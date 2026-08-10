@@ -44,14 +44,14 @@ func init_position(start_tx: int, start_ty: int) -> void:
 
 
 func _load_sprites() -> void:
-	sprite_texture = load("res://assets/sprites/player.png")
+	sprite_texture = load("res://assets/sprites/sprout_lands/characters.png")
 	var directions: Array[String] = ["down", "up", "left", "right"]
 	for row in directions.size():
 		var dir: String = directions[row]
 		sprite_quads[dir] = {}
 		for col in 4:
 			sprite_quads[dir][col] = Rect2(
-				col * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE
+				col * 48, row * 48, 48, 48
 			)
 
 
@@ -165,10 +165,10 @@ func update_player(delta: float) -> void:
 		walk_timer += delta
 		if walk_timer >= 0.15:
 			walk_timer = 0.0
-			walk_frame = (walk_frame % 2) + 1
+			walk_frame = (walk_frame + 1) % 4
 	else:
-		walk_frame = 0
 		walk_timer = 0.0
+		walk_frame = 0 # Idle frame
 
 	# Tool cycling
 	if Input.is_action_just_pressed("tool_next"):
@@ -180,8 +180,8 @@ func update_player(delta: float) -> void:
 	# (handled in _unhandled_input)
 
 	position = pos
-	queue_redraw()
-
+	if farm:
+		farm.queue_redraw()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed:
@@ -290,7 +290,7 @@ func _emit_particles(effect_type: String, tile_pos: Vector2i) -> void:
 		get_parent().spawn_particles(effect_type, world_pos)
 
 
-func _draw() -> void:
+func queue_render(canvas: CanvasItem, render_queue: Array) -> void:
 	if sprite_texture == null:
 		return
 
@@ -301,5 +301,10 @@ func _draw() -> void:
 	var quad_map = sprite_quads.get(facing, {})
 	var region: Rect2 = quad_map.get(frame, Rect2())
 	if region.size.x > 0:
-		var draw_pos := Vector2(-TILE_SIZE / 2.0, -TILE_SIZE / 2.0)
-		draw_texture_rect_region(sprite_texture, Rect2(draw_pos, Vector2(TILE_SIZE, TILE_SIZE)), region)
+		# Draw 48x48 sprite. Offset by -24 (half width) and -32 (so feet align with center)
+		# We add player.position since it's drawn from the canvas (farm) which is at 0,0
+		var draw_pos := position + Vector2(-24.0, -32.0)
+		render_queue.append({
+			"y": position.y,
+			"draw": func(): canvas.draw_texture_rect_region(sprite_texture, Rect2(draw_pos, Vector2(48, 48)), region)
+		})
