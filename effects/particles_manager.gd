@@ -6,9 +6,9 @@ var particle_texture: Texture2D
 
 
 func _ready() -> void:
-	particle_texture = load("res://assets/sprites/particle.png")
-
-
+	var img := Image.create(2, 2, false, Image.FORMAT_RGBA8)
+	img.fill(Color.WHITE)
+	particle_texture = ImageTexture.create_from_image(img)
 func emit(effect_type: String, world_pos: Vector2) -> void:
 	var particles := GPUParticles2D.new()
 	particles.emitting = false

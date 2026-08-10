@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cfeliby2ki08l"
-path="res://.godot/imported/crops.png-648722bf4b30dd00966f28fb52c99d59.ctex"
+uid="uid://dr067f8gufu5x"
+path="res://.godot/imported/plants.png-e21e856cd6136370f2fcd0eae52692db.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/crops.png"
-dest_files=["res://.godot/imported/crops.png-648722bf4b30dd00966f28fb52c99d59.ctex"]
+source_file="res://assets/sprites/sprout_lands/plants.png"
+dest_files=["res://.godot/imported/plants.png-e21e856cd6136370f2fcd0eae52692db.ctex"]
 
 [params]
 

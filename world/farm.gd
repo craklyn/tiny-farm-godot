@@ -35,32 +35,41 @@ func _ready() -> void:
 	_init_grid()
 
 
-func _load_textures() -> void:
-	tileset_texture = load("res://assets/sprites/tiles.png")
-	crops_texture = load("res://assets/sprites/crops.png")
-	objects_texture = load("res://assets/sprites/objects.png")
+var dirt_texture: Texture2D
+var biomes_texture: Texture2D
+var furniture_texture: Texture2D
+var chest_texture: Texture2D
 
-	# Tile regions: 8 columns x 1 row
-	var tile_names: Array[String] = [
-		"border", "obstacle_rock", "obstacle_log", "obstacle_weed",
-		"cleared", "tilled", "watered_tilled", "grass"
-	]
-	for i in tile_names.size():
-		tile_regions[tile_names[i]] = Rect2(i * TILE_SIZE, 0, TILE_SIZE, TILE_SIZE)
+func _load_textures() -> void:
+	tileset_texture = load("res://assets/sprites/sprout_lands/grass.png")
+	dirt_texture = load("res://assets/sprites/sprout_lands/dirt.png")
+	crops_texture = load("res://assets/sprites/sprout_lands/crops.png")
+	objects_texture = load("res://assets/sprites/sprout_lands/tools.png") # Kept just in case
+	biomes_texture = load("res://assets/sprites/sprout_lands/biomes.png")
+	furniture_texture = load("res://assets/sprites/sprout_lands/furniture.png")
+	chest_texture = load("res://assets/sprites/sprout_lands/chest.png")
+
+	# Tile regions (mapping obstacles to biomes.png)
+	tile_regions["obstacle_rock"] = Rect2(5 * 16, 4 * 16, 16, 16)
+	tile_regions["obstacle_log"] = Rect2(4 * 16, 2 * 16, 16, 16)
+	tile_regions["obstacle_weed"] = Rect2(0 * 16, 0 * 16, 16, 16)
+	tile_regions["border"] = Rect2(0 * 16, 0 * 16, 16, 16)
 
 	# Crop regions: 4 columns x 3 rows
-	for crop_name in CropDefs.ORDER:
-		crop_regions[crop_name] = {}
-		var row: int = CropDefs.TYPES[crop_name].sprite_row
-		for stage in 4:
-			crop_regions[crop_name][stage] = Rect2(
-				stage * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE
-			)
+	# Carrot is row 1, tomato is row 3, sunflower is row 4 in crops.png
+	crop_regions["carrot"] = {}
+	crop_regions["tomato"] = {}
+	crop_regions["sunflower"] = {}
+	for stage in 4: crop_regions["carrot"][stage] = Rect2(stage * 16, 1 * 16, 16, 16)
+	for stage in 6: crop_regions["tomato"][stage] = Rect2(stage * 16, 3 * 16, 16, 16)
+	for stage in 6: crop_regions["sunflower"][stage] = Rect2(stage * 16, 4 * 16, 16, 16)
 
-	# Object regions: 4 columns x 1 row
-	var obj_names: Array[String] = ["cot", "shipping_bin", "well", "seed_box"]
-	for i in obj_names.size():
-		object_regions[obj_names[i]] = Rect2(i * TILE_SIZE, 0, TILE_SIZE, TILE_SIZE)
+	# Object regions map
+	# Format: object_name -> [texture, rect]
+	object_regions["cot"] = [furniture_texture, Rect2(0 * 16, 1 * 16, 16, 16)]
+	object_regions["well"] = [furniture_texture, Rect2(4 * 16, 1 * 16, 16, 16)]
+	object_regions["shipping_bin"] = [chest_texture, Rect2(1 * 16, 1 * 16, 16, 16)]
+	object_regions["seed_box"] = [chest_texture, Rect2(4 * 16, 1 * 16, 16, 16)]
 
 
 func _init_grid() -> void:
@@ -78,7 +87,7 @@ func _init_grid() -> void:
 					var obstacle_types: Array[String] = ["obstacle_rock", "obstacle_log", "obstacle_weed"]
 					row.append(_create_tile(obstacle_types[randi() % 3]))
 				else:
-					row.append(_create_tile("grass"))
+					row.append(_create_tile("cleared"))
 			obj_row.append("")
 		tiles.append(row)
 		objects.append(obj_row)
@@ -180,37 +189,83 @@ func advance_day() -> void:
 
 
 func _draw() -> void:
+	# Bitmask mapping (0-15) for Sprout Lands top-left 4x4 layout
+	var BITMASK_MAP := {
+		0: Vector2i(3, 0),  1: Vector2i(3, 2),  2: Vector2i(0, 3),  3: Vector2i(0, 2),
+		4: Vector2i(3, 1),  5: Vector2i(3, 3),  6: Vector2i(0, 0),  7: Vector2i(0, 1),
+		8: Vector2i(2, 3),  9: Vector2i(2, 2), 10: Vector2i(1, 3), 11: Vector2i(1, 2),
+		12: Vector2i(2, 0), 13: Vector2i(2, 1), 14: Vector2i(1, 0), 15: Vector2i(1, 1)
+	}
+
+	var render_queue: Array[Dictionary] = []
+
 	for ty in MAP_HEIGHT:
 		for tx in MAP_WIDTH:
 			var tile: Dictionary = tiles[ty][tx]
 			var px := tx * TILE_SIZE
 			var py := ty * TILE_SIZE
 
-			# Choose tile quad based on state
-			var quad_name: String = tile.state
+			# Draw Grass background always
+			draw_texture_rect_region(tileset_texture, Rect2(px, py, TILE_SIZE, TILE_SIZE), Rect2(16, 16, 16, 16))
+
+			# Draw Tilled Dirt if applicable
+			if tile.state in ["tilled", "seeded", "growing", "ready"]:
+				# Calculate 4-way bitmask for dirt
+				var mask := 0
+				if ty > 0 and tiles[ty-1][tx].state in ["tilled", "seeded", "growing", "ready"]: mask += 1 # N
+				if tx < MAP_WIDTH - 1 and tiles[ty][tx+1].state in ["tilled", "seeded", "growing", "ready"]: mask += 2 # E
+				if ty < MAP_HEIGHT - 1 and tiles[ty+1][tx].state in ["tilled", "seeded", "growing", "ready"]: mask += 4 # S
+				if tx > 0 and tiles[ty][tx-1].state in ["tilled", "seeded", "growing", "ready"]: mask += 8 # W
+				
+				var coord: Vector2i = BITMASK_MAP[mask]
+				# If watered, use the next 4x4 block to the right! (x + 4)
+				var ox := 4 * 16 if tile.watered_today else 0
+				draw_texture_rect_region(dirt_texture, Rect2(px, py, TILE_SIZE, TILE_SIZE), Rect2(coord.x * 16 + ox, coord.y * 16, 16, 16))
+
+			# Queue obstacles
+			if tile.state in ["border", "obstacle_rock", "obstacle_log", "obstacle_weed"]:
+				var region: Rect2 = tile_regions.get(tile.state, Rect2())
+				if region.size.x > 0:
+					render_queue.append({
+						"y": py,
+						"draw": func(): draw_texture_rect_region(biomes_texture, Rect2(px, py, TILE_SIZE, TILE_SIZE), region)
+					})
+
+			# Queue crops
 			if tile.state in ["seeded", "growing", "ready"]:
-				quad_name = "watered_tilled" if tile.watered_today else "tilled"
-			elif tile.state == "tilled" and tile.watered_today:
-				quad_name = "watered_tilled"
+				var stage = tile.growth_stage
+				# clamp stage safely
+				if tile.crop_type == "carrot": stage = min(stage, 3)
+				elif tile.crop_type == "tomato" or tile.crop_type == "sunflower": stage = min(stage, 5)
+				var region: Rect2 = crop_regions[tile.crop_type].get(stage, Rect2())
+				if region.size.x > 0:
+					render_queue.append({
+						"y": py,
+						"draw": func(): draw_texture_rect_region(crops_texture, Rect2(px, py, TILE_SIZE, TILE_SIZE), region)
+					})
 
-			# Draw base tile
-			var region: Rect2 = tile_regions.get(quad_name, Rect2())
-			if region.size.x > 0:
-				draw_texture_rect_region(tileset_texture, Rect2(px, py, TILE_SIZE, TILE_SIZE), region)
-
-			# Draw crops on top
-			if tile.state in ["seeded", "growing", "ready"]:
-				var visual_stage := CropDefs.get_visual_stage(tile.crop_type, tile.growth_stage)
-				var crop_region_map = crop_regions.get(tile.crop_type, {})
-				var crop_region: Rect2 = crop_region_map.get(visual_stage, Rect2())
-				if crop_region.size.x > 0:
-					draw_texture_rect_region(crops_texture, Rect2(px, py, TILE_SIZE, TILE_SIZE), crop_region)
-
-			# Draw objects
+			# Queue objects
 			var obj: String = objects[ty][tx]
 			if obj != "":
-				var obj_region: Rect2 = object_regions.get(obj, Rect2())
-				if obj_region.size.x > 0:
-					draw_texture_rect_region(objects_texture, Rect2(px, py, TILE_SIZE, TILE_SIZE), obj_region)
+				var obj_data = object_regions.get(obj)
+				if obj_data:
+					var tex: Texture2D = obj_data[0]
+					var region: Rect2 = obj_data[1]
+					render_queue.append({
+						"y": py,
+						"draw": func(): draw_texture_rect_region(tex, Rect2(px, py, TILE_SIZE, TILE_SIZE), region)
+					})
+
+	# Insert player into render queue if player exists
+	var player = get_node_or_null("../Player")
+	if player and player.has_method("queue_render"):
+		player.queue_render(self, render_queue)
+
+	# Sort by Y-coordinate
+	render_queue.sort_custom(func(a, b): return a.y < b.y)
+
+	# Execute drawing commands
+	for entity in render_queue:
+		entity.draw.call()
 
 

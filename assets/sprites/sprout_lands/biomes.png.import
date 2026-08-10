@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://drukdnlyvnxup"
-path="res://.godot/imported/objects.png-bd456bef5cdf8a26cefbac13b078b089.ctex"
+uid="uid://c7qwku4q0qk7q"
+path="res://.godot/imported/biomes.png-68f4ab7dc3dfe96451c41e1b656c93a4.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/objects.png"
-dest_files=["res://.godot/imported/objects.png-bd456bef5cdf8a26cefbac13b078b089.ctex"]
+source_file="res://assets/sprites/sprout_lands/biomes.png"
+dest_files=["res://.godot/imported/biomes.png-68f4ab7dc3dfe96451c41e1b656c93a4.ctex"]
 
 [params]
 

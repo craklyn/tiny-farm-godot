@@ -31,11 +31,13 @@ func _ready() -> void:
 	# Create farm
 	var FarmScript = load("res://world/farm.gd")
 	farm = FarmScript.new()
+	farm.name = "Farm"
 	add_child(farm)
 
 	# Create player
 	var PlayerScript = load("res://player/player.gd")
 	player = PlayerScript.new()
+	player.name = "Player"
 	add_child(player)
 	player.farm = farm
 	player.init_position(2, 2)  # Near the cot

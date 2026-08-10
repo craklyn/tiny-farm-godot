@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://co87v5yj8g71n"
-path="res://.godot/imported/particle.png-b701fedadd53b1563f688725e6851c33.ctex"
+uid="uid://d182sqppkwhev"
+path="res://.godot/imported/chest.png-c600a71dffa4de4607524755a9b66df8.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/particle.png"
-dest_files=["res://.godot/imported/particle.png-b701fedadd53b1563f688725e6851c33.ctex"]
+source_file="res://assets/sprites/sprout_lands/chest.png"
+dest_files=["res://.godot/imported/chest.png-c600a71dffa4de4607524755a9b66df8.ctex"]
 
 [params]
 
