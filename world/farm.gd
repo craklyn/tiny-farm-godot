@@ -189,13 +189,40 @@ func advance_day() -> void:
 
 
 func _draw() -> void:
-	# Bitmask mapping (0-15) for Sprout Lands top-left 4x4 layout
-	var BITMASK_MAP := {
-		0: Vector2i(3, 0),  1: Vector2i(3, 2),  2: Vector2i(0, 3),  3: Vector2i(0, 2),
-		4: Vector2i(3, 1),  5: Vector2i(3, 3),  6: Vector2i(0, 0),  7: Vector2i(0, 1),
-		8: Vector2i(2, 3),  9: Vector2i(2, 2), 10: Vector2i(1, 3), 11: Vector2i(1, 2),
-		12: Vector2i(2, 0), 13: Vector2i(2, 1), 14: Vector2i(1, 0), 15: Vector2i(1, 1)
-	}
+	var BITMASK_MAP: Array[Vector2i] = [
+		Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(1, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5),
+		Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(1, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5),
+		Vector2i(0, 3), 	Vector2i(0, 4), 	Vector2i(0, 3), 	Vector2i(0, 4), 	Vector2i(0, 3), 	Vector2i(0, 4), 	Vector2i(0, 3), 	Vector2i(0, 4),
+		Vector2i(0, 3), 	Vector2i(0, 4), 	Vector2i(0, 3), 	Vector2i(0, 4), 	Vector2i(1, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5),
+		Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(1, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5),
+		Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(1, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5),
+		Vector2i(0, 3), 	Vector2i(0, 4), 	Vector2i(0, 3), 	Vector2i(0, 4), 	Vector2i(0, 3), 	Vector2i(0, 4), 	Vector2i(0, 3), 	Vector2i(0, 4),
+		Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(3, 3), 	Vector2i(0, 4), 	Vector2i(3, 3), 	Vector2i(0, 2),
+		Vector2i(3, 6), 	Vector2i(0, 5), 	Vector2i(3, 6), 	Vector2i(0, 5), 	Vector2i(2, 6), 	Vector2i(2, 6), 	Vector2i(3, 6), 	Vector2i(0, 5),
+		Vector2i(3, 6), 	Vector2i(0, 5), 	Vector2i(3, 6), 	Vector2i(0, 5), 	Vector2i(2, 6), 	Vector2i(2, 6), 	Vector2i(3, 6), 	Vector2i(2, 6),
+		Vector2i(3, 6), 	Vector2i(0, 4), 	Vector2i(3, 6), 	Vector2i(0, 4), 	Vector2i(2, 6), 	Vector2i(1, 7), 	Vector2i(3, 6), 	Vector2i(1, 7),
+		Vector2i(3, 6), 	Vector2i(0, 4), 	Vector2i(3, 6), 	Vector2i(0, 4), 	Vector2i(2, 6), 	Vector2i(1, 7), 	Vector2i(3, 6), 	Vector2i(1, 7),
+		Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(1, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5),
+		Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(1, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5),
+		Vector2i(0, 3), 	Vector2i(0, 4), 	Vector2i(0, 3), 	Vector2i(0, 4), 	Vector2i(0, 3), 	Vector2i(0, 4), 	Vector2i(0, 3), 	Vector2i(0, 4),
+		Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(3, 3), 	Vector2i(0, 4), 	Vector2i(3, 3), 	Vector2i(2, 2),
+		Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(1, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5),
+		Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(1, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5),
+		Vector2i(0, 3), 	Vector2i(0, 4), 	Vector2i(0, 3), 	Vector2i(0, 4), 	Vector2i(0, 3), 	Vector2i(0, 4), 	Vector2i(0, 3), 	Vector2i(0, 4),
+		Vector2i(0, 3), 	Vector2i(0, 4), 	Vector2i(0, 3), 	Vector2i(0, 4), 	Vector2i(1, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5),
+		Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(1, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5),
+		Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(1, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5),
+		Vector2i(0, 3), 	Vector2i(0, 4), 	Vector2i(0, 3), 	Vector2i(0, 4), 	Vector2i(0, 3), 	Vector2i(0, 4), 	Vector2i(0, 3), 	Vector2i(0, 4),
+		Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(3, 3), 	Vector2i(0, 4), 	Vector2i(3, 3), 	Vector2i(1, 2),
+		Vector2i(3, 6), 	Vector2i(0, 5), 	Vector2i(3, 6), 	Vector2i(0, 5), 	Vector2i(2, 6), 	Vector2i(2, 6), 	Vector2i(3, 6), 	Vector2i(0, 5),
+		Vector2i(3, 6), 	Vector2i(0, 5), 	Vector2i(3, 6), 	Vector2i(0, 5), 	Vector2i(2, 6), 	Vector2i(2, 6), 	Vector2i(3, 6), 	Vector2i(2, 6),
+		Vector2i(3, 6), 	Vector2i(0, 4), 	Vector2i(3, 6), 	Vector2i(0, 4), 	Vector2i(2, 6), 	Vector2i(1, 7), 	Vector2i(3, 6), 	Vector2i(1, 7),
+		Vector2i(3, 6), 	Vector2i(0, 4), 	Vector2i(3, 6), 	Vector2i(0, 4), 	Vector2i(2, 6), 	Vector2i(1, 7), 	Vector2i(3, 6), 	Vector2i(1, 7),
+		Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(1, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5),
+		Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(1, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5),
+		Vector2i(0, 3), 	Vector2i(0, 4), 	Vector2i(0, 3), 	Vector2i(0, 4), 	Vector2i(0, 3), 	Vector2i(0, 4), 	Vector2i(0, 3), 	Vector2i(0, 4),
+		Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(3, 3), 	Vector2i(0, 4), 	Vector2i(3, 3), 	Vector2i(2, 3)
+	]
 
 	var render_queue: Array[Dictionary] = []
 
@@ -210,12 +237,24 @@ func _draw() -> void:
 
 			# Draw Tilled Dirt if applicable
 			if tile.state in ["tilled", "seeded", "growing", "ready"]:
-				# Calculate 4-way bitmask for dirt
 				var mask := 0
-				if ty > 0 and tiles[ty-1][tx].state in ["tilled", "seeded", "growing", "ready"]: mask += 1 # N
-				if tx < MAP_WIDTH - 1 and tiles[ty][tx+1].state in ["tilled", "seeded", "growing", "ready"]: mask += 2 # E
-				if ty < MAP_HEIGHT - 1 and tiles[ty+1][tx].state in ["tilled", "seeded", "growing", "ready"]: mask += 4 # S
-				if tx > 0 and tiles[ty][tx-1].state in ["tilled", "seeded", "growing", "ready"]: mask += 8 # W
+				var c_n = ty > 0 and tiles[ty-1][tx].state in ["tilled", "seeded", "growing", "ready"]
+				var c_e = tx < MAP_WIDTH - 1 and tiles[ty][tx+1].state in ["tilled", "seeded", "growing", "ready"]
+				var c_s = ty < MAP_HEIGHT - 1 and tiles[ty+1][tx].state in ["tilled", "seeded", "growing", "ready"]
+				var c_w = tx > 0 and tiles[ty][tx-1].state in ["tilled", "seeded", "growing", "ready"]
+				var c_ne = ty > 0 and tx < MAP_WIDTH - 1 and tiles[ty-1][tx+1].state in ["tilled", "seeded", "growing", "ready"]
+				var c_se = ty < MAP_HEIGHT - 1 and tx < MAP_WIDTH - 1 and tiles[ty+1][tx+1].state in ["tilled", "seeded", "growing", "ready"]
+				var c_sw = ty < MAP_HEIGHT - 1 and tx > 0 and tiles[ty+1][tx-1].state in ["tilled", "seeded", "growing", "ready"]
+				var c_nw = ty > 0 and tx > 0 and tiles[ty-1][tx-1].state in ["tilled", "seeded", "growing", "ready"]
+
+				if c_n: mask |= 1
+				if c_n and c_e and c_ne: mask |= 2
+				if c_e: mask |= 4
+				if c_e and c_s and c_se: mask |= 8
+				if c_s: mask |= 16
+				if c_s and c_w and c_sw: mask |= 32
+				if c_w: mask |= 64
+				if c_w and c_n and c_nw: mask |= 128
 				
 				var coord: Vector2i = BITMASK_MAP[mask]
 				# If watered, use the next 4x4 block to the right! (x + 4)
