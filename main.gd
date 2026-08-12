@@ -100,6 +100,22 @@ func _process(delta: float) -> void:
 		var action: String = player.handle_action()
 		_handle_action_result(action)
 
+	# Swipe-chaining
+	if InputManager.swipe_active and InputManager.swipe_moved:
+		var st := InputManager.swipe_tile
+		var pt: Vector2i = player.get_tile_pos()
+		var resolved: Dictionary = ActionRouter.resolve(farm, GameState, st)
+		var chainable := { "water": true, "plant": true, "till": true, "harvest": true, "clear_weed": true, "clear_log": true, "clear_rock": true }
+		if not resolved.is_empty() and chainable.get(resolved.get("action", ""), false):
+			var fdx: int = st.x - pt.x
+			var fdy: int = st.y - pt.y
+			if absi(fdx) >= absi(fdy):
+				player.facing = "right" if fdx > 0 else "left"
+			else:
+				player.facing = "down" if fdy > 0 else "up"
+			player._execute_resolved_action(resolved)
+			GameState.check_milestones()
+
 	# Seed type cycling with number keys when Seeds tool is active
 	var current_tool_idx := GameState.selected_tool
 	if current_tool_idx >= 0 and current_tool_idx < Tools.LIST.size():
@@ -112,11 +128,12 @@ func _process(delta: float) -> void:
 				GameState.selected_seed_type = "sunflower"
 
 	# Update tile cursor
-	var cursor_info: Dictionary = hud.get_cursor_info(GameState.selected_tool, farm)
-	cursor_visible = cursor_info.get("visible", false)
-	if cursor_visible:
-		cursor_tile = cursor_info.get("tile", Vector2i(-1, -1))
-		cursor_color = cursor_info.get("color", Color.WHITE)
+	if InputManager.current_mode == InputManager.Mode.MOUSE:
+		cursor_visible = true
+		cursor_tile = InputManager.mouse_tile
+		cursor_color = ActionRouter.get_cursor_color(farm, GameState, cursor_tile)
+	else:
+		cursor_visible = false
 	queue_redraw()
 
 	# Determine interaction hints

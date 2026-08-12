@@ -24,6 +24,8 @@ var tool_name_label: Label
 var seed_info_label: Label
 var seed_counts_label: Label
 var water_label: Label
+var seed_pill: Panel
+var seed_pill_label: Label
 var toast_panel: Panel
 var toast_label: Label
 var hint_label: Label
@@ -146,6 +148,32 @@ func _build_ui() -> void:
 	hint_label.text = ""
 	add_child(hint_label)
 
+	# --- Active Seed Pill (above hint) ---
+	seed_pill = Panel.new()
+	var pill_style := StyleBoxFlat.new()
+	pill_style.bg_color = Color(0.18, 0.52, 0.22, 0.88)
+	pill_style.corner_radius_top_left = 12
+	pill_style.corner_radius_top_right = 12
+	pill_style.corner_radius_bottom_left = 12
+	pill_style.corner_radius_bottom_right = 12
+	pill_style.border_width_bottom = 1
+	pill_style.border_width_top = 1
+	pill_style.border_width_left = 1
+	pill_style.border_width_right = 1
+	pill_style.border_color = Color(1, 1, 1, 0.3)
+	seed_pill.add_theme_stylebox_override("panel", pill_style)
+	seed_pill.size = Vector2(100, 24)
+	seed_pill.position = Vector2(viewport_size.x / 2 - 50, viewport_size.y - 60 - 24)
+	seed_pill.gui_input.connect(_on_seed_pill_gui_input)
+	add_child(seed_pill)
+
+	seed_pill_label = Label.new()
+	seed_pill_label.position = Vector2(0, 2)
+	seed_pill_label.size = Vector2(100, 20)
+	seed_pill_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	seed_pill_label.add_theme_color_override("font_color", Color(1, 1, 0.9))
+	seed_pill.add_child(seed_pill_label)
+
 	# --- Toast ---
 	toast_panel = Panel.new()
 	var toast_style := StyleBoxFlat.new()
@@ -217,6 +245,22 @@ func _update_hud() -> void:
 		parts.append("%s:%d" % [abbrev, count])
 	seed_counts_label.text = "  ".join(parts)
 
+	# Active Seed Pill update
+	var seed_name: String = GameState.selected_seed_type
+	var scount: int = GameState.seeds.get(seed_name, 0)
+	var emoji := "?"
+	match seed_name:
+		"carrot": emoji = "🥕"
+		"tomato": emoji = "🍅"
+		"sunflower": emoji = "🌻"
+	seed_pill_label.text = "%s %s x%d" % [emoji, seed_name, scount]
+	
+	var style: StyleBoxFlat = seed_pill.get_theme_stylebox("panel")
+	if scount > 0:
+		style.bg_color = Color(0.18, 0.52, 0.22, 0.88)
+	else:
+		style.bg_color = Color(0.25, 0.25, 0.25, 0.75)
+
 	# Water
 	water_label.text = "Water: %d/%d" % [GameState.watering_can_charges, GameState.max_watering_can_charges]
 
@@ -243,28 +287,16 @@ func _on_milestone(_id: String, message: String) -> void:
 	show_toast(message)
 
 
-func get_cursor_info(player_tool: int, farm_node: Node2D) -> Dictionary:
-	"""Return cursor tile and color for the main scene to draw."""
-	if InputManager.current_mode != InputManager.Mode.MOUSE:
-		return { "visible": false }
-
-	var mt := InputManager.mouse_tile
-	if mt.x < 0 or mt.y < 0:
-		return { "visible": false }
-
-	var tile: Dictionary = farm_node.get_tile(mt.x, mt.y)
-	if tile.is_empty():
-		return { "visible": false }
-
-	var color := Color(1, 1, 1, 0.6)  # white neutral
-	var action := Tools.get_action(player_tool, tile.state)
-	if action != "":
-		color = Color(0.2, 0.9, 0.3, 0.6)  # green
-	elif tile.state == "border" or tile.state.begins_with("obstacle"):
-		color = Color(0.9, 0.3, 0.2, 0.6)  # red
-
-	return { "visible": true, "tile": mt, "color": color }
+func get_cursor_info(_pt: int, _fn: Node2D) -> Dictionary:
+	# Obsolete: main.gd uses ActionRouter.get_cursor_color directly
+	return { "visible": false }
 
 func set_hint(text: String) -> void:
 	if hint_label:
 		hint_label.text = text
+
+func _on_seed_pill_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		GameState.cycle_seed_type()
+		AudioManager.play_sfx("click")
+		get_viewport().set_input_as_handled()
