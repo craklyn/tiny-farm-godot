@@ -11,6 +11,11 @@ var mouse_tile: Vector2i = Vector2i(-1, -1)
 var click_tile: Vector2i = Vector2i(-1, -1)
 var has_click: bool = false
 
+# Swipe-chain state
+var swipe_active: bool = false
+var swipe_tile: Vector2i = Vector2i(-1, -1)
+var swipe_moved: bool = false  # true for one frame when finger enters a new tile
+
 # Tile conversion constants
 const TILE_SIZE := 16
 const SCALE := 3
@@ -18,7 +23,9 @@ const SCALE := 3
 var _camera_offset: Vector2 = Vector2.ZERO
 
 
-func _input(event: InputEvent) -> void:
+func _unhandled_input(event: InputEvent) -> void:
+	swipe_moved = false  # Reset per-frame
+
 	if event is InputEventKey or (event is InputEventJoypadButton and false):
 		_set_mode(Mode.KEYBOARD)
 	elif event is InputEventJoypadButton or event is InputEventJoypadMotion:
@@ -31,6 +38,22 @@ func _input(event: InputEvent) -> void:
 		_set_mode(Mode.MOUSE)
 	elif event is InputEventScreenTouch:
 		_set_mode(Mode.MOUSE)
+		if event.pressed:
+			# Treat touch-press as a click
+			click_tile = screen_to_tile(event.position)
+			has_click  = true
+			swipe_active = false
+		else:
+			# Finger lifted
+			swipe_active = false
+			swipe_tile   = Vector2i(-1, -1)
+	elif event is InputEventScreenDrag:
+		_set_mode(Mode.MOUSE)
+		var new_tile := screen_to_tile(event.position)
+		if new_tile != swipe_tile:
+			swipe_tile   = new_tile
+			swipe_active = true
+			swipe_moved  = true
 
 	# Track mouse clicks
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:

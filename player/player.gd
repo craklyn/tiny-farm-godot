@@ -19,9 +19,13 @@ var is_acting: bool = false
 var action_timer: float = 0.0
 const ACTION_DURATION := 0.35
 
-# Click-to-move
-var move_target: Vector2 = Vector2(-1, -1)
-var has_move_target: bool = false
+# A* path following
+var path: Array[Vector2i] = []
+var pending_action: Dictionary = {}  # {action, tool_idx, target_t, seed_type}
+
+# Tap destination indicator
+var tap_indicator: Dictionary = {}   # {tx, ty, timer}
+const TAP_INDICATOR_DURATION := 0.6
 
 # Sprite
 var sprite_texture: Texture2D
@@ -75,6 +79,12 @@ func update_player(delta: float) -> void:
 	if farm == null:
 		return
 
+	# Tap indicator timer
+	if not tap_indicator.is_empty():
+		tap_indicator["timer"] -= delta
+		if tap_indicator["timer"] <= 0:
+			tap_indicator = {}
+
 	# Action animation lock
 	if is_acting:
 		action_timer -= delta
@@ -85,43 +95,74 @@ func update_player(delta: float) -> void:
 	var dx: float = 0.0
 	var dy: float = 0.0
 
-	# Mouse click-to-move handling
+	# Touch/mouse tap → A* pathfind
 	if InputManager.has_click:
 		var click_t := InputManager.consume_click()
 		var player_t := get_tile_pos()
-		var adx := absi(click_t.x - player_t.x)
-		var ady := absi(click_t.y - player_t.y)
-		if adx <= 1 and ady <= 1 and not (adx == 0 and ady == 0):
-			# Adjacent tile: face it and action
-			if click_t.x > player_t.x:
-				facing = "right"
-			elif click_t.x < player_t.x:
-				facing = "left"
-			elif click_t.y > player_t.y:
-				facing = "down"
-			elif click_t.y < player_t.y:
-				facing = "up"
-			_try_action()
-			has_move_target = false
-		else:
-			# Far tile: set move target
-			move_target = Vector2(
-				click_t.x * TILE_SIZE + TILE_SIZE / 2.0,
-				click_t.y * TILE_SIZE + TILE_SIZE / 2.0
-			)
-			has_move_target = true
 
-	# Movement from keyboard/gamepad
+		# Resolve action
+		var resolved := ActionRouter.resolve(farm, GameState, click_t)
+
+		# Pathfind to tapped tile (or adjacent if unwalkable)
+		var new_path := Pathfinding.find_path(farm, player_t, click_t)
+		path = new_path
+
+		# Store tap indicator at final waypoint
+		if not path.is_empty():
+			var last := path[path.size() - 1]
+			tap_indicator = { "tx": last.x, "ty": last.y, "timer": TAP_INDICATOR_DURATION }
+		elif player_t == click_t:
+			tap_indicator = { "tx": click_t.x, "ty": click_t.y, "timer": TAP_INDICATOR_DURATION }
+
+		# Store pending action
+		if not resolved.is_empty():
+			if path.is_empty():
+				var dist = absi(player_t.x - click_t.x) + absi(player_t.y - click_t.y)
+				if dist <= 1:
+					var pa := resolved
+					var tgt: Vector2i = pa.get("target_t", click_t)
+					var fdx := tgt.x - player_t.x
+					var fdy := tgt.y - player_t.y
+					if fdx != 0 or fdy != 0:
+						if absi(fdx) >= absi(fdy):
+							facing = "right" if fdx > 0 else "left"
+						else:
+							facing = "down" if fdy > 0 else "up"
+					_execute_resolved_action(pa)
+				pending_action = {}
+			else:
+				pending_action = resolved
+		else:
+			pending_action = {}
+
+	# Keyboard / gamepad movement (cancels path)
 	var input_vec := Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	if input_vec.length() > 0.1:
 		dx = input_vec.x
 		dy = input_vec.y
-		has_move_target = false
-	elif has_move_target:
-		# Move toward click target
-		var diff := move_target - pos
+		path = []
+		pending_action = {}
+	elif not path.is_empty():
+		# Follow next waypoint
+		var wp := path[0]
+		var wp_world := Vector2(wp.x * TILE_SIZE + TILE_SIZE / 2.0, wp.y * TILE_SIZE + TILE_SIZE / 2.0)
+		var diff := wp_world - pos
 		if diff.length() < 2.0:
-			has_move_target = false
+			path.remove_at(0)
+			if path.is_empty() and not pending_action.is_empty():
+				# Arrived — execute pending action
+				var pa := pending_action
+				pending_action = {}
+				# Face the target tile
+				var my_t := get_tile_pos()
+				var tgt: Vector2i = pa.get("target_t", my_t)
+				var fdx := tgt.x - my_t.x
+				var fdy := tgt.y - my_t.y
+				if absi(fdx) >= absi(fdy):
+					facing = "right" if fdx > 0 else "left"
+				else:
+					facing = "down" if fdy > 0 else "up"
+				_execute_resolved_action(pa)
 		else:
 			var dir := diff.normalized()
 			dx = dir.x
@@ -232,52 +273,114 @@ func _try_action() -> String:
 		return "sleep"
 
 	# Regular tile action
-	var tile: Dictionary = farm.get_tile(facing_t.x, facing_t.y)
-	if tile.is_empty():
+	var state: String = farm.get_tile(facing_t.x, facing_t.y).get("state", "")
+	if state == "":
 		return ""
 
-	var action: String = Tools.get_action(GameState.selected_tool, tile.state)
+	var action: String = Tools.get_action(GameState.selected_tool, state)
 	if action == "":
 		return ""
 
-	var cost := Tools.get_energy_cost(action)
+	var cost: int = Tools.get_energy_cost(action)
 	if GameState.energy < cost:
 		return ""
 
-	# Special checks
 	if action == "water" and GameState.watering_can_charges <= 0:
 		return ""
 	if action == "plant" and GameState.seeds.get(GameState.selected_seed_type, 0) <= 0:
 		return ""
 
-	# Execute action
-	GameState.set_energy(GameState.energy - cost)
+	# Execute
+	GameState.energy -= cost
 	is_acting = true
 	action_timer = ACTION_DURATION
 
-	match action:
-		"clear_weed", "clear_log", "clear_rock":
+	if action == "clear_weed" or action == "clear_log" or action == "clear_rock":
+		farm.set_tile_state(facing_t.x, facing_t.y, "cleared")
+		AudioManager.play_sfx("till")
+		_emit_particles("chop", facing_t)
+	elif action == "till":
+		farm.set_tile_state(facing_t.x, facing_t.y, "tilled")
+		AudioManager.play_sfx("till")
+		_emit_particles("dirt", facing_t)
+	elif action == "plant":
+		farm.set_tile_state(facing_t.x, facing_t.y, "seeded", GameState.selected_seed_type)
+		GameState.seeds[GameState.selected_seed_type] -= 1
+	elif action == "water":
+		farm.water_tile(facing_t.x, facing_t.y)
+		GameState.watering_can_charges -= 1
+		AudioManager.play_sfx("water")
+		_emit_particles("water", facing_t)
+	elif action == "harvest":
+		var crop_type: String = farm.get_crop_type(facing_t.x, facing_t.y)
+		if crop_type != "":
+			GameState.crops[crop_type] = GameState.crops.get(crop_type, 0) + 1
+			GameState.harvest_counts[crop_type] = GameState.harvest_counts.get(crop_type, 0) + 1
 			farm.set_tile_state(facing_t.x, facing_t.y, "cleared")
-			_emit_particles("chop", facing_t)
-		"till":
-			farm.set_tile_state(facing_t.x, facing_t.y, "tilled")
-			_emit_particles("dirt", facing_t)
-		"plant":
-			farm.set_tile_state(facing_t.x, facing_t.y, "seeded", GameState.selected_seed_type)
-			GameState.seeds[GameState.selected_seed_type] -= 1
-		"water":
-			farm.water_tile(facing_t.x, facing_t.y)
-			GameState.watering_can_charges -= 1
-			_emit_particles("water", facing_t)
-		"harvest":
-			var crop_type: String = tile.crop_type
-			if crop_type != "":
-				GameState.crops[crop_type] = GameState.crops.get(crop_type, 0) + 1
-				GameState.harvest_counts[crop_type] = GameState.harvest_counts.get(crop_type, 0) + 1
-				farm.set_tile_state(facing_t.x, facing_t.y, "cleared")
-				_emit_particles("harvest", facing_t)
+			AudioManager.play_sfx("harvest")
+			_emit_particles("harvest", facing_t)
 
 	return action
+
+
+func _execute_resolved_action(pa: Dictionary) -> void:
+	var action: String = pa.get("action", "")
+	var target_t: Vector2i = pa.get("target_t", get_tile_pos())
+	var seed_type: String = pa.get("seed_type", GameState.selected_seed_type)
+
+	if action == "sleep":
+		get_tree().get_first_node_in_group("Main").call_deferred("trigger_action", "sleep")
+		return
+	if action == "open_shop":
+		get_tree().get_first_node_in_group("Main").call_deferred("trigger_action", "open_shop")
+		return
+	if action == "sell":
+		GameState.sell_crops_to_bin()
+		return
+	if action == "refill":
+		GameState.refill_watering_can()
+		return
+
+	var state: String = farm.get_tile(target_t.x, target_t.y).get("state", "")
+	if state == "": return
+
+	var cost: int = Tools.get_energy_cost(action)
+	if GameState.energy < cost: return
+
+	if action == "water" and GameState.watering_can_charges <= 0: return
+	if action == "plant" and GameState.seeds.get(seed_type, 0) <= 0: return
+
+	# Execute
+	if pa.has("tool_idx"):
+		GameState.selected_tool = pa["tool_idx"]
+	GameState.energy -= cost
+	is_acting = true
+	action_timer = ACTION_DURATION
+
+	if action == "clear_weed" or action == "clear_log" or action == "clear_rock":
+		farm.set_tile_state(target_t.x, target_t.y, "cleared")
+		AudioManager.play_sfx("till")
+		_emit_particles("chop", target_t)
+	elif action == "till":
+		farm.set_tile_state(target_t.x, target_t.y, "tilled")
+		AudioManager.play_sfx("till")
+		_emit_particles("dirt", target_t)
+	elif action == "plant":
+		farm.set_tile_state(target_t.x, target_t.y, "seeded", seed_type)
+		GameState.seeds[seed_type] -= 1
+	elif action == "water":
+		farm.water_tile(target_t.x, target_t.y)
+		GameState.watering_can_charges -= 1
+		AudioManager.play_sfx("water")
+		_emit_particles("water", target_t)
+	elif action == "harvest":
+		var crop_type: String = farm.get_crop_type(target_t.x, target_t.y)
+		if crop_type != "":
+			GameState.crops[crop_type] = GameState.crops.get(crop_type, 0) + 1
+			GameState.harvest_counts[crop_type] = GameState.harvest_counts.get(crop_type, 0) + 1
+			farm.set_tile_state(target_t.x, target_t.y, "cleared")
+			AudioManager.play_sfx("harvest")
+			_emit_particles("harvest", target_t)
 
 
 func _emit_particles(effect_type: String, tile_pos: Vector2i) -> void:

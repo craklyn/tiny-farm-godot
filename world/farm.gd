@@ -66,10 +66,10 @@ func _load_textures() -> void:
 
 	# Object regions map
 	# Format: object_name -> [texture, rect]
-	object_regions["cot"] = [furniture_texture, Rect2(0 * 16, 1 * 16, 16, 16)]
-	object_regions["well"] = [furniture_texture, Rect2(4 * 16, 1 * 16, 16, 16)]
+	object_regions["cot"] = [furniture_texture, Rect2(0 * 16, 0 * 16, 16, 32)]
+	object_regions["well"] = [furniture_texture, Rect2(4 * 16, 0 * 16, 16, 32)]
 	object_regions["shipping_bin"] = [chest_texture, Rect2(1 * 16, 1 * 16, 16, 16)]
-	object_regions["seed_box"] = [chest_texture, Rect2(4 * 16, 1 * 16, 16, 16)]
+	object_regions["seed_box"] = [furniture_texture, Rect2(5 * 16, 2 * 16, 16, 32)]
 
 
 func _init_grid() -> void:
@@ -134,7 +134,11 @@ func get_tile(tx: int, ty: int) -> Dictionary:
 
 func get_object(tx: int, ty: int) -> String:
 	if ty >= 0 and ty < MAP_HEIGHT and tx >= 0 and tx < MAP_WIDTH:
-		return objects[ty][tx]
+		if objects[ty][tx] != "":
+			return objects[ty][tx]
+		# Check if the tile below has a tall object
+		if ty + 1 < MAP_HEIGHT and objects[ty + 1][tx] in ["cot", "well", "seed_box"]:
+			return objects[ty + 1][tx]
 	return ""
 
 
@@ -292,7 +296,7 @@ func _draw() -> void:
 					var region: Rect2 = obj_data[1]
 					render_queue.append({
 						"y": py,
-						"draw": func(): draw_texture_rect_region(tex, Rect2(px, py, TILE_SIZE, TILE_SIZE), region)
+						"draw": func(): draw_texture_rect_region(tex, Rect2(px, py - (region.size.y - TILE_SIZE), region.size.x, region.size.y), region)
 					})
 
 	# Insert player into render queue if player exists
