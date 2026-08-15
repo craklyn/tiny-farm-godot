@@ -96,3 +96,30 @@ func _key(t: Vector2i) -> int:
 
 func _h(a: Vector2i, b: Vector2i) -> float:
 	return float(absi(a.x - b.x) + absi(a.y - b.y))
+
+func get_reachable_tiles(farm: Node2D, start_t: Vector2i) -> Array[Vector2i]:
+	var reachable: Array[Vector2i] = []
+	var queue: Array[Vector2i] = [start_t]
+	var visited: Dictionary = {}
+	
+	visited[_key(start_t)] = true
+	
+	var idx := 0
+	while idx < queue.size():
+		var ct := queue[idx]
+		idx += 1
+		
+		if farm.is_walkable(ct.x, ct.y) or ct == start_t:
+			if farm.is_walkable(ct.x, ct.y):
+				reachable.append(ct)
+			
+			for d: Vector2i in DIRS:
+				var nt := ct + d
+				var nk := _key(nt)
+				if not visited.has(nk):
+					if farm.is_walkable(nt.x, nt.y):
+						visited[nk] = true
+						queue.append(nt)
+						
+	return reachable
+

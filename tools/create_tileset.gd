@@ -5,7 +5,7 @@ func _init():
 	var ts = TileSet.new()
 	ts.tile_size = Vector2i(16, 16)
 	
-	# Create Terrain Set 0 (Match Corners and Sides)
+	# Create Terrain Set 0 (Match Wheaters and Sides)
 	ts.add_terrain_set()
 	ts.set_terrain_set_mode(0, TileSet.TERRAIN_MODE_MATCH_CORNERS_AND_SIDES)
 	

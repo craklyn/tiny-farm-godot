@@ -5,8 +5,8 @@ extends RefCounted
 
 # Crop definitions
 static var TYPES: Dictionary = {
-	"carrot": {
-		"name": "Carrot",
+	"wheat": {
+		"name": "Wheat",
 		"days_to_grow": 3,
 		"sell_price": 15,
 		"seed_price": 5,
@@ -20,22 +20,17 @@ static var TYPES: Dictionary = {
 		"sell_price": 30,
 		"seed_price": 10,
 		"stages": 4,
-		"unlock_requirement": { "crop": "carrot", "count": 1 },
+		"unlock_requirement": { "crop": "wheat", "count": 1 },
 		"sprite_row": 1,
 	},
-	"sunflower": {
-		"name": "Sunflower",
-		"days_to_grow": 7,
-		"sell_price": 50,
-		"seed_price": 20,
-		"stages": 4,
-		"unlock_requirement": { "crop": "tomato", "count": 1 },
-		"sprite_row": 2,
+	"egg": {
+		"name": "Egg",
+		"sell_price": 10,
 	},
 }
 
 # Display order
-static var ORDER: Array[String] = ["carrot", "tomato", "sunflower"]
+static var ORDER: Array[String] = ["wheat", "tomato"]
 
 
 static func is_ready(crop_type: String, growth_stage: int) -> bool:

@@ -1,0 +1,1568 @@
+diff --git a/.godot/editor/filesystem_cache10 b/.godot/editor/filesystem_cache10
+index ce917c2..62c0771 100644
+--- a/.godot/editor/filesystem_cache10
++++ b/.godot/editor/filesystem_cache10
+@@ -1,14 +1,15 @@
+ ea4bc82a6ad023ab7ee23ee620429895
+-::res://::1786511449
++::res://::1786768409
++check_export.gd::GDScript/GDScript::6952538440485313856::1786685271::0::1::::<>SceneTree<><>0<>1<><>::
+ export_presets.cfg::TextFile/TextFile::-1::1786511784::0::1::::<><><>0<>0<><>::
+-main.gd::GDScript/GDScript::573398445734219183::1786511673::0::1::::<>Node2D<><>0<>0<><>::
++main.gd::GDScript/GDScript::573398445734219183::1786768426::0::1::::<>Node2D<><>0<>0<><>::
+ main.tscn::PackedScene/PackedScene::-1::1786260836::0::1::::<><><>0<>0<><>::res://main.gd
+ README.md::TextFile/TextFile::-1::1786341064::0::1::::<><><>0<>0<><>::
+ ::res://assets/::1786464087
+ ::res://assets/audio/::1786464087
+-::res://assets/audio/music/::1786518141
++::res://assets/audio/music/::1786518218
+ bgm.wav::AudioStreamWAV/AudioStreamWAV::6665045444073980760::1786464087::1786465180::1::::<><><>0<>0<>0746489cc6db298298d3a8772e52c66e<>res://.godot/imported/bgm.wav-6a8eaa3963033400aed1a70b2b8e94f7.sample::
+-bgm_wholesome.ogg::AudioStreamOggVorbis::6921107747153134317::1786518148::1786518218::1::::<><><>0<>0<>1bb5aa5476747bac9443610dc8f922f8<>res://.godot/imported/bgm_wholesome.ogg-5c1e700996c854026ddb9ac4c0265110.oggvorbisstr::
++bgm_wholesome.ogg::AudioStreamOggVorbis/AudioStreamOggVorbis::6921107747153134317::1786518148::1786518218::1::::<><><>0<>0<>1bb5aa5476747bac9443610dc8f922f8<>res://.godot/imported/bgm_wholesome.ogg-5c1e700996c854026ddb9ac4c0265110.oggvorbisstr::
+ ::res://assets/audio/sfx/::1786465180
+ harvest.wav::AudioStreamWAV/AudioStreamWAV::7486598051859267510::1786464087::1786465180::1::::<><><>0<>0<>85edc4695d7ff779bad727d6b9d00e3c<>res://.godot/imported/harvest.wav-878db6a8e23b049aa04c3ba1fff2c4c9.sample::
+ till.wav::AudioStreamWAV/AudioStreamWAV::1810704901303855717::1786464087::1786465180::1::::<><><>0<>0<>ba5874a7683c57d67c06cc76a65fbf13<>res://.godot/imported/till.wav-f5ab83a01a89e69371662a114d003e7f.sample::
+@@ -27,41 +28,43 @@ grass.png::CompressedTexture2D/CompressedTexture2D::7030376491395937081::1786344
+ plants.png::CompressedTexture2D/CompressedTexture2D::8406021522852921547::1786377240::1786377303::1::::<><><>0<>0<>9b37825af844408c312b99b8b462f15d<>res://.godot/imported/plants.png-e21e856cd6136370f2fcd0eae52692db.ctex::
+ tools.png::CompressedTexture2D/CompressedTexture2D::3526236484933700733::1786344170::1786344264::1::::<><><>0<>0<>7770836cce040eae5459c3c0af2ac687<>res://.godot/imported/tools.png-bac27f1e157b9c8e9078457fbd8bf1fe.ctex::
+ ::res://crops/::1786260846
+-crop_defs.gd::GDScript/GDScript::6627387710835234060::1786260330::0::1::::CropDefs<>RefCounted<><>0<>0<><>::
++crop_defs.gd::GDScript/GDScript::6627387710835234060::1786768078::0::1::::CropDefs<>RefCounted<><>0<>0<><>::
+ ::res://effects/::1786260846
+ particles_manager.gd::GDScript/GDScript::2934257184671178587::1786344418::0::1::::<>Node2D<><>0<>0<><>::
++::res://entities/::1786768409
++chicken.gd::GDScript/GDScript::4733028579631117965::1786768116::0::1::::<>Node2D<><>0<>0<><>::
+ ::res://player/::1786260846
+-player.gd::GDScript::5101891556872685347::1786515083::0::1::::<>Node2D<><>0<>0<><>::
++player.gd::GDScript/GDScript::5101891556872685347::1786768471::0::1::::<>Node2D<><>0<>0<><>::
+ ::res://systems/::1786511616
+-action_router.gd::GDScript::4846452697455523229::1786512370::0::1::::<>Node<><>0<>0<><>::
+-audio_manager.gd::GDScript::2756718941746264995::1786518200::0::1::::<>Node<><>0<>0<><>::
++action_router.gd::GDScript/GDScript::4846452697455523229::1786768164::0::1::::<>Node<><>0<>0<><>::
++audio_manager.gd::GDScript/GDScript::2756718941746264995::1786518200::0::1::::<>Node<><>0<>0<><>::
+ day_cycle.gd::GDScript/GDScript::8438625455265815869::1786260555::0::1::::<>CanvasLayer<><>0<>0<><>::
+-game_state.gd::GDScript/GDScript::4214994310899671939::1786260315::0::1::::<>Node<><>0<>0<><>::
++game_state.gd::GDScript/GDScript::4214994310899671939::1786690060::0::1::::<>Node<><>0<>0<><>::
+ input_manager.gd::GDScript/GDScript::3065465728266198162::1786504674::0::1::::<>Node<><>0<>0<><>::
+-pathfinding.gd::GDScript/GDScript::1344463265294616195::1786511568::0::1::::<>Node<><>0<>0<><>::
++pathfinding.gd::GDScript/GDScript::1344463265294616195::1786768101::0::1::::<>Node<><>0<>0<><>::
+ tools.gd::GDScript/GDScript::7525842890209187911::1786260325::0::1::::Tools<>RefCounted<><>0<>0<><>::
+ ::res://tests/::1786511616
+-test_runner.gd::GDScript::361116474791826847::1786515216::0::1::::<>SceneTree<><>0<>0<><>::
++test_runner.gd::GDScript/GDScript::361116474791826847::1786690060::0::1::::<>SceneTree<><>0<>0<><>::
+ ::res://tools/::1786432639
+ baseline.png::CompressedTexture2D/CompressedTexture2D::6855071652068881458::1786379850::1786413758::1::::<><><>0<>0<>600165b4d07a7e3f069ddc9abe796265<>res://.godot/imported/baseline.png-b643cbc15fe64caecbe11d05f4cd7664.ctex::
+ bitmask_array.txt::TextFile/TextFile::-1::1786416441::0::1::::<><><>0<>0<><>::
+ check_settings.gd::GDScript/GDScript::51622277548421429::1786413902::0::1::::<>SceneTree<><>0<>0<><>::
+-create_tileset.gd::GDScript/GDScript::2899532608489149610::1786413618::0::1::::<>SceneTree<><>0<>0<><>::
+-create_tileset_auto.gd::GDScript/GDScript::1975125989023312163::1786415980::0::1::::<>SceneTree<><>0<>0<><>::
++create_tileset.gd::GDScript/GDScript::2899532608489149610::1786690060::0::1::::<>SceneTree<><>0<>0<><>::
++create_tileset_auto.gd::GDScript/GDScript::1975125989023312163::1786690060::0::1::::<>SceneTree<><>0<>0<><>::
+ diff_current.png::CompressedTexture2D/CompressedTexture2D::864840197643326392::1786378694::1786413758::1::::<><><>0<>0<>8352e5dce544cd9d6d4f74d26c8bc203<>res://.godot/imported/diff_current.png-f62ece08fee2586cb131f2557d8ccc7f.ctex::
+ generate_bitmask_array.gd::GDScript/GDScript::7481027767032501760::1786416434::0::1::::<>SceneTree<><>0<>0<><>::
+ setup_android_settings.gd::GDScript/GDScript::4693500843756397689::1786413674::0::1::::<>EditorScript<><>0<>1<><>::
+-test_game.gd::GDScript/GDScript::4024267913769520241::1786261498::0::1::::<>SceneTree<><>0<>0<><>::
+-test_graphics.gd::GDScript/GDScript::1932615048667195986::1786309264::0::1::::<>Node2D<><>0<>0<><>::
+-test_runner.gd::GDScript/GDScript::4111321758324756523::1786310254::0::1::::<>Node2D<><>0<>0<><>::
++test_game.gd::GDScript/GDScript::4024267913769520241::1786690060::0::1::::<>SceneTree<><>0<>0<><>::
++test_graphics.gd::GDScript/GDScript::1932615048667195986::1786690060::0::1::::<>Node2D<><>0<>0<><>::
++test_runner.gd::GDScript/GDScript::4111321758324756523::1786690060::0::1::::<>Node2D<><>0<>0<><>::
+ test_runner.tscn::PackedScene/PackedScene::-1::1786310040::0::1::::<><><>0<>0<><>::res://tools/test_runner.gd
+ test_visuals.gd::GDScript/GDScript::7550016450659235443::1786378704::0::1::::<>Node2D<><>0<>0<><>::
+ test_visuals.tscn::PackedScene/PackedScene::-1::1786378647::0::1::::<><><>0<>0<><>::res://tools/test_visuals.gd
+ ::res://ui/::1786465180
+-hud.gd::GDScript/GDScript::436789438700753348::1786510840::0::1::::<>CanvasLayer<><>0<>0<><>::
+-menus.gd::GDScript/GDScript::4724695193899873668::1786310652::0::1::::<>CanvasLayer<><>0<>0<><>::
++hud.gd::GDScript/GDScript::436789438700753348::1786690060::0::1::::<>CanvasLayer<><>0<>0<><>::
++menus.gd::GDScript/GDScript::4724695193899873668::1786768483::0::1::::<>CanvasLayer<><>0<>0<><>::
+ title_screen.gd::GDScript/GDScript::3315853693207645019::1786465478::0::1::::<>Control<><>0<>0<><>::
+ title_screen.tscn::PackedScene/PackedScene::5554334138428745::1786465469::0::1::::<><><>0<>0<><>::res://ui/title_screen.gd
+ ::res://world/::1786415957
+-farm.gd::GDScript::5779347435121214153::1786514371::0::1::::<>Node2D<><>0<>0<><>::
++farm.gd::GDScript/GDScript::5779347435121214153::1786768139::0::1::::<>Node2D<><>0<>0<><>::
+ farm_tileset.tres::TileSet/TileSet::-1::1786415986::0::1::::<><><>0<>0<><>::res://assets/sprites/sprout_lands/dirt.png<>res://assets/sprites/sprout_lands/grass.png
+diff --git a/.godot/uid_cache.bin b/.godot/uid_cache.bin
+index 7153ec2..db21e0d 100644
+Binary files a/.godot/uid_cache.bin and b/.godot/uid_cache.bin differ
+diff --git a/crops/crop_defs.gd b/crops/crop_defs.gd
+index 7c5c4f0..559f953 100644
+--- a/crops/crop_defs.gd
++++ b/crops/crop_defs.gd
+@@ -5,8 +5,8 @@ extends RefCounted
+ 
+ # Crop definitions
+ static var TYPES: Dictionary = {
+-	"carrot": {
+-		"name": "Carrot",
++	"wheat": {
++		"name": "Wheat",
+ 		"days_to_grow": 3,
+ 		"sell_price": 15,
+ 		"seed_price": 5,
+@@ -20,22 +20,17 @@ static var TYPES: Dictionary = {
+ 		"sell_price": 30,
+ 		"seed_price": 10,
+ 		"stages": 4,
+-		"unlock_requirement": { "crop": "carrot", "count": 1 },
++		"unlock_requirement": { "crop": "wheat", "count": 1 },
+ 		"sprite_row": 1,
+ 	},
+-	"sunflower": {
+-		"name": "Sunflower",
+-		"days_to_grow": 7,
+-		"sell_price": 50,
+-		"seed_price": 20,
+-		"stages": 4,
+-		"unlock_requirement": { "crop": "tomato", "count": 1 },
+-		"sprite_row": 2,
++	"egg": {
++		"name": "Egg",
++		"sell_price": 10,
+ 	},
+ }
+ 
+ # Display order
+-static var ORDER: Array[String] = ["carrot", "tomato", "sunflower"]
++static var ORDER: Array[String] = ["wheat", "tomato"]
+ 
+ 
+ static func is_ready(crop_type: String, growth_stage: int) -> bool:
+diff --git a/main.gd b/main.gd
+index 589acbe..312daac 100644
+--- a/main.gd
++++ b/main.gd
+@@ -12,6 +12,8 @@ var farm: Node2D
+ var player: Node2D
+ var particles_manager: Node2D
+ var camera: Camera2D
++var rain_particles: CPUParticles2D
++var entities: Node2D
+ 
+ # UI layers
+ var hud: CanvasLayer
+@@ -42,6 +44,20 @@ func _ready() -> void:
+ 	player.farm = farm
+ 	player.init_position(2, 2)  # Near the cot
+ 
++	# Create entity manager
++	entities = Node2D.new()
++	entities.name = "Entities"
++	add_child(entities)
++	
++	# Spawn initial chicken
++	var ChickenScript = load("res://entities/chicken.gd")
++	var chicken = ChickenScript.new()
++	var reachable = Pathfinding.get_reachable_tiles(farm, player.get_tile_pos())
++	if reachable.size() > 0:
++		var target = reachable[randi() % reachable.size()]
++		chicken.init(farm, target)
++		entities.add_child(chicken)
++
+ 	# Create particles manager
+ 	var ParticlesScript = load("res://effects/particles_manager.gd")
+ 	particles_manager = ParticlesScript.new()
+@@ -58,6 +74,27 @@ func _ready() -> void:
+ 	camera.limit_right = MAP_WIDTH * TILE_SIZE
+ 	camera.limit_bottom = MAP_HEIGHT * TILE_SIZE
+ 	player.add_child(camera)
++	
++	# Create rain particles attached to camera
++	rain_particles = CPUParticles2D.new()
++	rain_particles.name = "RainParticles"
++	rain_particles.emitting = false
++	rain_particles.amount = 400
++	rain_particles.lifetime = 1.0
++	rain_particles.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
++	# Cover screen width based on typical zoom (e.g., 3x zoom on 640x360 screen = 213 wide)
++	rain_particles.emission_rect_extents = Vector2(200, 1)
++	rain_particles.position = Vector2(0, -120)
++	rain_particles.direction = Vector2(-0.1, 1).normalized()
++	rain_particles.spread = 2.0
++	rain_particles.gravity = Vector2(0, 0)
++	rain_particles.initial_velocity_min = 350.0
++	rain_particles.initial_velocity_max = 450.0
++	rain_particles.scale_amount_min = 1.0
++	rain_particles.scale_amount_max = 2.0
++	rain_particles.color = Color(0.5, 0.7, 1.0, 0.4)
++	rain_particles.z_index = 50
++	camera.add_child(rain_particles)
+ 
+ 	# Create HUD
+ 	var HUDScript = load("res://ui/hud.gd")
+@@ -75,6 +112,13 @@ func _ready() -> void:
+ 	day_cycle = DayCycleScript.new()
+ 	add_child(day_cycle)
+ 
++	GameState.weather_changed.connect(_on_weather_changed)
++	_on_weather_changed(GameState.weather)
++
++func _on_weather_changed(weather: String) -> void:
++	if rain_particles:
++		rain_particles.emitting = (weather == "rainy")
++
+ 
+ func _process(delta: float) -> void:
+ 	# Update camera offset for input manager
+@@ -121,11 +165,9 @@ func _process(delta: float) -> void:
+ 	if current_tool_idx >= 0 and current_tool_idx < Tools.LIST.size():
+ 		if Tools.LIST[current_tool_idx].tool_name == "Seeds":
+ 			if Input.is_key_pressed(KEY_1):
+-				GameState.selected_seed_type = "carrot"
++				GameState.selected_seed_type = "wheat"
+ 			elif Input.is_key_pressed(KEY_2) and CropDefs.is_seed_unlocked("tomato", GameState.harvest_counts):
+ 				GameState.selected_seed_type = "tomato"
+-			elif Input.is_key_pressed(KEY_3) and CropDefs.is_seed_unlocked("sunflower", GameState.harvest_counts):
+-				GameState.selected_seed_type = "sunflower"
+ 
+ 	# Update tile cursor
+ 	if InputManager.current_mode == InputManager.Mode.MOUSE:
+@@ -181,9 +223,12 @@ func _handle_action_result(action: String) -> void:
+ 	if action == "sleep":
+ 		day_cycle.set_day_display(GameState.day + 1)
+ 		day_cycle.start_sleep(func():
++			GameState.start_new_day()
+ 			farm.advance_day()
++			for child in entities.get_children():
++				if child.has_method("on_new_day"):
++					child.on_new_day()
+ 			GameState.process_shipping_bin()
+-			GameState.start_new_day()
+ 		)
+ 	elif action == "open_shop":
+ 		menus.open_menu("shop")
+diff --git a/player/player.gd b/player/player.gd
+index f2cf304..308af53 100644
+--- a/player/player.gd
++++ b/player/player.gd
+@@ -22,6 +22,7 @@ const ACTION_DURATION := 0.35
+ # A* path following
+ var path: Array[Vector2i] = []
+ var pending_action: Dictionary = {}  # {action, tool_idx, target_t, seed_type}
++var drag_tool_idx: int = -1
+ 
+ # Tap destination indicator
+ var tap_indicator: Dictionary = {}   # {tx, ty, timer}
+@@ -96,44 +97,71 @@ func update_player(delta: float) -> void:
+ 	var dy: float = 0.0
+ 
+ 	# Touch/mouse tap → A* pathfind
++	var target_t: Variant = null
++	var is_drag := false
++	var is_new_tap := false
++	
+ 	if InputManager.has_click:
+-		var click_t := InputManager.consume_click()
++		target_t = InputManager.consume_click()
++		is_new_tap = true
++	elif InputManager.swipe_active and InputManager.swipe_moved:
++		target_t = InputManager.swipe_tile
++		is_drag = true
++		
++	if target_t != null:
++		var target_vec: Vector2i = target_t
+ 		var player_t := get_tile_pos()
+-
+-		# Resolve action
+-		var resolved := ActionRouter.resolve(farm, GameState, click_t)
+-
+-		# Pathfind to tapped tile (or adjacent if unwalkable)
+-		var new_path := Pathfinding.find_path(farm, player_t, click_t)
+-		path = new_path
+-
+-		# Store tap indicator at final waypoint
+-		if not path.is_empty():
+-			var last := path[path.size() - 1]
+-			tap_indicator = { "tx": last.x, "ty": last.y, "timer": TAP_INDICATOR_DURATION }
+-		elif player_t == click_t:
+-			tap_indicator = { "tx": click_t.x, "ty": click_t.y, "timer": TAP_INDICATOR_DURATION }
+-
+-		# Store pending action
+-		if not resolved.is_empty():
+-			if path.is_empty():
+-				var dist = absi(player_t.x - click_t.x) + absi(player_t.y - click_t.y)
+-				if dist <= 1:
+-					var pa := resolved
+-					var tgt: Vector2i = pa.get("target_t", click_t)
+-					var fdx := tgt.x - player_t.x
+-					var fdy := tgt.y - player_t.y
+-					if fdx != 0 or fdy != 0:
+-						if absi(fdx) >= absi(fdy):
+-							facing = "right" if fdx > 0 else "left"
+-						else:
+-							facing = "down" if fdy > 0 else "up"
+-					_execute_resolved_action(pa)
+-				pending_action = {}
++		
++		if is_new_tap:
++			path = []
++			pending_action = {}
++			tap_indicator = {}
++			
++		var drag_intent = drag_tool_idx if is_drag else null
++		var resolved := ActionRouter.resolve(farm, GameState, target_vec, player_t, is_drag, drag_intent)
++		
++		if is_new_tap:
++			if not resolved.is_empty():
++				drag_tool_idx = resolved.get("tool_idx", -1)
++			else:
++				drag_tool_idx = -1
++		
++		var new_path := Pathfinding.find_path(farm, player_t, target_vec)
++		
++		if not new_path.is_empty() or player_t == target_vec:
++			path = new_path
++			
++			var color := ActionRouter.get_cursor_color(farm, GameState, target_vec, player_t, is_drag)
++			
++			if not path.is_empty():
++				var last := path[path.size() - 1]
++				tap_indicator = { "tx": last.x, "ty": last.y, "timer": TAP_INDICATOR_DURATION, "r": color.r, "g": color.g, "b": color.b }
+ 			else:
+-				pending_action = resolved
++				tap_indicator = { "tx": target_vec.x, "ty": target_vec.y, "timer": TAP_INDICATOR_DURATION, "r": color.r, "g": color.g, "b": color.b }
++				
++			if not resolved.is_empty():
++				if path.is_empty():
++					var dist = absi(player_t.x - target_vec.x) + absi(player_t.y - target_vec.y)
++					if dist <= 1:
++						var pa := resolved
++						var tgt: Vector2i = pa.get("target_t", target_vec)
++						var fdx := tgt.x - player_t.x
++						var fdy := tgt.y - player_t.y
++						if fdx != 0 or fdy != 0:
++							if absi(fdx) >= absi(fdy):
++								facing = "right" if fdx > 0 else "left"
++							else:
++								facing = "down" if fdy > 0 else "up"
++						_execute_resolved_action(pa)
++					pending_action = {}
++				else:
++					pending_action = resolved
++			else:
++				pending_action = {}
+ 		else:
++			path = []
+ 			pending_action = {}
++			tap_indicator = {}
+ 
+ 	# Keyboard / gamepad movement (cancels path)
+ 	var input_vec := Input.get_vector("move_left", "move_right", "move_up", "move_down")
+@@ -234,6 +262,9 @@ func _unhandled_input(event: InputEvent) -> void:
+ 			GameState.cycle_tool(1)
+ 
+ 
++
++
++
+ func handle_action() -> String:
+ 	"""Called from main when action is pressed. Returns action name or empty string."""
+ 	if is_acting:
+@@ -340,6 +371,12 @@ func _execute_resolved_action(pa: Dictionary) -> void:
+ 	if action == "refill":
+ 		GameState.refill_watering_can()
+ 		return
++	if action == "collect":
++		if farm.get_object(target_t.x, target_t.y) == "egg":
++			farm.set_object(target_t.x, target_t.y, "")
++			GameState.crops["egg"] = GameState.crops.get("egg", 0) + 1
++			AudioManager.play_sfx("harvest")
++		return
+ 
+ 	var state: String = farm.get_tile(target_t.x, target_t.y).get("state", "")
+ 	if state == "": return
+@@ -411,3 +448,26 @@ func queue_render(canvas: CanvasItem, render_queue: Array) -> void:
+ 			"y": position.y,
+ 			"draw": func(): canvas.draw_texture_rect_region(sprite_texture, Rect2(draw_pos, Vector2(48, 48)), region)
+ 		})
++		
++	# Draw tap indicator
++	if not tap_indicator.is_empty():
++		var ind = tap_indicator
++		var progress: float = 1.0 - (ind.timer / TAP_INDICATOR_DURATION)
++		var alpha: float = 0.9 - progress * 0.7
++		var scale: float = 0.5 + progress * 0.5
++		var wx: float = float(ind.tx * TILE_SIZE + TILE_SIZE / 2.0)
++		var wy: float = float(ind.ty * TILE_SIZE + TILE_SIZE / 2.0)
++		
++		var h: float = (TILE_SIZE / 2.0) * scale
++		var pts = PackedVector2Array([
++			Vector2(wx, wy - h),
++			Vector2(wx + h, wy),
++			Vector2(wx, wy + h),
++			Vector2(wx - h, wy)
++		])
++		var color = Color(ind.get("r", 0.3), ind.get("g", 1.0), ind.get("b", 0.4), alpha)
++		
++		render_queue.append({
++			"y": wy - 100, # Always below everything
++			"draw": func(): canvas.draw_colored_polygon(pts, color)
++		})
+diff --git a/systems/action_router.gd b/systems/action_router.gd
+index 700363d..c007bac 100644
+--- a/systems/action_router.gd
++++ b/systems/action_router.gd
+@@ -9,6 +9,7 @@ const SPECIAL_OBJECTS := {
+ 	"well":         "refill",
+ 	"seed_box":     "open_shop",
+ 	"shipping_bin": "sell",
++	"egg":          "collect",
+ }
+ 
+ ## Result dictionary returned by resolve():
+@@ -25,21 +26,33 @@ const SPECIAL_OBJECTS := {
+ ##                             get_object(tx,ty), is_walkable(tx,ty)
+ ## @param gs       Node      — GameState autoload
+ ## @param tap_t    Vector2i  — tapped tile (0-indexed)
++## @param player_t Vector2i|null — player's current tile (0-indexed)
++## @param is_drag  bool      — true if triggered by a drag/swipe
++## @param drag_tool_idx Variant|null — if provided, restricts action to this tool_idx (int) or -1 (no action)
+ ## @return Dictionary|null
+-func resolve(farm: Node2D, gs: Node, tap_t: Vector2i) -> Dictionary:
++func resolve(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, is_drag: bool = false, drag_tool_idx = null) -> Dictionary:
+ 	var tx := tap_t.x
+ 	var ty := tap_t.y
+ 
++	# Helper to enforce drag intent
++	var check_result = func(res: Dictionary) -> Dictionary:
++		if drag_tool_idx != null:
++			if typeof(drag_tool_idx) == TYPE_INT and drag_tool_idx == -1:
++				return {}
++			if res.get("tool_idx", -1) != drag_tool_idx:
++				return {}
++		return res
++
+ 	# 1. Special objects
+ 	var obj: String = farm.get_object(tx, ty)
+ 	if obj != "" and SPECIAL_OBJECTS.has(obj):
+-		return {
++		return check_result.call({
+ 			"action":    SPECIAL_OBJECTS[obj],
+ 			"tool_idx":  0,  # Hands
+ 			"target_t":  tap_t,
+ 			"walk_to":   true,
+ 			"seed_type": "",
+-		}
++		})
+ 
+ 	# 2. Get tile state
+ 	var tile: Dictionary = farm.get_tile(tx, ty)
+@@ -47,43 +60,51 @@ func resolve(farm: Node2D, gs: Node, tap_t: Vector2i) -> Dictionary:
+ 		return {}  # Out of bounds
+ 	var state: String = tile.get("state", "")
+ 
++	# Intent Filter: For non-obstacles, if it's a far tap (not a drag), treat as pure movement
++	var is_tool_action := (state == "cleared" or state == "tilled" or state == "seeded" or state == "growing")
++	if is_tool_action and not is_drag and player_t != null:
++		var pt: Vector2i = player_t
++		var dist := absi(pt.x - tx) + absi(pt.y - ty)
++		if dist > 1:
++			return {}
++
+ 	# 3. Obstacle clearing → correct tool
+ 	if state == "obstacle_rock":
+-		return { "action": "clear_rock", "tool_idx": 2, "target_t": tap_t, "walk_to": true, "seed_type": "" }
++		return check_result.call({ "action": "clear_rock", "tool_idx": 2, "target_t": tap_t, "walk_to": true, "seed_type": "" })
+ 	if state == "obstacle_log":
+-		return { "action": "clear_log",  "tool_idx": 1, "target_t": tap_t, "walk_to": true, "seed_type": "" }
++		return check_result.call({ "action": "clear_log",  "tool_idx": 1, "target_t": tap_t, "walk_to": true, "seed_type": "" })
+ 	if state == "obstacle_weed":
+-		return { "action": "clear_weed", "tool_idx": 0, "target_t": tap_t, "walk_to": true, "seed_type": "" }
++		return check_result.call({ "action": "clear_weed", "tool_idx": 0, "target_t": tap_t, "walk_to": true, "seed_type": "" })
+ 
+ 	# 4. Ready crop → harvest
+ 	if state == "ready":
+-		return { "action": "harvest", "tool_idx": 0, "target_t": tap_t, "walk_to": true, "seed_type": "" }
++		return check_result.call({ "action": "harvest", "tool_idx": 0, "target_t": tap_t, "walk_to": true, "seed_type": "" })
+ 
+ 	# 5. Tilled → plant active seed
+ 	if state == "tilled":
+ 		var seed_type: String = gs.selected_seed_type
+ 		if gs.seeds.get(seed_type, 0) > 0:
+-			return { "action": "plant", "tool_idx": 5, "target_t": tap_t, "walk_to": true, "seed_type": seed_type }
++			return check_result.call({ "action": "plant", "tool_idx": 5, "target_t": tap_t, "walk_to": true, "seed_type": seed_type })
+ 		return {}
+ 
+ 	# 6. Cleared → till
+ 	if state == "cleared":
+ 		if gs.energy >= Tools.get_energy_cost("till"):
+-			return { "action": "till", "tool_idx": 3, "target_t": tap_t, "walk_to": true, "seed_type": "" }
++			return check_result.call({ "action": "till", "tool_idx": 3, "target_t": tap_t, "walk_to": true, "seed_type": "" })
+ 		return {}
+ 
+ 	# 7. Seeded / Growing and not yet watered today → water
+ 	if (state == "seeded" or state == "growing") and not tile.get("watered_today", true):
+ 		if gs.watering_can_charges > 0 and gs.energy >= Tools.get_energy_cost("water"):
+-			return { "action": "water", "tool_idx": 4, "target_t": tap_t, "walk_to": true, "seed_type": "" }
++			return check_result.call({ "action": "water", "tool_idx": 4, "target_t": tap_t, "walk_to": true, "seed_type": "" })
+ 		return {}
+ 
+ 	return {}
+ 
+ 
+ ## Returns a Color for the tile cursor based on what action would be performed.
+-func get_cursor_color(farm: Node2D, gs: Node, tap_t: Vector2i) -> Color:
+-	var result := resolve(farm, gs, tap_t)
++func get_cursor_color(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, is_drag: bool = false) -> Color:
++	var result := resolve(farm, gs, tap_t, player_t, is_drag)
+ 	if not result.is_empty() and result.get("action", "") != "":
+ 		return Color(0.2, 0.9, 0.3, 0.6)  # Green — valid action
+ 	var state: String = farm.get_tile(tap_t.x, tap_t.y).get("state", "")
+diff --git a/systems/game_state.gd b/systems/game_state.gd
+index 1f02604..65ffb87 100644
+--- a/systems/game_state.gd
++++ b/systems/game_state.gd
+@@ -8,9 +8,11 @@ signal energy_changed(new_energy: int)
+ signal gold_changed(new_gold: int)
+ signal tool_changed(new_tool_index: int)
+ signal milestone_reached(milestone_id: String, message: String)
++signal weather_changed(new_weather: String)
+ 
+ # Day
+ var day: int = 1
++var weather: String = "sunny"
+ 
+ # Player stats
+ var energy: int = 20
+@@ -21,17 +23,17 @@ var gold: int = 0
+ var selected_tool: int = 0  # Index into Tools.LIST
+ 
+ # Seeds & crops
+-var seeds: Dictionary = { "carrot": 5, "tomato": 0, "sunflower": 0 }
+-var crops: Dictionary = { "carrot": 0, "tomato": 0, "sunflower": 0 }
+-var harvest_counts: Dictionary = { "carrot": 0, "tomato": 0, "sunflower": 0 }
+-var shipping_bin: Dictionary = { "carrot": 0, "tomato": 0, "sunflower": 0 }
++var seeds: Dictionary = { "wheat": 5, "tomato": 0 }
++var crops: Dictionary = { "wheat": 0, "tomato": 0 }
++var harvest_counts: Dictionary = { "wheat": 0, "tomato": 0 }
++var shipping_bin: Dictionary = { "wheat": 0, "tomato": 0 }
+ 
+ # Watering can
+ var watering_can_charges: int = 8
+ var max_watering_can_charges: int = 8
+ 
+ # Selected seed type for planting
+-var selected_seed_type: String = "carrot"
++var selected_seed_type: String = "wheat"
+ 
+ # Milestones tracking
+ var _milestones_earned: Dictionary = {}
+@@ -110,8 +112,15 @@ func start_new_day() -> void:
+ 	energy = max_energy
+ 	watering_can_charges = max_watering_can_charges
+ 	day += 1
++	
++	if randf() < 0.2:
++		weather = "rainy"
++	else:
++		weather = "sunny"
++		
+ 	energy_changed.emit(energy)
+ 	day_changed.emit(day)
++	weather_changed.emit(weather)
+ 
+ 
+ func refill_watering_can() -> bool:
+@@ -131,9 +140,9 @@ func check_milestones() -> void:
+ 		{ "id": "green_thumb", "condition": total_harvests >= 10, "msg": "Green Thumb!" },
+ 		{ "id": "golden_field", "condition": gold >= 500, "msg": "Golden Field!" },
+ 		{ "id": "master_farmer", "condition": (
+-			harvest_counts.get("carrot", 0) >= 1 and
++			harvest_counts.get("wheat", 0) >= 1 and
+ 			harvest_counts.get("tomato", 0) >= 1 and
+-			harvest_counts.get("sunflower", 0) >= 1
++			harvest_counts.get(0) >= 1
+ 		), "msg": "Master Farmer!" },
+ 	]
+ 
+diff --git a/systems/pathfinding.gd b/systems/pathfinding.gd
+index 82e01c7..4de3169 100644
+--- a/systems/pathfinding.gd
++++ b/systems/pathfinding.gd
+@@ -96,3 +96,30 @@ func _key(t: Vector2i) -> int:
+ 
+ func _h(a: Vector2i, b: Vector2i) -> float:
+ 	return float(absi(a.x - b.x) + absi(a.y - b.y))
++
++func get_reachable_tiles(farm: Node2D, start_t: Vector2i) -> Array[Vector2i]:
++	var reachable: Array[Vector2i] = []
++	var queue: Array[Vector2i] = [start_t]
++	var visited: Dictionary = {}
++	
++	visited[_key(start_t)] = true
++	
++	var idx := 0
++	while idx < queue.size():
++		var ct := queue[idx]
++		idx += 1
++		
++		if farm.is_walkable(ct.x, ct.y) or ct == start_t:
++			if farm.is_walkable(ct.x, ct.y):
++				reachable.append(ct)
++			
++			for d: Vector2i in DIRS:
++				var nt := ct + d
++				var nk := _key(nt)
++				if not visited.has(nk):
++					if farm.is_walkable(nt.x, nt.y):
++						visited[nk] = true
++						queue.append(nt)
++						
++	return reachable
++
+diff --git a/tests/test_runner.gd b/tests/test_runner.gd
+index 2b1f489..2e15a37 100644
+--- a/tests/test_runner.gd
++++ b/tests/test_runner.gd
+@@ -52,49 +52,42 @@ func _assert(condition: bool, test_name: String) -> void:
+ func test_crop_defs() -> void:
+ 	print("\n--- CropDefs Tests ---")
+ 	
+-	_assert(CropDefs.TYPES.has("carrot"), "Carrot type exists")
++	_assert(CropDefs.TYPES.has("wheat"), "Wheat type exists")
+ 	_assert(CropDefs.TYPES.has("tomato"), "Tomato type exists")
+-	_assert(CropDefs.TYPES.has("sunflower"), "Sunflower type exists")
+ 	
+-	var carrot = CropDefs.TYPES["carrot"]
+-	_assert(carrot.days_to_grow == 3, "Carrot grows in 3 days")
+-	_assert(carrot.sell_price == 15, "Carrot sells for 15g")
+-	_assert(carrot.seed_price == 5, "Carrot seeds cost 5g")
++	var wheat = CropDefs.TYPES["wheat"]
++	_assert(wheat.days_to_grow == 3, "Wheat grows in 3 days")
++	_assert(wheat.sell_price == 15, "Wheat sells for 15g")
++	_assert(wheat.seed_price == 5, "Wheat seeds cost 5g")
+ 	
+ 	var tomato = CropDefs.TYPES["tomato"]
+ 	_assert(tomato.days_to_grow == 5, "Tomato grows in 5 days")
+ 	_assert(tomato.sell_price == 30, "Tomato sells for 30g")
+ 	
+-	var sunflower = CropDefs.TYPES["sunflower"]
+-	_assert(sunflower.days_to_grow == 7, "Sunflower grows in 7 days")
+-	_assert(sunflower.sell_price == 50, "Sunflower sells for 50g")
+ 	
+-	_assert(CropDefs.ORDER.size() == 3, "ORDER has 3 crops")
+-	_assert(CropDefs.ORDER[0] == "carrot", "ORDER[0] is carrot")
++	_assert(CropDefs.ORDER.size() == 2, "ORDER has 2 crops")
++	_assert(CropDefs.ORDER[0] == "wheat", "ORDER[0] is wheat")
+ 	
+-	_assert(not CropDefs.is_ready("carrot", 0), "Carrot not ready at stage 0")
+-	_assert(not CropDefs.is_ready("carrot", 2), "Carrot not ready at stage 2")
+-	_assert(CropDefs.is_ready("carrot", 3), "Carrot ready at stage 3")
+-	_assert(CropDefs.is_ready("carrot", 5), "Carrot ready at stage 5 (over)")
++	_assert(not CropDefs.is_ready("wheat", 0), "Wheat not ready at stage 0")
++	_assert(not CropDefs.is_ready("wheat", 2), "Wheat not ready at stage 2")
++	_assert(CropDefs.is_ready("wheat", 3), "Wheat ready at stage 3")
++	_assert(CropDefs.is_ready("wheat", 5), "Wheat ready at stage 5 (over)")
+ 	_assert(not CropDefs.is_ready("tomato", 4), "Tomato not ready at stage 4")
+ 	_assert(CropDefs.is_ready("tomato", 5), "Tomato ready at stage 5")
+ 	
+-	_assert(CropDefs.get_visual_stage("carrot", 0) == 0, "Carrot visual stage 0 at growth 0")
+-	_assert(CropDefs.get_visual_stage("carrot", 1) == 1, "Carrot visual stage 1 at growth 1")
+-	_assert(CropDefs.get_visual_stage("carrot", 2) == 2, "Carrot visual stage 2 at growth 2")
+-	_assert(CropDefs.get_visual_stage("carrot", 3) == 3, "Carrot visual stage 3 at growth 3 (ready)")
++	_assert(CropDefs.get_visual_stage("wheat", 0) == 0, "Wheat visual stage 0 at growth 0")
++	_assert(CropDefs.get_visual_stage("wheat", 1) == 1, "Wheat visual stage 1 at growth 1")
++	_assert(CropDefs.get_visual_stage("wheat", 2) == 2, "Wheat visual stage 2 at growth 2")
++	_assert(CropDefs.get_visual_stage("wheat", 3) == 3, "Wheat visual stage 3 at growth 3 (ready)")
+ 	
+ 	var no_harvests := {}
+-	_assert(CropDefs.is_seed_unlocked("carrot", no_harvests), "Carrot always unlocked")
++	_assert(CropDefs.is_seed_unlocked("wheat", no_harvests), "Wheat always unlocked")
+ 	_assert(not CropDefs.is_seed_unlocked("tomato", no_harvests), "Tomato locked with no harvests")
+-	_assert(not CropDefs.is_seed_unlocked("sunflower", no_harvests), "Sunflower locked with no harvests")
+ 	
+-	var one_carrot := { "carrot": 1 }
+-	_assert(CropDefs.is_seed_unlocked("tomato", one_carrot), "Tomato unlocked with 1 carrot")
+-	_assert(not CropDefs.is_seed_unlocked("sunflower", one_carrot), "Sunflower still locked")
++	var one_wheat := { "wheat": 1 }
++	_assert(CropDefs.is_seed_unlocked("tomato", one_wheat), "Tomato unlocked with 1 wheat")
+ 	
+-	var big_harvests := { "carrot": 10, "tomato": 2 }
+-	_assert(CropDefs.is_seed_unlocked("sunflower", big_harvests), "Sunflower unlocked with 2 tomatoes")
++	var big_harvests := { "wheat": 10, "tomato": 2 }
+ 
+ 
+ func test_tools() -> void:
+@@ -129,19 +122,19 @@ func test_player() -> void:
+ 	GameState.max_energy = 20
+ 	GameState.energy = 20
+ 	GameState.gold = 0
+-	GameState.seeds = { "carrot": 5 }
++	GameState.seeds = { "wheat": 5 }
+ 	GameState.crops = {}
+ 	GameState.shipping_bin = {}
+ 	GameState.harvest_counts = {}
+ 	GameState.max_watering_can_charges = 8
+ 	GameState.watering_can_charges = 8
+ 	GameState.selected_tool = 0
+-	GameState.selected_seed_type = "carrot"
++	GameState.selected_seed_type = "wheat"
+ 	
+ 	_assert(GameState.day == 1, "Initial day is 1")
+ 	_assert(GameState.energy == 20, "Initial energy is 20")
+ 	_assert(GameState.gold == 0, "Initial gold is 0")
+-	_assert(GameState.seeds.get("carrot", 0) == 5, "Start with 5 carrot seeds")
++	_assert(GameState.seeds.get("wheat", 0) == 5, "Start with 5 wheat seeds")
+ 	_assert(GameState.watering_can_charges == 8, "Watering can starts at 8")
+ 	
+ 	GameState.energy = 15
+@@ -151,31 +144,31 @@ func test_player() -> void:
+ 	_assert(GameState.selected_tool == 1, "Tool cycled forward to 1")
+ 	
+ 	GameState.gold = 100
+-	GameState.harvest_counts = { "carrot": 0, "tomato": 0, "sunflower": 0 }
+-	var bought = GameState.buy_seed("carrot")
+-	_assert(bought, "Can buy carrot seeds")
+-	_assert(GameState.gold == 95, "Gold decreased by 5 (carrot seed price)")
+-	_assert(GameState.seeds.get("carrot", 0) == 6, "Carrot seeds increased to 6")
++	GameState.harvest_counts = { "wheat": 0, "tomato": 0 }
++	var bought = GameState.buy_seed("wheat")
++	_assert(bought, "Can buy wheat seeds")
++	_assert(GameState.gold == 95, "Gold decreased by 5 (wheat seed price)")
++	_assert(GameState.seeds.get("wheat", 0) == 6, "Wheat seeds increased to 6")
+ 	
+ 	var bought_tomato = GameState.buy_seed("tomato")
+ 	_assert(not bought_tomato, "Can't buy locked tomato seeds")
+ 	
+-	GameState.harvest_counts["carrot"] = 1
++	GameState.harvest_counts["wheat"] = 1
+ 	bought_tomato = GameState.buy_seed("tomato")
+ 	_assert(bought_tomato, "Can buy tomato after unlock")
+ 	_assert(GameState.gold == 85, "Gold decreased by 10 (tomato seed price)")
+ 	
+-	GameState.crops = { "carrot": 3, "tomato": 0, "sunflower": 0 }
+-	GameState.shipping_bin = { "carrot": 0, "tomato": 0, "sunflower": 0 }
++	GameState.crops = { "wheat": 3, "tomato": 0 }
++	GameState.shipping_bin = { "wheat": 0, "tomato": 0 }
+ 	var sold = GameState.sell_crops_to_bin()
+ 	_assert(sold, "Sold crops")
+-	_assert(GameState.crops.get("carrot", 0) == 0, "Crops emptied after selling")
+-	_assert(GameState.shipping_bin.get("carrot", 0) == 3, "Bin has 3 carrots")
++	_assert(GameState.crops.get("wheat", 0) == 0, "Crops emptied after selling")
++	_assert(GameState.shipping_bin.get("wheat", 0) == 3, "Bin has 3 wheats")
+ 	
+ 	GameState.gold = 0
+ 	GameState.process_shipping_bin()
+-	_assert(GameState.gold == 45, "Gold = 3 carrots x 15g = 45g")
+-	_assert(GameState.shipping_bin.get("carrot", 0) == 0, "Bin emptied after processing")
++	_assert(GameState.gold == 45, "Gold = 3 wheats x 15g = 45g")
++	_assert(GameState.shipping_bin.get("wheat", 0) == 0, "Bin emptied after processing")
+ 	
+ 	GameState.energy = 5
+ 	GameState.watering_can_charges = 2
+@@ -211,15 +204,15 @@ func test_farm() -> void:
+ 			else:
+ 				t.tiles[ty].append({ "state": "cleared", "crop_type": "", "growth_stage": 0, "watered_today": false })
+ 	
+-	_assert(t.tiles[0][0]["state"] == "border", "Corner is border")
++	_assert(t.tiles[0][0]["state"] == "border", "Wheater is border")
+ 	_assert(t.tiles[1][1]["state"] == "cleared", "Interior is cleared")
+ 	
+ 	t.tiles[1][1]["state"] = "tilled"
+ 	_assert(t.tiles[1][1]["state"] == "tilled", "Tile tilled")
+ 	
+-	t.set_tile_state(1, 1, "seeded", "carrot")
++	t.set_tile_state(1, 1, "seeded", "wheat")
+ 	_assert(t.tiles[1][1]["state"] == "seeded", "Tile seeded")
+-	_assert(t.tiles[1][1]["crop_type"] == "carrot", "Crop type is carrot")
++	_assert(t.tiles[1][1]["crop_type"] == "wheat", "Crop type is wheat")
+ 	
+ 	t.water_tile(1, 1)
+ 	_assert(t.tiles[1][1]["watered_today"], "Tile watered")
+@@ -233,7 +226,7 @@ func test_farm() -> void:
+ 		t.water_tile(1, 1)
+ 		t.advance_day()
+ 	
+-	_assert(t.tiles[1][1]["state"] == "ready", "Carrot ready after 3 days")
++	_assert(t.tiles[1][1]["state"] == "ready", "Wheat ready after 3 days")
+ 	_assert(t.tiles[1][1]["growth_stage"] == 3, "Growth stage is 3")
+ 	
+ 	t.set_tile_state(1, 1, "cleared")
+@@ -253,7 +246,7 @@ func test_integration() -> void:
+ 	GameState.max_energy = 20
+ 	GameState.energy = 20
+ 	GameState.gold = 0
+-	GameState.seeds = { "carrot": 5 }
++	GameState.seeds = { "wheat": 5 }
+ 	GameState.crops = {}
+ 	GameState.shipping_bin = {}
+ 	GameState.harvest_counts = {}
+@@ -267,8 +260,8 @@ func test_integration() -> void:
+ 	
+ 	GameState.selected_tool = 5 # Seeds
+ 	_assert(Tools.get_action(5, "tilled") == "plant", "Seeds action on tilled = plant")
+-	GameState.seeds["carrot"] -= 1
+-	_assert(GameState.seeds["carrot"] == 4, "4 carrot seeds remaining")
++	GameState.seeds["wheat"] -= 1
++	_assert(GameState.seeds["wheat"] == 4, "4 wheat seeds remaining")
+ 	
+ 	GameState.selected_tool = 4 # Watering Can
+ 	_assert(Tools.get_action(4, "seeded") == "water", "WateringCan on seeded = water")
+@@ -289,26 +282,26 @@ func test_integration() -> void:
+ 		crop_growth += 1
+ 		GameState.start_new_day()
+ 	
+-	_assert(crop_growth == 3, "Carrot fully grown after 3 watered days")
+-	_assert(CropDefs.is_ready("carrot", crop_growth), "Carrot is ready to harvest")
++	_assert(crop_growth == 3, "Wheat fully grown after 3 watered days")
++	_assert(CropDefs.is_ready("wheat", crop_growth), "Wheat is ready to harvest")
+ 	_assert(GameState.day == 4, "Day 4")
+ 	
+ 	GameState.selected_tool = 0 # Hands
+ 	_assert(Tools.get_action(0, "ready") == "harvest", "Hands on ready = harvest")
+ 	GameState.energy -= Tools.get_energy_cost("harvest")
+-	GameState.crops["carrot"] = GameState.crops.get("carrot", 0) + 1
+-	GameState.harvest_counts["carrot"] = GameState.harvest_counts.get("carrot", 0) + 1
+-	_assert(GameState.crops["carrot"] == 1, "1 carrot in inventory")
++	GameState.crops["wheat"] = GameState.crops.get("wheat", 0) + 1
++	GameState.harvest_counts["wheat"] = GameState.harvest_counts.get("wheat", 0) + 1
++	_assert(GameState.crops["wheat"] == 1, "1 wheat in inventory")
+ 	
+-	_assert(CropDefs.is_seed_unlocked("tomato", GameState.harvest_counts), "Tomato unlocked after first carrot harvest")
++	_assert(CropDefs.is_seed_unlocked("tomato", GameState.harvest_counts), "Tomato unlocked after first wheat harvest")
+ 	
+ 	var sold = GameState.sell_crops_to_bin()
+ 	_assert(sold, "Sold crops to bin")
+-	_assert(GameState.crops.get("carrot", 0) == 0, "Carrots moved to bin")
++	_assert(GameState.crops.get("wheat", 0) == 0, "Wheats moved to bin")
+ 	
+ 	GameState.process_shipping_bin()
+-	_assert(GameState.gold == 15, "Earned 15g from carrot")
+-	_assert(GameState.shipping_bin.get("carrot", 0) == 0, "Bin emptied")
++	_assert(GameState.gold == 15, "Earned 15g from wheat")
++	_assert(GameState.shipping_bin.get("wheat", 0) == 0, "Bin emptied")
+ 	
+ 	var bought = GameState.buy_seed("tomato")
+ 	_assert(bought, "Bought tomato seeds")
+@@ -366,8 +359,8 @@ func test_action_router() -> void:
+ 			t.tiles[ty].append({ "state": "cleared", "crop_type": "", "growth_stage": 0, "watered_today": false })
+ 
+ 	GameState.selected_tool = 0
+-	GameState.selected_seed_type = "carrot"
+-	GameState.seeds = { "carrot": 1 }
++	GameState.selected_seed_type = "wheat"
++	GameState.seeds = { "wheat": 1 }
+ 	GameState.energy = 20
+ 	GameState.watering_can_charges = 8
+ 
+diff --git a/tools/create_tileset.gd b/tools/create_tileset.gd
+index 01db9c0..825c345 100644
+--- a/tools/create_tileset.gd
++++ b/tools/create_tileset.gd
+@@ -5,7 +5,7 @@ func _init():
+ 	var ts = TileSet.new()
+ 	ts.tile_size = Vector2i(16, 16)
+ 	
+-	# Create Terrain Set 0 (Match Corners and Sides)
++	# Create Terrain Set 0 (Match Wheaters and Sides)
+ 	ts.add_terrain_set()
+ 	ts.set_terrain_set_mode(0, TileSet.TERRAIN_MODE_MATCH_CORNERS_AND_SIDES)
+ 	
+diff --git a/tools/create_tileset_auto.gd b/tools/create_tileset_auto.gd
+index 2e91e61..e714727 100644
+--- a/tools/create_tileset_auto.gd
++++ b/tools/create_tileset_auto.gd
+@@ -60,7 +60,7 @@ func _init():
+ 			var terrain_id = 0 if tx < 4 else 1
+ 			td.terrain = terrain_id
+ 			
+-			# Sample edges and corners to determine peering bits
++			# Sample edges and wheaters to determine peering bits
+ 			# If pixel is opaque, it connects.
+ 			if dirt_img.get_pixel(cx + 15, cy + 7).a > 0: td.set_terrain_peering_bit(R, terrain_id)
+ 			if dirt_img.get_pixel(cx + 15, cy + 15).a > 0: td.set_terrain_peering_bit(BR, terrain_id)
+diff --git a/tools/test_game.gd b/tools/test_game.gd
+index 7a04424..7b36e90 100644
+--- a/tools/test_game.gd
++++ b/tools/test_game.gd
+@@ -56,55 +56,48 @@ func _test_crop_defs() -> void:
+ 	print("\n--- CropDefs Tests ---")
+ 
+ 	# Test TYPES exist
+-	_assert(CropDefs.TYPES.has("carrot"), "Carrot type exists")
++	_assert(CropDefs.TYPES.has("wheat"), "Wheat type exists")
+ 	_assert(CropDefs.TYPES.has("tomato"), "Tomato type exists")
+-	_assert(CropDefs.TYPES.has("sunflower"), "Sunflower type exists")
+ 
+ 	# Test crop properties
+-	var carrot: Dictionary = CropDefs.TYPES["carrot"]
+-	_assert(carrot.has("days_to_grow"), "Carrot has days_to_grow")
+-	_assert(carrot.days_to_grow == 3, "Carrot grows in 3 days")
+-	_assert(carrot.sell_price == 15, "Carrot sells for 15g")
+-	_assert(carrot.seed_price == 5, "Carrot seeds cost 5g")
++	var wheat: Dictionary = CropDefs.TYPES["wheat"]
++	_assert(wheat.has("days_to_grow"), "Wheat has days_to_grow")
++	_assert(wheat.days_to_grow == 3, "Wheat grows in 3 days")
++	_assert(wheat.sell_price == 15, "Wheat sells for 15g")
++	_assert(wheat.seed_price == 5, "Wheat seeds cost 5g")
+ 
+ 	var tomato: Dictionary = CropDefs.TYPES["tomato"]
+ 	_assert(tomato.days_to_grow == 5, "Tomato grows in 5 days")
+ 	_assert(tomato.sell_price == 30, "Tomato sells for 30g")
+ 
+-	var sunflower: Dictionary = CropDefs.TYPES["sunflower"]
+-	_assert(sunflower.days_to_grow == 7, "Sunflower grows in 7 days")
+-	_assert(sunflower.sell_price == 50, "Sunflower sells for 50g")
+ 
+ 	# Test ORDER
+ 	_assert(CropDefs.ORDER.size() == 3, "ORDER has 3 crops")
+-	_assert(CropDefs.ORDER[0] == "carrot", "ORDER[0] is carrot")
++	_assert(CropDefs.ORDER[0] == "wheat", "ORDER[0] is wheat")
+ 
+ 	# Test is_ready
+-	_assert(not CropDefs.is_ready("carrot", 0), "Carrot not ready at stage 0")
+-	_assert(not CropDefs.is_ready("carrot", 2), "Carrot not ready at stage 2")
+-	_assert(CropDefs.is_ready("carrot", 3), "Carrot ready at stage 3")
+-	_assert(CropDefs.is_ready("carrot", 5), "Carrot ready at stage 5 (over)")
++	_assert(not CropDefs.is_ready("wheat", 0), "Wheat not ready at stage 0")
++	_assert(not CropDefs.is_ready("wheat", 2), "Wheat not ready at stage 2")
++	_assert(CropDefs.is_ready("wheat", 3), "Wheat ready at stage 3")
++	_assert(CropDefs.is_ready("wheat", 5), "Wheat ready at stage 5 (over)")
+ 	_assert(not CropDefs.is_ready("tomato", 4), "Tomato not ready at stage 4")
+ 	_assert(CropDefs.is_ready("tomato", 5), "Tomato ready at stage 5")
+ 
+ 	# Test get_visual_stage
+-	_assert(CropDefs.get_visual_stage("carrot", 0) == 0, "Carrot visual stage 0 at growth 0")
+-	_assert(CropDefs.get_visual_stage("carrot", 1) == 1, "Carrot visual stage 1 at growth 1")
+-	_assert(CropDefs.get_visual_stage("carrot", 2) == 2, "Carrot visual stage 2 at growth 2")
+-	_assert(CropDefs.get_visual_stage("carrot", 3) == 3, "Carrot visual stage 3 at growth 3 (ready)")
++	_assert(CropDefs.get_visual_stage("wheat", 0) == 0, "Wheat visual stage 0 at growth 0")
++	_assert(CropDefs.get_visual_stage("wheat", 1) == 1, "Wheat visual stage 1 at growth 1")
++	_assert(CropDefs.get_visual_stage("wheat", 2) == 2, "Wheat visual stage 2 at growth 2")
++	_assert(CropDefs.get_visual_stage("wheat", 3) == 3, "Wheat visual stage 3 at growth 3 (ready)")
+ 
+ 	# Test seed unlock
+-	var no_harvests: Dictionary = { "carrot": 0, "tomato": 0, "sunflower": 0 }
+-	_assert(CropDefs.is_seed_unlocked("carrot", no_harvests), "Carrot always unlocked")
++	var no_harvests: Dictionary = { "wheat": 0, "tomato": 0 }
++	_assert(CropDefs.is_seed_unlocked("wheat", no_harvests), "Wheat always unlocked")
+ 	_assert(not CropDefs.is_seed_unlocked("tomato", no_harvests), "Tomato locked with no harvests")
+-	_assert(not CropDefs.is_seed_unlocked("sunflower", no_harvests), "Sunflower locked with no harvests")
+ 
+-	var one_carrot: Dictionary = { "carrot": 1, "tomato": 0, "sunflower": 0 }
+-	_assert(CropDefs.is_seed_unlocked("tomato", one_carrot), "Tomato unlocked after 1 carrot")
+-	_assert(not CropDefs.is_seed_unlocked("sunflower", one_carrot), "Sunflower still locked")
++	var one_wheat: Dictionary = { "wheat": 1, "tomato": 0 }
++	_assert(CropDefs.is_seed_unlocked("tomato", one_wheat), "Tomato unlocked after 1 wheat")
+ 
+-	var one_tomato: Dictionary = { "carrot": 1, "tomato": 1, "sunflower": 0 }
+-	_assert(CropDefs.is_seed_unlocked("sunflower", one_tomato), "Sunflower unlocked after 1 tomato")
++	var one_tomato: Dictionary = { "wheat": 1, "tomato": 1 }
+ 
+ 
+ func _test_tools() -> void:
+@@ -162,19 +155,19 @@ func _test_game_state() -> void:
+ 	_game_state.max_energy = 20
+ 	_game_state.gold = 0
+ 	_game_state.selected_tool = 0
+-	_game_state.seeds = { "carrot": 5, "tomato": 0, "sunflower": 0 }
+-	_game_state.crops = { "carrot": 0, "tomato": 0, "sunflower": 0 }
+-	_game_state.harvest_counts = { "carrot": 0, "tomato": 0, "sunflower": 0 }
+-	_game_state.shipping_bin = { "carrot": 0, "tomato": 0, "sunflower": 0 }
++	_game_state.seeds = { "wheat": 5, "tomato": 0 }
++	_game_state.crops = { "wheat": 0, "tomato": 0 }
++	_game_state.harvest_counts = { "wheat": 0, "tomato": 0 }
++	_game_state.shipping_bin = { "wheat": 0, "tomato": 0 }
+ 	_game_state.watering_can_charges = 8
+ 	_game_state.max_watering_can_charges = 8
+-	_game_state.selected_seed_type = "carrot"
++	_game_state.selected_seed_type = "wheat"
+ 
+ 	# Test initial state
+ 	_assert(_game_state.day == 1, "Initial day is 1")
+ 	_assert(_game_state.energy == 20, "Initial energy is 20")
+ 	_assert(_game_state.gold == 0, "Initial gold is 0")
+-	_assert(_game_state.seeds["carrot"] == 5, "Start with 5 carrot seeds")
++	_assert(_game_state.seeds["wheat"] == 5, "Start with 5 wheat seeds")
+ 	_assert(_game_state.watering_can_charges == 8, "Watering can starts at 8")
+ 
+ 	# Test set_energy
+@@ -198,35 +191,35 @@ func _test_game_state() -> void:
+ 
+ 	# Test buy_seed
+ 	_game_state.gold = 100
+-	_game_state.harvest_counts = { "carrot": 0, "tomato": 0, "sunflower": 0 }
+-	var bought: bool = _game_state.buy_seed("carrot")
+-	_assert(bought, "Can buy carrot seeds")
+-	_assert(_game_state.gold == 95, "Gold decreased by 5 (carrot seed price)")
+-	_assert(_game_state.seeds["carrot"] == 6, "Carrot seeds increased to 6")
++	_game_state.harvest_counts = { "wheat": 0, "tomato": 0 }
++	var bought: bool = _game_state.buy_seed("wheat")
++	_assert(bought, "Can buy wheat seeds")
++	_assert(_game_state.gold == 95, "Gold decreased by 5 (wheat seed price)")
++	_assert(_game_state.seeds["wheat"] == 6, "Wheat seeds increased to 6")
+ 
+ 	# Can't buy tomato (locked)
+ 	var bought_tomato: bool = _game_state.buy_seed("tomato")
+ 	_assert(not bought_tomato, "Can't buy locked tomato seeds")
+ 
+ 	# Unlock tomato
+-	_game_state.harvest_counts["carrot"] = 1
++	_game_state.harvest_counts["wheat"] = 1
+ 	bought_tomato = _game_state.buy_seed("tomato")
+ 	_assert(bought_tomato, "Can buy tomato after unlock")
+ 	_assert(_game_state.gold == 85, "Gold decreased by 10 (tomato seed price)")
+ 
+ 	# Test sell_crops_to_bin
+-	_game_state.crops = { "carrot": 3, "tomato": 0, "sunflower": 0 }
+-	_game_state.shipping_bin = { "carrot": 0, "tomato": 0, "sunflower": 0 }
++	_game_state.crops = { "wheat": 3, "tomato": 0 }
++	_game_state.shipping_bin = { "wheat": 0, "tomato": 0 }
+ 	var sold: bool = _game_state.sell_crops_to_bin()
+ 	_assert(sold, "Sold crops")
+-	_assert(_game_state.crops["carrot"] == 0, "Crops emptied after selling")
+-	_assert(_game_state.shipping_bin["carrot"] == 3, "Bin has 3 carrots")
++	_assert(_game_state.crops["wheat"] == 0, "Crops emptied after selling")
++	_assert(_game_state.shipping_bin["wheat"] == 3, "Bin has 3 wheats")
+ 
+ 	# Test process_shipping_bin
+ 	_game_state.gold = 0
+ 	_game_state.process_shipping_bin()
+-	_assert(_game_state.gold == 45, "Gold = 3 carrots × 15g = 45g")
+-	_assert(_game_state.shipping_bin["carrot"] == 0, "Bin emptied after processing")
++	_assert(_game_state.gold == 45, "Gold = 3 wheats × 15g = 45g")
++	_assert(_game_state.shipping_bin["wheat"] == 0, "Bin emptied after processing")
+ 
+ 	# Test start_new_day
+ 	_game_state.energy = 5
+@@ -268,7 +261,7 @@ func _test_farm() -> void:
+ 		farm_objects.append(obj_row)
+ 
+ 	# Test border detection
+-	_assert(farm_data[0][0].state == "border", "Corner is border")
++	_assert(farm_data[0][0].state == "border", "Wheater is border")
+ 	_assert(farm_data[1][1].state == "cleared", "Interior is cleared")
+ 	_assert(farm_data[2][2].state == "cleared", "Center is cleared")
+ 
+@@ -279,10 +272,10 @@ func _test_farm() -> void:
+ 
+ 	# Plant on tilled
+ 	farm_data[1][1].state = "seeded"
+-	farm_data[1][1].crop_type = "carrot"
++	farm_data[1][1].crop_type = "wheat"
+ 	farm_data[1][1].growth_stage = 0
+ 	_assert(farm_data[1][1].state == "seeded", "Tile seeded")
+-	_assert(farm_data[1][1].crop_type == "carrot", "Crop type is carrot")
++	_assert(farm_data[1][1].crop_type == "wheat", "Crop type is wheat")
+ 
+ 	# Water
+ 	farm_data[1][1].watered_today = true
+@@ -310,7 +303,7 @@ func _test_farm() -> void:
+ 				farm_data[1][1].state = "ready"
+ 		farm_data[1][1].watered_today = false
+ 
+-	_assert(farm_data[1][1].state == "ready", "Carrot ready after 3 days")
++	_assert(farm_data[1][1].state == "ready", "Wheat ready after 3 days")
+ 	_assert(farm_data[1][1].growth_stage == 3, "Growth stage is 3")
+ 
+ 	# Harvest
+@@ -340,12 +333,12 @@ func _test_integration() -> void:
+ 	_game_state.max_energy = 20
+ 	_game_state.gold = 0
+ 	_game_state.selected_tool = 0
+-	_game_state.seeds = { "carrot": 5, "tomato": 0, "sunflower": 0 }
+-	_game_state.crops = { "carrot": 0, "tomato": 0, "sunflower": 0 }
+-	_game_state.harvest_counts = { "carrot": 0, "tomato": 0, "sunflower": 0 }
+-	_game_state.shipping_bin = { "carrot": 0, "tomato": 0, "sunflower": 0 }
++	_game_state.seeds = { "wheat": 5, "tomato": 0 }
++	_game_state.crops = { "wheat": 0, "tomato": 0 }
++	_game_state.harvest_counts = { "wheat": 0, "tomato": 0 }
++	_game_state.shipping_bin = { "wheat": 0, "tomato": 0 }
+ 	_game_state.watering_can_charges = 8
+-	_game_state.selected_seed_type = "carrot"
++	_game_state.selected_seed_type = "wheat"
+ 
+ 	# Simulate a full farming cycle:
+ 	# Day 1: Till, plant, water
+@@ -359,8 +352,8 @@ func _test_integration() -> void:
+ 	# Seeds (tool 5) on tilled tile
+ 	_game_state.selected_tool = 5
+ 	_assert(Tools.get_action(5, "tilled") == "plant", "Seeds action on tilled = plant")
+-	_game_state.seeds["carrot"] -= 1
+-	_assert(_game_state.seeds["carrot"] == 4, "4 carrot seeds remaining")
++	_game_state.seeds["wheat"] -= 1
++	_assert(_game_state.seeds["wheat"] == 4, "4 wheat seeds remaining")
+ 
+ 	# Water (tool 4) on seeded tile
+ 	_game_state.selected_tool = 4
+@@ -377,7 +370,7 @@ func _test_integration() -> void:
+ 	_assert(_game_state.energy == 20, "Energy restored")
+ 	_assert(_game_state.watering_can_charges == 8, "Water refilled")
+ 
+-	# Simulate 3 days of watering a carrot crop to harvest
++	# Simulate 3 days of watering a wheat crop to harvest
+ 	# (We track growth manually since we don't have a real farm node here)
+ 	var crop_growth := 1  # Already got 1 day of growth from Day 1 watering
+ 	for d in range(2):
+@@ -388,32 +381,32 @@ func _test_integration() -> void:
+ 		# Sleep
+ 		_game_state.start_new_day()
+ 
+-	_assert(crop_growth == 3, "Carrot fully grown after 3 watered days")
+-	_assert(CropDefs.is_ready("carrot", crop_growth), "Carrot is ready to harvest")
++	_assert(crop_growth == 3, "Wheat fully grown after 3 watered days")
++	_assert(CropDefs.is_ready("wheat", crop_growth), "Wheat is ready to harvest")
+ 	_assert(_game_state.day == 4, "Day 4")
+ 
+ 	# Harvest
+ 	_game_state.selected_tool = 0  # Hands
+ 	_assert(Tools.get_action(0, "ready") == "harvest", "Hands on ready = harvest")
+ 	_game_state.set_energy(_game_state.energy - Tools.get_energy_cost("harvest"))
+-	_game_state.crops["carrot"] += 1
+-	_game_state.harvest_counts["carrot"] += 1
+-	_assert(_game_state.crops["carrot"] == 1, "1 carrot in inventory")
+-	_assert(_game_state.harvest_counts["carrot"] == 1, "1 total carrot harvested")
++	_game_state.crops["wheat"] += 1
++	_game_state.harvest_counts["wheat"] += 1
++	_assert(_game_state.crops["wheat"] == 1, "1 wheat in inventory")
++	_assert(_game_state.harvest_counts["wheat"] == 1, "1 total wheat harvested")
+ 
+ 	# Check tomato unlock
+-	_assert(CropDefs.is_seed_unlocked("tomato", _game_state.harvest_counts), "Tomato unlocked after first carrot harvest")
++	_assert(CropDefs.is_seed_unlocked("tomato", _game_state.harvest_counts), "Tomato unlocked after first wheat harvest")
+ 
+ 	# Sell to shipping bin
+ 	var sold: bool = _game_state.sell_crops_to_bin()
+ 	_assert(sold, "Sold crops to bin")
+-	_assert(_game_state.crops["carrot"] == 0, "Carrots moved to bin")
+-	_assert(_game_state.shipping_bin["carrot"] == 1, "1 carrot in shipping bin")
++	_assert(_game_state.crops["wheat"] == 0, "Wheats moved to bin")
++	_assert(_game_state.shipping_bin["wheat"] == 1, "1 wheat in shipping bin")
+ 
+ 	# Process overnight
+ 	_game_state.process_shipping_bin()
+-	_assert(_game_state.gold == 15, "Earned 15g from carrot")
+-	_assert(_game_state.shipping_bin["carrot"] == 0, "Bin emptied")
++	_assert(_game_state.gold == 15, "Earned 15g from wheat")
++	_assert(_game_state.shipping_bin["wheat"] == 0, "Bin emptied")
+ 
+ 	# Buy tomato seeds
+ 	_assert(_game_state.gold >= 10, "Enough gold for tomato seeds")
+diff --git a/tools/test_graphics.gd b/tools/test_graphics.gd
+index d69f58e..36d2a61 100644
+--- a/tools/test_graphics.gd
++++ b/tools/test_graphics.gd
+@@ -16,10 +16,10 @@ func _ready() -> void:
+ 	farm.set_tile_state(2, 2, "tilled")
+ 	
+ 	# Tile (3,2) - Hoed and Seeded
+-	farm.set_tile_state(3, 2, "seeded", "carrot")
++	farm.set_tile_state(3, 2, "seeded", "wheat")
+ 	
+ 	# Tile (4,2) - Hoed, Seeded, and Watered
+-	farm.set_tile_state(4, 2, "seeded", "carrot")
++	farm.set_tile_state(4, 2, "seeded", "wheat")
+ 	farm.water_tile(4, 2)
+ 	
+ 	# Wait for redraw
+diff --git a/tools/test_runner.gd b/tools/test_runner.gd
+index 6acd01a..dc5dc8a 100644
+--- a/tools/test_runner.gd
++++ b/tools/test_runner.gd
+@@ -139,15 +139,15 @@ func _scenario_c() -> void:
+ 	
+ 	# 2. Plant
+ 	GameState.selected_tool = 5 # Seeds
+-	GameState.selected_seed_type = "carrot"
+-	GameState.seeds["carrot"] = 5
++	GameState.selected_seed_type = "wheat"
++	GameState.seeds["wheat"] = 5
+ 	Input.action_press("action")
+ 	await _wait_for_action()
+ 	Input.action_release("action")
+ 	
+ 	tile = farm.get_tile(6, 5)
+ 	_assert(tile.state == "seeded", "Ground planted to 'seeded'")
+-	_assert(GameState.seeds["carrot"] == 4, "Seed consumed")
++	_assert(GameState.seeds["wheat"] == 4, "Seed consumed")
+ 	
+ 	# 3. Water
+ 	GameState.selected_tool = 4 # Watering Can
+@@ -167,7 +167,7 @@ func _scenario_d() -> void:
+ 	var initial_day = GameState.day
+ 	
+ 	# Plant a second seed but DON'T water it
+-	farm.set_tile_state(6, 4, "seeded", "carrot")
++	farm.set_tile_state(6, 4, "seeded", "wheat")
+ 	var unwatered_tile = farm.get_tile(6, 4)
+ 	
+ 	# Sleep trigger
+@@ -189,7 +189,7 @@ func _scenario_e() -> void:
+ 	print("\n--- Scenario E: Economy (Harvest, Sell) ---")
+ 	
+ 	# Force crop to ready
+-	farm.set_tile_state(6, 5, "ready", "carrot")
++	farm.set_tile_state(6, 5, "ready", "wheat")
+ 	farm.get_tile(6, 5).growth_stage = 3
+ 	
+ 	player.pos = Vector2(5.5 * 16.0, 5.5 * 16.0)
+@@ -201,7 +201,7 @@ func _scenario_e() -> void:
+ 	Input.action_release("action")
+ 	
+ 	_assert(farm.get_tile(6, 5).state == "cleared", "Harvested tile returned to 'cleared'")
+-	_assert(GameState.crops["carrot"] == 1, "Harvested crop in inventory")
++	_assert(GameState.crops["wheat"] == 1, "Harvested crop in inventory")
+ 	
+ 	# Move to shipping bin (assumed at tx=4, ty=1)
+ 	player.pos = Vector2(4.5 * 16.0, 2.5 * 16.0)
+@@ -211,11 +211,11 @@ func _scenario_e() -> void:
+ 	await _wait_for_action()
+ 	Input.action_release("action")
+ 	
+-	_assert(GameState.crops["carrot"] == 0, "Crop removed from inventory on bin interact")
+-	_assert(GameState.shipping_bin["carrot"] == 1, "Crop added to shipping bin")
++	_assert(GameState.crops["wheat"] == 0, "Crop removed from inventory on bin interact")
++	_assert(GameState.shipping_bin["wheat"] == 1, "Crop added to shipping bin")
+ 	
+ 	# Process bin overnight
+ 	var gold_before = GameState.gold
+ 	GameState.process_shipping_bin()
+-	_assert(GameState.shipping_bin["carrot"] == 0, "Bin emptied overnight")
+-	_assert(GameState.gold == gold_before + 15, "Gold increased by carrot sell price (15g)")
++	_assert(GameState.shipping_bin["wheat"] == 0, "Bin emptied overnight")
++	_assert(GameState.gold == gold_before + 15, "Gold increased by wheat sell price (15g)")
+diff --git a/ui/hud.gd b/ui/hud.gd
+index e316b38..c01b58b 100644
+--- a/ui/hud.gd
++++ b/ui/hud.gd
+@@ -15,6 +15,7 @@ const TOAST_DURATION := 3.0
+ var top_bar: Panel
+ var bottom_bar: Panel
+ var day_label: Label
++var weather_label: Label
+ var energy_label: Label
+ var energy_bar_bg: ColorRect
+ var energy_bar_fill: ColorRect
+@@ -65,6 +66,12 @@ func _build_ui() -> void:
+ 	day_label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.8))
+ 	top_bar.add_child(day_label)
+ 
++	# Weather label
++	weather_label = Label.new()
++	weather_label.position = Vector2(70, 5)
++	weather_label.add_theme_color_override("font_color", Color(0.6, 0.8, 1.0))
++	top_bar.add_child(weather_label)
++
+ 	# Energy bar background
+ 	energy_bar_bg = ColorRect.new()
+ 	energy_bar_bg.color = Color(0.2, 0.2, 0.2, 0.8)
+@@ -152,10 +159,10 @@ func _build_ui() -> void:
+ 	seed_pill = Panel.new()
+ 	var pill_style := StyleBoxFlat.new()
+ 	pill_style.bg_color = Color(0.18, 0.52, 0.22, 0.88)
+-	pill_style.corner_radius_top_left = 12
+-	pill_style.corner_radius_top_right = 12
+-	pill_style.corner_radius_bottom_left = 12
+-	pill_style.corner_radius_bottom_right = 12
++	pill_style.wheater_radius_top_left = 12
++	pill_style.wheater_radius_top_right = 12
++	pill_style.wheater_radius_bottom_left = 12
++	pill_style.wheater_radius_bottom_right = 12
+ 	pill_style.border_width_bottom = 1
+ 	pill_style.border_width_top = 1
+ 	pill_style.border_width_left = 1
+@@ -178,10 +185,10 @@ func _build_ui() -> void:
+ 	toast_panel = Panel.new()
+ 	var toast_style := StyleBoxFlat.new()
+ 	toast_style.bg_color = Color(0.1, 0.1, 0.15, 0.85)
+-	toast_style.corner_radius_top_left = 6
+-	toast_style.corner_radius_top_right = 6
+-	toast_style.corner_radius_bottom_left = 6
+-	toast_style.corner_radius_bottom_right = 6
++	toast_style.wheater_radius_top_left = 6
++	toast_style.wheater_radius_top_right = 6
++	toast_style.wheater_radius_bottom_left = 6
++	toast_style.wheater_radius_bottom_right = 6
+ 	toast_panel.add_theme_stylebox_override("panel", toast_style)
+ 	toast_panel.position = Vector2(viewport_size.x / 2 - 120, viewport_size.y / 2 - 40)
+ 	toast_panel.size = Vector2(240, 40)
+@@ -203,8 +210,11 @@ func _process(delta: float) -> void:
+ 
+ 
+ func _update_hud() -> void:
+-	# Day
++	# Day & Weather
+ 	day_label.text = "Day %d" % GameState.day
++	
++	var w_icon := "☀️" if GameState.weather == "sunny" else "🌧️"
++	weather_label.text = "%s %s" % [w_icon, GameState.weather.capitalize()]
+ 
+ 	# Energy
+ 	var fill_ratio := float(GameState.energy) / float(GameState.max_energy)
+@@ -250,9 +260,8 @@ func _update_hud() -> void:
+ 	var scount: int = GameState.seeds.get(seed_name, 0)
+ 	var emoji := "?"
+ 	match seed_name:
+-		"carrot": emoji = "🥕"
++		"wheat": emoji = "🥕"
+ 		"tomato": emoji = "🍅"
+-		"sunflower": emoji = "🌻"
+ 	seed_pill_label.text = "%s %s x%d" % [emoji, seed_name, scount]
+ 	
+ 	var style: StyleBoxFlat = seed_pill.get_theme_stylebox("panel")
+diff --git a/ui/menus.gd b/ui/menus.gd
+index b69310f..0e8bfc2 100644
+--- a/ui/menus.gd
++++ b/ui/menus.gd
+@@ -39,10 +39,10 @@ func _ready() -> void:
+ 	panel_style.border_width_right = 2
+ 	panel_style.border_width_top = 2
+ 	panel_style.border_width_bottom = 2
+-	panel_style.corner_radius_top_left = 8
+-	panel_style.corner_radius_top_right = 8
+-	panel_style.corner_radius_bottom_left = 8
+-	panel_style.corner_radius_bottom_right = 8
++	panel_style.wheater_radius_top_left = 8
++	panel_style.wheater_radius_top_right = 8
++	panel_style.wheater_radius_bottom_left = 8
++	panel_style.wheater_radius_bottom_right = 8
+ 	menu_panel.add_theme_stylebox_override("panel", panel_style)
+ 	menu_panel.size = Vector2(300, 200)
+ 	menu_panel.position = Vector2(viewport_size.x / 2 - 150, viewport_size.y / 2 - 100)
+@@ -79,6 +79,12 @@ func open_menu(menu_name: String) -> void:
+ 	selected_option = 0
+ 	dim_overlay.visible = true
+ 	menu_panel.visible = true
++	menu_panel.pivot_offset = menu_panel.size / 2.0
++	menu_panel.scale = Vector2(0.8, 0.8)
++	
++	var tween = create_tween()
++	tween.tween_property(menu_panel, "scale", Vector2(1, 1), 0.2).set_trans(Tween.TRANS_SPRING).set_ease(Tween.EASE_OUT)
++	
+ 	get_tree().paused = (menu_name == "pause")
+ 	_rebuild_options()
+ 
+@@ -111,18 +117,16 @@ func _rebuild_options() -> void:
+ 
+ 		"shop":
+ 			title_label.text = "SEED SHOP"
++			title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
++			
+ 			gold_display.visible = true
+ 			gold_display.text = "%dg" % GameState.gold
++			gold_display.add_theme_color_override("font_color", Color(1, 0.85, 0.2))
+ 			_build_shop_items()
+ 			for item in shop_items:
+-				var label_text: String
+-				if not item.unlocked:
+-					label_text = "??? (locked)"
+-				else:
+-					label_text = "%s - %dg" % [item.item_name, item.price]
+-				_add_option(label_text, item.affordable)
++				_add_shop_card(item)
+ 			_add_option("Close", true)
+-			menu_panel.size = Vector2(300, 60 + (shop_items.size() + 1) * 30)
++			menu_panel.size = Vector2(300, 60 + shop_items.size() * 56 + 40)
+ 
+ 		"inventory":
+ 			title_label.text = "INVENTORY"
+@@ -177,23 +181,124 @@ func _rebuild_options() -> void:
+ 
+ 
+ func _add_option(text: String, enabled: bool) -> void:
+-	var btn := Button.new()
+-	btn.text = text
+-	btn.flat = true
+-	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+-
++	var container = PanelContainer.new()
++	container.custom_minimum_size = Vector2(0, 52)
++	var style = StyleBoxFlat.new()
++	style.bg_color = Color(0.18, 0.18, 0.25, 0.6)
++	style.wheater_radius_top_left = 6
++	style.wheater_radius_top_right = 6
++	style.wheater_radius_bottom_left = 6
++	style.wheater_radius_bottom_right = 6
++	container.add_theme_stylebox_override("panel", style)
++
++	var hbox = HBoxContainer.new()
++	hbox.alignment = BoxContainer.ALIGNMENT_CENTER
++	container.add_child(hbox)
++	
++	var lbl = Label.new()
++	lbl.text = text
+ 	if enabled:
+-		btn.add_theme_color_override("font_color", Color(0.8, 0.8, 0.75))
+-		btn.add_theme_color_override("font_hover_color", Color(1, 1, 0.8))
+-		btn.add_theme_color_override("font_focus_color", Color(1, 1, 0.8))
++		lbl.add_theme_color_override("font_color", Color(0.8, 0.8, 0.75))
+ 	else:
+-		btn.add_theme_color_override("font_color", Color(0.4, 0.4, 0.4, 0.6))
++		lbl.add_theme_color_override("font_color", Color(0.4, 0.4, 0.4, 0.6))
++	hbox.add_child(lbl)
++	
++	var btn = Button.new()
++	btn.flat = true
++	btn.set_anchors_preset(Control.PRESET_FULL_RECT)
++	container.add_child(btn)
++	
++	if not enabled:
+ 		btn.disabled = true
+ 
+ 	var idx := options_container.get_child_count()
+ 	btn.pressed.connect(_on_option_pressed.bind(idx))
+ 	btn.focus_entered.connect(func(): selected_option = idx)
+-	options_container.add_child(btn)
++	options_container.add_child(container)
++
++
++func _add_shop_card(item: Dictionary) -> void:
++	var container = PanelContainer.new()
++	var style = StyleBoxFlat.new()
++	if item.affordable:
++		style.bg_color = Color(0.18, 0.18, 0.25, 0.6)
++	else:
++		style.bg_color = Color(0.1, 0.1, 0.15, 0.6)
++	style.wheater_radius_top_left = 6
++	style.wheater_radius_top_right = 6
++	style.wheater_radius_bottom_left = 6
++	style.wheater_radius_bottom_right = 6
++	container.add_theme_stylebox_override("panel", style)
++	
++	var hbox = HBoxContainer.new()
++	container.add_child(hbox)
++	
++	var icon = TextureRect.new()
++	icon.custom_minimum_size = Vector2(24, 24)
++	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
++	if item.unlocked:
++		var atlas = AtlasTexture.new()
++		atlas.atlas = preload("res://assets/sprites/sprout_lands/crops.png")
++		atlas.region = Rect2(80, item.sprite_row * 16, 16, 16)
++		icon.texture = atlas
++	hbox.add_child(icon)
++	
++	var vbox = VBoxContainer.new()
++	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
++	hbox.add_child(vbox)
++	
++	var name_lbl = Label.new()
++	if item.unlocked:
++		name_lbl.text = item.item_name
++		name_lbl.add_theme_color_override("font_color", Color(0.9, 0.9, 0.85))
++	else:
++		name_lbl.text = "??? (Locked)"
++		name_lbl.add_theme_color_override("font_color", Color(0.4, 0.4, 0.4))
++	vbox.add_child(name_lbl)
++	
++	var hbox_bottom = HBoxContainer.new()
++	vbox.add_child(hbox_bottom)
++	
++	if item.unlocked:
++		var price_lbl = Label.new()
++		price_lbl.text = str(item.price) + "g"
++		if item.affordable:
++			price_lbl.add_theme_color_override("font_color", Color(1, 0.85, 0.2))
++		else:
++			price_lbl.add_theme_color_override("font_color", Color(0.9, 0.3, 0.3))
++		price_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
++		hbox_bottom.add_child(price_lbl)
++		
++		var owned_lbl = Label.new()
++		owned_lbl.text = "Owned: " + str(item.owned)
++		owned_lbl.add_theme_color_override("font_color", Color(0.6, 0.7, 0.6))
++		hbox_bottom.add_child(owned_lbl)
++	
++	# Transparent button overlay for clicks
++	var btn = Button.new()
++	btn.flat = true
++	btn.set_anchors_preset(Control.PRESET_FULL_RECT)
++	container.add_child(btn)
++	
++	if not item.unlocked or not item.affordable:
++		btn.disabled = true
++	
++	var idx = options_container.get_child_count()
++	btn.pressed.connect(_on_shop_card_pressed.bind(idx, container))
++	btn.focus_entered.connect(func(): selected_option = idx)
++	options_container.add_child(container)
++
++func _on_shop_card_pressed(index: int, container: Control) -> void:
++	selected_option = index
++	container.pivot_offset = container.size / 2.0
++	
++	var tween = create_tween()
++	tween.tween_property(container, "scale", Vector2(0.95, 0.95), 0.05)
++	tween.tween_property(container, "scale", Vector2(1, 1), 0.1)
++	
++	# Small delay to let the animation play
++	await get_tree().create_timer(0.1).timeout
++	_select_current_option()
+ 
+ 
+ func _on_option_pressed(index: int) -> void:
+@@ -262,6 +367,7 @@ func _select_current_option() -> void:
+ 			if selected_option < shop_items.size():
+ 				var item: Dictionary = shop_items[selected_option]
+ 				if GameState.buy_seed(item.seed_type):
++					AudioManager.play_sfx("harvest")
+ 					_rebuild_options()
+ 					menu_action.emit("bought_seed")
+ 			else:
+@@ -281,8 +387,10 @@ func _build_shop_items() -> void:
+ 		var affordable: bool = GameState.gold >= def.seed_price and unlocked
+ 		shop_items.append({
+ 			"seed_type": crop_name,
+-			"item_name": def.name + " Seeds",
++			"item_name": def.name,
+ 			"price": def.seed_price,
+ 			"unlocked": unlocked,
+ 			"affordable": affordable,
++			"sprite_row": def.sprite_row,
++			"owned": GameState.seeds.get(crop_name, 0)
+ 		})
+diff --git a/world/farm.gd b/world/farm.gd
+index b47eb23..312539d 100644
+--- a/world/farm.gd
++++ b/world/farm.gd
+@@ -56,13 +56,10 @@ func _load_textures() -> void:
+ 	tile_regions["border"] = Rect2(0 * 16, 0 * 16, 16, 16)
+ 
+ 	# Crop regions: 4 columns x 3 rows
+-	# Carrot is row 1, tomato is row 3, sunflower is row 4 in crops.png
+-	crop_regions["carrot"] = {}
++	crop_regions["wheat"] = {}
+ 	crop_regions["tomato"] = {}
+-	crop_regions["sunflower"] = {}
+-	for stage in 4: crop_regions["carrot"][stage] = Rect2(stage * 16, 1 * 16, 16, 16)
++	for stage in 4: crop_regions["wheat"][stage] = Rect2(stage * 16, 1 * 16, 16, 16)
+ 	for stage in 6: crop_regions["tomato"][stage] = Rect2(stage * 16, 3 * 16, 16, 16)
+-	for stage in 6: crop_regions["sunflower"][stage] = Rect2(stage * 16, 4 * 16, 16, 16)
+ 
+ 	# Object regions map
+ 	# Format: object_name -> [texture, rect]
+@@ -189,6 +186,10 @@ func advance_day() -> void:
+ 				if CropDefs.is_ready(tile.crop_type, tile.growth_stage):
+ 					tile.state = "ready"
+ 			tile.watered_today = false
++			
++			if GameState.weather == "rainy" and tile.state in ["tilled", "seeded", "growing"]:
++				tile.watered_today = true
++				
+ 	queue_redraw()
+ 
+ 
+@@ -278,8 +279,7 @@ func _draw() -> void:
+ 			if tile.state in ["seeded", "growing", "ready"]:
+ 				var stage = tile.growth_stage
+ 				# clamp stage safely
+-				if tile.crop_type == "carrot": stage = min(stage, 3)
+-				elif tile.crop_type == "tomato" or tile.crop_type == "sunflower": stage = min(stage, 5)
++				if tile.crop_type == "wheat": stage = min(stage, 3)
+ 				var region: Rect2 = crop_regions[tile.crop_type].get(stage, Rect2())
+ 				if region.size.x > 0:
+ 					render_queue.append({
+@@ -289,7 +289,13 @@ func _draw() -> void:
+ 
+ 			# Queue objects
+ 			var obj: String = objects[ty][tx]
+-			if obj != "":
++			if obj == "egg":
++				render_queue.append({
++					"y": py,
++					"draw": func(): 
++						draw_rect(Rect2(px + 6, py + 8, 4, 6), Color.WHITE)
++				})
++			elif obj != "":
+ 				var obj_data = object_regions.get(obj)
+ 				if obj_data:
+ 					var tex: Texture2D = obj_data[0]

@@ -52,49 +52,42 @@ func _assert(condition: bool, test_name: String) -> void:
 func test_crop_defs() -> void:
 	print("\n--- CropDefs Tests ---")
 	
-	_assert(CropDefs.TYPES.has("carrot"), "Carrot type exists")
+	_assert(CropDefs.TYPES.has("wheat"), "Wheat type exists")
 	_assert(CropDefs.TYPES.has("tomato"), "Tomato type exists")
-	_assert(CropDefs.TYPES.has("sunflower"), "Sunflower type exists")
 	
-	var carrot = CropDefs.TYPES["carrot"]
-	_assert(carrot.days_to_grow == 3, "Carrot grows in 3 days")
-	_assert(carrot.sell_price == 15, "Carrot sells for 15g")
-	_assert(carrot.seed_price == 5, "Carrot seeds cost 5g")
+	var wheat = CropDefs.TYPES["wheat"]
+	_assert(wheat.days_to_grow == 3, "Wheat grows in 3 days")
+	_assert(wheat.sell_price == 15, "Wheat sells for 15g")
+	_assert(wheat.seed_price == 5, "Wheat seeds cost 5g")
 	
 	var tomato = CropDefs.TYPES["tomato"]
 	_assert(tomato.days_to_grow == 5, "Tomato grows in 5 days")
 	_assert(tomato.sell_price == 30, "Tomato sells for 30g")
 	
-	var sunflower = CropDefs.TYPES["sunflower"]
-	_assert(sunflower.days_to_grow == 7, "Sunflower grows in 7 days")
-	_assert(sunflower.sell_price == 50, "Sunflower sells for 50g")
 	
-	_assert(CropDefs.ORDER.size() == 3, "ORDER has 3 crops")
-	_assert(CropDefs.ORDER[0] == "carrot", "ORDER[0] is carrot")
+	_assert(CropDefs.ORDER.size() == 2, "ORDER has 2 crops")
+	_assert(CropDefs.ORDER[0] == "wheat", "ORDER[0] is wheat")
 	
-	_assert(not CropDefs.is_ready("carrot", 0), "Carrot not ready at stage 0")
-	_assert(not CropDefs.is_ready("carrot", 2), "Carrot not ready at stage 2")
-	_assert(CropDefs.is_ready("carrot", 3), "Carrot ready at stage 3")
-	_assert(CropDefs.is_ready("carrot", 5), "Carrot ready at stage 5 (over)")
+	_assert(not CropDefs.is_ready("wheat", 0), "Wheat not ready at stage 0")
+	_assert(not CropDefs.is_ready("wheat", 2), "Wheat not ready at stage 2")
+	_assert(CropDefs.is_ready("wheat", 3), "Wheat ready at stage 3")
+	_assert(CropDefs.is_ready("wheat", 5), "Wheat ready at stage 5 (over)")
 	_assert(not CropDefs.is_ready("tomato", 4), "Tomato not ready at stage 4")
 	_assert(CropDefs.is_ready("tomato", 5), "Tomato ready at stage 5")
 	
-	_assert(CropDefs.get_visual_stage("carrot", 0) == 0, "Carrot visual stage 0 at growth 0")
-	_assert(CropDefs.get_visual_stage("carrot", 1) == 1, "Carrot visual stage 1 at growth 1")
-	_assert(CropDefs.get_visual_stage("carrot", 2) == 2, "Carrot visual stage 2 at growth 2")
-	_assert(CropDefs.get_visual_stage("carrot", 3) == 3, "Carrot visual stage 3 at growth 3 (ready)")
+	_assert(CropDefs.get_visual_stage("wheat", 0) == 0, "Wheat visual stage 0 at growth 0")
+	_assert(CropDefs.get_visual_stage("wheat", 1) == 1, "Wheat visual stage 1 at growth 1")
+	_assert(CropDefs.get_visual_stage("wheat", 2) == 2, "Wheat visual stage 2 at growth 2")
+	_assert(CropDefs.get_visual_stage("wheat", 3) == 3, "Wheat visual stage 3 at growth 3 (ready)")
 	
 	var no_harvests := {}
-	_assert(CropDefs.is_seed_unlocked("carrot", no_harvests), "Carrot always unlocked")
+	_assert(CropDefs.is_seed_unlocked("wheat", no_harvests), "Wheat always unlocked")
 	_assert(not CropDefs.is_seed_unlocked("tomato", no_harvests), "Tomato locked with no harvests")
-	_assert(not CropDefs.is_seed_unlocked("sunflower", no_harvests), "Sunflower locked with no harvests")
 	
-	var one_carrot := { "carrot": 1 }
-	_assert(CropDefs.is_seed_unlocked("tomato", one_carrot), "Tomato unlocked with 1 carrot")
-	_assert(not CropDefs.is_seed_unlocked("sunflower", one_carrot), "Sunflower still locked")
+	var one_wheat := { "wheat": 1 }
+	_assert(CropDefs.is_seed_unlocked("tomato", one_wheat), "Tomato unlocked with 1 wheat")
 	
-	var big_harvests := { "carrot": 10, "tomato": 2 }
-	_assert(CropDefs.is_seed_unlocked("sunflower", big_harvests), "Sunflower unlocked with 2 tomatoes")
+	var big_harvests := { "wheat": 10, "tomato": 2 }
 
 
 func test_tools() -> void:
@@ -129,19 +122,19 @@ func test_player() -> void:
 	GameState.max_energy = 20
 	GameState.energy = 20
 	GameState.gold = 0
-	GameState.seeds = { "carrot": 5 }
+	GameState.seeds = { "wheat": 5 }
 	GameState.crops = {}
 	GameState.shipping_bin = {}
 	GameState.harvest_counts = {}
 	GameState.max_watering_can_charges = 8
 	GameState.watering_can_charges = 8
 	GameState.selected_tool = 0
-	GameState.selected_seed_type = "carrot"
+	GameState.selected_seed_type = "wheat"
 	
 	_assert(GameState.day == 1, "Initial day is 1")
 	_assert(GameState.energy == 20, "Initial energy is 20")
 	_assert(GameState.gold == 0, "Initial gold is 0")
-	_assert(GameState.seeds.get("carrot", 0) == 5, "Start with 5 carrot seeds")
+	_assert(GameState.seeds.get("wheat", 0) == 5, "Start with 5 wheat seeds")
 	_assert(GameState.watering_can_charges == 8, "Watering can starts at 8")
 	
 	GameState.energy = 15
@@ -151,31 +144,26 @@ func test_player() -> void:
 	_assert(GameState.selected_tool == 1, "Tool cycled forward to 1")
 	
 	GameState.gold = 100
-	GameState.harvest_counts = { "carrot": 0, "tomato": 0, "sunflower": 0 }
-	var bought = GameState.buy_seed("carrot")
-	_assert(bought, "Can buy carrot seeds")
-	_assert(GameState.gold == 95, "Gold decreased by 5 (carrot seed price)")
-	_assert(GameState.seeds.get("carrot", 0) == 6, "Carrot seeds increased to 6")
+	GameState.harvest_counts = { "wheat": 0, "tomato": 0 }
+	var bought = GameState.buy_seed("wheat")
+	_assert(bought, "Can buy wheat seeds")
+	_assert(GameState.gold == 95, "Gold decreased by 5 (wheat seed price)")
+	_assert(GameState.seeds.get("wheat", 0) == 6, "Wheat seeds increased to 6")
 	
 	var bought_tomato = GameState.buy_seed("tomato")
 	_assert(not bought_tomato, "Can't buy locked tomato seeds")
 	
-	GameState.harvest_counts["carrot"] = 1
+	GameState.harvest_counts["wheat"] = 1
 	bought_tomato = GameState.buy_seed("tomato")
 	_assert(bought_tomato, "Can buy tomato after unlock")
 	_assert(GameState.gold == 85, "Gold decreased by 10 (tomato seed price)")
 	
-	GameState.crops = { "carrot": 3, "tomato": 0, "sunflower": 0 }
-	GameState.shipping_bin = { "carrot": 0, "tomato": 0, "sunflower": 0 }
+	GameState.crops = { "wheat": 3, "tomato": 0 }
+	GameState.gold = 0
 	var sold = GameState.sell_crops_to_bin()
 	_assert(sold, "Sold crops")
-	_assert(GameState.crops.get("carrot", 0) == 0, "Crops emptied after selling")
-	_assert(GameState.shipping_bin.get("carrot", 0) == 3, "Bin has 3 carrots")
-	
-	GameState.gold = 0
-	GameState.process_shipping_bin()
-	_assert(GameState.gold == 45, "Gold = 3 carrots x 15g = 45g")
-	_assert(GameState.shipping_bin.get("carrot", 0) == 0, "Bin emptied after processing")
+	_assert(GameState.crops.get("wheat", 0) == 0, "Crops emptied after selling")
+	_assert(GameState.gold == 45, "Gold = 3 wheats x 15g = 45g")
 	
 	GameState.energy = 5
 	GameState.watering_can_charges = 2
@@ -211,15 +199,15 @@ func test_farm() -> void:
 			else:
 				t.tiles[ty].append({ "state": "cleared", "crop_type": "", "growth_stage": 0, "watered_today": false })
 	
-	_assert(t.tiles[0][0]["state"] == "border", "Corner is border")
+	_assert(t.tiles[0][0]["state"] == "border", "Wheater is border")
 	_assert(t.tiles[1][1]["state"] == "cleared", "Interior is cleared")
 	
 	t.tiles[1][1]["state"] = "tilled"
 	_assert(t.tiles[1][1]["state"] == "tilled", "Tile tilled")
 	
-	t.set_tile_state(1, 1, "seeded", "carrot")
+	t.set_tile_state(1, 1, "seeded", "wheat")
 	_assert(t.tiles[1][1]["state"] == "seeded", "Tile seeded")
-	_assert(t.tiles[1][1]["crop_type"] == "carrot", "Crop type is carrot")
+	_assert(t.tiles[1][1]["crop_type"] == "wheat", "Crop type is wheat")
 	
 	t.water_tile(1, 1)
 	_assert(t.tiles[1][1]["watered_today"], "Tile watered")
@@ -233,7 +221,7 @@ func test_farm() -> void:
 		t.water_tile(1, 1)
 		t.advance_day()
 	
-	_assert(t.tiles[1][1]["state"] == "ready", "Carrot ready after 3 days")
+	_assert(t.tiles[1][1]["state"] == "ready", "Wheat ready after 3 days")
 	_assert(t.tiles[1][1]["growth_stage"] == 3, "Growth stage is 3")
 	
 	t.set_tile_state(1, 1, "cleared")
@@ -253,7 +241,7 @@ func test_integration() -> void:
 	GameState.max_energy = 20
 	GameState.energy = 20
 	GameState.gold = 0
-	GameState.seeds = { "carrot": 5 }
+	GameState.seeds = { "wheat": 5 }
 	GameState.crops = {}
 	GameState.shipping_bin = {}
 	GameState.harvest_counts = {}
@@ -267,8 +255,8 @@ func test_integration() -> void:
 	
 	GameState.selected_tool = 5 # Seeds
 	_assert(Tools.get_action(5, "tilled") == "plant", "Seeds action on tilled = plant")
-	GameState.seeds["carrot"] -= 1
-	_assert(GameState.seeds["carrot"] == 4, "4 carrot seeds remaining")
+	GameState.seeds["wheat"] -= 1
+	_assert(GameState.seeds["wheat"] == 4, "4 wheat seeds remaining")
 	
 	GameState.selected_tool = 4 # Watering Can
 	_assert(Tools.get_action(4, "seeded") == "water", "WateringCan on seeded = water")
@@ -289,26 +277,24 @@ func test_integration() -> void:
 		crop_growth += 1
 		GameState.start_new_day()
 	
-	_assert(crop_growth == 3, "Carrot fully grown after 3 watered days")
-	_assert(CropDefs.is_ready("carrot", crop_growth), "Carrot is ready to harvest")
+	_assert(crop_growth == 3, "Wheat fully grown after 3 watered days")
+	_assert(CropDefs.is_ready("wheat", crop_growth), "Wheat is ready to harvest")
 	_assert(GameState.day == 4, "Day 4")
 	
 	GameState.selected_tool = 0 # Hands
 	_assert(Tools.get_action(0, "ready") == "harvest", "Hands on ready = harvest")
 	GameState.energy -= Tools.get_energy_cost("harvest")
-	GameState.crops["carrot"] = GameState.crops.get("carrot", 0) + 1
-	GameState.harvest_counts["carrot"] = GameState.harvest_counts.get("carrot", 0) + 1
-	_assert(GameState.crops["carrot"] == 1, "1 carrot in inventory")
+	GameState.crops["wheat"] = GameState.crops.get("wheat", 0) + 1
+	GameState.harvest_counts["wheat"] = GameState.harvest_counts.get("wheat", 0) + 1
+	_assert(GameState.crops["wheat"] == 1, "1 wheat in inventory")
 	
-	_assert(CropDefs.is_seed_unlocked("tomato", GameState.harvest_counts), "Tomato unlocked after first carrot harvest")
+	_assert(CropDefs.is_seed_unlocked("tomato", GameState.harvest_counts), "Tomato unlocked after first wheat harvest")
 	
 	var sold = GameState.sell_crops_to_bin()
 	_assert(sold, "Sold crops to bin")
-	_assert(GameState.crops.get("carrot", 0) == 0, "Carrots moved to bin")
+	_assert(GameState.crops.get("wheat", 0) == 0, "Wheats moved to bin")
 	
-	GameState.process_shipping_bin()
-	_assert(GameState.gold == 15, "Earned 15g from carrot")
-	_assert(GameState.shipping_bin.get("carrot", 0) == 0, "Bin emptied")
+	_assert(GameState.gold == 15, "Earned 15g from wheat")
 	
 	var bought = GameState.buy_seed("tomato")
 	_assert(bought, "Bought tomato seeds")
@@ -366,8 +352,8 @@ func test_action_router() -> void:
 			t.tiles[ty].append({ "state": "cleared", "crop_type": "", "growth_stage": 0, "watered_today": false })
 
 	GameState.selected_tool = 0
-	GameState.selected_seed_type = "carrot"
-	GameState.seeds = { "carrot": 1 }
+	GameState.selected_seed_type = "wheat"
+	GameState.seeds = { "wheat": 1 }
 	GameState.energy = 20
 	GameState.watering_can_charges = 8
 

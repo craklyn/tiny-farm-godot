@@ -16,10 +16,10 @@ func _ready() -> void:
 	farm.set_tile_state(2, 2, "tilled")
 	
 	# Tile (3,2) - Hoed and Seeded
-	farm.set_tile_state(3, 2, "seeded", "carrot")
+	farm.set_tile_state(3, 2, "seeded", "wheat")
 	
 	# Tile (4,2) - Hoed, Seeded, and Watered
-	farm.set_tile_state(4, 2, "seeded", "carrot")
+	farm.set_tile_state(4, 2, "seeded", "wheat")
 	farm.water_tile(4, 2)
 	
 	# Wait for redraw

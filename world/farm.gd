@@ -56,13 +56,10 @@ func _load_textures() -> void:
 	tile_regions["border"] = Rect2(0 * 16, 0 * 16, 16, 16)
 
 	# Crop regions: 4 columns x 3 rows
-	# Carrot is row 1, tomato is row 3, sunflower is row 4 in crops.png
-	crop_regions["carrot"] = {}
+	crop_regions["wheat"] = {}
 	crop_regions["tomato"] = {}
-	crop_regions["sunflower"] = {}
-	for stage in 4: crop_regions["carrot"][stage] = Rect2(stage * 16, 1 * 16, 16, 16)
+	for stage in 4: crop_regions["wheat"][stage] = Rect2(stage * 16, 1 * 16, 16, 16)
 	for stage in 6: crop_regions["tomato"][stage] = Rect2(stage * 16, 3 * 16, 16, 16)
-	for stage in 6: crop_regions["sunflower"][stage] = Rect2(stage * 16, 4 * 16, 16, 16)
 
 	# Object regions map
 	# Format: object_name -> [texture, rect]
@@ -189,6 +186,13 @@ func advance_day() -> void:
 				if CropDefs.is_ready(tile.crop_type, tile.growth_stage):
 					tile.state = "ready"
 			tile.watered_today = false
+			
+			var weather = "sunny"
+			if Engine.get_main_loop() and Engine.get_main_loop().root.has_node("GameState"):
+				weather = Engine.get_main_loop().root.get_node("GameState").weather
+			if weather == "rainy" and tile.state in ["tilled", "seeded", "growing"]:
+				tile.watered_today = true
+				
 	queue_redraw()
 
 
@@ -278,8 +282,7 @@ func _draw() -> void:
 			if tile.state in ["seeded", "growing", "ready"]:
 				var stage = tile.growth_stage
 				# clamp stage safely
-				if tile.crop_type == "carrot": stage = min(stage, 3)
-				elif tile.crop_type == "tomato" or tile.crop_type == "sunflower": stage = min(stage, 5)
+				if tile.crop_type == "wheat": stage = min(stage, 3)
 				var region: Rect2 = crop_regions[tile.crop_type].get(stage, Rect2())
 				if region.size.x > 0:
 					render_queue.append({
@@ -289,7 +292,13 @@ func _draw() -> void:
 
 			# Queue objects
 			var obj: String = objects[ty][tx]
-			if obj != "":
+			if obj == "egg":
+				render_queue.append({
+					"y": py,
+					"draw": func(): 
+						draw_rect(Rect2(px + 6, py + 8, 4, 6), Color.WHITE)
+				})
+			elif obj != "":
 				var obj_data = object_regions.get(obj)
 				if obj_data:
 					var tex: Texture2D = obj_data[0]
@@ -304,8 +313,24 @@ func _draw() -> void:
 	if player and player.has_method("queue_render"):
 		player.queue_render(self, render_queue)
 
-	# Sort by Y-coordinate
-	render_queue.sort_custom(func(a, b): return a.y < b.y)
+	# Insert entities into render queue
+	var entities = get_node_or_null("../Entities")
+	if entities:
+		for child in entities.get_children():
+			if child.has_method("queue_render"):
+				child.queue_render(self, render_queue)
+
+	# Inject insertion order for stable sorting
+	for i in range(render_queue.size()):
+		if not render_queue[i].has("order"):
+			render_queue[i]["order"] = i
+
+	# Sort by Y-coordinate (using order as tie-breaker)
+	render_queue.sort_custom(func(a, b): 
+		if a.y == b.y:
+			return a.order < b.order
+		return a.y < b.y
+	)
 
 	# Execute drawing commands
 	for entity in render_queue:

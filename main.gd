@@ -12,6 +12,8 @@ var farm: Node2D
 var player: Node2D
 var particles_manager: Node2D
 var camera: Camera2D
+var rain_particles: CPUParticles2D
+var entities: Node2D
 
 # UI layers
 var hud: CanvasLayer
@@ -42,6 +44,20 @@ func _ready() -> void:
 	player.farm = farm
 	player.init_position(2, 2)  # Near the cot
 
+	# Create entity manager
+	entities = Node2D.new()
+	entities.name = "Entities"
+	add_child(entities)
+	
+	# Spawn initial chicken
+	var ChickenScript = load("res://entities/chicken.gd")
+	var chicken = ChickenScript.new()
+	var reachable = Pathfinding.get_reachable_tiles(farm, player.get_tile_pos())
+	if reachable.size() > 0:
+		var target = reachable[randi() % reachable.size()]
+		chicken.init(farm, target)
+		entities.add_child(chicken)
+
 	# Create particles manager
 	var ParticlesScript = load("res://effects/particles_manager.gd")
 	particles_manager = ParticlesScript.new()
@@ -58,6 +74,27 @@ func _ready() -> void:
 	camera.limit_right = MAP_WIDTH * TILE_SIZE
 	camera.limit_bottom = MAP_HEIGHT * TILE_SIZE
 	player.add_child(camera)
+	
+	# Create rain particles attached to camera
+	rain_particles = CPUParticles2D.new()
+	rain_particles.name = "RainParticles"
+	rain_particles.emitting = false
+	rain_particles.amount = 400
+	rain_particles.lifetime = 1.0
+	rain_particles.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	# Cover screen width based on typical zoom (e.g., 3x zoom on 640x360 screen = 213 wide)
+	rain_particles.emission_rect_extents = Vector2(200, 1)
+	rain_particles.position = Vector2(0, -120)
+	rain_particles.direction = Vector2(-0.1, 1).normalized()
+	rain_particles.spread = 2.0
+	rain_particles.gravity = Vector2(0, 0)
+	rain_particles.initial_velocity_min = 350.0
+	rain_particles.initial_velocity_max = 450.0
+	rain_particles.scale_amount_min = 1.0
+	rain_particles.scale_amount_max = 2.0
+	rain_particles.color = Color(0.5, 0.7, 1.0, 0.4)
+	rain_particles.z_index = 50
+	camera.add_child(rain_particles)
 
 	# Create HUD
 	var HUDScript = load("res://ui/hud.gd")
@@ -74,6 +111,13 @@ func _ready() -> void:
 	var DayCycleScript = load("res://systems/day_cycle.gd")
 	day_cycle = DayCycleScript.new()
 	add_child(day_cycle)
+
+	GameState.weather_changed.connect(_on_weather_changed)
+	_on_weather_changed(GameState.weather)
+
+func _on_weather_changed(weather: String) -> void:
+	if rain_particles:
+		rain_particles.emitting = (weather == "rainy")
 
 
 func _process(delta: float) -> void:
@@ -121,11 +165,9 @@ func _process(delta: float) -> void:
 	if current_tool_idx >= 0 and current_tool_idx < Tools.LIST.size():
 		if Tools.LIST[current_tool_idx].tool_name == "Seeds":
 			if Input.is_key_pressed(KEY_1):
-				GameState.selected_seed_type = "carrot"
+				GameState.selected_seed_type = "wheat"
 			elif Input.is_key_pressed(KEY_2) and CropDefs.is_seed_unlocked("tomato", GameState.harvest_counts):
 				GameState.selected_seed_type = "tomato"
-			elif Input.is_key_pressed(KEY_3) and CropDefs.is_seed_unlocked("sunflower", GameState.harvest_counts):
-				GameState.selected_seed_type = "sunflower"
 
 	# Update tile cursor
 	if InputManager.current_mode == InputManager.Mode.MOUSE:
@@ -181,9 +223,12 @@ func _handle_action_result(action: String) -> void:
 	if action == "sleep":
 		day_cycle.set_day_display(GameState.day + 1)
 		day_cycle.start_sleep(func():
-			farm.advance_day()
-			GameState.process_shipping_bin()
 			GameState.start_new_day()
+			farm.advance_day()
+			for child in entities.get_children():
+				if child.has_method("on_new_day"):
+					child.on_new_day()
+			GameState.process_shipping_bin()
 		)
 	elif action == "open_shop":
 		menus.open_menu("shop")

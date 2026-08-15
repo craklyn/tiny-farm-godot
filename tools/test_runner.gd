@@ -139,15 +139,15 @@ func _scenario_c() -> void:
 	
 	# 2. Plant
 	GameState.selected_tool = 5 # Seeds
-	GameState.selected_seed_type = "carrot"
-	GameState.seeds["carrot"] = 5
+	GameState.selected_seed_type = "wheat"
+	GameState.seeds["wheat"] = 5
 	Input.action_press("action")
 	await _wait_for_action()
 	Input.action_release("action")
 	
 	tile = farm.get_tile(6, 5)
 	_assert(tile.state == "seeded", "Ground planted to 'seeded'")
-	_assert(GameState.seeds["carrot"] == 4, "Seed consumed")
+	_assert(GameState.seeds["wheat"] == 4, "Seed consumed")
 	
 	# 3. Water
 	GameState.selected_tool = 4 # Watering Can
@@ -167,7 +167,7 @@ func _scenario_d() -> void:
 	var initial_day = GameState.day
 	
 	# Plant a second seed but DON'T water it
-	farm.set_tile_state(6, 4, "seeded", "carrot")
+	farm.set_tile_state(6, 4, "seeded", "wheat")
 	var unwatered_tile = farm.get_tile(6, 4)
 	
 	# Sleep trigger
@@ -189,7 +189,7 @@ func _scenario_e() -> void:
 	print("\n--- Scenario E: Economy (Harvest, Sell) ---")
 	
 	# Force crop to ready
-	farm.set_tile_state(6, 5, "ready", "carrot")
+	farm.set_tile_state(6, 5, "ready", "wheat")
 	farm.get_tile(6, 5).growth_stage = 3
 	
 	player.pos = Vector2(5.5 * 16.0, 5.5 * 16.0)
@@ -201,21 +201,16 @@ func _scenario_e() -> void:
 	Input.action_release("action")
 	
 	_assert(farm.get_tile(6, 5).state == "cleared", "Harvested tile returned to 'cleared'")
-	_assert(GameState.crops["carrot"] == 1, "Harvested crop in inventory")
+	_assert(GameState.crops["wheat"] == 1, "Harvested crop in inventory")
 	
 	# Move to shipping bin (assumed at tx=4, ty=1)
 	player.pos = Vector2(4.5 * 16.0, 2.5 * 16.0)
 	player.facing = "up"
 	
+	var gold_before = GameState.gold
 	Input.action_press("action")
 	await _wait_for_action()
 	Input.action_release("action")
 	
-	_assert(GameState.crops["carrot"] == 0, "Crop removed from inventory on bin interact")
-	_assert(GameState.shipping_bin["carrot"] == 1, "Crop added to shipping bin")
-	
-	# Process bin overnight
-	var gold_before = GameState.gold
-	GameState.process_shipping_bin()
-	_assert(GameState.shipping_bin["carrot"] == 0, "Bin emptied overnight")
-	_assert(GameState.gold == gold_before + 15, "Gold increased by carrot sell price (15g)")
+	_assert(GameState.crops["wheat"] == 0, "Crop removed from inventory on bin interact")
+	_assert(GameState.gold == gold_before + 15, "Gold increased by wheat sell price (15g)")

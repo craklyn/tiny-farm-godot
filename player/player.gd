@@ -22,6 +22,7 @@ const ACTION_DURATION := 0.35
 # A* path following
 var path: Array[Vector2i] = []
 var pending_action: Dictionary = {}  # {action, tool_idx, target_t, seed_type}
+var drag_tool_idx: int = -1
 
 # Tap destination indicator
 var tap_indicator: Dictionary = {}   # {tx, ty, timer}
@@ -96,44 +97,71 @@ func update_player(delta: float) -> void:
 	var dy: float = 0.0
 
 	# Touch/mouse tap → A* pathfind
+	var target_t: Variant = null
+	var is_drag := false
+	var is_new_tap := false
+	
 	if InputManager.has_click:
-		var click_t := InputManager.consume_click()
+		target_t = InputManager.consume_click()
+		is_new_tap = true
+	elif InputManager.swipe_active and InputManager.swipe_moved:
+		target_t = InputManager.swipe_tile
+		is_drag = true
+		
+	if target_t != null:
+		var target_vec: Vector2i = target_t
 		var player_t := get_tile_pos()
-
-		# Resolve action
-		var resolved := ActionRouter.resolve(farm, GameState, click_t)
-
-		# Pathfind to tapped tile (or adjacent if unwalkable)
-		var new_path := Pathfinding.find_path(farm, player_t, click_t)
-		path = new_path
-
-		# Store tap indicator at final waypoint
-		if not path.is_empty():
-			var last := path[path.size() - 1]
-			tap_indicator = { "tx": last.x, "ty": last.y, "timer": TAP_INDICATOR_DURATION }
-		elif player_t == click_t:
-			tap_indicator = { "tx": click_t.x, "ty": click_t.y, "timer": TAP_INDICATOR_DURATION }
-
-		# Store pending action
-		if not resolved.is_empty():
-			if path.is_empty():
-				var dist = absi(player_t.x - click_t.x) + absi(player_t.y - click_t.y)
-				if dist <= 1:
-					var pa := resolved
-					var tgt: Vector2i = pa.get("target_t", click_t)
-					var fdx := tgt.x - player_t.x
-					var fdy := tgt.y - player_t.y
-					if fdx != 0 or fdy != 0:
-						if absi(fdx) >= absi(fdy):
-							facing = "right" if fdx > 0 else "left"
-						else:
-							facing = "down" if fdy > 0 else "up"
-					_execute_resolved_action(pa)
-				pending_action = {}
-			else:
-				pending_action = resolved
-		else:
+		
+		if is_new_tap:
+			path = []
 			pending_action = {}
+			tap_indicator = {}
+			
+		var drag_intent = drag_tool_idx if is_drag else null
+		var resolved := ActionRouter.resolve(farm, GameState, target_vec, player_t, is_drag, drag_intent)
+		
+		if is_new_tap:
+			if not resolved.is_empty():
+				drag_tool_idx = resolved.get("tool_idx", -1)
+			else:
+				drag_tool_idx = -1
+		
+		var new_path := Pathfinding.find_path(farm, player_t, target_vec)
+		
+		if not new_path.is_empty() or player_t == target_vec:
+			path = new_path
+			
+			var color := ActionRouter.get_cursor_color(farm, GameState, target_vec, player_t, is_drag)
+			
+			if not path.is_empty():
+				var last := path[path.size() - 1]
+				tap_indicator = { "tx": last.x, "ty": last.y, "timer": TAP_INDICATOR_DURATION, "r": color.r, "g": color.g, "b": color.b }
+			else:
+				tap_indicator = { "tx": target_vec.x, "ty": target_vec.y, "timer": TAP_INDICATOR_DURATION, "r": color.r, "g": color.g, "b": color.b }
+				
+			if not resolved.is_empty():
+				if path.is_empty():
+					var dist = absi(player_t.x - target_vec.x) + absi(player_t.y - target_vec.y)
+					if dist <= 1:
+						var pa := resolved
+						var tgt: Vector2i = pa.get("target_t", target_vec)
+						var fdx := tgt.x - player_t.x
+						var fdy := tgt.y - player_t.y
+						if fdx != 0 or fdy != 0:
+							if absi(fdx) >= absi(fdy):
+								facing = "right" if fdx > 0 else "left"
+							else:
+								facing = "down" if fdy > 0 else "up"
+						_execute_resolved_action(pa)
+					pending_action = {}
+				else:
+					pending_action = resolved
+			else:
+				pending_action = {}
+		else:
+			path = []
+			pending_action = {}
+			tap_indicator = {}
 
 	# Keyboard / gamepad movement (cancels path)
 	var input_vec := Input.get_vector("move_left", "move_right", "move_up", "move_down")
@@ -234,6 +262,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			GameState.cycle_tool(1)
 
 
+
+
+
 func handle_action() -> String:
 	"""Called from main when action is pressed. Returns action name or empty string."""
 	if is_acting:
@@ -312,7 +343,8 @@ func _try_action() -> String:
 		AudioManager.play_sfx("water")
 		_emit_particles("water", facing_t)
 	elif action == "harvest":
-		var crop_type: String = farm.get_crop_type(facing_t.x, facing_t.y)
+		var tile = farm.get_tile(facing_t.x, facing_t.y)
+		var crop_type: String = tile.get("crop_type", "")
 		if crop_type != "":
 			GameState.crops[crop_type] = GameState.crops.get(crop_type, 0) + 1
 			GameState.harvest_counts[crop_type] = GameState.harvest_counts.get(crop_type, 0) + 1
@@ -339,6 +371,12 @@ func _execute_resolved_action(pa: Dictionary) -> void:
 		return
 	if action == "refill":
 		GameState.refill_watering_can()
+		return
+	if action == "collect":
+		if farm.get_object(target_t.x, target_t.y) == "egg":
+			farm.set_object(target_t.x, target_t.y, "")
+			GameState.crops["egg"] = GameState.crops.get("egg", 0) + 1
+			AudioManager.play_sfx("harvest")
 		return
 
 	var state: String = farm.get_tile(target_t.x, target_t.y).get("state", "")
@@ -410,4 +448,27 @@ func queue_render(canvas: CanvasItem, render_queue: Array) -> void:
 		render_queue.append({
 			"y": position.y,
 			"draw": func(): canvas.draw_texture_rect_region(sprite_texture, Rect2(draw_pos, Vector2(48, 48)), region)
+		})
+		
+	# Draw tap indicator
+	if not tap_indicator.is_empty():
+		var ind = tap_indicator
+		var progress: float = 1.0 - (ind.timer / TAP_INDICATOR_DURATION)
+		var alpha: float = 0.9 - progress * 0.7
+		var scale: float = 0.5 + progress * 0.5
+		var wx: float = float(ind.tx * TILE_SIZE + TILE_SIZE / 2.0)
+		var wy: float = float(ind.ty * TILE_SIZE + TILE_SIZE / 2.0)
+		
+		var h: float = (TILE_SIZE / 2.0) * scale
+		var pts = PackedVector2Array([
+			Vector2(wx, wy - h),
+			Vector2(wx + h, wy),
+			Vector2(wx, wy + h),
+			Vector2(wx - h, wy)
+		])
+		var color = Color(ind.get("r", 0.3), ind.get("g", 1.0), ind.get("b", 0.4), alpha)
+		
+		render_queue.append({
+			"y": wy - 100, # Always below everything
+			"draw": func(): canvas.draw_colored_polygon(pts, color)
 		})

@@ -9,6 +9,7 @@ const SPECIAL_OBJECTS := {
 	"well":         "refill",
 	"seed_box":     "open_shop",
 	"shipping_bin": "sell",
+	"egg":          "collect",
 }
 
 ## Result dictionary returned by resolve():
@@ -25,21 +26,33 @@ const SPECIAL_OBJECTS := {
 ##                             get_object(tx,ty), is_walkable(tx,ty)
 ## @param gs       Node      — GameState autoload
 ## @param tap_t    Vector2i  — tapped tile (0-indexed)
+## @param player_t Vector2i|null — player's current tile (0-indexed)
+## @param is_drag  bool      — true if triggered by a drag/swipe
+## @param drag_tool_idx Variant|null — if provided, restricts action to this tool_idx (int) or -1 (no action)
 ## @return Dictionary|null
-func resolve(farm: Node2D, gs: Node, tap_t: Vector2i) -> Dictionary:
+func resolve(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, is_drag: bool = false, drag_tool_idx = null) -> Dictionary:
 	var tx := tap_t.x
 	var ty := tap_t.y
+
+	# Helper to enforce drag intent
+	var check_result = func(res: Dictionary) -> Dictionary:
+		if drag_tool_idx != null:
+			if typeof(drag_tool_idx) == TYPE_INT and drag_tool_idx == -1:
+				return {}
+			if res.get("tool_idx", -1) != drag_tool_idx:
+				return {}
+		return res
 
 	# 1. Special objects
 	var obj: String = farm.get_object(tx, ty)
 	if obj != "" and SPECIAL_OBJECTS.has(obj):
-		return {
+		return check_result.call({
 			"action":    SPECIAL_OBJECTS[obj],
 			"tool_idx":  0,  # Hands
 			"target_t":  tap_t,
 			"walk_to":   true,
 			"seed_type": "",
-		}
+		})
 
 	# 2. Get tile state
 	var tile: Dictionary = farm.get_tile(tx, ty)
@@ -47,43 +60,51 @@ func resolve(farm: Node2D, gs: Node, tap_t: Vector2i) -> Dictionary:
 		return {}  # Out of bounds
 	var state: String = tile.get("state", "")
 
+	# Intent Filter: For non-obstacles, if it's a far tap (not a drag), treat as pure movement
+	var is_tool_action := (state == "cleared" or state == "tilled" or state == "seeded" or state == "growing")
+	if is_tool_action and not is_drag and player_t != null:
+		var pt: Vector2i = player_t
+		var dist := absi(pt.x - tx) + absi(pt.y - ty)
+		if dist > 1:
+			return {}
+
 	# 3. Obstacle clearing → correct tool
 	if state == "obstacle_rock":
-		return { "action": "clear_rock", "tool_idx": 2, "target_t": tap_t, "walk_to": true, "seed_type": "" }
+		return check_result.call({ "action": "clear_rock", "tool_idx": 2, "target_t": tap_t, "walk_to": true, "seed_type": "" })
 	if state == "obstacle_log":
-		return { "action": "clear_log",  "tool_idx": 1, "target_t": tap_t, "walk_to": true, "seed_type": "" }
+		return check_result.call({ "action": "clear_log",  "tool_idx": 1, "target_t": tap_t, "walk_to": true, "seed_type": "" })
 	if state == "obstacle_weed":
-		return { "action": "clear_weed", "tool_idx": 0, "target_t": tap_t, "walk_to": true, "seed_type": "" }
+		return check_result.call({ "action": "clear_weed", "tool_idx": 0, "target_t": tap_t, "walk_to": true, "seed_type": "" })
 
 	# 4. Ready crop → harvest
 	if state == "ready":
-		return { "action": "harvest", "tool_idx": 0, "target_t": tap_t, "walk_to": true, "seed_type": "" }
+		return check_result.call({ "action": "harvest", "tool_idx": 0, "target_t": tap_t, "walk_to": true, "seed_type": "" })
 
 	# 5. Tilled → plant active seed
 	if state == "tilled":
 		var seed_type: String = gs.selected_seed_type
 		if gs.seeds.get(seed_type, 0) > 0:
-			return { "action": "plant", "tool_idx": 5, "target_t": tap_t, "walk_to": true, "seed_type": seed_type }
+			return check_result.call({ "action": "plant", "tool_idx": 5, "target_t": tap_t, "walk_to": true, "seed_type": seed_type })
 		return {}
 
 	# 6. Cleared → till
 	if state == "cleared":
 		if gs.energy >= Tools.get_energy_cost("till"):
-			return { "action": "till", "tool_idx": 3, "target_t": tap_t, "walk_to": true, "seed_type": "" }
+			return check_result.call({ "action": "till", "tool_idx": 3, "target_t": tap_t, "walk_to": true, "seed_type": "" })
 		return {}
 
 	# 7. Seeded / Growing and not yet watered today → water
 	if (state == "seeded" or state == "growing") and not tile.get("watered_today", true):
 		if gs.watering_can_charges > 0 and gs.energy >= Tools.get_energy_cost("water"):
-			return { "action": "water", "tool_idx": 4, "target_t": tap_t, "walk_to": true, "seed_type": "" }
+			return check_result.call({ "action": "water", "tool_idx": 4, "target_t": tap_t, "walk_to": true, "seed_type": "" })
 		return {}
 
 	return {}
 
 
 ## Returns a Color for the tile cursor based on what action would be performed.
-func get_cursor_color(farm: Node2D, gs: Node, tap_t: Vector2i) -> Color:
-	var result := resolve(farm, gs, tap_t)
+func get_cursor_color(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, is_drag: bool = false) -> Color:
+	var result := resolve(farm, gs, tap_t, player_t, is_drag)
 	if not result.is_empty() and result.get("action", "") != "":
 		return Color(0.2, 0.9, 0.3, 0.6)  # Green — valid action
 	var state: String = farm.get_tile(tap_t.x, tap_t.y).get("state", "")
