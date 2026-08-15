@@ -1,1 +1,2 @@
 .godot/\n*.import\n*.translation\n*.tmp\n
+android/build/

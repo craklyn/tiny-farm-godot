@@ -15,6 +15,7 @@ const TOAST_DURATION := 3.0
 var top_bar: Panel
 var bottom_bar: Panel
 var day_label: Label
+var weather_label: Label
 var energy_label: Label
 var energy_bar_bg: ColorRect
 var energy_bar_fill: ColorRect
@@ -64,6 +65,12 @@ func _build_ui() -> void:
 	day_label.position = Vector2(10, 5)
 	day_label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.8))
 	top_bar.add_child(day_label)
+
+	# Weather label
+	weather_label = Label.new()
+	weather_label.position = Vector2(70, 5)
+	weather_label.add_theme_color_override("font_color", Color(0.6, 0.8, 1.0))
+	top_bar.add_child(weather_label)
 
 	# Energy bar background
 	energy_bar_bg = ColorRect.new()
@@ -203,8 +210,13 @@ func _process(delta: float) -> void:
 
 
 func _update_hud() -> void:
-	# Day
+	if not seed_pill_label:
+		return
+	# Top bary & Weather
 	day_label.text = "Day %d" % GameState.day
+	
+	var w_icon := "☀️" if GameState.weather == "sunny" else "🌧️"
+	weather_label.text = "%s %s" % [w_icon, GameState.weather.capitalize()]
 
 	# Energy
 	var fill_ratio := float(GameState.energy) / float(GameState.max_energy)
@@ -250,9 +262,8 @@ func _update_hud() -> void:
 	var scount: int = GameState.seeds.get(seed_name, 0)
 	var emoji := "?"
 	match seed_name:
-		"carrot": emoji = "🥕"
+		"wheat": emoji = "🥕"
 		"tomato": emoji = "🍅"
-		"sunflower": emoji = "🌻"
 	seed_pill_label.text = "%s %s x%d" % [emoji, seed_name, scount]
 	
 	var style: StyleBoxFlat = seed_pill.get_theme_stylebox("panel")

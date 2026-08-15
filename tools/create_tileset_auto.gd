@@ -60,7 +60,7 @@ func _init():
 			var terrain_id = 0 if tx < 4 else 1
 			td.terrain = terrain_id
 			
-			# Sample edges and corners to determine peering bits
+			# Sample edges and wheaters to determine peering bits
 			# If pixel is opaque, it connects.
 			if dirt_img.get_pixel(cx + 15, cy + 7).a > 0: td.set_terrain_peering_bit(R, terrain_id)
 			if dirt_img.get_pixel(cx + 15, cy + 15).a > 0: td.set_terrain_peering_bit(BR, terrain_id)

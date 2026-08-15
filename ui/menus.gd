@@ -79,6 +79,12 @@ func open_menu(menu_name: String) -> void:
 	selected_option = 0
 	dim_overlay.visible = true
 	menu_panel.visible = true
+	menu_panel.pivot_offset = menu_panel.size / 2.0
+	menu_panel.scale = Vector2(0.8, 0.8)
+	
+	var tween = create_tween()
+	tween.tween_property(menu_panel, "scale", Vector2(1, 1), 0.2).set_trans(Tween.TRANS_SPRING).set_ease(Tween.EASE_OUT)
+	
 	get_tree().paused = (menu_name == "pause")
 	_rebuild_options()
 
@@ -111,18 +117,16 @@ func _rebuild_options() -> void:
 
 		"shop":
 			title_label.text = "SEED SHOP"
+			title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+			
 			gold_display.visible = true
 			gold_display.text = "%dg" % GameState.gold
+			gold_display.add_theme_color_override("font_color", Color(1, 0.85, 0.2))
 			_build_shop_items()
 			for item in shop_items:
-				var label_text: String
-				if not item.unlocked:
-					label_text = "??? (locked)"
-				else:
-					label_text = "%s - %dg" % [item.item_name, item.price]
-				_add_option(label_text, item.affordable)
+				_add_shop_card(item)
 			_add_option("Close", true)
-			menu_panel.size = Vector2(300, 60 + (shop_items.size() + 1) * 30)
+			menu_panel.size = Vector2(300, 60 + shop_items.size() * 56 + 40)
 
 		"inventory":
 			title_label.text = "INVENTORY"
@@ -154,18 +158,6 @@ func _rebuild_options() -> void:
 				lbl.add_theme_color_override("font_color", Color(0.8, 0.8, 0.75))
 				options_container.add_child(lbl)
 
-			# Shipping bin
-			var bin_header := Label.new()
-			bin_header.text = "\nShipping Bin:"
-			bin_header.add_theme_color_override("font_color", Color(0.6, 0.6, 0.7))
-			options_container.add_child(bin_header)
-			for crop_name in CropDefs.ORDER:
-				var def: Dictionary = CropDefs.TYPES[crop_name]
-				var count: int = GameState.shipping_bin.get(crop_name, 0)
-				var lbl := Label.new()
-				lbl.text = "  %s: %d" % [def.name, count]
-				lbl.add_theme_color_override("font_color", Color(0.8, 0.8, 0.75))
-				options_container.add_child(lbl)
 
 			_add_option("\nClose", true)
 			menu_panel.size = Vector2(300, 340)
@@ -177,23 +169,124 @@ func _rebuild_options() -> void:
 
 
 func _add_option(text: String, enabled: bool) -> void:
-	var btn := Button.new()
-	btn.text = text
-	btn.flat = true
-	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	var container = PanelContainer.new()
+	container.custom_minimum_size = Vector2(0, 52)
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.18, 0.18, 0.25, 0.6)
+	style.corner_radius_top_left = 6
+	style.corner_radius_top_right = 6
+	style.corner_radius_bottom_left = 6
+	style.corner_radius_bottom_right = 6
+	container.add_theme_stylebox_override("panel", style)
 
+	var hbox = HBoxContainer.new()
+	hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	container.add_child(hbox)
+	
+	var lbl = Label.new()
+	lbl.text = text
 	if enabled:
-		btn.add_theme_color_override("font_color", Color(0.8, 0.8, 0.75))
-		btn.add_theme_color_override("font_hover_color", Color(1, 1, 0.8))
-		btn.add_theme_color_override("font_focus_color", Color(1, 1, 0.8))
+		lbl.add_theme_color_override("font_color", Color(0.8, 0.8, 0.75))
 	else:
-		btn.add_theme_color_override("font_color", Color(0.4, 0.4, 0.4, 0.6))
+		lbl.add_theme_color_override("font_color", Color(0.4, 0.4, 0.4, 0.6))
+	hbox.add_child(lbl)
+	
+	var btn = Button.new()
+	btn.flat = true
+	btn.set_anchors_preset(Control.PRESET_FULL_RECT)
+	container.add_child(btn)
+	
+	if not enabled:
 		btn.disabled = true
 
 	var idx := options_container.get_child_count()
 	btn.pressed.connect(_on_option_pressed.bind(idx))
 	btn.focus_entered.connect(func(): selected_option = idx)
-	options_container.add_child(btn)
+	options_container.add_child(container)
+
+
+func _add_shop_card(item: Dictionary) -> void:
+	var container = PanelContainer.new()
+	var style = StyleBoxFlat.new()
+	if item.affordable:
+		style.bg_color = Color(0.18, 0.18, 0.25, 0.6)
+	else:
+		style.bg_color = Color(0.1, 0.1, 0.15, 0.6)
+	style.corner_radius_top_left = 6
+	style.corner_radius_top_right = 6
+	style.corner_radius_bottom_left = 6
+	style.corner_radius_bottom_right = 6
+	container.add_theme_stylebox_override("panel", style)
+	
+	var hbox = HBoxContainer.new()
+	container.add_child(hbox)
+	
+	var icon = TextureRect.new()
+	icon.custom_minimum_size = Vector2(24, 24)
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	if item.unlocked:
+		var atlas = AtlasTexture.new()
+		atlas.atlas = preload("res://assets/sprites/sprout_lands/crops.png")
+		atlas.region = Rect2(80, item.sprite_row * 16, 16, 16)
+		icon.texture = atlas
+	hbox.add_child(icon)
+	
+	var vbox = VBoxContainer.new()
+	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hbox.add_child(vbox)
+	
+	var name_lbl = Label.new()
+	if item.unlocked:
+		name_lbl.text = item.item_name
+		name_lbl.add_theme_color_override("font_color", Color(0.9, 0.9, 0.85))
+	else:
+		name_lbl.text = "??? (Locked)"
+		name_lbl.add_theme_color_override("font_color", Color(0.4, 0.4, 0.4))
+	vbox.add_child(name_lbl)
+	
+	var hbox_bottom = HBoxContainer.new()
+	vbox.add_child(hbox_bottom)
+	
+	if item.unlocked:
+		var price_lbl = Label.new()
+		price_lbl.text = str(item.price) + "g"
+		if item.affordable:
+			price_lbl.add_theme_color_override("font_color", Color(1, 0.85, 0.2))
+		else:
+			price_lbl.add_theme_color_override("font_color", Color(0.9, 0.3, 0.3))
+		price_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		hbox_bottom.add_child(price_lbl)
+		
+		var owned_lbl = Label.new()
+		owned_lbl.text = "Owned: " + str(item.owned)
+		owned_lbl.add_theme_color_override("font_color", Color(0.6, 0.7, 0.6))
+		hbox_bottom.add_child(owned_lbl)
+	
+	# Transparent button overlay for clicks
+	var btn = Button.new()
+	btn.flat = true
+	btn.set_anchors_preset(Control.PRESET_FULL_RECT)
+	container.add_child(btn)
+	
+	if not item.unlocked or not item.affordable:
+		btn.disabled = true
+	
+	var idx = options_container.get_child_count()
+	btn.pressed.connect(_on_shop_card_pressed.bind(idx, container))
+	btn.focus_entered.connect(func(): selected_option = idx)
+	options_container.add_child(container)
+
+func _on_shop_card_pressed(index: int, container: Control) -> void:
+	selected_option = index
+	container.pivot_offset = container.size / 2.0
+	
+	var tween = create_tween()
+	tween.tween_property(container, "scale", Vector2(0.95, 0.95), 0.05)
+	tween.tween_property(container, "scale", Vector2(1, 1), 0.1)
+	
+	# Small delay to let the animation play
+	await get_tree().create_timer(0.1).timeout
+	_select_current_option()
 
 
 func _on_option_pressed(index: int) -> void:
@@ -262,6 +355,7 @@ func _select_current_option() -> void:
 			if selected_option < shop_items.size():
 				var item: Dictionary = shop_items[selected_option]
 				if GameState.buy_seed(item.seed_type):
+					AudioManager.play_sfx("harvest")
 					_rebuild_options()
 					menu_action.emit("bought_seed")
 			else:
@@ -281,8 +375,10 @@ func _build_shop_items() -> void:
 		var affordable: bool = GameState.gold >= def.seed_price and unlocked
 		shop_items.append({
 			"seed_type": crop_name,
-			"item_name": def.name + " Seeds",
+			"item_name": def.name,
 			"price": def.seed_price,
 			"unlocked": unlocked,
 			"affordable": affordable,
+			"sprite_row": def.sprite_row,
+			"owned": GameState.seeds.get(crop_name, 0)
 		})
