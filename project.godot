@@ -29,6 +29,7 @@ window/size/viewport_width=800
 window/size/viewport_height=600
 window/size/resizable=false
 window/stretch/mode="canvas_items"
+window/handheld/orientation=4
 
 [input]
 
