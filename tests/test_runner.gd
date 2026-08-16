@@ -26,6 +26,8 @@ func _init() -> void:
 	test_integration()
 	test_pathfinding()
 	test_action_router()
+	test_input_bleed()
+	test_swipe_chaining()
 	
 	print("")
 	print(String("=").repeat(60))
@@ -65,7 +67,7 @@ func test_crop_defs() -> void:
 	_assert(tomato.sell_price == 30, "Tomato sells for 30g")
 	
 	
-	_assert(CropDefs.ORDER.size() == 2, "ORDER has 2 crops")
+	_assert(CropDefs.ORDER.size() == 3, "ORDER has 3 crops")
 	_assert(CropDefs.ORDER[0] == "wheat", "ORDER[0] is wheat")
 	
 	_assert(not CropDefs.is_ready("wheat", 0), "Wheat not ready at stage 0")
@@ -336,6 +338,14 @@ func test_pathfinding() -> void:
 	
 	var adjacent_click_path = Pathfinding.find_path(t, Vector2i(1, 2), Vector2i(2, 2))
 	_assert(adjacent_click_path.is_empty(), "Clicking adjacent obstacle returns empty path (0 dist to closest walkable)")
+	
+	t.objects[4][4] = "furniture_bed"
+	_assert(not t.is_walkable(4, 4), "Furniture makes tile unwalkable")
+	var furn_path = Pathfinding.find_path(t, Vector2i(1, 1), Vector2i(4, 4))
+	_assert(furn_path.size() > 0, "Finds path to neighbor of furniture")
+	var furn_last = furn_path[furn_path.size() - 1]
+	_assert(not (furn_last.x == 4 and furn_last.y == 4), "Path does not end ON furniture")
+	
 	t.free()
 
 func test_action_router() -> void:
@@ -373,3 +383,42 @@ func test_action_router() -> void:
 	var r4 = ActionRouter.resolve(t, GameState, Vector2i(1, 0))
 	_assert(r4.get("action", "") == "sell", "ActionRouter resolves sell on shipping_bin")
 
+func test_input_bleed() -> void:
+	print("\n--- Input Bleed Tests ---")
+	var InputManager = load("res://systems/input_manager.gd").new()
+	InputManager.has_click = true
+	InputManager.swipe_active = true
+	InputManager.swipe_moved = true
+	
+	# Simulate what main.gd does
+	InputManager.has_click = false
+	InputManager.swipe_active = false
+	InputManager.swipe_moved = false
+	
+	_assert(not InputManager.has_click, "has_click is resettable")
+	_assert(not InputManager.swipe_active, "swipe_active is resettable")
+	_assert(not InputManager.swipe_moved, "swipe_moved is resettable")
+	InputManager.free()
+
+func test_swipe_chaining() -> void:
+	print("\n--- Swipe Chaining Tests ---")
+	var FarmScript = load("res://world/farm.gd")
+	var t = FarmScript.new()
+	t.tiles.clear()
+	t.objects.clear()
+	for ty in t.MAP_HEIGHT:
+		t.tiles.append([])
+		t.objects.append([])
+		for tx in t.MAP_WIDTH:
+			t.objects[ty].append("")
+			t.tiles[ty].append({ "state": "cleared", "crop_type": "", "growth_stage": 0, "watered_today": false })
+			
+	GameState.selected_tool = 3 # Hoe
+	GameState.energy = 20
+	
+	var r_tap_far = ActionRouter.resolve(t, GameState, Vector2i(5, 5), Vector2i(1, 1), false)
+	_assert(r_tap_far.is_empty(), "ActionRouter ignores far tap on empty tile (intent filter)")
+	
+	var r_drag_far = ActionRouter.resolve(t, GameState, Vector2i(5, 5), Vector2i(1, 1), true)
+	_assert(r_drag_far.get("action", "") == "till", "ActionRouter allows drag on far tile")
+	t.free()
