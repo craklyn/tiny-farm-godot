@@ -67,6 +67,7 @@ func _load_textures() -> void:
 	object_regions["well"] = [furniture_texture, Rect2(4 * 16, 0 * 16, 16, 32)]
 	object_regions["shipping_bin"] = [chest_texture, Rect2(1 * 16, 1 * 16, 16, 16)]
 	object_regions["seed_box"] = [furniture_texture, Rect2(5 * 16, 2 * 16, 16, 32)]
+	object_regions["scarecrow"] = [crops_texture, Rect2(0 * 16, 4 * 16, 16, 16)]
 
 
 func _init_grid() -> void:
@@ -139,6 +140,23 @@ func get_object(tx: int, ty: int) -> String:
 	return ""
 
 
+func set_object(tx: int, ty: int, obj_type: String) -> void:
+	if ty >= 0 and ty < MAP_HEIGHT and tx >= 0 and tx < MAP_WIDTH:
+		objects[ty][tx] = obj_type
+		queue_redraw()
+
+
+func is_protected_by_scarecrow(tx: int, ty: int) -> bool:
+	for dy in range(-4, 5):
+		for dx in range(-4, 5):
+			var nx := tx + dx
+			var ny := ty + dy
+			if nx >= 0 and nx < MAP_WIDTH and ny >= 0 and ny < MAP_HEIGHT:
+				if objects[ny][nx] == "scarecrow":
+					return true
+	return false
+
+
 func is_walkable(tx: int, ty: int) -> bool:
 	var tile := get_tile(tx, ty)
 	if tile.is_empty():
@@ -148,7 +166,11 @@ func is_walkable(tx: int, ty: int) -> bool:
 		return false
 	if state.begins_with("obstacle"):
 		return false
+	var obj := get_object(tx, ty)
+	if obj != "" and obj != "egg":
+		return false
 	return true
+
 
 
 func set_tile_state(tx: int, ty: int, new_state: String, crop_type: String = "") -> void:

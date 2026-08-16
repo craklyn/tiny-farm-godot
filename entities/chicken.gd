@@ -46,6 +46,10 @@ func _process(delta: float) -> void:
 			return
 			
 		var target = path[path_index]
+		if not farm.is_walkable(target.x, target.y):
+			state = "idle"
+			timer = 0.0
+			return
 		var target_pos = Vector2((target.x - 1) * TILE_SIZE, (target.y - 1) * TILE_SIZE)
 		
 		var dist = position.distance_to(target_pos)
