@@ -25,8 +25,13 @@ var cursor_visible: bool = false
 var cursor_tile: Vector2i = Vector2i(-1, -1)
 var cursor_color: Color = Color.WHITE
 
+var crow_spawn_timer: float = 0.0
+
 
 func _ready() -> void:
+	InputManager.has_click = false
+	InputManager.swipe_active = false
+	add_to_group("Main")
 	# Pixel art rendering
 	get_viewport().canvas_item_default_texture_filter = Viewport.DEFAULT_CANVAS_ITEM_TEXTURE_FILTER_NEAREST
 
@@ -138,6 +143,23 @@ func _process(delta: float) -> void:
 
 	# Player update
 	player.update_player(delta)
+	
+	# Crow spawner logic
+	crow_spawn_timer += delta
+	if crow_spawn_timer > 10.0:
+		crow_spawn_timer = 0.0
+		var targets: Array[Vector2i] = []
+		for ty in MAP_HEIGHT:
+			for tx in MAP_WIDTH:
+				var tile = farm.get_tile(tx, ty)
+				if not tile.is_empty() and (tile.state == "growing" or tile.state == "ready" or tile.state == "seeded"):
+					targets.append(Vector2i(tx, ty))
+		if targets.size() > 0:
+			var target = targets[randi() % targets.size()]
+			var CrowScript = load("res://entities/crow.gd")
+			var crow = CrowScript.new()
+			crow.init_crow(-32.0, -32.0, target.x, target.y, farm, player, entities)
+			entities.add_child(crow)
 
 	# Action
 	if Input.is_action_just_pressed("action") and not player.is_acting:
@@ -148,17 +170,19 @@ func _process(delta: float) -> void:
 	if InputManager.swipe_active and InputManager.swipe_moved:
 		var st := InputManager.swipe_tile
 		var pt: Vector2i = player.get_tile_pos()
-		var resolved: Dictionary = ActionRouter.resolve(farm, GameState, st)
-		var chainable := { "water": true, "plant": true, "till": true, "harvest": true, "clear_weed": true, "clear_log": true, "clear_rock": true }
-		if not resolved.is_empty() and chainable.get(resolved.get("action", ""), false):
-			var fdx: int = st.x - pt.x
-			var fdy: int = st.y - pt.y
-			if absi(fdx) >= absi(fdy):
-				player.facing = "right" if fdx > 0 else "left"
-			else:
-				player.facing = "down" if fdy > 0 else "up"
-			player._execute_resolved_action(resolved)
-			GameState.check_milestones()
+		var dist = absi(st.x - pt.x) + absi(st.y - pt.y)
+		if dist <= 1:
+			var resolved: Dictionary = ActionRouter.resolve(farm, GameState, st)
+			var chainable := { "water": true, "plant": true, "till": true, "harvest": true, "clear_weed": true, "clear_log": true, "clear_rock": true }
+			if not resolved.is_empty() and chainable.get(resolved.get("action", ""), false):
+				var fdx: int = st.x - pt.x
+				var fdy: int = st.y - pt.y
+				if absi(fdx) >= absi(fdy):
+					player.facing = "right" if fdx > 0 else "left"
+				else:
+					player.facing = "down" if fdy > 0 else "up"
+				player._execute_resolved_action(resolved)
+				GameState.check_milestones()
 
 	# Seed type cycling with number keys when Seeds tool is active
 	var current_tool_idx := GameState.selected_tool
@@ -239,6 +263,10 @@ func _handle_action_result(action: String) -> void:
 func _on_menu_action(action: String) -> void:
 	if action == "quit":
 		get_tree().quit()
+
+
+func trigger_action(action: String) -> void:
+	_handle_action_result(action)
 
 
 func spawn_particles(effect_type: String, world_pos: Vector2) -> void:

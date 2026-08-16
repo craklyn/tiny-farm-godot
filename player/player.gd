@@ -19,6 +19,8 @@ var is_acting: bool = false
 var action_timer: float = 0.0
 const ACTION_DURATION := 0.35
 
+var spook_radius: float = 3.0 * TILE_SIZE
+
 # A* path following
 var path: Array[Vector2i] = []
 var pending_action: Dictionary = {}  # {action, tool_idx, target_t, seed_type}
@@ -276,83 +278,20 @@ func _try_action() -> String:
 	if is_acting:
 		return ""
 
-	var facing_t := get_facing_tile()
 	var player_t := get_tile_pos()
+	var facing_t := get_facing_tile()
 
-	# Check special objects first
-	var obj: String = farm.get_object(player_t.x, player_t.y)
-	var adj_obj: String = farm.get_object(facing_t.x, facing_t.y)
-
-	# Shipping bin
-	if obj == "shipping_bin" or adj_obj == "shipping_bin":
-		if GameState.sell_crops_to_bin():
-			return "sell"
+	# Try to resolve automatically via ActionRouter for facing tile
+	var resolved := ActionRouter.resolve(farm, GameState, facing_t, player_t, false)
+	if resolved.is_empty():
+		# Try standing tile for special objects (like cot, shipping bin)
+		resolved = ActionRouter.resolve(farm, GameState, player_t, player_t, false)
+		
+	if resolved.is_empty() or resolved.get("action", "") == "":
 		return ""
-
-	# Well
-	if obj == "well" or adj_obj == "well":
-		if GameState.refill_watering_can():
-			return "refill"
-		return ""
-
-	# Seed box
-	if obj == "seed_box" or adj_obj == "seed_box":
-		return "open_shop"
-
-	# Cot
-	if obj == "cot" or adj_obj == "cot":
-		return "sleep"
-
-	# Regular tile action
-	var state: String = farm.get_tile(facing_t.x, facing_t.y).get("state", "")
-	if state == "":
-		return ""
-
-	var action: String = Tools.get_action(GameState.selected_tool, state)
-	if action == "":
-		return ""
-
-	var cost: int = Tools.get_energy_cost(action)
-	if GameState.energy < cost:
-		return ""
-
-	if action == "water" and GameState.watering_can_charges <= 0:
-		return ""
-	if action == "plant" and GameState.seeds.get(GameState.selected_seed_type, 0) <= 0:
-		return ""
-
-	# Execute
-	GameState.energy -= cost
-	is_acting = true
-	action_timer = ACTION_DURATION
-
-	if action == "clear_weed" or action == "clear_log" or action == "clear_rock":
-		farm.set_tile_state(facing_t.x, facing_t.y, "cleared")
-		AudioManager.play_sfx("till")
-		_emit_particles("chop", facing_t)
-	elif action == "till":
-		farm.set_tile_state(facing_t.x, facing_t.y, "tilled")
-		AudioManager.play_sfx("till")
-		_emit_particles("dirt", facing_t)
-	elif action == "plant":
-		farm.set_tile_state(facing_t.x, facing_t.y, "seeded", GameState.selected_seed_type)
-		GameState.seeds[GameState.selected_seed_type] -= 1
-	elif action == "water":
-		farm.water_tile(facing_t.x, facing_t.y)
-		GameState.watering_can_charges -= 1
-		AudioManager.play_sfx("water")
-		_emit_particles("water", facing_t)
-	elif action == "harvest":
-		var tile = farm.get_tile(facing_t.x, facing_t.y)
-		var crop_type: String = tile.get("crop_type", "")
-		if crop_type != "":
-			GameState.crops[crop_type] = GameState.crops.get(crop_type, 0) + 1
-			GameState.harvest_counts[crop_type] = GameState.harvest_counts.get(crop_type, 0) + 1
-			farm.set_tile_state(facing_t.x, facing_t.y, "cleared")
-			AudioManager.play_sfx("harvest")
-			_emit_particles("harvest", facing_t)
-
-	return action
+		
+	_execute_resolved_action(resolved)
+	return resolved.get("action", "")
 
 
 func _execute_resolved_action(pa: Dictionary) -> void:
@@ -373,9 +312,14 @@ func _execute_resolved_action(pa: Dictionary) -> void:
 		GameState.refill_watering_can()
 		return
 	if action == "collect":
-		if farm.get_object(target_t.x, target_t.y) == "egg":
+		var obj = farm.get_object(target_t.x, target_t.y)
+		if obj == "egg":
 			farm.set_object(target_t.x, target_t.y, "")
 			GameState.crops["egg"] = GameState.crops.get("egg", 0) + 1
+			AudioManager.play_sfx("harvest")
+		elif obj == "scarecrow":
+			farm.set_object(target_t.x, target_t.y, "")
+			GameState.seeds["scarecrow"] = GameState.seeds.get("scarecrow", 0) + 1
 			AudioManager.play_sfx("harvest")
 		return
 
@@ -404,7 +348,11 @@ func _execute_resolved_action(pa: Dictionary) -> void:
 		AudioManager.play_sfx("till")
 		_emit_particles("dirt", target_t)
 	elif action == "plant":
-		farm.set_tile_state(target_t.x, target_t.y, "seeded", seed_type)
+		var is_obj = CropDefs.TYPES.get(seed_type, {}).get("is_object", false)
+		if is_obj:
+			farm.set_object(target_t.x, target_t.y, seed_type)
+		else:
+			farm.set_tile_state(target_t.x, target_t.y, "seeded", seed_type)
 		GameState.seeds[seed_type] -= 1
 	elif action == "water":
 		farm.water_tile(target_t.x, target_t.y)

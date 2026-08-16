@@ -10,6 +10,7 @@ const SPECIAL_OBJECTS := {
 	"seed_box":     "open_shop",
 	"shipping_bin": "sell",
 	"egg":          "collect",
+	"scarecrow":    "collect",
 }
 
 ## Result dictionary returned by resolve():
@@ -87,8 +88,11 @@ func resolve(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, is_drag: 
 			return check_result.call({ "action": "plant", "tool_idx": 5, "target_t": tap_t, "walk_to": true, "seed_type": seed_type })
 		return {}
 
-	# 6. Cleared → till
+	# 6. Cleared → till OR plant object
 	if state == "cleared":
+		var seed_type: String = gs.selected_seed_type
+		if gs.seeds.get(seed_type, 0) > 0 and CropDefs.TYPES.get(seed_type, {}).get("is_object", false):
+			return check_result.call({ "action": "plant", "tool_idx": 5, "target_t": tap_t, "walk_to": true, "seed_type": seed_type })
 		if gs.energy >= Tools.get_energy_cost("till"):
 			return check_result.call({ "action": "till", "tool_idx": 3, "target_t": tap_t, "walk_to": true, "seed_type": "" })
 		return {}

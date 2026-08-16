@@ -27,10 +27,18 @@ static var TYPES: Dictionary = {
 		"name": "Egg",
 		"sell_price": 10,
 	},
+	"scarecrow": {
+		"name": "Scarecrow",
+		"seed_price": 50,
+		"is_object": true,
+		"stages": 1,
+		"unlock_requirement": null,
+		"sprite_row": 4, # Fallback, actually mapped in farm.gd
+	},
 }
 
 # Display order
-static var ORDER: Array[String] = ["wheat", "tomato"]
+static var ORDER: Array[String] = ["wheat", "tomato", "scarecrow"]
 
 
 static func is_ready(crop_type: String, growth_stage: int) -> bool:
