@@ -130,6 +130,13 @@ func get_tile(tx: int, ty: int) -> Dictionary:
 	return {}
 
 
+func get_crop_type(tx: int, ty: int) -> String:
+	var tile := get_tile(tx, ty)
+	if tile.is_empty():
+		return ""
+	return tile.get("crop_type", "")
+
+
 func get_object(tx: int, ty: int) -> String:
 	if ty >= 0 and ty < MAP_HEIGHT and tx >= 0 and tx < MAP_WIDTH:
 		if objects[ty][tx] != "":
