@@ -4,6 +4,7 @@ extends Node2D
 
 const TILE_SIZE := 16
 const MOVE_SPEED := 3.0 * TILE_SIZE  # 3 tiles/sec in world pixels
+const COLLIDE_RADIUS := 2.5  # px half-width used for tile collision (leading edge)
 
 # Position (world pixels, center of sprite)
 var pos: Vector2 = Vector2.ZERO
@@ -211,23 +212,25 @@ func update_player(delta: float) -> void:
 		elif absf(move_vec.y) > 0.01:
 			facing = "down" if move_vec.y > 0 else "up"
 
-		# Calculate new position
+		# Calculate new position; collide on the player's leading edge, not its center
 		var new_pos := pos + move_vec * MOVE_SPEED * delta
-		var new_tx := int(new_pos.x / TILE_SIZE)
-		var new_ty := int(new_pos.y / TILE_SIZE)
 		var cur_tx := int(pos.x / TILE_SIZE)
 		var cur_ty := int(pos.y / TILE_SIZE)
 
 		# X collision
-		if new_tx != cur_tx:
-			if farm.is_walkable(new_tx, cur_ty):
+		var probe_x := new_pos.x + (COLLIDE_RADIUS if move_vec.x > 0.0 else -COLLIDE_RADIUS if move_vec.x < 0.0 else 0.0)
+		var probe_tx := int(probe_x / TILE_SIZE)
+		if probe_tx != cur_tx:
+			if farm.is_walkable(probe_tx, cur_ty):
 				pos.x = new_pos.x
 		else:
 			pos.x = new_pos.x
 
 		# Y collision
-		if new_ty != cur_ty:
-			if farm.is_walkable(cur_tx, new_ty):
+		var probe_y := new_pos.y + (COLLIDE_RADIUS if move_vec.y > 0.0 else -COLLIDE_RADIUS if move_vec.y < 0.0 else 0.0)
+		var probe_ty := int(probe_y / TILE_SIZE)
+		if probe_ty != cur_ty:
+			if farm.is_walkable(cur_tx, probe_ty):
 				pos.y = new_pos.y
 		else:
 			pos.y = new_pos.y
