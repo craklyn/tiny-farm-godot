@@ -63,15 +63,23 @@ them only changes its own task row below.)*
 - [ ] Device pass on a real tablet: mis-tap rate on tiles adjacent to HUD, swipe-chain
       feel, orientation/safe-area check. (Needs the designer's hardware for the final
       word, but the build and instrumentation can be prepared.)
-- [ ] Sound pass for existing verbs (AudioManager has slots; see design/10 draft).
+- [~] Sound pass: core verbs had SFX; squawk/cluck/jingle added as synthesized
+      placeholders (original, in-repo). Full pass per the design/10 verb table
+      awaits the Q-13 taste ruling.
 - [ ] Android export kept green each commit.
 
-**Blocked on a one-line ruling (strawmen above):**
-- [ ] Q-9 vignette implementation (sparkle highlight system, 3-step sequence)
-- [ ] Q-10 mercy rules + crow/chicken juice
-- [ ] Q-11 soft-floor energy behavior (or pool retune)
-- [ ] Q-12 proof tracking + Expansion Morning sequence
-- [ ] Q-8 formally: delete/park any virtual-stick plans
+**Ruled 2026-08-19 (all five accepted) and implemented same day:**
+- [x] Q-9 vignette: weed+tilled tiles in seeded generation, sparkle overlay,
+      progress derived purely from world state (`systems/vignette.gd`)
+- [x] Q-10 mercy rules + juice: never-the-only-crop spawner rule, squawk +
+      feather puff on scares, chicken cluck-on-tap, crow_scared proof verb
+- [x] Q-11 soft-floor energy: hard_energy flag (phase 1 off), half-speed
+      trudge at 0 energy, pulsing cot nudge
+- [x] Q-12 proof + Expansion Morning v1: silent sim-measured proof
+      (yard cleared + 20 shipped + 3 crows scared, consts tunable), jingle +
+      confetti celebration; literal gate/new-plot staging lands with M3
+- [x] Q-8: tap-to-move only confirmed; no virtual stick existed to remove.
+      Follow-up Q-28 (interaction inventory) queued for pre-M3.
 
 **The gate itself:**
 - [ ] Kid playtest protocol: one tablet, zero adult touches, note where she stalls,
