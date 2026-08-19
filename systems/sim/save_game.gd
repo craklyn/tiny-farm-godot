@@ -95,11 +95,18 @@ static func save_to(path: String, world: SimWorld, gs) -> bool:
 	return true
 
 
-static func load_from(path: String, world: SimWorld, gs) -> bool:
+static func load_dict(path: String) -> Dictionary:
 	if not FileAccess.file_exists(path):
-		return false
+		return {}
 	var data = JSON.parse_string(FileAccess.get_file_as_string(path))
 	if data == null or typeof(data) != TYPE_DICTIONARY:
+		return {}
+	return data
+
+
+static func load_from(path: String, world: SimWorld, gs) -> bool:
+	var data := load_dict(path)
+	if data.is_empty():
 		return false
 	return restore(data, world, gs)
 

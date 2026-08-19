@@ -54,3 +54,8 @@ theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_font_sizes/font_size = 14
 text = "Tap Anywhere to Start"
 horizontal_alignment = 1
+
+[node name="NewFarmButton" type="Button" parent="VBoxContainer"]
+layout_mode = 2
+visible = false
+text = "New Farm"

@@ -40,6 +40,7 @@ var _milestones_earned: Dictionary = {}
 
 # Game state
 var game_paused: bool = false
+var pending_load: bool = false  # title screen asks main to load the autosave
 
 
 func reset() -> void:
