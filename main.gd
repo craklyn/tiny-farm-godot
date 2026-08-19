@@ -258,6 +258,10 @@ func _handle_action_result(action: String) -> void:
 			for child in entities.get_children():
 				if child.has_method("on_new_day"):
 					child.on_new_day()
+			# Write-only autosave; loading waits on the continue/new-game menu (M1)
+			SaveGame.save_to("user://autosave.json", farm.sim, GameState)
+			if farm.replay != null:
+				farm.replay.save_to("user://session_replay.json")
 		)
 	elif action == "open_shop":
 		menus.open_menu("shop")

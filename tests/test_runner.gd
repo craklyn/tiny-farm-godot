@@ -32,6 +32,7 @@ func _init() -> void:
 	test_milestones()
 	test_sim_actions()
 	test_replay()
+	test_save_game()
 
 	print("")
 	print(String("=").repeat(60))
@@ -588,3 +589,38 @@ func test_replay() -> void:
 	rlog2.apply_to(world2, GameState)
 	var replay_snap := _replay_snapshot(world2)
 	_assert(replay_snap == live_snap, "replay reproduces exact end state despite RNG noise")
+
+func test_save_game() -> void:
+	print("\n--- SaveGame v1 Tests ---")
+
+	GameState.reset()
+	SimRng.reseed(55)
+	var world := SimWorld.new()
+	world.generate()
+	# Mutate some state through actions so the save is non-trivial
+	world.apply_action({ "verb": "till", "target": Vector2i(5, 2), "actor": "player" }, GameState)
+	world.apply_action({ "verb": "plant", "target": Vector2i(5, 2), "seed_type": "wheat", "actor": "player" }, GameState)
+	world.apply_action({ "verb": "water", "target": Vector2i(5, 2), "actor": "player" }, GameState)
+	world.apply_action({ "verb": "sleep", "actor": "world" }, GameState)
+	GameState.gold = 123
+	GameState._milestones_earned = { "first_harvest": true }
+
+	var live := JSON.stringify(SaveGame.capture(world, GameState))
+
+	# Round-trip through JSON text (as on disk), restore into fresh objects
+	var parsed = JSON.parse_string(live)
+	var world2 := SimWorld.new()
+	GameState.reset()
+	var ok := SaveGame.restore(parsed, world2, GameState)
+	_assert(ok, "restore accepts v1 save")
+	_assert(GameState.gold == 123, "gold restored")
+	_assert(GameState.day == 2, "day restored")
+	_assert(GameState._milestones_earned.has("first_harvest"), "milestones restored")
+	_assert(world2.get_tile(5, 2).state in ["growing", "seeded"], "planted tile restored")
+	var roundtrip := JSON.stringify(SaveGame.capture(world2, GameState))
+	_assert(roundtrip == live, "capture->restore->capture is value-identical")
+
+	# Unknown version refused
+	var bad = JSON.parse_string(live)
+	bad["version"] = 999
+	_assert(not SaveGame.restore(bad, SimWorld.new(), GameState), "unknown save version refused")
