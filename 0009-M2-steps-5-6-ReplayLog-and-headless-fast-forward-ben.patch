@@ -1,0 +1,450 @@
+From d3e3fe02e1027c7e7e9169ed76a8ba181214677d Mon Sep 17 00:00:00 2001
+From: Catherine Grabar <catherine.grabar@gmail.com>
+Date: Tue, 18 Aug 2026 23:46:48 -0700
+Subject: [PATCH 09/13] M2 steps 5-6: ReplayLog and headless fast-forward
+ benchmark
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- systems/sim/replay_log.gd: records (gen_seed, [Action...]) with the
+  rolled weather stamped on sleep entries; apply_to() rebuilds world +
+  GameState from scratch; JSON save/load
+- GameState.reset(): new-game/replay baseline mirroring initializers
+- farm facade records every ok action; main seeds each run from randi()
+  (documented entropy edge) and starts the session log
+- Replay determinism test: a scripted session with deliberate RNG noise
+  between actions replays from JSON to a byte-identical end-state snapshot
+- tools/benchmark_sim.gd: action-stream fast-forward benchmark.
+  Desktop result: ~1,900 sim-days/sec, ~156k actions/sec — ~1.15Mx
+  realtime vs a 600s nominal day (M2 gate needs >=100x)
+
+Suites: unit 145/145, integration 20/20.
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+---
+ .godot/editor/filesystem_cache10     |  20 ++++---
+ .godot/global_script_class_cache.cfg |   8 +++
+ .godot/uid_cache.bin                 | Bin 2278 -> 2361 bytes
+ main.gd                              |   6 ++
+ systems/game_state.gd                |  24 ++++++++
+ systems/sim/replay_log.gd            |  79 +++++++++++++++++++++++++++
+ systems/sim/replay_log.gd.uid        |   1 +
+ tests/test_runner.gd                 |  58 ++++++++++++++++++++
+ tools/benchmark_sim.gd               |  56 +++++++++++++++++++
+ tools/benchmark_sim.gd.uid           |   1 +
+ world/farm.gd                        |   8 +++
+ 11 files changed, 252 insertions(+), 9 deletions(-)
+ create mode 100644 systems/sim/replay_log.gd
+ create mode 100644 systems/sim/replay_log.gd.uid
+ create mode 100644 tools/benchmark_sim.gd
+ create mode 100644 tools/benchmark_sim.gd.uid
+
+diff --git a/.godot/editor/filesystem_cache10 b/.godot/editor/filesystem_cache10
+index b8449d9..c265ced 100644
+--- a/.godot/editor/filesystem_cache10
++++ b/.godot/editor/filesystem_cache10
+@@ -1,11 +1,11 @@
+ 78098b89c88a74ebe8c20117b8754620
+-::res://::1787121746
++::res://::1787121899
+ check_export.gd::GDScript::6952538440485313856::1787116185::0::1::::<>EditorScript<><>0<>1<><>::
+ diff.txt::TextFile::-1::1787120038::0::1::::<><><>0<>0<><>::
+ diff_2.txt::TextFile::-1::1787120317::0::1::::<><><>0<>0<><>::
+ export_presets.cfg::TextFile::-1::1787116185::0::1::::<><><>0<>0<><>::
+ icon.svg::CompressedTexture2D/CompressedTexture2D::7402722489563260205::1787116185::1787116185::1::::<><><>0<>0<>d2b28997c53204d91ce481ed906e68ee<>res://.godot/imported/icon.svg-218a8f2b3041327d8a5756f3a245f83b.ctex::
+-main.gd::GDScript::573398445734219183::1787121746::0::1::::<>Node2D<><>0<>0<><>::
++main.gd::GDScript::573398445734219183::1787121899::0::1::::<>Node2D<><>0<>0<><>::
+ main.tscn::PackedScene::-1::1787116185::0::1::::<><><>0<>0<><>::res://main.gd
+ port_diff.txt::TextFile::-1::1787116185::0::1::::<><><>0<>0<><>::
+ print_settings.gd::GDScript::1664838563707191840::1787116185::0::1::::<>EditorScript<><>0<>1<><>::
+@@ -75,21 +75,23 @@ chicken.gd::GDScript::4733028579631117965::1787121725::0::1::::<>Node2D<><>0<>0<
+ crow.gd::GDScript::3198351033573525920::1787121722::0::1::::<>Node2D<><>0<>0<><>::
+ ::res://player/::1787121718
+ player.gd::GDScript::5101891556872685347::1787121718::0::1::::<>Node2D<><>0<>0<><>::
+-::res://systems/::1787121516
++::res://systems/::1787121889
+ action_router.gd::GDScript::4846452697455523229::1787116185::0::1::::<>Node<><>0<>0<><>::
+ audio_manager.gd::GDScript::2756718941746264995::1787116185::0::1::::<>Node<><>0<>0<><>::
+ day_cycle.gd::GDScript::8438625455265815869::1787116185::0::1::::<>CanvasLayer<><>0<>0<><>::
+-game_state.gd::GDScript::4214994310899671939::1787121417::0::1::::<>Node<><>0<>0<><>::
++game_state.gd::GDScript::4214994310899671939::1787121889::0::1::::<>Node<><>0<>0<><>::
+ input_manager.gd::GDScript::3065465728266198162::1787116185::0::1::::<>Node<><>0<>0<><>::
+ pathfinding.gd::GDScript::1344463265294616195::1787116185::0::1::::<>Node<><>0<>0<><>::
+ sim_rng.gd::GDScript::7843240473217473074::1787121069::0::1::::SimRng<>RefCounted<><>0<>0<><>::
+ tools.gd::GDScript::7525842890209187911::1787116185::0::1::::Tools<>RefCounted<><>0<>0<><>::
+-::res://systems/sim/::1787121687
++::res://systems/sim/::1787121885
++replay_log.gd::GDScript::7655614895084958520::1787121885::0::1::::ReplayLog<>RefCounted<><>0<>0<><>::
+ sim_world.gd::GDScript::4017631656444712213::1787121687::0::1::::SimWorld<>RefCounted<><>0<>0<><>::
+ ::res://tests/::1787121092
+-test_runner.gd::GDScript::361116474791826847::1787121766::0::1::::<>SceneTree<><>0<>0<><>::
+-::res://tools/::1787116185
++test_runner.gd::GDScript::361116474791826847::1787121949::0::1::::<>SceneTree<><>0<>0<><>::
++::res://tools/::1787121957
+ baseline.png::CompressedTexture2D/CompressedTexture2D::6855071652068881458::1787116185::1787116185::1::::<><><>0<>0<>600165b4d07a7e3f069ddc9abe796265<>res://.godot/imported/baseline.png-b643cbc15fe64caecbe11d05f4cd7664.ctex::
++benchmark_sim.gd::GDScript::7424386728667150111::1787121957::0::1::::<>SceneTree<><>0<>0<><>::
+ bitmask_array.txt::TextFile::-1::1787116185::0::1::::<><><>0<>0<><>::
+ check_settings.gd::GDScript::51622277548421429::1787116185::0::1::::<>SceneTree<><>0<>0<><>::
+ create_tileset.gd::GDScript::2899532608489149610::1787116185::0::1::::<>SceneTree<><>0<>0<><>::
+@@ -108,6 +110,6 @@ hud.gd::GDScript::436789438700753348::1787116185::0::1::::<>CanvasLayer<><>0<>0<
+ menus.gd::GDScript::4724695193899873668::1787121744::0::1::::<>CanvasLayer<><>0<>0<><>::
+ title_screen.gd::GDScript::3315853693207645019::1787116185::0::1::::<>Control<><>0<>0<><>::
+ title_screen.tscn::PackedScene::5554334138428745::1787116185::0::1::::<><><>0<>0<><>::res://ui/title_screen.gd
+-::res://world/::1787121693
+-farm.gd::GDScript::5779347435121214153::1787121693::0::1::::<>Node2D<><>0<>0<><>::
++::res://world/::1787121896
++farm.gd::GDScript::5779347435121214153::1787121896::0::1::::<>Node2D<><>0<>0<><>::
+ farm_tileset.tres::TileSet::-1::1787116185::0::1::::<><><>0<>0<><>::res://assets/sprites/sprout_lands/dirt.png<>res://assets/sprites/sprout_lands/grass.png
+diff --git a/.godot/global_script_class_cache.cfg b/.godot/global_script_class_cache.cfg
+index 65bdf9d..eff39e9 100644
+--- a/.godot/global_script_class_cache.cfg
++++ b/.godot/global_script_class_cache.cfg
+@@ -8,6 +8,14 @@ list=[{
+ "path": "res://crops/crop_defs.gd"
+ }, {
+ "base": &"RefCounted",
++"class": &"ReplayLog",
++"icon": "",
++"is_abstract": false,
++"is_tool": false,
++"language": &"GDScript",
++"path": "res://systems/sim/replay_log.gd"
++}, {
++"base": &"RefCounted",
+ "class": &"SimRng",
+ "icon": "",
+ "is_abstract": false,
+diff --git a/.godot/uid_cache.bin b/.godot/uid_cache.bin
+index 46b1beaa7f2b54719b7fbe1d57301f6835a58d90..6b316894795dd00452b4e5df7feaa7046867646e 100644
+GIT binary patch
+delta 102
+zcmaDRxKoJHawFp(W(|wtUDNbU?Xu(<7#NCDi>>taiz|yuQge&-i!*cei&6`65-a0#
+y^3yl}V&1^0AzvPHG-U@zx(r-(Nq&A#v3^o&UUEimVo`QHP?uhM%H~z9Hp~Dc>?7F#
+
+delta 20
+ccmdlf^h}V^d?Vu@=FJ)`YZ*8HWwl`j08eBGEdT%j
+
+diff --git a/main.gd b/main.gd
+index d6524c1..1e23e47 100644
+--- a/main.gd
++++ b/main.gd
+@@ -35,11 +35,17 @@ func _ready() -> void:
+ 	# Pixel art rendering
+ 	get_viewport().canvas_item_default_texture_filter = Viewport.DEFAULT_CANVAS_ITEM_TEXTURE_FILTER_NEAREST
+ 
++	# Seed the sim. This is the one allowed raw randi(): the entropy edge that
++	# picks a fresh world per run; everything downstream flows through SimRng.
++	var gen_seed := randi()
++	SimRng.reseed(gen_seed)
++
+ 	# Create farm
+ 	var FarmScript = load("res://world/farm.gd")
+ 	farm = FarmScript.new()
+ 	farm.name = "Farm"
+ 	add_child(farm)
++	farm.start_replay_log(gen_seed)
+ 
+ 	# Create player
+ 	var PlayerScript = load("res://player/player.gd")
+diff --git a/systems/game_state.gd b/systems/game_state.gd
+index e89de37..90b3988 100644
+--- a/systems/game_state.gd
++++ b/systems/game_state.gd
+@@ -42,6 +42,30 @@ var _milestones_earned: Dictionary = {}
+ var game_paused: bool = false
+ 
+ 
++func reset() -> void:
++	# New-game / replay baseline. Must mirror the var initializers above.
++	day = 1
++	weather = "sunny"
++	energy = 20
++	max_energy = 20
++	gold = 0
++	selected_tool = 0
++	seeds = { "wheat": 5, "tomato": 0 }
++	crops = { "wheat": 0, "tomato": 0 }
++	harvest_counts = { "wheat": 0, "tomato": 0 }
++	shipping_bin = { "wheat": 0, "tomato": 0 }
++	watering_can_charges = 8
++	max_watering_can_charges = 8
++	selected_seed_type = "wheat"
++	_milestones_earned = {}
++	game_paused = false
++	day_changed.emit(day)
++	energy_changed.emit(energy)
++	gold_changed.emit(gold)
++	weather_changed.emit(weather)
++	tool_changed.emit(selected_tool)
++
++
+ func set_energy(value: int) -> void:
+ 	energy = clampi(value, 0, max_energy)
+ 	energy_changed.emit(energy)
+diff --git a/systems/sim/replay_log.gd b/systems/sim/replay_log.gd
+new file mode 100644
+index 0000000..529797a
+--- /dev/null
++++ b/systems/sim/replay_log.gd
+@@ -0,0 +1,79 @@
++# replay_log.gd — Action-stream recording for deterministic replay (S-3/S-5, M2)
++# A session is (gen_seed, [Action...]); re-applying the stream to a freshly
++# generated world reproduces the end state exactly. Sleep entries carry the
++# weather that was rolled live, so entity RNG noise between actions cannot
++# desync a replay. Replays are also the training-data substrate phase 4
++# curates into datasets (docs/ARCHITECTURE.md, "The Action record").
++class_name ReplayLog
++extends RefCounted
++
++const VERSION := 1
++
++var gen_seed: int = 0
++var entries: Array[Dictionary] = []
++
++
++func start(seed_value: int) -> void:
++	gen_seed = seed_value
++	entries.clear()
++
++
++func record(action: Dictionary, result: Dictionary) -> void:
++	var a := action.duplicate(true)
++	if a.get("verb", "") == "sleep":
++		a["weather"] = result.get("weather", "sunny")
++	entries.append(_encode(a))
++
++
++# Rebuild world + gs from scratch by re-applying the stream.
++func apply_to(world: SimWorld, gs) -> void:
++	if gs != null and gs.has_method("reset"):
++		gs.reset()
++	SimRng.reseed(gen_seed)
++	world.generate()
++	for e in entries:
++		world.apply_action(_decode(e), gs)
++
++
++func to_json() -> String:
++	return JSON.stringify({ "version": VERSION, "gen_seed": gen_seed, "entries": entries })
++
++
++static func from_json(text: String) -> ReplayLog:
++	var replay := ReplayLog.new()
++	var data = JSON.parse_string(text)
++	if data == null or typeof(data) != TYPE_DICTIONARY:
++		return replay
++	replay.gen_seed = int(data.get("gen_seed", 0))
++	for e in data.get("entries", []):
++		if typeof(e) == TYPE_DICTIONARY:
++			replay.entries.append(e)
++	return replay
++
++
++func save_to(path: String) -> bool:
++	var f := FileAccess.open(path, FileAccess.WRITE)
++	if f == null:
++		return false
++	f.store_string(to_json())
++	return true
++
++
++static func load_from(path: String) -> ReplayLog:
++	if not FileAccess.file_exists(path):
++		return null
++	return from_json(FileAccess.get_file_as_string(path))
++
++
++# JSON has no Vector2i; store targets as [x, y]
++static func _encode(a: Dictionary) -> Dictionary:
++	if a.has("target") and a.target is Vector2i:
++		a["target"] = [a.target.x, a.target.y]
++	return a
++
++
++static func _decode(e: Dictionary) -> Dictionary:
++	var a: Dictionary = e.duplicate(true)
++	if a.has("target") and a.target is Array and a.target.size() == 2:
++		a["target"] = Vector2i(int(a.target[0]), int(a.target[1]))
++	return a
+diff --git a/systems/sim/replay_log.gd.uid b/systems/sim/replay_log.gd.uid
+new file mode 100644
+index 0000000..7a7f3e4
+--- /dev/null
++++ b/systems/sim/replay_log.gd.uid
+@@ -0,0 +1 @@
++uid://dhco4g2fyg2jk
+diff --git a/tests/test_runner.gd b/tests/test_runner.gd
+index 9787f8f..4055d1a 100644
+--- a/tests/test_runner.gd
++++ b/tests/test_runner.gd
+@@ -31,6 +31,7 @@ func _init() -> void:
+ 	test_sim_rng()
+ 	test_milestones()
+ 	test_sim_actions()
++	test_replay()
+ 
+ 	print("")
+ 	print(String("=").repeat(60))
+@@ -530,3 +531,60 @@ func test_sim_actions() -> void:
+ 	_assert(not r.ok and r.reason == "no_energy", "till refused at 0 energy")
+ 	r = world.apply_action({ "verb": "bogus", "target": t }, GameState)
+ 	_assert(not r.ok, "unknown verb refused")
++
++func _replay_do(world: SimWorld, rlog: ReplayLog, action: Dictionary) -> Dictionary:
++	var r := world.apply_action(action, GameState)
++	if r.get("ok", false):
++		rlog.record(action, r)
++	return r
++
++func _replay_snapshot(world: SimWorld) -> String:
++	return JSON.stringify({
++		"tiles": world.tiles, "objects": world.objects,
++		"gs": [GameState.day, GameState.energy, GameState.gold, GameState.weather,
++			GameState.seeds, GameState.crops, GameState.harvest_counts,
++			GameState.shipping_bin, GameState.watering_can_charges],
++	})
++
++func test_replay() -> void:
++	print("\n--- Replay Determinism Tests ---")
++	var GEN := 99
++	var rlog := ReplayLog.new()
++	rlog.start(GEN)
++
++	GameState.reset()
++	SimRng.reseed(GEN)
++	var world := SimWorld.new()
++	world.generate()
++
++	var a := Vector2i(5, 2)
++	var b := Vector2i(7, 2)
++	_replay_do(world, rlog, { "verb": "till", "target": a, "actor": "player" })
++	_replay_do(world, rlog, { "verb": "plant", "target": a, "seed_type": "wheat", "actor": "player" })
++	_replay_do(world, rlog, { "verb": "water", "target": a, "actor": "player" })
++	_replay_do(world, rlog, { "verb": "till", "target": b, "actor": "player" })
++	_replay_do(world, rlog, { "verb": "plant", "target": b, "seed_type": "wheat", "actor": "player" })
++	_replay_do(world, rlog, { "verb": "water", "target": b, "actor": "player" })
++	_replay_do(world, rlog, { "verb": "sleep", "actor": "world" })
++	for i in 7:  # entity RNG noise the replay will NOT repeat
++		SimRng.randf()
++	_replay_do(world, rlog, { "verb": "water", "target": a, "actor": "player" })
++	_replay_do(world, rlog, { "verb": "eat_crop", "target": b, "actor": "crow" })
++	_replay_do(world, rlog, { "verb": "lay_egg", "target": Vector2i(7, 3), "actor": "chicken" })
++	_replay_do(world, rlog, { "verb": "sleep", "actor": "world" })
++	SimRng.randf()
++	_replay_do(world, rlog, { "verb": "water", "target": a, "actor": "player" })
++	_replay_do(world, rlog, { "verb": "sleep", "actor": "world" })
++	var hr := _replay_do(world, rlog, { "verb": "harvest", "target": a, "actor": "player" })
++	_assert(hr.get("ok", false) and hr.get("crop_type", "") == "wheat", "scripted session harvests wheat")
++	_replay_do(world, rlog, { "verb": "collect", "target": Vector2i(7, 3), "actor": "player" })
++	_replay_do(world, rlog, { "verb": "sell", "actor": "player" })
++	_assert(GameState.gold == 25, "scripted session earned wheat (15) + egg (10) gold")
++	var live_snap := _replay_snapshot(world)
++
++	var rlog2 := ReplayLog.from_json(rlog.to_json())
++	_assert(rlog2.entries.size() == rlog.entries.size(), "replay JSON round-trip keeps all entries")
++	var world2 := SimWorld.new()
++	rlog2.apply_to(world2, GameState)
++	var replay_snap := _replay_snapshot(world2)
++	_assert(replay_snap == live_snap, "replay reproduces exact end state despite RNG noise")
+diff --git a/tools/benchmark_sim.gd b/tools/benchmark_sim.gd
+new file mode 100644
+index 0000000..40fcc90
+--- /dev/null
++++ b/tools/benchmark_sim.gd
+@@ -0,0 +1,56 @@
++# benchmark_sim.gd — Headless sim fast-forward benchmark (M2 step 6)
++# Run: godot --headless --path . --script res://tools/benchmark_sim.gd
++# Simulates farming days as pure Action streams (the same path overnight
++# training will use) and reports days/sec and x-realtime against a nominal
++# 600-second gameplay day. Rendering, input, and Nodes are not involved.
++extends SceneTree
++
++const DAYS := 1000
++const NOMINAL_DAY_SECONDS := 600.0  # ~10 min of real play per in-game day
++
++func _init() -> void:
++	var gs = load("res://systems/game_state.gd").new()
++	gs.reset()
++	SimRng.reseed(1234)
++	var world := SimWorld.new()
++	world.generate()
++
++	var actions := 0
++	var t0 := Time.get_ticks_usec()
++
++	for d in DAYS:
++		# A generous day's work over a 10x8 plot: clear/till/plant/water/harvest
++		gs.energy = 1000000
++		gs.watering_can_charges = 1000000
++		gs.seeds["wheat"] = 1000000
++		for ty in range(4, 12):
++			for tx in range(12, 22):
++				var st: String = world.get_tile(tx, ty).get("state", "")
++				var verb := ""
++				match st:
++					"obstacle_rock": verb = "clear_rock"
++					"obstacle_log": verb = "clear_log"
++					"obstacle_weed": verb = "clear_weed"
++					"cleared": verb = "till"
++					"tilled": verb = "plant"
++					"seeded", "growing": verb = "water"
++					"ready": verb = "harvest"
++				if verb != "":
++					var action := { "verb": verb, "target": Vector2i(tx, ty), "actor": "bot" }
++					if verb == "plant":
++						action["seed_type"] = "wheat"
++					world.apply_action(action, gs)
++					actions += 1
++		world.apply_action({ "verb": "sleep", "actor": "world" }, gs)
++		actions += 1
++
++	var elapsed := (Time.get_ticks_usec() - t0) / 1000000.0
++	var days_per_sec := DAYS / elapsed
++	print("=== Sim fast-forward benchmark ===")
++	print("days simulated:     %d" % DAYS)
++	print("actions applied:    %d" % actions)
++	print("elapsed:            %.3f s" % elapsed)
++	print("days/sec:           %.1f" % days_per_sec)
++	print("actions/sec:        %.0f" % (actions / elapsed))
++	print("x-realtime:         %.0fx (vs %.0f s nominal day)" % [days_per_sec * NOMINAL_DAY_SECONDS, NOMINAL_DAY_SECONDS])
++	quit(0)
+diff --git a/tools/benchmark_sim.gd.uid b/tools/benchmark_sim.gd.uid
+new file mode 100644
+index 0000000..6ba40c7
+--- /dev/null
++++ b/tools/benchmark_sim.gd.uid
+@@ -0,0 +1 @@
++uid://dd1otg2fggsg2
+diff --git a/world/farm.gd b/world/farm.gd
+index 692dc0e..14575f3 100644
+--- a/world/farm.gd
++++ b/world/farm.gd
+@@ -9,6 +9,7 @@ const MAP_WIDTH := SimWorld.MAP_WIDTH
+ const MAP_HEIGHT := SimWorld.MAP_HEIGHT
+ 
+ var sim: SimWorld = SimWorld.new()
++var replay: ReplayLog = null  # set via start_replay_log(); records every ok action
+ 
+ # Facade views over sim truth (same Array references — in-place mutation works)
+ var tiles: Array[Array]:
+@@ -70,9 +71,16 @@ func _load_textures() -> void:
+ 
+ # --- Facade: forwards the old farm API to SimWorld ---------------------------
+ 
++func start_replay_log(gen_seed: int) -> void:
++	replay = ReplayLog.new()
++	replay.start(gen_seed)
++
++
+ func apply_action(action: Dictionary, gs = null) -> Dictionary:
+ 	var result := sim.apply_action(action, gs)
+ 	if result.get("ok", false):
++		if replay != null:
++			replay.record(action, result)
+ 		queue_redraw()
+ 	return result
+ 
+-- 
+2.39.5 (Apple Git-154)
+

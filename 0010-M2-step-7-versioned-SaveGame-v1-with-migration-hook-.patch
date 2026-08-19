@@ -1,0 +1,296 @@
+From 0c04f1aaae7c7ab77afe4ad07da8f00eb7a2d0e5 Mon Sep 17 00:00:00 2001
+From: Catherine Grabar <catherine.grabar@gmail.com>
+Date: Tue, 18 Aug 2026 23:48:09 -0700
+Subject: [PATCH 10/13] M2 step 7: versioned SaveGame v1 with migration hook +
+ autosave on sleep
+
+- systems/sim/save_game.gd: capture/restore of SimWorld grids + GameState
+  fields; version field and stepwise migration chain from the first save
+  we ever ship; JSON normalization so a loaded save is value-identical
+- main.gd: write-only autosave (user://autosave.json) and session replay
+  dump (user://session_replay.json) after each sleep; loading waits on
+  the continue/new-game menu (M1 scope)
+- Tests: round-trip value-identity, field restoration, unknown-version
+  refusal (unit 152/152, integration 20/20)
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+---
+ .godot/editor/filesystem_cache10     |  13 +--
+ .godot/global_script_class_cache.cfg |   8 ++
+ .godot/uid_cache.bin                 | Bin 2361 -> 2403 bytes
+ main.gd                              |   4 +
+ systems/sim/save_game.gd             | 122 +++++++++++++++++++++++++++
+ systems/sim/save_game.gd.uid         |   1 +
+ tests/test_runner.gd                 |  36 ++++++++
+ 7 files changed, 178 insertions(+), 6 deletions(-)
+ create mode 100644 systems/sim/save_game.gd
+ create mode 100644 systems/sim/save_game.gd.uid
+
+diff --git a/.godot/editor/filesystem_cache10 b/.godot/editor/filesystem_cache10
+index c265ced..0eeab1c 100644
+--- a/.godot/editor/filesystem_cache10
++++ b/.godot/editor/filesystem_cache10
+@@ -1,11 +1,11 @@
+ 78098b89c88a74ebe8c20117b8754620
+-::res://::1787121899
++::res://::1787122062
+ check_export.gd::GDScript::6952538440485313856::1787116185::0::1::::<>EditorScript<><>0<>1<><>::
+ diff.txt::TextFile::-1::1787120038::0::1::::<><><>0<>0<><>::
+ diff_2.txt::TextFile::-1::1787120317::0::1::::<><><>0<>0<><>::
+ export_presets.cfg::TextFile::-1::1787116185::0::1::::<><><>0<>0<><>::
+ icon.svg::CompressedTexture2D/CompressedTexture2D::7402722489563260205::1787116185::1787116185::1::::<><><>0<>0<>d2b28997c53204d91ce481ed906e68ee<>res://.godot/imported/icon.svg-218a8f2b3041327d8a5756f3a245f83b.ctex::
+-main.gd::GDScript::573398445734219183::1787121899::0::1::::<>Node2D<><>0<>0<><>::
++main.gd::GDScript::573398445734219183::1787122062::0::1::::<>Node2D<><>0<>0<><>::
+ main.tscn::PackedScene::-1::1787116185::0::1::::<><><>0<>0<><>::res://main.gd
+ port_diff.txt::TextFile::-1::1787116185::0::1::::<><><>0<>0<><>::
+ print_settings.gd::GDScript::1664838563707191840::1787116185::0::1::::<>EditorScript<><>0<>1<><>::
+@@ -84,12 +84,13 @@ input_manager.gd::GDScript::3065465728266198162::1787116185::0::1::::<>Node<><>0
+ pathfinding.gd::GDScript::1344463265294616195::1787116185::0::1::::<>Node<><>0<>0<><>::
+ sim_rng.gd::GDScript::7843240473217473074::1787121069::0::1::::SimRng<>RefCounted<><>0<>0<><>::
+ tools.gd::GDScript::7525842890209187911::1787116185::0::1::::Tools<>RefCounted<><>0<>0<><>::
+-::res://systems/sim/::1787121885
++::res://systems/sim/::1787122056
+ replay_log.gd::GDScript::7655614895084958520::1787121885::0::1::::ReplayLog<>RefCounted<><>0<>0<><>::
++save_game.gd::GDScript::1589743231732853455::1787122056::0::1::::SaveGame<>RefCounted<><>0<>0<><>::
+ sim_world.gd::GDScript::4017631656444712213::1787121687::0::1::::SimWorld<>RefCounted<><>0<>0<><>::
+-::res://tests/::1787121092
+-test_runner.gd::GDScript::361116474791826847::1787121949::0::1::::<>SceneTree<><>0<>0<><>::
+-::res://tools/::1787121957
++::res://tests/::1787121997
++test_runner.gd::GDScript::361116474791826847::1787122074::0::1::::<>SceneTree<><>0<>0<><>::
++::res://tools/::1787121965
+ baseline.png::CompressedTexture2D/CompressedTexture2D::6855071652068881458::1787116185::1787116185::1::::<><><>0<>0<>600165b4d07a7e3f069ddc9abe796265<>res://.godot/imported/baseline.png-b643cbc15fe64caecbe11d05f4cd7664.ctex::
+ benchmark_sim.gd::GDScript::7424386728667150111::1787121957::0::1::::<>SceneTree<><>0<>0<><>::
+ bitmask_array.txt::TextFile::-1::1787116185::0::1::::<><><>0<>0<><>::
+diff --git a/.godot/global_script_class_cache.cfg b/.godot/global_script_class_cache.cfg
+index eff39e9..67d0c71 100644
+--- a/.godot/global_script_class_cache.cfg
++++ b/.godot/global_script_class_cache.cfg
+@@ -16,6 +16,14 @@ list=[{
+ "path": "res://systems/sim/replay_log.gd"
+ }, {
+ "base": &"RefCounted",
++"class": &"SaveGame",
++"icon": "",
++"is_abstract": false,
++"is_tool": false,
++"language": &"GDScript",
++"path": "res://systems/sim/save_game.gd"
++}, {
++"base": &"RefCounted",
+ "class": &"SimRng",
+ "icon": "",
+ "is_abstract": false,
+diff --git a/.godot/uid_cache.bin b/.godot/uid_cache.bin
+index 6b316894795dd00452b4e5df7feaa7046867646e..8c49aa9865280e6cca9c47b4e87721dc89aed27e 100644
+GIT binary patch
+delta 37
+tcmdlf^jL_|Y9pgM3&;6YEswdM^NUS3U=im?EK7|~Ps~l-tjZ$73IOo!3+Mm<
+
+delta 15
+WcmaDXv{Q)DawDTU%jO^!K~?}KJ_Gjv
+
+diff --git a/main.gd b/main.gd
+index 1e23e47..8c29c85 100644
+--- a/main.gd
++++ b/main.gd
+@@ -258,6 +258,10 @@ func _handle_action_result(action: String) -> void:
+ 			for child in entities.get_children():
+ 				if child.has_method("on_new_day"):
+ 					child.on_new_day()
++			# Write-only autosave; loading waits on the continue/new-game menu (M1)
++			SaveGame.save_to("user://autosave.json", farm.sim, GameState)
++			if farm.replay != null:
++				farm.replay.save_to("user://session_replay.json")
+ 		)
+ 	elif action == "open_shop":
+ 		menus.open_menu("shop")
+diff --git a/systems/sim/save_game.gd b/systems/sim/save_game.gd
+new file mode 100644
+index 0000000..c3f9db4
+--- /dev/null
++++ b/systems/sim/save_game.gd
+@@ -0,0 +1,122 @@
++# save_game.gd — Versioned save format v1 (M2 step 7)
++# Snapshot of sim truth (SimWorld grids + GameState fields) with a version
++# field and a migration hook from the very first save we ever ship
++# (docs/ARCHITECTURE.md, world scale plan). JSON on disk.
++class_name SaveGame
++extends RefCounted
++
++const VERSION := 1
++
++
++static func capture(world: SimWorld, gs) -> Dictionary:
++	return {
++		"version": VERSION,
++		"world": {
++			"tiles": world.tiles.duplicate(true),
++			"objects": world.objects.duplicate(true),
++		},
++		"state": {
++			"day": gs.day,
++			"weather": gs.weather,
++			"energy": gs.energy,
++			"max_energy": gs.max_energy,
++			"gold": gs.gold,
++			"selected_tool": gs.selected_tool,
++			"seeds": gs.seeds.duplicate(),
++			"crops": gs.crops.duplicate(),
++			"harvest_counts": gs.harvest_counts.duplicate(),
++			"shipping_bin": gs.shipping_bin.duplicate(),
++			"watering_can_charges": gs.watering_can_charges,
++			"max_watering_can_charges": gs.max_watering_can_charges,
++			"selected_seed_type": gs.selected_seed_type,
++			"milestones": gs._milestones_earned.duplicate(),
++		},
++	}
++
++
++static func restore(data: Dictionary, world: SimWorld, gs) -> bool:
++	var d := migrate(data)
++	if d.is_empty():
++		return false
++
++	var w: Dictionary = d.get("world", {})
++	world.tiles.clear()
++	for row in w.get("tiles", []):
++		var r: Array = []
++		for tile in row:
++			r.append(_normalize_tile(tile))
++		world.tiles.append(r)
++	world.objects.clear()
++	for row in w.get("objects", []):
++		var r2: Array = []
++		for obj in row:
++			r2.append(String(obj))
++		world.objects.append(r2)
++
++	var s: Dictionary = d.get("state", {})
++	gs.day = int(s.get("day", 1))
++	gs.weather = String(s.get("weather", "sunny"))
++	gs.energy = int(s.get("energy", 20))
++	gs.max_energy = int(s.get("max_energy", 20))
++	gs.gold = int(s.get("gold", 0))
++	gs.selected_tool = int(s.get("selected_tool", 0))
++	gs.seeds = _int_values(s.get("seeds", {}))
++	gs.crops = _int_values(s.get("crops", {}))
++	gs.harvest_counts = _int_values(s.get("harvest_counts", {}))
++	gs.shipping_bin = _int_values(s.get("shipping_bin", {}))
++	gs.watering_can_charges = int(s.get("watering_can_charges", 8))
++	gs.max_watering_can_charges = int(s.get("max_watering_can_charges", 8))
++	gs.selected_seed_type = String(s.get("selected_seed_type", "wheat"))
++	gs._milestones_earned = s.get("milestones", {}).duplicate()
++
++	gs.day_changed.emit(gs.day)
++	gs.energy_changed.emit(gs.energy)
++	gs.gold_changed.emit(gs.gold)
++	gs.weather_changed.emit(gs.weather)
++	gs.tool_changed.emit(gs.selected_tool)
++	return true
++
++
++# Version chain: v(n) saves are migrated stepwise to VERSION here.
++# Unknown/future versions return {} (caller treats as unloadable).
++static func migrate(data: Dictionary) -> Dictionary:
++	var v := int(data.get("version", 0))
++	if v == VERSION:
++		return data
++	# future: if v == 1: data = _migrate_1_to_2(data); ...
++	return {}
++
++
++static func save_to(path: String, world: SimWorld, gs) -> bool:
++	var f := FileAccess.open(path, FileAccess.WRITE)
++	if f == null:
++		return false
++	f.store_string(JSON.stringify(capture(world, gs)))
++	return true
++
++
++static func load_from(path: String, world: SimWorld, gs) -> bool:
++	if not FileAccess.file_exists(path):
++		return false
++	var data = JSON.parse_string(FileAccess.get_file_as_string(path))
++	if data == null or typeof(data) != TYPE_DICTIONARY:
++		return false
++	return restore(data, world, gs)
++
++
++# JSON turns ints into floats and has no bool guarantees across tools;
++# normalize so a loaded save is value-identical to a live one.
++static func _normalize_tile(tile) -> Dictionary:
++	return {
++		"state": String(tile.get("state", "cleared")),
++		"crop_type": String(tile.get("crop_type", "")),
++		"growth_stage": int(tile.get("growth_stage", 0)),
++		"watered_today": bool(tile.get("watered_today", false)),
++	}
++
++
++static func _int_values(d: Dictionary) -> Dictionary:
++	var out := {}
++	for k in d.keys():
++		out[k] = int(d[k])
++	return out
+diff --git a/systems/sim/save_game.gd.uid b/systems/sim/save_game.gd.uid
+new file mode 100644
+index 0000000..ab59a70
+--- /dev/null
++++ b/systems/sim/save_game.gd.uid
+@@ -0,0 +1 @@
++uid://wwc3ruyglmv4
+diff --git a/tests/test_runner.gd b/tests/test_runner.gd
+index 4055d1a..5e3ccdf 100644
+--- a/tests/test_runner.gd
++++ b/tests/test_runner.gd
+@@ -32,6 +32,7 @@ func _init() -> void:
+ 	test_milestones()
+ 	test_sim_actions()
+ 	test_replay()
++	test_save_game()
+ 
+ 	print("")
+ 	print(String("=").repeat(60))
+@@ -588,3 +589,38 @@ func test_replay() -> void:
+ 	rlog2.apply_to(world2, GameState)
+ 	var replay_snap := _replay_snapshot(world2)
+ 	_assert(replay_snap == live_snap, "replay reproduces exact end state despite RNG noise")
++
++func test_save_game() -> void:
++	print("\n--- SaveGame v1 Tests ---")
++
++	GameState.reset()
++	SimRng.reseed(55)
++	var world := SimWorld.new()
++	world.generate()
++	# Mutate some state through actions so the save is non-trivial
++	world.apply_action({ "verb": "till", "target": Vector2i(5, 2), "actor": "player" }, GameState)
++	world.apply_action({ "verb": "plant", "target": Vector2i(5, 2), "seed_type": "wheat", "actor": "player" }, GameState)
++	world.apply_action({ "verb": "water", "target": Vector2i(5, 2), "actor": "player" }, GameState)
++	world.apply_action({ "verb": "sleep", "actor": "world" }, GameState)
++	GameState.gold = 123
++	GameState._milestones_earned = { "first_harvest": true }
++
++	var live := JSON.stringify(SaveGame.capture(world, GameState))
++
++	# Round-trip through JSON text (as on disk), restore into fresh objects
++	var parsed = JSON.parse_string(live)
++	var world2 := SimWorld.new()
++	GameState.reset()
++	var ok := SaveGame.restore(parsed, world2, GameState)
++	_assert(ok, "restore accepts v1 save")
++	_assert(GameState.gold == 123, "gold restored")
++	_assert(GameState.day == 2, "day restored")
++	_assert(GameState._milestones_earned.has("first_harvest"), "milestones restored")
++	_assert(world2.get_tile(5, 2).state in ["growing", "seeded"], "planted tile restored")
++	var roundtrip := JSON.stringify(SaveGame.capture(world2, GameState))
++	_assert(roundtrip == live, "capture->restore->capture is value-identical")
++
++	# Unknown version refused
++	var bad = JSON.parse_string(live)
++	bad["version"] = 999
++	_assert(not SaveGame.restore(bad, SimWorld.new(), GameState), "unknown save version refused")
+-- 
+2.39.5 (Apple Git-154)
+

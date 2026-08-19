@@ -7,7 +7,7 @@ var _has_save := false
 
 
 func _ready() -> void:
-	_has_save = FileAccess.file_exists("user://autosave.json")
+	_has_save = FileAccess.file_exists(GameState.save_path)
 	start_label.text = "Tap Anywhere to Continue" if _has_save else "Tap Anywhere to Start"
 	new_farm_button.visible = _has_save
 	new_farm_button.pressed.connect(_on_new_farm)

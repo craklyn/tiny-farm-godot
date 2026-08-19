@@ -1,0 +1,910 @@
+From 95c3b4429f13b94d2a2641e261259d4e9366fba3 Mon Sep 17 00:00:00 2001
+From: Catherine Grabar <catherine.grabar@gmail.com>
+Date: Tue, 18 Aug 2026 23:43:02 -0700
+Subject: [PATCH 08/13] M2 steps 3-4: extract SimWorld and route all actors
+ through apply_action
+
+- systems/sim/sim_world.gd: grid truth (tiles/objects, generation, growth,
+  walkability) extracted from farm.gd into a RefCounted sim class with no
+  Node/autoload/rendering dependencies (five-layer shape, ARCHITECTURE.md)
+- apply_action() is now the single mutation gateway (S-3): player tile
+  verbs, sell/refill/collect, shop buy_seed, sleep (day advance + weather +
+  shipping), crow eat_crop, chicken lay_egg all flow through it with the
+  pre-M2 guards preserved exactly
+- farm.gd becomes renderer + thin facade (same public API, tests unchanged)
+- player/crow/chicken/menus/main updated to submit Actions and keep only
+  presentation (sfx, particles, animation) on their side
+
+Suites: unit 141/141, integration 20/20.
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+---
+ .godot/editor/filesystem_cache10     |  30 +--
+ .godot/global_script_class_cache.cfg |   8 +
+ .godot/uid_cache.bin                 | Bin 2236 -> 2278 bytes
+ entities/chicken.gd                  |   3 +-
+ entities/crow.gd                     |   9 +-
+ main.gd                              |   5 +-
+ player/player.gd                     |  54 ++----
+ systems/sim/sim_world.gd             | 270 +++++++++++++++++++++++++++
+ systems/sim/sim_world.gd.uid         |   1 +
+ tests/test_runner.gd                 |  67 +++++++
+ ui/menus.gd                          |  12 +-
+ world/farm.gd                        | 177 ++++--------------
+ 12 files changed, 431 insertions(+), 205 deletions(-)
+ create mode 100644 systems/sim/sim_world.gd
+ create mode 100644 systems/sim/sim_world.gd.uid
+
+diff --git a/.godot/editor/filesystem_cache10 b/.godot/editor/filesystem_cache10
+index 7d80035..b8449d9 100644
+--- a/.godot/editor/filesystem_cache10
++++ b/.godot/editor/filesystem_cache10
+@@ -1,11 +1,11 @@
+ 78098b89c88a74ebe8c20117b8754620
+-::res://::1787121080
++::res://::1787121746
+ check_export.gd::GDScript::6952538440485313856::1787116185::0::1::::<>EditorScript<><>0<>1<><>::
+ diff.txt::TextFile::-1::1787120038::0::1::::<><><>0<>0<><>::
+ diff_2.txt::TextFile::-1::1787120317::0::1::::<><><>0<>0<><>::
+ export_presets.cfg::TextFile::-1::1787116185::0::1::::<><><>0<>0<><>::
+ icon.svg::CompressedTexture2D/CompressedTexture2D::7402722489563260205::1787116185::1787116185::1::::<><><>0<>0<>d2b28997c53204d91ce481ed906e68ee<>res://.godot/imported/icon.svg-218a8f2b3041327d8a5756f3a245f83b.ctex::
+-main.gd::GDScript::573398445734219183::1787121080::0::1::::<>Node2D<><>0<>0<><>::
++main.gd::GDScript::573398445734219183::1787121746::0::1::::<>Node2D<><>0<>0<><>::
+ main.tscn::PackedScene::-1::1787116185::0::1::::<><><>0<>0<><>::res://main.gd
+ port_diff.txt::TextFile::-1::1787116185::0::1::::<><><>0<>0<><>::
+ print_settings.gd::GDScript::1664838563707191840::1787116185::0::1::::<>EditorScript<><>0<>1<><>::
+@@ -70,22 +70,24 @@ phase-4-the-workforce.md::TextFile::-1::1787119193::0::1::::<><><>0<>0<><>::
+ phase-5-the-wilds.md::TextFile::-1::1787119584::0::1::::<><><>0<>0<><>::
+ ::res://effects/::1787116185
+ particles_manager.gd::GDScript::2934257184671178587::1787116185::0::1::::<>Node2D<><>0<>0<><>::
+-::res://entities/::1787121084
+-chicken.gd::GDScript::4733028579631117965::1787121084::0::1::::<>Node2D<><>0<>0<><>::
+-crow.gd::GDScript::3198351033573525920::1787116185::0::1::::<>Node2D<><>0<>0<><>::
+-::res://player/::1787120250
+-player.gd::GDScript::5101891556872685347::1787120250::0::1::::<>Node2D<><>0<>0<><>::
+-::res://systems/::1787121074
++::res://entities/::1787121725
++chicken.gd::GDScript::4733028579631117965::1787121725::0::1::::<>Node2D<><>0<>0<><>::
++crow.gd::GDScript::3198351033573525920::1787121722::0::1::::<>Node2D<><>0<>0<><>::
++::res://player/::1787121718
++player.gd::GDScript::5101891556872685347::1787121718::0::1::::<>Node2D<><>0<>0<><>::
++::res://systems/::1787121516
+ action_router.gd::GDScript::4846452697455523229::1787116185::0::1::::<>Node<><>0<>0<><>::
+ audio_manager.gd::GDScript::2756718941746264995::1787116185::0::1::::<>Node<><>0<>0<><>::
+ day_cycle.gd::GDScript::8438625455265815869::1787116185::0::1::::<>CanvasLayer<><>0<>0<><>::
+-game_state.gd::GDScript::4214994310899671939::1787121074::0::1::::<>Node<><>0<>0<><>::
++game_state.gd::GDScript::4214994310899671939::1787121417::0::1::::<>Node<><>0<>0<><>::
+ input_manager.gd::GDScript::3065465728266198162::1787116185::0::1::::<>Node<><>0<>0<><>::
+ pathfinding.gd::GDScript::1344463265294616195::1787116185::0::1::::<>Node<><>0<>0<><>::
+ sim_rng.gd::GDScript::7843240473217473074::1787121069::0::1::::SimRng<>RefCounted<><>0<>0<><>::
+ tools.gd::GDScript::7525842890209187911::1787116185::0::1::::Tools<>RefCounted<><>0<>0<><>::
++::res://systems/sim/::1787121687
++sim_world.gd::GDScript::4017631656444712213::1787121687::0::1::::SimWorld<>RefCounted<><>0<>0<><>::
+ ::res://tests/::1787121092
+-test_runner.gd::GDScript::361116474791826847::1787121098::0::1::::<>SceneTree<><>0<>0<><>::
++test_runner.gd::GDScript::361116474791826847::1787121766::0::1::::<>SceneTree<><>0<>0<><>::
+ ::res://tools/::1787116185
+ baseline.png::CompressedTexture2D/CompressedTexture2D::6855071652068881458::1787116185::1787116185::1::::<><><>0<>0<>600165b4d07a7e3f069ddc9abe796265<>res://.godot/imported/baseline.png-b643cbc15fe64caecbe11d05f4cd7664.ctex::
+ bitmask_array.txt::TextFile::-1::1787116185::0::1::::<><><>0<>0<><>::
+@@ -101,11 +103,11 @@ test_runner.gd::GDScript::4111321758324756523::1787116185::0::1::::<>Node2D<><>0
+ test_runner.tscn::PackedScene::-1::1787116185::0::1::::<><><>0<>0<><>::res://tools/test_runner.gd
+ test_visuals.gd::GDScript::7550016450659235443::1787116185::0::1::::<>Node2D<><>0<>0<><>::
+ test_visuals.tscn::PackedScene::-1::1787116185::0::1::::<><><>0<>0<><>::res://tools/test_visuals.gd
+-::res://ui/::1787116185
++::res://ui/::1787121744
+ hud.gd::GDScript::436789438700753348::1787116185::0::1::::<>CanvasLayer<><>0<>0<><>::
+-menus.gd::GDScript::4724695193899873668::1787116185::0::1::::<>CanvasLayer<><>0<>0<><>::
++menus.gd::GDScript::4724695193899873668::1787121744::0::1::::<>CanvasLayer<><>0<>0<><>::
+ title_screen.gd::GDScript::3315853693207645019::1787116185::0::1::::<>Control<><>0<>0<><>::
+ title_screen.tscn::PackedScene::5554334138428745::1787116185::0::1::::<><><>0<>0<><>::res://ui/title_screen.gd
+-::res://world/::1787121077
+-farm.gd::GDScript::5779347435121214153::1787121077::0::1::::<>Node2D<><>0<>0<><>::
++::res://world/::1787121693
++farm.gd::GDScript::5779347435121214153::1787121693::0::1::::<>Node2D<><>0<>0<><>::
+ farm_tileset.tres::TileSet::-1::1787116185::0::1::::<><><>0<>0<><>::res://assets/sprites/sprout_lands/dirt.png<>res://assets/sprites/sprout_lands/grass.png
+diff --git a/.godot/global_script_class_cache.cfg b/.godot/global_script_class_cache.cfg
+index d37f7d2..65bdf9d 100644
+--- a/.godot/global_script_class_cache.cfg
++++ b/.godot/global_script_class_cache.cfg
+@@ -16,6 +16,14 @@ list=[{
+ "path": "res://systems/sim_rng.gd"
+ }, {
+ "base": &"RefCounted",
++"class": &"SimWorld",
++"icon": "",
++"is_abstract": false,
++"is_tool": false,
++"language": &"GDScript",
++"path": "res://systems/sim/sim_world.gd"
++}, {
++"base": &"RefCounted",
+ "class": &"Tools",
+ "icon": "",
+ "is_abstract": false,
+diff --git a/.godot/uid_cache.bin b/.godot/uid_cache.bin
+index fd1b609d8053f52a05b649a6b5fa51f6e0471c62..46b1beaa7f2b54719b7fbe1d57301f6835a58d90 100644
+GIT binary patch
+delta 55
+zcmdlZ_)L(|d?Vu@W_8if107rH4w}m`FfbIQ7F+4-7grXSq~;du7iZ>zaC~`wQBKO{
+IU(APC04$aiwg3PC
+
+delta 15
+WcmaDRxJQuDY$M|z=FRFX`&j@j)&))g
+
+diff --git a/entities/chicken.gd b/entities/chicken.gd
+index fd314c2..335e691 100644
+--- a/entities/chicken.gd
++++ b/entities/chicken.gd
+@@ -66,8 +66,7 @@ func on_new_day() -> void:
+ 		var reachable = Pathfinding.get_reachable_tiles(farm, Vector2i(tx, ty))
+ 		if reachable.size() > 0:
+ 			var target = reachable[SimRng.randi() % reachable.size()]
+-			if farm.get_object(target.x, target.y) == "":
+-				farm.set_object(target.x, target.y, "egg")
++			farm.apply_action({ "verb": "lay_egg", "target": target, "actor": "chicken" })
+ 
+ func queue_render(canvas: CanvasItem, render_queue: Array) -> void:
+ 	render_queue.append({
+diff --git a/entities/crow.gd b/entities/crow.gd
+index f58fd5e..2a12895 100644
+--- a/entities/crow.gd
++++ b/entities/crow.gd
+@@ -61,9 +61,12 @@ func _process(delta: float) -> void:
+ 			
+ 		timer -= delta
+ 		if timer <= 0:
+-			var tile = farm.get_tile(target_tx, target_ty)
+-			if not tile.is_empty() and (tile.state == "growing" or tile.state == "ready" or tile.state == "seeded"):
+-				farm.set_tile_state(target_tx, target_ty, "tilled")
++			var result: Dictionary = farm.apply_action({
++				"verb": "eat_crop",
++				"target": Vector2i(target_tx, target_ty),
++				"actor": "crow",
++			})
++			if result.get("ok", false):
+ 				if get_tree() and get_tree().root.has_node("AudioManager"):
+ 					get_tree().root.get_node("AudioManager").play_sfx("till")
+ 			state = "flying_away"
+diff --git a/main.gd b/main.gd
+index 5280503..d6524c1 100644
+--- a/main.gd
++++ b/main.gd
+@@ -110,6 +110,7 @@ func _ready() -> void:
+ 	var MenusScript = load("res://ui/menus.gd")
+ 	menus = MenusScript.new()
+ 	add_child(menus)
++	menus.farm = farm
+ 	menus.menu_action.connect(_on_menu_action)
+ 
+ 	# Create day cycle overlay
+@@ -247,12 +248,10 @@ func _handle_action_result(action: String) -> void:
+ 	if action == "sleep":
+ 		day_cycle.set_day_display(GameState.day + 1)
+ 		day_cycle.start_sleep(func():
+-			GameState.start_new_day()
+-			farm.advance_day()
++			farm.apply_action({ "verb": "sleep", "actor": "world" }, GameState)
+ 			for child in entities.get_children():
+ 				if child.has_method("on_new_day"):
+ 					child.on_new_day()
+-			GameState.process_shipping_bin()
+ 		)
+ 	elif action == "open_shop":
+ 		menus.open_menu("shop")
+diff --git a/player/player.gd b/player/player.gd
+index e3eb363..c40c6ed 100644
+--- a/player/player.gd
++++ b/player/player.gd
+@@ -308,67 +308,39 @@ func _execute_resolved_action(pa: Dictionary) -> void:
+ 	if action == "open_shop":
+ 		get_tree().get_first_node_in_group("Main").call_deferred("trigger_action", "open_shop")
+ 		return
+-	if action == "sell":
+-		GameState.sell_crops_to_bin()
++	# Every remaining verb is a sim Action (S-3): the sim validates and mutates;
++	# this side keeps only presentation (tool swap, animation, sfx, particles).
++	var result: Dictionary = farm.apply_action({
++		"verb": action,
++		"target": target_t,
++		"seed_type": seed_type,
++		"actor": "player",
++	}, GameState)
++	if not result.get("ok", false):
+ 		return
+-	if action == "refill":
+-		GameState.refill_watering_can()
++
++	if action == "sell" or action == "refill":
+ 		return
+ 	if action == "collect":
+-		var obj = farm.get_object(target_t.x, target_t.y)
+-		if obj == "egg":
+-			farm.set_object(target_t.x, target_t.y, "")
+-			GameState.crops["egg"] = GameState.crops.get("egg", 0) + 1
+-			GameState.harvest_counts["egg"] = GameState.harvest_counts.get("egg", 0) + 1
+-			AudioManager.play_sfx("harvest")
+-		elif obj == "scarecrow":
+-			farm.set_object(target_t.x, target_t.y, "")
+-			GameState.seeds["scarecrow"] = GameState.seeds.get("scarecrow", 0) + 1
+-			AudioManager.play_sfx("harvest")
++		AudioManager.play_sfx("harvest")
+ 		return
+ 
+-	var state: String = farm.get_tile(target_t.x, target_t.y).get("state", "")
+-	if state == "": return
+-
+-	var cost: int = Tools.get_energy_cost(action)
+-	if GameState.energy < cost: return
+-
+-	if action == "water" and GameState.watering_can_charges <= 0: return
+-	if action == "plant" and GameState.seeds.get(seed_type, 0) <= 0: return
+-
+-	# Execute
+ 	if pa.has("tool_idx"):
+ 		GameState.selected_tool = pa["tool_idx"]
+-	GameState.energy -= cost
+ 	is_acting = true
+ 	action_timer = ACTION_DURATION
+ 
+ 	if action == "clear_weed" or action == "clear_log" or action == "clear_rock":
+-		farm.set_tile_state(target_t.x, target_t.y, "cleared")
+ 		AudioManager.play_sfx("till")
+ 		_emit_particles("chop", target_t)
+ 	elif action == "till":
+-		farm.set_tile_state(target_t.x, target_t.y, "tilled")
+ 		AudioManager.play_sfx("till")
+ 		_emit_particles("dirt", target_t)
+-	elif action == "plant":
+-		var is_obj = CropDefs.TYPES.get(seed_type, {}).get("is_object", false)
+-		if is_obj:
+-			farm.set_object(target_t.x, target_t.y, seed_type)
+-		else:
+-			farm.set_tile_state(target_t.x, target_t.y, "seeded", seed_type)
+-		GameState.seeds[seed_type] -= 1
+ 	elif action == "water":
+-		farm.water_tile(target_t.x, target_t.y)
+-		GameState.watering_can_charges -= 1
+ 		AudioManager.play_sfx("water")
+ 		_emit_particles("water", target_t)
+ 	elif action == "harvest":
+-		var crop_type: String = farm.get_crop_type(target_t.x, target_t.y)
+-		if crop_type != "":
+-			GameState.crops[crop_type] = GameState.crops.get(crop_type, 0) + 1
+-			GameState.harvest_counts[crop_type] = GameState.harvest_counts.get(crop_type, 0) + 1
+-			farm.set_tile_state(target_t.x, target_t.y, "cleared")
++		if result.has("crop_type"):
+ 			AudioManager.play_sfx("harvest")
+ 			_emit_particles("harvest", target_t)
+ 
+diff --git a/systems/sim/sim_world.gd b/systems/sim/sim_world.gd
+new file mode 100644
+index 0000000..8f485e2
+--- /dev/null
++++ b/systems/sim/sim_world.gd
+@@ -0,0 +1,270 @@
++# sim_world.gd — Grid-truth simulation state (S-5, M2)
++# Owns the farm's tile/object grids and every mutation of them; apply_action()
++# is the single gateway every actor (player, crow, chicken, later bots) uses
++# to change the world (S-3).
++# Layer-2 rules (docs/ARCHITECTURE.md): no Node inheritance, no rendering,
++# no autoload access, no Input — only SimRng (seeded) and CropDefs/Tools (data).
++class_name SimWorld
++extends RefCounted
++
++const MAP_WIDTH := 32
++const MAP_HEIGHT := 20
++
++# Fixed object positions (0-indexed tile coords)
++const OBJECT_POSITIONS: Array[Dictionary] = [
++	{ "type": "cot",          "tx": 2, "ty": 1 },
++	{ "type": "shipping_bin", "tx": 4, "ty": 1 },
++	{ "type": "well",         "tx": 6, "ty": 1 },
++	{ "type": "seed_box",     "tx": 8, "ty": 1 },
++]
++
++# Tile data: tiles[y][x] = { state, crop_type, growth_stage, watered_today }
++var tiles: Array[Array] = []
++var objects: Array[Array] = []  # objects[y][x] = "" or object type string
++
++
++func generate() -> void:
++	tiles.clear()
++	objects.clear()
++
++	for ty in MAP_HEIGHT:
++		var row: Array[Dictionary] = []
++		var obj_row: Array[String] = []
++		for tx in MAP_WIDTH:
++			if ty == 0 or ty == MAP_HEIGHT - 1 or tx == 0 or tx == MAP_WIDTH - 1:
++				row.append(_create_tile("border"))
++			else:
++				if SimRng.randf() < 0.25:
++					var obstacle_types: Array[String] = ["obstacle_rock", "obstacle_log", "obstacle_weed"]
++					row.append(_create_tile(obstacle_types[SimRng.randi() % 3]))
++				else:
++					row.append(_create_tile("cleared"))
++			obj_row.append("")
++		tiles.append(row)
++		objects.append(obj_row)
++
++	# Place fixed objects
++	for obj in OBJECT_POSITIONS:
++		var tx: int = obj.tx
++		var ty: int = obj.ty
++		tiles[ty][tx] = _create_tile("cleared")
++		objects[ty][tx] = obj.type
++		# Clear surrounding tiles
++		for dy in range(-1, 2):
++			for dx in range(-1, 2):
++				var nx := tx + dx
++				var ny := ty + dy
++				if nx >= 1 and nx <= MAP_WIDTH - 2 and ny >= 1 and ny <= MAP_HEIGHT - 2:
++					if objects[ny][nx] == "":
++						tiles[ny][nx] = _create_tile("cleared")
++
++	# Ensure player spawn area is clear
++	for dy in range(0, 3):
++		for dx in range(0, 11):
++			var tx := 1 + dx
++			var ty := 1 + dy
++			if tx <= MAP_WIDTH - 2 and ty <= MAP_HEIGHT - 2:
++				if objects[ty][tx] == "":
++					tiles[ty][tx] = _create_tile("cleared")
++
++
++func _create_tile(state: String) -> Dictionary:
++	return {
++		"state": state,
++		"crop_type": "",
++		"growth_stage": 0,
++		"watered_today": false,
++	}
++
++
++func get_tile(tx: int, ty: int) -> Dictionary:
++	if ty >= 0 and ty < MAP_HEIGHT and tx >= 0 and tx < MAP_WIDTH:
++		return tiles[ty][tx]
++	return {}
++
++
++func get_crop_type(tx: int, ty: int) -> String:
++	var tile := get_tile(tx, ty)
++	if tile.is_empty():
++		return ""
++	return tile.get("crop_type", "")
++
++
++func get_object(tx: int, ty: int) -> String:
++	if ty >= 0 and ty < MAP_HEIGHT and tx >= 0 and tx < MAP_WIDTH:
++		if objects[ty][tx] != "":
++			return objects[ty][tx]
++		# Check if the tile below has a tall object
++		if ty + 1 < MAP_HEIGHT and objects[ty + 1][tx] in ["cot", "well", "seed_box"]:
++			return objects[ty + 1][tx]
++	return ""
++
++
++func set_object(tx: int, ty: int, obj_type: String) -> void:
++	if ty >= 0 and ty < MAP_HEIGHT and tx >= 0 and tx < MAP_WIDTH:
++		objects[ty][tx] = obj_type
++
++
++func is_protected_by_scarecrow(tx: int, ty: int) -> bool:
++	for dy in range(-4, 5):
++		for dx in range(-4, 5):
++			var nx := tx + dx
++			var ny := ty + dy
++			if nx >= 0 and nx < MAP_WIDTH and ny >= 0 and ny < MAP_HEIGHT:
++				if objects[ny][nx] == "scarecrow":
++					return true
++	return false
++
++
++func is_walkable(tx: int, ty: int) -> bool:
++	var tile := get_tile(tx, ty)
++	if tile.is_empty():
++		return false
++	var state: String = tile.state
++	if state == "border":
++		return false
++	if state.begins_with("obstacle"):
++		return false
++	var obj := get_object(tx, ty)
++	if obj != "" and obj != "egg":
++		return false
++	return true
++
++
++func set_tile_state(tx: int, ty: int, new_state: String, crop_type: String = "") -> void:
++	var tile := get_tile(tx, ty)
++	if tile.is_empty():
++		return
++	tile.state = new_state
++	if crop_type != "":
++		tile.crop_type = crop_type
++	if new_state == "cleared" or new_state == "tilled":
++		tile.crop_type = ""
++		tile.growth_stage = 0
++		tile.watered_today = false
++	elif new_state == "seeded":
++		tile.growth_stage = 0
++		tile.watered_today = false
++
++
++func water_tile(tx: int, ty: int) -> void:
++	var tile := get_tile(tx, ty)
++	if not tile.is_empty() and (tile.state == "seeded" or tile.state == "growing"):
++		tile.watered_today = true
++
++
++# --- Action gateway (S-3) -----------------------------------------------------
++# action: { verb: String, target: Vector2i, seed_type: String, actor: String }
++# gs: GameState (player/economy state) — required for verbs that touch it.
++# Returns { ok: bool, reason: String, ...verb extras }. Mutation happens only
++# on ok. Guards mirror the pre-M2 player checks exactly (no new validation yet).
++func apply_action(action: Dictionary, gs = null) -> Dictionary:
++	var verb: String = action.get("verb", "")
++	var target: Vector2i = action.get("target", Vector2i(-1, -1))
++
++	match verb:
++		# -- special-object verbs (no energy cost, pre-M2 behavior) --
++		"sell":
++			if gs == null: return _fail("no_state")
++			return { "ok": gs.sell_crops_to_bin() }
++		"refill":
++			if gs == null: return _fail("no_state")
++			return { "ok": gs.refill_watering_can() }
++		"buy_seed":
++			if gs == null: return _fail("no_state")
++			return { "ok": gs.buy_seed(action.get("seed_type", "")) }
++		"collect":
++			if gs == null: return _fail("no_state")
++			var obj := get_object(target.x, target.y)
++			if obj == "egg":
++				set_object(target.x, target.y, "")
++				gs.crops["egg"] = gs.crops.get("egg", 0) + 1
++				gs.harvest_counts["egg"] = gs.harvest_counts.get("egg", 0) + 1
++				return { "ok": true, "collected": "egg" }
++			if obj == "scarecrow":
++				set_object(target.x, target.y, "")
++				gs.seeds["scarecrow"] = gs.seeds.get("scarecrow", 0) + 1
++				return { "ok": true, "collected": "scarecrow" }
++			return _fail("nothing_to_collect")
++
++		# -- day transition --
++		"sleep":
++			if gs == null: return _fail("no_state")
++			gs.start_new_day()
++			if action.has("weather"):  # replay override: reproduce the logged roll
++				gs.weather = action.weather
++				gs.weather_changed.emit(gs.weather)
++			advance_day(gs.weather)
++			gs.process_shipping_bin()
++			return { "ok": true, "day": gs.day, "weather": gs.weather }
++
++		# -- entity verbs --
++		"eat_crop":
++			var tile := get_tile(target.x, target.y)
++			if tile.is_empty(): return _fail("out_of_bounds")
++			if tile.state in ["growing", "ready", "seeded"]:
++				set_tile_state(target.x, target.y, "tilled")
++				return { "ok": true }
++			return _fail("no_crop")
++		"lay_egg":
++			if get_object(target.x, target.y) != "": return _fail("occupied")
++			set_object(target.x, target.y, "egg")
++			return { "ok": true }
++
++		# -- energy-costed tile verbs --
++		"clear_weed", "clear_log", "clear_rock", "till", "plant", "water", "harvest":
++			if gs == null: return _fail("no_state")
++			var tile := get_tile(target.x, target.y)
++			if tile.is_empty() or tile.get("state", "") == "": return _fail("out_of_bounds")
++			var cost: int = Tools.get_energy_cost(verb)
++			if gs.energy < cost: return _fail("no_energy")
++			var seed_type: String = action.get("seed_type", "")
++			if verb == "water" and gs.watering_can_charges <= 0: return _fail("no_water")
++			if verb == "plant" and gs.seeds.get(seed_type, 0) <= 0: return _fail("no_seeds")
++
++			gs.energy -= cost
++			match verb:
++				"clear_weed", "clear_log", "clear_rock":
++					set_tile_state(target.x, target.y, "cleared")
++				"till":
++					set_tile_state(target.x, target.y, "tilled")
++				"plant":
++					var is_obj: bool = CropDefs.TYPES.get(seed_type, {}).get("is_object", false)
++					if is_obj:
++						set_object(target.x, target.y, seed_type)
++					else:
++						set_tile_state(target.x, target.y, "seeded", seed_type)
++					gs.seeds[seed_type] -= 1
++				"water":
++					water_tile(target.x, target.y)
++					gs.watering_can_charges -= 1
++				"harvest":
++					var crop_type := get_crop_type(target.x, target.y)
++					if crop_type != "":
++						gs.crops[crop_type] = gs.crops.get(crop_type, 0) + 1
++						gs.harvest_counts[crop_type] = gs.harvest_counts.get(crop_type, 0) + 1
++						set_tile_state(target.x, target.y, "cleared")
++						return { "ok": true, "crop_type": crop_type }
++			return { "ok": true }
++
++	return _fail("unknown_verb")
++
++
++func _fail(reason: String) -> Dictionary:
++	return { "ok": false, "reason": reason }
++
++
++func advance_day(weather: String) -> void:
++	for ty in MAP_HEIGHT:
++		for tx in MAP_WIDTH:
++			var tile: Dictionary = tiles[ty][tx]
++			if tile.watered_today and (tile.state == "seeded" or tile.state == "growing"):
++				tile.growth_stage += 1
++				if tile.state == "seeded":
++					tile.state = "growing"
++				if CropDefs.is_ready(tile.crop_type, tile.growth_stage):
++					tile.state = "ready"
++			tile.watered_today = false
++
++			if weather == "rainy" and tile.state in ["tilled", "seeded", "growing"]:
++				tile.watered_today = true
+diff --git a/systems/sim/sim_world.gd.uid b/systems/sim/sim_world.gd.uid
+new file mode 100644
+index 0000000..3b4e6d8
+--- /dev/null
++++ b/systems/sim/sim_world.gd.uid
+@@ -0,0 +1 @@
++uid://bxif2ogxdjpht
+diff --git a/tests/test_runner.gd b/tests/test_runner.gd
+index f8c6705..9787f8f 100644
+--- a/tests/test_runner.gd
++++ b/tests/test_runner.gd
+@@ -30,6 +30,7 @@ func _init() -> void:
+ 	test_swipe_chaining()
+ 	test_sim_rng()
+ 	test_milestones()
++	test_sim_actions()
+ 
+ 	print("")
+ 	print(String("=").repeat(60))
+@@ -463,3 +464,69 @@ func test_milestones() -> void:
+ 	GameState.check_milestones()
+ 	_assert(GameState._milestones_earned.has("master_farmer"), "Master Farmer earned with wheat+tomato+egg")
+ 	_assert(GameState._milestones_earned.has("first_harvest"), "First Harvest earned")
++
++func test_sim_actions() -> void:
++	print("\n--- SimWorld apply_action Tests ---")
++
++	var world := SimWorld.new()
++	SimRng.reseed(7)
++	world.generate()
++
++	# Fresh state for economy checks
++	GameState.energy = 20
++	GameState.max_energy = 20
++	GameState.watering_can_charges = 8
++	GameState.seeds = { "wheat": 2 }
++	GameState.crops = {}
++	GameState.harvest_counts = {}
++	GameState.shipping_bin = {}
++	GameState.gold = 0
++	GameState.day = 1
++	GameState.weather = "sunny"
++
++	var t := Vector2i(5, 5)
++	world.tiles[t.y][t.x] = { "state": "cleared", "crop_type": "", "growth_stage": 0, "watered_today": false }
++	world.objects[t.y][t.x] = ""
++
++	var r := world.apply_action({ "verb": "till", "target": t, "actor": "player" }, GameState)
++	_assert(r.ok and world.get_tile(t.x, t.y).state == "tilled", "till action tills tile")
++	_assert(GameState.energy == 19, "till costs 1 energy")
++
++	r = world.apply_action({ "verb": "plant", "target": t, "seed_type": "wheat", "actor": "player" }, GameState)
++	_assert(r.ok and world.get_tile(t.x, t.y).state == "seeded", "plant action seeds tile")
++	_assert(GameState.seeds["wheat"] == 1, "plant consumes a seed")
++
++	r = world.apply_action({ "verb": "water", "target": t, "actor": "player" }, GameState)
++	_assert(r.ok and world.get_tile(t.x, t.y).watered_today, "water action waters tile")
++
++	# Grow to ready (wheat: 3 days), sleeping each day
++	for i in 3:
++		r = world.apply_action({ "verb": "sleep", "actor": "world", "weather": "sunny" }, GameState)
++		_assert(r.ok, "sleep day %d ok" % (i + 1))
++		world.apply_action({ "verb": "water", "target": t, "actor": "player" }, GameState)
++	_assert(world.get_tile(t.x, t.y).state == "ready", "crop ready after 3 watered sleeps")
++
++	r = world.apply_action({ "verb": "harvest", "target": t, "actor": "player" }, GameState)
++	_assert(r.ok and r.get("crop_type", "") == "wheat", "harvest returns crop type")
++	_assert(GameState.crops.get("wheat", 0) == 1, "harvest adds crop to inventory")
++	_assert(world.get_tile(t.x, t.y).state == "cleared", "harvest clears tile")
++
++	r = world.apply_action({ "verb": "sell", "target": t, "actor": "player" }, GameState)
++	_assert(r.ok and GameState.gold == 15, "sell pays wheat price")
++
++	# Entity verbs
++	world.tiles[t.y][t.x] = { "state": "growing", "crop_type": "wheat", "growth_stage": 1, "watered_today": false }
++	r = world.apply_action({ "verb": "eat_crop", "target": t, "actor": "crow" })
++	_assert(r.ok and world.get_tile(t.x, t.y).state == "tilled", "crow eat_crop tills the tile")
++
++	r = world.apply_action({ "verb": "lay_egg", "target": t, "actor": "chicken" })
++	_assert(r.ok and world.get_object(t.x, t.y) == "egg", "chicken lay_egg places egg")
++	r = world.apply_action({ "verb": "lay_egg", "target": t, "actor": "chicken" })
++	_assert(not r.ok, "lay_egg refused on occupied tile")
++
++	# Guards
++	GameState.energy = 0
++	r = world.apply_action({ "verb": "till", "target": Vector2i(6, 5), "actor": "player" }, GameState)
++	_assert(not r.ok and r.reason == "no_energy", "till refused at 0 energy")
++	r = world.apply_action({ "verb": "bogus", "target": t }, GameState)
++	_assert(not r.ok, "unknown verb refused")
+diff --git a/ui/menus.gd b/ui/menus.gd
+index ae81d23..4880dd3 100644
+--- a/ui/menus.gd
++++ b/ui/menus.gd
+@@ -2,6 +2,8 @@
+ # Mirrors the Love2D ui_menus.lua
+ extends CanvasLayer
+ 
++var farm: Node2D = null  # set by main; buy actions route through the sim when present
++
+ signal menu_action(action: String)
+ 
+ var active_menu: String = ""  # "", "pause", "shop", "inventory"
+@@ -354,7 +356,15 @@ func _select_current_option() -> void:
+ 		"shop":
+ 			if selected_option < shop_items.size():
+ 				var item: Dictionary = shop_items[selected_option]
+-				if GameState.buy_seed(item.seed_type):
++				# Transactions are sim Actions too (P-9 guardrail)
++				var bought: bool
++				if farm != null:
++					bought = farm.apply_action({
++						"verb": "buy_seed", "seed_type": item.seed_type, "actor": "player",
++					}, GameState).get("ok", false)
++				else:
++					bought = GameState.buy_seed(item.seed_type)
++				if bought:
+ 					AudioManager.play_sfx("harvest")
+ 					_rebuild_options()
+ 					menu_action.emit("bought_seed")
+diff --git a/world/farm.gd b/world/farm.gd
+index c6738b4..692dc0e 100644
+--- a/world/farm.gd
++++ b/world/farm.gd
+@@ -1,15 +1,22 @@
+-# farm.gd — Tile grid with state machine + rendering
+-# Mirrors the Love2D tilemap.lua: manages a 2D array of tile data,
+-# draws tiles/crops/objects using sprite atlases, handles day advancement
++# farm.gd — Renderer + facade over SimWorld (M2)
++# Grid truth lives in systems/sim/sim_world.gd; this node draws it with
++# sprite atlases and forwards the old farm API to the sim so call sites
++# (player, entities, ActionRouter, Pathfinding, tests) are unchanged.
+ extends Node2D
+ 
+ const TILE_SIZE := 16
+-const MAP_WIDTH := 32
+-const MAP_HEIGHT := 20
++const MAP_WIDTH := SimWorld.MAP_WIDTH
++const MAP_HEIGHT := SimWorld.MAP_HEIGHT
+ 
+-# Tile data: tiles[y][x] = { state, crop_type, growth_stage, watered_today }
+-var tiles: Array[Array] = []
+-var objects: Array[Array] = []  # objects[y][x] = "" or object type string
++var sim: SimWorld = SimWorld.new()
++
++# Facade views over sim truth (same Array references — in-place mutation works)
++var tiles: Array[Array]:
++	get:
++		return sim.tiles
++var objects: Array[Array]:
++	get:
++		return sim.objects
+ 
+ # Sprite resources
+ var tileset_texture: Texture2D
+@@ -21,18 +28,9 @@ var tile_regions: Dictionary = {}     # state_name -> Rect2
+ var crop_regions: Dictionary = {}     # crop_type -> { stage -> Rect2 }
+ var object_regions: Dictionary = {}   # object_name -> Rect2
+ 
+-# Fixed object positions (0-indexed tile coords)
+-const OBJECT_POSITIONS: Array[Dictionary] = [
+-	{ "type": "cot",          "tx": 2, "ty": 1 },
+-	{ "type": "shipping_bin", "tx": 4, "ty": 1 },
+-	{ "type": "well",         "tx": 6, "ty": 1 },
+-	{ "type": "seed_box",     "tx": 8, "ty": 1 },
+-]
+-
+-
+ func _ready() -> void:
+ 	_load_textures()
+-	_init_grid()
++	sim.generate()
+ 
+ 
+ var dirt_texture: Texture2D
+@@ -70,158 +68,55 @@ func _load_textures() -> void:
+ 	object_regions["scarecrow"] = [crops_texture, Rect2(0 * 16, 4 * 16, 16, 16)]
+ 
+ 
+-func _init_grid() -> void:
+-	tiles.clear()
+-	objects.clear()
++# --- Facade: forwards the old farm API to SimWorld ---------------------------
+ 
+-	for ty in MAP_HEIGHT:
+-		var row: Array[Dictionary] = []
+-		var obj_row: Array[String] = []
+-		for tx in MAP_WIDTH:
+-			if ty == 0 or ty == MAP_HEIGHT - 1 or tx == 0 or tx == MAP_WIDTH - 1:
+-				row.append(_create_tile("border"))
+-			else:
+-				if SimRng.randf() < 0.25:
+-					var obstacle_types: Array[String] = ["obstacle_rock", "obstacle_log", "obstacle_weed"]
+-					row.append(_create_tile(obstacle_types[SimRng.randi() % 3]))
+-				else:
+-					row.append(_create_tile("cleared"))
+-			obj_row.append("")
+-		tiles.append(row)
+-		objects.append(obj_row)
+-
+-	# Place fixed objects
+-	for obj in OBJECT_POSITIONS:
+-		var tx: int = obj.tx
+-		var ty: int = obj.ty
+-		tiles[ty][tx] = _create_tile("cleared")
+-		objects[ty][tx] = obj.type
+-		# Clear surrounding tiles
+-		for dy in range(-1, 2):
+-			for dx in range(-1, 2):
+-				var nx := tx + dx
+-				var ny := ty + dy
+-				if nx >= 1 and nx <= MAP_WIDTH - 2 and ny >= 1 and ny <= MAP_HEIGHT - 2:
+-					if objects[ny][nx] == "":
+-						tiles[ny][nx] = _create_tile("cleared")
+-
+-	# Ensure player spawn area is clear
+-	for dy in range(0, 3):
+-		for dx in range(0, 11):
+-			var tx := 1 + dx
+-			var ty := 1 + dy
+-			if tx <= MAP_WIDTH - 2 and ty <= MAP_HEIGHT - 2:
+-				if objects[ty][tx] == "":
+-					tiles[ty][tx] = _create_tile("cleared")
+-
+-
+-func _create_tile(state: String) -> Dictionary:
+-	return {
+-		"state": state,
+-		"crop_type": "",
+-		"growth_stage": 0,
+-		"watered_today": false,
+-	}
++func apply_action(action: Dictionary, gs = null) -> Dictionary:
++	var result := sim.apply_action(action, gs)
++	if result.get("ok", false):
++		queue_redraw()
++	return result
+ 
+ 
+ func get_tile(tx: int, ty: int) -> Dictionary:
+-	if ty >= 0 and ty < MAP_HEIGHT and tx >= 0 and tx < MAP_WIDTH:
+-		return tiles[ty][tx]
+-	return {}
++	return sim.get_tile(tx, ty)
+ 
+ 
+ func get_crop_type(tx: int, ty: int) -> String:
+-	var tile := get_tile(tx, ty)
+-	if tile.is_empty():
+-		return ""
+-	return tile.get("crop_type", "")
++	return sim.get_crop_type(tx, ty)
+ 
+ 
+ func get_object(tx: int, ty: int) -> String:
+-	if ty >= 0 and ty < MAP_HEIGHT and tx >= 0 and tx < MAP_WIDTH:
+-		if objects[ty][tx] != "":
+-			return objects[ty][tx]
+-		# Check if the tile below has a tall object
+-		if ty + 1 < MAP_HEIGHT and objects[ty + 1][tx] in ["cot", "well", "seed_box"]:
+-			return objects[ty + 1][tx]
+-	return ""
++	return sim.get_object(tx, ty)
+ 
+ 
+ func set_object(tx: int, ty: int, obj_type: String) -> void:
+-	if ty >= 0 and ty < MAP_HEIGHT and tx >= 0 and tx < MAP_WIDTH:
+-		objects[ty][tx] = obj_type
+-		queue_redraw()
++	sim.set_object(tx, ty, obj_type)
++	queue_redraw()
+ 
+ 
+ func is_protected_by_scarecrow(tx: int, ty: int) -> bool:
+-	for dy in range(-4, 5):
+-		for dx in range(-4, 5):
+-			var nx := tx + dx
+-			var ny := ty + dy
+-			if nx >= 0 and nx < MAP_WIDTH and ny >= 0 and ny < MAP_HEIGHT:
+-				if objects[ny][nx] == "scarecrow":
+-					return true
+-	return false
++	return sim.is_protected_by_scarecrow(tx, ty)
+ 
+ 
+ func is_walkable(tx: int, ty: int) -> bool:
+-	var tile := get_tile(tx, ty)
+-	if tile.is_empty():
+-		return false
+-	var state: String = tile.state
+-	if state == "border":
+-		return false
+-	if state.begins_with("obstacle"):
+-		return false
+-	var obj := get_object(tx, ty)
+-	if obj != "" and obj != "egg":
+-		return false
+-	return true
+-
++	return sim.is_walkable(tx, ty)
+ 
+ 
+ func set_tile_state(tx: int, ty: int, new_state: String, crop_type: String = "") -> void:
+-	var tile := get_tile(tx, ty)
+-	if tile.is_empty():
+-		return
+-	tile.state = new_state
+-	if crop_type != "":
+-		tile.crop_type = crop_type
+-	if new_state == "cleared" or new_state == "tilled":
+-		tile.crop_type = ""
+-		tile.growth_stage = 0
+-		tile.watered_today = false
+-	elif new_state == "seeded":
+-		tile.growth_stage = 0
+-		tile.watered_today = false
++	sim.set_tile_state(tx, ty, new_state, crop_type)
+ 	queue_redraw()
+ 
+ 
+ func water_tile(tx: int, ty: int) -> void:
+-	var tile := get_tile(tx, ty)
+-	if not tile.is_empty() and (tile.state == "seeded" or tile.state == "growing"):
+-		tile.watered_today = true
+-		queue_redraw()
++	sim.water_tile(tx, ty)
++	queue_redraw()
+ 
+ 
+ func advance_day() -> void:
+-	for ty in MAP_HEIGHT:
+-		for tx in MAP_WIDTH:
+-			var tile: Dictionary = tiles[ty][tx]
+-			if tile.watered_today and (tile.state == "seeded" or tile.state == "growing"):
+-				tile.growth_stage += 1
+-				if tile.state == "seeded":
+-					tile.state = "growing"
+-				if CropDefs.is_ready(tile.crop_type, tile.growth_stage):
+-					tile.state = "ready"
+-			tile.watered_today = false
+-			
+-			var weather = "sunny"
+-			if Engine.get_main_loop() and Engine.get_main_loop().root.has_node("GameState"):
+-				weather = Engine.get_main_loop().root.get_node("GameState").weather
+-			if weather == "rainy" and tile.state in ["tilled", "seeded", "growing"]:
+-				tile.watered_today = true
+-				
++	var weather := "sunny"
++	if Engine.get_main_loop() and Engine.get_main_loop().root.has_node("GameState"):
++		weather = Engine.get_main_loop().root.get_node("GameState").weather
++	sim.advance_day(weather)
+ 	queue_redraw()
+ 
+ 
+-- 
+2.39.5 (Apple Git-154)
+
