@@ -170,9 +170,9 @@ func _scenario_d() -> void:
 	farm.set_tile_state(6, 4, "seeded", "wheat")
 	var unwatered_tile = farm.get_tile(6, 4)
 	
-	# Sleep trigger
-	farm.advance_day()
-	GameState.start_new_day()
+	# Sleep through the sim gateway — the same path the live game uses —
+	# overriding the weather roll so growth assertions stay deterministic
+	farm.apply_action({ "verb": "sleep", "actor": "world", "weather": "sunny" }, GameState)
 	for i in 120: await get_tree().process_frame # Wait for fade
 	
 	_assert(GameState.day == initial_day + 1, "Day advanced")

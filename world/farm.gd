@@ -10,6 +10,7 @@ const MAP_HEIGHT := SimWorld.MAP_HEIGHT
 
 var sim: SimWorld = SimWorld.new()
 var replay: ReplayLog = null  # set via start_replay_log(); records every ok action
+var generate_on_ready := true  # main disables this when a save restore is pending
 
 # Facade views over sim truth (same Array references — in-place mutation works)
 var tiles: Array[Array]:
@@ -31,7 +32,8 @@ var object_regions: Dictionary = {}   # object_name -> Rect2
 
 func _ready() -> void:
 	_load_textures()
-	sim.generate()
+	if generate_on_ready:
+		sim.generate()
 
 
 var dirt_texture: Texture2D
@@ -100,11 +102,6 @@ func get_crop_type(tx: int, ty: int) -> String:
 
 func get_object(tx: int, ty: int) -> String:
 	return sim.get_object(tx, ty)
-
-
-func set_object(tx: int, ty: int, obj_type: String) -> void:
-	sim.set_object(tx, ty, obj_type)
-	queue_redraw()
 
 
 func is_protected_by_scarecrow(tx: int, ty: int) -> bool:

@@ -26,12 +26,21 @@ func _gui_input(event: InputEvent) -> void:
 
 
 func _on_new_farm() -> void:
+	# Park the current farm first: with a single save slot, an accidental New
+	# Farm would otherwise destroy it at the first sleep. Recoverable by
+	# renaming the .bak files back.
+	if _has_save:
+		DirAccess.copy_absolute(GameState.save_path, GameState.save_path + ".bak")
+		if FileAccess.file_exists(GameState.replay_path):
+			DirAccess.copy_absolute(GameState.replay_path, GameState.replay_path + ".bak")
 	start_game(false)
 
 
 func start_game(load_save: bool) -> void:
 	print("Starting game... (continue=%s)" % load_save)
 	GameState.pending_load = load_save
+	if not load_save:
+		GameState.reset()
 	InputManager.has_click = false
 	AudioManager.play_sfx("click")
 	var err = get_tree().change_scene_to_file("res://main.tscn")

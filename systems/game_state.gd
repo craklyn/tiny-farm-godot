@@ -10,30 +10,21 @@ signal tool_changed(new_tool_index: int)
 signal milestone_reached(milestone_id: String, message: String)
 signal weather_changed(new_weather: String)
 
-# Day
-var day: int = 1
-var weather: String = "sunny"
-
-# Player stats
-var energy: int = 20
-var max_energy: int = 20
-var gold: int = 0
-
-# Tools
-var selected_tool: int = 0  # Index into Tools.LIST
-
-# Seeds & crops
-var seeds: Dictionary = { "wheat": 5, "tomato": 0 }
-var crops: Dictionary = { "wheat": 0, "tomato": 0 }
-var harvest_counts: Dictionary = { "wheat": 0, "tomato": 0 }
-var shipping_bin: Dictionary = { "wheat": 0, "tomato": 0 }
-
-# Watering can
-var watering_can_charges: int = 8
-var max_watering_can_charges: int = 8
-
-# Selected seed type for planting
-var selected_seed_type: String = "wheat"
+# Sim-truth player state. Defaults live in ONE place: reset(), called from
+# _init() — do not add initializer values here, add them to reset().
+var day: int
+var weather: String
+var energy: int
+var max_energy: int
+var gold: int
+var selected_tool: int  # Index into Tools.LIST
+var seeds: Dictionary
+var crops: Dictionary
+var harvest_counts: Dictionary
+var shipping_bin: Dictionary
+var watering_can_charges: int
+var max_watering_can_charges: int
+var selected_seed_type: String
 
 # Milestones tracking
 var _milestones_earned: Dictionary = {}
@@ -48,8 +39,12 @@ var save_path: String = "user://autosave.json"
 var replay_path: String = "user://session_replay.json"
 
 
+func _init() -> void:
+	reset()
+
+
 func reset() -> void:
-	# New-game / replay baseline. Must mirror the var initializers above.
+	# New-game / replay baseline — the single source of default values.
 	day = 1
 	weather = "sunny"
 	energy = 20
@@ -170,8 +165,10 @@ func refill_watering_can() -> bool:
 
 func check_milestones() -> void:
 	var total_harvests: int = 0
-	for count in harvest_counts.values():
-		total_harvests += count
+	for crop_type in harvest_counts:
+		if crop_type == "egg":
+			continue  # eggs count only for Master Farmer, not harvest totals
+		total_harvests += harvest_counts[crop_type]
 
 	var milestones: Array[Dictionary] = [
 		{ "id": "first_harvest", "condition": total_harvests >= 1, "msg": "First Harvest!" },
