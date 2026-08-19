@@ -12,7 +12,13 @@ be decided well). Every entry gets a status change only via an explicit edit her
 ### S-1. Engine: Godot 4
 Already chosen and working; exports to Android/iOS/desktop; GDScript for gameplay with the
 option of C#/GDExtension for hot paths (relevant to ML inference/training). No foreseeable
-phase invalidates it.
+phase invalidates it. Supporting premises: best-in-class 2D for a pixel game; free/MIT
+with zero royalties (fits the free-release strategy, Q-6); headless + testable (proven:
+both suites run headless); native-code path for ML guaranteed via GDExtension — C# mobile
+export maturity is the one rough edge, verified at the D-2 spike with GDExtension as the
+fallback. Falsifiers (would reopen this settled entry): both C# and GDExtension failing
+to ship on-device training on mobile; a console-first or 3D-heavy pivot; team scale-up
+needing Unity's ecosystem/labor market.
 
 ### S-2. One game, five phases, one emotional arc
 Whatever the implementation topology turns out to be (fully persistent vs. partially
