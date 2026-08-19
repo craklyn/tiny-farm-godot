@@ -212,8 +212,11 @@ func update_player(delta: float) -> void:
 		elif absf(move_vec.y) > 0.01:
 			facing = "down" if move_vec.y > 0 else "up"
 
+		# Q-11 soft floor: an exhausted farmer trudges at half speed (the nudge
+		# toward the cot); presentation-only, sim truth is untouched
+		var speed := MOVE_SPEED * (0.5 if GameState.energy <= 0 else 1.0)
 		# Calculate new position; collide on the player's leading edge, not its center
-		var new_pos := pos + move_vec * MOVE_SPEED * delta
+		var new_pos := pos + move_vec * speed * delta
 		var cur_tx := int(pos.x / TILE_SIZE)
 		var cur_ty := int(pos.y / TILE_SIZE)
 

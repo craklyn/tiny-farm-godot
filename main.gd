@@ -25,6 +25,8 @@ var cursor_visible: bool = false
 var cursor_tile: Vector2i = Vector2i(-1, -1)
 var cursor_color: Color = Color.WHITE
 
+var _cot_tile: Vector2i = Vector2i(-1, -1)  # located after world setup (Q-11 pulse)
+
 var crow_spawn_timer: float = 0.0
 
 
@@ -65,6 +67,12 @@ func _ready() -> void:
 			farm.sim.generate()  # restore failed after generation was skipped
 		farm.start_replay_log(gen_seed)
 	farm.queue_redraw()
+
+	# Locate the cot for the low-energy pulse (survives layout changes)
+	for ty in MAP_HEIGHT:
+		for tx in MAP_WIDTH:
+			if farm.sim.objects[ty][tx] == "cot":
+				_cot_tile = Vector2i(tx, ty)
 
 	# Create player
 	var PlayerScript = load("res://player/player.gd")
@@ -328,3 +336,10 @@ func _draw() -> void:
 		var py := cursor_tile.y * TILE_SIZE
 		var rect := Rect2(px, py, TILE_SIZE, TILE_SIZE)
 		draw_rect(rect, cursor_color, false, 1.0)
+
+	# Q-11: a softly pulsing cot nudges an exhausted farmer toward sleep
+	if GameState.energy <= 2 and _cot_tile.x >= 0:
+		var pulse := 0.25 + 0.2 * sin(Time.get_ticks_msec() / 300.0)
+		var cot_rect := Rect2(_cot_tile.x * TILE_SIZE, (_cot_tile.y - 1) * TILE_SIZE, TILE_SIZE, TILE_SIZE * 2)
+		draw_rect(cot_rect, Color(1.0, 0.95, 0.6, pulse * 0.35), true)
+		draw_rect(cot_rect, Color(1.0, 0.95, 0.6, pulse), false, 1.5)

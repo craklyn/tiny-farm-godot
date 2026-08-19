@@ -101,22 +101,31 @@ func _scenario_b() -> void:
 	
 	GameState.set_energy(0)
 	_assert(GameState.energy == 0, "Energy set to 0")
-	
+
 	# Ensure Hands tool
-	GameState.selected_tool = 0 
-	
+	GameState.selected_tool = 0
+
 	# Setup a rock
 	farm.set_tile_state(6, 5, "obstacle_rock")
 	player.facing = "right"
 	player.pos = Vector2(5.5 * 16.0, 5.5 * 16.0)
-	
+
+	# Hard energy (phase 2+ rule): action blocked at 0 energy
+	GameState.hard_energy = true
 	Input.action_press("action")
 	await _wait_for_action()
 	Input.action_release("action")
-	
-	# Assert rock was NOT cleared (0 energy)
-	_assert(farm.get_tile(6, 5).state == "obstacle_rock", "Action blocked when 0 energy")
-	
+	_assert(farm.get_tile(6, 5).state == "obstacle_rock", "Action blocked when 0 energy (hard)")
+
+	# Soft floor (phase 1 default, Q-11): same action works at 0 energy
+	GameState.hard_energy = false
+	GameState.selected_tool = 0
+	Input.action_press("action")
+	await _wait_for_action()
+	Input.action_release("action")
+	_assert(farm.get_tile(6, 5).state == "cleared", "Action allowed at 0 energy (soft floor)")
+	_assert(GameState.energy == 0, "Soft floor keeps energy at 0, not negative")
+
 	# Restore energy
 	GameState.set_energy(20)
 
