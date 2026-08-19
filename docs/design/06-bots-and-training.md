@@ -35,6 +35,18 @@ Bodies: gardening tools → weapons (enabling tower retirement, D-7/P-4 gate).
    visible meter. The phase's ending is a design artifact — treat it as a first-class
    section, not an afterthought.
 7. **Communication** — ping vocabulary and command verb (P-7); when each token unlocks.
+8. **Training grounds & synthetic scenarios** (candidate mechanic, from the S-5
+   introspection note, 2026-08-18). The deterministic sim can *construct* practice, not
+   just replay it: the player builds drill scenarios — crow-ambush drill, watering
+   circuit, harvest sprint — and overnight the bot trains on N randomized instances.
+   That is real curriculum learning / domain randomization, surfaced as a craftable
+   gameplay object. Design hooks: drills as unlockable/craftable blueprints (phase-5
+   expeditions could drop rare ones — a feedback loop from the wilds into farming); the
+   D-4 "dream" surface *is* these synthetic rollouts, unifying presentation with
+   mechanism; and the specialization↔generalization tradeoff becomes play — a bot
+   over-trained on drills aces its exams but turns brittle on the messy real farm,
+   teaching overfitting honestly (D-4's spirit). Feasibility probe at the D-2 spike;
+   full design at M5.
 
 ## Constraints from decisions
 Bots emit player verbs only (S-3); observations are egocentric grid patches

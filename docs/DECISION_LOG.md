@@ -42,6 +42,24 @@ farming state, tower placement, pathfinding, and bot observations. Bots observe 
 grid patches; towers occupy tiles; expansion means more grid. Continuous-space physics is
 reserved for juice (particles, animations), never for game truth.
 
+**First-principles note (2026-08-18, on designer request):** examined rather than
+assumed; conclusion: keep, with one clarification and one exit clause. Clarification:
+**truth is quantized, motion is continuous** — entity positions move in continuous
+pixels (already true in code: the player glides, collision is tile-checked) while all
+game truth lives on cells. Why the grid survives scrutiny: (1) farming verbs are
+inherently parcel-quantized — a continuous farm turns "is this watered?" into a geometry
+query; (2) fixed-size egocentric grid patches are what keep phase-4 models tiny — a
+continuous world forces variable-length entity-list encoders, bigger models, and breaks
+the overnight budget (the grid is *why* the ML is feasible); (3) integer truth sidesteps
+cross-device float drift, protecting S-5 determinism and replay integrity; (4) the scent
+layer's write-on-event / lazy-decay cost model (P-10) requires cells; (5) tiles are the
+natural fat-finger touch target (P-1) and the kid-legible unit (S-7). Alternatives
+rejected: hexes (distance isotropy nobody needs; hostile to square plots, tools, and
+pixel art), continuous+navmesh (the successful automation/colony genre — Factorio,
+RimWorld, Mindustry — is convergently grid), room-graphs (too coarse for farming). Exit
+clause: if D-1 chooses a twitch phase 5, *excursion maps* may adopt continuous combat
+truth; farm-world truth stays grid regardless.
+
 ### S-5. Deterministic, headless, fast-forwardable simulation core
 The single biggest architectural commitment, and the one that is brutal to retrofit: game
 truth must advance on a deterministic tick, decoupled from rendering, runnable headless at
@@ -49,10 +67,20 @@ many-times real time with a seeded RNG. Required by: overnight RL training (phas
 tower-defense wave simulation (phase 3), capability-proof gates, balancing, and the
 existing automated-test culture. Scheduled as milestone M2 (see `ROADMAP.md`).
 
+**Introspection note (2026-08-18, designer):** when M2 is built, re-examine this
+assumption from the inside. In particular: the sim core is not just a *replayer* of
+reality but a *scenario constructor*, which opens candidate gameplay — specialized
+synthetic training data ("drills") that push a bot toward specialization at chosen
+interactions. Developed in `design/06-bots-and-training.md` §8; revisit at M2 and the
+D-2 spike. More to come.
+
 ### S-6. Touch is a first-class citizen forever
 Every *core* interaction in every phase must be expressible as tap/drag/pinch. Keyboard,
 mouse, and gamepad are convenience mappings on top, never the only path. (Whether touch is
 *primary* is P-1; that it is never second-class is settled.)
+**Motivating analysis:** `design/appendix-input-modality.md` — first-principles
+derivation (facts → considerations → options → pros/cons → decision) for this entry and
+P-1, written 2026-08-18 on designer request.
 
 ### S-7. The 4-year-old constraint binds phase 1
 Phase 1's core loop must be playable by a pre-reader: chunky tap targets, forgiving

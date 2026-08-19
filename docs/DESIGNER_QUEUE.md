@@ -11,9 +11,12 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
 
 ## Now — blocks M0 close or current work
 
-- **Q-1 (Ruling)** Tiering sign-off on `DECISION_LOG.md`: anything in Tier 1 you won't
-  lock (costliest: S-3 unified Actions, S-5 sim-core-first)? Anything provisional to
-  promote?
+- **Q-1 (Ruling)** Tiering sign-off on `DECISION_LOG.md`. **In progress (2026-08-18):**
+  S-2 ✓, S-3 ✓, S-4 ✓ (first-principles note added to the entry on request), S-5 ✓
+  (designer introspection note added; drills mechanic seeded in `design/06` §8), S-6 ✓
+  (motivating appendix written: `design/appendix-input-modality.md`). Outstanding:
+  S-1 (engine analysis delivered in-session; explicit ✓ pending), S-7, S-8, and the
+  "any provisional entry to promote?" check.
 - **Q-2** ~~Pest queen as leading story hypothesis~~ — ✅ ruled 2026-08-18: promoted;
   held "until we choose something better." Design against it; don't lock content that
   would be expensive to unwind. Recorded in D-3 and `design/08-narrative.md` §1.
