@@ -35,11 +35,17 @@ func _ready() -> void:
 	# Pixel art rendering
 	get_viewport().canvas_item_default_texture_filter = Viewport.DEFAULT_CANVAS_ITEM_TEXTURE_FILTER_NEAREST
 
+	# Seed the sim. This is the one allowed raw randi(): the entropy edge that
+	# picks a fresh world per run; everything downstream flows through SimRng.
+	var gen_seed := randi()
+	SimRng.reseed(gen_seed)
+
 	# Create farm
 	var FarmScript = load("res://world/farm.gd")
 	farm = FarmScript.new()
 	farm.name = "Farm"
 	add_child(farm)
+	farm.start_replay_log(gen_seed)
 
 	# Create player
 	var PlayerScript = load("res://player/player.gd")

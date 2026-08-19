@@ -31,6 +31,7 @@ func _init() -> void:
 	test_sim_rng()
 	test_milestones()
 	test_sim_actions()
+	test_replay()
 
 	print("")
 	print(String("=").repeat(60))
@@ -530,3 +531,60 @@ func test_sim_actions() -> void:
 	_assert(not r.ok and r.reason == "no_energy", "till refused at 0 energy")
 	r = world.apply_action({ "verb": "bogus", "target": t }, GameState)
 	_assert(not r.ok, "unknown verb refused")
+
+func _replay_do(world: SimWorld, rlog: ReplayLog, action: Dictionary) -> Dictionary:
+	var r := world.apply_action(action, GameState)
+	if r.get("ok", false):
+		rlog.record(action, r)
+	return r
+
+func _replay_snapshot(world: SimWorld) -> String:
+	return JSON.stringify({
+		"tiles": world.tiles, "objects": world.objects,
+		"gs": [GameState.day, GameState.energy, GameState.gold, GameState.weather,
+			GameState.seeds, GameState.crops, GameState.harvest_counts,
+			GameState.shipping_bin, GameState.watering_can_charges],
+	})
+
+func test_replay() -> void:
+	print("\n--- Replay Determinism Tests ---")
+	var GEN := 99
+	var rlog := ReplayLog.new()
+	rlog.start(GEN)
+
+	GameState.reset()
+	SimRng.reseed(GEN)
+	var world := SimWorld.new()
+	world.generate()
+
+	var a := Vector2i(5, 2)
+	var b := Vector2i(7, 2)
+	_replay_do(world, rlog, { "verb": "till", "target": a, "actor": "player" })
+	_replay_do(world, rlog, { "verb": "plant", "target": a, "seed_type": "wheat", "actor": "player" })
+	_replay_do(world, rlog, { "verb": "water", "target": a, "actor": "player" })
+	_replay_do(world, rlog, { "verb": "till", "target": b, "actor": "player" })
+	_replay_do(world, rlog, { "verb": "plant", "target": b, "seed_type": "wheat", "actor": "player" })
+	_replay_do(world, rlog, { "verb": "water", "target": b, "actor": "player" })
+	_replay_do(world, rlog, { "verb": "sleep", "actor": "world" })
+	for i in 7:  # entity RNG noise the replay will NOT repeat
+		SimRng.randf()
+	_replay_do(world, rlog, { "verb": "water", "target": a, "actor": "player" })
+	_replay_do(world, rlog, { "verb": "eat_crop", "target": b, "actor": "crow" })
+	_replay_do(world, rlog, { "verb": "lay_egg", "target": Vector2i(7, 3), "actor": "chicken" })
+	_replay_do(world, rlog, { "verb": "sleep", "actor": "world" })
+	SimRng.randf()
+	_replay_do(world, rlog, { "verb": "water", "target": a, "actor": "player" })
+	_replay_do(world, rlog, { "verb": "sleep", "actor": "world" })
+	var hr := _replay_do(world, rlog, { "verb": "harvest", "target": a, "actor": "player" })
+	_assert(hr.get("ok", false) and hr.get("crop_type", "") == "wheat", "scripted session harvests wheat")
+	_replay_do(world, rlog, { "verb": "collect", "target": Vector2i(7, 3), "actor": "player" })
+	_replay_do(world, rlog, { "verb": "sell", "actor": "player" })
+	_assert(GameState.gold == 25, "scripted session earned wheat (15) + egg (10) gold")
+	var live_snap := _replay_snapshot(world)
+
+	var rlog2 := ReplayLog.from_json(rlog.to_json())
+	_assert(rlog2.entries.size() == rlog.entries.size(), "replay JSON round-trip keeps all entries")
+	var world2 := SimWorld.new()
+	rlog2.apply_to(world2, GameState)
+	var replay_snap := _replay_snapshot(world2)
+	_assert(replay_snap == live_snap, "replay reproduces exact end state despite RNG noise")
