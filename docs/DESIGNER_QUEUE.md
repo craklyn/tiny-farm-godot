@@ -39,19 +39,21 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
 - **Q-7b (Action → Claude)** Before the *first public release*: sanity-check that the
   placeholder assets (Sprout Lands) permit free public distribution with credit —
   free-to-play still distributes them (Q-6 makes releases public early).
-- **Q-8 (Ruling)** Movement scheme — **strawman ready in `M1_PLAN.md`** (tap-to-move
-  only; no virtual stick in v1). One-line accept/edit/reject.
-- **Q-9 (Creative + Playtest)** Onboarding — **strawman ready in `M1_PLAN.md`**
-  (wordless guided vignette: three sparkle-lit tiles, then discovery). Kid test is the
-  referee.
-- **Q-10 (Creative)** Pest feel — **strawman ready in `M1_PLAN.md`** (comedy not
-  threat; walk-to-scare; mercy rules: max one crop per visit, never the only crop).
-- **Q-11 (Ruling)** Energy friction — **strawman ready in `M1_PLAN.md`** (soft floor:
-  0 energy = slow walk + yawns, no lockout; hard energy returns in phase 2).
-  Flagged as the most taste-sensitive of the five.
-- **Q-12 (Creative)** Phase-1-complete moment — **strawman ready in `M1_PLAN.md`**
-  ("Expansion Morning": silent proof → gate opens to the phase-2 plot, wrapped
-  sprinkler part, confetti, no text).
+- **Q-8** ~~Movement scheme~~ — ✅ ruled 2026-08-19: tap-to-move only, accepted.
+  Spawned follow-up: **Q-28** below (interaction inventory).
+- **Q-9** ~~Onboarding~~ — ✅ ruled 2026-08-19: wordless sparkle vignette accepted
+  ("worth trying"); kid test remains the referee.
+- **Q-10** ~~Pest feel~~ — ✅ ruled 2026-08-19: comedy-not-threat accepted, with
+  emphasis on the *first introduction* of each pest being gentle.
+- **Q-11** ~~Energy friction~~ — ✅ ruled 2026-08-19: soft floor accepted — designer
+  notes it also teaches player expectations (energy will matter later).
+- **Q-12** ~~Phase-1-complete moment~~ — ✅ ruled 2026-08-19: Expansion Morning
+  accepted as direction; thresholds and staging explicitly fine-tunable at playtest
+  (it is provisional like everything — P-4 spirit).
+- **Q-28 (Joint, from Q-8 ruling)** Interaction inventory: enumerate every game
+  interaction phase-by-phase and match each to its best input method (touch primary,
+  desktop mappings). First pass before M3; re-audit at each phase's design start.
+  Home: `design/11-ux-ui.md`.
 - **Q-13 (Approval)** Audio direction one-pager — **draft ready**:
   `design/10-audio-direction.md` §"Direction proposal v1" (warm acoustic-toy identity,
   delegation arc scored, verb→foley table). Three taste questions at its end.
