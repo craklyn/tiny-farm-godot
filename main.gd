@@ -345,6 +345,19 @@ func _draw() -> void:
 		var rect := Rect2(px, py, TILE_SIZE, TILE_SIZE)
 		draw_rect(rect, cursor_color, false, 1.0)
 
+	# Q-9: wordless onboarding — sparkle-pulse the current vignette target
+	if farm != null and VignetteState.is_active(farm.sim, GameState.day):
+		var vt := VignetteState.target_tile(farm.sim)
+		if vt.x >= 0:
+			var ms := Time.get_ticks_msec()
+			var glow := 0.45 + 0.35 * sin(ms / 220.0)
+			var vr := Rect2(vt.x * TILE_SIZE, vt.y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
+			draw_rect(vr, Color(1.0, 1.0, 0.75, glow), false, 1.5)
+			var twinkle := 0.45 + 0.35 * sin(ms / 220.0 + PI)
+			for corner in [vr.position, vr.position + Vector2(TILE_SIZE - 2, 0),
+					vr.position + Vector2(0, TILE_SIZE - 2), vr.position + Vector2(TILE_SIZE - 2, TILE_SIZE - 2)]:
+				draw_rect(Rect2(corner, Vector2(2, 2)), Color(1.0, 1.0, 0.85, twinkle), true)
+
 	# Q-11: a softly pulsing cot nudges an exhausted farmer toward sleep
 	if GameState.energy <= 2 and _cot_tile.x >= 0:
 		var pulse := 0.25 + 0.2 * sin(Time.get_ticks_msec() / 300.0)

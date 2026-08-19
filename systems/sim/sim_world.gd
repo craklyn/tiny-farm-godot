@@ -10,6 +10,10 @@ extends RefCounted
 const MAP_WIDTH := 32
 const MAP_HEIGHT := 20
 
+# Q-9 onboarding vignette tiles (inside the guaranteed-clear spawn band)
+const VIGNETTE_WEED := Vector2i(4, 3)
+const VIGNETTE_PLANT := Vector2i(6, 3)
+
 # Fixed object positions (0-indexed tile coords)
 const OBJECT_POSITIONS: Array[Dictionary] = [
 	{ "type": "cot",          "tx": 2, "ty": 1 },
@@ -66,6 +70,11 @@ func generate() -> void:
 			if tx <= MAP_WIDTH - 2 and ty <= MAP_HEIGHT - 2:
 				if objects[ty][tx] == "":
 					tiles[ty][tx] = _create_tile("cleared")
+
+	# Q-9 onboarding vignette: one weed to clear, one tilled tile to plant and
+	# water, in the spawn band. Part of seeded generation, so replays match.
+	tiles[VIGNETTE_WEED.y][VIGNETTE_WEED.x] = _create_tile("obstacle_weed")
+	tiles[VIGNETTE_PLANT.y][VIGNETTE_PLANT.x] = _create_tile("tilled")
 
 
 func _create_tile(state: String) -> Dictionary:

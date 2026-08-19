@@ -36,6 +36,7 @@ func _init() -> void:
 	test_replay_from_save()
 	test_replay_flush()
 	test_crow_scared_verb()
+	test_vignette()
 
 	print("")
 	print(String("=").repeat(60))
@@ -718,3 +719,30 @@ func test_crow_scared_verb() -> void:
 	_assert(GameState.crows_scared == 2, "counter accumulates")
 	r = world.apply_action({ "verb": "crow_scared", "actor": "crow" })
 	_assert(not r.ok, "crow_scared without gs refused")
+
+func test_vignette() -> void:
+	print("\n--- Vignette (Q-9 onboarding) Tests ---")
+	GameState.reset()
+	var world := SimWorld.new()
+	SimRng.reseed(21)
+	world.generate()
+
+	var weed := SimWorld.VIGNETTE_WEED
+	var plant := SimWorld.VIGNETTE_PLANT
+	_assert(world.get_tile(weed.x, weed.y).state == "obstacle_weed", "new farm has vignette weed")
+	_assert(world.get_tile(plant.x, plant.y).state == "tilled", "new farm has vignette tilled tile")
+	_assert(VignetteState.current_step(world) == 0, "step 0: clear the weed")
+	_assert(VignetteState.target_tile(world) == weed, "target is the weed")
+	_assert(VignetteState.is_active(world, 1), "active on day 1")
+
+	world.apply_action({ "verb": "clear_weed", "target": weed, "actor": "player" }, GameState)
+	_assert(VignetteState.current_step(world) == 1, "step 1 after clearing")
+	_assert(VignetteState.target_tile(world) == plant, "target moves to plant tile")
+
+	world.apply_action({ "verb": "plant", "target": plant, "seed_type": "wheat", "actor": "player" }, GameState)
+	_assert(VignetteState.current_step(world) == 2, "step 2 after planting")
+
+	world.apply_action({ "verb": "water", "target": plant, "actor": "player" }, GameState)
+	_assert(VignetteState.current_step(world) == 3, "step 3 (done) after watering")
+	_assert(not VignetteState.is_active(world, 1), "inactive once complete")
+	_assert(not VignetteState.is_active(world, 2), "inactive from day 2 regardless")
