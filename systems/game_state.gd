@@ -26,6 +26,8 @@ var watering_can_charges: int
 var max_watering_can_charges: int
 var selected_seed_type: String
 var hard_energy: bool  # phase 1: false (soft floor, Q-11); phase 2+ flips true
+var crows_scared: int  # Q-12 proof counter (player-caused scares, via crow_scared verb)
+var total_shipped: int  # Q-12 proof counter (crops sold, any route)
 
 # Milestones tracking
 var _milestones_earned: Dictionary = {}
@@ -60,6 +62,8 @@ func reset() -> void:
 	max_watering_can_charges = 8
 	selected_seed_type = "wheat"
 	hard_energy = false
+	crows_scared = 0
+	total_shipped = 0
 	_milestones_earned = {}
 	game_paused = false
 	day_changed.emit(day)

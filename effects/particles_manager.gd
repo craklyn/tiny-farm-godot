@@ -66,6 +66,34 @@ func emit(effect_type: String, world_pos: Vector2) -> void:
 			mat.scale_min = 1.0
 			mat.scale_max = 1.5
 			mat.color = Color(0.6, 0.45, 0.25)
+		"feathers":
+			particles.amount = 14
+			particles.lifetime = 0.9
+			mat.direction = Vector3(0, -1, 0)
+			mat.spread = 180.0
+			mat.initial_velocity_min = 10.0
+			mat.initial_velocity_max = 30.0
+			mat.gravity = Vector3(0, 12.0, 0)  # feathers drift, not drop
+			mat.scale_min = 1.0
+			mat.scale_max = 1.8
+			mat.color = Color(0.95, 0.95, 0.95)
+		"confetti":
+			particles.amount = 26
+			particles.lifetime = 1.1
+			mat.direction = Vector3(0, -1, 0)
+			mat.spread = 180.0
+			mat.initial_velocity_min = 40.0
+			mat.initial_velocity_max = 90.0
+			mat.gravity = Vector3(0, 90.0, 0)
+			mat.scale_min = 1.0
+			mat.scale_max = 2.0
+			var ramp := Gradient.new()
+			ramp.set_color(0, Color(1.0, 0.4, 0.5))
+			ramp.set_color(1, Color(0.4, 0.7, 1.0))
+			ramp.add_point(0.5, Color(1.0, 0.9, 0.3))
+			var ramp_tex := GradientTexture1D.new()
+			ramp_tex.gradient = ramp
+			mat.color_initial_ramp = ramp_tex
 
 	particles.process_material = mat
 	add_child(particles)

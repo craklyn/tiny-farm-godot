@@ -8,7 +8,10 @@ var sfx_streams = {
     "click": preload("res://assets/audio/sfx/ui_click.wav"),
     "till": preload("res://assets/audio/sfx/till.wav"),
     "water": preload("res://assets/audio/sfx/water.wav"),
-    "harvest": preload("res://assets/audio/sfx/harvest.wav")
+    "harvest": preload("res://assets/audio/sfx/harvest.wav"),
+    "squawk": preload("res://assets/audio/sfx/squawk.wav"),
+    "cluck": preload("res://assets/audio/sfx/cluck.wav"),
+    "jingle": preload("res://assets/audio/sfx/jingle.wav")
 }
 
 func _ready():

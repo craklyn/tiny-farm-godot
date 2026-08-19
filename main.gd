@@ -198,6 +198,13 @@ func _process(delta: float) -> void:
 	if menus.is_open():
 		return
 
+	# Q-10: tapping the chicken clucks (peek only — the tap still moves the player)
+	if InputManager.has_click:
+		for child in entities.get_children():
+			if child.has_method("on_new_day") and InputManager.click_tile == Vector2i(child.tx, child.ty):
+				AudioManager.play_sfx("cluck")
+				break
+
 	# Player update
 	player.update_player(delta)
 	
@@ -211,7 +218,8 @@ func _process(delta: float) -> void:
 				var tile = farm.get_tile(tx, ty)
 				if not tile.is_empty() and (tile.state == "growing" or tile.state == "ready" or tile.state == "seeded"):
 					targets.append(Vector2i(tx, ty))
-		if targets.size() > 0:
+		# Q-10 mercy rule: never send a crow after the player's ONLY crop
+		if targets.size() > 1:
 			var target = targets[SimRng.randi() % targets.size()]
 			var CrowScript = load("res://entities/crow.gd")
 			var crow = CrowScript.new()
