@@ -319,6 +319,7 @@ func _execute_resolved_action(pa: Dictionary) -> void:
 		if obj == "egg":
 			farm.set_object(target_t.x, target_t.y, "")
 			GameState.crops["egg"] = GameState.crops.get("egg", 0) + 1
+			GameState.harvest_counts["egg"] = GameState.harvest_counts.get("egg", 0) + 1
 			AudioManager.play_sfx("harvest")
 		elif obj == "scarecrow":
 			farm.set_object(target_t.x, target_t.y, "")

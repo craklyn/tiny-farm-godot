@@ -29,6 +29,7 @@ func _init() -> void:
 	test_input_bleed()
 	test_swipe_chaining()
 	test_sim_rng()
+	test_milestones()
 
 	print("")
 	print(String("=").repeat(60))
@@ -447,3 +448,18 @@ func test_sim_rng() -> void:
 	for i in 8:
 		seq_c.append(SimRng.randi())
 	_assert(seq_a != seq_c, "Different seed produces different sequence")
+
+func test_milestones() -> void:
+	print("\n--- Milestone Tests ---")
+
+	GameState._milestones_earned = {}
+	GameState.gold = 0
+	GameState.harvest_counts = { "wheat": 1, "tomato": 1 }
+	GameState.check_milestones()
+	_assert(not GameState._milestones_earned.has("master_farmer"),
+		"Master Farmer not earned without egg (and no crash on wheat+tomato)")
+
+	GameState.harvest_counts = { "wheat": 1, "tomato": 1, "egg": 1 }
+	GameState.check_milestones()
+	_assert(GameState._milestones_earned.has("master_farmer"), "Master Farmer earned with wheat+tomato+egg")
+	_assert(GameState._milestones_earned.has("first_harvest"), "First Harvest earned")

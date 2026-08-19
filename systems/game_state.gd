@@ -150,7 +150,7 @@ func check_milestones() -> void:
 		{ "id": "master_farmer", "condition": (
 			harvest_counts.get("wheat", 0) >= 1 and
 			harvest_counts.get("tomato", 0) >= 1 and
-			harvest_counts.get(0) >= 1
+			harvest_counts.get("egg", 0) >= 1
 		), "msg": "Master Farmer!" },
 	]
 
