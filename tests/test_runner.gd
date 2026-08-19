@@ -34,6 +34,7 @@ func _init() -> void:
 	test_replay()
 	test_save_game()
 	test_replay_from_save()
+	test_replay_flush()
 
 	print("")
 	print(String("=").repeat(60))
@@ -668,3 +669,34 @@ func test_replay_from_save() -> void:
 	rlog2.apply_to(world3, GameState)
 	_assert(_replay_snapshot(world3) == live_snap, "continued session replays to identical end state")
 	_assert(GameState._milestones_earned.has("first_harvest"), "replayed actions earn milestones (sim truth)")
+
+func test_replay_flush() -> void:
+	print("\n--- ReplayLog append-only flush Tests ---")
+
+	var path := "user://test_flush_replay.json"
+	if FileAccess.file_exists(path):
+		DirAccess.remove_absolute(path)
+
+	var rlog := ReplayLog.new()
+	rlog.start(123)
+	rlog.record({ "verb": "till", "target": Vector2i(5, 2), "actor": "player" }, { "ok": true })
+	rlog.record({ "verb": "sleep", "actor": "world" }, { "ok": true, "weather": "sunny" })
+	_assert(rlog.flush_to(path), "first flush writes file")
+
+	rlog.record({ "verb": "water", "target": Vector2i(5, 2), "actor": "player" }, { "ok": true })
+	rlog.record({ "verb": "sleep", "actor": "world" }, { "ok": true, "weather": "rainy" })
+	_assert(rlog.flush_to(path), "second flush appends")
+	_assert(rlog.flush_to(path), "no-op flush with nothing new succeeds")
+
+	var loaded := ReplayLog.load_from(path)
+	_assert(loaded != null and loaded.entries.size() == 4, "flushed file loads all 4 entries")
+	_assert(loaded.gen_seed == 123, "flushed file keeps header gen_seed")
+	# JSON round-trips turn ints into floats, so byte-equality with the
+	# in-memory log is wrong by design; assert stability + verb sequence.
+	_assert(ReplayLog.from_json(loaded.to_json()).to_json() == loaded.to_json(),
+		"loaded log re-serializes stably")
+	var verbs: Array = []
+	for e in loaded.entries:
+		verbs.append(e.get("verb", ""))
+	_assert(verbs == ["till", "sleep", "water", "sleep"], "loaded entries keep order and verbs")
+	DirAccess.remove_absolute(path)

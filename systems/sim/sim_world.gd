@@ -158,10 +158,16 @@ func water_tile(tx: int, ty: int) -> void:
 # gs: GameState (player/economy state) — required for verbs that touch it.
 # Returns { ok: bool, reason: String, ...verb extras }. Mutation happens only
 # on ok. Guards mirror the pre-M2 player checks exactly (no new validation yet).
+# Verbs that can change milestone inputs (harvest counts, gold); other verbs
+# skip the check — it dominated fast-forward throughput when run per action.
+const MILESTONE_VERBS := { "harvest": true, "collect": true, "sell": true, "sleep": true, "buy_seed": true }
+
+
 func apply_action(action: Dictionary, gs = null) -> Dictionary:
 	var result := _apply(action, gs)
 	# Milestones are capability proofs (P-4) — sim truth, so replays earn them too
-	if result.get("ok", false) and gs != null and gs.has_method("check_milestones"):
+	if result.get("ok", false) and gs != null and MILESTONE_VERBS.has(action.get("verb", "")) \
+			and gs.has_method("check_milestones"):
 		gs.check_milestones()
 	return result
 

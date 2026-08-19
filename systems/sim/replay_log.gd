@@ -48,35 +48,70 @@ func apply_to(world: SimWorld, gs) -> void:
 		world.apply_action(_decode(e), gs)
 
 
+# On-disk/in-text format is JSONL: line 1 is a header {version, gen_seed,
+# base_save}; every following line is one entry. This makes per-sleep
+# persistence append-only (O(new entries), not O(session)) — the review-flagged
+# O(n^2) rewrite is gone.
+var _flushed := 0  # entries already on disk at the current flush target
+
+
 func to_json() -> String:
-	return JSON.stringify({
+	var lines: PackedStringArray = []
+	lines.append(JSON.stringify({
 		"version": VERSION,
 		"gen_seed": gen_seed,
 		"base_save": base_save,
-		"entries": entries,
-	})
+	}))
+	for e in entries:
+		lines.append(JSON.stringify(e))
+	return "\n".join(lines)
 
 
 static func from_json(text: String) -> ReplayLog:
 	var replay := ReplayLog.new()
-	var data = JSON.parse_string(text)
-	if data == null or typeof(data) != TYPE_DICTIONARY:
+	var lines := text.split("\n", false)
+	if lines.is_empty():
 		return replay
-	replay.gen_seed = int(data.get("gen_seed", 0))
-	var bs = data.get("base_save", {})
+	var header = JSON.parse_string(lines[0])
+	if header == null or typeof(header) != TYPE_DICTIONARY:
+		return replay
+	replay.gen_seed = int(header.get("gen_seed", 0))
+	var bs = header.get("base_save", {})
 	if typeof(bs) == TYPE_DICTIONARY:
 		replay.base_save = bs
-	for e in data.get("entries", []):
+	for i in range(1, lines.size()):
+		var e = JSON.parse_string(lines[i])
 		if typeof(e) == TYPE_DICTIONARY:
 			replay.entries.append(e)
 	return replay
 
 
+# Full rewrite (new file / format reset). Prefer flush_to for periodic saves.
 func save_to(path: String) -> bool:
 	var f := FileAccess.open(path, FileAccess.WRITE)
 	if f == null:
 		return false
 	f.store_string(to_json())
+	f.store_string("\n")
+	_flushed = entries.size()
+	return true
+
+
+# Append-only periodic save: writes only entries recorded since the last
+# flush. Falls back to a full write when the file doesn't exist yet.
+func flush_to(path: String) -> bool:
+	if _flushed == 0 or not FileAccess.file_exists(path):
+		return save_to(path)
+	if _flushed >= entries.size():
+		return true
+	var f := FileAccess.open(path, FileAccess.READ_WRITE)
+	if f == null:
+		return false
+	f.seek_end()
+	for i in range(_flushed, entries.size()):
+		f.store_string(JSON.stringify(entries[i]))
+		f.store_string("\n")
+	_flushed = entries.size()
 	return true
 
 

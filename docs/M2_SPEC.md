@@ -64,11 +64,11 @@ step — strangler-fig migration, never a big-bang rewrite.
 - Robot end-to-end session (automated human-path regression: simulated taps through
   the real scene → autosave + replay files → verify) — keeps the gate property
   continuously tested, not just proven once. ✅ landed 2026-08-19.
-- Tech debt (2026-08-19 code review): `ReplayLog.save_to` rewrites the whole session
-  on every sleep — O(n²) I/O over long sessions, and `entries` grows unboundedly in
-  memory. Move to an append-only on-disk format (header once, entries appended per
-  flush) before sessions get long; revisit no later than the D-2 spike, since training
-  reads these files.
+- ✅ Resolved (2026-08-19): replay persistence is now append-only JSONL
+  (`ReplayLog.flush_to` writes only entries since the last flush; header line carries
+  version/gen_seed/base_save). Remaining note: `entries` still lives in memory for the
+  session (fine at current scales; revisit if sessions reach tens of thousands of
+  actions).
 
 ## Risks / notes
 - `Input`-driven player movement stays event-driven at the edge; it *produces* Actions,

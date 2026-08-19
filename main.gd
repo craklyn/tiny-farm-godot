@@ -302,7 +302,7 @@ func _handle_action_result(action: String) -> void:
 					child.on_new_day()
 			SaveGame.save_to(GameState.save_path, farm.sim, GameState)
 			if farm.replay != null:
-				farm.replay.save_to(GameState.replay_path)
+				farm.replay.flush_to(GameState.replay_path)
 		)
 	elif action == "open_shop":
 		menus.open_menu("shop")
