@@ -1,2 +1,3 @@
-.godot/\n*.import\n*.translation\n*.tmp\n
-android/build/
+.DS_Store
+diff.txt
+diff_2.txt
