@@ -37,6 +37,7 @@ func _init() -> void:
 	test_replay_flush()
 	test_crow_scared_verb()
 	test_vignette()
+	test_phase1_proof()
 
 	print("")
 	print(String("=").repeat(60))
@@ -746,3 +747,36 @@ func test_vignette() -> void:
 	_assert(VignetteState.current_step(world) == 3, "step 3 (done) after watering")
 	_assert(not VignetteState.is_active(world, 1), "inactive once complete")
 	_assert(not VignetteState.is_active(world, 2), "inactive from day 2 regardless")
+
+func test_phase1_proof() -> void:
+	print("\n--- Phase-1 capability proof (Q-12) Tests ---")
+	GameState.reset()
+	var world := SimWorld.new()
+	SimRng.reseed(31)
+	world.generate()
+
+	# Negative: counters met but obstacles remain (vignette weed included)
+	GameState.total_shipped = SimWorld.PHASE1_SHIPPED_TARGET
+	GameState.crows_scared = SimWorld.PHASE1_SCARED_TARGET
+	var r := world.apply_action({ "verb": "sleep", "actor": "world", "weather": "sunny" }, GameState)
+	_assert(r.ok and not r.get("phase1_complete_now", false), "proof not met while yard has obstacles")
+	_assert(not GameState.phase1_complete, "flag stays false")
+
+	# Clear every obstacle, then sleep again
+	for ty in SimWorld.MAP_HEIGHT:
+		for tx in SimWorld.MAP_WIDTH:
+			if String(world.tiles[ty][tx].get("state", "")).begins_with("obstacle"):
+				world.set_tile_state(tx, ty, "cleared")
+	r = world.apply_action({ "verb": "sleep", "actor": "world", "weather": "sunny" }, GameState)
+	_assert(r.get("phase1_complete_now", false), "proof met once yard cleared + counters reached")
+	_assert(GameState.phase1_complete, "flag set")
+
+	r = world.apply_action({ "verb": "sleep", "actor": "world", "weather": "sunny" }, GameState)
+	_assert(not r.get("phase1_complete_now", false), "celebration fires exactly once")
+
+	# Below-threshold counters never pass even on a cleared yard
+	GameState.reset()
+	GameState.total_shipped = SimWorld.PHASE1_SHIPPED_TARGET - 1
+	GameState.crows_scared = SimWorld.PHASE1_SCARED_TARGET
+	r = world.apply_action({ "verb": "sleep", "actor": "world", "weather": "sunny" }, GameState)
+	_assert(not GameState.phase1_complete, "shipping below target does not complete phase 1")

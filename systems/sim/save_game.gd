@@ -32,6 +32,7 @@ static func capture(world: SimWorld, gs) -> Dictionary:
 			"hard_energy": gs.hard_energy,
 			"crows_scared": gs.crows_scared,
 			"total_shipped": gs.total_shipped,
+			"phase1_complete": gs.phase1_complete,
 			"milestones": gs._milestones_earned.duplicate(),
 		},
 	}
@@ -86,6 +87,7 @@ static func restore(data: Dictionary, world: SimWorld, gs) -> bool:
 	gs.hard_energy = bool(s.get("hard_energy", false))
 	gs.crows_scared = int(s.get("crows_scared", 0))
 	gs.total_shipped = int(s.get("total_shipped", 0))
+	gs.phase1_complete = bool(s.get("phase1_complete", false))
 	gs._milestones_earned = s.get("milestones", {}).duplicate()
 
 	gs.day_changed.emit(gs.day)

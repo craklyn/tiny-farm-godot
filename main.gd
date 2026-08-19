@@ -312,13 +312,15 @@ func _handle_action_result(action: String) -> void:
 	if action == "sleep":
 		day_cycle.set_day_display(GameState.day + 1)
 		day_cycle.start_sleep(func():
-			farm.apply_action({ "verb": "sleep", "actor": "world" }, GameState)
+			var sleep_result: Dictionary = farm.apply_action({ "verb": "sleep", "actor": "world" }, GameState)
 			for child in entities.get_children():
 				if child.has_method("on_new_day"):
 					child.on_new_day()
 			SaveGame.save_to(GameState.save_path, farm.sim, GameState)
 			if farm.replay != null:
 				farm.replay.flush_to(GameState.replay_path)
+			if sleep_result.get("phase1_complete_now", false):
+				_celebrate_expansion_morning()
 		)
 	elif action == "open_shop":
 		menus.open_menu("shop")
@@ -331,6 +333,16 @@ func _on_menu_action(action: String) -> void:
 
 func trigger_action(action: String) -> void:
 	_handle_action_result(action)
+
+
+# Q-12 Expansion Morning v1: jingle + a confetti sweep across the farm, no
+# text. The literal gate/new-plot staging lands with the M3 world expansion
+# (thresholds and staging are designer-tunable at playtest).
+func _celebrate_expansion_morning() -> void:
+	AudioManager.play_sfx("jingle")
+	for i in 7:
+		var px := (4 + i * 4) * TILE_SIZE
+		spawn_particles("confetti", Vector2(px, 6 * TILE_SIZE))
 
 
 func spawn_particles(effect_type: String, world_pos: Vector2) -> void:

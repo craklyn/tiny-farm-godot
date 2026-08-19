@@ -28,6 +28,7 @@ var selected_seed_type: String
 var hard_energy: bool  # phase 1: false (soft floor, Q-11); phase 2+ flips true
 var crows_scared: int  # Q-12 proof counter (player-caused scares, via crow_scared verb)
 var total_shipped: int  # Q-12 proof counter (crops sold, any route)
+var phase1_complete: bool  # Q-12/P-4: set silently by the sim at sleep when the proof is met
 
 # Milestones tracking
 var _milestones_earned: Dictionary = {}
@@ -64,6 +65,7 @@ func reset() -> void:
 	hard_energy = false
 	crows_scared = 0
 	total_shipped = 0
+	phase1_complete = false
 	_milestones_earned = {}
 	game_paused = false
 	day_changed.emit(day)
@@ -128,6 +130,7 @@ func sell_crops_to_bin() -> bool:
 			if not def.is_empty():
 				gold += count * def.sell_price
 			crops[crop_type] = 0
+			total_shipped += count
 			sold_anything = true
 	if sold_anything:
 		gold_changed.emit(gold)
@@ -144,6 +147,7 @@ func process_shipping_bin() -> void:
 			if not def.is_empty():
 				gold += count * def.sell_price
 			shipping_bin[crop_type] = 0
+			total_shipped += count
 	gold_changed.emit(gold)
 
 
