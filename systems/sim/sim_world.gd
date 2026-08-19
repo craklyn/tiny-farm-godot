@@ -219,7 +219,13 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 				gs.weather_changed.emit(gs.weather)
 			advance_day(gs.weather)
 			gs.process_shipping_bin()
-			return { "ok": true, "day": gs.day, "weather": gs.weather }
+			# Q-12/P-4: silent capability proof, measured at sleep; the flag
+			# flips once, and the result tells presentation to celebrate
+			var newly_complete := false
+			if not gs.phase1_complete and _phase1_proof_met(gs):
+				gs.phase1_complete = true
+				newly_complete = true
+			return { "ok": true, "day": gs.day, "weather": gs.weather, "phase1_complete_now": newly_complete }
 
 		# -- entity verbs --
 		"eat_crop":
@@ -282,6 +288,23 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 
 func _fail(reason: String) -> Dictionary:
 	return { "ok": false, "reason": reason }
+
+
+# Q-12 phase-1 proof thresholds — provisional, fine-tuned at playtest
+const PHASE1_SHIPPED_TARGET := 20
+const PHASE1_SCARED_TARGET := 3
+
+
+func _phase1_proof_met(gs) -> bool:
+	if gs.total_shipped < PHASE1_SHIPPED_TARGET:
+		return false
+	if gs.crows_scared < PHASE1_SCARED_TARGET:
+		return false
+	for ty in MAP_HEIGHT:
+		for tx in MAP_WIDTH:
+			if String(tiles[ty][tx].get("state", "")).begins_with("obstacle"):
+				return false
+	return true
 
 
 func advance_day(weather: String) -> void:
