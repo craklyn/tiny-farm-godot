@@ -4,8 +4,8 @@ extends Node2D
 
 const TILE_SIZE := 16
 const CAMERA_SCALE := 3
-const MAP_WIDTH := 32
-const MAP_HEIGHT := 20
+const MAP_WIDTH := SimWorld.MAP_WIDTH
+const MAP_HEIGHT := SimWorld.MAP_HEIGHT
 
 # Scene references
 var farm: Node2D
@@ -40,12 +40,31 @@ func _ready() -> void:
 	var gen_seed := randi()
 	SimRng.reseed(gen_seed)
 
-	# Create farm
+	# Create farm. When continuing, the saved world must be restored BEFORE
+	# anything reads the grid (player spawn, chicken placement), and the
+	# throwaway generation is skipped entirely.
+	var pending := GameState.pending_load
+	GameState.pending_load = false
+	var save_data: Dictionary = SaveGame.load_dict(GameState.save_path) if pending else {}
+
 	var FarmScript = load("res://world/farm.gd")
 	farm = FarmScript.new()
 	farm.name = "Farm"
+	farm.generate_on_ready = save_data.is_empty()
 	add_child(farm)
-	farm.start_replay_log(gen_seed)
+
+	var restored := false
+	if not save_data.is_empty():
+		restored = SaveGame.restore(save_data, farm.sim, GameState)
+		if restored:
+			farm.start_replay_log_from_save(save_data)
+		else:
+			_backup_unloadable_save()
+	if not restored:
+		if not save_data.is_empty():
+			farm.sim.generate()  # restore failed after generation was skipped
+		farm.start_replay_log(gen_seed)
+	farm.queue_redraw()
 
 	# Create player
 	var PlayerScript = load("res://player/player.gd")
@@ -53,7 +72,8 @@ func _ready() -> void:
 	player.name = "Player"
 	add_child(player)
 	player.farm = farm
-	player.init_position(2, 2)  # Near the cot
+	var spawn := _find_spawn_tile(Vector2i(2, 2))  # near the cot
+	player.init_position(spawn.x, spawn.y)
 
 	# Create entity manager
 	entities = Node2D.new()
@@ -125,16 +145,29 @@ func _ready() -> void:
 	add_child(day_cycle)
 
 	GameState.weather_changed.connect(_on_weather_changed)
-
-	# Continue from autosave when the title screen requested it
-	if GameState.pending_load:
-		GameState.pending_load = false
-		var save_data := SaveGame.load_dict(GameState.save_path)
-		if not save_data.is_empty() and SaveGame.restore(save_data, farm.sim, GameState):
-			farm.start_replay_log_from_save(save_data)
-			farm.queue_redraw()
-
 	_on_weather_changed(GameState.weather)
+
+
+func _find_spawn_tile(preferred: Vector2i) -> Vector2i:
+	# A restored save can have an object on the default spawn tile
+	if farm.is_walkable(preferred.x, preferred.y):
+		return preferred
+	for radius in range(1, 6):
+		for dy in range(-radius, radius + 1):
+			for dx in range(-radius, radius + 1):
+				var t := preferred + Vector2i(dx, dy)
+				if farm.is_walkable(t.x, t.y):
+					return t
+	return preferred
+
+
+func _backup_unloadable_save() -> void:
+	# A save exists but this build can't load it (corrupt, or written by a
+	# newer version). Park copies so the next sleep's autosave can't destroy it.
+	DirAccess.copy_absolute(GameState.save_path, GameState.save_path + ".unloadable")
+	if FileAccess.file_exists(GameState.replay_path):
+		DirAccess.copy_absolute(GameState.replay_path, GameState.replay_path + ".unloadable")
+	push_warning("Autosave could not be loaded; preserved at %s.unloadable" % GameState.save_path)
 
 func _on_weather_changed(weather: String) -> void:
 	if rain_particles:
@@ -177,10 +210,11 @@ func _process(delta: float) -> void:
 			crow.init_crow(-32.0, -32.0, target.x, target.y, farm, player, entities)
 			entities.add_child(crow)
 
-	# Action
+	# Action. Dispatch happens inside the player (sleep/open_shop arrive back
+	# here via call_deferred -> trigger_action); routing the return value too
+	# would double-fire those verbs.
 	if Input.is_action_just_pressed("action") and not player.is_acting:
-		var action: String = player.handle_action()
-		_handle_action_result(action)
+		player.handle_action()
 
 	# Swipe-chaining
 	if InputManager.swipe_active and InputManager.swipe_moved:
@@ -198,7 +232,6 @@ func _process(delta: float) -> void:
 				else:
 					player.facing = "down" if fdy > 0 else "up"
 				player._execute_resolved_action(resolved)
-				GameState.check_milestones()
 
 	# Seed type cycling with number keys when Seeds tool is active
 	var current_tool_idx := GameState.selected_tool
@@ -273,8 +306,6 @@ func _handle_action_result(action: String) -> void:
 		)
 	elif action == "open_shop":
 		menus.open_menu("shop")
-	else:
-		GameState.check_milestones()
 
 
 func _on_menu_action(action: String) -> void:

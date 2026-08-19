@@ -74,16 +74,8 @@ func _ready() -> void:
 	if rlog == null or save.is_empty():
 		_check(false, "robot files loadable")
 	else:
-		var gs_replay = load("res://systems/game_state.gd").new()
-		var world_replay := SimWorld.new()
-		rlog.apply_to(world_replay, gs_replay)
-		var gs_save = load("res://systems/game_state.gd").new()
-		var world_save := SimWorld.new()
-		SaveGame.restore(save, world_save, gs_save)
-		var matched := SaveGame.capture_canonical(world_replay, gs_replay) == SaveGame.capture_canonical(world_save, gs_save)
-		_check(matched, "robot session replay MATCHES its autosave (%d entries)" % rlog.entries.size())
-		gs_replay.free()
-		gs_save.free()
+		_check(SaveGame.replay_matches(rlog, save),
+			"robot session replay MATCHES its autosave (%d entries)" % rlog.entries.size())
 
 	print("=".repeat(60))
 	print("Results: %s" % ("FAILED" if failed else "PASSED"))

@@ -468,6 +468,12 @@ func test_milestones() -> void:
 	_assert(GameState._milestones_earned.has("master_farmer"), "Master Farmer earned with wheat+tomato+egg")
 	_assert(GameState._milestones_earned.has("first_harvest"), "First Harvest earned")
 
+	GameState._milestones_earned = {}
+	GameState.harvest_counts = { "egg": 1 }
+	GameState.check_milestones()
+	_assert(not GameState._milestones_earned.has("first_harvest"),
+		"Egg alone does not earn First Harvest (harvest totals exclude eggs)")
+
 func test_sim_actions() -> void:
 	print("\n--- SimWorld apply_action Tests ---")
 
@@ -541,12 +547,9 @@ func _replay_do(world: SimWorld, rlog: ReplayLog, action: Dictionary) -> Diction
 	return r
 
 func _replay_snapshot(world: SimWorld) -> String:
-	return JSON.stringify({
-		"tiles": world.tiles, "objects": world.objects,
-		"gs": [GameState.day, GameState.energy, GameState.gold, GameState.weather,
-			GameState.seeds, GameState.crops, GameState.harvest_counts,
-			GameState.shipping_bin, GameState.watering_can_charges],
-	})
+	# One definition of "sim truth" everywhere: same canonical form the
+	# verification tools use (includes milestones and max fields).
+	return SaveGame.capture_canonical(world, GameState)
 
 func test_replay() -> void:
 	print("\n--- Replay Determinism Tests ---")
@@ -655,9 +658,7 @@ func test_replay_from_save() -> void:
 		{ "verb": "sell", "actor": "player" },
 	]
 	for a in actions:
-		var r: Dictionary = world2.apply_action(a, GameState)
-		if r.get("ok", false):
-			rlog.record(a, r)
+		_replay_do(world2, rlog, a)
 	_assert(GameState.gold == 15, "continue session harvested and sold wheat")
 	var live_snap := _replay_snapshot(world2)
 

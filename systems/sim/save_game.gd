@@ -39,15 +39,28 @@ static func restore(data: Dictionary, world: SimWorld, gs) -> bool:
 	if d.is_empty():
 		return false
 
+	# Structural validation: a version-valid save with missing or truncated
+	# grids must be rejected, not restored into undersized arrays.
 	var w: Dictionary = d.get("world", {})
+	var in_tiles: Array = w.get("tiles", [])
+	var in_objects: Array = w.get("objects", [])
+	if in_tiles.size() != SimWorld.MAP_HEIGHT or in_objects.size() != SimWorld.MAP_HEIGHT:
+		return false
+	for row in in_tiles:
+		if not (row is Array) or row.size() != SimWorld.MAP_WIDTH:
+			return false
+	for row in in_objects:
+		if not (row is Array) or row.size() != SimWorld.MAP_WIDTH:
+			return false
+
 	world.tiles.clear()
-	for row in w.get("tiles", []):
+	for row in in_tiles:
 		var r: Array = []
 		for tile in row:
 			r.append(_normalize_tile(tile))
 		world.tiles.append(r)
 	world.objects.clear()
-	for row in w.get("objects", []):
+	for row in in_objects:
 		var r2: Array = []
 		for obj in row:
 			r2.append(String(obj))
@@ -115,11 +128,19 @@ static func load_dict(path: String) -> Dictionary:
 	return data
 
 
-static func load_from(path: String, world: SimWorld, gs) -> bool:
-	var data := load_dict(path)
-	if data.is_empty():
-		return false
-	return restore(data, world, gs)
+# Shared verification: does a session's action log reproduce this save exactly?
+# Used by tools/verify_replay.gd and tools/robot_session.gd.
+static func replay_matches(rlog: ReplayLog, save: Dictionary) -> bool:
+	var gs_replay = load("res://systems/game_state.gd").new()
+	var world_replay := SimWorld.new()
+	rlog.apply_to(world_replay, gs_replay)
+	var gs_save = load("res://systems/game_state.gd").new()
+	var world_save := SimWorld.new()
+	restore(save, world_save, gs_save)
+	var matched := capture_canonical(world_replay, gs_replay) == capture_canonical(world_save, gs_save)
+	gs_replay.free()
+	gs_save.free()
+	return matched
 
 
 # JSON turns ints into floats and has no bool guarantees across tools;

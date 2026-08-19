@@ -261,7 +261,10 @@ Current map is 32×20 tiles; phase 4 fiction says "too large to manage manually"
 
 ## Performance guardrails (adopt now, cheap; retrofit later, expensive)
 
-- Game truth advances only in the sim tick; `_process` is presentation-only.
+- Game truth changes only through `SimWorld.apply_action` (S-3). A fixed truth tick is
+  deferred until phase-4 prep (`M2_SPEC.md` step 2): entity `_process` code may run
+  timers and decision processes, but every world mutation they decide on goes through
+  the gateway.
 - No per-tile per-frame work anywhere; per-tick work scales with *active entities*, not map
   area.
 - All randomness in layers 1–3 flows through the seeded sim RNG — never `randi()` in
