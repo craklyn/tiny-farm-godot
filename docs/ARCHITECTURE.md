@@ -1,0 +1,273 @@
+# Architecture Skeleton
+
+*The technical spine that has to hold all five phases. Grounded in what the prototype
+already does; the gaps are scheduled in `ROADMAP.md`. Decisions referenced as S-#/P-#/D-#
+live in `DECISION_LOG.md`.*
+
+## What already exists (and is the right shape)
+
+| Piece | File | Why it matters long-term |
+|---|---|---|
+| Tile grid + state machine | `world/farm.gd` | S-4: universal substrate for all phases |
+| Tap → resolved action | `systems/action_router.gd` | The embryo of the unified Action layer (S-3) |
+| Input abstraction (touch/mouse/kb/pad) | `systems/input_manager.gd` | S-6: input already separated from intent |
+| Global state + signals + milestones | `systems/game_state.gd` | Milestone signal is the seed of capability-proof gates (P-4) |
+| Day/energy cycle | `systems/day_cycle.gd` | The "overnight" slot where training will live |
+| A* pathfinding | `systems/pathfinding.gd` | Shared by player, pests, and future bots |
+| Headless test runner | `tools/test_runner.gd`, `tests/` | S-8; becomes trivial once S-5 lands |
+
+## The five-layer target shape
+
+```
+┌────────────────────────────────────────────────────────┐
+│ 5. Presentation   rendering, camera, audio, particles  │  reads sim, never writes it
+├────────────────────────────────────────────────────────┤
+│ 4. Input          touch/mouse/kb/pad → raw gestures    │  (input_manager.gd)
+├────────────────────────────────────────────────────────┤
+│ 3. Intent         gesture or bot-policy → Action       │  (action_router.gd + bot brains)
+├────────────────────────────────────────────────────────┤
+│ 2. Simulation     deterministic tick over grid + actors│  headless, seeded, fast-forward
+├────────────────────────────────────────────────────────┤
+│ 1. Data           tile/crop/pest/tower/bot definitions │  plain resources, no logic
+└────────────────────────────────────────────────────────┘
+```
+
+The load-bearing rule: **layers 1–3 must run with layer 5 absent.** Player and bots are
+both "layer-3 policies" that read observations from layer 2 and emit Actions into it.
+That single property gives us overnight training, TD wave previews, capability-proof
+gates, and honest automated tests, all from one mechanism.
+
+## The Action record (S-3)
+
+One shape for every world mutation, roughly:
+
+```gdscript
+Action { actor_id, verb, target_tile, params }   # verb: move_to, till, plant, water,
+                                                 # harvest, clear_rock, attack, place_tower,
+                                                 # refill, sleep, ...
+Observation { egocentric grid patch, self stats, nearby-entity summary, day/weather }
+```
+
+- The verb set grows per phase but never forks per actor: bots get no verb the player
+  lacks (S-3).
+- A replay is `[(Observation, Action)]`. Replays are savable, and phase 4's "choose your
+  training data" UI operates on saved replays. This costs almost nothing to log from day
+  one and is priceless later — start logging at M2.
+
+## Phase-4 ML: feasibility sketch and budgets
+
+### Hard budgets (design constraints, not aspirations)
+
+| Thing | Budget |
+|---|---|
+| Overnight training wall-clock | ≤ ~15 s on a mid-range Android phone (maskable by a "training montage" screen up to ~30 s) |
+| Inference | dozens of bots × ~2–10 decisions/s, well under one frame's budget combined |
+| Trainable params on device (overnight) | ~1k–50k per training run — a whole small policy *or* a low-rank adapter on a frozen base (see the adapter path below) |
+| Total policy size (inference-bound) | up to ~1–5M params for fleets at strategic cadence; larger for ≤8-bot squads; frozen bases quantize to int8 |
+| Sim speed for RL | headless fast-forward ≥ ~100× real time on-device (benchmark in the D-2 spike) |
+
+### Why this is genuinely feasible
+
+The farm is a discrete gridworld with a small verb set — the classic setting where small
+models actually work. Egocentric grid-patch observations (say 7×7×channels) plus a few
+scalars feed a 2-layer MLP; behavior cloning on a few thousand (Observation, Action) pairs
+converges in seconds *on a phone*. That is the honest floor of "real ML" and it ships the
+fantasy: your bot farms like *you* farm, because it learned from *your* replays.
+
+### The technique ladder = the unlock ladder (P-5)
+
+| Game unlock | Real technique underneath |
+|---|---|
+| Factory firmware | Tier 0: scripted FSM. Later tiers: a shipped, dev-pretrained base policy ("factory weights") |
+| Imitation core | Behavior cloning on player-selected replays |
+| Overnight practice | RL in the fast-forwarded sim: start with evolutionary strategies or value-based methods on tiny nets — pick in the D-2 spike |
+| Vision I/II/... | Larger observation patch radius |
+| Audio detection | Extra observation channel: recent sound events with direction |
+| Model size I/II/... | Early: wider/deeper fully-trainable MLP; later: larger frozen pretrained base tiers |
+| Training rank I/II/... | Adapter (LoRA) rank on the frozen base — how much trainable "personality" a bot can hold |
+| Combat modules | Verb-set expansion + reward terms for pest handling |
+
+### Pretrained base + player-trained adapters (the LoRA path)
+
+The budget table originally conflated two ceilings. On-device *training* bounds trainable
+parameters (~1k–50k overnight). *Inference* bounds total parameters — and that ceiling is
+~100× higher. A dev-time-pretrained base policy shipped with the game splits them: the
+base grows to what inference affords; the player's overnight training touches only a
+low-rank adapter (e.g. rank 4–8 on a ~1M-param base ≈ 10–50k trainable params — inside
+the same overnight budget), and fine-tuning a competent prior is far more sample-efficient
+and stable than training from scratch.
+
+- **Per-bot minds on one shared brain.** Base weights shared once (1M params fp16 ≈ 2 MB);
+  each bot may carry its own adapter (~80 KB; 50 bots ≈ 4 MB). Serve *unmerged*: batch
+  the frozen base forward pass across all bots, add each bot's `B(Ax)` delta individually
+  — multi-adapter serving costs two extra small matvecs per bot. No weight swapping
+  needed.
+- **Factory reset for free.** Delete the adapter → factory-fresh bot. Bad training data
+  becomes recoverable (and funny) instead of save-breaking. Legibility win for D-4.
+- **Fiction alignment.** The shipped base *is* "factory firmware." A fleet-wide shared
+  adapter is a firmware rollout (P-7's parameter-sharing economics: overnight cost scales
+  with *distinct adapters trained*, not fleet size). A per-bot adapter is an *individual*
+  — the leading mechanism for bots becoming named characters worth taking on phase-5
+  expeditions.
+- **What it does NOT buy:** shorter RL horizons. Credit assignment and sim throughput are
+  untouched, so P-8 (options over ticks) stands. It does soften the tactical tier: a base
+  pretrained at dev time for per-tick combat competence means squad adapters learn only
+  small behavioral deltas — per-tick learning for ≤8 phase-5 bots is easier than the raw
+  numbers suggest.
+- **Cost moved, not destroyed:** pretraining becomes a dev-time pipeline (task curriculum
+  + domain randomization over farm layouts so the base generalizes to farms it has never
+  seen). Validated in the D-2 spike.
+- **When to skip it:** at ≤~50k params, full fine-tuning is already trivial — no LoRA.
+  Adapters earn their keep only once bases outgrow the on-device training budget; the
+  ladder's early tiers stay small, fully-player-trained, and maximally legible.
+
+### Runtime strategy
+
+- **Development:** validate learnability offline in Python (e.g. godot-rl-agents-style
+  external training) to tune reward shaping and difficulty *before* committing the
+  in-engine implementation. Re-survey the ecosystem at the D-2 trigger; do not trust
+  today's library landscape.
+- **Shipping:** in-engine implementation of the minimal chosen algorithms (forward pass +
+  SGD for cloning + the chosen RL step) in C# or a small GDExtension. No Python, no ONNX
+  dependency on the player's device unless the spike proves we need one.
+- **Determinism note:** training uses the seeded sim (S-5); a given (dataset, seed, model
+  size) reproduces the same bot. Good for debugging, and quietly good for players sharing
+  "builds" someday (D-6).
+
+## Multi-agent design space
+
+### Communication between agents (P-7)
+
+Squad tactics with limited-perception agents is supported, but *not* via emergent learned
+protocols (research-grade, sample-hungry, illegible to players — out of budget and out of
+character). Instead: **designed vocabulary, learned usage.**
+
+- A message is just another Action verb: `ping(token, target_tile?)` with a small fixed
+  token set (`danger`, `found_food`, `help_here`, `done`, ...). Range-limited.
+- Received messages are an observation channel: a short buffer of recent messages with
+  direction and recency. This *is* the audio-detection channel already on the unlock
+  ladder — audio detection = receive; a "speaker" module = transmit; comms range is an
+  upgrade axis.
+- Tier 0 is stigmergy: markers/flags placed on the grid as world objects (communication
+  through the environment). Cheapest, most legible, very kid-visible — and generalized
+  into the scent layer below (P-10).
+- Agents learn *when* to emit and *how* to react — semantics are fixed by design. That
+  makes cooperative behavior trainable at our scale (BC seeding + joint rollouts in the
+  fast-forward sim, shared reward), and legible: the player watches a bot that saw a pest
+  alert one that didn't.
+- **The player speaks the same channel** (S-3): a `command` verb emitting high-priority
+  tokens into the same message system. Phase-5 squad orders are literally messages —
+  "command, don't twitch" extends to leading the squad, and command-following is itself
+  learned/unlocked.
+- Training note: use parameter sharing — bots running the same "model" share one policy
+  network (fiction: same firmware; math: training cost independent of fleet size; one
+  bot's overnight learning improves the whole fleet).
+- Fun deferred flavor: enemies with audio perception could *intercept* pings —
+  counterplay for later phases.
+
+### The scent layer (P-10)
+
+Stigmergy generalized into world infrastructure: one or more scalar channels over the
+grid (`pheromone`, `repellent`, `lure`, `wear`, ...) that entities write by acting and
+read by sensing. It is sim truth (layer 2), not a visual effect.
+
+**Representation and cost model:**
+- Write-on-event: an entity deposits scent on the tiles it touches — O(actors), not
+  O(tiles).
+- Decay-on-tick, lazily: store `(value, last_updated_tick)` per touched tile and compute
+  current value on read via the decay curve — touched-tile bookkeeping only, and idle
+  tiles cost literally nothing. **No per-tile diffusion sim, ever** (P-10 guardrail); if
+  a "spread" feel is needed, deposit with a small radius/falloff at write time instead.
+- Resolution may be coarser than the farm grid (e.g. 2×2 tiles per scent cell) if
+  profiling asks for it.
+
+**Readers and writers by phase:**
+- Phase 2 — pest raids *are* trail dynamics: scouts wander and mark; foragers follow the
+  gradient; success reinforces, time decays. Group behavior emerges from the layer, so
+  difficulty tuning = decay/reinforcement constants, not spawn counts.
+- Phase 2 counterplay maps to existing verbs, no new UI: watering can washes trails, a
+  stomp removes a scout before it reports, the hoe digs trail breaks. Kid-legible.
+- Phase 3 — towers write persistent fields: repellent (negative) and lure (attractant)
+  gradients steer trail-following waves. Tower defense becomes gradient engineering.
+- Phase 4/5 — bots can read scent as an observation channel (a natural "smell" sensor
+  unlock beside vision and audio); expeditions track pest trails backward to the nest.
+- Ambient — desire paths: a `wear` channel written by all movement, rendered as worn
+  ground. Costs one channel; makes the farm visibly remember how it is used.
+
+**Presentation:** a scent-overlay toggle renders the layer honestly (tinted tiles /
+heat-map). It is both a D-4 candidate (truthful AI visualization) and a gameplay tool
+(read the battlefield before a raid).
+
+### Verb-complete entities (P-9)
+
+Because the sim doesn't care who emits Actions (S-3), an entity with the *full* player
+verb set costs nothing extra architecturally. Guardrail that keeps this true: anything
+that changes the world is a verb (shop transactions included); UI navigation is never a
+verb. Brains are independent of verb sets — scripted FSMs, classical planners
+(GOAP/behavior trees), or learned policies can all drive a verb-complete body. Design
+space this opens (specific entities tied to D-3): rival farmers who till/plant/defend
+with your exact toolkit, a pest queen that *farms her own resources*, wild bots, phase-5
+enemy commanders. Existing pests already use verb *subsets* (the crow steals ≈ harvest);
+verb-complete rivals are the natural late-game generalization. Classical planners are the
+right first brain for these (legible, tunable difficulty); self-play training is possible
+but expensive — treat as an experiment, not a plan.
+
+### Control granularity and agent-count budgets (P-8)
+
+Two candidate granularities, with very different economics:
+
+| Tier | Decides | Executes | Cost/agent | Realistic on-screen (mobile) | Binding constraint |
+|---|---|---|---|---|---|
+| Scripted/FSM (wildlife, TD creeps) | n/a | tick-level scripts, flow fields | negligible | 500–1000+ | rendering + sim iteration |
+| **Strategic learned (options)** | option/subgoal at ~1 Hz or on-event | deterministic controllers (A*, action sequences) | µs per decision, batched | **200–500** | pathfinding + observation building |
+| Tactical learned (per-tick) | every sim tick (~10 Hz) | directly | ~10–20 µs/tick batched in C# | 50–100+ | observation encoding + **training feasibility** |
+| Tactical in naive GDScript | every tick | directly | ~ms/tick | 5–10 | interpreter overhead |
+
+Back-of-envelope for the learned tiers: a ~27k-param MLP (7×7×8 egocentric patch + 16
+scalars → 64 hidden → 16 verbs) is ~100k FLOPs per forward pass. 100 agents × 10 Hz =
+0.1 GFLOP/s — trivial for a phone *in compiled, batched code*, ~1000× slower interpreted.
+**Inference is essentially never the limit; the hot path must be C#/GDExtension and
+batched (matrix-matrix across agents).** The real limits are pathfinding (stagger
+requests; hierarchical A* at scale; flow fields for TD waves), building observations
+(slice cached world tensors, don't rebuild per agent), rendering (MultiMesh past a few
+hundred animated sprites), and above all *training*.
+
+Training is why we commit to **hierarchical control as the default**: learned policies
+choose *options* (go-to, work-plot, flee, ping, engage); deterministic controllers
+execute at tick level. Options shorten RL horizons from thousands of ticks to dozens of
+decisions, and let overnight training fast-forward semi-analytically (skip the walking —
+compute path duration and outcome), reaching effective 1000×+ sim speeds where per-tick
+training would strain the ≥100× floor. Per-tick learned control is reserved for small
+squads (≤~8, phase-5 combat micro) where both inference and training stay affordable.
+
+Additional guardrail: **decision LOD** — off-screen/distant agents decide less often and
+execute coarsely (compute work outcomes, skip animation-level sim), with care to keep
+outcomes deterministic and fair.
+
+A realistic worst-case scene under these budgets — phase 4 farm: ~12 player bots
+(strategic learned) + ~40 raiding pests (scripted, flow fields) + ~8 towers + wildlife —
+is comfortably inside budget on mid-range mobile. Phase 5: ≤8 tactical learned squad +
+dozens of scripted/strategic enemies — also fine.
+
+## World scale plan (P-3)
+
+Current map is 32×20 tiles; phase 4 fiction says "too large to manage manually" — plan for
+~10× linear growth. Consequences to build toward, not retrofit:
+- Chunked tile storage and rendering (only visible chunks draw; sim iterates active sets,
+  e.g. sprinklers/towers/bots, not every tile every tick).
+- Camera altitude tiers tied to progression (the "altitude as progression" pillar).
+- Save format that tolerates map growth and schema evolution from v1 — version field and
+  migration hooks from the first save file we ever ship.
+
+## Performance guardrails (adopt now, cheap; retrofit later, expensive)
+
+- Game truth advances only in the sim tick; `_process` is presentation-only.
+- No per-tile per-frame work anywhere; per-tick work scales with *active entities*, not map
+  area.
+- All randomness in layers 1–3 flows through the seeded sim RNG — never `randi()` in
+  gameplay code.
+- GDScript until profiling says otherwise; the known hot spots (sim fast-forward, NN math)
+  are exactly the pieces already earmarked for C#/GDExtension.
+- Scent layer (P-10): write-on-event + lazy decay-on-read only — no per-tile diffusion
+  pass, no per-frame scent iteration. If it ever shows up in a profile, coarsen the
+  resolution; never add a diffusion loop.
