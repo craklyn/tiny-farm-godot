@@ -1,8 +1,9 @@
 # M1 Plan — Touch-First Phase 1, Kid-Tested
 
-*Working plan for milestone M1. Exit gate (ROADMAP): the 4-year-old playtest — she
-clears, plants, waters, and harvests a crop on a tablet with no adult hands on the
-screen. Q-6 adds a second consequence: M1 ends in the first public free release.*
+*Working plan for milestone M1. Its exit gate — the pass/fail criterion defined in
+`ROADMAP.md` that marks the milestone done — is the 4-year-old playtest: she clears,
+plants, waters, and harvests a crop on a tablet with no adult hands on the screen.
+Q-6 adds a second consequence: M1 ends in the first public free release.*
 
 ## Current state vs. the gate
 
