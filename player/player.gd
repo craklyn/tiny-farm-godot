@@ -308,67 +308,39 @@ func _execute_resolved_action(pa: Dictionary) -> void:
 	if action == "open_shop":
 		get_tree().get_first_node_in_group("Main").call_deferred("trigger_action", "open_shop")
 		return
-	if action == "sell":
-		GameState.sell_crops_to_bin()
+	# Every remaining verb is a sim Action (S-3): the sim validates and mutates;
+	# this side keeps only presentation (tool swap, animation, sfx, particles).
+	var result: Dictionary = farm.apply_action({
+		"verb": action,
+		"target": target_t,
+		"seed_type": seed_type,
+		"actor": "player",
+	}, GameState)
+	if not result.get("ok", false):
 		return
-	if action == "refill":
-		GameState.refill_watering_can()
+
+	if action == "sell" or action == "refill":
 		return
 	if action == "collect":
-		var obj = farm.get_object(target_t.x, target_t.y)
-		if obj == "egg":
-			farm.set_object(target_t.x, target_t.y, "")
-			GameState.crops["egg"] = GameState.crops.get("egg", 0) + 1
-			GameState.harvest_counts["egg"] = GameState.harvest_counts.get("egg", 0) + 1
-			AudioManager.play_sfx("harvest")
-		elif obj == "scarecrow":
-			farm.set_object(target_t.x, target_t.y, "")
-			GameState.seeds["scarecrow"] = GameState.seeds.get("scarecrow", 0) + 1
-			AudioManager.play_sfx("harvest")
+		AudioManager.play_sfx("harvest")
 		return
 
-	var state: String = farm.get_tile(target_t.x, target_t.y).get("state", "")
-	if state == "": return
-
-	var cost: int = Tools.get_energy_cost(action)
-	if GameState.energy < cost: return
-
-	if action == "water" and GameState.watering_can_charges <= 0: return
-	if action == "plant" and GameState.seeds.get(seed_type, 0) <= 0: return
-
-	# Execute
 	if pa.has("tool_idx"):
 		GameState.selected_tool = pa["tool_idx"]
-	GameState.energy -= cost
 	is_acting = true
 	action_timer = ACTION_DURATION
 
 	if action == "clear_weed" or action == "clear_log" or action == "clear_rock":
-		farm.set_tile_state(target_t.x, target_t.y, "cleared")
 		AudioManager.play_sfx("till")
 		_emit_particles("chop", target_t)
 	elif action == "till":
-		farm.set_tile_state(target_t.x, target_t.y, "tilled")
 		AudioManager.play_sfx("till")
 		_emit_particles("dirt", target_t)
-	elif action == "plant":
-		var is_obj = CropDefs.TYPES.get(seed_type, {}).get("is_object", false)
-		if is_obj:
-			farm.set_object(target_t.x, target_t.y, seed_type)
-		else:
-			farm.set_tile_state(target_t.x, target_t.y, "seeded", seed_type)
-		GameState.seeds[seed_type] -= 1
 	elif action == "water":
-		farm.water_tile(target_t.x, target_t.y)
-		GameState.watering_can_charges -= 1
 		AudioManager.play_sfx("water")
 		_emit_particles("water", target_t)
 	elif action == "harvest":
-		var crop_type: String = farm.get_crop_type(target_t.x, target_t.y)
-		if crop_type != "":
-			GameState.crops[crop_type] = GameState.crops.get(crop_type, 0) + 1
-			GameState.harvest_counts[crop_type] = GameState.harvest_counts.get(crop_type, 0) + 1
-			farm.set_tile_state(target_t.x, target_t.y, "cleared")
+		if result.has("crop_type"):
 			AudioManager.play_sfx("harvest")
 			_emit_particles("harvest", target_t)
 

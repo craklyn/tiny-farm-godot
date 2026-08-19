@@ -1,15 +1,22 @@
-# farm.gd — Tile grid with state machine + rendering
-# Mirrors the Love2D tilemap.lua: manages a 2D array of tile data,
-# draws tiles/crops/objects using sprite atlases, handles day advancement
+# farm.gd — Renderer + facade over SimWorld (M2)
+# Grid truth lives in systems/sim/sim_world.gd; this node draws it with
+# sprite atlases and forwards the old farm API to the sim so call sites
+# (player, entities, ActionRouter, Pathfinding, tests) are unchanged.
 extends Node2D
 
 const TILE_SIZE := 16
-const MAP_WIDTH := 32
-const MAP_HEIGHT := 20
+const MAP_WIDTH := SimWorld.MAP_WIDTH
+const MAP_HEIGHT := SimWorld.MAP_HEIGHT
 
-# Tile data: tiles[y][x] = { state, crop_type, growth_stage, watered_today }
-var tiles: Array[Array] = []
-var objects: Array[Array] = []  # objects[y][x] = "" or object type string
+var sim: SimWorld = SimWorld.new()
+
+# Facade views over sim truth (same Array references — in-place mutation works)
+var tiles: Array[Array]:
+	get:
+		return sim.tiles
+var objects: Array[Array]:
+	get:
+		return sim.objects
 
 # Sprite resources
 var tileset_texture: Texture2D
@@ -21,18 +28,9 @@ var tile_regions: Dictionary = {}     # state_name -> Rect2
 var crop_regions: Dictionary = {}     # crop_type -> { stage -> Rect2 }
 var object_regions: Dictionary = {}   # object_name -> Rect2
 
-# Fixed object positions (0-indexed tile coords)
-const OBJECT_POSITIONS: Array[Dictionary] = [
-	{ "type": "cot",          "tx": 2, "ty": 1 },
-	{ "type": "shipping_bin", "tx": 4, "ty": 1 },
-	{ "type": "well",         "tx": 6, "ty": 1 },
-	{ "type": "seed_box",     "tx": 8, "ty": 1 },
-]
-
-
 func _ready() -> void:
 	_load_textures()
-	_init_grid()
+	sim.generate()
 
 
 var dirt_texture: Texture2D
@@ -70,158 +68,55 @@ func _load_textures() -> void:
 	object_regions["scarecrow"] = [crops_texture, Rect2(0 * 16, 4 * 16, 16, 16)]
 
 
-func _init_grid() -> void:
-	tiles.clear()
-	objects.clear()
+# --- Facade: forwards the old farm API to SimWorld ---------------------------
 
-	for ty in MAP_HEIGHT:
-		var row: Array[Dictionary] = []
-		var obj_row: Array[String] = []
-		for tx in MAP_WIDTH:
-			if ty == 0 or ty == MAP_HEIGHT - 1 or tx == 0 or tx == MAP_WIDTH - 1:
-				row.append(_create_tile("border"))
-			else:
-				if SimRng.randf() < 0.25:
-					var obstacle_types: Array[String] = ["obstacle_rock", "obstacle_log", "obstacle_weed"]
-					row.append(_create_tile(obstacle_types[SimRng.randi() % 3]))
-				else:
-					row.append(_create_tile("cleared"))
-			obj_row.append("")
-		tiles.append(row)
-		objects.append(obj_row)
-
-	# Place fixed objects
-	for obj in OBJECT_POSITIONS:
-		var tx: int = obj.tx
-		var ty: int = obj.ty
-		tiles[ty][tx] = _create_tile("cleared")
-		objects[ty][tx] = obj.type
-		# Clear surrounding tiles
-		for dy in range(-1, 2):
-			for dx in range(-1, 2):
-				var nx := tx + dx
-				var ny := ty + dy
-				if nx >= 1 and nx <= MAP_WIDTH - 2 and ny >= 1 and ny <= MAP_HEIGHT - 2:
-					if objects[ny][nx] == "":
-						tiles[ny][nx] = _create_tile("cleared")
-
-	# Ensure player spawn area is clear
-	for dy in range(0, 3):
-		for dx in range(0, 11):
-			var tx := 1 + dx
-			var ty := 1 + dy
-			if tx <= MAP_WIDTH - 2 and ty <= MAP_HEIGHT - 2:
-				if objects[ty][tx] == "":
-					tiles[ty][tx] = _create_tile("cleared")
-
-
-func _create_tile(state: String) -> Dictionary:
-	return {
-		"state": state,
-		"crop_type": "",
-		"growth_stage": 0,
-		"watered_today": false,
-	}
+func apply_action(action: Dictionary, gs = null) -> Dictionary:
+	var result := sim.apply_action(action, gs)
+	if result.get("ok", false):
+		queue_redraw()
+	return result
 
 
 func get_tile(tx: int, ty: int) -> Dictionary:
-	if ty >= 0 and ty < MAP_HEIGHT and tx >= 0 and tx < MAP_WIDTH:
-		return tiles[ty][tx]
-	return {}
+	return sim.get_tile(tx, ty)
 
 
 func get_crop_type(tx: int, ty: int) -> String:
-	var tile := get_tile(tx, ty)
-	if tile.is_empty():
-		return ""
-	return tile.get("crop_type", "")
+	return sim.get_crop_type(tx, ty)
 
 
 func get_object(tx: int, ty: int) -> String:
-	if ty >= 0 and ty < MAP_HEIGHT and tx >= 0 and tx < MAP_WIDTH:
-		if objects[ty][tx] != "":
-			return objects[ty][tx]
-		# Check if the tile below has a tall object
-		if ty + 1 < MAP_HEIGHT and objects[ty + 1][tx] in ["cot", "well", "seed_box"]:
-			return objects[ty + 1][tx]
-	return ""
+	return sim.get_object(tx, ty)
 
 
 func set_object(tx: int, ty: int, obj_type: String) -> void:
-	if ty >= 0 and ty < MAP_HEIGHT and tx >= 0 and tx < MAP_WIDTH:
-		objects[ty][tx] = obj_type
-		queue_redraw()
+	sim.set_object(tx, ty, obj_type)
+	queue_redraw()
 
 
 func is_protected_by_scarecrow(tx: int, ty: int) -> bool:
-	for dy in range(-4, 5):
-		for dx in range(-4, 5):
-			var nx := tx + dx
-			var ny := ty + dy
-			if nx >= 0 and nx < MAP_WIDTH and ny >= 0 and ny < MAP_HEIGHT:
-				if objects[ny][nx] == "scarecrow":
-					return true
-	return false
+	return sim.is_protected_by_scarecrow(tx, ty)
 
 
 func is_walkable(tx: int, ty: int) -> bool:
-	var tile := get_tile(tx, ty)
-	if tile.is_empty():
-		return false
-	var state: String = tile.state
-	if state == "border":
-		return false
-	if state.begins_with("obstacle"):
-		return false
-	var obj := get_object(tx, ty)
-	if obj != "" and obj != "egg":
-		return false
-	return true
-
+	return sim.is_walkable(tx, ty)
 
 
 func set_tile_state(tx: int, ty: int, new_state: String, crop_type: String = "") -> void:
-	var tile := get_tile(tx, ty)
-	if tile.is_empty():
-		return
-	tile.state = new_state
-	if crop_type != "":
-		tile.crop_type = crop_type
-	if new_state == "cleared" or new_state == "tilled":
-		tile.crop_type = ""
-		tile.growth_stage = 0
-		tile.watered_today = false
-	elif new_state == "seeded":
-		tile.growth_stage = 0
-		tile.watered_today = false
+	sim.set_tile_state(tx, ty, new_state, crop_type)
 	queue_redraw()
 
 
 func water_tile(tx: int, ty: int) -> void:
-	var tile := get_tile(tx, ty)
-	if not tile.is_empty() and (tile.state == "seeded" or tile.state == "growing"):
-		tile.watered_today = true
-		queue_redraw()
+	sim.water_tile(tx, ty)
+	queue_redraw()
 
 
 func advance_day() -> void:
-	for ty in MAP_HEIGHT:
-		for tx in MAP_WIDTH:
-			var tile: Dictionary = tiles[ty][tx]
-			if tile.watered_today and (tile.state == "seeded" or tile.state == "growing"):
-				tile.growth_stage += 1
-				if tile.state == "seeded":
-					tile.state = "growing"
-				if CropDefs.is_ready(tile.crop_type, tile.growth_stage):
-					tile.state = "ready"
-			tile.watered_today = false
-			
-			var weather = "sunny"
-			if Engine.get_main_loop() and Engine.get_main_loop().root.has_node("GameState"):
-				weather = Engine.get_main_loop().root.get_node("GameState").weather
-			if weather == "rainy" and tile.state in ["tilled", "seeded", "growing"]:
-				tile.watered_today = true
-				
+	var weather := "sunny"
+	if Engine.get_main_loop() and Engine.get_main_loop().root.has_node("GameState"):
+		weather = Engine.get_main_loop().root.get_node("GameState").weather
+	sim.advance_day(weather)
 	queue_redraw()
 
 

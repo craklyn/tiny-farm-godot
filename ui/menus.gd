@@ -2,6 +2,8 @@
 # Mirrors the Love2D ui_menus.lua
 extends CanvasLayer
 
+var farm: Node2D = null  # set by main; buy actions route through the sim when present
+
 signal menu_action(action: String)
 
 var active_menu: String = ""  # "", "pause", "shop", "inventory"
@@ -354,7 +356,15 @@ func _select_current_option() -> void:
 		"shop":
 			if selected_option < shop_items.size():
 				var item: Dictionary = shop_items[selected_option]
-				if GameState.buy_seed(item.seed_type):
+				# Transactions are sim Actions too (P-9 guardrail)
+				var bought: bool
+				if farm != null:
+					bought = farm.apply_action({
+						"verb": "buy_seed", "seed_type": item.seed_type, "actor": "player",
+					}, GameState).get("ok", false)
+				else:
+					bought = GameState.buy_seed(item.seed_type)
+				if bought:
 					AudioManager.play_sfx("harvest")
 					_rebuild_options()
 					menu_action.emit("bought_seed")

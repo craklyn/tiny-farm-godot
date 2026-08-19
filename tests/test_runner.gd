@@ -30,6 +30,7 @@ func _init() -> void:
 	test_swipe_chaining()
 	test_sim_rng()
 	test_milestones()
+	test_sim_actions()
 
 	print("")
 	print(String("=").repeat(60))
@@ -463,3 +464,69 @@ func test_milestones() -> void:
 	GameState.check_milestones()
 	_assert(GameState._milestones_earned.has("master_farmer"), "Master Farmer earned with wheat+tomato+egg")
 	_assert(GameState._milestones_earned.has("first_harvest"), "First Harvest earned")
+
+func test_sim_actions() -> void:
+	print("\n--- SimWorld apply_action Tests ---")
+
+	var world := SimWorld.new()
+	SimRng.reseed(7)
+	world.generate()
+
+	# Fresh state for economy checks
+	GameState.energy = 20
+	GameState.max_energy = 20
+	GameState.watering_can_charges = 8
+	GameState.seeds = { "wheat": 2 }
+	GameState.crops = {}
+	GameState.harvest_counts = {}
+	GameState.shipping_bin = {}
+	GameState.gold = 0
+	GameState.day = 1
+	GameState.weather = "sunny"
+
+	var t := Vector2i(5, 5)
+	world.tiles[t.y][t.x] = { "state": "cleared", "crop_type": "", "growth_stage": 0, "watered_today": false }
+	world.objects[t.y][t.x] = ""
+
+	var r := world.apply_action({ "verb": "till", "target": t, "actor": "player" }, GameState)
+	_assert(r.ok and world.get_tile(t.x, t.y).state == "tilled", "till action tills tile")
+	_assert(GameState.energy == 19, "till costs 1 energy")
+
+	r = world.apply_action({ "verb": "plant", "target": t, "seed_type": "wheat", "actor": "player" }, GameState)
+	_assert(r.ok and world.get_tile(t.x, t.y).state == "seeded", "plant action seeds tile")
+	_assert(GameState.seeds["wheat"] == 1, "plant consumes a seed")
+
+	r = world.apply_action({ "verb": "water", "target": t, "actor": "player" }, GameState)
+	_assert(r.ok and world.get_tile(t.x, t.y).watered_today, "water action waters tile")
+
+	# Grow to ready (wheat: 3 days), sleeping each day
+	for i in 3:
+		r = world.apply_action({ "verb": "sleep", "actor": "world", "weather": "sunny" }, GameState)
+		_assert(r.ok, "sleep day %d ok" % (i + 1))
+		world.apply_action({ "verb": "water", "target": t, "actor": "player" }, GameState)
+	_assert(world.get_tile(t.x, t.y).state == "ready", "crop ready after 3 watered sleeps")
+
+	r = world.apply_action({ "verb": "harvest", "target": t, "actor": "player" }, GameState)
+	_assert(r.ok and r.get("crop_type", "") == "wheat", "harvest returns crop type")
+	_assert(GameState.crops.get("wheat", 0) == 1, "harvest adds crop to inventory")
+	_assert(world.get_tile(t.x, t.y).state == "cleared", "harvest clears tile")
+
+	r = world.apply_action({ "verb": "sell", "target": t, "actor": "player" }, GameState)
+	_assert(r.ok and GameState.gold == 15, "sell pays wheat price")
+
+	# Entity verbs
+	world.tiles[t.y][t.x] = { "state": "growing", "crop_type": "wheat", "growth_stage": 1, "watered_today": false }
+	r = world.apply_action({ "verb": "eat_crop", "target": t, "actor": "crow" })
+	_assert(r.ok and world.get_tile(t.x, t.y).state == "tilled", "crow eat_crop tills the tile")
+
+	r = world.apply_action({ "verb": "lay_egg", "target": t, "actor": "chicken" })
+	_assert(r.ok and world.get_object(t.x, t.y) == "egg", "chicken lay_egg places egg")
+	r = world.apply_action({ "verb": "lay_egg", "target": t, "actor": "chicken" })
+	_assert(not r.ok, "lay_egg refused on occupied tile")
+
+	# Guards
+	GameState.energy = 0
+	r = world.apply_action({ "verb": "till", "target": Vector2i(6, 5), "actor": "player" }, GameState)
+	_assert(not r.ok and r.reason == "no_energy", "till refused at 0 energy")
+	r = world.apply_action({ "verb": "bogus", "target": t }, GameState)
+	_assert(not r.ok, "unknown verb refused")

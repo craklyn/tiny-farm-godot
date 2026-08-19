@@ -110,6 +110,7 @@ func _ready() -> void:
 	var MenusScript = load("res://ui/menus.gd")
 	menus = MenusScript.new()
 	add_child(menus)
+	menus.farm = farm
 	menus.menu_action.connect(_on_menu_action)
 
 	# Create day cycle overlay
@@ -247,12 +248,10 @@ func _handle_action_result(action: String) -> void:
 	if action == "sleep":
 		day_cycle.set_day_display(GameState.day + 1)
 		day_cycle.start_sleep(func():
-			GameState.start_new_day()
-			farm.advance_day()
+			farm.apply_action({ "verb": "sleep", "actor": "world" }, GameState)
 			for child in entities.get_children():
 				if child.has_method("on_new_day"):
 					child.on_new_day()
-			GameState.process_shipping_bin()
 		)
 	elif action == "open_shop":
 		menus.open_menu("shop")
