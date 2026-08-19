@@ -66,8 +66,7 @@ func on_new_day() -> void:
 		var reachable = Pathfinding.get_reachable_tiles(farm, Vector2i(tx, ty))
 		if reachable.size() > 0:
 			var target = reachable[SimRng.randi() % reachable.size()]
-			if farm.get_object(target.x, target.y) == "":
-				farm.set_object(target.x, target.y, "egg")
+			farm.apply_action({ "verb": "lay_egg", "target": target, "actor": "chicken" })
 
 func queue_render(canvas: CanvasItem, render_queue: Array) -> void:
 	render_queue.append({

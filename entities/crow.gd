@@ -61,9 +61,12 @@ func _process(delta: float) -> void:
 			
 		timer -= delta
 		if timer <= 0:
-			var tile = farm.get_tile(target_tx, target_ty)
-			if not tile.is_empty() and (tile.state == "growing" or tile.state == "ready" or tile.state == "seeded"):
-				farm.set_tile_state(target_tx, target_ty, "tilled")
+			var result: Dictionary = farm.apply_action({
+				"verb": "eat_crop",
+				"target": Vector2i(target_tx, target_ty),
+				"actor": "crow",
+			})
+			if result.get("ok", false):
 				if get_tree() and get_tree().root.has_node("AudioManager"):
 					get_tree().root.get_node("AudioManager").play_sfx("till")
 			state = "flying_away"
