@@ -1,4 +1,14 @@
+# Godot editor cache (never commit; .import metadata files ARE committed)
+.godot/
+
+# Android build outputs (restored from upstream .gitignore)
+android/build/
+
+# OS noise
 .DS_Store
+
+# Local review/scratch artifacts
 diff.txt
 diff_2.txt
+*.patch
 tools/diff_current.png
