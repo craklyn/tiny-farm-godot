@@ -42,6 +42,11 @@ var _milestones_earned: Dictionary = {}
 var game_paused: bool = false
 var pending_load: bool = false  # title screen asks main to load the autosave
 
+# Save file locations — overridable so automated sessions (robot tests) never
+# touch a real player's files
+var save_path: String = "user://autosave.json"
+var replay_path: String = "user://session_replay.json"
+
 
 func reset() -> void:
 	# New-game / replay baseline. Must mirror the var initializers above.

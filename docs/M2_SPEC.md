@@ -1,10 +1,9 @@
 # M2 Spec — Deterministic Simulation Core (S-5)
 
-*Plan of record for milestone M2. Status: core complete on desktop (2026-08-18) —
-steps 1, 3, 4, 5, 6, 7 landed; see "Remaining" below.
-Exit gate (ROADMAP): full farm day runs headless at ≥100× real time with identical
-outcomes across repeated seeded runs; a recorded human session replays to the same end
-state.*
+*Plan of record for milestone M2. **Status: COMPLETE (2026-08-19)** — steps 1, 3–7
+landed; exit gate met in full: ≥100× headless fast-forward (measured ~1.15M× on
+desktop), identical outcomes across seeded runs (unit-tested), and a real human
+session (30 actions, 2026-08-19) verified by `tools/verify_replay.gd`: **MATCH**.*
 
 ## Benchmark results (step 6)
 | Machine | days/sec | actions/sec | ×-realtime (600 s day) |
@@ -57,12 +56,14 @@ step — strangler-fig migration, never a big-bang rewrite.
 7. ✅ **Save v1** — `systems/sim/save_game.gd`: versioned snapshot + migration chain;
    value-identity round-trip tested; autosave-on-sleep wired (write-only).
 
-## Remaining before M2 closes
-- Android benchmark run (needs a device build — designer's phone or emulator).
-- Live-session replay harness: load `user://session_replay.json` from a real play
-  session and assert it reproduces the autosave state (the human-session half of the
-  exit gate; the scripted-session half is proven in tests).
-- Save *loading* UI (continue/new-game) — scoped to M1's menu work, not M2.
+## Follow-ups (post-M2, not gate blockers)
+- ✅ Live human session verified (2026-08-19): 30-entry replay → MATCH.
+- ✅ Save-loading UI: Continue/New Farm title flow landed 2026-08-18.
+- Android benchmark run — folds into D-2 spike prep (needs export templates +
+  a device; the desktop margin of ~4 orders of magnitude makes this low-risk).
+- Robot end-to-end session (automated human-path regression: simulated taps through
+  the real scene → autosave + replay files → verify) — keeps the gate property
+  continuously tested, not just proven once.
 
 ## Risks / notes
 - `Input`-driven player movement stays event-driven at the edge; it *produces* Actions,

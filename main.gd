@@ -129,7 +129,7 @@ func _ready() -> void:
 	# Continue from autosave when the title screen requested it
 	if GameState.pending_load:
 		GameState.pending_load = false
-		var save_data := SaveGame.load_dict("user://autosave.json")
+		var save_data := SaveGame.load_dict(GameState.save_path)
 		if not save_data.is_empty() and SaveGame.restore(save_data, farm.sim, GameState):
 			farm.start_replay_log_from_save(save_data)
 			farm.queue_redraw()
@@ -267,10 +267,9 @@ func _handle_action_result(action: String) -> void:
 			for child in entities.get_children():
 				if child.has_method("on_new_day"):
 					child.on_new_day()
-			# Write-only autosave; loading waits on the continue/new-game menu (M1)
-			SaveGame.save_to("user://autosave.json", farm.sim, GameState)
+			SaveGame.save_to(GameState.save_path, farm.sim, GameState)
 			if farm.replay != null:
-				farm.replay.save_to("user://session_replay.json")
+				farm.replay.save_to(GameState.replay_path)
 		)
 	elif action == "open_shop":
 		menus.open_menu("shop")

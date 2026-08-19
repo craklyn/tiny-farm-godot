@@ -95,6 +95,17 @@ static func save_to(path: String, world: SimWorld, gs) -> bool:
 	return true
 
 
+# Canonical string form of a capture for equality checks. Excludes
+# presentation-only fields (selected tool/seed) — they are not Actions and
+# not sim truth, so replays legitimately differ on them.
+static func capture_canonical(world: SimWorld, gs) -> String:
+	var c := capture(world, gs)
+	var s: Dictionary = c.get("state", {})
+	s.erase("selected_tool")
+	s.erase("selected_seed_type")
+	return JSON.stringify(c)
+
+
 static func load_dict(path: String) -> Dictionary:
 	if not FileAccess.file_exists(path):
 		return {}

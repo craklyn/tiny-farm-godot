@@ -1,0 +1,506 @@
+From f6a830aa5499d27cf77c28fed9a5b90d6d9e654e Mon Sep 17 00:00:00 2001
+From: Catherine Grabar <catherine.grabar@gmail.com>
+Date: Tue, 18 Aug 2026 23:54:54 -0700
+Subject: [PATCH 12/13] M1: Continue/New Farm title flow; M2: live-session
+ replay harness
+
+- Title screen: tap-anywhere continues the existing farm when an autosave
+  exists (kid-friendly default), with an explicit New Farm button;
+  GameState.pending_load carries the choice into main
+- ReplayLog gains base_save: sessions continued from an autosave replay
+  from that snapshot instead of regenerating from seed; serialized in JSON
+- SaveGame.load_dict helper; main loads the autosave on continue
+- Milestone checks moved into SimWorld.apply_action (capability proofs are
+  sim truth, P-4) so replays earn them identically
+- tools/verify_replay.gd: compares a live session's action log against its
+  autosave, excluding presentation-only fields (selected tool/seed)
+
+Suites: unit 156/156, integration 20/20.
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+---
+ .godot/editor/filesystem_cache10 |  46 +++++++++++++++--------------
+ .godot/uid_cache.bin             | Bin 2403 -> 2443 bytes
+ docs/M1_PLAN.md                  |  10 ++++---
+ main.gd                          |   9 ++++++
+ systems/game_state.gd            |   1 +
+ systems/sim/replay_log.gd        |  27 +++++++++++++++--
+ systems/sim/save_game.gd         |  11 +++++--
+ systems/sim/sim_world.gd         |   8 +++++
+ tests/test_runner.gd             |  43 +++++++++++++++++++++++++++
+ tools/verify_replay.gd           |  49 +++++++++++++++++++++++++++++++
+ tools/verify_replay.gd.uid       |   1 +
+ ui/title_screen.gd               |  29 ++++++++++++++----
+ ui/title_screen.tscn             |   5 ++++
+ world/farm.gd                    |   5 ++++
+ 14 files changed, 208 insertions(+), 36 deletions(-)
+ create mode 100644 tools/verify_replay.gd
+ create mode 100644 tools/verify_replay.gd.uid
+
+diff --git a/.godot/editor/filesystem_cache10 b/.godot/editor/filesystem_cache10
+index 0eeab1c..5167cdb 100644
+--- a/.godot/editor/filesystem_cache10
++++ b/.godot/editor/filesystem_cache10
+@@ -1,11 +1,11 @@
+ 78098b89c88a74ebe8c20117b8754620
+-::res://::1787122062
++::res://::1787122406
+ check_export.gd::GDScript::6952538440485313856::1787116185::0::1::::<>EditorScript<><>0<>1<><>::
+ diff.txt::TextFile::-1::1787120038::0::1::::<><><>0<>0<><>::
+ diff_2.txt::TextFile::-1::1787120317::0::1::::<><><>0<>0<><>::
+ export_presets.cfg::TextFile::-1::1787116185::0::1::::<><><>0<>0<><>::
+ icon.svg::CompressedTexture2D/CompressedTexture2D::7402722489563260205::1787116185::1787116185::1::::<><><>0<>0<>d2b28997c53204d91ce481ed906e68ee<>res://.godot/imported/icon.svg-218a8f2b3041327d8a5756f3a245f83b.ctex::
+-main.gd::GDScript::573398445734219183::1787122062::0::1::::<>Node2D<><>0<>0<><>::
++main.gd::GDScript::573398445734219183::1787122406::0::1::::<>Node2D<><>0<>0<><>::
+ main.tscn::PackedScene::-1::1787116185::0::1::::<><><>0<>0<><>::res://main.gd
+ port_diff.txt::TextFile::-1::1787116185::0::1::::<><><>0<>0<><>::
+ print_settings.gd::GDScript::1664838563707191840::1787116185::0::1::::<>EditorScript<><>0<>1<><>::
+@@ -39,14 +39,15 @@ tools.png::CompressedTexture2D/CompressedTexture2D::3526236484933700733::1787116
+ ::res://build/::1787116185
+ ::res://crops/::1787116185
+ crop_defs.gd::GDScript::6627387710835234060::1787116185::0::1::::CropDefs<>RefCounted<><>0<>0<><>::
+-::res://docs/::1787121066
++::res://docs/::1787122295
+ ARCHITECTURE.md::TextFile::-1::1787118667::0::1::::<><><>0<>0<><>::
+ DECISION_LOG.md::TextFile::-1::1787120716::0::1::::<><><>0<>0<><>::
+-DESIGNER_QUEUE.md::TextFile::-1::1787120754::0::1::::<><><>0<>0<><>::
++DESIGNER_QUEUE.md::TextFile::-1::1787122287::0::1::::<><><>0<>0<><>::
+ GAME_VISION.md::TextFile::-1::1787119590::0::1::::<><><>0<>0<><>::
+-M2_SPEC.md::TextFile::-1::1787121066::0::1::::<><><>0<>0<><>::
+-ROADMAP.md::TextFile::-1::1787119976::0::1::::<><><>0<>0<><>::
+-::res://docs/design/::1787120748
++M1_PLAN.md::TextFile::-1::1787122194::0::1::::<><><>0<>0<><>::
++M2_SPEC.md::TextFile::-1::1787122125::0::1::::<><><>0<>0<><>::
++ROADMAP.md::TextFile::-1::1787122295::0::1::::<><><>0<>0<><>::
++::res://docs/design/::1787122271
+ 00-overview.md::TextFile::-1::1787119966::0::1::::<><><>0<>0<><>::
+ 01-game-loops.md::TextFile::-1::1787119396::0::1::::<><><>0<>0<><>::
+ 02-farming-system.md::TextFile::-1::1787119409::0::1::::<><><>0<>0<><>::
+@@ -56,8 +57,8 @@ ROADMAP.md::TextFile::-1::1787119976::0::1::::<><><>0<>0<><>::
+ 06-bots-and-training.md::TextFile::-1::1787120721::0::1::::<><><>0<>0<><>::
+ 07-expedition-system.md::TextFile::-1::1787119470::0::1::::<><><>0<>0<><>::
+ 08-narrative.md::TextFile::-1::1787119956::0::1::::<><><>0<>0<><>::
+-09-art-direction.md::TextFile::-1::1787119974::0::1::::<><><>0<>0<><>::
+-10-audio-direction.md::TextFile::-1::1787119510::0::1::::<><><>0<>0<><>::
++09-art-direction.md::TextFile::-1::1787122271::0::1::::<><><>0<>0<><>::
++10-audio-direction.md::TextFile::-1::1787122214::0::1::::<><><>0<>0<><>::
+ 11-ux-ui.md::TextFile::-1::1787119524::0::1::::<><><>0<>0<><>::
+ 12-progression-and-gates.md::TextFile::-1::1787119536::0::1::::<><><>0<>0<><>::
+ appendix-input-modality.md::TextFile::-1::1787120746::0::1::::<><><>0<>0<><>::
+@@ -75,22 +76,22 @@ chicken.gd::GDScript::4733028579631117965::1787121725::0::1::::<>Node2D<><>0<>0<
+ crow.gd::GDScript::3198351033573525920::1787121722::0::1::::<>Node2D<><>0<>0<><>::
+ ::res://player/::1787121718
+ player.gd::GDScript::5101891556872685347::1787121718::0::1::::<>Node2D<><>0<>0<><>::
+-::res://systems/::1787121889
++::res://systems/::1787122382
+ action_router.gd::GDScript::4846452697455523229::1787116185::0::1::::<>Node<><>0<>0<><>::
+ audio_manager.gd::GDScript::2756718941746264995::1787116185::0::1::::<>Node<><>0<>0<><>::
+ day_cycle.gd::GDScript::8438625455265815869::1787116185::0::1::::<>CanvasLayer<><>0<>0<><>::
+-game_state.gd::GDScript::4214994310899671939::1787121889::0::1::::<>Node<><>0<>0<><>::
++game_state.gd::GDScript::4214994310899671939::1787122382::0::1::::<>Node<><>0<>0<><>::
+ input_manager.gd::GDScript::3065465728266198162::1787116185::0::1::::<>Node<><>0<>0<><>::
+ pathfinding.gd::GDScript::1344463265294616195::1787116185::0::1::::<>Node<><>0<>0<><>::
+ sim_rng.gd::GDScript::7843240473217473074::1787121069::0::1::::SimRng<>RefCounted<><>0<>0<><>::
+ tools.gd::GDScript::7525842890209187911::1787116185::0::1::::Tools<>RefCounted<><>0<>0<><>::
+-::res://systems/sim/::1787122056
+-replay_log.gd::GDScript::7655614895084958520::1787121885::0::1::::ReplayLog<>RefCounted<><>0<>0<><>::
+-save_game.gd::GDScript::1589743231732853455::1787122056::0::1::::SaveGame<>RefCounted<><>0<>0<><>::
+-sim_world.gd::GDScript::4017631656444712213::1787121687::0::1::::SimWorld<>RefCounted<><>0<>0<><>::
++::res://systems/sim/::1787122459
++replay_log.gd::GDScript::7655614895084958520::1787122395::0::1::::ReplayLog<>RefCounted<><>0<>0<><>::
++save_game.gd::GDScript::1589743231732853455::1787122398::0::1::::SaveGame<>RefCounted<><>0<>0<><>::
++sim_world.gd::GDScript::4017631656444712213::1787122459::0::1::::SimWorld<>RefCounted<><>0<>0<><>::
+ ::res://tests/::1787121997
+-test_runner.gd::GDScript::361116474791826847::1787122074::0::1::::<>SceneTree<><>0<>0<><>::
+-::res://tools/::1787121965
++test_runner.gd::GDScript::361116474791826847::1787122475::0::1::::<>SceneTree<><>0<>0<><>::
++::res://tools/::1787122467
+ baseline.png::CompressedTexture2D/CompressedTexture2D::6855071652068881458::1787116185::1787116185::1::::<><><>0<>0<>600165b4d07a7e3f069ddc9abe796265<>res://.godot/imported/baseline.png-b643cbc15fe64caecbe11d05f4cd7664.ctex::
+ benchmark_sim.gd::GDScript::7424386728667150111::1787121957::0::1::::<>SceneTree<><>0<>0<><>::
+ bitmask_array.txt::TextFile::-1::1787116185::0::1::::<><><>0<>0<><>::
+@@ -106,11 +107,12 @@ test_runner.gd::GDScript::4111321758324756523::1787116185::0::1::::<>Node2D<><>0
+ test_runner.tscn::PackedScene::-1::1787116185::0::1::::<><><>0<>0<><>::res://tools/test_runner.gd
+ test_visuals.gd::GDScript::7550016450659235443::1787116185::0::1::::<>Node2D<><>0<>0<><>::
+ test_visuals.tscn::PackedScene::-1::1787116185::0::1::::<><><>0<>0<><>::res://tools/test_visuals.gd
+-::res://ui/::1787121744
++verify_replay.gd::GDScript::7095729955274954805::1787122467::0::1::::<>SceneTree<><>0<>0<><>::
++::res://ui/::1787122381
+ hud.gd::GDScript::436789438700753348::1787116185::0::1::::<>CanvasLayer<><>0<>0<><>::
+ menus.gd::GDScript::4724695193899873668::1787121744::0::1::::<>CanvasLayer<><>0<>0<><>::
+-title_screen.gd::GDScript::3315853693207645019::1787116185::0::1::::<>Control<><>0<>0<><>::
+-title_screen.tscn::PackedScene::5554334138428745::1787116185::0::1::::<><><>0<>0<><>::res://ui/title_screen.gd
+-::res://world/::1787121896
+-farm.gd::GDScript::5779347435121214153::1787121896::0::1::::<>Node2D<><>0<>0<><>::
++title_screen.gd::GDScript::3315853693207645019::1787122377::0::1::::<>Control<><>0<>0<><>::
++title_screen.tscn::PackedScene::5554334138428745::1787122381::0::1::::<><><>0<>0<><>::res://ui/title_screen.gd
++::res://world/::1787122403
++farm.gd::GDScript::5779347435121214153::1787122403::0::1::::<>Node2D<><>0<>0<><>::
+ farm_tileset.tres::TileSet::-1::1787116185::0::1::::<><><>0<>0<><>::res://assets/sprites/sprout_lands/dirt.png<>res://assets/sprites/sprout_lands/grass.png
+diff --git a/.godot/uid_cache.bin b/.godot/uid_cache.bin
+index 8c49aa9865280e6cca9c47b4e87721dc89aed27e..39df51d20fec36f3bdb3852d7a3ea2b05867be97 100644
+GIT binary patch
+delta 53
+zcmaDX)Gf?ty^--GyQ-;#^SUz<l}R!T3=Bo7#a8<ICHeU|#rkEbMVV=p@kOZxIf<2<
+JkF(EV1OU+e5^(?k
+
+delta 15
+WcmeAcek{ajwUO~8`{qyVGZ_IaWd)Z2
+
+diff --git a/docs/M1_PLAN.md b/docs/M1_PLAN.md
+index caae201..c3b4fb9 100644
+--- a/docs/M1_PLAN.md
++++ b/docs/M1_PLAN.md
+@@ -53,10 +53,12 @@ them only changes its own task row below.)*
+ ## Task list
+ 
+ **Ready now (no rulings needed):**
+-- [ ] Title screen: Continue (loads `user://autosave.json`) / New Game (fresh seed);
+-      wire `SaveGame.load_from`. Closes an M2 leftover too.
+-- [ ] Live-replay harness: after a real session, verify `user://session_replay.json`
+-      replays to the autosave state (closes the human half of the M2 gate).
++- [x] Title screen: tap-anywhere = Continue when an autosave exists (kid-friendly
++      default), explicit New Farm button for a fresh seed. (2026-08-18)
++- [x] Live-replay harness: `tools/verify_replay.gd` compares a real session's replay
++      against its autosave; milestone checks moved into the sim gateway so replays
++      earn them too. Needs one real play session to run the human half of the gate.
++      (2026-08-18)
+ - [ ] Device pass on a real tablet: mis-tap rate on tiles adjacent to HUD, swipe-chain
+       feel, orientation/safe-area check. (Needs the designer's hardware for the final
+       word, but the build and instrumentation can be prepared.)
+diff --git a/main.gd b/main.gd
+index 8c29c85..6d6f84a 100644
+--- a/main.gd
++++ b/main.gd
+@@ -125,6 +125,15 @@ func _ready() -> void:
+ 	add_child(day_cycle)
+ 
+ 	GameState.weather_changed.connect(_on_weather_changed)
++
++	# Continue from autosave when the title screen requested it
++	if GameState.pending_load:
++		GameState.pending_load = false
++		var save_data := SaveGame.load_dict("user://autosave.json")
++		if not save_data.is_empty() and SaveGame.restore(save_data, farm.sim, GameState):
++			farm.start_replay_log_from_save(save_data)
++			farm.queue_redraw()
++
+ 	_on_weather_changed(GameState.weather)
+ 
+ func _on_weather_changed(weather: String) -> void:
+diff --git a/systems/game_state.gd b/systems/game_state.gd
+index 90b3988..ed61c46 100644
+--- a/systems/game_state.gd
++++ b/systems/game_state.gd
+@@ -40,6 +40,7 @@ var _milestones_earned: Dictionary = {}
+ 
+ # Game state
+ var game_paused: bool = false
++var pending_load: bool = false  # title screen asks main to load the autosave
+ 
+ 
+ func reset() -> void:
+diff --git a/systems/sim/replay_log.gd b/systems/sim/replay_log.gd
+index 529797a..0c1d961 100644
+--- a/systems/sim/replay_log.gd
++++ b/systems/sim/replay_log.gd
+@@ -10,11 +10,21 @@ extends RefCounted
+ const VERSION := 1
+ 
+ var gen_seed: int = 0
++var base_save: Dictionary = {}  # non-empty when the session continued from a save
+ var entries: Array[Dictionary] = []
+ 
+ 
+ func start(seed_value: int) -> void:
+ 	gen_seed = seed_value
++	base_save = {}
++	entries.clear()
++
++
++# Sessions that continue from an autosave replay from that snapshot instead
++# of regenerating from seed.
++func start_from_save(save_data: Dictionary) -> void:
++	gen_seed = 0
++	base_save = save_data.duplicate(true)
+ 	entries.clear()
+ 
+ 
+@@ -29,14 +39,22 @@ func record(action: Dictionary, result: Dictionary) -> void:
+ func apply_to(world: SimWorld, gs) -> void:
+ 	if gs != null and gs.has_method("reset"):
+ 		gs.reset()
+-	SimRng.reseed(gen_seed)
+-	world.generate()
++	if not base_save.is_empty():
++		SaveGame.restore(base_save, world, gs)
++	else:
++		SimRng.reseed(gen_seed)
++		world.generate()
+ 	for e in entries:
+ 		world.apply_action(_decode(e), gs)
+ 
+ 
+ func to_json() -> String:
+-	return JSON.stringify({ "version": VERSION, "gen_seed": gen_seed, "entries": entries })
++	return JSON.stringify({
++		"version": VERSION,
++		"gen_seed": gen_seed,
++		"base_save": base_save,
++		"entries": entries,
++	})
+ 
+ 
+ static func from_json(text: String) -> ReplayLog:
+@@ -45,6 +63,9 @@ static func from_json(text: String) -> ReplayLog:
+ 	if data == null or typeof(data) != TYPE_DICTIONARY:
+ 		return replay
+ 	replay.gen_seed = int(data.get("gen_seed", 0))
++	var bs = data.get("base_save", {})
++	if typeof(bs) == TYPE_DICTIONARY:
++		replay.base_save = bs
+ 	for e in data.get("entries", []):
+ 		if typeof(e) == TYPE_DICTIONARY:
+ 			replay.entries.append(e)
+diff --git a/systems/sim/save_game.gd b/systems/sim/save_game.gd
+index c3f9db4..30f3aaa 100644
+--- a/systems/sim/save_game.gd
++++ b/systems/sim/save_game.gd
+@@ -95,11 +95,18 @@ static func save_to(path: String, world: SimWorld, gs) -> bool:
+ 	return true
+ 
+ 
+-static func load_from(path: String, world: SimWorld, gs) -> bool:
++static func load_dict(path: String) -> Dictionary:
+ 	if not FileAccess.file_exists(path):
+-		return false
++		return {}
+ 	var data = JSON.parse_string(FileAccess.get_file_as_string(path))
+ 	if data == null or typeof(data) != TYPE_DICTIONARY:
++		return {}
++	return data
++
++
++static func load_from(path: String, world: SimWorld, gs) -> bool:
++	var data := load_dict(path)
++	if data.is_empty():
+ 		return false
+ 	return restore(data, world, gs)
+ 
+diff --git a/systems/sim/sim_world.gd b/systems/sim/sim_world.gd
+index 8f485e2..f988b83 100644
+--- a/systems/sim/sim_world.gd
++++ b/systems/sim/sim_world.gd
+@@ -159,6 +159,14 @@ func water_tile(tx: int, ty: int) -> void:
+ # Returns { ok: bool, reason: String, ...verb extras }. Mutation happens only
+ # on ok. Guards mirror the pre-M2 player checks exactly (no new validation yet).
+ func apply_action(action: Dictionary, gs = null) -> Dictionary:
++	var result := _apply(action, gs)
++	# Milestones are capability proofs (P-4) — sim truth, so replays earn them too
++	if result.get("ok", false) and gs != null and gs.has_method("check_milestones"):
++		gs.check_milestones()
++	return result
++
++
++func _apply(action: Dictionary, gs) -> Dictionary:
+ 	var verb: String = action.get("verb", "")
+ 	var target: Vector2i = action.get("target", Vector2i(-1, -1))
+ 
+diff --git a/tests/test_runner.gd b/tests/test_runner.gd
+index 5e3ccdf..60f7e91 100644
+--- a/tests/test_runner.gd
++++ b/tests/test_runner.gd
+@@ -33,6 +33,7 @@ func _init() -> void:
+ 	test_sim_actions()
+ 	test_replay()
+ 	test_save_game()
++	test_replay_from_save()
+ 
+ 	print("")
+ 	print(String("=").repeat(60))
+@@ -624,3 +625,45 @@ func test_save_game() -> void:
+ 	var bad = JSON.parse_string(live)
+ 	bad["version"] = 999
+ 	_assert(not SaveGame.restore(bad, SimWorld.new(), GameState), "unknown save version refused")
++
++func test_replay_from_save() -> void:
++	print("\n--- Replay-from-save (continue session) Tests ---")
++
++	# Session 1: fresh farm, some work, then capture the "autosave"
++	GameState.reset()
++	SimRng.reseed(77)
++	var world := SimWorld.new()
++	world.generate()
++	world.apply_action({ "verb": "till", "target": Vector2i(5, 2), "actor": "player" }, GameState)
++	world.apply_action({ "verb": "plant", "target": Vector2i(5, 2), "seed_type": "wheat", "actor": "player" }, GameState)
++	world.apply_action({ "verb": "water", "target": Vector2i(5, 2), "actor": "player" }, GameState)
++	world.apply_action({ "verb": "sleep", "actor": "world", "weather": "sunny" }, GameState)
++	var autosave = JSON.parse_string(JSON.stringify(SaveGame.capture(world, GameState)))
++
++	# Session 2: continue from the autosave, do more work, record it
++	var world2 := SimWorld.new()
++	GameState.reset()
++	_assert(SaveGame.restore(autosave, world2, GameState), "continue session restores autosave")
++	var rlog := ReplayLog.new()
++	rlog.start_from_save(autosave)
++	var actions := [
++		{ "verb": "water", "target": Vector2i(5, 2), "actor": "player" },
++		{ "verb": "sleep", "actor": "world", "weather": "sunny" },
++		{ "verb": "water", "target": Vector2i(5, 2), "actor": "player" },
++		{ "verb": "sleep", "actor": "world", "weather": "rainy" },
++		{ "verb": "harvest", "target": Vector2i(5, 2), "actor": "player" },
++		{ "verb": "sell", "actor": "player" },
++	]
++	for a in actions:
++		var r: Dictionary = world2.apply_action(a, GameState)
++		if r.get("ok", false):
++			rlog.record(a, r)
++	_assert(GameState.gold == 15, "continue session harvested and sold wheat")
++	var live_snap := _replay_snapshot(world2)
++
++	# Replay the continued session from the log's embedded base save
++	var rlog2 := ReplayLog.from_json(rlog.to_json())
++	var world3 := SimWorld.new()
++	rlog2.apply_to(world3, GameState)
++	_assert(_replay_snapshot(world3) == live_snap, "continued session replays to identical end state")
++	_assert(GameState._milestones_earned.has("first_harvest"), "replayed actions earn milestones (sim truth)")
+diff --git a/tools/verify_replay.gd b/tools/verify_replay.gd
+new file mode 100644
+index 0000000..1cee477
+--- /dev/null
++++ b/tools/verify_replay.gd
+@@ -0,0 +1,49 @@
++# verify_replay.gd — Live-session replay harness (M2 exit-gate check)
++# Run AFTER playing the game and sleeping at least once:
++#   godot --headless --path . --script res://tools/verify_replay.gd
++# Loads the session's action log (user://session_replay.json) and the autosave
++# (user://autosave.json) — both written together at each sleep — replays the log
++# into a fresh world, and verifies the end state matches the autosave.
++# Presentation-only fields (selected tool/seed) are excluded: they are not
++# Actions and are not sim truth.
++extends SceneTree
++
++
++func _init() -> void:
++	var rlog := ReplayLog.load_from("user://session_replay.json")
++	var save := SaveGame.load_dict("user://autosave.json")
++	if rlog == null or save.is_empty():
++		print("MISSING FILES: play a session (and sleep at least once) first.")
++		print("  looked for user://session_replay.json and user://autosave.json")
++		quit(1)
++		return
++
++	var gs_replay = load("res://systems/game_state.gd").new()
++	var world_replay := SimWorld.new()
++	rlog.apply_to(world_replay, gs_replay)
++
++	var gs_save = load("res://systems/game_state.gd").new()
++	var world_save := SimWorld.new()
++	SaveGame.restore(save, world_save, gs_save)
++
++	var a := _canonical(SaveGame.capture(world_replay, gs_replay))
++	var b := _canonical(SaveGame.capture(world_save, gs_save))
++
++	print("=== Live-session replay verification ===")
++	print("replay entries: %d (base_save: %s)" % [rlog.entries.size(), "yes" if not rlog.base_save.is_empty() else "no"])
++	if a == b:
++		print("MATCH: replay reproduces the autosave state exactly.")
++		quit(0)
++	else:
++		print("MISMATCH: replay end state differs from autosave.")
++		print("--- replay: ", a.left(400))
++		print("--- save:   ", b.left(400))
++		quit(1)
++
++
++func _canonical(capture: Dictionary) -> String:
++	var c: Dictionary = capture.duplicate(true)
++	var s: Dictionary = c.get("state", {})
++	s.erase("selected_tool")
++	s.erase("selected_seed_type")
++	return JSON.stringify(c)
+diff --git a/tools/verify_replay.gd.uid b/tools/verify_replay.gd.uid
+new file mode 100644
+index 0000000..897f30b
+--- /dev/null
++++ b/tools/verify_replay.gd.uid
+@@ -0,0 +1 @@
++uid://c8dhvu3fbcpur
+diff --git a/ui/title_screen.gd b/ui/title_screen.gd
+index a7a4fc2..ee8be4c 100644
+--- a/ui/title_screen.gd
++++ b/ui/title_screen.gd
+@@ -1,18 +1,37 @@
+ extends Control
+ 
++@onready var start_label: Label = $VBoxContainer/StartLabel
++@onready var new_farm_button: Button = $VBoxContainer/NewFarmButton
++
++var _has_save := false
++
++
++func _ready() -> void:
++	_has_save = FileAccess.file_exists("user://autosave.json")
++	start_label.text = "Tap Anywhere to Continue" if _has_save else "Tap Anywhere to Start"
++	new_farm_button.visible = _has_save
++	new_farm_button.pressed.connect(_on_new_farm)
++
++
+ func _gui_input(event: InputEvent) -> void:
+ 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+ 		accept_event()
+-		start_game()
++		start_game(_has_save)
+ 	elif event is InputEventScreenTouch and event.pressed:
+ 		accept_event()
+-		start_game()
++		start_game(_has_save)
+ 	elif event.is_action_pressed("ui_accept"):
+ 		accept_event()
+-		start_game()
++		start_game(_has_save)
++
++
++func _on_new_farm() -> void:
++	start_game(false)
++
+ 
+-func start_game() -> void:
+-	print("Starting game...")
++func start_game(load_save: bool) -> void:
++	print("Starting game... (continue=%s)" % load_save)
++	GameState.pending_load = load_save
+ 	InputManager.has_click = false
+ 	AudioManager.play_sfx("click")
+ 	var err = get_tree().change_scene_to_file("res://main.tscn")
+diff --git a/ui/title_screen.tscn b/ui/title_screen.tscn
+index 6c6e4ee..a0f5ad7 100644
+--- a/ui/title_screen.tscn
++++ b/ui/title_screen.tscn
+@@ -54,3 +54,8 @@ theme_override_colors/font_color = Color(1, 1, 1, 1)
+ theme_override_font_sizes/font_size = 14
+ text = "Tap Anywhere to Start"
+ horizontal_alignment = 1
++
++[node name="NewFarmButton" type="Button" parent="VBoxContainer"]
++layout_mode = 2
++visible = false
++text = "New Farm"
+diff --git a/world/farm.gd b/world/farm.gd
+index 14575f3..d59affd 100644
+--- a/world/farm.gd
++++ b/world/farm.gd
+@@ -76,6 +76,11 @@ func start_replay_log(gen_seed: int) -> void:
+ 	replay.start(gen_seed)
+ 
+ 
++func start_replay_log_from_save(save_data: Dictionary) -> void:
++	replay = ReplayLog.new()
++	replay.start_from_save(save_data)
++
++
+ func apply_action(action: Dictionary, gs = null) -> Dictionary:
+ 	var result := sim.apply_action(action, gs)
+ 	if result.get("ok", false):
+-- 
+2.39.5 (Apple Git-154)
+

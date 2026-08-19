@@ -26,24 +26,18 @@ func _init() -> void:
 	var world_save := SimWorld.new()
 	SaveGame.restore(save, world_save, gs_save)
 
-	var a := _canonical(SaveGame.capture(world_replay, gs_replay))
-	var b := _canonical(SaveGame.capture(world_save, gs_save))
+	var a := SaveGame.capture_canonical(world_replay, gs_replay)
+	var b := SaveGame.capture_canonical(world_save, gs_save)
 
 	print("=== Live-session replay verification ===")
 	print("replay entries: %d (base_save: %s)" % [rlog.entries.size(), "yes" if not rlog.base_save.is_empty() else "no"])
-	if a == b:
+	var matched := a == b
+	if matched:
 		print("MATCH: replay reproduces the autosave state exactly.")
-		quit(0)
 	else:
 		print("MISMATCH: replay end state differs from autosave.")
 		print("--- replay: ", a.left(400))
 		print("--- save:   ", b.left(400))
-		quit(1)
-
-
-func _canonical(capture: Dictionary) -> String:
-	var c: Dictionary = capture.duplicate(true)
-	var s: Dictionary = c.get("state", {})
-	s.erase("selected_tool")
-	s.erase("selected_seed_type")
-	return JSON.stringify(c)
+	gs_replay.free()
+	gs_save.free()
+	quit(0 if matched else 1)
