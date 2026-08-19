@@ -10,9 +10,13 @@ resolution means no manual tool selection for basic play (kid-critical). Modes:
 touch/mouse/keyboard/gamepad all first-class inputs mapping to the same Actions (S-6).
 
 ## Sections to fill
-1. **Movement scheme (Q-8)** — `[Designer]` ruling for M1: tap-to-move with pathfinding
-   only (recommended: matches command philosophy, kid-easiest, already implemented) vs.
-   also offering a virtual stick option.
+1. **Movement scheme (Q-8)** — ✅ ruled 2026-08-19: tap-to-move with pathfinding only;
+   no virtual stick in v1; keyboard/gamepad remain desktop conveniences. Revisit only
+   if the kid test shows steering-by-taps failing.
+1b. **Interaction inventory (Q-28, from the Q-8 ruling)** — `[Joint]`: enumerate every
+   interaction the game needs, phase by phase, and match each to its best input method.
+   First pass before M3; re-audit at each phase design start (phase-4 dashboards and
+   phase-5 tactics are where the answers are least obvious).
 2. **Onboarding (Q-9)** — wordless: guided sequence vs. discovery-driven; `[Playtest]`
    with the actual 4-year-old (the M1 gate). No reading in the core loop (S-7).
 3. **HUD** — current: energy, gold, day, tools (`ui/hud.gd`). To spec: phase-scalable
