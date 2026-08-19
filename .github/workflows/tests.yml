@@ -1,0 +1,50 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+env:
+  GODOT_VERSION: "4.7.2"
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Godot
+        id: cache-godot
+        uses: actions/cache@v4
+        with:
+          path: ~/godot
+          key: godot-${{ env.GODOT_VERSION }}-linux
+
+      - name: Download Godot
+        if: steps.cache-godot.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/godot
+          curl -fL -o godot.zip "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q godot.zip -d ~/godot
+
+      - name: Locate binary
+        run: |
+          GODOT_BIN="$(find ~/godot -name 'Godot_v*_linux.x86_64' -type f | head -1)"
+          chmod +x "$GODOT_BIN"
+          echo "GODOT=$GODOT_BIN" >> "$GITHUB_ENV"
+
+      - name: Import project
+        run: '"$GODOT" --headless --path . --import || true'
+
+      - name: Unit suite
+        run: '"$GODOT" --headless --path . --script res://tests/test_runner.gd'
+
+      - name: Integration suite
+        run: '"$GODOT" --headless --path . res://tools/test_runner.tscn'
+
+      - name: Robot session (end-to-end)
+        run: '"$GODOT" --headless --path . res://tools/robot_session.tscn'
+
+      - name: Sim benchmark (smoke)
+        run: '"$GODOT" --headless --path . --script res://tools/benchmark_sim.gd'
