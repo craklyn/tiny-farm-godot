@@ -6,7 +6,7 @@ const SPEED = 20.0
 var tx: int
 var ty: int
 var state: String = "idle"
-var timer: float = randf_range(0.0, 2.0)
+var timer: float = SimRng.randf_range(0.0, 2.0)
 
 var path: Array[Vector2i] = []
 var path_index: int = 0
@@ -30,19 +30,19 @@ func _process(delta: float) -> void:
 		if timer <= 0:
 			var reachable = Pathfinding.get_reachable_tiles(farm, Vector2i(tx, ty))
 			if reachable.size() > 0:
-				var target = reachable[randi() % reachable.size()]
+				var target = reachable[SimRng.randi() % reachable.size()]
 				path = Pathfinding.find_path(farm, Vector2i(tx, ty), target)
 				if path.size() > 0:
 					state = "moving"
 					path_index = 0
 				else:
-					timer = randf_range(1.0, 3.0)
+					timer = SimRng.randf_range(1.0, 3.0)
 			else:
-				timer = randf_range(1.0, 3.0)
+				timer = SimRng.randf_range(1.0, 3.0)
 	elif state == "moving":
 		if path_index >= path.size():
 			state = "idle"
-			timer = randf_range(2.0, 5.0)
+			timer = SimRng.randf_range(2.0, 5.0)
 			return
 			
 		var target = path[path_index]
@@ -62,10 +62,10 @@ func _process(delta: float) -> void:
 			position = position.move_toward(target_pos, SPEED * delta)
 
 func on_new_day() -> void:
-	if randf() > 0.5:
+	if SimRng.randf() > 0.5:
 		var reachable = Pathfinding.get_reachable_tiles(farm, Vector2i(tx, ty))
 		if reachable.size() > 0:
-			var target = reachable[randi() % reachable.size()]
+			var target = reachable[SimRng.randi() % reachable.size()]
 			if farm.get_object(target.x, target.y) == "":
 				farm.set_object(target.x, target.y, "egg")
 
