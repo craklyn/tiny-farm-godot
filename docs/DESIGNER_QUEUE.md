@@ -39,21 +39,25 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
 - **Q-7b (Action → Claude)** Before the *first public release*: sanity-check that the
   placeholder assets (Sprout Lands) permit free public distribution with credit —
   free-to-play still distributes them (Q-6 makes releases public early).
-- **Q-8 (Ruling)** Movement scheme. **Rec: tap-to-move + pathfinding only** (matches
-  command philosophy, kid-easiest, already implemented); virtual-stick experiment only
-  if the kid test surfaces a need.
-- **Q-9 (Creative + Playtest)** Onboarding without reading: guided wordless sequence
-  vs. discovery-driven. The 4-year-old playtest is the referee (M1 gate).
-- **Q-10 (Creative)** Pest interaction feel for a pre-reader: what does she *do* about
-  the crow, and is it delightful rather than stressful?
-- **Q-11 (Ruling)** Energy/sleep friction level in the kid-facing loop (how much
-  resource pressure before phase 1 stops being kid-friendly).
-- **Q-12 (Creative)** The "phase 1 complete" moment: what the player sees and feels at
-  the 1→2 gate (kid-legible celebration; `design/12` gate table).
-- **Q-13 (Approval)** Audio direction one-pager — Claude drafts from
-  `design/10-audio-direction.md` questions; you steer taste.
-- **Q-14 (Approval)** Art style guide — Claude consolidates existing assets into rules;
-  you approve (`design/09-art-direction.md`).
+- **Q-8 (Ruling)** Movement scheme — **strawman ready in `M1_PLAN.md`** (tap-to-move
+  only; no virtual stick in v1). One-line accept/edit/reject.
+- **Q-9 (Creative + Playtest)** Onboarding — **strawman ready in `M1_PLAN.md`**
+  (wordless guided vignette: three sparkle-lit tiles, then discovery). Kid test is the
+  referee.
+- **Q-10 (Creative)** Pest feel — **strawman ready in `M1_PLAN.md`** (comedy not
+  threat; walk-to-scare; mercy rules: max one crop per visit, never the only crop).
+- **Q-11 (Ruling)** Energy friction — **strawman ready in `M1_PLAN.md`** (soft floor:
+  0 energy = slow walk + yawns, no lockout; hard energy returns in phase 2).
+  Flagged as the most taste-sensitive of the five.
+- **Q-12 (Creative)** Phase-1-complete moment — **strawman ready in `M1_PLAN.md`**
+  ("Expansion Morning": silent proof → gate opens to the phase-2 plot, wrapped
+  sprinkler part, confetti, no text).
+- **Q-13 (Approval)** Audio direction one-pager — **draft ready**:
+  `design/10-audio-direction.md` §"Direction proposal v1" (warm acoustic-toy identity,
+  delegation arc scored, verb→foley table). Three taste questions at its end.
+- **Q-14 (Approval)** Art style guide — **draft ready**: `design/09-art-direction.md`
+  §"Style guide v1" (measured palette ramps, outline/shape/contrast rules, reserved
+  overlay hues, animation budget, reskin spec implications).
 
 ## Before M3 — phase 2 design
 

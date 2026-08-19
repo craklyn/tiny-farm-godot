@@ -17,10 +17,13 @@ encounters (crow/chicken exist), first-session onboarding without reading.
 a tablet without adult hands on the screen. (This gate is cheap to run, brutally honest,
 and exactly the constraint S-7 promises.)
 
-## M2 — Simulation core (the big one)
-Implement S-5: deterministic seeded tick, sim/presentation split per the five-layer shape,
-headless fast-forward, replay logging of (Observation, Action) pairs, versioned save
-format. Port existing tests onto it.
+## M2 — Simulation core (the big one) — CORE COMPLETE on desktop (2026-08-18)
+Implemented per `M2_SPEC.md`: SimRng, SimWorld extraction (sim/presentation split),
+apply_action as the single mutation gateway (S-3), ReplayLog with weather-stamped
+sleeps, versioned SaveGame v1 + autosave, headless fast-forward benchmark
+(**~1.15M× realtime on desktop** vs. the ≥100× gate). SimClock re-scoped/deferred with
+rationale (see spec). Remaining to close M2: Android benchmark run, live-session
+replay harness, save-loading UI (scoped into M1's menu work).
 **Exit gate:** the full farm day runs headless at ≥100× real time on desktop with identical
 outcomes across repeated seeded runs; a recorded human session replays to the same end
 state.
