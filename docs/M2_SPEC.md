@@ -1,9 +1,19 @@
 # M2 Spec — Deterministic Simulation Core (S-5)
 
-*Plan of record for milestone M2. Status: in progress (step 1 landed 2026-08-18).
+*Plan of record for milestone M2. Status: core complete on desktop (2026-08-18) —
+steps 1, 3, 4, 5, 6, 7 landed; see "Remaining" below.
 Exit gate (ROADMAP): full farm day runs headless at ≥100× real time with identical
 outcomes across repeated seeded runs; a recorded human session replays to the same end
 state.*
+
+## Benchmark results (step 6)
+| Machine | days/sec | actions/sec | ×-realtime (600 s day) |
+|---|---|---|---|
+| Desktop (Apple Silicon, GDScript!) | ~1,900 | ~156k | **~1.15M×** |
+| Mid-range Android | *pending — needs a device build* | | |
+
+The ≥100× gate is cleared by ~4 orders of magnitude before any C#/GDExtension
+optimization. Overnight-training throughput will be bounded by NN math, not the sim.
 
 ## Goals
 Game truth advances on a deterministic, seeded, fixed tick, decoupled from rendering,
@@ -16,28 +26,48 @@ No gameplay changes; no new content; no ML code. Both test suites stay green aft
 step — strangler-fig migration, never a big-bang rewrite.
 
 ## Migration steps
-1. **SimRng** ✅ — all gameplay randomness through one seeded RNG (`systems/sim_rng.gd`,
+1. ✅ **SimRng** — all gameplay randomness through one seeded RNG (`systems/sim_rng.gd`,
    `class_name SimRng`, static API so it works in `--script` mode too). No raw
-   `randi()`/`randf()` in gameplay code, ever again (ARCHITECTURE guardrail).
-2. **SimClock** — fixed-tick accumulator (proposed: 10 Hz truth tick); day/energy/crop
-   advancement and entity AI move from `_process(delta)` into `tick()` functions;
-   `_process` becomes presentation-only (interpolation, animation).
-3. **Farm truth extraction** — tile/object state into a plain `RefCounted` sim object
-   (no Node2D); `farm.gd` becomes its renderer. Same for GameState's sim-relevant state.
-4. **Actions through the sim API** — `player.gd` stops mutating farm directly;
-   `_execute_resolved_action` submits Actions to the sim; entities (crow, chicken)
-   likewise. This completes S-3's actor-agnostic execution path.
-5. **Replay log** — append (tick, actor_id, Action) to a session log; save/load it;
-   replay harness asserts end-state equality. Observation hooks stubbed (schema per
-   ARCHITECTURE) even if unused until phase 4.
-6. **Headless fast-forward** — entry point that runs N sim days without rendering;
-   benchmark on desktop and Android; record ×-realtime numbers in this file.
-7. **Save v1** — versioned save format with migration hook, per ARCHITECTURE world-scale
-   plan.
+   `randi()`/`randf()` in gameplay code (ARCHITECTURE guardrail); the one allowed
+   exception is main.gd's per-run `randi()` that *seeds* the sim (entropy edge).
+2. ⏸ **SimClock — re-scoped, deferred.** Original plan: fixed 10 Hz truth tick for all
+   AI/timers. Building step 5 showed action-level replay makes this unnecessary for
+   M2's gate: determinism lives in the Action stream, not in frame timing — entity
+   movement/timers are presentation-side decision *processes* whose chosen Actions are
+   what gets recorded. Fixed ticks return when something genuinely needs tick truth:
+   per-tick bot control or tick-stamped observations (phase-4 prep, P-8's tactical
+   tier). Revisit at the D-2 spike.
+3. ✅ **Farm truth extraction** — `systems/sim/sim_world.gd` (RefCounted, no
+   Node/autoload/render deps); `world/farm.gd` is now renderer + facade with an
+   unchanged public API. GameState remains the player/economy state store, mutated
+   only via sim actions (full extraction into a SimState is optional cleanup, not a
+   gate requirement — determinism holds because all mutation flows through
+   `apply_action`).
+4. ✅ **Actions through the sim API** — `SimWorld.apply_action` is the single mutation
+   gateway (S-3): player tile verbs, sell/refill/collect, shop `buy_seed`, `sleep`
+   (day + weather + shipping), crow `eat_crop`, chicken `lay_egg`. Guards mirror
+   pre-M2 behavior exactly; no new validation yet (hardening deliberately deferred so
+   behavior is provably unchanged).
+5. ✅ **Replay log** — `systems/sim/replay_log.gd`: (gen_seed, [Action...]) with rolled
+   weather stamped on sleep entries; JSON save/load; `apply_to()` rebuilds world+state.
+   Unit test proves a session replays to a byte-identical end-state snapshot *despite
+   injected RNG noise*. Live sessions dump to `user://session_replay.json` each sleep.
+   Observation hooks not yet stubbed (do with D-2 spike when the schema firms up).
+6. ✅ **Headless fast-forward** — `tools/benchmark_sim.gd`; numbers above.
+7. ✅ **Save v1** — `systems/sim/save_game.gd`: versioned snapshot + migration chain;
+   value-identity round-trip tested; autosave-on-sleep wired (write-only).
+
+## Remaining before M2 closes
+- Android benchmark run (needs a device build — designer's phone or emulator).
+- Live-session replay harness: load `user://session_replay.json` from a real play
+  session and assert it reproduces the autosave state (the human-session half of the
+  exit gate; the scripted-session half is proven in tests).
+- Save *loading* UI (continue/new-game) — scoped to M1's menu work, not M2.
 
 ## Risks / notes
 - `Input`-driven player movement stays event-driven at the edge; it *produces* Actions,
   it is not sim truth (five-layer shape, ARCHITECTURE).
-- Chicken/crow timers move to tick counts (float-delta timers are a determinism leak).
 - S-5 introspection note (designer): while building this, look for gameplay the sim
-  core enables — drills/synthetic scenarios are already seeded in `design/06` §8.
+  core enables — drills/synthetic scenarios are already seeded in `design/06` §8. The
+  benchmark confirms the enabling fact: sim throughput is effectively free; training
+  budgets will be spent on NN math, not world simulation.
