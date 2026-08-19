@@ -231,12 +231,14 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			var tile := get_tile(target.x, target.y)
 			if tile.is_empty() or tile.get("state", "") == "": return _fail("out_of_bounds")
 			var cost: int = Tools.get_energy_cost(verb)
-			if gs.energy < cost: return _fail("no_energy")
+			# Q-11 soft floor: in phase 1 an empty tank never blocks the action,
+			# it just stays at 0 (presentation slows the farmer as the nudge)
+			if gs.hard_energy and gs.energy < cost: return _fail("no_energy")
 			var seed_type: String = action.get("seed_type", "")
 			if verb == "water" and gs.watering_can_charges <= 0: return _fail("no_water")
 			if verb == "plant" and gs.seeds.get(seed_type, 0) <= 0: return _fail("no_seeds")
 
-			gs.energy -= cost
+			gs.energy = maxi(0, gs.energy - cost)
 			match verb:
 				"clear_weed", "clear_log", "clear_rock":
 					set_tile_state(target.x, target.y, "cleared")

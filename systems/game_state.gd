@@ -25,6 +25,7 @@ var shipping_bin: Dictionary
 var watering_can_charges: int
 var max_watering_can_charges: int
 var selected_seed_type: String
+var hard_energy: bool  # phase 1: false (soft floor, Q-11); phase 2+ flips true
 
 # Milestones tracking
 var _milestones_earned: Dictionary = {}
@@ -58,6 +59,7 @@ func reset() -> void:
 	watering_can_charges = 8
 	max_watering_can_charges = 8
 	selected_seed_type = "wheat"
+	hard_energy = false
 	_milestones_earned = {}
 	game_paused = false
 	day_changed.emit(day)

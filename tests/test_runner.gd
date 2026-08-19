@@ -536,8 +536,12 @@ func test_sim_actions() -> void:
 
 	# Guards
 	GameState.energy = 0
+	GameState.hard_energy = true
 	r = world.apply_action({ "verb": "till", "target": Vector2i(6, 5), "actor": "player" }, GameState)
-	_assert(not r.ok and r.reason == "no_energy", "till refused at 0 energy")
+	_assert(not r.ok and r.reason == "no_energy", "till refused at 0 energy (hard)")
+	GameState.hard_energy = false
+	r = world.apply_action({ "verb": "till", "target": Vector2i(6, 5), "actor": "player" }, GameState)
+	_assert(r.ok and GameState.energy == 0, "soft floor: till allowed at 0 energy, stays 0 (Q-11)")
 	r = world.apply_action({ "verb": "bogus", "target": t }, GameState)
 	_assert(not r.ok, "unknown verb refused")
 

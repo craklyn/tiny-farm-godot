@@ -29,6 +29,7 @@ static func capture(world: SimWorld, gs) -> Dictionary:
 			"watering_can_charges": gs.watering_can_charges,
 			"max_watering_can_charges": gs.max_watering_can_charges,
 			"selected_seed_type": gs.selected_seed_type,
+			"hard_energy": gs.hard_energy,
 			"milestones": gs._milestones_earned.duplicate(),
 		},
 	}
@@ -80,6 +81,7 @@ static func restore(data: Dictionary, world: SimWorld, gs) -> bool:
 	gs.watering_can_charges = int(s.get("watering_can_charges", 8))
 	gs.max_watering_can_charges = int(s.get("max_watering_can_charges", 8))
 	gs.selected_seed_type = String(s.get("selected_seed_type", "wheat"))
+	gs.hard_energy = bool(s.get("hard_energy", false))
 	gs._milestones_earned = s.get("milestones", {}).duplicate()
 
 	gs.day_changed.emit(gs.day)
