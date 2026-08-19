@@ -42,6 +42,30 @@ var _milestones_earned: Dictionary = {}
 var game_paused: bool = false
 
 
+func reset() -> void:
+	# New-game / replay baseline. Must mirror the var initializers above.
+	day = 1
+	weather = "sunny"
+	energy = 20
+	max_energy = 20
+	gold = 0
+	selected_tool = 0
+	seeds = { "wheat": 5, "tomato": 0 }
+	crops = { "wheat": 0, "tomato": 0 }
+	harvest_counts = { "wheat": 0, "tomato": 0 }
+	shipping_bin = { "wheat": 0, "tomato": 0 }
+	watering_can_charges = 8
+	max_watering_can_charges = 8
+	selected_seed_type = "wheat"
+	_milestones_earned = {}
+	game_paused = false
+	day_changed.emit(day)
+	energy_changed.emit(energy)
+	gold_changed.emit(gold)
+	weather_changed.emit(weather)
+	tool_changed.emit(selected_tool)
+
+
 func set_energy(value: int) -> void:
 	energy = clampi(value, 0, max_energy)
 	energy_changed.emit(energy)

@@ -9,6 +9,7 @@ const MAP_WIDTH := SimWorld.MAP_WIDTH
 const MAP_HEIGHT := SimWorld.MAP_HEIGHT
 
 var sim: SimWorld = SimWorld.new()
+var replay: ReplayLog = null  # set via start_replay_log(); records every ok action
 
 # Facade views over sim truth (same Array references — in-place mutation works)
 var tiles: Array[Array]:
@@ -70,9 +71,16 @@ func _load_textures() -> void:
 
 # --- Facade: forwards the old farm API to SimWorld ---------------------------
 
+func start_replay_log(gen_seed: int) -> void:
+	replay = ReplayLog.new()
+	replay.start(gen_seed)
+
+
 func apply_action(action: Dictionary, gs = null) -> Dictionary:
 	var result := sim.apply_action(action, gs)
 	if result.get("ok", false):
+		if replay != null:
+			replay.record(action, result)
 		queue_redraw()
 	return result
 
