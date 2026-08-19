@@ -76,6 +76,11 @@ func start_replay_log(gen_seed: int) -> void:
 	replay.start(gen_seed)
 
 
+func start_replay_log_from_save(save_data: Dictionary) -> void:
+	replay = ReplayLog.new()
+	replay.start_from_save(save_data)
+
+
 func apply_action(action: Dictionary, gs = null) -> Dictionary:
 	var result := sim.apply_action(action, gs)
 	if result.get("ok", false):

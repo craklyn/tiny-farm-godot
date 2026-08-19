@@ -53,10 +53,12 @@ them only changes its own task row below.)*
 ## Task list
 
 **Ready now (no rulings needed):**
-- [ ] Title screen: Continue (loads `user://autosave.json`) / New Game (fresh seed);
-      wire `SaveGame.load_from`. Closes an M2 leftover too.
-- [ ] Live-replay harness: after a real session, verify `user://session_replay.json`
-      replays to the autosave state (closes the human half of the M2 gate).
+- [x] Title screen: tap-anywhere = Continue when an autosave exists (kid-friendly
+      default), explicit New Farm button for a fresh seed. (2026-08-18)
+- [x] Live-replay harness: `tools/verify_replay.gd` compares a real session's replay
+      against its autosave; milestone checks moved into the sim gateway so replays
+      earn them too. Needs one real play session to run the human half of the gate.
+      (2026-08-18)
 - [ ] Device pass on a real tablet: mis-tap rate on tiles adjacent to HUD, swipe-chain
       feel, orientation/safe-area check. (Needs the designer's hardware for the final
       word, but the build and instrumentation can be prepared.)

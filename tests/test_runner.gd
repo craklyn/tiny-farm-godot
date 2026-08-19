@@ -33,6 +33,7 @@ func _init() -> void:
 	test_sim_actions()
 	test_replay()
 	test_save_game()
+	test_replay_from_save()
 
 	print("")
 	print(String("=").repeat(60))
@@ -624,3 +625,45 @@ func test_save_game() -> void:
 	var bad = JSON.parse_string(live)
 	bad["version"] = 999
 	_assert(not SaveGame.restore(bad, SimWorld.new(), GameState), "unknown save version refused")
+
+func test_replay_from_save() -> void:
+	print("\n--- Replay-from-save (continue session) Tests ---")
+
+	# Session 1: fresh farm, some work, then capture the "autosave"
+	GameState.reset()
+	SimRng.reseed(77)
+	var world := SimWorld.new()
+	world.generate()
+	world.apply_action({ "verb": "till", "target": Vector2i(5, 2), "actor": "player" }, GameState)
+	world.apply_action({ "verb": "plant", "target": Vector2i(5, 2), "seed_type": "wheat", "actor": "player" }, GameState)
+	world.apply_action({ "verb": "water", "target": Vector2i(5, 2), "actor": "player" }, GameState)
+	world.apply_action({ "verb": "sleep", "actor": "world", "weather": "sunny" }, GameState)
+	var autosave = JSON.parse_string(JSON.stringify(SaveGame.capture(world, GameState)))
+
+	# Session 2: continue from the autosave, do more work, record it
+	var world2 := SimWorld.new()
+	GameState.reset()
+	_assert(SaveGame.restore(autosave, world2, GameState), "continue session restores autosave")
+	var rlog := ReplayLog.new()
+	rlog.start_from_save(autosave)
+	var actions := [
+		{ "verb": "water", "target": Vector2i(5, 2), "actor": "player" },
+		{ "verb": "sleep", "actor": "world", "weather": "sunny" },
+		{ "verb": "water", "target": Vector2i(5, 2), "actor": "player" },
+		{ "verb": "sleep", "actor": "world", "weather": "rainy" },
+		{ "verb": "harvest", "target": Vector2i(5, 2), "actor": "player" },
+		{ "verb": "sell", "actor": "player" },
+	]
+	for a in actions:
+		var r: Dictionary = world2.apply_action(a, GameState)
+		if r.get("ok", false):
+			rlog.record(a, r)
+	_assert(GameState.gold == 15, "continue session harvested and sold wheat")
+	var live_snap := _replay_snapshot(world2)
+
+	# Replay the continued session from the log's embedded base save
+	var rlog2 := ReplayLog.from_json(rlog.to_json())
+	var world3 := SimWorld.new()
+	rlog2.apply_to(world3, GameState)
+	_assert(_replay_snapshot(world3) == live_snap, "continued session replays to identical end state")
+	_assert(GameState._milestones_earned.has("first_harvest"), "replayed actions earn milestones (sim truth)")

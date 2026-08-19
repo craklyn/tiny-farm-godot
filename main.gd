@@ -125,6 +125,15 @@ func _ready() -> void:
 	add_child(day_cycle)
 
 	GameState.weather_changed.connect(_on_weather_changed)
+
+	# Continue from autosave when the title screen requested it
+	if GameState.pending_load:
+		GameState.pending_load = false
+		var save_data := SaveGame.load_dict("user://autosave.json")
+		if not save_data.is_empty() and SaveGame.restore(save_data, farm.sim, GameState):
+			farm.start_replay_log_from_save(save_data)
+			farm.queue_redraw()
+
 	_on_weather_changed(GameState.weather)
 
 func _on_weather_changed(weather: String) -> void:

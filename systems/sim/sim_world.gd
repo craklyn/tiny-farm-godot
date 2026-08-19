@@ -159,6 +159,14 @@ func water_tile(tx: int, ty: int) -> void:
 # Returns { ok: bool, reason: String, ...verb extras }. Mutation happens only
 # on ok. Guards mirror the pre-M2 player checks exactly (no new validation yet).
 func apply_action(action: Dictionary, gs = null) -> Dictionary:
+	var result := _apply(action, gs)
+	# Milestones are capability proofs (P-4) — sim truth, so replays earn them too
+	if result.get("ok", false) and gs != null and gs.has_method("check_milestones"):
+		gs.check_milestones()
+	return result
+
+
+func _apply(action: Dictionary, gs) -> Dictionary:
 	var verb: String = action.get("verb", "")
 	var target: Vector2i = action.get("target", Vector2i(-1, -1))
 

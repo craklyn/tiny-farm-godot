@@ -10,11 +10,21 @@ extends RefCounted
 const VERSION := 1
 
 var gen_seed: int = 0
+var base_save: Dictionary = {}  # non-empty when the session continued from a save
 var entries: Array[Dictionary] = []
 
 
 func start(seed_value: int) -> void:
 	gen_seed = seed_value
+	base_save = {}
+	entries.clear()
+
+
+# Sessions that continue from an autosave replay from that snapshot instead
+# of regenerating from seed.
+func start_from_save(save_data: Dictionary) -> void:
+	gen_seed = 0
+	base_save = save_data.duplicate(true)
 	entries.clear()
 
 
@@ -29,14 +39,22 @@ func record(action: Dictionary, result: Dictionary) -> void:
 func apply_to(world: SimWorld, gs) -> void:
 	if gs != null and gs.has_method("reset"):
 		gs.reset()
-	SimRng.reseed(gen_seed)
-	world.generate()
+	if not base_save.is_empty():
+		SaveGame.restore(base_save, world, gs)
+	else:
+		SimRng.reseed(gen_seed)
+		world.generate()
 	for e in entries:
 		world.apply_action(_decode(e), gs)
 
 
 func to_json() -> String:
-	return JSON.stringify({ "version": VERSION, "gen_seed": gen_seed, "entries": entries })
+	return JSON.stringify({
+		"version": VERSION,
+		"gen_seed": gen_seed,
+		"base_save": base_save,
+		"entries": entries,
+	})
 
 
 static func from_json(text: String) -> ReplayLog:
@@ -45,6 +63,9 @@ static func from_json(text: String) -> ReplayLog:
 	if data == null or typeof(data) != TYPE_DICTIONARY:
 		return replay
 	replay.gen_seed = int(data.get("gen_seed", 0))
+	var bs = data.get("base_save", {})
+	if typeof(bs) == TYPE_DICTIONARY:
+		replay.base_save = bs
 	for e in data.get("entries", []):
 		if typeof(e) == TYPE_DICTIONARY:
 			replay.entries.append(e)
