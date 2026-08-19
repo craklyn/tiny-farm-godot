@@ -33,7 +33,9 @@ func _process(delta: float) -> void:
 		queue_redraw()
 	
 	if state == "flying_in":
-		if _is_spooked():
+		var cause_in := _spook_cause()
+		if cause_in != "":
+			_on_scared(cause_in)
 			state = "flying_away"
 			return
 		
@@ -55,7 +57,9 @@ func _process(delta: float) -> void:
 			position.y += (dy/dist) * speed
 			
 	elif state == "eating":
-		if _is_spooked():
+		var cause_eat := _spook_cause()
+		if cause_eat != "":
+			_on_scared(cause_eat)
 			state = "flying_away"
 			return
 			
@@ -80,10 +84,11 @@ func _process(delta: float) -> void:
 			queue_free()
 
 
-func _is_spooked() -> bool:
+# Returns what spooked the crow: "player", "scarecrow", "entity", or "" if calm.
+func _spook_cause() -> String:
 	if not player or not farm:
-		return false
-		
+		return ""
+
 	# Check player distance
 	var dx: float = player.position.x - position.x
 	var dy: float = player.position.y - position.y
@@ -92,14 +97,14 @@ func _is_spooked() -> bool:
 	if sr == null:
 		sr = 3.0 * TILE_SIZE
 	if dist < sr:
-		return true
-		
+		return "player"
+
 	# Check scarecrow
 	var my_tx = int(position.x / TILE_SIZE)
 	var my_ty = int(position.y / TILE_SIZE)
 	if farm.has_method("is_protected_by_scarecrow") and farm.is_protected_by_scarecrow(my_tx, my_ty):
-		return true
-		
+		return "scarecrow"
+
 	# Check other entities
 	if entities_manager:
 		for ent in entities_manager.get_children():
@@ -108,9 +113,27 @@ func _is_spooked() -> bool:
 				var edy: float = ent.position.y - position.y
 				var edist: float = sqrt(edx*edx + edy*edy)
 				if edist < ent.spook_radius:
-					return true
-					
-	return false
+					return "entity"
+
+	return ""
+
+
+var _scared_reported := false
+
+# Q-10 juice + Q-12 proof: squawk and feathers on any scare; only a
+# player-caused scare counts toward the capability proof (via the sim verb).
+func _on_scared(cause: String) -> void:
+	if _scared_reported:
+		return
+	_scared_reported = true
+	if cause == "player":
+		farm.apply_action({ "verb": "crow_scared", "actor": "crow" }, GameState)
+	if get_tree():
+		var main = get_tree().get_first_node_in_group("Main")
+		if main and main.has_method("spawn_particles"):
+			main.spawn_particles("feathers", position)
+		if get_tree().root.has_node("AudioManager"):
+			get_tree().root.get_node("AudioManager").play_sfx("squawk")
 
 
 func queue_render(canvas: CanvasItem, render_queue: Array) -> void:

@@ -35,6 +35,7 @@ func _init() -> void:
 	test_save_game()
 	test_replay_from_save()
 	test_replay_flush()
+	test_crow_scared_verb()
 
 	print("")
 	print(String("=").repeat(60))
@@ -704,3 +705,16 @@ func test_replay_flush() -> void:
 		verbs.append(e.get("verb", ""))
 	_assert(verbs == ["till", "sleep", "water", "sleep"], "loaded entries keep order and verbs")
 	DirAccess.remove_absolute(path)
+
+func test_crow_scared_verb() -> void:
+	print("\n--- crow_scared verb Tests ---")
+	GameState.reset()
+	var world := SimWorld.new()
+	SimRng.reseed(11)
+	world.generate()
+	var r := world.apply_action({ "verb": "crow_scared", "actor": "crow" }, GameState)
+	_assert(r.ok and GameState.crows_scared == 1, "crow_scared increments counter")
+	world.apply_action({ "verb": "crow_scared", "actor": "crow" }, GameState)
+	_assert(GameState.crows_scared == 2, "counter accumulates")
+	r = world.apply_action({ "verb": "crow_scared", "actor": "crow" })
+	_assert(not r.ok, "crow_scared without gs refused")

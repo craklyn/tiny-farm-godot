@@ -224,6 +224,11 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			if get_object(target.x, target.y) != "": return _fail("occupied")
 			set_object(target.x, target.y, "egg")
 			return { "ok": true }
+		"crow_scared":
+			# Player-caused scare event; feeds the Q-12 capability proof
+			if gs == null: return _fail("no_state")
+			gs.crows_scared += 1
+			return { "ok": true }
 
 		# -- energy-costed tile verbs --
 		"clear_weed", "clear_log", "clear_rock", "till", "plant", "water", "harvest":
