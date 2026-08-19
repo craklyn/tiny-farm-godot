@@ -59,7 +59,7 @@ func _ready() -> void:
 	var chicken = ChickenScript.new()
 	var reachable = Pathfinding.get_reachable_tiles(farm, player.get_tile_pos())
 	if reachable.size() > 0:
-		var target = reachable[randi() % reachable.size()]
+		var target = reachable[SimRng.randi() % reachable.size()]
 		chicken.init(farm, target)
 		entities.add_child(chicken)
 
@@ -155,7 +155,7 @@ func _process(delta: float) -> void:
 				if not tile.is_empty() and (tile.state == "growing" or tile.state == "ready" or tile.state == "seeded"):
 					targets.append(Vector2i(tx, ty))
 		if targets.size() > 0:
-			var target = targets[randi() % targets.size()]
+			var target = targets[SimRng.randi() % targets.size()]
 			var CrowScript = load("res://entities/crow.gd")
 			var crow = CrowScript.new()
 			crow.init_crow(-32.0, -32.0, target.x, target.y, farm, player, entities)

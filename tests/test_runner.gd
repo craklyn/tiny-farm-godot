@@ -28,7 +28,8 @@ func _init() -> void:
 	test_action_router()
 	test_input_bleed()
 	test_swipe_chaining()
-	
+	test_sim_rng()
+
 	print("")
 	print(String("=").repeat(60))
 	print("Results: %d PASSED, %d FAILED" % [pass_count, fail_count])
@@ -422,3 +423,27 @@ func test_swipe_chaining() -> void:
 	var r_drag_far = ActionRouter.resolve(t, GameState, Vector2i(5, 5), Vector2i(1, 1), true)
 	_assert(r_drag_far.get("action", "") == "till", "ActionRouter allows drag on far tile")
 	t.free()
+
+func test_sim_rng() -> void:
+	print("\n--- SimRng Determinism Tests ---")
+
+	SimRng.reseed(42)
+	var seq_a: Array[int] = []
+	for i in 8:
+		seq_a.append(SimRng.randi())
+	var float_a := SimRng.randf()
+
+	SimRng.reseed(42)
+	var seq_b: Array[int] = []
+	for i in 8:
+		seq_b.append(SimRng.randi())
+	var float_b := SimRng.randf()
+
+	_assert(seq_a == seq_b, "Same seed reproduces identical int sequence")
+	_assert(float_a == float_b, "Same seed reproduces identical float draw")
+
+	SimRng.reseed(43)
+	var seq_c: Array[int] = []
+	for i in 8:
+		seq_c.append(SimRng.randi())
+	_assert(seq_a != seq_c, "Different seed produces different sequence")

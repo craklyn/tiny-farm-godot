@@ -121,7 +121,7 @@ func start_new_day() -> void:
 	watering_can_charges = max_watering_can_charges
 	day += 1
 	
-	if randf() < 0.2:
+	if SimRng.randf() < 0.2:
 		weather = "rainy"
 	else:
 		weather = "sunny"

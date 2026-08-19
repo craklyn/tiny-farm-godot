@@ -81,9 +81,9 @@ func _init_grid() -> void:
 			if ty == 0 or ty == MAP_HEIGHT - 1 or tx == 0 or tx == MAP_WIDTH - 1:
 				row.append(_create_tile("border"))
 			else:
-				if randf() < 0.25:
+				if SimRng.randf() < 0.25:
 					var obstacle_types: Array[String] = ["obstacle_rock", "obstacle_log", "obstacle_weed"]
-					row.append(_create_tile(obstacle_types[randi() % 3]))
+					row.append(_create_tile(obstacle_types[SimRng.randi() % 3]))
 				else:
 					row.append(_create_tile("cleared"))
 			obj_row.append("")
