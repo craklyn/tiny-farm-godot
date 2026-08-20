@@ -19,7 +19,7 @@ func init(farm_ref: Node2D, start_t: Vector2i):
 	farm = farm_ref
 	tx = start_t.x
 	ty = start_t.y
-	position = Vector2((tx - 1) * TILE_SIZE, (ty - 1) * TILE_SIZE)
+	position = Vector2(tx * TILE_SIZE, ty * TILE_SIZE)
 
 func _process(delta: float) -> void:
 	if not farm:
@@ -50,7 +50,7 @@ func _process(delta: float) -> void:
 			state = "idle"
 			timer = 0.0
 			return
-		var target_pos = Vector2((target.x - 1) * TILE_SIZE, (target.y - 1) * TILE_SIZE)
+		var target_pos = Vector2(target.x * TILE_SIZE, target.y * TILE_SIZE)
 		
 		var dist = position.distance_to(target_pos)
 		if dist <= SPEED * delta:
