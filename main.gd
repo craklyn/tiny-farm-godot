@@ -42,9 +42,7 @@ func _ready() -> void:
 	var gen_seed := randi()
 	SimRng.reseed(gen_seed)
 
-	# Create farm. When continuing, the saved world must be restored BEFORE
-	# anything reads the grid (player spawn, chicken placement), and the
-	# throwaway generation is skipped entirely.
+		# Create farm.
 	var pending := GameState.pending_load
 	GameState.pending_load = false
 	var save_data: Dictionary = SaveGame.load_dict(GameState.save_path) if pending else {}
@@ -54,6 +52,11 @@ func _ready() -> void:
 	farm.name = "Farm"
 	farm.generate_on_ready = save_data.is_empty()
 	add_child(farm)
+
+	var overlay = Node2D.new()
+	overlay.name = "OverlayRenderer"
+	overlay.draw.connect(func(): _draw_overlay(overlay))
+	add_child(overlay)
 
 	var restored := false
 	if not save_data.is_empty():
@@ -265,7 +268,7 @@ func _process(delta: float) -> void:
 		cursor_color = ActionRouter.get_cursor_color(farm, GameState, cursor_tile)
 	else:
 		cursor_visible = false
-	queue_redraw()
+	if has_node("OverlayRenderer"): get_node("OverlayRenderer").queue_redraw()
 
 	# Determine interaction hints
 	var hint_text: String = ""
@@ -349,13 +352,13 @@ func spawn_particles(effect_type: String, world_pos: Vector2) -> void:
 	particles_manager.emit(effect_type, world_pos)
 
 
-func _draw() -> void:
+func _draw_overlay(overlay: CanvasItem) -> void:
 	# Draw tile cursor in world space
 	if cursor_visible and cursor_tile.x >= 0 and cursor_tile.y >= 0:
 		var px := cursor_tile.x * TILE_SIZE
 		var py := cursor_tile.y * TILE_SIZE
 		var rect := Rect2(px, py, TILE_SIZE, TILE_SIZE)
-		draw_rect(rect, cursor_color, false, 1.0)
+		overlay.draw_rect(rect, cursor_color, false, 1.0)
 
 	# Q-9: wordless onboarding — sparkle-pulse the current vignette target
 	if farm != null and VignetteState.is_active(farm.sim, GameState.day):
@@ -364,15 +367,15 @@ func _draw() -> void:
 			var ms := Time.get_ticks_msec()
 			var glow := 0.45 + 0.35 * sin(ms / 220.0)
 			var vr := Rect2(vt.x * TILE_SIZE, vt.y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
-			draw_rect(vr, Color(1.0, 1.0, 0.75, glow), false, 1.5)
+			overlay.draw_rect(vr, Color(1.0, 1.0, 0.75, glow), false, 1.5)
 			var twinkle := 0.45 + 0.35 * sin(ms / 220.0 + PI)
 			for corner in [vr.position, vr.position + Vector2(TILE_SIZE - 2, 0),
 					vr.position + Vector2(0, TILE_SIZE - 2), vr.position + Vector2(TILE_SIZE - 2, TILE_SIZE - 2)]:
-				draw_rect(Rect2(corner, Vector2(2, 2)), Color(1.0, 1.0, 0.85, twinkle), true)
+				overlay.draw_rect(Rect2(corner, Vector2(2, 2)), Color(1.0, 1.0, 0.85, twinkle), true)
 
 	# Q-11: a softly pulsing cot nudges an exhausted farmer toward sleep
 	if GameState.energy <= 2 and _cot_tile.x >= 0:
 		var pulse := 0.25 + 0.2 * sin(Time.get_ticks_msec() / 300.0)
 		var cot_rect := Rect2(_cot_tile.x * TILE_SIZE, (_cot_tile.y - 1) * TILE_SIZE, TILE_SIZE, TILE_SIZE * 2)
-		draw_rect(cot_rect, Color(1.0, 0.95, 0.6, pulse * 0.35), true)
-		draw_rect(cot_rect, Color(1.0, 0.95, 0.6, pulse), false, 1.5)
+		overlay.draw_rect(cot_rect, Color(1.0, 0.95, 0.6, pulse * 0.35), true)
+		overlay.draw_rect(cot_rect, Color(1.0, 0.95, 0.6, pulse), false, 1.5)
