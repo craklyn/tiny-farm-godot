@@ -159,10 +159,99 @@ def preview(rendered, path="tools/sfx_preview.png"):
     print("wrote", path)
 
 
+# --- Alternates (--alt) -------------------------------------------------------
+#
+# Playtest verdict 2026-08-27: click and till landed; harvest read as "an electric
+# lottery win" rather than physical work, and cluck/squawk did not read as a bird
+# at all. The pattern is that naive synthesis handles short percussive impacts and
+# UI ticks well and organic/voiced sounds badly. These alternates use scipy's
+# resonant filters (unavailable to the one-pole versions above) to chase formant-
+# like character, and are written alongside the originals so both can be A/B'd in
+# the in-game Sound Test before either is promoted.
+from scipy import signal as _sig
+
+
+def _band(x, lo, hi, order=2):
+    lo = max(20.0, lo)
+    hi = min(SR / 2.0 - 100.0, hi)
+    b, a = _sig.butter(order, [lo, hi], btype="band", fs=SR)
+    return _sig.lfilter(b, a, x)
+
+
+def _sweep_saw(f0, f1, n, curve=1.0):
+    t = np.linspace(0.0, 1.0, n) ** curve
+    f = f0 + (f1 - f0) * t
+    return _sig.sawtooth(2 * np.pi * np.cumsum(f) / SR)
+
+
+def harvest_alt():
+    """Physical first: a stem snapping and leaves rustling, with only a hint of
+    warm tone underneath — no bright two-note chime."""
+    n = int(0.40 * SR)
+    out = np.zeros(n)
+
+    sn = int(0.03 * SR)                                  # the snap of the stem
+    snap = _band(noise(sn), 700, 4200) * env(sn, int(0.001 * SR), sn, 7.0)
+    snap += _sweep_saw(680, 260, sn) * env(sn, int(0.001 * SR), sn, 8.0) * 0.5
+    out[:sn] += snap * 0.75
+
+    tn = int(0.09 * SR)                                  # weight in the hand
+    out[:tn] += sine(165, tn) * env(tn, int(0.003 * SR), tn, 4.0) * 0.5
+
+    rs = int(0.02 * SR)                                  # leaves letting go
+    rn = int(0.26 * SR)
+    rustle = _band(noise(rn), 1300, 5200)
+    rustle *= 0.55 + 0.45 * np.sin(2 * np.pi * 23 * np.arange(rn) / SR)
+    out[rs:rs + rn] += rustle * env(rn, int(0.01 * SR), rn, 2.2) * 0.34
+
+    ws = int(0.05 * SR)                                  # warm lift, kept dull
+    wn = n - ws
+    warm = sine(392, wn) * 0.6 + sine(588, wn) * 0.3 + sine(392 * 2, wn) * 0.1
+    warm = lowpass(warm, 1800)
+    out[ws:] += warm * env(wn, int(0.018 * SR), wn, 3.0) * 0.22
+    return normalise(out, 0.68)
+
+
+def cluck_alt():
+    """A two-part 'b'kok': a resonant pitch-dropping pulse, then a smaller one."""
+    n = int(0.22 * SR)
+    out = np.zeros(n)
+    for start, f0, f1, amp, ln_s in ((0.0, 950, 360, 1.0, 0.065), (0.075, 700, 300, 0.55, 0.05)):
+        s = int(start * SR)
+        ln = int(ln_s * SR)
+        voiced = _sweep_saw(f0, f1, ln, curve=0.55)
+        breath = noise(ln) * 0.45
+        pulse = _band(voiced + breath, 320, 2100, order=3)
+        pulse *= env(ln, int(0.0015 * SR), ln, 4.5) * amp
+        out[s:s + ln] += pulse[:len(out) - s]
+    return normalise(out, 0.6)
+
+
+def squawk_alt():
+    """A harsh falling cry: rich harmonics, breath noise, and a little rasp."""
+    n = int(0.26 * SR)
+    voiced = _sweep_saw(1180, 420, n, curve=0.75)
+    # slight roughness so it reads as a throat rather than an oscillator
+    vib = 1.0 + 0.05 * np.sin(2 * np.pi * 38 * np.arange(n) / SR)
+    voiced = voiced * vib
+    breath = noise(n) * 0.4
+    body = _band(voiced + breath, 700, 4600, order=3)
+    body = np.tanh(body * 2.2) / 2.2                      # rasp
+    return normalise(body * env(n, int(0.006 * SR), n, 2.4), 0.66)
+
+
+ALTERNATES = {
+    "harvest_alt": harvest_alt,
+    "cluck_alt": cluck_alt,
+    "squawk_alt": squawk_alt,
+}
+
+
 if __name__ == "__main__":
     os.makedirs(OUT_DIR, exist_ok=True)
     rendered = {}
-    for name, fn in SOUNDS.items():
+    table = dict(ALTERNATES) if "--alt" in sys.argv else dict(SOUNDS)
+    for name, fn in table.items():
         s = fn()
         rendered[name] = s
         path = os.path.join(OUT_DIR, f"{name}.wav")
