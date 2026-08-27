@@ -39,6 +39,7 @@ var dirt_texture: Texture2D
 var biomes_texture: Texture2D
 var furniture_texture: Texture2D
 var chest_texture: Texture2D
+var animals_texture: Texture2D
 
 func _load_textures() -> void:
 	# Generated sheets (see CREDITS.md — AI-generated via Retro Diffusion).
@@ -50,6 +51,7 @@ func _load_textures() -> void:
 	biomes_texture = load("res://assets/sprites/generated/obstacles.png")
 	furniture_texture = load("res://assets/sprites/generated/objects.png")
 	chest_texture = furniture_texture
+	animals_texture = load("res://assets/sprites/generated/animals.png")
 
 	# Tile regions (obstacles.png: rock, log, weed)
 	tile_regions["obstacle_rock"] = Rect2(0 * 16, 0, 16, 16)
@@ -230,8 +232,10 @@ func _draw() -> void:
 			if obj == "egg":
 				render_queue.append({
 					"y": py,
-					"draw": func(): 
-						draw_rect(Rect2(px + 6, py + 8, 4, 6), Color.WHITE)
+					"draw": func():
+						# animals.png cell 5
+						draw_texture_rect_region(animals_texture,
+							Rect2(px, py, TILE_SIZE, TILE_SIZE), Rect2(5 * 16, 0, 16, 16))
 				})
 			elif obj != "":
 				var obj_data = object_regions.get(obj)

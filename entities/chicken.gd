@@ -3,10 +3,14 @@ extends Node2D
 const TILE_SIZE = 16
 const SPEED = 20.0
 
+# animals.png cells: 0 chicken facing right, 1 chicken facing left
+const SPRITES := preload("res://assets/sprites/generated/animals.png")
+
 var tx: int
 var ty: int
 var state: String = "idle"
 var timer: float = SimRng.randf_range(0.0, 2.0)
+var facing_left: bool = false
 
 var path: Array[Vector2i] = []
 var path_index: int = 0
@@ -52,6 +56,11 @@ func _process(delta: float) -> void:
 			return
 		var target_pos = Vector2(target.x * TILE_SIZE, target.y * TILE_SIZE)
 		
+		if target_pos.x < position.x:
+			facing_left = true
+		elif target_pos.x > position.x:
+			facing_left = false
+
 		var dist = position.distance_to(target_pos)
 		if dist <= SPEED * delta:
 			position = target_pos
@@ -71,8 +80,10 @@ func on_new_day() -> void:
 func queue_render(canvas: CanvasItem, render_queue: Array) -> void:
 	render_queue.append({
 		"y": position.y,
-		"draw": func(): 
-			canvas.draw_rect(Rect2(position.x + 4, position.y + 4, 8, 8), Color.WHITE)
-			canvas.draw_rect(Rect2(position.x + 6, position.y + 2, 4, 2), Color.RED)
-			canvas.draw_rect(Rect2(position.x + 6, position.y + 6, 2, 2), Color.ORANGE)
+		"draw": func():
+			var cell: int = 1 if facing_left else 0
+			canvas.draw_texture_rect_region(
+				SPRITES,
+				Rect2(position.x, position.y, TILE_SIZE, TILE_SIZE),
+				Rect2(cell * 16, 0, 16, 16))
 	})

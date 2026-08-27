@@ -2,6 +2,8 @@ extends Node2D
 
 const TILE_SIZE := 16
 
+const SPRITES := preload("res://assets/sprites/generated/animals.png")
+
 var target_tx: int = 0
 var target_ty: int = 0
 
@@ -140,18 +142,12 @@ func queue_render(canvas: CanvasItem, render_queue: Array) -> void:
 	render_queue.append({
 		"y": position.y,
 		"draw": func():
-			# Draw body
-			canvas.draw_rect(Rect2(position.x - 4, position.y - 4, 8, 8), Color(0.1, 0.1, 0.1))
-			
-			# Draw wings
+			# animals.png cells: 2 perched, 3 wings up, 4 wings down
+			var cell := 2
 			if state == "flying_in" or state == "flying_away":
-				if flap_state == 0:
-					canvas.draw_rect(Rect2(position.x - 10, position.y - 8, 6, 4), Color(0.1, 0.1, 0.1))
-					canvas.draw_rect(Rect2(position.x + 4, position.y - 8, 6, 4), Color(0.1, 0.1, 0.1))
-				else:
-					canvas.draw_rect(Rect2(position.x - 10, position.y, 6, 4), Color(0.1, 0.1, 0.1))
-					canvas.draw_rect(Rect2(position.x + 4, position.y, 6, 4), Color(0.1, 0.1, 0.1))
-					
-			# Draw beak
-			canvas.draw_rect(Rect2(position.x - 2, position.y + 2, 4, 4), Color(0.9, 0.7, 0.1))
+				cell = 3 if flap_state == 0 else 4
+			canvas.draw_texture_rect_region(
+				SPRITES,
+				Rect2(position.x - TILE_SIZE / 2.0, position.y - TILE_SIZE / 2.0, TILE_SIZE, TILE_SIZE),
+				Rect2(cell * 16, 0, 16, 16))
 	})
