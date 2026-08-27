@@ -387,6 +387,31 @@ handoff (space economics, defense risk) needs both systems live.
 **Note (2026-08-18):** now gate-entangled — per P-4's ruling, completing the tower→bot
 handoff is part of the 4→5 transition's substance, not just an economy question.
 
+### D-8. Verb animation depth — do tile actions get animated, and how far?
+**The question:** today every verb (clear weed/log/rock, till, plant, water, harvest)
+resolves instantly: the tile swaps state and particles fire. Should each verb instead
+play an animation — the farmer's swing connecting, the weed shaking loose, soil turning
+under the hoe, the watering can tipping and the tile darkening, a crop popping free?
+Three tiers, in ascending cost: **(a) reaction-only** — the tile/target animates
+(shake, pop, darken) while the actor stays as-is; **(b) actor + reaction** — a per-verb
+actor animation (swing, stoop, pour) synchronized with the tile's reaction; **(c) full
+verb choreography** — per-verb, per-direction actor frames plus tool-specific effects.
+**Why deferred:** it is a taste-and-feel call that wants the kid playtest's evidence, not
+an armchair answer — the M1 gate asks whether a pre-reader *understands* what her taps
+did, and action legibility is exactly what animation buys. Committing early also prices
+badly: tier (c) multiplies every future actor's art (bots included, phase 4+), while
+tier (a) costs almost nothing and is where the current placeholder juice already sits.
+**Architectural note (why it is safe to defer):** animation is layer-5 presentation
+only. Verbs resolve through `SimWorld.apply_action` and are recorded in the replay log;
+adding animation must not gate, delay, or reorder that resolution, or determinism and
+replay fidelity break (S-3/S-5). Animations therefore play *after* the action resolves
+and may be skipped entirely — which is also what keeps the headless suites and
+fast-forward training honest. Any "wind-up before the effect" design would be the one
+version of this that touches the sim, and would need its own decision.
+**Trigger:** the first 4-year-old playtest (M1 exit gate). If she cannot tell what a tap
+did without an adult narrating, animation moves from polish to requirement, and the tier
+gets chosen against that evidence. Ruling tracked as Q-29 in `DESIGNER_QUEUE.md`.
+
 ---
 
 ## Awaiting designer input (the M0 exit gate)

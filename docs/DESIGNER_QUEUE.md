@@ -60,6 +60,13 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   interaction phase-by-phase and match each to its best input method (touch primary,
   desktop mappings). First pass before M3; re-audit at each phase's design start.
   Home: `design/11-ux-ui.md`.
+- **Q-29 (Ruling, at the playtest)** Verb animation depth — do clearing, tilling,
+  planting, watering, and harvesting get animated, and to which tier: (a) tile
+  reaction only, (b) actor + reaction, or (c) full per-verb choreography? Recorded as
+  **D-8** with the reasoning and the determinism constraint (animation is
+  presentation-only and must never gate `apply_action`). Recommendation: watch the
+  4-year-old playtest first — if she cannot tell what her tap did, tier (b) for the
+  five core verbs; otherwise stay at (a) and spend the art budget on the reskin.
 - **Q-13 (Approval)** Audio direction one-pager — **draft ready**:
   `design/10-audio-direction.md` §"Direction proposal v1" (warm acoustic-toy identity,
   delegation arc scored, verb→foley table). Three taste questions at its end.

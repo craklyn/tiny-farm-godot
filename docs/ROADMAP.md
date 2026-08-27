@@ -16,6 +16,10 @@ encounters (crow/chicken exist), first-session onboarding without reading.
 **Exit gate: the 4-year-old playtest.** She can clear, plant, water, and harvest a crop on
 a tablet without adult hands on the screen. (This gate is cheap to run, brutally honest,
 and exactly the constraint S-7 promises.)
+**Decision the gate feeds:** **D-8 / Q-29 — verb animation depth.** Whether clearing,
+tilling, planting, watering, and harvesting stay instant or get animated (and at which
+tier) is deliberately decided *from* the playtest, because the evidence that matters is
+whether a pre-reader can tell what her tap did.
 
 ## M2 — Simulation core (the big one) — ✅ COMPLETE (2026-08-19)
 Exit gate met in full: ~1.15M× headless fast-forward, seeded-run identity
