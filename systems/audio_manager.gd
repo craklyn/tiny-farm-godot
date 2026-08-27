@@ -4,15 +4,28 @@ var bgm_player: AudioStreamPlayer
 var sfx_players: Array[AudioStreamPlayer] = []
 var num_sfx_players = 8
 
+# name -> variants. Multiple entries are cycled at play time so a verb repeated
+# fifteen times in a row (tilling a row, harvesting a plot) does not replay one
+# byte-identical buffer. Harvest ships three CC0 recordings; see CREDITS.md for
+# each file's Freesound ID, author and licence.
 var sfx_streams = {
-    "click": preload("res://assets/audio/sfx/ui_click.wav"),
-    "till": preload("res://assets/audio/sfx/till.wav"),
-    "water": preload("res://assets/audio/sfx/water.wav"),
-    "harvest": preload("res://assets/audio/sfx/harvest.wav"),
-    "squawk": preload("res://assets/audio/sfx/squawk.wav"),
-    "cluck": preload("res://assets/audio/sfx/cluck.wav"),
-    "jingle": preload("res://assets/audio/sfx/jingle.wav")
+    "click": [preload("res://assets/audio/sfx/ui_click.wav")],
+    "till": [preload("res://assets/audio/sfx/till.wav")],
+    "water": [preload("res://assets/audio/sfx/water.wav")],
+    "harvest": [
+        preload("res://assets/audio/sfx/harvest_cc0_699491.wav"),
+        preload("res://assets/audio/sfx/harvest_cc0_699492.wav"),
+        preload("res://assets/audio/sfx/harvest_cc0_699493.wav"),
+    ],
+    "squawk": [preload("res://assets/audio/sfx/squawk.wav")],
+    "cluck": [preload("res://assets/audio/sfx/cluck.wav")],
+    "jingle": [preload("res://assets/audio/sfx/jingle.wav")]
 }
+
+# Presentation-only randomness, deliberately NOT SimRng: drawing from the seeded
+# sim RNG here would consume it out of band and desync replays (S-5).
+var _variant_rng := RandomNumberGenerator.new()
+var _last_variant: Dictionary = {}
 
 func _ready():
     process_mode = Node.PROCESS_MODE_ALWAYS
@@ -33,16 +46,26 @@ func _ready():
         sfx_players.append(p)
 
 func play_sfx(sound_name: String):
-    if not sfx_streams.has(sound_name):
+    var variants = sfx_streams.get(sound_name)
+    if variants == null or variants.is_empty():
         return
-        
+
+    var idx := 0
+    if variants.size() > 1:
+        idx = _variant_rng.randi_range(0, variants.size() - 1)
+        # Never play the same variant twice running; that is the repetition the
+        # cycling exists to avoid.
+        if idx == int(_last_variant.get(sound_name, -1)):
+            idx = (idx + 1) % variants.size()
+        _last_variant[sound_name] = idx
+
     for p in sfx_players:
         if not p.playing:
-            p.stream = sfx_streams[sound_name]
+            p.stream = variants[idx]
             p.play()
             return
-    
-    # If all busy, override the oldest one (first in array that we cycle, or just the first)
-    var p = sfx_players[0]
-    p.stream = sfx_streams[sound_name]
-    p.play()
+
+    # All busy: reuse the first player rather than dropping the sound.
+    if not sfx_players.is_empty():
+        sfx_players[0].stream = variants[idx]
+        sfx_players[0].play()

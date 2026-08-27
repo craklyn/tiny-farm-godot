@@ -93,7 +93,7 @@ def water():
     return normalise(out, 0.6)
 
 
-def harvest():
+def harvest():  # superseded by CC0 recordings (CREDITS.md); kept for reference
     """Pop plus a two-note chime — the phase-1 reward sound, so it may sparkle."""
     n = int(0.42 * SR)
     out = np.zeros(n)
@@ -113,6 +113,7 @@ def ui_click():
     body = lowpass(noise(n), 2600) * env(n, int(0.002 * SR), n, 7.0)
     tone = sine(1250, n) * env(n, int(0.002 * SR), n, 8.0) * 0.5
     return normalise(body + tone, 0.42)
+
 
 
 def write_wav(path, samples):
@@ -176,53 +177,46 @@ def _sweep_saw(f0, f1, n, curve=1.0):
     return _sig.sawtooth(2 * np.pi * np.cumsum(f) / SR)
 
 
-def harvest_alt3():
-    """Fourth take, and a different hypothesis rather than another variation.
-
-    Takes 1-3 all placed a pitched figure in the sound and all landed somewhere
-    in the arcade-reward vocabulary (jingle, denial beep, coin) — unsurprising,
-    since that vocabulary was defined by synthesized pitched rewards. The one
-    effect that passed the listen, till, is purely percussive. So this take has
-    no tonal content at all: a stem sliding free of soil, the snap as it gives,
-    and the crop settling into the hand. Any sense of reward is left to the
-    particles and the count going up."""
-    n = int(0.30 * SR)
+def cluck():
+    """A two-part 'b'kok': a resonant pitch-dropping pulse, then a smaller one."""
+    n = int(0.22 * SR)
     out = np.zeros(n)
-
-    # Friction of the stem drawing out of soil: filtered noise whose band slides
-    # downward, which reads as something being pulled rather than struck.
-    pn = int(0.13 * SR)
-    pull = np.zeros(pn)
-    step = max(1, pn // 12)
-    for i in range(0, pn, step):
-        seg = noise(min(step, pn - i))
-        frac = i / float(pn)
-        lo = 1700 - 900 * frac
-        hi = 5200 - 2200 * frac
-        pull[i:i + len(seg)] = _band(seg, lo, hi)[:len(seg)]
-    out[:pn] += pull * env(pn, int(0.012 * SR), pn, 1.7) * 0.62
-
-    # The moment it gives — brief, brighter, no pitch.
-    ss = int(0.10 * SR)
-    sn = int(0.035 * SR)
-    out[ss:ss + sn] += _band(noise(sn), 1800, 6500) * env(sn, int(0.001 * SR), sn, 7.0) * 0.7
-
-    # Leaves shaking loose.
-    rs = int(0.11 * SR)
-    rn = int(0.17 * SR)
-    out[rs:rs + rn] += _band(noise(rn), 1200, 4800) * env(rn, int(0.01 * SR), rn, 2.6) * 0.3
-
-    # Weight settling into the hand: low, short, dull.
-    ts = int(0.15 * SR)
-    tn = int(0.07 * SR)
-    thud = lowpass(noise(tn), 420) * env(tn, int(0.003 * SR), tn, 4.5)
-    out[ts:ts + tn] += thud * 0.5
-    return normalise(out, 0.66)
+    for start, f0, f1, amp, ln_s in ((0.0, 950, 360, 1.0, 0.065), (0.075, 700, 300, 0.55, 0.05)):
+        s = int(start * SR)
+        ln = int(ln_s * SR)
+        voiced = _sweep_saw(f0, f1, ln, curve=0.55)
+        breath = noise(ln) * 0.45
+        pulse = _band(voiced + breath, 320, 2100, order=3)
+        pulse *= env(ln, int(0.0015 * SR), ln, 4.5) * amp
+        out[s:s + ln] += pulse[:len(out) - s]
+    return normalise(out, 0.6)
 
 
-ALTERNATES = {
-    "harvest_alt3": harvest_alt3,
+def squawk():
+    """A harsh falling cry: rich harmonics, breath noise, and a little rasp."""
+    n = int(0.26 * SR)
+    voiced = _sweep_saw(1180, 420, n, curve=0.75)
+    # slight roughness so it reads as a throat rather than an oscillator
+    vib = 1.0 + 0.05 * np.sin(2 * np.pi * 38 * np.arange(n) / SR)
+    voiced = voiced * vib
+    breath = noise(n) * 0.4
+    body = _band(voiced + breath, 700, 4600, order=3)
+    body = np.tanh(body * 2.2) / 2.2                      # rasp
+    return normalise(body * env(n, int(0.006 * SR), n, 2.4), 0.66)
+
+
+# harvest is absent on purpose: four synthesis takes were rejected and the
+# shipped sound is now a set of CC0 recordings (see CREDITS.md). cluck and
+# squawk were promoted from alternates after the 2026-08-27 listen.
+SOUNDS = {
+    "till": till,
+    "water": water,
+    "ui_click": ui_click,
+    "cluck": cluck,
+    "squawk": squawk,
 }
+
+ALTERNATES = {}  # none outstanding
 
 
 if __name__ == "__main__":
