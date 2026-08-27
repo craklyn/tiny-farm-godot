@@ -176,82 +176,52 @@ def _sweep_saw(f0, f1, n, curve=1.0):
     return _sig.sawtooth(2 * np.pi * np.cumsum(f) / SR)
 
 
-def harvest_alt2():
-    """Third take. The first read as an electric jingle, the second as a flat
-    dull blip (a "denied" beep) because I over-corrected into muffled mid-range
-    with no pitch motion. A reward reads as physical when it is a *struck*
-    resonant body rather than a sustained oscillator: inharmonic bar partials,
-    fast decay, and two strikes rising a fourth. Wood also matches design/10's
-    "handmade timbres" better than any chime."""
-    n = int(0.44 * SR)
+def harvest_alt3():
+    """Fourth take, and a different hypothesis rather than another variation.
+
+    Takes 1-3 all placed a pitched figure in the sound and all landed somewhere
+    in the arcade-reward vocabulary (jingle, denial beep, coin) — unsurprising,
+    since that vocabulary was defined by synthesized pitched rewards. The one
+    effect that passed the listen, till, is purely percussive. So this take has
+    no tonal content at all: a stem sliding free of soil, the snap as it gives,
+    and the crop settling into the hand. Any sense of reward is left to the
+    particles and the count going up."""
+    n = int(0.30 * SR)
     out = np.zeros(n)
 
-    sn = int(0.028 * SR)                                  # the stem letting go
-    out[:sn] += _band(noise(sn), 900, 5000) * env(sn, int(0.001 * SR), sn, 8.0) * 0.55
+    # Friction of the stem drawing out of soil: filtered noise whose band slides
+    # downward, which reads as something being pulled rather than struck.
+    pn = int(0.13 * SR)
+    pull = np.zeros(pn)
+    step = max(1, pn // 12)
+    for i in range(0, pn, step):
+        seg = noise(min(step, pn - i))
+        frac = i / float(pn)
+        lo = 1700 - 900 * frac
+        hi = 5200 - 2200 * frac
+        pull[i:i + len(seg)] = _band(seg, lo, hi)[:len(seg)]
+    out[:pn] += pull * env(pn, int(0.012 * SR), pn, 1.7) * 0.62
 
-    def struck(f0, ln, amp):
-        """Marimba-ish bar: partials well off the harmonic series, each decaying
-        at its own rate, with a scrap of mallet noise at contact."""
-        sig = np.zeros(ln)
-        for ratio, a, dec in ((1.0, 1.0, 3.0), (3.93, 0.32, 5.5), (9.35, 0.11, 8.0)):
-            sig += sine(f0 * ratio, ln) * env(ln, int(0.001 * SR), ln, dec) * a
-        sig += _band(noise(ln), f0 * 0.8, f0 * 4.0) * env(ln, 2, ln, 14.0) * 0.18
-        return sig * amp
+    # The moment it gives — brief, brighter, no pitch.
+    ss = int(0.10 * SR)
+    sn = int(0.035 * SR)
+    out[ss:ss + sn] += _band(noise(sn), 1800, 6500) * env(sn, int(0.001 * SR), sn, 7.0) * 0.7
 
-    for start, f0, amp in ((0.012, 587.33, 0.85), (0.085, 783.99, 0.62)):
-        s0 = int(start * SR)
-        ln = n - s0
-        out[s0:] += struck(f0, ln, amp)
+    # Leaves shaking loose.
+    rs = int(0.11 * SR)
+    rn = int(0.17 * SR)
+    out[rs:rs + rn] += _band(noise(rn), 1200, 4800) * env(rn, int(0.01 * SR), rn, 2.6) * 0.3
 
-    rs = int(0.03 * SR)                                   # leaves, kept behind
-    rn = int(0.16 * SR)
-    rustle = _band(noise(rn), 1500, 5200) * env(rn, int(0.008 * SR), rn, 3.0)
-    out[rs:rs + rn] += rustle * 0.18
-    return normalise(out, 0.7)
-
-
-def cluck():
-    """A two-part 'b'kok': a resonant pitch-dropping pulse, then a smaller one."""
-    n = int(0.22 * SR)
-    out = np.zeros(n)
-    for start, f0, f1, amp, ln_s in ((0.0, 950, 360, 1.0, 0.065), (0.075, 700, 300, 0.55, 0.05)):
-        s = int(start * SR)
-        ln = int(ln_s * SR)
-        voiced = _sweep_saw(f0, f1, ln, curve=0.55)
-        breath = noise(ln) * 0.45
-        pulse = _band(voiced + breath, 320, 2100, order=3)
-        pulse *= env(ln, int(0.0015 * SR), ln, 4.5) * amp
-        out[s:s + ln] += pulse[:len(out) - s]
-    return normalise(out, 0.6)
-
-
-def squawk():
-    """A harsh falling cry: rich harmonics, breath noise, and a little rasp."""
-    n = int(0.26 * SR)
-    voiced = _sweep_saw(1180, 420, n, curve=0.75)
-    # slight roughness so it reads as a throat rather than an oscillator
-    vib = 1.0 + 0.05 * np.sin(2 * np.pi * 38 * np.arange(n) / SR)
-    voiced = voiced * vib
-    breath = noise(n) * 0.4
-    body = _band(voiced + breath, 700, 4600, order=3)
-    body = np.tanh(body * 2.2) / 2.2                      # rasp
-    return normalise(body * env(n, int(0.006 * SR), n, 2.4), 0.66)
-
-
-# cluck/squawk were promoted from alternates after the 2026-08-27 listen; they
-# are generated here now so the whole set is reproducible from this file.
-SOUNDS = {
-    "till": till,
-    "water": water,
-    "harvest": harvest,
-    "ui_click": ui_click,
-    "cluck": cluck,
-    "squawk": squawk,
-}
+    # Weight settling into the hand: low, short, dull.
+    ts = int(0.15 * SR)
+    tn = int(0.07 * SR)
+    thud = lowpass(noise(tn), 420) * env(tn, int(0.003 * SR), tn, 4.5)
+    out[ts:ts + tn] += thud * 0.5
+    return normalise(out, 0.66)
 
 
 ALTERNATES = {
-    "harvest_alt2": harvest_alt2,
+    "harvest_alt3": harvest_alt3,
 }
 
 
