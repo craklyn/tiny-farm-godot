@@ -91,8 +91,58 @@ func apply_action(action: Dictionary, gs = null) -> Dictionary:
 	if result.get("ok", false):
 		if replay != null:
 			replay.record(action, result)
+		# D-8 tier (a): the tile reacts so a tap has a visible consequence.
+		# Presentation only — it runs *after* the action has already resolved and
+		# can be dropped without touching sim truth or replay fidelity (S-3/S-5).
+		if action.has("target"):
+			react_at(action["target"])
 		queue_redraw()
 	return result
+
+
+# --- Verb reactions (D-8 tier (a) prototype) ---------------------------------
+
+const REACT_MS := 240.0
+var _reactions: Dictionary = {}  # Vector2i -> start time in msec
+
+
+func react_at(t) -> void:
+	if t is Vector2i:
+		_reactions[t] = Time.get_ticks_msec()
+		set_process(true)
+
+
+func _process(_delta: float) -> void:
+	# Only runs while a reaction is in flight; cost scales with acted tiles, not
+	# map area (ARCHITECTURE guardrail).
+	if _reactions.is_empty():
+		set_process(false)
+		return
+	var now := Time.get_ticks_msec()
+	for key in _reactions.keys():
+		if now - _reactions[key] > REACT_MS:
+			_reactions.erase(key)
+	queue_redraw()
+
+
+# 0 at rest, rising to 1 mid-reaction and back — a single squash-and-settle.
+func _react_k(tx: int, ty: int) -> float:
+	var key := Vector2i(tx, ty)
+	if not _reactions.has(key):
+		return 0.0
+	var e: float = (Time.get_ticks_msec() - _reactions[key]) / REACT_MS
+	if e >= 1.0:
+		return 0.0
+	return sin(e * PI)
+
+
+# Squash horizontally and settle vertically, keeping the tile's base planted.
+func _react_rect(px: int, py: int, k: float, h: float = TILE_SIZE) -> Rect2:
+	if k <= 0.0:
+		return Rect2(px, py + (TILE_SIZE - h), TILE_SIZE, h)
+	var w := TILE_SIZE * (1.0 + 0.22 * k)
+	var nh := h * (1.0 - 0.14 * k)
+	return Rect2(px - (w - TILE_SIZE) / 2.0, py + (TILE_SIZE - nh), w, nh)
 
 
 func get_tile(tx: int, ty: int) -> Dictionary:
@@ -148,6 +198,7 @@ func _draw() -> void:
 			var tile: Dictionary = tiles[ty][tx]
 			var px := tx * TILE_SIZE
 			var py := ty * TILE_SIZE
+			var k := _react_k(tx, ty)
 
 			# Draw Grass background always
 			draw_texture_rect_region(tileset_texture, Rect2(px, py, TILE_SIZE, TILE_SIZE), Rect2(16, 16, 16, 16))
@@ -160,6 +211,8 @@ func _draw() -> void:
 					_is_soil_at(tx, ty + 1), _is_soil_at(tx - 1, ty + 1),
 					_is_soil_at(tx - 1, ty), _is_soil_at(tx - 1, ty - 1))
 				var coord := Autotile.atlas_coord(mask, tile.watered_today)
+				# Ground stays flush: squashing it opens seams to the grass beneath.
+				# Only things standing on the soil react (crops, obstacles).
 				draw_texture_rect_region(dirt_texture, Rect2(px, py, TILE_SIZE, TILE_SIZE),
 					Rect2(coord.x * 16, coord.y * 16, 16, 16))
 
@@ -167,9 +220,10 @@ func _draw() -> void:
 			if tile.state in ["border", "obstacle_rock", "obstacle_log", "obstacle_weed"]:
 				var region: Rect2 = tile_regions.get(tile.state, Rect2())
 				if region.size.x > 0:
+					var ob_rect := _react_rect(px, py, k)
 					render_queue.append({
 						"y": py,
-						"draw": func(): draw_texture_rect_region(biomes_texture, Rect2(px, py, TILE_SIZE, TILE_SIZE), region)
+						"draw": func(): draw_texture_rect_region(biomes_texture, ob_rect, region)
 					})
 
 			# Queue crops
@@ -179,9 +233,10 @@ func _draw() -> void:
 				if tile.crop_type == "wheat": stage = min(stage, 3)
 				var region: Rect2 = crop_regions[tile.crop_type].get(stage, Rect2())
 				if region.size.x > 0:
+					var crop_rect := _react_rect(px, py, k)
 					render_queue.append({
 						"y": py,
-						"draw": func(): draw_texture_rect_region(crops_texture, Rect2(px, py, TILE_SIZE, TILE_SIZE), region)
+						"draw": func(): draw_texture_rect_region(crops_texture, crop_rect, region)
 					})
 
 			# Queue objects

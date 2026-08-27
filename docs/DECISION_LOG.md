@@ -411,6 +411,14 @@ version of this that touches the sim, and would need its own decision.
 **Trigger:** the first 4-year-old playtest (M1 exit gate). If she cannot tell what a tap
 did without an adult narrating, animation moves from polish to requirement, and the tier
 gets chosen against that evidence. Ruling tracked as Q-29 in `DESIGNER_QUEUE.md`.
+**Prototype (2026-08-27):** tier (a) is implemented and in the build so the playtest has
+something to judge — a successful action makes the acted tile's *contents* squash and
+settle (`farm.gd` `react_at`/`_react_rect`, ~240 ms). Two findings worth keeping: the
+ground plane must stay flush (squashing the soil opens seams to the grass beneath, so
+only crops and obstacles react), and the effect costs nothing in the sim — the
+fast-forward benchmark still measures ~973,000x realtime, because reactions run after
+`apply_action` has already resolved and redraw only while one is in flight. Tier (b)
+would additionally need per-verb actor poses, which is where the art cost starts.
 
 ---
 
