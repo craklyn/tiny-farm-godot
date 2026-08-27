@@ -11,9 +11,9 @@ intent; code decisions are expected to trace back to entries there.
 
 ## Commands
 
-Use `godot` (4.7.2 at `~/.local/bin/godot`, matching CI). The system package `godot4` is
-4.4.1 — don't use it here: opening the project with a different minor version rewrites
-`.import` metadata and causes spurious diffs.
+Use `godot` (4.7.2 at `~/.local/bin/godot`, matching CI's version). Don't open the
+project with a different minor version — it rewrites `.import` metadata and causes
+spurious diffs.
 
 ```bash
 # Run the game
