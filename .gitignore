@@ -7,6 +7,9 @@ android/build/
 # Export artifacts
 build/
 
+# Local secrets (API keys) — never commit
+.env
+
 # OS noise
 .DS_Store
 
