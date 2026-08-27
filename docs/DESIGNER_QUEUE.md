@@ -76,27 +76,28 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   release — the shipped set is complete and licence-clean.* Candidates drop into
   `assets/audio/sfx/` and appear in the in-game Sound Test for A/B on device;
   `tools/gen_sfx.py` remains the source for anything left synthesized.
-- **Q-30** ~~Where the farmer stands to work a tile~~ — ✅ implemented 2026-08-27. Today `walk_to` walks
-  the player *onto* a walkable target, so her sprite covers the tile she is acting
-  on (noticed when planting during the vignette). Unwalkable targets (rock, log)
-  already approach from a neighbour, so the game contains both behaviours and the
-  adjacent one reads better. Recommendation: adopt the genre standard — act on the
-  faced tile, never the occupied one, with auto-approach so a tap never gets
-  refused; prefer approaching from the **north**, because sprites are
-  bottom-anchored and y-sorted, so standing south of a tile is the one position
-  that hides it. The sim has no positional guards (`player_t` never appears in
-  `sim_world.gd`), so this is an Intent/Presentation change with no determinism
-  impact. **Implemented:** `Pathfinding.find_path_adjacent()` with a north-first
-  preference applied only as a tie-break, so she never detours; standing on the
-  target steps off; an unreachable neighbour still acts rather than refusing.
-  **Open sub-question for the playtest:** how it feels while swipe-chaining a row,
-  since she now walks alongside the row instead of along it. — do clearing, tilling,
+- **Q-29 (Ruling, at the playtest)** Verb animation depth — do clearing, tilling,
   planting, watering, and harvesting get animated, and to which tier: (a) tile
   reaction only, (b) actor + reaction, or (c) full per-verb choreography? Recorded as
   **D-8** with the reasoning and the determinism constraint (animation is
   presentation-only and must never gate `apply_action`). Recommendation: watch the
   4-year-old playtest first — if she cannot tell what her tap did, tier (b) for the
   five core verbs; otherwise stay at (a) and spend the art budget on the reskin.
+  **Tier (a) is prototyped and in the build** (the acted tile's contents squash and
+  settle), so the playtest has something concrete to rule on.
+- **Q-30** ~~Where the farmer stands to work a tile~~ — ✅ implemented 2026-08-27.
+  `walk_to` used to walk the player *onto* a walkable target, so her sprite covered
+  the tile she was acting on (noticed when planting during the vignette). Adopted the
+  genre standard: act on the faced tile, never the occupied one, with auto-approach so
+  a tap is never refused. `Pathfinding.find_path_adjacent()` prefers approaching from
+  the **north** — sprites are bottom-anchored and y-sorted, so standing south of a tile
+  is the one position that hides it — but only as a tie-break on path length, so she
+  never detours. Standing on the target steps off; a target with no reachable
+  neighbour is still acted on. The sim has no positional guards (`player_t` never
+  appears in `sim_world.gd`), so this was Intent/Presentation only, with no
+  determinism impact.
+  **Open sub-question for the playtest:** how it feels while swipe-chaining a row,
+  since she now walks alongside the row instead of along it.
 - **Q-13 (Approval)** Audio direction one-pager — **draft ready**:
   `design/10-audio-direction.md` §"Direction proposal v1" (warm acoustic-toy identity,
   delegation arc scored, verb→foley table). Three taste questions at its end.
