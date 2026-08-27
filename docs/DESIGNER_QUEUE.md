@@ -40,14 +40,11 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   (findings in `CREDITS.md`): free game *builds* with credit are fine; music cleared
   (CC BY 4.0); four old SFX need original replacements. One real problem found,
   spawned as **Q-7c**.
-- **Q-7c (Ruling)** The public GitHub repo contains the raw Sprout Lands files, and
-  the pack's license forbids redistribution "even if modified" — a public source repo
-  serving the PNGs is arguably that. Options: (a) make the repo private until the
-  planned reskin lands, (b) move the pack out of the tracked tree and gitignore it
-  (contributors fetch it themselves; git *history* would still contain it unless
-  rewritten), (c) email Cup Nooble for permission to keep it in a non-commercial
-  source repo with credit, (d) accelerate the reskin (Q-14). Recommendation: (c) in
-  parallel with whichever of (a)/(b) is least annoying; (d) fixes it permanently.
+- **Q-7c** ~~Public repo redistributes Sprout Lands~~ — ✅ ruled 2026-08-26: drop
+  assets with restrictive licenses rather than work around them. Executed same day:
+  pack deleted, replaced by AI-generated art (Retro Diffusion, `CREDITS.md`).
+  Residual action: purge the pack from git history (`git filter-repo` + force push)
+  at release prep, and verify Retro Diffusion output rights before shipping.
 - **Q-8** ~~Movement scheme~~ — ✅ ruled 2026-08-19: tap-to-move only, accepted.
   Spawned follow-up: **Q-28** below (interaction inventory).
 - **Q-9** ~~Onboarding~~ — ✅ ruled 2026-08-19: wordless sparkle vignette accepted

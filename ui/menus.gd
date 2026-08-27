@@ -229,8 +229,9 @@ func _add_shop_card(item: Dictionary) -> void:
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	if item.unlocked:
 		var atlas = AtlasTexture.new()
-		atlas.atlas = preload("res://assets/sprites/sprout_lands/crops.png")
-		atlas.region = Rect2(80, item.sprite_row * 16, 16, 16)
+		atlas.atlas = preload("res://assets/sprites/generated/crops.png")
+		# crops.png row 2: wheat packet, tomato packet, scarecrow
+		atlas.region = Rect2(item.sprite_row * 16, 32, 16, 16)
 		icon.texture = atlas
 	hbox.add_child(icon)
 	

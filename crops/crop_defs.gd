@@ -33,7 +33,7 @@ static var TYPES: Dictionary = {
 		"is_object": true,
 		"stages": 1,
 		"unlock_requirement": null,
-		"sprite_row": 4, # Fallback, actually mapped in farm.gd
+		"sprite_row": 2, # Shop icon column in crops.png row 2 (see menus.gd)
 	},
 }
 

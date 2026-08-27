@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dm17e6qawb4r1"
-path="res://.godot/imported/tool_icons.png-a6c1b9fe2d99feb55a281d6b555b44da.ctex"
+uid="uid://cgxirm423hvq0"
+path="res://.godot/imported/terrain_grass.png-4d454ff2a348c7595726d1fa516dd3ac.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/tool_icons.png"
-dest_files=["res://.godot/imported/tool_icons.png-a6c1b9fe2d99feb55a281d6b555b44da.ctex"]
+source_file="res://assets/sprites/generated/terrain_grass.png"
+dest_files=["res://.godot/imported/terrain_grass.png-4d454ff2a348c7595726d1fa516dd3ac.ctex"]
 
 [params]
 

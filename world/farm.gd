@@ -23,7 +23,6 @@ var objects: Array[Array]:
 # Sprite resources
 var tileset_texture: Texture2D
 var crops_texture: Texture2D
-var objects_texture: Texture2D
 
 # Quad regions (Rect2 for atlas lookups)
 var tile_regions: Dictionary = {}     # state_name -> Rect2
@@ -42,33 +41,35 @@ var furniture_texture: Texture2D
 var chest_texture: Texture2D
 
 func _load_textures() -> void:
-	tileset_texture = load("res://assets/sprites/sprout_lands/grass.png")
-	dirt_texture = load("res://assets/sprites/sprout_lands/dirt.png")
-	crops_texture = load("res://assets/sprites/sprout_lands/crops.png")
-	objects_texture = load("res://assets/sprites/sprout_lands/tools.png") # Kept just in case
-	biomes_texture = load("res://assets/sprites/sprout_lands/biomes.png")
-	furniture_texture = load("res://assets/sprites/sprout_lands/furniture.png")
-	chest_texture = load("res://assets/sprites/sprout_lands/chest.png")
+	# Generated sheets (see CREDITS.md — AI-generated via Retro Diffusion).
+	# terrain_grass: 3x3 of the seamless grass tile; draw code reads (16,16).
+	# terrain_dirt: tilled autotile at the BITMASK_MAP coords, watered at +4 cols.
+	tileset_texture = load("res://assets/sprites/generated/terrain_grass.png")
+	dirt_texture = load("res://assets/sprites/generated/terrain_dirt.png")
+	crops_texture = load("res://assets/sprites/generated/crops.png")
+	biomes_texture = load("res://assets/sprites/generated/obstacles.png")
+	furniture_texture = load("res://assets/sprites/generated/objects.png")
+	chest_texture = furniture_texture
 
-	# Tile regions (mapping obstacles to biomes.png)
-	tile_regions["obstacle_rock"] = Rect2(5 * 16, 4 * 16, 16, 16)
-	tile_regions["obstacle_log"] = Rect2(4 * 16, 2 * 16, 16, 16)
-	tile_regions["obstacle_weed"] = Rect2(0 * 16, 0 * 16, 16, 16)
-	tile_regions["border"] = Rect2(0 * 16, 0 * 16, 16, 16)
+	# Tile regions (obstacles.png: rock, log, weed)
+	tile_regions["obstacle_rock"] = Rect2(0 * 16, 0, 16, 16)
+	tile_regions["obstacle_log"] = Rect2(1 * 16, 0, 16, 16)
+	tile_regions["obstacle_weed"] = Rect2(2 * 16, 0, 16, 16)
+	tile_regions["border"] = Rect2(2 * 16, 0, 16, 16)
 
-	# Crop regions: 4 columns x 3 rows
+	# Crop regions (crops.png: row 0 wheat, row 1 tomato, 4 visual stages each)
 	crop_regions["wheat"] = {}
 	crop_regions["tomato"] = {}
-	for stage in 4: crop_regions["wheat"][stage] = Rect2(stage * 16, 1 * 16, 16, 16)
-	for stage in 6: crop_regions["tomato"][stage] = Rect2(stage * 16, 3 * 16, 16, 16)
+	for stage in 4: crop_regions["wheat"][stage] = Rect2(stage * 16, 0 * 16, 16, 16)
+	for stage in 4: crop_regions["tomato"][stage] = Rect2(stage * 16, 1 * 16, 16, 16)
 
-	# Object regions map
+	# Object regions map (objects.png: cot, well, seed_box 16x32; bin 16x16)
 	# Format: object_name -> [texture, rect]
-	object_regions["cot"] = [furniture_texture, Rect2(0 * 16, 0 * 16, 16, 32)]
-	object_regions["well"] = [furniture_texture, Rect2(4 * 16, 0 * 16, 16, 32)]
-	object_regions["shipping_bin"] = [chest_texture, Rect2(1 * 16, 1 * 16, 16, 16)]
-	object_regions["seed_box"] = [furniture_texture, Rect2(5 * 16, 2 * 16, 16, 32)]
-	object_regions["scarecrow"] = [crops_texture, Rect2(0 * 16, 4 * 16, 16, 16)]
+	object_regions["cot"] = [furniture_texture, Rect2(0 * 16, 0, 16, 32)]
+	object_regions["well"] = [furniture_texture, Rect2(1 * 16, 0, 16, 32)]
+	object_regions["shipping_bin"] = [chest_texture, Rect2(3 * 16, 16, 16, 16)]
+	object_regions["seed_box"] = [furniture_texture, Rect2(2 * 16, 0, 16, 32)]
+	object_regions["scarecrow"] = [crops_texture, Rect2(2 * 16, 2 * 16, 16, 16)]
 
 
 # --- Facade: forwards the old farm API to SimWorld ---------------------------

@@ -7,15 +7,19 @@ before the first public build ships.*
 ## Engine
 - **Godot Engine** — MIT License. https://godotengine.org
 
-## Art (placeholder — full reskin planned at art-style alignment, see docs/design/09)
-- **Sprout Lands asset pack** by Cup Nooble (`assets/sprites/sprout_lands/`).
-  - **License verified 2026-08-26 (Q-7b), from the itch.io page:** free version is
-    non-commercial use only, credit requested ("Cup Nooble"), and the pack "can't be
-    resold or redistributed even if modified". Consequences:
-    - Free game *builds* with credit: OK under the free tier.
-    - Any future monetization needs the premium tier ($3.99) — trivial, note for Q-25.
-    - ⚠ **This PUBLIC source repo contains the raw pack files, which conflicts with
-      the no-redistribution clause.** Open ruling: Q-7c in `docs/DESIGNER_QUEUE.md`.
+## Art
+- **Generated sprites** (`assets/sprites/generated/`, `assets/sprites/tool_icons.png`):
+  created for this project on 2026-08-26 with **Retro Diffusion**
+  (https://retrodiffusion.ai) pixel-art models, prompted and post-processed
+  (palette-constrained to the docs/design/09 ramps, background-keyed, downscaled,
+  autotile-composed) by Claude for this repo.
+  - [ ] **TODO: verify Retro Diffusion's terms of service grant output
+    usage/distribution rights before the first public release.**
+- **Sprout Lands asset pack** by Cup Nooble — *removed 2026-08-26* (Q-7c ruling:
+  drop restrictively-licensed assets; its free license forbids redistribution and
+  this repo is public). Q-7b license findings recorded in the git history of this
+  file. The pack files remain in git history until the planned history rewrite
+  (scheduled for release prep).
 
 ## Audio (placeholder)
 - `assets/audio/music/bgm_wholesome.ogg` — **"Wholesome" by Kevin MacLeod

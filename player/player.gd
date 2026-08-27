@@ -52,7 +52,7 @@ func init_position(start_tx: int, start_ty: int) -> void:
 
 
 func _load_sprites() -> void:
-	sprite_texture = load("res://assets/sprites/sprout_lands/characters.png")
+	sprite_texture = load("res://assets/sprites/generated/characters.png")
 	var directions: Array[String] = ["down", "up", "left", "right"]
 	for row in directions.size():
 		var dir: String = directions[row]
