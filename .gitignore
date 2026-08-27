@@ -4,6 +4,9 @@
 # Android build outputs (restored from upstream .gitignore)
 android/build/
 
+# Export artifacts
+build/
+
 # OS noise
 .DS_Store
 
