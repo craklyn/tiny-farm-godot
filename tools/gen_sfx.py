@@ -115,14 +115,6 @@ def ui_click():
     return normalise(body + tone, 0.42)
 
 
-SOUNDS = {
-    "till": till,
-    "water": water,
-    "harvest": harvest,
-    "ui_click": ui_click,
-}
-
-
 def write_wav(path, samples):
     data = np.clip(samples, -1.0, 1.0)
     pcm = (data * 32767).astype(np.int16)
@@ -184,35 +176,41 @@ def _sweep_saw(f0, f1, n, curve=1.0):
     return _sig.sawtooth(2 * np.pi * np.cumsum(f) / SR)
 
 
-def harvest_alt():
-    """Physical first: a stem snapping and leaves rustling, with only a hint of
-    warm tone underneath — no bright two-note chime."""
-    n = int(0.40 * SR)
+def harvest_alt2():
+    """Third take. The first read as an electric jingle, the second as a flat
+    dull blip (a "denied" beep) because I over-corrected into muffled mid-range
+    with no pitch motion. A reward reads as physical when it is a *struck*
+    resonant body rather than a sustained oscillator: inharmonic bar partials,
+    fast decay, and two strikes rising a fourth. Wood also matches design/10's
+    "handmade timbres" better than any chime."""
+    n = int(0.44 * SR)
     out = np.zeros(n)
 
-    sn = int(0.03 * SR)                                  # the snap of the stem
-    snap = _band(noise(sn), 700, 4200) * env(sn, int(0.001 * SR), sn, 7.0)
-    snap += _sweep_saw(680, 260, sn) * env(sn, int(0.001 * SR), sn, 8.0) * 0.5
-    out[:sn] += snap * 0.75
+    sn = int(0.028 * SR)                                  # the stem letting go
+    out[:sn] += _band(noise(sn), 900, 5000) * env(sn, int(0.001 * SR), sn, 8.0) * 0.55
 
-    tn = int(0.09 * SR)                                  # weight in the hand
-    out[:tn] += sine(165, tn) * env(tn, int(0.003 * SR), tn, 4.0) * 0.5
+    def struck(f0, ln, amp):
+        """Marimba-ish bar: partials well off the harmonic series, each decaying
+        at its own rate, with a scrap of mallet noise at contact."""
+        sig = np.zeros(ln)
+        for ratio, a, dec in ((1.0, 1.0, 3.0), (3.93, 0.32, 5.5), (9.35, 0.11, 8.0)):
+            sig += sine(f0 * ratio, ln) * env(ln, int(0.001 * SR), ln, dec) * a
+        sig += _band(noise(ln), f0 * 0.8, f0 * 4.0) * env(ln, 2, ln, 14.0) * 0.18
+        return sig * amp
 
-    rs = int(0.02 * SR)                                  # leaves letting go
-    rn = int(0.26 * SR)
-    rustle = _band(noise(rn), 1300, 5200)
-    rustle *= 0.55 + 0.45 * np.sin(2 * np.pi * 23 * np.arange(rn) / SR)
-    out[rs:rs + rn] += rustle * env(rn, int(0.01 * SR), rn, 2.2) * 0.34
+    for start, f0, amp in ((0.012, 587.33, 0.85), (0.085, 783.99, 0.62)):
+        s0 = int(start * SR)
+        ln = n - s0
+        out[s0:] += struck(f0, ln, amp)
 
-    ws = int(0.05 * SR)                                  # warm lift, kept dull
-    wn = n - ws
-    warm = sine(392, wn) * 0.6 + sine(588, wn) * 0.3 + sine(392 * 2, wn) * 0.1
-    warm = lowpass(warm, 1800)
-    out[ws:] += warm * env(wn, int(0.018 * SR), wn, 3.0) * 0.22
-    return normalise(out, 0.68)
+    rs = int(0.03 * SR)                                   # leaves, kept behind
+    rn = int(0.16 * SR)
+    rustle = _band(noise(rn), 1500, 5200) * env(rn, int(0.008 * SR), rn, 3.0)
+    out[rs:rs + rn] += rustle * 0.18
+    return normalise(out, 0.7)
 
 
-def cluck_alt():
+def cluck():
     """A two-part 'b'kok': a resonant pitch-dropping pulse, then a smaller one."""
     n = int(0.22 * SR)
     out = np.zeros(n)
@@ -227,7 +225,7 @@ def cluck_alt():
     return normalise(out, 0.6)
 
 
-def squawk_alt():
+def squawk():
     """A harsh falling cry: rich harmonics, breath noise, and a little rasp."""
     n = int(0.26 * SR)
     voiced = _sweep_saw(1180, 420, n, curve=0.75)
@@ -240,10 +238,20 @@ def squawk_alt():
     return normalise(body * env(n, int(0.006 * SR), n, 2.4), 0.66)
 
 
+# cluck/squawk were promoted from alternates after the 2026-08-27 listen; they
+# are generated here now so the whole set is reproducible from this file.
+SOUNDS = {
+    "till": till,
+    "water": water,
+    "harvest": harvest,
+    "ui_click": ui_click,
+    "cluck": cluck,
+    "squawk": squawk,
+}
+
+
 ALTERNATES = {
-    "harvest_alt": harvest_alt,
-    "cluck_alt": cluck_alt,
-    "squawk_alt": squawk_alt,
+    "harvest_alt2": harvest_alt2,
 }
 
 
