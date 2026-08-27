@@ -72,14 +72,56 @@ def search(key, query, max_dur=3.0, limit=6):
     return get(f"{API}/search/text/?{q}", key).get("results", [])
 
 
-def convert(src, dst, gain_db=-1.0):
-    """Downmix to the project's format and normalise, trimming leading silence."""
+MAX_DUR = 1.5  # a per-tile action wants a short sound; longer takes get trimmed
+
+
+def convert(src, dst, gain_db=-1.0, max_dur=MAX_DUR):
+    """Downmix to the project's format, trim leading silence, cap the length with
+    a short fade so a cut pour does not end abruptly, and normalise."""
+    fade_at = max(0.05, max_dur - 0.15)
     subprocess.run([
         "ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", src,
         "-af", f"silenceremove=start_periods=1:start_threshold=-50dB:start_silence=0.02,"
+               f"afade=t=out:st={fade_at:.2f}:d=0.15,"
                f"loudnorm=I=-16:TP={gain_db}:LRA=11",
+        "-t", str(max_dur),
         "-ar", str(SR), "-ac", "1", "-acodec", "pcm_s16le", dst,
     ], check=True)
+
+
+def fetch_ids(slot, ids, key):
+    """Fetch specific sounds by Freesound ID, for when a search has already been
+    eyeballed and only certain results are worth auditioning."""
+    record = json.load(open(PROVENANCE)) if os.path.isfile(PROVENANCE) else []
+    seen = {r["freesound_id"] for r in record}
+    kept = 0
+    for sid in ids:
+        if sid in seen:
+            print(f"  skip #{sid}: already fetched")
+            continue
+        s = get(f"{API}/sounds/{sid}/?fields=id,name,license,duration,username,previews,url", key)
+        if s.get("license", "").rstrip("/") != CC0_URL.rstrip("/"):
+            print(f"  skip #{sid}: licence is {s.get('license')}")
+            continue
+        name = f"{slot}_cc0_{sid}"
+        tmp, dst = f"/tmp/{name}.mp3", os.path.join(OUT_DIR, f"{name}.wav")
+        try:
+            open(tmp, "wb").write(get(s["previews"]["preview-hq-mp3"], key, binary=True))
+            convert(tmp, dst)
+        except Exception as exc:
+            print(f"  skip #{sid}: {exc}")
+            continue
+        finally:
+            if os.path.exists(tmp):
+                os.remove(tmp)
+        record.append({"slot": slot, "file": os.path.basename(dst), "freesound_id": s["id"],
+                       "title": s["name"], "author": s["username"],
+                       "license": "CC0 1.0 Universal (public domain dedication)",
+                       "source": s.get("url", f"https://freesound.org/s/{sid}/"), "query": "by-id"})
+        kept += 1
+        print(f"  kept {name}.wav  (src {s['duration']:.2f}s -> capped {MAX_DUR}s, by {s['username']})")
+    json.dump(record, open(PROVENANCE, "w"), indent=2)
+    return kept
 
 
 def fetch(slot, queries, key, want=3):
@@ -140,6 +182,13 @@ if __name__ == "__main__":
                 print(f"{r['file']:34s} #{r['freesound_id']:<9} {r['author']:<18} {r['title'][:40]}")
         sys.exit(0)
     k = api_key()
+    if "--ids" in sys.argv:
+        i = sys.argv.index("--ids")
+        slot_name = sys.argv[1]
+        ids = [int(x) for x in sys.argv[i + 1:]]
+        print(f"fetching {len(ids)} sound(s) by id for {slot_name!r}...")
+        print(f"{fetch_ids(slot_name, ids, k)} written; provenance in {PROVENANCE}")
+        sys.exit(0)
     slot = sys.argv[1] if len(sys.argv) > 1 else "harvest"
     queries = sys.argv[2:] or SEARCHES.get(slot, [slot])
     print(f"searching CC0 for {slot!r}...")

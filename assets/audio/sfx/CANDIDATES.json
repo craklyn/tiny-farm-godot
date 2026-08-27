@@ -41,22 +41,52 @@
   },
   {
     "slot": "water",
-    "file": "water_cc0_121201.wav",
-    "freesound_id": 121201,
-    "title": "watering can plastic hit.wav",
-    "author": "gusgus26",
+    "file": "water_cc0_559290.wav",
+    "freesound_id": 559290,
+    "title": "sound of a watering can.wav",
+    "author": "jaeger2801",
     "license": "CC0 1.0 Universal (public domain dedication)",
-    "source": "https://freesound.org/people/gusgus26/sounds/121201/",
-    "query": "watering can"
+    "source": "https://freesound.org/people/jaeger2801/sounds/559290/",
+    "query": "by-id"
   },
   {
     "slot": "water",
-    "file": "water_cc0_406558.wav",
-    "freesound_id": 406558,
-    "title": "hit - metallic - watering can - flicking a metal watering can 01.wav",
-    "author": "Anthousai",
+    "file": "water_cc0_510302.wav",
+    "freesound_id": 510302,
+    "title": "Watering Being Poured - MP3",
+    "author": "Niqabitographer",
     "license": "CC0 1.0 Universal (public domain dedication)",
-    "source": "https://freesound.org/people/Anthousai/sounds/406558/",
-    "query": "watering can"
+    "source": "https://freesound.org/people/Niqabitographer/sounds/510302/",
+    "query": "by-id"
+  },
+  {
+    "slot": "water",
+    "file": "water_cc0_842163.wav",
+    "freesound_id": 842163,
+    "title": "Pouring Water Short Free",
+    "author": "AardsReal",
+    "license": "CC0 1.0 Universal (public domain dedication)",
+    "source": "https://freesound.org/people/AardsReal/sounds/842163/",
+    "query": "by-id"
+  },
+  {
+    "slot": "water",
+    "file": "water_cc0_210428.wav",
+    "freesound_id": 210428,
+    "title": "Water Splash 1",
+    "author": "qubodup",
+    "license": "CC0 1.0 Universal (public domain dedication)",
+    "source": "https://freesound.org/people/qubodup/sounds/210428/",
+    "query": "by-id"
+  },
+  {
+    "slot": "water",
+    "file": "water_cc0_422728.wav",
+    "freesound_id": 422728,
+    "title": "S_Water_Pour.wav",
+    "author": "Grubzyy",
+    "license": "CC0 1.0 Universal (public domain dedication)",
+    "source": "https://freesound.org/people/Grubzyy/sounds/422728/",
+    "query": "by-id"
   }
 ]
