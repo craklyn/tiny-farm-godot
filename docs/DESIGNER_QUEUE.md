@@ -76,7 +76,7 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   release — the shipped set is complete and licence-clean.* Candidates drop into
   `assets/audio/sfx/` and appear in the in-game Sound Test for A/B on device;
   `tools/gen_sfx.py` remains the source for anything left synthesized.
-- **Q-30 (Ruling)** Where the farmer stands to work a tile. Today `walk_to` walks
+- **Q-30** ~~Where the farmer stands to work a tile~~ — ✅ implemented 2026-08-27. Today `walk_to` walks
   the player *onto* a walkable target, so her sprite covers the tile she is acting
   on (noticed when planting during the vignette). Unwalkable targets (rock, log)
   already approach from a neighbour, so the game contains both behaviours and the
@@ -86,7 +86,11 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   bottom-anchored and y-sorted, so standing south of a tile is the one position
   that hides it. The sim has no positional guards (`player_t` never appears in
   `sim_world.gd`), so this is an Intent/Presentation change with no determinism
-  impact. Open sub-question: how it should feel during swipe-chaining a row. — do clearing, tilling,
+  impact. **Implemented:** `Pathfinding.find_path_adjacent()` with a north-first
+  preference applied only as a tie-break, so she never detours; standing on the
+  target steps off; an unreachable neighbour still acts rather than refusing.
+  **Open sub-question for the playtest:** how it feels while swipe-chaining a row,
+  since she now walks alongside the row instead of along it. — do clearing, tilling,
   planting, watering, and harvesting get animated, and to which tier: (a) tile
   reaction only, (b) actor + reaction, or (c) full per-verb choreography? Recorded as
   **D-8** with the reasoning and the determinism constraint (animation is

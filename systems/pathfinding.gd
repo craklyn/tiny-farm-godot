@@ -123,3 +123,48 @@ func get_reachable_tiles(farm: Node2D, start_t: Vector2i) -> Array[Vector2i]:
 						
 	return reachable
 
+
+
+# Path to the best tile *beside* the goal rather than onto it (Q-30).
+#
+# Working a tile you are standing on hides the result under your own sprite,
+# which is why every game in the genre acts on the faced tile. Direction is not
+# arbitrary here: sprites are bottom-anchored and the render queue is y-sorted,
+# so a farmer standing south of a tile draws over it while one standing north
+# leaves it fully visible. North is therefore preferred, then the sides, with
+# south last — but only as a tie-break, so she never takes a silly detour.
+#
+# Returns [] when already adjacent (act where you stand) or when no neighbour is
+# reachable (act anyway rather than refuse the tap).
+const APPROACH_PENALTY := {
+	Vector2i(0, -1): 0.0,   # north: never occludes the target
+	Vector2i(-1, 0): 0.6,   # sides: partial overlap at most
+	Vector2i(1, 0): 0.6,
+	Vector2i(0, 1): 1.8,    # south: draws on top of the target
+}
+
+
+func find_path_adjacent(farm: Node2D, start_t: Vector2i, goal_t: Vector2i) -> Array[Vector2i]:
+	if start_t != goal_t and _is_adjacent(start_t, goal_t):
+		return []
+
+	var best: Array[Vector2i] = []
+	var best_score := INF
+	for d: Vector2i in DIRS:
+		var n := goal_t + d
+		if not farm.is_walkable(n.x, n.y):
+			continue
+		if n == start_t:
+			return []  # already standing in a good spot
+		var p := find_path(farm, start_t, n)
+		if p.is_empty():
+			continue
+		var score := float(p.size()) + float(APPROACH_PENALTY.get(d, 1.0))
+		if score < best_score:
+			best_score = score
+			best = p
+	return best
+
+
+func _is_adjacent(a: Vector2i, b: Vector2i) -> bool:
+	return absi(a.x - b.x) + absi(a.y - b.y) == 1

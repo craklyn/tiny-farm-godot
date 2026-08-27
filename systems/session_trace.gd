@@ -64,12 +64,12 @@ func tap(modality: String, tile: Vector2i, player_tile: Vector2i, tool_idx: int,
 
 # A queued action firing on arrival, so a refusal that happens seconds after the
 # tap is still attributable to it.
-func act(tile: Vector2i, player_tile: Vector2i, verb: String, ok: bool, reason: String = "") -> void:
+func act(tile: Vector2i, actor: String, verb: String, ok: bool, reason: String = "") -> void:
 	var e := {
 		"t": _stamp(),
 		"kind": "act",
 		"tile": [tile.x, tile.y],
-		"at": [player_tile.x, player_tile.y],
+		"actor": actor,
 		"verb": verb,
 		"ok": ok,
 	}
@@ -141,8 +141,8 @@ static func summarize(parsed: Dictionary) -> Dictionary:
 	var reasons: Dictionary = {}
 	var repeated: Dictionary = {}  # "x,y" -> dead/refused taps on that tile
 	for e in parsed.get("entries", []):
-		var out: String = e.get("out", "")
-		var is_dead := e.get("kind", "") == "tap" and (out == "none" or out == "refused")
+		var out: String = String(e.get("out", ""))
+		var is_dead: bool = String(e.get("kind", "")) == "tap" and (out == "none" or out == "refused")
 		if e.get("kind", "") == "tap":
 			taps += 1
 		if e.get("kind", "") == "act" and not e.get("ok", true):

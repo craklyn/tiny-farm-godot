@@ -63,12 +63,14 @@ func _ready() -> void:
 		restored = SaveGame.restore(save_data, farm.sim, GameState)
 		if restored:
 			farm.start_replay_log_from_save(save_data)
+			farm.start_trace(0, true)
 		else:
 			_backup_unloadable_save()
 	if not restored:
 		if not save_data.is_empty():
 			farm.sim.generate()  # restore failed after generation was skipped
 		farm.start_replay_log(gen_seed)
+		farm.start_trace(gen_seed, false)
 	farm.queue_redraw()
 
 	# Locate the cot for the low-energy pulse (survives layout changes)
@@ -322,6 +324,8 @@ func _handle_action_result(action: String) -> void:
 			SaveGame.save_to(GameState.save_path, farm.sim, GameState)
 			if farm.replay != null:
 				farm.replay.flush_to(GameState.replay_path)
+			if farm.trace != null:
+				farm.trace.flush(GameState.trace_path)
 			if sleep_result.get("phase1_complete_now", false):
 				_celebrate_expansion_morning()
 		)

@@ -10,6 +10,7 @@ const MAP_HEIGHT := SimWorld.MAP_HEIGHT
 
 var sim: SimWorld = SimWorld.new()
 var replay: ReplayLog = null  # set via start_replay_log(); records every ok action
+var trace: SessionTrace = null  # diagnostic stream; records refusals too (see systems/session_trace.gd)
 var generate_on_ready := true  # main disables this when a save restore is pending
 
 # Facade views over sim truth (same Array references — in-place mutation works)
@@ -86,8 +87,20 @@ func start_replay_log_from_save(save_data: Dictionary) -> void:
 	replay.start_from_save(save_data)
 
 
+func start_trace(gen_seed: int, from_save: bool) -> void:
+	trace = SessionTrace.new()
+	trace.start(gen_seed, from_save)
+
+
 func apply_action(action: Dictionary, gs = null) -> Dictionary:
 	var result := sim.apply_action(action, gs)
+	# Recorded whether or not it succeeded: a refused action is the interesting
+	# half, and it is exactly what ReplayLog cannot carry.
+	if trace != null:
+		var t = action.get("target", Vector2i(-1, -1))
+		trace.act(t if t is Vector2i else Vector2i(-1, -1),
+			String(action.get("actor", "?")), String(action.get("verb", "?")),
+			result.get("ok", false), String(result.get("reason", "")))
 	if result.get("ok", false):
 		if replay != null:
 			replay.record(action, result)

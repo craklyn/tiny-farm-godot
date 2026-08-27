@@ -129,9 +129,20 @@ func update_player(delta: float) -> void:
 			else:
 				drag_tool_idx = -1
 		
-		var new_path := Pathfinding.find_path(farm, player_t, target_vec)
+		# Q-30: an action tap walks *beside* the target so her sprite does not
+		# cover the tile she is working; a bare movement tap still walks onto it.
+		var new_path: Array[Vector2i]
+		if not resolved.is_empty() and resolved.get("walk_to", false):
+			new_path = Pathfinding.find_path_adjacent(farm, player_t, target_vec)
+		else:
+			new_path = Pathfinding.find_path(farm, player_t, target_vec)
 		
-		if not new_path.is_empty() or player_t == target_vec:
+		# An empty path used to mean "cannot get there". Since Q-30 it can also
+		# mean "already standing beside it", which is the common case for a tap
+		# on an adjacent tile — so that must not be treated as a dead tap.
+		var adjacent_now: bool = not resolved.is_empty() \
+			and absi(player_t.x - target_vec.x) + absi(player_t.y - target_vec.y) <= 1
+		if not new_path.is_empty() or player_t == target_vec or adjacent_now:
 			path = new_path
 			
 			var color := ActionRouter.get_cursor_color(farm, GameState, target_vec, player_t, is_drag)
@@ -142,6 +153,19 @@ func update_player(delta: float) -> void:
 			else:
 				tap_indicator = { "tx": target_vec.x, "ty": target_vec.y, "timer": TAP_INDICATOR_DURATION, "r": color.r, "g": color.g, "b": color.b }
 				
+			# Q-30 diagnostics: record what the tap meant and what became of it,
+			# including taps that achieve nothing — the signal a playtest needs,
+			# and the one ReplayLog cannot carry.
+			if farm.trace != null:
+				var out_kind := "none"
+				if resolved.is_empty():
+					out_kind = "walk" if not path.is_empty() else "none"
+				else:
+					out_kind = "queued" if not path.is_empty() else "acted"
+				farm.trace.tap("drag" if is_drag else "tap", target_vec, player_t,
+					GameState.selected_tool,
+					String(resolved.get("action", "")), out_kind)
+
 			if not resolved.is_empty():
 				if path.is_empty():
 					var dist = absi(player_t.x - target_vec.x) + absi(player_t.y - target_vec.y)

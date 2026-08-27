@@ -41,6 +41,7 @@ func _init() -> void:
 	test_autotile()
 	test_autotile_sheet()
 	test_title_summary()
+	test_approach_adjacent()
 
 	print("")
 	print(String("=").repeat(60))
@@ -939,3 +940,63 @@ func test_title_summary() -> void:
 	_assert(SimWorld.PHASE1_SHIPPED_TARGET > 0 and SimWorld.PHASE1_SCARED_TARGET > 0,
 		"phase-1 targets exist for the card to count toward")
 	GameState.reset()
+
+
+func test_approach_adjacent() -> void:
+	print("\n--- Approach-from-adjacent Tests (Q-30) ---")
+	var world := SimWorld.new()
+	SimRng.reseed(11)
+	world.generate()
+	# Clear a working area so approach choice is about preference, not obstacles.
+	for ty in range(2, 10):
+		for tx in range(2, 12):
+			world.set_tile_state(tx, ty, "cleared")
+
+	var farm = load("res://world/farm.gd").new()
+	farm.generate_on_ready = false
+	farm.sim = world
+
+	var goal := Vector2i(6, 6)
+
+	# Standing on the target must produce a step off it — this is the case that
+	# hid the result under the farmer's own sprite.
+	var p: Array = Pathfinding.find_path_adjacent(farm, goal, goal)
+	_assert(not p.is_empty(), "standing on the target yields a step off it")
+	_assert(p[p.size() - 1] != goal, "the step lands beside the target, not on it")
+	_assert(p[p.size() - 1] == goal + Vector2i(0, -1), "steps off to the north when free")
+
+	# Already beside it: no walking at all.
+	_assert(Pathfinding.find_path_adjacent(farm, goal + Vector2i(0, 1), goal).is_empty(),
+		"already adjacent needs no movement")
+	_assert(Pathfinding.find_path_adjacent(farm, goal + Vector2i(-1, 0), goal).is_empty(),
+		"adjacent from the west needs no movement either")
+
+	# Approaching from afar, the chosen tile is adjacent to the goal.
+	var far: Array = Pathfinding.find_path_adjacent(farm, Vector2i(2, 6), goal)
+	_assert(not far.is_empty(), "a distant tap produces a path")
+	var landed: Vector2i = far[far.size() - 1]
+	_assert(absi(landed.x - goal.x) + absi(landed.y - goal.y) == 1,
+		"the path ends beside the goal, never on it")
+
+	# North is preferred only as a tie-break: an approach that is clearly closer
+	# still wins, so she never takes a silly detour.
+	var from_south: Array = Pathfinding.find_path_adjacent(farm, goal + Vector2i(0, 5), goal)
+	var end_s: Vector2i = from_south[from_south.size() - 1]
+	_assert(absi(end_s.x - goal.x) + absi(end_s.y - goal.y) == 1,
+		"approach from far south still ends adjacent")
+	_assert(end_s.y > goal.y or end_s.x != goal.x,
+		"a much closer southern/side approach is not abandoned for north")
+
+	# The regression that broke the robot session: standing beside the target
+	# yields an empty path, which callers must read as "act now", not "unreachable".
+	var beside: Array = Pathfinding.find_path_adjacent(farm, goal + Vector2i(1, 0), goal)
+	_assert(beside.is_empty(), "adjacent yields an empty path")
+	_assert(Pathfinding.find_path(farm, goal + Vector2i(1, 0), goal).size() == 1,
+		"plain find_path would still step onto the target from there")
+
+	# Never refuse: fully walled in, the caller acts where it stands.
+	for d in [Vector2i(0,-1), Vector2i(0,1), Vector2i(-1,0), Vector2i(1,0)]:
+		world.set_tile_state(goal.x + d.x, goal.y + d.y, "obstacle_rock")
+	_assert(Pathfinding.find_path_adjacent(farm, Vector2i(2, 6), goal).is_empty(),
+		"no reachable neighbour returns empty so the action still fires")
+	farm.free()

@@ -41,6 +41,7 @@ var pending_load: bool = false  # title screen asks main to load the autosave
 # touch a real player's files
 var save_path: String = "user://autosave.json"
 var replay_path: String = "user://session_replay.json"
+var trace_path: String = "user://session_trace.jsonl"  # diagnostic; see systems/session_trace.gd
 
 
 func _init() -> void:
