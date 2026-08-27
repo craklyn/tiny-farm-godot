@@ -23,7 +23,7 @@ var gold_label: Label
 var tool_icon_rect: TextureRect
 var tool_name_label: Label
 var seed_info_label: Label
-var seed_counts_label: Label
+var crop_counts_label: Label
 var water_label: Label
 var seed_pill: Panel
 var seed_pill_label: Label
@@ -130,11 +130,11 @@ func _build_ui() -> void:
 	seed_info_label.add_theme_color_override("font_color", Color(0.6, 0.9, 0.4))
 	bottom_bar.add_child(seed_info_label)
 
-	# Seed counts
-	seed_counts_label = Label.new()
-	seed_counts_label.position = Vector2(viewport_size.x / 2 - 80, 6)
-	seed_counts_label.add_theme_color_override("font_color", Color(0.8, 0.9, 0.7))
-	bottom_bar.add_child(seed_counts_label)
+	# Harvested-crop counts (seed counts live on the seed pill / seed info label)
+	crop_counts_label = Label.new()
+	crop_counts_label.position = Vector2(viewport_size.x / 2 - 80, 6)
+	crop_counts_label.add_theme_color_override("font_color", Color(0.8, 0.9, 0.7))
+	bottom_bar.add_child(crop_counts_label)
 
 	# Watering can
 	water_label = Label.new()
@@ -249,13 +249,13 @@ func _update_hud() -> void:
 		else:
 			seed_info_label.visible = false
 
-	# Seed counts
+	# Harvested-crop counts
 	var parts: PackedStringArray = []
 	for crop_name in CropDefs.ORDER:
-		var count: int = GameState.seeds.get(crop_name, 0)
+		var count: int = GameState.crops.get(crop_name, 0)
 		var abbrev: String = crop_name.substr(0, 2).capitalize()
 		parts.append("%s:%d" % [abbrev, count])
-	seed_counts_label.text = "  ".join(parts)
+	crop_counts_label.text = "  ".join(parts)
 
 	# Active Seed Pill update
 	var seed_name: String = GameState.selected_seed_type
