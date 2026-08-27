@@ -32,6 +32,13 @@ before the first public build ships.*
   synthesized by `tools/gen_sfx.py` (2026-08-27), which *is* their source: rerun it to
   reproduce or retune them. Voiced to the docs/design/10 verb table. Cleared. The
   previous files of these names had no identifiable provenance and were replaced.
+- `assets/audio/sfx/*_cc0_*.wav` — **candidates awaiting selection**, fetched by
+  `tools/fetch_sfx_candidates.py` from Freesound under **CC0 1.0** (public domain
+  dedication: commercial use, modification and redistribution permitted, no
+  attribution required). Per-file source, Freesound ID and author are recorded in
+  `assets/audio/sfx/CANDIDATES.json`; the fetcher re-checks each result's licence
+  field rather than trusting the search filter. Unselected candidates get deleted;
+  selected ones move into the list above with their author credited by choice.
 - `assets/audio/music/bgm.wav` — unreferenced and provenance-unknown; deleted
   2026-08-26 (remains in git history only).
 

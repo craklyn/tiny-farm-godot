@@ -1,0 +1,62 @@
+[
+  {
+    "slot": "harvest",
+    "file": "harvest_cc0_699491.wav",
+    "freesound_id": 699491,
+    "title": "Plant_Harvest_02",
+    "author": "Valenspire",
+    "license": "CC0 1.0 Universal (public domain dedication)",
+    "source": "https://freesound.org/people/Valenspire/sounds/699491/",
+    "query": "harvest"
+  },
+  {
+    "slot": "harvest",
+    "file": "harvest_cc0_699493.wav",
+    "freesound_id": 699493,
+    "title": "Plant_Harvest_04",
+    "author": "Valenspire",
+    "license": "CC0 1.0 Universal (public domain dedication)",
+    "source": "https://freesound.org/people/Valenspire/sounds/699493/",
+    "query": "harvest"
+  },
+  {
+    "slot": "harvest",
+    "file": "harvest_cc0_699492.wav",
+    "freesound_id": 699492,
+    "title": "Plant_Harvest_03",
+    "author": "Valenspire",
+    "license": "CC0 1.0 Universal (public domain dedication)",
+    "source": "https://freesound.org/people/Valenspire/sounds/699492/",
+    "query": "harvest"
+  },
+  {
+    "slot": "water",
+    "file": "water_cc0_516257.wav",
+    "freesound_id": 516257,
+    "title": "grab _ CAN WATERING.mp3",
+    "author": "wyronroberth",
+    "license": "CC0 1.0 Universal (public domain dedication)",
+    "source": "https://freesound.org/people/wyronroberth/sounds/516257/",
+    "query": "watering can"
+  },
+  {
+    "slot": "water",
+    "file": "water_cc0_121201.wav",
+    "freesound_id": 121201,
+    "title": "watering can plastic hit.wav",
+    "author": "gusgus26",
+    "license": "CC0 1.0 Universal (public domain dedication)",
+    "source": "https://freesound.org/people/gusgus26/sounds/121201/",
+    "query": "watering can"
+  },
+  {
+    "slot": "water",
+    "file": "water_cc0_406558.wav",
+    "freesound_id": 406558,
+    "title": "hit - metallic - watering can - flicking a metal watering can 01.wav",
+    "author": "Anthousai",
+    "license": "CC0 1.0 Universal (public domain dedication)",
+    "source": "https://freesound.org/people/Anthousai/sounds/406558/",
+    "query": "watering can"
+  }
+]
