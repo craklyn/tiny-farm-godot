@@ -24,3 +24,6 @@ tools/tile_preview.png
 
 # SFX preview render (regenerate with tools/gen_sfx.py --preview)
 tools/sfx_preview.png
+
+# Last wireless-debugging address used by tools/deploy_android.sh
+.adb_target

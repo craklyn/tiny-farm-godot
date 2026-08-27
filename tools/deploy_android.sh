@@ -28,9 +28,16 @@ godot --headless --path . --export-debug "Android" "$APK"
 
 # Connect AFTER the export: the adb daemon can be restarted during a long build,
 # which drops any connection made beforehand.
+LAST_TARGET_FILE=".adb_target"
+
 TARGET="${1:-}"
 if [[ -n "$TARGET" ]]; then
 	adb connect "$TARGET" >/dev/null
+elif [[ -f "$LAST_TARGET_FILE" ]] \
+		&& adb connect "$(cat "$LAST_TARGET_FILE")" 2>&1 | grep -q '^connected'; then
+	# mDNS browsing is intermittent even while the port is happily listening, so
+	# the address that worked last time is tried first.
+	TARGET="$(cat "$LAST_TARGET_FILE")"
 else
 	# Wireless debugging advertises over mDNS, but two things complicate discovery:
 	# the browser also reports stale records from previous sessions (the port changes
@@ -63,6 +70,7 @@ if [[ -z "$SERIAL" ]]; then
 	exit 1
 fi
 
+printf '%s' "$SERIAL" > "$LAST_TARGET_FILE"
 adb -s "$SERIAL" install -r "$APK"
 # The launcher activity is GodotAppLauncher, not GodotApp; let the system resolve it.
 adb -s "$SERIAL" shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1 >/dev/null
