@@ -87,6 +87,37 @@ def convert(src, dst, gain_db=-1.0, max_dur=MAX_DUR):
         "-t", str(max_dur),
         "-ar", str(SR), "-ac", "1", "-acodec", "pcm_s16le", dst,
     ], check=True)
+    _assert_audible(src, dst, max_dur)
+
+
+def _assert_audible(src, dst, max_dur):
+    """A candidate that comes out silent must fail loudly rather than ship.
+
+    silenceremove strips everything from a quiet source, which produced a
+    zero-length file that reached the tablet as "does not make a sound".
+    Retry once without the silence trim before giving up.
+    """
+    import wave
+    def peak(path):
+        with wave.open(path) as w:
+            frames = w.getnframes()
+            if frames == 0:
+                return 0.0
+            import array
+            a = array.array("h")
+            a.frombytes(w.readframes(frames))
+            return max(abs(v) for v in a) / 32768.0
+    if peak(dst) >= 0.02:
+        return
+    print(f"    (silent after trim; retrying without silenceremove)")
+    fade_at = max(0.05, max_dur - 0.15)
+    subprocess.run([
+        "ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", src,
+        "-af", f"afade=t=out:st={fade_at:.2f}:d=0.15,loudnorm=I=-16:TP=-1.0:LRA=11",
+        "-t", str(max_dur), "-ar", str(SR), "-ac", "1", "-acodec", "pcm_s16le", dst,
+    ], check=True)
+    if peak(dst) < 0.02:
+        raise RuntimeError("still silent after retry")
 
 
 def fetch_ids(slot, ids, key):
