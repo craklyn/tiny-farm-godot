@@ -21,3 +21,6 @@ tools/diff_current.png
 
 # Autotile preview output (regenerate with tools/tile_preview.tscn)
 tools/tile_preview.png
+
+# SFX preview render (regenerate with tools/gen_sfx.py --preview)
+tools/sfx_preview.png

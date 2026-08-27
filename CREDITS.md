@@ -28,10 +28,10 @@ before the first public build ships.*
   line in the shipped credits.
 - `assets/audio/sfx/cluck.wav`, `jingle.wav`, `squawk.wav` — original synthesized
   placeholders, made in-repo 2026-08-19. Cleared.
-- `assets/audio/sfx/harvest.wav`, `till.wav`, `water.wav`, `ui_click.wav` —
-  - [ ] **TODO: provenance unknown (no embedded metadata; added 2026-08-11).
-    Replace with original synthesized sounds before the first public release**
-    (same approach as the 2026-08-19 batch; candidates in docs/design/10).
+- `assets/audio/sfx/harvest.wav`, `till.wav`, `water.wav`, `ui_click.wav` — original,
+  synthesized by `tools/gen_sfx.py` (2026-08-27), which *is* their source: rerun it to
+  reproduce or retune them. Voiced to the docs/design/10 verb table. Cleared. The
+  previous files of these names had no identifiable provenance and were replaced.
 - `assets/audio/music/bgm.wav` — unreferenced and provenance-unknown; deleted
   2026-08-26 (remains in git history only).
 
