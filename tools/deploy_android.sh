@@ -29,11 +29,19 @@ godot --headless --path . --export-debug "Android" "$APK"
 # Connect AFTER the export: the adb daemon can be restarted during a long build,
 # which drops any connection made beforehand.
 TARGET="${1:-}"
-if [[ -z "$TARGET" ]]; then
-	# Wireless debugging advertises over mDNS; find the tablet without being told the port.
-	TARGET=$(adb mdns services 2>/dev/null | awk '/_adb-tls-connect/ {print $3; exit}')
+if [[ -n "$TARGET" ]]; then
+	adb connect "$TARGET" >/dev/null
+else
+	# Wireless debugging advertises over mDNS, but the browser also reports stale
+	# records from previous sessions (the port changes every time it is re-enabled),
+	# so try every advertised address and keep the one that actually answers.
+	for cand in $(adb mdns services 2>/dev/null | awk '/_adb-tls-connect/ {print $3}'); do
+		if adb connect "$cand" 2>&1 | grep -q '^connected'; then
+			TARGET="$cand"
+			break
+		fi
+	done
 fi
-[[ -n "$TARGET" ]] && adb connect "$TARGET" >/dev/null
 
 # One device can appear twice (once by IP, once by mDNS name), so always target a
 # specific serial - a bare `adb install` fails with "more than one device".
