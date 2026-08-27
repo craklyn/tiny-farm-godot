@@ -3,14 +3,18 @@ extends Node2D
 const TILE_SIZE = 16
 const SPEED = 20.0
 
-# animals.png cells: 0 chicken facing right, 1 chicken facing left
+# animals.png cells: 0-3 walk cycle facing right, 4-7 the same facing left
 const SPRITES := preload("res://assets/sprites/generated/animals.png")
+const WALK_FRAMES := 4
+const FRAME_TIME := 0.14  # matches the 4-frame walk budget in docs/design/09
 
 var tx: int
 var ty: int
 var state: String = "idle"
 var timer: float = SimRng.randf_range(0.0, 2.0)
 var facing_left: bool = false
+var walk_frame: int = 0
+var _frame_timer: float = 0.0
 
 var path: Array[Vector2i] = []
 var path_index: int = 0
@@ -29,6 +33,18 @@ func _process(delta: float) -> void:
 	if not farm:
 		return
 		
+	# Walk cycle runs only while actually moving; idle rests on frame 0 so a
+	# standing hen doesn't march in place.
+	if state == "moving":
+		_frame_timer += delta
+		if _frame_timer >= FRAME_TIME:
+			_frame_timer -= FRAME_TIME
+			walk_frame = (walk_frame + 1) % WALK_FRAMES
+			queue_redraw()
+	else:
+		walk_frame = 0
+		_frame_timer = 0.0
+
 	if state == "idle":
 		timer -= delta
 		if timer <= 0:
@@ -81,7 +97,7 @@ func queue_render(canvas: CanvasItem, render_queue: Array) -> void:
 	render_queue.append({
 		"y": position.y,
 		"draw": func():
-			var cell: int = 1 if facing_left else 0
+			var cell: int = walk_frame + (WALK_FRAMES if facing_left else 0)
 			canvas.draw_texture_rect_region(
 				SPRITES,
 				Rect2(position.x, position.y, TILE_SIZE, TILE_SIZE),

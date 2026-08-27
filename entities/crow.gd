@@ -142,10 +142,10 @@ func queue_render(canvas: CanvasItem, render_queue: Array) -> void:
 	render_queue.append({
 		"y": position.y,
 		"draw": func():
-			# animals.png cells: 2 perched, 3 wings up, 4 wings down
-			var cell := 2
+			# animals.png cells: 8 perched, 9 wings up, 10 wings down
+			var cell := 8
 			if state == "flying_in" or state == "flying_away":
-				cell = 3 if flap_state == 0 else 4
+				cell = 9 if flap_state == 0 else 10
 			canvas.draw_texture_rect_region(
 				SPRITES,
 				Rect2(position.x - TILE_SIZE / 2.0, position.y - TILE_SIZE / 2.0, TILE_SIZE, TILE_SIZE),

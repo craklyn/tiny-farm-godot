@@ -360,18 +360,35 @@ func _draw_overlay(overlay: CanvasItem) -> void:
 		var rect := Rect2(px, py, TILE_SIZE, TILE_SIZE)
 		overlay.draw_rect(rect, cursor_color, false, 1.0)
 
-	# Q-9: wordless onboarding — sparkle-pulse the current vignette target
+	# Q-9: wordless onboarding — pulse the current vignette target.
+	# Pale-on-pale was invisible in practice, and a pre-reader gets no second
+	# explanation: warm gold on a dark backing ring reads over both grass and
+	# soil, and the bobbing chevron says "this one" without a word.
 	if farm != null and VignetteState.is_active(farm.sim, GameState.day):
 		var vt := VignetteState.target_tile(farm.sim)
 		if vt.x >= 0:
-			var ms := Time.get_ticks_msec()
-			var glow := 0.45 + 0.35 * sin(ms / 220.0)
+			var t := Time.get_ticks_msec() / 1000.0
+			var pulse := 0.5 + 0.5 * sin(t * 4.0)
 			var vr := Rect2(vt.x * TILE_SIZE, vt.y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
-			overlay.draw_rect(vr, Color(1.0, 1.0, 0.75, glow), false, 1.5)
-			var twinkle := 0.45 + 0.35 * sin(ms / 220.0 + PI)
-			for corner in [vr.position, vr.position + Vector2(TILE_SIZE - 2, 0),
-					vr.position + Vector2(0, TILE_SIZE - 2), vr.position + Vector2(TILE_SIZE - 2, TILE_SIZE - 2)]:
-				overlay.draw_rect(Rect2(corner, Vector2(2, 2)), Color(1.0, 1.0, 0.85, twinkle), true)
+			overlay.draw_rect(vr, Color(1.0, 0.78, 0.25, 0.10 + 0.12 * pulse), true)
+			overlay.draw_rect(vr.grow(1.0), Color(0.28, 0.16, 0.05, 0.45 + 0.25 * pulse), false, 1.0)
+			overlay.draw_rect(vr, Color(1.0, 0.72, 0.15, 0.8 + 0.2 * pulse), false, 2.0)
+
+			var twinkle := 0.5 + 0.5 * sin(t * 4.0 + PI)
+			var s := 2.0 + 1.5 * twinkle
+			for corner in [vr.position, vr.position + Vector2(TILE_SIZE, 0),
+					vr.position + Vector2(0, TILE_SIZE), vr.position + Vector2(TILE_SIZE, TILE_SIZE)]:
+				overlay.draw_rect(Rect2(corner - Vector2(s, s) / 2.0, Vector2(s, s)),
+					Color(1.0, 0.97, 0.78, 0.45 + 0.55 * twinkle), true)
+
+			var ax := vr.position.x + TILE_SIZE / 2.0
+			var ay := vr.position.y - 7.0 + sin(t * 3.0) * 2.0
+			overlay.draw_colored_polygon(
+				PackedVector2Array([Vector2(ax - 4.5, ay - 5), Vector2(ax + 4.5, ay - 5), Vector2(ax, ay + 2)]),
+				Color(0.28, 0.16, 0.05, 0.55))
+			overlay.draw_colored_polygon(
+				PackedVector2Array([Vector2(ax - 3.5, ay - 4.5), Vector2(ax + 3.5, ay - 4.5), Vector2(ax, ay + 1)]),
+				Color(1.0, 0.72, 0.15, 0.95))
 
 	# Q-11: a softly pulsing cot nudges an exhausted farmer toward sleep
 	if GameState.energy <= 2 and _cot_tile.x >= 0:

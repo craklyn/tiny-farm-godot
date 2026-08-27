@@ -190,9 +190,9 @@ func _draw() -> void:
 				render_queue.append({
 					"y": py,
 					"draw": func():
-						# animals.png cell 5
+						# animals.png cell 11
 						draw_texture_rect_region(animals_texture,
-							Rect2(px, py, TILE_SIZE, TILE_SIZE), Rect2(5 * 16, 0, 16, 16))
+							Rect2(px, py, TILE_SIZE, TILE_SIZE), Rect2(11 * 16, 0, 16, 16))
 				})
 			elif obj != "":
 				var obj_data = object_regions.get(obj)
