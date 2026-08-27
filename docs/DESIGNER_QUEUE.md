@@ -60,6 +60,22 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   interaction phase-by-phase and match each to its best input method (touch primary,
   desktop mappings). First pass before M3; re-audit at each phase's design start.
   Home: `design/11-ux-ui.md`.
+- **Q-31 (Creative → designer)** Record bespoke foley for the verb table. Raised
+  2026-08-27 after a listening session: synthesis reliably handles percussive
+  impacts and UI ticks (`till`, `ui_click`, `cluck`, `squawk` all passed) and
+  reliably fails at voiced or reward sounds — four `harvest` takes each landed in
+  the arcade vocabulary (chime, denial beep, coin, snare taps) before a CC0
+  recording settled it. Watering has no adequate CC0 source at all: six takes were
+  rejected as sloshing/shower/cup/pool/pail, and `sprinkler`, `rain soil` and
+  `shower plants` return **zero** CC0 results. The missing sound is specific — a
+  rose head sprinkling onto *soil*, not a stream pouring onto something hard.
+  **Designer will record these personally**, which also gives the cleanest possible
+  provenance: self-owned, no third-party licence to track (cf. Q-7c).
+  *Priority: after the kid playtest and after Q-13 settles the audio direction, so
+  the recordings target a decided aesthetic. Not blocking the playtest or the first
+  release — the shipped set is complete and licence-clean.* Candidates drop into
+  `assets/audio/sfx/` and appear in the in-game Sound Test for A/B on device;
+  `tools/gen_sfx.py` remains the source for anything left synthesized.
 - **Q-30 (Ruling)** Where the farmer stands to work a tile. Today `walk_to` walks
   the player *onto* a walkable target, so her sprite covers the tile she is acting
   on (noticed when planting during the vignette). Unwalkable targets (rock, log)

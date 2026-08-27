@@ -16,6 +16,10 @@ encounters (crow/chicken exist), first-session onboarding without reading.
 **Exit gate: the 4-year-old playtest.** She can clear, plant, water, and harvest a crop on
 a tablet without adult hands on the screen. (This gate is cheap to run, brutally honest,
 and exactly the constraint S-7 promises.)
+**Deferred out of M1:** **Q-31 — bespoke recorded foley.** The shipped effect set
+is complete and licence-clean (originals plus CC0), so audio no longer blocks the
+gate or the first release; the designer will record replacements once Q-13 settles
+the direction.
 **Decision the gate feeds:** **D-8 / Q-29 — verb animation depth.** Whether clearing,
 tilling, planting, watering, and harvesting stay instant or get animated (and at which
 tier) is deliberately decided *from* the playtest, because the evidence that matters is
