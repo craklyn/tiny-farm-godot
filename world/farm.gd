@@ -44,7 +44,7 @@ var animals_texture: Texture2D
 func _load_textures() -> void:
 	# Generated sheets (see CREDITS.md — AI-generated via Retro Diffusion).
 	# terrain_grass: 3x3 of the seamless grass tile; draw code reads (16,16).
-	# terrain_dirt: tilled autotile at the BITMASK_MAP coords, watered at +4 cols.
+	# terrain_dirt: one tile per neighbour mask (world/autotile.gd), watered at +16 cols.
 	tileset_texture = load("res://assets/sprites/generated/terrain_grass.png")
 	dirt_texture = load("res://assets/sprites/generated/terrain_dirt.png")
 	crops_texture = load("res://assets/sprites/generated/crops.png")
@@ -133,42 +133,14 @@ func advance_day() -> void:
 	queue_redraw()
 
 
-func _draw() -> void:
-	var BITMASK_MAP: Array[Vector2i] = [
-		Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(1, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5),
-		Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(1, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5),
-		Vector2i(0, 3), 	Vector2i(0, 4), 	Vector2i(0, 3), 	Vector2i(0, 4), 	Vector2i(0, 3), 	Vector2i(0, 4), 	Vector2i(0, 3), 	Vector2i(0, 4),
-		Vector2i(0, 3), 	Vector2i(0, 4), 	Vector2i(0, 3), 	Vector2i(0, 4), 	Vector2i(1, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5),
-		Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(1, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5),
-		Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(1, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5),
-		Vector2i(0, 3), 	Vector2i(0, 4), 	Vector2i(0, 3), 	Vector2i(0, 4), 	Vector2i(0, 3), 	Vector2i(0, 4), 	Vector2i(0, 3), 	Vector2i(0, 4),
-		Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(3, 3), 	Vector2i(0, 4), 	Vector2i(3, 3), 	Vector2i(0, 2),
-		Vector2i(3, 6), 	Vector2i(0, 5), 	Vector2i(3, 6), 	Vector2i(0, 5), 	Vector2i(2, 6), 	Vector2i(2, 6), 	Vector2i(3, 6), 	Vector2i(0, 5),
-		Vector2i(3, 6), 	Vector2i(0, 5), 	Vector2i(3, 6), 	Vector2i(0, 5), 	Vector2i(2, 6), 	Vector2i(2, 6), 	Vector2i(3, 6), 	Vector2i(2, 6),
-		Vector2i(3, 6), 	Vector2i(0, 4), 	Vector2i(3, 6), 	Vector2i(0, 4), 	Vector2i(2, 6), 	Vector2i(1, 7), 	Vector2i(3, 6), 	Vector2i(1, 7),
-		Vector2i(3, 6), 	Vector2i(0, 4), 	Vector2i(3, 6), 	Vector2i(0, 4), 	Vector2i(2, 6), 	Vector2i(1, 7), 	Vector2i(3, 6), 	Vector2i(1, 7),
-		Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(1, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5),
-		Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(1, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5),
-		Vector2i(0, 3), 	Vector2i(0, 4), 	Vector2i(0, 3), 	Vector2i(0, 4), 	Vector2i(0, 3), 	Vector2i(0, 4), 	Vector2i(0, 3), 	Vector2i(0, 4),
-		Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(3, 3), 	Vector2i(0, 4), 	Vector2i(3, 3), 	Vector2i(2, 2),
-		Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(1, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5),
-		Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(1, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5),
-		Vector2i(0, 3), 	Vector2i(0, 4), 	Vector2i(0, 3), 	Vector2i(0, 4), 	Vector2i(0, 3), 	Vector2i(0, 4), 	Vector2i(0, 3), 	Vector2i(0, 4),
-		Vector2i(0, 3), 	Vector2i(0, 4), 	Vector2i(0, 3), 	Vector2i(0, 4), 	Vector2i(1, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5),
-		Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(1, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5),
-		Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(1, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5),
-		Vector2i(0, 3), 	Vector2i(0, 4), 	Vector2i(0, 3), 	Vector2i(0, 4), 	Vector2i(0, 3), 	Vector2i(0, 4), 	Vector2i(0, 3), 	Vector2i(0, 4),
-		Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(3, 3), 	Vector2i(0, 4), 	Vector2i(3, 3), 	Vector2i(1, 2),
-		Vector2i(3, 6), 	Vector2i(0, 5), 	Vector2i(3, 6), 	Vector2i(0, 5), 	Vector2i(2, 6), 	Vector2i(2, 6), 	Vector2i(3, 6), 	Vector2i(0, 5),
-		Vector2i(3, 6), 	Vector2i(0, 5), 	Vector2i(3, 6), 	Vector2i(0, 5), 	Vector2i(2, 6), 	Vector2i(2, 6), 	Vector2i(3, 6), 	Vector2i(2, 6),
-		Vector2i(3, 6), 	Vector2i(0, 4), 	Vector2i(3, 6), 	Vector2i(0, 4), 	Vector2i(2, 6), 	Vector2i(1, 7), 	Vector2i(3, 6), 	Vector2i(1, 7),
-		Vector2i(3, 6), 	Vector2i(0, 4), 	Vector2i(3, 6), 	Vector2i(0, 4), 	Vector2i(2, 6), 	Vector2i(1, 7), 	Vector2i(3, 6), 	Vector2i(1, 7),
-		Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(1, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5),
-		Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(1, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5),
-		Vector2i(0, 3), 	Vector2i(0, 4), 	Vector2i(0, 3), 	Vector2i(0, 4), 	Vector2i(0, 3), 	Vector2i(0, 4), 	Vector2i(0, 3), 	Vector2i(0, 4),
-		Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(0, 6), 	Vector2i(0, 5), 	Vector2i(3, 3), 	Vector2i(0, 4), 	Vector2i(3, 3), 	Vector2i(2, 3)
-	]
+# Out-of-bounds counts as not-soil, so plots edge correctly against the map border.
+func _is_soil_at(tx: int, ty: int) -> bool:
+	if tx < 0 or ty < 0 or tx >= MAP_WIDTH or ty >= MAP_HEIGHT:
+		return false
+	return Autotile.is_soil(tiles[ty][tx].state)
 
+
+func _draw() -> void:
 	var render_queue: Array[Dictionary] = []
 
 	for ty in MAP_HEIGHT:
@@ -180,31 +152,16 @@ func _draw() -> void:
 			# Draw Grass background always
 			draw_texture_rect_region(tileset_texture, Rect2(px, py, TILE_SIZE, TILE_SIZE), Rect2(16, 16, 16, 16))
 
-			# Draw Tilled Dirt if applicable
-			if tile.state in ["tilled", "seeded", "growing", "ready"]:
-				var mask := 0
-				var c_n = ty > 0 and tiles[ty-1][tx].state in ["tilled", "seeded", "growing", "ready"]
-				var c_e = tx < MAP_WIDTH - 1 and tiles[ty][tx+1].state in ["tilled", "seeded", "growing", "ready"]
-				var c_s = ty < MAP_HEIGHT - 1 and tiles[ty+1][tx].state in ["tilled", "seeded", "growing", "ready"]
-				var c_w = tx > 0 and tiles[ty][tx-1].state in ["tilled", "seeded", "growing", "ready"]
-				var c_ne = ty > 0 and tx < MAP_WIDTH - 1 and tiles[ty-1][tx+1].state in ["tilled", "seeded", "growing", "ready"]
-				var c_se = ty < MAP_HEIGHT - 1 and tx < MAP_WIDTH - 1 and tiles[ty+1][tx+1].state in ["tilled", "seeded", "growing", "ready"]
-				var c_sw = ty < MAP_HEIGHT - 1 and tx > 0 and tiles[ty+1][tx-1].state in ["tilled", "seeded", "growing", "ready"]
-				var c_nw = ty > 0 and tx > 0 and tiles[ty-1][tx-1].state in ["tilled", "seeded", "growing", "ready"]
-
-				if c_n: mask |= 1
-				if c_n and c_e and c_ne: mask |= 2
-				if c_e: mask |= 4
-				if c_e and c_s and c_se: mask |= 8
-				if c_s: mask |= 16
-				if c_s and c_w and c_sw: mask |= 32
-				if c_w: mask |= 64
-				if c_w and c_n and c_nw: mask |= 128
-				
-				var coord: Vector2i = BITMASK_MAP[mask]
-				# If watered, use the next 4x4 block to the right! (x + 4)
-				var ox := 4 * 16 if tile.watered_today else 0
-				draw_texture_rect_region(dirt_texture, Rect2(px, py, TILE_SIZE, TILE_SIZE), Rect2(coord.x * 16 + ox, coord.y * 16, 16, 16))
+			# Draw tilled soil, edge-matched to its neighbours (see world/autotile.gd)
+			if Autotile.is_soil(tile.state):
+				var mask := Autotile.compute_mask(
+					_is_soil_at(tx, ty - 1), _is_soil_at(tx + 1, ty - 1),
+					_is_soil_at(tx + 1, ty), _is_soil_at(tx + 1, ty + 1),
+					_is_soil_at(tx, ty + 1), _is_soil_at(tx - 1, ty + 1),
+					_is_soil_at(tx - 1, ty), _is_soil_at(tx - 1, ty - 1))
+				var coord := Autotile.atlas_coord(mask, tile.watered_today)
+				draw_texture_rect_region(dirt_texture, Rect2(px, py, TILE_SIZE, TILE_SIZE),
+					Rect2(coord.x * 16, coord.y * 16, 16, 16))
 
 			# Queue obstacles
 			if tile.state in ["border", "obstacle_rock", "obstacle_log", "obstacle_weed"]:

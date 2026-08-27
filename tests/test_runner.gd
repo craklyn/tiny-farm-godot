@@ -38,6 +38,8 @@ func _init() -> void:
 	test_crow_scared_verb()
 	test_vignette()
 	test_phase1_proof()
+	test_autotile()
+	test_autotile_sheet()
 
 	print("")
 	print(String("=").repeat(60))
@@ -780,3 +782,124 @@ func test_phase1_proof() -> void:
 	GameState.crows_scared = SimWorld.PHASE1_SCARED_TARGET
 	r = world.apply_action({ "verb": "sleep", "actor": "world", "weather": "sunny" }, GameState)
 	_assert(not GameState.phase1_complete, "shipping below target does not complete phase 1")
+
+
+func test_autotile() -> void:
+	print("\n--- Autotile neighbour-mask Tests (tilled soil merging) ---")
+
+	# Bit layout must stay in lockstep with tools/gen_terrain_autotile.py.
+	_assert(Autotile.N == 1 and Autotile.E == 4 and Autotile.S == 16 and Autotile.W == 64,
+		"side bit values are N=1 E=4 S=16 W=64")
+
+	var none := Autotile.compute_mask(false, false, false, false, false, false, false, false)
+	_assert(none == 0, "isolated tile has mask 0")
+
+	var all_n := Autotile.compute_mask(true, true, true, true, true, true, true, true)
+	_assert(all_n == 255, "fully surrounded tile has mask 255")
+
+	# Sides are independent and land in the right bits.
+	_assert(Autotile.compute_mask(true, false, false, false, false, false, false, false) == Autotile.N,
+		"north-only neighbour sets just N")
+	_assert(Autotile.compute_mask(false, false, true, false, false, false, false, false) == Autotile.E,
+		"east-only neighbour sets just E")
+	_assert(Autotile.compute_mask(false, false, false, false, true, false, false, false) == Autotile.S,
+		"south-only neighbour sets just S")
+	_assert(Autotile.compute_mask(false, false, false, false, false, false, true, false) == Autotile.W,
+		"west-only neighbour sets just W")
+
+	# Corner gating: a diagonal without both its sides must not set its bit.
+	var lone_ne := Autotile.compute_mask(false, true, false, false, false, false, false, false)
+	_assert(lone_ne == 0, "diagonal alone never sets a corner bit")
+	var ne_missing_side := Autotile.compute_mask(true, true, false, false, false, false, false, false)
+	_assert(ne_missing_side == Autotile.N, "NE ignored when east side is open")
+	var ne_full := Autotile.compute_mask(true, true, true, false, false, false, false, false)
+	_assert(ne_full == Autotile.N | Autotile.E | Autotile.NE, "NE set when N, E and NE all present")
+	# The inner-corner case the old table collapsed: both sides, no diagonal.
+	var inner := Autotile.compute_mask(true, false, true, false, false, false, false, false)
+	_assert(inner == Autotile.N | Autotile.E, "inner corner keeps sides without the diagonal bit")
+
+	# Every distinct neighbourhood must land on a distinct tile — the property the
+	# old 13-tile table violated for 35 of the 47 reachable configurations.
+	var seen: Dictionary = {}
+	var reachable := 0
+	for m in 256:
+		var n := (m & Autotile.N) != 0
+		var e := (m & Autotile.E) != 0
+		var s := (m & Autotile.S) != 0
+		var w := (m & Autotile.W) != 0
+		var ne := (m & Autotile.NE) != 0
+		var se := (m & Autotile.SE) != 0
+		var sw := (m & Autotile.SW) != 0
+		var nw := (m & Autotile.NW) != 0
+		if Autotile.compute_mask(n, ne, e, se, s, sw, w, nw) != m:
+			continue  # not reachable under corner gating
+		reachable += 1
+		var c := Autotile.atlas_coord(m)
+		var key := "%d,%d" % [c.x, c.y]
+		_assert(not seen.has(key), "mask %d has its own tile" % m)
+		seen[key] = m
+		_assert(c.x >= 0 and c.x < 16 and c.y >= 0 and c.y < 16, "mask %d maps inside the sheet" % m)
+	_assert(reachable == 47, "47 neighbourhoods are reachable, got %d" % reachable)
+
+	# Watered variant is the same tile shifted into the second block.
+	for m in [0, 5, 47, 255]:
+		var dry := Autotile.atlas_coord(m, false)
+		var wet := Autotile.atlas_coord(m, true)
+		_assert(wet.y == dry.y and wet.x == dry.x + 16, "watered mask %d offsets by 16 columns" % m)
+
+	# State membership drives the whole thing.
+	_assert(Autotile.is_soil("tilled") and Autotile.is_soil("seeded")
+		and Autotile.is_soil("growing") and Autotile.is_soil("ready"),
+		"all four soil states join the tilled region")
+	_assert(not Autotile.is_soil("cleared") and not Autotile.is_soil("obstacle_rock")
+		and not Autotile.is_soil("border"),
+		"grass, obstacles and border are not soil")
+
+
+func test_autotile_sheet() -> void:
+	print("\n--- Autotile sheet Tests (art matches the mask) ---")
+	var tex: Texture2D = load("res://assets/sprites/generated/terrain_dirt.png")
+	_assert(tex != null, "terrain_dirt.png loads")
+	var img: Image = tex.get_image()
+	_assert(img.get_width() == 512 and img.get_height() == 256,
+		"sheet is 512x256 (256 masks x tilled/watered)")
+
+	# For each reachable mask, an open side must be drawn as a darker rim and a
+	# closed side must not be. This is what actually makes plots merge on screen.
+	var checked := 0
+	var wrong := 0
+	for m in 256:
+		var n := (m & Autotile.N) != 0
+		var e := (m & Autotile.E) != 0
+		var s := (m & Autotile.S) != 0
+		var w := (m & Autotile.W) != 0
+		if Autotile.compute_mask(n, (m & Autotile.NE) != 0, e, (m & Autotile.SE) != 0,
+				s, (m & Autotile.SW) != 0, w, (m & Autotile.NW) != 0) != m:
+			continue
+		for watered in [false, true]:
+			var c := Autotile.atlas_coord(m, watered)
+			var ox := c.x * 16
+			var oy := c.y * 16
+			var body := img.get_pixel(ox + 8, oy + 8)
+			var probes := [
+				[img.get_pixel(ox + 8, oy), not n, "N"],
+				[img.get_pixel(ox + 8, oy + 15), not s, "S"],
+				[img.get_pixel(ox, oy + 8), not w, "W"],
+				[img.get_pixel(ox + 15, oy + 8), not e, "E"],
+			]
+			for p in probes:
+				var col: Color = p[0]
+				var expect_rim: bool = p[1]
+				# A rim pixel is materially darker than the tile body.
+				var is_rim: bool = col.v < body.v * 0.85
+				checked += 1
+				if is_rim != expect_rim:
+					wrong += 1
+	_assert(wrong == 0, "every open side is rimmed and every closed side is not (%d/%d wrong)" % [wrong, checked])
+	_assert(checked == 47 * 2 * 4, "checked all 47 masks x 2 variants x 4 sides, got %d" % checked)
+
+	# Watered soil must be obviously darker than dry soil at a glance (kid-legible).
+	var dry_body := img.get_pixel(Autotile.atlas_coord(255, false).x * 16 + 8, 8)
+	var wet_body := img.get_pixel(Autotile.atlas_coord(255, true).x * 16 + 8, 8)
+	_assert(wet_body.v < dry_body.v * 0.7,
+		"watered soil is much darker than dry (dry v=%.2f wet v=%.2f)" % [dry_body.v, wet_body.v])
