@@ -61,6 +61,11 @@ func _build_ui() -> void:
 	else:
 		root_box.add_child(_make_start_button())
 
+	# Debug builds only, so a public release never shows it (the Android export
+	# we deploy is --export-debug, so it is present on the test tablet).
+	if OS.is_debug_build():
+		root_box.add_child(_make_sound_test_button())
+
 
 func _big_button_style(bg: Color, border: Color) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
@@ -163,6 +168,115 @@ func _make_start_button() -> Button:
 	_style_button(btn, Color(0.18, 0.42, 0.22), Color(1.0, 0.72, 0.15), Color(0.24, 0.52, 0.28))
 	btn.pressed.connect(func(): start_game(false))
 	return btn
+
+
+# --- Sound test (debug builds) ------------------------------------------------
+
+func _make_sound_test_button() -> Button:
+	var btn := Button.new()
+	btn.name = "SoundTestButton"
+	btn.text = "Sound Test"
+	btn.custom_minimum_size = Vector2(130, 34)
+	btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	btn.add_theme_font_size_override("font_size", 13)
+	_style_button(btn, Color(0.13, 0.24, 0.30), Color(0.45, 0.62, 0.70), Color(0.18, 0.32, 0.40))
+	btn.pressed.connect(_open_sound_test)
+	return btn
+
+
+func _open_sound_test() -> void:
+	if _confirm_open:
+		return
+	_confirm_open = true  # also blocks tap-anywhere while the panel is up
+
+	_confirm_layer = Control.new()
+	_confirm_layer.name = "SoundTestLayer"
+	_confirm_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_confirm_layer.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(_confirm_layer)
+
+	var dim := ColorRect.new()
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0.05, 0.09, 0.07, 1.0)
+	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_confirm_layer.add_child(dim)
+
+	var box := VBoxContainer.new()
+	box.set_anchors_preset(Control.PRESET_CENTER)
+	box.anchor_left = 0.5
+	box.anchor_top = 0.5
+	box.anchor_right = 0.5
+	box.anchor_bottom = 0.5
+	box.offset_left = -200
+	box.offset_top = -150
+	box.offset_right = 200
+	box.offset_bottom = 150
+	box.add_theme_constant_override("separation", 8)
+	_confirm_layer.add_child(box)
+
+	var head := Label.new()
+	head.text = "Sound Test"
+	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	head.add_theme_font_size_override("font_size", 26)
+	head.add_theme_color_override("font_color", Color(1.0, 0.86, 0.45))
+	box.add_child(head)
+
+	var hint := Label.new()
+	hint.text = "Tap a sound to hear it."
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.add_theme_font_size_override("font_size", 13)
+	hint.add_theme_color_override("font_color", Color(0.78, 0.86, 0.76))
+	box.add_child(hint)
+
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
+	box.add_child(grid)
+
+	# Driven off AudioManager's own table so this list cannot drift from the game.
+	var names: Array = AudioManager.sfx_streams.keys()
+	names.sort()
+	for n in names:
+		var b := Button.new()
+		b.text = String(n)
+		b.custom_minimum_size = Vector2(184, 42)
+		b.add_theme_font_size_override("font_size", 16)
+		_style_button(b, Color(0.16, 0.34, 0.20), Color(0.62, 0.76, 0.58), Color(0.22, 0.44, 0.26))
+		b.pressed.connect(func(): AudioManager.play_sfx(String(n)))
+		grid.add_child(b)
+
+	var music := Button.new()
+	music.name = "MusicToggle"
+	music.text = "Music: on"
+	music.custom_minimum_size = Vector2(184, 36)
+	music.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	music.add_theme_font_size_override("font_size", 14)
+	_style_button(music, Color(0.13, 0.24, 0.30), Color(0.45, 0.62, 0.70), Color(0.18, 0.32, 0.40))
+	music.pressed.connect(func():
+		# Mute the bed so a short SFX can be judged on its own.
+		var p: AudioStreamPlayer = AudioManager.bgm_player
+		if p == null:
+			return
+		if p.playing:
+			p.stop()
+			music.text = "Music: off"
+		else:
+			p.play()
+			music.text = "Music: on")
+	box.add_child(music)
+
+	var back := Button.new()
+	back.name = "SoundTestBackButton"
+	back.text = "Back"
+	back.custom_minimum_size = Vector2(150, 40)
+	back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	back.add_theme_font_size_override("font_size", 16)
+	_style_button(back, Color(0.18, 0.42, 0.22), Color(1.0, 0.72, 0.15), Color(0.24, 0.52, 0.28))
+	back.pressed.connect(_close_confirm)
+	box.add_child(back)
+
+	back.grab_focus()
 
 
 # --- New Farm confirmation ----------------------------------------------------
