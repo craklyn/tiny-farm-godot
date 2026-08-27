@@ -60,7 +60,17 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   interaction phase-by-phase and match each to its best input method (touch primary,
   desktop mappings). First pass before M3; re-audit at each phase's design start.
   Home: `design/11-ux-ui.md`.
-- **Q-29 (Ruling, at the playtest)** Verb animation depth — do clearing, tilling,
+- **Q-30 (Ruling)** Where the farmer stands to work a tile. Today `walk_to` walks
+  the player *onto* a walkable target, so her sprite covers the tile she is acting
+  on (noticed when planting during the vignette). Unwalkable targets (rock, log)
+  already approach from a neighbour, so the game contains both behaviours and the
+  adjacent one reads better. Recommendation: adopt the genre standard — act on the
+  faced tile, never the occupied one, with auto-approach so a tap never gets
+  refused; prefer approaching from the **north**, because sprites are
+  bottom-anchored and y-sorted, so standing south of a tile is the one position
+  that hides it. The sim has no positional guards (`player_t` never appears in
+  `sim_world.gd`), so this is an Intent/Presentation change with no determinism
+  impact. Open sub-question: how it should feel during swipe-chaining a row. — do clearing, tilling,
   planting, watering, and harvesting get animated, and to which tier: (a) tile
   reaction only, (b) actor + reaction, or (c) full per-verb choreography? Recorded as
   **D-8** with the reasoning and the determinism constraint (animation is
