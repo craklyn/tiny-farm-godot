@@ -1,28 +1,281 @@
+# title_screen.gd — boot screen: Continue (with a progress summary) or New Farm.
+#
+# The Continue card answers "where was I?" before committing to a tap, which
+# matters because the game has one save slot. New Farm is deliberately smaller
+# and asks for confirmation, since starting one replaces the farm on the next
+# sleep (S-7: nothing a pre-reader can tap should destroy progress silently).
 extends Control
 
-@onready var start_label: Label = $VBoxContainer/StartLabel
-@onready var new_farm_button: Button = $VBoxContainer/NewFarmButton
+const CARD_W := 340
+const CARD_H := 132
 
 var _has_save := false
+var _summary: Dictionary = {}
+var _confirm_open := false
+var _confirm_layer: Control = null
 
 
 func _ready() -> void:
 	_has_save = FileAccess.file_exists(GameState.save_path)
-	start_label.text = "Tap Anywhere to Continue" if _has_save else "Tap Anywhere to Start"
-	new_farm_button.visible = _has_save
-	new_farm_button.pressed.connect(_on_new_farm)
+	if _has_save:
+		_summary = _read_summary()
+		# A save we cannot parse is not a save we can offer to continue.
+		if _summary.is_empty():
+			_has_save = false
+	_build_ui()
+
+
+func _read_summary() -> Dictionary:
+	return SaveGame.summarize(SaveGame.load_dict(GameState.save_path))
+
+
+func _build_ui() -> void:
+	var root_box := VBoxContainer.new()
+	root_box.set_anchors_preset(Control.PRESET_CENTER)
+	root_box.anchor_left = 0.5
+	root_box.anchor_top = 0.5
+	root_box.anchor_right = 0.5
+	root_box.anchor_bottom = 0.5
+	root_box.offset_left = -CARD_W / 2.0
+	root_box.offset_top = -150
+	root_box.offset_right = CARD_W / 2.0
+	root_box.offset_bottom = 150
+	root_box.add_theme_constant_override("separation", 14)
+	root_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(root_box)
+
+	var title := Label.new()
+	title.text = "Tiny Farm"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 48)
+	title.add_theme_color_override("font_color", Color.WHITE)
+	title.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.6))
+	title.add_theme_constant_override("shadow_offset_x", 2)
+	title.add_theme_constant_override("shadow_offset_y", 2)
+	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root_box.add_child(title)
+
+	if _has_save:
+		root_box.add_child(_make_continue_card())
+		root_box.add_child(_make_new_farm_button())
+	else:
+		root_box.add_child(_make_start_button())
+
+
+func _big_button_style(bg: Color, border: Color) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = bg
+	sb.border_color = border
+	sb.set_border_width_all(3)
+	sb.set_corner_radius_all(10)
+	sb.content_margin_left = 12
+	sb.content_margin_right = 12
+	sb.content_margin_top = 10
+	sb.content_margin_bottom = 10
+	return sb
+
+
+func _style_button(btn: Button, bg: Color, border: Color, hover: Color) -> void:
+	btn.add_theme_stylebox_override("normal", _big_button_style(bg, border))
+	btn.add_theme_stylebox_override("hover", _big_button_style(hover, border))
+	btn.add_theme_stylebox_override("pressed", _big_button_style(border, border))
+	btn.add_theme_stylebox_override("focus", _big_button_style(hover, border))
+
+
+# The headline action: big target, and it shows the farm it is about to resume.
+func _make_continue_card() -> Button:
+	var btn := Button.new()
+	btn.name = "ContinueButton"
+	btn.custom_minimum_size = Vector2(CARD_W, CARD_H)
+	_style_button(btn, Color(0.18, 0.42, 0.22), Color(1.0, 0.72, 0.15), Color(0.24, 0.52, 0.28))
+	btn.pressed.connect(func(): start_game(true))
+
+	var box := VBoxContainer.new()
+	box.set_anchors_preset(Control.PRESET_FULL_RECT)
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_theme_constant_override("separation", 2)
+	btn.add_child(box)
+
+	var head := Label.new()
+	head.text = "Continue"
+	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	head.add_theme_font_size_override("font_size", 30)
+	head.add_theme_color_override("font_color", Color(1.0, 0.86, 0.45))
+	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(head)
+
+	var day := Label.new()
+	day.text = "Day %d" % _summary.get("day", 1)
+	day.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	day.add_theme_font_size_override("font_size", 20)
+	day.add_theme_color_override("font_color", Color.WHITE)
+	day.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(day)
+
+	var stats := Label.new()
+	stats.text = "%dg     %d shipped     %d crows shooed" % [
+		_summary.get("gold", 0), _summary.get("shipped", 0), _summary.get("scared", 0)]
+	stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	stats.add_theme_font_size_override("font_size", 14)
+	stats.add_theme_color_override("font_color", Color(0.86, 0.94, 0.82))
+	stats.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(stats)
+
+	var progress := Label.new()
+	if _summary.get("phase1", false):
+		progress.text = "Homestead complete"
+		progress.add_theme_color_override("font_color", Color(1.0, 0.86, 0.45))
+	else:
+		# Same two counters the sim uses for the phase-1 proof (Q-12), so the
+		# card shows real progression rather than a decorative number.
+		progress.text = "Homestead  %d/%d crops  %d/%d crows" % [
+			min(_summary.get("shipped", 0), SimWorld.PHASE1_SHIPPED_TARGET),
+			SimWorld.PHASE1_SHIPPED_TARGET,
+			min(_summary.get("scared", 0), SimWorld.PHASE1_SCARED_TARGET),
+			SimWorld.PHASE1_SCARED_TARGET]
+		progress.add_theme_color_override("font_color", Color(0.74, 0.85, 0.70))
+	progress.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	progress.add_theme_font_size_override("font_size", 13)
+	progress.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(progress)
+
+	return btn
+
+
+func _make_new_farm_button() -> Button:
+	var btn := Button.new()
+	btn.name = "NewFarmButton"
+	btn.text = "New Farm"
+	btn.custom_minimum_size = Vector2(150, 40)
+	btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	btn.add_theme_font_size_override("font_size", 15)
+	_style_button(btn, Color(0.14, 0.30, 0.17), Color(0.55, 0.68, 0.52), Color(0.20, 0.38, 0.22))
+	btn.pressed.connect(_open_confirm)
+	return btn
+
+
+func _make_start_button() -> Button:
+	var btn := Button.new()
+	btn.name = "StartButton"
+	btn.text = "Start Farming"
+	btn.custom_minimum_size = Vector2(CARD_W, 76)
+	btn.add_theme_font_size_override("font_size", 28)
+	_style_button(btn, Color(0.18, 0.42, 0.22), Color(1.0, 0.72, 0.15), Color(0.24, 0.52, 0.28))
+	btn.pressed.connect(func(): start_game(false))
+	return btn
+
+
+# --- New Farm confirmation ----------------------------------------------------
+
+func _open_confirm() -> void:
+	if _confirm_open:
+		return
+	_confirm_open = true
+
+	_confirm_layer = Control.new()
+	_confirm_layer.name = "ConfirmLayer"
+	_confirm_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_confirm_layer.mouse_filter = Control.MOUSE_FILTER_STOP  # swallow taps behind it
+	add_child(_confirm_layer)
+
+	var dim := ColorRect.new()
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0, 0, 0, 0.72)
+	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_confirm_layer.add_child(dim)
+
+	# Solid card behind the prompt: dimming alone left the Continue card bleeding
+	# through the words, which is the last place we want a legibility problem.
+	var backing := Panel.new()
+	backing.set_anchors_preset(Control.PRESET_CENTER)
+	backing.anchor_left = 0.5
+	backing.anchor_top = 0.5
+	backing.anchor_right = 0.5
+	backing.anchor_bottom = 0.5
+	backing.offset_left = -190
+	backing.offset_top = -100
+	backing.offset_right = 190
+	backing.offset_bottom = 100
+	backing.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var backing_style := StyleBoxFlat.new()
+	backing_style.bg_color = Color(0.09, 0.16, 0.11, 0.98)
+	backing_style.border_color = Color(0.55, 0.68, 0.52)
+	backing_style.set_border_width_all(2)
+	backing_style.set_corner_radius_all(12)
+	backing.add_theme_stylebox_override("panel", backing_style)
+	_confirm_layer.add_child(backing)
+
+	var box := VBoxContainer.new()
+	box.set_anchors_preset(Control.PRESET_CENTER)
+	box.anchor_left = 0.5
+	box.anchor_top = 0.5
+	box.anchor_right = 0.5
+	box.anchor_bottom = 0.5
+	box.offset_left = -170
+	box.offset_top = -80
+	box.offset_right = 170
+	box.offset_bottom = 80
+	box.add_theme_constant_override("separation", 10)
+	_confirm_layer.add_child(box)
+
+	var warn := Label.new()
+	warn.text = "Start a new farm?"
+	warn.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	warn.add_theme_font_size_override("font_size", 24)
+	warn.add_theme_color_override("font_color", Color.WHITE)
+	box.add_child(warn)
+
+	var detail := Label.new()
+	detail.text = "Your Day %d farm will be replaced." % _summary.get("day", 1)
+	detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	detail.add_theme_font_size_override("font_size", 14)
+	detail.add_theme_color_override("font_color", Color(0.92, 0.86, 0.72))
+	box.add_child(detail)
+
+	var keep := Button.new()
+	keep.name = "KeepFarmButton"
+	keep.text = "Keep my farm"
+	keep.custom_minimum_size = Vector2(220, 46)
+	keep.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	keep.add_theme_font_size_override("font_size", 18)
+	_style_button(keep, Color(0.18, 0.42, 0.22), Color(1.0, 0.72, 0.15), Color(0.24, 0.52, 0.28))
+	keep.pressed.connect(_close_confirm)
+	box.add_child(keep)
+
+	var wipe := Button.new()
+	wipe.name = "ConfirmNewFarmButton"
+	wipe.text = "Yes, start over"
+	wipe.custom_minimum_size = Vector2(180, 36)
+	wipe.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	wipe.add_theme_font_size_override("font_size", 14)
+	_style_button(wipe, Color(0.38, 0.18, 0.14), Color(0.72, 0.42, 0.34), Color(0.46, 0.22, 0.17))
+	wipe.pressed.connect(_on_new_farm)
+	box.add_child(wipe)
+
+	keep.grab_focus()  # the safe option is the default
+
+
+func _close_confirm() -> void:
+	_confirm_open = false
+	if _confirm_layer:
+		_confirm_layer.queue_free()
+		_confirm_layer = null
 
 
 func _gui_input(event: InputEvent) -> void:
+	# Tap-anywhere still resumes the farm (the kid-friendly default from Q-8's
+	# ruling), but never while the confirmation is up.
+	if _confirm_open or not _has_save:
+		return
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		accept_event()
-		start_game(_has_save)
+		start_game(true)
 	elif event is InputEventScreenTouch and event.pressed:
 		accept_event()
-		start_game(_has_save)
+		start_game(true)
 	elif event.is_action_pressed("ui_accept"):
 		accept_event()
-		start_game(_has_save)
+		start_game(true)
 
 
 func _on_new_farm() -> void:

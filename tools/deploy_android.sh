@@ -32,14 +32,22 @@ TARGET="${1:-}"
 if [[ -n "$TARGET" ]]; then
 	adb connect "$TARGET" >/dev/null
 else
-	# Wireless debugging advertises over mDNS, but the browser also reports stale
-	# records from previous sessions (the port changes every time it is re-enabled),
-	# so try every advertised address and keep the one that actually answers.
-	for cand in $(adb mdns services 2>/dev/null | awk '/_adb-tls-connect/ {print $3}'); do
-		if adb connect "$cand" 2>&1 | grep -q '^connected'; then
-			TARGET="$cand"
-			break
-		fi
+	# Wireless debugging advertises over mDNS, but two things complicate discovery:
+	# the browser also reports stale records from previous sessions (the port changes
+	# on every re-enable), and the export above can restart the adb daemon, leaving it
+	# with an empty service cache for a few seconds. So retry, and try every candidate.
+	adb start-server >/dev/null 2>&1
+	for _attempt in 1 2 3 4 5; do
+		# Pull IP:port by pattern, not field position: duplicate service names get an
+		# extra "(2)" column, which shifts the address out from under $3.
+		for cand in $(adb mdns services 2>/dev/null | grep '_adb-tls-connect' \
+				| grep -oE '[0-9]{1,3}(\.[0-9]{1,3}){3}:[0-9]+'); do
+			if adb connect "$cand" 2>&1 | grep -q '^connected'; then
+				TARGET="$cand"
+				break 2
+			fi
+		done
+		sleep 3
 	done
 fi
 

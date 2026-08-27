@@ -40,6 +40,7 @@ func _init() -> void:
 	test_phase1_proof()
 	test_autotile()
 	test_autotile_sheet()
+	test_title_summary()
 
 	print("")
 	print(String("=").repeat(60))
@@ -903,3 +904,38 @@ func test_autotile_sheet() -> void:
 	var wet_body := img.get_pixel(Autotile.atlas_coord(255, true).x * 16 + 8, 8)
 	_assert(wet_body.v < dry_body.v * 0.7,
 		"watered soil is much darker than dry (dry v=%.2f wet v=%.2f)" % [dry_body.v, wet_body.v])
+
+
+func test_title_summary() -> void:
+	print("\n--- Title screen Continue-card summary Tests ---")
+	# A real captured save must surface the figures the card advertises.
+	GameState.reset()
+	var world := SimWorld.new()
+	SimRng.reseed(5)
+	world.generate()
+	GameState.day = 12
+	GameState.gold = 340
+	GameState.total_shipped = 14
+	GameState.crows_scared = 2
+	var save := SaveGame.capture(world, GameState)
+	var sum: Dictionary = SaveGame.summarize(save)
+	_assert(sum.get("day", 0) == 12, "summary reports the saved day")
+	_assert(sum.get("gold", 0) == 340, "summary reports gold")
+	_assert(sum.get("shipped", 0) == 14, "summary reports crops shipped")
+	_assert(sum.get("scared", 0) == 2, "summary reports crows scared")
+	_assert(sum.get("phase1", true) == false, "phase 1 incomplete before the proof")
+
+	GameState.phase1_complete = true
+	_assert(SaveGame.summarize(SaveGame.capture(world, GameState)).get("phase1", false),
+		"summary reports a completed homestead")
+
+	# Anything unreadable must summarise to nothing, so the screen offers a
+	# fresh start instead of a Continue button that cannot load.
+	_assert(SaveGame.summarize({}).is_empty(), "empty save summarises to nothing")
+	_assert(SaveGame.summarize({"version": 1}).is_empty(), "save without state summarises to nothing")
+	_assert(SaveGame.summarize({"state": "not-a-dict"}).is_empty(), "malformed state summarises to nothing")
+
+	# Counters the card renders as progress must match the sim's proof targets.
+	_assert(SimWorld.PHASE1_SHIPPED_TARGET > 0 and SimWorld.PHASE1_SCARED_TARGET > 0,
+		"phase-1 targets exist for the card to count toward")
+	GameState.reset()

@@ -8,6 +8,7 @@ anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
+grow_vertical = 2
 script = ExtResource("1_a1b2c")
 
 [node name="ColorRect" type="ColorRect" parent="."]
@@ -19,43 +20,3 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 color = Color(0.2, 0.6, 0.3, 1)
-
-[node name="VBoxContainer" type="VBoxContainer" parent="."]
-layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -100.0
-offset_top = -50.0
-offset_right = 100.0
-offset_bottom = 50.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-theme_override_constants/separation = 20
-
-[node name="Label" type="Label" parent="VBoxContainer"]
-layout_mode = 2
-mouse_filter = 2
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
-theme_override_constants/shadow_offset_x = 2
-theme_override_constants/shadow_offset_y = 2
-theme_override_font_sizes/font_size = 48
-text = "Tiny Farm"
-horizontal_alignment = 1
-
-[node name="StartLabel" type="Label" parent="VBoxContainer"]
-layout_mode = 2
-mouse_filter = 2
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_font_sizes/font_size = 14
-text = "Tap Anywhere to Start"
-horizontal_alignment = 1
-
-[node name="NewFarmButton" type="Button" parent="VBoxContainer"]
-layout_mode = 2
-visible = false
-text = "New Farm"

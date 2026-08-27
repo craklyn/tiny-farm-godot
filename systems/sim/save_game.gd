@@ -127,6 +127,22 @@ static func capture_canonical(world: SimWorld, gs) -> String:
 	return JSON.stringify(c)
 
 
+# Progression figures for the title screen's Continue card. Lives here because
+# it is a read over the save schema; returns {} for anything unreadable so the
+# caller can offer a fresh start instead of a Continue that cannot load.
+static func summarize(data: Dictionary) -> Dictionary:
+	if data.is_empty() or not data.has("state") or typeof(data["state"]) != TYPE_DICTIONARY:
+		return {}
+	var s: Dictionary = data["state"]
+	return {
+		"day": int(s.get("day", 1)),
+		"gold": int(s.get("gold", 0)),
+		"shipped": int(s.get("total_shipped", 0)),
+		"scared": int(s.get("crows_scared", 0)),
+		"phase1": bool(s.get("phase1_complete", false)),
+	}
+
+
 static func load_dict(path: String) -> Dictionary:
 	if not FileAccess.file_exists(path):
 		return {}
