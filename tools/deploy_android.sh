@@ -24,17 +24,30 @@ if [[ "${1:-}" == "pair" ]]; then
 	exit 0
 fi
 
-if [[ -n "${1:-}" ]]; then
-	adb connect "$1"
-fi
+godot --headless --path . --export-debug "Android" "$APK"
 
-if ! adb devices | grep -qE '\sdevice$'; then
+# Connect AFTER the export: the adb daemon can be restarted during a long build,
+# which drops any connection made beforehand.
+TARGET="${1:-}"
+if [[ -z "$TARGET" ]]; then
+	# Wireless debugging advertises over mDNS; find the tablet without being told the port.
+	TARGET=$(adb mdns services 2>/dev/null | awk '/_adb-tls-connect/ {print $3; exit}')
+fi
+[[ -n "$TARGET" ]] && adb connect "$TARGET" >/dev/null
+
+# One device can appear twice (once by IP, once by mDNS name), so always target a
+# specific serial - a bare `adb install` fails with "more than one device".
+SERIAL="$TARGET"
+if [[ -z "$SERIAL" ]]; then
+	SERIAL=$(adb devices | awk '/\tdevice$/ {print $1; exit}')
+fi
+if [[ -z "$SERIAL" ]]; then
 	echo "No device. On the tablet: Developer options → Wireless debugging → ON," >&2
 	echo "then re-run with the IP:PORT it shows (pair first if this machine is new)." >&2
 	exit 1
 fi
 
-godot --headless --path . --export-debug "Android" "$APK"
-adb install -r "$APK"
-adb shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1 >/dev/null
-echo "Installed and launched $PKG"
+adb -s "$SERIAL" install -r "$APK"
+# The launcher activity is GodotAppLauncher, not GodotApp; let the system resolve it.
+adb -s "$SERIAL" shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1 >/dev/null
+echo "Installed and launched $PKG on $SERIAL"
