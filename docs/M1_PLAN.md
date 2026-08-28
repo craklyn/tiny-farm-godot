@@ -68,7 +68,16 @@ them only changes its own task row below.)*
       `tools/gen_sfx.py`; `harvest` is three CC0 recordings cycled at play time.
       An in-game Sound Test (debug builds) auditions them on device. Not the final
       pass — see Q-31 — but no longer a release blocker.
-- [ ] Android export kept green each commit.
+- [x] Android export kept green (2026-08-27): `tools/deploy_android.sh` builds,
+      pairs/connects over wireless debugging and installs in one step. Requires
+      Godot 4.7.2 export templates and ETC2/ASTC compression, both now configured.
+- [x] Tap legibility pass (2026-08-27), all found by playing rather than by
+      reasoning: tilled-soil autotiling was wrong for 35 of 47 neighbourhoods;
+      watered ground was indistinguishable from dry; the onboarding vignette was
+      drawn too faintly to notice; the farmer walked *onto* the tile she was
+      working and hid the result; a refused action gave no feedback at all.
+- [ ] Kid playtest protocol (the gate itself) — everything above was preparation
+      for this; further polish should wait for its evidence.
 
 **Ruled 2026-08-19 (all five accepted) and implemented same day:**
 - [x] Q-9 vignette: weed+tilled tiles in seeded generation, sparkle overlay,

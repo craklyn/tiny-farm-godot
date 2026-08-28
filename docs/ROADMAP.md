@@ -16,6 +16,11 @@ encounters (crow/chicken exist), first-session onboarding without reading.
 **Exit gate: the 4-year-old playtest.** She can clear, plant, water, and harvest a crop on
 a tablet without adult hands on the screen. (This gate is cheap to run, brutally honest,
 and exactly the constraint S-7 promises.)
+**Status 2026-08-27:** the build is on the test tablet and every known blocker
+is cleared — art is original/licence-clean, effects likewise, the touch loop has
+been debugged on device, and refusals now explain themselves. What remains before
+the gate is the playtest itself. Standing recommendation: stop polishing and run
+it; D-8/Q-29 and the swipe-chain feel are both waiting on its evidence.
 **Deferred out of M1:** **Q-31 — bespoke recorded foley.** The shipped effect set
 is complete and licence-clean (originals plus CC0), so audio no longer blocks the
 gate or the first release; the designer will record replacements once Q-13 settles
