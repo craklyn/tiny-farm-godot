@@ -9,14 +9,34 @@ extends RefCounted
 
 const VERSION := 1
 
+# Q-41: the *format* version above says how to parse the file; this says which game
+# produced it. They are different questions, and only the second one can tell you
+# whether a replay's actions still mean what they meant when they were recorded.
+#
+# A replay is not self-validating: apply_to() re-runs the actions against today's
+# rules, so a change to what `till` does, to worldgen for a seed, to growth rates,
+# to energy costs, or to SimRng consumption order silently produces a different
+# world from the one the player actually played. Nothing in the file itself reveals
+# that. The industry answer is not to make replays version-proof — that is
+# expensive and usually fails — but to make them version-*aware*, the way
+# StarCraft II refuses a replay from a different patch. This is that.
+#
+# Stamped at record time and free thereafter; it cannot be added retroactively to a
+# corpus already on disk, which is why it lands before phase 4 accumulates one.
+static func current_build() -> String:
+	return str(ProjectSettings.get_setting("application/config/build_id", "dev"))
+
+
 var gen_seed: int = 0
 var base_save: Dictionary = {}  # non-empty when the session continued from a save
 var entries: Array[Dictionary] = []
+var build_id: String = ""  # "" means a pre-Q-41 replay, not a mismatch
 
 
 func start(seed_value: int) -> void:
 	gen_seed = seed_value
 	base_save = {}
+	build_id = current_build()
 	entries.clear()
 
 
@@ -25,6 +45,7 @@ func start(seed_value: int) -> void:
 func start_from_save(save_data: Dictionary) -> void:
 	gen_seed = 0
 	base_save = save_data.duplicate(true)
+	build_id = current_build()
 	entries.clear()
 
 
@@ -61,6 +82,7 @@ func to_json() -> String:
 		"version": VERSION,
 		"gen_seed": gen_seed,
 		"base_save": base_save,
+		"build_id": build_id,
 	}))
 	for e in entries:
 		lines.append(JSON.stringify(e))
@@ -76,6 +98,7 @@ static func from_json(text: String) -> ReplayLog:
 	if header == null or typeof(header) != TYPE_DICTIONARY:
 		return replay
 	replay.gen_seed = int(header.get("gen_seed", 0))
+	replay.build_id = str(header.get("build_id", ""))
 	var bs = header.get("base_save", {})
 	if typeof(bs) == TYPE_DICTIONARY:
 		replay.base_save = bs
@@ -84,6 +107,30 @@ static func from_json(text: String) -> ReplayLog:
 		if typeof(e) == TYPE_DICTIONARY:
 			replay.entries.append(e)
 	return replay
+
+
+# Three outcomes, not two: a replay from this build, one from a different build, and
+# one recorded before stamping existed. Callers need to tell the last two apart —
+# a legacy replay is unverifiable rather than known-bad, and refusing it outright
+# would discard the only sessions we have.
+enum Build { MATCH, MISMATCH, UNSTAMPED }
+
+
+func build_status() -> Build:
+	if build_id == "":
+		return Build.UNSTAMPED
+	return Build.MATCH if build_id == current_build() else Build.MISMATCH
+
+
+# One line a human can read, for the tools that report rather than decide.
+func build_note() -> String:
+	match build_status():
+		Build.MATCH:
+			return "build %s (matches this build)" % build_id
+		Build.MISMATCH:
+			return "build %s, but this is %s — actions may no longer mean the same thing" \
+				% [build_id, current_build()]
+	return "unstamped (recorded before Q-41); cannot be checked against this build"
 
 
 # Full rewrite (new file / format reset). Prefer flush_to for periodic saves.

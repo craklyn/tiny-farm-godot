@@ -189,7 +189,7 @@ first, since a different answer there changes what the other four are optimising
   crow and chicken (S-3) — so it is replayable, deterministic, and needs no new
   machinery. **Note it takes a narrative position** (you inherit this farm), which is
   live D-3/Q-22 territory. Detail in `design/13` §4a.
-- **Q-41 (Ruling, small)** **Stamp replays with the game-logic version.** Raised
+- **Q-41** ~~Stamp replays with the game-logic version~~ — ✅ implemented 2026-08-28. Raised
   2026-08-28 from the designer's question about replay robustness. `ReplayLog` carries a
   format version but no build identity, while the project already computes one
   (`application/config/build_id`). **Recommendation: do it now** — a few
@@ -200,6 +200,12 @@ first, since a different answer there changes what the other four are optimising
   risk — `apply_to()` has no timing and never simulates movement, so presentation changes
   cannot affect verification; the real fragility is semantic drift in verbs, worldgen,
   growth rates, energy costs and RNG ordering. Full analysis under S-3 in `DECISION_LOG.md`.
+  **Done:** `ReplayLog` stamps `build_id` at record time and reports three states rather
+  than two — MATCH, MISMATCH, and UNSTAMPED for replays predating the change, which are
+  *unverifiable* rather than known-bad. `verify_replay.gd` prints provenance and warns on a
+  cross-build replay but still runs it: a mismatch usually still reproduces, and when it
+  does not, the provenance line is the difference between "the sim regressed" and "that was
+  recorded three builds ago". 13 assertions.
 - **Q-40 (Ruling)** **The landing page: a donut of living farm around the menu.**
   Designer's proposal: keep the menu centred, render the farm full-screen behind it, and
   drive that farm from a recorded replay so it plays while the player chooses.

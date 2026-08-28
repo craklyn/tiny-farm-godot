@@ -45,6 +45,7 @@ func _init() -> void:
 	test_approach_ignores_inventory()
 	test_session_trace()
 	test_crow_readiness()
+	test_replay_build_stamp()
 
 	print("")
 	print(String("=").repeat(60))
@@ -1187,3 +1188,58 @@ func test_crow_readiness() -> void:
 	_assert(SaveGame.restore(legacy, w4, GameState), "a pre-T-2 save still loads")
 	_assert(GameState.crows_seen == 0, "and defaults to a harmless first crow")
 
+
+
+func test_replay_build_stamp() -> void:
+	print("\n--- Replay build stamp (Q-41) Tests ---")
+
+	# Why this exists: apply_to() re-runs a replay's actions against *today's*
+	# rules, so semantic drift — what a verb does, worldgen per seed, growth
+	# rates, energy costs, SimRng ordering — silently yields a different world
+	# with nothing in the file to say so. The stamp makes that detectable.
+	var rlog := ReplayLog.new()
+	rlog.start(99)
+	_assert(rlog.build_id == ReplayLog.current_build(), "start() stamps the build")
+	_assert(rlog.build_id != "", "the build id is non-empty")
+	_assert(rlog.build_status() == ReplayLog.Build.MATCH, "a fresh replay matches this build")
+
+	var from_save := ReplayLog.new()
+	from_save.start_from_save({"version": 1, "state": {}})
+	_assert(from_save.build_id == ReplayLog.current_build(),
+		"continued sessions are stamped too, not just fresh ones")
+
+	# Round-trip through the on-disk format.
+	var world := SimWorld.new()
+	SimRng.reseed(99)
+	world.generate()
+	GameState.reset()
+	var a := { "verb": "till", "target": SimWorld.VIGNETTE_PLANT, "actor": "player" }
+	rlog.record(a, world.apply_action(a, GameState))
+	var restored := ReplayLog.from_json(rlog.to_json())
+	_assert(restored.build_id == rlog.build_id, "the stamp survives a save/load round trip")
+	_assert(restored.build_status() == ReplayLog.Build.MATCH, "and still reads as a match")
+
+	# A replay from another build is detected rather than silently trusted.
+	var foreign := ReplayLog.from_json(rlog.to_json())
+	foreign.build_id = "deadbee-fromthepast"
+	_assert(foreign.build_status() == ReplayLog.Build.MISMATCH, "a foreign build is flagged")
+	_assert(foreign.build_note().contains("deadbee"), "the note names the recording build")
+	_assert(foreign.build_note().contains(ReplayLog.current_build()),
+		"and names this one, so the difference is readable")
+
+	# Three states, not two: a replay recorded before stamping existed is
+	# unverifiable, which is different from known-bad. Refusing it outright would
+	# discard the only real sessions we have.
+	var legacy_text := '{"version":1,"gen_seed":7,"base_save":{}}\n'
+	var legacy := ReplayLog.from_json(legacy_text)
+	_assert(legacy.build_id == "", "a pre-Q-41 replay has no stamp")
+	_assert(legacy.build_status() == ReplayLog.Build.UNSTAMPED,
+		"and is reported as unstamped, not as a mismatch")
+	_assert(legacy.gen_seed == 7, "and still loads and replays normally")
+
+	# The stamp must not disturb what the replay is actually for.
+	var w2 := SimWorld.new()
+	var gs2 = load("res://systems/game_state.gd").new()
+	restored.apply_to(w2, gs2)
+	_assert(w2.get_tile(SimWorld.VIGNETTE_PLANT.x, SimWorld.VIGNETTE_PLANT.y).get("state", "") == "tilled",
+		"a stamped replay still reproduces its world")

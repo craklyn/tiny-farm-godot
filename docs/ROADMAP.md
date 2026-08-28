@@ -188,6 +188,25 @@ perceive.*
 - [ ] trees give `obstacle_log` an origin — coordinate with T-8's ring content
 *This is also the game's first decoy mechanic; note the through-line to `design/05`.*
 
+**T-17 — Regenerate scripted replays at build time** · after Q-37/Q-40 · ~1 day
+*So that shipped scripted content can never be stale, and so "the demo looks right" becomes
+a checked build artifact rather than a manual art task.*
+The insight is that a shipped replay does not need to survive version drift **if it is
+regenerated every build**. That sidesteps the whole robustness problem for authored
+content, and it composes with Q-41: a shipped replay whose `build_id` does not match is
+then proof the generator did not run, which CI can catch.
+- [ ] one script that produces every scripted replay the build needs (the attract loop's
+      demo session; the neighbour's opening sequence if Q-37 passes)
+- [ ] run it in CI and fail the build if a generated replay is missing or stale
+- [ ] **assert quality, not just validity** — the spike proved a replay can verify
+      perfectly and still read as a broken farm. Check the things that made it look wrong:
+      no refused actions, the plot ends fully worked, enough seeds to finish planting, no
+      dead stretches
+- [ ] `tools/replay_view.gd`'s session recorder is already a prototype of this; generalise
+      rather than starting over
+*Blocked on there being scripted events to generate, so it follows Q-37/Q-40 rather than
+leading them.*
+
 **T-16 — The landing page: a living farm around the menu** · Q-40 · ~3–4 days
 *So that the first thing anyone sees is the game playing itself, and so we get a
 demonstration channel that costs no agency at all.*

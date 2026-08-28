@@ -20,6 +20,15 @@ func _init() -> void:
 
 	print("=== Live-session replay verification ===")
 	print("replay entries: %d (base_save: %s)" % [rlog.entries.size(), "yes" if not rlog.base_save.is_empty() else "no"])
+	print("provenance:     %s" % rlog.build_note())
+
+	# Q-41: a mismatch is reported, not refused. A replay from another build may
+	# still reproduce — most changes touch nothing it depends on — and when it does
+	# NOT, the provenance line above is the difference between "the sim regressed"
+	# and "of course, that was recorded three builds ago". Refusing outright would
+	# throw away the diagnosis along with the replay.
+	if rlog.build_status() == ReplayLog.Build.MISMATCH:
+		print("WARNING: cross-build replay. A failure below may be drift, not a bug.")
 	var matched := SaveGame.replay_matches(rlog, save)
 	if matched:
 		print("MATCH: replay reproduces the autosave state exactly.")
