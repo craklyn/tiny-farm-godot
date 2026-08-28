@@ -78,7 +78,7 @@ them only changes its own task row below.)*
       working and hid the result; a refused action gave no feedback at all.
 - [x] Trace reading (2026-08-28, T-1): `tools/read_trace.gd` turns a session into a
       report — taps by outcome, refusal reasons, when each verb first worked,
-      stalls, and tiles tapped repeatedly to no effect; `tools/pull_trace.sh`
+      stalls, and tiles tapped repeatedly to no effect; `tools/pull_session.sh`
       fetches it off the tablet. Found and fixed in the doing: *unreachable* taps
       were never traced at all, so the deadest taps in a session left no evidence.
 - [x] First-session stress removed (2026-08-28, T-2): no crow until she has

@@ -4,7 +4,7 @@
 #   godot --headless --path . --script res://tools/read_trace.gd -- <path>
 #
 # Defaults to user://session_trace.jsonl (the desktop session). For a tablet
-# session, pull it first: tools/pull_trace.sh
+# session, pull it first: tools/pull_session.sh
 #
 # Why this exists: SessionTrace has recorded every tap since 2026-08-27, and
 # summarize() has been sitting there unused the whole time, so reading a playtest
@@ -28,7 +28,7 @@ func _init() -> void:
 		print("No trace at %s" % path)
 		print("Play a session first, or pass a path:")
 		print("  godot --headless --path . --script res://tools/read_trace.gd -- <path>")
-		print("For a tablet session: tools/pull_trace.sh")
+		print("For a tablet session: tools/pull_session.sh")
 		quit(1)
 		return
 

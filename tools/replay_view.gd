@@ -39,7 +39,25 @@ func _ready() -> void:
 	var live_before := _live_gamestate_fingerprint()
 	_live_at_start = live_before
 
-	_log = _record_a_session()
+	# A real session if one is offered, otherwise a synthetic one so the spike
+	# stays self-contained and runnable with no play history.
+	#   godot --path . tools/replay_view.tscn -- playtests/session_replay.json
+	var args := OS.get_cmdline_user_args()
+	if args.size() > 0 and FileAccess.file_exists(args[0]):
+		_log = ReplayLog.load_from(args[0])
+		if _log == null:
+			print("Could not parse %s" % args[0])
+			get_tree().quit(1)
+			return
+		print("\n--- Loaded a recorded session ---")
+		print("  %s" % args[0])
+		print("  %d actions · %s" % [_log.entries.size(), _log.build_note()])
+		_ok(not _log.entries.is_empty(), "the recorded session has actions to watch")
+		if not _log.base_save.is_empty():
+			print("  NOTE: this session continued from a save, so playback starts from")
+			print("  that snapshot rather than from worldgen.")
+	else:
+		_log = _record_a_session()
 	_check_renderer_standalone()
 	_check_isolation(live_before)
 	_check_movement_is_synthesizable()
@@ -167,9 +185,14 @@ func _check_renderer_standalone() -> void:
 	_ok(_farm.sim.count_planted() > 0, "the replay applied — crops exist in the attract world")
 
 	# Rewind to the start so the spike can play it forward a step at a time.
-	SimRng.reseed(_log.gen_seed)
-	_gs.reset()
-	_farm.sim.generate()
+	# Rewind to the session's starting world, however it began.
+	if _log.base_save.is_empty():
+		SimRng.reseed(_log.gen_seed)
+		_gs.reset()
+		_farm.sim.generate()
+	else:
+		_gs.reset()
+		SaveGame.restore(_log.base_save, _farm.sim, _gs)
 	for e in _log.entries:
 		_decoded.append(_log._decode(e))
 	_ok(_decoded.size() == _log.entries.size(), "entries decode for stepped playback")

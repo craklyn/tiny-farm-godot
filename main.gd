@@ -29,6 +29,13 @@ var _cot_tile: Vector2i = Vector2i(-1, -1)  # located after world setup (Q-11 pu
 
 var crow_spawn_timer: float = 0.0
 
+# APPLICATION_PAUSED covers backgrounding, which is the common case, but not a
+# hard kill. This bounds the worst case to PERSIST_INTERVAL seconds of lost play
+# rather than a whole session. Cheap: both logs are append-only, and SaveGame is
+# a small dictionary.
+const PERSIST_INTERVAL := 20.0
+var persist_timer: float = 0.0
+
 
 func _ready() -> void:
 	InputManager.has_click = false
@@ -213,6 +220,11 @@ func _process(delta: float) -> void:
 	# Player update
 	player.update_player(delta)
 	
+	persist_timer += delta
+	if persist_timer >= PERSIST_INTERVAL:
+		persist_timer = 0.0
+		persist_session()
+
 	# Crow spawner logic
 	crow_spawn_timer += delta
 	if crow_spawn_timer > 10.0:
@@ -314,6 +326,38 @@ func _process(delta: float) -> void:
 	hud.set_hint(hint_text)
 
 
+# --- Persistence -------------------------------------------------------------
+# Everything the session is worth: the farm, the action log, and the diagnostic
+# trace. The save and the replay are flushed *together* on purpose —
+# verify_replay.gd checks that the replay reproduces the autosave, so letting one
+# run ahead of the other would break that pairing.
+func persist_session() -> void:
+	if farm == null:
+		return
+	SaveGame.save_to(GameState.save_path, farm.sim, GameState)
+	if farm.replay != null:
+		farm.replay.flush_to(GameState.replay_path)
+	if farm.trace != null:
+		farm.trace.flush(GameState.trace_path)
+
+
+# Until now the session reached disk in exactly two places: tapping the cot, and
+# choosing "return to title" from the menu. A four-year-old will reliably do
+# neither — she plays, the tablet gets put down, Android kills the app, and the
+# whole session is gone. That is the M1 gate's evidence, lost by default.
+#
+# PAUSED is the one that matters on the tablet (it fires on backgrounding, which
+# is what actually happens); the other two cover desktop and orderly shutdown.
+# All three are cheap: the replay and trace are append-only, so a flush costs
+# O(new entries).
+func _notification(what: int) -> void:
+	match what:
+		NOTIFICATION_APPLICATION_PAUSED, \
+		NOTIFICATION_WM_CLOSE_REQUEST, \
+		NOTIFICATION_WM_GO_BACK_REQUEST:
+			persist_session()
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if menus.is_open():
 		return
@@ -336,11 +380,7 @@ func _handle_action_result(action: String) -> void:
 			for child in entities.get_children():
 				if child.has_method("on_new_day"):
 					child.on_new_day()
-			SaveGame.save_to(GameState.save_path, farm.sim, GameState)
-			if farm.replay != null:
-				farm.replay.flush_to(GameState.replay_path)
-			if farm.trace != null:
-				farm.trace.flush(GameState.trace_path)
+			persist_session()
 			if sleep_result.get("phase1_complete_now", false):
 				_celebrate_expansion_morning()
 		)
@@ -350,11 +390,7 @@ func _handle_action_result(action: String) -> void:
 		# Autosave on the way out: the day's work is only persisted at sleep, so
 		# leaving without this would quietly discard it (S-7 — nothing the player
 		# taps should destroy progress).
-		SaveGame.save_to(GameState.save_path, farm.sim, GameState)
-		if farm.replay != null:
-			farm.replay.flush_to(GameState.replay_path)
-		if farm.trace != null:
-			farm.trace.flush(GameState.trace_path)
+		persist_session()
 		get_tree().paused = false
 		get_tree().change_scene_to_file("res://ui/title_screen.tscn")
 	elif action == "open_shop":

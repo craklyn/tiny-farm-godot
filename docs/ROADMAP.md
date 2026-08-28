@@ -71,7 +71,7 @@ four-year-old can perceive without being taught at all.
 **T-1 — Read a session trace without hand-parsing JSONL** · ✅ done 2026-08-28
 - [x] `tools/read_trace.gd` — taps by outcome, refusal reasons, first successful use of
       each verb, stalls, stuck tiles, and a one-line verdict
-- [x] `tools/pull_trace.sh` — pulls from the tablet, timestamps into `playtests/`, reads it
+- [x] `tools/pull_session.sh` — pulls from the tablet, timestamps into `playtests/`, reads it
 - [x] unit coverage for `parse()`/`summarize()`/`teaching_report()` (25 new assertions)
 - [x] verified against the real local trace
 - [x] **bug found and fixed in the doing:** an *unreachable* tap — she taps something she

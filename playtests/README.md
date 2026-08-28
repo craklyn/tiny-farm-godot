@@ -1,0 +1,20 @@
+# Playtest sessions
+
+Pulled off the test tablet by `tools/pull_session.sh`, one timestamped directory per
+session. **Committed on purpose.** A playtest is not repeatable — the child is four once,
+and the second run is a different experiment because she has already seen the game — so
+these files are the M1 exit gate's evidence, not scratch data. They are small (tap
+coordinates and verbs, a few KB each) and carry nothing personal.
+
+Each directory holds up to three files, and they answer different questions:
+
+| File | Question it answers | Read it with |
+|---|---|---|
+| `session_trace.jsonl` | What did she tap, and what came of it — *including the taps that did nothing*? | `godot --headless --path . --script res://tools/read_trace.gd -- <path>` |
+| `session_replay.json` | What actually happened to the farm? | `godot --path . tools/replay_view.tscn -- <path>` |
+| `autosave.json` | Where did she end up? | `tools/verify_replay.gd` checks the replay against it |
+
+The trace is the one to read first: `SessionTrace.summarize()` counts dead taps by reason
+and flags tiles tapped three or more times with no effect, and `teaching_report()` gives
+time-to-first-use per verb plus every stall over eight seconds. Those are the failures of
+the *design*, not of the player.
