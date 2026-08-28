@@ -43,7 +43,13 @@ from an adult's impression.
 `T-1`/`T-2` are unblocked and can land before any ruling. `T-3`→`T-5` are one ruling
 (Q-33) and should ship together — half of them is worse than none, because the day-2
 payoff is what makes day 1 mean anything. `T-6`/`T-7` are Q-36. `T-8`→`T-10` are Q-34
-and are the bulk of the work. `T-11`/`T-12` are Q-35.
+and are the bulk of the work. `T-11`/`T-12` are Q-35. `T-13` is Q-37 and `T-14` is Q-38;
+both were raised on 2026-08-28 and neither is on the critical path to the exit gate.
+
+**If only one thing here gets built, build T-14.** It is the cheapest of the lot
+(presentation only, sim untouched), it deletes a whole concept rather than adding one,
+and it converts the single least readable element in the game into something a
+four-year-old can perceive without being taught at all.
 
 ---
 
@@ -131,12 +137,34 @@ type must become a function of distance from spawn.
 - [ ] reuses the T-7 ladder rather than adding a second hint system
 
 **T-11 — Teach sell, buy, and refill at first need** · Q-35 · ~1–2 days
-*So that the economy stops being the one part of phase 1 nobody is taught.*
+*So that the economy stops being the one part of phase 1 nobody is taught, and so the
+second causal chain — one crop buys three seeds — lands as a payoff rather than a menu.*
 - [ ] first sale highlighted when the basket reaches three crops
 - [ ] first purchase highlighted when the seed pouch empties (the exact state behind the
       2026-08-27 silent-refusal bug)
 - [ ] first refill highlighted when the can empties
 - [ ] each fires once, at the moment of need, one object at a time
+
+**T-13 — The cold open: a departing neighbour** · Q-37 · ~2–3 days
+*So that a verb is demonstrated rather than pointed at, and the first crop is an
+inheritance rather than a gift.*
+- [ ] the neighbour is a live actor, present at start, with the player never locked out
+- [ ] she performs **one** verb; her half-finished row tells the rest spatially
+- [ ] offscreen engine + honk instead of a truck sprite; she waves, and waves back if tapped
+- [ ] her actions go through `apply_action` as `actor: "neighbour"` (S-3) — no cutscene
+      system, no new machinery, replayable for free
+- [ ] ignorable end to end: tapping the ripe crop and never looking at her must still work
+*Blocked on Q-37, and takes a narrative position (Q-22) — confirm before building.*
+
+**T-14 — Daylight replaces the energy bar** · Q-38 · ~1–2 days
+*So that the least readable thing in the HUD becomes something a pre-reader can see.*
+- [ ] time of day derived from `energy / max_energy` — presentation only, sim untouched
+- [ ] four keyed colours (sunrise/midday/sunset/twilight) on one `CanvasModulate`
+- [ ] **night stays soft**: actions still work, she trudges and yawns, the cot pulses
+- [ ] verify the vignette highlight stays legible against every sky colour — on device,
+      since this is exactly the class of bug the 2026-08-27 legibility pass found
+- [ ] decide what happens to the numeric readout (recommendation: debug/desktop only)
+*Blocked on Q-38, whose real content is the phase-2 consequence, not the colour grade.*
 
 **T-12 — Wordless shop screen** · Q-35 · ~1 day
 *So that phase 1 keeps S-7's no-reading promise in the one screen that currently breaks it.*

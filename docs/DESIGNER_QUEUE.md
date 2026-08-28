@@ -172,6 +172,39 @@ first, since a different answer there changes what the other four are optimising
   the distribution of stages reached *is* the playtest data, and drops straight into the
   session trace.
 
+- **Q-37 (Ruling)** **The cold open.** Designer's proposal: before the ripe crop, the
+  player watches another child work the land, time passes, a moving truck arrives and she
+  leaves the growing crop behind. It does something nothing else in chapter 13 can — a
+  person can *demonstrate a verb*, where our highlight system can only point — and it
+  turns the opening crop from an arbitrary gift into an inheritance.
+  **Recommendation: adopt the live-scene revision, not the cutscene.** Valve's deepest
+  rule is never take control away, and a four-year-old will not watch a non-interactive
+  opening; she will tap through it or conclude the game is broken. Instead the departing
+  child is simply *present* at start with the player in full control: she performs **one**
+  verb, her half-finished row tells the rest spatially (cleared → tilled → seeded →
+  growing → ripe, read left to right), an offscreen engine and a honk replace the truck
+  sprite, and she waves. The whole scene is ignorable — tap the ripe crop and the design
+  still works. **Why it is nearly free:** she is not a cutscene system, she is one more
+  actor whose verbs go through `apply_action` as `actor: "neighbour"`, exactly like the
+  crow and chicken (S-3) — so it is replayable, deterministic, and needs no new
+  machinery. **Note it takes a narrative position** (you inherit this farm), which is
+  live D-3/Q-22 territory. Detail in `design/13` §4a.
+- **Q-38 (Ruling)** **Daylight instead of an energy bar.** Designer's proposal: replace
+  the energy meter with a visible day cycle (sunrise/midday/sunset/twilight as a colour
+  grade) where spending energy advances the time of day, so twilight itself says the day
+  is done. **Recommendation: adopt.** Energy is a number a pre-reader cannot read and the
+  sky is not; it also answers "why would she ever sleep?", which Q-11's soft floor left
+  unanswered by design. Only *actions* advance the clock, so wandering stays free and the
+  day ends when she runs out of things she wants to do — the §3 loop stated literally.
+  Nearly free to build: time of day is `energy / max_energy` on a colour ramp rendered as
+  one `CanvasModulate`, so the sim is untouched and replays are unaffected.
+  **The decision inside the decision:** merging the two means energy and time can never
+  diverge again — no "exhausted at noon", no food items — and Q-11 says hard energy
+  returns as a real constraint in phase 2. Rule that consciously now rather than discover
+  it at M3. Two cautions: night must stay soft (a wall is the lockout Q-11 forbade), and
+  the vignette highlight must stay legible against a twilight sky. Detail in `design/13`
+  §8a.
+
 ## Before M3 — phase 2 design
 
 - **Q-15 (Ruling)** Sprinkler/machine acquisition loop: crafted, bought, or

@@ -127,6 +127,72 @@ Teaching then runs *backwards along the production chain* — ripe → seeded �
 cleared — which is the same reverse-order teaching Valve uses when they show you the
 locked door before the key.
 
+### The cold open — proposed 2026-08-28, awaiting Q-37
+
+*Designer's proposal, and the analysis it prompted. Not scheduled to build.*
+
+The proposal: before the ripe crop, the player watches another child work the land —
+tilling, planting, watering — then a compressed day/night/day passage with the tile
+watered a few times, then a moving truck arrives and the child leaves, abandoning the
+growing crop the player will inherit.
+
+**What it does that nothing else in this chapter can.** Our vignette can only *point* at
+a tile. A person can **demonstrate a verb**, which is a capability the highlight system
+does not have at any budget. It also compresses the entire causal chain into one viewing,
+it explains why a ripe crop is sitting there (otherwise a slightly arbitrary gift), and
+it converts the crop from free food into *someone's unfinished work* — a small
+inheritance, which is a stronger motivator than a gift.
+
+**The objection, which is serious.** Valve's deepest and most-repeated finding is *never
+take control away from the player*; Half-Life 2 has essentially no cutscenes, and that is
+a design position rather than a stylistic one. Our specific player is four years old and
+will not watch a cutscene — she will tap the screen repeatedly and conclude either that
+it should be skipped or that the game is broken. Thirty seconds without agency at the
+very start is the highest-risk content we could place there. Secondary objections: an NPC
+with a walk cycle plus four verb animations and a truck is the most expensive item in
+this chapter, against a standing rule not to invest in placeholder art; and passive
+watching is a substantially weaker teacher than doing, so she may watch all of it and
+learn nothing, having never been the agent.
+
+**Recommended revision — keep the content, drop the cutscene.**
+
+- **A live scene, not a sequence.** The departing child is simply present when the game
+  starts. The player has full control from the first frame and may walk over, follow, or
+  ignore her entirely. If the player ignores everything and taps the ripe crop, the whole
+  design still works — the scene is enrichment, never a gate.
+- **One verb, not four.** Watching four actions is a cutscene; watching one is a moment.
+  She plants one tile and waters it, and that is all.
+- **The layout tells the rest.** Leave her half-finished row reading left to right —
+  cleared, tilled, seeded, growing, ripe. The chain is legible *spatially* whether or not
+  the player watched anything, which is environmental storytelling: one tilemap
+  arrangement, zero animation, and it cannot be missed or skipped.
+- **No truck sprite.** An engine idling offscreen, a honk, and the child walking off the
+  map edge does the whole job. Sound is far cheaper than art and reads as clearly.
+- **She waves**, and waves back if tapped. A four-year-old reads a wave instantly; it is
+  one frame of art, and it converts spectating into participation.
+- **Cut the time compression.** The day/night/day passage is the most expensive beat and
+  the least necessary — the ripe crop *is* the evidence that time passed, and showing it
+  explicitly tells her something the world is about to show her anyway.
+
+**Why this is nearly free, and the reason it is worth doing at all.** The departing child
+is not a cutscene system; she is **one more actor**. Her till/plant/water go through
+`apply_action` with `actor: "neighbour"`, exactly as the crow and chicken do today (S-3).
+The prologue is therefore replayable, deterministic, and produces *real* world state
+rather than scripted fakery — no new machinery, no new subsystem to keep in sync with the
+sim, and it honours the single-gateway rule instead of carving an exception around it.
+That reframing is what moves this from "build a cutscene system" to "add an actor and a
+sprite."
+
+**What it decides that we have not.** If she is moving out as the player moves in, the
+premise answers *who the player is* — you inherit this farm. That is the genre-standard
+premise and a good one, but it is live territory for D-3 / Q-22 (story bible), so it is
+flagged here rather than assumed. Adopting the cold open should be understood as taking
+a position on the narrative, cheaply and early.
+
+**Open questions if adopted.** Does it replay on a New Farm after the player has seen it
+once (recommendation: yes — Continue skips it, and a fresh farm is a fresh fiction)? Does
+the neighbour have a name, and does she return in a later phase? Both are Q-22 material.
+
 ### Day 1 — "food is a thing that exists, and you can have it"
 
 | Beat | What the player sees | What they learn | New verb |
@@ -308,8 +374,8 @@ thing we are currently hoping the player guesses.
 | 11 | clear weeds | ring 1, when the player wants more space | the hedge opens; weeds are the only obstacle inside | designed |
 | 12 | the axe / logs | ring 2 | new ring, one new obstacle type | designed |
 | 13 | the pickaxe / rocks | ring 3 | new ring, one new obstacle type | designed |
-| 14 | **selling at the bin** | — | **unscheduled** | ⚠ open |
-| 15 | **buying seeds at the box** | — | **unscheduled, and the only screen in phase 1 that may require reading** | ⚠ open |
+| 14 | sell at the bin | when the basket holds a crop she does not need | first half of the second causal chain | designed (§7a) |
+| 15 | buy seeds at the box | when the pouch runs low | second half; the payoff is *three* seeds for one crop | designed (§7a) |
 | 16 | **refilling the can at the well** | — | **unscheduled; becomes urgent the moment the can is finite** | ⚠ open |
 | 17 | scaring a crow by walking at it | day 3+ | discovered, never taught — the crow flees whether or not she meant it | intentional |
 
@@ -318,6 +384,50 @@ are the fixed objects in the spawn band (`shipping_bin`, `seed_box`, `well`), al
 are *economy* rather than *cultivation*, and none of them currently has a teaching beat.
 The empty seed pouch that produced the silent refusal we fixed on 2026-08-27 was this gap
 showing through: the player was never taught where seeds come from.
+
+### 7a. The second causal chain: crop → coins → more seeds
+
+*Designer's observation, 2026-08-28: the sold crop buys the next seeds, and that is what
+teaches the shop.* It is the right answer, and the existing numbers already support it
+without tuning.
+
+**Wheat sells for 15g; a wheat seed costs 5g.** So one harvested crop buys **three**
+seeds. To a pre-reader that reads as *I gave away one thing and got three things back* —
+a legible multiplication, and the second causal chain in the game after seed → crop. The
+first is about patience; this one is about increase, and it is what turns a garden into
+something that grows.
+
+**Two properties of the current numbers make this safe, and both should be protected.**
+
+- *The shop is an accelerator, never a rescue.* The player starts with five seeds
+  (`GameState.reset()`), so the pouch cannot empty on day 1 or 2. The shop therefore
+  answers "how do I go faster?" rather than "how do I stop being stuck" — motivation
+  before mechanism, with no urgency behind it, which is what gives the two-step sell →
+  buy room to be taught calmly.
+- *There is no soft-lock, and as of T-2 there provably cannot be.* The dead state is zero
+  seeds, zero crops, zero gold and nothing planted. Reaching it requires losing every
+  planted crop, which requires crows — and crows now require at least one completed
+  harvest, so by the time anything can be taken she demonstrably holds a crop or the gold
+  from one. The crow readiness gate closed this without being aimed at it. **Any future
+  change to that gate must preserve the property**, because a pre-reader who soft-locks
+  has no way to know it and no way out (S-7: no punishing fail states).
+
+**A fork worth naming and declining.** The loop could instead close without money at all,
+by having a harvest yield a seed as well as a crop — many farming games do this, and it
+makes a soft-lock structurally impossible rather than incidentally so. It is rejected
+here because the economy already works, is generous, and teaching a real system beats
+routing around one. But it is the fallback if playtest shows the two-step sell → buy is
+one step too many, and it is cheap to switch to.
+
+**Sequencing caution.** Day 3 already carries the egg and the first crow. The economy
+beat should not join them: **one new thing per day** is the rule the whole chapter runs
+on, and the pouch emptying naturally around day 3–4 gives a free, self-scheduling trigger.
+Let the need arrive rather than placing it.
+
+**The reading risk is real and lands here.** Selling at the bin is a tap. *Buying* opens
+`ui/menus.gd`, which prints prices as text ("5g"). That screen is the one place phase 1
+currently breaks S-7's no-reading rule, and this chain is what will send a four-year-old
+into it. T-12 owns the fix; it becomes load-bearing the moment this beat ships.
 
 Recommendation, offered for **Q-35**: teach them as a fourth chapter on the day the
 player first *needs* one — first sale when the basket has three crops, first purchase
@@ -346,6 +456,57 @@ The pass condition for this chapter is narrow and should stay narrow: **she reac
 
 ---
 
+## 8a. Daylight instead of an energy bar — proposed 2026-08-28, awaiting Q-38
+
+*Designer's proposal: replace the energy meter with a visible day cycle — sunrise,
+midday, sunset, twilight as a colour grade — where **spending energy is what advances
+the time of day**, so twilight itself says the day is done.*
+
+**Why this is the strongest of the three proposals on this page.** Energy is a number a
+pre-reader cannot read; the sky is not. It converts the least legible element in the HUD
+into an ambient wordless signal, which is exactly what S-7 asks for. It also answers a
+question this chapter raised and could not answer: *why would she ever sleep?* The cot is
+currently a tap with no motivation behind it, precisely because Q-11's soft floor removed
+all pressure by design. Twilight restores a reason to sleep without restoring a
+punishment. And it deletes a concept — energy and a day that advances only on a cot tap
+become one thing.
+
+**It also fits the §3 loop better than the system it replaces.** Only *actions* would
+advance the clock; walking, looking and wandering stay free. So the day ends when she runs
+out of things she *wants* to do, which is the phase-1 loop stated almost literally. The
+low-stress reading is strengthened, not compromised.
+
+**It is nearly free architecturally, which is the part that is easy to miss.** Time of day
+is a *derived presentation value*: `energy / max_energy` mapped onto a colour ramp and
+rendered as a single `CanvasModulate` over the world layer. The sim keeps its energy
+counter exactly as it is. No sim change, no determinism impact, no replay breakage, and no
+per-tile per-frame work. This is not building a clock; it is rendering an existing counter
+as light instead of as a bar.
+
+**Three cautions.**
+
+1. **Twilight must not be a wall.** If actions stop at nightfall that is the hard lockout
+   Q-11 explicitly ruled out. Night should continue: actions still work, she trudges and
+   yawns in the dark, the cot pulses. That is the *existing* soft-floor behaviour
+   re-skinned so a pre-reader can finally perceive it — "you are up past bedtime" rather
+   than an invisible number reaching zero.
+2. **It permanently closes off energy and time diverging.** Merged, there can never be
+   "exhausted, but it is only noon", and any food or rest item that restores energy
+   becomes incoherent — it would wind the sun backwards. Stardew keeps both meters for
+   exactly this reason. Q-11 says hard energy returns as a real constraint from phase 2,
+   and phase 2 is unruled (Q-15–Q-21), so **this is the decision inside the decision** and
+   should be made deliberately rather than discovered at M3.
+3. **The highlight must survive every sky.** The vignette's warm gold currently reads
+   against grass and soil; it would also have to read against a twilight tint, alongside
+   design/09's reserved overlay hues. We learned this once already — pale-on-pale was
+   invisible on device — and a hint that vanishes at dusk fails exactly when the player is
+   most likely to need the cot pointed out.
+
+**Open sub-questions.** Does weather tint on top of the time-of-day grade, or replace it?
+Does the numeric energy readout survive anywhere (recommendation: debug and desktop only —
+the sky *is* the bar for the child)? Does sleeping at midday simply waste the remaining
+daylight (recommendation: yes, and that is fine — sleep should never be refused)?
+
 ## 9. Open rulings
 
 | Q | Question | Recommendation |
@@ -355,4 +516,6 @@ The pass condition for this chapter is narrow and should stay narrow: **she reac
 | Q-34 | Tool-gated land rings, or all tools from the start? | Rings, with the lock expressed as land rather than refusal (§5) |
 | Q-35 | How and when to teach sell / buy / refill | At first need, one object at a time (§7) |
 | Q-36 | Hint escalation: is stage 3 too much hand-holding? | Ship it; a stalled four-year-old has already cost us the gate (§6) |
+| Q-38 | Replace the energy bar with a daylight cycle? | Adopt; keep night soft, and rule the phase-2 consequence consciously (§8a) |
+| Q-37 | The cold open: adopt, and in which form? | Adopt the live-scene revision, not the cutscene — control is never taken, one verb is demonstrated, the layout carries the rest (§4a) |
 
