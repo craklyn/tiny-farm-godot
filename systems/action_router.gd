@@ -106,6 +106,26 @@ func resolve(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, is_drag: 
 	return {}
 
 
+## True when a tile is one the player could work *at all*, ignoring whether they
+## currently hold the seeds, water or energy to do it.
+##
+## resolve() deliberately returns nothing when a resource is missing, which is
+## right for "what happens on tap" but wrong for "how do I walk there": running
+## out of seeds made her walk on top of the tile instead of up to it, because the
+## approach logic could no longer tell it was a farmable square.
+func is_workable(farm: Node2D, tap_t: Vector2i) -> bool:
+	var obj: String = farm.get_object(tap_t.x, tap_t.y)
+	if obj != "" and SPECIAL_OBJECTS.has(obj):
+		return true
+	var tile: Dictionary = farm.get_tile(tap_t.x, tap_t.y)
+	if tile.is_empty():
+		return false
+	return String(tile.get("state", "")) in [
+		"obstacle_rock", "obstacle_log", "obstacle_weed",
+		"cleared", "tilled", "seeded", "growing", "ready",
+	]
+
+
 ## Returns a Color for the tile cursor based on what action would be performed.
 func get_cursor_color(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, is_drag: bool = false) -> Color:
 	var result := resolve(farm, gs, tap_t, player_t, is_drag)

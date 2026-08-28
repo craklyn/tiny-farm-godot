@@ -142,10 +142,10 @@ func update_player(delta: float) -> void:
 		# whether the destination is workable; if it is, she stops in range, and
 		# the next tap can act with no step-off shuffle. Tiles with nothing to do
 		# are still walked onto normally.
-		var approach: bool = not resolved.is_empty() and bool(resolved.get("walk_to", false))
-		if not approach:
-			var probe: Dictionary = ActionRouter.resolve(farm, GameState, target_vec, target_vec, false, null)
-			approach = not probe.is_empty() and bool(probe.get("walk_to", false))
+		# Whether to walk *up to* the tile or onto it depends on the tile alone,
+		# never on what she is carrying — asking resolve() meant an empty seed
+		# pouch changed how she approached, which read as a second bug.
+		var approach: bool = ActionRouter.is_workable(farm, target_vec)
 
 		approach_target = target_vec if approach else Vector2i(-1, -1)
 

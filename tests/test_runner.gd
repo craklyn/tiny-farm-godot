@@ -42,6 +42,7 @@ func _init() -> void:
 	test_autotile_sheet()
 	test_title_summary()
 	test_approach_adjacent()
+	test_approach_ignores_inventory()
 
 	print("")
 	print(String("=").repeat(60))
@@ -992,4 +993,48 @@ func test_approach_adjacent() -> void:
 		world.set_tile_state(goal.x + d.x, goal.y + d.y, "obstacle_rock")
 	_assert(Pathfinding.find_path_toward(farm, Vector2i(3, 3), goal).is_empty(),
 		"a walled-in target returns empty so the action still fires in place")
+	farm.free()
+
+
+func test_approach_ignores_inventory() -> void:
+	print("\n--- Approach independent of inventory (Q-30) Tests ---")
+	GameState.reset()
+	var world := SimWorld.new()
+	SimRng.reseed(3)
+	world.generate()
+	var farm = load("res://world/farm.gd").new()
+	farm.generate_on_ready = false
+	farm.sim = world
+
+	var t := Vector2i(6, 6)
+	world.set_tile_state(t.x, t.y, "tilled")
+
+	# With seeds, planting resolves and the tile is workable.
+	GameState.seeds["wheat"] = 5
+	GameState.selected_seed_type = "wheat"
+	_assert(not ActionRouter.resolve(farm, GameState, t, t, false, null).is_empty(),
+		"planting resolves while she has seeds")
+	_assert(ActionRouter.is_workable(farm, t), "a tilled tile is workable")
+
+	# Out of seeds, resolve correctly refuses — but the tile must still count as
+	# workable, or she walks on top of it instead of up to it.
+	GameState.seeds["wheat"] = 0
+	_assert(ActionRouter.resolve(farm, GameState, t, t, false, null).is_empty(),
+		"planting does not resolve with an empty pouch")
+	_assert(ActionRouter.is_workable(farm, t),
+		"the tile is still workable with an empty pouch, so the approach is unchanged")
+
+	# Same for the other exhaustible resources.
+	world.set_tile_state(t.x, t.y, "seeded", "wheat")
+	GameState.watering_can_charges = 0
+	_assert(ActionRouter.is_workable(farm, t), "a dry crop is workable with an empty can")
+	world.set_tile_state(t.x, t.y, "cleared")
+	GameState.energy = 0
+	GameState.hard_energy = true
+	_assert(ActionRouter.is_workable(farm, t), "bare soil is workable with no energy")
+
+	# Things with genuinely nothing to do are walked onto normally.
+	world.set_tile_state(t.x, t.y, "border")
+	_assert(not ActionRouter.is_workable(farm, t), "the map border is not workable")
+	GameState.reset()
 	farm.free()
