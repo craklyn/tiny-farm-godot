@@ -78,6 +78,19 @@ if [[ -z "$SERIAL" ]]; then
 fi
 
 printf '%s' "$SERIAL" > "$LAST_TARGET_FILE"
+
+# Rescue whatever is on the device before touching it. Installing relaunches the
+# app, which starts a fresh session, and since persistence now runs on a timer
+# that session overwrites the previous trace within seconds. A playtest is not
+# repeatable, so the one irreplaceable thing here must not depend on remembering
+# to pull first.
+if adb -s "$SERIAL" shell "run-as $PKG test -s files/session_trace.jsonl" >/dev/null 2>&1; then
+	echo "Existing session on device — pulling it before install."
+	"$(dirname "$0")/pull_session.sh" >/dev/null 2>&1 \
+		&& echo "  rescued into playtests/" \
+		|| echo "  WARNING: could not pull; continuing anyway." >&2
+fi
+
 adb -s "$SERIAL" install -r "$APK"
 # The launcher activity is GodotAppLauncher, not GodotApp; let the system resolve it.
 adb -s "$SERIAL" shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1 >/dev/null
