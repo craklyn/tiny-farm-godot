@@ -59,16 +59,18 @@ and are the bulk of the work. `T-11`/`T-12` are Q-35.
       and the summary read as though they never happened. This is the single most
       diagnostic category for a playtest.
 
-**T-2 — No crow before the player is ready** · unblocked (designer raised it directly) ·
-~1 hour
-*So that the first session has no stress in it at all.*
-The spawner fires every 10 s from day 1 whenever more than one crop exists. A
-four-year-old meeting a pest before she has met a harvest has met a threat, not a joke.
-- [ ] gate on evidence, not calendar: ≥1 crop harvested, ≥3 crops planted, day ≥3
-- [ ] the *first* crow cannot eat — it lands far away, is loudly telegraphed, and flees
-- [ ] only the second crow onward can take a crop
-- [ ] sim-level test that no crow can spawn on day 1
-*Acceptance: a fresh save can reach the end of day 2 without ever seeing a crow.*
+**T-2 — No crow before the player is ready** · ✅ done 2026-08-28
+- [x] gated on evidence, not calendar: ≥1 crop harvested, ≥3 planted, day ≥3. The rule
+      is `SimWorld.may_spawn_crow()` — pure and headlessly testable; `main.gd` keeps only
+      the real-time timer
+- [x] the first crow of a save cannot eat: it perches for 12 s instead of 5, squawks, and
+      leaves empty-beaked. The sim never hears about the visit
+- [x] only the second crow onward can take a crop (`GameState.crows_seen`, saved, with
+      pre-T-2 saves defaulting to a harmless first crow)
+- [x] sim-level tests, including the acceptance criterion asserted exhaustively: no
+      combination of progress permits a crow on day 1 or 2
+- [x] eggs excluded from the harvest count via a shared `total_harvests()` helper, so the
+      crow gate and the milestone check cannot drift apart
 
 **T-3 — Day 1 opens on a ripe crop** · Q-33 · ~1 day
 *So that the player is paid before being asked, and forms the question the rest answers.*

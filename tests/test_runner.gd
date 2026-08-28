@@ -44,6 +44,7 @@ func _init() -> void:
 	test_approach_adjacent()
 	test_approach_ignores_inventory()
 	test_session_trace()
+	test_crow_readiness()
 
 	print("")
 	print(String("=").repeat(60))
@@ -1116,3 +1117,72 @@ func test_session_trace() -> void:
 	_assert(int(SessionTrace.teaching_report(empty)["time_to_first_tap_ms"]) == -1,
 		"empty trace reports no first tap")
 	_assert(int(SessionTrace.summarize({})["taps"]) == 0, "summarize tolerates a missing entries key")
+
+
+func test_crow_readiness() -> void:
+	print("\n--- Crow readiness gate (T-2) Tests ---")
+
+	# The rule design/13 §4 asks for: no pest until she has met a harvest, and
+	# has enough planted that losing one is affordable. Day is a backstop.
+	_assert(not SimWorld.may_spawn_crow(1, 5, 10), "no crow on day 1, however well she is doing")
+	_assert(not SimWorld.may_spawn_crow(2, 5, 10), "no crow on day 2 either")
+	_assert(not SimWorld.may_spawn_crow(3, 0, 10), "no crow before she has harvested anything")
+	_assert(not SimWorld.may_spawn_crow(3, 1, 2), "no crow while only two crops are planted")
+	_assert(SimWorld.may_spawn_crow(3, 1, 3), "a crow may come once all three conditions hold")
+	_assert(SimWorld.may_spawn_crow(9, 40, 30), "and keeps coming later")
+
+	# The acceptance criterion stated in the roadmap, asserted directly: a fresh
+	# save cannot see a crow at any point across days 1 and 2.
+	var day1_2_clear := true
+	for d in [1, 2]:
+		for h in range(0, 6):
+			for pl in range(0, 12):
+				if SimWorld.may_spawn_crow(d, h, pl):
+					day1_2_clear = false
+	_assert(day1_2_clear, "no combination of progress permits a crow on day 1 or 2")
+
+	# count_planted feeds the gate, so it has to agree with what a crow can target.
+	GameState.reset()
+	var world := SimWorld.new()
+	SimRng.reseed(7)
+	world.generate()
+	var before := world.count_planted()
+	world.tiles[3][6]["state"] = "seeded"
+	world.tiles[3][7]["state"] = "growing"
+	world.tiles[3][8]["state"] = "ready"
+	world.tiles[3][9]["state"] = "tilled"
+	_assert(world.count_planted() == before + 3,
+		"count_planted counts seeded/growing/ready but not tilled")
+
+	# Eggs are a gift, not evidence of working the loop, so they must not unlock
+	# the crow. This is the shared helper the milestone check also uses.
+	GameState.reset()
+	GameState.harvest_counts = {"egg": 9}
+	_assert(GameState.total_harvests() == 0, "eggs do not count as harvests")
+	_assert(not SimWorld.may_spawn_crow(5, GameState.total_harvests(), 10),
+		"nine eggs and no crops still means no crow")
+	GameState.harvest_counts["wheat"] = 1
+	_assert(GameState.total_harvests() == 1, "a crop does count")
+	_assert(SimWorld.may_spawn_crow(5, GameState.total_harvests(), 10),
+		"one real harvest opens the gate")
+
+	# crows_seen decides whether the first crow can eat, so it must survive a
+	# save/load — otherwise reloading hands the player an endless harmless crow.
+	GameState.reset()
+	GameState.crows_seen = 2
+	var w2 := SimWorld.new()
+	SimRng.reseed(11)
+	w2.generate()
+	var snapshot := SaveGame.capture(w2, GameState)
+	GameState.reset()
+	_assert(GameState.crows_seen == 0, "reset clears crows_seen")
+	var w3 := SimWorld.new()
+	_assert(SaveGame.restore(snapshot, w3, GameState), "save restores")
+	_assert(GameState.crows_seen == 2, "crows_seen round-trips through a save")
+
+	# A save written before T-2 has no such field and must still load.
+	var legacy := SaveGame.capture(w2, GameState)
+	legacy["state"].erase("crows_seen")
+	var w4 := SimWorld.new()
+	_assert(SaveGame.restore(legacy, w4, GameState), "a pre-T-2 save still loads")
+	_assert(GameState.crows_seen == 0, "and defaults to a harmless first crow")

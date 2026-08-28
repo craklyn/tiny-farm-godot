@@ -14,6 +14,26 @@ const MAP_HEIGHT := 20
 const VIGNETTE_WEED := Vector2i(4, 3)
 const VIGNETTE_PLANT := Vector2i(6, 3)
 
+# T-2 / design/13 §4: the first session contains no threat at all.
+#
+# The spawner used to fire every 10 s from day 1 whenever more than one crop
+# existed, so a four-year-old could meet a pest before she had ever met a
+# harvest — which makes the crow a threat rather than the joke Q-10 rules it
+# must be. Readiness is gated on evidence rather than the calendar: she must
+# have completed the loop at least once, and have enough planted that losing one
+# is affordable. The day floor is a backstop, not the mechanism.
+const CROW_MIN_DAY := 3
+const CROW_MIN_HARVESTS := 1
+const CROW_MIN_PLANTED := 3
+
+# Pure so it can be tested without a scene tree; the caller (main.gd) owns the
+# timer, this owns the rule.
+static func may_spawn_crow(day: int, total_harvests: int, planted: int) -> bool:
+	return day >= CROW_MIN_DAY \
+		and total_harvests >= CROW_MIN_HARVESTS \
+		and planted >= CROW_MIN_PLANTED
+
+
 # Fixed object positions (0-indexed tile coords)
 const OBJECT_POSITIONS: Array[Dictionary] = [
 	{ "type": "cot",          "tx": 2, "ty": 1 },
@@ -112,6 +132,18 @@ func get_object(tx: int, ty: int) -> String:
 func set_object(tx: int, ty: int, obj_type: String) -> void:
 	if ty >= 0 and ty < MAP_HEIGHT and tx >= 0 and tx < MAP_WIDTH:
 		objects[ty][tx] = obj_type
+
+
+# Tiles holding a crop at any stage — what a crow could target, and the measure
+# of whether the player has enough planted to afford losing one.
+func count_planted() -> int:
+	var n := 0
+	for ty in MAP_HEIGHT:
+		for tx in MAP_WIDTH:
+			var st: String = tiles[ty][tx].get("state", "")
+			if st == "seeded" or st == "growing" or st == "ready":
+				n += 1
+	return n
 
 
 func is_protected_by_scarecrow(tx: int, ty: int) -> bool:

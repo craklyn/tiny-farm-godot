@@ -17,6 +17,18 @@ var farm: Node2D = null
 var player: Node2D = null
 var entities_manager: Node = null
 
+# T-2: the first crow of a save cannot eat. It still flies in, still perches,
+# still squawks and puffs feathers when scared — it simply leaves empty-beaked.
+# Q-10 rules that pests are comedy rather than threat and that the *first
+# introduction* of each pest is the case that matters most; a first encounter
+# that costs the player a crop teaches threat no matter how gently it is drawn.
+var harmless: bool = false
+
+# A harmless crow dawdles, so there is an unmissable window to walk over and
+# scare it off. The telegraph is the point: she should get to win.
+const EAT_SECONDS := 5.0
+const HARMLESS_PERCH_SECONDS := 12.0
+
 func init_crow(start_x: float, start_y: float, tx: int, ty: int, f: Node2D, p: Node2D, em: Node) -> void:
 	position = Vector2(start_x, start_y)
 	target_tx = tx
@@ -53,7 +65,7 @@ func _process(delta: float) -> void:
 			position.x = target_x
 			position.y = target_y
 			state = "eating"
-			timer = 5.0 # 5 seconds to eat crop
+			timer = HARMLESS_PERCH_SECONDS if harmless else EAT_SECONDS
 		else:
 			position.x += (dx/dist) * speed
 			position.y += (dy/dist) * speed
@@ -67,14 +79,20 @@ func _process(delta: float) -> void:
 			
 		timer -= delta
 		if timer <= 0:
-			var result: Dictionary = farm.apply_action({
-				"verb": "eat_crop",
-				"target": Vector2i(target_tx, target_ty),
-				"actor": "crow",
-			})
-			if result.get("ok", false):
+			if harmless:
+				# Leaves without touching the crop, and without consuming the
+				# eat_crop verb — the sim never hears about this visit at all.
 				if get_tree() and get_tree().root.has_node("AudioManager"):
-					get_tree().root.get_node("AudioManager").play_sfx("till")
+					get_tree().root.get_node("AudioManager").play_sfx("squawk")
+			else:
+				var result: Dictionary = farm.apply_action({
+					"verb": "eat_crop",
+					"target": Vector2i(target_tx, target_ty),
+					"actor": "crow",
+				})
+				if result.get("ok", false):
+					if get_tree() and get_tree().root.has_node("AudioManager"):
+						get_tree().root.get_node("AudioManager").play_sfx("till")
 			state = "flying_away"
 			
 	elif state == "flying_away":

@@ -223,11 +223,22 @@ func _process(delta: float) -> void:
 				var tile = farm.get_tile(tx, ty)
 				if not tile.is_empty() and (tile.state == "growing" or tile.state == "ready" or tile.state == "seeded"):
 					targets.append(Vector2i(tx, ty))
-		# Q-10 mercy rule: never send a crow after the player's ONLY crop
-		if targets.size() > 1:
+		# T-2: readiness first, mercy second. The rule itself lives in the sim so
+		# it is testable headlessly; the timer stays here because it is real time.
+		# Q-10's never-the-only-crop mercy rule is now subsumed by CROW_MIN_PLANTED,
+		# which is strictly stronger (3 rather than 2), but stays spelled out because
+		# the mercy rule is the part a future change is most likely to break.
+		var ready_for_crows: bool = SimWorld.may_spawn_crow(
+			GameState.day, GameState.total_harvests(), targets.size())
+		if ready_for_crows and targets.size() > 1:
 			var target = targets[SimRng.randi() % targets.size()]
 			var CrowScript = load("res://entities/crow.gd")
 			var crow = CrowScript.new()
+			# The first crow she ever meets is a joke she gets to be the punchline
+			# of: it arrives, dawdles conspicuously, and leaves without taking
+			# anything. Only the second one onward can actually eat.
+			GameState.crows_seen += 1
+			crow.harmless = GameState.crows_seen <= 1
 			crow.init_crow(-32.0, -32.0, target.x, target.y, farm, player, entities)
 			entities.add_child(crow)
 

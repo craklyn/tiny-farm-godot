@@ -27,6 +27,7 @@ var max_watering_can_charges: int
 var selected_seed_type: String
 var hard_energy: bool  # phase 1: false (soft floor, Q-11); phase 2+ flips true
 var crows_scared: int  # Q-12 proof counter (player-caused scares, via crow_scared verb)
+var crows_seen: int  # T-2: how many crows have ever arrived; the first one is harmless
 var total_shipped: int  # Q-12 proof counter (crops sold, any route)
 var phase1_complete: bool  # Q-12/P-4: set silently by the sim at sleep when the proof is met
 
@@ -65,6 +66,7 @@ func reset() -> void:
 	selected_seed_type = "wheat"
 	hard_energy = false
 	crows_scared = 0
+	crows_seen = 0
 	total_shipped = 0
 	phase1_complete = false
 	_milestones_earned = {}
@@ -174,16 +176,24 @@ func refill_watering_can() -> bool:
 	return false
 
 
-func check_milestones() -> void:
-	var total_harvests: int = 0
+# Crops harvested, eggs excluded — eggs are a gift, not evidence the player has
+# worked the loop. Shared by the milestone check and T-2's crow readiness gate so
+# the two cannot drift apart.
+func total_harvests() -> int:
+	var n: int = 0
 	for crop_type in harvest_counts:
 		if crop_type == "egg":
-			continue  # eggs count only for Master Farmer, not harvest totals
-		total_harvests += harvest_counts[crop_type]
+			continue
+		n += harvest_counts[crop_type]
+	return n
+
+
+func check_milestones() -> void:
+	var harvested: int = total_harvests()
 
 	var milestones: Array[Dictionary] = [
-		{ "id": "first_harvest", "condition": total_harvests >= 1, "msg": "First Harvest!" },
-		{ "id": "green_thumb", "condition": total_harvests >= 10, "msg": "Green Thumb!" },
+		{ "id": "first_harvest", "condition": harvested >= 1, "msg": "First Harvest!" },
+		{ "id": "green_thumb", "condition": harvested >= 10, "msg": "Green Thumb!" },
 		{ "id": "golden_field", "condition": gold >= 500, "msg": "Golden Field!" },
 		{ "id": "master_farmer", "condition": (
 			harvest_counts.get("wheat", 0) >= 1 and
