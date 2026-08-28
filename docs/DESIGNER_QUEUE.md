@@ -43,9 +43,11 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
 - **Q-7c** ~~Public repo redistributes Sprout Lands~~ — ✅ ruled 2026-08-26: drop
   assets with restrictive licenses rather than work around them. Executed same day:
   pack deleted, replaced by AI-generated art (Retro Diffusion, `CREDITS.md`).
-  Residual action: purge the pack from git history (`git filter-repo` + force push)
-  at release prep — the pack is still live in `origin/main`'s tree. Retro Diffusion
-  output rights ✅ verified 2026-08-27 (terms §7; findings in `CREDITS.md`).
+  Residual actions both closed 2026-08-27: Retro Diffusion output rights ✅ verified
+  (terms §7), and the pack ✅ purged from git history (all 82 commits rewritten,
+  working tree provably unchanged). Designer ruled to accept the one residue a
+  rewrite cannot remove — GitHub keeps the old objects reachable by SHA until it
+  garbage-collects. Details in `CREDITS.md`.
 - **Q-8** ~~Movement scheme~~ — ✅ ruled 2026-08-19: tap-to-move only, accepted.
   Spawned follow-up: **Q-28** below (interaction inventory).
 - **Q-9** ~~Onboarding~~ — ✅ ruled 2026-08-19: wordless sparkle vignette accepted

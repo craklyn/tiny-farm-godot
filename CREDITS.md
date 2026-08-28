@@ -28,8 +28,16 @@ before the first public build ships.*
 - **Sprout Lands asset pack** by Cup Nooble — *removed 2026-08-26* (Q-7c ruling:
   drop restrictively-licensed assets; its free license forbids redistribution and
   this repo is public). Q-7b license findings recorded in the git history of this
-  file. The pack files remain in git history until the planned history rewrite
-  (scheduled for release prep).
+  file. **Purged from git history 2026-08-27** (`git filter-repo --invert-paths`,
+  all 82 commits rewritten; the working tree was provably untouched — the HEAD tree
+  hash was identical before and after). Both suites re-verified green on the
+  rewritten history. *Known residue, accepted by the designer: a force push does not
+  make GitHub delete the old objects, so commits from before the rewrite may stay
+  reachable by explicit SHA through the web UI and API until GitHub garbage-collects
+  them. The pack is absent from the tree, from any fresh clone, and from every
+  shipped build; it is not absent from GitHub's storage. Nobody had forked or
+  starred the repo when this was done.* Pre-rewrite backup bundle kept outside the
+  repo at `~/dev/tiny-farm-pre-purge-2026-08-27.bundle`.
 
 ## Audio (placeholder)
 - `assets/audio/music/bgm_wholesome.ogg` — **"Wholesome" by Kevin MacLeod
