@@ -221,18 +221,26 @@ func update_player(delta: float) -> void:
 			# was the one outcome the trace never recorded, because this branch only
 			# cleared state. A dead tap that leaves no evidence is worse than no
 			# instrumentation, since the summary reads as though it never happened.
-			# Adjacent-but-nothing-resolved lands here too, and it is a different
-			# thing from "cannot get there" — it means she is in range and the game
-			# still has no answer. Distinguish them, and speak in the first case.
+			# Three outcomes land here, and conflating them corrupts the instrument.
+			# She is either out of range ("unreachable"), in range with a reason we
+			# can give ("refused"), or in range with genuinely nothing to do
+			# ("none"). The first version of this called all three unreachable, and
+			# the 2026-08-28 session showed what that costs: 14 taps reported as
+			# "could not be reached at all" were every one of them on a tile she was
+			# standing directly beside — mostly crops already watered that day. A
+			# trace that mislabels its own categories misleads every analysis built
+			# on it, so this distinction matters more than the feedback does.
 			var near: bool = absi(player_t.x - target_vec.x) + absi(player_t.y - target_vec.y) <= 1
 			var why := ActionRouter.blocked_reason(farm, GameState, target_vec) if near else ""
 			if why != "":
 				refuse_target(target_vec, why)
+			var out_kind := "unreachable"
+			if near:
+				out_kind = "refused" if why != "" else "none"
 			if farm.trace != null:
 				farm.trace.tap("drag" if is_drag else "tap", target_vec, player_t,
 					GameState.selected_tool,
-					String(resolved.get("action", "")),
-					"refused" if why != "" else "unreachable", why)
+					String(resolved.get("action", "")), out_kind, why)
 			path = []
 			pending_action = {}
 			tap_indicator = {}

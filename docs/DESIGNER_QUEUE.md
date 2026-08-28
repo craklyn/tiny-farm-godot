@@ -206,6 +206,22 @@ first, since a different answer there changes what the other four are optimising
   cross-build replay but still runs it: a mismatch usually still reproduces, and when it
   does not, the provenance line is the difference between "the sim regressed" and "that was
   recorded three builds ago". 13 assertions.
+- **Q-42 (Ruling)** **An already-watered crop gives no feedback, and gets tapped again.**
+  Raised 2026-08-28 from the *second* adult session (`playtests/2026-08-28_115934`), the
+  first on a fresh farm. Fourteen taps produced nothing at all, and **twelve of them had
+  the watering can selected on crops already watered that day**; three separate tiles were
+  tapped three or more times. She could not tell a finished tile from an unresponsive one.
+  *This is deliberate current behaviour:* `blocked_reason()` returns "" for already-watered
+  because nothing is wrong, and answering it with the nope wobble would teach that a
+  perfectly good state is a malfunction. The evidence says silence is not working either.
+  **Recommendation: a positive acknowledgement rather than a refusal** — the tile
+  answers "yes, done", not "no". Cheapest form is a small droplet sparkle on tap; the
+  deeper fix is that watered soil should be readable *without* tapping, which the
+  2026-08-27 legibility pass improved but evidently not enough. Worth ruling alongside
+  **Q-38**, since a daylight cycle changes how wet soil reads at every hour.
+  *Note this is the same class as the well-and-bin false alarm fixed the same day: the
+  game has three states — did it, cannot do it, nothing to do — and only the first two
+  currently have a voice.*
 - **Q-40 (Ruling)** **The landing page: a donut of living farm around the menu.**
   Designer's proposal: keep the menu centred, render the farm full-screen behind it, and
   drive that farm from a recorded replay so it plays while the player chooses.
