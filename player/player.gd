@@ -98,6 +98,7 @@ func update_player(delta: float) -> void:
 
 	var dx: float = 0.0
 	var dy: float = 0.0
+	var step_limit: float = INF  # clamped to the waypoint distance while pathing
 
 	# Touch/mouse tap → A* pathfind
 	var target_t: Variant = null
@@ -213,7 +214,11 @@ func update_player(delta: float) -> void:
 		var wp := path[0]
 		var wp_world := Vector2(wp.x * TILE_SIZE + TILE_SIZE / 2.0, wp.y * TILE_SIZE + TILE_SIZE / 2.0)
 		var diff := wp_world - pos
-		if diff.length() < 2.0:
+		# Reached only when actually there. The step below is clamped so she can
+		# never overshoot, so this lands exactly rather than within a tolerance —
+		# a tolerance is what left her turning corners a couple of pixels shy of
+		# the tile centre, which reads as sloppy on a pixel grid.
+		if diff.length() < 0.01:
 			path.remove_at(0)
 
 			# Q-30: act the moment she is in range, from whatever side she
@@ -252,6 +257,7 @@ func update_player(delta: float) -> void:
 			var dir := diff.normalized()
 			dx = dir.x
 			dy = dir.y
+			step_limit = diff.length()
 
 	# Apply movement
 	is_moving = (absf(dx) > 0.01 or absf(dy) > 0.01)
@@ -269,8 +275,11 @@ func update_player(delta: float) -> void:
 		# Q-11 soft floor: an exhausted farmer trudges at half speed (the nudge
 		# toward the cot); presentation-only, sim truth is untouched
 		var speed := MOVE_SPEED * (0.5 if GameState.energy <= 0 else 1.0)
+		# Never step past the waypoint: overshooting is what forces a tolerance
+		# window, and the leftover error is what makes turns look off-grid.
+		var step: float = min(speed * delta, step_limit)
 		# Calculate new position; collide on the player's leading edge, not its center
-		var new_pos := pos + move_vec * speed * delta
+		var new_pos := pos + move_vec * step
 		var cur_tx := int(pos.x / TILE_SIZE)
 		var cur_ty := int(pos.y / TILE_SIZE)
 
