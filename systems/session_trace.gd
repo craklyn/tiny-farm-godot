@@ -40,11 +40,13 @@ func _stamp() -> int:
 
 # Every tap, whatever came of it. `verb` is the router's reading of the tap
 # ("" when it resolved to nothing) and `outcome` is what followed:
-#   none    - nothing on that tile to act on (a dead tap)
-#   walk    - just a move order
-#   queued  - action deferred until she arrives
-#   acted   - performed immediately
-#   refused - the sim said no; `reason` carries why
+#   none        - nothing on that tile to act on (a dead tap)
+#   walk        - just a move order
+#   queued      - action deferred until she arrives
+#   acted       - performed immediately
+#   refused     - the sim said no; `reason` carries why
+#   unreachable - she cannot path there and is not already beside it: the tap
+#                 did nothing whatsoever. The most diagnostic outcome we record.
 func tap(modality: String, tile: Vector2i, player_tile: Vector2i, tool_idx: int,
 		verb: String, outcome: String, reason: String = "") -> void:
 	var e := {
@@ -137,12 +139,14 @@ static func parse(text: String) -> Dictionary:
 static func summarize(parsed: Dictionary) -> Dictionary:
 	var taps := 0
 	var dead := 0
+	var unreachable := 0
 	var refused := 0
 	var reasons: Dictionary = {}
 	var repeated: Dictionary = {}  # "x,y" -> dead/refused taps on that tile
 	for e in parsed.get("entries", []):
 		var out: String = String(e.get("out", ""))
-		var is_dead: bool = String(e.get("kind", "")) == "tap" and (out == "none" or out == "refused")
+		var is_dead: bool = String(e.get("kind", "")) == "tap" \
+			and (out == "none" or out == "refused" or out == "unreachable")
 		if e.get("kind", "") == "tap":
 			taps += 1
 		if e.get("kind", "") == "act" and not e.get("ok", true):
@@ -150,12 +154,18 @@ static func summarize(parsed: Dictionary) -> Dictionary:
 			var w: String = e.get("why", "?")
 			reasons[w] = int(reasons.get(w, 0)) + 1
 		if is_dead:
-			if out == "none":
-				dead += 1
-			else:
+			if out == "refused":
 				refused += 1
 				var w2: String = e.get("why", "?")
 				reasons[w2] = int(reasons.get(w2, 0)) + 1
+			else:
+				# "none" and "unreachable" are both dead taps, but they mean
+				# different things to a designer: one is "there was nothing to do
+				# here", the other is "she wanted to and the game would not let
+				# her get there". Keep them separable.
+				dead += 1
+				if out == "unreachable":
+					unreachable += 1
 			var key := "%d,%d" % [e["tile"][0], e["tile"][1]]
 			repeated[key] = int(repeated.get(key, 0)) + 1
 	var stuck: Array = []
@@ -165,7 +175,63 @@ static func summarize(parsed: Dictionary) -> Dictionary:
 	return {
 		"taps": taps,
 		"dead_taps": dead,
+		"unreachable": unreachable,
 		"refused": refused,
 		"reasons": reasons,
 		"stuck_tiles": stuck,
 	}
+
+
+# What a *teaching* playtest wants to know, which is a different question from
+# summarize()'s "what went nowhere": how long each lesson took to land, and where
+# she stopped moving. Chapter design/13 §8 names these as the pass criteria, so
+# they live here (pure, static, testable) rather than in the reader tool.
+#
+# `stall_ms` defaults to 8000 to match the stage-2 nudge threshold in design/13
+# §6: a gap that long is, by that design's own definition, a moment the game
+# should have noticed and helped with.
+static func teaching_report(parsed: Dictionary, stall_ms: int = 8000) -> Dictionary:
+	var entries: Array = parsed.get("entries", [])
+	var first_use: Dictionary = {}   # verb -> ms of first SUCCESSFUL player act
+	var outcomes: Dictionary = {}    # outcome -> tap count
+	var stalls: Array = []           # gaps between consecutive taps
+	var tap_times: Array = []
+	var last_t := 0
+
+	for e in entries:
+		var t := int(e.get("t", 0))
+		last_t = maxi(last_t, t)
+		var kind := String(e.get("kind", ""))
+		if kind == "tap":
+			var out := String(e.get("out", "?"))
+			outcomes[out] = int(outcomes.get(out, 0)) + 1
+			tap_times.append(t)
+		elif kind == "act":
+			# Only the player's own successful actions count as a lesson landing.
+			# The chicken laying an egg is not the child learning anything.
+			if e.get("ok", false) and String(e.get("actor", "")) == "player":
+				var verb := String(e.get("verb", ""))
+				if verb != "" and not first_use.has(verb):
+					first_use[verb] = t
+
+	for i in range(1, tap_times.size()):
+		var gap: int = int(tap_times[i]) - int(tap_times[i - 1])
+		if gap >= stall_ms:
+			stalls.append({"after_ms": tap_times[i - 1], "gap_ms": gap})
+
+	return {
+		"duration_ms": last_t,
+		"time_to_first_tap_ms": (int(tap_times[0]) if not tap_times.is_empty() else -1),
+		"taps": tap_times.size(),
+		"outcomes": outcomes,
+		"first_use": first_use,
+		"stalls": stalls,
+		"longest_stall_ms": _longest(stalls),
+	}
+
+
+static func _longest(stalls: Array) -> int:
+	var m := 0
+	for s in stalls:
+		m = maxi(m, int(s.get("gap_ms", 0)))
+	return m

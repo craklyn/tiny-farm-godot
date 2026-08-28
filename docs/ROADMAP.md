@@ -47,16 +47,17 @@ and are the bulk of the work. `T-11`/`T-12` are Q-35.
 
 ---
 
-**T-1 — Read a session trace without hand-parsing JSONL** · unblocked · ~half a day
-*So that the one run we care most about produces evidence rather than a file.*
-`SessionTrace.summarize()` is written, documented, and called by nothing: no tool, no
-test, no way to pull the file off the tablet. Today reading a playtest means `adb` plus
-reading JSON by eye.
-- [ ] `tools/read_trace.gd` — takes a path, prints the summary and a per-beat timeline
-- [ ] pull the trace off a connected device (extend `deploy_android.sh` or a sibling)
-- [ ] unit coverage for `parse()`/`summarize()` — currently zero
-- [ ] verify against a real trace, not a synthetic one
-*Acceptance: one command turns a tablet session into a readable report.*
+**T-1 — Read a session trace without hand-parsing JSONL** · ✅ done 2026-08-28
+- [x] `tools/read_trace.gd` — taps by outcome, refusal reasons, first successful use of
+      each verb, stalls, stuck tiles, and a one-line verdict
+- [x] `tools/pull_trace.sh` — pulls from the tablet, timestamps into `playtests/`, reads it
+- [x] unit coverage for `parse()`/`summarize()`/`teaching_report()` (25 new assertions)
+- [x] verified against the real local trace
+- [x] **bug found and fixed in the doing:** an *unreachable* tap — she taps something she
+      cannot reach and nothing happens — was never traced at all. The branch handling it
+      cleared state and logged nothing, so the deadest taps in a session were invisible
+      and the summary read as though they never happened. This is the single most
+      diagnostic category for a playtest.
 
 **T-2 — No crow before the player is ready** · unblocked (designer raised it directly) ·
 ~1 hour

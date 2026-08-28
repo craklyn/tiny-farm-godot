@@ -43,6 +43,7 @@ func _init() -> void:
 	test_title_summary()
 	test_approach_adjacent()
 	test_approach_ignores_inventory()
+	test_session_trace()
 
 	print("")
 	print(String("=").repeat(60))
@@ -1038,3 +1039,80 @@ func test_approach_ignores_inventory() -> void:
 	_assert(not ActionRouter.is_workable(farm, t), "the map border is not workable")
 	GameState.reset()
 	farm.free()
+
+
+func test_session_trace() -> void:
+	print("\n--- SessionTrace Tests ---")
+
+	# Round-trip: a trace written by a session must read back as the same thing.
+	# parse()/summarize() shipped 2026-08-27 with no coverage at all; the M1 gate
+	# playtest is not the moment to discover the reader is wrong.
+	var tr := SessionTrace.new()
+	tr.start(12345, false)
+	_assert(tr.header().get("gen_seed", 0) == 12345, "header carries the seed")
+	_assert(tr.header().get("continued", true) == false, "header carries fresh-farm flag")
+
+	tr.tap("tap", Vector2i(3, 2), Vector2i(2, 2), 0, "till", "acted")
+	tr.act(Vector2i(3, 2), "player", "till", true)
+	tr.tap("tap", Vector2i(9, 9), Vector2i(2, 2), 0, "", "none")
+	tr.tap("tap", Vector2i(9, 9), Vector2i(2, 2), 0, "", "none")
+	tr.tap("tap", Vector2i(9, 9), Vector2i(2, 2), 0, "", "none")
+	tr.tap("tap", Vector2i(5, 5), Vector2i(2, 2), 3, "plant", "refused", "no seeds")
+	tr.tap("tap", Vector2i(30, 1), Vector2i(2, 2), 0, "", "unreachable")
+
+	var parsed := SessionTrace.parse(tr.to_jsonl())
+	_assert(parsed["header"].get("gen_seed", 0) == 12345, "parsed header round-trips")
+	_assert(parsed["entries"].size() == 7, "parsed all seven entries")
+
+	var sum := SessionTrace.summarize(parsed)
+	_assert(int(sum["taps"]) == 6, "counts every tap")
+	# 3 x none + 1 x unreachable are dead; the refusal is counted separately.
+	_assert(int(sum["dead_taps"]) == 4, "dead taps counted")
+	_assert(int(sum["unreachable"]) == 1, "unreachable taps counted separately")
+	_assert(int(sum["refused"]) == 1, "refusals counted")
+	_assert(sum["reasons"].get("no seeds", 0) == 1, "refusal reason recorded")
+	_assert(sum["stuck_tiles"].has("9,9"), "a tile tapped 3x with no effect is flagged")
+	_assert(not sum["stuck_tiles"].has("3,2"), "a tile that worked is not flagged")
+
+	# An unreachable tap is a dead tap. Before 2026-08-28 player.gd never recorded
+	# one at all, so this is the regression guard for the analysis half.
+	var only_unreachable := SessionTrace.parse(
+		'{"version":1,"gen_seed":1,"continued":false}\n'
+		+ '{"t":10,"kind":"tap","tile":[30,1],"at":[2,2],"out":"unreachable","verb":""}\n')
+	_assert(int(SessionTrace.summarize(only_unreachable)["dead_taps"]) == 1,
+		"an unreachable tap counts as dead")
+
+	# teaching_report: when each lesson first landed, and where she stopped.
+	var timed := SessionTrace.parse(
+		'{"version":1,"gen_seed":1,"continued":false}\n'
+		+ '{"t":500,"kind":"tap","tile":[3,2],"at":[2,2],"out":"acted","verb":"harvest"}\n'
+		+ '{"t":520,"kind":"act","tile":[3,2],"actor":"player","verb":"harvest","ok":true}\n'
+		+ '{"t":600,"kind":"act","tile":[3,2],"actor":"player","verb":"harvest","ok":true}\n'
+		+ '{"t":15000,"kind":"tap","tile":[4,2],"at":[2,2],"out":"acted","verb":"plant"}\n'
+		+ '{"t":15100,"kind":"act","tile":[4,2],"actor":"chicken","verb":"lay_egg","ok":true}\n'
+		+ '{"t":15200,"kind":"act","tile":[4,2],"actor":"player","verb":"plant","ok":true}\n')
+	var rep := SessionTrace.teaching_report(timed)
+	_assert(int(rep["time_to_first_tap_ms"]) == 500, "time to first tap")
+	_assert(int(rep["first_use"]["harvest"]) == 520, "first successful harvest is the first one")
+	_assert(int(rep["first_use"]["plant"]) == 15200, "first successful plant recorded")
+	_assert(not rep["first_use"].has("lay_egg"),
+		"a chicken laying an egg is not the player learning a verb")
+	_assert(rep["stalls"].size() == 1, "the 14.5s gap between taps is a stall")
+	_assert(int(rep["longest_stall_ms"]) == 14500, "longest stall measured")
+	_assert(int(rep["duration_ms"]) == 15200, "duration is the last stamp")
+	_assert(int(rep["outcomes"]["acted"]) == 2, "outcomes tallied by kind")
+
+	# A refused action arriving seconds after its tap must not count as a lesson.
+	var refused_only := SessionTrace.parse(
+		'{"version":1,"gen_seed":1,"continued":false}\n'
+		+ '{"t":100,"kind":"act","tile":[1,1],"actor":"player","verb":"plant","ok":false,"why":"no seeds"}\n')
+	_assert(not SessionTrace.teaching_report(refused_only)["first_use"].has("plant"),
+		"a refused action is not a first successful use")
+
+	# Degenerate inputs must not crash the reader mid-playtest.
+	var empty := SessionTrace.parse("")
+	_assert(empty["entries"].is_empty(), "empty text parses to no entries")
+	_assert(int(SessionTrace.summarize(empty)["taps"]) == 0, "empty trace summarises to zero")
+	_assert(int(SessionTrace.teaching_report(empty)["time_to_first_tap_ms"]) == -1,
+		"empty trace reports no first tap")
+	_assert(int(SessionTrace.summarize({})["taps"]) == 0, "summarize tolerates a missing entries key")

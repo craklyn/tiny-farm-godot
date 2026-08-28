@@ -204,6 +204,16 @@ func update_player(delta: float) -> void:
 			else:
 				pending_action = {}
 		else:
+			# She cannot get there and is not already beside it, so the tap achieves
+			# nothing at all. This is the *most* diagnostic outcome a playtest has —
+			# it is the child tapping something she believes is interactive — and it
+			# was the one outcome the trace never recorded, because this branch only
+			# cleared state. A dead tap that leaves no evidence is worse than no
+			# instrumentation, since the summary reads as though it never happened.
+			if farm.trace != null:
+				farm.trace.tap("drag" if is_drag else "tap", target_vec, player_t,
+					GameState.selected_tool,
+					String(resolved.get("action", "")), "unreachable")
 			path = []
 			pending_action = {}
 			tap_indicator = {}
