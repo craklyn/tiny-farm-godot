@@ -189,6 +189,17 @@ first, since a different answer there changes what the other four are optimising
   crow and chicken (S-3) — so it is replayable, deterministic, and needs no new
   machinery. **Note it takes a narrative position** (you inherit this farm), which is
   live D-3/Q-22 territory. Detail in `design/13` §4a.
+- **Q-41 (Ruling, small)** **Stamp replays with the game-logic version.** Raised
+  2026-08-28 from the designer's question about replay robustness. `ReplayLog` carries a
+  format version but no build identity, while the project already computes one
+  (`application/config/build_id`). **Recommendation: do it now** — a few
+  backward-compatible lines, and the only item in this area that is free today and
+  *impossible retroactively*, since a training corpus accumulated across a year of changes
+  with no version marker cannot be sorted out afterwards. Explicitly **not** recommended:
+  chasing version-proof replays (expensive, usually fails). Note move speed is *not* a
+  risk — `apply_to()` has no timing and never simulates movement, so presentation changes
+  cannot affect verification; the real fragility is semantic drift in verbs, worldgen,
+  growth rates, energy costs and RNG ordering. Full analysis under S-3 in `DECISION_LOG.md`.
 - **Q-40 (Ruling)** **The landing page: a donut of living farm around the menu.**
   Designer's proposal: keep the menu centred, render the farm full-screen behind it, and
   drive that farm from a recorded replay so it plays while the player chooses.

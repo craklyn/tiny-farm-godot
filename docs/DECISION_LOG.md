@@ -54,11 +54,44 @@ by accident and it held. Three findings worth keeping:
   rather than a behavioural record. This is the practical teeth behind "input handling
   stays strictly separated from action execution" above.
 
-*Open question this raises for P-5, recorded rather than answered:* purely **exploratory**
-movement — walking with no action at the end of it — leaves no trace in the Action stream,
-because it changes nothing. Whether "where the player chose to walk" is signal for
-behaviour cloning is a real question for the phase-4 training design, and the answer
-determines whether the training substrate ever needs to widen beyond world-changing verbs.
+*Open question this raises for P-5, recorded rather than answered:* the Action stream
+records **outcomes, not deliberation**. Most walking is recoverable because the next action
+implies it — "till (5,3)" means she walked adjacent to (5,3) — but walking with no action
+at the end of it leaves no trace at all: wandering over to look at the chicken, pacing
+while deciding, starting toward a tile and changing her mind. The stream jumps straight
+from one piece of work to the next.
+
+For replay verification and for the attract loop this is harmless, arguably an improvement.
+For **phase-4 behaviour cloning it is a real gap**: every example a bot ever sees is a
+player moving purposefully between tasks, so a cloned bot would be relentlessly efficient
+and would never investigate anything. If bots are eventually wanted that patrol or notice
+things, the corpus contains no examples of it. Whether to widen the substrate beyond
+world-changing verbs is therefore a phase-4 design decision, not a recording bug.
+
+**Replay robustness across game changes** (analysed 2026-08-28 on the designer's question).
+The replay is a *logical* record, not a temporal one — `apply_to()` re-applies the ordered
+action list to a fresh world with no timing at all and never simulates movement — so
+presentation-level changes such as **move speed cannot affect verification**; they change
+only how a playback looks. What genuinely invalidates a replay is semantic drift: what a
+verb does, worldgen for a given seed, growth rates, energy costs that change whether an
+action is refused, or the order `SimRng` is consumed.
+
+Industry practice does not solve cross-version robustness so much as detect it. Input-level
+replay (Doom demos, RTS lockstep) is compact and famously version-locked; state-snapshot
+replay is robust but large and cannot be re-simulated; command-stream replay — what this
+project has — sits between. The standard mitigations are **version stamping** (StarCraft II
+refuses mismatched replays) and **periodic checksums** to catch divergence at the moment it
+occurs rather than at the end.
+
+Recommendation, deliberately narrow: **stamp replays with the game-logic version now.**
+`ReplayLog` carries a *format* version but no build identity, and the project already
+computes one (`application/config/build_id`, drawn by `BuildOverlay`). It is a few
+backward-compatible lines, and it is the one item here that is free today and *impossible
+retroactively* — a corpus accumulated across a year of changes with no version marker
+cannot be sorted out afterwards. Everything else is deferred: do not chase version-proof
+replays. For phase 4 the real robustness move is materialising `(observation, action)`
+pairs at *record* time rather than deriving them at *train* time, which decouples the
+corpus from logic drift entirely — a P-5/D-2 decision with real cost, not one to take now.
 
 ### S-4. Grid world as the universal substrate
 The tile grid (already present in `world/farm.gd`) is the shared representation for
