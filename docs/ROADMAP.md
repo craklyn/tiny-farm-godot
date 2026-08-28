@@ -30,6 +30,119 @@ tilling, planting, watering, and harvesting stay instant or get animated (and at
 tier) is deliberately decided *from* the playtest, because the evidence that matters is
 whether a pre-reader can tell what her tap did.
 
+## M1.5 — Onboarding rebuild (added 2026-08-28)
+*Sits between the playtest and M3 because it is the playtest's most likely output.
+Design: `design/13-teaching-and-onboarding.md`. Rulings: Q-32–Q-36. **Q-32 frames the
+rest — rule it first.** Sizes are rough and assume part-time solo work.*
+
+**Exit gate:** a first-time pre-reader reaches day 1 beat 4 (tapping the cot) with no
+adult speaking, on two consecutive fresh runs — measured from the session trace, not
+from an adult's impression.
+
+### Ordering
+`T-1`/`T-2` are unblocked and can land before any ruling. `T-3`→`T-5` are one ruling
+(Q-33) and should ship together — half of them is worse than none, because the day-2
+payoff is what makes day 1 mean anything. `T-6`/`T-7` are Q-36. `T-8`→`T-10` are Q-34
+and are the bulk of the work. `T-11`/`T-12` are Q-35.
+
+---
+
+**T-1 — Read a session trace without hand-parsing JSONL** · unblocked · ~half a day
+*So that the one run we care most about produces evidence rather than a file.*
+`SessionTrace.summarize()` is written, documented, and called by nothing: no tool, no
+test, no way to pull the file off the tablet. Today reading a playtest means `adb` plus
+reading JSON by eye.
+- [ ] `tools/read_trace.gd` — takes a path, prints the summary and a per-beat timeline
+- [ ] pull the trace off a connected device (extend `deploy_android.sh` or a sibling)
+- [ ] unit coverage for `parse()`/`summarize()` — currently zero
+- [ ] verify against a real trace, not a synthetic one
+*Acceptance: one command turns a tablet session into a readable report.*
+
+**T-2 — No crow before the player is ready** · unblocked (designer raised it directly) ·
+~1 hour
+*So that the first session has no stress in it at all.*
+The spawner fires every 10 s from day 1 whenever more than one crop exists. A
+four-year-old meeting a pest before she has met a harvest has met a threat, not a joke.
+- [ ] gate on evidence, not calendar: ≥1 crop harvested, ≥3 crops planted, day ≥3
+- [ ] the *first* crow cannot eat — it lands far away, is loudly telegraphed, and flees
+- [ ] only the second crow onward can take a crop
+- [ ] sim-level test that no crow can spawn on day 1
+*Acceptance: a fresh save can reach the end of day 2 without ever seeing a crow.*
+
+**T-3 — Day 1 opens on a ripe crop** · Q-33 · ~1 day
+*So that the player is paid before being asked, and forms the question the rest answers.*
+Today day 1 opens on a weed — a chore, and the least motivating verb we have.
+- [ ] seeded generation places a ripe crop one tile from spawn (replay-affecting)
+- [ ] the farmer starts *not* adjacent to it, so beat 1 teaches movement implicitly
+- [ ] vignette steps reorder to harvest → plant → water → sleep
+- [ ] the weed leaves day 1 entirely; it returns as ring 1's content (T-9)
+- [ ] save/replay tests updated for the new opening
+
+**T-4 — The cot closes day 1** · Q-33 · ~half a day
+*So that the first session resolves instead of trailing off.*
+- [ ] once nothing else is highlighted, the cot becomes the highlighted target
+- [ ] sleeping from the vignette is what ends it, replacing "day == 1"
+
+**T-5 — Day 2 is the payoff** · Q-33 · ~1 day
+*So that four gestures are revealed to have been one causal chain — this is where the
+core loop actually lands, not day 1.*
+- [ ] on waking, the tile watered yesterday is grown and is the only thing highlighted
+- [ ] then 2–3 tilled tiles highlight **together**, not in sequence — the first honest
+      read on swipe-chaining a row (the open sub-question from Q-30)
+- [ ] one new verb, and only one: till, on a single cleared tile
+- [ ] the vignette becomes multi-day, which retires `is_active(world, day)`'s day-1 check
+
+**T-6 — Verb competence counts** · Q-36 (prerequisite for T-7) · ~half a day
+*So that the tutorial can measure the player instead of following a script.*
+- [ ] per-verb success counts in `GameState`, beside `harvest_counts`
+- [ ] included in the save payload; `SaveGame` version bump if the shape requires it
+- [ ] counts accrue in the sim gateway so replays earn them identically
+
+**T-7 — Hint escalation ladder** · Q-36 · ~2 days
+*So that a competent player sees no tutorial and a stuck one gets more help, with no
+setting and no skip button a pre-reader could not read.*
+- [ ] stage 1 invitation → stage 2 nudge (~8 s) → stage 3 insistence (~20 s)
+- [ ] decay: after 2 successes a verb never exceeds stage 1; after 4 it stops hinting
+- [ ] stage reached is written to the session trace — this *is* the playtest data
+- [ ] presentation-only; must never gate `apply_action` (the D-8 constraint)
+
+**T-8 — Ring-based world generation** · Q-34 · ~2–3 days · **largest item here**
+*So that "you cannot do that yet" is a hedge she can see, not a refusal she cannot read.*
+Obstacles are currently sprinkled uniformly at 25% (`sim_world.generate()`); obstacle
+type must become a function of distance from spawn.
+- [ ] rings 0–3: cleared / weeds / logs / rocks, with a visible boundary between them
+- [ ] seeded and deterministic; replay and save tests updated
+- [ ] a tap past the boundary still answers — she walks to the hedge and stops, never
+      silence and never a refusal message
+
+**T-9 — Tools are acquired, not owned** · Q-34 · ~1–2 days
+*So that each tool is a solution to a problem the player already has.*
+- [ ] start with hands, hoe, seeds, can; axe and pickaxe are acquired
+- [ ] acquisition opens the matching ring
+- [ ] the router degrades honestly when a tool is absent (this is where a silent no-op
+      would regress the 2026-08-27 refusal-feedback work — cover it with tests)
+
+**T-10 — Each ring opens a vignette** · Q-34 · ~1 day
+*So that a new tool gets a safe room containing exactly one new thing.*
+- [ ] a newly-opened ring highlights one obstacle of its new type, once
+- [ ] reuses the T-7 ladder rather than adding a second hint system
+
+**T-11 — Teach sell, buy, and refill at first need** · Q-35 · ~1–2 days
+*So that the economy stops being the one part of phase 1 nobody is taught.*
+- [ ] first sale highlighted when the basket reaches three crops
+- [ ] first purchase highlighted when the seed pouch empties (the exact state behind the
+      2026-08-27 silent-refusal bug)
+- [ ] first refill highlighted when the can empties
+- [ ] each fires once, at the moment of need, one object at a time
+
+**T-12 — Wordless shop screen** · Q-35 · ~1 day
+*So that phase 1 keeps S-7's no-reading promise in the one screen that currently breaks it.*
+- [ ] audit `seed_box` shop for required reading
+- [ ] crop icons and coin counts carry the meaning; words are decoration if present
+- [ ] verify at tablet size, where it has never been checked
+
+---
+
 ## M2 — Simulation core (the big one) — ✅ COMPLETE (2026-08-19)
 Exit gate met in full: ~1.15M× headless fast-forward, seeded-run identity
 (unit-tested), and a real 30-action human session replay-verified (MATCH).

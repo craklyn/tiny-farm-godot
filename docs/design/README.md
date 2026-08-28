@@ -42,6 +42,7 @@ is the single to-do list for designer input; nothing blocks silently outside it.
 | 10 | `10-audio-direction.md` | Music identity, SFX, adaptive layers |
 | 11 | `11-ux-ui.md` | Interface, HUD, onboarding, kid mode, accessibility |
 | 12 | `12-progression-and-gates.md` | Capability proofs, unlock ladders, difficulty |
+| 13 | `13-teaching-and-onboarding.md` | How the player is taught: the vignette, hint escalation, tool/land gating |
 | A | `appendix-input-modality.md` | First-principles derivation of S-6/P-1 (input modality) |
 
 Technical design lives in `docs/ARCHITECTURE.md`; production plan in `docs/ROADMAP.md`;

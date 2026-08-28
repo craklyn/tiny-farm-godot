@@ -127,6 +127,51 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   §"Style guide v1" (measured palette ramps, outline/shape/contrast rules, reserved
   overlay hues, animation budget, reskin spec implications).
 
+## M1.5 — onboarding rebuild (raised 2026-08-28)
+
+*All five come from `design/13-teaching-and-onboarding.md`, written after the designer's
+observation that the current vignette "shows a few actions to take, not what to be
+accomplished." Each ships with a recommendation. **Q-32 frames the rest** — rule it
+first, since a different answer there changes what the other four are optimising for.*
+
+- **Q-32 (Ruling)** **What is phase 1's core loop?** Low-stress wander, or an efficiency
+  ladder toward "chores done, sleep, repeat"? *Mechanical finding that settles half of
+  it: there is no in-day clock — `day_cycle.gd` only animates a fade, the day advances
+  solely because the player taps the cot, and nothing expires. With the Q-11 soft energy
+  floor, rushing is not currently expressible; the build is already the low-stress
+  version.* **Recommendation:** ratify that as intent, with one caveat that has teeth —
+  phase 1's mild repetition is *load-bearing setup* for phase 2's sprinkler, so the
+  standing rule becomes "never optimise away a phase-1 friction a later phase is meant
+  to relieve." Recorded in `design/01-game-loops.md`. Rule this one first.
+- **Q-33 (Ruling)** **Harvest-first opening.** Day 1 currently opens on a weed — a chore,
+  and the least motivating verb in the game. Proposal: open on a *ripe crop* one tile
+  from the farmer, so the first interaction is the reward, and teach the chain backwards
+  (ripe → seeded → tilled → cleared). **Recommendation: adopt.** It is the single change
+  that converts the vignette from instruction into motivation, and it is small — a
+  generation change plus a re-ordered step machine.
+- **Q-34 (Ruling)** **Tool-gated land rings**, or all six tools from the start as today?
+  The designer's instinct — each tool unlock opens new debris and starts a new vignette —
+  is the Valve structure exactly. **Recommendation: adopt, but express the lock as
+  *land*, not as a refusal.** A pre-reader cannot read "you need an axe," and a tap that
+  silently does nothing is the failure we just spent a milestone removing; a hedge she
+  cannot cross is legible without words. Largest work item in the chapter (world
+  generation becomes ring-based, which is a seeded sim change).
+- **Q-35 (Ruling)** **When to teach sell / buy / refill.** These three are currently
+  taught *nowhere* — the gap that produced the silent empty-pouch refusal on 2026-08-27.
+  **Recommendation:** at first need (first sale at three crops, first purchase when the
+  pouch empties, first refill when the can empties), one glowing object at a time. Note
+  the shop screen is the one place phase 1 may be forced to break the no-reading rule;
+  it should be designed around that (icons and coin counts, no words), not exempted.
+- **Q-36 (Ruling)** **How obvious should hints get?** Proposal replaces the global
+  subtle/obvious dial with a two-axis ladder: *escalate* within a beat when the player
+  stalls (invitation → nudge → insistence, at roughly 8 s and 20 s), and *decay*
+  permanently once a verb has succeeded twice. A competent player then sees no tutorial;
+  a struggling one gets progressively more help, with no settings and no skip button she
+  could not read. **Recommendation: ship it, including the loud stage 3** — twenty
+  seconds of a four-year-old doing nothing means the gate is already lost. Side benefit:
+  the distribution of stages reached *is* the playtest data, and drops straight into the
+  session trace.
+
 ## Before M3 — phase 2 design
 
 - **Q-15 (Ruling)** Sprinkler/machine acquisition loop: crafted, bought, or

@@ -17,8 +17,11 @@ touch/mouse/keyboard/gamepad all first-class inputs mapping to the same Actions 
    interaction the game needs, phase by phase, and match each to its best input method.
    First pass before M3; re-audit at each phase design start (phase-4 dashboards and
    phase-5 tactics are where the answers are least obvious).
-2. **Onboarding (Q-9)** — wordless: guided sequence vs. discovery-driven; `[Playtest]`
-   with the actual 4-year-old (the M1 gate). No reading in the core loop (S-7).
+2. **Onboarding (Q-9)** — ➜ **moved to its own chapter: `13-teaching-and-onboarding.md`.**
+   Q-9's ruling (wordless vignette) stands; chapter 13 rebuilds *what* it teaches after
+   the 2026-08-28 finding that the vignette teaches verbs rather than goals. Still
+   wordless, still `[Playtest]`-refereed by the 4-year-old, still no reading in the core
+   loop (S-7). Open rulings Q-32–Q-36 live there.
 3. **HUD** — current: energy, gold, day, tools (`ui/hud.gd`). To spec: phase-scalable
    HUD (what appears as systems unlock; screen real estate on phones).
 4. **Kid mode boundary (P-2)** — phase 1 kid-bound; the "sandbox farm" relaxed mode
