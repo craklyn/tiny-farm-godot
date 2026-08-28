@@ -22,8 +22,11 @@ export ANDROID_HOME="${ANDROID_HOME:-$HOME/Android/Sdk}"
 export PATH="$ANDROID_HOME/platform-tools:$PATH"
 
 PKG="com.daniel.tinyfarm"
-# Godot's user:// on Android maps to the app's external files dir.
-REMOTE_DIR="/sdcard/Android/data/$PKG/files"
+# Godot's user:// on Android is the app's *internal* files dir, not the external
+# /sdcard/Android/data/<pkg>/files path — that one exists and is readable, which
+# is what makes the mistake quiet: it is simply always empty. Internal storage
+# needs `run-as`, which works because we ship a debug build.
+REMOTE_DIR="files"
 STAMP="$(date +%Y-%m-%d_%H%M%S)"
 OUT="playtests/$STAMP"
 
@@ -44,28 +47,29 @@ fi
 
 mkdir -p "$OUT"
 
-# Show what is actually there before pulling: if the remote path is wrong, an
-# empty listing says so immediately instead of three silent pull failures.
-echo "Remote contents of $REMOTE_DIR:"
-if ! adb -s "$SERIAL" shell "ls -la $REMOTE_DIR" 2>&1 | sed 's/^/  /'; then
-	echo "Could not list $REMOTE_DIR — is the app installed and has it been run?" >&2
-fi
+# Show what is actually there before pulling: an empty listing names the problem
+# immediately instead of producing three silent pull failures.
+echo "Remote contents of $PKG:$REMOTE_DIR:"
+adb -s "$SERIAL" shell "run-as $PKG ls -la $REMOTE_DIR" 2>&1 | sed 's/^/  /'
 echo ""
 
+# `adb pull` cannot reach internal storage; stream each file out through run-as.
 got_any=0
 for f in session_trace.jsonl session_replay.json autosave.json; do
-	if adb -s "$SERIAL" pull "$REMOTE_DIR/$f" "$OUT/$f" >/dev/null 2>&1; then
+	if adb -s "$SERIAL" exec-out "run-as $PKG cat $REMOTE_DIR/$f" > "$OUT/$f" 2>/dev/null \
+			&& [[ -s "$OUT/$f" ]]; then
 		echo "pulled $f ($(wc -c < "$OUT/$f") bytes)"
 		got_any=1
 	else
+		rm -f "$OUT/$f"
 		echo "MISSING  $f"
 	fi
 done
 
 if [[ "$got_any" -eq 0 ]]; then
 	echo "" >&2
-	echo "Nothing pulled. Either the session never reached disk, or REMOTE_DIR is" >&2
-	echo "wrong for this device — check the listing above." >&2
+	echo "Nothing pulled. Either the session never reached disk, or run-as failed" >&2
+	echo "(it only works on a debug build) — check the listing above." >&2
 	exit 1
 fi
 

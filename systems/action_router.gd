@@ -106,6 +106,46 @@ func resolve(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, is_drag: 
 	return {}
 
 
+## Why a tap on a workable tile produced no action — "" when there was genuinely
+## nothing to do there.
+##
+## Found in the first real session trace ever read (2026-08-28): after tilling a
+## tile with an empty seed pouch, eight taps in four seconds produced absolute
+## silence. The 2026-08-27 refusal feedback fixed the *sim* layer — an action the
+## sim rejects now says so — but this is the layer above it: when resolve()
+## declines to produce an action at all, there is nothing for the sim to refuse,
+## so nothing ever speaks. Every `return {}` below that is caused by a missing
+## resource needs a voice, or a pre-reader is left tapping a tile that will never
+## answer (S-7).
+##
+## Mirrors resolve()'s guards deliberately rather than sharing code with them:
+## resolve answers "what happens", this answers "why not", and collapsing the two
+## would make resolve return a reason it does not need on every successful call.
+func blocked_reason(farm: Node2D, gs: Node, tap_t: Vector2i) -> String:
+	var tile: Dictionary = farm.get_tile(tap_t.x, tap_t.y)
+	if tile.is_empty():
+		return ""
+	var state: String = String(tile.get("state", ""))
+	var seed_type: String = gs.selected_seed_type
+
+	if state == "tilled":
+		if gs.seeds.get(seed_type, 0) <= 0:
+			return "no seeds"
+		return ""
+	if state == "cleared":
+		if gs.energy < Tools.get_energy_cost("till"):
+			return "too tired"
+		return ""
+	if state == "seeded" or state == "growing":
+		if tile.get("watered_today", false):
+			return ""  # already watered — nothing to do, not a refusal
+		if gs.watering_can_charges <= 0:
+			return "watering can empty"
+		if gs.energy < Tools.get_energy_cost("water"):
+			return "too tired"
+	return ""
+
+
 ## True when a tile is one the player could work *at all*, ignoring whether they
 ## currently hold the seeds, water or energy to do it.
 ##

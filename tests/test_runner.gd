@@ -46,6 +46,7 @@ func _init() -> void:
 	test_session_trace()
 	test_crow_readiness()
 	test_replay_build_stamp()
+	test_blocked_reason()
 
 	print("")
 	print(String("=").repeat(60))
@@ -1243,3 +1244,58 @@ func test_replay_build_stamp() -> void:
 	restored.apply_to(w2, gs2)
 	_assert(w2.get_tile(SimWorld.VIGNETTE_PLANT.x, SimWorld.VIGNETTE_PLANT.y).get("state", "") == "tilled",
 		"a stamped replay still reproduces its world")
+
+
+func test_blocked_reason() -> void:
+	print("\n--- Silent-tap reasons (from the first real trace) Tests ---")
+
+	# The first real session trace ever read (2026-08-28) showed eight taps in
+	# four seconds on a tilled tile producing no response at all. resolve()
+	# returns {} when a resource is missing, so the sim never receives an action
+	# to refuse, so the 2026-08-27 refusal feedback never fired. Every such tile
+	# must now be able to say why.
+	GameState.reset()
+	var farm = load("res://world/farm.gd").new()
+	farm.generate_on_ready = false
+	SimRng.reseed(31)
+	farm.sim.generate()
+	var t := Vector2i(7, 6)
+
+	farm.sim.tiles[t.y][t.x]["state"] = "tilled"
+	_assert(ActionRouter.blocked_reason(farm, GameState, t) == "",
+		"a tilled tile with seeds in hand is not blocked")
+	GameState.seeds["wheat"] = 0
+	_assert(ActionRouter.blocked_reason(farm, GameState, t) == "no seeds",
+		"a tilled tile with an empty pouch says so — the exact trace case")
+	_assert(ActionRouter.resolve(farm, GameState, t, t).is_empty(),
+		"and resolve still returns nothing, so the reason is the only feedback there is")
+
+	GameState.reset()
+	farm.sim.tiles[t.y][t.x]["state"] = "cleared"
+	_assert(ActionRouter.blocked_reason(farm, GameState, t) == "", "cleared ground tills fine")
+	GameState.energy = 0
+	_assert(ActionRouter.blocked_reason(farm, GameState, t) == "too tired",
+		"an exhausted farmer on cleared ground says so")
+
+	GameState.reset()
+	farm.sim.tiles[t.y][t.x]["state"] = "seeded"
+	farm.sim.tiles[t.y][t.x]["watered_today"] = false
+	_assert(ActionRouter.blocked_reason(farm, GameState, t) == "", "a dry crop waters fine")
+	GameState.watering_can_charges = 0
+	_assert(ActionRouter.blocked_reason(farm, GameState, t) == "watering can empty",
+		"an empty can says so")
+
+	# Already-watered is genuinely nothing to do, not a refusal — wobbling at a
+	# tile she just finished would teach that success looks like failure.
+	GameState.reset()
+	farm.sim.tiles[t.y][t.x]["watered_today"] = true
+	_assert(ActionRouter.blocked_reason(farm, GameState, t) == "",
+		"a crop already watered today is silent, because there is nothing wrong")
+
+	# Tiles with nothing to do at all stay silent.
+	GameState.reset()
+	farm.sim.tiles[t.y][t.x]["state"] = "border"
+	_assert(ActionRouter.blocked_reason(farm, GameState, t) == "", "a border tile is not a refusal")
+	_assert(ActionRouter.blocked_reason(farm, GameState, Vector2i(-5, -5)) == "",
+		"an out-of-bounds tile does not crash or invent a reason")
+	farm.free()

@@ -24,6 +24,13 @@ if [[ "${1:-}" == "pair" ]]; then
 	exit 0
 fi
 
+# Q-41 stamps every replay with application/config/build_id, which is useless if
+# that value is hand-edited and stale. Derive it from git at build time so a
+# pulled session says which code actually produced it.
+BUILD_ID="$(git describe --always --dirty 2>/dev/null || echo dev)"
+sed -i "s|^config/build_id=.*|config/build_id=\"$BUILD_ID\"|" project.godot
+echo "Build id: $BUILD_ID"
+
 godot --headless --path . --export-debug "Android" "$APK"
 
 # Connect AFTER the export: the adb daemon can be restarted during a long build,

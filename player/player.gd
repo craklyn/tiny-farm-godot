@@ -174,6 +174,17 @@ func update_player(delta: float) -> void:
 			# Q-30 diagnostics: record what the tap meant and what became of it,
 			# including taps that achieve nothing — the signal a playtest needs,
 			# and the one ReplayLog cannot carry.
+			# A tap that resolves to nothing on a tile she is standing on or beside
+			# is the silent-failure case the first real trace caught: eight taps in
+			# four seconds on a tilled tile with an empty pouch, no response of any
+			# kind. resolve() declines to produce an action, so the sim never gets
+			# one to refuse, so the 2026-08-27 refusal feedback never fires.
+			var blocked := ""
+			if resolved.is_empty() and path.is_empty():
+				blocked = ActionRouter.blocked_reason(farm, GameState, target_vec)
+				if blocked != "":
+					refuse_target(target_vec, blocked)
+
 			if farm.trace != null:
 				var out_kind := "none"
 				if resolved.is_empty():
@@ -182,7 +193,7 @@ func update_player(delta: float) -> void:
 					out_kind = "queued" if not path.is_empty() else "acted"
 				farm.trace.tap("drag" if is_drag else "tap", target_vec, player_t,
 					GameState.selected_tool,
-					String(resolved.get("action", "")), out_kind)
+					String(resolved.get("action", "")), out_kind, blocked)
 
 			if not resolved.is_empty():
 				if path.is_empty():
@@ -210,10 +221,18 @@ func update_player(delta: float) -> void:
 			# was the one outcome the trace never recorded, because this branch only
 			# cleared state. A dead tap that leaves no evidence is worse than no
 			# instrumentation, since the summary reads as though it never happened.
+			# Adjacent-but-nothing-resolved lands here too, and it is a different
+			# thing from "cannot get there" — it means she is in range and the game
+			# still has no answer. Distinguish them, and speak in the first case.
+			var near: bool = absi(player_t.x - target_vec.x) + absi(player_t.y - target_vec.y) <= 1
+			var why := ActionRouter.blocked_reason(farm, GameState, target_vec) if near else ""
+			if why != "":
+				refuse_target(target_vec, why)
 			if farm.trace != null:
 				farm.trace.tap("drag" if is_drag else "tap", target_vec, player_t,
 					GameState.selected_tool,
-					String(resolved.get("action", "")), "unreachable")
+					String(resolved.get("action", "")),
+					"refused" if why != "" else "unreachable", why)
 			path = []
 			pending_action = {}
 			tap_indicator = {}
@@ -385,6 +404,18 @@ func _try_action() -> String:
 		
 	_execute_resolved_action(resolved)
 	return resolved.get("action", "")
+
+
+# The same visible answer a sim refusal gives, for the case the sim never sees.
+func refuse_target(t: Vector2i, why: String) -> void:
+	if farm != null and farm.has_method("refuse_at"):
+		farm.refuse_at(t, why)
+	var d := t - get_tile_pos()
+	if d.x != 0 or d.y != 0:
+		if absi(d.x) >= absi(d.y):
+			facing = "right" if d.x > 0 else "left"
+		else:
+			facing = "down" if d.y > 0 else "up"
 
 
 func _execute_resolved_action(pa: Dictionary) -> void:
