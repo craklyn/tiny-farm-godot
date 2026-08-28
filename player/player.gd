@@ -4,6 +4,9 @@ extends Node2D
 
 const TILE_SIZE := 16
 const MOVE_SPEED := 3.0 * TILE_SIZE  # 3 tiles/sec in world pixels
+# How near a mid-path waypoint counts as reached. Small enough that a turn does
+# not visibly cut the corner, large enough that she is not railed through centres.
+const CORNER_TOLERANCE := 1.2
 const COLLIDE_RADIUS := 2.5  # px half-width used for tile collision (leading edge)
 
 # Position (world pixels, center of sprite)
@@ -214,11 +217,13 @@ func update_player(delta: float) -> void:
 		var wp := path[0]
 		var wp_world := Vector2(wp.x * TILE_SIZE + TILE_SIZE / 2.0, wp.y * TILE_SIZE + TILE_SIZE / 2.0)
 		var diff := wp_world - pos
-		# Reached only when actually there. The step below is clamped so she can
-		# never overshoot, so this lands exactly rather than within a tolerance —
-		# a tolerance is what left her turning corners a couple of pixels shy of
-		# the tile centre, which reads as sloppy on a pixel grid.
-		if diff.length() < 0.01:
+		# Corners keep a small tolerance so she rounds them instead of stopping
+		# dead on every tile centre — snapping through centres makes the walked
+		# path coarser than the pixels underneath it, which is the rigid feel of
+		# grid-locked movement. The *last* waypoint is exact, because where she
+		# comes to rest is the position the eye actually measures against the grid.
+		var last_leg: bool = path.size() == 1
+		if diff.length() < (0.01 if last_leg else CORNER_TOLERANCE):
 			path.remove_at(0)
 
 			# Q-30: act the moment she is in range, from whatever side she
@@ -257,7 +262,10 @@ func update_player(delta: float) -> void:
 			var dir := diff.normalized()
 			dx = dir.x
 			dy = dir.y
-			step_limit = diff.length()
+			# Only the final approach is clamped; rounding a corner may overshoot
+			# a shade, which is what gives the turn its curve.
+			if last_leg:
+				step_limit = diff.length()
 
 	# Apply movement
 	is_moving = (absf(dx) > 0.01 or absf(dy) > 0.01)
