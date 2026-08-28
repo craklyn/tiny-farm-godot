@@ -40,14 +40,26 @@ adult speaking, on two consecutive fresh runs — measured from the session trac
 from an adult's impression.
 
 ### Ordering
-`T-1`/`T-2` are unblocked and can land before any ruling. `T-3`→`T-5` are one ruling
-(Q-33) and should ship together — half of them is worse than none, because the day-2
-payoff is what makes day 1 mean anything. `T-6`/`T-7` are Q-36. `T-8`→`T-10` are Q-34
-and are the bulk of the work. `T-11`/`T-12` are Q-35. `T-13` is Q-37 and `T-14` is Q-38;
-both were raised on 2026-08-28 and neither is on the critical path to the exit gate.
+Seventeen stories; two are done. Grouped by the ruling that unblocks them:
 
-*Later additions: `T-13` (Q-37), `T-14` (Q-38), `T-15` (Q-39) and `T-16` (Q-40) were all
-raised 2026-08-28. None is on the critical path to the exit gate.*
+| Ruling | Stories | Note |
+|---|---|---|
+| *(none)* | `T-1` ✅, `T-2` ✅ | shipped 2026-08-28 |
+| **Q-32** | — | frames every row below; rule it first |
+| Q-33 | `T-3`→`T-5` | ship together — half is worse than none, since the day-2 payoff is what makes day 1 mean anything |
+| Q-36 | `T-6`, `T-7` | `T-6` is a prerequisite for `T-7` |
+| Q-34 | `T-8`→`T-10` | the bulk of the work |
+| Q-35 | `T-11`, `T-12` | |
+| Q-37 | `T-13` | build with `T-8` — the fence *is* ring 0's boundary |
+| Q-38 | `T-14` | |
+| Q-39 | `T-15` | build with `T-8` — trees are where logs come from |
+| Q-40 | `T-16` | spiked; risk resolved, see below |
+| *(after Q-37/Q-40)* | `T-17` | regenerates the scripted replays the above two create |
+
+`T-13`→`T-17` were raised on 2026-08-28 and none is on the critical path to the exit gate.
+**`T-8`, `T-13` and `T-15` are one design wearing three hats** — if all three rulings pass,
+build them as a single piece of work rather than discovering the overlap halfway through
+the second.
 
 **If only one thing here gets built, build T-14.** It is the cheapest of the lot
 (presentation only, sim untouched), it deletes a whole concept rather than adding one,

@@ -659,7 +659,12 @@ daylight (recommendation: yes, and that is fine — sleep should never be refuse
 | Q-34 | Tool-gated land rings, or all tools from the start? | Rings, with the lock expressed as land rather than refusal (§5) |
 | Q-35 | How and when to teach sell / buy / refill | At first need, one object at a time (§7) |
 | Q-36 | Hint escalation: is stage 3 too much hand-holding? | Ship it; a stalled four-year-old has already cost us the gate (§6) |
-| Q-39 | Trees drop acorns; crows prefer them? | Adopt — it converts a scripted mercy into visible behaviour, and it is the first decoy mechanic (§4) |
+| Q-37 | The cold open: adopt, and in which form? | Adopt the live-scene revision, not the cutscene — a fence, control never taken, one verb demonstrated, the layout carries the rest (§4a) |
 | Q-38 | Replace the energy bar with a daylight cycle? | Adopt; keep night soft, and rule the phase-2 consequence consciously (§8a) |
-| Q-37 | The cold open: adopt, and in which form? | Adopt the live-scene revision, not the cutscene — control is never taken, one verb is demonstrated, the layout carries the rest (§4a) |
+| Q-39 | Trees drop acorns; crows prefer them? | Adopt — it converts a scripted mercy into visible behaviour, and it is the first decoy mechanic (§4) |
+
+*Two further rulings raised the same day live outside this chapter, since they are not
+onboarding: **Q-40** (the landing page's attract loop) in `11-ux-ui.md`, and **Q-41**
+(stamping replays with the build id) which was engineering rather than taste and shipped
+the same day.*
 

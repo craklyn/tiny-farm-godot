@@ -54,6 +54,29 @@ Observation { egocentric grid patch, self stats, nearby-entity summary, day/weat
   training data" UI operates on saved replays. This costs almost nothing to log from day
   one and is priceless later — start logging at M2.
 
+**Implementation status, audited 2026-08-28 — two divergences between this section and the
+code, both deliberate for phase 1 and both due before phase 4.**
+
+1. **There is no `move_to` verb, and the sim holds no actor positions at all.** The verb
+   list above names `move_to`, but `sim_world.gd` contains no position for the player, the
+   crow or the chicken — where anyone *stands* is presentation state, and M2 chose that
+   explicitly (`M2_SPEC.md`: entity movement is a presentation-side decision *process*
+   whose chosen Actions are the record). The consequence is that `tools/benchmark_sim.gd`
+   fast-forwards an actor who **teleports**, with infinite energy: an honest measure of sim
+   throughput, which is what M2's gate asked, but it does not model travel. Travel is the
+   substance of a delegation game, so this must be revisited — tracked as **D-9**, with a
+   trigger *before* the D-2 spike, since an action space that omits movement is a different
+   learning problem.
+2. **A stored replay is `[Action]`, not `[(Observation, Action)]`.** Observations are
+   *derived* by re-simulating the stream rather than recorded alongside it. That is far
+   cheaper and it is why a replay is robust to presentation changes such as move speed —
+   `apply_to()` has no timing at all. The cost is that the corpus is only as stable as the
+   rules that regenerate it: semantic drift in verbs, worldgen, growth rates, energy costs
+   or `SimRng` ordering silently changes what an old replay means. Mitigated as of Q-41 by
+   stamping `build_id` at record time so drift is *detectable*; materialising observations
+   at record time, which would decouple the corpus from drift entirely, is a real-cost
+   P-5/D-2 decision and is deliberately not taken yet.
+
 ## Phase-4 ML: feasibility sketch and budgets
 
 ### Hard budgets (design constraints, not aspirations)

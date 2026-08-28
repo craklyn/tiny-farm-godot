@@ -89,8 +89,8 @@ them only changes its own task row below.)*
 
 **Onboarding rebuild (2026-08-28).** The designer's read — the vignette "shows a
 few actions to take, not what to be accomplished" — is diagnosed and answered in
-`design/13-teaching-and-onboarding.md`, with twelve stories under M1.5 in
-`ROADMAP.md` and rulings Q-32–Q-36 queued. T-1 and T-2 above are the two that
+`design/13-teaching-and-onboarding.md`, with seventeen stories under M1.5 in
+`ROADMAP.md` and rulings Q-32–Q-40 queued (Q-41 shipped). T-1 and T-2 above are the two that
 needed no ruling and are done. **The remaining ten wait on Q-32–Q-36, and on the
 playtest**: the current build is worth testing as-is, because the redesign is a
 hypothesis and she is the only referee for it.
