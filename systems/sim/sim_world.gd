@@ -219,12 +219,21 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 
 	match verb:
 		# -- special-object verbs (no energy cost, pre-M2 behavior) --
+		# These two are the only verbs whose failure means "there was nothing to
+		# do", not "you cannot do that". A full watering can and an empty basket
+		# are both perfectly fine states. Found in a real session (2026-08-28):
+		# eight taps on the well and nine on the shipping bin, every one refused
+		# with no reason at all — 17 of the session's 27 refusals.
 		"sell":
 			if gs == null: return _fail("no_state")
-			return { "ok": gs.sell_crops_to_bin() }
+			if not gs.sell_crops_to_bin():
+				return _fail("nothing_to_sell")
+			return { "ok": true }
 		"refill":
 			if gs == null: return _fail("no_state")
-			return { "ok": gs.refill_watering_can() }
+			if not gs.refill_watering_can():
+				return _fail("can_already_full")
+			return { "ok": true }
 		"buy_seed":
 			if gs == null: return _fail("no_state")
 			return { "ok": gs.buy_seed(action.get("seed_type", "")) }

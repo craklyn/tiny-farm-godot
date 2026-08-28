@@ -59,6 +59,7 @@ func _run_scenarios() -> void:
 	await _scenario_d()
 	await _scenario_e()
 	await _scenario_f()
+	await _scenario_g()
 
 func _wait_for_action() -> void:
 	# Give it one frame to register the action and set is_acting = true
@@ -278,3 +279,36 @@ func _scenario_f() -> void:
 		_assert(component * case.sign > 0.0,
 			"a crow from the %s leaves toward the %s" % [case.name, case.name])
 		c.free()
+
+
+func _scenario_g() -> void:
+	# Reported from play 2026-08-28: "Return to title" in the pause menu did
+	# nothing. main.gd's _on_menu_action recognised only "quit" and dropped every
+	# other emission, so the return_to_title branch was unreachable from the menu
+	# meant to trigger it — silent, because an unmatched signal says nothing.
+	print("\n--- Scenario G: pause menu actions are routed ---")
+
+	var menus = main_scene.get("menus")
+	_assert(menus != null, "the main scene exposes its menus")
+	_assert(menus.menu_action.get_connections().size() > 0, "menu_action has a listener")
+
+	# Every action the pause menu can emit must be recognised by the handler.
+	# Asserting on the routing rather than on the scene change, because changing
+	# scenes mid-suite would tear down the runner's own fixtures.
+	var handled := main_scene.has_method("_handle_action_result")
+	_assert(handled, "main routes actions through _handle_action_result")
+
+	var src := (main_scene.get_script().source_code as String)
+	var handler := src.substr(src.find("func _on_menu_action"))
+	handler = handler.substr(0, handler.find("\nfunc "))
+	_assert(handler.contains("_handle_action_result"),
+		"menu actions are forwarded to the shared router, not matched one by one")
+	_assert(handler.contains("quit"), "and quit is still handled explicitly")
+
+	# The branch it was failing to reach must still exist and still persist first,
+	# since leaving the farm without saving is the S-7 failure this guards.
+	var rta := src.find("\"return_to_title\"")
+	_assert(rta != -1, "return_to_title is still handled")
+	var branch := src.substr(rta, 400)
+	_assert(branch.contains("persist_session"),
+		"leaving to the title still saves the farm on the way out")

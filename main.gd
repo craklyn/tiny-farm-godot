@@ -397,9 +397,21 @@ func _handle_action_result(action: String) -> void:
 		menus.open_menu("shop")
 
 
+# Reported from play 2026-08-28: "Return to title" did nothing.
+#
+# This handler is the only listener on menus.menu_action, and it recognised
+# exactly one action — "quit" — dropping every other emission on the floor. So
+# the `return_to_title` branch in _handle_action_result() was unreachable from
+# the menu that is supposed to trigger it, and had been since the menu was added.
+# Everything else the menu emits went the same way; nothing complained, because a
+# signal with no matching branch is silent.
 func _on_menu_action(action: String) -> void:
 	if action == "quit":
 		get_tree().quit()
+		return
+	# One router for menu-originated and world-originated actions alike, so a new
+	# menu entry cannot be silently unhandled again.
+	_handle_action_result(action)
 
 
 func trigger_action(action: String) -> void:

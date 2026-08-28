@@ -11,6 +11,11 @@ const MAP_HEIGHT := SimWorld.MAP_HEIGHT
 var sim: SimWorld = SimWorld.new()
 var replay: ReplayLog = null  # set via start_replay_log(); records every ok action
 var trace: SessionTrace = null  # diagnostic stream; records refusals too (see systems/session_trace.gd)
+
+# Failures that are not the player's mistake and must not be answered as one.
+# They are still recorded in the trace — knowing she tapped the well eight times
+# is useful — they simply do not wobble or play the nope sound.
+const BENIGN_FAILURES := { "can_already_full": true, "nothing_to_sell": true }
 var generate_on_ready := true  # main disables this when a save restore is pending
 
 # Facade views over sim truth (same Array references — in-place mutation works)
@@ -103,10 +108,12 @@ func apply_action(action: Dictionary, gs = null) -> Dictionary:
 		trace.act(t if t is Vector2i else Vector2i(-1, -1),
 			String(action.get("actor", "?")), String(action.get("verb", "?")),
 			result.get("ok", false), String(result.get("reason", "")))
-	# A refused player action must say so. Silence is indistinguishable from a
-	# broken game for a pre-reader (S-7) — found by tapping to plant with an
-	# empty seed pouch and getting no response whatsoever.
-	if not result.get("ok", false) and String(action.get("actor", "")) == "player":
+	# Not every failure is a refusal. A full watering can and an empty basket mean
+	# "nothing to do here", and answering those with the nope sound and a wobble
+	# teaches that a perfectly normal state is a malfunction — the opposite of the
+	# problem the refusal feedback was added to solve. Stay quiet instead.
+	if not result.get("ok", false) and String(action.get("actor", "")) == "player" \
+			and not BENIGN_FAILURES.has(String(result.get("reason", ""))):
 		var rt = action.get("target", null)
 		if rt is Vector2i:
 			refuse_at(rt, String(result.get("reason", "")))

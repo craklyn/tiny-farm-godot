@@ -47,6 +47,7 @@ func _init() -> void:
 	test_crow_readiness()
 	test_replay_build_stamp()
 	test_blocked_reason()
+	test_benign_failures()
 
 	print("")
 	print(String("=").repeat(60))
@@ -1299,3 +1300,46 @@ func test_blocked_reason() -> void:
 	_assert(ActionRouter.blocked_reason(farm, GameState, Vector2i(-5, -5)) == "",
 		"an out-of-bounds tile does not crash or invent a reason")
 	farm.free()
+
+
+func test_benign_failures() -> void:
+	print("\n--- Nothing-to-do vs cannot-do (from the 2026-08-28 session) Tests ---")
+
+	# A real session logged 17 refusals with no reason at all — 8 on the well, 9
+	# on the shipping bin, out of 27 total. Both were returning a bare
+	# {"ok": false}, which made them undiagnosable in the trace AND answered a
+	# perfectly normal state with the nope sound and a wobble.
+	GameState.reset()
+	var world := SimWorld.new()
+	SimRng.reseed(5)
+	world.generate()
+
+	# Refill: full can is not a mistake.
+	GameState.watering_can_charges = GameState.max_watering_can_charges
+	var r := world.apply_action({ "verb": "refill", "actor": "player" }, GameState)
+	_assert(not r.get("ok", true), "refilling a full can does not succeed")
+	_assert(r.get("reason", "") == "can_already_full", "and now says why")
+	GameState.watering_can_charges = 0
+	_assert(world.apply_action({ "verb": "refill", "actor": "player" }, GameState).get("ok", false),
+		"refilling an empty can still works")
+
+	# Sell: an empty basket is not a mistake.
+	GameState.reset()
+	GameState.crops = { "wheat": 0, "tomato": 0 }
+	var s2 := world.apply_action({ "verb": "sell", "actor": "player" }, GameState)
+	_assert(not s2.get("ok", true), "selling nothing does not succeed")
+	_assert(s2.get("reason", "") == "nothing_to_sell", "and now says why")
+	GameState.crops["wheat"] = 2
+	var s3 := world.apply_action({ "verb": "sell", "actor": "player" }, GameState)
+	_assert(s3.get("ok", false), "selling a real crop still works")
+	_assert(GameState.gold > 0, "and pays out")
+
+	# The distinction that matters: these must not be answered as refusals.
+	# Wobbling at a full watering can teaches that a normal state is a
+	# malfunction, which is the opposite of what the refusal feedback is for.
+	var Farm = load("res://world/farm.gd")
+	_assert(Farm.BENIGN_FAILURES.has("can_already_full"), "a full can is benign")
+	_assert(Farm.BENIGN_FAILURES.has("nothing_to_sell"), "an empty basket is benign")
+	_assert(not Farm.BENIGN_FAILURES.has("no seeds"),
+		"an empty seed pouch is NOT benign — she wanted to plant and could not")
+	_assert(not Farm.BENIGN_FAILURES.has("no_state"), "an internal failure is not benign")
