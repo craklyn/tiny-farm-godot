@@ -28,6 +28,7 @@ var spook_radius: float = 3.0 * TILE_SIZE
 # A* path following
 var path: Array[Vector2i] = []
 var pending_action: Dictionary = {}  # {action, tool_idx, target_t, seed_type}
+var approach_target: Vector2i = Vector2i(-1, -1)  # tile she is walking up to (Q-30)
 var drag_tool_idx: int = -1
 
 # Tap destination indicator
@@ -146,9 +147,11 @@ func update_player(delta: float) -> void:
 			var probe: Dictionary = ActionRouter.resolve(farm, GameState, target_vec, target_vec, false, null)
 			approach = not probe.is_empty() and bool(probe.get("walk_to", false))
 
+		approach_target = target_vec if approach else Vector2i(-1, -1)
+
 		var new_path: Array[Vector2i]
 		if approach:
-			new_path = Pathfinding.find_path_adjacent(farm, player_t, target_vec)
+			new_path = Pathfinding.find_path_toward(farm, player_t, target_vec)
 		else:
 			new_path = Pathfinding.find_path(farm, player_t, target_vec)
 		
@@ -226,12 +229,14 @@ func update_player(delta: float) -> void:
 		if diff.length() < (0.01 if last_leg else CORNER_TOLERANCE):
 			path.remove_at(0)
 
-			# Q-30: act the moment she is in range, from whatever side she
-			# arrived on, rather than walking to a particular approach tile.
-			if not pending_action.is_empty():
+			# Q-30: stop the moment she is in range, from whichever side the route
+			# happened to bring her to — that is what makes the approach read as
+			# a continuation of the walk rather than a detour around the tile.
+			if approach_target.x >= 0:
 				var here := get_tile_pos()
-				var pend_t: Vector2i = pending_action.get("target_t", here)
+				var pend_t: Vector2i = approach_target
 				if absi(here.x - pend_t.x) + absi(here.y - pend_t.y) == 1:
+					approach_target = Vector2i(-1, -1)
 					var reached := pending_action
 					pending_action = {}
 					path = []
@@ -241,7 +246,8 @@ func update_player(delta: float) -> void:
 						facing = "right" if rdx > 0 else "left"
 					else:
 						facing = "down" if rdy > 0 else "up"
-					_execute_resolved_action(reached)
+					if not reached.is_empty():
+						_execute_resolved_action(reached)
 					return
 
 			if path.is_empty() and not pending_action.is_empty():

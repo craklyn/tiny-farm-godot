@@ -107,6 +107,14 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   work: the router is probed as if she were already there, purely to ask "is this
   workable?". Tiles with nothing to do are still walked onto normally, so plain
   navigation is unchanged.
+  **Third revision (same day), from play:** choosing an approach *side* up front was
+  itself the mistake. With two sides equidistant the pick was arbitrary (array
+  order), and A* then routed along the other axis, so she walked past the natural
+  side and pivoted 90° on arrival. Now she paths at the goal itself and halts the
+  moment she is adjacent — the *move-until-in-range* pattern from action-RPGs and
+  RTSs. The approach side falls out of the route she was already walking, so it
+  always agrees with her direction of travel and she arrives already facing the
+  tile, with no turn-in-place.
   **Open sub-question for the playtest:** how it feels while swipe-chaining a row,
   since she now walks alongside the row instead of along it.
 - **Q-13 (Approval)** Audio direction one-pager — **draft ready**:
