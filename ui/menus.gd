@@ -6,6 +6,13 @@ var farm: Node2D = null  # set by main before any menu can open; transactions ro
 
 signal menu_action(action: String)
 
+# Panel metrics. The pause panel used a hard-coded height and its second option
+# hung out of the box; anything list-shaped sizes itself from these now.
+const OPTION_H := 52.0
+const OPTION_SEP := 4.0
+const OPTIONS_TOP := 45.0
+const PANEL_PAD := 12.0
+
 var active_menu: String = ""  # "", "pause", "shop", "inventory"
 var selected_option: int = 0
 var shop_items: Array[Dictionary] = []
@@ -71,7 +78,8 @@ func _ready() -> void:
 
 	# Options container
 	options_container = VBoxContainer.new()
-	options_container.position = Vector2(10, 45)
+	options_container.position = Vector2(10, OPTIONS_TOP)
+	options_container.add_theme_constant_override("separation", int(OPTION_SEP))
 	options_container.size = Vector2(280, 300)
 	menu_panel.add_child(options_container)
 
@@ -116,7 +124,7 @@ func _rebuild_options() -> void:
 			gold_display.visible = false
 			_add_option("Resume", true)
 			_add_option("Return to Title", true)
-			menu_panel.size = Vector2(300, 130)
+			menu_panel.size = Vector2(300, _fit_panel_height())
 
 		"shop":
 			title_label.text = "SEED SHOP"
@@ -165,15 +173,30 @@ func _rebuild_options() -> void:
 			_add_option("\nClose", true)
 			menu_panel.size = Vector2(300, 340)
 
+	# Shrink the container to its contents: left at its declared 300px it extends
+	# past the panel and can swallow taps aimed at the world below it.
+	options_container.size = Vector2(
+		menu_panel.size.x - 2 * 10,
+		max(0.0, menu_panel.size.y - OPTIONS_TOP - PANEL_PAD)
+	)
+
 	menu_panel.position = Vector2(
 		viewport_size.x / 2 - menu_panel.size.x / 2,
 		viewport_size.y / 2 - menu_panel.size.y / 2
 	)
 
 
+# Height that exactly contains the options currently in the container.
+func _fit_panel_height() -> float:
+	var n := options_container.get_child_count()
+	if n <= 0:
+		return OPTIONS_TOP + PANEL_PAD
+	return OPTIONS_TOP + n * OPTION_H + (n - 1) * OPTION_SEP + PANEL_PAD
+
+
 func _add_option(text: String, enabled: bool) -> void:
 	var container = PanelContainer.new()
-	container.custom_minimum_size = Vector2(0, 52)
+	container.custom_minimum_size = Vector2(0, OPTION_H)
 	var style = StyleBoxFlat.new()
 	style.bg_color = Color(0.18, 0.18, 0.25, 0.6)
 	style.corner_radius_top_left = 6
