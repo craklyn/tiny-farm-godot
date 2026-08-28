@@ -36,6 +36,30 @@ Actions*. Consequences we commit to now:
   for behavior cloning. "Choose your training data" becomes a concrete gameplay object.
 - Bots never get magic abilities: anything a bot does, the player could have done by hand.
 
+**Empirical confirmation, 2026-08-28** (from the T-16 attract-loop spike,
+`tools/replay_view.gd`). Building playback on top of a recorded session tested this entry
+by accident and it held. Three findings worth keeping:
+
+- **The `(actor, verb, target)` stream is sufficient to reconstruct the whole
+  performance**, not merely the end state. Replaying at the *intent* layer — handing the
+  player a resolved `{action, target_t, tool_idx}` and letting her walk to it — reproduces
+  real play exactly, including approach behaviour, animation, tools and effects.
+- **Locomotion needs no verb, in either direction.** Movement is *derivable*: Pathfinding
+  is deterministic given a start and a goal, and the start is derived from where the
+  previous action left the actor. So `(a, t)` plus a spawn position determines the walk.
+  A bot emitting `(verb, target)` is therefore expressing exactly as much as a player does
+  — this entry's promise did not need widening to accommodate bots that move.
+- **Do not replay at the input layer.** Taps are ambiguous *by design*: one tap on a
+  distant workable tile resolves as pure movement (Q-30), so a tap stream is a UI artifact
+  rather than a behavioural record. This is the practical teeth behind "input handling
+  stays strictly separated from action execution" above.
+
+*Open question this raises for P-5, recorded rather than answered:* purely **exploratory**
+movement — walking with no action at the end of it — leaves no trace in the Action stream,
+because it changes nothing. Whether "where the player chose to walk" is signal for
+behaviour cloning is a real question for the phase-4 training design, and the answer
+determines whether the training substrate ever needs to widen beyond world-changing verbs.
+
 ### S-4. Grid world as the universal substrate
 The tile grid (already present in `world/farm.gd`) is the shared representation for
 farming state, tower placement, pathfinding, and bot observations. Bots observe egocentric

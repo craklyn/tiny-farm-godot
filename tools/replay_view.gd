@@ -271,26 +271,6 @@ func _process(delta: float) -> void:
 		return
 	_dwell = 0.0
 
-	# A real player often taps a distant workable tile TWICE: the router reads the
-	# first tap as pure movement (Q-30, second revision) and only the follow-up,
-	# now in range, resolves to an action. Tapping once per recorded action
-	# therefore walks her to every tile and works almost none of them.
-	#
-	# The finding this exposes matters more than the workaround: ReplayLog cannot
-	# drive tap-faithful playback at all, because the movement-only taps changed
-	# nothing and so were never recorded. SessionTrace *does* record them. An
-	# attract loop should be driven by a trace, with the replay as the check that
-	# it reproduced.
-	if _pending != Vector2i(-1, -1):
-		var now: String = _farm.sim.get_tile(_pending.x, _pending.y).get("state", "")
-		if now != _state_before or _attempts >= 3:
-			_pending = Vector2i(-1, -1)
-		else:
-			_attempts += 1
-			InputManager.click_tile = _pending
-			InputManager.has_click = true
-			return
-
 	while _next < _decoded.size() and not (_decoded[_next].get("target", null) is Vector2i):
 		_next += 1
 	if _next >= _decoded.size():
@@ -298,12 +278,47 @@ func _process(delta: float) -> void:
 		_capture()
 		return
 
-	_pending = _decoded[_next]["target"]
+	var a := _decoded[_next]
 	_next += 1
-	_state_before = _farm.sim.get_tile(_pending.x, _pending.y).get("state", "")
-	_attempts = 1
-	InputManager.click_tile = _pending
-	InputManager.has_click = true
+	_dispatch_intent(String(a.get("verb", "")), a["target"], String(a.get("seed_type", "wheat")))
+
+
+# Replay at the INTENT layer — not taps, and not the sim.
+#
+# Taps are the wrong layer: they are ambiguous by design, because the router
+# reads one tap on a distant workable tile as pure movement (Q-30). The sim is
+# also the wrong layer: going straight to apply_action() skips the approach and
+# the whole of _execute_resolved_action().
+#
+# Between them sits the resolved intent — {action, target_t, tool_idx} — which is
+# unambiguous, is exactly what a tap resolves *into*, and is precisely what
+# ReplayLog already stores as (verb, target). Handing the player one and letting
+# her walk to it reproduces real play without needing any new recorded data:
+# the walk is *derivable*, because Pathfinding is deterministic given a start and
+# a goal, and the start is itself derived from where the previous action left her.
+func _dispatch_intent(verb: String, target: Vector2i, seed_type: String) -> void:
+	var at: Vector2i = _player.get_tile_pos()
+	var intent := {
+		"action": verb,
+		"target_t": target,
+		"tool_idx": _tool_for(verb, target),
+		"seed_type": seed_type,
+	}
+	var path: Array[Vector2i] = Pathfinding.find_path_toward(_farm, at, target)
+	if path.is_empty():
+		_player._execute_resolved_action(intent)   # already in range
+	else:
+		_player.approach_target = target
+		_player.path = path
+		_player.pending_action = intent            # fires on arrival
+
+
+func _tool_for(verb: String, target: Vector2i) -> int:
+	var st: String = _farm.sim.get_tile(target.x, target.y).get("state", "")
+	for i in range(Tools.LIST.size()):
+		if Tools.get_action(i, st) == verb:
+			return i
+	return 0
 
 
 func _player_is_idle() -> bool:

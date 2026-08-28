@@ -246,14 +246,25 @@ above rested on assumptions nothing had tested, so they were tested:
   `_execute_resolved_action()`, losing the action animation, tool swap, sfx, particles and
   the D-8 tile squash. **So: drive the attract loop by injecting taps, not by applying
   actions.** Then it renders identically to real play by construction and cannot drift.
-- ⚠️ **ReplayLog cannot drive tap-faithful playback — use SessionTrace.** Tapping once per
-  recorded action worked almost no tiles: a far tap on workable ground resolves as pure
-  *movement* (Q-30, second revision), and only the follow-up tap acts. A real session's tap
-  stream therefore contains movement-only taps that changed nothing and so **were never
-  recorded in ReplayLog** — while `SessionTrace` records every one, with timing and player
-  position. **The attract loop should be driven by a trace, with the replay as the check
-  that it reproduced.** That also supplies the pacing the log lacks. (The spike works
-  around it by re-tapping until the tile state changes; that is a spike hack, not a design.)
+- ✅ **The action stream is sufficient — replay at the *intent* layer.** *(Corrects an
+  earlier conclusion in this block that the attract loop needed SessionTrace.)* There are
+  three layers and the outer two are both wrong. **Taps** are ambiguous by design: one tap
+  on a distant workable tile means "walk there" (Q-30), and that ambiguity is a deliberate
+  UI affordance, not missing data — tapping once per recorded action worked almost no
+  tiles. The **sim** is too deep: `apply_action()` skips the approach and all of
+  `_execute_resolved_action()`. Between them sits the **resolved intent**
+  `{action, target_t, tool_idx}` — unambiguous, exactly what a tap resolves *into*, and
+  exactly what ReplayLog already stores as `(verb, target)`. Handing the player one intent
+  per recorded action reproduces real play with no heuristics and no extra recorded data.
+  **Movement needs no recording because it is derivable:** Pathfinding is deterministic
+  given a start and a goal, and the start is derived from where the previous action left
+  her, so `(a, t)` plus a spawn position determines the whole walk.
+  *Consequence beyond this story:* this confirms S-3 — bots need no locomotion verb, they
+  emit `(verb, target)` like the player and the walk is derived by the same machinery.
+  *Residual, flagged for P-5/D-2:* purely **exploratory** movement — walking with no action
+  at the end of it — is not recoverable from the action stream. For an attract loop that is
+  arguably an improvement (a farmer who never dithers); for phase-4 behaviour cloning,
+  whether "where the player chose to walk" is training signal is an open question.
 - ⚠️ **Tap-driven playback re-opens the isolation hazard, measured.** Over one demo session
   the live autoload went from `energy 20, wheat 5` to `energy 0, wheat 0`: the attract loop
   spends the player's real resources, because `player._execute_resolved_action()` uses the
@@ -269,10 +280,10 @@ above rested on assumptions nothing had tested, so they were tested:
   can still read as a broken farm, so the shipped demo session must be recorded *to look
   good*, not merely to be valid.
 
-**Revised estimate: ~5–6 days, not 3–4.** The technical core is proven, but the spike
-turned up one refactor that was not in the original scope (an injectable game state on the
-player) and moved the data source from ReplayLog to SessionTrace. Both are the right
-changes; neither was visible before building it.
+**Revised estimate: ~4–5 days, not 3–4.** The technical core is proven and ReplayLog
+remains the data source. The one addition to scope is an injectable game state on the
+player; the SessionTrace switch briefly considered here turned out to be unnecessary once
+the playback moved to the intent layer.
 
 **T-14 — Daylight replaces the energy bar** · Q-38 · ~1–2 days
 *So that the least readable thing in the HUD becomes something a pre-reader can see.*
