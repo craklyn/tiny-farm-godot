@@ -76,8 +76,24 @@ them only changes its own task row below.)*
       watered ground was indistinguishable from dry; the onboarding vignette was
       drawn too faintly to notice; the farmer walked *onto* the tile she was
       working and hid the result; a refused action gave no feedback at all.
+- [x] Trace reading (2026-08-28, T-1): `tools/read_trace.gd` turns a session into a
+      report — taps by outcome, refusal reasons, when each verb first worked,
+      stalls, and tiles tapped repeatedly to no effect; `tools/pull_trace.sh`
+      fetches it off the tablet. Found and fixed in the doing: *unreachable* taps
+      were never traced at all, so the deadest taps in a session left no evidence.
+- [x] First-session stress removed (2026-08-28, T-2): no crow until she has
+      harvested something and has three crops planted, and the first crow of a
+      save cannot eat.
 - [ ] Kid playtest protocol (the gate itself) — everything above was preparation
       for this; further polish should wait for its evidence.
+
+**Onboarding rebuild (2026-08-28).** The designer's read — the vignette "shows a
+few actions to take, not what to be accomplished" — is diagnosed and answered in
+`design/13-teaching-and-onboarding.md`, with twelve stories under M1.5 in
+`ROADMAP.md` and rulings Q-32–Q-36 queued. T-1 and T-2 above are the two that
+needed no ruling and are done. **The remaining ten wait on Q-32–Q-36, and on the
+playtest**: the current build is worth testing as-is, because the redesign is a
+hypothesis and she is the only referee for it.
 
 **Ruled 2026-08-19 (all five accepted) and implemented same day:**
 - [x] Q-9 vignette: weed+tilled tiles in seeded generation, sparkle overlay,
