@@ -13,8 +13,18 @@ before the first public build ships.*
   (https://retrodiffusion.ai) pixel-art models, prompted and post-processed
   (palette-constrained to the docs/design/09 ramps, background-keyed, downscaled,
   autotile-composed) by Claude for this repo.
-  - [ ] **TODO: verify Retro Diffusion's terms of service grant output
-    usage/distribution rights before the first public release.**
+  - [x] **Output rights verified 2026-08-27** against Retro Diffusion's Legal
+    Terms (the PDF the site's `/terms` page embeds). §7 "Ownership of Designs and
+    Customer Materials": *"We do not claim ownership over your Designs or Customer
+    Materials. You retain full rights to them."* §2 grants the licence to create
+    Designs through the Services; its no-copy/no-distribute restriction is scoped to
+    Retro Diffusion's own "Content and Marks" (their site, software and models), not
+    to generated output. No attribution is required, and nothing conditions the
+    grant on the project being non-commercial or closed-source. Cleared for public
+    release. *Caveat: the API docs are silent on rights, so the website terms govern;
+    they are undated and revocable-in-place, so re-check if the asset set is
+    regenerated. A local copy of the PDF as read is not kept in-repo — retrieve it
+    from https://www.retrodiffusion.ai/terms if the wording is ever disputed.*
 - **Sprout Lands asset pack** by Cup Nooble — *removed 2026-08-26* (Q-7c ruling:
   drop restrictively-licensed assets; its free license forbids redistribution and
   this repo is public). Q-7b license findings recorded in the git history of this
