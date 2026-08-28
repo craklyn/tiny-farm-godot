@@ -226,10 +226,25 @@ above rested on assumptions nothing had tested, so they were tested:
   *Note for whoever builds it:* an empty path means "already beside it" as often as
   "unreachable" — the Q-30 distinction — and counting empty as failure understates
   reachability by nearly half.
+- ✅ **The farmer draws and walks.** Extended after the designer pointed out no character
+  appeared: the first spike proved a route was *computable*, never that anyone could be
+  *drawn walking it*. `player/player.gd` instantiates standalone, and `update_player()` is
+  called explicitly rather than from `_process`, which is exactly what makes puppeteering
+  possible — with no pending input it just follows the path it is handed. **The node must
+  be named `Player`**: `farm.gd` finds it with `get_node("../Player")`, so the name is
+  load-bearing. Without her the attract loop is tiles morphing on their own, which is
+  neither gameplay nor a demonstration of any verb.
 - ⚠️ **The donut needs the camera, confirmed visually.** In the captured frame every
   developed tile is in the top-left corner and the rest is undeveloped grass, so a centred
   menu over a static view would have an empty ring. Camera drift is load-bearing, not
   decoration.
+- ⚠️ **Curating the demo replay is real work.** Two separate faults made the spike's own
+  session *look* wrong while verifying perfectly: clearing and tilling in one pass left
+  cleared-but-untilled grass notches mid-field, and the plant pass silently ran out after
+  five of twenty-four tiles because `reset()` grants five seeds — the same empty-pouch
+  condition behind the 2026-08-27 silent-refusal bug. A replay that passes verification
+  can still read as a broken farm, so the shipped demo session must be recorded *to look
+  good*, not merely to be valid.
 
 Risk is now low; the remaining work is layout, curation and polish rather than unknowns.
 The estimate stands.

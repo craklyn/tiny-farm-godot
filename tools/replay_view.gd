@@ -14,15 +14,16 @@ extends Node2D
 const STEP_SECONDS := 0.6
 
 var _farm: Node2D = null
+var _player: Node2D = null          # sibling named "Player" — farm.gd looks it up by path
 var _gs = null                      # detached GameState — see _check_isolation()
 var _log: ReplayLog = null
 var _decoded: Array[Dictionary] = []
 var _next := 0
-var _timer := 0.0
-var _walk: Array[Vector2i] = []
-var _at := Vector2i(2, 2)
+var _dwell := 0.0
 var _pass := 0
 var _fail := 0
+
+const SPAWN := Vector2i(2, 2)
 
 
 func _ready() -> void:
@@ -44,7 +45,11 @@ func _ready() -> void:
 	if DisplayServer.get_name() == "headless":
 		get_tree().quit(1 if _fail > 0 else 0)
 	else:
-		print("Windowed: stepping the replay at %.1fs per action. Ctrl-C to stop." % STEP_SECONDS)
+		if not _decoded.is_empty():
+			var first = _decoded[0].get("target", null)
+			if first is Vector2i:
+				_player.path = Pathfinding.find_path_toward(_farm, SPAWN, first)
+		print("Windowed: the farmer walks the replay. %.1fs dwell per action." % STEP_SECONDS)
 
 
 func _ok(cond: bool, name: String) -> void:
@@ -70,31 +75,46 @@ func _record_a_session() -> ReplayLog:
 	var rlog := ReplayLog.new()
 	rlog.start(4242)
 
-	# A plausible little day: clear a few tiles, till, plant, water, sleep.
+	# A plausible little day, worked the way a person works a plot: clear the
+	# whole patch, then till it, then plant it.
+	#
+	# Separate passes are not stylistic. Matching on each tile's state as the loop
+	# visited it meant a tile that started as an obstacle got cleared and then
+	# never tilled, because the loop had already moved past it — which left bare
+	# grass notches in the middle of the field and read as a playback bug rather
+	# than a gap in this recorder.
 	var recorded := 0
+	var plot: Array[Vector2i] = []
 	for ty in range(2, 6):
 		for tx in range(3, 9):
-			var st: String = w.get_tile(tx, ty).get("state", "")
-			var verb := ""
-			match st:
-				"obstacle_weed": verb = "clear_weed"
-				"cleared": verb = "till"
-			if verb == "":
+			plot.append(Vector2i(tx, ty))
+
+	var clear_verbs := {
+		"obstacle_weed": "clear_weed",
+		"obstacle_rock": "clear_rock",
+		"obstacle_log": "clear_log",
+	}
+	for pass_name in ["clear", "till", "plant"]:
+		for t in plot:
+			var st: String = w.get_tile(t.x, t.y).get("state", "")
+			var a := {}
+			match pass_name:
+				"clear":
+					if clear_verbs.has(st):
+						a = { "verb": clear_verbs[st], "target": t, "actor": "player" }
+				"till":
+					if st == "cleared":
+						a = { "verb": "till", "target": t, "actor": "player" }
+				"plant":
+					if st == "tilled":
+						a = { "verb": "plant", "target": t, "actor": "player",
+							"seed_type": "wheat" }
+			if a.is_empty():
 				continue
-			var a := { "verb": verb, "target": Vector2i(tx, ty), "actor": "player" }
 			var r := w.apply_action(a, gs)
 			if r.get("ok", false):
 				rlog.record(a, r)
 				recorded += 1
-	for ty in range(2, 6):
-		for tx in range(3, 9):
-			if w.get_tile(tx, ty).get("state", "") == "tilled":
-				var a := { "verb": "plant", "target": Vector2i(tx, ty), "actor": "player",
-					"seed_type": "wheat" }
-				var r := w.apply_action(a, gs)
-				if r.get("ok", false):
-					rlog.record(a, r)
-					recorded += 1
 	var slp := { "verb": "sleep", "actor": "world" }
 	var sr := w.apply_action(slp, gs)
 	if sr.get("ok", false):
@@ -119,6 +139,20 @@ func _check_renderer_standalone() -> void:
 	add_child(_farm)
 	_ok(is_instance_valid(_farm), "farm instantiates as a bare Node2D child")
 	_ok(_farm.sim != null, "it brought its own SimWorld")
+
+	# The farmer. Without her the attract loop is tiles morphing on their own,
+	# which is neither gameplay nor a demonstration of any verb — so a visible
+	# actor is the feature, not a garnish. farm.gd finds her via get_node("../Player"),
+	# so the node name is load-bearing.
+	var PlayerScript = load("res://player/player.gd")
+	_player = PlayerScript.new()
+	_player.name = "Player"
+	add_child(_player)
+	_player.farm = _farm
+	_player.init_position(SPAWN.x, SPAWN.y)
+	_ok(_farm.get_node_or_null("../Player") != null,
+		"the farm renderer can find a sibling named Player")
+	_ok(_player.has_method("queue_render"), "the player can queue itself for drawing")
 
 	# Detached GameState: apply_to() calls gs.reset(), so handing it the autoload
 	# would wipe the player's live state on the title screen. This is the whole
@@ -203,22 +237,57 @@ func _check_movement_is_synthesizable() -> void:
 
 
 # --- Windowed playback --------------------------------------------------------
+# The performance. The replay says *what* happened and in what order; the walk
+# between actions is invented here, because ReplayLog carries no movement.
 func _process(delta: float) -> void:
-	if _farm == null or _next >= _decoded.size():
+	if _farm == null or _player == null or _next >= _decoded.size():
 		return
 	if DisplayServer.get_name() == "headless":
 		return
-	_timer += delta
-	if _timer < STEP_SECONDS:
+
+	# update_player() is called explicitly rather than from _process, which is
+	# what makes puppeteering possible: with no pending input it simply follows
+	# whatever path it has been handed.
+	_player.update_player(delta)
+
+	if not _player.path.is_empty():
+		_farm.queue_redraw()
 		return
-	_timer = 0.0
+
+	# She has arrived (or had nowhere to go). Dwell a beat so the eye can see the
+	# tile change, then perform the action and set off for the next one.
+	_dwell += delta
+	if _dwell < STEP_SECONDS:
+		return
+	_dwell = 0.0
+
 	var a := _decoded[_next]
 	_next += 1
+	var t = a.get("target", null)
+	if t is Vector2i:
+		_face_toward(t)
 	_farm.sim.apply_action(a, _gs)
 	_farm.queue_redraw()
-	if _next >= _decoded.size():
+
+	if _next < _decoded.size():
+		var nxt = _decoded[_next].get("target", null)
+		if nxt is Vector2i:
+			_player.path = Pathfinding.find_path_toward(_farm, _player.get_tile_pos(), nxt)
+	else:
 		print("Playback reached the end of the replay (%d actions)." % _decoded.size())
 		_capture()
+
+
+func _face_toward(t: Vector2i) -> void:
+	var at: Vector2i = _player.get_tile_pos()
+	var dx := t.x - at.x
+	var dy := t.y - at.y
+	if dx == 0 and dy == 0:
+		return
+	if absi(dx) >= absi(dy):
+		_player.facing = "right" if dx > 0 else "left"
+	else:
+		_player.facing = "down" if dy > 0 else "up"
 
 
 # Proof that the attract farm actually draws, not merely that it constructs.
