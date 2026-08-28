@@ -125,44 +125,49 @@ func get_reachable_tiles(farm: Node2D, start_t: Vector2i) -> Array[Vector2i]:
 
 
 
-# Path to the best tile *beside* the goal rather than onto it (Q-30).
+# Path to the tile *beside* the goal rather than onto it (Q-30).
 #
-# Working a tile you are standing on hides the result under your own sprite,
-# which is why every game in the genre acts on the faced tile. Direction is not
-# arbitrary here: sprites are bottom-anchored and the render queue is y-sorted,
-# so a farmer standing south of a tile draws over it while one standing north
-# leaves it fully visible. North is therefore preferred, then the sides, with
-# south last — but only as a tie-break, so she never takes a silly detour.
+# Working a tile you stand on hides the result under your own sprite, so the
+# farmer approaches instead. The approach tile is simply the nearest one — no
+# directional preference. An earlier version preferred the north side so the
+# sprite never covered the target, but paths to it routed *through* the goal
+# (it is walkable), so she walked onto the tile, stepped off northward and
+# turned back: worse than the problem it solved.
+#
+# Callers stop as soon as they are adjacent (see player.gd), so the exact
+# approach tile matters less than the direction of travel being natural.
 #
 # Returns [] when already adjacent (act where you stand) or when no neighbour is
 # reachable (act anyway rather than refuse the tap).
-const APPROACH_PENALTY := {
-	Vector2i(0, -1): 0.0,   # north: never occludes the target
-	Vector2i(-1, 0): 0.6,   # sides: partial overlap at most
-	Vector2i(1, 0): 0.6,
-	Vector2i(0, 1): 1.8,    # south: draws on top of the target
-}
-
-
 func find_path_adjacent(farm: Node2D, start_t: Vector2i, goal_t: Vector2i) -> Array[Vector2i]:
 	if start_t != goal_t and _is_adjacent(start_t, goal_t):
 		return []
 
 	var best: Array[Vector2i] = []
-	var best_score := INF
+	var best_len := 1 << 30
 	for d: Vector2i in DIRS:
 		var n := goal_t + d
 		if not farm.is_walkable(n.x, n.y):
 			continue
 		if n == start_t:
-			return []  # already standing in a good spot
+			return []
 		var p := find_path(farm, start_t, n)
 		if p.is_empty():
 			continue
-		var score := float(p.size()) + float(APPROACH_PENALTY.get(d, 1.0))
-		if score < best_score:
-			best_score = score
+		# Never route through the goal on the way to standing beside it.
+		if p.has(goal_t):
+			continue
+		if p.size() < best_len:
+			best_len = p.size()
 			best = p
+	if best.is_empty() and start_t == goal_t:
+		# Standing on it with every approach blocked by the goal check: step off
+		# to any free neighbour, then turn back.
+		for d: Vector2i in DIRS:
+			var n := goal_t + d
+			if farm.is_walkable(n.x, n.y):
+				var step: Array[Vector2i] = [n]
+				return step
 	return best
 
 

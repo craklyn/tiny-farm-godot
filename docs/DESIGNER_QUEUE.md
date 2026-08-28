@@ -89,13 +89,16 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   `walk_to` used to walk the player *onto* a walkable target, so her sprite covered
   the tile she was acting on (noticed when planting during the vignette). Adopted the
   genre standard: act on the faced tile, never the occupied one, with auto-approach so
-  a tap is never refused. `Pathfinding.find_path_adjacent()` prefers approaching from
-  the **north** — sprites are bottom-anchored and y-sorted, so standing south of a tile
-  is the one position that hides it — but only as a tie-break on path length, so she
-  never detours. Standing on the target steps off; a target with no reachable
-  neighbour is still acted on. The sim has no positional guards (`player_t` never
-  appears in `sim_world.gd`), so this was Intent/Presentation only, with no
-  determinism impact.
+  a tap is never refused. She approaches from whichever side is *nearest* and acts the
+  moment she is in range, from whatever direction she arrived on. Standing on the
+  target steps off and turns back; a target with no reachable neighbour is still acted
+  on. The sim has no positional guards (`player_t` never appears in `sim_world.gd`), so
+  this was Intent/Presentation only, with no determinism impact.
+  **Revised 2026-08-27 after play:** the first cut preferred approaching from the north
+  so the sprite would never cover the target. It looked wrong — paths to the north
+  neighbour routed *through* the goal tile (it is walkable), so she walked onto the
+  tile, stepped off northward and turned around. Directional preference is gone;
+  approach paths may not cross the goal, and arriving in range ends the walk.
   **Open sub-question for the playtest:** how it feels while swipe-chaining a row,
   since she now walks alongside the row instead of along it.
 - **Q-13 (Approval)** Audio direction one-pager — **draft ready**:

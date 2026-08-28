@@ -204,6 +204,25 @@ func update_player(delta: float) -> void:
 		var diff := wp_world - pos
 		if diff.length() < 2.0:
 			path.remove_at(0)
+
+			# Q-30: act the moment she is in range, from whatever side she
+			# arrived on, rather than walking to a particular approach tile.
+			if not pending_action.is_empty():
+				var here := get_tile_pos()
+				var pend_t: Vector2i = pending_action.get("target_t", here)
+				if absi(here.x - pend_t.x) + absi(here.y - pend_t.y) == 1:
+					var reached := pending_action
+					pending_action = {}
+					path = []
+					var rdx := pend_t.x - here.x
+					var rdy := pend_t.y - here.y
+					if absi(rdx) >= absi(rdy):
+						facing = "right" if rdx > 0 else "left"
+					else:
+						facing = "down" if rdy > 0 else "up"
+					_execute_resolved_action(reached)
+					return
+
 			if path.is_empty() and not pending_action.is_empty():
 				# Arrived — execute pending action
 				var pa := pending_action

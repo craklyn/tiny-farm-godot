@@ -963,7 +963,8 @@ func test_approach_adjacent() -> void:
 	var p: Array = Pathfinding.find_path_adjacent(farm, goal, goal)
 	_assert(not p.is_empty(), "standing on the target yields a step off it")
 	_assert(p[p.size() - 1] != goal, "the step lands beside the target, not on it")
-	_assert(p[p.size() - 1] == goal + Vector2i(0, -1), "steps off to the north when free")
+	_assert(absi(p[p.size() - 1].x - goal.x) + absi(p[p.size() - 1].y - goal.y) == 1,
+		"the step off lands on an adjacent tile")
 
 	# Already beside it: no walking at all.
 	_assert(Pathfinding.find_path_adjacent(farm, goal + Vector2i(0, 1), goal).is_empty(),
@@ -978,14 +979,20 @@ func test_approach_adjacent() -> void:
 	_assert(absi(landed.x - goal.x) + absi(landed.y - goal.y) == 1,
 		"the path ends beside the goal, never on it")
 
-	# North is preferred only as a tie-break: an approach that is clearly closer
-	# still wins, so she never takes a silly detour.
+	# The approach is the nearest one, from the direction of travel — no
+	# directional preference, and never a detour around the tile.
 	var from_south: Array = Pathfinding.find_path_adjacent(farm, goal + Vector2i(0, 5), goal)
 	var end_s: Vector2i = from_south[from_south.size() - 1]
-	_assert(absi(end_s.x - goal.x) + absi(end_s.y - goal.y) == 1,
-		"approach from far south still ends adjacent")
-	_assert(end_s.y > goal.y or end_s.x != goal.x,
-		"a much closer southern/side approach is not abandoned for north")
+	_assert(end_s == goal + Vector2i(0, 1),
+		"approaching from the south stops on the south side, not around the far side")
+	var from_east: Array = Pathfinding.find_path_adjacent(farm, goal + Vector2i(5, 0), goal)
+	_assert(from_east[from_east.size() - 1] == goal + Vector2i(1, 0),
+		"approaching from the east stops on the east side")
+
+	# The bug that caused the detour: a route to the approach tile must never
+	# pass through the goal, or she walks onto it and steps back off.
+	for pth in [from_south, from_east]:
+		_assert(not pth.has(goal), "the approach path never crosses the goal tile")
 
 	# The regression that broke the robot session: standing beside the target
 	# yields an empty path, which callers must read as "act now", not "unreachable".
