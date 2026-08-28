@@ -170,8 +170,14 @@ boundary**, so if Q-34 also passes, build this together with T-8 rather than sep
 perceive.*
 - [ ] standing trees as a world feature; acorns as a dropped object (sim, deterministic)
 - [ ] crow target selection prefers a reachable acorn over any crop
-- [ ] the T-2 harmless flag stays as the floor for the case where no acorn is reachable
-- [ ] sim-level tests: a crow with an acorn available never targets a crop
+- [ ] **acorn stock depletes on sleep, not per crow visit** — the spawner fires every 10 s,
+      so per-visit depletion burns a multi-day peace in ~80 s and a long first session eats
+      the whole ramp. Finite stock, no regeneration in phase 1
+- [ ] **retarget T-2's harmless flag** from "first crow ever" to "first crow to target a
+      crop", so the last mercy lands at the transition rather than on a crow that was
+      never a threat
+- [ ] sim-level tests: a crow with an acorn available never targets a crop; the stock
+      cannot be drained by lingering in a single day
 - [ ] trees give `obstacle_log` an origin — coordinate with T-8's ring content
 *This is also the game's first decoy mechanic; note the through-line to `design/05`.*
 

@@ -202,6 +202,17 @@ first, since a different answer there changes what the other four are optimising
   phases before `design/05` formalises it. Keep the T-2 flag as the floor; acorns carry
   the ongoing case. Ecology detail belongs in `design/04`. Sim work: an acorn object type
   and crow target preference, both deterministic and testable.
+  **Extended same day:** show the acorns *depleting over several days*, and once they are
+  gone the crows turn to crops. That converts the mercy into a difficulty curve with no
+  difficulty setting — the threat arrives on a schedule the world sets, experienced as
+  food running out, and the days before it are exactly the window where she learns the
+  rest of the game. Two conditions: **deplete the stock on sleep, not per crow visit**
+  (the spawner fires every 10 s, so per-visit depletion burns a multi-day peace in about
+  eighty seconds, and a long first session eats the whole ramp — the general rule being
+  that day-scaled pacing must never be driven by a real-time spawner), and **retarget
+  T-2's harmless flag from "first crow ever" to "first crow to target a crop"**, so the
+  last mercy lands at the transition instead of being spent on a crow that was never a
+  threat.
 - **Q-38 (Ruling)** **Daylight instead of an energy bar.** Designer's proposal: replace
   the energy meter with a visible day cycle (sunrise/midday/sunset/twilight as a colour
   grade) where spending energy advances the time of day, so twilight itself says the day

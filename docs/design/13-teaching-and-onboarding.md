@@ -328,9 +328,45 @@ Four things it earns beyond the first encounter:
 - **Trees are where logs come from.** Standing trees give `obstacle_log` an origin, which
   the ring structure in §5 wants anyway.
 
-Keep both mechanisms: the flag guarantees a safe first encounter even where no acorn
-happens to be reachable, and acorns carry the ongoing case. The ecology side belongs to
-`04-pests-and-ecology.md`; this chapter only cares that the crow's introduction costs
+**Depletion is what turns this from a mercy rule into a difficulty curve.** *Designer's
+extension, same day: show the acorns progressively disappearing over several days, and
+once they are gone the crows begin targeting crops.*
+
+That is a difficulty ramp with no difficulty setting. The threat arrives on a schedule the
+*world* sets rather than one a designer wrote, and the player experiences it as food
+running out — legible without a word. The acorns remaining are a visible countdown to
+"pests are real now", and the days before that are exactly the window in which she learns
+the rest of the game. It is Valve principle 5 applied to a creature's behaviour rather
+than to a verb: she watches crows take things several times, in varied circumstances,
+before anything of hers is at stake.
+
+Two things this requires to work, one of which is a trap.
+
+- **Depletion must be driven by days, not by crow visits.** The spawner fires every ten
+  seconds of real time. If each visiting crow removes an acorn, a pile of eight is gone in
+  about eighty seconds and the multi-day peace collapses into one long afternoon — worse,
+  a child who happily plays for forty minutes on day 1 burns the entire ramp before she
+  has learned anything. The **stock** should deplete on sleep, a few per night, while
+  individual crows still visibly carry one off as the teaching moment. The general rule,
+  which is worth holding to beyond this feature: **pacing that should be measured in days
+  must not be driven by a real-time spawner.**
+- **The T-2 mercy flag should be retargeted.** It currently keys on `crows_seen <= 1` —
+  the first crow *ever*. Under depletion that is the wrong anchor: the first several crows
+  are already harmless by behaviour, so the flag is spent on one that was never a threat.
+  It should key on **the first crow to target a crop**. The last mercy then lands exactly
+  at the transition: on the day the acorns run out, one crow perches slowly and loudly on
+  her wheat and gives her a long beat to come and win. After that, crows are simply crows.
+  That also makes the end of the peace an *event* rather than a silent state change, which
+  it deserves to be — it is the moment phase 1's no-threat contract ends.
+
+**Phase-1 shape, all numbers `[Playtest]`:** a finite initial stock, no regeneration.
+Monotonic, easy to reason about, easy to test. Slow regeneration is the natural phase-2
+evolution, where it becomes a soft difficulty dial and the acorn supply turns into
+something the player can deliberately manage.
+
+Keep both mechanisms: the retargeted flag guarantees a gentle transition even where no
+acorn happens to be reachable, and acorns carry the ongoing case. The ecology side belongs
+to `04-pests-and-ecology.md`; this chapter only cares that the crow's introduction costs
 nothing.
 
 ### Day 4 onward — combination, then silence
