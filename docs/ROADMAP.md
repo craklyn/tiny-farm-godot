@@ -238,6 +238,29 @@ above rested on assumptions nothing had tested, so they were tested:
   developed tile is in the top-left corner and the rest is undeveloped grass, so a centred
   menu over a static view would have an empty ring. Camera drift is load-bearing, not
   decoration.
+- ⚠️ **Action-driven playback renders a *different game*.** The designer spotted that she
+  walked on top of each tile before working it. Cause: `find_path_toward()` does not stop
+  short — the halt-when-in-range behaviour lives in the player's `approach_target`, which
+  only the *tap-handling* branch sets. Pushing a path into `player.path` silently discards
+  the entire Q-30 fix, and calling `sim.apply_action()` directly skips
+  `_execute_resolved_action()`, losing the action animation, tool swap, sfx, particles and
+  the D-8 tile squash. **So: drive the attract loop by injecting taps, not by applying
+  actions.** Then it renders identically to real play by construction and cannot drift.
+- ⚠️ **ReplayLog cannot drive tap-faithful playback — use SessionTrace.** Tapping once per
+  recorded action worked almost no tiles: a far tap on workable ground resolves as pure
+  *movement* (Q-30, second revision), and only the follow-up tap acts. A real session's tap
+  stream therefore contains movement-only taps that changed nothing and so **were never
+  recorded in ReplayLog** — while `SessionTrace` records every one, with timing and player
+  position. **The attract loop should be driven by a trace, with the replay as the check
+  that it reproduced.** That also supplies the pacing the log lacks. (The spike works
+  around it by re-tapping until the tile state changes; that is a spike hack, not a design.)
+- ⚠️ **Tap-driven playback re-opens the isolation hazard, measured.** Over one demo session
+  the live autoload went from `energy 20, wheat 5` to `energy 0, wheat 0`: the attract loop
+  spends the player's real resources, because `player._execute_resolved_action()` uses the
+  `GameState` autoload directly rather than an injected one. Currently masked — both title
+  exits reinitialize GameState (Continue restores from disk, New Farm calls `reset()`) —
+  but that is fragile. **T-16 needs an injectable game state on the player** (`var gs =
+  GameState`, overridable), which also makes the player as testable as the sim.
 - ⚠️ **Curating the demo replay is real work.** Two separate faults made the spike's own
   session *look* wrong while verifying perfectly: clearing and tilling in one pass left
   cleared-but-untilled grass notches mid-field, and the plant pass silently ran out after
@@ -246,8 +269,10 @@ above rested on assumptions nothing had tested, so they were tested:
   can still read as a broken farm, so the shipped demo session must be recorded *to look
   good*, not merely to be valid.
 
-Risk is now low; the remaining work is layout, curation and polish rather than unknowns.
-The estimate stands.
+**Revised estimate: ~5–6 days, not 3–4.** The technical core is proven, but the spike
+turned up one refactor that was not in the original scope (an injectable game state on the
+player) and moved the data source from ReplayLog to SessionTrace. Both are the right
+changes; neither was visible before building it.
 
 **T-14 — Daylight replaces the energy bar** · Q-38 · ~1–2 days
 *So that the least readable thing in the HUD becomes something a pre-reader can see.*

@@ -25,6 +25,11 @@ var _fail := 0
 
 const SPAWN := Vector2i(2, 2)
 
+var _pending := Vector2i(-1, -1)   # tile being tapped until it actually changes
+var _state_before := ""
+var _attempts := 0
+var _live_at_start := ""
+
 
 func _ready() -> void:
 	print("=".repeat(60))
@@ -32,6 +37,7 @@ func _ready() -> void:
 	print("=".repeat(60))
 
 	var live_before := _live_gamestate_fingerprint()
+	_live_at_start = live_before
 
 	_log = _record_a_session()
 	_check_renderer_standalone()
@@ -45,11 +51,7 @@ func _ready() -> void:
 	if DisplayServer.get_name() == "headless":
 		get_tree().quit(1 if _fail > 0 else 0)
 	else:
-		if not _decoded.is_empty():
-			var first = _decoded[0].get("target", null)
-			if first is Vector2i:
-				_player.path = Pathfinding.find_path_toward(_farm, SPAWN, first)
-		print("Windowed: the farmer walks the replay. %.1fs dwell per action." % STEP_SECONDS)
+		print("Windowed: the farmer plays the replay through her own input path.")
 
 
 func _ok(cond: bool, name: String) -> void:
@@ -237,45 +239,77 @@ func _check_movement_is_synthesizable() -> void:
 
 
 # --- Windowed playback --------------------------------------------------------
-# The performance. The replay says *what* happened and in what order; the walk
-# between actions is invented here, because ReplayLog carries no movement.
+# The performance — driven through the *player's own input path*, not by calling
+# sim.apply_action() directly.
+#
+# The first cut did apply actions directly, and the designer immediately spotted
+# that she walked on top of each tile before working it. That is not how the game
+# plays: find_path_toward() does not stop short, and the halt-when-in-range
+# behaviour lives in the player's `approach_target`, which only the tap-handling
+# branch sets. Shoving a path into `player.path` therefore silently discards the
+# whole Q-30 fix — three revisions of work — along with the action animation,
+# tool swap, sfx, particles and the D-8 tile squash, all of which live in
+# _execute_resolved_action().
+#
+# So: inject the tap and let the existing intent -> player -> sim pipeline do
+# everything. The attract loop then renders identically to real play *by
+# construction*, and cannot drift from it later.
 func _process(delta: float) -> void:
 	if _farm == null or _player == null or _next >= _decoded.size():
 		return
 	if DisplayServer.get_name() == "headless":
 		return
 
-	# update_player() is called explicitly rather than from _process, which is
-	# what makes puppeteering possible: with no pending input it simply follows
-	# whatever path it has been handed.
 	_player.update_player(delta)
+	_farm.queue_redraw()
 
-	if not _player.path.is_empty():
-		_farm.queue_redraw()
+	if not _player_is_idle():
 		return
 
-	# She has arrived (or had nowhere to go). Dwell a beat so the eye can see the
-	# tile change, then perform the action and set off for the next one.
 	_dwell += delta
 	if _dwell < STEP_SECONDS:
 		return
 	_dwell = 0.0
 
-	var a := _decoded[_next]
-	_next += 1
-	var t = a.get("target", null)
-	if t is Vector2i:
-		_face_toward(t)
-	_farm.sim.apply_action(a, _gs)
-	_farm.queue_redraw()
+	# A real player often taps a distant workable tile TWICE: the router reads the
+	# first tap as pure movement (Q-30, second revision) and only the follow-up,
+	# now in range, resolves to an action. Tapping once per recorded action
+	# therefore walks her to every tile and works almost none of them.
+	#
+	# The finding this exposes matters more than the workaround: ReplayLog cannot
+	# drive tap-faithful playback at all, because the movement-only taps changed
+	# nothing and so were never recorded. SessionTrace *does* record them. An
+	# attract loop should be driven by a trace, with the replay as the check that
+	# it reproduced.
+	if _pending != Vector2i(-1, -1):
+		var now: String = _farm.sim.get_tile(_pending.x, _pending.y).get("state", "")
+		if now != _state_before or _attempts >= 3:
+			_pending = Vector2i(-1, -1)
+		else:
+			_attempts += 1
+			InputManager.click_tile = _pending
+			InputManager.has_click = true
+			return
 
-	if _next < _decoded.size():
-		var nxt = _decoded[_next].get("target", null)
-		if nxt is Vector2i:
-			_player.path = Pathfinding.find_path_toward(_farm, _player.get_tile_pos(), nxt)
-	else:
-		print("Playback reached the end of the replay (%d actions)." % _decoded.size())
+	while _next < _decoded.size() and not (_decoded[_next].get("target", null) is Vector2i):
+		_next += 1
+	if _next >= _decoded.size():
+		print("Playback reached the end of the replay.")
 		_capture()
+		return
+
+	_pending = _decoded[_next]["target"]
+	_next += 1
+	_state_before = _farm.sim.get_tile(_pending.x, _pending.y).get("state", "")
+	_attempts = 1
+	InputManager.click_tile = _pending
+	InputManager.has_click = true
+
+
+func _player_is_idle() -> bool:
+	return _player.path.is_empty() \
+		and not _player.is_acting \
+		and _player.pending_action.is_empty()
 
 
 func _face_toward(t: Vector2i) -> void:
@@ -295,6 +329,21 @@ func _capture() -> void:
 	await RenderingServer.frame_post_draw
 	var img := get_viewport().get_texture().get_image()
 	# Written to the scratch dir, not the repo: it is evidence, not an asset.
+	# Honesty check: the isolation assertion above runs at *setup*, before any
+	# tap-driven playback. Tap dispatch goes through _execute_resolved_action(),
+	# which hardcodes the GameState autoload — so re-measure at the end and say
+	# so plainly rather than leaving the earlier ✓ to imply more than it proved.
+	var after := _live_gamestate_fingerprint()
+	if after == _live_at_start:
+		print("isolation after playback: HELD (autoload unchanged)")
+	else:
+		print("isolation after playback: **VIOLATED** — the live GameState moved.")
+		print("  before: %s" % _live_at_start)
+		print("  after:  %s" % after)
+		print("  Cause: player._execute_resolved_action() uses the GameState autoload")
+		print("  directly. Tap-driven playback therefore spends the player's real")
+		print("  seeds and energy. T-16 needs an injectable game state on the player.")
+
 	var path := "user://spike_frame.png"
 	var err := img.save_png(ProjectSettings.globalize_path(path))
 	print("frame capture: %s (%dx%d)" % ["ok" if err == OK else "FAILED", img.get_width(), img.get_height()])
