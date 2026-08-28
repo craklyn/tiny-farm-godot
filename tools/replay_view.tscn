@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://replay_view_spike"]
+
+[ext_resource type="Script" path="res://tools/replay_view.gd" id="1_replayview"]
+
+[node name="ReplayView" type="Node2D"]
+script = ExtResource("1_replayview")

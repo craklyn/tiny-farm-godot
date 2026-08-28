@@ -207,8 +207,32 @@ demonstration channel that costs no agency at all.*
       session once one exists, so the backdrop and the Continue card show the same farm
 - [ ] pause the loop while the New Farm confirmation is open — one moving thing at a time
 - [ ] a way to disable it if it costs too much on the tablet (it renders a second world)
+- [ ] suppress the `BuildOverlay` autoload, which draws its build hash over the scene
+- [ ] pick a camera deliberately: the map is 32×20 tiles, larger than the viewport
 *Not on the critical path to the M1 gate. Note the overlap with Q-37: this is the other,
 cheaper way to demonstrate a verb to someone who has not started playing.*
+
+**Spiked 2026-08-28 — `tools/replay_view.gd`, all three unknowns resolved.** The estimate
+above rested on assumptions nothing had tested, so they were tested:
+- ✅ **The renderer works outside `main.tscn`.** `world/farm.gd` instantiates as a bare
+  `Node2D` child, loads its textures, and draws correctly — verified by capturing a frame,
+  not merely by constructing it.
+- ✅ **The isolation hazard is avoidable.** A detached `GameState` plus its own `SimWorld`
+  leaves the autoload's day/gold/energy/seeds fingerprint byte-identical across a full
+  `apply_to()`. The spike asserts this, so the hazard cannot regress silently.
+- ✅ **The walk is synthesizable.** Of 27 action targets in a recorded session, 15 needed a
+  route and 12 were already adjacent — **zero stranded**. `Pathfinding` covers the whole
+  replay, so "the replay is the score, the title screen is the performance" holds.
+  *Note for whoever builds it:* an empty path means "already beside it" as often as
+  "unreachable" — the Q-30 distinction — and counting empty as failure understates
+  reachability by nearly half.
+- ⚠️ **The donut needs the camera, confirmed visually.** In the captured frame every
+  developed tile is in the top-left corner and the rest is undeveloped grass, so a centred
+  menu over a static view would have an empty ring. Camera drift is load-bearing, not
+  decoration.
+
+Risk is now low; the remaining work is layout, curation and polish rather than unknowns.
+The estimate stands.
 
 **T-14 — Daylight replaces the energy bar** · Q-38 · ~1–2 days
 *So that the least readable thing in the HUD becomes something a pre-reader can see.*
