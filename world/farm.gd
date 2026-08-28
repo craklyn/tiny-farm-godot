@@ -5,6 +5,7 @@
 extends Node2D
 
 const TILE_SIZE := 16
+const EGG_SIZE := TILE_SIZE / 2.0  # half a tile, centred (see the egg draw below)
 const MAP_WIDTH := SimWorld.MAP_WIDTH
 const MAP_HEIGHT := SimWorld.MAP_HEIGHT
 
@@ -313,12 +314,19 @@ func _draw() -> void:
 			# Queue objects
 			var obj: String = objects[ty][tx]
 			if obj == "egg":
+				# Drawn at half a tile and centred: at full tile size it read as
+				# boulder-sized next to the chicken that laid it. The tap target is
+				# unaffected — taps resolve by tile coordinate, not by sprite bounds,
+				# so this shrinks the picture without shrinking what she can hit.
+				var egg_rect := Rect2(
+					px + (TILE_SIZE - EGG_SIZE) / 2.0,
+					py + (TILE_SIZE - EGG_SIZE) / 2.0,
+					EGG_SIZE, EGG_SIZE)
 				render_queue.append({
 					"y": py,
 					"draw": func():
 						# animals.png cell 11
-						draw_texture_rect_region(animals_texture,
-							Rect2(px, py, TILE_SIZE, TILE_SIZE), Rect2(11 * 16, 0, 16, 16))
+						draw_texture_rect_region(animals_texture, egg_rect, Rect2(11 * 16, 0, 16, 16))
 				})
 			elif obj != "":
 				var obj_data = object_regions.get(obj)
