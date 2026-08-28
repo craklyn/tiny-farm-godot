@@ -477,6 +477,43 @@ fast-forward benchmark still measures ~973,000x realtime, because reactions run 
 `apply_action` has already resolved and redraw only while one is in flight. Tier (b)
 would additionally need per-verb actor poses, which is where the art cost starts.
 
+### D-9. Does actor position become simulation state, and movement an Action?
+Raised 2026-08-28 from the designer's question: *is the problem just that our action
+replay doesn't record movement taps as actions?*
+
+**Current state, and it is deliberate.** `sim_world.gd` contains no actor positions at
+all — not the player's, not the crow's, not the chicken's. The sim owns tiles and objects;
+where anyone is *standing* is presentation state. M2 chose this explicitly and recorded it
+(`M2_SPEC.md`: entity movement and timers are presentation-side decision *processes* whose
+chosen Actions are the record). For phase 1 it is the right call and it is what makes the
+M2 gate cheap to hit. It is also why movement is not recorded: not an oversight in the
+logger, but a consequence of position not being sim truth.
+
+**Why it cannot hold through phase 4.** `tools/benchmark_sim.gd` sets energy and seeds to
+a million and applies verbs across a plot: **the actor teleports.** That is an honest
+measure of *sim throughput*, which is exactly what M2's gate asked for, but it means the
+overnight fast-forward does not model travel. Travel is the substance of a delegation
+game — "which bot goes where, and is the walk worth it" *is* the phase-4 problem — and an
+agent that teleports has no problem to solve. Simulating agents, not just the farm, is
+what "train bots overnight" means.
+
+**What flips if this is adopted:** actor position becomes sim state; movement becomes an
+Action (or a costed process the sim schedules); the fast-forward begins to model travel
+time; and the exploratory-movement gap noted under S-3 closes for free, because movement
+would be recorded anyway. S-3 is unaffected in spirit — player and bots would simply share
+one more verb, which is what that entry already promises.
+
+**Trigger: before the D-2 spike, not merely before M5.** D-2 chooses the ML algorithms,
+and an action space that omits movement is a materially different learning problem from
+one that includes it — so answering D-2 first would be choosing an algorithm for a world
+we have not decided on. This is the earliest decision of the phase-4 group.
+
+**Cost if deferred past that point:** every replay recorded before the change lacks
+movement, so the pre-change corpus can train task selection but not routing. That argues
+for settling D-9 *before* accumulating training data in earnest, and it compounds with
+Q-41 (version-stamping replays), which is what would let a mixed corpus be sorted out at
+all.
+
 ---
 
 ## Awaiting designer input (the M0 exit gate)

@@ -325,8 +325,14 @@ wave design on the sim core (waves are just fast-forwardable sims — previewabl
 testable for free).
 
 ## Phase-gated beyond this point
-- **D-2 spike** (any time after M2, before phase 4 production): on-device training
-  benchmark; pick algorithms; then phase 4 production.
+- **D-9** (before D-2): does actor position become sim state, and movement an Action?
+  The sim currently holds no actor positions, so the fast-forward benchmark's actor
+  teleports — an honest throughput measure, but it does not model travel, which is the
+  substance of a delegation game. Must be settled *before* D-2, since an action space that
+  omits movement is a different learning problem, and before a training corpus is
+  accumulated in earnest.
+- **D-2 spike** (after D-9; any time after M2, before phase 4 production): on-device
+  training benchmark; pick algorithms; then phase 4 production.
 - **M5 — Phase 4 vertical slice:** first bot learns from the player's own replays;
   overnight training loop live; D-4 (how much real ML the player sees) resolved by
   playtest.
