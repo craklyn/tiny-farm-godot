@@ -189,6 +189,23 @@ first, since a different answer there changes what the other four are optimising
   crow and chicken (S-3) — so it is replayable, deterministic, and needs no new
   machinery. **Note it takes a narrative position** (you inherit this farm), which is
   live D-3/Q-22 territory. Detail in `design/13` §4a.
+- **Q-40 (Ruling)** **The landing page: a donut of living farm around the menu.**
+  Designer's proposal: keep the menu centred, render the farm full-screen behind it, and
+  drive that farm from a recorded replay so it plays while the player chooses.
+  **Recommendation: adopt.** Beyond looking good, an attract loop is a *demonstration
+  channel that costs zero agency* — exactly what Q-37's cold open buys at the price of
+  control — and it is skippable by construction, since the skip is the button the player
+  was already reaching for. **Two findings from checking the code.** (1) `ReplayLog` has
+  no timestamps and contains no movement (only world mutations go through
+  `apply_action`), so it drives *state*, not *performance*; do **not** add fields to it —
+  it is S-3 training data — and instead treat the replay as the score and the title screen
+  as the performance, synthesizing the walk with the existing `Pathfinding`. (2) **Hazard:**
+  `ReplayLog.apply_to(world, gs)` calls `gs.reset()`, so passing the `GameState` autoload
+  would wipe the player's live state on the title screen *before* they tap Continue; the
+  attract loop needs a detached GameState and its own SimWorld. Also note the donut's real
+  constraint: the menu hides the centre, and the busiest part of any real session is the
+  top-left spawn band, so a slow camera drift is needed rather than a static view. Detail
+  in `design/11-ux-ui.md`.
 - **Q-39 (Ruling)** **Acorns as the crow's first target.** Designer's proposal: trees
   drop acorns and crows go for those first. **Recommendation: adopt.** T-2 currently makes
   the first crow harmless with a boolean, which works but is a *scripted* mercy the player

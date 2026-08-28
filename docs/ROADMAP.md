@@ -46,6 +46,9 @@ payoff is what makes day 1 mean anything. `T-6`/`T-7` are Q-36. `T-8`→`T-10` a
 and are the bulk of the work. `T-11`/`T-12` are Q-35. `T-13` is Q-37 and `T-14` is Q-38;
 both were raised on 2026-08-28 and neither is on the critical path to the exit gate.
 
+*Later additions: `T-13` (Q-37), `T-14` (Q-38), `T-15` (Q-39) and `T-16` (Q-40) were all
+raised 2026-08-28. None is on the critical path to the exit gate.*
+
 **If only one thing here gets built, build T-14.** It is the cheapest of the lot
 (presentation only, sim untouched), it deletes a whole concept rather than adding one,
 and it converts the single least readable element in the game into something a
@@ -184,6 +187,28 @@ perceive.*
       cannot be drained by lingering in a single day
 - [ ] trees give `obstacle_log` an origin — coordinate with T-8's ring content
 *This is also the game's first decoy mechanic; note the through-line to `design/05`.*
+
+**T-16 — The landing page: a living farm around the menu** · Q-40 · ~3–4 days
+*So that the first thing anyone sees is the game playing itself, and so we get a
+demonstration channel that costs no agency at all.*
+- [ ] `world/farm.gd` instantiated standalone behind the title menu (verified: it is a
+      clean Node2D facade over SimWorld with no coupling to `main`)
+- [ ] **a detached `GameState` and its own `SimWorld`** — `ReplayLog.apply_to()` calls
+      `gs.reset()`, so handing it the autoload would wipe the player's live state on the
+      title screen before they tap Continue. `tests/test_runner.gd` has the pattern
+- [ ] the attract loop must never write `save_path`, `replay_path` or `trace_path`
+- [ ] **synthesize the performance, do not extend the log**: `ReplayLog` has no timestamps
+      and no movement, so path the farmer between action targets with `Pathfinding` and
+      choose the pacing locally. Adding fields to the log is off the table — it is S-3
+      training data
+- [ ] slow camera drift, because the menu occludes the centre and the busiest part of any
+      real session is the top-left spawn band
+- [ ] a curated demo replay shipped for first launch; switch to the player's own last
+      session once one exists, so the backdrop and the Continue card show the same farm
+- [ ] pause the loop while the New Farm confirmation is open — one moving thing at a time
+- [ ] a way to disable it if it costs too much on the tablet (it renders a second world)
+*Not on the critical path to the M1 gate. Note the overlap with Q-37: this is the other,
+cheaper way to demonstrate a verb to someone who has not started playing.*
 
 **T-14 — Daylight replaces the energy bar** · Q-38 · ~1–2 days
 *So that the least readable thing in the HUD becomes something a pre-reader can see.*
