@@ -206,13 +206,23 @@ first, since a different answer there changes what the other four are optimising
   gone the crows turn to crops. That converts the mercy into a difficulty curve with no
   difficulty setting — the threat arrives on a schedule the world sets, experienced as
   food running out, and the days before it are exactly the window where she learns the
-  rest of the game. Two conditions: **deplete the stock on sleep, not per crow visit**
-  (the spawner fires every 10 s, so per-visit depletion burns a multi-day peace in about
-  eighty seconds, and a long first session eats the whole ramp — the general rule being
-  that day-scaled pacing must never be driven by a real-time spawner), and **retarget
-  T-2's harmless flag from "first crow ever" to "first crow to target a crop"**, so the
-  last mercy lands at the transition instead of being spent on a crow that was never a
-  threat.
+  rest of the game. **Extended again, same day, and this is the
+  load-bearing rule:** *a crow that gets food is done for the day; if shooed it keeps
+  trying until it is fed or the day ends.* That fixes the pacing problem at its cause
+  rather than by sleep-time bookkeeping — no crow can consume twice, so the acorn stock
+  depletes at the rate of crows-per-day whatever the session length. It also makes shooing
+  *buy time* rather than win outright (with day's end as the honest win condition), pairs
+  with Q-38 because a visible sky tells the player how long she has to hold out, makes the
+  acorn equation exact (acorns ≥ crows that day → zero loss), and turns the crow into a
+  character with a goal rather than an anonymous unit — a bird that keeps coming back is
+  funny where a stream of birds is a swarm. **It needs one companion: a per-day crow
+  budget**, since bounding losses to the number of crows only bounds anything if that
+  number is bounded (one per ten seconds otherwise means ~200 crows in a long session,
+  each entitled to a meal). With both, daily loss is exactly
+  `min(crows_today, crops_available)`, and the budget is the dial that becomes **flocks**
+  in phase 2 — raise the number, never the appetite. Also **retarget T-2's harmless flag
+  from "first crow ever" to "first crow to target a crop"**, so the last mercy lands at
+  the transition instead of being spent on a crow that was never a threat.
 - **Q-38 (Ruling)** **Daylight instead of an energy bar.** Designer's proposal: replace
   the energy meter with a visible day cycle (sunrise/midday/sunset/twilight as a colour
   grade) where spending energy advances the time of day, so twilight itself says the day

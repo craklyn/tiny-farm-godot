@@ -170,9 +170,13 @@ boundary**, so if Q-34 also passes, build this together with T-8 rather than sep
 perceive.*
 - [ ] standing trees as a world feature; acorns as a dropped object (sim, deterministic)
 - [ ] crow target selection prefers a reachable acorn over any crop
-- [ ] **acorn stock depletes on sleep, not per crow visit** — the spawner fires every 10 s,
-      so per-visit depletion burns a multi-day peace in ~80 s and a long first session eats
-      the whole ramp. Finite stock, no regeneration in phase 1
+- [ ] **a fed crow is done for the day**; a shooed one keeps trying until fed or until the
+      day ends. This is what makes pacing independent of session length — no crow consumes
+      twice, so the acorn stock depletes at the rate of crows-per-day on its own
+- [ ] **a per-day crow budget** (one on the first pest day, scaling later) — without it the
+      10 s spawner yields ~200 crows in a long session, each entitled to a meal. With both
+      rules daily loss is exactly `min(crows_today, crops_available)`
+- [ ] finite acorn stock, no regeneration in phase 1
 - [ ] **retarget T-2's harmless flag** from "first crow ever" to "first crow to target a
       crop", so the last mercy lands at the transition rather than on a crow that was
       never a threat

@@ -346,10 +346,38 @@ Two things this requires to work, one of which is a trap.
   seconds of real time. If each visiting crow removes an acorn, a pile of eight is gone in
   about eighty seconds and the multi-day peace collapses into one long afternoon — worse,
   a child who happily plays for forty minutes on day 1 burns the entire ramp before she
-  has learned anything. The **stock** should deplete on sleep, a few per night, while
-  individual crows still visibly carry one off as the teaching moment. The general rule,
-  which is worth holding to beyond this feature: **pacing that should be measured in days
-  must not be driven by a real-time spawner.**
+  has learned anything. The general rule, worth holding to beyond this feature: **pacing
+  that should be measured in days must not be driven by a real-time spawner.**
+
+  **The fix, and a better one than depleting on sleep** *(designer, same day)*: **a crow
+  that gets food is done for the day.** If it is shooed it keeps trying — until it is fed,
+  or until the day ends. Sleep-time bookkeeping was treating a symptom; this addresses the
+  cause, because no individual crow can consume twice and the acorn stock therefore
+  depletes at the rate of crows-per-day on its own. The real-time spawner stops mattering.
+
+  Three further properties fall out of it:
+
+  - **Shooing buys time rather than winning outright**, with day's end as the win
+    condition. Honest — defending costs effort — without ever being a loss the player
+    could not have prevented.
+  - **It pairs with Q-38's daylight cycle.** With a visible sky she can see how much day
+    is left, so "keep it off a little longer" becomes a readable goal rather than an
+    unknowable wait. Each feature makes the other better, which is some evidence both are
+    right.
+  - **The acorn equation becomes exact:** acorns available ≥ crows that day → zero crop
+    loss. The decoy mechanic stated as arithmetic a player can feel without counting.
+
+  It also turns the crow into a *character with a goal it keeps pursuing* rather than an
+  anonymous unit from a spawner. A bird that keeps coming back is funny; a stream of birds
+  is a swarm — so this serves Q-10's comedy register for free.
+
+  **The gap it leaves.** Bounding losses to *the number of crows* only bounds anything if
+  the number of crows is itself bounded — otherwise a forty-minute session spawns two
+  hundred of them at one per ten seconds, each entitled to a meal. So it needs a
+  companion: **a per-day crow budget**, one on the first pest day and scaling later. With
+  both rules, daily loss is exactly `min(crows_today, crops_available)` and session length
+  becomes irrelevant to pacing, which is what this was all trying to buy. The budget is
+  then the dial that becomes **flocks** in phase 2: raise the number, never the appetite.
 - **The T-2 mercy flag should be retargeted.** It currently keys on `crows_seen <= 1` —
   the first crow *ever*. Under depletion that is the wrong anchor: the first several crows
   are already harmless by behaviour, so the flag is spent on one that was never a threat.
