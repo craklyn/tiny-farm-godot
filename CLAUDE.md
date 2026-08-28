@@ -99,4 +99,9 @@ Working agreements (from README):
 - Both test suites stay green on every commit; new systems ship with sim-level tests.
 - Design docs are updated in the same change as the design they reflect.
 - Commit straight to main while the team is small (Q-4 ruling); commit immediately.
-- Current art/audio are placeholders (`CREDITS.md`); don't invest in asset polish.
+- Current art/audio are placeholders (`CREDITS.md`). **Updated 2026-08-28:** modest
+  investment in new placeholder art is fine — the Retro Diffusion pipeline (the
+  `retro-diffusion-pixel-art` skill; output rights verified) makes a sprite cheap, so
+  "that needs new art" is no longer on its own a reason to reject a design. Stay
+  frugal: generate what the design needs and no more, keep the palette-locking and
+  post-processing steps, and record provenance in `CREDITS.md`.

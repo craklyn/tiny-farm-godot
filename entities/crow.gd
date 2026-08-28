@@ -29,6 +29,32 @@ var harmless: bool = false
 const EAT_SECONDS := 5.0
 const HARMLESS_PERCH_SECONDS := 12.0
 
+const MAP_W_PX := SimWorld.MAP_WIDTH * TILE_SIZE
+const MAP_H_PX := SimWorld.MAP_HEIGHT * TILE_SIZE
+const OFFSCREEN := 32.0
+const DESPAWN_MARGIN := 100.0
+
+# The way out, set from the way in. Crows used to enter at a fixed point off the
+# top-left corner and leave along the same diagonal, which made standing near the
+# left edge block every crow in the game — an accidental mechanic nobody designed
+# and no player could reason about.
+var exit_dir: Vector2 = Vector2(-1, -1).normalized()
+
+
+# Where a crow enters, given which edge it picked and how far along that edge.
+# Pure and static so the spread can be tested without a scene tree; `along` is
+# taken modulo the relevant axis, so any integer is valid.
+static func offscreen_start(side: int, along: int) -> Vector2:
+	match side % 4:
+		0:  # left
+			return Vector2(-OFFSCREEN, float(posmod(along, MAP_H_PX)))
+		1:  # right
+			return Vector2(MAP_W_PX + OFFSCREEN, float(posmod(along, MAP_H_PX)))
+		2:  # top
+			return Vector2(float(posmod(along, MAP_W_PX)), -OFFSCREEN)
+	# bottom
+	return Vector2(float(posmod(along, MAP_W_PX)), MAP_H_PX + OFFSCREEN)
+
 func init_crow(start_x: float, start_y: float, tx: int, ty: int, f: Node2D, p: Node2D, em: Node) -> void:
 	position = Vector2(start_x, start_y)
 	target_tx = tx
@@ -36,6 +62,10 @@ func init_crow(start_x: float, start_y: float, tx: int, ty: int, f: Node2D, p: N
 	farm = f
 	player = p
 	entities_manager = em
+	# Leave the way she came, so the exit is as varied as the entrance.
+	var centre := Vector2(MAP_W_PX / 2.0, MAP_H_PX / 2.0)
+	var away := position - centre
+	exit_dir = away.normalized() if away.length() > 0.001 else Vector2(-1, -1).normalized()
 
 
 func _process(delta: float) -> void:
@@ -97,10 +127,11 @@ func _process(delta: float) -> void:
 			
 	elif state == "flying_away":
 		var speed: float = 80.0 * delta
-		position.x -= speed
-		position.y -= speed
-		
-		if position.x < -100 or position.y < -100:
+		position += exit_dir * speed
+
+		if position.x < -DESPAWN_MARGIN or position.y < -DESPAWN_MARGIN \
+				or position.x > MAP_W_PX + DESPAWN_MARGIN \
+				or position.y > MAP_H_PX + DESPAWN_MARGIN:
 			queue_free()
 
 

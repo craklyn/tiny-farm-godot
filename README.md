@@ -65,7 +65,9 @@ CI runs the headless suites on every push (`.github/workflows/tests.yml`).
 - Both test suites stay green on every commit; new systems ship with sim-level tests.
 - Design docs are updated in the same change as the design they reflect.
 - Current art and audio are placeholders (see `CREDITS.md`); a full reskin is planned
-  once the art style is settled.
+  once the art style is settled. Modest investment in new placeholder art is fine
+  (2026-08-28) — the Retro Diffusion pipeline makes a sprite cheap enough that art cost
+  is no longer a reason to reject a design on its own. Frugal, not precious.
 
 ## License
 Code: see [LICENSE](LICENSE). Third-party assets: see [CREDITS.md](CREDITS.md).

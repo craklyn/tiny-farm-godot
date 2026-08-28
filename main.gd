@@ -239,7 +239,11 @@ func _process(delta: float) -> void:
 			# anything. Only the second one onward can actually eat.
 			GameState.crows_seen += 1
 			crow.harmless = GameState.crows_seen <= 1
-			crow.init_crow(-32.0, -32.0, target.x, target.y, farm, player, entities)
+			# Seeded like all gameplay randomness, so a run stays reproducible.
+			var side: int = SimRng.randi() % 4
+			var along: int = SimRng.randi()
+			var start: Vector2 = CrowScript.offscreen_start(side, along)
+			crow.init_crow(start.x, start.y, target.x, target.y, farm, player, entities)
 			entities.add_child(crow)
 
 	# Action. Dispatch happens inside the player (sleep/open_shop arrive back

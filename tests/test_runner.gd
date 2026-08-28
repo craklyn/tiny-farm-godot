@@ -1186,3 +1186,4 @@ func test_crow_readiness() -> void:
 	var w4 := SimWorld.new()
 	_assert(SaveGame.restore(legacy, w4, GameState), "a pre-T-2 save still loads")
 	_assert(GameState.crows_seen == 0, "and defaults to a harmless first crow")
+

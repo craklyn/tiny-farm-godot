@@ -58,6 +58,7 @@ func _run_scenarios() -> void:
 	await _scenario_c()
 	await _scenario_d()
 	await _scenario_e()
+	await _scenario_f()
 
 func _wait_for_action() -> void:
 	# Give it one frame to register the action and set is_acting = true
@@ -223,3 +224,57 @@ func _scenario_e() -> void:
 	
 	_assert(GameState.crops["wheat"] == 0, "Crop removed from inventory on bin interact")
 	_assert(GameState.gold == gold_before + 15, "Gold increased by wheat sell price (15g)")
+
+
+func _scenario_f() -> void:
+	# Reported from play 2026-08-28: crows only ever came from the left. They
+	# spawned at a fixed (-32,-32) and flew away along that same diagonal, so
+	# standing near the left edge blocked every crow in the game — an accidental
+	# mechanic nobody designed and no player could reason about.
+	#
+	# Lives in the integration suite rather than the unit suite because crow.gd
+	# reaches for the GameState autoload, which the --script unit runner has not
+	# registered.
+	print("\n--- Scenario F: Crow approach direction ---")
+
+	var Crow = load("res://entities/crow.gd")
+	var w: float = float(SimWorld.MAP_WIDTH * 16)
+	var h: float = float(SimWorld.MAP_HEIGHT * 16)
+
+	var left: Vector2 = Crow.offscreen_start(0, 100)
+	var right: Vector2 = Crow.offscreen_start(1, 100)
+	var top: Vector2 = Crow.offscreen_start(2, 100)
+	var bottom: Vector2 = Crow.offscreen_start(3, 100)
+
+	_assert(left.x < 0.0, "side 0 enters from off the left edge")
+	_assert(right.x > w, "side 1 enters from off the right edge")
+	_assert(top.y < 0.0, "side 2 enters from off the top edge")
+	_assert(bottom.y > h, "side 3 enters from off the bottom edge")
+	_assert(Crow.offscreen_start(0, 10).y != Crow.offscreen_start(0, 200).y,
+		"entry point varies along the edge, not just the side")
+	_assert(Crow.offscreen_start(0, -7).y >= 0.0, "a negative offset stays on the edge")
+	_assert(Crow.offscreen_start(0, 999999).y < h, "a huge offset stays on the edge")
+	_assert(Crow.offscreen_start(4, 100) == left, "side index wraps")
+
+	# All four edges must be reachable from the spawner's seeded draw, or some
+	# side is unreachable and the block-one-corner exploit survives there.
+	var seen := {}
+	SimRng.reseed(99)
+	for i in range(200):
+		seen[SimRng.randi() % 4] = true
+	_assert(seen.size() == 4, "all four edges are reachable from the seeded draw")
+
+	# Departure mirrors arrival: a crow entering from the right must leave to the
+	# right, not cross the whole farm to exit where crows always used to.
+	for case in [
+		{ "at": right,  "name": "right",  "axis": "x", "sign": 1.0 },
+		{ "at": left,   "name": "left",   "axis": "x", "sign": -1.0 },
+		{ "at": bottom, "name": "bottom", "axis": "y", "sign": 1.0 },
+		{ "at": top,    "name": "top",    "axis": "y", "sign": -1.0 },
+	]:
+		var c = Crow.new()
+		c.init_crow(case.at.x, case.at.y, 5, 5, farm, player, null)
+		var component: float = c.exit_dir.x if case.axis == "x" else c.exit_dir.y
+		_assert(component * case.sign > 0.0,
+			"a crow from the %s leaves toward the %s" % [case.name, case.name])
+		c.free()

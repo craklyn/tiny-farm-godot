@@ -189,6 +189,19 @@ first, since a different answer there changes what the other four are optimising
   crow and chicken (S-3) — so it is replayable, deterministic, and needs no new
   machinery. **Note it takes a narrative position** (you inherit this farm), which is
   live D-3/Q-22 territory. Detail in `design/13` §4a.
+- **Q-39 (Ruling)** **Acorns as the crow's first target.** Designer's proposal: trees
+  drop acorns and crows go for those first. **Recommendation: adopt.** T-2 currently makes
+  the first crow harmless with a boolean, which works but is a *scripted* mercy the player
+  can never perceive — a four-year-old sees a crow that inexplicably left. Acorns replace
+  the script with behaviour: the crow is not nerfed, it simply prefers acorns, which is
+  legible, true, and watchable. It also makes the mercy standing rather than one-shot,
+  teaches "crows want things" one beat before "crows want *your* things", gives standing
+  trees a reason to exist (and `obstacle_log` an origin the ring design wants anyway), and
+  — the part worth noticing — **it is the first decoy.** A player who works out that a
+  tree near her crops keeps crows busy has invented lure-and-aggro management on her own,
+  phases before `design/05` formalises it. Keep the T-2 flag as the floor; acorns carry
+  the ongoing case. Ecology detail belongs in `design/04`. Sim work: an acorn object type
+  and crow target preference, both deterministic and testable.
 - **Q-38 (Ruling)** **Daylight instead of an energy bar.** Designer's proposal: replace
   the energy meter with a visible day cycle (sunrise/midday/sunset/twilight as a colour
   grade) where spending energy advances the time of day, so twilight itself says the day

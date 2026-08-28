@@ -145,16 +145,35 @@ second causal chain — one crop buys three seeds — lands as a payoff rather t
 - [ ] first refill highlighted when the can empties
 - [ ] each fires once, at the moment of need, one object at a time
 
-**T-13 — The cold open: a departing neighbour** · Q-37 · ~2–3 days
+**T-13 — The cold open: a fence, a neighbour, and an open gate** · Q-37 · ~2–3 days
 *So that a verb is demonstrated rather than pointed at, and the first crop is an
-inheritance rather than a gift.*
-- [ ] the neighbour is a live actor, present at start, with the player never locked out
-- [ ] she performs **one** verb; her half-finished row tells the rest spatially
+inheritance the player physically crosses into rather than a gift.*
+- [ ] the player starts in her own small yard, **in full control from frame one**, with a
+      fence between her and the neighbour's plot
+- [ ] the neighbour works on the far side; she performs **one** verb, and her
+      half-finished row tells the rest spatially (cleared → tilled → seeded → growing → ripe)
+- [ ] a **toy in the pen, not a chore**: the chicken clucks when tapped, so the first
+      *reward* is seconds in even though the first *harvest* is around forty-five
 - [ ] offscreen engine + honk instead of a truck sprite; she waves, and waves back if tapped
+- [ ] the honk is the callback, then the **gate opens** and becomes the vignette's first
+      highlighted target — beat 0, ahead of the harvest
 - [ ] her actions go through `apply_action` as `actor: "neighbour"` (S-3) — no cutscene
       system, no new machinery, replayable for free
-- [ ] ignorable end to end: tapping the ripe crop and never looking at her must still work
-*Blocked on Q-37, and takes a narrative position (Q-22) — confirm before building.*
+- [ ] once the gate is open, ignoring her entirely and tapping the ripe crop must still work
+- [ ] art: neighbour sprite + walk cycle, one verb pose, a wave frame, fence and gate tiles
+      — a modest generation run on the existing pipeline, not a budget decision
+*Blocked on Q-37, and takes a narrative position (Q-22). **The fence is ring 0's
+boundary**, so if Q-34 also passes, build this together with T-8 rather than separately.*
+
+**T-15 — Trees, acorns, and crows that prefer them** · Q-39 · ~2 days
+*So that the crow's harmlessness is something she can watch rather than a flag she cannot
+perceive.*
+- [ ] standing trees as a world feature; acorns as a dropped object (sim, deterministic)
+- [ ] crow target selection prefers a reachable acorn over any crop
+- [ ] the T-2 harmless flag stays as the floor for the case where no acorn is reachable
+- [ ] sim-level tests: a crow with an acorn available never targets a crop
+- [ ] trees give `obstacle_log` an origin — coordinate with T-8's ring content
+*This is also the game's first decoy mechanic; note the through-line to `design/05`.*
 
 **T-14 — Daylight replaces the energy bar** · Q-38 · ~1–2 days
 *So that the least readable thing in the HUD becomes something a pre-reader can see.*

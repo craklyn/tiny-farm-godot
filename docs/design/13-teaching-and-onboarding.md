@@ -149,17 +149,66 @@ a design position rather than a stylistic one. Our specific player is four years
 will not watch a cutscene — she will tap the screen repeatedly and conclude either that
 it should be skipped or that the game is broken. Thirty seconds without agency at the
 very start is the highest-risk content we could place there. Secondary objections: an NPC
-with a walk cycle plus four verb animations and a truck is the most expensive item in
-this chapter, against a standing rule not to invest in placeholder art; and passive
-watching is a substantially weaker teacher than doing, so she may watch all of it and
-learn nothing, having never been the agent.
+with a walk cycle plus four verb animations and a truck was the most expensive item in
+this chapter; and passive watching is a substantially weaker teacher than doing, so she
+may watch all of it and learn nothing, having never been the agent.
+
+*The cost half of that objection is withdrawn (2026-08-28).* It rested on the old working
+agreement not to invest in placeholder art, which no longer holds: the project is frugal
+but has a working generative pipeline (`retro-diffusion-pixel-art`, output rights verified
+2026-08-27) that already produced the entire current art set. A neighbour sprite with a
+walk cycle, one verb pose, a wave frame, and fence-and-gate tiles is a modest generation
+run, not a budget decision. **The agency objection stands on its own and is the one that
+matters** — and the fence below answers it.
+
+**The fence, which resolves the objection rather than working around it.**
+*Designer's revision, 2026-08-28, and it is better than what it replaces.*
+
+Put a **fence between two yards**. The player starts in her own small yard with full
+control from the first frame, and watches the neighbour work through the fence. When the
+neighbour leaves, **the gate is left open**, and the player can cross into the plot with
+the ripe crop in it.
+
+This is not a compromise on the cutscene problem; it dissolves it. Control is never taken
+away — the restriction is *spatial*, and the player is free inside it the whole time,
+which is exactly the Half-Life method of holding attention with geometry instead of a
+camera cut. Four further things fall out of it for free:
+
+- **The fence is the first instance of the §5 lock.** "Not yet" expressed as land rather
+  than as a refusal, arriving on day 1 as the very first lesson — and attached to no tool
+  at all, so by the time a ring boundary actually gates something, the grammar is already
+  learned.
+- **An opening gate is a reward that needs no words.** Closed becomes open; a pre-reader
+  reads that instantly, and it is the cheapest celebration in the game.
+- **It answers "why is this crop mine?" physically.** You cross into her yard and take
+  over. The inheritance is something you *do*, not something you are told.
+- **A small starting pen is kind.** A 32×20 map is a lot of room to be lost in on a first
+  session; bounding the opening is a courtesy, not a restriction.
+
+**The tension this creates, and its answer.** If the pen holds nothing she is caged and
+bored; if it holds chores she ignores the neighbour entirely. The answer is to **put a toy
+in the pen, not a chore**: the chicken. Tapping it clucks — zero stakes, instantly
+delightful, and it teaches *tap things and they respond* without spending a farm verb or a
+vignette beat. So the first **reward** still arrives within seconds even though the first
+**harvest** now arrives around forty-five. That distinction is the entire budget of the
+cold open: it may spend time-to-first-harvest, and it must not spend time-to-first-delight.
+
+**Ending the scene.** Event-driven, never on a timer the player cannot see. The
+neighbour's sequence runs its course and the offscreen honk is the callback that draws
+attention wherever the player happens to be; the gate then opens and becomes the
+vignette's first highlighted target — beat 0, ahead of the harvest at beat 1.
+
+**Design consequence.** The fence *is* ring 0's boundary, so this and the ring generation
+in §5 are one design rather than two. If both are adopted, T-8 and T-13 should be built
+together.
 
 **Recommended revision — keep the content, drop the cutscene.**
 
 - **A live scene, not a sequence.** The departing child is simply present when the game
-  starts. The player has full control from the first frame and may walk over, follow, or
-  ignore her entirely. If the player ignores everything and taps the ripe crop, the whole
-  design still works — the scene is enrichment, never a gate.
+  starts, on the far side of the fence. The player has full control from the first frame
+  and may watch, wander, or play with the chicken instead. Once the gate opens, ignoring
+  everything and tapping the ripe crop must still work — the scene is enrichment, never a
+  gate on progress.
 - **One verb, not four.** Watching four actions is a cutscene; watching one is a moment.
   She plants one tile and waters it, and that is all.
 - **The layout tells the rest.** Leave her half-finished row reading left to right —
@@ -253,6 +302,36 @@ comedy-not-threat ruling, applied to the specific case of the first encounter, w
 the case that ruling explicitly said matters most.
 
 Only the *second* crow can actually take a crop.
+
+**Acorns — proposed 2026-08-28, awaiting Q-39, and better than the flag it would
+replace.** *Designer's proposal: trees drop acorns, and crows go for the acorns first.*
+
+T-2's harmless-first-crow is a **scripted** mercy: a boolean that says "this one cannot
+eat." It works, and it is two lines, but the player can never perceive the rule — a
+four-year-old experiences it as a crow that inexplicably left. Acorns replace the script
+with **behaviour**: the crow is not nerfed, it simply prefers acorns, and it flies off
+with one. That is legible, it is *true*, and the child can watch it happen.
+
+Four things it earns beyond the first encounter:
+
+- **The mercy becomes standing rather than one-shot.** As long as acorns are about, crows
+  are cheap to live with. The first-crow flag stops being the whole safety net and becomes
+  only its floor.
+- **It teaches "crows want things" before "crows want *your* things."** The concept
+  arrives one step before the threat does, which is principle 4 — one new thing at a time
+  — applied to a creature rather than a verb.
+- **It is the first decoy, and decoys are the seed of tower defense.** A player who
+  notices that a tree near the crops keeps the crows busy has invented lure-and-aggro
+  management on her own, several phases before `05-defense-system.md` formalises it. That
+  is the "mastered systems become substrate" property the vision asks every phase to have,
+  arriving for free in phase 1.
+- **Trees are where logs come from.** Standing trees give `obstacle_log` an origin, which
+  the ring structure in §5 wants anyway.
+
+Keep both mechanisms: the flag guarantees a safe first encounter even where no acorn
+happens to be reachable, and acorns carry the ongoing case. The ecology side belongs to
+`04-pests-and-ecology.md`; this chapter only cares that the crow's introduction costs
+nothing.
 
 ### Day 4 onward — combination, then silence
 
@@ -516,6 +595,7 @@ daylight (recommendation: yes, and that is fine — sleep should never be refuse
 | Q-34 | Tool-gated land rings, or all tools from the start? | Rings, with the lock expressed as land rather than refusal (§5) |
 | Q-35 | How and when to teach sell / buy / refill | At first need, one object at a time (§7) |
 | Q-36 | Hint escalation: is stage 3 too much hand-holding? | Ship it; a stalled four-year-old has already cost us the gate (§6) |
+| Q-39 | Trees drop acorns; crows prefer them? | Adopt — it converts a scripted mercy into visible behaviour, and it is the first decoy mechanic (§4) |
 | Q-38 | Replace the energy bar with a daylight cycle? | Adopt; keep night soft, and rule the phase-2 consequence consciously (§8a) |
 | Q-37 | The cold open: adopt, and in which form? | Adopt the live-scene revision, not the cutscene — control is never taken, one verb is demonstrated, the layout carries the rest (§4a) |
 
