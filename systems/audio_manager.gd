@@ -19,7 +19,8 @@ var sfx_streams = {
     ],
     "squawk": [preload("res://assets/audio/sfx/squawk.wav")],
     "cluck": [preload("res://assets/audio/sfx/cluck.wav")],
-    "jingle": [preload("res://assets/audio/sfx/jingle.wav")]
+    "jingle": [preload("res://assets/audio/sfx/jingle.wav")],
+    "nope": [preload("res://assets/audio/sfx/nope.wav")]
 }
 
 # Presentation-only randomness, deliberately NOT SimRng: drawing from the seeded

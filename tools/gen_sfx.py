@@ -208,12 +208,30 @@ def squawk():
 # harvest is absent on purpose: four synthesis takes were rejected and the
 # shipped sound is now a set of CC0 recordings (see CREDITS.md). cluck and
 # squawk were promoted from alternates after the 2026-08-27 listen.
+def nope():
+    """Refusal: two soft descending thuds, an "uh-uh" rather than a buzzer.
+
+    docs/design/10's kid constraints rule out harsh stingers — a pre-reader who
+    cannot read an error message should hear something gentle and comic, not a
+    punishment. Percussive and unpitched-ish, which is the category synthesis
+    handles well (till and ui_click both passed a listen)."""
+    n = int(0.30 * SR)
+    out = np.zeros(n)
+    for start, freq, amp in ((0.0, 330.0, 1.0), (0.13, 247.0, 0.8)):
+        s0 = int(start * SR)
+        ln = int(0.14 * SR)
+        body = sine(freq, ln) * 0.55 + lowpass(noise(ln), 900) * 0.45
+        out[s0:s0 + ln] += body * env(ln, int(0.006 * SR), ln, 3.4) * amp
+    return normalise(out, 0.5)
+
+
 SOUNDS = {
     "till": till,
     "water": water,
     "ui_click": ui_click,
     "cluck": cluck,
     "squawk": squawk,
+    "nope": nope,
 }
 
 ALTERNATES = {}  # none outstanding

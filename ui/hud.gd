@@ -20,6 +20,7 @@ var energy_label: Label
 var energy_bar_bg: ColorRect
 var energy_bar_fill: ColorRect
 var gold_label: Label
+var menu_button: Button
 var tool_icon_rect: TextureRect
 var tool_name_label: Label
 var seed_info_label: Label
@@ -95,11 +96,32 @@ func _build_ui() -> void:
 
 	# Gold label
 	gold_label = Label.new()
-	gold_label.position = Vector2(viewport_size.x - 80, 5)
+	gold_label.position = Vector2(viewport_size.x - 116, 5)
 	gold_label.size = Vector2(70, 20)
 	gold_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	gold_label.add_theme_color_override("font_color", Color(1, 0.85, 0.2))
 	top_bar.add_child(gold_label)
+
+	# Menu button, top-right. Chunky enough for a small finger (S-6/S-7) and
+	# drawn as three bars so it needs no reading.
+	menu_button = Button.new()
+	menu_button.name = "MenuButton"
+	menu_button.text = "\u2630"
+	menu_button.size = Vector2(34, 26)
+	menu_button.position = Vector2(viewport_size.x - 38, 2)
+	menu_button.add_theme_font_size_override("font_size", 18)
+	var mb_style := StyleBoxFlat.new()
+	mb_style.bg_color = Color(0.16, 0.20, 0.16, 0.9)
+	mb_style.border_color = Color(0.62, 0.72, 0.58)
+	mb_style.set_border_width_all(2)
+	mb_style.set_corner_radius_all(6)
+	menu_button.add_theme_stylebox_override("normal", mb_style)
+	menu_button.add_theme_stylebox_override("hover", mb_style)
+	menu_button.add_theme_stylebox_override("pressed", mb_style)
+	menu_button.add_theme_stylebox_override("focus", mb_style)
+	menu_button.add_theme_color_override("font_color", Color(0.92, 0.96, 0.88))
+	menu_button.pressed.connect(_on_menu_button)
+	top_bar.add_child(menu_button)
 
 	# --- Bottom Bar ---
 	bottom_bar = Panel.new()
@@ -311,3 +333,11 @@ func _on_seed_pill_gui_input(event: InputEvent) -> void:
 		GameState.cycle_seed_type()
 		AudioManager.play_sfx("click")
 		get_viewport().set_input_as_handled()
+
+
+func _on_menu_button() -> void:
+	# Routed through main so the HUD does not need to know about the menu layer.
+	var main := get_tree().get_first_node_in_group("Main")
+	if main and main.has_method("trigger_action"):
+		AudioManager.play_sfx("click")
+		main.trigger_action("open_pause")

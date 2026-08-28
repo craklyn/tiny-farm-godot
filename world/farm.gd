@@ -41,6 +41,7 @@ var biomes_texture: Texture2D
 var furniture_texture: Texture2D
 var chest_texture: Texture2D
 var animals_texture: Texture2D
+var tool_icons_texture: Texture2D
 
 func _load_textures() -> void:
 	# Generated sheets (see CREDITS.md — AI-generated via Retro Diffusion).
@@ -53,6 +54,7 @@ func _load_textures() -> void:
 	furniture_texture = load("res://assets/sprites/generated/objects.png")
 	chest_texture = furniture_texture
 	animals_texture = load("res://assets/sprites/generated/animals.png")
+	tool_icons_texture = load("res://assets/sprites/tool_icons.png")
 
 	# Tile regions (obstacles.png: rock, log, weed)
 	tile_regions["obstacle_rock"] = Rect2(0 * 16, 0, 16, 16)
@@ -101,6 +103,14 @@ func apply_action(action: Dictionary, gs = null) -> Dictionary:
 		trace.act(t if t is Vector2i else Vector2i(-1, -1),
 			String(action.get("actor", "?")), String(action.get("verb", "?")),
 			result.get("ok", false), String(result.get("reason", "")))
+	# A refused player action must say so. Silence is indistinguishable from a
+	# broken game for a pre-reader (S-7) — found by tapping to plant with an
+	# empty seed pouch and getting no response whatsoever.
+	if not result.get("ok", false) and String(action.get("actor", "")) == "player":
+		var rt = action.get("target", null)
+		if rt is Vector2i:
+			refuse_at(rt, String(result.get("reason", "")))
+
 	if result.get("ok", false):
 		if replay != null:
 			replay.record(action, result)
@@ -118,6 +128,43 @@ func apply_action(action: Dictionary, gs = null) -> Dictionary:
 const REACT_MS := 240.0
 var _reactions: Dictionary = {}  # Vector2i -> start time in msec
 
+# Refusals: a shake plus a floating picture of whatever she is missing. Wordless
+# on purpose — the player who most needs this cannot read (S-7).
+const REFUSE_MS := 620.0
+var _refusals: Dictionary = {}  # Vector2i -> { "t": msec, "why": String }
+
+
+func refuse_at(t: Vector2i, why: String) -> void:
+	_refusals[t] = { "t": Time.get_ticks_msec(), "why": why }
+	set_process(true)
+	if Engine.get_main_loop() and Engine.get_main_loop().root.has_node("AudioManager"):
+		Engine.get_main_loop().root.get_node("AudioManager").play_sfx("nope")
+
+
+# Sideways wobble, decaying — deliberately unlike the success squash, which is
+# vertical, so the two read as different answers rather than different amounts.
+func _refuse_dx(tx: int, ty: int) -> float:
+	var key := Vector2i(tx, ty)
+	if not _refusals.has(key):
+		return 0.0
+	var e: float = (Time.get_ticks_msec() - _refusals[key]["t"]) / REFUSE_MS
+	if e >= 1.0:
+		return 0.0
+	return sin(e * PI * 6.0) * 2.2 * (1.0 - e)
+
+
+# What she is missing, drawn above the tile: the seed pouch, the watering can,
+# or the bed. Anything else refuses without a picture (the shake still plays).
+func _refuse_icon(why: String) -> Array:
+	match why:
+		"no_seeds":
+			return [tool_icons_texture, Rect2(5 * 16, 0, 16, 16)]
+		"no_water":
+			return [tool_icons_texture, Rect2(4 * 16, 0, 16, 16)]
+		"no_energy":
+			return [furniture_texture, Rect2(0, 0, 16, 32)]
+	return []
+
 
 func react_at(t) -> void:
 	if t is Vector2i:
@@ -128,13 +175,16 @@ func react_at(t) -> void:
 func _process(_delta: float) -> void:
 	# Only runs while a reaction is in flight; cost scales with acted tiles, not
 	# map area (ARCHITECTURE guardrail).
-	if _reactions.is_empty():
+	if _reactions.is_empty() and _refusals.is_empty():
 		set_process(false)
 		return
 	var now := Time.get_ticks_msec()
 	for key in _reactions.keys():
 		if now - _reactions[key] > REACT_MS:
 			_reactions.erase(key)
+	for key in _refusals.keys():
+		if now - _refusals[key]["t"] > REFUSE_MS:
+			_refusals.erase(key)
 	queue_redraw()
 
 
@@ -150,12 +200,12 @@ func _react_k(tx: int, ty: int) -> float:
 
 
 # Squash horizontally and settle vertically, keeping the tile's base planted.
-func _react_rect(px: int, py: int, k: float, h: float = TILE_SIZE) -> Rect2:
+func _react_rect(px: int, py: int, k: float, h: float = TILE_SIZE, dx: float = 0.0) -> Rect2:
 	if k <= 0.0:
-		return Rect2(px, py + (TILE_SIZE - h), TILE_SIZE, h)
+		return Rect2(px + dx, py + (TILE_SIZE - h), TILE_SIZE, h)
 	var w := TILE_SIZE * (1.0 + 0.22 * k)
 	var nh := h * (1.0 - 0.14 * k)
-	return Rect2(px - (w - TILE_SIZE) / 2.0, py + (TILE_SIZE - nh), w, nh)
+	return Rect2(px + dx - (w - TILE_SIZE) / 2.0, py + (TILE_SIZE - nh), w, nh)
 
 
 func get_tile(tx: int, ty: int) -> Dictionary:
@@ -212,6 +262,7 @@ func _draw() -> void:
 			var px := tx * TILE_SIZE
 			var py := ty * TILE_SIZE
 			var k := _react_k(tx, ty)
+			var shake := _refuse_dx(tx, ty)
 
 			# Draw Grass background always
 			draw_texture_rect_region(tileset_texture, Rect2(px, py, TILE_SIZE, TILE_SIZE), Rect2(16, 16, 16, 16))
@@ -226,14 +277,14 @@ func _draw() -> void:
 				var coord := Autotile.atlas_coord(mask, tile.watered_today)
 				# Ground stays flush: squashing it opens seams to the grass beneath.
 				# Only things standing on the soil react (crops, obstacles).
-				draw_texture_rect_region(dirt_texture, Rect2(px, py, TILE_SIZE, TILE_SIZE),
+				draw_texture_rect_region(dirt_texture, Rect2(px + shake, py, TILE_SIZE, TILE_SIZE),
 					Rect2(coord.x * 16, coord.y * 16, 16, 16))
 
 			# Queue obstacles
 			if tile.state in ["border", "obstacle_rock", "obstacle_log", "obstacle_weed"]:
 				var region: Rect2 = tile_regions.get(tile.state, Rect2())
 				if region.size.x > 0:
-					var ob_rect := _react_rect(px, py, k)
+					var ob_rect := _react_rect(px, py, k, TILE_SIZE, shake)
 					render_queue.append({
 						"y": py,
 						"draw": func(): draw_texture_rect_region(biomes_texture, ob_rect, region)
@@ -246,7 +297,7 @@ func _draw() -> void:
 				if tile.crop_type == "wheat": stage = min(stage, 3)
 				var region: Rect2 = crop_regions[tile.crop_type].get(stage, Rect2())
 				if region.size.x > 0:
-					var crop_rect := _react_rect(px, py, k)
+					var crop_rect := _react_rect(px, py, k, TILE_SIZE, shake)
 					render_queue.append({
 						"y": py,
 						"draw": func(): draw_texture_rect_region(crops_texture, crop_rect, region)
@@ -271,6 +322,30 @@ func _draw() -> void:
 						"y": py,
 						"draw": func(): draw_texture_rect_region(tex, Rect2(px, py - (region.size.y - TILE_SIZE), region.size.x, region.size.y), region)
 					})
+
+	# The missing-thing picture rides above everything, including the farmer —
+	# it is the whole message, so it must never be the thing that gets occluded.
+	for key in _refusals.keys():
+		var rk: Vector2i = key
+		var icon: Array = _refuse_icon(String(_refusals[key]["why"]))
+		if icon.is_empty():
+			continue
+		var e: float = (Time.get_ticks_msec() - _refusals[key]["t"]) / REFUSE_MS
+		if e >= 1.0:
+			continue
+		var tex: Texture2D = icon[0]
+		var reg: Rect2 = icon[1]
+		var rise := 6.0 * e
+		var fade: float = 1.0 - max(0.0, (e - 0.55) / 0.45)
+		var iw := 14.0
+		var ih := iw * (reg.size.y / reg.size.x)
+		var ix := rk.x * TILE_SIZE + (TILE_SIZE - iw) / 2.0
+		var iy := rk.y * TILE_SIZE - ih - 3.0 - rise
+		render_queue.append({
+			"y": 100000.0,  # always last
+			"draw": func(): draw_texture_rect_region(tex, Rect2(ix, iy, iw, ih), reg,
+				Color(1, 1, 1, fade))
+		})
 
 	# Insert player into render queue if player exists
 	var player = get_node_or_null("../Player")

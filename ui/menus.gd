@@ -115,7 +115,7 @@ func _rebuild_options() -> void:
 			title_label.text = "PAUSED"
 			gold_display.visible = false
 			_add_option("Resume", true)
-			_add_option("Quit", true)
+			_add_option("Return to Title", true)
 			menu_panel.size = Vector2(300, 130)
 
 		"shop":
@@ -353,7 +353,8 @@ func _select_current_option() -> void:
 				close_menu()
 				menu_action.emit("resume")
 			elif selected_option == 1:
-				menu_action.emit("quit")
+				close_menu()
+				menu_action.emit("return_to_title")
 
 		"shop":
 			if selected_option < shop_items.size():

@@ -329,6 +329,19 @@ func _handle_action_result(action: String) -> void:
 			if sleep_result.get("phase1_complete_now", false):
 				_celebrate_expansion_morning()
 		)
+	elif action == "open_pause":
+		menus.open_menu("pause")
+	elif action == "return_to_title":
+		# Autosave on the way out: the day's work is only persisted at sleep, so
+		# leaving without this would quietly discard it (S-7 — nothing the player
+		# taps should destroy progress).
+		SaveGame.save_to(GameState.save_path, farm.sim, GameState)
+		if farm.replay != null:
+			farm.replay.flush_to(GameState.replay_path)
+		if farm.trace != null:
+			farm.trace.flush(GameState.trace_path)
+		get_tree().paused = false
+		get_tree().change_scene_to_file("res://ui/title_screen.tscn")
 	elif action == "open_shop":
 		menus.open_menu("shop")
 
