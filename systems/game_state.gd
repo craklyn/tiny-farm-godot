@@ -94,20 +94,40 @@ func cycle_tool(direction: int) -> void:
 	tool_changed.emit(selected_tool)
 
 
+# Reported from play 2026-08-28: after placing a scarecrow, with 0 of every seed
+# type, cycling stopped doing anything at all.
+#
+# The old loop only accepted a type she had stock of, so owning nothing meant it
+# matched nothing and returned having changed nothing — silently. A control that
+# does nothing and says nothing is indistinguishable from a broken game (S-7),
+# and it is worse here than it looks, because the selection it leaves stranded
+# is what resolve() consults: stuck on "scarecrow" with none left, a tilled tile
+# answers "no seeds" even after she has bought wheat.
+#
+# Now it always advances to the next unlocked type, preferring ones she actually
+# has. The control therefore always responds, and a selection with no stock is a
+# recoverable state rather than a dead end.
 func cycle_seed_type() -> void:
 	var order := CropDefs.ORDER
 	var current_idx := order.find(selected_seed_type)
 	if current_idx == -1:
 		current_idx = 0
-	# Find next unlocked seed type with stock
+
+	var first_unlocked := ""
 	for offset in range(1, order.size() + 1):
 		var idx := (current_idx + offset) % order.size()
 		var seed_type: String = order[idx]
 		var def: Dictionary = CropDefs.TYPES.get(seed_type, {})
-		var has_price = def.has("seed_price")
-		if has_price and CropDefs.is_seed_unlocked(seed_type, harvest_counts) and seeds.get(seed_type, 0) > 0:
+		if not def.has("seed_price") or not CropDefs.is_seed_unlocked(seed_type, harvest_counts):
+			continue
+		if seeds.get(seed_type, 0) > 0:
 			selected_seed_type = seed_type
 			return
+		if first_unlocked == "":
+			first_unlocked = seed_type
+	# Nothing in stock anywhere: still move, so the control visibly answers.
+	if first_unlocked != "":
+		selected_seed_type = first_unlocked
 
 
 func buy_seed(seed_type: String) -> bool:
@@ -120,6 +140,14 @@ func buy_seed(seed_type: String) -> bool:
 		return false
 	gold -= def.seed_price
 	seeds[seed_type] = seeds.get(seed_type, 0) + 1
+	# Hold what you just bought, if you were holding nothing. Without this the
+	# selection can point at an item with no stock while the pouch has seeds in
+	# it, so a tilled tile reports "no seeds" to a player who just bought some —
+	# the trap underneath the 2026-08-28 scarecrow report. Deliberately does not
+	# override a selection she still has stock of: buying a scarecrow should not
+	# silently stop her planting the wheat she was mid-row on.
+	if seeds.get(selected_seed_type, 0) <= 0:
+		selected_seed_type = seed_type
 	gold_changed.emit(gold)
 	return true
 

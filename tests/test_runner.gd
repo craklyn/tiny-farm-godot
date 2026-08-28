@@ -48,6 +48,7 @@ func _init() -> void:
 	test_replay_build_stamp()
 	test_blocked_reason()
 	test_benign_failures()
+	test_seed_selection_trap()
 
 	print("")
 	print(String("=").repeat(60))
@@ -1343,3 +1344,52 @@ func test_benign_failures() -> void:
 	_assert(not Farm.BENIGN_FAILURES.has("no seeds"),
 		"an empty seed pouch is NOT benign — she wanted to plant and could not")
 	_assert(not Farm.BENIGN_FAILURES.has("no_state"), "an internal failure is not benign")
+
+
+func test_seed_selection_trap() -> void:
+	print("\n--- Seed cycling with an empty pouch (2026-08-28 report) Tests ---")
+
+	# Reported from play: after placing a scarecrow, holding 0 of every type,
+	# cycling stopped responding entirely. The old loop only accepted a type with
+	# stock, so owning nothing matched nothing and it returned silently.
+	GameState.reset()
+	GameState.harvest_counts = { "wheat": 1, "tomato": 0 }  # unlock tomato
+	GameState.seeds = { "wheat": 0, "tomato": 0, "scarecrow": 0 }
+	GameState.selected_seed_type = "scarecrow"
+	GameState.cycle_seed_type()
+	_assert(GameState.selected_seed_type != "scarecrow",
+		"cycling still moves when she holds nothing — the reported dead control")
+	var first: String = GameState.selected_seed_type
+	GameState.cycle_seed_type()
+	_assert(GameState.selected_seed_type != first, "and keeps moving on the next press")
+
+	# Stock is still preferred over an empty type.
+	GameState.reset()
+	GameState.harvest_counts = { "wheat": 1 }
+	GameState.seeds = { "wheat": 0, "tomato": 3, "scarecrow": 0 }
+	GameState.selected_seed_type = "wheat"
+	GameState.cycle_seed_type()
+	_assert(GameState.selected_seed_type == "tomato",
+		"cycling prefers a type she actually has")
+
+	# The trap underneath the report: buying while empty-handed must select what
+	# was bought, or resolve() reports "no seeds" to someone holding seeds.
+	GameState.reset()
+	GameState.seeds = { "wheat": 0, "tomato": 0, "scarecrow": 0 }
+	GameState.selected_seed_type = "scarecrow"
+	GameState.gold = 100
+	_assert(GameState.buy_seed("wheat"), "buying wheat succeeds")
+	_assert(GameState.selected_seed_type == "wheat",
+		"and she is now holding it, not the scarecrow she ran out of")
+
+	_assert(GameState.seeds.get(GameState.selected_seed_type, 0) > 0,
+		"the selected type has stock, so a tilled tile can no longer answer 'no seeds'")
+
+	# But a purchase must not hijack a selection she is still using.
+	GameState.reset()
+	GameState.seeds = { "wheat": 5, "tomato": 0, "scarecrow": 0 }
+	GameState.selected_seed_type = "wheat"
+	GameState.gold = 100
+	_assert(GameState.buy_seed("scarecrow"), "buying a scarecrow succeeds")
+	_assert(GameState.selected_seed_type == "wheat",
+		"and does not interrupt the row of wheat she was planting")
