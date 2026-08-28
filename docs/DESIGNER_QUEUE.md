@@ -99,6 +99,14 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   neighbour routed *through* the goal tile (it is walkable), so she walked onto the
   tile, stepped off northward and turned around. Directional preference is gone;
   approach paths may not cross the goal, and arriving in range ends the walk.
+  **Second revision (same day), from play:** tapping a tile still walked her on top,
+  because `action_router.gd`'s intent filter reads a far tap on workable ground as
+  pure *movement* and returns no action — so the approach logic never engaged, and
+  only the follow-up tap (now at distance 0) resolved, producing a step-off shuffle.
+  Movement taps now also stop in range when the destination is something she could
+  work: the router is probed as if she were already there, purely to ask "is this
+  workable?". Tiles with nothing to do are still walked onto normally, so plain
+  navigation is unchanged.
   **Open sub-question for the playtest:** how it feels while swipe-chaining a row,
   since she now walks alongside the row instead of along it.
 - **Q-13 (Approval)** Audio direction one-pager — **draft ready**:

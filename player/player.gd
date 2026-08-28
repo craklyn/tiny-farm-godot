@@ -129,10 +129,21 @@ func update_player(delta: float) -> void:
 			else:
 				drag_tool_idx = -1
 		
-		# Q-30: an action tap walks *beside* the target so her sprite does not
-		# cover the tile she is working; a bare movement tap still walks onto it.
+		# Q-30: stop *beside* a tile she could work rather than on top of it.
+		#
+		# ActionRouter's intent filter reads a far tap on workable ground as pure
+		# movement, so `resolved` is empty for it — but that is no reason to walk
+		# onto the tile. Probing the router as if she were already there tells us
+		# whether the destination is workable; if it is, she stops in range, and
+		# the next tap can act with no step-off shuffle. Tiles with nothing to do
+		# are still walked onto normally.
+		var approach: bool = not resolved.is_empty() and bool(resolved.get("walk_to", false))
+		if not approach:
+			var probe: Dictionary = ActionRouter.resolve(farm, GameState, target_vec, target_vec, false, null)
+			approach = not probe.is_empty() and bool(probe.get("walk_to", false))
+
 		var new_path: Array[Vector2i]
-		if not resolved.is_empty() and resolved.get("walk_to", false):
+		if approach:
 			new_path = Pathfinding.find_path_adjacent(farm, player_t, target_vec)
 		else:
 			new_path = Pathfinding.find_path(farm, player_t, target_vec)
