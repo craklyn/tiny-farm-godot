@@ -100,3 +100,26 @@ before the first public build ships.*
 
 *Rule going forward: no asset lands in the repo without a line here naming its source
 and license.*
+
+## Repository history rewrites
+
+Records of `git filter-repo` rewrites of this repo's history, and what each one did and
+did not achieve. Both share the same known residue, accepted by the designer: a force
+push does not make GitHub delete the old objects, so commits from before a rewrite may
+stay reachable by explicit SHA through the web UI and API until GitHub garbage-collects
+them.
+
+- **Retro Diffusion API key** (`retrodiff.env`) — *purged 2026-08-29*. The key was
+  committed in plaintext at `retrodiff.env` in `118a780` (2026-08-26) and tracked in this
+  public repo for three days; `.gitignore` covered `.env` but not `retrodiff.env`.
+  **The remedy was rotation, not the rewrite:** the key was revoked at the provider on
+  2026-08-29 and the old value now returns HTTP 403, which is what actually ended the
+  exposure — given the residue above, the rewrite alone would not have. `git filter-repo
+  --invert-paths --path retrodiff.env`, all 142 commits rewritten; the working tree was
+  provably untouched (the HEAD tree hash was `ad54925a…` before and after). Both suites
+  re-verified green on the rewritten history (648 unit, 65 integration), and no commit in
+  it contains the key string. Pre-rewrite backup bundle kept outside the repo at
+  `~/dev/tiny-farm-pre-purge-retrodiff-2026-08-29.bundle`. The live key now lives only in
+  the project-local, gitignored `.env`, as `RETRODIFFUSION_API_KEY` — the variable the
+  `retro-diffusion-pixel-art` skill reads.
+- **Sprout Lands asset pack** — *purged 2026-08-27*. Recorded in full under **Art** above.
