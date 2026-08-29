@@ -1031,3 +1031,102 @@ Godot 4.7.2 at `~/.local/bin/godot`.
     frame rate (kill-switch if it drops).
 30. Q-46 thresholds and cold-open pacing: taste pass on device.
 31. Q-47: exit-gate evidence ruling; then run the gate per whatever is ruled.
+
+---
+
+## 11. Execution status — Checkpoint B (2026-08-29)
+
+*Appended by the execution session. Scope given to it: WI-1, WI-2, then the WI-3+WI-4
+block, stopping at Checkpoint B for human review. WI-5..WI-9 deliberately not started.*
+
+### Work items complete
+
+| WI | Stories | State |
+|---|---|---|
+| WI-1 | T-14 | **done** — daylight replaces the energy bar; `_scenario_h_daylight` |
+| WI-2 | T-18, T-19 (+F-5) | **done** — the third state speaks; `test_satisfied_states`, `_scenario_i_third_state` |
+| WI-3 | T-8, T-9, T-10, T-13, T-15 | **done** — parcels, tool acquisition, the cold open, acorns |
+| WI-4 | T-3, T-4, T-5 | **done** — the harvest-first multi-day vignette |
+
+**Not started, as instructed:** WI-5 (T-11/T-12), WI-6 (T-25), WI-7 (T-16), WI-8 (T-17),
+WI-9 (T-22). Nothing from §5 was built.
+
+Suites at the final commit: unit **648 PASSED, 0 FAILED** (baseline 468), integration
+**65 PASSED, 0 FAILED** (baseline 42), robot session **PASSED** including the replay
+MATCH line and now traversing the cold open rather than bypassing it, visual regression
+**PASSED** against a regenerated baseline, benchmark **889,151× realtime**.
+
+### Deviations taken (§9: criteria binding, mechanisms advisory)
+
+1. **WI-1 — `energy_changed` was never emitted for energy *spent*.** The plan's
+   signal-driven tint would have sat frozen until the next day turned over. The sim's
+   energy deduction now goes through `gs.set_energy()`, which clamps identically and
+   emits. No behaviour change and no RNG involved.
+2. **WI-1 — Q-38 is not actually ruled.** The plan's preamble says ten rulings landed on
+   2026-08-29; ten did, and Q-38 is not among them — its `DESIGNER_QUEUE` entry has never
+   been struck through and ROADMAP T-14 still said "blocked on Q-38". T-14 was built
+   anyway, on the recommendation and nowhere beyond it, with a status note in the queue
+   saying exactly that and what it would cost to revert (~25 lines of `ui/hud.gd` and one
+   `CanvasModulate`). The decision inside the decision — that merging energy and time
+   forecloses "exhausted at noon" for good — is still the designer's.
+3. **WI-2 — a tap the intent layer can see is already satisfied is no longer dispatched.**
+   The plan describes `satisfied_reason` as a pure read alongside `blocked_reason`, but
+   the well and bin resolve to a real action, so consulting it only after dispatch would
+   have logged a phantom refusal and said the same thing twice. The router answers first.
+   Side effect, and a good one: the well and bin stop logging benign refusals they never
+   earned.
+4. **WI-3 — the boundary-tap fallback had to be built, not verified.** The plan says to
+   "verify the existing move-until-in-range logic produces 'she went, and stopped'". It
+   did not: A* returns `[]` for an unreachable goal and `player.gd` recorded that as a
+   dead tap with no feedback at all. `Pathfinding.find_path_nearest()` is new — a bounded
+   BFS to the reachable tile closest to the tap, run once per tap and never per frame.
+5. **WI-3 — non-player actors are not charged.** There is one `GameState`, so the cold
+   open would have spent the *player's* energy, seeds and water on the neighbour's row.
+   `SimWorld.UNCHARGED_ACTORS` skips the energy, seed and water costs (and the clear
+   counts) for `neighbour`/`world`/`crow`/`chicken`. Asserted in `test_cold_open`.
+6. **WI-3/WI-4 — the highlight arbitration is a separate file.** The plan folds T-10's
+   parcel introduction into "the vignette highlight". Keeping it inside `VignetteState`
+   would have broken WI-4's own criterion that the vignette is silent from play-day 3, so
+   `systems/teaching_focus.gd` arbitrates: vignette first, then parcel introductions, and
+   nothing at all until the gate is open. WI-5 and WI-6 extend that one file.
+7. **WI-3 — the vignette's beat 0 takes the player's tile as an argument.** There is no
+   flag-free way to derive "she has not walked through the open gate yet" from world state
+   alone. Live position is neither saved nor a flag, so the no-saved-flags property is
+   intact, but the signature is `target_tiles(world, gs, player_t)` rather than the plan's.
+8. **WI-3 — the cold open's staging.** Q-45 deferred the fine detail to build time. What
+   shipped: water, sleep, water, sleep, then till → plant → water on one tile, then wave
+   and open the gate. Two world-sleeps; takeover on day 3. The takeover row reads
+   `cleared · tilled · seeded(watered) · growing(watered) · ready` exactly as WI-4's
+   contract requires, asserted across 20 seeds in `test_takeover_layout`.
+9. **The neighbour's sprite was not generated.** The tiles were (six sprites, $0.16); she
+   is the player's own sheet with a local palette remap. It costs nothing, cannot drift
+   from the player's walk cycle, and reads as another child at 16px. A bespoke sheet is a
+   cheap upgrade whenever the art pass wants one. Recorded in `CREDITS.md`.
+
+### Added to the designer queue
+
+- **Q-46 (Ruling)** — how the axe and pickaxe are acquired. Built as the plan's strawman
+  and labelled as one: tool visible at its gate, collectable once a proof fires (5
+  harvests / 3 logs), tap to take and the gate opens. Both thresholds are `[Playtest]`
+  constants in `WorldLayout.DEFAULT.tools` and nowhere else.
+- **Q-47 (Ruling)** — the M1.5 exit-gate evidence mechanism (finding F-7). Filed with the
+  Q-43-mirroring recommendation. **The ROADMAP gate text is deliberately unchanged**
+  pending the ruling.
+- **Q-38** — a status note added recording that T-14 shipped on the recommendation while
+  the ruling itself is still open (deviation 2 above).
+
+### Open, and handed on rather than done
+
+- The plan's §10.C/E items that need a human: tablet legibility of the highlight at
+  twilight, cold-open pacing on device, and Q-46's thresholds.
+- At 16px a **closed gate reads much like a plain fence tile**. The *open* gate is clearly
+  different, which is the beat that matters, but the closed one wants a stronger
+  silhouette in the art pass. Noted on ROADMAP T-13.
+- T-19's re-measurement (`tile_history()` showing *worked-then-acknowledged* in place of
+  *worked-then-dead*) needs the next real session; nothing is left to build for it.
+- Old replays in `playtests/` now report cross-build provenance and MISMATCH. Expected
+  across a worldgen change, per §1.
+- **Unrelated to M1.5, found in passing and worth acting on:** the Retro Diffusion API key
+  is committed in plaintext at `retrodiff.env`, which is tracked in this public repo (since
+  commit `118a780`). It needs rotating at the provider — a history rewrite would not undo
+  the exposure. Not touched here.

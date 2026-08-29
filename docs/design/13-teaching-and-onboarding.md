@@ -284,11 +284,18 @@ the neighbour have a name, and does she return in a later phase? Both are Q-22 m
 
 ### Day 1 — "food is a thing that exists, and you can have it"
 
+*Table updated 2026-08-29 to what shipped (T-3/T-4). Beat 0 is new: the cold open ends
+with an opened gate, and that gate is the first thing that glows, so the first lesson is
+"go there" rather than "tap there". The ripe crop is deliberately **not** beside the
+farmer — it is across the gate and at least two tiles in, so beat 1 requires a walk and
+teaches movement without a beat of its own (§7 item 1).*
+
 | Beat | What the player sees | What they learn | New verb |
 |---|---|---|---|
-| 1 | A ripe crop beside the farmer, glowing | Tapping a glowing thing is good | harvest |
+| 0 | The gate the neighbour left open, glowing | The way on is open now | *(move)* |
+| 1 | A ripe crop across the gate, glowing | Tapping a glowing thing is good | harvest |
 | 2 | An empty tilled square, glowing | Things start as seeds | plant |
-| 3 | The seed sits there looking dry | Seeds need water | water |
+| 3 | The seed she just planted, glowing | Seeds need water | water |
 | 4 | Nothing more glows; the cot glows | The day ends when you choose | sleep |
 
 Four beats, four taps, one new verb each, in strict dependency order. **Nothing else on
@@ -303,8 +310,16 @@ resolution.
 
 ### Day 2 — "it grew **because** you did that"
 
-The player wakes. The tile they watered yesterday is a grown plant, and it is the only
-thing glowing.
+The player wakes. A grown plant is the only thing glowing.
+
+*Honest correction, 2026-08-29 (T-5, as built).* It is **not** the tile she watered
+yesterday. Wheat takes three days, so her own seed is a visible sprout on day 2; the ripe
+one is the neighbour's last growing tile, which the overnight advance carried to ready.
+The whole row moving one stage is itself the lesson — *the world moved because the day
+did* — and the causal chain still lands, one tile to the left of where this section
+originally imagined it. If the literal watered-tile-becomes-food payoff matters more than
+the cost, the fallback is a one-day starter crop for the opening: cheap, but new content,
+and it is a designer's call rather than a builder's (raised in `M1_5_PLAN.md` §3).
 
 This is the payoff, and it is the moment the core loop actually lands — not on day 1.
 Day 1 taught four gestures; day 2 reveals that they were *one causal chain*. Everything
@@ -312,13 +327,18 @@ before this is setup.
 
 - **Harvest it.** Second instance of the verb, different context, no prompt escalation
   needed. (Principle 5.)
-- **Repeat unassisted.** Two or three tilled tiles are now available and glow together
-  rather than one at a time. Plant, water, plant, water. The first opportunity to
-  swipe-chain, and the first honest read on whether chaining a row feels right — the
-  open sub-question left over from Q-30.
+- **Repeat unassisted.** The neighbour's half-prepared second row is available and glows
+  **together** rather than one tile at a time — and so does watering it afterwards. Plant,
+  water, plant, water. The first opportunity to swipe-chain, and the first honest read on
+  whether chaining a row feels right — the open sub-question left over from Q-30.
 - **One new thing, and only one: the hoe.** A cleared tile that is not yet tilled. The
   chain extends one link backwards: cleared → tilled → seeded → ripe.
-- **Still no crow.**
+- **Still no crow.** Guaranteed by construction rather than by intent: crow readiness
+  counts in *play-days*, and play-day 2 is below the floor whatever the calendar says.
+- **And then it stops.** From play-day 3 `VignetteState` returns nothing, for good,
+  whatever the world looks like. Later highlights — a newly opened parcel's one new
+  obstacle, and the economy beats when they land — are the same single highlight arbitrated
+  by `systems/teaching_focus.gd`, not a tutorial that never ends.
 
 ### Day 3 — "other things live here" (introduced as gifts, then as comedy)
 

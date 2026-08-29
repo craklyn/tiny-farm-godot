@@ -6,10 +6,19 @@
 ## Gate table (capability proofs, sim-measured)
 | Gate | Proof (provisional) | Presentation |
 |---|---|---|
-| 1→2 | Yard cleared to threshold + first shipments (exact proof: M1 design) | Visible milestone (kid-legible celebration) |
+| 1→2 | Yard cleared + first shipments + crows scared (`SimWorld._phase1_proof_met`) | Visible milestone (kid-legible celebration) |
 | 2→3 | Sustained yield while repelling group raids | Visible-ish: the farm's growth *causes* the siege |
 | 3→4 | Survive defined siege waves | Visible: victory over the pillaging era |
 | 4→5 | N profitable days, zero interventions, towers retired (D-7) | **Hidden meter** (P-4 ruling): authored crest, presented as natural emergence |
+
+**"Yard cleared" means every *opened* parcel, 2026-08-29 (T-8).** Before the parcel
+rebuild the proof scanned the whole map, which was right when every tile was reachable
+from the first frame. With land behind capability gates it would have made phase 1
+impossible to finish without the pickaxe — and phase 1 completion is not supposed to
+require the last tool in phase 1's own ladder. The check now walks only the parcels whose
+gate is open, which is derived from the grid and so needs no flag and survives replays.
+The consequence to accept deliberately: a player who never earns the pickaxe can still
+complete phase 1, and the quarry is simply land she has not taken up yet.
 
 ## Unlock ladders (consolidated index; details in system chapters)
 - Tools & land rings (02) → machines (03) → towers (05) →

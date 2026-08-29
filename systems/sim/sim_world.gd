@@ -12,10 +12,10 @@ const MAP_HEIGHT := 20
 
 # T-8 / Q-34: the world is parcels now. Where the land is and what opens it is
 # data in systems/world_layout.gd; this file only knows how to fill a region
-# definition. The old uniform 25% sprinkle and the two hard-coded vignette tiles
-# (VIGNETTE_WEED / VIGNETTE_PLANT) are gone with it — obstacle *type* is a
-# property of the parcel a tile belongs to, so a rock the player cannot break is
-# a legible future behind a hedge rather than noise in her yard.
+# definition. The old uniform 25% sprinkle and the two hard-coded onboarding
+# tile constants are gone with it — obstacle *type* is now a property of the
+# parcel a tile belongs to, so a rock the player cannot break is a legible
+# future behind a hedge rather than noise in her yard.
 var layout: Dictionary = WorldLayout.DEFAULT
 
 # T-2 / design/13 §4: the first session contains no threat at all.
