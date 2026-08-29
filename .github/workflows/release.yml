@@ -93,7 +93,10 @@ jobs:
 
       - name: Install butler
         run: |
-          curl -fL -o butler.zip "https://broth.itch.ovh/butler/linux-amd64/LATEST/archive/default"
+          # broth.itch.ovh no longer resolves; .zone is the live host. Verified by
+          # the first tagged run failing on DNS, which is the whole reason this
+          # was proven with a tag rather than by reading the YAML.
+          curl -fL -o butler.zip "https://broth.itch.zone/butler/linux-amd64/LATEST/archive/default"
           unzip -q butler.zip -d ~/butler
           chmod +x ~/butler/butler
           ~/butler/butler -V
