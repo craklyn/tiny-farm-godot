@@ -152,7 +152,14 @@ first, since a different answer there changes what the other four are optimising
   phase 1's mild repetition is *load-bearing setup* for phase 2's sprinkler, so the
   standing rule becomes "never optimise away a phase-1 friction a later phase is meant
   to relieve." Recorded in `design/01-game-loops.md`. Rule this one first.
-- **Q-33 (Ruling)** **Harvest-first opening.** Day 1 currently opens on a weed — a chore,
+- **Q-33** ~~Harvest-first opening~~ — ✅ ruled 2026-08-29: **adopt.** In the designer's
+  words, it "shows the player the first possible loop they can execute. After they
+  harvest, they'll feel like they need to plant more to harvest more." **And it resolves
+  the tension with Q-32** — a free reward before any effort looked like the reverse of the
+  saturation-then-relief cycle, but the effort *is* shown: the neighbour performs
+  till/plant/water in the opening vignette, the moving truck comes and goes before they
+  can harvest, and that is precisely why the crop is the player's to take. The reward is
+  witnessed labour rather than a gift from nowhere. Original wording: Day 1 currently opens on a weed — a chore,
   and the least motivating verb in the game. Proposal: open on a *ripe crop* one tile
   from the farmer, so the first interaction is the reward, and teach the chain backwards
   (ripe → seeded → tilled → cleared). **Recommendation: adopt.** It is the single change
@@ -181,7 +188,14 @@ first, since a different answer there changes what the other four are optimising
   the distribution of stages reached *is* the playtest data, and drops straight into the
   session trace.
 
-- **Q-37 (Ruling)** **The cold open.** Designer's proposal: before the ripe crop, the
+- **Q-37** ~~The cold open~~ — ✅ substantially ruled 2026-08-29 alongside Q-33: **adopt,
+  with the neighbour performing the full till → plant → water cycle**, then a moving truck
+  arriving and leaving before they can harvest. The player inherits the standing crop. Note
+  this overrides the earlier "one verb only" recommendation — three verbs is not a cutscene
+  when the player is free to move throughout, which the fence arrangement (the designer's
+  own revision) guarantees. **One detail still open**, recorded as Q-45: whether time
+  visibly passes during the vignette or the ripe crop is simply already standing. Original
+  wording: Designer's proposal: before the ripe crop, the
   player watches another child work the land, time passes, a moving truck arrives and she
   leaves the growing crop behind. It does something nothing else in chapter 13 can — a
   person can *demonstrate a verb*, where our highlight system can only point — and it
