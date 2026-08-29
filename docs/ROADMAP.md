@@ -68,7 +68,7 @@ adult speaking, on two consecutive fresh runs — measured from the session trac
 from an adult's impression.
 
 ### Ordering
-Twenty-four stories; three are done. Grouped by the ruling that unblocks them:
+Twenty-four stories; five are done. Grouped by the ruling that unblocks them:
 
 | Ruling | Stories | Note |
 |---|---|---|
@@ -83,7 +83,7 @@ Twenty-four stories; three are done. Grouped by the ruling that unblocks them:
 | Q-39 | `T-15` | build with `T-8` — trees are where logs come from |
 | Q-40 | `T-16` | spiked; risk resolved, see below |
 | Q-42 | `T-18`, `T-19` | **evidence-backed** — measured data behind them |
-| *(none)* | `T-20` ✅, `T-23`, `T-24`, `T-21`, `T-22` | **in this order.** Ship first (`T-23`), then automate it (`T-24`); polish and the phone pass follow. None needs a ruling |
+| *(none)* | `T-20` ✅, `T-23` ✅, `T-24` ✅, `T-21`, `T-22` | shipped and automated; polish and the phone pass remain. None needs a ruling |
 | *(after Q-37/Q-40)* | `T-17` | regenerates the scripted replays the above two create |
 
 `T-13`→`T-17` were raised on 2026-08-28 and none is on the critical path to the exit gate.
@@ -265,7 +265,7 @@ shooed.**
 *Property worth keeping: pressure follows productivity. A player who wanders and plants
 nothing is never visited, while a busy farm draws birds — fairer, and the right fiction.*
 
-**T-23 — Ship it: first public release on itch.io** · unblocked · ~1 day
+**T-23 — Ship it: first public release on itch.io** · ✅ done 2026-08-29
 *So that Q-6's standing rule — release early, free, unrestricted — finally holds. M1 is
 closed and nothing blocks this.*
 **Web export spiked 2026-08-28 and the engine runs.** A `Web` preset now exists
@@ -289,7 +289,7 @@ is unreachable. Reach and evidence are separate problems: shipping gets players,
 an upload path (the Firebase idea) closes the loop back to us. Do not count on web
 distribution for playtest data.
 
-**T-24 — Publish on tag** · after T-23 · ~half a day (web)
+**T-24 — Publish on tag** · ✅ done 2026-08-29
 *So that "release early and often" (Q-6) survives contact with a busy week. A manual
 release decays; a one-command release does not.*
 
@@ -320,6 +320,14 @@ Publishing stays a deliberate act; it just stops being a chore.
 public APK wants a **release** build, not the `--export-debug` one the tablet runs, which
 means the Android SDK, build-tools for `apksigner`, and a signing keystore held as a
 secret. Until that exists, upload the APK to the itch page by hand — it changes rarely.
+
+**Shipped 2026-08-29 — https://craklyn.itch.io/tiny-farm.** `v0.1.0` published by the
+tag pipeline: tests → export templates → web export → butler → itch. Q-6's standing rule
+(release early, free, unrestricted) is finally met, and releasing is now
+`git tag v0.1.1 && git push origin v0.1.1`. Two things found in the doing and fixed:
+`broth.itch.ovh` no longer resolves (butler is at `broth.itch.zone`), and the game had no
+credits at all, which meant shipping would have breached the CC BY licence on the music.
+Runbook and traps: `docs/DEPLOY.md`.
 
 **T-22 — First phone pass (iOS)** · unblocked once an iOS build exists · ~1–2 days
 *So that the half of "touch-first" the design has always claimed but never tested gets
