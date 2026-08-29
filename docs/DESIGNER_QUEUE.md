@@ -196,7 +196,12 @@ first, since a different answer there changes what the other four are optimising
   pouch empties, first refill when the can empties), one glowing object at a time. Note
   the shop screen is the one place phase 1 may be forced to break the no-reading rule;
   it should be designed around that (icons and coin counts, no words), not exempted.
-- **Q-36 (Ruling)** **How obvious should hints get?** Proposal replaces the global
+- **Q-36** ~~How obvious should hints get?~~ — ✅ ruled 2026-08-29: **rejected — the
+  current attention-focus is fine.** No escalation ladder, no competence decay, no
+  hint-intensity system. One addition only: **when the highlighted target is off-screen,
+  show an arrow at the screen edge pointing toward it.** Retires T-6 and T-7 outright
+  rather than deferring them (~2.5 days of work deleted, and a whole subsystem the game
+  now does not carry). Spawned T-25. Original wording: Proposal replaces the global
   subtle/obvious dial with a two-axis ladder: *escalate* within a beat when the player
   stalls (invitation → nudge → insistence, at roughly 8 s and 20 s), and *decay*
   permanently once a verb has succeeded twice. A competent player then sees no tutorial;

@@ -159,13 +159,15 @@ core loop actually lands, not day 1.*
 - [ ] one new verb, and only one: till, on a single cleared tile
 - [ ] the vignette becomes multi-day, which retires `is_active(world, day)`'s day-1 check
 
-**T-6 — Verb competence counts** · Q-36 (prerequisite for T-7) · ~half a day
+**T-6 — Verb competence counts** · ❌ dropped 2026-08-29 (Q-36 rejected) · ~half a day
 *So that the tutorial can measure the player instead of following a script.*
 - [ ] per-verb success counts in `GameState`, beside `harvest_counts`
 - [ ] included in the save payload; `SaveGame` version bump if the shape requires it
 - [ ] counts accrue in the sim gateway so replays earn them identically
 
-**T-7 — Hint escalation ladder** · Q-36 · ~2 days
+**T-7 — Hint escalation ladder** · ❌ dropped 2026-08-29 (Q-36 rejected) · ~2 days
+*Not deferred — dropped. The designer judged the current attention-focus adequate, so the
+hint-intensity system is not built at all. The only thing kept from this area is T-25.*
 *So that a competent player sees no tutorial and a stuck one gets more help, with no
 setting and no skip button a pre-reader could not read.*
 - [ ] stage 1 invitation → stage 2 nudge (~8 s) → stage 3 insistence (~20 s)
@@ -353,6 +355,15 @@ first time, and it arrives free with the TestFlight work rather than as separate
 *Note what a phone does **not** test: this is not the 4-year-old scenario. A pre-reader on
 a phone is a worse experience than on a tablet by design, so read a phone session as
 evidence about the touch design, never about learnability.*
+
+**T-25 — Off-screen target arrow** · Q-36 ✅ · ~half a day
+*So that a highlighted tile she has wandered away from can still be found.*
+The camera follows the farmer, so the vignette's target can leave the screen entirely —
+at which point the highlight is doing nothing and there is no other cue.
+- [ ] when the current highlighted target is outside the view, draw an arrow at the screen
+      edge pointing toward it
+- [ ] presentation only; it must not gate `apply_action` (the D-8 constraint)
+- [ ] legible against every sky colour once Q-38's daylight lands
 
 **T-21 — Style the vignette highlight properly** · Q-36 adjacent · ~1 day
 *So that the guided beats look authored rather than debug-drawn.*
