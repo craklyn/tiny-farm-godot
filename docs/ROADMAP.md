@@ -265,8 +265,14 @@ inheritance the player physically crosses into rather than a gift.*
 - [ ] her actions go through `apply_action` as `actor: "neighbour"` (S-3) — no cutscene
       system, no new machinery, replayable for free
 - [ ] once the gate is open, ignoring her entirely and tapping the ripe crop must still work
-- [ ] art: neighbour sprite + walk cycle, one verb pose, a wave frame, fence and gate tiles
-      — a modest generation run on the existing pipeline, not a budget decision
+- [x] art: fence, hedge, gate (closed and open), tree and acorn generated on the existing
+      pipeline (six sprites, $0.16); the neighbour is the player's own sheet palette-remapped
+      rather than generated, so she cannot drift from the player's walk cycle and cost
+      nothing. Her verb pose and wave are the existing action frame, held. The honk is
+      synthesized in-repo. All recorded in `CREDITS.md`
+- [ ] **device check:** at 16px a closed gate and a plain fence tile read similarly. The
+      *open* gate is clearly different, which is the beat that matters, but the closed one
+      could use a stronger silhouette in the art pass
 *Blocked on Q-37, and takes a narrative position (Q-22). **The fence is ring 0's
 boundary**, so if Q-34 also passes, build this together with T-8 rather than separately.*
 

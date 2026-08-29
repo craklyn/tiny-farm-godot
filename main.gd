@@ -42,9 +42,10 @@ var _tint: Color = Color.WHITE
 # The player has full control from frame one — she is simply on the other side of
 # a fence, which is how this holds attention with geometry instead of a camera
 # cut (design/13 §4a).
-const COLD_OPEN_STEP := 1.4  # [Playtest] seconds between the neighbour's actions
-var _cold_open_timer: float = 0.6
+const COLD_OPEN_STEP := 1.1  # [Playtest] seconds between the neighbour's actions
+var _cold_open_timer: float = 1.2
 var _cold_open_failures: int = 0
+var neighbour: Node2D = null
 
 
 # APPLICATION_PAUSED covers backgrounding, which is the common case, but not a
@@ -118,6 +119,19 @@ func _ready() -> void:
 	entities.name = "Entities"
 	add_child(entities)
 	
+	# T-13: the neighbour, if her two days have not happened yet. She stands on
+	# the far side of the fence and the player watches her through it — the
+	# restriction is spatial, so control is never taken away, which is what
+	# dissolves the "never cut away from the player" objection rather than
+	# compromising on it (design/13 §4a).
+	if not ColdOpen.is_done(farm.sim):
+		var NeighbourScript = load("res://entities/neighbour.gd")
+		neighbour = NeighbourScript.new()
+		neighbour.name = "Neighbour"
+		var plot: Dictionary = farm.sim.layout.get("neighbour_plot", {})
+		neighbour.init(farm, plot.get("wave_at", Vector2i(12, 4)))
+		entities.add_child(neighbour)
+
 	# Spawn initial chicken
 	var ChickenScript = load("res://entities/chicken.gd")
 	var chicken = ChickenScript.new()
@@ -199,6 +213,12 @@ func _ready() -> void:
 # nothing here gates her input, and once the gate opens, ignoring the neighbour
 # entirely and tapping the ripe crop must still work.
 func _tick_cold_open(delta: float) -> void:
+	# Let her finish walking or swinging before asking for the next beat. A
+	# person who teleports between tiles is not demonstrating anything, and
+	# demonstrating a verb is the one thing a highlight cannot do at any budget.
+	if neighbour != null and is_instance_valid(neighbour) and neighbour.is_busy():
+		return
+
 	_cold_open_timer -= delta
 	if _cold_open_timer > 0.0:
 		return
@@ -220,9 +240,27 @@ func _tick_cold_open(delta: float) -> void:
 		)
 		return
 
+	# Walk there first, and only act once she is beside it.
+	var target = act.get("target", null)
+	var live: bool = neighbour != null and is_instance_valid(neighbour)
+	if live and target is Vector2i and not neighbour.is_beside(target):
+		neighbour.go_to(target)
+		_cold_open_timer = 0.0
+		return
+
 	var res: Dictionary = farm.apply_action(act, GameState)
 	if res.get("ok", false):
 		_cold_open_failures = 0
+		if live and target is Vector2i:
+			neighbour.pose(target)
+		# The honk is the callback that draws attention wherever the player
+		# happens to be; then she waves and walks off the map edge. No truck
+		# sprite — sound is far cheaper than art and reads as clearly.
+		if String(act.get("verb", "")) == "open_gate":
+			AudioManager.play_sfx("honk")
+			if live:
+				neighbour.wave()
+				neighbour.call_deferred("leave")
 		return
 	# A stuck neighbour must never block the game. After a bounded number of
 	# refusals the scene gives up and hands over the farm anyway.
@@ -231,6 +269,9 @@ func _tick_cold_open(delta: float) -> void:
 		var g := ColdOpen.gate(farm.sim)
 		if g.x >= 0:
 			farm.apply_action({ "verb": "open_gate", "target": g, "actor": "neighbour" }, GameState)
+			AudioManager.play_sfx("honk")
+			if live:
+				neighbour.call_deferred("leave")
 
 
 func _find_spawn_tile(preferred: Vector2i) -> Vector2i:

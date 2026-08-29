@@ -62,11 +62,19 @@ func _load_textures() -> void:
 	animals_texture = load("res://assets/sprites/generated/animals.png")
 	tool_icons_texture = load("res://assets/sprites/tool_icons.png")
 
-	# Tile regions (obstacles.png: rock, log, weed)
+	# Tile regions (obstacles.png: rock, log, weed, tree, fence, hedge, gates)
 	tile_regions["obstacle_rock"] = Rect2(0 * 16, 0, 16, 16)
 	tile_regions["obstacle_log"] = Rect2(1 * 16, 0, 16, 16)
 	tile_regions["obstacle_weed"] = Rect2(2 * 16, 0, 16, 16)
 	tile_regions["border"] = Rect2(2 * 16, 0, 16, 16)
+	# T-8 (Q-34): the boundary is the design's real content, so it has to be a
+	# thing she can see. Closed and open gates are different pictures, because
+	# "closed became open" is the cheapest celebration in the game.
+	tile_regions["obstacle_tree"] = Rect2(3 * 16, 0, 16, 16)
+	tile_regions[WorldLayout.FENCE] = Rect2(4 * 16, 0, 16, 16)
+	tile_regions[WorldLayout.HEDGE] = Rect2(5 * 16, 0, 16, 16)
+	tile_regions[WorldLayout.GATE_CLOSED] = Rect2(6 * 16, 0, 16, 16)
+	tile_regions[WorldLayout.GATE_OPEN] = Rect2(7 * 16, 0, 16, 16)
 
 	# Crop regions (crops.png: row 0 wheat, row 1 tomato, 4 visual stages each)
 	crop_regions["wheat"] = {}
@@ -81,6 +89,12 @@ func _load_textures() -> void:
 	object_regions["shipping_bin"] = [chest_texture, Rect2(3 * 16, 16, 16, 16)]
 	object_regions["seed_box"] = [furniture_texture, Rect2(2 * 16, 0, 16, 32)]
 	object_regions["scarecrow"] = [crops_texture, Rect2(2 * 16, 2 * 16, 16, 16)]
+	object_regions["acorn"] = [furniture_texture, Rect2(4 * 16, 16, 16, 16)]
+	# T-9: a tool lying at its gate is drawn with the icon the HUD already uses
+	# for it, so what she picks up and what she then holds are the same picture.
+	# No new art needed for either.
+	object_regions["tool_axe"] = [tool_icons_texture, Rect2(1 * 16, 0, 16, 16)]
+	object_regions["tool_pickaxe"] = [tool_icons_texture, Rect2(2 * 16, 0, 16, 16)]
 
 
 # --- Facade: forwards the old farm API to SimWorld ---------------------------
@@ -336,8 +350,10 @@ func _draw() -> void:
 				draw_texture_rect_region(dirt_texture, Rect2(px + shake, py, TILE_SIZE, TILE_SIZE),
 					Rect2(coord.x * 16, coord.y * 16, 16, 16))
 
-			# Queue obstacles
-			if tile.state in ["border", "obstacle_rock", "obstacle_log", "obstacle_weed"]:
+			# Queue obstacles and boundaries
+			if tile.state in ["border", "obstacle_rock", "obstacle_log", "obstacle_weed",
+					"obstacle_tree", WorldLayout.FENCE, WorldLayout.HEDGE,
+					WorldLayout.GATE_CLOSED, WorldLayout.GATE_OPEN]:
 				var region: Rect2 = tile_regions.get(tile.state, Rect2())
 				if region.size.x > 0:
 					var ob_rect := _react_rect(px, py, k, TILE_SIZE, shake)
@@ -361,7 +377,7 @@ func _draw() -> void:
 
 			# Queue objects
 			var obj: String = objects[ty][tx]
-			if obj == "egg":
+			if obj == "egg" or obj == "acorn":
 				# Drawn at half a tile and centred: at full tile size it read as
 				# boulder-sized next to the chicken that laid it. The tap target is
 				# unaffected — taps resolve by tile coordinate, not by sprite bounds,
@@ -370,11 +386,13 @@ func _draw() -> void:
 					px + (TILE_SIZE - EGG_SIZE) / 2.0,
 					py + (TILE_SIZE - EGG_SIZE) / 2.0,
 					EGG_SIZE, EGG_SIZE)
+				var small_data: Array = object_regions.get(obj, [animals_texture, Rect2(11 * 16, 0, 16, 16)])
+				var small_tex: Texture2D = small_data[0]
+				var small_reg: Rect2 = small_data[1]
 				render_queue.append({
 					"y": py,
 					"draw": func():
-						# animals.png cell 11
-						draw_texture_rect_region(animals_texture, egg_rect, Rect2(11 * 16, 0, 16, 16))
+						draw_texture_rect_region(small_tex, egg_rect, small_reg)
 				})
 			elif obj != "":
 				var obj_data = object_regions.get(obj)

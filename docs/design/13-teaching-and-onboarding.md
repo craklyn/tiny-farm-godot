@@ -205,8 +205,41 @@ neighbour's sequence runs its course and the offscreen honk is the callback that
 attention wherever the player happens to be; the gate then opens and becomes the
 vignette's first highlighted target — beat 0, ahead of the harvest at beat 1.
 
-**Design consequence.** The fence *is* ring 0's boundary, so this and the ring generation
-in §5 are one design rather than two. If both are adopted, T-8 and T-13 should be built
+### As built, 2026-08-29 (T-13)
+
+`systems/sim/cold_open.gd` is pure and static and derives her next action from world
+state alone — no flags, no timers in the sim — so quitting mid-scene and reloading
+resumes correctly for free, and Continue never replays it (an already-open gate is all
+the memory it needs). Her verbs go through `apply_action` as `actor: "neighbour"`, which
+is what makes the whole opening replayable and is why this was an actor rather than a
+subsystem.
+
+The staging Q-45 deferred to build time came out as: she waters her row, a day passes,
+she waters it again, a day passes, and then she demonstrates the full till → plant →
+water cycle on one tile before waving and leaving. Two world-sleeps, so the player
+watches a seed become food. What she leaves behind reads left to right as
+`cleared · tilled · seeded(watered) · growing(watered) · ready` — the whole production
+chain as one row, which is environmental storytelling that cannot be skipped and does
+not need to have been watched.
+
+Three consequences worth recording:
+
+- **Days passing re-anchors everything day-keyed.** The world is on day 3 when the gate
+  opens, so `GameState.takeover_day` is set there and crow readiness and scheduling count
+  in *play-days*. Anchoring on the raw day counter would have let a crow arrive on her
+  first morning, silently breaking T-2 on day one.
+- **Her labour is not charged to the player.** There is one `GameState`, so without an
+  explicit rule she would have tilled and watered using the player's energy, seeds and
+  water, and the player would wake on day 1 already tired and a seed short.
+- **A stuck neighbour must never block the game.** The scene is bounded: after a few
+  refused actions it gives up and opens the gate anyway. Whatever happens, the player
+  gets her farm.
+
+The honk is `assets/audio/sfx/honk.wav`, synthesized in-repo — two parps and an engine
+pulling away. There is still no truck sprite, and there does not need to be.
+
+**Design consequence.** The fence *is* parcel 0's boundary, so this and the parcel
+generation in §5 are one design rather than two. If both are adopted, T-8 and T-13 should be built
 together.
 
 **Recommended revision — keep the content, drop the cutscene.**
@@ -481,16 +514,44 @@ Proposed ring structure, all numbers `[Playtest]`:
 | 2 | axe | logs | a tool changes what the world will let you do |
 | 3 | pickaxe | rocks | the last of the manual chain; the yard is now large enough to be tedious → phase 2 |
 
+**As built (2026-08-29, T-8).** The word in the code is **parcel**, and the shape is
+data in `systems/world_layout.gd` rather than anything the generator computes — rect
+lists, so rings, a valley, terraces or linked plots are all a change to that one file.
+The generator is checked by test for the absence of `ring_index` and any
+distance-from-spawn, because the placeholder would otherwise become the design by
+default. The default arrangement shipped is:
+
+| Parcel | Boundary | Opened by | Contains |
+|---|---|---|---|
+| **yard** | fence | start | the four fixed objects, the chicken, **no chores at all** |
+| **neighbour** | fence, gate at (11,4) | the cold open | her half-finished row, and the ripe crop |
+| **meadow** | — (contiguous with her plot) | with that gate | weeds |
+| **wood** | hedge, gate at (21,4) | the **axe** | logs, the standing trees they come from, and the acorns |
+| **quarry** | hedge, gate at (21,14) | the **pickaxe** | rocks |
+
+Two things fell out of building it that the table above does not say. The yard holding
+**nothing to clear** is load-bearing, not tidiness: a pen with work in it gets tidied
+instead of watched, and the whole cold open depends on her looking through the fence.
+And both tool gates sit on the same hedge line, so both promises are visible from the
+open meadow — a pickaxe hidden behind the axe's parcel would not be a promise she can
+see, which is the entire mechanism.
+
 Two consequences to accept deliberately:
 
-- **World generation changes.** Today obstacles are sprinkled uniformly at 25% across the
-  whole map (`sim_world.gd` `generate()`). Rings mean obstacle *type* becomes a function
-  of distance from spawn. This is a sim change, so it is seeded, replay-affecting, and
-  needs its own tests. It is the largest single piece of work in this chapter.
+- **World generation changes.** Obstacles used to be sprinkled uniformly at 25% across
+  the whole map (`sim_world.gd` `generate()`). Obstacle *type* is now a property of the
+  parcel a tile belongs to. This is a sim change, so it is seeded, replay-affecting, and
+  needs its own tests. It was the largest single piece of work in this chapter.
 - **A stray tap past the boundary must still answer.** The honest fallback if a player
   taps beyond the hedge is not silence and not a refusal message: the farmer walks to the
   boundary and looks at it. Movement is always a legal answer, and "she went, and stopped"
-  reads correctly to a pre-reader.
+  reads correctly to a pre-reader. *Built as `Pathfinding.find_path_nearest()`: A-star
+  returns nothing for an unreachable goal, which before parcels always meant a mistake
+  and is now the ordinary case, so the fallback walks her to the reachable tile closest
+  to what she tapped and stops there. Covered by `test_boundary_tap_answers`.*
+- **A tool she has not earned yields no action at all**, so the tap degrades to that same
+  movement rather than to a silent no-op. A silent no-op here would have regressed the
+  2026-08-27 refusal-feedback work on the exact path built to fix it.
 
 ---
 

@@ -25,6 +25,24 @@ before the first public build ships.*
     they are undated and revocable-in-place, so re-check if the asset set is
     regenerated. A local copy of the PDF as read is not kept in-repo — retrieve it
     from https://www.retrodiffusion.ai/terms if the wording is ever disputed.*
+- **M1.5 additions, 2026-08-29** (same Retro Diffusion pipeline and rights as above,
+  same palette-locking and post-processing steps; prompts and composition recorded in
+  the `retro-diffusion-pixel-art` skill's `styles/tiny-farm.md`):
+  - `obstacles.png` widened from 3 to 8 cells — the new cells are **tree, fence,
+    hedge, gate (closed) and gate (open)**, the land that T-8's parcels are bounded
+    by. Six generations at $0.027 each, $0.162 for the run. The four boundary cells
+    are stretched to fill their 16px cell edge to edge, so a run of fence reads as a
+    line she cannot cross rather than a row of dashes.
+  - `objects.png` widened by one cell for the **acorn** (T-15).
+  - `neighbour.png` — **not generated**. It is `characters.png` with a local
+    palette remap (blond → teal hair, rust → green outfit, pink → rose accent), so
+    the departing child reuses the player's own walk cycle exactly. At 16px a
+    pre-reader reads *another child* from hair and clothes, and this costs nothing
+    and cannot drift from the player's animation. A bespoke sheet is a cheap
+    upgrade whenever the art pass wants one.
+  - The tools lying at their gates are drawn with the **existing** `tool_icons.png`
+    cells, so what she picks up and what she then holds are the same picture and no
+    new art was needed.
 - **Sprout Lands asset pack** by Cup Nooble — *removed 2026-08-26* (Q-7c ruling:
   drop restrictively-licensed assets; its free license forbids redistribution and
   this repo is public). Q-7b license findings recorded in the git history of this
@@ -46,6 +64,11 @@ before the first public build ships.*
   line in the shipped credits.
 - `assets/audio/sfx/jingle.wav` — original synthesized placeholder, made in-repo
   2026-08-19. Cleared.
+- `assets/audio/sfx/honk.wav` — original, synthesized by `tools/gen_sfx.py` (added
+  2026-08-29 for T-13's cold open): two friendly parps and an engine pulling away,
+  standing in for the moving truck that design/13 §4a deliberately does not draw.
+  Same voicing constraints as the rest (docs/design/10: gentle attacks, no stingers).
+  Rerunning the generator reproduces every existing file byte-for-byte. Cleared.
 - `assets/audio/sfx/till.wav`, `water.wav`, `ui_click.wav`, `cluck.wav`, `squawk.wav` —
   original, synthesized by `tools/gen_sfx.py` (2026-08-27), which *is* their source:
   rerun it to reproduce or retune them. Voiced to the docs/design/10 verb table.

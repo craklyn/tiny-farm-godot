@@ -22,6 +22,13 @@ const CLEAR_VERBS := {
 
 
 static func targets(world: SimWorld, gs, player_t: Vector2i = Vector2i(-1, -1)) -> Array[Vector2i]:
+	# 0. Nothing is taught until the farm is hers. During the cold open the
+	#    neighbour is the show, and pointing at a weed she cannot even reach yet
+	#    would be a highlight on a tile whose tap does nothing — the exact failure
+	#    every hint in this game exists to avoid.
+	if not _handed_over(world):
+		var nothing: Array[Vector2i] = []
+		return nothing
 	# 1. The onboarding vignette owns the first two play-days outright.
 	var vignette := VignetteState.target_tiles(world, gs, player_t)
 	if not vignette.is_empty():
@@ -30,6 +37,17 @@ static func targets(world: SimWorld, gs, player_t: Vector2i = Vector2i(-1, -1)) 
 	#    type, until she clears one of those — then never again. A new tool gets a
 	#    safe room containing exactly one new kind of thing (Valve principle 4).
 	return parcel_introduction(world, gs)
+
+
+static func _handed_over(world: SimWorld) -> bool:
+	for p in WorldLayout.parcels(world.layout):
+		if String(p.get("opened_by", "")) != WorldLayout.OPENED_BY_COLD_OPEN:
+			continue
+		var g: Vector2i = p.get("gate", Vector2i(-1, -1))
+		if g.x < 0:
+			return true
+		return String(world.get_tile(g.x, g.y).get("state", "")) == WorldLayout.GATE_OPEN
+	return true  # a layout with no cold open (an old save) was always hers
 
 
 # One tile of the newest unlearned obstacle type in an open parcel, or [].

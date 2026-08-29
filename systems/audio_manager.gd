@@ -20,7 +20,10 @@ var sfx_streams = {
     "squawk": [preload("res://assets/audio/sfx/squawk.wav")],
     "cluck": [preload("res://assets/audio/sfx/cluck.wav")],
     "jingle": [preload("res://assets/audio/sfx/jingle.wav")],
-    "nope": [preload("res://assets/audio/sfx/nope.wav")]
+    "nope": [preload("res://assets/audio/sfx/nope.wav")],
+    # T-13: the offscreen moving truck. Two parps and an engine pulling away —
+    # the callback that ends the cold open, in place of a truck sprite.
+    "honk": [preload("res://assets/audio/sfx/honk.wav")]
 }
 
 # Presentation-only randomness, deliberately NOT SimRng: drawing from the seeded

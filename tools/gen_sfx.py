@@ -225,6 +225,34 @@ def nope():
     return normalise(out, 0.5)
 
 
+def honk():
+    """The moving truck, offscreen: two friendly parps and an engine pulling away.
+
+    T-13 / design/13 §4a: "no truck sprite — an engine idling offscreen, a honk,
+    and the child walking off the map edge does the whole job." The honk is the
+    callback that draws the player's attention wherever she happens to be, so it
+    has to carry across a room without being a stinger (docs/design/10's kid
+    constraints). Two stacked low sines with a touch of a fifth read as a car
+    horn; the tail is a filtered noise swell that fades, which is a departing
+    engine at this scale.
+    """
+    n = int(1.15 * SR)
+    out = np.zeros(n)
+    for start, base in ((0.0, 233.0), (0.34, 220.0)):
+        s0 = int(start * SR)
+        ln = int(0.26 * SR)
+        body = (sine(base, ln) * 0.5
+                + sine(base * 1.5, ln) * 0.3
+                + sine(base * 2.0, ln) * 0.14)
+        out[s0:s0 + ln] += body * env(ln, int(0.02 * SR), ln, 1.4)
+    # Engine pulling away: broadband rumble, lowpassed and fading out.
+    s1 = int(0.62 * SR)
+    ln2 = n - s1
+    rumble = lowpass(noise(ln2), 260) * 0.55 + sine(72.0, ln2) * 0.25
+    out[s1:] += rumble * env(ln2, int(0.12 * SR), ln2, 1.8) * 0.7
+    return normalise(out, 0.55)
+
+
 SOUNDS = {
     "till": till,
     "water": water,
@@ -232,6 +260,7 @@ SOUNDS = {
     "cluck": cluck,
     "squawk": squawk,
     "nope": nope,
+    "honk": honk,
 }
 
 ALTERNATES = {}  # none outstanding
