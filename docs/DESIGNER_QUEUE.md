@@ -167,8 +167,12 @@ first, since a different answer there changes what the other four are optimising
   generation change plus a re-ordered step machine.
 - **Q-34** ~~Tool-gated land rings~~ — ✅ ruled 2026-08-29: **adopt, with the lock
   expressed as land.** Start with hands, hoe, seeds and can; the axe and pickaxe are earned
-  and each opens a ring containing one new obstacle type. "Not yet" is a hedge she can see,
-  never a refusal she cannot read. Fits Q-32 directly — each ring is a fresh saturation and
+  and each opens a new parcel containing one new obstacle type. "Not yet" is a hedge she
+  can see, never a refusal she cannot read. **"Ring" is a placeholder**: the *arrangement*
+  of unlocked space is explicitly a free design parameter (designer, same day) — rings, a
+  valley, terraces and hedged fields are all open, and the generator must take a region
+  definition rather than compute distance from spawn. The constraints the shape must
+  satisfy are listed in `design/13` §5. Fits Q-32 directly — each ring is a fresh saturation and
   each tool the relief that makes the previous ring manageable. **Build as one piece with
   Q-37's fence (which is ring 0's boundary) and Q-39's trees (which are where logs come
   from).** Largest item in M1.5; world generation becomes a seeded sim change. Original

@@ -173,11 +173,16 @@ setting and no skip button a pre-reader could not read.*
 - [ ] stage reached is written to the session trace — this *is* the playtest data
 - [ ] presentation-only; must never gate `apply_action` (the D-8 constraint)
 
-**T-8 — Ring-based world generation** · Q-34 · ~2–3 days · **largest item here**
+**T-8 — Parcel-based world generation** · Q-34 ✅ · ~2–3 days · **largest item here**
 *So that "you cannot do that yet" is a hedge she can see, not a refusal she cannot read.*
-Obstacles are currently sprinkled uniformly at 25% (`sim_world.generate()`); obstacle
-type must become a function of distance from spawn.
-- [ ] rings 0–3: cleared / weeds / logs / rocks, with a visible boundary between them
+Obstacles are currently sprinkled uniformly at 25% (`sim_world.generate()`); obstacle type
+must become a property of the parcel a tile belongs to.
+**"Ring" was a placeholder — the arrangement is a free design parameter** (designer,
+2026-08-29). Concentric rings, a valley, terraces, hedged fields and linked plots are all
+open. **Build the generator to take a region definition, not to compute distance from
+spawn**, or the placeholder silently becomes the design. Constraints the shape must meet
+are in `design/13` §5.
+- [ ] parcels 0–3: cleared / weeds / logs / rocks, with a visible boundary between them
 - [ ] seeded and deterministic; replay and save tests updated
 - [ ] a tap past the boundary still answers — she walks to the hedge and stops, never
       silence and never a refusal message

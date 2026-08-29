@@ -433,10 +433,27 @@ That proviso is the whole design risk, and it is sharp: **a four-year-old cannot
 locked-tool message**, and a tap that silently does nothing is precisely the failure we
 just spent a milestone eliminating. So the "not yet" must be spatial, not textual:
 
-> **Tools unlock rings of land, and the ring boundary — not the tool — is what the
-> player sees.** You begin in a small tidy plot bounded by hedge. Beyond it, brush. The
-> axe does not merely enable logs; it opens the *next ring*, and the ring is full of
-> logs. The player never experiences a refusal, only an expansion.
+> **Tools unlock new land, and the boundary — not the tool — is what the player sees.**
+> You begin in a small tidy plot bounded by hedge. Beyond it, brush. The axe does not
+> merely enable logs; it opens the *next parcel*, and that parcel is full of logs. The
+> player never experiences a refusal, only an expansion.
+
+**"Ring" is a placeholder, and the arrangement is a free design parameter** (designer,
+2026-08-29). Concentric rings are one arrangement; a valley that extends in one direction,
+terraces up a slope, hedged fields, or parcels linked by paths are all equally valid, and
+the choice is open. What is *decided* is the mechanism and its constraints, listed below.
+The neutral term used in docs and code is **parcel** — a bounded piece of land that opens
+when a capability is earned — chosen because it carries no shape with it. Do not write
+`ring_index` into world generation; the generator should take a region definition rather
+than compute a distance from the centre, or the placeholder becomes the design by default.
+
+**What the arrangement must satisfy, whatever shape it takes:**
+
+- the boundary is **visible and wordless** — a hedge, a fence, a treeline, a slope
+- crossing it is gated by **capability, never by a refusal message** a pre-reader cannot read
+- each newly-opened parcel introduces **exactly one new obstacle type** (principle 4)
+- each parcel is a **fresh saturation** (Q-32): more work than can be done in a sitting
+- a tap beyond the boundary **still answers** — she walks to the edge and stops
 
 This aligns with the "tools & land rings" ladder already listed in `12-progression-and-
 gates.md`, and it gives every tool unlock a natural vignette: a new ring is a new safe
