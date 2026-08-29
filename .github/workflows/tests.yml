@@ -3,6 +3,9 @@ name: tests
 on:
   push:
   pull_request:
+  # Callable, so release.yml gates publishing on the same suite rather than a
+  # duplicated copy of it that can drift.
+  workflow_call:
 
 env:
   GODOT_VERSION: "4.7.2"

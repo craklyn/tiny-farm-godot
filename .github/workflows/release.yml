@@ -1,0 +1,110 @@
+# release.yml — publish to itch.io on a tag (T-24).
+#
+# Deliberately NOT on every green push. Tests passing means it works, not that it
+# is worth showing anyone: this project has committed green builds where the
+# session trace mislabelled its own categories, where the crow schedule desynced
+# replays, and where seed cycling was a dead end. Publishing stays a deliberate
+# act — it just stops being a chore.
+#
+#   git tag v0.1.0 && git push origin v0.1.0
+#
+# Requires one repository secret: BUTLER_API_KEY
+# (itch.io → Settings → API keys).
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+env:
+  GODOT_VERSION: "4.7.2"
+  ITCH_TARGET: "craklyn/tiny-farm"
+
+jobs:
+  # Same suite the normal CI runs, called rather than copied.
+  tests:
+    uses: ./.github/workflows/tests.yml
+
+  publish:
+    needs: tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Godot
+        id: cache-godot
+        uses: actions/cache@v4
+        with:
+          path: ~/godot
+          key: godot-${{ env.GODOT_VERSION }}-linux
+
+      - name: Download Godot
+        if: steps.cache-godot.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/godot
+          curl -fL -o godot.zip "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q godot.zip -d ~/godot
+
+      # New dependency: the test job never exported anything, so templates have
+      # never been needed in CI before.
+      - name: Cache export templates
+        id: cache-templates
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/godot/export_templates
+          key: godot-templates-${{ env.GODOT_VERSION }}
+
+      - name: Download export templates
+        if: steps.cache-templates.outputs.cache-hit != 'true'
+        run: |
+          curl -fL -o templates.tpz "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          unzip -q templates.tpz
+          mkdir -p ~/.local/share/godot/export_templates
+          mv templates "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+
+      - name: Locate binary
+        run: |
+          GODOT_BIN="$(find ~/godot -name 'Godot_v*_linux.x86_64' -type f | head -1)"
+          chmod +x "$GODOT_BIN"
+          echo "GODOT=$GODOT_BIN" >> "$GITHUB_ENV"
+
+      # Q-41 stamps every replay with build_id, so a trace from a web player is
+      # only attributable if this is the real thing rather than whatever was last
+      # hand-committed to project.godot.
+      - name: Stamp build id from the tag
+        run: |
+          BUILD_ID="${GITHUB_REF_NAME:-$(git describe --always --dirty)}"
+          sed -i "s|^config/build_id=.*|config/build_id=\"$BUILD_ID\"|" project.godot
+          echo "BUILD_ID=$BUILD_ID" >> "$GITHUB_ENV"
+          echo "Publishing build id: $BUILD_ID"
+
+      - name: Import project
+        run: '"$GODOT" --headless --path . --import || true'
+
+      - name: Export web
+        run: |
+          mkdir -p build/web
+          "$GODOT" --headless --path . --export-release "Web" build/web/index.html
+          test -f build/web/index.html
+          test -f build/web/index.wasm
+
+      - name: Install butler
+        run: |
+          curl -fL -o butler.zip "https://broth.itch.ovh/butler/linux-amd64/LATEST/archive/default"
+          unzip -q butler.zip -d ~/butler
+          chmod +x ~/butler/butler
+          ~/butler/butler -V
+
+      - name: Push to itch.io
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+        run: |
+          if [ -z "$BUTLER_API_KEY" ]; then
+            echo "BUTLER_API_KEY is not set — add it under Settings → Secrets." >&2
+            exit 1
+          fi
+          ~/butler/butler push build/web "${ITCH_TARGET}:html5" --userversion "$BUILD_ID"
+          ~/butler/butler status "${ITCH_TARGET}"
