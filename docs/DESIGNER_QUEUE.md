@@ -143,7 +143,7 @@ observation that the current vignette "shows a few actions to take, not what to 
 accomplished." Each ships with a recommendation. **Q-32 frames the rest** — rule it
 first, since a different answer there changes what the other four are optimising for.*
 
-- **Q-32 (Ruling)** **What is phase 1's core loop?** Low-stress wander, or an efficiency
+- **Q-32** ~~What is phase 1's core loop?~~ — ✅ ruled 2026-08-29: **saturation → mastery → relief → new obligation, repeating once per phase.** Each phase opens with more work than hands can manage; the player masters it manually; an ability makes exactly that work effortless; a new obligation arrives. Recorded verbatim in `design/01-game-loops.md`, which supersedes the weaker 2026-08-28 draft that treated phase-1 repetition as a one-time setup for phase 2. Four consequences drawn out there, the sharpest being that **saturation must be abundance, not deficit** — "more here than I can get to" invites, "behind on what I owe" is stress, and a pre-reader reads the second as failing (S-7). Original wording of the old Q-32: Low-stress wander, or an efficiency
   ladder toward "chores done, sleep, repeat"? *Mechanical finding that settles half of
   it: there is no in-day clock — `day_cycle.gd` only animates a fade, the day advances
   solely because the player taps the cot, and nothing expires. With the Q-11 soft energy
