@@ -65,6 +65,13 @@ func _build_ui() -> void:
 	else:
 		root_box.add_child(_make_start_button())
 
+	# Deliberately NOT debug-gated: the bundled music is CC BY 4.0 and *requires*
+	# an attribution line in the shipped credits (CREDITS.md). Until this existed
+	# the game showed credits nowhere, so shipping it publicly would have breached
+	# that licence — found on the way to the first release. Small and low-contrast
+	# so it does not compete with the one button a pre-reader needs.
+	root_box.add_child(_make_credits_button())
+
 	# Debug builds only, so a public release never shows it (the Android export
 	# we deploy is --export-debug, so it is present on the test tablet).
 	if OS.is_debug_build():
@@ -172,6 +179,100 @@ func _make_start_button() -> Button:
 	_style_button(btn, Color(0.18, 0.42, 0.22), Color(1.0, 0.72, 0.15), Color(0.24, 0.52, 0.28))
 	btn.pressed.connect(func(): start_game(false))
 	return btn
+
+
+# --- Credits (all builds; a licence obligation, not a nicety) -----------------
+
+# Kept in one place and sourced from CREDITS.md, which is the provenance record.
+# If an asset's licence changes, both must change together.
+const CREDITS_TEXT := """Tiny Farm
+
+Made with Godot Engine — MIT License
+godotengine.org
+
+MUSIC
+"Wholesome" by Kevin MacLeod (incompetech.com)
+Licensed under Creative Commons: By Attribution 4.0
+creativecommons.org/licenses/by/4.0/
+
+SOUND
+Original effects synthesized for this project.
+Harvest sounds by Valenspire (Freesound), CC0 1.0.
+
+ART
+Pixel art generated with Retro Diffusion
+and post-processed for this project.
+
+Full provenance for every asset is recorded in
+CREDITS.md in the project repository."""
+
+
+func _make_credits_button() -> Button:
+	var btn := Button.new()
+	btn.name = "CreditsButton"
+	btn.text = "Credits"
+	btn.custom_minimum_size = Vector2(110, 30)
+	btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	btn.add_theme_font_size_override("font_size", 12)
+	_style_button(btn, Color(0.12, 0.26, 0.15), Color(0.42, 0.55, 0.40), Color(0.17, 0.33, 0.20))
+	btn.pressed.connect(_open_credits)
+	return btn
+
+
+func _open_credits() -> void:
+	if _confirm_open:
+		return
+	_confirm_open = true  # also blocks tap-anywhere while the panel is up
+
+	_confirm_layer = Control.new()
+	_confirm_layer.name = "CreditsLayer"
+	_confirm_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_confirm_layer.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(_confirm_layer)
+
+	var dim := ColorRect.new()
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0.05, 0.09, 0.07, 1.0)
+	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_confirm_layer.add_child(dim)
+
+	# Scrolled, because the text outgrows a phone screen in portrait and an
+	# attribution nobody can reach is not an attribution.
+	var scroll := ScrollContainer.new()
+	scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
+	scroll.offset_left = 24
+	scroll.offset_top = 16
+	scroll.offset_right = -24
+	scroll.offset_bottom = -60
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_confirm_layer.add_child(scroll)
+
+	var body := Label.new()
+	body.text = CREDITS_TEXT
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	body.add_theme_font_size_override("font_size", 14)
+	body.add_theme_color_override("font_color", Color(0.90, 0.95, 0.88))
+	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(body)
+
+	var back := Button.new()
+	back.name = "CreditsBackButton"
+	back.text = "Back"
+	back.custom_minimum_size = Vector2(150, 40)
+	back.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	back.anchor_left = 0.5
+	back.anchor_right = 0.5
+	back.offset_left = -75
+	back.offset_top = -50
+	back.offset_right = 75
+	back.offset_bottom = -10
+	back.add_theme_font_size_override("font_size", 16)
+	_style_button(back, Color(0.18, 0.42, 0.22), Color(1.0, 0.72, 0.15), Color(0.24, 0.52, 0.28))
+	back.pressed.connect(_close_confirm)
+	_confirm_layer.add_child(back)
+
+	back.grab_focus()
 
 
 # --- Sound test (debug builds) ------------------------------------------------
