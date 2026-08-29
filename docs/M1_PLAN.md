@@ -84,8 +84,12 @@ them only changes its own task row below.)*
 - [x] First-session stress removed (2026-08-28, T-2): no crow until she has
       harvested something and has three crops planted, and the first crow of a
       save cannot eat.
-- [ ] Kid playtest protocol (the gate itself) — everything above was preparation
-      for this; further polish should wait for its evidence.
+- [x] **Exit gate met 2026-08-28 — see `ROADMAP.md` for the revision.** The gate was
+      re-specified by the designer after the 4-year-old proved consistently
+      unavailable: measured trace criteria plus an unprompted adult session, with
+      her run kept as opportunistic validation that never blocks. S-7's constraint
+      is unchanged. Three sessions captured under `playtests/`; the last, on a
+      fresh farm with no instructions, reached the whole phase-1 loop unaided.
 
 **Onboarding rebuild (2026-08-28).** The designer's read — the vignette "shows a
 few actions to take, not what to be accomplished" — is diagnosed and answered in
@@ -108,7 +112,31 @@ hypothesis and she is the only referee for it.
 - [x] Q-8: tap-to-move only confirmed; no virtual stick existed to remove.
       Follow-up Q-28 (interaction inventory) queued for pre-M3.
 
-**The gate itself:**
-- [ ] Kid playtest protocol: one tablet, zero adult touches, note where she stalls,
-      what she taps that does nothing, what makes her laugh. Repeat after fixes.
-      Two clean runs = gate passed; then cut the first public build (Q-6).
+**The gate — met 2026-08-28.** Retained here for the record, and because the
+protocol still applies whenever the child *is* available (opportunistically, never
+blocking): one tablet, zero adult touches, note where she stalls, what she taps
+that does nothing, what makes her laugh.
+
+**What the adult sessions actually taught** (three runs, `playtests/`):
+
+*Working, and now evidenced rather than hoped:*
+- The Q-9 vignette lands: clear 3.5s → plant 7.3s → water 9.1s, in order, unaided.
+- The economy loop is discoverable without being taught — she harvested, sold,
+  bought and planted with no teaching beat for any of it. That is the §7a chain in
+  `design/13` validating itself, and it strengthens the Q-35 recommendation.
+- The cot is understood: six days reached in six minutes, with no affordance
+  teaching it.
+- Dead taps fell 17% → 12% between sessions as fixes landed.
+
+*Broken, and fixed the same day:* the pause menu's return-to-title never fired;
+the well and shipping bin wobbled at states where nothing was wrong; seed cycling
+went dead with an empty pouch and could strand the selection so a tilled tile
+reported "no seeds" to a player holding seeds; a tilled tile with an empty pouch
+was silent; eggs drew boulder-sized.
+
+*The finding that became design work (Q-42, T-18/T-19):* the game has three
+states and only two of them speak — *did it*, *cannot do it*, and *nothing to do*.
+Twenty dead taps held the watering can on already-watered crops, and every stuck
+tile had the shape "worked five times, then went quiet". Silence reads as a
+malfunction, and a wobble would read as a failure; the third state needs its own
+positive answer.

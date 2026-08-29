@@ -9,26 +9,54 @@ skeleton (`design/00`–`12`), and the designer intake queue (`DESIGNER_QUEUE.md
 Exit gate: the queue's **Now** section is cleared (tiering sign-off Q-1 chief among
 them).
 
-## M1 — Touch-first phase 1, kid-tested
+## M1 — Touch-first phase 1 ✅ COMPLETE (2026-08-28)
 Make the existing farm loop genuinely touch-first and phase-1-complete per S-6/S-7:
 tap-to-command everywhere, chunky targets, forgiving interactions, individual-pest
 encounters (crow/chicken exist), first-session onboarding without reading.
-**Exit gate: the 4-year-old playtest.** She can clear, plant, water, and harvest a crop on
-a tablet without adult hands on the screen. (This gate is cheap to run, brutally honest,
-and exactly the constraint S-7 promises.)
-**Status 2026-08-27:** the build is on the test tablet and every known blocker
-is cleared — art is original/licence-clean, effects likewise, the touch loop has
-been debugged on device, and refusals now explain themselves. What remains before
-the gate is the playtest itself. Standing recommendation: stop polishing and run
-it; D-8/Q-29 and the swipe-chain feel are both waiting on its evidence.
+**Exit gate — REVISED 2026-08-28 by the designer, and ✅ MET the same day.**
+
+*Originally: the 4-year-old plays unaided on a tablet.* That gate made the milestone
+hostage to the availability of a four-year-old, who — the designer's words — "is
+consistently not available when I need her to review." That is a planning fault, not a
+design one, and it was blocking a milestone whose work was otherwise finished.
+
+**S-7 is untouched.** The constraint still binds phase 1: no reading, chunky targets, no
+punishing fail states, designed for a pre-reader whoever is holding the tablet. What
+changed is only the *evidence mechanism*.
+
+**The gate as met:** an adult playing unprompted on the target device, with the session
+trace as the objective record. Three sessions were captured on 2026-08-28
+(`playtests/`), and the last — a fresh farm, no instructions given — showed the full
+phase-1 loop discovered without help:
+
+| Measured | Result |
+|---|---|
+| vignette completed | clear 3.5s → plant 7.3s → water 9.1s |
+| full loop reached | harvest 2m26s, egg collected 2m34s, sell 3m14s, buy 3m22s |
+| days reached | 6 (the cot was understood without being taught) |
+| taps achieving nothing | 12%, down from 17% in the prior session |
+| longest stall | 14.4s |
+
+**The child's run is retained as opportunistic validation** — worth running whenever she
+is willing, never a blocker on shipping or on starting the next milestone. See
+`playtester-availability` reasoning in this section and the S-7 note in `DECISION_LOG.md`.
+
+**Standing rule this yields for later gates:** prefer *measured* criteria from the session
+trace (dead-tap rate, stalls, stuck tiles, time-to-first-use per verb) plus an unprompted
+adult session. Those are comparable across runs; an adult's impression is not, and a
+child's availability cannot be scheduled.
 **Deferred out of M1:** **Q-31 — bespoke recorded foley.** The shipped effect set
 is complete and licence-clean (originals plus CC0), so audio no longer blocks the
 gate or the first release; the designer will record replacements once Q-13 settles
 the direction.
-**Decision the gate feeds:** **D-8 / Q-29 — verb animation depth.** Whether clearing,
-tilling, planting, watering, and harvesting stay instant or get animated (and at which
-tier) is deliberately decided *from* the playtest, because the evidence that matters is
-whether a pre-reader can tell what her tap did.
+**Decision the gate feeds:** **D-8 / Q-29 — verb animation depth.** Still open, and now
+better served: an adult can say in words whether she could tell what a tap did, which a
+pre-reader never could. Ask it directly at the next session rather than inferring it.
+
+**M1 closes into the first public free release (Q-6).** All three release blockers were
+cleared on 2026-08-27–28: Retro Diffusion output rights verified, the Sprout Lands pack
+purged from git history, and the commit backlog pushed with CI green. Nothing now stands
+between this milestone and shipping it.
 
 ## M1.5 — Onboarding rebuild (added 2026-08-28)
 *Sits between the playtest and M3 because it is the playtest's most likely output.
@@ -40,7 +68,7 @@ adult speaking, on two consecutive fresh runs — measured from the session trac
 from an adult's impression.
 
 ### Ordering
-Seventeen stories; two are done. Grouped by the ruling that unblocks them:
+Nineteen stories; two are done. Grouped by the ruling that unblocks them:
 
 | Ruling | Stories | Note |
 |---|---|---|
@@ -54,6 +82,7 @@ Seventeen stories; two are done. Grouped by the ruling that unblocks them:
 | Q-38 | `T-14` | |
 | Q-39 | `T-15` | build with `T-8` — trees are where logs come from |
 | Q-40 | `T-16` | spiked; risk resolved, see below |
+| Q-42 | `T-18`, `T-19` | **evidence-backed** — the only stories here with measured data behind them |
 | *(after Q-37/Q-40)* | `T-17` | regenerates the scripted replays the above two create |
 
 `T-13`→`T-17` were raised on 2026-08-28 and none is on the critical path to the exit gate.
@@ -212,6 +241,30 @@ perceive.*
       cannot be drained by lingering in a single day
 - [ ] trees give `obstacle_log` an origin — coordinate with T-8's ring content
 *This is also the game's first decoy mechanic; note the through-line to `design/05`.*
+
+**T-18 — Give the third state a voice: "nothing to do"** · Q-42 · ~1 day
+*So that a finished tile stops looking like a broken one.*
+Evidence, from the 2026-08-28 adult session: **20 dead taps held the watering can**, on
+crops already watered that day, and three tiles were tapped 3+ times each. The game has
+three states and only two of them speak — *did it* (squash + sound), *cannot do it*
+(wobble + nope), and *nothing to do* (silence). The third reads as a malfunction.
+- [ ] a positive acknowledgement on an already-satisfied tile — it answers "yes, done",
+      never "no". A wobble here would teach that a good state is a failure
+- [ ] the same treatment for the well with a full can and the bin with an empty basket,
+      which are currently silent for the same reason (the benign-failure fix stopped them
+      lying; it did not make them speak)
+- [ ] check whether watered soil is legible *without* tapping — the 2026-08-27 pass
+      improved it and this session says not enough
+*Rule Q-42 alongside Q-38: a daylight cycle changes how wet soil reads at every hour.*
+
+**T-19 — Make a state change visible when it happens** · Q-42 · ~1 day
+*So that a tile that stops responding shows why it stopped.*
+All five stuck tiles in the last session had the shape `acted 5, then dead` — they worked
+repeatedly and then went quiet. That is not a broken tile; it is a state change the player
+could not see. The per-tile histories in `read_trace.gd` now surface this pattern, so it
+can be measured before and after.
+- [ ] the moment a tile becomes "done for today", say so where she is looking
+- [ ] re-measure with `tile_history()`: the signature to eliminate is worked-then-dead
 
 **T-17 — Regenerate scripted replays at build time** · after Q-37/Q-40 · ~1 day
 *So that shipped scripted content can never be stale, and so "the demo looks right" becomes

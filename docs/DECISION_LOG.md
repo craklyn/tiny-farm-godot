@@ -144,6 +144,25 @@ Phase 1's core loop must be playable by a pre-reader: chunky tap targets, forgiv
 interactions, no fail states that destroy progress, no reading required to farm. This is a
 hard constraint on phase 1 only (see P-2 for how later phases relate).
 
+**Gate mechanism revised 2026-08-28 (the constraint itself is unchanged).** M1's exit
+gate was written as "the 4-year-old plays unaided", which made a milestone hostage to a
+four-year-old's availability — and she is, in the designer's words, "consistently not
+available when I need her to review." That is a planning fault rather than a design one.
+
+This entry still binds phase 1 exactly as written: no reading in the core loop, chunky
+targets, no punishing fail states, designed for a pre-reader whoever is holding the
+tablet. What changed is only how the evidence is gathered. Gates now use **measured
+session-trace criteria plus an unprompted adult session**, with the child's run retained
+as *opportunistic validation* — run whenever she is willing, never blocking a milestone.
+
+Two things make the substitute defensible rather than merely convenient. The trace
+metrics (dead-tap rate, stalls, stuck tiles, time-to-first-use per verb) are objective and
+comparable across runs, which an adult's impression is not. And an adult is strictly
+*better* for the questions a pre-reader cannot answer in words — D-8's "could you tell
+what your tap did" chief among them. What is genuinely lost is learnability evidence: an
+adult who already understands farming games cannot tell us whether the game teaches. That
+loss is real and is the reason the child's run is retained rather than retired.
+
 ### S-8. Headless automated testing stays load-bearing
 The repo's existing headless test-runner approach survives every refactor. New systems ship
 with simulation-level tests. (S-5 makes this dramatically easier.)

@@ -127,6 +127,15 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   §"Style guide v1" (measured palette ramps, outline/shape/contrast rules, reserved
   overlay hues, animation budget, reskin spec implications).
 
+- **Q-43** ~~M1's exit gate depends on an unavailable playtester~~ — ✅ ruled 2026-08-28
+  by the designer: **user-acceptance test satisfied at this stage.** The 4-year-old is
+  consistently unavailable when review is needed, so gating a milestone on her was a
+  planning fault. S-7's *constraint* is untouched — phase 1 is still designed for a
+  pre-reader — but the *evidence mechanism* becomes measured trace criteria plus an
+  unprompted adult session, with her run retained as opportunistic validation that never
+  blocks. M1 is closed; the adult session's learnings feed M1.5. Recorded under S-7 in
+  `DECISION_LOG.md` and in `ROADMAP.md`'s M1 block.
+
 ## M1.5 — onboarding rebuild (raised 2026-08-28)
 
 *All five come from `design/13-teaching-and-onboarding.md`, written after the designer's
