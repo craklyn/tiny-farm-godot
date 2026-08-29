@@ -55,19 +55,16 @@ handmade part, before any of that exists.
 - **Swipe** across several tiles to work a row
 - **Tap the bed** to sleep and start the next day
 
-## Credits
+## Credits — deliberately NOT on the page
 
-Made with **Godot Engine** — MIT License — godotengine.org
+*Decided 2026-08-29: skipped.* The in-game Credits screen (title screen → Credits)
+ships with the work and is reachable in two taps, which satisfies CC BY 4.0 for the
+one asset that requires attribution. Repeating it in the description was
+belt-and-braces, and a wall of licence text is the wrong first thing to read on a
+page for a small farming game.
 
-Music: *"Wholesome"* by **Kevin MacLeod** (incompetech.com), licensed under
-**Creative Commons: By Attribution 4.0** — https://creativecommons.org/licenses/by/4.0/
-
-Sound: original effects synthesized for this project; harvest sounds by **Valenspire**
-(Freesound), CC0 1.0.
-
-Art: pixel art generated with **Retro Diffusion** and post-processed for this project.
-
-Full asset provenance: https://github.com/craklyn/tiny-farm-godot/blob/main/CREDITS.md
+Attribution therefore lives in exactly two places, and they must change together:
+`ui/title_screen.gd`'s `CREDITS_TEXT`, and `CREDITS.md`.
 
 ## Before publishing — checklist
 
@@ -75,5 +72,6 @@ Full asset provenance: https://github.com/craklyn/tiny-farm-godot/blob/main/CRED
       farm that survives a page reload, and the Credits button opening and closing.
 - [ ] Check it on a phone browser. Tap targets are the known risk (T-22).
 - [ ] Screenshots for the page — at least the farm mid-play, not just the title screen.
-- [ ] Confirm the in-game Credits screen is present in the *release* build. It is not
-      debug-gated, but verify rather than assume: the music licence requires it.
+- [x] Confirm the in-game Credits screen is present in the *release* build. It is not
+      debug-gated, and it is the *only* place the CC BY attribution appears, so this is a
+      licence check rather than a polish one — verify it on every release.
