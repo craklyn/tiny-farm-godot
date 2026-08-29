@@ -417,8 +417,13 @@ chain is available, multiple tiles want attention at once, and the player choose
 order. This is principle 6 — the "test" is simply an ordinary day that requires two or
 three learned mechanics interleaved, and passing it is invisible.
 
-Hint levels have by now decayed to stage 1 for every verb the player has demonstrated
-(§6), so a competent player sees an ordinary farm with no tutorial in it at all.
+~~Hint levels have by now decayed to stage 1 for every verb the player has demonstrated
+(§6), so a competent player sees an ordinary farm with no tutorial in it at all.~~
+*Struck 2026-08-29 (Q-36): there are no hint levels and no decay. The vignette simply
+stops — its last beat is day 2's till, and from day 3 the game is silent because there is
+nothing left in it that teaches. Later highlights (a newly opened parcel's one new
+obstacle, the economy beats) fire at their own trigger moments and are the same single
+highlight, not a level of one.*
 
 ---
 
@@ -489,7 +494,17 @@ Two consequences to accept deliberately:
 
 ---
 
-## 6. How subtle? — the escalation ladder
+## 6. ~~How subtle? — the escalation ladder~~ — REJECTED 2026-08-29 (Q-36)
+
+> **This whole section is superseded and is kept only as the argument the designer
+> heard and declined.** Q-36, ruled 2026-08-29: *the current attention-focus is fine.*
+> No escalation ladder, no per-verb competence counts, no hint-intensity system — the
+> stories that would have built it (T-6, T-7) are **dropped outright rather than
+> deferred**, and the subsystem is not carried at all. Exactly one thing survives from
+> this section's area, and it is not from this section: when the highlighted target is
+> off-screen, an arrow at the screen edge points toward it (T-25).
+>
+> Nothing below is implemented. Read it as history.
 
 Asked directly: *how subtle versus how obvious should the vignette be?* The answer that
 falls out of principle 7 is that this is the wrong axis. Correct is:

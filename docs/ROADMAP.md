@@ -202,8 +202,11 @@ are in `design/13` §5.
 
 **T-10 — Each ring opens a vignette** · Q-34 · ~1 day
 *So that a new tool gets a safe room containing exactly one new thing.*
-- [ ] a newly-opened ring highlights one obstacle of its new type, once
-- [ ] reuses the T-7 ladder rather than adding a second hint system
+- [ ] a newly-opened parcel highlights one obstacle of its new type, once
+- [ ] uses the ordinary vignette highlight — one target, once, then never again.
+      *(Corrected 2026-08-29, M1.5 finding F-2: this bullet used to say "reuses the T-7
+      ladder", and **Q-36 rejected the ladder outright** on 2026-08-29, dropping T-6 and
+      T-7. There is one highlight system and this rides on it.)*
 
 **T-11 — Teach sell, buy, and refill at first need** · Q-35 · ~1–2 days
 *So that the economy stops being the one part of phase 1 nobody is taught, and so the
@@ -239,12 +242,15 @@ boundary**, so if Q-34 also passes, build this together with T-8 rather than sep
 perceive.*
 - [ ] standing trees as a world feature; acorns as a dropped object (sim, deterministic)
 - [ ] crow target selection prefers a reachable acorn over any crop
-- [ ] **a fed crow is done for the day**; a shooed one keeps trying until fed or until the
-      day ends. This is what makes pacing independent of session length — no crow consumes
-      twice, so the acorn stock depletes at the rate of crows-per-day on its own
-- [ ] **a per-day crow budget** (one on the first pest day, scaling later) — without it the
-      10 s spawner yields ~200 crows in a long session, each entitled to a meal. With both
-      rules daily loss is exactly `min(crows_today, crops_available)`
+- [x] **each crow gets exactly one scheduled arrival per day, consumed whether it is fed
+      or shooed** — shooing is a win for the day, not a ten-second reprieve. *(Corrected
+      2026-08-29, M1.5 finding F-1: this bullet used to say a shooed crow "keeps trying
+      until fed or until the day ends", which **Q-44 reversed** on 2026-08-28 and T-20
+      shipped the same day. The old text was the stale side, not the code.)*
+- [x] **a per-day crow budget** — `SimWorld.CROWS_PER_DAY`, already in the code since
+      T-20. It is the number of scheduled arrivals, and the dial that becomes flocks in
+      phase 2: raise the number, never the appetite. With both rules daily loss is exactly
+      `min(crows_today, crops_available)`
 - [ ] finite acorn stock, no regeneration in phase 1
 - [ ] **retarget T-2's harmless flag** from "first crow ever" to "first crow to target a
       crop", so the last mercy lands at the transition rather than on a crow that was

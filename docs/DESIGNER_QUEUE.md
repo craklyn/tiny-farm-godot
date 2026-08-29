@@ -343,6 +343,38 @@ first, since a different answer there changes what the other four are optimising
   in phase 2 — raise the number, never the appetite. Also **retarget T-2's harmless flag
   from "first crow ever" to "first crow to target a crop"**, so the last mercy lands at
   the transition instead of being spent on a crow that was never a threat.
+- **Q-46 (Ruling)** **How are the axe and pickaxe acquired?** Q-34 ruled that they are
+  *earned*, and `design/02` §6 still lists the unlock mechanism as an open section — but
+  M1.5's parcel rebuild cannot be built without *some* mechanism, so one is in the code
+  now as a clearly-labelled strawman rather than a decision. **What is built:** each tool
+  sits visibly on the ground at its parcel's gate from the moment she leaves the yard — a
+  promise she can see and cannot yet take. It becomes collectable when a capability proof
+  fires: the **axe** after 5 total harvests, the **pickaxe** after 3 logs cleared. Tapping
+  it grants the tool and opens the gate, and the parcel behind it contains exactly one new
+  obstacle type. Both thresholds are single named constants in one place
+  (`WorldLayout.DEFAULT.tools[].threshold`, marked `[Playtest]`), so tuning them is a
+  one-line edit. **Recommendation: accept the shape** — visible tool at the gate,
+  proof-gated, tap to take — and tune the two numbers on device. The shape is the part
+  that matters: it makes each tool a solution to a problem she already has (Valve
+  principle 1), and it keeps "not yet" spatial rather than textual (S-7). *What is
+  genuinely open and not decided here: whether the proof should be a harvest count at all,
+  versus something she can see herself accumulating; and whether the tool should be a gift
+  from the departing neighbour instead of a found object, which would cost nothing extra
+  and ties back to Q-22.*
+- **Q-47 (Ruling)** **What evidence closes M1.5's exit gate?** The M1.5 gate in
+  `ROADMAP.md` currently reads "a first-time pre-reader reaches day 1 beat 4 … on two
+  consecutive fresh runs". That re-creates the exact planning fault **Q-43 fixed for M1**
+  on 2026-08-28: it makes a milestone depend on a four-year-old being available and
+  cooperative twice in a row. S-7/Q-43's revision moved gates to *measured trace criteria
+  plus an unprompted adult session*, with the child kept as opportunistic validation that
+  never blocks. The M1.5 gate was written before that revision and was never brought into
+  line. **Recommendation: restate it the same way Q-43 did** — the gate is an unprompted
+  adult fresh run, measured from the session trace (time-to-first-correct-tap per beat,
+  zero adult words spoken, the cot tapped), with a pre-reader run recorded opportunistically
+  and never blocking. **Deliberately not changed in code or in the ROADMAP** — the gate
+  text is untouched pending this ruling, because rewriting a milestone's exit condition is
+  a designer's call and not an execution session's.
+
 - **Q-38 (Ruling — still open, but built)** **Daylight instead of an energy bar.**
   **Status note 2026-08-29:** `docs/M1_5_PLAN.md` scheduled this as work item WI-1 and
   described Q-38 as ruled; it is not — this entry has never been struck through. T-14 was
