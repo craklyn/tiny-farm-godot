@@ -183,7 +183,14 @@ first, since a different answer there changes what the other four are optimising
   silently does nothing is the failure we just spent a milestone removing; a hedge she
   cannot cross is legible without words. Largest work item in the chapter (world
   generation becomes ring-based, which is a seeded sim change).
-- **Q-35 (Ruling)** **When to teach sell / buy / refill.** These three are currently
+- **Q-35** ~~When to teach sell / buy / refill~~ — ✅ ruled 2026-08-29: **teach at first
+  need, and redesign the shop so it needs no reading.** The bin lights when her basket
+  holds crops; the seed box lights when her pouch empties; each fires once, at the moment
+  it is useful. **The shop rework is the load-bearing half** — guiding a pre-reader to a
+  menu she cannot read is worse than not guiding her, so the screen must work on crop icons
+  and coin counts. Keeps S-7's no-reading promise whole rather than carving an exception
+  for the one screen that breaks it. Stories T-11 and T-12. Original wording: these three
+  are currently
   taught *nowhere* — the gap that produced the silent empty-pouch refusal on 2026-08-27.
   **Recommendation:** at first need (first sale at three crops, first purchase when the
   pouch empties, first refill when the can empties), one glowing object at a time. Note
