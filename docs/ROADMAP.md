@@ -63,6 +63,10 @@ between this milestone and shipping it.
 Design: `design/13-teaching-and-onboarding.md`. Rulings: Q-32–Q-36. **Q-32 frames the
 rest — rule it first.** Sizes are rough and assume part-time solo work.*
 
+**Implementation plan (2026-08-29): `docs/M1_5_PLAN.md`** — work items WI-1..WI-9 in
+dependency order, per-item acceptance criteria and verifier procedures, and the
+stage-3 verification checklist. Written after the ten 2026-08-29 rulings landed.
+
 **Exit gate:** a first-time pre-reader reaches day 1 beat 4 (tapping the cot) with no
 adult speaking, on two consecutive fresh runs — measured from the session trace, not
 from an adult's impression.
