@@ -27,7 +27,26 @@ var max_watering_can_charges: int
 var selected_seed_type: String
 var hard_energy: bool  # phase 1: false (soft floor, Q-11); phase 2+ flips true
 var crows_scared: int  # Q-12 proof counter (player-caused scares, via crow_scared verb)
-var crows_seen: int  # T-2: how many crows have ever arrived; the first one is harmless
+var crows_seen: int  # T-2: how many crows have ever arrived (kept for trace/compat)
+# T-15 / Q-39: the mercy flag's real anchor. Under acorns the first several crows
+# are already harmless *by behaviour*, so spending the scripted mercy on "the
+# first crow ever" spends it on a bird that was never a threat. It belongs on the
+# first crow to go for a **crop**, which is the moment the peace actually ends.
+var crop_crows_seen: int
+
+# T-9 (Q-34): tools are acquired, not owned. She starts with hands, hoe, can and
+# seeds; the axe and pickaxe are earned, and each opens the parcel that needs it.
+var tools_owned: Dictionary
+
+# T-13 (Q-37/Q-45): the cold open spends real days before the player owns
+# anything, so every day-keyed rule is anchored here rather than on `day`.
+# Set by the sim when the neighbour's gate opens; 1 for a world without one.
+var takeover_day: int
+
+# Cleared-obstacle counts by verb, accrued in the sim gateway so replays earn
+# them identically. Feeds T-10 ("has she ever cleared one of these?") and Q-46's
+# pickaxe proof.
+var clear_counts: Dictionary
 
 # T-20: the day is measured in actions taken, not seconds. Each crow is assigned
 # exactly one point in that day at which it flies in; being shooed means it is
@@ -74,6 +93,13 @@ func reset() -> void:
 	hard_energy = false
 	crows_scared = 0
 	crows_seen = 0
+	crop_crows_seen = 0
+	tools_owned = {
+		"hands": true, "hoe": true, "watering_can": true, "seeds": true,
+		"axe": false, "pickaxe": false,
+	}
+	takeover_day = 1
+	clear_counts = {}
 	actions_today = 0
 	crow_schedule = []
 	total_shipped = 0
@@ -97,10 +123,30 @@ func set_gold(value: int) -> void:
 	gold_changed.emit(gold)
 
 
+# T-9: cycling never lands on a tool she has not acquired. A control that
+# selects an invisible, unusable tool is the same class of dead end as the
+# seed-cycling trap below — it responds, and the response means nothing.
 func cycle_tool(direction: int) -> void:
 	var tool_count := Tools.LIST.size()
-	selected_tool = (selected_tool + direction + tool_count) % tool_count
+	var step: int = 1 if direction >= 0 else -1
+	for _i in tool_count:
+		selected_tool = (selected_tool + step + tool_count) % tool_count
+		if owns_tool(Tools.key_of(selected_tool)):
+			break
 	tool_changed.emit(selected_tool)
+
+
+func owns_tool(key: String) -> bool:
+	# Defaults to owned for anything the table has never heard of, so a new tool
+	# added later is usable before anyone remembers to grant it.
+	return bool(tools_owned.get(key, true))
+
+
+# The player's own day 1 is the day she takes the farm over, not the day the
+# world started. Everything day-keyed (crow readiness, the crow schedule, the
+# vignette's beats) counts in these.
+func play_day() -> int:
+	return day - takeover_day + 1
 
 
 # Reported from play 2026-08-28: after placing a scarecrow, with 0 of every seed
@@ -198,7 +244,7 @@ func start_new_day() -> void:
 	# A fresh day's action clock, and a fresh set of arrival points for it. Rolled
 	# here so it is seeded sim truth and a replay reproduces the same birds.
 	actions_today = 0
-	crow_schedule = SimWorld.roll_crow_schedule(day)
+	crow_schedule = SimWorld.roll_crow_schedule(play_day())
 	
 	if SimRng.randf() < 0.2:
 		weather = "rainy"

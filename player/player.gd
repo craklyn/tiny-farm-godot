@@ -264,14 +264,32 @@ func update_player(delta: float) -> void:
 			var out_kind := "unreachable"
 			if near:
 				out_kind = "satisfied" if satisfied2 != "" else ("refused" if why != "" else "none")
+			path = []
+			pending_action = {}
+			tap_indicator = {}
+			approach_target = Vector2i(-1, -1)
+
+			# T-8 (Q-34, design/13 §5): a tap beyond a boundary still answers.
+			# She cannot reach that tile — because it is behind a fence, a closed
+			# gate or a hedge — and the honest answer is not silence and not a
+			# refusal she cannot read. It is movement: she walks as far toward it
+			# as the land allows and stops at the edge, which reads correctly as
+			# "not yet". Only for far taps; a tap she is already standing beside
+			# was answered above.
+			if not near and satisfied2 == "" and why == "":
+				var toward := Pathfinding.find_path_nearest(farm, player_t, target_vec)
+				if not toward.is_empty():
+					path = toward
+					out_kind = "walk"
+					var edge := path[path.size() - 1]
+					tap_indicator = { "tx": edge.x, "ty": edge.y,
+						"timer": TAP_INDICATOR_DURATION, "r": 0.9, "g": 0.85, "b": 0.3 }
+
 			if farm.trace != null:
 				farm.trace.tap("drag" if is_drag else "tap", target_vec, player_t,
 					GameState.selected_tool,
 					String(resolved.get("action", "")), out_kind,
 					satisfied2 if satisfied2 != "" else why)
-			path = []
-			pending_action = {}
-			tap_indicator = {}
 
 	# Keyboard / gamepad movement (cancels path)
 	var input_vec := Input.get_vector("move_left", "move_right", "move_up", "move_down")
@@ -465,6 +483,26 @@ func _execute_resolved_action(pa: Dictionary) -> void:
 	if action == "open_shop":
 		get_tree().get_first_node_in_group("Main").call_deferred("trigger_action", "open_shop")
 		return
+	# T-9 (Q-34): picking the tool up is what opens its parcel. Two recorded
+	# actions rather than one hidden side effect, so a replay opens the same gate
+	# at the same moment and the sim keeps a single gateway per world change.
+	if action == "take_tool":
+		var tool_key: String = pa.get("tool", "")
+		var got: Dictionary = farm.apply_action({
+			"verb": "take_tool",
+			"target": target_t,
+			"tool": tool_key,
+			"actor": "player",
+		}, GameState)
+		if not got.get("ok", false):
+			return
+		AudioManager.play_sfx("jingle")
+		_emit_particles("harvest", target_t)
+		GameState.selected_tool = Tools.index_of_key(String(got.get("tool", tool_key)))
+		var gate := WorldLayout.gate_for_tool(String(got.get("tool", tool_key)))
+		if gate.x >= 0:
+			farm.apply_action({ "verb": "open_gate", "target": gate, "actor": "world" }, GameState)
+		return
 	# Every remaining verb is a sim Action (S-3): the sim validates and mutates;
 	# this side keeps only presentation (tool swap, animation, sfx, particles).
 	var result: Dictionary = farm.apply_action({
@@ -487,7 +525,8 @@ func _execute_resolved_action(pa: Dictionary) -> void:
 	is_acting = true
 	action_timer = ACTION_DURATION
 
-	if action == "clear_weed" or action == "clear_log" or action == "clear_rock":
+	if action == "clear_weed" or action == "clear_log" or action == "clear_rock" \
+			or action == "clear_tree":
 		AudioManager.play_sfx("till")
 		_emit_particles("chop", target_t)
 	elif action == "till":

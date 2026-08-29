@@ -32,6 +32,10 @@ static func capture(world: SimWorld, gs) -> Dictionary:
 			"hard_energy": gs.hard_energy,
 			"crows_scared": gs.crows_scared,
 			"crows_seen": gs.crows_seen,
+			"crop_crows_seen": gs.crop_crows_seen,
+			"tools_owned": gs.tools_owned.duplicate(),
+			"takeover_day": gs.takeover_day,
+			"clear_counts": gs.clear_counts.duplicate(),
 			"actions_today": gs.actions_today,
 			"crow_schedule": gs.crow_schedule.duplicate(),
 			"total_shipped": gs.total_shipped,
@@ -91,6 +95,22 @@ static func restore(data: Dictionary, world: SimWorld, gs) -> bool:
 	gs.crows_scared = int(s.get("crows_scared", 0))
 	# Defaulted, so pre-T-2 saves load unchanged and simply get a harmless first crow.
 	gs.crows_seen = int(s.get("crows_seen", 0))
+	# Additive M1.5 fields, all chosen so a pre-M1.5 save loads and plays. Tools
+	# default to **owned**, because every save written before T-9 was written by a
+	# build where she had all six — restoring one into a farm that has confiscated
+	# her axe would be a bug wearing a migration's clothes. No VERSION bump: these
+	# are additive keys in the existing schema (docs/ARCHITECTURE.md).
+	gs.crop_crows_seen = int(s.get("crop_crows_seen", 0))
+	var owned: Dictionary = {}
+	for t in Tools.LIST:
+		owned[t.key] = true
+	for k in s.get("tools_owned", {}).keys():
+		owned[k] = bool(s["tools_owned"][k])
+	gs.tools_owned = owned
+	# 1 means "the world began the day she did", which is exactly true of every
+	# save written before the cold open existed.
+	gs.takeover_day = int(s.get("takeover_day", 1))
+	gs.clear_counts = _int_values(s.get("clear_counts", {}))
 	gs.actions_today = int(s.get("actions_today", 0))
 	# Reloading mid-day must neither resurrect a crow already shooed nor erase one
 	# still owed, so the remaining schedule is part of the save.

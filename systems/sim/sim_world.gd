@@ -10,9 +10,13 @@ extends RefCounted
 const MAP_WIDTH := 32
 const MAP_HEIGHT := 20
 
-# Q-9 onboarding vignette tiles (inside the guaranteed-clear spawn band)
-const VIGNETTE_WEED := Vector2i(4, 3)
-const VIGNETTE_PLANT := Vector2i(6, 3)
+# T-8 / Q-34: the world is parcels now. Where the land is and what opens it is
+# data in systems/world_layout.gd; this file only knows how to fill a region
+# definition. The old uniform 25% sprinkle and the two hard-coded vignette tiles
+# (VIGNETTE_WEED / VIGNETTE_PLANT) are gone with it — obstacle *type* is a
+# property of the parcel a tile belongs to, so a rock the player cannot break is
+# a legible future behind a hedge rather than noise in her yard.
+var layout: Dictionary = WorldLayout.DEFAULT
 
 # T-2 / design/13 §4: the first session contains no threat at all.
 #
@@ -22,6 +26,9 @@ const VIGNETTE_PLANT := Vector2i(6, 3)
 # must be. Readiness is gated on evidence rather than the calendar: she must
 # have completed the loop at least once, and have enough planted that losing one
 # is affordable. The day floor is a backstop, not the mechanism.
+# Counted in *play-days*, not absolute days: the cold open (T-13) spends real
+# days before the player owns anything, so anchoring on `day` would let a crow
+# arrive on her first morning. See GameState.play_day().
 const CROW_MIN_DAY := 3
 const CROW_MIN_HARVESTS := 1
 const CROW_MIN_PLANTED := 3
@@ -46,7 +53,7 @@ const CROW_EARLIEST_ACTION := 4   # never in the first few actions of a day
 
 
 # Arrival points for one day, as action counts. Seeded, so a replay sees the same
-# birds arrive at the same moments.
+# birds arrive at the same moments. `day` is a **play-day** (see CROW_MIN_DAY).
 static func roll_crow_schedule(day: int) -> Array[int]:
 	var out: Array[int] = []
 	if day < CROW_MIN_DAY:
@@ -61,7 +68,7 @@ static func roll_crow_schedule(day: int) -> Array[int]:
 
 
 # Pure so it can be tested without a scene tree; the caller (main.gd) owns the
-# timer, this owns the rule.
+# timer, this owns the rule. `day` is a **play-day** (see CROW_MIN_DAY).
 static func may_spawn_crow(day: int, total_harvests: int, planted: int) -> bool:
 	return day >= CROW_MIN_DAY \
 		and total_harvests >= CROW_MIN_HARVESTS \
@@ -81,10 +88,14 @@ var tiles: Array[Array] = []
 var objects: Array[Array] = []  # objects[y][x] = "" or object type string
 
 
-func generate() -> void:
+func generate(with_layout: Dictionary = WorldLayout.DEFAULT) -> void:
+	layout = with_layout
 	tiles.clear()
 	objects.clear()
 
+	# 1. Bare ground inside the map border. Every later step overwrites; nothing
+	#    below reads a tile it has not written, so the fill order is the only
+	#    thing determinism depends on.
 	for ty in MAP_HEIGHT:
 		var row: Array[Dictionary] = []
 		var obj_row: Array[String] = []
@@ -92,43 +103,137 @@ func generate() -> void:
 			if ty == 0 or ty == MAP_HEIGHT - 1 or tx == 0 or tx == MAP_WIDTH - 1:
 				row.append(_create_tile("border"))
 			else:
-				if SimRng.randf() < 0.25:
-					var obstacle_types: Array[String] = ["obstacle_rock", "obstacle_log", "obstacle_weed"]
-					row.append(_create_tile(obstacle_types[SimRng.randi() % 3]))
-				else:
-					row.append(_create_tile("cleared"))
+				row.append(_create_tile("cleared"))
 			obj_row.append("")
 		tiles.append(row)
 		objects.append(obj_row)
 
-	# Place fixed objects
+	# 2. Each parcel's own obstacle, at its own density — this is the whole of
+	#    T-8. One new obstacle type per parcel (design/13 §5, Valve principle 4);
+	#    the wood is the single exception, and only because a standing tree is
+	#    where a log comes from (Q-39).
+	for p in WorldLayout.parcels(layout):
+		var obstacle := String(p.get("obstacle", ""))
+		var density := float(p.get("density", 0.0))
+		var extra := String(p.get("extra_obstacle", ""))
+		var extra_density := float(p.get("extra_density", 0.0))
+		if obstacle == "" and extra == "":
+			continue
+		for r in p.get("rects", []):
+			var rect: Rect2i = r
+			for ty in range(rect.position.y, rect.end.y):
+				for tx in range(rect.position.x, rect.end.x):
+					if not _inside(tx, ty):
+						continue
+					var roll := SimRng.randf()
+					if extra != "" and roll < extra_density:
+						tiles[ty][tx] = _create_tile(extra)
+					elif obstacle != "" and roll < extra_density + density:
+						tiles[ty][tx] = _create_tile(obstacle)
+
+	# 3. The boundaries, which are the design's real content: "not yet" expressed
+	#    as land she can see rather than as a message she cannot read.
+	for b in WorldLayout.boundaries(layout):
+		var kind := String(b.get("kind", WorldLayout.FENCE))
+		for r in b.get("rects", []):
+			var rect: Rect2i = r
+			for ty in range(rect.position.y, rect.end.y):
+				for tx in range(rect.position.x, rect.end.x):
+					if _inside(tx, ty):
+						tiles[ty][tx] = _create_tile(kind)
+
+	# 4. Gates, all closed. Closed becomes open is the cheapest celebration in the
+	#    game and needs no words (design/13 §4a).
+	for p in WorldLayout.parcels(layout):
+		var g: Vector2i = p.get("gate", Vector2i(-1, -1))
+		if g.x >= 0 and _inside(g.x, g.y):
+			tiles[g.y][g.x] = _create_tile(WorldLayout.GATE_CLOSED)
+
+	# 5. Fixed objects, on cleared ground with cleared shoulders.
 	for obj in OBJECT_POSITIONS:
 		var tx: int = obj.tx
 		var ty: int = obj.ty
 		tiles[ty][tx] = _create_tile("cleared")
 		objects[ty][tx] = obj.type
-		# Clear surrounding tiles
 		for dy in range(-1, 2):
 			for dx in range(-1, 2):
 				var nx := tx + dx
 				var ny := ty + dy
-				if nx >= 1 and nx <= MAP_WIDTH - 2 and ny >= 1 and ny <= MAP_HEIGHT - 2:
-					if objects[ny][nx] == "":
-						tiles[ny][nx] = _create_tile("cleared")
+				if _inside(nx, ny) and objects[ny][nx] == "" \
+						and not WorldLayout.is_boundary_state(String(tiles[ny][nx].state)):
+					tiles[ny][nx] = _create_tile("cleared")
 
-	# Ensure player spawn area is clear
-	for dy in range(0, 3):
-		for dx in range(0, 11):
-			var tx := 1 + dx
-			var ty := 1 + dy
-			if tx <= MAP_WIDTH - 2 and ty <= MAP_HEIGHT - 2:
-				if objects[ty][tx] == "":
-					tiles[ty][tx] = _create_tile("cleared")
+	# 6. The tools, lying at their gates from the first moment she can see them.
+	#    Q-46 STRAWMAN — the mechanism is in DESIGNER_QUEUE, not settled here.
+	for e in WorldLayout.tools(layout):
+		var at: Vector2i = e.get("at", Vector2i(-1, -1))
+		if _inside(at.x, at.y):
+			tiles[at.y][at.x] = _create_tile("cleared")
+			objects[at.y][at.x] = String(e.get("object", ""))
 
-	# Q-9 onboarding vignette: one weed to clear, one tilled tile to plant and
-	# water, in the spawn band. Part of seeded generation, so replays match.
-	tiles[VIGNETTE_WEED.y][VIGNETTE_WEED.x] = _create_tile("obstacle_weed")
-	tiles[VIGNETTE_PLANT.y][VIGNETTE_PLANT.x] = _create_tile("tilled")
+	# 7. A finite acorn stock near the trees (T-15 / Q-39). No regeneration in
+	#    phase 1: the stock running down IS the difficulty ramp, and a ramp that
+	#    refills is not a ramp. Walkable like an egg, so it can never trap anyone.
+	_place_acorns()
+
+	# 8. The neighbour's plot, in its state *before* the cold open runs. Her own
+	#    actions and the world sleeps produce the takeover row, so what the player
+	#    inherits is real world state rather than a picture of some.
+	_place_neighbour_plot()
+
+
+func _inside(tx: int, ty: int) -> bool:
+	return tx >= 1 and tx <= MAP_WIDTH - 2 and ty >= 1 and ty <= MAP_HEIGHT - 2
+
+
+func _place_acorns() -> void:
+	var spec: Dictionary = layout.get("acorns", {})
+	if spec.is_empty():
+		return
+	var rect: Rect2i = spec.get("rect", Rect2i())
+	var want := int(spec.get("count", 0))
+	var candidates: Array[Vector2i] = []
+	for ty in range(rect.position.y, rect.end.y):
+		for tx in range(rect.position.x, rect.end.x):
+			if _inside(tx, ty) and tiles[ty][tx].state == "cleared" and objects[ty][tx] == "":
+				candidates.append(Vector2i(tx, ty))
+	# Seeded draw without replacement: swap-and-shrink so the same seed always
+	# picks the same tiles in the same order.
+	for i in want:
+		if candidates.is_empty():
+			return
+		var idx: int = SimRng.randi() % candidates.size()
+		var t: Vector2i = candidates[idx]
+		candidates.remove_at(idx)
+		objects[t.y][t.x] = "acorn"
+
+
+# The layout contract WI-4's vignette derives its beats from. Placed here rather
+# than scripted at runtime so that a fresh world is already a coherent story even
+# if nothing ever animates: cleared → tilled → seeded → growing → ready, read
+# left to right, is environmental storytelling that cannot be skipped.
+func _place_neighbour_plot() -> void:
+	var plot: Dictionary = layout.get("neighbour_plot", {})
+	if plot.is_empty():
+		return
+	var crop := String(plot.get("crop", "wheat"))
+	for t in plot.get("cleared", []):
+		tiles[t.y][t.x] = _create_tile("cleared")
+	for t in plot.get("tilled", []):
+		tiles[t.y][t.x] = _create_tile("tilled")
+	var demo: Vector2i = plot.get("cleared_for_demo", Vector2i(-1, -1))
+	if demo.x >= 0:
+		tiles[demo.y][demo.x] = _create_tile("cleared")
+	for t in plot.get("seeded", []):
+		tiles[t.y][t.x] = _create_tile("seeded")
+		tiles[t.y][t.x].crop_type = crop
+	for e in plot.get("growing", []):
+		var at: Vector2i = e.get("at", Vector2i(-1, -1))
+		tiles[at.y][at.x] = _create_tile("growing")
+		tiles[at.y][at.x].crop_type = crop
+		tiles[at.y][at.x].growth_stage = int(e.get("stage", 1))
+	for t in plot.get("second_row", []):
+		tiles[t.y][t.x] = _create_tile("tilled")
 
 
 func _create_tile(state: String) -> Dictionary:
@@ -200,10 +305,69 @@ func is_walkable(tx: int, ty: int) -> bool:
 		return false
 	if state.begins_with("obstacle"):
 		return false
+	# T-8: a boundary is land, and land is what says "not yet". An open gate is
+	# ordinary ground — that transition is the whole reward.
+	if WorldLayout.is_boundary_state(state):
+		return false
 	var obj := get_object(tx, ty)
-	if obj != "" and obj != "egg":
+	if obj != "" and obj != "egg" and obj != "acorn":
 		return false
 	return true
+
+
+# Parcels are open when their gate is (or they never had one). Derived from the
+# grid, so it survives saves and replays with no flag of its own.
+func is_parcel_open(parcel: Dictionary) -> bool:
+	var g: Vector2i = parcel.get("gate", Vector2i(-1, -1))
+	if g.x < 0:
+		return true
+	return String(get_tile(g.x, g.y).get("state", "")) == WorldLayout.GATE_OPEN
+
+
+# Q-46 STRAWMAN (see DESIGNER_QUEUE): the proof that makes a placed tool
+# collectable. Pure, so the router can ask it and a test can drive it.
+static func tool_proof_met(entry: Dictionary, gs) -> bool:
+	if gs == null:
+		return false
+	var need := int(entry.get("threshold", 0))
+	match String(entry.get("proof", "")):
+		"harvests":
+			return gs.total_harvests() >= need
+		"clear_log", "clear_rock", "clear_weed", "clear_tree":
+			return int(gs.clear_counts.get(String(entry.get("proof", "")), 0)) >= need
+	return false
+
+
+# T-15 / Q-39: what a crow goes for. **Any acorn beats any crop** — that is the
+# whole mechanic, and it is behaviour rather than the scripted mercy T-2 used, so
+# a four-year-old can watch the rule instead of experiencing a bird that
+# inexplicably left. The rule lives here; the caller supplies the draw, exactly
+# as may_spawn_crow() splits rule from timer.
+func choose_crow_target(prefer_seed: int) -> Dictionary:
+	var acorns: Array[Vector2i] = []
+	var crops: Array[Vector2i] = []
+	for ty in MAP_HEIGHT:
+		for tx in MAP_WIDTH:
+			if objects[ty][tx] == "acorn":
+				acorns.append(Vector2i(tx, ty))
+				continue
+			var st: String = tiles[ty][tx].get("state", "")
+			if st == "seeded" or st == "growing" or st == "ready":
+				crops.append(Vector2i(tx, ty))
+	if not acorns.is_empty():
+		return { "kind": "acorn", "tile": acorns[posmod(prefer_seed, acorns.size())] }
+	if not crops.is_empty():
+		return { "kind": "crop", "tile": crops[posmod(prefer_seed, crops.size())] }
+	return { "kind": "none", "tile": Vector2i(-1, -1) }
+
+
+func count_acorns() -> int:
+	var n := 0
+	for ty in MAP_HEIGHT:
+		for tx in MAP_WIDTH:
+			if objects[ty][tx] == "acorn":
+				n += 1
+	return n
 
 
 func set_tile_state(tx: int, ty: int, new_state: String, crop_type: String = "") -> void:
@@ -242,6 +406,14 @@ const MILESTONE_VERBS := { "harvest": true, "collect": true, "sell": true, "slee
 # are errands rather than farm work. Everything else the player successfully does
 # is one tick of the action clock T-20 schedules crows against.
 const NON_WORK_VERBS := { "sleep": true, "sell": true, "buy_seed": true, "refill": true }
+
+# Actors who work out of their own pockets. The cold open (T-13) passes the
+# player's GameState — there is only one — so without this the neighbour would
+# till, plant and water her own row using the player's energy, seeds and water,
+# and the player would wake up on day 1 already tired and a seed short. Energy,
+# seed and water costs are the player's alone; the world state they produce is
+# everybody's.
+const UNCHARGED_ACTORS := { "neighbour": true, "world": true, "crow": true, "chicken": true }
 
 
 func apply_action(action: Dictionary, gs = null) -> Dictionary:
@@ -313,7 +485,54 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 				newly_complete = true
 			return { "ok": true, "day": gs.day, "weather": gs.weather, "phase1_complete_now": newly_complete }
 
+		# -- land and tools (T-8/T-9, Q-34) --
+		# Closed becomes open. Applied by the neighbour at the end of the cold
+		# open (actor "neighbour") and by tool acquisition (actor "world") — both
+		# recorded, so a replay opens the same gates at the same moments.
+		"open_gate":
+			var gtile := get_tile(target.x, target.y)
+			if gtile.is_empty(): return _fail("out_of_bounds")
+			if String(gtile.get("state", "")) != WorldLayout.GATE_CLOSED:
+				return _fail("not_a_closed_gate")
+			set_tile_state(target.x, target.y, WorldLayout.GATE_OPEN)
+			# The cold open's gate is where the player's own day 1 begins, so the
+			# day-keyed rules re-anchor here rather than on the absolute day
+			# counter. Set inside the sim so a replay earns the same anchor.
+			var opened := _parcel_with_gate(target)
+			if gs != null and String(opened.get("opened_by", "")) == WorldLayout.OPENED_BY_COLD_OPEN \
+					and "takeover_day" in gs:
+				gs.takeover_day = gs.day
+				# Whatever the cold open's own days rolled is not hers; play-day 1
+				# starts now, and play-day 1 has no crows in it by construction.
+				gs.actions_today = 0
+				gs.crow_schedule = roll_crow_schedule(1)
+			return { "ok": true, "opened": String(opened.get("id", "")) }
+
+		# Picking a tool up off the ground. The proof gate lives in the router
+		# (an unproven tool simply resolves as movement — she walks up to it and
+		# stops, which is the wordless "not yet"); this guard is the sim's own
+		# backstop, and it is never the path a player reaches by tapping.
+		"take_tool":
+			if gs == null: return _fail("no_state")
+			var want := String(action.get("tool", ""))
+			var placed := get_object(target.x, target.y)
+			if placed == "" or not placed.begins_with("tool_"):
+				return _fail("no_tool_here")
+			if want != "" and placed != "tool_" + want:
+				return _fail("wrong_tool")
+			set_object(target.x, target.y, "")
+			gs.tools_owned[placed.substr(5)] = true
+			return { "ok": true, "tool": placed.substr(5) }
+
 		# -- entity verbs --
+		# T-15 / Q-39: the crow's preferred meal. An entity-only verb like
+		# eat_crop, and like eat_crop it gives the bird no capability the player
+		# could not exercise by hand (she can pick things up; she simply has no
+		# reason to pick up an acorn in phase 1).
+		"eat_acorn":
+			if get_object(target.x, target.y) != "acorn": return _fail("no_acorn")
+			set_object(target.x, target.y, "")
+			return { "ok": true }
 		"eat_crop":
 			var tile := get_tile(target.x, target.y)
 			if tile.is_empty(): return _fail("out_of_bounds")
@@ -332,25 +551,32 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			return { "ok": true }
 
 		# -- energy-costed tile verbs --
-		"clear_weed", "clear_log", "clear_rock", "till", "plant", "water", "harvest":
+		"clear_weed", "clear_log", "clear_rock", "clear_tree", "till", "plant", "water", "harvest":
 			if gs == null: return _fail("no_state")
 			var tile := get_tile(target.x, target.y)
 			if tile.is_empty() or tile.get("state", "") == "": return _fail("out_of_bounds")
 			var cost: int = Tools.get_energy_cost(verb)
+			var charged: bool = not UNCHARGED_ACTORS.has(String(action.get("actor", "")))
 			# Q-11 soft floor: in phase 1 an empty tank never blocks the action,
 			# it just stays at 0 (presentation slows the farmer as the nudge)
-			if gs.hard_energy and gs.energy < cost: return _fail("no_energy")
+			if charged and gs.hard_energy and gs.energy < cost: return _fail("no_energy")
 			var seed_type: String = action.get("seed_type", "")
-			if verb == "water" and gs.watering_can_charges <= 0: return _fail("no_water")
-			if verb == "plant" and gs.seeds.get(seed_type, 0) <= 0: return _fail("no_seeds")
+			if charged and verb == "water" and gs.watering_can_charges <= 0: return _fail("no_water")
+			if charged and verb == "plant" and gs.seeds.get(seed_type, 0) <= 0: return _fail("no_seeds")
 
 			# Through the setter, not the field: set_energy() clamps identically and
 			# emits energy_changed, which is what T-14's daylight tint listens to.
 			# A direct write left the sky frozen until the next day turned over.
-			gs.set_energy(gs.energy - cost)
+			if charged:
+				gs.set_energy(gs.energy - cost)
 			match verb:
-				"clear_weed", "clear_log", "clear_rock":
+				"clear_weed", "clear_log", "clear_rock", "clear_tree":
 					set_tile_state(target.x, target.y, "cleared")
+					# Accrued in the gateway so a replay earns the same counts.
+					# Feeds T-10 ("has she ever cleared one of these?") and Q-46's
+					# pickaxe proof, and costs one dictionary write per clear.
+					if charged and "clear_counts" in gs:
+						gs.clear_counts[verb] = int(gs.clear_counts.get(verb, 0)) + 1
 				"till":
 					set_tile_state(target.x, target.y, "tilled")
 				"plant":
@@ -359,10 +585,12 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 						set_object(target.x, target.y, seed_type)
 					else:
 						set_tile_state(target.x, target.y, "seeded", seed_type)
-					gs.seeds[seed_type] -= 1
+					if charged:
+						gs.seeds[seed_type] -= 1
 				"water":
 					water_tile(target.x, target.y)
-					gs.watering_can_charges -= 1
+					if charged:
+						gs.watering_can_charges -= 1
 				"harvest":
 					var crop_type := get_crop_type(target.x, target.y)
 					if crop_type != "":
@@ -384,16 +612,35 @@ const PHASE1_SHIPPED_TARGET := 20
 const PHASE1_SCARED_TARGET := 3
 
 
+# The tidy-farm half of the proof counts **opened parcels only**. Before T-8 it
+# scanned the whole map, which was right when every tile was reachable from the
+# first frame; with land behind gates it would make phase 1 impossible to finish
+# without the pickaxe, and phase 1 completion is not supposed to require the last
+# tool. Derived from gate state, so it needs no flag and survives replays.
 func _phase1_proof_met(gs) -> bool:
 	if gs.total_shipped < PHASE1_SHIPPED_TARGET:
 		return false
 	if gs.crows_scared < PHASE1_SCARED_TARGET:
 		return false
-	for ty in MAP_HEIGHT:
-		for tx in MAP_WIDTH:
-			if String(tiles[ty][tx].get("state", "")).begins_with("obstacle"):
-				return false
+	for p in WorldLayout.parcels(layout):
+		if not is_parcel_open(p):
+			continue
+		for r in p.get("rects", []):
+			var rect: Rect2i = r
+			for ty in range(rect.position.y, rect.end.y):
+				for tx in range(rect.position.x, rect.end.x):
+					if not _inside(tx, ty):
+						continue
+					if String(tiles[ty][tx].get("state", "")).begins_with("obstacle"):
+						return false
 	return true
+
+
+func _parcel_with_gate(gate: Vector2i) -> Dictionary:
+	for p in WorldLayout.parcels(layout):
+		if p.get("gate", Vector2i(-1, -1)) == gate:
+			return p
+	return {}
 
 
 func advance_day(weather: String) -> void:

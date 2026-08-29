@@ -153,3 +153,54 @@ func find_path_toward(farm: Node2D, start_t: Vector2i, goal_t: Vector2i) -> Arra
 
 func _is_adjacent(a: Vector2i, b: Vector2i) -> bool:
 	return absi(a.x - b.x) + absi(a.y - b.y) == 1
+
+
+# As far toward the goal as she can actually get (T-8 / Q-34, design/13 §5).
+#
+# A tap beyond a boundary **must still answer**. Before parcels, an unreachable
+# goal was always a mistake and returning [] was right; now it is the ordinary
+# case — she tapped a tree across the hedge because she wants to go there — and
+# silence is exactly the failure M1 spent a milestone removing. The honest answer
+# is movement: she walks to the hedge and looks at it, which a pre-reader reads
+# correctly as "not yet" without a word of text.
+#
+# BFS over reachable ground, keeping the visited tile closest to the goal
+# (ties broken by fewest steps, so she stops at the near face of the boundary
+# rather than walking the length of it). Cost is bounded by the reachable area
+# and it runs once per tap, never per frame.
+func find_path_nearest(farm: Node2D, start_t: Vector2i, goal_t: Vector2i) -> Array[Vector2i]:
+	var came_from: Dictionary = {}
+	var steps: Dictionary = {}
+	var start_key := _key(start_t)
+	steps[start_key] = 0
+
+	var queue: Array[Vector2i] = [start_t]
+	var idx := 0
+	var best_t := start_t
+	var best_h := _h(start_t, goal_t)
+	var best_steps := 0
+
+	while idx < queue.size():
+		var ct: Vector2i = queue[idx]
+		idx += 1
+		var ck := _key(ct)
+		var ct_steps: int = steps[ck]
+		var h := _h(ct, goal_t)
+		if h < best_h or (h == best_h and ct_steps < best_steps):
+			best_h = h
+			best_steps = ct_steps
+			best_t = ct
+		for d: Vector2i in DIRS:
+			var nt := ct + d
+			var nk := _key(nt)
+			if steps.has(nk):
+				continue
+			if not farm.is_walkable(nt.x, nt.y):
+				continue
+			steps[nk] = ct_steps + 1
+			came_from[nk] = ck
+			queue.append(nt)
+
+	if best_t == start_t:
+		return []
+	return _reconstruct(came_from, start_key, _key(best_t), best_t)

@@ -24,6 +24,12 @@ var entities_manager: Node = null
 # that costs the player a crop teaches threat no matter how gently it is drawn.
 var harmless: bool = false
 
+# T-15 / Q-39: "acorn" or "crop", decided by SimWorld.choose_crow_target(). A
+# crow on an acorn is not nerfed and not scripted — it simply prefers acorns,
+# which is a rule a four-year-old can watch happen instead of a boolean she can
+# never perceive.
+var target_kind: String = "crop"
+
 # A harmless crow dawdles, so there is an unmissable window to walk over and
 # scare it off. The telegraph is the point: she should get to win.
 const EAT_SECONDS := 5.0
@@ -116,7 +122,7 @@ func _process(delta: float) -> void:
 					get_tree().root.get_node("AudioManager").play_sfx("squawk")
 			else:
 				var result: Dictionary = farm.apply_action({
-					"verb": "eat_crop",
+					"verb": "eat_acorn" if target_kind == "acorn" else "eat_crop",
 					"target": Vector2i(target_tx, target_ty),
 					"actor": "crow",
 				})

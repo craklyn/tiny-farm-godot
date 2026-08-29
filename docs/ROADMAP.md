@@ -140,28 +140,39 @@ four-year-old can perceive without being taught at all.
 - [x] eggs excluded from the harvest count via a shared `total_harvests()` helper, so the
       crow gate and the milestone check cannot drift apart
 
-**T-3 — Day 1 opens on a ripe crop** · Q-33 · ~1 day
+**T-3 — Day 1 opens on a ripe crop** · Q-33 ✅ · done 2026-08-29 (M1.5 WI-4)
 *So that the player is paid before being asked, and forms the question the rest answers.*
-Today day 1 opens on a weed — a chore, and the least motivating verb we have.
-- [ ] seeded generation places a ripe crop one tile from spawn (replay-affecting)
-- [ ] the farmer starts *not* adjacent to it, so beat 1 teaches movement implicitly
-- [ ] vignette steps reorder to harvest → plant → water → sleep
-- [ ] the weed leaves day 1 entirely; it returns as ring 1's content (T-9)
-- [ ] save/replay tests updated for the new opening
+Day 1 used to open on a weed — a chore, and the least motivating verb we have.
+- [x] seeded generation places the ripe crop in the neighbour's row, and the cold
+      open's two days are what ripen it — so it is *her unfinished work*, not a gift
+- [x] the farmer starts in her own yard, so beat 1 requires a walk through the gate;
+      asserted (ripe tile ≥ 2 tiles from the gate) in `test_vignette_multiday`
+- [x] vignette beats reorder to gate → harvest → plant → water → sleep
+- [x] the weed leaves day 1 entirely; it is parcel 1's content now (T-8)
+- [x] save/replay tests updated for the new opening; the six worldgen tests named in
+      `M1_5_PLAN.md`'s blast radius were rewritten in the same commit
 
-**T-4 — The cot closes day 1** · Q-33 · ~half a day
+**T-4 — The cot closes day 1** · Q-33 ✅ · done 2026-08-29 (M1.5 WI-4)
 *So that the first session resolves instead of trailing off.*
-- [ ] once nothing else is highlighted, the cot becomes the highlighted target
-- [ ] sleeping from the vignette is what ends it, replacing "day == 1"
+- [x] once nothing else is highlighted, the cot becomes the highlighted target
+- [x] sleeping is what ends day 1's phase: `VignetteState.is_active()`'s old
+      `day == 1` check is gone, and activity is derived from what remains undone
+      relative to `GameState.takeover_day`
 
-**T-5 — Day 2 is the payoff** · Q-33 · ~1 day
+**T-5 — Day 2 is the payoff** · Q-33 ✅ · done 2026-08-29 (M1.5 WI-4)
 *So that four gestures are revealed to have been one causal chain — this is where the
 core loop actually lands, not day 1.*
-- [ ] on waking, the tile watered yesterday is grown and is the only thing highlighted
-- [ ] then 2–3 tilled tiles highlight **together**, not in sequence — the first honest
-      read on swipe-chaining a row (the open sub-question from Q-30)
-- [ ] one new verb, and only one: till, on a single cleared tile
-- [ ] the vignette becomes multi-day, which retires `is_active(world, day)`'s day-1 check
+- [x] on waking, a newly ripe tile is the only thing highlighted. **Honest staging
+      note:** wheat takes 3 days, so the tile *she* watered on day 1 is a visible
+      sprout on day 2 and the ripe one is the neighbour's, ripening overnight. The
+      whole row advancing one stage is itself the lesson ("the world moved because the
+      day did"). Flagged to the designer in `M1_5_PLAN.md` §3; the literal
+      watered-tile-becomes-food version needs a 1-day starter crop and a ruling
+- [x] then the remaining tilled tiles highlight **together**, not in sequence —
+      `target_tiles()` returns an array, and so does the watering beat after it
+- [x] one new verb, and only one: till, on a single cleared tile
+- [x] the vignette is multi-day and counts in **play-days**, so the cold open's own
+      days cannot be mistaken for hers
 
 **T-6 — Verb competence counts** · ❌ dropped 2026-08-29 (Q-36 rejected) · ~half a day
 *So that the tutorial can measure the player instead of following a script.*
@@ -179,7 +190,7 @@ setting and no skip button a pre-reader could not read.*
 - [ ] stage reached is written to the session trace — this *is* the playtest data
 - [ ] presentation-only; must never gate `apply_action` (the D-8 constraint)
 
-**T-8 — Parcel-based world generation** · Q-34 ✅ · ~2–3 days · **largest item here**
+**T-8 — Parcel-based world generation** · Q-34 ✅ · done 2026-08-29 (M1.5 WI-3)
 *So that "you cannot do that yet" is a hedge she can see, not a refusal she cannot read.*
 Obstacles are currently sprinkled uniformly at 25% (`sim_world.generate()`); obstacle type
 must become a property of the parcel a tile belongs to.
@@ -188,20 +199,41 @@ must become a property of the parcel a tile belongs to.
 open. **Build the generator to take a region definition, not to compute distance from
 spawn**, or the placeholder silently becomes the design. Constraints the shape must meet
 are in `design/13` §5.
-- [ ] parcels 0–3: cleared / weeds / logs / rocks, with a visible boundary between them
-- [ ] seeded and deterministic; replay and save tests updated
-- [ ] a tap past the boundary still answers — she walks to the hedge and stops, never
-      silence and never a refusal message
+- [x] parcels: the fenced **yard** (cleared, the four fixed objects, the chicken), the
+      **neighbour's plot**, the **meadow** (weeds), the **wood** (logs + trees, axe gate)
+      and the **quarry** (rocks, pickaxe gate), each with a visible boundary
+- [x] the region definitions live in `systems/world_layout.gd` as data — rect lists, so
+      rings, a valley, terraces or linked plots are all expressible by editing that file
+      and nothing else. `test_parcel_generation` greps the generator for `ring_index` and
+      `distance_from_spawn` and fails on either, so the placeholder cannot quietly
+      become the design
+- [x] seeded and deterministic (same seed → byte-identical world, asserted); replay and
+      save tests updated
+- [x] a tap past the boundary still answers — `Pathfinding.find_path_nearest()` walks her
+      to the near face of the fence and stops. Never silence, never a refusal message
+- [x] the yard holds **no chores at all**: a pen with work in it would be tidied instead
+      of watched, so the toy (the chicken) is the only thing in it
 
-**T-9 — Tools are acquired, not owned** · Q-34 · ~1–2 days
+**T-9 — Tools are acquired, not owned** · Q-34 ✅ · done 2026-08-29 (M1.5 WI-3)
 *So that each tool is a solution to a problem the player already has.*
-- [ ] start with hands, hoe, seeds, can; axe and pickaxe are acquired
-- [ ] acquisition opens the matching ring
-- [ ] the router degrades honestly when a tool is absent (this is where a silent no-op
-      would regress the 2026-08-27 refusal-feedback work — cover it with tests)
+- [x] start with hands, hoe, seeds, can; axe and pickaxe are acquired
+      (`GameState.tools_owned`, saved additively — old saves default to all-owned)
+- [x] acquisition opens the matching parcel: `take_tool` then `open_gate`, two recorded
+      actions so a replay opens the same gate at the same moment
+- [x] the router degrades honestly when a tool is absent — it produces **no action**, so
+      the tap becomes movement and she walks up to the log and stops. That is the
+      wordless "not yet"; a silent no-op would have regressed the 2026-08-27
+      refusal-feedback work, so `test_tool_acquisition` covers it directly
+- [x] `cycle_tool` never lands on a tool she has not acquired
+- [ ] **how** the tools are earned is a strawman pending **Q-46** — visible at the gate,
+      proof-gated (5 harvests / 3 logs), tap to take. Both numbers are `[Playtest]`
+      constants in `WorldLayout.DEFAULT.tools`
 
-**T-10 — Each ring opens a vignette** · Q-34 · ~1 day
+**T-10 — Each parcel opens a vignette** · Q-34 ✅ · done 2026-08-29 (M1.5 WI-3)
 *So that a new tool gets a safe room containing exactly one new thing.*
+Built as `systems/teaching_focus.gd` — the single arbitration point for everything that
+glows, so the onboarding vignette, the parcel introductions and (later) the economy
+beats cannot collide. Two glowing tiles is not a hint, it is a choice.
 - [ ] a newly-opened parcel highlights one obstacle of its new type, once
 - [ ] uses the ordinary vignette highlight — one target, once, then never again.
       *(Corrected 2026-08-29, M1.5 finding F-2: this bullet used to say "reuses the T-7
@@ -217,7 +249,8 @@ second causal chain — one crop buys three seeds — lands as a payoff rather t
 - [ ] first refill highlighted when the can empties
 - [ ] each fires once, at the moment of need, one object at a time
 
-**T-13 — The cold open: a fence, a neighbour, and an open gate** · Q-37 · ~2–3 days
+**T-13 — The cold open: a fence, a neighbour, and an open gate** · Q-37 ✅ · sim done
+2026-08-29 (M1.5 WI-3); art and her sprite follow in the next commit
 *So that a verb is demonstrated rather than pointed at, and the first crop is an
 inheritance the player physically crosses into rather than a gift.*
 - [ ] the player starts in her own small yard, **in full control from frame one**, with a
@@ -237,7 +270,8 @@ inheritance the player physically crosses into rather than a gift.*
 *Blocked on Q-37, and takes a narrative position (Q-22). **The fence is ring 0's
 boundary**, so if Q-34 also passes, build this together with T-8 rather than separately.*
 
-**T-15 — Trees, acorns, and crows that prefer them** · Q-39 · ~2 days
+**T-15 — Trees, acorns, and crows that prefer them** · Q-39 ✅ · sim done 2026-08-29
+(M1.5 WI-3); the tree and acorn tiles follow with the art commit
 *So that the crow's harmlessness is something she can watch rather than a flag she cannot
 perceive.*
 - [ ] standing trees as a world feature; acorns as a dropped object (sim, deterministic)
@@ -251,13 +285,18 @@ perceive.*
       T-20. It is the number of scheduled arrivals, and the dial that becomes flocks in
       phase 2: raise the number, never the appetite. With both rules daily loss is exactly
       `min(crows_today, crops_available)`
-- [ ] finite acorn stock, no regeneration in phase 1
-- [ ] **retarget T-2's harmless flag** from "first crow ever" to "first crow to target a
-      crop", so the last mercy lands at the transition rather than on a crow that was
-      never a threat
-- [ ] sim-level tests: a crow with an acorn available never targets a crop; the stock
-      cannot be drained by lingering in a single day
-- [ ] trees give `obstacle_log` an origin — coordinate with T-8's ring content
+- [x] finite acorn stock, no regeneration in phase 1 — the stock running down *is* the
+      difficulty ramp, and a ramp that refills is not a ramp. `[Playtest]` count in
+      `WorldLayout.DEFAULT.acorns`
+- [x] **retarget T-2's harmless flag** from "first crow ever" to "first crow to target a
+      crop" (`GameState.crop_crows_seen`), so the last mercy lands at the transition
+      rather than on a crow that was never a threat. `crows_seen` stays for trace/compat
+- [x] sim-level tests (`test_acorns`): with any acorn present no crow ever picks a crop
+      (asserted over 200 draws); `eat_acorn` removes exactly one; sleeping does not
+      refill; only an exhausted stock turns crows to crops; the daily-loss bound still
+      holds with acorns in the equation
+- [x] trees give `obstacle_log` an origin — `obstacle_tree` is the wood parcel's second
+      obstacle type and the axe clears both
 *This is also the game's first decoy mechanic; note the through-line to `design/05`.*
 
 **T-20 — One crow, one chance per day** · ✅ done 2026-08-28 (designer ruling)

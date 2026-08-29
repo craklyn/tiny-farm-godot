@@ -33,6 +33,22 @@ func _ready() -> void:
 	await get_tree().process_frame
 	player = main_scene.player
 
+	# T-13: a fresh farm starts inside the cold open, so the robot plays through
+	# it the way the game does — by applying the derived actions to the real
+	# gateway — rather than hacking the gate open. That way this run also proves
+	# the opening replays, which is the property that makes it free.
+	_check(not ColdOpen.is_done(main_scene.farm.sim), "a fresh farm starts before the gate opens")
+	var opening := ColdOpen.run(main_scene.farm, main_scene.farm.sim, GameState)
+	_check(opening.get("ok", false), "the cold open ran to completion (%d actions)" % opening.get("steps", -1))
+	_check(ColdOpen.is_done(main_scene.farm.sim), "and left the gate open")
+	_check(GameState.takeover_day == GameState.day, "the player's day 1 is anchored at the handover")
+	var neighbour_entries := 0
+	for e in main_scene.farm.replay.entries:
+		if String(e.get("actor", "")) == "neighbour":
+			neighbour_entries += 1
+	_check(neighbour_entries > 0, "her work is in the replay as actor 'neighbour' (%d entries)" % neighbour_entries)
+	await get_tree().process_frame
+
 	# A short day of real play: till, plant, water the same tile via taps
 	await _tap_and_wait(TILE)   # till (adjacent to spawn, auto-selects hoe)
 	_check(main_scene.farm.get_tile(TILE.x, TILE.y).state == "tilled", "tap tilled the tile")
@@ -54,8 +70,10 @@ func _ready() -> void:
 	await get_tree().process_frame
 	Input.action_release("action")
 
-	var slept := await _wait_until(func(): return GameState.day == 2 and not main_scene.day_cycle.is_active(), 600)
-	_check(slept, "sleep completed and day advanced")
+	# Takeover-relative: the calendar day is 1 + COLD_OPEN_DAYS by now, and what
+	# matters is that *her* second day has begun.
+	var slept := await _wait_until(func(): return GameState.play_day() == 2 and not main_scene.day_cycle.is_active(), 600)
+	_check(slept, "sleep completed and her day advanced")
 	if not slept:
 		var pt: Vector2i = player.get_tile_pos()
 		var ft: Vector2i = player.get_facing_tile()

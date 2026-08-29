@@ -36,6 +36,17 @@ var world_tint: CanvasModulate
 var _tint: Color = Color.WHITE
 
 
+# T-13 (Q-37/Q-45): the cold open is paced here and decided in the sim. Every few
+# seconds we ask ColdOpen what the neighbour does next and put it through the
+# same gateway everyone else uses, so the scene is replayable and free to ignore.
+# The player has full control from frame one — she is simply on the other side of
+# a fence, which is how this holds attention with geometry instead of a camera
+# cut (design/13 §4a).
+const COLD_OPEN_STEP := 1.4  # [Playtest] seconds between the neighbour's actions
+var _cold_open_timer: float = 0.6
+var _cold_open_failures: int = 0
+
+
 # APPLICATION_PAUSED covers backgrounding, which is the common case, but not a
 # hard kill. This bounds the worst case to PERSIST_INTERVAL seconds of lost play
 # rather than a whole session. Cheap: both logs are append-only, and SaveGame is
@@ -99,7 +110,7 @@ func _ready() -> void:
 	player.name = "Player"
 	add_child(player)
 	player.farm = farm
-	var spawn := _find_spawn_tile(Vector2i(2, 2))  # near the cot
+	var spawn := _find_spawn_tile(WorldLayout.spawn())  # inside the fenced yard
 	player.init_position(spawn.x, spawn.y)
 
 	# Create entity manager
@@ -184,6 +195,44 @@ func _ready() -> void:
 	_on_weather_changed(GameState.weather)
 
 
+# One derived action at a time, on a timer the player never has to wait for —
+# nothing here gates her input, and once the gate opens, ignoring the neighbour
+# entirely and tapping the ripe crop must still work.
+func _tick_cold_open(delta: float) -> void:
+	_cold_open_timer -= delta
+	if _cold_open_timer > 0.0:
+		return
+	_cold_open_timer = COLD_OPEN_STEP
+
+	var act := ColdOpen.next_action(farm.sim, GameState)
+	if act.is_empty():
+		return
+
+	# Q-45: time visibly passes, so a world sleep is the ordinary day fade — the
+	# same one her own cot gives her, minus the cot.
+	if String(act.get("verb", "")) == "sleep":
+		day_cycle.set_day_display(GameState.day + 1)
+		day_cycle.start_sleep(func():
+			farm.apply_action(act, GameState)
+			for child in entities.get_children():
+				if child.has_method("on_new_day"):
+					child.on_new_day()
+		)
+		return
+
+	var res: Dictionary = farm.apply_action(act, GameState)
+	if res.get("ok", false):
+		_cold_open_failures = 0
+		return
+	# A stuck neighbour must never block the game. After a bounded number of
+	# refusals the scene gives up and hands over the farm anyway.
+	_cold_open_failures += 1
+	if _cold_open_failures >= ColdOpen.MAX_FAILURES:
+		var g := ColdOpen.gate(farm.sim)
+		if g.x >= 0:
+			farm.apply_action({ "verb": "open_gate", "target": g, "actor": "neighbour" }, GameState)
+
+
 func _find_spawn_tile(preferred: Vector2i) -> Vector2i:
 	# A restored save can have an object on the default spawn tile
 	if farm.is_walkable(preferred.x, preferred.y):
@@ -241,6 +290,10 @@ func _process(delta: float) -> void:
 	if menus.is_open():
 		return
 
+	# T-13: the neighbour's last two days, if they have not happened yet.
+	if farm != null and not ColdOpen.is_done(farm.sim):
+		_tick_cold_open(delta)
+
 	# Q-10: tapping the chicken clucks (peek only — the tap still moves the player)
 	if InputManager.has_click:
 		for child in entities.get_children():
@@ -263,28 +316,32 @@ func _process(delta: float) -> void:
 	if not GameState.crow_schedule.is_empty() \
 			and GameState.actions_today >= GameState.crow_schedule[0]:
 		GameState.crow_schedule.remove_at(0)
-		var targets: Array[Vector2i] = []
-		for ty in MAP_HEIGHT:
-			for tx in MAP_WIDTH:
-				var tile = farm.get_tile(tx, ty)
-				if not tile.is_empty() and (tile.state == "growing" or tile.state == "ready" or tile.state == "seeded"):
-					targets.append(Vector2i(tx, ty))
 		# T-2: readiness first, mercy second. Both rules live in the sim so they are
 		# testable headlessly; this file only reacts to the schedule.
 		# Q-10's never-the-only-crop mercy rule is now subsumed by CROW_MIN_PLANTED,
 		# which is strictly stronger (3 rather than 2), but stays spelled out because
 		# the mercy rule is the part a future change is most likely to break.
+		# T-13: counted in play-days, so the cold open's days cannot buy a crow.
+		var planted: int = farm.sim.count_planted()
 		var ready_for_crows: bool = SimWorld.may_spawn_crow(
-			GameState.day, GameState.total_harvests(), targets.size())
-		if ready_for_crows and targets.size() > 1:
-			var target = targets[SimRng.randi() % targets.size()]
+			GameState.play_day(), GameState.total_harvests(), planted)
+		# T-15 / Q-39: the sim owns the rule (any acorn beats any crop), this owns
+		# the draw — the same split may_spawn_crow uses for the timer.
+		var pick: Dictionary = farm.sim.choose_crow_target(SimRng.randi())
+		var kind: String = pick.get("kind", "none")
+		if ready_for_crows and kind != "none" and planted > 1:
+			var target: Vector2i = pick.get("tile", Vector2i(-1, -1))
 			var CrowScript = load("res://entities/crow.gd")
 			var crow = CrowScript.new()
-			# The first crow she ever meets is a joke she gets to be the punchline
-			# of: it arrives, dawdles conspicuously, and leaves without taking
-			# anything. Only the second one onward can actually eat.
 			GameState.crows_seen += 1
-			crow.harmless = GameState.crows_seen <= 1
+			# T-15's retarget of T-2's mercy flag: the last scripted mercy is spent
+			# on the first crow to go for a **crop**, which is the moment the peace
+			# actually ends — not on one of the several earlier birds that were
+			# already harmless because they went for an acorn.
+			crow.harmless = (kind == "crop" and GameState.crop_crows_seen == 0)
+			crow.target_kind = kind
+			if kind == "crop":
+				GameState.crop_crows_seen += 1
 			# Seeded like all gameplay randomness, so a run stays reproducible.
 			var side: int = SimRng.randi() % 4
 			var along: int = SimRng.randi()
@@ -483,22 +540,27 @@ func _draw_overlay(overlay: CanvasItem) -> void:
 		var rect := Rect2(px, py, TILE_SIZE, TILE_SIZE)
 		overlay.draw_rect(rect, _lit(cursor_color), false, 1.0)
 
-	# Q-9: wordless onboarding — pulse the current vignette target.
+	# Q-9 / T-3..T-5 / T-10: wordless onboarding — pulse whatever the single
+	# arbitration point says is being taught right now. It returns an *array*
+	# because day 2's whole lesson is that several tiles glow together, which is
+	# the invitation to chain a swipe along a row.
+	#
 	# Pale-on-pale was invisible in practice, and a pre-reader gets no second
 	# explanation: warm gold on a dark backing ring reads over both grass and
 	# soil, and the bobbing chevron says "this one" without a word.
-	if farm != null and VignetteState.is_active(farm.sim, GameState.day):
-		var vt := VignetteState.target_tile(farm.sim)
-		if vt.x >= 0:
-			var t := Time.get_ticks_msec() / 1000.0
-			var pulse := 0.5 + 0.5 * sin(t * 4.0)
+	if farm != null:
+		var t := Time.get_ticks_msec() / 1000.0
+		var pulse := 0.5 + 0.5 * sin(t * 4.0)
+		var twinkle := 0.5 + 0.5 * sin(t * 4.0 + PI)
+		var s := 2.0 + 1.5 * twinkle
+		for vt in TeachingFocus.targets(farm.sim, GameState, player.get_tile_pos() if player else Vector2i(-1, -1)):
+			if vt.x < 0:
+				continue
 			var vr := Rect2(vt.x * TILE_SIZE, vt.y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
 			overlay.draw_rect(vr, _lit(Color(1.0, 0.78, 0.25, 0.10 + 0.12 * pulse)), true)
 			overlay.draw_rect(vr.grow(1.0), _lit(Color(0.28, 0.16, 0.05, 0.45 + 0.25 * pulse)), false, 1.0)
 			overlay.draw_rect(vr, _lit(Color(1.0, 0.72, 0.15, 0.8 + 0.2 * pulse)), false, 2.0)
 
-			var twinkle := 0.5 + 0.5 * sin(t * 4.0 + PI)
-			var s := 2.0 + 1.5 * twinkle
 			for corner in [vr.position, vr.position + Vector2(TILE_SIZE, 0),
 					vr.position + Vector2(0, TILE_SIZE), vr.position + Vector2(TILE_SIZE, TILE_SIZE)]:
 				overlay.draw_rect(Rect2(corner - Vector2(s, s) / 2.0, Vector2(s, s)),

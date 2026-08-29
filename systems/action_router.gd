@@ -11,6 +11,20 @@ const SPECIAL_OBJECTS := {
 	"shipping_bin": "sell",
 	"egg":          "collect",
 	"scarecrow":    "collect",
+	"tool_axe":     "take_tool",
+	"tool_pickaxe": "take_tool",
+}
+
+# T-9 (Q-34): which tool an obstacle needs. A tool she has not acquired yields no
+# action at all — the tap becomes pure movement and she walks up to the obstacle
+# and stops, which is the wordless "not yet". By layout construction she should
+# rarely meet one, since locked-tool obstacles live behind closed gates; this is
+# the honest answer for the cases the layout does not cover.
+const OBSTACLE_TOOLS := {
+	"obstacle_weed": "hands",
+	"obstacle_log":  "axe",
+	"obstacle_tree": "axe",
+	"obstacle_rock": "pickaxe",
 }
 
 ## Result dictionary returned by resolve():
@@ -47,12 +61,21 @@ func resolve(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, is_drag: 
 	# 1. Special objects
 	var obj: String = farm.get_object(tx, ty)
 	if obj != "" and SPECIAL_OBJECTS.has(obj):
+		# A placed tool she has not yet earned is a promise, not a prize. Q-46's
+		# strawman proof decides when it becomes collectable; until then the tap
+		# resolves to nothing here, so she walks over, looks at it, and stops.
+		# That is the same "not yet" the hedge gives, and it needs no words.
+		if SPECIAL_OBJECTS[obj] == "take_tool":
+			var entry := _tool_entry_for(obj)
+			if entry.is_empty() or not SimWorld.tool_proof_met(entry, gs):
+				return {}
 		return check_result.call({
 			"action":    SPECIAL_OBJECTS[obj],
 			"tool_idx":  0,  # Hands
 			"target_t":  tap_t,
 			"walk_to":   true,
 			"seed_type": "",
+			"tool":      String(_tool_entry_for(obj).get("tool", "")),
 		})
 
 	# 2. Get tile state
@@ -69,12 +92,14 @@ func resolve(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, is_drag: 
 		if dist > 1:
 			return {}
 
-	# 3. Obstacle clearing → correct tool
-	if state == "obstacle_rock":
+	# 3. Obstacle clearing → correct tool, if she has it (T-9)
+	if state == "obstacle_rock" and _owns_for(gs, state):
 		return check_result.call({ "action": "clear_rock", "tool_idx": 2, "target_t": tap_t, "walk_to": true, "seed_type": "" })
-	if state == "obstacle_log":
+	if state == "obstacle_log" and _owns_for(gs, state):
 		return check_result.call({ "action": "clear_log",  "tool_idx": 1, "target_t": tap_t, "walk_to": true, "seed_type": "" })
-	if state == "obstacle_weed":
+	if state == "obstacle_tree" and _owns_for(gs, state):
+		return check_result.call({ "action": "clear_tree", "tool_idx": 1, "target_t": tap_t, "walk_to": true, "seed_type": "" })
+	if state == "obstacle_weed" and _owns_for(gs, state):
 		return check_result.call({ "action": "clear_weed", "tool_idx": 0, "target_t": tap_t, "walk_to": true, "seed_type": "" })
 
 	# 4. Ready crop → harvest
@@ -198,9 +223,23 @@ func is_workable(farm: Node2D, tap_t: Vector2i) -> bool:
 	if tile.is_empty():
 		return false
 	return String(tile.get("state", "")) in [
-		"obstacle_rock", "obstacle_log", "obstacle_weed",
+		"obstacle_rock", "obstacle_log", "obstacle_tree", "obstacle_weed",
 		"cleared", "tilled", "seeded", "growing", "ready",
 	]
+
+
+func _owns_for(gs: Node, state: String) -> bool:
+	var key: String = OBSTACLE_TOOLS.get(state, "")
+	if key == "":
+		return true
+	return gs.owns_tool(key)
+
+
+func _tool_entry_for(obj: String) -> Dictionary:
+	for e in WorldLayout.tools():
+		if String(e.get("object", "")) == obj:
+			return e
+	return {}
 
 
 ## Returns a Color for the tile cursor based on what action would be performed.

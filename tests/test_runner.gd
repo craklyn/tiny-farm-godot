@@ -36,7 +36,8 @@ func _init() -> void:
 	test_replay_from_save()
 	test_replay_flush()
 	test_crow_scared_verb()
-	test_vignette()
+	test_vignette_multiday()
+	test_takeover_layout()
 	test_phase1_proof()
 	test_autotile()
 	test_autotile_sheet()
@@ -53,6 +54,12 @@ func _init() -> void:
 	test_seed_selection_trap()
 	test_trace_analyses()
 	test_satisfied_states()
+	test_parcel_generation()
+	test_tool_acquisition()
+	test_boundary_tap_answers()
+	test_cold_open()
+	test_takeover_anchoring()
+	test_acorns()
 
 	print("")
 	print(String("=").repeat(60))
@@ -167,8 +174,19 @@ func test_player() -> void:
 	GameState.energy = 15
 	_assert(GameState.energy == 15, "Energy set to 15")
 	
+	# T-9 (Q-34): cycling skips tools she has not acquired, so from Hands (0) the
+	# next stop is the Hoe (3) — the Axe and Pickaxe are still lying at their
+	# gates. A control that selected an invisible, unusable tool would be the same
+	# dead end as the seed-cycling trap this file already guards against.
 	GameState.cycle_tool(1)
-	_assert(GameState.selected_tool == 1, "Tool cycled forward to 1")
+	_assert(GameState.selected_tool == Tools.index_of_key("hoe"),
+		"Tool cycling skips the unacquired axe and pickaxe")
+	GameState.tools_owned["axe"] = true
+	GameState.selected_tool = 0
+	GameState.cycle_tool(1)
+	_assert(GameState.selected_tool == Tools.index_of_key("axe"),
+		"and stops at the axe once she has one")
+	GameState.tools_owned["axe"] = false
 	
 	GameState.gold = 100
 	GameState.harvest_counts = { "wheat": 0, "tomato": 0 }
@@ -393,6 +411,12 @@ func test_action_router() -> void:
 	GameState.watering_can_charges = 8
 
 	t.tiles[1][1]["state"] = "obstacle_log"
+	# T-9: without the axe there is no action at all — the tap becomes movement,
+	# so she walks up to the log and stops. "Not yet" as land, never as a message
+	# a pre-reader cannot read (Q-34).
+	_assert(ActionRouter.resolve(t, GameState, Vector2i(1, 1)).is_empty(),
+		"a log yields no action while the axe is still at its gate")
+	GameState.tools_owned["axe"] = true
 	var r1 = ActionRouter.resolve(t, GameState, Vector2i(1, 1))
 	_assert(r1.get("action", "") == "clear_log", "ActionRouter resolves clear_log on log")
 	_assert(r1.get("tool_idx", -1) == 1, "ActionRouter selects axe for log")
@@ -736,32 +760,159 @@ func test_crow_scared_verb() -> void:
 	r = world.apply_action({ "verb": "crow_scared", "actor": "crow" })
 	_assert(not r.ok, "crow_scared without gs refused")
 
-func test_vignette() -> void:
-	print("\n--- Vignette (Q-9 onboarding) Tests ---")
+func test_vignette_multiday() -> void:
+	print("\n--- Vignette: harvest-first, multi-day (T-3/T-4/T-5, Q-33) Tests ---")
+
+	# Q-33 replaced a vignette that opened on a **weed** — a chore, and the least
+	# motivating verb in the game. It taught three verbs and zero goals: a player
+	# who finished it had learned which pixels respond, not what the game is for.
+	# The chain is now taught backwards from the harvest, and the day-2 payoff is
+	# what makes day 1 mean anything, which is why the three stories shipped
+	# together.
 	GameState.reset()
 	var world := SimWorld.new()
 	SimRng.reseed(21)
 	world.generate()
+	var gs = load("res://systems/game_state.gd").new()
 
-	var weed := SimWorld.VIGNETTE_WEED
-	var plant := SimWorld.VIGNETTE_PLANT
-	_assert(world.get_tile(weed.x, weed.y).state == "obstacle_weed", "new farm has vignette weed")
-	_assert(world.get_tile(plant.x, plant.y).state == "tilled", "new farm has vignette tilled tile")
-	_assert(VignetteState.current_step(world) == 0, "step 0: clear the weed")
-	_assert(VignetteState.target_tile(world) == weed, "target is the weed")
-	_assert(VignetteState.is_active(world, 1), "active on day 1")
+	var gate := WorldLayout.gate_of("neighbour")
+	var yard_tile := Vector2i(3, 3)
+	var plot_tile := Vector2i(15, 4)
 
-	world.apply_action({ "verb": "clear_weed", "target": weed, "actor": "player" }, GameState)
-	_assert(VignetteState.current_step(world) == 1, "step 1 after clearing")
-	_assert(VignetteState.target_tile(world) == plant, "target moves to plant tile")
+	# While the cold open is still running, the neighbour is the show and the
+	# vignette says nothing at all.
+	_assert(not VignetteState.is_active(world, gs, yard_tile),
+		"the vignette is silent while the gate is still closed")
 
-	world.apply_action({ "verb": "plant", "target": plant, "seed_type": "wheat", "actor": "player" }, GameState)
-	_assert(VignetteState.current_step(world) == 2, "step 2 after planting")
+	ColdOpen.run(world, world, gs)
+	_assert(gs.takeover_day == gs.day, "takeover is anchored where the cold open ends")
 
-	world.apply_action({ "verb": "water", "target": plant, "actor": "player" }, GameState)
-	_assert(VignetteState.current_step(world) == 3, "step 3 (done) after watering")
-	_assert(not VignetteState.is_active(world, 1), "inactive once complete")
-	_assert(not VignetteState.is_active(world, 2), "inactive from day 2 regardless")
+	# Beat 0 — the handoff. Standing in her own yard, the only thing glowing is
+	# the way out; the ripe crop beyond it is the reason to take it.
+	var beat0 := VignetteState.target_tiles(world, gs, yard_tile)
+	_assert(beat0.size() == 1 and beat0[0] == gate, "beat 0 highlights the opened gate")
+
+	# Beat 1 — the ripe crop. It cannot fail, cannot be refused and costs a tap:
+	# the safest possible room, and the player is paid before she is asked.
+	var beat1 := VignetteState.target_tiles(world, gs, plot_tile)
+	_assert(beat1.size() == 1, "beat 1 highlights exactly one tile")
+	var ripe: Vector2i = beat1[0]
+	_assert(world.get_tile(ripe.x, ripe.y).state == "ready", "and it is the ripe crop")
+	_assert(absi(ripe.x - gate.x) + absi(ripe.y - gate.y) >= 2,
+		"the ripe crop is not adjacent to the gate, so beat 1 teaches movement implicitly")
+
+	world.apply_action({ "verb": "harvest", "target": ripe, "actor": "player" }, gs)
+
+	# Beat 2 — plant. One tilled tile, and only one.
+	var beat2 := VignetteState.target_tiles(world, gs, plot_tile)
+	_assert(beat2.size() == 1, "beat 2 highlights exactly one tilled tile")
+	var to_plant: Vector2i = beat2[0]
+	_assert(world.get_tile(to_plant.x, to_plant.y).state == "tilled", "and it is tilled")
+
+	world.apply_action({ "verb": "plant", "target": to_plant, "seed_type": "wheat", "actor": "player" }, gs)
+
+	# Beat 3 — water the thing she just planted.
+	var beat3 := VignetteState.target_tiles(world, gs, plot_tile)
+	_assert(beat3.size() == 1 and beat3[0] == to_plant, "beat 3 highlights the tile she just planted")
+
+	world.apply_action({ "verb": "water", "target": to_plant, "actor": "player" }, gs)
+
+	# Beat 4 (T-4) — the cot, and only once nothing else is asking. This is what
+	# turns "I did some things" into "I did some things and then something
+	# happened"; without it the first session has no resolution.
+	var beat4 := VignetteState.target_tiles(world, gs, plot_tile)
+	_assert(beat4.size() == 1, "beat 4 highlights exactly one thing")
+	_assert(world.objects[beat4[0].y][beat4[0].x] == "cot", "and it is the cot")
+
+	# T-4: day 1's phase ends by **sleeping**, not by the day counter passing 1.
+	world.apply_action({ "verb": "sleep", "actor": "world", "weather": "sunny" }, gs)
+	_assert(gs.play_day() == 2, "sleeping moved her to play-day 2")
+
+	# T-5 — the payoff. The neighbour's last growing tile ripened overnight, and
+	# it is the only thing glowing.
+	var day2 := VignetteState.target_tiles(world, gs, plot_tile)
+	_assert(day2.size() == 1, "day 2 opens on exactly one target")
+	_assert(world.get_tile(day2[0].x, day2[0].y).state == "ready", "and it is the newly ripe tile")
+	world.apply_action({ "verb": "harvest", "target": day2[0], "actor": "player" }, gs)
+
+	# Then the half-prepared row, highlighted **together** — the first honest read
+	# on whether chaining a swipe along a row feels right (the Q-30 leftover).
+	var row := VignetteState.target_tiles(world, gs, plot_tile)
+	_assert(row.size() >= 2, "the remaining tilled tiles are highlighted together, not in sequence")
+	for t2 in row:
+		_assert(world.get_tile(t2.x, t2.y).state == "tilled", "every tile in the group is tilled")
+		world.apply_action({ "verb": "plant", "target": t2, "seed_type": "wheat", "actor": "player" }, gs)
+
+	# ...and watering the row is a group too, for the same reason.
+	var wet := VignetteState.target_tiles(world, gs, plot_tile)
+	_assert(wet.size() >= 2, "the row she just planted is highlighted together for watering")
+	for t3 in wet:
+		world.apply_action({ "verb": "water", "target": t3, "actor": "player" }, gs)
+
+	# One new verb, and only one: till. The chain extends one link backwards.
+	var till_beat := VignetteState.target_tiles(world, gs, plot_tile)
+	_assert(till_beat.size() == 1, "the day-2 till beat is a single tile")
+	_assert(world.get_tile(till_beat[0].x, till_beat[0].y).state == "cleared", "and it is cleared ground")
+	world.apply_action({ "verb": "till", "target": till_beat[0], "actor": "player" }, gs)
+
+	# From play-day 3 the game stops teaching and starts trusting. Asserted
+	# regardless of world state, because "silent from day 3" is the promise.
+	world.apply_action({ "verb": "sleep", "actor": "world", "weather": "sunny" }, gs)
+	_assert(gs.play_day() == 3, "and on to play-day 3")
+	_assert(not VignetteState.is_active(world, gs, plot_tile),
+		"the vignette is over for good from play-day 3")
+	world.set_tile_state(5, 3, "tilled")
+	_assert(not VignetteState.is_active(world, gs, plot_tile),
+		"and no amount of fresh world state brings it back")
+	gs.free()
+
+
+func test_takeover_layout() -> void:
+	print("\n--- The takeover contract WI-4 derives its beats from Tests ---")
+
+	# The vignette derives every beat from world state, so generation has to
+	# *guarantee* the state. This is that guarantee, checked across seeds: what
+	# the player inherits must read left-to-right as the whole production chain
+	# — cleared, tilled, seeded, growing, ready — because that is environmental
+	# storytelling she cannot skip and does not need to have watched.
+	var gate := WorldLayout.gate_of("neighbour")
+	var checked := 0
+	for seed_value in range(1, 21):
+		var world := SimWorld.new()
+		SimRng.reseed(seed_value)
+		world.generate()
+		var gs = load("res://systems/game_state.gd").new()
+		var res := ColdOpen.run(world, world, gs)
+		var ok_run: bool = res.get("ok", false)
+
+		var ready: Array[Vector2i] = []
+		var tilled: Array[Vector2i] = []
+		var seeded_wet := 0
+		var growing_wet := 0
+		for p in WorldLayout.parcels(world.layout):
+			if String(p.get("id", "")) != "neighbour":
+				continue
+			for r in p.get("rects", []):
+				var rect: Rect2i = r
+				for ty in range(rect.position.y, rect.end.y):
+					for tx in range(rect.position.x, rect.end.x):
+						var t: Dictionary = world.tiles[ty][tx]
+						match String(t.get("state", "")):
+							"ready": ready.append(Vector2i(tx, ty))
+							"tilled": tilled.append(Vector2i(tx, ty))
+							"seeded":
+								if t.get("watered_today", false): seeded_wet += 1
+							"growing":
+								if t.get("watered_today", false): growing_wet += 1
+
+		var pass_row: bool = ok_run and ready.size() == 1 and tilled.size() >= 2 \
+			and seeded_wet >= 1 and growing_wet >= 1 \
+			and absi(ready[0].x - gate.x) + absi(ready[0].y - gate.y) >= 2 \
+			and gs.takeover_day == 1 + ColdOpen.COLD_OPEN_DAYS
+		if pass_row:
+			checked += 1
+		gs.free()
+	_assert(checked == 20, "the takeover contract holds for every seed 1..20 (%d/20)" % checked)
 
 func test_phase1_proof() -> void:
 	print("\n--- Phase-1 capability proof (Q-12) Tests ---")
@@ -1252,7 +1403,8 @@ func test_replay_build_stamp() -> void:
 	SimRng.reseed(99)
 	world.generate()
 	GameState.reset()
-	var a := { "verb": "till", "target": SimWorld.VIGNETTE_PLANT, "actor": "player" }
+	var yard_tile := Vector2i(5, 3)  # inside the fenced yard, always cleared
+	var a := { "verb": "till", "target": yard_tile, "actor": "player" }
 	rlog.record(a, world.apply_action(a, GameState))
 	var restored := ReplayLog.from_json(rlog.to_json())
 	_assert(restored.build_id == rlog.build_id, "the stamp survives a save/load round trip")
@@ -1280,7 +1432,7 @@ func test_replay_build_stamp() -> void:
 	var w2 := SimWorld.new()
 	var gs2 = load("res://systems/game_state.gd").new()
 	restored.apply_to(w2, gs2)
-	_assert(w2.get_tile(SimWorld.VIGNETTE_PLANT.x, SimWorld.VIGNETTE_PLANT.y).get("state", "") == "tilled",
+	_assert(w2.get_tile(yard_tile.x, yard_tile.y).get("state", "") == "tilled",
 		"a stamped replay still reproduces its world")
 
 
@@ -1547,7 +1699,7 @@ func test_crow_schedule() -> void:
 	var world := SimWorld.new()
 	SimRng.reseed(9)
 	world.generate()
-	var t := SimWorld.VIGNETTE_PLANT
+	var t := Vector2i(5, 3)  # inside the fenced yard
 	world.tiles[t.y][t.x]["state"] = "cleared"
 	# Measured as deltas per step, so one surprising verb cannot cascade into
 	# three misleading failures.
@@ -1774,3 +1926,610 @@ func test_satisfied_states() -> void:
 
 	GameState.reset()
 	farm.free()
+
+
+func test_parcel_generation() -> void:
+	print("\n--- Parcel world generation (T-8, Q-34) Tests ---")
+
+	# Obstacles used to be sprinkled uniformly at 25% across the whole map, which
+	# made the yard's rocks and logs *noise*: indistinguishable in affordance from
+	# a weed, differing only in which invisible tool resolved them. Obstacle type
+	# is now a property of the parcel a tile belongs to, so a rock she cannot yet
+	# break is a legible future behind a hedge instead.
+	SimRng.reseed(4242)
+	var a := SimWorld.new()
+	a.generate()
+	SimRng.reseed(4242)
+	var b := SimWorld.new()
+	b.generate()
+	var gs_a = load("res://systems/game_state.gd").new()
+	var gs_b = load("res://systems/game_state.gd").new()
+	_assert(SaveGame.capture_canonical(a, gs_a) == SaveGame.capture_canonical(b, gs_b),
+		"the same seed generates a byte-identical world")
+
+	SimRng.reseed(4243)
+	var c := SimWorld.new()
+	c.generate()
+	var gs_c = load("res://systems/game_state.gd").new()
+	_assert(SaveGame.capture_canonical(a, gs_a) != SaveGame.capture_canonical(c, gs_c),
+		"and a different seed generates a different one")
+	gs_b.free()
+	gs_c.free()
+
+	# **The generator must not compute a distance from spawn.** "Ring" was a
+	# placeholder and the arrangement is an explicitly free design parameter
+	# (designer, 2026-08-29); a generator that derives type from distance turns
+	# the placeholder into the design by default. It takes a region definition.
+	var src := (load("res://systems/sim/sim_world.gd").source_code as String)
+	_assert(not src.contains("ring_index"), "generation carries no ring_index")
+	_assert(not src.contains("distance_from_spawn"), "nor a distance from spawn")
+
+	# Each parcel contains only its own obstacle type — one new thing per parcel
+	# (Valve principle 4). The wood is the single deliberate exception: a standing
+	# tree is where a log comes from (Q-39).
+	for p in WorldLayout.parcels():
+		var allowed := { "": true }
+		allowed[String(p.get("obstacle", ""))] = true
+		allowed[String(p.get("extra_obstacle", ""))] = true
+		var strays := 0
+		var own := 0
+		for r in p.get("rects", []):
+			var rect: Rect2i = r
+			for ty in range(rect.position.y, rect.end.y):
+				for tx in range(rect.position.x, rect.end.x):
+					var st := String(a.tiles[ty][tx].get("state", ""))
+					if not st.begins_with("obstacle"):
+						continue
+					if allowed.has(st):
+						own += 1
+					else:
+						strays += 1
+		_assert(strays == 0, "parcel '%s' holds no obstacle but its own" % p.get("id", "?"))
+		if String(p.get("obstacle", "")) != "":
+			_assert(own > 0, "parcel '%s' actually contains its obstacle" % p.get("id", "?"))
+
+	# The boundary is the design's real content: "not yet" expressed as land.
+	var boundary_tiles := 0
+	for bnd in WorldLayout.boundaries():
+		for r in bnd.get("rects", []):
+			var rect: Rect2i = r
+			for ty in range(rect.position.y, rect.end.y):
+				for tx in range(rect.position.x, rect.end.x):
+					boundary_tiles += 1
+					var st := String(a.tiles[ty][tx].get("state", ""))
+					var is_gate := (st == WorldLayout.GATE_CLOSED or st == WorldLayout.GATE_OPEN)
+					_assert_quiet(st == String(bnd.get("kind", "")) or is_gate,
+						"boundary tile (%d,%d) is boundary or gate" % [tx, ty])
+					_assert_quiet(not a.is_walkable(tx, ty) or is_gate,
+						"boundary tile (%d,%d) is not walkable" % [tx, ty])
+	_assert(boundary_tiles > 0, "the layout draws a boundary at all")
+	_flush_quiet("every boundary tile is a wall she can see")
+
+	# Gates start closed, so the very first lesson in the game is "not yet" told
+	# as land — and an opening gate is the cheapest celebration there is.
+	for p in WorldLayout.parcels():
+		var g: Vector2i = p.get("gate", Vector2i(-1, -1))
+		if g.x < 0:
+			continue
+		_assert(String(a.tiles[g.y][g.x].get("state", "")) == WorldLayout.GATE_CLOSED,
+			"parcel '%s' starts behind a closed gate" % p.get("id", "?"))
+		_assert(not a.is_walkable(g.x, g.y), "and a closed gate is not walkable")
+		_assert(not a.is_parcel_open(p), "and reads as closed")
+
+	# The yard: the four fixed objects at their known coordinates, and nothing to
+	# clear. The integration suite and the robot session both assert these, and
+	# moving them would buy nothing.
+	for obj in SimWorld.OBJECT_POSITIONS:
+		_assert(a.objects[obj.ty][obj.tx] == obj.type,
+			"%s is still at (%d,%d)" % [obj.type, obj.tx, obj.ty])
+	var spawn := WorldLayout.spawn()
+	_assert(a.is_walkable(spawn.x, spawn.y), "the spawn tile is walkable")
+	_assert(String(WorldLayout.parcel_at(spawn).get("id", "")) == "yard",
+		"and it is inside the fenced yard")
+
+	# The pen has a toy in it, not a chore: the yard must contain nothing to
+	# clear, or she ignores the neighbour and tidies up instead (design/13 §4a).
+	var yard_obstacles := 0
+	for r in WorldLayout.parcel_at(spawn).get("rects", []):
+		var rect: Rect2i = r
+		for ty in range(rect.position.y, rect.end.y):
+			for tx in range(rect.position.x, rect.end.x):
+				if String(a.tiles[ty][tx].get("state", "")).begins_with("obstacle"):
+					yard_obstacles += 1
+	_assert(yard_obstacles == 0, "the starting yard holds no chores")
+
+	# Both tools lie visibly at their gates from generation (Q-46 strawman).
+	for e in WorldLayout.tools():
+		var at: Vector2i = e.get("at", Vector2i(-1, -1))
+		_assert(a.objects[at.y][at.x] == String(e.get("object", "")),
+			"the %s is on the ground at its gate" % e.get("tool", "?"))
+
+	# She is genuinely penned in until the gate opens — that is what makes the
+	# spatial restriction real rather than decorative.
+	var reachable := _flood(a, spawn)
+	var escaped := false
+	for t in reachable:
+		if String(WorldLayout.parcel_at(t).get("id", "")) != "yard":
+			escaped = true
+	_assert(not escaped, "nothing outside the yard is reachable before the gate opens")
+	_assert(reachable.size() > 20, "but the yard itself is roomy enough to play in")
+
+	gs_a.free()
+
+
+func test_tool_acquisition() -> void:
+	print("\n--- Tools are acquired, not owned (T-9, Q-34) Tests ---")
+
+	# All six tools existed from the first frame, so the yard's rocks and logs
+	# were noise. Under Q-34 they become promises: a tool is a solution to a
+	# problem she already has, and the lock is land rather than a message.
+	var gs = load("res://systems/game_state.gd").new()
+	_assert(gs.owns_tool("hands") and gs.owns_tool("hoe"), "she starts with hands and hoe")
+	_assert(gs.owns_tool("watering_can") and gs.owns_tool("seeds"), "and the can and seeds")
+	_assert(not gs.owns_tool("axe"), "but not the axe")
+	_assert(not gs.owns_tool("pickaxe"), "and not the pickaxe")
+
+	var world := SimWorld.new()
+	SimRng.reseed(77)
+	world.generate()
+	var farm = load("res://world/farm.gd").new()
+	farm.generate_on_ready = false
+	farm.sim = world
+
+	# Cycling never lands on a tool she has not got.
+	for _i in 24:
+		gs.cycle_tool(1)
+		_assert_quiet(gs.owns_tool(Tools.key_of(gs.selected_tool)),
+			"cycle_tool never selects an unowned tool")
+	for _i in 24:
+		gs.cycle_tool(-1)
+		_assert_quiet(gs.owns_tool(Tools.key_of(gs.selected_tool)),
+			"cycle_tool never selects an unowned tool (backwards)")
+	_flush_quiet("cycling in both directions only ever lands on tools she has")
+
+	var axe_entry: Dictionary = WorldLayout.tools()[0]
+	var at: Vector2i = axe_entry.get("at", Vector2i(-1, -1))
+	var gate: Vector2i = axe_entry.get("gate", Vector2i(-1, -1))
+
+	# The proof has not fired, so the tool is a promise: the router yields no
+	# action at all and the tap becomes movement.
+	_assert(not SimWorld.tool_proof_met(axe_entry, gs), "the axe's proof is not met yet")
+	_assert(ActionRouter.resolve(farm, gs, at, at).is_empty(),
+		"an unearned tool yields no action — she walks over and looks at it")
+	_assert(ActionRouter.is_workable(farm, at),
+		"but it is still a thing to approach, so she stops beside it rather than on it")
+
+	# And no obstacle it would unlock is actionable either.
+	var log_t := Vector2i(23, 3)
+	world.set_tile_state(log_t.x, log_t.y, "obstacle_log")
+	_assert(ActionRouter.resolve(farm, gs, log_t, log_t).is_empty(),
+		"a log yields no action without the axe")
+	var rock_t := Vector2i(23, 12)
+	world.set_tile_state(rock_t.x, rock_t.y, "obstacle_rock")
+	_assert(ActionRouter.resolve(farm, gs, rock_t, rock_t).is_empty(),
+		"a rock yields no action without the pickaxe")
+
+	# Meet the proof (Q-46 strawman: harvests, threshold in the layout data).
+	gs.harvest_counts["wheat"] = int(axe_entry.get("threshold", 5))
+	_assert(SimWorld.tool_proof_met(axe_entry, gs), "harvesting enough meets the axe's proof")
+	var offer: Dictionary = ActionRouter.resolve(farm, gs, at, at)
+	_assert(offer.get("action", "") == "take_tool", "and now the tool answers a tap")
+	_assert(offer.get("tool", "") == "axe", "with the tool it will grant")
+
+	var got := world.apply_action({ "verb": "take_tool", "target": at, "tool": "axe", "actor": "player" }, gs)
+	_assert(got.get("ok", false) and got.get("tool", "") == "axe", "take_tool grants the axe")
+	_assert(gs.owns_tool("axe"), "and she owns it")
+	_assert(world.get_object(at.x, at.y) == "", "and it is no longer on the ground")
+	_assert(world.apply_action({ "verb": "take_tool", "target": at, "actor": "player" }, gs).get("reason", "")
+		== "no_tool_here", "taking it twice is refused")
+
+	# Acquisition opens the parcel — that is acquisition's visible half.
+	_assert(String(world.get_tile(gate.x, gate.y).state) == WorldLayout.GATE_CLOSED,
+		"the gate is still closed until the follow-up action")
+	var opened := world.apply_action({ "verb": "open_gate", "target": gate, "actor": "world" }, gs)
+	_assert(opened.get("ok", false), "open_gate succeeds on a closed gate")
+	_assert(String(world.get_tile(gate.x, gate.y).state) == WorldLayout.GATE_OPEN, "and the gate opens")
+	_assert(world.is_walkable(gate.x, gate.y), "an open gate is ordinary ground")
+	_assert(not world.apply_action({ "verb": "open_gate", "target": gate, "actor": "world" }, gs).get("ok", true),
+		"opening an already-open gate is refused rather than silently repeated")
+	_assert(not world.apply_action({ "verb": "open_gate", "target": Vector2i(5, 3), "actor": "world" }, gs).get("ok", true),
+		"and a non-gate tile is not a gate")
+
+	# With the axe in hand the log finally answers, and the tree with it.
+	_assert(ActionRouter.resolve(farm, gs, log_t, log_t).get("action", "") == "clear_log",
+		"the log answers once she holds the axe")
+	world.set_tile_state(log_t.x, log_t.y, "obstacle_tree")
+	_assert(ActionRouter.resolve(farm, gs, log_t, log_t).get("action", "") == "clear_tree",
+		"and so does a standing tree")
+	world.apply_action({ "verb": "clear_tree", "target": log_t, "actor": "player" }, gs)
+	_assert(String(world.get_tile(log_t.x, log_t.y).state) == "cleared", "clear_tree clears it")
+	_assert(int(gs.clear_counts.get("clear_tree", 0)) == 1, "and the sim gateway counts the clear")
+
+	# Old saves keep their tools. Every save written before T-9 came from a build
+	# where she had all six; confiscating her axe on load would be a bug wearing
+	# a migration's clothes.
+	var legacy := { "version": SaveGame.VERSION,
+		"world": { "tiles": world.tiles.duplicate(true), "objects": world.objects.duplicate(true) },
+		"state": { "day": 4 } }
+	var gs_old = load("res://systems/game_state.gd").new()
+	var w_old := SimWorld.new()
+	_assert(SaveGame.restore(legacy, w_old, gs_old), "a pre-M1.5 save still restores")
+	_assert(gs_old.owns_tool("axe") and gs_old.owns_tool("pickaxe"),
+		"and defaults to owning every tool")
+	_assert(gs_old.takeover_day == 1, "and to a takeover day of 1 — the world began when she did")
+
+	# A current save round-trips the real ownership.
+	var fresh := SaveGame.capture(world, gs)
+	var gs_rt = load("res://systems/game_state.gd").new()
+	var w_rt := SimWorld.new()
+	SaveGame.restore(JSON.parse_string(JSON.stringify(fresh)), w_rt, gs_rt)
+	_assert(gs_rt.owns_tool("axe"), "a current save keeps the axe she earned")
+	_assert(not gs_rt.owns_tool("pickaxe"), "and keeps the pickaxe she has not")
+	_assert(int(gs_rt.clear_counts.get("clear_tree", 0)) == 1, "and the clear counts round-trip")
+
+	gs.free()
+	gs_old.free()
+	gs_rt.free()
+	farm.free()
+
+
+func test_boundary_tap_answers() -> void:
+	print("\n--- A tap past the boundary still answers (T-8, design/13 §5) Tests ---")
+
+	# The design risk in Q-34 is sharp and it is the whole reason the lock is
+	# land: a four-year-old cannot read a locked-tool message, and a tap that
+	# silently does nothing is precisely the failure M1 spent a milestone
+	# eliminating. So the honest answer to a tap across the fence is *movement* —
+	# she walks to the boundary and stops, which reads correctly without a word.
+	var gs = load("res://systems/game_state.gd").new()
+	var world := SimWorld.new()
+	SimRng.reseed(1234)
+	world.generate()
+	var farm = load("res://world/farm.gd").new()
+	farm.generate_on_ready = false
+	farm.sim = world
+
+	var spawn := WorldLayout.spawn()
+	var beyond := Vector2i(17, 4)  # deep inside the neighbour's plot, gate closed
+	_assert(String(WorldLayout.parcel_at(beyond).get("id", "")) == "neighbour",
+		"the test target really is inside a closed parcel")
+	_assert(world.is_walkable(beyond.x, beyond.y), "and is itself perfectly ordinary ground")
+
+	_assert(Pathfinding.find_path(farm, spawn, beyond).is_empty(),
+		"there is genuinely no route there")
+	_assert(ActionRouter.blocked_reason(farm, gs, beyond) == "" ,
+		"and no refusal reason is produced — she has done nothing wrong")
+	_assert(ActionRouter.satisfied_reason(farm, gs, beyond) == "",
+		"nor is it an already-done state")
+
+	# The fallback: as far toward it as the land allows.
+	var toward: Array = Pathfinding.find_path_nearest(farm, spawn, beyond)
+	_assert(not toward.is_empty(), "she still gets a walk order — the tap is never silent")
+	var edge: Vector2i = toward[toward.size() - 1]
+	_assert(world.is_walkable(edge.x, edge.y), "and it ends somewhere she can stand")
+	_assert(String(WorldLayout.parcel_at(edge).get("id", "")) == "yard",
+		"inside her own yard, because that is as far as the land goes")
+	var d_edge: int = absi(edge.x - beyond.x) + absi(edge.y - beyond.y)
+	var d_spawn: int = absi(spawn.x - beyond.x) + absi(spawn.y - beyond.y)
+	_assert(d_edge < d_spawn, "and closer to what she tapped than where she started")
+
+	# Right up against the boundary, not somewhere vaguely in that direction.
+	var touching := false
+	for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		var n: Vector2i = edge + d
+		if WorldLayout.is_boundary_state(String(world.get_tile(n.x, n.y).get("state", ""))):
+			touching = true
+	_assert(touching, "she stops with her nose against the fence")
+
+	# Once the gate opens the same tap is an ordinary walk, no special case.
+	var gate := WorldLayout.gate_of("neighbour")
+	world.apply_action({ "verb": "open_gate", "target": gate, "actor": "neighbour" }, gs)
+	_assert(not Pathfinding.find_path(farm, spawn, beyond).is_empty(),
+		"an open gate makes the ordinary path work again")
+
+	gs.free()
+	farm.free()
+
+
+func test_cold_open() -> void:
+	print("\n--- The cold open (T-13, Q-37/Q-45) Tests ---")
+
+	# She is not a cutscene system, she is one more actor: her verbs go through
+	# apply_action as actor "neighbour", exactly like the crow and chicken (S-3).
+	# So the whole opening is replayable, deterministic, and produces real world
+	# state rather than scripted fakery.
+	var gs = load("res://systems/game_state.gd").new()
+	var world := SimWorld.new()
+	SimRng.reseed(2026)
+	world.generate()
+
+	var gate := WorldLayout.gate_of("neighbour")
+	_assert(not ColdOpen.is_done(world), "a fresh farm still has the scene ahead of it")
+	_assert(ColdOpen.gate(world) == gate, "and the scene knows which gate it ends with")
+
+	var energy_before: int = gs.energy
+	var log := ReplayLog.new()
+	log.start(2026)
+	var steps := 0
+	var all_ok := true
+	var actors := {}
+	for _i in ColdOpen.MAX_STEPS:
+		var act := ColdOpen.next_action(world, gs)
+		if act.is_empty():
+			break
+		actors[String(act.get("actor", "?"))] = true
+		var res := world.apply_action(act, gs)
+		if not res.get("ok", false):
+			all_ok = false
+		log.record(act, res)
+		steps += 1
+	_assert(steps > 0 and steps < ColdOpen.MAX_STEPS, "the scene runs and terminates (%d steps)" % steps)
+	_assert(all_ok, "every action the neighbour derives actually resolves")
+	_assert(actors.has("neighbour"), "her work is recorded as actor 'neighbour'")
+	_assert(actors.has("world"), "and the days that pass are world sleeps")
+	_assert(ColdOpen.next_action(world, gs).is_empty(), "and then she has nothing left to do")
+	_assert(ColdOpen.is_done(world), "the gate is open")
+	_assert(String(world.get_tile(gate.x, gate.y).state) == WorldLayout.GATE_OPEN, "really open")
+
+	# Q-45: time visibly passes, so the player watches a seed become food.
+	_assert(gs.day == 1 + ColdOpen.COLD_OPEN_DAYS,
+		"the world is %d days older" % ColdOpen.COLD_OPEN_DAYS)
+	_assert(gs.takeover_day == gs.day, "and her own day 1 is anchored at the handover")
+
+	# Her work is not charged to the player. She spends her energy, not hers.
+	_assert(gs.energy == energy_before,
+		"the neighbour's labour costs the player nothing (and the sleeps refill anyway)")
+	_assert(gs.seeds.get("wheat", 0) == 5, "and she plants her own seed, not the player's")
+
+	# The whole opening replays. This is the property that makes it free: no new
+	# machinery to keep in sync with the sim, and the single gateway is honoured
+	# rather than carved around.
+	var w2 := SimWorld.new()
+	var gs2 = load("res://systems/game_state.gd").new()
+	log.apply_to(w2, gs2)
+	_assert(SaveGame.capture_canonical(world, gs) == SaveGame.capture_canonical(w2, gs2),
+		"replaying the cold open reproduces the same world exactly")
+
+	# Continue never replays it: the scene is derived, so an already-open gate is
+	# all the memory it needs.
+	_assert(ColdOpen.next_action(w2, gs2).is_empty(),
+		"a restored world with an open gate has no cold open left in it")
+
+	# It must terminate for every world it can be handed. A stuck neighbour must
+	# never block the game, so run() is bounded and opens the gate regardless.
+	var stuck := 0
+	for seed_value in range(1, 101):
+		var w := SimWorld.new()
+		SimRng.reseed(seed_value)
+		w.generate()
+		var g = load("res://systems/game_state.gd").new()
+		var res := ColdOpen.run(w, w, g)
+		if not (res.get("ok", false) and ColdOpen.is_done(w)):
+			stuck += 1
+		g.free()
+	_assert(stuck == 0, "the scene finishes cleanly on 100 consecutive seeds")
+
+	# And when it cannot finish, it still hands over the farm.
+	var broken := SimWorld.new()
+	SimRng.reseed(5)
+	broken.generate()
+	var gs_broken = load("res://systems/game_state.gd").new()
+	broken.layout = {
+		"parcels": [{ "id": "neighbour", "rects": [Rect2i(12, 1, 9, 6)], "obstacle": "",
+			"gate": WorldLayout.gate_of("neighbour"), "opened_by": WorldLayout.OPENED_BY_COLD_OPEN }],
+		"neighbour_plot": { "cleared_for_demo": Vector2i(-1, -1), "crop": "wheat" },
+	}
+	var res_broken := ColdOpen.run(broken, broken, gs_broken)
+	_assert(ColdOpen.is_done(broken),
+		"even a scene with nothing to perform ends with the gate open")
+	_assert(res_broken.get("steps", -1) >= 0, "and reports what it managed")
+	gs_broken.free()
+
+	gs.free()
+	gs2.free()
+
+
+func test_takeover_anchoring() -> void:
+	print("\n--- Play-days, not calendar days (T-13 x T-2/T-20) Tests ---")
+
+	# The cold open spends real days before the player owns anything, so every
+	# day-keyed rule has to count from the handover. Anchoring on the raw day
+	# counter would let a crow arrive on her first morning — which would break
+	# T-2's "no threat before she is ready" outright, on day one, invisibly.
+	# This is the T-2/T-20 safety property, so a red here is stop-and-think.
+	var gs = load("res://systems/game_state.gd").new()
+	gs.takeover_day = 3
+	gs.day = 3
+	_assert(gs.play_day() == 1, "the day the gate opens is her play-day 1")
+	gs.day = 4
+	_assert(gs.play_day() == 2, "and the next morning is play-day 2")
+
+	# Exhaustive, in the style of the crow-readiness test it protects.
+	for takeover in range(1, 8):
+		for offset in range(0, 6):
+			var play := offset + 1
+			var absolute := takeover + offset
+			gs.takeover_day = takeover
+			gs.day = absolute
+			_assert_quiet(gs.play_day() == play,
+				"takeover %d, day %d is play-day %d" % [takeover, absolute, play])
+			var sched := SimWorld.roll_crow_schedule(gs.play_day())
+			if play < SimWorld.CROW_MIN_DAY:
+				_assert_quiet(sched.is_empty(),
+					"no crow is scheduled on play-day %d (absolute day %d)" % [play, absolute])
+			_assert_quiet(
+				SimWorld.may_spawn_crow(gs.play_day(), 99, 99) == (play >= SimWorld.CROW_MIN_DAY),
+				"readiness follows the play-day, not the calendar")
+	_flush_quiet("crow scheduling and readiness follow play-days for every takeover day 1..7")
+
+	# The anchor is set by the sim, inside the gateway, so a replay earns it.
+	var world := SimWorld.new()
+	SimRng.reseed(31)
+	world.generate()
+	var gs2 = load("res://systems/game_state.gd").new()
+	gs2.day = 3
+	var stale_schedule: Array[int] = [4, 9]
+	gs2.crow_schedule = stale_schedule
+	gs2.actions_today = 12
+	world.apply_action({ "verb": "open_gate", "target": WorldLayout.gate_of("neighbour"),
+		"actor": "neighbour" }, gs2)
+	_assert(gs2.takeover_day == 3, "opening the cold open's gate sets the anchor")
+	_assert(gs2.crow_schedule.is_empty(),
+		"and discards the schedule the cold open's own days rolled — play-day 1 has no crows in it")
+	_assert(gs2.actions_today == 0, "and starts her action clock at zero")
+
+	# A tool gate is not a handover and must not move the anchor.
+	var gs3 = load("res://systems/game_state.gd").new()
+	gs3.day = 9
+	var w3 := SimWorld.new()
+	SimRng.reseed(31)
+	w3.generate()
+	w3.apply_action({ "verb": "open_gate", "target": WorldLayout.gate_of("wood"), "actor": "world" }, gs3)
+	_assert(gs3.takeover_day == 1, "opening the axe's gate leaves the anchor alone")
+
+	gs.free()
+	gs2.free()
+	gs3.free()
+
+
+func test_acorns() -> void:
+	print("\n--- Acorns, and crows that prefer them (T-15, Q-39/Q-44) Tests ---")
+
+	# T-2's harmless-first-crow is a *scripted* mercy: a boolean the player can
+	# never perceive, experienced as a crow that inexplicably left. Acorns replace
+	# the script with behaviour — the crow is not nerfed, it simply prefers
+	# acorns, and she can watch it happen. It is also the game's first decoy,
+	# which is lure-and-aggro management several phases before design/05.
+	var world := SimWorld.new()
+	SimRng.reseed(808)
+	world.generate()
+	var gs = load("res://systems/game_state.gd").new()
+
+	var stock := world.count_acorns()
+	_assert(stock > 0, "a fresh farm has an acorn stock (%d)" % stock)
+	_assert(stock == int(world.layout["acorns"]["count"]),
+		"and it is exactly the [Playtest] number the layout asks for")
+	for ty in SimWorld.MAP_HEIGHT:
+		for tx in SimWorld.MAP_WIDTH:
+			if world.objects[ty][tx] == "acorn":
+				_assert_quiet(world.is_walkable(tx, ty),
+					"acorn at (%d,%d) is walkable" % [tx, ty])
+	_flush_quiet("acorns are walkable like eggs, so they can never trap anyone")
+
+	# Plant a row of crops in the yard, so both kinds of target exist at once.
+	# (The neighbour's plot already holds crops of its own, so count from there.)
+	var crops_before: int = world.count_planted()
+	for i in 5:
+		world.set_tile_state(3 + i, 3, "seeded", "wheat")
+	_assert(world.count_planted() == crops_before + 5, "and five more crops to compete with them")
+
+	# **Any acorn beats any crop.** Asserted across many draws, because the choice
+	# is what a four-year-old will be watching.
+	var crop_picked := 0
+	for i in 200:
+		var pick := world.choose_crow_target(i)
+		if String(pick.get("kind", "")) != "acorn":
+			crop_picked += 1
+	_assert(crop_picked == 0, "with an acorn about, no crow ever goes for a crop")
+
+	# eat_acorn takes exactly one, and only from a tile that has one.
+	var first := world.choose_crow_target(0)
+	var at: Vector2i = first.get("tile", Vector2i(-1, -1))
+	_assert(world.apply_action({ "verb": "eat_acorn", "target": at, "actor": "crow" }).get("ok", false),
+		"a crow eats the acorn it flew to")
+	_assert(world.count_acorns() == stock - 1, "and the stock drops by exactly one")
+	_assert(not world.apply_action({ "verb": "eat_acorn", "target": at, "actor": "crow" }).get("ok", true),
+		"and there is nothing left on that tile to eat twice")
+	_assert(world.count_planted() == crops_before + 5, "no crop was touched")
+
+	# Depletion is the difficulty ramp: the threat arrives on a schedule the
+	# *world* sets, experienced as food running out. Finite, no regeneration.
+	var eaten := 1
+	while world.count_acorns() > 0 and eaten < 100:
+		var p := world.choose_crow_target(eaten)
+		world.apply_action({ "verb": "eat_acorn", "target": p.get("tile"), "actor": "crow" })
+		eaten += 1
+	_assert(world.count_acorns() == 0, "the stock can be emptied")
+	world.apply_action({ "verb": "sleep", "actor": "world", "weather": "sunny" }, gs)
+	_assert(world.count_acorns() == 0, "and sleeping does not refill it — no regeneration in phase 1")
+
+	# Only then do crows turn to crops, which is the moment the peace ends.
+	var after := world.choose_crow_target(3)
+	_assert(String(after.get("kind", "")) == "crop", "with the acorns gone, the crow wants a crop")
+	_assert(world.apply_action({ "verb": "eat_crop", "target": after.get("tile"), "actor": "crow" }).get("ok", false),
+		"and takes one")
+	_assert(world.count_planted() == crops_before + 4, "exactly one")
+
+	# An empty farm is not a crash.
+	var bare := SimWorld.new()
+	SimRng.reseed(3)
+	bare.generate()
+	for ty in SimWorld.MAP_HEIGHT:
+		for tx in SimWorld.MAP_WIDTH:
+			if bare.objects[ty][tx] == "acorn":
+				bare.objects[ty][tx] = ""
+			var bst := String(bare.tiles[ty][tx].get("state", ""))
+			if bst == "seeded" or bst == "growing" or bst == "ready":
+				bare.set_tile_state(tx, ty, "cleared")
+	_assert(String(bare.choose_crow_target(0).get("kind", "")) == "none",
+		"nothing to eat is answered as 'none', not as a crash")
+
+	# T-15's retarget of T-2's mercy flag: it belongs on the first crow to go for
+	# a **crop**, which is the transition, not on one of the several earlier birds
+	# that were already harmless because they went for an acorn.
+	_assert(gs.crop_crows_seen == 0, "the crop-crow counter starts at zero")
+	var harmless_first: bool = ("crop" == "crop" and gs.crop_crows_seen == 0)
+	_assert(harmless_first, "so the first crop-targeting crow is the harmless one")
+	gs.crop_crows_seen += 1
+	_assert(not ("crop" == "crop" and gs.crop_crows_seen == 0),
+		"and the second one is not")
+	_assert(not ("acorn" == "crop" and 0 == 0), "an acorn-targeting crow never spends the mercy")
+
+	# The daily-loss identity still holds with acorns in the equation: a day
+	# cannot cost more crops than there were scheduled arrivals.
+	_assert(SimWorld.CROWS_PER_DAY >= 1, "there is a per-day crow budget at all")
+	var sched := SimWorld.roll_crow_schedule(SimWorld.CROW_MIN_DAY)
+	_assert(sched.size() == SimWorld.CROWS_PER_DAY,
+		"and a day schedules exactly that many arrivals, so daily loss is bounded by it")
+
+	gs.free()
+
+
+# --- helpers for the noisier loops above --------------------------------------
+# A loop over 640 tiles should not print 640 lines. These collapse a run of
+# assertions into one, reporting the first failure if there was one.
+var _quiet_fail := ""
+var _quiet_count := 0
+
+func _assert_quiet(condition: bool, label: String) -> void:
+	_quiet_count += 1
+	if not condition and _quiet_fail == "":
+		_quiet_fail = label
+
+func _flush_quiet(label: String) -> void:
+	if _quiet_fail == "":
+		_assert(true, "%s (%d checks)" % [label, _quiet_count])
+	else:
+		_assert(false, "%s — first failure: %s" % [label, _quiet_fail])
+	_quiet_fail = ""
+	_quiet_count = 0
+
+
+func _flood(world: SimWorld, start: Vector2i) -> Array[Vector2i]:
+	var seen := { start: true }
+	var queue: Array[Vector2i] = [start]
+	var out: Array[Vector2i] = []
+	var idx := 0
+	while idx < queue.size():
+		var c: Vector2i = queue[idx]
+		idx += 1
+		out.append(c)
+		for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var n: Vector2i = c + d
+			if seen.has(n):
+				continue
+			if not world.is_walkable(n.x, n.y):
+				continue
+			seen[n] = true
+			queue.append(n)
+	return out

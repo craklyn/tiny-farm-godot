@@ -108,7 +108,11 @@ func _scenario_b() -> void:
 	Input.action_release("tool_next")
 	await get_tree().process_frame
 	
-	_assert(GameState.selected_tool == (initial_tool + 1) % Tools.LIST.size(), "Tool cycled next")
+	# T-9 (Q-34): cycling skips the axe and pickaxe until they are acquired, so
+	# "next" is the next tool she actually holds rather than the next index.
+	_assert(GameState.selected_tool != initial_tool, "Tool cycled next")
+	_assert(GameState.owns_tool(Tools.key_of(GameState.selected_tool)),
+		"and landed on a tool she owns")
 	
 	GameState.set_energy(0)
 	_assert(GameState.energy == 0, "Energy set to 0")
@@ -116,8 +120,10 @@ func _scenario_b() -> void:
 	# Ensure Hands tool
 	GameState.selected_tool = 0
 
-	# Setup a rock
-	farm.set_tile_state(6, 5, "obstacle_rock")
+	# A weed rather than a rock: this scenario is about the energy floor, and a
+	# rock now needs a pickaxe she has not earned (T-9), which would make it a
+	# tool-ownership test wearing an energy test's name.
+	farm.set_tile_state(6, 5, "obstacle_weed")
 	player.facing = "right"
 	player.pos = Vector2(5.5 * 16.0, 5.5 * 16.0)
 
@@ -126,7 +132,7 @@ func _scenario_b() -> void:
 	Input.action_press("action")
 	await _wait_for_action()
 	Input.action_release("action")
-	_assert(farm.get_tile(6, 5).state == "obstacle_rock", "Action blocked when 0 energy (hard)")
+	_assert(farm.get_tile(6, 5).state == "obstacle_weed", "Action blocked when 0 energy (hard)")
 
 	# Soft floor (phase 1 default, Q-11): same action works at 0 energy
 	GameState.hard_energy = false
