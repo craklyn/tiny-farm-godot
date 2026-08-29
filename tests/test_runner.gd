@@ -1571,7 +1571,9 @@ func test_daylight() -> void:
 	# it, so the number that used to be an unreadable bar is exactly the day's
 	# progress. This maps it to light.
 	var dawn := Daylight.tint_for(20, 20)
-	var noon := Daylight.tint_for(16, 20)
+	# 78 of 100 lands exactly on the midday stop; 16 of 20 is 0.80 and would sit
+	# part-way between dawn and midday.
+	var noon := Daylight.tint_for(78, 100)
 	var dusk := Daylight.tint_for(0, 20)
 	_assert(dawn != noon, "dawn and midday differ")
 	_assert(dusk != noon, "dusk and midday differ")
@@ -1584,13 +1586,15 @@ func test_daylight() -> void:
 	_assert(dusk.r > 0.4 and dusk.g > 0.4 and dusk.b > 0.4,
 		"twilight dims but never goes dark enough to hide the farm")
 
-	# Monotonic enough to read as time passing rather than as a flickering meter.
-	var prev := 2.0
-	for e in [20, 18, 15, 12, 9, 6, 3, 0]:
+	# The arc brightens into midday and then declines, which is what makes it read
+	# as a day passing rather than as a battery draining. So the fall is only
+	# asserted *after* midday (f < 0.78, i.e. energy below ~15 of 20).
+	_assert(Daylight.tint_for(18, 20) != dawn, "the light changes as the first actions are spent")
+	var prev := 99.0
+	for e in [12, 9, 6, 3, 0]:
 		var c := Daylight.tint_for(e, 20)
 		var lum: float = c.r + c.g + c.b
-		if e < 16:
-			_assert(lum <= prev + 0.001, "light falls as the day is spent (energy %d)" % e)
+		_assert(lum <= prev + 0.001, "light falls through the afternoon (energy %d)" % e)
 		prev = lum
 
 	# Degenerate inputs must not produce a black screen mid-play.
