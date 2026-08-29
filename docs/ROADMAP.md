@@ -68,7 +68,7 @@ adult speaking, on two consecutive fresh runs — measured from the session trac
 from an adult's impression.
 
 ### Ordering
-Twenty-two stories; three are done. Grouped by the ruling that unblocks them:
+Twenty-three stories; three are done. Grouped by the ruling that unblocks them:
 
 | Ruling | Stories | Note |
 |---|---|---|
@@ -83,7 +83,7 @@ Twenty-two stories; three are done. Grouped by the ruling that unblocks them:
 | Q-39 | `T-15` | build with `T-8` — trees are where logs come from |
 | Q-40 | `T-16` | spiked; risk resolved, see below |
 | Q-42 | `T-18`, `T-19` | **evidence-backed** — measured data behind them |
-| *(none)* | `T-20` ✅, `T-21`, `T-22` | balance, polish, and the first phone pass — none needs a ruling |
+| *(none)* | `T-20` ✅, `T-21`, `T-22`, `T-23` | balance, polish, the first phone pass, and shipping — none needs a ruling |
 | *(after Q-37/Q-40)* | `T-17` | regenerates the scripted replays the above two create |
 
 `T-13`→`T-17` were raised on 2026-08-28 and none is on the critical path to the exit gate.
@@ -264,6 +264,30 @@ shooed.**
       alone, no stamping in the replay log, and immune to other consumers.
 *Property worth keeping: pressure follows productivity. A player who wanders and plants
 nothing is never visited, while a busy farm draws birds — fairer, and the right fiction.*
+
+**T-23 — Ship it: first public release on itch.io** · unblocked · ~1 day
+*So that Q-6's standing rule — release early, free, unrestricted — finally holds. M1 is
+closed and nothing blocks this.*
+**Web export spiked 2026-08-28 and the engine runs.** A `Web` preset now exists
+(single-threaded, so no SharedArrayBuffer/COOP-COEP headers are needed and it drops
+straight onto itch). Verified in a browser: Godot 4.7.2 boots, WebGL2 initialises, and —
+the one that mattered — **`user://` persists**, as an IndexedDB store named `/userfs`. The
+autosave, replay and trace all survive a reload.
+- [ ] visual and touch check in a real browser, desktop and mobile (the harness browser
+      would not composite, so nothing has been *seen* yet)
+- [ ] audio: browsers block sound until a user gesture. Godot resumes the AudioContext on
+      first input, but the title screen's tap is the first gesture and must not be silent
+- [ ] 48 MB export — fine for itch, worth a look at whether the placeholder art is
+      carrying dead weight
+- [ ] upload the Android APK to the same page: already green, zero extra work, and it is
+      the build that has actually been played
+- [ ] itch page: screenshots, a one-paragraph description, "made with Godot", credits
+      pointing at `CREDITS.md`
+**Correction to an earlier claim of mine:** I said a web release would generate traces we
+could read, and that is wrong. In a browser the trace sits in the *player's* IndexedDB and
+is unreachable. Reach and evidence are separate problems: shipping gets players, and only
+an upload path (the Firebase idea) closes the loop back to us. Do not count on web
+distribution for playtest data.
 
 **T-22 — First phone pass (iOS)** · unblocked once an iOS build exists · ~1–2 days
 *So that the half of "touch-first" the design has always claimed but never tested gets
