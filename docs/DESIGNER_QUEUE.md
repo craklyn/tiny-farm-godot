@@ -273,7 +273,14 @@ first, since a different answer there changes what the other four are optimising
   *Note this is the same class as the well-and-bin false alarm fixed the same day: the
   game has three states — did it, cannot do it, nothing to do — and only the first two
   currently have a voice.*
-- **Q-40 (Ruling)** **The landing page: a donut of living farm around the menu.**
+- **Q-40** ~~The landing page: a donut of living farm around the menu~~ — ✅ ruled
+  2026-08-29: **adopt.** Technically proven by the `tools/replay_view.gd` spike, which
+  established that the renderer runs standalone, that a replay drives it faithfully at the
+  *intent* layer, and that the farmer walks and works exactly as in real play. Two
+  constraints the spike surfaced and the build must honour: the attract loop needs its own
+  **detached `GameState`** or it spends the player's real energy and seeds, and it needs a
+  **drifting camera** because everything developed sits in one corner of the map. Story
+  T-16. Original wording:
   Designer's proposal: keep the menu centred, render the farm full-screen behind it, and
   drive that farm from a recorded replay so it plays while the player chooses.
   **Recommendation: adopt.** Beyond looking good, an attract loop is a *demonstration
