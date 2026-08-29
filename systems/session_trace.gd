@@ -45,6 +45,13 @@ func _stamp() -> int:
 #   queued      - action deferred until she arrives
 #   acted       - performed immediately
 #   refused     - the sim said no; `reason` carries why
+#   satisfied   - the target was already in the state she wanted, and the game
+#                 said so with a positive cue (T-18/T-19, Q-42). `reason` carries
+#                 the code: already_watered / can_full / basket_empty. This is
+#                 NOT a dead tap — the tap was answered — and every analysis
+#                 below keeps it out of the dead-tap totals on purpose. The
+#                 T-19 signature to watch for is *worked-then-acknowledged*
+#                 replacing *worked-then-dead*.
 #   unreachable - she cannot path there and is not already beside it: the tap
 #                 did nothing whatsoever. The most diagnostic outcome we record.
 func tap(modality: String, tile: Vector2i, player_tile: Vector2i, tool_idx: int,
@@ -146,14 +153,24 @@ static func summarize(parsed: Dictionary) -> Dictionary:
 	var dead := 0
 	var unreachable := 0
 	var refused := 0
+	var satisfied := 0
 	var reasons: Dictionary = {}
+	var satisfied_reasons: Dictionary = {}
 	var repeated: Dictionary = {}  # "x,y" -> dead/refused taps on that tile
 	for e in parsed.get("entries", []):
 		var out: String = String(e.get("out", ""))
+		# "satisfied" is deliberately absent from is_dead. A tile that answered
+		# "yes, already done" answered — counting it as a dead tap would make
+		# T-18 look like a regression in the very number it exists to move, and
+		# would keep those tiles in the stuck-tile list for ever.
 		var is_dead: bool = String(e.get("kind", "")) == "tap" \
 			and (out == "none" or out == "refused" or out == "unreachable")
 		if e.get("kind", "") == "tap":
 			taps += 1
+			if out == "satisfied":
+				satisfied += 1
+				var sw: String = e.get("why", "?")
+				satisfied_reasons[sw] = int(satisfied_reasons.get(sw, 0)) + 1
 		if e.get("kind", "") == "act" and not e.get("ok", true):
 			refused += 1
 			var w: String = e.get("why", "?")
@@ -182,6 +199,8 @@ static func summarize(parsed: Dictionary) -> Dictionary:
 		"dead_taps": dead,
 		"unreachable": unreachable,
 		"refused": refused,
+		"satisfied": satisfied,
+		"satisfied_reasons": satisfied_reasons,
 		"reasons": reasons,
 		"stuck_tiles": stuck,
 	}
@@ -208,6 +227,9 @@ static func teaching_report(parsed: Dictionary, stall_ms: int = 8000) -> Diction
 		last_t = maxi(last_t, t)
 		var kind := String(e.get("kind", ""))
 		if kind == "tap":
+			# Tallied by name, so T-18's "satisfied" outcome appears as its own row
+			# without a filter change here — and, being neither a refusal nor a dead
+			# tap, it never lands in either of those buckets by accident.
 			var out := String(e.get("out", "?"))
 			outcomes[out] = int(outcomes.get(out, 0)) + 1
 			tap_times.append(t)
@@ -295,6 +317,11 @@ static func mislabelled_unreachable(parsed: Dictionary) -> Array:
 # Which verbs are failing, as opposed to which reasons are given. Refusals with
 # no reason show up as "?" in the reason table, which says nothing about where to
 # look; grouping by verb found the well and the shipping bin immediately.
+#
+# Filters on `act` entries, not on tap outcomes, so T-18's "satisfied" taps never
+# reach it. They also produce fewer `act` entries than before: a tap the intent
+# layer can answer as already-done is no longer dispatched to the sim, so the
+# well and bin stop logging benign refusals that were never the player's mistake.
 static func failures_by_verb(parsed: Dictionary) -> Dictionary:
 	var out := {"with_reason": {}, "without_reason": {}}
 	for e in parsed.get("entries", []):
@@ -309,6 +336,10 @@ static func failures_by_verb(parsed: Dictionary) -> Dictionary:
 # What a stuck tile actually did, over the whole session. A tile that is only
 # ever dead is a different problem from one that worked five times and then
 # stopped — the second is a state change she could not see.
+#
+# Outcomes are counted by name, so "satisfied" shows up as its own row here. That
+# is the T-19 measurement: the signature to eliminate was *worked-then-dead*, and
+# what should replace it is *worked-then-acknowledged*.
 static func tile_history(parsed: Dictionary, key: String) -> Dictionary:
 	var outs: Dictionary = {}
 	var tools: Dictionary = {}
@@ -335,6 +366,11 @@ static func dead_tap_tools(parsed: Dictionary) -> Dictionary:
 	for e in parsed.get("entries", []):
 		if String(e.get("kind", "")) != "tap":
 			continue
+		# "satisfied" excluded on purpose: this table exists to identify what she
+		# was holding when a tap went NOWHERE. Twelve of fourteen dead taps in the
+		# 2026-08-28 session held the watering can, which is what identified them
+		# as already-watered crops — the taps T-18 now answers. They must leave
+		# this table as they are fixed, or the measurement cannot show the fix.
 		var o := String(e.get("out", ""))
 		if o == "none" or o == "unreachable" or o == "refused":
 			var tool := int(e.get("tool", -1))

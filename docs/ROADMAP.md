@@ -384,29 +384,48 @@ legible; it does not look like part of the game.
 *Distinct from T-7, which decides **when** a hint escalates. This is only how it looks, so
 it can land before Q-36 is ruled.*
 
-**T-18 — Give the third state a voice: "nothing to do"** · Q-42 · ~1 day
+**T-18 — Give the third state a voice: "nothing to do"** · Q-42 ✅ · done 2026-08-29 (M1.5 WI-2)
 *So that a finished tile stops looking like a broken one.*
 Evidence, from the 2026-08-28 adult session: **20 dead taps held the watering can**, on
 crops already watered that day, and three tiles were tapped 3+ times each. The game has
 three states and only two of them speak — *did it* (squash + sound), *cannot do it*
 (wobble + nope), and *nothing to do* (silence). The third reads as a malfunction.
-- [ ] a positive acknowledgement on an already-satisfied tile — it answers "yes, done",
-      never "no". A wobble here would teach that a good state is a failure
-- [ ] the same treatment for the well with a full can and the bin with an empty basket,
-      which are currently silent for the same reason (the benign-failure fix stopped them
-      lying; it did not make them speak)
+- [x] a positive acknowledgement on an already-satisfied tile — it answers "yes, done",
+      never "no". A wobble here would teach that a good state is a failure.
+      `ActionRouter.satisfied_reason()` (a deliberate sibling of `blocked_reason()`, not a
+      merge with it) plus `farm.acknowledge_at()`: a soft ring, three rising sparkles, and
+      the quiet UI tick rather than the harvest chime — non-rewarding on purpose, so
+      repeated tapping is answered and not farmed for stimulation
+- [x] the same treatment for the well with a full can and the bin with an empty basket.
+      Two routes to the one cue: the intent layer answers a tap it can see is already
+      satisfied (and no longer dispatches an action the sim would benignly refuse), and
+      `farm.apply_action` acknowledges a `BENIGN_FAILURES` result that arrives any other way
+- [x] `"satisfied"` is a first-class tap outcome in `systems/session_trace.gd`, kept out of
+      the dead-tap and refusal totals by every analyser, printed by `tools/read_trace.gd`
 - [ ] check whether watered soil is legible *without* tapping — the 2026-08-27 pass
-      improved it and this session says not enough
-*Rule Q-42 alongside Q-38: a daylight cycle changes how wet soil reads at every hour.*
+      improved it and this session says not enough *(open; and Q-38's daylight now changes
+      how wet soil reads at every hour, so it wants a fresh device look)*
+*Ruled 2026-08-29 alongside T-19; shipped together, since they share the cue and the trace
+change. **Also fixed here: finding F-5** — `blocked_reason()` returned human phrases
+("no seeds") while `farm._refuse_icon()` matched the sim's codes ("no_seeds"), so the two
+never met and every router-level refusal silently lost its picture. The router now speaks
+the sim's vocabulary and the icon table is data (`farm.REFUSE_ICONS`) the unit suite
+asserts against.*
 
-**T-19 — Make a state change visible when it happens** · Q-42 · ~1 day
+**T-19 — Make a state change visible when it happens** · Q-42 ✅ · done 2026-08-29 (M1.5 WI-2)
 *So that a tile that stops responding shows why it stopped.*
 All five stuck tiles in the last session had the shape `acted 5, then dead` — they worked
 repeatedly and then went quiet. That is not a broken tile; it is a state change the player
 could not see. The per-tile histories in `read_trace.gd` now surface this pattern, so it
 can be measured before and after.
-- [ ] the moment a tile becomes "done for today", say so where she is looking
-- [ ] re-measure with `tile_history()`: the signature to eliminate is worked-then-dead
+- [x] the moment a tile becomes "done for today", say so where she is looking — watering
+      is the verb that finishes a tile, so the water landing now carries the same done-tick
+      T-18 uses, minus its sound (the water is already playing). Same cue, two triggers,
+      no new system
+- [ ] re-measure with `tile_history()`: the signature to eliminate is worked-then-dead.
+      The replacement signature is *worked-then-acknowledged*, and `tile_history()` now
+      reports `satisfied` as its own row so the before/after is readable
+      *(needs the next real session; nothing left to build)*
 
 **T-17 — Regenerate scripted replays at build time** · after Q-37/Q-40 · ~1 day
 *So that shipped scripted content can never be stale, and so "the demo looks right" becomes

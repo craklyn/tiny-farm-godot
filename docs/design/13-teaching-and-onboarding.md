@@ -627,6 +627,29 @@ For each beat, `systems/session_trace.gd` gives us:
 The pass condition for this chapter is narrow and should stay narrow: **she reaches beat
 4 of day 1 without an adult speaking.** Everything else is diagnostics.
 
+**The third state now speaks, and is measured (T-18/T-19, Q-42, shipped 2026-08-29).**
+The game has three answers and until now only two of them had a voice: *did it* (a
+vertical squash and a sound), *cannot* (a sideways wobble, the nope sound, and a picture
+of what she is missing), and *nothing to do* — which was silence, and which a pre-reader
+reads as a broken tile. `ActionRouter.satisfied_reason()` names the third state as its own
+question, separate from `blocked_reason()` on purpose: they get opposite feedback, and
+collapsing them would be one boolean away from wobbling at a finished tile, which is what
+Q-42 forbids. The cue is a soft ring, three rising sparkles, and the quiet UI tick — never
+the wobble, and deliberately less rewarding than a harvest, so tapping a done tile over
+and over is *answered* rather than turned into something worth doing. It fires in three
+places: on a tap at an already-watered crop, a full watering can, or an empty basket; and
+— this is T-19 — at the moment the water lands, so the tile says it is finished where she
+is looking, rather than going quiet the next time she tries.
+
+The measurement is what makes this falsifiable. `systems/session_trace.gd` gains a
+`"satisfied"` tap outcome carrying its reason code, and every analyser keeps it out of the
+dead-tap and refusal totals, because folding it in would hide the fix in the exact number
+it exists to move. The 2026-08-28 session's signature was **worked-then-dead** — five
+tiles that responded repeatedly and then went quiet, and 20 dead taps holding the watering
+can. What should appear in its place is **worked-then-acknowledged**, readable directly
+from `tile_history()`. If the next session still shows worked-then-dead, the cue is not
+reading and this is the wrong fix rather than an unlucky player.
+
 ---
 
 ## 8a. Daylight instead of an energy bar — proposed 2026-08-28, awaiting Q-38

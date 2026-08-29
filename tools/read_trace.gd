@@ -85,6 +85,7 @@ func _init() -> void:
 		print("  %-12s %4d  %s" % [k, int(outcomes[k]), _bar(int(outcomes[k]), taps)])
 	var dead := int(sum.get("dead_taps", 0))
 	var refused := int(sum.get("refused", 0))
+	var satisfied := int(sum.get("satisfied", 0))
 	var wasted := dead + refused
 	if taps > 0:
 		print("")
@@ -92,6 +93,14 @@ func _init() -> void:
 		print("  %d found nothing to do (%d of those could not be reached at all)"
 			% [dead, int(sum.get("unreachable", 0))])
 		print("  %d were refused by the sim" % refused)
+		# T-18/T-19: these used to be silence and counted as dead taps. They are
+		# answered taps now, so they are reported separately and never folded into
+		# the wasted total — that is the number the change is meant to move.
+		print("  %d were answered 'already done' (T-18) — not wasted" % satisfied)
+	if satisfied > 0:
+		var sreasons: Dictionary = sum.get("satisfied_reasons", {})
+		for k in _sorted_by_count(sreasons):
+			print("      %-24s %d" % [k, int(sreasons[k])])
 	print("")
 
 	# --- Why anything was refused --------------------------------------------

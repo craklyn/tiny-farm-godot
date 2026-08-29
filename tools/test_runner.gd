@@ -61,6 +61,14 @@ func _run_scenarios() -> void:
 	await _scenario_f()
 	await _scenario_g()
 	await _scenario_h_daylight()
+	await _scenario_i_third_state()
+
+func _wait_until(pred: Callable, max_frames: int) -> bool:
+	for i in max_frames:
+		if pred.call():
+			return true
+		await get_tree().process_frame
+	return false
 
 func _wait_for_action() -> void:
 	# Give it one frame to register the action and set is_acting = true
@@ -375,3 +383,116 @@ func _scenario_h_daylight() -> void:
 	_assert(farm.get_tile(9, 6).state == "cleared", "night stays soft — the action still resolves at 0 energy")
 
 	GameState.set_energy(GameState.max_energy)
+
+
+func _scenario_i_third_state() -> void:
+	# T-18/T-19 (Q-42): the game's third answer — *nothing to do* — used to be
+	# silence, and a four-year-old reads silence as a broken tile. The 2026-08-28
+	# session measured 20 dead taps holding the watering can over crops already
+	# watered that day. A finished tile now says "yes, done", positively, and the
+	# trace records it as its own outcome so the fix is measurable.
+	print("\n--- Scenario I: the third state speaks ---")
+
+	GameState.set_energy(GameState.max_energy)
+	GameState.watering_can_charges = GameState.max_watering_can_charges
+	farm.set_tile_state(11, 8, "cleared")
+	farm.set_tile_state(12, 8, "seeded", "wheat")
+	player.pos = Vector2(11.5 * 16.0, 8.5 * 16.0)
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+
+	# 1. water it through the real tap path
+	var before: int = farm.trace.entries.size()
+	InputManager.click_tile = Vector2i(12, 8)
+	InputManager.has_click = true
+	var watered := await _wait_until(func(): return farm.get_tile(12, 8).watered_today, 200)
+	_assert(watered, "a tap watered the tile through the input path")
+
+	# 2. tap it again with the can still selected — the exact dead-tap case
+	InputManager.click_tile = Vector2i(12, 8)
+	InputManager.has_click = true
+	var acked := await _wait_until(
+		func(): return _last_tap_outcome(before) == "satisfied", 200)
+	_assert(acked, "tapping an already-watered crop is answered 'satisfied', not silence")
+	_assert(_last_tap_reason(before) == "already_watered", "and the reason code is recorded")
+	_assert(_no_refusals_since(before), "no refusal was recorded — a good state never wobbles")
+
+	# 3. the well, with a full can: the same third state from the object side
+	var mark: int = farm.trace.entries.size()
+	GameState.watering_can_charges = GameState.max_watering_can_charges
+	player.pos = Vector2(6.5 * 16.0, 2.5 * 16.0)
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+	InputManager.click_tile = Vector2i(6, 1)
+	InputManager.has_click = true
+	var well_ack := await _wait_until(
+		func(): return _last_tap_outcome(mark) == "satisfied", 200)
+	_assert(well_ack, "tapping the well with a full can is answered 'satisfied'")
+	_assert(_last_tap_reason(mark) == "can_full", "and says which good state it was in")
+	_assert(_no_refusals_since(mark), "the well no longer logs a benign refusal it never earned")
+
+	# 4. the bin, with an empty basket
+	var mark2: int = farm.trace.entries.size()
+	GameState.crops = { "wheat": 0, "tomato": 0 }
+	player.pos = Vector2(4.5 * 16.0, 2.5 * 16.0)
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+	InputManager.click_tile = Vector2i(4, 1)
+	InputManager.has_click = true
+	var bin_ack := await _wait_until(
+		func(): return _last_tap_outcome(mark2) == "satisfied", 200)
+	_assert(bin_ack, "tapping the bin with an empty basket is answered 'satisfied'")
+	_assert(_last_tap_reason(mark2) == "basket_empty", "and says which good state it was in")
+
+	# 5. and a real refusal still refuses — the third state must not swallow the
+	#    second. An empty pouch on a tilled tile is the 2026-08-27 silent-refusal
+	#    case, and it must still say what she is missing, in the sim's vocabulary.
+	var mark3: int = farm.trace.entries.size()
+	farm.set_tile_state(11, 8, "cleared")
+	farm.set_tile_state(12, 8, "tilled")
+	GameState.seeds["wheat"] = 0
+	GameState.seeds["tomato"] = 0
+	GameState.selected_seed_type = "wheat"
+	player.pos = Vector2(11.5 * 16.0, 8.5 * 16.0)
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+	InputManager.click_tile = Vector2i(12, 8)
+	InputManager.has_click = true
+	var refused := await _wait_until(
+		func(): return _last_tap_outcome(mark3) == "refused", 200)
+	_assert(refused, "an empty pouch on a tilled tile is still a refusal, not an acknowledgement")
+	_assert(_last_tap_reason(mark3) == "no_seeds",
+		"and it speaks the sim's code, so the icon table matches it (finding F-5)")
+	_assert(farm.REFUSE_ICONS.has(_last_tap_reason(mark3)),
+		"and that code has a picture to show her")
+
+	GameState.seeds["wheat"] = 5
+	GameState.crops = { "wheat": 0, "tomato": 0 }
+
+
+func _last_tap_outcome(since: int) -> String:
+	for i in range(farm.trace.entries.size() - 1, since - 1, -1):
+		if String(farm.trace.entries[i].get("kind", "")) == "tap":
+			return String(farm.trace.entries[i].get("out", ""))
+	return ""
+
+
+func _last_tap_reason(since: int) -> String:
+	for i in range(farm.trace.entries.size() - 1, since - 1, -1):
+		if String(farm.trace.entries[i].get("kind", "")) == "tap":
+			return String(farm.trace.entries[i].get("why", ""))
+	return ""
+
+
+func _no_refusals_since(since: int) -> bool:
+	for i in range(since, farm.trace.entries.size()):
+		var e: Dictionary = farm.trace.entries[i]
+		if String(e.get("kind", "")) == "act" and not e.get("ok", true):
+			return false
+		if String(e.get("out", "")) == "refused":
+			return false
+	return true

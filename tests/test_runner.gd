@@ -52,6 +52,7 @@ func _init() -> void:
 	test_benign_failures()
 	test_seed_selection_trap()
 	test_trace_analyses()
+	test_satisfied_states()
 
 	print("")
 	print(String("=").repeat(60))
@@ -1065,7 +1066,7 @@ func test_session_trace() -> void:
 	tr.tap("tap", Vector2i(9, 9), Vector2i(2, 2), 0, "", "none")
 	tr.tap("tap", Vector2i(9, 9), Vector2i(2, 2), 0, "", "none")
 	tr.tap("tap", Vector2i(9, 9), Vector2i(2, 2), 0, "", "none")
-	tr.tap("tap", Vector2i(5, 5), Vector2i(2, 2), 3, "plant", "refused", "no seeds")
+	tr.tap("tap", Vector2i(5, 5), Vector2i(2, 2), 3, "plant", "refused", "no_seeds")
 	tr.tap("tap", Vector2i(30, 1), Vector2i(2, 2), 0, "", "unreachable")
 
 	var parsed := SessionTrace.parse(tr.to_jsonl())
@@ -1078,9 +1079,41 @@ func test_session_trace() -> void:
 	_assert(int(sum["dead_taps"]) == 4, "dead taps counted")
 	_assert(int(sum["unreachable"]) == 1, "unreachable taps counted separately")
 	_assert(int(sum["refused"]) == 1, "refusals counted")
-	_assert(sum["reasons"].get("no seeds", 0) == 1, "refusal reason recorded")
+	_assert(sum["reasons"].get("no_seeds", 0) == 1, "refusal reason recorded")
 	_assert(sum["stuck_tiles"].has("9,9"), "a tile tapped 3x with no effect is flagged")
 	_assert(not sum["stuck_tiles"].has("3,2"), "a tile that worked is not flagged")
+
+	# T-18/T-19 (Q-42): an acknowledged tap is NOT a dead tap. The 2026-08-28
+	# session's headline number was 20 dead taps holding the watering can over
+	# crops already watered that day; if "satisfied" were still counted as dead,
+	# the fix would be invisible in the one measurement that is meant to show it —
+	# and those tiles would sit in the stuck-tile list for ever.
+	var ack := SessionTrace.new()
+	ack.start(7, false)
+	ack.tap("tap", Vector2i(6, 3), Vector2i(6, 4), 4, "", "satisfied", "already_watered")
+	ack.tap("tap", Vector2i(6, 3), Vector2i(6, 4), 4, "", "satisfied", "already_watered")
+	ack.tap("tap", Vector2i(6, 3), Vector2i(6, 4), 4, "", "satisfied", "already_watered")
+	ack.tap("tap", Vector2i(6, 1), Vector2i(6, 2), 4, "refill", "satisfied", "can_full")
+	ack.tap("tap", Vector2i(8, 8), Vector2i(6, 4), 4, "", "none")
+	var ack_parsed := SessionTrace.parse(ack.to_jsonl())
+	var ack_sum := SessionTrace.summarize(ack_parsed)
+	_assert(int(ack_sum["taps"]) == 5, "acknowledged taps are still taps")
+	_assert(int(ack_sum["satisfied"]) == 4, "acknowledged taps counted as their own outcome")
+	_assert(int(ack_sum["dead_taps"]) == 1, "and they are NOT dead taps — only the real one is")
+	_assert(int(ack_sum["refused"]) == 0, "nor refusals — a good state is not a refusal")
+	_assert(int(ack_sum["satisfied_reasons"].get("already_watered", 0)) == 3,
+		"the acknowledgement reason is recorded")
+	_assert(int(ack_sum["satisfied_reasons"].get("can_full", 0)) == 1,
+		"and the well's full can is its own reason")
+	_assert(not ack_sum["stuck_tiles"].has("6,3"),
+		"a tile tapped 3x and answered every time is not a stuck tile")
+	var ack_rep := SessionTrace.teaching_report(ack_parsed)
+	_assert(int(ack_rep["outcomes"].get("satisfied", 0)) == 4,
+		"teaching_report tallies satisfied taps as their own row")
+	_assert(SessionTrace.dead_tap_tools(ack_parsed).get(4, 0) == 1,
+		"dead_tap_tools counts only the genuinely dead tap, not the answered ones")
+	_assert(SessionTrace.tile_history(ack_parsed, "6,3")["outcomes"].get("satisfied", 0) == 3,
+		"tile_history shows worked-then-acknowledged instead of worked-then-dead (T-19)")
 
 	# An unreachable tap is a dead tap. Before 2026-08-28 player.gd never recorded
 	# one at all, so this is the regression guard for the analysis half.
@@ -1113,7 +1146,7 @@ func test_session_trace() -> void:
 	# A refused action arriving seconds after its tap must not count as a lesson.
 	var refused_only := SessionTrace.parse(
 		'{"version":1,"gen_seed":1,"continued":false}\n'
-		+ '{"t":100,"kind":"act","tile":[1,1],"actor":"player","verb":"plant","ok":false,"why":"no seeds"}\n')
+		+ '{"t":100,"kind":"act","tile":[1,1],"actor":"player","verb":"plant","ok":false,"why":"no_seeds"}\n')
 	_assert(not SessionTrace.teaching_report(refused_only)["first_use"].has("plant"),
 		"a refused action is not a first successful use")
 
@@ -1270,7 +1303,7 @@ func test_blocked_reason() -> void:
 	_assert(ActionRouter.blocked_reason(farm, GameState, t) == "",
 		"a tilled tile with seeds in hand is not blocked")
 	GameState.seeds["wheat"] = 0
-	_assert(ActionRouter.blocked_reason(farm, GameState, t) == "no seeds",
+	_assert(ActionRouter.blocked_reason(farm, GameState, t) == "no_seeds",
 		"a tilled tile with an empty pouch says so — the exact trace case")
 	_assert(ActionRouter.resolve(farm, GameState, t, t).is_empty(),
 		"and resolve still returns nothing, so the reason is the only feedback there is")
@@ -1279,7 +1312,7 @@ func test_blocked_reason() -> void:
 	farm.sim.tiles[t.y][t.x]["state"] = "cleared"
 	_assert(ActionRouter.blocked_reason(farm, GameState, t) == "", "cleared ground tills fine")
 	GameState.energy = 0
-	_assert(ActionRouter.blocked_reason(farm, GameState, t) == "too tired",
+	_assert(ActionRouter.blocked_reason(farm, GameState, t) == "no_energy",
 		"an exhausted farmer on cleared ground says so")
 
 	GameState.reset()
@@ -1287,7 +1320,7 @@ func test_blocked_reason() -> void:
 	farm.sim.tiles[t.y][t.x]["watered_today"] = false
 	_assert(ActionRouter.blocked_reason(farm, GameState, t) == "", "a dry crop waters fine")
 	GameState.watering_can_charges = 0
-	_assert(ActionRouter.blocked_reason(farm, GameState, t) == "watering can empty",
+	_assert(ActionRouter.blocked_reason(farm, GameState, t) == "no_water",
 		"an empty can says so")
 
 	# Already-watered is genuinely nothing to do, not a refusal — wobbling at a
@@ -1344,7 +1377,7 @@ func test_benign_failures() -> void:
 	var Farm = load("res://world/farm.gd")
 	_assert(Farm.BENIGN_FAILURES.has("can_already_full"), "a full can is benign")
 	_assert(Farm.BENIGN_FAILURES.has("nothing_to_sell"), "an empty basket is benign")
-	_assert(not Farm.BENIGN_FAILURES.has("no seeds"),
+	_assert(not Farm.BENIGN_FAILURES.has("no_seeds"),
 		"an empty seed pouch is NOT benign — she wanted to plant and could not")
 	_assert(not Farm.BENIGN_FAILURES.has("no_state"), "an internal failure is not benign")
 
@@ -1437,7 +1470,7 @@ func test_trace_analyses() -> void:
 		+ '{"t":1,"kind":"act","verb":"refill","actor":"player","ok":false}\n'
 		+ '{"t":2,"kind":"act","verb":"refill","actor":"player","ok":false}\n'
 		+ '{"t":3,"kind":"act","verb":"sell","actor":"player","ok":false}\n'
-		+ '{"t":4,"kind":"act","verb":"plant","actor":"player","ok":false,"why":"no seeds"}\n')
+		+ '{"t":4,"kind":"act","verb":"plant","actor":"player","ok":false,"why":"no_seeds"}\n')
 	var byv := SessionTrace.failures_by_verb(fails)
 	_assert(int(byv["without_reason"].get("refill", 0)) == 2, "silent refills grouped by verb")
 	_assert(int(byv["without_reason"].get("sell", 0)) == 1, "silent sells too")
@@ -1615,3 +1648,129 @@ func test_daylight() -> void:
 	var black := Daylight.compensate(gold, Color(0, 0, 0))
 	_assert(black.r <= 1.0 and black.g <= 1.0 and black.b <= 1.0,
 		"a pathological tint cannot push a colour out of range")
+
+
+func test_satisfied_states() -> void:
+	print("\n--- The third state has a voice (T-18/T-19, Q-42) Tests ---")
+
+	# Evidence, from the 2026-08-28 adult session on a fresh farm: 14 taps
+	# produced nothing at all and 12 of them held the watering can over crops
+	# already watered that day; three separate tiles were tapped 3+ times. The
+	# game has three answers — did it, cannot, nothing-to-do — and only the first
+	# two spoke. Q-42 ruled that the third answers **yes-done, never no**.
+	GameState.reset()
+	var farm = load("res://world/farm.gd").new()
+	farm.generate_on_ready = false
+	SimRng.reseed(41)
+	farm.sim.generate()
+	var t := Vector2i(7, 6)
+
+	# --- already watered ------------------------------------------------------
+	farm.sim.tiles[t.y][t.x]["state"] = "growing"
+	farm.sim.tiles[t.y][t.x]["crop_type"] = "wheat"
+	farm.sim.tiles[t.y][t.x]["watered_today"] = false
+	_assert(ActionRouter.satisfied_reason(farm, GameState, t) == "",
+		"a dry crop is not satisfied — there is real work to do")
+	_assert(not ActionRouter.resolve(farm, GameState, t, t).is_empty(),
+		"and the action resolves, so nothing is acknowledged over a live action")
+	farm.sim.tiles[t.y][t.x]["watered_today"] = true
+	_assert(ActionRouter.satisfied_reason(farm, GameState, t) == "already_watered",
+		"a crop watered today answers 'already done' — the exact 20-dead-tap case")
+	_assert(ActionRouter.blocked_reason(farm, GameState, t) == "",
+		"and it is NOT a refusal: a good state must never wobble")
+	_assert(ActionRouter.resolve(farm, GameState, t, t).is_empty(),
+		"resolve still declines, so the acknowledgement is the only answer there is")
+	farm.sim.tiles[t.y][t.x]["state"] = "seeded"
+	_assert(ActionRouter.satisfied_reason(farm, GameState, t) == "already_watered",
+		"a watered seed answers the same way as a watered sprout")
+
+	# A ripe crop is not "satisfied" — there is a harvest waiting.
+	farm.sim.tiles[t.y][t.x]["state"] = "ready"
+	_assert(ActionRouter.satisfied_reason(farm, GameState, t) == "",
+		"a ripe crop is work, not a finished state")
+	farm.sim.tiles[t.y][t.x]["state"] = "cleared"
+	_assert(ActionRouter.satisfied_reason(farm, GameState, t) == "",
+		"cleared ground has nothing to acknowledge")
+	_assert(ActionRouter.satisfied_reason(farm, GameState, Vector2i(-3, -3)) == "",
+		"an out-of-bounds tile does not crash or invent an answer")
+
+	# --- the well, with a full can -------------------------------------------
+	var well := Vector2i(6, 1)
+	_assert(farm.get_object(well.x, well.y) == "well", "the well is where the layout puts it")
+	GameState.watering_can_charges = GameState.max_watering_can_charges
+	_assert(ActionRouter.satisfied_reason(farm, GameState, well) == "can_full",
+		"a full can at the well answers 'already done'")
+	GameState.watering_can_charges = 3
+	_assert(ActionRouter.satisfied_reason(farm, GameState, well) == "",
+		"a part-empty can still has a refill to do")
+
+	# --- the bin, with an empty basket ---------------------------------------
+	var bin := Vector2i(4, 1)
+	_assert(farm.get_object(bin.x, bin.y) == "shipping_bin", "the bin is where the layout puts it")
+	GameState.crops = { "wheat": 0, "tomato": 0 }
+	_assert(ActionRouter.satisfied_reason(farm, GameState, bin) == "basket_empty",
+		"an empty basket at the bin answers 'already done'")
+	GameState.crops["wheat"] = 1
+	_assert(ActionRouter.satisfied_reason(farm, GameState, bin) == "",
+		"a full basket has a sale to make")
+
+	# The cot is never "satisfied" — sleeping is always available (S-7).
+	_assert(ActionRouter.satisfied_reason(farm, GameState, Vector2i(2, 1)) == "",
+		"the cot is never answered as already-done; sleep is never refused")
+
+	# --- F-5: the refusal vocabulary must be one vocabulary -------------------
+	# blocked_reason() returned human phrases ("no seeds") while farm's icon table
+	# matched the sim's codes ("no_seeds"), so they never met and every
+	# router-level refusal silently lost its picture — the wordless half of the
+	# feedback, dropped on the exact path built to end silent refusals.
+	var Farm = load("res://world/farm.gd")
+	for code in ["no_seeds", "no_water", "no_energy"]:
+		_assert(Farm.REFUSE_ICONS.has(code),
+			"the refusal icon table knows the sim code '%s'" % code)
+	var src := (ActionRouter.get_script().source_code as String)
+	var body := src.substr(src.find("func blocked_reason"))
+	body = body.substr(0, body.find("\n## Why a tap produced no action because"))
+	for phrase in ["\"no seeds\"", "\"too tired\"", "\"watering can empty\""]:
+		_assert(not body.contains(phrase),
+			"blocked_reason no longer speaks the human phrase %s" % phrase)
+
+	# Every code blocked_reason can actually emit, driven through real states, has
+	# a picture. This is the assertion that stops F-5 recurring.
+	var emitted: Dictionary = {}
+	GameState.reset()
+	farm.sim.tiles[t.y][t.x]["state"] = "tilled"
+	GameState.seeds["wheat"] = 0
+	emitted[ActionRouter.blocked_reason(farm, GameState, t)] = true
+	GameState.reset()
+	farm.sim.tiles[t.y][t.x]["state"] = "cleared"
+	GameState.energy = 0
+	emitted[ActionRouter.blocked_reason(farm, GameState, t)] = true
+	GameState.reset()
+	farm.sim.tiles[t.y][t.x]["state"] = "seeded"
+	farm.sim.tiles[t.y][t.x]["watered_today"] = false
+	GameState.watering_can_charges = 0
+	emitted[ActionRouter.blocked_reason(farm, GameState, t)] = true
+	emitted.erase("")
+	_assert(emitted.size() == 3, "three distinct refusal codes are reachable")
+	for code in emitted.keys():
+		_assert(Farm.REFUSE_ICONS.has(String(code)),
+			"refusal code '%s' from the router has an icon" % code)
+
+	# --- the sim's benign failures are acknowledged, not refused --------------
+	# They are the same third state arriving from the other layer: a full can and
+	# an empty basket are perfectly good states, so they must not wobble.
+	for reason in Farm.BENIGN_FAILURES.keys():
+		_assert(not Farm.REFUSE_ICONS.has(String(reason)),
+			"benign reason '%s' has no refusal picture — it is not a refusal" % reason)
+
+	# --- the cue is never the wobble -----------------------------------------
+	# Q-42's one hard rule. Asserted structurally so a future edit that reaches for
+	# refuse_at() inside acknowledge_at() fails here rather than in a playtest.
+	var fsrc := (Farm.source_code as String)
+	var ack := fsrc.substr(fsrc.find("func acknowledge_at"))
+	ack = ack.substr(0, ack.find("\n\nfunc ") if ack.find("\n\nfunc ") != -1 else ack.length())
+	_assert(not ack.contains("refuse_at"), "acknowledge_at never routes to the refusal wobble")
+	_assert(not ack.contains("\"nope\""), "and never plays the nope sound")
+
+	GameState.reset()
+	farm.free()

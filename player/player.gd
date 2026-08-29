@@ -180,22 +180,39 @@ func update_player(delta: float) -> void:
 			# kind. resolve() declines to produce an action, so the sim never gets
 			# one to refuse, so the 2026-08-27 refusal feedback never fires.
 			var blocked := ""
-			if resolved.is_empty() and path.is_empty():
+			# T-18 (Q-42): before deciding a tap achieved nothing, ask whether the
+			# target is already in the state she wanted. That is the game's third
+			# answer — *nothing to do* — and it now speaks positively instead of
+			# being silence. Only asked when she is already in range: a distant tap
+			# is a walk order first, and the answer belongs where she arrives.
+			var here_now: bool = absi(player_t.x - target_vec.x) + absi(player_t.y - target_vec.y) <= 1
+			var satisfied := ""
+			if path.is_empty() and here_now:
+				satisfied = ActionRouter.satisfied_reason(farm, GameState, target_vec)
+			if satisfied != "":
+				farm.acknowledge_at(target_vec, satisfied)
+			elif resolved.is_empty() and path.is_empty():
 				blocked = ActionRouter.blocked_reason(farm, GameState, target_vec)
 				if blocked != "":
 					refuse_target(target_vec, blocked)
 
 			if farm.trace != null:
 				var out_kind := "none"
-				if resolved.is_empty():
+				if satisfied != "":
+					out_kind = "satisfied"
+				elif resolved.is_empty():
 					out_kind = "walk" if not path.is_empty() else "none"
 				else:
 					out_kind = "queued" if not path.is_empty() else "acted"
 				farm.trace.tap("drag" if is_drag else "tap", target_vec, player_t,
 					GameState.selected_tool,
-					String(resolved.get("action", "")), out_kind, blocked)
+					String(resolved.get("action", "")), out_kind,
+					satisfied if satisfied != "" else blocked)
 
-			if not resolved.is_empty():
+			# An already-answered tap does not also get dispatched: sending the well
+			# an action the sim will benignly refuse would log a phantom refusal and
+			# say the same thing twice.
+			if not resolved.is_empty() and satisfied == "":
 				if path.is_empty():
 					var dist = absi(player_t.x - target_vec.x) + absi(player_t.y - target_vec.y)
 					if dist <= 1:
@@ -230,17 +247,28 @@ func update_player(delta: float) -> void:
 			# standing directly beside — mostly crops already watered that day. A
 			# trace that mislabels its own categories misleads every analysis built
 			# on it, so this distinction matters more than the feedback does.
+			# T-18 (Q-42): this branch is where the 2026-08-28 session's 20 dead taps
+			# landed — the watering can held over crops already watered that day, and
+			# all five stuck tiles with the shape *worked five times, then dead*. Ask
+			# the satisfied question before the blocked one, because a finished tile
+			# is answering yes, not no, and the two get opposite feedback.
 			var near: bool = absi(player_t.x - target_vec.x) + absi(player_t.y - target_vec.y) <= 1
-			var why := ActionRouter.blocked_reason(farm, GameState, target_vec) if near else ""
-			if why != "":
+			var satisfied2 := ActionRouter.satisfied_reason(farm, GameState, target_vec) if near else ""
+			var why := ""
+			if near and satisfied2 == "":
+				why = ActionRouter.blocked_reason(farm, GameState, target_vec)
+			if satisfied2 != "":
+				farm.acknowledge_at(target_vec, satisfied2)
+			elif why != "":
 				refuse_target(target_vec, why)
 			var out_kind := "unreachable"
 			if near:
-				out_kind = "refused" if why != "" else "none"
+				out_kind = "satisfied" if satisfied2 != "" else ("refused" if why != "" else "none")
 			if farm.trace != null:
 				farm.trace.tap("drag" if is_drag else "tap", target_vec, player_t,
 					GameState.selected_tool,
-					String(resolved.get("action", "")), out_kind, why)
+					String(resolved.get("action", "")), out_kind,
+					satisfied2 if satisfied2 != "" else why)
 			path = []
 			pending_action = {}
 			tap_indicator = {}
@@ -468,6 +496,12 @@ func _execute_resolved_action(pa: Dictionary) -> void:
 	elif action == "water":
 		AudioManager.play_sfx("water")
 		_emit_particles("water", target_t)
+		# T-19: say the state changed *at the moment it changes*, where she is
+		# looking. Watering is the one verb that makes a tile done for the day, and
+		# every stuck tile in the last session had the shape "worked, then dead" —
+		# a state change she could not see. Same cue as T-18's acknowledgement,
+		# without its sound, because the water is already playing.
+		farm.acknowledge_at(target_t, "already_watered", false)
 	elif action == "harvest":
 		if result.has("crop_type"):
 			AudioManager.play_sfx("harvest")

@@ -130,19 +130,56 @@ func blocked_reason(farm: Node2D, gs: Node, tap_t: Vector2i) -> String:
 
 	if state == "tilled":
 		if gs.seeds.get(seed_type, 0) <= 0:
-			return "no seeds"
+			return "no_seeds"
 		return ""
 	if state == "cleared":
 		if gs.energy < Tools.get_energy_cost("till"):
-			return "too tired"
+			return "no_energy"
 		return ""
 	if state == "seeded" or state == "growing":
 		if tile.get("watered_today", false):
-			return ""  # already watered — nothing to do, not a refusal
+			return ""  # already watered — satisfied_reason() answers this one
 		if gs.watering_can_charges <= 0:
-			return "watering can empty"
+			return "no_water"
 		if gs.energy < Tools.get_energy_cost("water"):
-			return "too tired"
+			return "no_energy"
+	return ""
+
+
+## Why a tap produced no action because the target is **already in a good
+## state** — the game's third state, which until now had no voice at all.
+##
+## T-18/T-19, Q-42 (2026-08-29). The game has three answers: *did it* (squash +
+## sound), *cannot* (wobble + nope), and *nothing to do* — and the third was
+## silence, which a four-year-old reads as a broken tile. The 2026-08-28 session
+## measured it: 20 dead taps held the watering can over crops already watered
+## that day, and all five stuck tiles had the shape *worked five times, then
+## dead*. Q-42 ruled the fix: the tile answers **yes-done, never no**.
+##
+## Deliberately a sibling of blocked_reason() rather than a merge with it. They
+## answer different questions — "why could you not" versus "why did you not need
+## to" — and the answers get opposite feedback, so collapsing them would be one
+## boolean away from wobbling at a finished tile, which is the exact thing Q-42
+## forbids.
+##
+## Pure read: touches no state, mutates nothing.
+func satisfied_reason(farm: Node2D, gs: Node, tap_t: Vector2i) -> String:
+	var obj: String = farm.get_object(tap_t.x, tap_t.y)
+	if obj == "well":
+		if gs.watering_can_charges >= gs.max_watering_can_charges:
+			return "can_full"
+		return ""
+	if obj == "shipping_bin":
+		for count in gs.crops.values():
+			if int(count) > 0:
+				return ""
+		return "basket_empty"
+	var tile: Dictionary = farm.get_tile(tap_t.x, tap_t.y)
+	if tile.is_empty():
+		return ""
+	var state: String = String(tile.get("state", ""))
+	if (state == "seeded" or state == "growing") and tile.get("watered_today", false):
+		return "already_watered"
 	return ""
 
 

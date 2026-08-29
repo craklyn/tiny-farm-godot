@@ -112,12 +112,19 @@ func apply_action(action: Dictionary, gs = null) -> Dictionary:
 	# Not every failure is a refusal. A full watering can and an empty basket mean
 	# "nothing to do here", and answering those with the nope sound and a wobble
 	# teaches that a perfectly normal state is a malfunction — the opposite of the
-	# problem the refusal feedback was added to solve. Stay quiet instead.
-	if not result.get("ok", false) and String(action.get("actor", "")) == "player" \
-			and not BENIGN_FAILURES.has(String(result.get("reason", ""))):
+	# problem the refusal feedback was added to solve.
+	#
+	# Staying quiet was the 2026-08-28 fix and it was only half right: T-18 (Q-42)
+	# says the third state should *speak*, positively. So a benign failure now
+	# acknowledges instead of either wobbling or saying nothing.
+	if not result.get("ok", false) and String(action.get("actor", "")) == "player":
 		var rt = action.get("target", null)
+		var reason := String(result.get("reason", ""))
 		if rt is Vector2i:
-			refuse_at(rt, String(result.get("reason", "")))
+			if BENIGN_FAILURES.has(reason):
+				acknowledge_at(rt, reason)
+			else:
+				refuse_at(rt, reason)
 
 	if result.get("ok", false):
 		if replay != null:
@@ -141,6 +148,12 @@ var _reactions: Dictionary = {}  # Vector2i -> start time in msec
 const REFUSE_MS := 620.0
 var _refusals: Dictionary = {}  # Vector2i -> { "t": msec, "why": String }
 
+# T-18/T-19 (Q-42): the third state's voice. A finished tile answers "yes, done"
+# — a soft tick and a rising sparkle, never the refusal wobble, because wobbling
+# at a good state teaches that success looks like failure.
+const ACK_MS := 520.0
+var _acks: Dictionary = {}  # Vector2i -> { "t": msec, "why": String }
+
 
 func refuse_at(t: Vector2i, why: String) -> void:
 	_refusals[t] = { "t": Time.get_ticks_msec(), "why": why }
@@ -163,15 +176,47 @@ func _refuse_dx(tx: int, ty: int) -> float:
 
 # What she is missing, drawn above the tile: the seed pouch, the watering can,
 # or the bed. Anything else refuses without a picture (the shake still plays).
+#
+# Finding F-5 (2026-08-29): this used to match the sim's snake_case codes while
+# ActionRouter.blocked_reason() returned human phrases ("no seeds", "watering can
+# empty", "too tired"), so the two never met and **every router-level refusal
+# lost its picture** — the wordless half of the feedback dropped on exactly the
+# path built to end silent refusals. The router now speaks the sim's vocabulary
+# and the table lives here as data, so the unit suite can assert that every code
+# either side can emit has an icon and the mismatch cannot come back.
+const REFUSE_ICONS := {
+	"no_seeds":  { "sheet": "tools",   "rect": [5 * 16, 0, 16, 16] },
+	"no_water":  { "sheet": "tools",   "rect": [4 * 16, 0, 16, 16] },
+	"no_energy": { "sheet": "objects", "rect": [0, 0, 16, 32] },
+}
+
+
 func _refuse_icon(why: String) -> Array:
-	match why:
-		"no_seeds":
-			return [tool_icons_texture, Rect2(5 * 16, 0, 16, 16)]
-		"no_water":
-			return [tool_icons_texture, Rect2(4 * 16, 0, 16, 16)]
-		"no_energy":
-			return [furniture_texture, Rect2(0, 0, 16, 32)]
-	return []
+	var entry: Dictionary = REFUSE_ICONS.get(why, {})
+	if entry.is_empty():
+		return []
+	var r: Array = entry["rect"]
+	var tex: Texture2D = tool_icons_texture if entry["sheet"] == "tools" else furniture_texture
+	return [tex, Rect2(r[0], r[1], r[2], r[3])]
+
+
+# T-18: a small positive cue on a tile that is already in the state she wanted.
+# Visually distinct from BOTH the success squash (vertical, on the tile itself)
+# and the refusal wobble (sideways, with the nope sound): this is a soft ring and
+# a rising sparkle, and its sound is the quiet UI tick rather than the harvest
+# chime — deliberately non-rewarding, so repeated tapping is answered rather than
+# farmed for stimulation.
+#
+# T-19 uses the same cue at completion time (`with_sound = false`, because the
+# verb's own sound is already playing): the moment a tile becomes done for the
+# day, it says so where she is looking.
+func acknowledge_at(t, why: String, with_sound: bool = true) -> void:
+	if not (t is Vector2i):
+		return
+	_acks[t] = { "t": Time.get_ticks_msec(), "why": why }
+	set_process(true)
+	if with_sound and Engine.get_main_loop() and Engine.get_main_loop().root.has_node("AudioManager"):
+		Engine.get_main_loop().root.get_node("AudioManager").play_sfx("click")
 
 
 func react_at(t) -> void:
@@ -183,7 +228,7 @@ func react_at(t) -> void:
 func _process(_delta: float) -> void:
 	# Only runs while a reaction is in flight; cost scales with acted tiles, not
 	# map area (ARCHITECTURE guardrail).
-	if _reactions.is_empty() and _refusals.is_empty():
+	if _reactions.is_empty() and _refusals.is_empty() and _acks.is_empty():
 		set_process(false)
 		return
 	var now := Time.get_ticks_msec()
@@ -193,6 +238,9 @@ func _process(_delta: float) -> void:
 	for key in _refusals.keys():
 		if now - _refusals[key]["t"] > REFUSE_MS:
 			_refusals.erase(key)
+	for key in _acks.keys():
+		if now - _acks[key]["t"] > ACK_MS:
+			_acks.erase(key)
 	queue_redraw()
 
 
@@ -337,6 +385,31 @@ func _draw() -> void:
 						"y": py,
 						"draw": func(): draw_texture_rect_region(tex, Rect2(px, py - (region.size.y - TILE_SIZE), region.size.x, region.size.y), region)
 					})
+
+	# The done-tick, drawn above everything for the same reason the refusal icon
+	# is: a soft ring opening outward with three sparkles rising off it. No shake,
+	# no squash, no nope — the shapes say "yes" rather than "no" (Q-42).
+	for key in _acks.keys():
+		var ak: Vector2i = key
+		var ae: float = (Time.get_ticks_msec() - _acks[key]["t"]) / ACK_MS
+		if ae >= 1.0:
+			continue
+		var acx := ak.x * TILE_SIZE + TILE_SIZE / 2.0
+		var acy := ak.y * TILE_SIZE + TILE_SIZE / 2.0
+		var arad: float = 3.0 + 5.0 * ae
+		var aa: float = 0.85 * (1.0 - ae)
+		render_queue.append({
+			"y": 100000.0,
+			"draw": func():
+				draw_arc(Vector2(acx, acy), arad, 0.0, TAU, 20,
+					Color(0.62, 0.90, 1.0, aa), 1.4)
+				for i in 3:
+					var ang: float = -PI / 2.0 + (i - 1) * 0.7
+					var d: float = 5.0 + 6.0 * ae
+					var sp := Vector2(acx + cos(ang) * d, acy + sin(ang) * d - 3.0 * ae)
+					draw_rect(Rect2(sp - Vector2(1.1, 1.1), Vector2(2.2, 2.2)),
+						Color(0.95, 1.0, 1.0, aa))
+		})
 
 	# The missing-thing picture rides above everything, including the farmer —
 	# it is the whole message, so it must never be the thing that gets occluded.
