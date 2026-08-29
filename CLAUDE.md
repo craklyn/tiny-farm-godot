@@ -41,6 +41,11 @@ godot --headless --path . --script res://tools/verify_replay.gd
 After a fresh clone or when assets changed, import first: `godot --headless --path . --import`
 (CI does this; harmless to repeat).
 
+**Deploying anywhere — tablet, web, or a public release — is `docs/DEPLOY.md`.** It is the
+runbook, including the traps that have already cost time (Android's `user://` is internal
+storage; installing overwrites the previous session; itch drafts 404 to everyone but their
+owner). Publishing is a pushed `v*` tag, never a push to main.
+
 There is no per-test filter. Both suites are single-file custom runners: tests are
 `test_*()` functions called explicitly from the top of `tests/test_runner.gd` (`_init`)
 and `tools/test_runner.gd` (`_ready`). To add a test, write the function and add the call
