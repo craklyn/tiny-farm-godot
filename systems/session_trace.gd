@@ -121,7 +121,12 @@ func flush(path: String) -> void:
 static func parse(text: String) -> Dictionary:
 	var out := {"header": {}, "entries": []}
 	var lines := text.strip_edges().split("\n")
-	if lines.is_empty():
+	# A blank or whitespace-only file still yields one empty line, and handing
+	# that to JSON.parse_string logs a parse error before returning null. It
+	# recovers, but the reader is meant to be pointed at whatever file exists —
+	# including a truncated or empty one — without printing engine errors at a
+	# designer who just wanted a report.
+	if lines.is_empty() or lines[0].strip_edges() == "":
 		return out
 	var head = JSON.parse_string(lines[0])
 	if typeof(head) == TYPE_DICTIONARY:
@@ -235,3 +240,114 @@ static func _longest(stalls: Array) -> int:
 	for s in stalls:
 		m = maxi(m, int(s.get("gap_ms", 0)))
 	return m
+
+
+# --- Analyses promoted from hand-written one-offs -----------------------------
+# Everything below was first run by hand against a real session on 2026-08-28 and
+# earned its place by finding something. They live here rather than in the reader
+# tool so they are pure, unit-testable, and reusable by anything that reads a
+# trace. The rule for adding to this file: an analysis graduates from a one-off
+# only after it has actually found something worth acting on.
+
+
+# Wall-clock lies. The first real session reported a duration of 274 minutes; it
+# was about twenty seconds of play with a four-and-a-half-hour backgrounded gap
+# in the middle, because persistence now survives the app being put down. Any gap
+# longer than `idle_ms` is treated as the player having left rather than played.
+static func active_time(parsed: Dictionary, idle_ms: int = 120000) -> Dictionary:
+	var ts: Array = []
+	for e in parsed.get("entries", []):
+		if String(e.get("kind", "")) == "tap":
+			ts.append(int(e.get("t", 0)))
+	if ts.size() < 2:
+		return {"active_ms": 0, "wall_ms": (int(ts[0]) if ts.size() == 1 else 0), "gaps": 0}
+	var active := 0
+	var gaps := 0
+	for i in range(1, ts.size()):
+		var d: int = int(ts[i]) - int(ts[i - 1])
+		if d <= idle_ms:
+			active += d
+		else:
+			gaps += 1
+	return {"active_ms": active, "wall_ms": int(ts[-1]) - int(ts[0]), "gaps": gaps}
+
+
+# Integrity check on the instrument itself, not on the player.
+#
+# A tap logged "unreachable" while she was standing beside the tile is a lie, and
+# the 2026-08-28 session contained fourteen of them — every one adjacent. The
+# report is the measuring device for the M1 gate, so it must be able to catch its
+# own categories drifting. If this ever returns non-zero again, fix the logger
+# before drawing a single conclusion from the session.
+static func mislabelled_unreachable(parsed: Dictionary) -> Array:
+	var bad: Array = []
+	for e in parsed.get("entries", []):
+		if String(e.get("out", "")) != "unreachable":
+			continue
+		var t = e.get("tile", null)
+		var at = e.get("at", null)
+		if t is Array and at is Array and t.size() == 2 and at.size() == 2:
+			if absi(int(at[0]) - int(t[0])) + absi(int(at[1]) - int(t[1])) <= 1:
+				bad.append(e)
+	return bad
+
+
+# Which verbs are failing, as opposed to which reasons are given. Refusals with
+# no reason show up as "?" in the reason table, which says nothing about where to
+# look; grouping by verb found the well and the shipping bin immediately.
+static func failures_by_verb(parsed: Dictionary) -> Dictionary:
+	var out := {"with_reason": {}, "without_reason": {}}
+	for e in parsed.get("entries", []):
+		if String(e.get("kind", "")) != "act" or e.get("ok", true):
+			continue
+		var verb := String(e.get("verb", "?"))
+		var bucket: String = "with_reason" if e.has("why") else "without_reason"
+		out[bucket][verb] = int(out[bucket].get(verb, 0)) + 1
+	return out
+
+
+# What a stuck tile actually did, over the whole session. A tile that is only
+# ever dead is a different problem from one that worked five times and then
+# stopped — the second is a state change she could not see.
+static func tile_history(parsed: Dictionary, key: String) -> Dictionary:
+	var outs: Dictionary = {}
+	var tools: Dictionary = {}
+	for e in parsed.get("entries", []):
+		if String(e.get("kind", "")) != "tap":
+			continue
+		var t = e.get("tile", null)
+		if not (t is Array and t.size() == 2):
+			continue
+		if "%d,%d" % [int(t[0]), int(t[1])] != key:
+			continue
+		var o := String(e.get("out", "?"))
+		outs[o] = int(outs.get(o, 0)) + 1
+		var tool := int(e.get("tool", -1))
+		tools[tool] = int(tools.get(tool, 0)) + 1
+	return {"outcomes": outs, "tools": tools}
+
+
+# What she was holding when a tap went nowhere. Twelve of fourteen dead taps in
+# the 2026-08-28 session had the watering can selected, which is what identified
+# them as already-watered crops rather than a pathing fault.
+static func dead_tap_tools(parsed: Dictionary) -> Dictionary:
+	var tools: Dictionary = {}
+	for e in parsed.get("entries", []):
+		if String(e.get("kind", "")) != "tap":
+			continue
+		var o := String(e.get("out", ""))
+		if o == "none" or o == "unreachable" or o == "refused":
+			var tool := int(e.get("tool", -1))
+			tools[tool] = int(tools.get(tool, 0)) + 1
+	return tools
+
+
+# Days reached, from the world's own sleep verb — the cheapest proxy for whether
+# she understood the cot, which is the one beat with no visual affordance at all.
+static func days_played(parsed: Dictionary) -> int:
+	var n := 0
+	for e in parsed.get("entries", []):
+		if String(e.get("kind", "")) == "act" and String(e.get("verb", "")) == "sleep" \
+				and e.get("ok", false):
+			n += 1
+	return n

@@ -74,6 +74,19 @@ four-year-old can perceive without being taught at all.
 - [x] `tools/pull_session.sh` — pulls from the tablet, timestamps into `playtests/`, reads it
 - [x] unit coverage for `parse()`/`summarize()`/`teaching_report()` (25 new assertions)
 - [x] verified against the real local trace
+- [x] **grown from use (2026-08-28)**, after three real sessions. Every analysis added had
+      first been run by hand and had found something: active-play time separated from
+      wall-clock (a session read as 274 minutes and was ~20s of play either side of a
+      backgrounded gap); failures grouped by *verb* rather than reason, which located the
+      silent well and shipping bin at a glance; per-tile outcome histories, which
+      distinguish a tile that never worked from one that worked five times and then
+      stopped; the tool in hand on dead taps, which identified 20 dead taps as
+      already-watered crops rather than a pathing fault; days reached, as the cheapest
+      proxy for whether the cot was understood; and an **integrity check on the instrument
+      itself**, which fires when a tap is logged "unreachable" while the player was
+      standing beside the tile — the exact fault that corrupted the 2026-08-28 report.
+      *Standing rule for this file: an analysis graduates from a hand-run one-off only
+      after it has found something worth acting on.*
 - [x] **bug found and fixed in the doing:** an *unreachable* tap — she taps something she
       cannot reach and nothing happens — was never traced at all. The branch handling it
       cleared state and logged nothing, so the deadest taps in a session were invisible

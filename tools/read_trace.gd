@@ -50,13 +50,31 @@ func _init() -> void:
 	var seed_str := "?"
 	if head.has("gen_seed"):
 		seed_str = str(int(head["gen_seed"]))
-	print("seed %s · %s · %d entries · %s" % [
+	var act := SessionTrace.active_time(parsed)
+	print("seed %s · %s · %d entries" % [
 		seed_str,
 		("continued from a save" if head.get("continued", false) else "fresh farm"),
 		entries.size(),
-		_dur(int(rep.get("duration_ms", 0))),
 	])
+	# Wall-clock is misleading now that the app persists when backgrounded: the
+	# first real session read as 274 minutes and was twenty seconds of play with
+	# the tablet put down in the middle. Lead with time actually spent playing.
+	var gaps := int(act.get("gaps", 0))
+	var span := ""
+	if gaps > 0:
+		span = " (over %s wall-clock, %d break%s)" % [
+			_dur(int(act.get("wall_ms", 0))), gaps, "" if gaps == 1 else "s"]
+	print("played %s%s · reached day %d" % [
+		_dur(int(act.get("active_ms", 0))), span, SessionTrace.days_played(parsed)])
 	print("")
+
+	# Instrument integrity first: if the trace is mislabelling its own categories,
+	# nothing below it can be trusted, and that has happened once already.
+	var bad: Array = SessionTrace.mislabelled_unreachable(parsed)
+	if not bad.is_empty():
+		print("!! INSTRUMENT FAULT: %d taps logged 'unreachable' while she was" % bad.size())
+		print("!! standing beside the tile. Fix the logger before trusting anything below.")
+		print("")
 
 	# --- What she tapped, and what came of it --------------------------------
 	print("--- Taps ---")
@@ -82,6 +100,24 @@ func _init() -> void:
 		print("--- Refusal reasons ---")
 		for k in _sorted_by_count(reasons):
 			print("  %-28s %d" % [k, int(reasons[k])])
+		print("")
+
+	# "?" in the table above says nothing about where to look. The verb does.
+	var byv: Dictionary = SessionTrace.failures_by_verb(parsed)
+	var silent: Dictionary = byv.get("without_reason", {})
+	if not silent.is_empty():
+		print("--- Failures with NO reason recorded (fix these first) ---")
+		for k in _sorted_by_count(silent):
+			print("  %-28s %d" % [k, int(silent[k])])
+		print("  A refusal with no reason cannot be diagnosed, and usually means the")
+		print("  verb returns a bare false instead of saying what went wrong.")
+		print("")
+
+	var dt: Dictionary = SessionTrace.dead_tap_tools(parsed)
+	if not dt.is_empty():
+		print("--- What she was holding when a tap went nowhere ---")
+		for k in _sorted_by_count(dt):
+			print("  %-28s %d" % [_tool_name(int(k)), int(dt[k])])
 		print("")
 
 	# --- Where a lesson landed, and when -------------------------------------
@@ -115,7 +151,15 @@ func _init() -> void:
 		print("  none")
 	else:
 		for k in stuck:
-			print("  tile %s" % k)
+			var h: Dictionary = SessionTrace.tile_history(parsed, String(k))
+			var parts: PackedStringArray = []
+			var outs: Dictionary = h.get("outcomes", {})
+			for o in _sorted_by_count(outs):
+				parts.append("%s %d" % [o, int(outs[o])])
+			# A tile that only ever failed is a different problem from one that
+			# worked and then stopped — the second is a state change she could
+			# not see.
+			print("  tile %-6s %s" % [k, ", ".join(parts)])
 		print("")
 		print("  These are the design's failures, not hers: she believed something")
 		print("  was there and the game disagreed three times without explaining.")
@@ -149,6 +193,12 @@ func _bar(n: int, total: int) -> String:
 		return ""
 	var width := roundi(20.0 * n / total)
 	return "#".repeat(width)
+
+
+func _tool_name(idx: int) -> String:
+	if idx >= 0 and idx < Tools.LIST.size():
+		return Tools.LIST[idx].tool_name
+	return "tool %d" % idx
 
 
 func _sorted_by_count(d: Dictionary) -> Array:

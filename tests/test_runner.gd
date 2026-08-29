@@ -49,6 +49,7 @@ func _init() -> void:
 	test_blocked_reason()
 	test_benign_failures()
 	test_seed_selection_trap()
+	test_trace_analyses()
 
 	print("")
 	print(String("=").repeat(60))
@@ -1393,3 +1394,83 @@ func test_seed_selection_trap() -> void:
 	_assert(GameState.buy_seed("scarecrow"), "buying a scarecrow succeeds")
 	_assert(GameState.selected_seed_type == "wheat",
 		"and does not interrupt the row of wheat she was planting")
+
+
+func test_trace_analyses() -> void:
+	print("\n--- Trace analyses promoted from hand-run one-offs ---")
+
+	# Each of these was written by hand against a real session on 2026-08-28 and
+	# earned a place by finding something. The rule for this file: an analysis
+	# graduates from a one-off only after it has found something worth acting on.
+	var hdr := '{"version":1,"gen_seed":1,"continued":false}\n'
+
+	# active_time: wall-clock lies once the app persists while backgrounded. The
+	# first real session reported 274 minutes and was ~20s of play either side of
+	# a four-hour gap.
+	var backgrounded := SessionTrace.parse(hdr
+		+ '{"t":1000,"kind":"tap","tile":[1,1],"at":[1,1],"out":"acted"}\n'
+		+ '{"t":6000,"kind":"tap","tile":[1,1],"at":[1,1],"out":"acted"}\n'
+		+ '{"t":16000000,"kind":"tap","tile":[1,1],"at":[1,1],"out":"acted"}\n'
+		+ '{"t":16004000,"kind":"tap","tile":[1,1],"at":[1,1],"out":"acted"}\n')
+	var act := SessionTrace.active_time(backgrounded)
+	_assert(int(act["active_ms"]) == 9000, "active time excludes the backgrounded gap")
+	_assert(int(act["wall_ms"]) > 15000000, "wall clock still reported, for contrast")
+	_assert(int(act["gaps"]) == 1, "and the break is counted")
+
+	# mislabelled_unreachable: an integrity check on the instrument itself. This
+	# is the one that caught my own logging bug — 14 taps reported as unreachable
+	# were every one of them adjacent.
+	var lying := SessionTrace.parse(hdr
+		+ '{"t":10,"kind":"tap","tile":[10,3],"at":[11,3],"out":"unreachable"}\n'
+		+ '{"t":20,"kind":"tap","tile":[10,3],"at":[20,15],"out":"unreachable"}\n')
+	var bad: Array = SessionTrace.mislabelled_unreachable(lying)
+	_assert(bad.size() == 1, "an adjacent 'unreachable' tap is flagged as a fault")
+	_assert(int(bad[0]["at"][0]) == 11, "and it is the adjacent one, not the distant one")
+	_assert(SessionTrace.mislabelled_unreachable(SessionTrace.parse(hdr)).is_empty(),
+		"a clean trace reports no fault")
+
+	# failures_by_verb: "?" in the reason table says nothing about where to look.
+	# Grouping by verb found the well and the shipping bin immediately.
+	var fails := SessionTrace.parse(hdr
+		+ '{"t":1,"kind":"act","verb":"refill","actor":"player","ok":false}\n'
+		+ '{"t":2,"kind":"act","verb":"refill","actor":"player","ok":false}\n'
+		+ '{"t":3,"kind":"act","verb":"sell","actor":"player","ok":false}\n'
+		+ '{"t":4,"kind":"act","verb":"plant","actor":"player","ok":false,"why":"no seeds"}\n')
+	var byv := SessionTrace.failures_by_verb(fails)
+	_assert(int(byv["without_reason"].get("refill", 0)) == 2, "silent refills grouped by verb")
+	_assert(int(byv["without_reason"].get("sell", 0)) == 1, "silent sells too")
+	_assert(not byv["without_reason"].has("plant"), "a failure WITH a reason is not listed as silent")
+	_assert(int(byv["with_reason"].get("plant", 0)) == 1, "and appears in the explained bucket")
+
+	# tile_history: a tile that only ever failed is a different problem from one
+	# that worked five times and then stopped — the second is a state change she
+	# could not see.
+	var hist := SessionTrace.parse(hdr
+		+ '{"t":1,"kind":"tap","tile":[10,3],"at":[9,3],"out":"acted","tool":3}\n'
+		+ '{"t":2,"kind":"tap","tile":[10,3],"at":[9,3],"out":"acted","tool":3}\n'
+		+ '{"t":3,"kind":"tap","tile":[10,3],"at":[9,3],"out":"none","tool":4}\n'
+		+ '{"t":4,"kind":"tap","tile":[9,9],"at":[9,3],"out":"acted","tool":3}\n')
+	var h := SessionTrace.tile_history(hist, "10,3")
+	_assert(int(h["outcomes"].get("acted", 0)) == 2, "tile history counts what worked")
+	_assert(int(h["outcomes"].get("none", 0)) == 1, "and what did not")
+	_assert(not h["outcomes"].has("9,9"), "and only for the tile asked about")
+
+	# dead_tap_tools: 12 of 14 dead taps held the watering can, which is what
+	# identified them as already-watered crops rather than a pathing fault.
+	var tools := SessionTrace.dead_tap_tools(hist)
+	_assert(int(tools.get(4, 0)) == 1, "dead taps are grouped by the tool in hand")
+	_assert(not tools.has(3), "and successful taps are not counted")
+
+	# days_played: the cheapest proxy for whether she understood the cot, which
+	# is the one beat with no visual affordance at all.
+	var slept := SessionTrace.parse(hdr
+		+ '{"t":1,"kind":"act","verb":"sleep","actor":"world","ok":true}\n'
+		+ '{"t":2,"kind":"act","verb":"sleep","actor":"world","ok":true}\n'
+		+ '{"t":3,"kind":"act","verb":"sleep","actor":"world","ok":false}\n')
+	_assert(SessionTrace.days_played(slept) == 2, "only successful sleeps count as days")
+
+	# Degenerate input must not crash the reader mid-playtest.
+	var empty := SessionTrace.parse("")
+	_assert(int(SessionTrace.active_time(empty)["active_ms"]) == 0, "empty trace has no active time")
+	_assert(SessionTrace.days_played(empty) == 0, "and no days")
+	_assert(SessionTrace.dead_tap_tools(empty).is_empty(), "and no dead taps")
