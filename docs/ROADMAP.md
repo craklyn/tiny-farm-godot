@@ -68,7 +68,7 @@ adult speaking, on two consecutive fresh runs — measured from the session trac
 from an adult's impression.
 
 ### Ordering
-Twenty-three stories; three are done. Grouped by the ruling that unblocks them:
+Twenty-four stories; three are done. Grouped by the ruling that unblocks them:
 
 | Ruling | Stories | Note |
 |---|---|---|
@@ -83,7 +83,7 @@ Twenty-three stories; three are done. Grouped by the ruling that unblocks them:
 | Q-39 | `T-15` | build with `T-8` — trees are where logs come from |
 | Q-40 | `T-16` | spiked; risk resolved, see below |
 | Q-42 | `T-18`, `T-19` | **evidence-backed** — measured data behind them |
-| *(none)* | `T-20` ✅, `T-21`, `T-22`, `T-23` | balance, polish, the first phone pass, and shipping — none needs a ruling |
+| *(none)* | `T-20` ✅, `T-23`, `T-24`, `T-21`, `T-22` | **in this order.** Ship first (`T-23`), then automate it (`T-24`); polish and the phone pass follow. None needs a ruling |
 | *(after Q-37/Q-40)* | `T-17` | regenerates the scripted replays the above two create |
 
 `T-13`→`T-17` were raised on 2026-08-28 and none is on the critical path to the exit gate.
@@ -288,6 +288,38 @@ could read, and that is wrong. In a browser the trace sits in the *player's* Ind
 is unreachable. Reach and evidence are separate problems: shipping gets players, and only
 an upload path (the Firebase idea) closes the loop back to us. Do not count on web
 distribution for playtest data.
+
+**T-24 — Publish on tag** · after T-23 · ~half a day (web)
+*So that "release early and often" (Q-6) survives contact with a busy week. A manual
+release decays; a one-command release does not.*
+
+**Deliberately not on every green push.** Tests passing means it works, not that it is
+worth showing anyone — this project shipped green commits today where the trace mislabelled
+its own categories, the crow schedule desynced replays, and seed cycling was a dead end.
+Publishing stays a deliberate act; it just stops being a chore.
+
+*Trigger:* a pushed tag matching `v*`, plus `workflow_dispatch` as an escape hatch.
+
+*How, concretely:*
+- [ ] new workflow `.github/workflows/release.yml`, separate from `tests.yml` so a red
+      test run cannot publish — it `needs:` the test job rather than duplicating it
+- [ ] install the Godot **export templates** (`.tpz` for 4.7.2), which CI has never
+      needed: the current job only runs headless tests. Cache them like the editor binary
+- [ ] **stamp `build_id` from the tag**, the way `deploy_android.sh` stamps it from git.
+      Without this every published build reports whatever was last hand-committed to
+      `project.godot` — and Q-41 stamps replays with that value, so a trace from a web
+      player is only attributable if the id is real
+- [ ] `godot --headless --export-release "Web" build/web/index.html`
+- [ ] install `butler` (itch's own CLI, built for this: differential uploads, named
+      channels) and `butler push build/web <user>/<game>:html5`
+- [ ] `BUTLER_API_KEY` as a repository secret; the itch page must exist first, which is
+      why this follows T-23 rather than replacing it
+- [ ] verify by actually publishing a tag, not by reading the YAML
+
+*Scoped to web on purpose.* Android in CI is a bigger job and should be its own story: a
+public APK wants a **release** build, not the `--export-debug` one the tablet runs, which
+means the Android SDK, build-tools for `apksigner`, and a signing keystore held as a
+secret. Until that exists, upload the APK to the itch page by hand — it changes rarely.
 
 **T-22 — First phone pass (iOS)** · unblocked once an iOS build exists · ~1–2 days
 *So that the half of "touch-first" the design has always claimed but never tested gets
