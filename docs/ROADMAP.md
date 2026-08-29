@@ -365,7 +365,10 @@ at which point the highlight is doing nothing and there is no other cue.
 - [ ] presentation only; it must not gate `apply_action` (the D-8 constraint)
 - [ ] legible against every sky colour once Q-38's daylight lands
 
-**T-21 — Style the vignette highlight properly** · Q-36 adjacent · ~1 day
+**T-21 — Style the vignette highlight properly** · ⏸ deferred 2026-08-29 to the full art
+reskin · ~1 day
+*The designer's call: the current art is fine for now, and styling the highlight against
+placeholder art would mean doing it twice. Picks up whenever the wholesale reskin does.*
 *So that the guided beats look authored rather than debug-drawn.*
 Named by the designer 2026-08-28: "better styled vignettes". The current highlight is
 hand-drawn primitives in `main.gd`'s overlay — a pulsing rect, a grow-rect ring, and four
