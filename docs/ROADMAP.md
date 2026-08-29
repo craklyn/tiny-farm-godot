@@ -68,7 +68,7 @@ adult speaking, on two consecutive fresh runs — measured from the session trac
 from an adult's impression.
 
 ### Ordering
-Nineteen stories; two are done. Grouped by the ruling that unblocks them:
+Twenty-one stories; two are done. Grouped by the ruling that unblocks them:
 
 | Ruling | Stories | Note |
 |---|---|---|
@@ -82,7 +82,8 @@ Nineteen stories; two are done. Grouped by the ruling that unblocks them:
 | Q-38 | `T-14` | |
 | Q-39 | `T-15` | build with `T-8` — trees are where logs come from |
 | Q-40 | `T-16` | spiked; risk resolved, see below |
-| Q-42 | `T-18`, `T-19` | **evidence-backed** — the only stories here with measured data behind them |
+| Q-42 | `T-18`, `T-19` | **evidence-backed** — measured data behind them |
+| *(none)* | `T-20`, `T-21` | designer-named balance and polish; `T-20`'s cadence is a number, not a ruling |
 | *(after Q-37/Q-40)* | `T-17` | regenerates the scripted replays the above two create |
 
 `T-13`→`T-17` were raised on 2026-08-28 and none is on the critical path to the exit gate.
@@ -241,6 +242,30 @@ perceive.*
       cannot be drained by lingering in a single day
 - [ ] trees give `obstacle_log` an origin — coordinate with T-8's ring content
 *This is also the game's first decoy mechanic; note the through-line to `design/05`.*
+
+**T-20 — Crow pressure balance pass** · partly unblocked · ~half a day
+*So that pests read as occasional comedy rather than a standing tax.*
+Named by the designer 2026-08-28: "crows less aggressive". **The cadence is the immediate
+problem and needs no ruling — it is a number.** `main.gd` fires the spawner every **10
+seconds**, so once T-2's readiness conditions are met a crow arrives roughly six times a
+minute, indefinitely. In a six-minute session that is dozens of birds.
+- [ ] raise the spawn interval, and cap arrivals per day (a number, not a design change)
+- [ ] the per-day budget from T-15 is the *principled* version of this cap — treat this
+      story as the interim and fold it into T-15 if Q-39 passes
+- [ ] sim-level test asserting the per-day ceiling, so the cadence cannot regress silently
+*Q-10 already rules the intent (comedy, not threat); this is only the arithmetic.*
+
+**T-21 — Style the vignette highlight properly** · Q-36 adjacent · ~1 day
+*So that the guided beats look authored rather than debug-drawn.*
+Named by the designer 2026-08-28: "better styled vignettes". The current highlight is
+hand-drawn primitives in `main.gd`'s overlay — a pulsing rect, a grow-rect ring, and four
+corner squares — added when pale-on-pale proved invisible on device. It works and is
+legible; it does not look like part of the game.
+- [ ] replace the primitive stack with authored art, at the palette in `design/09`
+- [ ] must stay legible over grass, tilled soil, and — if Q-38 passes — every sky colour
+- [ ] keep it presentation-only and cheap: it redraws every frame while active
+*Distinct from T-7, which decides **when** a hint escalates. This is only how it looks, so
+it can land before Q-36 is ruled.*
 
 **T-18 — Give the third state a voice: "nothing to do"** · Q-42 · ~1 day
 *So that a finished tile stops looking like a broken one.*
