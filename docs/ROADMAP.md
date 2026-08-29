@@ -243,17 +243,27 @@ perceive.*
 - [ ] trees give `obstacle_log` an origin — coordinate with T-8's ring content
 *This is also the game's first decoy mechanic; note the through-line to `design/05`.*
 
-**T-20 — Crow pressure balance pass** · partly unblocked · ~half a day
-*So that pests read as occasional comedy rather than a standing tax.*
-Named by the designer 2026-08-28: "crows less aggressive". **The cadence is the immediate
-problem and needs no ruling — it is a number.** `main.gd` fires the spawner every **10
-seconds**, so once T-2's readiness conditions are met a crow arrives roughly six times a
-minute, indefinitely. In a six-minute session that is dozens of birds.
-- [ ] raise the spawn interval, and cap arrivals per day (a number, not a design change)
-- [ ] the per-day budget from T-15 is the *principled* version of this cap — treat this
-      story as the interim and fold it into T-15 if Q-39 passes
-- [ ] sim-level test asserting the per-day ceiling, so the cadence cannot regress silently
-*Q-10 already rules the intent (comedy, not threat); this is only the arithmetic.*
+**T-20 — One crow, one chance per day** · ✅ done 2026-08-28 (designer ruling)
+*So that shooing a crow is a win for the day rather than a ten-second reprieve.*
+The spawner fired every 10 seconds, so once T-2's readiness conditions were met a crow
+arrived about six times a minute for as long as the app was open. The designer's ruling
+replaced the stopwatch outright: **each crow gets exactly one scheduled arrival per day,
+given as a point in the day's action clock, and it is consumed whether the bird is fed or
+shooed.**
+- [x] `GameState.actions_today` — the day is measured in actions, not seconds. Farm work
+      ticks it; errands at the bin, box and well do not, nor do other actors
+- [x] `SimWorld.roll_crow_schedule(day)` rolled at sleep; `CROWS_PER_DAY` is the flock dial
+      phase 2 turns up (Q-39)
+- [x] schedule and clock are saved, so reloading mid-day neither resurrects a crow already
+      dealt with nor erases one still owed
+- [x] **`SimRng.stateless()` added, and it matters beyond crows.** Rolling the schedule
+      from the shared stream desynced replays instantly — entity noise advances that
+      stream between actions, the exact failure sleep's weather stamping was invented to
+      fix, caught within minutes by the existing replay tests. Anything derived *per day*
+      rather than *per event* must now use the stateless draw: reproducible from the seed
+      alone, no stamping in the replay log, and immune to other consumers.
+*Property worth keeping: pressure follows productivity. A player who wanders and plants
+nothing is never visited, while a busy farm draws birds — fairer, and the right fiction.*
 
 **T-21 — Style the vignette highlight properly** · Q-36 adjacent · ~1 day
 *So that the guided beats look authored rather than debug-drawn.*

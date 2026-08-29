@@ -248,6 +248,15 @@ first, since a different answer there changes what the other four are optimising
   constraint: the menu hides the centre, and the busiest part of any real session is the
   top-left spawn band, so a slow camera drift is needed rather than a static view. Detail
   in `design/11-ux-ui.md`.
+- **Q-44** ~~Crow arrival cadence~~ — ✅ ruled and implemented 2026-08-28: **each crow gets
+  exactly one chance per day.** It is assigned a single point in the day's action clock at
+  which it flies in; if it is shooed it does not return that day, because it never had a
+  second arrival scheduled. Replaces a 10-second wall-clock spawner that delivered a crow
+  roughly six times a minute. **This revises the Q-39 extension recorded earlier the same
+  day** — that draft had a shooed crow keep trying until fed or nightfall, and the
+  designer's rule is better for phase 1: shooing should be a win, not a reprieve. Q-39's
+  per-day budget is now the *number* of scheduled arrivals (`CROWS_PER_DAY`), which is the
+  dial that becomes flocks in phase 2.
 - **Q-39 (Ruling)** **Acorns as the crow's first target.** Designer's proposal: trees
   drop acorns and crows go for those first. **Recommendation: adopt.** T-2 currently makes
   the first crow harmless with a boolean, which works but is a *scripted* mercy the player

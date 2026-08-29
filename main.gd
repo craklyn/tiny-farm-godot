@@ -27,7 +27,6 @@ var cursor_color: Color = Color.WHITE
 
 var _cot_tile: Vector2i = Vector2i(-1, -1)  # located after world setup (Q-11 pulse)
 
-var crow_spawn_timer: float = 0.0
 
 # APPLICATION_PAUSED covers backgrounding, which is the common case, but not a
 # hard kill. This bounds the worst case to PERSIST_INTERVAL seconds of lost play
@@ -225,18 +224,21 @@ func _process(delta: float) -> void:
 		persist_timer = 0.0
 		persist_session()
 
-	# Crow spawner logic
-	crow_spawn_timer += delta
-	if crow_spawn_timer > 10.0:
-		crow_spawn_timer = 0.0
+	# Crow spawner. T-20: no stopwatch. Each crow has one scheduled arrival, given
+	# as a point in the day's action clock, and it is consumed whether the bird
+	# gets fed or gets shooed — so chasing one off is a win for the day rather
+	# than a ten-second reprieve.
+	if not GameState.crow_schedule.is_empty() \
+			and GameState.actions_today >= GameState.crow_schedule[0]:
+		GameState.crow_schedule.remove_at(0)
 		var targets: Array[Vector2i] = []
 		for ty in MAP_HEIGHT:
 			for tx in MAP_WIDTH:
 				var tile = farm.get_tile(tx, ty)
 				if not tile.is_empty() and (tile.state == "growing" or tile.state == "ready" or tile.state == "seeded"):
 					targets.append(Vector2i(tx, ty))
-		# T-2: readiness first, mercy second. The rule itself lives in the sim so
-		# it is testable headlessly; the timer stays here because it is real time.
+		# T-2: readiness first, mercy second. Both rules live in the sim so they are
+		# testable headlessly; this file only reacts to the schedule.
 		# Q-10's never-the-only-crop mercy rule is now subsumed by CROW_MIN_PLANTED,
 		# which is strictly stronger (3 rather than 2), but stays spelled out because
 		# the mercy rule is the part a future change is most likely to break.

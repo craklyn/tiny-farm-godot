@@ -26,6 +26,40 @@ const CROW_MIN_DAY := 3
 const CROW_MIN_HARVESTS := 1
 const CROW_MIN_PLANTED := 3
 
+# T-20, ruled 2026-08-28: a crow gets exactly one chance per day.
+#
+# The spawner used to fire on a 10-second wall-clock timer, so once the readiness
+# conditions were met a crow arrived roughly six times a minute for as long as the
+# app was open — dozens in a short session, which makes shooing a chore rather than
+# a win. Each crow now gets a single scheduled arrival, expressed as a point in the
+# day's *action clock*: shooed or fed, it is done, because it never had a second
+# arrival to make.
+#
+# Measuring the day in actions rather than seconds has a property the timer could
+# not: pressure follows productivity. A player who wanders, pokes at the chicken
+# and plants nothing is never visited, while a busy farm draws birds — which is
+# both fairer and the right fiction.
+#
+# CROWS_PER_DAY is the flock dial that phase 2 turns up (design/13, Q-39).
+const CROWS_PER_DAY := 1
+const CROW_EARLIEST_ACTION := 4   # never in the first few actions of a day
+
+
+# Arrival points for one day, as action counts. Seeded, so a replay sees the same
+# birds arrive at the same moments.
+static func roll_crow_schedule(day: int) -> Array[int]:
+	var out: Array[int] = []
+	if day < CROW_MIN_DAY:
+		return out
+	# Derived, not drawn: see SimRng.stateless(). A per-day value taken from the
+	# shared stream desyncs replays, because entity noise advances that stream
+	# between actions.
+	for i in CROWS_PER_DAY:
+		out.append(CROW_EARLIEST_ACTION + SimRng.stateless(day, i) % 20)
+	out.sort()
+	return out
+
+
 # Pure so it can be tested without a scene tree; the caller (main.gd) owns the
 # timer, this owns the rule.
 static func may_spawn_crow(day: int, total_harvests: int, planted: int) -> bool:
@@ -204,8 +238,19 @@ func water_tile(tx: int, ty: int) -> void:
 const MILESTONE_VERBS := { "harvest": true, "collect": true, "sell": true, "sleep": true, "buy_seed": true }
 
 
+# Verbs that do not advance the day's clock: sleep ends it, and the shop and bin
+# are errands rather than farm work. Everything else the player successfully does
+# is one tick of the action clock T-20 schedules crows against.
+const NON_WORK_VERBS := { "sleep": true, "sell": true, "buy_seed": true, "refill": true }
+
+
 func apply_action(action: Dictionary, gs = null) -> Dictionary:
 	var result := _apply(action, gs)
+	if result.get("ok", false) and gs != null \
+			and String(action.get("actor", "")) == "player" \
+			and not NON_WORK_VERBS.has(action.get("verb", "")) \
+			and "actions_today" in gs:
+		gs.actions_today += 1
 	# Milestones are capability proofs (P-4) — sim truth, so replays earn them too
 	if result.get("ok", false) and gs != null and MILESTONE_VERBS.has(action.get("verb", "")) \
 			and gs.has_method("check_milestones"):

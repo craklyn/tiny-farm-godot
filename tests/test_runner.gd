@@ -45,6 +45,7 @@ func _init() -> void:
 	test_approach_ignores_inventory()
 	test_session_trace()
 	test_crow_readiness()
+	test_crow_schedule()
 	test_replay_build_stamp()
 	test_blocked_reason()
 	test_benign_failures()
@@ -1474,3 +1475,89 @@ func test_trace_analyses() -> void:
 	_assert(int(SessionTrace.active_time(empty)["active_ms"]) == 0, "empty trace has no active time")
 	_assert(SessionTrace.days_played(empty) == 0, "and no days")
 	_assert(SessionTrace.dead_tap_tools(empty).is_empty(), "and no dead taps")
+
+
+func test_crow_schedule() -> void:
+	print("\n--- One crow, one chance per day (T-20) Tests ---")
+
+	# Ruled 2026-08-28. The spawner fired every 10 seconds, so once the readiness
+	# conditions were met a crow arrived about six times a minute for as long as
+	# the app was open — which makes shooing a chore rather than a win. Each crow
+	# now gets one scheduled arrival, expressed as a point in the day's action
+	# clock, and it is consumed whether the bird is fed or shooed.
+	_assert(SimWorld.roll_crow_schedule(1).is_empty(), "no crows scheduled on day 1")
+	_assert(SimWorld.roll_crow_schedule(2).is_empty(), "nor day 2")
+	var d3 := SimWorld.roll_crow_schedule(3)
+	_assert(d3.size() == SimWorld.CROWS_PER_DAY, "one arrival per crow per day")
+	_assert(int(d3[0]) >= SimWorld.CROW_EARLIEST_ACTION,
+		"and never in the first few actions of the day")
+
+	# Stateless by construction: a per-day value drawn from the shared SimRng
+	# stream desynced replays immediately, because entity noise advances that
+	# stream between actions — the same failure sleep's weather stamping fixed.
+	SimRng.reseed(77)
+	var a := SimWorld.roll_crow_schedule(5)
+	SimRng.randi(); SimRng.randi(); SimRng.randf()   # entity noise
+	var b := SimWorld.roll_crow_schedule(5)
+	_assert(a == b, "the schedule is unmoved by other draws on the shared stream")
+	SimRng.reseed(78)
+	var c := SimWorld.roll_crow_schedule(5)
+	_assert(a != c or SimWorld.CROWS_PER_DAY == 0, "but it does vary with the seed")
+	SimRng.reseed(77)
+	_assert(SimWorld.roll_crow_schedule(5) == a, "and is reproducible from the seed alone")
+	_assert(SimWorld.roll_crow_schedule(6) != a or SimWorld.CROWS_PER_DAY == 0,
+		"and differs day to day")
+
+	# The action clock: farm work advances the day, errands do not.
+	GameState.reset()
+	var world := SimWorld.new()
+	SimRng.reseed(9)
+	world.generate()
+	var t := SimWorld.VIGNETTE_PLANT
+	world.tiles[t.y][t.x]["state"] = "cleared"
+	# Measured as deltas per step, so one surprising verb cannot cascade into
+	# three misleading failures.
+	var n0: int = GameState.actions_today
+	world.apply_action({ "verb": "till", "target": t, "actor": "player" }, GameState)
+	_assert(GameState.actions_today == n0 + 1, "a successful player action ticks the clock")
+
+	var n1: int = GameState.actions_today
+	world.apply_action({ "verb": "plant", "target": t, "actor": "player",
+		"seed_type": "nonexistent_seed" }, GameState)
+	_assert(GameState.actions_today == n1, "a refused action does not tick it")
+
+	var n2: int = GameState.actions_today
+	GameState.crops["wheat"] = 1
+	world.apply_action({ "verb": "sell", "actor": "player" }, GameState)
+	_assert(GameState.actions_today == n2, "nor does an errand at the bin")
+
+	var n3: int = GameState.actions_today
+	GameState.watering_can_charges = 0
+	world.apply_action({ "verb": "refill", "actor": "player" }, GameState)
+	_assert(GameState.actions_today == n3, "nor does refilling at the well")
+
+	var n4: int = GameState.actions_today
+	world.tiles[t.y][t.x]["state"] = "seeded"
+	world.apply_action({ "verb": "eat_crop", "target": t, "actor": "crow" }, GameState)
+	_assert(GameState.actions_today == n4, "nor does another actor's action")
+
+	# Sleeping starts a fresh day and a fresh set of arrivals.
+	GameState.day = 4
+	GameState.actions_today = 12
+	world.apply_action({ "verb": "sleep", "actor": "world" }, GameState)
+	_assert(GameState.actions_today == 0, "sleeping resets the day's action clock")
+	_assert(GameState.crow_schedule.size() == SimWorld.CROWS_PER_DAY,
+		"and rolls the new day's arrivals")
+
+	# The schedule survives a reload, so a mid-day save neither resurrects a crow
+	# already dealt with nor erases one still owed.
+	var pending: Array[int] = [7]
+	GameState.crow_schedule = pending
+	GameState.actions_today = 5
+	var snap := SaveGame.capture(world, GameState)
+	GameState.reset()
+	var w2 := SimWorld.new()
+	_assert(SaveGame.restore(snap, w2, GameState), "save restores")
+	_assert(GameState.crow_schedule.size() == 1 and int(GameState.crow_schedule[0]) == 7,
+		"the remaining schedule survives")
+	_assert(GameState.actions_today == 5, "and so does the day's progress")

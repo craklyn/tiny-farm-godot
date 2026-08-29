@@ -28,6 +28,13 @@ var selected_seed_type: String
 var hard_energy: bool  # phase 1: false (soft floor, Q-11); phase 2+ flips true
 var crows_scared: int  # Q-12 proof counter (player-caused scares, via crow_scared verb)
 var crows_seen: int  # T-2: how many crows have ever arrived; the first one is harmless
+
+# T-20: the day is measured in actions taken, not seconds. Each crow is assigned
+# exactly one point in that day at which it flies in; being shooed means it is
+# simply gone, because it never had a second arrival scheduled. See
+# SimWorld.roll_crow_schedule().
+var actions_today: int
+var crow_schedule: Array[int]  # action counts at which a crow arrives today
 var total_shipped: int  # Q-12 proof counter (crops sold, any route)
 var phase1_complete: bool  # Q-12/P-4: set silently by the sim at sleep when the proof is met
 
@@ -67,6 +74,8 @@ func reset() -> void:
 	hard_energy = false
 	crows_scared = 0
 	crows_seen = 0
+	actions_today = 0
+	crow_schedule = []
 	total_shipped = 0
 	phase1_complete = false
 	_milestones_earned = {}
@@ -186,6 +195,10 @@ func start_new_day() -> void:
 	energy = max_energy
 	watering_can_charges = max_watering_can_charges
 	day += 1
+	# A fresh day's action clock, and a fresh set of arrival points for it. Rolled
+	# here so it is seeded sim truth and a replay reproduces the same birds.
+	actions_today = 0
+	crow_schedule = SimWorld.roll_crow_schedule(day)
 	
 	if SimRng.randf() < 0.2:
 		weather = "rainy"

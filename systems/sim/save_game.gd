@@ -32,6 +32,8 @@ static func capture(world: SimWorld, gs) -> Dictionary:
 			"hard_energy": gs.hard_energy,
 			"crows_scared": gs.crows_scared,
 			"crows_seen": gs.crows_seen,
+			"actions_today": gs.actions_today,
+			"crow_schedule": gs.crow_schedule.duplicate(),
 			"total_shipped": gs.total_shipped,
 			"phase1_complete": gs.phase1_complete,
 			"milestones": gs._milestones_earned.duplicate(),
@@ -89,6 +91,13 @@ static func restore(data: Dictionary, world: SimWorld, gs) -> bool:
 	gs.crows_scared = int(s.get("crows_scared", 0))
 	# Defaulted, so pre-T-2 saves load unchanged and simply get a harmless first crow.
 	gs.crows_seen = int(s.get("crows_seen", 0))
+	gs.actions_today = int(s.get("actions_today", 0))
+	# Reloading mid-day must neither resurrect a crow already shooed nor erase one
+	# still owed, so the remaining schedule is part of the save.
+	var sched: Array[int] = []
+	for v in s.get("crow_schedule", []):
+		sched.append(int(v))
+	gs.crow_schedule = sched
 	gs.total_shipped = int(s.get("total_shipped", 0))
 	gs.phase1_complete = bool(s.get("phase1_complete", false))
 	gs._milestones_earned = s.get("milestones", {}).duplicate()

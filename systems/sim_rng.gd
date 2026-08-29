@@ -31,3 +31,17 @@ static func randi_range(from: int, to: int) -> int:
 
 static func randf_range(from: float, to: float) -> float:
 	return rng.randf_range(from, to)
+
+
+# A deterministic draw that does NOT touch the shared stream.
+#
+# Anything derived per-day rather than per-event must use this. Rolling a day's
+# crow schedule from randi() desynced replays instantly, because the shared
+# stream is also advanced by entity noise between actions — the exact failure
+# that sleep's weather stamping was invented to fix, and which the replay tests
+# caught within minutes. Deriving from (seed, day, index) instead means the value
+# is reproducible from the seed alone, needs no stamping in the replay log, and
+# cannot be knocked out of step by anything else consuming randomness.
+static func stateless(salt: int, index: int) -> int:
+	var h := hash("%d:%d:%d" % [rng.seed, salt, index])
+	return absi(h)

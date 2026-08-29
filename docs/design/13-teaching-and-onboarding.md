@@ -350,8 +350,14 @@ Two things this requires to work, one of which is a trap.
   that should be measured in days must not be driven by a real-time spawner.**
 
   **The fix, and a better one than depleting on sleep** *(designer, same day)*: **a crow
-  that gets food is done for the day.** If it is shooed it keeps trying — until it is fed,
-  or until the day ends. Sleep-time bookkeeping was treating a symptom; this addresses the
+  that gets food is done for the day.**
+
+  **Revised again, and ruled, later the same day (Q-44):** a shooed crow does **not** keep
+  trying. Each crow is assigned exactly one arrival per day — a single point in the day's
+  action clock — so being chased off ends its day, because it never had a second arrival to
+  make. The earlier draft had it returning until fed or nightfall; the designer's rule is
+  better for phase 1, because shooing should be a *win* rather than a reprieve, and a bird
+  that keeps coming back turns a small victory into a chore. Implemented as T-20. Sleep-time bookkeeping was treating a symptom; this addresses the
   cause, because no individual crow can consume twice and the acorn stock therefore
   depletes at the rate of crows-per-day on its own. The real-time spawner stops mattering.
 
