@@ -46,6 +46,7 @@ func _init() -> void:
 	test_session_trace()
 	test_crow_readiness()
 	test_crow_schedule()
+	test_daylight()
 	test_replay_build_stamp()
 	test_blocked_reason()
 	test_benign_failures()
@@ -1561,3 +1562,52 @@ func test_crow_schedule() -> void:
 	_assert(GameState.crow_schedule.size() == 1 and int(GameState.crow_schedule[0]) == 7,
 		"the remaining schedule survives")
 	_assert(GameState.actions_today == 5, "and so does the day's progress")
+
+
+func test_daylight() -> void:
+	print("\n--- Daylight from energy (Q-38 / T-14) Tests ---")
+
+	# The day is measured in work done: energy starts full and only actions spend
+	# it, so the number that used to be an unreadable bar is exactly the day's
+	# progress. This maps it to light.
+	var dawn := Daylight.tint_for(20, 20)
+	var noon := Daylight.tint_for(16, 20)
+	var dusk := Daylight.tint_for(0, 20)
+	_assert(dawn != noon, "dawn and midday differ")
+	_assert(dusk != noon, "dusk and midday differ")
+	_assert(noon.is_equal_approx(Color(1, 1, 1)), "midday applies no tint at all")
+	_assert(dusk.b > dusk.r, "twilight is blue")
+	_assert(Daylight.tint_for(3, 20).r > Daylight.tint_for(3, 20).b, "sunset is warm")
+
+	# Night must stay legible: Q-11's floor means actions still work at zero, so
+	# twilight is a nudge toward the cot and never a blackout.
+	_assert(dusk.r > 0.4 and dusk.g > 0.4 and dusk.b > 0.4,
+		"twilight dims but never goes dark enough to hide the farm")
+
+	# Monotonic enough to read as time passing rather than as a flickering meter.
+	var prev := 2.0
+	for e in [20, 18, 15, 12, 9, 6, 3, 0]:
+		var c := Daylight.tint_for(e, 20)
+		var lum: float = c.r + c.g + c.b
+		if e < 16:
+			_assert(lum <= prev + 0.001, "light falls as the day is spent (energy %d)" % e)
+		prev = lum
+
+	# Degenerate inputs must not produce a black screen mid-play.
+	_assert(Daylight.tint_for(5, 0).is_equal_approx(Color(1, 1, 1)), "no max energy means no tint")
+	_assert(Daylight.tint_for(99, 20).is_equal_approx(Daylight.tint_for(20, 20)),
+		"energy above max clamps to dawn")
+	_assert(Daylight.tint_for(-5, 20).is_equal_approx(dusk), "negative energy clamps to dusk")
+
+	# Hints are drawn into the tinted canvas, so a gold highlight would go muddy
+	# blue at dusk — exactly when a stuck player most needs to see it.
+	var gold := Color(1.0, 0.72, 0.15, 1.0)
+	var fixed := Daylight.compensate(gold, dusk)
+	_assert(fixed.r >= gold.r and fixed.g >= gold.g,
+		"hint colours are brightened to survive the twilight tint")
+	_assert(fixed.a == gold.a, "and their alpha is left alone")
+	_assert(Daylight.compensate(gold, Color(1, 1, 1)).is_equal_approx(gold),
+		"at midday compensation changes nothing")
+	var black := Daylight.compensate(gold, Color(0, 0, 0))
+	_assert(black.r <= 1.0 and black.g <= 1.0 and black.b <= 1.0,
+		"a pathological tint cannot push a colour out of range")
