@@ -27,6 +27,14 @@ var cursor_color: Color = Color.WHITE
 
 var _cot_tile: Vector2i = Vector2i(-1, -1)  # located after world setup (Q-11 pulse)
 
+# T-14 / Q-38: the day as light instead of as a bar. `world_tint` multiplies the
+# world canvas only — the HUD, menus and day-cycle fade are CanvasLayers of their
+# own, so they keep their authored colours. `_tint` caches the same colour so the
+# overlay can divide it back out of its hints (Daylight.compensate) without
+# recomputing per draw call.
+var world_tint: CanvasModulate
+var _tint: Color = Color.WHITE
+
 
 # APPLICATION_PAUSED covers backgrounding, which is the common case, but not a
 # hard kill. This bounds the worst case to PERSIST_INTERVAL seconds of lost play
@@ -163,6 +171,15 @@ func _ready() -> void:
 	day_cycle = DayCycleScript.new()
 	add_child(day_cycle)
 
+	# T-14: the sky. Signal-driven rather than per-frame — energy only moves when
+	# an action resolves or a day turns, so there is nothing to poll.
+	world_tint = CanvasModulate.new()
+	world_tint.name = "WorldTint"
+	add_child(world_tint)
+	GameState.energy_changed.connect(_on_energy_changed)
+	GameState.day_changed.connect(_on_day_changed_tint)
+	_update_daylight()
+
 	GameState.weather_changed.connect(_on_weather_changed)
 	_on_weather_changed(GameState.weather)
 
@@ -187,6 +204,21 @@ func _backup_unloadable_save() -> void:
 	if FileAccess.file_exists(GameState.replay_path):
 		DirAccess.copy_absolute(GameState.replay_path, GameState.replay_path + ".unloadable")
 	push_warning("Autosave could not be loaded; preserved at %s.unloadable" % GameState.save_path)
+
+func _on_energy_changed(_e: int) -> void:
+	_update_daylight()
+
+
+func _on_day_changed_tint(_d: int) -> void:
+	_update_daylight()
+
+
+# Q-38's whole mechanism: energy/max_energy on a colour ramp, applied once.
+func _update_daylight() -> void:
+	_tint = Daylight.tint_for(GameState.energy, GameState.max_energy)
+	if world_tint != null:
+		world_tint.color = _tint
+
 
 func _on_weather_changed(weather: String) -> void:
 	if rain_particles:
@@ -434,13 +466,22 @@ func spawn_particles(effect_type: String, world_pos: Vector2) -> void:
 	particles_manager.emit(effect_type, world_pos)
 
 
+# T-14 caution 3 (design/13 §8a): the overlay lives in the same canvas the
+# daylight tint multiplies, so a gold highlight goes muddy blue at dusk —
+# exactly when a stuck player most needs to see it. Dividing the authored colour
+# by the current tint cancels that out. `_tint` is cached, so this costs one
+# divide per colour rather than a ramp lookup per draw call.
+func _lit(c: Color) -> Color:
+	return Daylight.compensate(c, _tint)
+
+
 func _draw_overlay(overlay: CanvasItem) -> void:
 	# Draw tile cursor in world space
 	if cursor_visible and cursor_tile.x >= 0 and cursor_tile.y >= 0:
 		var px := cursor_tile.x * TILE_SIZE
 		var py := cursor_tile.y * TILE_SIZE
 		var rect := Rect2(px, py, TILE_SIZE, TILE_SIZE)
-		overlay.draw_rect(rect, cursor_color, false, 1.0)
+		overlay.draw_rect(rect, _lit(cursor_color), false, 1.0)
 
 	# Q-9: wordless onboarding — pulse the current vignette target.
 	# Pale-on-pale was invisible in practice, and a pre-reader gets no second
@@ -452,29 +493,29 @@ func _draw_overlay(overlay: CanvasItem) -> void:
 			var t := Time.get_ticks_msec() / 1000.0
 			var pulse := 0.5 + 0.5 * sin(t * 4.0)
 			var vr := Rect2(vt.x * TILE_SIZE, vt.y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
-			overlay.draw_rect(vr, Color(1.0, 0.78, 0.25, 0.10 + 0.12 * pulse), true)
-			overlay.draw_rect(vr.grow(1.0), Color(0.28, 0.16, 0.05, 0.45 + 0.25 * pulse), false, 1.0)
-			overlay.draw_rect(vr, Color(1.0, 0.72, 0.15, 0.8 + 0.2 * pulse), false, 2.0)
+			overlay.draw_rect(vr, _lit(Color(1.0, 0.78, 0.25, 0.10 + 0.12 * pulse)), true)
+			overlay.draw_rect(vr.grow(1.0), _lit(Color(0.28, 0.16, 0.05, 0.45 + 0.25 * pulse)), false, 1.0)
+			overlay.draw_rect(vr, _lit(Color(1.0, 0.72, 0.15, 0.8 + 0.2 * pulse)), false, 2.0)
 
 			var twinkle := 0.5 + 0.5 * sin(t * 4.0 + PI)
 			var s := 2.0 + 1.5 * twinkle
 			for corner in [vr.position, vr.position + Vector2(TILE_SIZE, 0),
 					vr.position + Vector2(0, TILE_SIZE), vr.position + Vector2(TILE_SIZE, TILE_SIZE)]:
 				overlay.draw_rect(Rect2(corner - Vector2(s, s) / 2.0, Vector2(s, s)),
-					Color(1.0, 0.97, 0.78, 0.45 + 0.55 * twinkle), true)
+					_lit(Color(1.0, 0.97, 0.78, 0.45 + 0.55 * twinkle)), true)
 
 			var ax := vr.position.x + TILE_SIZE / 2.0
 			var ay := vr.position.y - 7.0 + sin(t * 3.0) * 2.0
 			overlay.draw_colored_polygon(
 				PackedVector2Array([Vector2(ax - 4.5, ay - 5), Vector2(ax + 4.5, ay - 5), Vector2(ax, ay + 2)]),
-				Color(0.28, 0.16, 0.05, 0.55))
+				_lit(Color(0.28, 0.16, 0.05, 0.55)))
 			overlay.draw_colored_polygon(
 				PackedVector2Array([Vector2(ax - 3.5, ay - 4.5), Vector2(ax + 3.5, ay - 4.5), Vector2(ax, ay + 1)]),
-				Color(1.0, 0.72, 0.15, 0.95))
+				_lit(Color(1.0, 0.72, 0.15, 0.95)))
 
 	# Q-11: a softly pulsing cot nudges an exhausted farmer toward sleep
 	if GameState.energy <= 2 and _cot_tile.x >= 0:
 		var pulse := 0.25 + 0.2 * sin(Time.get_ticks_msec() / 300.0)
 		var cot_rect := Rect2(_cot_tile.x * TILE_SIZE, (_cot_tile.y - 1) * TILE_SIZE, TILE_SIZE, TILE_SIZE * 2)
-		overlay.draw_rect(cot_rect, Color(1.0, 0.95, 0.6, pulse * 0.35), true)
-		overlay.draw_rect(cot_rect, Color(1.0, 0.95, 0.6, pulse), false, 1.5)
+		overlay.draw_rect(cot_rect, _lit(Color(1.0, 0.95, 0.6, pulse * 0.35)), true)
+		overlay.draw_rect(cot_rect, _lit(Color(1.0, 0.95, 0.6, pulse)), false, 1.5)

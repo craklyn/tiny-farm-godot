@@ -343,7 +343,18 @@ first, since a different answer there changes what the other four are optimising
   in phase 2 — raise the number, never the appetite. Also **retarget T-2's harmless flag
   from "first crow ever" to "first crow to target a crop"**, so the last mercy lands at
   the transition instead of being spent on a crow that was never a threat.
-- **Q-38 (Ruling)** **Daylight instead of an energy bar.** Designer's proposal: replace
+- **Q-38 (Ruling — still open, but built)** **Daylight instead of an energy bar.**
+  **Status note 2026-08-29:** `docs/M1_5_PLAN.md` scheduled this as work item WI-1 and
+  described Q-38 as ruled; it is not — this entry has never been struck through. T-14 was
+  built anyway, *on the recommendation below and nowhere beyond it*, because WI-1 was the
+  plan's first item and the pure `systems/daylight.gd` was already written and tested. The
+  three open sub-questions were taken at their recommendations: weather tint deferred to
+  phase 2, numeric readout debug-only, sleeping at midday wastes the daylight. **Nothing
+  here is a ruling and all of it is cheap to revert** — the energy bar is ~25 lines of
+  `ui/hud.gd` and the tint is one `CanvasModulate` in `main.gd`. What still needs your
+  actual decision is the part the recommendation calls the decision inside the decision:
+  merging energy and time forecloses "exhausted at noon" and any food/rest item, for good.
+  Say the word and it comes out. Designer's proposal: replace
   the energy meter with a visible day cycle (sunrise/midday/sunset/twilight as a colour
   grade) where spending energy advances the time of day, so twilight itself says the day
   is done. **Recommendation: adopt.** Energy is a number a pre-reader cannot read and the

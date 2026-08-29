@@ -83,7 +83,7 @@ Twenty-four stories; five are done. Grouped by the ruling that unblocks them:
 | Q-34 | `T-8`→`T-10` | the bulk of the work |
 | Q-35 | `T-11`, `T-12` | |
 | Q-37 | `T-13` | build with `T-8` — the fence *is* ring 0's boundary |
-| Q-38 | `T-14` | |
+| Q-38 | `T-14` | built 2026-08-29 on the recommendation; the ruling itself is still open |
 | Q-39 | `T-15` | build with `T-8` — trees are where logs come from |
 | Q-40 | `T-16` | spiked; risk resolved, see below |
 | Q-42 | `T-18`, `T-19` | **evidence-backed** — measured data behind them |
@@ -524,15 +524,24 @@ remains the data source. The one addition to scope is an injectable game state o
 player; the SessionTrace switch briefly considered here turned out to be unnecessary once
 the playback moved to the intent layer.
 
-**T-14 — Daylight replaces the energy bar** · Q-38 · ~1–2 days
+**T-14 — Daylight replaces the energy bar** · Q-38 · ✅ built 2026-08-29 (M1.5 WI-1)
 *So that the least readable thing in the HUD becomes something a pre-reader can see.*
-- [ ] time of day derived from `energy / max_energy` — presentation only, sim untouched
-- [ ] four keyed colours (sunrise/midday/sunset/twilight) on one `CanvasModulate`
-- [ ] **night stays soft**: actions still work, she trudges and yawns, the cot pulses
+- [x] time of day derived from `energy / max_energy` — presentation only, sim untouched
+      (`systems/daylight.gd`, wired from `main.gd`)
+- [x] five keyed colours (dawn/midday/afternoon/sunset/twilight) on one `CanvasModulate`
+      under the Main scene, so it tints the world canvas and leaves the HUD/menu
+      `CanvasLayer`s alone
+- [x] **night stays soft**: actions still work, she trudges and yawns, the cot pulses —
+      asserted in `_scenario_h_daylight` (integration suite)
+- [x] the overlay's highlight, chevron and cot pulse are drawn through
+      `Daylight.compensate()`, so an authored gold lands as gold at every hour
 - [ ] verify the vignette highlight stays legible against every sky colour — on device,
       since this is exactly the class of bug the 2026-08-27 legibility pass found
-- [ ] decide what happens to the numeric readout (recommendation: debug/desktop only)
-*Blocked on Q-38, whose real content is the phase-2 consequence, not the colour grade.*
+      *(designer/device step, M1.5 plan §10.E)*
+- [x] numeric readout: debug builds only (`OS.is_debug_build()`); the sky is the bar
+*The energy bar, its background and its label are gone from `ui/hud.gd`.
+**Built on Q-38's recommendation while the ruling itself is still open** — see the
+DESIGNER_QUEUE note; nothing here is expensive to revert.*
 
 **T-12 — Wordless shop screen** · Q-35 · ~1 day
 *So that phase 1 keeps S-7's no-reading promise in the one screen that currently breaks it.*

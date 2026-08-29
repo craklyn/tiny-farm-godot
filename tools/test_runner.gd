@@ -60,6 +60,7 @@ func _run_scenarios() -> void:
 	await _scenario_e()
 	await _scenario_f()
 	await _scenario_g()
+	await _scenario_h_daylight()
 
 func _wait_for_action() -> void:
 	# Give it one frame to register the action and set is_acting = true
@@ -312,3 +313,65 @@ func _scenario_g() -> void:
 	var branch := src.substr(rta, 400)
 	_assert(branch.contains("persist_session"),
 		"leaving to the title still saves the farm on the way out")
+
+
+func _scenario_h_daylight() -> void:
+	# T-14 / Q-38: the energy bar is replaced by the sky. The bar was the single
+	# least readable element in the HUD for the player this game is aimed at; the
+	# same number rendered as light needs no reading at all.
+	print("\n--- Scenario H: Daylight replaces the energy bar ---")
+
+	var tint: CanvasModulate = null
+	for child in main_scene.get_children():
+		if child is CanvasModulate:
+			tint = child
+	_assert(tint != null, "a CanvasModulate tints the world canvas")
+	if tint == null:
+		return
+
+	# (a) it starts at the colour the pure ramp says it should be
+	GameState.set_energy(GameState.max_energy)
+	await get_tree().process_frame
+	var expected := Daylight.tint_for(GameState.energy, GameState.max_energy)
+	_assert(tint.color.is_equal_approx(expected), "world tint matches Daylight.tint_for at full energy")
+
+	# (b) spending energy through the real input path moves it
+	var before := tint.color
+	var energy_before := GameState.energy
+	farm.set_tile_state(9, 5, "cleared")
+	player.pos = Vector2(8.5 * 16.0, 5.5 * 16.0)
+	player.facing = "right"
+	GameState.selected_tool = 3  # Hoe
+	Input.action_press("action")
+	await _wait_for_action()
+	Input.action_release("action")
+	await get_tree().process_frame
+	_assert(GameState.energy < energy_before, "the action spent energy")
+	_assert(not tint.color.is_equal_approx(before), "spending energy changed the world tint")
+	_assert(tint.color.is_equal_approx(Daylight.tint_for(GameState.energy, GameState.max_energy)),
+		"world tint tracks Daylight.tint_for after the action")
+
+	# (c) the HUD no longer carries the energy bar at all
+	_assert(not ("energy_bar_fill" in main_scene.hud), "the HUD has no energy_bar_fill")
+	_assert(not ("energy_bar_bg" in main_scene.hud), "the HUD has no energy_bar_bg")
+	var found_bar := false
+	for node in main_scene.hud.find_children("*", "ColorRect", true, false):
+		if node.name == "energy_bar_fill" or node.name == "energy_bar_bg":
+			found_bar = true
+	_assert(not found_bar, "no energy bar node survives in the HUD tree")
+
+	# (d) Q-11's soft floor is untouched: actions still resolve at twilight
+	GameState.set_energy(0)
+	await get_tree().process_frame
+	_assert(tint.color.is_equal_approx(Daylight.tint_for(0, GameState.max_energy)),
+		"empty energy renders as the twilight stop")
+	farm.set_tile_state(9, 6, "obstacle_weed")
+	player.pos = Vector2(8.5 * 16.0, 6.5 * 16.0)
+	player.facing = "right"
+	GameState.selected_tool = 0  # Hands
+	Input.action_press("action")
+	await _wait_for_action()
+	Input.action_release("action")
+	_assert(farm.get_tile(9, 6).state == "cleared", "night stays soft — the action still resolves at 0 energy")
+
+	GameState.set_energy(GameState.max_energy)

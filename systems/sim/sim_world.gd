@@ -344,7 +344,10 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			if verb == "water" and gs.watering_can_charges <= 0: return _fail("no_water")
 			if verb == "plant" and gs.seeds.get(seed_type, 0) <= 0: return _fail("no_seeds")
 
-			gs.energy = maxi(0, gs.energy - cost)
+			# Through the setter, not the field: set_energy() clamps identically and
+			# emits energy_changed, which is what T-14's daylight tint listens to.
+			# A direct write left the sky frozen until the next day turned over.
+			gs.set_energy(gs.energy - cost)
 			match verb:
 				"clear_weed", "clear_log", "clear_rock":
 					set_tile_state(target.x, target.y, "cleared")

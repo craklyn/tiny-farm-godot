@@ -16,9 +16,7 @@ var top_bar: Panel
 var bottom_bar: Panel
 var day_label: Label
 var weather_label: Label
-var energy_label: Label
-var energy_bar_bg: ColorRect
-var energy_bar_fill: ColorRect
+var energy_label: Label  # T-14: debug builds only — the sky is the bar (Q-38)
 var gold_label: Label
 var menu_button: Button
 var tool_icon_rect: TextureRect
@@ -73,26 +71,18 @@ func _build_ui() -> void:
 	weather_label.add_theme_color_override("font_color", Color(0.6, 0.8, 1.0))
 	top_bar.add_child(weather_label)
 
-	# Energy bar background
-	energy_bar_bg = ColorRect.new()
-	energy_bar_bg.color = Color(0.2, 0.2, 0.2, 0.8)
-	energy_bar_bg.position = Vector2(viewport_size.x / 2 - 60, 5)
-	energy_bar_bg.size = Vector2(120, 20)
-	top_bar.add_child(energy_bar_bg)
-
-	# Energy bar fill
-	energy_bar_fill = ColorRect.new()
-	energy_bar_fill.position = Vector2(viewport_size.x / 2 - 59, 6)
-	energy_bar_fill.size = Vector2(118, 18)
-	top_bar.add_child(energy_bar_fill)
-
-	# Energy text
-	energy_label = Label.new()
-	energy_label.position = Vector2(viewport_size.x / 2 - 50, 5)
-	energy_label.size = Vector2(100, 20)
-	energy_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	energy_label.add_theme_color_override("font_color", Color.WHITE)
-	top_bar.add_child(energy_label)
+	# T-14 / Q-38: the energy bar is gone. Time of day *is* the meter now — the
+	# world tint in main.gd renders the same number as light, which a pre-reader
+	# can read and "14/20" never was. The numeric readout survives for debugging
+	# only, because a developer still wants the exact figure.
+	if OS.is_debug_build():
+		energy_label = Label.new()
+		energy_label.name = "energy_debug_label"
+		energy_label.position = Vector2(viewport_size.x / 2 - 50, 5)
+		energy_label.size = Vector2(100, 20)
+		energy_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		energy_label.add_theme_color_override("font_color", Color(1, 1, 1, 0.45))
+		top_bar.add_child(energy_label)
 
 	# Gold label
 	gold_label = Label.new()
@@ -240,13 +230,9 @@ func _update_hud() -> void:
 	var w_icon := "☀️" if GameState.weather == "sunny" else "🌧️"
 	weather_label.text = "%s %s" % [w_icon, GameState.weather.capitalize()]
 
-	# Energy
-	var fill_ratio := float(GameState.energy) / float(GameState.max_energy)
-	var r := 0.3 + 0.7 * (1.0 - fill_ratio)
-	var g := 0.3 + 0.7 * fill_ratio
-	energy_bar_fill.color = Color(r, g, 0.2, 0.9)
-	energy_bar_fill.size.x = 118.0 * fill_ratio
-	energy_label.text = "Energy: %d/%d" % [GameState.energy, GameState.max_energy]
+	# Energy — debug readout only (T-14). Release builds show the sky instead.
+	if energy_label != null:
+		energy_label.text = "Energy: %d/%d" % [GameState.energy, GameState.max_energy]
 
 	# Gold
 	gold_label.text = "%dg" % GameState.gold

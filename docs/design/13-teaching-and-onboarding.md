@@ -69,6 +69,13 @@ is a soft floor in phase 1 (Q-11) — at zero the farmer trudges and yawns but e
 still works. So **"do the chores and rush to bed" is not currently expressible.** The
 build is already a low-stress wander. The question is whether that is intent or accident.
 
+*Correction, 2026-08-29 (M1.5 finding F-1..F-7, item F-3): "only animates a fade"
+undersells `day_cycle.gd`, which is the day-transition **sequencer** — it renders the
+"Day N" label, gates all gameplay through `is_active()` (checked by `main.gd`), and
+fires the day-advance callback (the `sleep` verb, each entity's `on_new_day`, the
+persist, the Q-12 celebration) from inside its own `_process`. The claim that matters
+is unaffected: there is still no in-day clock, and days still advance only on the cot.*
+
 **The proposal: it is intent, and phase 1 should lean into it — with one deliberate
 exception.**
 
@@ -672,6 +679,25 @@ as light instead of as a bar.
 Does the numeric energy readout survive anywhere (recommendation: debug and desktop only —
 the sky *is* the bar for the child)? Does sleeping at midday simply waste the remaining
 daylight (recommendation: yes, and that is fine — sleep should never be refused)?
+
+**How they were resolved when this was built (2026-08-29, M1.5 WI-1 / T-14).** Each was
+taken at the recommendation, and each is cheap to revisit:
+
+- *Weather tint:* **deferred to phase 2.** Rain already speaks through its particle
+  layer, and stacking a second multiplicative grade on the daylight ramp would make the
+  twilight legibility problem (caution 3) harder for no phase-1 gain.
+- *Numeric readout:* **debug builds only** (`OS.is_debug_build()` in `ui/hud.gd`). A
+  developer still wants the exact figure; the player this game is aimed at never did.
+- *Sleeping at midday:* **wastes the remaining daylight, by design.** Sleep is never
+  refused (S-7), and "you went to bed early" is a legible, harmless outcome.
+
+The build detail: one `CanvasModulate` under the Main scene tints the world canvas and
+leaves the HUD, menus and day-cycle fade — all `CanvasLayer`s of their own — untouched.
+It is driven by the `energy_changed` and `day_changed` signals rather than per frame.
+Caution 3 is answered by `Daylight.compensate()`: every colour the overlay authors is
+divided by the current tint before it is drawn, so a gold highlight is still gold at
+dusk. Whether that survives contact with the tablet is the one part of this only a
+device pass can answer.
 
 ## 9. Open rulings
 
