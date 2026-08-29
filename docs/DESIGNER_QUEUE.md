@@ -215,7 +215,7 @@ first, since a different answer there changes what the other four are optimising
   cross-build replay but still runs it: a mismatch usually still reproduces, and when it
   does not, the provenance line is the difference between "the sim regressed" and "that was
   recorded three builds ago". 13 assertions.
-- **Q-42 (Ruling)** **An already-watered crop gives no feedback, and gets tapped again.**
+- **Q-42** ~~An already-watered crop gives no feedback, and gets tapped again~~ — ✅ ruled 2026-08-29: **a friendly "already done" acknowledgement.** The tile answers yes rather than no — a small positive cue, never the refusal wobble, which would teach that a good state is a failure. Fixing the soil's legibility instead was considered and not chosen; it may still be worth doing later, and Q-38's daylight changes how wet soil reads at every hour anyway. Implemented as T-18/T-19.
   Raised 2026-08-28 from the *second* adult session (`playtests/2026-08-28_115934`), the
   first on a fresh farm. Fourteen taps produced nothing at all, and **twelve of them had
   the watering can selected on crops already watered that day**; three separate tiles were
