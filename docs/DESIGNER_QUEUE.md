@@ -165,7 +165,14 @@ first, since a different answer there changes what the other four are optimising
   (ripe → seeded → tilled → cleared). **Recommendation: adopt.** It is the single change
   that converts the vignette from instruction into motivation, and it is small — a
   generation change plus a re-ordered step machine.
-- **Q-34 (Ruling)** **Tool-gated land rings**, or all six tools from the start as today?
+- **Q-34** ~~Tool-gated land rings~~ — ✅ ruled 2026-08-29: **adopt, with the lock
+  expressed as land.** Start with hands, hoe, seeds and can; the axe and pickaxe are earned
+  and each opens a ring containing one new obstacle type. "Not yet" is a hedge she can see,
+  never a refusal she cannot read. Fits Q-32 directly — each ring is a fresh saturation and
+  each tool the relief that makes the previous ring manageable. **Build as one piece with
+  Q-37's fence (which is ring 0's boundary) and Q-39's trees (which are where logs come
+  from).** Largest item in M1.5; world generation becomes a seeded sim change. Original
+  wording: or all six tools from the start as today?
   The designer's instinct — each tool unlock opens new debris and starts a new vignette —
   is the Valve structure exactly. **Recommendation: adopt, but express the lock as
   *land*, not as a refusal.** A pre-reader cannot read "you need an axe," and a tap that
