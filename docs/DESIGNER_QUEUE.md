@@ -193,8 +193,13 @@ first, since a different answer there changes what the other four are optimising
   arriving and leaving before they can harvest. The player inherits the standing crop. Note
   this overrides the earlier "one verb only" recommendation — three verbs is not a cutscene
   when the player is free to move throughout, which the fence arrangement (the designer's
-  own revision) guarantees. **One detail still open**, recorded as Q-45: whether time
-  visibly passes during the vignette or the ripe crop is simply already standing. Original
+  own revision) guarantees. **Q-45 answered 2026-08-29: time visibly passes** — the vignette
+  shows the neighbour's actions across a couple of days, as originally sketched during the
+  Valve-teaching discussion, so the player watches a seed become food. Fine-grained staging
+  deliberately deferred to build time. *Cost noted, not argued: this is the most expensive
+  beat in the chapter and needs a non-interactive time skip, which is the part a
+  four-year-old is likeliest to tap through — the fence keeps her free to move during it,
+  which is the mitigation.* Original
   wording: Designer's proposal: before the ripe crop, the
   player watches another child work the land, time passes, a moving truck arrives and she
   leaves the growing crop behind. It does something nothing else in chapter 13 can — a
@@ -271,7 +276,10 @@ first, since a different answer there changes what the other four are optimising
   designer's rule is better for phase 1: shooing should be a win, not a reprieve. Q-39's
   per-day budget is now the *number* of scheduled arrivals (`CROWS_PER_DAY`), which is the
   dial that becomes flocks in phase 2.
-- **Q-39 (Ruling)** **Acorns as the crow's first target.** Designer's proposal: trees
+- **Q-39** ~~Acorns as the crow's first target~~ — ✅ adopted 2026-08-29. Not so much ruled
+  as *authored*: the designer proposed it and then refined it twice unprompted — depletion
+  across days, then the one-chance-per-day rule that became Q-44 and shipped as T-20.
+  Recorded as adopted; say so if that reads wrong. Original wording: trees
   drop acorns and crows go for those first. **Recommendation: adopt.** T-2 currently makes
   the first crow harmless with a boolean, which works but is a *scripted* mercy the player
   can never perceive — a four-year-old sees a crow that inexplicably left. Acorns replace
