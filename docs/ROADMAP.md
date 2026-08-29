@@ -68,7 +68,7 @@ adult speaking, on two consecutive fresh runs — measured from the session trac
 from an adult's impression.
 
 ### Ordering
-Twenty-one stories; two are done. Grouped by the ruling that unblocks them:
+Twenty-two stories; three are done. Grouped by the ruling that unblocks them:
 
 | Ruling | Stories | Note |
 |---|---|---|
@@ -83,7 +83,7 @@ Twenty-one stories; two are done. Grouped by the ruling that unblocks them:
 | Q-39 | `T-15` | build with `T-8` — trees are where logs come from |
 | Q-40 | `T-16` | spiked; risk resolved, see below |
 | Q-42 | `T-18`, `T-19` | **evidence-backed** — measured data behind them |
-| *(none)* | `T-20`, `T-21` | designer-named balance and polish; `T-20`'s cadence is a number, not a ruling |
+| *(none)* | `T-20` ✅, `T-21`, `T-22` | balance, polish, and the first phone pass — none needs a ruling |
 | *(after Q-37/Q-40)* | `T-17` | regenerates the scripted replays the above two create |
 
 `T-13`→`T-17` were raised on 2026-08-28 and none is on the critical path to the exit gate.
@@ -264,6 +264,26 @@ shooed.**
       alone, no stamping in the replay log, and immune to other consumers.
 *Property worth keeping: pressure follows productivity. A player who wanders and plants
 nothing is never visited, while a busy farm draws birds — fairer, and the right fiction.*
+
+**T-22 — First phone pass (iOS)** · unblocked once an iOS build exists · ~1–2 days
+*So that the half of "touch-first" the design has always claimed but never tested gets
+tested.*
+P-1 says "phone/tablet primary"; `design/11` budgets HUD space "on phones" (§3) and names
+one-hand phone play (§7). **No phone has ever run this game.** Every touch decision to date
+was validated on one 10" Android tablet. The designer's iPhone makes this testable for the
+first time, and it arrives free with the TestFlight work rather than as separate effort.
+- [ ] **tap targets are the thing to measure.** `M1_PLAN` already calls 16px tiles at 3×
+      zoom "near the comfortable minimum" — that was measured on a tablet. The same
+      logical size on a phone is physically much smaller, and Apple's HIG floor is 44×44
+      points. This is the most likely real finding
+- [ ] camera zoom probably needs to be a function of physical screen size, not a constant
+- [ ] HUD and menu layout at phone width and in portrait; safe areas around the notch
+- [ ] re-run the trace metrics on a phone session — dead-tap rate is the objective
+      comparison against the tablet baselines (17% → 12%), and mis-taps will show up there
+      before anyone can articulate them
+*Note what a phone does **not** test: this is not the 4-year-old scenario. A pre-reader on
+a phone is a worse experience than on a tablet by design, so read a phone session as
+evidence about the touch design, never about learnability.*
 
 **T-21 — Style the vignette highlight properly** · Q-36 adjacent · ~1 day
 *So that the guided beats look authored rather than debug-drawn.*
