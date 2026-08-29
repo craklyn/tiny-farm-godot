@@ -9,6 +9,10 @@ build/
 
 # Local secrets (API keys) — never commit
 .env
+# retrodiff.env held the Retro Diffusion key in plaintext and was tracked from
+# 118a780 until 2026-08-29. The key lives in .env only now; this line is
+# belt-and-braces so a stray local copy can never be re-added.
+retrodiff.env
 
 # OS noise
 .DS_Store

@@ -1126,7 +1126,13 @@ MATCH line and now traversing the cold open rather than bypassing it, visual reg
   *worked-then-dead*) needs the next real session; nothing is left to build for it.
 - Old replays in `playtests/` now report cross-build provenance and MISMATCH. Expected
   across a worldgen change, per §1.
-- **Unrelated to M1.5, found in passing and worth acting on:** the Retro Diffusion API key
-  is committed in plaintext at `retrodiff.env`, which is tracked in this public repo (since
-  commit `118a780`). It needs rotating at the provider — a history rewrite would not undo
-  the exposure. Not touched here.
+- **Unrelated to M1.5, found in passing and acted on 2026-08-29:** the Retro Diffusion API
+  key was committed in plaintext at `retrodiff.env`, tracked in this public repo since
+  commit `118a780`. The file is now untracked (`git rm --cached`) and gitignored, and the
+  key it duplicated already lived in the project-local, gitignored `.env` as
+  `RETRODIFFUSION_API_KEY` — which is where the `retro-diffusion-pixel-art` skill reads it
+  from, so no tooling changed. **The key itself must still be rotated at
+  https://www.retrodiffusion.ai**: it was public for three days, and — exactly as recorded
+  in `CREDITS.md` for the Sprout Lands purge — a `git filter-repo` rewrite plus force push
+  does not make GitHub delete the old objects, so the value stays reachable by explicit SHA
+  until GitHub garbage-collects it. Rotation is the only step that actually revokes it.
