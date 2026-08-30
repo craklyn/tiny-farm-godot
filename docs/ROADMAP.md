@@ -538,7 +538,7 @@ can be measured before and after.
       reports `satisfied` as its own row so the before/after is readable
       *(needs the next real session; nothing left to build)*
 
-**T-17 — Regenerate scripted replays at build time** · after Q-37/Q-40 · ~1 day
+**T-17 — Regenerate scripted replays at build time** · Q-40 ✅ · done 2026-08-30 (M1.5 WI-8)
 *So that shipped scripted content can never be stale, and so "the demo looks right" becomes
 a checked build artifact rather than a manual art task.*
 The insight is that a shipped replay does not need to survive version drift **if it is

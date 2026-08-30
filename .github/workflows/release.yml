@@ -84,6 +84,16 @@ jobs:
       - name: Import project
         run: '"$GODOT" --headless --path . --import || true'
 
+      # T-17 / Q-41: **after** the build-id stamp and **before** the export, so
+      # the shipped demo replay carries the tag's build id. The title screen
+      # refuses to play a demo whose stamp does not match the running build
+      # (a stale one would show a farm that never existed), so a demo generated
+      # before the stamp would simply never appear in the release it shipped in —
+      # and a shipped replay with the wrong build_id is proof this step did not
+      # run where it should.
+      - name: Regenerate the demo replay (stamped)
+        run: '"$GODOT" --headless --path . --script res://tools/gen_demo_replay.gd'
+
       - name: Export web
         run: |
           mkdir -p build/web

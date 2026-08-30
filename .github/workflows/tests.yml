@@ -40,6 +40,19 @@ jobs:
       - name: Import project
         run: '"$GODOT" --headless --path . --import || true'
 
+      # T-17: the generator IS the test. It hard-fails on any quality assertion,
+      # so a demo replay that verifies perfectly but reads as a broken farm
+      # cannot ship (the T-16 spike's lesson).
+      - name: Regenerate the demo replay
+        run: '"$GODOT" --headless --path . --script res://tools/gen_demo_replay.gd'
+
+      # A committed file that the generator no longer reproduces means the
+      # generator ran and the commit did not include its output. "Stale replay"
+      # is a silent failure otherwise: the title screen would play a farm nobody
+      # can regenerate.
+      - name: Demo replay is not stale
+        run: git diff --exit-code assets/demo/demo_replay.json
+
       - name: Unit suite
         run: '"$GODOT" --headless --path . --script res://tests/test_runner.gd'
 
