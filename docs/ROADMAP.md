@@ -454,7 +454,7 @@ first time, and it arrives free with the TestFlight work rather than as separate
 a phone is a worse experience than on a tablet by design, so read a phone session as
 evidence about the touch design, never about learnability.*
 
-**T-25 — Off-screen target arrow** · Q-36 ✅ · ~half a day
+**T-25 — Off-screen target arrow** · Q-36 ✅ · done 2026-08-30 (M1.5 WI-6)
 *So that a highlighted tile she has wandered away from can still be found.*
 The camera follows the farmer, so the vignette's target can leave the screen entirely —
 at which point the highlight is doing nothing and there is no other cue.
@@ -467,10 +467,18 @@ beat 0 holds it there until she crosses, by which point the crop is in view. Acr
 (`_scenario_m_targets_on_screen`). The real case for T-25 is the one Q-36 named: a player
 who has **wandered away** from a target she was already shown, which no beat ordering can
 prevent.*
-- [ ] when the current highlighted target is outside the view, draw an arrow at the screen
-      edge pointing toward it
-- [ ] presentation only; it must not gate `apply_action` (the D-8 constraint)
-- [ ] legible against every sky colour once Q-38's daylight lands
+- [x] when the current highlighted target is outside the view, draw a chunky arrow at the
+      screen edge pointing toward it. Geometry is a pure helper
+      (`systems/overlay_math.gd` `OverlayMath.edge_arrow`) so it is unit-testable
+      headlessly; main.gd only rotates a triangle by the angle it returns
+- [x] **only when something is actually being taught.** An arrow with no highlight behind
+      it would be a permanent fixture, which is the opposite of what Q-36 asked for
+- [x] the band it may be drawn in excludes the HUD's top and bottom bars. That is right in
+      both directions: the arrow stays clear of them, *and* a target hidden behind one
+      counts as off screen and gets pointed at — she cannot see it either way
+- [x] presentation only; it must not gate `apply_action` (the D-8 constraint)
+- [x] legible against every sky colour — drawn through `Daylight.compensate` like every
+      other hint (T-14)
 
 **T-21 — Style the vignette highlight properly** · ⏸ deferred 2026-08-29 to the full art
 reskin · ~1 day

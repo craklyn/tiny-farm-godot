@@ -573,6 +573,25 @@ func _lit(c: Color) -> Color:
 	return Daylight.compensate(c, _tint)
 
 
+# What the camera can currently see, in world coordinates. Where the camera has
+# come to rest matters, not where the smoothing has got to, but the smoothing is
+# only ever a few pixels behind and an arrow does not need the difference.
+func _visible_world_rect() -> Rect2:
+	var half: Vector2 = get_viewport().get_visible_rect().size / (2.0 * float(CAMERA_SCALE))
+	return Rect2(camera.get_screen_center_position() - half, half * 2.0)
+
+
+const ARROW_MARGIN := 6.0  # keep the whole triangle inside the visible band
+const ARROW_LEN := 9.0
+# The HUD's top and bottom bars cover the screen edges, so the band the arrow may
+# be drawn in is shorter than the camera's view. Shrinking the rect is right in
+# both directions: the arrow stays clear of the bars, *and* a target hidden
+# behind one counts as off screen and gets pointed at, which it should — she
+# cannot see it either way.
+const HUD_TOP_PX := 30.0
+const HUD_BOTTOM_PX := 32.0
+
+
 func _draw_overlay(overlay: CanvasItem) -> void:
 	# Draw tile cursor in world space
 	if cursor_visible and cursor_tile.x >= 0 and cursor_tile.y >= 0:
@@ -634,6 +653,42 @@ func _draw_overlay(overlay: CanvasItem) -> void:
 			overlay.draw_colored_polygon(
 				PackedVector2Array([Vector2(ax - 3.5, ay - 4.5), Vector2(ax + 3.5, ay - 4.5), Vector2(ax, ay + 1)]),
 				_lit(Color(1.0, 0.72, 0.15, 0.95)))
+
+	# T-25 (Q-36's one survivor): when the thing being taught is off screen, point
+	# at it from the edge. The camera follows the farmer, so a target can leave
+	# the view entirely — and at that moment the highlight above is drawing to
+	# nobody and there is no other cue at all.
+	#
+	# Only ever for a target that is genuinely being taught: an arrow with nothing
+	# highlighted behind it would be a permanent fixture, which is the opposite of
+	# what Q-36 asked for. Compensated like every other hint, so it survives dusk.
+	if farm != null and camera != null:
+		var focus: Array[Vector2i] = TeachingFocus.targets(
+			farm.sim, GameState, player.get_tile_pos() if player else Vector2i(-1, -1))
+		if not focus.is_empty():
+			var view := _visible_world_rect()
+			var top: float = HUD_TOP_PX / float(CAMERA_SCALE)
+			var bottom: float = HUD_BOTTOM_PX / float(CAMERA_SCALE)
+			view = Rect2(view.position + Vector2(0.0, top),
+				view.size - Vector2(0.0, top + bottom))
+			var tgt := Vector2(focus[0].x * TILE_SIZE + TILE_SIZE / 2.0,
+				focus[0].y * TILE_SIZE + TILE_SIZE / 2.0)
+			var arrow: Dictionary = OverlayMath.edge_arrow(view, tgt, ARROW_MARGIN)
+			if arrow.visible:
+				var t2 := Time.get_ticks_msec() / 1000.0
+				var bob: float = 1.0 + 0.12 * sin(t2 * 4.0)
+				var at: Vector2 = arrow.pos
+				var ang: float = arrow.angle
+				# A chunky triangle: this is for a four-year-old across a room,
+				# not a minimap marker.
+				var pts := PackedVector2Array()
+				for local in [Vector2(ARROW_LEN, 0.0), Vector2(-4.0, 5.5), Vector2(-4.0, -5.5)]:
+					pts.append(at + local.rotated(ang) * bob)
+				var back := PackedVector2Array()
+				for local2 in [Vector2(ARROW_LEN + 1.6, 0.0), Vector2(-5.6, 7.2), Vector2(-5.6, -7.2)]:
+					back.append(at + local2.rotated(ang) * bob)
+				overlay.draw_colored_polygon(back, _lit(Color(0.28, 0.16, 0.05, 0.6)))
+				overlay.draw_colored_polygon(pts, _lit(Color(1.0, 0.72, 0.15, 0.95)))
 
 	# Q-11: a softly pulsing cot nudges an exhausted farmer toward sleep
 	if GameState.energy <= 2 and _cot_tile.x >= 0:

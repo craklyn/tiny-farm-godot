@@ -62,6 +62,7 @@ func _init() -> void:
 	test_takeover_anchoring()
 	test_acorns()
 	test_economy_teaching()
+	test_offscreen_arrow()
 
 	print("")
 	print(String("=").repeat(60))
@@ -2817,3 +2818,62 @@ func test_economy_teaching() -> void:
 # GDScript's typed-array literals.
 func _only(targets: Array[Vector2i]) -> Vector2i:
 	return targets[0] if targets.size() == 1 else Vector2i(-1, -1)
+
+
+func test_offscreen_arrow() -> void:
+	print("\n--- Off-screen target arrow (T-25, Q-36's one survivor) Tests ---")
+
+	# Q-36 rejected the hint-escalation ladder outright and kept exactly one
+	# thing: when the highlighted target is off screen, point at it. The camera
+	# follows the farmer, so a target can leave the view entirely — at which
+	# point the highlight is drawing to nobody and there is no other cue at all.
+	var view := Rect2(100, 100, 400, 300)   # centre (300, 250)
+	var centre := view.position + view.size / 2.0
+	var margin := 10.0
+
+	# On screen: nothing is drawn. An arrow pointing at something she can already
+	# see is noise, and noise is what Q-36 was rejecting.
+	for inside in [centre, Vector2(105, 105), Vector2(495, 395), Vector2(300, 101)]:
+		_assert_quiet(not OverlayMath.edge_arrow(view, inside).visible,
+			"a target at %s is inside the view" % inside)
+	_flush_quiet("nothing is drawn while the target is on screen")
+
+	# Off screen in each of the eight directions: drawn, clamped to the inset
+	# edge, and pointing at the thing.
+	var far := 5000.0
+	for dir in [Vector2(1, 0), Vector2(-1, 0), Vector2(0, 1), Vector2(0, -1),
+			Vector2(1, 1), Vector2(-1, 1), Vector2(1, -1), Vector2(-1, -1)]:
+		var target: Vector2 = centre + dir.normalized() * far
+		var a: Dictionary = OverlayMath.edge_arrow(view, target, margin)
+		_assert_quiet(a.visible, "a target %s of the view is pointed at" % dir)
+		var pos: Vector2 = a.pos
+		# Inside the view, and on its inset edge rather than somewhere in the middle.
+		_assert_quiet(view.has_point(pos), "the arrow at %s is drawn on screen" % dir)
+		var on_edge: bool = (
+			is_equal_approx(pos.x, view.position.x + margin)
+			or is_equal_approx(pos.x, view.end.x - margin)
+			or is_equal_approx(pos.y, view.position.y + margin)
+			or is_equal_approx(pos.y, view.end.y - margin))
+		_assert_quiet(on_edge, "the arrow at %s sits on the inset edge, at %s" % [dir, pos])
+		# And it points at the target, not merely away from the centre.
+		var want: float = (target - pos).angle()
+		_assert_quiet(absf(angle_difference(float(a.angle), want)) < 0.05,
+			"the arrow at %s points at the target" % dir)
+	_flush_quiet("an off-screen target is pointed at from the edge, in all 8 directions")
+
+	# Quadrant spot-check with real numbers, so a sign error cannot hide behind
+	# the loop above.
+	var right: Dictionary = OverlayMath.edge_arrow(view, Vector2(9000, 250), margin)
+	_assert(is_equal_approx(right.pos.x, view.end.x - margin), "a target to the right clamps to the right edge")
+	_assert(is_equal_approx(right.pos.y, centre.y), "and stays level with the centre")
+	_assert(absf(float(right.angle)) < 0.001, "pointing right is angle 0")
+
+	var up: Dictionary = OverlayMath.edge_arrow(view, Vector2(300, -9000), margin)
+	_assert(is_equal_approx(up.pos.y, view.position.y + margin), "a target above clamps to the top edge")
+	_assert(float(up.angle) < 0.0, "and points upward (negative y is up)")
+
+	# Degenerate inputs must not produce a stray arrow.
+	_assert(not OverlayMath.edge_arrow(Rect2(0, 0, 0, 0), Vector2(5, 5)).visible,
+		"an empty view draws nothing")
+	_assert(not OverlayMath.edge_arrow(view, centre).visible,
+		"a target exactly at the centre draws nothing")
