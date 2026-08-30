@@ -1067,8 +1067,12 @@ MATCH line and now traversing the cold open rather than bypassing it, visual reg
    been struck through and ROADMAP T-14 still said "blocked on Q-38". T-14 was built
    anyway, on the recommendation and nowhere beyond it, with a status note in the queue
    saying exactly that and what it would cost to revert (~25 lines of `ui/hud.gd` and one
-   `CanvasModulate`). The decision inside the decision — that merging energy and time
-   forecloses "exhausted at noon" for good — is still the designer's.
+   `CanvasModulate`). *Follow-up, same day: the designer corrected the argument this
+   deviation leaned on. Merging energy and time does **not** foreclose food or rest items
+   — such an item can change the exchange rate (a fed farmer spends less clock per action)
+   rather than restore energy, which never winds the sun backwards. Corrected in
+   `design/13` §8a, `DESIGNER_QUEUE` Q-38 and `systems/daylight.gd`'s header. Q-38 remains
+   unruled, but the cost of ruling it either way is smaller than this plan assumed.*
 3. **WI-2 — a tap the intent layer can see is already satisfied is no longer dispatched.**
    The plan describes `satisfied_reason` as a pure read alongside `blocked_reason`, but
    the well and bin resolve to a real action, so consulting it only after dispatch would

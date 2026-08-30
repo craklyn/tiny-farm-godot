@@ -383,10 +383,11 @@ first, since a different answer there changes what the other four are optimising
   three open sub-questions were taken at their recommendations: weather tint deferred to
   phase 2, numeric readout debug-only, sleeping at midday wastes the daylight. **Nothing
   here is a ruling and all of it is cheap to revert** — the energy bar is ~25 lines of
-  `ui/hud.gd` and the tint is one `CanvasModulate` in `main.gd`. What still needs your
-  actual decision is the part the recommendation calls the decision inside the decision:
-  merging energy and time forecloses "exhausted at noon" and any food/rest item, for good.
-  Say the word and it comes out. Designer's proposal: replace
+  `ui/hud.gd` and the tint is one `CanvasModulate` in `main.gd`. Say the word and it comes
+  out. **The stakes are lower than this entry used to claim** — see the 2026-08-29
+  correction below; what is left to decide is whether the sky replacing the bar is the
+  right call for phase 1, which is a taste question rather than a phase-2 mortgage.
+  Designer's proposal: replace
   the energy meter with a visible day cycle (sunrise/midday/sunset/twilight as a colour
   grade) where spending energy advances the time of day, so twilight itself says the day
   is done. **Recommendation: adopt.** Energy is a number a pre-reader cannot read and the
@@ -398,7 +399,14 @@ first, since a different answer there changes what the other four are optimising
   **The decision inside the decision:** merging the two means energy and time can never
   diverge again — no "exhausted at noon", no food items — and Q-11 says hard energy
   returns as a real constraint in phase 2. Rule that consciously now rather than discover
-  it at M3. Two cautions: night must stay soft (a wall is the lockout Q-11 forbade), and
+  it at M3. ***Corrected by the designer, 2026-08-29: the "no food items" half is wrong.***
+  A food item does not have to restore energy; it can change the **exchange rate**, so a
+  well-fed farmer spends less clock per action and gets more done before dusk. That is
+  coherent with energy-as-clock, reads as "being fed makes you faster at working", and
+  never winds the sun backwards. The merge forecloses one *implementation* of food, not
+  the concept — and meals are not planned, so it is not a live consideration either way.
+  Recorded because it was the main argument for hesitating over this ruling, and it does
+  not hold. Two cautions: night must stay soft (a wall is the lockout Q-11 forbade), and
   the vignette highlight must stay legible against a twilight sky. Detail in `design/13`
   §8a.
 

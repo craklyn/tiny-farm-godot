@@ -782,12 +782,23 @@ as light instead of as a bar.
    yawns in the dark, the cot pulses. That is the *existing* soft-floor behaviour
    re-skinned so a pre-reader can finally perceive it — "you are up past bedtime" rather
    than an invisible number reaching zero.
-2. **It permanently closes off energy and time diverging.** Merged, there can never be
-   "exhausted, but it is only noon", and any food or rest item that restores energy
-   becomes incoherent — it would wind the sun backwards. Stardew keeps both meters for
-   exactly this reason. Q-11 says hard energy returns as a real constraint from phase 2,
-   and phase 2 is unruled (Q-15–Q-21), so **this is the decision inside the decision** and
-   should be made deliberately rather than discovered at M3.
+2. **It closes off energy and time diverging.** Merged, there can never be "exhausted,
+   but it is only noon", and any food or rest item that *restores* energy becomes
+   incoherent — it would wind the sun backwards. Stardew keeps both meters for exactly
+   this reason. Q-11 says hard energy returns as a real constraint from phase 2, and phase
+   2 is unruled (Q-15–Q-21), so this should be decided deliberately rather than discovered
+   at M3.
+
+   **Corrected 2026-08-29 (designer), and it matters — this caution was overstated.** It
+   said "permanently closes off … any food or rest item", and that is only true of
+   *restorative* items. A food item can instead change the **exchange rate**: a well-fed
+   farmer spends less clock per action, so she gets more done before dusk than an unfed
+   one. Nothing winds backwards; being fed simply makes her faster at working *as measured
+   against the time of day*, which is arguably a better fiction than a refilled meter and
+   is exactly the kind of dial phase 2 wants. So the merge forecloses one *implementation*
+   of food, not the concept. Meals are not planned anyway, so this is not central today.
+   The residual consideration is real but small, and it is not a reason to hesitate over
+   Q-38.
 3. **The highlight must survive every sky.** The vignette's warm gold currently reads
    against grass and soil; it would also have to read against a twilight tint, alongside
    design/09's reserved overlay hues. We learned this once already — pale-on-pale was

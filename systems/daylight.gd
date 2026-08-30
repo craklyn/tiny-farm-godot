@@ -6,9 +6,12 @@
 # is the whole change — a four-year-old cannot read "14/20" and can absolutely see
 # that it is getting late.
 #
-# Consequences the designer accepted when ruling this (Q-38):
-#   - energy and time can never diverge again; no "exhausted at noon", and no food
-#     or rest item, since either would wind the sun backwards.
+# Consequences of merging the two (Q-38, still an open ruling — see DESIGNER_QUEUE):
+#   - energy and time cannot diverge, so there is no "exhausted at noon" and no
+#     food or rest item that *restores* energy, since that would wind the sun
+#     backwards. It does NOT rule out food as a concept (designer, 2026-08-29):
+#     an item that changes the exchange rate — less clock spent per action, so a
+#     fed farmer gets more done before dusk — is perfectly coherent here.
 #   - night must stay SOFT. Actions still work at zero (Q-11's floor); the farmer
 #     trudges and the cot pulses. Twilight is a nudge, never a wall.
 #
