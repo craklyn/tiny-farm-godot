@@ -361,6 +361,31 @@ first, since a different answer there changes what the other four are optimising
   versus something she can see herself accumulating; and whether the tool should be a gift
   from the departing neighbour instead of a found object, which would cost nothing extra
   and ties back to Q-22.*
+
+  **Found in play, 2026-08-29, and it needs your pick before this is finished.** The
+  designer played it and asked "am I supposed to be able to pick up the axe?" The
+  mechanism works — verified end to end through a real tap in `_scenario_n_pick_up_the_axe`
+  — but *before* the proof fires, tapping the axe walks her over and then does **nothing at
+  all**, with no cue of any kind. That is precisely the silent-tap failure T-18 was built to
+  eliminate, re-introduced by this strawman, and the fact that the person who designed the
+  game could not tell whether it was broken is the whole evidence needed. Q-34 rules out
+  the obvious repair: "not yet" must never be a refusal, so a wobble on the axe is
+  forbidden. Two coherent ways out, and this is a taste call:
+
+  - **(a) Make the lock visible without tapping — recommended.** Draw the placed tool
+    darkened/silhouetted until its proof fires, exactly the vocabulary Q-35 already ruled
+    for locked shop items, and give it the single highlight the moment it becomes
+    takeable. She never taps expecting a result, and the moment it *becomes* available is
+    announced rather than discovered. This keeps Q-46's whole point intact — the tool is
+    "a promise she can see". Implementation note: draw the dimming in `main.gd`'s overlay
+    rather than in `farm.gd`, which has no GameState and should not gain one (finding F-4).
+  - **(b) Put the tool behind its own gate.** Then the existing boundary grammar does all
+    the work with no new visual state — she walks to the hedge and stops, like everything
+    else beyond a boundary. But it breaks Q-46's shape ("tapping it grants the tool"),
+    because she can no longer reach it, and a promise behind a hedge is just a hedge.
+
+  Until this is ruled the axe is reachable, tappable and silent before 5 harvests. Say
+  which and it is a small change either way.
 - **Q-47 (Ruling)** **What evidence closes M1.5's exit gate?** The M1.5 gate in
   `ROADMAP.md` currently reads "a first-time pre-reader reaches day 1 beat 4 … on two
   consecutive fresh runs". That re-creates the exact planning fault **Q-43 fixed for M1**

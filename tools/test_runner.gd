@@ -64,6 +64,7 @@ func _run_scenarios() -> void:
 	await _scenario_i_third_state()
 	await _scenario_l_menu_holds_world()
 	await _scenario_m_targets_on_screen()
+	await _scenario_n_pick_up_the_axe()
 
 func _wait_until(pred: Callable, max_frames: int) -> bool:
 	for i in max_frames:
@@ -661,3 +662,66 @@ func _scenario_m_targets_on_screen() -> void:
 		"from spawn the game asks for the gate, which is the only thing she can see to walk to")
 
 	gs.free()
+
+
+func _scenario_n_pick_up_the_axe() -> void:
+	# Asked from play 2026-08-29: "am I supposed to be able to pick up the axe?"
+	# The unit suite proves the router offers `take_tool` and the sim grants it,
+	# but nothing drove the whole thing through an actual tap, which is where a
+	# player meets it. This does.
+	print("\n--- Scenario N: picking the axe up off the ground ---")
+
+	var entry: Dictionary = WorldLayout.tools()[0]
+	var at: Vector2i = entry.get("at", Vector2i(-1, -1))
+	var gate: Vector2i = entry.get("gate", Vector2i(-1, -1))
+	var stand := Vector2i(at.x - 1, at.y)
+
+	farm.set_tile_state(at.x, at.y, "cleared")
+	farm.sim.set_object(at.x, at.y, String(entry.get("object", "")))
+	farm.set_tile_state(stand.x, stand.y, "cleared")
+	farm.set_tile_state(gate.x, gate.y, WorldLayout.GATE_CLOSED)
+	GameState.tools_owned["axe"] = false
+	GameState.harvest_counts = { "wheat": 0, "tomato": 0 }
+	player.pos = Vector2(stand.x * 16 + 8, stand.y * 16 + 8)
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+
+	# Before the proof: the tap must not take it, and — this is the part a player
+	# feels — it must not silently do nothing either. Today it resolves to pure
+	# movement, so she walks up to it and stops.
+	InputManager.click_tile = at
+	InputManager.has_click = true
+	for i in 30: await get_tree().process_frame
+	_assert(farm.get_object(at.x, at.y) == String(entry.get("object", "")),
+		"an unearned axe stays on the ground")
+	_assert(not GameState.owns_tool("axe"), "and she does not have it")
+	_assert(String(farm.get_tile(gate.x, gate.y).state) == WorldLayout.GATE_CLOSED,
+		"and its gate stays shut")
+
+	# Meet the Q-46 strawman proof, then tap it again.
+	GameState.harvest_counts["wheat"] = int(entry.get("threshold", 5))
+	_assert(SimWorld.tool_proof_met(entry, GameState), "the harvest proof is met")
+	player.pos = Vector2(stand.x * 16 + 8, stand.y * 16 + 8)
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+
+	InputManager.click_tile = at
+	InputManager.has_click = true
+	var took := await _wait_until(func(): return GameState.owns_tool("axe"), 200)
+	_assert(took, "tapping the earned axe picks it up")
+	_assert(farm.get_object(at.x, at.y) == "", "and it leaves the ground")
+	_assert(String(farm.get_tile(gate.x, gate.y).state) == WorldLayout.GATE_OPEN,
+		"and picking it up is what opens its parcel")
+	_assert(farm.is_walkable(gate.x, gate.y), "which is now walkable")
+	_assert(GameState.selected_tool == Tools.index_of_key("axe"),
+		"and she is holding what she just picked up")
+
+	# Both actions are in the replay, so a session that earns a tool replays as
+	# one that earns it — the gate is not a presentation side effect.
+	var verbs: Array = []
+	for e in farm.replay.entries:
+		verbs.append(String(e.get("verb", "")))
+	_assert(verbs.has("take_tool"), "take_tool is recorded")
+	_assert(verbs.has("open_gate"), "and so is the gate opening")
