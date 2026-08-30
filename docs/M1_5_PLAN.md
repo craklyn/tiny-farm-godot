@@ -1034,27 +1034,52 @@ Godot 4.7.2 at `~/.local/bin/godot`.
 
 ---
 
-## 11. Execution status — Checkpoint B (2026-08-29)
+## 11. Execution status (2026-08-29 → 2026-08-30)
 
-*Appended by the execution session. Scope given to it: WI-1, WI-2, then the WI-3+WI-4
-block, stopping at Checkpoint B for human review. WI-5..WI-9 deliberately not started.*
+*Appended by the execution session. It was first scoped to stop at Checkpoint B; the
+designer then reviewed, ruled on several open questions, and asked for the plan's original
+order to be completed autonomously with a change request filed alongside it.*
 
 ### Work items complete
 
 | WI | Stories | State |
 |---|---|---|
-| WI-1 | T-14 | **done** — daylight replaces the energy bar; `_scenario_h_daylight` |
-| WI-2 | T-18, T-19 (+F-5) | **done** — the third state speaks; `test_satisfied_states`, `_scenario_i_third_state` |
+| WI-1 | T-14 | **done** — daylight replaces the energy bar |
+| WI-2 | T-18, T-19 (+F-5) | **done** — the third state speaks |
 | WI-3 | T-8, T-9, T-10, T-13, T-15 | **done** — parcels, tool acquisition, the cold open, acorns |
 | WI-4 | T-3, T-4, T-5 | **done** — the harvest-first multi-day vignette |
+| WI-5 | T-11, T-12 | **done** — economy at first need; the shop has no words in it |
+| WI-6 | T-25 | **done** — off-screen target arrow |
+| WI-7 | T-16 | **done** — the title screen plays a recorded farm |
+| WI-8 | T-17 | **done** — demo replay generated at build time, in both CI workflows |
+| WI-9 | T-22 | **not started — blocked on hardware.** Needs a Mac and the designer's
+  iPhone; nothing else depends on it and it must not gate the milestone. |
 
-**Not started, as instructed:** WI-5 (T-11/T-12), WI-6 (T-25), WI-7 (T-16), WI-8 (T-17),
-WI-9 (T-22). Nothing from §5 was built.
+Nothing from §5 was built.
 
-Suites at the final commit: unit **648 PASSED, 0 FAILED** (baseline 468), integration
-**65 PASSED, 0 FAILED** (baseline 42), robot session **PASSED** including the replay
-MATCH line and now traversing the cold open rather than bypassing it, visual regression
-**PASSED** against a regenerated baseline, benchmark **889,151× realtime**.
+Suites at the final commit: unit **725 PASSED, 0 FAILED** (baseline 468), integration
+**127 PASSED, 0 FAILED** (baseline 42), robot session **PASSED** including the replay
+MATCH line and traversing the cold open rather than bypassing it, visual regression
+**PASSED**, demo generator **PASSED** with a clean `git diff`, benchmark **661,893×
+realtime** (still the hundreds-of-thousands the checklist asks for).
+
+### Two notes for the verifier before running §10
+
+1. **§10.B12's baseline SHA no longer exists.** `719f221` was rewritten out of history on
+   2026-08-29 when the leaked Retro Diffusion API key was purged. The same commit is now
+   **`3ede162`** ("M1.5 implementation plan: WI-1..WI-9 with per-item verifier
+   procedures"). `git diff 3ede162..HEAD -- systems/sim/replay_log.gd` is empty: the entry
+   format is untouched, as S-3 requires.
+2. **Old replays in `playtests/` report cross-build provenance and MISMATCH.** Expected
+   across a worldgen change, per §1, and not a regression signal.
+
+### Change request filed
+
+`docs/M1_5_CHANGE_REQUEST.md` proposes re-scoping what remained of M1.5 against **Q-47**
+(the designer dropped the 4-year-old as an early playtester because the opening minutes are
+not the priority). It recommends parking T-11 while keeping T-12, and argues the split at
+length. **The work was built to the plan's original order regardless**, at the designer's
+instruction, so accepting or rejecting the request costs nothing to undo either way.
 
 ### Deviations taken (§9: criteria binding, mechanisms advisory)
 
@@ -1113,17 +1138,35 @@ MATCH line and now traversing the cold open rather than bypassing it, visual reg
    from the player's walk cycle, and reads as another child at 16px. A bespoke sheet is a
    cheap upgrade whenever the art pass wants one. Recorded in `CREDITS.md`.
 
-### Added to the designer queue
+### Added to the designer queue, and since ruled
 
-- **Q-46 (Ruling)** — how the axe and pickaxe are acquired. Built as the plan's strawman
-  and labelled as one: tool visible at its gate, collectable once a proof fires (5
-  harvests / 3 logs), tap to take and the gate opens. Both thresholds are `[Playtest]`
-  constants in `WorldLayout.DEFAULT.tools` and nowhere else.
-- **Q-47 (Ruling)** — the M1.5 exit-gate evidence mechanism (finding F-7). Filed with the
-  Q-43-mirroring recommendation. **The ROADMAP gate text is deliberately unchanged**
-  pending the ruling.
-- **Q-38** — a status note added recording that T-14 shipped on the recommendation while
-  the ruling itself is still open (deviation 2 above).
+- **Q-46** — how the axe and pickaxe are acquired. Filed as a strawman, then **ruled
+  2026-08-29/30**: the shape is accepted and the thresholds (5 harvests, 3 logs) are fine.
+  A sub-ruling (a) came out of play — an unearned tool used to look takeable and answer a
+  tap with nothing at all, which is the silent-tap failure T-18 exists to remove, so it is
+  now drawn as a dark silhouette and glows the moment its proof fires.
+- **Q-47** — the exit-gate evidence mechanism (finding F-7). Filed, then **ruled
+  2026-08-29**, and the ruling turned out broader than the question: the 4-year-old is
+  dropped as an early playtester entirely, and opening-minutes polish is deliberately low
+  priority. The gate is rewritten in `ROADMAP.md`; six deprioritised items are parked in a
+  new "Deferred — start-of-game polish" section.
+- **Q-38** — a status note recording that T-14 shipped on the recommendation while the
+  ruling itself is still open (deviation 2 above). Still open, but **cheaper than this plan
+  assumed**: the designer corrected the claim that merging energy and time forecloses food
+  items, since such an item can change the exchange rate rather than restore energy.
+
+### Deviations taken in WI-5..WI-8
+
+10. **WI-7 — `test_player_gs_injection` is split across both suites.** `player.gd` still
+    names `InputManager`, `ActionRouter` and `Pathfinding` as global identifiers, so the
+    script cannot be compiled in the unit runner, which has no autoloads. Removing those
+    too is a far larger change to the hottest file than T-16 asked for. The unit test
+    therefore covers everything checkable headlessly — including a source-level guarantee
+    that player.gd never names the live state outside its default tree lookup — and the
+    behavioural isolation assertion lives in `_scenario_k_attract`. Documented in both.
+11. **WI-8 — the generator records the cold open by stepping it**, rather than calling
+    `ColdOpen.run()`, because `run()` applies to the world without recording and every
+    action has to land in the log.
 
 ### Open, and handed on rather than done
 
