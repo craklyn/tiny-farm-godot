@@ -43,7 +43,12 @@ static func targets(world: SimWorld, gs, player_t: Vector2i = Vector2i(-1, -1)) 
 	# 3. T-10: a parcel that has just opened points at **one** obstacle of its new
 	#    type, until she clears one of those — then never again. A new tool gets a
 	#    safe room containing exactly one new kind of thing (Valve principle 4).
-	return parcel_introduction(world, gs)
+	var parcel := parcel_introduction(world, gs)
+	if not parcel.is_empty():
+		return parcel
+	# 4. T-11: the economy, taught at first need. Lowest priority on purpose —
+	#    these are errands, and an errand must never interrupt a lesson.
+	return economy_beat(world, gs)
 
 
 # Placed tools whose capability proof has NOT fired yet. Presentation draws these
@@ -86,6 +91,71 @@ static func _handed_over(world: SimWorld) -> bool:
 			return true
 		return String(world.get_tile(g.x, g.y).get("state", "")) == WorldLayout.GATE_OPEN
 	return true  # a layout with no cold open (an old save) was always hers
+
+
+# T-11 (Q-35): sell / buy / refill, each highlighted at **the moment of need**
+# and each firing at most once by construction — the condition includes "you have
+# never done this", so doing it once retires the beat with no flag to store.
+#
+# These three were taught *nowhere* before, which is the gap that produced the
+# silent empty-pouch refusal on 2026-08-27: the player was never told where seeds
+# come from. They are deliberately last in the arbitration — the economy is an
+# errand, and an errand must never interrupt a lesson.
+#
+# Never points at a shop she cannot buy from: the seed-box beat also requires
+# enough gold for the cheapest seed, because pointing a pre-reader at a screen
+# that will refuse her is worse than not pointing at all.
+static func economy_beat(world: SimWorld, gs) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	if gs == null:
+		return out
+
+	var basket := 0
+	for count in gs.crops.values():
+		basket += int(count)
+	if basket >= SELL_BEAT_CROPS and int(gs.total_shipped) == 0:
+		return _find_object(world, "shipping_bin")
+
+	if int(gs.cans_refilled) == 0 and int(gs.watering_can_charges) <= 0:
+		return _find_object(world, "well")
+
+	if int(gs.seeds_bought) == 0 and _pouch_empty(gs) and gs.gold >= _cheapest_seed():
+		return _find_object(world, "seed_box")
+
+	return out
+
+
+# [Playtest] — "enough that giving one away is obviously affordable" (design/13 §7a).
+const SELL_BEAT_CROPS := 3
+
+
+static func _pouch_empty(gs) -> bool:
+	for count in gs.seeds.values():
+		if int(count) > 0:
+			return false
+	return true
+
+
+static func _cheapest_seed() -> int:
+	var best := -1
+	for crop_name in CropDefs.ORDER:
+		var def: Dictionary = CropDefs.TYPES.get(crop_name, {})
+		if not def.has("seed_price"):
+			continue
+		var price := int(def.seed_price)
+		if best < 0 or price < best:
+			best = price
+	return maxi(best, 0)
+
+
+static func _find_object(world: SimWorld, kind: String) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	for ty in SimWorld.MAP_HEIGHT:
+		for tx in SimWorld.MAP_WIDTH:
+			if world.objects[ty][tx] == kind:
+				out.append(Vector2i(tx, ty))
+				return out
+	return out
 
 
 # One tile of the newest unlearned obstacle type in an open parcel, or [].

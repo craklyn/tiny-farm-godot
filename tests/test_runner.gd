@@ -61,6 +61,7 @@ func _init() -> void:
 	test_actor_energy()
 	test_takeover_anchoring()
 	test_acorns()
+	test_economy_teaching()
 
 	print("")
 	print(String("=").repeat(60))
@@ -2705,3 +2706,114 @@ func test_actor_energy() -> void:
 	gs3.free()
 	gs4.free()
 	gs5.free()
+
+
+func test_economy_teaching() -> void:
+	print("\n--- The economy, taught at first need (T-11, Q-35) Tests ---")
+
+	# Sell, buy and refill were taught *nowhere* — the gap that produced the
+	# silent empty-pouch refusal on 2026-08-27, where the player was never told
+	# where seeds come from. Each beat now fires at the moment of need, and each
+	# fires at most once **by construction**: the condition includes "you have
+	# never done this", so doing it once retires the beat with no flag to store.
+	var world := SimWorld.new()
+	SimRng.reseed(1212)
+	world.generate()
+	var gs = load("res://systems/game_state.gd").new()
+	# Past the handover and past the vignette, or nothing is taught at all.
+	world.apply_action({ "verb": "open_gate", "target": WorldLayout.gate_of("neighbour"),
+		"actor": "neighbour" }, gs)
+	gs.day = gs.takeover_day + 5
+
+	var bin := Vector2i(4, 1)
+	var well := Vector2i(6, 1)
+	var box := Vector2i(8, 1)
+	_assert(world.get_object(bin.x, bin.y) == "shipping_bin", "the bin is where the layout puts it")
+
+	# Nothing owed, nothing needed: silence.
+	gs.crops = { "wheat": 0, "tomato": 0 }
+	gs.watering_can_charges = gs.max_watering_can_charges
+	gs.seeds = { "wheat": 5, "tomato": 0 }
+	_assert(TeachingFocus.economy_beat(world, gs).is_empty(),
+		"a farmer with nothing to sell, water or buy is not nagged")
+
+	# --- sell: the basket fills up -------------------------------------------
+	gs.crops["wheat"] = TeachingFocus.SELL_BEAT_CROPS - 1
+	_assert(TeachingFocus.economy_beat(world, gs).is_empty(),
+		"one crop short of the threshold is still silence")
+	gs.crops["wheat"] = TeachingFocus.SELL_BEAT_CROPS
+	_assert(_only(TeachingFocus.economy_beat(world, gs)) == bin,
+		"a full enough basket points at the bin")
+	# Selling once retires it for good, and the counter is what remembers.
+	world.apply_action({ "verb": "sell", "actor": "player" }, gs)
+	_assert(gs.total_shipped > 0, "selling accrues the counter through the sim gateway")
+	gs.crops["wheat"] = 99
+	_assert(TeachingFocus.economy_beat(world, gs).is_empty(),
+		"and the bin is never highlighted again, however full the basket gets")
+
+	# --- refill: the can runs dry --------------------------------------------
+	gs.watering_can_charges = 0
+	_assert(_only(TeachingFocus.economy_beat(world, gs)) == well,
+		"an empty can points at the well")
+	world.apply_action({ "verb": "refill", "actor": "player" }, gs)
+	_assert(gs.cans_refilled == 1, "refilling accrues its counter")
+	gs.watering_can_charges = 0
+	_assert(TeachingFocus.economy_beat(world, gs).is_empty(),
+		"and the well is never highlighted again")
+
+	# --- buy: the pouch empties ----------------------------------------------
+	gs.seeds = { "wheat": 0, "tomato": 0 }
+	gs.gold = 0
+	_assert(TeachingFocus.economy_beat(world, gs).is_empty(),
+		"an empty pouch with no money points at NOTHING — never send her to a shop she cannot buy from")
+	gs.gold = 5
+	_assert(_only(TeachingFocus.economy_beat(world, gs)) == box,
+		"an empty pouch and the price of a seed points at the seed box")
+	world.apply_action({ "verb": "buy_seed", "seed_type": "wheat", "actor": "player" }, gs)
+	_assert(gs.seeds_bought == 1, "buying accrues its counter")
+	gs.seeds = { "wheat": 0, "tomato": 0 }
+	gs.gold = 500
+	_assert(TeachingFocus.economy_beat(world, gs).is_empty(),
+		"and the seed box is never highlighted again")
+
+	# --- one glowing thing at a time -----------------------------------------
+	# An errand must never interrupt a lesson, so these sit below the vignette
+	# and below a newly opened parcel's introduction in the arbitration.
+	var gs2 = load("res://systems/game_state.gd").new()
+	var w2 := SimWorld.new()
+	SimRng.reseed(1212)
+	w2.generate()
+	ColdOpen.run(w2, w2, gs2)
+	gs2.crops["wheat"] = TeachingFocus.SELL_BEAT_CROPS
+	_assert(not TeachingFocus.economy_beat(w2, gs2).is_empty(),
+		"the sell beat would fire on its own")
+	var during_vignette: Array[Vector2i] = TeachingFocus.targets(w2, gs2, Vector2i(15, 4))
+	_assert(during_vignette.size() == 1 and not during_vignette.has(bin),
+		"but on play-day 1 the vignette owns the highlight and the errand waits")
+
+	# --- the counters are sim truth ------------------------------------------
+	var round_trip = JSON.parse_string(JSON.stringify(SaveGame.capture(world, gs)))
+	var gs3 = load("res://systems/game_state.gd").new()
+	var w3 := SimWorld.new()
+	SaveGame.restore(round_trip, w3, gs3)
+	_assert(gs3.seeds_bought == gs.seeds_bought and gs3.cans_refilled == gs.cans_refilled,
+		"the counters round-trip through a save")
+	var legacy := { "version": SaveGame.VERSION,
+		"world": { "tiles": world.tiles.duplicate(true), "objects": world.objects.duplicate(true) },
+		"state": {} }
+	var gs4 = load("res://systems/game_state.gd").new()
+	var w4 := SimWorld.new()
+	SaveGame.restore(legacy, w4, gs4)
+	_assert(gs4.seeds_bought == 0 and gs4.cans_refilled == 0,
+		"and a pre-T-11 save reads as 'never done it', so an old farm gets the beat once")
+
+	gs.free()
+	gs2.free()
+	gs3.free()
+	gs4.free()
+
+
+# One target, or (-1,-1). Keeps the economy assertions readable without fighting
+# GDScript's typed-array literals.
+func _only(targets: Array[Vector2i]) -> Vector2i:
+	return targets[0] if targets.size() == 1 else Vector2i(-1, -1)

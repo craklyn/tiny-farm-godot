@@ -21,6 +21,8 @@ var shop_items: Array[Dictionary] = []
 var dim_overlay: ColorRect
 var menu_panel: Panel
 var title_label: Label
+var shop_title_icon: TextureRect
+var gold_icon: TextureRect
 var options_container: VBoxContainer
 var gold_display: Label
 
@@ -74,6 +76,29 @@ func _ready() -> void:
 	gold_display.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	gold_display.add_theme_color_override("font_color", Color(1, 0.85, 0.2))
 	gold_display.visible = false
+
+	# T-12 (Q-35): the shop's own header, as a picture. The seed packet says
+	# "seeds are sold here" to someone who cannot read "SEED SHOP".
+	shop_title_icon = TextureRect.new()
+	shop_title_icon.name = "shop_title_icon"
+	shop_title_icon.position = Vector2(10, 8)
+	shop_title_icon.size = Vector2(26, 26)
+	shop_title_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	shop_title_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	shop_title_icon.texture = crop_icon(0)
+	shop_title_icon.visible = false
+	menu_panel.add_child(shop_title_icon)
+
+	# And the coin beside the gold count, so the number has a unit she can read.
+	gold_icon = TextureRect.new()
+	gold_icon.name = "gold_icon"
+	gold_icon.position = Vector2(176, 10)
+	gold_icon.size = Vector2(22, 22)
+	gold_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	gold_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	gold_icon.texture = coin_icon()
+	gold_icon.visible = false
+	menu_panel.add_child(gold_icon)
 	menu_panel.add_child(gold_display)
 
 	# Options container
@@ -128,26 +153,38 @@ func _rebuild_options() -> void:
 		"pause":
 			title_label.text = "PAUSED"
 			gold_display.visible = false
+			shop_title_icon.visible = false
+			gold_icon.visible = false
 			_add_option("Resume", true)
 			_add_option("Return to Title", true)
 			menu_panel.size = Vector2(300, _fit_panel_height())
 
 		"shop":
-			title_label.text = "SEED SHOP"
-			title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-			
+			# T-12 (Q-35): **the shop is the one screen in phase 1 that required
+			# reading**, and guiding a pre-reader into a screen she cannot read is
+			# worse than not guiding her at all. So: a seed-packet header instead
+			# of "SEED SHOP", a coin beside the gold count instead of "g", crop
+			# icons instead of names, and an ✕ instead of "Close". Numerals stay —
+			# S-7 forbids required *reading*, not digits.
+			title_label.text = ""
+			shop_title_icon.visible = true
+			gold_icon.visible = true
 			gold_display.visible = true
-			gold_display.text = "%dg" % GameState.gold
+			gold_display.text = "%d" % GameState.gold
 			gold_display.add_theme_color_override("font_color", Color(1, 0.85, 0.2))
 			_build_shop_items()
 			for item in shop_items:
 				_add_shop_card(item)
-			_add_option("Close", true)
+			# ✕ — a symbol, not a word. The row is already full-width and 52px
+			# tall, so the *target* was never the problem; the glyph was.
+			_add_option("\u2715", true, 28)
 			menu_panel.size = Vector2(300, 60 + shop_items.size() * 56 + 40)
 
 		"inventory":
 			title_label.text = "INVENTORY"
 			gold_display.visible = false
+			shop_title_icon.visible = false
+			gold_icon.visible = false
 
 			# Seeds section
 			var seeds_header := Label.new()
@@ -200,7 +237,42 @@ func _fit_panel_height() -> float:
 	return OPTIONS_TOP + n * OPTION_H + (n - 1) * OPTION_SEP + PANEL_PAD
 
 
-func _add_option(text: String, enabled: bool) -> void:
+# crops.png row 2 holds the shop iconography: wheat packet, tomato packet,
+# scarecrow, and (added 2026-08-30 for T-12) a coin.
+const ICON_SHEET := preload("res://assets/sprites/generated/crops.png")
+const COIN_COL := 3
+
+
+static func crop_icon(sprite_row: int) -> AtlasTexture:
+	var atlas := AtlasTexture.new()
+	atlas.atlas = ICON_SHEET
+	atlas.region = Rect2(sprite_row * 16, 32, 16, 16)
+	return atlas
+
+
+static func coin_icon() -> AtlasTexture:
+	var atlas := AtlasTexture.new()
+	atlas.atlas = ICON_SHEET
+	atlas.region = Rect2(COIN_COL * 16, 32, 16, 16)
+	return atlas
+
+
+func _add_icon_number(row: HBoxContainer, tex: Texture2D, text: String, size: float,
+		colour: Color) -> void:
+	var pic := TextureRect.new()
+	pic.custom_minimum_size = Vector2(size, size)
+	pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	pic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	pic.texture = tex
+	row.add_child(pic)
+	var lbl := Label.new()
+	lbl.text = text
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl.add_theme_color_override("font_color", colour)
+	row.add_child(lbl)
+
+
+func _add_option(text: String, enabled: bool, font_size: int = 0) -> void:
 	var container = PanelContainer.new()
 	container.custom_minimum_size = Vector2(0, OPTION_H)
 	var style = StyleBoxFlat.new()
@@ -217,6 +289,8 @@ func _add_option(text: String, enabled: bool) -> void:
 	
 	var lbl = Label.new()
 	lbl.text = text
+	if font_size > 0:
+		lbl.add_theme_font_size_override("font_size", font_size)
 	if enabled:
 		lbl.add_theme_color_override("font_color", Color(0.8, 0.8, 0.75))
 	else:
@@ -253,47 +327,38 @@ func _add_shop_card(item: Dictionary) -> void:
 	var hbox = HBoxContainer.new()
 	container.add_child(hbox)
 	
+	# The crop's own packet, always drawn. A locked item is the **same picture,
+	# darkened** — never an empty box and never "???", which tells a pre-reader
+	# nothing except that something is missing. Same vocabulary as the placed
+	# tools she cannot pick up yet (Q-46a), so "you can see it, not yet yours"
+	# looks the same everywhere in the game.
 	var icon = TextureRect.new()
-	icon.custom_minimum_size = Vector2(24, 24)
+	icon.custom_minimum_size = Vector2(34, 34)
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	if item.unlocked:
-		var atlas = AtlasTexture.new()
-		atlas.atlas = preload("res://assets/sprites/generated/crops.png")
-		# crops.png row 2: wheat packet, tomato packet, scarecrow
-		atlas.region = Rect2(item.sprite_row * 16, 32, 16, 16)
-		icon.texture = atlas
+	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	icon.texture = crop_icon(int(item.sprite_row))
+	if not item.unlocked:
+		icon.modulate = Color(0.12, 0.11, 0.18, 0.85)
 	hbox.add_child(icon)
-	
-	var vbox = VBoxContainer.new()
-	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	hbox.add_child(vbox)
-	
-	var name_lbl = Label.new()
+
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hbox.add_child(spacer)
+
 	if item.unlocked:
-		name_lbl.text = item.item_name
-		name_lbl.add_theme_color_override("font_color", Color(0.9, 0.9, 0.85))
-	else:
-		name_lbl.text = "??? (Locked)"
-		name_lbl.add_theme_color_override("font_color", Color(0.4, 0.4, 0.4))
-	vbox.add_child(name_lbl)
-	
-	var hbox_bottom = HBoxContainer.new()
-	vbox.add_child(hbox_bottom)
-	
-	if item.unlocked:
-		var price_lbl = Label.new()
-		price_lbl.text = str(item.price) + "g"
-		if item.affordable:
-			price_lbl.add_theme_color_override("font_color", Color(1, 0.85, 0.2))
-		else:
-			price_lbl.add_theme_color_override("font_color", Color(0.9, 0.3, 0.3))
-		price_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		hbox_bottom.add_child(price_lbl)
-		
-		var owned_lbl = Label.new()
-		owned_lbl.text = "Owned: " + str(item.owned)
-		owned_lbl.add_theme_color_override("font_color", Color(0.6, 0.7, 0.6))
-		hbox_bottom.add_child(owned_lbl)
+		# What it costs, and what she already has: coin + numeral, packet + numeral.
+		var price_row := HBoxContainer.new()
+		price_row.alignment = BoxContainer.ALIGNMENT_END
+		hbox.add_child(price_row)
+		_add_icon_number(price_row, coin_icon(), str(item.price), 20.0,
+			Color(1, 0.85, 0.2) if item.affordable else Color(0.9, 0.3, 0.3))
+
+		var owned_row := HBoxContainer.new()
+		owned_row.alignment = BoxContainer.ALIGNMENT_END
+		owned_row.custom_minimum_size = Vector2(58, 0)
+		hbox.add_child(owned_row)
+		_add_icon_number(owned_row, crop_icon(int(item.sprite_row)),
+			"\u00d7%d" % int(item.owned), 18.0, Color(0.72, 0.82, 0.7))
 	
 	# Transparent button overlay for clicks
 	var btn = Button.new()

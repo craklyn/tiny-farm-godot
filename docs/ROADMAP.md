@@ -274,14 +274,23 @@ beats cannot collide. Two glowing tiles is not a hint, it is a choice.
       ladder", and **Q-36 rejected the ladder outright** on 2026-08-29, dropping T-6 and
       T-7. There is one highlight system and this rides on it.)*
 
-**T-11 — Teach sell, buy, and refill at first need** · Q-35 · ~1–2 days
+**T-11 — Teach sell, buy, and refill at first need** · Q-35 ✅ · done 2026-08-30 (M1.5 WI-5)
 *So that the economy stops being the one part of phase 1 nobody is taught, and so the
 second causal chain — one crop buys three seeds — lands as a payoff rather than a menu.*
-- [ ] first sale highlighted when the basket reaches three crops
-- [ ] first purchase highlighted when the seed pouch empties (the exact state behind the
-      2026-08-27 silent-refusal bug)
-- [ ] first refill highlighted when the can empties
-- [ ] each fires once, at the moment of need, one object at a time
+- [x] first sale highlighted when the basket reaches three crops
+- [x] first purchase highlighted when the seed pouch empties (the exact state behind the
+      2026-08-27 silent-refusal bug) — **and only if she can afford the cheapest seed**,
+      because pointing a pre-reader at a shop that will refuse her is worse than silence
+- [x] first refill highlighted when the can empties
+- [x] each fires once **by construction** rather than by a flag: the condition includes
+      "you have never done this" (`total_shipped`, `seeds_bought`, `cans_refilled`,
+      accrued in the sim gateway so replays earn them), so doing it once retires the beat
+- [x] one object at a time — the economy beats are **last** in `TeachingFocus`'s
+      arbitration, below the vignette and below a newly opened parcel's introduction. An
+      errand must never interrupt a lesson
+*Filed alongside this: `docs/M1_5_CHANGE_REQUEST.md` proposes parking T-11 as
+opening-minutes work under Q-47, while keeping T-12. Built to the plan's order pending
+that review.*
 
 **T-13 — The cold open: a fence, a neighbour, and an open gate** · Q-37 ✅ · sim done
 2026-08-29 (M1.5 WI-3); art and her sprite follow in the next commit
@@ -656,11 +665,18 @@ the playback moved to the intent layer.
 **Built on Q-38's recommendation while the ruling itself is still open** — see the
 DESIGNER_QUEUE note; nothing here is expensive to revert.*
 
-**T-12 — Wordless shop screen** · Q-35 · ~1 day
+**T-12 — Wordless shop screen** · Q-35 ✅ · done 2026-08-30 (M1.5 WI-5)
 *So that phase 1 keeps S-7's no-reading promise in the one screen that currently breaks it.*
-- [ ] audit `seed_box` shop for required reading
-- [ ] crop icons and coin counts carry the meaning; words are decoration if present
-- [ ] verify at tablet size, where it has never been checked
+- [x] audit done: it printed "SEED SHOP", "5g", "Owned: N", "??? (Locked)" and "Close"
+- [x] crop icons and coin counts carry the meaning, and **no words remain at all** —
+      a seed-packet header, a coin beside the gold numeral, a coin + numeral for price,
+      a packet + ×numeral for what she owns, and an ✕ to close. Numerals stay: S-7
+      forbids required *reading*, not digits
+- [x] a locked item is **the same picture, darkened** — never an empty box and never
+      "???", matching the vocabulary used for a tool she cannot yet pick up (Q-46a)
+- [x] `_scenario_j_wordless_shop` walks every Label in the shop and fails on any ASCII
+      letter, so this cannot quietly regress
+- [ ] verify at tablet size, where it has never been checked *(device step)*
 
 ---
 

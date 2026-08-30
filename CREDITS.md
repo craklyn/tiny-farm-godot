@@ -34,6 +34,8 @@ before the first public build ships.*
     are stretched to fill their 16px cell edge to edge, so a run of fence reads as a
     line she cannot cross rather than a row of dashes.
   - `objects.png` widened by one cell for the **acorn** (T-15).
+  - `crops.png` row 2 gains a **coin** at column 3 (2026-08-30, one generation,
+    $0.027), so the wordless shop can price things without printing "5g" (T-12).
   - `neighbour.png` — **not generated**. It is `characters.png` with a local
     palette remap (blond → teal hair, rust → green outfit, pink → rose accent), so
     the departing child reuses the player's own walk cycle exactly. At 16px a

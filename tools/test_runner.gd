@@ -65,6 +65,7 @@ func _run_scenarios() -> void:
 	await _scenario_l_menu_holds_world()
 	await _scenario_m_targets_on_screen()
 	await _scenario_n_pick_up_the_axe()
+	await _scenario_j_wordless_shop()
 
 func _wait_until(pred: Callable, max_frames: int) -> bool:
 	for i in max_frames:
@@ -738,3 +739,82 @@ func _scenario_n_pick_up_the_axe() -> void:
 		verbs.append(String(e.get("verb", "")))
 	_assert(verbs.has("take_tool"), "take_tool is recorded")
 	_assert(verbs.has("open_gate"), "and so is the gate opening")
+
+
+# Any ASCII letter. The rule is S-7's: digits, whitespace and symbols are fine —
+# what is forbidden is a screen that cannot be used without *reading*.
+func _has_letters(text: String) -> bool:
+	for i in text.length():
+		var c := text.unicode_at(i)
+		if (c >= 65 and c <= 90) or (c >= 97 and c <= 122):
+			return true
+	return false
+
+
+func _collect_labels(node: Node, out: Array) -> void:
+	if node is Label:
+		out.append(node)
+	for child in node.get_children():
+		_collect_labels(child, out)
+
+
+func _scenario_j_wordless_shop() -> void:
+	# T-12 (Q-35). The shop was the one screen in phase 1 that **required
+	# reading** — "SEED SHOP", "5g", "Owned: N", "??? (Locked)", "Close" — and
+	# Q-35's ruling is that guiding a pre-reader into a screen she cannot read is
+	# worse than not guiding her at all. This is the mechanical check that it
+	# stays wordless, rerunnable by anyone.
+	print("\n--- Scenario J: the shop has no words in it ---")
+
+	var menus = main_scene.menus
+	GameState.gold = 100
+	GameState.harvest_counts = { "wheat": 0, "tomato": 0 }  # tomato stays locked
+	menus.open_menu("shop")
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	var labels: Array = []
+	_collect_labels(menus.options_container, labels)
+	_assert(labels.size() > 0, "the shop draws some text at all (numbers)")
+	var worded: Array = []
+	for lbl in labels:
+		if _has_letters(String(lbl.text)):
+			worded.append(String(lbl.text))
+	_assert(worded.is_empty(),
+		"no label in the shop contains a letter%s" % ("" if worded.is_empty() else " — found %s" % str(worded)))
+	_assert(not _has_letters(String(menus.title_label.text)),
+		"and the title is a picture, not the words SEED SHOP")
+	_assert(not _has_letters(String(menus.gold_display.text)),
+		"and the gold count is a numeral beside a coin, not '100g'")
+	_assert(menus.shop_title_icon.visible and menus.gold_icon.visible,
+		"the seed-packet header and the coin are actually shown")
+
+	# A locked item is the same picture, darkened — never an empty box, never
+	# "???", which tells a pre-reader nothing except that something is missing.
+	var icons: Array = []
+	for card in menus.options_container.get_children():
+		for tr in card.find_children("*", "TextureRect", true, false):
+			icons.append(tr)
+	_assert(icons.size() >= 2, "every card carries an icon, locked ones included")
+	var darkened := 0
+	for tr in icons:
+		if tr.modulate.v < 0.5:
+			darkened += 1
+	_assert(darkened >= 1, "the locked item is drawn darkened rather than blank")
+
+	# Buying still goes through the sim gateway, unchanged (P-9).
+	var before: int = GameState.seeds.get("wheat", 0)
+	var bought_gold: int = GameState.gold
+	menus.selected_option = 0
+	menus._select_current_option()
+	await get_tree().process_frame
+	_assert(GameState.seeds.get("wheat", 0) == before + 1, "tapping a card still buys the seed")
+	_assert(GameState.gold < bought_gold, "and still costs gold")
+	_assert(GameState.seeds_bought >= 1, "and accrues T-11's counter")
+
+	# The ✕ closes it, and it is the last option rather than an index guess.
+	menus.selected_option = menus.shop_items.size()
+	menus._select_current_option()
+	await get_tree().process_frame
+	_assert(not menus.is_open(), "the ✕ closes the shop")
+	_assert(not get_tree().paused, "and the world starts again")

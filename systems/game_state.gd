@@ -55,6 +55,13 @@ var clear_counts: Dictionary
 var actions_today: int
 var crow_schedule: Array[int]  # action counts at which a crow arrives today
 var total_shipped: int  # Q-12 proof counter (crops sold, any route)
+
+# T-11 (Q-35): "has she ever done this?" for the three economy verbs, so each
+# teaching beat can fire exactly once by construction rather than by a flag.
+# `total_shipped` already answers the selling half. Accrued where the actions
+# resolve, so replays earn them identically; saved additively, default 0.
+var seeds_bought: int
+var cans_refilled: int
 var phase1_complete: bool  # Q-12/P-4: set silently by the sim at sleep when the proof is met
 
 # Milestones tracking
@@ -103,6 +110,8 @@ func reset() -> void:
 	actions_today = 0
 	crow_schedule = []
 	total_shipped = 0
+	seeds_bought = 0
+	cans_refilled = 0
 	phase1_complete = false
 	_milestones_earned = {}
 	game_paused = false
@@ -195,6 +204,7 @@ func buy_seed(seed_type: String) -> bool:
 		return false
 	gold -= def.seed_price
 	seeds[seed_type] = seeds.get(seed_type, 0) + 1
+	seeds_bought += 1
 	# Hold what you just bought, if you were holding nothing. Without this the
 	# selection can point at an item with no stock while the pouch has seeds in
 	# it, so a tilled tile reports "no seeds" to a player who just bought some —
@@ -259,6 +269,7 @@ func start_new_day() -> void:
 func refill_watering_can() -> bool:
 	if watering_can_charges < max_watering_can_charges:
 		watering_can_charges = max_watering_can_charges
+		cans_refilled += 1
 		return true
 	return false
 

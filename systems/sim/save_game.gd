@@ -43,6 +43,8 @@ static func capture(world: SimWorld, gs) -> Dictionary:
 			"actions_today": gs.actions_today,
 			"crow_schedule": gs.crow_schedule.duplicate(),
 			"total_shipped": gs.total_shipped,
+			"seeds_bought": gs.seeds_bought,
+			"cans_refilled": gs.cans_refilled,
 			"phase1_complete": gs.phase1_complete,
 			"milestones": gs._milestones_earned.duplicate(),
 		},
@@ -126,6 +128,10 @@ static func restore(data: Dictionary, world: SimWorld, gs) -> bool:
 		sched.append(int(v))
 	gs.crow_schedule = sched
 	gs.total_shipped = int(s.get("total_shipped", 0))
+	# T-11, additive: a save from before these existed reads as "never done it",
+	# so an old farm gets the teaching beat once rather than never.
+	gs.seeds_bought = int(s.get("seeds_bought", 0))
+	gs.cans_refilled = int(s.get("cans_refilled", 0))
 	gs.phase1_complete = bool(s.get("phase1_complete", false))
 	gs._milestones_earned = s.get("milestones", {}).duplicate()
 

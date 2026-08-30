@@ -643,9 +643,9 @@ thing we are currently hoping the player guesses.
 | 11 | clear weeds | ring 1, when the player wants more space | the hedge opens; weeds are the only obstacle inside | designed |
 | 12 | the axe / logs | ring 2 | new ring, one new obstacle type | designed |
 | 13 | the pickaxe / rocks | ring 3 | new ring, one new obstacle type | designed |
-| 14 | sell at the bin | when the basket holds a crop she does not need | first half of the second causal chain | designed (§7a) |
-| 15 | buy seeds at the box | when the pouch runs low | second half; the payoff is *three* seeds for one crop | designed (§7a) |
-| 16 | **refilling the can at the well** | — | **unscheduled; becomes urgent the moment the can is finite** | ⚠ open |
+| 14 | sell at the bin | when the basket holds three crops | first half of the second causal chain | ✅ built 2026-08-30 (T-11) |
+| 15 | buy seeds at the box | when the pouch empties *and she can afford a seed* | second half; the payoff is *three* seeds for one crop | ✅ built 2026-08-30 (T-11) |
+| 16 | refilling the can at the well | when the can empties | the gap this table exposed; same shape as the other two | ✅ built 2026-08-30 (T-11) |
 | 17 | scaring a crow by walking at it | day 3+ | discovered, never taught — the crow flees whether or not she meant it | intentional |
 
 Items 14–16 are the real gap this inventory exposes, and they share a shape: all three
@@ -697,6 +697,20 @@ Let the need arrive rather than placing it.
 `ui/menus.gd`, which prints prices as text ("5g"). That screen is the one place phase 1
 currently breaks S-7's no-reading rule, and this chain is what will send a four-year-old
 into it. T-12 owns the fix; it becomes load-bearing the moment this beat ships.
+
+**Fixed 2026-08-30 (T-12).** The shop has no words in it: a seed-packet header instead of
+"SEED SHOP", a coin beside the gold numeral instead of "100g", a coin + numeral for price,
+a packet + ×numeral for what she owns, and an ✕ to close. A locked item is the same picture
+darkened — never an empty box and never "??? (Locked)", which tells a pre-reader nothing
+except that something is missing; it is the same "you can see it, not yet yours" vocabulary
+a placed tool uses (Q-46a). Numerals stay, because S-7 forbids required *reading*, not
+digits. `_scenario_j_wordless_shop` walks every Label in the screen and fails on any ASCII
+letter, so the promise is mechanical rather than remembered.
+
+**Both halves of the trigger design carry one rule worth restating**, because it is the
+kind of thing that looks like a detail and is not: the seed-box beat also requires that she
+can *afford* the cheapest seed. Pointing a pre-reader at a screen that is going to refuse
+her is worse than pointing at nothing.
 
 Recommendation, offered for **Q-35**: teach them as a fourth chapter on the day the
 player first *needs* one — first sale when the basket has three crops, first purchase
