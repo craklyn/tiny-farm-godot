@@ -720,8 +720,18 @@ For each beat, `systems/session_trace.gd` gives us:
 - **tiles tapped three or more times with no effect** — already flagged by
   `SessionTrace.summarize()` as stuck tiles.
 
-The pass condition for this chapter is narrow and should stay narrow: **she reaches beat
-4 of day 1 without an adult speaking.** Everything else is diagnostics.
+~~The pass condition for this chapter is narrow and should stay narrow: **she reaches beat
+4 of day 1 without an adult speaking.** Everything else is diagnostics.~~
+
+**Superseded 2026-08-29 (Q-47).** The pass condition is now an *unprompted adult* fresh
+run whose trace shows no regression against the session that closed M1, plus evidence the
+new beats land — the table is in `ROADMAP.md`'s M1.5 block. The 4-year-old is dropped as
+an early playtester, not because the chapter stopped being about her, but because the
+opening minutes are not where effort belongs while the five-phase arc is unbuilt.
+Everything this chapter designs still stands; what is deprioritised is *further polishing
+of it*. The beat numbering in the struck sentence had also gone stale: the cold open
+spends two days, so day 1 means play-day 1, and beat 0 (crossing the gate) makes the cot
+the fifth beat.
 
 **The third state now speaks, and is measured (T-18/T-19, Q-42, shipped 2026-08-29).**
 The game has three answers and until now only two of them had a voice: *did it* (a

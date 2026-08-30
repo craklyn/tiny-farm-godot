@@ -397,7 +397,33 @@ first, since a different answer there changes what the other four are optimising
   no flag anywhere. The highlight sits below the onboarding vignette in the arbitration,
   so it cannot interrupt day 1 or 2. **The thresholds (5 harvests / 3 logs) were ruled
   fine the same day**, which closes Q-46.
-- **Q-47 (Ruling)** **What evidence closes M1.5's exit gate?** The M1.5 gate in
+- **Q-47** ~~What evidence closes M1.5's exit gate?~~ — ✅ **ruled 2026-08-29, and the
+  ruling is broader than the question.** In the designer's words: *"let's drop my daughter
+  as an early playtester. Because we're making an ambitious game, we can't right now polish
+  up the first 30 seconds of play. We'll ensure the start of game is fun for her, but as a
+  lower priority set of stories."*
+
+  This goes further than Q-43 and on different grounds. Q-43 removed her from the critical
+  path because she was *unavailable*; Q-47 removes her from the early testing loop because
+  the opening minutes are *not the priority*. The game's ambition is the five-phase
+  delegation arc, and the part of it easiest to keep fiddling with is the first thirty
+  seconds. **Consequence for planning: do not propose further onboarding polish unprompted,
+  and never write a gate that needs her — not even as opportunistic validation, which was
+  Q-43's formulation and which this supersedes.**
+
+  **S-7 is untouched**, and that distinction is the load-bearing one: phase 1 is still
+  designed for a pre-reader (no required reading in the core loop, chunky targets, no
+  punishing fail states), and "the start of the game will be fun for her" is still a goal.
+  What changed is the *priority of the work* and the *source of the evidence*, not the
+  constraint. Recorded under S-7 in `DECISION_LOG.md`.
+
+  **The gate as rewritten** (`ROADMAP.md` M1.5): an unprompted adult fresh run on the
+  target device, measured from the session trace, with the bar set as **no regression
+  against M1's measured session** plus evidence that the new beats land. Regression bars
+  rather than aspirational ones, deliberately — "do not get worse" needs no taste to
+  justify, and any of them can be raised later. Original entry follows.
+
+  **What evidence closes M1.5's exit gate?** The M1.5 gate in
   `ROADMAP.md` currently reads "a first-time pre-reader reaches day 1 beat 4 … on two
   consecutive fresh runs". That re-creates the exact planning fault **Q-43 fixed for M1**
   on 2026-08-28: it makes a milestone depend on a four-year-old being available and
@@ -407,9 +433,10 @@ first, since a different answer there changes what the other four are optimising
   line. **Recommendation: restate it the same way Q-43 did** — the gate is an unprompted
   adult fresh run, measured from the session trace (time-to-first-correct-tap per beat,
   zero adult words spoken, the cot tapped), with a pre-reader run recorded opportunistically
-  and never blocking. **Deliberately not changed in code or in the ROADMAP** — the gate
-  text is untouched pending this ruling, because rewriting a milestone's exit condition is
-  a designer's call and not an execution session's.
+  and never blocking. ~~**Deliberately not changed in code or in the ROADMAP**~~ —
+  *rewritten 2026-08-29 on the ruling above; the recommendation's "pre-reader run recorded
+  opportunistically" was itself superseded, since Q-47 drops her from the loop entirely
+  rather than making her non-blocking.*
 
 - **Q-38 (Ruling — still open, but built)** **Daylight instead of an energy bar.**
   **Status note 2026-08-29:** `docs/M1_5_PLAN.md` scheduled this as work item WI-1 and

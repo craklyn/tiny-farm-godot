@@ -149,6 +149,18 @@ gate was written as "the 4-year-old plays unaided", which made a milestone hosta
 four-year-old's availability — and she is, in the designer's words, "consistently not
 available when I need her to review." That is a planning fault rather than a design one.
 
+**Extended 2026-08-29 (Q-47) — she is dropped as an early playtester entirely.** The
+designer: *"let's drop my daughter as an early playtester. Because we're making an
+ambitious game, we can't right now polish up the first 30 seconds of play. We'll ensure
+the start of game is fun for her, but as a lower priority set of stories."* Different
+grounds from the 2026-08-28 revision: that one removed her from the critical path because
+she was unavailable, this one removes her from the loop because the opening minutes are
+not the priority while the five-phase arc is unbuilt. **Planning consequence: no gate,
+criterion or plan step may require her — not even as the "opportunistic validation" the
+2026-08-28 revision allowed — and further onboarding polish is a low-priority backlog
+rather than a thing to propose unprompted.** The constraint in this entry is *not*
+weakened by either revision.
+
 This entry still binds phase 1 exactly as written: no reading in the core loop, chunky
 targets, no punishing fail states, designed for a pre-reader whoever is holding the
 tablet. What changed is only how the evidence is gathered. Gates now use **measured

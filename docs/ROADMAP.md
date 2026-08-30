@@ -67,9 +67,37 @@ rest — rule it first.** Sizes are rough and assume part-time solo work.*
 dependency order, per-item acceptance criteria and verifier procedures, and the
 stage-3 verification checklist. Written after the ten 2026-08-29 rulings landed.
 
-**Exit gate:** a first-time pre-reader reaches day 1 beat 4 (tapping the cot) with no
-adult speaking, on two consecutive fresh runs — measured from the session trace, not
-from an adult's impression.
+**Exit gate — REVISED 2026-08-29 by the designer (Q-47).**
+
+*Originally: a first-time pre-reader reaches day 1 beat 4 with no adult speaking, on two
+consecutive fresh runs.* That re-created the planning fault Q-43 had already fixed for M1,
+and made it worse by needing her **twice, consecutively**. It was also stale on its own
+terms: the cold open spends two days, so "day 1" now means play-day 1, and there is a
+beat 0 (crossing the opened gate), so the cot is the fifth beat rather than the fourth.
+
+**The designer's ruling goes further than restating the mechanism** — the 4-year-old is
+dropped as an early playtester altogether, because the opening minutes are not where the
+effort belongs while the five-phase arc is unbuilt. S-7's constraint still binds (see
+`DECISION_LOG.md`); the *priority* of opening polish is what changed.
+
+**The gate:** one unprompted adult fresh run on the target device, measured from the
+session trace. The bar is **no regression against M1's measured session** on the shared
+metrics, plus evidence that M1.5's new beats actually land:
+
+| Criterion | Bar | Source |
+|---|---|---|
+| taps achieving nothing | ≤ 12% (M1 measured 12%, down from 17%) | `summarize()` — note `satisfied` taps are excluded by T-18 |
+| longest stall | ≤ 20s (M1 measured 14.4s) | `teaching_report().longest_stall_ms` |
+| the cot is understood | at least one sleep, unprompted | `days_played() >= 1` |
+| the chain is completed | first harvest, plant and water all recorded | `teaching_report().first_use` |
+| instrument integrity | zero mislabelled taps | `mislabelled_unreachable()` |
+| no adult words | honesty condition on how the session is run | **not machine-measurable — say so rather than implying otherwise** |
+
+*Regression bars rather than aspirational ones, deliberately: "do not get worse than the
+session that closed M1" needs no taste to justify, and any of these can be raised later.
+The one criterion deliberately left out is "crossed the gate unaided" — it is derivable
+from the trace's recorded player positions but has no analysis function yet, and adding
+one is opening-polish work, which is exactly what this ruling deprioritises.*
 
 ### Ordering
 Twenty-four stories; five are done. Grouped by the ruling that unblocks them:
@@ -633,6 +661,35 @@ DESIGNER_QUEUE note; nothing here is expensive to revert.*
 - [ ] audit `seed_box` shop for required reading
 - [ ] crop icons and coin counts carry the meaning; words are decoration if present
 - [ ] verify at tablet size, where it has never been checked
+
+---
+
+## Deferred — start-of-game polish (parked 2026-08-29, Q-47)
+
+*Not dropped: **deprioritised**. The designer's call, and the reasoning is worth keeping
+in front of whoever picks this up — the game's ambition is the five-phase delegation arc,
+and the opening thirty seconds is the part that is easiest to keep fiddling with instead.
+"We'll ensure the start of game is fun for her, but as a lower priority set of stories."*
+
+**Nothing here blocks anything.** Pick these up when the arc is further along, or when a
+real session says one of them is costing more than it looks.
+
+- [ ] **The child's own run.** Whenever she is available and willing — never as a gate,
+      never as a plan step, and not as "opportunistic validation" attached to a milestone
+      either (Q-47 supersedes Q-43's formulation on that point).
+- [ ] **"Crossed the gate unaided" as a measured criterion.** Derivable today from the
+      player positions the trace already records on every tap, but it needs one analysis
+      function in `systems/session_trace.gd`. Left out of the M1.5 gate for that reason.
+- [ ] **Closed-gate silhouette.** At 16px a shut gate reads much like a plain fence tile.
+      The *open* gate is clearly different, which is the beat that matters, so this is
+      polish rather than a fault.
+- [ ] **Cold-open pacing on device.** `COLD_OPEN_STEP` is 1.1s and `COLD_OPEN_DAYS` is 2,
+      both `[Playtest]`, neither yet felt on a tablet.
+- [ ] **Watered soil legible without tapping** (the open half of T-18). The 2026-08-27
+      pass improved it and the 2026-08-28 session said not enough; Q-38's daylight now
+      changes how wet soil reads at every hour, so it wants a fresh look.
+- [ ] **T-19's re-measurement** — `tile_history()` should show *worked-then-acknowledged*
+      where it used to show *worked-then-dead*. Nothing left to build; it needs a session.
 
 ---
 
