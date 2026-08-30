@@ -62,6 +62,8 @@ func _run_scenarios() -> void:
 	await _scenario_g()
 	await _scenario_h_daylight()
 	await _scenario_i_third_state()
+	await _scenario_l_menu_holds_world()
+	await _scenario_m_targets_on_screen()
 
 func _wait_until(pred: Callable, max_frames: int) -> bool:
 	for i in max_frames:
@@ -502,3 +504,160 @@ func _no_refusals_since(since: int) -> bool:
 		if String(e.get("out", "")) == "refused":
 			return false
 	return true
+
+
+func _scenario_l_menu_holds_world() -> void:
+	# Reported from play 2026-08-29: "the chicken advances by a big jump when I
+	# bought in the shop."
+	#
+	# Not corrupted state — the world kept running behind the menu. `open_menu`
+	# paused the tree only for the *pause* menu, so with the shop up the player was
+	# frozen (main._process returns early on menus.is_open()) while every entity
+	# carried on living. The shop panel covers them, so the chicken's ordinary walk
+	# is invisible until the screen closes, at which point she has teleported.
+	#
+	# The rule this asserts: **while any menu is open the world holds.** A menu is
+	# not a place the game continues without you.
+	print("\n--- Scenario L: an open menu holds the world ---")
+
+	var menus = main_scene.menus
+	var chicken = null
+	var ChickenScript = load("res://entities/chicken.gd")
+	for child in main_scene.entities.get_children():
+		if child.get_script() == ChickenScript:
+			chicken = child
+	_assert(chicken != null, "the farm has a chicken to watch")
+	if chicken == null:
+		return
+
+	# Put her on a known walk so "did she move" is a real question.
+	farm.set_tile_state(5, 5, "cleared")
+	farm.set_tile_state(6, 5, "cleared")
+	farm.set_tile_state(7, 5, "cleared")
+	chicken.tx = 5
+	chicken.ty = 5
+	chicken.position = Vector2(5 * 16, 5 * 16)
+	chicken.path.clear()
+	chicken.path.append(Vector2i(6, 5))
+	chicken.path.append(Vector2i(7, 5))
+	chicken.path_index = 0
+	chicken.state = "moving"
+	await get_tree().process_frame
+
+	var moving_start: Vector2 = chicken.position
+	for i in 20: await get_tree().process_frame
+	_assert(chicken.position != moving_start, "she walks while the game is running")
+
+	menus.open_menu("shop")
+	await get_tree().process_frame
+	_assert(menus.is_open(), "the shop is open")
+	_assert(get_tree().paused, "opening the shop pauses the world, as the pause menu does")
+
+	var frozen_at: Vector2 = chicken.position
+	for i in 30: await get_tree().process_frame
+	_assert(chicken.position == frozen_at,
+		"and she does not move behind it — no teleport when the screen closes")
+
+	menus.close_menu()
+	await get_tree().process_frame
+	_assert(not get_tree().paused, "closing it starts the world again")
+	for i in 20: await get_tree().process_frame
+	_assert(chicken.position != frozen_at, "and she carries on from where she stood")
+
+	# The inventory is a menu too, and so is the pause screen it was already true of.
+	for name in ["inventory", "pause"]:
+		menus.open_menu(name)
+		await get_tree().process_frame
+		_assert(get_tree().paused, "the %s screen holds the world too" % name)
+		menus.close_menu()
+		await get_tree().process_frame
+	_assert(not get_tree().paused, "and the world is running again afterwards")
+
+	# The second half of the same report: "I see it advance when I click to buy."
+	# That is a *long frame*, not the menu — `_process` gets the real frame time,
+	# and rebuilding the shop's options stalls one. With no cap on the step, one
+	# stalled frame carried her a whole tile. Pausing hides it in menus; the cap is
+	# what stops it happening anywhere else a frame hitches.
+	chicken.tx = 5
+	chicken.ty = 5
+	chicken.position = Vector2(5 * 16, 5 * 16)
+	chicken.path.clear()
+	chicken.path.append(Vector2i(6, 5))
+	chicken.path.append(Vector2i(7, 5))
+	chicken.path.append(Vector2i(8, 5))
+	chicken.path_index = 0
+	chicken.state = "moving"
+	var before_hitch: Vector2 = chicken.position
+	chicken._process(2.0)  # a two-second frame, far worse than any real hitch
+	var jumped: float = chicken.position.distance_to(before_hitch)
+	_assert(jumped <= 16.0,
+		"a stalled frame moves her at most one tile, not %d px" % int(jumped))
+	_assert(jumped > 0.0, "but she still moves — the cap is not a freeze")
+
+	chicken.state = "idle"
+	chicken.path.clear()
+
+
+# Where the camera comes to rest for a player standing at `player_px`. Godot
+# smooths towards this over several frames; the settled value is what matters and
+# is worth computing rather than waiting for.
+func _settled_view(player_px: Vector2) -> Rect2:
+	var half: Vector2 = get_viewport().get_visible_rect().size / (2.0 * float(main_scene.CAMERA_SCALE))
+	var cam: Camera2D = main_scene.camera
+	return Rect2(Vector2(
+		clampf(player_px.x, cam.limit_left + half.x, cam.limit_right - half.x),
+		clampf(player_px.y, cam.limit_top + half.y, cam.limit_bottom - half.y)) - half, half * 2.0)
+
+
+func _scenario_m_targets_on_screen() -> void:
+	# Raised from play 2026-08-29: could the ripe-crop beat wait until the player
+	# has walked far enough right to reveal it?
+	#
+	# Measured answer: it already does, and not by accident of timing — beat 0
+	# holds the highlight on the *gate* for as long as she is inside the yard, and
+	# by the time she steps through, the crop is on screen. So there is nothing to
+	# build. But that only works because of a coincidence of three numbers: the
+	# yard is 10 tiles wide, the camera shows 8.3 tiles either side, and the ripe
+	# crop sits at x=17. `systems/world_layout.gd` exists precisely so the
+	# arrangement can be edited freely, so this asserts the property rather than
+	# leaving it to hold by luck. If someone widens the yard or moves the crop,
+	# this fails instead of the game quietly pointing at nothing.
+	print("\n--- Scenario M: a highlighted target is on screen ---")
+
+	var world := SimWorld.new()
+	SimRng.reseed(4242)
+	world.generate()
+	var gs = load("res://systems/game_state.gd").new()
+	ColdOpen.run(world, world, gs)
+
+	var checked := 0
+	var offscreen: Array = []
+	for p in WorldLayout.parcels():
+		var pid := String(p.get("id", ""))
+		if pid != "yard" and pid != "neighbour":
+			continue
+		for r in p.get("rects", []):
+			var rect: Rect2i = r
+			for ty in range(rect.position.y, rect.end.y):
+				for tx in range(rect.position.x, rect.end.x):
+					if not world.is_walkable(tx, ty):
+						continue
+					var here := Vector2i(tx, ty)
+					var view := _settled_view(Vector2(tx * 16 + 8, ty * 16 + 8))
+					for target in TeachingFocus.targets(world, gs, here):
+						checked += 1
+						if not view.has_point(Vector2(target.x * 16 + 8, target.y * 16 + 8)):
+							offscreen.append("from %s the highlight %s is off screen" % [here, target])
+	_assert(checked > 0, "there were targets to check (%d)" % checked)
+	_assert(offscreen.is_empty(),
+		"every day-1 highlight is on screen from anywhere she can stand (%s)"
+			% ("ok" if offscreen.is_empty() else offscreen[0]))
+
+	# And the specific beat the report was about: standing at spawn, the thing
+	# being pointed at is the gate — not the crop two screens away.
+	var spawn := WorldLayout.spawn()
+	var at_spawn: Array = TeachingFocus.targets(world, gs, spawn)
+	_assert(at_spawn.size() == 1 and at_spawn[0] == WorldLayout.gate_of("neighbour"),
+		"from spawn the game asks for the gate, which is the only thing she can see to walk to")
+
+	gs.free()

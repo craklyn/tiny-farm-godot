@@ -2,6 +2,12 @@ extends Node2D
 
 const TILE_SIZE = 16
 const SPEED = 20.0
+# A long frame must not teleport her. `_process` is handed the real frame time,
+# so one stalled frame — rebuilding a menu's options, a shader compile, a hitch —
+# used to carry her a whole tile in a single step. That is what a player saw as
+# the chicken jumping at the moment of clicking Buy. Capping the step at half a
+# tile costs nothing at 60fps (0.33px/frame) and only bites past ~0.4s frames.
+const MAX_STEP := TILE_SIZE * 0.5
 
 # animals.png cells: 0-3 walk cycle facing right, 4-7 the same facing left
 const SPRITES := preload("res://assets/sprites/generated/animals.png")
@@ -77,14 +83,15 @@ func _process(delta: float) -> void:
 		elif target_pos.x > position.x:
 			facing_left = false
 
+		var step: float = minf(SPEED * delta, MAX_STEP)
 		var dist = position.distance_to(target_pos)
-		if dist <= SPEED * delta:
+		if dist <= step:
 			position = target_pos
 			tx = target.x
 			ty = target.y
 			path_index += 1
 		else:
-			position = position.move_toward(target_pos, SPEED * delta)
+			position = position.move_toward(target_pos, step)
 
 func on_new_day() -> void:
 	if SimRng.randf() > 0.5:

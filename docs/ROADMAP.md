@@ -415,6 +415,15 @@ evidence about the touch design, never about learnability.*
 *So that a highlighted tile she has wandered away from can still be found.*
 The camera follows the farmer, so the vignette's target can leave the screen entirely —
 at which point the highlight is doing nothing and there is no other cue.
+
+*Measured 2026-08-29, so nobody re-derives it wrongly: the **day-1 beats are not** an
+argument for this. The camera shows 8.3 tiles either side, and the ripe crop at (17,4) is
+indeed off screen from spawn — but the thing highlighted at spawn is the **gate**, and
+beat 0 holds it there until she crosses, by which point the crop is in view. Across all
+109 day-1 target checks from every tile she can stand on, no highlight is ever off screen
+(`_scenario_m_targets_on_screen`). The real case for T-25 is the one Q-36 named: a player
+who has **wandered away** from a target she was already shown, which no beat ordering can
+prevent.*
 - [ ] when the current highlighted target is outside the view, draw an arrow at the screen
       edge pointing toward it
 - [ ] presentation only; it must not gate `apply_action` (the D-8 constraint)

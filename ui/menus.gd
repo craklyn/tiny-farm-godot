@@ -95,7 +95,13 @@ func open_menu(menu_name: String) -> void:
 	var tween = create_tween()
 	tween.tween_property(menu_panel, "scale", Vector2(1, 1), 0.2).set_trans(Tween.TRANS_SPRING).set_ease(Tween.EASE_OUT)
 	
-	get_tree().paused = (menu_name == "pause")
+	# **While any menu is open, the world holds.** This used to pause only for the
+	# pause screen, so with the shop up the player was frozen (main._process
+	# returns early on is_open()) while every entity carried on living. Reported
+	# from play 2026-08-29: "the chicken advances by a big jump when I bought in
+	# the shop" — she had simply been walking the whole time, behind a panel.
+	# A menu is not a place the game continues without you.
+	get_tree().paused = true
 	_rebuild_options()
 
 

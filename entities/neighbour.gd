@@ -13,6 +13,9 @@ extends Node2D
 
 const TILE_SIZE := 16
 const SPEED := 26.0
+# Same cap as the chicken: one stalled frame must not carry an entity a whole
+# tile. See entities/chicken.gd for the report this came from.
+const MAX_STEP := TILE_SIZE * 0.5
 const POSE_SECONDS := 0.45
 const WAVE_SECONDS := 1.6
 
@@ -106,7 +109,7 @@ func _process(delta: float) -> void:
 
 	if _leaving:
 		facing = "left"
-		position.x -= SPEED * delta
+		position.x -= minf(SPEED * delta, MAX_STEP)
 		_advance_walk(delta)
 		if position.x < -3.0 * TILE_SIZE:
 			queue_free()
@@ -126,7 +129,7 @@ func _process(delta: float) -> void:
 		_path.remove_at(0)
 		return
 	var dir := diff.normalized()
-	position += dir * SPEED * delta
+	position += dir * minf(SPEED * delta, MAX_STEP)
 	if absf(dir.x) > absf(dir.y):
 		facing = "right" if dir.x > 0 else "left"
 	else:
