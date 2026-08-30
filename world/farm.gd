@@ -19,6 +19,17 @@ var trace: SessionTrace = null  # diagnostic stream; records refusals too (see s
 const BENIGN_FAILURES := { "can_already_full": true, "nothing_to_sell": true }
 var generate_on_ready := true  # main disables this when a save restore is pending
 
+# The state this farm belongs to. Defaults to the GameState autoload lazily, the
+# same as `player.gd`'s, and for the same reason: the title screen's attract loop
+# (T-16 / Q-40) renders a second farm that must not touch the player's real
+# state. `advance_day()` read the live autoload's weather through the scene root,
+# which is one of the four couplings finding F-4 named — this closes it.
+var gs: Node = null
+
+# Silences the feedback cues. The attract farm must not tick, beep or play the
+# nope sound into a title screen the player is not playing.
+var mute_feedback := false
+
 # Facade views over sim truth (same Array references — in-place mutation works)
 var tiles: Array[Array]:
 	get:
@@ -170,6 +181,8 @@ var _acks: Dictionary = {}  # Vector2i -> { "t": msec, "why": String }
 
 
 func refuse_at(t: Vector2i, why: String) -> void:
+	if mute_feedback:
+		return
 	_refusals[t] = { "t": Time.get_ticks_msec(), "why": why }
 	set_process(true)
 	if Engine.get_main_loop() and Engine.get_main_loop().root.has_node("AudioManager"):
@@ -226,6 +239,8 @@ func _refuse_icon(why: String) -> Array:
 # day, it says so where she is looking.
 func acknowledge_at(t, why: String, with_sound: bool = true) -> void:
 	if not (t is Vector2i):
+		return
+	if mute_feedback:
 		return
 	_acks[t] = { "t": Time.get_ticks_msec(), "why": why }
 	set_process(true)
@@ -310,10 +325,19 @@ func water_tile(tx: int, ty: int) -> void:
 
 func advance_day() -> void:
 	var weather := "sunny"
-	if Engine.get_main_loop() and Engine.get_main_loop().root.has_node("GameState"):
-		weather = Engine.get_main_loop().root.get_node("GameState").weather
+	var state := _state()
+	if state != null:
+		weather = String(state.weather)
 	sim.advance_day(weather)
 	queue_redraw()
+
+
+func _state() -> Node:
+	if gs != null:
+		return gs
+	if Engine.get_main_loop() and Engine.get_main_loop().root.has_node("GameState"):
+		return Engine.get_main_loop().root.get_node("GameState")
+	return null
 
 
 # Out-of-bounds counts as not-soil, so plots edge correctly against the map border.

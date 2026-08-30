@@ -557,7 +557,7 @@ then proof the generator did not run, which CI can catch.
 *Blocked on there being scripted events to generate, so it follows Q-37/Q-40 rather than
 leading them.*
 
-**T-16 — The landing page: a living farm around the menu** · Q-40 · ~3–4 days
+**T-16 — The landing page: a living farm around the menu** · Q-40 ✅ · done 2026-08-30 (M1.5 WI-7)
 *So that the first thing anyone sees is the game playing itself, and so we get a
 demonstration channel that costs no agency at all.*
 - [ ] `world/farm.gd` instantiated standalone behind the title menu (verified: it is a

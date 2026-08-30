@@ -56,8 +56,14 @@ will never watch it. It teaches the adult, the returning player, and — the cas
 actually matters on a shared family tablet — **the child during the seconds while the
 device is being handed to her**, which is a real and recurring window.
 
-**What the existing replay can and cannot drive.** `world/farm.gd` is a clean `Node2D`
-facade over `SimWorld` with no coupling to `main`, so it instantiates standalone. But
+**What the existing replay can and cannot drive.** `world/farm.gd` is a `Node2D` facade
+over `SimWorld` and instantiates standalone, which the spike proved. *Correction,
+2026-08-30 (finding F-4): "no coupling to `main`" was overstated.* It hard-codes sibling
+paths (`get_node("../Player")`, `../Entities`), reaches the `AudioManager` autoload for the
+nope sound, and — the one that mattered — `advance_day()` read the **live GameState
+autoload's** weather through the scene root. T-16 closed the last of those with an
+injectable `gs` on both `farm.gd` and `player.gd`; the sibling paths remain, which is why
+the attract loop's farmer must be a sibling literally named `Player`. But
 `ReplayLog` was built for verification, not playback, and is missing two things:
 
 - **No timestamps.** `record()` stores the action, plus weather on sleeps. Nothing about

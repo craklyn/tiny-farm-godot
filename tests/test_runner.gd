@@ -63,6 +63,7 @@ func _init() -> void:
 	test_acorns()
 	test_economy_teaching()
 	test_offscreen_arrow()
+	test_player_gs_injection()
 
 	print("")
 	print(String("=").repeat(60))
@@ -2877,3 +2878,84 @@ func test_offscreen_arrow() -> void:
 		"an empty view draws nothing")
 	_assert(not OverlayMath.edge_arrow(view, centre).visible,
 		"a target exactly at the centre draws nothing")
+
+
+func test_player_gs_injection() -> void:
+	print("\n--- Injectable state, not the autoload (T-16) Tests ---")
+
+	# The T-16 spike (`tools/replay_view.gd`) measured this failing: driving the
+	# renderer from a replay drained the **live** GameState to energy 0, wheat 0
+	# while the player was still looking at the title screen. A farmer who spends
+	# your seeds on the menu is a data-loss bug wearing an animation. The spike's
+	# closing note named the cause — `_execute_resolved_action()` used the
+	# autoload directly — and this is that finding, fixed and guarded.
+	#
+	# **Split deliberately.** `player.gd` still names `InputManager`, `ActionRouter`
+	# and `Pathfinding` as global identifiers, so the script cannot be *compiled*
+	# in this runner, which has no autoloads. Removing those too is a much larger
+	# change to the hottest file in the game and is not what T-16 asked for. So the
+	# behavioural half — construct a player with a detached state, work a tile,
+	# assert the autoload is byte-identical — lives in the integration suite's
+	# `_scenario_k_attract`, where autoloads exist. What is checked here is
+	# everything that *can* be checked headlessly, including the guarantee that
+	# player.gd holds no direct reference to the live state at all.
+
+	# --- farm.gd's injection, which is finding F-4's fix ----------------------
+	var detached = load("res://systems/game_state.gd").new()
+	detached.reset()
+	var farm = load("res://world/farm.gd").new()
+	farm.generate_on_ready = false
+	farm.gs = detached
+	farm.mute_feedback = true
+	SimRng.reseed(4242)
+	farm.sim.generate()
+
+	var t := Vector2i(5, 3)
+	farm.set_tile_state(t.x, t.y, "tilled")
+	detached.weather = "rainy"
+	farm.advance_day()
+	_assert(farm.get_tile(t.x, t.y).watered_today,
+		"advance_day() reads the injected state's weather, not the autoload's (F-4)")
+
+	detached.weather = "sunny"
+	farm.set_tile_state(t.x, t.y, "tilled")
+	farm.advance_day()
+	_assert(not farm.get_tile(t.x, t.y).watered_today, "and follows it when it changes")
+
+	# --- mute_feedback: the attract farm must be silent ----------------------
+	farm.refuse_at(t, "no_seeds")
+	farm.acknowledge_at(t, "already_watered")
+	_assert(farm._refusals.is_empty(), "a muted farm records no refusal wobble")
+	_assert(farm._acks.is_empty(), "and no acknowledgement tick")
+	farm.mute_feedback = false
+	farm.acknowledge_at(t, "already_watered")
+	_assert(not farm._acks.is_empty(), "and speaks again when unmuted")
+
+	# --- player.gd holds no direct reference to the live state ---------------
+	# The spike's failure was one hardcoded autoload in one function. Asserting on
+	# the source is what stops it coming back in a different function later.
+	# Read as text rather than loaded: loading compiles the script, and compiling
+	# it in this runner fails on the autoloads it still names, which would print an
+	# error the reader would have to learn to ignore.
+	var src := FileAccess.get_file_as_string("res://player/player.gd")
+	_assert(src.length() > 0, "player.gd is readable as text")
+	var offenders: Array = []
+	for line in src.split("\n"):
+		var code: String = String(line).split("#")[0]
+		if not code.contains("GameState"):
+			continue
+		# The only permitted mentions are the tree lookup supplying the default.
+		if code.contains("has_node(") or code.contains("get_node("):
+			continue
+		offenders.append(String(line).strip_edges())
+	_assert(offenders.is_empty(),
+		"player.gd never uses the live state directly%s"
+			% ("" if offenders.is_empty() else " — found %s" % str(offenders)))
+	_assert(src.contains("var gs: Node"), "player.gd declares an injectable state")
+	_assert(src.contains("gs.set_energy") or src.contains(", gs)"),
+		"and spends that state rather than a global")
+
+	detached.free()
+	farm.free()
+
+

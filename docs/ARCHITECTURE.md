@@ -288,8 +288,14 @@ Current map is 32×20 tiles; phase 4 fiction says "too large to manage manually"
   deferred until phase-4 prep (`M2_SPEC.md` step 2): entity `_process` code may run
   timers and decision processes, but every world mutation they decide on goes through
   the gateway.
-- No per-tile per-frame work anywhere; per-tick work scales with *active entities*, not map
-  area.
+- No per-tile per-frame work **in the sim**; per-tick work scales with *active entities*,
+  not map area. *Honest exception, recorded 2026-08-30 (finding F-6): the **renderer** does
+  walk every tile every frame — `player.gd` calls `farm.queue_redraw()` unconditionally and
+  `farm._draw()` iterates all 640 tiles with per-tile allocations. It holds 60fps on the
+  tablet and is not scheduled for change, but the rule as previously worded was stale
+  against the code. T-16's attract loop renders a **second** farm, doubling that pass,
+  which is why it carries a kill-switch (`ATTRACT_ENABLED`), a tick divider
+  (`TICK_EVERY`) and a headless skip rather than being assumed free.*
 - All randomness in layers 1–3 flows through the seeded sim RNG — never `randi()` in
   gameplay code.
 - GDScript until profiling says otherwise; the known hot spots (sim fast-forward, NN math)

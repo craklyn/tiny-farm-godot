@@ -42,9 +42,34 @@ var sprite_quads: Dictionary = {}  # direction -> { frame -> Rect2 }
 # Reference to farm
 var farm: Node2D = null
 
+# The player's own state. Defaults to the gs autoload, which is what the
+# real game wants, but it is *injectable* — set it before adding this node to the
+# tree and everything below spends that state instead.
+#
+# T-16 (Q-40) is why. The title screen's attract loop renders a second farm and
+# drives it through this same player, and the spike (`tools/replay_view.gd`)
+# measured what happened when it could not: the attract loop drained the live
+# autoload to energy 0, wheat 0 while the player watched the menu. A farmer who
+# spends your seeds on the title screen is a data-loss bug wearing an animation.
+#
+# It also makes the player as testable as the sim — see `test_player_gs_injection`.
+var gs: Node = null
+
 
 func _ready() -> void:
+	if gs == null:
+		gs = _default_state()
 	_load_sprites()
+
+
+# The autoload, found through the tree rather than named as a global identifier.
+# Naming it directly made this whole script uninstantiable outside a scene tree
+# with autoloads registered — which is precisely the coupling T-16 exists to
+# remove, and it is why no unit test had ever constructed a player.
+func _default_state() -> Node:
+	if Engine.get_main_loop() and Engine.get_main_loop().root.has_node("GameState"):
+		return Engine.get_main_loop().root.get_node("GameState")
+	return null
 
 
 func init_position(start_tx: int, start_ty: int) -> void:
@@ -126,7 +151,7 @@ func update_player(delta: float) -> void:
 			tap_indicator = {}
 			
 		var drag_intent = drag_tool_idx if is_drag else null
-		var resolved := ActionRouter.resolve(farm, GameState, target_vec, player_t, is_drag, drag_intent)
+		var resolved := ActionRouter.resolve(farm, gs, target_vec, player_t, is_drag, drag_intent)
 		
 		if is_new_tap:
 			if not resolved.is_empty():
@@ -163,7 +188,7 @@ func update_player(delta: float) -> void:
 		if not new_path.is_empty() or player_t == target_vec or adjacent_now:
 			path = new_path
 			
-			var color := ActionRouter.get_cursor_color(farm, GameState, target_vec, player_t, is_drag)
+			var color := ActionRouter.get_cursor_color(farm, gs, target_vec, player_t, is_drag)
 			
 			if not path.is_empty():
 				var last := path[path.size() - 1]
@@ -188,11 +213,11 @@ func update_player(delta: float) -> void:
 			var here_now: bool = absi(player_t.x - target_vec.x) + absi(player_t.y - target_vec.y) <= 1
 			var satisfied := ""
 			if path.is_empty() and here_now:
-				satisfied = ActionRouter.satisfied_reason(farm, GameState, target_vec)
+				satisfied = ActionRouter.satisfied_reason(farm, gs, target_vec)
 			if satisfied != "":
 				farm.acknowledge_at(target_vec, satisfied)
 			elif resolved.is_empty() and path.is_empty():
-				blocked = ActionRouter.blocked_reason(farm, GameState, target_vec)
+				blocked = ActionRouter.blocked_reason(farm, gs, target_vec)
 				if blocked != "":
 					refuse_target(target_vec, blocked)
 
@@ -205,7 +230,7 @@ func update_player(delta: float) -> void:
 				else:
 					out_kind = "queued" if not path.is_empty() else "acted"
 				farm.trace.tap("drag" if is_drag else "tap", target_vec, player_t,
-					GameState.selected_tool,
+					gs.selected_tool,
 					String(resolved.get("action", "")), out_kind,
 					satisfied if satisfied != "" else blocked)
 
@@ -253,10 +278,10 @@ func update_player(delta: float) -> void:
 			# the satisfied question before the blocked one, because a finished tile
 			# is answering yes, not no, and the two get opposite feedback.
 			var near: bool = absi(player_t.x - target_vec.x) + absi(player_t.y - target_vec.y) <= 1
-			var satisfied2 := ActionRouter.satisfied_reason(farm, GameState, target_vec) if near else ""
+			var satisfied2 := ActionRouter.satisfied_reason(farm, gs, target_vec) if near else ""
 			var why := ""
 			if near and satisfied2 == "":
-				why = ActionRouter.blocked_reason(farm, GameState, target_vec)
+				why = ActionRouter.blocked_reason(farm, gs, target_vec)
 			if satisfied2 != "":
 				farm.acknowledge_at(target_vec, satisfied2)
 			elif why != "":
@@ -287,7 +312,7 @@ func update_player(delta: float) -> void:
 
 			if farm.trace != null:
 				farm.trace.tap("drag" if is_drag else "tap", target_vec, player_t,
-					GameState.selected_tool,
+					gs.selected_tool,
 					String(resolved.get("action", "")), out_kind,
 					satisfied2 if satisfied2 != "" else why)
 
@@ -371,7 +396,7 @@ func update_player(delta: float) -> void:
 
 		# Q-11 soft floor: an exhausted farmer trudges at half speed (the nudge
 		# toward the cot); presentation-only, sim truth is untouched
-		var speed := MOVE_SPEED * (0.5 if GameState.energy <= 0 else 1.0)
+		var speed := MOVE_SPEED * (0.5 if gs.energy <= 0 else 1.0)
 		# Never step past the waypoint: overshooting is what forces a tolerance
 		# window, and the leftover error is what makes turns look off-grid.
 		var step: float = min(speed * delta, step_limit)
@@ -409,9 +434,9 @@ func update_player(delta: float) -> void:
 
 	# Tool cycling
 	if Input.is_action_just_pressed("tool_next"):
-		GameState.cycle_tool(1)
+		gs.cycle_tool(1)
 	if Input.is_action_just_pressed("tool_prev"):
-		GameState.cycle_tool(-1)
+		gs.cycle_tool(-1)
 
 	# Handle scroll wheel for tool cycling
 	# (handled in _unhandled_input)
@@ -423,11 +448,11 @@ func update_player(delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-			GameState.cycle_tool(-1)
+			gs.cycle_tool(-1)
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			GameState.cycle_tool(1)
+			gs.cycle_tool(1)
 		elif event.button_index == MOUSE_BUTTON_RIGHT:
-			GameState.cycle_tool(1)
+			gs.cycle_tool(1)
 
 
 
@@ -448,10 +473,10 @@ func _try_action() -> String:
 	var facing_t := get_facing_tile()
 
 	# Try to resolve automatically via ActionRouter for facing tile
-	var resolved := ActionRouter.resolve(farm, GameState, facing_t, player_t, false)
+	var resolved := ActionRouter.resolve(farm, gs, facing_t, player_t, false)
 	if resolved.is_empty():
 		# Try standing tile for special objects (like cot, shipping bin)
-		resolved = ActionRouter.resolve(farm, GameState, player_t, player_t, false)
+		resolved = ActionRouter.resolve(farm, gs, player_t, player_t, false)
 		
 	if resolved.is_empty() or resolved.get("action", "") == "":
 		return ""
@@ -475,7 +500,7 @@ func refuse_target(t: Vector2i, why: String) -> void:
 func _execute_resolved_action(pa: Dictionary) -> void:
 	var action: String = pa.get("action", "")
 	var target_t: Vector2i = pa.get("target_t", get_tile_pos())
-	var seed_type: String = pa.get("seed_type", GameState.selected_seed_type)
+	var seed_type: String = pa.get("seed_type", gs.selected_seed_type)
 
 	if action == "sleep":
 		get_tree().get_first_node_in_group("Main").call_deferred("trigger_action", "sleep")
@@ -493,15 +518,15 @@ func _execute_resolved_action(pa: Dictionary) -> void:
 			"target": target_t,
 			"tool": tool_key,
 			"actor": "player",
-		}, GameState)
+		}, gs)
 		if not got.get("ok", false):
 			return
 		AudioManager.play_sfx("jingle")
 		_emit_particles("harvest", target_t)
-		GameState.selected_tool = Tools.index_of_key(String(got.get("tool", tool_key)))
+		gs.selected_tool = Tools.index_of_key(String(got.get("tool", tool_key)))
 		var gate := WorldLayout.gate_for_tool(String(got.get("tool", tool_key)))
 		if gate.x >= 0:
-			farm.apply_action({ "verb": "open_gate", "target": gate, "actor": "world" }, GameState)
+			farm.apply_action({ "verb": "open_gate", "target": gate, "actor": "world" }, gs)
 		return
 	# Every remaining verb is a sim Action (S-3): the sim validates and mutates;
 	# this side keeps only presentation (tool swap, animation, sfx, particles).
@@ -510,7 +535,7 @@ func _execute_resolved_action(pa: Dictionary) -> void:
 		"target": target_t,
 		"seed_type": seed_type,
 		"actor": "player",
-	}, GameState)
+	}, gs)
 	if not result.get("ok", false):
 		return
 
@@ -521,7 +546,7 @@ func _execute_resolved_action(pa: Dictionary) -> void:
 		return
 
 	if pa.has("tool_idx"):
-		GameState.selected_tool = pa["tool_idx"]
+		gs.selected_tool = pa["tool_idx"]
 	is_acting = true
 	action_timer = ACTION_DURATION
 

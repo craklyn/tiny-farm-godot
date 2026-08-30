@@ -66,6 +66,7 @@ func _run_scenarios() -> void:
 	await _scenario_m_targets_on_screen()
 	await _scenario_n_pick_up_the_axe()
 	await _scenario_j_wordless_shop()
+	await _scenario_k_attract()
 
 func _wait_until(pred: Callable, max_frames: int) -> bool:
 	for i in max_frames:
@@ -818,3 +819,115 @@ func _scenario_j_wordless_shop() -> void:
 	await get_tree().process_frame
 	_assert(not menus.is_open(), "the ✕ closes the shop")
 	_assert(not get_tree().paused, "and the world starts again")
+
+
+func _live_fingerprint() -> String:
+	var g = GameState
+	return "%d|%d|%d|%d|%s|%s|%d" % [g.day, g.gold, g.energy, g.watering_can_charges,
+		JSON.stringify(g.seeds), JSON.stringify(g.crops), g.total_shipped]
+
+
+func _scenario_k_attract() -> void:
+	# T-16 (Q-40). The spike measured the failure this guards: driving the
+	# renderer from a replay drained the **live** GameState to energy 0, wheat 0
+	# while the player was still looking at the menu. A farmer who spends your
+	# seeds on the title screen is a data-loss bug wearing an animation.
+	print("\n--- Scenario K: the attract loop cannot touch the player's farm ---")
+
+	var AttractScript = load("res://ui/attract_loop.gd")
+
+	# Headless has nothing to render into, so the title screen must not start one.
+	var title = load("res://ui/title_screen.tscn").instantiate()
+	get_tree().root.add_child(title)
+	await get_tree().process_frame
+	_assert(title.get_node_or_null("AttractLoop") == null,
+		"the title screen starts no attract loop headless")
+	title.queue_free()
+	await get_tree().process_frame
+
+	# Build a small session to play, so this does not depend on whoever played last.
+	var rec = load("res://systems/game_state.gd").new()
+	rec.reset()
+	var w := SimWorld.new()
+	SimRng.reseed(4242)
+	w.generate()
+	var rlog := ReplayLog.new()
+	rlog.start(4242)
+	var worked := 0
+	for i in 6:
+		var t := Vector2i(3 + i, 3)
+		if not w.is_walkable(t.x, t.y):
+			continue
+		w.set_tile_state(t.x, t.y, "cleared")
+		var a := { "verb": "till", "target": t, "actor": "player" }
+		var r := w.apply_action(a, rec)
+		if r.get("ok", false):
+			rlog.record(a, r)
+			worked += 1
+	_assert(worked >= 3, "the synthetic session has actions to play (%d)" % worked)
+
+	var before := _live_fingerprint()
+	var files_before: Array = []
+	for path in [GameState.save_path, GameState.replay_path, GameState.trace_path]:
+		files_before.append(FileAccess.file_exists(path))
+
+	var loop = AttractScript.new()
+	loop.name = "AttractLoop"
+	add_child(loop)
+	_assert(loop.begin(rlog), "the attract loop starts on a real replay")
+	_assert(loop.farm != null and loop.farm.sim != null, "it brought its own farm and SimWorld")
+	_assert(loop.farm.sim != main_scene.farm.sim, "which is not the played farm's")
+	_assert(loop.gs != null and loop.gs != GameState,
+		"and a DETACHED GameState, not the singleton — this is the whole hazard")
+	_assert(loop.player != null and loop.player.gs == loop.gs,
+		"the farmer it drives spends that detached state")
+	_assert(loop.player.name == "Player",
+		"and is named Player, which farm.gd's renderer looks up by path")
+	_assert(loop.farm.mute_feedback, "the attract farm is muted — no nope sounds into a menu")
+
+	# Step it. This is the path the spike found leaking.
+	for i in 240:
+		loop._process(1.0 / 60.0)
+	_assert(loop._next > 0, "playback actually advanced (%d entries in)" % loop._next)
+	_assert(_live_fingerprint() == before,
+		"the live GameState is byte-identical after playback — the spike's finding, fixed")
+
+	# And it wrote nothing anywhere the real game keeps its farm.
+	var idx := 0
+	for path in [GameState.save_path, GameState.replay_path, GameState.trace_path]:
+		_assert(FileAccess.file_exists(path) == files_before[idx],
+			"the attract loop created no file at %s" % path)
+		idx += 1
+	_assert(loop.farm.replay == null, "it records no replay of its own")
+	_assert(loop.farm.trace == null, "and no session trace")
+
+	# Pausing is what the New Farm confirmation uses: one moving thing at a time.
+	var frozen: int = loop._next
+	loop.paused = true
+	for i in 240:
+		loop._process(1.0 / 60.0)
+	_assert(loop._next == frozen, "a paused attract loop stops advancing")
+	loop.paused = false
+
+	# An uninjected player still defaults to the autoload, which is what the real
+	# game wants and what every existing call site assumes. (The unit suite cannot
+	# check this half: it has no autoloads.)
+	var plain = load("res://player/player.gd").new()
+	plain.name = "PlainPlayer"
+	add_child(plain)
+	await get_tree().process_frame
+	_assert(plain.gs == GameState, "an uninjected player defaults to the GameState autoload")
+	plain.queue_free()
+
+	# Choosing what to play: the player's own session only when this build
+	# recorded it, because apply_to() re-runs actions against today's rules and a
+	# cross-build replay can show a farm that never existed (Q-41).
+	var stale := ReplayLog.from_json(rlog.to_json())
+	stale.build_id = "some-other-build"
+	_assert(stale.build_status() == ReplayLog.Build.MISMATCH, "a foreign replay is detected")
+	_assert(AttractScript.choose_replay("user://does_not_exist.json", "res://also_missing.json") == null,
+		"with nothing to play it returns null, so the title keeps its plain backdrop")
+
+	loop.queue_free()
+	rec.free()
+	await get_tree().process_frame

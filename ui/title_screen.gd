@@ -19,7 +19,12 @@ var _confirm_open := false
 var _confirm_layer: Control = null
 
 
+const DEMO_REPLAY_PATH := "res://assets/demo/demo_replay.json"
+var _attract: Node2D = null
+
+
 func _ready() -> void:
+	_start_attract()
 	_has_save = FileAccess.file_exists(GameState.save_path)
 	if _has_save:
 		_summary = _read_summary()
@@ -27,6 +32,52 @@ func _ready() -> void:
 		if _summary.is_empty():
 			_has_save = false
 	_build_ui()
+
+
+# T-16 (Q-40): the menu sits over a real farm being played. Everything about
+# what it plays and how is in `ui/attract_loop.gd`; this only decides whether to.
+func _start_attract() -> void:
+	var AttractScript = load("res://ui/attract_loop.gd")
+	if not AttractScript.ATTRACT_ENABLED:
+		return
+	# Headless has nothing to render into and no reason to spend the frames.
+	if DisplayServer.get_name() == "headless":
+		return
+	var replay: ReplayLog = AttractScript.choose_replay(GameState.replay_path, DEMO_REPLAY_PATH)
+	if replay == null:
+		return  # first boot on a fresh install: keep the flat backdrop
+
+	var loop = AttractScript.new()
+	loop.name = "AttractLoop"
+	# Draw order is tree order, and `_ready` runs this *before* `_build_ui`, so the
+	# farm lands after the backdrop and before the menu: backdrop, farm, buttons.
+	# It is a Node2D and takes no input, so every tap still reaches the menu above
+	# it and tap-anywhere-to-continue still reaches the title screen itself.
+	add_child(loop)
+	if not loop.begin(replay):
+		loop.queue_free()
+		return
+	_attract = loop
+
+	# The flat backdrop stays as the thing *behind* the farm rather than being
+	# deleted — the drifting layer need not cover every pixel — but it darkens,
+	# because a bright green rectangle beside a real farm reads as a hole.
+	var back := get_node_or_null("ColorRect")
+	if back != null:
+		back.color = Color(0.13, 0.28, 0.17)
+
+	# One moving thing at a time — the build hash would otherwise sit over a
+	# moving farm, and it is a developer's label, not part of the picture.
+	var overlay = get_tree().root.get_node_or_null("BuildOverlay")
+	if overlay != null and OS.is_debug_build() == false:
+		overlay.visible = false
+
+
+# Anything that opens a panel over the title pauses the farm behind it: one
+# moving thing at a time, which is the same rule the vignette follows.
+func _set_attract_paused(value: bool) -> void:
+	if _attract != null and is_instance_valid(_attract):
+		_attract.paused = value
 
 
 func _read_summary() -> Dictionary:
@@ -223,6 +274,7 @@ func _open_credits() -> void:
 	if _confirm_open:
 		return
 	_confirm_open = true  # also blocks tap-anywhere while the panel is up
+	_set_attract_paused(true)
 
 	_confirm_layer = Control.new()
 	_confirm_layer.name = "CreditsLayer"
@@ -293,6 +345,7 @@ func _open_sound_test() -> void:
 	if _confirm_open:
 		return
 	_confirm_open = true  # also blocks tap-anywhere while the panel is up
+	_set_attract_paused(true)
 
 	_confirm_layer = Control.new()
 	_confirm_layer.name = "SoundTestLayer"
@@ -428,6 +481,7 @@ func _open_confirm() -> void:
 	if _confirm_open:
 		return
 	_confirm_open = true
+	_set_attract_paused(true)  # one moving thing at a time
 
 	_confirm_layer = Control.new()
 	_confirm_layer.name = "ConfirmLayer"
@@ -514,6 +568,7 @@ func _open_confirm() -> void:
 
 func _close_confirm() -> void:
 	_confirm_open = false
+	_set_attract_paused(false)
 	if _confirm_layer:
 		_confirm_layer.queue_free()
 		_confirm_layer = null
