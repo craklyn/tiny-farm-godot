@@ -343,7 +343,12 @@ first, since a different answer there changes what the other four are optimising
   in phase 2 — raise the number, never the appetite. Also **retarget T-2's harmless flag
   from "first crow ever" to "first crow to target a crop"**, so the last mercy lands at
   the transition instead of being spent on a crow that was never a threat.
-- **Q-46 (Ruling)** **How are the axe and pickaxe acquired?** Q-34 ruled that they are
+- **Q-46** ~~How are the axe and pickaxe acquired?~~ — ✅ **ruled 2026-08-29.** The shape
+  (visible tool at its gate, proof-gated, tap to take) and the thresholds are both
+  accepted: **axe after 5 harvests, pickaxe after 3 logs cleared.** They stay named
+  constants in `WorldLayout.DEFAULT.tools` so they remain tunable. The lock is drawn
+  rather than said — see sub-ruling (a) below. Original entry and reasoning follow.
+  **How are the axe and pickaxe acquired?** Q-34 ruled that they are
   *earned*, and `design/02` §6 still lists the unlock mechanism as an open section — but
   M1.5's parcel rebuild cannot be built without *some* mechanism, so one is in the code
   now as a clearly-labelled strawman rather than a decision. **What is built:** each tool
@@ -390,9 +395,8 @@ first, since a different answer there changes what the other four are optimising
   up. Both states are derived — `TeachingFocus.locked_tools()` / `ready_tools()` read the
   objects grid and the proof — so the beat ends itself when the tool is gone and there is
   no flag anywhere. The highlight sits below the onboarding vignette in the arbitration,
-  so it cannot interrupt day 1 or 2. **The thresholds themselves (5 harvests / 3 logs)
-  are still a strawman awaiting your ruling** — that is the part of Q-46 that remains
-  open.
+  so it cannot interrupt day 1 or 2. **The thresholds (5 harvests / 3 logs) were ruled
+  fine the same day**, which closes Q-46.
 - **Q-47 (Ruling)** **What evidence closes M1.5's exit gate?** The M1.5 gate in
   `ROADMAP.md` currently reads "a first-time pre-reader reaches day 1 beat 4 … on two
   consecutive fresh runs". That re-creates the exact planning fault **Q-43 fixed for M1**

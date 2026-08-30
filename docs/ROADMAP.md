@@ -231,8 +231,9 @@ are in `design/13` §5.
       not tell whether a silent, takeable-looking axe was a bug — which is the same
       silent-tap failure T-18 exists to remove, and which Q-34 forbids repairing with a
       refusal, so it had to be fixed in the affordance rather than the response
-- [ ] **the thresholds** are still a strawman pending **Q-46** — 5 harvests / 3 logs, both
-      `[Playtest]` constants in `WorldLayout.DEFAULT.tools`
+- [x] **the thresholds** ruled 2026-08-29 (Q-46 closed): 5 harvests for the axe, 3 logs
+      for the pickaxe. Still named constants in `WorldLayout.DEFAULT.tools` so they stay
+      tunable
 
 **T-10 — Each parcel opens a vignette** · Q-34 ✅ · done 2026-08-29 (M1.5 WI-3)
 *So that a new tool gets a safe room containing exactly one new thing.*

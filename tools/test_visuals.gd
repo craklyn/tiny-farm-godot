@@ -17,6 +17,13 @@ func _ready() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 
+	# The playtest readout (ui/hud.gd PLAYTEST_NOTES) is a scaffold, not the game.
+	# Baking four lines of debug text into the baseline would make this test fail
+	# the day it is switched off for a release — exactly when it should be quiet.
+	if main_scene.hud != null and main_scene.hud.notes_label != null:
+		main_scene.hud.notes_label.visible = false
+		await get_tree().process_frame
+
 	var img: Image = get_viewport().get_texture().get_image()
 	
 	if not FileAccess.file_exists(BASELINE_PATH):

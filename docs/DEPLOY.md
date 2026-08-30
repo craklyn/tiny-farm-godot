@@ -106,6 +106,12 @@ trace mislabelled its own categories and where the crow schedule desynced replay
       music's attribution appears *only* there, so a release without it breaches the
       licence. Attribution lives in `ui/title_screen.gd` `CREDITS_TEXT` and `CREDITS.md`,
       and the two change together.
+- [ ] **Turn off the playtest readout.** `ui/hud.gd`'s `PLAYTEST_NOTES` must be `false`.
+      It draws four lines of English at the top of the screen naming the current beat and
+      every unlock threshold — indispensable for a playtest, and a direct breach of S-7's
+      no-required-reading promise in anything public. It is deliberately *not* gated on
+      `OS.is_debug_build()`, because a playtest build handed to a tester is often a debug
+      export and the readout has to survive that; the cost of that choice is this line.
 - [ ] Page copy and settings: `ITCH_PAGE.md`.
 
 ---

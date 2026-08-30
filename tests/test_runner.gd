@@ -929,6 +929,12 @@ func test_phase1_proof() -> void:
 	_assert(r.ok and not r.get("phase1_complete_now", false), "proof not met while yard has obstacles")
 	_assert(not GameState.phase1_complete, "flag stays false")
 
+	# Same contract as the tool proofs: phase1_progress is what _phase1_proof_met
+	# consults, so the numbers a playtester reads are the numbers being tested.
+	var before_clear: Dictionary = world.phase1_progress(GameState)
+	_assert(int(before_clear.obstacles_left) > 0, "progress reports the obstacles still standing")
+	_assert(not bool(before_clear.met), "and agrees the proof is not met")
+
 	# Clear every obstacle, then sleep again
 	for ty in SimWorld.MAP_HEIGHT:
 		for tx in SimWorld.MAP_WIDTH:
@@ -936,6 +942,11 @@ func test_phase1_proof() -> void:
 				world.set_tile_state(tx, ty, "cleared")
 	r = world.apply_action({ "verb": "sleep", "actor": "world", "weather": "sunny" }, GameState)
 	_assert(r.get("phase1_complete_now", false), "proof met once yard cleared + counters reached")
+	var after_clear: Dictionary = world.phase1_progress(GameState)
+	_assert(int(after_clear.obstacles_left) == 0, "and no obstacles are left in reach")
+	_assert(bool(after_clear.met), "and the readout agrees the proof is met")
+	_assert(int(after_clear.shipped_target) == SimWorld.PHASE1_SHIPPED_TARGET,
+		"and reports the real targets rather than its own copy of them")
 	_assert(GameState.phase1_complete, "flag set")
 
 	r = world.apply_action({ "verb": "sleep", "actor": "world", "weather": "sunny" }, GameState)
@@ -2095,6 +2106,14 @@ func test_tool_acquisition() -> void:
 	# The proof has not fired, so the tool is a promise: the router yields no
 	# action at all and the tap becomes movement.
 	_assert(not SimWorld.tool_proof_met(axe_entry, gs), "the axe's proof is not met yet")
+	# The playtest readout reads these numbers, and `tool_proof_met` is defined in
+	# terms of them, so what is on screen cannot disagree with the gate itself.
+	var prog: Dictionary = SimWorld.tool_proof_progress(axe_entry, gs)
+	_assert(int(prog.need) == int(axe_entry.get("threshold", 0)),
+		"progress reports the threshold the layout actually sets")
+	_assert(int(prog.have) == gs.total_harvests(), "and how far along she is")
+	_assert(bool(prog.met) == SimWorld.tool_proof_met(axe_entry, gs),
+		"and agrees with the gate, because the gate is defined by it")
 	_assert(ActionRouter.resolve(farm, gs, at, at).is_empty(),
 		"an unearned tool yields no action — she walks over and looks at it")
 	_assert(ActionRouter.is_workable(farm, at),
@@ -2133,6 +2152,8 @@ func test_tool_acquisition() -> void:
 	# Meet the proof (Q-46 strawman: harvests, threshold in the layout data).
 	gs.harvest_counts["wheat"] = int(axe_entry.get("threshold", 5))
 	_assert(SimWorld.tool_proof_met(axe_entry, gs), "harvesting enough meets the axe's proof")
+	_assert(bool(SimWorld.tool_proof_progress(axe_entry, gs).met),
+		"and the readout says so too")
 	var offer: Dictionary = ActionRouter.resolve(farm, gs, at, at)
 	_assert(offer.get("action", "") == "take_tool", "and now the tool answers a tap")
 	_assert(offer.get("tool", "") == "axe", "with the tool it will grant")

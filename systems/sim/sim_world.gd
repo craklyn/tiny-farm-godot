@@ -324,18 +324,30 @@ func is_parcel_open(parcel: Dictionary) -> bool:
 	return String(get_tile(g.x, g.y).get("state", "")) == WorldLayout.GATE_OPEN
 
 
-# Q-46 STRAWMAN (see DESIGNER_QUEUE): the proof that makes a placed tool
-# collectable. Pure, so the router can ask it and a test can drive it.
+# Q-46: the proof that makes a placed tool collectable. Thresholds ruled
+# 2026-08-29 (5 harvests for the axe, 3 logs for the pickaxe); they still live in
+# WorldLayout as named constants so they stay tunable. Pure, so the router can ask
+# it and a test can drive it.
 static func tool_proof_met(entry: Dictionary, gs) -> bool:
-	if gs == null:
-		return false
+	return tool_proof_progress(entry, gs).get("met", false)
+
+
+# The same rule, with its working shown — how far along she is, for the playtest
+# readout. Deliberately the *source* of tool_proof_met rather than a parallel
+# implementation, so the number on screen can never disagree with the gate.
+static func tool_proof_progress(entry: Dictionary, gs) -> Dictionary:
+	var proof := String(entry.get("proof", ""))
 	var need := int(entry.get("threshold", 0))
-	match String(entry.get("proof", "")):
-		"harvests":
-			return gs.total_harvests() >= need
-		"clear_log", "clear_rock", "clear_weed", "clear_tree":
-			return int(gs.clear_counts.get(String(entry.get("proof", "")), 0)) >= need
-	return false
+	var have := 0
+	if gs != null:
+		match proof:
+			"harvests":
+				have = gs.total_harvests()
+			"clear_log", "clear_rock", "clear_weed", "clear_tree":
+				have = int(gs.clear_counts.get(proof, 0))
+			_:
+				return { "proof": proof, "have": 0, "need": need, "met": false }
+	return { "proof": proof, "have": have, "need": need, "met": gs != null and have >= need }
 
 
 # T-15 / Q-39: what a crow goes for. **Any acorn beats any crop** — that is the
@@ -662,10 +674,14 @@ const PHASE1_SCARED_TARGET := 3
 # without the pickaxe, and phase 1 completion is not supposed to require the last
 # tool. Derived from gate state, so it needs no flag and survives replays.
 func _phase1_proof_met(gs) -> bool:
-	if gs.total_shipped < PHASE1_SHIPPED_TARGET:
-		return false
-	if gs.crows_scared < PHASE1_SCARED_TARGET:
-		return false
+	var p := phase1_progress(gs)
+	return p.get("met", false)
+
+
+# Obstacles still standing in parcels she can actually reach. O(map), so callers
+# must not run it every frame (the playtest readout throttles it).
+func count_obstacles_in_open_parcels() -> int:
+	var n := 0
 	for p in WorldLayout.parcels(layout):
 		if not is_parcel_open(p):
 			continue
@@ -676,8 +692,23 @@ func _phase1_proof_met(gs) -> bool:
 					if not _inside(tx, ty):
 						continue
 					if String(tiles[ty][tx].get("state", "")).begins_with("obstacle"):
-						return false
-	return true
+						n += 1
+	return n
+
+
+# The phase-1 capability proof with its working shown. Same reason as
+# tool_proof_progress: the readout must not be able to disagree with the gate, so
+# the gate is defined in terms of this rather than beside it.
+func phase1_progress(gs) -> Dictionary:
+	var shipped := int(gs.total_shipped) if gs != null else 0
+	var scared := int(gs.crows_scared) if gs != null else 0
+	var left := count_obstacles_in_open_parcels()
+	return {
+		"shipped": shipped, "shipped_target": PHASE1_SHIPPED_TARGET,
+		"scared": scared, "scared_target": PHASE1_SCARED_TARGET,
+		"obstacles_left": left,
+		"met": shipped >= PHASE1_SHIPPED_TARGET and scared >= PHASE1_SCARED_TARGET and left == 0,
+	}
 
 
 func _parcel_with_gate(gate: Vector2i) -> Dictionary:

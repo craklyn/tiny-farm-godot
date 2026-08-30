@@ -30,6 +30,24 @@ var toast_panel: Panel
 var toast_label: Label
 var hint_label: Label
 
+# --- Playtest readout ---------------------------------------------------------
+#
+# **A scaffold, not the game.** Asked for on 2026-08-29 so a playtester can see
+# what the game currently wants and what is gating the next thing; the shipping
+# game is wordless by S-7 and none of this belongs in it. It is one constant to
+# switch off, and `docs/DEPLOY.md`'s pre-release checklist says to do exactly
+# that before any public build.
+#
+# Everything shown here is read from the sim's own gate functions
+# (`tool_proof_progress`, `phase1_progress`), never recomputed alongside them, so
+# a number on screen cannot disagree with the rule it is describing.
+const PLAYTEST_NOTES := true
+# The obstacle count is an O(map) scan, so it is refreshed on a timer rather than
+# every frame — the no-per-tile-per-frame guardrail applies to debug UI too.
+const NOTES_REFRESH := 0.5
+var notes_label: Label
+var _notes_timer: float = 0.0
+
 # Tile cursor (drawn in world space via the main scene)
 var cursor_tile: Vector2i = Vector2i(-1, -1)
 var cursor_color: Color = Color.WHITE
@@ -167,6 +185,18 @@ func _build_ui() -> void:
 	hint_label.text = ""
 	add_child(hint_label)
 
+	if PLAYTEST_NOTES:
+		notes_label = Label.new()
+		notes_label.name = "playtest_notes"
+		notes_label.position = Vector2(10, 34)
+		notes_label.size = Vector2(viewport_size.x - 20, 76)
+		notes_label.add_theme_font_size_override("font_size", 13)
+		notes_label.add_theme_color_override("font_color", Color(1, 1, 0.86, 0.92))
+		notes_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+		notes_label.add_theme_constant_override("outline_size", 4)
+		notes_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(notes_label)
+
 	# --- Active Seed Pill (above hint) ---
 	seed_pill = Panel.new()
 	var pill_style := StyleBoxFlat.new()
@@ -219,6 +249,96 @@ func _build_ui() -> void:
 func _process(delta: float) -> void:
 	_update_hud()
 	_update_toast(delta)
+	if notes_label != null:
+		_notes_timer -= delta
+		if _notes_timer <= 0.0:
+			_notes_timer = NOTES_REFRESH
+			_update_playtest_notes()
+
+
+# What the game currently wants, and what is gating whatever is still locked.
+func _update_playtest_notes() -> void:
+	var main := get_tree().get_first_node_in_group("Main")
+	if main == null or main.farm == null or main.farm.sim == null:
+		return
+	var world: SimWorld = main.farm.sim
+	var lines: PackedStringArray = []
+
+	lines.append("PLAYTEST — day %d (her day %d)%s" % [
+		GameState.day, GameState.play_day(),
+		"  ·  the neighbour is still here" if not ColdOpen.is_done(world) else ""])
+
+	# The beat the game is actually pointing at, named.
+	var player_t: Vector2i = main.player.get_tile_pos() if main.player != null else Vector2i(-1, -1)
+	var targets: Array[Vector2i] = TeachingFocus.targets(world, GameState, player_t)
+	if targets.is_empty():
+		lines.append("NOW: nothing is being taught — the farm is yours to poke at")
+	else:
+		lines.append("NOW: %s  %s" % [_describe_target(main.farm, targets[0]), _target_list(targets)])
+
+	# Every locked tool, and how far along its proof is.
+	var tools: PackedStringArray = []
+	for e in WorldLayout.tools(world.layout):
+		var at: Vector2i = e.get("at", Vector2i(-1, -1))
+		if world.get_object(at.x, at.y) != String(e.get("object", "")):
+			continue  # already taken
+		var p: Dictionary = SimWorld.tool_proof_progress(e, GameState)
+		tools.append("%s %d/%d %s" % [String(e.get("tool", "?")).to_upper(),
+			p.have, p.need, "READY — go and take it" if p.met else _proof_name(String(p.proof))])
+	if not tools.is_empty():
+		lines.append("TOOLS: " + "   ".join(tools))
+
+	var ph: Dictionary = world.phase1_progress(GameState)
+	lines.append("PHASE 1: shipped %d/%d · crows scared %d/%d · obstacles left %d%s" % [
+		ph.shipped, ph.shipped_target, ph.scared, ph.scared_target, ph.obstacles_left,
+		"  ✓ COMPLETE" if ph.met else ""])
+
+	notes_label.text = "\n".join(lines)
+
+
+# Tile states are code words; a playtester should read English.
+const TILE_NOUNS := {
+	"ready": "ripe crop",
+	"growing": "growing crop",
+	"seeded": "planted seed",
+	"tilled": "tilled soil",
+	"cleared": "bare ground",
+	"obstacle_weed": "weed",
+	"obstacle_log": "log",
+	"obstacle_rock": "rock",
+	"obstacle_tree": "tree",
+}
+
+
+func _proof_name(proof: String) -> String:
+	match proof:
+		"harvests": return "harvests"
+		"clear_log": return "logs cleared"
+		"clear_rock": return "rocks cleared"
+		"clear_weed": return "weeds cleared"
+		"clear_tree": return "trees cleared"
+	return proof
+
+
+func _describe_target(farm: Node2D, t: Vector2i) -> String:
+	var obj: String = farm.get_object(t.x, t.y)
+	if obj != "":
+		return "%s at (%d,%d)" % [obj.replace("_", " "), t.x, t.y]
+	var state: String = String(farm.get_tile(t.x, t.y).get("state", "?"))
+	if state == WorldLayout.GATE_OPEN or state == WorldLayout.GATE_CLOSED:
+		return "the gate at (%d,%d) — walk through it" % [t.x, t.y]
+	var noun: String = TILE_NOUNS.get(state, state)
+	var resolved: Dictionary = ActionRouter.resolve(farm, GameState, t, t)
+	var verb: String = String(resolved.get("action", ""))
+	if verb == "":
+		return "the %s at (%d,%d)" % [noun, t.x, t.y]
+	return "%s the %s at (%d,%d)" % [verb.replace("_", " "), noun, t.x, t.y]
+
+
+func _target_list(targets: Array[Vector2i]) -> String:
+	if targets.size() <= 1:
+		return ""
+	return "(+%d more highlighted together)" % (targets.size() - 1)
 
 
 func _update_hud() -> void:
