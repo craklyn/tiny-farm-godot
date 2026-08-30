@@ -33,10 +33,48 @@ static func targets(world: SimWorld, gs, player_t: Vector2i = Vector2i(-1, -1)) 
 	var vignette := VignetteState.target_tiles(world, gs, player_t)
 	if not vignette.is_empty():
 		return vignette
-	# 2. T-10: a parcel that has just opened points at **one** obstacle of its new
+	# 2. Q-46(a): the moment a placed tool becomes takeable, say so. This is the
+	#    only announcement it gets — before the proof fires the tool is drawn as a
+	#    silhouette of itself and asks for nothing, and once she picks it up the
+	#    object is gone, so the beat ends itself with no flag.
+	var ready := ready_tools(world, gs)
+	if not ready.is_empty():
+		return ready
+	# 3. T-10: a parcel that has just opened points at **one** obstacle of its new
 	#    type, until she clears one of those — then never again. A new tool gets a
 	#    safe room containing exactly one new kind of thing (Valve principle 4).
 	return parcel_introduction(world, gs)
+
+
+# Placed tools whose capability proof has NOT fired yet. Presentation draws these
+# darkened (Q-46(a), 2026-08-29) — the same vocabulary Q-35 ruled for locked shop
+# items — so the lock is legible *without tapping*.
+#
+# Found in play: the tool used to look exactly like a takeable one and answered a
+# tap with nothing at all, which is the silent-tap failure T-18 exists to remove.
+# Q-34 forbids repairing that with a refusal ("not yet" is never a message), so
+# the fix has to be in the affordance rather than in the response: she should
+# never tap it expecting a result in the first place.
+static func locked_tools(world: SimWorld, gs) -> Array[Vector2i]:
+	return _placed_tools(world, gs, false)
+
+
+# Placed tools she has earned and has not yet picked up.
+static func ready_tools(world: SimWorld, gs) -> Array[Vector2i]:
+	return _placed_tools(world, gs, true)
+
+
+static func _placed_tools(world: SimWorld, gs, want_earned: bool) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	if gs == null:
+		return out
+	for e in WorldLayout.tools(world.layout):
+		var at: Vector2i = e.get("at", Vector2i(-1, -1))
+		if at.x < 0 or world.get_object(at.x, at.y) != String(e.get("object", "")):
+			continue  # already picked up, or never placed
+		if SimWorld.tool_proof_met(e, gs) == want_earned:
+			out.append(at)
+	return out
 
 
 static func _handed_over(world: SimWorld) -> bool:

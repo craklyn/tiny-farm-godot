@@ -690,6 +690,11 @@ func _scenario_n_pick_up_the_axe() -> void:
 	# Before the proof: the tap must not take it, and — this is the part a player
 	# feels — it must not silently do nothing either. Today it resolves to pure
 	# movement, so she walks up to it and stops.
+	_assert(TeachingFocus.locked_tools(farm.sim, GameState).has(at),
+		"an unearned axe reads as locked, so it is drawn as a silhouette (Q-46a)")
+	_assert(not TeachingFocus.ready_tools(farm.sim, GameState).has(at),
+		"and is not announced as available")
+
 	InputManager.click_tile = at
 	InputManager.has_click = true
 	for i in 30: await get_tree().process_frame
@@ -702,6 +707,14 @@ func _scenario_n_pick_up_the_axe() -> void:
 	# Meet the Q-46 strawman proof, then tap it again.
 	GameState.harvest_counts["wheat"] = int(entry.get("threshold", 5))
 	_assert(SimWorld.tool_proof_met(entry, GameState), "the harvest proof is met")
+	# Asserted on the mechanism rather than on the arbitrated result: by this
+	# point in the suite the live world has been driven through many scenarios,
+	# so what else may legitimately be competing for the highlight is not a
+	# fixed quantity. `test_tool_acquisition` owns the arbitration assertion.
+	_assert(TeachingFocus.ready_tools(farm.sim, GameState).has(at),
+		"and the moment it becomes takeable, it is announced")
+	_assert(not TeachingFocus.locked_tools(farm.sim, GameState).has(at),
+		"and stops being drawn as locked")
 	player.pos = Vector2(stand.x * 16 + 8, stand.y * 16 + 8)
 	player.path.clear()
 	player.pending_action = {}

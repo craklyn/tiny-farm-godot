@@ -2110,6 +2110,26 @@ func test_tool_acquisition() -> void:
 	_assert(ActionRouter.resolve(farm, gs, rock_t, rock_t).is_empty(),
 		"a rock yields no action without the pickaxe")
 
+	# Q-46(a), from play 2026-08-29: the lock has to be legible *without tapping*,
+	# because a tool that looks takeable and answers a tap with nothing is the
+	# silent-tap failure T-18 exists to remove — and Q-34 forbids repairing that
+	# with a refusal. So an unearned tool is drawn as a silhouette of itself, and
+	# the moment it becomes takeable it is the one thing that glows.
+	_assert(TeachingFocus.locked_tools(world, gs).has(at),
+		"an unearned tool is listed as locked, so presentation can draw it darkened")
+	_assert(not TeachingFocus.ready_tools(world, gs).has(at),
+		"and is not announced as available")
+	_assert(not TeachingFocus.targets(world, gs, at).has(at),
+		"and nothing glows on it")
+
+	# Teaching is switched off entirely until the farm is hers, so to see the
+	# arbitration at all this fixture has to be past the handover and past the
+	# vignette's two days — otherwise the vignette would rightly own the
+	# highlight and this would prove nothing.
+	world.apply_action({ "verb": "open_gate", "target": WorldLayout.gate_of("neighbour"),
+		"actor": "neighbour" }, gs)
+	gs.day = gs.takeover_day + 5
+
 	# Meet the proof (Q-46 strawman: harvests, threshold in the layout data).
 	gs.harvest_counts["wheat"] = int(axe_entry.get("threshold", 5))
 	_assert(SimWorld.tool_proof_met(axe_entry, gs), "harvesting enough meets the axe's proof")
@@ -2117,12 +2137,28 @@ func test_tool_acquisition() -> void:
 	_assert(offer.get("action", "") == "take_tool", "and now the tool answers a tap")
 	_assert(offer.get("tool", "") == "axe", "with the tool it will grant")
 
+	_assert(not TeachingFocus.locked_tools(world, gs).has(at),
+		"once earned it stops being drawn as locked")
+	_assert(TeachingFocus.ready_tools(world, gs).has(at), "and starts being announced")
+	_assert(TeachingFocus.targets(world, gs, at).has(at),
+		"the moment it becomes takeable is the moment it glows")
+
 	var got := world.apply_action({ "verb": "take_tool", "target": at, "tool": "axe", "actor": "player" }, gs)
 	_assert(got.get("ok", false) and got.get("tool", "") == "axe", "take_tool grants the axe")
 	_assert(gs.owns_tool("axe"), "and she owns it")
 	_assert(world.get_object(at.x, at.y) == "", "and it is no longer on the ground")
 	_assert(world.apply_action({ "verb": "take_tool", "target": at, "actor": "player" }, gs).get("reason", "")
 		== "no_tool_here", "taking it twice is refused")
+	# The beat ends itself: the object is gone, so there is nothing left to point
+	# at and no flag was ever needed to remember that she has it.
+	_assert(not TeachingFocus.ready_tools(world, gs).has(at),
+		"picking it up ends its highlight, with no flag to clear")
+	_assert(not TeachingFocus.locked_tools(world, gs).has(at),
+		"and a tool that is gone is not drawn as a locked one either")
+	# The pickaxe is still lying at its own gate, still unearned, and still
+	# correctly listed as locked — taking one tool says nothing about the other.
+	_assert(TeachingFocus.locked_tools(world, gs).size() == 1,
+		"the pickaxe is untouched by any of this")
 
 	# Acquisition opens the parcel — that is acquisition's visible half.
 	_assert(String(world.get_tile(gate.x, gate.y).state) == WorldLayout.GATE_CLOSED,

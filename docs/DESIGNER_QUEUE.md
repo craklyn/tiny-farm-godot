@@ -384,8 +384,15 @@ first, since a different answer there changes what the other four are optimising
     else beyond a boundary. But it breaks Q-46's shape ("tapping it grants the tool"),
     because she can no longer reach it, and a promise behind a hedge is just a hedge.
 
-  Until this is ruled the axe is reachable, tappable and silent before 5 harvests. Say
-  which and it is a small change either way.
+  **Ruled the same day: (a), noting the art is all placeholder.** Built: an unearned tool
+  is drawn as a dark silhouette of itself (in `main.gd`'s overlay, not `farm.gd` — F-4),
+  and the moment its proof fires it becomes the one thing that glows, until she picks it
+  up. Both states are derived — `TeachingFocus.locked_tools()` / `ready_tools()` read the
+  objects grid and the proof — so the beat ends itself when the tool is gone and there is
+  no flag anywhere. The highlight sits below the onboarding vignette in the arbitration,
+  so it cannot interrupt day 1 or 2. **The thresholds themselves (5 harvests / 3 logs)
+  are still a strawman awaiting your ruling** — that is the part of Q-46 that remains
+  open.
 - **Q-47 (Ruling)** **What evidence closes M1.5's exit gate?** The M1.5 gate in
   `ROADMAP.md` currently reads "a first-time pre-reader reaches day 1 beat 4 … on two
   consecutive fresh runs". That re-creates the exact planning fault **Q-43 fixed for M1**

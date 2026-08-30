@@ -225,9 +225,14 @@ are in `design/13` §5.
       wordless "not yet"; a silent no-op would have regressed the 2026-08-27
       refusal-feedback work, so `test_tool_acquisition` covers it directly
 - [x] `cycle_tool` never lands on a tool she has not acquired
-- [ ] **how** the tools are earned is a strawman pending **Q-46** — visible at the gate,
-      proof-gated (5 harvests / 3 logs), tap to take. Both numbers are `[Playtest]`
-      constants in `WorldLayout.DEFAULT.tools`
+- [x] the lock is legible **without tapping** (Q-46a, ruled 2026-08-29 after play): an
+      unearned tool is drawn as a dark silhouette of itself, and the moment its proof fires
+      it becomes the one thing that glows. Found because the designer played it and could
+      not tell whether a silent, takeable-looking axe was a bug — which is the same
+      silent-tap failure T-18 exists to remove, and which Q-34 forbids repairing with a
+      refusal, so it had to be fixed in the affordance rather than the response
+- [ ] **the thresholds** are still a strawman pending **Q-46** — 5 harvests / 3 logs, both
+      `[Playtest]` constants in `WorldLayout.DEFAULT.tools`
 
 **T-10 — Each parcel opens a vignette** · Q-34 ✅ · done 2026-08-29 (M1.5 WI-3)
 *So that a new tool gets a safe room containing exactly one new thing.*

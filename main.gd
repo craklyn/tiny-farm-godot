@@ -581,6 +581,25 @@ func _draw_overlay(overlay: CanvasItem) -> void:
 		var rect := Rect2(px, py, TILE_SIZE, TILE_SIZE)
 		overlay.draw_rect(rect, _lit(cursor_color), false, 1.0)
 
+	# Q-46(a): a tool she has not earned yet is drawn as a silhouette of itself,
+	# so the lock is legible before she touches it. Found in play — it used to
+	# look exactly like a takeable tool and answer a tap with nothing at all,
+	# which is the silent-tap failure T-18 exists to remove. Q-34 forbids fixing
+	# that with a refusal, so it is fixed in the affordance instead: she never
+	# taps it expecting a result. Deliberately NOT daylight-compensated — this is
+	# an object sitting in the world, so it takes the world's light.
+	#
+	# Drawn here rather than in farm.gd because that file has no GameState and
+	# must not gain one (finding F-4); the overlay already has both.
+	if farm != null:
+		for lt in TeachingFocus.locked_tools(farm.sim, GameState):
+			var data: Array = farm.object_regions.get(farm.get_object(lt.x, lt.y), [])
+			if data.size() < 2:
+				continue
+			overlay.draw_texture_rect_region(data[0],
+				Rect2(lt.x * TILE_SIZE, lt.y * TILE_SIZE, TILE_SIZE, TILE_SIZE), data[1],
+				Color(0.10, 0.09, 0.16, 0.72))
+
 	# Q-9 / T-3..T-5 / T-10: wordless onboarding — pulse whatever the single
 	# arbitration point says is being taught right now. It returns an *array*
 	# because day 2's whole lesson is that several tiles glow together, which is
