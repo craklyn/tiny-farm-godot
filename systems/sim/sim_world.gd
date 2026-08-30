@@ -407,13 +407,52 @@ const MILESTONE_VERBS := { "harvest": true, "collect": true, "sell": true, "slee
 # is one tick of the action clock T-20 schedules crows against.
 const NON_WORK_VERBS := { "sleep": true, "sell": true, "buy_seed": true, "refill": true }
 
-# Actors who work out of their own pockets. The cold open (T-13) passes the
-# player's GameState — there is only one — so without this the neighbour would
-# till, plant and water her own row using the player's energy, seeds and water,
-# and the player would wake up on day 1 already tired and a seed short. Energy,
-# seed and water costs are the player's alone; the world state they produce is
-# everybody's.
-const UNCHARGED_ACTORS := { "neighbour": true, "world": true, "crow": true, "chicken": true }
+# **Every actor has its own energy meter** (designer, 2026-08-29). The player's
+# meter happens to also be the clock — spending it is what advances the time of
+# day (Q-38) — but that is a property of *her* meter, not a reason for everybody
+# else to work for free. An NPC just gets tired, in its own pocket, and starts
+# fresh when the day turns.
+#
+# The cold open (T-13) is why this had to be settled: there is one GameState, so
+# without a per-actor meter the neighbour would have tilled, planted and watered
+# her own row out of the player's energy, and the player would have woken on day
+# 1 already tired. The first version of this fix simply made non-player actors
+# free, which was wrong in the same way for the opposite reason.
+#
+# Only energy is metered per actor. Seeds and water are not modelled for NPCs —
+# they bring their own, off screen — because an NPC seed pouch buys nothing in
+# phase 1 and would be state to save, replay and keep coherent for no gain.
+#
+# Soft floor, exactly as Q-11 gives the player: an exhausted actor clamps at 0
+# and its action still resolves. Nothing in phase 1 is a wall.
+const ACTOR_MAX_ENERGY := 20  # [Playtest]
+
+# actor name -> energy remaining. Sim truth: saved, restored and replayed, so an
+# NPC's tiredness survives a reload and a replay reproduces it exactly. Absent
+# means "has not worked yet", which reads as full.
+var actor_energy: Dictionary = {}
+
+
+static func _is_player(actor: String) -> bool:
+	# "" is the player: plenty of call sites (and tests) omit the actor entirely,
+	# and the player is the only actor anything ever forgot to name.
+	return actor == "" or actor == "player"
+
+
+func energy_of(actor: String) -> int:
+	if _is_player(actor):
+		return -1  # the player's meter is GameState's, not the world's
+	return int(actor_energy.get(actor, ACTOR_MAX_ENERGY))
+
+
+func is_exhausted(actor: String) -> bool:
+	return not _is_player(actor) and energy_of(actor) <= 0
+
+
+func spend_actor_energy(actor: String, cost: int) -> void:
+	if _is_player(actor) or cost <= 0:
+		return
+	actor_energy[actor] = maxi(0, energy_of(actor) - cost)
 
 
 func apply_action(action: Dictionary, gs = null) -> Dictionary:
@@ -556,7 +595,8 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			var tile := get_tile(target.x, target.y)
 			if tile.is_empty() or tile.get("state", "") == "": return _fail("out_of_bounds")
 			var cost: int = Tools.get_energy_cost(verb)
-			var charged: bool = not UNCHARGED_ACTORS.has(String(action.get("actor", "")))
+			var actor := String(action.get("actor", ""))
+			var charged: bool = _is_player(actor)
 			# Q-11 soft floor: in phase 1 an empty tank never blocks the action,
 			# it just stays at 0 (presentation slows the farmer as the nudge)
 			if charged and gs.hard_energy and gs.energy < cost: return _fail("no_energy")
@@ -564,11 +604,15 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			if charged and verb == "water" and gs.watering_can_charges <= 0: return _fail("no_water")
 			if charged and verb == "plant" and gs.seeds.get(seed_type, 0) <= 0: return _fail("no_seeds")
 
-			# Through the setter, not the field: set_energy() clamps identically and
-			# emits energy_changed, which is what T-14's daylight tint listens to.
-			# A direct write left the sky frozen until the next day turned over.
+			# The player's energy is also the clock, so hers goes through the setter,
+			# not the field: set_energy() clamps identically and emits
+			# energy_changed, which is what T-14's daylight tint listens to. A direct
+			# write left the sky frozen until the next day turned over. Everyone
+			# else spends from their own meter, which drives nothing but themselves.
 			if charged:
 				gs.set_energy(gs.energy - cost)
+			else:
+				spend_actor_energy(actor, cost)
 			match verb:
 				"clear_weed", "clear_log", "clear_rock", "clear_tree":
 					set_tile_state(target.x, target.y, "cleared")
@@ -644,6 +688,10 @@ func _parcel_with_gate(gate: Vector2i) -> Dictionary:
 
 
 func advance_day(weather: String) -> void:
+	# Everyone wakes rested, the player included (GameState.start_new_day does
+	# hers). An NPC's tiredness is a within-day thing, same as the farmer's.
+	for actor in actor_energy.keys():
+		actor_energy[actor] = ACTOR_MAX_ENERGY
 	for ty in MAP_HEIGHT:
 		for tx in MAP_WIDTH:
 			var tile: Dictionary = tiles[ty][tx]

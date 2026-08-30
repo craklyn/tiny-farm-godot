@@ -14,6 +14,10 @@ static func capture(world: SimWorld, gs) -> Dictionary:
 		"world": {
 			"tiles": world.tiles.duplicate(true),
 			"objects": world.objects.duplicate(true),
+			# Per-actor energy (designer, 2026-08-29): every actor has its own
+			# meter, and only the player's is also the clock. World state rather
+			# than player state, so it lives here beside the grids.
+			"actor_energy": world.actor_energy.duplicate(),
 		},
 		"state": {
 			"day": gs.day,
@@ -76,6 +80,9 @@ static func restore(data: Dictionary, world: SimWorld, gs) -> bool:
 		for obj in row:
 			r2.append(String(obj))
 		world.objects.append(r2)
+	# Additive: a save written before per-actor energy existed simply has nobody
+	# on record, which reads as everybody rested — true of the builds that wrote it.
+	world.actor_energy = _int_values(w.get("actor_energy", {}))
 
 	var s: Dictionary = d.get("state", {})
 	gs.day = int(s.get("day", 1))

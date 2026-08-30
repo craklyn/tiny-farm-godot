@@ -1084,10 +1084,16 @@ MATCH line and now traversing the cold open rather than bypassing it, visual reg
    did not: A* returns `[]` for an unreachable goal and `player.gd` recorded that as a
    dead tap with no feedback at all. `Pathfinding.find_path_nearest()` is new — a bounded
    BFS to the reachable tile closest to the tap, run once per tap and never per frame.
-5. **WI-3 — non-player actors are not charged.** There is one `GameState`, so the cold
+5. **WI-3 — every actor has its own energy meter.** There is one `GameState`, so the cold
    open would have spent the *player's* energy, seeds and water on the neighbour's row.
-   `SimWorld.UNCHARGED_ACTORS` skips the energy, seed and water costs (and the clear
-   counts) for `neighbour`/`world`/`crow`/`chicken`. Asserted in `test_cold_open`.
+   The first fix made non-player actors cost-free; **the designer corrected that the same
+   day** — that treats "spending energy advances the clock" (Q-38) as a reason nobody but
+   the player can get tired, when it is only a property of *her* meter. `SimWorld` now
+   owns `actor_energy` (sim truth: saved, restored, replayed), NPCs spend from it under
+   the same Q-11 soft floor, and everyone wakes rested when the day turns. Only energy is
+   metered per actor — NPC seeds and water are still not modelled, because an NPC pouch
+   would be state to keep coherent for no phase-1 gain. `test_actor_energy` (new) and
+   `test_cold_open`. Recorded in `design/02` §4.
 6. **WI-3/WI-4 — the highlight arbitration is a separate file.** The plan folds T-10's
    parcel introduction into "the vignette highlight". Keeping it inside `VignetteState`
    would have broken WI-4's own criterion that the vignette is silent from play-day 3, so

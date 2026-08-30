@@ -19,6 +19,20 @@ watering-can charges, well refill; shipping bin → gold overnight; day/weather 
    already exists as a variable; minimum viable is rain-waters-crops.
 4. **Energy & time economy** — energy costs per action exist; tuning is `[Playtest]`
    with the kid constraint bounding phase-1 friction (Q-11).
+   **Settled 2026-08-29 (designer): energy is per actor, and only the player's is the
+   clock.** Every actor — the player, the departing neighbour, and every bot phase 4
+   eventually adds — has its own meter (`SimWorld.actor_energy`, sim truth, saved and
+   replayed). Spending the *player's* is what advances the time of day (Q-38), but that
+   is a property of her meter rather than a licence for everyone else to work for free.
+   An NPC simply gets tired, under the same Q-11 soft floor: the meter clamps at zero and
+   the action still resolves. Everyone wakes rested when the day turns. Open and
+   `[Playtest]`: whether NPCs should instead recover *during* a day as the player's own
+   clock advances, and what `ACTOR_MAX_ENERGY` should be per actor type.
+   *This was found by building it — the cold open (T-13) puts an NPC through the player's
+   own action gateway, and the first fix made non-player actors cost-free, which is wrong
+   in the same way for the opposite reason.* Only energy is metered per actor; NPC seeds
+   and water are not modelled, because an NPC pouch would be state to save, replay and
+   keep coherent for no phase-1 gain.
 5. **Money economy** — sources (shipping) and sinks (seeds, machines, towers, bots) per
    phase; the economy must fund each phase's new system. `[Claude]` first-pass
    spreadsheet model at M3 planning.

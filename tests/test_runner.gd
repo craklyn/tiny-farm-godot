@@ -58,6 +58,7 @@ func _init() -> void:
 	test_tool_acquisition()
 	test_boundary_tap_answers()
 	test_cold_open()
+	test_actor_energy()
 	test_takeover_anchoring()
 	test_acorns()
 
@@ -2276,10 +2277,12 @@ func test_cold_open() -> void:
 		"the world is %d days older" % ColdOpen.COLD_OPEN_DAYS)
 	_assert(gs.takeover_day == gs.day, "and her own day 1 is anchored at the handover")
 
-	# Her work is not charged to the player. She spends her energy, not hers.
+	# Her work is not charged to the player. She spends her own energy, not hers.
 	_assert(gs.energy == energy_before,
 		"the neighbour's labour costs the player nothing (and the sleeps refill anyway)")
 	_assert(gs.seeds.get("wheat", 0) == 5, "and she plants her own seed, not the player's")
+	_assert(world.actor_energy.has("neighbour"),
+		"but she does have a meter of her own, and it was used")
 
 	# The whole opening replays. This is the property that makes it free: no new
 	# machinery to keep in sync with the sim, and the single gateway is honoured
@@ -2533,3 +2536,115 @@ func _flood(world: SimWorld, start: Vector2i) -> Array[Vector2i]:
 			seen[n] = true
 			queue.append(n)
 	return out
+
+
+func test_actor_energy() -> void:
+	print("\n--- Every actor has its own energy meter (designer, 2026-08-29) Tests ---")
+
+	# The player's energy is also the clock — spending it is what advances the
+	# time of day (Q-38) — but that is a property of *her* meter, not a reason for
+	# everybody else to work for free. The first fix for the cold open charging the
+	# player made non-player actors free, which was wrong in the same way for the
+	# opposite reason. An NPC just gets tired, in its own pocket.
+	var world := SimWorld.new()
+	SimRng.reseed(606)
+	world.generate()
+	var gs = load("res://systems/game_state.gd").new()
+
+	var t := Vector2i(5, 3)  # inside the yard, cleared ground
+	world.set_tile_state(t.x, t.y, "cleared")
+
+	_assert(world.energy_of("neighbour") == SimWorld.ACTOR_MAX_ENERGY,
+		"an actor who has never worked reads as rested")
+	_assert(world.energy_of("player") == -1,
+		"the player has no meter here — hers is GameState's, because hers is the clock")
+	_assert(not world.is_exhausted("neighbour"), "and is not exhausted")
+
+	# An NPC's action spends the NPC's energy and none of the player's.
+	var player_energy_before: int = gs.energy
+	var r := world.apply_action({ "verb": "till", "target": t, "actor": "neighbour" }, gs)
+	_assert(r.get("ok", false), "the neighbour can till")
+	_assert(gs.energy == player_energy_before, "and it costs the player nothing")
+	_assert(world.energy_of("neighbour") == SimWorld.ACTOR_MAX_ENERGY - Tools.get_energy_cost("till"),
+		"but it costs her exactly what the verb costs")
+
+	# Two actors are two meters; neither reaches into the other.
+	world.set_tile_state(t.x, t.y, "cleared")
+	world.apply_action({ "verb": "till", "target": t, "actor": "somebody_else" }, gs)
+	_assert(world.energy_of("somebody_else") == SimWorld.ACTOR_MAX_ENERGY - Tools.get_energy_cost("till"),
+		"a second actor gets a second meter")
+	_assert(world.energy_of("neighbour") == SimWorld.ACTOR_MAX_ENERGY - Tools.get_energy_cost("till"),
+		"and spending from it leaves the first alone")
+
+	# The player's own action still charges the player, and still moves the clock.
+	world.set_tile_state(t.x, t.y, "cleared")
+	world.apply_action({ "verb": "till", "target": t, "actor": "player" }, gs)
+	_assert(gs.energy == player_energy_before - Tools.get_energy_cost("till"),
+		"the player still pays for her own work")
+	_assert(world.energy_of("player") == -1, "and gains no world-side meter by doing it")
+
+	# An unnamed actor is the player: plenty of call sites omit it, and the player
+	# is the only actor anything ever forgot to name.
+	var before_unnamed: int = gs.energy
+	world.set_tile_state(t.x, t.y, "cleared")
+	world.apply_action({ "verb": "till", "target": t }, gs)
+	_assert(gs.energy == before_unnamed - Tools.get_energy_cost("till"),
+		"an action with no actor named is charged to the player")
+
+	# Soft floor, exactly as Q-11 gives the player: an exhausted NPC clamps at 0
+	# and its action still resolves. Nothing in phase 1 is a wall, for anyone.
+	world.actor_energy["neighbour"] = 0
+	_assert(world.is_exhausted("neighbour"), "an NPC can be exhausted")
+	world.set_tile_state(t.x, t.y, "cleared")
+	_assert(world.apply_action({ "verb": "till", "target": t, "actor": "neighbour" }, gs).get("ok", false),
+		"and still works — the soft floor is not the player's alone")
+	_assert(world.energy_of("neighbour") == 0, "clamped at zero rather than going negative")
+
+	# Everyone wakes rested when the day turns.
+	world.apply_action({ "verb": "sleep", "actor": "world", "weather": "sunny" }, gs)
+	_assert(world.energy_of("neighbour") == SimWorld.ACTOR_MAX_ENERGY,
+		"a day turning refills every actor's meter")
+	_assert(world.energy_of("somebody_else") == SimWorld.ACTOR_MAX_ENERGY, "all of them")
+	_assert(gs.energy == gs.max_energy, "the player's included, as before")
+
+	# It is sim truth: saved, restored, and reproduced by a replay.
+	world.actor_energy["neighbour"] = 7
+	var round_trip = JSON.parse_string(JSON.stringify(SaveGame.capture(world, gs)))
+	var w2 := SimWorld.new()
+	var gs2 = load("res://systems/game_state.gd").new()
+	_assert(SaveGame.restore(round_trip, w2, gs2), "a save with actor energy in it restores")
+	_assert(w2.energy_of("neighbour") == 7, "and an NPC's tiredness survives a reload")
+
+	var legacy := { "version": SaveGame.VERSION,
+		"world": { "tiles": world.tiles.duplicate(true), "objects": world.objects.duplicate(true) },
+		"state": {} }
+	var w3 := SimWorld.new()
+	var gs3 = load("res://systems/game_state.gd").new()
+	_assert(SaveGame.restore(legacy, w3, gs3), "a save written before meters existed still restores")
+	_assert(w3.energy_of("neighbour") == SimWorld.ACTOR_MAX_ENERGY,
+		"with nobody on record, which reads as everybody rested")
+
+	var log := ReplayLog.new()
+	log.start(606)
+	var w4 := SimWorld.new()
+	var gs4 = load("res://systems/game_state.gd").new()
+	SimRng.reseed(606)
+	w4.generate()
+	for i in 3:
+		var tile := Vector2i(5 + i, 3)
+		w4.set_tile_state(tile.x, tile.y, "cleared")
+		var a := { "verb": "till", "target": tile, "actor": "neighbour" }
+		log.record(a, w4.apply_action(a, gs4))
+	var w5 := SimWorld.new()
+	var gs5 = load("res://systems/game_state.gd").new()
+	log.apply_to(w5, gs5)
+	_assert(w5.energy_of("neighbour") == w4.energy_of("neighbour"),
+		"and a replay reproduces it exactly")
+	_assert(SaveGame.capture_canonical(w4, gs4) == SaveGame.capture_canonical(w5, gs5),
+		"so the canonical capture still matches after a replay")
+
+	gs.free()
+	gs2.free()
+	gs3.free()
+	gs4.free()
+	gs5.free()
