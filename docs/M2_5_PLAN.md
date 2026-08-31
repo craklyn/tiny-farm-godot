@@ -1932,15 +1932,19 @@ honest number is a range); the WI-12 column varied by 1.8% across its four runs.
 bands are narrower than the 8× change between them, which is what makes the comparison a
 finding rather than an anecdote.
 
-**The gate is missed, and the number is the deliverable.** ≥100,000× was the criterion;
-**~82,000×** is the measurement. Nothing was tuned to close the eighteen percent — the
+**The gate was missed, and the number was the deliverable.** ≥100,000× was the criterion;
+**~82,000×** was the measurement. Nothing was tuned to close the eighteen percent — the
 instruction was to profile and report rather than to make the sim faster until its own
-benchmark passed — and the gap is **filed as Q-67** for a ruling, because "accept the
-number or spend an afternoon on the pathfinder" is a call about priorities. Where the 7.3
-seconds go — measured by running a scratch copy of the file with `Time.get_ticks_usec()`
-accumulators around each phase, so the shipped benchmark carries no instrumentation; the
-per-route figures below it come from a second scratch script timing `Movement.path` and
-`Movement.reachable` in tight loops on a generated world:
+benchmark passed — and the gap was **filed as Q-67** for a ruling, because "accept the
+number or spend an afternoon on the pathfinder" is a call about priorities. (Q-67 was
+answered by taking the afternoon; **the gate passes at 106–108k× now**, and the whole of
+that follow-on is recorded under *Q-67: the pathfinder, afterwards* below. Everything
+between here and there is the measurement as WI-12 left it, kept because it is what the
+afternoon was aimed at.) Where the 7.3 seconds go — measured by running a scratch copy of
+the file with `Time.get_ticks_usec()` accumulators around each phase, so the shipped
+benchmark carries no instrumentation; the per-route figures below it come from a second
+scratch script timing `Movement.path` and `Movement.reachable` in tight loops on a
+generated world:
 
 | | | |
 |---|---|---|
@@ -2046,7 +2050,10 @@ the point: this WI touches `tools/` and docs and nothing else.
    WI-8d/8e flagged, and it is the first cost in this codebase big enough to be felt in a
    frame: four bots choosing a beat on the same tick is ~4 ms. Left alone deliberately
    (`bot_brain.gd` is WI-9's file and nothing deploys a bot in the live game), recorded here
-   so the M3 debut of the shoo config does not meet it by surprise.
+   so the M3 debut of the shoo config does not meet it by surprise. *(Since halved by
+   Q-67's follow-on — the flood fill is ~410 µs and the parked fleet 3.7 s rather than 6.4 —
+   without touching `bot_brain.gd`. The shape of the note stands: a patrol beat still costs
+   a whole-map flood, it is just a cheaper one.)*
 8. **No critter was benched.** WI-9's handoff offered it as the third thing to measure ("*if*
    you bench a farm with critters"); the plan's criterion is 1-vs-8 bots, nothing spawns a
    critter in a live game, and a fifth and sixth run would have doubled the file's runtime
@@ -2059,13 +2066,134 @@ the point: this WI touches `tools/` and docs and nothing else.
    that best by being the old shape. Said out loud in a comment in both files so a reader
    does not take it for a mirror.
 
+#### Q-67: the pathfinder, afterwards ✅ landed 2026-08-31
+
+Q-67's option (b) — "a binary heap and a flat cost map would plausibly pay the whole gap" —
+was taken, on the same day and as its own change. **The gate passes.** Same benchmark, same
+world, same seed, same 73,000 Actions, same 62,000 tiles walked over 186,000 ticks of
+travel: the run went from **82,065–82,408×** (four runs, this machine, immediately before)
+to **106,192–108,478×** (four runs, immediately after), a **1.30×** end-to-end speedup, and
+`plan gate (>=100000x): PASS` on all four. The elapsed time is 7.28–7.31 s → 5.53–5.65 s.
+
+| | before | after |
+|---|---|---|
+| `Movement.plan` (A* per work tile) | 2.52 s / 44.9 µs a call | **1.37 s / 24.0 µs** |
+| `advance_to_tick` (clock, the hen, the bot's poll) | 2.36 s | 1.83 s |
+| `Movement.step` | 0.96 s | 0.95 s |
+| `apply_action` (the work itself) | 0.61 s | 0.60 s |
+| the day turn (`sleep` + the 640-tile growth pass) | 0.38 s | 0.37 s |
+| a 2-tile route / a 3-tile route | 30.9 µs / 53.5 µs | **15.0 µs / 19.3 µs** |
+| `Movement.reachable` over the meadow (220 tiles) | 905 µs | **412 µs** |
+| 8 idle shoo bots (a parked fleet, 10,000 ticks) | 6.36 s | 3.67–3.75 s |
+| 8 busy actors vs. 1, cost over the floor | 7.80–7.89× | 7.78–7.85× |
+
+(The per-phase figures are the same scratch-instrumented copy as the table above, so they
+are comparable line for line; that run counts 57,019 `Movement.plan` calls where WI-12's
+counted 56,006, which is where the accumulator sits and not what the sim did — the action,
+tile and tick counts are identical to the digit. `advance_to_tick` fell without being
+touched because the hen plans routes too. The last row is the point: the cost model the
+gate exists to protect did not move.)
+
+**What changed, and why none of it is allowed to change an answer.** D-9 records no motion
+at all, so every critter's walk in every recorded session — the robot fixture, the shipped
+demo replay, a human's tablet session — is *recomputed* through this A* on replay. A faster
+search that broke a tie one tile differently would desync all of them silently. So the bar
+was byte-for-byte identity, not "still finds a shortest route", and every change is one
+that can be argued to preserve it:
+
+1. **The open list is a stable `(f, seq)` binary min-heap** — `sim_clock.gd`'s pattern,
+   for `sim_clock.gd`'s reason. The linear scan it replaces kept the *earliest* of equal
+   f-scores (appends went to the end, `remove_at` preserved the rest), so f-then-insertion
+   order **is** the old order. One entry is one 64-bit integer, `(f, seq, tile)` packed
+   high-to-low, so a comparison is an integer comparison.
+2. **A flat preallocated node pool** replaces the `came`/`cost` Dictionaries keyed on
+   Vector2i: three arrays indexed `y * MAP_WIDTH + x`, with a **generation stamp** instead
+   of clearing them, so starting a search costs one integer increment rather than a
+   map-sized wipe (which would have been a per-map cost per decision — rule 8).
+3. **Each tile is asked about once per search.** A negative stamp marks a tile already
+   found impassable, so `is_walkable` is called once per tile met rather than once per
+   neighbour that touches it. Nothing is cached *between* searches: the ground changes
+   under an actor, and a route planned against a stale grid is the bug this engine is
+   careful about.
+4. **A stale heap entry is skipped rather than re-expanded.** Manhattan is consistent on
+   this grid, so a tile's first pop is already its best route and the old code's
+   re-expansion changed nothing; skipping it is the same answer sooner, and it is what
+   bounds the heap at four pushes per tile.
+5. **The search returns the moment the goal is first reached**, not when it comes off the
+   heap — the single biggest win, because with an exact heuristic every tile A* expands
+   before reaching the goal lies on a shortest route, and the old code expanded the whole
+   equal-cost diamond before the goal surfaced. `came[goal]` was only ever written once in
+   the old code (a second route needs a strictly cheaper one, and the first is already
+   cheapest) and the chain behind it is frozen for the same reason, so the route
+   reconstructed at first contact is the route the old pop returned. The argument is
+   written out in full in `movement.gd`.
+6. **`Movement.reachable` got the same pool**, and its result *is* its queue — the two
+   arrays the old version kept were always identical. Order preserved exactly, which
+   matters because worldgen draws the hen's tile out of it with a seeded pick.
+7. **`SimWorld.is_walkable` stopped composing itself out of `get_tile` and `get_object`**
+   and reads both inline; `get_object`'s `in ["cot", "well", "seed_box"]` became a const
+   instead of allocating a three-string array on every call. It is the hottest read in the
+   sim — ~1.8 million calls in a thousand benchmark days — and went 0.95 µs → 0.66 µs.
+
+**The proof, in the order it was taken.** `tests/test_runner.gd` keeps the four
+implementations that were replaced, verbatim (`_ref_path`, `_ref_reachable`, `_ref_walkable`,
+`_ref_object` — deliberately not tidied into calling the new ones), and
+`test_pathfinder_identity` holds them against the shipping code:
+
+- **15,680 (start, goal, mode) pairs** over four worlds — the farm as it generates, the
+  movement arena's two walls, an open field where every route is a diamond of ties, and a
+  sealed room with a rock maze — in all four movement modes, asserted **element for
+  element**. 7,960 routed, 7,720 refused, longest 33 tiles.
+- **336 flood fills** over the same worlds in three modes, asserted identical **in order**,
+  largest 540 tiles.
+- **5,120 tile reads** (every tile of every test world) asserting `is_walkable` and
+  `get_object` still answer exactly as they did.
+- The adversarial cases named one at a time: going nowhere, a start or goal off the map at
+  either end, a room with no door (refused for a walker, hopped by a kangaroo, by the
+  identical route), a burrower refused a rock to surface in, and the equal-cost diamond
+  pinned to its literal answer — `[(4, 5), (4, 6), (5, 6), (6, 6), (7, 6)]` — so a
+  tie-break change fails loudly rather than statistically.
+- Suites: unit **1376 PASSED / 0 FAILED** (1364 + this test's 12), integration **216 / 0**,
+  robot session **PASSED** (23 entries, 850 ticks, 7 free-walk events, recomputation match),
+  `verify_replay` **MATCH** on the real v1 human session, visual regression **passes
+  unchanged**, and — the strongest evidence available, because it is the one artefact whose
+  routes are all recomputed — **the demo replay regenerates byte-identically**
+  (`md5 ed92e61d66ff9b2bb88c694139af79ea` before and after, a no-op `git status`).
+
+**Deviations:**
+
+1. **Two files outside the pathfinder were touched** (`SimWorld.is_walkable` and
+   `get_object`, change 7 above). The A* was the assignment; once the Dictionaries were
+   gone, asking the world what a tile is *was* the remaining cost, and it is a read every
+   brain, every action guard and the renderer share. Both changes are pure inlining with no
+   new logic, and the full-map sweep against the old bodies is what makes that checkable
+   rather than asserted.
+2. **`Movement.reachable` was rewritten too**, though it is not on the benchmark's work
+   path and cannot move the gate. It is the same routine in the same file with the same
+   pool, and it is the cost WI-12's deviation 7 flagged as "the first cost in this codebase
+   big enough to be felt in a frame" — a shoo bot picking a patrol beat, ~910 µs, four of
+   them ~4 ms. Now ~410 µs. Its output order is load-bearing (the hen's spawn draw), which
+   is why it is swept in order rather than as a set.
+3. **`Movement._h` is gone** — the heuristic is two `absi` calls inline in the search, and
+   nothing outside this file used it. `Pathfinding._h` (presentation's wrapper, untouched by
+   this change) is a different function that happens to share the name.
+4. **The identity sweep costs the unit suite ~2 s** (3.5 s → 5.7 s), most of it running the
+   *old* A* on unreachable goals so it can flood the way it used to. Traded knowingly: this
+   is the test that stands between a tie-break change and a silent desync of every recorded
+   session, and it is worth more than two seconds of CI. The start strides (3 and 5) share
+   no factor with the map's 32×20, so the sample lands on every phase of the terrain.
+5. **The benchmark file was not touched.** The gate constant, the 10,000× floor and the
+   exit-code contract are all exactly as WI-12 wrote them; the only difference in its output
+   is that the gate line now reads PASS.
+
 **For the milestone verifier — things noticed across §9 while reading it end to end.**
 This is the last work item, so what follows is not WI-12's business but is worth a second
 pair of eyes:
 
-- **The exit gate's throughput clause is not met** (~82,000× against 100,000×). It is the
-  one binding criterion in this plan that failed, it is filed as Q-67 with a recommendation,
-  and `ROADMAP.md`'s M2.5 exit gate now says so beside the clause rather than in a footnote.
+- ~~**The exit gate's throughput clause is not met**~~ — **met as of 2026-08-31**, at
+  106,192–108,478× against 100,000×, by Q-67's option (b) (see *Q-67: the pathfinder,
+  afterwards* above). It was the one binding criterion in this plan that had failed;
+  `ROADMAP.md`'s M2.5 exit gate is updated to match.
 - **WI-5 is still Phase A.** Brain entries are still *written* as well as recomputed;
   "WI-5 landed" is not "format v2 flipped". Its four Phase B prerequisites (a real human
   tablet session verified, a robot run containing a whole crow visit, the neighbour

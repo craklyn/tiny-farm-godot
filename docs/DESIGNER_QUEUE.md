@@ -771,27 +771,30 @@ trace actually says, because several of these looked like bugs and were not.*
   earns for you" is a system rather than one counter.* Nothing is blocked: no bot is
   deployed in the live game. Engineering note: one `if` in `SimWorld._apply`'s `crow_scared`
   branch either way.
-- **Q-67 (Ruling)** **The fast-forward models travel now, and it costs eight times more
-  than the gate assumed.** Raised by M2.5 WI-12. The benchmark's worker used to teleport;
-  it now walks to every tile it works, at its species' speed, through the movement engine
-  and the tick clock. Measured honestly, that is **~82,000x realtime** against the plan's
-  **100,000x** exit-gate clause — 662,773x before travel, so travel costs about 8x, and
-  about four fifths of the run is now walking rather than farming. Nothing was tuned to
-  close the gap (the number is the deliverable), and the property the gate exists to
-  protect is separately measured and clean: eight busy actors cost **7.9x** one actor's
-  per-tick work, so cost scales with actors, never with elapsed ticks or map area.
-  Two readings. (a) *accept it* — 100,000x was a round number chosen before anyone knew
-  what travel cost, the run still fast-forwards **8,200 farm-days a minute** (an overnight
-  training session is ~4 million days), and the gate's real job is catching a per-tick
-  regression, which a floor an order of magnitude down does better than a threshold the
-  build sits just under. (b) *earn it back* — the dominant cost is `Movement.path`'s A*,
-  ~20-100us for a two-tile route, because its open list is a linear scan and every expanded
-  node allocates a Dictionary; a binary heap and a flat cost map would plausibly pay the
-  whole gap, and since every brain in the game plans routes it is a live-game frame-time
-  win as well as a benchmark one. *Recommendation: rule (a) for the milestone and schedule
-  (b) as its own change with its own before/after — it is sim surgery, it is not urgent
-  (nothing in the shipping game is slow), and doing it inside WI-12 would have been tuning
-  the sim to pass its own gate.* Nothing is blocked either way.
+- **Q-67** ~~The fast-forward models travel now, and it costs eight times more than the
+  gate assumed~~ — ✅ **resolved by engineering 2026-08-31: option (b), and the gate
+  passes.** Raised by M2.5 WI-12, which made the benchmark's worker walk to every tile it
+  works and measured **~82,000x realtime** against the plan's **100,000x** exit-gate
+  clause. The question was whether to accept the number (a) or spend an afternoon on the
+  pathfinder (b). (b) was done, so there is no gap left to rule on: the same run, same
+  world, same 73,000 Actions and same 62,000 tiles walked, now measures **106,192–108,478x
+  across four runs** — **PASS**, 1.30x the old figure — and the cost-model property the
+  gate exists to protect is where it was (eight busy actors cost **7.8x** one actor's
+  per-tick work).
+  The work was exactly what (b) described and nothing else: `Movement.path`'s open list
+  became a stable `(f, seq)` binary min-heap — `sim_clock.gd`'s pattern — over a flat
+  preallocated node pool, with the terrain question asked once per tile instead of once
+  per neighbour, and it exits the moment the goal is first reached rather than when it
+  comes off the heap. `Movement.reachable` and `SimWorld.is_walkable` got the same
+  treatment. **Nothing about the answers changed**, and that was the binding constraint:
+  D-9 records no motion, so every critter's walk in every recorded session is recomputed
+  through this A*, and a route that broke a tie one tile differently would desync the
+  robot fixture, the demo replay and every human session. `test_pathfinder_identity` holds
+  the old implementations against the new ones over 15,680 (start, goal, mode) pairs and
+  336 flood fills, element for element, and the demo replay regenerates byte-identically.
+  As a bonus the live-game cost WI-12 flagged (deviation 7 — a shoo bot picking a patrol
+  beat cost ~910 µs, four of them ~4 ms in a frame) is now ~410 µs. Detail and the full
+  before/after in `M2_5_PLAN.md` §9 WI-12.
 
 ## Before M3 — phase 2 design
 

@@ -272,80 +272,341 @@ static func can_enter(world: SimWorld, actor_id: String, t: Vector2i) -> bool:
 # moves her, and a replay of a session recorded before that change would put her
 # somewhere else. Same queue, same DIRS order, same array as the flood fill this
 # generalises (M2.5 WI-3's `SimWorld.reachable_from`).
+#
+# The result **is** the queue — every tile enters it once, in the order it was
+# discovered, and is read back out in that same order — which is why the two
+# arrays the old version kept were always identical and only one is kept now. It
+# runs on the same stamped pool as the A* below and asks the world about each tile
+# exactly once, which is what took a flood fill of the meadow from ~905 µs to
+# ~410: the first cost in this codebase big enough for a frame to feel, flagged by
+# WI-12's deviation 7 when a shoo bot picking its next patrol beat cost 4 ms for
+# four of them (Q-67).
 static func reachable(world: SimWorld, mode: String, start: Vector2i) -> Array[Vector2i]:
 	var out: Array[Vector2i] = []
-	if not in_bounds(world, start) or not passable(world, mode, start):
+	var mode_id := _mode_id(mode)
+	if not _crossable(world, mode_id, start.x, start.y):
 		return out
-	var seen := { start: true }
-	var queue: Array[Vector2i] = [start]
+
+	var w: int = SimWorld.MAP_WIDTH
+	var mh: int = SimWorld.MAP_HEIGHT
+	_ensure_pool(w * mh)
+	var gen := _next_gen()
+	var ground := mode_id == _M_GROUND
+	_stamp[start.y * w + start.x] = gen
+	out.append(start)
+
 	var idx := 0
-	while idx < queue.size():
-		var t := queue[idx]
+	while idx < out.size():
+		var t: Vector2i = out[idx]
 		idx += 1
-		out.append(t)
-		for d in DIRS:
-			var n: Vector2i = t + d
-			if seen.has(n) or not in_bounds(world, n) or not passable(world, mode, n):
+		var cx := t.x
+		var cy := t.y
+		for d in 4:
+			var nx := cx + _DX[d]
+			var ny := cy + _DY[d]
+			if nx < 0 or nx >= w or ny < 0 or ny >= mh:
 				continue
-			seen[n] = true
-			queue.append(n)
+			var ni := ny * w + nx
+			var seen: int = _stamp[ni]
+			if seen == gen or seen == -gen:
+				continue  # already queued, or already found impassable
+			if not (world.is_walkable(nx, ny) if ground \
+					else _crossable(world, mode_id, nx, ny)):
+				_stamp[ni] = -gen
+				continue
+			_stamp[ni] = gen
+			out.append(Vector2i(nx, ny))
 	return out
 
 
+# --- A*: the search, and the pool it runs in -----------------------------------
+#
+# **Why this is written the way it is** (Q-67, M2.5 WI-12's profile). A
+# fast-forward plans tens of thousands of routes — 56,006 in a thousand benchmark
+# days — and the textbook shape this replaces cost 44.9 µs a call because every
+# expanded node allocated a Dictionary and the open list was a linear scan with a
+# `remove_at`. Nothing had ever needed the pathfinder to be *fast*, because until
+# travel was modelled nothing in a fast-forward planned a route.
+#
+# So the search allocates nothing per call. Three flat arrays indexed by
+# `y * MAP_WIDTH + x` stand in for the dictionaries a textbook A* keys on
+# Vector2i, and a **generation stamp** stands in for clearing them: a cell belongs
+# to this search only while `_stamp[i] == _gen`, so starting a search costs one
+# integer increment rather than a map-sized wipe. That matters for its own sake —
+# ground rule 8 says no per-map work per decision, and a wipe would have been
+# exactly that.
+#
+# The stamp does a second job that turned out to be worth more than the first.
+# Once the Dictionaries were gone the search's whole remaining cost was asking the
+# world what a tile is: `is_walkable` is the most expensive thing in the loop even
+# after Q-67 tightened it — a tile fetch, a handful of string comparisons and an
+# object lookup — and a textbook A* asks about the same tile once per neighbour
+# that touches it, three or four times over. A **negative**
+# stamp (`-_gen`) marks a tile this search has already found impassable, so every
+# tile the search meets is asked about exactly once. Nothing is cached *between*
+# searches: the ground changes under an actor and a route planned against a stale
+# grid is the bug this whole file is careful about.
+#
+# The arrays are static and are therefore **not re-entrant**: nothing in this file
+# calls back into a search and nothing may. Layer 2 stays pure — these are plain
+# packed arrays, no Node, no autoload, no engine anything.
+static var _pool_size: int = 0
+static var _g: PackedInt32Array = PackedInt32Array()
+static var _came: PackedInt32Array = PackedInt32Array()
+static var _stamp: PackedInt32Array = PackedInt32Array()
+static var _open: PackedInt64Array = PackedInt64Array()
+static var _gen: int = 0
+
+# **The open list is a stable binary min-heap, and the stability is the whole
+# point.** One entry is one 64-bit integer, `(f, seq, tile)` packed high-to-low so
+# that comparing two entries as plain integers orders them by f first and by
+# **insertion order** second. That second field is `sim_clock.gd`'s trick — the
+# same (at, seq) pattern, for the same reason — and here it is what reproduces the
+# linear scan this replaces bit for bit: that scan kept the *earliest* of equal
+# f-scores, because appends went to the end and `remove_at` preserved the order of
+# everything else.
+#
+# Which makes the ordering load-bearing in the strongest sense the project has.
+# Manhattan is exact for four-way movement on a uniform grid, so the first time
+# the goal comes off the queue it is by a shortest route; the fixed `DIRS` order
+# and this tie-break are what make it always the *same* shortest route, on any
+# machine, in a replay as in a live session. D-9 records no motion at all — every
+# critter's walk in every recorded session is recomputed through this function —
+# so reordering these fields does not slow a replay down, it desyncs it.
+#
+# The field widths hold a map of 2^21 tiles (this one has 640) and 2^21 pushes.
+# The push bound is provable rather than hopeful: a stale entry is skipped instead
+# of re-expanded (see the loop), so each tile is expanded at most once and each
+# expansion pushes at most four, which is why `_open` can be sized once at
+# `4 * tiles` and never checked again.
+const _F_SHIFT := 42
+const _SEQ_SHIFT := 21
+const _IDX_MASK := (1 << 21) - 1
+
+# `DIRS` split into two integer lanes. Same order, and a unit test asserts it
+# stays the same order — the search runs on these, and a route walks through
+# tiles, not Vector2i temporaries.
+const _DX: Array[int] = [0, 0, -1, 1]
+const _DY: Array[int] = [-1, 1, 0, 0]
+
+# Mode as an integer, resolved once per search instead of matched on a string once
+# per neighbour.
+const _M_GROUND := 0
+const _M_FLY := 1
+const _M_BURROW := 2
+const _M_HOP := 3
+const _M_STATIC := 4
+
+
+static func _mode_id(mode: String) -> int:
+	match mode:
+		SpeciesDefs.FLY: return _M_FLY
+		SpeciesDefs.BURROW: return _M_BURROW
+		SpeciesDefs.HOP: return _M_HOP
+		SpeciesDefs.STATIC: return _M_STATIC
+		_: return _M_GROUND
+
+
+# `in_bounds(t) and passable(mode, t)` — the pair every search does together — in
+# one tile lookup instead of two. Not a new rule, the same rule read once:
+# `is_walkable` already answers false off the map, and `is_barrier` already
+# answers false for a tile that is not there, so the bounds half is implied for
+# every mode except `fly`, which is passable everywhere on purpose (a crow enters
+# from off the map) and would otherwise search open sky.
+static func _crossable(world: SimWorld, mode_id: int, x: int, y: int) -> bool:
+	match mode_id:
+		_M_GROUND:
+			return world.is_walkable(x, y)
+		_M_HOP:
+			if world.is_walkable(x, y):
+				return true
+			var tile := world.get_tile(x, y)
+			return not tile.is_empty() and WorldLayout.is_boundary_state(String(tile.get("state", "")))
+		_M_BURROW:
+			var under := world.get_tile(x, y)
+			return not under.is_empty() and String(under.get("state", "")) != "border"
+		_M_FLY:
+			return not world.get_tile(x, y).is_empty()
+		_:
+			return false
+
+
+# `in_bounds(t) and can_stop(mode, t)` — the other pair, asked about the goal
+# once. The two modes where it differs from `_crossable` are the two where
+# passing through is not the same as being there: a kangaroo clears a fence
+# rather than perching on it, and a mole travelling under a rock has to come up
+# somewhere it can stand.
+static func _stoppable(world: SimWorld, mode_id: int, x: int, y: int) -> bool:
+	match mode_id:
+		_M_HOP, _M_BURROW:
+			return world.is_walkable(x, y)
+		_:
+			return _crossable(world, mode_id, x, y)
+
+
+static func _ensure_pool(tiles: int) -> void:
+	if _pool_size >= tiles:
+		return
+	_pool_size = tiles
+	_g.resize(tiles)
+	_came.resize(tiles)
+	_stamp.resize(tiles)
+	_stamp.fill(0)
+	# Four pushes per expansion, one expansion per tile: see the packing note.
+	_open.resize(tiles * 4 + 8)
+	_gen = 0
+
+
+# The next search's stamp. Generations only ever go up, so the wipe below is the
+# one thing that keeps `+gen`/`-gen` inside a 32-bit cell — it costs one
+# comparison per search and happens roughly once a billion of them.
+static func _next_gen() -> int:
+	_gen += 1
+	if _gen >= 0x40000000:
+		_gen = 1
+		_stamp.fill(0)
+	return _gen
+
+
 # The waypoints from `start` to `goal` (excluding `start`), or [] when this mode
-# has no route. A*: Manhattan heuristic, which is exact for four-way movement on a
-# uniform grid, so the first time the goal comes off the queue it is by a shortest
-# route. Ties break on insertion order (the scan below keeps the earliest of equal
-# f-scores) and neighbours are generated in a fixed order, so "a shortest route"
-# is always the *same* shortest route — on any machine, in a replay as in a live
-# session. Determinism here is not a nicety: a recomputed walk is how D-9 avoids
-# recording motion at all.
+# has no route.
 #
 # `fly` rarely wants this: a flyer has no route to find, it goes in a straight
 # line through everything, and that is `fly_toward()` below. Asking anyway is
 # answered honestly — the shortest tile staircase, over the map.
 static func path(world: SimWorld, mode: String, start: Vector2i, goal: Vector2i) -> Array[Vector2i]:
 	var out: Array[Vector2i] = []
-	if start == goal or not in_bounds(world, start) or not in_bounds(world, goal):
+	if start == goal:
 		return out
-	if not passable(world, mode, start) or not can_stop(world, mode, goal):
+	var mode_id := _mode_id(mode)
+	# The old prologue asked four questions — `in_bounds` and then `passable` for
+	# the start, `in_bounds` and then `can_stop` for the goal — and each of those
+	# fetched the tile again. Same two conditions, two fetches.
+	if not _crossable(world, mode_id, start.x, start.y):
+		return out
+	if not _stoppable(world, mode_id, goal.x, goal.y):
 		return out
 
-	var came: Dictionary = {}
-	var cost: Dictionary = { start: 0 }
-	var open: Array[Dictionary] = [{ "t": start, "f": _h(start, goal) }]
-	while not open.is_empty():
-		var best := 0
-		for i in range(1, open.size()):
-			if open[i]["f"] < open[best]["f"]:
-				best = i
-		var cur: Vector2i = open[best]["t"]
-		open.remove_at(best)
-		if cur == goal:
-			var t := cur
-			while t != start:
-				out.push_front(t)
-				t = came[t]
-			return out
-		var here: int = int(cost[cur])
-		for d in DIRS:
-			var n: Vector2i = cur + d
-			# A *route* is over the map, whatever the mode. The bounds check is
-			# redundant for the three modes the border already stops and it is not
-			# redundant for `fly`, which is passable everywhere on purpose (a crow
-			# enters from off the map) and would otherwise search open sky.
-			if not in_bounds(world, n) or not passable(world, mode, n):
+	var w: int = SimWorld.MAP_WIDTH
+	var mh: int = SimWorld.MAP_HEIGHT
+	_ensure_pool(w * mh)
+	var gen := _next_gen()
+	var ground := mode_id == _M_GROUND
+	var gx := goal.x
+	var gy := goal.y
+	var goal_i := gy * w + gx
+	var start_i := start.y * w + start.x
+
+	_stamp[start_i] = gen
+	_g[start_i] = 0
+	_came[start_i] = -1
+	_open[0] = ((absi(start.x - gx) + absi(start.y - gy)) << _F_SHIFT) | start_i
+	var n := 1   # entries in the heap
+	var seq := 1 # next insertion stamp; the start took 0
+
+	while n > 0:
+		var key: int = _open[0]
+		var cur: int = key & _IDX_MASK
+		# Pop the root: the last entry goes to the top and sifts down. Written out
+		# here rather than called, because this loop is the whole reason the file
+		# was rewritten and a static call per pop is a measurable share of it.
+		n -= 1
+		if n > 0:
+			var tail: int = _open[n]
+			var i := 0
+			while true:
+				var left := i * 2 + 1
+				if left >= n:
+					break
+				var small := left
+				var right := left + 1
+				if right < n and _open[right] < _open[left]:
+					small = right
+				if _open[small] >= tail:
+					break
+				_open[i] = _open[small]
+				i = small
+			_open[i] = tail
+
+		var cy := cur / w
+		var cx := cur - cy * w
+		var here: int = _g[cur]
+		# A **stale duplicate**: this tile was reached again more cheaply, pushed a
+		# second time, and the cheaper entry has already been expanded. The linear
+		# scan this replaces popped it and changed nothing — Manhattan is
+		# consistent on this grid, so a tile's first pop is already its best route
+		# and every neighbour test in the re-expansion failed. Skipping it is the
+		# same answer sooner, and it is what bounds the heap (see the packing note).
+		if (key >> _F_SHIFT) != here + absi(cx - gx) + absi(cy - gy):
+			continue
+
+		var step_cost := here + 1
+		for d in 4:
+			var nx := cx + _DX[d]
+			var ny := cy + _DY[d]
+			# Off the map is off the map for every mode, `fly` included: a *route*
+			# is over the map even for a species that is passable everywhere on
+			# purpose (a crow enters from two tiles off the edge), which would
+			# otherwise search open sky. Done as integers here only so the pool can
+			# be indexed at all — `_crossable` still asks the world the honest
+			# question below.
+			if nx < 0 or nx >= w or ny < 0 or ny >= mh:
 				continue
-			var step_cost := here + 1
-			if step_cost < int(cost.get(n, 0x7FFFFFFF)):
-				cost[n] = step_cost
-				came[n] = cur
-				open.append({ "t": n, "f": float(step_cost) + _h(n, goal) })
+			var ni := ny * w + nx
+			var seen: int = _stamp[ni]
+			if seen == gen:
+				# Already reached this search, so already known crossable: the only
+				# question left is whether this route to it is cheaper.
+				if _g[ni] <= step_cost:
+					continue
+			elif seen == -gen:
+				continue  # asked about this tile already this search: impassable
+			elif not (world.is_walkable(nx, ny) if ground \
+					else _crossable(world, mode_id, nx, ny)):
+				# The walker's answer is `is_walkable` and nothing else, and it is
+				# the mode nearly every route in the game is planned in, so it is
+				# asked directly rather than through the mode switch.
+				_stamp[ni] = -gen
+				continue
+			_stamp[ni] = gen
+			_g[ni] = step_cost
+			_came[ni] = cur
+
+			# **The goal is finished the moment it is first reached, not when it
+			# comes off the heap** — and that is a claim about the *old* code, not a
+			# new rule. `came[goal]` was only ever written once there: a second route
+			# to it needs a strictly cheaper one, and the first is already the
+			# cheapest. Manhattan is exact here, so every tile A* expands while the
+			# goal is still unreached lies on a shortest route (f = f_min means
+			# g + distance-to-goal = distance), which makes the tile that reaches the
+			# goal one step short of it and this route as short as any. The chain
+			# behind it is frozen for the same reason — each of those tiles was
+			# expanded, so each already had its best route. Popping the goal instead
+			# would have expanded the rest of the equal-cost diamond first and
+			# returned these same tiles.
+			if ni == goal_i:
+				var t := ni
+				while t != start_i:
+					var ty := t / w
+					out.append(Vector2i(t - ty * w, ty))
+					t = _came[t]
+				out.reverse()
+				return out
+
+			# Push, sifting up. Same inlining, same reason.
+			var entry := ((step_cost + absi(nx - gx) + absi(ny - gy)) << _F_SHIFT) \
+				| (seq << _SEQ_SHIFT) | ni
+			seq += 1
+			var j := n
+			n += 1
+			while j > 0:
+				var parent := (j - 1) >> 1
+				if _open[parent] <= entry:
+					break
+				_open[j] = _open[parent]
+				j = parent
+			_open[j] = entry
 	return out
-
-
-static func _h(a: Vector2i, b: Vector2i) -> float:
-	return float(absi(a.x - b.x) + absi(a.y - b.y))
 
 
 # --- tick-stepped motion -------------------------------------------------------

@@ -69,6 +69,7 @@ func _init() -> void:
 	test_sim_clock()
 	test_brains()
 	test_movement()
+	test_pathfinder_identity()
 	test_scent()
 	test_sprinkler()
 	test_pea()
@@ -4009,11 +4010,301 @@ func _movement_arena(seed_value: int = 4) -> SimWorld:
 	return w
 
 
+# --- Q-67: the reference pathfinder, kept so the fast one can be held against it
+#
+# `Movement.path`, `Movement.reachable`, `SimWorld.is_walkable` and
+# `SimWorld.get_object` were all rewritten for speed (Q-67, from M2.5 WI-12's
+# profile: the A* was 44.9 µs a call and travel was 79% of a fast-forward). Every
+# one of those rewrites is a claim that the *answer* did not change, and the
+# answer is load-bearing in the strongest way this project has. D-9 records no
+# motion at all, so every critter's walk in every recorded session — the robot
+# fixture, the demo replay, a human's tablet session — is **recomputed** through
+# these functions on replay. A route that broke a tie one tile differently would
+# desync all of them, silently, and only the replay verifier would ever say so.
+#
+# So the implementations they replaced live on here, verbatim, and
+# `test_pathfinder_identity` is element-by-element equality over a sweep. These
+# four are the *old* code and are not to be tidied into calling the new one — that
+# is the entire point of them.
+
+func _ref_object(world: SimWorld, tx: int, ty: int) -> String:
+	if ty >= 0 and ty < SimWorld.MAP_HEIGHT and tx >= 0 and tx < SimWorld.MAP_WIDTH:
+		if world.objects[ty][tx] != "":
+			return world.objects[ty][tx]
+		if ty + 1 < SimWorld.MAP_HEIGHT and world.objects[ty + 1][tx] in ["cot", "well", "seed_box"]:
+			return world.objects[ty + 1][tx]
+	return ""
+
+
+func _ref_walkable(world: SimWorld, tx: int, ty: int) -> bool:
+	var tile := world.get_tile(tx, ty)
+	if tile.is_empty():
+		return false
+	var state: String = tile.state
+	if state == "border":
+		return false
+	if state.begins_with("obstacle"):
+		return false
+	if WorldLayout.is_boundary_state(state):
+		return false
+	var obj := _ref_object(world, tx, ty)
+	if obj != "" and obj != "egg" and obj != "acorn":
+		return false
+	return true
+
+
+# The old A*: a linear scan over an open list of freshly allocated Dictionaries,
+# keeping the earliest of equal f-scores.
+func _ref_path(world: SimWorld, mode: String, start: Vector2i, goal: Vector2i) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	if start == goal or not Movement.in_bounds(world, start) or not Movement.in_bounds(world, goal):
+		return out
+	if not Movement.passable(world, mode, start) or not Movement.can_stop(world, mode, goal):
+		return out
+	var came: Dictionary = {}
+	var cost: Dictionary = { start: 0 }
+	var open: Array[Dictionary] = [{ "t": start, "f": float(_ref_h(start, goal)) }]
+	while not open.is_empty():
+		var best := 0
+		for i in range(1, open.size()):
+			if open[i]["f"] < open[best]["f"]:
+				best = i
+		var cur: Vector2i = open[best]["t"]
+		open.remove_at(best)
+		if cur == goal:
+			var t := cur
+			while t != start:
+				out.push_front(t)
+				t = came[t]
+			return out
+		var here: int = int(cost[cur])
+		for d in Movement.DIRS:
+			var n: Vector2i = cur + d
+			if not Movement.in_bounds(world, n) or not Movement.passable(world, mode, n):
+				continue
+			var step_cost := here + 1
+			if step_cost < int(cost.get(n, 0x7FFFFFFF)):
+				cost[n] = step_cost
+				came[n] = cur
+				open.append({ "t": n, "f": float(step_cost) + float(_ref_h(n, goal)) })
+	return out
+
+
+func _ref_h(a: Vector2i, b: Vector2i) -> int:
+	return absi(a.x - b.x) + absi(a.y - b.y)
+
+
+# The old flood fill: a `seen` Dictionary keyed on Vector2i and a separate queue.
+func _ref_reachable(world: SimWorld, mode: String, start: Vector2i) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	if not Movement.in_bounds(world, start) or not Movement.passable(world, mode, start):
+		return out
+	var seen := { start: true }
+	var queue: Array[Vector2i] = [start]
+	var idx := 0
+	while idx < queue.size():
+		var t := queue[idx]
+		idx += 1
+		out.append(t)
+		for d in Movement.DIRS:
+			var n: Vector2i = t + d
+			if seen.has(n) or not Movement.in_bounds(world, n) or not Movement.passable(world, mode, n):
+				continue
+			seen[n] = true
+			queue.append(n)
+	return out
+
+
+# The four worlds the sweep runs over, chosen for the four things that can make
+# two shortest routes differ: ordinary terrain, walls to go round, open ground
+# where every route is a diamond of equal-cost ties, and somewhere with no way in.
+func _pathfinder_worlds() -> Array:
+	return [
+		["the farm as it generates", _pathfinder_farm()],
+		["the arena (two walls to go round)", _movement_arena()],
+		["an open field (every route a diamond of ties)", _open_field()],
+		["a sealed room and a rock maze", _sealed_room()],
+	]
+
+
+func _pathfinder_farm() -> SimWorld:
+	SimRng.reseed(1234)
+	var w := SimWorld.new()
+	w.generate()
+	return w
+
+
+func _open_field() -> SimWorld:
+	var w := _movement_arena()
+	for ty in range(1, SimWorld.MAP_HEIGHT - 1):
+		for tx in range(1, SimWorld.MAP_WIDTH - 1):
+			w.set_tile_state(tx, ty, "cleared")
+	return w
+
+
+func _sealed_room() -> SimWorld:
+	var w := _open_field()
+	# A hedged room with four walls and no door: a goal inside it is reachable by
+	# a hopper and a burrower and by nobody else, which is the case where the old
+	# A* flooded its whole component before giving up and the new one has to give
+	# up in exactly the same place.
+	for tx in range(20, 27):
+		w.set_tile_state(tx, 6, WorldLayout.HEDGE)
+		w.set_tile_state(tx, 12, WorldLayout.HEDGE)
+	for ty in range(6, 13):
+		w.set_tile_state(20, ty, WorldLayout.HEDGE)
+		w.set_tile_state(26, ty, WorldLayout.HEDGE)
+	# and a rock maze in the west, for the long way round.
+	for ty in range(2, 16):
+		if ty % 4 != 0:
+			w.set_tile_state(6, ty, "obstacle_rock")
+	for tx in range(2, 12):
+		if tx % 3 != 0:
+			w.set_tile_state(tx, 9, "obstacle_rock")
+	return w
+
+
 func _movement_trace(world: SimWorld, actor_id: String, steps: int) -> String:
 	var out: PackedStringArray = []
 	for i in steps:
 		out.append("%s%s" % [Movement.step(world, actor_id, i), world.actor_pos(actor_id)])
 	return "|".join(out)
+
+
+# The goals the sweep asks for, relative to each start: one step each way, the
+# short diagonals whose shortest routes are a diamond of ties, the axis runs, and
+# hauls long enough to cross a wall or fall off the map.
+const _SWEEP_OFFSETS: Array[Vector2i] = [
+	Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1),
+	Vector2i(2, 0), Vector2i(0, 2), Vector2i(2, 2), Vector2i(-2, 2),
+	Vector2i(3, 2), Vector2i(2, 3), Vector2i(-3, -2), Vector2i(4, 0),
+	Vector2i(0, -4), Vector2i(5, 3), Vector2i(-5, 3), Vector2i(6, 6),
+	Vector2i(9, 0), Vector2i(0, 8), Vector2i(13, 7), Vector2i(-13, -7),
+]
+
+
+# Q-67. The pathfinder was rewritten for speed; this is the whole of the argument
+# that it is still the same pathfinder. See the reference copies above for why the
+# bar is byte-for-byte and not "still finds a shortest route".
+func test_pathfinder_identity() -> void:
+	print("\n--- The faster pathfinder answers identically (Q-67) ---")
+
+	# The neighbour order both searches run on is `DIRS`, split into two integer
+	# lanes so the loop adds ints rather than building Vector2i temporaries. It is
+	# the tie-break, so the two are asserted equal here rather than trusted to a
+	# comment: they would drift in silence, and the silence would be a desync.
+	var lanes: Array[Vector2i] = []
+	for d in 4:
+		lanes.append(Vector2i(Movement._DX[d], Movement._DY[d]))
+	_assert(str(lanes) == str(Movement.DIRS),
+		"the search's neighbour order is DIRS itself: %s" % str(lanes))
+
+	var worlds := _pathfinder_worlds()
+
+	# --- the terrain reads the searches rest on -------------------------------
+	# `is_walkable` stopped composing itself out of `get_tile` and `get_object`
+	# and reads both inline instead. It is the hottest read in the sim and every
+	# route in the game is built out of its answers, so it is swept whole.
+	for entry in worlds:
+		var w: SimWorld = entry[1]
+		for ty in SimWorld.MAP_HEIGHT:
+			for tx in SimWorld.MAP_WIDTH:
+				_assert_quiet(w.get_object(tx, ty) == _ref_object(w, tx, ty),
+					"%s: object at %d,%d" % [entry[0], tx, ty])
+				_assert_quiet(w.is_walkable(tx, ty) == _ref_walkable(w, tx, ty),
+					"%s: walkable at %d,%d" % [entry[0], tx, ty])
+	_flush_quiet("every tile of every test world reads the same as it always did")
+
+	# --- the sweep -------------------------------------------------------------
+	var modes := [SpeciesDefs.GROUND, SpeciesDefs.HOP, SpeciesDefs.BURROW, SpeciesDefs.FLY]
+	var pairs := 0
+	var routed := 0
+	var refused := 0
+	var longest := 0
+	var mismatch := ""
+	for entry in worlds:
+		var w: SimWorld = entry[1]
+		for mode in modes:
+			# Strides that share no factor with the map's dimensions, so the starts
+			# land on every phase of the terrain rather than on one lane of it.
+			for sy in range(0, SimWorld.MAP_HEIGHT, 3):
+				for sx in range(0, SimWorld.MAP_WIDTH, 5):
+					var s := Vector2i(sx, sy)
+					for off in _SWEEP_OFFSETS:
+						var g: Vector2i = s + off
+						var got := Movement.path(w, mode, s, g)
+						var want := _ref_path(w, mode, s, g)
+						pairs += 1
+						if got.is_empty():
+							refused += 1
+						else:
+							routed += 1
+							longest = maxi(longest, got.size())
+						if mismatch == "" and str(got) != str(want):
+							mismatch = "%s, %s, %s -> %s: %s, was %s" % [entry[0], mode, s, g, got, want]
+	_assert(mismatch == "",
+		"%d (start, goal, mode) pairs route tile-for-tile as they always did%s"
+			% [pairs, "" if mismatch == "" else " — first difference: " + mismatch])
+	# A sweep that found nothing proves nothing: it has to have routed, to have
+	# refused, and to have gone a long way round at least once.
+	_assert(routed > 5000 and refused > 2000 and longest >= 20,
+		"and the sweep is a real one (%d routed, %d refused, longest %d tiles)"
+			% [routed, refused, longest])
+
+	# --- the flood fill, whose *order* worldgen draws the hen's tile out of ----
+	var fills := 0
+	var filled := 0
+	var fill_mismatch := ""
+	for entry in worlds:
+		var w: SimWorld = entry[1]
+		for mode in [SpeciesDefs.GROUND, SpeciesDefs.HOP, SpeciesDefs.BURROW]:
+			for sy in range(0, SimWorld.MAP_HEIGHT, 5):
+				for sx in range(0, SimWorld.MAP_WIDTH, 5):
+					var s := Vector2i(sx, sy)
+					var got := Movement.reachable(w, mode, s)
+					var want := _ref_reachable(w, mode, s)
+					fills += 1
+					filled = maxi(filled, got.size())
+					if fill_mismatch == "" and str(got) != str(want):
+						fill_mismatch = "%s, %s, from %s (%d vs %d tiles)" % [
+							entry[0], mode, s, got.size(), want.size()]
+	_assert(fill_mismatch == "",
+		"%d flood fills come back in the identical order%s (largest %d tiles)"
+			% [fills, "" if fill_mismatch == "" else " — first difference: " + fill_mismatch, filled])
+
+	# --- the answers that are not routes --------------------------------------
+	var field: SimWorld = worlds[2][1]
+	var sealed: SimWorld = worlds[3][1]
+	var arena: SimWorld = worlds[1][1]
+	var inside := Vector2i(23, 9)
+	var outside := Vector2i(5, 3)
+	_assert(Movement.path(field, SpeciesDefs.GROUND, outside, outside).is_empty()
+			and _ref_path(field, SpeciesDefs.GROUND, outside, outside).is_empty(),
+		"going nowhere is no route, not a route of length zero")
+	_assert(str(Movement.path(field, SpeciesDefs.GROUND, Vector2i(-4, 5), outside))
+				== str(_ref_path(field, SpeciesDefs.GROUND, Vector2i(-4, 5), outside))
+			and str(Movement.path(field, SpeciesDefs.GROUND, outside, Vector2i(40, 5)))
+				== str(_ref_path(field, SpeciesDefs.GROUND, outside, Vector2i(40, 5))),
+		"and a start or a goal off the map is refused the same way at both ends")
+	_assert(Movement.path(sealed, SpeciesDefs.GROUND, outside, inside).is_empty(),
+		"a walker has no way into a room with no door")
+	_assert(not Movement.path(sealed, SpeciesDefs.HOP, outside, inside).is_empty(),
+		"a hopper does, over the hedge — the same tile, a different capability")
+	_assert(str(Movement.path(sealed, SpeciesDefs.HOP, outside, inside))
+			== str(_ref_path(sealed, SpeciesDefs.HOP, outside, inside)),
+		"and it hops it by the identical route")
+	_assert(Movement.path(arena, SpeciesDefs.BURROW, Vector2i(5, 5), Vector2i(14, 5)).is_empty(),
+		"a burrower still cannot surface inside a rock")
+
+	# The tie-break itself, stated as a fact rather than inferred from a sweep: on
+	# open ground a 3-by-2 goal has ten shortest routes, and which one comes back
+	# is decided by DIRS order and by insertion order among equal f-scores. Both
+	# implementations pick this one, and a replay of any recorded session depends
+	# on it staying this one.
+	var diamond := Movement.path(field, SpeciesDefs.GROUND, Vector2i(4, 4), Vector2i(7, 6))
+	_assert(str(diamond) == str(_ref_path(field, SpeciesDefs.GROUND, Vector2i(4, 4), Vector2i(7, 6)))
+			and str(diamond) == "[(4, 5), (4, 6), (5, 6), (6, 6), (7, 6)]",
+		"an equal-cost diamond breaks the same way it always has: %s" % str(diamond))
 
 
 func test_movement() -> void:

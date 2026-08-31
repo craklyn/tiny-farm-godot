@@ -793,22 +793,32 @@ live game: every `per_day` is 0 and the bot's debut is Q-56's, which keeps the s
 build exactly as it was.
 
 **Status 2026-08-31 (last): every work item is landed, and the throughput clause of the
-exit gate is missed.** WI-12 made the benchmark's worker walk — a registered bot, ground
+exit gate was missed.** WI-12 made the benchmark's worker walk — a registered bot, ground
 travel at its species' speed, actions dispatched through the tick clock — and the honest
-number with travel modelled is **~82,000× realtime**, against a gate of 100,000×. It was
+number with travel modelled was **~82,000× realtime**, against a gate of 100,000×. It was
 662,773× when the actor teleported, so travel costs about 8×, and roughly four fifths of
-the run is now walking: A* per work tile and brain dispatch during the walk, profiled in
-`M2_5_PLAN.md` §9. Nothing was tuned to close the gap; the same run proves the cost model
-the gate exists to protect (8 busy actors cost **7.9×** one actor's per-tick work, so cost
-scales with actors and not with ticks or map area). The designer's call is whether the gate
-is met in spirit, an order of magnitude clear of any per-tick regression, or whether the A*
-open list gets an afternoon.
+the run is walking: A* per work tile and brain dispatch during the walk, profiled in
+`M2_5_PLAN.md` §9. Nothing was tuned inside WI-12 to close the gap; the same run proved the
+cost model the gate exists to protect (8 busy actors cost **7.9×** one actor's per-tick
+work, so cost scales with actors and not with ticks or map area). The gap was filed as
+Q-67, offering the designer "accept the number, or the A* open list gets an afternoon".
+
+**Status 2026-08-31 (actually last): the gate passes.** Q-67 took the afternoon. The
+pathfinder's open list is now a stable `(f, seq)` binary min-heap over a flat preallocated
+node pool — SimClock's pattern, and its determinism argument — and it stops the moment the
+goal is first reached. Same benchmark, same seed, same 73,000 Actions and 62,000 tiles
+walked: **106,192–108,478× across four runs**, a 1.30× speedup, with the actor-scaling
+ratio unmoved at 7.8×. **The routes did not change**, which was the binding constraint —
+every recorded session's walks are recomputed through this A*, so a different tie-break
+would desync the robot fixture and the demo replay. 15,680 (start, goal, mode) pairs are
+held against the old implementation element for element in `test_pathfinder_identity`, and
+the demo replay regenerates byte-identically. Detail in `M2_5_PLAN.md` §9 WI-12.
 
 **Exit gate:** both suites green and grown; robot session replay-verified through the
 new clock; the attract loop visibly renders the neighbour (the bug that motivated the
-refactor, fixed as a test); benchmark ≥100k× realtime *with travel modeled* (**~82k×
-measured — see the status note above**); every tier-1 critter's mechanic proven by a
-deterministic sim test.
+refactor, fixed as a test); benchmark ≥100k× realtime *with travel modeled* (**~106–108k×
+measured — met, after Q-67's pathfinder work; ~82k× as WI-12 first measured it**); every
+tier-1 critter's mechanic proven by a deterministic sim test.
 
 ## M3 — Phase 2 vertical slice
 Sprinklers (first automation), group-pest skirmishes, yield-threshold gate per P-4.

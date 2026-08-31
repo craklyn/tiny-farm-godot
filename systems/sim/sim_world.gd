@@ -477,13 +477,24 @@ func get_crop_type(tx: int, ty: int) -> String:
 	return tile.get("crop_type", "")
 
 
+# The objects that stand two tiles high, so the tile above one reads as occupied.
+# A constant rather than the array literal that used to sit in the `in` test
+# below: `is_walkable` calls this function for every neighbour of every node of
+# every route the sim plans, and a literal there allocated a three-string array on
+# each of them (Q-67). Same list, same answer, no allocation.
+const TALL_OBJECTS: Array[String] = ["cot", "well", "seed_box"]
+
+
 func get_object(tx: int, ty: int) -> String:
 	if ty >= 0 and ty < MAP_HEIGHT and tx >= 0 and tx < MAP_WIDTH:
-		if objects[ty][tx] != "":
-			return objects[ty][tx]
+		var here: String = objects[ty][tx]
+		if here != "":
+			return here
 		# Check if the tile below has a tall object
-		if ty + 1 < MAP_HEIGHT and objects[ty + 1][tx] in ["cot", "well", "seed_box"]:
-			return objects[ty + 1][tx]
+		if ty + 1 < MAP_HEIGHT:
+			var below: String = objects[ty + 1][tx]
+			if below in TALL_OBJECTS:
+				return below
 	return ""
 
 
@@ -542,8 +553,18 @@ func is_protected_by_scarecrow(tx: int, ty: int) -> bool:
 	return false
 
 
+# **The hottest read in the sim** (Q-67): every neighbour of every node of every
+# route every brain plans comes through here, ~1.8 million times in a thousand
+# benchmark days. So the bounds test, the tile fetch and the object lookup are
+# written out rather than composed out of `get_tile` and `get_object` — same
+# questions in the same order, same answers, two fewer calls and one fewer bounds
+# check per read. The tall-object clause is `get_object`'s, kept beside it and
+# reading the same `TALL_OBJECTS`; a walkability test that disagreed with
+# `get_object` would be a walker standing inside the well.
 func is_walkable(tx: int, ty: int) -> bool:
-	var tile := get_tile(tx, ty)
+	if ty < 0 or ty >= MAP_HEIGHT or tx < 0 or tx >= MAP_WIDTH:
+		return false
+	var tile: Dictionary = tiles[ty][tx]
 	if tile.is_empty():
 		return false
 	var state: String = tile.state
@@ -555,7 +576,11 @@ func is_walkable(tx: int, ty: int) -> bool:
 	# ordinary ground — that transition is the whole reward.
 	if WorldLayout.is_boundary_state(state):
 		return false
-	var obj := get_object(tx, ty)
+	var obj: String = objects[ty][tx]
+	if obj == "" and ty + 1 < MAP_HEIGHT:
+		var below: String = objects[ty + 1][tx]
+		if below in TALL_OBJECTS:
+			obj = below
 	if obj != "" and obj != "egg" and obj != "acorn":
 		return false
 	return true
