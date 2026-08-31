@@ -90,6 +90,11 @@ const ACTOR_RENDERERS := {
 	SpeciesDefs.RABBIT: "res://entities/grazer.gd",
 	SpeciesDefs.KANGAROO: "res://entities/grazer.gd",
 	SpeciesDefs.SONGBIRD: "res://entities/songbird.gd",
+	# The mole draws one of three cells depending on whether it is under the farm,
+	# and the worm draws one cell per tile of itself — the first actor in the game
+	# whose sprite is not a sprite (M2.5 WI-8d/8e).
+	SpeciesDefs.MOLE: "res://entities/mole.gd",
+	SpeciesDefs.WORM: "res://entities/worm.gd",
 }
 
 var actors_node: Node2D = null            # the sprites' parent, named "Entities"

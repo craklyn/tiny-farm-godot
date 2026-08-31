@@ -39,6 +39,10 @@ static func _table() -> Dictionary:
 			"graze": GrazerBrain.new(),
 			# ...and one brain with no path that can return an Action (WI-8g).
 			"songbird_ambient": SongbirdBrain.new(),
+			# The last two of tier 1 (M2.5 WI-8d/8e): one that is only reachable
+			# for the second it is above ground, and one that gets in its own way.
+			"mole_tunnel": MoleBrain.new(),
+			"worm_hunt": WormBrain.new(),
 		}
 	return _by_id
 

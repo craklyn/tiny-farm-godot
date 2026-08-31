@@ -1585,3 +1585,164 @@ pre-existing, documented there, not to be fixed casually).
 *One new note:* a brain that is interrupted by something external — a fright, a stomp, a
 washed trail — must be asked "what state should I come back to", not just "what state was I
 in". Deviation 4 is that question answered wrong the first time.
+
+### WI-8d / WI-8e — The mole and the worm ✅ landed 2026-08-31
+
+**One commit, because they are the two halves of the same claim.** WI-4 shipped four
+movement modes and two cross-cutting capabilities with inhabitants for only two of them,
+and said so out loud: "burrow, hop, bodies and exclusivity have no shipping species until
+WI-8 writes their rows." The kangaroo took `hop`. These two take `burrow` and `body_len`,
+and between them they close that sentence — after this commit the only capability still
+waiting for an animal is `tile_exclusive`, which is the giant ant the designer parked
+(plan §5). Neither brain contains a line of movement code; everything strange about how
+these two get about is in the two `movement` dictionaries in `species_defs.gd`.
+
+**Two rows, two brains, no new verb, and no new plumbing.** `mole` (`burrow`, 20 px/s,
+`eat_crop`) and `worm` (`ground`, `body_len: 2`, 6 px/s, `eat_crop`) are rows in
+`SimWorld.visitors()` with `per_day: 0` and a `Brain.arrive` each — which is WI-8c's
+handoff cashed exactly as it was written: **the appointment book, the roll, the save, the
+restore and the legacy default were all already there**, and the two critters cost the
+gateway nothing. `MoleBrain` and `WormBrain` are the only new sim files.
+
+**The mole's theft is the gateway's existing rule, checked rather than assumed.** The plan
+says "steals a planted seed (`eat_crop` on seeded state)", and the honest answer is that
+the verb has always covered it: `has_crop` includes `seeded` and the verb sets the tile to
+`tilled`, which is precisely "the seed is gone and the soil is still worked". So there is no
+new verb, no new branch in `apply_action`, and the only new data question is *which* tiles a
+mole wants — `SimWorld.has_seed()`, the narrower half of `has_crop`, added as the one
+definition of "sown and not yet up" for the same reason `has_crop` is the one definition of
+"something is growing here".
+
+Suites: unit **1309 PASSED / 0 FAILED** (1213 after WI-8c/8f/8g, +96 from `test_mole` and
+`test_worm`), integration **207 / 0** (193 before, +14 from scenario U), robot session
+**PASSED** (20 entries, 850 ticks, 7 free-walk events, recomputation match), `verify_replay`
+**MATCH** on the real v1 human session, demo replay regenerates with a **clean diff**,
+visual regression **passes unchanged — the re-baseline allowance is still UNSPENT**.
+Benchmark, four runs: **707k / 707k / 705k / 687k×**, inside the 614–736k band this machine has
+shown since WI-4; nothing here is on the fast-forward path, because nothing here exists in a
+shipping farm. Purity greps clean: no `Time.`/delta/`_process(` under `systems/sim/`, no
+Node, autoload, `Input` or `Pathfinding` in either brain, and zero `SimRng` under
+`entities/` — the two new renderers need no dice at all, because a mole's cell is a
+question about sim state and a worm has no idle animation.
+
+**Deviations and decisions taken inside the WI:**
+
+1. **The stomp grew two qualifiers, and they are the honest reading of what a stomp is.**
+   `SimWorld.stompable_at` / `_stomp` now share one `_stompable_ids_at(tile)`, which skips
+   any actor that `Movement.is_under` and asks `Movement.occupied_tiles` rather than the
+   registry position. The first is the mole's whole design — a burrower's tile is where it
+   is *travelling*, not where it can be answered, so the tap falls through to the ordinary
+   clear and the animal carries on — and the second is the worm's: a tap on the tail is a
+   tap on the worm. Both are no-ops for the four species that are one tile big and never
+   underground, and the census assertion in `test_ants` ("exactly the two ants today") was
+   **edited** into a named list of four, which is the second existing assertion this
+   milestone has changed rather than added to. It is a strengthening: the old line counted,
+   the new one says who.
+2. **The mole is stompable, and that is what makes "you cannot touch it" a claim worth
+   testing.** A mole that were simply never stompable would make the criterion ("not
+   stompable mid-burrow") true by having no counterplay at all, which is theatre. Instead
+   the boot works, and works only in the ~1.6 s it is above ground, so the three assertions
+   about being unreachable are a *window* rather than an immunity — and the test plays both
+   sides of it. Filed as **Q-64**, with the mound (see 4) as the other half of the same
+   taste question.
+3. **The player is in the mole's brain exactly once, and it is a fact about a tile.** It has
+   no `flees_spook_radius`, no flee state and no fright — that is what makes "unspookable
+   mid-burrow" structural rather than conditional — but `spook_source_near` (WI-8c's general
+   query) filters the tiles it is *willing to surface on*. So standing in the sown row
+   protects it, which is the grazers' "presence is counterplay" applied to a critter no tap
+   can reach, and the test proves it by running the same seed twice with only her position
+   changed. The animal is not scared; it is careful.
+4. **The mound: a burrower is drawn, not hidden.** WI-6's handoff said `Movement.is_under`
+   decides "whether a burrower should be drawn at all"; r2's three cells (mound / emerging /
+   surfaced) say the sheet expected a mound, and that is what ships — an under-farm mole
+   shows as a ridge of soil travelling across the field. Drawing nothing would make the
+   theft an ambush; the mound makes it a chase a small child can win, and it is one line
+   either way. Q-64 has it.
+5. **The worm goes round itself, and that is a brain decision rather than an engine one.**
+   `Movement.path` plans over the ground, and a body is checked at the *step* (WI-4, on
+   purpose: the body moves while the route is walked). So a full worm heading back the way
+   it came plans straight through its own neck and balks — the first version of this brain
+   simply gave up there, and every visit ended with the animal stuck two tiles from its
+   food. `WormBrain._wriggle` is the answer: on BLOCKED it takes the enterable neighbour
+   nearest the goal, tie-broken in `Movement.DIRS` order, capped at `MAX_DETOURS` per
+   journey. This is WI-4 deviation 5's contract being used as intended ("what to do about
+   BLOCKED differs per critter"), and it is deliberately *not* an `avoid` parameter on
+   `Movement.path` in the WI-8b style: a body-aware route would be correct only at the
+   instant it was planned.
+6. **A stuck worm ends.** `STUCK_PATIENCE` consecutive balks and it goes down into the soil
+   (despawn), which is ground rule 8 from the lifecycle's side — a worm curled inside its
+   own body will never move again, and an actor that will never move again must not keep
+   waking up. The self-trap test asserts both halves: the engine's (all four neighbours are
+   its own body, on open ground, with no wall involved) and the brain's (and then it stops).
+7. **The worm eats what it is lying on; the grazer and the ant scout do not.** All three
+   search with the same shape — "nearest crop within radius, then `Movement.plan` to it" —
+   and a plan to the tile you are already standing on is an empty route, so an animal that
+   finds itself *on* food ignores it and wanders off. Invisible for critters that arrive at
+   the map edge and walk to their food; very visible for a worm put down in a field, which
+   is how the first version of `test_worm` found it. Fixed here only (one branch in
+   `_hunt`), because changing the grazer's or the scout's search is changing a shipped,
+   tested animal for a case no live game can reach — but it is a real blind spot and this is
+   where it is written down.
+8. **`edge_tile` moved from `GrazerBrain` to `Brain`.** Three species now arrive at the
+   hole in the hedge and leave by it; the function was already static and mode-aware (a
+   mole's edge is ground a walker could never reach), so this is a hoist rather than a
+   change — the grazer's call site is untouched, because an inherited static resolves
+   unqualified exactly as `ticks()` and `ticks_per_tile()` already do.
+9. **Two `[Playtest]` bounds, held by the animal's own count** (WI-8c deviation 4's lesson
+   taken rather than re-learned): `MOLE_STEALS` (2) and `WORM_MEALS` (3), re-checked every
+   time the animal goes looking for another meal, so anything that interrupts a departing
+   critter cannot buy it thirds. The mole's is denominated in **seeds** and the plan asked
+   for that to be accounted for honestly: a sown tile has always counted in
+   `count_planted()`, so a stolen seed is a unit of the currency T-15/T-20 already measured
+   — a subset of the same loss, not a new kind of it. The formula now reads
+   `CROWS_PER_DAY + ANT_RAIDS_PER_DAY × ANT_COLUMN_SIZE + (RABBIT + KANGAROO) × GRAZER_BITES
+   + MOLE_VISITS × MOLE_STEALS + WORM_VISITS × WORM_MEALS`, every `per_day` is 0, and the
+   live bound is still `CROWS_PER_DAY` with the original test unmodified. `test_mole` also
+   asserts the sharper thing: a mole's visit costs **zero growing crops**, because it only
+   ever targets `seeded`.
+10. **The worm's renderer draws several cells for one actor**, which is new. One node (the
+    actor is one actor), `position` is the head (that is what the farm's y-sort means by
+    "where a worm is"), one sprite position per segment chasing its own tile so a new
+    segment crawls out of the tail rather than appearing, and cells chosen from
+    `Movement.occupied_tiles` — head, tail, body, and r3's vertical body cell where a
+    segment's neighbours are in a column. The sheet has no *vertical head*, so a worm
+    crawling up the screen draws a sideways one; that is the sheet's limit rather than a
+    bug, it reads fine at 16 px, and it is one more cell whenever the art bench comes back.
+11. **The mole's `min_planted` is about the wrong thing, knowingly.** The visitors' table
+    gates arrivals on `count_planted()`, and what a mole actually wants is "how many seeds
+    are in the ground" — a farm of ripe wheat has nothing for one. The row uses
+    `min_planted: 3` as the nearest question the table asks and the brain answers the rest
+    by leaving again when it finds nothing sown (which is also what bounds its O(map) scan:
+    at most `MOLE_STEALS + 1` scans a visit, because finding nothing ends the visit). Adding
+    a `min_seeded` to the table would be one more column for one species; if a second
+    seed-eater ever ships, that is when it earns its place.
+12. **An observed flake, reported rather than fixed.** The integration suite failed
+    intermittently on this machine while other Godot processes were running — scenario H's
+    "night stays soft" once, and scenario E's three harvest asserts once — and both scenarios
+    pass on a quiet machine, on this branch and on the commit before it (checked by stashing).
+    They are input/frame-timing races in scenarios that press a key and wait, not regressions
+    from this WI. Final runs: **207 / 0 twice in a row.**
+
+**For WI-9 (bots) and WI-12 (the benchmark).**
+*For the bot worker:* (i) the entity system is now exercised by every capability it has, so
+a bot is genuinely just a row and a brain — the interesting precedent for you is that
+`ACTOR_RENDERERS` carried a **mound**, a **four-tile animal** and a **flying bird** through
+one contract (`init_actor` + `queue_render`) without the farm learning anything; (ii) the
+stomp's two new qualifiers are where "which actor is on this tile" is now defined, and a
+shoo-bot asking "what is here" should ask `Movement.occupied_tiles`, not `actor_pos`, or it
+will miss two thirds of a worm; (iii) `Brain.edge_tile` is where a visitor comes in and goes
+out, if a bot's debut ever needs one; (iv) `_wriggle` in `worm_brain.gd` is the pattern for
+any actor that can be blocked by something the router did not plan around — a bot following
+the player through a doorway will meet it. *One shared-helpers note:* `_crop_within`,
+`_random_reachable` and `_idle_for` now exist in **four** brains (chicken, ant scout, grazer,
+worm) in slightly different forms. Folding the general versions into `brain.gd` is a
+worthwhile half-hour and it is a pass across shipped files, not something a critter should do
+on its way past.
+*For the benchmark worker:* the two new species are the most expensive actors in the game
+per decision, and both are bounded on purpose. The mole scans the **whole map** for sown
+tiles when it picks a target (`_pick_seed_tile`, `count_planted()`'s standing) — at most
+`MOLE_STEALS + 1` times a visit, never per tick. The worm is the opposite shape: 27 ticks
+per tile (6 px/s) means it thinks rarely, but every `Movement.step` costs a body walk and its
+`can_enter` is O(body). Neither is on the fast-forward path today, and if WI-12 ever benches
+a farm *with* critters on it, the mole's scan is the number to watch and the honest fix is a
+sown-tile index rather than a smaller radius.

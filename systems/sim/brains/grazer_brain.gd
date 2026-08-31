@@ -117,21 +117,8 @@ func arrive(world: SimWorld, gs, species: String, arrival: int) -> String:
 	return species
 
 
-# A tile this species can stand on, as near the edge of the map as its own
-# capability allows — which for a kangaroo is a different set of tiles than for a
-# rabbit, and neither of them is written down here. Deterministic: the reachable
-# set is in the movement engine's fixed BFS order and the draw indexes into it.
-static func edge_tile(world: SimWorld, species: String, draw: int) -> Vector2i:
-	var mode := Movement.mode_of(species)
-	var edges: Array[Vector2i] = []
-	for t in Movement.reachable(world, mode, WorldLayout.spawn()):
-		if not Movement.can_stop(world, mode, t):
-			continue
-		if t.x <= 1 or t.y <= 1 or t.x >= SimWorld.MAP_WIDTH - 2 or t.y >= SimWorld.MAP_HEIGHT - 2:
-			edges.append(t)
-	if edges.is_empty():
-		return Vector2i(-1, -1)
-	return edges[draw % edges.size()]
+# (`edge_tile` was written here for the grazers and now lives in `brain.gd`: the
+# mole arrives the same way, from under the same hedge — M2.5 WI-8d.)
 
 
 # --- one animal's think -------------------------------------------------------

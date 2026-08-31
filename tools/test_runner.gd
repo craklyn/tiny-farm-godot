@@ -73,6 +73,7 @@ func _run_scenarios() -> void:
 	await _scenario_r_attract_shows_the_neighbour()
 	await _scenario_s_a_raid_is_drawn()
 	await _scenario_t_the_bestiary_is_drawn()
+	await _scenario_u_under_and_over()
 
 func _wait_until(pred: Callable, max_frames: int) -> bool:
 	for i in max_frames:
@@ -1391,6 +1392,121 @@ func _scenario_t_the_bestiary_is_drawn() -> void:
 	_assert(not yard.actor_nodes.has(SpeciesDefs.RABBIT)
 			and not yard.actor_nodes.has(SpeciesDefs.KANGAROO)
 			and not yard.actor_nodes.has(SpeciesDefs.SONGBIRD),
+		"and every sprite goes when its actor does")
+
+	yard.queue_free()
+	await get_tree().process_frame
+
+
+func _scenario_u_under_and_over() -> void:
+	# The last two renderers, and the two of them are the awkward cases the rest of
+	# the actor system never had to answer (M2.5 WI-8d/8e).
+	#
+	# Scenarios S and T's treatment, for their reason: nothing in the live game
+	# spawns a mole or a worm — both `per_day` values are 0 and the debut is a
+	# designer's content-sequencing call — so this is a **detached** farm with
+	# actors put into the registry by hand. What is new here is not the binding (a
+	# species row and a line of `ACTOR_RENDERERS`, as ever) but what the binding
+	# has to carry: **one actor drawn as no sprite at all**, and **one actor drawn
+	# as several**.
+	print("\n--- Scenario U: the one you cannot see, and the one that is four tiles ---")
+
+	var FarmScript = load("res://world/farm.gd")
+	var yard = FarmScript.new()
+	yard.name = "Burrow"
+	yard.mute_feedback = true
+	add_child(yard)
+	await get_tree().process_frame
+
+	# A cleared strip to crawl along: the yard is an ordinary generated farm, and a
+	# worm walked by the engine needs ground the engine will let it onto.
+	var at := Vector2i(7, 9)
+	for ty in range(8, 13):
+		for tx in range(6, 20):
+			yard.sim.set_tile_state(tx, ty, "cleared")
+			yard.sim.set_object(tx, ty, "")
+	yard.sim.spawn_actor(SpeciesDefs.MOLE, SpeciesDefs.MOLE, at, {
+		"state": MoleBrain.STATE_TUNNEL, "under": true,
+	})
+	yard.sim.spawn_actor(SpeciesDefs.WORM, SpeciesDefs.WORM, at + Vector2i(5, 0), {
+		"state": WormBrain.STATE_HUNT,
+	})
+	yard.sync_actors()
+
+	var mole = yard.actor_nodes.get(SpeciesDefs.MOLE, null)
+	var worm = yard.actor_nodes.get(SpeciesDefs.WORM, null)
+	_assert(mole != null and worm != null,
+		"spawning the last two species gives two sprites, with no renderer change")
+	if mole == null or worm == null:
+		yard.queue_free()
+		await get_tree().process_frame
+		return
+
+	# --- the mole: three cells, and the sim picks which ----------------------
+	# critters.png row 2 is mound / emerging / surfaced (CREDITS.md). The renderer
+	# holds no animation state of its own: it asks `Movement.is_under` and the
+	# brain's own state, so it cannot disagree with the world about what is
+	# happening.
+	_assert(mole.position == Vector2(at.x * 16, at.y * 16), "the mole is drawn on its own tile")
+	_assert(mole.cell() == 0, "and while it is under the farm it is a **mound**, not a mole")
+	yard.sim.actor(SpeciesDefs.MOLE)["extra"]["under"] = false
+	yard.sim.actor(SpeciesDefs.MOLE)["extra"]["state"] = MoleBrain.STATE_EMERGE
+	_assert(mole.cell() == 1, "the tick it surfaces, it is coming up")
+	yard.sim.actor(SpeciesDefs.MOLE)["extra"]["state"] = MoleBrain.STATE_SURFACED
+	_assert(mole.cell() == 2, "and then it is a mole standing on a tile")
+	var was: Vector2 = mole.position
+	yard.sim.set_actor_pos(SpeciesDefs.MOLE, at + Vector2i(3, 0))
+	for i in 30:
+		mole._process(1.0 / 60.0)
+	_assert(mole.position.x > was.x, "it travels toward wherever the sim has put it")
+
+	# --- the worm: one actor, several cells ---------------------------------
+	# The first renderer in the game that draws more than one cell for one actor,
+	# out of `Movement.occupied_tiles` (WI-6's handoff).
+	var worm_at: Vector2i = at + Vector2i(5, 0)
+	_assert(worm.segment_tiles().size() == 1 and worm.segment_cells() == [0],
+		"a worm that has not moved is one tile, and that tile is its head")
+	# Walk it three tiles with the engine, exactly as its brain does, and let it
+	# grow the way a meal grows it (`extra.body_len`, WI-4's per-actor override).
+	yard.sim.actor(SpeciesDefs.WORM)["extra"]["body_len"] = 4
+	for i in 3:
+		Movement.plan(yard.sim, SpeciesDefs.WORM, worm_at + Vector2i(i + 1, 0))
+		Movement.step(yard.sim, SpeciesDefs.WORM, i)
+	_assert(worm.segment_tiles().size() == 4, "after three crawls it is four tiles of worm")
+	_assert(worm.segment_cells() == [0, 1, 1, 2],
+		"drawn head, body, body, tail — one cell per tile it occupies (%s)"
+			% str(worm.segment_cells()))
+	# A corner puts a segment between a tile above it and a tile beside it; a
+	# segment with both neighbours in its own column draws the vertical cell.
+	Movement.plan(yard.sim, SpeciesDefs.WORM, worm_at + Vector2i(3, 1))
+	Movement.step(yard.sim, SpeciesDefs.WORM, 4)
+	Movement.plan(yard.sim, SpeciesDefs.WORM, worm_at + Vector2i(3, 2))
+	Movement.step(yard.sim, SpeciesDefs.WORM, 5)
+	_assert(worm.segment_cells()[1] == 3,
+		"and a segment in a straight vertical run draws the vertical body cell (%s)"
+			% str(worm.segment_cells()))
+	for i in 60:
+		worm._process(1.0 / 60.0)
+	_assert(worm.seg_px.size() == worm.segment_tiles().size(),
+		"every segment has a sprite position of its own, and they follow the head")
+	_assert(worm.position == worm.seg_px[0],
+		"the node itself is the head, which is what the farm's y-sort draws a worm by")
+	# It is the slowest thing in the game (6 px/s), so catching up with five tiles
+	# of crawl takes it a while — and it does catch up, without ever teleporting.
+	var crawled := 0
+	while crawled < 1200 and worm.position != Vector2(
+			worm.segment_tiles()[0].x * 16, worm.segment_tiles()[0].y * 16):
+		worm._process(1.0 / 60.0)
+		crawled += 1
+	_assert(crawled < 1200,
+		"and the sprite crawls the whole way to the tile the sim has it on (%d frames)" % crawled)
+
+	# Stomped, full, or curled up in itself — the sim dropping the actor is the
+	# only way either of these ends, and the sprites go with them.
+	for id in [SpeciesDefs.MOLE, SpeciesDefs.WORM]:
+		yard.sim.despawn_actor(String(id))
+	yard.sync_actors()
+	_assert(not yard.actor_nodes.has(SpeciesDefs.MOLE) and not yard.actor_nodes.has(SpeciesDefs.WORM),
 		"and every sprite goes when its actor does")
 
 	yard.queue_free()

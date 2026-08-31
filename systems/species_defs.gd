@@ -27,7 +27,8 @@ class_name SpeciesDefs
 extends RefCounted
 
 # --- movement modes (plan §3.4) -----------------------------------------------
-# WI-4 implements all four; only `ground` and `fly` have inhabitants today.
+# WI-4 implements all four and WI-8 populated the last of them: the kangaroo hops,
+# the mole burrows, and everybody else walks or flies.
 const GROUND := "ground"   # paths around obstacles on sim truth
 const FLY := "fly"         # straight line, ignores obstacles — the crow's row
 const BURROW := "burrow"   # moves under the grid, surfaces at targets (WI-8d)
@@ -56,6 +57,10 @@ const ANT_FORAGER := "ant_forager"
 const RABBIT := "rabbit"
 const KANGAROO := "kangaroo"
 const SONGBIRD := "songbird"
+# The last two of tier 1 (M2.5 WI-8d/8e, `design/04` §4). One that is never where
+# you tapped and one that is in four places at once.
+const MOLE := "mole"
+const WORM := "worm"
 
 # **"world" is not a species.** `{ "actor": "world" }` is the sim acting on its own
 # behalf — the day turning, a gate opening because a proof was met — and it holds
@@ -374,6 +379,82 @@ static var ROWS: Dictionary = {
 		# what makes the zero-verb claim checkable — its whole visit is recomputed
 		# and compared by WI-5's net, with no Actions in it to compare.
 		"persistent": true,
+	},
+
+	# --- the last two of tier 1 (M2.5 WI-8d/8e) -------------------------------
+	#
+	# **These two rows are what the movement engine was built for.** WI-4 shipped
+	# `burrow` and `body_len > 1` with no inhabitants and said so: "burrow, hop,
+	# bodies and exclusivity have no shipping species until WI-8 writes their
+	# rows." The kangaroo took `hop`; these take the other two, and between them
+	# they are the whole of the argument that a capability is data — neither brain
+	# below contains a line of movement code, and everything strange about how
+	# these animals get about is in the two `movement` dictionaries here.
+	#
+	# **Nothing spawns either.** `SimWorld.MOLE_VISITS_PER_DAY` and
+	# `WORM_VISITS_PER_DAY` are 0, so no schedule in any real game holds an
+	# appointment for one; the debut is content sequencing (the Q-56 pattern).
+
+	# The one you cannot tap. It travels **under** the farm, where a rock, a hedge
+	# and a closed gate are all equally irrelevant, comes up on a tile somebody has
+	# just sown, takes the seed and goes back down. `eat_crop` on a `seeded` tile is
+	# the whole theft — the verb has always accepted a seed in the ground and always
+	# left the soil tilled behind it (`SimWorld.has_crop`), so the mole needed no
+	# new word and got none.
+	#
+	# The counterplay is **timing rather than aim**: it is `stompable`, but a
+	# burrower under the ground is out of reach (`SimWorld.stompable_at` asks
+	# `Movement.is_under`), so the answer to a mole is the second or two it is up.
+	# `[Designer]` Q-64 asks whether that window is fair and whether the mound
+	# should give its route away.
+	MOLE: {
+		"name": "Mole",
+		"brain": "mole_tunnel",
+		# `eat_crop`, for the fourth time. No new verb (P-9 / ground rule 1).
+		"verbs": ["eat_crop"],
+		# 20 px/s: the hen's pace. It is unhurried because almost none of the
+		# journey is visible, and the part that is should be watchable. [Playtest].
+		"speed": 0.125,
+		# Finding F-6's other half: the route ignores the surface entirely.
+		"movement": { "mode": BURROW, "body_len": 1, "tile_exclusive": false },
+		# **It notices nothing, deliberately.** A mole that fled the player would
+		# need to notice her from underground, which is the opposite of the claim
+		# this species exists to make. What her presence *does* do is keep it from
+		# surfacing under her feet, and that is a check on the tile it picks
+		# (`mole_brain.gd`), not a sense on this row.
+		"senses": {},
+		# Minutes of ground-level event, like a raid and a grazer's visit — part of
+		# a snapshot of a farm (see `SaveGame._capture_actors`).
+		"persistent": true,
+		"stompable": true,
+	},
+
+	# The one that is in several places at once. It hunts crops at a crawl and
+	# **grows a segment for every one it eats** (`extra.body_len`, WI-4's per-actor
+	# override), so its own body is the thing most likely to be in its way: the
+	# snake rule, which the movement engine has enforced since WI-4 and which this
+	# is the first species to be able to lose to.
+	WORM: {
+		"name": "Worm",
+		"brain": "worm_hunt",
+		"verbs": ["eat_crop"],
+		# 6 px/s — 2.7 s a tile, the slowest thing in the game by a distance. A
+		# worm that could keep up with anything would not read as a worm, and the
+		# whole counterplay is that she can simply walk over and deal with it.
+		# [Playtest].
+		"speed": 0.0375,
+		# **Two segments to start with**, which is what makes it a body at all: a
+		# head and a tail, growing by one per meal. The row is the default and the
+		# actor's own `extra.body_len` is what changes (WI-4 deviation 7).
+		"movement": { "mode": GROUND, "body_len": 2, "tile_exclusive": false },
+		# A shorter nose than a rabbit's: it is slow, and a slow animal that can
+		# smell across the farm spends its whole visit walking. [Playtest].
+		"senses": { "crop_sense": 4.0 },
+		"persistent": true,
+		# A boot answers it, on **any tile it occupies** — a tap on the tail is a
+		# tap on the worm (`SimWorld.stompable_at` reads `Movement.occupied_tiles`).
+		# `[Designer]` Q-65 asks whether it should be answerable at all.
+		"stompable": true,
 	},
 }
 

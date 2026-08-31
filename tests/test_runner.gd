@@ -76,6 +76,8 @@ func _init() -> void:
 	test_ants()
 	test_grazers()
 	test_songbird()
+	test_mole()
+	test_worm()
 
 	print("")
 	print(String("=").repeat(60))
@@ -5091,11 +5093,19 @@ func test_ants() -> void:
 	_assert(not SpeciesDefs.is_stompable(SpeciesDefs.CHICKEN)
 			and not SpeciesDefs.is_stompable(SpeciesDefs.PLAYER),
 		"and nothing else does — stomping is opt-in per row, so the hen can never be tapped away")
-	var boots := 0
+	# The census, kept as a census: which species answer a boot is a design fact
+	# and it should change only on purpose. It grew from two to four at M2.5
+	# WI-8d/8e — the crawling things are answerable and the mammals and the birds
+	# are not, and each of the two newcomers qualifies its own answer (a mole only
+	# while it is above ground, a worm on any tile of itself).
+	var boots: Array[String] = []
 	for id in SpeciesDefs.ids():
 		if SpeciesDefs.is_stompable(String(id)):
-			boots += 1
-	_assert(boots == 2, "which is exactly the two ants today")
+			boots.append(String(id))
+	boots.sort()
+	_assert(str(boots) == str([SpeciesDefs.ANT_FORAGER, SpeciesDefs.ANT_SCOUT,
+			SpeciesDefs.MOLE, SpeciesDefs.WORM]),
+		"which is exactly the two ants, the mole and the worm: %s" % str(boots))
 
 	# --- nothing spawns in the live game (plan §4) ----------------------------
 	_assert(SimWorld.ANT_RAIDS_PER_DAY == 0,
@@ -5873,3 +5883,605 @@ func test_songbird() -> void:
 		"a save from before the visitors' book still loads")
 	_assert(gs_legacy.visitor_schedules.is_empty(), "with nobody owed a visit")
 	gs_legacy.free()
+
+
+# --- the last two of tier 1: a thief and a snake (M2.5 WI-8d/8e) --------------
+#
+# Both ride `_meadow_session` (the flattened field the grazers arranged) with a
+# few tiles sown by hand, because what the mole steals is a *seed* and what the
+# worm grows on is a crop, and a scenario has to be able to tell those apart in
+# the assertion.
+const SEED_ROW_Y := 8
+const WALLED_SEED := Vector2i(18, 12)
+
+
+# Sow a handful of tiles: `seeded` is what `plant` leaves behind and what the mole
+# comes for (`SimWorld.has_seed`).
+func _sow(s: LiveSession, tiles: Array) -> void:
+	for t in tiles:
+		s.world.set_tile_state(int(t.x), int(t.y), "seeded", "wheat")
+
+
+func _seeded_count(world: SimWorld) -> int:
+	var n := 0
+	for ty in SimWorld.MAP_HEIGHT:
+		for tx in SimWorld.MAP_WIDTH:
+			if world.has_seed(tx, ty):
+				n += 1
+	return n
+
+
+# A seed inside a ring of rock: no walker and no hopper has a route in, and a
+# burrower does not care. `_fence_pen`'s shape for the mode below the ground.
+func _rock_pen(world: SimWorld, at: Vector2i) -> void:
+	for dy in range(-1, 2):
+		for dx in range(-1, 2):
+			if dx == 0 and dy == 0:
+				continue
+			world.set_tile_state(at.x + dx, at.y + dy, "obstacle_rock")
+	world.set_tile_state(at.x, at.y, "seeded", "wheat")
+
+
+func _release_mole(s: LiveSession, at: Vector2i) -> void:
+	s.world.spawn_actor(SpeciesDefs.MOLE, SpeciesDefs.MOLE, at, {
+		"state": MoleBrain.STATE_TUNNEL,
+		"under": true,
+		"home_x": at.x, "home_y": at.y,
+		"tgt_x": -1, "tgt_y": -1,
+		"steals": 0,
+	})
+
+
+func _release_worm(s: LiveSession, at: Vector2i) -> void:
+	s.world.spawn_actor(SpeciesDefs.WORM, SpeciesDefs.WORM, at, {
+		"state": WormBrain.STATE_HUNT,
+		"home_x": at.x, "home_y": at.y,
+		"tgt_x": -1, "tgt_y": -1,
+		"meals": 0, "tries": 0, "stuck": 0, "detours": 0,
+	})
+
+
+# Sim time until this actor is above ground (or the limit runs out).
+func _tick_until_up(s: LiveSession, actor_id: String, limit: int = 4000) -> bool:
+	var spent := 0
+	while spent < limit and s.world.has_actor(actor_id) \
+			and Movement.is_under(s.world, actor_id):
+		s.tick(5)
+		spent += 5
+	return s.world.has_actor(actor_id) and not Movement.is_under(s.world, actor_id)
+
+
+func test_mole() -> void:
+	print("\n--- The mole: it is never where you tapped (M2.5 WI-8d, design/04 §4) Tests ---")
+
+	# --- the row (checklist §8.B) ---------------------------------------------
+	_assert(SpeciesDefs.has(SpeciesDefs.MOLE), "the table has it")
+	_assert(SpeciesDefs.verbs_of(SpeciesDefs.MOLE) == ["eat_crop"],
+		"with one verb, and it is the crow's, reused a fourth time (P-9: no verb the player lacks)")
+	_assert(SpeciesDefs.mode_of(SpeciesDefs.MOLE) == SpeciesDefs.BURROW,
+		"**the first shipping row that burrows** — the capability WI-4 built and left empty")
+	_assert(is_equal_approx(SpeciesDefs.speed_of(SpeciesDefs.MOLE), SimClock.tiles_per_tick(20.0)),
+		"its 20 px/s converts, like every other row")
+	_assert(Brains.of_species(SpeciesDefs.MOLE) is MoleBrain, "and the row binds to a brain")
+	_assert(SpeciesDefs.senses_of(SpeciesDefs.MOLE).is_empty(),
+		"it senses nothing: a mole that fled the player would be the opposite of the claim")
+	_assert(not SpeciesDefs.senses_of(SpeciesDefs.MOLE).get("flees_spook_radius", false),
+		"...and in particular it does not flee, which is what makes 'unspookable' structural")
+	_assert(SpeciesDefs.is_stompable(SpeciesDefs.MOLE), "a boot answers it — when it is up")
+
+	# --- nothing spawns one in the live game (plan §4) ------------------------
+	_assert(SimWorld.MOLE_VISITS_PER_DAY == 0,
+		"no visit is scheduled in a shipping build — the debut is content sequencing")
+	for day in range(1, 21):
+		_assert_quiet(SimWorld.roll_visitor_schedule(SpeciesDefs.MOLE, day).is_empty(),
+			"day %d schedules no mole" % day)
+	_flush_quiet("and no day of any real game rolls one")
+	var quiet := _crow_ready_session(20260831)
+	_work_until_actions(quiet, 40)
+	quiet.tick(1200)
+	_assert(quiet.world.actors_of_species(SpeciesDefs.MOLE).is_empty(),
+		"a whole worked day on an ordinary farm never contains one")
+	quiet.done()
+
+	# --- the arrival, on the visitors' book -----------------------------------
+	var booked := _meadow_session(7)
+	_sow(booked, [Vector2i(12, SEED_ROW_Y), Vector2i(13, SEED_ROW_Y)])
+	booked.gs.day = 9
+	booked.gs.takeover_day = 1
+	booked.gs.visitor_schedules = { SpeciesDefs.MOLE: [3] }
+	_work_until_actions(booked, 3)
+	_assert(booked.world.has_actor(SpeciesDefs.MOLE),
+		"a booked visit arrives when the day's *action* clock reaches it (T-20's clock)")
+	_assert(booked.gs.visitor_schedules.get(SpeciesDefs.MOLE, []).is_empty(),
+		"and the appointment is spent, whether the visit comes to anything or not")
+	_assert(Movement.is_under(booked.world, SpeciesDefs.MOLE),
+		"**it arrives the way it travels** — under the farm, before anything has seen it")
+	_assert(Brains.of_species(SpeciesDefs.MOLE).arrive(
+			booked.world, booked.gs, SpeciesDefs.MOLE, 9) == "",
+		"a second mole is refused while the first is still down there")
+	booked.done()
+
+	# --- the mechanic: it takes the seed and leaves the crop ------------------
+	#
+	# The distinction is the species: a grazer eats what is growing, and this one
+	# steals what was planted. Both go through the same verb on the same gateway,
+	# and `eat_crop` on a `seeded` tile has always meant exactly this.
+	var theft := _meadow_session(4242)
+	_sow(theft, [Vector2i(10, SEED_ROW_Y), Vector2i(12, SEED_ROW_Y),
+		Vector2i(14, SEED_ROW_Y), Vector2i(16, SEED_ROW_Y)])
+	var seeds_before := _seeded_count(theft.world)
+	var crops_before := theft.world.count_planted() - seeds_before
+	_release_mole(theft, Vector2i(5, 12))
+	_assert(_tick_until_gone(theft, SpeciesDefs.MOLE),
+		"a mole let into a sown field steals and goes")
+	_assert(seeds_before - _seeded_count(theft.world) == SimWorld.MOLE_STEALS,
+		"taking exactly its fill — %d seeds, which is what bounds a visit"
+			% SimWorld.MOLE_STEALS)
+	_assert(theft.world.count_planted() - _seeded_count(theft.world) == crops_before,
+		"and **not one growing crop**: it came for seed, and the row of wheat is untouched")
+	_assert(theft.gs.crops.get("wheat", 0) == 0,
+		"nothing it took reached the player's basket: a visit is a loss, not a harvest")
+	theft.done()
+
+	# --- off the grid, honestly (plan §4's criterion for 8d) ------------------
+	#
+	# 1. **Surface obstacles are irrelevant to its route.** A seed inside a ring of
+	#    rock that neither a walker nor a hopper has a route into, taken anyway.
+	var walled := _meadow_session(11, false)
+	_rock_pen(walled.world, WALLED_SEED)
+	var outside := Vector2i(14, 12)
+	_assert(Movement.path(walled.world, SpeciesDefs.GROUND, outside, WALLED_SEED).is_empty()
+			and Movement.path(walled.world, SpeciesDefs.HOP, outside, WALLED_SEED).is_empty(),
+		"nothing that walks or hops has a route to a seed ringed with rock")
+	var under_route := Movement.path(walled.world, SpeciesDefs.BURROW, outside, WALLED_SEED)
+	_assert(not under_route.is_empty(),
+		"a burrower has one, straight through (%d tiles)" % under_route.size())
+	var through_rock := false
+	for t in under_route:
+		if not walled.world.is_walkable(t.x, t.y):
+			through_rock = true
+	_assert(through_rock, "and it goes *through* the wall rather than round it")
+	_release_mole(walled, outside)
+	_tick_until_gone(walled, SpeciesDefs.MOLE)
+	_assert(not walled.world.has_seed(WALLED_SEED.x, WALLED_SEED.y),
+		"**and the mole gets the walled seed** — under the rock, because its row says burrow")
+	walled.done()
+
+	# 2. **It cannot be answered from above.** While it is under, the tile it is
+	#    passing beneath is ordinary ground: the tap that would stomp an ant falls
+	#    through to the clear it always was, and the mole carries on.
+	var reach := _meadow_session(31, false)
+	_sow(reach, [Vector2i(18, 6)])
+	_release_mole(reach, Vector2i(5, 6))
+	reach.tick(40)
+	_assert(reach.world.has_actor(SpeciesDefs.MOLE) and Movement.is_under(reach.world, SpeciesDefs.MOLE),
+		"a mole on its way somewhere is under the farm")
+	var beneath := reach.world.actor_pos(SpeciesDefs.MOLE)
+	_assert(not reach.world.stompable_at(beneath),
+		"**the sim says there is nothing on that tile to stomp**, though the mole is right there")
+	var swing := reach.act({ "verb": "clear_weed", "target": beneath, "actor": "player" })
+	_assert(swing.get("ok", false) and not swing.get("stomped", false),
+		"so a clear-class tap is an ordinary clear, not a stomp")
+	_assert(reach.world.has_actor(SpeciesDefs.MOLE), "and the mole is still down there")
+
+	# 3. **Nothing frightens it mid-burrow.** She stands on top of it; it does not
+	#    notice, because there is no fright in the brain to notice with.
+	var route_was := str(reach.world.actor(SpeciesDefs.MOLE)["extra"].get("path", []))
+	var target_was := str([reach.world.actor(SpeciesDefs.MOLE)["extra"].get("tgt_x", -1),
+		reach.world.actor(SpeciesDefs.MOLE)["extra"].get("tgt_y", -1)])
+	reach.world.set_actor_pos(SimWorld.ACTOR_PLAYER, beneath)
+	reach.tick(20)
+	_assert(reach.world.has_actor(SpeciesDefs.MOLE)
+			and _state_of(reach.world, SpeciesDefs.MOLE) == MoleBrain.STATE_TUNNEL,
+		"she walks over the top of it and it is still tunnelling")
+	_assert(str(reach.world.actor(SpeciesDefs.MOLE)["extra"].get("path", [])) == route_was
+			and str([reach.world.actor(SpeciesDefs.MOLE)["extra"].get("tgt_x", -1),
+				reach.world.actor(SpeciesDefs.MOLE)["extra"].get("tgt_y", -1)]) == target_was,
+		"on the same route to the same tile — the fright is not merely ignored, it is absent")
+	reach.world.set_actor_pos(SimWorld.ACTOR_PLAYER, MEADOW_FAR_CORNER)
+
+	# 4. **But when it comes up, the boot lands.** Which is what makes the three
+	#    assertions above a *window* rather than an immunity: the answer to a mole
+	#    is the second or two it is above ground.
+	_assert(_tick_until_up(reach, SpeciesDefs.MOLE), "it surfaces at the tile it was aiming for")
+	var up_at := reach.world.actor_pos(SpeciesDefs.MOLE)
+	_assert(up_at == Vector2i(18, 6), "which is the sown one (%s)" % up_at)
+	_assert(reach.world.stompable_at(up_at), "and *now* the sim says there is something there")
+	var boot := reach.act({ "verb": "clear_weed", "target": up_at, "actor": "player" })
+	_assert(boot.get("ok", false) and boot.get("stomped", false), "the tap answers it")
+	_assert(not reach.world.has_actor(SpeciesDefs.MOLE), "and the mole is gone")
+	_assert(reach.world.has_seed(up_at.x, up_at.y),
+		"with the seed still in the ground: the stomp leaves the tile alone (WI-8a's rule)")
+	reach.done()
+
+	# --- she can guard a seedbed by standing in it ----------------------------
+	#
+	# The one place the player is in this brain at all, and it is a fact about the
+	# *tile* rather than a sense on the row: a mole will not surface where anything
+	# frightening is near. Same seed, same farm, same seed tile — the only
+	# difference between the two runs is where she is standing.
+	var guarded := _meadow_session(505, false)
+	_sow(guarded, [Vector2i(12, 10)])
+	guarded.world.set_actor_pos(SimWorld.ACTOR_PLAYER, Vector2i(13, 10))
+	_release_mole(guarded, Vector2i(5, 10))
+	_assert(_tick_until_gone(guarded, SpeciesDefs.MOLE),
+		"a mole with nowhere it is willing to come up gives up and leaves")
+	_assert(guarded.world.has_seed(12, 10),
+		"**and the seed she was standing over survives** — no tap, no tool, no verb at all")
+	guarded.done()
+
+	var unguarded := _meadow_session(505, false)
+	_sow(unguarded, [Vector2i(12, 10)])
+	_release_mole(unguarded, Vector2i(5, 10))
+	_tick_until_gone(unguarded, SpeciesDefs.MOLE)
+	_assert(not unguarded.world.has_seed(12, 10),
+		"...and with her across the farm instead, the same mole takes the same seed")
+	unguarded.done()
+
+	# --- the daily-loss identity, extended again (plan §4) --------------------
+	#
+	# The mole's term is denominated in **seeds**, which is the honest accounting:
+	# `count_planted()` has always counted a sown tile as planted, so a stolen seed
+	# is a unit of the currency the identity was already measured in — a thing she
+	# paid gold for and will not harvest. It is a subset of the same loss, not a
+	# new kind of it, which is why the formula gains a term rather than a footnote.
+	var bound := SimWorld.CROWS_PER_DAY \
+		+ SimWorld.ANT_RAIDS_PER_DAY * SimWorld.ANT_COLUMN_SIZE \
+		+ (SimWorld.RABBIT_VISITS_PER_DAY + SimWorld.KANGAROO_VISITS_PER_DAY) * SimWorld.GRAZER_BITES \
+		+ SimWorld.MOLE_VISITS_PER_DAY * SimWorld.MOLE_STEALS \
+		+ SimWorld.WORM_VISITS_PER_DAY * SimWorld.WORM_MEALS
+	_assert(bound == SimWorld.CROWS_PER_DAY,
+		"in a shipping build the last two mouths add nothing to it: no visit is ever scheduled")
+	var budget := _meadow_session(88)
+	_sow(budget, [Vector2i(8, SEED_ROW_Y), Vector2i(9, SEED_ROW_Y), Vector2i(10, SEED_ROW_Y),
+		Vector2i(11, SEED_ROW_Y), Vector2i(12, SEED_ROW_Y), Vector2i(13, SEED_ROW_Y)])
+	var planted_dawn := budget.world.count_planted()
+	_release_mole(budget, Vector2i(6, 12))
+	_tick_until_gone(budget, SpeciesDefs.MOLE)
+	budget.tick(2000)
+	_assert(planted_dawn - budget.world.count_planted() <= SimWorld.MOLE_STEALS,
+		"a forced mole visit costs at most %d planted tiles (%d)"
+			% [SimWorld.MOLE_STEALS, planted_dawn - budget.world.count_planted()])
+	budget.done()
+
+	# --- determinism, which everything above rests on -------------------------
+	var runs: Array[String] = []
+	for _i in 2:
+		var d := _meadow_session(909)
+		_sow(d, [Vector2i(10, SEED_ROW_Y), Vector2i(14, SEED_ROW_Y), Vector2i(18, SEED_ROW_Y)])
+		_release_mole(d, Vector2i(6, 12))
+		_tick_until_gone(d, SpeciesDefs.MOLE)
+		d.tick(300)
+		runs.append(SaveGame.capture_canonical(d.world, d.gs))
+		d.done()
+	_assert(runs[0] == runs[1],
+		"the same seed digs the same farm the same way, seed for seed and tick for tick")
+
+	# --- a save taken mid-tunnel, continued, and its own replay ---------------
+	#
+	# The strongest statement the repo can make (WI-5's net, WI-8c's shape): a
+	# session continued from a save taken while the mole is **under the farm** is
+	# recorded, replayed, and the recomputation compared action for action and tick
+	# for tick. The farmer walks during it and the crossing is recorded, so the
+	# surfacing rule — the one thing in this brain that reads her position — has to
+	# be recomputed from the log or the net names the entry where they parted.
+	var played := _meadow_session(4242)
+	_sow(played, [Vector2i(10, SEED_ROW_Y), Vector2i(14, SEED_ROW_Y), Vector2i(18, SEED_ROW_Y)])
+	_release_mole(played, Vector2i(5, 12))
+	played.tick(30)
+	_assert(played.world.has_actor(SpeciesDefs.MOLE) and Movement.is_under(played.world, SpeciesDefs.MOLE),
+		"the mole is under the farm when the game is saved")
+	var mid = JSON.parse_string(JSON.stringify(SaveGame.capture(played.world, played.gs)))
+	_assert(mid["world"]["actors"].has(SpeciesDefs.MOLE),
+		"and it is *in* the save — a visit in progress is part of a snapshot of a farm")
+	_assert(bool(mid["world"]["actors"][SpeciesDefs.MOLE]["extra"].get("under", false)),
+		"with its off-grid position saved as the fact it is (under: true)")
+	played.done()
+
+	var gs_cont = load("res://systems/game_state.gd").new()
+	gs_cont.reset()
+	var w_cont := SimWorld.new()
+	_assert(SaveGame.restore(mid, w_cont, gs_cont), "the mid-tunnel save restores")
+	_assert(Movement.is_under(w_cont, SpeciesDefs.MOLE), "with the mole still under the farm")
+	SimRng.reseed(w_cont.gen_seed)
+	var cont_log := ReplayLog.new()
+	cont_log.start_from_save(mid, w_cont.gen_seed)
+	var walked_in := false
+	var spent := 0
+	while spent < 6000 and w_cont.has_actor(SpeciesDefs.MOLE):
+		for t in w_cont.advance_ticks(20, gs_cont):
+			if t["result"].get("ok", false):
+				cont_log.record(t["action"], t["result"], int(t["tick"]), true)
+		cont_log.mark_tick(w_cont.clock.tick)
+		spent += 20
+		# Halfway through she walks out to the seed row and stands there, which is
+		# a decision the mole has to recompute the same way twice.
+		if not walked_in and spent >= 60:
+			walked_in = true
+			var beside := Vector2i(11, SEED_ROW_Y)
+			w_cont.set_actor_pos(SimWorld.ACTOR_PLAYER, beside, "left")
+			cont_log.record_walk("stop", "left", beside, w_cont.clock.tick)
+	_assert(walked_in, "the farmer walks out to the seedbed mid-visit, and the crossing is recorded")
+	_assert(not w_cont.has_actor(SpeciesDefs.MOLE),
+		"the visit ends inside the continued session (%d ticks)" % spent)
+	var end_save = JSON.parse_string(JSON.stringify(SaveGame.capture(w_cont, gs_cont)))
+	var report := SaveGame.replay_report(cont_log, end_save)
+	_assert(report["matched"],
+		"and it replays to the identical outcome %s" % report["divergence"])
+	gs_cont.free()
+
+
+func test_worm() -> void:
+	print("\n--- The worm: it grows, and its own back is in the way (M2.5 WI-8e) Tests ---")
+
+	# --- the row (checklist §8.B) ---------------------------------------------
+	_assert(SpeciesDefs.has(SpeciesDefs.WORM), "the table has it")
+	_assert(SpeciesDefs.verbs_of(SpeciesDefs.WORM) == ["eat_crop"],
+		"with one verb, and it is everybody else's (P-9: no verb the player lacks)")
+	_assert(SpeciesDefs.mode_of(SpeciesDefs.WORM) == SpeciesDefs.GROUND,
+		"it walks like a walker — the strangeness is not in the mode")
+	_assert(Movement.body_len_of(SpeciesDefs.WORM) == 2,
+		"**the first shipping row with a body**: two segments to start with")
+	_assert(is_equal_approx(SpeciesDefs.speed_of(SpeciesDefs.WORM), SimClock.tiles_per_tick(6.0)),
+		"its 6 px/s converts, and makes it the slowest thing in the game")
+	_assert(Brains.of_species(SpeciesDefs.WORM) is WormBrain, "and the row binds to a brain")
+	_assert(SpeciesDefs.is_stompable(SpeciesDefs.WORM), "a boot answers it")
+	_assert(SimWorld.WORM_VISITS_PER_DAY == 0,
+		"and nothing schedules one in a shipping build")
+	for day in range(1, 21):
+		_assert_quiet(SimWorld.roll_visitor_schedule(SpeciesDefs.WORM, day).is_empty(),
+			"day %d schedules no worm" % day)
+	_flush_quiet("on any day of any real game")
+
+	# --- the arrival ----------------------------------------------------------
+	var booked := _meadow_session(7)
+	booked.gs.day = 9
+	booked.gs.takeover_day = 1
+	booked.gs.visitor_schedules = { SpeciesDefs.WORM: [3] }
+	_work_until_actions(booked, 3)
+	_assert(booked.world.has_actor(SpeciesDefs.WORM),
+		"a booked visit arrives on the day's action clock, like every other visitor")
+	_assert(booked.gs.visitor_schedules.get(SpeciesDefs.WORM, []).is_empty(),
+		"and the appointment is spent either way")
+	_assert(Brains.of_species(SpeciesDefs.WORM).arrive(
+			booked.world, booked.gs, SpeciesDefs.WORM, 9) == "",
+		"a second worm is refused while the first is still here")
+	booked.done()
+
+	# --- the mechanic: one segment per crop ----------------------------------
+	#
+	# The growth is the work item, so it is measured rather than watched: the
+	# length before, the crops missing after, and the drawn footprint at the end.
+	# **"A three-segment body occupies three tiles" is WI-4's test**; this one is
+	# the growth — n crops eaten, n segments longer, and the tiles to match.
+	var grow := _meadow_session(4242, false)
+	# Three crops, spaced exactly a nose apart along one row, so the animal has to
+	# **crawl** between them: a body only fills out over the tiles its head has
+	# already been on (WI-4's `_advance_body`), so a worm that ate three crops
+	# standing still would be three segments long and drawn as one tile — true, and
+	# not a picture of anything.
+	for tx in [12, 16, 20]:
+		grow.world.set_tile_state(tx, SEED_ROW_Y, "growing", "wheat")
+	var was_len := Movement.body_len(grow.world, "nobody")
+	_release_worm(grow, Vector2i(8, SEED_ROW_Y))
+	_assert(was_len == 1, "an actor that does not exist is one tile long, and asks nothing of anybody")
+	_assert(Movement.body_len(grow.world, SpeciesDefs.WORM) == 2,
+		"a worm starts at the length its species row says")
+	var crops_dawn := grow.world.count_planted()
+	var contiguous := true
+	var never_overdrawn := true
+	var distinct := true
+	var longest := 0
+	var grew_to := 2
+	var spent := 0
+	while spent < 16000 and grow.world.has_actor(SpeciesDefs.WORM):
+		grow.tick(20)
+		spent += 20
+		if not grow.world.has_actor(SpeciesDefs.WORM):
+			break
+		var body := Movement.occupied_tiles(grow.world, SpeciesDefs.WORM)
+		grew_to = Movement.body_len(grow.world, SpeciesDefs.WORM)
+		longest = maxi(longest, body.size())
+		if body.size() > grew_to:
+			never_overdrawn = false  # it drew more of itself than it is
+		var seen := {}
+		for i in body.size():
+			if seen.has(body[i]):
+				distinct = false
+			seen[body[i]] = true
+			if i > 0 and absi(body[i].x - body[i - 1].x) + absi(body[i].y - body[i - 1].y) != 1:
+				contiguous = false
+	var eaten := crops_dawn - grow.world.count_planted()
+	_assert(eaten == SimWorld.WORM_MEALS,
+		"a worm in a row of wheat eats its fill and goes (%d crops)" % eaten)
+	_assert(grew_to == 2 + eaten,
+		"**and it is one segment longer for every one of them**: 2 + %d eaten = %d segments"
+			% [eaten, grew_to])
+	_assert(longest == grew_to,
+		"and the tiles it is drawn on grew with it — %d of them, which is what it is" % longest)
+	_assert(contiguous, "its body is a line of adjacent tiles, head first, at every moment of it")
+	_assert(distinct and never_overdrawn,
+		"and it never occupies one tile twice, or more tiles than it is long")
+	grow.done()
+
+	# The same claim from the registry's side: the growth is one integer in the
+	# actor's own `extra` (WI-4's per-actor override), which is why it survives a
+	# save without the species table ever hearing about it.
+	var one_meal := _meadow_session(77, false)
+	one_meal.world.set_tile_state(12, 8, "ready", "wheat")
+	_release_worm(one_meal, Vector2i(10, 8))
+	var fed := false
+	var meal_spent := 0
+	while meal_spent < 6000 and one_meal.world.has_actor(SpeciesDefs.WORM) and not fed:
+		one_meal.tick(20)
+		meal_spent += 20
+		fed = one_meal.world.count_planted() == 0
+	_assert(fed, "a worm eats the one crop on the farm")
+	_assert(int(one_meal.world.actor(SpeciesDefs.WORM)["extra"].get("body_len", 0)) == 3,
+		"and writes its new length into its own registry entry (2 -> 3)")
+	_assert(Movement.body_len(one_meal.world, SpeciesDefs.WORM) == 3,
+		"which is the length the engine moves it at")
+	var carried = JSON.parse_string(JSON.stringify(SaveGame.capture(one_meal.world, one_meal.gs)))
+	var gs_back = load("res://systems/game_state.gd").new()
+	var w_back := SimWorld.new()
+	SaveGame.restore(carried, w_back, gs_back)
+	_assert(Movement.body_len(w_back, SpeciesDefs.WORM) == 3,
+		"a saved worm restores at the length it grew to")
+	_assert(str(Movement.occupied_tiles(w_back, SpeciesDefs.WORM))
+			== str(Movement.occupied_tiles(one_meal.world, SpeciesDefs.WORM)),
+		"with its body on the same tiles it was lying on")
+	gs_back.free()
+	one_meal.done()
+
+	# --- the snake rule: it can shut itself in ---------------------------------
+	#
+	# Plan §4's criterion, played rather than asserted: the worm is walked in a
+	# spiral by the movement engine — every step is `Movement.plan` + `step`, the
+	# same two calls its brain makes — until its head steps into the middle of the
+	# coil. All four of its neighbours are then **its own body**, on open ground,
+	# with no wall anywhere near it. That is the classic constraint: the only thing
+	# that trapped it is how long it got.
+	SimRng.reseed(4242)
+	var arena := SimWorld.new()
+	arena.generate()
+	for ty in range(3, 12):
+		for tx in range(3, 12):
+			arena.set_tile_state(tx, ty, "cleared")
+			arena.set_object(tx, ty, "")
+	arena.spawn_actor(SpeciesDefs.WORM, SpeciesDefs.WORM, Vector2i(4, 4), {})
+	# Eight segments — five meals' worth of growth, written the way a meal writes
+	# it (WI-4's `extra.body_len`, and the same line `WormBrain.on_result` uses).
+	arena.actor(SpeciesDefs.WORM)["extra"]["body_len"] = 8
+	var coil: Array[Vector2i] = [
+		Vector2i(5, 4), Vector2i(6, 4), Vector2i(6, 5), Vector2i(6, 6),
+		Vector2i(5, 6), Vector2i(4, 6), Vector2i(4, 5), Vector2i(5, 5),
+	]
+	var walked := 0
+	for t in coil:
+		if Movement.plan(arena, SpeciesDefs.WORM, t) \
+				and Movement.step(arena, SpeciesDefs.WORM, walked) == Movement.MOVED:
+			walked += 1
+	_assert(walked == coil.size(), "the worm walks itself into a coil, one engine step at a time")
+	var head := arena.actor_pos(SpeciesDefs.WORM)
+	_assert(head == Vector2i(5, 5), "its head ends in the middle of it (%s)" % head)
+	var occupied := Movement.occupied_tiles(arena, SpeciesDefs.WORM)
+	_assert(occupied.size() == 8, "eight tiles of worm (%d)" % occupied.size())
+	var walled_in := true
+	var open_ground := true
+	for d in Movement.DIRS:
+		var n: Vector2i = head + d
+		if not (n in occupied) or Movement.can_enter(arena, SpeciesDefs.WORM, n):
+			walled_in = false
+		if not arena.is_walkable(n.x, n.y):
+			open_ground = false
+	_assert(open_ground, "on ground it could otherwise walk across in any direction")
+	_assert(walled_in,
+		"**and every way out is its own body** — the snake rule, with no wall involved")
+	Movement.plan(arena, SpeciesDefs.WORM, Vector2i(9, 9))
+	_assert(Movement.step(arena, SpeciesDefs.WORM, 99) == Movement.BLOCKED,
+		"so a route out is blocked at the step, not at the plan (WI-4's rule)")
+	_assert(arena.actor_pos(SpeciesDefs.WORM) == head, "and it has not moved")
+
+	# ...and what a stuck worm *does* is the brain's answer, not the engine's: it
+	# balks a few times and then goes back down into the soil, because an actor
+	# that will never move again must not keep waking up (ground rule 8).
+	var trapped := _meadow_session(4242, false)
+	trapped.world.spawn_actor(SpeciesDefs.WORM, SpeciesDefs.WORM, Vector2i(4, 4), {
+		"state": WormBrain.STATE_HUNT, "home_x": 4, "home_y": 4,
+		"meals": 0, "tries": 0, "stuck": 0,
+	})
+	trapped.world.actor(SpeciesDefs.WORM)["extra"]["body_len"] = 8
+	var steps := 0
+	for t in coil:
+		if Movement.plan(trapped.world, SpeciesDefs.WORM, t) \
+				and Movement.step(trapped.world, SpeciesDefs.WORM, steps) == Movement.MOVED:
+			steps += 1
+	_assert(steps == coil.size() and trapped.world.actor_pos(SpeciesDefs.WORM) == Vector2i(5, 5),
+		"a second worm coils itself up the same way, this time on the clock")
+	_assert(_tick_until_gone(trapped, SpeciesDefs.WORM),
+		"and a worm with nowhere left to go stops trying rather than waking up forever")
+	trapped.done()
+
+	# --- the stomp answers any tile of it ------------------------------------
+	var boot := _meadow_session(31, false)
+	boot.world.set_tile_state(12, 8, "ready", "wheat")
+	_release_worm(boot, Vector2i(8, 8))
+	var crawled := 0
+	while crawled < 4000 and Movement.occupied_tiles(boot.world, SpeciesDefs.WORM).size() < 2:
+		boot.tick(20)
+		crawled += 20
+	var body := Movement.occupied_tiles(boot.world, SpeciesDefs.WORM)
+	_assert(body.size() >= 2, "a worm that has crawled a tile is lying on two of them")
+	var tail: Vector2i = body[body.size() - 1]
+	_assert(tail != boot.world.actor_pos(SpeciesDefs.WORM), "and its tail is not its head")
+	_assert(boot.world.stompable_at(tail),
+		"**a tap on the tail is a tap on the worm** (`Movement.occupied_tiles`, not the head)")
+	var stomp := boot.act({ "verb": "clear_weed", "target": tail, "actor": "player" })
+	_assert(stomp.get("ok", false) and stomp.get("stomped", false), "the boot lands")
+	_assert(not boot.world.has_actor(SpeciesDefs.WORM), "and the whole animal goes, not a segment")
+	boot.done()
+
+	# --- the daily-loss identity ---------------------------------------------
+	var budget := _meadow_session(88)
+	var dawn := budget.world.count_planted()
+	_release_worm(budget, Vector2i(9, 6))
+	_tick_until_gone(budget, SpeciesDefs.WORM, 16000)
+	budget.tick(2000)
+	_assert(dawn - budget.world.count_planted() <= SimWorld.WORM_MEALS,
+		"a forced worm visit costs at most %d crops (%d)"
+			% [SimWorld.WORM_MEALS, dawn - budget.world.count_planted()])
+	budget.done()
+
+	# --- determinism ----------------------------------------------------------
+	var runs: Array[String] = []
+	for _i in 2:
+		var d := _meadow_session(909)
+		_release_worm(d, Vector2i(9, 6))
+		_tick_until_gone(d, SpeciesDefs.WORM, 16000)
+		d.tick(300)
+		runs.append(SaveGame.capture_canonical(d.world, d.gs))
+		d.done()
+	_assert(runs[0] == runs[1],
+		"the same seed grows the same worm the same way, segment for segment and tick for tick")
+
+	# --- a save taken mid-crawl, continued, and its own replay ---------------
+	#
+	# WI-5's net, aimed at the one thing that is new here: the **body** is in the
+	# save and in the comparison, so a restored worm that lay down differently, or
+	# grew at a different tick, is a divergence with a name.
+	var played := _meadow_session(4242)
+	_release_worm(played, Vector2i(9, 6))
+	played.tick(120)
+	_assert(played.world.has_actor(SpeciesDefs.WORM), "a visit is under way when the game is saved")
+	var half_fed := int(played.world.actor(SpeciesDefs.WORM)["extra"].get("meals", 0))
+	_assert(half_fed > 0 and half_fed < SimWorld.WORM_MEALS,
+		"with the worm part-grown and still hungry (%d of %d meals)" % [half_fed, SimWorld.WORM_MEALS])
+	var mid = JSON.parse_string(JSON.stringify(SaveGame.capture(played.world, played.gs)))
+	_assert(mid["world"]["actors"].has(SpeciesDefs.WORM)
+			and mid["world"]["actors"][SpeciesDefs.WORM]["extra"].has("body"),
+		"and the worm is in it, body and all")
+	_assert(int(mid["world"]["actors"][SpeciesDefs.WORM]["extra"].get("body_len", 0)) == 2 + half_fed,
+		"at the length it has grown to, which is one integer in its own registry entry")
+	played.done()
+
+	var gs_cont = load("res://systems/game_state.gd").new()
+	gs_cont.reset()
+	var w_cont := SimWorld.new()
+	_assert(SaveGame.restore(mid, w_cont, gs_cont), "the mid-crawl save restores")
+	SimRng.reseed(w_cont.gen_seed)
+	var cont_log := ReplayLog.new()
+	cont_log.start_from_save(mid, w_cont.gen_seed)
+	var lived := 0
+	while lived < 16000 and w_cont.has_actor(SpeciesDefs.WORM):
+		for t in w_cont.advance_ticks(20, gs_cont):
+			if t["result"].get("ok", false):
+				cont_log.record(t["action"], t["result"], int(t["tick"]), true)
+		cont_log.mark_tick(w_cont.clock.tick)
+		lived += 20
+	_assert(not w_cont.has_actor(SpeciesDefs.WORM),
+		"the whole visit plays out inside the continued session (%d ticks)" % lived)
+	var end_save = JSON.parse_string(JSON.stringify(SaveGame.capture(w_cont, gs_cont)))
+	var report := SaveGame.replay_report(cont_log, end_save)
+	_assert(report["matched"],
+		"and it replays to the identical outcome %s" % report["divergence"])
+	gs_cont.free()

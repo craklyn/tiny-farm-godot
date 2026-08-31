@@ -60,11 +60,14 @@ const BLOCKED := "blocked"
 
 # --- capability lookup, and the one seam a test may write to -------------------
 #
-# `burrow`, `hop`, multi-tile bodies and tile exclusivity have **no shipping
-# species**: WI-8 owns those rows, and the species table stays honest about who
-# actually exists (a row for a critter with no brain and no sprite is a lie the
-# verification checklist would have to believe). So the engine takes an override
-# table that only tests write to, and every lookup here consults it first.
+# When this shipped, `burrow`, `hop`, multi-tile bodies and tile exclusivity had
+# **no shipping species**: WI-8 owned those rows, and the species table stays
+# honest about who actually exists (a row for a critter with no brain and no
+# sprite is a lie the verification checklist would have to believe). So the engine
+# takes an override table that only tests write to, and every lookup here consults
+# it first. WI-8 has since written three of the four — the kangaroo hops, the mole
+# burrows, the worm has a body — and **`tile_exclusive` is the one still waiting
+# for an inhabitant** (the giant ant, parked in plan §5).
 #
 # This is deliberately the *only* way to move without a species row, it is empty
 # in a shipping build, and `forget_test_species()` puts it back. A WI-8 worker

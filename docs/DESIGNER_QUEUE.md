@@ -714,6 +714,41 @@ trace actually says, because several of these looked like bugs and were not.*
   cannot frustrate a small child, and revisit it beside Q-16's combat verbs and WI-9's shoo
   policy — "what does chasing something accomplish" is one question, and answering it for
   the rabbit answers it for the bot.* Nothing is blocked: no grazer spawns in the live game.
+- **Q-64** **How much of the mole should the player be allowed to see?** Raised by M2.5
+  WI-8d. The mole travels under the farm, where nothing on the surface is in its way and
+  nothing can touch it: a clear-class tap on the tile it is passing beneath is an ordinary
+  clear, and there is no fright in its brain to interrupt it. Its counterplay is therefore
+  *timing* — it is stompable only in the second or two it is above ground taking a seed —
+  plus one thing that is not a tap at all: it refuses to surface where she is standing, so
+  guarding a seedbed with her feet works. Two decisions inside that, both taste and both one
+  line: (a) **the mound.** While it is under, the renderer draws r2's mound cell rather than
+  nothing, so its route across the field is visible and the player can walk to where it is
+  going. Drawing nothing would make the theft a genuine ambush; drawing the mound makes it a
+  chase a four-year-old can win. Built as the mound. (b) **the window.** `EMERGE_SECONDS` is
+  1.6 s of surfacing before the seed goes, which is what makes the boot possible at all — a
+  shorter window makes the mole nearly unanswerable, a longer one makes it a sitting duck.
+  *Recommendation: keep both as built and set them at a playtest with a child, because this
+  is the first critter in the game whose answer is a reaction rather than a decision, and
+  the two numbers are the whole difficulty.* Nothing is blocked: no mole spawns in the live
+  game.
+- **Q-65** **A worm that eats crops, and gets longer for no reason.** Raised by M2.5 WI-8e.
+  Two questions, both about what the animal *is* rather than how it works. (a) **Should a
+  worm be a pest at all?** In the cozy-farming tradition a worm is good soil, not a thief;
+  this one eats what is growing, which is the fastest way to give the movement engine's body
+  support an inhabitant but is not obviously the roster's best use of a worm. The alternative
+  fiction — it eats *weeds*, or it improves the tile it leaves — is the same brain with a
+  different verb and would make it the first neutral-or-good critter after the songbird.
+  (b) **The growth means nothing yet.** It gets one segment per crop, which is legible and
+  charming and has no consequence: a longer worm is not slower, not worth more, not harder
+  to stomp, and nothing in the game reads its length. It does make it likelier to get in its
+  own way and give up, which is a joke rather than a mechanic. Options if length should
+  matter: a long worm is worth something when stomped; it splits; it becomes slower;
+  or (the honest minimum) it stays a spectacle. It is also `stompable` on any tile it
+  occupies — a tap on the tail answers it — which for a slow, harmless-looking animal may be
+  too easy an answer or exactly the right one for a small child. *Recommendation: rule (a)
+  first, since it decides whether (b) is even the right question, and leave the length as
+  spectacle until something in phase 2 wants to read it.* Nothing is blocked: no worm spawns
+  in the live game.
 
 ## Before M3 — phase 2 design
 

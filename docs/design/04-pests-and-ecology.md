@@ -29,6 +29,8 @@ lays, what it follows, what repels), senses, speed. Rows below exist in code and
 | Rabbit | `eat_crop` (the same one again) | none — it neither lays nor follows | crops within 5 tiles; **flees the player's `spook_radius`** | 30 px/s | **stand near it.** No tap, no tool, no verb: it bolts inside her radius and comes back outside it. |
 | Kangaroo | `eat_crop` | none | the rabbit's, exactly — the same table entry | 45 px/s | the rabbit's. It **crosses fence-class tiles** (fence, hedge, closed gate), so a hedge is not counterplay against this one. |
 | Songbird | *none at all* | none | none | 35 px/s (flies) | none needed — it never touches anything. |
+| Mole | `eat_crop`, on a **sown** tile — it steals the seed and leaves the soil tilled | none | none at all; it is not frightened of anything | 20 px/s (**burrows**) | **be standing there.** It will not surface where the player is, so guarding a seedbed works; and it is stompable *only* in the second or two it is above ground. |
+| Worm | `eat_crop` | none | crops within 4 tiles | 6 px/s — the slowest thing in the game | **stomp**, on any tile it occupies (a tap on the tail is a tap on the worm). |
 
 A raid is: one scout → one completed trail → a column of 3 foragers → one crop each,
 carried home. That bounds a raid's cost at the column size and a day's at
@@ -52,6 +54,27 @@ If the two ever need to *feel* different, that is a behaviour to add on purpose,
 difference to preserve; today the honest statement is that a kangaroo is a rabbit that
 does not care about your fence.
 
+**The mole steals seed, and that is a different loss from a bite.** Its visit is: tunnel in
+under the boundary → surface on a tile somebody has sown → take the seed (the soil is left
+tilled, which is what `eat_crop` has always done to a sown tile) → go back down → do it once
+more, or leave. Its cost is bounded by **steals per visit** (2 today, `SimWorld.MOLE_STEALS`),
+so the daily-loss identity gains a term denominated in *seeds*: `crows + raids x column size
++ grazer visits x bites + mole visits x steals + worm visits x meals`. A seed has always
+counted as planted, so this is a subset of the same loss rather than a new kind of it — but
+it is the loss the player paid gold for and has nothing to show for, which is a different
+feeling from losing a head of wheat she watched grow. It is also the first critter whose
+counterplay is a **reaction**: while it is under the farm nothing on the surface can reach
+it and nothing frightens it, so the answer is the moment it comes up (`[Designer]` Q-64).
+
+**The worm is the multi-tile animal, and its own body is its problem.** It crawls from crop
+to crop and grows one segment per meal (`extra.body_len`), its segments occupy the tiles
+behind it, and the movement engine refuses to let its head enter a tile it is already lying
+on — so a long worm has to go *round* itself to reach anything behind it, and a long enough
+one can curl up with all four ways out being worm, at which point it gives up and goes back
+into the soil. That is the classic snake constraint, and it is the whole of the design: the
+growth is spectacle rather than mechanic today (`[Designer]` Q-65, which also asks whether a
+worm should be a pest at all in a cozy farming game).
+
 ## Sections to fill
 2. **Nests** — where they spawn relative to the farm, growth over time, visibility
    `[Designer]` Q-18 (early visibility foreshadows phase 5's trail-tracking).
@@ -64,8 +87,14 @@ does not care about your fence.
    settled (P-10). **Wash and stomp are implemented** (M2.5 WI-8a/8b), both on verbs
    the player already has; the hoe dig is unbuilt. **Presence is now counterplay too**
    (M2.5 WI-8c): the grazers flee the player's `spook_radius`, which is the first answer
-   in the game that is not a verb at all — she walks over and the animal goes. Whether
-   that should *end* a visit rather than pause it is `[Designer]` Q-63. Additional verbs
+   in the game that is not a verb at all — she walks over and the animal goes. **Presence
+   is also what protects a seedbed** (M2.5 WI-8d): a mole refuses to surface anywhere near
+   her, so standing in the sown row is counterplay against a critter no tap can reach.
+   Whether that should *end* a visit rather than pause it is `[Designer]` Q-63. The stomp
+   now has two qualifiers, both from the critters that needed them: a burrower is
+   unanswerable while it is under the ground (so the mole's window is the seconds it is up,
+   `[Designer]` Q-64), and a multi-tile animal answers on any tile it occupies (so a tap on
+   a worm's tail is a tap on the worm). Additional verbs
    `[Designer]` Q-16 (swat/chase, thrown objects, dog?), plus Q-61 (a tap that targets a
    *critter* rather than a tile is new, and it is the stomp's whole shape).
 5. **Neutral wildlife** — chicken exists; role of harmless fauna (charm, eggs, ambient

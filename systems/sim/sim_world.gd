@@ -149,12 +149,30 @@ static func may_start_raid(day: int, planted: int) -> bool:
 const RABBIT_VISITS_PER_DAY := 0
 const KANGAROO_VISITS_PER_DAY := 0
 const SONGBIRDS_PER_DAY := 0
+# ...and the last two of tier 1 (M2.5 WI-8d/8e), which added two rows to the table
+# below and nothing else: no field, no roll, no loop, no save key.
+const MOLE_VISITS_PER_DAY := 0
+const WORM_VISITS_PER_DAY := 0
 
 # How many crops one visiting grazer takes before it has had its fill and leaves.
 # This is the daily-loss identity's new term (T-15/T-20, plan §4): a visit costs
 # at most this, because the count is kept in the actor's own `extra` and the brain
 # goes home when it reaches it. [Playtest].
 const GRAZER_BITES := 2
+
+# The same bound, for the same reason, for the last two mouths (M2.5 WI-8d/8e).
+# Each is a count in the animal's own `extra`, re-checked every time it goes
+# looking for another meal, so a visit that is interrupted cannot buy itself
+# thirds (the lesson of WI-8c deviation 4).
+#
+# **A mole's term is denominated in seeds**, not in grown crops: it only ever
+# targets a `seeded` tile (`has_seed` below), and a stolen seed is a unit of
+# `count_planted()` exactly as a ripe head is — the same currency the daily-loss
+# identity has always been measured in, and one the player paid gold for. It is a
+# strict subset of that identity rather than a new kind of loss, which is why the
+# formula gains a term rather than a footnote. [Playtest].
+const MOLE_STEALS := 2
+const WORM_MEALS := 3
 
 # Built on first use rather than as a `const`, so the table can name species
 # constants without asking GDScript to resolve two class initialisers into each
@@ -178,6 +196,21 @@ static func visitors() -> Dictionary:
 			SpeciesDefs.SONGBIRD: {
 				"per_day": SONGBIRDS_PER_DAY,
 				"min_day": 1, "min_planted": 0, "earliest": 2, "salt": 9000,
+			},
+			# It comes for *seeds*, so the honest mercy rule would be about how
+			# many are in the ground rather than how much is growing.
+			# `min_planted` is the nearest question this table asks, and the brain
+			# answers the rest by leaving again when it finds nothing sown
+			# (M2.5 WI-8d).
+			SpeciesDefs.MOLE: {
+				"per_day": MOLE_VISITS_PER_DAY,
+				"min_day": 5, "min_planted": 3, "earliest": 4, "salt": 10000,
+			},
+			# The slowest visitor there is, so it comes early in the day and to a
+			# farm with barely anything on it (M2.5 WI-8e).
+			SpeciesDefs.WORM: {
+				"per_day": WORM_VISITS_PER_DAY,
+				"min_day": 3, "min_planted": 2, "earliest": 4, "salt": 11000,
 			},
 		}
 	return _visitors
@@ -470,6 +503,20 @@ func has_crop(tx: int, ty: int) -> bool:
 		return false
 	var st: String = tile.get("state", "")
 	return st == "seeded" or st == "growing" or st == "ready"
+
+
+# Is there a *seed* in this ground — sown, and not yet come up? The narrower half
+# of `has_crop`, and the mole's whole diet (M2.5 WI-8d): it steals what the player
+# has just planted rather than what she is about to harvest, which is why its
+# damage is measured in seeds. One definition, here, for the same reason `has_crop`
+# is one definition: the brain that goes looking and the test that checks what it
+# took must not be able to disagree about what a seed is.
+#
+# `eat_crop` needs no special case for it — the verb has always accepted this state
+# and always left the soil `tilled` behind it, which is exactly what a stolen seed
+# looks like from the ground's side.
+func has_seed(tx: int, ty: int) -> bool:
+	return String(get_tile(tx, ty).get("state", "")) == "seeded"
 
 
 # Tiles holding a crop at any stage — what a crow could target, and the measure
@@ -843,25 +890,47 @@ func spook_source_near(t: Vector2i, ignore: String = "") -> String:
 # shipping build, which is also why it costs a tap nothing: a registry with four
 # actors in it is a four-entry scan.
 func stompable_at(t: Vector2i) -> bool:
-	for id in actors:
-		if SpeciesDefs.is_stompable(String(actors[id].get("species", ""))) \
-				and actor_pos(String(id)) == t:
-			return true
-	return false
+	return not _stompable_ids_at(t).is_empty()
 
 
-# Everything stompable on this tile, gone. **All of them, not the first one
-# found**: ants do not claim tiles (`tile_exclusive` is false on both rows), so
-# two can share one, and "whichever the registry happened to list first" is
-# exactly the kind of iteration-order dependency the registry block forbids.
-# Returns how many went, so the caller can tell a stomp from a swing at nothing.
+# Everything a boot on this tile would answer, sorted by id. **All of them, not
+# the first one found**: ants do not claim tiles (`tile_exclusive` is false on
+# both rows), so two can share one, and "whichever the registry happened to list
+# first" is exactly the kind of iteration-order dependency the registry block
+# forbids.
+#
+# Two clauses beyond "is it stompable and is it here", both added by M2.5 WI-8d/8e
+# for their own critter and both general:
+#
+#   **Under the ground is out of reach.** A burrower's registry tile is where it
+#   is *travelling*, not where it can be answered, so a mole beneath a row of
+#   wheat is not standing on it in any sense a boot can act on — and the tap falls
+#   through to the ordinary clear, which is what the player expects from a tile
+#   with nothing visible on it. It is what makes the mole's counterplay *timing*:
+#   the answer to one is the second or two it is up.
+#
+#   **A long actor answers on any tile it occupies.** `Movement.occupied_tiles`
+#   is the whole footprint (head first) and falls back to the single position for
+#   everybody else, so a tap on a worm's tail is a tap on the worm, and nothing
+#   changes for the four species that are one tile big.
+func _stompable_ids_at(t: Vector2i) -> Array[String]:
+	var out: Array[String] = []
+	for raw in actors:
+		var id := String(raw)
+		if not SpeciesDefs.is_stompable(String(actors[id].get("species", ""))):
+			continue
+		if Movement.is_under(self, id):
+			continue
+		if t in Movement.occupied_tiles(self, id):
+			out.append(id)
+	out.sort()
+	return out
+
+
+# ...and gone. Returns how many went, so the caller can tell a stomp from a swing
+# at nothing.
 func _stomp(t: Vector2i) -> int:
-	var doomed: Array[String] = []
-	for id in actors:
-		if SpeciesDefs.is_stompable(String(actors[id].get("species", ""))) \
-				and actor_pos(String(id)) == t:
-			doomed.append(String(id))
-	doomed.sort()
+	var doomed := _stompable_ids_at(t)
 	for id in doomed:
 		despawn_actor(id)
 	return doomed.size()

@@ -129,6 +129,34 @@ static func ticks_per_tile(species: String) -> int:
 	return Movement.ticks_per_tile(species)
 
 
+# Where a visitor comes onto the farm, and therefore where it will leave by: a
+# tile this species can *stand* on, as near the edge of the map as its own
+# capability allows. Not a nest — that is `[Designer]` Q-18 and the ants' problem
+# — it is the gap in the hedge, stored as one pair of numbers in `extra`, which is
+# what makes "and it goes back out the way it came" a fact a test can assert
+# (M2.5 WI-8c).
+#
+# Which tiles qualify is the *mode's* answer, not this function's: a kangaroo's
+# edge includes the far side of a fence and a mole's includes ground a walker
+# could never have reached, and neither is written down here. Deterministic — the
+# reachable set comes back in the movement engine's fixed BFS order and the draw
+# indexes into it.
+#
+# Lives on the base class because three species now arrive this way (both grazers
+# and the mole); it was `GrazerBrain.edge_tile` when only two did.
+static func edge_tile(world: SimWorld, species: String, draw: int) -> Vector2i:
+	var mode := Movement.mode_of(species)
+	var edges: Array[Vector2i] = []
+	for t in Movement.reachable(world, mode, WorldLayout.spawn()):
+		if not Movement.can_stop(world, mode, t):
+			continue
+		if t.x <= 1 or t.y <= 1 or t.x >= SimWorld.MAP_WIDTH - 2 or t.y >= SimWorld.MAP_HEIGHT - 2:
+			edges.append(t)
+	if edges.is_empty():
+		return Vector2i(-1, -1)
+	return edges[draw % edges.size()]
+
+
 # Seconds, as the design docs and the old presentation timers state them,
 # converted to ticks. Every `[Playtest]` duration in a brain is written in
 # seconds and passed through here, so the numbers stay readable against the
