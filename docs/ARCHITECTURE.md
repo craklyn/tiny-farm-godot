@@ -114,18 +114,21 @@ code, both deliberate for phase 1 and both due before phase 4.**
    state now: the registry holds it, saves persist it, and tick-stepped brains move it.
    There is still **no `move_to` verb**, and deliberately — Q-53 ruled that for
    sim-brained actors movement is a *recomputed process*, not a logged verb, because the
-   mover's deterministic code is the reconstruction rule. What remains open is the rest of
-   the sentence: `tools/benchmark_sim.gd` still fast-forwards an actor who **teleports**
-   (WI-12 makes it walk), and the player's position is still presentation's — the engine
-   she will move on landed with WI-4, and the renderer that mirrors sim truth is WI-6's.
+   mover's deterministic code is the reconstruction rule. What remained open was the rest
+   of the sentence: `tools/benchmark_sim.gd` fast-forwarded an actor who **teleported**,
+   and the player's position was still presentation's — the engine she moves on landed
+   with WI-4, the renderer that mirrors sim truth with WI-6, and the walking worker with
+   WI-12.
    **WI-5 closed the comparison seam**: a v2 replay advances the sim clock through the
    session's own ticks, so `SaveGame.capture_canonical` compares every sim-moved actor's
    position again — a hen who ends the session on a different tile now fails a replay.
    **WI-6 closed the last exclusion**: the player's tile crossings write her registry entry
    and are recorded as free-walk entries a replay applies back, so the comparison is total
-   — every actor, position, facing, meter and scratch. What is left of this item is one
-   line: `tools/benchmark_sim.gd` still fast-forwards an actor who **teleports**, and
-   WI-12 makes it walk.
+   — every actor, position, facing, meter and scratch.
+   **✅ WI-12 closed the last line (2026-08-31): the teleport is gone.** The benchmark's
+   worker is a registered bot that walks to every tile it works, at its species' speed,
+   through the movement engine and the tick clock — so the overnight fast-forward models
+   travel. What that costs is recorded in `M2_5_PLAN.md` §9 (WI-12).
 2. **A stored replay is `[Action@tick]`, not `[(Observation, Action)]`.** Observations are
    *derived* by re-simulating the stream rather than recorded alongside it. That is far
    cheaper and it is why a replay is robust to presentation changes such as move speed —

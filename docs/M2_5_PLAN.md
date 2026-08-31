@@ -1898,3 +1898,186 @@ number to watch. One caution: nothing in the fast-forward path advances the cloc
 (`advance_day` schedules brains but does not tick), so the moment the benchmark models
 travel it is also the first time brains run inside it — the day loop will start paying for
 the hen and every bot on the farm, and that is a real cost rather than a regression.
+
+### WI-12 — Benchmark v2 + re-baseline ✅ landed 2026-08-31
+
+**The teleport is gone.** `tools/benchmark_sim.gd`'s worker is a real registered bot
+(`BotBrain.deploy`, WI-9's one call) that **walks** to every tile it works, at the speed
+its species row declares, over routes the movement engine plans, with the tick clock
+advanced between every stride so the hen — and anybody else the farm holds — lives
+through the walk. Finding F-5's last clause ("`tools/benchmark_sim.gd`'s actor teleports,
+so fast-forward cannot model travel") is closed, and with it the last open line of
+`ARCHITECTURE.md`'s implementation-status item 1 and the argument paragraph under D-9.
+
+The plot and the verb sequence are unchanged, so the work is the same work: **73,000
+Actions over 1,000 days**, exactly as before. What is new is that reaching each tile costs
+ticks — 62,000 tiles walked, 186,000 ticks of travel — and that fast-forward now jumps
+the clock event to event through them (ground rule 8 from the caller's side, one
+`advance_to_tick` per stride).
+
+**The numbers, with travel modelled** (four runs on this desktop, and the run is
+deterministic — the action, tile and tick counts are identical every time):
+
+| | pre-WI-12 (teleporting) | WI-12 (walking) |
+|---|---|---|
+| x-realtime (vs a 600 s nominal day) | 634k–690k× | **81.7k–83.2k×** |
+| days/sec | ~1,130 | 136 |
+| actions/sec | ~79,000 | ~10,000 |
+| actions per tick of travel | — (no travel) | **0.392** (2.5 ticks of walking per action) |
+| sim clock rate | — (clock never advanced) | 2,530× (18,600 s of sim time in 7.3 s wall) |
+
+The pre-WI-12 column is four runs of the committed file taken on this machine on the same
+evening, and the milestone's historical band for it is 614k–736k× (WI-4 §9's note that the
+honest number is a range); the WI-12 column varied by 1.8% across its four runs. Both
+bands are narrower than the 8× change between them, which is what makes the comparison a
+finding rather than an anecdote.
+
+**The gate is missed, and the number is the deliverable.** ≥100,000× was the criterion;
+**~82,000×** is the measurement. Nothing was tuned to close the eighteen percent — the
+instruction was to profile and report rather than to make the sim faster until its own
+benchmark passed — and the gap is **filed as Q-67** for a ruling, because "accept the
+number or spend an afternoon on the pathfinder" is a call about priorities. Where the 7.3
+seconds go — measured by running a scratch copy of the file with `Time.get_ticks_usec()`
+accumulators around each phase, so the shipped benchmark carries no instrumentation; the
+per-route figures below it come from a second scratch script timing `Movement.path` and
+`Movement.reachable` in tight loops on a generated world:
+
+| | | |
+|---|---|---|
+| `Movement.plan` (A* per work tile) | 2.52 s | 56,006 calls, 44.9 µs each |
+| `advance_to_tick` (clock, the hen, the bot's own poll) | 2.36 s | 62,000 calls over 186,000 ticks |
+| `Movement.step` | 0.96 s | 62,000 strides |
+| `apply_action` (the work itself) | 0.61 s | 73,000 Actions, 8.4 µs each |
+| the day turn (`sleep` + the 640-tile growth pass) | 0.38 s | 1,000 turns |
+| reading each tile's state for a verb | 0.11 s | 80,000 lookups |
+
+(6.94 s of a 7.42 s instrumented run; the remainder is the sweep's own loop and the cost
+of the measurement calls themselves.)
+
+**Travel is 79% of the run, and the single biggest line in it is the pathfinder.** A
+two-tile route costs 35–45 µs and a three-tile one 82–104 µs, because `Movement.path`'s
+open list is a linear scan with a `remove_at` and every expanded node is a freshly
+allocated Dictionary. WI-4 chose A* deliberately and correctly; nothing has ever needed it
+to be *fast* before, because until this WI nothing in a fast-forward planned a route. That
+is Q-67's option (b), and it would help the live game as much as the benchmark — every
+brain in the bestiary plans routes.
+
+**Ground rule 8, measured as a slope** (the plan's second criterion). Same world, same
+10,000-tick budget, four **sequential** runs each from its own reseed, circle bots orbiting
+a standing farmer on a cleared patch:
+
+| | wall time | over the floor |
+|---|---|---|
+| no bots (the farm's own cost: the hen, the clock) | 0.067 s | — |
+| 1 circle bot | 0.319 s | +0.252 s |
+| 8 circle bots | 2.033 s | +1.966 s |
+| 8 idle shoo bots (a parked fleet) | 6.36 s | +6.29 s |
+
+**Eight busy actors cost 7.80× one actor's per-tick work** (7.80–7.89× across runs) and
+**6.4× the total**, which is exactly the prediction rule 8 makes: the marginal cost is
+linear in actors, and the world's fixed costs dilute it in the total. There is no per-tick
+and no per-map term anywhere in that slope — a farm with eight machines on it costs eight
+machines, not eight farms.
+
+Suites: unit **1364 PASSED / 0 FAILED**, integration **216 / 0**, robot session
+**PASSED** (21–24 entries across runs — a fresh seed each time, as every WI since WI-3 has
+recorded — 850 ticks, 7 free-walk events, recomputation match every run), `verify_replay`
+**MATCH** on the real v1 human session, demo replay regenerates with a **clean diff**,
+visual regression **passes unchanged**. Every count is exactly where WI-9 left it, which is
+the point: this WI touches `tools/` and docs and nothing else.
+
+**Deviations and decisions taken inside the WI:**
+
+1. **The gate does not decide the exit code, and that is a deliberate weakening of a
+   contract nobody had.** The old file always `quit(0)`; CI's "Sim benchmark (smoke)" step
+   therefore only ever caught a crash. The new file keeps *that* contract and adds real
+   failure conditions to it — nothing walked (`travel_ticks == 0`), the day's work did not
+   happen, the fleet never moved, or throughput under a **10,000× floor** — each printed
+   through `printerr` and returning 1. The floor is an order of magnitude under the
+   measurement rather than the plan's 100,000× for two reasons: CI runs on a shared cloud
+   runner several times slower than any desktop, so a desktop threshold there would be a red
+   build about somebody else's machine; and the gate is currently missed, so wiring it to
+   the exit code would paint every push red about a number this section already records.
+   The failure path was checked by raising the floor to 900,000× and watching the process
+   exit 1 with the reason on stderr.
+2. **The worker's policy is this file, not a brain, and it is deployed following nobody.**
+   There is no brain in the game that farms a plot — the three bot configs are follow,
+   circle and shoo — and writing one would have been shipping a fourth config to make a
+   benchmark work. So the bot is deployed `CONFIG_FOLLOW` with `owner: "nobody"`, which
+   makes `BotBrain._follow` poll and defer (`_wait`), and the sweep decides where it goes.
+   That is honest in the way that matters: a driver picking the next target while the engine
+   and the clock do the travelling is exactly the shape an overnight training run has (P-8's
+   policy picks *options* over deterministic controllers). Deploying it on the player
+   instead would have been worse than useless — she stands in the yard behind the cold
+   open's closed gate, so it would fail to find a station and `clear_route` the sweep's
+   own route every poll. The poll is left in and paid for: a real driven bot would think at
+   least as often as it steps, so the ~46,000 no-op dispatches stand in for a cost a real
+   fleet has.
+3. **The sweep is serpentine, and that is worth 45k× → 74k×.** Row-major was free when
+   nothing walked; with travel it spends a nine-tile trudge back to the near edge eight
+   times a day and measures it as the cost of farming. A worker walks the rows and turns at
+   the end of one. (Row-major with travel measured 44,988× and 2.0 tiles walked per action;
+   serpentine measured 74,436× and 1.1.)
+4. **"In range" is Q-30's range, and that is worth another 74k× → 82k×.** The game does
+   not put the farmer *on* the tile she works: `Pathfinding.find_path_toward` routes at the
+   tile and `player.gd` stops the moment she is beside it, from whichever side the route
+   brought her. So the worker stops on adjacency too, and a target it is already beside
+   costs no travel at all. Modelling it the other way would have been inventing travel this
+   game does not have — a nine-tile row would cost nine strides instead of the four or five
+   a player actually walks. Both variants are recorded here rather than only the fastest, so
+   the reader can see exactly what each fidelity decision is worth.
+5. **The scaling run stands the farmer in a cleared 7×7 patch in the meadow.** A ring drawn
+   round her spawn tile runs half of itself into the map border, and a weed on the ring makes
+   a bot skip round it — either way the run would have measured terrain instead of actors.
+   The patch is cleared and she is placed, deterministically, before any bot is deployed.
+   Four runs, **sequential, each from its own reseed**, per WI-9 deviation 8's trap.
+6. **10,000 ticks per scaling run, not more.** The ratios repeat to within a hundredth
+   across runs at that budget, and the whole benchmark now takes ~17 s where the old one
+   took 0.9 s. That is the real cost of these measurements and it is mostly the parked
+   fleet's (see 7); halving it again would have started to matter to the ratios.
+7. **An idle shoo fleet is the *most* expensive eight actors, not the cheapest** — which
+   contradicts WI-9's handoff ("eight `shoo` bots on an empty farm is the honest floor: one
+   registry pass every 0.4 s each, no routes at all"). A shoo bot with nothing to chase
+   **patrols**, and `BotBrain._patrol_tile` picks its next beat out of `Movement.reachable`,
+   which is a flood fill of everywhere it can get to: **917 µs over 220 tiles** from the
+   middle of the meadow. Eight of them cost 3.1× what eight walking circle bots cost. This
+   is not a rule-8 violation — it is per *decision*, not per tick, and a patrol leg is
+   several seconds long — but it is the same shape as the mole's whole-map scan that
+   WI-8d/8e flagged, and it is the first cost in this codebase big enough to be felt in a
+   frame: four bots choosing a beat on the same tick is ~4 ms. Left alone deliberately
+   (`bot_brain.gd` is WI-9's file and nothing deploys a bot in the live game), recorded here
+   so the M3 debut of the shoo config does not meet it by surprise.
+8. **No critter was benched.** WI-9's handoff offered it as the third thing to measure ("*if*
+   you bench a farm with critters"); the plan's criterion is 1-vs-8 bots, nothing spawns a
+   critter in a live game, and a fifth and sixth run would have doubled the file's runtime
+   to measure a farm that does not exist yet. The mole's whole-map scan therefore remains
+   unmeasured, and stays on WI-8d/8e's note where it was filed.
+9. **`tests/test_runner.gd:_benchmark_day` is now a copy of a sweep this file no longer
+   runs** — still row-major, still applying from nowhere. Deliberate and left alone: what it
+   proves is that *registering* the worker changes nothing (unregistered id vs. deployed
+   bot, identical grids and state), which is the fact these numbers rest on, and it proves
+   that best by being the old shape. Said out loud in a comment in both files so a reader
+   does not take it for a mirror.
+
+**For the milestone verifier — things noticed across §9 while reading it end to end.**
+This is the last work item, so what follows is not WI-12's business but is worth a second
+pair of eyes:
+
+- **The exit gate's throughput clause is not met** (~82,000× against 100,000×). It is the
+  one binding criterion in this plan that failed, it is filed as Q-67 with a recommendation,
+  and `ROADMAP.md`'s M2.5 exit gate now says so beside the clause rather than in a footnote.
+- **WI-5 is still Phase A.** Brain entries are still *written* as well as recomputed;
+  "WI-5 landed" is not "format v2 flipped". Its four Phase B prerequisites (a real human
+  tablet session verified, a robot run containing a whole crow visit, the neighbour
+  decision, the corpus question) are all still open, and none of them is a code change.
+- **The visual re-baseline allowance was spent once, by WI-2** (its deviation 7, in a commit
+  of its own, for the hen's spawn draw moving into worldgen). WI-6 and WI-9 both report the
+  allowance "UNSPENT", meaning *their own*; net across the milestone it is one re-baseline,
+  which is what §8.A allows. WI-12 did not need one.
+- **A walking session records about three entries a second** (WI-6 deviation 2). No real
+  human session has been recorded on the tablet since, so the corpus size that lands in
+  front of the phase-4 question is still an estimate (~1,000 entries for ten minutes).
+- **The day turn is the one per-map pass left in the fast-forward loop** — 640 tiles of
+  growth per `sleep`, 0.38 ms per day. Rule 8 is about per-tick cost so this is legal and
+  always was, but it is now a measurable fraction (5%) of a fast-forward and it is the only
+  cost in the loop that scales with map area rather than with actors.

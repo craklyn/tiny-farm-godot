@@ -544,6 +544,12 @@ overnight fast-forward does not model travel. Travel is the substance of a deleg
 game — "which bot goes where, and is the walk worth it" *is* the phase-4 problem — and an
 agent that teleports has no problem to solve. Simulating agents, not just the farm, is
 what "train bots overnight" means.
+**✅ The teleport is gone (M2.5 WI-12, 2026-08-31).** The benchmark's worker is a
+registered bot that walks to every tile it works, at its species' speed, through the
+movement engine and the tick clock, so the fast-forward models travel — and travel turns
+out to be four fifths of the run (662,773× realtime became ~82,000×, profile in
+`M2_5_PLAN.md` §9). The paragraph above is history; the sentence it was arguing for is
+now the code.
 
 **What flips if this is adopted:** actor position becomes sim state; movement becomes an
 Action (or a costed process the sim schedules); the fast-forward begins to model travel
@@ -560,7 +566,8 @@ we have not decided on. This is the earliest decision of the phase-4 group.
 movement, so the pre-change corpus can train task selection but not routing. That argues
 for settling D-9 *before* accumulating training data in earnest, and it compounds with
 Q-41 (version-stamping replays), which is what would let a mixed corpus be sorted out at
-all.
+all. **✅ Not incurred (2026-08-31):** settled before any corpus existed — the movement-less
+logs on disk are eight playtest sessions and the demo replay, all Q-41-stamped.
 
 ---
 

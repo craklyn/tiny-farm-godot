@@ -788,15 +788,27 @@ was the serial critical path, so WI-4..WI-7 and the bestiary can now fan out in 
 **Status 2026-08-31 (later the same day): everything but the benchmark is in.** WI-4
 (movement engine), WI-5 (replay v2 + the dual-record net), WI-6 (renderer unification),
 WI-7 (scent), WI-8a–8g (the tier-1 bestiary), WI-9 (the bot line), WI-10 (sprinkler + pea)
-and WI-11 (the art bench) have landed; **WI-12** (benchmark v2 with travel modelled, and
-the re-baseline) is the last one open, and it is what the exit gate's throughput clause
-waits on. Nothing in the bestiary or the bot line spawns in a live game: every `per_day` is
-0 and the bot's debut is Q-56's, which keeps the shipping build exactly as it was.
+and WI-11 (the art bench) have landed. Nothing in the bestiary or the bot line spawns in a
+live game: every `per_day` is 0 and the bot's debut is Q-56's, which keeps the shipping
+build exactly as it was.
+
+**Status 2026-08-31 (last): every work item is landed, and the throughput clause of the
+exit gate is missed.** WI-12 made the benchmark's worker walk — a registered bot, ground
+travel at its species' speed, actions dispatched through the tick clock — and the honest
+number with travel modelled is **~82,000× realtime**, against a gate of 100,000×. It was
+662,773× when the actor teleported, so travel costs about 8×, and roughly four fifths of
+the run is now walking: A* per work tile and brain dispatch during the walk, profiled in
+`M2_5_PLAN.md` §9. Nothing was tuned to close the gap; the same run proves the cost model
+the gate exists to protect (8 busy actors cost **7.9×** one actor's per-tick work, so cost
+scales with actors and not with ticks or map area). The designer's call is whether the gate
+is met in spirit, an order of magnitude clear of any per-tick regression, or whether the A*
+open list gets an afternoon.
 
 **Exit gate:** both suites green and grown; robot session replay-verified through the
 new clock; the attract loop visibly renders the neighbour (the bug that motivated the
-refactor, fixed as a test); benchmark ≥100k× realtime *with travel modeled*; every
-tier-1 critter's mechanic proven by a deterministic sim test.
+refactor, fixed as a test); benchmark ≥100k× realtime *with travel modeled* (**~82k×
+measured — see the status note above**); every tier-1 critter's mechanic proven by a
+deterministic sim test.
 
 ## M3 — Phase 2 vertical slice
 Sprinklers (first automation), group-pest skirmishes, yield-threshold gate per P-4.
@@ -809,12 +821,11 @@ wave design on the sim core (waves are just fast-forwardable sims — previewabl
 testable for free).
 
 ## Phase-gated beyond this point
-- **D-9** (before D-2): does actor position become sim state, and movement an Action?
-  The sim currently holds no actor positions, so the fast-forward benchmark's actor
-  teleports — an honest throughput measure, but it does not model travel, which is the
-  substance of a delegation game. Must be settled *before* D-2, since an action space that
-  omits movement is a different learning problem, and before a training corpus is
-  accumulated in earnest.
+- ~~**D-9** (before D-2): does actor position become sim state, and movement an Action?~~
+  **✅ Settled 2026-08-31 (Q-53), and shipped through M2.5.** Position is sim state, the
+  fast-forward benchmark's worker walks instead of teleporting (WI-12), and D-2 now has
+  an action space that includes movement — which was the whole reason this had to come
+  first.
 - **D-2 spike** (after D-9; any time after M2, before phase 4 production): on-device
   training benchmark; pick algorithms; then phase 4 production.
 - **M5 — Phase 4 vertical slice:** first bot learns from the player's own replays;
