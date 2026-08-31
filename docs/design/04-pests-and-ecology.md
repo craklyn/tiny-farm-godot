@@ -25,7 +25,7 @@ lays, what it follows, what repels), senses, speed. Rows below exist in code and
 | Species | Verbs | Scent | Senses | Speed | Counterplay |
 |---|---|---|---|---|---|
 | Ant scout | *none* — it walks and it marks | **lays** `pest_trail` on every tile of its walk home | crops within 3 tiles | 10 px/s | **stomp** (a clear-class tap on its tile). A stomped scout never gets home, so the column never forms. |
-| Ant forager | `eat_crop` (the crow's, reused) | **follows** the strongest neighbouring `pest_trail` (excluding the tile it came from); **reinforces** it on the way home | trail only — it carries no map | 8 px/s | **wash** (`water` on a trail tile erases the cell). A hole in the trail disperses the column. |
+| Ant forager | `eat_crop` (the crow's, reused) | **follows** the strongest neighbouring `pest_trail` (excluding the tile it came from); **reinforces** it on the way home | trail only — it carries no map | 8 px/s | **wash** (`water` on a trail tile erases the cell). A hole in the trail disperses the column. A rainy day turn washes the whole field (Q-58). |
 | Rabbit | `eat_crop` (the same one again) | none — it neither lays nor follows | crops within 5 tiles; **flees the player's `spook_radius`** | 30 px/s | **stand near it.** No tap, no tool, no verb: it bolts inside her radius and comes back outside it. |
 | Kangaroo | `eat_crop` | none | the rabbit's, exactly — the same table entry | 45 px/s | the rabbit's. It **crosses fence-class tiles** (fence, hedge, closed gate), so a hedge is not counterplay against this one. |
 | Songbird | *none at all* | none | none | 35 px/s (flies) | none needed — it never touches anything. |
@@ -48,8 +48,10 @@ the daily-loss identity again: `crows + raids x column size + grazer visits x bi
 **The rabbit and the kangaroo are the same brain.** They differ by one field of the species
 table — the movement capability — and that difference is the whole kangaroo: it clears
 fences, hedges and closed gates, so the boundary that says "not yet" to the player and to
-every walker says nothing to this one (see `DESIGNER_QUEUE.md` Q-57 for whether the *gate*
-should be in that set, and Q-63 for whether fleeing is the whole of a grazer's answer).
+every walker says nothing to this one — **ruled 2026-08-31 (Q-57): wild things hop anything,
+closed gates included, because a boundary is the player's rule and not nature's**. Whether
+fleeing is the whole of a grazer's answer is now the row's own `fright_ends_visit` field
+(Q-63), false for both of them today.
 If the two ever need to *feel* different, that is a behaviour to add on purpose, not a
 difference to preserve; today the honest statement is that a kangaroo is a rabbit that
 does not care about your fence.
@@ -72,8 +74,11 @@ behind it, and the movement engine refuses to let its head enter a tile it is al
 on — so a long worm has to go *round* itself to reach anything behind it, and a long enough
 one can curl up with all four ways out being worm, at which point it gives up and goes back
 into the soil. That is the classic snake constraint, and it is the whole of the design: the
-growth is spectacle rather than mechanic today (`[Designer]` Q-65, which also asks whether a
-worm should be a pest at all in a cozy farming game).
+growth is spectacle rather than mechanic today. `[Designer]` Q-65 — whether a worm should be
+a pest at all in a cozy farming game, and whether its length should ever mean anything — was
+**parked unruled on 2026-08-31 by the designer's explicit choice**: the worm stays a
+zero-dial proof that the movement engine carries a body, and its meaning is left for a phase
+that wants it.
 
 ## Sections to fill
 2. **Nests** — where they spawn relative to the farm, growth over time, visibility
@@ -90,13 +95,18 @@ worm should be a pest at all in a cozy farming game).
    in the game that is not a verb at all — she walks over and the animal goes. **Presence
    is also what protects a seedbed** (M2.5 WI-8d): a mole refuses to surface anywhere near
    her, so standing in the sown row is counterplay against a critter no tap can reach.
-   Whether that should *end* a visit rather than pause it is `[Designer]` Q-63. The stomp
-   now has two qualifiers, both from the critters that needed them: a burrower is
-   unanswerable while it is under the ground (so the mole's window is the seconds it is up,
-   `[Designer]` Q-64), and a multi-tile animal answers on any tile it occupies (so a tap on
-   a worm's tail is a tap on the worm). Additional verbs
-   `[Designer]` Q-16 (swat/chase, thrown objects, dog?), plus Q-61 (a tap that targets a
-   *critter* rather than a tile is new, and it is the stomp's whole shape).
+   Whether a fright *ends* a visit rather than pausing it is now a **field on the species
+   row** (`fright_ends_visit`, Q-63 ruled 2026-08-31), false for both grazers today, so
+   ruling it for a given animal is a data edit rather than a code change. **The weather is
+   counterplay she does not perform** (Q-58 ruled 2026-08-31): a rainy day turn washes every
+   scent channel on the whole farm, because water is water — a raid does not survive a wet
+   night. The stomp now has two qualifiers, both from the critters that needed them: a
+   burrower is unanswerable while it is under the ground (so the mole's window is the seconds
+   it is up, and Q-64 ruled 2026-08-31 that its mound stays visible while it travels), and a
+   multi-tile animal answers on any tile it occupies (so a tap on a worm's tail is a tap on
+   the worm). Additional verbs `[Designer]` Q-16 (swat/chase, thrown objects, dog?). Q-61 is
+   ruled (2026-08-31): a tap that targets a *critter* rather than a tile is blessed as the
+   stomp's shape, with a device pass owed when ants debut.
 5. **Neutral wildlife** — chicken exists; role of harmless fauna (charm, eggs, ambient
    life for the kid layer; also negative training examples for bots: *don't* attack the
    chicken). **The songbird is the first one built for this and nothing else** (M2.5

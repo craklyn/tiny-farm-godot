@@ -4717,6 +4717,64 @@ func test_scent() -> void:
 	_assert(not dry.get("ok", false) and world.scent.read(Scent.TRAIL, soil, world.clock.tick) == 60.0,
 		"a watering that fails washes nothing — an empty can is not a bucket")
 
+	# --- ...and rain washes the lot (`[Designer]` Q-58, ruled 2026-08-31) -----
+	#
+	# "Water is water": what her bucket does to one tile, the sky does to all of
+	# them at once. Three claims, in order — every channel goes, *only* rain does
+	# it, and the clean ground survives a save and a replay like any other fact a
+	# day turn produces.
+	world.scent.deposit(Scent.TRAIL, soil + Vector2i(2, 0), 45.0, world.clock.tick)
+	world.scent.deposit("test_lure", soil + Vector2i(3, 0), 20.0, world.clock.tick)
+	var marked_tiles: Array[Vector2i] = [soil, soil + Vector2i(1, 0), soil + Vector2i(2, 0), soil + Vector2i(3, 0)]
+	var dusk = JSON.parse_string(JSON.stringify(SaveGame.capture(world, GameState)))
+	_assert(world.scent.cell_count() == 4 and dusk["world"]["scent"].has("test_lure"),
+		"a trail and a lure lie across her plot as she goes to bed")
+
+	# The dry night first, from the same dusk, so the two mornings differ in the
+	# weather and in nothing else.
+	var dry_gs = load("res://systems/game_state.gd").new()
+	var dry_world := SimWorld.new()
+	SaveGame.restore(dusk, dry_world, dry_gs)
+	dry_world.apply_action({ "verb": "sleep", "weather": "sunny", "actor": "player" }, dry_gs)
+	var dry_tick := dry_world.clock.tick
+	_assert(dry_world.scent.cell_count() == 4, "a dry night leaves every cell where it was")
+	_assert(is_equal_approx(dry_world.scent.read(Scent.TRAIL, soil, dry_tick), 60.0),
+		"...holding the value it held, because a day turn is not a decay rule of its own")
+	_assert(is_equal_approx(dry_world.scent.read(
+			Scent.TRAIL, soil, dry_tick + int(Scent.half_life_ticks(Scent.TRAIL))), 30.0),
+		"and still halving on its own clock, exactly as it did yesterday")
+	dry_gs.free()
+
+	# The wet one.
+	world.apply_action({ "verb": "sleep", "weather": "rainy", "actor": "player" }, GameState)
+	_assert(world.scent.cell_count() == 0, "**a rainy night washes the farm** — not one cell is left")
+	var rained_clean := true
+	for c in Scent.channels():
+		for t in marked_tiles:
+			if world.scent.read(String(c), t, world.clock.tick) != 0.0:
+				rained_clean = false
+	_assert(rained_clean,
+		"every channel on every marked tile reads nothing: the lure goes with the trail")
+	_assert(world.scent.to_save().is_empty(),
+		"and the field holds no cells at all, rather than a map of zeroes")
+
+	# The round trip WI-5's net asks of everything else: a session that lays a
+	# trail, sleeps in the rain and is replayed from its own save must wake to the
+	# same clean ground. The wash is not recorded anywhere — the *weather* is, and
+	# the replay washes the farm for the same reason the session did.
+	var wet := LiveSession.new(5858)
+	wet.world.scent.deposit(Scent.TRAIL, Vector2i(6, 6), 70.0, wet.world.clock.tick)
+	wet.world.scent.deposit("test_lure", Vector2i(7, 6), 25.0, wet.world.clock.tick)
+	wet.rebase()
+	_assert(wet.act({ "verb": "sleep", "weather": "rainy", "actor": "player" }).get("ok", false)
+			and wet.world.scent.cell_count() == 0,
+		"a recorded session sleeps through the rain and wakes to a washed farm")
+	var wet_end = JSON.parse_string(JSON.stringify(SaveGame.capture(wet.world, wet.gs)))
+	var wet_report := SaveGame.replay_report(wet.log, wet_end)
+	_assert(wet_report["matched"],
+		"and its replay reproduces the wash rather than the trail %s" % wet_report["divergence"])
+	wet.done()
+
 	# --- cost scales with writes, not tiles (ground rule 8) -------------------
 	# Two halves of one claim. First: the work is proportional to the number of
 	# deposits and reads, and 40,000 of them are cheap. Second, and the one the
@@ -5734,6 +5792,43 @@ func _state_of(world: SimWorld, actor_id: String) -> String:
 	return String(world.actor(actor_id).get("extra", {}).get("state", ""))
 
 
+# One visit, interrupted (`[Designer]` Q-63): let the animal take a mouthful, walk
+# up to it until it bolts, walk away again, and let the rest of the visit play
+# out. Returns what the farm lost by the end. The two answers to Q-63 are this
+# same scenario on the same seed with one field of the species row different.
+func _bite_then_scare(seed_value: int, species: String) -> Dictionary:
+	var s := _meadow_session(seed_value)
+	var dawn := s.world.count_planted()
+	_release_grazer(s, species, Vector2i(5, 9))
+	var bit := false
+	var spent := 0
+	while spent < 4000 and s.world.has_actor(species):
+		s.tick(10)
+		spent += 10
+		if int(s.world.actor(species).get("extra", {}).get("bites", 0)) >= 1:
+			bit = true
+			break
+	var bolted := false
+	if bit:
+		for _round in 20:
+			s.world.set_actor_pos(SimWorld.ACTOR_PLAYER, s.world.actor_pos(species) + Vector2i(1, 0))
+			s.tick(3)
+			if not s.world.has_actor(species):
+				break
+			if _state_of(s.world, species) == GrazerBrain.STATE_FLEE:
+				bolted = true
+				break
+		s.world.set_actor_pos(SimWorld.ACTOR_PLAYER, MEADOW_FAR_CORNER)
+	var gone := _tick_until_gone(s, species)
+	s.tick(600)  # ...and it does not wander back in afterwards
+	var out := {
+		"bit": bit, "bolted": bolted, "gone": gone,
+		"lost": dawn - s.world.count_planted(),
+	}
+	s.done()
+	return out
+
+
 func test_grazers() -> void:
 	print("\n--- The rabbit and the kangaroo: one brain, two rows (M2.5 WI-8c/8f) Tests ---")
 
@@ -5866,6 +5961,51 @@ func test_grazers() -> void:
 	_assert(not SpeciesDefs.senses_of(SpeciesDefs.CHICKEN).get("flees_spook_radius", false),
 		"and the hen does not, because hers does not")
 
+	# --- ...and whether the fright *ends* the visit is the row's answer -------
+	#
+	# `[Designer]` Q-63, ruled 2026-08-31: the *shape* of the behaviour is this
+	# brain's and the *value* is the species row's (`ARCHITECTURE.md`, "Where a
+	# behaviour lives"). Both shipping grazers are ruled `false` — flee-and-return,
+	# the behaviour asserted immediately above — so the ruling changed nothing a
+	# player could see, and the true path deliberately has no shipping row. It is
+	# played through the test-row seam instead, for the same reason the movement
+	# engine keeps one: a row in the table is a claim about the game.
+	_assert(not SpeciesDefs.fright_ends_visit(SpeciesDefs.RABBIT)
+			and not SpeciesDefs.fright_ends_visit(SpeciesDefs.KANGAROO),
+		"neither grazer's visit is ended by a fright, which is the behaviour it always had")
+	_assert(not SpeciesDefs.fright_ends_visit("no_such_species"),
+		"and a row that never mentions the field means the same thing: a fright is a pause")
+
+	SpeciesDefs.define_test_row("test_bolter", {
+		"name": "Test Bolter",
+		"brain": "graze",  # the rabbit's brain, unmodified — that is the claim
+		"verbs": ["eat_crop"],
+		"speed": SpeciesDefs.speed_of(SpeciesDefs.RABBIT),
+		"movement": SpeciesDefs.movement_of(SpeciesDefs.RABBIT),
+		"senses": SpeciesDefs.senses_of(SpeciesDefs.RABBIT),
+		"persistent": true,
+		"fright_ends_visit": true,
+	})
+	# The same farm, the same seed, the same mouthful and the same fright: the two
+	# runs differ in one field of one row and in nothing else.
+	var paused := _bite_then_scare(4242, SpeciesDefs.RABBIT)
+	var ended := _bite_then_scare(4242, "test_bolter")
+	_assert(paused["bit"] and paused["bolted"] and ended["bit"] and ended["bolted"],
+		"both animals take a bite, and both bolt when she walks up — the fright is the same fright")
+	_assert(paused["lost"] == SimWorld.GRAZER_BITES,
+		"**the rabbit comes back for the rest of its fill**: her fright bought a pause (%d crops)"
+			% paused["lost"])
+	_assert(ended["lost"] == 1,
+		"**a `fright_ends_visit` row does not**: one bite, and the scare ended the visit (%d crops)"
+			% ended["lost"])
+	_assert(paused["gone"] and ended["gone"],
+		"and both leave under their own steam — what differs is when, not whether")
+	SpeciesDefs.forget_test_rows()
+	_assert(not SpeciesDefs.has("test_bolter"),
+		"the test-row seam leaves nothing behind, exactly as the movement engine's does")
+	_assert(SpeciesDefs.ids().size() == SpeciesDefs.ROWS.size(),
+		"and the shipping species table is untouched by it")
+
 	# --- the kangaroo: exactly the barrier class, and nothing else -----------
 	#
 	# The criterion, played rather than asserted: a fence-enclosed crop is
@@ -5899,14 +6039,15 @@ func test_grazers() -> void:
 	hopper.done()
 	walker.done()
 
-	# Q-57 is the taste question this raises and it is filed, not decided here:
-	# the barrier class includes closed gates, so a hopper can be in a parcel the
-	# player has not earned. Asserted so that a change to the class is a failing
-	# test rather than a surprise on a tablet.
+	# The taste question this raises is **ruled** (Q-57, 2026-08-31: wild things hop
+	# anything, closed gates included — a boundary is the player's rule, not
+	# nature's), and the assertion that pinned it stays exactly where it was: a
+	# change to the barrier class is a failing test rather than a surprise on a
+	# tablet.
 	var gated := _meadow_session(12, false)
 	gated.world.set_tile_state(PEN_CROP.x, PEN_CROP.y - 1, WorldLayout.GATE_CLOSED)
 	_assert(Movement.is_barrier(gated.world, Vector2i(PEN_CROP.x, PEN_CROP.y - 1)),
-		"a closed gate is in the barrier class a hopper crosses (Q-57, filed and unruled)")
+		"a closed gate is in the barrier class a hopper crosses (Q-57, ruled: keep as built)")
 	gated.done()
 
 	# --- the daily-loss identity, extended to the new mouths (plan §4) --------
@@ -7114,11 +7255,13 @@ func test_bots() -> void:
 	_assert(covered["seen"] == 1 and uncovered["seen"] == 1
 			and covered["booked"] == 0 and uncovered["booked"] == 0,
 		"T-20 holds either way: one arrival is one arrival, shooed or fed")
-	# Q-12 is a proof about **her**. A machine doing her job for her must not fill
-	# it in — `[Designer]` Q-66 asks whether that is right, and this is the safe
-	# answer until it is ruled.
-	_assert(covered["scared_counter"] == 0,
-		"a bot's scare does not count toward her capability proof (Q-12/Q-66)")
+	# **Delegated work counts** (`[Designer]` Q-66, ruled 2026-08-31: credit flows
+	# up). She built the machine and she placed it, so the bird it walked off her
+	# farm is on her proof exactly as the ones she walked off herself — which is
+	# the whole game's thesis, arriving early and in miniature. WI-9 shipped the
+	# opposite as the safe default and this assertion is the flip of it.
+	_assert(covered["scared_counter"] == 1,
+		"a bot's scare counts toward her capability proof, like her own (Q-12/Q-66)")
 	var by_hand := _bot_yard(77)
 	by_hand.world.spawn_actor(SimWorld.ACTOR_CROW, SpeciesDefs.CROW, Vector2i(9, 9), {})
 	by_hand.act({ "verb": "crow_scared", "actor": SimWorld.ACTOR_CROW })

@@ -611,7 +611,13 @@ trace actually says, because several of these looked like bugs and were not.*
   so the first automation the player meets is the sprinkler (design/03's "watch your
   old job happen without you"), then revisit with the shoo-bot as a candidate.*
 
-- **Q-57** **May a hopper cross a *closed gate*, or only a fence?** Raised by M2.5 WI-4,
+- **Q-57** ~~May a hopper cross a *closed gate*, or only a fence?~~ — ✅ **ruled 2026-08-31:
+  keep as built, reading (a).** Wild things hop anything, closed gates included: **a boundary
+  is the player's rule, not nature's**. A kangaroo in the parcel she has not earned is a tease
+  for the land she has not opened, not a leak in it. Nothing changed in the barrier class, and
+  the pinning assertion in `test_grazers` stands — so an edit to that class stays a failing
+  test rather than a surprise on a tablet. Original item:
+  **May a hopper cross a *closed gate*, or only a fence?** Raised by M2.5 WI-4,
   which implements the plan's criterion verbatim: `hop` crosses "exactly barrier-class
   tiles", and the barrier class is fence, hedge **and closed gate** (`WorldLayout`'s own
   definition — a closed gate is a boundary until it opens). The engineering is settled
@@ -625,7 +631,17 @@ trace actually says, because several of these looked like bugs and were not.*
   *Recommendation: leave it as built and look at it on device when a kangaroo exists —
   it is one entry in the barrier list either way, and (a) costs nothing to try first.*
   Nothing is blocked on this: no hop-mode species ships until WI-8f.
-- **Q-58** **Does *rain* wash pest trails?** Raised by M2.5 WI-7, which implements P-10's
+- **Q-58** ~~Does *rain* wash pest trails?~~ — ✅ **ruled 2026-08-31: rain washes everything,
+  reading (b).** Fiction first — water is water, so the sky does to the whole farm what her
+  bucket does to one tile, and a raid does not survive a wet night. **Built** the same day:
+  `Scent.wash_all()` drops every channel's written cells and `SimWorld.advance_day` calls it
+  on a rainy day turn. It stays P-10-legal (a loop over the *cells*, never over the map, so a
+  farm nobody has marked pays nothing for a rainy morning) and it is deterministic because the
+  weather is — the day's roll is sim state, and a replay re-applies it. Covered in
+  `test_scent`: a trail and a second channel laid, a rainy sleep, every cell reads 0 and the
+  field compares clean through both a save and a replay; a sunny sleep leaves it decaying
+  normally. Original item:
+  **Does *rain* wash pest trails?** Raised by M2.5 WI-7, which implements P-10's
   counterplay verbatim: the `water` verb erases every scent channel on the tile it lands
   on, so a child with a watering can breaks a trail one tile at a time. Rain is the other
   thing that puts water on tiles — at the day turn it wets every tilled, seeded and
@@ -638,7 +654,12 @@ trace actually says, because several of these looked like bugs and were not.*
   *Recommendation: leave it as built — (a) — and revisit when a raid exists to feel it
   against; it is one line in `advance_day` either way.* Nothing is blocked on this: no
   species writes scent until WI-8.
-- **Q-59** **Reloading a save no longer re-rolls the day.** Raised by M2.5 WI-5, and it is
+- **Q-59** ~~Reloading a save no longer re-rolls the day.~~ — ✅ **approved 2026-08-31:
+  reload determinism stands, reading (a).** The farm is a place with a history, not a slot
+  machine; a mercy re-roll, if one is ever wanted, will be a mechanic she can see rather than
+  a property of the quit button. No code change — this is the shipping behaviour. Original
+  item:
+  **Reloading a save no longer re-rolls the day.** Raised by M2.5 WI-5, and it is
   a consequence rather than a choice anyone made: a farm now carries the seed it was
   generated from, and continuing from a save puts the game back on that seed (which is
   what lets a continued session's replay reproduce it at all — the fix closes a real hole
@@ -653,7 +674,11 @@ trace actually says, because several of these looked like bugs and were not.*
   reroll is ever wanted as a mercy it should be a designed one (a mechanic she can see)
   rather than a property of the quit button.* Nothing is blocked: this is live now and
   reversible in one line of `main.gd`.
-- **Q-60** **The title screen is now inhabited, and it acts on its own.** Raised by M2.5
+- **Q-60** ~~The title screen is now inhabited, and it acts on its own.~~ — ✅ **ruled
+  2026-08-31: keep the inhabited title screen.** Both halves stand — the neighbour working her
+  row and the backdrop running sim time, hen, crow and all. No code change; the pacing remains
+  worth an eye on device, but as a look rather than a question. Original item:
+  **The title screen is now inhabited, and it acts on its own.** Raised by M2.5
   WI-6, which fixed finding F-3 — the attract loop used to play the cold open with nobody
   on screen, so tiles tilled themselves and the *farmer* walked over to do the neighbour's
   work. Two things changed and only the first was asked for. (i) The neighbour is there,
@@ -669,7 +694,12 @@ trace actually says, because several of these looked like bugs and were not.*
   waits for the neighbour's stride where before it waited only for the farmer's. Reversible
   in one line (`ui/attract_loop.gd`'s clock pump); the neighbour half stands either way.
 
-- **Q-61** **A tap can now target a *creature*, and that is new.** Raised by M2.5 WI-8a,
+- **Q-61** ~~A tap can now target a *creature*, and that is new.~~ — ✅ **ruled 2026-08-31:
+  blessed, with an audit.** The tap-a-creature pattern is approved as built (reading (a)) — the
+  small moving thing is what a child is aiming at. The audit is a device-pass item, now on the
+  plan's §8.E list: *first-stomp reaction, judged when ants debut — Q-10 comedy-not-threat
+  lens*. No code change. Original item:
+  **A tap can now target a *creature*, and that is new.** Raised by M2.5 WI-8a,
   which implements the plan's criterion verbatim: the ant scout is "stomp-able — the
   player's `clear_weed`-class verb answers it, reuse, no new verb". It works, it needed no
   new word in the sim and no new UI, and it has one consequence nobody has looked at on a
@@ -686,7 +716,12 @@ trace actually says, because several of these looked like bugs and were not.*
   exists to aim at — it is a handful of lines in `action_router.gd` either way, and the
   competing readings are really about whether ants are ever dense enough for the ambiguity
   to bite.* Nothing is blocked: no ant spawns in the live game.
-- **Q-62** **What does a column *look* like when it breaks?** Raised by M2.5 WI-8b. Washing
+- **Q-62** ~~What does a column *look* like when it breaks?~~ — ✅ **ruled 2026-08-31:
+  deferred to the ant debut**, and bundled with Q-61's audit — same device session, same §8.E
+  line. (a) ships meanwhile: a forager that loses the trail disperses, which today means it is
+  gone. Whether a broken column should be *watched* instead is judged when there are ants on a
+  screen to watch. No code change. Original item:
+  **What does a column *look* like when it breaks?** Raised by M2.5 WI-8b. Washing
   one tile of a trail is P-10's counterplay and it works: the gradient has a hole in it, and
   a forager that reaches the hole has lost the only thing it knew, because a forager carries
   no map — the trail *is* its memory. In the sim it then **disperses**, which today means the
@@ -699,7 +734,20 @@ trace actually says, because several of these looked like bugs and were not.*
   and it is testable — and revisit with Q-17 (raid readability), because "the player must see
   a raid form" and "the player must see a raid break" are the same question from the two
   ends.* Nothing is blocked: no ant spawns in the live game.
-- **Q-63** **Is running away the *whole* of a rabbit's answer?** Raised by M2.5 WI-8c/8f.
+- **Q-63** ~~Is running away the *whole* of a rabbit's answer?~~ — ✅ **ruled 2026-08-31: the
+  composition law, plus the boolean.** Two parts, both landed. (1) **The law**, written into
+  `ARCHITECTURE.md` beside the brains paragraph: behaviour *shape* lives in a brain class, one
+  per archetype, shared when species genuinely share it; behaviour *parameters* live in the
+  species row; the moment a table field encodes branching logic rather than a value, the
+  archetype has split — fork the brain and keep the table dumb; protocols over subclass trees,
+  because anything that answers `step()` is a brain and that is what phase 4's learned policies
+  rely on. (2) **The boolean**: `fright_ends_visit` is now a field on the species row schema,
+  read by `grazer_brain.gd`, and it is **false for the rabbit and the kangaroo** — the current
+  flee-and-return behaviour, so this ruling changes nothing a player could see. Ruling each
+  species' *value* later is a data edit. Both paths are unit-asserted (the false path returns
+  for its remaining bites; a true-flagged test species leaves and the visit is consumed).
+  Original item:
+  **Is running away the *whole* of a rabbit's answer?** Raised by M2.5 WI-8c/8f.
   The grazers are the first critters whose counterplay is not a tap at all: walk over and
   the animal bolts, walk away and it comes back and carries on eating, and a visit costs
   two crops whatever she does. That is deliberate — it is Q-10's "the crow is the joke, not
@@ -714,7 +762,12 @@ trace actually says, because several of these looked like bugs and were not.*
   cannot frustrate a small child, and revisit it beside Q-16's combat verbs and WI-9's shoo
   policy — "what does chasing something accomplish" is one question, and answering it for
   the rabbit answers it for the bot.* Nothing is blocked: no grazer spawns in the live game.
-- **Q-64** **How much of the mole should the player be allowed to see?** Raised by M2.5
+- **Q-64** ~~How much of the mole should the player be allowed to see?~~ — ✅ **ruled
+  2026-08-31: the mound stays visible.** Both halves as built: the renderer draws the mound
+  while the mole travels, so its route is a chase a four-year-old can win rather than an
+  ambush, and `EMERGE_SECONDS` stays where it is. Both numbers are still `[Playtest]` — the
+  place to set them is a session with a child, not a queue item. No code change. Original item:
+  **How much of the mole should the player be allowed to see?** Raised by M2.5
   WI-8d. The mole travels under the farm, where nothing on the surface is in its way and
   nothing can touch it: a clear-class tap on the tile it is passing beneath is an ordinary
   clear, and there is no fright in its brain to interrupt it. Its counterplay is therefore
@@ -731,7 +784,12 @@ trace actually says, because several of these looked like bugs and were not.*
   is the first critter in the game whose answer is a reaction rather than a decision, and
   the two numbers are the whole difficulty.* Nothing is blocked: no mole spawns in the live
   game.
-- **Q-65** **A worm that eats crops, and gets longer for no reason.** Raised by M2.5 WI-8e.
+- **Q-65** — ⏸️ **parked unruled 2026-08-31, by the designer's explicit choice.** Neither (a)
+  nor (b) is answered: the worm stays exactly what it is, a zero-dial proof that the movement
+  engine carries a body, and the question of what it *means* is left for a phase that wants
+  it. Recorded here as parked rather than struck, so it is picked up as an open question and
+  not as a settled one. The item, unchanged:
+  **A worm that eats crops, and gets longer for no reason.** Raised by M2.5 WI-8e.
   Two questions, both about what the animal *is* rather than how it works. (a) **Should a
   worm be a pest at all?** In the cozy-farming tradition a worm is good soil, not a thief;
   this one eats what is growing, which is the fastest way to give the movement engine's body
@@ -749,7 +807,16 @@ trace actually says, because several of these looked like bugs and were not.*
   first, since it decides whether (b) is even the right question, and leave the length as
   spectacle until something in phase 2 wants to read it.* Nothing is blocked: no worm spawns
   in the live game.
-- **Q-66** **When your machine does your job, is it still your achievement?** Raised by M2.5
+- **Q-66** ~~When your machine does your job, is it still your achievement?~~ — ✅ **ruled
+  2026-08-31: delegated work counts, reading (b) — credit flows up.** A bot's `crow_scared`
+  (the one that carries `by`) now credits `gs.crows_scared` identically to her own scare: the
+  player built and placed the machine, and a game whose whole thesis is "the farm runs without
+  you" cannot refuse her the credit for the machine she deployed. **Built** the same day — one
+  `if` in `SimWorld._apply`'s `crow_scared` branch, flipped; `by` survives on the report,
+  because *which* machine did it is still worth knowing and the flee reason still distinguishes
+  a person from a machine. WI-9's assertion that a bot's scare did not count is updated to
+  assert that it does. Original item:
+  **When your machine does your job, is it still your achievement?** Raised by M2.5
   WI-9 — and it is the whole game's question, arriving early and in miniature. Q-12's
   phase-1 proof counts crows *she* frightened off (`GameState.crows_scared`, three of them);
   a shoo-bot ends a crow's visit by exactly the same event, through exactly the same verb.

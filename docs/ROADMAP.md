@@ -786,9 +786,14 @@ record is `M2_5_PLAN.md` §10. Final state: unit 1376 / integration 216 / robot
 recomputation MATCH / benchmark **107k× with travel modeled** (the gate failed at 82k×
 on first measurement and was earned back by the output-identical pathfinder rewrite,
 Q-67). Replay v2 is at **Phase A** — the dual-record net runs everywhere; Phase B's
-flip has four recorded prerequisites, none of them code. Remaining for the designer:
-the device/taste pass (§8.C/E) and Q-57–Q-66 — including each critter's debut, all of
-which sit behind `PER_DAY := 0` dials awaiting rulings.
+flip has four recorded prerequisites, none of them code. **Q-57–Q-66 were all ruled on
+2026-08-31** (nine struck, Q-65 parked unruled by the designer's choice); three of them
+asked for a build and got one the same day — rain washes every scent channel farm-wide
+(Q-58), `fright_ends_visit` is a species-row field under the composition law now written
+into `ARCHITECTURE.md` (Q-63), and a bot's scare credits her capability proof like her own
+(Q-66). Remaining for the designer: the device/taste pass (§8.C/E, which now carries the
+first-stomp audit Q-61/Q-62 are bundled into) and each critter's debut, all of which sit
+behind `PER_DAY := 0` dials awaiting rulings.
 
 **Status 2026-08-31: the chassis is landed.** WI-1 (SimClock), WI-2 (actor registry +
 species table) and WI-3 (one brain interface, plus the crow/chicken/neighbour retrofits

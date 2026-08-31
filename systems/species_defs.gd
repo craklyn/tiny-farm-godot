@@ -347,6 +347,14 @@ static var ROWS: Dictionary = {
 		# A visit that lasts minutes and stands on the ground is part of a snapshot
 		# of a farm — the ants' argument, not the crow's (see `_capture_actors`).
 		"persistent": true,
+		# **A fright pauses the visit; it does not end it** (`[Designer]` Q-63,
+		# ruled 2026-08-31). Whether running away is the whole of a rabbit's answer
+		# is a *value* on this row rather than a branch in `grazer_brain.gd`: false
+		# is flee-and-return, which is the behaviour it has had since WI-8c, and
+		# ruling otherwise for an animal later is an edit to this one word. See
+		# `ARCHITECTURE.md`, "Where a behaviour lives", for why it is a field and
+		# not a subclass.
+		"fright_ends_visit": false,
 		# **Deliberately not stompable.** The stomp answers a scout, whose whole
 		# threat is that it gets home; a rabbit's answer is her footsteps. Adding a
 		# boot here would make the flee sense decorative.
@@ -358,10 +366,11 @@ static var ROWS: Dictionary = {
 	# (fence, hedge, closed gate; `Movement.is_barrier`). A crop a rabbit can smell
 	# and never reach is a crop this one is standing on.
 	#
-	# **Q-57 is filed and unruled** (`DESIGNER_QUEUE.md`): the barrier class
-	# includes closed gates, so a hopper can be in a parcel the player has not
-	# earned. Nothing is blocked — `KANGAROO_VISITS_PER_DAY` is 0, so no kangaroo
-	# has ever been in anybody's quarry.
+	# **Q-57 is ruled** (2026-08-31, `DESIGNER_QUEUE.md`): the barrier class keeps
+	# closed gates, so a hopper can be in a parcel the player has not earned —
+	# wild things hop anything, because a boundary is the player's rule and not
+	# nature's. Nothing is blocked either way: `KANGAROO_VISITS_PER_DAY` is 0, so
+	# no kangaroo has ever been in anybody's quarry.
 	KANGAROO: {
 		"name": "Kangaroo",
 		"brain": "graze",  # the rabbit's, unchanged — that is the point of the row
@@ -372,6 +381,7 @@ static var ROWS: Dictionary = {
 		"movement": { "mode": HOP, "body_len": 1, "tile_exclusive": false },
 		"senses": { "crop_sense": 5.0, "flees_spook_radius": true },
 		"persistent": true,
+		"fright_ends_visit": false,  # the rabbit's answer, unchanged (Q-63)
 	},
 
 	# **The one that does nothing at all** (`design/04` §5: harmless fauna, "charm,
@@ -432,8 +442,10 @@ static var ROWS: Dictionary = {
 	# The counterplay is **timing rather than aim**: it is `stompable`, but a
 	# burrower under the ground is out of reach (`SimWorld.stompable_at` asks
 	# `Movement.is_under`), so the answer to a mole is the second or two it is up.
-	# `[Designer]` Q-64 asks whether that window is fair and whether the mound
-	# should give its route away.
+	# Q-64 is ruled (2026-08-31): **the mound stays visible** while it travels, so
+	# the theft is a chase a four-year-old can win rather than an ambush, and
+	# `EMERGE_SECONDS` stays where it is — both still `[Playtest]` numbers, to be
+	# set with a child rather than in a queue item.
 	MOLE: {
 		"name": "Mole",
 		"brain": "mole_tunnel",
@@ -480,7 +492,8 @@ static var ROWS: Dictionary = {
 		"persistent": true,
 		# A boot answers it, on **any tile it occupies** — a tap on the tail is a
 		# tap on the worm (`SimWorld.stompable_at` reads `Movement.occupied_tiles`).
-		# `[Designer]` Q-65 asks whether it should be answerable at all.
+		# `[Designer]` Q-65 asks whether it should be answerable at all, and is
+		# **parked unruled** (2026-08-31) by the designer's explicit choice.
 		"stompable": true,
 	},
 
@@ -532,9 +545,12 @@ static var ROWS: Dictionary = {
 		# watches for is a *configuration* (`extra.quarry`, a class), not a
 		# species fact — two bots off the same line differ by their settings and
 		# by nothing else. The one sense worth considering is `spook_radius`: give
-		# this row one and grazers would flee a patrolling bot for free, which is
-		# `[Designer]` Q-63's other half ("what does chasing something
-		# accomplish") and is not this work item's to rule.
+		# this row one and grazers would flee a patrolling bot for free. Q-63 is
+		# ruled (2026-08-31) and it did not give this row a radius: what a fright
+		# *accomplishes* is now `fright_ends_visit` on the frightened animal's
+		# row, and both grazers say "a pause", so a patrolling bot with a radius
+		# would still shoo nothing permanently. Giving it one stays a decision
+		# somebody makes on purpose.
 		"senses": {},
 		# A machine on the farm is part of a snapshot of the farm — the sprinkler's
 		# standing, and the hen's, rather than the crow's.
@@ -546,11 +562,39 @@ static var ROWS: Dictionary = {
 }
 
 
+# --- the one seam a test may write to -----------------------------------------
+#
+# `Movement.define_test_species` and `Scent.define_test_channel`'s mechanism, one
+# level up: whole rows rather than a capability or a channel. The shipping table
+# above stays honest about which animals the game actually has, while a test can
+# play a *field* through a real brain without the table growing a species nothing
+# spawns.
+#
+# Q-63's `fright_ends_visit` is the case that wanted it: both grazers are ruled
+# `false`, so the true path has no shipping row — and it must not get one for a
+# test's sake, because a row here is a claim about the game.
+#
+# `ids()` and `species_of_class()` deliberately keep answering from `ROWS` alone:
+# a test row is something a test spawns, never something the game enumerates.
+# Empty in a shipping build; `forget_test_rows()` puts it back.
+static var _test_rows: Dictionary = {}
+
+
+static func define_test_row(species: String, row_data: Dictionary) -> void:
+	_test_rows[species] = row_data.duplicate(true)
+
+
+static func forget_test_rows() -> void:
+	_test_rows.clear()
+
+
 static func has(species: String) -> bool:
-	return ROWS.has(species)
+	return ROWS.has(species) or _test_rows.has(species)
 
 
 static func row(species: String) -> Dictionary:
+	if _test_rows.has(species):
+		return _test_rows[species]
 	return ROWS.get(species, {})
 
 
@@ -626,3 +670,12 @@ static func is_persistent(species: String) -> bool:
 # **no**: the hen must never be answerable by tapping her.
 static func is_stompable(species: String) -> bool:
 	return bool(row(species).get("stompable", false))
+
+
+# Does a fright *end* this species' visit, or only interrupt it? (`[Designer]`
+# Q-63, ruled 2026-08-31 — the boolean half of the ruling; the law it follows is
+# in `ARCHITECTURE.md`, "Where a behaviour lives".) Read by `grazer_brain.gd`
+# when a flight ends, and **the default is no**: a row that never mentions it
+# means the flee-and-return every grazer in the game does today.
+static func fright_ends_visit(species: String) -> bool:
+	return bool(row(species).get("fright_ends_visit", false))

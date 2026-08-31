@@ -327,7 +327,9 @@ static func ring_tiles(c: Vector2i, r: int) -> Array[Vector2i]:
 #   *what reaching it does* is the crow's own `crow_scared` report, unchanged:
 #     the visit ends exactly the way it ends when she walks over herself, because
 #     it is the same event with a different cause (`by`, which the gateway reads
-#     to keep Q-12's proof hers — see `SimWorld._apply` and `[Designer]` Q-66).
+#     to tell a person's fright from a machine's — and which since Q-66 was ruled
+#     no longer decides whose proof it is: the scare counts for her either way.
+#     See `SimWorld._apply`).
 #
 # And the fourth, which is the honest one: **the songbird has nothing to say
 # about being chased.** It has no verbs, no flee and no visit to end, so a bot
@@ -444,9 +446,11 @@ func _reached(world: SimWorld, actor_id: String, extra: Dictionary, tick: int,
 		"verb": "crow_scared",
 		"target": world.actor_pos(target),
 		"actor": target,
-		# Who did the frightening. The gateway reads it to keep the Q-12 proof
-		# hers (Q-66), and it is what makes a bot's work legible in the replay
-		# corpus phase 4 trains on — "this bird left because that machine arrived".
+		# Who did the frightening. The gateway reads it for the *kind* of cause
+		# (a person or a machine) rather than for whose proof it is — Q-66 is
+		# ruled and the credit is hers either way — and it is what makes a bot's
+		# work legible in the replay corpus phase 4 trains on: "this bird left
+		# because that machine arrived".
 		"by": actor_id,
 	}
 

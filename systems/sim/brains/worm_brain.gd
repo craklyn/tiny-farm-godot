@@ -31,7 +31,10 @@
 # nothing but food. The counterplay is a boot — it is `stompable`, on **any tile
 # it occupies**, which is `SimWorld.stompable_at` reading the whole footprint
 # rather than the head. Whether a worm should be answerable at all, and whether
-# its length should ever *mean* anything, are `[Designer]` Q-65.
+# its length should ever *mean* anything, are `[Designer]` Q-65 — **parked unruled
+# on 2026-08-31 by the designer's own choice**: it stays a zero-dial proof that
+# the movement engine carries a body, and its meaning waits for a phase that
+# wants one.
 #
 # Movement is the engine's, per WI-4's handoff: `Movement.plan` for where, `match
 # Movement.step` for the next tile, and not one line of pathing here. Every draw is

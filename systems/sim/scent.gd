@@ -42,6 +42,13 @@
 # existing verb and no new UI. The wash hook is wired in the gateway now and is a
 # no-op until a critter writes, but it is exact in the tests, which is what makes
 # it safe for WI-8 to rely on.
+#
+# **Rain is the second eraser** (`[Designer]` Q-58, ruled 2026-08-31: "rain washes
+# everything — water is water"). A rainy day turn washes every channel over the
+# whole farm (`wash_all` below, called from `SimWorld.advance_day`), so a trail
+# does not survive a wet night. Fiction first: the player's bucket and the sky do
+# the same thing to a smell on the ground, and a rule that spared one channel or
+# one half of the map would be a rule nobody could see.
 class_name Scent
 extends RefCounted
 
@@ -295,6 +302,26 @@ func wash(tile: Vector2i) -> int:
 	for c in _cells:
 		if _cells[c].erase(tile):
 			n += 1
+	return n
+
+
+# The **rain's** answer to a trail: every channel, every written cell, gone
+# (`[Designer]` Q-58, ruled 2026-08-31 — "water is water"). Returns how many cells
+# went, for the same reason `wash` does.
+#
+# It is the same erasure as `wash`, farm-wide, and it is written as a loop over
+# the *cells* rather than over the map because that is P-10's guardrail: a rainy
+# morning on a farm nobody has walked on costs one empty dictionary per channel,
+# not 640 lookups. A field is its writes, and washing all of it is dropping them.
+#
+# Determinism is the weather's: `SimWorld.advance_day` calls this on a rainy day
+# turn, the day's weather is sim state rolled from the seed and re-applied by a
+# replay, so the same farm gets the same rain and the same clean ground.
+func wash_all() -> int:
+	var n := 0
+	for c in _cells:
+		n += _cells[c].size()
+		_cells[c].clear()
 	return n
 
 

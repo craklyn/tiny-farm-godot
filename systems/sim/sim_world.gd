@@ -1351,22 +1351,25 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			# it is recorded, and a replay ends the visit at the same point in the
 			# stream that the session did.
 			#
-			# **Who caused it is now part of the report** (M2.5 WI-9). `by` is the
-			# actor that did the frightening, and **absent means the player** —
-			# which is every report the game has ever written, because
-			# `entities/crow.gd` names nobody and never needed to. A shoo-bot names
-			# itself, and the difference is one line: `gs.crows_scared` is the Q-12
-			# *capability proof*, the count of times **she** walked a bird off her
-			# farm, and a machine doing her job for her is the one thing that must
-			# not fill it in. Whether that is right is `[Designer]` Q-66 — the
-			# delegation question this whole game is about, arriving early and in
-			# miniature — and the safe default is the one that cannot silently
-			# complete her proof while she watches.
+			# **Who caused it is part of the report** (M2.5 WI-9). `by` is the actor
+			# that did the frightening, and **absent means the player** — which is
+			# every report the game has ever written, because `entities/crow.gd`
+			# names nobody and never needed to. A shoo-bot names itself.
+			#
+			# **A machine's scare counts as hers** (`[Designer]` Q-66, ruled
+			# 2026-08-31: *credit flows up*). WI-9 shipped the conservative half —
+			# a bot ended the visit but did not fill in the Q-12 proof — and the
+			# designer ruled the delegation reading instead: by phase 4 the whole
+			# game is "the farm runs without you", she built and placed the machine,
+			# and a proof that refused her the work her fleet did would be the game
+			# disagreeing with its own thesis. So `gs.crows_scared` counts the
+			# scare whoever caused it, and `by` stays on the report because *which*
+			# machine did it is still worth knowing (and is what the reason below
+			# is drawn from).
 			if gs == null: return _fail("no_state")
 			var by := String(action.get("by", ACTOR_PLAYER))
 			var by_player := _is_player(by)
-			if by_player:
-				gs.crows_scared += 1
+			gs.crows_scared += 1
 			# The *kind* of cause, not the id: the reason string is what a renderer
 			# matches on to pick a noise (`entities/crow.gd:_announce_departure`),
 			# and it wants "a person did this" / "a machine did this", not a
@@ -1606,6 +1609,19 @@ func advance_day(weather: String, gs = null) -> void:
 
 			if weather == "rainy" and tile.state in ["tilled", "seeded", "growing"]:
 				tile.watered_today = true
+
+	# ...and the rain does to a trail what her watering can does to one tile of it
+	# (`[Designer]` Q-58, ruled 2026-08-31: **rain washes everything**). Water is
+	# water: the sky is not a second rule about scent, it is the same rule over the
+	# whole farm, so a raid's trail does not survive a wet night.
+	#
+	# **Every channel, not the pest trail alone** — `Scent.wash` made that choice
+	# for the bucket and this is the same choice for the same reason. It is a loop
+	# over the *written cells* and never over the map (P-10's guardrail), so a farm
+	# nobody has marked pays nothing for a rainy morning. Deterministic because the
+	# weather is: the day's roll is sim state, and a replay re-applies it.
+	if weather == "rainy":
+		scent.wash_all()
 
 	# The machines, last (M2.5 WI-10). **After** the pass above, deliberately: it
 	# has just harvested yesterday's water and cleared every tile, so watering here

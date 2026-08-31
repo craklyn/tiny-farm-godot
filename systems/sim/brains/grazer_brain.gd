@@ -22,7 +22,10 @@
 #                       verb a two-year-old has. Q-10's telegraph logic applied to
 #                       a mammal: it runs, it does not vanish, and it comes back
 #                       when she leaves, so shooing it is a thing she can watch
-#                       herself doing.
+#                       herself doing. **Unless its row says otherwise**: a
+#                       species with `fright_ends_visit` goes home instead of
+#                       coming back (Q-63, ruled 2026-08-31). Both grazers say it
+#                       does not, so nothing in the game behaves differently.
 #   leave               after `SimWorld.GRAZER_BITES` it has had its fill and goes
 #                       home the way it came. That is the daily-loss bound's new
 #                       term, guaranteed by a counter in `extra` rather than by
@@ -142,12 +145,23 @@ func step(world: SimWorld, actor_id: String, tick: int, _gs = null) -> Dictionar
 
 	match state:
 		STATE_FLEE:
-			# Out of range: it stops running and goes back to what it was doing,
-			# which is the second half of the criterion (flees inside the radius,
-			# **resumes outside it**) and the reason this is a scare rather than a
-			# despawn.
+			# Out of range: it stops running. **What happens next is the species'
+			# own answer, not this brain's** (`[Designer]` Q-63, ruled 2026-08-31):
+			# a row that says `fright_ends_visit` has had its visit ended by the
+			# scare and goes home, and every row in the game today says the
+			# opposite and goes back to what it was doing — which is the second
+			# half of WI-8c's criterion (flees inside the radius, **resumes
+			# outside it**) and the reason this is a scare rather than a despawn.
+			#
+			# One field, one branch, no species named: which of the two an animal
+			# is, is a value in `species_defs.gd`, so ruling it for the rabbit or
+			# for something that does not exist yet is a data edit
+			# (`ARCHITECTURE.md`, "Where a behaviour lives").
 			Movement.clear_route(world, actor_id)
-			_idle_for(extra, tick, REST_IDLE)
+			if SpeciesDefs.fright_ends_visit(world.species_of(actor_id)):
+				_head_home(world, actor_id, extra, tick)
+			else:
+				_idle_for(extra, tick, REST_IDLE)
 		STATE_APPROACH:
 			return _approach(world, actor_id, extra, tick)
 		STATE_NIBBLE:

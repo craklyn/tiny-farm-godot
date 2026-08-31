@@ -12,7 +12,8 @@
 # it draws the **mound**: a mole under the farm is not invisible, it is a ridge of
 # soil moving across the field, and that is both the readable answer and the one
 # that gives the player something to walk over to. Whether the route should be
-# given away like that is `[Designer]` Q-64 — it is one line here either way.
+# given away like that was `[Designer]` Q-64, **ruled 2026-08-31: the mound stays
+# visible** — a chase a four-year-old can win beats an ambush she cannot see.
 #
 # **Nothing spawns one in the live game** (`SimWorld.MOLE_VISITS_PER_DAY` is 0, and
 # the debut is a designer's content-sequencing call), so this is exercised in a

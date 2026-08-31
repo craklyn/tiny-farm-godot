@@ -68,12 +68,15 @@ is saved, replayed and compared like anybody else. These are the hand-written ve
 P-8's **options**: the first learned bot replaces the dispatch on `extra.config` with a
 policy and keeps everything underneath it.
 
-Two things it deliberately does not do. It has **no `spook_radius`** — giving it one would
-make it shoo mammals for free, and whether a fright should end a grazer's visit at all is
-`[Designer]` Q-63. And a bot's scare **does not count** toward her Q-12 capability proof
-(`by` on the report; `[Designer]` Q-66 — the delegation question this chapter is
-ultimately about). Nothing deploys one: Q-56 is ruled, and the debut waits for at least M3
-with the shoo config as the candidate.
+Two notes, one on what it withholds and one on what it earns. It has **no `spook_radius`** —
+giving it one would make it shoo mammals for free. (Whether a fright ends a grazer's visit
+is now the species row's own `fright_ends_visit` field, Q-63 ruled 2026-08-31 and `false` for
+both grazers, so a bot with a radius would still only pause one.) And a bot's scare
+**counts** toward her Q-12 capability proof, exactly as her own does — Q-66, ruled
+2026-08-31: *credit flows up*, because she built and placed the machine and this chapter's
+whole arc is the farm running without her. The report still says `by`, so which machine did it stays knowable.
+Nothing deploys one: Q-56 is ruled, and the debut waits for at least M3 with the shoo config
+as the candidate.
 
 ## Constraints from decisions
 Bots emit player verbs only (S-3); observations are egocentric grid patches

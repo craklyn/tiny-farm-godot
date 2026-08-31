@@ -285,7 +285,9 @@ ROADMAP M2.5 section current; `design/04` species table started with the tier-1 
 `ARCHITECTURE.md` layer description updated (brains, clock, registry); CREDITS
 provenance + spend; DECISION_LOG D-9 status updated per Q-53's ruling.
 **E. Designer items (not blockers)** — critter charm pass on device; tick-rate feel;
-which critters debut when.
+which critters debut when; **first-stomp reaction, judged when ants debut — Q-10
+comedy-not-threat lens** (Q-61's audit, ruled 2026-08-31), and in the same device session
+whether a broken column should be *watched* rather than simply gone (Q-62, deferred there).
 
 ## 9. Execution status
 
@@ -2210,6 +2212,65 @@ pair of eyes:
   always was, but it is now a measurable fraction (5%) of a fast-forward and it is the only
   cost in the loop that scales with map area rather than with actors.
 
+### The M2.5 designer rulings ✅ applied 2026-08-31 (Q-57–Q-66)
+
+The designer ruled all ten M2.5 queue items in one pass. Nine are struck in
+`DESIGNER_QUEUE.md` with their reasoning; Q-65 is recorded as **parked unruled**, which was
+the designer's explicit choice and not an omission. Three of the ten asked for a build.
+
+**Q-58 — rain washes everything.** `Scent.wash_all()` drops every channel's written cells;
+`SimWorld.advance_day` calls it on a rainy day turn. Fiction first — water is water — and
+P-10-legal, because it iterates the *cells* and never the map: a farm nobody has marked pays
+one empty-dictionary clear per channel for a rainy morning, which is the same shape as the
+rest of the layer. Deterministic because the weather is sim state and a replay re-applies it.
+Nine new assertions in `test_scent`: a trail and a second channel laid, a rainy sleep, every
+cell reads 0, the field compares clean through a save **and** through a `replay_report`; a
+sunny sleep from the same dusk leaves both cells decaying on their own clock.
+
+**Q-63 — the composition law, plus the boolean.** The law is written into `ARCHITECTURE.md`
+beside the brains paragraph ("Where a behaviour lives"): shape in a brain class, parameters
+in the species row, and *the moment a table field encodes branching logic rather than a
+value, the archetype has split* — fork the brain, keep the table dumb; protocols over
+subclass trees, because a phase-4 learned policy is a thing that answers `step()` and nothing
+else. The boolean is `fright_ends_visit` on the row schema, read by `grazer_brain.gd` where a
+flight ends, and it is **false** for the rabbit and the kangaroo — the flee-and-return they
+have had since WI-8c — so the ruling changed no behaviour a player could see, and ruling an
+animal's value later is a data edit. Both paths are asserted from one fixture on one seed
+(`_bite_then_scare`): the rabbit comes back for its second bite, a true-flagged species does
+not and the visit is over at one.
+
+**Q-66 — delegated work counts.** One `if` in the gateway's `crow_scared` branch, flipped: a
+bot's scare now credits `gs.crows_scared` identically to hers. `by` stays on the report,
+because which machine did it is still worth knowing and the flee *reason* (a person or a
+machine) is still drawn from it. WI-9's assertion that a bot's scare did not count is the one
+existing assertion that moved, and it now asserts that it does.
+
+**Deviations.**
+
+1. **A test-row seam was added to `species_defs.gd`** (`define_test_row` / `forget_test_rows`,
+   consulted by `has()` and `row()`). Q-63's ruling asks for the true path to be proved "via
+   the test-species mechanism", and the mechanism that existed — `Movement.define_test_species`
+   — covers a movement capability only, not a brain, senses or a row field. The new seam is
+   the same pattern one level up and for the same reason: both grazers are ruled `false`, so
+   the true path must not get a shipping row for a test's sake. `ids()` and
+   `species_of_class()` still answer from `ROWS` alone, and the test closes the seam behind
+   itself and asserts the shipping table is untouched.
+2. **The rain wash sits next to the day turn's existing per-map pass, not inside it.** The
+   growth loop over 640 tiles is already there (§9's last note calls it out); `wash_all` is
+   deliberately a separate statement over the field's own cells rather than a line inside
+   that loop, so the wash's cost stays a function of how much anybody has marked.
+3. **Three docs said something the rulings make false** and were corrected in the same
+   change: `design/04` (Q-57 as "unruled", Q-63 as an open question, Q-65 now recorded as
+   parked), `design/06` (a bot's scare "does not count"), and the code comments that quoted
+   those statuses (`species_defs.gd`, `bot_brain.gd`, `entities/mole.gd`, `worm_brain.gd`,
+   and `test_grazers`' Q-57 note, whose pinning assertion stands unchanged).
+
+**Suites after the three build changes:** unit **1393 PASSED, 0 FAILED** (1376 before — 17
+new assertions, one flipped); integration **216 PASSED, 0 FAILED**; robot session **PASSED /
+MATCH**; `verify_replay` **MATCH**; demo replay regenerates byte-identically (neither a
+rain-wash nor a bot scare occurs in it, as predicted); visual regression **exact**, the
+re-baseline allowance untouched.
+
 ---
 
 ## 10. Verification record (stage 3, run 2026-08-31)
@@ -2261,5 +2322,7 @@ restore-vs-kept-playing tick skew on `schedule_all_brains` (pre-existing,
 
 **Still open, by design:** WI-5 Phase B (four prerequisites recorded in §9, none a
 code change — brain entries are still written); §8.C's live device/taste pass and
-§8.E (the designer's); ten taste questions Q-57–Q-66 in the queue; every critter
-debut awaiting its ruling.
+§8.E (the designer's); every critter debut awaiting its ruling. ~~Ten taste questions
+Q-57–Q-66 in the queue~~ — **all ten answered 2026-08-31**: nine struck with their
+reasoning, Q-65 parked unruled by choice, three of them built (see *The M2.5 designer
+rulings* in §9).

@@ -75,6 +75,20 @@ no Node, no autoload, no rendering, no `Input`, and (rule 7) **no engine clock**
   unaffected — it is presentation's wrapper, it takes a `Node2D`, and the player's
   tap-to-walk still goes through it.
 
+**Where a behaviour lives: shape in the brain, parameters in the row** (`[Designer]` Q-63,
+ruled 2026-08-31). Behaviour *shape* is a brain class — one per archetype, and shared by every
+species that genuinely shares it: the rabbit and the kangaroo both name `graze`, and there is
+no `if kangaroo` anywhere in it, because a fence is a capability in the row rather than a
+branch in the brain. Behaviour *parameters* are fields on the species row — speeds, senses,
+what a mouth is worth, whether a fright ends a visit. The line between the two is sharp, and
+it is checkable: **the moment a table field encodes branching logic rather than a value, the
+archetype has split — fork the brain and keep the table dumb.** `fright_ends_visit: true` is a
+parameter; a field that had to say *when* a fright ends a visit would be a program written in
+a dictionary, and the honest answer to it is a second brain. The binding is a **protocol, not
+a subclass tree**: anything that answers `step()` is a brain, whatever it is underneath, and
+that is precisely what phase 4 rests on — a learned policy is a thing that answers `step()`
+and will resemble `grazer_brain.gd` in no other respect.
+
 The consequence worth stating plainly: **a bot, a crow and the farmer are the same kind of
 thing** — a policy that emits Actions into one gateway — differing only in a row of data
 and which layer their policy lives in. That is what phase 4 needs to be cheap.
