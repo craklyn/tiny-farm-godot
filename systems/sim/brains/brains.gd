@@ -33,6 +33,12 @@ static func _table() -> Dictionary:
 			# are two mechanics: one marks the ground, the other reads it.
 			"ant_scout": AntScoutBrain.new(),
 			"ant_forager": AntForagerBrain.new(),
+			# **One brain, two species.** The rabbit's row and the kangaroo's
+			# both name `graze`; the fence-crossing is the movement capability
+			# in the species row, not a branch in the brain (M2.5 WI-8c/8f).
+			"graze": GrazerBrain.new(),
+			# ...and one brain with no path that can return an Action (WI-8g).
+			"songbird_ambient": SongbirdBrain.new(),
 		}
 	return _by_id
 

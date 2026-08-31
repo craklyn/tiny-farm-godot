@@ -1444,3 +1444,144 @@ will burn an hour. Filed here as engineering rather than in `DESIGNER_QUEUE.md`;
 one line (`_schedule_brain(id, int(extra.get("wake", …)))`) and it must not be taken
 casually, because the *day turn* calls the same function and deliberately wants everybody
 woken now (WI-3 deviation 8, the hen's egg).
+
+### WI-8c / WI-8f / WI-8g — The rabbit, the kangaroo and the songbird ✅ landed 2026-08-31
+
+**One commit, because two of them are the same file and the third is the proof that the
+file did not need a special case.** 8c writes a brain, 8f names it from a second species
+row and changes one field, and 8g is a species that exercises the whole chassis while
+doing nothing at all — the three of them together are one statement about the actor system
+rather than three critters.
+
+**Three rows, two brains, and no new verb.** `species_defs.gd` gains `rabbit` (`ground`,
+30 px/s, `eat_crop`), `kangaroo` (`hop`, 45 px/s, `eat_crop`) and `songbird` (`fly`,
+35 px/s, **no verbs at all**). `grazer_brain.gd` is the rabbit's FSM — wander, notice a
+crop within 5 tiles, walk onto it, bite, take `SimWorld.GRAZER_BITES` (2) and go home the
+way it came — and the kangaroo's row names the *same brain id*, so `Brains.of_species` hands
+back the identical object for both. `songbird_brain.gd` drifts between perches on
+`Movement.fly_toward` and leaves; it has no `return { "verb": … }` anywhere in it.
+
+**The fright is finding F-7b, alive.** `senses.spook_radius` has been on the player's row
+since WI-2 with nothing able to read it: the crow measured pixels off a node, and WI-3
+deleted its "other actors with a spook_radius" scan as dead code because the player's
+position was not sim truth. WI-6 made it sim truth, so `SimWorld.spook_source_near(tile)`
+is now an honest registry query — the radius belongs to the frightener (she is what is
+three tiles scary), the noticing belongs to the frightened (`flees_spook_radius`, the
+crow's flag and now both grazers'), and the loop is one sorted pass over four registry
+entries. A rabbit **bolts inside the radius and resumes grazing outside it**, which is the
+criterion in both halves and is why this is a scare rather than a despawn.
+
+**The kangaroo is a fence, not a class.** `test_grazers` plays the same scenario twice with
+one word changed: a crop inside a hand-built ring of fence, a grazer released three tiles
+outside it. The hopper gets the crop; the walker smells it, fails to plan a route, wanders
+out its patience and leaves. `Movement.path` over `hop` and over `ground` is asserted
+beside it, so the behavioural claim and the engine claim are checked separately.
+
+Suites: unit **1213 PASSED / 0 FAILED** (1138 after WI-8a/8b, +75 from `test_grazers` and
+`test_songbird`), integration **193 / 0** (181 before, +12 from scenario T), robot session
+**PASSED** (24 entries, 850 ticks, 7 free-walk events, recomputation match), `verify_replay`
+**MATCH** on the real v1 human session, demo replay regenerates with a **clean diff**,
+visual regression **passes unchanged — the re-baseline allowance is still UNSPENT**.
+Benchmark **650,221×**, inside the 614–736k band this machine has shown since WI-4; nothing
+here is on the fast-forward path, because nothing here exists in a shipping farm. Purity
+greps clean: no `Time.`/delta/`_process(` under `systems/sim/`, no Node, autoload, `Input`
+or `Pathfinding` in either brain, and zero `SimRng` under `entities/`.
+
+**Deviations and decisions taken inside the WI:**
+
+1. **The visitors ride one appointment book, not three.** WI-8a's handoff said to copy the
+   crow's pattern — a `gs.<x>_schedule` field, a `roll_*`, a `_send_due_*` and a pair of
+   lines in `save_game.gd` per species — and three more copies of it would have made
+   **five**. Instead `SimWorld.visitors()` is a table (per species: `per_day`, `min_day`,
+   `min_planted`, `earliest`, `salt`), `gs.visitor_schedules` is one `{species: [action
+   counts]}` dictionary, and `_send_due_visitors` is one loop that dispatches through a new
+   `Brain.arrive(world, gs, species, arrival)` hook — so the gateway never learns what a
+   rabbit is. **The crow's book and the raid's were deliberately not migrated into it**:
+   they are shipped, saved and tested under their own names, and rewriting a save format to
+   tidy it is how a save file stops loading. The payoff is for the next worker: the mole and
+   the worm are a row in that table, not a field plus a roll plus a loop plus a save key.
+   *(It also sidesteps WI-8a's trap — `gs.ant_schedule` is `Array[int]`, and an untyped
+   assignment to it aborts the calling function silently. `visitor_schedules` is a
+   `Dictionary`, so a test writes `gs.visitor_schedules = { SpeciesDefs.RABBIT: [3] }` and
+   nothing detonates.)*
+2. **The brain file is `grazer_brain.gd`, not `rabbit_brain.gd`.** The plan's words are
+   "its brain is the rabbit's", and a kangaroo whose species row read `"brain":
+   "rabbit_graze"` would have made the claim loudest — and would also have been a small lie
+   in the one file a reader checks first. A neutral name says the same thing without it:
+   both rows name `graze`, the file's header says it was written for the rabbit and taken
+   unchanged by the kangaroo, and the test asserts the two species resolve to the *same
+   object*. Naming, not scope.
+3. **One renderer script for both grazers** (`entities/grazer.gd`, two lines in
+   `ACTOR_RENDERERS`), which is `entities/ant.gd`'s precedent for the ants' reason: they
+   differ by which row of `critters.png` they draw and how fast the sprite moves, and both
+   of those are read off `SpeciesDefs` — the speed as arithmetic on the row rather than a
+   second copy of the number, so it cannot drift as the row is tuned. A renderer per species
+   would have made the kangaroo a special case in the one place WI-8f exists to prove it is
+   not one. `entities/songbird.gd` is its own file because a flyer draws from
+   `Movement.float_pos` and animates on a state rather than on movement.
+4. **The bites bound is held in `_graze`, and finding that out was the useful part.** A
+   grazer counts its own mouthfuls and heads home on the last one, which bounds a visit at
+   `GRAZER_BITES` — but the fright interrupts *whatever it was doing*, including the walk
+   home, and a frightened animal resumes by grazing. So a player who startled a departing
+   rabbit had bought it a third bite: the bound held only for visits nobody interfered with,
+   which is the opposite of what a bound is for. It is now re-checked every time the animal
+   grazes, and there is a test that harasses a rabbit for twelve rounds and counts the row
+   afterwards.
+5. **A grazer arrives at the edge of the map and leaves by the same tile.** Not a nest —
+   that is Q-18's question and the ants' problem — but the gap in the hedge it came through,
+   stored as one pair of numbers in `extra`. It is also what makes "hops out" (plan §4) a
+   fact a test can assert rather than a story: the visit ends with a despawn *at a known
+   tile*, and a grazer that cannot find its way back simply stops being on the farm.
+6. **The songbird is `persistent: true`, where the crow is not** — and the argument is the
+   ants', not the bird's. WI-3's reason for skipping the crow in a save was that a raider
+   halfway across the sky is not part of a snapshot of a farm; a songbird is not raiding,
+   it belongs to the place the way the hen does. It is also what makes the zero-verb claim
+   *checkable*: because the bird is in `capture()`, its whole flight is recomputed on replay
+   and compared position for position by WI-5's net, so "it wrote nothing down" is not the
+   same as "nothing was watching it". Both grazers are persistent for the ants' reason
+   (minutes on the ground, and the plan asks for a mid-visit save that restores).
+7. **The songbird is silent.** It has no sound because it has no event to make one at, and
+   inventing a chirp timer would have put a wall-clock decision in a presentation node for
+   an actor whose entire point is that it needs no special case. Whether ambient fauna make
+   noise is `design/10`'s question; noted in `design/04` §5 rather than filed, because
+   nothing is blocked on it.
+8. **The rabbit is not stompable, deliberately.** `stompable` is opt-in per row (WI-8a), and
+   a boot here would have made the flee sense decorative — the whole design of the grazers
+   is that the counterplay is *being there*, which is the only verb the youngest player has.
+   **Filed as Q-63**: whether a fright should *end* a visit rather than pause it is taste,
+   it is about four lines, and it is the same question WI-9's shoo-bot will ask about birds.
+9. **Q-57 is asserted rather than resolved.** A hopper crosses closed gates because they are
+   in `WorldLayout.is_boundary_state`, so a kangaroo can stand in a parcel the player has not
+   earned. The ruling is still the designer's; there is now a test that says the gate is in
+   the class, so changing the class is a failing test rather than a surprise on a tablet.
+   Nothing is blocked: `KANGAROO_VISITS_PER_DAY` is 0.
+
+**The daily-loss identity, extended again (plan §4's criterion).** The formula now reads
+`CROWS_PER_DAY + ANT_RAIDS_PER_DAY × ANT_COLUMN_SIZE + (RABBIT + KANGAROO visits) ×
+GRAZER_BITES`, and the new term is guaranteed by construction rather than by tuning
+(deviation 4). In a shipping build every visitor's `per_day` is **0**, so the live bound is
+`CROWS_PER_DAY` exactly as it was before this milestone started, and the original test is
+still unmodified and still passing. The songbird contributes nothing to it by having no
+verbs at all.
+
+**For the remaining critter workers (8d mole, 8e worm) and WI-9.** Four things are worth
+taking.
+*Take:* (i) **a schedule is a row now** — add `{species: {per_day: 0, min_day, min_planted,
+earliest, salt}}` to `SimWorld.visitors()` and implement `Brain.arrive`, and the appointment
+book, the save, the restore, the legacy default and the daily roll are all already written;
+(ii) `SimWorld.spook_source_near(tile)` is the general "is anything frightening near this
+tile" query, so a mole that ducks under when she walks past is one call and no new sense —
+the radius stays on her row; (iii) `_meadow_session` / `_release_grazer` / `_tick_until_gone`
+in `tests/test_runner.gd` are `_ant_session`'s shape for a *visitor* (a flattened field, an
+actor placed by hand, a loop that runs until the visit ends), and `_fence_pen` builds a
+barrier-class enclosure without depending on where the generated layout puts a parcel;
+(iv) aim at `SaveGame.replay_report` from the first line — the rabbit's version of that test
+records the **player's walk** during the continued session, so the flee has to be recomputed
+from the recorded crossings, and it is the assert that would have caught anything this brain
+read that the sim does not own.
+*Still avoid:* WI-8a's trap — do not compare a kept-playing world against a restored one
+tick for tick (`SaveGame.restore` calls `schedule_all_brains()`, which wakes everybody early;
+pre-existing, documented there, not to be fixed casually).
+*One new note:* a brain that is interrupted by something external — a fright, a stomp, a
+washed trail — must be asked "what state should I come back to", not just "what state was I
+in". Deviation 4 is that question answered wrong the first time.

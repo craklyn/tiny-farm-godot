@@ -72,6 +72,7 @@ func _run_scenarios() -> void:
 	await _scenario_q_crow_is_sim_sent()
 	await _scenario_r_attract_shows_the_neighbour()
 	await _scenario_s_a_raid_is_drawn()
+	await _scenario_t_the_bestiary_is_drawn()
 
 func _wait_until(pred: Callable, max_frames: int) -> bool:
 	for i in max_frames:
@@ -1305,6 +1306,92 @@ func _scenario_s_a_raid_is_drawn() -> void:
 	yard.sync_actors()
 	_assert(not yard.actor_nodes.has(SimWorld.ACTOR_ANT_SCOUT),
 		"and the sprite goes when the actor does")
+
+	yard.queue_free()
+	await get_tree().process_frame
+
+
+func _scenario_t_the_bestiary_is_drawn() -> void:
+	# The tier-1 visitors' renderers, exercised the only way they can be
+	# (M2.5 WI-8c/8f/8g).
+	#
+	# Scenario S's treatment, for the same reason: nothing in the live game spawns
+	# a rabbit, a kangaroo or a songbird — every `per_day` in
+	# `SimWorld.visitors()` is 0 and the debut is a designer's content-sequencing
+	# call — so this is a **detached** farm with actors put into the registry by
+	# hand, and the claim being checked is that *no code here knows what a rabbit
+	# is*. Three species rows and three lines of `ACTOR_RENDERERS` are the whole
+	# binding, and two of those lines name the same script.
+	print("\n--- Scenario T: the bestiary gets drawn, because the registry holds it ---")
+
+	var FarmScript = load("res://world/farm.gd")
+	var yard = FarmScript.new()
+	yard.name = "Meadow"
+	yard.mute_feedback = true
+	add_child(yard)
+	await get_tree().process_frame
+
+	var at := Vector2i(7, 9)
+	yard.sim.spawn_actor(SpeciesDefs.RABBIT, SpeciesDefs.RABBIT, at, {})
+	yard.sim.spawn_actor(SpeciesDefs.KANGAROO, SpeciesDefs.KANGAROO, at + Vector2i(2, 0), {})
+	yard.sim.spawn_actor(SpeciesDefs.SONGBIRD, SpeciesDefs.SONGBIRD, at + Vector2i(4, 0), {
+		"state": SongbirdBrain.STATE_FLYING, "fx": 11.0, "fy": 9.0,
+	})
+	yard.sync_actors()
+
+	var rabbit = yard.actor_nodes.get(SpeciesDefs.RABBIT, null)
+	var roo = yard.actor_nodes.get(SpeciesDefs.KANGAROO, null)
+	var bird = yard.actor_nodes.get(SpeciesDefs.SONGBIRD, null)
+	_assert(rabbit != null and roo != null and bird != null,
+		"spawning three new species gives three sprites, with no renderer change")
+	if rabbit == null or roo == null or bird == null:
+		yard.queue_free()
+		await get_tree().process_frame
+		return
+
+	_assert(rabbit.position == Vector2(at.x * 16, at.y * 16), "each standing on its own tile")
+	# critters.png row 1 is the rabbit's hop, row 4 the kangaroo's (CREDITS.md).
+	# The two species differ by a number off the species row, not by a class.
+	_assert(rabbit.sheet_row == 1 and roo.sheet_row == 4,
+		"each drawing its own row of the sheet, chosen from the species and nothing else")
+	_assert(rabbit.get_script() == roo.get_script(),
+		"and both are the same script — as they are the same brain, which is the point")
+	_assert(roo.speed_px > rabbit.speed_px,
+		"the kangaroo's sprite moves faster because its row says so, not because this file does")
+
+	# The sprite follows sim truth, exactly as the hen's does: the sim puts an
+	# actor on a tile and the renderer walks the sprite between tiles.
+	var was: Vector2 = rabbit.position
+	yard.sim.set_actor_pos(SpeciesDefs.RABBIT, at + Vector2i(3, 0))
+	for i in 30:
+		rabbit._process(1.0 / 60.0)
+	_assert(rabbit.position.x > was.x, "it hops toward wherever the sim has put it")
+	_assert(not rabbit.facing_left, "facing the way it is going")
+	yard.sim.set_actor_pos(SpeciesDefs.RABBIT, at)
+	rabbit._process(1.0 / 60.0)
+	_assert(rabbit.facing_left, "and the cells are mirrored when it turns back (they all face right)")
+
+	# The bird reads a *continuous* position, the crow's pairing — so a flyer's
+	# sprite is not quantised to the ten-hertz tile the registry holds.
+	var bird_was: Vector2 = bird.position
+	yard.sim.actor(SpeciesDefs.SONGBIRD)["extra"]["fx"] = 11.4
+	for i in 20:
+		bird._process(1.0 / 60.0)
+	_assert(bird.position.x > bird_was.x,
+		"the songbird flies on the sub-tile position its brain keeps, not on the rounded one")
+	_assert(not bird.perched(), "and flaps while it is flying")
+	yard.sim.actor(SpeciesDefs.SONGBIRD)["extra"]["state"] = SongbirdBrain.STATE_PERCHED
+	_assert(bird.perched(), "and sits still on the perched cell when the sim says it has landed")
+
+	# Fed, bored or off the map — the sim dropping the actor is the only way any
+	# of these visits ends, and the sprite goes with it.
+	for id in [SpeciesDefs.RABBIT, SpeciesDefs.KANGAROO, SpeciesDefs.SONGBIRD]:
+		yard.sim.despawn_actor(String(id))
+	yard.sync_actors()
+	_assert(not yard.actor_nodes.has(SpeciesDefs.RABBIT)
+			and not yard.actor_nodes.has(SpeciesDefs.KANGAROO)
+			and not yard.actor_nodes.has(SpeciesDefs.SONGBIRD),
+		"and every sprite goes when its actor does")
 
 	yard.queue_free()
 	await get_tree().process_frame

@@ -26,6 +26,9 @@ lays, what it follows, what repels), senses, speed. Rows below exist in code and
 |---|---|---|---|---|---|
 | Ant scout | *none* — it walks and it marks | **lays** `pest_trail` on every tile of its walk home | crops within 3 tiles | 10 px/s | **stomp** (a clear-class tap on its tile). A stomped scout never gets home, so the column never forms. |
 | Ant forager | `eat_crop` (the crow's, reused) | **follows** the strongest neighbouring `pest_trail` (excluding the tile it came from); **reinforces** it on the way home | trail only — it carries no map | 8 px/s | **wash** (`water` on a trail tile erases the cell). A hole in the trail disperses the column. |
+| Rabbit | `eat_crop` (the same one again) | none — it neither lays nor follows | crops within 5 tiles; **flees the player's `spook_radius`** | 30 px/s | **stand near it.** No tap, no tool, no verb: it bolts inside her radius and comes back outside it. |
+| Kangaroo | `eat_crop` | none | the rabbit's, exactly — the same table entry | 45 px/s | the rabbit's. It **crosses fence-class tiles** (fence, hedge, closed gate), so a hedge is not counterplay against this one. |
+| Songbird | *none at all* | none | none | 35 px/s (flies) | none needed — it never touches anything. |
 
 A raid is: one scout → one completed trail → a column of 3 foragers → one crop each,
 carried home. That bounds a raid's cost at the column size and a day's at
@@ -33,6 +36,21 @@ carried home. That bounds a raid's cost at the column size and a day's at
 extended to a new mouth. The **difficulty dial is `pest_trail`'s half-life**, per §1
 above — turn it down and a column starves before it forms, without changing a
 spawn count.
+
+A grazer's visit is: arrive at a gap in the boundary → wander → find a crop → take a bite
+→ repeat until full → leave the way it came. Its cost is bounded by **bites per visit**
+(2 today, `SimWorld.GRAZER_BITES`), counted by the animal itself and re-checked every time
+it grazes, so frightening a full rabbit off its way home cannot buy it thirds. That extends
+the daily-loss identity again: `crows + raids x column size + grazer visits x bites`.
+
+**The rabbit and the kangaroo are the same brain.** They differ by one field of the species
+table — the movement capability — and that difference is the whole kangaroo: it clears
+fences, hedges and closed gates, so the boundary that says "not yet" to the player and to
+every walker says nothing to this one (see `DESIGNER_QUEUE.md` Q-57 for whether the *gate*
+should be in that set, and Q-63 for whether fleeing is the whole of a grazer's answer).
+If the two ever need to *feel* different, that is a behaviour to add on purpose, not a
+difference to preserve; today the honest statement is that a kangaroo is a rabbit that
+does not care about your fence.
 
 ## Sections to fill
 2. **Nests** — where they spawn relative to the farm, growth over time, visibility
@@ -44,12 +62,21 @@ spawn count.
    *seen*) — nothing in the game telegraphs one yet beyond the ants themselves.
 4. **Counterplay catalog** — wash (watering can), stomp scouts, dig breaks (hoe) are
    settled (P-10). **Wash and stomp are implemented** (M2.5 WI-8a/8b), both on verbs
-   the player already has; the hoe dig is unbuilt. Additional verbs `[Designer]` Q-16
-   (swat/chase, thrown objects, dog?), plus Q-61 (a tap that targets a *critter* rather
-   than a tile is new, and it is the stomp's whole shape).
+   the player already has; the hoe dig is unbuilt. **Presence is now counterplay too**
+   (M2.5 WI-8c): the grazers flee the player's `spook_radius`, which is the first answer
+   in the game that is not a verb at all — she walks over and the animal goes. Whether
+   that should *end* a visit rather than pause it is `[Designer]` Q-63. Additional verbs
+   `[Designer]` Q-16 (swat/chase, thrown objects, dog?), plus Q-61 (a tap that targets a
+   *critter* rather than a tile is new, and it is the stomp's whole shape).
 5. **Neutral wildlife** — chicken exists; role of harmless fauna (charm, eggs, ambient
    life for the kid layer; also negative training examples for bots: *don't* attack the
-   chicken).
+   chicken). **The songbird is the first one built for this and nothing else** (M2.5
+   WI-8g): it has no verbs, its brain has no path that can return an Action, and a
+   recorded session containing one contains not a single entry naming it. It drifts,
+   perches, and goes. That is a design entry as much as an engineering one — it says the
+   roster may contain animals whose entire contribution is that the farm is inhabited, and
+   it gives a phase-4 bot a second thing that must not be chased. It is currently silent;
+   whether ambient fauna make noise is `design/10`'s question, not this chapter's.
 6. **Ecology depth** — do pests exist when unobserved (persistent nests with populations)
    or spawn per-raid? Leans on decision LOD (`ARCHITECTURE.md`); `[Joint]` at M3.
 

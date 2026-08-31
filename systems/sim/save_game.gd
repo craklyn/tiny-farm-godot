@@ -75,6 +75,11 @@ static func capture(world: SimWorld, gs) -> Dictionary:
 			# reloaded mid-column has to know it already used its chance for the
 			# day, for the same reason the crow's schedule is here.
 			"ant_schedule": gs.ant_schedule.duplicate(),
+			# ...and the book everybody after the ants shares (M2.5 WI-8c/8f/8g).
+			# Additive, and `{}` in every save this build writes — every `per_day`
+			# in `SimWorld.visitors()` is 0 — but a rabbit reloaded mid-nibble has
+			# to know its visit was already this day's, for the crow's reason.
+			"visitor_schedules": _copy_schedules(gs.visitor_schedules),
 			"total_shipped": gs.total_shipped,
 			"seeds_bought": gs.seeds_bought,
 			"cans_refilled": gs.cans_refilled,
@@ -82,6 +87,32 @@ static func capture(world: SimWorld, gs) -> Dictionary:
 			"milestones": gs._milestones_earned.duplicate(),
 		},
 	}
+
+
+# The visitors' book, out and back (M2.5 WI-8c/8f/8g). Both directions are a
+# deep copy with the ints coerced, for the reason every other collection here is:
+# a save must not hand out a reference into the live GameState, and JSON hands
+# back floats where the sim keeps `Array[int]`.
+static func _copy_schedules(book: Dictionary) -> Dictionary:
+	var out := {}
+	for species in book.keys():
+		var days: Array = book[species]
+		out[String(species)] = days.duplicate()
+	return out
+
+
+static func _restore_schedules(raw) -> Dictionary:
+	var out := {}
+	if typeof(raw) != TYPE_DICTIONARY:
+		return out
+	for species in raw.keys():
+		var days: Array[int] = []
+		var listed = raw[species]
+		if listed is Array:
+			for v in listed:
+				days.append(int(v))
+		out[String(species)] = days
+	return out
 
 
 static func restore(data: Dictionary, world: SimWorld, gs) -> bool:
@@ -207,6 +238,10 @@ static func restore(data: Dictionary, world: SimWorld, gs) -> bool:
 	for v in s.get("ant_schedule", []):
 		ants.append(int(v))
 	gs.ant_schedule = ants
+	# ...and everybody else's; absent ⇒ nobody is owed a visit, which is what
+	# every save written before this field means and what every save written
+	# after it says anyway.
+	gs.visitor_schedules = _restore_schedules(s.get("visitor_schedules", {}))
 	gs.total_shipped = int(s.get("total_shipped", 0))
 	# T-11, additive: a save from before these existed reads as "never done it",
 	# so an old farm gets the teaching beat once rather than never.

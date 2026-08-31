@@ -84,6 +84,12 @@ const ACTOR_RENDERERS := {
 	# (M2.5 WI-8a/8b).
 	SpeciesDefs.ANT_SCOUT: "res://entities/ant.gd",
 	SpeciesDefs.ANT_FORAGER: "res://entities/ant.gd",
+	# The rabbit and the kangaroo share a script as well as a brain: they differ
+	# by a row of critters.png and a speed, and both come off the species row
+	# (M2.5 WI-8c/8f).
+	SpeciesDefs.RABBIT: "res://entities/grazer.gd",
+	SpeciesDefs.KANGAROO: "res://entities/grazer.gd",
+	SpeciesDefs.SONGBIRD: "res://entities/songbird.gd",
 }
 
 var actors_node: Node2D = null            # the sprites' parent, named "Entities"

@@ -74,6 +74,8 @@ func _init() -> void:
 	test_pea()
 	test_replay_v2()
 	test_ants()
+	test_grazers()
+	test_songbird()
 
 	print("")
 	print(String("=").repeat(60))
@@ -5356,3 +5358,518 @@ func test_ants() -> void:
 	_assert(ActionRouter.resolve(tap_farm, GameState, on_a_crop, Vector2i(0, 0)).is_empty(),
 		"a far tap is still pure movement — she goes there first, exactly as for a workable tile")
 	tap_farm.free()
+
+
+# --- the tier-1 visitors: two mouths and one bird (M2.5 WI-8c/8f/8g) ----------
+#
+# A farm arranged so a visit is legible: a wide cleared field with a short row of
+# wheat in it, nothing else in the way, and the farmer parked in the far corner
+# so that her `spook_radius` is not quietly part of every scenario. The player's
+# tile is written directly rather than walked, because these fixtures arrange a
+# farm rather than play one — the one place it matters (the replay test at the
+# bottom) records her crossings properly, which is the whole point of that test.
+const MEADOW_FAR_CORNER := Vector2i(29, 17)
+const MEADOW_ROW_Y := 5
+const PEN_CROP := Vector2i(17, 10)
+
+
+func _meadow_session(seed_value: int, with_crops: bool = true) -> LiveSession:
+	var s := LiveSession.new(seed_value)
+	for ty in range(3, 15):
+		for tx in range(3, 23):
+			s.world.set_tile_state(tx, ty, "cleared")
+			s.world.set_object(tx, ty, "")
+	if with_crops:
+		for tx in range(10, 16):
+			s.world.set_tile_state(tx, MEADOW_ROW_Y, "growing", "wheat")
+	s.world.set_actor_pos(SimWorld.ACTOR_PLAYER, MEADOW_FAR_CORNER)
+	s.gs.energy = 500
+	s.gs.watering_can_charges = 500
+	return s
+
+
+# A one-tile crop inside a ring of fence: the barrier class, built by hand so the
+# test does not depend on where the generated layout happens to put a parcel.
+# A walker has no route in and a hopper does, and that difference is the whole of
+# WI-8f.
+func _fence_pen(world: SimWorld) -> void:
+	for dy in range(-1, 2):
+		for dx in range(-1, 2):
+			if dx == 0 and dy == 0:
+				continue
+			world.set_tile_state(PEN_CROP.x + dx, PEN_CROP.y + dy, WorldLayout.FENCE)
+	world.set_tile_state(PEN_CROP.x, PEN_CROP.y, "growing", "wheat")
+
+
+func _release_grazer(s: LiveSession, species: String, at: Vector2i) -> void:
+	s.world.spawn_actor(species, species, at, {
+		"state": GrazerBrain.STATE_GRAZE,
+		"home_x": at.x, "home_y": at.y,
+		"bites": 0, "tries": 0,
+	})
+
+
+func _release_songbird(s: LiveSession, from: Vector2 = Vector2(-2.0, 5.5)) -> void:
+	s.world.spawn_actor(SpeciesDefs.SONGBIRD, SpeciesDefs.SONGBIRD,
+		Vector2i(floori(from.x), floori(from.y)), {
+			"state": SongbirdBrain.STATE_PERCHED,
+			"fx": from.x, "fy": from.y,
+			"tgt_x": -1, "tgt_y": -1,
+			"perches": 0, "perch_until": 0, "ex": 0.0, "ey": 0.0,
+		})
+
+
+# Sim time until this actor's visit is over, or the limit runs out.
+func _tick_until_gone(s: LiveSession, actor_id: String, limit: int = 8000) -> bool:
+	var spent := 0
+	while spent < limit and s.world.has_actor(actor_id):
+		s.tick(10)
+		spent += 10
+	return not s.world.has_actor(actor_id)
+
+
+func _state_of(world: SimWorld, actor_id: String) -> String:
+	return String(world.actor(actor_id).get("extra", {}).get("state", ""))
+
+
+func test_grazers() -> void:
+	print("\n--- The rabbit and the kangaroo: one brain, two rows (M2.5 WI-8c/8f) Tests ---")
+
+	# --- the two rows (checklist §8.B) ----------------------------------------
+	_assert(SpeciesDefs.has(SpeciesDefs.RABBIT) and SpeciesDefs.has(SpeciesDefs.KANGAROO),
+		"the table has both grazers")
+	_assert(SpeciesDefs.verbs_of(SpeciesDefs.RABBIT) == ["eat_crop"]
+			and SpeciesDefs.verbs_of(SpeciesDefs.KANGAROO) == ["eat_crop"],
+		"each has one verb and it is the crow's, reused (P-9: no verb the player lacks)")
+	_assert(is_equal_approx(SpeciesDefs.speed_of(SpeciesDefs.RABBIT), SimClock.tiles_per_tick(30.0)),
+		"the rabbit's 30 px/s converts, like every other row")
+	_assert(is_equal_approx(SpeciesDefs.speed_of(SpeciesDefs.KANGAROO), SimClock.tiles_per_tick(45.0)),
+		"and the kangaroo's 45 px/s")
+
+	# **The claim WI-8f exists to make**, stated three ways before it is played:
+	# same brain id, same brain *object*, and exactly one field of difference.
+	_assert(SpeciesDefs.brain_of(SpeciesDefs.RABBIT) == SpeciesDefs.brain_of(SpeciesDefs.KANGAROO),
+		"both rows name the same brain")
+	_assert(Brains.of_species(SpeciesDefs.RABBIT) == Brains.of_species(SpeciesDefs.KANGAROO),
+		"...which is literally the same object — there is no kangaroo code anywhere")
+	_assert(Brains.of_species(SpeciesDefs.RABBIT) is GrazerBrain, "and it is the grazer's")
+	_assert(SpeciesDefs.mode_of(SpeciesDefs.RABBIT) == SpeciesDefs.GROUND
+			and SpeciesDefs.mode_of(SpeciesDefs.KANGAROO) == SpeciesDefs.HOP,
+		"the one field that differs is the movement capability (WI-4, plan §3.4)")
+	_assert(SpeciesDefs.senses_of(SpeciesDefs.RABBIT)
+			== SpeciesDefs.senses_of(SpeciesDefs.KANGAROO),
+		"even their senses are the same table entry — the fence is not a sense")
+	_assert(not SpeciesDefs.is_stompable(SpeciesDefs.RABBIT)
+			and not SpeciesDefs.is_stompable(SpeciesDefs.KANGAROO),
+		"and neither answers a boot: a rabbit's counterplay is her footsteps, not a tap")
+
+	# --- nothing spawns in the live game (plan §4) ----------------------------
+	_assert(SimWorld.RABBIT_VISITS_PER_DAY == 0 and SimWorld.KANGAROO_VISITS_PER_DAY == 0,
+		"no visit is scheduled in a shipping build — the debut is content sequencing")
+	for day in range(1, 21):
+		_assert_quiet(SimWorld.roll_visitor_schedule(SpeciesDefs.RABBIT, day).is_empty(),
+			"day %d schedules no rabbit" % day)
+		_assert_quiet(SimWorld.roll_visitor_schedule(SpeciesDefs.KANGAROO, day).is_empty(),
+			"day %d schedules no kangaroo" % day)
+	_flush_quiet("and no day of any real game rolls one")
+	var quiet := _crow_ready_session(31337)
+	_work_until_actions(quiet, 40)
+	quiet.tick(1200)
+	_assert(quiet.world.actors_of_species(SpeciesDefs.RABBIT).is_empty()
+			and quiet.world.actors_of_species(SpeciesDefs.KANGAROO).is_empty(),
+		"a whole worked day on an ordinary farm never contains one")
+	quiet.done()
+
+	# --- but the arrival path is real, and rides the crow's own clock ---------
+	_assert(SimWorld.may_visit(SpeciesDefs.RABBIT, 4, 3),
+		"a rabbit may come once there is a farm worth visiting")
+	_assert(not SimWorld.may_visit(SpeciesDefs.RABBIT, 3, 3), "not before the day floor")
+	_assert(not SimWorld.may_visit(SpeciesDefs.RABBIT, 4, 2),
+		"and not onto a farm with almost nothing growing on it (the crow's T-2 mercy)")
+	_assert(not SimWorld.may_visit("no_such_species", 99, 99),
+		"a species with no row in the visitors' table never arrives at all")
+
+	var booked := _meadow_session(7)
+	booked.gs.day = 9
+	booked.gs.takeover_day = 1
+	booked.gs.visitor_schedules = { SpeciesDefs.RABBIT: [3] }
+	_work_until_actions(booked, 3)
+	_assert(booked.world.has_actor(SpeciesDefs.RABBIT),
+		"a booked visit arrives when the day's *action* clock reaches it (T-20's clock)")
+	_assert(booked.gs.visitor_schedules.get(SpeciesDefs.RABBIT, []).is_empty(),
+		"and the appointment is spent, whether the visit comes to anything or not")
+	var arrived_at := booked.world.actor_pos(SpeciesDefs.RABBIT)
+	_assert(arrived_at.x <= 1 or arrived_at.y <= 1
+			or arrived_at.x >= SimWorld.MAP_WIDTH - 2 or arrived_at.y >= SimWorld.MAP_HEIGHT - 2,
+		"coming in at the edge of the map, which is also the way it will leave %s" % arrived_at)
+	_assert(Brains.of_species(SpeciesDefs.RABBIT).arrive(
+			booked.world, booked.gs, SpeciesDefs.RABBIT, 9) == "",
+		"a second rabbit is refused while the first is still on the farm")
+	booked.done()
+
+	# --- the mechanic: it finds the row, takes its fill, and leaves -----------
+	var visit := _meadow_session(4242)
+	var dawn := visit.world.count_planted()
+	_release_grazer(visit, SpeciesDefs.RABBIT, Vector2i(5, 9))
+	_assert(_tick_until_gone(visit, SpeciesDefs.RABBIT),
+		"a rabbit put in a field of wheat eats and goes")
+	_assert(dawn - visit.world.count_planted() == SimWorld.GRAZER_BITES,
+		"taking exactly its fill — %d bites, which is what bounds a visit"
+			% SimWorld.GRAZER_BITES)
+	_assert(visit.gs.crops.get("wheat", 0) == 0,
+		"and nothing it took reached the player's basket: a visit is a loss, not a harvest")
+	visit.done()
+
+	# --- the fright: F-7b's sense, alive (plan §4's criterion for 8c) ---------
+	#
+	# A bare meadow, so nothing but the player is on its mind. It flees **inside**
+	# the radius and resumes **outside** it, which is the criterion in both halves
+	# — the second half is why this is a scare and not a despawn.
+	var scare := _meadow_session(77, false)
+	_release_grazer(scare, SpeciesDefs.RABBIT, Vector2i(12, 9))
+	scare.tick(60)
+	var settled := scare.world.actor_pos(SpeciesDefs.RABBIT)
+	_assert(_state_of(scare.world, SpeciesDefs.RABBIT) != GrazerBrain.STATE_FLEE,
+		"with the farmer across the farm, a rabbit is not running from anything")
+	var radius := float(SpeciesDefs.senses_of(SpeciesDefs.PLAYER)["spook_radius"])
+	scare.world.set_actor_pos(SimWorld.ACTOR_PLAYER, settled + Vector2i(1, 0))
+	_assert(scare.world.spook_source_near(settled) == SimWorld.ACTOR_PLAYER,
+		"the sim can now answer 'who is frightening, and are they near' — F-7b, alive")
+	_assert(scare.world.spook_source_near(MEADOW_FAR_CORNER) == "",
+		"...and answers nobody where nobody is")
+	scare.tick(3)
+	_assert(_state_of(scare.world, SpeciesDefs.RABBIT) == GrazerBrain.STATE_FLEE,
+		"**she walks up and it bolts** — no tap, no tool, no verb at all")
+	scare.tick(400)
+	var bolted := scare.world.actor_pos(SpeciesDefs.RABBIT)
+	var away := Vector2(bolted - scare.world.actor_pos(SimWorld.ACTOR_PLAYER)).length()
+	_assert(away > radius,
+		"it runs clear of her radius (%.1f tiles, radius %.1f)" % [away, radius])
+	_assert(_state_of(scare.world, SpeciesDefs.RABBIT) != GrazerBrain.STATE_FLEE,
+		"**and stops running once it is clear** — a scare, not a despawn")
+	# ...and it settles back into what it was doing rather than standing there.
+	scare.world.set_actor_pos(SimWorld.ACTOR_PLAYER, MEADOW_FAR_CORNER)
+	scare.tick(100)
+	_assert(_state_of(scare.world, SpeciesDefs.RABBIT) == GrazerBrain.STATE_GRAZE,
+		"and when she has gone it goes back to grazing (the criterion's second half)")
+	_assert(scare.world.has_actor(SpeciesDefs.RABBIT),
+		"still on the farm the whole time — she moved it, she did not delete it")
+	scare.done()
+
+	# The crow's row asked the same question first and its answer is unchanged:
+	# the sense is opt-in per row, so the hen is never startled by a farmer walking
+	# past her.
+	_assert(SpeciesDefs.senses_of(SpeciesDefs.RABBIT).get("flees_spook_radius", false),
+		"the rabbit notices, because its row says it does")
+	_assert(not SpeciesDefs.senses_of(SpeciesDefs.CHICKEN).get("flees_spook_radius", false),
+		"and the hen does not, because hers does not")
+
+	# --- the kangaroo: exactly the barrier class, and nothing else -----------
+	#
+	# The criterion, played rather than asserted: a fence-enclosed crop is
+	# reachable by the hopper and not by the walker, **with the same brain in
+	# both**. The only line that differs between these two scenarios is the
+	# species name.
+	var pen_modes := _meadow_session(11, false)
+	_fence_pen(pen_modes.world)
+	var outside := Vector2i(14, 10)
+	_assert(Movement.path(pen_modes.world, SpeciesDefs.HOP, outside, PEN_CROP).size() > 0,
+		"a hopper has a route into a fenced pen")
+	_assert(Movement.path(pen_modes.world, SpeciesDefs.GROUND, outside, PEN_CROP).is_empty(),
+		"and a walker has none — the barrier class is the whole difference (WI-4)")
+	pen_modes.done()
+
+	var hopper := _meadow_session(11, false)
+	_fence_pen(hopper.world)
+	_release_grazer(hopper, SpeciesDefs.KANGAROO, outside)
+	_tick_until_gone(hopper, SpeciesDefs.KANGAROO)
+	_assert(hopper.world.count_planted() == 0,
+		"**the kangaroo gets the crop in the pen** — over the fence, because its row says hop")
+
+	var walker := _meadow_session(11, false)
+	_fence_pen(walker.world)
+	_release_grazer(walker, SpeciesDefs.RABBIT, outside)
+	_tick_until_gone(walker, SpeciesDefs.RABBIT)
+	_assert(walker.world.count_planted() == 1,
+		"**the rabbit never does** — same brain, same farm, same wheat, one word changed")
+	_assert(not walker.world.has_actor(SpeciesDefs.RABBIT),
+		"and it gives up and leaves rather than standing at the fence forever")
+	hopper.done()
+	walker.done()
+
+	# Q-57 is the taste question this raises and it is filed, not decided here:
+	# the barrier class includes closed gates, so a hopper can be in a parcel the
+	# player has not earned. Asserted so that a change to the class is a failing
+	# test rather than a surprise on a tablet.
+	var gated := _meadow_session(12, false)
+	gated.world.set_tile_state(PEN_CROP.x, PEN_CROP.y - 1, WorldLayout.GATE_CLOSED)
+	_assert(Movement.is_barrier(gated.world, Vector2i(PEN_CROP.x, PEN_CROP.y - 1)),
+		"a closed gate is in the barrier class a hopper crosses (Q-57, filed and unruled)")
+	gated.done()
+
+	# --- the daily-loss identity, extended to the new mouths (plan §4) --------
+	#
+	# T-15/T-20 bounded a day's losses by the birds it scheduled; WI-8a/8b added
+	# the raid's term. The formula now reads:
+	#   crows + raids x column size + grazer visits x bites per visit
+	# and each term is guaranteed by construction rather than by tuning — a
+	# forager's `carrying` is set once, and a grazer counts its own bites and goes
+	# home on the last one.
+	var bound := SimWorld.CROWS_PER_DAY \
+		+ SimWorld.ANT_RAIDS_PER_DAY * SimWorld.ANT_COLUMN_SIZE \
+		+ (SimWorld.RABBIT_VISITS_PER_DAY + SimWorld.KANGAROO_VISITS_PER_DAY) * SimWorld.GRAZER_BITES
+	_assert(bound == SimWorld.CROWS_PER_DAY,
+		"in a shipping build the grazers add nothing to it: no visit is ever scheduled")
+	for species in [SpeciesDefs.RABBIT, SpeciesDefs.KANGAROO]:
+		var budget := _meadow_session(88)
+		var before := budget.world.count_planted()
+		_release_grazer(budget, String(species), Vector2i(8, 6))
+		_tick_until_gone(budget, String(species))
+		budget.tick(2000)
+		_assert_quiet(before - budget.world.count_planted() <= SimWorld.GRAZER_BITES,
+			"a forced %s visit costs at most %d crops" % [species, SimWorld.GRAZER_BITES])
+		budget.done()
+	_flush_quiet("and a forced visit costs at most GRAZER_BITES crops, for either mouth")
+
+	# ...and it stays bounded when the player *interferes*, which is the case a
+	# bound is actually for. A fright interrupts whatever the animal was doing,
+	# including the walk home, so a fed rabbit that is startled must not come back
+	# to the row for thirds. It does not: the fill is re-checked every time it
+	# grazes (`GrazerBrain._graze`).
+	var harried := _meadow_session(88)
+	var harried_dawn := harried.world.count_planted()
+	_release_grazer(harried, SpeciesDefs.RABBIT, Vector2i(8, 6))
+	for _round in 12:
+		harried.tick(60)
+		if not harried.world.has_actor(SpeciesDefs.RABBIT):
+			break
+		# She keeps walking up to it, over and over, all through the visit.
+		harried.world.set_actor_pos(SimWorld.ACTOR_PLAYER,
+			harried.world.actor_pos(SpeciesDefs.RABBIT) + Vector2i(1, 0))
+		harried.tick(5)
+		harried.world.set_actor_pos(SimWorld.ACTOR_PLAYER, MEADOW_FAR_CORNER)
+	harried.tick(2000)
+	_assert(harried_dawn - harried.world.count_planted() <= SimWorld.GRAZER_BITES,
+		"a rabbit scared off and back again all afternoon still costs at most %d (%d)"
+			% [SimWorld.GRAZER_BITES, harried_dawn - harried.world.count_planted()])
+	harried.done()
+
+	# --- determinism, which everything above rests on ------------------------
+	for species in [SpeciesDefs.RABBIT, SpeciesDefs.KANGAROO]:
+		var runs: Array[String] = []
+		for _i in 2:
+			var d := _meadow_session(909)
+			_release_grazer(d, String(species), Vector2i(6, 8))
+			_tick_until_gone(d, String(species))
+			d.tick(300)
+			runs.append(SaveGame.capture_canonical(d.world, d.gs))
+			d.done()
+		_assert_quiet(runs[0] == runs[1], "%s: two runs of one seed agree" % species)
+	_flush_quiet("the same seed grazes the same farm the same way, bite for bite and tick for tick")
+
+	# --- a save taken mid-visit, continued, and its own replay ---------------
+	#
+	# The strongest statement the repo can make, and the one WI-5's handoff
+	# promised would judge this brain (plan §4's criterion for 8c): a session
+	# continued from a mid-visit save is recorded, replayed, and the recomputation
+	# is compared **action for action and tick for tick**.
+	#
+	# The player *walks* during it, recorded as free-walk entries (WI-6), which is
+	# what makes this a test of the fright rather than only of the nibble: the
+	# replay has to walk her the same way and the rabbit has to bolt at the same
+	# tick, from the same tile, or the net names the entry where they parted.
+	var played := _meadow_session(4242)
+	_release_grazer(played, SpeciesDefs.RABBIT, Vector2i(5, 9))
+	played.tick(40)
+	_assert(played.world.has_actor(SpeciesDefs.RABBIT), "a visit is under way when the game is saved")
+	var mid = JSON.parse_string(JSON.stringify(SaveGame.capture(played.world, played.gs)))
+	_assert(mid["world"]["actors"].has(SpeciesDefs.RABBIT),
+		"and the rabbit is *in* the save — a visit on the ground is part of a snapshot of a farm")
+	played.done()
+
+	var gs_cont = load("res://systems/game_state.gd").new()
+	gs_cont.reset()
+	var w_cont := SimWorld.new()
+	_assert(SaveGame.restore(mid, w_cont, gs_cont), "the mid-visit save restores")
+	SimRng.reseed(w_cont.gen_seed)
+	var cont_log := ReplayLog.new()
+	cont_log.start_from_save(mid, w_cont.gen_seed)
+	var walked_in := false
+	var bolted_live := false
+	var spent := 0
+	while spent < 4000 and w_cont.has_actor(SpeciesDefs.RABBIT):
+		for t in w_cont.advance_ticks(20, gs_cont):
+			if t["result"].get("ok", false):
+				cont_log.record(t["action"], t["result"], int(t["tick"]), true)
+		cont_log.mark_tick(w_cont.clock.tick)
+		spent += 20
+		# Halfway through, she walks over — one recorded crossing, exactly as
+		# `world/farm.gd:note_player_walk` writes one.
+		if not walked_in and spent >= 40 and w_cont.has_actor(SpeciesDefs.RABBIT):
+			walked_in = true
+			var beside: Vector2i = w_cont.actor_pos(SpeciesDefs.RABBIT) + Vector2i(1, 0)
+			w_cont.set_actor_pos(SimWorld.ACTOR_PLAYER, beside, "left")
+			cont_log.record_walk("stop", "left", beside, w_cont.clock.tick)
+			w_cont.advance_ticks(3, gs_cont)
+			bolted_live = _state_of(w_cont, SpeciesDefs.RABBIT) == GrazerBrain.STATE_FLEE
+	_assert(walked_in, "the farmer walks up to it mid-visit, and the crossing is recorded")
+	_assert(bolted_live,
+		"the rabbit bolts because of it, so the fright is part of what the replay has to reproduce")
+	_assert(cont_log.entries.size() > 0,
+		"the continued session records something (%d entries)" % cont_log.entries.size())
+	var end_save = JSON.parse_string(JSON.stringify(SaveGame.capture(w_cont, gs_cont)))
+	var report := SaveGame.replay_report(cont_log, end_save)
+	_assert(report["matched"],
+		"and it replays to the identical outcome %s" % report["divergence"])
+	gs_cont.free()
+
+
+func test_songbird() -> void:
+	print("\n--- The songbird: a bird that never acts (M2.5 WI-8g, design/04 §5) Tests ---")
+
+	# --- the row --------------------------------------------------------------
+	_assert(SpeciesDefs.has(SpeciesDefs.SONGBIRD), "the table has it")
+	_assert(SpeciesDefs.verbs_of(SpeciesDefs.SONGBIRD).is_empty(),
+		"**with no verbs at all** — the whole work item, as one line of data")
+	_assert(SpeciesDefs.mode_of(SpeciesDefs.SONGBIRD) == SpeciesDefs.FLY,
+		"it flies, which is the crow's capability out of the same table (WI-4)")
+	_assert(is_equal_approx(SpeciesDefs.speed_of(SpeciesDefs.SONGBIRD), SimClock.tiles_per_tick(35.0)),
+		"its 35 px/s converts, like every other row")
+	_assert(Brains.of_species(SpeciesDefs.SONGBIRD) is SongbirdBrain, "and the row binds to a brain")
+	_assert(SpeciesDefs.senses_of(SpeciesDefs.SONGBIRD).is_empty(),
+		"it notices nothing: a bird that fled would be a second mechanic on an actor with none")
+	_assert(SimWorld.SONGBIRDS_PER_DAY == 0, "and nothing schedules one in a shipping build")
+	for day in range(1, 21):
+		_assert_quiet(SimWorld.roll_visitor_schedule(SpeciesDefs.SONGBIRD, day).is_empty(),
+			"day %d schedules no songbird" % day)
+	_flush_quiet("on any day of any real game")
+
+	# --- the claim: a whole visit, and not one Action ------------------------
+	var ambient := _meadow_session(909)
+	_release_songbird(ambient)
+	var perched_somewhere := false
+	var moved_at_all := false
+	var was := Movement.float_pos(ambient.world, SpeciesDefs.SONGBIRD)
+	var brain_actions := 0
+	var spent := 0
+	while spent < 8000 and ambient.world.has_actor(SpeciesDefs.SONGBIRD):
+		for t in ambient.world.advance_ticks(20, ambient.gs):
+			if String(t["action"].get("actor", "")) == SpeciesDefs.SONGBIRD:
+				brain_actions += 1
+		spent += 20
+		if ambient.world.has_actor(SpeciesDefs.SONGBIRD):
+			if _state_of(ambient.world, SpeciesDefs.SONGBIRD) == SongbirdBrain.STATE_PERCHED:
+				perched_somewhere = true
+			if Movement.float_pos(ambient.world, SpeciesDefs.SONGBIRD) != was:
+				moved_at_all = true
+	_assert(moved_at_all, "it drifts")
+	_assert(perched_somewhere, "and perches")
+	_assert(not ambient.world.has_actor(SpeciesDefs.SONGBIRD),
+		"and then it is gone, off the edge of the map like the crow (after %d ticks)" % spent)
+	_assert(brain_actions == 0,
+		"**and in the whole visit it took no Action whatsoever** (%d)" % brain_actions)
+	ambient.done()
+
+	# The same claim from the other end: the *log*. A session with a songbird in
+	# it and a hen who lays and walks records everything the hen does and never
+	# once names the bird — which is what "carries a pure-charm actor with no
+	# special case" has to mean in a game whose logs are phase 4's corpus.
+	var logged := _meadow_session(4242)
+	_release_songbird(logged)
+	# A session with work in it, so "no songbird entries" is a statement about the
+	# bird rather than about an empty log.
+	_work_until_actions(logged, 4)
+	logged.tick(200)
+	_assert(logged.log.entries.size() > 0,
+		"the session records the farmer's work (%d entries)" % logged.log.entries.size())
+	var songbird_entries := 0
+	for e in logged.log.entries:
+		if String(e.get("actor", "")) == SpeciesDefs.SONGBIRD:
+			songbird_entries += 1
+	_assert(songbird_entries == 0,
+		"a recorded session containing a songbird contains no songbird entries (%d of %d)"
+			% [songbird_entries, logged.log.entries.size()])
+
+	# ...and the net still matches, which is the half that makes the zero-entry
+	# claim mean something: the bird's flight is **recomputed** from the seed and
+	# compared tile for tile, so "it wrote nothing down" is not the same as "it
+	# was not checked".
+	var mid = JSON.parse_string(JSON.stringify(SaveGame.capture(logged.world, logged.gs)))
+	var bird_in_save: bool = mid["world"]["actors"].has(SpeciesDefs.SONGBIRD)
+	logged.done()
+
+	var gs_cont = load("res://systems/game_state.gd").new()
+	gs_cont.reset()
+	var w_cont := SimWorld.new()
+	_assert(SaveGame.restore(mid, w_cont, gs_cont) and bird_in_save,
+		"a mid-visit save restores, with the bird in it")
+	SimRng.reseed(w_cont.gen_seed)
+	var cont_log := ReplayLog.new()
+	cont_log.start_from_save(mid, w_cont.gen_seed)
+	var flew := 0
+	while flew < 600:
+		for t in w_cont.advance_ticks(20, gs_cont):
+			if t["result"].get("ok", false):
+				cont_log.record(t["action"], t["result"], int(t["tick"]), true)
+		cont_log.mark_tick(w_cont.clock.tick)
+		flew += 20
+	var moved_on := w_cont.has_actor(SpeciesDefs.SONGBIRD)
+	var end_save = JSON.parse_string(JSON.stringify(SaveGame.capture(w_cont, gs_cont)))
+	var report := SaveGame.replay_report(cont_log, end_save)
+	_assert(report["matched"],
+		"and the continued session replays to the identical outcome %s" % report["divergence"])
+	_assert(not moved_on,
+		"the bird's whole visit ends inside the continued session, and the replay ends it too")
+	gs_cont.free()
+
+	# --- the visitors' book, which all three of them ride --------------------
+	_assert(SimWorld.visitors().has(SpeciesDefs.RABBIT)
+			and SimWorld.visitors().has(SpeciesDefs.KANGAROO)
+			and SimWorld.visitors().has(SpeciesDefs.SONGBIRD),
+		"all three are rows in one table rather than three copies of the crow's plumbing")
+	for species in SimWorld.visitors().keys():
+		_assert_quiet(SpeciesDefs.has(String(species)),
+			"%s is a species the table knows" % species)
+		_assert_quiet(int(SimWorld.visitors()[species]["per_day"]) == 0,
+			"%s is scheduled zero times a day" % species)
+		_assert_quiet(Brains.of_species(String(species)).arrive(null, null, String(species), 0) == "",
+			"%s's arrival hook refuses a null world" % species)
+	_flush_quiet("every row in the visitors' table names a real species, ships at zero, and is safe")
+
+	# A fresh day rolls a book for everybody in the table, and it is empty.
+	var fresh = load("res://systems/game_state.gd").new()
+	fresh.reset()
+	fresh.takeover_day = 1
+	fresh.day = 9
+	fresh.start_new_day()
+	_assert(fresh.visitor_schedules.size() == SimWorld.visitors().size(),
+		"start_new_day rolls one book per visiting species")
+	var owed := 0
+	for species in fresh.visitor_schedules.keys():
+		owed += fresh.visitor_schedules[species].size()
+	_assert(owed == 0, "and every one of them is empty in a real game")
+	fresh.free()
+
+	# The book survives a save, because a reload mid-day must neither resurrect a
+	# spent visit nor erase an owed one (the crow's reason, WI-3).
+	var carried := _meadow_session(5)
+	carried.gs.visitor_schedules = { SpeciesDefs.SONGBIRD: [4, 11] }
+	var snap = JSON.parse_string(JSON.stringify(SaveGame.capture(carried.world, carried.gs)))
+	var gs_back = load("res://systems/game_state.gd").new()
+	var w_back := SimWorld.new()
+	SaveGame.restore(snap, w_back, gs_back)
+	_assert(gs_back.visitor_schedules.get(SpeciesDefs.SONGBIRD, []) == [4, 11],
+		"an appointment survives a save and a load")
+	gs_back.free()
+	carried.done()
+
+	# ...and an old save, written before the field existed, restores as "nobody
+	# is owed a visit" rather than as a crash.
+	var legacy = JSON.parse_string(JSON.stringify(snap))
+	legacy["state"].erase("visitor_schedules")
+	var gs_legacy = load("res://systems/game_state.gd").new()
+	var w_legacy := SimWorld.new()
+	_assert(SaveGame.restore(legacy, w_legacy, gs_legacy),
+		"a save from before the visitors' book still loads")
+	_assert(gs_legacy.visitor_schedules.is_empty(), "with nobody owed a visit")
+	gs_legacy.free()

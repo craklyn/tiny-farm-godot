@@ -60,6 +60,14 @@ var crow_schedule: Array[int]  # action counts at which a crow arrives today
 # lifecycle behind it is built and tested, and it rides the same action clock the
 # crow does so that pressure follows productivity for both.
 var ant_schedule: Array[int]
+# ...and one book for everybody after them (M2.5 WI-8c/8f/8g): `{species:
+# [action counts]}`, filled from `SimWorld.roll_visitor_schedules()`. A
+# dictionary rather than a field per species because the crow's and the raid's
+# already cost a field, a roll, a save key and a `_send_due_*` each, and the
+# bestiary is not going to stop at five — a new critter is a row in
+# `SimWorld.visitors()` and nothing here changes. Always empty in a real game:
+# every `per_day` in that table is 0.
+var visitor_schedules: Dictionary
 var total_shipped: int  # Q-12 proof counter (crops sold, any route)
 
 # T-11 (Q-35): "has she ever done this?" for the three economy verbs, so each
@@ -116,6 +124,7 @@ func reset() -> void:
 	actions_today = 0
 	crow_schedule = []
 	ant_schedule = []
+	visitor_schedules = {}
 	total_shipped = 0
 	seeds_bought = 0
 	cans_refilled = 0
@@ -263,6 +272,7 @@ func start_new_day() -> void:
 	actions_today = 0
 	crow_schedule = SimWorld.roll_crow_schedule(play_day())
 	ant_schedule = SimWorld.roll_ant_schedule(play_day())
+	visitor_schedules = SimWorld.roll_visitor_schedules(play_day())
 
 	if SimRng.randf() < 0.2:
 		weather = "rainy"

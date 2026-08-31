@@ -51,6 +51,11 @@ const SPRINKLER := "sprinkler"
 # they are two *mechanics*: one marks, the other follows.
 const ANT_SCOUT := "ant_scout"
 const ANT_FORAGER := "ant_forager"
+# The tier-1 visitors (M2.5 WI-8c/8f/8g, `design/04` §4 and §5). Two mouths that
+# answer to a footstep and one bird that answers to nothing.
+const RABBIT := "rabbit"
+const KANGAROO := "kangaroo"
+const SONGBIRD := "songbird"
 
 # **"world" is not a species.** `{ "actor": "world" }` is the sim acting on its own
 # behalf — the day turning, a gate opening because a proof was met — and it holds
@@ -266,6 +271,109 @@ static var ROWS: Dictionary = {
 		"senses": {},
 		"persistent": true,
 		"stompable": true,
+	},
+
+	# --- the three that came next (M2.5 WI-8c/8f/8g) --------------------------
+	#
+	# **Two of these rows are the same animal.** The rabbit and the kangaroo name
+	# the *same brain* (`graze`) and differ by four numbers, one of which — the
+	# movement mode — is the entire kangaroo. That is plan §4's "exists to prove
+	# capability data beats code" stated as data rather than as a claim: nothing in
+	# `grazer_brain.gd` says `if kangaroo`, and nothing needs to, because a fence is
+	# a question the movement engine answers out of this table (WI-4).
+	#
+	# **They are the first consumers of `spook_radius`, which kills finding F-7b.**
+	# The player's row has carried the sense since WI-2 and nothing has been able to
+	# read it: the crow's version measured pixels off a node, and its "other actors
+	# with a spook_radius" scan was dead code deleted in WI-3 because the player's
+	# position was not sim truth. It is sim truth now (WI-6), so a grazer asks
+	# `SimWorld.spook_source_near()` and gets a real answer from the registry. The
+	# radius lives on the *frightener's* row, not the frightened one's — she is what
+	# is 3 tiles scary, and `flees_spook_radius` is what notices, exactly as the
+	# crow's row says it.
+	#
+	# **Nothing spawns any of them.** `SimWorld.RABBIT_VISITS_PER_DAY`,
+	# `KANGAROO_VISITS_PER_DAY` and `SONGBIRDS_PER_DAY` are all 0, so no schedule in
+	# any real game holds an appointment. The debut is content sequencing (the Q-56
+	# pattern), which is the standing the sprinkler and the ants already ship with.
+
+	# The garden thief with an ear on the door. Wanders, notices a crop within a
+	# few tiles, walks onto it and takes a bite; **bolts the moment the player is
+	# near, and comes back to grazing when she has gone**. That last clause is the
+	# whole design: the counterplay is *walking over*, which is the only verb a
+	# two-year-old has, and no tap is required at all.
+	RABBIT: {
+		"name": "Rabbit",
+		"brain": "graze",
+		# `eat_crop` — the crow's mouth, the ants' mouth, reused a third time. No
+		# new verb (P-9 / ground rule 1).
+		"verbs": ["eat_crop"],
+		# 30 px/s: quicker than the hen, slower than the farmer, so she can catch
+		# up to it if she means to and it looks unhurried if she does not.
+		# [Playtest].
+		"speed": 0.1875,
+		"movement": { "mode": GROUND, "body_len": 1, "tile_exclusive": false },
+		# It notices food further off than an ant does — it is bigger and it is
+		# looking for a meal rather than for a route. [Playtest].
+		"senses": { "crop_sense": 5.0, "flees_spook_radius": true },
+		# A visit that lasts minutes and stands on the ground is part of a snapshot
+		# of a farm — the ants' argument, not the crow's (see `_capture_actors`).
+		"persistent": true,
+		# **Deliberately not stompable.** The stomp answers a scout, whose whole
+		# threat is that it gets home; a rabbit's answer is her footsteps. Adding a
+		# boot here would make the flee sense decorative.
+	},
+
+	# The same animal, over the fence. Its brain is the rabbit's, its senses are
+	# the rabbit's, and the one field that differs is `mode: HOP` — which the
+	# movement engine reads as "ground pathing, plus exactly the barrier class"
+	# (fence, hedge, closed gate; `Movement.is_barrier`). A crop a rabbit can smell
+	# and never reach is a crop this one is standing on.
+	#
+	# **Q-57 is filed and unruled** (`DESIGNER_QUEUE.md`): the barrier class
+	# includes closed gates, so a hopper can be in a parcel the player has not
+	# earned. Nothing is blocked — `KANGAROO_VISITS_PER_DAY` is 0, so no kangaroo
+	# has ever been in anybody's quarry.
+	KANGAROO: {
+		"name": "Kangaroo",
+		"brain": "graze",  # the rabbit's, unchanged — that is the point of the row
+		"verbs": ["eat_crop"],
+		# 45 px/s. It covers ground in bounds, which is what makes a fence look
+		# incidental rather than absent. [Playtest].
+		"speed": 0.28125,
+		"movement": { "mode": HOP, "body_len": 1, "tile_exclusive": false },
+		"senses": { "crop_sense": 5.0, "flees_spook_radius": true },
+		"persistent": true,
+	},
+
+	# **The one that does nothing at all** (`design/04` §5: harmless fauna, "charm,
+	# eggs, ambient life for the kid layer"). It drifts across the farm, perches a
+	# while, drifts again, and goes. It has **no verbs**, and its brain has no
+	# branch that could return an Action — which is the claim plan §4 asks this
+	# species to prove: the system carries a pure-charm actor with no special case
+	# anywhere. It is a species row, a brain and a sprite, like everybody else, and
+	# the replay log never mentions it because there is nothing to mention.
+	#
+	# (`design/04` §5 also notes the other reason to have one: a phase-4 bot needs
+	# negative examples — things not to chase — and the hen cannot be the only one.)
+	SONGBIRD: {
+		"name": "Songbird",
+		"brain": "songbird_ambient",
+		"verbs": [],
+		# 35 px/s: flitting rather than the crow's purposeful 60. [Playtest].
+		"speed": 0.21875,
+		# `fly`, so it goes over everything and perches wherever it likes — a fence
+		# post is a fine place for a small bird, and `Movement.can_stop` says yes
+		# for the same reason it says no to a kangaroo.
+		"movement": { "mode": FLY, "body_len": 1, "tile_exclusive": false },
+		# It notices nothing. Not an oversight: a bird that fled the player would be
+		# a second mechanic on an actor whose mechanic is that it has none.
+		"senses": {},
+		# Unlike the crow, it is *here* rather than raiding: it belongs to the farm
+		# the way the hen does, so a snapshot of the farm contains it. It is also
+		# what makes the zero-verb claim checkable — its whole visit is recomputed
+		# and compared by WI-5's net, with no Actions in it to compare.
+		"persistent": true,
 	},
 }
 

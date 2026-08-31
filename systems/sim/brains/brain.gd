@@ -80,6 +80,24 @@ func on_new_day(_world: SimWorld, _actor_id: String) -> void:
 	pass
 
 
+# The day's action clock has reached an appointment this species holds, so
+# something may be about to turn up (M2.5 WI-8c/8f/8g, `SimWorld._send_due_visitors`).
+# Return the id of whatever arrived, or "" if the appointment passes without
+# anybody — **it is spent either way**, which is T-20's rule for the crow applied
+# to every visitor after it.
+#
+# `species` is a parameter rather than a thing the brain knows, because one brain
+# may serve several rows: the rabbit and the kangaroo share this hook and differ
+# only in the row it spawns them from, which is plan §4's "capability data beats
+# code" seen from the arrival end.
+#
+# The crow and the ant scout predate this and keep their own static `send()`.
+# They are shipped, tested and saved under those names, and a hook is worth
+# having only where it removes a copy.
+func arrive(_world: SimWorld, _gs, _species: String, _arrival: int) -> String:
+	return ""
+
+
 # Actions this actor takes **as the day turns**, applied by `advance_day` at the
 # end of the turn (M2.5 WI-10). Empty for everything that thinks on the clock,
 # which is nearly everything: a brain with a `wake` decides *when* it acts, and

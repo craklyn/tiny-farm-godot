@@ -122,6 +122,103 @@ static func may_start_raid(day: int, planted: int) -> bool:
 	return day >= ANT_MIN_DAY and planted >= ANT_MIN_PLANTED
 
 
+# --- The visitors' appointment book (M2.5 WI-8c/8f/8g) ------------------------
+#
+# The crow's schedule and the raid's, worn by three more species, and written
+# **once** instead of three more times. Each of the two above is a `*_SCHEDULE`
+# field on GameState, a `roll_*` function, a `_send_due_*` loop and a pair of
+# lines in `save_game.gd`; a third copy would have been forgivable and a fifth
+# would not, so the rule each visiting species differs by is a row in this table
+# and everything around it is shared. **A future critter is a row here** (the
+# mole, the worm, WI-9's bots if their debut is ever scheduled) rather than a
+# field, a roll, a loop and a save key.
+#
+# The two older books are deliberately **not** migrated into it: they are shipped,
+# tested and saved under their own names, and rewriting a format to tidy it is how
+# a save file stops loading. See §9 of `M2_5_PLAN.md`.
+#
+# Per row: `min_day` is a **play-day** floor (the T-2 backstop), `min_planted` is
+# the "there is something worth coming for, and losing it is affordable" gate,
+# `earliest` keeps an arrival out of the first few actions of a day, and `salt`
+# separates this species' `SimRng.stateless` draws from every other species'.
+#
+# **Every `per_day` is 0, and that is the shipping value.** The whole lifecycle —
+# scheduled, gated, spawned, fed and gone — exists and is tested; no real game has
+# ever contained a rabbit, a kangaroo or a songbird. Turning one on is one integer
+# and a designer's ruling (the Q-56 pattern).
+const RABBIT_VISITS_PER_DAY := 0
+const KANGAROO_VISITS_PER_DAY := 0
+const SONGBIRDS_PER_DAY := 0
+
+# How many crops one visiting grazer takes before it has had its fill and leaves.
+# This is the daily-loss identity's new term (T-15/T-20, plan §4): a visit costs
+# at most this, because the count is kept in the actor's own `extra` and the brain
+# goes home when it reaches it. [Playtest].
+const GRAZER_BITES := 2
+
+# Built on first use rather than as a `const`, so the table can name species
+# constants without asking GDScript to resolve two class initialisers into each
+# other — `Brains._table()`'s reason, and its shape.
+static var _visitors: Dictionary = {}
+
+
+static func visitors() -> Dictionary:
+	if _visitors.is_empty():
+		_visitors = {
+			SpeciesDefs.RABBIT: {
+				"per_day": RABBIT_VISITS_PER_DAY,
+				"min_day": 4, "min_planted": 3, "earliest": 5, "salt": 7000,
+			},
+			SpeciesDefs.KANGAROO: {
+				"per_day": KANGAROO_VISITS_PER_DAY,
+				"min_day": 6, "min_planted": 4, "earliest": 5, "salt": 8000,
+			},
+			# It eats nothing, so it needs no farm to raid and no mercy rule: a
+			# songbird may turn up on a bare field on the first morning.
+			SpeciesDefs.SONGBIRD: {
+				"per_day": SONGBIRDS_PER_DAY,
+				"min_day": 1, "min_planted": 0, "earliest": 2, "salt": 9000,
+			},
+		}
+	return _visitors
+
+
+# Arrival points for one species on one day, as action counts — `roll_crow_schedule`
+# generalised. Derived from (seed, day, species salt) rather than drawn from the
+# shared stream, for the reason `crow_brain.gd` spells out at length: entity noise
+# advances that stream between the player's actions and a replay's is not advanced
+# the same way. `day` is a **play-day**.
+static func roll_visitor_schedule(species: String, day: int) -> Array[int]:
+	var out: Array[int] = []
+	var rule: Dictionary = visitors().get(species, {})
+	if rule.is_empty() or day < int(rule["min_day"]):
+		return out
+	for i in int(rule["per_day"]):
+		out.append(int(rule["earliest"]) + SimRng.stateless(day, int(rule["salt"]) + i) % 20)
+	out.sort()
+	return out
+
+
+# Every visiting species' schedule for a fresh day, in one dictionary — what
+# `GameState.start_new_day` stores and `SaveGame` carries. Keyed by species, so a
+# reader can tell what is owed to whom.
+static func roll_visitor_schedules(day: int) -> Dictionary:
+	var out := {}
+	for species in visitors().keys():
+		out[String(species)] = roll_visitor_schedule(String(species), day)
+	return out
+
+
+# May this species come at all? The crow's readiness gate (T-2) with its numbers
+# read out of the table instead of written into the function. Pure, so it tests
+# without a world, exactly like `may_spawn_crow` and `may_start_raid`.
+static func may_visit(species: String, day: int, planted: int) -> bool:
+	var rule: Dictionary = visitors().get(species, {})
+	if rule.is_empty():
+		return false
+	return day >= int(rule["min_day"]) and planted >= int(rule["min_planted"])
+
+
 # Fixed object positions (0-indexed tile coords)
 const OBJECT_POSITIONS: Array[Dictionary] = [
 	{ "type": "cot",          "tx": 2, "ty": 1 },
@@ -691,6 +788,46 @@ func actors_of_species(species: String) -> Array[String]:
 	return out
 
 
+# --- who frightens whom: finding F-7b, alive at last (M2.5 WI-8c) -------------
+#
+# **The scan the crow was written to do and never could.** `entities/crow.gd` used
+# to look for "other entities with a `spook_radius`" and the answer was always the
+# player, because she was the only thing that had one *and* the only thing whose
+# position a node could see — so WI-3 deleted the scan rather than porting it, and
+# recorded the reason (F-7b: dead code that could only ever find one answer). What
+# was missing was not the loop, it was sim truth: nobody's live position was in
+# the registry. Since WI-6 the player's is, so the loop can be written honestly,
+# here, where it reads the registry instead of the scene tree.
+#
+# The radius belongs to the **frightener** (`senses.spook_radius`, the player's
+# row since WI-2 — she is what is three tiles scary), and noticing belongs to the
+# frightened (`senses.flees_spook_radius`, the crow's row and now both grazers').
+# Returns the id of the nearest thing worth running from, or "".
+#
+# Cost is one pass over the registry per decision — four to six entries in any
+# farm this game has ever had — and never over the map. Ids are visited in sorted
+# order and kept on a **strictly** smaller distance, so two equidistant
+# frighteners resolve the same way on every machine and in every replay (the
+# registry-iteration-order rule, a few blocks up).
+func spook_source_near(t: Vector2i, ignore: String = "") -> String:
+	var best := ""
+	var best_d := INF
+	var ids: Array = actors.keys()
+	ids.sort()
+	for raw in ids:
+		var id := String(raw)
+		if id == ignore:
+			continue
+		var radius := float(SpeciesDefs.senses_of(species_of(id)).get("spook_radius", 0.0))
+		if radius <= 0.0:
+			continue
+		var d := Vector2(actor_pos(id) - t).length()
+		if d < radius and d < best_d:
+			best_d = d
+			best = id
+	return best
+
+
 # --- the stomp (P-10 / design/04 §4; M2.5 WI-8a) ------------------------------
 #
 # **A tap answers a critter, and it does it with a verb she already has.** A
@@ -954,6 +1091,9 @@ func apply_action(action: Dictionary, gs = null) -> Dictionary:
 		# every real game: `ANT_RAIDS_PER_DAY` is 0, so the schedule is empty on
 		# every day of it.
 		_send_due_ants(gs)
+		# ...and everyone in the visitors' table (M2.5 WI-8c/8f/8g), whose books
+		# are empty in every real game for the same reason.
+		_send_due_visitors(gs)
 	# Milestones are capability proofs (P-4) — sim truth, so replays earn them too
 	if result.get("ok", false) and gs != null and MILESTONE_VERBS.has(action.get("verb", "")) \
 			and gs.has_method("check_milestones"):
@@ -1217,6 +1357,33 @@ func _send_due_ants(gs) -> void:
 		var arrival := int(gs.ant_schedule[0])
 		gs.ant_schedule.remove_at(0)
 		AntScoutBrain.send(self, gs, arrival)
+
+
+# ...and the same clock reaching everybody else's (M2.5 WI-8c/8f/8g). One loop
+# over the visitors' table instead of a `_send_due_*` per species: what differs
+# between a rabbit and a songbird is a row in `visitors()` and a brain, and
+# neither of those is a copy of this function.
+#
+# The appointment is consumed whether anything comes of it or not — T-20's rule,
+# which is why it is spelled the same way here as it is two functions up. Which
+# species the arriving actor is *is* the dispatch: `Brains.of_species(...).arrive`
+# means the gateway never learns what a rabbit is.
+#
+# **Empty in every real game**: every `per_day` in the table is 0, so
+# `GameState.start_new_day` rolls an empty book for each of them on every day of
+# every session, and this loop finds nothing to do.
+func _send_due_visitors(gs) -> void:
+	if gs == null or not ("visitor_schedules" in gs):
+		return
+	for raw in visitors().keys():
+		var species := String(raw)
+		# The live array, not a copy: consuming an appointment has to actually
+		# spend it, and Godot arrays are references.
+		var book: Array = gs.visitor_schedules.get(species, [])
+		while not book.is_empty() and int(gs.actions_today) >= int(book[0]):
+			var arrival := int(book[0])
+			book.remove_at(0)
+			Brains.of_species(species).arrive(self, gs, species, arrival)
 
 
 # Q-12 phase-1 proof thresholds — provisional, fine-tuned at playtest

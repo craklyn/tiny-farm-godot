@@ -699,6 +699,21 @@ trace actually says, because several of these looked like bugs and were not.*
   and it is testable — and revisit with Q-17 (raid readability), because "the player must see
   a raid form" and "the player must see a raid break" are the same question from the two
   ends.* Nothing is blocked: no ant spawns in the live game.
+- **Q-63** **Is running away the *whole* of a rabbit's answer?** Raised by M2.5 WI-8c/8f.
+  The grazers are the first critters whose counterplay is not a tap at all: walk over and
+  the animal bolts, walk away and it comes back and carries on eating, and a visit costs
+  two crops whatever she does. That is deliberate — it is Q-10's "the crow is the joke, not
+  the threat" written for a mammal, and it gives the youngest player a verb she already has
+  (her feet). Two readings: (a) *as built* — presence buys time, not victory; a rabbit is
+  weather rather than an enemy, and being unable to *lose* to one is the point; (b) a
+  fright should **end the visit**, so patrolling a row genuinely protects it, so a player
+  who notices is rewarded with more than a pause, and so WI-9's shoo-bot has something to
+  do about something other than birds. (b) is roughly four lines in `grazer_brain.gd` (the
+  flee ends in `_head_home` rather than in `_graze`) and it changes what a grazer *is*.
+  *Recommendation: leave it as built until a real playtest, because (a) is the version that
+  cannot frustrate a small child, and revisit it beside Q-16's combat verbs and WI-9's shoo
+  policy — "what does chasing something accomplish" is one question, and answering it for
+  the rabbit answers it for the bot.* Nothing is blocked: no grazer spawns in the live game.
 
 ## Before M3 — phase 2 design
 
