@@ -78,6 +78,7 @@ func _init() -> void:
 	test_songbird()
 	test_mole()
 	test_worm()
+	test_bots()
 
 	print("")
 	print(String("=").repeat(60))
@@ -6485,3 +6486,544 @@ func test_worm() -> void:
 	_assert(report["matched"],
 		"and it replays to the identical outcome %s" % report["divergence"])
 	gs_cont.free()
+
+
+# --- The bot line, v1 (M2.5 WI-9) ---------------------------------------------
+#
+# A flat yard with no acorns on it. No acorns because a crow prefers one to any
+# crop (T-15/Q-39), and the shoo tests need the bird to come for a **crop** on a
+# tile this test chose — which is also the only way "its radius covers the
+# target" can be a thing to assert rather than a thing to hope for.
+const BOT_CROP_ROW_Y := 10
+const BOT_CROP_X0 := 12
+const BOT_CROP_X1 := 18
+const BOT_HER_TILE := Vector2i(8, 6)
+
+
+func _bot_yard(seed_value: int, with_crops: bool = false) -> LiveSession:
+	var s := LiveSession.new(seed_value)
+	for ty in range(3, 17):
+		for tx in range(3, 28):
+			s.world.set_tile_state(tx, ty, "cleared")
+			s.world.set_object(tx, ty, "")
+	for ty in SimWorld.MAP_HEIGHT:
+		for tx in SimWorld.MAP_WIDTH:
+			if s.world.get_object(tx, ty) == "acorn":
+				s.world.set_object(tx, ty, "")
+	if with_crops:
+		for tx in range(BOT_CROP_X0, BOT_CROP_X1):
+			s.world.set_tile_state(tx, BOT_CROP_ROW_Y, "growing", "wheat")
+	s.world.set_actor_pos(SimWorld.ACTOR_PLAYER, BOT_HER_TILE)
+	s.gs.energy = 500
+	s.gs.watering_can_charges = 500
+	s.gs.seeds["wheat"] = 500
+	return s
+
+
+# How far a bot is from the actor it belongs to, in tiles walked.
+func _bot_gap(world: SimWorld, bot_id: String, owner_id: String = SimWorld.ACTOR_PLAYER) -> int:
+	var a := world.actor_pos(bot_id)
+	var b := world.actor_pos(owner_id)
+	return absi(a.x - b.x) + absi(a.y - b.y)
+
+
+# Her walking, one tile at a time, recorded exactly as `world/farm.gd` records a
+# crossing (M2.5 WI-6) — which is what makes a follower's whole session
+# replayable: nothing can recompute where she chose to go, so the log carries it
+# and `ReplayLog._apply_v2` puts her back.
+func _walk_her(s: LiveSession, to: Vector2i, ticks_between: int = 4) -> void:
+	var at := s.world.actor_pos(SimWorld.ACTOR_PLAYER)
+	while at != to:
+		var d := Vector2i(signi(to.x - at.x), 0)
+		if d.x == 0:
+			d = Vector2i(0, signi(to.y - at.y))
+		at += d
+		s.walk("step", Movement.facing_from(at - d, at), at)
+		s.tick(ticks_between)
+
+
+# The tile the day's first scheduled crow will come for, worked out **from the
+# schedule** rather than from watching: `CrowBrain.send` picks it with a
+# stateless draw off (day, arrival), so a test can know where a bird is going
+# before it exists — which is what lets the shoo tests place a bot's patch to
+# cover it, or not, and change nothing else.
+func _crow_target_for(s: LiveSession, arrival: int) -> Vector2i:
+	var pick: Dictionary = s.world.choose_crow_target(
+		SimRng.stateless(int(s.gs.day), 1000 + arrival))
+	return pick.get("tile", Vector2i(-1, -1))
+
+
+# A farm a crow may visit, with one appointment in the book (T-2's readiness
+# gate, T-20's action clock). `crop_crows_seen` is spent, so the bird that comes
+# is **not** the scripted harmless one and will actually take a crop — which is
+# what the control run has to be able to lose.
+func _bot_crow_ready(s: LiveSession, arrival: int = 1) -> void:
+	s.gs.day = 6
+	s.gs.takeover_day = 1
+	s.gs.harvest_counts["wheat"] = 3
+	s.gs.crop_crows_seen = 1
+	s.gs.actions_today = 0
+	var book: Array[int] = [arrival]
+	s.gs.crow_schedule = book
+
+
+# One shoo scenario, played out: the same farm, the same crow, the same bot, and
+# **one number different** — how far the machine considers its business.
+func _shoo_run(seed_value: int, radius: float) -> Dictionary:
+	var s := _bot_yard(seed_value, true)
+	_bot_crow_ready(s)
+	var target := _crow_target_for(s, 1)
+	var home := target + Vector2i(0, 2)
+	BotBrain.deploy(s.world, "shoo_bot", BotBrain.CONFIG_SHOO, home,
+		{ "home_x": home.x, "home_y": home.y, "radius": radius })
+	var planted_before := s.world.count_planted()
+	# One action of hers moves T-20's clock, which is the only thing that brings a
+	# crow (the gateway decides it, not this test).
+	s.act({ "verb": "till", "target": Vector2i(5, 12), "actor": "player" })
+	var arrived := s.world.has_actor(SimWorld.ACTOR_CROW)
+	var reason := ""
+	var spent := 0
+	while spent < 900 and s.world.has_actor(SimWorld.ACTOR_CROW):
+		s.tick(5)
+		spent += 5
+		var st := String(s.world.actor(SimWorld.ACTOR_CROW).get("extra", {}).get("state", ""))
+		if st == "leaving" and reason == "":
+			reason = String(s.world.actor(SimWorld.ACTOR_CROW)["extra"].get("leaving_because", ""))
+	var scares := 0
+	var by := ""
+	for e in s.log.entries:
+		if String(e.get("verb", "")) == "crow_scared":
+			scares += 1
+			by = String(e.get("by", ""))
+			_assert_quiet(bool(e.get("brain", false)),
+				"the bot's scare is recorded as a brain Action")
+	var out := {
+		"target": target,
+		"arrived": arrived,
+		"reason": reason,
+		"lost": planted_before - s.world.count_planted(),
+		"scares": scares,
+		"by": by,
+		"scared_counter": int(s.gs.crows_scared),
+		"seen": int(s.gs.crows_seen),
+		"booked": s.gs.crow_schedule.size(),
+		"bot_home": home,
+		"bot_end": s.world.actor_pos("shoo_bot"),
+	}
+	s.done()
+	return out
+
+
+# `tools/benchmark_sim.gd`'s inner loop, in the shape that file runs it: a
+# generous day's work over a 10x8 plot, applied as one actor.
+func _benchmark_day(world: SimWorld, gs, actor_id: String) -> int:
+	var applied := 0
+	gs.energy = 1000000
+	gs.watering_can_charges = 1000000
+	gs.seeds["wheat"] = 1000000
+	for ty in range(4, 12):
+		for tx in range(12, 22):
+			var st: String = world.get_tile(tx, ty).get("state", "")
+			var verb := ""
+			match st:
+				"obstacle_rock": verb = "clear_rock"
+				"obstacle_log": verb = "clear_log"
+				"obstacle_weed": verb = "clear_weed"
+				"cleared": verb = "till"
+				"tilled": verb = "plant"
+				"seeded", "growing": verb = "water"
+				"ready": verb = "harvest"
+			if verb == "":
+				continue
+			var action := { "verb": verb, "target": Vector2i(tx, ty), "actor": actor_id }
+			if verb == "plant":
+				action["seed_type"] = "wheat"
+			world.apply_action(action, gs)
+			applied += 1
+	world.apply_action({ "verb": "sleep", "actor": "world" }, gs)
+	return applied + 1
+
+
+# The grids, as a string. What the benchmark actually produces, with the registry
+# deliberately left out of it — the whole question there is whether *registering*
+# the worker changes the work.
+func _grid_signature(world: SimWorld) -> String:
+	return "%s|%s" % [str(world.tiles), str(world.objects)]
+
+
+func test_bots() -> void:
+	print("\n--- The bot line, v1: one machine, three settings (M2.5 WI-9) Tests ---")
+
+	# --- the row (P-9, ground rule 1) -----------------------------------------
+	#
+	# P-9 says any entity may carry the full player verb set. This row is the
+	# first one that does, and the assertion below is the strongest form of it:
+	# not "the same verbs" but **the same array**, so there is nothing to keep in
+	# step and no way for the two to drift.
+	_assert(is_same(SpeciesDefs.ROWS[SpeciesDefs.BOT]["verbs"],
+			SpeciesDefs.ROWS[SpeciesDefs.PLAYER]["verbs"]),
+		"a bot carries the player's verb set — literally her row's array, not a copy (P-9)")
+	_assert(str(SpeciesDefs.verbs_of(SpeciesDefs.BOT)) == str(SpeciesDefs.PLAYER_VERBS)
+			and SpeciesDefs.verbs_of(SpeciesDefs.BOT).size() == SpeciesDefs.PLAYER_VERBS.size(),
+		"...and therefore verb for verb, in order (%d verbs)" % SpeciesDefs.PLAYER_VERBS.size())
+	var borrowed := false
+	for v in SpeciesDefs.verbs_of(SpeciesDefs.BOT):
+		if v in SpeciesDefs.ENTITY_VERBS and not (v in SpeciesDefs.PLAYER_VERBS):
+			borrowed = true
+	_assert(not borrowed,
+		"and not one verb she lacks — a bot gets no capability the player has not got (rule 1)")
+	_assert(SpeciesDefs.mode_of(SpeciesDefs.BOT) == SpeciesDefs.GROUND
+			and SpeciesDefs.is_persistent(SpeciesDefs.BOT)
+			and not SpeciesDefs.is_stompable(SpeciesDefs.BOT),
+		"it walks, it is part of a snapshot of the farm, and a boot does not answer it")
+	_assert(is_equal_approx(SpeciesDefs.speed_of(SpeciesDefs.BOT), SimClock.tiles_per_tick(48.0)),
+		"at 48 px/s — her own pace exactly, so it can keep station and cannot outrun her")
+	_assert(Brains.of_species(SpeciesDefs.BOT) is BotBrain,
+		"and one brain answers for all three configs")
+
+	# **A class is data** (the shoo config's quarry). The alternative was a list
+	# of species names inside the brain, which is the hardcoded roster the species
+	# table exists to abolish — and which the next bird would have fallen out of.
+	_assert(str(SpeciesDefs.species_of_class(SpeciesDefs.CLASS_BIRD))
+			== str([SpeciesDefs.CROW, SpeciesDefs.SONGBIRD]),
+		"the bird class is exactly the crow and the songbird, and it is a field on their rows")
+	_assert(SpeciesDefs.class_of(SpeciesDefs.CHICKEN) == ""
+			and SpeciesDefs.class_of(SpeciesDefs.BOT) == "",
+		"a hen is not a bird as far as a shoo-bot is concerned, and neither is another bot")
+
+	# --- nothing acquires one (Q-56, ruled) -----------------------------------
+	SimRng.reseed(31337)
+	var fresh := SimWorld.new()
+	fresh.generate()
+	_assert(fresh.actors_of_species(SpeciesDefs.BOT).is_empty(),
+		"a generated world contains no bot — the debut is Q-56's, and it is ruled: not before M3")
+	_assert(not SimWorld.visitors().has(SpeciesDefs.BOT),
+		"and nothing schedules one either: a machine is not a visitor")
+
+	# --- follow: it trails her, and it reads the registry to do it ------------
+	var f := _bot_yard(9001)
+	BotBrain.deploy(f.world, "follow_bot", BotBrain.CONFIG_FOLLOW, BOT_HER_TILE + Vector2i(2, 0))
+	f.rebase()
+	f.tick(20)
+	_assert(_bot_gap(f.world, "follow_bot") <= BotBrain.FOLLOW_TILES + BotBrain.FOLLOW_SLACK,
+		"a deployed follow bot settles at its station (%d tiles)" % _bot_gap(f.world, "follow_bot"))
+
+	# Her walk is *recorded*, tile by tile, exactly as the game records one — and
+	# it has to be, because nothing can recompute where she chose to go. The bot's
+	# whole behaviour is a function of those entries.
+	var sites: Array[Vector2i] = [Vector2i(14, 6), Vector2i(14, 13), Vector2i(6, 13)]
+	var worst := 0
+	var stood_on_her := false
+	for site in sites:
+		_walk_her(f, site)
+		f.tick(12)
+		worst = maxi(worst, _bot_gap(f.world, "follow_bot"))
+		if f.world.actor_pos("follow_bot") == f.world.actor_pos(SimWorld.ACTOR_PLAYER):
+			stood_on_her = true
+		f.world.set_tile_state(site.x, site.y, "cleared")
+		f.act({ "verb": "till", "target": site, "actor": "player" })
+		_assert_quiet(_bot_gap(f.world, "follow_bot") <= BotBrain.FOLLOW_TILES + BotBrain.FOLLOW_SLACK + 1,
+			"the bot is at her elbow for the action at %s" % str(site))
+	_flush_quiet("a follow bot's position tracks the player's action sites across a recorded session")
+	_assert(worst <= BotBrain.FOLLOW_TILES + BotBrain.FOLLOW_SLACK + 1,
+		"and never falls behind by more than its station plus a step (worst: %d)" % worst)
+	_assert(not stood_on_her, "and never stands where she is standing")
+
+	# The net, on the config whose whole input is her recorded motion: strip the
+	# walks out and the bot follows a farmer who never moved.
+	var f_save = JSON.parse_string(JSON.stringify(SaveGame.capture(f.world, f.gs)))
+	var f_report := SaveGame.replay_report(f.log, f_save)
+	_assert(f_report["matched"],
+		"the whole session replays to the identical outcome, bot included %s" % f_report["divergence"])
+	var stripped := ReplayLog.new()
+	stripped.gen_seed = f.log.gen_seed
+	stripped.base_save = f.log.base_save
+	stripped.version = f.log.version
+	stripped.end_tick = f.log.end_tick
+	for e in f.log.entries:
+		if not ReplayLog.is_walk(e):
+			stripped.entries.append(e)
+	_assert(not SaveGame.replay_report(stripped, f_save)["matched"],
+		"and a log with her crossings taken out of it does not — the bot is following *her*")
+	f.done()
+
+	# Two runs of one seed are one run twice (ground rule 3: every draw is SimRng).
+	var follow_ends: Array[String] = []
+	for _i in 2:
+		var d := _bot_yard(4711)
+		BotBrain.deploy(d.world, "follow_bot", BotBrain.CONFIG_FOLLOW, BOT_HER_TILE + Vector2i(3, 1))
+		_walk_her(d, Vector2i(16, 12))
+		d.tick(60)
+		follow_ends.append(SaveGame.capture_canonical(d.world, d.gs))
+		d.done()
+	_assert(follow_ends[0] == follow_ends[1], "and the same seed walks the same bot the same way")
+
+	# --- circle: it orbits, one tile at a time --------------------------------
+	var c := _bot_yard(2024)
+	BotBrain.deploy(c.world, "circle_bot", BotBrain.CONFIG_CIRCLE, BOT_HER_TILE + Vector2i(0, 2),
+		{ "radius": 2 })
+	c.tick(40)
+	var ring_tiles := {}
+	var off_ring := 0
+	var on_her := 0
+	for _i in 60:
+		c.tick(3)
+		var at := c.world.actor_pos("circle_bot")
+		ring_tiles[at] = true
+		var her := c.world.actor_pos(SimWorld.ACTOR_PLAYER)
+		if maxi(absi(at.x - her.x), absi(at.y - her.y)) != 2:
+			off_ring += 1
+		if at == her:
+			on_her += 1
+	_assert(off_ring == 0,
+		"a circle bot holds its radius on every sample of a standing farmer (%d off)" % off_ring)
+	_assert(on_her == 0, "and is never underfoot")
+	_assert(ring_tiles.size() >= 8,
+		"and it *orbits* rather than parking: %d of the ring's 16 tiles" % ring_tiles.size())
+	# The ring is a square, and that is load-bearing: consecutive tiles have to be
+	# orthogonally adjacent or an orbit is a series of diagonal hops nobody can walk.
+	var ring := BotBrain.ring_tiles(Vector2i(10, 10), 2)
+	var adjacent := true
+	for i in ring.size():
+		var step_v: Vector2i = ring[(i + 1) % ring.size()] - ring[i]
+		if absi(step_v.x) + absi(step_v.y) != 1:
+			adjacent = false
+	_assert(ring.size() == 16 and adjacent,
+		"the orbit of radius 2 is 16 tiles and every step round it is one tile")
+
+	# It keeps orbiting *her*, not the spot she was on.
+	_walk_her(c, Vector2i(16, 10))
+	c.tick(30)
+	var her_now := c.world.actor_pos(SimWorld.ACTOR_PLAYER)
+	var bot_now := c.world.actor_pos("circle_bot")
+	_assert(maxi(absi(bot_now.x - her_now.x), absi(bot_now.y - her_now.y)) <= 3,
+		"and it comes with her when she walks off (%s vs %s)" % [str(bot_now), str(her_now)])
+	c.done()
+
+	# --- shoo: the same farm, the same bird, one number different -------------
+	#
+	# The criterion, stated the way plan §4 states it: the visit ends early
+	# **exactly when the bot's radius covers the crow's target**, and the target
+	# is worked out from the appointment book rather than observed, so the two
+	# runs differ in nothing but the radius.
+	var covered := _shoo_run(5150, 3.0)
+	var uncovered := _shoo_run(5150, 1.0)
+	_assert(covered["arrived"] and uncovered["arrived"],
+		"the day's appointment brings a crow in both runs (target %s)" % str(covered["target"]))
+	_assert(str(covered["target"]) == str(uncovered["target"]),
+		"the same crow, for the same crop, on the same tick")
+	_assert(covered["reason"] == "bot" and covered["lost"] == 0,
+		"a bot whose patch covers the target ends the visit — and the crop is still there")
+	_assert(uncovered["reason"] == "ate" and uncovered["lost"] == 1,
+		"and a bot whose patch does not, does not: that crow ate (%s)" % str(uncovered["reason"]))
+	_assert(covered["scares"] == 1 and covered["by"] == "shoo_bot",
+		"the scare is one recorded Action, and it says which machine caused it")
+	_assert(uncovered["scares"] == 0, "and the run that lost the crop recorded none")
+	_flush_quiet("every Action a shoo bot takes is in the log, marked as a brain's")
+	_assert(covered["seen"] == 1 and uncovered["seen"] == 1
+			and covered["booked"] == 0 and uncovered["booked"] == 0,
+		"T-20 holds either way: one arrival is one arrival, shooed or fed")
+	# Q-12 is a proof about **her**. A machine doing her job for her must not fill
+	# it in — `[Designer]` Q-66 asks whether that is right, and this is the safe
+	# answer until it is ruled.
+	_assert(covered["scared_counter"] == 0,
+		"a bot's scare does not count toward her capability proof (Q-12/Q-66)")
+	var by_hand := _bot_yard(77)
+	by_hand.world.spawn_actor(SimWorld.ACTOR_CROW, SpeciesDefs.CROW, Vector2i(9, 9), {})
+	by_hand.act({ "verb": "crow_scared", "actor": SimWorld.ACTOR_CROW })
+	_assert(by_hand.gs.crows_scared == 1,
+		"...while her own scare counts exactly as it always has (no `by` means her)")
+	by_hand.done()
+
+	# --- shoo: the actor with nothing to say about it -------------------------
+	#
+	# A songbird has no verbs at all (WI-8g), which means there is no Action either
+	# of them can take when a bot arrives on its tile. The honest outcome is
+	# *nothing*, and the only honest thing for the machine to do about it is stop.
+	var q := _bot_yard(8123)
+	var perch := Vector2i(14, 9)
+	BotBrain.deploy(q.world, "shoo_bot", BotBrain.CONFIG_SHOO, perch + Vector2i(0, 3),
+		{ "home_x": perch.x, "home_y": perch.y + 3, "radius": 5.0 })
+	q.world.spawn_actor(SpeciesDefs.SONGBIRD, SpeciesDefs.SONGBIRD, perch, {
+		"state": SongbirdBrain.STATE_PERCHED,
+		"fx": float(perch.x) + 0.5, "fy": float(perch.y) + 0.5,
+		"tgt_x": -1, "tgt_y": -1, "perches": 0, "perch_until": 100000, "ex": 0.0, "ey": 0.0,
+	})
+	var chased := false
+	for _i in 30:
+		q.tick(10)
+		if String(q.world.actor("shoo_bot")["extra"].get("state", "")) == BotBrain.STATE_CHASE:
+			chased = true
+	_assert(chased, "a shoo bot chases a songbird — a bird is a bird, by its class")
+	_assert(q.world.has_actor(SpeciesDefs.SONGBIRD),
+		"and achieves nothing, because a songbird has no visit to end and no Action to receive")
+	var log_had_actions := false
+	for e in q.log.entries:
+		if not ReplayLog.is_walk(e):
+			log_had_actions = true
+	_assert(not log_had_actions,
+		"nothing is written down, because nothing happened — no verb was invented for it")
+	_assert(String(q.world.actor("shoo_bot")["extra"].get("ignore", "")) == SpeciesDefs.SONGBIRD,
+		"the machine marks the bird as one it cannot budge...")
+	var home_q := Vector2i(perch.x, perch.y + 3)
+	var went_home := Vector2(q.world.actor_pos("shoo_bot") - home_q).length() <= 5.0
+	_assert(went_home and String(q.world.actor("shoo_bot")["extra"].get("state", ""))
+			!= BotBrain.STATE_CHASE,
+		"...and goes back to its patch rather than hounding it forever")
+	q.done()
+
+	# --- energy: a bot is metered like everybody else --------------------------
+	#
+	# Plan §4's third criterion. The meter is the registry's (`spend_actor_energy`),
+	# the floor is Q-11's soft one — an exhausted actor clamps at 0 and its action
+	# still resolves, because nothing in phase 1 is a wall — and the day turn
+	# refills it exactly as it refills the neighbour's.
+	var e := _bot_yard(606)
+	BotBrain.deploy(e.world, "work_bot", BotBrain.CONFIG_FOLLOW, Vector2i(20, 12))
+	_assert(e.world.energy_of("work_bot") == SimWorld.ACTOR_MAX_ENERGY,
+		"a fresh bot has a full meter of its own")
+	var till_cost := Tools.get_energy_cost("till")
+	e.world.set_tile_state(6, 12, "cleared")
+	e.world.apply_action({ "verb": "till", "target": Vector2i(6, 12), "actor": "work_bot" }, e.gs)
+	_assert(e.world.energy_of("work_bot") == SimWorld.ACTOR_MAX_ENERGY - till_cost,
+		"and spends it on the work, at the same cost her own arm charges")
+	var hers: int = e.gs.energy
+	_assert(int(e.world.actor(SimWorld.ACTOR_PLAYER).get("energy", 0)) == -1 and e.gs.energy == hers,
+		"out of its own pocket — the farmer's meter (which is also the clock) is untouched")
+	var work := 0
+	while e.world.energy_of("work_bot") > 0 and work < 200:
+		work += 1
+		e.world.set_tile_state(7, 12, "cleared")
+		e.world.apply_action({ "verb": "till", "target": Vector2i(7, 12), "actor": "work_bot" }, e.gs)
+	_assert(e.world.energy_of("work_bot") == 0 and e.world.is_exhausted("work_bot"),
+		"it runs out, like anybody else who works all day (%d actions)" % work)
+	e.world.set_tile_state(8, 12, "cleared")
+	var tired := e.world.apply_action(
+		{ "verb": "till", "target": Vector2i(8, 12), "actor": "work_bot" }, e.gs)
+	_assert(tired.get("ok", false) and e.world.get_tile(8, 12).get("state", "") == "tilled"
+			and e.world.energy_of("work_bot") == 0,
+		"and an empty tank still does the job at 0 — Q-11's soft floor, for machines too")
+	e.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
+	_assert(e.world.energy_of("work_bot") == SimWorld.ACTOR_MAX_ENERGY,
+		"the day turning refills it, exactly as it refills the hen and the neighbour")
+	e.done()
+
+	# --- the benchmark's fake actor, made real (WI-12's other half) ------------
+	#
+	# `tools/benchmark_sim.gd` has always applied its day's work as actor "bot",
+	# which nobody had registered — the gateway minted a species-less entry for it
+	# (`_ensure_actor`). There is a species called `bot` now, so the same
+	# unregistered id comes back as one; **the world it produces is identical
+	# either way**, which is the thing WI-12 needs to be true before it converts
+	# that file to deploy a real one.
+	# One run at a time, each from its own reseed: the benchmark's days roll
+	# weather off the shared stream, so interleaving two of them would compare a
+	# sunny farm against a rainy one and blame the bot.
+	var gs_a = load("res://systems/game_state.gd").new()
+	gs_a.reset()
+	SimRng.reseed(1234)
+	var bench_a := SimWorld.new()
+	bench_a.generate()
+	var applied_a := 0
+	for _day_a in 4:
+		applied_a += _benchmark_day(bench_a, gs_a, "bot")
+	var gs_b = load("res://systems/game_state.gd").new()
+	gs_b.reset()
+	SimRng.reseed(1234)
+	var bench_b := SimWorld.new()
+	bench_b.generate()
+	BotBrain.deploy(bench_b, "bot", BotBrain.CONFIG_FOLLOW, Vector2i(16, 8))
+	var applied_b := 0
+	for _day_b in 4:
+		applied_b += _benchmark_day(bench_b, gs_b, "bot")
+	_assert(applied_a == applied_b and applied_a > 0,
+		"the same day's work, applied by an unregistered worker and a real one (%d actions)"
+			% applied_a)
+	_assert(bench_a.species_of("bot") == SpeciesDefs.BOT
+			and bench_a.actor_pos("bot") == Vector2i(-1, -1),
+		"an id that names a species is registered as one, standing nowhere (`_ensure_actor`)")
+	_assert(_grid_signature(bench_a) == _grid_signature(bench_b),
+		"and the farm they leave behind is the same farm, tile for tile")
+	_assert(str(SaveGame.capture(bench_a, gs_a)["state"])
+			== str(SaveGame.capture(bench_b, gs_b)["state"]),
+		"with the same gold, the same harvests and the same day (%d)" % gs_a.day)
+	_assert(bench_b.energy_of("bot") == bench_a.energy_of("bot"),
+		"and the meter reads the same, because it was always a real meter")
+	gs_a.free()
+	gs_b.free()
+
+	# --- the net, over a working bot (plan §4's last criterion) ----------------
+	#
+	# Save mid-session, restore, keep playing with a bot on the farm — her walk
+	# recorded, the bot's chase recomputed — and check the whole thing against
+	# `SaveGame.replay_report`. It is the strongest statement the repo can make
+	# about a new actor: every Action it took is in the log with `brain: true`,
+	# the recomputation produced the same Actions at the same ticks, and the two
+	# worlds are equal down to the machine's own scratch state.
+	#
+	# **Both sides restore**, which is not an accident: `SaveGame.restore` calls
+	# `schedule_all_brains()` and wakes everybody on the next tick, so a
+	# kept-playing world compared against a restored one drifts for reasons that
+	# have nothing to do with bots (WI-8a's handoff; still true, still not to be
+	# fixed casually).
+	var live := _bot_yard(4242, true)
+	_bot_crow_ready(live)
+	var crow_at := _crow_target_for(live, 1)
+	BotBrain.deploy(live.world, "shoo_bot", BotBrain.CONFIG_SHOO, crow_at + Vector2i(0, 2),
+		{ "home_x": crow_at.x, "home_y": crow_at.y + 2, "radius": 4.0 })
+	BotBrain.deploy(live.world, "follow_bot", BotBrain.CONFIG_FOLLOW, BOT_HER_TILE + Vector2i(1, 1))
+	live.tick(30)
+	var mid_save = JSON.parse_string(JSON.stringify(SaveGame.capture(live.world, live.gs)))
+	_assert(mid_save["world"]["actors"].has("shoo_bot")
+			and mid_save["world"]["actors"]["shoo_bot"]["extra"].get("config", "")
+				== BotBrain.CONFIG_SHOO,
+		"a bot is in the save like anybody else, with its configuration in its own entry")
+	live.done()
+
+	var gs_cont2 = load("res://systems/game_state.gd").new()
+	gs_cont2.reset()
+	var w2 := SimWorld.new()
+	_assert(SaveGame.restore(mid_save, w2, gs_cont2), "the mid-session save restores")
+	SimRng.reseed(w2.gen_seed)
+	var log2 := ReplayLog.new()
+	log2.start_from_save(mid_save, w2.gen_seed)
+
+	# Her half of the continued session: a walk, recorded crossing by crossing,
+	# and the action that moves T-20's clock and brings the bird.
+	var here := w2.actor_pos(SimWorld.ACTOR_PLAYER)
+	for i in 4:
+		var to := here + Vector2i(i + 1, 0)
+		w2.set_actor_pos(SimWorld.ACTOR_PLAYER, to, "right")
+		log2.record_walk("step", "right", to, w2.clock.tick)
+		for t in w2.advance_ticks(4, gs_cont2):
+			if t["result"].get("ok", false):
+				log2.record(t["action"], t["result"], int(t["tick"]), true)
+	var till_at := Vector2i(5, 14)
+	w2.set_tile_state(till_at.x, till_at.y, "cleared")
+	var r2 := w2.apply_action({ "verb": "till", "target": till_at, "actor": "player" }, gs_cont2)
+	if r2.get("ok", false):
+		log2.record({ "verb": "till", "target": till_at, "actor": "player" }, r2, w2.clock.tick)
+	_assert(w2.has_actor(SimWorld.ACTOR_CROW), "the continued session's action brings the crow")
+	var lived2 := 0
+	while lived2 < 900 and w2.has_actor(SimWorld.ACTOR_CROW):
+		for t in w2.advance_ticks(10, gs_cont2):
+			if t["result"].get("ok", false):
+				log2.record(t["action"], t["result"], int(t["tick"]), true)
+		log2.mark_tick(w2.clock.tick)
+		lived2 += 10
+	log2.mark_tick(w2.clock.tick)
+	_assert(not w2.has_actor(SimWorld.ACTOR_CROW),
+		"the visit is over inside the continued session (%d ticks)" % lived2)
+	var bot_scares := 0
+	for entry in log2.entries:
+		if String(entry.get("verb", "")) == "crow_scared" and String(entry.get("by", "")) == "shoo_bot":
+			bot_scares += 1
+			_assert_quiet(bool(entry.get("brain", false)) and entry.has("tick"),
+				"the bot's Action is stamped with its tick and marked as a brain's")
+	_flush_quiet("the log holds the bot's own Actions, in the format the net checks")
+	_assert(bot_scares == 1, "and the bot ended the visit rather than the crow's appetite")
+	var end2 = JSON.parse_string(JSON.stringify(SaveGame.capture(w2, gs_cont2)))
+	var report2 := SaveGame.replay_report(log2, end2)
+	_assert(report2["matched"],
+		"and the continued session replays to the identical outcome %s" % report2["divergence"])
+	gs_cont2.free()

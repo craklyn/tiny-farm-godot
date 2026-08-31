@@ -61,6 +61,25 @@ const SONGBIRD := "songbird"
 # you tapped and one that is in four places at once.
 const MOLE := "mole"
 const WORM := "worm"
+# The scripted bot line (M2.5 WI-9, `design/06` — P-9's first inhabitant). **One
+# species, three configs**: follow, circle and shoo are `extra.config` on the
+# actor, not three rows here, because a product line is one machine with a
+# setting rather than three animals.
+const BOT := "bot"
+
+# --- what kind of thing a species is (M2.5 WI-9) -------------------------------
+#
+# A **class** is a fact about a species that something else wants to act on
+# without naming names. It exists because the shoo-bot's job is "chase birds",
+# and the alternative to a field here is a list of species ids inside a brain —
+# which is the hardcoded roster the whole table exists to abolish, and which a
+# new bird would silently fall out of.
+#
+# Deliberately thin: rows carry a class only when something asks a question of
+# it, so today exactly two do. A species with no class is not "unclassified", it
+# is not something any bot has been told to look for — and a shoo config aimed at
+# a class nobody carries finds nobody, which is the safe direction to fail in.
+const CLASS_BIRD := "bird"
 
 # **"world" is not a species.** `{ "actor": "world" }` is the sim acting on its own
 # behalf — the day turning, a gate opening because a proof was met — and it holds
@@ -181,6 +200,10 @@ static var ROWS: Dictionary = {
 		# `_spook_cause()` scan actually is, and WI-3 moves that scan sim-side.
 		"senses": { "flees_spook_radius": true, "flees_scarecrow": true },
 		"persistent": false,
+		# What a shoo-bot is looking for (M2.5 WI-9). The bird class is read off
+		# this field rather than off a list of species names in the bot's brain,
+		# which is what makes "chase birds" survive the next bird.
+		"class": CLASS_BIRD,
 	},
 
 	# The first machine (design/03, M2.5 WI-10). **"A sprinkler waters; it does
@@ -379,6 +402,10 @@ static var ROWS: Dictionary = {
 		# what makes the zero-verb claim checkable — its whole visit is recomputed
 		# and compared by WI-5's net, with no Actions in it to compare.
 		"persistent": true,
+		# A bird, and therefore something a shoo-bot chases (M2.5 WI-9) — which is
+		# the second half of the zero-verb claim: the bot arrives, and there is no
+		# Action either of them can take about it. See `bot_brain.gd`'s `_reached`.
+		"class": CLASS_BIRD,
 	},
 
 	# --- the last two of tier 1 (M2.5 WI-8d/8e) -------------------------------
@@ -456,6 +483,66 @@ static var ROWS: Dictionary = {
 		# `[Designer]` Q-65 asks whether it should be answerable at all.
 		"stompable": true,
 	},
+
+	# --- the bot line, v1 (M2.5 WI-9, `design/06` §"The scripted line") -------
+	#
+	# **P-9 made real, and this row is the whole of the claim**: "any entity may
+	# carry the full player verb set (S-3 guarantees the sim doesn't care who
+	# acts)". So its verbs are `PLAYER_VERBS` — **the same array her own row
+	# names**, not a list written out again beside it, so a verb she gains is a
+	# verb it gains and the two cannot drift apart. Ground rule 1's other
+	# direction is what that buys: a bot gets no verb the player lacks, and there
+	# is nothing here to keep in step because there is nothing here to differ.
+	# (`test_bots` asserts the two rows hold the *same object*, which is the only
+	# form of that claim a future edit cannot quietly break.)
+	#
+	# **One species, three configs** (plan §4: follow, circle, shoo). Which one a
+	# bot is, is `extra.config` on the actor — the same registry scratch every
+	# other brain keeps its state in, so a config is saved, replayed and compared
+	# like anything else, and re-configuring a bot is writing one string rather
+	# than despawning a rabbit and spawning a kangaroo. Three species rows would
+	# have said these are three kinds of thing; they are one machine with a dial,
+	# which is what a *product line* means and what phase 4 replaces the dial of
+	# (P-8: a learned policy picks options; these three are the options, written
+	# by hand).
+	#
+	# **It is an ordinary actor in every other respect.** Ground movement, its own
+	# `actor_energy` meter under the same rules and the same Q-11 soft floor as
+	# the neighbour's (`SimWorld.spend_actor_energy` — a machine that worked for
+	# free would be the first actor in the game exempt from the meter every other
+	# actor pays), refilled by the day turn like everybody else.
+	#
+	# **Nothing acquires one.** Q-56 is ruled: the debut waits until at least M3,
+	# so the first automation the player meets is the sprinkler — and the shoo
+	# config is the candidate when it comes. A bot exists only where
+	# `BotBrain.deploy` puts one, which is the tests. It has no acquisition, no
+	# recipe, no shop entry and no spawn in any live farm.
+	BOT: {
+		"name": "Bot",
+		"brain": "bot_line",
+		# P-9 / ground rule 1. Shared, not copied — see above.
+		"verbs": PLAYER_VERBS,
+		# 48 px/s: her own pace exactly, which is the honest speed for a machine
+		# whose first job is to keep up with her and whose second is to not
+		# outrun her. A slower bot could never close a gap she opened; a faster
+		# one would arrive at the crow before she could decide to. [Playtest].
+		"speed": 0.3,
+		"movement": { "mode": GROUND, "body_len": 1, "tile_exclusive": false },
+		# **It notices nothing, and the omission is the design.** What a shoo-bot
+		# watches for is a *configuration* (`extra.quarry`, a class), not a
+		# species fact — two bots off the same line differ by their settings and
+		# by nothing else. The one sense worth considering is `spook_radius`: give
+		# this row one and grazers would flee a patrolling bot for free, which is
+		# `[Designer]` Q-63's other half ("what does chasing something
+		# accomplish") and is not this work item's to rule.
+		"senses": {},
+		# A machine on the farm is part of a snapshot of the farm — the sprinkler's
+		# standing, and the hen's, rather than the crow's.
+		"persistent": true,
+		# **Not stompable**, and not by omission: a clear-class tap answers small
+		# crawling pests, and a boot that could delete the player's own machine is
+		# a different design (and a support ticket).
+	},
 }
 
 
@@ -496,6 +583,27 @@ static func senses_of(species: String) -> Dictionary:
 
 static func brain_of(species: String) -> String:
 	return String(row(species).get("brain", ""))
+
+
+# What kind of thing this is, for anything that acts on a class rather than on a
+# name (M2.5 WI-9: the shoo-bot's quarry). "" for every row that nothing has had
+# a reason to classify, which is most of them — see CLASS_BIRD above.
+static func class_of(species: String) -> String:
+	return String(row(species).get("class", ""))
+
+
+# Every species of a class, sorted. Sorted because the answer feeds decisions —
+# a bot picking which bird to chase — and "whichever the table listed first" is
+# the iteration-order dependency the registry block forbids.
+static func species_of_class(cls: String) -> Array[String]:
+	var out: Array[String] = []
+	if cls == "":
+		return out
+	for id in ROWS.keys():
+		if class_of(String(id)) == cls:
+			out.append(String(id))
+	out.sort()
+	return out
 
 
 # Does this species have this verb at all? The sim does not gate on it yet —

@@ -835,6 +835,24 @@ func actors_of_species(species: String) -> Array[String]:
 	return out
 
 
+# Everybody of a *class* — birds, today (M2.5 WI-9). The registry's answer to
+# "what kind of things are in this world", for a bot that was told to chase a
+# class rather than a list of species names (`SpeciesDefs.class_of`).
+#
+# **Sorted**, for `spook_source_near`'s reason two functions down: the answer
+# feeds a decision, and a bot that picked "whichever the registry happened to
+# list first" would chase a different bird in a replay than it did live.
+func actors_of_class(cls: String) -> Array[String]:
+	var out: Array[String] = []
+	if cls == "":
+		return out
+	for id in actors:
+		if SpeciesDefs.class_of(String(actors[id].get("species", ""))) == cls:
+			out.append(String(id))
+	out.sort()
+	return out
+
+
 # --- who frightens whom: finding F-7b, alive at last (M2.5 WI-8c) -------------
 #
 # **The scan the crow was written to do and never could.** `entities/crow.gd` used
@@ -1307,10 +1325,29 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			# (WI-4/WI-6) — but the report is an Action through the one gateway, so
 			# it is recorded, and a replay ends the visit at the same point in the
 			# stream that the session did.
+			#
+			# **Who caused it is now part of the report** (M2.5 WI-9). `by` is the
+			# actor that did the frightening, and **absent means the player** —
+			# which is every report the game has ever written, because
+			# `entities/crow.gd` names nobody and never needed to. A shoo-bot names
+			# itself, and the difference is one line: `gs.crows_scared` is the Q-12
+			# *capability proof*, the count of times **she** walked a bird off her
+			# farm, and a machine doing her job for her is the one thing that must
+			# not fill it in. Whether that is right is `[Designer]` Q-66 — the
+			# delegation question this whole game is about, arriving early and in
+			# miniature — and the safe default is the one that cannot silently
+			# complete her proof while she watches.
 			if gs == null: return _fail("no_state")
-			gs.crows_scared += 1
-			Brains.flee(self, String(action.get("actor", "")), "player")
-			return { "ok": true }
+			var by := String(action.get("by", ACTOR_PLAYER))
+			var by_player := _is_player(by)
+			if by_player:
+				gs.crows_scared += 1
+			# The *kind* of cause, not the id: the reason string is what a renderer
+			# matches on to pick a noise (`entities/crow.gd:_announce_departure`),
+			# and it wants "a person did this" / "a machine did this", not a
+			# registry key.
+			Brains.flee(self, String(action.get("actor", "")), "player" if by_player else "bot")
+			return { "ok": true, "by": by }
 
 		# -- energy-costed tile verbs --
 		"clear_weed", "clear_log", "clear_rock", "clear_tree", "till", "plant", "water", "harvest":

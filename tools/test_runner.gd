@@ -74,6 +74,7 @@ func _run_scenarios() -> void:
 	await _scenario_s_a_raid_is_drawn()
 	await _scenario_t_the_bestiary_is_drawn()
 	await _scenario_u_under_and_over()
+	await _scenario_v_the_bot_is_drawn()
 
 func _wait_until(pred: Callable, max_frames: int) -> bool:
 	for i in max_frames:
@@ -1507,6 +1508,86 @@ func _scenario_u_under_and_over() -> void:
 		yard.sim.despawn_actor(String(id))
 	yard.sync_actors()
 	_assert(not yard.actor_nodes.has(SpeciesDefs.MOLE) and not yard.actor_nodes.has(SpeciesDefs.WORM),
+		"and every sprite goes when its actor does")
+
+	yard.queue_free()
+	await get_tree().process_frame
+
+
+func _scenario_v_the_bot_is_drawn() -> void:
+	# The bot's renderer, exercised the only way it can be (M2.5 WI-9).
+	#
+	# Scenarios S, T and U's treatment, for their reason: nothing in the live game
+	# deploys a bot — Q-56 is ruled and the debut waits for at least M3 — so this
+	# is a **detached** farm with an actor put into the registry by hand. What is
+	# being checked is that a bot is a species row, a brain and one line of
+	# `ACTOR_RENDERERS`, like everybody else, and that the line it needed was the
+	# *player's own draw path*: `bot.png` is `characters.png`'s layout on purpose
+	# (WI-6's handoff), so the sprite is 48 px cells, four rows of facing, frame 0
+	# the standing idle — and none of that is new code.
+	print("\n--- Scenario V: the machine gets drawn, out of the farmer's own sheet ---")
+
+	var FarmScript = load("res://world/farm.gd")
+	var yard = FarmScript.new()
+	yard.name = "Depot"
+	yard.mute_feedback = true
+	add_child(yard)
+	await get_tree().process_frame
+
+	var at := Vector2i(8, 9)
+	for ty in range(7, 13):
+		for tx in range(6, 20):
+			yard.sim.set_tile_state(tx, ty, "cleared")
+			yard.sim.set_object(tx, ty, "")
+	# Two configs of one machine: one line of ACTOR_RENDERERS draws both, because
+	# a config is data on the actor rather than a species of its own.
+	BotBrain.deploy(yard.sim, "follow_bot", BotBrain.CONFIG_FOLLOW, at)
+	BotBrain.deploy(yard.sim, "shoo_bot", BotBrain.CONFIG_SHOO, at + Vector2i(4, 0))
+	yard.sync_actors()
+
+	var bot = yard.actor_nodes.get("follow_bot", null)
+	var other = yard.actor_nodes.get("shoo_bot", null)
+	_assert(bot != null and other != null,
+		"deploying two bots gives two sprites, with no renderer change")
+	if bot == null or other == null:
+		yard.queue_free()
+		await get_tree().process_frame
+		return
+
+	_assert(bot.get_script() == other.get_script(),
+		"and both are the same script, because they are the same machine on a different setting")
+	_assert(bot.position == Vector2(at.x * 16, at.y * 16), "standing on its own tile")
+	_assert(bot.cell_region() == Rect2(0, 0, 48, 48),
+		"drawn from bot.png's 48 px cells, frame 0 of the down row — the standing idle")
+	_assert(is_equal_approx(bot.speed_px, SpeciesDefs.speed_of(SpeciesDefs.BOT) * 16.0 * 10.0),
+		"its sprite walks at the speed its species row says, not at a number this file keeps")
+
+	# The sprite follows sim truth, exactly as the hen's does: the sim puts an
+	# actor on a tile and the renderer walks the sprite between tiles.
+	var was: Vector2 = bot.position
+	yard.sim.set_actor_pos("follow_bot", at + Vector2i(3, 0), "right")
+	for i in 40:
+		bot._process(1.0 / 60.0)
+	_assert(bot.position.x > was.x, "it walks toward wherever the sim has put it")
+	_assert(bot.cell_region().position.y == 3 * 48,
+		"facing the way the sim says it is facing (the right-hand row of the sheet)")
+	# ...and when it gets there it stops walking: frame 0 is the standing idle, so
+	# a bot that arrived must not be marching in place (the hen's rule).
+	var frames := 0
+	while frames < 400 and not bot.position.is_equal_approx(bot.sim_position()):
+		bot._process(1.0 / 60.0)
+		frames += 1
+	yard.sim.set_actor_pos("follow_bot", at + Vector2i(3, 0), "up")
+	bot._process(1.0 / 60.0)
+	_assert(bot.cell_region() == Rect2(0, 48, 48, 48),
+		"and stands still on frame 0 of the row it now faces once it arrives (%d frames)" % frames)
+
+	# Retired, recalled, or never deployed at all — the sim dropping the actor is
+	# the only way a bot ends, and the sprite goes with it.
+	for id in ["follow_bot", "shoo_bot"]:
+		yard.sim.despawn_actor(String(id))
+	yard.sync_actors()
+	_assert(not yard.actor_nodes.has("follow_bot") and not yard.actor_nodes.has("shoo_bot"),
 		"and every sprite goes when its actor does")
 
 	yard.queue_free()

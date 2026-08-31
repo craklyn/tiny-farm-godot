@@ -95,6 +95,10 @@ const ACTOR_RENDERERS := {
 	# whose sprite is not a sprite (M2.5 WI-8d/8e).
 	SpeciesDefs.MOLE: "res://entities/mole.gd",
 	SpeciesDefs.WORM: "res://entities/worm.gd",
+	# One species, three configs — so one line, whichever setting a bot is on
+	# (M2.5 WI-9). It draws from `bot.png`, which is `characters.png`'s layout on
+	# purpose: a bot reuses the player's draw path verbatim.
+	SpeciesDefs.BOT: "res://entities/bot.gd",
 }
 
 var actors_node: Node2D = null            # the sprites' parent, named "Entities"

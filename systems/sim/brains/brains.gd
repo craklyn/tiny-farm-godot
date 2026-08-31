@@ -43,6 +43,12 @@ static func _table() -> Dictionary:
 			# for the second it is above ground, and one that gets in its own way.
 			"mole_tunnel": MoleBrain.new(),
 			"worm_hunt": WormBrain.new(),
+			# **One brain, three configs** (M2.5 WI-9): follow, circle and shoo
+			# are `extra.config` on the actor, not three species. The opposite
+			# arrangement to the grazers' — they are two species sharing one
+			# brain, this is one species with a dial — and between them they are
+			# the two ways this table stays small.
+			"bot_line": BotBrain.new(),
 		}
 	return _by_id
 

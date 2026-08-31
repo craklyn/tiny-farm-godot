@@ -1746,3 +1746,155 @@ per tile (6 px/s) means it thinks rarely, but every `Movement.step` costs a body
 `can_enter` is O(body). Neither is on the fast-forward path today, and if WI-12 ever benches
 a farm *with* critters on it, the mole's scan is the number to watch and the honest fix is a
 sown-tile index rather than a smaller radius.
+
+### WI-9 — Bot line v1 ✅ landed 2026-08-31
+
+**One species, one brain, three configs — and the config is data on the actor.** The plan
+calls this a *product line*, and that word decided the shape: `SpeciesDefs.BOT` is one row,
+`bot_brain.gd` is one brain, and whether a bot follows, circles or shoos is
+`extra.config` — the same registry scratch every other brain keeps its state in, so a
+config is saved, replayed and compared like anything else, and re-setting a bot is writing
+one string. Three species rows would have said in the one file a reader checks first that a
+farm with two settings of one machine has two kinds of thing on it. (The grazers are the
+same economy from the other side: two species sharing one brain. Between them they are the
+two ways the table stays small.) It is also the shape P-8 replaces: a learned policy picks
+**options** at ~1 Hz over deterministic controllers, and follow / circle / shoo are options,
+written by hand — the first learned bot swaps `step()`'s dispatch for a policy and keeps
+everything underneath it.
+
+**P-9's first inhabitant, asserted rather than described.** The row's `verbs` field *is*
+`PLAYER_VERBS` — the same array the player's own row names — so a verb she gains is a verb
+it gains and there is nothing to keep in step. `test_bots` asserts the two rows hold the
+**same object**, which is the only form of that claim a future edit cannot quietly break.
+Ground rule 1's other direction comes free: there is no verb here she lacks, because there
+is no verb list here at all. It walks on ground, is `persistent`, is not `stompable` (a
+boot that could delete the player's machine is a different design), and spends its own
+`actor_energy` under Q-11's soft floor — tested to exhaustion, at 0, and refilled by the day
+turn beside the hen and the neighbour.
+
+**Nothing deploys one.** Q-56 is ruled (hold until at least M3; the sprinkler is the first
+automation she meets, the shoo-bot is the candidate after it), so `BotBrain.deploy` is the
+only way a bot enters a world and only the tests call it. A generated farm has none, the
+visitors' table has no row for one, and there is no acquisition, recipe or shop entry.
+
+Suites: unit **1364 PASSED / 0 FAILED** (1309 after WI-8d/8e, +55 from `test_bots`),
+integration **216 / 0** (207 before, +9 from scenario V), robot session **PASSED**
+(23 entries, 850 ticks, 7 free-walk events, recomputation match), `verify_replay` **MATCH**
+on the real v1 human session, demo replay regenerates with a **clean diff**, visual
+regression **passes unchanged — the re-baseline allowance is still UNSPENT**. Benchmark,
+three runs: **673k / 705k / 696k×**, inside the 614–736k band this machine has shown since
+WI-4. Purity greps clean: no `Time.`/delta/`_process(` under `systems/sim/`, no Node,
+autoload, `Input` or `Pathfinding` in the brain, and zero `SimRng` under `entities/` (the
+renderer's one die roll is `CosmeticRng`, as the flap of a crow's wing is).
+
+**Deviations and decisions taken inside the WI:**
+
+1. **A shoo ends a crow's visit with the crow's own report, and the report grew a `by`.**
+   The plan says "the visit ends the way a player scare does (crow's existing
+   `crow_scared` semantics — reuse)", and reuse means *the same Action*: the bot returns
+   `{verb: "crow_scared", actor: <the bird>, by: <the bot>}`, the gateway calls
+   `Brains.flee` exactly as it does when she walks over, and the bird leaves with feathers
+   and a squawk. The bot gains no verb by doing this — `crow_scared` is a **report, not a
+   capability** (`SpeciesDefs.ENTITY_VERBS`), and it belongs to the bird; what the bot
+   causes is a bird saying a thing the bird could always say. `by` is new and **absent
+   means the player**, which is every report the game has ever written
+   (`entities/crow.gd` names nobody), so every existing log and every existing path is
+   byte-identical. The one thing it changes is that `gs.crows_scared` — Q-12's proof that
+   **she** can clear a farm — is not filled in by a machine. **Filed as Q-66**, because
+   "when your machine does your job, is it still your achievement" is the whole game's
+   question arriving early and in miniature, and it is one `if` either way. The safe
+   direction is the one that cannot silently complete her phase-1 gate while she watches.
+2. **The bird class is a field on the species row** (`SpeciesDefs.class_of`,
+   `SimWorld.actors_of_class`), and the shoo config's quarry is a *class string in
+   `extra`*. The plan explicitly forbade a hardcoded name list, and the alternative that
+   needed no new field — "a bird is anything whose movement mode is `fly`" — is a
+   different claim that happens to be true today and would silently recruit the first
+   drone. Deliberately thin: a row carries a class only when something asks a question of
+   it, so exactly two do (crow, songbird), everything else answers `""`, and a config
+   aimed at a class nobody carries finds nobody — the safe direction to fail in. It also
+   makes Q-63's other half a *configuration* rather than a code change: `quarry: "mammal"`
+   plus a class on the rabbit's row is a bot that chases rabbits, the day the designer
+   rules that a fright should end a grazer's visit.
+3. **The songbird is chased and nothing happens, on purpose.** It has no verbs, no flee
+   and no visit to end, so there is no Action either party can take when a bot arrives on
+   its tile — and inventing one (a despawn, a flee state, a new verb) would be exactly the
+   special case WI-8g exists to prove the system does not need. So the honest outcome is
+   *nothing*, and the only honest thing the machine may do about it is stop: it marks that
+   id as one it cannot budge, leaves it alone for `GIVE_UP_SECONDS` (20 s, per target and
+   time-boxed rather than permanent, because ids are reused and a bird behind a fence may
+   not be in twenty seconds) and goes home. The test asserts all three halves: it chases,
+   the bird is still there, **and the replay log has no entry at all**.
+4. **A bot has no `spook_radius`, and the omission is the design.** Giving the row one
+   would make every grazer flee a patrolling bot for free — which is a real design (and a
+   tempting one, since it would give the shoo config something to do about mammals) but it
+   is `[Designer]` Q-63's other half, and Q-63's own recommendation is that "what does
+   chasing something accomplish" wants one answer for the rabbit and the bot together.
+   Referenced, not ruled. Noted in the row, in `design/06` and in Q-66's text.
+5. **`_set_out` — plan and take the first step in the same think.** Every other brain in
+   the game plans on one think and steps on the next, which costs a beat and costs nothing
+   else, because their goals do not move. A bot's goal is a **person**: by the time the
+   next think came round she had walked on, the station had gone stale, and it re-planned
+   instead of stepping. Written that way first, and the result was a machine that pointed
+   at her very accurately from a great distance. It is the one place a bot's brain differs
+   structurally from a critter's, and it is a consequence of following something that
+   moves rather than a shortcut.
+6. **A circle bot's phase is read off its position, not remembered.** The first version
+   stored an orbit index in `extra`; a bot that was displaced (just deployed, or she moved
+   and took the ring with her) then marched across her to a tile a quarter of the way
+   round. Deriving the index from the tile it is standing on — and joining at the *nearest*
+   ring tile when it is off the ring — makes the two incapable of disagreeing, removes a
+   field from the save, and is what makes the orbit a **walk**: the ring is a square, so
+   consecutive tiles are orthogonally adjacent and each step of an orbit is one tile.
+   (`test_bots` asserts the ring's adjacency directly, because that property is the reason
+   it is a square rather than the diamond every other radius in this codebase uses.)
+7. **A follow bot is the most expensive brain in the game, and that is per decision.** It
+   re-plans a route each tile it steps while she is moving (a short A*, since the station
+   is two tiles from her), and costs one poll every 0.4 s when it is standing at its
+   station. That is ground rule 8 honoured rather than dodged — there is no per-tick work
+   and no per-map work anywhere in the file — but it is the first brain whose cost is
+   driven by *another actor's* motion, which is worth knowing before a fleet of eight.
+8. **The benchmark file was not touched** (it is WI-12's), and the coordination is a test
+   instead. `tools/benchmark_sim.gd` applies its day's work as actor `"bot"`, which nobody
+   registered; there is a species called `bot` now, so `_ensure_actor` mints it as one
+   rather than as the species-less entry it used to. `test_bots` runs the benchmark's exact
+   verb sequence for four days twice — once with the unregistered id, once with a real
+   deployed bot — and asserts the two farms are identical tile for tile, with the same
+   gold, the same harvests, the same day and the same meter reading. That is the fact WI-12
+   needs before it converts the file. *(Trap it cost half an hour to find: the two runs
+   must be **sequential, each from its own reseed**. Interleaving them makes each day's
+   weather roll come off the shared stream in the other run's turn, and a rainy day waters
+   a farm the sunny one did not — a difference that looks exactly like the bot's fault.)*
+9. **One renderer, both configs** (`entities/bot.gd`, one line of `ACTOR_RENDERERS`) — and
+   it is the *player's* draw path, because WI-6's handoff generated `bot.png` at 192×192,
+   4×4 of 48 px in `characters.png`'s exact layout so that it could be. Rows are down / up
+   / left / right, frame 0 is the standing idle, and the position comes from
+   `Movement.float_pos` (the sprinkler's line, which falls back to the registry tile) while
+   the *facing* comes from the registry, where `Movement.place_on_tile` writes it from the
+   direction of travel — so the sprite cannot face a way the actor is not going. Integration
+   **scenario V** is the check, in a detached farm like scenarios S, T and U: no test code
+   knows what a bot is beyond the config strings it deploys with.
+10. **A `deploy()` static rather than hand-built `extra` in the tests.** The critter tests
+    build their actor's scratch by hand (`_release_grazer` and friends); a bot's scratch is
+    a *configuration* with defaults, and a test writing it out by hand would be a second
+    copy of what a config means. It is also the one place a debut has to call, which keeps
+    "nothing acquires one" a fact about one function.
+
+**For WI-12 (the benchmark).** The conversion is yours and it is now unblocked from both
+ends: the species exists, `BotBrain.deploy(world, "bot", BotBrain.CONFIG_FOLLOW, tile)` is
+the one call, and `test_bots`'s benchmark block is the before/after equivalence proof
+already written down (four days of the benchmark's own verb sequence, unregistered vs.
+registered, identical grids and identical state) — so if your converted file's numbers move,
+it is travel and not registration. Three things worth measuring, in this order: **(i)** the
+plan's own criterion is travel modelled *and* ≥ 100,000× realtime, and a walking bot costs
+one A* per tile plus one `SimClock` event per step, so the interesting ratio is
+actions-per-tick-of-travel rather than actions/sec; **(ii)** the 1-vs-8-actor scaling run
+wants the *cheapest* eight actors it can get, and eight `follow` bots are not that — a
+follow bot re-plans while its owner moves (deviation 7), so it measures the follower rather
+than the registry; eight bots on **circle** around a standing farmer is the honest
+"per-tick cost scales with actors" shape, and eight `shoo` bots on an empty farm is the
+honest floor (one registry pass every 0.4 s each, no routes at all). **(iii)** If you bench
+a farm with critters on it, WI-8d/8e's note still stands: the mole's whole-map scan is the
+number to watch. One caution: nothing in the fast-forward path advances the clock today
+(`advance_day` schedules brains but does not tick), so the moment the benchmark models
+travel it is also the first time brains run inside it — the day loop will start paying for
+the hen and every bot on the farm, and that is a real cost rather than a regression.

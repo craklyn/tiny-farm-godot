@@ -785,6 +785,14 @@ species table) and WI-3 (one brain interface, plus the crow/chicken/neighbour re
 and the clock pump) are in; per-WI detail and deviations are in `M2_5_PLAN.md` §9. That
 was the serial critical path, so WI-4..WI-7 and the bestiary can now fan out in parallel.
 
+**Status 2026-08-31 (later the same day): everything but the benchmark is in.** WI-4
+(movement engine), WI-5 (replay v2 + the dual-record net), WI-6 (renderer unification),
+WI-7 (scent), WI-8a–8g (the tier-1 bestiary), WI-9 (the bot line), WI-10 (sprinkler + pea)
+and WI-11 (the art bench) have landed; **WI-12** (benchmark v2 with travel modelled, and
+the re-baseline) is the last one open, and it is what the exit gate's throughput clause
+waits on. Nothing in the bestiary or the bot line spawns in a live game: every `per_day` is
+0 and the bot's debut is Q-56's, which keeps the shipping build exactly as it was.
+
 **Exit gate:** both suites green and grown; robot session replay-verified through the
 new clock; the attract loop visibly renders the neighbour (the bug that motivated the
 refactor, fixed as a test); benchmark ≥100k× realtime *with travel modeled*; every

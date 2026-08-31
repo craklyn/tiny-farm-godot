@@ -749,6 +749,28 @@ trace actually says, because several of these looked like bugs and were not.*
   first, since it decides whether (b) is even the right question, and leave the length as
   spectacle until something in phase 2 wants to read it.* Nothing is blocked: no worm spawns
   in the live game.
+- **Q-66** **When your machine does your job, is it still your achievement?** Raised by M2.5
+  WI-9 — and it is the whole game's question, arriving early and in miniature. Q-12's
+  phase-1 proof counts crows *she* frightened off (`GameState.crows_scared`, three of them);
+  a shoo-bot ends a crow's visit by exactly the same event, through exactly the same verb.
+  **Built the conservative way:** the `crow_scared` report now carries `by`, absent means her
+  (which is every report the game has ever written), and a scare a machine caused ends the
+  visit, squawks, saves the crop and **does not count** toward her proof. Two readings.
+  (a) *as built* — a proof is a proof about **her**, and a gate that a machine can open on
+  her behalf is not a proof of anything; it also means the phase-1 gate cannot be
+  accidentally completed by leaving a bot on patrol overnight. (b) *the delegation reading* —
+  by phase 4 the entire game is "the farm runs without you", the player built and placed the
+  bot, and refusing her the credit for a machine she deployed is the game disagreeing with
+  its own thesis; a middle version counts it at a discount, or counts it only for proofs she
+  has already demonstrated once by hand. This is the same question as Q-63's other half
+  ("what does chasing something *accomplish*"), and the answer wants to be one answer:
+  whether a fright ends a visit, and whose fright counts. *Recommendation: leave it as built
+  through M3 — the safe direction, since the debut (Q-56) is a shoo-bot and a bot that
+  silently finishes her proof while she watches is the one outcome that cannot be undone —
+  and rule it properly when the phase-4 delegation loop is designed, where "what the fleet
+  earns for you" is a system rather than one counter.* Nothing is blocked: no bot is
+  deployed in the live game. Engineering note: one `if` in `SimWorld._apply`'s `crow_scared`
+  branch either way.
 
 ## Before M3 — phase 2 design
 

@@ -148,7 +148,11 @@ func _report_scare() -> void:
 # mouthful) rather than one this node caused. Each has always had its own noise.
 func _announce_departure(reason: String) -> void:
 	match reason:
-		"scarecrow", "player":
+		# "bot": a shoo-bot walked it off (M2.5 WI-9). The same noise as her own
+		# fright, because it is the same fright — what differs is who caused it,
+		# and that difference is the sim's business (Q-12's proof) rather than the
+		# feathers'.
+		"scarecrow", "player", "bot":
 			_puff("squawk")
 		"perched":
 			# T-2's mercy crow: it leaves empty-beaked, and the sim never heard

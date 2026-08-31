@@ -48,6 +48,33 @@ Bodies: gardening tools → weapons (enabling tower retirement, D-7/P-4 gate).
    teaching overfitting honestly (D-4's spirit). Feasibility probe at the D-2 spike;
    full design at M5.
 
+## The scripted line, v1 (built: M2.5 WI-9, 2026-08-31)
+The bot chassis exists before any of the above does, because P-9 ("any entity may carry
+the full player verb set") needed an inhabitant and the entity system needed its last
+consumer. **One species (`bot`), one brain, three configs** — the config is
+`extra.config` on the actor, not a species each, because a product line is one machine
+with a setting:
+
+- **follow** — trails the player at two tiles, reads her live registry position, re-plans
+  as she walks, never stands on her tile.
+- **circle** — orbits her at a fixed radius, one tile at a time, and comes with her.
+- **shoo** — patrols a radius around a home tile, chases any **bird-class** actor inside
+  it (a class on the species row, not a list of names in the brain), ends a crow's visit
+  with the crow's own `crow_scared` report, and comes home when the patch is clear.
+
+It carries `PLAYER_VERBS` itself — the same array her own row names — spends its own
+`actor_energy` under the same rules and the same Q-11 soft floor as every other actor, and
+is saved, replayed and compared like anybody else. These are the hand-written version of
+P-8's **options**: the first learned bot replaces the dispatch on `extra.config` with a
+policy and keeps everything underneath it.
+
+Two things it deliberately does not do. It has **no `spook_radius`** — giving it one would
+make it shoo mammals for free, and whether a fright should end a grazer's visit at all is
+`[Designer]` Q-63. And a bot's scare **does not count** toward her Q-12 capability proof
+(`by` on the report; `[Designer]` Q-66 — the delegation question this chapter is
+ultimately about). Nothing deploys one: Q-56 is ruled, and the debut waits for at least M3
+with the shoo config as the candidate.
+
 ## Constraints from decisions
 Bots emit player verbs only (S-3); observations are egocentric grid patches
 (ARCHITECTURE); hierarchical options control (P-8); parameter sharing default with
