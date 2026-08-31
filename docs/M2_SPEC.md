@@ -35,7 +35,9 @@ step — strangler-fig migration, never a big-bang rewrite.
    movement/timers are presentation-side decision *processes* whose chosen Actions are
    what gets recorded. Fixed ticks return when something genuinely needs tick truth:
    per-tick bot control or tick-stamped observations (phase-4 prep, P-8's tactical
-   tier). Revisit at the D-2 spike.
+   tier). Revisit at the D-2 spike. *Revisited early, 2026-08-31: the return was
+   triggered by M2.5 (Q-53 / D-9 settled) — sim-owned NPC movement needed tick truth
+   before the D-2 spike did. See `M2_5_PLAN.md` §3.*
 3. ✅ **Farm truth extraction** — `systems/sim/sim_world.gd` (RefCounted, no
    Node/autoload/render deps); `world/farm.gd` is now renderer + facade with an
    unchanged public API. GameState remains the player/economy state store, mutated

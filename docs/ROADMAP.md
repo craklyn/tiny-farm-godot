@@ -776,8 +776,9 @@ one brain interface, per-species movement, replay v2 with a dual-record migratio
 plus a tier-1 bestiary (ant scout & column, rabbit, mole, worm, kangaroo, songbird),
 a scripted bot line (follow / circle / shoo), sprinkler, and the pea crop.*
 
-**Blocked on Q-53** (ratify the D-9 + SimClock + replay-v2 decision package). Taste
-flags filed as Q-54 (fire), Q-55 (pea ammo economy & towers), Q-56 (bot debut).
+**Q-53 ratified 2026-08-31** (D-9 settled + SimClock returns + replay v2 — see
+`DECISION_LOG.md` D-9); execution unblocked. Q-54 (fire) parked, Q-55 (pea economy)
+deferred to M3 with the pea crop shipping now, Q-56 holds the bot debut until ≥M3.
 
 **Exit gate:** both suites green and grown; robot session replay-verified through the
 new clock; the attract loop visibly renders the neighbour (the bug that motivated the

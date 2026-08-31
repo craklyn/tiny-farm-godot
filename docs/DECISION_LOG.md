@@ -512,6 +512,21 @@ would additionally need per-verb actor poses, which is where the art cost starts
 Raised 2026-08-28 from the designer's question: *is the problem just that our action
 replay doesn't record movement taps as actions?*
 
+**✅ Settled 2026-08-31 (Q-53, ratifying `M2_5_PLAN.md` §3).** Actor position becomes
+sim state for every registered actor. Movement splits by who moves: for sim-brained
+actors it is a **tick-stepped sim process, recomputed on replay and never recorded**
+(the mover's deterministic code is the reconstruction rule); the player's free walking
+is recorded as tick-stamped direction-change events, since human input is the one thing
+no rule can recompute. Alongside it, the M2_SPEC SimClock deferral ends: a fixed-dt
+logical tick (10 Hz, `[Playtest]`) replaces wall-clock for NPC motion, which converts
+the last nondeterminism source (real-time races between NPC progress and player input)
+into recordable timestamps. Q-38's semantics are untouched — daylight still advances by
+player work. Replay format v2 (tick-stamped, player-only) migrates behind a
+dual-record-and-assert net; v1 logs stay verifiable under their Q-41 build stamps. The
+earlier trigger ("before the D-2 spike") is satisfied ahead of schedule because M3's
+trail pests need sim-owned movement regardless — the phase-2 need arrived before the
+phase-4 one, exactly as the entity brainstorm predicted.
+
 **Current state, and it is deliberate.** `sim_world.gd` contains no actor positions at
 all — not the player's, not the crow's, not the chicken's. The sim owns tiles and objects;
 where anyone is *standing* is presentation state. M2 chose this explicitly and recorded it

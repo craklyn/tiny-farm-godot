@@ -571,7 +571,10 @@ trace actually says, because several of these looked like bugs and were not.*
 
 ## M2.5 — the actor system (filed 2026-08-31, from the entity brainstorm)
 
-- **Q-53 (Ruling — gates M2.5 execution)** **Ratify the actor-system decision package**
+- **Q-53** ~~Ratify the actor-system decision package?~~ — ✅ **ruled 2026-08-31: ratified
+  as drafted.** Recorded in `DECISION_LOG.md` D-9 (settled) and `M2_SPEC.md`'s SimClock
+  note; M2.5 execution unblocked. Original item:
+  **Ratify the actor-system decision package**
   drafted in `M2_5_PLAN.md` §3: (1) D-9 settles — actor positions become sim state;
   NPC movement is a tick-stepped sim process, recomputed on replay, never recorded;
   (2) SimClock returns — a fixed-dt logical tick (proposed 10 Hz, `[Playtest]`)
@@ -581,12 +584,16 @@ trace actually says, because several of these looked like bugs and were not.*
   dual-record-and-assert net before anything is dropped. *Recommendation: ratify as
   drafted — the package is the session's own convergence, and every piece is guarded
   by a migration net or a `[Playtest]` dial.* No replay work starts before this ruling.
-- **Q-54 (Ruling)** **Fire as an entity.** Spreads to adjacent tiles with fuel, burns
+- **Q-54** ~~Fire as an entity?~~ — ✅ **ruled 2026-08-31: parked as recommended.**
+  Build nothing now; it stays a filed idea until a phase-2+ design wants a hazard.
+  Original item: **Fire as an entity.** Spreads to adjacent tiles with fuel, burns
   out over time — mechanically a fine actor (a process with a position), but it
   destroys crops, so *when it can exist and what ignites it* is taste and stakes, not
   engineering. *Recommendation: build later behind test scenarios only; no ignition
   source in the live game until a phase-2+ design wants one.*
-- **Q-55 (Ruling)** **The pea economy.** Peas are grown, stored, delivered by bots, and
+- **Q-55** ~~The pea economy?~~ — ✅ **ruled 2026-08-31: pea ships now as an ordinary
+  crop (M2.5 WI-10); the shooters/towers/storage/delivery economy is designed at M3
+  alongside `design/03`/`design/05`.** Original item: **The pea economy.** Peas are grown, stored, delivered by bots, and
   fired by peashooters (bot-mounted and tower) until critters back off. It fuses the
   farm and defense halves into one supply chain and partially answers Q-16 (thrown
   objects) — but it touches player-built structures and tower design, each a system.
@@ -594,7 +601,10 @@ trace actually says, because several of these looked like bugs and were not.*
   Zombies homage. *Recommendation: design at M3 alongside `design/03`/`design/05`;
   the pea ships now as an ordinary crop (M2.5 WI-10) so the economy has its raw
   material waiting.*
-- **Q-56 (Ruling)** **When do bots debut for the player?** The scripted line (follow /
+- **Q-56** ~~When do bots debut for the player?~~ — ✅ **ruled 2026-08-31: hold until at
+  least M3 so the sprinkler is the first automation the player meets; then revisit with
+  the shoo-bot as the debut candidate.** The configs are still built (WI-9), test-only.
+  Original item: **When do bots debut for the player?** The scripted line (follow /
   circle / shoo-birds) exists behind test scenarios after M2.5 WI-9. The roadmap's
   phases put trainable bots at phase 4, but a charming follow-bot could appear far
   earlier as pure delegation-flavor. *Recommendation: hold the debut until at least M3
