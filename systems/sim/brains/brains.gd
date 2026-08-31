@@ -29,6 +29,10 @@ static func _table() -> Dictionary:
 			"chicken_wander": ChickenBrain.new(),
 			"crow_visit": CrowBrain.new(),
 			"sprinkler_day": SprinklerBrain.new(),
+			# The bestiary's first pair (M2.5 WI-8a/8b). Two brains because they
+			# are two mechanics: one marks the ground, the other reads it.
+			"ant_scout": AntScoutBrain.new(),
+			"ant_forager": AntForagerBrain.new(),
 		}
 	return _by_id
 

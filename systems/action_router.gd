@@ -78,6 +78,30 @@ func resolve(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, is_drag: 
 			"tool":      String(_tool_entry_for(obj).get("tool", "")),
 		})
 
+	# 1b. A critter underfoot answers before the ground does — the stomp
+	# (P-10 / `design/04` §4; M2.5 WI-8a). It resolves to the *hands* clear, the
+	# verb she already uses to pull a weed up, so the sim needed no new word and a
+	# bot answering a scout does exactly what a child's tap does (ground rule 1).
+	#
+	# Asked of the **registry**, the way `main.gd` asks it which tile the hen is
+	# standing on before it clucks: where an actor is standing is sim truth, and a
+	# second scout answers here for free. It is asked before the tile's own state
+	# because the ant is the thing on the square that wants dealing with — and the
+	# gateway makes sure the stomp leaves the ground alone, so tapping an ant that
+	# is sitting on a row of wheat costs her the ant and not the wheat.
+	var world = farm.get("sim")
+	if world != null and world.stompable_at(tap_t):
+		# Far taps stay pure movement, exactly as they do for a workable tile
+		# below: she walks over, and the tap that lands when she is there stomps.
+		if not is_drag and player_t != null:
+			var pt0: Vector2i = player_t
+			if absi(pt0.x - tx) + absi(pt0.y - ty) > 1:
+				return {}
+		return check_result.call({
+			"action": "clear_weed", "tool_idx": 0, "target_t": tap_t,
+			"walk_to": true, "seed_type": "",
+		})
+
 	# 2. Get tile state
 	var tile: Dictionary = farm.get_tile(tx, ty)
 	if tile.is_empty():

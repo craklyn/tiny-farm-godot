@@ -79,6 +79,11 @@ const ACTOR_RENDERERS := {
 	SpeciesDefs.CHICKEN: "res://entities/chicken.gd",
 	SpeciesDefs.CROW: "res://entities/crow.gd",
 	SpeciesDefs.SPRINKLER: "res://entities/sprinkler.gd",
+	# Both ants, one script: they differ by which cells of critters.png they draw
+	# and how fast they walk, and both of those come off the species row
+	# (M2.5 WI-8a/8b).
+	SpeciesDefs.ANT_SCOUT: "res://entities/ant.gd",
+	SpeciesDefs.ANT_FORAGER: "res://entities/ant.gd",
 }
 
 var actors_node: Node2D = null            # the sprites' parent, named "Entities"

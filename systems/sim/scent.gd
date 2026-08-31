@@ -231,11 +231,28 @@ func cell_count(channel: String = "") -> int:
 # its ties on, and for the same reason: two ants in the same field must make the
 # same choice on every machine and in every replay. Four reads, whatever the map
 # is doing.
-func strongest_neighbour(channel: String, from: Vector2i, tick: int) -> Vector2i:
+#
+# **`avoid` is the tile the follower just came from**, and it is not optional
+# nicety — it is what makes a trail directional (M2.5 WI-8b). A scout deposits as
+# it walks *home*, so the tiles nearest home were written last and have decayed
+# least: the field's gradient points at the nest, not at the food. A forager that
+# simply walked uphill would step one tile off the nest, find the nest stronger,
+# and oscillate there forever. Excluding the previous tile is the classic ant's
+# answer and it is enough on its own, because a scout's homeward route is a
+# *shortest* path: movement along it is monotone in both axes, so tile *i* is
+# orthogonally adjacent only to *i-1* and *i+1* and the corridor has exactly one
+# way on. Direction comes from the topology; the values only have to be there.
+#
+# It lives here rather than in the brain so that the tie-break stays in one
+# place — a second copy of "which neighbour wins" is a second thing that can
+# drift from `Movement.DIRS`.
+func strongest_neighbour(channel: String, from: Vector2i, tick: int, avoid: Vector2i = Vector2i.MAX) -> Vector2i:
 	var best := from
 	var best_value := 0.0
 	for d in Movement.DIRS:
 		var t: Vector2i = from + d
+		if t == avoid:
+			continue
 		var v := read(channel, t, tick)
 		if v > best_value:
 			best_value = v

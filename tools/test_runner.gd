@@ -71,6 +71,7 @@ func _run_scenarios() -> void:
 	await _scenario_k_attract()
 	await _scenario_q_crow_is_sim_sent()
 	await _scenario_r_attract_shows_the_neighbour()
+	await _scenario_s_a_raid_is_drawn()
 
 func _wait_until(pred: Callable, max_frames: int) -> bool:
 	for i in max_frames:
@@ -1241,4 +1242,69 @@ func _scenario_r_attract_shows_the_neighbour() -> void:
 			"and the sprite goes when the actor does")
 
 	loop.queue_free()
+	await get_tree().process_frame
+
+
+func _scenario_s_a_raid_is_drawn() -> void:
+	# The ant pair's renderer, exercised the only way it can be (M2.5 WI-8a/8b).
+	#
+	# Nothing in the live game spawns an ant — `SimWorld.ANT_RAIDS_PER_DAY` is 0
+	# and the debut is a designer's content-sequencing call — so this is the
+	# sprinkler's situation exactly, and it gets the sprinkler's treatment: a
+	# **detached** farm, an actor put into the registry by hand, and the claim
+	# being checked is that *no code here knows what an ant is*. A species row and
+	# two lines of `ACTOR_RENDERERS` are the whole binding.
+	print("\n--- Scenario S: a raid gets drawn, because the registry holds one ---")
+
+	var FarmScript = load("res://world/farm.gd")
+	var yard = FarmScript.new()
+	yard.name = "AntYard"
+	yard.mute_feedback = true
+	add_child(yard)
+	await get_tree().process_frame
+
+	var nest := Vector2i(6, 8)
+	yard.sim.spawn_actor(SimWorld.ACTOR_ANT_SCOUT, SpeciesDefs.ANT_SCOUT, nest, {})
+	yard.sim.spawn_actor("ant_forager_0", SpeciesDefs.ANT_FORAGER, nest + Vector2i(1, 0), {})
+	yard.sync_actors()
+
+	var scout = yard.actor_nodes.get(SimWorld.ACTOR_ANT_SCOUT, null)
+	var forager = yard.actor_nodes.get("ant_forager_0", null)
+	_assert(scout != null and is_instance_valid(scout),
+		"spawning a scout in the registry gives it a sprite, with no renderer change")
+	_assert(forager != null and is_instance_valid(forager),
+		"and so does a forager, from the same one script")
+	if scout == null or forager == null:
+		yard.queue_free()
+		await get_tree().process_frame
+		return
+
+	_assert(scout.position == Vector2(nest.x * 16, nest.y * 16), "standing on its own tile")
+	# critters.png row 0: cols 0–1 the scout, cols 2–3 the forager (CREDITS.md).
+	# The two species differ by a number off the species row, not by a class.
+	_assert(scout.first_cell == 0 and forager.first_cell == 2,
+		"drawing its own two cells of the sheet, chosen from the species and nothing else")
+	_assert(scout.get_script() == forager.get_script(),
+		"and both are the same script — they differ by their row, which is the point")
+
+	# The sprite follows sim truth, exactly as the hen's does: the sim puts an
+	# actor on a tile and the renderer walks the sprite between tiles.
+	var was: Vector2 = scout.position
+	yard.sim.set_actor_pos(SimWorld.ACTOR_ANT_SCOUT, nest + Vector2i(3, 0))
+	for i in 30:
+		scout._process(1.0 / 60.0)
+	_assert(scout.position.x > was.x, "it walks toward wherever the sim has put it")
+	_assert(not scout.facing_left, "facing the way it is going")
+	yard.sim.set_actor_pos(SimWorld.ACTOR_ANT_SCOUT, nest)
+	scout._process(1.0 / 60.0)
+	_assert(scout.facing_left, "and the cells are mirrored when it turns back (they all face right)")
+
+	# Stomped, dispersed, or home with its crop — the sim dropping the actor is
+	# the only way an ant ends, and the sprite goes with it.
+	yard.sim.despawn_actor(SimWorld.ACTOR_ANT_SCOUT)
+	yard.sync_actors()
+	_assert(not yard.actor_nodes.has(SimWorld.ACTOR_ANT_SCOUT),
+		"and the sprite goes when the actor does")
+
+	yard.queue_free()
 	await get_tree().process_frame

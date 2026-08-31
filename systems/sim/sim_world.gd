@@ -77,6 +77,51 @@ static func may_spawn_crow(day: int, total_harvests: int, planted: int) -> bool:
 		and planted >= CROW_MIN_PLANTED
 
 
+# --- Ant raids (design/04 §1 and §3, P-10; M2.5 WI-8a/8b) ---------------------
+#
+# The crow's schedule, worn by a second kind of pest, and for the same reasons:
+# an arrival is a point in the day's **action clock** (T-20 — pressure follows
+# productivity), it is consumed whether the raid happens or not, and the draw is
+# `SimRng.stateless` so a replay sees the same raid at the same moment.
+#
+# **`ANT_RAIDS_PER_DAY` is 0, and that is the shipping value.** The whole raid
+# lifecycle exists — scheduled, gated, spawned, columned and despawned — and
+# nothing in the live game has ever contained an ant, exactly as `M2_5_PLAN.md`
+# §4 requires ("none of these spawn in the live game yet; *when* each debuts is
+# designer content sequencing"). A test hands `gs.ant_schedule` a number and the
+# whole path runs; turning it on for players is one integer and a designer's
+# ruling.
+const ANT_RAIDS_PER_DAY := 0
+const ANT_EARLIEST_ACTION := 6   # never in the first few actions of a day
+const ANT_MIN_DAY := 4           # a play-day, like CROW_MIN_DAY
+const ANT_MIN_PLANTED := 4       # something worth raiding, and losing one is affordable
+
+# How many foragers a completed trail summons, and how many ticks apart they
+# leave the nest. The size is what bounds a raid's cost — one crop each, so a
+# column can take at most this many — and per `design/04` §1 it is deliberately
+# **not** the difficulty dial: that is the trail's half-life. [Playtest].
+const ANT_COLUMN_SIZE := 3
+const ANT_COLUMN_STAGGER := 12
+
+
+static func roll_ant_schedule(day: int) -> Array[int]:
+	var out: Array[int] = []
+	if day < ANT_MIN_DAY:
+		return out
+	for i in ANT_RAIDS_PER_DAY:
+		out.append(ANT_EARLIEST_ACTION + SimRng.stateless(day, 5000 + i) % 20)
+	out.sort()
+	return out
+
+
+# May a raid start at all? The crow's readiness gate (T-2) without the harvest
+# clause: a column that eats three plants needs there to *be* plants, and the day
+# floor is the backstop rather than the mechanism. Pure, so it can be tested
+# without a world, exactly like `may_spawn_crow`.
+static func may_start_raid(day: int, planted: int) -> bool:
+	return day >= ANT_MIN_DAY and planted >= ANT_MIN_PLANTED
+
+
 # Fixed object positions (0-indexed tile coords)
 const OBJECT_POSITIONS: Array[Dictionary] = [
 	{ "type": "cot",          "tx": 2, "ty": 1 },
@@ -317,6 +362,19 @@ func set_object(tx: int, ty: int, obj_type: String) -> void:
 		objects[ty][tx] = obj_type
 
 
+# Is there something growing on this tile? **The one definition**, used by the
+# `eat_crop` verb's guard and by every mouth that goes looking for one (M2.5
+# WI-8): a crop is a crop whether it is a seed in the ground or a ripe head, and
+# an ant that could smell a tile the gateway then refused to let it eat would be
+# a bug wearing a design's clothes. Out of bounds is honestly "no".
+func has_crop(tx: int, ty: int) -> bool:
+	var tile := get_tile(tx, ty)
+	if tile.is_empty():
+		return false
+	var st: String = tile.get("state", "")
+	return st == "seeded" or st == "growing" or st == "ready"
+
+
 # Tiles holding a crop at any stage — what a crow could target, and the measure
 # of whether the player has enough planted to afford losing one.
 func count_planted() -> int:
@@ -548,6 +606,11 @@ const ACTOR_PLAYER := "player"
 const ACTOR_NEIGHBOUR := "neighbour"
 const ACTOR_CHICKEN := "chicken"
 const ACTOR_CROW := "crow"
+# The raid (M2.5 WI-8a/8b). One scout per raid, so it takes the species name;
+# the foragers are numbered from this prefix (`ant_forager_0`…), because a column
+# is the first time the game has had more than one of anything.
+const ACTOR_ANT_SCOUT := "ant_scout"
+const ACTOR_ANT_FORAGER := "ant_forager"
 
 
 static func _is_player(actor: String) -> bool:
@@ -626,6 +689,45 @@ func actors_of_species(species: String) -> Array[String]:
 		if String(actors[id].get("species", "")) == species:
 			out.append(String(id))
 	return out
+
+
+# --- the stomp (P-10 / design/04 §4; M2.5 WI-8a) ------------------------------
+#
+# **A tap answers a critter, and it does it with a verb she already has.** A
+# scout standing on a tile is what a clear-class action (`clear_weed` and its
+# siblings — the same tap that pulls a weed up) resolves to; the intent layer
+# asks `stompable_at` first and the gateway does the rest inside the verb it
+# already implements. No new verb, no new UI, and therefore nothing a future bot
+# gets that the player lacks (ground rule 1).
+#
+# Which species answer a boot is a field in the species table, so the hen can
+# never be one by accident. Nothing stompable exists in the live game — the ant
+# pair is the only such row and nothing spawns one — so this is inert in a
+# shipping build, which is also why it costs a tap nothing: a registry with four
+# actors in it is a four-entry scan.
+func stompable_at(t: Vector2i) -> bool:
+	for id in actors:
+		if SpeciesDefs.is_stompable(String(actors[id].get("species", ""))) \
+				and actor_pos(String(id)) == t:
+			return true
+	return false
+
+
+# Everything stompable on this tile, gone. **All of them, not the first one
+# found**: ants do not claim tiles (`tile_exclusive` is false on both rows), so
+# two can share one, and "whichever the registry happened to list first" is
+# exactly the kind of iteration-order dependency the registry block forbids.
+# Returns how many went, so the caller can tell a stomp from a swing at nothing.
+func _stomp(t: Vector2i) -> int:
+	var doomed: Array[String] = []
+	for id in actors:
+		if SpeciesDefs.is_stompable(String(actors[id].get("species", ""))) \
+				and actor_pos(String(id)) == t:
+			doomed.append(String(id))
+	doomed.sort()
+	for id in doomed:
+		despawn_actor(id)
+	return doomed.size()
 
 
 # An actor that acts without having been spawned still gets a meter. Since M2.5
@@ -848,6 +950,10 @@ func apply_action(action: Dictionary, gs = null) -> Dictionary:
 		# target choice and entry draws were the last gameplay decisions living in
 		# presentation.
 		_send_due_crows(gs)
+		# ...and the same appointment book, for the raid (M2.5 WI-8a). A no-op in
+		# every real game: `ANT_RAIDS_PER_DAY` is 0, so the schedule is empty on
+		# every day of it.
+		_send_due_ants(gs)
 	# Milestones are capability proofs (P-4) — sim truth, so replays earn them too
 	if result.get("ok", false) and gs != null and MILESTONE_VERBS.has(action.get("verb", "")) \
 			and gs.has_method("check_milestones"):
@@ -971,7 +1077,11 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 		"eat_crop":
 			var tile := get_tile(target.x, target.y)
 			if tile.is_empty(): return _fail("out_of_bounds")
-			if tile.state in ["growing", "ready", "seeded"]:
+			# `has_crop` is the one definition of "there is something growing
+			# here" (M2.5 WI-8): the guard and the mouths that go looking for a
+			# meal read the same function, so a critter can never smell a tile the
+			# gateway would then refuse it.
+			if has_crop(target.x, target.y):
 				set_tile_state(target.x, target.y, "tilled")
 				return { "ok": true }
 			return _fail("no_crop")
@@ -1019,6 +1129,20 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 				spend_actor_energy(actor, cost)
 			match verb:
 				"clear_weed", "clear_log", "clear_rock", "clear_tree":
+					# **A critter underfoot is what the clear answers** (P-10's
+					# "stomp scouts", `design/04` §4; M2.5 WI-8a). The stomp takes
+					# precedence over the ground and *leaves the tile alone*: the
+					# verb means "deal with the small thing on this square", and an
+					# ant on a row of wheat must not cost the player the wheat.
+					# Deliberately not its own verb — a bot answering a scout does
+					# exactly what a child's tap does (ground rule 1), and nothing
+					# in the router or the sim had to learn a new word.
+					#
+					# It does not count as clearing an obstacle: T-10 and Q-46 ask
+					# "has she ever cleared one of *these*", and a stomped ant is
+					# not evidence about a rock.
+					if _stomp(target) > 0:
+						return { "ok": true, "stomped": true }
 					set_tile_state(target.x, target.y, "cleared")
 					# Accrued in the gateway so a replay earns the same counts.
 					# Feeds T-10 ("has she ever cleared one of these?") and Q-46's
@@ -1079,6 +1203,20 @@ func _send_due_crows(gs) -> void:
 		var arrival := int(gs.crow_schedule[0])
 		gs.crow_schedule.remove_at(0)
 		CrowBrain.send(self, gs, arrival)
+
+
+# The same clock reaching a raid's appointment (M2.5 WI-8a). Consumed whether a
+# raid actually starts or not, exactly as T-20 rules for the crow: a farm gets
+# one raid's chance a day, and stomping the scout is a win for the day rather
+# than a pause. The rule about whether one *may* start is `may_start_raid`, and
+# the arrival itself is `AntScoutBrain.send`.
+func _send_due_ants(gs) -> void:
+	if gs == null or not ("ant_schedule" in gs):
+		return
+	while not gs.ant_schedule.is_empty() and int(gs.actions_today) >= int(gs.ant_schedule[0]):
+		var arrival := int(gs.ant_schedule[0])
+		gs.ant_schedule.remove_at(0)
+		AntScoutBrain.send(self, gs, arrival)
 
 
 # Q-12 phase-1 proof thresholds — provisional, fine-tuned at playtest

@@ -1286,3 +1286,161 @@ correct move is to copy `player/player.gd`'s `_load_sprites` / `queue_render` pa
 the hen does rather than from input — a bot is a registry mirror, not an input device. Then
 one line in `ACTOR_RENDERERS` and every farm renderer draws it, tests included. The debut
 is still Q-56's; only the sheet and the binding are engineering.
+
+### WI-8a / WI-8b — The ant pair ✅ landed 2026-08-31
+
+**One commit, because they are one mechanic seen from two ends.** 8a builds the thing that
+marks and 8b builds the thing that reads the mark; a scout with nothing following it is a
+wandering dot, and a forager with nothing to follow is a despawn. The plan's own criteria
+are phrased as a pair ("the ant pair also asserts: stomped scout ⇒ no column; washed trail
+⇒ column disperses"), and neither assert can be written without both halves.
+
+**Two rows, two brains, and no new verb.** `species_defs.gd` gains `ant_scout` (verbs `[]`
+— it walks and it marks, and neither is an Action) and `ant_forager` (verbs `["eat_crop"]`,
+the crow's mouth reused). Both `ground`, both `tile_exclusive: false` (WI-4's handoff
+offered the flag; the giant ant is out of scope per §5), 10 and 8 px/s through
+`SimClock.tiles_per_tick` like every other row. `ant_scout_brain.gd` wanders on `SimRng`
+draws taken inside `step()`, notices a crop within 3 tiles, walks onto it and then walks
+home calling `world.scent.deposit(Scent.TRAIL, tile, DEPOSIT, tick)` once per step — WI-7's
+handoff, implemented as written. `ant_forager_brain.gd` reads
+`strongest_neighbour(TRAIL, pos, tick, prev)`, steps onto what it returns, eats exactly one
+crop in its life, and reinforces the trail on the way home.
+
+**The counterplay is both of P-10's, on verbs she already has.** A clear-class tap
+(`clear_weed` and its three siblings) on a tile a stompable actor is standing on stomps it
+in the gateway — and **leaves the tile alone**, so an ant on a row of wheat costs her the
+ant and not the wheat. `water` washes the trail off a tile, which WI-7 had already wired;
+this is the first work item where it erases anything.
+
+Suites: unit **1138 PASSED / 0 FAILED** (1073 after WI-6, +65 from `test_ants`),
+integration **181 / 0** (172 before, +9 from scenario S), robot session **PASSED**
+(21 entries, 850 ticks, recomputation match), `verify_replay` **MATCH** on the real v1
+human session, demo replay regenerates with a **clean diff**, visual regression **passes
+unchanged — WI-6's re-baseline allowance is still UNSPENT**. Benchmark, three runs:
+**627k / 711k / 718k×**, inside the 614–736k band this machine has shown since WI-4;
+nothing here is on the fast-forward path, because nothing here exists in a shipping farm.
+Purity greps clean: no `Time.`/delta/`_process(` under `systems/sim/`, no Node, autoload,
+`Input` or `Pathfinding` in either brain, and zero `SimRng` under `entities/` (the last of
+which is a **substring** test, so `entities/ant.gd` says "the sim's seeded stream" in the
+comment where it means to name it).
+
+**Deviations and decisions taken inside the WI:**
+
+1. **A trail deposit is not an Action, and this is the one thing worth reading twice.**
+   Ground rule 1 says every world mutation goes through `apply_action`, and the scent field
+   is sim truth (it is inside `capture()`). The deposit is nonetheless a direct call from
+   the brain, exactly as WI-7's handoff specified it — because it is a *consequence of a
+   step*, and movement is D-9's standing exception: a tick-stepped sim process is
+   recomputed, never recorded, since the mover's own deterministic code is the
+   reconstruction rule. The deposit is recomputed by the identical mechanism and **WI-5's
+   net checks it**: the field is inside `capture_canonical`, so a deposit landing on a
+   different tick than it did live is a named failure. The alternative — a `lay_trail`
+   verb — would be a new verb the player lacks (rule 1's other half) *and* one replay entry
+   per step forever, in the file phase 4's corpus is made of. WI-10 made the same argument
+   about the sprinkler's nine waterings; this is that argument at one entry per second.
+2. **`Scent.strongest_neighbour` gained an optional `avoid` parameter**, one additive edit
+   to WI-7's file (the `Brain.ticks_per_tile` → `Movement.ticks_per_tile` precedent). It is
+   not a nicety, it is what makes a trail *directional*: the scout deposits as it walks
+   home, so the tiles nearest the nest were written last and have decayed least, and the
+   field's gradient therefore points at the **nest**. A follower walking uphill would step
+   one tile out and immediately find home stronger again — it would oscillate forever.
+   Excluding the tile it just came from is the classic ant's answer, and it is *sufficient*
+   rather than merely helpful, because a scout's homeward route is a shortest path:
+   movement along it is monotone in both axes, so tile *i* is orthogonally adjacent only to
+   *i-1* and *i+1*, and a corridor with the back door shut has exactly one way on.
+   Direction comes from the topology; the values only have to be there. It lives in
+   `scent.gd` rather than in the brain so the `Movement.DIRS` tie-break stays in one place.
+3. **Both ants are `persistent: true`, where the crow is not** — and the reason is the
+   difference between a visit and an occupation. WI-3's argument for the bird was that a
+   save is a snapshot of a farm and a crow halfway across the sky is not part of one. A
+   column is standing on the ground, its **trail is already saved** (`world.scent`, WI-7),
+   and it lasts minutes; dropping the ants and keeping the trail would restore a farm with
+   a road and nobody on it. The plan's own criterion asks for a save mid-raid that restores
+   to the identical outcome, which requires it.
+4. **A forager's step is `Movement.plan` + `Movement.step` over a single tile.** It looks
+   odd beside a hen's cross-farm route and it is the honest shape: a forager has no
+   destination, it has a next tile. Going through the engine anyway (rather than calling
+   `place_on_tile` directly) means blocked ground, facing, the body hook and the
+   speed-derived wake are all answered the same way they are for every other mover, which
+   is what WI-4's handoff asked for — "no critter writes movement code".
+5. **The stomp takes precedence over the ground, and does not count as clearing.** A
+   `clear_*` that lands on a stompable actor despawns it and returns `{ok, stomped}`
+   *without* calling `set_tile_state` and without touching `gs.clear_counts` — T-10 and
+   Q-46 ask "has she ever cleared one of *these*", and a squashed ant is not evidence about
+   a rock. It stomps **everything** stompable on the tile rather than the first one found,
+   because ants are not `tile_exclusive` and "whichever the registry listed first" is
+   exactly the iteration-order dependency the registry block forbids.
+6. **The intent-layer rule is in `action_router.gd`, and it asks the registry.** That is
+   the chicken-tap precedent (`main.gd` asks `actors_of_species` which tile the hen is on
+   before it clucks) moved into the layer that owns resolution. A far tap is still pure
+   movement, exactly as it is for a workable tile, so she walks over and the tap that lands
+   when she is there stomps. **Filed as Q-61**: this is the first tap in the game that
+   resolves against a *creature* rather than against the ground, and a scout standing on a
+   ripe crop therefore makes that tap a stomp instead of a harvest while it stands there.
+   The sim protects the important half (the tile is untouched); whether the ambiguity is
+   right is taste.
+7. **Dispersal is a despawn.** An ant that reaches a washed tile has lost the only thing it
+   had — the trail is its memory, not its map — so it is simply gone. **Filed as Q-62**: a
+   column that mills about or straggles off would read better on screen and is more code
+   and more state; the sim's answer is the same either way.
+8. **`gs.ant_schedule` is a real field, and it is always empty.** The raid rides the crow's
+   own appointment book: an arrival is a point in the day's **action clock** (T-20 —
+   pressure follows productivity), consumed whether the raid comes to anything or not,
+   drawn with `SimRng.stateless`, persisted in the save beside `crow_schedule` so a reload
+   mid-day neither resurrects a spent raid nor erases an owed one. `ANT_RAIDS_PER_DAY` is
+   **0**, so `roll_ant_schedule` returns `[]` on every day of every real game and nothing
+   in the live build has ever contained an ant — the plan's requirement, and the
+   sprinkler's standing. A test writes one number into the schedule and the whole path
+   runs, which is why the lifecycle is exercised rather than merely written.
+   *(Trap for the next worker: `ant_schedule` is `Array[int]`, so `gs.ant_schedule = [3]`
+   through an untyped reference is a runtime type error that aborts the calling function —
+   which looks exactly like a hang in a headless run. Assign a typed local.)*
+9. **`SimWorld.has_crop()` is new and is now the single definition of "something is growing
+   here"** — used by `eat_crop`'s guard and by both ants. Behaviour-neutral (it is the
+   same three states the verb always accepted); it exists so a critter can never smell a
+   tile the gateway would then refuse it.
+10. **The nest is a placeholder and says so.** `AntScoutBrain.nest_tile` picks a walkable
+    tile at least 10 tiles from the farmhouse from a stateless draw, because *where nests
+    belong* is `[Designer]` Q-18 and phase 5 hangs off the answer. The raid only ever asks
+    its scout where "home" is, and that is one number in `extra`, so Q-18's ruling changes
+    one function. The unit tests place their own nest for the same reason.
+11. **One renderer file for both species** (`entities/ant.gd`, two lines in
+    `ACTOR_RENDERERS`). They differ by which cells of `critters.png` row 0 they draw
+    (0–1 scout, 2–3 forager) and how fast the sprite walks — and both of those are read
+    off the species row, so the script contains no `if scout`. The sprite speed is derived
+    from `SpeciesDefs.speed_of` × tile × `SimClock.RATE` rather than written down again,
+    so it cannot drift from the sim as the row is tuned. Integration **scenario S** is the
+    check, in a detached farm like scenario R's sprinkler: no test code knows what an ant
+    is.
+
+**A note on the daily-loss identity (plan §4's criterion).** T-15/T-20 bounded a day's
+losses by the arrivals it scheduled. The formula now reads
+`CROWS_PER_DAY + ANT_RAIDS_PER_DAY × ANT_COLUMN_SIZE`, and each half is guaranteed by
+construction rather than by tuning: `CrowBrain.send` refuses a second bird, and a forager's
+`carrying` flag is set once and never cleared, so an ant eats at most once in its life and
+then leaves. In a shipping build the second term is **zero** and the existing bound is
+untouched — the old test is unmodified and still passes. `test_ants` asserts both: that the
+live bound is unchanged, and that a *forced* raid costs at most one crop per forager.
+
+**For the remaining critter workers (8c–8g).** Four things are worth copying and one worth
+avoiding.
+*Copy:* (i) `Movement.plan` / `match Movement.step` really is the whole binding — neither
+brain contains a line of movement code, and the forager's one-tile plans go through the
+same call as the hen's cross-farm walk; (ii) put the arrival on the crow's pattern
+(`gs.<x>_schedule` + a `_send_due_*` in the gateway + a `PER_DAY` constant of 0) and the
+lifecycle is tested without ever being live; (iii) `_ant_session` in `tests/test_runner.gd`
+is a reusable shape — a `LiveSession` whose field has been flattened and planted, so a
+critter's one mechanic is legible in the assertions; (iv) the strongest test available is
+the WI-5 net: capture mid-behaviour, restore, continue with a log, and call
+`SaveGame.replay_report` — it checks the Actions, the ticks and (for anyone writing scent)
+every cell, and it caught nothing here only because it was aimed at from the start.
+*Avoid:* comparing a **kept-playing** world against a **restored** one tick-for-tick. It
+fails, and not because of your critter: `SaveGame.restore` calls `schedule_all_brains()`,
+which reschedules every actor for `clock.tick + 1` rather than for the `wake` it was
+holding, so a restored mid-walk actor steps a few ticks early. It is invisible in the game
+because a Continue restores on both sides (the live session *is* the restored world, and so
+is its replay), which is why nothing has ever caught it — but a test that pairs the two
+will burn an hour. Filed here as engineering rather than in `DESIGNER_QUEUE.md`; the fix is
+one line (`_schedule_brain(id, int(extra.get("wake", …)))`) and it must not be taken
+casually, because the *day turn* calls the same function and deliberately wants everybody
+woken now (WI-3 deviation 8, the hen's egg).

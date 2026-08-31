@@ -73,6 +73,7 @@ func _init() -> void:
 	test_sprinkler()
 	test_pea()
 	test_replay_v2()
+	test_ants()
 
 	print("")
 	print(String("=").repeat(60))
@@ -4987,3 +4988,371 @@ func test_replay_v2() -> void:
 	gs_lost.free()
 	gs_w.free()
 	walked.done()
+
+
+# --- the ant pair: scouts mark, foragers follow (M2.5 WI-8a/8b) ---------------
+#
+# A farm arranged so a raid is legible: a clear field with a short row of wheat
+# in it, and nothing else in the way. The nest is placed by the test rather than
+# by `AntScoutBrain.nest_tile`, because *where* nests belong is `[Designer]`
+# Q-18 and a test that depended on today's placeholder answer would break the day
+# it is ruled.
+func _ant_session(seed_value: int) -> LiveSession:
+	var s := LiveSession.new(seed_value)
+	for ty in range(3, 12):
+		for tx in range(3, 20):
+			s.world.set_tile_state(tx, ty, "cleared")
+			s.world.set_object(tx, ty, "")
+	for tx in range(10, 14):
+		s.world.set_tile_state(tx, 5, "growing", "wheat")
+	s.gs.energy = 500
+	s.gs.watering_can_charges = 500
+	return s
+
+
+const ANT_NEST := Vector2i(5, 5)
+
+
+func _release_scout(s: LiveSession) -> void:
+	s.world.spawn_actor(SimWorld.ACTOR_ANT_SCOUT, SpeciesDefs.ANT_SCOUT, ANT_NEST, {
+		"state": AntScoutBrain.STATE_SEARCH,
+		"home_x": ANT_NEST.x, "home_y": ANT_NEST.y,
+		"tgt_x": -1, "tgt_y": -1,
+	})
+
+
+# Sim time until the scout is on its way home (a trail exists, and is not yet
+# complete), or until it is over. Returns whether it got there.
+func _tick_until_homing(s: LiveSession, limit: int = 6000) -> bool:
+	var spent := 0
+	while spent < limit:
+		s.tick(5)
+		spent += 5
+		if not s.world.has_actor(SimWorld.ACTOR_ANT_SCOUT):
+			return false
+		if String(s.world.actor(SimWorld.ACTOR_ANT_SCOUT)["extra"].get("state", "")) \
+				== AntScoutBrain.STATE_HOME:
+			return true
+	return false
+
+
+func _tick_until_column(s: LiveSession, limit: int = 8000) -> bool:
+	var spent := 0
+	while spent < limit:
+		s.tick(10)
+		spent += 10
+		if not s.world.actors_of_species(SpeciesDefs.ANT_FORAGER).is_empty():
+			return true
+	return false
+
+
+func _tick_until_raid_over(s: LiveSession, limit: int = 12000) -> void:
+	var spent := 0
+	while spent < limit and AntScoutBrain.raid_is_live(s.world):
+		s.tick(25)
+		spent += 25
+
+
+func _trail_tiles(world: SimWorld) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	for ty in SimWorld.MAP_HEIGHT:
+		for tx in SimWorld.MAP_WIDTH:
+			if world.scent.read(Scent.TRAIL, Vector2i(tx, ty), world.clock.tick) > 0.0:
+				out.append(Vector2i(tx, ty))
+	return out
+
+
+func test_ants() -> void:
+	print("\n--- The ant pair: scouts mark, foragers follow (M2.5 WI-8a/8b, P-10) Tests ---")
+
+	# --- the two rows (checklist §8.B) ----------------------------------------
+	_assert(SpeciesDefs.has(SpeciesDefs.ANT_SCOUT) and SpeciesDefs.has(SpeciesDefs.ANT_FORAGER),
+		"the table has both ants")
+	_assert(SpeciesDefs.mode_of(SpeciesDefs.ANT_SCOUT) == SpeciesDefs.GROUND
+			and SpeciesDefs.mode_of(SpeciesDefs.ANT_FORAGER) == SpeciesDefs.GROUND,
+		"both walk, and say so in the one field that decides it (WI-4)")
+	_assert(is_equal_approx(SpeciesDefs.speed_of(SpeciesDefs.ANT_SCOUT), SimClock.tiles_per_tick(10.0)),
+		"the scout's 10 px/s converts, like every other row")
+	_assert(is_equal_approx(SpeciesDefs.speed_of(SpeciesDefs.ANT_FORAGER), SimClock.tiles_per_tick(8.0)),
+		"and a laden forager's 8 px/s")
+	# Ground rule 1, on the pair that most obviously could have broken it.
+	_assert(SpeciesDefs.verbs_of(SpeciesDefs.ANT_SCOUT).is_empty(),
+		"the scout has no verbs at all — it walks and it marks, and neither is an Action")
+	_assert(SpeciesDefs.verbs_of(SpeciesDefs.ANT_FORAGER) == ["eat_crop"],
+		"and the forager's one verb is the crow's, reused (P-9: no verb the player lacks)")
+	_assert(Brains.of_species(SpeciesDefs.ANT_SCOUT) is AntScoutBrain
+			and Brains.of_species(SpeciesDefs.ANT_FORAGER) is AntForagerBrain,
+		"both rows bind to a brain")
+	_assert(SpeciesDefs.is_stompable(SpeciesDefs.ANT_SCOUT)
+			and SpeciesDefs.is_stompable(SpeciesDefs.ANT_FORAGER),
+		"both answer a boot")
+	_assert(not SpeciesDefs.is_stompable(SpeciesDefs.CHICKEN)
+			and not SpeciesDefs.is_stompable(SpeciesDefs.PLAYER),
+		"and nothing else does — stomping is opt-in per row, so the hen can never be tapped away")
+	var boots := 0
+	for id in SpeciesDefs.ids():
+		if SpeciesDefs.is_stompable(String(id)):
+			boots += 1
+	_assert(boots == 2, "which is exactly the two ants today")
+
+	# --- nothing spawns in the live game (plan §4) ----------------------------
+	_assert(SimWorld.ANT_RAIDS_PER_DAY == 0,
+		"no raid is scheduled in a shipping build — the debut is content sequencing, not this WI")
+	for day in range(1, 21):
+		_assert_quiet(SimWorld.roll_ant_schedule(day).is_empty(),
+			"day %d schedules no raid" % day)
+	_flush_quiet("and no day of any real game rolls one")
+	var quiet := _crow_ready_session(31337)
+	_work_until_actions(quiet, 40)
+	quiet.tick(1200)
+	_assert(not AntScoutBrain.raid_is_live(quiet.world),
+		"a whole worked day on an ordinary farm never contains an ant")
+	quiet.done()
+
+	# --- but the arrival path is real, and rides the crow's own clock ---------
+	_assert(SimWorld.may_start_raid(SimWorld.ANT_MIN_DAY, SimWorld.ANT_MIN_PLANTED),
+		"a raid may start once there is a farm worth raiding")
+	_assert(not SimWorld.may_start_raid(SimWorld.ANT_MIN_DAY - 1, SimWorld.ANT_MIN_PLANTED),
+		"not before the day floor")
+	_assert(not SimWorld.may_start_raid(SimWorld.ANT_MIN_DAY, SimWorld.ANT_MIN_PLANTED - 1),
+		"and not onto a farm with almost nothing growing on it (the crow's T-2 mercy, for a column)")
+	var booked := _ant_session(7)
+	booked.gs.day = 8
+	booked.gs.takeover_day = 1
+	var appointment: Array[int] = [3]
+	booked.gs.ant_schedule = appointment
+	_work_until_actions(booked, 3)
+	_assert(booked.world.has_actor(SimWorld.ACTOR_ANT_SCOUT),
+		"a booked raid arrives when the day's *action* clock reaches it (T-20's clock, for ants)")
+	_assert(booked.gs.ant_schedule.is_empty(),
+		"and the appointment is spent, whether the raid comes to anything or not")
+	_assert(AntScoutBrain.send(booked.world, booked.gs, 9) == "",
+		"a second raid is refused while the first is still on the farm")
+	booked.done()
+
+	# --- the scout: a trail is written by walking home ------------------------
+	var raid := _ant_session(4242)
+	_release_scout(raid)
+	_assert(raid.world.scent.cell_count(Scent.TRAIL) == 0,
+		"a searching scout marks nothing — the trail is the *way back*, not the walk out")
+	_assert(_tick_until_homing(raid), "it finds the wheat and sets off home")
+	var found := Vector2i(int(raid.world.actor(SimWorld.ACTOR_ANT_SCOUT)["extra"]["tgt_x"]),
+		int(raid.world.actor(SimWorld.ACTOR_ANT_SCOUT)["extra"]["tgt_y"]))
+	_assert(raid.world.scent.read(Scent.TRAIL, found, raid.world.clock.tick) > 0.0,
+		"the first mark is on the food itself, so a trail's far end is dinner")
+	_tick_until_raid_over(raid)
+
+	var trail := _trail_tiles(raid.world)
+	_assert(trail.size() >= 5, "the finished trail is a run of tiles (%d)" % trail.size())
+	_assert(trail.has(ANT_NEST) and trail.has(found),
+		"running from the nest to the crop it found")
+	for t in trail:
+		var joined := false
+		for d in Movement.DIRS:
+			if trail.has(t + d):
+				joined = true
+		_assert_quiet(joined, "%s has a neighbour on the trail" % t)
+	_flush_quiet("and it is a corridor, not a scatter — every marked tile touches another")
+	# The gradient points *home*, because home was written last. That is exactly
+	# why a follower has to exclude the tile it came from (see `Scent.strongest_neighbour`).
+	_assert(int(raid.world.scent.cell(Scent.TRAIL, ANT_NEST)["tick"])
+			> int(raid.world.scent.cell(Scent.TRAIL, found)["tick"]),
+		"the nest end was written last, so the field's slope runs the wrong way for a follower")
+
+	# --- the column: it forms, it eats one each, it goes home -----------------
+	_assert(raid.gs.crops.get("wheat", 0) == 0,
+		"nothing the ants took reached the player's basket — a raid is a loss, not a harvest")
+	_assert(raid.world.count_planted() <= 4 - 1, "the row lost plants to the column")
+	_assert(4 - raid.world.count_planted() <= SimWorld.ANT_COLUMN_SIZE,
+		"and at most one per forager, which is the whole cost of a raid")
+	_assert(not AntScoutBrain.raid_is_live(raid.world),
+		"and when the column has carried its crops home there are no ants left")
+
+	# Success reinforces: a tile a laden ant walked over holds more than the one
+	# deposit the scout left on it (`design/04` §1).
+	var strongest := 0.0
+	for t in trail:
+		strongest = maxf(strongest, raid.world.scent.read(Scent.TRAIL, t, raid.world.clock.tick))
+	_assert(strongest > AntScoutBrain.DEPOSIT,
+		"a route that fed somebody is stronger than the scout left it (%.1f > %.1f)"
+			% [strongest, AntScoutBrain.DEPOSIT])
+
+	# ...and decay erases. No writer left, so the field is a closed form of its
+	# own past: read it far enough into the future and the trail is simply gone.
+	var far_off := raid.world.clock.tick + int(20.0 * Scent.half_life_ticks(Scent.TRAIL))
+	var still_there := 0
+	for t in trail:
+		if raid.world.scent.read(Scent.TRAIL, t, far_off) > 0.0:
+			still_there += 1
+	_assert(still_there == 0,
+		"and a trail nobody reinforces fades to nothing (P-10's third clause, the difficulty dial)")
+	raid.done()
+
+	# --- counterplay 1: stomp the scout, and no column ever forms -------------
+	var stomped := _ant_session(4242)
+	_release_scout(stomped)
+	_assert(_tick_until_homing(stomped), "a second scout finds the same row")
+	var standing := stomped.world.actor_pos(SimWorld.ACTOR_ANT_SCOUT)
+	var ground_was := String(stomped.world.get_tile(standing.x, standing.y).get("state", ""))
+	var planted_was := stomped.world.count_planted()
+	_assert(stomped.world.stompable_at(standing), "the sim knows there is something to stomp there")
+	_assert(not stomped.world.stompable_at(stomped.world.actor_pos(SimWorld.ACTOR_CHICKEN))
+			or stomped.world.actor_pos(SimWorld.ACTOR_CHICKEN) == standing,
+		"and the hen is not something to stomp")
+	var boot := stomped.act({ "verb": "clear_weed", "target": standing, "actor": "player" })
+	_assert(boot.get("ok", false) and boot.get("stomped", false),
+		"the player's existing clear-class verb answers it — no new verb, no new UI")
+	_assert(not stomped.world.has_actor(SimWorld.ACTOR_ANT_SCOUT), "and the scout is gone")
+	_assert(String(stomped.world.get_tile(standing.x, standing.y).get("state", "")) == ground_was,
+		"leaving the ground exactly as it was — an ant on a row of wheat costs her the ant, not the wheat")
+	_assert(int(stomped.gs.clear_counts.get("clear_weed", 0)) == 0,
+		"and it is not evidence of clearing an obstacle (T-10/Q-46 count weeds, not ants)")
+	_tick_until_raid_over(stomped)
+	stomped.tick(4000)
+	_assert(stomped.world.actors_of_species(SpeciesDefs.ANT_FORAGER).is_empty(),
+		"**no column forms**: the trail never completed, so nothing was ever summoned")
+	_assert(stomped.world.count_planted() == planted_was,
+		"and the row the scout found keeps every plant")
+	stomped.done()
+
+	# --- counterplay 2: wash a trail tile, and the column disperses -----------
+	var washed := _ant_session(4242)
+	_release_scout(washed)
+	_assert(_tick_until_column(washed), "a third raid gets its column out of the nest")
+	_assert(washed.world.actors_of_species(SpeciesDefs.ANT_FORAGER).size() == SimWorld.ANT_COLUMN_SIZE,
+		"of %d, which is what a completed trail summons" % SimWorld.ANT_COLUMN_SIZE)
+	var planted_at_wash := washed.world.count_planted()
+	var hole := Vector2i(ANT_NEST.x + 3, ANT_NEST.y)
+	_assert(washed.world.scent.read(Scent.TRAIL, hole, washed.world.clock.tick) > 0.0,
+		"and there is trail on the tile about to be watered")
+	var splash := washed.act({ "verb": "water", "target": hole, "actor": "player" })
+	_assert(splash.get("ok", false), "she waters it — the verb she already waters crops with")
+	_assert(washed.world.scent.read(Scent.TRAIL, hole, washed.world.clock.tick) == 0.0,
+		"which leaves a hole in the trail rather than a weak link (WI-7's full-cell erase)")
+	_tick_until_raid_over(washed)
+	_assert(washed.world.actors_of_species(SpeciesDefs.ANT_FORAGER).is_empty(),
+		"**the column disperses**: an ant that has lost the trail has lost everything it knew")
+	_assert(washed.world.count_planted() == planted_at_wash,
+		"and the crops on the far side of the hole are never reached")
+	washed.done()
+
+	# A forager is stompable too — the same tap, on a different ant.
+	var underfoot := _ant_session(4242)
+	_release_scout(underfoot)
+	_assert(_tick_until_column(underfoot), "a fourth raid forms its column")
+	var ant0 := underfoot.world.actors_of_species(SpeciesDefs.ANT_FORAGER)[0]
+	var at := underfoot.world.actor_pos(ant0)
+	underfoot.act({ "verb": "clear_weed", "target": at, "actor": "player" })
+	_assert(not underfoot.world.has_actor(ant0), "one stamp, one fewer ant in the column")
+	_tick_until_raid_over(underfoot)
+	underfoot.done()
+
+	# --- the daily-loss identity, extended to the new mouths (plan §4) --------
+	# T-15/T-20 bound a day's losses by the birds it scheduled. The formula now
+	# reads: **crows scheduled + raids scheduled x column size**, because a
+	# forager eats exactly once in its life and then leaves.
+	var bound := SimWorld.CROWS_PER_DAY + SimWorld.ANT_RAIDS_PER_DAY * SimWorld.ANT_COLUMN_SIZE
+	_assert(bound == SimWorld.CROWS_PER_DAY,
+		"in a shipping build the ants add nothing to it: no raid is ever scheduled")
+	var budget := _ant_session(77)
+	var dawn := budget.world.count_planted()
+	_release_scout(budget)
+	_tick_until_raid_over(budget)
+	budget.tick(2000)
+	_assert(dawn - budget.world.count_planted() <= SimWorld.ANT_COLUMN_SIZE,
+		"and a forced raid costs at most one crop per forager (%d of %d)"
+			% [dawn - budget.world.count_planted(), SimWorld.ANT_COLUMN_SIZE])
+	budget.done()
+
+	# --- determinism, which everything above rests on ------------------------
+	var runs: Array[String] = []
+	for _i in 2:
+		var d := _ant_session(909)
+		_release_scout(d)
+		_tick_until_raid_over(d)
+		d.tick(500)
+		runs.append(SaveGame.capture_canonical(d.world, d.gs))
+		d.done()
+	_assert(runs[0] == runs[1],
+		"the same seed raids the same farm the same way, ant for ant and tick for tick")
+
+	# --- a save taken mid-raid, continued, and its own replay ----------------
+	# The strongest statement the repo can make, and the one WI-5's handoff
+	# promised would judge this brain: a session continued from a mid-raid save
+	# is recorded, replayed, and the recomputation is compared **action for
+	# action and tick for tick** — which for an ant means its `eat_crop` and,
+	# through `capture()`, every scent cell it wrote.
+	var played := _ant_session(4242)
+	_release_scout(played)
+	_assert(_tick_until_column(played), "a raid is under way when the game is saved")
+	played.tick(120)
+	var mid = JSON.parse_string(JSON.stringify(SaveGame.capture(played.world, played.gs)))
+	var mid_ants := AntScoutBrain.raid_is_live(played.world)
+	played.done()
+
+	var gs_cont = load("res://systems/game_state.gd").new()
+	gs_cont.reset()
+	var w_cont := SimWorld.new()
+	_assert(SaveGame.restore(mid, w_cont, gs_cont), "the mid-raid save restores")
+	_assert(mid_ants and AntScoutBrain.raid_is_live(w_cont),
+		"with the raid still on the farm — a column is part of a snapshot of one, unlike a bird in flight")
+	SimRng.reseed(w_cont.gen_seed)
+	var cont_log := ReplayLog.new()
+	cont_log.start_from_save(mid, w_cont.gen_seed)
+	var spent := 0
+	while spent < 6000 and AntScoutBrain.raid_is_live(w_cont):
+		for t in w_cont.advance_ticks(25, gs_cont):
+			if t["result"].get("ok", false):
+				cont_log.record(t["action"], t["result"], int(t["tick"]), true)
+		cont_log.mark_tick(w_cont.clock.tick)
+		spent += 25
+	_assert(cont_log.entries.size() > 0,
+		"the continued session records the ants' Actions (%d)" % cont_log.entries.size())
+	var end_save = JSON.parse_string(JSON.stringify(SaveGame.capture(w_cont, gs_cont)))
+	var report := SaveGame.replay_report(cont_log, end_save)
+	_assert(report["matched"],
+		"and it replays to the identical outcome %s" % report["divergence"])
+	gs_cont.free()
+
+	# --- the gradient's one rule, in isolation -------------------------------
+	# Why the follower excludes the tile it came from, stated as a test rather
+	# than only as a comment: a trail laid *towards* the nest gets stronger the
+	# closer to home it is, so uphill is backwards.
+	var field := Scent.new()
+	field.deposit(Scent.TRAIL, Vector2i(4, 4), 10.0, 0)
+	field.deposit(Scent.TRAIL, Vector2i(5, 4), 10.0, 100)
+	field.deposit(Scent.TRAIL, Vector2i(6, 4), 10.0, 200)
+	_assert(field.strongest_neighbour(Scent.TRAIL, Vector2i(5, 4), 300) == Vector2i(6, 4),
+		"the strongest neighbour is the one written last — the way the scout came")
+	_assert(field.strongest_neighbour(Scent.TRAIL, Vector2i(5, 4), 300, Vector2i(6, 4)) == Vector2i(4, 4),
+		"and excluding it turns a follower round to face the food")
+	_assert(field.strongest_neighbour(Scent.TRAIL, Vector2i(4, 4), 300, Vector2i(5, 4)) == Vector2i(4, 4),
+		"at the end of the trail there is nothing left, which is what 'disperse' means")
+
+	# --- the intent layer: a tap on a critter (M2.5 WI-8a) -------------------
+	var FarmScript = load("res://world/farm.gd")
+	var tap_farm = FarmScript.new()
+	tap_farm.tiles.clear()
+	tap_farm.objects.clear()
+	for ty in SimWorld.MAP_HEIGHT:
+		tap_farm.tiles.append([])
+		tap_farm.objects.append([])
+		for tx in SimWorld.MAP_WIDTH:
+			tap_farm.objects[ty].append("")
+			tap_farm.tiles[ty].append({ "state": "growing", "crop_type": "wheat",
+				"growth_stage": 1, "watered_today": true })
+	GameState.seeds = { "wheat": 1 }
+	GameState.energy = 20
+	GameState.watering_can_charges = 8
+	var on_a_crop := Vector2i(6, 6)
+	_assert(ActionRouter.resolve(tap_farm, GameState, on_a_crop, Vector2i(6, 5)).is_empty(),
+		"a watered crop answers nothing, which is the tile's own state today")
+	tap_farm.sim.spawn_actor(SimWorld.ACTOR_ANT_SCOUT, SpeciesDefs.ANT_SCOUT, on_a_crop, {})
+	var tapped: Dictionary = ActionRouter.resolve(tap_farm, GameState, on_a_crop, Vector2i(6, 5))
+	_assert(String(tapped.get("action", "")) == "clear_weed",
+		"an ant standing on it answers with the hands — the stomp, in the intent layer")
+	_assert(int(tapped.get("tool_idx", -1)) == 0 and bool(tapped.get("walk_to", false)),
+		"with her hands, and she walks over to do it")
+	_assert(ActionRouter.resolve(tap_farm, GameState, on_a_crop, Vector2i(0, 0)).is_empty(),
+		"a far tap is still pure movement — she goes there first, exactly as for a workable tile")
+	tap_farm.free()

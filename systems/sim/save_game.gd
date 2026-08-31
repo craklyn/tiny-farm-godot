@@ -70,6 +70,11 @@ static func capture(world: SimWorld, gs) -> Dictionary:
 			"clear_counts": gs.clear_counts.duplicate(),
 			"actions_today": gs.actions_today,
 			"crow_schedule": gs.crow_schedule.duplicate(),
+			# The raid's appointment book (M2.5 WI-8a). Additive, and empty in
+			# every save this build writes — `ANT_RAIDS_PER_DAY` is 0 — but a raid
+			# reloaded mid-column has to know it already used its chance for the
+			# day, for the same reason the crow's schedule is here.
+			"ant_schedule": gs.ant_schedule.duplicate(),
 			"total_shipped": gs.total_shipped,
 			"seeds_bought": gs.seeds_bought,
 			"cans_refilled": gs.cans_refilled,
@@ -195,6 +200,13 @@ static func restore(data: Dictionary, world: SimWorld, gs) -> bool:
 	for v in s.get("crow_schedule", []):
 		sched.append(int(v))
 	gs.crow_schedule = sched
+	# Same again for the raid (M2.5 WI-8a); absent ⇒ no raid owed, which is what
+	# every save written before this field means and what every save written
+	# after it says anyway.
+	var ants: Array[int] = []
+	for v in s.get("ant_schedule", []):
+		ants.append(int(v))
+	gs.ant_schedule = ants
 	gs.total_shipped = int(s.get("total_shipped", 0))
 	# T-11, additive: a save from before these existed reads as "never done it",
 	# so an old farm gets the teaching beat once rather than never.

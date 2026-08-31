@@ -669,6 +669,37 @@ trace actually says, because several of these looked like bugs and were not.*
   waits for the neighbour's stride where before it waited only for the farmer's. Reversible
   in one line (`ui/attract_loop.gd`'s clock pump); the neighbour half stands either way.
 
+- **Q-61** **A tap can now target a *creature*, and that is new.** Raised by M2.5 WI-8a,
+  which implements the plan's criterion verbatim: the ant scout is "stomp-able — the
+  player's `clear_weed`-class verb answers it, reuse, no new verb". It works, it needed no
+  new word in the sim and no new UI, and it has one consequence nobody has looked at on a
+  screen: **every tap in this game until now resolved against the ground**. Tap a tile, get
+  what that tile needs. The stomp resolves against a thing *standing on* the ground, and it
+  takes precedence over what the tile would otherwise have offered — so a scout sitting on a
+  ripe crop makes that tap a stomp instead of a harvest for as long as it stands there. The
+  sim protects the obvious half (the stomp deliberately leaves the tile untouched, so an ant
+  on her wheat costs her the ant and not the wheat), and the tile goes back to answering
+  normally the moment the ant moves. Two readings: (a) *as built* — the small moving thing
+  is what a child is aiming at, and the ground is not going anywhere; (b) the stomp is its
+  own gesture (a hold, a second tool, a swat verb from Q-16) so a tap never changes meaning
+  under her finger. *Recommendation: leave it as built and look at it on device when a raid
+  exists to aim at — it is a handful of lines in `action_router.gd` either way, and the
+  competing readings are really about whether ants are ever dense enough for the ambiguity
+  to bite.* Nothing is blocked: no ant spawns in the live game.
+- **Q-62** **What does a column *look* like when it breaks?** Raised by M2.5 WI-8b. Washing
+  one tile of a trail is P-10's counterplay and it works: the gradient has a hole in it, and
+  a forager that reaches the hole has lost the only thing it knew, because a forager carries
+  no map — the trail *is* its memory. In the sim it then **disperses**, which today means the
+  actor is despawned: the ant is simply gone. Two readings: (a) *as built* — an ant with no
+  trail has nothing to do and nowhere it knows to go, and a farm that quietly stops having
+  ants after a well-aimed splash is a clean reward; (b) it should be *watched*: the column
+  mills about, wanders off the edge, or straggles home over a few seconds, so the player
+  sees her splash work rather than inferring it from an absence. (b) is the better feeling
+  and it is also more code and more sim state. *Recommendation: ship (a) now — it is honest
+  and it is testable — and revisit with Q-17 (raid readability), because "the player must see
+  a raid form" and "the player must see a raid break" are the same question from the two
+  ends.* Nothing is blocked: no ant spawns in the live game.
+
 ## Before M3 — phase 2 design
 
 - **Q-15 (Ruling)** Sprinkler/machine acquisition loop: crafted, bought, or

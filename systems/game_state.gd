@@ -54,6 +54,12 @@ var clear_counts: Dictionary
 # SimWorld.roll_crow_schedule().
 var actions_today: int
 var crow_schedule: Array[int]  # action counts at which a crow arrives today
+# The same appointment book for an ant raid (M2.5 WI-8a, `design/04` §3). Always
+# empty in a real game — `SimWorld.ANT_RAIDS_PER_DAY` is 0 and the debut is a
+# designer's sequencing call, not a switch this milestone flips — but the
+# lifecycle behind it is built and tested, and it rides the same action clock the
+# crow does so that pressure follows productivity for both.
+var ant_schedule: Array[int]
 var total_shipped: int  # Q-12 proof counter (crops sold, any route)
 
 # T-11 (Q-35): "has she ever done this?" for the three economy verbs, so each
@@ -109,6 +115,7 @@ func reset() -> void:
 	clear_counts = {}
 	actions_today = 0
 	crow_schedule = []
+	ant_schedule = []
 	total_shipped = 0
 	seeds_bought = 0
 	cans_refilled = 0
@@ -255,7 +262,8 @@ func start_new_day() -> void:
 	# here so it is seeded sim truth and a replay reproduces the same birds.
 	actions_today = 0
 	crow_schedule = SimWorld.roll_crow_schedule(play_day())
-	
+	ant_schedule = SimWorld.roll_ant_schedule(play_day())
+
 	if SimRng.randf() < 0.2:
 		weather = "rainy"
 	else:

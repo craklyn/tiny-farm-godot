@@ -47,6 +47,10 @@ const NEIGHBOUR := "neighbour"
 const CHICKEN := "chicken"
 const CROW := "crow"
 const SPRINKLER := "sprinkler"
+# The bestiary's first pair (M2.5 WI-8a/8b, `design/04` §1). Two species because
+# they are two *mechanics*: one marks, the other follows.
+const ANT_SCOUT := "ant_scout"
+const ANT_FORAGER := "ant_forager"
 
 # **"world" is not a species.** `{ "actor": "world" }` is the sim acting on its own
 # behalf — the day turning, a gate opening because a proof was met — and it holds
@@ -196,6 +200,73 @@ static var ROWS: Dictionary = {
 		"senses": {},
 		"persistent": true,
 	},
+
+	# --- the bestiary, tier 1 (M2.5 WI-8) -------------------------------------
+	#
+	# **The ant pair is the scent layer's first consumer** (`design/04` §1, P-10):
+	# scouts mark, foragers follow, success reinforces, decay erases. Neither row
+	# adds a verb — the scout has *none at all* (it walks and it deposits, and a
+	# deposit is a consequence of walking rather than a thing anybody does), and
+	# the forager's one verb is `eat_crop`, the mouth every critter in the game
+	# already shares with the crow.
+	#
+	# Their **counterplay is the player's existing hands**: a clear-class tap on
+	# the tile an ant is standing on stomps it (`stompable` below), and the
+	# `water` verb washes the trail off a tile (`SimWorld._apply` → `Scent.wash`,
+	# wired by WI-7). No new verb, no new UI, on either side. P-10 says difficulty
+	# is the decay constant rather than the spawn count, so the dial that makes
+	# ants hard is `Scent.CHANNELS[TRAIL].half_life`, not this table.
+	#
+	# **Nothing spawns one.** `SimWorld.ANT_RAIDS_PER_DAY` is 0: the raid
+	# lifecycle is built, scheduled and tested, and the live game has never
+	# contained an ant. *When* they debut is designer content sequencing (the
+	# Q-56 pattern), not this work item's to decide — the same standing the
+	# sprinkler ships with.
+
+	# The one that goes looking. Wanders, finds a crop, and walks home laying
+	# trail — which is the whole of it, and the reason a raid is answerable:
+	# stomp the scout and the column that would have followed never exists.
+	ANT_SCOUT: {
+		"name": "Ant Scout",
+		"brain": "ant_scout",
+		# **No verbs.** It changes the world only by moving and by depositing, and
+		# a deposit is not an Action (see `ant_scout_brain.gd`'s header for why
+		# that is the same rule the hen's walk follows, not an exception to it).
+		"verbs": [],
+		# 10 px/s — half the hen's pace, and 1.6 s per tile. Small and slow is the
+		# readability requirement (Q-17: a forming raid must be *seen*); a fast ant
+		# is a raid that is over before a child has looked up. [Playtest].
+		"speed": 0.0625,
+		"movement": { "mode": GROUND, "body_len": 1, "tile_exclusive": false },
+		# How far it notices food. Small on purpose: a scout with a big nose walks
+		# straight lines and stops looking like a search. [Playtest].
+		"senses": { "crop_sense": 3.0 },
+		# A raid is minutes of ground-level event with a *saved* trail behind it
+		# (`world.scent`), so unlike the crow's flight it is part of a snapshot of
+		# a farm — see the note in `save_game.gd:_capture_actors`.
+		"persistent": true,
+		# The counterplay, as data: a clear-class tap on this actor's tile answers
+		# it. See `SimWorld.stompable_at` and the `clear_*` branch of the gateway.
+		"stompable": true,
+	},
+
+	# The one that follows. Reads the gradient, takes exactly one crop, carries it
+	# home reinforcing the trail, and is gone. One crop each is what bounds a
+	# raid's cost (see `SimWorld.ANT_COLUMN_SIZE` and the daily-loss test).
+	ANT_FORAGER: {
+		"name": "Ant Forager",
+		"brain": "ant_forager",
+		# `eat_crop` — the crow's verb, and no new one. She can pull a crop up by
+		# hand; she simply has no reason to eat it (see ENTITY_VERBS above).
+		"verbs": ["eat_crop"],
+		# 8 px/s: 2 s per tile, a shade slower than the scout, because a column is
+		# a procession and a laden ant is a slow ant. [Playtest].
+		"speed": 0.05,
+		"movement": { "mode": GROUND, "body_len": 1, "tile_exclusive": false },
+		"senses": {},
+		"persistent": true,
+		"stompable": true,
+	},
 }
 
 
@@ -250,3 +321,11 @@ static func may(species: String, verb: String) -> bool:
 # this milestone. See SimWorld's registry block.
 static func is_persistent(species: String) -> bool:
 	return bool(row(species).get("persistent", false))
+
+
+# Does a clear-class tap on this thing's tile answer it? (M2.5 WI-8a, P-10's
+# "stomp scouts" counterplay.) Data rather than a list in the gateway, so the
+# critter that wants stomping says so in its own row — and so the default is
+# **no**: the hen must never be answerable by tapping her.
+static func is_stompable(species: String) -> bool:
+	return bool(row(species).get("stompable", false))
