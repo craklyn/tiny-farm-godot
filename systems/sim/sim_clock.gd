@@ -33,6 +33,14 @@ extends RefCounted
 # speeds (tiles per tick) against it.
 const RATE := 10
 
+# The px/s → tiles/tick conversion, kept here because the rate is here: a species
+# table that hard-codes the division would go quietly wrong the day RATE moves.
+# `systems/species_defs.gd` documents each row's px/s figure and the unit test
+# checks the row against this (M2.5 WI-2).
+static func tiles_per_tick(px_per_second: float, tile_px: float = 16.0) -> float:
+	return px_per_second / tile_px / float(RATE)
+
+
 # Sim time. Read freely; advance it only through advance_to()/advance_by(), which
 # are the only things that can dispatch what is due at the ticks passed over.
 var tick: int = 0

@@ -324,10 +324,117 @@ clean.
    Nothing schedules any yet, and events carry `Callable`s, which do not serialize; the
    saveable shape is WI-3's to settle when it has real processes to save.
 
-**For WI-2/WI-3:** the clock is `world.clock` and starts at 0 on `generate()` and on
+**For WI-2/WI-3 (written by WI-1):** the clock is `world.clock` and starts at 0 on `generate()` and on
 `SaveGame.restore()`; `capture_canonical()` now includes the tick, so a replay whose
 recomputed motion consumes a different number of ticks than the recorded session will
 fail the existing replay-vs-save comparison — that is deliberate, and it is free extra
 assurance for WI-5's dual-record net. `ARCHITECTURE.md`'s layer-2 description is
 deliberately not updated yet: brains, clock and registry are one paragraph, and it is
 written once WI-2/WI-3 land (checklist §8.D).
+
+### WI-2 — Actor registry + species data ✅ landed 2026-08-31
+
+`systems/species_defs.gd` (layer 1, `tools.gd` precedent): rows for the four species
+that exist today — player, neighbour, chicken, crow — each carrying verbs, movement
+capability `{mode, body_len, tile_exclusive}`, speed in tiles/tick, senses and a brain
+id. The crow's row is `fly`, which is finding F-6 turned into data. Speeds convert from
+the px/s each presentation node moves at today (player 48, neighbour 26, chicken 20,
+crow 60 inbound) through `SimClock.tiles_per_tick()` — added there because the rate
+lives there, so a table that hard-coded the division could not go quietly wrong when
+`RATE` moves. The table is append-only by construction: WI-8 workers add a row at the
+bottom and touch nothing above it.
+
+`SimWorld.actors: {actor_id: {species, pos, facing, energy, extra}}` absorbs
+`actor_energy` — the field is gone and the meter now rides inside each entry, with
+`energy_of` / `is_exhausted` / `spend_actor_energy` reading and writing it and
+`advance_day` refilling every registered actor. Registry API: `spawn_actor` /
+`despawn_actor` / `has_actor` / `actor` / `actor_pos` / `set_actor_pos` /
+`species_of` / `actors_of_species` / `set_actor_energy`, all sim functions, no verbs.
+Worldgen gained step 9 (`spawn_default_actors`), so **who is in the world and where is
+decided from the seed** rather than by whichever renderer spawns nodes; `main.gd` reads
+the hen's tile out of the registry instead of drawing it, which is finding F-7c's cause.
+`SaveGame` persists the registry as `world.actors` (additive, no VERSION bump, the
+`tick`/`actor_energy` pattern), flattening `pos` to x/y because JSON has no Vector2i.
+
+Suites: unit **811 PASSED / 0 FAILED** (764 before, +47 from `test_actor_registry`),
+integration **141 / 0**, robot session **MATCH**, `verify_replay` MATCH on a real
+pre-M2.5 session (its base_save takes the legacy path), benchmark 661,012×
+(650,471× at WI-1). Purity greps clean: no `Time.`/delta under `systems/sim/`, no Node,
+autoload, `Input` or `Pathfinding` in the new code.
+
+**Deviations and decisions taken inside the WI (criteria unaffected unless noted):**
+
+1. **`test_actor_energy` is not quite unmodified.** Two lines that wrote
+   `world.actor_energy["neighbour"] = n` directly became `world.set_actor_energy(...)`;
+   every assertion in it is untouched and still passes. There is no way to keep the old
+   direct-write working once energy lives inside a per-actor entry — a property getter
+   returning a snapshot dictionary would silently swallow the write, which is worse than
+   a two-line edit. `test_cold_open`'s one `actor_energy.has("neighbour")` assertion
+   became `not world.has_actor("neighbour")` after the gate opens (see 3).
+2. **The chicken's registry position is her *spawn* tile, not where her sprite has
+   wandered to.** The criterion ("chicken position survives save/load") is met — the
+   tile is rolled in worldgen from the seed, saved, restored and replayed, and a reload
+   no longer teleports her — but her live wander is still presentation-side and
+   wall-clock paced (findings F-2/F-4). Writing that position into sim truth *now* would
+   make every session's save disagree with its own replay, because a headless replay has
+   no chicken node to wander. It becomes true state in WI-3, when her brain moves; that
+   is the same commit that should make her position mirror sim truth in the renderer.
+   The player's entry has the same shape of caveat: it initialises from
+   `WorldLayout.spawn()` and nothing moves it (WI-4/WI-6). `main.gd` still adjusts *its
+   own* spawn tile when a restored save has an object on the default one, and
+   deliberately does not write that adjustment back — a boot-time presentation fixup in
+   sim truth would break replay equality the same way.
+3. **The neighbour despawns in the gateway when the cold-open gate opens.** The WI scopes
+   the registry to "the neighbour while the cold open is live", and that has to be true
+   from every direction: `generate()` and a legacy load both decide her presence from the
+   gate, so `open_gate` maintains the same invariant instead of leaving a departed actor
+   registered forever for WI-6 to draw standing in an empty yard. It is applied inside
+   `apply_action`, so a replay and a reload agree about when she leaves.
+4. **The crow stays node-spawned**, as instructed: registry v1 is persistent actors only.
+   Its row is in the species table with `persistent: false`; its lifecycle moves with its
+   brain (WI-3). It therefore never appears in the registry, and `_ensure_actor()` exists
+   so that any actor which acts without having been spawned still gets a meter — the
+   crow's verbs happen to cost nothing, so today nothing takes that path but tests.
+5. **A load never draws.** `spawn_default_actors(from_stream)` takes the hen's tile from
+   the shared RNG stream in worldgen (one deterministic sequence a replay repeats) and
+   **by rule** on the legacy-load path — the first reachable tile that is not the spawn
+   point. Consuming the stream inside `restore()` would shift every later draw of the
+   session continuing from it, which is the desync class `SimRng.stateless()` exists for.
+6. **Legacy `actor_energy` is folded in only for actors the world still contains.** The
+   common pre-M2.5 save was written after the cold open and still carries the neighbour's
+   meter; restoring it would be the one remaining way to put a departed actor back on the
+   farm. Tested in both directions.
+7. **The visual baseline was regenerated, deliberately, in a commit of its own** — the
+   one thing here that spends a checklist allowance the plan reserved for WI-6, so it is
+   called out rather than buried, and isolated so it can be read (and reverted) without
+   the code. Moving the hen's tile roll from `main.gd` into worldgen changes where in the
+   RNG stream that draw happens, so the seeded frame `tools/test_visuals.tscn` renders has
+   her standing on a different tile. Verified as *only* that: old and new baselines differ
+   in 1,872 pixels forming two sprite-sized boxes (x 243–281 / 291–329, y 51–95 /
+   195–239) — one where she was, one where she is now — and nothing else in the frame
+   moved. Re-running the test after regeneration passes. WI-6's own re-baseline allowance
+   is untouched; this is the WI-2 commit's consequence, paid immediately after it.
+8. **Registry iteration order is not truth and nothing may depend on it.** A generated
+   world holds actors in spawn order; a restored one holds them in the order
+   `JSON.stringify` sorted the keys into (it sorts by default — which is also why
+   `capture_canonical` compares equal across the two). Noted in the code; the unit test
+   compares registries as sorted signatures rather than as arrangements.
+9. **`SimClock` gained one static function** (`tiles_per_tick`). It is the only edit to
+   WI-1's file and it is additive; the alternative was `species_defs.gd` (layer 1)
+   reaching up into layer 2 for `RATE`.
+
+**Two small extras that were cheap and are worth having:** the species table names the
+verbs each species may use, and a test asserts (a) that no row holds a verb outside the
+player's set except the handful of entity verbs documented one by one with their reasons
+— checklist §8.B's "no new verb grants an NPC a capability the player lacks", now a test
+rather than a review — and (b) that every verb named in the table is one `apply_action`
+actually implements, so a typo in a WI-8 row fails loudly instead of producing a brain
+that silently never acts.
+
+**For WI-3:** brains bind by the `brain` id in each species row (`player_input`,
+`cold_open`, `chicken_wander`, `crow_visit`); `extra` on each registry entry is where
+per-actor brain state belongs, and it is already saved and replayed, so a brain needs no
+new persistence of its own. The crow's registration and the chicken's live position are
+the two things WI-3 should make true (deviations 2 and 4). `ARCHITECTURE.md`'s layer-2
+paragraph is still unwritten by deliberate agreement with WI-1 — brains, clock and
+registry are one paragraph, and WI-3 is the landing that completes it (checklist §8.D).

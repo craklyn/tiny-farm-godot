@@ -153,13 +153,17 @@ func _ready() -> void:
 		neighbour.init(farm, plot.get("wave_at", Vector2i(12, 4)))
 		entities.add_child(neighbour)
 
-	# Spawn initial chicken
-	var ChickenScript = load("res://entities/chicken.gd")
-	var chicken = ChickenScript.new()
-	var reachable = Pathfinding.get_reachable_tiles(farm, player.get_tile_pos())
-	if reachable.size() > 0:
-		var target = reachable[SimRng.randi() % reachable.size()]
-		chicken.init(farm, target)
+	# The chicken, where the sim says she is (M2.5 WI-2). Her tile used to be
+	# drawn here, after generation, from whatever the RNG stream happened to be
+	# holding — which is why reloading a save put her somewhere new every time
+	# (plan finding F-7c). Worldgen rolls it now, from the seed, and the save
+	# carries it; this reads the registry and draws her there. She is still
+	# node-driven once she starts walking: her brain moves sim-side in WI-3.
+	var hen: Dictionary = farm.sim.actor(SimWorld.ACTOR_CHICKEN)
+	if not hen.is_empty():
+		var ChickenScript = load("res://entities/chicken.gd")
+		var chicken = ChickenScript.new()
+		chicken.init(farm, hen.get("pos", WorldLayout.spawn(farm.sim.layout)))
 		entities.add_child(chicken)
 
 	# Create particles manager

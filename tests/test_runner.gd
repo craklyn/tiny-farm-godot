@@ -59,6 +59,7 @@ func _init() -> void:
 	test_boundary_tap_answers()
 	test_cold_open()
 	test_actor_energy()
+	test_actor_registry()
 	test_takeover_anchoring()
 	test_acorns()
 	test_economy_teaching()
@@ -2367,8 +2368,13 @@ func test_cold_open() -> void:
 	_assert(gs.energy == energy_before,
 		"the neighbour's labour costs the player nothing (and the sleeps refill anyway)")
 	_assert(gs.seeds.get("wheat", 0) == 5, "and she plants her own seed, not the player's")
-	_assert(world.actor_energy.has("neighbour"),
-		"but she does have a meter of her own, and it was used")
+	# She is a registered actor while her scene is live (M2.5 WI-2) with a meter of
+	# her own; opening the gate is her leaving, so it takes her out of the world
+	# as well as off the farm. Her meter is exercised in test_actor_registry and
+	# test_actor_energy, which do not have to run her all the way out of the game
+	# to look at it.
+	_assert(not world.has_actor(SimWorld.ACTOR_NEIGHBOUR),
+		"and when the gate is open she is gone from the registry too")
 
 	# The whole opening replays. This is the property that makes it free: no new
 	# machinery to keep in sync with the sim, and the single gateway is honoured
@@ -2679,7 +2685,7 @@ func test_actor_energy() -> void:
 
 	# Soft floor, exactly as Q-11 gives the player: an exhausted NPC clamps at 0
 	# and its action still resolves. Nothing in phase 1 is a wall, for anyone.
-	world.actor_energy["neighbour"] = 0
+	world.set_actor_energy("neighbour", 0)
 	_assert(world.is_exhausted("neighbour"), "an NPC can be exhausted")
 	world.set_tile_state(t.x, t.y, "cleared")
 	_assert(world.apply_action({ "verb": "till", "target": t, "actor": "neighbour" }, gs).get("ok", false),
@@ -2694,7 +2700,7 @@ func test_actor_energy() -> void:
 	_assert(gs.energy == gs.max_energy, "the player's included, as before")
 
 	# It is sim truth: saved, restored, and reproduced by a replay.
-	world.actor_energy["neighbour"] = 7
+	world.set_actor_energy("neighbour", 7)
 	var round_trip = JSON.parse_string(JSON.stringify(SaveGame.capture(world, gs)))
 	var w2 := SimWorld.new()
 	var gs2 = load("res://systems/game_state.gd").new()
@@ -2734,6 +2740,290 @@ func test_actor_energy() -> void:
 	gs3.free()
 	gs4.free()
 	gs5.free()
+
+
+# The registry as a value, with its arrangement thrown away — see the comment at
+# the call site.
+func _actors_signature(world: SimWorld) -> String:
+	var ids := world.actors.keys()
+	ids.sort()
+	var parts: PackedStringArray = []
+	for id in ids:
+		parts.append("%s=%s" % [id, world.actors[id]])
+	return "; ".join(parts)
+
+
+func test_actor_registry() -> void:
+	print("\n--- The actor registry and the species table (D-9/Q-53, M2.5 WI-2) Tests ---")
+
+	# --- the table (plan §3.4; checklist §8.B) --------------------------------
+	# Every row answers all four questions. `movement` has no default anywhere in
+	# SpeciesDefs precisely so that this can fail rather than shrug: WI-8 adds a
+	# critter row per worker, and a row that forgot how it moves must not walk.
+	for id in SpeciesDefs.ids():
+		var row: Dictionary = SpeciesDefs.row(id)
+		var move: Dictionary = SpeciesDefs.movement_of(id)
+		_assert_quiet(not move.is_empty(), "%s carries a movement capability" % id)
+		_assert_quiet(SpeciesDefs.mode_of(id) in SpeciesDefs.MODES,
+			"%s moves in one of the four modes" % id)
+		_assert_quiet(int(move.get("body_len", 0)) >= 1, "%s occupies at least one tile" % id)
+		_assert_quiet(typeof(move.get("tile_exclusive")) == TYPE_BOOL,
+			"%s says whether it shares a tile" % id)
+		_assert_quiet(SpeciesDefs.speed_of(id) > 0.0, "%s has a speed" % id)
+		_assert_quiet(SpeciesDefs.brain_of(id) != "", "%s names a brain (WI-3 binds it)" % id)
+		_assert_quiet(SpeciesDefs.verbs_of(id) is Array, "%s lists its verbs" % id)
+		_assert_quiet(String(row.get("name", "")) != "", "%s has a display name" % id)
+	_flush_quiet("every species row answers all of the questions a row exists to answer")
+
+	# Finding F-6, now one field instead of an accident of each node's code: the
+	# crow has always flown over what a walker paths around.
+	_assert(SpeciesDefs.mode_of(SpeciesDefs.CROW) == SpeciesDefs.FLY,
+		"the crow's obstacle-ignoring flight is a data row (F-6)")
+	_assert(SpeciesDefs.mode_of(SpeciesDefs.CHICKEN) == SpeciesDefs.GROUND
+			and SpeciesDefs.mode_of(SpeciesDefs.NEIGHBOUR) == SpeciesDefs.GROUND
+			and SpeciesDefs.mode_of(SpeciesDefs.PLAYER) == SpeciesDefs.GROUND,
+		"and everybody else walks")
+
+	# Speeds are tiles per tick, converted from the px/s each presentation node
+	# moves at today. Asserted against the conversion rather than against a
+	# literal, so raising SimClock.RATE cannot quietly leave the table saying
+	# something it no longer means.
+	_assert(is_equal_approx(SpeciesDefs.speed_of(SpeciesDefs.PLAYER), SimClock.tiles_per_tick(48.0)),
+		"the player's 48 px/s is 0.3 tiles/tick")
+	_assert(is_equal_approx(SpeciesDefs.speed_of(SpeciesDefs.NEIGHBOUR), SimClock.tiles_per_tick(26.0)),
+		"the neighbour's 26 px/s converts")
+	_assert(is_equal_approx(SpeciesDefs.speed_of(SpeciesDefs.CHICKEN), SimClock.tiles_per_tick(20.0)),
+		"the chicken's 20 px/s converts")
+	_assert(is_equal_approx(SpeciesDefs.speed_of(SpeciesDefs.CROW), SimClock.tiles_per_tick(60.0)),
+		"the crow's 60 px/s flight converts")
+	_assert(is_equal_approx(SimClock.tiles_per_tick(160.0), 1.0),
+		"a tile per tick is 160 px/s at 16 px tiles and 10 Hz")
+
+	# The player's spook radius is the one sense that exists today, and it exists
+	# in pixels on a node (`player/player.gd`). In tiles here, because a sim that
+	# reasons in pixels is a sim that has lost the plot.
+	_assert(is_equal_approx(float(SpeciesDefs.senses_of(SpeciesDefs.PLAYER).get("spook_radius", 0.0)), 3.0),
+		"the player startles things within 3 tiles (48 px, as the crow reads it today)")
+	_assert(SpeciesDefs.senses_of(SpeciesDefs.CROW).get("flees_spook_radius", false),
+		"and the crow is what notices — F-7b's scan, written down as a sense")
+
+	# Ground rule 1: nobody gets a verb the player lacks, except the handful of
+	# entity verbs the table documents one by one with their reasons.
+	for id in SpeciesDefs.ids():
+		for v in SpeciesDefs.verbs_of(id):
+			_assert_quiet(v in SpeciesDefs.PLAYER_VERBS or v in SpeciesDefs.ENTITY_VERBS,
+				"%s's verb %s is accounted for" % [id, v])
+	_flush_quiet("no species has a verb outside the player's set and the documented entity verbs")
+
+	# And every verb named in the table is one the gateway actually knows — a
+	# typo in a row would otherwise be a brain that silently never acts. Driven
+	# with no GameState and an off-map target, so nothing here mutates anything:
+	# the only answer being ruled out is "unknown_verb".
+	var vocab := SimWorld.new()
+	for id in SpeciesDefs.ids():
+		for v in SpeciesDefs.verbs_of(id):
+			var r: Dictionary = vocab.apply_action({ "verb": v, "target": Vector2i(-1, -1) }, null)
+			_assert_quiet(String(r.get("reason", "")) != "unknown_verb",
+				"%s's verb %s is a verb the gateway knows" % [id, v])
+	_flush_quiet("every verb in the table is a verb apply_action() implements")
+
+	# --- the cast a generated world contains ----------------------------------
+	GameState.reset()
+	SimRng.reseed(2026)
+	var world := SimWorld.new()
+	world.generate()
+
+	_assert(world.has_actor(SimWorld.ACTOR_PLAYER), "a generated world contains the player")
+	_assert(world.actor_pos(SimWorld.ACTOR_PLAYER) == WorldLayout.spawn(),
+		"at the layout's spawn point (nothing moves her yet — WI-4/WI-6)")
+	_assert(world.has_actor(SimWorld.ACTOR_CHICKEN), "and the chicken")
+	_assert(world.has_actor(SimWorld.ACTOR_NEIGHBOUR),
+		"and the neighbour, because her cold open has not run")
+	var hen: Vector2i = world.actor_pos(SimWorld.ACTOR_CHICKEN)
+	_assert(world.is_walkable(hen.x, hen.y), "the hen is standing somewhere she could stand")
+	_assert(world.species_of(SimWorld.ACTOR_CHICKEN) == SpeciesDefs.CHICKEN,
+		"and she is a chicken, which is a species the table knows")
+	for id in world.actors:
+		_assert_quiet(SpeciesDefs.has(world.species_of(id)),
+			"%s's species is in the table" % id)
+		_assert_quiet(not SpeciesDefs.movement_of(world.species_of(id)).is_empty(),
+			"%s can move somehow" % id)
+	_flush_quiet("every actor a generated world registers has a species, and that species can move")
+	_assert(not world.has_actor("crow"),
+		"the crow is not in registry v1 — a visit is not a resident (WI-3 owns its lifecycle)")
+
+	# Where she stands is a function of the seed, which is the point: the tile
+	# used to be drawn in main.gd after generation, so it was a function of
+	# whatever the stream happened to be holding when a renderer got there.
+	SimRng.reseed(2026)
+	var twin := SimWorld.new()
+	twin.generate()
+	_assert(twin.actor_pos(SimWorld.ACTOR_CHICKEN) == hen,
+		"the same seed puts the hen on the same tile")
+	var moved := false
+	for s in [7, 99, 1234, 55555]:
+		SimRng.reseed(s)
+		var other := SimWorld.new()
+		other.generate()
+		if other.actor_pos(SimWorld.ACTOR_CHICKEN) != hen:
+			moved = true
+	_assert(moved, "and a different seed puts her somewhere else")
+
+	# --- she survives a save and a load (the WI's named criterion, F-7c) -------
+	var gs = load("res://systems/game_state.gd").new()
+	var snapshot = JSON.parse_string(JSON.stringify(SaveGame.capture(world, gs)))
+	var reloaded := SimWorld.new()
+	var gs_reloaded = load("res://systems/game_state.gd").new()
+	_assert(SaveGame.restore(snapshot, reloaded, gs_reloaded), "a save with a registry in it restores")
+	_assert(reloaded.actor_pos(SimWorld.ACTOR_CHICKEN) == hen,
+		"and the chicken is where she was, not where a fresh die roll put her (F-7c)")
+	_assert(reloaded.actor_pos(SimWorld.ACTOR_PLAYER) == world.actor_pos(SimWorld.ACTOR_PLAYER)
+			and reloaded.has_actor(SimWorld.ACTOR_NEIGHBOUR),
+		"and so is everybody else who was in the world")
+	# Entry for entry, not arrangement for arrangement: a saved registry comes
+	# back in the order JSON.stringify sorted its keys into rather than in spawn
+	# order, and nothing is allowed to care (see SimWorld's registry block).
+	_assert(_actors_signature(reloaded) == _actors_signature(world),
+		"the whole registry round-trips value-for-value")
+
+	# --- and a replay reproduces it exactly -----------------------------------
+	# Same seed, same action stream, same registry — including the neighbour's
+	# departure, which is a sim fact applied in the gateway rather than a node
+	# calling queue_free().
+	var log := ReplayLog.new()
+	log.start(4242)
+	SimRng.reseed(4242)
+	var live := SimWorld.new()
+	var gs_live = load("res://systems/game_state.gd").new()
+	live.generate()
+	var gate := ColdOpen.gate(live)
+	var stream: Array[Dictionary] = [
+		{ "verb": "till", "target": Vector2i(14, 4), "actor": "neighbour" },
+		{ "verb": "water", "target": Vector2i(13, 4), "actor": "neighbour" },
+		{ "verb": "open_gate", "target": gate, "actor": "neighbour" },
+	]
+	for a in stream:
+		log.record(a, live.apply_action(a, gs_live))
+	_assert(not live.has_actor(SimWorld.ACTOR_NEIGHBOUR),
+		"opening the cold open's gate takes the neighbour out of the world")
+	var replayed := SimWorld.new()
+	var gs_replayed = load("res://systems/game_state.gd").new()
+	log.apply_to(replayed, gs_replayed)
+	_assert(str(replayed.actors) == str(live.actors),
+		"same seed + same actions = the same registry, entry for entry")
+	_assert(SaveGame.capture_canonical(live, gs_live) == SaveGame.capture_canonical(replayed, gs_replayed),
+		"so the canonical capture still matches after a replay")
+
+	# --- the meter lives in the entry now -------------------------------------
+	SimRng.reseed(606)
+	var metered := SimWorld.new()
+	metered.generate()
+	var gs_m = load("res://systems/game_state.gd").new()
+	metered.set_tile_state(5, 3, "cleared")
+	metered.apply_action({ "verb": "till", "target": Vector2i(5, 3), "actor": "neighbour" }, gs_m)
+	_assert(int(metered.actor(SimWorld.ACTOR_NEIGHBOUR).get("energy", -99))
+			== SimWorld.ACTOR_MAX_ENERGY - Tools.get_energy_cost("till"),
+		"spending an NPC's energy writes it into her registry entry")
+	_assert(metered.energy_of(SimWorld.ACTOR_NEIGHBOUR)
+			== int(metered.actor(SimWorld.ACTOR_NEIGHBOUR).get("energy", -99)),
+		"and energy_of() reads the same field, not a second copy of the truth")
+	_assert(int(metered.actor(SimWorld.ACTOR_PLAYER).get("energy", 0)) == -1,
+		"the player's entry carries no meter — hers is GameState's, because hers is the clock")
+	metered.advance_day("sunny")
+	_assert(metered.energy_of(SimWorld.ACTOR_NEIGHBOUR) == SimWorld.ACTOR_MAX_ENERGY,
+		"a day turning refills every registered actor")
+	_assert(int(metered.actor(SimWorld.ACTOR_PLAYER).get("energy", 0)) == -1,
+		"and leaves the player's alone")
+
+	# --- spawn and despawn are sim functions ----------------------------------
+	metered.spawn_actor("chicken_2", SpeciesDefs.CHICKEN, Vector2i(6, 6))
+	_assert(metered.actors_of_species(SpeciesDefs.CHICKEN).size() == 2,
+		"a second hen is a second entry, not a special case")
+	metered.set_actor_pos("chicken_2", Vector2i(7, 6), "left")
+	_assert(metered.actor_pos("chicken_2") == Vector2i(7, 6)
+			and String(metered.actor("chicken_2").get("facing", "")) == "left",
+		"moving one is a sim call (WI-4 is what will make it happen on its own)")
+	_assert(metered.despawn_actor("chicken_2") and not metered.has_actor("chicken_2"),
+		"and despawning removes her")
+	_assert(not metered.despawn_actor("chicken_2"), "despawning twice is not a second departure")
+	_assert(metered.actor_pos("nobody") == Vector2i(-1, -1) and metered.actor("nobody").is_empty(),
+		"an actor nobody spawned has no entry and no position")
+
+	# --- a pre-M2.5 save default-spawns exactly as the old build would ---------
+	var legacy := { "version": SaveGame.VERSION,
+		"world": {
+			"tiles": world.tiles.duplicate(true),
+			"objects": world.objects.duplicate(true),
+			# What such a save *did* carry: the meters, in a map of their own.
+			"actor_energy": { "neighbour": 7 },
+		},
+		"state": {} }
+	var old_world := SimWorld.new()
+	var gs_old = load("res://systems/game_state.gd").new()
+	_assert(SaveGame.restore(legacy, old_world, gs_old), "a save written before the registry still restores")
+	_assert(old_world.has_actor(SimWorld.ACTOR_PLAYER) and old_world.has_actor(SimWorld.ACTOR_CHICKEN),
+		"and default-spawns the cast that build would have had")
+	var old_hen: Vector2i = old_world.actor_pos(SimWorld.ACTOR_CHICKEN)
+	_assert(old_world.is_walkable(old_hen.x, old_hen.y) and old_hen != old_world.actor_pos(SimWorld.ACTOR_PLAYER),
+		"with the hen beside the player rather than under her")
+	_assert(old_world.energy_of(SimWorld.ACTOR_NEIGHBOUR) == 7,
+		"and its actor_energy map is folded into the entries (the compat shim)")
+
+	# The common case for a legacy save is one written *after* the cold open, and
+	# its actor_energy still has the neighbour in it. She is gone; a meter must
+	# not be the thing that puts a departed actor back on the farm.
+	SimRng.reseed(2026)
+	var after := SimWorld.new()
+	var gs_after = load("res://systems/game_state.gd").new()
+	after.generate()
+	after.apply_action({ "verb": "open_gate", "target": ColdOpen.gate(after), "actor": "neighbour" }, gs_after)
+	var legacy_after := { "version": SaveGame.VERSION,
+		"world": {
+			"tiles": after.tiles.duplicate(true),
+			"objects": after.objects.duplicate(true),
+			"actor_energy": { "neighbour": 3, "chicken": 5 },
+		},
+		"state": {} }
+	var old_after := SimWorld.new()
+	var gs_old_after = load("res://systems/game_state.gd").new()
+	_assert(SaveGame.restore(legacy_after, old_after, gs_old_after),
+		"a legacy save from after the cold open restores too")
+	_assert(not old_after.has_actor(SimWorld.ACTOR_NEIGHBOUR),
+		"and does not resurrect the neighbour to give her meter back to")
+	_assert(old_after.energy_of(SimWorld.ACTOR_CHICKEN) == 5,
+		"while the hen, who is still here, keeps hers")
+
+	# The real fixtures, not a synthetic old save: every genuinely pre-M2.5
+	# autosave in playtests/ must come back with a farm that has a hen on it.
+	var dir := DirAccess.open("res://playtests")
+	if dir != null:
+		var checked := 0
+		for name in dir.get_directories():
+			var path := "res://playtests/%s/autosave.json" % name
+			var data := SaveGame.load_dict(path)
+			if data.is_empty() or data.get("world", {}).has("actors"):
+				continue
+			checked += 1
+			var fixture := SimWorld.new()
+			var gs_fixture = load("res://systems/game_state.gd").new()
+			_assert_quiet(SaveGame.restore(data, fixture, gs_fixture), "%s restores" % name)
+			_assert_quiet(fixture.has_actor(SimWorld.ACTOR_PLAYER)
+					and fixture.has_actor(SimWorld.ACTOR_CHICKEN),
+				"%s comes back with a player and a hen" % name)
+			var t: Vector2i = fixture.actor_pos(SimWorld.ACTOR_CHICKEN)
+			_assert_quiet(fixture.is_walkable(t.x, t.y), "%s puts the hen somewhere walkable" % name)
+			gs_fixture.free()
+		_assert_quiet(checked > 0, "there were pre-M2.5 fixtures to check")
+		_flush_quiet("every real pre-registry autosave in playtests/ default-spawns its cast")
+
+	gs.free()
+	gs_reloaded.free()
+	gs_live.free()
+	gs_replayed.free()
+	gs_m.free()
+	gs_old.free()
+	gs_after.free()
+	gs_old_after.free()
 
 
 func test_economy_teaching() -> void:

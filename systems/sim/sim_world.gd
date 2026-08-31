@@ -192,6 +192,14 @@ func generate(with_layout: Dictionary = WorldLayout.DEFAULT) -> void:
 	#    inherits is real world state rather than a picture of some.
 	_place_neighbour_plot()
 
+	# 9. The cast (M2.5 WI-2, D-9/Q-53). Who is in the world and where they stand
+	#    is decided here — from the seed, with the grids — rather than by whichever
+	#    renderer happens to spawn nodes. The hen's tile used to be drawn in
+	#    `main.gd` after generation, which is exactly why she landed somewhere new
+	#    every time a save was loaded (finding F-7c). Last in the sequence, so
+	#    every draw above it keeps the stream position it has always had.
+	spawn_default_actors(true)
+
 
 func _inside(tx: int, ty: int) -> bool:
 	return tx >= 1 and tx <= MAP_WIDTH - 2 and ty >= 1 and ty <= MAP_HEIGHT - 2
@@ -458,32 +466,223 @@ const NON_WORK_VERBS := { "sleep": true, "sell": true, "buy_seed": true, "refill
 # and its action still resolves. Nothing in phase 1 is a wall.
 const ACTOR_MAX_ENERGY := 20  # [Playtest]
 
-# actor name -> energy remaining. Sim truth: saved, restored and replayed, so an
-# NPC's tiredness survives a reload and a replay reproduces it exactly. Absent
-# means "has not worked yet", which reads as full.
-var actor_energy: Dictionary = {}
+
+# --- Actor registry (D-9 / Q-53, M2.5 WI-2) -----------------------------------
+#
+# **Who is in the world, and where, is sim truth.** D-9 said actor position was
+# presentation's business; Q-53 settled it the other way, and this is that
+# settlement. Before it, no actor position was saved, recorded or replayed
+# (finding F-5): the hen's tile was drawn in `main.gd` *after* generation, so she
+# landed somewhere new on every load (F-7c), and entities existed only because
+# main happened to spawn nodes, so every other renderer of the same sim silently
+# showed an empty farm (F-3).
+#
+# Entry shape — `actors[actor_id] = { species, pos, facing, energy, extra }`:
+#   species  a row in `systems/species_defs.gd`
+#   pos      Vector2i tile coordinates. Sim truth, saved and replayed.
+#   facing   "down"/"up"/"left"/"right" — the one presentation fact worth keeping
+#            sim-side, because a renderer that joins late has to draw *something*
+#   energy   this actor's own meter (below). The player's is GameState's, so hers
+#            reads -1 here and is never spent
+#   extra    per-species scratch, saved with the entry and untouched by the sim;
+#            WI-3's brains keep their per-actor state here rather than growing
+#            the registry a field per critter
+#
+# **Registry v1 holds persistent actors only** (plan §4): the player, the
+# neighbour while her cold open is live, and the chicken. The crow is still
+# node-spawned and node-owned — moving its lifecycle in belongs with its brain
+# (WI-3), because "when does a crow exist" is a decision, not a record, and the
+# decision is currently in `main.gd`'s spawner.
+#
+# **Nothing moves an actor yet.** Spawn positions are worldgen's and they stay
+# put; the walking is WI-4's. Until then the registry says where an actor
+# *lives*, not where its sprite is standing this frame — and deliberately so: the
+# presentation-side wander is wall-clock paced (finding F-2/F-4), and writing it
+# into sim truth before its brain moves would make the save disagree with the
+# replay of the same session.
+#
+# Spawn and despawn are sim functions rather than verbs. A verb is a thing an
+# actor *does*; nobody does a spawn. Brain-driven arrivals (a crow's visit, an
+# ant column) are WI-3+ and will schedule against the clock.
+#
+# **Iteration order is not truth.** A generated world holds actors in spawn
+# order; a restored one holds them in the order `JSON.stringify` sorted them
+# (alphabetically — it sorts keys by default, which is also why
+# `capture_canonical` compares equal across the two). Nothing may depend on the
+# order, and everything here is written not to: refills are per entry, lookups
+# are by id, and a renderer that needs a stable draw order must sort on
+# something real, like position.
+var actors: Dictionary = {}
+
+# The three ids registry v1 knows by name. Actor ids are still species names in
+# phase 1 — there is one hen and she is called "chicken" — and WI-3 is where a
+# second one needs an id of her own.
+const ACTOR_PLAYER := "player"
+const ACTOR_NEIGHBOUR := "neighbour"
+const ACTOR_CHICKEN := "chicken"
 
 
 static func _is_player(actor: String) -> bool:
 	# "" is the player: plenty of call sites (and tests) omit the actor entirely,
 	# and the player is the only actor anything ever forgot to name.
-	return actor == "" or actor == "player"
+	return actor == "" or actor == ACTOR_PLAYER
 
 
-func energy_of(actor: String) -> int:
-	if _is_player(actor):
-		return -1  # the player's meter is GameState's, not the world's
-	return int(actor_energy.get(actor, ACTOR_MAX_ENERGY))
+func spawn_actor(actor_id: String, species: String, at: Vector2i, extra: Dictionary = {}) -> Dictionary:
+	var entry := {
+		"species": species,
+		"pos": at,
+		"facing": "down",
+		# The player's meter is GameState's, and hers is also the clock (Q-38).
+		# -1 is the same "she has no world-side meter" that energy_of() returns,
+		# stored so every row has the same shape.
+		"energy": -1 if _is_player(actor_id) else ACTOR_MAX_ENERGY,
+		"extra": extra.duplicate(true),
+	}
+	actors[actor_id] = entry
+	return entry
 
 
-func is_exhausted(actor: String) -> bool:
-	return not _is_player(actor) and energy_of(actor) <= 0
+func despawn_actor(actor_id: String) -> bool:
+	return actors.erase(actor_id)
 
 
-func spend_actor_energy(actor: String, cost: int) -> void:
-	if _is_player(actor) or cost <= 0:
+func has_actor(actor_id: String) -> bool:
+	return actors.has(actor_id)
+
+
+# The live entry (mutable — callers hold the sim's own dictionary), or {}.
+func actor(actor_id: String) -> Dictionary:
+	return actors.get(actor_id, {})
+
+
+func species_of(actor_id: String) -> String:
+	return String(actor(actor_id).get("species", ""))
+
+
+func actor_pos(actor_id: String) -> Vector2i:
+	return actor(actor_id).get("pos", Vector2i(-1, -1))
+
+
+# Sim-side movement, for the movement engine (WI-4) and the brains that drive it
+# (WI-3). Presentation must not call this: a node writing its wall-clock position
+# into sim truth is exactly the desync the registry exists to prevent.
+func set_actor_pos(actor_id: String, at: Vector2i, facing: String = "") -> void:
+	var e: Dictionary = actor(actor_id)
+	if e.is_empty():
 		return
-	actor_energy[actor] = maxi(0, energy_of(actor) - cost)
+	e["pos"] = at
+	if facing != "":
+		e["facing"] = facing
+
+
+func actors_of_species(species: String) -> Array[String]:
+	var out: Array[String] = []
+	for id in actors:
+		if String(actors[id].get("species", "")) == species:
+			out.append(String(id))
+	return out
+
+
+# An actor that acts without having been spawned still gets a meter. Today that
+# is the crow (registry v1 is persistent actors only) and every test that names
+# an actor out of thin air. Since ids are species names in phase 1, an id that
+# names a species is registered as one; anything else gets a species-less entry
+# at (-1, -1), which is the honest record of "something acted here and nobody
+# spawned it". WI-3 spawns them properly and this stops being a live path.
+func _ensure_actor(actor_id: String) -> Dictionary:
+	if not actors.has(actor_id):
+		spawn_actor(actor_id, actor_id if SpeciesDefs.has(actor_id) else "", Vector2i(-1, -1))
+	return actors[actor_id]
+
+
+func energy_of(actor_id: String) -> int:
+	if _is_player(actor_id):
+		return -1  # the player's meter is GameState's, not the world's
+	var e: Dictionary = actors.get(actor_id, {})
+	if e.is_empty():
+		return ACTOR_MAX_ENERGY  # nobody on record reads as rested, as it always did
+	return int(e.get("energy", ACTOR_MAX_ENERGY))
+
+
+func is_exhausted(actor_id: String) -> bool:
+	return not _is_player(actor_id) and energy_of(actor_id) <= 0
+
+
+func set_actor_energy(actor_id: String, value: int) -> void:
+	if _is_player(actor_id):
+		return
+	_ensure_actor(actor_id)["energy"] = maxi(0, value)
+
+
+func spend_actor_energy(actor_id: String, cost: int) -> void:
+	if _is_player(actor_id) or cost <= 0:
+		return
+	var e := _ensure_actor(actor_id)
+	e["energy"] = maxi(0, int(e.get("energy", ACTOR_MAX_ENERGY)) - cost)
+
+
+# The cast a world contains when nothing on record says otherwise: worldgen's
+# step 9, and a load whose save predates the registry.
+#
+# `from_stream` is the whole difference between those two callers. Worldgen may
+# draw the hen's tile from the shared RNG stream, because `generate()` is one
+# deterministic sequence that a replay repeats exactly. A **load must not draw at
+# all**: consuming the stream inside `restore()` would shift every later draw of
+# the session that continues from it, which is precisely the desync
+# `SimRng.stateless()` was invented for. So a legacy load places her by rule.
+func spawn_default_actors(from_stream: bool = false) -> void:
+	actors.clear()
+	var start := WorldLayout.spawn(layout)
+	spawn_actor(ACTOR_PLAYER, SpeciesDefs.PLAYER, start)
+	# She is in the world exactly while her scene is: an unopened cold-open gate
+	# is the same evidence `ColdOpen.is_done()` reads, so a save restored
+	# mid-scene brings her back and one restored after it does not.
+	if not ColdOpen.is_done(self):
+		var plot: Dictionary = layout.get("neighbour_plot", {})
+		spawn_actor(ACTOR_NEIGHBOUR, SpeciesDefs.NEIGHBOUR, plot.get("wave_at", start))
+	spawn_actor(ACTOR_CHICKEN, SpeciesDefs.CHICKEN, _chicken_tile(start, from_stream))
+
+
+func _chicken_tile(start: Vector2i, from_stream: bool) -> Vector2i:
+	var reachable := _reachable_from(start)
+	if reachable.is_empty():
+		return start
+	if from_stream:
+		return reachable[SimRng.randi() % reachable.size()]
+	# By rule, for the no-draw path: the first tile the flood fill reaches that is
+	# not the spawn point itself, so a pre-registry save wakes with the hen beside
+	# the player rather than under her.
+	for t in reachable:
+		if t != start:
+			return t
+	return reachable[0]
+
+
+# Flood fill over walkable tiles, in the sim, with no autoload in sight — the
+# `Pathfinding` autoload is presentation's wrapper and layer 2 may not touch it.
+# Worldgen-only for now (one O(map) pass, next to the several it already does);
+# pathing as a pure sim function is WI-4's deliverable, and this is deliberately
+# not it.
+func _reachable_from(start: Vector2i) -> Array[Vector2i]:
+	const DIRS := [Vector2i(0, -1), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(1, 0)]
+	var out: Array[Vector2i] = []
+	if not is_walkable(start.x, start.y):
+		return out
+	var seen := { start: true }
+	var queue: Array[Vector2i] = [start]
+	var idx := 0
+	while idx < queue.size():
+		var t := queue[idx]
+		idx += 1
+		out.append(t)
+		for d in DIRS:
+			var n: Vector2i = t + d
+			if seen.has(n) or not is_walkable(n.x, n.y):
+				continue
+			seen[n] = true
+			queue.append(n)
+	return out
 
 
 func apply_action(action: Dictionary, gs = null) -> Dictionary:
@@ -569,8 +768,18 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			# day-keyed rules re-anchor here rather than on the absolute day
 			# counter. Set inside the sim so a replay earns the same anchor.
 			var opened := _parcel_with_gate(target)
-			if gs != null and String(opened.get("opened_by", "")) == WorldLayout.OPENED_BY_COLD_OPEN \
-					and "takeover_day" in gs:
+			var by_cold_open := String(opened.get("opened_by", "")) == WorldLayout.OPENED_BY_COLD_OPEN
+			# She leaves the world as well as the farm (M2.5 WI-2). Spawn and
+			# despawn are sim facts, so her departure is one: it happens in the
+			# gateway, which is what makes a replay and a reload agree about when
+			# the registry stops containing her. It keeps one invariant true from
+			# both directions — the neighbour is registered exactly while her gate
+			# is closed, whether this world was generated, restored or replayed to
+			# here. Her *node* still leaves on its own (entities/neighbour.gd);
+			# renderers stop being the authority on who exists in WI-6.
+			if by_cold_open:
+				despawn_actor(ACTOR_NEIGHBOUR)
+			if gs != null and by_cold_open and "takeover_day" in gs:
 				gs.takeover_day = gs.day
 				# Whatever the cold open's own days rolled is not hers; play-day 1
 				# starts now, and play-day 1 has no crows in it by construction.
@@ -740,8 +949,13 @@ func _parcel_with_gate(gate: Vector2i) -> Dictionary:
 func advance_day(weather: String) -> void:
 	# Everyone wakes rested, the player included (GameState.start_new_day does
 	# hers). An NPC's tiredness is a within-day thing, same as the farmer's.
-	for actor in actor_energy.keys():
-		actor_energy[actor] = ACTOR_MAX_ENERGY
+	# Every *registered* actor, which since M2.5 WI-2 is the same set that used to
+	# be "everyone with a meter on record" plus the ones who have not worked yet
+	# and were already reading as full.
+	for id in actors:
+		if _is_player(id):
+			continue  # hers is GameState's, and hers is also the clock
+		actors[id]["energy"] = ACTOR_MAX_ENERGY
 	for ty in MAP_HEIGHT:
 		for tx in MAP_WIDTH:
 			var tile: Dictionary = tiles[ty][tx]

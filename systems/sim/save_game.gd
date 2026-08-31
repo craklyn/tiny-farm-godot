@@ -14,10 +14,16 @@ static func capture(world: SimWorld, gs) -> Dictionary:
 		"world": {
 			"tiles": world.tiles.duplicate(true),
 			"objects": world.objects.duplicate(true),
-			# Per-actor energy (designer, 2026-08-29): every actor has its own
-			# meter, and only the player's is also the clock. World state rather
-			# than player state, so it lives here beside the grids.
-			"actor_energy": world.actor_energy.duplicate(),
+			# Who is in the world and where (M2.5 WI-2, D-9/Q-53). Additive in
+			# exactly the way `actor_energy` and `tick` were: a save without this
+			# key default-spawns on load (see restore), so no VERSION bump.
+			#
+			# This absorbs the old `actor_energy` map — every actor has its own
+			# meter (designer, 2026-08-29) and the meter now rides inside its
+			# registry entry, so it is written once, beside the position it
+			# belongs to. The old key is still *read* below, for saves that have
+			# one; it is no longer written.
+			"actors": _capture_actors(world),
 			# Sim time (M2.5 WI-1). Additive, same pattern as actor_energy above:
 			# a save written before the clock existed simply has no tick, which
 			# reads as 0 — true of every build that wrote one.
@@ -90,9 +96,31 @@ static func restore(data: Dictionary, world: SimWorld, gs) -> bool:
 		for obj in row:
 			r2.append(String(obj))
 		world.objects.append(r2)
-	# Additive: a save written before per-actor energy existed simply has nobody
-	# on record, which reads as everybody rested — true of the builds that wrote it.
-	world.actor_energy = _int_values(w.get("actor_energy", {}))
+	# The actor registry (M2.5 WI-2). Grids first, deliberately: the default spawn
+	# below reads the restored world — the gate tells it whether the neighbour is
+	# still here, the walkable tiles tell it where the hen can stand.
+	var saved_actors: Dictionary = w.get("actors", {})
+	# Empty counts as absent: a world containing nobody at all is not a state
+	# anything produces (the player is always registered), so reading it as a
+	# save from before the registry is the more useful of the two answers.
+	if saved_actors.is_empty():
+		# Pre-M2.5 save: nobody on record, so the world gets the cast it would
+		# have had under the build that wrote it — the player at her spawn, the
+		# hen on the farm, the neighbour if her scene never finished. Placed by
+		# rule rather than by a draw, because a load must not consume the shared
+		# RNG stream (see SimWorld.spawn_default_actors).
+		world.spawn_default_actors(false)
+		# Compat shim: such a save recorded NPC tiredness in its own `actor_energy`
+		# map. Energy lives in the registry now, so the old map is folded into it —
+		# but only for actors this world still contains. A save written after the
+		# cold open finished carries the neighbour's meter and she is gone;
+		# restoring a meter would be the one way to put a departed actor back.
+		var legacy_energy := _int_values(w.get("actor_energy", {}))
+		for id in legacy_energy:
+			if world.has_actor(id):
+				world.set_actor_energy(id, int(legacy_energy[id]))
+	else:
+		world.actors = _restore_actors(saved_actors)
 	# Additive in the same way, and a load is a fresh timeline: the tick comes back,
 	# nothing is left pending (see SimClock.reset).
 	world.clock.reset(int(w.get("tick", 0)))
@@ -221,6 +249,46 @@ static func replay_matches(rlog: ReplayLog, save: Dictionary) -> bool:
 	gs_replay.free()
 	gs_save.free()
 	return matched
+
+
+# The registry, flattened for JSON — which has no Vector2i, so a tile becomes
+# x/y. Key order is not preserved and does not need to be: `JSON.stringify` sorts
+# keys, which is what lets `capture_canonical` compare a live world against the
+# same world restored (they hold their actors in different orders — see the
+# registry block in sim_world.gd).
+static func _capture_actors(world: SimWorld) -> Dictionary:
+	var out := {}
+	for id in world.actors:
+		var a: Dictionary = world.actors[id]
+		var pos: Vector2i = a.get("pos", Vector2i(-1, -1))
+		out[id] = {
+			"species": String(a.get("species", "")),
+			"x": pos.x,
+			"y": pos.y,
+			"facing": String(a.get("facing", "down")),
+			"energy": int(a.get("energy", SimWorld.ACTOR_MAX_ENERGY)),
+			"extra": a.get("extra", {}).duplicate(true),
+		}
+	return out
+
+
+# ...and back, with the same normalization the tiles get: JSON hands back floats,
+# and a live registry holds ints and a Vector2i.
+static func _restore_actors(raw: Dictionary) -> Dictionary:
+	var out := {}
+	for id in raw.keys():
+		var a = raw[id]
+		if typeof(a) != TYPE_DICTIONARY:
+			continue
+		var extra = a.get("extra", {})
+		out[String(id)] = {
+			"species": String(a.get("species", "")),
+			"pos": Vector2i(int(a.get("x", -1)), int(a.get("y", -1))),
+			"facing": String(a.get("facing", "down")),
+			"energy": int(a.get("energy", SimWorld.ACTOR_MAX_ENERGY)),
+			"extra": extra.duplicate(true) if typeof(extra) == TYPE_DICTIONARY else {},
+		}
+	return out
 
 
 # JSON turns ints into floats and has no bool guarantees across tools;

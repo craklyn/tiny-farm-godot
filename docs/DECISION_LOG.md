@@ -527,9 +527,11 @@ earlier trigger ("before the D-2 spike") is satisfied ahead of schedule because 
 trail pests need sim-owned movement regardless — the phase-2 need arrived before the
 phase-4 one, exactly as the entity brainstorm predicted.
 
-**Current state, and it is deliberate.** `sim_world.gd` contains no actor positions at
-all — not the player's, not the crow's, not the chicken's. The sim owns tiles and objects;
-where anyone is *standing* is presentation state. M2 chose this explicitly and recorded it
+**The state this was raised from** — true until M2.5 WI-2 landed the actor registry
+(`SimWorld.actors`), which is where the paragraphs below stopped describing the code and
+started describing what the ruling changed. `sim_world.gd` contained no actor positions at
+all — not the player's, not the crow's, not the chicken's. The sim owned tiles and objects;
+where anyone was *standing* was presentation state. M2 chose this explicitly and recorded it
 (`M2_SPEC.md`: entity movement and timers are presentation-side decision *processes* whose
 chosen Actions are the record). For phase 1 it is the right call and it is what makes the
 M2 gate cheap to hit. It is also why movement is not recorded: not an oversight in the
