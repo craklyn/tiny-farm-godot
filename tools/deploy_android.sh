@@ -31,6 +31,15 @@ BUILD_ID="$(git describe --always --dirty 2>/dev/null || echo dev)"
 sed -i "s|^config/build_id=.*|config/build_id=\"$BUILD_ID\"|" project.godot
 echo "Build id: $BUILD_ID"
 
+# T-17 / Q-41: regenerate the demo replay AFTER the stamp above and BEFORE the
+# export, exactly as release.yml does and for the same reason. The title screen
+# refuses to play a demo whose build_id does not match the running build, because
+# apply_to() re-runs actions against today's rules and a stale one would show a
+# farm that never existed. Stamping without regenerating therefore ships an
+# attract loop that silently never appears — which is what the first deploy of
+# this build did.
+godot --headless --path . --script res://tools/gen_demo_replay.gd
+
 godot --headless --path . --export-debug "Android" "$APK"
 
 # Connect AFTER the export: the adb daemon can be restarted during a long build,

@@ -45,6 +45,12 @@ the device, installs, and launches.
   a release build, the Android SDK, `apksigner`, and a signing keystore. Not built yet.
 - `build_id` is stamped from `git describe` at build time. Do not hand-edit it in
   `project.godot`; Q-41 stamps replays with that value.
+- **The demo replay is regenerated as part of the deploy, after the stamp and before the
+  export.** Not optional, and not cosmetic: the title screen refuses to play a demo whose
+  `build_id` does not match the running build (a stale one would show a farm that never
+  existed), so stamping without regenerating ships an attract loop that silently never
+  appears. Caught on the first deploy of the build that added it — the tablet would have
+  shown a flat green title screen and nothing would have looked broken.
 
 ### Pulling a play session
 
