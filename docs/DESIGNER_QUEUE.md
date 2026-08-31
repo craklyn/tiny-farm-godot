@@ -569,6 +569,38 @@ trace actually says, because several of these looked like bugs and were not.*
   already watered" signal. Showing it confused her once; hiding it loses something true.
   Currently hidden.
 
+## M2.5 — the actor system (filed 2026-08-31, from the entity brainstorm)
+
+- **Q-53 (Ruling — gates M2.5 execution)** **Ratify the actor-system decision package**
+  drafted in `M2_5_PLAN.md` §3: (1) D-9 settles — actor positions become sim state;
+  NPC movement is a tick-stepped sim process, recomputed on replay, never recorded;
+  (2) SimClock returns — a fixed-dt logical tick (proposed 10 Hz, `[Playtest]`)
+  replaces wall-clock for NPC motion, rendering interpolates, Q-38's
+  daylight-advances-by-player-work is untouched; (3) replay format v2 — tick-stamped
+  player-only entries plus direction-change events for free walking, migrated behind a
+  dual-record-and-assert net before anything is dropped. *Recommendation: ratify as
+  drafted — the package is the session's own convergence, and every piece is guarded
+  by a migration net or a `[Playtest]` dial.* No replay work starts before this ruling.
+- **Q-54 (Ruling)** **Fire as an entity.** Spreads to adjacent tiles with fuel, burns
+  out over time — mechanically a fine actor (a process with a position), but it
+  destroys crops, so *when it can exist and what ignites it* is taste and stakes, not
+  engineering. *Recommendation: build later behind test scenarios only; no ignition
+  source in the live game until a phase-2+ design wants one.*
+- **Q-55 (Ruling)** **The pea economy.** Peas are grown, stored, delivered by bots, and
+  fired by peashooters (bot-mounted and tower) until critters back off. It fuses the
+  farm and defense halves into one supply chain and partially answers Q-16 (thrown
+  objects) — but it touches player-built structures and tower design, each a system.
+  One aside for the naming/art pass: a pea-shooting tower will read as a Plants vs
+  Zombies homage. *Recommendation: design at M3 alongside `design/03`/`design/05`;
+  the pea ships now as an ordinary crop (M2.5 WI-10) so the economy has its raw
+  material waiting.*
+- **Q-56 (Ruling)** **When do bots debut for the player?** The scripted line (follow /
+  circle / shoo-birds) exists behind test scenarios after M2.5 WI-9. The roadmap's
+  phases put trainable bots at phase 4, but a charming follow-bot could appear far
+  earlier as pure delegation-flavor. *Recommendation: hold the debut until at least M3
+  so the first automation the player meets is the sprinkler (design/03's "watch your
+  old job happen without you"), then revisit with the shoo-bot as a candidate.*
+
 ## Before M3 — phase 2 design
 
 - **Q-15 (Ruling)** Sprinkler/machine acquisition loop: crafted, bought, or

@@ -767,6 +767,23 @@ benchmark. SimClock re-scoped/deferred with rationale (see spec).
 identical outcomes across repeated seeded runs; a recorded human session replays to the
 same end state.
 
+## M2.5 — The actor system (added 2026-08-31)
+
+*Sits between M2 and M3 because M3's trail pests need actors the sim can move, and the
+phase-4 corpus needs the recording semantics settled (D-9). Born from the 2026-08-31
+entity brainstorm. **Plan: `docs/M2_5_PLAN.md`** — chassis (tick clock, actor registry,
+one brain interface, per-species movement, replay v2 with a dual-record migration net)
+plus a tier-1 bestiary (ant scout & column, rabbit, mole, worm, kangaroo, songbird),
+a scripted bot line (follow / circle / shoo), sprinkler, and the pea crop.*
+
+**Blocked on Q-53** (ratify the D-9 + SimClock + replay-v2 decision package). Taste
+flags filed as Q-54 (fire), Q-55 (pea ammo economy & towers), Q-56 (bot debut).
+
+**Exit gate:** both suites green and grown; robot session replay-verified through the
+new clock; the attract loop visibly renders the neighbour (the bug that motivated the
+refactor, fixed as a test); benchmark ≥100k× realtime *with travel modeled*; every
+tier-1 critter's mechanic proven by a deterministic sim test.
+
 ## M3 — Phase 2 vertical slice
 Sprinklers (first automation), group-pest skirmishes, yield-threshold gate per P-4.
 **Exit gate:** a new player reaches the phase 2→3 capability proof in normal play, and the
