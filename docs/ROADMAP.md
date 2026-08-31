@@ -780,6 +780,16 @@ a scripted bot line (follow / circle / shoo), sprinkler, and the pea crop.*
 `DECISION_LOG.md` D-9); execution unblocked. Q-54 (fire) parked, Q-55 (pea economy)
 deferred to M3 with the pea crop shipping now, Q-56 holds the bot debut until ≥M3.
 
+**Status 2026-08-31: COMPLETE and verified, same day.** All twelve work items landed
+(WI-1..WI-12), executed by supervised workers with per-item verification; the stage-3
+record is `M2_5_PLAN.md` §10. Final state: unit 1376 / integration 216 / robot
+recomputation MATCH / benchmark **107k× with travel modeled** (the gate failed at 82k×
+on first measurement and was earned back by the output-identical pathfinder rewrite,
+Q-67). Replay v2 is at **Phase A** — the dual-record net runs everywhere; Phase B's
+flip has four recorded prerequisites, none of them code. Remaining for the designer:
+the device/taste pass (§8.C/E) and Q-57–Q-66 — including each critter's debut, all of
+which sit behind `PER_DAY := 0` dials awaiting rulings.
+
 **Status 2026-08-31: the chassis is landed.** WI-1 (SimClock), WI-2 (actor registry +
 species table) and WI-3 (one brain interface, plus the crow/chicken/neighbour retrofits
 and the clock pump) are in; per-WI detail and deviations are in `M2_5_PLAN.md` §9. That

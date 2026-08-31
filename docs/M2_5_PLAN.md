@@ -2209,3 +2209,57 @@ pair of eyes:
   growth per `sleep`, 0.38 ms per day. Rule 8 is about per-tick cost so this is legal and
   always was, but it is now a measurable fraction (5%) of a fast-forward and it is the only
   cost in the loop that scales with map area rather than with actors.
+
+---
+
+## 10. Verification record (stage 3, run 2026-08-31)
+
+Run at `129cf58` by the orchestrating session, which also verified every work item
+individually before the next launched. **Every §8 item that can be checked
+mechanically passes**, including the one criterion that first failed and was then
+earned back.
+
+**A — suites, all reproduced independently at final HEAD:** unit **1376 PASSED, 0
+FAILED** (baseline 731 — 645 new assertions); integration **216 PASSED, 0 FAILED**
+(baseline 141); robot session **PASSED**, replay recomputation **MATCH** (24 entries,
+850 ticks, free-walk events present); `verify_replay` **MATCH** on a real pre-M2.5
+human session via the legacy path; demo replay regenerates with a clean diff (md5
+stable across the A* rewrite — the strongest identity proof available); visual
+regression **exact** (net ONE deliberate re-baseline across the milestone, WI-2's
+isolated `af93ede`, cause stated); benchmark **107,456× realtime with travel
+modeled** — the ≥100k gate passes. The gate FAILED at ~82k× when WI-12 first measured
+it; per §9's doctrine the number was reported rather than tuned, Q-67 was filed, and
+an output-identical pathfinder rewrite (129cf58; 15,680 path pairs asserted against
+the retained reference implementation) earned it back. Scaling holds: 8× busy actors
+≈ 7.8× the per-actor cost, 6.6× total.
+
+**B — invariants:** all M1.5 §10.B greps still clean; no `Time.*`/delta under
+`systems/sim/` (rule 7); zero `SimRng` under `entities/` (WI-3); **no new verbs in
+the gateway** — the milestone's seven critters, three bot configs and machine all
+speak the original 19-verb vocabulary, and the bot row asserts `verbs ==
+PLAYER_VERBS` so drift is impossible; every species row carries a movement
+capability (unit-asserted); every critter ships behind a `PER_DAY := 0` dial — only
+the crow is live, per Q-56's sequencing.
+
+**Deviation verdicts (verifier's judgment on the three §9 items that stretch the
+rules):** (1) *trail deposits are not Actions* — accepted: the deposit is a
+consequence of tick-stepped movement (D-9's ratified exception), the counterplay
+wash IS a logged player Action, and the dual-record net verifies deposits
+tick-exactly; a `lay_trail` verb would violate ground rule 1. (2) *the WI-3
+canonical seam* — opened deliberately, closed by WI-5/WI-6 exactly as scheduled;
+the compare is now total. (3) *the sanctioned presentation→sim write*
+(`note_player_walk`) — accepted and documented in `CLAUDE.md`; it records in the
+same call, which is what keeps replay truthful.
+
+**Found along the way, fixed and netted:** the day-turn brain-reschedule leak
+(WI-5's net caught the hen quadrupling); the grazer third-bite bound; the
+title-screen crow spending live GameState (WI-6); save-reload day re-rolling
+(Q-59, now deterministic). **Known, documented, deliberately not fixed:**
+restore-vs-kept-playing tick skew on `schedule_all_brains` (pre-existing,
+§9 WI-8a); the mole's whole-map seed scan (bounded, unbenched); the day turn's
+640-tile growth pass (5% of fast-forward, the one per-map cost, legal under rule 8).
+
+**Still open, by design:** WI-5 Phase B (four prerequisites recorded in §9, none a
+code change — brain entries are still written); §8.C's live device/taste pass and
+§8.E (the designer's); ten taste questions Q-57–Q-66 in the queue; every critter
+debut awaiting its ruling.
