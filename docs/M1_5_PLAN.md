@@ -1189,3 +1189,7 @@ instruction, so accepting or rejecting the request costs nothing to undo either 
   in `CREDITS.md` for the Sprout Lands purge — a `git filter-repo` rewrite plus force push
   does not make GitHub delete the old objects, so the value stays reachable by explicit SHA
   until GitHub garbage-collects it. Rotation is the only step that actually revokes it.
+  *Resolved 2026-08-30: Daniel revoked the leaked key and issued a new one. The
+  replacement lives only in the gitignored `.env`; a full-history and working-tree
+  search confirms its value appears in no commit and no file besides `.env`. Nothing
+  remains to do here.*
