@@ -638,6 +638,21 @@ trace actually says, because several of these looked like bugs and were not.*
   *Recommendation: leave it as built — (a) — and revisit when a raid exists to feel it
   against; it is one line in `advance_day` either way.* Nothing is blocked on this: no
   species writes scent until WI-8.
+- **Q-59** **Reloading a save no longer re-rolls the day.** Raised by M2.5 WI-5, and it is
+  a consequence rather than a choice anyone made: a farm now carries the seed it was
+  generated from, and continuing from a save puts the game back on that seed (which is
+  what lets a continued session's replay reproduce it at all — the fix closes a real hole
+  WI-3 filed). The visible side effect is that quitting and tapping Continue now brings
+  the *same* tomorrow every time: the same weather roll, the same crow arrival. Before, a
+  reload drew a fresh seed, so it re-rolled both. Two readings: (a) *as built* — the farm
+  is a place with a history, not a slot machine, and a save that means something different
+  each time you open it is exactly what S-3/S-5 exist to prevent; (b) fresh entropy on
+  reload, which quietly gives a stuck child a second chance at a rainy day, at the price
+  of a save whose replay can never be verified. *Recommendation: keep (a). It is the
+  honest reading of "deterministic", the alternative cannot be made replayable, and if a
+  reroll is ever wanted as a mercy it should be a designed one (a mechanic she can see)
+  rather than a property of the quit button.* Nothing is blocked: this is live now and
+  reversible in one line of `main.gd`.
 
 ## Before M3 — phase 2 design
 

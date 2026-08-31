@@ -997,6 +997,8 @@ deliberately does **not** reseed: a load is called by tests and by the attract l
 global side effect from a read would be a landmine. Consequence for live play, and it is an
 improvement: the same save reloaded twice now brings the same crows, because the day's
 schedule is `stateless(seed, day)` and the seed is the farm's own rather than the process's.
+Filed as **Q-59** because it is player-visible taste as well as engineering: Continue now
+brings the same tomorrow every time, weather included.
 
 Suites: unit **1070 PASSED / 0 FAILED** (1035 before, +35 from `test_replay_v2`),
 integration **154 / 0**, robot session **PASSED** across five runs (fresh seed each,
