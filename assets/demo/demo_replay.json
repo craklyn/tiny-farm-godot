@@ -1,4 +1,4 @@
-{"base_save":{},"build_id":"v0.1.0-38-ged20eb8-dirty","gen_seed":20260830,"version":1}
+{"base_save":{},"build_id":"v0.1.0-39-g9ff25fa","gen_seed":20260830,"version":1}
 {"actor":"neighbour","target":[16,4],"verb":"water"}
 {"actor":"neighbour","target":[17,4],"verb":"water"}
 {"actor":"world","verb":"sleep","weather":"sunny"}
