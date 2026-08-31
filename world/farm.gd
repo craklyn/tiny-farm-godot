@@ -368,7 +368,15 @@ func _draw() -> void:
 					_is_soil_at(tx + 1, ty), _is_soil_at(tx + 1, ty + 1),
 					_is_soil_at(tx, ty + 1), _is_soil_at(tx - 1, ty + 1),
 					_is_soil_at(tx - 1, ty), _is_soil_at(tx - 1, ty - 1))
-				var coord := Autotile.atlas_coord(mask, tile.watered_today)
+				# Draw wet soil only where something is actually growing. Rain marks
+				# bare `tilled` tiles watered too (sim_world.advance_day), which
+				# nothing mechanical uses — growth only reads it on seeded/growing,
+				# and it resets the next morning — so on a rainy morning the player
+				# saw watered ground with no plant in it and reasonably concluded
+				# she could water empty tiles. Reported from play 2026-08-30. The
+				# state is left alone; it is the picture that was lying.
+				var has_crop: bool = tile.state == "seeded" or tile.state == "growing"
+				var coord := Autotile.atlas_coord(mask, tile.watered_today and has_crop)
 				# Ground stays flush: squashing it opens seams to the grass beneath.
 				# Only things standing on the soil react (crops, obstacles).
 				draw_texture_rect_region(dirt_texture, Rect2(px + shake, py, TILE_SIZE, TILE_SIZE),
@@ -388,10 +396,16 @@ func _draw() -> void:
 
 			# Queue crops
 			if tile.state in ["seeded", "growing", "ready"]:
-				var stage = tile.growth_stage
-				# clamp stage safely
-				if tile.crop_type == "wheat": stage = min(stage, 3)
-				var region: Rect2 = crop_regions[tile.crop_type].get(stage, Rect2())
+				# `CropDefs.get_visual_stage()` maps however many growth days a crop
+				# takes onto the four cells the sheet actually has. This used to
+				# clamp by hand and only for wheat, so a **tomato** — which takes
+				# five days and is ready at stage 5 — drew nothing at all from
+				# stage 4 onward: an invisible plant that could still be watered
+				# and eventually harvested. Reported from play 2026-08-30 as "a
+				# couple tiles didn't show anything planted, but they were
+				# waterable, and eventually they were harvested".
+				var stage: int = CropDefs.get_visual_stage(tile.crop_type, tile.growth_stage)
+				var region: Rect2 = crop_regions.get(tile.crop_type, {}).get(stage, Rect2())
 				if region.size.x > 0:
 					var crop_rect := _react_rect(px, py, k, TILE_SIZE, shake)
 					render_queue.append({

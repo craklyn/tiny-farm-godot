@@ -395,7 +395,15 @@ func set_tile_state(tx: int, ty: int, new_state: String, crop_type: String = "")
 		tile.watered_today = false
 	elif new_state == "seeded":
 		tile.growth_stage = 0
-		tile.watered_today = false
+		# **Planting into wet ground keeps it wet.** This used to force the tile
+		# dry, so planting on a rainy day threw the rain away and the soil visibly
+		# went from wet to dry under her hands — reported from play 2026-08-30 as
+		# "when planting when it's raining, the wetness of soil goes to dry", and
+		# read at the time as not being able to plant on a rainy day at all.
+		#
+		# The only thing that can wet a *tilled* tile is rain (the router offers
+		# watering on seeded/growing only), so preserving it means exactly one
+		# thing: rain waters what you plant that day. Which is what rain is for.
 
 
 func water_tile(tx: int, ty: int) -> void:

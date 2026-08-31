@@ -473,6 +473,78 @@ first, since a different answer there changes what the other four are optimising
   the vignette highlight must stay legible against a twilight sky. Detail in `design/13`
   §8a.
 
+## From the 2026-08-30 tablet playthrough
+
+*The first real session on the M1.5 build (`playtests/2026-08-30_221027`, 10m14s, day 12,
+5% dead taps). Bugs found in it were fixed the same night and are not listed here — these
+are the things that need the designer's taste rather than a patch. Each carries what the
+trace actually says, because several of these looked like bugs and were not.*
+
+- **Q-48 (Ruling)** **The acorn decoy makes the phase-1 proof nearly unreachable.** Q-12's
+  proof needs 20 crops shipped, the opened land cleared, **and three crows scared**. The
+  session ended on shipped 21/20 and cleared land, blocked solely on **crows scared 1/3**.
+  The trace says why, and it is not a bug: five crows arrived, **four ate an acorn and left
+  satisfied**, one was chased off. T-15's acorns are working exactly as Q-39 designed —
+  and that removes both the reason and the opportunity to scare crows, which Q-12 had
+  asked her to do three times. Two systems designed three days apart, pulling opposite
+  ways. *(The designer's hypothesis at the time — that a scare only counts once the crow
+  has landed — is not what happened: `_spook_cause` is checked in `flying_in` too, and the
+  counter is honest.)* **Recommendation: change the proof, not the acorns.** The acorns are
+  the better mechanic and the scare count is the arbitrary half. Options in rough order of
+  preference: (a) drop the scare requirement and let shipped-plus-cleared carry the proof;
+  (b) count *any* crow dealt with, fed or shooed, which the acorn stock guarantees will
+  happen; (c) leave it and accept that phase 1 completes only once the acorns run out —
+  which is arguably the designed pacing (`design/13`: the stock is a countdown to "pests
+  are real now"), and might be exactly right. **(c) is free and needs no code**, so the
+  real question is only whether completing phase 1 *should* wait on the acorns running out.
+- **Q-49 (Ruling)** **A "go to bed" affordance.** Requested from play: a button that walks
+  the farmer to the cot and sleeps, from wherever she is. Tapping the cot already does
+  exactly this — so what is being asked for is a HUD control, not a new behaviour, and the
+  gap is discoverability rather than capability. **Recommendation: adopt, as a wordless bed
+  icon in the bottom bar**, enabled only when sleeping is possible. It is small, it serves
+  every day of the game rather than the opening, and the cot is often off screen by
+  evening — which is precisely when she most wants it. *Held rather than built because the
+  HUD is currently status-only: adding the first action button to it is a shape decision
+  about what the HUD is for, and that is yours.*
+- **Q-50 (Ruling)** **The chicken's egg is invisible as a rule.** She saw several eggs one
+  morning, then spent part of another day waiting in-game for eggs to appear. Both
+  readings are reasonable and neither is what happens: the hen lays **at most one egg, at
+  the day rollover, on a coin flip** (`entities/chicken.gd`), and a "bunch" is several
+  days of uncollected eggs sitting where they fell. Nothing in the game says so.
+  **Recommendation: make it once-a-morning and certain** — drop the coin flip, lay exactly
+  one egg each dawn. It costs a line, it makes the hen a reliable little ritual rather
+  than a slot machine, and "there is an egg every morning" is a rule a four-year-old can
+  learn by living it. The randomness currently buys nothing except the confusion reported
+  here. *Not built: it is a change to what the hen means, which is yours.*
+- **Q-51 (Ruling)** **The cold open plays mostly off screen, and its days pass without
+  warning.** Two problems, one cause. The neighbour's plot runs from x=12 to x=20; the
+  camera is clamped and shows roughly x=0..16 while the player stands at spawn — so the
+  most legible half of the scene happens past the right edge. And the two world-sleeps
+  render as the ordinary "Day N" fade, which in context reads as the game skipping rather
+  than as time passing in a story. The designer's words: *"it's jarring that the days
+  progress with very little hint that it's part of a cutscene, and it plays while still
+  pretty much off-screen, so it's extra jarring."* **Recommendation: fix the framing
+  first** — during the cold open only, ease the camera toward the neighbour so both yards
+  are in shot, releasing it the moment the gate opens. That is presentation-only, changes
+  no sim state, and probably fixes most of the second complaint too, since a day passing
+  reads very differently when you can see whose day it is. If it does not, the cheap
+  follow-up is to make the cold open's fades visibly different from the player's own —
+  slower, and without the "Day N" card, which currently implies *she* slept. **Note this
+  is opening-minutes work, which Q-47 deprioritised** — it is filed rather than built for
+  that reason, and it is the one item where the ruling and the evidence point opposite
+  ways.
+- **Q-52 (Approval)** **Two small changes made on the night, easily reverted.**
+  (1) *"Sunny" at night was confusing*, so the weather line now shows only the time of day
+  as an icon (☀️ / 🌇 / 🌙) when the weather is clear, and keeps "🌧️ Rainy" when it is
+  not — rain is the half worth naming and the half she can act on. (2) *Rain used to mark
+  bare tilled soil as watered*, which drew as wet ground with nothing planted in it and
+  led to "able to water tiles without a plant"; the renderer now shows wet soil only where
+  something is growing. **The residual worth your opinion:** planting into rain-wet ground
+  now keeps the wetness (that was a real bug — planting used to dry it out), so the wetness
+  *is* meaningful on bare soil, and hiding it hides a genuine "plant here now and it is
+  already watered" signal. Showing it confused her once; hiding it loses something true.
+  Currently hidden.
+
 ## Before M3 — phase 2 design
 
 - **Q-15 (Ruling)** Sprinkler/machine acquisition loop: crafted, bought, or

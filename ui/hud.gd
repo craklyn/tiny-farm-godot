@@ -26,6 +26,7 @@ var crop_counts_label: Label
 var water_label: Label
 var seed_pill: Panel
 var seed_pill_label: Label
+var seed_pill_icon: TextureRect
 var toast_panel: Panel
 var toast_label: Label
 var hint_label: Label
@@ -216,9 +217,17 @@ func _build_ui() -> void:
 	seed_pill.gui_input.connect(_on_seed_pill_gui_input)
 	add_child(seed_pill)
 
+	seed_pill_icon = TextureRect.new()
+	seed_pill_icon.name = "seed_pill_icon"
+	seed_pill_icon.position = Vector2(4, 4)
+	seed_pill_icon.size = Vector2(16, 16)
+	seed_pill_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	seed_pill_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	seed_pill.add_child(seed_pill_icon)
+
 	seed_pill_label = Label.new()
-	seed_pill_label.position = Vector2(0, 2)
-	seed_pill_label.size = Vector2(100, 20)
+	seed_pill_label.position = Vector2(18, 2)
+	seed_pill_label.size = Vector2(82, 20)
 	seed_pill_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	seed_pill_label.add_theme_color_override("font_color", Color(1, 1, 0.9))
 	seed_pill.add_child(seed_pill_label)
@@ -347,8 +356,16 @@ func _update_hud() -> void:
 	# Top bary & Weather
 	day_label.text = "Day %d" % GameState.day
 	
-	var w_icon := "☀️" if GameState.weather == "sunny" else "🌧️"
-	weather_label.text = "%s %s" % [w_icon, GameState.weather.capitalize()]
+	# Reported from play 2026-08-30: "Sunny" at night is confusing — and it is,
+	# because the label was answering a question nobody asked. The *sky* already
+	# says what time it is (T-14), so this only needs to say when something is
+	# falling out of it. Clear weather is now just the time of day as an icon,
+	# with no word at all; rain keeps its word, because rain is the thing worth
+	# naming and the one the player can act on.
+	if GameState.weather == "sunny":
+		weather_label.text = _sky_icon()
+	else:
+		weather_label.text = "🌧️ %s" % GameState.weather.capitalize()
 
 	# Energy — debug readout only (T-14). Release builds show the sky instead.
 	if energy_label != null:
@@ -385,14 +402,20 @@ func _update_hud() -> void:
 		parts.append("%s:%d" % [abbrev, count])
 	crop_counts_label.text = "  ".join(parts)
 
-	# Active Seed Pill update
+	# Active Seed Pill update. The icon is the crop's own shop sprite rather than
+	# an emoji looked up by name: the emoji table knew wheat and tomato and fell
+	# through to "?" for the scarecrow, so selecting it showed no icon at all
+	# (reported from play 2026-08-30). Reading the sprite from CropDefs means a
+	# crop added later cannot silently lose its picture.
 	var seed_name: String = GameState.selected_seed_type
 	var scount: int = GameState.seeds.get(seed_name, 0)
-	var emoji := "?"
-	match seed_name:
-		"wheat": emoji = "🥕"
-		"tomato": emoji = "🍅"
-	seed_pill_label.text = "%s %s x%d" % [emoji, seed_name, scount]
+	var seed_def: Dictionary = CropDefs.TYPES.get(seed_name, {})
+	if seed_def.has("sprite_row"):
+		seed_pill_icon.texture = _crop_icon(int(seed_def.sprite_row))
+		seed_pill_icon.visible = true
+	else:
+		seed_pill_icon.visible = false
+	seed_pill_label.text = "%s x%d" % [seed_name, scount]
 	
 	var style: StyleBoxFlat = seed_pill.get_theme_stylebox("panel")
 	if scount > 0:
@@ -402,6 +425,26 @@ func _update_hud() -> void:
 
 	# Water
 	water_label.text = "Water: %d/%d" % [GameState.watering_can_charges, GameState.max_watering_can_charges]
+
+
+# The same fraction the daylight tint is derived from (T-14 / Q-38), as a glyph.
+# Deliberately reads off `Daylight`'s own idea of the day rather than inventing a
+# second threshold, so the icon and the sky can never disagree.
+func _sky_icon() -> String:
+	var f: float = float(GameState.energy) / maxf(1.0, float(GameState.max_energy))
+	if f > 0.55:
+		return "☀️"
+	if f > 0.18:
+		return "🌇"
+	return "🌙"
+
+
+# crops.png row 2: one shop icon per crop, indexed by its sprite_row.
+func _crop_icon(sprite_row: int) -> AtlasTexture:
+	var atlas := AtlasTexture.new()
+	atlas.atlas = load("res://assets/sprites/generated/crops.png")
+	atlas.region = Rect2(sprite_row * 16, 32, 16, 16)
+	return atlas
 
 
 func _update_toast(delta: float) -> void:

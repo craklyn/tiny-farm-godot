@@ -2983,6 +2983,12 @@ func test_pre_m15_saves_load() -> void:
 		var data := SaveGame.load_dict(path)
 		if data.is_empty():
 			continue
+		# Only the genuinely pre-M1.5 fixtures. `playtests/` grows every time a
+		# session is pulled off the tablet, so "everything in here is old" stopped
+		# being true the moment the first post-M1.5 session landed — detect it by
+		# the absence of the fields M1.5 added rather than by date or by faith.
+		if data.get("state", {}).has("tools_owned"):
+			continue
 		checked += 1
 		var world := SimWorld.new()
 		var gs = load("res://systems/game_state.gd").new()

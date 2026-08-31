@@ -65,6 +65,7 @@ func _run_scenarios() -> void:
 	await _scenario_l_menu_holds_world()
 	await _scenario_m_targets_on_screen()
 	await _scenario_n_pick_up_the_axe()
+	await _scenario_o_touch_has_no_hover()
 	await _scenario_j_wordless_shop()
 	await _scenario_k_attract()
 
@@ -931,3 +932,47 @@ func _scenario_k_attract() -> void:
 	loop.queue_free()
 	rec.free()
 	await get_tree().process_frame
+
+
+func _scenario_o_touch_has_no_hover() -> void:
+	# Reported from the tablet, 2026-08-30: "yellow box is moving around as screen
+	# scrolls, instead of holding position of the click."
+	#
+	# It was never a click indicator. It is a *mouse hover* — recomputed every
+	# frame from the pointer's screen position plus the camera offset — so with a
+	# finger resting where it last tapped and the camera scrolling after the
+	# walking farmer, the box slid across the world. A finger does not hover, so
+	# on touch there should be no box at all.
+	print("\n--- Scenario O: a finger does not hover ---")
+
+	var im = InputManager
+
+	var touch := InputEventScreenTouch.new()
+	touch.pressed = true
+	touch.position = Vector2(400, 300)
+	im._unhandled_input(touch)
+	_assert(im.current_mode == im.Mode.TOUCH, "a screen touch is TOUCH, not MOUSE")
+	im._process(0.016)
+	_assert(im.mouse_tile == Vector2i(-1, -1), "and leaves no hover tile to draw")
+
+	# Godot emulates mouse events from touch, and the menus' Buttons run on that
+	# emulation, so it cannot be switched off — it must be recognised instead.
+	var emulated := InputEventMouseMotion.new()
+	emulated.position = Vector2(400, 300)
+	im._unhandled_input(emulated)
+	_assert(im.current_mode == im.Mode.TOUCH,
+		"an emulated mouse event right after a touch does not flip the mode back")
+	im._process(0.016)
+	_assert(im.mouse_tile == Vector2i(-1, -1), "so the box stays gone")
+
+	# A real mouse, well after the finger, still gets its hover back.
+	im._last_touch_ms = -100000
+	var real := InputEventMouseMotion.new()
+	real.position = Vector2(120, 90)
+	im._unhandled_input(real)
+	_assert(im.current_mode == im.Mode.MOUSE, "a mouse moving on its own is MOUSE again")
+	im._process(0.016)
+	_assert(im.mouse_tile != Vector2i(-1, -1), "and the hover tile comes back")
+
+	# Leave the suite in a known state.
+	im._last_touch_ms = -100000

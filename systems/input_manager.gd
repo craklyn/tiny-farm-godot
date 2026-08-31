@@ -4,10 +4,19 @@ extends Node
 
 signal input_mode_changed(new_mode: String)
 
-enum Mode { KEYBOARD, GAMEPAD, MOUSE }
+# TOUCH is distinct from MOUSE on purpose. A finger has no hover: it is either
+# down somewhere or absent, and there is no "the pointer is resting on this tile"
+# for the game to show. Godot delivers touches as mouse events too, so without
+# this the tablet looked like a mouse to everything downstream.
+enum Mode { KEYBOARD, GAMEPAD, MOUSE, TOUCH }
 
 var current_mode: Mode = Mode.KEYBOARD
 var mouse_tile: Vector2i = Vector2i(-1, -1)
+
+# How long after a real touch an incoming mouse event is assumed to be Godot's
+# emulation of that touch rather than a person moving a mouse.
+const TOUCH_EMULATION_WINDOW_MS := 1200
+var _last_touch_ms: int = -100000
 var click_tile: Vector2i = Vector2i(-1, -1)
 var has_click: bool = false
 
@@ -35,9 +44,19 @@ func _unhandled_input(event: InputEvent) -> void:
 		else:
 			_set_mode(Mode.GAMEPAD)
 	elif event is InputEventMouseButton or event is InputEventMouseMotion:
-		_set_mode(Mode.MOUSE)
+		# Godot emulates mouse events from touches, and that emulation is what the
+		# menus' Buttons actually run on — so it cannot simply be turned off. But
+		# it also means a tablet looks exactly like a mouse to this branch, which
+		# would put the mode straight back to MOUSE and bring the drifting hover
+		# cursor with it. A real mouse does not move within a second of a finger
+		# touching the glass; emulated events always do. The window self-corrects,
+		# so a desktop with a touchscreen still gets its hover back a moment after
+		# the user picks the mouse up again.
+		if Time.get_ticks_msec() - _last_touch_ms > TOUCH_EMULATION_WINDOW_MS:
+			_set_mode(Mode.MOUSE)
 	elif event is InputEventScreenTouch:
-		_set_mode(Mode.MOUSE)
+		_last_touch_ms = Time.get_ticks_msec()
+		_set_mode(Mode.TOUCH)
 		if event.pressed:
 			# Treat touch-press as a click
 			click_tile = screen_to_tile(event.position)
@@ -48,7 +67,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			swipe_active = false
 			swipe_tile   = Vector2i(-1, -1)
 	elif event is InputEventScreenDrag:
-		_set_mode(Mode.MOUSE)
+		_last_touch_ms = Time.get_ticks_msec()
+		_set_mode(Mode.TOUCH)
 		var new_tile := screen_to_tile(event.position)
 		if new_tile != swipe_tile:
 			swipe_tile   = new_tile
@@ -62,7 +82,17 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _process(_delta: float) -> void:
-	# Update mouse tile position continuously
+	# Only a real pointing device has a hover position worth tracking.
+	#
+	# Reported from play 2026-08-30: "yellow box is moving around as screen
+	# scrolls, instead of holding position of the click." That is this line. The
+	# tile is recomputed every frame from the *screen* position plus the camera
+	# offset, so on a tablet — where the last touch point stays put and the camera
+	# scrolls after the walking farmer — the cursor slid across the world. It was
+	# never a click indicator; it is a mouse hover, and a finger does not hover.
+	if current_mode != Mode.MOUSE:
+		mouse_tile = Vector2i(-1, -1)
+		return
 	var mouse_pos := get_viewport().get_mouse_position()
 	mouse_tile = screen_to_tile(mouse_pos)
 
@@ -95,6 +125,7 @@ func get_mode_string() -> String:
 		Mode.KEYBOARD: return "keyboard"
 		Mode.GAMEPAD: return "gamepad"
 		Mode.MOUSE: return "mouse"
+		Mode.TOUCH: return "touch"
 	return "keyboard"
 
 
