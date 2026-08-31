@@ -107,6 +107,45 @@ The one criterion deliberately left out is "crossed the gate unaided" — it is 
 from the trace's recorded player positions but has no analysis function yet, and adding
 one is opening-polish work, which is exactly what this ruling deprioritises.*
 
+**Gate run recorded 2026-08-31.** The 2026-08-30 tablet session
+(`playtests/2026-08-30_221027` — the same session whose bugs were triaged that night)
+was the gate run: Daniel's wife, fresh farm, 10m14s, and the designer attested the
+session conditions after the fact. Scored against the bars:
+
+| Criterion | Bar | Measured | Verdict |
+|---|---|---|---|
+| taps achieving nothing | ≤ 12% | **5%** (22/437) | ✅ met, decisively |
+| longest stall | ≤ 20s | 44.2s once; all others ≤ 16.3s | ✅ met — **designer attests** the 44s was the two of them talking, not play |
+| the cot understood, unprompted | ≥ 1 sleep | day 12 reached | ❌ **void** — she had been shown the cot in earlier playthroughs, and the trace shows the beat failing on its own terms (see T-27) |
+| the chain completed | first harvest/plant/water | 42.7s / 44.7s / 47.1s | ✅ met |
+| instrument integrity | zero mislabelled | none | ✅ met |
+
+**The gate therefore stays open on one beat only: the cot.** Everything else passed,
+most of it decisively. Close it by shipping T-27 and scoring the cot criterion on the
+next fresh adult run; no full re-run of the other bars is required (they are regression
+bars and this session is now their baseline: 5% dead taps, 16.3s honest-longest stall).
+
+**T-27 — The cot must present itself** · raised by the designer 2026-08-31 ·
+**elevated out of the Q-47 parking by his words: "We absolutely need to improve the
+presentation of the sleeping spot."**
+*So that the day's most important verb is discovered rather than taught by an adult —
+the one thing this gate run could not prove.*
+The trace evidence, so the fix aims at what actually happened (every cot tap
+mechanically worked — the failures are all legibility):
+- [ ] **a completed sleep must be unmistakable, and immune to re-taps.** She slept
+      **three times in five seconds** at 3m37–42s and twice more at 5m11–13s — tap,
+      sleep, couldn't tell, re-tap. "Day 12" contains ~3 phantom days. A wake-grace
+      window (a tap landing just after the fade must not instantly re-sleep) plus a
+      louder completion beat.
+- [ ] **the cot wants a tap halo.** Four consecutive `no_energy` refusals at 5m04–10s
+      were taps landing on (2,2), one tile below the cot, resolving as till-with-hoe.
+      Per T-18's philosophy, a near-miss tap with nothing better to do should read as
+      a cot tap.
+- [ ] **the cot must look like sleeping before first use** — form is the designer's
+      (glow at dusk? the cot pulse already exists at zero energy — perhaps earlier and
+      stronger?).
+- [ ] re-evidence: the next fresh adult session scores the cot bar unprompted.
+
 ### Ordering
 Twenty-six stories as of 2026-08-30: twenty-one shipped, `T-6`/`T-7` dropped (Q-36),
 `T-21` deferred to the art pass, `T-22` blocked on hardware, `T-26` parked under Q-47.
