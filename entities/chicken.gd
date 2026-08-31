@@ -49,7 +49,10 @@ var farm: Node2D
 func _ready() -> void:
 	queue_redraw()
 
-func init(farm_ref: Node2D, id: String = SimWorld.ACTOR_CHICKEN) -> void:
+# The renderer contract every actor sprite answers (M2.5 WI-6): `world/farm.gd`
+# builds one of these for each registered actor of a species it has art for, and
+# hands it the farm and the id. Everything else it needs is in the registry.
+func init_actor(farm_ref: Node2D, id: String = SimWorld.ACTOR_CHICKEN) -> void:
 	farm = farm_ref
 	actor_id = id
 	var at: Vector2i = farm.sim.actor_pos(actor_id)

@@ -37,6 +37,7 @@ var tx: int = 0
 var ty: int = 0
 var facing: String = "down"
 var farm: Node2D = null
+var actor_id: String = SimWorld.ACTOR_NEIGHBOUR
 
 var _path: Array[Vector2i] = []
 var _walk_frame: int = 0
@@ -56,11 +57,27 @@ func _ready() -> void:
 	queue_redraw()
 
 
-func init(farm_ref: Node2D, start_t: Vector2i) -> void:
+# The renderer contract every actor sprite answers (M2.5 WI-6). She starts where
+# the registry says she is — worldgen's `wave_at`, the same tile `main.gd` used to
+# hand her — and from there her *walk* is driven by whoever is playing the scene:
+# `main.gd`'s cold-open pacing in the game, `ui/attract_loop.gd`'s recorded
+# entries on the title screen. Her position is not tick-stepped and deliberately
+# is not (WI-3 deviation 7): the visibility gate and the stride wait are facts
+# about a camera and a wall clock, and rule 7 keeps those out of the sim.
+func init_actor(farm_ref: Node2D, id: String = SimWorld.ACTOR_NEIGHBOUR) -> void:
 	farm = farm_ref
+	actor_id = id
+	var start_t: Vector2i = farm.sim.actor_pos(actor_id)
 	tx = start_t.x
 	ty = start_t.y
 	position = Vector2(tx * TILE_SIZE + TILE_SIZE / 2.0, ty * TILE_SIZE + TILE_SIZE / 2.0)
+
+
+# She has left the registry (the gate is open) but not yet the picture. The
+# renderer's sync leaves a departing sprite alone so the walk-off can finish;
+# `_process` frees it at the map edge. See `world/farm.gd:sync_actors`.
+func is_departing() -> bool:
+	return _leaving
 
 
 # Busy means "do not hand me the next action yet" — she is mid-stride or
@@ -112,6 +129,15 @@ func leave() -> void:
 
 
 func _process(delta: float) -> void:
+	step(delta)
+
+
+# One frame of her walk, callable. The live game lets the engine drive it above;
+# the attract loop drives it itself (M2.5 WI-6), because playback runs on its own
+# scaled clock (`TICK_EVERY`) and the farmer already moves on that one — two
+# people demonstrating the same scene at different speeds is worse than either
+# speed.
+func step(delta: float) -> void:
 	if _pose_timer > 0.0:
 		_pose_timer -= delta
 		queue_redraw()

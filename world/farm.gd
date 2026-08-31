@@ -49,8 +49,100 @@ var object_regions: Dictionary = {}   # object_name -> Rect2
 
 func _ready() -> void:
 	_load_textures()
+	actors_node = Node2D.new()
+	actors_node.name = "Entities"
+	add_child(actors_node)
 	if generate_on_ready:
 		sim.generate()
+	sync_actors()
+
+
+# --- Actors, drawn from the registry (M2.5 WI-6) ------------------------------
+#
+# **Finding F-3 dies here.** Until now a hen existed because `main.gd` built a
+# node, so every *other* renderer of the same sim — the title screen's attract
+# loop, most obviously — showed a farm where the tiles tilled themselves and
+# nobody was there. The registry has been sim truth since WI-2 and the brains
+# have moved actors since WI-3; what was missing was a renderer that reads it.
+# This is that: any farm node, in any scene, gives every registered actor a
+# sprite and takes it away again when the sim says it has gone.
+#
+# **The player is the one exception and stays one.** Her node is the input device
+# and the camera anchor, so `main.gd` still owns it and the render queue still
+# finds it at `../Player`; her *position* joins sim truth from the other
+# direction (tile-crossing events, see `note_player_walk` below).
+#
+# A species with no row here is simply not drawn — which is the honest state for
+# anything whose art has not landed, and it is one line to change when it does.
+const ACTOR_RENDERERS := {
+	SpeciesDefs.NEIGHBOUR: "res://entities/neighbour.gd",
+	SpeciesDefs.CHICKEN: "res://entities/chicken.gd",
+	SpeciesDefs.CROW: "res://entities/crow.gd",
+	SpeciesDefs.SPRINKLER: "res://entities/sprinkler.gd",
+}
+
+var actors_node: Node2D = null            # the sprites' parent, named "Entities"
+var actor_nodes: Dictionary = {}          # actor_id -> Node2D
+
+
+# Sprites for the actors the sim has, and no sprites for the actors it has not.
+# Cheap and idempotent (it is O(registered actors), never O(map)), so callers
+# pump it per frame rather than trying to catch every registry change: `main.gd`
+# and `ui/attract_loop.gd` both do, and `advance_sim` does it for whoever else
+# lets sim time pass.
+func sync_actors() -> void:
+	if actors_node == null:
+		return
+	for id in sim.actors.keys():
+		var actor_id := String(id)
+		if is_instance_valid(actor_nodes.get(actor_id, null)):
+			continue
+		var script_path: String = ACTOR_RENDERERS.get(sim.species_of(actor_id), "")
+		if script_path == "":
+			continue
+		var node = load(script_path).new()
+		node.name = "%s_%s" % [sim.species_of(actor_id), actor_id]
+		node.init_actor(self, actor_id)
+		actors_node.add_child(node)
+		actor_nodes[actor_id] = node
+	for id in actor_nodes.keys():
+		var node = actor_nodes[id]
+		if not is_instance_valid(node):
+			actor_nodes.erase(id)
+			continue
+		if sim.has_actor(id):
+			continue
+		# The actor left the registry, so its sprite goes with it — unless the
+		# sprite is still finishing an exit the sim has already recorded. The
+		# neighbour is the case: she leaves the registry the instant the gate
+		# opens (WI-2 deviation 3), and then walks off the map edge, which is the
+		# whole visible payoff of the cold open. She frees herself when she gets
+		# there.
+		if node.has_method("is_departing") and node.is_departing():
+			continue
+		node.queue_free()
+		actor_nodes.erase(id)
+
+
+# Every sprite, gone now — for a renderer that is starting the world over (the
+# attract loop's loop round). Removed from the tree rather than only queued, so a
+# resync in the same frame cannot draw two of anybody.
+func clear_actors() -> void:
+	for id in actor_nodes.keys():
+		var node = actor_nodes[id]
+		if is_instance_valid(node):
+			if node.get_parent() != null:
+				node.get_parent().remove_child(node)
+			node.queue_free()
+	actor_nodes.clear()
+
+
+# The farmer's node, for the sprites that have to notice her (the crow's spook
+# radius). Looked up by path rather than injected because *every* farm renderer
+# has one at this path, which is what makes an entity work in the attract loop
+# and in the game without knowing which it is in (design/11's coupling note).
+func player_node() -> Node2D:
+	return get_node_or_null("../Player")
 
 
 var dirt_texture: Texture2D
@@ -148,6 +240,7 @@ func start_trace(gen_seed: int, from_save: bool) -> void:
 # `ReplayLog._apply_v2`). Fast-forward tools advance the clock explicitly too.
 func advance_sim(ticks: int, gs = null) -> void:
 	if ticks <= 0:
+		sync_actors()
 		return
 	for taken in sim.advance_ticks(ticks, gs):
 		# **The dispatch tick, not the clock's** — this loop runs after the whole
@@ -161,6 +254,10 @@ func advance_sim(ticks: int, gs = null) -> void:
 		# answer. The recorded copy is Phase A's half of the net; Phase B is when
 		# these stop being written at all.
 		_record(taken["action"], taken["result"], int(taken["tick"]), true)
+	# A brain may have spawned or despawned somebody in there — a crow arriving, a
+	# crow leaving the map — so the sprites follow the registry before the frame
+	# this ran in gets drawn.
+	sync_actors()
 	queue_redraw()
 
 
@@ -168,6 +265,27 @@ func apply_action(action: Dictionary, gs = null) -> Dictionary:
 	var result := sim.apply_action(action, gs)
 	_record(action, result, sim.clock.tick)
 	return result
+
+
+# The player's tile crossings, which are the one thing about her no rule can
+# recompute (M2.5 WI-6, plan §3.3).
+#
+# Her pixel motion is deliberately untouched — D-8's spirit, and the plan's §4
+# says her feel is not the movement engine's to change — so what joins sim truth
+# is **tile occupancy, updated when she crosses a boundary**. Each crossing writes
+# her registry entry and is recorded as a free-walk event, the shape WI-5 fixed
+# and every reader already tolerates; `ReplayLog._apply_v2` applies them back, so
+# a replay's registry lands where the session's did and `capture_canonical` can
+# compare her like anybody else.
+#
+# Facing is written **only** from here, never from the many places presentation
+# turns her to look at something: a turn taken while standing still is not a fact
+# a replay could reproduce, and writing one would fail comparisons for a reason
+# that says nothing about the farm.
+func note_player_walk(event: String, dir: String, at: Vector2i) -> void:
+	sim.set_actor_pos(SimWorld.ACTOR_PLAYER, at, dir)
+	if replay != null:
+		replay.record_walk(event, dir, at, sim.clock.tick)
 
 
 # The bookkeeping every resolved action gets, whoever asked for it: the trace,
@@ -213,7 +331,21 @@ func _record(action: Dictionary, result: Dictionary, at_tick: int,
 		# can be dropped without touching sim truth or replay fidelity (S-3/S-5).
 		if action.has("target"):
 			react_at(action["target"])
+		if String(action.get("verb", "")) == "sleep":
+			_notify_day_turn()
 		queue_redraw()
+
+
+# A morning happened. Machines act *inside* the day turn (`Brain.day_actions`,
+# M2.5 WI-10), so there is no tick for a renderer to notice one on — the sprinkler
+# would water nine tiles and never be seen doing it. Told here, from the one place
+# every resolved Action passes through, so it works whether the sleep came from a
+# cot, from the cold open's day fade or from a replay's action stream.
+func _notify_day_turn() -> void:
+	for id in actor_nodes.keys():
+		var node = actor_nodes[id]
+		if is_instance_valid(node) and node.has_method("on_day_turn"):
+			node.on_day_turn()
 
 
 # --- Verb reactions (D-8 tier (a) prototype) ---------------------------------
@@ -385,7 +517,17 @@ func advance_day() -> void:
 	# turn: machines fire at the day turn and they act through `apply_action`,
 	# which needs it (M2.5 WI-10).
 	sim.advance_day(weather, state)
+	_notify_day_turn()
+	sync_actors()
 	queue_redraw()
+
+
+# The GameState this farm belongs to — the injected one, or the autoload. Public
+# because the entity renderers need it: a crow reporting its fright to the
+# `GameState` *autoload* would spend the player's real farm from the title
+# screen's attract loop, which is the T-16 hazard scenario K exists to catch.
+func state() -> Node:
+	return _state()
 
 
 func _state() -> Node:
@@ -552,10 +694,12 @@ func _draw() -> void:
 	if player and player.has_method("queue_render"):
 		player.queue_render(self, render_queue)
 
-	# Insert entities into render queue
-	var entities = get_node_or_null("../Entities")
-	if entities:
-		for child in entities.get_children():
+	# Insert every registered actor's sprite into the render queue (M2.5 WI-6).
+	# These are this farm's own children now rather than a sibling node some other
+	# scene happened to build, which is what makes the attract loop show a
+	# populated farm without knowing anything about entities (finding F-3).
+	if actors_node != null:
+		for child in actors_node.get_children():
 			if child.has_method("queue_render"):
 				child.queue_render(self, render_queue)
 

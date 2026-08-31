@@ -1029,6 +1029,14 @@ above. Visible effect on the shipping game: the hen keeps her intended pace all 
    position is not sim truth until WI-6, so a recorded walk would be an unverifiable stream
    growing every log and every future training corpus. WI-6 turns the recorder on and
    nothing downstream changes — that is what defining it early buys.
+   **✅ Closed 2026-08-31 by WI-6.** The recorder is on (`world/farm.gd:note_player_walk`,
+   called from the pixel walker on each tile crossing), `_apply_v2` applies the entries
+   into the registry instead of stepping over them, and the erase block in
+   `capture_canonical` is gone — so a walk is now checked by the same comparison that
+   checks everything else. It cost the readers nothing, as predicted: the only downstream
+   edit was the attract loop learning to skip a walk entry *without spending a dwell on
+   it*. One thing the shape did change: a fourth event value, `step` — see WI-6's
+   deviation 1.
 2. **Phase B is not tonight**, as instructed, and the criteria say why: Phase A has soaked
    for one evening of suites, not for a real human session on the tablet. What Phase B
    needs is in "What Phase B still requires" below.
@@ -1108,3 +1116,173 @@ keep you clear of it: take every draw from `SimRng` **inside** `step()` (never f
 renderer), and put per-actor state in the registry entry's `extra`, which is saved,
 replayed and compared. WI-7's scent is compared the same way now, so a deposit that lands
 on a different tick than it did live is a failure with a name.
+
+### WI-6 — Renderer unification ✅ landed 2026-08-31
+
+Three things landed together because they are one thing: **whoever renders a `SimWorld`
+draws whoever is in it.**
+
+**1. Actors are drawn from the registry** (`world/farm.gd`). A farm node owns an
+`Entities` layer and a `sync_actors()` that binds a species to a sprite script
+(`ACTOR_RENDERERS`), builds a node for each registered actor it has art for
+(`init_actor(farm, actor_id)` — the one contract every entity now answers), and frees it
+when the sim says the actor has gone. `main.gd` no longer builds a hen, a neighbour or a
+crow; it pumps `farm.sync_actors()` once a frame, which is the same wall-clock→sim
+boundary its clock pump already is. `main.entities` now *names* the farm's layer rather
+than owning one, so the integration scenarios that reach into it (L and Q) are unmodified.
+The player is the deliberate exception, exactly as the WI asks: her node is the input
+device and the camera anchor, `main.gd` still owns it, and the render queue still finds it
+at `../Player`. The sprinkler got the renderer WI-10 could not write
+(`entities/sprinkler.gd`, objects.png row 1 col 5 idle / col 6 spraying, the spray frame
+held for `SPRAY_SECONDS` after a day turn).
+
+**2. The attract screen's neighbour — finding F-3, dead as a test.** The shipped demo opens
+with nine `actor: "neighbour"` entries, and the title screen played every one of them with
+nobody on screen; worse, it handed them to `_dispatch_intent`, so the *farmer* walked
+across the map and tilled the neighbour's row — F-3 from the other end, as WI-5's handoff
+put it. Her sprite now exists because the registry holds her, and her beats are performed
+by driving *her*: walk to the action's target, pose, act, wave, leave. Her motion is
+derived the way the attract farmer's is (pathfinding from where the last beat left her),
+**not** put on the clock — WI-3 deviation 7's ruling stands, because the cold open's
+visibility gate and stride wait are facts about a camera. Integration **scenario R** is the
+plan's criterion, checked rather than claimed: the shipped demo replay, a neighbour sprite
+in the attract farm's own layer, her position moving while the beats play, the farmer
+demonstrably not on her row, and — the second half — the whole cold open playing through to
+the gate opening with her sprite spared to walk off after the registry has dropped her.
+
+**3. Her position goes live, and the canonical compare goes total.** The player's tile
+crossings write her registry entry and are recorded as free-walk entries
+(`farm.note_player_walk` → `SimWorld.set_actor_pos` + `ReplayLog.record_walk`);
+`ReplayLog._apply_v2` applies them back instead of stepping over them; and the erase block
+in `capture_canonical` **is gone**. Nothing about her pixel motion changed — no speed, no
+collision, no input, no waypoint arithmetic (D-8's spirit, plan §4): the recorder is eight
+lines that read `is_moving`, `facing` and `get_tile_pos()` *after* the movement code has
+finished, and writes nothing back into it. The comparison now covers every actor the world
+contains, position, facing, meter and scratch, plus the clock. WI-5's deviation 1 is
+closed above.
+
+Suites: unit **1073 PASSED / 0 FAILED** (1070 before), integration **172 / 0** (154 before,
++18 from scenario R), robot session **PASSED across five runs** (fresh seed each; 22–24
+entries, 7 free-walk events every time, ~850 ticks, recomputation match and state MATCH
+every run), `verify_replay` **MATCH** twice over — on the real v1 human session on this
+machine (the regression that matters for removing the erase block) and on a v2 robot
+session carrying walk entries. Demo replay **regenerates byte-identically twice** (md5
+`ed92e61d…`, and the diff against the committed file is empty). Visual regression **passes
+unchanged — WI-6's re-baseline allowance is UNSPENT** and remains available to WI-8/WI-12.
+Benchmark, six runs: **614k / 714k / 703k / 620k / 714k / 710k×**, the same bimodal noise
+this machine has shown since WI-4 (625k–736k); nothing here is on the fast-forward path.
+
+**Deviations and decisions taken inside the WI:**
+
+1. **A walk is recorded per tile crossing, and `step` is a fourth event value.** §3.3
+   describes begin/turn/stop — the run-length encoding of held input — and that shape
+   cannot be *checked*, which is the whole reason WI-5 left the recorder off. Reconstructing
+   which tiles a run of held input crossed would mean reproducing her pixel motion, and her
+   pixel motion is the one thing this WI may not touch. So a crossing is an event: `begin`
+   when a walk starts, `step` when she crosses into the next tile going the same way, `turn`
+   when the direction changed, `stop` when she comes to rest. `from` is always the tile she
+   occupies at that instant, so a replay's registry is the session's registry after every
+   single entry — which is what makes the comparison total rather than merely final, and
+   what makes an autosave taken mid-stride reproduce. §3.3's information is all still there
+   (begin/turn/stop are exactly the events it named); the stream is a superset, not a
+   substitute. Every reader keys off `kind`, so nothing downstream noticed the new value.
+2. **The cost, stated honestly: a walking session records about three entries a second.**
+   A robot run gained 7; a ten-minute human session will gain something like a thousand.
+   That is the price of a verifiable player position, and it is paid in the file the phase-4
+   corpus is made of, so it is worth a designer's eye before the corpus gets large —
+   WI-5 §9 (d) already books the corpus question for Phase B and this belongs in it. Two
+   cheaper encodings exist if it ever matters (drop `step` and accept a final-position-only
+   guarantee; or emit a crossing only every N tiles), and both are a line in
+   `player/player.gd`.
+3. **The demo replay gains no walk entries**, contrary to what the work item expected —
+   `tools/gen_demo_replay.gd` is sim-only by design (no scene tree, no player node, which
+   is what lets it run in CI), so there is no pixel walker to cross a tile. It regenerates
+   byte-identically to the committed file. Nothing is wrong; the expectation was about a
+   generator that does not exist.
+4. **The robot session had to be taught to walk.** Its "keyboard walk returned to spawn
+   tile" assertion had been passing for free: Q-30 stops her *beside* a workable tile, so
+   the three taps never moved her, and the walk-back predicate (`tile == (2,2)`) was already
+   true on the frame it was first evaluated. It now walks out along the row and back, which
+   is a real crossing in each direction, and asserts both the free-walk entries and that the
+   registry knows where she ended. This is the second existing test to be *changed* rather
+   than added to in this milestone, and it is a strengthening: the old line asserted
+   something that could not fail.
+5. **`sync_actors` spares a departing sprite** — the one place a registry-driven renderer
+   deliberately does not follow the registry. The neighbour leaves the registry the instant
+   the gate opens (WI-2 deviation 3) and then walks off the map, which is the only goodbye
+   in the game; a node that answers `is_departing()` is left alone and frees itself. In the
+   attract loop `leave()` is called directly rather than deferred as `main.gd` does it,
+   because there the despawn and the sync can share a frame and a deferred flag would leave
+   a window in which she is neither registered nor leaving.
+6. **The attract loop now runs sim time**, which WI-5's handoff named as WI-6's
+   ("recomputation-driven playback… is what makes it show a hen and a crow at all"). It has
+   its own clock pump at the playback rate and **skips brain entries** rather than applying
+   them, so the hen potters and a crow can visit. Without it, deliverable 1 would have put a
+   *statue* of a hen on the title screen, which is finding F-3 half-fixed and arguably worse
+   than the empty yard. It cannot and does not match the recording tick-for-tick — the
+   playback paces itself by the farmer's walk — and nothing checks it, because it is a
+   backdrop. **Filed as Q-60**: this changes what the title screen *is*, and that is taste.
+7. **A real leak this WI would otherwise have opened.** `entities/crow.gd` reported
+   `crow_scared` to the `GameState` **autoload**. That was harmless while a crow could only
+   exist in the played game; the moment any farm renderer can have one, a bird on the title
+   screen spends the player's real state — precisely the T-16 hazard scenario K exists to
+   catch, and scenario K would not have caught it, because it does not fly a crow. It goes
+   through `farm.state()` now (the injected state, or the autoload), and entity sounds are
+   muted on a muted farm for the same reason the tile feedback already was.
+8. **Walk entries cost the attract loop a dwell, and that had to be fixed.** Playback spends
+   `STEP_SECONDS` per entry; a session's walk stream would have frozen the farm for minutes
+   while it stepped politely over each crossing. `_skip_unplayable()` consumes walks and
+   brain entries without spending a beat. This is the only downstream change WI-5's
+   pre-defined shape did not already absorb, and it is the shape's fault rather than the
+   reader's: an entry that is not a beat should not have looked like one.
+9. **The neighbour is stepped by the attract loop, not by the engine** (`step(delta)`
+   extracted from her `_process`, and the loop calls `set_process(false)` on her). Playback
+   runs on its own scaled clock (`TICK_EVERY`) and the farmer already moves on it; two
+   people demonstrating the same scene at different speeds is worse than either speed. It
+   also makes the scenario deterministic — it can step the whole cold open synchronously
+   instead of hoping headless frame deltas add up.
+10. **`SimWorld.set_actor_pos`'s "presentation must not call this" comment now names its one
+    sanctioned caller**, with the reason: the write is a *recorded* discrete event, not a
+    frame's worth of pixels, which is the difference between sim truth and a desync. The
+    same exception is written into `ARCHITECTURE.md`'s layer diagram and `CLAUDE.md`'s layer
+    list, because "reads sim, never writes it" is a rule people will check this against.
+11. **Two existing unit assertions were edited**, both inverted rather than weakened: the
+    WI-5 seam test's "the player's position is still excluded" is now "and so does the
+    player, whose position is in the comparison now", and the free-walk block became a live
+    round trip (record a walk, replay it, compare with her tile *in* the comparison, then
+    strip the walks out of the log and watch it fail — which is what every log written
+    before this WI is).
+12. **No coverage overlay for the sprinkler.** `SprinklerBrain.coverage()` is available and
+    the WI offered it as optional; nothing places a sprinkler in the live game (Q-15), so a
+    debug overlay would have been drawn for nobody. The renderer is the half that was
+    actually missing — and it is tested, in scenario R's tail, by spawning one into the
+    *attract loop's detached* farm: it gets a sprite because a species row and one line of
+    `ACTOR_RENDERERS` say so, it stands on its tile, it draws the spray cell after a day
+    turn, and its sprite goes when the actor does. No test code knows what a sprinkler is,
+    which is the claim being checked.
+
+**For WI-8's critter workers — how a renderer binds to `critters.png`.** Your critter is a
+species row and a brain; its *sprite* is now one line in `world/farm.gd`'s
+`ACTOR_RENDERERS` plus one small script under `entities/`. The contract is
+`init_actor(farm, actor_id)` and `queue_render(canvas, render_queue)`; copy
+`entities/chicken.gd` for a tile-stepped walker (it interpolates its sprite toward
+`world.actor_pos()` and caps a stalled frame) or `entities/crow.gd` for anything with a
+continuous position, and read `Movement.float_pos(world, id)` if you want one path that
+covers both — it falls back to the registry tile. `CREDITS.md` records the rows: r0 ant
+scout ×2 + forager ×2, r1 rabbit hop ×4, r2 mole mound / emerging / surfaced, r3 worm head
+/ body / tail / vertical body, r4 kangaroo hop ×4, r5 songbird perched / wings up / wings
+down, r6 the three spares. All 16px, all facing right, mirrored like the chicken's cells
+0–3. Three notes that will save you an hour: a **multi-tile body** draws from
+`Movement.occupied_tiles` (head first) rather than from one position; a **burrower** asks
+`Movement.is_under` whether to draw at all, and r2's three cells are exactly the three
+states that answer implies; and any die roll a renderer wants is `CosmeticRng`, never
+`SimRng` — there is a unit test that reads `entities/` and fails on a hit.
+
+**For WI-9 — binding `bot.png`.** It is 192×192, 4×4 cells of 48px in `characters.png`'s
+*exact* layout (rows down/up/left/right, frame 0 the standing idle), which was generated
+that way on purpose: a bot renderer can reuse the player's draw path verbatim. The cheapest
+correct move is to copy `player/player.gd`'s `_load_sprites` / `queue_render` pair into
+`entities/bot.gd`, swap the texture, and drive `position` from `world.actor_pos()` the way
+the hen does rather than from input — a bot is a registry mirror, not an input device. Then
+one line in `ACTOR_RENDERERS` and every farm renderer draws it, tests included. The debut
+is still Q-56's; only the sheet and the binding are engineering.

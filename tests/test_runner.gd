@@ -3532,6 +3532,14 @@ class LiveSession:
 	# Actions would — and still hold a log that reproduces everything after it.
 	# The seed goes with it, as `main.gd` passes it: a continued session runs on
 	# the seed its farm was made from (WI-5).
+	# A tile crossing, recorded the way `world/farm.gd:note_player_walk` records
+	# one (M2.5 WI-6): the registry entry and the log entry are written together,
+	# because a walk that moved her without saying so — or said so without moving
+	# her — is exactly the divergence the pairing exists to prevent.
+	func walk(event: String, dir: String, at: Vector2i) -> void:
+		world.set_actor_pos(SimWorld.ACTOR_PLAYER, at, dir)
+		log.record_walk(event, dir, at, world.clock.tick)
+
 	func rebase() -> void:
 		log = ReplayLog.new()
 		log.start_from_save(
@@ -3831,12 +3839,14 @@ func test_brains() -> void:
 		"and so does a clock that turned further than the recording did")
 	SimRng.reseed(5150)
 	seam.generate()
-	# The residue, and the only one: the player walks in pixels until WI-6 wires
-	# her to the registry, so her registry entry is her spawn tile in a live
-	# session and in a replay alike, and comparing it would assert nothing.
+	# ...and the last residue is gone (M2.5 WI-6). The player was excluded from
+	# this comparison for as long as nothing wrote her tile into the registry; her
+	# crossings write it now and are recorded as free-walk entries a replay applies
+	# back, so the comparison is total and a farmer who ends the session on a
+	# different tile is a failed replay like anybody else.
 	seam.set_actor_pos(SimWorld.ACTOR_PLAYER, Vector2i(11, 11), "up")
-	_assert(SaveGame.capture_canonical(seam, gs_seam) == seam_before,
-		"the player's position is still excluded — she is WI-6's, and nothing writes it yet")
+	_assert(SaveGame.capture_canonical(seam, gs_seam) != seam_before,
+		"and so does the player, whose position is in the comparison now (WI-6)")
 	_assert(JSON.stringify(SaveGame.capture(seam, gs_seam)).contains("\"x\":11"),
 		"but the *save* still stores where she is — a save is a snapshot")
 	SimRng.reseed(5150)
@@ -4931,25 +4941,49 @@ func test_replay_v2() -> void:
 	_flush_quiet("every recorded session in playtests/ still reads and replays as the v1 log it is (%d)"
 		% checked)
 
-	# --- free-walk entries: defined, stepped over, not yet written -------------
-	# §3.3's other half. The shape is fixed and every reader tolerates it, so WI-6
-	# turns the recorder on without touching anything downstream (see the WI-5
-	# note in M2_5_PLAN §9 for why it is not on yet).
+	# --- free-walk entries: recorded, applied, compared (M2.5 WI-6) ------------
+	# §3.3's other half, and the switch WI-5 armed and left off. A crossing writes
+	# her registry entry and records an event; a replay applies the event back; and
+	# `capture_canonical` — which no longer excludes her — is what says the two
+	# agree.
 	var walked := LiveSession.new(31415)
 	walked.act({ "verb": "till", "target": Vector2i(5, 2), "actor": "player" })
-	walked.log.record_walk("begin", "left", Vector2i(5, 2), walked.world.clock.tick)
-	walked.log.record_walk("stop", "left", Vector2i(3, 2), walked.world.clock.tick)
+	walked.walk("begin", "left", Vector2i(5, 2))
+	walked.walk("step", "left", Vector2i(4, 2))
+	walked.walk("turn", "up", Vector2i(4, 1))
+	walked.walk("stop", "up", Vector2i(4, 1))
 	walked.act({ "verb": "plant", "target": Vector2i(5, 2), "seed_type": "wheat", "actor": "player" })
 	var w_w := SimWorld.new()
 	var gs_w = load("res://systems/game_state.gd").new()
 	var round_tripped := ReplayLog.from_json(walked.log.to_json())
 	_assert(ReplayLog.is_walk(round_tripped.entries[1]),
 		"a free-walk event survives the file as a walk, not as an Action")
+	_assert(walked.world.actor_pos(SimWorld.ACTOR_PLAYER) == Vector2i(4, 1),
+		"a recorded crossing is also a move: the registry holds the tile she reached")
 	round_tripped.apply_to(w_w, gs_w)
+	_assert(w_w.actor_pos(SimWorld.ACTOR_PLAYER) == Vector2i(4, 1)
+			and String(w_w.actor(SimWorld.ACTOR_PLAYER)["facing"]) == "up",
+		"and a replay walks her there — position and facing, from the events alone")
 	_assert(SaveGame.capture_canonical(walked.world, walked.gs)
 			== SaveGame.capture_canonical(w_w, gs_w),
-		"and a replay steps over it and reproduces the session anyway")
+		"so the session and its replay compare equal with the player's tile IN the comparison")
 	_assert(round_tripped.divergence == "",
 		"without the net mistaking it for a brain that failed to recompute")
+
+	# ...and the comparison bites. A log with her walk stripped out — which is
+	# exactly what every log written before this WI is — replays into a farm where
+	# she never left the spawn tile, and now that is a failure rather than a thing
+	# nobody was looking at.
+	var lost := ReplayLog.from_json(walked.log.to_json())
+	for i in range(lost.entries.size() - 1, -1, -1):
+		if ReplayLog.is_walk(lost.entries[i]):
+			lost.entries.remove_at(i)
+	var w_lost := SimWorld.new()
+	var gs_lost = load("res://systems/game_state.gd").new()
+	lost.apply_to(w_lost, gs_lost)
+	_assert(SaveGame.capture_canonical(walked.world, walked.gs)
+			!= SaveGame.capture_canonical(w_lost, gs_lost),
+		"and a dropped walk event is a failed replay, which is what makes recording one worth it")
+	gs_lost.free()
 	gs_w.free()
 	walked.done()

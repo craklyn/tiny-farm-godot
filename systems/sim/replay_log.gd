@@ -132,20 +132,24 @@ func mark_tick(tick: int) -> void:
 	end_tick = maxi(end_tick, tick)
 
 
-# --- Player free walking (format v2, defined; not recorded yet) ---------------
+# --- Player free walking (format v2, live since M2.5 WI-6) --------------------
 #
-# §3.3's other half: a free walk is recorded as its direction changes
-# (begin/turn/stop), which is the run-length encoding of held input and the one
-# thing about the player no rule can recompute. The entry shape is
-# `{ "kind": "walk", "event": "begin"|"turn"|"stop", "dir": "left", "from": [x, y],
-# "tick": n }` — no verb, no target, and `apply_to` steps over it.
+# §3.3's other half, and the one thing about the player no rule can recompute:
+# where she chose to walk. The entry shape is
+# `{ "kind": "walk", "event": "begin"|"turn"|"step"|"stop", "dir": "left",
+# "from": [x, y], "tick": n }` — no verb, no target, and it is not an Action.
 #
-# **Nothing writes one yet, deliberately** (M2_5_PLAN §9, WI-5 deviation 1). The
-# player's position is not sim truth until WI-6 wires the pixel walker to the
-# registry, so nothing would recompute a walk from these events; recording them
-# now would grow every log and every future training corpus with a stream that
-# no reader can check. The shape is fixed here, and the readers step over it
-# here, so WI-6 turns the recorder on and nothing downstream has to change.
+# **`from` is the tile she is standing on at that instant**, which is what makes
+# these verifiable: `_apply_v2` writes it straight into her registry entry, so a
+# replay's player position is the session's player position and
+# `SaveGame.capture_canonical` compares her like everybody else. WI-5 defined the
+# shape and left the recorder off because nothing could check one yet; WI-6 wires
+# `player/player.gd`'s pixel walker to the registry, which is what turned it on.
+#
+# `step` is the fourth event value, added with the recorder (WI-6): §3.3's
+# begin/turn/stop is a run-length encoding of *held input*, and a crossing that
+# continues in the same direction is neither a begin, a turn, nor a stop. Every
+# reader keys off `kind` alone, so the extra value cost nothing downstream.
 const WALK_KIND := "walk"
 
 
@@ -212,7 +216,12 @@ func _apply_v2(world: SimWorld, gs) -> void:
 		var tick := int(e.get("tick", 0))
 		recomputed.append_array(world.advance_to_tick(tick, gs))
 		if is_walk(e):
-			continue  # a free-walk event, once anything records one; not an Action
+			# Not an Action: the player's own motion, replayed by putting her back
+			# on the tile the event says she reached (M2.5 WI-6). It changes
+			# nothing else in the world, and it is not part of the net — a person
+			# is recorded, never recomputed.
+			_apply_walk(e, world)
+			continue
 		var decoded := _decode(e)
 		if bool(e.get("brain", false)):
 			if matched >= recomputed.size():
@@ -231,6 +240,18 @@ func _apply_v2(world: SimWorld, gs) -> void:
 		var extra: Dictionary = recomputed[matched]
 		_note_divergence(entries.size(), "(nothing recorded)",
 			_signature(extra["action"], int(extra.get("tick", -1))))
+
+
+# A recorded free walk, put back into the registry. Tolerant of a malformed entry
+# rather than fatal on one: a walk that cannot be read is a walk that does not
+# move her, which is exactly what every reader did with these before WI-6 turned
+# the recorder on.
+static func _apply_walk(entry: Dictionary, world: SimWorld) -> void:
+	var from = entry.get("from", null)
+	if not (from is Array) or from.size() != 2:
+		return
+	world.set_actor_pos(SimWorld.ACTOR_PLAYER,
+		Vector2i(int(from[0]), int(from[1])), String(entry.get("dir", "")))
 
 
 # First one wins: a desync cascades, and the first divergence is the one that

@@ -45,7 +45,17 @@ var _tint: Color = Color.WHITE
 const COLD_OPEN_STEP := 1.1  # [Playtest] seconds between the neighbour's actions
 var _cold_open_timer: float = 1.2
 var _cold_open_failures: int = 0
-var neighbour: Node2D = null
+
+
+# Her sprite, if the farm still has one for her (M2.5 WI-6). Looked up rather than
+# held, because the farm builds it from the registry and frees it when she has
+# walked off the map — so a stored reference here would be the one place that
+# could outlive the actor.
+func neighbour_node() -> Node2D:
+	if farm == null:
+		return null
+	var n = farm.actor_nodes.get(SimWorld.ACTOR_NEIGHBOUR, null)
+	return n if is_instance_valid(n) else null
 
 # The scene does not begin until the player can see it.
 #
@@ -98,38 +108,6 @@ func _pump_sim_clock(delta: float) -> void:
 		return
 	_tick_debt -= float(whole)
 	farm.advance_sim(mini(whole, MAX_TICKS_PER_FRAME), GameState)
-
-
-# Sprites for actors the sim has, and no sprites for actors it has not.
-#
-# **The direction of this is the point** (M2.5 WI-3). Until now a crow existed
-# because this file built a node and stopped existing because the node called
-# `queue_free()`, and the sim was never told either way — which is finding F-3's
-# whole class of bug: entities exist only because `main.gd` spawns nodes, so every
-# other renderer of the same sim silently loses them. Now the sim decides (the
-# T-20 schedule reaches an arrival inside the gateway, `CrowBrain` flies the visit
-# and despawns at the map edge) and this reacts. WI-6 moves the reacting into
-# `world/farm.gd`, where the attract loop gets it too.
-var _actor_nodes: Dictionary = {}  # actor_id -> Node2D
-
-func _sync_actor_nodes() -> void:
-	if farm == null or entities == null:
-		return
-	for id in farm.sim.actors_of_species(SpeciesDefs.CROW):
-		if _actor_nodes.has(id) and is_instance_valid(_actor_nodes[id]):
-			continue
-		var CrowScript = load("res://entities/crow.gd")
-		var crow = CrowScript.new()
-		crow.name = "Crow_" + id
-		crow.init_crow(farm, player, id)
-		entities.add_child(crow)
-		_actor_nodes[id] = crow
-	for id in _actor_nodes.keys():
-		if not farm.sim.has_actor(id):
-			var node = _actor_nodes[id]
-			if is_instance_valid(node):
-				node.queue_free()
-			_actor_nodes.erase(id)
 
 
 # APPLICATION_PAUSED covers backgrounding, which is the common case, but not a
@@ -209,37 +187,15 @@ func _ready() -> void:
 	var spawn := _find_spawn_tile(WorldLayout.spawn())  # inside the fenced yard
 	player.init_position(spawn.x, spawn.y)
 
-	# Create entity manager
-	entities = Node2D.new()
-	entities.name = "Entities"
-	add_child(entities)
-	
-	# T-13: the neighbour, if her two days have not happened yet. She stands on
-	# the far side of the fence and the player watches her through it — the
-	# restriction is spatial, so control is never taken away, which is what
-	# dissolves the "never cut away from the player" objection rather than
-	# compromising on it (design/13 §4a).
-	if not ColdOpen.is_done(farm.sim):
-		var NeighbourScript = load("res://entities/neighbour.gd")
-		neighbour = NeighbourScript.new()
-		neighbour.name = "Neighbour"
-		var plot: Dictionary = farm.sim.layout.get("neighbour_plot", {})
-		neighbour.init(farm, plot.get("wave_at", Vector2i(12, 4)))
-		entities.add_child(neighbour)
-
-	# The chicken, where the sim says she is (M2.5 WI-2). Her tile used to be
-	# drawn here, after generation, from whatever the RNG stream happened to be
-	# holding — which is why reloading a save put her somewhere new every time
-	# (plan finding F-7c). Worldgen rolls it now, from the seed, and the save
-	# carries it. Since WI-3 her *walk* is sim truth too: `ChickenBrain` decides
-	# where she potters off to and the node below only draws her getting there.
-	for hen_id in farm.sim.actors_of_species(SpeciesDefs.CHICKEN):
-		var ChickenScript = load("res://entities/chicken.gd")
-		var chicken = ChickenScript.new()
-		chicken.name = "Chicken_" + hen_id
-		chicken.init(farm, hen_id)
-		entities.add_child(chicken)
-		_actor_nodes[hen_id] = chicken
+	# The cast, drawn by the farm from the registry (M2.5 WI-6). The neighbour if
+	# her two days have not happened yet, the hen where worldgen put her, and a
+	# crow whenever the sim sends one — none of them built here any more, which is
+	# what makes the same farm node populate the title screen's attract loop.
+	#
+	# `entities` still names the layer the sprites live in, because that is what
+	# it always named; it simply belongs to the farm now.
+	entities = farm.actors_node
+	farm.sync_actors()
 
 	# Create particles manager
 	var ParticlesScript = load("res://effects/particles_manager.gd")
@@ -340,7 +296,8 @@ func _tick_cold_open(delta: float) -> void:
 	# Let her finish walking or swinging before asking for the next beat. A
 	# person who teleports between tiles is not demonstrating anything, and
 	# demonstrating a verb is the one thing a highlight cannot do at any budget.
-	if neighbour != null and is_instance_valid(neighbour) and neighbour.is_busy():
+	var neighbour := neighbour_node()
+	if neighbour != null and neighbour.is_busy():
 		return
 
 	_cold_open_timer -= delta
@@ -368,7 +325,7 @@ func _tick_cold_open(delta: float) -> void:
 
 	# Walk there first, and only act once she is beside it.
 	var target = act.get("target", null)
-	var live: bool = neighbour != null and is_instance_valid(neighbour)
+	var live: bool = neighbour != null
 	if live and target is Vector2i and not neighbour.is_beside(target):
 		neighbour.go_to(target)
 		_cold_open_timer = 0.0
@@ -454,7 +411,15 @@ func _process(delta: float) -> void:
 	# below are about the *player's* input, not about whether the world exists. An
 	# open menu is different — it pauses the tree, so this never runs.
 	_pump_sim_clock(delta)
-	_sync_actor_nodes()
+	# Sprites for the actors the sim has, and no sprites for the actors it has
+	# not. **The direction of this is the point** (WI-3): a crow used to exist
+	# because this file built a node and stop existing because the node called
+	# `queue_free()`, and the sim was never told either way — finding F-3's whole
+	# class of bug. WI-3 moved the deciding into the sim; WI-6 moved the reacting
+	# into the farm, where every other renderer of the same sim gets it for free.
+	# What is left here is the frame boundary, exactly like the clock pump above.
+	if farm != null:
+		farm.sync_actors()
 
 	# Skip gameplay during day transition
 	if day_cycle.is_active():

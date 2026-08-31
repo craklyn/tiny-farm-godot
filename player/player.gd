@@ -72,12 +72,34 @@ func _default_state() -> Node:
 	return null
 
 
+# --- Her position, as sim truth (M2.5 WI-6) -----------------------------------
+#
+# She keeps continuous pixel motion and exactly the feel she had — the plan's §4
+# and D-8's spirit both forbid changing it, and nothing above or below this line
+# touches speed, collision or input. What joins the actor registry is **tile
+# occupancy, updated on tile crossings**: the moment she leaves one tile for the
+# next, her registry entry is written and the crossing is recorded as a free-walk
+# event (`world/farm.gd:note_player_walk`). A replay applies those back, so the
+# recomputed registry lands where the session's did.
+#
+# Crossings and not frames, and not pixels: a per-frame write would put wall-clock
+# noise into sim truth, and a pixel position would make the registry hold a number
+# no rule could reproduce. A tile boundary is a discrete event both sides agree on.
+var _walk_tile: Vector2i = Vector2i(-1, -1)  # the tile the last event was written at
+var _walk_dir: String = ""                   # "" while she is standing still
+
+
 func init_position(start_tx: int, start_ty: int) -> void:
 	pos = Vector2(
 		start_tx * TILE_SIZE + TILE_SIZE / 2.0,
 		start_ty * TILE_SIZE + TILE_SIZE / 2.0
 	)
 	position = pos
+	# Where she is placed is not a crossing — a spawn is worldgen's business and
+	# the registry already holds it. Seeded so the first real step is the first
+	# thing recorded.
+	_walk_tile = Vector2i(start_tx, start_ty)
+	_walk_dir = ""
 
 
 func _load_sprites() -> void:
@@ -442,8 +464,42 @@ func update_player(delta: float) -> void:
 	# (handled in _unhandled_input)
 
 	position = pos
+	_note_walk()
 	if farm:
 		farm.queue_redraw()
+
+
+# The three things a replay needs to know about a free walk, and nothing else
+# (plan §3.3, M2.5 WI-6): that one began, every tile boundary she crossed while it
+# lasted, and that it ended. `begin` and `stop` bracket the run; a crossing is a
+# `turn` when the direction changed since the last one and a `step` when it did
+# not, which is §3.3's run-length information kept without giving up the exact
+# tile stream that makes the registry reproducible.
+#
+# Only reached when she is neither acting nor waiting on a farm, because both of
+# those return earlier in `update_player` — and in both she is standing still, so
+# there is nothing to cross.
+func _note_walk() -> void:
+	if farm == null or not farm.has_method("note_player_walk"):
+		return
+	var here := get_tile_pos()
+	if is_moving:
+		if _walk_dir == "":
+			farm.note_player_walk("begin", facing, here)
+		elif here != _walk_tile:
+			farm.note_player_walk("turn" if facing != _walk_dir else "step", facing, here)
+		_walk_dir = facing
+		_walk_tile = here
+	elif _walk_dir != "":
+		# A walk can end on a tile she has not been recorded on yet — the last
+		# frame of a step both crosses and stops — so the crossing is written
+		# before the stop, never folded into it.
+		if here != _walk_tile:
+			farm.note_player_walk("turn" if facing != _walk_dir else "step", facing, here)
+			_walk_tile = here
+		farm.note_player_walk("stop", _walk_dir, here)
+		_walk_dir = ""
+
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed:

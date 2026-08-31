@@ -602,6 +602,15 @@ func actor_pos(actor_id: String) -> Vector2i:
 # Sim-side movement, for the movement engine (WI-4) and the brains that drive it
 # (WI-3). Presentation must not call this: a node writing its wall-clock position
 # into sim truth is exactly the desync the registry exists to prevent.
+#
+# **One sanctioned exception, and it is the player's** (M2.5 WI-6). She keeps
+# continuous pixel motion, so her tile is written here from
+# `world/farm.gd:note_player_walk` when she crosses a boundary — and the crossing
+# is *recorded* in the same call, as a free-walk entry a replay applies back. That
+# is what makes it not a desync: the write is a discrete event both a live session
+# and its replay agree on, rather than a frame's worth of pixels leaking in. A
+# renderer that wrote any other actor's position here would still be the bug this
+# comment is about, because nothing would be recording it.
 func set_actor_pos(actor_id: String, at: Vector2i, facing: String = "") -> void:
 	var e: Dictionary = actor(actor_id)
 	if e.is_empty():

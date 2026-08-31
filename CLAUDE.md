@@ -65,7 +65,11 @@ Five-layer shape (full detail in `docs/ARCHITECTURE.md`):
 3. **Intent** — `systems/action_router.gd`: resolves a tap/gesture to an Action.
 4. **Input** — `systems/input_manager.gd`: touch/mouse/keyboard/gamepad → raw gestures.
 5. **Presentation** — `world/farm.gd` (renderer + facade over SimWorld), `player/`,
-   `entities/`, `ui/`, `effects/`. Reads sim, never writes it directly.
+   `entities/`, `ui/`, `effects/`. Reads sim, never writes it directly — with one
+   sanctioned exception, the player's tile crossings (`farm.note_player_walk`, M2.5 WI-6),
+   which are recorded in the same call so a replay reproduces them. `farm.sync_actors()`
+   gives every registered actor a sprite, so any farm renderer is populated; `entities/*.gd`
+   are mirrors of registry state (`init_actor(farm, actor_id)`).
 
 Load-bearing rules (violating these breaks determinism, replays, and the phase-4 ML plan):
 

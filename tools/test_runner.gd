@@ -70,6 +70,7 @@ func _run_scenarios() -> void:
 	await _scenario_j_wordless_shop()
 	await _scenario_k_attract()
 	await _scenario_q_crow_is_sim_sent()
+	await _scenario_r_attract_shows_the_neighbour()
 
 func _wait_until(pred: Callable, max_frames: int) -> bool:
 	for i in max_frames:
@@ -1122,3 +1123,122 @@ func _scenario_q_crow_is_sim_sent() -> void:
 	await get_tree().process_frame
 	_assert(not is_instance_valid(crow) or crow.is_queued_for_deletion(),
 		"and its sprite is freed because the actor is gone, not because a node decided")
+
+
+func _scenario_r_attract_shows_the_neighbour() -> void:
+	# Finding F-3, killed as a test rather than patched (M2.5 WI-6, plan §4).
+	#
+	# The shipped demo opens with the cold open: a string of `actor: "neighbour"`
+	# entries in which somebody tills, plants, waters and then opens the gate. The
+	# title screen played every one of them with **nobody on screen** — the farm
+	# was drawn by a farm node and the entities existed only because `main.gd`
+	# built them, so the designer watched tiles till themselves. Worse, the entries
+	# were handed to the *farmer*, who walked across the map to do the neighbour's
+	# work.
+	#
+	# Both halves are asserted here: a neighbour sprite exists in the attract
+	# farm's own actor layer, and it is the thing that moves during those beats.
+	print("\n--- Scenario R: the attract loop shows the neighbour working her row ---")
+
+	var demo := ReplayLog.load_from("res://assets/demo/demo_replay.json")
+	_assert(demo != null and not demo.entries.is_empty(), "the shipped demo replay loads")
+	if demo == null or demo.entries.is_empty():
+		return
+	var cold_open_beats := 0
+	for e in demo.entries:
+		if String(e.get("actor", "")) == SimWorld.ACTOR_NEIGHBOUR:
+			cold_open_beats += 1
+	_assert(cold_open_beats > 0,
+		"and it opens on the cold open (%d neighbour entries — the F-3 evidence)" % cold_open_beats)
+
+	var AttractScript = load("res://ui/attract_loop.gd")
+	var loop = AttractScript.new()
+	loop.name = "AttractNeighbourLoop"
+	add_child(loop)
+	_assert(loop.begin(demo), "the attract loop starts on it")
+
+	# The sprite exists because the *registry* holds her, not because this scene
+	# built one — which is the whole of the fix, and why it works for the hen and
+	# a crow too.
+	var her = loop.farm.actor_nodes.get(SimWorld.ACTOR_NEIGHBOUR, null)
+	_assert(her != null and is_instance_valid(her),
+		"the attract farm has a neighbour sprite, drawn from the actor registry")
+	_assert(loop.farm.actor_nodes.has(SimWorld.ACTOR_CHICKEN),
+		"and a hen, by the same mechanism and with no code that knows about hens")
+	if her == null:
+		loop.queue_free()
+		await get_tree().process_frame
+		return
+	_assert(her.get_parent() == loop.farm.actors_node,
+		"living under the attract farm, not under the played game's entity layer")
+	_assert(loop.farm.actors_node != main_scene.entities,
+		"which is a different layer from the one the player's own farm draws")
+
+	# Play the cold-open beats. She walks to each target at 26 px/s and the loop
+	# waits for her stride, so this is thousands of sixtieths — bounded, and it
+	# stops the moment both things being asserted are true.
+	var start_pos: Vector2 = her.position
+	var moved := false
+	var beats := 0
+	for i in 6000:
+		loop._process(1.0 / 60.0)
+		if not is_instance_valid(her):
+			break
+		if her.position.distance_to(start_pos) > 8.0:
+			moved = true
+		beats = loop._next
+		if moved and beats > 0:
+			break
+	_assert(moved, "she walks her row while those beats play (%s → %s)"
+		% [start_pos, her.position if is_instance_valid(her) else Vector2.ZERO])
+	_assert(beats > 0, "and the beats are being performed (%d entries in)" % beats)
+	# The farmer stays out of it: the neighbour's plot is over the fence, and a
+	# playback that sent the farmer there is the same bug from the other side.
+	var farmer_t: Vector2i = loop.player.get_tile_pos()
+	var plot: Dictionary = loop.farm.sim.layout.get("neighbour_plot", {})
+	var wave_at: Vector2i = plot.get("wave_at", Vector2i(-1, -1))
+	_assert(absi(farmer_t.x - wave_at.x) + absi(farmer_t.y - wave_at.y) > 1,
+		"and the farmer is not the one doing it — she is at %s, the neighbour's row is at %s"
+			% [farmer_t, wave_at])
+
+	# Play the rest of it: she works her row, opens the gate and walks off. The
+	# registry drops her at `open_gate` (WI-2 deviation 3), and this is the one
+	# place a registry-driven renderer must deliberately *not* follow the registry
+	# — a sprite that vanished mid-wave would lose the only goodbye in the game.
+	var departed := false
+	for i in 40000:
+		loop._process(1.0 / 60.0)
+		if ColdOpen.is_done(loop.farm.sim):
+			departed = not is_instance_valid(her) or her.is_queued_for_deletion() \
+				or her.is_departing()
+			break
+	_assert(ColdOpen.is_done(loop.farm.sim), "the cold open plays through to the gate opening")
+	_assert(not loop.farm.sim.has_actor(SimWorld.ACTOR_NEIGHBOUR),
+		"which drops her from the registry, the moment it opens")
+	_assert(departed, "and her sprite is spared to walk off the map, not freed with the actor")
+
+	# The general claim, checked on the species that proves it: a machine. Nothing
+	# in the live game places a sprinkler (Q-15), so this is the only place its
+	# renderer can be exercised — and it is exercised in a *detached* farm, which
+	# is also the point. No code here knows what a sprinkler is; the species row
+	# and one line of `ACTOR_RENDERERS` are the whole binding (M2.5 WI-6, WI-10).
+	loop.farm.sim.spawn_actor("sprinkler", SpeciesDefs.SPRINKLER, Vector2i(6, 8))
+	loop.farm.sync_actors()
+	var machine = loop.farm.actor_nodes.get("sprinkler", null)
+	_assert(machine != null and is_instance_valid(machine),
+		"spawning a sprinkler in the registry gives it a sprite, with no renderer change")
+	if machine != null:
+		_assert(machine.position == Vector2(6 * 16, 8 * 16), "standing on its own tile")
+		_assert(machine._spray_timer <= 0.0, "idle to begin with (objects.png row 1 col 5)")
+		# A machine acts *inside* the day turn, so there is no tick to notice it
+		# on: the farm tells its sprites a morning happened.
+		loop.farm.apply_action({ "verb": "sleep", "actor": "world" }, loop.gs)
+		_assert(machine._spray_timer > 0.0,
+			"and it is drawn spraying after the day turn it waters on (col 6)")
+		loop.farm.sim.despawn_actor("sprinkler")
+		loop.farm.sync_actors()
+		_assert(not loop.farm.actor_nodes.has("sprinkler"),
+			"and the sprite goes when the actor does")
+
+	loop.queue_free()
+	await get_tree().process_frame

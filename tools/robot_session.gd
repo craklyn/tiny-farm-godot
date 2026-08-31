@@ -62,13 +62,25 @@ func _ready() -> void:
 	await _tap_and_wait(TILE)   # water
 	_check(main_scene.farm.get_tile(TILE.x, TILE.y).watered_today, "tap watered the tile")
 
-	# Taps walk the player onto the acted tile; return to (2,2) via keyboard
-	# (covers the second input modality), then sleep facing the cot at (2,1)
+	# A real walk, out along the row and back, on the keyboard — the second input
+	# modality, and since M2.5 WI-6 the thing that puts free-walk events in the log
+	# and moves her registry entry. It has to be deliberate: Q-30 stops her
+	# *beside* a workable tile, so the taps above never carried her anywhere, and a
+	# robot that only ever taps its neighbouring tile never crosses a boundary at
+	# all. She ends back on (2,2), facing the cot at (2,1).
+	Input.action_press("move_right")
+	var out := await _wait_until(func(): return player.get_tile_pos().x >= 4, 300)
+	Input.action_release("move_right")
+	_check(out, "keyboard walk carried her out along the row (tile %s)" % player.get_tile_pos())
+	await get_tree().process_frame
 	Input.action_press("move_left")
 	var back := await _wait_until(func(): return player.get_tile_pos() == Vector2i(2, 2), 300)
 	Input.action_release("move_left")
 	_check(back, "keyboard walk returned to spawn tile")
 	await get_tree().process_frame
+	_check(main_scene.farm.sim.actor_pos(SimWorld.ACTOR_PLAYER) == Vector2i(2, 2),
+		"and the registry knows it — her tile is sim truth now (%s)"
+			% main_scene.farm.sim.actor_pos(SimWorld.ACTOR_PLAYER))
 
 	player.facing = "up"
 	Input.action_press("action")
@@ -118,9 +130,18 @@ func _ready() -> void:
 	else:
 		_check(rlog.version >= 2, "the session recorded in replay format v%d" % rlog.version)
 		var brain_entries := 0
+		var walk_entries := 0
 		for e in rlog.entries:
 			if bool(e.get("brain", false)):
 				brain_entries += 1
+			if ReplayLog.is_walk(e):
+				walk_entries += 1
+		# The switch WI-5 armed and WI-6 flipped: her walk is in the log, and the
+		# state comparison below is what checks it — her tile is inside
+		# `capture_canonical` now, so a replay that lost track of where she walked
+		# fails here rather than being quietly excluded.
+		_check(walk_entries > 0,
+			"her free walk is in the replay as tile-crossing events (%d)" % walk_entries)
 		var report := SaveGame.replay_report(rlog, save)
 		# The dual-record net (M2.5 WI-5, plan §4). The replay advanced the clock
 		# through the session's own ticks, so every brain on it decided again —

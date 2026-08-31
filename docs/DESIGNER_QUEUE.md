@@ -653,6 +653,21 @@ trace actually says, because several of these looked like bugs and were not.*
   reroll is ever wanted as a mercy it should be a designed one (a mechanic she can see)
   rather than a property of the quit button.* Nothing is blocked: this is live now and
   reversible in one line of `main.gd`.
+- **Q-60** **The title screen is now inhabited, and it acts on its own.** Raised by M2.5
+  WI-6, which fixed finding F-3 — the attract loop used to play the cold open with nobody
+  on screen, so tiles tilled themselves and the *farmer* walked over to do the neighbour's
+  work. Two things changed and only the first was asked for. (i) The neighbour is there,
+  working her row, waving and walking off, driven from the recorded entries exactly as the
+  farmer is. (ii) The backdrop now runs sim time, so the **hen potters about** and — on a
+  long enough demo — **a crow can arrive, eat and be seen leaving**, none of it recorded,
+  all of it recomputed. That second one is a change of what the title screen *is*: from a
+  recording being played back to a farm being lived in. *Recommendation: keep it.* A farm
+  of statues is worse than an empty one, the cost is a handful of ticks per frame on a
+  second world already being drawn, and a crow on the title screen is a better trailer for
+  this game than a tidy row of wheat. But it is taste, it is visible to anyone who opens
+  the app, and it wants your eye on device — particularly the pacing, since the loop now
+  waits for the neighbour's stride where before it waited only for the farmer's. Reversible
+  in one line (`ui/attract_loop.gd`'s clock pump); the neighbour half stands either way.
 
 ## Before M3 — phase 2 design
 

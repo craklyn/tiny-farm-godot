@@ -244,13 +244,14 @@ static func save_to(path: String, world: SimWorld, gs) -> bool:
 # the point: it is the strongest statement the repo can make that the
 # recomputation is the recording.
 #
-# **One residue, and it is named:** the player's `x`/`y`/`facing`/`extra` are
-# still excluded. Her position is not sim truth yet — she walks in pixels and
-# nothing writes her tile back into the registry (M2.5 WI-2 deviation 2), so the
-# registry holds her spawn tile in a live session and in a replay alike, and
-# comparing it would assert nothing. WI-6 wires the pixel walker to the registry
-# as tile-crossing events; **these four lines come out with it**, and the free-walk
-# entry `ReplayLog` already defines is what will carry her across the boundary.
+# **And the last residue with it** (M2.5 WI-6). The player was excluded from this
+# comparison for as long as her position was not sim truth: she walked in pixels,
+# nothing wrote her tile into the registry, and so both sides held her spawn tile
+# and comparing them asserted nothing. Her tile crossings write the registry now
+# and are recorded as free-walk entries that `ReplayLog._apply_v2` applies back,
+# so the comparison is **total**: every actor the world contains, position,
+# facing, meter and scratch, plus the clock — nothing is erased here but the two
+# presentation fields below, which are not Actions and never were sim truth.
 #
 # `capture()` itself is untouched: a **save** still stores every position and the
 # tick, because a save is a snapshot and a snapshot knows where everybody was.
@@ -259,10 +260,6 @@ static func capture_canonical(world: SimWorld, gs) -> String:
 	var s: Dictionary = c.get("state", {})
 	s.erase("selected_tool")
 	s.erase("selected_seed_type")
-	var a: Dictionary = c.get("world", {}).get("actors", {})
-	if a.has(SimWorld.ACTOR_PLAYER):
-		for moved in ["x", "y", "facing", "extra"]:
-			a[SimWorld.ACTOR_PLAYER].erase(moved)
 	return _canonical_text(c)
 
 

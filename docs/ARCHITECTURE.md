@@ -20,7 +20,7 @@ live in `DECISION_LOG.md`.*
 
 ```
 ┌────────────────────────────────────────────────────────┐
-│ 5. Presentation   rendering, camera, audio, particles  │  reads sim, never writes it
+│ 5. Presentation   rendering, camera, audio, particles  │  reads sim, never writes it*
 ├────────────────────────────────────────────────────────┤
 │ 4. Input          touch/mouse/kb/pad → raw gestures    │  (input_manager.gd)
 ├────────────────────────────────────────────────────────┤
@@ -31,6 +31,14 @@ live in `DECISION_LOG.md`.*
 │ 1. Data           tile/crop/pest/tower/bot definitions │  plain resources, no logic
 └────────────────────────────────────────────────────────┘
 ```
+
+\* One exception, and it is written down in the code that takes it: the **player's tile
+crossings** are written into the actor registry by `world/farm.gd:note_player_walk`
+(M2.5 WI-6). She keeps continuous pixel motion, so her tile is the only sim truth about her
+that presentation can know — and the same call *records* the crossing as a free-walk entry
+that a replay applies back, which is what keeps it a reproducible event rather than a
+frame's worth of pixels leaking into the sim. No other actor's position may be written
+this way; every other mover is on the clock, and nothing would be recording it.
 
 The load-bearing rule: **layers 1–3 must run with layer 5 absent.** Player and bots are
 both "layer-3 policies" that read observations from layer 2 and emit Actions into it.
@@ -71,6 +79,16 @@ The consequence worth stating plainly: **a bot, a crow and the farmer are the sa
 thing** — a policy that emits Actions into one gateway — differing only in a row of data
 and which layer their policy lives in. That is what phase 4 needs to be cheap.
 
+**Layer 5's half of that, as of M2.5 WI-6.** A farm renderer (`world/farm.gd`) draws
+whoever the registry holds: `sync_actors()` binds a species to a sprite script
+(`ACTOR_RENDERERS`), builds a node for each registered actor it has art for, and frees it
+when the sim says the actor has gone. Sprites are the farm's own children, so **every**
+renderer of a `SimWorld` is populated — the title screen's attract loop included, which
+before this drew a farm where tiles tilled themselves and nobody was there (M2.5 finding
+F-3). An entity script is therefore a *mirror*: `init_actor(farm, actor_id)`, read the
+registry, draw. The player is the deliberate exception — her node is the input device and
+the camera anchor, so `main.gd` owns it and the render queue finds it at `../Player`.
+
 ## The Action record (S-3)
 
 One shape for every world mutation, roughly:
@@ -102,9 +120,12 @@ code, both deliberate for phase 1 and both due before phase 4.**
    she will move on landed with WI-4, and the renderer that mirrors sim truth is WI-6's.
    **WI-5 closed the comparison seam**: a v2 replay advances the sim clock through the
    session's own ticks, so `SaveGame.capture_canonical` compares every sim-moved actor's
-   position again — a hen who ends the session on a different tile now fails a replay. The
-   player's registry entry is the one exclusion left, and it is empty of meaning until
-   WI-6 writes her tile into it.
+   position again — a hen who ends the session on a different tile now fails a replay.
+   **WI-6 closed the last exclusion**: the player's tile crossings write her registry entry
+   and are recorded as free-walk entries a replay applies back, so the comparison is total
+   — every actor, position, facing, meter and scratch. What is left of this item is one
+   line: `tools/benchmark_sim.gd` still fast-forwards an actor who **teleports**, and
+   WI-12 makes it walk.
 2. **A stored replay is `[Action@tick]`, not `[(Observation, Action)]`.** Observations are
    *derived* by re-simulating the stream rather than recorded alongside it. That is far
    cheaper and it is why a replay is robust to presentation changes such as move speed —

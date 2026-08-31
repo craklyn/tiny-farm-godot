@@ -42,9 +42,14 @@ var _last_state := ""
 var _scared_reported := false
 
 
-func init_crow(f: Node2D, p: Node2D, id: String = SimWorld.ACTOR_CROW) -> void:
+# The renderer contract every actor sprite answers (M2.5 WI-6). The farmer is
+# found *through* the farm rather than passed in, because every farm renderer has
+# one at the same path and this node must not care which scene it is in — the
+# title screen's attract loop drives a farm with a sibling literally named Player
+# for exactly that reason (design/11's coupling note).
+func init_actor(f: Node2D, id: String = SimWorld.ACTOR_CROW) -> void:
 	farm = f
-	player = p
+	player = f.player_node() if f.has_method("player_node") else null
 	actor_id = id
 	position = sim_position()
 	_last_state = _state()
@@ -109,6 +114,11 @@ func _process(delta: float) -> void:
 # radius is also written down as a species sense (`SpeciesDefs.senses_of`), where
 # WI-8c's rabbit becomes its second consumer and finding F-7b finally dies.
 func _player_is_near() -> bool:
+	if not is_instance_valid(player):
+		# Resolved late as well as early: a farm renderer builds its sprites as
+		# the registry gains actors, which can be before the farmer's node has
+		# been added to the scene (M2.5 WI-6).
+		player = farm.player_node() if farm != null and farm.has_method("player_node") else null
 	if player == null:
 		return false
 	var sr = player.get("spook_radius")
@@ -123,7 +133,11 @@ func _report_scare() -> void:
 	if _scared_reported:
 		return
 	_scared_reported = true
-	farm.apply_action({ "verb": "crow_scared", "actor": actor_id }, GameState)
+	# The farm's own state, not the `GameState` autoload: a second farm rendering
+	# a second world (the attract loop) must never spend the player's real one —
+	# the T-16 hazard, and now reachable from here because a crow can fly in a
+	# farm nobody is playing (M2.5 WI-6).
+	farm.apply_action({ "verb": "crow_scared", "actor": actor_id }, farm.state())
 	_puff("squawk")
 	# The report is what turned the bird around, so the departure it causes is
 	# already announced — don't squawk twice for one fright.
@@ -153,6 +167,10 @@ func _puff(sound: String) -> void:
 
 
 func _sfx(name: String) -> void:
+	# A muted farm is one nobody is playing (the title screen's backdrop), and it
+	# must not squawk into a menu — the same rule its tile feedback already keeps.
+	if farm != null and farm.mute_feedback:
+		return
 	if get_tree() and get_tree().root.has_node("AudioManager"):
 		get_tree().root.get_node("AudioManager").play_sfx(name)
 
