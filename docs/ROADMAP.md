@@ -67,6 +67,14 @@ rest — rule it first.** Sizes are rough and assume part-time solo work.*
 dependency order, per-item acceptance criteria and verifier procedures, and the
 stage-3 verification checklist. Written after the ten 2026-08-29 rulings landed.
 
+**Status 2026-08-30: implementation complete and verified.** WI-1..WI-8 shipped; the
+stage-3 verification passed §10.A/B/D in full (record: `M1_5_PLAN.md` §12) — unit 731,
+integration 141, robot MATCH, visuals exact, demo replay clean, 662k× benchmark, all
+invariant greps clean. Remaining to close the milestone: the exit-gate run below
+(needs a fresh adult on the target device), the §10.C/E device/taste items, WI-9
+(T-22, blocked on hardware), and two designer decisions — the change request
+(`M1_5_CHANGE_REQUEST.md`) and Q-38.
+
 **Exit gate — REVISED 2026-08-29 by the designer (Q-47).**
 
 *Originally: a first-time pre-reader reaches day 1 beat 4 with no adult speaking, on two
@@ -100,7 +108,9 @@ from the trace's recorded player positions but has no analysis function yet, and
 one is opening-polish work, which is exactly what this ruling deprioritises.*
 
 ### Ordering
-Twenty-four stories; five are done. Grouped by the ruling that unblocks them:
+Twenty-six stories as of 2026-08-30: twenty-one shipped, `T-6`/`T-7` dropped (Q-36),
+`T-21` deferred to the art pass, `T-22` blocked on hardware, `T-26` parked under Q-47.
+Grouped by the ruling that unblocked them:
 
 | Ruling | Stories | Note |
 |---|---|---|
@@ -294,8 +304,9 @@ second causal chain — one crop buys three seeds — lands as a payoff rather t
 opening-minutes work under Q-47, while keeping T-12. Built to the plan's order pending
 that review.*
 
-**T-13 — The cold open: a fence, a neighbour, and an open gate** · Q-37 ✅ · sim done
-2026-08-29 (M1.5 WI-3); art and her sprite follow in the next commit
+**T-13 — The cold open: a fence, a neighbour, and an open gate** · Q-37 ✅ · done
+2026-08-29 (M1.5 WI-3), art included; the one open box below is a device check,
+parked with the rest of the opening polish under Q-47
 *So that a verb is demonstrated rather than pointed at, and the first crop is an
 inheritance the player physically crosses into rather than a gift.*
 - [x] the player starts in her own small yard, **in full control from frame one**, with a
@@ -323,8 +334,8 @@ inheritance the player physically crosses into rather than a gift.*
 *Blocked on Q-37, and takes a narrative position (Q-22). **The fence is ring 0's
 boundary**, so if Q-34 also passes, build this together with T-8 rather than separately.*
 
-**T-15 — Trees, acorns, and crows that prefer them** · Q-39 ✅ · sim done 2026-08-29
-(M1.5 WI-3); the tree and acorn tiles follow with the art commit
+**T-15 — Trees, acorns, and crows that prefer them** · Q-39 ✅ · done 2026-08-29
+(M1.5 WI-3), tiles included
 *So that the crow's harmlessness is something she can watch rather than a flag she cannot
 perceive.*
 - [x] standing trees as a world feature; acorns as a dropped object (sim, deterministic)

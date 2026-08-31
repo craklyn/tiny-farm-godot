@@ -1193,3 +1193,45 @@ instruction, so accepting or rejecting the request costs nothing to undo either 
   replacement lives only in the gitignored `.env`; a full-history and working-tree
   search confirms its value appears in no commit and no file besides `.env`. Nothing
   remains to do here.*
+
+---
+
+## 12. Verification record (stage 3, run 2026-08-30)
+
+Run against a clean tree at `30416c5`, Godot 4.7.2. **Everything mechanically
+checkable in §10 passes.**
+
+**A — suites.** Import clean. Unit **731 PASSED, 0 FAILED** (baseline 468); all eleven
+named tests defined and called. Integration **141 PASSED, 0 FAILED**; `_scenario_h/i/j/k`
+present and called. Robot session **PASSED** with replay **MATCH** (14 entries), playing
+the cold open through the real gateway — the run asserts the gate starts closed, the
+opening completes, and the neighbour's actions land in the log as `actor: "neighbour"`.
+Demo generator exits 0 with a clean diff. Benchmark **662,773× realtime**. Visual
+regression (not in §10, run anyway): exact match.
+
+**B — invariants.** Sim-purity grep over `systems/sim/` (including `cold_open.gd`):
+no hits. The only raw `randi()` is `main.gd`'s per-run seed; the crow schedule derives
+per-day values via `SimRng.stateless`. No presentation file calls
+`set_tile_state`/`set_object`. For D-8, the router, player and sim contain no reference
+to highlights, arrows, daylight or teaching focus at all — nothing can gate the gateway.
+Replay-format diff against `3ede162` (the post-purge baseline, §11 note 1) is empty.
+`ring_index`/distance-from-spawn appear only in the test asserting their absence.
+
+**D — paperwork.** All verified: Q-46/Q-47 recorded rulings, `[Playtest]` thresholds in
+one place (`world_layout.gd`), every T-item state correct (F-1's rewrite included),
+F-2/F-3/F-4/F-6 corrections in their files, design/13 §5 terminology matching
+`world_layout.gd`, CREDITS provenance for all six asset groups, demo-replay generation
+in both workflows with release.yml ordered stamp → import → regenerate → export.
+
+**Deviation verdict.** §11 item 10 (`test_player_gs_injection` split across suites):
+**accepted.** §9 makes criteria binding and mechanisms advisory; the criterion — the
+attract-mode farmer provably cannot touch live state — is covered by the unit half's
+source-level guarantee plus `_scenario_k_attract`'s behavioural assertion. The single-test
+mechanism would have required refactoring three autoload globals out of `player.gd` for
+no T-16 benefit.
+
+**Not covered here, by design:** §10.C's live desktop spot-checks and §10.E's device
+items (the designer's), the exit-gate run itself (per Q-47's evidence bar), and the
+change request. Post-plan work (the 2026-08-30 tablet-playtest fixes, touch input mode,
+Q-51's visibility gate, T-26's registration) landed with tests and is why the suite
+counts exceed §11's recorded 725/127.
