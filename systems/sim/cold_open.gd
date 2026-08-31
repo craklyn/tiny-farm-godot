@@ -35,6 +35,52 @@ const MAX_FAILURES := 3
 const MAX_STEPS := 64
 
 
+# Every tile the scene will act on, as a tile-space rect: her row, the tile she
+# demonstrates on, where she waves, and the gate she opens. Pure, and derived
+# from the layout, so moving the neighbour's plot moves this with it.
+#
+# Presentation uses it to decide whether the player can actually *see* the scene
+# before letting it start (T-13, and the 2026-08-30 report that it "plays while
+# still pretty much off-screen"). Waiting is the right answer rather than moving
+# the camera, because moving the camera is taking control away — the one thing
+# design/13 §4a says the fence exists to avoid.
+static func stage_rect(world: SimWorld) -> Rect2i:
+	var plot: Dictionary = world.layout.get("neighbour_plot", {})
+	var tiles: Array[Vector2i] = []
+	for t in plot.get("cleared", []):
+		tiles.append(t)
+	for t in plot.get("tilled", []):
+		tiles.append(t)
+	for t in plot.get("second_row", []):
+		tiles.append(t)
+	for t in plot.get("seeded", []):
+		tiles.append(t)
+	for e in plot.get("growing", []):
+		tiles.append(e.get("at", Vector2i(-1, -1)))
+	var demo: Vector2i = plot.get("cleared_for_demo", Vector2i(-1, -1))
+	if demo.x >= 0:
+		tiles.append(demo)
+	var wave: Vector2i = plot.get("wave_at", Vector2i(-1, -1))
+	if wave.x >= 0:
+		tiles.append(wave)
+	var g := gate(world)
+	if g.x >= 0:
+		tiles.append(g)
+
+	if tiles.is_empty():
+		return Rect2i(0, 0, 0, 0)
+	var lo := tiles[0]
+	var hi := tiles[0]
+	for t in tiles:
+		if t.x < 0:
+			continue
+		lo.x = mini(lo.x, t.x)
+		lo.y = mini(lo.y, t.y)
+		hi.x = maxi(hi.x, t.x)
+		hi.y = maxi(hi.y, t.y)
+	return Rect2i(lo, hi - lo + Vector2i(1, 1))
+
+
 static func gate(world: SimWorld) -> Vector2i:
 	for p in WorldLayout.parcels(world.layout):
 		if String(p.get("opened_by", "")) == WorldLayout.OPENED_BY_COLD_OPEN:

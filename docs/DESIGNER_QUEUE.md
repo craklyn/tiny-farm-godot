@@ -533,6 +533,24 @@ trace actually says, because several of these looked like bugs and were not.*
   is opening-minutes work, which Q-47 deprioritised** — it is filed rather than built for
   that reason, and it is the one item where the ruling and the evidence point opposite
   ways.
+
+  **Framing half built 2026-08-30 at the designer's request, and by a better route than
+  the recommendation above.** His suggestion: *"can we wait until the right edge of that
+  scene is visible to the player?"* — which is better than panning, because panning is
+  taking control away and the fence exists precisely so that never has to happen. So the
+  scene now **waits**: `ColdOpen.stage_rect()` is every tile it will act on, and the
+  neighbour does not begin until the camera contains all of it. In practice that means
+  walking to the fence, which is where you would stand to watch someone in the next yard
+  anyway. Once begun it is latched, so wandering off cannot strand a half-inherited farm
+  behind a shut gate, and a patience timeout (25s, `[Playtest]`) starts it regardless —
+  a player who never wanders right must still get her farm, and on a small enough viewport
+  the scene may not fit however far she walks. *One correction to the request: **x=20 is
+  unreachable as a trigger.** She is penned in the yard (x 1–10) until the gate opens, and
+  the gate opens at the scene's end, so waiting on x=20 would deadlock the game. The
+  scene's own action tiles reach x=17, which comes into view at x=10 — the fence.*
+  **Still open: the second half** — that the day transitions read as the game skipping
+  rather than as time passing in a story. Worth re-judging on device now the framing is
+  fixed, since a day passing may read very differently when you can see whose day it is.
 - **Q-52 (Approval)** **Two small changes made on the night, easily reverted.**
   (1) *"Sunny" at night was confusing*, so the weather line now shows only the time of day
   as an icon (☀️ / 🌇 / 🌙) when the weather is clear, and keeps "🌧️ Rainy" when it is

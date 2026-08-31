@@ -238,6 +238,21 @@ Three consequences worth recording:
 The honk is `assets/audio/sfx/honk.wav`, synthesized in-repo — two parps and an engine
 pulling away. There is still no truck sprite, and there does not need to be.
 
+**The scene waits until it can be seen (added 2026-08-30, from the first tablet
+session).** It was playing past the right edge of the screen: the neighbour works out to
+x=17, and the camera shows to about x=16.7 with the player at spawn. The fix is to wait
+rather than to pan, and the distinction matters — panning is taking control away, which
+is the objection the fence was invented to dissolve. She may wander, play with the
+chicken, or ignore everything; the neighbour simply does not start until the whole of what
+she is about to do is on screen, which in practice means the player has strolled to the
+fence. That is also where you would stand to watch someone working in the next yard, so
+the trigger is the behaviour it is rewarding.
+
+Two guards make it safe rather than clever: once begun the scene is **latched**, so
+wandering off cannot leave a half-inherited farm behind a gate that never opens; and a
+patience timeout starts it regardless, because a player who never walks right must still
+get her farm, and a small enough screen may never fit the scene however far she walks.
+
 **Design consequence.** The fence *is* parcel 0's boundary, so this and the parcel
 generation in §5 are one design rather than two. If both are adopted, T-8 and T-13 should be built
 together.

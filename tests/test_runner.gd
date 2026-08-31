@@ -2307,6 +2307,30 @@ func test_cold_open() -> void:
 
 	var gate := WorldLayout.gate_of("neighbour")
 	_assert(not ColdOpen.is_done(world), "a fresh farm still has the scene ahead of it")
+
+	# The stage: every tile the scene will act on. Presentation waits until the
+	# player can see all of it before letting the neighbour start, so this has to
+	# actually cover her work — a rect that missed the far end of her row would
+	# start the scene exactly where the report said it was invisible.
+	var stage := ColdOpen.stage_rect(world)
+	_assert(stage.size.x > 0 and stage.size.y > 0, "the scene has a stage rect")
+	var plot: Dictionary = world.layout.get("neighbour_plot", {})
+	var must_cover: Array[Vector2i] = [
+		plot.get("cleared_for_demo", Vector2i(-1, -1)),
+		plot.get("wave_at", Vector2i(-1, -1)),
+		WorldLayout.gate_of("neighbour"),
+	]
+	for e in plot.get("growing", []):
+		must_cover.append(e.get("at", Vector2i(-1, -1)))
+	for t in plot.get("seeded", []):
+		must_cover.append(t)
+	for t in must_cover:
+		_assert_quiet(t.x < 0 or stage.has_point(t), "the stage covers %s" % t)
+	_flush_quiet("the stage rect covers every tile the scene acts on")
+	# And it is genuinely wider than one screenful from spawn, which is the whole
+	# reason the wait exists: 8.3 tiles either side of a camera clamped at spawn
+	# cannot reach the far end of her row.
+	_assert(stage.end.x >= 17, "it reaches the far end of her row (x=%d)" % stage.end.x)
 	_assert(ColdOpen.gate(world) == gate, "and the scene knows which gate it ends with")
 
 	var energy_before: int = gs.energy

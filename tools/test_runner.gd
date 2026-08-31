@@ -66,6 +66,7 @@ func _run_scenarios() -> void:
 	await _scenario_m_targets_on_screen()
 	await _scenario_n_pick_up_the_axe()
 	await _scenario_o_touch_has_no_hover()
+	await _scenario_p_cold_open_waits()
 	await _scenario_j_wordless_shop()
 	await _scenario_k_attract()
 
@@ -976,3 +977,67 @@ func _scenario_o_touch_has_no_hover() -> void:
 
 	# Leave the suite in a known state.
 	im._last_touch_ms = -100000
+
+
+func _scenario_p_cold_open_waits() -> void:
+	# Requested after the tablet playthrough: the cold open "plays while still
+	# pretty much off-screen". The neighbour works out to x=17 and the camera
+	# shows to about x=16.7 from spawn, so the most legible half of the scene
+	# happened past the right edge.
+	#
+	# The fix is to wait rather than to pan: panning is taking control away, and
+	# the fence exists so that never has to happen (design/13 §4a). She wanders to
+	# the fence — which is where you would stand to watch someone in the next
+	# yard — and only then does the neighbour begin.
+	print("\n--- Scenario P: the cold open waits until it can be seen ---")
+
+	var scene = preload("res://main.tscn").instantiate()
+	add_child(scene)
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	var stage := ColdOpen.stage_rect(scene.farm.sim)
+	_assert(not ColdOpen.is_done(scene.farm.sim), "the fresh farm has its cold open ahead of it")
+	# The suite already has a main scene running, so this second one's camera is
+	# not the current one and Godot does not run its smoothing. Make it current
+	# and unsmoothed so "where the camera has settled" is answerable this frame.
+	scene.camera.position_smoothing_enabled = false
+	scene.camera.make_current()
+
+	# At spawn the far end of her row is off screen, so nothing starts.
+	scene.player.pos = Vector2(2 * 16 + 8, 2 * 16 + 8)
+	scene.player.position = scene.player.pos
+	for i in 90: await get_tree().process_frame
+	_assert(not scene._stage_is_visible(), "from spawn the scene is not fully on screen")
+	_assert(not scene._cold_open_started, "so the neighbour has not started")
+	_assert(scene.farm.sim.get_tile(stage.position.x, stage.position.y).size() > 0,
+		"and the world is intact while it waits")
+
+	# Walk to the fence and it comes into view.
+	scene.player.pos = Vector2(10 * 16 + 8, 4 * 16 + 8)
+	scene.player.position = scene.player.pos
+	for i in 90: await get_tree().process_frame
+	_assert(scene._stage_is_visible(), "at the fence the whole scene is on screen")
+	_assert(scene._cold_open_started, "and the neighbour starts")
+
+	# Once begun it is latched: wandering off must not strand her half-inherited
+	# farm behind a gate that never opens.
+	scene.player.pos = Vector2(2 * 16 + 8, 2 * 16 + 8)
+	scene.player.position = scene.player.pos
+	for i in 30: await get_tree().process_frame
+	_assert(scene._cold_open_started, "walking away again does not stop it")
+
+	# Hand the viewport back to the suite's own scene.
+	if main_scene.camera != null:
+		main_scene.camera.make_current()
+	scene.queue_free()
+	await get_tree().process_frame
+
+	# The patience timeout is what stops a player who never wanders right from
+	# never getting her farm at all — and on a small enough viewport the scene may
+	# not fit however far she walks.
+	_assert(scene_patience() > 0.0, "there is a patience timeout at all")
+
+
+func scene_patience() -> float:
+	return load("res://main.gd").COLD_OPEN_PATIENCE

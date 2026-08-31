@@ -47,6 +47,27 @@ var _cold_open_timer: float = 1.2
 var _cold_open_failures: int = 0
 var neighbour: Node2D = null
 
+# The scene does not begin until the player can see it.
+#
+# Reported from the tablet 2026-08-30: it "plays while still pretty much
+# off-screen". The neighbour works out to x=17 and the camera shows to x≈16.7
+# from spawn, so the most legible half happened past the right edge. The designer
+# asked for the scene to wait until its right-hand edge is on screen, which is
+# the better fix than panning the camera: panning is taking control away, and the
+# fence exists precisely so that never has to happen (design/13 §4a). She is
+# free to wander; the neighbour simply does not start until she looks.
+#
+# In practice this means walking to the fence — which is where you would stand to
+# watch someone in the next yard anyway.
+#
+# The patience timeout is not optional. A player who never wanders right would
+# otherwise never see the gate open and never get her farm, and on a small enough
+# viewport the whole scene may not fit however far she walks. Whatever happens,
+# the game starts. [Playtest].
+const COLD_OPEN_PATIENCE := 25.0
+var _cold_open_waited: float = 0.0
+var _cold_open_started: bool = false
+
 
 # APPLICATION_PAUSED covers backgrounding, which is the common case, but not a
 # hard kill. This bounds the worst case to PERSIST_INTERVAL seconds of lost play
@@ -209,10 +230,34 @@ func _ready() -> void:
 	_on_weather_changed(GameState.weather)
 
 
+# Can she see the whole of what is about to happen? Uses the settled camera
+# rather than where the smoothing has got to, so the answer does not flicker
+# while she walks.
+func _stage_is_visible() -> bool:
+	if camera == null:
+		return true
+	var stage := ColdOpen.stage_rect(farm.sim)
+	if stage.size.x <= 0:
+		return true
+	var view := _visible_world_rect()
+	var world_rect := Rect2(
+		Vector2(stage.position) * TILE_SIZE,
+		Vector2(stage.size) * TILE_SIZE)
+	return view.encloses(world_rect)
+
+
 # One derived action at a time, on a timer the player never has to wait for —
 # nothing here gates her input, and once the gate opens, ignoring the neighbour
 # entirely and tapping the ripe crop must still work.
 func _tick_cold_open(delta: float) -> void:
+	# Latched: once the scene has begun it runs to the end. Pausing it again when
+	# she wanders off would leave her farm half-inherited and the gate shut.
+	if not _cold_open_started:
+		_cold_open_waited += delta
+		if _cold_open_waited < COLD_OPEN_PATIENCE and not _stage_is_visible():
+			return
+		_cold_open_started = true
+
 	# Let her finish walking or swinging before asking for the next beat. A
 	# person who teleports between tiles is not demonstrating anything, and
 	# demonstrating a verb is the one thing a highlight cannot do at any budget.
