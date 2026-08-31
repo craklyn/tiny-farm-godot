@@ -67,10 +67,25 @@ func _start_attract() -> void:
 		back.color = Color(0.13, 0.28, 0.17)
 
 	# One moving thing at a time — the build hash would otherwise sit over a
-	# moving farm, and it is a developer's label, not part of the picture.
-	var overlay = get_tree().root.get_node_or_null("BuildOverlay")
-	if overlay != null and OS.is_debug_build() == false:
-		overlay.visible = false
+	# moving farm, and it is a developer's label rather than part of the picture.
+	# Restored in _exit_tree: BuildOverlay is an autoload and outlives this scene,
+	# so hiding it without putting it back would silently remove it from the game
+	# itself, which is the one place it is actually useful.
+	_hide_build_overlay(true)
+
+
+func _build_overlay() -> CanvasLayer:
+	return get_tree().root.get_node_or_null("BuildOverlay") as CanvasLayer
+
+
+func _hide_build_overlay(hidden: bool) -> void:
+	var overlay := _build_overlay()
+	if overlay != null:
+		overlay.visible = not hidden
+
+
+func _exit_tree() -> void:
+	_hide_build_overlay(false)
 
 
 # Anything that opens a panel over the title pauses the farm behind it: one

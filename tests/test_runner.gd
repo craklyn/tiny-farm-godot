@@ -64,6 +64,7 @@ func _init() -> void:
 	test_economy_teaching()
 	test_offscreen_arrow()
 	test_player_gs_injection()
+	test_pre_m15_saves_load()
 
 	print("")
 	print(String("=").repeat(60))
@@ -2959,3 +2960,59 @@ func test_player_gs_injection() -> void:
 	farm.free()
 
 
+func test_pre_m15_saves_load() -> void:
+	print("\n--- Real pre-M1.5 saves still load (§10.C item 22) Tests ---")
+
+	# M1.5 added six fields to the save (`tools_owned`, `takeover_day`,
+	# `clear_counts`, `crop_crows_seen`, `seeds_bought`, `cans_refilled`) and
+	# rebuilt world generation underneath them. Every one was chosen to be
+	# additive, and `test_tool_acquisition` proves that against a *synthetic* old
+	# save — but the fixtures in `playtests/` are the real thing, written by the
+	# build that closed M1, and they are what an actual player would be carrying.
+	# A migration that works on a save you wrote yourself is not evidence.
+	var dir := DirAccess.open("res://playtests")
+	_assert(dir != null, "the playtests fixtures directory is readable")
+	if dir == null:
+		return
+
+	var checked := 0
+	for name in dir.get_directories():
+		var path := "res://playtests/%s/autosave.json" % name
+		if not FileAccess.file_exists(path):
+			continue
+		var data := SaveGame.load_dict(path)
+		if data.is_empty():
+			continue
+		checked += 1
+		var world := SimWorld.new()
+		var gs = load("res://systems/game_state.gd").new()
+		var ok: bool = SaveGame.restore(data, world, gs)
+		_assert_quiet(ok, "%s restores" % name)
+		if ok:
+			# Tools default to owned: every one of these was written by a build
+			# where she had all six, and confiscating her axe on load would be a
+			# bug wearing a migration's clothes.
+			_assert_quiet(gs.owns_tool("axe") and gs.owns_tool("pickaxe"),
+				"%s keeps every tool" % name)
+			# takeover_day 1 is exactly true of a world that had no cold open.
+			_assert_quiet(gs.takeover_day == 1, "%s anchors at day 1" % name)
+			_assert_quiet(gs.play_day() == gs.day, "%s play-day equals its day" % name)
+			# And the world is intact enough to keep playing.
+			_assert_quiet(world.tiles.size() == SimWorld.MAP_HEIGHT,
+				"%s restored a full grid" % name)
+			var spawn := WorldLayout.spawn()
+			_assert_quiet(world.get_tile(spawn.x, spawn.y).size() > 0,
+				"%s has a tile at the spawn point" % name)
+			# The new derived readers must not crash on an old world, which has
+			# no gates, no parcels drawn and no acorns in it.
+			_assert_quiet(world.count_obstacles_in_open_parcels() >= 0,
+				"%s survives the phase-1 progress scan" % name)
+			_assert_quiet(String(world.choose_crow_target(0).get("kind", "")) != "",
+				"%s survives crow target selection" % name)
+			_assert_quiet(not VignetteState.is_active(world, gs, spawn),
+				"%s does not resurrect the vignette (it has no gate to open)" % name)
+			_assert_quiet(TeachingFocus.targets(world, gs, spawn) is Array,
+				"%s survives the teaching arbitration" % name)
+		gs.free()
+	_flush_quiet("every real pre-M1.5 autosave in playtests/ still loads and plays")
+	_assert(checked >= 1, "there was at least one real fixture to check (%d)" % checked)

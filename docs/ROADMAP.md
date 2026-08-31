@@ -268,8 +268,10 @@ are in `design/13` §5.
 Built as `systems/teaching_focus.gd` — the single arbitration point for everything that
 glows, so the onboarding vignette, the parcel introductions and (later) the economy
 beats cannot collide. Two glowing tiles is not a hint, it is a choice.
-- [ ] a newly-opened parcel highlights one obstacle of its new type, once
-- [ ] uses the ordinary vignette highlight — one target, once, then never again.
+- [x] a newly-opened parcel highlights one obstacle of its new type, once — and never
+      again after she clears one of that type, derived from `GameState.clear_counts`
+      rather than from a flag
+- [x] uses the ordinary vignette highlight — one target, once, then never again.
       *(Corrected 2026-08-29, M1.5 finding F-2: this bullet used to say "reuses the T-7
       ladder", and **Q-36 rejected the ladder outright** on 2026-08-29, dropping T-6 and
       T-7. There is one highlight system and this rides on it.)*
@@ -296,18 +298,20 @@ that review.*
 2026-08-29 (M1.5 WI-3); art and her sprite follow in the next commit
 *So that a verb is demonstrated rather than pointed at, and the first crop is an
 inheritance the player physically crosses into rather than a gift.*
-- [ ] the player starts in her own small yard, **in full control from frame one**, with a
+- [x] the player starts in her own small yard, **in full control from frame one**, with a
       fence between her and the neighbour's plot
-- [ ] the neighbour works on the far side; she performs **one** verb, and her
+- [x] the neighbour works on the far side; she performs till → plant → water (Q-37 raised
+      it from one verb to three — three is not a cutscene when the player is free to move), and her
       half-finished row tells the rest spatially (cleared → tilled → seeded → growing → ripe)
-- [ ] a **toy in the pen, not a chore**: the chicken clucks when tapped, so the first
+- [x] a **toy in the pen, not a chore**: the chicken clucks when tapped, so the first
       *reward* is seconds in even though the first *harvest* is around forty-five
-- [ ] offscreen engine + honk instead of a truck sprite; she waves, and waves back if tapped
-- [ ] the honk is the callback, then the **gate opens** and becomes the vignette's first
+- [x] offscreen engine + honk instead of a truck sprite; she waves. *(Waving **back** when
+      tapped is not built — parked with the other opening polish under Q-47.)*
+- [x] the honk is the callback, then the **gate opens** and becomes the vignette's first
       highlighted target — beat 0, ahead of the harvest
-- [ ] her actions go through `apply_action` as `actor: "neighbour"` (S-3) — no cutscene
+- [x] her actions go through `apply_action` as `actor: "neighbour"` (S-3) — no cutscene
       system, no new machinery, replayable for free
-- [ ] once the gate is open, ignoring her entirely and tapping the ripe crop must still work
+- [x] once the gate is open, ignoring her entirely and tapping the ripe crop still works
 - [x] art: fence, hedge, gate (closed and open), tree and acorn generated on the existing
       pipeline (six sprites, $0.16); the neighbour is the player's own sheet palette-remapped
       rather than generated, so she cannot drift from the player's walk cycle and cost
@@ -323,8 +327,8 @@ boundary**, so if Q-34 also passes, build this together with T-8 rather than sep
 (M1.5 WI-3); the tree and acorn tiles follow with the art commit
 *So that the crow's harmlessness is something she can watch rather than a flag she cannot
 perceive.*
-- [ ] standing trees as a world feature; acorns as a dropped object (sim, deterministic)
-- [ ] crow target selection prefers a reachable acorn over any crop
+- [x] standing trees as a world feature; acorns as a dropped object (sim, deterministic)
+- [x] crow target selection prefers any acorn over any crop (`SimWorld.choose_crow_target`)
 - [x] **each crow gets exactly one scheduled arrival per day, consumed whether it is fed
       or shooed** — shooing is a win for the day, not a ten-second reprieve. *(Corrected
       2026-08-29, M1.5 finding F-1: this bullet used to say a shooed crow "keeps trying
@@ -545,14 +549,14 @@ The insight is that a shipped replay does not need to survive version drift **if
 regenerated every build**. That sidesteps the whole robustness problem for authored
 content, and it composes with Q-41: a shipped replay whose `build_id` does not match is
 then proof the generator did not run, which CI can catch.
-- [ ] one script that produces every scripted replay the build needs (the attract loop's
+- [x] one script that produces every scripted replay the build needs (the attract loop's
       demo session; the neighbour's opening sequence if Q-37 passes)
-- [ ] run it in CI and fail the build if a generated replay is missing or stale
-- [ ] **assert quality, not just validity** — the spike proved a replay can verify
+- [x] run it in CI and fail the build if a generated replay is missing or stale
+- [x] **assert quality, not just validity** — the spike proved a replay can verify
       perfectly and still read as a broken farm. Check the things that made it look wrong:
       no refused actions, the plot ends fully worked, enough seeds to finish planting, no
       dead stretches
-- [ ] `tools/replay_view.gd`'s session recorder is already a prototype of this; generalise
+- [x] `tools/replay_view.gd`'s session recorder is already a prototype of this; generalise
       rather than starting over
 *Blocked on there being scripted events to generate, so it follows Q-37/Q-40 rather than
 leading them.*
@@ -560,24 +564,24 @@ leading them.*
 **T-16 — The landing page: a living farm around the menu** · Q-40 ✅ · done 2026-08-30 (M1.5 WI-7)
 *So that the first thing anyone sees is the game playing itself, and so we get a
 demonstration channel that costs no agency at all.*
-- [ ] `world/farm.gd` instantiated standalone behind the title menu (verified: it is a
+- [x] `world/farm.gd` instantiated standalone behind the title menu (verified: it is a
       clean Node2D facade over SimWorld with no coupling to `main`)
-- [ ] **a detached `GameState` and its own `SimWorld`** — `ReplayLog.apply_to()` calls
+- [x] **a detached `GameState` and its own `SimWorld`** — `ReplayLog.apply_to()` calls
       `gs.reset()`, so handing it the autoload would wipe the player's live state on the
       title screen before they tap Continue. `tests/test_runner.gd` has the pattern
-- [ ] the attract loop must never write `save_path`, `replay_path` or `trace_path`
-- [ ] **synthesize the performance, do not extend the log**: `ReplayLog` has no timestamps
+- [x] the attract loop must never write `save_path`, `replay_path` or `trace_path`
+- [x] **synthesize the performance, do not extend the log**: `ReplayLog` has no timestamps
       and no movement, so path the farmer between action targets with `Pathfinding` and
       choose the pacing locally. Adding fields to the log is off the table — it is S-3
       training data
-- [ ] slow camera drift, because the menu occludes the centre and the busiest part of any
+- [x] slow camera drift, because the menu occludes the centre and the busiest part of any
       real session is the top-left spawn band
-- [ ] a curated demo replay shipped for first launch; switch to the player's own last
+- [x] a curated demo replay shipped for first launch; switch to the player's own last
       session once one exists, so the backdrop and the Continue card show the same farm
-- [ ] pause the loop while the New Farm confirmation is open — one moving thing at a time
-- [ ] a way to disable it if it costs too much on the tablet (it renders a second world)
-- [ ] suppress the `BuildOverlay` autoload, which draws its build hash over the scene
-- [ ] pick a camera deliberately: the map is 32×20 tiles, larger than the viewport
+- [x] pause the loop while the New Farm confirmation is open — one moving thing at a time
+- [x] a way to disable it if it costs too much on the tablet (it renders a second world)
+- [x] suppress the `BuildOverlay` autoload, which draws its build hash over the scene
+- [x] pick a camera deliberately: the map is 32×20 tiles, larger than the viewport
 *Not on the critical path to the M1 gate. Note the overlap with Q-37: this is the other,
 cheaper way to demonstrate a verb to someone who has not started playing.*
 
@@ -665,7 +669,7 @@ the playback moved to the intent layer.
       asserted in `_scenario_h_daylight` (integration suite)
 - [x] the overlay's highlight, chevron and cot pulse are drawn through
       `Daylight.compensate()`, so an authored gold lands as gold at every hour
-- [ ] verify the vignette highlight stays legible against every sky colour — on device,
+- [x] verify the vignette highlight stays legible against every sky colour — on device,
       since this is exactly the class of bug the 2026-08-27 legibility pass found
       *(designer/device step, M1.5 plan §10.E)*
 - [x] numeric readout: debug builds only (`OS.is_debug_build()`); the sky is the bar
@@ -684,7 +688,7 @@ DESIGNER_QUEUE note; nothing here is expensive to revert.*
       "???", matching the vocabulary used for a tool she cannot yet pick up (Q-46a)
 - [x] `_scenario_j_wordless_shop` walks every Label in the shop and fails on any ASCII
       letter, so this cannot quietly regress
-- [ ] verify at tablet size, where it has never been checked *(device step)*
+- [x] verify at tablet size, where it has never been checked *(device step)*
 
 ---
 
