@@ -516,8 +516,9 @@ trace actually says, because several of these looked like bugs and were not.*
   than a slot machine, and "there is an egg every morning" is a rule a four-year-old can
   learn by living it. The randomness currently buys nothing except the confusion reported
   here. *Not built: it is a change to what the hen means, which is yours.*
-- **Q-51 (Ruling)** **The cold open plays mostly off screen, and its days pass without
-  warning.** Two problems, one cause. The neighbour's plot runs from x=12 to x=20; the
+- **Q-51** ~~The cold open plays mostly off screen, and its days pass without warning.~~ —
+  ✅ **resolved 2026-08-30**: framing half built (the scene waits until it can be seen),
+  transition half registered as `T-26` rather than left as a question. Two problems, one cause. The neighbour's plot runs from x=12 to x=20; the
   camera is clamped and shows roughly x=0..16 while the player stands at spawn — so the
   most legible half of the scene happens past the right edge. And the two world-sleeps
   render as the ordinary "Day N" fade, which in context reads as the game skipping rather
@@ -548,9 +549,14 @@ trace actually says, because several of these looked like bugs and were not.*
   unreachable as a trigger.** She is penned in the yard (x 1–10) until the gate opens, and
   the gate opens at the scene's end, so waiting on x=20 would deadlock the game. The
   scene's own action tiles reach x=17, which comes into view at x=10 — the fence.*
-  **Still open: the second half** — that the day transitions read as the game skipping
-  rather than as time passing in a story. Worth re-judging on device now the framing is
-  fixed, since a day passing may read very differently when you can see whose day it is.
+  **The second half is closed as a queue item and registered as work instead** (designer,
+  2026-08-30: *"for now, just register it as a problem we should solve"*). It is **`T-26`**
+  in `ROADMAP.md` — acknowledged, unscheduled, and no longer waiting on anyone's ruling.
+  The note there records the cause (the cold open reuses the player's own "Day N" fade, so
+  a transition she did not cause implies she slept) and says to re-judge on device before
+  building, since the framing fix landed after the report.
+
+  **Q-51 is therefore closed.**
 - **Q-52 (Approval)** **Two small changes made on the night, easily reverted.**
   (1) *"Sunny" at night was confusing*, so the weather line now shows only the time of day
   as an icon (☀️ / 🌇 / 🌙) when the weather is clear, and keeps "🌧️ Rainy" when it is

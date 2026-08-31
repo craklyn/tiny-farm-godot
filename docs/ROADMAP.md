@@ -458,6 +458,28 @@ first time, and it arrives free with the TestFlight work rather than as separate
 a phone is a worse experience than on a tablet by design, so read a phone session as
 evidence about the touch design, never about learnability.*
 
+**T-26 — The cold open's day transitions read as the game skipping** · from play
+2026-08-30 · **acknowledged, unscheduled**
+*So that time visibly passing reads as part of a story rather than as the game taking
+the controls away.*
+The designer, after the first tablet session: *"it's jarring that the days progress with
+very little hint that it's part of a cutscene."* **Registered as a problem we should
+solve, not as a question awaiting a ruling** (designer, 2026-08-30) — it is real, it is
+worth fixing, and it is not being fixed now.
+
+The cause, so nobody has to re-derive it: the cold open's two world-sleeps use the *same*
+`day_cycle` fade the player's own cot gives her, "Day N" card and all. In her own hands
+that card is the reward for tapping the cot; during the cold open it arrives unbidden and
+implies **she** slept, when in fact she was standing in her yard watching someone else's
+week go by.
+- [ ] make the cold open's transitions visibly not-hers — slower, and without the "Day N"
+      card, is the cheap first attempt
+- [ ] re-judge on device **before** building anything: the framing fix landed after this
+      was reported, and a day passing may read very differently now that you can see whose
+      day it is
+*Related but distinct from the framing half of Q-51, which is built: the scene now waits
+until the player can see it (`ColdOpen.stage_rect`).*
+
 **T-25 — Off-screen target arrow** · Q-36 ✅ · done 2026-08-30 (M1.5 WI-6)
 *So that a highlighted tile she has wandered away from can still be found.*
 The camera follows the farmer, so the vignette's target can leave the screen entirely —
@@ -713,6 +735,8 @@ real session says one of them is costing more than it looks.
       polish rather than a fault.
 - [ ] **Cold-open pacing on device.** `COLD_OPEN_STEP` is 1.1s and `COLD_OPEN_DAYS` is 2,
       both `[Playtest]`, neither yet felt on a tablet.
+- [ ] **`T-26` — the cold open's day transitions read as the game skipping.** See below;
+      registered as a real problem rather than an open question.
 - [ ] **Watered soil legible without tapping** (the open half of T-18). The 2026-08-27
       pass improved it and the 2026-08-28 session said not enough; Q-38's daylight now
       changes how wet soil reads at every hour, so it wants a fresh look.
