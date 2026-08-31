@@ -131,19 +131,31 @@ presentation of the sleeping spot."**
 *So that the day's most important verb is discovered rather than taught by an adult —
 the one thing this gate run could not prove.*
 The trace evidence, so the fix aims at what actually happened (every cot tap
-mechanically worked — the failures are all legibility):
-- [ ] **a completed sleep must be unmistakable, and immune to re-taps.** She slept
-      **three times in five seconds** at 3m37–42s and twice more at 5m11–13s — tap,
-      sleep, couldn't tell, re-tap. "Day 12" contains ~3 phantom days. A wake-grace
-      window (a tap landing just after the fade must not instantly re-sleep) plus a
-      louder completion beat.
-- [ ] **the cot wants a tap halo.** Four consecutive `no_energy` refusals at 5m04–10s
-      were taps landing on (2,2), one tile below the cot, resolving as till-with-hoe.
-      Per T-18's philosophy, a near-miss tap with nothing better to do should read as
-      a cot tap.
-- [ ] **the cot must look like sleeping before first use** — form is the designer's
-      (glow at dusk? the cot pulse already exists at zero energy — perhaps earlier and
-      stronger?).
+mechanically worked — the failures are all legibility). **Shape ruled 2026-08-31**
+after a survey of the genre standards (Stardew/Harvest Moon confirm-dialog,
+anticipation animation, transition input consumption, touch-target minimums):
+**no confirmation step** — the designer's words: *"our consequences are lower, so we
+will not add the check"* — everything else adopted as analyzed:
+- [ ] **anticipation: the sleep is acknowledged by her body, instantly.** The Action
+      still applies the moment the tap resolves (D-8: presentation never gates or
+      delays the gateway) — but the transition now *opens* with her visibly lying on
+      the cot before the fade, so the tap is answered in her own sprite within a
+      beat. This also answers T-26's root finding from the other side: day
+      transitions must show whose sleep they are.
+- [ ] **input is consumed during the whole day transition.** Her triple-sleep
+      (3× in 5s at 3m37–42s; ~3 phantom days inside "day 12") happened because
+      re-taps landed in the first instants of morning. Taps during the
+      tuck-in → fade → Day-N → morning sequence go nowhere; no debounce timer needed.
+- [ ] **the cot gets a tap halo, refusal-aware.** Four consecutive `no_energy`
+      refusals at 5m04–10s were taps on (2,2), one tile below the cot, resolved as
+      till-with-hoe. Rule: the tapped tile wins whenever it produces a real world
+      change; only a tap that produced nothing (or a no-effect refusal) is rescued
+      to a high-value interactable adjacent to it. T-18's philosophy, applied.
+- [ ] **the cot reads bigger.** Drawn taller (a 16×32 sprite on its 1-tile sim
+      footprint — no worldgen change), generated on the existing pipeline; with the
+      halo this takes the *effective* touch target to genre minimums.
+- [ ] **the cot must look like sleeping before first use** — final form is the
+      designer's (glow at dusk? the zero-energy pulse, earlier and stronger?).
 - [ ] re-evidence: the next fresh adult session scores the cot bar unprompted.
 
 ### Ordering
