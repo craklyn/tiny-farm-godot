@@ -68,6 +68,7 @@ func _init() -> void:
 	test_pre_m15_saves_load()
 	test_sim_clock()
 	test_brains()
+	test_movement()
 
 	print("")
 	print(String("=").repeat(60))
@@ -3912,3 +3913,294 @@ func _tick_trace(seed_value: int) -> String:
 	out.append("planted=%d acorns=%d" % [s.world.count_planted(), s.world.count_acorns()])
 	s.done()
 	return "|".join(out)
+
+
+# --- The movement engine (M2.5 WI-4) ------------------------------------------
+
+# A purpose-built arena rather than a carved-up farm: a movement test wants to
+# say exactly where the wall is. Blank ground inside the border, with two walls
+# running down it and one way round the south end of both —
+#
+#   x:      5        10       14      18
+#   y 1     .        |        #       .      | barrier column: fence / hedge /
+#   ...     .        |        #       .        closed gate, cycling by row
+#   y 14    .        |        #       .      # rock column (a surface obstacle)
+#   y 15-18 .   the way round both walls .
+#
+# so a walker must go the long way, a flyer and a burrower go straight, and a
+# hopper crosses the barrier column but not the rocks.
+func _movement_arena(seed_value: int = 4) -> SimWorld:
+	var w := SimWorld.new()
+	SimRng.reseed(seed_value)
+	w.generate()
+	for id in w.actors.keys():
+		w.despawn_actor(String(id))
+	for ty in SimWorld.MAP_HEIGHT:
+		for tx in SimWorld.MAP_WIDTH:
+			w.set_object(tx, ty, "")
+			var edge := tx == 0 or ty == 0 or tx == SimWorld.MAP_WIDTH - 1 or ty == SimWorld.MAP_HEIGHT - 1
+			w.set_tile_state(tx, ty, "border" if edge else "cleared")
+	const BARRIERS := [WorldLayout.FENCE, WorldLayout.HEDGE, WorldLayout.GATE_CLOSED]
+	for ty in range(1, 15):
+		w.set_tile_state(10, ty, BARRIERS[(ty + 1) % BARRIERS.size()])
+		w.set_tile_state(14, ty, "obstacle_rock")
+	return w
+
+
+func _movement_trace(world: SimWorld, actor_id: String, steps: int) -> String:
+	var out: PackedStringArray = []
+	for i in steps:
+		out.append("%s%s" % [Movement.step(world, actor_id, i), world.actor_pos(actor_id)])
+	return "|".join(out)
+
+
+func test_movement() -> void:
+	print("\n--- The movement engine: one mode per capability (M2.5 WI-4) Tests ---")
+
+	# --- the capability table drives everything -------------------------------
+	# The engine reads the species row WI-2 wrote, so the crow flying over a fence
+	# the hen walks around is *data* (finding F-6), not two nodes' worth of code.
+	_assert(Movement.mode_of(SpeciesDefs.CROW) == SpeciesDefs.FLY
+			and Movement.mode_of(SpeciesDefs.CHICKEN) == SpeciesDefs.GROUND,
+		"the engine takes each actor's mode off its species row")
+	for id in SpeciesDefs.ids():
+		_assert_quiet(Movement.ticks_per_tile(id) >= 1, "%s converts its speed to ticks/tile" % id)
+		_assert_quiet(Movement.body_len_of(id) >= 1, "%s occupies at least one tile" % id)
+	_flush_quiet("every shipping species is a mover the engine can already move")
+	_assert(Brain.ticks_per_tile(SpeciesDefs.CHICKEN) == Movement.ticks_per_tile(SpeciesDefs.CHICKEN),
+		"and a brain's speed conversion *is* the engine's, not a second copy of it")
+
+	var w := _movement_arena()
+	var west := Vector2i(5, 5)
+	var east := Vector2i(18, 5)
+	var barrier := Vector2i(10, 5)
+	var rock := Vector2i(14, 5)
+	var straight := absi(east.x - west.x) + absi(east.y - west.y)
+	_assert(w.get_tile(barrier.x, barrier.y).get("state", "") == WorldLayout.FENCE
+			and w.get_tile(rock.x, rock.y).get("state", "") == "obstacle_rock",
+		"the arena has a fence at %s and a rock wall at %s" % [barrier, rock])
+
+	# --- ground: A* over sim truth --------------------------------------------
+	var walk := Movement.path(w, SpeciesDefs.GROUND, west, east)
+	_assert(not walk.is_empty(), "a walker finds a way round (%d tiles)" % walk.size())
+	_assert(walk.size() > straight, "the long way, because both walls are in her way (%d > %d)"
+		% [walk.size(), straight])
+	_assert(walk[walk.size() - 1] == east, "and it ends where she was going")
+	var crossed_a_wall := false
+	var stepwise := true
+	var prev := west
+	for t in walk:
+		if not w.is_walkable(t.x, t.y):
+			crossed_a_wall = true
+		if absi(t.x - prev.x) + absi(t.y - prev.y) != 1:
+			stepwise = false
+		prev = t
+	_assert(not crossed_a_wall, "every tile of a walker's route is ground she can stand on")
+	_assert(stepwise, "and every step of it is one tile")
+	_assert(Movement.path(w, SpeciesDefs.GROUND, west, barrier).is_empty(),
+		"a walker cannot even be sent *to* a fence tile")
+
+	# The ground-mode names the rest of the sim calls are this engine now, not a
+	# second implementation that could drift from it (WI-3 wrote them as the
+	# deliberate special case and said so).
+	_assert(str(w.path_between(west, east)) == str(walk),
+		"SimWorld.path_between is the engine's ground mode")
+	_assert(str(w.reachable_from(west)) == str(Movement.reachable(w, SpeciesDefs.GROUND, west)),
+		"and so is reachable_from — whose *order* worldgen draws the hen's tile out of")
+
+	# --- fly: the criterion, in one scenario ----------------------------------
+	# The flyer crosses the fence the walker paths around, and it is the crow's
+	# own shipping row doing it — the same code path, not a test-only mode.
+	w.spawn_actor("flyer", SpeciesDefs.CROW, west,
+		{ "fx": Movement.tile_centre(west).x, "fy": Movement.tile_centre(west).y })
+	var over: Dictionary = {}
+	var arrived_at := -1
+	for i in 200:
+		if Movement.fly_toward(w, "flyer", Movement.tile_centre(east), SpeciesDefs.speed_of(SpeciesDefs.CROW)):
+			arrived_at = i
+			break
+		over[w.actor_pos("flyer")] = true
+	_assert(arrived_at > 0, "the flyer arrives, tick-stepped, in %d steps" % arrived_at)
+	_assert(w.actor_pos("flyer") == east, "on the tile it was aiming at")
+	_assert(over.has(barrier) and over.has(rock),
+		"having gone straight over the fence and the rocks (%d tiles crossed)" % over.size())
+	_assert(over.size() <= straight + 1, "in a straight line, not round anything")
+	# The pairing WI-3 asked to keep: continuous position in `extra`, registry
+	# tile as its rounded shadow, so a renderer can draw smoothly from 10 Hz truth.
+	_assert(Movement.float_pos(w, "flyer").is_equal_approx(Movement.tile_centre(east)),
+		"its continuous position is where it really is")
+	_assert(Vector2i(floori(Movement.float_pos(w, "flyer").x), floori(Movement.float_pos(w, "flyer").y))
+			== w.actor_pos("flyer"),
+		"and the registry tile is that position, rounded")
+
+	# A flyer's *continuous* flight leaves the map on purpose (a crow enters from
+	# two tiles off it), but a tile route is a route over the map: nothing in the
+	# engine may search open sky.
+	var sky := Movement.path(w, SpeciesDefs.FLY, west, east)
+	_assert(sky.size() == straight, "a flyer asked for a tile route gets the straight one")
+	for t in sky:
+		_assert_quiet(Movement.in_bounds(w, t), "route tile %s is on the map" % t)
+	_flush_quiet("and every tile of it is on the map, in every mode")
+
+	# --- burrow: under the grid, up at the target (WI-8d's mole) --------------
+	Movement.define_test_species("test_mole", { "mode": SpeciesDefs.BURROW }, 1.0)
+	_assert(Movement.passable(w, SpeciesDefs.BURROW, rock)
+			and Movement.passable(w, SpeciesDefs.BURROW, barrier),
+		"a burrower ignores surface obstacles — rocks and fences alike")
+	_assert(not Movement.passable(w, SpeciesDefs.BURROW, Vector2i(0, 0)),
+		"but the map border is the edge of the world, not a surface obstacle")
+	var dig := Movement.path(w, SpeciesDefs.BURROW, west, east)
+	_assert(dig.size() == straight, "so its route is the straight one (%d tiles)" % dig.size())
+	_assert(barrier in dig and rock in dig, "straight through both walls")
+	_assert(Movement.path(w, SpeciesDefs.BURROW, west, rock).is_empty(),
+		"and it cannot surface inside a rock — a journey ends where it can stand")
+	w.spawn_actor("mole", "test_mole", west)
+	Movement.plan(w, "mole", east)
+	_assert(Movement.is_under(w, "mole"), "it goes under to travel")
+	var surfaced_at := -1
+	for i in 40:
+		if Movement.step(w, "mole", i) == Movement.ARRIVED:
+			surfaced_at = i
+			break
+	_assert(w.actor_pos("mole") == east, "arrives at its target")
+	_assert(surfaced_at == straight, "in one tick per tile at 1 tile/tick (%d)" % surfaced_at)
+	_assert(not Movement.is_under(w, "mole"), "and surfaces there (plan §4)")
+
+	# --- hop: ground plus *exactly* the barrier class (WI-8f's kangaroo) ------
+	Movement.define_test_species("test_roo", { "mode": SpeciesDefs.HOP }, 1.0)
+	var hop_over := Movement.path(w, SpeciesDefs.HOP, west, Vector2i(12, 5))
+	_assert(hop_over.size() == 7 and barrier in hop_over,
+		"a hopper crosses the fence a walker paths around (%d tiles)" % hop_over.size())
+	var hop_round := Movement.path(w, SpeciesDefs.HOP, west, east)
+	_assert(not hop_round.is_empty() and hop_round.size() > straight,
+		"but the rock wall still stops it (%d > %d)" % [hop_round.size(), straight])
+	var hopped_a_rock := false
+	for t in hop_round:
+		if String(w.get_tile(t.x, t.y).get("state", "")).begins_with("obstacle"):
+			hopped_a_rock = true
+	_assert(not hopped_a_rock, "it hops fences, not obstacles")
+	_assert(not Movement.can_stop(w, SpeciesDefs.HOP, barrier),
+		"and it clears a fence rather than perching on one")
+
+	# "Exactly barrier-class" measured against every tile of a **real** farm, and
+	# against the tile states themselves rather than against the engine's own
+	# helper — so no other state can quietly join the class.
+	var farm := SimWorld.new()
+	SimRng.reseed(99)
+	farm.generate()
+	for ty in SimWorld.MAP_HEIGHT:
+		for tx in SimWorld.MAP_WIDTH:
+			var t := Vector2i(tx, ty)
+			var st := String(farm.get_tile(tx, ty).get("state", ""))
+			var is_barrier_state := st == WorldLayout.FENCE or st == WorldLayout.HEDGE \
+				or st == WorldLayout.GATE_CLOSED
+			_assert_quiet(Movement.passable(farm, SpeciesDefs.HOP, t)
+					== (farm.is_walkable(tx, ty) or is_barrier_state),
+				"hop passability at %s (%s)" % [t, st])
+			_assert_quiet(Movement.passable(farm, SpeciesDefs.GROUND, t) == farm.is_walkable(tx, ty),
+				"ground passability at %s (%s)" % [t, st])
+	_flush_quiet("a hopper crosses exactly the barrier class, over every tile of a generated farm")
+
+	# --- body_len > 1: trailing segments occupy tiles (WI-8e's worm) ----------
+	Movement.define_test_species("test_worm", { "mode": SpeciesDefs.GROUND, "body_len": 3 }, 1.0)
+	w.spawn_actor("worm", "test_worm", Vector2i(3, 3))
+	_assert(Movement.body_len(w, "worm") == 3, "a three-segment species is three segments long")
+	_assert(Movement.occupied_tiles(w, "worm").size() == 1,
+		"a worm that has never moved is one tile of worm")
+	Movement.plan(w, "worm", Vector2i(8, 3))
+	for i in 3:
+		Movement.step(w, "worm", i)
+	var body := Movement.occupied_tiles(w, "worm")
+	_assert(body.size() == 3, "after three steps its body occupies three tiles")
+	_assert(str(body) == str([Vector2i(6, 3), Vector2i(5, 3), Vector2i(4, 3)]),
+		"head first, and trailing behind it: %s" % str(body))
+	_assert(w.actor_pos("worm") == body[0], "the registry tile is the head")
+	# The snake rule: it is blocked by its own body, and by nothing else here.
+	_assert(not Movement.can_enter(w, "worm", Vector2i(5, 3)),
+		"it cannot double back into its own neck (the snake rule)")
+	_assert(Movement.can_enter(w, "worm", Vector2i(7, 3)) and Movement.can_enter(w, "worm", Vector2i(6, 2)),
+		"but every other neighbour is open ground")
+	Movement.plan(w, "worm", Vector2i(5, 3))
+	_assert(Movement.step(w, "worm", 10) == Movement.BLOCKED,
+		"and a route into itself is blocked at the step, not at the plan")
+	_assert(w.actor_pos("worm") == Vector2i(6, 3), "so it has not moved")
+	# Per-actor override: WI-8e grows the worm by writing one integer, with no
+	# species row per length.
+	w.actor("worm")["extra"]["body_len"] = 5
+	_assert(Movement.body_len(w, "worm") == 5, "a worm grows by overriding its own length")
+
+	# --- tile_exclusive: never two of a kind on one tile ----------------------
+	Movement.define_test_species("test_ant", { "mode": SpeciesDefs.GROUND, "tile_exclusive": true }, 1.0)
+	Movement.define_test_species("test_hen", { "mode": SpeciesDefs.GROUND }, 1.0)
+	w.spawn_actor("ant_a", "test_ant", Vector2i(3, 10))
+	w.spawn_actor("ant_b", "test_ant", Vector2i(5, 10))
+	Movement.plan(w, "ant_a", Vector2i(7, 10))
+	var shared := false
+	var ant_blocked := false
+	for i in 20:
+		if Movement.step(w, "ant_a", i) == Movement.BLOCKED:
+			ant_blocked = true
+		if w.actor_pos("ant_a") == w.actor_pos("ant_b"):
+			shared = true
+	_assert(w.actor_pos("ant_a") == Vector2i(4, 10), "an exclusive actor stops short of its own kind")
+	_assert(ant_blocked and not shared, "two exclusive actors never share a tile")
+	w.despawn_actor("ant_b")
+	_assert(Movement.step(w, "ant_a", 30) == Movement.MOVED and w.actor_pos("ant_a") == Vector2i(5, 10),
+		"and it carries on the moment the tile is free")
+	# The flag is what does the work: without it, sharing is fine and always was —
+	# the hen and the player have stood on the same tile since M1.
+	w.spawn_actor("hen_a", "test_hen", Vector2i(3, 12))
+	w.spawn_actor("hen_b", "test_hen", Vector2i(4, 12))
+	Movement.plan(w, "hen_a", Vector2i(5, 12))
+	Movement.step(w, "hen_a", 40)
+	_assert(w.actor_pos("hen_a") == w.actor_pos("hen_b"),
+		"a species that is not tile_exclusive shares happily")
+
+	# --- cost is per step, not per tick (plan §1 rule 8) ----------------------
+	# An actor that has arrived asks for nothing: `step()` sets a wake when it
+	# moves and deliberately does not when it stops, so a parked mover cannot
+	# schedule itself a heartbeat.
+	var parked: int = int(w.actor("mole")["extra"].get("wake", -1))
+	for i in 100:
+		_assert_quiet(Movement.step(w, "mole", 1000 + i) == Movement.ARRIVED, "a parked mover stays put")
+		_assert_quiet(int(w.actor("mole")["extra"].get("wake", -1)) == parked,
+			"and asks for no tick of its own")
+	_flush_quiet("a mover that has arrived costs the clock nothing (rule 8)")
+
+	# --- deterministic across runs --------------------------------------------
+	# Every mode, twice, from scratch: the same routes and the same step-by-step
+	# outcomes. A recomputed walk is how D-9 avoids recording motion at all, so
+	# this is the property the whole engine rests on.
+	var traces: Array[String] = []
+	for run in 2:
+		var a := _movement_arena()
+		var out: PackedStringArray = []
+		out.append(str(Movement.path(a, SpeciesDefs.GROUND, west, east)))
+		out.append(str(Movement.path(a, SpeciesDefs.HOP, west, east)))
+		out.append(str(Movement.path(a, SpeciesDefs.BURROW, west, east)))
+		out.append(str(Movement.reachable(a, SpeciesDefs.GROUND, west).size()))
+		a.spawn_actor("m", "test_mole", west)
+		Movement.plan(a, "m", east)
+		out.append(_movement_trace(a, "m", 20))
+		a.spawn_actor("k", "test_roo", west)
+		Movement.plan(a, "k", east)
+		out.append(_movement_trace(a, "k", 40))
+		a.spawn_actor("wm", "test_worm", Vector2i(3, 3))
+		Movement.plan(a, "wm", Vector2i(9, 9))
+		out.append(_movement_trace(a, "wm", 20))
+		a.spawn_actor("f", SpeciesDefs.CROW, west, { "fx": 5.5, "fy": 5.5 })
+		for i in 40:
+			Movement.fly_toward(a, "f", Movement.tile_centre(east), SpeciesDefs.speed_of(SpeciesDefs.CROW))
+			out.append(str(Movement.float_pos(a, "f")))
+		traces.append("|".join(out))
+	_assert(traces[0] == traces[1], "every mode moves identically across two runs")
+	_assert(traces[0].length() > 400, "and the trace is a real one (%d chars)" % traces[0].length())
+
+	# The seam closes behind the tests: the shipping table stays the only source
+	# of species, and WI-8's rows are the only way burrow and hop reach the game.
+	Movement.forget_test_species()
+	_assert(Movement.capability_of("test_mole").is_empty(),
+		"the test-only species mechanism leaves nothing behind")
+	for id in SpeciesDefs.ids():
+		_assert_quiet(not SpeciesDefs.movement_of(id).is_empty(), "%s still answers from the real table" % id)
+	_flush_quiet("and the shipping species table is untouched by it")

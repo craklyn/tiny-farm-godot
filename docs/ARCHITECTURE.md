@@ -37,8 +37,8 @@ both "layer-3 policies" that read observations from layer 2 and emit Actions int
 That single property gives us overnight training, TD wave previews, capability-proof
 gates, and honest automated tests, all from one mechanism.
 
-**Layer 2 in detail, as of M2.5** (`M2_5_PLAN.md` WI-1..WI-3; D-9 settled by Q-53). The
-simulation layer is four things that fit together, all under `systems/sim/` and all pure —
+**Layer 2 in detail, as of M2.5** (`M2_5_PLAN.md` WI-1..WI-4; D-9 settled by Q-53). The
+simulation layer is five things that fit together, all under `systems/sim/` and all pure —
 no Node, no autoload, no rendering, no `Input`, and (rule 7) **no engine clock**:
 
 - **The world** (`sim_world.gd`) — grid truth plus one gateway, `apply_action`, through
@@ -58,6 +58,14 @@ no Node, no autoload, no rendering, no `Input`, and (rule 7) **no engine clock**
   returns; the gateway is what mutates. The player's "brain" is the ActionRouter up in
   layer 3, named in the table so she needs no special case; the neighbour's is the cold
   open, which is the pattern the interface was generalised from.
+- **The movement engine** (`sim/movement.gd`) — one file that moves every mover according
+  to the capability its species row declares: `ground` (A* over sim truth), `fly` (a
+  straight line in continuous tile space, with the registry tile as its rounded shadow),
+  `burrow` (under the grid, surfacing where it stops), `hop` (ground plus exactly the
+  barrier class), plus multi-tile bodies and tile exclusivity. Brains say *where*; this
+  says *how*, one tile per `ticks_per_tile`, on the clock. The `Pathfinding` autoload is
+  unaffected — it is presentation's wrapper, it takes a `Node2D`, and the player's
+  tap-to-walk still goes through it.
 
 The consequence worth stating plainly: **a bot, a crow and the farmer are the same kind of
 thing** — a policy that emits Actions into one gateway — differing only in a row of data
@@ -91,7 +99,9 @@ code, both deliberate for phase 1 and both due before phase 4.**
    mover's deterministic code is the reconstruction rule. What remains open is the rest of
    the sentence: `tools/benchmark_sim.gd` still fast-forwards an actor who **teleports**
    (WI-12 makes it walk), and the player's and the neighbour's positions are still
-   presentation's until the movement engine lands (WI-4). Until then
+   presentation's — the engine they will move on landed with WI-4, but joining them to it
+   needs the tick stamps that let a replay recompute a walk (WI-5) and the renderer that
+   mirrors sim truth (WI-6). Until then
    `SaveGame.capture_canonical` temporarily excludes actor positions from the
    replay-vs-save comparison — a v1 replay carries no ticks, so it cannot recompute
    motion; WI-5's tick stamps and dual-record net are what restore the comparison.

@@ -613,3 +613,141 @@ the net its "recompute NPCs" hook without a second code path. The four `erase` l
 `capture_canonical` and the exclusion in `_capture_actors` are the two places WI-5 has to
 revisit, and both name WI-5 in their comments. The pre-existing `stateless`/`base_save`
 seed hole above is WI-5's to close.
+
+### WI-4 — Movement engine ✅ landed 2026-08-31
+
+`systems/sim/movement.gd` (pure, layer 2): one file that moves every mover according to
+the capability its species row declares, so **how a thing gets somewhere is data**
+(§3.4 decision 4, finding F-6) rather than code inside a node.
+
+- **`ground`** — A* over sim truth, Manhattan heuristic (exact for four-way movement on a
+  uniform grid), neighbours in a fixed order and ties broken on insertion order, so "a
+  shortest route" is always the *same* shortest route.
+- **`fly`** — a straight line in continuous tile space at the species' tiles/tick, with
+  the registry tile as its rounded shadow. WI-3's crow implementation, generalised: the
+  bird now calls `Movement.fly_toward` / `drift` / `float_pos` and `crow_brain.gd` is left
+  with the decisions (where to go, how long to perch, when to leave).
+- **`burrow`** — travels under the grid, so surface obstacles, boundaries and placed
+  objects are all irrelevant; the map border is not a surface obstacle and still stops it.
+  It goes under when it sets off (`extra["under"]`) and **surfaces where it stops**.
+- **`hop`** — ground pathing plus exactly the barrier class (fence, hedge, closed gate —
+  `WorldLayout.is_boundary_state`, not a second list that could drift from it).
+- **`body_len > 1`** — trailing segments in `extra["body"]` (head first), dragged along by
+  the one function that moves a tile-stepped actor, and the head is blocked by its own
+  body (the snake rule).
+- **`tile_exclusive`** — refuses a tile another actor of the **same species** occupies,
+  checked at the step rather than at the plan, because occupancy is a fact about *now*.
+
+`SimWorld.reachable_from()` and `path_between()` are one line each now — the ground-mode
+names worldgen, the hen and the tests already call, delegating to the engine. WI-3 wrote
+them as the deliberate ground-only special case and said the general function was WI-4's;
+this is that, and the special case is a default argument. **The `Pathfinding` autoload is
+untouched**: it is presentation's wrapper, it takes a `Node2D` farm, and the player's
+tap-to-walk still goes through it (its own tests pass unmodified).
+
+The two consumers that exist today both went through the shared code path: the hen's
+`_think`/`_walk` became `Movement.plan` / `Movement.step` with her FSM (idle spans, balk,
+rest) untouched, and the crow's `_fly_toward`/`_advance`/`_place`/`_at` are gone into the
+engine. **The player and the neighbour were deliberately not touched** — they still walk
+in pixels, and joining them to the engine needs WI-5's tick stamps and WI-6's renderer.
+
+Suites: unit **928 PASSED / 0 FAILED** (875 before, +53 from `test_movement`), integration
+**154 / 0**, robot session **MATCH** (15 entries), `verify_replay` MATCH, demo replay
+regenerates with a clean diff, visual regression **passes unchanged** (no re-baseline;
+WI-6's allowance is still untouched). Benchmark 666,108× on the run taken with this work
+landed — but the honest number is a range: four consecutive runs of the unmodified
+benchmark on this machine gave 625k / 666k / 726k / 736k, so it is noise around WI-3's
+734,895× and not a change. The benchmark's actor still teleports (it advances no ticks and
+runs no brains), so nothing in this WI is on its path at all; WI-12 is where travel enters
+it and where a number worth comparing appears. Purity greps clean: no `Time.`/delta/
+`_process(` under `systems/sim/`, no Node, autoload, `Input` or `Pathfinding` there either.
+
+**Deviations and decisions taken inside the WI:**
+
+1. **Ground pathing is A* where WI-3's `path_between` was breadth-first.** The plan asks
+   for A* and this is it, but the swap had to be shown to be free: both are shortest, so
+   an equal-length route means the hen's walk takes the same number of ticks, wakes at the
+   same ticks and draws from `SimRng` in the same order — only *which* of several equally
+   short routes she treads can differ. The flood fill's **order is deliberately not
+   touched**: worldgen picks the hen's spawn tile out of `reachable_from` with a seeded
+   draw, so a reordering there would move her and would change what an old replay means.
+   Checked rather than assumed: the visual baseline (a seeded frame with the hen in it)
+   passes unchanged, and the demo replay regenerates identically.
+2. **`can_stop` is a separate question from `passable`, for two modes.** A kangaroo clears
+   a fence rather than perching on one, and a mole travelling under a rock has to come up
+   somewhere it can stand. Without the distinction "surfaces at its target" is a story
+   rather than a fact, and a hopper could end its journey standing on a hedge. Ground and
+   fly answer the two questions identically, as they should.
+3. **The test-only species mechanism is an injection hook on the engine**:
+   `Movement.define_test_species(id, capability, speed)` and `forget_test_species()`, an
+   override table consulted before `SpeciesDefs` by every capability lookup. It is empty
+   in a shipping build, the test that uses it clears it and then asserts it is empty, and
+   **no row was added to `species_defs.gd` for a critter that does not exist** — burrow,
+   hop, bodies and exclusivity have no shipping species until WI-8 writes their rows, and
+   a species table that lied about who exists would be a worse cost than the seam.
+4. **`Brain.ticks_per_tile` now delegates to `Movement.ticks_per_tile`** — one edit to
+   WI-3's file, the same arithmetic, so the speed conversion a brain states its timings in
+   *is* the one the engine moves on, and so a test species has a speed at all.
+5. **`step()` sets `wake` only when it actually moves.** ARRIVED and BLOCKED deliberately
+   leave it alone, because what to do about them differs per critter (the hen rests after
+   a walk and re-thinks next tick after a balk) — and because a parked mover that set
+   itself a wake would be a heartbeat, which is exactly what ground rule 8 forbids. There
+   is a test: a hundred `step()` calls on an arrived actor change nothing.
+6. **A route is over the map in every mode.** `fly` is passable everywhere on purpose (a
+   crow enters two tiles off the edge and leaves the same way), so the searches bound
+   themselves rather than trusting the mode — otherwise asking a flyer for a tile route
+   would search open sky.
+7. **`extra["body_len"]` overrides the species row per actor**, so WI-8e's worm grows by
+   writing one integer instead of needing a species row per length. The body grows out of
+   the tile the actor left rather than appearing all at once on tiles it has never been on.
+8. **Q-57 filed** (`DESIGNER_QUEUE.md`): the barrier class includes *closed gates*, so a
+   hop-mode critter can cross into a parcel the player has not earned. The criterion here
+   is implemented verbatim ("crosses exactly barrier-class tiles") and the consequence is
+   taste — T-8's boundaries are the wordless "not yet". Nothing is blocked on the ruling:
+   no hop-mode species ships before WI-8f.
+
+**For WI-8's critter workers — how a row binds to each mode.** A critter is one row in
+`species_defs.gd` and one brain; **no critter writes movement code**. The row's
+`movement: {mode, body_len, tile_exclusive}` is the whole binding, and the brain then
+speaks in two calls:
+
+```gdscript
+Movement.plan(world, actor_id, goal)      # false when this mover has no route there
+match Movement.step(world, actor_id, tick):
+    Movement.MOVED:   pass                # the engine set the next wake from the speed row
+    Movement.ARRIVED: ...                 # your critter decides what "there" means
+    Movement.BLOCKED: ...                 # re-plan, idle, give up — your call
+```
+
+Per mode: **8d's mole** sets `mode: burrow`, plans to a tilled tile (`Movement.can_stop`
+refuses one it could not surface on) and reads `Movement.is_under` to know whether it is
+showing — its route ignores every rock and hedge on the way. **8f's kangaroo** sets
+`mode: hop` and is otherwise the rabbit's brain, which is the point of the exercise: the
+fence-crossing is the row, not the code. **8e's worm** sets `body_len` and grows with
+`actor["extra"]["body_len"] += 1`; `Movement.occupied_tiles` is what a renderer and any
+future collision draw from, and the head is already blocked by its own body. **8a/8b's
+ants** set `tile_exclusive` if the giant-ant idea ever comes back; the flag costs nothing
+for species that leave it false. **8g's songbird** sets `mode: fly` and uses
+`Movement.fly_toward` / `drift` with a continuous position (`fx`, `fy`) in its `extra`,
+exactly as the crow does. Speeds are tiles/tick via `SimClock.tiles_per_tick(px_per_sec)`,
+as WI-2's rows document.
+
+**For WI-5 / WI-6 — what the engine expects when the player's and neighbour's positions
+go live.** Both are already `mode: ground` rows with speeds, so the engine can move them
+today; what is missing is not motion but the two things around it.
+*WI-5:* a walk is **recomputed, not recorded** (Q-53), and recomputation needs the tick a
+walk began on — which is why `capture_canonical`'s four `erase` lines (WI-3 deviation 1)
+cannot come off before the tick stamps land. The engine makes that recomputation exact:
+given the same world, the same start tick and the same goal, `plan` + `step` produce the
+same tiles at the same ticks on any machine (`test_movement` asserts it across two runs
+for every mode). The player is the one mover whose *goal* is not a brain's decision, so
+her free walk is still the direction-change events §3.3 describes; what v2 has to record
+about her is where she started and when she turned, not where she was each tick.
+*WI-6:* a renderer should draw from `world.actor_pos` for tile-stepped movers and from
+`Movement.float_pos` for flyers (it falls back to the registry tile for anybody without a
+continuous position, so one code path draws both), interpolating between ticks — that
+pairing is exactly what WI-3 asked to keep. `Movement.occupied_tiles` gives a multi-tile
+actor's whole footprint, and `Movement.is_under` says whether a burrower should be drawn
+at all. **The player's feel is not the engine's to change** (§4, D-8 spirit): when her
+position joins sim truth it is as tile occupancy updated on tile-crossing events, with the
+pixel motion staying exactly where it is.

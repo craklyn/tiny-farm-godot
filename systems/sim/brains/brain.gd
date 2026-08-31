@@ -84,11 +84,12 @@ func on_new_day(_world: SimWorld, _actor_id: String) -> void:
 
 # Ticks per tile for a species, from its `speed` row (tiles per tick). At least
 # one: a species slower than one tile per tick still steps, just rarely.
+# **The movement engine's own conversion** since M2.5 WI-4, so a brain that
+# states a timing in tiles and the engine that moves the actor cannot come to
+# disagree — and so a test species (`Movement.define_test_species`) has a speed
+# at all.
 static func ticks_per_tile(species: String) -> int:
-	var speed := SpeciesDefs.speed_of(species)
-	if speed <= 0.0:
-		return 1
-	return maxi(1, int(round(1.0 / speed)))
+	return Movement.ticks_per_tile(species)
 
 
 # Seconds, as the design docs and the old presentation timers state them,

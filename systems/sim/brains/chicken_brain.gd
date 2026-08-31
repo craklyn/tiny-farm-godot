@@ -82,41 +82,33 @@ func _think(world: SimWorld, actor_id: String, _e: Dictionary, extra: Dictionary
 		# First thought of her life, staggered so she is not standing to attention.
 		_idle_for(extra, tick, FIRST_IDLE)
 		return
-	var here := world.actor_pos(actor_id)
-	var goal := _random_reachable(world, here)
-	var path: Array[Vector2i] = []
-	if goal.x >= 0:
-		path = world.path_between(here, goal)
-	if path.is_empty():
+	var goal := _random_reachable(world, world.actor_pos(actor_id))
+	# Her route comes from the movement engine now (M2.5 WI-4), which reads the
+	# `ground` mode off her species row. Nothing about her walk changed: what she
+	# used to do by hand — find a route, re-check every tile as she reaches it,
+	# step one tile per `ticks_per_tile` — is what the engine does for every mover,
+	# and the crow flying over the fence she is walking around is the same file.
+	if goal.x < 0 or not Movement.plan(world, actor_id, goal):
 		_idle_for(extra, tick, BALKED_IDLE)
 		return
 	extra["state"] = "moving"
-	extra["path"] = _flatten(path)
-	extra["step"] = 0
-	extra["wake"] = tick + ticks_per_tile(world.species_of(actor_id))
+	extra["wake"] = tick + Movement.ticks_per_tile(world.species_of(actor_id))
 
 
 func _walk(world: SimWorld, actor_id: String, _e: Dictionary, extra: Dictionary, tick: int) -> void:
-	var path: Array = extra.get("path", [])
-	var idx := int(extra.get("step", 0))
-	if idx * 2 + 1 >= path.size():
-		extra["state"] = "idle"
-		extra["path"] = []
-		_idle_for(extra, tick, REST_IDLE)
-		return
-	var next := Vector2i(int(path[idx * 2]), int(path[idx * 2 + 1]))
-	# The ground can change under her — the player tills, plants, drops a
-	# scarecrow — so every step is re-checked against the world rather than
-	# trusted from when the path was found.
-	if not world.is_walkable(next.x, next.y):
-		extra["state"] = "idle"
-		extra["path"] = []
-		extra["wake"] = tick + 1
-		return
-	var here := world.actor_pos(actor_id)
-	world.set_actor_pos(actor_id, next, _facing(here, next))
-	extra["step"] = idx + 1
-	extra["wake"] = tick + ticks_per_tile(world.species_of(actor_id))
+	match Movement.step(world, actor_id, tick):
+		Movement.ARRIVED:
+			extra["state"] = "idle"
+			extra["path"] = []
+			_idle_for(extra, tick, REST_IDLE)
+		Movement.BLOCKED:
+			# The ground changed under her — the player tilled, planted, dropped a
+			# scarecrow — so she gives up on this route and thinks again next tick.
+			extra["state"] = "idle"
+			extra["path"] = []
+			extra["wake"] = tick + 1
+		_:
+			pass  # moved; the engine set her next wake from her speed
 
 
 func _idle_for(extra: Dictionary, tick: int, span: Array) -> void:
@@ -131,21 +123,3 @@ func _random_reachable(world: SimWorld, from: Vector2i) -> Vector2i:
 	if reachable.is_empty():
 		return Vector2i(-1, -1)
 	return reachable[SimRng.randi() % reachable.size()]
-
-
-static func _facing(from: Vector2i, to: Vector2i) -> String:
-	var d := to - from
-	if absi(d.x) >= absi(d.y) and d.x != 0:
-		return "right" if d.x > 0 else "left"
-	if d.y != 0:
-		return "down" if d.y > 0 else "up"
-	return ""
-
-
-# JSON has no Vector2i and `extra` is saved, so a path rides as flat x,y pairs.
-static func _flatten(path: Array[Vector2i]) -> Array:
-	var out: Array = []
-	for t in path:
-		out.append(t.x)
-		out.append(t.y)
-	return out

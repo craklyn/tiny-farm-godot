@@ -157,9 +157,13 @@ func step(world: SimWorld, actor_id: String, tick: int, _gs = null) -> Dictionar
 			if _spooked(world, actor_id):
 				flee(world, actor_id, "scarecrow")
 				return {}
-			_fly_toward(world, actor_id, extra, _target_centre(extra),
-				SpeciesDefs.speed_of(SpeciesDefs.CROW))
-			if _at(extra, _target_centre(extra)):
+			# `fly` is a row in the species table and a mode in the movement
+			# engine (M2.5 WI-4): straight at the target, nothing on the ground in
+			# its way, continuous position in `extra` with the registry tile as
+			# its rounded shadow. WI-3 wrote that here for one bird; every flyer
+			# after it gets the same code by naming the mode.
+			if Movement.fly_toward(world, actor_id, _target_centre(extra),
+					SpeciesDefs.speed_of(SpeciesDefs.CROW)):
 				extra["state"] = "eating"
 				var wait := HARMLESS_PERCH_SECONDS if bool(extra.get("harmless", false)) else EAT_SECONDS
 				extra["eat_at"] = tick + ticks(wait)
@@ -183,8 +187,8 @@ func step(world: SimWorld, actor_id: String, tick: int, _gs = null) -> Dictionar
 			}
 		"leaving":
 			var dir := Vector2(float(extra.get("ex", -1.0)), float(extra.get("ey", -1.0)))
-			_advance(world, actor_id, extra, dir, SimClock.tiles_per_tick(EXIT_PX_PER_SECOND))
-			if _off_the_map(extra):
+			Movement.drift(world, actor_id, dir, SimClock.tiles_per_tick(EXIT_PX_PER_SECOND))
+			if _off_the_map(world, actor_id):
 				world.despawn_actor(actor_id)
 	return {}
 
@@ -212,39 +216,16 @@ func flee(world: SimWorld, actor_id: String, reason: String) -> void:
 
 
 # --- flight -------------------------------------------------------------------
-
+#
 # Finding F-6, in the one place it matters: the crow's row is `fly`, so it goes
-# in a straight line and nothing on the ground is in its way. WI-4's movement
-# engine generalises this to every mode; here it is only the mode the crow has.
-func _fly_toward(world: SimWorld, actor_id: String, extra: Dictionary, goal: Vector2, speed: float) -> void:
-	var here := Vector2(float(extra.get("fx", 0.0)), float(extra.get("fy", 0.0)))
-	var diff := goal - here
-	if diff.length() <= speed:
-		_place(world, actor_id, extra, goal)
-		return
-	_place(world, actor_id, extra, here + diff.normalized() * speed)
-
-
-func _advance(world: SimWorld, actor_id: String, extra: Dictionary, dir: Vector2, speed: float) -> void:
-	var here := Vector2(float(extra.get("fx", 0.0)), float(extra.get("fy", 0.0)))
-	_place(world, actor_id, extra, here + dir * speed)
-
-
-# The float position is where the bird actually is (presentation reads it and
-# interpolates); the registry tile is what the rest of the sim sees. Both, every
-# step, so a scarecrow check and a shoo-bot's radius (WI-9) read the same crow.
-func _place(world: SimWorld, actor_id: String, extra: Dictionary, at: Vector2) -> void:
-	extra["fx"] = at.x
-	extra["fy"] = at.y
-	world.set_actor_pos(actor_id, Vector2i(floori(at.x), floori(at.y)))
-
+# in a straight line and nothing on the ground is in its way. The flight itself
+# is `systems/sim/movement.gd` since M2.5 WI-4 — the float position in `extra`
+# with the registry tile as its rounded shadow, the stop-exactly-on-the-goal
+# arithmetic, the drift out — and this brain is left with the *decisions*: where
+# to go, how long to perch, when to leave.
 
 func _target_centre(extra: Dictionary) -> Vector2:
-	return Vector2(float(int(extra.get("tgt_x", 0))) + 0.5, float(int(extra.get("tgt_y", 0))) + 0.5)
-
-
-func _at(extra: Dictionary, goal: Vector2) -> bool:
-	return Vector2(float(extra.get("fx", 0.0)), float(extra.get("fy", 0.0))).is_equal_approx(goal)
+	return Movement.tile_centre(Vector2i(int(extra.get("tgt_x", 0)), int(extra.get("tgt_y", 0))))
 
 
 func _leave(extra: Dictionary, reason: String) -> void:
@@ -264,8 +245,7 @@ func _spooked(world: SimWorld, actor_id: String) -> bool:
 	return world.is_protected_by_scarecrow(t.x, t.y)
 
 
-func _off_the_map(extra: Dictionary) -> bool:
-	var x := float(extra.get("fx", 0.0))
-	var y := float(extra.get("fy", 0.0))
-	return x < -DESPAWN_TILES or y < -DESPAWN_TILES \
-		or x > SimWorld.MAP_WIDTH + DESPAWN_TILES or y > SimWorld.MAP_HEIGHT + DESPAWN_TILES
+func _off_the_map(world: SimWorld, actor_id: String) -> bool:
+	var at := Movement.float_pos(world, actor_id)
+	return at.x < -DESPAWN_TILES or at.y < -DESPAWN_TILES \
+		or at.x > SimWorld.MAP_WIDTH + DESPAWN_TILES or at.y > SimWorld.MAP_HEIGHT + DESPAWN_TILES

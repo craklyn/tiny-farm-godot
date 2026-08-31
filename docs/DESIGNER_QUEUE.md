@@ -611,6 +611,21 @@ trace actually says, because several of these looked like bugs and were not.*
   so the first automation the player meets is the sprinkler (design/03's "watch your
   old job happen without you"), then revisit with the shoo-bot as a candidate.*
 
+- **Q-57** **May a hopper cross a *closed gate*, or only a fence?** Raised by M2.5 WI-4,
+  which implements the plan's criterion verbatim: `hop` crosses "exactly barrier-class
+  tiles", and the barrier class is fence, hedge **and closed gate** (`WorldLayout`'s own
+  definition — a closed gate is a boundary until it opens). The engineering is settled
+  either way; what needs taste is the consequence. T-8 says a boundary is the wordless
+  "not yet", and the kangaroo (WI-8f) is the first actor that could stand in the quarry
+  before the player has ever seen a pickaxe. Two readings, both defensible: (a) *as
+  built* — the whole point of a hopper is that fences do not apply to it, and a critter
+  loose in the locked wood is a lovely tease for the parcel she has not opened; (b) the
+  hop class stops at a gate, so a gate means "closed to everybody" and a parcel the
+  player has not earned is a place she has genuinely never seen anything happen in.
+  *Recommendation: leave it as built and look at it on device when a kangaroo exists —
+  it is one entry in the barrier list either way, and (a) costs nothing to try first.*
+  Nothing is blocked on this: no hop-mode species ships until WI-8f.
+
 ## Before M3 — phase 2 design
 
 - **Q-15 (Ruling)** Sprinkler/machine acquisition loop: crafted, bought, or

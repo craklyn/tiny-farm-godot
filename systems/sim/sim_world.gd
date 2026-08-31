@@ -675,60 +675,22 @@ func _chicken_tile(start: Vector2i, from_stream: bool) -> Vector2i:
 	return reachable[0]
 
 
-# Flood fill over walkable tiles, in the sim, with no autoload in sight — the
-# `Pathfinding` autoload is presentation's wrapper and layer 2 may not touch it.
-# Used by worldgen and by the hen's brain (M2.5 WI-3) when she picks somewhere to
-# potter off to. **Pathing as a general sim function, per movement capability, is
-# WI-4's deliverable**; this is the ground-mode special case that the one walker
-# with a sim-side brain needs, and it is deliberately not more than that.
+# Ground-mode pathing, over sim truth, with no autoload in sight — the
+# `Pathfinding` autoload is presentation's wrapper (it takes a `Node2D` farm) and
+# layer 2 may not touch it. **Since M2.5 WI-4 both of these are one line**: the
+# search itself lives in `systems/sim/movement.gd`, per movement capability, and
+# these are the ground-mode names worldgen, the hen's brain and the tests already
+# call. WI-3 wrote them as the deliberate ground-only special case and said the
+# general function was WI-4's deliverable; this is that, and the special case is
+# now a default argument.
 func reachable_from(start: Vector2i) -> Array[Vector2i]:
-	const DIRS := [Vector2i(0, -1), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(1, 0)]
-	var out: Array[Vector2i] = []
-	if not is_walkable(start.x, start.y):
-		return out
-	var seen := { start: true }
-	var queue: Array[Vector2i] = [start]
-	var idx := 0
-	while idx < queue.size():
-		var t := queue[idx]
-		idx += 1
-		out.append(t)
-		for d in DIRS:
-			var n: Vector2i = t + d
-			if seen.has(n) or not is_walkable(n.x, n.y):
-				continue
-			seen[n] = true
-			queue.append(n)
-	return out
+	return Movement.reachable(self, SpeciesDefs.GROUND, start)
 
 
 # The waypoints from `start` to `goal` (excluding `start`), or [] when there is
-# no walkable route. Breadth-first, so it is the shortest one and — the part that
-# matters — the *same* one every time, on any machine, in a replay as in a live
-# session. Same caveat as above: WI-4 owns pathing per movement mode.
+# no walkable route.
 func path_between(start: Vector2i, goal: Vector2i) -> Array[Vector2i]:
-	const DIRS := [Vector2i(0, -1), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(1, 0)]
-	var out: Array[Vector2i] = []
-	if start == goal or not is_walkable(goal.x, goal.y) or not is_walkable(start.x, start.y):
-		return out
-	var came := { start: start }
-	var queue: Array[Vector2i] = [start]
-	var idx := 0
-	while idx < queue.size():
-		var t: Vector2i = queue[idx]
-		idx += 1
-		if t == goal:
-			while t != start:
-				out.push_front(t)
-				t = came[t]
-			return out
-		for d in DIRS:
-			var n: Vector2i = t + d
-			if came.has(n) or not is_walkable(n.x, n.y):
-				continue
-			came[n] = t
-			queue.append(n)
-	return out
+	return Movement.path(self, SpeciesDefs.GROUND, start, goal)
 
 
 # --- Sim time: the brains ride the clock (M2.5 WI-3) ---------------------------
