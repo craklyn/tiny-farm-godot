@@ -99,6 +99,11 @@ static func restore(data: Dictionary, world: SimWorld, gs) -> bool:
 	# The actor registry (M2.5 WI-2). Grids first, deliberately: the default spawn
 	# below reads the restored world — the gate tells it whether the neighbour is
 	# still here, the walkable tiles tell it where the hen can stand.
+	# Sim time comes back before the cast does, and it matters which way round:
+	# `reset()` empties the clock's queue, and spawning an actor schedules that
+	# actor's first thought on it (M2.5 WI-3). Resetting afterwards would throw
+	# every one of those away and leave a reloaded farm standing perfectly still.
+	world.clock.reset(int(w.get("tick", 0)))
 	var saved_actors: Dictionary = w.get("actors", {})
 	# Empty counts as absent: a world containing nobody at all is not a state
 	# anything produces (the player is always registered), so reading it as a
@@ -121,9 +126,9 @@ static func restore(data: Dictionary, world: SimWorld, gs) -> bool:
 				world.set_actor_energy(id, int(legacy_energy[id]))
 	else:
 		world.actors = _restore_actors(saved_actors)
-	# Additive in the same way, and a load is a fresh timeline: the tick comes back,
-	# nothing is left pending (see SimClock.reset).
-	world.clock.reset(int(w.get("tick", 0)))
+		# A restored registry did not go through spawn_actor, so nobody is on the
+		# clock yet. This is the one call that makes a loaded farm alive.
+		world.schedule_all_brains()
 
 	var s: Dictionary = d.get("state", {})
 	gs.day = int(s.get("day", 1))
@@ -203,11 +208,41 @@ static func save_to(path: String, world: SimWorld, gs) -> bool:
 # Canonical string form of a capture for equality checks. Excludes
 # presentation-only fields (selected tool/seed) — they are not Actions and
 # not sim truth, so replays legitimately differ on them.
+#
+# **And, temporarily, everything a tick-stepped brain moves** (M2.5 WI-3). This is
+# a deliberate seam, and it closes in WI-5:
+#
+#   Since WI-3 the hen walks and the crow flies as sim processes, driven by the
+#   clock during live play. A v1 replay carries **no tick information at all** —
+#   `apply_to()` re-applies a bare action stream and never advances the clock —
+#   so a replay cannot recompute that motion, and comparing it against a save
+#   that recorded it would fail every time for a reason that says nothing about
+#   whether the replay is faithful. What crosses the determinism boundary in v1 is
+#   the Action stream, and the Action stream is compared in full.
+#
+#   So the tick counter, and each actor's `pos`/`facing`/`extra` (brain scratch),
+#   come out of the comparison — and nothing else does. **Species, existence and
+#   energy stay in**, because none of them is a function of motion: an actor who
+#   should be on the farm and is not, or who has spent energy the replay did not,
+#   still fails here exactly as before.
+#
+#   WI-5's format v2 stamps entries with ticks, which is what makes recomputation
+#   possible; its dual-record net then asserts the recomputed motion matches the
+#   recording action-for-action, and these lines come out again.
+#
+# `capture()` itself is untouched: a **save** still stores positions and the tick,
+# because a save is a snapshot and a snapshot knows where everybody was standing.
 static func capture_canonical(world: SimWorld, gs) -> String:
 	var c := capture(world, gs)
 	var s: Dictionary = c.get("state", {})
 	s.erase("selected_tool")
 	s.erase("selected_seed_type")
+	var w: Dictionary = c.get("world", {})
+	w.erase("tick")
+	var a: Dictionary = w.get("actors", {})
+	for id in a:
+		for moved in ["x", "y", "facing", "extra"]:
+			a[id].erase(moved)
 	return JSON.stringify(c)
 
 
@@ -256,10 +291,21 @@ static func replay_matches(rlog: ReplayLog, save: Dictionary) -> bool:
 # keys, which is what lets `capture_canonical` compare a live world against the
 # same world restored (they hold their actors in different orders — see the
 # registry block in sim_world.gd).
+#
+# **A visit is not saved** (M2.5 WI-3). Species whose row says `persistent: false`
+# — the crow, today — are skipped: a save is a snapshot of a farm, and a bird
+# halfway across the sky on the frame the autosave timer happened to fire is not
+# part of one. Reloading has never restored a crow (it was a node), its schedule
+# entry for the day is already spent, and T-20 says one arrival is one arrival.
+# The alternative is worse in both directions: persisting it would resurrect a
+# bird mid-flight with a stale target, and comparing it would fail a replay for a
+# bird the replay was never asked to fly.
 static func _capture_actors(world: SimWorld) -> Dictionary:
 	var out := {}
 	for id in world.actors:
 		var a: Dictionary = world.actors[id]
+		if not SpeciesDefs.is_persistent(String(a.get("species", ""))):
+			continue
 		var pos: Vector2i = a.get("pos", Vector2i(-1, -1))
 		out[id] = {
 			"species": String(a.get("species", "")),

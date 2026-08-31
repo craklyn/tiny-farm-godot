@@ -37,6 +37,32 @@ both "layer-3 policies" that read observations from layer 2 and emit Actions int
 That single property gives us overnight training, TD wave previews, capability-proof
 gates, and honest automated tests, all from one mechanism.
 
+**Layer 2 in detail, as of M2.5** (`M2_5_PLAN.md` WI-1..WI-3; D-9 settled by Q-53). The
+simulation layer is four things that fit together, all under `systems/sim/` and all pure —
+no Node, no autoload, no rendering, no `Input`, and (rule 7) **no engine clock**:
+
+- **The world** (`sim_world.gd`) — grid truth plus one gateway, `apply_action`, through
+  which every mutation by every actor passes (S-3).
+- **The clock** (`sim_clock.gd`) — sim time is a tick counter and a min-heap of events,
+  10 Hz `[Playtest]`, and nothing else. It *jumps* rather than steps: cost is per event,
+  never per elapsed tick, which is what keeps fast-forward honest. Converting wall time
+  into ticks happens in `main.gd`, at the same boundary as the one raw `randi()` that
+  seeds a run — those two are the only places the outside world gets in.
+- **The registry** — `world.actors[id] = {species, pos, facing, energy, extra}`, with
+  `systems/species_defs.gd` (layer 1) answering what a *kind* of actor is: its verbs, its
+  movement capability, its speed in tiles per tick, its senses, its brain. Who is in the
+  world and where they stand is sim truth, saved and replayed. Spawn and despawn are sim
+  functions, not verbs: a verb is a thing an actor *does*, and nobody does a spawn.
+- **The brains** (`sim/brains/`) — one interface, `step(world, actor, tick) -> action | null`,
+  scheduled on the clock, with per-actor state in the entry's `extra`. A brain decides and
+  returns; the gateway is what mutates. The player's "brain" is the ActionRouter up in
+  layer 3, named in the table so she needs no special case; the neighbour's is the cold
+  open, which is the pattern the interface was generalised from.
+
+The consequence worth stating plainly: **a bot, a crow and the farmer are the same kind of
+thing** — a policy that emits Actions into one gateway — differing only in a row of data
+and which layer their policy lives in. That is what phase 4 needs to be cheap.
+
 ## The Action record (S-3)
 
 One shape for every world mutation, roughly:
@@ -57,16 +83,18 @@ Observation { egocentric grid patch, self stats, nearby-entity summary, day/weat
 **Implementation status, audited 2026-08-28 — two divergences between this section and the
 code, both deliberate for phase 1 and both due before phase 4.**
 
-1. **There is no `move_to` verb, and the sim holds no actor positions at all.** The verb
-   list above names `move_to`, but `sim_world.gd` contains no position for the player, the
-   crow or the chicken — where anyone *stands* is presentation state, and M2 chose that
-   explicitly (`M2_SPEC.md`: entity movement is a presentation-side decision *process*
-   whose chosen Actions are the record). The consequence is that `tools/benchmark_sim.gd`
-   fast-forwards an actor who **teleports**, with infinite energy: an honest measure of sim
-   throughput, which is what M2's gate asked, but it does not model travel. Travel is the
-   substance of a delegation game, so this must be revisited — tracked as **D-9**, with a
-   trigger *before* the D-2 spike, since an action space that omits movement is a different
-   learning problem.
+1. ~~**There is no `move_to` verb, and the sim holds no actor positions at all.**~~
+   **Closed 2026-08-31 by M2.5 WI-2/WI-3 (D-9 settled, Q-53).** Actor position is sim
+   state now: the registry holds it, saves persist it, and tick-stepped brains move it.
+   There is still **no `move_to` verb**, and deliberately — Q-53 ruled that for
+   sim-brained actors movement is a *recomputed process*, not a logged verb, because the
+   mover's deterministic code is the reconstruction rule. What remains open is the rest of
+   the sentence: `tools/benchmark_sim.gd` still fast-forwards an actor who **teleports**
+   (WI-12 makes it walk), and the player's and the neighbour's positions are still
+   presentation's until the movement engine lands (WI-4). Until then
+   `SaveGame.capture_canonical` temporarily excludes actor positions from the
+   replay-vs-save comparison — a v1 replay carries no ticks, so it cannot recompute
+   motion; WI-5's tick stamps and dual-record net are what restore the comparison.
 2. **A stored replay is `[Action]`, not `[(Observation, Action)]`.** Observations are
    *derived* by re-simulating the stream rather than recorded alongside it. That is far
    cheaper and it is why a replay is robust to presentation changes such as move speed —

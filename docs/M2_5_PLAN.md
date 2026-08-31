@@ -438,3 +438,178 @@ new persistence of its own. The crow's registration and the chicken's live posit
 the two things WI-3 should make true (deviations 2 and 4). `ARCHITECTURE.md`'s layer-2
 paragraph is still unwritten by deliberate agreement with WI-1 — brains, clock and
 registry are one paragraph, and WI-3 is the landing that completes it (checklist §8.D).
+
+### WI-3 — One brain interface + the three retrofits ✅ landed 2026-08-31
+
+`systems/sim/brains/` (pure, layer 2): `brain.gd` is the interface —
+`step(world, actor_id, tick, gs) -> Dictionary` returning an Action or `{}` — plus
+`on_clock()`, `flee()`, `on_result()` and `on_new_day()` hooks and the
+seconds→ticks / speed→ticks-per-tile conversions every brain states its timings in.
+`brains.gd` binds WI-2's four brain ids to implementations (`player_brain.gd`,
+`cold_open_brain.gd`, `chicken_brain.gd`, `crow_brain.gd`) and carries the two gateway
+hooks. Brains are **stateless singletons**: one instance per id, all per-actor state in
+the registry entry's `extra`, so a second hen is a `spawn_actor` call and nothing else.
+
+`SimWorld` gained the dispatcher: `advance_to_tick()` / `advance_ticks()` step every
+clock-driven actor's brain, put whatever it returns through `apply_action`, and reschedule
+it for the `extra["wake"]` tick it asked for. **One pending event per actor**, cancelled
+and reissued rather than stacked, so a day turn or a spawn can wake somebody without
+doubling them up; the handle is kept beside the registry (`_brain_events`), not inside the
+entry, because a scheduling handle is not a fact about an actor. Also sim-side now: the
+crow's whole lifecycle (`_send_due_crows` in the gateway reaches T-20's appointment;
+`CrowBrain.send` applies T-2's readiness gate, T-15's target preference and the entry
+draws, and registers the bird), `reachable_from` / `path_between` (ground-mode BFS, the
+one walker with a sim brain — WI-4 owns pathing per capability), and the day turn telling
+brains a morning exists rather than acting for them.
+
+`entities/chicken.gd` and `entities/crow.gd` are renderers: they read the registry, walk a
+sprite toward where the sim says the actor is, and make the noises. Both lost their FSMs
+— 90 lines of code down to 63 for the hen, 143 down to 95 for the crow — and what left is
+every decision either of them used to make.
+`world/farm.gd` gained `advance_sim()`, which turns the dispatcher's returned Actions into
+the same replay entries, trace lines and tile reactions a tap produces (recording stays in
+presentation — layer 2 has never known a `ReplayLog` exists). `main.gd` gained the clock
+pump and lost the crow spawner.
+
+Suites: unit **875 PASSED / 0 FAILED** (811 before, +64 from `test_brains`), integration
+**154 / 0** (141 before; scenarios F and L rewritten — see deviation 6 — and scenario Q
+added, which plays the join live: the sim sends a crow, `main.gd` draws it, the sprite
+tracks sim truth, shooing it turns the bird around *in the sim*, and the node is freed
+because the actor left rather than because a node decided), robot session
+**MATCH** (15–16 entries — the run's seed is a fresh `randi()`, so the hen's morning coin
+flip decides whether the last one is an egg, as it did before this WI),
+benchmark 734,895× (661,012× at WI-2), demo replay regenerates with a clean diff, visual
+regression **passes unchanged** (no re-baseline needed; WI-6's allowance is untouched).
+Verifier greps clean: no `Time.`/delta/`_process(` in code under `systems/sim/`, no Node,
+autoload, `Input` or `Pathfinding` there either, and **zero `SimRng` under `entities/`** —
+the last of those is now also a unit test, which reads the entity sources and fails on a
+hit, so the criterion is checked by the suite rather than only by a reviewer.
+
+**Deviations and decisions taken inside the WI:**
+
+1. **`capture_canonical` temporarily excludes actor motion, and the tick with it.** This is
+   the sanctioned seam and the biggest thing in the WI. WI-2 put positions into
+   `capture_canonical`, and WI-1 put the tick there; brains now move both during *live*
+   play, but a v1 replay carries no tick information at all, so `apply_to` cannot recompute
+   the motion and the comparison would fail for a reason that says nothing about fidelity.
+   So `world.tick` and each entry's `pos`/`facing`/`extra` come out of the comparison — and
+   nothing else does. **Species, existence and energy stay in**, and the unit suite asserts
+   both halves: a moved hen and a turned clock pass, an exhausted hen and a missing hen
+   fail. `capture()` is untouched, so a **save** still stores positions and the tick.
+   WI-5's tick stamps make recomputation possible and its dual-record net asserts it;
+   these four `erase` lines come out then, and the comment in `save_game.gd` says so.
+2. **The clock pump is `main.gd`'s**, accumulating frame delta into whole ticks and calling
+   `farm.advance_sim()` — the wall-clock→tick boundary, commented as the exact analogue of
+   the per-run `randi()` seed a few lines above it. It runs *before* both of `_process`'s
+   early returns, because entities have always kept living through the day-cycle fade and
+   those returns are about the player's input, not about whether the world exists. Menus
+   pause the tree, so a paused game pumps nothing and scenario L stays green for the same
+   reason it was green before. A long frame converts at most `MAX_TICKS_PER_FRAME` (4), the
+   same judgement `entities/*.gd`'s `MAX_STEP` made about a stalled frame, now made once
+   for everybody — and asserted in scenario L beside the renderer's own cap. Fast-forward
+   paths (benchmark, replay, the attract loop) never come through here; they advance the
+   clock explicitly or not at all.
+3. **Spook detection stays presentation-side**, as sanctioned. `entities/crow.gd` still
+   measures the distance to the player node and still dispatches `crow_scared` through the
+   gateway, so it lands in the log and a replay ends the visit at the same point in the
+   stream. What changed: the gateway now *acts* on the report (`Brains.flee`), so ending
+   the visit is a sim fact rather than a node's private state change — which is what makes
+   the replay half true. The **scarecrow** half of the same sense moved sim-side outright,
+   because a scarecrow is a placed object and the crow's tile is sim truth; sim-side
+   *player* detection arrives with live player position (WI-4/WI-6). The dead
+   "other entities with a spook_radius" scan (finding F-7b: it could only ever find the
+   player) was deleted rather than ported.
+4. **The crow's arrival draws are `SimRng.stateless`, not the shared stream.** This is a
+   behaviour-preserving change of mechanism that the move into the gateway *required*: a
+   live session's shared stream is advanced by the hen's wandering between the player's
+   actions and a replay's is not, so a crow whose target kind came off it would pick
+   differently on playback and `crows_seen`/`crop_crows_seen` — which are saved and
+   compared — would drift. Deriving from (seed, day, arrival) is exactly what
+   `roll_crow_schedule` already does and for exactly this reason. Consequence for the
+   seeded stream: the spawner's one-to-three `randi()` calls per arrival are gone and the
+   chicken's draws moved from presentation into her brain, so **the stream's consumers are
+   now worldgen and the hen's brain, and nothing else**. No seeded test shifted outcome —
+   the unit suite drives `choose_crow_target` with explicit indices and the schedule
+   through `stateless`, and the visual baseline (a two-frame render of a seeded world)
+   passed unchanged. One small timing difference falls out of the move and is an
+   improvement rather than a regression: the arrival is now checked **when a player work
+   action lands** rather than every frame, so a save restored mid-day past its arrival
+   point no longer produces a crow on the loading frame, and a player who does no farm
+   work for the rest of the day is never visited — which is precisely what T-20's ruling
+   says the action clock is for ("pressure follows productivity").
+5. **The crow is registered but never saved.** `persistent: false` in its species row now
+   means what it says: `SaveGame._capture_actors` skips non-persistent species, so a bird
+   mid-flight is not in a snapshot of a farm. Reloading has never restored a crow (it was a
+   node), its schedule entry for the day is already spent, and T-20 says one arrival is one
+   arrival. The alternative is worse in both directions — persisting it resurrects a bird
+   with a stale target, comparing it fails a replay for a bird the replay was never asked
+   to fly. This is also what keeps deviation 1's seam from having to cover existence.
+6. **Two integration scenarios were rewritten, and they are the only test changes that were
+   not additions.** Scenario F asserted `Crow.offscreen_start` and a crow node's
+   `exit_dir`; that arithmetic moved into `CrowBrain.entry_point` / `exit_direction`, in
+   tile space instead of pixels, and the scenario asserts the same properties there — the
+   2026-08-28 "crows only ever came from the left" report is still the thing being
+   guarded. Scenario L hand-loaded a path into the chicken's presentation FSM, which no
+   longer exists; it now sets her position in *sim truth* and watches the renderer walk
+   there. Every assertion in both is preserved, and scenario L gained one: that the clock
+   pump also caps a stalled frame.
+7. **The neighbour's brain is bound but not clocked, and her walk stays in pixels.** Her
+   decisions were already pure sim (`ColdOpen.next_action`) — finding F-1 named her as the
+   one brain in the right place — so the interface was generalised *from* her and
+   `ColdOpenBrain` is a wrapper over it, which is the proof it fits. Her *pacing* stays in
+   `main.gd` because the visibility gate (Q-51), the stride wait and the patience timeout
+   are facts about a camera and a wall clock, and rule 7 keeps those out of layer 2; moving
+   them in to satisfy a uniformity nothing needs would change how the opening feels, which
+   this WI is forbidden from doing. Her motion joins sim truth with the player's in WI-4.
+   WI-2's deviation 2 is therefore half-closed: the **chicken's** live position is sim truth
+   now; the neighbour's and the player's are still WI-4's.
+8. **The hen's egg is an Action, never a side effect of the day turn.** `advance_day` only
+   marks the morning (`extra.lay_due`) and wakes the brains; the coin flip happens the next
+   time she thinks, and the `lay_egg` is recorded like anything else. A roll taken inside
+   `advance_day` would be taken twice — once live, once when a replay re-applies the sleep
+   — which is the desync class this whole WI exists to end. The visible cost is that the
+   egg lands one pumped tick (0.1 s) after the day turns instead of inside it; it still
+   appears during the fade.
+9. **`step()` takes a fourth parameter, `gs`.** The plan's signature is
+   `step(world, actor, tick)`; the cold open needs the day counter and the gateway takes
+   `gs` anyway, so it is passed through and brains that do not need it ignore it. Kept
+   optional so the plan's three-argument form still calls.
+10. **A brain-scheduling handle is not registry state.** First written into the entry as
+    `_event`, which promptly failed WI-2's "the whole registry round-trips value-for-value"
+    assertion — correctly, because a generated world and a restored one issue their event
+    ids in different orders. Moved beside the registry into `SimWorld._brain_events`. The
+    WI-2 test is unmodified, and the failure was worth having: it is the registry-as-value
+    invariant doing its job.
+
+**A pre-existing hole this work surfaced but did not widen (for WI-5).** `SimRng.stateless`
+derives from `rng.seed`, and `ReplayLog.apply_to` does **not** reseed on the `base_save`
+path — a session continued from an autosave replays under whatever seed the verifying
+process happens to hold. That already affects `gs.crow_schedule`, which `start_new_day`
+rolls with `stateless` and which is compared in `capture_canonical`, so a *continued*
+session that sleeps into play-day 3 or later could already mismatch before this WI. WI-3
+narrows it (a crow now arrives in both runs instead of only the live one; only the target
+*kind* can differ) but cannot close it: the fix is to persist the world's gen seed and
+reseed from it in `apply_to`, and `replay_log.gd` is WI-5's file. Filed here rather than in
+`DESIGNER_QUEUE.md` because it is engineering, not taste.
+
+**For WI-4 (movement engine):** `SimWorld.reachable_from()` and `path_between()` are the
+ground-mode BFS the hen uses — deliberately the special case, not the general function, and
+the place to start when pathing becomes a capability-driven pure sim function.
+`ChickenBrain._walk` is the shape a tick-stepped ground mover has (one tile per
+`Brain.ticks_per_tile()`, re-checking walkability every step because the ground changes
+under an actor), and `CrowBrain._fly_toward` / `_place` is the `fly` row: a continuous
+float position in `extra` with the registry tile as its rounded shadow, which is what lets
+a renderer draw smooth motion from a 10 Hz truth. Both want generalising rather than
+copying. The player and the neighbour are the two actors still walking in pixels; when they
+join, deviation 1's four `erase` lines and WI-2's deviation 2 both come off the books —
+but only together with WI-5's tick stamps, since a replay still cannot recompute motion it
+has no clock for.
+
+**For WI-5 (replay v2):** the dual-record net has a natural seat —
+`SimWorld.advance_to_tick()` returns `[{action, result}]` in dispatch order, which is
+already the recomputation the net has to compare against the recording, and
+`world/farm.gd`'s `advance_sim` is the one place those become entries. `Brains` also gives
+the net its "recompute NPCs" hook without a second code path. The four `erase` lines in
+`capture_canonical` and the exclusion in `_capture_actors` are the two places WI-5 has to
+revisit, and both name WI-5 in their comments. The pre-existing `stateless`/`base_save`
+seed hole above is WI-5's to close.

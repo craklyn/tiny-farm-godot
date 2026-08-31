@@ -67,6 +67,7 @@ func _init() -> void:
 	test_player_gs_injection()
 	test_pre_m15_saves_load()
 	test_sim_clock()
+	test_brains()
 
 	print("")
 	print(String("=").repeat(60))
@@ -3476,4 +3477,438 @@ func test_sim_clock() -> void:
 
 	world.generate()
 	_assert(world.clock.tick == 0, "regenerating a world restarts its timeline (so a replay counts from the same zero)")
-	_assert(SimClock.RATE == 10, "the proposed tick rate is 10 Hz [Playtest], and nothing consumes it yet")
+	_assert(SimClock.RATE == 10, "the proposed tick rate is 10 Hz [Playtest]")
+
+
+# --- M2.5 WI-3 -----------------------------------------------------------------
+
+# A farm being played, the way `world/farm.gd` plays one: actions go through the
+# gateway and are recorded, and sim time passes between them, recording whatever
+# the brains did with it. Everything below that needs a "live session" uses this,
+# so what the tests exercise is the same shape the running game uses.
+class LiveSession:
+	var world := SimWorld.new()
+	var gs
+	var log := ReplayLog.new()
+
+	func _init(seed_value: int) -> void:
+		gs = load("res://systems/game_state.gd").new()
+		gs.reset()
+		SimRng.reseed(seed_value)
+		world.generate()
+		log.start(seed_value)
+
+	func act(action: Dictionary) -> Dictionary:
+		var r := world.apply_action(action, gs)
+		if r.get("ok", false):
+			log.record(action, r)
+		return r
+
+	func tick(n: int) -> Array[Dictionary]:
+		var taken := world.advance_ticks(n, gs)
+		for t in taken:
+			if t["result"].get("ok", false):
+				log.record(t["action"], t["result"])
+		return taken
+
+	# Re-base the log on a snapshot of right now, exactly as `main.gd` does when a
+	# session continues from an autosave (`farm.start_replay_log_from_save`). Lets
+	# a fixture arrange a farm however it likes — including in ways no sequence of
+	# Actions would — and still hold a log that reproduces everything after it.
+	func rebase() -> void:
+		log = ReplayLog.new()
+		log.start_from_save(JSON.parse_string(JSON.stringify(SaveGame.capture(world, gs))))
+
+	func done() -> void:
+		gs.free()
+
+
+func test_brains() -> void:
+	print("\n--- One brain interface, and the three retrofits (M2.5 WI-3) Tests ---")
+
+	# --- the interface (plan §4: the neighbour's pattern made law) -------------
+	for id in SpeciesDefs.ids():
+		_assert_quiet(Brains.has(SpeciesDefs.brain_of(id)),
+			"%s's brain id resolves to a brain" % id)
+		_assert_quiet(Brains.of_species(id) is Brain, "%s's brain is a Brain" % id)
+	_flush_quiet("every species row's brain id binds to a real implementation (WI-2's handoff)")
+	_assert(Brains.of_id("cold_open") is ColdOpenBrain
+			and Brains.of_id("chicken_wander") is ChickenBrain
+			and Brains.of_id("crow_visit") is CrowBrain,
+		"and the three retrofitted brains are the three this work item wrote")
+	_assert(Brains.of_id("no_such_brain") is Brain,
+		"an unknown brain id is a brain that decides nothing, not a crash")
+
+	# Two of the four are not on the tick clock, and both for pacing reasons the
+	# brain files spell out: the player is a person, and the cold open is a scene
+	# presentation paces (rule 7 keeps cameras and viewports out of layer 2).
+	_assert(not Brains.of_id("player_input").on_clock(), "the player is not stepped by the sim")
+	_assert(not Brains.of_id("cold_open").on_clock(), "nor is the cold open — main.gd paces the scene")
+	_assert(Brains.of_id("chicken_wander").on_clock() and Brains.of_id("crow_visit").on_clock(),
+		"the hen and the crow ride the clock")
+
+	# The neighbour's brain IS `ColdOpen.next_action`, which is the whole claim of
+	# finding F-1: the interface was generalised from her, so it has to fit her.
+	var s := LiveSession.new(2026)
+	_assert(Brains.of_id("cold_open").step(s.world, SimWorld.ACTOR_NEIGHBOUR, 0, s.gs)
+			== ColdOpen.next_action(s.world, s.gs),
+		"the cold-open brain returns exactly what her pure decider returns")
+
+	# --- the hen: F-2 and F-4 die ---------------------------------------------
+	# Her wander used to be a presentation FSM drawing from the shared SimRng
+	# stream on frame time. It is a tick-stepped sim process now: she moves one
+	# tile at a time, only onto walkable ground, and only when the clock says so.
+	var hen_start: Vector2i = s.world.actor_pos(SimWorld.ACTOR_CHICKEN)
+	_assert(s.world.clock.tick == 0, "a fresh world has not begun")
+	s.tick(1)
+	_assert(s.world.actor_pos(SimWorld.ACTOR_CHICKEN) == hen_start,
+		"and one tick in she has not teleported anywhere")
+	var visited := { hen_start: true }
+	var last := hen_start
+	var wandered := false
+	for _i in 600:
+		s.tick(1)
+		var at: Vector2i = s.world.actor_pos(SimWorld.ACTOR_CHICKEN)
+		if at != last:
+			wandered = true
+			_assert_quiet(absi(at.x - last.x) + absi(at.y - last.y) == 1,
+				"she stepped to an adjacent tile, not across the farm")
+			_assert_quiet(s.world.is_walkable(at.x, at.y), "onto ground she could stand on")
+			visited[at] = true
+			last = at
+	_flush_quiet("every step the hen took over a minute of sim time was one walkable tile")
+	_assert(wandered, "she wanders on her own, with no node in sight (%d tiles)" % visited.size())
+	_assert(s.world.actor(SimWorld.ACTOR_CHICKEN)["extra"].has("wake"),
+		"and her scratch lives in the registry entry's `extra`, where WI-2 put it")
+
+	# --- the egg is an Action, not a side effect of the day turn ---------------
+	# The distinction is load-bearing. A coin flip taken inside advance_day() would
+	# be taken twice — once live, once when a replay re-applies the sleep — which
+	# is the exact desync this work item exists to end. So the day turn only marks
+	# the morning; the brain acts on it and the Action is recorded.
+	var eggs_before := _count_objects(s.world, "egg")
+	s.world.apply_action({ "verb": "sleep", "actor": "world", "weather": "sunny" }, s.gs)
+	_assert(_count_objects(s.world, "egg") == eggs_before,
+		"a day turning lays no egg by itself")
+	_assert(bool(s.world.actor(SimWorld.ACTOR_CHICKEN)["extra"].get("lay_due", false)),
+		"it only tells the hen there is a morning")
+	var laid := 0
+	for _i in 40:
+		for t in s.tick(1):
+			if String(t["action"].get("verb", "")) == "lay_egg":
+				laid += 1
+	_assert(laid <= 1, "and she considers it exactly once (%d)" % laid)
+	_assert(not bool(s.world.actor(SimWorld.ACTOR_CHICKEN)["extra"].get("lay_due", true)),
+		"the morning is spent whichever way the coin came down")
+	s.done()
+
+	# Over many days the coin is a coin — neither a guarantee nor a drought.
+	var days_with_egg := 0
+	for seed_value in range(1, 41):
+		var d := LiveSession.new(seed_value)
+		d.world.apply_action({ "verb": "sleep", "actor": "world", "weather": "sunny" }, d.gs)
+		for t in d.tick(30):
+			if String(t["action"].get("verb", "")) == "lay_egg":
+				days_with_egg += 1
+		d.done()
+	_assert(days_with_egg > 5 and days_with_egg < 35,
+		"the morning egg is still a coin flip across 40 seeds (%d)" % days_with_egg)
+
+	# --- the crow: its whole visit is sim truth now ----------------------------
+	var c := _crow_ready_session(4242)
+	_assert(not c.world.has_actor(SimWorld.ACTOR_CROW), "no crow before its appointment")
+	var arrival: int = int(c.gs.crow_schedule[0])
+	_work_until_actions(c, arrival)
+	_assert(c.world.has_actor(SimWorld.ACTOR_CROW),
+		"a crow arrives when the day's action clock reaches its scheduled arrival (T-20)")
+	_assert(c.gs.crow_schedule.is_empty(), "and the arrival is spent")
+	_assert(c.world.species_of(SimWorld.ACTOR_CROW) == SpeciesDefs.CROW,
+		"it is a registered actor of the species the table describes")
+	var visit: Dictionary = c.world.actor(SimWorld.ACTOR_CROW)["extra"].duplicate(true)
+	_assert(String(visit.get("kind", "")) == "acorn",
+		"and it went for an acorn, because any acorn beats any crop (T-15/Q-39)")
+	var entry: Vector2i = c.world.actor_pos(SimWorld.ACTOR_CROW)
+	_assert(entry.x < 0 or entry.y < 0 or entry.x >= SimWorld.MAP_WIDTH or entry.y >= SimWorld.MAP_HEIGHT,
+		"it enters from off the map, at %s" % entry)
+
+	# Finding F-4, dead: the eat lands at a *tick*, not when a sprite arrived.
+	var acorns_before := c.world.count_acorns()
+	var ate_at := -1
+	for _i in 400:
+		for t in c.tick(1):
+			if String(t["action"].get("verb", "")).begins_with("eat_"):
+				ate_at = c.world.clock.tick
+	_assert(ate_at > 0, "the crow eats at a deterministic tick (%d)" % ate_at)
+	_assert(c.world.count_acorns() == acorns_before - 1, "and takes exactly one acorn")
+	_assert(not c.world.has_actor(SimWorld.ACTOR_CROW), "then leaves the map and the registry")
+	var crow_planted := c.world.count_planted()
+	c.tick(600)
+	_assert(c.world.count_planted() == crow_planted,
+		"and nothing else eats a crop for the rest of the day — one arrival, one visit")
+
+	# The same visit, twice, from the same seed: identical timing and outcome.
+	# The draws are `SimRng.stateless`, so this holds no matter what else has been
+	# consuming the shared stream (which in a live session is the hen, constantly).
+	var twin := _crow_ready_session(4242)
+	_work_until_actions(twin, arrival)
+	_assert(str(twin.world.actor(SimWorld.ACTOR_CROW)["extra"]) == str(visit),
+		"same seed, same day, same arrival: the same bird on the same errand")
+	twin.done()
+
+	# One arrival is consumed whether the bird is fed **or shooed** (T-20). Shooing
+	# it is a recorded Action through the one gateway, and it ends the visit.
+	var shooed := _crow_ready_session(4242)
+	_work_until_actions(shooed, arrival)
+	var acorns_at_arrival := shooed.world.count_acorns()
+	shooed.tick(20)
+	_assert(shooed.world.has_actor(SimWorld.ACTOR_CROW), "the bird is still on its way in")
+	shooed.act({ "verb": "crow_scared", "actor": SimWorld.ACTOR_CROW })
+	_assert(String(shooed.world.actor(SimWorld.ACTOR_CROW)["extra"].get("state", "")) == "leaving",
+		"a scare report turns it around inside the gateway")
+	_assert(shooed.gs.crows_scared == 1, "and counts toward the Q-12 capability proof")
+	shooed.tick(600)
+	_assert(not shooed.world.has_actor(SimWorld.ACTOR_CROW), "it leaves")
+	_assert(shooed.world.count_acorns() == acorns_at_arrival, "having eaten nothing")
+	_assert(shooed.gs.crow_schedule.is_empty(),
+		"and the day owes no replacement — shooing one is a win for the day (T-20)")
+	shooed.done()
+
+	# A scarecrow is sim truth, so the bird notices it without presentation's help.
+	var scared := _crow_ready_session(4242)
+	_work_until_actions(scared, arrival)
+	var target := Vector2i(int(scared.world.actor(SimWorld.ACTOR_CROW)["extra"]["tgt_x"]),
+		int(scared.world.actor(SimWorld.ACTOR_CROW)["extra"]["tgt_y"]))
+	scared.world.set_object(target.x, target.y + 1, "scarecrow")
+	var acorns_guarded := scared.world.count_acorns()
+	scared.tick(600)
+	_assert(not scared.world.has_actor(SimWorld.ACTOR_CROW), "a guarded crop sends the crow home")
+	_assert(scared.world.count_acorns() == acorns_guarded, "with nothing eaten")
+	scared.done()
+
+	# T-2's mercy, retargeted by T-15: the first crow to go for a **crop** eats
+	# nothing at all. It still flies in, still perches, and leaves empty-beaked.
+	var mercy := _crow_ready_session(4242)
+	for ty in SimWorld.MAP_HEIGHT:
+		for tx in SimWorld.MAP_WIDTH:
+			if mercy.world.objects[ty][tx] == "acorn":
+				mercy.world.set_object(tx, ty, "")
+	_work_until_actions(mercy, arrival)
+	_assert(mercy.world.has_actor(SimWorld.ACTOR_CROW), "with the acorns gone a crow still comes")
+	_assert(String(mercy.world.actor(SimWorld.ACTOR_CROW)["extra"].get("kind", "")) == "crop",
+		"and now it wants a crop")
+	_assert(bool(mercy.world.actor(SimWorld.ACTOR_CROW)["extra"].get("harmless", false)),
+		"the first crop-crow is the harmless one")
+	var crops_before := mercy.world.count_planted()
+	mercy.tick(600)
+	_assert(not mercy.world.has_actor(SimWorld.ACTOR_CROW), "it perches, then goes")
+	_assert(mercy.world.count_planted() == crops_before,
+		"and the first crop-crow of a save costs the player nothing (T-2)")
+	_assert(mercy.gs.crop_crows_seen == 1, "but it does spend the mercy")
+	mercy.done()
+
+	# The daily-loss bound the acorn tests state, now over the live path: a day
+	# cannot cost more crops than it scheduled arrivals.
+	var budget := _crow_ready_session(77)
+	for ty2 in SimWorld.MAP_HEIGHT:
+		for tx2 in SimWorld.MAP_WIDTH:
+			if budget.world.objects[ty2][tx2] == "acorn":
+				budget.world.set_object(tx2, ty2, "")
+	budget.gs.crop_crows_seen = 1  # past the mercy, so every bird is a real one
+	var planted_at_dawn := budget.world.count_planted()
+	_work_until_actions(budget, 40)
+	budget.tick(2000)
+	_assert(planted_at_dawn - budget.world.count_planted() <= SimWorld.CROWS_PER_DAY,
+		"a whole day of work loses at most CROWS_PER_DAY crops to birds")
+	budget.done()
+
+	# --- rule 8: cost is per decision, never per tick --------------------------
+	# A day of sim time with nobody but a dozing hen in it must be cheap, because
+	# fast-forward is the thing this whole clock exists to keep honest.
+	var idle := LiveSession.new(31337)
+	var t0 := Time.get_ticks_msec()
+	idle.world.advance_ticks(60 * SimClock.RATE, idle.gs)  # a minute of sim time
+	var elapsed := Time.get_ticks_msec() - t0
+	_assert(elapsed < 250, "a minute of sim time with one wandering actor costs %d ms" % elapsed)
+	_assert(idle.world.clock.pending() == 1,
+		"and exactly one event is pending — one think per actor on the clock, never a queue of them")
+	idle.done()
+
+	# --- determinism: the property everything else rests on --------------------
+	var trace_a := _tick_trace(909)
+	_assert(trace_a == _tick_trace(909), "same seed + same inputs + same ticks = the same session")
+	_assert(trace_a != _tick_trace(910), "and a different seed is a different one")
+
+	# --- a live tick-stepped session still replays -----------------------------
+	# The seam this work item deliberately opens is in `capture_canonical`, not
+	# here: the Action stream is compared in full, and it is the stream that
+	# crosses the determinism boundary in a v1 log. Brains do not run during
+	# playback (a v1 entry has no tick to run them against), so what they did live
+	# has to be in the log — which is exactly what `world/farm.gd` records.
+	#
+	# From the seed first: the cold open recorded action by action, then days
+	# turning with the hen thinking between them.
+	var seeded := LiveSession.new(1717)
+	for _i in ColdOpen.MAX_STEPS:
+		var next := ColdOpen.next_action(seeded.world, seeded.gs)
+		if next.is_empty():
+			break
+		seeded.act(next)
+	for _i in 4:
+		seeded.act({ "verb": "sleep", "actor": "world" })
+		seeded.tick(300)
+	var replayed := SimWorld.new()
+	var gs_replayed = load("res://systems/game_state.gd").new()
+	seeded.log.apply_to(replayed, gs_replayed)
+	_assert(SaveGame.capture_canonical(seeded.world, seeded.gs)
+			== SaveGame.capture_canonical(replayed, gs_replayed),
+		"a tick-stepped session replays from its seed to the same world (%d entries)"
+			% seeded.log.entries.size())
+	_assert(_count_objects(seeded.world, "egg") > 0,
+		"and there were eggs in it — the hen's Actions really are in the log")
+	gs_replayed.free()
+	seeded.done()
+
+	# And from a save, which is the other way a session begins and the pairing
+	# `tools/verify_replay.gd` checks. This is the one that carries a crow.
+	var played := _crow_ready_session(1717)
+	played.rebase()
+	_work_until_actions(played, 30)
+	played.tick(900)
+	_work_until_actions(played, 40)
+	played.tick(900)
+	var snapshot = JSON.parse_string(JSON.stringify(SaveGame.capture(played.world, played.gs)))
+	_assert(played.gs.crows_seen > 0, "a crow visited during the recorded session")
+	_assert(SaveGame.replay_matches(played.log, snapshot),
+		"and the session reproduces its own autosave, which is what the robot asserts")
+
+	# --- the seam, stated as a test -------------------------------------------
+	# `capture_canonical` drops the tick and each actor's pos/facing/extra while a
+	# v1 replay has no way to recompute them (WI-5 restores them). Existence,
+	# species and energy stay in, and this asserts *both halves* — because a seam
+	# that quietly swallowed a missing actor would be a hole, not a seam.
+	var seam := SimWorld.new()
+	var gs_seam = load("res://systems/game_state.gd").new()
+	SimRng.reseed(5150)
+	seam.generate()
+	var seam_before := SaveGame.capture_canonical(seam, gs_seam)
+	seam.set_actor_pos(SimWorld.ACTOR_CHICKEN, Vector2i(9, 9), "left")
+	seam.actor(SimWorld.ACTOR_CHICKEN)["extra"]["wake"] = 12345
+	seam.clock.advance_to(999)
+	_assert(SaveGame.capture_canonical(seam, gs_seam) == seam_before,
+		"a moved actor and a turned clock do not fail the replay comparison (the WI-3 seam)")
+	_assert(JSON.stringify(SaveGame.capture(seam, gs_seam)).contains("\"x\":9"),
+		"but the *save* still stores where she is — a save is a snapshot")
+	seam.set_actor_energy(SimWorld.ACTOR_CHICKEN, 3)
+	_assert(SaveGame.capture_canonical(seam, gs_seam) != seam_before,
+		"energy is still compared: the seam is about motion, not about state in general")
+	seam.set_actor_energy(SimWorld.ACTOR_CHICKEN, SimWorld.ACTOR_MAX_ENERGY)
+	seam.despawn_actor(SimWorld.ACTOR_CHICKEN)
+	_assert(SaveGame.capture_canonical(seam, gs_seam) != seam_before,
+		"and so is existence: an actor who should be on the farm and is not still fails")
+
+	# A visit is not saved. The crow's row says `persistent: false`, and that is
+	# what keeps a bird mid-flight out of a snapshot of a farm.
+	SimRng.reseed(5150)
+	seam.generate()
+	seam.spawn_actor(SimWorld.ACTOR_CROW, SpeciesDefs.CROW, Vector2i(4, 4))
+	_assert(seam.has_actor(SimWorld.ACTOR_CROW), "a crow can be in the registry")
+	_assert(not SaveGame.capture(seam, gs_seam)["world"]["actors"].has(SimWorld.ACTOR_CROW),
+		"but never in a save — a visit is not a resident")
+	_assert(SaveGame.capture_canonical(seam, gs_seam) == seam_before,
+		"so a bird in flight cannot fail a replay comparison either")
+	gs_seam.free()
+	played.done()
+
+	# --- a reloaded farm is alive ---------------------------------------------
+	# A restored registry never went through spawn_actor, so nothing would be on
+	# the clock without SaveGame's explicit call. A hen who stands perfectly still
+	# after a reload is the failure this catches.
+	var saved := LiveSession.new(6161)
+	var save_dict = JSON.parse_string(JSON.stringify(SaveGame.capture(saved.world, saved.gs)))
+	var loaded := SimWorld.new()
+	var gs_loaded = load("res://systems/game_state.gd").new()
+	_assert(SaveGame.restore(save_dict, loaded, gs_loaded), "the save restores")
+	_assert(loaded.clock.pending() > 0, "and its actors are on the clock again")
+	var loaded_start: Vector2i = loaded.actor_pos(SimWorld.ACTOR_CHICKEN)
+	loaded.advance_ticks(600, gs_loaded)
+	_assert(loaded.actor_pos(SimWorld.ACTOR_CHICKEN) != loaded_start,
+		"so the hen carries on pottering after a reload")
+	gs_loaded.free()
+	saved.done()
+
+	# --- the carve-out, as a grep the suite runs itself ------------------------
+	# Checklist §8.B: zero `SimRng` references under `entities/`. Presentation may
+	# not hold the sim's dice — that is finding F-2 — and cosmetics that want a
+	# die roll have `CosmeticRng`, whose answers are allowed to differ between two
+	# runs of the same session.
+	var sources := DirAccess.open("res://entities")
+	_assert(sources != null, "there is an entities/ directory to check")
+	if sources != null:
+		var checked := 0
+		for name in sources.get_files():
+			if not name.ends_with(".gd"):
+				continue
+			checked += 1
+			var src := FileAccess.get_file_as_string("res://entities/%s" % name)
+			_assert_quiet(not src.contains("SimRng"), "entities/%s draws from SimRng" % name)
+		_assert_quiet(checked >= 3, "there were entity scripts to check (%d)" % checked)
+		_flush_quiet("no renderer under entities/ touches SimRng (the WI-3 carve-out, §8.B)")
+	_assert(CosmeticRng.randf() >= 0.0 and CosmeticRng.randf() <= 1.0,
+		"and the cosmetic source they use instead answers without touching the sim stream")
+
+
+func _count_objects(world: SimWorld, kind: String) -> int:
+	var n := 0
+	for ty in SimWorld.MAP_HEIGHT:
+		for tx in SimWorld.MAP_WIDTH:
+			if world.objects[ty][tx] == kind:
+				n += 1
+	return n
+
+
+# A farm far enough along that T-2's readiness gate is open: the cold open done,
+# a harvest behind her, plenty planted, and a crow scheduled for today.
+func _crow_ready_session(seed_value: int) -> LiveSession:
+	var s := LiveSession.new(seed_value)
+	ColdOpen.run(s.world, s.world, s.gs)
+	s.gs.seeds["wheat"] = 500
+	s.gs.watering_can_charges = 500
+	s.gs.energy = 500
+	s.gs.harvest_counts["wheat"] = 3
+	for ty in range(3, 6):
+		for tx in range(3, 10):
+			s.world.set_tile_state(tx, ty, "seeded", "wheat")
+	# Three sleeps past the handover, so this is a play-day a crow may visit.
+	for _i in 3:
+		s.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
+	s.gs.energy = 500
+	s.gs.watering_can_charges = 500
+	return s
+
+
+# Farm work until the day's action clock reaches `n`. Tilling a tile and clearing
+# it again is the cheapest repeatable player action there is.
+func _work_until_actions(s: LiveSession, n: int) -> void:
+	var t := Vector2i(10, 12)
+	var guard := 0
+	while s.gs.actions_today < n and guard < 200:
+		guard += 1
+		s.world.set_tile_state(t.x, t.y, "cleared")
+		s.act({ "verb": "till", "target": t, "actor": "player" })
+
+
+# One session, boiled down to a string: what the brains did, when, and where
+# everybody ended up. Two runs of the same seed must produce the same string.
+func _tick_trace(seed_value: int) -> String:
+	var s := _crow_ready_session(seed_value)
+	var out: PackedStringArray = []
+	for i in 30:
+		_work_until_actions(s, s.gs.actions_today + 2)
+		for t in s.tick(40):
+			out.append("%d:%s@%s" % [s.world.clock.tick, t["action"].get("verb", ""),
+				t["action"].get("target", Vector2i(-1, -1))])
+	for id in ["player", "chicken", "crow"]:
+		out.append("%s=%s" % [id, s.world.actor_pos(id)])
+	out.append("planted=%d acorns=%d" % [s.world.count_planted(), s.world.count_acorns()])
+	s.done()
+	return "|".join(out)

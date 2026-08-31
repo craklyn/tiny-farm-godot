@@ -1,196 +1,160 @@
+# crow.gd — the crow, drawn (Q-10; M2.5 WI-3)
+#
+# **Presentation only.** The visit itself — when a crow comes (T-20's action
+# clock), whether it may (T-2's readiness gate), what it goes for (T-15's
+# acorn preference), how it flies, when it eats and when it leaves — is
+# `systems/sim/brains/crow_brain.gd`, on the tick clock, in the sim. This node
+# draws a bird at the position the registry holds and makes the noises.
+#
+# That is finding F-4 dead: the eat used to land *when this sprite arrived*, at
+# whatever frame rate the device managed, racing the player's taps. It lands at a
+# tick now.
+#
+# **One thing is still measured here**, and deliberately: how close the player is
+# standing. Her position is not sim truth until the movement engine lands
+# (WI-4/WI-6), so the proximity check stays where it can see her — and the answer
+# goes back through the one gateway as the `crow_scared` verb, exactly as it
+# always did. That means it is a recorded Action, so a replay still ends the visit
+# where the session did. Scarecrows, which *are* sim truth, are noticed by the
+# brain instead.
 extends Node2D
 
 const TILE_SIZE := 16
 
 const SPRITES := preload("res://assets/sprites/generated/animals.png")
 
-var target_tx: int = 0
-var target_ty: int = 0
+# Inbound and outbound flight speeds in px/s. The sim moves the bird in tiles per
+# tick at the same rates (`SpeciesDefs` and `CrowBrain.EXIT_PX_PER_SECOND`); these
+# are what walks the sprite between the sim's ten-per-second positions, so the two
+# agree and the sprite trails by less than a tile.
+const FLY_IN_SPEED := 60.0
+const FLY_OUT_SPEED := 80.0
+const MAX_STEP := TILE_SIZE * 1.5  # a stalled frame must not fling it across the farm
 
-var state: String = "flying_in" # flying_in, eating, flying_away
-var timer: float = 0.0
+var actor_id: String = SimWorld.ACTOR_CROW
+var farm: Node2D = null
+var player: Node2D = null
 
 var flap_timer: float = 0.0
 var flap_state: int = 0
 
-var farm: Node2D = null
-var player: Node2D = null
-var entities_manager: Node = null
-
-# T-2: the first crow of a save cannot eat. It still flies in, still perches,
-# still squawks and puffs feathers when scared — it simply leaves empty-beaked.
-# Q-10 rules that pests are comedy rather than threat and that the *first
-# introduction* of each pest is the case that matters most; a first encounter
-# that costs the player a crop teaches threat no matter how gently it is drawn.
-var harmless: bool = false
-
-# T-15 / Q-39: "acorn" or "crop", decided by SimWorld.choose_crow_target(). A
-# crow on an acorn is not nerfed and not scripted — it simply prefers acorns,
-# which is a rule a four-year-old can watch happen instead of a boolean she can
-# never perceive.
-var target_kind: String = "crop"
-
-# A harmless crow dawdles, so there is an unmissable window to walk over and
-# scare it off. The telegraph is the point: she should get to win.
-const EAT_SECONDS := 5.0
-const HARMLESS_PERCH_SECONDS := 12.0
-
-const MAP_W_PX := SimWorld.MAP_WIDTH * TILE_SIZE
-const MAP_H_PX := SimWorld.MAP_HEIGHT * TILE_SIZE
-const OFFSCREEN := 32.0
-const DESPAWN_MARGIN := 100.0
-
-# The way out, set from the way in. Crows used to enter at a fixed point off the
-# top-left corner and leave along the same diagonal, which made standing near the
-# left edge block every crow in the game — an accidental mechanic nobody designed
-# and no player could reason about.
-var exit_dir: Vector2 = Vector2(-1, -1).normalized()
+var _last_state := ""
+var _scared_reported := false
 
 
-# Where a crow enters, given which edge it picked and how far along that edge.
-# Pure and static so the spread can be tested without a scene tree; `along` is
-# taken modulo the relevant axis, so any integer is valid.
-static func offscreen_start(side: int, along: int) -> Vector2:
-	match side % 4:
-		0:  # left
-			return Vector2(-OFFSCREEN, float(posmod(along, MAP_H_PX)))
-		1:  # right
-			return Vector2(MAP_W_PX + OFFSCREEN, float(posmod(along, MAP_H_PX)))
-		2:  # top
-			return Vector2(float(posmod(along, MAP_W_PX)), -OFFSCREEN)
-	# bottom
-	return Vector2(float(posmod(along, MAP_W_PX)), MAP_H_PX + OFFSCREEN)
-
-func init_crow(start_x: float, start_y: float, tx: int, ty: int, f: Node2D, p: Node2D, em: Node) -> void:
-	position = Vector2(start_x, start_y)
-	target_tx = tx
-	target_ty = ty
+func init_crow(f: Node2D, p: Node2D, id: String = SimWorld.ACTOR_CROW) -> void:
 	farm = f
 	player = p
-	entities_manager = em
-	# Leave the way she came, so the exit is as varied as the entrance.
-	var centre := Vector2(MAP_W_PX / 2.0, MAP_H_PX / 2.0)
-	var away := position - centre
-	exit_dir = away.normalized() if away.length() > 0.001 else Vector2(-1, -1).normalized()
+	actor_id = id
+	position = sim_position()
+	_last_state = _state()
+	# Cosmetic, and the only die roll in this file: a flock should not flap in
+	# unison. `CosmeticRng`, never the sim's seeded stream — see
+	# systems/cosmetic_rng.gd for which is which and why.
+	flap_timer = CosmeticRng.randf_range(0.0, 0.1)
+
+
+func _extra() -> Dictionary:
+	return farm.sim.actor(actor_id).get("extra", {})
+
+
+func _state() -> String:
+	return String(_extra().get("state", ""))
+
+
+# Where the sim says the bird is, in pixels. The brain keeps a continuous
+# tile-space position in `extra` (the registry tile is the rounded version of it),
+# which is what makes a smooth flight possible from a ten-hertz truth.
+func sim_position() -> Vector2:
+	var e := _extra()
+	if e.has("fx"):
+		return Vector2(float(e["fx"]) * TILE_SIZE, float(e["fy"]) * TILE_SIZE)
+	var t: Vector2i = farm.sim.actor_pos(actor_id)
+	return Vector2(t.x * TILE_SIZE + TILE_SIZE / 2.0, t.y * TILE_SIZE + TILE_SIZE / 2.0)
 
 
 func _process(delta: float) -> void:
+	if farm == null:
+		return
+	if not farm.sim.has_actor(actor_id):
+		queue_free()
+		return
+
+	var state := _state()
+
 	# Animation
 	flap_timer += delta
 	if flap_timer > 0.1:
 		flap_timer = 0.0
 		flap_state = (flap_state + 1) % 2
 		queue_redraw()
-	
-	if state == "flying_in":
-		var cause_in := _spook_cause()
-		if cause_in != "":
-			_on_scared(cause_in)
-			state = "flying_away"
-			return
-		
-		var target_x: float = target_tx * TILE_SIZE + TILE_SIZE / 2.0
-		var target_y: float = target_ty * TILE_SIZE + TILE_SIZE / 2.0
-		
-		var speed: float = 60.0 * delta
-		var dx: float = target_x - position.x
-		var dy: float = target_y - position.y
-		var dist: float = sqrt(dx*dx + dy*dy)
-		
-		if dist <= speed:
-			position.x = target_x
-			position.y = target_y
-			state = "eating"
-			timer = HARMLESS_PERCH_SECONDS if harmless else EAT_SECONDS
-		else:
-			position.x += (dx/dist) * speed
-			position.y += (dy/dist) * speed
-			
-	elif state == "eating":
-		var cause_eat := _spook_cause()
-		if cause_eat != "":
-			_on_scared(cause_eat)
-			state = "flying_away"
-			return
-			
-		timer -= delta
-		if timer <= 0:
-			if harmless:
-				# Leaves without touching the crop, and without consuming the
-				# eat_crop verb — the sim never hears about this visit at all.
-				if get_tree() and get_tree().root.has_node("AudioManager"):
-					get_tree().root.get_node("AudioManager").play_sfx("squawk")
-			else:
-				var result: Dictionary = farm.apply_action({
-					"verb": "eat_acorn" if target_kind == "acorn" else "eat_crop",
-					"target": Vector2i(target_tx, target_ty),
-					"actor": "crow",
-				})
-				if result.get("ok", false):
-					if get_tree() and get_tree().root.has_node("AudioManager"):
-						get_tree().root.get_node("AudioManager").play_sfx("till")
-			state = "flying_away"
-			
-	elif state == "flying_away":
-		var speed: float = 80.0 * delta
-		position += exit_dir * speed
 
-		if position.x < -DESPAWN_MARGIN or position.y < -DESPAWN_MARGIN \
-				or position.x > MAP_W_PX + DESPAWN_MARGIN \
-				or position.y > MAP_H_PX + DESPAWN_MARGIN:
-			queue_free()
+	# The player half of the crow's `senses` row, the half that cannot be sim truth
+	# yet. Reported through the gateway, which is what ends the visit.
+	if state == "flying_in" or state == "eating":
+		if _player_is_near():
+			_report_scare()
+			state = _state()  # the gateway ends the visit synchronously
+
+	if state != _last_state:
+		if state == "leaving":
+			_announce_departure(String(_extra().get("leaving_because", "")))
+		_last_state = state
+
+	var speed: float = FLY_OUT_SPEED if state == "leaving" else FLY_IN_SPEED
+	position = position.move_toward(sim_position(), minf(speed * delta, MAX_STEP))
 
 
-# Returns what spooked the crow: "player", "scarecrow", "entity", or "" if calm.
-func _spook_cause() -> String:
-	if not player or not farm:
-		return ""
-
-	# Check player distance
-	var dx: float = player.position.x - position.x
-	var dy: float = player.position.y - position.y
-	var dist: float = sqrt(dx*dx + dy*dy)
+# 3 tiles by default, read off the player node in pixels, exactly as before. The
+# radius is also written down as a species sense (`SpeciesDefs.senses_of`), where
+# WI-8c's rabbit becomes its second consumer and finding F-7b finally dies.
+func _player_is_near() -> bool:
+	if player == null:
+		return false
 	var sr = player.get("spook_radius")
 	if sr == null:
-		sr = 3.0 * TILE_SIZE
-	if dist < sr:
-		return "player"
-
-	# Check scarecrow
-	var my_tx = int(position.x / TILE_SIZE)
-	var my_ty = int(position.y / TILE_SIZE)
-	if farm.has_method("is_protected_by_scarecrow") and farm.is_protected_by_scarecrow(my_tx, my_ty):
-		return "scarecrow"
-
-	# Check other entities
-	if entities_manager:
-		for ent in entities_manager.get_children():
-			if ent != self and ent.get("spook_radius") != null:
-				var edx: float = ent.position.x - position.x
-				var edy: float = ent.position.y - position.y
-				var edist: float = sqrt(edx*edx + edy*edy)
-				if edist < ent.spook_radius:
-					return "entity"
-
-	return ""
+		sr = SpeciesDefs.senses_of(SpeciesDefs.PLAYER).get("spook_radius", 3.0) * TILE_SIZE
+	return position.distance_to(player.position) < float(sr)
 
 
-var _scared_reported := false
-
-# Q-10 juice + Q-12 proof: squawk and feathers on any scare; only a
-# player-caused scare counts toward the capability proof (via the sim verb).
-func _on_scared(cause: String) -> void:
+# Q-10 juice + Q-12 proof: squawk and feathers on any scare; only a player-caused
+# scare counts toward the capability proof, and it counts by being an Action.
+func _report_scare() -> void:
 	if _scared_reported:
 		return
 	_scared_reported = true
-	if cause == "player":
-		farm.apply_action({ "verb": "crow_scared", "actor": "crow" }, GameState)
+	farm.apply_action({ "verb": "crow_scared", "actor": actor_id }, GameState)
+	_puff("squawk")
+	# The report is what turned the bird around, so the departure it causes is
+	# already announced — don't squawk twice for one fright.
+	_last_state = _state()
+
+
+# The visit ended for a reason the sim decided (a scarecrow, a finished perch, a
+# mouthful) rather than one this node caused. Each has always had its own noise.
+func _announce_departure(reason: String) -> void:
+	match reason:
+		"scarecrow", "player":
+			_puff("squawk")
+		"perched":
+			# T-2's mercy crow: it leaves empty-beaked, and the sim never heard
+			# about this visit at all. One squawk, no feathers — it was not scared.
+			_sfx("squawk")
+		"ate":
+			_sfx("till")
+
+
+func _puff(sound: String) -> void:
 	if get_tree():
 		var main = get_tree().get_first_node_in_group("Main")
 		if main and main.has_method("spawn_particles"):
 			main.spawn_particles("feathers", position)
-		if get_tree().root.has_node("AudioManager"):
-			get_tree().root.get_node("AudioManager").play_sfx("squawk")
+	_sfx(sound)
+
+
+func _sfx(name: String) -> void:
+	if get_tree() and get_tree().root.has_node("AudioManager"):
+		get_tree().root.get_node("AudioManager").play_sfx(name)
 
 
 func queue_render(canvas: CanvasItem, render_queue: Array) -> void:
@@ -199,7 +163,7 @@ func queue_render(canvas: CanvasItem, render_queue: Array) -> void:
 		"draw": func():
 			# animals.png cells: 8 perched, 9 wings up, 10 wings down
 			var cell := 8
-			if state == "flying_in" or state == "flying_away":
+			if _state() != "eating":
 				cell = 9 if flap_state == 0 else 10
 			canvas.draw_texture_rect_region(
 				SPRITES,

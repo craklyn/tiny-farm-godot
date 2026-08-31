@@ -69,6 +69,7 @@ func _run_scenarios() -> void:
 	await _scenario_p_cold_open_waits()
 	await _scenario_j_wordless_shop()
 	await _scenario_k_attract()
+	await _scenario_q_crow_is_sim_sent()
 
 func _wait_until(pred: Callable, max_frames: int) -> bool:
 	for i in max_frames:
@@ -260,31 +261,37 @@ func _scenario_f() -> void:
 	# registered.
 	print("\n--- Scenario F: Crow approach direction ---")
 
-	var Crow = load("res://entities/crow.gd")
-	var w: float = float(SimWorld.MAP_WIDTH * 16)
-	var h: float = float(SimWorld.MAP_HEIGHT * 16)
+	# M2.5 WI-3 moved this arithmetic out of `entities/crow.gd` and into the crow's
+	# brain, in tile space rather than pixels (a sim that reasons in pixels has lost
+	# the plot). The properties asserted are the ones the 2026-08-28 report was
+	# about and have not changed; only where they live has.
+	var w := float(SimWorld.MAP_WIDTH)
+	var h := float(SimWorld.MAP_HEIGHT)
 
-	var left: Vector2 = Crow.offscreen_start(0, 100)
-	var right: Vector2 = Crow.offscreen_start(1, 100)
-	var top: Vector2 = Crow.offscreen_start(2, 100)
-	var bottom: Vector2 = Crow.offscreen_start(3, 100)
+	var left: Vector2 = CrowBrain.entry_point(0, 100)
+	var right: Vector2 = CrowBrain.entry_point(1, 100)
+	var top: Vector2 = CrowBrain.entry_point(2, 100)
+	var bottom: Vector2 = CrowBrain.entry_point(3, 100)
 
 	_assert(left.x < 0.0, "side 0 enters from off the left edge")
 	_assert(right.x > w, "side 1 enters from off the right edge")
 	_assert(top.y < 0.0, "side 2 enters from off the top edge")
 	_assert(bottom.y > h, "side 3 enters from off the bottom edge")
-	_assert(Crow.offscreen_start(0, 10).y != Crow.offscreen_start(0, 200).y,
+	_assert(CrowBrain.entry_point(0, 10).y != CrowBrain.entry_point(0, 200).y,
 		"entry point varies along the edge, not just the side")
-	_assert(Crow.offscreen_start(0, -7).y >= 0.0, "a negative offset stays on the edge")
-	_assert(Crow.offscreen_start(0, 999999).y < h, "a huge offset stays on the edge")
-	_assert(Crow.offscreen_start(4, 100) == left, "side index wraps")
+	_assert(CrowBrain.entry_point(0, -7).y >= 0.0, "a negative offset stays on the edge")
+	_assert(CrowBrain.entry_point(0, 999999).y < h, "a huge offset stays on the edge")
+	_assert(CrowBrain.entry_point(4, 100) == left, "side index wraps")
 
-	# All four edges must be reachable from the spawner's seeded draw, or some
-	# side is unreachable and the block-one-corner exploit survives there.
+	# All four edges must be reachable from the arrival's seeded draw, or some
+	# side is unreachable and the block-one-corner exploit survives there. The draw
+	# is `SimRng.stateless` now, not the shared stream (WI-3): a live session's
+	# stream is advanced by the hen's wandering and a replay's is not, so a crow
+	# whose entry came off it would arrive from a different edge on playback.
 	var seen := {}
 	SimRng.reseed(99)
 	for i in range(200):
-		seen[SimRng.randi() % 4] = true
+		seen[int(SimRng.stateless(i, 2000)) % 4] = true
 	_assert(seen.size() == 4, "all four edges are reachable from the seeded draw")
 
 	# Departure mirrors arrival: a crow entering from the right must leave to the
@@ -295,12 +302,10 @@ func _scenario_f() -> void:
 		{ "at": bottom, "name": "bottom", "axis": "y", "sign": 1.0 },
 		{ "at": top,    "name": "top",    "axis": "y", "sign": -1.0 },
 	]:
-		var c = Crow.new()
-		c.init_crow(case.at.x, case.at.y, 5, 5, farm, player, null)
-		var component: float = c.exit_dir.x if case.axis == "x" else c.exit_dir.y
+		var dir: Vector2 = CrowBrain.exit_direction(case.at)
+		var component: float = dir.x if case.axis == "x" else dir.y
 		_assert(component * case.sign > 0.0,
 			"a crow from the %s leaves toward the %s" % [case.name, case.name])
-		c.free()
 
 
 func _scenario_g() -> void:
@@ -523,6 +528,13 @@ func _scenario_l_menu_holds_world() -> void:
 	#
 	# The rule this asserts: **while any menu is open the world holds.** A menu is
 	# not a place the game continues without you.
+	#
+	# Updated for M2.5 WI-3, which moved the hen's decisions and her position into
+	# the sim: the setup now puts her somewhere in *sim truth* and watches the
+	# renderer walk there, rather than hand-loading a path into a presentation FSM
+	# that no longer exists. What is asserted is unchanged, and the reason it still
+	# holds is unchanged too — an open menu pauses the tree, and a paused tree runs
+	# no `_process`, so `main.gd`'s clock pump never converts a frame into a tick.
 	print("\n--- Scenario L: an open menu holds the world ---")
 
 	var menus = main_scene.menus
@@ -535,19 +547,14 @@ func _scenario_l_menu_holds_world() -> void:
 	if chicken == null:
 		return
 
-	# Put her on a known walk so "did she move" is a real question.
-	farm.set_tile_state(5, 5, "cleared")
-	farm.set_tile_state(6, 5, "cleared")
-	farm.set_tile_state(7, 5, "cleared")
-	chicken.tx = 5
-	chicken.ty = 5
+	# Put her on a known walk so "did she move" is a real question. The sim says
+	# where she is; the node's job is to get its sprite there.
+	for tx in [5, 6, 7]:
+		farm.set_tile_state(tx, 5, "cleared")
+	farm.sim.set_actor_pos(chicken.actor_id, Vector2i(5, 5))
 	chicken.position = Vector2(5 * 16, 5 * 16)
-	chicken.path.clear()
-	chicken.path.append(Vector2i(6, 5))
-	chicken.path.append(Vector2i(7, 5))
-	chicken.path_index = 0
-	chicken.state = "moving"
 	await get_tree().process_frame
+	farm.sim.set_actor_pos(chicken.actor_id, Vector2i(7, 5))
 
 	var moving_start: Vector2 = chicken.position
 	for i in 20: await get_tree().process_frame
@@ -566,6 +573,7 @@ func _scenario_l_menu_holds_world() -> void:
 	menus.close_menu()
 	await get_tree().process_frame
 	_assert(not get_tree().paused, "closing it starts the world again")
+	farm.sim.set_actor_pos(chicken.actor_id, Vector2i(7, 5))
 	for i in 20: await get_tree().process_frame
 	_assert(chicken.position != frozen_at, "and she carries on from where she stood")
 
@@ -583,15 +591,15 @@ func _scenario_l_menu_holds_world() -> void:
 	# and rebuilding the shop's options stalls one. With no cap on the step, one
 	# stalled frame carried her a whole tile. Pausing hides it in menus; the cap is
 	# what stops it happening anywhere else a frame hitches.
-	chicken.tx = 5
-	chicken.ty = 5
+	#
+	# Two caps now, and both are asserted: the renderer's (below) and, since WI-3,
+	# `main.gd`'s clock pump, which converts at most MAX_TICKS_PER_FRAME of a long
+	# frame into sim time so a hitch cannot run the world forward either.
+	for tx2 in [6, 7, 8]:
+		farm.set_tile_state(tx2, 5, "cleared")
+	farm.sim.set_actor_pos(chicken.actor_id, Vector2i(5, 5))
 	chicken.position = Vector2(5 * 16, 5 * 16)
-	chicken.path.clear()
-	chicken.path.append(Vector2i(6, 5))
-	chicken.path.append(Vector2i(7, 5))
-	chicken.path.append(Vector2i(8, 5))
-	chicken.path_index = 0
-	chicken.state = "moving"
+	farm.sim.set_actor_pos(chicken.actor_id, Vector2i(8, 5))
 	var before_hitch: Vector2 = chicken.position
 	chicken._process(2.0)  # a two-second frame, far worse than any real hitch
 	var jumped: float = chicken.position.distance_to(before_hitch)
@@ -599,8 +607,11 @@ func _scenario_l_menu_holds_world() -> void:
 		"a stalled frame moves her at most one tile, not %d px" % int(jumped))
 	_assert(jumped > 0.0, "but she still moves — the cap is not a freeze")
 
-	chicken.state = "idle"
-	chicken.path.clear()
+	var sim_before: int = farm.sim.clock.tick
+	main_scene._pump_sim_clock(2.0)
+	_assert(farm.sim.clock.tick - sim_before <= main_scene.MAX_TICKS_PER_FRAME,
+		"and a stalled frame advances sim time by at most %d ticks, not 20"
+			% main_scene.MAX_TICKS_PER_FRAME)
 
 
 # Where the camera comes to rest for a player standing at `player_px`. Godot
@@ -1041,3 +1052,73 @@ func _scenario_p_cold_open_waits() -> void:
 
 func scene_patience() -> float:
 	return load("res://main.gd").COLD_OPEN_PATIENCE
+
+
+func _scenario_q_crow_is_sim_sent() -> void:
+	# M2.5 WI-3 turned the crow inside out. It used to exist because `main.gd`
+	# built a node, fly because that node's `_process` moved it, eat when the
+	# sprite arrived, and stop existing because the node called `queue_free()` —
+	# the sim was never told about any of it. Now the sim sends it (the T-20
+	# schedule reaching an arrival inside the gateway), flies it on the tick clock,
+	# and despawns it at the map edge; the node is a sprite that follows.
+	#
+	# This runs live rather than headless because the thing being checked is the
+	# *join*: that a bird the sim registered gets drawn, tracks where the sim puts
+	# it, and disappears with it. The behaviour either side of the join has its own
+	# unit tests (`test_brains`).
+	print("\n--- Scenario Q: the sim sends the crow, presentation draws it ---")
+
+	# A farm far enough along that T-2's readiness gate is open. Set on the live
+	# GameState because this is the last scenario in the suite.
+	GameState.takeover_day = 1
+	GameState.day = maxi(GameState.day, SimWorld.CROW_MIN_DAY)
+	GameState.harvest_counts["wheat"] = maxi(1, int(GameState.harvest_counts.get("wheat", 0)))
+	for tx in range(4, 10):
+		farm.set_tile_state(tx, 8, "seeded", "wheat")
+	_assert(GameState.play_day() >= SimWorld.CROW_MIN_DAY and farm.sim.count_planted() >= 3,
+		"the farm is ready for a crow (play-day %d, %d planted)"
+			% [GameState.play_day(), farm.sim.count_planted()])
+
+	GameState.actions_today = 0
+	GameState.crow_schedule = [1] as Array[int]
+	farm.set_tile_state(3, 8, "cleared")
+	_assert(not farm.sim.has_actor(SimWorld.ACTOR_CROW), "no crow before its appointment")
+	farm.apply_action({ "verb": "till", "target": Vector2i(3, 8), "actor": "player" }, GameState)
+	_assert(farm.sim.has_actor(SimWorld.ACTOR_CROW),
+		"one player action reaches the scheduled arrival and the sim sends a crow")
+	_assert(GameState.crow_schedule.is_empty(), "spending the day's one arrival (T-20)")
+
+	# The node appears because the actor does, not the other way round.
+	await get_tree().process_frame
+	var crow = null
+	var CrowScript = load("res://entities/crow.gd")
+	for child in main_scene.entities.get_children():
+		if child.get_script() == CrowScript:
+			crow = child
+	_assert(crow != null, "and main.gd spawns a sprite for the actor the sim registered")
+	if crow == null:
+		return
+	_assert(crow.actor_id == SimWorld.ACTOR_CROW, "the sprite knows whose it is")
+
+	# It follows sim truth rather than flying itself.
+	var was: Vector2 = crow.position
+	for i in 30: await get_tree().process_frame
+	_assert(crow.position != was, "the sprite moves")
+	_assert(crow.position.distance_to(crow.sim_position()) < 32.0,
+		"and stays within a couple of tiles of where the sim says the bird is")
+
+	# Shooing it is an Action through the one gateway, and the sim is what ends
+	# the visit — which is why a replay ends it in the same place.
+	var scared_before: int = GameState.crows_scared
+	farm.apply_action({ "verb": "crow_scared", "actor": SimWorld.ACTOR_CROW }, GameState)
+	_assert(GameState.crows_scared == scared_before + 1, "a scare counts toward the Q-12 proof")
+	_assert(String(farm.sim.actor(SimWorld.ACTOR_CROW)["extra"].get("state", "")) == "leaving",
+		"and turns the bird around in the sim, not in the node")
+
+	# Fast-forward the sim past its departure; the sprite goes with it.
+	farm.advance_sim(600, GameState)
+	_assert(not farm.sim.has_actor(SimWorld.ACTOR_CROW), "the crow leaves the map and the registry")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_assert(not is_instance_valid(crow) or crow.is_queued_for_deletion(),
+		"and its sprite is freed because the actor is gone, not because a node decided")

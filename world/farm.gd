@@ -125,8 +125,36 @@ func start_trace(gen_seed: int, from_save: bool) -> void:
 	trace.start(gen_seed, from_save)
 
 
+# Let sim time pass, and record what the brains did with it (M2.5 WI-3).
+#
+# The sim decides; this turns the decisions into the same replay entries, trace
+# lines and tile reactions that a tap through `apply_action` produces, so an
+# action a crow took at tick 4,182 is in the log exactly as it would have been
+# when its node took it. Recording stays here on purpose: layer 2 has never known
+# that a `ReplayLog` exists, and it is not learning now.
+#
+# **Only the live game calls this** (`main.gd`'s clock pump). A replay must not:
+# a v1 log carries no ticks, so re-running brains during playback would invent
+# motion the recording never had. Fast-forward tools advance the clock themselves.
+func advance_sim(ticks: int, gs = null) -> void:
+	if ticks <= 0:
+		return
+	for taken in sim.advance_ticks(ticks, gs):
+		_record(taken["action"], taken["result"])
+	queue_redraw()
+
+
 func apply_action(action: Dictionary, gs = null) -> Dictionary:
 	var result := sim.apply_action(action, gs)
+	_record(action, result)
+	return result
+
+
+# The bookkeeping every resolved action gets, whoever asked for it: the trace,
+# the player's feedback, the replay entry and the tile's reaction. Split out of
+# `apply_action` so that an action a brain took inside `advance_sim` lands in the
+# log identically to one a tap produced (M2.5 WI-3).
+func _record(action: Dictionary, result: Dictionary) -> void:
 	# Recorded whether or not it succeeded: a refused action is the interesting
 	# half, and it is exactly what ReplayLog cannot carry.
 	if trace != null:
@@ -160,7 +188,6 @@ func apply_action(action: Dictionary, gs = null) -> Dictionary:
 		if action.has("target"):
 			react_at(action["target"])
 		queue_redraw()
-	return result
 
 
 # --- Verb reactions (D-8 tier (a) prototype) ---------------------------------

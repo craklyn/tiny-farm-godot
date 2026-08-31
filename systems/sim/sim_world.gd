@@ -67,8 +67,10 @@ static func roll_crow_schedule(day: int) -> Array[int]:
 	return out
 
 
-# Pure so it can be tested without a scene tree; the caller (main.gd) owns the
-# timer, this owns the rule. `day` is a **play-day** (see CROW_MIN_DAY).
+# Pure so it can be tested without a scene tree. It was always the rule half of a
+# split whose other half — the timer — lived in `main.gd`; since M2.5 WI-3 both
+# halves are sim-side (`_send_due_crows` reaches the appointment, `CrowBrain.send`
+# asks this whether a bird may come). `day` is a **play-day** (see CROW_MIN_DAY).
 static func may_spawn_crow(day: int, total_harvests: int, planted: int) -> bool:
 	return day >= CROW_MIN_DAY \
 		and total_harvests >= CROW_MIN_HARVESTS \
@@ -89,9 +91,11 @@ var objects: Array[Array] = []  # objects[y][x] = "" or object type string
 
 # The sim's tick clock (D-9 / Q-53, M2.5 WI-1). Sim truth, exactly like the grids:
 # owned here, saved with the world, and the only time anything in layer 2 is
-# allowed to read once the retrofits land. Nothing consumes it yet — this work
-# item establishes ownership and nothing else, because entity movement (WI-3/WI-4)
-# and tick-stamped replays (WI-5) are separate landings.
+# allowed to read. Since M2.5 WI-3 the brains ride on it: every clock-driven actor
+# has exactly one pending "think" event, and `advance_ticks()` is what turns sim
+# time into decisions. Nothing in here reads a frame delta or an engine clock
+# (plan §1 rule 7) — converting wall time into ticks is `main.gd`'s job, at the
+# same boundary its per-run `randi()` seed sits on.
 var clock := SimClock.new()
 
 
@@ -372,8 +376,9 @@ static func tool_proof_progress(entry: Dictionary, gs) -> Dictionary:
 # T-15 / Q-39: what a crow goes for. **Any acorn beats any crop** — that is the
 # whole mechanic, and it is behaviour rather than the scripted mercy T-2 used, so
 # a four-year-old can watch the rule instead of experiencing a bird that
-# inexplicably left. The rule lives here; the caller supplies the draw, exactly
-# as may_spawn_crow() splits rule from timer.
+# inexplicably left. The rule lives here; the caller supplies the draw — which
+# since M2.5 WI-3 is `CrowBrain.send`, and it supplies a **stateless** one, so
+# the same bird makes the same choice on replay.
 func choose_crow_target(prefer_seed: int) -> Dictionary:
 	var acorns: Array[Vector2i] = []
 	var crops: Array[Vector2i] = []
@@ -488,22 +493,21 @@ const ACTOR_MAX_ENERGY := 20  # [Playtest]
 #            WI-3's brains keep their per-actor state here rather than growing
 #            the registry a field per critter
 #
-# **Registry v1 holds persistent actors only** (plan §4): the player, the
-# neighbour while her cold open is live, and the chicken. The crow is still
-# node-spawned and node-owned — moving its lifecycle in belongs with its brain
-# (WI-3), because "when does a crow exist" is a decision, not a record, and the
-# decision is currently in `main.gd`'s spawner.
+# **The registry holds residents and visits alike** since M2.5 WI-3: the player,
+# the neighbour while her cold open is live, the chicken — and a crow, for as long
+# as its visit lasts. A crow's species row says `persistent: false`, which is what
+# keeps it out of the *save*: a save is a snapshot of a farm, and a bird halfway
+# across the sky is not part of one (see `SaveGame._capture_actors`).
 #
-# **Nothing moves an actor yet.** Spawn positions are worldgen's and they stay
-# put; the walking is WI-4's. Until then the registry says where an actor
-# *lives*, not where its sprite is standing this frame — and deliberately so: the
-# presentation-side wander is wall-clock paced (finding F-2/F-4), and writing it
-# into sim truth before its brain moves would make the save disagree with the
-# replay of the same session.
+# **Positions move under the clock now** (WI-3), for actors whose brain is on it:
+# the hen's wander is a tick-stepped sim process, the crow's flight likewise. The
+# player's and the neighbour's are still presentation's — they walk in pixels and
+# join sim truth with the movement engine (WI-4), which is also when
+# `capture_canonical` gets to compare positions again (see the note there).
 #
 # Spawn and despawn are sim functions rather than verbs. A verb is a thing an
 # actor *does*; nobody does a spawn. Brain-driven arrivals (a crow's visit, an
-# ant column) are WI-3+ and will schedule against the clock.
+# ant column) schedule against the clock from inside the gateway.
 #
 # **Iteration order is not truth.** A generated world holds actors in spawn
 # order; a restored one holds them in the order `JSON.stringify` sorted them
@@ -514,12 +518,15 @@ const ACTOR_MAX_ENERGY := 20  # [Playtest]
 # something real, like position.
 var actors: Dictionary = {}
 
-# The three ids registry v1 knows by name. Actor ids are still species names in
-# phase 1 — there is one hen and she is called "chicken" — and WI-3 is where a
-# second one needs an id of her own.
+# The ids the registry knows by name. Actor ids are still species names in
+# phase 1 — there is one hen and she is called "chicken", one crow and it is
+# called "crow" — and a second of either needs an id of its own (the registry
+# takes one happily; `CrowBrain.send` refuses a second bird because
+# CROWS_PER_DAY is 1).
 const ACTOR_PLAYER := "player"
 const ACTOR_NEIGHBOUR := "neighbour"
 const ACTOR_CHICKEN := "chicken"
+const ACTOR_CROW := "crow"
 
 
 static func _is_player(actor: String) -> bool:
@@ -540,10 +547,17 @@ func spawn_actor(actor_id: String, species: String, at: Vector2i, extra: Diction
 		"extra": extra.duplicate(true),
 	}
 	actors[actor_id] = entry
+	# A newly arrived actor starts thinking on the next tick. Nothing happens
+	# until something advances the clock, so this is free in a headless
+	# fast-forward that never does.
+	_schedule_brain(actor_id, clock.tick + 1)
 	return entry
 
 
 func despawn_actor(actor_id: String) -> bool:
+	if _brain_events.has(actor_id):
+		clock.cancel(int(_brain_events[actor_id]))
+		_brain_events.erase(actor_id)
 	return actors.erase(actor_id)
 
 
@@ -584,12 +598,13 @@ func actors_of_species(species: String) -> Array[String]:
 	return out
 
 
-# An actor that acts without having been spawned still gets a meter. Today that
-# is the crow (registry v1 is persistent actors only) and every test that names
-# an actor out of thin air. Since ids are species names in phase 1, an id that
-# names a species is registered as one; anything else gets a species-less entry
-# at (-1, -1), which is the honest record of "something acted here and nobody
-# spawned it". WI-3 spawns them properly and this stops being a live path.
+# An actor that acts without having been spawned still gets a meter. Since M2.5
+# WI-3 spawned the crow properly, nothing in the running game takes this path —
+# only tests that name an actor out of thin air, and whatever the next milestone
+# forgets to register. Since ids are species names in phase 1, an id that names a
+# species is registered as one; anything else gets a species-less entry at
+# (-1, -1), which is the honest record of "something acted here and nobody
+# spawned it".
 func _ensure_actor(actor_id: String) -> Dictionary:
 	if not actors.has(actor_id):
 		spawn_actor(actor_id, actor_id if SpeciesDefs.has(actor_id) else "", Vector2i(-1, -1))
@@ -633,6 +648,7 @@ func spend_actor_energy(actor_id: String, cost: int) -> void:
 # `SimRng.stateless()` was invented for. So a legacy load places her by rule.
 func spawn_default_actors(from_stream: bool = false) -> void:
 	actors.clear()
+	_brain_events.clear()
 	var start := WorldLayout.spawn(layout)
 	spawn_actor(ACTOR_PLAYER, SpeciesDefs.PLAYER, start)
 	# She is in the world exactly while her scene is: an unopened cold-open gate
@@ -645,7 +661,7 @@ func spawn_default_actors(from_stream: bool = false) -> void:
 
 
 func _chicken_tile(start: Vector2i, from_stream: bool) -> Vector2i:
-	var reachable := _reachable_from(start)
+	var reachable := reachable_from(start)
 	if reachable.is_empty():
 		return start
 	if from_stream:
@@ -661,10 +677,11 @@ func _chicken_tile(start: Vector2i, from_stream: bool) -> Vector2i:
 
 # Flood fill over walkable tiles, in the sim, with no autoload in sight — the
 # `Pathfinding` autoload is presentation's wrapper and layer 2 may not touch it.
-# Worldgen-only for now (one O(map) pass, next to the several it already does);
-# pathing as a pure sim function is WI-4's deliverable, and this is deliberately
-# not it.
-func _reachable_from(start: Vector2i) -> Array[Vector2i]:
+# Used by worldgen and by the hen's brain (M2.5 WI-3) when she picks somewhere to
+# potter off to. **Pathing as a general sim function, per movement capability, is
+# WI-4's deliverable**; this is the ground-mode special case that the one walker
+# with a sim-side brain needs, and it is deliberately not more than that.
+func reachable_from(start: Vector2i) -> Array[Vector2i]:
 	const DIRS := [Vector2i(0, -1), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(1, 0)]
 	var out: Array[Vector2i] = []
 	if not is_walkable(start.x, start.y):
@@ -685,6 +702,128 @@ func _reachable_from(start: Vector2i) -> Array[Vector2i]:
 	return out
 
 
+# The waypoints from `start` to `goal` (excluding `start`), or [] when there is
+# no walkable route. Breadth-first, so it is the shortest one and — the part that
+# matters — the *same* one every time, on any machine, in a replay as in a live
+# session. Same caveat as above: WI-4 owns pathing per movement mode.
+func path_between(start: Vector2i, goal: Vector2i) -> Array[Vector2i]:
+	const DIRS := [Vector2i(0, -1), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(1, 0)]
+	var out: Array[Vector2i] = []
+	if start == goal or not is_walkable(goal.x, goal.y) or not is_walkable(start.x, start.y):
+		return out
+	var came := { start: start }
+	var queue: Array[Vector2i] = [start]
+	var idx := 0
+	while idx < queue.size():
+		var t: Vector2i = queue[idx]
+		idx += 1
+		if t == goal:
+			while t != start:
+				out.push_front(t)
+				t = came[t]
+			return out
+		for d in DIRS:
+			var n: Vector2i = t + d
+			if came.has(n) or not is_walkable(n.x, n.y):
+				continue
+			came[n] = t
+			queue.append(n)
+	return out
+
+
+# --- Sim time: the brains ride the clock (M2.5 WI-3) ---------------------------
+#
+# **A brain is `step(world, actor, tick) -> action | null`** (see
+# `systems/sim/brains/brain.gd`), and this is where they get stepped. Each
+# clock-driven actor holds exactly one pending event; when it dispatches, that
+# actor's brain decides, whatever it returns goes through `apply_action` like
+# anybody else's Action, and the brain is rescheduled for whenever it said it
+# next wants to think.
+#
+# **Cost is per decision, never per tick** (plan §1 rule 8): a dozing hen who
+# asked to be woken in four seconds costs one heap entry for those forty ticks,
+# and a world with nobody in it costs nothing at all. `next_event_tick()` is what
+# lets this jump rather than count.
+#
+# **Nothing in here reads wall-clock time.** Somebody has to convert frames into
+# ticks and that somebody is `main.gd` — the same boundary its per-run `randi()`
+# seed lives on, and for the same reason (rule 7). Fast-forward paths advance the
+# clock explicitly instead.
+const BRAIN_EVENT := "brain"
+
+
+# Advance sim time to `target_tick`, letting brains decide along the way.
+# Returns every Action they took, in dispatch order, as
+# `[{ "action": {...}, "result": {...} }]` — the caller's record of what the
+# world did while it was not looking. `world/farm.gd` is what turns that into
+# replay entries and trace lines; the sim does not know those exist.
+func advance_to_tick(target_tick: int, gs = null) -> Array[Dictionary]:
+	var taken: Array[Dictionary] = []
+	if target_tick <= clock.tick:
+		return taken
+	while true:
+		var next := clock.next_event_tick()
+		if next < 0 or next > target_tick:
+			break
+		# Dispatched a whole tick at a time, and the events are *collected* before
+		# any of them is handled: a brain that spawns or reschedules during its own
+		# step must not be able to perturb the queue it is being read out of.
+		for e in clock.advance_to(next):
+			_dispatch(e, gs, taken)
+	clock.advance_to(target_tick)
+	return taken
+
+
+func advance_ticks(ticks: int, gs = null) -> Array[Dictionary]:
+	return advance_to_tick(clock.tick + maxi(0, ticks), gs)
+
+
+func _dispatch(event: Dictionary, gs, taken: Array[Dictionary]) -> void:
+	if String(event.get("kind", "")) != BRAIN_EVENT:
+		return
+	var actor_id := String(event.get("actor", ""))
+	if not actors.has(actor_id):
+		return  # despawned since it was scheduled; its event is not its ghost
+	var brain := Brains.of_actor(self, actor_id)
+	var action := brain.step(self, actor_id, clock.tick, gs)
+	if not action.is_empty():
+		var result := apply_action(action, gs)
+		brain.on_result(self, actor_id, action, result)
+		taken.append({ "action": action, "result": result })
+	# The brain may have despawned itself (a crow leaving the map), or been
+	# despawned by its own Action's consequences (the neighbour opening the gate).
+	if actors.has(actor_id):
+		_schedule_brain(actor_id, int(actors[actor_id]["extra"].get("wake", clock.tick + 1)))
+
+
+# One pending think per actor: the previous event is cancelled rather than left
+# to fire twice, so a day turn or a spawn can wake somebody without doubling them
+# up. Kept **beside** the registry rather than inside an entry, because a
+# scheduling handle is not a fact about an actor: it is not saved, not replayed,
+# and not part of what "the same registry" means (which is also what lets the unit
+# suite compare two registries entry for entry).
+var _brain_events: Dictionary = {}  # actor_id -> pending SimClock event id
+
+
+func _schedule_brain(actor_id: String, at_tick: int) -> void:
+	if not actors.has(actor_id) or not Brains.of_actor(self, actor_id).on_clock():
+		return
+	if _brain_events.has(actor_id):
+		clock.cancel(int(_brain_events[actor_id]))
+	_brain_events[actor_id] = clock.schedule(
+		maxi(at_tick, clock.tick + 1), { "kind": BRAIN_EVENT, "actor": actor_id })
+
+
+# Everybody thinks again. Called after a load (a restored registry never went
+# through `spawn_actor`, so without this a reloaded farm would stand perfectly
+# still) and at the day turn, so a morning lands on the morning rather than
+# whenever the hen next happened to be due.
+func schedule_all_brains() -> void:
+	_brain_events.clear()
+	for id in actors.keys():
+		_schedule_brain(id, clock.tick + 1)
+
+
 func apply_action(action: Dictionary, gs = null) -> Dictionary:
 	var result := _apply(action, gs)
 	if result.get("ok", false) and gs != null \
@@ -692,6 +831,13 @@ func apply_action(action: Dictionary, gs = null) -> Dictionary:
 			and not NON_WORK_VERBS.has(action.get("verb", "")) \
 			and "actions_today" in gs:
 		gs.actions_today += 1
+		# T-20's action clock has just moved, which is the only thing that can
+		# bring a crow. Decided here rather than in `main.gd` (M2.5 WI-3) so a
+		# replay and a headless fast-forward see the same birds arrive at the same
+		# moments as the session that recorded them — the spawner's readiness gate,
+		# target choice and entry draws were the last gameplay decisions living in
+		# presentation.
+		_send_due_crows(gs)
 	# Milestones are capability proofs (P-4) — sim truth, so replays earn them too
 	if result.get("ok", false) and gs != null and MILESTONE_VERBS.has(action.get("verb", "")) \
 			and gs.has_method("check_milestones"):
@@ -824,9 +970,17 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			set_object(target.x, target.y, "egg")
 			return { "ok": true }
 		"crow_scared":
-			# Player-caused scare event; feeds the Q-12 capability proof
+			# Player-caused scare event; feeds the Q-12 capability proof.
+			# It is a *report*, not a capability (see SpeciesDefs.ENTITY_VERBS):
+			# the bird tells the sim it was frightened, and the sim ends its visit.
+			# Proximity to the player is still measured presentation-side, because
+			# where she is standing is not sim truth until the movement engine lands
+			# (WI-4/WI-6) — but the report is an Action through the one gateway, so
+			# it is recorded, and a replay ends the visit at the same point in the
+			# stream that the session did.
 			if gs == null: return _fail("no_state")
 			gs.crows_scared += 1
+			Brains.flee(self, String(action.get("actor", "")), "player")
 			return { "ok": true }
 
 		# -- energy-costed tile verbs --
@@ -889,6 +1043,21 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 
 func _fail(reason: String) -> Dictionary:
 	return { "ok": false, "reason": reason }
+
+
+# T-20: each crow has a single scheduled arrival, given as a point in the day's
+# action clock, and **it is consumed whether the bird gets fed, gets shooed, or
+# never comes at all** — so chasing one off is a win for the day rather than a
+# ten-second reprieve. The rule that decides whether a bird actually arrives is
+# `may_spawn_crow` (T-2) and it lives with the rest of the crow's brain
+# (`CrowBrain.send`); this is only the clock reaching the appointment.
+func _send_due_crows(gs) -> void:
+	if gs == null or not ("crow_schedule" in gs):
+		return
+	while not gs.crow_schedule.is_empty() and int(gs.actions_today) >= int(gs.crow_schedule[0]):
+		var arrival := int(gs.crow_schedule[0])
+		gs.crow_schedule.remove_at(0)
+		CrowBrain.send(self, gs, arrival)
 
 
 # Q-12 phase-1 proof thresholds — provisional, fine-tuned at playtest
@@ -956,6 +1125,14 @@ func advance_day(weather: String) -> void:
 		if _is_player(id):
 			continue  # hers is GameState's, and hers is also the clock
 		actors[id]["energy"] = ACTOR_MAX_ENERGY
+	# A new morning is a fact each brain acts on the *next time it thinks*, never
+	# inside the day turn itself (M2.5 WI-3). The hen's egg is the case that makes
+	# the rule: a replay re-applies the sleep but does not run brains, so a coin
+	# flip taken here would be taken twice — once recorded live, once re-rolled on
+	# replay. So the day turn only tells them, and wakes them, and what they do
+	# about it arrives as an ordinary recorded Action.
+	Brains.on_new_day(self)
+	schedule_all_brains()
 	for ty in MAP_HEIGHT:
 		for tx in MAP_WIDTH:
 			var tile: Dictionary = tiles[ty][tx]

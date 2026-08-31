@@ -6,6 +6,16 @@
 # swing. That is what makes the cold open cheap: she is not a cutscene system,
 # she is one more entity, exactly like the chicken and the crow (S-3).
 #
+# She was always the one brain in the right place (plan finding F-1), which is
+# why M2.5 WI-3 generalised the brain interface *from* her rather than retrofitted
+# her into it: `systems/sim/brains/cold_open_brain.gd` is a four-line wrapper
+# around her existing decider. Her *pacing* stays in `main.gd`, deliberately —
+# waiting until the player can see the stage, letting her finish a stride, giving
+# up after a timeout are facts about a camera and a wall clock, and rule 7 keeps
+# those out of the sim. Her walk joins sim truth with the movement engine (WI-4),
+# alongside the player's, which is why this file still paths in pixels while the
+# hen's and the crow's no longer do.
+#
 # She borrows the player's own walk cycle, recoloured (see CREDITS.md): at 16px
 # a four-year-old reads *another child* from hair and clothes, and a bespoke
 # sheet is a cheap upgrade whenever the art pass wants one.

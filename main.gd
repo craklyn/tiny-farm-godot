@@ -69,6 +69,69 @@ var _cold_open_waited: float = 0.0
 var _cold_open_started: bool = false
 
 
+# The clock pump: where wall time becomes sim time (M2.5 WI-3, plan §1 rule 7).
+#
+# Rule 7 forbids anything under `systems/sim/` from reading a frame delta or an
+# engine clock — sim time is the tick counter and nothing else, which is what
+# lets a live session, a headless fast-forward and a replay agree about when
+# things happened. But *something* has to convert frames into ticks, and this is
+# it: the wall-clock→tick boundary, exactly analogous to the one raw `randi()` in
+# `_ready()` that seeds the run. Both are edges where the outside world gets in,
+# both live here, and both are the only ones of their kind.
+#
+# Whole ticks only; the remainder carries to the next frame, so the sim advances
+# at a steady 10 Hz however the frame rate wobbles. A long frame is capped rather
+# than replayed in full — the same judgement `entities/*.gd`'s MAX_STEP made about
+# a stalled frame carrying an entity a whole tile, now made once for everybody.
+# Menus pause the tree, so a paused game pumps nothing and the world holds
+# (integration scenario L); the fast-forward tools never come through here at all.
+const MAX_TICKS_PER_FRAME := 4  # 0.4 s of sim time; beyond that a hitch is dropped
+var _tick_debt: float = 0.0
+
+
+func _pump_sim_clock(delta: float) -> void:
+	if farm == null:
+		return
+	_tick_debt += delta * float(SimClock.RATE)
+	var whole := int(_tick_debt)
+	if whole <= 0:
+		return
+	_tick_debt -= float(whole)
+	farm.advance_sim(mini(whole, MAX_TICKS_PER_FRAME), GameState)
+
+
+# Sprites for actors the sim has, and no sprites for actors it has not.
+#
+# **The direction of this is the point** (M2.5 WI-3). Until now a crow existed
+# because this file built a node and stopped existing because the node called
+# `queue_free()`, and the sim was never told either way — which is finding F-3's
+# whole class of bug: entities exist only because `main.gd` spawns nodes, so every
+# other renderer of the same sim silently loses them. Now the sim decides (the
+# T-20 schedule reaches an arrival inside the gateway, `CrowBrain` flies the visit
+# and despawns at the map edge) and this reacts. WI-6 moves the reacting into
+# `world/farm.gd`, where the attract loop gets it too.
+var _actor_nodes: Dictionary = {}  # actor_id -> Node2D
+
+func _sync_actor_nodes() -> void:
+	if farm == null or entities == null:
+		return
+	for id in farm.sim.actors_of_species(SpeciesDefs.CROW):
+		if _actor_nodes.has(id) and is_instance_valid(_actor_nodes[id]):
+			continue
+		var CrowScript = load("res://entities/crow.gd")
+		var crow = CrowScript.new()
+		crow.name = "Crow_" + id
+		crow.init_crow(farm, player, id)
+		entities.add_child(crow)
+		_actor_nodes[id] = crow
+	for id in _actor_nodes.keys():
+		if not farm.sim.has_actor(id):
+			var node = _actor_nodes[id]
+			if is_instance_valid(node):
+				node.queue_free()
+			_actor_nodes.erase(id)
+
+
 # APPLICATION_PAUSED covers backgrounding, which is the common case, but not a
 # hard kill. This bounds the worst case to PERSIST_INTERVAL seconds of lost play
 # rather than a whole session. Cheap: both logs are append-only, and SaveGame is
@@ -157,14 +220,15 @@ func _ready() -> void:
 	# drawn here, after generation, from whatever the RNG stream happened to be
 	# holding — which is why reloading a save put her somewhere new every time
 	# (plan finding F-7c). Worldgen rolls it now, from the seed, and the save
-	# carries it; this reads the registry and draws her there. She is still
-	# node-driven once she starts walking: her brain moves sim-side in WI-3.
-	var hen: Dictionary = farm.sim.actor(SimWorld.ACTOR_CHICKEN)
-	if not hen.is_empty():
+	# carries it. Since WI-3 her *walk* is sim truth too: `ChickenBrain` decides
+	# where she potters off to and the node below only draws her getting there.
+	for hen_id in farm.sim.actors_of_species(SpeciesDefs.CHICKEN):
 		var ChickenScript = load("res://entities/chicken.gd")
 		var chicken = ChickenScript.new()
-		chicken.init(farm, hen.get("pos", WorldLayout.spawn(farm.sim.layout)))
+		chicken.name = "Chicken_" + hen_id
+		chicken.init(farm, hen_id)
 		entities.add_child(chicken)
+		_actor_nodes[hen_id] = chicken
 
 	# Create particles manager
 	var ParticlesScript = load("res://effects/particles_manager.gd")
@@ -273,7 +337,12 @@ func _tick_cold_open(delta: float) -> void:
 		return
 	_cold_open_timer = COLD_OPEN_STEP
 
-	var act := ColdOpen.next_action(farm.sim, GameState)
+	# Her decisions come from her brain, which is `systems/sim/cold_open.gd` behind
+	# the WI-3 interface — the one brain that was already in the right place
+	# (finding F-1), and the pattern every other brain is now shaped like. It is
+	# deliberately not on the tick clock: the *pacing* above is a fact about a
+	# camera and a viewport, and rule 7 keeps those out of the sim.
+	var act := Brains.of_id("cold_open").step(farm.sim, SimWorld.ACTOR_NEIGHBOUR, farm.sim.clock.tick, GameState)
 	if act.is_empty():
 		return
 
@@ -283,9 +352,6 @@ func _tick_cold_open(delta: float) -> void:
 		day_cycle.set_day_display(GameState.day + 1)
 		day_cycle.start_sleep(func():
 			farm.apply_action(act, GameState)
-			for child in entities.get_children():
-				if child.has_method("on_new_day"):
-					child.on_new_day()
 		)
 		return
 
@@ -372,6 +438,13 @@ func _process(delta: float) -> void:
 		cam_offset = camera.get_screen_center_position() * CAMERA_SCALE - viewport_size / 2.0
 	InputManager.update_camera_offset(cam_offset)
 
+	# Sim time first, before either early return: entities have always kept living
+	# through the day-cycle fade (their own `_process` ran), and the two returns
+	# below are about the *player's* input, not about whether the world exists. An
+	# open menu is different — it pauses the tree, so this never runs.
+	_pump_sim_clock(delta)
+	_sync_actor_nodes()
+
 	# Skip gameplay during day transition
 	if day_cycle.is_active():
 		return
@@ -384,10 +457,12 @@ func _process(delta: float) -> void:
 	if farm != null and not ColdOpen.is_done(farm.sim):
 		_tick_cold_open(delta)
 
-	# Q-10: tapping the chicken clucks (peek only — the tap still moves the player)
+	# Q-10: tapping the chicken clucks (peek only — the tap still moves the player).
+	# Asked of the registry rather than of the nodes (M2.5 WI-3): where the hen is
+	# standing is sim truth now, and a second hen would answer here for free.
 	if InputManager.has_click:
-		for child in entities.get_children():
-			if child.has_method("on_new_day") and InputManager.click_tile == Vector2i(child.tx, child.ty):
+		for id in farm.sim.actors_of_species(SpeciesDefs.CHICKEN):
+			if farm.sim.actor_pos(id) == InputManager.click_tile:
 				AudioManager.play_sfx("cluck")
 				break
 
@@ -398,46 +473,6 @@ func _process(delta: float) -> void:
 	if persist_timer >= PERSIST_INTERVAL:
 		persist_timer = 0.0
 		persist_session()
-
-	# Crow spawner. T-20: no stopwatch. Each crow has one scheduled arrival, given
-	# as a point in the day's action clock, and it is consumed whether the bird
-	# gets fed or gets shooed — so chasing one off is a win for the day rather
-	# than a ten-second reprieve.
-	if not GameState.crow_schedule.is_empty() \
-			and GameState.actions_today >= GameState.crow_schedule[0]:
-		GameState.crow_schedule.remove_at(0)
-		# T-2: readiness first, mercy second. Both rules live in the sim so they are
-		# testable headlessly; this file only reacts to the schedule.
-		# Q-10's never-the-only-crop mercy rule is now subsumed by CROW_MIN_PLANTED,
-		# which is strictly stronger (3 rather than 2), but stays spelled out because
-		# the mercy rule is the part a future change is most likely to break.
-		# T-13: counted in play-days, so the cold open's days cannot buy a crow.
-		var planted: int = farm.sim.count_planted()
-		var ready_for_crows: bool = SimWorld.may_spawn_crow(
-			GameState.play_day(), GameState.total_harvests(), planted)
-		# T-15 / Q-39: the sim owns the rule (any acorn beats any crop), this owns
-		# the draw — the same split may_spawn_crow uses for the timer.
-		var pick: Dictionary = farm.sim.choose_crow_target(SimRng.randi())
-		var kind: String = pick.get("kind", "none")
-		if ready_for_crows and kind != "none" and planted > 1:
-			var target: Vector2i = pick.get("tile", Vector2i(-1, -1))
-			var CrowScript = load("res://entities/crow.gd")
-			var crow = CrowScript.new()
-			GameState.crows_seen += 1
-			# T-15's retarget of T-2's mercy flag: the last scripted mercy is spent
-			# on the first crow to go for a **crop**, which is the moment the peace
-			# actually ends — not on one of the several earlier birds that were
-			# already harmless because they went for an acorn.
-			crow.harmless = (kind == "crop" and GameState.crop_crows_seen == 0)
-			crow.target_kind = kind
-			if kind == "crop":
-				GameState.crop_crows_seen += 1
-			# Seeded like all gameplay randomness, so a run stays reproducible.
-			var side: int = SimRng.randi() % 4
-			var along: int = SimRng.randi()
-			var start: Vector2 = CrowScript.offscreen_start(side, along)
-			crow.init_crow(start.x, start.y, target.x, target.y, farm, player, entities)
-			entities.add_child(crow)
 
 	# Action. Dispatch happens inside the player (sleep/open_shop arrive back
 	# here via call_deferred -> trigger_action); routing the return value too
@@ -557,10 +592,11 @@ func _handle_action_result(action: String) -> void:
 	if action == "sleep":
 		day_cycle.set_day_display(GameState.day + 1)
 		day_cycle.start_sleep(func():
+			# The morning belongs to the sim now (M2.5 WI-3): `advance_day` tells
+			# every brain a day turned and wakes them, so the hen's egg arrives as
+			# an ordinary recorded Action on the next pumped tick rather than as a
+			# `child.on_new_day()` loop over whatever nodes happened to exist.
 			var sleep_result: Dictionary = farm.apply_action({ "verb": "sleep", "actor": "world" }, GameState)
-			for child in entities.get_children():
-				if child.has_method("on_new_day"):
-					child.on_new_day()
 			persist_session()
 			if sleep_result.get("phase1_complete_now", false):
 				_celebrate_expansion_morning()

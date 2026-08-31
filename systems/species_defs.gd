@@ -19,10 +19,10 @@
 # capability, and `movement_of()` deliberately has no default: a row that forgot
 # to answer the question must fail the test rather than quietly walk.
 #
-# **Brain ids are placeholders.** Nothing loads them yet. WI-3 introduces
-# `systems/sim/brains/` and binds these strings to real `step()` implementations;
-# they are here now so the row is complete and the binding is a lookup rather
-# than a refactor.
+# **Brain ids bind to `systems/sim/brains/`** (M2.5 WI-3): each string below is
+# looked up by `Brains.of_species()` and answers `step(world, actor, tick) -> action`.
+# A row is complete when it names one, and a typo fails in the unit suite rather
+# than producing a critter that silently never acts.
 class_name SpeciesDefs
 extends RefCounted
 
@@ -140,10 +140,12 @@ static var ROWS: Dictionary = {
 	# The joke, not the threat (Q-10). Flies in, prefers acorns to crops (T-15 /
 	# Q-39), leaves when anything frightens it.
 	#
-	# `persistent: false` is this milestone's scoping, not a property of crows:
-	# the registry holds actors the world always contains, and a crow is a visit.
-	# Its lifecycle moves into the sim with its brain (WI-3), where "when does a
-	# crow exist" is answered by the T-20 schedule rather than by a node.
+	# `persistent: false` is what keeps a visit out of a **save**: the crow is a
+	# registered actor for as long as its visit lasts (WI-3 moved its lifecycle
+	# into the sim, where "when does a crow exist" is answered by the T-20
+	# schedule rather than by a node), but a bird halfway across the sky on the
+	# frame the autosave timer fired is not part of a snapshot of a farm. See
+	# `SaveGame._capture_actors`.
 	CROW: {
 		"name": "Crow",
 		"brain": "crow_visit",

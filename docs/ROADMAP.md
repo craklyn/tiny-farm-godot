@@ -780,6 +780,11 @@ a scripted bot line (follow / circle / shoo), sprinkler, and the pea crop.*
 `DECISION_LOG.md` D-9); execution unblocked. Q-54 (fire) parked, Q-55 (pea economy)
 deferred to M3 with the pea crop shipping now, Q-56 holds the bot debut until ≥M3.
 
+**Status 2026-08-31: the chassis is landed.** WI-1 (SimClock), WI-2 (actor registry +
+species table) and WI-3 (one brain interface, plus the crow/chicken/neighbour retrofits
+and the clock pump) are in; per-WI detail and deviations are in `M2_5_PLAN.md` §9. That
+was the serial critical path, so WI-4..WI-7 and the bestiary can now fan out in parallel.
+
 **Exit gate:** both suites green and grown; robot session replay-verified through the
 new clock; the attract loop visibly renders the neighbour (the bug that motivated the
 refactor, fixed as a test); benchmark ≥100k× realtime *with travel modeled*; every
