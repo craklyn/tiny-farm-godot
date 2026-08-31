@@ -45,6 +45,46 @@ before the first public build ships.*
   - The tools lying at their gates are drawn with the **existing** `tool_icons.png`
     cells, so what she picks up and what she then holds are the same picture and no
     new art was needed.
+- **M2.5 art bench, 2026-08-31** (`M2_5_PLAN.md` WI-11 — same Retro Diffusion pipeline
+  and rights as above; palette-locked and post-processed by the same steps, with the
+  prompts and per-family palettes recorded in the `retro-diffusion-pixel-art` skill's
+  `styles/tiny-farm.md`). **Total spend for the whole bench: $1.390 (139 credits) of
+  the plan's 250-credit cap; account balance after the run $1.916.** 24 generations:
+  19 stills (`rd_plus__default`, $0.027–0.033 each, six of them two-variant) and five
+  8-frame walk animations (`rd_advanced_animation__walking`, $0.14 each, each seeded
+  with one of the stills). Every shipped pixel is snapped to the 81 colours already
+  present in the shipped sheets, so the roster introduces no new palette entries; all
+  alpha is 0 or 255.
+  - `critters.png` — **new**, 64x112, sixteen 16px cells laid out one species per row:
+    **r0** ant scout x2 + ant forager x2 (the forager is the scout carrying the pea
+    from its own generation — the generated forager's body was clipped by the frame);
+    **r1** rabbit hop x4; **r2** mole mound / emerging / surfaced (the emerging cell is
+    the mole composited behind the mound, so one generation covers two states);
+    **r3** worm head / body / tail / vertical body; **r4** kangaroo hop x4;
+    **r5** songbird perched / wings up / wings down; **r6** the three
+    behaviourless spares the designer asked for — fox, duck, squirrel. All face right,
+    to be mirrored like the chicken's cells 0–3.
+    Two cells are drawn rather than generated: the **worm body and tail** are built
+    from one repeated cross-section taken from the generated worm's own ramp, because
+    a body tile has to abut its neighbours seamlessly on both edges and no generator
+    will do that. The songbird's three generations disagreed about belly colour
+    (white / yellow / cream) and were remapped to one cream belly so the flap cycle
+    does not strobe.
+  - `bot.png` — **new**, 192x192, 4x4 of 48px cells in `characters.png`'s exact layout
+    (rows down / up / left / right, frame 0 the standing idle), so the bot can reuse
+    the player's draw path verbatim. Three walk animations (front, back, side) with
+    the left row mirrored from the side — the fourth call the skill says not to pay
+    for. The bot's debut is still Q-56's to decide; only the sheet ships.
+  - `crops.png` — widened from 96x48 to 96x64; the new **row 3 is pea**, four growth
+    stages in the same order and cell shape as wheat and tomato (WI-10). Existing
+    cells are untouched, so every current atlas rect still resolves.
+  - `objects.png` — widened from 80x32 to 112x32; the two new row-1 cells are the
+    **sprinkler, idle (col 5) and spraying (col 6)**. Both come from one generation:
+    the idle cell is the spraying one with its droplet components dropped, so the two
+    frames cannot drift apart.
+  - Unused from this run, kept out of the repo: `sprinkler_idle` (a second, differently
+    shaped sprinkler, dropped in favour of the consistent pair above) and both
+    `ant_scout` variants (long and flat; they vanished at 16px). $0.081 of the $1.390.
 - **Sprout Lands asset pack** by Cup Nooble — *removed 2026-08-26* (Q-7c ruling:
   drop restrictively-licensed assets; its free license forbids redistribution and
   this repo is public). Q-7b license findings recorded in the git history of this
