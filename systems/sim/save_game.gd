@@ -18,6 +18,14 @@ static func capture(world: SimWorld, gs) -> Dictionary:
 			# meter, and only the player's is also the clock. World state rather
 			# than player state, so it lives here beside the grids.
 			"actor_energy": world.actor_energy.duplicate(),
+			# Sim time (M2.5 WI-1). Additive, same pattern as actor_energy above:
+			# a save written before the clock existed simply has no tick, which
+			# reads as 0 — true of every build that wrote one.
+			# **Pending events are not saved.** Nothing schedules any yet; when
+			# something does (WI-3), events carry Callables, which do not
+			# serialize, so persisting them is its own design rather than a key
+			# added here in advance of a need.
+			"tick": world.clock.tick,
 		},
 		"state": {
 			"day": gs.day,
@@ -85,6 +93,9 @@ static func restore(data: Dictionary, world: SimWorld, gs) -> bool:
 	# Additive: a save written before per-actor energy existed simply has nobody
 	# on record, which reads as everybody rested — true of the builds that wrote it.
 	world.actor_energy = _int_values(w.get("actor_energy", {}))
+	# Additive in the same way, and a load is a fresh timeline: the tick comes back,
+	# nothing is left pending (see SimClock.reset).
+	world.clock.reset(int(w.get("tick", 0)))
 
 	var s: Dictionary = d.get("state", {})
 	gs.day = int(s.get("day", 1))

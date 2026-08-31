@@ -65,6 +65,7 @@ func _init() -> void:
 	test_offscreen_arrow()
 	test_player_gs_injection()
 	test_pre_m15_saves_load()
+	test_sim_clock()
 
 	print("")
 	print(String("=").repeat(60))
@@ -3046,3 +3047,143 @@ func test_pre_m15_saves_load() -> void:
 		gs.free()
 	_flush_quiet("every real pre-M1.5 autosave in playtests/ still loads and plays")
 	_assert(checked >= 1, "there was at least one real fixture to check (%d)" % checked)
+
+
+func test_sim_clock() -> void:
+	print("\n--- SimClock: sim time is the tick counter (D-9/Q-53, M2.5 WI-1) Tests ---")
+
+	# Nothing dispatches early, nothing dispatches late, and events sharing a tick
+	# dispatch in the order they were scheduled — the property the `seq` tiebreak
+	# exists for, so determinism can never come to depend on heap internals.
+	var clock := SimClock.new()
+	var trace := []
+	var read_at := []
+	var stamp := func(e: Dictionary) -> void:
+		trace.append(String(e.get("name", "")))
+		read_at.append(clock.tick)
+	clock.schedule(5, { "name": "a" }, stamp)
+	clock.schedule(5, { "name": "b" }, stamp)
+	clock.schedule(7, { "name": "c" }, stamp)
+	clock.schedule(5, { "name": "d" }, stamp)
+	_assert(clock.pending() == 4, "four events queued")
+	_assert(clock.next_event_tick() == 5, "fast-forward can see the next event without stepping to it")
+
+	_assert(clock.advance_to(4).is_empty(), "advancing short of an event dispatches nothing")
+	_assert(clock.tick == 4, "though the clock still arrives where it was sent")
+	var fired := clock.advance_to(5)
+	_assert(fired.size() == 3, "everything due at a tick fires when that tick arrives")
+	_assert(str(trace) == str(["a", "b", "d"]), "events sharing a tick fire in scheduling order")
+	_assert(str(read_at) == str([5, 5, 5]), "and the clock reads as their own tick while they do")
+	_assert(clock.advance_to(6).is_empty(), "an already-dispatched tick does not fire twice")
+	_assert(clock.advance_to(9).size() == 1, "and the later event waits for its own tick")
+	_assert(str(read_at) == str([5, 5, 5, 7]), "which is 7, not the 9 the fast-forward was aiming at")
+	_assert(clock.pending() == 0 and clock.next_event_tick() == -1, "an empty queue has no next event")
+
+	# Same seed, same schedule, twice: identical dispatch order and tick trace.
+	# The walker reschedules itself from the dispatch loop, so this exercises the
+	# shape WI-3's brains will actually use rather than a static queue.
+	var run := func(seed_value: int) -> String:
+		SimRng.reseed(seed_value)
+		var c := SimClock.new()
+		var out := []
+		for i in 8:
+			c.schedule(SimRng.randi() % 40, { "name": "e%d" % i })
+		c.schedule(3, { "name": "walker", "steps": 5 })
+		while c.pending() > 0:
+			for e in c.advance_to(c.next_event_tick()):
+				out.append("%s@%d" % [String(e.get("name", "")), int(e.get("at", -1))])
+				var steps := int(e.get("steps", 0))
+				if steps > 1:
+					c.schedule(c.tick + 1 + SimRng.randi() % 3,
+						{ "name": "walker", "steps": steps - 1 })
+		return str(out)
+
+	var first: String = run.call(2026)
+	var second: String = run.call(2026)
+	_assert(first.length() > 0 and first.count("walker@") == 5,
+		"the run produced a trace with the walker's five steps in it")
+	_assert(first == second, "same seed + same schedule = identical dispatch order and tick trace")
+	_assert(run.call(7) != first, "and a different seed produces a different one")
+
+	# Ground rule 8: fast-forward *jumps*. A million empty ticks cost nothing,
+	# because the cost is per event and never per tick. Time.get_ticks_msec() is
+	# legal here and nowhere under systems/sim/ — this file is a test, not the sim.
+	var far := SimClock.new()
+	var hits := []
+	var count := func(_e: Dictionary) -> void:
+		hits.append(1)
+	for i in 10:
+		far.schedule(100_000 * (i + 1), { "name": "milestone" }, count)
+	var t0 := Time.get_ticks_msec()
+	far.advance_to(1_000_000)
+	var empty := SimClock.new()
+	empty.advance_to(1_000_000)
+	var elapsed := Time.get_ticks_msec() - t0
+	_assert(hits.size() == 10, "every milestone across a million ticks fired")
+	_assert(far.tick == 1_000_000 and empty.tick == 1_000_000, "and both clocks landed on the target tick")
+	_assert(elapsed < 100, "1,000,000 empty ticks cross in under 100 ms (%d ms)" % elapsed)
+
+	# Cancelling is how a despawn will withdraw a pending step (WI-3). A cancelled
+	# event never fires and never reaches the caller's trace.
+	var c2 := SimClock.new()
+	var id_a := c2.schedule(10, { "name": "a" })
+	c2.schedule(10, { "name": "b" })
+	_assert(c2.cancel(id_a), "a pending event can be cancelled")
+	_assert(not c2.cancel(id_a), "and cancelling it again is not a second cancellation")
+	_assert(c2.pending() == 1, "the cancelled event is gone from the count immediately")
+	var survivors := c2.advance_to(20)
+	_assert(survivors.size() == 1 and String(survivors[0].get("name", "")) == "b",
+		"only the surviving event dispatches")
+
+	# Time never runs backwards, and nothing can be scheduled into the past: an
+	# event aimed at a tick already gone lands on the present instead.
+	var c3 := SimClock.new()
+	c3.advance_to(50)
+	c3.schedule(10, { "name": "late" })
+	_assert(c3.next_event_tick() == 50, "an event scheduled for a past tick lands on the present")
+	c3.advance_to(20)
+	_assert(c3.tick == 50 and c3.pending() == 1, "a target in the past is a no-op, not a rewind")
+	_assert(c3.advance_to(50).size() == 1, "and the present-tick event fires on the next advance")
+
+	# An event scheduled *during* a dispatch, for the tick being dispatched, joins
+	# the same pass behind everything already due there. (Which is also why a
+	# process must reschedule itself at tick + 1 or later; see SimClock.schedule.)
+	var c4 := SimClock.new()
+	var chain := []
+	var follow := func(_e: Dictionary) -> void:
+		chain.append("follow@%d" % c4.tick)
+	var lead := func(_e: Dictionary) -> void:
+		chain.append("lead@%d" % c4.tick)
+		c4.schedule(c4.tick, { "name": "follow" }, follow)
+	c4.schedule(2, { "name": "lead" }, lead)
+	var one_pass := c4.advance_to(9)
+	_assert(one_pass.size() == 2, "an event scheduled during a dispatch joins the same pass")
+	_assert(str(chain) == str(["lead@2", "follow@2"]), "on the same tick, behind what was already due")
+
+	# The clock is sim truth, so it is saved with the world and comes back — the
+	# same additive pattern actor_energy used, with no VERSION bump.
+	GameState.reset()
+	SimRng.reseed(910)
+	var world := SimWorld.new()
+	world.generate()
+	_assert(world.clock.tick == 0, "a freshly generated world starts at tick 0")
+	world.clock.advance_to(4242)
+	var snap = JSON.parse_string(JSON.stringify(SaveGame.capture(world, GameState)))
+	var w2 := SimWorld.new()
+	var gs2 = load("res://systems/game_state.gd").new()
+	_assert(SaveGame.restore(snap, w2, gs2), "a save with sim time in it restores")
+	_assert(w2.clock.tick == 4242, "and the tick counter survives the round trip")
+
+	var legacy := { "version": SaveGame.VERSION,
+		"world": { "tiles": world.tiles.duplicate(true), "objects": world.objects.duplicate(true) },
+		"state": {} }
+	var w3 := SimWorld.new()
+	var gs3 = load("res://systems/game_state.gd").new()
+	_assert(SaveGame.restore(legacy, w3, gs3), "a save written before the clock existed still restores")
+	_assert(w3.clock.tick == 0, "reading, correctly, as tick 0")
+	gs2.free()
+	gs3.free()
+
+	world.generate()
+	_assert(world.clock.tick == 0, "regenerating a world restarts its timeline (so a replay counts from the same zero)")
+	_assert(SimClock.RATE == 10, "the proposed tick rate is 10 Hz [Playtest], and nothing consumes it yet")

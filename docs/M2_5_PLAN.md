@@ -290,3 +290,44 @@ which critters debut when.
 ## 9. Execution status
 
 *(Appended by execution sessions as work lands.)*
+
+### WI-1 — SimClock ✅ landed 2026-08-31
+
+`systems/sim/sim_clock.gd` (pure, RefCounted): tick counter, min-heap event queue
+keyed on `(at, seq)`, `advance_to()` / `advance_by()` / `schedule()` / `cancel()` /
+`next_event_tick()`. `SimWorld` owns one as `clock` (sim truth); `generate()` resets it,
+`SaveGame` persists the tick additively (`world.tick`, absent ⇒ 0, no VERSION bump —
+the `actor_energy` pattern). `RATE = 10` is a `[Playtest]` constant with no consumers yet.
+
+Suites: unit **764 PASSED / 0 FAILED** (731 before, +33 from `test_sim_clock`),
+integration **141 / 0**, robot session **MATCH**, benchmark 650,471× (baseline
+662,773×; the clock is one allocation per world and touches no hot path).
+Rule-7 verifier grep over `systems/sim/` for `Time.`/`get_ticks`/`delta`/`_process(`:
+clean.
+
+**Deviations from the WI-1 text (criteria unaffected):**
+
+1. *"`apply_action` results and NPC processes schedule against it"* is **not** done here.
+   Nothing is wired to the clock yet: no entity, no verb result and no replay entry
+   reads or advances it. Wiring is WI-3's retrofit and WI-5's format bump, and doing it
+   in this commit would have meant landing behaviour changes with no brains to own them.
+   WI-1's own criteria (determinism, the 10⁶-tick bound, the purity grep) are all met
+   without it. `main.gd` still drives entities exactly as before.
+2. **Ordering is `(tick, scheduling order)`, not tick alone.** Same-tick events dispatch
+   FIFO by an internal `seq`, so the dispatch order is a total order that cannot depend
+   on how the heap arranges equal keys. This is stricter than the plan asked for, and
+   the determinism test asserts it directly.
+3. **API surface beyond `advance_to`:** `cancel()` (lazy — the id is dropped and the heap
+   entry skipped when it surfaces) and `next_event_tick()` (the read that makes rule 8
+   usable: callers jump to the next event instead of counting through empty time).
+4. **Scheduled events are not persisted**, only the tick counter — noted in the code.
+   Nothing schedules any yet, and events carry `Callable`s, which do not serialize; the
+   saveable shape is WI-3's to settle when it has real processes to save.
+
+**For WI-2/WI-3:** the clock is `world.clock` and starts at 0 on `generate()` and on
+`SaveGame.restore()`; `capture_canonical()` now includes the tick, so a replay whose
+recomputed motion consumes a different number of ticks than the recorded session will
+fail the existing replay-vs-save comparison — that is deliberate, and it is free extra
+assurance for WI-5's dual-record net. `ARCHITECTURE.md`'s layer-2 description is
+deliberately not updated yet: brains, clock and registry are one paragraph, and it is
+written once WI-2/WI-3 land (checklist §8.D).

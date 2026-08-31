@@ -87,11 +87,22 @@ const OBJECT_POSITIONS: Array[Dictionary] = [
 var tiles: Array[Array] = []
 var objects: Array[Array] = []  # objects[y][x] = "" or object type string
 
+# The sim's tick clock (D-9 / Q-53, M2.5 WI-1). Sim truth, exactly like the grids:
+# owned here, saved with the world, and the only time anything in layer 2 is
+# allowed to read once the retrofits land. Nothing consumes it yet — this work
+# item establishes ownership and nothing else, because entity movement (WI-3/WI-4)
+# and tick-stamped replays (WI-5) are separate landings.
+var clock := SimClock.new()
+
 
 func generate(with_layout: Dictionary = WorldLayout.DEFAULT) -> void:
 	layout = with_layout
 	tiles.clear()
 	objects.clear()
+	# A regenerated world is a new world, so its timeline starts over. Matters for
+	# replay: `apply_to()` regenerates from seed, and a replayed session must count
+	# its ticks from the same zero the recorded one did.
+	clock.reset()
 
 	# 1. Bare ground inside the map border. Every later step overwrites; nothing
 	#    below reads a tile it has not written, so the fill order is the only
