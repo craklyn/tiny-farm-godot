@@ -64,7 +64,7 @@ func _init() -> void:
 		var sleep := { "verb": "sleep", "actor": "world", "weather": "sunny" }
 		var r := world.apply_action(sleep, gs)
 		_check(r.get("ok", false), "day %d ended with a sleep" % (day + 1))
-		log.record(sleep, r)
+		log.record(sleep, r, world.clock.tick)
 		days += 1
 
 	# --- Quality assertions. All hard-fail; none is about validity. ----------
@@ -84,6 +84,11 @@ func _init() -> void:
 	log.apply_to(w2, gs2)
 	_check(SaveGame.capture_canonical(world, gs) == SaveGame.capture_canonical(w2, gs2),
 		"replaying the file reproduces the generator's own end state")
+	# Format v2's dual-record net (M2.5 WI-5). The generator advances no ticks, so
+	# no brain ever decides anything here and the net has nothing to compare —
+	# which is itself worth asserting, because "nothing recomputed" and "the
+	# recomputation disagreed" are different files.
+	_check(log.divergence == "", "no recomputation divergence (%s)" % log.divergence)
 
 	# --- Write, then reload and verify what actually landed on disk ----------
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://assets/demo"))
@@ -100,7 +105,8 @@ func _init() -> void:
 		gs3.free()
 
 	print("")
-	print("  %d actions · %d days · build %s" % [log.entries.size(), days, log.build_id])
+	print("  %d actions · %d days · v%d · build %s" % [
+		log.entries.size(), days, ReplayLog.VERSION, log.build_id])
 	print("=".repeat(60))
 	print("Results: %s" % ("FAILED" if _fail > 0 else "PASSED"))
 	print("=".repeat(60))
@@ -125,7 +131,7 @@ func _run_cold_open(world: SimWorld, gs, log: ReplayLog) -> bool:
 		var r := world.apply_action(a, gs)
 		if not r.get("ok", false):
 			return false
-		log.record(a, r)
+		log.record(a, r, world.clock.tick)
 	return false
 
 
@@ -144,7 +150,7 @@ func _pass(world: SimWorld, gs, log: ReplayLog, verb: String,
 				a["seed_type"] = "wheat"
 			var r := world.apply_action(a, gs)
 			if r.get("ok", false):
-				log.record(a, r)
+				log.record(a, r, world.clock.tick)
 				if verb == "plant":
 					planted.append(t)
 			else:

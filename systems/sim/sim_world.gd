@@ -106,11 +106,22 @@ var clock := SimClock.new()
 # the wash in the gateway is exact and unexercised.
 var scent := Scent.new()
 
+# The seed this world was generated from (M2.5 WI-5). Sim truth, and the one
+# piece of it that was missing: `SimRng.stateless()` derives every per-day draw
+# from the *current* seed — the crow schedule most visibly — so a world that
+# cannot say which seed it came from cannot be continued or replayed faithfully.
+# Recorded here at generation, carried through the save, and reseeded from by
+# whoever owns the session (`main.gd` after a restore, `ReplayLog.apply_to()`
+# before it replays). 0 means "unknown", which is what every save written before
+# this field existed says, and those keep their old behaviour.
+var gen_seed: int = 0
+
 
 func generate(with_layout: Dictionary = WorldLayout.DEFAULT) -> void:
 	layout = with_layout
 	tiles.clear()
 	objects.clear()
+	gen_seed = SimRng.current_seed()
 	# A regenerated world is a new world, so its timeline starts over. Matters for
 	# replay: `apply_to()` regenerates from seed, and a replayed session must count
 	# its ticks from the same zero the recorded one did. The scent layer goes with
@@ -726,9 +737,14 @@ const BRAIN_EVENT := "brain"
 
 # Advance sim time to `target_tick`, letting brains decide along the way.
 # Returns every Action they took, in dispatch order, as
-# `[{ "action": {...}, "result": {...} }]` — the caller's record of what the
-# world did while it was not looking. `world/farm.gd` is what turns that into
-# replay entries and trace lines; the sim does not know those exist.
+# `[{ "action": {...}, "result": {...}, "tick": n }]` — the caller's record of
+# what the world did while it was not looking. `world/farm.gd` is what turns that
+# into replay entries and trace lines; the sim does not know those exist.
+#
+# The tick is in there because it is half of what the Action means (M2.5 WI-5):
+# a replay's dual-record net compares a recomputed brain Action against the
+# recorded one, and "the same verb on the same tile three seconds late" is a
+# desync, not a match.
 func advance_to_tick(target_tick: int, gs = null) -> Array[Dictionary]:
 	var taken: Array[Dictionary] = []
 	if target_tick <= clock.tick:
@@ -761,7 +777,7 @@ func _dispatch(event: Dictionary, gs, taken: Array[Dictionary]) -> void:
 	if not action.is_empty():
 		var result := apply_action(action, gs)
 		brain.on_result(self, actor_id, action, result)
-		taken.append({ "action": action, "result": result })
+		taken.append({ "action": action, "result": result, "tick": clock.tick })
 	# The brain may have despawned itself (a crow leaving the map), or been
 	# despawned by its own Action's consequences (the neighbour opening the gate).
 	if actors.has(actor_id):
@@ -790,7 +806,20 @@ func _schedule_brain(actor_id: String, at_tick: int) -> void:
 # through `spawn_actor`, so without this a reloaded farm would stand perfectly
 # still) and at the day turn, so a morning lands on the morning rather than
 # whenever the hen next happened to be due.
+#
+# **Cancel before forgetting** — the handles are dropped by cancelling them, not
+# by clearing the map. Clearing it first left every previously scheduled think in
+# the clock's heap with nothing left holding its id, so a day turn added a think
+# instead of moving one: after three sleeps the hen woke four times on the same
+# tick and pottered four times as fast, and after ten days, eleven. **Found by
+# WI-5's dual-record net** — a continued session's hen ended up on a different
+# tile than her replay's, because a restored world starts with an empty queue and
+# a played one had been accumulating ghosts since morning. It is the invariant
+# this file already claimed two comments up ("one pending think per actor"), now
+# actually held.
 func schedule_all_brains() -> void:
+	for id in _brain_events.keys():
+		clock.cancel(int(_brain_events[id]))
 	_brain_events.clear()
 	for id in actors.keys():
 		_schedule_brain(id, clock.tick + 1)

@@ -98,14 +98,14 @@ code, both deliberate for phase 1 and both due before phase 4.**
    sim-brained actors movement is a *recomputed process*, not a logged verb, because the
    mover's deterministic code is the reconstruction rule. What remains open is the rest of
    the sentence: `tools/benchmark_sim.gd` still fast-forwards an actor who **teleports**
-   (WI-12 makes it walk), and the player's and the neighbour's positions are still
-   presentation's — the engine they will move on landed with WI-4, but joining them to it
-   needs the tick stamps that let a replay recompute a walk (WI-5) and the renderer that
-   mirrors sim truth (WI-6). Until then
-   `SaveGame.capture_canonical` temporarily excludes actor positions from the
-   replay-vs-save comparison — a v1 replay carries no ticks, so it cannot recompute
-   motion; WI-5's tick stamps and dual-record net are what restore the comparison.
-2. **A stored replay is `[Action]`, not `[(Observation, Action)]`.** Observations are
+   (WI-12 makes it walk), and the player's position is still presentation's — the engine
+   she will move on landed with WI-4, and the renderer that mirrors sim truth is WI-6's.
+   **WI-5 closed the comparison seam**: a v2 replay advances the sim clock through the
+   session's own ticks, so `SaveGame.capture_canonical` compares every sim-moved actor's
+   position again — a hen who ends the session on a different tile now fails a replay. The
+   player's registry entry is the one exclusion left, and it is empty of meaning until
+   WI-6 writes her tile into it.
+2. **A stored replay is `[Action@tick]`, not `[(Observation, Action)]`.** Observations are
    *derived* by re-simulating the stream rather than recorded alongside it. That is far
    cheaper and it is why a replay is robust to presentation changes such as move speed —
    `apply_to()` has no timing at all. The cost is that the corpus is only as stable as the
@@ -114,6 +114,14 @@ code, both deliberate for phase 1 and both due before phase 4.**
    stamping `build_id` at record time so drift is *detectable*; materialising observations
    at record time, which would decouple the corpus from drift entirely, is a real-cost
    P-5/D-2 decision and is deliberately not taken yet.
+
+   **Format v2 (M2.5 WI-5)** adds the one piece re-simulation could not derive: *when*.
+   Every entry carries the tick it resolved on, the log carries the sim time the session
+   reached, and the session's seed is in the header so a continued game replays under the
+   seed it was played on. Entries an NPC brain decided are marked and **recomputed** on
+   replay rather than re-applied (Q-53) — Phase A writes both halves and asserts they
+   agree action for action, which is the migration net; Phase B stops writing the recorded
+   half. v1 logs stay readable and take the old path unchanged.
 
 ## Phase-4 ML: feasibility sketch and budgets
 

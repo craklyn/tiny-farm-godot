@@ -38,6 +38,14 @@ static func capture(world: SimWorld, gs) -> Dictionary:
 			# species writes scent yet. Only *written* cells are stored, so this is
 			# `{}` on an unmarked farm and never a grid of zeroes.
 			"scent": world.scent.to_save(),
+			# The seed this world came from (M2.5 WI-5). Additive, the same way
+			# again: absent ⇒ 0 ⇒ "unknown", which is what every save written
+			# before this field says, and those load and play exactly as before.
+			# It is here because `SimRng.stateless()` derives every per-day draw
+			# from the current seed, so a farm that cannot say which seed it came
+			# from cannot be continued *or* replayed faithfully — the hole WI-3's
+			# closing note filed and this closes.
+			"gen_seed": world.gen_seed,
 		},
 		"state": {
 			"day": gs.day,
@@ -110,6 +118,13 @@ static func restore(data: Dictionary, world: SimWorld, gs) -> bool:
 	# actor's first thought on it (M2.5 WI-3). Resetting afterwards would throw
 	# every one of those away and leave a reloaded farm standing perfectly still.
 	world.clock.reset(int(w.get("tick", 0)))
+	# Which seed this farm came from (M2.5 WI-5). Restored, never *applied*: a load
+	# must not reach out and reseed the process — `SaveGame.restore` is called by
+	# tests and by the attract loop, and a global side effect from a read would be
+	# a landmine. Whoever owns the session does the reseeding, at the session
+	# boundary where the one raw `randi()` already lives (`main.gd`, and
+	# `ReplayLog.apply_to` for a replay of one).
+	world.gen_seed = int(w.get("gen_seed", 0))
 	# ...and the scent layer with it (M2.5 WI-7), before the cast: a restored trail
 	# is part of the world its actors wake up into. Absent ⇒ a clean field.
 	world.scent.from_save(w.get("scent", {}))
@@ -218,41 +233,57 @@ static func save_to(path: String, world: SimWorld, gs) -> bool:
 # presentation-only fields (selected tool/seed) — they are not Actions and
 # not sim truth, so replays legitimately differ on them.
 #
-# **And, temporarily, everything a tick-stepped brain moves** (M2.5 WI-3). This is
-# a deliberate seam, and it closes in WI-5:
+# **The WI-3 seam is closed here** (M2.5 WI-5). WI-3 took the tick counter and
+# every actor's `pos`/`facing`/`extra` out of this comparison, because brains had
+# started moving them during live play while a v1 replay had no tick information
+# at all and could not recompute the motion. Format v2 stamps every entry with
+# the tick it happened on, and `ReplayLog.apply_to` now advances the clock
+# through those ticks and lives out the session's remaining sim time, so a replay
+# *does* recompute the motion — and this compares it. A hen who ends the session
+# on a different tile than the one the save recorded is now a failure, which is
+# the point: it is the strongest statement the repo can make that the
+# recomputation is the recording.
 #
-#   Since WI-3 the hen walks and the crow flies as sim processes, driven by the
-#   clock during live play. A v1 replay carries **no tick information at all** —
-#   `apply_to()` re-applies a bare action stream and never advances the clock —
-#   so a replay cannot recompute that motion, and comparing it against a save
-#   that recorded it would fail every time for a reason that says nothing about
-#   whether the replay is faithful. What crosses the determinism boundary in v1 is
-#   the Action stream, and the Action stream is compared in full.
+# **One residue, and it is named:** the player's `x`/`y`/`facing`/`extra` are
+# still excluded. Her position is not sim truth yet — she walks in pixels and
+# nothing writes her tile back into the registry (M2.5 WI-2 deviation 2), so the
+# registry holds her spawn tile in a live session and in a replay alike, and
+# comparing it would assert nothing. WI-6 wires the pixel walker to the registry
+# as tile-crossing events; **these four lines come out with it**, and the free-walk
+# entry `ReplayLog` already defines is what will carry her across the boundary.
 #
-#   So the tick counter, and each actor's `pos`/`facing`/`extra` (brain scratch),
-#   come out of the comparison — and nothing else does. **Species, existence and
-#   energy stay in**, because none of them is a function of motion: an actor who
-#   should be on the farm and is not, or who has spent energy the replay did not,
-#   still fails here exactly as before.
-#
-#   WI-5's format v2 stamps entries with ticks, which is what makes recomputation
-#   possible; its dual-record net then asserts the recomputed motion matches the
-#   recording action-for-action, and these lines come out again.
-#
-# `capture()` itself is untouched: a **save** still stores positions and the tick,
-# because a save is a snapshot and a snapshot knows where everybody was standing.
+# `capture()` itself is untouched: a **save** still stores every position and the
+# tick, because a save is a snapshot and a snapshot knows where everybody was.
 static func capture_canonical(world: SimWorld, gs) -> String:
 	var c := capture(world, gs)
 	var s: Dictionary = c.get("state", {})
 	s.erase("selected_tool")
 	s.erase("selected_seed_type")
-	var w: Dictionary = c.get("world", {})
-	w.erase("tick")
-	var a: Dictionary = w.get("actors", {})
-	for id in a:
+	var a: Dictionary = c.get("world", {}).get("actors", {})
+	if a.has(SimWorld.ACTOR_PLAYER):
 		for moved in ["x", "y", "facing", "extra"]:
-			a[id].erase(moved)
-	return JSON.stringify(c)
+			a[SimWorld.ACTOR_PLAYER].erase(moved)
+	return _canonical_text(c)
+
+
+# Comparison text, with one normalization: everything goes through JSON and back
+# before being written out (M2.5 WI-5).
+#
+# It exists because half of what this compares is a **live** world and half is one
+# **restored from disk**, and JSON has one number type. A brain's scratch state
+# (`extra`) holds honest integers live — `wake: 43`, `step: 4` — and comes back
+# from a save as `43.0` and `4.0`, so without this the two stringify differently
+# and every replay of a session with a walking hen in it fails on a difference
+# that is an artifact of the file format rather than a fact about the farm. One
+# round trip puts both sides in the same shape. It normalizes nothing else: key
+# order was already canonical (`JSON.stringify` sorts), and a value that differs
+# still differs.
+static func _canonical_text(c: Dictionary) -> String:
+	var text := JSON.stringify(c)
+	var parsed = JSON.parse_string(text)
+	if typeof(parsed) != TYPE_DICTIONARY:
+		return text  # unparseable (a NaN somewhere): compare the raw form, never "null"
+	return JSON.stringify(parsed)
 
 
 # Progression figures for the title screen's Continue card. Lives here because
@@ -283,16 +314,31 @@ static func load_dict(path: String) -> Dictionary:
 # Shared verification: does a session's action log reproduce this save exactly?
 # Used by tools/verify_replay.gd and tools/robot_session.gd.
 static func replay_matches(rlog: ReplayLog, save: Dictionary) -> bool:
+	return replay_report(rlog, save).get("matched", false)
+
+
+# The same check with its reasons attached (M2.5 WI-5). A v2 replay can fail in
+# two different places and they mean different things: `divergence` is the
+# dual-record net — a brain recomputed something other than what it did live,
+# named down to the entry — while a bare state mismatch says the end states
+# differ without saying where. Reporting both is what makes a failure a
+# diagnosis; the tools print it.
+static func replay_report(rlog: ReplayLog, save: Dictionary) -> Dictionary:
 	var gs_replay = load("res://systems/game_state.gd").new()
 	var world_replay := SimWorld.new()
 	rlog.apply_to(world_replay, gs_replay)
 	var gs_save = load("res://systems/game_state.gd").new()
 	var world_save := SimWorld.new()
 	restore(save, world_save, gs_save)
-	var matched := capture_canonical(world_replay, gs_replay) == capture_canonical(world_save, gs_save)
+	var same_state := capture_canonical(world_replay, gs_replay) \
+		== capture_canonical(world_save, gs_save)
 	gs_replay.free()
 	gs_save.free()
-	return matched
+	return {
+		"matched": same_state and rlog.divergence == "",
+		"state_matched": same_state,
+		"divergence": rlog.divergence,
+	}
 
 
 # The registry, flattened for JSON — which has no Vector2i, so a tile becomes

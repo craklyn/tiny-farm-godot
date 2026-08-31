@@ -46,6 +46,11 @@ func _ready() -> void:
 	for e in main_scene.farm.replay.entries:
 		if String(e.get("actor", "")) == "neighbour":
 			neighbour_entries += 1
+	# She is recorded, not recomputed, and that is deliberate: her *pacing* is a
+	# fact about a camera and a viewport (M2.5 WI-3 deviation 7), so she is the
+	# one NPC no clock can reproduce. The brains that *are* on the clock are
+	# checked at the bottom of this run, where the replay recomputes them and the
+	# dual-record net compares the two streams (WI-5).
 	_check(neighbour_entries > 0, "her work is in the replay as actor 'neighbour' (%d entries)" % neighbour_entries)
 	await get_tree().process_frame
 
@@ -86,14 +91,49 @@ func _ready() -> void:
 	_check(FileAccess.file_exists(ROBOT_SAVE), "autosave written")
 	_check(FileAccess.file_exists(ROBOT_REPLAY), "session replay written")
 
+	# Then let the farm live a while (M2.5 WI-5). Everything above takes about two
+	# seconds of sim time, and in two seconds the hen decides almost nothing — so a
+	# robot session that stopped at the sleep would hand the dual-record net an
+	# empty stream to agree with, which is a green light that means nothing.
+	#
+	# Sim time is driven through `main.gd`'s own pump, one call per frame with the
+	# frame cap it applies to a real one, so this is the same path a slow tablet
+	# frame takes rather than a private door into the clock. Then the session is
+	# persisted again: the save and the replay are written together, which is the
+	# pairing everything below verifies.
+	var ticks_before: int = main_scene.farm.sim.clock.tick
+	for _i in 200:
+		main_scene._pump_sim_clock(float(main_scene.MAX_TICKS_PER_FRAME) / SimClock.RATE)
+		await get_tree().process_frame
+	main_scene.persist_session()
+	_check(main_scene.farm.sim.clock.tick - ticks_before > 400,
+		"the farm lived on after she slept (%d ticks of sim time)"
+			% (main_scene.farm.sim.clock.tick - ticks_before))
+
 	# Verify: replay the robot's own session against its autosave
 	var rlog := ReplayLog.load_from(ROBOT_REPLAY)
 	var save := SaveGame.load_dict(ROBOT_SAVE)
 	if rlog == null or save.is_empty():
 		_check(false, "robot files loadable")
 	else:
-		_check(SaveGame.replay_matches(rlog, save),
-			"robot session replay MATCHES its autosave (%d entries)" % rlog.entries.size())
+		_check(rlog.version >= 2, "the session recorded in replay format v%d" % rlog.version)
+		var brain_entries := 0
+		for e in rlog.entries:
+			if bool(e.get("brain", false)):
+				brain_entries += 1
+		var report := SaveGame.replay_report(rlog, save)
+		# The dual-record net (M2.5 WI-5, plan §4). The replay advanced the clock
+		# through the session's own ticks, so every brain on it decided again —
+		# and this is the assertion that it decided the *same things*, in the same
+		# order, on the same ticks. A refactor that changes what the hen does now
+		# fails here, naming the entry, rather than showing up as a farm that is
+		# subtly wrong somewhere.
+		_check(String(report.get("divergence", "")) == "",
+			"recomputation matches the recording, action for action (%d brain entries) %s" % [
+				brain_entries, report.get("divergence", "")])
+		_check(report.get("state_matched", false),
+			"robot session replay MATCHES its autosave (%d entries, %d ticks)" % [
+				rlog.entries.size(), rlog.end_tick])
 
 	print("=".repeat(60))
 	print("Results: %s" % ("FAILED" if failed else "PASSED"))

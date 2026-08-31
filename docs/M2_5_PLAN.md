@@ -948,3 +948,161 @@ it: nothing in the live game does.
 **For WI-8's critter workers.** `Brain.day_actions()` is available to any critter whose
 one act belongs to the day turn rather than to a tick — but prefer a `wake` if the thing
 decides *when* to act, because a brain doing both acts twice.
+
+### WI-5 — Replay v2 + the dual-record net ✅ Phase A landed 2026-08-31
+
+**Format v2** (`systems/sim/replay_log.gd`, the first sanctioned change to the format —
+§1's amendment, ratified by Q-53). One entry, in full:
+
+```json
+{"actor":"chicken","target":[5,2],"tick":1601,"verb":"lay_egg","brain":true}
+```
+
+Three additions and nothing else. **`tick`** is the sim time the Action resolved at, so a
+replay can put the world back in the state the actor decided from rather than in whatever
+state the action stream happened to leave it in. **`brain: true`** marks an Action a
+tick-driven brain decided; a v2 replay **recomputes** those instead of re-applying them
+(D-9/Q-53: the mover's deterministic code is the reconstruction rule) and asserts the
+recomputation matches the recording. **The header's `gen_seed`** is now the seed the
+*session* ran under on both paths, and `apply_to` reseeds from it — the hole below. The
+end tick rides as a `{"mark": n}` line appended by each flush, because a session's length
+is only known when it is written down and the header was written at the start; a reader
+lifts marks out of the stream, so no consumer sees a non-Action entry.
+
+**The dual-record net** (`ReplayLog._apply_v2`). Two streams have to agree: the recording
+is `entries`; the recomputation is what the brains decide while the clock is advanced
+through the same ticks, which `SimWorld.advance_to_tick` already returned in dispatch
+order (WI-3's handoff named this seat, and it fitted). Player and neighbour entries are
+applied — nothing recomputes a person — and brain entries are matched head to head as
+signatures over actor, verb, target, tick and parameters. A mismatch is one line naming the
+first diverging entry (`entry 5: recorded @1601 {…target=0,0…}, recomputed @1601
+{…target=5,2…}`), surfaced through `SaveGame.replay_report` into the robot session,
+`verify_replay.gd` and the unit suite. Sprinkler day-actions need no net: they already fire
+*inside* the replayed `sleep` (WI-10 deviation 4).
+
+**The WI-3 seam is closed.** `capture_canonical`'s four `erase` lines are gone for every
+actor the sim moves, so a hen who ends the session on a different tile now fails a replay —
+in the robot session she walks ~100 tiles during 800 recomputed ticks and lands on the same
+one. The player's `x`/`y`/`facing`/`extra` are the one residue, documented where the erase
+lines were: nothing writes her tile into the registry until WI-6, so comparing it would
+assert nothing. WI-7's scent field is genuinely compared by the same mechanism (it is
+inside `capture()`, and recomputed deposits must now land on the same ticks); it is still
+empty on both sides because no shipping species writes scent.
+
+**The seed hole, closed** (WI-3's closing note, filed as engineering). `SimWorld.gen_seed`
+is recorded at generation, persisted additively in the save (`world.gen_seed`, absent ⇒ 0 ⇒
+"unknown"), and reseeded from **by whoever owns the session** — `main.gd` after a restore,
+`ReplayLog.apply_to` before it replays, the attract loop when it rewinds. `SaveGame.restore`
+deliberately does **not** reseed: a load is called by tests and by the attract loop, and a
+global side effect from a read would be a landmine. Consequence for live play, and it is an
+improvement: the same save reloaded twice now brings the same crows, because the day's
+schedule is `stateless(seed, day)` and the seed is the farm's own rather than the process's.
+
+Suites: unit **1070 PASSED / 0 FAILED** (1035 before, +35 from `test_replay_v2`),
+integration **154 / 0**, robot session **PASSED** across five runs (fresh seed each,
+15–17 entries, ~840 ticks, recomputation match every time), `verify_replay` **MATCH** on a
+real v1 human session, demo replay **regenerates byte-identically twice** (md5 equal;
+the diff against the old file is exactly the version bump and the tick stamps), visual
+regression **passes unchanged** (WI-6's re-baseline allowance still untouched). Benchmark,
+three runs: **645k / 706k / 719k×**, inside the 631–713k band WI-10 recorded — nothing here
+is on the fast-forward path.
+
+**A real bug the net found on its first night.** `SimWorld.schedule_all_brains()` cleared
+`_brain_events` *before* rescheduling, which dropped the handles without cancelling the
+events, so every day turn **added** a pending think instead of moving one: after three
+sleeps the hen woke four times on the same tick and pottered four times as fast, and after
+ten days, eleven. It was invisible in every existing test because a live session and a
+restored one both drifted the same way; it surfaced the moment a *continued* session was
+compared against its own replay, since a restored world starts with an empty queue. Fixed
+(cancel, then forget), which is also the invariant the file already claimed one comment
+above. Visible effect on the shipping game: the hen keeps her intended pace all week.
+
+**Deviations and decisions taken inside the WI:**
+
+1. **Player free-walk events are defined and tolerated, not recorded** — §3.3's other half,
+   deliberately deferred. `ReplayLog.record_walk()` / `is_walk()` fix the shape
+   (`{kind:"walk", event:"begin"|"turn"|"stop", dir, from:[x,y], tick}`), `apply_to` steps
+   over one, the attract loop steps over one, and a unit test drives a log containing two
+   through a full replay. Nothing writes one because nothing can *check* one: the player's
+   position is not sim truth until WI-6, so a recorded walk would be an unverifiable stream
+   growing every log and every future training corpus. WI-6 turns the recorder on and
+   nothing downstream changes — that is what defining it early buys.
+2. **Phase B is not tonight**, as instructed, and the criteria say why: Phase A has soaked
+   for one evening of suites, not for a real human session on the tablet. What Phase B
+   needs is in "What Phase B still requires" below.
+3. **`capture_canonical` normalizes through one JSON round trip.** Half of what it compares
+   is a live world and half is one restored from disk, and JSON has one number type: a
+   brain's scratch holds `wake: 43` live and `43.0` restored, which stringify differently.
+   Without this, un-erasing `extra` would fail every replay of a session with a walking hen
+   in it, on an artifact of the file format rather than a fact about the farm. It
+   normalizes nothing else — key order was already canonical, and a value that differs
+   still differs. A parse failure falls back to the raw form rather than to `"null"`, so a
+   NaN can never make two different worlds compare equal.
+4. **The crow stays out of saves** (WI-3 deviation 5, revisited as instructed and kept).
+   The argument did not change — a save is a snapshot of a farm and a bird halfway across
+   the sky is not part of one — and the net now checks the crow *harder* than a position
+   could: every Action of its visit is recomputed and compared, tick for tick.
+5. **`SimWorld.advance_to_tick` returns the dispatch tick** with each Action
+   (`{action, result, tick}`), one additive line in WI-3's dispatcher. The tick is half of
+   what a brain's Action means, and without it "the same verb on the same tile three ticks
+   late" would pass the net. A unit test asserts that it does not. It is also load-bearing
+   for the recorder: `advance_sim` iterates the returned batch *after* the whole advance
+   has finished, so stamping from `sim.clock.tick` there would date every brain Action up
+   to four ticks late — which the net would then report as a divergence in the game's own
+   recording. (It did, on the first draft. The tick comes from the batch.)
+6. **The robot session was given sim time to live through.** Everything it did took about
+   two seconds of sim time, in which the hen decides almost nothing — so the net would have
+   been asserting agreement between two empty streams. It now pumps 800 ticks through
+   `main.gd`'s own clock pump (one call per frame, with the frame cap a real frame gets)
+   and persists again, so the run ends with a hen who has walked a hundred tiles and a
+   replay that has to walk them too. This is the assert the plan asked to replace the
+   "neighbour in the replay" one with; **the neighbour assert stayed** beside it, because
+   she is not on the clock and never was recomputable (WI-3 deviation 7), so what changed
+   shape is the replay-match assert at the bottom rather than that line.
+7. **`LiveSession` (the unit suite's fixture) mirrors `main.gd` exactly**, including the
+   reseed after a rebase. It had to: a fixture that continued a session *without* going
+   back onto the farm's seed would be testing a session no player can have, and it was the
+   first thing to fail when the seed fix landed.
+8. **`flush_to` writes a mark even when no new entry was recorded**, because sim time
+   moving is a change worth writing: a farm where the hen wandered for twenty seconds and
+   nobody acted is a farm whose replay has to run for twenty seconds.
+
+**What Phase B still requires** (the flip: NPC entries stop being written).
+(a) One real human session on the tablet, played and then verified with
+`verify_replay.gd` — the robot plays a tidy two-minute day and a person does not.
+(b) A soak of the current suites across enough robot runs to trust the crow path. The
+robot's brain-entry count is 0–2 per run — the hen's egg is a coin flip and her *walking*
+records nothing at all — and no run has yet contained a whole crow visit, so what the robot
+proves every time is the state pairing (she walks a hundred recomputed tiles and lands on
+the recorded one) rather than a long action-for-action comparison. The unit suite carries
+that half deliberately (`test_replay_v2` guarantees brain entries and tampers with them
+three ways). A robot session that works long enough to draw a crow would close the gap.
+(c) A decision about the neighbour, which Phase B's text does not cover: she is an NPC
+whose entries cannot be dropped, because her pacing is presentation's (WI-3 deviation 7).
+Either she keeps being recorded — the honest answer, and then "NPC entries stop being
+written" means "brain entries stop being written" — or WI-6 moves her pacing onto the
+clock and she becomes recomputable like the rest.
+(d) The corpus question, which is really a phase-4 one: dropping brain entries makes a log
+smaller and truer, and also makes it impossible to *read* what an NPC did without
+re-simulating. Worth a line in `DESIGNER_QUEUE.md` before the flip rather than after.
+
+**For WI-6 (renderer + player position).** The two things it inherits are named above and
+both are one edit each. **The erase block** in `capture_canonical` is now a single `if
+a.has(ACTOR_PLAYER)` — when her tile-crossing events write her registry entry, delete it
+and the comparison covers everybody. **The recorder** is `ReplayLog.record_walk`, already
+shaped, already tolerated by `apply_to` and the attract loop; the input layer knows when a
+held direction changes, and that is the only place that has to call it. The attract loop is
+still applying recorded entries rather than recomputing brains (brain entries now go
+straight to its sim instead of being walked to by the farmer, which was finding F-3 from
+the other end — the attract farmer used to cross the farm to lay the hen's egg);
+recomputation-driven playback is what makes it show a hen and a crow at all, and that is
+WI-6's to build on `advance_sim`.
+
+**For WI-8's critter workers.** The net is live and it will judge your brain: any Action
+your critter takes through the tick clock is recorded with its tick and recomputed on
+replay, and if your brain reads anything the sim does not own — a frame delta, a node, an
+unseeded draw — the robot session will name the entry where the two disagreed. Two habits
+keep you clear of it: take every draw from `SimRng` **inside** `step()` (never from a
+renderer), and put per-actor state in the registry entry's `extra`, which is saved,
+replayed and compared. WI-7's scent is compared the same way now, so a deposit that lands
+on a different tick than it did live is a failure with a name.

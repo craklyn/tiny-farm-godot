@@ -120,9 +120,13 @@ func start_replay_log(gen_seed: int) -> void:
 	replay.start(gen_seed)
 
 
-func start_replay_log_from_save(save_data: Dictionary) -> void:
+# `seed_value` is the seed the continued session runs under — the restored
+# world's own `gen_seed` (M2.5 WI-5). Without it a replay of a continued session
+# reproduces it under whatever seed the verifying process holds, which is not the
+# one the player played.
+func start_replay_log_from_save(save_data: Dictionary, seed_value: int = 0) -> void:
 	replay = ReplayLog.new()
-	replay.start_from_save(save_data)
+	replay.start_from_save(save_data, seed_value)
 
 
 func start_trace(gen_seed: int, from_save: bool) -> void:
@@ -139,19 +143,30 @@ func start_trace(gen_seed: int, from_save: bool) -> void:
 # that a `ReplayLog` exists, and it is not learning now.
 #
 # **Only the live game calls this** (`main.gd`'s clock pump). A replay must not:
-# a v1 log carries no ticks, so re-running brains during playback would invent
-# motion the recording never had. Fast-forward tools advance the clock themselves.
+# it advances the clock itself, through the ticks its entries are stamped with,
+# and compares what the brains decide there against what was recorded (M2.5 WI-5,
+# `ReplayLog._apply_v2`). Fast-forward tools advance the clock explicitly too.
 func advance_sim(ticks: int, gs = null) -> void:
 	if ticks <= 0:
 		return
 	for taken in sim.advance_ticks(ticks, gs):
-		_record(taken["action"], taken["result"])
+		# **The dispatch tick, not the clock's** — this loop runs after the whole
+		# advance has finished, so `sim.clock.tick` is already up to four ticks
+		# past where the hen actually decided, and a replay recomputing her would
+		# land on the earlier one and be called a divergence. The sim hands the
+		# tick back with the Action for exactly this reason (M2.5 WI-5).
+		#
+		# `from_brain`: a tick-driven brain decided this, so a v2 replay
+		# recomputes it rather than re-applying it — and asserts it got the same
+		# answer. The recorded copy is Phase A's half of the net; Phase B is when
+		# these stop being written at all.
+		_record(taken["action"], taken["result"], int(taken["tick"]), true)
 	queue_redraw()
 
 
 func apply_action(action: Dictionary, gs = null) -> Dictionary:
 	var result := sim.apply_action(action, gs)
-	_record(action, result)
+	_record(action, result, sim.clock.tick)
 	return result
 
 
@@ -159,7 +174,8 @@ func apply_action(action: Dictionary, gs = null) -> Dictionary:
 # the player's feedback, the replay entry and the tile's reaction. Split out of
 # `apply_action` so that an action a brain took inside `advance_sim` lands in the
 # log identically to one a tap produced (M2.5 WI-3).
-func _record(action: Dictionary, result: Dictionary) -> void:
+func _record(action: Dictionary, result: Dictionary, at_tick: int,
+		from_brain: bool = false) -> void:
 	# Recorded whether or not it succeeded: a refused action is the interesting
 	# half, and it is exactly what ReplayLog cannot carry.
 	if trace != null:
@@ -186,7 +202,12 @@ func _record(action: Dictionary, result: Dictionary) -> void:
 
 	if result.get("ok", false):
 		if replay != null:
-			replay.record(action, result)
+			# Stamped with the sim time it resolved at (format v2, M2.5 WI-5).
+			# The clock is the sim's, not the frame's: this is the one number that
+			# lets a replay put the world back in the state the actor decided
+			# from, rather than in whatever state the action stream happened to
+			# leave it in.
+			replay.record(action, result, at_tick, from_brain)
 		# D-8 tier (a): the tile reacts so a tap has a visible consequence.
 		# Presentation only — it runs *after* the action has already resolved and
 		# can be dropped without touching sim truth or replay fidelity (S-3/S-5).

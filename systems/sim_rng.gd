@@ -17,6 +17,15 @@ static func reseed(new_seed: int) -> void:
 	rng.seed = new_seed
 
 
+# Which seed the stream is currently running under. `stateless()` below derives
+# from it, so it is not merely bookkeeping: two processes that disagree about
+# this value disagree about every per-day draw in the game (M2.5 WI-5). The world
+# records it at generation time so a save, and therefore a continued session and
+# its replay, can all be put back on the same seed.
+static func current_seed() -> int:
+	return int(rng.seed)
+
+
 static func randi() -> int:
 	return rng.randi()
 

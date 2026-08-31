@@ -72,6 +72,7 @@ func _init() -> void:
 	test_scent()
 	test_sprinkler()
 	test_pea()
+	test_replay_v2()
 
 	print("")
 	print(String("=").repeat(60))
@@ -3509,23 +3510,38 @@ class LiveSession:
 	func act(action: Dictionary) -> Dictionary:
 		var r := world.apply_action(action, gs)
 		if r.get("ok", false):
-			log.record(action, r)
+			log.record(action, r, world.clock.tick)
 		return r
 
+	# Sim time passing, recorded the way `world/farm.gd:advance_sim` records it
+	# (M2.5 WI-5): each brain Action carries the tick it was decided on and the
+	# mark that says a brain decided it, and the log is marked with where the
+	# clock got to — which is what `main.gd` writes beside every autosave, and
+	# what lets a replay live out the pottering after the last Action.
 	func tick(n: int) -> Array[Dictionary]:
 		var taken := world.advance_ticks(n, gs)
 		for t in taken:
 			if t["result"].get("ok", false):
-				log.record(t["action"], t["result"])
+				log.record(t["action"], t["result"], int(t["tick"]), true)
+		log.mark_tick(world.clock.tick)
 		return taken
 
 	# Re-base the log on a snapshot of right now, exactly as `main.gd` does when a
 	# session continues from an autosave (`farm.start_replay_log_from_save`). Lets
 	# a fixture arrange a farm however it likes — including in ways no sequence of
 	# Actions would — and still hold a log that reproduces everything after it.
+	# The seed goes with it, as `main.gd` passes it: a continued session runs on
+	# the seed its farm was made from (WI-5).
 	func rebase() -> void:
 		log = ReplayLog.new()
-		log.start_from_save(JSON.parse_string(JSON.stringify(SaveGame.capture(world, gs))))
+		log.start_from_save(
+			JSON.parse_string(JSON.stringify(SaveGame.capture(world, gs))), world.gen_seed)
+		# ...and back onto that seed, which is the whole of the WI-5 seed fix seen
+		# from the live side: `main.gd` reseeds from the restored world before the
+		# continued session takes a single action, so the session and its replay
+		# draw from the same stream position. A fixture that skipped this would be
+		# testing a session no player can have.
+		SimRng.reseed(world.gen_seed)
 
 	func done() -> void:
 		gs.free()
@@ -3786,26 +3802,45 @@ func test_brains() -> void:
 	played.tick(900)
 	var snapshot = JSON.parse_string(JSON.stringify(SaveGame.capture(played.world, played.gs)))
 	_assert(played.gs.crows_seen > 0, "a crow visited during the recorded session")
-	_assert(SaveGame.replay_matches(played.log, snapshot),
-		"and the session reproduces its own autosave, which is what the robot asserts")
+	var played_report := SaveGame.replay_report(played.log, snapshot)
+	_assert(played_report["matched"],
+		"and the session reproduces its own autosave, which is what the robot asserts %s"
+			% played_report["divergence"])
 
-	# --- the seam, stated as a test -------------------------------------------
-	# `capture_canonical` drops the tick and each actor's pos/facing/extra while a
-	# v1 replay has no way to recompute them (WI-5 restores them). Existence,
-	# species and energy stay in, and this asserts *both halves* — because a seam
-	# that quietly swallowed a missing actor would be a hole, not a seam.
+	# --- the seam, closed, stated as a test -----------------------------------
+	# WI-3 took the tick and every actor's pos/facing/extra out of
+	# `capture_canonical` because a v1 replay had no way to recompute them. v2
+	# stamps the ticks and `apply_to` lives out the session's sim time, so they
+	# are back in and they **bite**: a hen standing somewhere else is a failed
+	# replay now. The player is the one residue, and she is asserted below.
 	var seam := SimWorld.new()
 	var gs_seam = load("res://systems/game_state.gd").new()
 	SimRng.reseed(5150)
 	seam.generate()
 	var seam_before := SaveGame.capture_canonical(seam, gs_seam)
 	seam.set_actor_pos(SimWorld.ACTOR_CHICKEN, Vector2i(9, 9), "left")
+	_assert(SaveGame.capture_canonical(seam, gs_seam) != seam_before,
+		"a moved actor fails the replay comparison (the WI-3 seam, closed by WI-5)")
 	seam.actor(SimWorld.ACTOR_CHICKEN)["extra"]["wake"] = 12345
+	_assert(SaveGame.capture_canonical(seam, gs_seam) != seam_before,
+		"and so does brain scratch that drifted")
+	SimRng.reseed(5150)
+	seam.generate()
 	seam.clock.advance_to(999)
+	_assert(SaveGame.capture_canonical(seam, gs_seam) != seam_before,
+		"and so does a clock that turned further than the recording did")
+	SimRng.reseed(5150)
+	seam.generate()
+	# The residue, and the only one: the player walks in pixels until WI-6 wires
+	# her to the registry, so her registry entry is her spawn tile in a live
+	# session and in a replay alike, and comparing it would assert nothing.
+	seam.set_actor_pos(SimWorld.ACTOR_PLAYER, Vector2i(11, 11), "up")
 	_assert(SaveGame.capture_canonical(seam, gs_seam) == seam_before,
-		"a moved actor and a turned clock do not fail the replay comparison (the WI-3 seam)")
-	_assert(JSON.stringify(SaveGame.capture(seam, gs_seam)).contains("\"x\":9"),
+		"the player's position is still excluded — she is WI-6's, and nothing writes it yet")
+	_assert(JSON.stringify(SaveGame.capture(seam, gs_seam)).contains("\"x\":11"),
 		"but the *save* still stores where she is — a save is a snapshot")
+	SimRng.reseed(5150)
+	seam.generate()
 	seam.set_actor_energy(SimWorld.ACTOR_CHICKEN, 3)
 	_assert(SaveGame.capture_canonical(seam, gs_seam) != seam_before,
 		"energy is still compared: the seam is about motion, not about state in general")
@@ -3815,7 +3850,11 @@ func test_brains() -> void:
 		"and so is existence: an actor who should be on the farm and is not still fails")
 
 	# A visit is not saved. The crow's row says `persistent: false`, and that is
-	# what keeps a bird mid-flight out of a snapshot of a farm.
+	# what keeps a bird mid-flight out of a snapshot of a farm. **Revisited in
+	# WI-5 and deliberately kept**: the argument (a save is a snapshot of a farm;
+	# a bird halfway across the sky is not part of one) did not change, and the
+	# dual-record net now checks the crow harder than a position ever could — every
+	# Action of its visit is recomputed and compared, tick for tick.
 	SimRng.reseed(5150)
 	seam.generate()
 	seam.spawn_actor(SimWorld.ACTOR_CROW, SpeciesDefs.CROW, Vector2i(4, 4))
@@ -4692,3 +4731,225 @@ func test_pea() -> void:
 	_assert(GameState.sell_crops_to_bin(), "and it sells")
 	_assert(GameState.gold == gold_before + int(pea.sell_price),
 		"at its own price (%dg), through the economy every other crop uses" % int(pea.sell_price))
+
+
+# --- M2.5 WI-5 -----------------------------------------------------------------
+
+# A live session that is guaranteed to contain at least one Action a brain took,
+# so the dual-record net has something to compare. The hen's egg is a coin flip
+# at each day turn (Q-10), so this turns days until one lands rather than
+# assuming the first morning obliges.
+func _session_with_brain_actions(seed_value: int) -> LiveSession:
+	var s := LiveSession.new(seed_value)
+	for _day in 8:
+		s.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
+		s.tick(400)
+		for e in s.log.entries:
+			if bool(e.get("brain", false)):
+				return s
+	return s
+
+
+func _brain_entry_count(rlog: ReplayLog) -> int:
+	var n := 0
+	for e in rlog.entries:
+		if bool(e.get("brain", false)):
+			n += 1
+	return n
+
+
+func test_replay_v2() -> void:
+	print("\n--- Replay format v2 + the dual-record net (M2.5 WI-5) Tests ---")
+
+	# --- the format ------------------------------------------------------------
+	var s := _session_with_brain_actions(4321)
+	_assert(ReplayLog.VERSION == 2, "the format version is 2 (§3.3, ratified by Q-53)")
+	_assert(_brain_entry_count(s.log) > 0,
+		"the session contains Actions a brain decided (%d of %d entries)"
+			% [_brain_entry_count(s.log), s.log.entries.size()])
+	var stamped := true
+	var ordered := true
+	var last_tick := -1
+	for e in s.log.entries:
+		stamped = stamped and e.has("tick")
+		ordered = ordered and int(e["tick"]) >= last_tick
+		last_tick = int(e["tick"])
+	_assert(stamped, "every entry carries the tick it happened on")
+	_assert(ordered, "and the stream is in tick order, which is what lets a replay walk it")
+	_assert(s.log.end_tick >= last_tick and s.log.end_tick == s.world.clock.tick,
+		"the log knows how long the session ran (%d ticks), not just when it last acted"
+			% s.log.end_tick)
+
+	var text := s.log.to_json()
+	var reloaded := ReplayLog.from_json(text)
+	_assert(reloaded.version == 2, "a v2 log reads back as v2")
+	_assert(reloaded.entries.size() == s.log.entries.size()
+			and _brain_entry_count(reloaded) == _brain_entry_count(s.log),
+		"with every entry and every brain mark intact")
+	_assert(reloaded.end_tick == s.log.end_tick,
+		"and the end tick survives the round trip (it rides as a mark line, so a flush stays append-only)")
+	_assert(text.contains("\"mark\":"), "which is what that line is")
+	_assert(ReplayLog.from_json(reloaded.to_json()).to_json() == reloaded.to_json(),
+		"and re-serializes stably")
+
+	# --- the net: the recomputation is the recording ---------------------------
+	var snapshot = JSON.parse_string(JSON.stringify(SaveGame.capture(s.world, s.gs)))
+	var report := SaveGame.replay_report(reloaded, snapshot)
+	_assert(String(report["divergence"]) == "",
+		"the brains recompute exactly what they were recorded doing %s" % report["divergence"])
+	_assert(report["matched"],
+		"and the session reproduces its own autosave — positions, clock and all")
+	# The state comparison is doing real work now: the hen's tile is in it (the
+	# WI-3 seam, closed above), so this is not merely the grids agreeing.
+	var w_replay := SimWorld.new()
+	var gs_replay = load("res://systems/game_state.gd").new()
+	reloaded.apply_to(w_replay, gs_replay)
+	_assert(w_replay.actor_pos(SimWorld.ACTOR_CHICKEN) == s.world.actor_pos(SimWorld.ACTOR_CHICKEN),
+		"the replayed hen ends where the recorded hen ended (%s), having walked there herself"
+			% s.world.actor_pos(SimWorld.ACTOR_CHICKEN))
+	_assert(w_replay.clock.tick == s.world.clock.tick,
+		"and the same amount of sim time passed (%d ticks)" % w_replay.clock.tick)
+	_assert(_count_objects(w_replay, "egg") == _count_objects(s.world, "egg"),
+		"and a recomputed Action is applied once, not twice — the same eggs, not double")
+	gs_replay.free()
+
+	# --- the net catches a recording that no longer recomputes ------------------
+	# Each of these is a way a refactor could silently change what an NPC does.
+	# The net's whole job is that none of them is silent.
+	var tampered := ReplayLog.from_json(text)
+	var first_brain := -1
+	for i in tampered.entries.size():
+		if bool(tampered.entries[i].get("brain", false)):
+			first_brain = i
+			break
+	tampered.entries[first_brain]["target"] = [0, 0]
+	var w_t := SimWorld.new()
+	var gs_t = load("res://systems/game_state.gd").new()
+	tampered.apply_to(w_t, gs_t)
+	_assert(tampered.divergence.contains("entry %d" % first_brain),
+		"a brain Action recorded on a different tile fails, naming the entry: %s" % tampered.divergence)
+	gs_t.free()
+
+	var late := ReplayLog.from_json(text)
+	late.entries[first_brain]["tick"] = int(late.entries[first_brain]["tick"]) + 3
+	var w_l := SimWorld.new()
+	var gs_l = load("res://systems/game_state.gd").new()
+	late.apply_to(w_l, gs_l)
+	_assert(late.divergence != "",
+		"the same Action three ticks late fails too — when is half of what it means")
+	gs_l.free()
+
+	var missing := ReplayLog.from_json(text)
+	missing.entries.remove_at(first_brain)
+	var w_m := SimWorld.new()
+	var gs_m = load("res://systems/game_state.gd").new()
+	missing.apply_to(w_m, gs_m)
+	_assert(missing.divergence != "",
+		"and so does a recomputation that produced something nobody recorded")
+	gs_m.free()
+	s.done()
+
+	# --- the seed fix (the hole WI-3 filed and this closes) --------------------
+	# `SimRng.stateless()` derives from the current seed, and a continued session
+	# used to replay under whatever seed the verifying process happened to hold.
+	# The day's crow schedule is rolled that way, so the two disagreed about the
+	# birds — silently, unless the session happened to be long enough to show it.
+	SimRng.reseed(24680)
+	var right_crows := SimWorld.roll_crow_schedule(SimWorld.CROW_MIN_DAY + 1)
+	SimRng.reseed(999999)
+	var wrong_crows := SimWorld.roll_crow_schedule(SimWorld.CROW_MIN_DAY + 1)
+	_assert(right_crows != wrong_crows,
+		"the two seeds really do disagree about a day's crows — which is what makes this testable")
+
+	var cont := _crow_ready_session(24680)
+	cont.rebase()   # continue from an autosave, exactly as main.gd does
+	cont.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
+	cont.tick(300)
+	var cont_snap = JSON.parse_string(JSON.stringify(SaveGame.capture(cont.world, cont.gs)))
+	_assert(not cont.gs.crow_schedule.is_empty(),
+		"the continued day has a crow due, so the seed is load-bearing in what follows")
+	_assert(cont.log.gen_seed == 24680,
+		"a continued session's log carries the seed its farm was made from")
+	_assert(int(cont_snap["world"]["gen_seed"]) == 24680,
+		"and so does the save, which is where a reload gets it")
+
+	# The verifier is a different process holding a completely different seed.
+	SimRng.reseed(13579)
+	var cont_report := SaveGame.replay_report(cont.log, cont_snap)
+	_assert(cont_report["matched"],
+		"a session continued from a save replays under a foreign ambient seed and still matches %s"
+			% cont_report["divergence"])
+
+	# ...and the control: the same log with its seed removed does not, which is
+	# the hole itself, demonstrated rather than described.
+	var seedless := ReplayLog.from_json(cont.log.to_json())
+	seedless.gen_seed = 0
+	SimRng.reseed(13579)
+	_assert(not SaveGame.replay_matches(seedless, cont_snap),
+		"and without the seed it does not — that was the hole")
+	cont.done()
+
+	# --- v1 logs are read as v1, and nothing new happens to them ---------------
+	var legacy_text := JSON.stringify({ "gen_seed": 99, "base_save": {}, "build_id": "old" }) \
+		+ "\n" + JSON.stringify({ "verb": "till", "target": [5, 2], "actor": "player" })
+	var legacy := ReplayLog.from_json(legacy_text)
+	_assert(legacy.version == 1, "a header with no version field is a v1 log")
+	var w_v1 := SimWorld.new()
+	var gs_v1 = load("res://systems/game_state.gd").new()
+	legacy.apply_to(w_v1, gs_v1)
+	_assert(w_v1.get_tile(5, 2).state == "tilled", "and it still applies, action for action")
+	_assert(w_v1.clock.tick == 0 and legacy.divergence == "",
+		"advancing no clock and recomputing nothing — the legacy path, untouched")
+	gs_v1.free()
+
+	# The real thing: every recorded session in playtests/ is a v1 log, and every
+	# one of them must keep behaving exactly as it did before the format bumped.
+	var dir := DirAccess.open("res://playtests")
+	_assert(dir != null, "the playtests fixtures directory is readable")
+	var checked := 0
+	for name in dir.get_directories():
+		var path := "res://playtests/%s/session_replay.json" % name
+		if not FileAccess.file_exists(path):
+			continue
+		var fixture := ReplayLog.load_from(path)
+		if fixture == null:
+			continue
+		checked += 1
+		_assert_quiet(fixture.version == 1, "%s is a v1 log" % name)
+		var wf := SimWorld.new()
+		var gsf = load("res://systems/game_state.gd").new()
+		fixture.apply_to(wf, gsf)
+		_assert_quiet(fixture.divergence == "",
+			"%s takes the legacy path and asserts nothing about brains" % name)
+		# A log with no Actions in it reproduces the save it began from — the one
+		# thing that is true of a v1 fixture whatever build wrote it.
+		if fixture.entries.is_empty() and not fixture.base_save.is_empty():
+			_assert_quiet(SaveGame.replay_matches(fixture, SaveGame.load_dict(
+				"res://playtests/%s/autosave.json" % name)),
+				"%s (no actions) still reproduces its own autosave" % name)
+		gsf.free()
+	_flush_quiet("every recorded session in playtests/ still reads and replays as the v1 log it is (%d)"
+		% checked)
+
+	# --- free-walk entries: defined, stepped over, not yet written -------------
+	# §3.3's other half. The shape is fixed and every reader tolerates it, so WI-6
+	# turns the recorder on without touching anything downstream (see the WI-5
+	# note in M2_5_PLAN §9 for why it is not on yet).
+	var walked := LiveSession.new(31415)
+	walked.act({ "verb": "till", "target": Vector2i(5, 2), "actor": "player" })
+	walked.log.record_walk("begin", "left", Vector2i(5, 2), walked.world.clock.tick)
+	walked.log.record_walk("stop", "left", Vector2i(3, 2), walked.world.clock.tick)
+	walked.act({ "verb": "plant", "target": Vector2i(5, 2), "seed_type": "wheat", "actor": "player" })
+	var w_w := SimWorld.new()
+	var gs_w = load("res://systems/game_state.gd").new()
+	var round_tripped := ReplayLog.from_json(walked.log.to_json())
+	_assert(ReplayLog.is_walk(round_tripped.entries[1]),
+		"a free-walk event survives the file as a walk, not as an Action")
+	round_tripped.apply_to(w_w, gs_w)
+	_assert(SaveGame.capture_canonical(walked.world, walked.gs)
+			== SaveGame.capture_canonical(w_w, gs_w),
+		"and a replay steps over it and reproduces the session anyway")
+	_assert(round_tripped.divergence == "",
+		"without the net mistaking it for a brain that failed to recompute")
+	gs_w.free()
+	walked.done()

@@ -172,7 +172,18 @@ func _ready() -> void:
 	if not save_data.is_empty():
 		restored = SaveGame.restore(save_data, farm.sim, GameState)
 		if restored:
-			farm.start_replay_log_from_save(save_data)
+			# A continued farm goes back on its own seed (M2.5 WI-5). Every
+			# per-day draw in the game comes from `SimRng.stateless()`, which
+			# derives from the current seed — so continuing under the fresh
+			# `randi()` above would mean the same save, reloaded twice, brought
+			# different crows, and that a replay of the continued session could
+			# never reproduce it. The seed is part of what a farm *is*, and the
+			# save has carried it since this WI. Saves written before that say
+			# nothing, and those continue exactly as they did.
+			if farm.sim.gen_seed != 0:
+				gen_seed = farm.sim.gen_seed
+				SimRng.reseed(gen_seed)
+			farm.start_replay_log_from_save(save_data, farm.sim.gen_seed)
 			farm.start_trace(0, true)
 		else:
 			_backup_unloadable_save()
@@ -552,6 +563,14 @@ func persist_session() -> void:
 		return
 	SaveGame.save_to(GameState.save_path, farm.sim, GameState)
 	if farm.replay != null:
+		# The same instant in sim time, written into both files (M2.5 WI-5). The
+		# save says where everybody was standing; the mark says what time it was
+		# when they were standing there, and a replay lives out the difference
+		# between its last recorded Action and this — which is most of what the
+		# hen does with her day. Taken from the same `farm.sim` in the same call
+		# as the save above, because a tick between them would be a tick nobody
+		# could account for.
+		farm.replay.mark_tick(farm.sim.clock.tick)
 		farm.replay.flush_to(GameState.replay_path)
 	if farm.trace != null:
 		farm.trace.flush(GameState.trace_path)

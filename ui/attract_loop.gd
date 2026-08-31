@@ -89,11 +89,7 @@ func begin(replay: ReplayLog) -> bool:
 	player.farm = farm
 
 	# Start from the session's own beginning, however it began.
-	if _log.base_save.is_empty():
-		SimRng.reseed(_log.gen_seed)
-		farm.sim.generate()
-	else:
-		SaveGame.restore(_log.base_save, farm.sim, gs)
+	_rewind_world()
 
 	var spawn := WorldLayout.spawn()
 	player.init_position(spawn.x, spawn.y)
@@ -134,6 +130,21 @@ func _process(delta: float) -> void:
 	_advance()
 
 
+# The world the recorded session started from — used on the first play and on
+# every loop round. Mirrors `ReplayLog.apply_to`'s opening deliberately, seed and
+# all: a v2 session continued from a save ran under that save's own seed (M2.5
+# WI-5), and a playback on some other seed is a farm that never was, which is the
+# same lie Q-41's build check exists to prevent.
+func _rewind_world() -> void:
+	if _log.base_save.is_empty():
+		SimRng.reseed(_log.gen_seed)
+		farm.sim.generate()
+	else:
+		SaveGame.restore(_log.base_save, farm.sim, gs)
+		if _log.version >= 2 and _log.gen_seed != 0:
+			SimRng.reseed(_log.gen_seed)
+
+
 func _idle() -> bool:
 	return player.path.is_empty() and not player.is_acting and player.pending_action.is_empty()
 
@@ -145,6 +156,22 @@ func _advance() -> void:
 	var a: Dictionary = _decoded[_next]
 	_next += 1
 	var verb := String(a.get("verb", ""))
+
+	# Format v2 (M2.5 WI-5). Two entry kinds this playback does not perform:
+	#
+	#  - A **free-walk event** is not an Action at all; nothing records one yet
+	#    and this steps over it when something does.
+	#  - A **brain entry** is somebody else's decision — the hen laying, the crow
+	#    eating — and driving the *farmer* to it is finding F-3 from the other
+	#    end: she would walk across the farm to lay an egg. Applied straight to
+	#    the detached sim instead, so the egg simply appears where the hen left
+	#    it. Recomputation-driven playback (running the brains here, with sprites
+	#    for them) is WI-6's, and it is what this becomes.
+	if ReplayLog.is_walk(a):
+		return
+	if bool(a.get("brain", false)):
+		farm.apply_action(a, gs)
+		return
 
 	# A day turning is not something the farmer walks to. Applied straight to the
 	# detached sim, which is also the only place playback may legitimately do so.
@@ -195,11 +222,7 @@ func _tool_for(verb: String, target: Vector2i) -> int:
 func _restart() -> void:
 	_next = 0
 	gs.reset()
-	if _log.base_save.is_empty():
-		SimRng.reseed(_log.gen_seed)
-		farm.sim.generate()
-	else:
-		SaveGame.restore(_log.base_save, farm.sim, gs)
+	_rewind_world()
 	var spawn := WorldLayout.spawn()
 	player.init_position(spawn.x, spawn.y)
 	farm.queue_redraw()
