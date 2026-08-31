@@ -32,7 +32,13 @@ const GROUND := "ground"   # paths around obstacles on sim truth
 const FLY := "fly"         # straight line, ignores obstacles — the crow's row
 const BURROW := "burrow"   # moves under the grid, surfaces at targets (WI-8d)
 const HOP := "hop"         # ground, but crosses barrier-class tiles (WI-8f)
-const MODES: Array[String] = [GROUND, FLY, BURROW, HOP]
+# A machine does not travel (M2.5 WI-10). This is the honest way to say so rather
+# than a `ground` row with `speed: 0`, which would be a claim that it walks very
+# slowly: `Movement.passable` refuses every tile in this mode, so a route cannot
+# be planned for a sprinkler at all, and `step()` answers that it is already where
+# it is going. A machine that is *carried* somewhere is a placement, not a walk.
+const STATIC := "static"
+const MODES: Array[String] = [GROUND, FLY, BURROW, HOP, STATIC]
 
 # Species ids. Actor *ids* are still species names in phase 1 (there is one hen,
 # and she is called "chicken"); WI-3 is where a second one needs "chicken_2".
@@ -40,6 +46,7 @@ const PLAYER := "player"
 const NEIGHBOUR := "neighbour"
 const CHICKEN := "chicken"
 const CROW := "crow"
+const SPRINKLER := "sprinkler"
 
 # **"world" is not a species.** `{ "actor": "world" }` is the sim acting on its own
 # behalf — the day turning, a gate opening because a proof was met — and it holds
@@ -160,6 +167,34 @@ static var ROWS: Dictionary = {
 		# `_spook_cause()` scan actually is, and WI-3 moves that scan sim-side.
 		"senses": { "flees_spook_radius": true, "flees_scarecrow": true },
 		"persistent": false,
+	},
+
+	# The first machine (design/03, M2.5 WI-10). **"A sprinkler waters; it does
+	# nothing the watering can couldn't"** — which is the whole design, and why
+	# this row's verb list is one verb the player already owns and the work item
+	# added no gateway code whatsoever.
+	#
+	# It is an actor rather than a placed object because it *decides*: at the day
+	# turn its brain says which tiles to water, and those are ordinary Actions
+	# through the one gateway (ground rule 1). Which tile it stands on, how far it
+	# reaches and what it costs to keep are `design/03` §3–§4's questions; the
+	# radius is a `[Playtest]` constant in `sprinkler_brain.gd` and upkeep is
+	# deliberately unbuilt (plan §4).
+	#
+	# **Nothing places one.** Acquisition is Q-15's ruling and the plan leaves it
+	# open, so a sprinkler exists only behind `spawn_actor` and the tests; the
+	# live game has never contained one, and it has no renderer until WI-6.
+	SPRINKLER: {
+		"name": "Sprinkler",
+		"brain": "sprinkler_day",
+		"verbs": ["water"],
+		# It has no speed because it has nowhere to be. See STATIC above: the mode
+		# is what makes that a fact the movement engine enforces rather than a
+		# number a future edit could nudge off zero.
+		"speed": 0.0,
+		"movement": { "mode": STATIC, "body_len": 1, "tile_exclusive": false },
+		"senses": {},
+		"persistent": true,
 	},
 }
 

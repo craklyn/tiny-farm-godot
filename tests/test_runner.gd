@@ -70,6 +70,8 @@ func _init() -> void:
 	test_brains()
 	test_movement()
 	test_scent()
+	test_sprinkler()
+	test_pea()
 
 	print("")
 	print(String("=").repeat(60))
@@ -2772,7 +2774,11 @@ func test_actor_registry() -> void:
 		_assert_quiet(int(move.get("body_len", 0)) >= 1, "%s occupies at least one tile" % id)
 		_assert_quiet(typeof(move.get("tile_exclusive")) == TYPE_BOOL,
 			"%s says whether it shares a tile" % id)
-		_assert_quiet(SpeciesDefs.speed_of(id) > 0.0, "%s has a speed" % id)
+		# Every *mover* has a speed. A machine has none, and says so with its mode
+		# rather than with a zero that could be mistaken for an oversight (M2.5
+		# WI-10): `STATIC` is the one row shape where "no speed" is the answer.
+		_assert_quiet(SpeciesDefs.speed_of(id) > 0.0 or SpeciesDefs.mode_of(id) == SpeciesDefs.STATIC,
+			"%s has a speed, or is stationary and says so" % id)
 		_assert_quiet(SpeciesDefs.brain_of(id) != "", "%s names a brain (WI-3 binds it)" % id)
 		_assert_quiet(SpeciesDefs.verbs_of(id) is Array, "%s lists its verbs" % id)
 		_assert_quiet(String(row.get("name", "")) != "", "%s has a display name" % id)
@@ -4468,3 +4474,221 @@ func test_scent() -> void:
 	_assert(not Scent.has_channel("test_lure"), "the test-only channel mechanism leaves nothing behind")
 	_assert(Scent.channels().size() == Scent.CHANNELS.size(),
 		"and the shipping channel set is untouched by it")
+
+
+func test_sprinkler() -> void:
+	print("\n--- The first machine: a sprinkler waters (design/03, M2.5 WI-10) Tests ---")
+
+	# --- the row: a machine is an actor, and an actor is measured like any other -
+	_assert(SpeciesDefs.has(SpeciesDefs.SPRINKLER), "the sprinkler is a species the table knows")
+	_assert(str(SpeciesDefs.verbs_of(SpeciesDefs.SPRINKLER)) == str(["water"]),
+		"and its whole vocabulary is one verb the player already owns (design/03: it does nothing the can couldn't)")
+	_assert("water" in SpeciesDefs.PLAYER_VERBS,
+		"which is what makes it legal under ground rule 1 — no capability she lacks")
+	_assert(SpeciesDefs.mode_of(SpeciesDefs.SPRINKLER) == SpeciesDefs.STATIC
+			and SpeciesDefs.speed_of(SpeciesDefs.SPRINKLER) == 0.0,
+		"it is stationary, and says so with its mode rather than with a speed of nearly zero")
+	_assert(SpeciesDefs.is_persistent(SpeciesDefs.SPRINKLER),
+		"a machine is a resident: it is in the save, unlike a crow's visit")
+	_assert(Brains.of_species(SpeciesDefs.SPRINKLER) is SprinklerBrain,
+		"its brain id binds to the brain this work item wrote")
+	_assert(not Brains.of_species(SpeciesDefs.SPRINKLER).on_clock(),
+		"which is not on the tick clock: a machine fires once a morning, it is not a heartbeat")
+
+	# --- stationary means the engine cannot be asked to move it ---------------
+	GameState.reset()
+	SimRng.reseed(4040)
+	var world := SimWorld.new()
+	world.generate()
+	var middle := Vector2i(20, 10)
+	var pending_before := world.clock.pending()
+	world.spawn_actor("sprinkler_1", SpeciesDefs.SPRINKLER, middle)
+	_assert(world.clock.pending() == pending_before,
+		"spawning one schedules nothing: it costs the clock nothing between days (rule 8)")
+	_assert(not Movement.plan(world, "sprinkler_1", Vector2i(10, 10)),
+		"no route can be planned for it")
+	_assert(Movement.path(world, SpeciesDefs.STATIC, middle, Vector2i(10, 10)).is_empty()
+			and Movement.reachable(world, SpeciesDefs.STATIC, middle).is_empty(),
+		"in either search, because a machine travels through nothing")
+	_assert(Movement.step(world, "sprinkler_1", 1) == Movement.ARRIVED
+			and world.actor_pos("sprinkler_1") == middle,
+		"and stepping it reports that it is already where it is going")
+
+	# --- the criterion: tiles in radius wake watered, tiles outside don't -----
+	# A 5x5 of planted soil around a radius-1 machine, so the edge of its reach is
+	# inside the plot rather than at the edge of the world.
+	for dy in range(-2, 3):
+		for dx in range(-2, 3):
+			var t: Vector2i = middle + Vector2i(dx, dy)
+			world.set_tile_state(t.x, t.y, "seeded", "wheat")
+	GameState.watering_can_charges = GameState.max_watering_can_charges
+	# Weather is overridden the way a replay overrides it, so "it rained" cannot be
+	# the reason a tile outside the radius is wet.
+	world.apply_action({ "verb": "sleep", "actor": "world", "weather": "sunny" }, GameState)
+	var inside := 0
+	var outside_wet := 0
+	for dy in range(-2, 3):
+		for dx in range(-2, 3):
+			var t: Vector2i = middle + Vector2i(dx, dy)
+			var wet: bool = world.get_tile(t.x, t.y).watered_today
+			if maxi(absi(dx), absi(dy)) <= SprinklerBrain.RADIUS:
+				if wet:
+					inside += 1
+			elif wet:
+				outside_wet += 1
+	_assert(inside == 9, "every tile in the machine's radius wakes watered (%d of 9)" % inside)
+	_assert(outside_wet == 0, "and no tile outside it does (%d wet)" % outside_wet)
+	_assert(GameState.weather == "sunny", "on a day it did not rain")
+
+	# It waters with the verb, so it pays what the verb costs — out of its own
+	# meter (every actor has one), never out of hers, and never out of her can.
+	_assert(world.energy_of("sprinkler_1") == SimWorld.ACTOR_MAX_ENERGY - 9 * Tools.get_energy_cost("water"),
+		"it spends its own energy on the nine tiles, and wakes refilled to do it again")
+	_assert(GameState.watering_can_charges == GameState.max_watering_can_charges
+			and GameState.energy == GameState.max_energy,
+		"her can and her arms are untouched — which is the entire point of owning one")
+
+	# The chore it retires, actually retired: the crops under it grow, on a dry
+	# week, with nobody carrying anything.
+	var under := middle + Vector2i(1, 0)
+	var beyond := middle + Vector2i(2, 0)
+	for _i in 3:
+		world.apply_action({ "verb": "sleep", "actor": "world", "weather": "sunny" }, GameState)
+	_assert(world.get_tile(under.x, under.y).state == "ready",
+		"a crop inside the radius grows to ready on its own (design/03: your old job, happening without you)")
+	_assert(world.get_tile(beyond.x, beyond.y).state == "seeded"
+			and world.get_tile(beyond.x, beyond.y).growth_stage == 0,
+		"and a crop one tile beyond it is exactly as far along as the day it was planted")
+
+	# --- coverage is data about the machine, not a second implementation ------
+	_assert(SprinklerBrain.coverage(world, "sprinkler_1").size() == 9,
+		"coverage answers with the nine tiles it waters")
+	_assert(SprinklerBrain.coverage(world, "sprinkler_1")[0] == middle + Vector2i(-1, -1),
+		"in a fixed order, so two runs of the same farm water in the same sequence")
+	world.actor("sprinkler_1")["extra"]["radius"] = 0
+	_assert(str(SprinklerBrain.coverage(world, "sprinkler_1")) == str([middle]),
+		"and a per-actor radius overrides the species default (the body_len pattern, for M3's upgrades)")
+	world.actor("sprinkler_1")["extra"]["radius"] = 2
+	_assert(SprinklerBrain.coverage(world, "sprinkler_1").size() == 25, "in both directions")
+	world.actor("sprinkler_1")["extra"].erase("radius")
+	# A machine at the edge of the map sprays what is there and nothing else.
+	world.spawn_actor("sprinkler_edge", SpeciesDefs.SPRINKLER, Vector2i(0, 0))
+	_assert(SprinklerBrain.coverage(world, "sprinkler_edge").size() == 4,
+		"a machine in the corner waters the four tiles that exist, not the five that don't")
+	world.despawn_actor("sprinkler_edge")
+
+	# Who acts at a day turn is sorted by id, so it cannot depend on registry
+	# order — which differs between a generated world and a restored one.
+	world.spawn_actor("sprinkler_b", SpeciesDefs.SPRINKLER, Vector2i(6, 12))
+	world.spawn_actor("sprinkler_a", SpeciesDefs.SPRINKLER, Vector2i(9, 12))
+	var day_actions := Brains.day_actions(world, GameState)
+	_assert(day_actions.size() == 27, "three machines, nine tiles each, one list")
+	_assert(String(day_actions[0]["actor"]) == "sprinkler_1"
+			and String(day_actions[9]["actor"]) == "sprinkler_a"
+			and String(day_actions[18]["actor"]) == "sprinkler_b",
+		"in actor-id order, whatever order they were spawned in")
+	for a in day_actions:
+		_assert_quiet(String(a["verb"]) == "water", "a machine's day action is a water")
+	_flush_quiet("and every one of them is the player's own verb, through the one gateway")
+	world.despawn_actor("sprinkler_a")
+	world.despawn_actor("sprinkler_b")
+	_assert(Brains.day_actions(SimWorld.new(), GameState).is_empty(),
+		"a farm with no machines on it — which is every farm in the game today — turns its day with an empty list")
+
+	# --- it saves and it replays, like any other actor ------------------------
+	var s := LiveSession.new(808)
+	for dy in range(-1, 2):
+		for dx in range(-1, 2):
+			s.world.set_tile_state(20 + dx, 10 + dy, "seeded", "wheat")
+	s.world.spawn_actor("sprinkler_1", SpeciesDefs.SPRINKLER, Vector2i(20, 10))
+	# Rebased on a snapshot of right now, exactly as a session continued from an
+	# autosave is: nothing *places* a machine, so a save is how one reaches a
+	# replay (Q-15 owns the acquisition path that would make it an Action).
+	s.rebase()
+	s.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
+	s.tick(200)
+	var snap = JSON.parse_string(JSON.stringify(SaveGame.capture(s.world, s.gs)))
+	_assert(snap["world"]["actors"].has("sprinkler_1")
+			and String(snap["world"]["actors"]["sprinkler_1"]["species"]) == SpeciesDefs.SPRINKLER,
+		"a machine is in the save, at its tile, like any resident")
+	_assert(SaveGame.replay_matches(s.log, snap),
+		"and the session reproduces its own autosave — the day turn waters the same nine tiles again")
+	var restored := SimWorld.new()
+	var gs_restored = load("res://systems/game_state.gd").new()
+	SaveGame.restore(snap, restored, gs_restored)
+	_assert(restored.actor_pos("sprinkler_1") == Vector2i(20, 10)
+			and restored.species_of("sprinkler_1") == SpeciesDefs.SPRINKLER,
+		"a reloaded farm still has its machine, standing where it stood")
+	_assert(not restored._brain_events.has("sprinkler_1")
+			and not Brains.of_actor(restored, "sprinkler_1").on_clock(),
+		"and a load does not put it on the clock: schedule_all_brains skips a brain that is not on one")
+	restored.apply_action({ "verb": "sleep", "actor": "world", "weather": "sunny" }, gs_restored)
+	_assert(restored.get_tile(20, 10).watered_today,
+		"and it waters the morning after a reload, which is the thing F-7c was about for the hen")
+	gs_restored.free()
+	s.done()
+
+
+func test_pea() -> void:
+	print("\n--- Pea, an ordinary crop (Q-55 ruled 2026-08-31; M2.5 WI-10) Tests ---")
+
+	var pea: Dictionary = CropDefs.TYPES.get("pea", {})
+	_assert(not pea.is_empty(), "pea is a crop type")
+	_assert(int(pea.days_to_grow) == 3 and int(pea.stages) == 4,
+		"three days to grow, four visual stages — the shape wheat and tomato already have")
+	_assert(int(pea.sell_price) == 20 and int(pea.seed_price) == 8,
+		"priced between them [Playtest]: worth growing, never the obvious choice")
+	_assert(int(pea.sell_price) > int(pea.seed_price),
+		"and worth more than its seed, which is the only balance rule that is not taste")
+	_assert(int(pea.sprite_row) == 3, "it draws from crops.png row 3 (WI-11 widened the sheet for it)")
+	var sheet: Texture2D = load("res://assets/sprites/generated/crops.png")
+	_assert(sheet != null and sheet.get_image().get_height() >= (int(pea.sprite_row) + 1) * 16,
+		"and that row is really in the sheet, not a cell off the bottom of it")
+
+	# The shop does not sell it yet: every shop, HUD and seed-picker path iterates
+	# ORDER, and the pea is deliberately not in it (Q-55/Q-56 — the debut is content
+	# sequencing, not this work item).
+	_assert(not ("pea" in CropDefs.ORDER), "the shop does not sell pea seeds yet")
+	_assert(CropDefs.ORDER.size() == 3, "so the shop still offers exactly what it offered yesterday")
+	_assert(not CropDefs.is_seed_unlocked("pea", {}),
+		"and when it does debut it is behind the same first-harvest gate the tomato is")
+	_assert(CropDefs.is_seed_unlocked("pea", { "wheat": 1 }), "which one wheat opens")
+
+	# Growth, through the ordinary stages, with no special case anywhere.
+	for stage in [0, 1, 2, 3]:
+		_assert_quiet(CropDefs.get_visual_stage("pea", stage) == stage,
+			"pea at growth %d draws its stage-%d cell" % [stage, stage])
+	_flush_quiet("a pea walks up its four stages exactly as wheat does")
+	_assert(not CropDefs.is_ready("pea", 2) and CropDefs.is_ready("pea", 3),
+		"and is ready on the third day, not the second")
+
+	# ...and the same walk through the gateway, in a real world: planted, watered,
+	# slept over three times, harvested, sold.
+	GameState.reset()
+	SimRng.reseed(606)
+	var world := SimWorld.new()
+	world.generate()
+	var plot := Vector2i(20, 10)
+	world.set_tile_state(plot.x, plot.y, "cleared")
+	GameState.seeds["pea"] = 1
+	GameState.gold = 0
+	_assert(world.apply_action({ "verb": "till", "target": plot, "actor": "player" }, GameState).get("ok", false)
+			and world.apply_action({ "verb": "plant", "target": plot, "seed_type": "pea", "actor": "player" }, GameState).get("ok", false),
+		"she tills and plants a pea with the verbs she already had")
+	_assert(world.get_crop_type(plot.x, plot.y) == "pea" and GameState.seeds["pea"] == 0,
+		"the tile holds a pea and the seed left her pocket")
+	for _day in 3:
+		world.apply_action({ "verb": "water", "target": plot, "actor": "player" }, GameState)
+		world.apply_action({ "verb": "sleep", "actor": "world", "weather": "sunny" }, GameState)
+	_assert(world.get_tile(plot.x, plot.y).state == "ready"
+			and world.get_tile(plot.x, plot.y).growth_stage == 3,
+		"three watered nights and it is ready")
+	var harvested := world.apply_action({ "verb": "harvest", "target": plot, "actor": "player" }, GameState)
+	_assert(harvested.get("ok", false) and String(harvested.get("crop_type", "")) == "pea",
+		"harvesting one gives back a pea")
+	_assert(int(GameState.crops.get("pea", 0)) == 1 and int(GameState.harvest_counts.get("pea", 0)) == 1,
+		"which lands in her basket and in the counts the milestones read")
+	var gold_before: int = GameState.gold
+	_assert(GameState.sell_crops_to_bin(), "and it sells")
+	_assert(GameState.gold == gold_before + int(pea.sell_price),
+		"at its own price (%dg), through the economy every other crop uses" % int(pea.sell_price))

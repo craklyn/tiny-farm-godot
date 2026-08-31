@@ -87,11 +87,16 @@ func _load_textures() -> void:
 	tile_regions[WorldLayout.GATE_CLOSED] = Rect2(6 * 16, 0, 16, 16)
 	tile_regions[WorldLayout.GATE_OPEN] = Rect2(7 * 16, 0, 16, 16)
 
-	# Crop regions (crops.png: row 0 wheat, row 1 tomato, 4 visual stages each)
+	# Crop regions (crops.png: row 0 wheat, row 1 tomato, row 3 pea, 4 visual
+	# stages each; row 2 is the shop iconography — see menus.gd). The pea ships as
+	# an ordinary crop (Q-55, M2.5 WI-10) and nothing plants one yet, so this cell
+	# binding is what stops the first thing that does from growing invisibly.
 	crop_regions["wheat"] = {}
 	crop_regions["tomato"] = {}
+	crop_regions["pea"] = {}
 	for stage in 4: crop_regions["wheat"][stage] = Rect2(stage * 16, 0 * 16, 16, 16)
 	for stage in 4: crop_regions["tomato"][stage] = Rect2(stage * 16, 1 * 16, 16, 16)
+	for stage in 4: crop_regions["pea"][stage] = Rect2(stage * 16, 3 * 16, 16, 16)
 
 	# Object regions map (objects.png: cot, well, seed_box 16x32; bin 16x16)
 	# Format: object_name -> [texture, rect]
@@ -355,7 +360,10 @@ func advance_day() -> void:
 	var state := _state()
 	if state != null:
 		weather = String(state.weather)
-	sim.advance_day(weather)
+	# The state goes through too, so this facade's day turn is the gateway's day
+	# turn: machines fire at the day turn and they act through `apply_action`,
+	# which needs it (M2.5 WI-10).
+	sim.advance_day(weather, state)
 	queue_redraw()
 
 

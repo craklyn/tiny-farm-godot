@@ -173,6 +173,13 @@ static func passable(world: SimWorld, mode: String, t: Vector2i) -> bool:
 			return in_bounds(world, t) and String(world.get_tile(t.x, t.y).get("state", "")) != "border"
 		SpeciesDefs.HOP:
 			return world.is_walkable(t.x, t.y) or is_barrier(world, t)
+		SpeciesDefs.STATIC:
+			# A machine travels through nothing (M2.5 WI-10). Every search and
+			# every step follows from this one answer: `path` and `reachable`
+			# return empty, `plan` is false, and `step` reports that a sprinkler
+			# is already where it is going. Being *moved* is a placement somebody
+			# else does, not a journey this engine plans.
+			return false
 		_:
 			return world.is_walkable(t.x, t.y)
 

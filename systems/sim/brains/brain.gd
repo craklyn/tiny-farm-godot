@@ -80,6 +80,25 @@ func on_new_day(_world: SimWorld, _actor_id: String) -> void:
 	pass
 
 
+# Actions this actor takes **as the day turns**, applied by `advance_day` at the
+# end of the turn (M2.5 WI-10). Empty for everything that thinks on the clock,
+# which is nearly everything: a brain with a `wake` decides *when* it acts, and
+# doing it here as well would be acting twice.
+#
+# It exists for a machine, whose whole nature is that it fires once a morning and
+# is otherwise inert (`design/03`: the player watches their old job happen without
+# them). The sprinkler is the first and only implementation.
+#
+# Returns ordinary Actions, put through `apply_action` like anybody else's, so a
+# machine gets no capability the player lacks (ground rule 1). They are
+# **recomputed** rather than recorded: a replay re-applies the `sleep` that turned
+# the day, and this runs again inside it, which is Q-53's rule for a sim-brained
+# actor's behaviour and is what keeps the day turn one entry in the log rather
+# than one plus a machine's worth.
+func day_actions(_world: SimWorld, _actor_id: String, _gs = null) -> Array[Dictionary]:
+	return []
+
+
 # --- shared helpers ----------------------------------------------------------
 
 # Ticks per tile for a species, from its `speed` row (tiles per tick). At least

@@ -28,3 +28,18 @@
 ## Constraints from decisions
 Sim-side machines tick in the deterministic core (S-5) so fast-forward and training-time
 simulation include them. Sprinklers are the phase-2 gate's economic engine (P-4).
+
+## As built (M2.5 WI-10) — the sprinkler exists, behind spawn only
+The first machine is a **species row and a brain** (`systems/sim/brains/sprinkler_brain.gd`):
+stationary (movement mode `static`, so the engine cannot be asked to move it), not on the
+tick clock, and its whole vocabulary is `water` — the player's own verb, through the one
+gateway, which is this doc's "does nothing the watering can couldn't" holding at the level
+of code. At the day turn it waters its radius, **after** the growth pass, so the tiles
+under it *wake* watered exactly as rain leaves them; a crop under it grows on a dry week
+with nobody carrying anything. Radius is 1 (the 3x3 it stands in), `[Playtest]`, with a
+per-actor override for a future upgrade tier.
+Still open and unbuilt, deliberately: **§2 acquisition** (Q-15 — nothing places one, so a
+sprinkler exists only where a test spawns it), **§3 placement, overlap and water-source
+coupling** (it is an actor in the registry today, not an object occupying a tile), and
+**§4 upkeep** (it spends the ordinary per-actor energy meter and refills each morning,
+which is not a resource loop and must not be mistaken for one).

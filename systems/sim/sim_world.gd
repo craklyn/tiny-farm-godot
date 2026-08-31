@@ -862,7 +862,7 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			if action.has("weather"):  # replay override: reproduce the logged roll
 				gs.weather = action.weather
 				gs.weather_changed.emit(gs.weather)
-			advance_day(gs.weather)
+			advance_day(gs.weather, gs)
 			gs.process_shipping_bin()
 			# Q-12/P-4: silent capability proof, measured at sleep; the flag
 			# flips once, and the result tells presentation to celebrate
@@ -1098,7 +1098,10 @@ func _parcel_with_gate(gate: Vector2i) -> Dictionary:
 	return {}
 
 
-func advance_day(weather: String) -> void:
+# `gs` is optional and is only needed by the machines below (M2.5 WI-10): a day
+# turn without a GameState is a test fixture arranging a grid, not a farm waking
+# up, and the sleep verb — the only caller in the running game — always has one.
+func advance_day(weather: String, gs = null) -> void:
 	# Everyone wakes rested, the player included (GameState.start_new_day does
 	# hers). An NPC's tiredness is a within-day thing, same as the farmer's.
 	# Every *registered* actor, which since M2.5 WI-2 is the same set that used to
@@ -1129,3 +1132,18 @@ func advance_day(weather: String) -> void:
 
 			if weather == "rainy" and tile.state in ["tilled", "seeded", "growing"]:
 				tile.watered_today = true
+
+	# The machines, last (M2.5 WI-10). **After** the pass above, deliberately: it
+	# has just harvested yesterday's water and cleared every tile, so watering here
+	# is watering the morning the farm is turning into — which is what "the tiles in
+	# its radius wake watered" means, and it is the same seat rain takes two lines
+	# up. Watering before it would pour into a bucket the growth pass then empties.
+	#
+	# These are ordinary Actions through the ordinary gateway, so a sprinkler is
+	# measured against ground rule 1 like any other actor and gets no capability the
+	# player lacks. They are **recomputed on replay** rather than recorded (Q-53):
+	# a replay re-applies the `sleep` that turned this day, and this runs inside it.
+	# Empty on every farm in the game today — nothing places a machine (Q-15).
+	if gs != null:
+		for action in Brains.day_actions(self, gs):
+			apply_action(action, gs)

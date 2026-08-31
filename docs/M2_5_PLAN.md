@@ -842,3 +842,109 @@ riding has a hole in it — `test_scent` proves the wash both directly and throu
 `water` Action in the gateway. Reinforcement is the same `deposit` call (values add and
 clamp at the channel's cap), and the decay constant is the difficulty dial: turn
 `half_life` down and a column starves before it forms, not because fewer ants spawned.
+
+### WI-10 — Sprinkler + pea ✅ landed 2026-08-31
+
+**The machine.** `systems/sim/brains/sprinkler_brain.gd` plus one row in
+`species_defs.gd`, and between them they add **no new verb, no new mutation and no new
+path through `apply_action`** — which is `design/03`'s principle ("a sprinkler waters;
+it does nothing the watering can couldn't") turning out to be an implementation note as
+well as a design one. Its vocabulary is `["water"]`, a verb the player already owns, so
+ground rule 1 holds by construction and the existing test that checks it needed nothing
+added.
+
+It is stationary as **data**: a fifth movement mode, `STATIC`, for which
+`Movement.passable` answers false everywhere — so `plan()` cannot route a sprinkler,
+`reachable()` is empty for it, and `step()` reports that it is already where it is going.
+It is not on the tick clock (`on_clock()` false), holds no pending event and cannot be
+woken; its one moment is `day_actions()`, a new `Brain` hook that
+`SimWorld.advance_day` runs **after** the growth pass has cleared yesterday's water, in
+the seat rain takes. That ordering is the criterion: the tiles in its radius *wake*
+watered, and a crop under it grows on a dry week with nobody carrying anything.
+
+**The pea** is a row in `crop_defs.gd` and nothing else — three days, 20g, seeds 8g, all
+`[Playtest]`, drawing crops.png row 3 (WI-11 widened the sheet for it), bound in
+`world/farm.gd`'s `crop_regions` exactly as wheat and tomato are. It is **not in
+`ORDER`**, which is what every shop, HUD and seed-picker path iterates, so the shop sells
+exactly what it sold yesterday. Q-55 ruled the ammo economy is M3's; the crop is here so
+that economy finds its raw material already grown, tested and balanced.
+
+Suites: unit **1035 PASSED / 0 FAILED** (984 after WI-7, +51 from `test_sprinkler` and
+`test_pea`), integration **154 / 0**, robot session **MATCH** (15 entries),
+`verify_replay` MATCH, demo replay regenerates with a clean diff, visual regression
+**passes unchanged** (WI-6's re-baseline allowance still untouched). Benchmark, three
+runs each: **631k / 702k / 713k×** as it ships (no machine on the farm — the same noise
+band WI-4 recorded) and **591k / 659k / 650k×** with a sprinkler registered on the
+worked plot, measured with a scratch copy of the benchmark rather than by editing
+`tools/benchmark_sim.gd`, which is WI-12's file. The machine costs what its nine
+waterings cost — about 7% for 11% more Actions — and **nothing per tick**, which is the
+number that matters for rule 8.
+
+**Deviations and decisions taken inside the WI:**
+
+1. **Stationary is a movement mode, not a speed of zero.** The WI offered either; a
+   `ground` row with `speed: 0` is a claim that the thing walks very slowly, and
+   `Movement.ticks_per_tile` would have answered "one tile per tick" for it, which is a
+   lie waiting for a caller. `STATIC` makes it the engine's business instead.
+   **One existing test line changed** as a consequence — `test_actor_registry`'s "every
+   row has a speed" is now "every row has a speed, or is stationary and says so". It is
+   the only assertion in the suite that was edited rather than added, and it is a
+   refinement rather than a weakening: a `ground` row with no speed still fails.
+2. **The day-turn hook is general, not a sprinkler in the day turn.** `Brain.day_actions`
+   is a hook any brain may implement and `Brains.day_actions(world, gs)` collects them
+   **sorted by actor id** — because registry iteration order differs between a generated
+   world and a restored one (WI-2 deviation 8), so a day turn that walked the registry as
+   it found it could act in two different orders on the same farm. Nothing about watering
+   cares today; the invariant is free now and archaeology later.
+3. **`advance_day` gained an optional `gs`**, because the machines' Actions go through
+   `apply_action`, which needs one. Without it the machine pass is skipped rather than
+   emitting Actions doomed to `no_state`: a day turn with no GameState is a test fixture
+   arranging a grid, not a farm waking up. The facade `world/farm.gd:advance_day()` passes
+   its state through, so it stays the gateway's day turn and not a second one.
+4. **Recomputed, never recorded** (Q-53). Nine `water` entries a day is what recording a
+   machine would cost, and the log is also phase 4's training corpus: it would describe a
+   decision nobody made, once per tile, forever. A replay re-applies the `sleep` and the
+   machine fires again inside it — asserted by replaying a real session against its own
+   autosave, the same pairing the robot uses.
+5. **It spends its own energy** (nine tiles, one each, from the meter every actor has and
+   every actor refills at the day turn). That is **not upkeep** — upkeep is deferred to
+   M3 design (`design/03` §4 has not chosen between machines that break and machines that
+   run free) — and it cannot become one by accident, because Q-11's soft floor means an
+   exhausted machine still waters. It is simply the same meter the hen and the neighbour
+   spend from, which is what "a machine is an actor" has to mean if it means anything.
+6. **Radius 1 — the 3x3 it stands in the middle of — and a square rather than a diamond.**
+   `design/03` §3 (coverage, overlap, water-source coupling) is unwritten and this is the
+   `[Playtest]` constant the plan asked for, deliberately small: the reason a sprinkler
+   is a reward is that it retires a chore she felt, not that it retires the farm. Square
+   because it is the shape `is_protected_by_scarecrow` already uses, and one coverage
+   shape is easier to teach than two. `extra["radius"]` overrides it per actor (WI-4
+   deviation 7's `body_len` pattern), so an M3 upgrade tier is one integer.
+7. **A sprinkler is an actor, not a placed grid object.** `design/03`'s "machines are
+   visible physical objects on the grid occupying tiles" is about placement and space
+   competition, which is M3's design and Q-15's acquisition loop; today it stands in the
+   registry, blocks nobody, and appears in no `objects` row. When placement lands, the
+   object half is additive and the actor half is already here.
+8. **Nothing places one, and nothing draws one.** There is no acquisition path (Q-15 is
+   open), so a sprinkler exists only where `spawn_actor` puts one — the tests, and
+   whatever M3 builds. The live game has never contained one; the renderer is WI-6's.
+9. **A trap for whoever debuts the pea in the shop.** `sprite_row` does double duty: it
+   is the crop's growth *row* in crops.png **and** its icon *column* in row 2 (see
+   `ui/menus.gd:crop_icon`). The pea's growth row is 3, and row 2 column 3 is the **coin**
+   (T-12's wordless pricing, added 2026-08-30). So the pea's shop icon today would be a
+   coin. Nothing is broken — the shop does not list it — but debuting it means either a
+   pea packet somewhere the coin is not, or splitting the two uses of that one number.
+
+**For WI-6 (rendering a stationary actor).** Draw it from `world.actor_pos()` like any
+tile-stepped actor — `Movement.float_pos` falls back to the registry tile for anybody
+without a continuous position, so the one code path WI-4 handed you covers a machine
+without knowing it is one — and it never moves, so there is nothing to interpolate.
+`CREDITS.md` records the cells: `objects.png` row 1, **col 5 idle and col 6 spraying**,
+generated as a pair so they cannot drift. The spraying frame has an obvious trigger (the
+day turn) and `SprinklerBrain.coverage(world, actor_id)` gives the exact tiles for a
+coverage overlay, derived from `day_actions` rather than computed beside it so a readout
+can never disagree with what the machine does. To see one at all you will need to spawn
+it: nothing in the live game does.
+
+**For WI-8's critter workers.** `Brain.day_actions()` is available to any critter whose
+one act belongs to the day turn rather than to a tick — but prefer a `wake` if the thing
+decides *when* to act, because a brain doing both acts twice.

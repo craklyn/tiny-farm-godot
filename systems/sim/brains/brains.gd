@@ -28,6 +28,7 @@ static func _table() -> Dictionary:
 			"cold_open": ColdOpenBrain.new(),
 			"chicken_wander": ChickenBrain.new(),
 			"crow_visit": CrowBrain.new(),
+			"sprinkler_day": SprinklerBrain.new(),
 		}
 	return _by_id
 
@@ -78,3 +79,23 @@ static func flee(world: SimWorld, actor_id: String, reason: String) -> void:
 static func on_new_day(world: SimWorld) -> void:
 	for id in world.actors.keys():
 		of_actor(world, id).on_new_day(world, id)
+
+
+# Everything every actor does *as the day turns*, in one list for `advance_day` to
+# put through the gateway (M2.5 WI-10). Empty on a farm with no machines on it,
+# which is every farm in the game today.
+#
+# **Sorted by actor id, and that is load-bearing.** Registry iteration order is not
+# truth — a generated world holds actors in spawn order and a restored one in the
+# order `JSON.stringify` sorted its keys into (see SimWorld's registry block) — so
+# a day turn that walked the registry as it found it could water the same farm's
+# tiles in two different orders. Nothing about watering cares today, but "the
+# order actors act in is a function of who they are, not of how this world was
+# built" is exactly the kind of invariant that is free now and archaeology later.
+static func day_actions(world: SimWorld, gs = null) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var ids: Array = world.actors.keys()
+	ids.sort()
+	for id in ids:
+		out.append_array(of_actor(world, id).day_actions(world, String(id), gs))
+	return out
