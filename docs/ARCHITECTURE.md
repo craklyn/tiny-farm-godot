@@ -259,6 +259,19 @@ read by sensing. It is sim truth (layer 2), not a visual effect.
 heat-map). It is both a D-4 candidate (truthful AI visualization) and a gameplay tool
 (read the battlefield before a raid).
 
+**As built (M2.5 WI-7):** `systems/sim/scent.gd` — `deposit(channel, tile, amount, tick)`
+writes, `read(channel, tile, tick)` applies the closed-form decay for the elapsed ticks,
+and a cell stores exactly `(value, last_updated_tick)`. **Reads never mutate the field**:
+no write-back and no pruning, because storage that changed shape depending on who looked
+and when would not survive a replay. Channels are rows in one table (`half_life` in
+seconds, `cap` on reinforcement, both `[Playtest]`); only `pest_trail` ships, and a
+tower's repellent or the `wear` channel above is one row and no storage change.
+`strongest_neighbour()` is the gradient a forager walks on, tie-broken in the
+pathfinder's own neighbour order. `wash(tile)` is **full-cell erasure across every
+channel**, wired to the `water` verb in the gateway — the counterplay above, with no new
+verb and no new UI. Written cells save additively (a pre-scent save loads as a clean
+field). The first writer is WI-8's ant pair; the scent-overlay toggle remains unbuilt.
+
 ### Verb-complete entities (P-9)
 
 Because the sim doesn't care who emits Actions (S-3), an entity with the *full* player

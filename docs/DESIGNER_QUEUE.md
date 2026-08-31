@@ -625,6 +625,19 @@ trace actually says, because several of these looked like bugs and were not.*
   *Recommendation: leave it as built and look at it on device when a kangaroo exists —
   it is one entry in the barrier list either way, and (a) costs nothing to try first.*
   Nothing is blocked on this: no hop-mode species ships until WI-8f.
+- **Q-58** **Does *rain* wash pest trails?** Raised by M2.5 WI-7, which implements P-10's
+  counterplay verbatim: the `water` verb erases every scent channel on the tile it lands
+  on, so a child with a watering can breaks a trail one tile at a time. Rain is the other
+  thing that puts water on tiles — at the day turn it wets every tilled, seeded and
+  growing tile at once — and P-10 says nothing about it. Two readings: (a) *as built* —
+  rain waters crops, it does not wash trails, so counterplay stays a thing the player
+  does and a rainy morning is not a free reset of a raid she was supposed to answer;
+  (b) rain washes the whole farm, which is a lovely weather beat ("the rain took their
+  trail away") and a difficulty valve, but it hands her a raid-cancelling day she did not
+  earn and makes trail difficulty depend on a die roll she cannot see coming.
+  *Recommendation: leave it as built — (a) — and revisit when a raid exists to feel it
+  against; it is one line in `advance_day` either way.* Nothing is blocked on this: no
+  species writes scent until WI-8.
 
 ## Before M3 — phase 2 design
 

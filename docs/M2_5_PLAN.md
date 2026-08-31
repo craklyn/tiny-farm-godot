@@ -751,3 +751,94 @@ actor's whole footprint, and `Movement.is_under` says whether a burrower should 
 at all. **The player's feel is not the engine's to change** (§4, D-8 spirit): when her
 position joins sim truth it is as tile occupancy updated on tile-crossing events, with the
 pixel motion staying exactly where it is.
+
+### WI-7 — Scent layer v1 ✅ landed 2026-08-31
+
+`systems/sim/scent.gd` (pure, layer 2): P-10's cost model, implemented as written.
+A cell exists **because somebody wrote it** (`deposit(channel, tile, amount, tick)`),
+holds exactly `(value, last_updated_tick)`, and its current value is computed
+**closed form** on read (`read(channel, tile, tick)`). Nothing in the file iterates
+the map, on any tick, for any reason — P-10's "no per-tile diffusion sim, ever", which
+is also ground rule 8 from the scent layer's side: a trail laid a thousand ticks ago is
+one `pow()` away from being read, and a farm nobody has marked holds no cells at all.
+
+**Channels are data.** One table, three numbers a row: `half_life` (seconds, converted
+through `SimClock.RATE` exactly as a brain's timings are), `cap` on reinforcement, both
+`[Playtest]` — because `design/04` says difficulty tuning is decay/reinforcement
+constants, and "a trail halves every minute" is a sentence a designer can hold, where a
+per-tick multiplier of 0.998845 is not. A tower's repellent field, a lure, and P-10's
+`wear` channel are each one row and **no change to storage or to the API**.
+
+**The gradient** WI-8b's foragers walk on is `strongest_neighbour(channel, tile, tick)`
+(with `strongest_neighbour_value` for "is there anything worth following?"), tie-broken
+in `Movement.DIRS` order — the pathfinder's own tie-break, not a second one that could
+drift from it, so two ants in one field agree on every machine. **Erasure is
+full-cell**: `wash(tile)` takes every channel at that tile and is wired to the `water`
+verb in the gateway, which is P-10's counterplay with no new verb and no new UI. A
+washed tile is a *hole* in a trail rather than a weak link, which is what breaks a
+gradient. Written cells save additively (`world.scent`, the `tick`/`actors` pattern,
+no VERSION bump); a pre-scent save loads as a clean field.
+
+Suites: unit **984 PASSED / 0 FAILED** (928 before, +56 from `test_scent`), integration
+**154 / 0**, robot session **MATCH** (15–16 entries; the hen's morning coin flip decides
+whether there is a last one, as WI-3 noted), `verify_replay` MATCH, demo replay
+regenerates with a clean diff. Purity greps clean: no `Time.`/delta/`_process(` in code
+under `systems/sim/`, and no Node, autoload, `Input` or `Pathfinding` in the new file.
+
+**Deviations and decisions taken inside the WI (criteria unaffected):**
+
+1. **Reading never mutates, and nothing prunes on a schedule.** "Lazy decay-on-read"
+   could reasonably mean "write the decayed value back", and it deliberately does not:
+   storage whose *shape* depended on who happened to read it and when would let two runs
+   of the same session save differently, which is the determinism class the whole tick
+   discipline exists to prevent. So the field is a function of its writes alone.
+   `compact(tick)` exists for an explicit caller with a deterministic reason, and
+   **nothing in the sim calls it** — storage is bounded by map area regardless, since a
+   cell is a tile.
+2. **A `FADED` floor (0.01, `[Playtest]`), which the plan does not name.** Below it a
+   reading is `0.0`. Without one, a decayed trail is a gradient of imperceptible numbers
+   a forager could follow forever, and "the trail faded" would never be true of anything.
+   The closed form is exact above the floor and the test asserts both halves.
+3. **Only `pest_trail` ships**, with `define_test_channel()` / `forget_test_channels()`
+   as the test-only seam — WI-4's `define_test_species` precedent, for its reason: a
+   constant with no writer is a constant, but a *named channel* with no writer is a claim
+   about the game. The test defines a second channel to prove storage and the API do not
+   reshape when one arrives, then clears it and asserts the shipping set is untouched.
+4. **`deposit_blob()` ships unused-ready** (P-10's "if a spread feel is needed, deposit
+   with a small radius/falloff at write time instead"). Eight lines, tested, called by
+   nothing — it is here so the first design that wants softness does not reach for a
+   per-tile pass, which is the one thing P-10 forbids outright.
+5. **The wash is unconditional on a successful `water`,** not limited to the soil states
+   `water_tile` actually wets: what wets a crop is a fact about soil, what washes a trail
+   is a fact about water. A *failed* water (empty can, out of bounds) washes nothing —
+   the erasure happens inside the verb's own resolution, after its guards.
+6. **The field is inside `capture()` and therefore inside `capture_canonical()`.** It is
+   sim truth and it compares clean today, because no shipping species writes scent — both
+   sides are empty. **This is a seam WI-8 has to look at:** the first critter that
+   deposits during live play writes at ticks a v1 replay cannot recompute, which is
+   exactly WI-3 deviation 1's problem, and if a critter lands before WI-5's tick stamps
+   do, `world.scent` joins the four `erase` lines in `save_game.gd` until it can come
+   back out.
+7. **A save round trip is equal to a hair, not bit-for-bit.** `JSON.stringify` carries
+   about fifteen significant digits, so a restored value differs from the live one in the
+   last bits. It does not matter for comparison — both sides stringify, and `to_save()`
+   emits cells **sorted by tile**, so the serialized form is canonical whatever order the
+   deposits arrived in — and the test asserts the shape (which tiles, which ticks)
+   exactly and the values approximately.
+8. **A restore replaces the field rather than merging into it** (a load is a world, not
+   an addition to the one you were playing), and a save carrying a channel this build does
+   not know is dropped rather than half-restored.
+
+**For WI-8a/8b (the ants), who are the first writers.** The scout lays with
+`world.scent.deposit(Scent.TRAIL, tile, amount, world.clock.tick)` on each tile it walks
+home over — one call per step it takes, which is the whole of "write-on-event". The
+forager follows with `world.scent.strongest_neighbour(Scent.TRAIL, pos, tick)` and steps
+onto what it returns (it returns `pos` itself when there is nothing to follow, so
+"follow" and "search" are distinguishable without a second call); the tie-break is fixed,
+so a column is deterministic. **The two asserts the plan asks of the ant pair are already
+half-built:** a stomped scout never deposits, so no trail exists to complete; and a
+washed tile is `read() == 0.0` with its neighbours intact, so the gradient the column was
+riding has a hole in it — `test_scent` proves the wash both directly and through a real
+`water` Action in the gateway. Reinforcement is the same `deposit` call (values add and
+clamp at the channel's cap), and the decay constant is the difficulty dial: turn
+`half_life` down and a column starves before it forms, not because fewer ants spawned.

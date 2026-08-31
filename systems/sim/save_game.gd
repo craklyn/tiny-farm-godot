@@ -32,6 +32,12 @@ static func capture(world: SimWorld, gs) -> Dictionary:
 			# serialize, so persisting them is its own design rather than a key
 			# added here in advance of a need.
 			"tick": world.clock.tick,
+			# The scent layer (P-10, M2.5 WI-7). Additive in the same way again: a
+			# save written before it existed has no field, and reads as a clean one
+			# — which is what every farm in the game holds today, since no shipping
+			# species writes scent yet. Only *written* cells are stored, so this is
+			# `{}` on an unmarked farm and never a grid of zeroes.
+			"scent": world.scent.to_save(),
 		},
 		"state": {
 			"day": gs.day,
@@ -104,6 +110,9 @@ static func restore(data: Dictionary, world: SimWorld, gs) -> bool:
 	# actor's first thought on it (M2.5 WI-3). Resetting afterwards would throw
 	# every one of those away and leave a reloaded farm standing perfectly still.
 	world.clock.reset(int(w.get("tick", 0)))
+	# ...and the scent layer with it (M2.5 WI-7), before the cast: a restored trail
+	# is part of the world its actors wake up into. Absent ⇒ a clean field.
+	world.scent.from_save(w.get("scent", {}))
 	var saved_actors: Dictionary = w.get("actors", {})
 	# Empty counts as absent: a world containing nobody at all is not a state
 	# anything produces (the player is always registered), so reading it as a

@@ -98,6 +98,14 @@ var objects: Array[Array] = []  # objects[y][x] = "" or object type string
 # same boundary its per-run `randi()` seed sits on.
 var clock := SimClock.new()
 
+# The scent layer (P-10, M2.5 WI-7). Sim truth like the grids and the clock: owned
+# here, saved with the world, washed away by the `water` verb below. It holds a
+# cell only where something has written one — no per-tile pass, on any tick, ever
+# (P-10's guardrail) — so on a farm nobody has marked it is an empty dictionary.
+# **Nothing writes it yet**: WI-8's ant pair is the first writer, and until then
+# the wash in the gateway is exact and unexercised.
+var scent := Scent.new()
+
 
 func generate(with_layout: Dictionary = WorldLayout.DEFAULT) -> void:
 	layout = with_layout
@@ -105,8 +113,10 @@ func generate(with_layout: Dictionary = WorldLayout.DEFAULT) -> void:
 	objects.clear()
 	# A regenerated world is a new world, so its timeline starts over. Matters for
 	# replay: `apply_to()` regenerates from seed, and a replayed session must count
-	# its ticks from the same zero the recorded one did.
+	# its ticks from the same zero the recorded one did. The scent layer goes with
+	# it: a new world has been marked by nobody (M2.5 WI-7).
 	clock.reset()
+	scent.clear()
 
 	# 1. Bare ground inside the map border. Every later step overwrites; nothing
 	#    below reads a tile it has not written, so the fill order is the only
@@ -989,6 +999,17 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 						gs.seeds[seed_type] -= 1
 				"water":
 					water_tile(target.x, target.y)
+					# P-10's counterplay, with no new verb and no new UI: water on a
+					# tile washes **every** scent channel off it, so a trail through
+					# a watered tile is broken rather than weakened (M2.5 WI-7).
+					# Wired at the one place the verb resolves, so a bot watering and
+					# a child tapping do the same thing to a trail.
+					#
+					# Unconditional, and deliberately not limited to the soil states
+					# `water_tile` wets: what wets a crop is a fact about soil, what
+					# washes a trail is a fact about water. No shipping species writes
+					# scent yet, so today this always erases nothing.
+					scent.wash(target)
 					if charged:
 						gs.watering_can_charges -= 1
 				"harvest":

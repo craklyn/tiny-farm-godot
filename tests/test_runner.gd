@@ -69,6 +69,7 @@ func _init() -> void:
 	test_sim_clock()
 	test_brains()
 	test_movement()
+	test_scent()
 
 	print("")
 	print(String("=").repeat(60))
@@ -4204,3 +4205,266 @@ func test_movement() -> void:
 	for id in SpeciesDefs.ids():
 		_assert_quiet(not SpeciesDefs.movement_of(id).is_empty(), "%s still answers from the real table" % id)
 	_flush_quiet("and the shipping species table is untouched by it")
+
+
+func test_scent() -> void:
+	print("\n--- The scent layer: write on event, decay on read (P-10, M2.5 WI-7) Tests ---")
+
+	# --- channels are data (P-10's pheromone/repellent/lure/wear) --------------
+	_assert(Scent.has_channel(Scent.TRAIL), "the pest trail is a channel the layer knows")
+	_assert(Scent.CHANNELS[Scent.TRAIL].has("half_life") and Scent.cap_of(Scent.TRAIL) > 0.0,
+		"and its row says how fast it fades and how far reinforcement can go (design/04: the difficulty dial)")
+	_assert(not Scent.has_channel("no_such_channel"), "a channel nobody defined does not exist")
+	_assert(is_equal_approx(Scent.half_life_ticks(Scent.TRAIL),
+			float(Scent.CHANNELS[Scent.TRAIL]["half_life"]) * float(SimClock.RATE)),
+		"half-lives are stated in seconds and converted at SimClock.RATE, like a brain's timings")
+
+	var field := Scent.new()
+	var here := Vector2i(8, 8)
+	_assert(field.deposit("no_such_channel", here, 50.0, 0) == 0.0
+			and field.read("no_such_channel", here, 0) == 0.0
+			and field.cell_count() == 0,
+		"a typo'd channel writes nothing and reads as nothing, rather than becoming a phantom field")
+
+	# --- the closed form, exact at arbitrary tick gaps (the WI's criterion) ----
+	# The value at t is value₀ · retention^(t − t₀), computed once on read. Not
+	# approached by stepping, not accumulated: asserted against `pow` itself, at
+	# gaps chosen to be nothing like each other.
+	var r := Scent.retention(Scent.TRAIL)
+	_assert(r > 0.0 and r < 1.0, "a channel decays: 0 < retention < 1 (%.6f per tick)" % r)
+	field.deposit(Scent.TRAIL, here, 80.0, 100)
+	_assert(field.read(Scent.TRAIL, here, 100) == 80.0, "a fresh deposit reads as itself")
+	for gap in [1, 2, 7, 13, 60, 137, 599, 1200]:
+		_assert_quiet(field.read(Scent.TRAIL, here, 100 + gap) == 80.0 * pow(r, float(gap)),
+			"the reading %d ticks later is the closed form" % gap)
+	_flush_quiet("a trail read after N ticks equals closed-form decay, at every gap asked for")
+	_assert(is_equal_approx(field.read(Scent.TRAIL, here, 100 + int(Scent.half_life_ticks(Scent.TRAIL))), 40.0),
+		"which after one half-life is half of it — the number the designer actually tunes")
+	_assert(field.read(Scent.TRAIL, here, 50) == 80.0,
+		"and a reading stamped *before* the deposit does not decay backwards into a larger one")
+
+	# Reinforcement composes with decay rather than papering over it: a second
+	# deposit adds to what is left, not to what was once there.
+	var left := field.read(Scent.TRAIL, here, 400)
+	field.deposit(Scent.TRAIL, here, 30.0, 400)
+	_assert(is_equal_approx(field.read(Scent.TRAIL, here, 400), left + 30.0),
+		"reinforcement adds to what has survived (%.3f + 30)" % left)
+	for i in 40:
+		field.deposit(Scent.TRAIL, here, 50.0, 400)
+	_assert(field.read(Scent.TRAIL, here, 400) == Scent.cap_of(Scent.TRAIL),
+		"and a tile walked over a hundred times holds its cap, not a runaway number")
+
+	# P-10's sanctioned answer to "we want a spread feel": pay for softness at
+	# *write* time, in one event, instead of diffusing the field every tick. Nothing
+	# ships that uses it; it is here so the first design that wants softness does not
+	# reach for a per-tile pass.
+	var soft := Scent.new()
+	soft.deposit_blob(Scent.TRAIL, Vector2i(9, 9), 20.0, 0, 1)
+	_assert(soft.cell_count(Scent.TRAIL) == 5,
+		"a blob writes its own tile and its four neighbours — five cells, not a map")
+	_assert(soft.read(Scent.TRAIL, Vector2i(9, 9), 0) == 20.0
+			and is_equal_approx(soft.read(Scent.TRAIL, Vector2i(9, 8), 0), 10.0),
+		"strongest in the middle and weaker at the edge, in one event")
+
+	# Faded is gone: a trail nobody reinforced stops being a gradient of
+	# imperceptible numbers a forager could follow forever.
+	field.deposit(Scent.TRAIL, Vector2i(1, 1), 1.0, 0)
+	var faded_at := int(Scent.half_life_ticks(Scent.TRAIL) * 20.0)
+	_assert(field.read(Scent.TRAIL, Vector2i(1, 1), faded_at) == 0.0,
+		"a trail left alone for twenty half-lives reads as nothing at all")
+	_assert(not field.cell(Scent.TRAIL, Vector2i(1, 1)).is_empty(),
+		"though the cell is still there — reading it did not quietly rewrite the field")
+
+	# --- reading never mutates (the determinism half of "lazy") ---------------
+	var before := JSON.stringify(field.to_save())
+	var count_before := field.cell_count()
+	for i in 500:
+		field.read(Scent.TRAIL, here, 400 + i * 37)
+		field.read(Scent.TRAIL, Vector2i(3, 3), i)
+		field.strongest_neighbour(Scent.TRAIL, here, i)
+	_assert(JSON.stringify(field.to_save()) == before and field.cell_count() == count_before,
+		"a thousand reads change nothing about what is stored (storage is a function of the writes)")
+
+	# --- the gradient WI-8b's foragers walk on --------------------------------
+	# A scout's trail home, strongest at the end it just left, and a forager reads
+	# it one tile at a time.
+	var trail := Scent.new()
+	var route: Array[Vector2i] = [Vector2i(10, 5), Vector2i(11, 5), Vector2i(12, 5), Vector2i(13, 5)]
+	for i in route.size():
+		trail.deposit(Scent.TRAIL, route[i], 10.0 + float(i) * 10.0, 0)
+	_assert(trail.strongest_neighbour(Scent.TRAIL, Vector2i(11, 5), 0) == Vector2i(12, 5),
+		"a forager standing on the trail is pulled toward the stronger end")
+	_assert(trail.strongest_neighbour(Scent.TRAIL, Vector2i(13, 5), 0) == Vector2i(12, 5),
+		"and at the strong end, back down it — the gradient, not the tile it is on")
+	_assert(is_equal_approx(trail.strongest_neighbour_value(Scent.TRAIL, Vector2i(11, 5), 0), 30.0),
+		"the strongest neighbour's reading is the other half of that answer")
+	_assert(trail.strongest_neighbour(Scent.TRAIL, Vector2i(2, 15), 0) == Vector2i(2, 15),
+		"and a tile in clean air answers with itself: there is nothing to follow")
+	_assert(trail.strongest_neighbour_value(Scent.TRAIL, Vector2i(2, 15), 0) == 0.0,
+		"reading as nothing, so a brain can tell 'follow' from 'search'")
+	# Ties break on Movement's neighbour order — the pathfinder's tie-break, not a
+	# second one that could drift from it — so two ants in one field agree.
+	var even := Scent.new()
+	for d in Movement.DIRS:
+		even.deposit(Scent.TRAIL, Vector2i(6, 6) + d, 25.0, 0)
+	_assert(even.strongest_neighbour(Scent.TRAIL, Vector2i(6, 6), 0) == Vector2i(6, 6) + Movement.DIRS[0],
+		"equal neighbours break the tie in Movement.DIRS order, on every machine")
+	# The gradient decays with everything else: the same field, later, still points
+	# the same way (decay is uniform per channel) but has stopped being followable.
+	_assert(trail.strongest_neighbour(Scent.TRAIL, Vector2i(11, 5), 3000) == Vector2i(12, 5),
+		"a decayed trail still points the same way")
+	_assert(trail.strongest_neighbour(Scent.TRAIL, Vector2i(11, 5), faded_at) == Vector2i(11, 5),
+		"until it has faded, and then it points nowhere")
+
+	# --- erasure: the counterplay, as a hole rather than a dent ---------------
+	_assert(trail.erase(Scent.TRAIL, Vector2i(12, 5)), "a washed cell had something in it")
+	_assert(trail.read(Scent.TRAIL, Vector2i(12, 5), 0) == 0.0
+			and trail.cell(Scent.TRAIL, Vector2i(12, 5)).is_empty(),
+		"and afterwards holds nothing at all — full-cell erasure, not a subtraction")
+	_assert(trail.strongest_neighbour(Scent.TRAIL, Vector2i(11, 5), 0) == Vector2i(10, 5),
+		"which is what breaks a gradient: the column is pulled back the way it came")
+	_assert(is_equal_approx(trail.read(Scent.TRAIL, Vector2i(13, 5), 0), 40.0),
+		"the tiles either side of the wash are untouched")
+	_assert(not trail.erase(Scent.TRAIL, Vector2i(12, 5)), "washing clean ground erases nothing")
+
+	# A wash takes every channel, because water on a tile is water on a tile.
+	Scent.define_test_channel("test_lure", 30.0)
+	trail.deposit("test_lure", Vector2i(13, 5), 12.0, 0)
+	_assert(trail.wash(Vector2i(13, 5)) == 2, "one wash, both channels")
+	_assert(trail.read(Scent.TRAIL, Vector2i(13, 5), 0) == 0.0
+			and trail.read("test_lure", Vector2i(13, 5), 0) == 0.0,
+		"and neither of them survives it")
+	_assert(trail.wash(Vector2i(1, 19)) == 0, "washing a tile nothing has marked is a no-op")
+
+	# --- the wash is wired to the `water` verb (P-10: no new verb, no new UI) --
+	GameState.reset()
+	SimRng.reseed(77)
+	var world := SimWorld.new()
+	world.generate()
+	_assert(world.scent.cell_count() == 0,
+		"a generated world holds no cells: nothing iterates tiles to make them (P-10's guardrail)")
+	var plot := WorldLayout.spawn()
+	var soil := Vector2i(plot.x + 1, plot.y)
+	GameState.watering_can_charges = 8
+	GameState.seeds["wheat"] = 5
+	world.apply_action({ "verb": "till", "target": soil, "actor": "player" }, GameState)
+	world.apply_action({ "verb": "plant", "target": soil, "seed_type": "wheat", "actor": "player" }, GameState)
+	world.scent.deposit(Scent.TRAIL, soil, 60.0, world.clock.tick)
+	world.scent.deposit(Scent.TRAIL, soil + Vector2i(1, 0), 60.0, world.clock.tick)
+	_assert(world.scent.read(Scent.TRAIL, soil, world.clock.tick) == 60.0, "a trail runs across her plot")
+	var watered := world.apply_action({ "verb": "water", "target": soil, "actor": "player" }, GameState)
+	_assert(watered.get("ok", false) and world.get_tile(soil.x, soil.y).watered_today,
+		"she waters the tile, and it is wet — the verb still does its own job")
+	_assert(world.scent.read(Scent.TRAIL, soil, world.clock.tick) == 0.0,
+		"and the trail on it is washed away (P-10's counterplay, through the existing verb)")
+	_assert(world.scent.read(Scent.TRAIL, soil + Vector2i(1, 0), world.clock.tick) == 60.0,
+		"the next tile along is untouched: a wash is one tile, and one tile is a hole in a trail")
+	GameState.watering_can_charges = 0
+	world.scent.deposit(Scent.TRAIL, soil, 60.0, world.clock.tick)
+	var dry := world.apply_action({ "verb": "water", "target": soil, "actor": "player" }, GameState)
+	_assert(not dry.get("ok", false) and world.scent.read(Scent.TRAIL, soil, world.clock.tick) == 60.0,
+		"a watering that fails washes nothing — an empty can is not a bucket")
+
+	# --- cost scales with writes, not tiles (ground rule 8) -------------------
+	# Two halves of one claim. First: the work is proportional to the number of
+	# deposits and reads, and 40,000 of them are cheap. Second, and the one the
+	# guardrail is actually about: the *map* is not in the cost at all — neither
+	# in storage (a cell exists because it was written) nor in time (elapsed ticks
+	# are one `pow`, not a loop over them).
+	var bench := Scent.new()
+	var t0 := Time.get_ticks_msec()
+	for pass_i in 40:
+		for i in 500:
+			bench.deposit(Scent.TRAIL, Vector2i(i % 32, i / 32), 1.0, pass_i * 10)
+	for pass_i in 40:
+		for i in 500:
+			bench.read(Scent.TRAIL, Vector2i(i % 32, i / 32), 400 + pass_i * 1000)
+	var writes_ms := Time.get_ticks_msec() - t0
+	_assert(bench.cell_count(Scent.TRAIL) == 500,
+		"20,000 deposits over 500 tiles are 500 cells — storage counts writes, not tiles")
+	_assert(writes_ms < 400, "and 40,000 deposits and reads cross in under 400 ms (%d ms)" % writes_ms)
+
+	var sparse := Scent.new()
+	sparse.deposit(Scent.TRAIL, Vector2i(4, 4), 50.0, 0)
+	var t1 := Time.get_ticks_msec()
+	for i in 20000:
+		sparse.read(Scent.TRAIL, Vector2i(4, 4), 1_000_000 + i)
+	var far_ms := Time.get_ticks_msec() - t1
+	_assert(sparse.cell_count() == 1, "one written cell is one cell on a 32x20 map")
+	_assert(far_ms < 200,
+		"and reading it a million ticks later costs the same as one tick later (%d ms for 20,000 reads)" % far_ms)
+	_assert(sparse.read(Scent.TRAIL, Vector2i(4, 4), 1_000_000) == 0.0
+			and sparse.read(Scent.TRAIL, Vector2i(4, 4), 0) == 50.0,
+		"a million ticks of nobody looking is still a million ticks of decay")
+	# The explicit sweep exists, and nothing in the sim calls it (see compact()).
+	_assert(sparse.compact(1_000_000) == 1 and sparse.cell_count() == 0,
+		"a caller with a deterministic reason can reclaim a faded cell explicitly")
+
+	# --- it saves, it restores, and a pre-scent save is a clean field ---------
+	var keeper := SimWorld.new()
+	SimRng.reseed(505)
+	keeper.generate()
+	keeper.clock.advance_to(900)
+	for i in 6:
+		keeper.scent.deposit(Scent.TRAIL, Vector2i(5 + i, 7), 12.5 + float(i), 900 - i * 30)
+	keeper.scent.deposit("test_lure", Vector2i(5, 7), 3.25, 880)
+	var snap = JSON.parse_string(JSON.stringify(SaveGame.capture(keeper, GameState)))
+	_assert(snap["world"].has("scent") and snap["world"]["scent"].has(Scent.TRAIL),
+		"a save carries the written cells")
+	var back := SimWorld.new()
+	var gs_back = load("res://systems/game_state.gd").new()
+	_assert(SaveGame.restore(snap, back, gs_back), "and restores")
+	_assert(back.scent.cell_count(Scent.TRAIL) == 6 and back.scent.cell_count("test_lure") == 1,
+		"with every cell in both channels")
+	var same := true
+	for i in 6:
+		var t := Vector2i(5 + i, 7)
+		# JSON carries about fifteen significant digits, so a round trip is equal to
+		# a hair rather than bit-for-bit; what has to survive exactly is the *shape*
+		# (which tiles, which ticks) and it does.
+		if not is_equal_approx(back.scent.read(Scent.TRAIL, t, 900), keeper.scent.read(Scent.TRAIL, t, 900)):
+			same = false
+		if int(back.scent.cell(Scent.TRAIL, t)["tick"]) != int(keeper.scent.cell(Scent.TRAIL, t)["tick"]):
+			same = false
+	_assert(same, "every restored cell reads the same value at the same tick, from the same stamp")
+	_assert(JSON.stringify(back.scent.to_save()) == JSON.stringify(keeper.scent.to_save()),
+		"and the field's serialized form is canonical — sorted by tile, so two equal fields compare equal")
+
+	var legacy := { "version": SaveGame.VERSION,
+		"world": { "tiles": keeper.tiles.duplicate(true), "objects": keeper.objects.duplicate(true) },
+		"state": {} }
+	var old_world := SimWorld.new()
+	var gs_old = load("res://systems/game_state.gd").new()
+	_assert(SaveGame.restore(legacy, old_world, gs_old), "a save written before the scent layer still restores")
+	_assert(old_world.scent.cell_count() == 0, "reading, correctly, as a farm nobody has marked")
+	# Restoring into a world that already holds a field replaces it rather than
+	# merging: a load is a world, not an addition to the one you were playing.
+	var reused := SimWorld.new()
+	reused.scent.deposit(Scent.TRAIL, Vector2i(2, 2), 99.0, 0)
+	var gs_reused = load("res://systems/game_state.gd").new()
+	SaveGame.restore(snap, reused, gs_reused)
+	_assert(reused.scent.read(Scent.TRAIL, Vector2i(2, 2), 900) == 0.0
+			and reused.scent.cell_count(Scent.TRAIL) == 6,
+		"and loading a save replaces the field rather than merging into it")
+	gs_back.free()
+	gs_old.free()
+	gs_reused.free()
+
+	# Same deposits in the same order, twice: the same field, byte for byte. The
+	# property WI-8's ants and WI-5's replays both rest on.
+	var runs: Array[String] = []
+	for run in 2:
+		var f := Scent.new()
+		for i in 200:
+			f.deposit(Scent.TRAIL, Vector2i(i % 17, (i * 7) % 13), 1.0 + float(i % 5), i * 3)
+			if i % 11 == 0:
+				f.wash(Vector2i((i * 3) % 17, i % 13))
+		runs.append(JSON.stringify(f.to_save()))
+	_assert(runs[0] == runs[1], "the same writes twice produce the same field, byte for byte")
+
+	# The seam closes behind the tests, exactly as the movement engine's does: the
+	# shipping table stays the only source of channels.
+	Scent.forget_test_channels()
+	_assert(not Scent.has_channel("test_lure"), "the test-only channel mechanism leaves nothing behind")
+	_assert(Scent.channels().size() == Scent.CHANNELS.size(),
+		"and the shipping channel set is untouched by it")
