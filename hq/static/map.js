@@ -35,12 +35,21 @@ async function renderMapEditor() {
   const cv = document.getElementById("mp-canvas");
   const ctx = cv.getContext("2d");
   const status = document.getElementById("mp-status");
-  const [grass, yard, obstacles, tools] = await Promise.all([
+  const [grass, yard, floorImg, interior, obstacles, tools] = await Promise.all([
     getSheet("assets/sprites/generated/terrain_grass.png"),
     getSheet("assets/sprites/generated/terrain_yard.png"),
+    getSheet("assets/sprites/generated/terrain_floor.png"),
+    getSheet("assets/sprites/generated/interior.png"),
     getSheet("assets/sprites/generated/obstacles.png"),
     getSheet("assets/sprites/tool_icons.png"),
   ]);
+  const GROUNDS = { yard, floor: floorImg };
+  // boundary kind -> [sheet, cell x-offset]; interior kinds live on their own sheet
+  const BOUNDS = {
+    fence: [obstacles, 4 * 16], hedge: [obstacles, 5 * 16],
+    gate_closed: [obstacles, 6 * 16], gate_open: [obstacles, 7 * 16],
+    wall: [interior, 0], window: [interior, 16],
+  };
 
   const cellAt = (img, sx, sy, x, y, alpha) => {
     ctx.globalAlpha = alpha ?? 1;
@@ -62,7 +71,7 @@ async function renderMapEditor() {
     (L.parcels || []).forEach((p, pi) => {
       (p.rects || []).forEach(r => {
         for (let y = r[1]; y < r[1] + r[3]; y++) for (let x = r[0]; x < r[0] + r[2]; x++) {
-          if (p.ground === "yard") cellAt(yard, 16, 16, x, y);
+          if (GROUNDS[p.ground]) cellAt(GROUNDS[p.ground], 16, 16, x, y);
           if (p.obstacle && OBSTACLE_CELLS[p.obstacle] !== undefined) {
             // deterministic dither so the preview is stable
             if (((x * 7 + y * 13) % 100) / 100 < (p.density || 0)) {
@@ -78,8 +87,9 @@ async function renderMapEditor() {
     });
     // boundary runs, then gates on top
     (L.boundaries || []).forEach(b => (b.rects || []).forEach(r => {
+      const [sheet, sx] = BOUNDS[b.kind] || BOUNDS.fence;
       for (let y = r[1]; y < r[1] + r[3]; y++) for (let x = r[0]; x < r[0] + r[2]; x++) {
-        cellAt(obstacles, OBSTACLE_CELLS[b.kind === "hedge" ? "hedge" : "fence"] * 16, 0, x, y);
+        cellAt(sheet, sx, 0, x, y);
       }
     }));
     (L.parcels || []).forEach(p => {
@@ -153,7 +163,10 @@ async function renderMapEditor() {
   const load = async name => {
     state.doc = await (await fetch("/api/map/" + name)).json();
     state.name = name; state.sel = -1; state.dirty = false;
-    status.textContent = name === "default" ? "read-only — save under a new name to edit" : "";
+    const sc = cv.closest(".org-scroll");
+    if (sc) requestAnimationFrame(() => { sc.scrollLeft = (sc.scrollWidth - sc.clientWidth) / 2; });
+    status.textContent = (state.doc.source || "").includes("world_layout.gd")
+      ? "mirrors the game code (read-only) — save under a new name to edit" : "";
     draw(); sidePanel();
   };
 

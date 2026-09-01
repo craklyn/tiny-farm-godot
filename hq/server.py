@@ -368,8 +368,9 @@ def save_map(payload):
     doc = payload.get("doc")
     if not MAP_NAME_RE.match(name):
         return {"error": "map name: lowercase letters, digits, - and _ only"}
-    if name == "default":
-        return {"error": "'default' mirrors systems/world_layout.gd — save under a new name"}
+    existing = os.path.join(DATA, "maps", f"{name}.json")
+    if os.path.isfile(existing) and "world_layout.gd" in str(load_json(existing).get("source", "")):
+        return {"error": f"'{name}' mirrors systems/world_layout.gd — save under a new name"}
     if not isinstance(doc, dict) or not isinstance(doc.get("layout"), dict):
         return {"error": "doc must carry a layout object"}
     if not isinstance(doc["layout"].get("parcels"), list):

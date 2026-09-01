@@ -384,6 +384,29 @@
           "facts": {"Tillable": "never", "Consequence": "the first till of every game is beyond the gate"}
         },
         {
+          "id": "terrain_floor", "name": "Home Floor", "emoji": "🪵",
+          "desc": "The player's home floor: wood planks derived from the fence's own browns, so indoor wood and outdoor wood are the same wood. Walkable, never tillable — the yard's rule, indoors.",
+          "sheet": "assets/sprites/generated/terrain_floor.png",
+          "frames": [[0,0,48,48]],
+          "fps": 1,
+          "layout": "A 3x3 arrangement of one seamless 16px plank tile — the terrain_grass.png format.",
+          "sounds": [],
+          "code": ["systems/world_layout.gd", "tools/gen_interior.py"],
+          "facts": {"Tillable": "never", "Home": "the player's house (T-37)"}
+        },
+        {
+          "id": "interior_walls", "name": "Walls & Window", "emoji": "🪟",
+          "desc": "The home's shell: plaster wall with a wood baseboard, and the window — the same wall with sky through glass. Both are boundary tiles like the fence and hedge: never walkable, drawn edge to edge.",
+          "sheet": "assets/sprites/generated/interior.png",
+          "frames": [[0,0,16,16],[16,0,16,16]],
+          "frame_names": ["wall", "window"],
+          "fps": 0.8,
+          "layout": "interior.png — cell 0 wall, cell 1 window. The pane's blue is the one new colour: no ambient tile in the game is blue, so it reads as outdoors seen from indoors.",
+          "sounds": [],
+          "code": ["systems/world_layout.gd", "tools/gen_interior.py"],
+          "facts": {"Walkable": "never — boundary states, like the fence", "Windows": "wall variant; more furnishings come later"}
+        },
+        {
           "id": "terrain_dirt", "name": "Tilled Soil (Autotile)", "emoji": "🟫",
           "desc": "Tilled and watered soil as a full autotile set — one 16px tile per neighbor mask, with a parallel watered block. The lookup is the identity function on the mask.",
           "sheet": "assets/sprites/generated/terrain_dirt.png",

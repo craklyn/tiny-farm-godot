@@ -1,0 +1,105 @@
+{
+  "grid": [
+    32,
+    20
+  ],
+  "layout": {
+    "acorns": {},
+    "boundaries": [
+      {
+        "kind": "wall",
+        "rects": [
+          [
+            10,
+            5,
+            12,
+            1
+          ],
+          [
+            10,
+            13,
+            12,
+            1
+          ],
+          [
+            10,
+            6,
+            1,
+            7
+          ],
+          [
+            21,
+            6,
+            1,
+            7
+          ]
+        ]
+      },
+      {
+        "kind": "window",
+        "rects": [
+          [
+            13,
+            5,
+            1,
+            1
+          ],
+          [
+            18,
+            5,
+            1,
+            1
+          ]
+        ]
+      },
+      {
+        "kind": "gate_open",
+        "rects": [
+          [
+            15,
+            13,
+            1,
+            1
+          ]
+        ]
+      }
+    ],
+    "neighbour_plot": {},
+    "objects": [
+      {
+        "tx": 12,
+        "ty": 7,
+        "type": "cot"
+      }
+    ],
+    "parcels": [
+      {
+        "boundary": "wall",
+        "density": 0.0,
+        "gate": [
+          -1,
+          -1
+        ],
+        "ground": "floor",
+        "id": "home",
+        "obstacle": "",
+        "opened_by": "start",
+        "rects": [
+          [
+            11,
+            6,
+            10,
+            7
+          ]
+        ]
+      }
+    ],
+    "spawn": [
+      15,
+      9
+    ],
+    "tools": []
+  },
+  "name": "home",
+  "source": "systems/world_layout.gd WorldLayout.HOME"
+}

@@ -13,13 +13,14 @@
     "Save/replay integrity: a session records which map it was generated from, so replays and the build-stamp discipline survive multiple maps",
     "Determinism proof extended: same seed + same layout = identical world, per map"
   ],
-  "current_status": "Not started — correctly. The editor half exists (HQ Map Editor tab; definitions save to hq/data/maps/). The blocking input is the designer ruling on what a second map *is* in this game; the loader is straightforward engineering once that lands.",
+  "current_status": "Moving. The home interior (T-37) became the second real layout: floor/wall/window states exist, layouts can now carry their own object placements (the layout `objects` key — the farm still uses its constant), and the home renders behind a debug door. Still open: the CEO's ruling on how maps connect in play, and the loader for editor-saved JSON maps.",
   "plan": [
     {"step": "HQ map editor for layout definitions", "done": true},
-    {"step": "Designer ruling: the relationship between maps (new decision card when this activates)", "done": false},
-    {"step": "Move station positions into the layout schema", "done": false},
-    {"step": "Loader + validation + determinism tests", "done": false},
-    {"step": "First non-default map playable behind a debug door (the Zoo pattern)", "done": false}
+    {"step": "Object placement becomes layout data (the `objects` key — shipped with the home, T-37)", "done": true},
+    {"step": "A second real layout generates and renders (the home, behind a debug door)", "done": true},
+    {"step": "CEO ruling: how maps relate in play (doors, transitions, what saves/replays record)", "done": false},
+    {"step": "Loader + validation for editor-saved JSON maps", "done": false},
+    {"step": "First map transition playable (farm door -> home)", "done": false}
   ],
   "plan_note": "Plan is intentionally incomplete pending the maps ruling.",
   "links": ["systems/world_layout.gd", "hq/data/maps/", "tools/export_layout.gd"]
