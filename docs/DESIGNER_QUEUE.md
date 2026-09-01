@@ -586,7 +586,11 @@ trace actually says, because several of these looked like bugs and were not.*
   *is* meaningful on bare soil, and hiding it hides a genuine "plant here now and it is
   already watered" signal. Showing it confused her once; hiding it loses something true.
   Currently hidden.
-- **Q-68 (Ruling)** **The bed's head is behind the HUD bar when she stands in the top
+- **Q-68** ~~The bed's head is behind the HUD bar?~~ — ✅ **ruled 2026-09-01, by
+  proxy:** the designer picked treatment A (dusk glow) for T-27 box 5, and A carries
+  fix (d) — `Camera2D.limit_top` extends by the bar's height, so the world sits below
+  it at the top clamp and every row-0 object is freed. Ships as the rule.
+  Original entry: **The bed's head is behind the HUD bar when she stands in the top
   rows.** Noticed while building T-27 box 4, and it is geometry rather than a bug. The
   cot sits at (2,1), the first row inside the map border, and a tall object's extra
   height rises *north* — so the new 16x32 sprite occupies row 0. The camera clamps at
@@ -618,7 +622,11 @@ trace actually says, because several of these looked like bugs and were not.*
   item closes with it.
   *T-31's bed button is deliberately placed clear of the top bar, so nothing about this
   ruling collides with it — see Q-69.*
-- **Q-69 (Ruling)** **Which corner does the bed button live in?** Q-49 ruled the button
+- **Q-69** ~~Which corner does the bed button live in?~~ — ✅ **ruled 2026-09-01:
+  bottom-left, as built.** The ruling also answers the entry's larger question by
+  precedent: the HUD may hold an action when it is an ordinary tap in disguise —
+  the button injects a real cot tap through the normal intent path, nothing more.
+  Original entry: **Which corner does the bed button live in?** Q-49 ruled the button
   and it is built (T-31): a wordless cot icon that dispatches an ordinary cot tap. Your
   recommendation said *"in the bottom bar"*, and it is **above** it instead — the bar is
   32px of chrome and a thumb target wants ~44 (the same argument T-27 box 4 used to make

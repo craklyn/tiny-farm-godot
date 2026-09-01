@@ -160,10 +160,12 @@ will not add the check"* — everything else adopted as analyzed:
 - [x] **the cot reads bigger.** Drawn taller (a 16×32 sprite on its 1-tile sim
       footprint — no worldgen change), generated on the existing pipeline; with the
       halo this takes the *effective* touch target to genre minimums.
-- [ ] **the cot must look like sleeping before first use** — final form is the
-      designer's. **Three treatments are drafted and in the build** (2026-08-31,
-      to his *"draft me choices"*), switched on the tablet; the box stays open
-      until he picks one. Details under **Box 5's drafts** below.
+- [x] **the cot must look like sleeping before first use** — ✅ **ruled 2026-09-01:
+      A, the dusk glow**, picked from rendered stills of all three treatments.
+      A was already the default, so nothing changed but the record; the toggle
+      stays in the build for an arm's-length tablet confirm, and the pick also
+      rules Q-68 (A carries the camera-clamp fix). Details under **Box 5's
+      drafts** below.
 - [ ] re-evidence: the next fresh adult session scores the cot bar unprompted.
       **Prerequisite widened by the designer 2026-08-31:** the session waits on the
       cot look AND on T-28's station passes (sell/buy and water refill), so one fresh
@@ -349,8 +351,8 @@ true of soil as well as of chores.
   guarding an unreachable path would be adding a rule to answer nobody's question. Named
   here so the next person who *can* reach it knows it was seen.
 
-**T-29 — The day wears a clock** · Q-38's rider, filed 2026-08-31 · **scheme drafted,
-awaiting veto**
+**T-29 — The day wears a clock** · Q-38's rider, filed 2026-08-31 · **scheme
+approved 2026-09-01, building**
 *So that time-of-day is readable precisely, not only ambiently — and so the day's
 arithmetic survives the exchange-rate future Q-38's correction reserved (a fed farmer
 spends less clock, never rewinds the sun).*
