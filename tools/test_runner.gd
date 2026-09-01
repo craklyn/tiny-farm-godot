@@ -80,6 +80,7 @@ func _run_scenarios() -> void:
 	await _scenario_y_acorns_are_pickable()
 	await _scenario_z_a_bed_button()
 	await _scenario_aa_the_yard_is_home()
+	await _scenario_ab_the_stations_present_themselves()
 
 func _wait_until(pred: Callable, max_frames: int) -> bool:
 	for i in max_frames:
@@ -1836,22 +1837,23 @@ func _scenario_x_three_looks_for_the_cot() -> void:
 
 	# Door 2, Q-31's precedent proper: the title screen's panel, beside the Sound
 	# Test's own button. Built here for real, because a switch that only exists in
-	# a comment is not a switch.
+	# a comment is not a switch. Generalised by T-28 into the Look Lab — same
+	# gate, same panel, same corner, now one section per open question.
 	var title = load("res://ui/title_screen.tscn").instantiate()
 	add_child(title)
 	await get_tree().process_frame
-	var opener := _find_button(title, "CotLookButton")
-	_assert(opener != null, "the title screen offers 'Cot Look' beside 'Sound Test'")
+	var opener := _find_button(title, "LookLabButton")
+	_assert(opener != null, "the title screen offers 'Look Lab' beside 'Sound Test'")
 	if opener != null:
 		opener.pressed.emit()
 		await get_tree().process_frame
 		var picks := 0
 		for i in CotPresentation.COUNT:
-			if _find_button(title, "CotLook%d" % i) != null:
+			if _find_button(title, "Look_%s_%d" % [LookLab.COT, i]) != null:
 				picks += 1
 		_assert(picks == CotPresentation.COUNT,
-			"and the panel offers every treatment the game can draw (%d)" % picks)
-		var c_button := _find_button(title, "CotLook%d" % CotPresentation.TURNDOWN)
+			"and the panel offers every cot treatment the game can draw (%d)" % picks)
+		var c_button := _find_button(title, "Look_%s_%d" % [LookLab.COT, CotPresentation.TURNDOWN])
 		if c_button != null:
 			c_button.pressed.emit()
 			await get_tree().process_frame
@@ -2215,3 +2217,241 @@ func _scenario_aa_the_yard_is_home() -> void:
 			% rescued.get("action", "-"))
 	_assert(rescued.get("halo_from", Vector2i(-1, -1)) == below,
 		"rescued by T-27's halo, with the miss still recorded where it happened")
+
+
+func _scenario_ab_the_stations_present_themselves() -> void:
+	# T-28, drafted rather than decided: two treatments for "the stations never say
+	# what they are for", two for "the already-done answer does not communicate",
+	# all four in this build, switched on device (Q-31's Sound Test precedent, as
+	# T-27 box 5 applied it to the cot).
+	#
+	# The load-bearing property is D-8, exactly as in Scenario X. Scenario I proves
+	# that a tap on a satisfied tile answers "satisfied" and that a tap on the bin
+	# sells; a presentation treatment is precisely the kind of change that could
+	# quietly turn either into a wind-up, so both are re-proved once per treatment
+	# against the real main scene.
+	print("\n--- Scenario AB: the stations present themselves, and none of it gates a tap (T-28) ---")
+
+	var was_d: int = StationPresentation.discovery
+	var was_s: int = StationPresentation.satisfied
+	var was_cot: int = CotPresentation.treatment
+
+	# --- door 1: the pause menu, one line per open question ------------------
+	main_scene.menus.open_menu("pause")
+	await get_tree().process_frame
+	var labels: Array = []
+	_collect_labels(main_scene.menus.options_container, labels)
+	var seen_axes := 0
+	for axis in LookLab.AXES:
+		for l in labels:
+			if String(l.text) == LookLab.option_label(axis):
+				seen_axes += 1
+				break
+	_assert(seen_axes == LookLab.AXES.size(),
+		"the pause menu carries a line per open look (%d/%d), each naming where it stands"
+			% [seen_axes, LookLab.AXES.size()])
+
+	var d_before: int = StationPresentation.discovery
+	main_scene.menus.selected_option = 2 + LookLab.AXES.find(LookLab.DISCOVERY)
+	main_scene.menus._select_current_option()
+	await get_tree().process_frame
+	_assert(StationPresentation.discovery == posmod(d_before + 1, StationPresentation.DISCOVERY_COUNT),
+		"tapping the discovery line advances that axis")
+	_assert(CotPresentation.treatment == was_cot
+			and StationPresentation.satisfied == was_s,
+		"and moves nothing else — three axes, judged one at a time")
+	_assert(not main_scene.menus.is_open(),
+		"and closes the menu, so the farm is what he is looking at when it changes")
+
+	# --- door 2: the title screen's Look Lab panel ---------------------------
+	var title = load("res://ui/title_screen.tscn").instantiate()
+	add_child(title)
+	await get_tree().process_frame
+	var opener := _find_button(title, "LookLabButton")
+	_assert(opener != null, "the title screen offers 'Look Lab' beside 'Sound Test'")
+	if opener != null:
+		opener.pressed.emit()
+		await get_tree().process_frame
+		var offered := 0
+		var wanted := 0
+		for axis in LookLab.AXES:
+			for i in LookLab.count_of(axis):
+				wanted += 1
+				if _find_button(title, "Look_%s_%d" % [axis, i]) != null:
+					offered += 1
+		_assert(offered == wanted,
+			"and the panel offers every draft of every axis (%d/%d)" % [offered, wanted])
+		var pick := _find_button(title, "Look_%s_%d"
+			% [LookLab.SATISFIED, StationPresentation.SATISFIED_NOUN])
+		if pick != null:
+			pick.pressed.emit()
+			await get_tree().process_frame
+			_assert(StationPresentation.satisfied == StationPresentation.SATISFIED_NOUN,
+				"picking one there selects it, through the same static the game reads")
+	title.queue_free()
+	await get_tree().process_frame
+
+	# --- the world the drafts need -------------------------------------------
+	if not TeachingFocus.handed_over(farm.sim):
+		farm.apply_action({ "verb": "open_gate", "target": WorldLayout.gate_of("neighbour"),
+			"actor": "neighbour" }, GameState)
+	_assert(TeachingFocus.handed_over(farm.sim), "the farm is hers, so hints are allowed at all")
+	GameState.day = GameState.takeover_day + 5
+	GameState.clear_counts["clear_weed"] = 1   # no lesson outranking the errand
+	GameState.set_energy(GameState.max_energy)
+	GameState.gold = 0
+	GameState.total_shipped = 0
+	GameState.cans_refilled = 0
+	GameState.seeds_bought = 0
+	GameState.watering_can_charges = GameState.max_watering_can_charges
+	GameState.crops = { "wheat": 1, "tomato": 0 }
+	var bin := StationPresentation.find_station(farm.sim, StationPresentation.BIN)
+	_assert(bin.x >= 0, "the bin is on the map at %s" % bin)
+
+	var art_ok := true
+	for key in StationPresentation.GLYPH_ATLAS.keys():
+		if farm.glyph(key).is_empty():
+			art_ok = false
+	_assert(art_ok, "and the live farm resolved every T-28 glyph to a real texture")
+
+	# --- the discovery treatments, in the real scene -------------------------
+	for d in [StationPresentation.DISCOVERY_OFF, StationPresentation.DISCOVERY_GLINT,
+			StationPresentation.DISCOVERY_PIP]:
+		var label: String = StationPresentation.discovery_name(d)
+		StationPresentation.set_discovery(d)
+		main_scene._apply_station_treatment()
+		await get_tree().process_frame
+
+		var drew: int = main_scene.station_draws
+		for i in 4:
+			await get_tree().process_frame
+		_assert(main_scene.station_draws > drew,
+			"%s: the station block draws to completion, frame after frame (%d)"
+				% [label, main_scene.station_draws - drew])
+
+		var pips: Array[Dictionary] = StationPresentation.pips(
+			farm.sim, GameState, player.get_tile_pos())
+		var on_bin := false
+		for pip in pips:
+			if pip["at"] == bin:
+				on_bin = true
+		_assert(on_bin == (d == StationPresentation.DISCOVERY_PIP),
+			"%s: a coin floats over the bin only under B" % label)
+
+	# The glint's scheduler, driven for real: it must pick an unused station from
+	# CosmeticRng and never sit on two at once.
+	StationPresentation.set_discovery(StationPresentation.DISCOVERY_GLINT)
+	main_scene._apply_station_treatment()
+	var lit := await _wait_until(func(): return main_scene._glint_at.x >= 0, 900)
+	_assert(lit, "under A a station does eventually catch the light (%s)" % main_scene._glint_at)
+	if lit:
+		_assert(StationPresentation.glint_candidates(farm.sim, GameState).has(main_scene._glint_at),
+			"and it is one she has never used")
+
+	# --- D-8, once per discovery treatment: the tap still sells ---------------
+	for d2 in [StationPresentation.DISCOVERY_OFF, StationPresentation.DISCOVERY_GLINT,
+			StationPresentation.DISCOVERY_PIP]:
+		StationPresentation.set_discovery(d2)
+		main_scene._apply_station_treatment()
+		GameState.crops = { "wheat": 1, "tomato": 0 }
+		GameState.total_shipped = 0
+		player.pos = Vector2(bin.x * 16 + 8.0, (bin.y + 1) * 16 + 8.0)
+		player.path.clear()
+		player.pending_action = {}
+		await get_tree().process_frame
+		InputManager.click_tile = bin
+		InputManager.has_click = true
+		var sold := await _wait_until(func(): return int(GameState.total_shipped) > 0, 200)
+		_assert(sold, "%s: a tap on the bin still sells, at the tap (D-8)"
+			% StationPresentation.discovery_name(d2))
+
+	# --- the already-done treatments -----------------------------------------
+	farm.set_tile_state(11, 8, "cleared")
+	farm.set_tile_state(12, 8, "seeded", "wheat")
+	farm.water_tile(12, 8)
+	for s in [StationPresentation.SATISFIED_OFF, StationPresentation.SATISFIED_NOUN,
+			StationPresentation.SATISFIED_CHIP]:
+		var slabel: String = StationPresentation.satisfied_name(s)
+		StationPresentation.set_satisfied(s)
+		main_scene._apply_station_treatment()
+		GameState.watering_can_charges = GameState.max_watering_can_charges
+		await get_tree().process_frame
+
+		var mark: int = farm.trace.entries.size()
+		player.pos = Vector2(11.5 * 16.0, 8.5 * 16.0)
+		player.path.clear()
+		player.pending_action = {}
+		await get_tree().process_frame
+		InputManager.click_tile = Vector2i(12, 8)
+		InputManager.has_click = true
+		var acked := await _wait_until(
+			func(): return _last_tap_outcome(mark) == "satisfied", 200)
+		_assert(acked, "%s: an already-watered crop is still answered 'satisfied'" % slabel)
+		_assert(_last_tap_reason(mark) == "already_watered",
+			"%s: with the same reason code, so the trace is comparable across the A/B" % slabel)
+		_assert(_no_refusals_since(mark), "%s: and a good state still never wobbles" % slabel)
+		_assert(farm._acks.has(Vector2i(12, 8)),
+			"%s: the cue is in flight, so the treatment has something to draw on" % slabel)
+
+		# Renders, whatever it is drawing.
+		var fdrew: int = main_scene.station_draws
+		for i in 3:
+			await get_tree().process_frame
+		_assert(main_scene.station_draws > fdrew, "%s: and the frame completes" % slabel)
+
+	# --- treatment B's HUD, which is the half that is not on a tile ----------
+	var hud = main_scene.hud
+	StationPresentation.set_satisfied(StationPresentation.SATISFIED_CHIP)
+	GameState.crops = { "wheat": 0, "tomato": 0 }
+	GameState.watering_can_charges = GameState.max_watering_can_charges
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_assert(hud.state_chips != null and hud.state_chips.visible,
+		"B shows the state chips")
+	_assert(not hud.water_label.visible and not hud.crop_counts_label.visible,
+		"and takes away the words they replace — a picture must not have to compete with its own numeral")
+	var empty_pips := 0
+	for pip in hud.basket_pips:
+		if pip.visible:
+			empty_pips += 1
+	_assert(empty_pips == 0 and hud.basket_chip.modulate.r < 0.9,
+		"an empty basket is drawn dim and holding nothing — the answer to 'basket_empty', before the tap")
+	_assert(hud.can_gauge_fill.size.y >= HUD_GAUGE_FULL,
+		"a full can reads full (%.0fpx)" % hud.can_gauge_fill.size.y)
+
+	GameState.crops = { "wheat": 2, "tomato": 0 }
+	GameState.watering_can_charges = 0
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var filled := 0
+	for pip in hud.basket_pips:
+		if pip.visible:
+			filled += 1
+	_assert(filled == 2 and hud.basket_chip.modulate.r > 0.9,
+		"two crops put two pips in a lit basket (%d)" % filled)
+	_assert(hud.can_gauge_fill.size.y == 0.0 and hud.can_chip.modulate.r < 0.9,
+		"and an empty can empties the gauge — so 'go to the well' is visible from anywhere")
+
+	StationPresentation.set_satisfied(StationPresentation.SATISFIED_OFF)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_assert(not hud.state_chips.visible and hud.water_label.visible
+			and hud.crop_counts_label.visible,
+		"and switching back gives the HUD it has always had, exactly")
+
+	# --- put everything back --------------------------------------------------
+	GameState.crops = { "wheat": 0, "tomato": 0 }
+	GameState.watering_can_charges = GameState.max_watering_can_charges
+	StationPresentation.set_discovery(was_d)
+	StationPresentation.set_satisfied(was_s)
+	CotPresentation.set_treatment(was_cot)
+	main_scene._apply_station_treatment()
+	main_scene._apply_cot_treatment()
+	_assert(StationPresentation.discovery == StationPresentation.DISCOVERY_OFF
+			and StationPresentation.satisfied == StationPresentation.SATISFIED_OFF,
+		"and the build's defaults, restored, are OFF — T-28 stays the designer's to tick")
+
+
+# The gauge's full height, from the HUD's own metrics: 22px tall with a 1px lip
+# top and bottom. Spelled once here so the assertion above cannot drift from it.
+const HUD_GAUGE_FULL := 20.0

@@ -129,6 +129,27 @@ before the first public build ships.*
   colour the remap does not know, so a future regeneration of the grass cannot silently
   leave the yard half-recoloured. Rights are the generated grass tile's, unchanged —
   this is a local derivation of an asset already covered above.
+- **T-28, the station glyphs, 2026-09-01** — **not generated, $0.00.** Two 16x16 cells
+  written into `crops.png`'s **iconography row** (row 2, columns 4 and 5 — the row that
+  already holds the shop's seed packets, the scarecrow and T-12's coin), by
+  `tools/gen_station_glyphs.py` (idempotent, no network). No sheet grew and nothing that
+  was already drawn moved a pixel.
+  - **Column 4, a droplet** — water itself, which the game had no picture of: the
+    watering can is *her tool*, and "this crop already has its water" is a sentence about
+    the tile. Its four colours are read out of `tool_icons.png` cell 4 (the can) at
+    generation time, so the can and the water it carries stay one family and a
+    regenerated can cannot leave the droplet in last month's teal.
+  - **Column 5, an empty basket** — what she is holding when the shipping bin has
+    nothing to take. Its three wood colours are read out of `objects.png` cell (3,1) (the
+    bin) the same way, and the darkest of them fills the row under the rim, which is what
+    makes it an *empty* basket rather than merely a basket.
+  Derived rather than generated because both are labels *for* objects the player is
+  already looking at: a separately generated droplet and basket would have arrived in
+  their own palettes and read as icons from another game. The remaining three pictures
+  T-28 needed cost nothing at all — the coin is T-12's, and the watering can and seed
+  packet are the refusal table's own cells (finding F-5), so a player who has learnt
+  those two glyphs has already learnt most of this vocabulary. Rights are the generated
+  sheets', unchanged — these are local additions to assets already covered above.
 - **Sprout Lands asset pack** by Cup Nooble — *removed 2026-08-26* (Q-7c ruling:
   drop restrictively-licensed assets; its free license forbids redistribution and
   this repo is public). Q-7b license findings recorded in the git history of this

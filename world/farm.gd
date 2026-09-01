@@ -46,6 +46,7 @@ var crops_texture: Texture2D
 var tile_regions: Dictionary = {}     # state_name -> Rect2
 var crop_regions: Dictionary = {}     # crop_type -> { stage -> Rect2 }
 var object_regions: Dictionary = {}   # object_name -> Rect2
+var glyph_regions: Dictionary = {}    # T-28 glyph key -> [texture, Rect2]
 
 # T-27 box 5, treatment C: which of the cot's two cells to draw — the made bed or
 # the turned-down one. Pushed in rather than worked out here, because this file
@@ -242,6 +243,25 @@ func _load_textures() -> void:
 	object_regions["tool_axe"] = [tool_icons_texture, Rect2(1 * 16, 0, 16, 16)]
 	object_regions["tool_pickaxe"] = [tool_icons_texture, Rect2(2 * 16, 0, 16, 16)]
 
+	# T-28's pictograms, resolved from `StationPresentation.GLYPH_ATLAS` — which
+	# is pure data, so the table can be asserted headlessly and the two renderers
+	# that need these (the world overlay and the HUD) cannot disagree about which
+	# cell a droplet is. Three of the five are pictures the game already spoke in:
+	# the coin is T-12's shop icon, the can and the seed packet are the refusal
+	# table's own (F-5). Only the droplet and the empty basket are new.
+	for key in StationPresentation.GLYPH_ATLAS.keys():
+		var entry: Dictionary = StationPresentation.GLYPH_ATLAS[key]
+		var r: Array = entry["rect"]
+		glyph_regions[key] = [
+			tool_icons_texture if entry["sheet"] == "tools" else crops_texture,
+			Rect2(r[0], r[1], r[2], r[3]),
+		]
+
+
+## `[texture, region]` for one of T-28's glyph keys, or `[]`.
+func glyph(key: String) -> Array:
+	return glyph_regions.get(key, [])
+
 
 # --- Facade: forwards the old farm API to SimWorld ---------------------------
 
@@ -400,6 +420,9 @@ var _refusals: Dictionary = {}  # Vector2i -> { "t": msec, "why": String }
 # — a soft tick and a rising sparkle, never the refusal wobble, because wobbling
 # at a good state teaches that success looks like failure.
 const ACK_MS := 520.0
+# [Playtest] T-28 treatment A's noun, in world pixels — a shade under a tile, so
+# it reads as a label on the answer rather than as a second object in the farm.
+const ACK_NOUN := 12.0
 var _acks: Dictionary = {}  # Vector2i -> { "t": msec, "why": String }
 
 
@@ -653,6 +676,27 @@ func _draw() -> void:
 						"draw": func(): draw_texture_rect_region(crops_texture, crop_rect, region)
 					})
 
+				# T-28, satisfied treatment B: **the state shows before the tap.**
+				# Thirteen of the eighteen "already done" taps in the gate session
+				# were the watering can over a crop that had already had its water,
+				# and the only way to find that out was to ask. A crop that has been
+				# watered today wears a droplet, so the answer is on the tile before
+				# the question is. Also a candidate answer to T-18's open box
+				# ("watered soil legible without tapping"), which is why it is drawn
+				# on the *crop* rather than on the soil: rain marks bare tilled
+				# ground watered too, and that is exactly the lie the 2026-08-30
+				# session caught.
+				if StationPresentation.satisfied == StationPresentation.SATISFIED_CHIP \
+						and tile.watered_today and tile.state != "ready":
+					var wart: Array = glyph(StationPresentation.GLYPH_DROPLET)
+					if not wart.is_empty():
+						var wrect := Rect2(px + TILE_SIZE - 7.0 + shake, py + 0.5, 6.0, 6.0)
+						render_queue.append({
+							"y": py + 0.5,
+							"draw": func(): draw_texture_rect_region(
+								wart[0], wrect, wart[1], Color(1, 1, 1, 0.92))
+						})
+
 			# Queue objects
 			var obj: String = objects[ty][tx]
 			if obj == "egg" or obj == "acorn":
@@ -712,6 +756,37 @@ func _draw() -> void:
 					draw_rect(Rect2(sp - Vector2(1.1, 1.1), Vector2(2.2, 2.2)),
 						Color(0.95, 1.0, 1.0, aa))
 		})
+
+		# T-28, satisfied treatment A: **the answer names itself.** Same ring,
+		# same sparkles, same tick, same volume — Q-42's judgement that a good
+		# state is answered *less* rewardingly than a harvest is not up for
+		# revision, and the designer's complaint is legibility, not loudness. What
+		# it gains is a noun and a check: the can at the well, the empty basket at
+		# the bin, the droplet on a crop that has had its water. The cue stops
+		# saying only "yes" and starts saying "yes, *this*".
+		if StationPresentation.satisfied == StationPresentation.SATISFIED_NOUN:
+			var noun: String = StationPresentation.noun_for(String(_acks[key].get("why", "")))
+			var nart: Array = glyph(noun)
+			if not nart.is_empty():
+				var nx := acx
+				var ny: float = acy - ACK_NOUN - 2.0 - 3.0 * ae
+				render_queue.append({
+					"y": 100000.0,
+					"draw": func():
+						draw_texture_rect_region(nart[0],
+							Rect2(nx - ACK_NOUN / 2.0, ny - ACK_NOUN / 2.0,
+								ACK_NOUN, ACK_NOUN),
+							nart[1], Color(1, 1, 1, minf(1.0, aa + 0.15)))
+						# The check, in the cue's own blue-white. Two strokes, and
+						# they are the constant of this grammar: whatever noun it
+						# is beside, a tick means "already so" (the shop's ✕ is the
+						# precedent for a glyph carrying a whole word — S-7 forbids
+						# required reading, not marks).
+						var tick := Vector2(nx + ACK_NOUN * 0.34, ny + ACK_NOUN * 0.30)
+						var col := Color(0.72, 0.97, 1.0, minf(1.0, aa + 0.15))
+						draw_line(tick + Vector2(-2.6, -0.4), tick + Vector2(-0.9, 1.6), col, 1.4)
+						draw_line(tick + Vector2(-0.9, 1.6), tick + Vector2(2.6, -2.4), col, 1.4)
+				})
 
 	# The missing-thing picture rides above everything, including the farmer —
 	# it is the whole message, so it must never be the thing that gets occluded.

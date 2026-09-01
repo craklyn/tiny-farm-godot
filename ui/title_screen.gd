@@ -142,10 +142,12 @@ func _build_ui() -> void:
 	# we deploy is --export-debug, so it is present on the test tablet).
 	if OS.is_debug_build():
 		root_box.add_child(_make_sound_test_button())
-		# T-27 box 5, on the Sound Test's own pattern (Q-31): candidates ship in
+		# The look lab, on the Sound Test's own pattern (Q-31): candidates ship in
 		# the build and get A/B'd on device with a thumb. Same debug gate, same
 		# panel shape, same place on the screen — the affordance is already learned.
-		root_box.add_child(_make_cot_look_button())
+		# One panel for every open look (T-27's cot, T-28's two station axes),
+		# because a second rig would mean a second place to remember.
+		root_box.add_child(_make_look_lab_button())
 
 
 func _big_button_style(bg: Color, border: Color) -> StyleBoxFlat:
@@ -494,40 +496,44 @@ func _open_sound_test() -> void:
 	back.grab_focus()
 
 
-# --- Cot look (debug builds) --------------------------------------------------
+# --- The look lab (debug builds) ----------------------------------------------
 #
-# T-27's last box — "the cot must look like sleeping before first use" — is the
-# designer's call, so three treatments ride along in one build and he picks with
-# his thumbs. Everything about what they are is in `systems/cot_presentation.gd`;
-# this is only the door, and it is deliberately the Sound Test's door: same gate,
-# same panel, same corner of the title screen, so there is one place in this game
-# where candidates go to be judged.
+# Every look that is still the designer's to pick, behind one door. T-27's last
+# box asked "what does a cot look like before you have slept in it?"; T-28 asks
+# two more of exactly the same kind about the bin, the well and the seed box.
+# What each draft *is* lives in `systems/cot_presentation.gd` and
+# `systems/station_presentation.gd`; `systems/look_lab.gd` is the registry, and
+# this is only the door.
 #
-# The selection survives the trip into `main.tscn` and back because it lives on a
-# static, not in the scene (see `CotPresentation.treatment`). The other door is
-# the pause menu, which is the one to use for a real comparison — these look
-# different at dusk, and the title screen has no dusk.
+# It is deliberately the Sound Test's door: same gate, same panel, same corner of
+# the title screen, so there is one place in this game where candidates go to be
+# judged — and one place to look when you cannot remember where a switch went.
+#
+# Every selection survives the trip into `main.tscn` and back because it lives on
+# a static, not in the scene. The other door is the pause menu, which is the one
+# to use for a real comparison: these show themselves at dusk, or with a crop in
+# the basket, and the title screen has neither.
 
-func _make_cot_look_button() -> Button:
+func _make_look_lab_button() -> Button:
 	var btn := Button.new()
-	btn.name = "CotLookButton"
-	btn.text = "Cot Look"
+	btn.name = "LookLabButton"
+	btn.text = "Look Lab"
 	btn.custom_minimum_size = Vector2(130, 34)
 	btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	btn.add_theme_font_size_override("font_size", 13)
 	_style_button(btn, Color(0.13, 0.24, 0.30), Color(0.45, 0.62, 0.70), Color(0.18, 0.32, 0.40))
-	btn.pressed.connect(_open_cot_look)
+	btn.pressed.connect(_open_look_lab)
 	return btn
 
 
-func _open_cot_look() -> void:
+func _open_look_lab() -> void:
 	if _confirm_open:
 		return
 	_confirm_open = true  # also blocks tap-anywhere while the panel is up
 	_set_attract_paused(true)
 
 	_confirm_layer = Control.new()
-	_confirm_layer.name = "CotLookLayer"
+	_confirm_layer.name = "LookLabLayer"
 	_confirm_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_confirm_layer.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(_confirm_layer)
@@ -550,67 +556,86 @@ func _open_cot_look() -> void:
 	var box := VBoxContainer.new()
 	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	box.alignment = BoxContainer.ALIGNMENT_CENTER
-	box.add_theme_constant_override("separation", 8)
+	box.add_theme_constant_override("separation", 6)
 	scroll.add_child(box)
 
 	var head := Label.new()
-	head.text = "Cot Look"
+	head.text = "Look Lab"
 	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	head.add_theme_font_size_override("font_size", 26)
 	head.add_theme_color_override("font_color", Color(1.0, 0.86, 0.45))
 	box.add_child(head)
 
 	var hint := Label.new()
-	hint.text = "Three drafts of \"this is where the day ends\".\nPick one, then judge it at dusk — pause can swap it in-game."
+	hint.text = "Drafts awaiting a pick. Each row is judged on its own.\nPause can swap any of them in-game, which is where to judge them."
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.add_theme_font_size_override("font_size", 13)
 	hint.add_theme_color_override("font_color", Color(0.78, 0.86, 0.76))
 	box.add_child(hint)
 
-	# Driven off CotPresentation's own table, so this list cannot drift from what
-	# the game actually draws — the Sound Test's rule, for the same reason.
-	var buttons: Array[Button] = []
+	# Driven off LookLab's own registry, so this panel cannot drift from what the
+	# game actually draws — the Sound Test's rule, for the same reason.
+	var buttons: Dictionary = {}  # axis -> Array[Button]
 	var refresh := func():
-		for i in buttons.size():
-			var chosen: bool = (i == CotPresentation.treatment)
-			buttons[i].text = "%s  %s\n%s" % [
-				"▶" if chosen else "  ", CotPresentation.name_of(i), CotPresentation.blurb_of(i)]
-			if chosen:
-				_style_button(buttons[i], Color(0.18, 0.42, 0.22), Color(1.0, 0.72, 0.15),
-					Color(0.24, 0.52, 0.28))
-			else:
-				_style_button(buttons[i], Color(0.13, 0.24, 0.30), Color(0.45, 0.62, 0.70),
-					Color(0.18, 0.32, 0.40))
+		for axis in buttons.keys():
+			var row: Array = buttons[axis]
+			for i in row.size():
+				var chosen: bool = (i == LookLab.current(axis))
+				row[i].text = "%s  %s\n%s" % [
+					"▶" if chosen else "  ", LookLab.name_of(axis, i), LookLab.blurb_of(axis, i)]
+				if chosen:
+					_style_button(row[i], Color(0.18, 0.42, 0.22), Color(1.0, 0.72, 0.15),
+						Color(0.24, 0.52, 0.28))
+				else:
+					_style_button(row[i], Color(0.13, 0.24, 0.30), Color(0.45, 0.62, 0.70),
+						Color(0.18, 0.32, 0.40))
 
-	for i in CotPresentation.COUNT:
-		var b := Button.new()
-		b.name = "CotLook%d" % i
-		b.custom_minimum_size = Vector2(300, 56)
-		b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		b.add_theme_font_size_override("font_size", 14)
-		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		var idx := i
-		b.pressed.connect(func():
-			CotPresentation.set_treatment(idx)
-			AudioManager.play_sfx("click")
-			refresh.call())
-		buttons.append(b)
-		box.add_child(b)
+	for axis in LookLab.AXES:
+		var axis_head := Label.new()
+		axis_head.text = "%s — %s" % [LookLab.label_of(axis), LookLab.QUESTIONS.get(axis, "")]
+		axis_head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		axis_head.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		axis_head.custom_minimum_size = Vector2(300, 0)
+		axis_head.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		axis_head.add_theme_font_size_override("font_size", 12)
+		axis_head.add_theme_color_override("font_color", Color(1.0, 0.86, 0.45, 0.9))
+		box.add_child(axis_head)
+
+		var row: Array[Button] = []
+		for i in LookLab.count_of(axis):
+			var b := Button.new()
+			b.name = "Look_%s_%d" % [axis, i]
+			b.custom_minimum_size = Vector2(300, 50)
+			b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+			b.add_theme_font_size_override("font_size", 13)
+			b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			var pick_axis := axis
+			var pick_idx := i
+			b.pressed.connect(func():
+				LookLab.set_to(pick_axis, pick_idx)
+				AudioManager.play_sfx("click")
+				refresh.call())
+			row.append(b)
+			box.add_child(b)
+		buttons[axis] = row
 	refresh.call()
 
-	# Q-68 rides along with the pick: A and B lower the camera's top limit by the
-	# HUD bar's height so the whole bed clears it; C leaves the camera alone,
+	# Q-68 rides along with the cot pick: A and B lower the camera's top limit by
+	# the HUD bar's height so the whole bed clears it; C leaves the camera alone,
 	# because its cue sits below the bar anyway. Choosing a treatment therefore
 	# also chooses a Q-68 ruling, which is exactly what the queue item asked for.
 	var note := Label.new()
-	note.text = "A and B also drop the camera clear of the HUD bar (Q-68); C does not."
+	note.text = "Cot A and B also drop the camera clear of the HUD bar (Q-68); C does not."
 	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	note.custom_minimum_size = Vector2(300, 0)
+	note.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	note.add_theme_font_size_override("font_size", 11)
 	note.add_theme_color_override("font_color", Color(0.70, 0.80, 0.86))
 	box.add_child(note)
 
 	var back := Button.new()
-	back.name = "CotLookBackButton"
+	back.name = "LookLabBackButton"
 	back.text = "Back"
 	back.custom_minimum_size = Vector2(150, 40)
 	back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER

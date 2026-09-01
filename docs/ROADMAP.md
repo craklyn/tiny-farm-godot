@@ -180,6 +180,119 @@ poorly** — the satisfied-tap answers (full can, empty basket, already watered:
 her session) didn't communicate. Treatments to be drafted behind the T-27 A/B toggle
 pattern; walking friction explicitly NOT one of his observations.
 
+**The drafts — 2026-09-01, awaiting the pick.** Four treatments, **two axes**, all in
+one build and switched on the tablet with a thumb. Nothing here is decided; this box
+stays unticked until he says which, and the ones he does not pick come out.
+
+*Two axes rather than four combinations, deliberately.* His two observations are
+different failures with different fixes, and a build that only offers fixed pairs cannot
+tell you which half worked. **Both axes default to OFF, which is today's game exactly** —
+he needs to see the thing he complained about beside the drafts, and a draft with no
+status quo to sit next to is not a draft. (This is also why the visual baseline did not
+move: the shipped default renders the frame it always did.)
+
+**Why T-11 was not already enough** — the thing to understand before adding anything
+beside it, and the finding this work turned up. `TeachingFocus.economy_beat` is real and
+it works, but it is **last in a five-way arbitration** and it fires at **need**, so a
+first-time player gets nothing in two whole windows:
+- *Before the need.* The bin is silent until the basket holds three, the well until the
+  can hits zero, the box until the pouch is empty. A player who has not yet run out of
+  anything has never been told these objects do anything at all.
+- *Underneath a lesson.* `targets()` returns the first non-empty, so the vignette owns
+  the highlight outright on the early days and an unlearned obstacle outranks the economy
+  after that. An errand arriving under one of those is starved for as long as the lesson
+  lasts — which is correct (an errand must never interrupt a lesson) and is exactly why
+  something quieter is needed underneath it. Asserted both ways in
+  `test_station_presentation`: at one crop the highlight is on a weed and the pip is free
+  to speak; at three crops with the weed lesson done the highlight takes the bin **and
+  the pip stands down**.
+
+**Axis 1 — discovery.** *"How does a station say what it is for, first time?"*
+- **A · idle glints.** An unused station occasionally catches the light: a four-point
+  sparkle sweeping across its sprite on a long random interval (7–14s, `[Playtest]`), one
+  station at a time, retiring per station the first time she uses it. Asks for nothing —
+  no condition beyond "she has never used it" — so it is discovery by *invitation*: a
+  thing that glints is a thing worth walking to. Timing and choice of station come from
+  **`CosmeticRng`, never `SimRng`** (finding F-2's rule): a sparkle that lands on a
+  different frame in two runs of one replay is correct, one that moves the sim's dice is
+  a bug. Skewed envelope, peaking at 31% — a symmetric one is a *pulse*, and the cot owns
+  pulsing (T-27 treatment B); two things breathing at each other across one farm is noise.
+- **B · purpose pips at relevance.** A glyph in a quiet bubble floats over the station
+  that is currently the answer — a **coin** over the bin, the **watering can** over the
+  well, a **seed packet** over the box — and stops the first time she uses it.
+  Deliberately looser thresholds than T-11's beat, and that difference *is* the design: a
+  directive highlight interrupting a lesson is a cost you only pay for something urgent,
+  so it fires at need (three crops, an empty can, an empty pouch); an ambient pip costs
+  nothing to ignore, so it may fire at relevance (**one** crop, the **first** sip of
+  water, the **price of one seed**). It keeps T-11's one inviolable rule: never point at a
+  shop that will refuse her, so the box pip still checks she can afford the cheapest seed.
+  **They read as one system because only one of them ever speaks about a tile**: any tile
+  `TeachingFocus.targets()` is pointing at gets no pip. Glowing gold ring with a bobbing
+  chevron means *do this now*; a quiet glyph drifting at half that rate means *this is
+  what that is for*.
+
+**Axis 2 — the "already done" answer.** *"How does it say what is already done?"*
+Q-42's judgement is not up for revision — a good state is answered **less** rewardingly
+than a harvest, or repeated tapping gets farmed for stimulation — and neither treatment
+touches the volume. The complaint is that the cue says "yes" and never says *to what*.
+- **A · the answer names itself.** Same ring, same three sparkles, same quiet tick, same
+  520ms; it gains a **noun and a check**. A full can at the well answers with a can and a
+  tick, an empty basket at the bin with an empty basket, an already-watered crop with a
+  droplet. The check is the constant of the grammar — whatever noun it sits beside, a
+  tick means *already so* (the shop's ✕ is the precedent for a mark carrying a whole word;
+  S-7 forbids required reading, not marks). Table-driven (`SATISFIED_GLYPHS`) and the
+  suite *drives the router* to enumerate its codes, so a fourth good state added later
+  arrives as a failing test rather than as a cue that silently says nothing — finding
+  F-5's lesson, applied before it can happen again.
+- **B · the state shows before the tap.** Aimed at the thirteen taps that should never
+  have been asked. Her can's fullness and her basket's emptiness stop being "Water: 8/8"
+  and "Wh:0" and become pictures on the HUD — a basket with a pip per crop, drawn dim and
+  holding nothing when it is empty; a can beside a tube filled to the level in it — and a
+  crop that has had its water wears a **droplet on the tile**. The words they replace are
+  hidden under this treatment: a picture that has to compete with its own numeral is not
+  a fair draft of the picture. *This treatment is also a candidate answer to T-18's open
+  box, "watered soil legible without tapping"* — and it is drawn on the **crop**, not the
+  soil, because rain marks bare tilled ground watered too and that is precisely the lie
+  the 2026-08-30 session caught.
+
+- **Where the switches are.** T-27's two doors, **generalised into one look lab** rather
+  than copied: `systems/look_lab.gd` is a registry of *axes* (the cot's, and T-28's two),
+  the title screen's button is now **"Look Lab"** and its panel has a section per open
+  question, and the pause menu carries **one line per axis**, each naming where it stands
+  and each advancing only itself. A second rig would have meant two panels, two pause
+  lines and a designer wondering which menu the thing he wants is under. Debug builds
+  only, like the Sound Test. Every pick lives on a static, so it survives the trip to the
+  title screen and back and `GameState.reset()` cannot wipe it.
+- **D-8 held, treatment by treatment.** `StationPresentation` is pure static over sim
+  reads — no Node, no autoload, no `Input`, and no randomness of its own. The unit suite
+  asserts the world is byte-identical after asking every treatment what to draw, nine
+  ways; Scenario AB re-proves in the real scene that a tap on the bin still **sells at the
+  tap** under each discovery treatment and that an already-watered crop still answers
+  `satisfied` with the same reason code under each satisfied treatment — so the trace
+  stays comparable across the A/B, which is what makes the next session's numbers mean
+  anything.
+- **No art spend ($0.00).** Three of the five pictures already existed: the coin is
+  T-12's, and the can and the seed packet are the refusal table's own cells, so a player
+  who has learnt those two glyphs has already learnt most of this vocabulary. The two
+  missing nouns — **water itself** and **an empty basket** — are derived into `crops.png`'s
+  iconography row by `tools/gen_station_glyphs.py`, in the can's and the bin's own colours
+  read out of their cells at generation time (CREDITS.md).
+- **Found by rendering a still, not by reasoning:** a pip floating above a 16x32 station
+  in row 0 lands **behind the HUD's top bar** and is simply not there. It is Q-68's
+  geometry again, and the fix is the shrunk visible rect T-25's off-screen arrow already
+  uses — "the bar hides this" and "the camera has left it behind" are one question. Where
+  there is room the pip floats above the station; where there is not it rides the
+  sprite's shoulder.
+- Covered by `tests/test_runner.gd:test_station_presentation` (50 assertions: the axes are
+  independent and wrap, the lab reaches every draft, every glyph cell is really on its
+  sheet and is not blank, the relevance and retirement rules station by station, the
+  highlight-wins rule, guard 0 during the cold open, the glint envelope, and the D-8
+  property) and `tools/test_runner.gd` **Scenario AB** (both doors, every treatment
+  rendering in the real scene with a draw-completion witness, the live glint scheduler
+  picking an unused station, the D-8 taps, and the HUD chips appearing and standing down).
+  **1557 unit / 349 integration, both green; robot session, benchmark and the visual
+  baseline unchanged.**
+
 **T-30 — Acorns are pickable** · Q-48's ruling, 2026-09-01 · ✅ **done 2026-09-01**
 *A tap on an acorn collects it into inventory (the egg's `collect` precedent),
 removing it from the crow stock — the player's own hands can accelerate the turn to
@@ -441,6 +554,10 @@ above stays unticked until he says which one, and the two he does not pick come 
   **title screen → "Cot Look"** (beside "Sound Test", the panel that lists all three with
   the current one marked), and **pause → "Cot look: …"**, which advances and closes so
   the farm is what he is looking at when it changes, and names the new one in a toast.
+  *Generalised 2026-09-01 by T-28: both doors are now the **Look Lab**
+  (`systems/look_lab.gd`), one panel and one pause line per open question. The cot's
+  three drafts are unchanged and still reachable — the title button reads "Look Lab" and
+  the pause line still reads "Cot look: …".*
   The pause door is the one to use — these only show themselves at dusk, and the title
   screen has no dusk. The pick lives on a static in `CotPresentation`, not in the scene
   or in `GameState`, so it survives the trip to the title screen and back and is not
@@ -913,6 +1030,10 @@ three states and only two of them speak — *did it* (squash + sound), *cannot d
 - [ ] check whether watered soil is legible *without* tapping — the 2026-08-27 pass
       improved it and this session says not enough *(open; and Q-38's daylight now changes
       how wet soil reads at every hour, so it wants a fresh device look)*
+      *Cross-reference, 2026-09-01: **T-28's satisfied treatment B is a candidate answer
+      to this box** — a watered crop wears a droplet, drawn on the crop rather than on the
+      soil because rain marks bare tilled ground watered too. If the designer picks B this
+      box closes with it; if he picks A it stays open and unaffected.*
 *Ruled 2026-08-29 alongside T-19; shipped together, since they share the cue and the trace
 change. **Also fixed here: finding F-5** — `blocked_reason()` returned human phrases
 ("no seeds") while `farm._refuse_icon()` matched the sim's codes ("no_seeds"), so the two

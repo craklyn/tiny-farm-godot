@@ -13,6 +13,12 @@ const OPTION_SEP := 4.0
 const OPTIONS_TOP := 45.0
 const PANEL_PAD := 12.0
 
+# Where the look lab's lines start in the pause menu: after Resume and Return to
+# Title, and one line per open axis (`LookLab.AXES`). Named rather than spelled
+# `== 2`, because T-28 turned one debug line into three and the next axis will
+# not want to find this arithmetic by reading it.
+const PAUSE_LAB_FIRST := 2
+
 var active_menu: String = ""  # "", "pause", "shop", "inventory"
 var selected_option: int = 0
 var shop_items: Array[Dictionary] = []
@@ -157,17 +163,21 @@ func _rebuild_options() -> void:
 			gold_icon.visible = false
 			_add_option("Resume", true)
 			_add_option("Return to Title", true)
-			# T-27 box 5: the cot A/B, where the designer can actually reach it.
+			# The look lab, where the designer can actually reach it — one line per
+			# open question (T-27's cot, T-28's two station axes; see
+			# `systems/look_lab.gd`), each naming where it currently stands.
 			#
-			# The candidates also sit behind the title screen's "Cot Look" panel,
+			# The same candidates sit behind the title screen's "Look Lab" panel,
 			# which is Q-31's Sound Test precedent proper — but a look that only
-			# shows itself at dusk cannot be judged from the title screen without
-			# reloading the farm for every comparison. From here it is two taps and
-			# the farm is still where he left it: tap, the menu closes, the world is
-			# wearing the next treatment. Debug builds only, exactly like the Sound
-			# Test, so a public build never shows it (S-7: no words in the game).
+			# shows itself at dusk, or only when the basket has something in it,
+			# cannot be judged from the title screen without reloading the farm for
+			# every comparison. From here it is two taps and the farm is still where
+			# he left it: tap, the menu closes, the world is wearing the next
+			# treatment. Debug builds only, exactly like the Sound Test, so a public
+			# build never shows it (S-7: no words in the game).
 			if OS.is_debug_build():
-				_add_option("Cot look: %s" % CotPresentation.name_of(CotPresentation.treatment), true)
+				for axis in LookLab.AXES:
+					_add_option(LookLab.option_label(axis), true)
 			menu_panel.size = Vector2(300, _fit_panel_height())
 
 		"shop":
@@ -460,13 +470,16 @@ func _select_current_option() -> void:
 			elif selected_option == 1:
 				close_menu()
 				menu_action.emit("return_to_title")
-			elif selected_option == 2 and OS.is_debug_build():
-				# Advance and get out of the way — the whole value of this switch is
-				# seeing the farm immediately afterwards. `main.gd` picks the change
-				# up on "cot_look" and names the new treatment in a toast.
-				CotPresentation.cycle()
+			elif OS.is_debug_build() and selected_option >= PAUSE_LAB_FIRST \
+					and selected_option < PAUSE_LAB_FIRST + LookLab.AXES.size():
+				# Advance that one axis and get out of the way — the whole value of
+				# this switch is seeing the farm immediately afterwards. `main.gd`
+				# picks the change up on "look_lab" and names the axis and its new
+				# treatment in a toast. Each axis moves on its own, because T-28's
+				# two problems have to be judgeable one at a time.
+				LookLab.cycle(LookLab.AXES[selected_option - PAUSE_LAB_FIRST])
 				close_menu()
-				menu_action.emit("cot_look")
+				menu_action.emit("look_lab")
 
 		"shop":
 			if selected_option < shop_items.size():

@@ -29,6 +29,16 @@ var water_label: Label
 var seed_pill: Panel
 var seed_pill_label: Label
 var seed_pill_icon: TextureRect
+
+# T-28's satisfied treatment B — "the state shows before the tap". Built always,
+# shown only under that treatment, so the default build is byte-for-byte the HUD
+# it was and the visual baseline does not move.
+var state_chips: Control
+var basket_chip: TextureRect
+var basket_pips: Array[ColorRect] = []
+var can_chip: TextureRect
+var can_gauge_back: ColorRect
+var can_gauge_fill: ColorRect
 var toast_panel: Panel
 var toast_label: Label
 var hint_label: Label
@@ -177,6 +187,8 @@ func _build_ui() -> void:
 	water_label.add_theme_color_override("font_color", Color(0.4, 0.7, 0.95))
 	bottom_bar.add_child(water_label)
 
+	_build_state_chips(viewport_size)
+
 	# --- The bed button (T-31 / Q-49) -----------------------------------------
 	#
 	# The HUD's first action control. Everything else here is status; this one
@@ -312,6 +324,134 @@ func _build_ui() -> void:
 	toast_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	toast_label.add_theme_color_override("font_color", Color(1, 0.95, 0.5))
 	toast_panel.add_child(toast_label)
+
+
+# --- T-28, satisfied treatment B: the state, before the question --------------
+#
+# Two of the three "already done" answers in the gate session were about things
+# she was *carrying* — a can that was already full (×2) and a basket that was
+# already empty (×3) — and the only way to find either out was to walk to a
+# station and tap it. The HUD did hold both numbers, as "Water: 8/8" and "Wh:0",
+# which is (a) reading, in the one part of the game S-7 says must not require it,
+# and (b) a number where a picture belongs.
+#
+# So under this treatment they become pictures: a basket with a pip for each crop
+# in it, drawn dim and empty when there is nothing, and a can beside a tube of
+# water filled to the level in it. Both replace their labels rather than sitting
+# beside them — a picture that has to compete with the number it replaced is not
+# a fair draft of the picture.
+#
+# The third answer, "already watered", is not a thing she carries, so it is on
+# the tile instead (`world/farm.gd` draws the droplet). All three under one
+# treatment, because the treatment is a claim about *when* the answer arrives.
+const CHIP_W := 136.0
+const GAUGE_W := 9.0
+const GAUGE_H := 22.0
+const BASKET_PIPS := 5     # [Playtest] past five, "lots" is the honest reading
+
+
+func _build_state_chips(viewport_size: Vector2) -> void:
+	state_chips = Control.new()
+	state_chips.name = "state_chips"
+	state_chips.position = Vector2(viewport_size.x - CHIP_W, 0)
+	state_chips.size = Vector2(CHIP_W, 32)
+	state_chips.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	state_chips.visible = false
+	bottom_bar.add_child(state_chips)
+
+	basket_chip = TextureRect.new()
+	basket_chip.name = "basket_chip"
+	basket_chip.position = Vector2(0, 3)
+	basket_chip.size = Vector2(26, 26)
+	basket_chip.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	basket_chip.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	basket_chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	basket_chip.texture = _glyph_icon(StationPresentation.GLYPH_BASKET)
+	state_chips.add_child(basket_chip)
+
+	# One pip per crop in the basket. A tally rather than a numeral: "how many
+	# things have I got" is a question a pre-reader answers by counting, and the
+	# shop already proved digits are legible where they are unavoidable — here
+	# they are avoidable.
+	basket_pips.clear()
+	for i in BASKET_PIPS:
+		var pip := ColorRect.new()
+		pip.name = "basket_pip_%d" % i
+		pip.position = Vector2(28 + i * 7, 13)
+		pip.size = Vector2(5, 5)
+		pip.color = Color(0.95, 0.80, 0.28)
+		pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		pip.visible = false
+		state_chips.add_child(pip)
+		basket_pips.append(pip)
+
+	can_chip = TextureRect.new()
+	can_chip.name = "can_chip"
+	can_chip.position = Vector2(70, 3)
+	can_chip.size = Vector2(26, 26)
+	can_chip.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	can_chip.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	can_chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	can_chip.texture = _glyph_icon(StationPresentation.GLYPH_CAN)
+	state_chips.add_child(can_chip)
+
+	can_gauge_back = ColorRect.new()
+	can_gauge_back.name = "can_gauge"
+	can_gauge_back.position = Vector2(100, 5)
+	can_gauge_back.size = Vector2(GAUGE_W, GAUGE_H)
+	can_gauge_back.color = Color(0.06, 0.10, 0.14, 0.92)
+	can_gauge_back.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	state_chips.add_child(can_gauge_back)
+
+	can_gauge_fill = ColorRect.new()
+	can_gauge_fill.name = "can_gauge_fill"
+	can_gauge_fill.color = Color(0.36, 0.72, 0.95)
+	can_gauge_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	can_gauge_back.add_child(can_gauge_fill)
+
+
+func _glyph_icon(key: String):
+	var entry: Dictionary = StationPresentation.GLYPH_ATLAS.get(key, {})
+	if entry.is_empty():
+		return null
+	var atlas := AtlasTexture.new()
+	atlas.atlas = tool_icons_texture if entry["sheet"] == "tools" \
+		else load("res://assets/sprites/generated/crops.png")
+	var r: Array = entry["rect"]
+	atlas.region = Rect2(r[0], r[1], r[2], r[3])
+	return atlas
+
+
+func _update_state_chips() -> void:
+	if state_chips == null:
+		return
+	var on: bool = StationPresentation.satisfied == StationPresentation.SATISFIED_CHIP
+	state_chips.visible = on
+	# The labels these replace. Under every other treatment the HUD is exactly
+	# what it was, which is what keeps the A/B honest.
+	if water_label != null:
+		water_label.visible = not on
+	if crop_counts_label != null:
+		crop_counts_label.visible = not on
+	if not on:
+		return
+
+	var basket := 0
+	for count in GameState.crops.values():
+		basket += int(count)
+	# Empty is the state this treatment exists to show, so it is the loud one:
+	# the basket goes grey and stays visibly unfilled. Q-46(a)'s vocabulary —
+	# darkened means "not there" — reused rather than reinvented.
+	basket_chip.modulate = Color(1, 1, 1, 1) if basket > 0 else Color(0.42, 0.44, 0.48, 0.9)
+	for i in basket_pips.size():
+		basket_pips[i].visible = i < basket
+
+	var frac: float = float(GameState.watering_can_charges) \
+		/ maxf(1.0, float(GameState.max_watering_can_charges))
+	var h: float = round((GAUGE_H - 2.0) * clampf(frac, 0.0, 1.0))
+	can_gauge_fill.position = Vector2(1.0, GAUGE_H - 1.0 - h)
+	can_gauge_fill.size = Vector2(GAUGE_W - 2.0, h)
+	can_chip.modulate = Color(1, 1, 1, 1) if frac > 0.0 else Color(0.42, 0.44, 0.48, 0.9)
 
 
 func _process(delta: float) -> void:
@@ -485,6 +625,9 @@ func _update_hud() -> void:
 
 	# Water
 	water_label.text = "Water: %d/%d" % [GameState.watering_can_charges, GameState.max_watering_can_charges]
+
+	# T-28's satisfied treatment B, if it is the one being judged.
+	_update_state_chips()
 
 
 # The same fraction the daylight tint is derived from (T-14 / Q-38), as a glyph.

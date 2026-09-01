@@ -84,6 +84,7 @@ func _init() -> void:
 	test_bots()
 	test_cot_halo()
 	test_cot_presentation()
+	test_station_presentation()
 
 	print("")
 	print(String("=").repeat(60))
@@ -8028,3 +8029,348 @@ func test_yard_ground() -> void:
 	gs.free()
 	gs_back.free()
 	gs_legacy.free()
+
+
+func test_station_presentation() -> void:
+	# T-28, drafted rather than decided. The designer's two observations about the
+	# bin, the well and the seed box — (1) they never say what they are for before
+	# first use, (2) their "already done" answers do not communicate — get two
+	# treatments each, all four in one build, switched on the tablet with a thumb.
+	#
+	# This test does not know which he will pick. It holds the drafts to the rules
+	# they have to obey either way: the axes are independent, the pictures exist,
+	# the pip never fights the teaching highlight, nothing fires before the farm is
+	# hers, and none of it touches the sim.
+	print("\n--- The stations present themselves (T-28) Tests ---")
+
+	var was_d: int = StationPresentation.discovery
+	var was_s: int = StationPresentation.satisfied
+	var was_cot: int = CotPresentation.treatment
+
+	# --- the two axes, and the fact that they really are two -----------------
+	_assert(StationPresentation.discovery == StationPresentation.DISCOVERY_OFF
+			and StationPresentation.satisfied == StationPresentation.SATISFIED_OFF,
+		"both axes ship OFF — the default build is the game he complained about, "
+			+ "which is the thing the drafts have to be compared against")
+
+	StationPresentation.set_discovery(StationPresentation.DISCOVERY_OFF)
+	StationPresentation.set_satisfied(StationPresentation.SATISFIED_OFF)
+	_assert(StationPresentation.cycle_discovery() == StationPresentation.DISCOVERY_GLINT,
+		"cycling discovery off gives A, the idle glints")
+	_assert(StationPresentation.cycle_discovery() == StationPresentation.DISCOVERY_PIP,
+		"cycling A gives B, the purpose pips")
+	_assert(StationPresentation.cycle_discovery() == StationPresentation.DISCOVERY_OFF,
+		"and B wraps back to off, so a thumb can never park it on nothing")
+	_assert(StationPresentation.satisfied == StationPresentation.SATISFIED_OFF,
+		"three turns of the discovery axis left the other one exactly where it was")
+
+	_assert(StationPresentation.cycle_satisfied() == StationPresentation.SATISFIED_NOUN,
+		"and the already-done axis cycles on its own: off gives A")
+	_assert(StationPresentation.cycle_satisfied() == StationPresentation.SATISFIED_CHIP,
+		"A gives B")
+	_assert(StationPresentation.cycle_satisfied() == StationPresentation.SATISFIED_OFF,
+		"B wraps back to off")
+	_assert(StationPresentation.discovery == StationPresentation.DISCOVERY_OFF,
+		"having moved nothing on the discovery axis — the two problems are judged separately")
+	_assert(StationPresentation.set_discovery(-1) == StationPresentation.DISCOVERY_PIP
+			and StationPresentation.set_satisfied(7) == StationPresentation.SATISFIED_NOUN,
+		"and an out-of-range set wraps rather than crashing or parking on nothing")
+
+	_assert(StationPresentation.DISCOVERY_NAMES.size() == StationPresentation.DISCOVERY_COUNT
+			and StationPresentation.DISCOVERY_BLURBS.size() == StationPresentation.DISCOVERY_COUNT
+			and StationPresentation.SATISFIED_NAMES.size() == StationPresentation.SATISFIED_COUNT
+			and StationPresentation.SATISFIED_BLURBS.size() == StationPresentation.SATISFIED_COUNT,
+		"every treatment on both axes has a name and a blurb for the two switches")
+
+	# --- the look lab reaches all of it --------------------------------------
+	#
+	# One door for every look that is still his to pick. A second rig would have
+	# meant two panels and two pause lines to remember.
+	_assert(LookLab.AXES.has(LookLab.COT) and LookLab.AXES.has(LookLab.DISCOVERY)
+			and LookLab.AXES.has(LookLab.SATISFIED),
+		"the look lab carries all three open questions (%d)" % LookLab.AXES.size())
+	var lab_ok := true
+	for axis in LookLab.AXES:
+		if LookLab.count_of(axis) <= 0 or LookLab.label_of(axis) == "":
+			lab_ok = false
+		for i in LookLab.count_of(axis):
+			if LookLab.name_of(axis, i) == "" or LookLab.blurb_of(axis, i) == "":
+				lab_ok = false
+	_assert(lab_ok, "and every axis knows how many drafts it has and what each is called")
+	_assert(LookLab.count_of("no_such_axis") == 0 and LookLab.name_of("no_such_axis", 0) == "",
+		"an axis that does not exist answers empty rather than crashing the panel")
+
+	LookLab.set_to(LookLab.DISCOVERY, StationPresentation.DISCOVERY_GLINT)
+	_assert(StationPresentation.discovery == StationPresentation.DISCOVERY_GLINT
+			and LookLab.current(LookLab.DISCOVERY) == StationPresentation.DISCOVERY_GLINT,
+		"the lab writes the same static the game reads — one source of truth per axis")
+	LookLab.cycle(LookLab.SATISFIED)
+	_assert(LookLab.last_axis == LookLab.SATISFIED,
+		"and remembers which axis it moved, so the toast can name it")
+	_assert(CotPresentation.treatment == was_cot,
+		"and T-27's cot pick is untouched by any of it")
+	_assert(LookLab.option_label(LookLab.COT).begins_with("Cot look:"),
+		"the pause line names the axis and where it stands (%s)"
+			% LookLab.option_label(LookLab.COT))
+
+	# --- the pictures exist --------------------------------------------------
+	#
+	# Finding F-5's lesson, applied before it can happen again: the refusal icons
+	# and the router's vocabulary drifted apart silently once, and what stopped it
+	# coming back was making the table something a test can walk.
+	var art_ok := true
+	for kind in StationPresentation.STATIONS:
+		if not StationPresentation.STATION_GLYPHS.has(kind):
+			art_ok = false
+			continue
+		if not StationPresentation.GLYPH_ATLAS.has(StationPresentation.STATION_GLYPHS[kind]):
+			art_ok = false
+	_assert(art_ok, "every station has a glyph and every glyph has a cell on a sheet")
+
+	var sheets := { "crops": "res://assets/sprites/generated/crops.png",
+		"tools": "res://assets/sprites/tool_icons.png" }
+	var cells_ok := true
+	for key in StationPresentation.GLYPH_ATLAS.keys():
+		var entry: Dictionary = StationPresentation.GLYPH_ATLAS[key]
+		if not sheets.has(entry.get("sheet", "")):
+			cells_ok = false
+			continue
+		var r: Array = entry["rect"]
+		var tex: Texture2D = load(sheets[entry["sheet"]])
+		if tex == null or r.size() != 4 \
+				or r[0] + r[2] > tex.get_width() or r[1] + r[3] > tex.get_height():
+			cells_ok = false
+	_assert(cells_ok, "and every one of those cells is really on the sheet it claims")
+
+	# The two nouns T-28 had to draw (`tools/gen_station_glyphs.py`, derived from
+	# the can and the bin, no art spend) are actually in the file — an empty cell
+	# would draw as nothing at all and fail silently, which is the worst failure
+	# a wordless cue can have.
+	var crops_img: Image = (load(sheets["crops"]) as Texture2D).get_image()
+	var drawn_ok := true
+	for key in [StationPresentation.GLYPH_DROPLET, StationPresentation.GLYPH_BASKET]:
+		var r2: Array = StationPresentation.GLYPH_ATLAS[key]["rect"]
+		var ink := 0
+		for y in range(r2[1], r2[1] + r2[3]):
+			for x in range(r2[0], r2[0] + r2[2]):
+				if crops_img.get_pixel(x, y).a > 0.15:
+					ink += 1
+		if ink < 40:
+			drawn_ok = false
+	_assert(drawn_ok, "the droplet and the empty basket are drawn, not empty cells")
+
+	# --- the already-done nouns cover every answer the router can give -------
+	#
+	# Driven rather than listed: the codes come out of `satisfied_reason` itself,
+	# so a fourth good state added later arrives here as a failure instead of as a
+	# cue that silently says nothing.
+	GameState.reset()
+	var farm_node = load("res://world/farm.gd").new()
+	farm_node.generate_on_ready = false
+	SimRng.reseed(41)
+	farm_node.sim.generate()
+	var crop_t := Vector2i(7, 6)
+	farm_node.sim.tiles[crop_t.y][crop_t.x]["state"] = "growing"
+	farm_node.sim.tiles[crop_t.y][crop_t.x]["crop_type"] = "wheat"
+	farm_node.sim.tiles[crop_t.y][crop_t.x]["watered_today"] = true
+	GameState.watering_can_charges = GameState.max_watering_can_charges
+	GameState.crops = { "wheat": 0, "tomato": 0 }
+	var codes: Array[String] = []
+	for probe in [crop_t, Vector2i(6, 1), Vector2i(4, 1)]:
+		var code: String = ActionRouter.satisfied_reason(farm_node, GameState, probe)
+		if code != "" and not codes.has(code):
+			codes.append(code)
+	_assert(codes.size() == 3,
+		"the router still gives exactly three already-done answers (%s)" % ", ".join(codes))
+	var nouns_ok := true
+	for code in codes:
+		if StationPresentation.noun_for(code) == "" \
+				or not StationPresentation.GLYPH_ATLAS.has(StationPresentation.noun_for(code)):
+			nouns_ok = false
+	_assert(nouns_ok, "and every one of them has a noun to say itself with (treatment A)")
+	_assert(StationPresentation.noun_for("no_seeds") == "",
+		"while a refusal code gets no noun here — a refusal is not an answer of this kind")
+	farm_node.free()
+
+	# --- the pips ------------------------------------------------------------
+	var world := SimWorld.new()
+	SimRng.reseed(1212)
+	world.generate()
+	var gs = load("res://systems/game_state.gd").new()
+	var bin := Vector2i(4, 1)
+	var well := Vector2i(6, 1)
+	var box := Vector2i(8, 1)
+
+	# Before the handover, nothing at all: the neighbour is the show, and a hint
+	# on a farm that is not hers yet is a hint on a tile whose tap does nothing.
+	StationPresentation.set_discovery(StationPresentation.DISCOVERY_PIP)
+	gs.crops["wheat"] = 2
+	_assert(StationPresentation.pips(world, gs).is_empty(),
+		"during the cold open the stations say nothing — guard 0, shared with the highlight")
+
+	world.apply_action({ "verb": "open_gate", "target": WorldLayout.gate_of("neighbour"),
+		"actor": "neighbour" }, gs)
+	gs.day = gs.takeover_day + 5   # past the vignette, which owns the highlight outright
+
+	gs.crops = { "wheat": 0, "tomato": 0 }
+	gs.watering_can_charges = gs.max_watering_can_charges
+	gs.gold = 0
+	_assert(StationPresentation.pips(world, gs).is_empty(),
+		"a farmer with nothing to sell, no water spent and no money is told nothing")
+
+	# The bin, at *relevance* rather than at need. This is the whole of T-28's
+	# discovery gap: T-11's beat waits for three crops, and a first crop is
+	# already something to sell.
+	gs.crops["wheat"] = 1
+	var p1 := StationPresentation.pips(world, gs)
+	_assert(p1.size() == 1 and p1[0]["at"] == bin
+			and p1[0]["glyph"] == StationPresentation.GLYPH_COIN,
+		"one crop in the basket floats a coin over the bin — before the beat would fire")
+	_assert(TeachingFocus.economy_beat(world, gs).is_empty(),
+		"and at that moment the teaching highlight is still silent, which is the gap")
+
+	# The *other* half of the gap, and the sharper one: even once the beat would
+	# fire, an unlearned obstacle outranks it, so the errand waits for the lesson
+	# (`targets()` returns the first non-empty). Here the highlight is on a weed
+	# and the pip is free to speak about the bin — two systems busy at once,
+	# on two tiles, saying two different kinds of thing.
+	var taught_now := TeachingFocus.targets(world, gs)
+	_assert(not taught_now.is_empty() and not taught_now.has(bin),
+		"the highlight is elsewhere — a lesson outranks an errand — and the pip fills the silence")
+
+	# Where they meet, the directive cue wins and the ambient one gets out of the
+	# way. One glowing thing at a time, extended to cover the quiet thing too.
+	gs.crops["wheat"] = TeachingFocus.SELL_BEAT_CROPS
+	gs.clear_counts["clear_weed"] = 1   # the parcel's lesson is done; the errand can be heard
+	_assert(TeachingFocus.targets(world, gs).has(bin),
+		"at three crops, with no lesson outranking it, the highlight takes the bin")
+	var p2 := StationPresentation.pips(world, gs)
+	var bin_pipped := false
+	for pip in p2:
+		if pip["at"] == bin:
+			bin_pipped = true
+	_assert(not bin_pipped,
+		"and the pip stands down there — they never draw on one tile (the pip is ambient, the highlight is directive)")
+
+	world.apply_action({ "verb": "sell", "actor": "player" }, gs)
+	gs.gold = 0        # the sale's coins would otherwise light the seed box next
+	gs.crops["wheat"] = 9
+	var p3 := StationPresentation.pips(world, gs)
+	for pip in p3:
+		_assert(pip["at"] != bin, "selling once retires the bin's pip for good")
+	_assert(p3.is_empty(), "and with nothing else relevant, nothing is shown at all")
+
+	# The well, at the first sip rather than at the last.
+	gs.watering_can_charges = gs.max_watering_can_charges - 1
+	var p4 := StationPresentation.pips(world, gs)
+	_assert(p4.size() == 1 and p4[0]["at"] == well
+			and p4[0]["glyph"] == StationPresentation.GLYPH_CAN,
+		"a can that is not full floats the can over the well")
+	_assert(TeachingFocus.economy_beat(world, gs).is_empty(),
+		"where the beat waits for empty")
+	world.apply_action({ "verb": "refill", "actor": "player" }, gs)
+	gs.watering_can_charges = 0
+	for pip in StationPresentation.pips(world, gs):
+		_assert(pip["at"] != well, "refilling once retires the well's pip")
+
+	# The seed box: relevance is money, and never a shop that will refuse her.
+	gs.watering_can_charges = gs.max_watering_can_charges
+	gs.gold = TeachingFocus.cheapest_seed() - 1
+	_assert(StationPresentation.pips(world, gs).is_empty(),
+		"a pocket one coin short of a seed points at nothing — never send her to a shop that will refuse her")
+	gs.gold = TeachingFocus.cheapest_seed()
+	var p5 := StationPresentation.pips(world, gs)
+	_assert(p5.size() == 1 and p5[0]["at"] == box
+			and p5[0]["glyph"] == StationPresentation.GLYPH_PACKET,
+		"the price of one seed floats a packet over the box, pouch full or not")
+	world.apply_action({ "verb": "buy_seed", "seed_type": "wheat", "actor": "player" }, gs)
+	gs.gold = 500
+	for pip in StationPresentation.pips(world, gs):
+		_assert(pip["at"] != box, "and buying once retires it")
+
+	# The other treatments do not leak into this one.
+	gs.crops = { "wheat": 0, "tomato": 0 }
+	gs.total_shipped = 0
+	gs.cans_refilled = 0
+	gs.seeds_bought = 0
+	gs.crops["wheat"] = 3
+	StationPresentation.set_discovery(StationPresentation.DISCOVERY_OFF)
+	_assert(StationPresentation.pips(world, gs).is_empty()
+			and StationPresentation.glint_candidates(world, gs).is_empty(),
+		"switched off, neither treatment draws anything — off is today's game exactly")
+	StationPresentation.set_discovery(StationPresentation.DISCOVERY_GLINT)
+	_assert(StationPresentation.pips(world, gs).is_empty(),
+		"and A never floats a pip")
+
+	# --- the glints ----------------------------------------------------------
+	var glints := StationPresentation.glint_candidates(world, gs)
+	_assert(glints.size() == 3 and glints.has(bin) and glints.has(well) and glints.has(box),
+		"under A every station she has never used may catch the light (%d)" % glints.size())
+	world.apply_action({ "verb": "sell", "actor": "player" }, gs)
+	var glints2 := StationPresentation.glint_candidates(world, gs)
+	_assert(glints2.size() == 2 and not glints2.has(bin),
+		"a station she has used stops glinting — the treatment retires itself, station by station")
+	StationPresentation.set_discovery(StationPresentation.DISCOVERY_PIP)
+	_assert(StationPresentation.glint_candidates(world, gs).is_empty(),
+		"and B never glints")
+
+	_assert(StationPresentation.glint_alpha(-0.1) == 0.0
+			and StationPresentation.glint_alpha(0.0) == 0.0
+			and StationPresentation.glint_alpha(StationPresentation.GLINT_DUR) == 0.0,
+		"a glint is nothing before it starts and nothing after it ends")
+	var peak := 0.0
+	var peak_at := 0.0
+	for i in 101:
+		var e: float = StationPresentation.GLINT_DUR * i / 100.0
+		var v: float = StationPresentation.glint_alpha(e)
+		if v > peak:
+			peak = v
+			peak_at = i / 100.0
+	_assert(peak > 0.95 and peak <= 1.0,
+		"and swells to a full but bounded brightness (%.2f)" % peak)
+	_assert(peak_at < 0.5,
+		"reaching it in the first half of the glint (at %.0f%%)" % (peak_at * 100.0))
+	_assert(StationPresentation.glint_alpha(StationPresentation.GLINT_DUR * 0.15)
+			> StationPresentation.glint_alpha(StationPresentation.GLINT_DUR * 0.85),
+		"skewed early — a catch of light arrives faster than it leaves, so it is not a pulse")
+	_assert(StationPresentation.glint_sweep(0.0) == 0.0
+			and StationPresentation.glint_sweep(StationPresentation.GLINT_DUR) == 1.0
+			and StationPresentation.glint_sweep(99.0) == 1.0,
+		"and the sweep crosses the sprite once and stays put")
+	_assert(StationPresentation.GLINT_MIN_S >= 5.0,
+		"the interval is long enough to read as weather rather than as a prompt (%.1fs)"
+			% StationPresentation.GLINT_MIN_S)
+
+	# --- D-8: none of this can reach the gateway -----------------------------
+	#
+	# Every treatment is presentation, so asking it what to draw must leave the
+	# world byte-identical. Cheap to prove and the one property that would break
+	# replays if it were ever false.
+	var before := SaveGame.capture_canonical(world, gs)
+	for d in [StationPresentation.DISCOVERY_OFF, StationPresentation.DISCOVERY_GLINT,
+			StationPresentation.DISCOVERY_PIP]:
+		StationPresentation.set_discovery(d)
+		for s in [StationPresentation.SATISFIED_OFF, StationPresentation.SATISFIED_NOUN,
+				StationPresentation.SATISFIED_CHIP]:
+			StationPresentation.set_satisfied(s)
+			StationPresentation.pips(world, gs, Vector2i(9, 9))
+			StationPresentation.glint_candidates(world, gs)
+			for kind in StationPresentation.STATIONS:
+				StationPresentation.used(gs, kind)
+				StationPresentation.relevant(gs, kind)
+				StationPresentation.find_station(world, kind)
+	_assert(SaveGame.capture_canonical(world, gs) == before,
+		"asking any treatment what to draw, nine ways, changed nothing in the world (D-8)")
+
+	# A missing GameState is a renderer that is starting up, not a crash.
+	_assert(StationPresentation.pips(world, null).is_empty()
+			and StationPresentation.glint_candidates(null, gs).is_empty()
+			and StationPresentation.used(null, StationPresentation.BIN),
+		"and a half-built scene asks these questions safely")
+
+	gs.free()
+	StationPresentation.set_discovery(was_d)
+	StationPresentation.set_satisfied(was_s)
+	_assert(StationPresentation.discovery == StationPresentation.DISCOVERY_OFF
+			and StationPresentation.satisfied == StationPresentation.SATISFIED_OFF,
+		"and the build's defaults, restored, are OFF — T-28 stays the designer's to tick")

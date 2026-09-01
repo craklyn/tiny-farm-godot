@@ -26,7 +26,7 @@ static func targets(world: SimWorld, gs, player_t: Vector2i = Vector2i(-1, -1)) 
 	#    neighbour is the show, and pointing at a weed she cannot even reach yet
 	#    would be a highlight on a tile whose tap does nothing — the exact failure
 	#    every hint in this game exists to avoid.
-	if not _handed_over(world):
+	if not handed_over(world):
 		var nothing: Array[Vector2i] = []
 		return nothing
 	# 1. The onboarding vignette owns the first two play-days outright.
@@ -82,7 +82,9 @@ static func _placed_tools(world: SimWorld, gs, want_earned: bool) -> Array[Vecto
 	return out
 
 
-static func _handed_over(world: SimWorld) -> bool:
+# Public since T-28: the station drafts share guard 0 rather than re-deriving it.
+# Nothing may be pointed at, ambiently or directively, before the farm is hers.
+static func handed_over(world: SimWorld) -> bool:
 	for p in WorldLayout.parcels(world.layout):
 		if String(p.get("opened_by", "")) != WorldLayout.OPENED_BY_COLD_OPEN:
 			continue
@@ -119,7 +121,7 @@ static func economy_beat(world: SimWorld, gs) -> Array[Vector2i]:
 	if int(gs.cans_refilled) == 0 and int(gs.watering_can_charges) <= 0:
 		return _find_object(world, "well")
 
-	if int(gs.seeds_bought) == 0 and _pouch_empty(gs) and gs.gold >= _cheapest_seed():
+	if int(gs.seeds_bought) == 0 and _pouch_empty(gs) and gs.gold >= cheapest_seed():
 		return _find_object(world, "seed_box")
 
 	return out
@@ -136,7 +138,10 @@ static func _pouch_empty(gs) -> bool:
 	return true
 
 
-static func _cheapest_seed() -> int:
+# Public since T-28, for the same reason: "never point at a shop that will
+# refuse her" is a rule about pointing, not a rule about highlights, so the
+# ambient pip has to be able to ask the same question.
+static func cheapest_seed() -> int:
 	var best := -1
 	for crop_name in CropDefs.ORDER:
 		var def: Dictionary = CropDefs.TYPES.get(crop_name, {})

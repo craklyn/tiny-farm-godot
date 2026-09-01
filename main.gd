@@ -286,11 +286,12 @@ func _ready() -> void:
 	GameState.weather_changed.connect(_on_weather_changed)
 	_on_weather_changed(GameState.weather)
 
-	# T-27 box 5: whichever cot treatment the session is carrying. Applied once
-	# here and again whenever the switch is thrown, so a farm that was already
+	# T-27 box 5 and T-28: whichever drafts the session is carrying. Applied once
+	# here and again whenever a switch is thrown, so a farm that was already
 	# running picks it up without reloading (which is the point of switching from
 	# the pause menu at dusk rather than from the title screen).
 	_apply_cot_treatment()
+	_apply_station_treatment()
 
 
 # Can she see the whole of what is about to happen? Uses the settled camera
@@ -448,6 +449,19 @@ func _apply_cot_treatment() -> void:
 	_update_cot_look()
 
 
+# T-28's two axes, applied live. Both are read per frame by whoever draws them
+# (the overlay for discovery, `world/farm.gd` and the HUD for the already-done
+# answer), so there is nothing to push — except the farm's redraw, because the
+# satisfied axis changes what a *watered tile* looks like and tiles only redraw
+# when something asks them to. The glint's schedule is reset so a switch does
+# not leave half a sparkle from the treatment before it on screen.
+func _apply_station_treatment() -> void:
+	_glint_at = Vector2i(-1, -1)
+	_glint_next = 0.0
+	if farm != null:
+		farm.queue_redraw()
+
+
 # T-27 (box 1): the sky she fell asleep under, held until the screen is black.
 #
 # The sleep Action lands before the tuck-in beat is drawn (that is the D-8 order,
@@ -497,6 +511,12 @@ func _process(delta: float) -> void:
 	# What is left here is the frame boundary, exactly like the clock pump above.
 	if farm != null:
 		farm.sync_actors()
+
+	# T-28 discovery treatment A: whose turn it is to catch the light. Above the
+	# day-transition return with the clock and the actors, because a glint is
+	# weather rather than gameplay — but it does nothing at all under the other
+	# treatments, so this costs one comparison when it is switched off.
+	_tick_station_glints(delta)
 
 	# Skip gameplay during day transition.
 	#
@@ -739,14 +759,17 @@ func _handle_action_result(action: String) -> void:
 		get_tree().change_scene_to_file("res://ui/title_screen.tscn")
 	elif action == "open_shop":
 		menus.open_menu("shop")
-	elif action == "cot_look":
-		# T-27 box 5: the switch was thrown from the pause menu (debug builds
-		# only). The menu has already advanced `CotPresentation.treatment`; this
-		# is the live farm catching up without a reload — camera limit, cot cell,
-		# and a toast so a tablet says out loud which one is now showing.
+	elif action == "look_lab":
+		# The look lab's switch was thrown from the pause menu (debug builds
+		# only). The menu has already advanced one axis; this is the live farm
+		# catching up without a reload — camera limit, cot cell, station state —
+		# and a toast so a tablet says out loud which axis moved and to what.
 		_apply_cot_treatment()
+		_apply_station_treatment()
 		if hud != null and hud.has_method("show_toast"):
-			hud.show_toast("Cot look: %s" % CotPresentation.name_of(CotPresentation.treatment))
+			var axis: String = LookLab.last_axis
+			hud.show_toast("%s: %s" % [LookLab.label_of(axis),
+				LookLab.name_of(axis, LookLab.current(axis))])
 
 
 # Reported from play 2026-08-28: "Return to title" did nothing.
@@ -839,6 +862,13 @@ func _draw_overlay(overlay: CanvasItem) -> void:
 				Rect2(lt.x * TILE_SIZE, lt.y * TILE_SIZE, TILE_SIZE, TILE_SIZE), data[1],
 				Color(0.10, 0.09, 0.16, 0.72))
 
+	# T-28's discovery axis. Drawn **before** the teaching highlight on purpose:
+	# these are ambient and the highlight is directive, so if they ever met the
+	# directive one must be the one on top. (They cannot meet — `pips()` drops any
+	# tile the arbitration is pointing at — but the draw order is where that
+	# intention is cheapest to state and hardest to lose.)
+	_draw_station_presentation(overlay)
+
 	# Q-9 / T-3..T-5 / T-10: wordless onboarding — pulse whatever the single
 	# arbitration point says is being taught right now. It returns an *array*
 	# because day 2's whole lesson is that several tiles glow together, which is
@@ -918,6 +948,140 @@ func _draw_overlay(overlay: CanvasItem) -> void:
 # throws half way through is only a red line in the log and would not fail a
 # suite, so the counter is checked instead of the log. One int, no branch.
 var cot_draws: int = 0
+
+# The same witness for T-28's station block (Scenario AB), and the same reason.
+var station_draws: int = 0
+
+# The idle glint's schedule (T-28, discovery treatment A). Which station is
+# currently catching the light, when it started, and how long until the next one.
+#
+# **`CosmeticRng`, never `SimRng`.** Both the interval and the choice of station
+# are things that may differ between two runs of the same replay without either
+# being wrong — which is exactly the carve-out `cosmetic_rng.gd` exists for, and
+# the opposite of finding F-2, where a renderer's timers drew from the sim's
+# stream and a frame rate could move the sim's dice.
+var _glint_at: Vector2i = Vector2i(-1, -1)
+var _glint_start: float = 0.0
+var _glint_next: float = 0.0
+
+
+func _tick_station_glints(delta: float) -> void:
+	if farm == null or StationPresentation.discovery != StationPresentation.DISCOVERY_GLINT:
+		_glint_at = Vector2i(-1, -1)
+		return
+	var now := Time.get_ticks_msec() / 1000.0
+	if _glint_at.x >= 0:
+		if now - _glint_start < StationPresentation.GLINT_DUR:
+			return  # one at a time: two things twinkling is a choice, not a hint
+		_glint_at = Vector2i(-1, -1)
+	_glint_next -= delta
+	if _glint_next > 0.0:
+		return
+	_glint_next = CosmeticRng.randf_range(
+		StationPresentation.GLINT_MIN_S, StationPresentation.GLINT_MAX_S)
+	var candidates: Array[Vector2i] = StationPresentation.glint_candidates(farm.sim, GameState)
+	if candidates.is_empty():
+		return
+	_glint_at = candidates[CosmeticRng.randi_range(0, candidates.size() - 1)]
+	_glint_start = now
+
+
+# Where a station's sprite actually sits, which is not its tile: the well and the
+# seed box are 16x32 and rise north, the bin is 16x16 (`world/farm.gd` draws
+# objects at `py - (h - TILE_SIZE)`). A pip floating over the *tile* would sit
+# halfway down the well.
+func _station_rect(at: Vector2i) -> Rect2:
+	var px := at.x * TILE_SIZE
+	var py := at.y * TILE_SIZE
+	var h := float(TILE_SIZE)
+	if farm != null:
+		var data = farm.object_regions.get(farm.get_object(at.x, at.y))
+		if data:
+			h = (data[1] as Rect2).size.y
+	return Rect2(px, py - (h - TILE_SIZE), TILE_SIZE, h)
+
+
+# T-28's discovery axis, drawn. Presentation throughout: it reads sim state and
+# `GameState` and draws, and nothing it does can reach `apply_action` (D-8) — a
+# tap on a pipped, glinting bin sells exactly when a tap on a bare one does,
+# which Scenario AB asserts treatment by treatment.
+func _draw_station_presentation(overlay: CanvasItem) -> void:
+	if farm == null:
+		return
+	var t := Time.get_ticks_msec() / 1000.0
+
+	# B — the purpose pip: a glyph in a quiet bubble, floating over the station
+	# that is currently the answer. Slow bob and no chevron, deliberately: the
+	# teaching highlight bobs at 3.0 rad/s with a pointing arrow and means *do
+	# this now*; this drifts at half that with no arrow and means *this is what
+	# that is for*. One vocabulary, two volumes.
+	#
+	# **The pip is clamped into the band the player can actually see**, which is
+	# not the camera's rect: the HUD's top bar covers 30 screen pixels of it, and
+	# the well and the seed box are 16x32 sprites standing in row 0, so a bubble
+	# floating above them lands behind the bar and is simply not there. Found by
+	# rendering a still rather than by reasoning — it is Q-68's geometry again,
+	# and the same shrunk rect T-25's off-screen arrow uses is the answer, because
+	# "the top bar hides this" and "the camera has left it behind" are one
+	# question. Clamped rather than moved: where there is room the pip floats
+	# above the station, and where there is not it rides the sprite's shoulder.
+	var pip_top: float = -1.0e9
+	if camera != null:
+		pip_top = _visible_world_rect().position.y \
+			+ HUD_TOP_PX / float(CAMERA_SCALE) + PIP_R + 1.0
+	var player_t: Vector2i = player.get_tile_pos() if player != null else Vector2i(-1, -1)
+	for pip in StationPresentation.pips(farm.sim, GameState, player_t):
+		var at: Vector2i = pip["at"]
+		var art: Array = farm.glyph(String(pip["glyph"]))
+		if art.is_empty():
+			continue
+		var rect := _station_rect(at)
+		var c := Vector2(rect.position.x + TILE_SIZE / 2.0,
+			maxf(rect.position.y - PIP_LIFT, pip_top) + sin(t * 1.5) * 1.1)
+		# Compensated like every other hint (T-14 caution 3): a painted cue that
+		# goes muddy blue at dusk is a cue that fails exactly when she is tired.
+		overlay.draw_circle(c, PIP_R, _lit(Color(0.10, 0.09, 0.16, 0.62)))
+		overlay.draw_arc(c, PIP_R, 0.0, TAU, 18, _lit(Color(1.0, 0.93, 0.72, 0.85)), 1.0)
+		overlay.draw_texture_rect_region(art[0],
+			Rect2(c - Vector2(PIP_GLYPH, PIP_GLYPH) / 2.0, Vector2(PIP_GLYPH, PIP_GLYPH)),
+			art[1], _lit(Color(1, 1, 1, 0.96)))
+		# The tail, so the bubble belongs to the thing under it rather than
+		# hovering over the farm in general.
+		overlay.draw_colored_polygon(PackedVector2Array([
+			c + Vector2(-2.2, PIP_R - 0.6), c + Vector2(2.2, PIP_R - 0.6),
+			c + Vector2(0.0, PIP_R + 3.0)]), _lit(Color(0.10, 0.09, 0.16, 0.62)))
+
+	# A — the idle glint: a catch of light travelling across an unused station.
+	# Deliberately **not** daylight-compensated, for the reason the cot's lamp is
+	# not: compensation exists to stop a painted hint going muddy under the tint,
+	# and this is not paint, it is a highlight on a surface. It takes the hour's
+	# colour because a real one would.
+	if _glint_at.x >= 0:
+		var e := t - _glint_start
+		var a := StationPresentation.glint_alpha(e)
+		if a > 0.0:
+			var gr := _station_rect(_glint_at)
+			var s := StationPresentation.glint_sweep(e)
+			var head := gr.position + Vector2(gr.size.x * s, gr.size.y * (0.15 + 0.7 * s))
+			# A four-point star at the head of the sweep, and two dots behind it.
+			var arm: float = 4.2 * a
+			var star := Color(1.0, 0.99, 0.88, 0.9 * a)
+			overlay.draw_line(head - Vector2(arm, 0), head + Vector2(arm, 0), star, 1.0)
+			overlay.draw_line(head - Vector2(0, arm), head + Vector2(0, arm), star, 1.0)
+			overlay.draw_circle(head, 1.3, Color(1, 1, 1, a))
+			for i in 2:
+				var f: float = maxf(0.0, s - 0.16 * (i + 1))
+				var p := gr.position + Vector2(gr.size.x * f, gr.size.y * (0.15 + 0.7 * f))
+				overlay.draw_circle(p, 1.0 - 0.25 * i, Color(1.0, 0.98, 0.85, a * (0.5 - 0.2 * i)))
+	station_draws += 1
+
+
+# [Playtest] The bubble's geometry, in world pixels. A tile is 16, so a radius of
+# 6.5 is a bubble a little smaller than the thing it belongs to — big enough to
+# read across a room at 3x, small enough not to become the object.
+const PIP_R := 6.5
+const PIP_GLYPH := 9.0
+const PIP_LIFT := 5.0
 
 
 # T-27 box 5 and Q-11, in that order. Everything here is presentation: it reads
