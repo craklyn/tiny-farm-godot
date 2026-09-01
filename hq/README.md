@@ -18,6 +18,9 @@ decision inbox parsed live from `docs/DESIGNER_QUEUE.md`.
   serving, live designer-queue parsing, and `/api/chat` which shells out to the
   local `claude` CLI with a per-persona system prompt, read-only repo tools).
 - `static/` — the single-page frontend.
+- `static/vendor/` — vendored third-party libs, fetched once from jsdelivr so the
+  app has no runtime network dependency: `marked` 16.4.1 (MIT, markdown parsing)
+  and `DOMPurify` 3.2.7 (Apache-2.0/MPL-2.0, HTML sanitization) for chat replies.
 - `data/org.json` — org chart + personas (Amazon titles/levels).
 - `data/entities.json` — entity gallery: sprite-sheet frame rects, fps, sounds,
   code refs. Update when a new species/crop/object ships (the Zoo's roster and

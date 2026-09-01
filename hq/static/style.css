@@ -195,7 +195,20 @@ code.ref { background: #1b1710; border: 1px solid var(--line); border-radius: 6p
   border-radius: 8px; padding: 8px 12px; font-size: 14px; font-family: inherit;
 }
 .chat-log { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding: 6px 2px; }
-.msg { max-width: 76%; padding: 10px 14px; border-radius: 12px; line-height: 1.45; white-space: pre-wrap; }
+.msg { max-width: 76%; padding: 10px 14px; border-radius: 12px; line-height: 1.45; }
+.msg p { margin: 8px 0; }
+.msg > *:first-child { margin-top: 0; }
+.msg > *:last-child { margin-bottom: 0; }
+.msg h1, .msg h2, .msg h3, .msg h4 { font-size: 15px; font-weight: 700; color: var(--accent); margin: 12px 0 6px; }
+.msg ul, .msg ol { margin: 8px 0 8px 22px; }
+.msg li { margin: 3px 0; }
+.msg a { color: var(--blue); }
+.msg blockquote { border-left: 3px solid var(--line); padding-left: 10px; margin: 8px 0; color: var(--muted); }
+.msg table { border-collapse: collapse; margin: 8px 0; display: block; overflow-x: auto; }
+.msg th, .msg td { border: 1px solid var(--line); padding: 4px 10px; font-size: 13.5px; }
+.msg code { background: #1b1710; border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; font-size: 13px; }
+.msg pre { background: #1b1710; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin: 8px 0; overflow-x: auto; }
+.msg pre code { background: none; border: 0; padding: 0; }
 .msg.user { align-self: flex-end; background: #3a4a2d; }
 .msg.them { align-self: flex-start; background: var(--panel); border: 1px solid var(--line); }
 .msg .who { font-size: 11px; color: var(--muted); margin-bottom: 4px; font-weight: 600; }

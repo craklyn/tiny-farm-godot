@@ -17,6 +17,17 @@ async function api(path) {
 function h(html) { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content; }
 function esc(s) { return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 
+/* Markdown for chat replies: marked (parser) + DOMPurify (sanitizer), both
+   vendored in static/vendor/. Falls back to escaped plain text if either is
+   missing. */
+function md(src) {
+  const text = String(src ?? "");
+  if (window.marked && window.DOMPurify) {
+    return DOMPurify.sanitize(marked.parse(text, { breaks: true, gfm: true }));
+  }
+  return `<p>${esc(text).replace(/\n/g, "<br>")}</p>`;
+}
+
 /* ---------------- sprite animator ---------------- */
 const sheets = {};
 function getSheet(src) {
@@ -372,7 +383,7 @@ async function renderChat(toId) {
   const hist = chatHistories[to] ||= [];
   const draw = () => {
     log.replaceChildren(...hist.map(m => h(`<div class="msg ${m.role === "user" ? "user" : "them"}">
-      ${m.role !== "user" ? `<div class="who">${esc(m.name || cur.name)}</div>` : ""}${esc(m.text)}</div>`).firstElementChild));
+      ${m.role !== "user" ? `<div class="who">${esc(m.name || cur.name)}</div>` : ""}${md(m.text)}</div>`).firstElementChild));
     log.scrollTop = log.scrollHeight;
   };
   draw();
