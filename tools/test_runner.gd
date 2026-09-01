@@ -81,6 +81,7 @@ func _run_scenarios() -> void:
 	await _scenario_z_a_bed_button()
 	await _scenario_aa_the_yard_is_home()
 	await _scenario_ab_the_stations_present_themselves()
+	await _scenario_ac_the_zoo()
 
 func _wait_until(pred: Callable, max_frames: int) -> bool:
 	for i in max_frames:
@@ -2455,3 +2456,165 @@ func _scenario_ab_the_stations_present_themselves() -> void:
 # The gauge's full height, from the HUD's own metrics: 22px tall with a 1px lip
 # top and bottom. Spelled once here so the assertion above cannot drift from it.
 const HUD_GAUGE_FULL := 20.0
+
+
+func _scenario_ac_the_zoo() -> void:
+	# T-33, the designer 2026-09-01: a door onto the entities, because the whole
+	# bestiary ships behind `PER_DAY := 0` and nobody has ever seen a rabbit.
+	#
+	# Two things are worth an integration scenario rather than a unit test. The
+	# first is that the door *opens onto a farm that renders* — every species
+	# through the sim, out the other side as a sprite, with a clock running. The
+	# second is Scenario K's hazard, inherited whole: a second world running over
+	# the player's own state would spend her energy and her seeds while she was
+	# looking at a debug panel. The zoo is a bigger version of the attract loop, so
+	# it gets the attract loop's proof.
+	print("\n--- Scenario AC: the zoo, and it cannot touch the player's farm (T-33) ---")
+
+	# The door itself. Debug gate, same row as the Sound Test and the Look Lab.
+	var title = load("res://ui/title_screen.tscn").instantiate()
+	add_child(title)
+	await get_tree().process_frame
+	_assert(_find_button(title, "ZooButton") != null,
+		"the title screen offers 'Zoo' beside 'Sound Test' and 'Look Lab'")
+	_assert(_find_button(title, "SoundTestButton") != null
+			and _find_button(title, "LookLabButton") != null,
+		"and the doors that were already there are still there")
+	title.queue_free()
+	await get_tree().process_frame
+
+	var live_before := _live_fingerprint()
+	var files_before: Array = []
+	for path in [GameState.save_path, GameState.replay_path, GameState.trace_path]:
+		files_before.append(FileAccess.file_exists(path))
+
+	var zoo = load("res://ui/zoo_screen.tscn").instantiate()
+	add_child(zoo)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	zoo.running = false   # the clock is pumped by hand below, so the ticks are countable
+
+	var zfarm = zoo.farm
+	_assert(zfarm != null and zfarm.sim != null, "the zoo brought its own farm and SimWorld")
+	_assert(zfarm.sim != main_scene.farm.sim, "which is not the played farm's")
+	_assert(zoo.gs != null and zoo.gs != GameState,
+		"and a DETACHED GameState, not the singleton — Scenario K's whole hazard")
+	_assert(zoo.player != null and zoo.player.gs == zoo.gs and zoo.player.name == "Player",
+		"the farmer it stands up spends that detached state, at the name farm.gd looks up")
+	_assert(zfarm.replay == null and zfarm.trace == null,
+		"it records no replay and no session trace — nothing here can reach a save slot")
+	_assert(zfarm.sim.actors.keys() == [SimWorld.ACTOR_PLAYER],
+		"and starts with the farmer and nobody else")
+
+	# One of everything, through the panel's own buttons.
+	var offered := 0
+	for species in Zoo.roster():
+		if _find_button(zoo, "Zoo_%s" % species) != null:
+			offered += 1
+	_assert(offered == Zoo.roster().size(),
+		"the roster panel offers a button per species (%d/%d)" % [offered, Zoo.roster().size()])
+
+	var drawn_species := {}
+	for species in Zoo.roster():
+		var button := _find_button(zoo, "Zoo_%s" % species)
+		if button != null:
+			button.pressed.emit()
+	await get_tree().process_frame
+	var census: Dictionary = Zoo.census(zfarm.sim)
+	_assert(census.size() == Zoo.roster().size(),
+		"tapping every button puts every species in the world (%d/%d)"
+			% [census.size(), Zoo.roster().size()])
+	for species in census:
+		_assert(int(census[species]) == zfarm.sim.actors_of_species(String(species)).size(),
+			"the census line agrees with the registry for %s" % species)
+
+	# Sprites, which is the half a unit test cannot see.
+	for id in zfarm.sim.actors.keys():
+		var actor_id := String(id)
+		if actor_id == SimWorld.ACTOR_PLAYER:
+			continue
+		if is_instance_valid(zfarm.actor_nodes.get(actor_id, null)):
+			drawn_species[zfarm.sim.species_of(actor_id)] = true
+	_assert(drawn_species.size() == Zoo.roster().size(),
+		"and every one of them got a sprite (%d/%d species drawn)"
+			% [drawn_species.size(), Zoo.roster().size()])
+	for species in Zoo.roster():
+		_assert(not Zoo.icon_of(species).is_empty(),
+			"%s's button resolved to a real cell of a real sheet" % species)
+
+	# 200 ticks with the whole bestiary awake, in the real scene, drawing.
+	var tick_before: int = zfarm.sim.clock.tick
+	for i in 200:
+		zoo.pump(0.1)
+		if i % 40 == 0:
+			await get_tree().process_frame
+	_assert(zfarm.sim.clock.tick == tick_before + 200,
+		"200 ticks pass with everything running (%d)" % (zfarm.sim.clock.tick - tick_before))
+	_assert(zfarm.sim.has_actor(SimWorld.ACTOR_PLAYER), "and the farmer is still standing there")
+
+	# The scent tint: zoo-only, magenta, and O(marks) rather than O(map).
+	_assert(not zoo.overlay.enabled, "the trail tint is off until it is asked for")
+	var marks: Array[Vector2i] = [Vector2i(6, 6), Vector2i(7, 6), Vector2i(8, 6)]
+	for t in marks:
+		zfarm.sim.scent.deposit(Scent.TRAIL, t, 12.0, zfarm.sim.clock.tick)
+	_assert(zoo.toggle_trail(), "and toggles on")
+	zoo.overlay._refresh()
+	_assert(zoo.overlay.marked().size() == zfarm.sim.scent.cell_count(Scent.TRAIL),
+		"it reads exactly the field's written cells (%d), never the map"
+			% zoo.overlay.marked().size())
+	for t in marks:
+		_assert(t in zoo.overlay.marked(), "including %s" % t)
+	var drew: int = zoo.overlay.draws
+	for i in 4:
+		zfarm.queue_redraw()
+		await get_tree().process_frame
+	_assert(zoo.overlay.draws > drew,
+		"and the tint block draws to completion, frame after frame (%d)"
+			% (zoo.overlay.draws - drew))
+	_assert(not zoo.toggle_trail(), "and toggles back off")
+
+	# Time controls.
+	_assert(zoo.cycle_speed() == 2 and zoo.cycle_speed() == 4 and zoo.cycle_speed() == 1,
+		"the speed toggle cycles 2x, 4x and back to 1x")
+	var sprinkler_id: String = zfarm.sim.actors_of_species(SpeciesDefs.SPRINKLER)[0]
+	var covered: Array[Vector2i] = SprinklerBrain.coverage(zfarm.sim, sprinkler_id)
+	for t in covered:
+		zfarm.sim.set_tile_state(t.x, t.y, "growing", "wheat")
+		zfarm.sim.tiles[t.y][t.x]["watered_today"] = false
+	var day_before: int = int(zoo.gs.day)
+	var turn: Dictionary = zoo.turn_day()
+	_assert(turn.get("ok", false) and int(zoo.gs.day) == day_before + 1,
+		"the day-turn button turns the zoo's day (%d)" % int(zoo.gs.day))
+	_assert(String(zoo.gs.weather) == "sunny",
+		"and forces sunny, so a rainy roll cannot wash the trail he opened the tint to see")
+	var wet := 0
+	for t in covered:
+		if zfarm.sim.tiles[t.y][t.x]["watered_today"]:
+			wet += 1
+	_assert(wet == covered.size(),
+		"the sprinkler fires on it (%d of %d tiles wet)" % [wet, covered.size()])
+
+	# Clear.
+	var gone: int = zoo.clear_zoo()
+	await get_tree().process_frame
+	_assert(gone > 0 and zfarm.sim.actors.keys() == [SimWorld.ACTOR_PLAYER],
+		"clear empties the zoo (%d removed) and leaves the farmer" % gone)
+	var sprites_left := 0
+	for id in zfarm.actor_nodes.keys():
+		if is_instance_valid(zfarm.actor_nodes[id]):
+			sprites_left += 1
+	_assert(sprites_left == 0, "and the sprites went with them (%d left)" % sprites_left)
+
+	# The whole point: none of that touched the player's farm.
+	_assert(_live_fingerprint() == live_before,
+		"the live GameState is byte-identical after a full session in the zoo")
+	var idx := 0
+	for path in [GameState.save_path, GameState.replay_path, GameState.trace_path]:
+		_assert(FileAccess.file_exists(path) == files_before[idx],
+			"the zoo created no file at %s" % path)
+		idx += 1
+	_assert(main_scene.farm.sim.has_actor(SimWorld.ACTOR_PLAYER),
+		"and the played farm is still the played farm")
+
+	zoo.queue_free()
+	await get_tree().process_frame

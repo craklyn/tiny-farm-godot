@@ -263,6 +263,12 @@ touches the volume. The complaint is that the cue says "yes" and never says *to 
   lines and a designer wondering which menu the thing he wants is under. Debug builds
   only, like the Sound Test. Every pick lives on a static, so it survives the trip to the
   title screen and back and `GameState.reset()` cannot wipe it.
+  *Cross-reference, 2026-09-01: **T-33's Zoo joins that row as the third debug door** —
+  same `OS.is_debug_build()` gate, same corner of the title screen. It is a scene change
+  rather than a panel, because what it opens is a second farm with a clock of its own and
+  the attract loop is already running one behind this menu; the debug surfaces are now
+  Sound Test (Q-31), Look Lab (T-27/T-28) and Zoo (T-33), and that is where a new one
+  goes.*
 - **D-8 held, treatment by treatment.** `StationPresentation` is pure static over sim
   reads — no Node, no autoload, no `Input`, and no randomness of its own. The unit suite
   asserts the world is byte-identical after asking every treatment what to draw, nine
@@ -463,6 +469,91 @@ true of soil as well as of chores.
   critter, the yard has neither, and a stomp leaves the ground alone by design — and
   guarding an unreachable path would be adding a rule to answer nobody's question. Named
   here so the next person who *can* reach it knows it was seen.
+
+**T-33 — The Zoo** · designer directive, 2026-09-01 · ✅ **done 2026-09-01**
+> *"Some sort of way for us to experience the new entities in the game. Either a debug
+> world (like our sound debug) or another 'zoo' of the entities we've created, and a way
+> to select or add them in a useful way just to see them doing their thing in action."*
+
+*The whole M2.5 bestiary ships behind `PER_DAY := 0` and the bot behind Q-56, so until
+now the only way anyone had seen a rabbit was by reading a test's assertions. The zoo is
+the door that fixes that.*
+
+- [x] **The roster is enumerated, never listed.** `Zoo.roster()` is `SpeciesDefs.ids()`
+      minus the farmer, in the table's own order, and that is the load-bearing decision
+      rather than a tidy one: a bestiary that grows by a row a work item cannot have a
+      hand-written panel beside it, because the row that gets forgotten is exactly the one
+      nobody has looked at. Add a species row and it appears in the panel, with its
+      sprite, on the next run — `test_zoo` holds the identity so it cannot drift. Twelve
+      species today.
+- [x] **Each species enters the way it really enters** — `CrowBrain.send`,
+      `AntScoutBrain.send`, `AntForagerBrain.raise_column`, `Brain.arrive` (the five in
+      `SimWorld.visitors()`, one call for all of them), `BotBrain.deploy`, and a plain
+      `spawn_actor` for the three that are simply placed. The alternative — one
+      `spawn_actor` with a hand-written `extra` per species — would have been a second
+      copy of every brain's initial state, in a debug file, drifting quietly from the real
+      one until the zoo showed animals that behave like nothing in the game. **If an
+      animal cannot be got in with the game's own machinery, the zoo is showing a lie.**
+- [x] **"One more" needed a trick, and it is confined to one function.** The real entry
+      points refuse a second of anything — one crow, one raid, one rabbit — which is right
+      for a farm and wrong for a zoo. So `Zoo.spawn` **parks** the ones already registered
+      (lifts them out of `world.actors`), calls the real entry point into the gap, renames
+      the newcomer off the canonical id if it landed on a parked one (`rabbit_z2`), puts
+      the parked entries back, and reschedules everybody through the sim's own public
+      `schedule_all_brains()`. No brain, no gateway and no species row knows the zoo
+      exists.
+- [x] **§ No changes to `systems/sim/`, and none were needed.** The zoo consumes: it
+      generates from its own `WorldLayout`-shaped dictionary (a flat open field, no
+      obstacles, no boundaries, no gates), stocks a mixed crop patch, seeds a mole's row,
+      lays two acorns, and sets the detached state's calendar to day 12 so every readiness
+      gate is already past. The one accessor that might have been added — "list the scent
+      field's written cells" — turned out to exist already as `Scent.to_save()`, so the
+      overlay reads that instead.
+- [x] **Its own world and its own detached `GameState`**, the attract loop's pattern
+      (T-16/Q-40) and its hazard: a second world driven over the player's own state
+      drained her energy and her wheat while she was still looking at a menu.
+      `farm.replay` and `farm.trace` are left null, so `world/farm.gd:_record` writes
+      nowhere, and nothing in the scene calls `SaveGame` — **the zoo cannot reach a real
+      save slot because it never learns what one is.** Scenario AC fingerprints the live
+      singleton and the three real file paths across a full session in there.
+- [x] **Time controls**: a day-turn button (the sprinkler's whole life is the day turn, so
+      without one the machine is a statue), and a 1×/2×/4× tick-speed toggle. The day turn
+      forces **sunny** rather than rolling, because a rainy turn washes every scent channel
+      farm-wide (Q-58) and would erase the trail somebody opened the tint to look at.
+- [x] **The scent tint**, in `design/09`'s reserved magenta — the pest-pheromone hue, which
+      exists precisely because no ambient tile in the game is that colour. A raid is the
+      one mechanic whose substance is invisible: without it a column reads as three ants
+      walking in a suspiciously straight line. **P-10's guardrail binds a debug surface
+      too** — the tile list is the field's *written cells* (`Scent.to_save()`, O(marks)),
+      refreshed on a 0.2s throttle, and the per-frame cost is one `Scent.read()` per mark.
+      It draws through `world/farm.gd`'s own render queue as a child of the sprite layer
+      with a `y` below every real entry, so the tint sits *under* the ants that laid it and
+      `farm.gd` needed no change at all.
+- [x] **Sprites beat words where cheap** (S-7 does not bind a developer's surface, but the
+      picture was free): each button wears the cell of the sheet the *farm* would draw that
+      animal from, read through `farm.gd`'s own `ACTOR_RENDERERS`, so there is one answer
+      to "what does this look like". A species with a row and no art gets a text-only
+      button, which is the honest state — and `test_zoo` asserts the portrait table and the
+      renderer table agree exactly, so art landing and the zoo noticing are one step.
+- **Two things worth knowing.** Repeat-tapping *Ant Forager* while a column is already out
+  can hand the new column the old one's ids (`ant_forager_0…` are fixed, and
+  `raise_column` was written under the guarantee that a raid is fully gone before the next
+  one starts); the parked entries are renamed rather than lost, so nothing is destroyed,
+  but two simultaneous columns is a zoo-only state no farm can reach. And the **neighbour
+  stands still** — her brain is `cold_open`, which is deliberately not on the tick clock
+  (its pacing is a camera's, not the sim's), so in the zoo she is a sprite to look at
+  rather than a thing to watch.
+- Covered by `tests/test_runner.gd:test_zoo` (122 assertions: the roster identity, every
+  species reaching the registry with its own brain bound, the column, the bot's config,
+  the crow choosing an acorn, the census, 400 ticks with the whole bestiary awake, a
+  second of everything through the park-and-rename path, the day turn firing the
+  sprinkler, and clear/refill) and `tools/test_runner.gd` **Scenario AC** (the door on the
+  title screen, the detached state and the three untouched file paths, every button
+  producing a sprite in the real scene, 200 ticks, the tint reading exactly the written
+  cells and drawing to completion, the speed toggle, the day turn, and clear taking the
+  sprites with it). **1679 unit / 405 integration, both green; robot session
+  replay-verified, benchmark 105,132× (gate ≥100,000×), and the visual baseline
+  untouched — the zoo is behind the title screen, so it cannot be in the frame.**
 
 **T-29 — The day wears a clock** · Q-38's rider, filed 2026-08-31 · **scheme
 approved 2026-09-01, building**

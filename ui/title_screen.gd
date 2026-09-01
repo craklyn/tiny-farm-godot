@@ -148,6 +148,11 @@ func _build_ui() -> void:
 		# One panel for every open look (T-27's cot, T-28's two station axes),
 		# because a second rig would mean a second place to remember.
 		root_box.add_child(_make_look_lab_button())
+		# ...and the third door on the same row (T-33). Not a panel over this
+		# screen like the other two, because what it opens is a *farm*: a second
+		# world with a clock of its own, which cannot live behind a menu that is
+		# already sitting on one. Everything about it is `ui/zoo_screen.gd`.
+		root_box.add_child(_make_zoo_button())
 
 
 func _big_button_style(bg: Color, border: Color) -> StyleBoxFlat:
@@ -645,6 +650,40 @@ func _open_look_lab() -> void:
 	box.add_child(back)
 
 	back.grab_focus()
+
+
+# --- The zoo (debug builds) ---------------------------------------------------
+#
+# T-33, the designer 2026-09-01: *"Some sort of way for us to experience the new
+# entities in the game... a 'zoo' of the entities we've created, and a way to
+# select or add them in a useful way just to see them doing their thing."*
+#
+# The whole bestiary ships behind `PER_DAY := 0`, so nobody has ever seen a rabbit
+# outside a test's assertions. This is that door, and it is deliberately the Sound
+# Test's and the Look Lab's door — same gate, same row, same corner — because there
+# is one place in this game where things go to be looked at.
+#
+# It changes scene rather than opening a panel: the zoo is a second farm with a
+# clock of its own, and the attract loop is already running one behind this menu.
+
+func _make_zoo_button() -> Button:
+	var btn := Button.new()
+	btn.name = "ZooButton"
+	btn.text = "Zoo"
+	btn.custom_minimum_size = Vector2(130, 34)
+	btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	btn.add_theme_font_size_override("font_size", 13)
+	_style_button(btn, Color(0.13, 0.24, 0.30), Color(0.45, 0.62, 0.70), Color(0.18, 0.32, 0.40))
+	btn.pressed.connect(_open_zoo)
+	return btn
+
+
+func _open_zoo() -> void:
+	if _confirm_open:
+		return
+	InputManager.has_click = false
+	AudioManager.play_sfx("click")
+	get_tree().change_scene_to_file("res://ui/zoo_screen.tscn")
 
 
 # --- New Farm confirmation ----------------------------------------------------

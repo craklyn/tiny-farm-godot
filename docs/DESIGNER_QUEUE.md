@@ -657,6 +657,29 @@ trace actually says, because several of these looked like bugs and were not.*
   The yard is most of the early screen for the first several minutes, so this is a
   colour you will be staring at longer than any other in the game — which is the whole
   argument for the quiet end and the reason it is still worth your eye rather than mine.
+- **Q-71 (Ruling)** **Does the Zoo stay a debug door, or become something the player
+  gets?** T-33 built what you asked for: a title-screen door onto a flat field with a
+  button per species, spawning each one the way its real lifecycle does. It is behind
+  `OS.is_debug_build()` beside the Sound Test and the Look Lab, which is the right place
+  for a tool. But what it turned out to be is close to a **field guide** — the picture, the
+  name, and the animal doing its thing — and phase 1's players are pre-readers who will
+  meet a rabbit exactly once, at speed, in the middle of something else.
+  **The three shapes, cheapest first.** *(a) Leave it a tool.* Nothing to build, nothing
+  to teach, no S-7 problem; the knowledge stays with us. *(b) A bestiary page that fills
+  in.* The same panel, but a species' cell is blank until it has been *seen* in a real
+  game — a collection, which is a strong pull for a small child and costs one saved set of
+  flags. *(c) A sandbox the player can open.* The zoo as it stands, in the shipping build.
+  Cheapest of all to ship and the one I would argue against: it hands the player the
+  answer to every pest before the pest is a question, and P-4's pacing is built on
+  meeting things in order.
+  **Recommendation: (a) now, and hold (b) as an M3 candidate** — it wants the critters to
+  actually debut first, which is the `PER_DAY` ruling below and not this one. Nothing is
+  foreclosed either way; the roster derives itself from `SpeciesDefs`, so a player-facing
+  version is a different panel over the same list.
+  *Related and still open: **Q-17** asks when the scent overlay is taught. T-33 is the
+  first thing in the game that draws one (magenta, `design/09`'s reserved hue, debug-only)
+  — so if you want to look at the overlay question with your eyes rather than in the
+  abstract, the Zoo's "Trail" button is now where to do it.*
 
 ## M2.5 — the actor system (filed 2026-08-31, from the entity brainstorm)
 

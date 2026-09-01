@@ -85,6 +85,7 @@ func _init() -> void:
 	test_cot_halo()
 	test_cot_presentation()
 	test_station_presentation()
+	test_zoo()
 
 	print("")
 	print(String("=").repeat(60))
@@ -8374,3 +8375,147 @@ func test_station_presentation() -> void:
 	_assert(StationPresentation.discovery == StationPresentation.DISCOVERY_OFF
 			and StationPresentation.satisfied == StationPresentation.SATISFIED_OFF,
 		"and the build's defaults, restored, are OFF — T-28 stays the designer's to tick")
+
+
+# --- The zoo (T-33) -----------------------------------------------------------
+#
+# The zoo's job is to be the one surface that cannot fall behind the bestiary, so
+# the first assertion here is the only one that really matters: **the roster is
+# `SpeciesDefs.ids()`**, not a list somebody wrote out beside it. Everything else
+# proves that the door it opens actually leads somewhere — every species reaching
+# the registry, with its own brain bound, through its own real entry point.
+func test_zoo() -> void:
+	print("\n--- The zoo (T-33) ---")
+
+	# 1. The roster cannot drift from the table.
+	var expected: Array[String] = []
+	for raw in SpeciesDefs.ids():
+		if not String(raw) in Zoo.EXCLUDED:
+			expected.append(String(raw))
+	_assert(Zoo.roster() == expected,
+		"the roster is SpeciesDefs.ids() minus the exclusions, in the table's order (%d species)"
+			% Zoo.roster().size())
+	_assert(not SpeciesDefs.PLAYER in Zoo.roster(),
+		"the farmer is scenery here, not an exhibit")
+	_assert(Zoo.roster().size() == SpeciesDefs.ids().size() - Zoo.EXCLUDED.size(),
+		"and nothing else is quietly filtered out — a new row appears with no edit to the panel")
+	for species in Zoo.roster():
+		_assert(SpeciesDefs.has(species) and Brains.has(SpeciesDefs.brain_of(species)),
+			"%s has a species row and a brain this build knows" % species)
+	# The picture and the renderer are one decision, so the two tables agree
+	# exactly: art that exists has a portrait, art that does not has neither.
+	var renderers: Dictionary = Zoo.renderers()
+	for species in Zoo.roster():
+		_assert(Zoo.has_art(species) == renderers.has(species),
+			"%s has a button portrait exactly when the farm has a sprite for it" % species)
+
+	# 2. The field.
+	var gs = load("res://systems/game_state.gd").new()
+	gs.reset()
+	var world := SimWorld.new()
+	Zoo.furnish(world, gs)
+	_assert(world.actors.keys() == [SimWorld.ACTOR_PLAYER],
+		"a furnished zoo holds the farmer and nobody else — the census starts at zero")
+	_assert(world.count_planted() >= 4 and world.count_acorns() >= 1,
+		"stocked: %d crops in the ground and %d acorns, so every mouth finds its own food"
+			% [world.count_planted(), world.count_acorns()])
+	var seeded := 0
+	for t in Zoo.SOWN:
+		if world.has_seed(t.x, t.y):
+			seeded += 1
+	_assert(seeded == Zoo.SOWN.size(), "and seed in the ground for a mole to steal (%d tiles)" % seeded)
+	_assert(gs.play_day() >= 6 and gs.total_harvests() >= SimWorld.CROW_MIN_HARVESTS,
+		"on a calendar every readiness gate is already past (play day %d)" % gs.play_day())
+	var flat := true
+	for ty in range(1, SimWorld.MAP_HEIGHT - 1):
+		for tx in range(1, SimWorld.MAP_WIDTH - 1):
+			if String(world.tiles[ty][tx]["state"]).begins_with("obstacle"):
+				flat = false
+	_assert(flat, "the field is flat — nothing is in the way of a walk, a hop or a flight")
+
+	# 3. Every species gets in, through its own entry point, with its brain bound.
+	var born_by_species: Dictionary = {}
+	for species in Zoo.roster():
+		var born := Zoo.spawn(world, gs, species, 0)
+		born_by_species[species] = born
+		_assert(not born.is_empty(), "%s enters the zoo" % species)
+		for id in born:
+			_assert(world.species_of(id) == species,
+				"  %s is registered as a %s" % [id, species])
+			_assert(Brains.of_actor(world, id) == Brains.of_species(species),
+				"  and thinks with its own brain")
+	_assert(born_by_species[SpeciesDefs.ANT_FORAGER].size() == SimWorld.ANT_COLUMN_SIZE,
+		"the forager button raises a whole column (%d), because that is how a forager exists"
+			% SimWorld.ANT_COLUMN_SIZE)
+	_assert(world.actor(born_by_species[SpeciesDefs.BOT][0])["extra"]["config"]
+			== BotBrain.CONFIGS[0],
+		"the first bot is a %s bot" % BotBrain.CONFIGS[0])
+	_assert(String(world.actor(SimWorld.ACTOR_CROW)["extra"].get("kind", "")) == "acorn",
+		"and the crow goes for an acorn, which is the T-15 rule and not a zoo special case")
+
+	# 4. The census reports what the registry holds.
+	var census := Zoo.census(world)
+	var counted := 0
+	for species in census:
+		counted += int(census[species])
+		_assert(int(census[species]) == world.actors_of_species(String(species)).size(),
+			"census agrees with the registry for %s" % species)
+	_assert(counted == world.actors.size() - 1,
+		"and covers everybody but the farmer (%d)" % counted)
+
+	# 5. It runs. 200 ticks of every brain in the game deciding at once.
+	var before_tick := world.clock.tick
+	world.advance_ticks(200, gs)
+	_assert(world.clock.tick == before_tick + 200, "200 ticks pass with the whole bestiary awake")
+	_assert(world.has_actor(SimWorld.ACTOR_PLAYER), "and the farmer is still standing there")
+
+	# 6. One more of each — the interaction the roster exists for. The real entry
+	#    points refuse a second of anything, so this is the park-and-rename path.
+	for species in Zoo.roster():
+		var again := Zoo.spawn(world, gs, species, 1)
+		_assert(not again.is_empty(), "a second %s can be added" % species)
+		for id in again:
+			_assert(world.has_actor(id) and world.species_of(id) == species,
+				"  %s joined without evicting the first" % id)
+	_assert(world.actors_of_species(SpeciesDefs.RABBIT).size() >= 2,
+		"two rabbits on one farm, which no real game would ever allow")
+	world.advance_ticks(200, gs)
+
+	# 7. A day turn: the machine's whole life, and everybody wakes rested.
+	#
+	# The patch is re-sown under the machine first, because four hundred ticks of
+	# a full bestiary is exactly long enough for the mouths to have eaten what it
+	# was standing over — which is the zoo working, not the sprinkler failing.
+	var sprinkler_id: String = world.actors_of_species(SpeciesDefs.SPRINKLER)[0]
+	var covered: Array[Vector2i] = SprinklerBrain.coverage(world, sprinkler_id)
+	for t in covered:
+		world.set_tile_state(t.x, t.y, "growing", "wheat")
+		world.tiles[t.y][t.x]["watered_today"] = false
+	# Somebody with no day-turn job of their own, so "rested" is observable after
+	# the turn rather than immediately spent (the sprinkler waters nine tiles out
+	# of its own meter, which is the point of the meter).
+	var hen: String = world.actors_of_species(SpeciesDefs.CHICKEN)[0]
+	world.set_actor_energy(hen, 1)
+	world.apply_action({ "verb": "sleep", "actor": "world", "weather": "sunny" }, gs)
+	var wet := 0
+	for t in covered:
+		if world.tiles[t.y][t.x]["watered_today"]:
+			wet += 1
+	_assert(wet == covered.size(),
+		"the day turn fires the sprinkler over its whole radius (%d of %d tiles wet)"
+			% [wet, covered.size()])
+	_assert(world.energy_of(hen) == SimWorld.ACTOR_MAX_ENERGY,
+		"and everybody wakes rested")
+
+	# 8. Clear.
+	var gone := Zoo.clear(world)
+	_assert(gone > 0 and world.actors.keys() == [SimWorld.ACTOR_PLAYER],
+		"clear empties the zoo (%d removed) and leaves the farmer" % gone)
+	_assert(Zoo.census(world).is_empty(), "so the census is empty again")
+
+	# 9. And it can be refilled from empty, which is the loop a designer actually
+	#    does: add, watch, clear, add something else.
+	_assert(not Zoo.spawn(world, gs, SpeciesDefs.KANGAROO, 0).is_empty(),
+		"and the zoo refills after a clear")
+
+	gs.free()
