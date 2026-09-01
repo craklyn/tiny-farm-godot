@@ -20,8 +20,13 @@ func _ready() -> void:
 	# The playtest readout (ui/hud.gd PLAYTEST_NOTES) is a scaffold, not the game.
 	# Baking four lines of debug text into the baseline would make this test fail
 	# the day it is switched off for a release — exactly when it should be quiet.
+	# Its collapse toggle (the designer, 2026-09-01) is the same scaffold and goes
+	# with it, for the same reason: a debug control in the baseline is a debug
+	# control this test would start demanding.
 	if main_scene.hud != null and main_scene.hud.notes_label != null:
 		main_scene.hud.notes_label.visible = false
+		if main_scene.hud.notes_toggle != null:
+			main_scene.hud.notes_toggle.visible = false
 		await get_tree().process_frame
 
 	var img: Image = get_viewport().get_texture().get_image()
