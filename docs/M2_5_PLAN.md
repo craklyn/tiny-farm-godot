@@ -1724,6 +1724,22 @@ question about sim state and a worm has no idle animation.
     pass on a quiet machine, on this branch and on the commit before it (checked by stashing).
     They are input/frame-timing races in scenarios that press a key and wait, not regressions
     from this WI. Final runs: **207 / 0 twice in a row.**
+    *Resolved 2026-08-31, and the diagnosis above was wrong.* Reproduced under artificial
+    CPU contention (suite plus three spinners pinned to one core; scenario W's cot-halo
+    asserts fell the same way), then made deterministic: the cause is not the waits but
+    **the hen's egg**. Every day turn gives her a 50% roll to lay on a SimRng-drawn tile
+    from everywhere reachable (Q-10), the suite turns many days (the cold open's included),
+    and an egg resolves to "collect" ahead of anything else on its tile (T-30's
+    object-wins rule) — so a staged tile with an egg on it answers a press or a tap with
+    the egg, and the scenario fails looking exactly like a lost input. Load merely re-rolls
+    where the eggs land, by changing how much sim time each frame carries; a quiet machine
+    lands them on the same harmless tiles every run. Planting an egg on scenario E's
+    harvest tile reproduced its three documented failures on demand. The fix is in the
+    harness, not the game (the hen is behaving as designed): scenarios stage tiles through
+    `_stage_tile`, which claims the object layer along with the state. The fragile waits
+    found on the way were converted to bounded condition-polls in the same change, and the
+    suite ran green five times in a row under the same contention that reproduced the
+    failure.
 
 **For WI-9 (bots) and WI-12 (the benchmark).**
 *For the bot worker:* (i) the entity system is now exercised by every capability it has, so

@@ -90,11 +90,39 @@ func _wait_until(pred: Callable, max_frames: int) -> bool:
 		await get_tree().process_frame
 	return false
 
+# The action lock, waited out by condition on both edges rather than assumed to
+# appear within exactly one frame. The begin-poll is bounded because instant
+# verbs (sell, refill, collect) and refused actions never raise is_acting at
+# all — a handful of frames is the difference between "wait for the swing" and
+# "hang forever on a verb that has no swing".
 func _wait_for_action() -> void:
-	# Give it one frame to register the action and set is_acting = true
-	await get_tree().process_frame
+	for i in 8:
+		await get_tree().process_frame
+		if player.is_acting:
+			break
 	while player.is_acting:
 		await get_tree().process_frame
+
+
+# Stage a tile for a scenario: the state it needs, and **nothing on it**.
+#
+# The under-load flake (M2.5 plan §9 item 12 — scenario E's harvest asserts,
+# scenario H's "night stays soft", W's cot halo) was never a frame-timing race
+# in the waits. It is the hen: every day turn gives her a 50% roll to lay an
+# egg on a SimRng-drawn tile from *everywhere reachable* (Q-10, ChickenBrain),
+# and the suite turns many days. An egg resolves to "collect" ahead of anything
+# else on the tile (the T-30 object-wins rule), so a staged tile with an egg on
+# it answers a tap or a press with the egg instead of the scenario's own setup —
+# and the whole scenario fails on what looks like a lost input. Load matters
+# only because it shifts how much sim time each frame carries, which moves the
+# hen and her RNG stream, re-rolling where the eggs land; a quiet machine lands
+# them on the same harmless tiles every run. So: a scenario that stages a tile
+# claims the object layer too, and the lottery is out of the suite without
+# touching the hen, who is behaving exactly as designed.
+func _stage_tile(tx: int, ty: int, state: String, crop_type: String = "") -> void:
+	farm.set_tile_state(tx, ty, state, crop_type)
+	if farm.get_object(tx, ty) != "":
+		farm.sim.set_object(tx, ty, "")
 
 func _scenario_a() -> void:
 	print("\n--- Scenario A: Movement & Collisions ---")
@@ -104,7 +132,7 @@ func _scenario_a() -> void:
 	_assert(spawn_pos.distance_to(Vector2(2.5 * 16.0, 2.5 * 16.0)) < 1.0, "Player spawned at correct position")
 	
 	# Block the right side with a rock
-	farm.set_tile_state(3, 2, "obstacle_rock")
+	_stage_tile(3, 2, "obstacle_rock")
 	
 	# Press right for 10 frames
 	Input.action_press("move_right")
@@ -143,7 +171,7 @@ func _scenario_b() -> void:
 	# A weed rather than a rock: this scenario is about the energy floor, and a
 	# rock now needs a pickaxe she has not earned (T-9), which would make it a
 	# tool-ownership test wearing an energy test's name.
-	farm.set_tile_state(6, 5, "obstacle_weed")
+	_stage_tile(6, 5, "obstacle_weed")
 	player.facing = "right"
 	player.pos = Vector2(5.5 * 16.0, 5.5 * 16.0)
 
@@ -171,7 +199,7 @@ func _scenario_c() -> void:
 	print("\n--- Scenario C: Farming Loop (Hoe, Plant, Water) ---")
 	
 	# Start on cleared ground
-	farm.set_tile_state(6, 5, "cleared")
+	_stage_tile(6, 5, "cleared")
 	player.pos = Vector2(5.5 * 16.0, 5.5 * 16.0)
 	player.facing = "right"
 	
@@ -200,9 +228,8 @@ func _scenario_c() -> void:
 	GameState.selected_tool = 4 # Watering Can
 	GameState.watering_can_charges = 5
 	Input.action_press("action")
-	await get_tree().process_frame
+	await _wait_for_action()
 	Input.action_release("action")
-	for i in 25: await get_tree().process_frame
 	
 	tile = farm.get_tile(6, 5)
 	_assert(tile.watered_today == true, "Ground watered successfully")
@@ -214,13 +241,17 @@ func _scenario_d() -> void:
 	var initial_day = GameState.day
 	
 	# Plant a second seed but DON'T water it
-	farm.set_tile_state(6, 4, "seeded", "wheat")
+	_stage_tile(6, 4, "seeded", "wheat")
 	var unwatered_tile = farm.get_tile(6, 4)
 	
 	# Sleep through the sim gateway — the same path the live game uses —
 	# overriding the weather roll so growth assertions stay deterministic
 	farm.apply_action({ "verb": "sleep", "actor": "world", "weather": "sunny" }, GameState)
-	for i in 120: await get_tree().process_frame # Wait for fade
+	# There is no fade to wait for: a sleep applied straight at the gateway turns
+	# the day synchronously and starts no day-cycle transition — that is main.gd's
+	# doing, from a cot tap. A few frames of settle; the old 120 were two seconds
+	# of dead wall-clock that load stretched further.
+	for i in 5: await get_tree().process_frame
 	
 	_assert(GameState.day == initial_day + 1, "Day advanced")
 	_assert(GameState.energy == GameState.max_energy, "Energy restored")
@@ -236,7 +267,7 @@ func _scenario_e() -> void:
 	print("\n--- Scenario E: Economy (Harvest, Sell) ---")
 	
 	# Force crop to ready
-	farm.set_tile_state(6, 5, "ready", "wheat")
+	_stage_tile(6, 5, "ready", "wheat")
 	farm.get_tile(6, 5).growth_stage = 3
 	
 	player.pos = Vector2(5.5 * 16.0, 5.5 * 16.0)
@@ -377,7 +408,7 @@ func _scenario_h_daylight() -> void:
 	# (b) spending energy through the real input path moves it
 	var before := tint.color
 	var energy_before := GameState.energy
-	farm.set_tile_state(9, 5, "cleared")
+	_stage_tile(9, 5, "cleared")
 	player.pos = Vector2(8.5 * 16.0, 5.5 * 16.0)
 	player.facing = "right"
 	GameState.selected_tool = 3  # Hoe
@@ -404,7 +435,7 @@ func _scenario_h_daylight() -> void:
 	await get_tree().process_frame
 	_assert(tint.color.is_equal_approx(Daylight.tint_for(0, GameState.max_energy)),
 		"empty energy renders as the twilight stop")
-	farm.set_tile_state(9, 6, "obstacle_weed")
+	_stage_tile(9, 6, "obstacle_weed")
 	player.pos = Vector2(8.5 * 16.0, 6.5 * 16.0)
 	player.facing = "right"
 	GameState.selected_tool = 0  # Hands
@@ -503,7 +534,7 @@ func _scenario_h_daylight() -> void:
 	GameState.set_energy(0)
 	await get_tree().process_frame
 	_assert(hud.clock_label.text == "16:00", "an empty meter parks the clock at 16:00")
-	farm.set_tile_state(9, 6, "obstacle_weed")
+	_stage_tile(9, 6, "obstacle_weed")
 	player.pos = Vector2(8.5 * 16.0, 6.5 * 16.0)
 	player.facing = "right"
 	GameState.selected_tool = 0  # Hands
@@ -555,8 +586,8 @@ func _scenario_i_third_state() -> void:
 
 	GameState.set_energy(GameState.max_energy)
 	GameState.watering_can_charges = GameState.max_watering_can_charges
-	farm.set_tile_state(11, 8, "cleared")
-	farm.set_tile_state(12, 8, "seeded", "wheat")
+	_stage_tile(11, 8, "cleared")
+	_stage_tile(12, 8, "seeded", "wheat")
 	player.pos = Vector2(11.5 * 16.0, 8.5 * 16.0)
 	player.path.clear()
 	player.pending_action = {}
@@ -611,8 +642,8 @@ func _scenario_i_third_state() -> void:
 	#    second. An empty pouch on a tilled tile is the 2026-08-27 silent-refusal
 	#    case, and it must still say what she is missing, in the sim's vocabulary.
 	var mark3: int = farm.trace.entries.size()
-	farm.set_tile_state(11, 8, "cleared")
-	farm.set_tile_state(12, 8, "tilled")
+	_stage_tile(11, 8, "cleared")
+	_stage_tile(12, 8, "tilled")
 	GameState.seeds["wheat"] = 0
 	GameState.seeds["tomato"] = 0
 	GameState.selected_seed_type = "wheat"
@@ -692,7 +723,7 @@ func _scenario_l_menu_holds_world() -> void:
 	# Put her on a known walk so "did she move" is a real question. The sim says
 	# where she is; the node's job is to get its sprite there.
 	for tx in [5, 6, 7]:
-		farm.set_tile_state(tx, 5, "cleared")
+		_stage_tile(tx, 5, "cleared")
 	farm.sim.set_actor_pos(chicken.actor_id, Vector2i(5, 5))
 	chicken.position = Vector2(5 * 16, 5 * 16)
 	await get_tree().process_frame
@@ -738,7 +769,7 @@ func _scenario_l_menu_holds_world() -> void:
 	# `main.gd`'s clock pump, which converts at most MAX_TICKS_PER_FRAME of a long
 	# frame into sim time so a hitch cannot run the world forward either.
 	for tx2 in [6, 7, 8]:
-		farm.set_tile_state(tx2, 5, "cleared")
+		_stage_tile(tx2, 5, "cleared")
 	farm.sim.set_actor_pos(chicken.actor_id, Vector2i(5, 5))
 	chicken.position = Vector2(5 * 16, 5 * 16)
 	farm.sim.set_actor_pos(chicken.actor_id, Vector2i(8, 5))
@@ -833,10 +864,10 @@ func _scenario_n_pick_up_the_axe() -> void:
 	var gate: Vector2i = entry.get("gate", Vector2i(-1, -1))
 	var stand := Vector2i(at.x - 1, at.y)
 
-	farm.set_tile_state(at.x, at.y, "cleared")
+	_stage_tile(at.x, at.y, "cleared")
 	farm.sim.set_object(at.x, at.y, String(entry.get("object", "")))
-	farm.set_tile_state(stand.x, stand.y, "cleared")
-	farm.set_tile_state(gate.x, gate.y, WorldLayout.GATE_CLOSED)
+	_stage_tile(stand.x, stand.y, "cleared")
+	_stage_tile(gate.x, gate.y, WorldLayout.GATE_CLOSED)
 	GameState.tools_owned["axe"] = false
 	GameState.harvest_counts = { "wheat": 0, "tomato": 0 }
 	player.pos = Vector2(stand.x * 16 + 8, stand.y * 16 + 8)
@@ -1216,14 +1247,14 @@ func _scenario_q_crow_is_sim_sent() -> void:
 	GameState.day = maxi(GameState.day, SimWorld.CROW_MIN_DAY)
 	GameState.harvest_counts["wheat"] = maxi(1, int(GameState.harvest_counts.get("wheat", 0)))
 	for tx in range(4, 10):
-		farm.set_tile_state(tx, 8, "seeded", "wheat")
+		_stage_tile(tx, 8, "seeded", "wheat")
 	_assert(GameState.play_day() >= SimWorld.CROW_MIN_DAY and farm.sim.count_planted() >= 3,
 		"the farm is ready for a crow (play-day %d, %d planted)"
 			% [GameState.play_day(), farm.sim.count_planted()])
 
 	GameState.actions_today = 0
 	GameState.crow_schedule = [1] as Array[int]
-	farm.set_tile_state(3, 8, "cleared")
+	_stage_tile(3, 8, "cleared")
 	_assert(not farm.sim.has_actor(SimWorld.ACTOR_CROW), "no crow before its appointment")
 	farm.apply_action({ "verb": "till", "target": Vector2i(3, 8), "actor": "player" }, GameState)
 	_assert(farm.sim.has_actor(SimWorld.ACTOR_CROW),
@@ -1790,8 +1821,8 @@ func _scenario_w_the_cot_presents_itself() -> void:
 		return
 	var below := cot + Vector2i(0, 1)          # (2,2) — the tile she kept hitting
 	var beside := cot + Vector2i(1, 1)         # (3,2) — where she stood while doing it
-	farm.set_tile_state(below.x, below.y, "cleared")
-	farm.set_tile_state(beside.x, beside.y, "cleared")
+	_stage_tile(below.x, below.y, "cleared")
+	_stage_tile(beside.x, beside.y, "cleared")
 	GameState.seeds["wheat"] = 0               # so cleared soil means "till", never "plant"
 
 	# (a) One tap, one day — however many times she taps during the transition.
@@ -1849,7 +1880,7 @@ func _scenario_w_the_cot_presents_itself() -> void:
 	var day2: int = GameState.day
 	GameState.set_energy(0)
 	GameState.selected_tool = 3  # hoe, exactly as the trace recorded
-	farm.set_tile_state(below.x, below.y, "cleared")
+	_stage_tile(below.x, below.y, "cleared")
 	player.pos = Vector2(beside.x * 16 + 8.0, beside.y * 16 + 8.0)
 	player.path.clear()
 	player.pending_action = {}
@@ -1873,7 +1904,7 @@ func _scenario_w_the_cot_presents_itself() -> void:
 	var day3: int = GameState.day
 	GameState.set_energy(GameState.max_energy)
 	GameState.selected_tool = 3
-	farm.set_tile_state(below.x, below.y, "cleared")
+	_stage_tile(below.x, below.y, "cleared")
 	player.pos = Vector2(beside.x * 16 + 8.0, beside.y * 16 + 8.0)
 	player.path.clear()
 	player.pending_action = {}
@@ -1929,7 +1960,7 @@ func _scenario_x_three_looks_for_the_cot() -> void:
 	if cot.x < 0:
 		return
 	var below := cot + Vector2i(0, 1)
-	farm.set_tile_state(below.x, below.y, "cleared")
+	_stage_tile(below.x, below.y, "cleared")
 	GameState.seeds["wheat"] = 0
 
 	# The switch itself. Both doors write the same static, and it is the static —
@@ -2064,8 +2095,8 @@ func _scenario_y_acorns_are_pickable() -> void:
 
 	var stand := Vector2i(6, 6)
 	var nut := Vector2i(7, 6)          # one step east of her, so she is already beside it
-	farm.set_tile_state(stand.x, stand.y, "cleared")
-	farm.set_tile_state(nut.x, nut.y, "cleared")
+	_stage_tile(stand.x, stand.y, "cleared")
+	_stage_tile(nut.x, nut.y, "cleared")
 	farm.sim.set_object(nut.x, nut.y, "acorn")
 	GameState.seeds["wheat"] = 0        # so cleared soil means "till", never "plant"
 	GameState.selected_tool = 3         # hoe in hand: the tap could have meant "till"
@@ -2144,7 +2175,7 @@ func _scenario_z_a_bed_button() -> void:
 	#    there on her own feet, not put her to bed where she stands.
 	GameState.set_energy(GameState.max_energy)
 	var start := Vector2i(6, 5)
-	farm.set_tile_state(start.x, start.y, "cleared")
+	_stage_tile(start.x, start.y, "cleared")
 	player.pos = Vector2(start.x * 16 + 8.0, start.y * 16 + 8.0)
 	player.path.clear()
 	player.pending_action = {}
@@ -2186,7 +2217,7 @@ func _scenario_z_a_bed_button() -> void:
 	#    one tap to undo, exactly like tapping the wrong tile.
 	GameState.set_energy(GameState.max_energy)
 	var elsewhere := Vector2i(8, 7)
-	farm.set_tile_state(elsewhere.x, elsewhere.y, "cleared")
+	_stage_tile(elsewhere.x, elsewhere.y, "cleared")
 	GameState.seeds["wheat"] = 0        # nothing to plant there: a pure walk order
 	GameState.selected_tool = 0
 	player.pos = Vector2(start.x * 16 + 8.0, start.y * 16 + 8.0)
@@ -2197,7 +2228,11 @@ func _scenario_z_a_bed_button() -> void:
 	var day_mid: int = GameState.day
 	bed.pressed.emit()
 	await _wait_until(func(): return not player.path.is_empty(), 300)
-	for i in 40: await get_tree().process_frame
+	# Mid-walk by condition, not by counting frames: under load a frame carries
+	# more wall-clock, and 40 of them could be the whole walk — the retarget then
+	# lands on a farmer already in bed. One tile crossed is provably mid-walk
+	# from anywhere in the yard, however long a frame is.
+	await _wait_until(func(): return player.get_tile_pos() != start, 600)
 	InputManager.click_tile = elsewhere
 	InputManager.has_click = true
 	var retargeted := await _wait_until(func(): return player.approach_target == elsewhere, 300)
@@ -2284,8 +2319,7 @@ func _scenario_aa_the_yard_is_home() -> void:
 	var near := Vector2i(8, 5)
 	var far := Vector2i(5, 2)
 	for t in [stand, near, far]:
-		farm.set_tile_state(t.x, t.y, WorldLayout.YARD)
-		farm.sim.set_object(t.x, t.y, "")
+		_stage_tile(t.x, t.y, WorldLayout.YARD)
 	GameState.set_energy(GameState.max_energy)
 	GameState.selected_tool = 3            # the hoe, exactly as the fat-finger trace had it
 	player.pos = Vector2(stand.x * 16 + 8.0, stand.y * 16 + 8.0)
@@ -2342,7 +2376,7 @@ func _scenario_aa_the_yard_is_home() -> void:
 	var cot: Vector2i = main_scene._cot_tile
 	var below := cot + Vector2i(0, 1)
 	var beside := cot + Vector2i(1, 1)
-	farm.set_tile_state(below.x, below.y, WorldLayout.YARD)
+	_stage_tile(below.x, below.y, WorldLayout.YARD)
 	var rescued := ActionRouter.resolve_with_halo(farm, GameState, below, beside, false)
 	_assert(String(rescued.get("action", "")) == "sleep",
 		"the tile below the cot is yard now, so the fat finger can only ever mean the cot (%s)"
@@ -2498,8 +2532,8 @@ func _scenario_ab_the_stations_present_themselves() -> void:
 			% StationPresentation.discovery_name(d2))
 
 	# --- the already-done treatments -----------------------------------------
-	farm.set_tile_state(11, 8, "cleared")
-	farm.set_tile_state(12, 8, "seeded", "wheat")
+	_stage_tile(11, 8, "cleared")
+	_stage_tile(12, 8, "seeded", "wheat")
 	farm.water_tile(12, 8)
 	for s in [StationPresentation.SATISFIED_OFF, StationPresentation.SATISFIED_NOUN,
 			StationPresentation.SATISFIED_CHIP]:
