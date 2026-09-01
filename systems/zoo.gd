@@ -209,25 +209,7 @@ static func label_of(species: String) -> String:
 static func furnish(world: SimWorld, gs) -> void:
 	SimRng.reseed(SEED)
 	world.generate(LAYOUT)
-
-	# A crop patch in mixed states, so a mouth has something at every stage to
-	# find and the eye has something to read the day turn against.
-	var n := 0
-	for ty in range(PATCH.position.y, PATCH.end.y):
-		for tx in range(PATCH.position.x, PATCH.end.x):
-			n += 1
-			if n % 3 == 0:
-				world.set_tile_state(tx, ty, "ready", "wheat")
-				world.tiles[ty][tx]["growth_stage"] = 3
-			else:
-				world.set_tile_state(tx, ty, "growing", "wheat")
-				world.tiles[ty][tx]["growth_stage"] = 1 + (n % 2)
-	for t in SOWN:
-		world.set_tile_state(t.x, t.y, "seeded", "wheat")
-	for t in TILLED:
-		world.set_tile_state(t.x, t.y, "tilled")
-	for t in ACORNS:
-		world.set_object(t.x, t.y, "acorn")
+	stock(world)
 
 	# Everybody but the farmer goes, so the census starts at zero and every sprite
 	# on screen is one somebody asked for. She stays: she is the follow-bot's owner
@@ -248,6 +230,48 @@ static func furnish(world: SimWorld, gs) -> void:
 	gs.crow_schedule.clear()
 	gs.ant_schedule.clear()
 	gs.visitor_schedules.clear()
+
+
+## The field's larder, laid (and re-laid) in one pass: a crop patch in mixed
+## states so a mouth finds something at every stage, seed in the ground for a
+## mole, bare tilled soil for a sprinkler, acorns for a crow. Separate from
+## `furnish` because the zoo's residents genuinely eat the place empty — every
+## grazer, worm and raid takes crops out of the ground — and an emptied field
+## quietly turns the arrival gates off (a scout wants `ANT_MIN_PLANTED`, the
+## crow `CROW_MIN_PLANTED`). The panel's Re-sow button calls this to mend that.
+static func stock(world: SimWorld) -> void:
+	var n := 0
+	for ty in range(PATCH.position.y, PATCH.end.y):
+		for tx in range(PATCH.position.x, PATCH.end.x):
+			n += 1
+			if n % 3 == 0:
+				world.set_tile_state(tx, ty, "ready", "wheat")
+				world.tiles[ty][tx]["growth_stage"] = 3
+			else:
+				world.set_tile_state(tx, ty, "growing", "wheat")
+				world.tiles[ty][tx]["growth_stage"] = 1 + (n % 2)
+	for t in SOWN:
+		world.set_tile_state(t.x, t.y, "seeded", "wheat")
+	for t in TILLED:
+		world.set_tile_state(t.x, t.y, "tilled")
+	for t in ACORNS:
+		world.set_object(t.x, t.y, "acorn")
+
+
+## Why a tap on this species' button produced nobody, in words — the live-world
+## half of its arrival gate, which the zoo's calendar cannot pre-satisfy the way
+## it does the day floors (the residents eat the crops the gates count). "" when
+## no gate this file knows about is the reason; the caller supplies the generic
+## "its real arrival said no" for that case.
+static func decline_reason(world: SimWorld, species: String) -> String:
+	var planted := world.count_planted()
+	if species == SpeciesDefs.ANT_SCOUT and planted < SimWorld.ANT_MIN_PLANTED:
+		return "a raid wants %d+ crops in the ground (%d now) — Re-sow" \
+			% [SimWorld.ANT_MIN_PLANTED, planted]
+	if species == SpeciesDefs.CROW and planted < SimWorld.CROW_MIN_PLANTED:
+		return "the crow wants %d+ crops in the ground (%d now) — Re-sow" \
+			% [SimWorld.CROW_MIN_PLANTED, planted]
+	return ""
 
 
 ## Everything the zoo added, gone. The farmer stays, because she is the field
@@ -350,8 +374,11 @@ static func _invite(world: SimWorld, gs, species: String, nth: int) -> Array[Str
 				out.append(scout)
 		# A column with no scout in front of it — the other half of the raid, for
 		# looking at a forager without waiting for one. It follows whatever trail
-		# is on the ground, which may be none, in which case it wanders home again:
-		# that is the mechanic, seen from its failure side.
+		# is on the ground — which may be none, in which case all three disperse
+		# (despawn, Q-62's ruling) within seconds of arriving. That is the
+		# mechanic seen from its failure side, and it reads on screen as a flash
+		# of ants that vanish; whether this button should do more (seed a starter
+		# trail, say) is Q-82.
 		SpeciesDefs.ANT_FORAGER:
 			var nest := AntScoutBrain.nest_tile(world, SimRng.stateless(DAY, 6000 + nth))
 			if nest.x >= 0:

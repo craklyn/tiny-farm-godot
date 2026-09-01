@@ -62,13 +62,23 @@ const NO_TILE := Vector2i(-1, -1)
 # reaches the nest (`ant_scout_brain.gd`), which is the only thing in the game
 # that creates one — stomp the scout and this never runs.
 #
-# Ids are fixed and countable (`ant_forager_0`…), which is safe because
-# `AntScoutBrain.send` refuses to start a raid while any ant is still registered:
-# a column is fully gone before the next one can exist.
+# Ids are counted up from the prefix (`ant_forager_0`…), **skipping any still
+# registered**. On a real farm the skip never fires — `AntScoutBrain.send`
+# refuses to start a raid while any ant remains, so a column is fully gone
+# before the next can exist and the ids are always 0..2. The zoo is the
+# exception: it parks that refusal to run two raids at once (T-33), and when the
+# ids were fixed, a second trail's column landed on the first's ids and
+# `spawn_actor` silently replaced its three live ants — they teleported across
+# the field mid-march (found 2026-09-01). The skip is deterministic (a function
+# of the registry alone), so replays are untouched.
 static func raise_column(world: SimWorld, _scout_id: String, nest: Vector2i, tick: int) -> Array[String]:
 	var out: Array[String] = []
+	var n := 0
 	for i in SimWorld.ANT_COLUMN_SIZE:
-		var id := "%s_%d" % [SimWorld.ACTOR_ANT_FORAGER, i]
+		while world.has_actor("%s_%d" % [SimWorld.ACTOR_ANT_FORAGER, n]):
+			n += 1
+		var id := "%s_%d" % [SimWorld.ACTOR_ANT_FORAGER, n]
+		n += 1
 		world.spawn_actor(id, SpeciesDefs.ANT_FORAGER, nest, {
 			# They leave the nest one behind the other rather than as a clump, so
 			# a column reads as a column. The first sets off immediately.

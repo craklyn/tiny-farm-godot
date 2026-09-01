@@ -6303,6 +6303,30 @@ func test_ants() -> void:
 			% [dawn - budget.world.count_planted(), SimWorld.ANT_COLUMN_SIZE])
 	budget.done()
 
+	# --- two columns may coexist (found in the zoo, 2026-09-01) ---------------
+	# On a real farm `send` keeps raids serial, so a column's ids were fixed at
+	# 0..2 — and the zoo, which parks that refusal to run two raids at once,
+	# showed the cost: a second completed trail's column landed on the first's
+	# ids and `spawn_actor` silently replaced three live ants mid-march. Ids now
+	# count past anybody still registered.
+	var two := SimWorld.new()
+	SimRng.reseed(11)
+	two.generate()
+	var col_a := AntForagerBrain.raise_column(two, "", Vector2i(4, 4), 0)
+	var col_b := AntForagerBrain.raise_column(two, "", Vector2i(12, 9), 0)
+	_assert(col_a.size() == SimWorld.ANT_COLUMN_SIZE
+			and col_b.size() == SimWorld.ANT_COLUMN_SIZE,
+		"two trails raise two full columns")
+	for id in col_b:
+		_assert_quiet(not col_a.has(id), "%s is not an id the first column holds" % id)
+	_flush_quiet("with no id shared between them")
+	for id in col_a:
+		_assert_quiet(two.actor_pos(String(id)) == Vector2i(4, 4),
+			"%s still stands at its own nest" % id)
+	_flush_quiet("and the first column's ants are untouched where they stood")
+	_assert(two.actors_of_species(SpeciesDefs.ANT_FORAGER).size() == 2 * SimWorld.ANT_COLUMN_SIZE,
+		"six foragers are registered, not three survivors of an overwrite")
+
 	# --- determinism, which everything above rests on ------------------------
 	var runs: Array[String] = []
 	for _i in 2:
@@ -8981,6 +9005,27 @@ func test_zoo() -> void:
 	#    does: add, watch, clear, add something else.
 	_assert(not Zoo.spawn(world, gs, SpeciesDefs.KANGAROO, 0).is_empty(),
 		"and the zoo refills after a clear")
+
+	# 10. A gate may genuinely refuse in here — the residents eat the crops the
+	#     ant and crow gates count — and the refusal has words and a remedy.
+	#     (Found 2026-09-01: the scout button silently did nothing on a grazed-
+	#     out field, which read as a broken button.)
+	for ty in SimWorld.MAP_HEIGHT:
+		for tx in SimWorld.MAP_WIDTH:
+			var st := String(world.tiles[ty][tx].get("state", ""))
+			if st == "seeded" or st == "growing" or st == "ready":
+				world.set_tile_state(tx, ty, "grass")
+	_assert(Zoo.spawn(world, gs, SpeciesDefs.ANT_SCOUT, 0).is_empty(),
+		"a grazed-out field refuses a scout — the real gate, not a zoo special case")
+	_assert(Zoo.decline_reason(world, SpeciesDefs.ANT_SCOUT) != "",
+		"and the refusal can say why: %s" % Zoo.decline_reason(world, SpeciesDefs.ANT_SCOUT))
+	_assert(Zoo.decline_reason(world, SpeciesDefs.CROW) != "",
+		"the crow's gate too")
+	Zoo.stock(world)
+	_assert(world.count_planted() >= SimWorld.ANT_MIN_PLANTED,
+		"Re-sow restocks the field past the gates")
+	_assert(not Zoo.spawn(world, gs, SpeciesDefs.ANT_SCOUT, 1).is_empty(),
+		"and the scout button works again")
 
 	gs.free()
 

@@ -1096,6 +1096,26 @@ never touched. Session: `playtests/2026-08-31_230643`.*
   T-28's state-first treatment carry the load — the can's level on the toolbar is
   exactly the warning a fast player needs. Re-measure after the T-28 pick ships.*
 
+## From the 2026-09-01 zoo session (T-33)
+
+- **Q-82 (Ruling, filed 2026-09-01)** **What should the zoo's Ant Forager button show?**
+  The designer watched ants in the zoo "vanishing after a short period" and others "not
+  appearing at all". Two of the causes were bugs, both fixed the same day (a second
+  raid's column overwrote the first's ants — forager ids now skip anybody still
+  registered; and a grazed-out field made the scout button silently refuse — the gate's
+  refusal now has words on the census line, plus a Re-sow button). The remainder is
+  taste: the forager button raises a column with no trail on the ground, so all three
+  disperse — despawn, Q-62's ruling (a) — within seconds. On the one screen whose whole
+  purpose is *watching* a forager, that reads as a flash of ants that vanish. Options:
+  (a) as built — the button honestly demonstrates dispersal, the raid's failure side,
+  and a scout tap already shows the success side in full; (b) the button also lays a
+  short starter trail from the nest toward the crop patch, so a tapped column visibly
+  marches, eats and returns — zoo-only, no sim change, a handful of `scent.deposit`
+  calls; (c) reopen Q-62's reading (b) — dispersal itself becomes watchable (milling,
+  straggling) — which is sim work and was deliberately deferred to the ant debut.
+  *Recommendation: (b). It keeps Q-62's ruling intact, costs a dozen lines in
+  `systems/zoo.gd`, and makes the button do what its tooltip promises.*
+
 ## Before M3 — phase 2 design
 
 - **Q-73 (Creative, the designer's own seed, 2026-09-01)** **Evenings as social time.**

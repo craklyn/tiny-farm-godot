@@ -55,6 +55,12 @@ const SPEEDS: Array[int] = [1, 2, 4]
 # frame-exact; a visitor that leaves on its own shows up a quarter-second later.
 const CENSUS_SECONDS := 0.25
 
+# How long a "nobody came" notice stays on the census line. Every button goes
+# through a species' real arrival gate, and a gate may genuinely say no (the
+# residents eat the crops the ant and crow gates count) — a silent no reads as
+# a broken button, so the refusal gets a sentence for a few seconds instead.
+const NOTICE_SECONDS := 5.0
+
 var farm: Node2D = null
 var player: Node2D = null
 var gs: Node = null
@@ -67,6 +73,8 @@ var _world: Node2D = null
 var _tick_debt: float = 0.0
 var _census_timer := 0.0
 var _taps: Dictionary = {}          # species -> how many times its button was hit
+var _notice := ""                   # "nobody came" line, shown under the census
+var _notice_timer := 0.0
 var _census_label: Label = null
 var _speed_button: Button = null
 var _trail_button: Button = null
@@ -134,6 +142,11 @@ func _build_world() -> void:
 # --- the clock ------------------------------------------------------------------
 
 func _process(delta: float) -> void:
+	if _notice_timer > 0.0:
+		_notice_timer -= delta
+		if _notice_timer <= 0.0:
+			_notice = ""
+			_refresh_census()
 	if not running or farm == null:
 		return
 	pump(delta)
@@ -164,10 +177,23 @@ func spawn_species(species: String) -> Array[String]:
 	var nth := int(_taps.get(species, 0))
 	_taps[species] = nth + 1
 	var born := Zoo.spawn(farm.sim, gs, species, nth)
+	if born.is_empty():
+		var why := Zoo.decline_reason(farm.sim, species)
+		_notice = "No %s came — %s" % [Zoo.label_of(species),
+			why if why != "" else "its real arrival said no"]
+		_notice_timer = NOTICE_SECONDS
 	farm.sync_actors()
 	farm.queue_redraw()
 	_refresh_census()
 	return born
+
+
+## The larder, refilled — for when the residents have eaten the field down past
+## the arrival gates (the census notice points here).
+func resow() -> void:
+	Zoo.stock(farm.sim)
+	farm.queue_redraw()
+	_refresh_census()
 
 
 ## Everything the zoo added, gone; the farmer stays.
@@ -227,7 +253,8 @@ func census_text() -> String:
 
 func _refresh_census() -> void:
 	if _census_label != null:
-		_census_label.text = census_text()
+		_census_label.text = census_text() \
+			+ (("\n" + _notice) if _notice_timer > 0.0 and _notice != "" else "")
 
 
 # --- the panel -------------------------------------------------------------------
@@ -296,6 +323,13 @@ func _build_controls() -> void:
 		toggle_trail()
 		AudioManager.play_sfx("click"))
 	row.add_child(_trail_button)
+
+	var sow := _small_button("ResowButton", "Re-sow")
+	sow.custom_minimum_size = Vector2(84, 34)
+	sow.pressed.connect(func():
+		resow()
+		AudioManager.play_sfx("click"))
+	row.add_child(sow)
 
 	var wipe := _small_button("ClearZooButton", "Clear")
 	_style_button(wipe, Color(0.38, 0.18, 0.14), Color(0.72, 0.42, 0.34), Color(0.46, 0.22, 0.17))
