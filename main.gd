@@ -710,6 +710,24 @@ func _handle_action_result(action: String) -> void:
 			if sleep_result.get("phase1_complete_now", false):
 				_celebrate_expansion_morning()
 		, true)
+	elif action == "go_to_bed":
+		# T-31 (Q-49): the HUD's bed button, and the whole of it. It is **an
+		# ordinary cot tap**, aimed at the cot's tile instead of at a point on the
+		# glass — which matters because by evening the cot is usually off screen,
+		# which is exactly when she wants it.
+		#
+		# Not a sleep. Dispatching `"sleep"` here would put her to bed from
+		# wherever she is standing, which is a teleport with the walk deleted; this
+		# fills the same one-tap buffer a finger fills, so `resolve_with_halo`, the
+		# approach, the path, the tuck-in and the Action are the ones the cot tap
+		# has always used. No new verb, no new sim surface, and a replay of a
+		# session that used the button is indistinguishable from one that did not.
+		#
+		# Two behaviours fall out of that rather than being written: a press during
+		# the day transition does nothing (T-27 box 2 drops the tap at the input
+		# boundary), and a press mid-walk retargets exactly like any new tap.
+		if _cot_tile.x >= 0:
+			InputManager.tap_tile(_cot_tile)
 	elif action == "open_pause":
 		menus.open_menu("pause")
 	elif action == "return_to_title":

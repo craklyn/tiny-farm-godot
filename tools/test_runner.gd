@@ -78,6 +78,7 @@ func _run_scenarios() -> void:
 	await _scenario_w_the_cot_presents_itself()
 	await _scenario_x_three_looks_for_the_cot()
 	await _scenario_y_acorns_are_pickable()
+	await _scenario_z_a_bed_button()
 
 func _wait_until(pred: Callable, max_frames: int) -> bool:
 	for i in max_frames:
@@ -1954,3 +1955,128 @@ func _scenario_y_acorns_are_pickable() -> void:
 	_assert(_refusals_since(mark) == 0, "and nothing was refused along the way")
 
 	GameState.seeds["wheat"] = 5
+
+
+# Her walk has finished for the purposes of a wait: she is standing beside the
+# tile she was sent to (Q-30 — a workable tile is one she stops *beside*, never on
+# top of), or she has gone to bed instead, which the caller is about to fail on.
+func _walk_settled(t: Vector2i) -> bool:
+	if main_scene.day_cycle.is_active():
+		return true
+	var p: Vector2i = player.get_tile_pos()
+	return absi(p.x - t.x) + absi(p.y - t.y) <= 1
+
+
+func _scenario_z_a_bed_button() -> void:
+	# T-31 (Q-49).
+	# The HUD's first action control, and the ruling it comes from: T-27's fixes
+	# make the cot findable *once it is on screen*, and by evening it usually is
+	# not — *"a tired player should not have to find the bed."*
+	#
+	# The whole design is in one sentence: the button is **an ordinary cot tap**.
+	# So this scenario asserts the two things that sentence has to survive — that
+	# it really walks her there (rather than sleeping her where she stands) and
+	# that it inherits the cot tap's behaviour under T-27's transition window and
+	# under a retarget — plus the wordless/geometry rules the HUD owes it.
+	print("\n--- Scenario Z: a bed button on the HUD (T-31) ---")
+
+	var real_paths := [GameState.save_path, GameState.replay_path, GameState.trace_path]
+	GameState.save_path = "user://t31_autosave.json"
+	GameState.replay_path = "user://t31_replay.json"
+	GameState.trace_path = "user://t31_trace.jsonl"
+
+	var hud = main_scene.hud
+	var cot: Vector2i = main_scene._cot_tile
+	var bed := _find_button(main_scene, "BedButton")
+	_assert(bed != null, "the HUD carries a bed button")
+	if bed == null or cot.x < 0:
+		return
+
+	# 1. It is there to be found, and it says nothing (S-7).
+	_assert(bed.visible and not bed.disabled,
+		"it is visible and live from the start — discovery is the whole point (D-8: it gates nothing)")
+	_assert(not _has_letters(bed.text), "and wordless: the picture is the cot's own sprite cell")
+	_assert(bed.get_node("bed_button_icon").texture != null, "which is actually loaded")
+	_assert(bed.size.x >= 40 and bed.size.y >= 40,
+		"and it is a thumb-sized target (%dx%d)" % [int(bed.size.x), int(bed.size.y)])
+
+	# 2. Geometry: nowhere near the top bar, whose treatment Q-68 is still open on.
+	var bar := Rect2(hud.top_bar.position, hud.top_bar.size)
+	_assert(not bar.intersects(Rect2(bed.position, bed.size)),
+		"it sits clear of the top bar, so Q-68's ruling cannot collide with it")
+
+	# 3. The walk. She is across the yard from the cot; the button must take her
+	#    there on her own feet, not put her to bed where she stands.
+	GameState.set_energy(GameState.max_energy)
+	var start := Vector2i(6, 5)
+	farm.set_tile_state(start.x, start.y, "cleared")
+	player.pos = Vector2(start.x * 16 + 8.0, start.y * 16 + 8.0)
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+
+	var day_before: int = GameState.day
+	var mark: int = farm.trace.entries.size()
+	bed.pressed.emit()
+	_assert(GameState.day == day_before,
+		"pressing it does not sleep her on the spot — there is a farm to cross first")
+	var walking := await _wait_until(func(): return not player.path.is_empty(), 300)
+	_assert(walking, "she sets off toward the cot")
+	var started := await _wait_until(func(): return main_scene.day_cycle.is_active(), 12000)
+	_assert(started, "and when she gets there, she goes to bed")
+	var at_cot: Vector2i = player.get_tile_pos()
+	_assert(absi(at_cot.x - cot.x) + absi(at_cot.y - cot.y) <= 1,
+		"having walked to the cot's own side (%d,%d) — no teleport" % [at_cot.x, at_cot.y])
+	_assert(GameState.day == day_before + 1,
+		"the sim is already in the new day — the Action resolved at the tap, like any cot tap (D-8)")
+	_assert(player.tuck_tile == cot, "and she is drawn lying on the cot (T-27 box 1)")
+
+	# 4. T-27 box 2 covers the button for free: presses during the transition are
+	#    dropped at the input boundary, so they cannot buffer into the morning.
+	var presses := 0
+	var guard := 0
+	while main_scene.day_cycle.is_active() and guard < 4000:
+		bed.pressed.emit()
+		presses += 1
+		guard += 1
+		await get_tree().process_frame
+	_assert(presses > 0, "she pressed it again during the transition (%d times)" % presses)
+	for i in 60: await get_tree().process_frame
+	_assert(GameState.day == day_before + 1,
+		"the day still advanced exactly once (day %d)" % GameState.day)
+	_assert(_sleeps_since(mark) == 1,
+		"and the sim saw exactly one sleep (%d)" % _sleeps_since(mark))
+
+	# 5. It is a tap, so a new tap overrides it — pressing it by mistake costs her
+	#    one tap to undo, exactly like tapping the wrong tile.
+	GameState.set_energy(GameState.max_energy)
+	var elsewhere := Vector2i(8, 7)
+	farm.set_tile_state(elsewhere.x, elsewhere.y, "cleared")
+	GameState.seeds["wheat"] = 0        # nothing to plant there: a pure walk order
+	GameState.selected_tool = 0
+	player.pos = Vector2(start.x * 16 + 8.0, start.y * 16 + 8.0)
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+
+	var day_mid: int = GameState.day
+	bed.pressed.emit()
+	await _wait_until(func(): return not player.path.is_empty(), 300)
+	for i in 40: await get_tree().process_frame
+	InputManager.click_tile = elsewhere
+	InputManager.has_click = true
+	var retargeted := await _wait_until(func(): return player.approach_target == elsewhere, 300)
+	_assert(retargeted,
+		"a tap mid-walk retargets her — the walk order is the finger's now, not the button's")
+	var arrived := await _wait_until(func(): return _walk_settled(elsewhere), 12000)
+	_assert(arrived and not main_scene.day_cycle.is_active(),
+		"and she walks to where the finger said instead of to bed")
+	_assert(GameState.day == day_mid, "and the day did not turn")
+
+	GameState.seeds["wheat"] = 5
+	for p in [GameState.save_path, GameState.replay_path, GameState.trace_path]:
+		if FileAccess.file_exists(p):
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(p))
+	GameState.save_path = real_paths[0]
+	GameState.replay_path = real_paths[1]
+	GameState.trace_path = real_paths[2]

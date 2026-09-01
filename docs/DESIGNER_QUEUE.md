@@ -616,6 +616,21 @@ trace actually says, because several of these looked like bugs and were not.*
   eats, so C is the treatment that does not need the bed whole. Picking a cot look on the
   tablet therefore also rules Q-68: A or B ⇒ (d), C ⇒ (a). Say so when you pick and this
   item closes with it.
+  *T-31's bed button is deliberately placed clear of the top bar, so nothing about this
+  ruling collides with it — see Q-69.*
+- **Q-69 (Ruling)** **Which corner does the bed button live in?** Q-49 ruled the button
+  and it is built (T-31): a wordless cot icon that dispatches an ordinary cot tap. Your
+  recommendation said *"in the bottom bar"*, and it is **above** it instead — the bar is
+  32px of chrome and a thumb target wants ~44 (the same argument T-27 box 4 used to make
+  the cot taller), so a button *in* the bar would be the small target the cot just stopped
+  being. It sits bottom-**left**, 44×48, floating over the world: the top bar is where
+  Q-68's treatments live, and the bottom-right corner belongs to the build stamp.
+  **What it costs:** the corner covers about two tiles of farm she can no longer tap, which
+  is the price of any HUD action control and is why Q-49 called this a shape decision.
+  **Recommendation: leave it until you have had it under a thumb**, then say move it,
+  resize it, or leave it — it is four numbers in `ui/hud.gd`. The one thing worth deciding
+  deliberately rather than by drift is whether the HUD is now allowed to hold *actions* at
+  all; if the answer is no, this button comes back out and the cot carries the beat alone.
 
 ## M2.5 — the actor system (filed 2026-08-31, from the entity brainstorm)
 

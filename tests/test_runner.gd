@@ -470,6 +470,24 @@ func test_input_bleed() -> void:
 	_assert(not InputManager.has_click, "has_click is resettable")
 	_assert(not InputManager.swipe_active, "swipe_active is resettable")
 	_assert(not InputManager.swipe_moved, "swipe_moved is resettable")
+
+	# T-31 (Q-49): a tap aimed at a tile rather than at a point on the glass — the
+	# HUD's bed button, which has to produce the *same* intent a thumb on the cot
+	# produces. It fills the same one-tap buffer, so everything downstream is the
+	# ordinary cot tap; and it obeys T-27's consumption window, because a tap made
+	# during a day transition is not a tap in the day it would land in.
+	var cot := Vector2i(2, 1)
+	_assert(InputManager.tap_tile(cot), "a tile tap is taken when nothing is in the way")
+	_assert(InputManager.has_click, "and fills the same buffer a finger fills")
+	_assert(InputManager.consume_click() == cot, "with the tile it was aimed at")
+	_assert(not InputManager.has_click, "consumed exactly once, like any tap")
+
+	InputManager.swallow_input(true)
+	_assert(not InputManager.tap_tile(cot), "during a day transition the tap is refused")
+	_assert(not InputManager.has_click, "and nothing is left buffered to fire on the first frame of morning")
+	InputManager.swallow_input(false)
+	_assert(InputManager.tap_tile(cot), "the instant the window shuts it is an ordinary tap again")
+	InputManager.consume_click()
 	InputManager.free()
 
 func test_swipe_chaining() -> void:

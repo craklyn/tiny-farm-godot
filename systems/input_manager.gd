@@ -64,6 +64,28 @@ func is_swallowing() -> bool:
 	return _swallowing
 
 
+## A tap aimed at a **tile** rather than at a point on the glass — T-31 (Q-49),
+## and the HUD's bed button is its only caller today.
+##
+## The button has to produce the same intent a thumb on the cot produces: walk,
+## tuck in, sleep. Injecting it here, into the same one-tap buffer a finger fills,
+## is what makes that literally true rather than merely similar — everything
+## downstream (`resolve_with_halo`, the approach, the path, the tap indicator, the
+## Action) is the ordinary cot tap and knows nothing about a button. It cannot go
+## through `screen_to_tile`, because by evening the cot is usually off screen,
+## which is exactly when she wants it.
+##
+## Refused while the T-27 window is open, for the same reason a finger is: a tap
+## made during a day transition is not a tap in the day it lands in. Returns
+## whether the tap was taken, so a caller can tell the difference.
+func tap_tile(t: Vector2i) -> bool:
+	if _swallowing:
+		return false
+	click_tile = t
+	has_click = true
+	return true
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	swipe_moved = false  # Reset per-frame
 

@@ -19,6 +19,8 @@ var weather_label: Label
 var energy_label: Label  # T-14: debug builds only — the sky is the bar (Q-38)
 var gold_label: Label
 var menu_button: Button
+var bed_button: Button          # T-31 (Q-49): the HUD's one action control
+var bed_button_icon: TextureRect
 var tool_icon_rect: TextureRect
 var tool_name_label: Label
 var seed_info_label: Label
@@ -174,6 +176,63 @@ func _build_ui() -> void:
 	water_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	water_label.add_theme_color_override("font_color", Color(0.4, 0.7, 0.95))
 	bottom_bar.add_child(water_label)
+
+	# --- The bed button (T-31 / Q-49) -----------------------------------------
+	#
+	# The HUD's first action control. Everything else here is status; this one
+	# does something, which is the shape decision Q-49 held the item for and the
+	# designer ruled: *"a tired player should not have to find the bed."* T-27's
+	# fixes make the cot findable **once it is on screen**, and by evening it
+	# usually is not.
+	#
+	# It is a *tap on the cot*, not a sleep (see `main.gd`'s `go_to_bed`): the
+	# button knows nothing about where the cot is or what sleeping costs — it asks
+	# main, main injects the tap, and the walk, the tuck-in and the Action all take
+	# the ordinary route. So there is no new verb, no shortcut, and nothing new in
+	# a replay but an ordinary cot tap.
+	#
+	# Wordless (S-7), and the picture is the cot's own sprite cell rather than a
+	# glyph: the affordance is "that thing over there", so showing the thing is the
+	# strongest label available, and it costs no art at all.
+	#
+	# Placed above the bottom bar on the **left**, deliberately away from the top
+	# bar: Q-68 is still open on the top bar's geometry (the (d) camera answer and
+	# the (c) float-or-shrink option both live up there), and a control the player
+	# needs at dusk must not be sitting where that ruling might move things. The
+	# bottom-right is spoken for by the build stamp overlay.
+	bed_button = Button.new()
+	bed_button.name = "BedButton"
+	bed_button.size = Vector2(44, 48)
+	bed_button.position = Vector2(10, viewport_size.y - 32 - 8 - 48)
+	bed_button.tooltip_text = "Go to bed"  # never drawn; for a developer with a mouse
+	var bed_style := StyleBoxFlat.new()
+	bed_style.bg_color = Color(0.16, 0.20, 0.16, 0.9)
+	bed_style.border_color = Color(0.62, 0.72, 0.58)
+	bed_style.set_border_width_all(2)
+	bed_style.set_corner_radius_all(8)
+	bed_button.add_theme_stylebox_override("normal", bed_style)
+	bed_button.add_theme_stylebox_override("hover", bed_style)
+	bed_button.add_theme_stylebox_override("pressed", bed_style)
+	bed_button.add_theme_stylebox_override("focus", bed_style)
+	bed_button.pressed.connect(_on_bed_button)
+	add_child(bed_button)
+
+	# objects.png cell 0 is the cot, 16x32 — the same cell the world draws (see
+	# `world/farm.gd`'s object_regions). Treatment C's turned-down cell is
+	# deliberately *not* followed here: the button is a signpost to the bed, and a
+	# signpost that changes picture at dusk is a second thing to learn.
+	bed_button_icon = TextureRect.new()
+	bed_button_icon.name = "bed_button_icon"
+	bed_button_icon.position = Vector2(4, 3)
+	bed_button_icon.size = Vector2(36, 42)
+	bed_button_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	bed_button_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	bed_button_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var cot_icon := AtlasTexture.new()
+	cot_icon.atlas = load("res://assets/sprites/generated/objects.png")
+	cot_icon.region = Rect2(0, 0, 16, 32)
+	bed_button_icon.texture = cot_icon
+	bed_button.add_child(bed_button_icon)
 
 	# Hint label (above bottom bar)
 	hint_label = Label.new()
@@ -482,6 +541,18 @@ func _on_seed_pill_gui_input(event: InputEvent) -> void:
 		GameState.cycle_seed_type()
 		AudioManager.play_sfx("click")
 		get_viewport().set_input_as_handled()
+
+
+func _on_bed_button() -> void:
+	# Routed through main for the same reason the menu button is: the HUD does not
+	# know where the cot is, and should not learn. Main turns this into a tap on
+	# the cot's tile (T-31). The click is *not* consumed here — during a day
+	# transition `InputManager` drops it and this is silently nothing, which is
+	# T-27 box 2 covering the button for free.
+	var main := get_tree().get_first_node_in_group("Main")
+	if main and main.has_method("trigger_action"):
+		AudioManager.play_sfx("click")
+		main.trigger_action("go_to_bed")
 
 
 func _on_menu_button() -> void:

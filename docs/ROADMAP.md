@@ -205,10 +205,39 @@ crops and the Q-12 proof. Proof and acorn design otherwise untouched.*
 menu both list `CropDefs.ORDER` only. It has no use yet, so there is nothing to
 show; whatever gives it one in phase 2 owes it a picture.*
 
-**T-31 — A bed button on the HUD** · Q-49's ruling, 2026-09-01 · small
+**T-31 — A bed button on the HUD** · Q-49's ruling, 2026-09-01 · ✅ **done 2026-09-01**
 *A wordless icon that dispatches an ordinary cot tap (walk, tuck-in, sleep — same
 path as a thumb on the cot; no new verb, no new sim surface). Built even though
 T-27's fixes shipped: a tired player should not have to find the bed.*
+- [x] **it is a tap, not a sleep.** The button asks `main.gd` for `go_to_bed`,
+      which injects a tap **aimed at the cot's tile** into the same one-tap buffer
+      a finger fills (`InputManager.tap_tile`, T-31's only new function). It cannot
+      go through `screen_to_tile`, because by evening the cot is usually off
+      screen — which is exactly when she wants it. Everything downstream is the
+      cot tap: `resolve_with_halo`, the approach, the path, the tuck-in, the
+      Action. Dispatching `"sleep"` here instead would have been a teleport with
+      the walk deleted.
+- [x] **two behaviours fall out rather than being written:** a press during the
+      day transition does nothing (T-27 box 2 drops it at the input boundary,
+      buffering nothing into the morning), and a press mid-walk is retargeted by
+      the next tap like any other. Both asserted.
+- [x] **wordless (S-7), and the picture is the cot's own sprite cell** — objects.png
+      cell 0, the thing the button takes you to. No new art at all, and it deliberately
+      does *not* follow treatment C's turned-down cell: a signpost that changes
+      picture at dusk is a second thing to learn.
+- [x] **visible and live from the first frame** (discovery is the point) and it
+      gates nothing and claims no teaching focus — D-8 holds: the Action still
+      resolves at the press, as Scenario Z re-proves.
+- [x] tests: `test_input_bleed` gains the tile-tap injection (taken, buffered,
+      consumed once, refused while the T-27 window is open) and integration
+      Scenario Z walks her across the yard by button, presses it 284 times during
+      the transition, and retargets her mid-walk.
+*Deviation from Q-49's recommendation, on purpose: it is **above** the bottom bar
+rather than in it. The bar is 32px tall and a thumb target wants ~44 (T-27 box 4's
+own argument), so the button floats at the bottom-left at 44×48. Left, and clear of
+the top bar, because Q-68 is still open on the top bar's treatment and the
+bottom-right corner is the build stamp's. Filed as **Q-69** — the corner is his to
+move once he has it under a thumb.*
 
 **T-29 — The day wears a clock** · Q-38's rider, filed 2026-08-31 · **scheme drafted,
 awaiting veto**
