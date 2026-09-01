@@ -593,7 +593,12 @@ trace actually says, because several of these looked like bugs and were not.*
   now keeps the wetness (that was a real bug — planting used to dry it out), so the wetness
   *is* meaningful on bare soil, and hiding it hides a genuine "plant here now and it is
   already watered" signal. Showing it confused her once; hiding it loses something true.
-  Currently hidden.
+  Currently hidden. **Narrowed 2026-09-01:** the rule was hiding more than bare soil.
+  Rain's list of what it wets was the *growth* pass's list, so a crop that ripened
+  overnight was skipped and stood on dry ground between wet rows — reported from the
+  tablet, fixed in both halves (rain wets ripe soil; the renderer draws it). So the open
+  residual is now exactly one case, the one you were asked about: **bare tilled ground
+  that the rain has watered.** Still hidden.
 - **Q-68** ~~The bed's head is behind the HUD bar?~~ — ✅ **ruled 2026-09-01, by
   proxy:** the designer picked treatment A (dusk glow) for T-27 box 5, and A carries
   fix (d) — `Camera2D.limit_top` extends by the bar's height, so the world sits below
@@ -722,6 +727,33 @@ trace actually says, because several of these looked like bugs and were not.*
   built**, and look at it on the tablet before spending a baseline on it — the whole
   question is whether the digits pull the eye away from the arc, which is a thing to
   see rather than to argue.
+
+## From the 2026-09-01 tablet playthrough
+
+*Six findings, reported from the device the same day and fixed the same day — they are
+listed here only where something in them needed the designer's taste rather than a
+patch. All six were confirmed against the code before being touched: two were about what
+the ground shows (rain skipping ripe soil; the ground drying before the fade), one about
+which rock T-10 marks, one is the ruling below, and two were the HUD (a pill that did not
+fit "scarecrow", and a collapse toggle for the playtest readout).*
+
+- **Q-75 (Approval, filed 2026-09-01)** **How sparse is sparse, in the open field?**
+  Your ruling — *"We should include sparse rocks and logs in the un-blocked sections.
+  Once those items are available, then the player can do a superior job clearing that
+  space"* — is built and shipped. What is a judgement call and not in your words: the
+  **number** (six per open parcel, three rocks and three logs, `[Playtest]` in
+  `world_layout.gd`), and **which parcels get any**. Today exactly one does: the meadow.
+  The yard was left bare on T-32's grounds — it is home, not field, and a boulder in the
+  living room is not a promise — and the neighbour's plot was left bare because every
+  tile of it is read as a sentence during the cold open. The placer refuses anything that
+  would seal off ground or crowd a station, so raising the number is safe up to the point
+  where the meadow stops being a meadow. **Recommendation: look at six on the device
+  first.** It reads as "a few things you cannot deal with yet" rather than as terrain, and
+  that is the feeling the ruling was about; the number is one constant either way.
+  *Open sub-question, no rush: when the wood and the quarry open, should they scatter the
+  **other** parcel's obstacle through themselves — a rock or two among the logs — for the
+  same reason? Not built; it would blur "one new obstacle type per parcel", which is why
+  it is a question rather than a change.*
 
 ## M2.5 — the actor system (filed 2026-08-31, from the entity brainstorm)
 
