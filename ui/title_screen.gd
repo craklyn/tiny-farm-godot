@@ -141,18 +141,23 @@ func _build_ui() -> void:
 	# Debug builds only, so a public release never shows it (the Android export
 	# we deploy is --export-debug, so it is present on the test tablet).
 	if OS.is_debug_build():
-		root_box.add_child(_make_sound_test_button())
+		# One literal row for all three debug doors. They used to stack, and the
+		# third one pushed the menu off the bottom of the tablet's screen —
+		# reported from the device the night the Zoo landed. Three across at 104px
+		# fits the 340px column with the row's two 10px separations to spare.
+		var debug_row := HBoxContainer.new()
+		debug_row.alignment = BoxContainer.ALIGNMENT_CENTER
+		debug_row.add_theme_constant_override("separation", 10)
+		debug_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		root_box.add_child(debug_row)
 		# The look lab, on the Sound Test's own pattern (Q-31): candidates ship in
-		# the build and get A/B'd on device with a thumb. Same debug gate, same
-		# panel shape, same place on the screen — the affordance is already learned.
-		# One panel for every open look (T-27's cot, T-28's two station axes),
-		# because a second rig would mean a second place to remember.
-		root_box.add_child(_make_look_lab_button())
-		# ...and the third door on the same row (T-33). Not a panel over this
-		# screen like the other two, because what it opens is a *farm*: a second
-		# world with a clock of its own, which cannot live behind a menu that is
-		# already sitting on one. Everything about it is `ui/zoo_screen.gd`.
-		root_box.add_child(_make_zoo_button())
+		# the build and get A/B'd on device with a thumb. One panel for every open
+		# look (T-27's cot, T-28's two station axes). The Zoo is a door, not a
+		# panel, because what it opens is a *farm* with a clock of its own
+		# (`ui/zoo_screen.gd`).
+		for b in [_make_sound_test_button(), _make_look_lab_button(), _make_zoo_button()]:
+			b.custom_minimum_size = Vector2(104, 34)
+			debug_row.add_child(b)
 
 
 func _big_button_style(bg: Color, border: Color) -> StyleBoxFlat:

@@ -2108,7 +2108,7 @@ func test_energy_repartition() -> void:
 				"%s wakes under the same sky" % name)
 			gsf.free()
 	_flush_quiet("every v1 autosave in playtests/ loads at its own hour (%d)" % checked)
-	_assert(checked == 8, "all 8 shelved sessions were checked (%d)" % checked)
+	_assert(checked == 9, "all 9 shelved sessions were checked (%d)" % checked)
 
 
 func test_clock_digits() -> void:
@@ -5831,13 +5831,14 @@ func test_replay_v2() -> void:
 	# "matches this build" while the world underneath it has moved. That is what
 	# `tools/verify_replay.gd` did to the last local human session at T-32: MATCH
 	# before, MISMATCH after, with no cross-build warning to explain it.
-	_assert(checked == 8, "there are 8 recorded sessions in playtests/ (%d)" % checked)
+	_assert(checked == 9, "there are 9 recorded sessions in playtests/ (%d)" % checked)
 	_assert(matched == 3,
 		"3 of them still reproduce their autosave — the ones with no Actions to re-apply (%d)"
 			% matched)
-	_assert(mismatched == 5,
-		"and 5 do not, unchanged by T-32: M1.5's worldgen already invalidated them (%d)"
-			% mismatched)
+	_assert(mismatched == 6,
+		"and 6 do not: M1.5's worldgen invalidated five, and the ninth (rescued off the"
+		+ " tablet at the 2026-08-31 deploy, still on the v0.1.0-39 build) predates"
+		+ " T-32's yard (%d)" % mismatched)
 
 	# --- free-walk entries: recorded, applied, compared (M2.5 WI-6) ------------
 	# §3.3's other half, and the switch WI-5 armed and left off. A crossing writes
