@@ -12,8 +12,12 @@
 # wanted the hour readable *precisely* as well. So the same fraction is now also
 # drawn as a **sun-arc** in the HUD's top bar — a token sliding sunrise→dusk with
 # ticks at the three hours the sky itself changes. The arc reads its geometry
-# from `progress()` and `TICKS` below and its token from `glyph_for()`, so the
-# precise read and the ambient one cannot disagree about what time it is.
+# from `progress()` and `TICKS` below and its token's phase from `is_night()`, so
+# the precise read and the ambient one cannot disagree about what time it is.
+#
+# **T-34 gave the same hour digits** (`clock_text` below): the day is 6:00→16:00,
+# one energy unit is one minute, and the digits sit beside the arc. Three
+# drawings of one number now — light, arc, clock — and all three read this file.
 #
 # T-29 also re-partitioned the meter — 600 fine units, a base verb costing 30
 # (`Tools.DAY_UNITS`) — and **nothing in this file changed for it**, which is the
@@ -48,9 +52,9 @@ const STOPS: Array[Dictionary] = [
 # --- The hour, as a number and as a glyph (T-29) -------------------------------
 #
 # Everything below is the same fraction `tint_for` uses, exposed so the HUD's
-# sun-arc and its weather line can be drawn from it instead of from a second copy
-# of the same thresholds. Two numbers used to live in `ui/hud.gd`'s `_sky_icon`;
-# they live here now, unchanged to the digit, and the arc reads them too.
+# sun-arc can be drawn from it instead of from a second copy of the same
+# thresholds. The numbers used to live in `ui/hud.gd`'s `_sky_icon`; they live
+# here now, unchanged to the digit, and the arc reads them too.
 
 # The day as it is *walked*: 0.0 at sunrise (a full meter), 1.0 at dusk (an empty
 # one). The arc's token is placed on this, which is why it is the inverse of the
@@ -77,26 +81,58 @@ const TICKS: Array[Dictionary] = [
 	{ "id": "dusk", "f": 0.18 },       # sunset, and the hour the token becomes a moon
 ]
 
-# The sky as one character, shown on the HUD's weather line since T-14 and worn
-# by the arc's token since T-29. `GLYPH_NIGHT_F` is deliberately the *same* 0.18
-# as the dusk tick above: the token turns into a moon exactly as it passes that
-# mark, which is the one moment on the arc worth being able to point at.
-const GLYPH_EVENING_F := 0.55  # ☀️ above this
-const GLYPH_NIGHT_F := 0.18    # 🌇 above this, 🌙 below — Daylight's own sunset stop
-
-
-static func glyph_for(energy: int, max_energy: int) -> String:
-	var f := fraction(energy, max_energy)
-	if f > GLYPH_EVENING_F:
-		return "☀️"
-	if f > GLYPH_NIGHT_F:
-		return "🌇"
-	return "🌙"
+# Dusk, as one number. Deliberately the *same* 0.18 as the dusk tick above: the
+# arc's token turns into a moon exactly as it passes that mark, which is the one
+# moment on the arc worth being able to point at.
+#
+# It used to have a sibling, `GLYPH_EVENING_F`, and a `glyph_for()` that turned
+# the pair into ☀️ / 🌇 / 🌙 for the HUD's weather line. **Q-72 retired that
+# glyph** (ruled 2026-09-01, built with T-34): the arc and the new digits own the
+# hour now, and the weather line saying it a third time was the same fact three
+# times over. The threshold survives because the moon still needs it.
+const NIGHT_F := 0.18
 
 
 # Past dusk — the arc's token is a moon, and the sky is the twilight stop.
 static func is_night(energy: int, max_energy: int) -> bool:
-	return fraction(energy, max_energy) <= GLYPH_NIGHT_F
+	return fraction(energy, max_energy) <= NIGHT_F
+
+
+# --- The hour, as digits (T-34) ------------------------------------------------
+#
+# The only reader in this file that is **not** a ratio, and deliberately so.
+# Everything above divides by `max_energy`, which is why an 18/20 legacy save and
+# a 540/600 modern one draw the same sky. The clock instead counts the meter's
+# *units*, because T-29 picked 600 of them for exactly this: over a ten-hour
+# workday, **one unit is one fictional minute**, so the clock is literally
+# `6:00 + units spent` — a base verb (30) is half an hour, a heavy clear (60) an
+# hour. No conversion factor exists and none may be added; `test_clock_digits`
+# asserts the identity unit-by-unit so that adding one fails a test rather than
+# quietly re-scaling the day. (The corollary: at the legacy 20-unit scale this
+# would read 6:20 at dusk. That is correct and not a bug — legacy saves are
+# migrated ×30 on load, so no live game is ever on that ruler.)
+#
+# **24-hour, digits and a colon, nothing else.** S-7 bans words on screen and
+# Q-35's shop precedent allows digits, which rules out "am"/"pm"; and a 12-hour
+# clock without them would run 6:00 … 4:00 and wrap through noon with nothing to
+# mark the turn. "16:00" needs no suffix to be unambiguous, so 24-hour it is.
+const DAY_START_MINUTE := 6 * 60  # the workday opens at 6:00 (T-34's ruling)
+
+
+# Minutes on the clock face: the day's opening plus every unit spent. Energy over
+# max reads as the opening, energy under zero as the close — and the meter clamps
+# at 0 anyway (`GameState.set_energy`), so Q-11's soft-floor work past dusk
+# cannot push the digits past 16:00. Whatever happens after the meter empties
+# happens *in the evening*, a span energy never touches (Q-73).
+static func clock_minutes(energy: int, max_energy: int) -> int:
+	if max_energy <= 0:
+		return DAY_START_MINUTE
+	return DAY_START_MINUTE + clampi(max_energy - energy, 0, max_energy)
+
+
+static func clock_text(energy: int, max_energy: int) -> String:
+	var m: int = clock_minutes(energy, max_energy)
+	return "%d:%02d" % [m / 60, m % 60]
 
 
 static func tint_for(energy: int, max_energy: int) -> Color:

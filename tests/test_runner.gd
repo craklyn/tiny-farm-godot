@@ -49,6 +49,7 @@ func _init() -> void:
 	test_crow_schedule()
 	test_daylight()
 	test_energy_repartition()
+	test_clock_digits()
 	test_replay_build_stamp()
 	test_blocked_reason()
 	test_benign_failures()
@@ -1953,8 +1954,8 @@ func test_energy_repartition() -> void:
 			"fraction at %d/20 == fraction at %d/600" % [e, fine])
 		_assert_quiet(is_equal_approx(Daylight.progress(e, 20), Daylight.progress(fine, 600)),
 			"arc progress at %d/20 == arc progress at %d/600" % [e, fine])
-		_assert_quiet(Daylight.glyph_for(e, 20) == Daylight.glyph_for(fine, 600),
-			"sky glyph at %d/20 == sky glyph at %d/600" % [e, fine])
+		# (the sky glyph was the fourth reader checked here until Q-72 retired it
+		# with T-34; `is_night` carries its threshold now)
 		_assert_quiet(Daylight.is_night(e, 20) == Daylight.is_night(fine, 600),
 			"night at %d/20 == night at %d/600" % [e, fine])
 		_assert_quiet(is_equal_approx(CotPresentation.dusk_ramp(e, 20),
@@ -1999,7 +2000,7 @@ func test_energy_repartition() -> void:
 				found = true
 		_assert_quiet(found, "the %s tick sits on one of the sky's own stops" % tick["id"])
 	_flush_quiet("the arc's ticks are the hours the tint itself turns — no invented thresholds")
-	_assert(is_equal_approx(Daylight.GLYPH_NIGHT_F, float(Daylight.TICKS[2]["f"])),
+	_assert(is_equal_approx(Daylight.NIGHT_F, float(Daylight.TICKS[2]["f"])),
 		"and the token becomes a moon exactly as it passes the dusk tick")
 
 	# --- v1 -> v2: a legacy save loads at the fraction it was saved at ---------
@@ -2094,6 +2095,85 @@ func test_energy_repartition() -> void:
 			gsf.free()
 	_flush_quiet("every v1 autosave in playtests/ loads at its own hour (%d)" % checked)
 	_assert(checked == 8, "all 8 shelved sessions were checked (%d)" % checked)
+
+
+func test_clock_digits() -> void:
+	print("\n--- T-34: the clock gets digits (6:00 → 16:00) ---")
+
+	# --- the boundary instants the ruling names -------------------------------
+	_assert(Daylight.clock_text(600, 600) == "6:00", "a full meter opens the day at 6:00")
+	_assert(Daylight.clock_text(570, 600) == "6:30", "one base verb (30) is half an hour")
+	_assert(Daylight.clock_text(540, 600) == "7:00", "two of them make an hour")
+	_assert(Daylight.clock_text(300, 600) == "11:00", "half a day's work lands at 11:00")
+	_assert(Daylight.clock_text(60, 600) == "15:00", "two base verbs left is 15:00")
+	_assert(Daylight.clock_text(0, 600) == "16:00", "and an empty meter is 16:00")
+
+	# --- one unit IS one minute -----------------------------------------------
+	#
+	# The identity T-34 is built on, asserted directly so that anyone who ever
+	# adds a conversion factor breaks a test instead of quietly re-scaling the
+	# day. Every single unit of the meter is one minute of the clock face, and the
+	# meter's whole length is exactly the ten-hour workday.
+	_assert(Tools.DAY_UNITS == 600, "the day is 600 units (T-29)")
+	_assert(Daylight.clock_minutes(0, Tools.DAY_UNITS)
+			- Daylight.clock_minutes(Tools.DAY_UNITS, Tools.DAY_UNITS) == Tools.DAY_UNITS,
+		"and the clock spans exactly DAY_UNITS minutes — 600 units, ten hours, no factor")
+	for spent in range(0, Tools.DAY_UNITS + 1):
+		_assert_quiet(Daylight.clock_minutes(Tools.DAY_UNITS - spent, Tools.DAY_UNITS)
+				== 6 * 60 + spent,
+			"unit %d spent reads minute 6:00 + %d" % [spent, spent])
+	_flush_quiet("every one of the 600 units is one minute of the clock face")
+	_assert(Daylight.clock_text(Tools.DAY_UNITS - Tools.get_energy_cost("clear_log"),
+			Tools.DAY_UNITS) == "7:00",
+		"a heavy clear (60) is a full hour, straight out of the cost table")
+
+	# --- digits and a colon, nothing else (S-7 via Q-35) ----------------------
+	# 24-hour deliberately: "am"/"pm" are words, and an unsuffixed 12-hour face
+	# would wrap through noon unmarked. Checked at every hour of the workday.
+	for spent2 in range(0, Tools.DAY_UNITS + 1):
+		var face: String = Daylight.clock_text(Tools.DAY_UNITS - spent2, Tools.DAY_UNITS)
+		var legal := true
+		for i in face.length():
+			var ch: String = face[i]
+			if ch != ":" and not (ch >= "0" and ch <= "9"):
+				legal = false
+		_assert_quiet(legal, "the face '%s' is digits and a colon only" % face)
+	_flush_quiet("no hour of the day puts a word on screen")
+
+	# --- it parks at dusk, and soft-floor work happens in the evening ---------
+	#
+	# Q-11's floor means the verbs still resolve on an empty meter, and
+	# `GameState.set_energy` clamps at 0 — so that work is *evening* work (Q-73's
+	# span) and the digits do not move for it.
+	var gs = load("res://systems/game_state.gd").new()
+	gs.reset()
+	_assert(Daylight.clock_text(gs.energy, gs.max_energy) == "6:00",
+		"a fresh day starts at 6:00")
+	gs.set_energy(0)
+	for _i in 5:
+		gs.set_energy(gs.energy - Tools.get_energy_cost("till"))
+	_assert(gs.energy == 0, "five actions past the floor leave the meter at 0 (Q-11)")
+	_assert(Daylight.clock_text(gs.energy, gs.max_energy) == "16:00",
+		"and the clock is still parked at 16:00 — the evening is not on the face")
+	_assert(Daylight.clock_text(-300, 600) == "16:00",
+		"even an unclamped negative cannot push the digits past dusk")
+	_assert(Daylight.clock_text(900, 600) == "6:00", "nor an over-full meter before dawn")
+	_assert(Daylight.clock_text(5, 0) == "6:00", "and a degenerate day reads as its opening")
+
+	# --- sleep at any hour wakes at 6:00 --------------------------------------
+	gs.set_energy(240)
+	_assert(Daylight.clock_text(gs.energy, gs.max_energy) == "12:00", "asleep at noon...")
+	gs.start_new_day()
+	_assert(Daylight.clock_text(gs.energy, gs.max_energy) == "6:00",
+		"...and awake at 6:00 — an unspent afternoon is not banked (T-14's sub-ruling)")
+	gs.free()
+
+	# --- the clock is the one reader that counts units, not ratios ------------
+	# Deliberate, and worth pinning: the legacy 20-unit scale would read 6:20 at
+	# dusk, which is why saves are migrated ×30 on load (T-29) rather than the
+	# clock being taught two rulers.
+	_assert(Daylight.clock_text(0, 20) == "6:20",
+		"the clock reads units, not the fraction every other reader here uses")
 
 
 func test_satisfied_states() -> void:

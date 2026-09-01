@@ -42,6 +42,7 @@ var day_label: Label
 var weather_label: Label
 var energy_label: Label  # T-14: debug builds only — the sky is the bar (Q-38)
 var sun_arc: Control     # T-29: the hour, precisely and wordlessly
+var clock_label: Label   # T-34: the same hour in digits, beside the arc
 var gold_label: Label
 var menu_button: Button
 var bed_button: Button          # T-31 (Q-49): the HUD's one action control
@@ -144,6 +145,28 @@ func _build_ui() -> void:
 	sun_arc.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	sun_arc.draw.connect(_draw_sun_arc)
 	top_bar.add_child(sun_arc)
+
+	# T-34: and the same hour in digits, immediately right of the arc.
+	#
+	# Not a contradiction of the arc but a second reading of one number, the way
+	# the tint and the arc already are. The arc answers "roughly where in the day
+	# am I" at a glance and stays the reading a pre-reader uses; the digits answer
+	# "exactly how much is left", which is the question the debug readout kept
+	# being asked for.
+	#
+	# S-7-legal by Q-35's shop precedent — **digits allowed, words never** — and
+	# that is also why the clock is 24-hour: "am"/"pm" are words, and a 12-hour
+	# clock without them runs 6:00 … 4:00 and wraps through noon with nothing to
+	# mark the turn. 6:00 → 16:00 reads in one direction on digits and a colon.
+	# Right of the arc rather than under it because the bar is 30px tall and there
+	# is no under; the type is the bar's own, so the row still reads as one row.
+	clock_label = Label.new()
+	clock_label.name = "clock_label"
+	clock_label.position = Vector2(sun_arc.position.x + ARC_W + 8.0, 5)
+	clock_label.size = Vector2(54, 20)
+	clock_label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.8))
+	clock_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	top_bar.add_child(clock_label)
 
 	# The numeric readout survives for debugging only, because a developer still
 	# wants the exact figure. Moved off centre at T-29 to leave the arc the middle
@@ -598,14 +621,16 @@ func _update_hud() -> void:
 	# Top bary & Weather
 	day_label.text = "Day %d" % GameState.day
 	
-	# Reported from play 2026-08-30: "Sunny" at night is confusing — and it is,
-	# because the label was answering a question nobody asked. The *sky* already
-	# says what time it is (T-14), so this only needs to say when something is
-	# falling out of it. Clear weather is now just the time of day as an icon,
-	# with no word at all; rain keeps its word, because rain is the thing worth
-	# naming and the one the player can act on.
+	# Reported from play 2026-08-30: "Sunny" at night is confusing — and it was,
+	# because the label was answering a question nobody asked. Dropping the word
+	# left a ☀️/🌇/🌙 icon behind, and **Q-72 (ruled 2026-09-01) retires that
+	# too**: the arc says what time it is precisely and T-34's digits say it
+	# exactly, so a third, coarser telling of the same hour was only spending
+	# pixels. The line now speaks *only when weather is happening* — silent on a
+	# clear day, "🌧️ Rainy" when it is not, which is the thing worth naming and
+	# the one the player can act on.
 	if GameState.weather == "sunny":
-		weather_label.text = _sky_icon()
+		weather_label.text = ""
 	else:
 		weather_label.text = "🌧️ %s" % GameState.weather.capitalize()
 
@@ -613,6 +638,11 @@ func _update_hud() -> void:
 	# of the bar is: one pass, one place to look when the bar is wrong.
 	if sun_arc != null:
 		sun_arc.queue_redraw()
+
+	# The same hour in digits (T-34), from the same function the arc and the sky
+	# are drawn from — so the three of them cannot disagree about the time.
+	if clock_label != null:
+		clock_label.text = Daylight.clock_text(GameState.energy, GameState.max_energy)
 
 	# Energy — debug readout only (T-14/Q-38's sub-ruling). Release builds get the
 	# sun-arc above and the sky behind it; neither carries a digit.
@@ -676,16 +706,6 @@ func _update_hud() -> void:
 
 	# T-28's satisfied treatment B, if it is the one being judged.
 	_update_state_chips()
-
-
-# The same fraction the daylight tint is derived from (T-14 / Q-38), as a glyph.
-# Deliberately reads off `Daylight`'s own idea of the day rather than inventing a
-# second threshold, so the icon and the sky can never disagree. **T-29 made that
-# literally true**: the two numbers it used to hold itself now live in
-# `Daylight` beside the tick marks, and the arc's token wears the same glyph, so
-# the line, the arc and the sky are three drawings of one function.
-func _sky_icon() -> String:
-	return Daylight.glyph_for(GameState.energy, GameState.max_energy)
 
 
 # --- The sun-arc (T-29) -------------------------------------------------------

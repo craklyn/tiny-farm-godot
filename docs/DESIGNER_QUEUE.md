@@ -691,7 +691,10 @@ trace actually says, because several of these looked like bugs and were not.*
 - **Q-72** ~~Does the weather line keep its glyph now the arc exists?~~ — ✅ **ruled
   2026-09-01: the weather line speaks only when weather is happening** (rain keeps its
   words; clear skies say nothing — the arc and the new T-34 digits own time). Built
-  with T-34 so the baseline moves once.
+  with T-34 so the baseline moves once. **Built 2026-09-01:** `_sky_icon()` and
+  `Daylight.glyph_for` are gone, the clear-day line is `""`, rain is untouched, and the
+  one re-baseline covered both halves — 323 pixels, all in the top bar, 86 of them the
+  ☀️ leaving and 237 the clock arriving.
   Original entry: **Does the weather line keep its sun/sunset/moon glyph now the arc is
   there?** T-29 put a sun-arc in the middle of the top bar, and the weather label three
   inches to its left still shows ☀️ / 🌇 / 🌙 on a clear day — the same hour, said twice.
@@ -707,6 +710,18 @@ trace actually says, because several of these looked like bugs and were not.*
   **Recommendation: (b), but it is a look-at-it call, not an argument** — one line of
   `ui/hud.gd`, no sim, and it moves the visual baseline, so it is worth doing once rather
   than twice. Left undone deliberately: nothing in T-29's boxes asked for it.
+- **Q-74 (Ruling, filed 2026-09-01 from T-34)** **How loud should the clock be?** T-34
+  ruled *where* the digits go (beside the arc) but not how big, and "small hh:mm" was
+  resolved by interpretation: the clock wears the **top bar's own type and the day
+  label's colour**, and stays subordinate to the arc by being the narrower element and
+  not the one in the middle. The alternative — a smaller or dimmer face, the way the
+  debug readout is dimmed to 45% — was rejected on the argument that a second type size
+  inside a 30px bar reads as a different *kind* of thing rather than as a quieter one.
+  That is a taste call made in flight, so it is recorded rather than assumed: it is one
+  line of `ui/hud.gd` plus a re-baseline either way. **Recommendation: leave it as
+  built**, and look at it on the tablet before spending a baseline on it — the whole
+  question is whether the digits pull the eye away from the arc, which is a thing to
+  see rather than to argue.
 
 ## M2.5 — the actor system (filed 2026-08-31, from the entity brainstorm)
 
@@ -1010,6 +1025,12 @@ trace actually says, because several of these looked like bugs and were not.*
   parks at 16:00 when the meter empties, so the evening exists as a span energy never
   touches. What lives in it — the neighbour returning (Q-22 territory), festivals,
   bot chatter — is phase-2+ content design. Nothing is blocked; the span waits.
+  **Structural half shipped 2026-09-01** and it cost nothing to build: the meter
+  already clamps at 0, so Q-11's soft-floor work past dusk spends no clock and the
+  digits sit at 16:00 through it. Note for whoever designs the content: the evening
+  currently has **no length** — it is "after the meter empties", not a second budget,
+  and giving it one (an evening clock, an evening meter) is a new decision, not an
+  extension of this one.
 
 - **Q-15 (Ruling)** Sprinkler/machine acquisition loop: crafted, bought, or
   milestone-granted; the resource loop that feeds it (`design/03`).

@@ -556,21 +556,79 @@ the door that fixes that.*
   replay-verified, benchmark 105,132× (gate ≥100,000×), and the visual baseline
   untouched — the zoo is behind the title screen, so it cannot be in the frame.**
 
-**T-34 — The clock gets digits** · ruled 2026-09-01 · builds on T-29
+**T-34 — The clock gets digits** · ruled 2026-09-01 · builds on T-29 · ✅ **built
+2026-09-01**
 *The designer: display the time as a digital clock, with day start and end set —
 "maybe evenings are for socializing potentially and that's why we don't tie it to
 energy." Ruled same day: the workday is **6:00 → 16:00**, digits live **beside the
 arc** in the top bar.*
-- [ ] With 600 units over ten hours, **one unit is one fictional minute**: the clock
+- [x] With 600 units over ten hours, **one unit is one fictional minute**: the clock
       is literally `6:00 + units spent`, a base action is 30 minutes, a heavy clear
       an hour. No conversion factor exists.
-- [ ] At energy 0 the clock parks at 16:00 — everything after is *evening*, a span
+- [x] At energy 0 the clock parks at 16:00 — everything after is *evening*, a span
       energy never touches; soft-floor work (Q-11) happens "in the evening" without
       moving the digits. Evening's own rules are future design (see the queue's
       phase-2 section: evenings as social time). Sleep at any hour wakes at 6:00.
-- [ ] Q-72 rides along: the weather line goes quiet on clear days — rain keeps its
+- [x] Q-72 rides along: the weather line goes quiet on clear days — rain keeps its
       words; the arc and digits own time. One deliberate re-baseline for the pair.
-- [ ] Digits are S-7-legal by Q-35's shop precedent (digits allowed, words never).
+- [x] Digits are S-7-legal by Q-35's shop precedent (digits allowed, words never).
+
+**What it came out as.**
+
+- **`Daylight.clock_text(energy, max_energy)`** — one home, beside `progress()`,
+  `fraction()` and `is_night()`, so the tint, the arc and the digits are three
+  drawings of one function and cannot disagree about the hour. `clock_minutes()`
+  underneath it is the arithmetic; `clock_text` is only the `"%d:%02d"`.
+- **The clock is the one reader in that file that is not a ratio**, and that is the
+  point. Everything else divides by `max_energy`, which is why an 18/20 legacy save
+  and a 540/600 modern one draw the same sky; the clock counts *units*, because a
+  unit is a minute. `DAY_START_MINUTE = 6 * 60`, minutes = units spent, and nothing
+  in between. The unit test walks all 601 instants one at a time asserting
+  `clock_minutes(600 − n) == 6:00 + n`, so adding a conversion factor later fails a
+  test rather than quietly re-scaling the day. (Corollary, asserted so nobody
+  "fixes" it: at the legacy 20-unit scale the face would read 6:20 at dusk. Correct
+  — v1 saves are migrated ×30 on load, so no live game is ever on that ruler.)
+- **Decision recorded: 24-hour, "6:00" → "16:00".** The brief offered 12-hour
+  without a suffix and it does not survive contact — unsuffixed 12-hour runs
+  6:00 … 4:00 and wraps through noon with nothing marking the turn, and the fix for
+  that ("am"/"pm") is words, which S-7 bans and Q-35's precedent does not licence.
+  Q-35 licences *digits*. So: digits and a colon, no leading zero on the hour, and
+  a face that only ever reads in one direction. Asserted character by character at
+  every one of the 601 instants — no hour of the day can put a letter on screen.
+- **Parking at dusk needed no new code**, which is worth recording as a property
+  rather than a coincidence: `GameState.set_energy` already clamps to `[0, max]`,
+  so Q-11's soft-floor work past the floor spends nothing and the digits cannot
+  move. The clamp in `clock_minutes` is belt-and-braces for a caller that hands it
+  a raw number. Sleep already restores `energy = max_energy` (`start_new_day`), so
+  waking at 6:00 is the same identity read forwards — an unspent afternoon is not
+  banked, which is T-14's sub-ruling still standing.
+- **Placement:** `clock_label` in the top bar at the arc's right edge + 8px
+  (x=460 of 800, between the arc and the gold), the bar's own type and the day
+  label's colour, `MOUSE_FILTER_IGNORE` so it cannot eat a tap. "Small" was read as
+  *subordinate to the arc*, not as a smaller font: a second type size in a 30px bar
+  would have read as a different kind of thing, and the arc keeps primacy by being
+  the wider element and the one in the middle. That reading is taste rather than
+  ruling, so it is filed as **Q-74** for a look on the tablet.
+- **Q-72, built the same change:** `_sky_icon()` is gone from `ui/hud.gd` and
+  `Daylight.glyph_for` / `GLYPH_EVENING_F` with it — the weather line is `""` on a
+  clear day and unchanged ("🌧️ Rainy") in rain. `GLYPH_NIGHT_F` survives the
+  retirement as **`NIGHT_F`**, because the arc's token still needs to know when to
+  become a moon; the rename is the only ripple (one line of `test_energy_repartition`,
+  which also loses its now-impossible glyph parity check).
+- Covered by `tests/test_runner.gd:test_clock_digits` (the five boundary instants,
+  the one-unit-one-minute identity over all 601, wordlessness over all 601, the
+  cost table's own 30 and 60, parking under five soft-floor actions, the degenerate
+  inputs, sleep-at-noon → 6:00) and `tools/test_runner.gd` **Scenario H (f)/(g)**
+  (the label exists beside the arc and inside the bar, reads 6:00 at a full meter,
+  reads 6:30 after one real tilling through the real input path, parks at 16:00 and
+  stays there through a soft-floor clear, and the weather line silent on a clear day
+  / speaking in rain).
+- **1735 unit / 432 integration, both green; robot session replay-verified (44
+  entries, 909 ticks), benchmark 104,967× (gate ≥100,000×).** The visual baseline
+  moved and is re-baselined in its own commit (precedent 9673e65): 323 pixels, all
+  inside the top bar, in exactly two clusters — columns 71–84 where the ☀️ used to
+  be (86 pixels removed) and columns 460–491 where "6:00" now is (237 pixels added),
+  rows 11–25 of the 30px bar. Nothing below row 25 moved.
 
 **T-29 — The day wears a clock** · Q-38's rider, filed 2026-08-31 · scheme approved
 2026-09-01 · ✅ **built 2026-08-31**
@@ -628,6 +686,8 @@ Scheme as approved, designed for the multiplier test the designer set:
   moon threshold are literally the same constant, so the token becomes a moon as it
   crosses that mark. The two glyph thresholds moved out of `ui/hud.gd` into `Daylight`
   unchanged to the digit; the weather line and the arc now read one function.
+  *(Superseded 2026-09-01 by Q-72/T-34: the line stopped saying the hour at all, so
+  `glyph_for` and the evening threshold retired and `NIGHT_F` carries the moon.)*
 - **Save format v2**, and it is the first non-additive schema change this project has
   had. Every previous field was chosen so an old save could default it; a
   re-partition cannot be — the same key holds a number thirty times smaller and no

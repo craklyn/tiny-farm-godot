@@ -458,9 +458,83 @@ func _scenario_h_daylight() -> void:
 	_assert(hud.sun_token_pos().distance_to(before_action) > 1.5,
 		"and one base action moves it by more than a pixel or two")
 
-	# The digits stay out of the shipped bar (S-7, and Q-38's sub-ruling that the
-	# numeric readout is debug-only). Asserted on the source, because this suite
-	# only ever runs in a debug build and so can never observe the release case.
+	# (f) T-34: the same hour in digits, beside the arc.
+	#
+	# The arc is the wordless read and stays the one the game is designed around;
+	# the digits are the exact one. Both are drawn from `Daylight`, so what is
+	# checked here is that the label exists where the ruling put it, says what the
+	# pure function says, and carries nothing but digits and a colon.
+	_assert(hud.clock_label != null and hud.clock_label is Label,
+		"the top bar carries a clock")
+	_assert(hud.clock_label.get_parent() == hud.top_bar, "in the top bar, with the arc")
+	_assert(hud.clock_label.position.x >= hud.sun_arc.position.x + hud.sun_arc.size.x,
+		"beside the arc and to its right, as the ruling placed it")
+	_assert(hud.clock_label.position.y + hud.clock_label.size.y <= hud.top_bar.size.y,
+		"and inside the bar's own 30 pixels")
+
+	GameState.set_energy(GameState.max_energy)
+	await get_tree().process_frame
+	_assert(hud.clock_label.text == "6:00", "a full meter reads 6:00 — the workday opens")
+
+	# Digits and a colon only: "am"/"pm" would be words, which S-7 bans and Q-35's
+	# precedent does not licence (it licences digits, and only digits).
+	var wordless := true
+	for i in hud.clock_label.text.length():
+		var ch: String = hud.clock_label.text[i]
+		if ch != ":" and not (ch >= "0" and ch <= "9"):
+			wordless = false
+	_assert(wordless, "and it is wordless — digits and a colon, no am/pm (S-7 via Q-35)")
+
+	# One real action through the real input path moves it exactly half an hour:
+	# one energy unit is one fictional minute and a base verb is 30 of them.
+	# (9,6) was cleared by the soft-floor action above and she is still beside it.
+	GameState.selected_tool = 3  # Hoe
+	Input.action_press("action")
+	await _wait_for_action()
+	Input.action_release("action")
+	await get_tree().process_frame
+	_assert(GameState.energy == GameState.max_energy - Tools.get_energy_cost("till"),
+		"one base action spent 30 units")
+	_assert(hud.clock_label.text == "6:30",
+		"and the clock says 6:30 — one unit is one minute, with no factor between")
+
+	# It parks at dusk, and Q-11's soft-floor work happens in the evening (Q-73's
+	# span) without moving the digits.
+	GameState.set_energy(0)
+	await get_tree().process_frame
+	_assert(hud.clock_label.text == "16:00", "an empty meter parks the clock at 16:00")
+	farm.set_tile_state(9, 6, "obstacle_weed")
+	player.pos = Vector2(8.5 * 16.0, 6.5 * 16.0)
+	player.facing = "right"
+	GameState.selected_tool = 0  # Hands
+	Input.action_press("action")
+	await _wait_for_action()
+	Input.action_release("action")
+	await get_tree().process_frame
+	_assert(farm.get_tile(9, 6).state == "cleared",
+		"work past the floor still resolves (Q-11)")
+	_assert(hud.clock_label.text == "16:00",
+		"and it happens in the evening — the digits do not move for it")
+
+	# (g) Q-72: the weather line speaks only when weather is happening. Clear days
+	# are the arc's and the clock's to report; the line saying the hour a third
+	# time was the duplication the ruling removed.
+	var weather_was: String = GameState.weather
+	GameState.weather = "sunny"
+	await get_tree().process_frame
+	_assert(hud.weather_label.text == "",
+		"on a clear day the weather line says nothing at all")
+	GameState.weather = "rainy"
+	await get_tree().process_frame
+	_assert(hud.weather_label.text.contains("Rainy"),
+		"and rain still speaks, in exactly the words it had")
+	GameState.weather = weather_was
+	await get_tree().process_frame
+
+	# The *energy* readout stays out of the shipped bar (Q-38's sub-ruling that it
+	# is debug-only) — T-34 shipped a clock, not the meter's raw numbers, and the
+	# two are separate rulings. Asserted on the source, because this suite only
+	# ever runs in a debug build and so can never observe the release case.
 	var hud_src := (hud.get_script().source_code as String)
 	var gate := hud_src.find("OS.is_debug_build()")
 	_assert(gate != -1 and hud_src.find("energy_debug_label") > gate,
