@@ -31,9 +31,48 @@ const SCALE := 3
 
 var _camera_offset: Vector2 = Vector2.ZERO
 
+# T-27 (box 2): the consumption window.
+#
+# Her triple sleep — three cot taps in five seconds (2026-08-30 trace, 3m37–42s),
+# about three phantom days inside "day 12" — was never three decisions. `main.gd`
+# returns early for the whole day transition, so `player.update_player()` never
+# ran and never *consumed* `has_click`: the tap sat in this buffer and fired on
+# the first frame of morning, which started the next transition, which buffered
+# the next tap. One intention, three days.
+#
+# The fix is a window, not a timer. While a transition owns the screen, pointer
+# events are dropped **here**, at the input boundary, before anything downstream
+# can turn one into an intent — so there is nothing to debounce and no interval to
+# tune. Nothing about the gateway changes: an Action that has already resolved
+# still lands, and a tap the instant after the window closes is an ordinary tap.
+var _swallowing: bool = false
+
+
+## Open or close the window. Opening it also discards whatever is already
+## buffered: a tap made in the world she fell asleep in is not a tap in the one
+## she wakes up in.
+func swallow_input(on: bool) -> void:
+	_swallowing = on
+	if on:
+		has_click = false
+		swipe_active = false
+		swipe_moved = false
+		swipe_tile = Vector2i(-1, -1)
+
+
+func is_swallowing() -> bool:
+	return _swallowing
+
 
 func _unhandled_input(event: InputEvent) -> void:
 	swipe_moved = false  # Reset per-frame
+
+	# T-27: dropped whole, including the mode bookkeeping — a fade is not a moment
+	# to decide the player has switched from a finger to a mouse. Keys and pads
+	# still come through: the pause button must work during a transition.
+	if _swallowing and (event is InputEventScreenTouch or event is InputEventScreenDrag \
+			or event is InputEventMouseButton or event is InputEventMouseMotion):
+		return
 
 	if event is InputEventKey or (event is InputEventJoypadButton and false):
 		_set_mode(Mode.KEYBOARD)

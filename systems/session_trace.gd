@@ -54,8 +54,17 @@ func _stamp() -> int:
 #                 replacing *worked-then-dead*.
 #   unreachable - she cannot path there and is not already beside it: the tap
 #                 did nothing whatsoever. The most diagnostic outcome we record.
+#
+# `tile` is always the tile the finger actually hit. Since T-27 the intent layer
+# may *rescue* a tap that achieved nothing to a high-value object beside it (the
+# cot); when it does, `halo` carries the tile it was rescued to and `tile` still
+# carries the miss. That order matters: the misses are the evidence — four
+# `no_energy` refusals on (2,2) with the cot at (2,1), 2026-08-30 — and a trace
+# that recorded the rescued tile instead would report the fix as though the
+# player had never missed at all.
 func tap(modality: String, tile: Vector2i, player_tile: Vector2i, tool_idx: int,
-		verb: String, outcome: String, reason: String = "") -> void:
+		verb: String, outcome: String, reason: String = "",
+		halo: Vector2i = Vector2i(-1, -1)) -> void:
 	var e := {
 		"t": _stamp(),
 		"kind": "tap",
@@ -68,6 +77,8 @@ func tap(modality: String, tile: Vector2i, player_tile: Vector2i, tool_idx: int,
 	}
 	if reason != "":
 		e["why"] = reason
+	if halo.x >= 0:
+		e["halo"] = [halo.x, halo.y]
 	entries.append(e)
 
 

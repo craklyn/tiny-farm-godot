@@ -85,6 +85,20 @@ before the first public build ships.*
   - Unused from this run, kept out of the repo: `sprinkler_idle` (a second, differently
     shaped sprinkler, dropped in favour of the consistent pair above) and both
     `ant_scout` variants (long and flat; they vanished at 16px). $0.081 of the $1.390.
+- **T-27, the cot, 2026-08-31** (same Retro Diffusion pipeline, rights and
+  palette-locking as above). `objects.png` cell 0 — the **cot** — regenerated in place.
+  One call, two variants, `rd_plus__default` at 64x128 (4x the 16x32 cell), **$0.058**
+  of the T-27 story's $0.25 cap; account balance after the run $1.858. The sheet is
+  unchanged in size and gains **no new colours**: the chosen variant was keyed,
+  trimmed, downscaled NEAREST and then snapped to the 19 colours already in
+  `objects.png` (three pixels' worth of drift, `#c05a3a`→`#c84e39`,
+  `#a87959`→`#a97959`, `#e5b898`→`#e8cfa6`).
+  The old cell drew an 11px-tall bed sitting in the bottom third of its 16x32 region,
+  so the tallest object in the yard read as the smallest; the new one fills the cell it
+  was always allotted. Nothing about the sim changed — the cot's footprint is the one
+  tile it always was, and the renderer already anchored tall objects to the footprint
+  with the extra height rising north (`world/farm.gd`, `SimWorld.TALL_OBJECTS`).
+  The unchosen variant is not in the repo.
 - **Sprout Lands asset pack** by Cup Nooble — *removed 2026-08-26* (Q-7c ruling:
   drop restrictively-licensed assets; its free license forbids redistribution and
   this repo is public). Q-7b license findings recorded in the git history of this

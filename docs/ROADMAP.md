@@ -136,27 +136,63 @@ after a survey of the genre standards (Stardew/Harvest Moon confirm-dialog,
 anticipation animation, transition input consumption, touch-target minimums):
 **no confirmation step** — the designer's words: *"our consequences are lower, so we
 will not add the check"* — everything else adopted as analyzed:
-- [ ] **anticipation: the sleep is acknowledged by her body, instantly.** The Action
+- [x] **anticipation: the sleep is acknowledged by her body, instantly.** The Action
       still applies the moment the tap resolves (D-8: presentation never gates or
       delays the gateway) — but the transition now *opens* with her visibly lying on
       the cot before the fade, so the tap is answered in her own sprite within a
       beat. This also answers T-26's root finding from the other side: day
       transitions must show whose sleep they are.
-- [ ] **input is consumed during the whole day transition.** Her triple-sleep
+- [x] **input is consumed during the whole day transition.** Her triple-sleep
       (3× in 5s at 3m37–42s; ~3 phantom days inside "day 12") happened because
       re-taps landed in the first instants of morning. Taps during the
       tuck-in → fade → Day-N → morning sequence go nowhere; no debounce timer needed.
-- [ ] **the cot gets a tap halo, refusal-aware.** Four consecutive `no_energy`
+- [x] **the cot gets a tap halo, refusal-aware.** Four consecutive `no_energy`
       refusals at 5m04–10s were taps on (2,2), one tile below the cot, resolved as
       till-with-hoe. Rule: the tapped tile wins whenever it produces a real world
       change; only a tap that produced nothing (or a no-effect refusal) is rescued
       to a high-value interactable adjacent to it. T-18's philosophy, applied.
-- [ ] **the cot reads bigger.** Drawn taller (a 16×32 sprite on its 1-tile sim
+- [x] **the cot reads bigger.** Drawn taller (a 16×32 sprite on its 1-tile sim
       footprint — no worldgen change), generated on the existing pipeline; with the
       halo this takes the *effective* touch target to genre minimums.
 - [ ] **the cot must look like sleeping before first use** — final form is the
       designer's (glow at dusk? the zero-energy pulse, earlier and stronger?).
 - [ ] re-evidence: the next fresh adult session scores the cot bar unprompted.
+
+**Built 2026-08-31** (the four boxes above; the two below them stay open). What it
+came out as, and where it differs from the description it was written from:
+
+- The sleep Action now resolves **at the tap**, not inside the fade's callback where
+  it used to sit. That is the box as written ("the Action still applies the moment the
+  tap resolves") but it *is* a change from what the code did before, and it is the load-
+  bearing one: presentation could not open on a beat that came before the Action
+  without either delaying the Action (D-8's forbidden "wind-up") or moving it earlier.
+  Everything after `apply_action` — tuck-in, fade, Day-N, morning — is skippable
+  presentation, which is what keeps the headless suites and fast-forward honest.
+- **Deviation, presentation-only:** because the sim is in the new day for the whole
+  transition, her energy is full while she is still visibly lying down, and Q-38's
+  daylight ramp would snap the world from dusk to noon *before* the fade. The tint is
+  therefore frozen at the value she fell asleep under and thawed under the black
+  (`main.gd` `_freeze_daylight`). Nothing else about the new day is hidden; the crops
+  do turn while she lies there, which is honest and, at the cot, off to the side.
+- The tuck-in pose is **drawn, never walked**: `player.tuck_tile` moves the sprite to
+  the cot and leaves `pos` alone, because `pos` is what her registry entry and the
+  replay's free-walk events are written from (M2.5 WI-6). A presentation flourish that
+  moved her would have posted a teleport into the training data.
+- The halo is wired to the **cot alone** (`ActionRouter.HALO_OBJECTS`), with four
+  guards on it: a non-empty resolution wins outright, a drag is never rescued, a far
+  tap keeps its walk order, and a tile answering Q-42's *yes-done* is never talked
+  over. The trace keeps the tile the finger hit and records the rescue beside it as
+  `halo`, because the misses are the evidence.
+- The **cot sprite** needed no renderer change: `farm.gd` already anchored a 16x32
+  object to its footprint tile with the height rising north, and `SimWorld.TALL_OBJECTS`
+  already made the tile above it read as occupied and tappable. The old art simply drew
+  an 11px bed in the bottom third of the cell it had. $0.058, one call (CREDITS.md).
+- Covered by `tests/test_runner.gd:test_cot_halo` (the rule, headless: twelve
+  assertions including her exact case) and `tools/test_runner.gd` Scenario W (the whole
+  chain through the real input path: one tap = one day under 288 re-taps; the fat
+  finger sleeps; the same tap with energy tills). Scenario L is untouched and green.
+- The visual baseline changed, cot only; re-baselined in its own commit (precedent
+  af93ede).
 
 ### Ordering
 Twenty-six stories as of 2026-08-30: twenty-one shipped, `T-6`/`T-7` dropped (Q-36),

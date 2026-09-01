@@ -4,6 +4,15 @@
 # perform automatically — no manual tool selection required for basic actions.
 extends Node
 
+## T-27 (box 3): the objects a tap that achieved nothing may be *rescued* to.
+##
+## **The cot only**, deliberately. The mechanism is written so the shipping bin
+## and the well can join it whenever the designer says so — they are the other
+## two things in the yard worth a fat finger — but wiring one object is the
+## smallest change that answers the evidence, and every extra entry here is a
+## tile that silently stops meaning what it says.
+const HALO_OBJECTS := { "cot": true }
+
 const SPECIAL_OBJECTS := {
 	"cot":          "sleep",
 	"well":         "refill",
@@ -153,6 +162,61 @@ func resolve(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, is_drag: 
 		return {}
 
 	return {}
+
+
+## resolve(), plus the refusal-aware tap halo — T-27 (box 3), T-18's philosophy
+## applied to *where* a tap landed rather than to what it found there.
+##
+## The evidence (2026-08-30, 5m04–10s): four consecutive `no_energy` refusals on
+## (2,2), one tile below the cot at (2,1), every one of them a tap meant for the
+## cot and resolved as till-with-hoe. Nothing was broken — she missed by one tile,
+## four times, and the game answered "you cannot till that" four times.
+##
+## **The tapped tile always wins when it produces a real world change.** Only a
+## tap that produced nothing at all is rescued, and only to a high-value
+## interactable orthogonally adjacent to it. Four guards keep that promise narrow:
+##
+##  1. a non-empty resolution is returned untouched — a till is a till;
+##  2. a drag is never rescued: a stroke is a deliberate line, and rescuing one
+##     would make a swipe along a row sleep her when it reached the cot's column;
+##  3. only a tap she is standing on or beside is rescued — a far tap already has
+##     an honest answer (she walks toward it), and rescuing one would put her to
+##     sleep from across the farm;
+##  4. a tile that answers *yes-done* is never rescued (Q-42): "already watered"
+##     is an answer, and the halo must not talk over it.
+##
+## The rescue re-resolves as if she had tapped the object itself, so everything
+## downstream — the approach, the walk, the tap indicator, the sim Action — is the
+## ordinary cot tap it was meant to be. `halo_from` carries the tile the finger
+## actually hit so the trace can still record the miss (that evidence is the whole
+## reason this exists).
+##
+## Sim untouched: this is intent resolution, layer 3, and it produces no verb the
+## player did not already have.
+func resolve_with_halo(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null,
+		is_drag: bool = false, drag_tool_idx = null) -> Dictionary:
+	var direct := resolve(farm, gs, tap_t, player_t, is_drag, drag_tool_idx)
+	if not direct.is_empty():
+		return direct                                    # guard 1
+	if is_drag or player_t == null:
+		return direct                                    # guard 2
+	var pt: Vector2i = player_t
+	if absi(pt.x - tap_t.x) + absi(pt.y - tap_t.y) > 1:
+		return direct                                    # guard 3
+	if satisfied_reason(farm, gs, tap_t) != "":
+		return direct                                    # guard 4
+
+	# Fixed order (N, S, W, E) so the rule is reproducible if two haloed objects
+	# ever end up beside the same tile.
+	for d in [Vector2i(0, -1), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(1, 0)]:
+		var n: Vector2i = tap_t + d
+		if not HALO_OBJECTS.has(farm.get_object(n.x, n.y)):
+			continue
+		var rescued := resolve(farm, gs, n, player_t, is_drag, drag_tool_idx)
+		if not rescued.is_empty():
+			rescued["halo_from"] = tap_t
+			return rescued
+	return direct
 
 
 ## Why a tap on a workable tile produced no action — "" when there was genuinely

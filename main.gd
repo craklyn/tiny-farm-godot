@@ -388,9 +388,33 @@ func _on_day_changed_tint(_d: int) -> void:
 
 # Q-38's whole mechanism: energy/max_energy on a colour ramp, applied once.
 func _update_daylight() -> void:
+	if _daylight_frozen:
+		return
 	_tint = Daylight.tint_for(GameState.energy, GameState.max_energy)
 	if world_tint != null:
 		world_tint.color = _tint
+
+
+# T-27 (box 1): the sky she fell asleep under, held until the screen is black.
+#
+# The sleep Action lands before the tuck-in beat is drawn (that is the D-8 order,
+# and it is not negotiable), which means her energy — and therefore Q-38's whole
+# clock — is already full while she is still visibly lying down. Without this the
+# world snaps from dusk to noon *and then* fades out, which reads as the game
+# glitching at the exact moment it is trying to answer her.
+#
+# Presentation only, and cheap to be sure of: `_tint` is a cache of a pure
+# function of state, so thawing just asks Daylight again.
+var _daylight_frozen: bool = false
+
+
+func _freeze_daylight() -> void:
+	_daylight_frozen = true
+
+
+func _thaw_daylight() -> void:
+	_daylight_frozen = false
+	_update_daylight()
 
 
 func _on_weather_changed(weather: String) -> void:
@@ -421,9 +445,26 @@ func _process(delta: float) -> void:
 	if farm != null:
 		farm.sync_actors()
 
-	# Skip gameplay during day transition
+	# Skip gameplay during day transition.
+	#
+	# T-27 (box 2): and consume input for the whole of it — tuck-in, fade, Day-N
+	# card, morning. Re-asserted every frame rather than latched at the dispatch,
+	# so a transition that starts anywhere else (the cold open's world sleep) is
+	# covered by the same rule for free, and so a frame lost to anything at all
+	# cannot leave the window stuck open. The world still redraws, because the
+	# player is held and would otherwise never queue the tuck-in pose.
 	if day_cycle.is_active():
+		InputManager.swallow_input(true)
+		if farm != null:
+			farm.queue_redraw()
 		return
+	if InputManager.is_swallowing():
+		InputManager.swallow_input(false)
+	# Belt and braces: the sky is normally thawed under the black, in the day
+	# cycle's own callback. If a transition ever ends without firing it, the world
+	# must not stay stuck at dusk.
+	if _daylight_frozen:
+		_thaw_daylight()
 
 	# Skip gameplay while menu is open
 	if menus.is_open():
@@ -574,17 +615,47 @@ func _handle_action_result(action: String) -> void:
 	if action == "":
 		return
 	if action == "sleep":
-		day_cycle.set_day_display(GameState.day + 1)
+		# A sleep that arrives while a transition is already running is not a
+		# second decision — input is consumed for the whole window (T-27 box 2), so
+		# the only way here is two dispatches deferred out of the same frame. Turned
+		# away at the **dispatcher**, which is intent, not at the gateway: no Action
+		# that has resolved is ever held back, and a bot asking for `sleep` through
+		# `apply_action` is unaffected by this line.
+		if day_cycle.is_active():
+			return
+		# T-27 (box 1) and D-8, in this order deliberately.
+		#
+		# **The Action resolves here, at the tap.** `apply_action` runs before a
+		# single frame of presentation, so the sim is in the new day for the whole
+		# transition and every beat below could be skipped without it noticing —
+		# which is what keeps the headless suites and fast-forward training honest.
+		# D-8 names the one variant that would be a sim change, a wind-up *before*
+		# the effect; this is its opposite, an acknowledgement after it.
+		#
+		# The morning belongs to the sim (M2.5 WI-3): `advance_day` tells every
+		# brain a day turned and wakes them, so the hen's egg arrives as an ordinary
+		# recorded Action on the next pumped tick rather than as a
+		# `child.on_new_day()` loop over whatever nodes happened to exist.
+		_freeze_daylight()
+		var sleep_result: Dictionary = farm.apply_action({ "verb": "sleep", "actor": "world" }, GameState)
+		persist_session()
+		# The window opens on the same line the Action landed on, and closes when
+		# the morning has finished presenting itself (see `_process`).
+		InputManager.swallow_input(true)
+		# The day counter has already turned, so the card names the day she is in
+		# rather than the one she is about to reach.
+		day_cycle.set_day_display(GameState.day)
+		if player != null and _cot_tile.x >= 0:
+			player.tuck_in(_cot_tile)
 		day_cycle.start_sleep(func():
-			# The morning belongs to the sim now (M2.5 WI-3): `advance_day` tells
-			# every brain a day turned and wakes them, so the hen's egg arrives as
-			# an ordinary recorded Action on the next pumped tick rather than as a
-			# `child.on_new_day()` loop over whatever nodes happened to exist.
-			var sleep_result: Dictionary = farm.apply_action({ "verb": "sleep", "actor": "world" }, GameState)
-			persist_session()
+			# Under the black: she gets up, the sky catches up with the sim, and the
+			# morning celebrates if the sim said it should.
+			if player != null:
+				player.wake_up()
+			_thaw_daylight()
 			if sleep_result.get("phase1_complete_now", false):
 				_celebrate_expansion_morning()
-		)
+		, true)
 	elif action == "open_pause":
 		menus.open_menu("pause")
 	elif action == "return_to_title":

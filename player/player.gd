@@ -56,6 +56,35 @@ var farm: Node2D = null
 var gs: Node = null
 
 
+# T-27 (box 1): the tile she is shown lying on, or (-1,-1) when she is awake.
+#
+# **Presentation only, and deliberately draw-time only.** `pos` is where her
+# registry entry is read from on every tile crossing (M2.5 WI-6) and what the
+# replay's free-walk events are written from, so moving her to make her look
+# asleep would move sim truth and post a teleport into the training data. The
+# sprite goes to the cot; she does not.
+#
+# No new art (D-8's tier-(a) budget): the held action frame is the same trick the
+# neighbour's wave uses — one frame doing a second job — and the cot is drawn
+# north-south, so an upright sprite already lies along it.
+var tuck_tile: Vector2i = Vector2i(-1, -1)
+# How far north of the footprint tile's centre she is drawn, so she lands in the
+# middle of the two-tile cot instead of standing at its foot.
+const TUCK_RISE := 7.0
+
+
+func tuck_in(t: Vector2i) -> void:
+	tuck_tile = t
+	if farm != null:
+		farm.queue_redraw()
+
+
+func wake_up() -> void:
+	tuck_tile = Vector2i(-1, -1)
+	if farm != null:
+		farm.queue_redraw()
+
+
 func _ready() -> void:
 	if gs == null:
 		gs = _default_state()
@@ -173,8 +202,22 @@ func update_player(delta: float) -> void:
 			tap_indicator = {}
 			
 		var drag_intent = drag_tool_idx if is_drag else null
-		var resolved := ActionRouter.resolve(farm, gs, target_vec, player_t, is_drag, drag_intent)
-		
+		# T-27 (box 3): the refusal-aware halo. The tapped tile still wins whenever
+		# it produces a real world change; a tap that produced nothing, made while
+		# she is standing beside the cot, resolves as the cot tap it was meant to be.
+		var resolved := ActionRouter.resolve_with_halo(farm, gs, target_vec, player_t, is_drag, drag_intent)
+
+		# What the finger hit, kept apart from what the tap meant. The trace records
+		# the tile she actually touched — the fat-finger evidence is the whole reason
+		# the halo exists, and a trace that quietly rewrote it could never show the
+		# miss happening again.
+		var tapped_t := target_vec
+		var halo_t: Vector2i = resolved.get("halo_from", Vector2i(-1, -1))
+		if halo_t.x >= 0:
+			# From here on the tap *is* a tap on the object: the approach, the path,
+			# the indicator and the dispatch all take the ordinary route.
+			target_vec = resolved.get("target_t", target_vec)
+
 		if is_new_tap:
 			if not resolved.is_empty():
 				drag_tool_idx = resolved.get("tool_idx", -1)
@@ -251,10 +294,11 @@ func update_player(delta: float) -> void:
 					out_kind = "walk" if not path.is_empty() else "none"
 				else:
 					out_kind = "queued" if not path.is_empty() else "acted"
-				farm.trace.tap("drag" if is_drag else "tap", target_vec, player_t,
+				farm.trace.tap("drag" if is_drag else "tap", tapped_t, player_t,
 					gs.selected_tool,
 					String(resolved.get("action", "")), out_kind,
-					satisfied if satisfied != "" else blocked)
+					satisfied if satisfied != "" else blocked,
+					target_vec if halo_t.x >= 0 else Vector2i(-1, -1))
 
 			# An already-answered tap does not also get dispatched: sending the well
 			# an action the sim will benignly refuse would log a phantom refusal and
@@ -333,10 +377,11 @@ func update_player(delta: float) -> void:
 						"timer": TAP_INDICATOR_DURATION, "r": 0.9, "g": 0.85, "b": 0.3 }
 
 			if farm.trace != null:
-				farm.trace.tap("drag" if is_drag else "tap", target_vec, player_t,
+				farm.trace.tap("drag" if is_drag else "tap", tapped_t, player_t,
 					gs.selected_tool,
 					String(resolved.get("action", "")), out_kind,
-					satisfied2 if satisfied2 != "" else why)
+					satisfied2 if satisfied2 != "" else why,
+					target_vec if halo_t.x >= 0 else Vector2i(-1, -1))
 
 	# Keyboard / gamepad movement (cancels path)
 	var input_vec := Input.get_vector("move_left", "move_right", "move_up", "move_down")
@@ -640,6 +685,25 @@ func _emit_particles(effect_type: String, tile_pos: Vector2i) -> void:
 
 func queue_render(canvas: CanvasItem, render_queue: Array) -> void:
 	if sprite_texture == null:
+		return
+
+	# T-27: asleep, she is drawn on the cot and nowhere else — no tap indicator
+	# either, since nothing she taps during a transition means anything (box 2).
+	if tuck_tile.x >= 0:
+		var sleep_region: Rect2 = sprite_quads.get("up", {}).get(3, Rect2())
+		if sleep_region.size.x > 0:
+			var anchor := Vector2(
+				tuck_tile.x * TILE_SIZE + TILE_SIZE / 2.0,
+				tuck_tile.y * TILE_SIZE + TILE_SIZE / 2.0 - TUCK_RISE)
+			var bed_pos := anchor + Vector2(-24.0, -32.0)
+			render_queue.append({
+				# Half a pixel in front of the cot's own entry (queued at the
+				# footprint tile's top edge), so she is tucked *into* the bed
+				# rather than under it, without disturbing anything on the row.
+				"y": tuck_tile.y * TILE_SIZE + 0.5,
+				"draw": func(): canvas.draw_texture_rect_region(
+					sprite_texture, Rect2(bed_pos, Vector2(48, 48)), sleep_region)
+			})
 		return
 
 	var frame := walk_frame

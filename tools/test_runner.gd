@@ -75,6 +75,7 @@ func _run_scenarios() -> void:
 	await _scenario_t_the_bestiary_is_drawn()
 	await _scenario_u_under_and_over()
 	await _scenario_v_the_bot_is_drawn()
+	await _scenario_w_the_cot_presents_itself()
 
 func _wait_until(pred: Callable, max_frames: int) -> bool:
 	for i in max_frames:
@@ -1592,3 +1593,168 @@ func _scenario_v_the_bot_is_drawn() -> void:
 
 	yard.queue_free()
 	await get_tree().process_frame
+
+# --- T-27: the cot must present itself -----------------------------------------
+# Counts sleeps the sim actually performed since a mark in the trace. `act`
+# entries, not tap outcomes, because the question is what the *world* did.
+func _sleeps_since(since: int) -> int:
+	var n := 0
+	for i in range(since, farm.trace.entries.size()):
+		var e: Dictionary = farm.trace.entries[i]
+		if String(e.get("kind", "")) == "act" and String(e.get("verb", "")) == "sleep" \
+				and e.get("ok", false):
+			n += 1
+	return n
+
+
+func _refusals_since(since: int) -> int:
+	var n := 0
+	for i in range(since, farm.trace.entries.size()):
+		var e: Dictionary = farm.trace.entries[i]
+		if String(e.get("out", "")) == "refused":
+			n += 1
+		elif String(e.get("kind", "")) == "act" and not e.get("ok", true):
+			n += 1
+	return n
+
+
+func _last_tap_entry(since: int) -> Dictionary:
+	for i in range(farm.trace.entries.size() - 1, since - 1, -1):
+		if String(farm.trace.entries[i].get("kind", "")) == "tap":
+			return farm.trace.entries[i]
+	return {}
+
+
+func _scenario_w_the_cot_presents_itself() -> void:
+	# T-27, straight out of the 2026-08-30 tablet session, both halves of it:
+	#
+	#   * three cot taps in five seconds (3m37–42s) became about three days inside
+	#     "day 12". `main.gd` returns early for the whole transition, so the player
+	#     never ran and never *consumed* `has_click` — each tap sat in the buffer
+	#     and fired on the first frame of morning, starting the next transition.
+	#   * four `no_energy` refusals on (2,2) at 5m04–10s were every one of them a
+	#     tap meant for the cot at (2,1), one tile north, resolved as till-with-hoe.
+	#
+	# Both are asserted here against the real main scene through the real input
+	# path, because both were failures of the whole chain rather than of any one
+	# function in it.
+	print("\n--- Scenario W: the cot presents itself (T-27) ---")
+
+	# The sleep autosaves, and the real game's autosave is the file
+	# `verify_replay.gd` checks a human session against. Borrow different paths for
+	# the scenario and put them back afterwards.
+	var real_paths := [GameState.save_path, GameState.replay_path, GameState.trace_path]
+	GameState.save_path = "user://t27_autosave.json"
+	GameState.replay_path = "user://t27_replay.json"
+	GameState.trace_path = "user://t27_trace.jsonl"
+
+	var cot: Vector2i = main_scene._cot_tile
+	_assert(cot.x >= 0, "the farm has a cot, and main.gd knows where it is")
+	if cot.x < 0:
+		return
+	var below := cot + Vector2i(0, 1)          # (2,2) — the tile she kept hitting
+	var beside := cot + Vector2i(1, 1)         # (3,2) — where she stood while doing it
+	farm.set_tile_state(below.x, below.y, "cleared")
+	farm.set_tile_state(beside.x, beside.y, "cleared")
+	GameState.seeds["wheat"] = 0               # so cleared soil means "till", never "plant"
+
+	# (a) One tap, one day — however many times she taps during the transition.
+	GameState.set_energy(GameState.max_energy)
+	player.pos = Vector2(below.x * 16 + 8.0, below.y * 16 + 8.0)
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+
+	var day_before: int = GameState.day
+	var mark: int = farm.trace.entries.size()
+	InputManager.click_tile = cot
+	InputManager.has_click = true
+	var started := await _wait_until(func(): return main_scene.day_cycle.is_active(), 200)
+	_assert(started, "tapping the cot starts the day transition")
+	_assert(GameState.day == day_before + 1,
+		"and the sim is ALREADY in the new day — the Action resolved at the tap, not behind the fade (D-8)")
+	_assert(main_scene.day_cycle.state == "tucking",
+		"the transition opens on the lit world rather than on the fade")
+	_assert(player.tuck_tile == cot,
+		"with the farmer drawn lying on the cot — her body answers the tap (T-27 box 1)")
+	_assert(player.pos.distance_to(Vector2(below.x * 16 + 8.0, below.y * 16 + 8.0)) < 0.01,
+		"and her actual position never moved: the pose is drawn, not walked (sim truth is untouched)")
+
+	# Now the hostile part, which is simply what a four-year-old does when nothing
+	# appears to have happened yet: keep tapping. This covers the 1.5 s re-tap that
+	# cost her a day, and every other instant of the window besides.
+	var t0 := Time.get_ticks_msec()
+	var taps := 0
+	var guard := 0
+	while main_scene.day_cycle.is_active() and guard < 2000:
+		InputManager.click_tile = cot
+		InputManager.has_click = true
+		taps += 1
+		guard += 1
+		await get_tree().process_frame
+	var window_ms := Time.get_ticks_msec() - t0
+	_assert(taps > 0, "she tapped the cot again during the transition (%d times)" % taps)
+	_assert(window_ms >= 1500,
+		"and the window covered the whole transition, well past the 1.5 s re-tap (%d ms)" % window_ms)
+
+	# Nothing may be left buffered to fire on the first frame of morning — that
+	# buffer *is* the bug.
+	for i in 60: await get_tree().process_frame
+	_assert(GameState.day == day_before + 1,
+		"the day advanced exactly once, however many times she tapped (day %d)" % GameState.day)
+	_assert(_sleeps_since(mark) == 1,
+		"and the sim saw exactly one sleep, not three (%d)" % _sleeps_since(mark))
+	_assert(player.tuck_tile.x < 0, "she is out of bed by morning")
+	_assert(not InputManager.is_swallowing(),
+		"and the window is shut again — a tap the instant after it is an ordinary tap")
+
+	# (b) The fat finger: no energy, hoe in hand, one tile south of the cot.
+	var mark2: int = farm.trace.entries.size()
+	var day2: int = GameState.day
+	GameState.set_energy(0)
+	GameState.selected_tool = 3  # hoe, exactly as the trace recorded
+	farm.set_tile_state(below.x, below.y, "cleared")
+	player.pos = Vector2(beside.x * 16 + 8.0, beside.y * 16 + 8.0)
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+	InputManager.click_tile = below
+	InputManager.has_click = true
+	var slept := await _wait_until(func(): return GameState.day == day2 + 1, 600)
+	_assert(slept, "a tap one tile below the cot, with no energy, puts her to bed (her exact case)")
+	var haloed := _last_tap_entry(mark2)
+	_assert(haloed.get("tile", []) == [below.x, below.y],
+		"and the trace still records the tile her finger actually hit")
+	_assert(haloed.get("halo", []) == [cot.x, cot.y],
+		"with the tile it was rescued to recorded beside it")
+	_assert(_refusals_since(mark2) == 0,
+		"no refusal was logged at all — the miss never became a 'no' (it used to be four)")
+	await _wait_until(func(): return not main_scene.day_cycle.is_active(), 600)
+	for i in 5: await get_tree().process_frame
+
+	# (c) The tapped tile still wins whenever it can do something.
+	var mark3: int = farm.trace.entries.size()
+	var day3: int = GameState.day
+	GameState.set_energy(GameState.max_energy)
+	GameState.selected_tool = 3
+	farm.set_tile_state(below.x, below.y, "cleared")
+	player.pos = Vector2(beside.x * 16 + 8.0, beside.y * 16 + 8.0)
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+	InputManager.click_tile = below
+	InputManager.has_click = true
+	var tilled := await _wait_until(
+		func(): return farm.get_tile(below.x, below.y).state == "tilled", 600)
+	_assert(tilled, "with energy in the bank the same tap tills the tile she hit")
+	_assert(GameState.day == day3, "and she did not go to bed")
+	_assert(not _last_tap_entry(mark3).has("halo"),
+		"nothing was rescued — the tapped tile wins whenever it produces a real change")
+
+	GameState.seeds["wheat"] = 5
+	for p in [GameState.save_path, GameState.replay_path, GameState.trace_path]:
+		if FileAccess.file_exists(p):
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(p))
+	GameState.save_path = real_paths[0]
+	GameState.replay_path = real_paths[1]
+	GameState.trace_path = real_paths[2]

@@ -2,11 +2,25 @@
 # Mirrors the Love2D day_cycle.lua
 extends CanvasLayer
 
-var state: String = "idle"  # "idle", "fading_out", "hold", "fading_in"
+var state: String = "idle"  # "idle", "tucking", "fading_out", "hold", "fading_in"
 var alpha: float = 0.0
 var timer: float = 0.0
 var day_display: int = 1
 
+# T-27 (box 1): the anticipation beat. The transition now *opens* on the lit
+# world with the farmer lying on her cot, and only then fades.
+#
+# **This does not delay the sim by a frame, and must not (D-8).** The sleep Action
+# is applied by `main.gd` at the instant the tap resolves, before `start_sleep()`
+# is even called — so the world is already in the new day for the whole of the
+# sequence below, and every phase here is presentation that could be skipped
+# entirely without the sim noticing. D-8 names the one variant that would be a
+# sim change ("a wind-up before the effect") and this is deliberately not it: the
+# effect has already happened, and what she is watching is its acknowledgement.
+#
+# Long enough to register as an answer to her tap, short enough that it never
+# reads as a wait. [Playtest]
+const TUCK_TIME := 0.45
 const FADE_OUT_TIME := 0.5
 const HOLD_TIME := 0.5
 const FADE_IN_TIME := 0.5
@@ -38,10 +52,15 @@ func _ready() -> void:
 	add_child(day_label)
 
 
-func start_sleep(on_new_day: Callable) -> void:
+## `tuck` asks for T-27's anticipation beat before the fade. The player's own
+## sleep passes it; the cold open's world sleep does not — nobody is lying on
+## anything there, and holding a lit world for half a second to show that would be
+## a pause with nothing in it (T-26 asks the opposite question of that transition,
+## and it is still open).
+func start_sleep(on_new_day: Callable, tuck: bool = false) -> void:
 	if state != "idle":
 		return
-	state = "fading_out"
+	state = "tucking" if tuck else "fading_out"
 	timer = 0.0
 	alpha = 0.0
 	_on_new_day = on_new_day
@@ -63,6 +82,12 @@ func _process(delta: float) -> void:
 	timer += delta
 
 	match state:
+		"tucking":
+			# The world stays lit and unfaded: this beat exists to be *seen*.
+			alpha = 0.0
+			if timer >= TUCK_TIME:
+				state = "fading_out"
+				timer = 0.0
 		"fading_out":
 			alpha = minf(1.0, timer / FADE_OUT_TIME)
 			if timer >= FADE_OUT_TIME:

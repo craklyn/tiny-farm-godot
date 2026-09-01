@@ -80,6 +80,7 @@ func _init() -> void:
 	test_mole()
 	test_worm()
 	test_bots()
+	test_cot_halo()
 
 	print("")
 	print(String("=").repeat(60))
@@ -7461,3 +7462,94 @@ func test_bots() -> void:
 	_assert(report2["matched"],
 		"and the continued session replays to the identical outcome %s" % report2["divergence"])
 	gs_cont2.free()
+
+
+func test_cot_halo() -> void:
+	# T-27 (box 3). The 2026-08-30 tablet session, 5m04–10s: four consecutive
+	# `no_energy` refusals on (2,2) — every one a tap meant for the cot at (2,1),
+	# one tile north, resolved as till-with-hoe. Nothing was broken; she missed by
+	# one tile, four times, and the game said "you cannot till that" four times.
+	#
+	# The rule under test, in full: **the tapped tile wins whenever it produces a
+	# real world change**, and only a tap that produced nothing at all is rescued
+	# to a haloed object beside it.
+	print("\n--- T-27: the cot's refusal-aware tap halo ---")
+	var FarmScript = load("res://world/farm.gd")
+	var t = FarmScript.new()
+	t.tiles.clear()
+	t.objects.clear()
+	for ty in t.MAP_HEIGHT:
+		t.tiles.append([])
+		t.objects.append([])
+		for tx in t.MAP_WIDTH:
+			t.objects[ty].append("")
+			t.tiles[ty].append({ "state": "cleared", "crop_type": "", "growth_stage": 0, "watered_today": false })
+
+	GameState.selected_tool = 3          # hoe
+	GameState.selected_seed_type = "wheat"
+	GameState.seeds = { "wheat": 0 }     # so cleared soil means "till", never "plant"
+	GameState.energy = 20
+	GameState.watering_can_charges = 8
+
+	var cot := Vector2i(2, 1)
+	var below := Vector2i(2, 2)          # the tile her finger actually hit
+	var beside := Vector2i(3, 2)         # where she was standing while it did
+	t.objects[cot.y][cot.x] = "cot"
+
+	# 1. With energy, the tapped tile wins outright.
+	var till = ActionRouter.resolve_with_halo(t, GameState, below, beside, false, null)
+	_assert(till.get("action", "") == "till",
+		"with energy, the tile below the cot still tills — the tapped tile wins")
+	_assert(not till.has("halo_from"), "and nothing was rescued")
+
+	# 2. Her exact case: no energy, so the tap resolves to nothing at all.
+	GameState.energy = 0
+	_assert(ActionRouter.resolve(t, GameState, below, beside, false, null).is_empty(),
+		"with no energy that same tap resolves to nothing (the case that refused four times)")
+	var saved = ActionRouter.resolve_with_halo(t, GameState, below, beside, false, null)
+	_assert(saved.get("action", "") == "sleep", "and the halo rescues it to the cot")
+	_assert(saved.get("target_t", Vector2i.ZERO) == cot,
+		"re-resolved as a tap on the cot's own tile, so everything downstream is an ordinary cot tap")
+	_assert(saved.get("halo_from", Vector2i.ZERO) == below,
+		"carrying the tile she actually hit, so the trace can still record the miss")
+
+	# 3. A far tap already has an honest answer — she walks. Rescuing one would put
+	#    her to sleep from across the farm.
+	_assert(ActionRouter.resolve_with_halo(t, GameState, below, Vector2i(6, 6), false, null).is_empty(),
+		"a far tap keeps its walk order and is never rescued")
+
+	# 4. A drag is a deliberate stroke: a swipe along a row must not sleep her when
+	#    it reaches the cot's column.
+	GameState.energy = 20
+	var dragged = ActionRouter.resolve_with_halo(t, GameState, below, beside, true, -1)
+	_assert(dragged.is_empty() or not dragged.has("halo_from"),
+		"a drag is never rescued")
+
+	# 5. Q-42's third state is an answer, and the halo must not talk over it.
+	GameState.energy = 0
+	t.tiles[below.y][below.x]["state"] = "growing"
+	t.tiles[below.y][below.x]["crop_type"] = "wheat"
+	t.tiles[below.y][below.x]["watered_today"] = true
+	_assert(ActionRouter.resolve_with_halo(t, GameState, below, beside, false, null).is_empty(),
+		"an already-watered crop beside the cot still says 'yes, done' instead of sleeping her")
+	t.tiles[below.y][below.x]["state"] = "cleared"
+	t.tiles[below.y][below.x]["watered_today"] = false
+
+	# 6. A dead tap with nothing worth rescuing to stays a dead tap.
+	_assert(ActionRouter.resolve_with_halo(t, GameState, Vector2i(8, 8), Vector2i(8, 7), false, null).is_empty(),
+		"a dead tap with no haloed object beside it is still a dead tap")
+
+	# 7. And the cot itself is untouched by any of this.
+	var plain = ActionRouter.resolve_with_halo(t, GameState, cot, below, false, null)
+	_assert(plain.get("action", "") == "sleep" and not plain.has("halo_from"),
+		"a tap on the cot is a plain cot tap, not a rescue")
+
+	# The halo is wired to the cot and nothing else, on purpose (smallest true
+	# change). If this ever fails, the bin and the well arrived — check the
+	# designer actually asked for them.
+	_assert(ActionRouter.HALO_OBJECTS.size() == 1 and ActionRouter.HALO_OBJECTS.has("cot"),
+		"exactly one object is haloed today, and it is the cot")
+
+	GameState.energy = 20
+	GameState.seeds = { "wheat": 5 }
+	t.free()
