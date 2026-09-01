@@ -1652,6 +1652,19 @@ func _scenario_u_under_and_over() -> void:
 	_assert(worm.segment_cells()[1] == 3,
 		"and a segment in a straight vertical run draws the vertical body cell (%s)"
 			% str(worm.segment_cells()))
+	# The bend itself (net flow diagonal: one neighbour above, one beside) draws
+	# the joint — the symmetric cell — never the striped horizontal body, so a
+	# cornering worm reads as one connected animal (designer directive 2026-09-01).
+	_assert(worm.segment_cells()[2] == worm.CELL_JOINT,
+		"a segment at the bend draws the joint cell (%s)" % str(worm.segment_cells()))
+	# And the head, crawling downward, is rotated to face down rather than drawn
+	# sideways — the directional cells rotate for vertical travel.
+	var head_draw: Dictionary = worm.segment_draws()[0]
+	_assert(head_draw.cell == worm.CELL_HEAD and is_equal_approx(head_draw.rot, PI / 2),
+		"a head crawling down is rotated +90 deg, not sideways (rot=%f)" % head_draw.rot)
+	var tail_draw: Dictionary = worm.segment_draws()[worm.segment_draws().size() - 1]
+	_assert(tail_draw.cell == worm.CELL_TAIL and tail_draw.rot == 0.0 and not tail_draw.flip,
+		"the tail on the horizontal run stays unrotated and unmirrored")
 	for i in 60:
 		worm._process(1.0 / 60.0)
 	_assert(worm.seg_px.size() == worm.segment_tiles().size(),

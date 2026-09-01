@@ -16,11 +16,17 @@
 #   * and each segment slides toward its own tile at the species' own speed, so a
 #     growing worm's new segment grows out of the tail rather than appearing.
 #
-# critters.png row 3 is head / body / tail / vertical body: four cells for a shape
-# with two orientations, so a worm crawling **up or down draws a sideways head**.
-# That is the sheet's limit rather than a bug (a vertical head cell was not
-# generated), it reads fine at 16 px, and it is one more cell whenever the art
-# bench comes back.
+# critters.png row 3 is head / body / tail / vertical body: four cells, and the
+# renderer stretches them over every orientation a path can take (designer
+# directive, 2026-09-01 — the worm used to draw a sideways head when crawling
+# vertically and a broken body at bends):
+#   * the directional cells (head, tail, horizontal body) mirror for leftward
+#     travel and rotate 90° for vertical travel;
+#   * a bend draws the vertical-body cell as a joint — it is the one symmetric
+#     cell on the row, so it reads as a knuckle connecting the two runs rather
+#     than a break in the animal.
+# A dedicated corner cell is still one more cell whenever the art bench comes
+# back; the joint reads fine at 16 px.
 #
 # **Nothing spawns one in the live game** (`SimWorld.WORM_VISITS_PER_DAY` is 0, and
 # the debut is a designer's content-sequencing call), so this is exercised in a
@@ -39,6 +45,8 @@ const CELL_HEAD := 0
 const CELL_BODY := 1
 const CELL_TAIL := 2
 const CELL_BODY_VERTICAL := 3
+# The one symmetric cell doubles as the bend joint (see the header comment).
+const CELL_JOINT := CELL_BODY_VERTICAL
 
 # A long frame must not teleport it — the hen's cap.
 const MAX_STEP := TILE_SIZE * 0.5
@@ -74,21 +82,57 @@ func segment_tiles() -> Array[Vector2i]:
 	return Movement.occupied_tiles(farm.sim, actor_id)
 
 
-# Which cell each segment draws, head to tail. Head, tail, and body in between —
-# and the **vertical** body cell where the segment's neighbours are in a column,
-# which is what keeps a corner from looking like a break in the animal.
-func segment_cells() -> Array[int]:
+# What each segment draws, head to tail: the cell, a rotation (radians), and
+# whether to mirror. Orientation is read from the tile path, never from pixel
+# positions, so a segment mid-slide keeps the orientation of the step it is on.
+#   * head/tail point along the path (their cells face right on the sheet):
+#     mirrored when the path runs left, rotated ±90° when it runs vertically;
+#   * an interior segment reads its net flow (the tile before minus the tile
+#     after): straight column → vertical body, straight row → horizontal body
+#     (mirrored leftward), and a diagonal net flow is a **bend** → the joint.
+func segment_draws() -> Array[Dictionary]:
 	var tiles := segment_tiles()
-	var out: Array[int] = []
-	for i in tiles.size():
-		if i == 0:
-			out.append(CELL_HEAD)
-		elif i == tiles.size() - 1:
-			out.append(CELL_TAIL)
-		elif tiles[i - 1].x == tiles[i + 1].x:
-			out.append(CELL_BODY_VERTICAL)
+	var n := tiles.size()
+	var out: Array[Dictionary] = []
+	for i in n:
+		var cell := CELL_BODY
+		var rot := 0.0
+		var flip := false
+		var d := Vector2i.ZERO
+		if n == 1:
+			cell = CELL_HEAD
+			flip = facing_left
+		elif i == 0:
+			cell = CELL_HEAD
+			d = tiles[0] - tiles[1]
+		elif i == n - 1:
+			cell = CELL_TAIL
+			d = tiles[n - 2] - tiles[n - 1]
 		else:
-			out.append(CELL_BODY)
+			d = tiles[i - 1] - tiles[i + 1]
+			if d.x != 0 and d.y != 0:
+				cell = CELL_JOINT
+			elif d.x == 0:
+				cell = CELL_BODY_VERTICAL
+			else:
+				cell = CELL_BODY
+				flip = d.x < 0
+		if cell == CELL_HEAD or cell == CELL_TAIL:
+			if d.y < 0:
+				rot = -PI / 2
+			elif d.y > 0:
+				rot = PI / 2
+			elif d.x < 0:
+				flip = true
+		out.append({"cell": cell, "rot": rot, "flip": flip})
+	return out
+
+
+# The cells alone, head to tail — the view the tests and any tooling read.
+func segment_cells() -> Array[int]:
+	var out: Array[int] = []
+	for o in segment_draws():
+		out.append(o.cell)
 	return out
 
 
@@ -137,17 +181,24 @@ func queue_render(canvas: CanvasItem, render_queue: Array) -> void:
 		# The head's row is where a worm is, as far as the y-sort is concerned.
 		"y": position.y,
 		"draw": func():
-			var cells := segment_cells()
+			var draws := segment_draws()
 			# Tail first, so the head is drawn over the segment behind it.
-			for i in range(cells.size() - 1, -1, -1):
+			for i in range(draws.size() - 1, -1, -1):
 				if i >= seg_px.size():
 					continue
 				var at: Vector2 = seg_px[i]
-				var dest := Rect2(at.x, at.y, TILE_SIZE, TILE_SIZE)
-				# The vertical body cell is symmetric, so only the cells that point
-				# somewhere are mirrored.
-				if facing_left and cells[i] != CELL_BODY_VERTICAL:
-					dest = Rect2(at.x + TILE_SIZE, at.y, -TILE_SIZE, TILE_SIZE)
-				canvas.draw_texture_rect_region(
-					SPRITES, dest, Rect2(cells[i] * 16, SHEET_ROW * 16, 16, 16))
+				var o: Dictionary = draws[i]
+				var src := Rect2(o.cell * 16, SHEET_ROW * 16, 16, 16)
+				if o.rot != 0.0:
+					# Rotate about the cell's centre. draw_set_transform bleeds into
+					# every later draw on this canvas unless reset — reset it.
+					canvas.draw_set_transform(at + Vector2(8, 8), o.rot, Vector2.ONE)
+					canvas.draw_texture_rect_region(
+						SPRITES, Rect2(-8, -8, TILE_SIZE, TILE_SIZE), src)
+					canvas.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+				else:
+					var dest := Rect2(at.x, at.y, TILE_SIZE, TILE_SIZE)
+					if o.flip:
+						dest = Rect2(at.x + TILE_SIZE, at.y, -TILE_SIZE, TILE_SIZE)
+					canvas.draw_texture_rect_region(SPRITES, dest, src)
 	})
