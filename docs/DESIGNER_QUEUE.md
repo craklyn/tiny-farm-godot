@@ -1111,6 +1111,26 @@ never touched. Session: `playtests/2026-08-31_230643`.*
   and giving it one (an evening clock, an evening meter) is a new decision, not an
   extension of this one.
 
+- **Q-79 (Ruling, filed 2026-09-01)** **Where does phase 1 end?** The designer's
+  progression framing has phase 1 running from bare yard to **the first automatic
+  tower**, with tower defense as phase 2. The doc system currently splits that span
+  across phases 1–2 and starts towers in phase 3. If the framing is confirmed, the
+  five-phase structure in `GAME_VISION.md`, the phase stubs, and the `design/12` gate
+  table renumber around it (homestead+machines merge; siege→2, workforce→3, wilds→4).
+  Recommendation: confirm the merge — the designer's numbering is the one that will be
+  spoken aloud, and chronic doc/designer disagreement is worse than a renumbering diff.
+  The straw-man skeleton in `phases/phase-1-homestead.md` covers the full span either way.
+- **Q-80 (Ruling, filed 2026-09-01)** **Livestock: role and roster.** New scope from the
+  designer's progression framing (sheep, cows, horses, pigs, llamas named as candidates).
+  Straw-man in `phases/phase-1-homestead.md` ch. 5: products + hands-on care + *working
+  animals* (guard llama, tap-commanded dog) with horse/pig parked. Sub-questions: does a
+  predator/thief pest come with the animals, and which care chores join the Q-19
+  never-automate list?
+- **Q-81 (Ruling, filed 2026-09-01)** **The first tower's identity.** It ends phase 1,
+  so its shape is the phase's final statement. Straw-man: a scare-tower (repellent-scent
+  pulse — continuous with P-10 and the scarecrow), arriving manual-trigger and *earning*
+  autofire as the phase-gate celebration. Alternatives: a damage tower (classic TD
+  arrives with a bang) or a watchtower/sensor first.
 - **Q-15 (Ruling)** Sprinkler/machine acquisition loop: crafted, bought, or
   milestone-granted; the resource loop that feeds it (`design/03`).
 - **Q-16 (Creative)** Combat verb additions beyond wash/stomp/dig: swat/chase, thrown

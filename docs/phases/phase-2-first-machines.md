@@ -2,6 +2,11 @@
 
 *Stub. Detailed design starts at milestone M3 planning.*
 
+**Boundary flag (Q-79, 2026-09-01):** the designer's progression framing runs phase 1
+all the way to the first automatic tower, which would fold this stub's content into
+`phase-1-homestead.md` (where the straw-man progression skeleton now sequences it) and
+renumber the later phases. Content here stays valid either way; the label is what's open.
+
 **Premise:** Simple automation (sprinklers first) begins retiring phase-1 labor. Pests now
 arrive in groups; the player faces a variety of minor combat challenges. Gate to phase 3:
 sustained farm yield achieved by repelling enough pests (P-4).
