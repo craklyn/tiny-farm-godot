@@ -77,7 +77,11 @@ static func _cot(world: SimWorld) -> Vector2i:
 # swipe-chaining a row feels right (the open sub-question left over from Q-30).
 #
 # `player_t` is live position, not saved state: it is only used to tell whether
-# she has yet walked through the open gate, which is beat 0's whole content.
+# she is standing home-side, which arms beat 0 — but only until the first
+# crossing. That completion is the one fact the world cannot re-derive (where
+# she has *ever* stood is history, not state), so it lives as a latch on her
+# sim registry entry (`SimWorld.player_left_yard`, T-35) — the same place her
+# position does — rather than as a flag here.
 static func target_tiles(world: SimWorld, gs, player_t: Vector2i = Vector2i(-1, -1)) -> Array[Vector2i]:
 	var none: Array[Vector2i] = []
 	# While the cold open is still running, the neighbour is the show.
@@ -90,7 +94,15 @@ static func target_tiles(world: SimWorld, gs, player_t: Vector2i = Vector2i(-1, 
 
 	# Beat 0 — the handoff. The gate she has not yet walked through is the only
 	# target; the ripe crop beyond it is the reason to.
-	if player_t.x >= 0:
+	#
+	# T-35: **and it latches.** "Has she walked through it" used to be read off
+	# her current tile — standing home-side meant the beat re-armed, so at her
+	# first prompted bedtime the gate outglowed the cot and pointed her out of
+	# the yard (playtests/2026-08-31_233943). The latch is sim truth on her
+	# registry entry (set where her tile is written), so it survives saves and
+	# reproduces in replays; once she has ever left the yard, this beat is
+	# complete forever and the yard is allowed to ask her to bed.
+	if player_t.x >= 0 and not world.player_left_yard():
 		var here: Dictionary = WorldLayout.parcel_at(player_t, world.layout)
 		if String(here.get("id", "")) == "yard":
 			var g := _gate(world)

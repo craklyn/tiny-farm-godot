@@ -883,9 +883,10 @@ const ACTOR_MAX_ENERGY := Tools.DAY_UNITS  # [Playtest]
 #            sim-side, because a renderer that joins late has to draw *something*
 #   energy   this actor's own meter (below). The player's is GameState's, so hers
 #            reads -1 here and is never spent
-#   extra    per-species scratch, saved with the entry and untouched by the sim;
-#            WI-3's brains keep their per-actor state here rather than growing
-#            the registry a field per critter
+#   extra    per-species scratch, saved with the entry; WI-3's brains keep their
+#            per-actor state here rather than growing the registry a field per
+#            critter. The sim itself writes exactly one key, on the player only:
+#            `left_yard` (T-35, latched in set_actor_pos)
 #
 # **The registry holds residents and visits alike** since M2.5 WI-3: the player,
 # the neighbour while her cold open is live, the chicken — and a crow, for as long
@@ -996,6 +997,23 @@ func set_actor_pos(actor_id: String, at: Vector2i, facing: String = "") -> void:
 	e["pos"] = at
 	if facing != "":
 		e["facing"] = facing
+	# T-35: the moment the player first stands on a non-yard tile, the fact is
+	# latched — in her registry entry, so it rides saves and replays with her
+	# position. The vignette's handoff beat (walk through the gate) reads this
+	# to stay finished: derived from her *current* tile it re-armed every time
+	# she came home, which is what pointed her at the gate at bedtime
+	# (playtests/2026-08-31_233943, 1m47s–2m20s). Written here because this is
+	# the one sanctioned write point for her tile, live and in replay alike.
+	if actor_id == ACTOR_PLAYER and not bool(e["extra"].get("left_yard", false)) \
+			and String(WorldLayout.parcel_at(at, layout).get("id", "")) != "yard":
+		e["extra"]["left_yard"] = true
+
+
+# T-35's predicate: has she ever been outside the yard? True forever once the
+# latch above fires. An old save (or a hand-built world) that never recorded it
+# reads false, which re-offers the gate beat at worst — the pre-T-35 behaviour.
+func player_left_yard() -> bool:
+	return bool(actor(ACTOR_PLAYER).get("extra", {}).get("left_yard", false))
 
 
 func actors_of_species(species: String) -> Array[String]:

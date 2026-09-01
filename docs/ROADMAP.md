@@ -20,7 +20,7 @@ all landed). Suites at close: unit 1799 / integration 453 / robot MATCH / benchm
 ~105k× / visuals green. Fourteen designer rulings recorded across Q-53..Q-74.
 
 **Do first on resume (both ruled, evidence in hand):**
-- **T-35** below — the gate lesson must latch; her trace is the test case.
+- **T-35** below — ✅ shipped 2026-09-01; her window is the regression test.
 - **T-36** below — the clock becomes 12-hour AM/PM; one format function.
 
 **Then the standing picks and paths:**
@@ -42,12 +42,17 @@ action/walk entries, 3% dead taps — the best human score to date), and the dep
 rescue (`220426`). The 09-01 findings' fixes are commits `ac2d23a..7452200`.
 
 **T-35 — The gate lesson must latch** · bug, reported live 2026-08-31, evidence in
-`playtests/2026-08-31_233943` · ready to fix
+`playtests/2026-08-31_233943` · ✅ SHIPPED 2026-09-01
 *Her first prompted trip to bed: the pointer aimed at the GATE, she followed it out
 of the yard, wandered 22 seconds (field pokes, a shop detour) before finding the bed
-herself — the trace window at 1m47s–2m20s shows every step. Cause shape: the
-"crossed the gate" beat re-arms when she stands home-side; it must latch complete
-the first time, forever. One predicate plus a regression test replaying her window.*
+herself — the trace window at 1m47s–2m20s shows every step. Cause confirmed: the
+"crossed the gate" beat re-armed whenever she stood home-side. The fix is the ruled
+predicate: her first step onto non-yard ground latches `left_yard` on her sim
+registry entry (written in `SimWorld.set_actor_pos`, the one sanctioned write point
+for her tile), so the latch rides saves and replays with her position; the vignette's
+beat 0 reads it and stays complete forever. The regression test
+(`test_gate_lesson_latch_regression`) replays her session to the moment before her
+first sleep and asserts the cot glows, not the gate — it fails against the old code.*
 
 **T-36 — The clock reads 12-hour, AM/PM** · ruled 2026-08-31 by the designer,
 overturning T-34's 24-hour deviation · ready to build

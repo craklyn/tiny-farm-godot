@@ -61,6 +61,7 @@ func _init() -> void:
 	test_replay_flush()
 	test_crow_scared_verb()
 	test_vignette_multiday()
+	test_gate_lesson_latch_regression()
 	test_takeover_layout()
 	test_phase1_proof()
 	test_autotile()
@@ -900,8 +901,18 @@ func test_vignette_multiday() -> void:
 
 	# Beat 0 — the handoff. Standing in her own yard, the only thing glowing is
 	# the way out; the ripe crop beyond it is the reason to take it.
+	_assert(not world.player_left_yard(), "before she has ever crossed, the latch is unset")
 	var beat0 := VignetteState.target_tiles(world, gs, yard_tile)
 	_assert(beat0.size() == 1 and beat0[0] == gate, "beat 0 highlights the opened gate")
+
+	# T-35 — and crossing it once completes the beat forever. The crossing is a
+	# position write (the gate tile is the first non-yard ground she can stand
+	# on), and the latch rides her registry entry from there.
+	world.set_actor_pos(SimWorld.ACTOR_PLAYER, gate)
+	_assert(world.player_left_yard(), "stepping onto the gate tile latches the crossing")
+	var after_cross := VignetteState.target_tiles(world, gs, yard_tile)
+	_assert(not after_cross.has(gate),
+		"once crossed, standing home-side never re-arms the gate beat (T-35)")
 
 	# Beat 1 — the ripe crop. It cannot fail, cannot be refused and costs a tap:
 	# the safest possible room, and the player is paid before she is asked.
@@ -934,6 +945,12 @@ func test_vignette_multiday() -> void:
 	var beat4 := VignetteState.target_tiles(world, gs, plot_tile)
 	_assert(beat4.size() == 1, "beat 4 highlights exactly one thing")
 	_assert(world.objects[beat4[0].y][beat4[0].x] == "cot", "and it is the cot")
+	# T-35's reported moment, in miniature: the cot is home-side, so she is
+	# standing in the yard when this beat should fire — and it must be the cot
+	# she sees there, never the gate again.
+	var beat4_home := VignetteState.target_tiles(world, gs, yard_tile)
+	_assert(beat4_home.size() == 1 and world.objects[beat4_home[0].y][beat4_home[0].x] == "cot",
+		"asked from the yard, bedtime points at the cot, not the gate (T-35)")
 
 	# T-4: day 1's phase ends by **sleeping**, not by the day counter passing 1.
 	world.apply_action({ "verb": "sleep", "actor": "world", "weather": "sunny" }, gs)
@@ -976,6 +993,64 @@ func test_vignette_multiday() -> void:
 	_assert(not VignetteState.is_active(world, gs, plot_tile),
 		"and no amount of fresh world state brings it back")
 	gs.free()
+
+
+func test_gate_lesson_latch_regression() -> void:
+	print("\n--- T-35: the gate lesson latches (her 2026-08-31 bedtime window) Tests ---")
+
+	# The report, live from the couch on 2026-08-31: her first prompted trip to
+	# bed, the pointer aimed at the GATE, and she followed it out of the yard —
+	# 22 seconds of field pokes and a shop detour before she found the bed
+	# herself. The trace window is 1m47s–2m20s; in the replay that is the walk
+	# entries between her day-1 planting and her first sleep (ticks ~380–511),
+	# ending at (3,4), beside the cot. This replays her session to the moment
+	# just before that sleep and asks what was glowing.
+	var fixture := ReplayLog.load_from("res://playtests/2026-08-31_233943/session_replay.json")
+	_assert(fixture != null, "her session replay is on the shelf")
+
+	# Cut just before her first sleep: the cold open's own sleeps predate any
+	# player entry, so "the first sleep after she has acted" finds bedtime
+	# whatever the cold open spent getting there.
+	var seen_player := false
+	var cut := -1
+	for i in fixture.entries.size():
+		var e: Dictionary = fixture.entries[i]
+		if String(e.get("actor", "")) == "player":
+			seen_player = true
+		if seen_player and String(e.get("verb", "")) == "sleep":
+			cut = i
+			break
+	_assert(cut > 0, "her first bedtime is in the log")
+
+	var cut_tick := int(fixture.entries[cut - 1].get("tick", 0))
+	fixture.entries.resize(cut)
+	fixture.end_tick = cut_tick
+
+	var world := SimWorld.new()
+	var gs = load("res://systems/game_state.gd").new()
+	fixture.apply_to(world, gs)
+
+	_assert(gs.play_day() == 1, "the cut lands on her first play-day, at bedtime")
+	_assert(world.player_left_yard(),
+		"by bedtime she had long since crossed the gate, and the sim knows it")
+	var at := world.actor_pos(SimWorld.ACTOR_PLAYER)
+	_assert(String(WorldLayout.parcel_at(at, world.layout).get("id", "")) == "yard",
+		"she is standing home-side, exactly where the bug fired")
+
+	var glowing := VignetteState.target_tiles(world, gs, at)
+	var gate := WorldLayout.gate_of("neighbour")
+	_assert(not glowing.has(gate),
+		"the gate does not glow at her again — the lesson latched (T-35)")
+	_assert(glowing.size() == 1 and world.objects[glowing[0].y][glowing[0].x] == "cot",
+		"what glows at her bedtime is the cot")
+
+	# And the latch is part of the farm, not the run: it survives a save.
+	var reloaded := SimWorld.new()
+	var gs2 = load("res://systems/game_state.gd").new()
+	SaveGame.restore(SaveGame.capture(world, gs), reloaded, gs2)
+	_assert(reloaded.player_left_yard(), "the latch rides the save with her registry entry")
+	gs.free()
+	gs2.free()
 
 
 func test_takeover_layout() -> void:
