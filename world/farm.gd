@@ -836,6 +836,17 @@ func _draw() -> void:
 				render_queue.append({
 					"y": 100000.0,
 					"draw": func():
+						# The same quiet bubble the purpose pip wears (main.gd),
+						# and for the reason the designer gave looking at the
+						# first capture (2026-09-01): over a well or a bush the
+						# bare glyph has nothing to separate it from the sprite
+						# behind it. One backing, one vocabulary — a glyph on a
+						# dark disc is "the game telling you something", whether
+						# it floats over a station or answers a tap.
+						draw_circle(Vector2(nx, ny), ACK_NOUN * 0.72,
+							Color(0.10, 0.09, 0.16, 0.62 * na))
+						draw_arc(Vector2(nx, ny), ACK_NOUN * 0.72, 0.0, TAU, 18,
+							Color(0.62, 0.90, 1.0, 0.85 * na), 1.0)
 						draw_texture_rect_region(nart[0],
 							Rect2(nx - ACK_NOUN / 2.0, ny - ACK_NOUN / 2.0,
 								ACK_NOUN, ACK_NOUN),

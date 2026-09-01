@@ -2619,9 +2619,12 @@ func _scenario_ab_the_stations_present_themselves() -> void:
 	StationPresentation.set_satisfied(StationPresentation.SATISFIED_OFF)
 	await get_tree().process_frame
 	await get_tree().process_frame
-	_assert(not hud.state_chips.visible and hud.water_label.visible
-			and hud.crop_counts_label.visible,
-		"and switching back gives the HUD it has always had, exactly")
+	# Q-78 (ruled 2026-09-01): the can chip is no longer treatment B's to take
+	# away — it stays under every treatment, replacing the "Water:" text for
+	# good. Only the basket half and the crop-count text revert with the switch.
+	_assert(hud.state_chips.visible and not hud.basket_chip.visible
+			and not hud.water_label.visible and hud.crop_counts_label.visible,
+		"and switching back keeps the can chip (Q-78) while the basket half reverts")
 
 	# --- put everything back --------------------------------------------------
 	GameState.crops = { "wheat": 0, "tomato": 0 }

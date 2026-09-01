@@ -571,6 +571,26 @@ logs on disk are eight playtest sessions and the demo replay, all Q-41-stamped.
 
 ---
 
+### D-10. Does tapping ahead queue? (the depth-2 intent queue)
+Raised 2026-08-31 by the serious-gamer session (Q-77): 61 taps landed within a second
+of a queued walk, 16 aimed elsewhere, and each **replaced** the queued intent — a fast
+player expects tap-five-tiles-and-she-does-all-five, and today's one-slot buffer answers
+with last-tap-wins.
+
+**Deferred 2026-09-01 by the designer:** *"Add to our backlog to prototype depth-2
+queue, but let's not do it now. Let's wait until we're refining controls, or until we
+see an issue that this solves well."* The shape of the eventual work is already scoped
+(Q-77's recommendation): a depth-2 queue prototyped behind the Look Lab before any
+ruling, because it changes input feel, teaching, and the replay's shape of a session at
+once — and the phase-4 corpus question (does a queue's order carry intent?) rides on it.
+
+**Trigger:** a controls-refinement pass, or a playtest finding this solves well —
+whichever arrives first. Cost if deferred long: fast-player sessions keep recording
+replaced-intent taps as dead input, which slightly muddies the dead-tap metric the
+gates use (16 of the speed run's 61 were genuinely aimed elsewhere).
+
+---
+
 ## Awaiting designer input (the M0 exit gate)
 
 **Open items now live in `DESIGNER_QUEUE.md`** — the single intake queue for all

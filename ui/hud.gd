@@ -551,17 +551,22 @@ func _glyph_icon(key: String):
 func _update_state_chips() -> void:
 	if state_chips == null:
 		return
-	var on: bool = StationPresentation.satisfied == StationPresentation.SATISFIED_CHIP
-	state_chips.visible = on
-	# The labels these replace. Under every other treatment the HUD is exactly
-	# what it was, which is what keeps the A/B honest.
+	# Q-78 (ruled 2026-09-01): **the can's level is everyone's now.** The fast
+	# session emptied the can mid-row 11 times, and the warning that would have
+	# prevented it was living inside a treatment the designer did not pick — so
+	# the can chip and its gauge are cherry-picked out of treatment B and shown
+	# always, replacing "Water: 8/8" (a number where a picture belongs, and
+	# reading where S-7 forbids requiring it). The can's *size* is untouched:
+	# running dry is the refill loop's teacher (T-11), the chip is its warning.
+	# The basket chip and its pips remain treatment B's, judged as a draft.
+	var full_b: bool = StationPresentation.satisfied == StationPresentation.SATISFIED_CHIP
+	state_chips.visible = true
 	if water_label != null:
-		water_label.visible = not on
+		water_label.visible = false
 	if crop_counts_label != null:
-		crop_counts_label.visible = not on
-	if not on:
-		return
+		crop_counts_label.visible = not full_b
 
+	basket_chip.visible = full_b
 	var basket := 0
 	for count in GameState.crops.values():
 		basket += int(count)
@@ -570,7 +575,7 @@ func _update_state_chips() -> void:
 	# darkened means "not there" — reused rather than reinvented.
 	basket_chip.modulate = Color(1, 1, 1, 1) if basket > 0 else Color(0.42, 0.44, 0.48, 0.9)
 	for i in basket_pips.size():
-		basket_pips[i].visible = i < basket
+		basket_pips[i].visible = full_b and i < basket
 
 	var frac: float = float(GameState.watering_can_charges) \
 		/ maxf(1.0, float(GameState.max_watering_can_charges))

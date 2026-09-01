@@ -1059,7 +1059,11 @@ fit "scarecrow", and a collapse toggle for the playtest readout).*
 bursts of 48 — and the profile exposed three design questions the gentle sessions
 never touched. Session: `playtests/2026-08-31_230643`.*
 
-- **Q-76 (Ruling)** **Fast players hammer-tap the cold open expecting a skip.** Four
+- **Q-76** ~~Fast players hammer-tap the cold open expecting a skip — does it get one?~~
+  — ✅ **ruled 2026-09-01: no skip yet** (the recommendation taken: the scene is ~40s
+  and plays once per farm; revisit if a second fast tester bounces off it, and if ruled
+  in later, a skip fast-forwards the real actions, never bypasses them).
+  Original entry: **(Ruling)** **Fast players hammer-tap the cold open expecting a skip.** Four
   rapid taps on his own tile in the scene's first three seconds — the universal
   meet-a-cutscene gesture — answered with nothing; his first three stalls were
   watching the neighbour work. Does the cold open get a skip (and what does skipping
@@ -1067,13 +1071,26 @@ never touched. Session: `playtests/2026-08-31_230643`.*
   the scene is ~40s and plays once per farm; revisit if a second fast tester bounces
   off it. If ruled in, "skip" should fast-forward the real actions, never bypass
   them (the sim path exists — the robot does exactly this).*
-- **Q-77 (Ruling)** **The one-slot tap buffer fights fast play.** 61 taps landed
+- **Q-77** ~~The one-slot tap buffer fights fast play — does tapping ahead queue?~~
+  — ✅ **ruled 2026-09-01: backlogged, deliberately.** The designer: *"Add to our
+  backlog to prototype depth-2 queue, but let's not do it now. Let's wait until we're
+  refining controls, or until we see an issue that this solves well."* Now **D-10** in
+  `DECISION_LOG.md`, with that trigger.
+  Original entry: **(Ruling)** **The one-slot tap buffer fights fast play.** 61 taps landed
   within a second of a queued walk; 16 aimed elsewhere, and each REPLACED the queued
   intent — a fast player expects tap-five-tiles-and-she-does-all-five. A real intent
   queue changes input feel, teaching, and the replay's shape of a session.
   *Recommendation: prototype a depth-2 queue behind the Look Lab before ruling; the
   phase-4 corpus question (does a queue's order carry intent?) rides on it.*
-- **Q-78 (Ruling)** **The can runs dry mid-gesture at speed.** 11 `no_water` refusals
+- **Q-78** ~~The can runs dry mid-gesture at speed — bigger can, or a warning?~~
+  — ✅ **ruled 2026-09-01: keep 8 charges, ship the can-level chip for everyone.** The
+  recommendation had leaned on T-28's state-first treatment carrying the warning, but
+  the designer picked the *noun* treatment on that axis — so the can chip and its gauge
+  were cherry-picked out of the unpicked draft and made unconditional (`ui/hud.gd`,
+  replacing the "Water: 8/8" text; one re-baseline). The can's size is untouched: the
+  dry can stays the refill loop's teacher, the chip is its warning. Re-measure the
+  `no_water` count in the next fast session.
+  Original entry: **(Ruling)** **The can runs dry mid-gesture at speed.** 11 `no_water` refusals
   and 22 dead-taps-holding-the-can: 8 charges empties mid-row for a fast player.
   *Recommendation: leave the number (it is the refill loop's teacher, T-11) and let
   T-28's state-first treatment carry the load — the can's level on the toolbar is

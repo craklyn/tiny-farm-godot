@@ -26,7 +26,8 @@ all landed). Suites at close: unit 1799 / integration 453 / robot MATCH / benchm
 **Then the standing picks and paths:**
 - ✅ The T-28 picks and Q-74 were ruled 2026-09-01 from live captures in chat: pips,
   the noun (now holding before it fades), and the clock as built. See T-28 below.
-- Q-76/77/78 (new, from the serious-gamer session) await rulings.
+- ✅ Q-76/77/78 ruled 2026-09-01: no intro skip yet; the tap queue is backlogged as
+  D-10 with a trigger; the can keeps 8 charges and its level chip shipped for everyone.
 - The M1.5 gate re-evidence needs a **fresh adult** (the household testers are now
   both coached); casting is the designer's.
 - Replay v2 Phase B prerequisites are recorded in `M2_5_PLAN.md` §9 — a fresh-farm
