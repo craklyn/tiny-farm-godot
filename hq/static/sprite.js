@@ -17,15 +17,26 @@ async function renderSpriteEditor(path) {
     return;
   }
 
-  // Unique frames only (some cycles revisit a cell — e.g. the mole's mound).
-  const seen = new Set();
-  const rects = ent.frames.filter(f => {
+  // Unique frames only (some cycles revisit a cell), keeping any part names
+  // aligned and a map from original frame index -> unique index (composites
+  // reference original indices).
+  const seen = new Map();
+  const rects = [], names = [], idxMap = [];
+  ent.frames.forEach((f, i) => {
     const k = f.join(",");
-    if (seen.has(k)) return false;
-    seen.add(k); return true;
+    if (!seen.has(k)) {
+      seen.set(k, rects.length);
+      rects.push(f);
+      names.push((ent.frame_names || [])[i] || null);
+    }
+    idxMap[i] = seen.get(k);
   });
+  const comp = (ent.composite && ent.composite.length) ? ent.composite : null;
   const fw = Math.max(...rects.map(r => r[2])), fh = Math.max(...rects.map(r => r[3]));
   const zoom = Math.max(4, Math.min(28, Math.floor(430 / Math.max(fw, fh))));
+  const compCols = comp ? Math.max(...comp.map(c => c.dx)) + 1 : 1;
+  const compRows = comp ? Math.max(...comp.map(c => c.dy)) + 1 : 1;
+  const pvW = fw * 3 * compCols, pvH = fh * 3 * compRows;
 
   // Load the sheet fresh (no cache) so we always edit current bytes.
   const img = await new Promise((res, rej) => {
@@ -86,10 +97,12 @@ async function renderSpriteEditor(path) {
       <div class="sp-side">
         <h2 style="margin-top:0">Live preview</h2>
         <div class="sp-previews">
-          <figure><canvas id="sp-before" width="${fw * 3}" height="${fh * 3}"></canvas><figcaption>before</figcaption></figure>
-          <figure><canvas id="sp-preview" width="${fw * 3}" height="${fh * 3}"></canvas><figcaption>after (your edits)</figcaption></figure>
+          <figure><canvas id="sp-before" width="${pvW}" height="${pvH}"></canvas><figcaption>before</figcaption></figure>
+          <figure><canvas id="sp-preview" width="${pvW}" height="${pvH}"></canvas><figcaption>after (your edits)</figcaption></figure>
         </div>
-        <p class="small muted">Both loop in sync at the game's own rate — before is the sheet as it was when you opened the editor.</p>
+        <p class="small muted">${comp
+          ? "Assembled the way the game renderer builds this creature — parts placed, rotated, and joined, with your edits live on the right."
+          : "Both loop in sync at the game's own rate — before is the sheet as it was when you opened the editor."}</p>
         <h2>Save</h2>
         <p class="small muted">Writes your edits back into <code class="ref">${esc(ent.sheet)}</code>. The original is backed up first; git and the visual-regression suite have your back.</p>
         <p><button id="sp-save">💾 Save to sheet</button>
@@ -139,10 +152,27 @@ async function renderSpriteEditor(path) {
       for (let x = 1; x < w; x++) { ctx.beginPath(); ctx.moveTo(x * zoom + .5, 0); ctx.lineTo(x * zoom + .5, hh * zoom); ctx.stroke(); }
       for (let y = 1; y < hh; y++) { ctx.beginPath(); ctx.moveTo(0, y * zoom + .5); ctx.lineTo(w * zoom, y * zoom + .5); ctx.stroke(); }
     }
-    document.getElementById("sp-idx").textContent = `${cur + 1} / ${frames.length}`;
+    document.getElementById("sp-idx").textContent =
+      (names[cur] ? names[cur] + " · " : "") + `${cur + 1} / ${frames.length}`;
   };
 
+  const drawAssembled = (dctx, canvas, useOrig) => {
+    dctx.clearRect(0, 0, canvas.width, canvas.height);
+    comp.forEach(c => {
+      const f = frames[idxMap[c.f]];
+      const [, , w, hh] = f.rect;
+      tmp.width = w; tmp.height = hh;
+      tctx.putImageData(useOrig ? f.orig : f.data, 0, 0);
+      dctx.save();
+      dctx.translate((c.dx + 0.5) * fw * 3, (c.dy + 0.5) * fh * 3);
+      if (c.rot) dctx.rotate(c.rot * Math.PI / 180);
+      if (c.flip) dctx.scale(-1, 1);
+      dctx.drawImage(tmp, 0, 0, w, hh, -w * 1.5, -hh * 1.5, w * 3, hh * 3);
+      dctx.restore();
+    });
+  };
   const renderPreview = i => {
+    if (comp) { drawAssembled(pctx, pv, false); drawAssembled(bctx, bv, true); return; }
     const f = frames[i % frames.length];
     pctx.clearRect(0, 0, pv.width, pv.height);
     blit(f, pctx, 3, 1);
@@ -150,7 +180,7 @@ async function renderSpriteEditor(path) {
     blit(f, bctx, 3, 1, true);
   };
   let pvi = 0;
-  animators.push(setInterval(() => { pvi = (pvi + 1) % frames.length; renderPreview(pvi); }, 1000 / (ent.fps || 4)));
+  if (!comp) animators.push(setInterval(() => { pvi = (pvi + 1) % frames.length; renderPreview(pvi); }, 1000 / (ent.fps || 4)));
   renderPreview(0);
 
   let playTimer = null;
@@ -165,19 +195,37 @@ async function renderSpriteEditor(path) {
     render();
   };
 
+  // Colors the user added via the picker this session; they join the image's
+  // real palette the moment they're painted with.
+  const customColors = [];
   const buildPalette = () => {
     const bar = document.getElementById("sp-palette");
     bar.replaceChildren();
     const er = h(`<button class="sw eraser ${color === null ? "sel" : ""}" title="eraser — makes pixels transparent">⌫</button>`).firstElementChild;
     er.addEventListener("click", () => { color = null; buildPalette(); });
     bar.appendChild(er);
-    paletteOf().forEach(rgb => {
+    const used = paletteOf();
+    const usedKeys = new Set(used.map(c => c.join(",")));
+    const swatch = (rgb, extra) => {
       const hex = "#" + rgb.map(v => v.toString(16).padStart(2, "0")).join("");
       const sel = color && color.join(",") === rgb.join(",");
-      const b = h(`<button class="sw ${sel ? "sel" : ""}" style="background:${hex}" title="${hex}"></button>`).firstElementChild;
+      const b = h(`<button class="sw ${sel ? "sel" : ""} ${extra || ""}" style="background:${hex}" title="${hex}${extra ? " (new — not yet in the image)" : ""}"></button>`).firstElementChild;
       b.addEventListener("click", () => { color = rgb; buildPalette(); });
       bar.appendChild(b);
+    };
+    used.forEach(rgb => swatch(rgb));
+    customColors.filter(c => !usedKeys.has(c.join(","))).forEach(rgb => swatch(rgb, "custom"));
+    const add = h(`<button class="sw addc" title="add a new color to the palette">＋</button>`).firstElementChild;
+    const picker = h(`<input type="color" style="position:absolute;width:0;height:0;opacity:0;border:0;padding:0">`).firstElementChild;
+    picker.addEventListener("input", () => {
+      const rgb = [1, 3, 5].map(i => parseInt(picker.value.slice(i, i + 2), 16));
+      if (!customColors.some(c => c.join(",") === rgb.join(","))) customColors.push(rgb);
+      color = rgb;
+      buildPalette();
     });
+    add.addEventListener("click", () => picker.click());
+    bar.appendChild(add);
+    bar.appendChild(picker);
   };
 
   const pixAt = ev => {

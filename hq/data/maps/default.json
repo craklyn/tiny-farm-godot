@@ -1,0 +1,255 @@
+{
+  "grid": [
+    32,
+    20
+  ],
+  "layout": {
+    "acorns": {
+      "count": 8,
+      "rect": [
+        22,
+        1,
+        9,
+        8
+      ]
+    },
+    "boundaries": [
+      {
+        "kind": "fence",
+        "rects": [
+          [
+            11,
+            1,
+            1,
+            7
+          ],
+          [
+            1,
+            7,
+            10,
+            1
+          ]
+        ]
+      },
+      {
+        "kind": "hedge",
+        "rects": [
+          [
+            21,
+            1,
+            1,
+            18
+          ],
+          [
+            22,
+            9,
+            9,
+            1
+          ]
+        ]
+      }
+    ],
+    "neighbour_plot": {
+      "cleared": [
+        [
+          13,
+          4
+        ]
+      ],
+      "cleared_for_demo": [
+        15,
+        4
+      ],
+      "crop": "wheat",
+      "growing": [
+        {
+          "at": [
+            17,
+            4
+          ],
+          "stage": 1
+        }
+      ],
+      "row_y": 4,
+      "second_row": [
+        [
+          14,
+          5
+        ],
+        [
+          15,
+          5
+        ],
+        [
+          16,
+          5
+        ]
+      ],
+      "seeded": [
+        [
+          16,
+          4
+        ]
+      ],
+      "tilled": [
+        [
+          14,
+          4
+        ]
+      ],
+      "wave_at": [
+        12,
+        4
+      ]
+    },
+    "parcels": [
+      {
+        "boundary": "fence",
+        "density": 0.0,
+        "gate": [
+          -1,
+          -1
+        ],
+        "ground": "yard",
+        "id": "yard",
+        "obstacle": "",
+        "opened_by": "start",
+        "rects": [
+          [
+            1,
+            1,
+            10,
+            6
+          ]
+        ]
+      },
+      {
+        "boundary": "fence",
+        "density": 0.0,
+        "gate": [
+          11,
+          4
+        ],
+        "id": "neighbour",
+        "obstacle": "",
+        "opened_by": "cold_open",
+        "rects": [
+          [
+            12,
+            1,
+            9,
+            6
+          ]
+        ]
+      },
+      {
+        "boundary": "",
+        "density": 0.3,
+        "gate": [
+          -1,
+          -1
+        ],
+        "id": "meadow",
+        "obstacle": "obstacle_weed",
+        "opened_by": "start",
+        "rects": [
+          [
+            1,
+            8,
+            20,
+            11
+          ],
+          [
+            12,
+            7,
+            9,
+            1
+          ]
+        ],
+        "scatter": {
+          "count": 6,
+          "kinds": [
+            "obstacle_rock",
+            "obstacle_log"
+          ]
+        }
+      },
+      {
+        "boundary": "hedge",
+        "density": 0.22,
+        "extra_density": 0.1,
+        "extra_obstacle": "obstacle_tree",
+        "gate": [
+          21,
+          4
+        ],
+        "id": "wood",
+        "obstacle": "obstacle_log",
+        "opened_by": "axe",
+        "rects": [
+          [
+            22,
+            1,
+            9,
+            8
+          ]
+        ]
+      },
+      {
+        "boundary": "hedge",
+        "density": 0.28,
+        "gate": [
+          21,
+          14
+        ],
+        "id": "quarry",
+        "obstacle": "obstacle_rock",
+        "opened_by": "pickaxe",
+        "rects": [
+          [
+            22,
+            10,
+            9,
+            9
+          ]
+        ]
+      }
+    ],
+    "spawn": [
+      2,
+      2
+    ],
+    "tools": [
+      {
+        "at": [
+          20,
+          4
+        ],
+        "gate": [
+          21,
+          4
+        ],
+        "object": "tool_axe",
+        "proof": "harvests",
+        "threshold": 5,
+        "tool": "axe"
+      },
+      {
+        "at": [
+          20,
+          14
+        ],
+        "gate": [
+          21,
+          14
+        ],
+        "object": "tool_pickaxe",
+        "proof": "clear_log",
+        "threshold": 3,
+        "tool": "pickaxe"
+      }
+    ]
+  },
+  "name": "default",
+  "source": "systems/world_layout.gd WorldLayout.DEFAULT"
+}

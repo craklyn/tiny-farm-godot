@@ -1,0 +1,26 @@
+{
+  "id": "multi-map",
+  "name": "Multiple maps: game-side loader for edited layouts",
+  "priority": 10,
+  "status": "planned",
+  "owner": "tomas",
+  "contributors": ["milo", "jade"],
+  "summary": "The HQ map editor edits layout definitions — the same WorldLayout-shaped input the seeded generator already consumes (the Zoo proves a second layout works). What's missing is the game-side half: loading an edited layout JSON into a real game. This project is that bridge, and it deliberately waits on a few design calls.",
+  "requirements": [
+    "A validated loader (layout JSON -> WorldLayout dictionary) with sim-level tests: bad rects, overlapping parcels, missing gates all refused with reasons",
+    "Station positions (cot, bin, well, seed box, pen) move from sim code constants into the layout, so maps can place them",
+    "A ruled answer on how multiple maps relate: alternate farms? connected areas? phase-2 spaces? (designer call — shapes the save format)",
+    "Save/replay integrity: a session records which map it was generated from, so replays and the build-stamp discipline survive multiple maps",
+    "Determinism proof extended: same seed + same layout = identical world, per map"
+  ],
+  "current_status": "Not started — correctly. The editor half exists (HQ Map Editor tab; definitions save to hq/data/maps/). The blocking input is the designer ruling on what a second map *is* in this game; the loader is straightforward engineering once that lands.",
+  "plan": [
+    {"step": "HQ map editor for layout definitions", "done": true},
+    {"step": "Designer ruling: the relationship between maps (new decision card when this activates)", "done": false},
+    {"step": "Move station positions into the layout schema", "done": false},
+    {"step": "Loader + validation + determinism tests", "done": false},
+    {"step": "First non-default map playable behind a debug door (the Zoo pattern)", "done": false}
+  ],
+  "plan_note": "Plan is intentionally incomplete pending the maps ruling.",
+  "links": ["systems/world_layout.gd", "hq/data/maps/", "tools/export_layout.gd"]
+}

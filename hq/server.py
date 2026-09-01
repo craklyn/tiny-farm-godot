@@ -348,6 +348,40 @@ def save_sprite(payload):
     return {"ok": True, "bytes": len(raw), "backup": os.path.relpath(bak, REPO)}
 
 
+MAP_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,39}$")
+
+
+def list_maps():
+    mdir = os.path.join(DATA, "maps")
+    out = []
+    for f in sorted(os.listdir(mdir)) if os.path.isdir(mdir) else []:
+        if f.endswith(".json"):
+            out.append({"name": f[:-5]})
+    return out
+
+
+def save_map(payload):
+    """Save a map layout definition. Maps are the seeded generator's *input*
+    (WorldLayout-shaped) — the editor never paints generated worlds. 'default'
+    is read-only: its source of truth is systems/world_layout.gd."""
+    name = str(payload.get("name", ""))
+    doc = payload.get("doc")
+    if not MAP_NAME_RE.match(name):
+        return {"error": "map name: lowercase letters, digits, - and _ only"}
+    if name == "default":
+        return {"error": "'default' mirrors systems/world_layout.gd — save under a new name"}
+    if not isinstance(doc, dict) or not isinstance(doc.get("layout"), dict):
+        return {"error": "doc must carry a layout object"}
+    if not isinstance(doc["layout"].get("parcels"), list):
+        return {"error": "layout needs a parcels list"}
+    mdir = os.path.join(DATA, "maps")
+    os.makedirs(mdir, exist_ok=True)
+    doc["name"] = name
+    with open(os.path.join(mdir, f"{name}.json"), "w", encoding="utf-8") as f:
+        json.dump(doc, f, indent=2, ensure_ascii=False)
+    return {"ok": True, "name": name}
+
+
 def api_persona(pid):
     """The exact system prompt that defines this worker in chat — shown in the UI."""
     org = load_org()
@@ -454,6 +488,16 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, api_queue())
             if path.startswith("/api/persona/"):
                 return self._send(200, api_persona(path[len("/api/persona/"):]))
+            if path == "/api/maps":
+                return self._send(200, list_maps())
+            if path.startswith("/api/map/"):
+                name = path[len("/api/map/"):]
+                if not MAP_NAME_RE.match(name):
+                    return self._send(400, {"error": "bad map name"})
+                mp = os.path.join(DATA, "maps", f"{name}.json")
+                if not os.path.isfile(mp):
+                    return self._send(404, {"error": "no such map"})
+                return self._send(200, load_json(mp))
             if path == "/api/docs":
                 return self._send(200, api_docs())
             if path.startswith("/api/doc/"):
@@ -474,6 +518,11 @@ class Handler(BaseHTTPRequestHandler):
             payload = json.loads(self.rfile.read(length) or b"{}")
         except Exception:
             return self._send(400, {"error": "bad JSON"})
+        if path == "/api/map/save":
+            try:
+                return self._send(200, save_map(payload))
+            except Exception as e:
+                return self._send(500, {"error": str(e)[:300]})
         if path == "/api/sprite/save":
             try:
                 return self._send(200, save_sprite(payload))

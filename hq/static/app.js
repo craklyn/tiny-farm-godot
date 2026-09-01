@@ -48,6 +48,12 @@ async function animate(canvas, ent, scale) {
   const img = await getSheet(ent.sheet);
   const ctx = canvas.getContext("2d");
   ctx.imageSmoothingEnabled = false;
+  if (ent.composite && ent.composite.length) {
+    // Composite entities (e.g. the worm) aren't a frame cycle: parts assemble
+    // into one creature, mirroring the game renderer's own rules.
+    drawComposite(ctx, canvas, img, ent);
+    return;
+  }
   const frames = ent.frames;
   const maxW = Math.max(...frames.map(f => f[2])), maxH = Math.max(...frames.map(f => f[3]));
   const s = scale || Math.floor(Math.min(canvas.width / maxW, canvas.height / maxH));
@@ -65,6 +71,25 @@ async function animate(canvas, ent, scale) {
 
 function clearAnimators() { while (animators.length) clearInterval(animators.pop()); }
 
+function drawComposite(ctx, canvas, img, ent) {
+  const cells = ent.composite;
+  const cols = Math.max(...cells.map(c => c.dx)) + 1;
+  const rows = Math.max(...cells.map(c => c.dy)) + 1;
+  const fw = Math.max(...ent.frames.map(f => f[2])), fh = Math.max(...ent.frames.map(f => f[3]));
+  const s = Math.max(1, Math.floor(Math.min(canvas.width / (cols * fw), canvas.height / (rows * fh))));
+  const ox = (canvas.width - cols * fw * s) / 2, oy = (canvas.height - rows * fh * s) / 2;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  cells.forEach(c => {
+    const [x, y, w, hh] = ent.frames[c.f];
+    ctx.save();
+    ctx.translate(ox + (c.dx + 0.5) * fw * s, oy + (c.dy + 0.5) * fh * s);
+    if (c.rot) ctx.rotate(c.rot * Math.PI / 180);
+    if (c.flip) ctx.scale(-1, 1);
+    ctx.drawImage(img, x, y, w, hh, -w * s / 2, -hh * s / 2, w * s, hh * s);
+    ctx.restore();
+  });
+}
+
 /* ---------------- router ---------------- */
 const routes = {
   "/": renderDashboard,
@@ -73,6 +98,7 @@ const routes = {
   "/program": renderProgram,
   "/inbox": renderInbox,
   "/chat": renderChat,
+  "/maps": renderMapEditor,
 };
 
 let routeSeq = 0;

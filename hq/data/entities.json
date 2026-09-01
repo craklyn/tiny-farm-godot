@@ -55,6 +55,7 @@
           "desc": "The first machine. A static actor that never moves; at the day turn its brain issues ordinary water actions over its radius — automation through the exact same gateway as a thumb.",
           "sheet": "assets/sprites/generated/objects.png",
           "frames": [[80,16,16,16],[96,16,16,16]],
+          "frame_names": ["idle", "spraying"],
           "fps": 1.2,
           "layout": "Two state cells in objects.png (idle, spraying) — a threshold swap, not an animation; the spray frame holds ~1.4s after the day turn.",
           "sounds": [],
@@ -120,7 +121,8 @@
           "id": "mole", "name": "Mole", "emoji": "🦔",
           "desc": "Travels under the farm ignoring all terrain, surfaces on a freshly-sown tile, eats the seed, and goes back down. Stompable only in the seconds it is surfaced — its mound stays visible while it travels.",
           "sheet": "assets/sprites/generated/critters.png",
-          "frames": [[0,32,16,16],[16,32,16,16],[32,32,16,16],[16,32,16,16]],
+          "frames": [[0,32,16,16],[16,32,16,16],[32,32,16,16]],
+          "frame_names": ["mound", "emerging", "surfaced"],
           "fps": 2,
           "layout": "critters.png row 2 — three state cells (mound, emerging, surfaced), shown here as a cycle.",
           "sounds": [],
@@ -129,14 +131,22 @@
         },
         {
           "id": "worm", "name": "Worm", "emoji": "🪱",
-          "desc": "The slowest thing in the game. Hunts crops and grows a body segment for every crop eaten — its own lengthening body becomes its main obstacle. Stompable on any tile it occupies.",
+          "desc": "The slowest thing in the game. Hunts crops and grows a body segment for every crop eaten — its own lengthening body becomes its main obstacle. Stompable on any tile it occupies. Not an animation cycle: the renderer draws one part per occupied tile, mirroring and rotating the directional parts to follow the path and drawing the symmetric cell as a joint at bends.",
           "sheet": "assets/sprites/generated/critters.png",
-          "frames": [[0,48,16,16],[16,48,16,16],[32,48,16,16]],
+          "frames": [[0,48,16,16],[16,48,16,16],[32,48,16,16],[48,48,16,16]],
+          "frame_names": ["head", "body", "tail", "body (vertical) / joint"],
           "fps": 2,
-          "layout": "critters.png row 3 — head, body, tail, vertical-body cells. In-game these aren't an animation: one cell is drawn per occupied tile, the only multi-cell actor in the renderer. The body and tail cells were hand-drawn.",
+          "composite": [
+            {"f": 2, "dx": 0, "dy": 0},
+            {"f": 1, "dx": 1, "dy": 0},
+            {"f": 3, "dx": 2, "dy": 0},
+            {"f": 3, "dx": 2, "dy": 1},
+            {"f": 0, "dx": 2, "dy": 2, "rot": 90}
+          ],
+          "layout": "critters.png row 3 — head, body, tail, vertical-body/joint parts, assembled one per occupied tile (the only multi-cell actor). Directional parts mirror leftward and rotate 90° for vertical travel; a bend draws the symmetric cell as a knuckle. The preview shows a bent worm exactly as the game renderer assembles it.",
           "sounds": [],
           "code": ["entities/worm.gd", "systems/sim/brains/worm_brain.gd"],
-          "facts": {"Speed": "6 px/s", "Grows": "+1 segment per crop eaten", "Starts at": "2 segments"}
+          "facts": {"Speed": "6 px/s", "Grows": "+1 segment per crop eaten", "Starts at": "2 segments", "Bends": "joint cell at corners; head/tail rotate for vertical travel"}
         },
         {
           "id": "bot", "name": "Bot", "emoji": "🤖",
