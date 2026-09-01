@@ -41,7 +41,10 @@ async function renderSpriteEditor(path) {
     work.width = w; work.height = hh;
     wctx.clearRect(0, 0, w, hh);
     wctx.drawImage(img, x, y, w, hh, 0, 0, w, hh);
-    return { rect: [x, y, w, hh], data: wctx.getImageData(0, 0, w, hh), undo: [] };
+    const data = wctx.getImageData(0, 0, w, hh);
+    // untouched copy from load time, for the before/after preview
+    const orig = new ImageData(new Uint8ClampedArray(data.data), w, hh);
+    return { rect: [x, y, w, hh], data, orig, undo: [] };
   });
 
   let cur = 0, playing = false, onion = true, dirty = false;
@@ -82,8 +85,11 @@ async function renderSpriteEditor(path) {
       </div>
       <div class="sp-side">
         <h2 style="margin-top:0">Live preview</h2>
-        <canvas id="sp-preview" width="${fw * 3}" height="${fh * 3}"></canvas>
-        <p class="small muted">Loops at the game's own rate, with your edits, while you work.</p>
+        <div class="sp-previews">
+          <figure><canvas id="sp-before" width="${fw * 3}" height="${fh * 3}"></canvas><figcaption>before</figcaption></figure>
+          <figure><canvas id="sp-preview" width="${fw * 3}" height="${fh * 3}"></canvas><figcaption>after (your edits)</figcaption></figure>
+        </div>
+        <p class="small muted">Both loop in sync at the game's own rate — before is the sheet as it was when you opened the editor.</p>
         <h2>Save</h2>
         <p class="small muted">Writes your edits back into <code class="ref">${esc(ent.sheet)}</code>. The original is backed up first; git and the visual-regression suite have your back.</p>
         <p><button id="sp-save">💾 Save to sheet</button>
@@ -98,15 +104,18 @@ async function renderSpriteEditor(path) {
   const pv = document.getElementById("sp-preview");
   const pctx = pv.getContext("2d");
   pctx.imageSmoothingEnabled = false;
+  const bv = document.getElementById("sp-before");
+  const bctx = bv.getContext("2d");
+  bctx.imageSmoothingEnabled = false;
   const status = document.getElementById("sp-status");
 
   const tmp = document.createElement("canvas");
   const tctx = tmp.getContext("2d");
 
-  const blit = (frame, dctx, scale, alpha) => {
+  const blit = (frame, dctx, scale, alpha, useOrig) => {
     const [, , w, hh] = frame.rect;
     tmp.width = w; tmp.height = hh;
-    tctx.putImageData(frame.data, 0, 0);
+    tctx.putImageData(useOrig ? frame.orig : frame.data, 0, 0);
     dctx.globalAlpha = alpha;
     dctx.drawImage(tmp, 0, 0, w, hh, 0, 0, w * scale, hh * scale);
     dctx.globalAlpha = 1;
@@ -134,8 +143,11 @@ async function renderSpriteEditor(path) {
   };
 
   const renderPreview = i => {
+    const f = frames[i % frames.length];
     pctx.clearRect(0, 0, pv.width, pv.height);
-    blit(frames[i % frames.length], pctx, 3, 1);
+    blit(f, pctx, 3, 1);
+    bctx.clearRect(0, 0, bv.width, bv.height);
+    blit(f, bctx, 3, 1, true);
   };
   let pvi = 0;
   animators.push(setInterval(() => { pvi = (pvi + 1) % frames.length; renderPreview(pvi); }, 1000 / (ent.fps || 4)));
