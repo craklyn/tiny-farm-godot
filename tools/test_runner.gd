@@ -82,6 +82,7 @@ func _run_scenarios() -> void:
 	await _scenario_aa_the_yard_is_home()
 	await _scenario_ab_the_stations_present_themselves()
 	await _scenario_ac_the_zoo()
+	await _scenario_ad_two_hud_findings()
 
 func _wait_until(pred: Callable, max_frames: int) -> bool:
 	for i in max_frames:
@@ -2802,4 +2803,102 @@ func _scenario_ac_the_zoo() -> void:
 		"and the played farm is still the played farm")
 
 	zoo.queue_free()
+	await get_tree().process_frame
+
+
+# Two HUD findings from the tablet, 2026-09-01. Both are about the overlay rather
+# than the world, so both are asserted against the real HUD the real scene built.
+func _scenario_ad_two_hud_findings() -> void:
+	print("\n--- Scenario AD: the pill fits its words, and the debug block folds away ---")
+
+	var hud = main_scene.hud
+
+	# --- the pill sizes to its content ---------------------------------------
+	#
+	# *"The pill drawn beneath the current selected item (e.g. scarecrow) .. the
+	# pill isn't big enough so the words spill over."* The pill was a fixed 100
+	# pixels with an 82-pixel label in it; "scarecrow x1" does not fit in 82.
+	var font: Font = hud.seed_pill_label.get_theme_font("font")
+	var font_size: int = hud.seed_pill_label.get_theme_font_size("font_size")
+	var widest := ""
+	var widest_px := 0.0
+	for seed_name in CropDefs.TYPES.keys():
+		var sample := "%s x%d" % [seed_name, 12]
+		var px: float = font.get_string_size(sample, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+		if px > widest_px:
+			widest_px = px
+			widest = sample
+	_assert(widest_px > 82.0,
+		"the longest label in the game ('%s', %.0fpx) really did overflow the old 82px slot"
+			% [widest, widest_px])
+
+	var spilled: PackedStringArray = []
+	for seed_name in CropDefs.TYPES.keys():
+		GameState.selected_seed_type = seed_name
+		GameState.seeds[seed_name] = 12
+		hud._update_hud()
+		var text_px: float = font.get_string_size(hud.seed_pill_label.text,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+		var room: float = hud.seed_pill.size.x - hud.PILL_ICON_W
+		if text_px > room:
+			spilled.append("%s (%.0f > %.0f)" % [hud.seed_pill_label.text, text_px, room])
+	_assert(spilled.is_empty(),
+		"every seed, tool and object in the pouch fits inside its pill (%s)"
+			% ("none spill" if spilled.is_empty() else ", ".join(spilled)))
+
+	# The scarecrow by name, because it is the one she reported.
+	GameState.selected_seed_type = "scarecrow"
+	GameState.seeds["scarecrow"] = 1
+	hud._update_hud()
+	_assert(hud.seed_pill.size.x > 100.0,
+		"the scarecrow's pill grew past the old fixed 100px (%.0f)" % hud.seed_pill.size.x)
+	_assert(hud.seed_pill_label.size.x + hud.PILL_ICON_W <= hud.seed_pill.size.x,
+		"and the label still sits inside it, icon included")
+	var centre_gap: float = absf(
+		hud.seed_pill.position.x + hud.seed_pill.size.x / 2.0
+		- main_scene.get_viewport().get_visible_rect().size.x / 2.0)
+	_assert(centre_gap <= 1.0,
+		"a wider pill is still centred, not stretched off to one side (%.1fpx off)" % centre_gap)
+
+	GameState.selected_seed_type = "wheat"
+	GameState.seeds["wheat"] = 5
+	hud._update_hud()
+	_assert(absf(hud.seed_pill.size.x - hud.PILL_MIN_W) <= 4.0,
+		"and a short label leaves the pill within a pixel or two of the size it has always been (%.1f)"
+			% hud.seed_pill.size.x)
+
+	# --- the debug readout folds away ----------------------------------------
+	#
+	# *"We should add a 'hide debug' button in the top left that collapses the
+	# debug information printed in the top left."*
+	_assert(hud.notes_toggle != null and hud.notes_label != null,
+		"the playtest readout has a toggle beside it")
+	_assert(hud.notes_toggle.position.x < 40.0 and hud.notes_toggle.position.y < 60.0,
+		"in the top left, where the block it hides is")
+	_assert(hud.notes_toggle.size.x <= 32.0 and hud.notes_toggle.size.y <= 24.0,
+		"and it is a chip (%.0fx%.0f), so collapsing does not leave a slab of button"
+			% [hud.notes_toggle.size.x, hud.notes_toggle.size.y])
+	_assert(hud.notes_label.visible, "the block starts open")
+
+	hud._on_notes_toggle()
+	_assert(not hud.notes_label.visible, "one press collapses it")
+	_assert(hud.notes_toggle.visible and hud.notes_toggle.text != "",
+		"leaving the chip behind to offer it back")
+	var quiet_mark: String = hud.notes_label.text
+	for i in 40: await get_tree().process_frame
+	_assert(hud.notes_label.text == quiet_mark,
+		"and the collapsed block stops paying for its O(map) refresh")
+
+	hud._on_notes_toggle()
+	_assert(hud.notes_label.visible, "a second press brings it back")
+
+	# Remembered for the session: the flag is a static on the script, so a HUD
+	# built later in the same run (a return to the title and a new game) opens in
+	# the state the developer left it in.
+	hud._on_notes_toggle()
+	var HudScript = load("res://ui/hud.gd")
+	_assert(HudScript.notes_collapsed,
+		"the collapsed state lives on the script, not on this one HUD node")
+	hud._on_notes_toggle()
+	_assert(not HudScript.notes_collapsed, "and it is put back the same way")
 	await get_tree().process_frame

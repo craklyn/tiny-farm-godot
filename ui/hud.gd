@@ -56,6 +56,26 @@ var seed_pill: Panel
 var seed_pill_label: Label
 var seed_pill_icon: TextureRect
 
+# The pill sizes to its own words. Reported from play 2026-09-01: *"The pill drawn
+# beneath the current selected item (e.g. scarecrow) .. the pill isn't big enough
+# so the words spill over."* It was a fixed 100x24 with an 82px label inside it,
+# which holds "wheat x5" and does not hold "scarecrow x1" — and the scarecrow is
+# the one thing in the pouch with a long name, so the bug arrived with the item.
+#
+# The minimum is the width the pill has always been, so short names look exactly
+# as they did; the maximum is a pill that still fits across a phone. Between them
+# it is the icon, the measured string and a little air.
+const PILL_ICON_W := 18.0
+const PILL_PAD := 12.0
+const PILL_MIN_W := 100.0
+const PILL_MAX_W := 240.0
+const PILL_H := 24.0
+
+
+# Pure, so the suites can ask what a given string would need without a viewport.
+static func pill_width(text_width: float) -> float:
+	return clampf(PILL_ICON_W + text_width + PILL_PAD, PILL_MIN_W, PILL_MAX_W)
+
 # T-28's satisfied treatment B — "the state shows before the tap". Built always,
 # shown only under that treatment, so the default build is byte-for-byte the HUD
 # it was and the visual baseline does not move.
@@ -86,6 +106,14 @@ const PLAYTEST_NOTES := true
 const NOTES_REFRESH := 0.5
 var notes_label: Label
 var _notes_timer: float = 0.0
+
+# The collapse toggle (the designer, 2026-09-01) and its state. Small enough that
+# a collapsed readout leaves a chip rather than a dead slab of button, which is
+# the whole point of collapsing it.
+const NOTES_TOGGLE_W := 22.0
+const NOTES_TOGGLE_H := 18.0
+static var notes_collapsed := false
+var notes_toggle: Button
 
 # Tile cursor (drawn in world space via the main scene)
 var cursor_tile: Vector2i = Vector2i(-1, -1)
@@ -323,16 +351,44 @@ func _build_ui() -> void:
 	add_child(hint_label)
 
 	if PLAYTEST_NOTES:
+		# The designer, 2026-09-01: *"We should add a 'hide debug' button in the top
+		# left that collapses the debug information printed in the top left."* The
+		# readout is a scaffold that covers the top third of the screen, and on a
+		# tablet that is exactly where the yard is.
+		#
+		# Debug-gated with the block it hides, so a release build has neither. The
+		# collapsed state is a **static**, the look-lab's precedent: it survives a
+		# return to the title and a new game the way a developer expects a debug
+		# switch to, and it is deliberately not saved — S-7 does not bind a debug
+		# surface, and neither does the save format.
+		notes_toggle = Button.new()
+		notes_toggle.name = "playtest_notes_toggle"
+		notes_toggle.size = Vector2(NOTES_TOGGLE_W, NOTES_TOGGLE_H)
+		notes_toggle.position = Vector2(10, 34)
+		notes_toggle.focus_mode = Control.FOCUS_NONE
+		notes_toggle.add_theme_font_size_override("font_size", 12)
+		var nt_style := StyleBoxFlat.new()
+		nt_style.bg_color = Color(0.10, 0.12, 0.10, 0.75)
+		nt_style.border_color = Color(0.62, 0.72, 0.58, 0.8)
+		nt_style.set_border_width_all(1)
+		nt_style.set_corner_radius_all(4)
+		for slot in ["normal", "hover", "pressed", "focus"]:
+			notes_toggle.add_theme_stylebox_override(slot, nt_style)
+		notes_toggle.add_theme_color_override("font_color", Color(0.92, 0.96, 0.88))
+		notes_toggle.pressed.connect(_on_notes_toggle)
+		add_child(notes_toggle)
+
 		notes_label = Label.new()
 		notes_label.name = "playtest_notes"
-		notes_label.position = Vector2(10, 34)
-		notes_label.size = Vector2(viewport_size.x - 20, 76)
+		notes_label.position = Vector2(10 + NOTES_TOGGLE_W + 4, 34)
+		notes_label.size = Vector2(viewport_size.x - 24 - NOTES_TOGGLE_W, 76)
 		notes_label.add_theme_font_size_override("font_size", 13)
 		notes_label.add_theme_color_override("font_color", Color(1, 1, 0.86, 0.92))
 		notes_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
 		notes_label.add_theme_constant_override("outline_size", 4)
 		notes_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_child(notes_label)
+		_apply_notes_collapsed()
 
 	# --- Active Seed Pill (above hint) ---
 	seed_pill = Panel.new()
@@ -348,8 +404,9 @@ func _build_ui() -> void:
 	pill_style.border_width_right = 1
 	pill_style.border_color = Color(1, 1, 1, 0.3)
 	seed_pill.add_theme_stylebox_override("panel", pill_style)
-	seed_pill.size = Vector2(100, 24)
-	seed_pill.position = Vector2(viewport_size.x / 2 - 50, viewport_size.y - 60 - 24)
+	seed_pill.size = Vector2(PILL_MIN_W, PILL_H)
+	seed_pill.position = Vector2(viewport_size.x / 2 - PILL_MIN_W / 2.0,
+		viewport_size.y - 60 - PILL_H)
 	seed_pill.gui_input.connect(_on_seed_pill_gui_input)
 	add_child(seed_pill)
 
@@ -362,9 +419,12 @@ func _build_ui() -> void:
 	seed_pill.add_child(seed_pill_icon)
 
 	seed_pill_label = Label.new()
-	seed_pill_label.position = Vector2(18, 2)
-	seed_pill_label.size = Vector2(82, 20)
+	seed_pill_label.position = Vector2(PILL_ICON_W, 2)
+	seed_pill_label.size = Vector2(PILL_MIN_W - PILL_ICON_W - 4.0, 20)
 	seed_pill_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	# Belt and braces behind `_fit_seed_pill`: a name longer than the widest pill
+	# we will draw gets trimmed rather than spilling out of the rounded rect.
+	seed_pill_label.clip_text = true
 	seed_pill_label.add_theme_color_override("font_color", Color(1, 1, 0.9))
 	seed_pill.add_child(seed_pill_label)
 
@@ -522,11 +582,51 @@ func _update_state_chips() -> void:
 func _process(delta: float) -> void:
 	_update_hud()
 	_update_toast(delta)
-	if notes_label != null:
+	# Collapsed means collapsed: the readout's obstacle count is an O(map) scan, and
+	# a hidden label has no business paying for one.
+	if notes_label != null and not notes_collapsed:
 		_notes_timer -= delta
 		if _notes_timer <= 0.0:
 			_notes_timer = NOTES_REFRESH
 			_update_playtest_notes()
+
+
+# Measure, pad, then draw — and stay centred while doing it, because the pill's
+# position is where it is *drawn from*, not where its middle is.
+func _fit_seed_pill() -> void:
+	if seed_pill == null or seed_pill_label == null:
+		return
+	var font: Font = seed_pill_label.get_theme_font("font")
+	var font_size: int = seed_pill_label.get_theme_font_size("font_size")
+	var text_w := 0.0
+	if font != null:
+		text_w = font.get_string_size(seed_pill_label.text,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	var w := pill_width(text_w)
+	if is_equal_approx(w, seed_pill.size.x):
+		return
+	var viewport_size := get_viewport().get_visible_rect().size
+	seed_pill.size = Vector2(w, PILL_H)
+	seed_pill.position = Vector2(round(viewport_size.x / 2.0 - w / 2.0), seed_pill.position.y)
+	seed_pill_label.size = Vector2(w - PILL_ICON_W - 4.0, 20)
+
+
+func _on_notes_toggle() -> void:
+	notes_collapsed = not notes_collapsed
+	_apply_notes_collapsed()
+	if not notes_collapsed:
+		_notes_timer = 0.0  # refresh on the next frame rather than up to half a second later
+
+
+func _apply_notes_collapsed() -> void:
+	if notes_label != null:
+		notes_label.visible = not notes_collapsed
+	if notes_toggle != null:
+		# "≡" offers the block back; "×" closes it. No words, on a surface that is
+		# nothing but words — the button has to be readable at 22 pixels wide.
+		notes_toggle.text = "☰" if notes_collapsed else "×"
+		notes_toggle.tooltip_text = "show the playtest readout" if notes_collapsed \
+			else "hide the playtest readout"
 
 
 # What the game currently wants, and what is gating whatever is still locked.
@@ -694,7 +794,8 @@ func _update_hud() -> void:
 	else:
 		seed_pill_icon.visible = false
 	seed_pill_label.text = "%s x%d" % [seed_name, scount]
-	
+	_fit_seed_pill()
+
 	var style: StyleBoxFlat = seed_pill.get_theme_stylebox("panel")
 	if scount > 0:
 		style.bg_color = Color(0.18, 0.52, 0.22, 0.88)
