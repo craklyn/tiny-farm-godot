@@ -207,7 +207,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(data)))
-        self.send_header("Cache-Control", "max-age=300")
+        # Static app files change with the repo; only heavy game assets are worth caching.
+        self.send_header("Cache-Control", "max-age=3600" if root.endswith("assets") else "no-cache")
         self.end_headers()
         self.wfile.write(data)
 

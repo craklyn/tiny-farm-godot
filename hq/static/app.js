@@ -126,14 +126,33 @@ async function renderOrg() {
   const byMgr = {};
   org.employees.forEach(e => { (byMgr[e.manager || "root"] ||= []).push(e); });
   const root = org.employees.find(e => !e.manager);
+  const directs = byMgr[root.id] || [];
+  // Staff seats (chief of staff) attach beside the CEO; functional leads hang below.
+  const staff = directs.filter(e => e.team === "Executive");
+  const leads = directs.filter(e => e.team !== "Executive");
   const frag = h(`<h1>Org Chart</h1>
-    <p class="sub">${org.employees.length} people · click anyone to see their charter, or to start a chat. Levels use Amazon's ladder.</p>
-    <div class="org-root" id="org-root"></div>`);
+    <p class="sub">${org.employees.length} people · every lead reports to you; the chief of staff sits at your side, outside the functional chain. Click anyone to see their charter or start a chat. Levels use Amazon's ladder.</p>
+    <div class="org-scroll"><div class="org-root" id="org-root"></div></div>`);
   const rootDiv = frag.getElementById("org-root");
-  rootDiv.appendChild(personCard(root));
+  const top = document.createElement("div");
+  top.className = "org-top";
+  top.appendChild(personCard(root));
+  if (staff.length) {
+    const sd = document.createElement("div");
+    sd.className = "org-staff";
+    sd.appendChild(h(`<div class="tie"></div>`));
+    staff.forEach(s => {
+      const card = personCard(s, true);
+      card.firstElementChild.insertAdjacentHTML("beforeend", `<div class="role">staff — reports to CEO</div>`);
+      sd.appendChild(card);
+    });
+    top.appendChild(sd);
+  }
+  rootDiv.appendChild(top);
+  rootDiv.appendChild(h(`<div class="org-stub"></div>`));
   const kids = document.createElement("div");
   kids.className = "org-kids";
-  (byMgr[root.id] || []).forEach(direct => {
+  leads.forEach(direct => {
     const branch = document.createElement("div");
     branch.className = "org-branch";
     branch.appendChild(personCard(direct, true));
@@ -145,7 +164,7 @@ async function renderOrg() {
         sub.appendChild(personCard(r, true));
         (byMgr[r.id] || []).forEach(rr => {
           const d = personCard(rr, true);
-          d.firstElementChild.style.marginLeft = "22px";
+          d.firstElementChild.classList.add("indent");
           sub.appendChild(d);
         });
       });
@@ -155,6 +174,8 @@ async function renderOrg() {
   });
   rootDiv.appendChild(kids);
   $view.replaceChildren(frag);
+  const scroll = $view.querySelector(".org-scroll");
+  scroll.scrollLeft = (scroll.scrollWidth - scroll.clientWidth) / 2;
   $view.querySelectorAll(".org-node").forEach(n =>
     n.addEventListener("click", () => showPerson(org, n.dataset.id)));
 }

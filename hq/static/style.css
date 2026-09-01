@@ -53,7 +53,7 @@ body {
 .health.ok i { background: var(--green); }
 
 /* ---------- main ---------- */
-#view { flex: 1; padding: 28px 34px; max-width: 1200px; }
+#view { flex: 1; min-width: 0; padding: 28px 34px; max-width: 1200px; }
 h1 { font-size: 26px; margin-bottom: 4px; }
 h2 { font-size: 18px; margin: 22px 0 10px; }
 .sub { color: var(--muted); margin-bottom: 22px; }
@@ -95,24 +95,41 @@ button:disabled { opacity: .5; cursor: default; }
 .stat span { font-size: 12.5px; color: var(--muted); }
 
 /* ---------- org chart ---------- */
-.org-root { display: flex; flex-direction: column; align-items: center; gap: 0; }
+.org-scroll { overflow-x: auto; padding-bottom: 18px; }
+.org-root { display: flex; flex-direction: column; align-items: center; width: max-content; min-width: 100%; margin: 0 auto; }
 .org-node {
   background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
   padding: 10px 14px; cursor: pointer; text-align: left;
-  min-width: 190px; max-width: 230px; transition: border-color .15s;
+  min-width: 180px; max-width: 220px; transition: border-color .15s;
 }
 .org-node:hover { border-color: var(--accent); }
 .org-node .nm { font-weight: 700; font-size: 14px; display: flex; gap: 6px; align-items: center; }
 .org-node .tt { font-size: 12px; color: var(--muted); margin-top: 2px; }
 .org-node .lv { font-size: 11px; color: var(--accent); margin-top: 3px; font-weight: 600; }
-.org-kids { display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; margin-top: 26px; align-items: flex-start; }
-.org-branch { display: flex; flex-direction: column; align-items: center; position: relative; }
+
+/* CEO row: the root card with the chief-of-staff seat attached at its side */
+.org-top { display: flex; align-items: center; position: relative; }
+.org-top .org-node { border-color: var(--accent); }
+.org-staff { display: flex; align-items: center; position: absolute; left: 100%; top: 50%; transform: translateY(-50%); }
+.org-staff .tie { width: 34px; height: 2px; background: var(--line); flex-shrink: 0; }
+.org-staff .org-node { border-style: dashed; min-width: 200px; }
+.org-staff .role { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-top: 4px; }
+
+/* connector: stub under the CEO, rail across the leads, stub into each lead */
+.org-stub { width: 2px; height: 26px; background: var(--line); }
+.org-kids { display: flex; flex-wrap: nowrap; justify-content: center; align-items: flex-start; }
+.org-branch { display: flex; flex-direction: column; align-items: center; position: relative; padding: 26px 9px 0; }
 .org-branch::before {
-  content: ""; position: absolute; top: -26px; height: 26px; width: 2px; background: var(--line);
+  content: ""; position: absolute; top: 0; left: 50%; width: 2px; height: 26px; background: var(--line);
 }
-.org-sub { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; padding-left: 0; }
+.org-branch::after {
+  content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--line);
+}
+.org-branch:first-child::after { left: 50%; }
+.org-branch:last-child::after { right: 50%; }
+.org-sub { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
 .org-sub .org-node { min-width: 170px; }
-.teamlabel { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin: 14px 0 6px; }
+.org-sub .org-node.indent { margin-left: 22px; }
 
 /* person detail overlay */
 #overlay {
