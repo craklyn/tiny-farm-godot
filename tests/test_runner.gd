@@ -8511,10 +8511,12 @@ func test_station_presentation() -> void:
 	var was_cot: int = CotPresentation.treatment
 
 	# --- the two axes, and the fact that they really are two -----------------
-	_assert(StationPresentation.discovery == StationPresentation.DISCOVERY_OFF
-			and StationPresentation.satisfied == StationPresentation.SATISFIED_OFF,
-		"both axes ship OFF — the default build is the game he complained about, "
-			+ "which is the thing the drafts have to be compared against")
+	# Shipped OFF while the drafts awaited judgement; the designer ruled on
+	# 2026-09-01 — pips for discovery, the noun for already-done — so the ruled
+	# picks ARE the defaults now, exactly as the cot's dusk-glow pick landed.
+	_assert(StationPresentation.discovery == StationPresentation.DISCOVERY_PIP
+			and StationPresentation.satisfied == StationPresentation.SATISFIED_NOUN,
+		"the axes ship the designer's picks — B · purpose pips, A · the answer names itself")
 
 	StationPresentation.set_discovery(StationPresentation.DISCOVERY_OFF)
 	StationPresentation.set_satisfied(StationPresentation.SATISFIED_OFF)
@@ -8834,9 +8836,9 @@ func test_station_presentation() -> void:
 	gs.free()
 	StationPresentation.set_discovery(was_d)
 	StationPresentation.set_satisfied(was_s)
-	_assert(StationPresentation.discovery == StationPresentation.DISCOVERY_OFF
-			and StationPresentation.satisfied == StationPresentation.SATISFIED_OFF,
-		"and the build's defaults, restored, are OFF — T-28 stays the designer's to tick")
+	_assert(StationPresentation.discovery == StationPresentation.DISCOVERY_PIP
+			and StationPresentation.satisfied == StationPresentation.SATISFIED_NOUN,
+		"and the build's defaults, restored, are the ruled picks — the Look Lab can still dissent")
 
 
 # --- The zoo (T-33) -----------------------------------------------------------

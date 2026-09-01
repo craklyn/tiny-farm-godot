@@ -826,20 +826,27 @@ func _draw() -> void:
 			if not nart.is_empty():
 				var nx := acx
 				var ny: float = acy - ACK_NOUN - 2.0 - 3.0 * ae
+				# The noun holds, then fades (the designer's condition on the T-28
+				# pick, 2026-09-01: "okay if it shows then fades"). It used to ride
+				# the ring's own envelope, which decays from the first frame — so
+				# the one part of the cue that must be *recognized* spent most of
+				# its life translucent. The ring and sparkles keep that envelope:
+				# they are the motion, this is the message.
+				var na: float = clampf((1.0 - ae) / 0.35, 0.0, 1.0)
 				render_queue.append({
 					"y": 100000.0,
 					"draw": func():
 						draw_texture_rect_region(nart[0],
 							Rect2(nx - ACK_NOUN / 2.0, ny - ACK_NOUN / 2.0,
 								ACK_NOUN, ACK_NOUN),
-							nart[1], Color(1, 1, 1, minf(1.0, aa + 0.15)))
+							nart[1], Color(1, 1, 1, na))
 						# The check, in the cue's own blue-white. Two strokes, and
 						# they are the constant of this grammar: whatever noun it
 						# is beside, a tick means "already so" (the shop's ✕ is the
 						# precedent for a glyph carrying a whole word — S-7 forbids
 						# required reading, not marks).
 						var tick := Vector2(nx + ACK_NOUN * 0.34, ny + ACK_NOUN * 0.30)
-						var col := Color(0.72, 0.97, 1.0, minf(1.0, aa + 0.15))
+						var col := Color(0.72, 0.97, 1.0, na)
 						draw_line(tick + Vector2(-2.6, -0.4), tick + Vector2(-0.9, 1.6), col, 1.4)
 						draw_line(tick + Vector2(-0.9, 1.6), tick + Vector2(2.6, -2.4), col, 1.4)
 				})

@@ -24,8 +24,8 @@ all landed). Suites at close: unit 1799 / integration 453 / robot MATCH / benchm
 - **T-36** below — ✅ shipped 2026-09-01; the face reads 6:00 AM → 4:00 PM.
 
 **Then the standing picks and paths:**
-- The designer's pick from T-28's four station treatments (Look Lab, on the tablet),
-  and Q-74 (clock loudness) in the same sitting.
+- ✅ The T-28 picks and Q-74 were ruled 2026-09-01 from live captures in chat: pips,
+  the noun (now holding before it fades), and the clock as built. See T-28 below.
 - Q-76/77/78 (new, from the serious-gamer session) await rulings.
 - The M1.5 gate re-evidence needs a **fresh adult** (the household testers are now
   both coached); casting is the designer's.
@@ -241,9 +241,16 @@ poorly** — the satisfied-tap answers (full can, empty basket, already watered:
 her session) didn't communicate. Treatments to be drafted behind the T-27 A/B toggle
 pattern; walking friction explicitly NOT one of his observations.
 
-**The drafts — 2026-09-01, awaiting the pick.** Four treatments, **two axes**, all in
-one build and switched on the tablet with a thumb. Nothing here is decided; this box
-stays unticked until he says which, and the ones he does not pick come out.
+**The drafts — 2026-09-01, and ✅ THE PICK, same day.** Four treatments, **two axes**,
+all in one build and switched on the tablet with a thumb. The designer ruled from live
+captures of all four (rendered frames of the real scene, judged in chat rather than on
+the device): **discovery → B, the purpose pips; already-done → A, the answer names
+itself**, with one condition on A — the noun must *show, then fade*, not ride the
+ring's decaying alpha (his read of the capture: "the contrast is too low to recognize
+what's being shown"). Confirmed against the code — the glyph faded from birth — and
+fixed: the noun holds full opacity until the cue's last third (`world/farm.gd`). The
+picks ship as the defaults, the way the cot's dusk-glow landed; the axes stay in the
+Look Lab. Q-74 was ruled in the same sitting: the clock stays as built.
 
 *Two axes rather than four combinations, deliberately.* His two observations are
 different failures with different fixes, and a build that only offers fixed pairs cannot

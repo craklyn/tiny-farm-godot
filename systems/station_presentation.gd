@@ -96,7 +96,11 @@ const DISCOVERY_GLINT := 1
 const DISCOVERY_PIP := 2
 const DISCOVERY_COUNT := 3
 
-static var discovery: int = DISCOVERY_OFF
+# **The designer picked B (2026-09-01)**, from live captures of both drafts, so
+# the pip is the default the game ships with — the same way the cot's dusk-glow
+# pick landed (T-27). The axis stays in the Look Lab so the pick can be
+# revisited against OFF on the device.
+static var discovery: int = DISCOVERY_PIP
 
 const DISCOVERY_NAMES: Array[String] = [
 	"off · as today",
@@ -127,7 +131,11 @@ const SATISFIED_NOUN := 1
 const SATISFIED_CHIP := 2
 const SATISFIED_COUNT := 3
 
-static var satisfied: int = SATISFIED_OFF
+# **The designer picked A (2026-09-01)**, with one condition — the noun must
+# *show, then fade*, not fade from birth (its alpha used to ride the ring's
+# decaying envelope; `world/farm.gd` now holds it full until the cue's last
+# third). Default ships as the pick, axis stays in the Look Lab, as above.
+static var satisfied: int = SATISFIED_NOUN
 
 const SATISFIED_NAMES: Array[String] = [
 	"off · as today",

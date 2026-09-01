@@ -715,7 +715,11 @@ trace actually says, because several of these looked like bugs and were not.*
   **Recommendation: (b), but it is a look-at-it call, not an argument** — one line of
   `ui/hud.gd`, no sim, and it moves the visual baseline, so it is worth doing once rather
   than twice. Left undone deliberately: nothing in T-29's boxes asked for it.
-- **Q-74 (Ruling, filed 2026-09-01 from T-34)** **How loud should the clock be?** T-34
+- **Q-74** ~~How loud should the clock be?~~ — ✅ **ruled 2026-09-01: leave it as
+  built** (the recommendation taken; the digits wear the bar's own type and colour and
+  stay subordinate to the arc by position). Ruled in the same sitting as the T-28 picks,
+  just after T-36 turned the face 12-hour AM/PM — so the ruling covers the wider face
+  too. Original entry: **(Ruling, filed 2026-09-01 from T-34)** **How loud should the clock be?** T-34
   ruled *where* the digits go (beside the arc) but not how big, and "small hh:mm" was
   resolved by interpretation: the clock wears the **top bar's own type and the day
   label's colour**, and stays subordinate to the arc by being the narrower element and

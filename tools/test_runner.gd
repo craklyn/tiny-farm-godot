@@ -2631,9 +2631,9 @@ func _scenario_ab_the_stations_present_themselves() -> void:
 	CotPresentation.set_treatment(was_cot)
 	main_scene._apply_station_treatment()
 	main_scene._apply_cot_treatment()
-	_assert(StationPresentation.discovery == StationPresentation.DISCOVERY_OFF
-			and StationPresentation.satisfied == StationPresentation.SATISFIED_OFF,
-		"and the build's defaults, restored, are OFF — T-28 stays the designer's to tick")
+	_assert(StationPresentation.discovery == StationPresentation.DISCOVERY_PIP
+			and StationPresentation.satisfied == StationPresentation.SATISFIED_NOUN,
+		"and the build's defaults, restored, are the 2026-09-01 picks — pips, and the noun")
 
 
 # The gauge's full height, from the HUD's own metrics: 22px tall with a 1px lip
