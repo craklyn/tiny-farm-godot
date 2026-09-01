@@ -1049,6 +1049,32 @@ fit "scarecrow", and a collapse toggle for the playtest readout).*
   beat cost ~910 µs, four of them ~4 ms in a frame) is now ~410 µs. Detail and the full
   before/after in `M2_5_PLAN.md` §9 WI-12.
 
+## From the 2026-08-31 serious-gamer session (filing approved by the designer)
+
+*The designer played "as a more serious gamer might" — 63% of taps under 500ms,
+bursts of 48 — and the profile exposed three design questions the gentle sessions
+never touched. Session: `playtests/2026-08-31_230643`.*
+
+- **Q-76 (Ruling)** **Fast players hammer-tap the cold open expecting a skip.** Four
+  rapid taps on his own tile in the scene's first three seconds — the universal
+  meet-a-cutscene gesture — answered with nothing; his first three stalls were
+  watching the neighbour work. Does the cold open get a skip (and what does skipping
+  do to the inheritance beat it exists to stage)? *Recommendation: no skip yet —
+  the scene is ~40s and plays once per farm; revisit if a second fast tester bounces
+  off it. If ruled in, "skip" should fast-forward the real actions, never bypass
+  them (the sim path exists — the robot does exactly this).*
+- **Q-77 (Ruling)** **The one-slot tap buffer fights fast play.** 61 taps landed
+  within a second of a queued walk; 16 aimed elsewhere, and each REPLACED the queued
+  intent — a fast player expects tap-five-tiles-and-she-does-all-five. A real intent
+  queue changes input feel, teaching, and the replay's shape of a session.
+  *Recommendation: prototype a depth-2 queue behind the Look Lab before ruling; the
+  phase-4 corpus question (does a queue's order carry intent?) rides on it.*
+- **Q-78 (Ruling)** **The can runs dry mid-gesture at speed.** 11 `no_water` refusals
+  and 22 dead-taps-holding-the-can: 8 charges empties mid-row for a fast player.
+  *Recommendation: leave the number (it is the refill loop's teacher, T-11) and let
+  T-28's state-first treatment carry the load — the can's level on the toolbar is
+  exactly the warning a fast player needs. Re-measure after the T-28 pick ships.*
+
 ## Before M3 — phase 2 design
 
 - **Q-73 (Creative, the designer's own seed, 2026-09-01)** **Evenings as social time.**

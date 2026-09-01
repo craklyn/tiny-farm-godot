@@ -29,6 +29,8 @@ const SHELF := {
 	"2026-08-30_221027": { "format": 1, "verdict": "cross" },
 	"2026-08-31_220017": { "format": 1, "verdict": "cross" },
 	"2026-08-31_220426": { "format": 2, "verdict": "cross" },
+	"2026-08-31_230643": { "format": 2, "verdict": "cross" },
+	"2026-08-31_233943": { "format": 2, "verdict": "cross" },
 }
 
 

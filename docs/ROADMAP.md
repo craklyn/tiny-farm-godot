@@ -3,6 +3,58 @@
 *Near-term milestones are concrete; later ones are phase-gated by the triggers in
 `DECISION_LOG.md`. Each milestone names its exit gate.*
 
+---
+
+## State of play — written 2026-09-01 for the Thursday resume
+
+*The designer paused work for ~3 days (credit budget). Everything below is pushed,
+CI-green, and the tablet carries the current build. A fresh session starts here.*
+
+**What the 08-30 → 09-01 arc shipped:** M2.5 (the actor system — clock, registry,
+brains, movement-as-data, replay v2 phase A, scent, seven critters, three bot
+configs, sprinkler, pea) built and verified end to end; M1.5's exit gate scored
+(four of five bars met, the cot bar void → T-27 shipped its fixes and the dusk-glow
+pick); the Zoo; the Look Lab; the 600-unit day with sun-arc and digits; the yard
+rework (T-32); and two rounds of same-day playtest fixes (six findings on 09-01,
+all landed). Suites at close: unit 1799 / integration 453 / robot MATCH / benchmark
+~105k× / visuals green. Fourteen designer rulings recorded across Q-53..Q-74.
+
+**Do first on resume (both ruled, evidence in hand):**
+- **T-35** below — the gate lesson must latch; her trace is the test case.
+- **T-36** below — the clock becomes 12-hour AM/PM; one format function.
+
+**Then the standing picks and paths:**
+- The designer's pick from T-28's four station treatments (Look Lab, on the tablet),
+  and Q-74 (clock loudness) in the same sitting.
+- Q-76/77/78 (new, from the serious-gamer session) await rulings.
+- The M1.5 gate re-evidence needs a **fresh adult** (the household testers are now
+  both coached); casting is the designer's.
+- Replay v2 Phase B prerequisites are recorded in `M2_5_PLAN.md` §9 — a fresh-farm
+  tablet session on a current build is the missing human artifact (the 08-31
+  sessions all predate the final worldgen).
+- M3 planning is unblocked and next in line after the above (`M2_5_PLAN.md` is the
+  template; Q-15/Q-55 are its opening rulings).
+
+**Session archaeology, if needed:** the three 08-31 evening sessions are shelved and
+classified in `tests/test_runner.gd`'s SHELF table — the designer's speed run
+(`230643`), his wife's third session (`233943`, the largest replay recorded: 3,389
+action/walk entries, 3% dead taps — the best human score to date), and the deploy
+rescue (`220426`). The 09-01 findings' fixes are commits `ac2d23a..7452200`.
+
+**T-35 — The gate lesson must latch** · bug, reported live 2026-08-31, evidence in
+`playtests/2026-08-31_233943` · ready to fix
+*Her first prompted trip to bed: the pointer aimed at the GATE, she followed it out
+of the yard, wandered 22 seconds (field pokes, a shop detour) before finding the bed
+herself — the trace window at 1m47s–2m20s shows every step. Cause shape: the
+"crossed the gate" beat re-arms when she stands home-side; it must latch complete
+the first time, forever. One predicate plus a regression test replaying her window.*
+
+**T-36 — The clock reads 12-hour, AM/PM** · ruled 2026-08-31 by the designer,
+overturning T-34's 24-hour deviation · ready to build
+*"I'd prefer time of day to be 12-hour clock with AM / PM." The 24h form existed
+only to avoid words under S-7; this ruling accepts the two-letter markers on the
+clock. One format function (`Daylight.clock_text`), its tests, one re-baseline.*
+
 ## M0 — Design space recorded ✅ (2026-08-18)
 `GAME_VISION.md`, `DECISION_LOG.md`, `ARCHITECTURE.md`, phase stubs, full GDD chapter
 skeleton (`design/00`–`12`), and the designer intake queue (`DESIGNER_QUEUE.md`).
