@@ -183,13 +183,77 @@ static func parcel_introduction(world: SimWorld, gs) -> Array[Vector2i]:
 	return out
 
 
+# The one obstacle a parcel introduces itself with: **reachable, and nearest the
+# way in.**
+#
+# Reported from play 2026-09-01: *"When the first rock was ready to be hit by
+# pickaxe, it was blocked by a rock nearer the entrance of that section. We should
+# ensure the rock that's marked is accessible and near the entrance of the
+# section."* Confirmed — this used to be a scan of the parcel's rectangles in
+# row-major order, which returns the top-left-most rock and knows nothing about
+# whether she can stand next to it. A highlight on a tile whose tap cannot work is
+# the exact failure every hint in this game exists to avoid (guard 0 above says so
+# about the cold open; this says it about a boulder).
+#
+# So the pick is a breadth-first walk **outward from the entrance**, over ground
+# she can actually walk, and the answer is the first tile of `kind` it touches:
+# reachable by construction (something she can stand on is adjacent to it, and
+# clearing is done from an adjacent tile), nearest by construction (BFS reaches
+# walkable tiles in distance order), and deterministic by construction (fixed
+# neighbour order, no RNG, sim truth only — the same farm gives the same answer on
+# every machine and in every replay).
+#
+# It **stops at the first hit**, so the common case is cheaper than the full-rect
+# scan it replaces; the worst case (no reachable obstacle of that kind at all)
+# floods the reachable area once, over a stamped byte array rather than a
+# dictionary, and then the beat is silently off — which is the honest answer.
 static func _first_of(world: SimWorld, parcel: Dictionary, kind: String) -> Vector2i:
-	for r in parcel.get("rects", []):
-		var rect: Rect2i = r
-		for ty in range(rect.position.y, rect.end.y):
-			for tx in range(rect.position.x, rect.end.x):
-				if ty < 0 or ty >= SimWorld.MAP_HEIGHT or tx < 0 or tx >= SimWorld.MAP_WIDTH:
-					continue
-				if String(world.tiles[ty][tx].get("state", "")) == kind:
-					return Vector2i(tx, ty)
+	var start := _entrance(world, parcel)
+	if start.x < 0 or not world.is_walkable(start.x, start.y):
+		return Vector2i(-1, -1)
+	var w: int = SimWorld.MAP_WIDTH
+	var h: int = SimWorld.MAP_HEIGHT
+	var seen := PackedByteArray()
+	seen.resize(w * h)
+	var queue: Array[Vector2i] = [start]
+	seen[start.y * w + start.x] = 1
+	var idx := 0
+	while idx < queue.size():
+		var t: Vector2i = queue[idx]
+		idx += 1
+		for d in DIRS:
+			var n: Vector2i = t + d
+			if n.x < 0 or n.y < 0 or n.x >= w or n.y >= h:
+				continue
+			var k: int = n.y * w + n.x
+			if seen[k] == 1:
+				continue
+			seen[k] = 1
+			if String(world.tiles[n.y][n.x].get("state", "")) == kind \
+					and _in_parcel(parcel, n):
+				return n
+			if world.is_walkable(n.x, n.y):
+				queue.append(n)
 	return Vector2i(-1, -1)
+
+
+# Where she comes into a parcel: its gate, or — for a parcel that has never had
+# one (the meadow, open from the first morning) — the farm's own spawn, which is
+# the only door the whole map has. Walking distance from there is what "near the
+# entrance" means, and it is stable while she walks around, so the marked rock
+# does not hop from boulder to boulder under her.
+static func _entrance(world: SimWorld, parcel: Dictionary) -> Vector2i:
+	var g: Vector2i = parcel.get("gate", Vector2i(-1, -1))
+	if g.x >= 0 and world.is_walkable(g.x, g.y):
+		return g
+	return WorldLayout.spawn(world.layout)
+
+
+const DIRS: Array[Vector2i] = [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]
+
+
+static func _in_parcel(parcel: Dictionary, t: Vector2i) -> bool:
+	for r in parcel.get("rects", []):
+		if (r as Rect2i).has_point(t):
+			return true
+	return false

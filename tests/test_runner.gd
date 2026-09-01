@@ -112,6 +112,7 @@ func _init() -> void:
 	test_zoo()
 	test_rain_on_ripe_soil()
 	test_ground_holds_until_black()
+	test_parcel_introduction_pick()
 
 	print("")
 	print(String("=").repeat(60))
@@ -9017,4 +9018,117 @@ func test_ground_holds_until_black() -> void:
 	_assert(farm.tile_look(t.x, t.y).state == "cleared", "and releasing it catches up in one step")
 
 	farm.free()
+	gs.free()
+
+
+# T-10's introduction highlight, reported from play 2026-09-01: *"When the first
+# rock was ready to be hit by pickaxe, it was blocked by a rock nearer the
+# entrance of that section. We should ensure the rock that's marked is accessible
+# and near the entrance of the section."*
+#
+# The designer's sentence is the spec, and both halves of it are asserted here:
+# the marked obstacle must be one she can stand next to, and of those it must be
+# the one nearest the way in.
+func test_parcel_introduction_pick() -> void:
+	print("\n--- T-10: the marked obstacle is reachable, and nearest the gate ---")
+
+	var gs = load("res://systems/game_state.gd").new()
+	var world := SimWorld.new()
+	SimRng.reseed(3101)
+	world.generate()
+
+	# Open the quarry and retire the earlier introductions, so the rock is the beat
+	# under test rather than the meadow's weed.
+	var quarry: Dictionary = {}
+	for p in WorldLayout.parcels(world.layout):
+		if String(p.get("id", "")) == "quarry":
+			quarry = p
+	_assert(not quarry.is_empty(), "the layout still has a quarry to introduce")
+	var gate: Vector2i = quarry.get("gate", Vector2i(-1, -1))
+	world.tiles[gate.y][gate.x] = { "state": WorldLayout.GATE_OPEN, "crop_type": "",
+		"growth_stage": 0, "watered_today": false }
+	gs.clear_counts = { "clear_weed": 1, "clear_log": 1, "clear_tree": 1 }
+
+	# --- on the generated world: the pick is reachable, and it is the nearest ---
+	var picked: Array[Vector2i] = TeachingFocus.parcel_introduction(world, gs)
+	_assert(picked.size() == 1, "one obstacle is marked, never two (T-10)")
+	var mark: Vector2i = picked[0]
+	_assert(String(world.get_tile(mark.x, mark.y).state) == "obstacle_rock",
+		"and it is a rock, the quarry's one new kind")
+
+	# Ranked independently of the code under test: a flood fill from the gate,
+	# whose result is in discovery order, so a tile's index in it is its distance
+	# order from the way in.
+	var order: Dictionary = {}
+	var reach: Array[Vector2i] = Movement.reachable(world, SpeciesDefs.GROUND, gate)
+	for i in reach.size():
+		order[reach[i]] = i
+	var rank := func(t: Vector2i) -> int:
+		var best := -1
+		for d in [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]:
+			var n: Vector2i = t + d
+			if order.has(n) and (best < 0 or int(order[n]) < best):
+				best = int(order[n])
+		return best
+	_assert(rank.call(mark) >= 0,
+		"she can stand beside it — the marked rock is clearable from ground she can reach")
+	var nearer := 0
+	var rocks := 0
+	for r in quarry.get("rects", []):
+		var rect: Rect2i = r
+		for ty in range(rect.position.y, rect.end.y):
+			for tx in range(rect.position.x, rect.end.x):
+				if String(world.get_tile(tx, ty).state) != "obstacle_rock":
+					continue
+				rocks += 1
+				var rk: int = rank.call(Vector2i(tx, ty))
+				if rk >= 0 and rk < rank.call(mark):
+					nearer += 1
+	_assert(rocks > 1, "the quarry generated more than one rock to choose between (%d)" % rocks)
+	_assert(nearer == 0,
+		"and no reachable rock is nearer the gate than the marked one (%d nearer)" % nearer)
+
+	# --- the adversarial fixture: a rock behind a rock -------------------------
+	#
+	# Her exact case, built deliberately: the row-major-first rock is walled in,
+	# and the only sensible answer is the one beside the gate. The old rule
+	# returned the walled-in one — it scanned the parcel's rectangle and never
+	# asked whether she could get there.
+	for r in quarry.get("rects", []):
+		var rect: Rect2i = r
+		for ty in range(rect.position.y, rect.end.y):
+			for tx in range(rect.position.x, rect.end.x):
+				world.tiles[ty][tx] = { "state": "cleared", "crop_type": "",
+					"growth_stage": 0, "watered_today": false }
+	var walled := Vector2i(22, 10)         # first in row-major order, and sealed off
+	var by_the_gate := Vector2i(23, 14)    # one step in from the gate at (21,14)
+	var far := Vector2i(29, 18)            # reachable, but the length of the quarry away
+	for t in [walled, by_the_gate, far, Vector2i(23, 10), Vector2i(22, 11)]:
+		world.tiles[t.y][t.x] = { "state": "obstacle_rock", "crop_type": "",
+			"growth_stage": 0, "watered_today": false }
+	var row_major := Vector2i(-1, -1)
+	for r in quarry.get("rects", []):
+		var rect: Rect2i = r
+		for ty in range(rect.position.y, rect.end.y):
+			for tx in range(rect.position.x, rect.end.x):
+				if row_major.x < 0 and String(world.get_tile(tx, ty).state) == "obstacle_rock":
+					row_major = Vector2i(tx, ty)
+	_assert(row_major == walled,
+		"the fixture's first-in-scan-order rock is the walled-in one, as her session's was")
+	var walled_open := 0
+	for d in [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]:
+		if world.is_walkable(walled.x + d.x, walled.y + d.y):
+			walled_open += 1
+	_assert(walled_open == 0, "and there is nowhere at all to stand beside it")
+
+	var picked2: Array[Vector2i] = TeachingFocus.parcel_introduction(world, gs)
+	_assert(_only(picked2) == by_the_gate,
+		"so the beat marks the rock beside the gate instead (%s)" % [_only(picked2)])
+	_assert(_only(picked2) != walled, "never the one she cannot reach")
+	_assert(_only(picked2) != far, "and never the far one when a nearer one is reachable")
+
+	# Determinism: the same farm gives the same answer, every time it is asked.
+	_assert(_only(TeachingFocus.parcel_introduction(world, gs)) == by_the_gate,
+		"asked again, the same rock — the pick is a fact about the farm, not a roll")
+
 	gs.free()
