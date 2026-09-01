@@ -1,0 +1,25 @@
+{
+  "id": "hq-app",
+  "name": "Tiny Farm HQ (this app)",
+  "priority": 9,
+  "status": "done",
+  "owner": "claude",
+  "contributors": [],
+  "summary": "The CEO's operating surface: org chart with personas, chief-of-staff chat routed to any team member, the living entity gallery, the program report, and the decision inbox that mirrors the designer queue. Runs locally and starts at boot.",
+  "requirements": [
+    "Runs on localhost with zero external dependencies",
+    "Starts automatically at boot (systemd user service)",
+    "Org chart with every persona browsable and chattable",
+    "Entity gallery with animated sprites and asset/code/sound references",
+    "Program report with per-project pages (requirements, status, plan)",
+    "Decision inbox parsed live from the designer queue doc"
+  ],
+  "current_status": "Shipped 2026-09-01. Running as the tiny-farm-hq systemd user service with lingering enabled, so it survives reboots. Natural next increments: playtest/session summaries in the app, and a KPI page once there is revenue to chart.",
+  "plan": [
+    {"step": "Server, data model, and frontend", "done": true},
+    {"step": "Chat endpoint through the local Claude CLI", "done": true},
+    {"step": "systemd user service with lingering enabled", "done": true},
+    {"step": "Verified in browser; committed and pushed", "done": true}
+  ],
+  "links": ["hq/"]
+}

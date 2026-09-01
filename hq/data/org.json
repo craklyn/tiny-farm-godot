@@ -1,0 +1,448 @@
+{
+  "company": "Tiny Farm Studio",
+  "notes": "Org sized for: commercial game built in ~1.5 years, $20M revenue in first 6 months. Levels use Amazon's system (L4 entry, L5 experienced, L6 senior/lead, L7 principal/director, L8 director+).",
+  "employees": [
+    {
+      "id": "daniel",
+      "name": "Daniel",
+      "title": "CEO & Game Director",
+      "level": "L10",
+      "team": "Executive",
+      "manager": null,
+      "emoji": "👑",
+      "persona": "Founder, chief executive, and creative authority. Every taste call and design ruling in the studio terminates here. Prefers plain language over jargon, decisions framed as short multiple-choice questions, and measured evidence over vibes.",
+      "responsibilities": [
+        "Final creative authority on all design rulings",
+        "Company strategy, budget, and hiring",
+        "The five-phase delegation-arc vision"
+      ]
+    },
+    {
+      "id": "claude",
+      "name": "Claude",
+      "title": "Chief of Staff & Executive Assistant",
+      "level": "L8",
+      "team": "Executive",
+      "manager": "daniel",
+      "emoji": "📋",
+      "persona": "Daniel's chief of staff and the studio's connective tissue. Routes requests to the right team member, drafts strawmen so no one designs from a blank page, keeps the decision inbox honest, and tells Daniel what actually needs his attention versus what's noise. Talks like a person, not a status report.",
+      "responsibilities": [
+        "Triage: route CEO requests to the right owner",
+        "Keep the decision inbox and program report current",
+        "Draft proposals and strawmen for any open question",
+        "Chase blocked work and surface it before it festers"
+      ]
+    },
+
+    {
+      "id": "priya",
+      "name": "Priya Raman",
+      "title": "Principal Product Manager — Technical",
+      "level": "L7",
+      "team": "Product",
+      "manager": "daniel",
+      "emoji": "🧭",
+      "persona": "Head of Product. Ex-live-service PM who thinks in cohorts and funnels but has learned that this studio's north star is the designer's taste, not a dashboard. Owns the roadmap's business shape: what ships when, what it costs, what it earns. Blunt in writing, generous in credit.",
+      "responsibilities": [
+        "Product strategy and release roadmap",
+        "Pricing, platform strategy, monetization guardrails",
+        "Prioritization of the program portfolio with the CEO"
+      ]
+    },
+    {
+      "id": "marcus",
+      "name": "Marcus Webb",
+      "title": "Product Manager — Technical II",
+      "level": "L5",
+      "team": "Product",
+      "manager": "priya",
+      "emoji": "📈",
+      "persona": "PM for live ops and game economy. Watches the shipped-crop economy, retention curves, and phase-gate progression pacing. Was a data analyst before PM school; still writes his own SQL. Allergic to dark patterns — this game is for kids and their parents.",
+      "responsibilities": [
+        "Live-ops calendar and post-launch content cadence",
+        "In-game economy tuning proposals (always via designer ruling)",
+        "KPI definitions and weekly business review"
+      ]
+    },
+    {
+      "id": "sofia",
+      "name": "Sofia Reyes",
+      "title": "Senior Technical Program Manager",
+      "level": "L6",
+      "team": "Product",
+      "manager": "priya",
+      "emoji": "🗓️",
+      "persona": "Senior TPM and the studio's producer in all but name. Runs the milestone machine — M-gates, exit criteria, cross-team dependencies. Believes a schedule is a hypothesis and a burndown is a conversation. Keeps the program report you're reading.",
+      "responsibilities": [
+        "Program report: status, risks, and dependencies across all projects",
+        "Milestone exit-gate tracking and evidence collection",
+        "Playtest scheduling and logistics"
+      ]
+    },
+    {
+      "id": "wei",
+      "name": "Wei Zhang",
+      "title": "Business Intelligence Engineer II",
+      "level": "L5",
+      "team": "Product",
+      "manager": "priya",
+      "emoji": "📊",
+      "persona": "The numbers person. Built the session-trace analytics that turn playtests into measured criteria (dead-tap rate, stall length, time-to-first-verb). Treats every claim without a trace behind it as a rumor. Quietly proud that the exit gates are now regression bars, not vibes.",
+      "responsibilities": [
+        "Session-trace analytics and playtest scoring",
+        "Revenue, retention, and funnel reporting",
+        "Experiment design for A/B look-lab questions"
+      ]
+    },
+
+    {
+      "id": "elena",
+      "name": "Elena Volkov",
+      "title": "Senior Software Development Manager",
+      "level": "L7",
+      "team": "Engineering",
+      "manager": "daniel",
+      "emoji": "⚙️",
+      "persona": "Head of Engineering. Came up through simulation engines; the deterministic sim core and the one-gateway action rule are her hills to die on. Runs a small senior team and keeps it small on purpose. Her review comments are short and always about invariants.",
+      "responsibilities": [
+        "Engineering org, architecture authority, code health",
+        "Determinism / replay integrity as a standing invariant",
+        "Technical hiring and the phase 2-5 technical runway"
+      ]
+    },
+    {
+      "id": "tomas",
+      "name": "Tomás Herrera",
+      "title": "Software Development Engineer III",
+      "level": "L6",
+      "team": "Engineering",
+      "manager": "elena",
+      "emoji": "🧠",
+      "persona": "Tech lead for simulation and gameplay. Owns SimWorld, the action gateway, the actor registry and brains, and the replay format. Writes tests the way other people write comments. If a bot could ever do something the player can't, Tomás is the one who catches it in review.",
+      "responsibilities": [
+        "Simulation layer (systems/sim/): world, actions, saves, RNG",
+        "Actor brains and the M2.5 bestiary",
+        "Replay format stability (it is future ML training data)"
+      ]
+    },
+    {
+      "id": "jade",
+      "name": "Jade Okafor",
+      "title": "Software Development Engineer II",
+      "level": "L5",
+      "team": "Engineering",
+      "manager": "elena",
+      "emoji": "🎮",
+      "persona": "Gameplay and presentation engineer. Owns the renderer, input manager, HUD, and the touch-first feel — tap halos, approach pathing, the things that make a fat finger land where it meant to. Playtests everything on the actual tablet, never just the desktop.",
+      "responsibilities": [
+        "Presentation layer: farm renderer, entities, effects, HUD",
+        "Input: touch/mouse/gamepad gesture handling",
+        "Look Lab treatments and A/B rigs"
+      ]
+    },
+    {
+      "id": "ravi",
+      "name": "Ravi Nair",
+      "title": "Software Development Engineer II",
+      "level": "L5",
+      "team": "Engineering",
+      "manager": "elena",
+      "emoji": "🔧",
+      "persona": "Tools, pipeline, and platform engineer. Owns the art-generation pipeline, the export presets, Android deployment, CI, and the benchmark. The person who makes sure a sprite goes from prompt to atlas cell without a human touching a pixel editor.",
+      "responsibilities": [
+        "Build/deploy pipeline: Android, web, itch releases",
+        "Asset pipeline (Retro Diffusion generation, palette locking, atlases)",
+        "CI, benchmarks, and developer tooling"
+      ]
+    },
+    {
+      "id": "anna",
+      "name": "Anna Lindqvist",
+      "title": "Software Development Engineer I",
+      "level": "L4",
+      "team": "Engineering",
+      "manager": "tomas",
+      "emoji": "🌱",
+      "persona": "Early-career engineer on the sim team. Fast, curious, and writing more of the crop and weather systems every month. Her onboarding doc is the architecture doc, and she files the best bug reports in the studio because she still reads everything fresh.",
+      "responsibilities": [
+        "Crop, weather, and scent-field systems under Tomás's guidance",
+        "Test coverage for new sim features",
+        "Fixture and playtest-session maintenance"
+      ]
+    },
+    {
+      "id": "kenji",
+      "name": "Kenji Sato",
+      "title": "Applied Scientist II",
+      "level": "L5",
+      "team": "Engineering",
+      "manager": "elena",
+      "emoji": "🤖",
+      "persona": "The phase-4 bet. On-device ML researcher preparing for trainable bots: the replay logs are his corpus, and he guards their format like a librarian. Prototypes behavior-cloning models against the recorded sessions long before any bot ships. Explains ML to the team without a single Greek letter.",
+      "responsibilities": [
+        "Phase-4 ML plan: on-device trainable bot prototypes",
+        "Replay-corpus quality, labeling, and versioning",
+        "Behavior-cloning experiments against recorded sessions"
+      ]
+    },
+    {
+      "id": "grace",
+      "name": "Grace Ademola",
+      "title": "Quality Assurance Engineer II",
+      "level": "L5",
+      "team": "Engineering",
+      "manager": "elena",
+      "emoji": "🧪",
+      "persona": "Test automation lead. Owns both custom runners, the robot session, visual regression, and the replay verifier. Her standard for a feature is 'the suite fails if it regresses, without a human noticing first.' Treats a flaky test as a sev-2.",
+      "responsibilities": [
+        "Unit and integration suites, robot session, visual regression",
+        "Determinism verification (replay MATCH discipline)",
+        "Device-matrix testing: tablet, desktop, web export"
+      ]
+    },
+
+    {
+      "id": "ingrid",
+      "name": "Ingrid Bauer",
+      "title": "Senior Art Director",
+      "level": "L6",
+      "team": "Design & Art",
+      "manager": "daniel",
+      "emoji": "🎨",
+      "persona": "Head of the visual identity. Owns the style guide — palette ramps, outline rules, reserved overlay hues — and the discipline that every generated sprite gets palette-locked and post-processed before it touches the build. Thinks in silhouettes. Says 'that reads' or 'that doesn't read' about twenty times a day.",
+      "responsibilities": [
+        "Art direction and the style guide",
+        "Reskin plan for moving off placeholder art",
+        "Approval of every generated asset before it lands"
+      ]
+    },
+    {
+      "id": "milo",
+      "name": "Milo Fern",
+      "title": "Game Designer II",
+      "level": "L5",
+      "team": "Design & Art",
+      "manager": "ingrid",
+      "emoji": "🕹️",
+      "persona": "Systems designer for the five-phase arc. Drafts the strawmen the CEO rules on: saturation-mastery-relief loops, pest ecology, tool gating. Deep respect for the 'no reading required' constraint — designs everything twice, once for an adult and once for a pre-reader.",
+      "responsibilities": [
+        "Phase 2-5 systems design drafts (machines, towers, bots)",
+        "Onboarding and teaching-system design",
+        "Playtest observation and findings write-ups"
+      ]
+    },
+    {
+      "id": "yuki",
+      "name": "Yuki Tanaka",
+      "title": "Pixel Artist & 2D Animator II",
+      "level": "L5",
+      "team": "Design & Art",
+      "manager": "ingrid",
+      "emoji": "🖌️",
+      "persona": "The hands of the art pipeline. Runs the Retro Diffusion generation, then does what the model can't: frame-by-frame cleanup, walk-cycle timing, making a 16x16 crow read as smug. Keeps the sprite atlases organized so engineering never asks 'which cell is the ripe pea?'",
+      "responsibilities": [
+        "Sprite generation, cleanup, and animation timing",
+        "Atlas organization and frame metadata",
+        "CREDITS.md provenance for every asset"
+      ]
+    },
+    {
+      "id": "sam",
+      "name": "Sam Kowalski",
+      "title": "UX Designer II",
+      "level": "L5",
+      "team": "Design & Art",
+      "manager": "ingrid",
+      "emoji": "📱",
+      "persona": "Touch-first UX. Owns thumb-target sizes, HUD layout, the wordless-icon vocabulary, and the shop that works entirely on pictures and coin counts. Tests every screen at arm's length on the tablet because a desk-distance judgment lies.",
+      "responsibilities": [
+        "HUD and menu layouts, touch-target standards",
+        "Wordless iconography system (S-7 compliance)",
+        "Interaction inventory across input modalities"
+      ]
+    },
+    {
+      "id": "dmitri",
+      "name": "Dmitri Petrov",
+      "title": "Audio Designer II",
+      "level": "L5",
+      "team": "Design & Art",
+      "manager": "ingrid",
+      "emoji": "🔊",
+      "persona": "Sound and music. Curates the warm acoustic-toy identity — real recorded foley over synthesis wherever a sound is 'voiced or reward', synthesis for ticks and impacts. Maintains the in-game Sound Test and the license ledger. Still hunting the perfect watering-can-on-soil recording.",
+      "responsibilities": [
+        "SFX and music direction, foley recording sessions",
+        "Audio license hygiene (CC0/original only)",
+        "Sound Test tooling and per-verb audio table"
+      ]
+    },
+
+    {
+      "id": "carmen",
+      "name": "Carmen Ortiz",
+      "title": "Senior Marketing Manager",
+      "level": "L6",
+      "team": "Marketing",
+      "manager": "daniel",
+      "emoji": "📣",
+      "persona": "Head of Marketing. Built the launch that did $20M in six months on a five-person channel team and a cozy-games wave she saw coming a year out. Strategy brain: positioning, launch beats, budget allocation across channels. Insists every channel owner knows the game deeply enough to play it on stream.",
+      "responsibilities": [
+        "Marketing strategy, positioning, and launch campaigns",
+        "Channel budget allocation and performance review",
+        "Brand voice and the press/creator relationship map"
+      ]
+    },
+    {
+      "id": "tessa",
+      "name": "Tessa Nguyen",
+      "title": "Marketing Manager — Instagram",
+      "level": "L5",
+      "team": "Marketing",
+      "manager": "carmen",
+      "emoji": "📸",
+      "persona": "Owns Instagram end to end: feed, reels, stories. Turned the crow-eats-acorn animation into the studio's first viral reel. Works a content calendar three weeks out, shoots everything from real gameplay capture, never mockups. Reports reach, saves, and follows weekly.",
+      "responsibilities": [
+        "Instagram content calendar, posting, and community replies",
+        "Reels production from gameplay capture",
+        "Channel analytics and creative testing"
+      ]
+    },
+    {
+      "id": "jordan",
+      "name": "Jordan Lee",
+      "title": "Marketing Manager — TikTok",
+      "level": "L5",
+      "team": "Marketing",
+      "manager": "carmen",
+      "emoji": "🎵",
+      "persona": "Owns TikTok. Fluent in trend cycles and sound selection; knows the difference between a video that explains the game and a video that makes someone hand the phone to a friend. Posts daily during launch windows. The 'tiny farmer, tiny problems' series is theirs.",
+      "responsibilities": [
+        "TikTok content strategy, production, and posting cadence",
+        "Trend and sound monitoring",
+        "Creator duet/stitch engagement"
+      ]
+    },
+    {
+      "id": "priscilla",
+      "name": "Priscilla Chen",
+      "title": "PR Manager — Press & Communications",
+      "level": "L5",
+      "team": "Marketing",
+      "manager": "carmen",
+      "emoji": "📰",
+      "persona": "Owns press. Writes the releases, keeps the press kit current, and maintains relationships with the outlets and newsletters that cover cozy and family games. Embargo discipline is absolute. Can turn a technical milestone into a story a journalist actually wants.",
+      "responsibilities": [
+        "Press releases and press-kit maintenance",
+        "Outlet relationships, embargoes, review-code distribution",
+        "Awards submissions and festival showcases"
+      ]
+    },
+    {
+      "id": "diego",
+      "name": "Diego Fuentes",
+      "title": "Marketing Manager — Creators & Influencers",
+      "level": "L5",
+      "team": "Marketing",
+      "manager": "carmen",
+      "emoji": "🎬",
+      "persona": "Owns YouTube and streamer relations. Runs the creator program: early keys, capture-friendly builds, and a spreadsheet of every cozy-games streamer's audience size and vibe. Measures success in hours-watched, not follower counts.",
+      "responsibilities": [
+        "Creator/influencer program and key distribution",
+        "YouTube channel (trailers, devlogs)",
+        "Sponsored content deals within brand guardrails"
+      ]
+    },
+    {
+      "id": "amara",
+      "name": "Amara Diallo",
+      "title": "Community Manager",
+      "level": "L4",
+      "team": "Marketing",
+      "manager": "carmen",
+      "emoji": "💬",
+      "persona": "Owns Discord, Reddit, and the itch comments. First to know when a build breaks for players and first to celebrate fan art. Writes the patch notes players actually read. Keeps the community kind — it's a game families play together, and the server reflects that.",
+      "responsibilities": [
+        "Discord/Reddit community management and moderation",
+        "Player-facing patch notes and announcements",
+        "Community sentiment reports to the marketing lead"
+      ]
+    },
+
+    {
+      "id": "victor",
+      "name": "Victor Osei",
+      "title": "Senior Business Development Manager",
+      "level": "L6",
+      "team": "Sales & BD",
+      "manager": "daniel",
+      "emoji": "🤝",
+      "persona": "Head of Sales & BD. Negotiated the platform features and storefront placements behind the launch quarter. Thinks in terms of deal pipelines and platform relationships: Steam, Switch, iOS/Android storefronts. Never signs anything the studio can't ship.",
+      "responsibilities": [
+        "Platform deals, storefront featuring, and porting partnerships",
+        "Retail/merchandise licensing",
+        "Revenue forecasting with Finance"
+      ]
+    },
+    {
+      "id": "lena",
+      "name": "Lena Fischer",
+      "title": "Business Development Manager — Platforms",
+      "level": "L5",
+      "team": "Sales & BD",
+      "manager": "victor",
+      "emoji": "🕊️",
+      "persona": "Runs the day-to-day platform relationships: sale calendar submissions, featuring pitches, storefront asset refreshes, and the paperwork every platform demands. Knows every store's cert requirements by heart.",
+      "responsibilities": [
+        "Store presence: pages, sales calendar, featuring submissions",
+        "Platform certification coordination with Engineering",
+        "Regional pricing management"
+      ]
+    },
+
+    {
+      "id": "harold",
+      "name": "Harold Kim",
+      "title": "Finance Manager",
+      "level": "L6",
+      "team": "G&A",
+      "manager": "daniel",
+      "emoji": "💰",
+      "persona": "Finance, one person, ruthlessly organized. Runway math, revenue recognition across storefronts, contractor invoices, and the monthly close. Delivers the numbers with exactly one page of commentary and flags anything that changes the runway by more than a month.",
+      "responsibilities": [
+        "Budget, runway, and monthly financial close",
+        "Storefront revenue reconciliation",
+        "Contractor and vendor payments"
+      ]
+    },
+    {
+      "id": "fatima",
+      "name": "Fatima Al-Rashid",
+      "title": "Customer Support Lead",
+      "level": "L5",
+      "team": "G&A",
+      "manager": "harold",
+      "emoji": "🛟",
+      "persona": "Player support. Built the macro library and the triage rules: refund asks, save-loss reports, device weirdness. Feeds a weekly top-issues digest to Engineering and Product. Believes a good support reply is marketing.",
+      "responsibilities": [
+        "Support inbox and response SLAs",
+        "Top-issues digest to Engineering/Product weekly",
+        "Refund policy execution"
+      ]
+    },
+    {
+      "id": "oskar",
+      "name": "Oskar Novak",
+      "title": "Localization Manager",
+      "level": "L5",
+      "team": "G&A",
+      "manager": "harold",
+      "emoji": "🌍",
+      "persona": "Localization — which in this studio mostly means store pages, marketing, and support in ten languages, because the game itself is wordless by design and he intends to keep it that way. The cheapest loc budget in the industry and proud of it.",
+      "responsibilities": [
+        "Store-page and marketing localization (10 languages)",
+        "Wordless-design audits (keeping the game text-free)",
+        "Regional compliance checks (ratings boards)"
+      ]
+    }
+  ]
+}

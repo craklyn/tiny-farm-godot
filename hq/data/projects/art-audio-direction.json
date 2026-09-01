@@ -1,0 +1,25 @@
+{
+  "id": "art-audio-direction",
+  "name": "Art & audio direction sign-off, then the reskin",
+  "priority": 6,
+  "status": "blocked",
+  "owner": "ingrid",
+  "contributors": ["dmitri", "yuki"],
+  "summary": "Both direction one-pagers are drafted and waiting on the CEO: the art style guide (palette ramps, outline rules, animation budget) and the audio direction (warm acoustic-toy identity). Once signed, art executes the full reskin off placeholder assets via the generation pipeline, and audio records the bespoke foley the CC0 hunt proved impossible (there is no usable recording of a watering can sprinkling onto soil anywhere in the commons — it has to be made).",
+  "requirements": [
+    "CEO approves the art style guide draft (with any amendments)",
+    "CEO approves the audio direction draft and answers its three taste questions",
+    "Full reskin executed: every placeholder sprite regenerated under the locked style",
+    "Bespoke foley recorded for the verb table (the CEO wanted to record these personally)",
+    "Credits and provenance updated for every replaced asset"
+  ],
+  "current_status": "Blocked on two CEO approvals, both drafts ready to read. Deliberately sequenced after playtest-critical work — the current placeholders are license-clean and complete, so nothing ships worse for waiting.",
+  "plan": [
+    {"step": "Art style guide draft delivered", "done": true},
+    {"step": "Audio direction draft delivered", "done": true},
+    {"step": "CEO reads both, approves or amends", "done": false},
+    {"step": "Reskin executed in batches (terrain, crops, actors, UI), each behind visual regression", "done": false},
+    {"step": "Foley recording session; new takes A/B'd in the Sound Test on device", "done": false}
+  ],
+  "links": ["docs/design/09-art-direction.md", "docs/design/10-audio-direction.md", "CREDITS.md"]
+}

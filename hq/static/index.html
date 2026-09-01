@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tiny Farm HQ</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌾</text></svg>">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div id="app">
+  <nav id="sidebar">
+    <div class="brand">
+      <div class="brand-icon">🌾</div>
+      <div>
+        <div class="brand-name">Tiny Farm HQ</div>
+        <div class="brand-sub">CEO Operating Surface</div>
+      </div>
+    </div>
+    <a href="#/" data-route="/"><span>🏠</span> Dashboard</a>
+    <a href="#/org" data-route="/org"><span>🧑‍🤝‍🧑</span> Org Chart</a>
+    <a href="#/entities" data-route="/entities"><span>🐔</span> Entities</a>
+    <a href="#/program" data-route="/program"><span>🗂️</span> Program Report</a>
+    <a href="#/inbox" data-route="/inbox"><span>📥</span> Decision Inbox <b id="inbox-badge" class="badge" hidden></b></a>
+    <a href="#/chat" data-route="/chat"><span>💬</span> Chief of Staff</a>
+    <div class="sidebar-foot">
+      <div id="health-dot" class="health"><i></i> checking…</div>
+    </div>
+  </nav>
+  <main id="view"></main>
+</div>
+<script src="/static/app.js"></script>
+</body>
+</html>

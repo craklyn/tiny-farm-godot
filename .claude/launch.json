@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "tiny-farm-hq",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["hq/server.py"],
+      "port": 8642
+    }
+  ]
+}

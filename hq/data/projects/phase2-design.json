@@ -1,0 +1,24 @@
+{
+  "id": "phase2-design",
+  "name": "Phase 2 systems design (machines & delegation begins)",
+  "priority": 4,
+  "status": "in_progress",
+  "owner": "milo",
+  "contributors": ["tomas", "sam"],
+  "summary": "Phase 2 is where the delegation arc starts paying off: the sprinkler graduates from a single machine to a system, crow pressure scales from lone birds to flocks, and evenings may become social time. A six-turn progression straw-man (bare yard to first tower) is drafted; the systems design behind it needs to firm up before M3 planning can borrow from it.",
+  "requirements": [
+    "Phase 2 design chapter drafted: machines, flock scaling, decoys, the evening question",
+    "Each new mechanic traced to the saturation-mastery-relief loop ruling",
+    "Sim-layer feasibility notes from Engineering on each proposed system",
+    "CEO ruling on the phase 2 opening questions (evenings, flock dial, acorn economy)"
+  ],
+  "current_status": "The progression straw-man (six turns of the cycle) is committed. The bestiary, sprinkler, scent fields, and bot configs already exist in the sim behind flags — phase 2 design is partly 'decide how to turn on what's built.' Design drafting is active but early.",
+  "plan": [
+    {"step": "Six-turn progression straw-man drafted", "done": true},
+    {"step": "M2.5 shipped the mechanical substrate (sprinkler, scent, brains, bot configs)", "done": true},
+    {"step": "Write the phase 2 design chapter with open questions flagged for ruling", "done": false},
+    {"step": "CEO rules; design feeds M3 (or M4) scope", "done": false}
+  ],
+  "plan_note": "Plan is intentionally incomplete — later steps depend on which milestone picks up phase 2 content.",
+  "links": ["docs/phases/", "docs/design/"]
+}
