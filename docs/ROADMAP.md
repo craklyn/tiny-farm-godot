@@ -1485,6 +1485,14 @@ benchmark. SimClock re-scoped/deferred with rationale (see spec).
 identical outcomes across repeated seeded runs; a recorded human session replays to the
 same end state.
 
+*Housekeeping (2026-08-31): deleted `tools/test_game.gd`, the orphan test script that
+predated the real suites. Nothing ran it — not CI, not the command list — and four of
+its assertions had silently rotted against behavior that legitimately moved on (pre-T-9
+tool cycling, the old stage-in-bin sell flow). A test file nobody runs is worse than
+none, because it reads as coverage. Everything it checked lives in
+`tests/test_runner.gd`; the handful of data-table pins it alone held (`set_energy`
+clamping, the axe/pickaxe/watering-can action rows) were moved there before deletion.*
+
 ## M2.5 — The actor system (added 2026-08-31)
 
 *Sits between M2 and M3 because M3's trail pests need actors the sim can move, and the

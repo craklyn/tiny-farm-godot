@@ -164,13 +164,23 @@ func test_tools() -> void:
 	_assert(Tools.LIST[5].tool_name == "Seeds", "Tool 5 is Seeds")
 	
 	_assert(Tools.can_act_on_tile(0, "ready"), "Hands can harvest")
+	_assert(Tools.can_act_on_tile(0, "obstacle_weed"), "Hands can act on weeds")
+	_assert(not Tools.can_act_on_tile(0, "obstacle_rock"), "Hands can't act on rocks")
+	_assert(Tools.can_act_on_tile(1, "obstacle_log"), "Axe can act on logs")
+	_assert(not Tools.can_act_on_tile(1, "obstacle_rock"), "Axe can't act on rocks")
+	_assert(Tools.can_act_on_tile(2, "obstacle_rock"), "Pickaxe can act on rocks")
 	_assert(Tools.can_act_on_tile(3, "cleared"), "Hoe can act on cleared")
 	_assert(not Tools.can_act_on_tile(3, "tilled"), "Hoe can't act on tilled")
+	_assert(Tools.can_act_on_tile(4, "seeded"), "Watering Can can act on seeded")
+	_assert(Tools.can_act_on_tile(4, "growing"), "Watering Can can act on growing")
 	_assert(Tools.can_act_on_tile(5, "tilled"), "Seeds can act on tilled")
-	
+
 	_assert(Tools.get_action(3, "cleared") == "till", "Hoe + cleared = till")
 	_assert(Tools.get_action(5, "tilled") == "plant", "Seeds + tilled = plant")
 	_assert(Tools.get_action(0, "obstacle_weed") == "clear_weed", "Hands + weed = clear_weed")
+	_assert(Tools.get_action(1, "obstacle_log") == "clear_log", "Axe + log = clear_log")
+	_assert(Tools.get_action(2, "obstacle_rock") == "clear_rock", "Pickaxe + rock = clear_rock")
+	_assert(Tools.get_action(0, "cleared") == "", "Hands + cleared = no action")
 	
 	# T-29: a base verb costs 30 of the day's 600 fine units — the same 20-action
 	# day, on a finer ruler. Pinned against the literal 30 rather than against
@@ -219,6 +229,10 @@ func test_player() -> void:
 	
 	GameState.energy = 450  # T-29: what 15/20 used to be, at the same fraction
 	_assert(GameState.energy == 450, "Energy set to 450 — three quarters of the day")
+	GameState.set_energy(-5)
+	_assert(GameState.energy == 0, "set_energy clamps at 0")
+	GameState.set_energy(GameState.max_energy + 300)
+	_assert(GameState.energy == GameState.max_energy, "set_energy clamps at max")
 	
 	# T-9 (Q-34): cycling skips tools she has not acquired, so from Hands (0) the
 	# next stop is the Hoe (3) — the Axe and Pickaxe are still lying at their
