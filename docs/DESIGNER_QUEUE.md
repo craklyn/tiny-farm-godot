@@ -445,7 +445,15 @@ first, since a different answer there changes what the other four are optimising
   enough on its own — the designer wants an explicit time-of-day display, and a
   re-partition of the day into round units chosen so that future work-speed multipliers
   (1.25×, 1.5×, 2×, 2/3×, 1/2×…) keep every action cost integral. Scheme drafted in
-  T-29 for veto. Original entry:
+  T-29 for veto. **The scheme was approved and T-29 is built (2026-08-31):** the day is
+  600 fine units at 30 to a base verb (the same twenty-action day, on a finer ruler), and
+  the top bar carries a wordless sun-arc — token sliding sunrise→dusk, notched at the
+  three hours the tint itself turns, a crescent past dusk. The sub-rulings taken in T-14
+  all stand untouched: weather tint still deferred, sleeping at midday still wastes the
+  daylight, **and the numeric readout is still debug-only** — the arc took the middle of
+  the bar and the digits moved aside behind the same `OS.is_debug_build()` gate. One
+  small thing this leaves for a thumb, recorded rather than decided: **Q-72**. Original
+  entry:
   **Daylight instead of an energy bar.**
   **Status note 2026-08-29:** `docs/M1_5_PLAN.md` scheduled this as work item WI-1 and
   described Q-38 as ruled; it is not — this entry has never been struck through. T-14 was
@@ -680,6 +688,21 @@ trace actually says, because several of these looked like bugs and were not.*
   first thing in the game that draws one (magenta, `design/09`'s reserved hue, debug-only)
   — so if you want to look at the overlay question with your eyes rather than in the
   abstract, the Zoo's "Trail" button is now where to do it.*
+- **Q-72 (Taste)** **Does the weather line keep its sun/sunset/moon glyph now the arc is
+  there?** T-29 put a sun-arc in the middle of the top bar, and the weather label three
+  inches to its left still shows ☀️ / 🌇 / 🌙 on a clear day — the same hour, said twice.
+  They read one function now (`Daylight.glyph_for`), so they can never *disagree*; the
+  question is only whether the duplication is worth its pixels.
+  **Two shapes.** *(a) Leave both.* The glyph is a coarse read at a glance and the arc is
+  the precise one, which is not obviously waste — the day counter beside it is also
+  information the world already carries. *(b) Let the weather line speak only when
+  weather is happening*, so it is blank on a clear day and "🌧️ Rainy" when it is not.
+  That is the line's own stated logic taken one step further (it already dropped the word
+  "Sunny" on 2026-08-30 for exactly this reason: it was answering a question nobody
+  asked), and it would leave the arc as the only thing in the bar saying what time it is.
+  **Recommendation: (b), but it is a look-at-it call, not an argument** — one line of
+  `ui/hud.gd`, no sim, and it moves the visual baseline, so it is worth doing once rather
+  than twice. Left undone deliberately: nothing in T-29's boxes asked for it.
 
 ## M2.5 — the actor system (filed 2026-08-31, from the entity brainstorm)
 

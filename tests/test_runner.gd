@@ -48,6 +48,7 @@ func _init() -> void:
 	test_crow_readiness()
 	test_crow_schedule()
 	test_daylight()
+	test_energy_repartition()
 	test_replay_build_stamp()
 	test_blocked_reason()
 	test_benign_failures()
@@ -170,17 +171,35 @@ func test_tools() -> void:
 	_assert(Tools.get_action(5, "tilled") == "plant", "Seeds + tilled = plant")
 	_assert(Tools.get_action(0, "obstacle_weed") == "clear_weed", "Hands + weed = clear_weed")
 	
-	_assert(Tools.get_energy_cost("till") == 1, "Tilling costs 1")
-	_assert(Tools.get_energy_cost("water") == 1, "Watering costs 1")
-	_assert(Tools.get_energy_cost("harvest") == 1, "Harvesting costs 1")
+	# T-29: a base verb costs 30 of the day's 600 fine units — the same 20-action
+	# day, on a finer ruler. Pinned against the literal 30 rather than against
+	# `Tools.BASE_COST`, because the whole point of the number is that it is the
+	# one every future work-speed multiplier divides evenly (Q-38's rider).
+	_assert(Tools.get_energy_cost("till") == 30, "Tilling costs 30 fine units")
+	_assert(Tools.get_energy_cost("water") == 30, "Watering costs 30")
+	_assert(Tools.get_energy_cost("harvest") == 30, "Harvesting costs 30")
+	_assert(Tools.get_energy_cost("clear_log") == 60, "A heavy clear costs 60 — two base verbs")
+	_assert(Tools.get_energy_cost("plant") == 0, "Planting is still free")
+	_assert(Tools.DAY_UNITS == 600 and Tools.DAY_UNITS / Tools.BASE_COST == 20,
+		"and the day is still exactly 20 base actions long")
+	# The divisibility argument, asserted rather than asserted-in-a-comment: every
+	# multiplier the designer named divides 30 into a whole number of units.
+	for m in [[5, 4], [3, 2], [2, 1], [2, 3], [1, 2], [5, 2], [3, 1], [3, 4]]:
+		var num: int = m[0]
+		var den: int = m[1]
+		_assert_quiet(Tools.BASE_COST * den % num == 0,
+			"a %d/%dx worker spends a whole number of units per action" % [num, den])
+	_flush_quiet("every work-speed multiplier on the designer's list lands on an integer")
 
 
 func test_player() -> void:
 	print("\n--- GameState Tests ---")
 	# Reset state first
 	GameState.day = 1
-	GameState.max_energy = 20
-	GameState.energy = 20
+	# T-29: a full day is `Tools.DAY_UNITS` (600), not 20. Written through the
+	# constant so this fixture follows the day if it is ever re-partitioned again.
+	GameState.max_energy = Tools.DAY_UNITS
+	GameState.energy = Tools.DAY_UNITS
 	GameState.gold = 0
 	GameState.seeds = { "wheat": 5 }
 	GameState.crops = {}
@@ -190,15 +209,15 @@ func test_player() -> void:
 	GameState.watering_can_charges = 8
 	GameState.selected_tool = 0
 	GameState.selected_seed_type = "wheat"
-	
+
 	_assert(GameState.day == 1, "Initial day is 1")
-	_assert(GameState.energy == 20, "Initial energy is 20")
+	_assert(GameState.energy == 600, "Initial energy is a full day — 600 fine units (T-29)")
 	_assert(GameState.gold == 0, "Initial gold is 0")
 	_assert(GameState.seeds.get("wheat", 0) == 5, "Start with 5 wheat seeds")
 	_assert(GameState.watering_can_charges == 8, "Watering can starts at 8")
 	
-	GameState.energy = 15
-	_assert(GameState.energy == 15, "Energy set to 15")
+	GameState.energy = 450  # T-29: what 15/20 used to be, at the same fraction
+	_assert(GameState.energy == 450, "Energy set to 450 — three quarters of the day")
 	
 	# T-9 (Q-34): cycling skips tools she has not acquired, so from Hands (0) the
 	# next stop is the Hoe (3) — the Axe and Pickaxe are still lying at their
@@ -236,12 +255,12 @@ func test_player() -> void:
 	_assert(GameState.crops.get("wheat", 0) == 0, "Crops emptied after selling")
 	_assert(GameState.gold == 45, "Gold = 3 wheats x 15g = 45g")
 	
-	GameState.energy = 5
+	GameState.energy = 150  # T-29: a quarter left, as 5/20 was
 	GameState.watering_can_charges = 2
 	GameState.day = 3
 	GameState.start_new_day()
 	_assert(GameState.day == 4, "Day advanced to 4")
-	_assert(GameState.energy == 20, "Energy restored to 20")
+	_assert(GameState.energy == GameState.max_energy, "Energy restored to a full day")
 	_assert(GameState.watering_can_charges == 8, "Watering can refilled")
 	
 	GameState.watering_can_charges = 3
@@ -309,8 +328,8 @@ func test_integration() -> void:
 	print("\n--- Integration Tests (full game loop) ---")
 	# Setup mock
 	GameState.day = 1
-	GameState.max_energy = 20
-	GameState.energy = 20
+	GameState.max_energy = Tools.DAY_UNITS  # T-29: 600 fine units to the day
+	GameState.energy = Tools.DAY_UNITS
 	GameState.gold = 0
 	GameState.seeds = { "wheat": 5 }
 	GameState.crops = {}
@@ -318,11 +337,12 @@ func test_integration() -> void:
 	GameState.harvest_counts = {}
 	GameState.max_watering_can_charges = 8
 	GameState.watering_can_charges = 8
-	
+
 	GameState.selected_tool = 3 # Hoe
 	_assert(Tools.get_action(3, "cleared") == "till", "Hoe action on cleared = till")
 	GameState.energy -= Tools.get_energy_cost("till")
-	_assert(GameState.energy == 19, "Energy 19 after tilling")
+	# T-29: one base action into a 600-unit day, which is where 19/20 used to be.
+	_assert(GameState.energy == 570, "Energy 570 after tilling — 19 actions left")
 	
 	GameState.selected_tool = 5 # Seeds
 	_assert(Tools.get_action(5, "tilled") == "plant", "Seeds action on tilled = plant")
@@ -333,12 +353,12 @@ func test_integration() -> void:
 	_assert(Tools.get_action(4, "seeded") == "water", "WateringCan on seeded = water")
 	GameState.energy -= Tools.get_energy_cost("water")
 	GameState.watering_can_charges -= 1
-	_assert(GameState.energy == 18, "Energy 18 after watering")
+	_assert(GameState.energy == 540, "Energy 540 after watering — two actions in (T-29)")
 	_assert(GameState.watering_can_charges == 7, "7 water charges remaining")
-	
+
 	GameState.start_new_day()
 	_assert(GameState.day == 2, "Day 2 after sleeping")
-	_assert(GameState.energy == 20, "Energy restored")
+	_assert(GameState.energy == GameState.max_energy, "Energy restored")
 	_assert(GameState.watering_can_charges == 8, "Water refilled")
 	
 	var crop_growth = 1
@@ -433,7 +453,9 @@ func test_action_router() -> void:
 	GameState.selected_tool = 0
 	GameState.selected_seed_type = "wheat"
 	GameState.seeds = { "wheat": 1 }
-	GameState.energy = 20
+	# T-29: "she has energy" is a full day now, not 20 units — 20 would be less
+	# than one till and every resolve below would answer no_energy instead.
+	GameState.energy = Tools.DAY_UNITS
 	GameState.watering_can_charges = 8
 
 	t.tiles[1][1]["state"] = "obstacle_log"
@@ -507,8 +529,8 @@ func test_swipe_chaining() -> void:
 			t.tiles[ty].append({ "state": "cleared", "crop_type": "", "growth_stage": 0, "watered_today": false })
 			
 	GameState.selected_tool = 3 # Hoe
-	GameState.energy = 20
-	
+	GameState.energy = Tools.DAY_UNITS  # T-29: a full day, not 20 fine units
+
 	var r_tap_far = ActionRouter.resolve(t, GameState, Vector2i(5, 5), Vector2i(1, 1), false)
 	_assert(r_tap_far.is_empty(), "ActionRouter ignores far tap on empty tile (intent filter)")
 	
@@ -569,8 +591,8 @@ func test_sim_actions() -> void:
 	world.generate()
 
 	# Fresh state for economy checks
-	GameState.energy = 20
-	GameState.max_energy = 20
+	GameState.energy = Tools.DAY_UNITS  # T-29
+	GameState.max_energy = Tools.DAY_UNITS
 	GameState.watering_can_charges = 8
 	GameState.seeds = { "wheat": 2 }
 	GameState.crops = {}
@@ -586,7 +608,7 @@ func test_sim_actions() -> void:
 
 	var r := world.apply_action({ "verb": "till", "target": t, "actor": "player" }, GameState)
 	_assert(r.ok and world.get_tile(t.x, t.y).state == "tilled", "till action tills tile")
-	_assert(GameState.energy == 19, "till costs 1 energy")
+	_assert(GameState.energy == 570, "till costs one base action — 30 of 600 (T-29)")
 
 	r = world.apply_action({ "verb": "plant", "target": t, "seed_type": "wheat", "actor": "player" }, GameState)
 	_assert(r.ok and world.get_tile(t.x, t.y).state == "seeded", "plant action seeds tile")
@@ -1860,6 +1882,218 @@ func test_daylight() -> void:
 	var black := Daylight.compensate(gold, Color(0, 0, 0))
 	_assert(black.r <= 1.0 and black.g <= 1.0 and black.b <= 1.0,
 		"a pathological tint cannot push a colour out of range")
+
+
+func test_energy_repartition() -> void:
+	print("\n--- T-29: the day re-partitioned into 600 fine units (Q-38's rider) ---")
+
+	# --- the constants, as shipped -------------------------------------------
+	_assert(Tools.DAY_UNITS == 600, "a day is 600 fine units")
+	_assert(Tools.BASE_COST == 30 and Tools.HEAVY_COST == 60,
+		"a base verb costs 30 of them and a heavy clear 60")
+	_assert(SimWorld.ACTOR_MAX_ENERGY == Tools.DAY_UNITS,
+		"an NPC's day is the same length as hers — a bot gets no more clock (S-3)")
+	var fresh = load("res://systems/game_state.gd").new()
+	_assert(fresh.energy == 600 and fresh.max_energy == 600,
+		"and a new game starts on a full one")
+	fresh.free()
+	for verb in ["till", "water", "harvest", "clear_weed"]:
+		_assert_quiet(Tools.get_energy_cost(verb) == 30, "%s costs 30" % verb)
+	for verb in ["clear_log", "clear_rock", "clear_tree"]:
+		_assert_quiet(Tools.get_energy_cost(verb) == 60, "%s costs 60" % verb)
+	for verb in ["plant", "sell", "refill", "sleep"]:
+		_assert_quiet(Tools.get_energy_cost(verb) == 0, "%s is free" % verb)
+	_flush_quiet("every verb's cost is 30, 60 or nothing")
+
+	# --- the same day at 1x ---------------------------------------------------
+	#
+	# The load-bearing claim of the whole item: this changes the ruler, not the
+	# game. Twenty base actions fill a day exactly, the twenty-first is the one
+	# that would overdraw, and Q-11's soft floor catches it in exactly the same
+	# place it always did.
+	SimRng.reseed(29)
+	var world := SimWorld.new()
+	world.generate()
+	var gs = load("res://systems/game_state.gd").new()
+	for ty in range(4, 12):
+		for tx in range(4, 12):
+			world.set_tile_state(tx, ty, "cleared")
+			world.set_object(tx, ty, "")
+	var spent := 0
+	var refused_at := -1
+	gs.hard_energy = true  # phase 2's rule, so the refusal is visible at all
+	for i in 40:
+		var tile := Vector2i(4 + i % 8, 4 + i / 8)
+		var res := world.apply_action({ "verb": "till", "target": tile, "actor": "player" }, gs)
+		if not res.ok:
+			refused_at = i
+			break
+		spent += 1
+	_assert(spent == 20 and refused_at == 20,
+		"twenty base actions fill a day and the twenty-first is refused, exactly as at 20 points")
+	_assert(gs.energy == 0, "with the meter landing on nothing left over — 600 divides by 30")
+	gs.hard_energy = false
+	var soft := world.apply_action({ "verb": "till", "target": Vector2i(6, 6), "actor": "player" }, gs)
+	_assert(soft.ok and gs.energy == 0,
+		"and phase 1's soft floor still lets the 21st through at zero (Q-11)")
+	gs.free()
+
+	# --- every fraction-reader is unchanged, proven pair by pair ---------------
+	#
+	# `Daylight`, `CotPresentation` and the sky glyph are all ratios over
+	# `energy / max_energy`, so re-partitioning must be invisible to them. This is
+	# the proof rather than the claim: the old scale and the new one are asked the
+	# same question at every equivalent instant and must answer identically.
+	CotPresentation.set_treatment(CotPresentation.GLOW)
+	for e in range(0, 21):
+		var fine: int = e * 30
+		_assert_quiet(Daylight.tint_for(e, 20).is_equal_approx(Daylight.tint_for(fine, 600)),
+			"tint at %d/20 == tint at %d/600" % [e, fine])
+		_assert_quiet(is_equal_approx(Daylight.fraction(e, 20), Daylight.fraction(fine, 600)),
+			"fraction at %d/20 == fraction at %d/600" % [e, fine])
+		_assert_quiet(is_equal_approx(Daylight.progress(e, 20), Daylight.progress(fine, 600)),
+			"arc progress at %d/20 == arc progress at %d/600" % [e, fine])
+		_assert_quiet(Daylight.glyph_for(e, 20) == Daylight.glyph_for(fine, 600),
+			"sky glyph at %d/20 == sky glyph at %d/600" % [e, fine])
+		_assert_quiet(Daylight.is_night(e, 20) == Daylight.is_night(fine, 600),
+			"night at %d/20 == night at %d/600" % [e, fine])
+		_assert_quiet(is_equal_approx(CotPresentation.dusk_ramp(e, 20),
+				CotPresentation.dusk_ramp(fine, 600)),
+			"dusk ramp at %d/20 == dusk ramp at %d/600" % [e, fine])
+		_assert_quiet(is_equal_approx(CotPresentation.glow_alpha(e, 20, 1.25),
+				CotPresentation.glow_alpha(fine, 600, 1.25)),
+			"lamp at %d/20 == lamp at %d/600" % [e, fine])
+	CotPresentation.set_treatment(CotPresentation.PULSE)
+	for e in range(0, 21):
+		var fine2: int = e * 30
+		_assert_quiet(is_equal_approx(CotPresentation.pulse_strength(e, 20),
+				CotPresentation.pulse_strength(fine2, 600)),
+			"pulse at %d/20 == pulse at %d/600" % [e, fine2])
+	CotPresentation.set_treatment(CotPresentation.TURNDOWN)
+	for e in range(0, 21):
+		var fine3: int = e * 30
+		_assert_quiet(CotPresentation.turned_down(e, 20) == CotPresentation.turned_down(fine3, 600),
+			"turndown at %d/20 == turndown at %d/600" % [e, fine3])
+	CotPresentation.set_treatment(CotPresentation.GLOW)
+	_flush_quiet("every fraction-reader gives the same answer at both scales, at all 21 instants")
+
+	# Q-11's own floor pulse moved from `energy <= 2` to a stated threshold, and
+	# it must land on the same instant: two base actions' worth of daylight left.
+	_assert(CotPresentation.at_floor(60) and not CotPresentation.at_floor(61),
+		"the Q-11 cot pulse still starts with two base actions left (was energy <= 2)")
+	_assert(CotPresentation.at_floor(0), "and it is certainly on at an empty day")
+
+	# --- the arc's own geometry ----------------------------------------------
+	_assert(is_equal_approx(Daylight.progress(600, 600), 0.0)
+			and is_equal_approx(Daylight.progress(0, 600), 1.0),
+		"the arc walks 0 at sunrise to 1 at dusk")
+	_assert(Daylight.TICKS.size() == 3, "three ticks, as the box asks")
+	var last_f := 1.1
+	for tick in Daylight.TICKS:
+		var f: float = float(tick["f"])
+		_assert_quiet(f < last_f, "%s comes after the tick before it" % tick["id"])
+		last_f = f
+		var found := false
+		for stop in Daylight.STOPS:
+			if is_equal_approx(float(stop["f"]), f):
+				found = true
+		_assert_quiet(found, "the %s tick sits on one of the sky's own stops" % tick["id"])
+	_flush_quiet("the arc's ticks are the hours the tint itself turns — no invented thresholds")
+	_assert(is_equal_approx(Daylight.GLYPH_NIGHT_F, float(Daylight.TICKS[2]["f"])),
+		"and the token becomes a moon exactly as it passes the dusk tick")
+
+	# --- v1 -> v2: a legacy save loads at the fraction it was saved at ---------
+	var legacy := {
+		"version": 1,
+		"world": {
+			"tiles": world.tiles.duplicate(true),
+			"objects": world.objects.duplicate(true),
+			"actors": {
+				"player": { "species": "farmer", "x": 3, "y": 3, "facing": "down",
+					"energy": -1, "extra": {} },
+				"chicken": { "species": "chicken", "x": 5, "y": 5, "facing": "down",
+					"energy": 7, "extra": {} },
+			},
+		},
+		"state": { "energy": 14, "max_energy": 20 },
+	}
+	var migrated := SaveGame.migrate(legacy)
+	_assert(int(migrated.get("version", 0)) == 2, "a v1 save migrates to v2")
+	_assert(int(legacy["state"]["energy"]) == 14,
+		"and the caller's own dictionary is left alone — migrate copies, it does not rewrite")
+	var w1 := SimWorld.new()
+	var gs1 = load("res://systems/game_state.gd").new()
+	_assert(SaveGame.restore(legacy, w1, gs1), "a v1 save still restores")
+	_assert(gs1.energy == 420 and gs1.max_energy == 600,
+		"with her meter scaled x30 — 14/20 lands as 420/600")
+	_assert(is_equal_approx(Daylight.fraction(gs1.energy, gs1.max_energy),
+			Daylight.fraction(14, 20)),
+		"which is the same fraction, and therefore the same sky she saved under")
+	_assert(w1.energy_of("chicken") == 210, "and every actor's meter scales with it (7 -> 210)")
+	_assert(int(w1.actor("player").get("energy", 0)) == -1,
+		"except the player's world-side sentinel, which is not a meter and must not be multiplied")
+	gs1.free()
+
+	# The pre-M2.5 shape of the same thing: meters in their own `actor_energy` map.
+	var legacy_map := {
+		"version": 1,
+		"world": {
+			"tiles": world.tiles.duplicate(true),
+			"objects": world.objects.duplicate(true),
+			"actor_energy": { "chicken": 5 },
+		},
+		"state": { "energy": 20, "max_energy": 20 },
+	}
+	var w2 := SimWorld.new()
+	var gs2 = load("res://systems/game_state.gd").new()
+	_assert(SaveGame.restore(legacy_map, w2, gs2), "a pre-registry v1 save restores too")
+	_assert(w2.energy_of(SimWorld.ACTOR_CHICKEN) == 150,
+		"and the old actor_energy map is scaled on the way through the compat shim")
+	_assert(gs2.energy == 600 and gs2.max_energy == 600, "a full day saved is a full day loaded")
+	gs2.free()
+
+	# A v2 save is not scaled twice, and a version this build has never heard of
+	# is still unloadable rather than guessed at.
+	var w3 := SimWorld.new()
+	var gs3 = load("res://systems/game_state.gd").new()
+	gs3.energy = 420
+	_assert(SaveGame.restore(SaveGame.capture(world, gs3), w3, gs3),
+		"a save this build wrote round-trips")
+	_assert(gs3.energy == 420, "at the number it was written with, unscaled")
+	_assert(SaveGame.migrate({ "version": 99 }).is_empty(), "a future save is still unloadable")
+	_assert(SaveGame.migrate({}).is_empty(), "and so is one with no version at all")
+	gs3.free()
+
+	# --- the real fixtures, at the fraction each of them was saved at ----------
+	#
+	# The synthetic cases above prove the arithmetic; these are the files an
+	# actual player would be carrying, and they are all v1. Each must come back
+	# under the sky it went down under.
+	var dir := DirAccess.open("res://playtests")
+	_assert(dir != null, "the playtests fixtures directory is readable")
+	var checked := 0
+	if dir != null:
+		for name in dir.get_directories():
+			var path := "res://playtests/%s/autosave.json" % name
+			var data := SaveGame.load_dict(path)
+			if data.is_empty() or not data.get("state", {}).has("energy"):
+				continue
+			var was := Daylight.fraction(int(data["state"]["energy"]),
+				int(data["state"].get("max_energy", 20)))
+			checked += 1
+			var wf := SimWorld.new()
+			var gsf = load("res://systems/game_state.gd").new()
+			_assert_quiet(SaveGame.restore(data, wf, gsf), "%s restores" % name)
+			_assert_quiet(gsf.max_energy == 600, "%s loads into a 600-unit day" % name)
+			_assert_quiet(is_equal_approx(Daylight.fraction(gsf.energy, gsf.max_energy), was),
+				"%s loads at the fraction it was saved at (%.3f)" % [name, was])
+			_assert_quiet(Daylight.tint_for(gsf.energy, gsf.max_energy).is_equal_approx(
+					Daylight.tint_for(int(data["state"]["energy"]),
+						int(data["state"].get("max_energy", 20)))),
+				"%s wakes under the same sky" % name)
+			gsf.free()
+	_flush_quiet("every v1 autosave in playtests/ loads at its own hour (%d)" % checked)
+	_assert(checked == 8, "all 8 shelved sessions were checked (%d)" % checked)
 
 
 func test_satisfied_states() -> void:
@@ -5919,7 +6153,7 @@ func test_ants() -> void:
 			tap_farm.tiles[ty].append({ "state": "growing", "crop_type": "wheat",
 				"growth_stage": 1, "watered_today": true })
 	GameState.seeds = { "wheat": 1 }
-	GameState.energy = 20
+	GameState.energy = Tools.DAY_UNITS  # T-29: a full day, so the stomp is affordable
 	GameState.watering_can_charges = 8
 	var on_a_crop := Vector2i(6, 6)
 	_assert(ActionRouter.resolve(tap_farm, GameState, on_a_crop, Vector2i(6, 5)).is_empty(),
@@ -7702,7 +7936,7 @@ func test_cot_halo() -> void:
 	GameState.selected_tool = 3          # hoe
 	GameState.selected_seed_type = "wheat"
 	GameState.seeds = { "wheat": 0 }     # so cleared soil means "till", never "plant"
-	GameState.energy = 20
+	GameState.energy = Tools.DAY_UNITS   # T-29: "with energy" is a full day now
 	GameState.watering_can_charges = 8
 
 	var cot := Vector2i(2, 1)
@@ -7734,7 +7968,7 @@ func test_cot_halo() -> void:
 
 	# 4. A drag is a deliberate stroke: a swipe along a row must not sleep her when
 	#    it reaches the cot's column.
-	GameState.energy = 20
+	GameState.energy = Tools.DAY_UNITS  # T-29
 	var dragged = ActionRouter.resolve_with_halo(t, GameState, below, beside, true, -1)
 	_assert(dragged.is_empty() or not dragged.has("halo_from"),
 		"a drag is never rescued")
@@ -7764,7 +7998,7 @@ func test_cot_halo() -> void:
 	_assert(ActionRouter.HALO_OBJECTS.size() == 1 and ActionRouter.HALO_OBJECTS.has("cot"),
 		"exactly one object is haloed today, and it is the cot")
 
-	GameState.energy = 20
+	GameState.energy = Tools.DAY_UNITS  # T-29
 	GameState.seeds = { "wheat": 5 }
 	t.free()
 

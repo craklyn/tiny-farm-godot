@@ -115,8 +115,10 @@ func reset() -> void:
 	# New-game / replay baseline — the single source of default values.
 	day = 1
 	weather = "sunny"
-	energy = 20
-	max_energy = 20
+	# T-29: the day is 600 fine units and a base verb costs 30 of them, so this is
+	# the same 20-action day it has always been (`Tools.DAY_UNITS`).
+	energy = Tools.DAY_UNITS
+	max_energy = Tools.DAY_UNITS
 	gold = 0
 	selected_tool = 0
 	seeds = { "wheat": 5, "tomato": 0 }

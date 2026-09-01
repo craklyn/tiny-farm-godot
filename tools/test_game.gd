@@ -136,12 +136,14 @@ func _test_tools() -> void:
 	_assert(Tools.get_action(0, "cleared") == "", "Hands + cleared = no action")
 
 	# Test energy costs
-	_assert(Tools.get_energy_cost("clear_weed") == 1, "Weed clearing costs 1")
-	_assert(Tools.get_energy_cost("clear_log") == 2, "Log clearing costs 2")
-	_assert(Tools.get_energy_cost("clear_rock") == 2, "Rock clearing costs 2")
-	_assert(Tools.get_energy_cost("till") == 1, "Tilling costs 1")
-	_assert(Tools.get_energy_cost("water") == 1, "Watering costs 1")
-	_assert(Tools.get_energy_cost("harvest") == 1, "Harvesting costs 1")
+	# T-29: the day is 600 fine units, a base verb 30 and a heavy clear 60 — the
+	# same 20-action day, counted finer.
+	_assert(Tools.get_energy_cost("clear_weed") == 30, "Weed clearing costs 30")
+	_assert(Tools.get_energy_cost("clear_log") == 60, "Log clearing costs 60")
+	_assert(Tools.get_energy_cost("clear_rock") == 60, "Rock clearing costs 60")
+	_assert(Tools.get_energy_cost("till") == 30, "Tilling costs 30")
+	_assert(Tools.get_energy_cost("water") == 30, "Watering costs 30")
+	_assert(Tools.get_energy_cost("harvest") == 30, "Harvesting costs 30")
 	_assert(Tools.get_energy_cost("plant") == 0, "Planting costs 0")
 
 
@@ -151,8 +153,8 @@ func _test_game_state() -> void:
 	# Note: GameState is an autoload, so we test it directly
 	# Reset to known state
 	_game_state.day = 1
-	_game_state.energy = 20
-	_game_state.max_energy = 20
+	_game_state.energy = Tools.DAY_UNITS  # T-29: a full day is 600 fine units
+	_game_state.max_energy = Tools.DAY_UNITS
 	_game_state.gold = 0
 	_game_state.selected_tool = 0
 	_game_state.seeds = { "wheat": 5, "tomato": 0 }
@@ -165,18 +167,18 @@ func _test_game_state() -> void:
 
 	# Test initial state
 	_assert(_game_state.day == 1, "Initial day is 1")
-	_assert(_game_state.energy == 20, "Initial energy is 20")
+	_assert(_game_state.energy == 600, "Initial energy is a full day — 600 (T-29)")
 	_assert(_game_state.gold == 0, "Initial gold is 0")
 	_assert(_game_state.seeds["wheat"] == 5, "Start with 5 wheat seeds")
 	_assert(_game_state.watering_can_charges == 8, "Watering can starts at 8")
 
 	# Test set_energy
-	_game_state.set_energy(15)
-	_assert(_game_state.energy == 15, "Energy set to 15")
+	_game_state.set_energy(450)  # T-29: the fraction 15/20 used to be
+	_assert(_game_state.energy == 450, "Energy set to 450")
 	_game_state.set_energy(-5)
 	_assert(_game_state.energy == 0, "Energy clamped to 0")
-	_game_state.set_energy(30)
-	_assert(_game_state.energy == 20, "Energy clamped to max")
+	_game_state.set_energy(900)
+	_assert(_game_state.energy == 600, "Energy clamped to max (T-29)")
 
 	# Test tool cycling
 	_game_state.selected_tool = 0
@@ -222,12 +224,12 @@ func _test_game_state() -> void:
 	_assert(_game_state.shipping_bin["wheat"] == 0, "Bin emptied after processing")
 
 	# Test start_new_day
-	_game_state.energy = 5
+	_game_state.energy = 150  # T-29: the fraction 5/20 used to be
 	_game_state.watering_can_charges = 2
 	_game_state.day = 3
 	_game_state.start_new_day()
 	_assert(_game_state.day == 4, "Day advanced to 4")
-	_assert(_game_state.energy == 20, "Energy restored to 20")
+	_assert(_game_state.energy == 600, "Energy restored to a full day (T-29)")
 	_assert(_game_state.watering_can_charges == 8, "Watering can refilled")
 
 	# Test refill_watering_can
@@ -329,8 +331,8 @@ func _test_integration() -> void:
 
 	# Reset GameState
 	_game_state.day = 1
-	_game_state.energy = 20
-	_game_state.max_energy = 20
+	_game_state.energy = Tools.DAY_UNITS  # T-29: a full day is 600 fine units
+	_game_state.max_energy = Tools.DAY_UNITS
 	_game_state.gold = 0
 	_game_state.selected_tool = 0
 	_game_state.seeds = { "wheat": 5, "tomato": 0 }
@@ -347,7 +349,7 @@ func _test_integration() -> void:
 	_assert(Tools.get_action(3, "cleared") == "till", "Hoe action on cleared = till")
 	var till_cost := Tools.get_energy_cost("till")
 	_game_state.set_energy(_game_state.energy - till_cost)
-	_assert(_game_state.energy == 19, "Energy 19 after tilling")
+	_assert(_game_state.energy == 570, "Energy 570 after tilling — one base action (T-29)")
 
 	# Seeds (tool 5) on tilled tile
 	_game_state.selected_tool = 5
@@ -361,13 +363,13 @@ func _test_integration() -> void:
 	var water_cost := Tools.get_energy_cost("water")
 	_game_state.set_energy(_game_state.energy - water_cost)
 	_game_state.watering_can_charges -= 1
-	_assert(_game_state.energy == 18, "Energy 18 after watering")
+	_assert(_game_state.energy == 540, "Energy 540 after watering (T-29)")
 	_assert(_game_state.watering_can_charges == 7, "7 water charges remaining")
 
 	# Sleep -> advance day
 	_game_state.start_new_day()
 	_assert(_game_state.day == 2, "Day 2 after sleeping")
-	_assert(_game_state.energy == 20, "Energy restored")
+	_assert(_game_state.energy == 600, "Energy restored (T-29)")
 	_assert(_game_state.watering_can_charges == 8, "Water refilled")
 
 	# Simulate 3 days of watering a wheat crop to harvest
@@ -375,7 +377,7 @@ func _test_integration() -> void:
 	var crop_growth := 1  # Already got 1 day of growth from Day 1 watering
 	for d in range(2):
 		# Water
-		_game_state.set_energy(_game_state.energy - 1)
+		_game_state.set_energy(_game_state.energy - Tools.BASE_COST)  # T-29
 		_game_state.watering_can_charges -= 1
 		crop_growth += 1
 		# Sleep
@@ -419,7 +421,7 @@ func _test_integration() -> void:
 	_game_state.set_energy(0)
 	_assert(_game_state.energy == 0, "Energy is 0")
 	# Can't perform action requiring energy
-	_assert(Tools.get_energy_cost("till") == 1, "Tilling costs 1 energy")
+	_assert(Tools.get_energy_cost("till") == 30, "Tilling costs 30 fine units (T-29)")
 	_assert(_game_state.energy < Tools.get_energy_cost("till"), "Not enough energy to till")
 
 	# Can still do 0-cost actions

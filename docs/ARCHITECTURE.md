@@ -377,7 +377,12 @@ Current map is 32×20 tiles; phase 4 fiction says "too large to manage manually"
   e.g. sprinklers/towers/bots, not every tile every tick).
 - Camera altitude tiers tied to progression (the "altitude as progression" pillar).
 - Save format that tolerates map growth and schema evolution from v1 — version field and
-  migration hooks from the first save file we ever ship.
+  migration hooks from the first save file we ever ship. **First used in anger at T-29**
+  (save v2, 2026-08-31): every schema change before it was *additive* and needed no bump,
+  but re-partitioning the day into 600 fine units left every existing key meaning
+  something thirty times smaller — which no default can detect. The rule that came out of
+  it: additive keys default, **re-interpreted keys bump**, and the shim rides the version
+  marker rather than a guess about the value.
 
 ## Performance guardrails (adopt now, cheap; retrofit later, expensive)
 

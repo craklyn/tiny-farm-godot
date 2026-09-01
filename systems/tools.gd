@@ -29,15 +29,38 @@ static var LIST: Array[ToolDef] = [
 	ToolDef.new("Seeds",        5, ["tilled"], "seeds"),
 ]
 
-# Energy costs per action
+# --- The day, in fine units (T-29 / Q-38's rider) -----------------------------
+#
+# Energy *is* the clock (Q-38): the day is one full meter and only actions spend
+# it. T-29 re-partitions that meter from 20 coarse points into **600 fine
+# units**, with a base verb costing 30 and a heavy clear 60. The day is still
+# exactly 20 base actions long, so at 1x this is bit-for-bit the game it was —
+# the same refusal moments, the same soft floor, the same sky at the same
+# instant. Only the ruler got finer.
+#
+# **Why 30.** A future work-speed multiplier m (Q-38's exchange-rate correction:
+# a fed farmer spends less clock, never rewinds the sun) divides an action's cost
+# to 30/m. 30 is the smallest base on which every multiplier the designer named
+# lands on a whole number — 1.25x->24, 1.5x->20, 2x->15, 2/3x->45, 1/2x->60 —
+# and 2.5x->12, 3x->10 and 0.75x->40 come free. (General rule: any m = n/d with n
+# dividing 30d works. Misses exist, 1.4x among them, but every named multiplier
+# and its neighbours hit.)
+#
+# One number, read by everything: `GameState.max_energy`, `SimWorld
+# .ACTOR_MAX_ENERGY` and `SaveGame`'s ×30 legacy shim all derive from these.
+const DAY_UNITS := 600
+const BASE_COST := 30   # till, water, harvest, clear a weed — 20 of them make a day
+const HEAVY_COST := 60  # log, rock, tree: two base verbs' worth, as it always was
+
+# Energy costs per action, in the units above.
 static var ENERGY_COSTS: Dictionary = {
-	"clear_weed": 1,
-	"clear_log": 2,
-	"clear_tree": 2,
-	"clear_rock": 2,
-	"till": 1,
-	"water": 1,
-	"harvest": 1,
+	"clear_weed": BASE_COST,
+	"clear_log": HEAVY_COST,
+	"clear_tree": HEAVY_COST,
+	"clear_rock": HEAVY_COST,
+	"till": BASE_COST,
+	"water": BASE_COST,
+	"harvest": BASE_COST,
 	"plant": 0,
 	"sell": 0,
 	"refill": 0,

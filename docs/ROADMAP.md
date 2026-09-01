@@ -72,8 +72,9 @@ stage-3 verification passed §10.A/B/D in full (record: `M1_5_PLAN.md` §12) —
 integration 141, robot MATCH, visuals exact, demo replay clean, 662k× benchmark, all
 invariant greps clean. Remaining to close the milestone: the exit-gate run below
 (needs a fresh adult on the target device), the §10.C/E device/taste items, WI-9
-(T-22, blocked on hardware), and two designer decisions — the change request
-(`M1_5_CHANGE_REQUEST.md`) and Q-38.
+(T-22, blocked on hardware), and the change request (`M1_5_CHANGE_REQUEST.md`).
+**Q-38 came off this list 2026-08-31** — ratified, daylight stays, and its display
+rider is built as T-29 (the sun-arc).
 
 **Exit gate — REVISED 2026-08-29 by the designer (Q-47).**
 
@@ -555,30 +556,94 @@ the door that fixes that.*
   replay-verified, benchmark 105,132× (gate ≥100,000×), and the visual baseline
   untouched — the zoo is behind the title screen, so it cannot be in the frame.**
 
-**T-29 — The day wears a clock** · Q-38's rider, filed 2026-08-31 · **scheme
-approved 2026-09-01, building**
+**T-29 — The day wears a clock** · Q-38's rider, filed 2026-08-31 · scheme approved
+2026-09-01 · ✅ **built 2026-08-31**
 *So that time-of-day is readable precisely, not only ambiently — and so the day's
 arithmetic survives the exchange-rate future Q-38's correction reserved (a fed farmer
 spends less clock, never rewinds the sun).*
-Proposed scheme, designed for the multiplier test the designer set:
-- [ ] **energy becomes 600 fine units** (was 20 points); base verbs cost **30**
+Scheme as approved, designed for the multiplier test the designer set:
+- [x] **energy becomes 600 fine units** (was 20 points); base verbs cost **30**
       (were 1), heavy clears **60** (were 2), plant stays 0. Same day length — 20
       base actions — bit-for-bit the same gameplay at 1× speed.
-- [ ] **why 30:** a work-speed multiplier m divides an action's clock cost to 30/m.
+- [x] **why 30:** a work-speed multiplier m divides an action's clock cost to 30/m.
       30 is the smallest base where every multiplier in the designer's list lands on
       an integer — 1.25×→24, 1.5×→20, 2×→15, 2/3×→45, 1/2×→60 — plus 2.5×→12, 3×→10,
       0.75×→40 for free. (The general rule: any m = n/d with n dividing 30d works;
       misses exist — e.g., 1.4× — but every named multiplier and its neighbours hit.)
-- [ ] **the display:** a wordless sun-arc — a token sliding sunrise→dusk across a
+- [x] **the display:** a wordless sun-arc — a token sliding sunrise→dusk across a
       small arc, ticks at morning/midday/dusk (S-7: no digits needed; the debug
       numeric readout stays debug-only). The ambient tint stays; the arc is the
       precise read the tint cannot give.
-- [ ] **migration:** saves/replays carrying legacy energy values scale ×30 on load
+- [x] **migration:** saves/replays carrying legacy energy values scale ×30 on load
       (the additive-shim pattern); `ACTOR_MAX_ENERGY` scales with it; Q-38 semantics
       untouched — daylight advances per unit spent.
 
-**Built 2026-08-31** (the four boxes above; the two below them stay open). What it
-came out as, and where it differs from the description it was written from:
+**What it came out as, and where it differs from the scheme it was written from.**
+
+- **The numbers, as shipped.** `Tools.DAY_UNITS = 600`, `Tools.BASE_COST = 30`,
+  `Tools.HEAVY_COST = 60`; till/water/harvest/clear_weed 30, clear_log/rock/tree 60,
+  plant/sell/refill/sleep 0. `GameState.reset()` and `SimWorld.ACTOR_MAX_ENERGY` both
+  **derive from `Tools.DAY_UNITS`** rather than restating 600, so the player's day and
+  an NPC's are one number and cannot drift — which matters more than tidiness, because
+  S-3 says a bot gets no verb the player lacks and it should get no more clock either.
+- **The identity is asserted, not asserted-in-a-comment** (`test_energy_repartition`).
+  Twenty base actions fill a day, the twenty-first is refused under hard energy and
+  passes under Q-11's soft floor, and the meter lands on exactly zero. Every
+  fraction-reader — the tint, the arc, the sky glyph, all three cot treatments — is
+  asked the same question at all 21 equivalent instants on both scales and must answer
+  identically. The divisibility argument is a loop over the designer's list rather than
+  prose.
+- **One hardcoded hour had to move:** `main.gd` drew Q-11's cot pulse at
+  `GameState.energy <= 2`, which is an absolute and would have become 1/300th of a day.
+  It is now `CotPresentation.at_floor()` — *two base actions' worth of daylight left*,
+  read from `Tools` — which is the same instant, and which a future exchange rate
+  carries with it instead of stranding.
+- **Deviation, and the only real one: the arc is an ellipse, not a half circle.** The
+  top bar is 30px tall, so a semicircle wide enough to read would have its middle hours
+  clipped off the top of the screen — the one part of the day a clock most needs to
+  show. Flattening it keeps the whole path in the bar and still rises and falls, which
+  is what the reading depends on. Drawn as a sampled polyline for the same reason
+  (`draw_arc` only does circles).
+- **Deviation, naming: the ticks are `Daylight.STOPS`' own three interior stops**
+  (0.78 / 0.45 / 0.18), not three new numbers at "morning/midday/dusk". They sit where
+  the *sky itself* turns, which is the point — the arc exists to give a precise read of
+  exactly the clock the tint gives ambiently, and a tick at an hour the light did not
+  change would be marking an hour the game does not have. The dusk tick and the
+  moon threshold are literally the same constant, so the token becomes a moon as it
+  crosses that mark. The two glyph thresholds moved out of `ui/hud.gd` into `Daylight`
+  unchanged to the digit; the weather line and the arc now read one function.
+- **Save format v2**, and it is the first non-additive schema change this project has
+  had. Every previous field was chosen so an old save could default it; a
+  re-partition cannot be — the same key holds a number thirty times smaller and no
+  default tells the two apart. So the shim rides the version marker, and `migrate()`
+  copies rather than rewriting the caller's dictionary. The player's world-side
+  `energy: -1` is a **sentinel, not a meter**, and is left alone; multiplying it would
+  have made -30, which stops reading as one.
+- **Replays needed nothing.** Entries carry no energy, so a log recomputed under scaled
+  costs from a scaled pool lands on the identical state. Asserted the only way it can
+  be: `assets/demo/demo_replay.json` regenerates **byte-identical** to the committed
+  file (twice), and a fresh robot session replay-verifies MATCH.
+- **The eight shelved sessions in `playtests/` are all v1 and all still load**, each at
+  the fraction it was saved at and under the same sky — asserted file by file. The
+  replay ledger is unmoved: 3 still reproduce their autosave, 5 do not, exactly as
+  before (both sides scale, so a match stays a match).
+- Covered by `tests/test_runner.gd:test_energy_repartition` (the constants, the
+  20-action day, the two-scale identity sweep, the v1→v2 shim, the eight fixtures) and
+  `tools/test_runner.gd` **Scenario H (e)** (the arc in the real scene: it exists, it is
+  wordless, it never eats a tap, the token crosses west to east, rides high at midday,
+  moves visibly on one action, and turns into a moon at dusk — plus the source check
+  that the only numeric readout left is behind `OS.is_debug_build()`).
+- **1715 unit / 418 integration, both green; robot session replay-verified (42 entries,
+  909 ticks), benchmark 105,935× (gate ≥100,000×), demo replay byte-identical.** The
+  visual baseline moved — the top bar is what changed — and is re-baselined in its own
+  commit (precedent af93ede).
+
+**T-27, built 2026-08-31** (its first four boxes; the two after them stayed open at the
+time). What it came out as, and where it differs from the description it was written
+from. *Named explicitly 2026-08-31: this block and the "Box 5's drafts" section under it
+belong to **T-27**, whose boxes are ~500 lines above — T-28 and T-29 through T-33 were
+appended between them. It said only "the four boxes above", which stopped being true the
+moment something else was inserted above it.*
 
 - The sleep Action now resolves **at the tap**, not inside the fade's callback where
   it used to sit. That is the box as written ("the Action still applies the moment the
@@ -689,7 +754,7 @@ Grouped by the ruling that unblocked them:
 | Q-34 | `T-8`→`T-10` | the bulk of the work |
 | Q-35 | `T-11`, `T-12` | |
 | Q-37 | `T-13` | build with `T-8` — the fence *is* ring 0's boundary |
-| Q-38 | `T-14` | built 2026-08-29 on the recommendation; the ruling itself is still open |
+| Q-38 | `T-14`, `T-29` | ✅ ratified 2026-08-31; `T-14` built 2026-08-29 on the recommendation, and the ruling's display rider shipped as `T-29` |
 | Q-39 | `T-15` | build with `T-8` — trees are where logs come from |
 | Q-40 | `T-16` | spiked; risk resolved, see below |
 | Q-42 | `T-18`, `T-19` | **evidence-backed** — measured data behind them |
@@ -1280,8 +1345,12 @@ the playback moved to the intent layer.
       *(designer/device step, M1.5 plan §10.E)*
 - [x] numeric readout: debug builds only (`OS.is_debug_build()`); the sky is the bar
 *The energy bar, its background and its label are gone from `ui/hud.gd`.
-**Built on Q-38's recommendation while the ruling itself is still open** — see the
-DESIGNER_QUEUE note; nothing here is expensive to revert.*
+**Built on Q-38's recommendation while the ruling itself was still open**; the ruling
+landed 2026-08-31 and ratified it. **Superseded in one place by T-29:** the sky is no
+longer the *only* bar — the top bar now carries a wordless sun-arc drawn from the same
+`energy / max_energy` this file's colour ramp uses, because the ruling's rider said the
+ambient read alone was not enough. Everything above is otherwise untouched, and the
+numeric readout is still debug-only.*
 
 **T-12 — Wordless shop screen** · Q-35 ✅ · done 2026-08-30 (M1.5 WI-5)
 *So that phase 1 keeps S-7's no-reading promise in the one screen that currently breaks it.*

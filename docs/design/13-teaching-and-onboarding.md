@@ -794,7 +794,7 @@ reading and this is the wrong fix rather than an unlucky player.
 
 ---
 
-## 8a. Daylight instead of an energy bar — proposed 2026-08-28, awaiting Q-38
+## 8a. Daylight instead of an energy bar — proposed 2026-08-28, ✅ Q-38 ratified 2026-08-31
 
 *Designer's proposal: replace the energy meter with a visible day cycle — sunrise,
 midday, sunset, twilight as a colour grade — where **spending energy is what advances
@@ -864,6 +864,8 @@ taken at the recommendation, and each is cheap to revisit:
   twilight legibility problem (caution 3) harder for no phase-1 gain.
 - *Numeric readout:* **debug builds only** (`OS.is_debug_build()` in `ui/hud.gd`). A
   developer still wants the exact figure; the player this game is aimed at never did.
+  Unchanged by T-29, and re-affirmed by it: the arc took the middle of the bar and the
+  digits moved aside, still behind the same gate.
 - *Sleeping at midday:* **wastes the remaining daylight, by design.** Sleep is never
   refused (S-7), and "you went to bed early" is a legible, harmless outcome.
 
@@ -875,6 +877,18 @@ divided by the current tint before it is drawn, so a gold highlight is still gol
 dusk. Whether that survives contact with the tablet is the one part of this only a
 device pass can answer.
 
+**What shipped, 2026-08-31 (Q-38 ratified, and its rider built as T-29).** The ruling
+kept the sky and added one thing to it: **the top bar carries a wordless sun-arc** — a
+sun token sliding sunrise→dusk along a shallow arc, notched at the three hours
+`Daylight.STOPS` itself turns, becoming a crescent moon once the day is past dusk. The
+tint says roughly what hour it is and the arc says exactly, and both are the same
+`energy / max_energy` so they cannot disagree; no digit and no word appears in either
+(S-7). Underneath it, the day was **re-partitioned into 600 fine units** with a base
+verb costing 30, so that the exchange-rate food this section's caution 2 reserved — a
+fed farmer spending less clock per action — keeps every cost a whole number at every
+multiplier the designer named. It is the same twenty-action day it always was; only the
+ruler is finer.
+
 ## 9. Open rulings
 
 | Q | Question | Recommendation |
@@ -885,7 +899,7 @@ device pass can answer.
 | Q-35 | How and when to teach sell / buy / refill | At first need, one object at a time (§7) |
 | Q-36 | Hint escalation: is stage 3 too much hand-holding? | Ship it; a stalled four-year-old has already cost us the gate (§6) |
 | Q-37 | The cold open: adopt, and in which form? | Adopt the live-scene revision, not the cutscene — a fence, control never taken, one verb demonstrated, the layout carries the rest (§4a) |
-| Q-38 | Replace the energy bar with a daylight cycle? | Adopt; keep night soft, and rule the phase-2 consequence consciously (§8a) |
+| Q-38 | Replace the energy bar with a daylight cycle? | ✅ ratified 2026-08-31 — daylight stays, with an explicit sun-arc beside it (T-29) and the day re-partitioned into 600 fine units (§8a) |
 | Q-39 | Trees drop acorns; crows prefer them? | Adopt — it converts a scripted mercy into visible behaviour, and it is the first decoy mechanic (§4) |
 
 *Two further rulings raised the same day live outside this chapter, since they are not

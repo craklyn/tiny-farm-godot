@@ -1,11 +1,21 @@
-# save_game.gd — Versioned save format v1 (M2 step 7)
+# save_game.gd — Versioned save format v2 (M2 step 7; v2 at T-29)
 # Snapshot of sim truth (SimWorld grids + GameState fields) with a version
 # field and a migration hook from the very first save we ever ship
 # (docs/ARCHITECTURE.md, world scale plan). JSON on disk.
 class_name SaveGame
 extends RefCounted
 
-const VERSION := 1
+# v2 (T-29): the day is 600 fine units instead of 20 coarse points. Everything
+# else in the schema is unchanged — every *other* field this format has ever
+# gained was additive and needed no bump (see the notes through `capture`), but a
+# re-partition is not additive: the same key holds a number that now means
+# something thirty times smaller, and no amount of defaulting can tell the two
+# apart. So it rides an explicit marker rather than a value heuristic ("is this
+# 14 an old full-ish day or a new nearly-empty one?" has no honest answer).
+const VERSION := 2
+
+# 600 / 20. The one place the old scale is written down.
+const LEGACY_ENERGY_SCALE := 30
 
 
 static func capture(world: SimWorld, gs) -> Dictionary:
@@ -204,8 +214,11 @@ static func restore(data: Dictionary, world: SimWorld, gs) -> bool:
 	var s: Dictionary = d.get("state", {})
 	gs.day = int(s.get("day", 1))
 	gs.weather = String(s.get("weather", "sunny"))
-	gs.energy = int(s.get("energy", 20))
-	gs.max_energy = int(s.get("max_energy", 20))
+	# Defaults in the day's fine units (T-29). Anything reaching here is already a
+	# v2 dictionary — a v1 file was scaled on the way in — so a missing key means
+	# a hand-built save, and "a full day" is the useful answer for one.
+	gs.energy = int(s.get("energy", Tools.DAY_UNITS))
+	gs.max_energy = int(s.get("max_energy", Tools.DAY_UNITS))
 	gs.gold = int(s.get("gold", 0))
 	gs.selected_tool = int(s.get("selected_tool", 0))
 	gs.seeds = _int_values(s.get("seeds", {}))
@@ -276,8 +289,62 @@ static func migrate(data: Dictionary) -> Dictionary:
 	var v := int(data.get("version", 0))
 	if v == VERSION:
 		return data
-	# future: if v == 1: data = _migrate_1_to_2(data); ...
+	if v == 1:
+		return _migrate_1_to_2(data)
+	# future: if v == 2: data = _migrate_2_to_3(data); ...
 	return {}
+
+
+# v1 -> v2 (T-29): every energy in the file is in the old 20-point day, so every
+# one of them multiplies by 30 and lands in the same 600-unit day at exactly the
+# **fraction** it was saved at. That is the whole migration and it is total:
+# there are four places a v1 file can carry an energy — the player's meter, her
+# maximum, each registry entry's meter, and the pre-M2.5 `actor_energy` map that
+# `restore` still folds in — and all four are here.
+#
+# Fractions are what must survive, not the numbers: `Daylight`, `CotPresentation`
+# and the sky glyph all read `energy / max_energy`, so a farmer who saved at
+# dusk must load at dusk. Scaling both sides of that division by the same 30
+# keeps it exact, and every v1 value was an integer number of old points, so
+# nothing rounds.
+#
+# The copy is deliberate. `migrate` is called from `restore`, which callers hand
+# a dictionary they still own (the fixture tests load one and read it again
+# afterwards); rewriting theirs under them would be a side effect from a read.
+static func _migrate_1_to_2(data: Dictionary) -> Dictionary:
+	var out: Dictionary = data.duplicate(true)
+	out["version"] = 2
+	var s: Dictionary = out.get("state", {})
+	if typeof(s) == TYPE_DICTIONARY:
+		if s.has("energy"):
+			s["energy"] = int(s["energy"]) * LEGACY_ENERGY_SCALE
+		if s.has("max_energy"):
+			s["max_energy"] = int(s["max_energy"]) * LEGACY_ENERGY_SCALE
+	var w: Dictionary = out.get("world", {})
+	if typeof(w) == TYPE_DICTIONARY:
+		var saved_actors = w.get("actors", {})
+		if typeof(saved_actors) == TYPE_DICTIONARY:
+			for id in saved_actors.keys():
+				var a = saved_actors[id]
+				if typeof(a) == TYPE_DICTIONARY and a.has("energy"):
+					a["energy"] = _scale_energy(int(a["energy"]))
+		# Pre-M2.5 saves keep their meters in their own map; the compat shim in
+		# `restore` folds it into the registry, and it is in old points too.
+		var legacy = w.get("actor_energy", {})
+		if typeof(legacy) == TYPE_DICTIONARY:
+			for id in legacy.keys():
+				legacy[id] = _scale_energy(int(legacy[id]))
+	return out
+
+
+# One value in a registry entry's `energy` field is not a quantity: **-1 is the
+# player's sentinel** for "her meter is GameState's, not the world's"
+# (`SimWorld.spawn_actor`). Multiplying a sentinel by 30 makes -30, which is not
+# the same sentinel and stops reading as one. So the scale applies to meters and
+# leaves the marker alone — which is a category check, not the value heuristic
+# the version bump exists to avoid.
+static func _scale_energy(v: int) -> int:
+	return v if v < 0 else v * LEGACY_ENERGY_SCALE
 
 
 static func save_to(path: String, world: SimWorld, gs) -> bool:

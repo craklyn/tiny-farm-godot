@@ -54,6 +54,16 @@ const VERSION := 2
 #
 # Stamped at record time and free thereafter; it cannot be added retroactively to a
 # corpus already on disk, which is why it lands before phase 4 accumulates one.
+#
+# **The energy-cost case, worked (T-29, 2026-08-31).** That change multiplied every
+# cost — and the pool they are spent from — by 30, and it is the one shape of
+# cost drift that leaves a replay *meaning the same thing*: no entry carries an
+# energy, so recomputing an old log under the new costs from the new pool lands on
+# exactly the ×30 image of the state it landed on before, refusal for refusal. The
+# saves needed a shim (`SaveGame` v2) because they store the numbers; the logs
+# needed nothing, and `assets/demo/demo_replay.json` regenerates byte-identical
+# across the change. Not every cost change is this kind — a *re-weighting* would
+# genuinely reinterpret a log, and that is what the stamp above is for.
 static func current_build() -> String:
 	return str(ProjectSettings.get_setting("application/config/build_id", "dev"))
 

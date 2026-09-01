@@ -748,7 +748,12 @@ const NON_WORK_VERBS := { "sleep": true, "sell": true, "buy_seed": true, "refill
 #
 # Soft floor, exactly as Q-11 gives the player: an exhausted actor clamps at 0
 # and its action still resolves. Nothing in phase 1 is a wall.
-const ACTOR_MAX_ENERGY := 20  # [Playtest]
+#
+# T-29 scaled this with the player's: an NPC's day is the same 600 fine units
+# hers is, so "a day's work" means the same amount of work for everybody and a
+# bot gets no more clock than the farmer does (S-3). Derived from `Tools` rather
+# than restated, so the two can never drift.
+const ACTOR_MAX_ENERGY := Tools.DAY_UNITS  # [Playtest]
 
 
 # --- Actor registry (D-9 / Q-53, M2.5 WI-2) -----------------------------------

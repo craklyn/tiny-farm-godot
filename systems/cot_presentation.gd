@@ -87,9 +87,22 @@ const PULSE_F := 0.35      # [Playtest] B starts here and reaches full strength 
 
 
 static func _fraction(energy: int, max_energy: int) -> float:
-	if max_energy <= 0:
-		return 1.0
-	return clampf(float(energy) / float(max_energy), 0.0, 1.0)
+	return Daylight.fraction(energy, max_energy)
+
+
+# Q-11's own floor pulse — the cot breathing at the bottom of the day, which
+# predates these treatments and which A and C leave exactly as they found it.
+# `main.gd` wrote it as `energy <= 2` back when the day was 20 coarse points;
+# T-29 makes the day 600 fine units, so it is stated here as what it always
+# meant: **two base actions' worth of daylight left**. Read from `Tools` rather
+# than restated as 60, so a future exchange rate (Q-38's correction: a fed farmer
+# spends less clock per action) carries this threshold with it instead of
+# stranding it at an hour that no longer exists.
+const FLOOR_ACTIONS := 2
+
+
+static func at_floor(energy: int) -> bool:
+	return energy <= FLOOR_ACTIONS * Tools.get_energy_cost("till")
 
 
 # 0.0 before dusk, ramping to 1.0 as the day runs out. Treatments A and C read it.

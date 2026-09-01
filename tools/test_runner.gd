@@ -163,8 +163,9 @@ func _scenario_b() -> void:
 	_assert(farm.get_tile(6, 5).state == "cleared", "Action allowed at 0 energy (soft floor)")
 	_assert(GameState.energy == 0, "Soft floor keeps energy at 0, not negative")
 
-	# Restore energy
-	GameState.set_energy(20)
+	# Restore energy. `20` when this was written meant a full day; T-29 makes a day
+	# 600 fine units, and 20 of those is not even one till.
+	GameState.set_energy(GameState.max_energy)
 
 func _scenario_c() -> void:
 	print("\n--- Scenario C: Farming Loop (Hoe, Plant, Water) ---")
@@ -411,6 +412,61 @@ func _scenario_h_daylight() -> void:
 	await _wait_for_action()
 	Input.action_release("action")
 	_assert(farm.get_tile(9, 6).state == "cleared", "night stays soft — the action still resolves at 0 energy")
+
+	# (e) T-29: the bar carries the hour precisely, and still without a word.
+	#
+	# Q-38 was ratified with one rider — the tint is ambient, and the designer
+	# wanted the time of day readable exactly as well. The sun-arc is that read.
+	# It is a drawing, so what is asserted is the geometry it is drawn from: the
+	# token's own position in the arc's pixels.
+	var hud = main_scene.hud
+	_assert(hud.sun_arc != null and hud.sun_arc is Control,
+		"the top bar carries a sun-arc")
+	_assert(hud.sun_arc.get_parent() == hud.top_bar, "in the top bar, where the readout was")
+	_assert(hud.sun_arc.find_children("*", "Label", true, false).is_empty(),
+		"and it is wordless — the arc has no text in it at all (S-7)")
+	_assert(hud.sun_arc.mouse_filter == Control.MOUSE_FILTER_IGNORE,
+		"and it never eats a tap meant for the farm")
+
+	GameState.set_energy(0)
+	await get_tree().process_frame
+	var at_dusk: Vector2 = hud.sun_token_pos()
+	_assert(hud.sun_token_is_moon(), "at an empty day the token is a moon")
+	GameState.set_energy(GameState.max_energy)
+	await get_tree().process_frame
+	var at_dawn: Vector2 = hud.sun_token_pos()
+	_assert(not hud.sun_token_is_moon(), "and at a full one it is the sun")
+	_assert(at_dawn.x < at_dusk.x, "the token travels west to east across the day")
+	_assert(is_equal_approx(at_dawn.y, at_dusk.y),
+		"starting and ending on the horizon — it is an arc, not a bar")
+
+	# Half a day spent puts it overhead, which is the whole reason it is an arc.
+	GameState.set_energy(GameState.max_energy / 2)
+	await get_tree().process_frame
+	var at_noon: Vector2 = hud.sun_token_pos()
+	_assert(at_noon.y < at_dawn.y - 5.0, "and rides high over midday")
+	_assert(at_noon.x > at_dawn.x and at_noon.x < at_dusk.x, "halfway along, halfway through")
+	_assert(at_dusk.x - at_dawn.x > 80.0, "with the whole day worth crossing")
+
+	# One ordinary action visibly moves it — a clock nobody can see tick is not a
+	# clock. A base verb is 1/20th of the day, so the token moves a real distance.
+	GameState.set_energy(GameState.max_energy)
+	await get_tree().process_frame
+	var before_action: Vector2 = hud.sun_token_pos()
+	GameState.set_energy(GameState.energy - Tools.get_energy_cost("till"))
+	await get_tree().process_frame
+	_assert(hud.sun_token_pos().distance_to(before_action) > 1.5,
+		"and one base action moves it by more than a pixel or two")
+
+	# The digits stay out of the shipped bar (S-7, and Q-38's sub-ruling that the
+	# numeric readout is debug-only). Asserted on the source, because this suite
+	# only ever runs in a debug build and so can never observe the release case.
+	var hud_src := (hud.get_script().source_code as String)
+	var gate := hud_src.find("OS.is_debug_build()")
+	_assert(gate != -1 and hud_src.find("energy_debug_label") > gate,
+		"the only numeric energy readout left is behind the debug gate")
+	_assert(hud_src.count("Energy: %d/%d") == 1,
+		"and there is exactly one of it")
 
 	GameState.set_energy(GameState.max_energy)
 
@@ -1869,8 +1925,9 @@ func _scenario_x_three_looks_for_the_cot() -> void:
 		var label: String = CotPresentation.name_of(t)
 		CotPresentation.set_treatment(t)
 		main_scene._apply_cot_treatment()
-		# Dusk, which is the hour every one of these is about.
-		GameState.set_energy(2)
+		# Dusk, which is the hour every one of these is about. 60 of 600 is where
+		# `energy = 2` sat on the old 20-point day (T-29) — the same instant.
+		GameState.set_energy(60)
 		await get_tree().process_frame
 
 		_assert(main_scene.camera.limit_top

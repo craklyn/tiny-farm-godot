@@ -11,12 +11,37 @@ var toast_message: String = ""
 var toast_timer: float = 0.0
 const TOAST_DURATION := 3.0
 
+# --- The sun-arc (T-29 / Q-38's rider) ----------------------------------------
+#
+# An eighth of the top bar's width and all of its height: big enough that the
+# token's move after one action is visible, small enough that it stays a status
+# element beside the day counter rather than becoming the HUD.
+#
+# It is a **flattened** arc rather than a half circle, and that is forced rather
+# than chosen: a semicircle wide enough to read is taller than the 30px bar, so a
+# circular path would have its middle hours cut off by the top of the screen —
+# which is the one part of the day a clock most needs to show. An ellipse keeps
+# the whole path inside the bar and still rises and falls, which is the shape the
+# reading depends on.
+const ARC_W := 104.0
+const ARC_H := 30.0
+const ARC_RX := 46.0
+const ARC_RY := 13.0
+const ARC_CENTRE := Vector2(ARC_W / 2.0, 21.0)  # the horizon the token rises from
+const ARC_STEPS := 48
+const ARC_TOKEN_R := 4.0
+const ARC_TICK := 3.0           # half a tick's length, either side of the path
+# The top bar's own colour once its 60%-black panel has composited: what the moon
+# is bitten out with, so the crescent reads as sky.
+const MOON_CUT := Color(0.122, 0.122, 0.122)
+
 # UI controls (created programmatically)
 var top_bar: Panel
 var bottom_bar: Panel
 var day_label: Label
 var weather_label: Label
 var energy_label: Label  # T-14: debug builds only — the sky is the bar (Q-38)
+var sun_arc: Control     # T-29: the hour, precisely and wordlessly
 var gold_label: Label
 var menu_button: Button
 var bed_button: Button          # T-31 (Q-49): the HUD's one action control
@@ -104,14 +129,31 @@ func _build_ui() -> void:
 
 	# T-14 / Q-38: the energy bar is gone. Time of day *is* the meter now — the
 	# world tint in main.gd renders the same number as light, which a pre-reader
-	# can read and "14/20" never was. The numeric readout survives for debugging
-	# only, because a developer still wants the exact figure.
+	# can read and "420/600" never was.
+	#
+	# T-29 (Q-38's rider) puts the *precise* read back in the bar without putting
+	# the number back: a wordless sun-arc, centred, with a token that slides
+	# sunrise→dusk as the day is spent. The tint says roughly what hour it is; the
+	# arc says exactly, and neither needs reading (S-7). Drawn rather than
+	# assembled from nodes because it is one small picture and a `_draw` costs no
+	# tree.
+	sun_arc = Control.new()
+	sun_arc.name = "sun_arc"
+	sun_arc.position = Vector2(viewport_size.x / 2 - ARC_W / 2.0, 0)
+	sun_arc.size = Vector2(ARC_W, ARC_H)
+	sun_arc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	sun_arc.draw.connect(_draw_sun_arc)
+	top_bar.add_child(sun_arc)
+
+	# The numeric readout survives for debugging only, because a developer still
+	# wants the exact figure. Moved off centre at T-29 to leave the arc the middle
+	# of the bar — it is the thing that ships, and the digits are not (S-7, and
+	# Q-38's sub-ruling that the readout stays debug-only).
 	if OS.is_debug_build():
 		energy_label = Label.new()
 		energy_label.name = "energy_debug_label"
-		energy_label.position = Vector2(viewport_size.x / 2 - 50, 5)
-		energy_label.size = Vector2(100, 20)
-		energy_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		energy_label.position = Vector2(110, 5)
+		energy_label.size = Vector2(130, 20)
 		energy_label.add_theme_color_override("font_color", Color(1, 1, 1, 0.45))
 		top_bar.add_child(energy_label)
 
@@ -567,7 +609,13 @@ func _update_hud() -> void:
 	else:
 		weather_label.text = "🌧️ %s" % GameState.weather.capitalize()
 
-	# Energy — debug readout only (T-14). Release builds show the sky instead.
+	# The hour, drawn (T-29). Redrawn here rather than on a signal because the rest
+	# of the bar is: one pass, one place to look when the bar is wrong.
+	if sun_arc != null:
+		sun_arc.queue_redraw()
+
+	# Energy — debug readout only (T-14/Q-38's sub-ruling). Release builds get the
+	# sun-arc above and the sky behind it; neither carries a digit.
 	if energy_label != null:
 		energy_label.text = "Energy: %d/%d" % [GameState.energy, GameState.max_energy]
 
@@ -632,14 +680,92 @@ func _update_hud() -> void:
 
 # The same fraction the daylight tint is derived from (T-14 / Q-38), as a glyph.
 # Deliberately reads off `Daylight`'s own idea of the day rather than inventing a
-# second threshold, so the icon and the sky can never disagree.
+# second threshold, so the icon and the sky can never disagree. **T-29 made that
+# literally true**: the two numbers it used to hold itself now live in
+# `Daylight` beside the tick marks, and the arc's token wears the same glyph, so
+# the line, the arc and the sky are three drawings of one function.
 func _sky_icon() -> String:
-	var f: float = float(GameState.energy) / maxf(1.0, float(GameState.max_energy))
-	if f > 0.55:
-		return "☀️"
-	if f > 0.18:
-		return "🌇"
-	return "🌙"
+	return Daylight.glyph_for(GameState.energy, GameState.max_energy)
+
+
+# --- The sun-arc (T-29) -------------------------------------------------------
+#
+# Wordless by construction: an arc, three ticks, and one token. Nothing here is
+# text and nothing here is a digit (S-7). The whole drawing is a pure function of
+# `Daylight.progress`, so it cannot show an hour the tint disagrees with, and it
+# is redrawn on the same `_update_hud` pass everything else in the bar is.
+
+# Where the token sits for a given progress (0.0 sunrise → 1.0 dusk). The path is
+# the upper half of the ellipse walked left to right, so sunrise is due west and
+# dusk due east with midday overhead — which is the shape a day has.
+func _arc_point(p: float) -> Vector2:
+	var a: float = PI + clampf(p, 0.0, 1.0) * PI
+	return ARC_CENTRE + Vector2(cos(a) * ARC_RX, sin(a) * ARC_RY)
+
+
+# The token's place on the arc, in the arc's own pixels. Public because a drawing
+# can only be asserted on through the numbers it is drawn from, and the
+# integration suite does exactly that (Scenario H).
+func sun_token_pos() -> Vector2:
+	return _arc_point(Daylight.progress(GameState.energy, GameState.max_energy))
+
+
+# Past dusk the token is a moon rather than a sun — the same threshold the sky
+# glyph changes on, which is also the arc's third tick.
+func sun_token_is_moon() -> bool:
+	return Daylight.is_night(GameState.energy, GameState.max_energy)
+
+
+# The path between two progress points, sampled. `draw_arc` would do this in one
+# call but only for a circle, and the bar is not tall enough for one.
+func _arc_path(from_p: float, to_p: float) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	var steps: int = maxi(2, int(round(ARC_STEPS * (to_p - from_p))))
+	for i in steps + 1:
+		pts.append(_arc_point(from_p + (to_p - from_p) * float(i) / float(steps)))
+	return pts
+
+
+func _draw_sun_arc() -> void:
+	var p: float = Daylight.progress(GameState.energy, GameState.max_energy)
+
+	# The horizon, so the arc reads as a sky rather than as a gauge.
+	sun_arc.draw_line(Vector2(2, ARC_CENTRE.y), Vector2(ARC_W - 2, ARC_CENTRE.y),
+		Color(1, 1, 1, 0.16), 1.0)
+	# The day's whole path, dim...
+	sun_arc.draw_polyline(_arc_path(0.0, 1.0), Color(1, 1, 1, 0.20), 1.0, true)
+	# ...and the part of it already walked, lit. This is the only "how much is
+	# left" cue, and it is a length rather than a number.
+	if p > 0.01:
+		sun_arc.draw_polyline(_arc_path(0.0, p), Color(1.0, 0.93, 0.74, 0.55), 2.0, true)
+
+	# The three hours the sky itself turns (Daylight.TICKS), as notches across the
+	# path. They are what turns "somewhere along here" into a precise read.
+	for tick in Daylight.TICKS:
+		var tp: float = 1.0 - float(tick["f"])
+		var at_tick := _arc_point(tp)
+		var out := (at_tick - ARC_CENTRE).normalized()
+		sun_arc.draw_line(at_tick - out * ARC_TICK, at_tick + out * ARC_TICK,
+			Color(1, 1, 1, 0.38), 1.0)
+
+	var at := _arc_point(p)
+	if sun_token_is_moon():
+		# A crescent, cut by a disc in the bar's own colour, so the bite reads as
+		# night sky rather than as a hole punched in the HUD. The cut is sized to
+		# sit *inside* the disc (offset + radius = the moon's own radius): a bite
+		# that overhung the edge would paint bar-colour onto the bar and show up
+		# as a dark ring around the moon.
+		sun_arc.draw_circle(at, ARC_TOKEN_R, Color(0.87, 0.90, 1.0))
+		sun_arc.draw_circle(at + Vector2(1.3, -0.95), ARC_TOKEN_R * 0.6, MOON_CUT)
+	else:
+		# The sun reddens as it falls, which is the same story the tint tells.
+		var warm: Color = Color(1.0, 0.94, 0.62).lerp(Color(1.0, 0.66, 0.30), p)
+		for i in 8:
+			var a2: float = i * PI / 4.0
+			var d2 := Vector2(cos(a2), sin(a2))
+			sun_arc.draw_line(at + d2 * (ARC_TOKEN_R + 1.5), at + d2 * (ARC_TOKEN_R + 3.5),
+				Color(warm.r, warm.g, warm.b, 0.55), 1.0)
+		sun_arc.draw_circle(at, ARC_TOKEN_R, warm)
 
 
 # crops.png row 2: one shop icon per crop, indexed by its sprite_row.

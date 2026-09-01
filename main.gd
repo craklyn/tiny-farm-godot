@@ -1100,7 +1100,7 @@ func _draw_cot_presentation(overlay: CanvasItem) -> void:
 	# when it is the one selected. Under A and C, Q-11's floor is exactly what it
 	# has always been: "night must stay SOFT ... the cot pulses."
 	var b := CotPresentation.pulse_alpha(GameState.energy, GameState.max_energy, t)
-	if b <= 0.0 and GameState.energy <= 2:
+	if b <= 0.0 and CotPresentation.at_floor(GameState.energy):
 		b = 0.25 + 0.2 * sin(Time.get_ticks_msec() / 300.0)
 	if b > 0.0:
 		overlay.draw_rect(cot_rect, _lit(Color(1.0, 0.95, 0.6, b * 0.35)), true)
