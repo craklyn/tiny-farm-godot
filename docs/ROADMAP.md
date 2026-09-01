@@ -165,11 +165,22 @@ will not add the check"* — everything else adopted as analyzed:
       that session also feeds replay Phase B's human-session prerequisite.
 
 **T-28 — The stations present themselves (sell/buy, water refill)** · raised by the
-designer 2026-08-31 as a prerequisite of the gate session · **awaiting his
-specifics** — the directive is "improve the sell/buy and water refill" places; what he
-observed in the session that wants fixing (first-use discovery? the satisfied-tap
-answers? something else?) is his to name before treatments are drafted, so the fix
-aims at the observed problem the way T-27's did.
+designer 2026-08-31 as a prerequisite of the gate session · **aimed 2026-09-01, his
+observations:** (1) **hard to discover first time** — the bin/shop/well don't announce
+what they're for before first use, the cot's disease; (2) **"already done" reads
+poorly** — the satisfied-tap answers (full can, empty basket, already watered: 18 in
+her session) didn't communicate. Treatments to be drafted behind the T-27 A/B toggle
+pattern; walking friction explicitly NOT one of his observations.
+
+**T-30 — Acorns are pickable** · Q-48's ruling, 2026-09-01 · small
+*A tap on an acorn collects it into inventory (the egg's `collect` precedent),
+removing it from the crow stock — the player's own hands can accelerate the turn to
+crops and the Q-12 proof. Proof and acorn design otherwise untouched.*
+
+**T-31 — A bed button on the HUD** · Q-49's ruling, 2026-09-01 · small
+*A wordless icon that dispatches an ordinary cot tap (walk, tuck-in, sleep — same
+path as a thumb on the cot; no new verb, no new sim surface). Built even though
+T-27's fixes shipped: a tired player should not have to find the bed.*
 
 **T-29 — The day wears a clock** · Q-38's rider, filed 2026-08-31 · **scheme drafted,
 awaiting veto**

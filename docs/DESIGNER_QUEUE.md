@@ -488,7 +488,13 @@ first, since a different answer there changes what the other four are optimising
 are the things that need the designer's taste rather than a patch. Each carries what the
 trace actually says, because several of these looked like bugs and were not.*
 
-- **Q-48 (Ruling)** **The acorn decoy makes the phase-1 proof nearly unreachable.** Q-12's
+- **Q-48** ~~The acorn decoy makes the phase-1 proof nearly unreachable~~ — ✅ **ruled
+  2026-09-01, against the recommendation:** the proof stays exactly as it is and so do
+  the acorns — *"acorns run out by design"*; the ramp is the fix. What changes instead:
+  **the player may harvest acorns** (pick one up into inventory, the egg's `collect`
+  precedent), which removes it from the crow stock — so a player who wants the proof
+  sooner can accelerate the turn to crops with her own hands. Filed as **T-30**.
+  Original entry: **The acorn decoy makes the phase-1 proof nearly unreachable.** Q-12's
   proof needs 20 crops shipped, the opened land cleared, **and three crows scared**. The
   session ended on shipped 21/20 and cleared land, blocked solely on **crows scared 1/3**.
   The trace says why, and it is not a bug: five crows arrived, **four ate an acorn and left
@@ -505,7 +511,11 @@ trace actually says, because several of these looked like bugs and were not.*
   which is arguably the designed pacing (`design/13`: the stock is a countdown to "pests
   are real now"), and might be exactly right. **(c) is free and needs no code**, so the
   real question is only whether completing phase 1 *should* wait on the acorns running out.
-- **Q-49 (Ruling)** **A "go to bed" affordance.** Requested from play: a button that walks
+- **Q-49** ~~A "go to bed" affordance?~~ — ✅ **ruled 2026-09-01: build it anyway.**
+  T-27's cot fixes (halo, bed-sized sprite, tuck-in beat) shipped first, and the
+  designer still wants the button — a tired player should not have to find the bed.
+  Wordless icon on the HUD, dispatches an ordinary cot tap. Filed as **T-31**.
+  Original entry: **A "go to bed" affordance.** Requested from play: a button that walks
   the farmer to the cot and sleeps, from wherever she is. Tapping the cot already does
   exactly this — so what is being asked for is a HUD control, not a new behaviour, and the
   gap is discoverability rather than capability. **Recommendation: adopt, as a wordless bed

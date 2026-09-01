@@ -1,5 +1,10 @@
 # Change request — re-scope what remains of M1.5 against Q-47
 
+**CLOSED 2026-09-01: overtaken by events (designer's ruling).** Everything this
+document proposed re-scoping was built to the plan's original order before a decision
+was needed, so there is nothing left to decide. It stays as the record of the
+reasoning.
+
 *Filed 2026-08-29 by the execution session, at the designer's request, to be reviewed
 alongside the WI-5..WI-8 work rather than instead of it. **The work is being built to the
 plan's original order regardless of this document.** This is a proposal about what should
