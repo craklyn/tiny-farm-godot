@@ -99,6 +99,22 @@ before the first public build ships.*
   tile it always was, and the renderer already anchored tall objects to the footprint
   with the extra height rising north (`world/farm.gd`, `SimWorld.TALL_OBJECTS`).
   The unchosen variant is not in the repo.
+- **T-27 box 5, the turned-down cot, 2026-08-31** — **not generated, $0.00.**
+  `objects.png` widened from 112x32 to 128x32; the new **cell 7 (row 0) is the cot with
+  its blanket turned down**, treatment C of the three cot looks awaiting the designer's
+  pick. It is cell 0 — the Retro Diffusion cot above — edited in place from that cell's
+  own nine colours by `tools/gen_cot_turndown.py` (idempotent, no network): the blanket's
+  rust trim moves from row 11 to rows 16–17 and the five rows it vacates become the cream
+  sheet that was already showing above it. Nothing outside x=2..12 is touched, so the
+  frame, posts, pillows, teal hem and feet are the original pixels.
+  Derived rather than generated for the same reason the sprinkler's idle frame is its
+  spraying frame minus the droplets and the worm's body is one repeated cross-section of
+  its own ramp: **two cells swapped at a threshold must not drift.** A second generated
+  bed would have had its posts and pillows a pixel out and the swap would pop. The script
+  refuses to write if the edit would introduce a colour the sheet did not already have or
+  any non-binary alpha, so the palette lock is enforced rather than asserted. Cells 0–6
+  are byte-identical. Rights are the generated cot's, unchanged — this is a local edit of
+  an asset already covered above.
 - **Sprout Lands asset pack** by Cup Nooble — *removed 2026-08-26* (Q-7c ruling:
   drop restrictively-licensed assets; its free license forbids redistribution and
   this repo is public). Q-7b license findings recorded in the git history of this

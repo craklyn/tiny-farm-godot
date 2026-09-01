@@ -118,6 +118,13 @@ trace mislabelled its own categories and where the crow schedule desynced replay
       no-required-reading promise in anything public. It is deliberately *not* gated on
       `OS.is_debug_build()`, because a playtest build handed to a tester is often a debug
       export and the readout has to survive that; the cost of that choice is this line.
+- [ ] **Settle the cot look before a public release.** T-27 box 5 ships *three*
+      treatments at once so the designer can A/B them on the tablet (`Cot Look` on the
+      title screen, `Cot look:` in the pause menu — both `OS.is_debug_build()`-gated, so
+      neither switch appears in a release build and nothing has to be turned off). What
+      does need doing is the ruling: a release quietly ships treatment A, the default. If
+      that is not the intent, pick first and delete the other two
+      (`systems/cot_presentation.gd`).
 - [ ] Page copy and settings: `ITCH_PAGE.md`.
 
 ---

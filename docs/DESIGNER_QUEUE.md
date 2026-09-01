@@ -591,6 +591,21 @@ trace actually says, because several of these looked like bugs and were not.*
   regenerated demo replay and a re-baseline; (c) let the top bar float or shrink. This
   matters most for box 5 below it, since whatever "looks like sleeping" turns out to be
   will want the whole bed visible. Related: the T-27 entry in `ROADMAP.md`.
+  **Updated 2026-08-31, and now answerable with the same thumb as T-27 box 5.** A
+  fourth way out was found while drafting the cot treatments and is **in the build**:
+  **(d) reserve the bar's height in the camera.** `Camera2D.limit_top` goes negative by
+  exactly the bar's height in world pixels (−10 at the 3× zoom), so at the top clamp the
+  world sits *below* the bar and the strip the bar covers is empty space instead of a row
+  of farm. One line in `main.gd`, presentation only — no sim change (so (b)'s regenerated
+  demo replay is not owed), no HUD redesign, and it frees every object in row 0 at once,
+  not just the cot. It does move the whole frame down 30px at the top clamp, which is why
+  the visual baseline was re-cut.
+  **How to rule it without reading this again:** treatments **A and B carry (d)**;
+  treatment **C keeps (a)**, honestly rather than lazily — C's cue (the sheet folded back,
+  the trim moved down) lives in rows 11–17 of the sprite, well below the ten rows the bar
+  eats, so C is the treatment that does not need the bed whole. Picking a cot look on the
+  tablet therefore also rules Q-68: A or B ⇒ (d), C ⇒ (a). Say so when you pick and this
+  item closes with it.
 
 ## M2.5 — the actor system (filed 2026-08-31, from the entity brainstorm)
 

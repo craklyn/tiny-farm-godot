@@ -155,8 +155,9 @@ will not add the check"* — everything else adopted as analyzed:
       footprint — no worldgen change), generated on the existing pipeline; with the
       halo this takes the *effective* touch target to genre minimums.
 - [ ] **the cot must look like sleeping before first use** — final form is the
-      designer's; 2–3 treatments are being drafted behind a toggle for tablet A/B
-      (with Q-68's headboard fix folded into each).
+      designer's. **Three treatments are drafted and in the build** (2026-08-31,
+      to his *"draft me choices"*), switched on the tablet; the box stays open
+      until he picks one. Details under **Box 5's drafts** below.
 - [ ] re-evidence: the next fresh adult session scores the cot bar unprompted.
       **Prerequisite widened by the designer 2026-08-31:** the session waits on the
       cot look AND on T-28's station passes (sell/buy and water refill), so one fresh
@@ -227,6 +228,64 @@ came out as, and where it differs from the description it was written from:
   finger sleeps; the same tap with energy tills). Scenario L is untouched and green.
 - The visual baseline changed, cot only; re-baselined in its own commit (precedent
   af93ede).
+
+**Box 5's drafts — 2026-08-31, awaiting the pick.** The designer's answer to this box
+was *"draft me choices"*, so three treatments ship **together in one build** and are
+A/B'd on the tablet. That shape is Q-31's Sound Test precedent applied to a picture
+instead of a sound: candidates ride along in the debug build, get judged on device, and
+the losers are deleted rather than argued about. **Nothing here is decided** — the box
+above stays unticked until he says which one, and the two he does not pick come out.
+
+- **A · dusk glow (the default).** Past the dusk threshold the cot gives off a soft warm
+  lamp-glow — four rings drawn outside-in so the alpha pools toward the wick — growing
+  as the light fails, with a slow breath a lamp would have rather than a heartbeat. The
+  "the day is ending, here is where it ends" read. Daylight-compensated (T-14 caution 3)
+  so the lamp stays warm while the sky goes blue, which is the one thing a lamp must
+  never fail to do.
+- **B · the pulse, earlier and stronger.** The Q-11 pulse the cot already has at zero
+  energy, started at a low-energy threshold instead and scaled with the drain: both the
+  swing and the rate grow, so the cot breathes louder *and* quicker as bedtime nears. It
+  is a strict superset of the pulse it replaces — at every energy where the old one drew
+  at all, this one draws at least as loudly — because Q-11's soft floor is settled and a
+  draft may add to it, never take it away.
+- **C · the bed turns itself down.** A second 16x32 cell swapped in past the same dusk
+  threshold: the blanket pulled back off the sheet, its trim moved down. The only one of
+  the three that costs the overlay nothing per frame, and the only one that is a picture
+  rather than an effect. **No art spend:** the cell is derived from the cot's own cell by
+  `tools/gen_cot_turndown.py`, in the cot's own nine colours, on the house pattern for a
+  second state of one object (the sprinkler's two frames, the worm's body) — two cells
+  swapped at a threshold must not drift, and a generated second bed would have had its
+  posts a pixel out and made the swap pop. Regenerating it prettily is a $0.06 call if he
+  picks C and wants one.
+- **Where the switch is.** Two doors, both debug-only, exactly like the Sound Test's:
+  **title screen → "Cot Look"** (beside "Sound Test", the panel that lists all three with
+  the current one marked), and **pause → "Cot look: …"**, which advances and closes so
+  the farm is what he is looking at when it changes, and names the new one in a toast.
+  The pause door is the one to use — these only show themselves at dusk, and the title
+  screen has no dusk. The pick lives on a static in `CotPresentation`, not in the scene
+  or in `GameState`, so it survives the trip to the title screen and back and is not
+  something `GameState.reset()` can wipe.
+- **Q-68 is folded in, and the pick rules it.** A and B carry a fourth fix found while
+  drafting these — `Camera2D.limit_top` goes negative by the HUD bar's height, so at the
+  top clamp the world sits below the bar rather than under it, and the whole bed clears.
+  C keeps Q-68's option (a) on purpose: its cue lives in rows 11–17 of the sprite, below
+  the ten rows the bar eats, so it is the one treatment that does not need the bed whole.
+  A or B ⇒ Q-68 (d); C ⇒ Q-68 (a).
+- **D-8 held, treatment by treatment.** All of this is presentation: `CotPresentation` is
+  a pure static over the same number Q-38 renders as light, with no Node, no autoload and
+  no sim access, and the sprite swap is one key lookup in `farm.gd` (which still has no
+  `GameState` — finding F-4 — so `main.gd` pushes the state in). Scenario X re-proves for
+  **each** treatment what Scenario W proves for the default: the sleep resolves *at the
+  tap*, with the sim already in the new day before a frame of presentation runs.
+- Covered by `tests/test_runner.gd:test_cot_presentation` (the arithmetic, headless:
+  thresholds, the cycle, the B-supersets-Q-11 property sampled across the swing, and the
+  Q-68 limit per treatment) and `tools/test_runner.gd` Scenario X (both doors, the live
+  camera and cot cell, a draw-completion witness per treatment, and the D-8 tap). 1438
+  unit / 262 integration, both green.
+- The visual baseline changed again — the whole frame drops 30px at the top clamp,
+  because the default treatment carries Q-68 (d). Re-baselined in its own commit, same
+  precedent as above. It is the *fix* that moved it: the bed's headboard is now below the
+  bar instead of behind it.
 
 ### Ordering
 Twenty-six stories as of 2026-08-30: twenty-one shipped, `T-6`/`T-7` dropped (Q-36),

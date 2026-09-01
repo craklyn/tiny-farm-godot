@@ -81,6 +81,7 @@ func _init() -> void:
 	test_worm()
 	test_bots()
 	test_cot_halo()
+	test_cot_presentation()
 
 	print("")
 	print(String("=").repeat(60))
@@ -7553,3 +7554,100 @@ func test_cot_halo() -> void:
 	GameState.energy = 20
 	GameState.seeds = { "wheat": 5 }
 	t.free()
+
+
+func test_cot_presentation() -> void:
+	# T-27 (box 5). Three treatments in one build, switched on device — the
+	# designer's pick, not this file's. What is asserted here is only what a
+	# treatment is *allowed* to be: pure arithmetic over the number Q-38 already
+	# renders as light, with no way to reach the sim.
+	print("\n--- T-27: the cot's three looks (box 5) ---")
+
+	var was: int = CotPresentation.treatment
+	var maxe := 20
+
+	# The default is A, and the switch is a cycle with no dead end.
+	CotPresentation.set_treatment(CotPresentation.GLOW)
+	_assert(CotPresentation.treatment == CotPresentation.GLOW,
+		"the default treatment is A, the dusk glow")
+	_assert(CotPresentation.cycle() == CotPresentation.PULSE, "cycling A gives B")
+	_assert(CotPresentation.cycle() == CotPresentation.TURNDOWN, "cycling B gives C")
+	_assert(CotPresentation.cycle() == CotPresentation.GLOW, "cycling C comes back to A")
+	_assert(CotPresentation.NAMES.size() == CotPresentation.COUNT
+			and CotPresentation.BLURBS.size() == CotPresentation.COUNT,
+		"every treatment has a name and a blurb, so neither switch can list a blank")
+
+	# --- A: the lamp ---------------------------------------------------------
+	CotPresentation.set_treatment(CotPresentation.GLOW)
+	_assert(CotPresentation.dusk_ramp(maxe, maxe) == 0.0,
+		"a full day is not dusk — nothing lights up at dawn")
+	_assert(CotPresentation.glow_alpha(maxe, maxe, 0.0) == 0.0,
+		"so treatment A draws nothing at all at the top of the day")
+	_assert(CotPresentation.dusk_ramp(0, maxe) == 1.0, "an empty day is fully lit")
+	var mid := CotPresentation.dusk_ramp(3, maxe)  # f = 0.15, inside the ramp
+	_assert(mid > 0.0 and mid < 1.0, "and it arrives as a ramp, not a switch (%.2f)" % mid)
+	_assert(CotPresentation.glow_alpha(0, maxe, 0.0) > 0.0,
+		"the lamp is on at an empty day")
+	_assert(CotPresentation.dusk_ramp(0, 0) == 0.0,
+		"a world with no max energy asks for no light rather than dividing by zero")
+
+	# Only one treatment draws at a time — that is what makes an A/B an A/B.
+	_assert(CotPresentation.pulse_alpha(0, maxe, 0.0) == 0.0,
+		"A does not also run B's pulse")
+	_assert(not CotPresentation.turned_down(0, maxe), "and does not turn the bed down")
+
+	# --- B: the pulse, earlier and stronger ----------------------------------
+	CotPresentation.set_treatment(CotPresentation.PULSE)
+	_assert(CotPresentation.pulse_strength(maxe, maxe) == 0.0,
+		"B is silent at the top of the day")
+	_assert(CotPresentation.pulse_strength(0, maxe) == 1.0,
+		"and at full strength on an empty one")
+	# The box says "starts at a low-energy threshold and scales as energy drains".
+	var early := CotPresentation.pulse_strength(6, maxe)   # f = 0.30
+	var late := CotPresentation.pulse_strength(2, maxe)    # f = 0.10 — Q-11's old trigger
+	_assert(early > 0.0, "it has started well before the old energy<=2 trigger")
+	_assert(late > early, "and it is louder later — the cot breathes harder as bedtime nears")
+
+	# It must be a superset of the Q-11 pulse it stands in for, at every energy
+	# where that one drew at all. Q-11's floor swings in [0.05, 0.45]; sampling
+	# the swing is the only honest way to compare two sines.
+	for e in [0, 1, 2]:
+		var hi := -1.0
+		var lo := 2.0
+		for i in 200:
+			var v: float = CotPresentation.pulse_alpha(e, maxe, i * 0.037)
+			hi = maxf(hi, v)
+			lo = minf(lo, v)
+		_assert(hi >= 0.45,
+			"at energy %d B swings at least as bright as Q-11's floor (%.2f)" % [e, hi])
+		_assert(hi - lo >= 0.4,
+			"and at energy %d it still comes all the way down — it breathes (%.2f)" % [e, hi - lo])
+	_assert(CotPresentation.glow_alpha(0, maxe, 0.0) == 0.0, "B does not also light a lamp")
+	_assert(not CotPresentation.turned_down(0, maxe), "and does not turn the bed down")
+
+	# --- C: the bed turns itself down ----------------------------------------
+	CotPresentation.set_treatment(CotPresentation.TURNDOWN)
+	_assert(not CotPresentation.turned_down(maxe, maxe), "C leaves the bed made at dawn")
+	_assert(CotPresentation.turned_down(0, maxe), "and turns it down once the day is spent")
+	_assert(CotPresentation.turned_down(5, maxe), "from the same dusk threshold A uses")
+	_assert(CotPresentation.pulse_alpha(0, maxe, 0.0) == 0.0
+			and CotPresentation.glow_alpha(0, maxe, 0.0) == 0.0,
+		"and draws nothing into the overlay at all — the whole treatment is one sprite")
+
+	# --- Q-68, folded in -----------------------------------------------------
+	# A and B take fix (d): the camera reserves the HUD bar's height, so at the
+	# top clamp the world sits below the bar instead of under it. C keeps (a),
+	# because its cue lives below the bar anyway. Picking a treatment therefore
+	# also rules Q-68, which is the point.
+	CotPresentation.set_treatment(CotPresentation.GLOW)
+	_assert(CotPresentation.camera_top_limit(30.0, 3) == -10,
+		"A drops the camera's top limit by the bar's height in world pixels")
+	CotPresentation.set_treatment(CotPresentation.PULSE)
+	_assert(CotPresentation.camera_top_limit(30.0, 3) == -10, "so does B")
+	CotPresentation.set_treatment(CotPresentation.TURNDOWN)
+	_assert(CotPresentation.camera_top_limit(30.0, 3) == 0,
+		"C does not move the camera — its cue is below the bar already")
+	_assert(CotPresentation.camera_top_limit(30.0, 0) == 0,
+		"and a zero scale asks for no shift rather than dividing by zero")
+
+	CotPresentation.set_treatment(was)

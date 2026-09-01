@@ -47,6 +47,14 @@ var tile_regions: Dictionary = {}     # state_name -> Rect2
 var crop_regions: Dictionary = {}     # crop_type -> { stage -> Rect2 }
 var object_regions: Dictionary = {}   # object_name -> Rect2
 
+# T-27 box 5, treatment C: which of the cot's two cells to draw — the made bed or
+# the turned-down one. Pushed in rather than worked out here, because this file
+# has no GameState and must not gain one (finding F-4); `main.gd` sets it from the
+# same daylight update the sky's tint comes from. Default false, so every other
+# renderer of a farm (the attract loop, the replay viewer) draws the made bed
+# without knowing this exists.
+var cot_turned_down: bool = false
+
 func _ready() -> void:
 	_load_textures()
 	actors_node = Node2D.new()
@@ -213,6 +221,10 @@ func _load_textures() -> void:
 	# Object regions map (objects.png: cot, well, seed_box 16x32; bin 16x16)
 	# Format: object_name -> [texture, rect]
 	object_regions["cot"] = [furniture_texture, Rect2(0 * 16, 0, 16, 32)]
+	# T-27 box 5, treatment C. Not an object the sim knows about — no verb, no
+	# footprint, nothing in `OBJECT_POSITIONS`: it is cell 0 with its blanket
+	# pulled back, and `cot_turned_down` chooses between the two below.
+	object_regions["cot_turned_down"] = [furniture_texture, Rect2(7 * 16, 0, 16, 32)]
 	object_regions["well"] = [furniture_texture, Rect2(1 * 16, 0, 16, 32)]
 	object_regions["shipping_bin"] = [chest_texture, Rect2(3 * 16, 16, 16, 16)]
 	object_regions["seed_box"] = [furniture_texture, Rect2(2 * 16, 0, 16, 32)]
@@ -651,7 +663,13 @@ func _draw() -> void:
 						draw_texture_rect_region(small_tex, egg_rect, small_reg)
 				})
 			elif obj != "":
-				var obj_data = object_regions.get(obj)
+				# T-27 box 5 (treatment C): the same object, in its other state.
+				# Only the picture changes — the tile still holds "cot", so taps,
+				# saves, replays and `TALL_OBJECTS` are all untouched.
+				var key: String = obj
+				if obj == "cot" and cot_turned_down:
+					key = "cot_turned_down"
+				var obj_data = object_regions.get(key)
 				if obj_data:
 					var tex: Texture2D = obj_data[0]
 					var region: Rect2 = obj_data[1]

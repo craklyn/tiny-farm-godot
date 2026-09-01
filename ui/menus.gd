@@ -157,6 +157,17 @@ func _rebuild_options() -> void:
 			gold_icon.visible = false
 			_add_option("Resume", true)
 			_add_option("Return to Title", true)
+			# T-27 box 5: the cot A/B, where the designer can actually reach it.
+			#
+			# The candidates also sit behind the title screen's "Cot Look" panel,
+			# which is Q-31's Sound Test precedent proper — but a look that only
+			# shows itself at dusk cannot be judged from the title screen without
+			# reloading the farm for every comparison. From here it is two taps and
+			# the farm is still where he left it: tap, the menu closes, the world is
+			# wearing the next treatment. Debug builds only, exactly like the Sound
+			# Test, so a public build never shows it (S-7: no words in the game).
+			if OS.is_debug_build():
+				_add_option("Cot look: %s" % CotPresentation.name_of(CotPresentation.treatment), true)
 			menu_panel.size = Vector2(300, _fit_panel_height())
 
 		"shop":
@@ -449,6 +460,13 @@ func _select_current_option() -> void:
 			elif selected_option == 1:
 				close_menu()
 				menu_action.emit("return_to_title")
+			elif selected_option == 2 and OS.is_debug_build():
+				# Advance and get out of the way — the whole value of this switch is
+				# seeing the farm immediately afterwards. `main.gd` picks the change
+				# up on "cot_look" and names the new treatment in a toast.
+				CotPresentation.cycle()
+				close_menu()
+				menu_action.emit("cot_look")
 
 		"shop":
 			if selected_option < shop_items.size():

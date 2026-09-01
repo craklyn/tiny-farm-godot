@@ -146,6 +146,24 @@ func _ready() -> void:
 	overlay.draw.connect(func(): _draw_overlay(overlay))
 	add_child(overlay)
 
+	# T-27 box 5, treatment A: a canvas of its own, and an **additive** one.
+	#
+	# The lamp was drawn into `OverlayRenderer` first and was invisible, for a
+	# reason worth keeping: the overlay is alpha-blended inside the canvas Q-38's
+	# `CanvasModulate` multiplies, so the brightest thing it can possibly draw is
+	# the ambient light itself — at dusk, exactly when a lamp is supposed to read,
+	# its ceiling is at its lowest. Compensating (T-14 caution 3) fixes the *hue*
+	# and cannot fix that ceiling, because compensation clamps at white.
+	# A light is not a colour on top of the world, it is light added to it, so this
+	# node blends additively and the ceiling goes away.
+	var glow = Node2D.new()
+	glow.name = "CotGlowRenderer"
+	var glow_mat := CanvasItemMaterial.new()
+	glow_mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	glow.material = glow_mat
+	glow.draw.connect(func(): _draw_cot_glow(glow))
+	add_child(glow)
+
 	var restored := false
 	if not save_data.is_empty():
 		restored = SaveGame.restore(save_data, farm.sim, GameState)
@@ -209,6 +227,10 @@ func _ready() -> void:
 	camera.position_smoothing_speed = 8.0
 	# Set camera limits to clamp within the map
 	camera.limit_left = 0
+	# Q-68, via T-27's treatments: `limit_top` is not always 0 any more. See
+	# `CotPresentation.camera_top_limit` — under the treatments that want the whole
+	# bed visible it goes negative by the HUD bar's height, so at the top clamp the
+	# world sits *below* the bar instead of under it.
 	camera.limit_top = 0
 	camera.limit_right = MAP_WIDTH * TILE_SIZE
 	camera.limit_bottom = MAP_HEIGHT * TILE_SIZE
@@ -263,6 +285,12 @@ func _ready() -> void:
 
 	GameState.weather_changed.connect(_on_weather_changed)
 	_on_weather_changed(GameState.weather)
+
+	# T-27 box 5: whichever cot treatment the session is carrying. Applied once
+	# here and again whenever the switch is thrown, so a farm that was already
+	# running picks it up without reloading (which is the point of switching from
+	# the pause menu at dusk rather than from the title screen).
+	_apply_cot_treatment()
 
 
 # Can she see the whole of what is about to happen? Uses the settled camera
@@ -393,6 +421,31 @@ func _update_daylight() -> void:
 	_tint = Daylight.tint_for(GameState.energy, GameState.max_energy)
 	if world_tint != null:
 		world_tint.color = _tint
+	_update_cot_look()
+
+
+# T-27 box 5, treatment C: the cot's two cells, chosen on the same signal the sky
+# is. Riding the daylight update rather than polling is deliberate — the treatment
+# reads the *same number* Q-38 renders as light, so the bed can never turn itself
+# down at a different hour than the one the sky is showing. The freeze in
+# `_update_daylight` covers this too: the bed she is lying in stays turned down
+# for the whole transition instead of remaking itself under her.
+func _update_cot_look() -> void:
+	if farm == null:
+		return
+	var down := CotPresentation.turned_down(GameState.energy, GameState.max_energy)
+	if down != farm.cot_turned_down:
+		farm.cot_turned_down = down
+		farm.queue_redraw()
+
+
+# Everything a treatment change touches outside the per-frame overlay: the camera
+# (Q-68's fix, which A and B carry and C does not) and the cot's cell. Cheap
+# enough to just re-run, and it is only ever called from `_ready` and the switch.
+func _apply_cot_treatment() -> void:
+	if camera != null:
+		camera.limit_top = CotPresentation.camera_top_limit(HUD_TOP_PX, CAMERA_SCALE)
+	_update_cot_look()
 
 
 # T-27 (box 1): the sky she fell asleep under, held until the screen is black.
@@ -531,6 +584,7 @@ func _process(delta: float) -> void:
 	else:
 		cursor_visible = false
 	if has_node("OverlayRenderer"): get_node("OverlayRenderer").queue_redraw()
+	if has_node("CotGlowRenderer"): get_node("CotGlowRenderer").queue_redraw()
 
 	# Determine interaction hints
 	var hint_text: String = ""
@@ -667,6 +721,14 @@ func _handle_action_result(action: String) -> void:
 		get_tree().change_scene_to_file("res://ui/title_screen.tscn")
 	elif action == "open_shop":
 		menus.open_menu("shop")
+	elif action == "cot_look":
+		# T-27 box 5: the switch was thrown from the pause menu (debug builds
+		# only). The menu has already advanced `CotPresentation.treatment`; this
+		# is the live farm catching up without a reload — camera limit, cot cell,
+		# and a toast so a tablet says out loud which one is now showing.
+		_apply_cot_treatment()
+		if hud != null and hud.has_method("show_toast"):
+			hud.show_toast("Cot look: %s" % CotPresentation.name_of(CotPresentation.treatment))
 
 
 # Reported from play 2026-08-28: "Return to title" did nothing.
@@ -830,9 +892,63 @@ func _draw_overlay(overlay: CanvasItem) -> void:
 				overlay.draw_colored_polygon(back, _lit(Color(0.28, 0.16, 0.05, 0.6)))
 				overlay.draw_colored_polygon(pts, _lit(Color(1.0, 0.72, 0.15, 0.95)))
 
-	# Q-11: a softly pulsing cot nudges an exhausted farmer toward sleep
-	if GameState.energy <= 2 and _cot_tile.x >= 0:
-		var pulse := 0.25 + 0.2 * sin(Time.get_ticks_msec() / 300.0)
-		var cot_rect := Rect2(_cot_tile.x * TILE_SIZE, (_cot_tile.y - 1) * TILE_SIZE, TILE_SIZE, TILE_SIZE * 2)
-		overlay.draw_rect(cot_rect, _lit(Color(1.0, 0.95, 0.6, pulse * 0.35)), true)
-		overlay.draw_rect(cot_rect, _lit(Color(1.0, 0.95, 0.6, pulse)), false, 1.5)
+	_draw_cot_presentation(overlay)
+
+
+# How many times the cot block has been drawn to completion. The integration
+# suite's witness that each treatment renders (`Scenario X`): a draw callback that
+# throws half way through is only a red line in the log and would not fail a
+# suite, so the counter is checked instead of the log. One int, no branch.
+var cot_draws: int = 0
+
+
+# T-27 box 5 and Q-11, in that order. Everything here is presentation: it reads
+# `GameState.energy` — the same number Q-38 renders as light — and draws. Nothing
+# it does can reach `apply_action`, so a sleep dispatched under any treatment
+# resolves at the tap exactly as Scenario W proves for the default (D-8).
+func _draw_cot_presentation(overlay: CanvasItem) -> void:
+	if _cot_tile.x < 0:
+		return
+	var t := Time.get_ticks_msec() / 1000.0
+	var cot_rect := Rect2(_cot_tile.x * TILE_SIZE, (_cot_tile.y - 1) * TILE_SIZE,
+		TILE_SIZE, TILE_SIZE * 2)
+
+	# Treatment B replaces the Q-11 pulse with a superset of itself — earlier,
+	# deeper, quicker — so the two are never drawn together and nothing is lost
+	# when it is the one selected. Under A and C, Q-11's floor is exactly what it
+	# has always been: "night must stay SOFT ... the cot pulses."
+	var b := CotPresentation.pulse_alpha(GameState.energy, GameState.max_energy, t)
+	if b <= 0.0 and GameState.energy <= 2:
+		b = 0.25 + 0.2 * sin(Time.get_ticks_msec() / 300.0)
+	if b > 0.0:
+		overlay.draw_rect(cot_rect, _lit(Color(1.0, 0.95, 0.6, b * 0.35)), true)
+		overlay.draw_rect(cot_rect, _lit(Color(1.0, 0.95, 0.6, b)), false, 1.5)
+
+	# Treatment A is not drawn here — it is light, so it has its own additive
+	# canvas (`_draw_cot_glow`). Treatment C is not drawn here either: it is the
+	# sprite, swapped in `world/farm.gd` off `cot_turned_down`. That is worth
+	# having in the A/B — one of the three candidates costs nothing per frame.
+	cot_draws += 1
+
+
+# Treatment A. Concentric rings, largest first, so the added light accumulates
+# toward the wick: a pool with a falloff rather than a disc with an edge. Runs on
+# `CotGlowRenderer`, which blends additively — see where it is built for why that
+# is not a detail.
+func _draw_cot_glow(glow: CanvasItem) -> void:
+	if _cot_tile.x < 0:
+		return
+	var a := CotPresentation.glow_alpha(
+		GameState.energy, GameState.max_energy, Time.get_ticks_msec() / 1000.0)
+	if a <= 0.0:
+		return
+	var wick := Vector2(_cot_tile.x * TILE_SIZE + TILE_SIZE / 2.0,
+		(_cot_tile.y - 1) * TILE_SIZE + TILE_SIZE)
+	for i in range(CotPresentation.GLOW_RINGS - 1, -1, -1):
+		var r: float = CotPresentation.GLOW_INNER_R + i * CotPresentation.GLOW_RING_STEP
+		# Deliberately *not* daylight-compensated. Compensation exists to stop a
+		# painted hint going muddy under the tint; this is emitted light, and light
+		# taking the hour's colour is correct — the lamp warms as the sky cools
+		# rather than fighting it.
+		glow.draw_circle(wick, r, Color(1.0, 0.86, 0.55, CotPresentation.GLOW_RING_A * a))
+	cot_draws += 1

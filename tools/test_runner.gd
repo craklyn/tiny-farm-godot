@@ -76,6 +76,7 @@ func _run_scenarios() -> void:
 	await _scenario_u_under_and_over()
 	await _scenario_v_the_bot_is_drawn()
 	await _scenario_w_the_cot_presents_itself()
+	await _scenario_x_three_looks_for_the_cot()
 
 func _wait_until(pred: Callable, max_frames: int) -> bool:
 	for i in max_frames:
@@ -1751,6 +1752,162 @@ func _scenario_w_the_cot_presents_itself() -> void:
 	_assert(not _last_tap_entry(mark3).has("halo"),
 		"nothing was rescued — the tapped tile wins whenever it produces a real change")
 
+	GameState.seeds["wheat"] = 5
+	for p in [GameState.save_path, GameState.replay_path, GameState.trace_path]:
+		if FileAccess.file_exists(p):
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(p))
+	GameState.save_path = real_paths[0]
+	GameState.replay_path = real_paths[1]
+	GameState.trace_path = real_paths[2]
+
+
+func _find_button(root: Node, node_name: String) -> Button:
+	if root is Button and root.name == node_name:
+		return root
+	for child in root.get_children():
+		var hit := _find_button(child, node_name)
+		if hit != null:
+			return hit
+	return null
+
+
+func _scenario_x_three_looks_for_the_cot() -> void:
+	# T-27's last box, drafted rather than decided: three treatments for "the cot
+	# must look like sleeping before first use", all three in this build, switched
+	# on device (Q-31's Sound Test precedent). The designer picks; this scenario
+	# only holds the drafts to the rules they have to obey either way.
+	#
+	# The load-bearing one is D-8. Scenario W proves that a cot tap resolves *at
+	# the tap* under the default; a presentation treatment is exactly the kind of
+	# change that could quietly turn that into a wind-up, so the same property is
+	# re-proved once per treatment against the real main scene.
+	print("\n--- Scenario X: three looks for the cot, and none of them gates the tap (T-27) ---")
+
+	var real_paths := [GameState.save_path, GameState.replay_path, GameState.trace_path]
+	GameState.save_path = "user://t27x_autosave.json"
+	GameState.replay_path = "user://t27x_replay.json"
+	GameState.trace_path = "user://t27x_trace.jsonl"
+	var was_treatment: int = CotPresentation.treatment
+
+	var cot: Vector2i = main_scene._cot_tile
+	_assert(cot.x >= 0, "the farm has a cot")
+	if cot.x < 0:
+		return
+	var below := cot + Vector2i(0, 1)
+	farm.set_tile_state(below.x, below.y, "cleared")
+	GameState.seeds["wheat"] = 0
+
+	# The switch itself. Both doors write the same static, and it is the static —
+	# not the scene — that carries the pick across a return to the title screen.
+	CotPresentation.set_treatment(CotPresentation.GLOW)
+	var seen: Array[int] = []
+	for i in CotPresentation.COUNT:
+		seen.append(CotPresentation.treatment)
+		CotPresentation.cycle()
+	_assert(seen == [CotPresentation.GLOW, CotPresentation.PULSE, CotPresentation.TURNDOWN],
+		"the toggle cycles A → B → C")
+	_assert(CotPresentation.treatment == CotPresentation.GLOW,
+		"and wraps back to A, so a thumb can never park it on nothing")
+
+	# Door 1, the one that matters at dusk: pause → the cot option, which advances
+	# and closes so the farm is visible again immediately.
+	main_scene.menus.open_menu("pause")
+	await get_tree().process_frame
+	var labels: Array = []
+	_collect_labels(main_scene.menus.options_container, labels)
+	var has_switch := false
+	for l in labels:
+		if String(l.text).begins_with("Cot look:"):
+			has_switch = true
+	_assert(has_switch, "the pause menu carries the cot switch (debug builds), naming the current look")
+	main_scene.menus.selected_option = 2
+	main_scene.menus._select_current_option()
+	await get_tree().process_frame
+	_assert(CotPresentation.treatment == CotPresentation.PULSE,
+		"tapping it advances the treatment")
+	_assert(not main_scene.menus.is_open(),
+		"and closes the menu, so the farm is what he is looking at when it changes")
+	_assert(main_scene.camera.limit_top
+			== CotPresentation.camera_top_limit(main_scene.HUD_TOP_PX, main_scene.CAMERA_SCALE),
+		"the live camera picked up the new treatment's Q-68 answer without a reload")
+
+	# Door 2, Q-31's precedent proper: the title screen's panel, beside the Sound
+	# Test's own button. Built here for real, because a switch that only exists in
+	# a comment is not a switch.
+	var title = load("res://ui/title_screen.tscn").instantiate()
+	add_child(title)
+	await get_tree().process_frame
+	var opener := _find_button(title, "CotLookButton")
+	_assert(opener != null, "the title screen offers 'Cot Look' beside 'Sound Test'")
+	if opener != null:
+		opener.pressed.emit()
+		await get_tree().process_frame
+		var picks := 0
+		for i in CotPresentation.COUNT:
+			if _find_button(title, "CotLook%d" % i) != null:
+				picks += 1
+		_assert(picks == CotPresentation.COUNT,
+			"and the panel offers every treatment the game can draw (%d)" % picks)
+		var c_button := _find_button(title, "CotLook%d" % CotPresentation.TURNDOWN)
+		if c_button != null:
+			c_button.pressed.emit()
+			await get_tree().process_frame
+			_assert(CotPresentation.treatment == CotPresentation.TURNDOWN,
+				"picking one there selects it")
+	title.queue_free()
+	await get_tree().process_frame
+
+	# Each treatment, in the real scene: it draws, it looks like itself, and the
+	# tap still resolves at the tap.
+	for t in [CotPresentation.GLOW, CotPresentation.PULSE, CotPresentation.TURNDOWN]:
+		var label: String = CotPresentation.name_of(t)
+		CotPresentation.set_treatment(t)
+		main_scene._apply_cot_treatment()
+		# Dusk, which is the hour every one of these is about.
+		GameState.set_energy(2)
+		await get_tree().process_frame
+
+		_assert(main_scene.camera.limit_top
+				== CotPresentation.camera_top_limit(main_scene.HUD_TOP_PX, main_scene.CAMERA_SCALE),
+			"%s: the camera carries this treatment's Q-68 answer" % label)
+		_assert(farm.cot_turned_down == (t == CotPresentation.TURNDOWN),
+			"%s: the bed is turned down under C and made under the others" % label)
+		if t == CotPresentation.TURNDOWN:
+			_assert(farm.object_regions.has("cot_turned_down"),
+				"%s: and the second cell it draws from exists on the sheet" % label)
+
+		# Renders. The counter is the witness: a draw callback that throws part way
+		# through prints a red line and fails nothing, so the assertion is that the
+		# block reached its end, not that the log was quiet.
+		var drew: int = main_scene.cot_draws
+		for i in 4:
+			await get_tree().process_frame
+		_assert(main_scene.cot_draws > drew,
+			"%s: the cot block draws to completion, frame after frame (%d)"
+				% [label, main_scene.cot_draws - drew])
+
+		# D-8, once per treatment: presentation never gates the gateway.
+		var day_before: int = GameState.day
+		player.pos = Vector2(below.x * 16 + 8.0, below.y * 16 + 8.0)
+		player.path.clear()
+		player.pending_action = {}
+		await get_tree().process_frame
+		InputManager.click_tile = cot
+		InputManager.has_click = true
+		var started := await _wait_until(func(): return main_scene.day_cycle.is_active(), 200)
+		_assert(started, "%s: tapping the cot starts the day transition" % label)
+		_assert(GameState.day == day_before + 1,
+			"%s: and the sim is ALREADY in the new day — the Action resolved at the tap (D-8)" % label)
+		await _wait_until(func(): return not main_scene.day_cycle.is_active(), 600)
+		for i in 5:
+			await get_tree().process_frame
+
+	# Put everything back: the default is A, and the next scenario (and the human
+	# holding the tablet) gets the game as shipped.
+	CotPresentation.set_treatment(was_treatment)
+	main_scene._apply_cot_treatment()
+	_assert(CotPresentation.treatment == CotPresentation.GLOW,
+		"and the build's default, restored, is A — the box stays the designer's to tick")
 	GameState.seeds["wheat"] = 5
 	for p in [GameState.save_path, GameState.replay_path, GameState.trace_path]:
 		if FileAccess.file_exists(p):
