@@ -1,0 +1,19 @@
+{
+  "id": "Q-50",
+  "title": "Should the hen lay an egg every morning, guaranteed?",
+  "question": "Right now the hen lays at most one egg per night, on a coin flip. In the last tablet playtest this confused the player: she saw several eggs one morning (really several days of uncollected eggs), then spent part of another day waiting for eggs that never came. Nothing in the game explains the randomness — and being wordless, nothing can.",
+  "why_now": "It's a one-line change, and it decides what the hen *means*: a reliable little morning ritual, or a slot machine. \"There's an egg every morning\" is a rule a small child can learn just by living it.",
+  "options": [
+    {"key": "a", "label": "One egg every dawn, certain", "detail": "Drop the coin flip. The hen becomes a dependable ritual and the confusion disappears. The randomness currently buys nothing.", "recommended": true},
+    {"key": "b", "label": "Keep the coin flip", "detail": "Keeps a little unpredictability; accepts that some players will misread it."},
+    {"key": "c", "label": "Something else", "detail": "E.g. certain egg but only after she's been visited, or more hens later. Write it in the judgment box."}
+  ],
+  "attachments": [
+    {"type": "sprite", "entity": "actors/chicken", "caption": "The hen, from the live sprite sheet"},
+    {"type": "audio", "src": "assets/audio/sfx/cluck.wav", "caption": "Her cluck (plays when tapped)"}
+  ],
+  "links": [
+    {"label": "Chicken in the entity gallery", "href": "#/entity/actors/chicken"},
+    {"label": "Original queue entry", "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"}
+  ]
+}

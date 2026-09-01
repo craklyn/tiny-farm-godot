@@ -1,0 +1,17 @@
+{
+  "id": "Q-31",
+  "title": "Schedule your foley recording session (or delegate it)",
+  "question": "You committed to personally recording the bespoke sound effects — chiefly the watering sound, because after six rejected takes it's established that no usable free recording exists anywhere of a watering can's rose head sprinkling onto soil. It has to be made. Recording it yourself also gives the cleanest possible ownership: no third-party license to ever track. The shipped sounds are complete and legal, so nothing blocks on this — it's purely waiting on the audio direction sign-off and your calendar.",
+  "why_now": "It's the only item in the queue assigned to *you* as the doer, and unowned calendar items rot. One decision closes it: when, or whether to hand it off.",
+  "options": [
+    {"key": "a", "label": "Schedule it after the audio direction is approved", "detail": "Pick a weekend; the session targets the approved aesthetic. Pairs naturally with ruling the audio direction card above.", "recommended": true},
+    {"key": "b", "label": "Delegate to the audio role", "detail": "Give up the self-recorded provenance; someone else sources or records the takes."},
+    {"key": "c", "label": "Park it explicitly", "detail": "Acknowledge it's post-release polish and take it off the active queue."}
+  ],
+  "attachments": [
+    {"type": "audio", "src": "assets/audio/sfx/water.wav", "caption": "The synthesized watering sound to beat"}
+  ],
+  "links": [
+    {"label": "Audio direction draft (the prerequisite)", "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/10-audio-direction.md"}
+  ]
+}

@@ -31,6 +31,14 @@ decision inbox parsed live from `docs/DESIGNER_QUEUE.md`.
   `systems/species_defs.gd` are the source of truth to mirror).
 - `data/projects/*.json` — the program report, one file per project, ordered by
   `priority`.
+- `data/decisions/*.json` — curated decision cards for the inbox: plain-language
+  question, options with a recommendation, attachments (image/audio/sprite/video),
+  links. Keep in sync with open items in `docs/DESIGNER_QUEUE.md`.
+- `data/rulings/` — rulings the CEO records in the inbox (`<Q-id>.json`, plus a
+  running `RULINGS.md` ledger). `status: pending_integration` means a work session
+  still needs to fold it into the design docs — see CLAUDE.md "Docs and process".
+- `data/sprite_backups/` — pre-edit copies of any sheet saved from the in-app
+  sprite editor (one per sheet per day).
 
 The `.gdignore` keeps Godot from scanning this directory. The chat feature and
 project data are dev-facing; nothing here ships with the game.

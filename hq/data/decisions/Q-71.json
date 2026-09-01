@@ -1,0 +1,20 @@
+{
+  "id": "Q-71",
+  "title": "Does the Zoo stay a dev tool, or become something players get?",
+  "question": "You asked for a way to see all the new creatures in action, and the Zoo delivered: a debug door on the title screen opening onto a flat field with a button per species, each spawning the way its real lifecycle does. What it accidentally became is close to a field guide — picture, name, and the animal doing its thing. Phase 1's players will meet each critter exactly once, at speed, in the middle of something else.",
+  "why_now": "Cheap to decide now, before anyone builds on the wrong assumption. Nothing is foreclosed either way — the roster builds itself from the species table, so a player-facing version is just a different door onto the same list.",
+  "options": [
+    {"key": "a", "label": "Keep it a dev tool for now", "detail": "Nothing to build, nothing to teach. Revisit as a player feature when the critters have actually debuted in real games.", "recommended": true},
+    {"key": "b", "label": "A bestiary that fills in", "detail": "A collection page where a species appears only after the player has met it in a real game. Strong pull for a kid; costs one set of saved flags. Best considered at the next milestone."},
+    {"key": "c", "label": "Ship the sandbox to players", "detail": "Cheapest to ship, but it hands players the answer to every pest before the pest is a question — against the meet-things-in-order pacing."}
+  ],
+  "attachments": [
+    {"type": "sprite", "entity": "actors/rabbit", "caption": "The rabbit — currently only visible via the Zoo"},
+    {"type": "sprite", "entity": "actors/mole", "caption": "The mole"},
+    {"type": "sprite", "entity": "actors/worm", "caption": "The worm"}
+  ],
+  "links": [
+    {"label": "All actors in the entity gallery", "href": "#/entities"},
+    {"label": "Original queue entry", "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"}
+  ]
+}

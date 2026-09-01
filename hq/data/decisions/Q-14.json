@@ -1,0 +1,20 @@
+{
+  "id": "Q-14",
+  "title": "Approve the art style guide",
+  "question": "The art style guide draft is ready: measured palette ramps, outline and shape rules, contrast standards, reserved overlay colors (like the magenta that only ever means pest scent), an animation budget, and what all this implies for the eventual full reskin. Everything generated since has followed it informally; your sign-off makes it the law.",
+  "why_now": "The full reskin off placeholder art can't be scheduled until the style is locked — and every sprite generated before lock risks regeneration after it.",
+  "options": [
+    {"key": "a", "label": "Approve as drafted", "detail": "The style guide becomes binding; the reskin can be planned.", "recommended": true},
+    {"key": "b", "label": "Approve with amendments", "detail": "Write the changes in the judgment box."},
+    {"key": "c", "label": "Not yet — I want a look session", "detail": "A side-by-side render session against the current build first."}
+  ],
+  "attachments": [
+    {"type": "image", "src": "assets/sprites/generated/characters.png", "caption": "The farmer sheet — current style in practice"},
+    {"type": "image", "src": "assets/sprites/generated/crops.png", "caption": "Crops + iconography row"},
+    {"type": "image", "src": "assets/sprites/generated/critters.png", "caption": "The critter bestiary"}
+  ],
+  "links": [
+    {"label": "The draft itself (docs/design/09-art-direction.md)", "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/09-art-direction.md"},
+    {"label": "Entity gallery (all sprites in motion)", "href": "#/entities"}
+  ]
+}

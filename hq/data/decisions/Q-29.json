@@ -1,0 +1,20 @@
+{
+  "id": "Q-29",
+  "title": "How much animation do the five core verbs get?",
+  "question": "When the player clears, tills, plants, waters, or harvests — how much should the game act it out? Today the acted-on tile squashes and settles (the cheapest tier), and it's in the build. The next tier up animates the farmer's body per verb; the top tier is full per-verb choreography. The question the playtests should answer: can a player tell what her tap just did?",
+  "why_now": "This was parked waiting on playtest evidence, and playtests have happened. An adult tester can say in words whether the feedback was clear — worth asking directly at the next session, or ruling from your own tablet time.",
+  "options": [
+    {"key": "a", "label": "Stay at tile-reaction only", "detail": "What's in the build. Spend the art budget on the reskin instead.", "recommended": true},
+    {"key": "b", "label": "Animate the farmer too", "detail": "A swing/pour/pull pose per verb on her sprite. Mid-cost; helps if testers can't tell what a tap did."},
+    {"key": "c", "label": "Full per-verb choreography", "detail": "The expensive tier — only if the game feels dead without it."}
+  ],
+  "attachments": [
+    {"type": "sprite", "entity": "actors/player", "caption": "The farmer today — walk cycle only, no per-verb poses"},
+    {"type": "audio", "src": "assets/audio/sfx/till.wav", "caption": "Till — sound carries part of the feedback"},
+    {"type": "audio", "src": "assets/audio/sfx/harvest_cc0_699491.wav", "caption": "Harvest"}
+  ],
+  "links": [
+    {"label": "Farmer in the entity gallery", "href": "#/entity/actors/player"},
+    {"label": "Original queue entry", "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"}
+  ]
+}

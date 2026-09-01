@@ -100,6 +100,14 @@ the game proper.
   status changes only by editing that file.
 - `docs/DESIGNER_QUEUE.md` — Q-# items awaiting the designer's ruling. Anything needing
   the designer's taste or sign-off goes here rather than being silently decided.
+- **CEO rulings from Tiny Farm HQ** (`hq/`, the local dashboard): the designer records
+  rulings on decision cards there, which land in `hq/data/rulings/<Q-id>.json` with
+  `status: "pending_integration"`. **At the start of any work session, check that
+  directory.** Integrate each pending ruling: strike/annotate the item in
+  `docs/DESIGNER_QUEUE.md` (and `DECISION_LOG.md` if it settles a decision), do or file
+  the work it unblocks, then set the ruling's status to `"integrated"`. Curated decision
+  cards live in `hq/data/decisions/` — when new Q-items open or close, keep those cards
+  in sync (plain language, options with a recommendation, attachments).
 - `docs/ROADMAP.md` — milestones M0–M6 with exit gates (M2, the deterministic sim core,
   is complete). `docs/M2_SPEC.md` records how; `docs/design/` holds the GDD chapters.
 

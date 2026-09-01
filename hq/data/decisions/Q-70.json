@@ -1,0 +1,19 @@
+{
+  "id": "Q-70",
+  "title": "Is the yard's ground color right?",
+  "question": "You asked for ground inside the fence that can't be farmed, and it needed to look different from the field without you ever having specified how different. What shipped is the field's own grass pattern with its colors a step darker and cooler — it reads as tended lawn against the paler field, visible at the fence line, invisible when you're not looking for it. Two alternatives were rendered and rejected: a half-strength version (so subtle you'd have to be told) and a desaturated sage (unmistakable, but it read as *dead* ground).",
+  "why_now": "The yard fills most of the screen for a new player's first several minutes — you'll stare at this color longer than any other in the game. It deserves your eye once, on the tablet, at arm's length. Changing it is one line plus a re-baseline.",
+  "options": [
+    {"key": "a", "label": "Leave it as shipped", "detail": "The current deeper-and-cooler lawn. Quiet but visible at the boundary.", "recommended": true},
+    {"key": "b", "label": "Louder", "detail": "Push the color difference further so the boundary is obvious at a glance."},
+    {"key": "c", "label": "Quieter", "detail": "Pull it back toward the field color; boundary nearly invisible."}
+  ],
+  "attachments": [
+    {"type": "image", "src": "assets/sprites/generated/terrain_yard.png", "caption": "Yard ground (as shipped)"},
+    {"type": "image", "src": "assets/sprites/generated/terrain_grass.png", "caption": "Field grass, for comparison"}
+  ],
+  "links": [
+    {"label": "Yard ground in the entity gallery", "href": "#/entity/world/terrain_yard"},
+    {"label": "Original queue entry", "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"}
+  ]
+}

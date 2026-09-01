@@ -60,6 +60,74 @@ def load_projects():
     return projects
 
 
+def load_dir_json(sub):
+    d = os.path.join(DATA, sub)
+    if not os.path.isdir(d):
+        return []
+    return [load_json(os.path.join(d, f)) for f in sorted(os.listdir(d)) if f.endswith(".json")]
+
+
+QID_RE = re.compile(r"^Q-\d+[a-z]?$")
+
+
+def record_ruling(payload):
+    """Persist a CEO ruling from the decision inbox. Future work sessions pick
+    these up (status pending_integration) and fold them into the design docs."""
+    qid = str(payload.get("id", ""))
+    if not QID_RE.match(qid):
+        return {"error": "bad decision id"}
+    judgment = str(payload.get("judgment", "")).strip()
+    option = str(payload.get("option", "")).strip()
+    option_label = str(payload.get("option_label", "")).strip()
+    if not judgment and not option:
+        return {"error": "pick an option or write a judgment"}
+    import datetime
+    ruling = {
+        "id": qid,
+        "option": option or None,
+        "option_label": option_label or None,
+        "judgment": judgment or None,
+        "ruled_at": datetime.datetime.now().isoformat(timespec="seconds"),
+        "status": "pending_integration",
+    }
+    rdir = os.path.join(DATA, "rulings")
+    os.makedirs(rdir, exist_ok=True)
+    with open(os.path.join(rdir, f"{qid}.json"), "w", encoding="utf-8") as f:
+        json.dump(ruling, f, indent=2, ensure_ascii=False)
+    with open(os.path.join(rdir, "RULINGS.md"), "a", encoding="utf-8") as f:
+        f.write(f"\n## {qid} — ruled {ruling['ruled_at']}\n")
+        if option_label:
+            f.write(f"- Picked: **({option}) {option_label}**\n")
+        if judgment:
+            f.write(f"- In his words: {judgment}\n")
+        f.write("- Status: pending integration into docs/DESIGNER_QUEUE.md\n")
+    return {"ok": True, "ruling": ruling}
+
+
+def api_queue():
+    """Raw queue parse + curated decision cards + any recorded rulings."""
+    out = parse_queue()
+    out["curated"] = load_dir_json("decisions")
+    out["rulings"] = {r["id"]: r for r in load_dir_json("rulings")}
+    return out
+
+
+def check_consistency():
+    """Warn (journal-visible) about dangling people/decision references."""
+    try:
+        ids = {e["id"] for e in load_org()["employees"]}
+        for p in load_projects():
+            for pid in [p.get("owner")] + list(p.get("contributors", [])):
+                if pid and pid not in ids:
+                    print(f"[consistency] project {p['id']}: unknown person '{pid}'")
+        open_ids = {i["id"] for i in parse_queue()["items"]}
+        for c in load_dir_json("decisions"):
+            if c["id"] not in open_ids:
+                print(f"[consistency] curated decision {c['id']} not found in DESIGNER_QUEUE.md")
+    except Exception as e:
+        print(f"[consistency] check failed: {e}")
+
+
 ITEM_RE = re.compile(r"^- \*\*(Q-\d+[a-z]?)\s*(?:\(([^)]*)\))?\*\*\s*(.*)$")
 
 
@@ -234,7 +302,50 @@ roster:
 {roster}
 
 Never invent facts about the game's state; check the repo or say you're unsure."""
-    return prompt
+    # Collapse source-code line wraps into flowing paragraphs (single \n -> space);
+    # keeps the prompt clean for the CLI and readable in the HQ "what defines them" view.
+    return re.sub(r"(?<!\n)\n(?!\n)", " ", prompt)
+
+
+def png_size(raw):
+    """Width/height from a PNG's IHDR chunk."""
+    if len(raw) < 24 or not raw.startswith(b"\x89PNG"):
+        return None
+    return (int.from_bytes(raw[16:20], "big"), int.from_bytes(raw[20:24], "big"))
+
+
+def save_sprite(payload):
+    """Write an edited sprite sheet back into assets/. The browser composites
+    edited frames into the full sheet; we validate and persist, backing up the
+    original bytes once per day into hq/data/sprite_backups/."""
+    import base64
+    import datetime
+    import shutil
+    sheet = str(payload.get("sheet", ""))
+    data_url = str(payload.get("data_url", ""))
+    full = os.path.realpath(os.path.join(REPO, sheet))
+    root = os.path.realpath(os.path.join(REPO, "assets", "sprites"))
+    if not (full.startswith(root + os.sep) and full.endswith(".png") and os.path.isfile(full)):
+        return {"error": "sheet must be an existing PNG under assets/sprites/"}
+    prefix = "data:image/png;base64,"
+    if not data_url.startswith(prefix):
+        return {"error": "expected a PNG data URL"}
+    raw = base64.b64decode(data_url[len(prefix):])
+    if len(raw) > 8_000_000 or not raw.startswith(b"\x89PNG"):
+        return {"error": "not a plausible PNG"}
+    with open(full, "rb") as f:
+        old = f.read()
+    if png_size(raw) != png_size(old):
+        return {"error": f"sheet dimensions changed ({png_size(old)} -> {png_size(raw)}) — refusing"}
+    bdir = os.path.join(DATA, "sprite_backups")
+    os.makedirs(bdir, exist_ok=True)
+    stamp = datetime.date.today().isoformat()
+    bak = os.path.join(bdir, f"{os.path.basename(full)}.{stamp}.png")
+    if not os.path.exists(bak):
+        shutil.copyfile(full, bak)
+    with open(full, "wb") as f:
+        f.write(raw)
+    return {"ok": True, "bytes": len(raw), "backup": os.path.relpath(bak, REPO)}
 
 
 def api_persona(pid):
@@ -340,7 +451,7 @@ class Handler(BaseHTTPRequestHandler):
                         return self._send(200, p)
                 return self._send(404, {"error": "no such project"})
             if path == "/api/queue":
-                return self._send(200, parse_queue())
+                return self._send(200, api_queue())
             if path.startswith("/api/persona/"):
                 return self._send(200, api_persona(path[len("/api/persona/"):]))
             if path == "/api/docs":
@@ -363,6 +474,16 @@ class Handler(BaseHTTPRequestHandler):
             payload = json.loads(self.rfile.read(length) or b"{}")
         except Exception:
             return self._send(400, {"error": "bad JSON"})
+        if path == "/api/sprite/save":
+            try:
+                return self._send(200, save_sprite(payload))
+            except Exception as e:
+                return self._send(500, {"error": str(e)[:300]})
+        if path == "/api/ruling":
+            try:
+                return self._send(200, record_ruling(payload))
+            except Exception as e:
+                return self._send(500, {"error": str(e)[:300]})
         if path == "/api/chat":
             try:
                 return self._send(200, run_chat(payload))
@@ -372,6 +493,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
+    check_consistency()
     server = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
     print(f"Tiny Farm HQ on http://localhost:{PORT}")
     server.serve_forever()

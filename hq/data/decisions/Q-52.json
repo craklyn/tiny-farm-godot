@@ -1,0 +1,18 @@
+{
+  "id": "Q-52",
+  "title": "Rain-wet bare soil: show it or keep hiding it?",
+  "question": "When rain falls on bare tilled soil (nothing planted), the soil really is watered — plant there and the seed starts life already wet, which is true and useful. But showing that wetness once confused a playtester ('I can water tiles without a plant?'), so it's currently hidden: wet ground only draws where something is growing. Hiding it fixed the confusion and lost a true signal. This is the last open sliver of a bigger fix that already shipped.",
+  "why_now": "Small, but it's been open for days and it gates nothing — a thirty-second call. Also worth knowing: the watering can's own 'state shows before the tap' treatment (a droplet on watered crops) shipped, so the vocabulary for showing wetness now exists.",
+  "options": [
+    {"key": "a", "label": "Keep it hidden", "detail": "Status quo. Bare soil never draws wet; the plant-here-now signal stays invisible.", "recommended": true},
+    {"key": "b", "label": "Show it", "detail": "Wet bare soil draws wet. True, useful, and possibly confusing again — could be revisited after the next fresh-adult session."},
+    {"key": "c", "label": "Show it differently", "detail": "E.g. only a subtle droplet mark rather than the full wet-soil tint. Write the idea in the judgment box."}
+  ],
+  "attachments": [
+    {"type": "image", "src": "assets/sprites/generated/terrain_dirt.png", "caption": "The soil autotile — dry block left, watered block right"}
+  ],
+  "links": [
+    {"label": "Tilled soil in the entity gallery", "href": "#/entity/world/terrain_dirt"},
+    {"label": "Original queue entry", "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"}
+  ]
+}

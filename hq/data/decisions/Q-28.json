@@ -1,0 +1,16 @@
+{
+  "id": "Q-28",
+  "title": "Kick off the interaction inventory before the next milestone?",
+  "question": "A standing follow-up from the movement-scheme ruling: enumerate every interaction in the game, phase by phase, and match each to its best input method — touch as primary, with desktop mappings. The agreement was 'first pass before M3, re-audit at each phase's design start.' M3 planning is now next in line, so the bill is due.",
+  "why_now": "This is a scheduling call, not a design one: green-light the first pass now so it feeds M3 planning, or explicitly fold it into M3's own plan.",
+  "options": [
+    {"key": "a", "label": "Green-light it now", "detail": "A drafted inventory lands in the UX doc for your review before M3 scope is set.", "recommended": true},
+    {"key": "b", "label": "Fold it into M3 planning", "detail": "It becomes a work item inside the M3 plan rather than a precursor."},
+    {"key": "c", "label": "Defer it", "detail": "Say why in the judgment box so the record shows it was chosen, not forgotten."}
+  ],
+  "attachments": [],
+  "links": [
+    {"label": "Its home doc (docs/design/11-ux-ui.md)", "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/11-ux-ui.md"},
+    {"label": "M3 planning in the program report", "href": "#/project/m3-planning"}
+  ]
+}

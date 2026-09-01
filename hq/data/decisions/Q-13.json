@@ -1,0 +1,20 @@
+{
+  "id": "Q-13",
+  "title": "Approve the audio direction (warm acoustic-toy sound)",
+  "question": "The audio direction one-pager is drafted and waiting on you. The identity it proposes: warm, acoustic, toy-like — real recorded sounds over synthesis wherever a sound is 'voiced' or a reward, synthesis kept for ticks and impacts. The delegation arc gets scored: as machines take over the work, the music takes over the labor sounds. It ends with three taste questions only you can answer.",
+  "why_now": "Your own foley recording session (the watering can, the harvest sounds) waits on this — recordings should target a decided aesthetic, not precede one. Approving unblocks that chain.",
+  "options": [
+    {"key": "a", "label": "Approve as drafted", "detail": "Lock the direction; the foley session and any music commissioning proceed against it.", "recommended": true},
+    {"key": "b", "label": "Approve with amendments", "detail": "Write what to change in the judgment box; the doc gets revised and this closes."},
+    {"key": "c", "label": "Not yet — discuss first", "detail": "Say what's unresolved and it becomes a working session."}
+  ],
+  "attachments": [
+    {"type": "audio", "src": "assets/audio/sfx/harvest_cc0_699491.wav", "caption": "Current harvest (CC0 recording — the direction's benchmark)"},
+    {"type": "audio", "src": "assets/audio/sfx/till.wav", "caption": "Current till (synthesized — passes as an impact)"},
+    {"type": "audio", "src": "assets/audio/sfx/water.wav", "caption": "Current water (synthesized — the one the doc says must be re-recorded)"},
+    {"type": "audio", "src": "assets/audio/music/bgm_wholesome.ogg", "caption": "Current placeholder music"}
+  ],
+  "links": [
+    {"label": "The draft itself (docs/design/10-audio-direction.md)", "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/10-audio-direction.md"}
+  ]
+}

@@ -88,6 +88,7 @@ async function route() {
   try {
     if (hash.startsWith("/project/")) await renderProject(hash.slice("/project/".length));
     else if (hash.startsWith("/entity/")) await renderEntityDetail(hash.slice("/entity/".length));
+    else if (hash.startsWith("/sprite/")) await renderSpriteEditor(hash.slice("/sprite/".length));
     else if (hash.startsWith("/chat/")) await renderChat(hash.slice("/chat/".length));
     else await (routes[hash] || renderDashboard)();
   } catch (e) {
@@ -103,7 +104,8 @@ window.addEventListener("hashchange", route);
 /* ---------------- dashboard ---------------- */
 async function renderDashboard() {
   const [org, projects, queue] = await Promise.all([api("/api/org"), api("/api/projects"), api("/api/queue")]);
-  const open = queue.items.filter(q => !q.answered);
+  const rulings = queue.rulings || {};
+  const prepped = (queue.curated || []).filter(c => !rulings[c.id]);
   const byStatus = s => projects.filter(p => p.status === s).length;
   const hour = new Date().getHours();
   const greet = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
@@ -111,7 +113,7 @@ async function renderDashboard() {
     <h1>${greet}, Daniel 👋</h1>
     <p class="sub">Here's where Tiny Farm Studio stands today.</p>
     <div class="statrow">
-      <div class="stat"><b>${open.length}</b><span>decisions waiting on you</span></div>
+      <div class="stat"><b>${prepped.length}</b><span>decisions ready for your call</span></div>
       <div class="stat"><b>${byStatus("in_progress")}</b><span>projects in flight</span></div>
       <div class="stat"><b>${byStatus("blocked")}</b><span>projects blocked</span></div>
       <div class="stat"><b>${org.employees.length - 1}</b><span>people on your team</span></div>
@@ -125,9 +127,13 @@ async function renderDashboard() {
   const dp = document.getElementById("dash-projects");
   projects.slice(0, 3).forEach(p => dp.appendChild(projRow(p, org)));
   const dq = document.getElementById("dash-queue");
-  if (!open.length) dq.appendChild(h(`<div class="card muted">Inbox zero — nothing needs a ruling right now. 🎉</div>`));
-  open.slice(0, 4).forEach(q => dq.appendChild(queueCard(q)));
-  if (open.length > 4) dq.appendChild(h(`<p class="small"><a class="plain" href="#/inbox">…and ${open.length - 4} more in the inbox</a></p>`));
+  if (!prepped.length) dq.appendChild(h(`<div class="card muted">Inbox zero — nothing prepped needs a ruling right now. 🎉</div>`));
+  prepped.slice(0, 4).forEach(c => {
+    const row = h(`<div class="card q-item" style="cursor:pointer"><span class="qid">${c.id}</span> ${esc(c.title)}</div>`).firstElementChild;
+    row.addEventListener("click", () => location.hash = "#/inbox");
+    dq.appendChild(row);
+  });
+  if (prepped.length > 4) dq.appendChild(h(`<p class="small"><a class="plain" href="#/inbox">…and ${prepped.length - 4} more in the inbox</a></p>`));
 }
 
 /* ---------------- org chart ---------------- */
@@ -309,7 +315,8 @@ function showEntity(group, ent) {
         <table class="facts">${facts || "<tr><td class='muted'>—</td></tr>"}</table>
         <h2>Sprite sheet</h2>
         <p class="small muted">${esc(ent.layout || "")}</p>
-        ${ent.sheet ? `<code class="ref">${esc(ent.sheet)}</code>` : ""}
+        ${ent.sheet ? `<p><code class="ref">${esc(ent.sheet)}</code></p>` : ""}
+        ${ent.sheet && (ent.frames || []).length ? `<p style="margin-top:8px"><button class="ghost" data-edit-sprite>✏️ Edit this sprite</button></p>` : ""}
         <h2>Sounds</h2>
         <p>${sounds || "<span class='muted small'>silent — no sounds wired to this entity</span>"}</p>
         <h2>Code</h2>
@@ -321,6 +328,8 @@ function showEntity(group, ent) {
     b.addEventListener("click", () => new Audio(b.dataset.snd).play()));
   $view.querySelectorAll("[data-crumb-tab]").forEach(a =>
     a.addEventListener("click", () => { if (a.dataset.crumbTab) entTab = a.dataset.crumbTab; }));
+  const eb = $view.querySelector("[data-edit-sprite]");
+  if (eb) eb.addEventListener("click", () => location.hash = `#/sprite/${group.id}/${ent.id}`);
 }
 
 /* ---------------- program report ---------------- */
@@ -382,25 +391,115 @@ function queueCard(q) {
   </div>`);
 }
 
+function findEntity(entData, path) {
+  const [gid, eid] = (path || "").split("/");
+  const g = entData.groups.find(x => x.id === gid);
+  return g && g.entities.find(x => x.id === eid);
+}
+
+function attachmentEl(att, entData) {
+  const wrap = h(`<figure class="att"><figcaption>${esc(att.caption || "")}</figcaption></figure>`).firstElementChild;
+  if (att.type === "image") {
+    wrap.prepend(h(`<img src="/${esc(att.src)}" alt="${esc(att.caption || "")}">`).firstElementChild);
+  } else if (att.type === "audio") {
+    const b = h(`<button class="soundbtn">🔊 play</button>`).firstElementChild;
+    b.addEventListener("click", () => new Audio("/" + att.src).play());
+    wrap.prepend(b);
+  } else if (att.type === "video") {
+    wrap.prepend(h(`<video src="/${esc(att.src)}" controls></video>`).firstElementChild);
+  } else if (att.type === "sprite") {
+    const c = h(`<canvas width="96" height="96"></canvas>`).firstElementChild;
+    const ent = entData && findEntity(entData, att.entity);
+    if (ent) animate(c, ent);
+    wrap.prepend(c);
+  }
+  return wrap;
+}
+
+function decisionCard(c, ruling, entData, onRuled) {
+  const opts = (c.options || []).map(o => `
+    <label class="opt ${ruling && ruling.option === o.key ? "picked" : ""}">
+      <input type="radio" name="opt-${c.id}" value="${o.key}" data-label="${esc(o.label)}" ${ruling ? "disabled" : ""} ${ruling && ruling.option === o.key ? "checked" : ""}>
+      <span><b>${esc(o.label)}</b>${o.recommended ? ' <span class="rec">recommended</span>' : ""}<br>
+      <span class="small muted">${esc(o.detail || "")}</span></span>
+    </label>`).join("");
+  const atts = (c.attachments || []).length
+    ? `<div class="att-row"></div>` : "";
+  const links = (c.links || []).map(l =>
+    `<a class="plain small" href="${esc(l.href)}" ${l.href.startsWith("http") ? 'target="_blank" rel="noopener"' : ""}>🔗 ${esc(l.label)}</a>`).join(" · ");
+  const card = h(`<div class="card d-card">
+    <div class="d-head"><span class="qid">${c.id}</span> <b>${esc(c.title)}</b></div>
+    <p>${esc(c.question)}</p>
+    ${c.why_now ? `<p class="small muted"><b>Why now:</b> ${esc(c.why_now)}</p>` : ""}
+    ${atts}
+    ${links ? `<p style="margin-top:10px">${links}</p>` : ""}
+    <div class="d-options">${opts}</div>
+    ${ruling
+      ? `<div class="ruled-box">✅ <b>Ruled ${esc((ruling.ruled_at || "").replace("T", " "))}</b>${ruling.option_label ? " — " + esc(ruling.option_label) : ""}${ruling.judgment ? `<div class="small" style="margin-top:6px">"${esc(ruling.judgment)}"</div>` : ""}<div class="small muted" style="margin-top:6px">${ruling.status === "integrated" ? "Integrated into the design docs." : "Queued for the next work session to fold into the design docs."}</div></div>`
+      : `<div class="d-judge">
+          <textarea placeholder="Your judgment, in your own words — required if you don't pick an option; welcome either way."></textarea>
+          <button data-rule="${c.id}">Record ruling</button>
+        </div>`}
+  </div>`).firstElementChild;
+  const attRow = card.querySelector(".att-row");
+  if (attRow) (c.attachments || []).forEach(a => attRow.appendChild(attachmentEl(a, entData)));
+  const btn = card.querySelector("[data-rule]");
+  if (btn) btn.addEventListener("click", async () => {
+    const sel = card.querySelector(`input[name="opt-${c.id}"]:checked`);
+    const judgment = card.querySelector("textarea").value.trim();
+    if (!sel && !judgment) { alert("Pick an option or write a judgment first."); return; }
+    btn.disabled = true; btn.textContent = "Recording…";
+    try {
+      const r = await fetch("/api/ruling", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: c.id, option: sel ? sel.value : "", option_label: sel ? sel.dataset.label : "", judgment }),
+      });
+      const j = await r.json();
+      if (j.error) { alert(j.error); btn.disabled = false; btn.textContent = "Record ruling"; return; }
+      onRuled(j.ruling);
+    } catch (e) { alert("Failed: " + e.message); btn.disabled = false; btn.textContent = "Record ruling"; }
+  });
+  return card;
+}
+
 async function renderInbox() {
-  const queue = await api("/api/queue");
-  const open = queue.items.filter(q => !q.answered);
+  delete cache["/api/queue"];
+  const [queue, entData] = await Promise.all([api("/api/queue"), api("/api/entities")]);
+  const rulings = queue.rulings || {};
+  const curated = queue.curated || [];
+  const curatedIds = new Set(curated.map(c => c.id));
+  const fresh = curated.filter(c => !rulings[c.id]);
+  const ruled = curated.filter(c => rulings[c.id]);
+  const rawOpen = queue.items.filter(q => !q.answered && !curatedIds.has(q.id) && !rulings[q.id]);
   const done = queue.items.filter(q => q.answered);
   const frag = h(`<h1>Decision Inbox</h1>
-    <p class="sub">Parsed live from the designer queue — the single list of everything waiting on your ruling, taste, or sign-off. ${open.length} open, ${done.length} answered.</p>
+    <p class="sub">${fresh.length} decision${fresh.length === 1 ? "" : "s"} ready for your call — each in plain language, with what you need to judge it. Rulings you record here are picked up by the next work session and folded into the design docs.</p>
     <div id="q-open"></div>
-    <h2 style="cursor:pointer" id="q-toggle">▸ Answered (${done.length})</h2>
+    ${ruled.length ? `<h2>Ruled by you (${ruled.length})</h2><div id="q-ruled"></div>` : ""}
+    <h2 style="cursor:pointer" id="q-raw-toggle">▸ Not yet prepped (${rawOpen.length})</h2>
+    <div id="q-raw" hidden><p class="small muted">Open items still in raw internal form — ask your chief of staff to prep any of these into a proper decision card.</p></div>
+    <h2 style="cursor:pointer" id="q-toggle">▸ Answered history (${done.length})</h2>
     <div id="q-done" hidden></div>`);
   $view.replaceChildren(frag);
   const qo = document.getElementById("q-open");
-  if (!open.length) qo.appendChild(h(`<div class="card muted">Nothing open. Inbox zero. 🎉</div>`));
-  open.forEach(q => qo.appendChild(queueCard(q)));
+  if (!fresh.length) qo.appendChild(h(`<div class="card muted">Nothing prepped needs a ruling right now. 🎉</div>`));
+  const onRuled = r => { queue.rulings[r.id] = r; renderInbox(); };
+  fresh.forEach(c => qo.appendChild(decisionCard(c, null, entData, onRuled)));
+  const qr = document.getElementById("q-ruled");
+  if (qr) ruled.forEach(c => qr.appendChild(decisionCard(c, rulings[c.id], entData, onRuled)));
+  const qraw = document.getElementById("q-raw");
+  rawOpen.forEach(q => qraw.appendChild(queueCard(q)));
+  const rawTg = document.getElementById("q-raw-toggle");
+  rawTg.addEventListener("click", () => {
+    qraw.hidden = !qraw.hidden;
+    rawTg.textContent = (qraw.hidden ? "▸" : "▾") + ` Not yet prepped (${rawOpen.length})`;
+  });
   const qd = document.getElementById("q-done");
   done.forEach(q => qd.appendChild(queueCard(q)));
   const tg = document.getElementById("q-toggle");
   tg.addEventListener("click", () => {
     qd.hidden = !qd.hidden;
-    tg.textContent = (qd.hidden ? "▸" : "▾") + ` Answered (${done.length})`;
+    tg.textContent = (qd.hidden ? "▸" : "▾") + ` Answered history (${done.length})`;
   });
 }
 
