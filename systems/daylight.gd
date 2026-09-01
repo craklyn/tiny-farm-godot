@@ -15,9 +15,10 @@
 # from `progress()` and `TICKS` below and its token's phase from `is_night()`, so
 # the precise read and the ambient one cannot disagree about what time it is.
 #
-# **T-34 gave the same hour digits** (`clock_text` below): the day is 6:00→16:00,
-# one energy unit is one minute, and the digits sit beside the arc. Three
-# drawings of one number now — light, arc, clock — and all three read this file.
+# **T-34 gave the same hour digits** (`clock_text` below): the day is 6:00 AM →
+# 4:00 PM (12-hour with AM/PM since T-36), one energy unit is one minute, and the
+# digits sit beside the arc. Three drawings of one number now — light, arc,
+# clock — and all three read this file.
 #
 # T-29 also re-partitioned the meter — 600 fine units, a base verb costing 30
 # (`Tools.DAY_UNITS`) — and **nothing in this file changed for it**, which is the
@@ -112,11 +113,13 @@ static func is_night(energy: int, max_energy: int) -> bool:
 # would read 6:20 at dusk. That is correct and not a bug — legacy saves are
 # migrated ×30 on load, so no live game is ever on that ruler.)
 #
-# **24-hour, digits and a colon, nothing else.** S-7 bans words on screen and
-# Q-35's shop precedent allows digits, which rules out "am"/"pm"; and a 12-hour
-# clock without them would run 6:00 … 4:00 and wrap through noon with nothing to
-# mark the turn. "16:00" needs no suffix to be unambiguous, so 24-hour it is.
-const DAY_START_MINUTE := 6 * 60  # the workday opens at 6:00 (T-34's ruling)
+# **12-hour, with AM/PM** (T-36, ruled 2026-08-31, overturning T-34's 24-hour
+# deviation). T-34 read S-7's word ban as ruling out the markers and went 24-hour
+# to keep the face unambiguous; the designer overruled it directly — *"I'd prefer
+# time of day to be 12-hour clock with AM / PM"* — accepting the two-letter
+# markers on the clock. So the face runs 6:00 AM … 12:00 PM … 4:00 PM, and the
+# noon wrap is marked by the suffix rather than by the hour count.
+const DAY_START_MINUTE := 6 * 60  # the workday opens at 6:00 AM (T-34's ruling)
 
 
 # Minutes on the clock face: the day's opening plus every unit spent. Energy over
@@ -132,7 +135,11 @@ static func clock_minutes(energy: int, max_energy: int) -> int:
 
 static func clock_text(energy: int, max_energy: int) -> String:
 	var m: int = clock_minutes(energy, max_energy)
-	return "%d:%02d" % [m / 60, m % 60]
+	var h24: int = m / 60
+	# 6:00→16:00 never touches midnight, so the wrap to worry about is noon only:
+	# hour 12 stays 12, 13–16 drop twelve, and the suffix marks the turn (T-36).
+	var h12: int = ((h24 + 11) % 12) + 1
+	return "%d:%02d %s" % [h12, m % 60, "AM" if h24 < 12 else "PM"]
 
 
 static func tint_for(energy: int, max_energy: int) -> Color:

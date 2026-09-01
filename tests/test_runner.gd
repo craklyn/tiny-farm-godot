@@ -2223,15 +2223,23 @@ func test_energy_repartition() -> void:
 
 
 func test_clock_digits() -> void:
-	print("\n--- T-34: the clock gets digits (6:00 → 16:00) ---")
+	print("\n--- T-34/T-36: the clock gets digits (6:00 AM → 4:00 PM) ---")
 
-	# --- the boundary instants the ruling names -------------------------------
-	_assert(Daylight.clock_text(600, 600) == "6:00", "a full meter opens the day at 6:00")
-	_assert(Daylight.clock_text(570, 600) == "6:30", "one base verb (30) is half an hour")
-	_assert(Daylight.clock_text(540, 600) == "7:00", "two of them make an hour")
-	_assert(Daylight.clock_text(300, 600) == "11:00", "half a day's work lands at 11:00")
-	_assert(Daylight.clock_text(60, 600) == "15:00", "two base verbs left is 15:00")
-	_assert(Daylight.clock_text(0, 600) == "16:00", "and an empty meter is 16:00")
+	# --- the boundary instants the rulings name -------------------------------
+	# The hours are T-34's; the face is T-36's (12-hour with AM/PM, the designer
+	# overturning T-34's 24-hour deviation on 2026-08-31).
+	_assert(Daylight.clock_text(600, 600) == "6:00 AM", "a full meter opens the day at 6:00 AM")
+	_assert(Daylight.clock_text(570, 600) == "6:30 AM", "one base verb (30) is half an hour")
+	_assert(Daylight.clock_text(540, 600) == "7:00 AM", "two of them make an hour")
+	_assert(Daylight.clock_text(300, 600) == "11:00 AM", "half a day's work lands at 11:00 AM")
+	_assert(Daylight.clock_text(60, 600) == "3:00 PM", "two base verbs left is 3:00 PM")
+	_assert(Daylight.clock_text(0, 600) == "4:00 PM", "and an empty meter is 4:00 PM")
+
+	# --- the noon wrap, marked by the suffix and nothing else -----------------
+	_assert(Daylight.clock_text(241, 600) == "11:59 AM", "the last morning minute is 11:59 AM")
+	_assert(Daylight.clock_text(240, 600) == "12:00 PM", "noon is 12:00 PM — the suffix turns, the hour holds")
+	_assert(Daylight.clock_text(181, 600) == "12:59 PM", "12 stays 12 through its whole hour")
+	_assert(Daylight.clock_text(180, 600) == "1:00 PM", "and then the afternoon counts from 1")
 
 	# --- one unit IS one minute -----------------------------------------------
 	#
@@ -2249,21 +2257,26 @@ func test_clock_digits() -> void:
 			"unit %d spent reads minute 6:00 + %d" % [spent, spent])
 	_flush_quiet("every one of the 600 units is one minute of the clock face")
 	_assert(Daylight.clock_text(Tools.DAY_UNITS - Tools.get_energy_cost("clear_log"),
-			Tools.DAY_UNITS) == "7:00",
+			Tools.DAY_UNITS) == "7:00 AM",
 		"a heavy clear (60) is a full hour, straight out of the cost table")
 
-	# --- digits and a colon, nothing else (S-7 via Q-35) ----------------------
-	# 24-hour deliberately: "am"/"pm" are words, and an unsuffixed 12-hour face
-	# would wrap through noon unmarked. Checked at every hour of the workday.
+	# --- the face's whole grammar (T-36) --------------------------------------
+	# Digits, a colon, and exactly one of the two accepted markers — the ruling
+	# accepts "AM"/"PM" on the clock and nothing wider. Checked at every minute
+	# of the workday: hour 1–12 (never 0, never 13+), minutes zero-padded, the
+	# suffix AM strictly before noon and PM from it.
 	for spent2 in range(0, Tools.DAY_UNITS + 1):
 		var face: String = Daylight.clock_text(Tools.DAY_UNITS - spent2, Tools.DAY_UNITS)
-		var legal := true
-		for i in face.length():
-			var ch: String = face[i]
-			if ch != ":" and not (ch >= "0" and ch <= "9"):
-				legal = false
-		_assert_quiet(legal, "the face '%s' is digits and a colon only" % face)
-	_flush_quiet("no hour of the day puts a word on screen")
+		var parts := face.split(" ")
+		var ok_face := parts.size() == 2 and (parts[1] == "AM" or parts[1] == "PM")
+		if ok_face:
+			var hm := parts[0].split(":")
+			ok_face = hm.size() == 2 and hm[0].is_valid_int() and hm[1].is_valid_int() \
+				and int(hm[0]) >= 1 and int(hm[0]) <= 12 and hm[1].length() == 2
+			var expect_pm := 6 * 60 + spent2 >= 12 * 60
+			ok_face = ok_face and (parts[1] == "PM") == expect_pm
+		_assert_quiet(ok_face, "the face '%s' is h:mm plus AM/PM, hour 1–12" % face)
+	_flush_quiet("every minute of the day wears a legal 12-hour face")
 
 	# --- it parks at dusk, and soft-floor work happens in the evening ---------
 	#
@@ -2272,32 +2285,32 @@ func test_clock_digits() -> void:
 	# span) and the digits do not move for it.
 	var gs = load("res://systems/game_state.gd").new()
 	gs.reset()
-	_assert(Daylight.clock_text(gs.energy, gs.max_energy) == "6:00",
-		"a fresh day starts at 6:00")
+	_assert(Daylight.clock_text(gs.energy, gs.max_energy) == "6:00 AM",
+		"a fresh day starts at 6:00 AM")
 	gs.set_energy(0)
 	for _i in 5:
 		gs.set_energy(gs.energy - Tools.get_energy_cost("till"))
 	_assert(gs.energy == 0, "five actions past the floor leave the meter at 0 (Q-11)")
-	_assert(Daylight.clock_text(gs.energy, gs.max_energy) == "16:00",
-		"and the clock is still parked at 16:00 — the evening is not on the face")
-	_assert(Daylight.clock_text(-300, 600) == "16:00",
+	_assert(Daylight.clock_text(gs.energy, gs.max_energy) == "4:00 PM",
+		"and the clock is still parked at 4:00 PM — the evening is not on the face")
+	_assert(Daylight.clock_text(-300, 600) == "4:00 PM",
 		"even an unclamped negative cannot push the digits past dusk")
-	_assert(Daylight.clock_text(900, 600) == "6:00", "nor an over-full meter before dawn")
-	_assert(Daylight.clock_text(5, 0) == "6:00", "and a degenerate day reads as its opening")
+	_assert(Daylight.clock_text(900, 600) == "6:00 AM", "nor an over-full meter before dawn")
+	_assert(Daylight.clock_text(5, 0) == "6:00 AM", "and a degenerate day reads as its opening")
 
-	# --- sleep at any hour wakes at 6:00 --------------------------------------
+	# --- sleep at any hour wakes at 6:00 AM -----------------------------------
 	gs.set_energy(240)
-	_assert(Daylight.clock_text(gs.energy, gs.max_energy) == "12:00", "asleep at noon...")
+	_assert(Daylight.clock_text(gs.energy, gs.max_energy) == "12:00 PM", "asleep at noon...")
 	gs.start_new_day()
-	_assert(Daylight.clock_text(gs.energy, gs.max_energy) == "6:00",
-		"...and awake at 6:00 — an unspent afternoon is not banked (T-14's sub-ruling)")
+	_assert(Daylight.clock_text(gs.energy, gs.max_energy) == "6:00 AM",
+		"...and awake at 6:00 AM — an unspent afternoon is not banked (T-14's sub-ruling)")
 	gs.free()
 
 	# --- the clock is the one reader that counts units, not ratios ------------
 	# Deliberate, and worth pinning: the legacy 20-unit scale would read 6:20 at
 	# dusk, which is why saves are migrated ×30 on load (T-29) rather than the
 	# clock being taught two rulers.
-	_assert(Daylight.clock_text(0, 20) == "6:20",
+	_assert(Daylight.clock_text(0, 20) == "6:20 AM",
 		"the clock reads units, not the fraction every other reader here uses")
 
 

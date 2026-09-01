@@ -494,8 +494,8 @@ func _scenario_h_daylight() -> void:
 	#
 	# The arc is the wordless read and stays the one the game is designed around;
 	# the digits are the exact one. Both are drawn from `Daylight`, so what is
-	# checked here is that the label exists where the ruling put it, says what the
-	# pure function says, and carries nothing but digits and a colon.
+	# checked here is that the label exists where the ruling put it and says what
+	# the pure function says — a 12-hour face with AM/PM since T-36.
 	_assert(hud.clock_label != null and hud.clock_label is Label,
 		"the top bar carries a clock")
 	_assert(hud.clock_label.get_parent() == hud.top_bar, "in the top bar, with the arc")
@@ -506,16 +506,13 @@ func _scenario_h_daylight() -> void:
 
 	GameState.set_energy(GameState.max_energy)
 	await get_tree().process_frame
-	_assert(hud.clock_label.text == "6:00", "a full meter reads 6:00 — the workday opens")
+	_assert(hud.clock_label.text == "6:00 AM", "a full meter reads 6:00 AM — the workday opens")
 
-	# Digits and a colon only: "am"/"pm" would be words, which S-7 bans and Q-35's
-	# precedent does not licence (it licences digits, and only digits).
-	var wordless := true
-	for i in hud.clock_label.text.length():
-		var ch: String = hud.clock_label.text[i]
-		if ch != ":" and not (ch >= "0" and ch <= "9"):
-			wordless = false
-	_assert(wordless, "and it is wordless — digits and a colon, no am/pm (S-7 via Q-35)")
+	# T-36 (2026-08-31): the designer overturned T-34's 24-hour deviation and
+	# accepted the two-letter markers on the clock — so the face carries digits,
+	# a colon, and exactly AM or PM, nothing wider.
+	_assert(hud.clock_label.text.ends_with(" AM") or hud.clock_label.text.ends_with(" PM"),
+		"and it wears the accepted marker — AM/PM, per the T-36 ruling")
 
 	# One real action through the real input path moves it exactly half an hour:
 	# one energy unit is one fictional minute and a base verb is 30 of them.
@@ -527,14 +524,14 @@ func _scenario_h_daylight() -> void:
 	await get_tree().process_frame
 	_assert(GameState.energy == GameState.max_energy - Tools.get_energy_cost("till"),
 		"one base action spent 30 units")
-	_assert(hud.clock_label.text == "6:30",
-		"and the clock says 6:30 — one unit is one minute, with no factor between")
+	_assert(hud.clock_label.text == "6:30 AM",
+		"and the clock says 6:30 AM — one unit is one minute, with no factor between")
 
 	# It parks at dusk, and Q-11's soft-floor work happens in the evening (Q-73's
 	# span) without moving the digits.
 	GameState.set_energy(0)
 	await get_tree().process_frame
-	_assert(hud.clock_label.text == "16:00", "an empty meter parks the clock at 16:00")
+	_assert(hud.clock_label.text == "4:00 PM", "an empty meter parks the clock at 4:00 PM")
 	_stage_tile(9, 6, "obstacle_weed")
 	player.pos = Vector2(8.5 * 16.0, 6.5 * 16.0)
 	player.facing = "right"
@@ -545,7 +542,7 @@ func _scenario_h_daylight() -> void:
 	await get_tree().process_frame
 	_assert(farm.get_tile(9, 6).state == "cleared",
 		"work past the floor still resolves (Q-11)")
-	_assert(hud.clock_label.text == "16:00",
+	_assert(hud.clock_label.text == "4:00 PM",
 		"and it happens in the evening — the digits do not move for it")
 
 	# (g) Q-72: the weather line speaks only when weather is happening. Clear days

@@ -21,7 +21,7 @@ all landed). Suites at close: unit 1799 / integration 453 / robot MATCH / benchm
 
 **Do first on resume (both ruled, evidence in hand):**
 - **T-35** below — ✅ shipped 2026-09-01; her window is the regression test.
-- **T-36** below — the clock becomes 12-hour AM/PM; one format function.
+- **T-36** below — ✅ shipped 2026-09-01; the face reads 6:00 AM → 4:00 PM.
 
 **Then the standing picks and paths:**
 - The designer's pick from T-28's four station treatments (Look Lab, on the tablet),
@@ -55,10 +55,13 @@ beat 0 reads it and stays complete forever. The regression test
 first sleep and asserts the cot glows, not the gate — it fails against the old code.*
 
 **T-36 — The clock reads 12-hour, AM/PM** · ruled 2026-08-31 by the designer,
-overturning T-34's 24-hour deviation · ready to build
+overturning T-34's 24-hour deviation · ✅ SHIPPED 2026-09-01
 *"I'd prefer time of day to be 12-hour clock with AM / PM." The 24h form existed
 only to avoid words under S-7; this ruling accepts the two-letter markers on the
-clock. One format function (`Daylight.clock_text`), its tests, one re-baseline.*
+clock. As predicted: one format function (`Daylight.clock_text` now renders
+6:00 AM → 4:00 PM, suffix marking the noon wrap), its tests (boundary instants,
+the noon wrap, a full-day face-grammar sweep), a slightly wider HUD label, and
+one visual re-baseline (the diff was exactly the " AM" suffix).*
 
 ## M0 — Design space recorded ✅ (2026-08-18)
 `GAME_VISION.md`, `DECISION_LOG.md`, `ARCHITECTURE.md`, phase stubs, full GDD chapter

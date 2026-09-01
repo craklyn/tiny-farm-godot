@@ -182,16 +182,17 @@ func _build_ui() -> void:
 	# "exactly how much is left", which is the question the debug readout kept
 	# being asked for.
 	#
-	# S-7-legal by Q-35's shop precedent — **digits allowed, words never** — and
-	# that is also why the clock is 24-hour: "am"/"pm" are words, and a 12-hour
-	# clock without them runs 6:00 … 4:00 and wraps through noon with nothing to
-	# mark the turn. 6:00 → 16:00 reads in one direction on digits and a colon.
-	# Right of the arc rather than under it because the bar is 30px tall and there
-	# is no under; the type is the bar's own, so the row still reads as one row.
+	# T-36 (2026-08-31): 12-hour with AM/PM. T-34 read S-7's word ban as ruling
+	# the markers out and shipped 24-hour; the designer overruled it — *"I'd
+	# prefer time of day to be 12-hour clock with AM / PM"* — so the face runs
+	# 6:00 AM → 4:00 PM and the suffix marks the noon wrap. Right of the arc
+	# rather than under it because the bar is 30px tall and there is no under;
+	# the type is the bar's own, so the row still reads as one row. Sized for
+	# the longest face it wears ("11:59 AM").
 	clock_label = Label.new()
 	clock_label.name = "clock_label"
 	clock_label.position = Vector2(sun_arc.position.x + ARC_W + 8.0, 5)
-	clock_label.size = Vector2(54, 20)
+	clock_label.size = Vector2(76, 20)
 	clock_label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.8))
 	clock_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	top_bar.add_child(clock_label)
