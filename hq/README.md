@@ -17,7 +17,11 @@ decision inbox parsed live from `docs/DESIGNER_QUEUE.md`.
 - `server.py` — zero-dependency HTTP server (static app, JSON APIs, game-asset
   serving, live designer-queue parsing, and `/api/chat` which shells out to the
   local `claude` CLI with a per-persona system prompt, read-only repo tools).
-- `static/` — the single-page frontend.
+- `static/` — the single-page frontend. `design.js`/`design.css` are the Design
+  Studio tab: the living GDD browsed live from `docs/` (chapter maturity board,
+  decision-log tier counts, milestone strip, and full doc rendering via
+  `/api/docs` + `/api/doc/<path>` — served from the repo on every request,
+  never copied).
 - `static/vendor/` — vendored third-party libs, fetched once from jsdelivr so the
   app has no runtime network dependency: `marked` 16.4.1 (MIT, markdown parsing)
   and `DOMPurify` 3.2.7 (Apache-2.0/MPL-2.0, HTML sanitization) for chat replies.

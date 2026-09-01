@@ -21,6 +21,7 @@ import re
 import subprocess
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import unquote
 
 HQ_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HQ_DIR)
@@ -104,6 +105,100 @@ def parse_queue():
     return {"items": items}
 
 
+# ---------- Design Studio: the living GDD, parsed live from docs/ ----------
+
+STATUS_RE = re.compile(r"^\*Status:\s*\**([A-Za-z][A-Za-z -]*[A-Za-z])")
+MILESTONE_RE = re.compile(r"^## (M[0-9.]+) — (.+)$")
+
+CORE_DOCS = [
+    ("docs/GAME_VISION.md", "The north star — vision, five phases, pillars"),
+    ("docs/ROADMAP.md", "Milestones, state of play, standing rules"),
+    ("docs/DECISION_LOG.md", "Every decision, tiered: settled / provisional / deferred"),
+    ("docs/DESIGNER_QUEUE.md", "The single inbox of things waiting on the CEO"),
+    ("docs/ARCHITECTURE.md", "Technical design: the deterministic sim and its layers"),
+    ("docs/DEPLOY.md", "The release runbook"),
+]
+
+
+def _doc_meta(rel, blurb=""):
+    """Title + maturity status for one markdown doc (first heading, first *Status:* line)."""
+    path = os.path.join(REPO, rel)
+    title, status = os.path.basename(rel), ""
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            for line in f:
+                s = line.strip()
+                if s.startswith("# ") and title == os.path.basename(rel):
+                    title = s[2:].strip()
+                if not status:
+                    m = STATUS_RE.match(s)
+                    if m:
+                        status = m.group(1).strip().lower()
+                    elif s.startswith("*Stub"):
+                        status = "stub"
+    except OSError:
+        return None
+    return {"path": rel, "title": title, "status": status, "blurb": blurb}
+
+
+def _decision_counts():
+    """S/P/D tier counts, live from DECISION_LOG.md."""
+    try:
+        with open(os.path.join(REPO, "docs", "DECISION_LOG.md"), "r", encoding="utf-8") as f:
+            text = f.read()
+    except OSError:
+        return {}
+    return {
+        "settled": len(re.findall(r"^### S-\d", text, re.M)),
+        "provisional": len(re.findall(r"^### P-\d", text, re.M)),
+        "deferred": len(re.findall(r"^### D-\d", text, re.M)),
+    }
+
+
+def _milestones():
+    """Milestone strip, live from ROADMAP.md headings."""
+    try:
+        with open(os.path.join(REPO, "docs", "ROADMAP.md"), "r", encoding="utf-8") as f:
+            lines = f.readlines()
+    except OSError:
+        return []
+    out = []
+    for line in lines:
+        m = MILESTONE_RE.match(line.rstrip())
+        if m:
+            title = re.sub(r"[✅—-]*\s*✅.*$", "", m.group(2)).strip(" —-")
+            out.append({"id": m.group(1), "title": title, "done": "✅" in m.group(2)})
+    return out
+
+
+def api_docs():
+    """Index of the whole design-doc system, grouped, with live statuses."""
+    def listing(sub):
+        d = os.path.join(REPO, "docs", sub)
+        try:
+            names = sorted(f for f in os.listdir(d) if f.endswith(".md") and f != "README.md")
+        except OSError:
+            return []
+        return [m for m in (_doc_meta(f"docs/{sub}/{f}") for f in names) if m]
+
+    groups = [
+        {"name": "North star & records", "docs": [m for m in (_doc_meta(p, b) for p, b in CORE_DOCS) if m]},
+        {"name": "Design chapters — the living GDD", "docs": listing("design")},
+        {"name": "Phase experience docs", "docs": listing("phases")},
+    ]
+    return {"groups": groups, "decisions": _decision_counts(), "milestones": _milestones()}
+
+
+def api_doc(rel):
+    """One markdown doc, raw, for client-side rendering. Whitelisted to docs/*.md."""
+    full = os.path.realpath(os.path.join(REPO, rel))
+    droot = os.path.realpath(os.path.join(REPO, "docs"))
+    if not (full.startswith(droot + os.sep) and full.endswith(".md") and os.path.isfile(full)):
+        return None
+    with open(full, "r", encoding="utf-8") as f:
+        return {"path": os.path.relpath(full, REPO), "markdown": f.read()}
+
+
 GAME_CONTEXT = """You work at Tiny Farm Studio. The product is Tiny Farm: a touch-first cozy
 farming game in Godot 4, phase 1 of a five-phase arc where the player gradually delegates
 farming to machines, towers, and trainable bots (on-device ML in phase 4). It is designed
@@ -140,6 +235,17 @@ roster:
 
 Never invent facts about the game's state; check the repo or say you're unsure."""
     return prompt
+
+
+def api_persona(pid):
+    """The exact system prompt that defines this worker in chat — shown in the UI."""
+    org = load_org()
+    emp = next((e for e in org["employees"] if e["id"] == pid), None)
+    if emp is None:
+        return {"error": "no such person"}
+    if pid == "daniel":
+        return {"id": pid, "system_prompt": None, "note": "The CEO is not a persona — that's you."}
+    return {"id": pid, "system_prompt": build_system_prompt(org, pid)}
 
 
 def run_chat(payload):
@@ -235,6 +341,15 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(404, {"error": "no such project"})
             if path == "/api/queue":
                 return self._send(200, parse_queue())
+            if path.startswith("/api/persona/"):
+                return self._send(200, api_persona(path[len("/api/persona/"):]))
+            if path == "/api/docs":
+                return self._send(200, api_docs())
+            if path.startswith("/api/doc/"):
+                doc = api_doc(unquote(path[len("/api/doc/"):]))
+                if doc is None:
+                    return self._send(404, {"error": "no such doc"})
+                return self._send(200, doc)
             if path == "/api/health":
                 return self._send(200, {"ok": True})
             return self._send(404, {"error": "not found"})

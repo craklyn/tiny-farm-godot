@@ -75,8 +75,10 @@ const routes = {
   "/chat": renderChat,
 };
 
+let routeSeq = 0;
 async function route() {
   clearAnimators();
+  const seq = ++routeSeq;
   const hash = location.hash.slice(1) || "/";
   document.querySelectorAll("#sidebar a").forEach(a => {
     const r = a.dataset.route;
@@ -85,11 +87,16 @@ async function route() {
   $view.innerHTML = `<p class="muted">Loading…</p>`;
   try {
     if (hash.startsWith("/project/")) await renderProject(hash.slice("/project/".length));
+    else if (hash.startsWith("/entity/")) await renderEntityDetail(hash.slice("/entity/".length));
     else if (hash.startsWith("/chat/")) await renderChat(hash.slice("/chat/".length));
     else await (routes[hash] || renderDashboard)();
   } catch (e) {
     $view.innerHTML = `<div class="card"><b>Something broke:</b> ${esc(e.message)}</div>`;
   }
+  // A slow render can land after a newer navigation already painted (e.g. the
+  // initial load racing a late-registered route). Re-run the current route so
+  // the newest navigation always wins.
+  if (seq !== routeSeq) return route();
 }
 window.addEventListener("hashchange", route);
 
@@ -125,10 +132,17 @@ async function renderDashboard() {
 
 /* ---------------- org chart ---------------- */
 function personCard(e, compact) {
+  if (compact) {
+    return h(`<div class="org-node" data-id="${e.id}">
+      <div class="nm">${e.emoji} ${esc(e.name)}</div>
+      <div class="lv">${esc(e.short || e.title)} · ${e.level}</div>
+      <div class="fo">${esc(e.focus || "")}</div>
+    </div>`);
+  }
   return h(`<div class="org-node" data-id="${e.id}">
     <div class="nm">${e.emoji} ${esc(e.name)}</div>
     <div class="tt">${esc(e.title)}</div>
-    <div class="lv">${e.level}${compact ? "" : " · " + esc(e.team)}</div>
+    <div class="lv">${e.level} · ${esc(e.team)}</div>
   </div>`);
 }
 
@@ -163,24 +177,28 @@ async function renderOrg() {
   rootDiv.appendChild(h(`<div class="org-stub"></div>`));
   const kids = document.createElement("div");
   kids.className = "org-kids";
+  // Recursive: each person's reports hang off a rail below them, elbow per card.
+  const buildSub = id => {
+    const reports = byMgr[id] || [];
+    if (!reports.length) return null;
+    const sub = document.createElement("div");
+    sub.className = "org-sub";
+    reports.forEach(r => {
+      const twig = document.createElement("div");
+      twig.className = "twig";
+      twig.appendChild(personCard(r, true));
+      const nested = buildSub(r.id);
+      if (nested) twig.appendChild(nested);
+      sub.appendChild(twig);
+    });
+    return sub;
+  };
   leads.forEach(direct => {
     const branch = document.createElement("div");
     branch.className = "org-branch";
     branch.appendChild(personCard(direct, true));
-    const reports = byMgr[direct.id] || [];
-    if (reports.length) {
-      const sub = document.createElement("div");
-      sub.className = "org-sub";
-      reports.forEach(r => {
-        sub.appendChild(personCard(r, true));
-        (byMgr[r.id] || []).forEach(rr => {
-          const d = personCard(rr, true);
-          d.firstElementChild.classList.add("indent");
-          sub.appendChild(d);
-        });
-      });
-      branch.appendChild(sub);
-    }
+    const sub = buildSub(direct.id);
+    if (sub) branch.appendChild(sub);
     kids.appendChild(branch);
   });
   rootDiv.appendChild(kids);
@@ -196,18 +214,35 @@ function showPerson(org, id) {
   const ov = h(`<div id="overlay"><div class="panel">
     <button class="close">✕</button>
     <h2 style="margin-top:0">${e.emoji} ${esc(e.name)}</h2>
-    <p><span class="chip lvl">${e.level}</span> <span class="chip team">${esc(e.team)}</span></p>
+    <p><span class="chip lvl">${e.level}</span> <span class="chip team">${esc(e.team)}</span> ${e.focus ? `<span class="chip team">${esc(e.focus)}</span>` : ""}</p>
     <p style="margin:10px 0 4px"><b>${esc(e.title)}</b></p>
     <p class="muted" style="margin:10px 0">${esc(e.persona)}</p>
     <h2>Owns</h2>
     <ul class="req">${e.responsibilities.map(r => `<li>${esc(r)}</li>`).join("")}</ul>
-    ${e.id !== "daniel" ? `<p style="margin-top:18px"><button data-chat="${e.id}">💬 Chat with ${esc(e.name.split(" ")[0])}</button></p>` : ""}
+    ${e.id !== "daniel" ? `<p style="margin-top:18px">
+      <button data-chat="${e.id}">💬 Chat with ${esc(e.name.split(" ")[0])}</button>
+      <button class="ghost" data-def="${e.id}">🧬 What defines them</button></p>
+    <div class="promptbox" hidden><p class="small muted">This is the exact system prompt handed to the Claude CLI when you chat with ${esc(e.name.split(" ")[0])} — persona + charter + studio context, with read-only access to the repo:</p><pre></pre></div>` : ""}
   </div></div>`);
   document.body.appendChild(ov);
   const overlay = document.getElementById("overlay");
   overlay.addEventListener("click", ev => { if (ev.target === overlay || ev.target.classList.contains("close")) overlay.remove(); });
   const cb = overlay.querySelector("[data-chat]");
   if (cb) cb.addEventListener("click", () => { overlay.remove(); location.hash = "#/chat/" + e.id; });
+  const db = overlay.querySelector("[data-def]");
+  if (db) db.addEventListener("click", async () => {
+    const box = overlay.querySelector(".promptbox");
+    if (!box.hidden) { box.hidden = true; return; }
+    box.hidden = false;
+    const pre = box.querySelector("pre");
+    if (!pre.textContent) {
+      pre.textContent = "Loading…";
+      try {
+        const r = await (await fetch("/api/persona/" + e.id)).json();
+        pre.textContent = r.system_prompt || r.note || r.error || "—";
+      } catch (err) { pre.textContent = "Failed to load: " + err.message; }
+    }
+  });
 }
 
 /* ---------------- entities ---------------- */
@@ -238,9 +273,18 @@ async function renderEntities() {
     </div>`);
     const el = card.firstElementChild;
     animate(el.querySelector("canvas"), ent);
-    el.addEventListener("click", () => showEntity(group, ent));
+    el.addEventListener("click", () => location.hash = `#/entity/${group.id}/${ent.id}`);
     grid.appendChild(el);
   });
+}
+
+async function renderEntityDetail(path) {
+  const [gid, eid] = path.split("/");
+  const data = await api("/api/entities");
+  const group = data.groups.find(g => g.id === gid);
+  const ent = group && group.entities.find(e => e.id === eid);
+  if (!ent) { $view.replaceChildren(h(`<div class="card">No such entity. <a class="plain" href="#/entities">Back to the gallery</a></div>`)); return; }
+  showEntity(group, ent);
 }
 
 function showEntity(group, ent) {
@@ -252,7 +296,9 @@ function showEntity(group, ent) {
   }).join("");
   const code = (ent.code || []).map(c => `<code class="ref">${esc(c)}</code>`).join("");
   $view.replaceChildren(h(`
-    <p><a class="plain" href="#/entities">← back to the gallery</a></p>
+    <p class="crumbs"><a class="plain" href="#/entities" data-crumb-tab="">Entities</a>
+      <span>›</span> <a class="plain" href="#/entities" data-crumb-tab="${group.id}">${esc(group.name)}</a>
+      <span>›</span> <b>${ent.emoji} ${esc(ent.name)}</b></p>
     <div class="ent-detail">
       <canvas width="240" height="240"></canvas>
       <div style="flex:1;min-width:280px">
@@ -273,6 +319,8 @@ function showEntity(group, ent) {
   animate($view.querySelector("canvas"), ent);
   $view.querySelectorAll("[data-snd]").forEach(b =>
     b.addEventListener("click", () => new Audio(b.dataset.snd).play()));
+  $view.querySelectorAll("[data-crumb-tab]").forEach(a =>
+    a.addEventListener("click", () => { if (a.dataset.crumbTab) entTab = a.dataset.crumbTab; }));
 }
 
 /* ---------------- program report ---------------- */

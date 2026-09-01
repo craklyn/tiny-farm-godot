@@ -99,37 +99,59 @@ button:disabled { opacity: .5; cursor: default; }
 .org-root { display: flex; flex-direction: column; align-items: center; width: max-content; min-width: 100%; margin: 0 auto; }
 .org-node {
   background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
-  padding: 10px 14px; cursor: pointer; text-align: left;
-  min-width: 180px; max-width: 220px; transition: border-color .15s;
+  padding: 8px 11px; cursor: pointer; text-align: left;
+  min-width: 128px; max-width: 158px; transition: border-color .15s;
 }
 .org-node:hover { border-color: var(--accent); }
-.org-node .nm { font-weight: 700; font-size: 14px; display: flex; gap: 6px; align-items: center; }
+.org-node .nm { font-weight: 700; font-size: 13px; display: flex; gap: 5px; align-items: center; white-space: nowrap; }
 .org-node .tt { font-size: 12px; color: var(--muted); margin-top: 2px; }
-.org-node .lv { font-size: 11px; color: var(--accent); margin-top: 3px; font-weight: 600; }
+.org-node .lv { font-size: 11px; color: var(--accent); margin-top: 3px; font-weight: 600; white-space: nowrap; }
+.org-node .fo { font-size: 10.5px; color: var(--muted); margin-top: 2px; }
 
 /* CEO row: the root card with the chief-of-staff seat attached at its side */
 .org-top { display: flex; align-items: center; position: relative; }
 .org-top .org-node { border-color: var(--accent); }
 .org-staff { display: flex; align-items: center; position: absolute; left: 100%; top: 50%; transform: translateY(-50%); }
 .org-staff .tie { width: 34px; height: 2px; background: var(--line); flex-shrink: 0; }
-.org-staff .org-node { border-style: dashed; min-width: 200px; }
+.org-staff .org-node { border-style: dashed; min-width: 150px; }
 .org-staff .role { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-top: 4px; }
 
 /* connector: stub under the CEO, rail across the leads, stub into each lead */
 .org-stub { width: 2px; height: 26px; background: var(--line); }
 .org-kids { display: flex; flex-wrap: nowrap; justify-content: center; align-items: flex-start; }
-.org-branch { display: flex; flex-direction: column; align-items: center; position: relative; padding: 26px 9px 0; }
+.org-branch { display: flex; flex-direction: column; align-items: flex-start; position: relative; padding: 26px 8px 0; }
+/* stub from the CEO rail into the lead card (fixed x so it always lands on the card) */
 .org-branch::before {
-  content: ""; position: absolute; top: 0; left: 50%; width: 2px; height: 26px; background: var(--line);
+  content: ""; position: absolute; top: 0; left: 72px; width: 2px; height: 26px; background: var(--line);
 }
 .org-branch::after {
   content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--line);
 }
-.org-branch:first-child::after { left: 50%; }
-.org-branch:last-child::after { right: 50%; }
-.org-sub { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
-.org-sub .org-node { min-width: 170px; }
-.org-sub .org-node.indent { margin-left: 22px; }
+.org-branch:first-child::after { left: 72px; }
+.org-branch:last-child::after { right: calc(100% - 74px); }
+
+/* Reporting lines below a manager: a rail descends from the manager's card and
+   every report hangs off it with an elbow. Nested for deeper levels. */
+.org-sub { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; padding-left: 16px; }
+.org-sub .org-node { min-width: 128px; }
+.twig { position: relative; }
+.twig > .org-node { position: relative; }
+.twig > .org-node::before {
+  content: ""; position: absolute; left: -12px; top: -8px;
+  width: 12px; height: calc(50% + 8px);
+  border-left: 2px solid var(--line); border-bottom: 2px solid var(--line);
+  border-bottom-left-radius: 8px;
+}
+.twig:not(:last-child)::after {
+  content: ""; position: absolute; left: -12px; top: 0; bottom: -8px; width: 2px; background: var(--line);
+}
+
+.promptbox { margin-top: 14px; }
+.promptbox pre {
+  background: #1b1710; border: 1px solid var(--line); border-radius: 8px;
+  padding: 12px 14px; font-size: 12px; line-height: 1.5;
+  white-space: pre-wrap; max-height: 300px; overflow-y: auto; margin-top: 8px;
+}
 
 /* person detail overlay */
 #overlay {
@@ -156,6 +178,8 @@ button:disabled { opacity: .5; cursor: default; }
 .ent-card canvas { image-rendering: pixelated; background: #1b1710; border-radius: 8px; }
 .ent-card .nm { font-weight: 700; margin-top: 8px; }
 .ent-card .ds { font-size: 12px; color: var(--muted); margin-top: 4px; min-height: 30px; }
+.crumbs { margin-bottom: 16px; font-size: 14px; }
+.crumbs span { color: var(--muted); margin: 0 4px; }
 .ent-detail { display: flex; gap: 26px; flex-wrap: wrap; }
 .ent-detail canvas { image-rendering: pixelated; background: #1b1710; border-radius: 10px; }
 .facts td { padding: 3px 12px 3px 0; font-size: 13.5px; vertical-align: top; }

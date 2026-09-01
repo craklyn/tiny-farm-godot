@@ -15,7 +15,9 @@
         "Final creative authority on all design rulings",
         "Company strategy, budget, and hiring",
         "The five-phase delegation-arc vision"
-      ]
+      ],
+      "short": "CEO",
+      "focus": "Vision & final rulings"
     },
     {
       "id": "claude",
@@ -31,9 +33,10 @@
         "Keep the decision inbox and program report current",
         "Draft proposals and strawmen for any open question",
         "Chase blocked work and surface it before it festers"
-      ]
+      ],
+      "short": "Chief of Staff",
+      "focus": "Routing, drafts, chasing"
     },
-
     {
       "id": "priya",
       "name": "Priya Raman",
@@ -47,7 +50,9 @@
         "Product strategy and release roadmap",
         "Pricing, platform strategy, monetization guardrails",
         "Prioritization of the program portfolio with the CEO"
-      ]
+      ],
+      "short": "Pr. PMT",
+      "focus": "Product strategy"
     },
     {
       "id": "marcus",
@@ -62,7 +67,9 @@
         "Live-ops calendar and post-launch content cadence",
         "In-game economy tuning proposals (always via designer ruling)",
         "KPI definitions and weekly business review"
-      ]
+      ],
+      "short": "PMT II",
+      "focus": "Economy & live ops"
     },
     {
       "id": "sofia",
@@ -77,7 +84,9 @@
         "Program report: status, risks, and dependencies across all projects",
         "Milestone exit-gate tracking and evidence collection",
         "Playtest scheduling and logistics"
-      ]
+      ],
+      "short": "Sr. TPM",
+      "focus": "Program & milestones"
     },
     {
       "id": "wei",
@@ -92,9 +101,10 @@
         "Session-trace analytics and playtest scoring",
         "Revenue, retention, and funnel reporting",
         "Experiment design for A/B look-lab questions"
-      ]
+      ],
+      "short": "BIE II",
+      "focus": "Analytics & traces"
     },
-
     {
       "id": "elena",
       "name": "Elena Volkov",
@@ -108,7 +118,9 @@
         "Engineering org, architecture authority, code health",
         "Determinism / replay integrity as a standing invariant",
         "Technical hiring and the phase 2-5 technical runway"
-      ]
+      ],
+      "short": "Sr. SDM",
+      "focus": "Engineering org"
     },
     {
       "id": "tomas",
@@ -123,7 +135,9 @@
         "Simulation layer (systems/sim/): world, actions, saves, RNG",
         "Actor brains and the M2.5 bestiary",
         "Replay format stability (it is future ML training data)"
-      ]
+      ],
+      "short": "SDE III",
+      "focus": "Sim & replay core"
     },
     {
       "id": "jade",
@@ -138,7 +152,9 @@
         "Presentation layer: farm renderer, entities, effects, HUD",
         "Input: touch/mouse/gamepad gesture handling",
         "Look Lab treatments and A/B rigs"
-      ]
+      ],
+      "short": "SDE II",
+      "focus": "Gameplay & touch feel"
     },
     {
       "id": "ravi",
@@ -153,7 +169,9 @@
         "Build/deploy pipeline: Android, web, itch releases",
         "Asset pipeline (Retro Diffusion generation, palette locking, atlases)",
         "CI, benchmarks, and developer tooling"
-      ]
+      ],
+      "short": "SDE II",
+      "focus": "Pipeline & deploys"
     },
     {
       "id": "anna",
@@ -168,7 +186,9 @@
         "Crop, weather, and scent-field systems under Tomás's guidance",
         "Test coverage for new sim features",
         "Fixture and playtest-session maintenance"
-      ]
+      ],
+      "short": "SDE I",
+      "focus": "Crops, weather, scent"
     },
     {
       "id": "kenji",
@@ -183,7 +203,9 @@
         "Phase-4 ML plan: on-device trainable bot prototypes",
         "Replay-corpus quality, labeling, and versioning",
         "Behavior-cloning experiments against recorded sessions"
-      ]
+      ],
+      "short": "AS II",
+      "focus": "Phase-4 ML"
     },
     {
       "id": "grace",
@@ -198,9 +220,10 @@
         "Unit and integration suites, robot session, visual regression",
         "Determinism verification (replay MATCH discipline)",
         "Device-matrix testing: tablet, desktop, web export"
-      ]
+      ],
+      "short": "QAE II",
+      "focus": "Test automation"
     },
-
     {
       "id": "ingrid",
       "name": "Ingrid Bauer",
@@ -214,7 +237,9 @@
         "Art direction and the style guide",
         "Reskin plan for moving off placeholder art",
         "Approval of every generated asset before it lands"
-      ]
+      ],
+      "short": "Sr. Art Dir",
+      "focus": "Visual identity"
     },
     {
       "id": "milo",
@@ -229,7 +254,9 @@
         "Phase 2-5 systems design drafts (machines, towers, bots)",
         "Onboarding and teaching-system design",
         "Playtest observation and findings write-ups"
-      ]
+      ],
+      "short": "GD II",
+      "focus": "Systems design"
     },
     {
       "id": "yuki",
@@ -244,7 +271,9 @@
         "Sprite generation, cleanup, and animation timing",
         "Atlas organization and frame metadata",
         "CREDITS.md provenance for every asset"
-      ]
+      ],
+      "short": "Artist II",
+      "focus": "Sprites & animation"
     },
     {
       "id": "sam",
@@ -259,7 +288,9 @@
         "HUD and menu layouts, touch-target standards",
         "Wordless iconography system (S-7 compliance)",
         "Interaction inventory across input modalities"
-      ]
+      ],
+      "short": "UXD II",
+      "focus": "Touch UX & HUD"
     },
     {
       "id": "dmitri",
@@ -274,9 +305,10 @@
         "SFX and music direction, foley recording sessions",
         "Audio license hygiene (CC0/original only)",
         "Sound Test tooling and per-verb audio table"
-      ]
+      ],
+      "short": "Audio II",
+      "focus": "Sound & music"
     },
-
     {
       "id": "carmen",
       "name": "Carmen Ortiz",
@@ -290,7 +322,9 @@
         "Marketing strategy, positioning, and launch campaigns",
         "Channel budget allocation and performance review",
         "Brand voice and the press/creator relationship map"
-      ]
+      ],
+      "short": "Sr. MM",
+      "focus": "Marketing strategy"
     },
     {
       "id": "tessa",
@@ -305,7 +339,9 @@
         "Instagram content calendar, posting, and community replies",
         "Reels production from gameplay capture",
         "Channel analytics and creative testing"
-      ]
+      ],
+      "short": "MM II",
+      "focus": "Instagram"
     },
     {
       "id": "jordan",
@@ -320,7 +356,9 @@
         "TikTok content strategy, production, and posting cadence",
         "Trend and sound monitoring",
         "Creator duet/stitch engagement"
-      ]
+      ],
+      "short": "MM II",
+      "focus": "TikTok"
     },
     {
       "id": "priscilla",
@@ -335,7 +373,9 @@
         "Press releases and press-kit maintenance",
         "Outlet relationships, embargoes, review-code distribution",
         "Awards submissions and festival showcases"
-      ]
+      ],
+      "short": "PR Mgr",
+      "focus": "Press & embargoes"
     },
     {
       "id": "diego",
@@ -350,7 +390,9 @@
         "Creator/influencer program and key distribution",
         "YouTube channel (trailers, devlogs)",
         "Sponsored content deals within brand guardrails"
-      ]
+      ],
+      "short": "MM II",
+      "focus": "YouTube & streamers"
     },
     {
       "id": "amara",
@@ -365,9 +407,10 @@
         "Discord/Reddit community management and moderation",
         "Player-facing patch notes and announcements",
         "Community sentiment reports to the marketing lead"
-      ]
+      ],
+      "short": "CM I",
+      "focus": "Discord & Reddit"
     },
-
     {
       "id": "victor",
       "name": "Victor Osei",
@@ -381,7 +424,9 @@
         "Platform deals, storefront featuring, and porting partnerships",
         "Retail/merchandise licensing",
         "Revenue forecasting with Finance"
-      ]
+      ],
+      "short": "Sr. BDM",
+      "focus": "Deals & platforms"
     },
     {
       "id": "lena",
@@ -396,9 +441,10 @@
         "Store presence: pages, sales calendar, featuring submissions",
         "Platform certification coordination with Engineering",
         "Regional pricing management"
-      ]
+      ],
+      "short": "BDM II",
+      "focus": "Storefronts & cert"
     },
-
     {
       "id": "harold",
       "name": "Harold Kim",
@@ -412,7 +458,9 @@
         "Budget, runway, and monthly financial close",
         "Storefront revenue reconciliation",
         "Contractor and vendor payments"
-      ]
+      ],
+      "short": "Fin Mgr",
+      "focus": "Runway & close"
     },
     {
       "id": "fatima",
@@ -427,7 +475,9 @@
         "Support inbox and response SLAs",
         "Top-issues digest to Engineering/Product weekly",
         "Refund policy execution"
-      ]
+      ],
+      "short": "CS Lead",
+      "focus": "Player support"
     },
     {
       "id": "oskar",
@@ -442,7 +492,9 @@
         "Store-page and marketing localization (10 languages)",
         "Wordless-design audits (keeping the game text-free)",
         "Regional compliance checks (ratings boards)"
-      ]
+      ],
+      "short": "Loc Mgr",
+      "focus": "Store pages, 10 languages"
     }
   ]
 }
