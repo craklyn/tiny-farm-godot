@@ -2,10 +2,24 @@
 
 *Stub. Detailed design starts at milestone M3 planning.*
 
-**Boundary flag (Q-79, 2026-09-01):** the designer's progression framing runs phase 1
-all the way to the first automatic tower, which would fold this stub's content into
-`phase-1-homestead.md` (where the straw-man progression skeleton now sequences it) and
-renumber the later phases. Content here stays valid either way; the label is what's open.
+**Boundary (Q-79 ruled 2026-09-01): the five-phase structure stands** — this phase keeps
+its scope. Phase 1 now ends on the scarecrow as the first tower (Q-81,
+`phase-1-homestead.md` §4), so phase 2 opens with a player who has already delegated one
+job to one static; its machines and statics extend that ladder rather than introduce it.
+
+**Livestock lives here (Q-80 ruled 2026-09-01: products + working animals).** The barn
+roster is phase 2's second scale driver alongside the sprinkler: new income (eggs, wool,
+milk), new *daily hands-on care* (feed, water, collect, shear — candidates for the Q-19
+never-automate list), a thief pest drawn to feed and eggs, and **working animals** — the
+guard llama (a scarecrow with legs: fear-scent around the flock) and the tap-commanded
+dog (the first creature the player commands; pre-figures phase 4's bots). Straw-man
+roster order: sheep → cow → llama → dog; horse and pig parked (no current friction their
+relief would answer).
+
+**The statics ladder continues here**: fencing per-tile (yard size becomes a cost),
+buried chicken wire (the anti-burrower), scarecrow habituation (it wants moving), and
+the counter-turn — the **kangaroo** hops everything (Q-57), the standing proof that
+statics never finish the job.
 
 **Premise:** Simple automation (sprinklers first) begins retiring phase-1 labor. Pests now
 arrive in groups; the player faces a variety of minor combat challenges. Gate to phase 3:

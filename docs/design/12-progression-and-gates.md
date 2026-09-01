@@ -20,6 +20,12 @@ gate is open, which is derived from the grid and so needs no flag and survives r
 The consequence to accept deliberately: a player who never earns the pickaxe can still
 complete phase 1, and the quarry is simply land she has not taken up yet.
 
+**Proposed 1→2 proof extension (Q-81, ruled 2026-09-01; code change at M3 planning):**
+the proof's "crows scared" term culminates in the scarecrow — its final condition
+becomes *a crow scared by something that is not the player*, so the kid-legible
+celebration moment and the measured proof are the same event
+(`phases/phase-1-homestead.md` §4).
+
 ## Unlock ladders (consolidated index; details in system chapters)
 - Tools & land rings (02) → machines (03) → towers (05) →
 - Bot sensors: vision / audio / speaker / smell (06, P-7/P-10)

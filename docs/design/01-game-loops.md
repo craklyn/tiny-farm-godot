@@ -74,6 +74,11 @@ the player taps the cot) and energy is a soft floor (Q-11). Both stay. Saturatio
 1 is the *yard itself*: more ground than can be cleared, tilled, planted and watered by
 hand in one day — an invitation, with the sprinkler in phase 2 as the first relief.
 
+One amendment to the delegation table above (Q-81, ruled 2026-09-01): phase 1's "—" now
+has a footnote. Its final beat delegates exactly one job at toy scale — the scarecrow
+takes over crow-scaring — so the phase ends on a miniature of the whole arc's thesis.
+The macro chart lives in `../phases/phase-1-homestead.md`.
+
 *For the four-year-old, whose loop is smaller and who is the constraint S-7 binds:*
 see a sparkle → tap it → something nice happens. Every structure above is scaffolding that
 eventually retires into that.

@@ -1,162 +1,167 @@
 # Phase 1 — The Homestead
 
-*Status: **straw-man progression skeleton drafted 2026-09-01** (this document), awaiting
-the rulings listed at the bottom. The premise and constraints above the skeleton are
-stable; every chapter below is a proposal with named adjustment conditions, and every
-number is `[Playtest]`.*
+*Status: **macro drafted 2026-09-01** (designer rulings Q-79/Q-80/Q-81 folded in; every
+number `[Playtest]` unless marked ruled). This is the phase's design doc: experience
+goals, the macro chart, beat details, triggers, economy, content budget, telemetry.
+Format follows the macro-chart practice (Cerny method): one table the whole phase can be
+read from, with prose only where a beat needs argument.*
 
-**Premise:** Manual farming à la Harvest Moon/Stardew: clear the yard, till, plant, water,
-harvest, ship, sleep. Pests escalate from individuals to coordinated groups; the player's
-answers escalate from their own two feet to passive defenses to the first machine that
-fights. The player learns the movement/interaction language of the whole game here.
+**Premise:** Manual farming à la Harvest Moon/Stardew: clear the yard, till, plant,
+water, harvest, ship, sleep. Individual pests escalate from one thief to three fronts;
+the player answers with their own feet and hands until the final beat hands one job — 
+crow-scaring — to the first static defender. The player learns the movement/interaction
+language of the whole game here.
+
+**Boundary (Q-79 ruled 2026-09-01):** the five-phase structure stands. Phase 1 is the
+manual act only; sprinklers, group pests, and livestock-at-scale are phase 2
+(`phase-2-first-machines.md`). Phase 1 ends at **the scarecrow** — ruled Q-81: the
+scarecrow *is* the first tower, "a non-mobile, small-area tower that only affects one
+animal." The tower ladder is thereby continuous across the whole game: scarecrow (1) →
+statics and machines (2) → true towers (3) → bots that retire towers (4, D-7).
 
 **Hard constraints:** S-7 (playable by a 4-year-old, touch-first, no reading in the core
-loop, no destructive fail states). The tap-to-command interface established here is the
-game's default interaction language (S-3, S-6). Saturation must always read as abundance,
-never deficit (Q-32 ruling): no timers, no quotas, nothing decays if ignored.
-
-**Boundary note (Q-79, open).** The designer's 2026-09-01 framing has phase 1 running
-from bare yard **to the first automatic tower**, with tower defense as phase 2. The doc
-system currently splits that span across phases 1–2 and starts towers in phase 3
-(`GAME_VISION.md`, `phase-2-first-machines.md`, `design/12` gate table). This skeleton
-covers the designer's full span; whether the docs renumber around it is Q-79.
+loop, no destructive fail states); saturation reads as abundance, never deficit (Q-32);
+tap-to-command is the interaction language (S-3, S-6).
 
 ---
 
-## The skeleton: six turns of the cycle
+## 1. Player experience goals
 
-The whole phase is the ruled arc loop (`design/01`, Q-32) turned six times — a friction
-point is introduced, the player pushes against it by hand, a tool retires it *if used
-well*, and the next friction is already growing underneath. Two braided tracks: the
-**growing** track saturates on labor, the **defending** track saturates on mischief.
+1. **"I know how to live here."** By the end, the verb chain, the economy loop, and the
+   day rhythm are second nature — this phase is the teaching act (`design/13`).
+2. **"The farm is mine because I made it."** Every cleared tile was a decision; land is
+   the visible record of effort (the parcel ladder).
+3. **"I am the only thing between the crops and the mouths."** Vigilance is felt bodily
+   — the player's own position is phase 1's entire defense system.
+4. **"…and now something watches with me."** The finale: relief, pride, and the game's
+   thesis whispered once at toy scale — you delegated a job, and it held.
 
-| # | Chapter | Friction (saturation) | Manual push | Relief (the tool) | Skill the tool demands |
+## 2. The macro chart
+
+Target first-run length: **2–3 hours** (Q-21 partial, ruled 2026-09-01). At current
+day-lengths that is roughly 25–35 in-game days for a leisurely first run; beats below
+carry day *ranges*, but every exit is a sim-measured proof, never a calendar.
+
+| Beat | Days (≈) | New content / mechanic | Rising friction | The manual answer | Exit signal (sim-measured) |
 |---|---|---|---|---|---|
-| 0 | The vignette *(built)* | none — teaching | the day-1–3 verb chain, the economy loop | — | — |
-| 1 | Land *(built)* | more ground than hands | swipe-chains, routing a day | axe → wood, pickaxe → quarry | choosing what to take on |
-| 2 | Water | can't water what you planted | hauling the can, triage | **sprinkler** (Q-15) | placement, coverage, well coupling |
-| 3 | Mischief | raids on multiple fronts | stomp, wash, stand guard | *(none — deliberately)* | counterplay per species |
-| 4 | The perimeter | can't be everywhere | patrol routes | **fence, wire, scarecrow** | matching the static to the intruder |
-| 5 | Livestock | animals need daily care | feed, water, collect, shear | **working animals** (Q-80) | placing living defenders |
-| 6 | The breaking point | raids outrun player + statics | whole days on defense | **the first tower** (Q-81) | siting; then letting go |
+| **A — Wake** *(built)* | 1–3 | the verb chain, cause & effect, coins, the egg | none — teaching | — | first bought seed in the ground (`design/13` §4) |
+| **B — Meadow** *(built)* | 3–8 | weeds parcel; the crow turns thief | tending vs. guarding splits attention | walk at the crow (discovered, never taught) | N crops shipped ∧ M crows scared by hand |
+| **C — Wood** | 8–15 | axe parcel: logs, trees, acorns; **rabbit** debuts; songbird ambient | watering rounds lengthen; two pest fronts | swipe-chain routing; presence spooks the rabbit | wood worked ∧ rabbit spooked K times |
+| **D — Quarry** | 15–22 | pickaxe parcel: rocks; **mole** debuts (steals seed) | three fronts; peak triage — the day is spent running | stand guard on the seedbed; stomp the surfacing window | crop-losses-while-elsewhere accumulate (the scarecrow's trigger) |
+| **E — Scarecrow** | 22–28 | the **first tower**: static, small radius, crows only | none — this beat is relief | siting it over the crow-hot ground | a crow flees the scarecrow **while the player is elsewhere** → phase gate |
 
-The phase ends at the moment the first tower acts **without the player** — the first
-machine that does the player's defending, the delegation thesis made visible.
+Intensity shape: tending load climbs B→D and stays high (phase 2 relieves it, not
+phase 1 — the sprinkler must arrive already-wanted). Vigilance load climbs B→D and
+*drops* at E. Ending on the vigilance drop, not the tending drop, is deliberate: the
+phase closes on its defense story, and the labor story is the cliffhanger.
 
-### Chapter 0 — The vignette *(built; `design/13`)*
+## 3. Beat details
 
-Days 1–3: harvest → plant → water → sleep, cause and effect, the coin loop, the first
-crow. No friction by design. A repeat player clears it at speed (Q-76 ruled: no skip
-button; the beats complete as fast as they're performed).
+**A — Wake** (days 1–3, built): the vignette (`design/13` §4): harvest → plant → water
+→ sleep, the grown tile as proof of cause, eggs, sell/buy/refill. No friction by
+design. Q-76 ruled: no skip button — beats complete as fast as they are performed.
 
-### Chapter 1 — Land *(built; `design/13` §5)*
+**B — Meadow** (built): the crow escalates from comedy to cost (T-15/T-20 daily-loss
+identity). Scaring by walking is discovered, never taught (`design/13` item 17). The
+player's first taste of the phase's core tension: every minute guarding is a minute not
+farming — and under Q-32, that must feel like *two good options*, not falling behind.
 
-The parcel ladder: meadow (weeds, hands) → wood (logs, axe) → quarry (rocks, pickaxe).
-Each parcel is a fresh saturation. The friction this chapter plants deliberately goes
-unrelieved: every tile tilled is a tile to water, and the day (600 units, Q-38) doesn't
-grow with the yard. Pests stay individual: the crow, then the **rabbit** (flee the
-player's presence — counterplay is a walk, not a verb).
+**C — Wood**: the axe opens logs and standing trees. The **rabbit** (built, unspawned —
+`species_defs`) debuts as the second front: no verb answers it, only presence. The
+songbird drifts through as pure inhabitance. The watering-round friction that phase 2
+will relieve starts genuinely pinching here; it is *not* relieved in this phase
+(`design/01`: never optimise away a chore a later phase retires — keep it pleasant).
 
-### Chapter 2 — Water
+**D — Quarry**: the pickaxe opens rocks. The **mole** (built, unspawned) debuts: it
+steals the seed the player *paid for*, the phase's sharpest loss, and its counterplay is
+positional (stand in the seedbed; stomp only in the surfacing window — Q-64's visible
+mound). Three fronts now exceed one pair of feet — the phase's designed saturation
+point, and precisely the ache the scarecrow answers.
 
-The sprinkler arrives **just after the sim measures watering saturation** — e.g. N days
-running where the day ends with planted-but-dry tiles `[Playtest]`. Acquisition is Q-15
-(bought / crafted / granted). The skill is placement: radius coverage against the yard's
-actual shape, proximity to the well if coupling is ruled in (`design/03` §3). Hand-
-watering survives at the edges — relief is earned per-tile, not global.
+**E — Scarecrow**: see §4.
 
-The counter-turn: yield attracts mouths. The **ant raids** debut (scout → trail → column,
-P-10), and the **mole** starts stealing seed. Pest pressure scales with what the farm is
-worth, not with a clock.
+Not in phase 1: ants and the scent layer, kangaroo, worm (parked, Q-65), sprinkler,
+barn livestock — all phase 2+. The chicken is phase 1's whole livestock presence.
 
-### Chapter 3 — Mischief (the manual-defense chapter)
+## 4. The finale: the scarecrow is the first tower (Q-81)
 
-No new tool on purpose. The player *is* the farm's defense: stomp scouts, wash trails,
-stand in the seedbed so the mole won't surface, walk at grazers. This chapter teaches the
-counterplay catalog (`design/04` §4) one species at a time, and it must be long enough to
-hurt — the passive defenses only pay off as relief if the player has genuinely been
-sprinting between fronts.
+Ruled 2026-09-01, in the designer's words: *"a non-mobile, small-area tower that only
+affects one animal is an okay starting point."* Consequences taken on:
 
-### Chapter 4 — The perimeter
+- **Mechanically** it is the sprinkler's sibling: a species row and a brain, static, its
+  one behavior a standing `spook_radius` — the same field the player's own body already
+  projects. It scares **crows only**, in a **small radius** `[Playtest]`, no
+  habituation in phase 1 (habituation/moving-it-around is phase-2 statics depth).
+- **The delegation must be witnessed.** The beat only lands if the player *sees* a crow
+  veer off while they are busy elsewhere. Presentation owes a noticing aid (the crow's
+  flee is already animated; whether it needs more is `[Playtest]`).
+- **Acquisition** `[Designer, Q-82]`: bought at the seed box (economy sink, teaches
+  nothing new) vs. built from the wood parcel's logs (gives the axe chapter a payoff and
+  foreshadows crafting). Straw-man: built from logs — the first thing the yard's
+  materials *become*.
+- **Trigger**: offered only after the sim has measured both mastery and pain — ≥M crows
+  scared by hand ∧ ≥L crops lost to crows while the player was elsewhere `[Playtest]`.
+  Arriving before the loss is felt would violate the Q-32 relief rule.
+- **Gate proof**: the existing 1→2 proof (`SimWorld._phase1_proof_met`: opened parcels
+  cleared + first shipments + crows scared) gains a proposed final term: *a crow scared
+  by something that is not the player*. The celebration is the proof: the scarecrow
+  working alone **is** the kid-legible milestone moment (`design/12` presentation
+  column). Code change flagged for M3 planning.
 
-The statics arrive, and each one answers a *class* of intruder, which makes buying and
-placing them a legible matching puzzle rather than a checklist:
+## 5. Pacing: three speeds from one mechanism
 
-| Static | Stops | Doesn't stop |
+Every unlock trigger is a saturation predicate the sim measures, never a day count:
+
+- **Leisurely** — unfinished work costs nothing (Q-32); the next friction waits.
+- **Slow** — a player who doesn't see the answer just keeps getting the manual chapter,
+  indefinitely playable; the push itself teaches the tool.
+- **Fast** — a repeat player *drives* the predicates (plant wide, let the crow feed,
+  scare it on sight). Speed is knowledge — the right currency for the teaching act.
+  Repeat-run target: **30–45 minutes** `[Playtest]`.
+
+## 6. Economy budget (rough; spreadsheet due at M3 planning, `design/02` §5)
+
+| Beat | Main sink | Rough sizing rule |
 |---|---|---|
-| fence / hedge / gate *(built as tiles)* | walkers (rabbit, fox?) | hoppers, burrowers, birds |
-| chicken wire | burrowers (mole) — wire under the seedbed | everything above ground |
-| scarecrow | birds (crow) — writes fear-scent in a radius, the first **field-writer** the player owns (P-10 continuity: this is a proto-tower) | ground pests; and birds habituate — it wants moving `[Playtest]` |
-| *(nothing)* | — | the **kangaroo** hops it all (Q-57): the walking proof that statics don't finish the job |
+| A–B | seeds | the T-11 loop: one crop funds three seeds |
+| C–D | seeds at scale; can-refills are time, not gold | surplus accumulates — the phase has no mid-phase money wall |
+| E | the scarecrow | ≈ a few days of shipping surplus if bought; ≈ a wood-parcel session if built (Q-82) |
 
-The skill is perimeter economics: gaps, gate discipline, coverage per coin. The residual
-(hoppers, habituated birds, whatever slips a gap) keeps manual play alive — by design,
-this chapter reduces the fronts from five to two, never to zero.
+The phase deliberately ends money-easy: phase 2's machines are the first real sinks.
 
-### Chapter 5 — Livestock (Q-80, the biggest new scope)
+## 7. Content inventory (build cost of this doc)
 
-Animals are the new scale driver on both tracks at once: new income (eggs, wool, milk),
-new *daily hands-on care* (feed, water, collect, shear — candidates for the
-never-automate-before-bots list, Q-19), and a new pest surface (a thief after eggs and
-feed). Straw-man roster, smallest first: **chicken** (built; the coop formalizes her) →
-**sheep** (wool) → **cow** (milk) → **llama** (a *guard* — real farms use them; she
-writes fear-scent around the flock, a scarecrow with legs) → **dog** (chases pests on a
-tap-command — the first creature the player *commands*, pre-figuring phase 4's bots).
-Horse and pig are parked candidates, not in the straw-man (frugality; the horse's
-speed-relief competes with nothing that currently hurts).
+| Item | Status |
+|---|---|
+| Beats A–B, parcels, tools, economy objects, crow, chicken | ✅ built (M1.5/M2.5) |
+| Rabbit, mole, songbird | ✅ built, need spawn-in + tuning (content sequencing) |
+| Scarecrow | new: species row + brain (sprinkler pattern), art (one sprite, retro-diffusion pipeline), acquisition path (Q-82), trigger + proof term |
+| Beat-C/D trigger predicates | new, sim-side, testable headless |
 
-### Chapter 6 — The breaking point → the first tower
+No new engine capability is required; the phase completes on the actor system as built.
 
-Nests grow with the farm's worth; raid days go multi-front past what player + statics +
-dog can hold, and the player notices whole days going to defense instead of farming —
-the phase's final saturation. The relief is the **first tower** (Q-81 decides its
-identity; straw-man: a scare-tower — a super-scarecrow that pulses repellent scent,
-continuous with P-10's gradient thesis and with everything the player just learned).
+## 8. Telemetry & playtest plan
 
-It arrives **manual**: the player taps it to fire, and it's good — better than running
-there. The phase gate (P-4, sim-measured: sustained yield while repelling raids) is
-presented as the tower *earning autofire* — the celebration IS the machine waking up.
-The first time it fires while the player is busy farming, phase 1 is over and the
-tower-defense arc has begun.
+The session trace already records every action and dead tap. Per-beat measures to add or
+watch: time-to-first-sale (A); crows scared by hand and crops lost per day (B–D);
+watering actions per day (the phase-2 handoff number); time between scarecrow-available
+and scarecrow-placed (did the offer read?); time between placement and the witnessed
+scare (did the payoff land?); first-run wall-clock to gate vs. the 2–3 h target.
+Existing bar: the M1.5-style fresh-adult session remains the evidence standard.
 
----
+## 9. Risks
 
-## Pacing: leisurely, slow, and fast are the same design
+1. **The finale underwhelms** — one small static scaring one bird may read as a shrug,
+   not a thesis. Mitigation: the witnessed-scare presentation beat; the gate celebration
+   rides on it. `[Playtest]`
+2. **Beat D overshoots** — three fronts at once may tip abundance into stress for the
+   young end of S-7. Mitigation: front counts are per-species spawn scheduling, all
+   sim-tunable; kid-mode dial exists (P-2).
+3. **2–3 h is tight** for five beats — if playtests run long, beats C and D compress
+   (the parcels can shrink) before any beat is cut.
 
-Every unlock trigger is a **sim-measured saturation predicate**, not a day count — the
-sprinkler appears because dry tiles piled up, the statics because losses did, the tower
-because defense days did. So the three speeds fall out of one mechanism:
+## 10. Open items
 
-- **Leisurely** — a player who putters never sees a wall; abundance framing (Q-32) means
-  unfinished work costs nothing, and the next friction simply waits until they grow into it.
-- **Slow** — a player who doesn't yet see the answer keeps getting the manual chapter,
-  which is playable indefinitely (no deficit), until the push itself teaches the tool.
-- **Fast** — a repeat player can *drive* the predicates: plant wide to summon the
-  sprinkler, invite raids to summon the statics. Speed is knowledge, which is the correct
-  currency for a teaching phase.
-
-Hours-per-phase ambition is Q-21 and sets this doc's content budget more than any other
-number.
-
-## Economy shape
-
-Each relief is a gold sink sized to its chapter: seeds → sprinkler → statics (per-tile
-fence makes yard size a cost) → animals (purchase + recurring feed) → the tower, the most
-expensive thing yet. The shipping loop must fund each chapter's relief at that chapter's
-yield `[Claude: first-pass spreadsheet at M3 planning, design/02 §5]`.
-
-## What stays manual all phase (feeds Q-19)
-
-Planting, harvesting, shipping, and animal care are never automated here — the sprinkler
-only waters, the statics only stand, the tower only defends. Hands-on farming survives
-until phase 4 retires it for real.
-
-## Open rulings this skeleton needs
-
-- **Q-79** — the phase boundary: does the doc system renumber around "phase 1 ends at
-  the first automatic tower"?
-- **Q-80** — livestock role and roster ambition (products only vs. working animals; the
-  fox/thief question).
-- **Q-81** — the first tower's identity (scare-pulse vs. damage vs. watchtower).
-- **Q-15** — sprinkler/machine acquisition; **Q-21** — hours ambition; plus the standing
-  M3 set (Q-16–Q-20) which this skeleton sequences but does not answer.
+- **Q-82 (Designer)** scarecrow acquisition: bought vs. built-from-logs (straw-man: built).
+- Proof-term change (§4) lands with M3 planning.
+- All `[Playtest]` numbers above; first pass at M3's fresh-adult session.
