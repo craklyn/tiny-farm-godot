@@ -106,6 +106,24 @@ const DEFAULT := {
 			"boundary": "",              # contiguous with the neighbour's plot
 			"gate": Vector2i(-1, -1),
 			"opened_by": OPENED_BY_START,
+			# The designer, 2026-09-01: *"We should include sparse rocks and logs in
+			# the un-blocked sections. Once those items are available, then the
+			# player can do a superior job clearing that space."* So the field she
+			# starts in holds a few things she cannot do anything about yet — the
+			# axe and the pickaxe stop being keys to two rooms and become tools that
+			# improve ground she already walks on every day.
+			#
+			# **Sparse, and it must stay sparse**: this is a promise, not a chore.
+			# The parcel's *introduction* is still the weed and only the weed (T-10
+			# reads `obstacle`/`extra_obstacle`, never this), so "one new obstacle
+			# type per parcel" is intact — a scattered boulder is scenery until she
+			# has the tool, and the moment she does it is work she chose.
+			#
+			# The yard gets none: T-32 made it home rather than field, and a rock in
+			# the living room is not a promise. The neighbour's plot gets none
+			# either — it is the takeover contract, and every tile of it is read as
+			# a sentence.
+			"scatter": { "kinds": ["obstacle_rock", "obstacle_log"], "count": 6 },  # [Playtest]
 		},
 		{
 			"id": "wood",
@@ -241,3 +259,11 @@ static func is_boundary_state(state: String) -> bool:
 # written into those tiles are left exactly as they are.
 static func ground_of(parcel: Dictionary) -> String:
 	return String(parcel.get("ground", ""))
+
+
+# The handful of already-there obstacles a parcel scatters through itself, or {}
+# for the parcels that declare none (the designer, 2026-09-01). Separate from
+# `obstacle`/`density`, which is what the parcel is *made of* and what T-10
+# introduces it with; this is what it merely *contains*.
+static func scatter_of(parcel: Dictionary) -> Dictionary:
+	return parcel.get("scatter", {})

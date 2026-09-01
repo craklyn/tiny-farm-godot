@@ -113,6 +113,7 @@ func _init() -> void:
 	test_rain_on_ripe_soil()
 	test_ground_holds_until_black()
 	test_parcel_introduction_pick()
+	test_parcel_scatter()
 
 	print("")
 	print(String("=").repeat(60))
@@ -2385,13 +2386,21 @@ func test_parcel_generation() -> void:
 	_assert(not src.contains("ring_index"), "generation carries no ring_index")
 	_assert(not src.contains("distance_from_spawn"), "nor a distance from spawn")
 
-	# Each parcel contains only its own obstacle type — one new thing per parcel
-	# (Valve principle 4). The wood is the single deliberate exception: a standing
-	# tree is where a log comes from (Q-39).
+	# Each parcel contains only the obstacles it declares — one new thing per
+	# parcel (Valve principle 4). The wood is the single deliberate exception: a
+	# standing tree is where a log comes from (Q-39).
+	#
+	# `scatter` joins the allowance as of 2026-09-01, ruled by the designer: an
+	# open parcel may hold a handful of rocks and logs she cannot clear yet. It is
+	# still declared data, so nothing arrives here that the layout did not ask
+	# for — and it is deliberately NOT what the parcel *introduces*, which stays
+	# `obstacle`/`extra_obstacle` (see `test_parcel_scatter`).
 	for p in WorldLayout.parcels():
 		var allowed := { "": true }
 		allowed[String(p.get("obstacle", ""))] = true
 		allowed[String(p.get("extra_obstacle", ""))] = true
+		for kind in WorldLayout.scatter_of(p).get("kinds", []):
+			allowed[String(kind)] = true
 		var strays := 0
 		var own := 0
 		for r in p.get("rects", []):
@@ -9132,3 +9141,168 @@ func test_parcel_introduction_pick() -> void:
 		"asked again, the same rock — the pick is a fact about the farm, not a roll")
 
 	gs.free()
+
+
+# The designer, 2026-09-01: *"We should include sparse rocks and logs in the
+# un-blocked sections. Once those items are available, then the player can do a
+# superior job clearing that space."*
+#
+# A worldgen change, so it is tested over a spread of seeds rather than one: the
+# scatter must be sparse, deterministic, confined to the parcels that ask for it,
+# and incapable of sealing anything off or standing on a beat.
+func test_parcel_scatter() -> void:
+	print("\n--- Sparse rocks and logs in the open field (designer, 2026-09-01) ---")
+
+	var meadow: Dictionary = {}
+	for p in WorldLayout.parcels():
+		if String(p.get("id", "")) == "meadow":
+			meadow = p
+	var spec: Dictionary = WorldLayout.scatter_of(meadow)
+	_assert(not spec.is_empty(), "the meadow — open from the first morning — declares a scatter")
+	_assert(WorldLayout.scatter_of(WorldLayout.parcels()[0]).is_empty(),
+		"and the yard declares none: T-32 made it home, not field")
+
+	var kinds: Array = spec.get("kinds", [])
+	var want := int(spec.get("count", 0))
+	_assert(kinds.has("obstacle_rock") and kinds.has("obstacle_log"),
+		"rocks and logs, which are exactly the two the axe and the pickaxe answer")
+	_assert(want > 0 and want <= 12, "a handful (%d), not a field of them — sparse is the ruling" % want)
+
+	var counted_seeds := 0
+	var totals := { "obstacle_rock": 0, "obstacle_log": 0 }
+	for seed_value in [11, 202, 3003, 40004, 55555, 606060]:
+		var world := SimWorld.new()
+		SimRng.reseed(seed_value)
+		world.generate()
+		counted_seeds += 1
+
+		# --- sparse, and only where it was asked for --------------------------
+		var scattered := 0
+		for r in meadow.get("rects", []):
+			var rect: Rect2i = r
+			for ty in range(rect.position.y, rect.end.y):
+				for tx in range(rect.position.x, rect.end.x):
+					var st := String(world.get_tile(tx, ty).state)
+					if totals.has(st):
+						scattered += 1
+						totals[st] += 1
+		_assert_quiet(scattered == want,
+			"seed %d scatters exactly %d obstacles through the meadow" % [seed_value, want])
+
+		var elsewhere := 0
+		for p in WorldLayout.parcels():
+			if String(p.get("id", "")) == "meadow" or not WorldLayout.scatter_of(p).is_empty():
+				continue
+			for r in p.get("rects", []):
+				var rect2: Rect2i = r
+				for ty in range(rect2.position.y, rect2.end.y):
+					for tx in range(rect2.position.x, rect2.end.x):
+						var st2 := String(world.get_tile(tx, ty).state)
+						var declared := { "": true }
+						declared[String(p.get("obstacle", ""))] = true
+						declared[String(p.get("extra_obstacle", ""))] = true
+						if st2.begins_with("obstacle") and not declared.has(st2):
+							elsewhere += 1
+		_assert_quiet(elsewhere == 0,
+			"seed %d puts nothing in the yard or the neighbour's plot" % seed_value)
+
+		# --- the beats stay clear ---------------------------------------------
+		#
+		# The cold open's row and the vignette's tiles are read as sentences; an
+		# obstacle standing on one of them would be a story with a boulder in it.
+		var plot: Dictionary = world.layout.get("neighbour_plot", {})
+		var beats: Array[Vector2i] = []
+		for key in ["cleared", "tilled", "seeded", "second_row"]:
+			for t in plot.get(key, []):
+				beats.append(t)
+		for e in plot.get("growing", []):
+			beats.append(e.get("at", Vector2i(-1, -1)))
+		beats.append(plot.get("cleared_for_demo", Vector2i(-1, -1)))
+		beats.append(plot.get("wave_at", Vector2i(-1, -1)))
+		beats.append(WorldLayout.spawn(world.layout))
+		for e in WorldLayout.tools(world.layout):
+			beats.append(e.get("at", Vector2i(-1, -1)))
+			beats.append(e.get("gate", Vector2i(-1, -1)))
+		var trampled := 0
+		for t in beats:
+			if t.x >= 0 and String(world.get_tile(t.x, t.y).state).begins_with("obstacle"):
+				trampled += 1
+		_assert_quiet(trampled == 0,
+			"seed %d leaves the takeover row, the tools and the gates untouched" % seed_value)
+
+		# --- and nothing is sealed off ----------------------------------------
+		#
+		# The open field is one piece: from the tile the neighbour waves goodbye
+		# from — the first ground the player owns — both tools, both gates and
+		# every scattered obstacle are still walkable-to. (The yard is deliberately
+		# not in this: it is fenced until the cold open opens its gate.)
+		# The flood counts a weed as passable, because it is: clearing weeds is the
+		# verb she has on day one, so ground behind one is ground she can open.
+		# What must never happen is ground behind something she has no tool for.
+		var here: Vector2i = plot.get("wave_at", Vector2i(12, 4))
+		var reach := {}
+		var queue: Array[Vector2i] = [here]
+		reach[here] = true
+		var qi := 0
+		while qi < queue.size():
+			var at: Vector2i = queue[qi]
+			qi += 1
+			for d in [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]:
+				var n: Vector2i = at + d
+				if n.x < 0 or n.y < 0 or n.x >= SimWorld.MAP_WIDTH or n.y >= SimWorld.MAP_HEIGHT:
+					continue
+				if reach.has(n):
+					continue
+				if world.is_walkable(n.x, n.y) or String(world.get_tile(n.x, n.y).state) == "obstacle_weed":
+					reach[n] = true
+					queue.append(n)
+		var open_field: Array = reach.keys()
+		var beside := func(t: Vector2i) -> bool:
+			for d in [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]:
+				if reach.has(t + d):
+					return true
+			return reach.has(t)
+		var stranded := 0
+		# The tools, not their gates: a closed gate is *meant* to be unwalkable, and
+		# its only other neighbour is the tool lying beside it. Taking the tool is
+		# what opens it (Q-46), so reaching the tool is reaching the gate.
+		for e in WorldLayout.tools(world.layout):
+			if not beside.call(e.get("at", Vector2i(-1, -1))):
+				stranded += 1
+		for r in meadow.get("rects", []):
+			var rect3: Rect2i = r
+			for ty in range(rect3.position.y, rect3.end.y):
+				for tx in range(rect3.position.x, rect3.end.x):
+					if totals.has(String(world.get_tile(tx, ty).state)) \
+							and not beside.call(Vector2i(tx, ty)):
+						stranded += 1
+		_assert_quiet(stranded == 0,
+			"seed %d strands nothing: the tools, the gates and every scattered rock are still walkable-to (%d tiles open)"
+				% [seed_value, open_field.size()])
+
+		# --- T-10 still introduces the weed, never a scattered rock -----------
+		var gs = load("res://systems/game_state.gd").new()
+		gs.clear_counts = {}
+		var intro: Array[Vector2i] = TeachingFocus.parcel_introduction(world, gs)
+		if not intro.is_empty():
+			_assert_quiet(String(world.get_tile(intro[0].x, intro[0].y).state) == "obstacle_weed",
+				"seed %d introduces the meadow with its weed, not with a boulder" % seed_value)
+		gs.free()
+	_flush_quiet("the scatter is sparse, confined, harmless and beat-free across %d seeds" % counted_seeds)
+	_assert(int(totals["obstacle_rock"]) > 0 and int(totals["obstacle_log"]) > 0,
+		"both kinds actually appear (%d rocks, %d logs over %d seeds)"
+			% [int(totals["obstacle_rock"]), int(totals["obstacle_log"]), counted_seeds])
+
+	# --- deterministic: the same seed lays the same field ----------------------
+	var a := SimWorld.new()
+	SimRng.reseed(777)
+	a.generate()
+	var b := SimWorld.new()
+	SimRng.reseed(777)
+	b.generate()
+	var same := true
+	for ty in SimWorld.MAP_HEIGHT:
+		for tx in SimWorld.MAP_WIDTH:
+			if String(a.get_tile(tx, ty).state) != String(b.get_tile(tx, ty).state):
+				same = false
+	_assert(same, "and the same seed lays the same scatter, tile for tile (replays depend on it)")

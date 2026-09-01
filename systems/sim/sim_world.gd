@@ -413,6 +413,14 @@ func generate(with_layout: Dictionary = WorldLayout.DEFAULT) -> void:
 			tiles[at.y][at.x] = _create_tile("cleared")
 			objects[at.y][at.x] = String(e.get("object", ""))
 
+	# 6b. A handful of rocks and logs through the parcels that declare a scatter —
+	#     today the meadow, the one field parcel that is open from the first
+	#     morning (the designer, 2026-09-01). **After** the fixed objects, the
+	#     yard's ground and the tools, so it can see what they claimed and place
+	#     around it, and before the acorns, which are in a different parcel and
+	#     draw from candidates of their own.
+	_place_scatter()
+
 	# 7. A finite acorn stock near the trees (T-15 / Q-39). No regeneration in
 	#    phase 1: the stock running down IS the difficulty ramp, and a ramp that
 	#    refills is not a ramp. Walkable like an egg, so it can never trap anyone.
@@ -434,6 +442,108 @@ func generate(with_layout: Dictionary = WorldLayout.DEFAULT) -> void:
 
 func _inside(tx: int, ty: int) -> bool:
 	return tx >= 1 and tx <= MAP_WIDTH - 2 and ty >= 1 and ty <= MAP_HEIGHT - 2
+
+
+# Sparse rocks and logs through a parcel that is already open (the designer,
+# 2026-09-01: *"We should include sparse rocks and logs in the un-blocked
+# sections. Once those items are available, then the player can do a superior job
+# clearing that space."*). Which parcels, and how many, is layout data — this is
+# only the placing.
+#
+# Three rules, and each one is a thing that would otherwise go wrong:
+#
+#   * **It never lands on anything.** Candidates are plain `cleared` ground with
+#     no object on it and no object anywhere in its shoulders, so the ring step 5
+#     deliberately cleared around the cot, the bin, the well, the seed box and the
+#     two tools stays clear — those shoulders exist because a fat finger misses
+#     onto them (T-27 box 3). Tiles beside a gate are spared for the same reason:
+#     the way in reads as a way in.
+#   * **It never cuts the field in two.** Every placement is checked with a flood
+#     fill and reverted unless the walkable area shrank by exactly the one tile it
+#     filled. A seeded draw is deterministic, not careful — without this, one seed
+#     in some number of them would wall off a corner of the meadow, and the player
+#     who found it would have no idea it was supposed to be reachable.
+#   * **It is a seeded draw without replacement**, the same swap-and-shrink
+#     `_place_acorns` uses, so the same seed always lays the same field and a
+#     replay regenerates it exactly.
+func _place_scatter() -> void:
+	for p in WorldLayout.parcels(layout):
+		var spec: Dictionary = WorldLayout.scatter_of(p)
+		var kinds: Array = spec.get("kinds", [])
+		var want := int(spec.get("count", 0))
+		if kinds.is_empty() or want <= 0:
+			continue
+		var candidates: Array[Vector2i] = []
+		for r in p.get("rects", []):
+			var rect: Rect2i = r
+			for ty in range(rect.position.y, rect.end.y):
+				for tx in range(rect.position.x, rect.end.x):
+					if _scatter_candidate(tx, ty):
+						candidates.append(Vector2i(tx, ty))
+		if candidates.is_empty():
+			continue
+		var placed := 0
+		while placed < want and not candidates.is_empty():
+			var idx: int = SimRng.randi() % candidates.size()
+			var t: Vector2i = candidates[idx]
+			candidates.remove_at(idx)
+			var kind := String(kinds[placed % kinds.size()])
+			var was: Dictionary = tiles[t.y][t.x]
+			tiles[t.y][t.x] = _create_tile(kind)
+			if _keeps_ground_connected(t):
+				placed += 1
+			else:
+				tiles[t.y][t.x] = was  # it would have sealed something off
+
+
+# Does the ground on all sides of this newly-blocked tile still hang together?
+#
+# Asked of the tile's own neighbours rather than of the whole map, which is both
+# cheaper and exactly the right question: filling one tile can only separate
+# ground that used to route *through* it, so if everything that touched it can
+# still reach everything else that touched it, nothing anywhere was cut off.
+func _keeps_ground_connected(t: Vector2i) -> bool:
+	var open_sides: Array[Vector2i] = []
+	for d in [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]:
+		if is_walkable(t.x + d.x, t.y + d.y):
+			open_sides.append(t + d)
+	if open_sides.size() <= 1:
+		return true
+	var seen := {}
+	for reached in reachable_from(open_sides[0]):
+		seen[reached] = true
+	for i in range(1, open_sides.size()):
+		if not seen.has(open_sides[i]):
+			return false
+	return true
+
+
+# Ground a scattered obstacle may land on: plain field, nothing on it, nothing
+# beside it that a finger aims at.
+func _scatter_candidate(tx: int, ty: int) -> bool:
+	if not _inside(tx, ty):
+		return false
+	if String(tiles[ty][tx].state) != "cleared" or objects[ty][tx] != "":
+		return false
+	# Somewhere to stand while clearing it, or it is scenery forever.
+	var approachable := false
+	for d in [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]:
+		if is_walkable(tx + d.x, ty + d.y):
+			approachable = true
+	if not approachable:
+		return false
+	for dy in range(-1, 2):
+		for dx in range(-1, 2):
+			var nx := tx + dx
+			var ny := ty + dy
+			if nx < 0 or ny < 0 or nx >= MAP_WIDTH or ny >= MAP_HEIGHT:
+				continue
+			if objects[ny][nx] != "":
+				return false
+			var st := String(tiles[ny][nx].state)
+			if st == WorldLayout.GATE_CLOSED or st == WorldLayout.GATE_OPEN:
+				return false
+	return true
 
 
 func _place_acorns() -> void:

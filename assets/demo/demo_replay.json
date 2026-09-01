@@ -1,9 +1,7 @@
 {"base_save":{},"build_id":"v0.1.0-90-g7866bbb-dirty","gen_seed":20260830,"version":2}
 {"actor":"neighbour","target":[16,4],"tick":0,"verb":"water"}
 {"actor":"neighbour","target":[17,4],"tick":0,"verb":"water"}
-{"actor":"world","tick":0,"verb":"sleep","weather":"sunny"}
-{"actor":"neighbour","target":[16,4],"tick":0,"verb":"water"}
-{"actor":"neighbour","target":[17,4],"tick":0,"verb":"water"}
+{"actor":"world","tick":0,"verb":"sleep","weather":"rainy"}
 {"actor":"world","tick":0,"verb":"sleep","weather":"sunny"}
 {"actor":"neighbour","target":[15,4],"tick":0,"verb":"till"}
 {"actor":"neighbour","seed_type":"wheat","target":[15,4],"tick":0,"verb":"plant"}
