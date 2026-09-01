@@ -10,6 +10,28 @@ var GameState: Node
 var ActionRouter: Node
 var Pathfinding: Node
 
+# The shelf: every session folder in playtests/, classified. `format` is the
+# replay version it was recorded under; `verdict` is what its replay does against
+# its own autosave — "match", or "cross" for sessions whose world has moved under
+# them (M1.5's parcels invalidated the 08-28/08-30 play sessions; T-32's yard adds
+# a second reason to the same files; the 08-31 pair are deploy rescues — the first
+# from the pre-M2.5 build, the second a Continue on a pre-T-32 base, this game's
+# first v2 log). A deploy's rescue that shelves a new folder fails the fixture
+# tests BY NAME until it is classified here — deliberately.
+const SHELF := {
+	"2026-08-28_111552": { "format": 1, "verdict": "cross" },
+	"2026-08-28_114839": { "format": 1, "verdict": "cross" },
+	"2026-08-28_115934": { "format": 1, "verdict": "cross" },
+	"2026-08-28_224740": { "format": 1, "verdict": "cross" },
+	"2026-08-30_215248": { "format": 1, "verdict": "match" },
+	"2026-08-30_215356": { "format": 1, "verdict": "match" },
+	"2026-08-30_215452": { "format": 1, "verdict": "match" },
+	"2026-08-30_221027": { "format": 1, "verdict": "cross" },
+	"2026-08-31_220017": { "format": 1, "verdict": "cross" },
+	"2026-08-31_220426": { "format": 2, "verdict": "cross" },
+}
+
+
 func _init() -> void:
 	GameState = load("res://systems/game_state.gd").new()
 	ActionRouter = load("res://systems/action_router.gd").new()
@@ -2082,10 +2104,17 @@ func test_energy_repartition() -> void:
 	# --- the real fixtures, at the fraction each of them was saved at ----------
 	#
 	# The synthetic cases above prove the arithmetic; these are the files an
-	# actual player would be carrying, and they are all v1. Each must come back
-	# under the sky it went down under.
+	# actual player would be carrying. Each must come back under the sky it went
+	# down under. The roster of shelved sessions lives in SHELF (top of this
+	# file): every deploy's rescue adds a folder here, and a folder not in SHELF
+	# fails by NAME so the newcomer gets classified deliberately instead of
+	# breaking arithmetic — the 8→9→10 count treadmill ended 2026-08-31.
 	var dir := DirAccess.open("res://playtests")
 	_assert(dir != null, "the playtests fixtures directory is readable")
+	if dir != null:
+		for name in dir.get_directories():
+			_assert(SHELF.has(name),
+				"new shelved session %s needs classifying in SHELF" % name)
 	var checked := 0
 	if dir != null:
 		for name in dir.get_directories():
@@ -2107,8 +2136,9 @@ func test_energy_repartition() -> void:
 						int(data["state"].get("max_energy", 20)))),
 				"%s wakes under the same sky" % name)
 			gsf.free()
-	_flush_quiet("every v1 autosave in playtests/ loads at its own hour (%d)" % checked)
-	_assert(checked == 9, "all 9 shelved sessions were checked (%d)" % checked)
+	_flush_quiet("every shelved autosave in playtests/ loads at its own hour (%d)" % checked)
+	_assert(checked == SHELF.size(),
+		"all %d shelved sessions were checked (%d)" % [SHELF.size(), checked])
 
 
 func test_clock_digits() -> void:
@@ -5774,13 +5804,12 @@ func test_replay_v2() -> void:
 		"advancing no clock and recomputing nothing — the legacy path, untouched")
 	gs_v1.free()
 
-	# The real thing: every recorded session in playtests/ is a v1 log, and every
-	# one of them must keep behaving exactly as it did before the format bumped.
+	# The real thing: every recorded session in playtests/ replays as exactly the
+	# log SHELF says it is — format and verdict both. A folder missing from SHELF
+	# fails by name (see SHELF's comment at the top of the file).
 	var dir := DirAccess.open("res://playtests")
 	_assert(dir != null, "the playtests fixtures directory is readable")
 	var checked := 0
-	var matched := 0
-	var mismatched := 0
 	for name in dir.get_directories():
 		var path := "res://playtests/%s/session_replay.json" % name
 		if not FileAccess.file_exists(path):
@@ -5789,19 +5818,27 @@ func test_replay_v2() -> void:
 		if fixture == null:
 			continue
 		checked += 1
-		_assert_quiet(fixture.version == 1, "%s is a v1 log" % name)
+		if not SHELF.has(name):
+			_assert(false, "new recorded session %s needs classifying in SHELF" % name)
+			continue
+		var expect: Dictionary = SHELF[name]
+		_assert_quiet(fixture.version == int(expect["format"]),
+			"%s is the v%d log the shelf says it is" % [name, int(expect["format"])])
 		var wf := SimWorld.new()
 		var gsf = load("res://systems/game_state.gd").new()
 		fixture.apply_to(wf, gsf)
-		_assert_quiet(fixture.divergence == "",
-			"%s takes the legacy path and asserts nothing about brains" % name)
-		if SaveGame.replay_matches(fixture, SaveGame.load_dict(
-				"res://playtests/%s/autosave.json" % name)):
-			matched += 1
-		else:
-			mismatched += 1
+		if int(expect["format"]) == 1:
+			_assert_quiet(fixture.divergence == "",
+				"%s takes the legacy path and asserts nothing about brains" % name)
+		# (a v2 fixture may report divergence — the tenth session is a Continue on
+		# a pre-T-32 base, and its recomputation disagreeing with its recording is
+		# the cross-provenance speaking, not a bug.)
+		var is_match := SaveGame.replay_matches(fixture, SaveGame.load_dict(
+				"res://playtests/%s/autosave.json" % name))
+		_assert_quiet(is_match == (String(expect["verdict"]) == "match"),
+			"%s replays to the '%s' verdict the shelf records" % [name, expect["verdict"]])
 		gsf.free()
-	_flush_quiet("every recorded session in playtests/ still reads and replays as the v1 log it is (%d)"
+	_flush_quiet("every recorded session in playtests/ replays as the log the shelf says it is (%d)"
 		% checked)
 
 	# **Which of them still reproduce their own farm, counted.** This used to be a
@@ -5831,14 +5868,8 @@ func test_replay_v2() -> void:
 	# "matches this build" while the world underneath it has moved. That is what
 	# `tools/verify_replay.gd` did to the last local human session at T-32: MATCH
 	# before, MISMATCH after, with no cross-build warning to explain it.
-	_assert(checked == 9, "there are 9 recorded sessions in playtests/ (%d)" % checked)
-	_assert(matched == 3,
-		"3 of them still reproduce their autosave — the ones with no Actions to re-apply (%d)"
-			% matched)
-	_assert(mismatched == 6,
-		"and 6 do not: M1.5's worldgen invalidated five, and the ninth (rescued off the"
-		+ " tablet at the 2026-08-31 deploy, still on the v0.1.0-39 build) predates"
-		+ " T-32's yard (%d)" % mismatched)
+	_assert(checked == SHELF.size(),
+		"there are %d recorded sessions in playtests/ (%d)" % [SHELF.size(), checked])
 
 	# --- free-walk entries: recorded, applied, compared (M2.5 WI-6) ------------
 	# §3.3's other half, and the switch WI-5 armed and left off. A crossing writes
