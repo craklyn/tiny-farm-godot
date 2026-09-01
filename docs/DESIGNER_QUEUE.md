@@ -688,7 +688,11 @@ trace actually says, because several of these looked like bugs and were not.*
   first thing in the game that draws one (magenta, `design/09`'s reserved hue, debug-only)
   — so if you want to look at the overlay question with your eyes rather than in the
   abstract, the Zoo's "Trail" button is now where to do it.*
-- **Q-72 (Taste)** **Does the weather line keep its sun/sunset/moon glyph now the arc is
+- **Q-72** ~~Does the weather line keep its glyph now the arc exists?~~ — ✅ **ruled
+  2026-09-01: the weather line speaks only when weather is happening** (rain keeps its
+  words; clear skies say nothing — the arc and the new T-34 digits own time). Built
+  with T-34 so the baseline moves once.
+  Original entry: **Does the weather line keep its sun/sunset/moon glyph now the arc is
   there?** T-29 put a sun-arc in the middle of the top bar, and the weather label three
   inches to its left still shows ☀️ / 🌇 / 🌙 on a clear day — the same hour, said twice.
   They read one function now (`Daylight.glyph_for`), so they can never *disagree*; the
@@ -999,6 +1003,13 @@ trace actually says, because several of these looked like bugs and were not.*
   before/after in `M2_5_PLAN.md` §9 WI-12.
 
 ## Before M3 — phase 2 design
+
+- **Q-73 (Creative, the designer's own seed, 2026-09-01)** **Evenings as social time.**
+  His words, filed verbatim: *"Maybe evenings are for socializing potentially and
+  that's why we don't tie it to energy."* T-34 built the structural half: the clock
+  parks at 16:00 when the meter empties, so the evening exists as a span energy never
+  touches. What lives in it — the neighbour returning (Q-22 territory), festivals,
+  bot chatter — is phase-2+ content design. Nothing is blocked; the span waits.
 
 - **Q-15 (Ruling)** Sprinkler/machine acquisition loop: crafted, bought, or
   milestone-granted; the resource loop that feeds it (`design/03`).

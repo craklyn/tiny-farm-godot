@@ -556,6 +556,22 @@ the door that fixes that.*
   replay-verified, benchmark 105,132× (gate ≥100,000×), and the visual baseline
   untouched — the zoo is behind the title screen, so it cannot be in the frame.**
 
+**T-34 — The clock gets digits** · ruled 2026-09-01 · builds on T-29
+*The designer: display the time as a digital clock, with day start and end set —
+"maybe evenings are for socializing potentially and that's why we don't tie it to
+energy." Ruled same day: the workday is **6:00 → 16:00**, digits live **beside the
+arc** in the top bar.*
+- [ ] With 600 units over ten hours, **one unit is one fictional minute**: the clock
+      is literally `6:00 + units spent`, a base action is 30 minutes, a heavy clear
+      an hour. No conversion factor exists.
+- [ ] At energy 0 the clock parks at 16:00 — everything after is *evening*, a span
+      energy never touches; soft-floor work (Q-11) happens "in the evening" without
+      moving the digits. Evening's own rules are future design (see the queue's
+      phase-2 section: evenings as social time). Sleep at any hour wakes at 6:00.
+- [ ] Q-72 rides along: the weather line goes quiet on clear days — rain keeps its
+      words; the arc and digits own time. One deliberate re-baseline for the pair.
+- [ ] Digits are S-7-legal by Q-35's shop precedent (digits allowed, words never).
+
 **T-29 — The day wears a clock** · Q-38's rider, filed 2026-08-31 · scheme approved
 2026-09-01 · ✅ **built 2026-08-31**
 *So that time-of-day is readable precisely, not only ambiently — and so the day's
