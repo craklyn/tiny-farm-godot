@@ -82,6 +82,7 @@ func _run_scenarios() -> void:
 	await _scenario_aa_the_yard_is_home()
 	await _scenario_ab_the_stations_present_themselves()
 	await _scenario_ac_the_zoo()
+	await _scenario_ae_the_home()
 	await _scenario_ad_two_hud_findings()
 
 func _wait_until(pred: Callable, max_frames: int) -> bool:
@@ -2655,6 +2656,54 @@ func _scenario_ab_the_stations_present_themselves() -> void:
 # The gauge's full height, from the HUD's own metrics: 22px tall with a 1px lip
 # top and bottom. Spelled once here so the assertion above cannot drift from it.
 const HUD_GAUGE_FULL := 20.0
+
+
+func _scenario_ae_the_home() -> void:
+	# T-37, the designer 2026-09-01: an indoor space representing the player's
+	# home — the bed, windows, very little else. The unit test proves the layout
+	# generates; this proves the *door opens onto a room that renders*, detached
+	# from the played farm (the Zoo's proof, for the Zoo's reason).
+	print("\n--- Scenario AE: the home renders, detached (T-37) ---")
+
+	var title = load("res://ui/title_screen.tscn").instantiate()
+	add_child(title)
+	await get_tree().process_frame
+	_assert(_find_button(title, "HomeButton") != null,
+		"the title screen offers 'Home' in the debug grid")
+	title.queue_free()
+	await get_tree().process_frame
+
+	var home = load("res://ui/home_screen.tscn").instantiate()
+	add_child(home)
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	var hfarm = home.farm
+	_assert(hfarm != null and hfarm.sim != null, "the home brought its own farm and SimWorld")
+	_assert(hfarm.sim != main_scene.farm.sim, "which is not the played farm's")
+	_assert(home.gs != null and home.gs != GameState, "and a detached GameState, not the singleton")
+	_assert(hfarm.replay == null and hfarm.trace == null,
+		"nothing in the home records — no replay, no trace")
+
+	# The room, as generated in the real scene.
+	_assert(String(hfarm.sim.get_tile(14, 8).get("state", "")) == WorldLayout.FLOOR,
+		"the floor is down")
+	_assert(String(hfarm.sim.get_tile(13, 5).get("state", "")) == WorldLayout.WINDOW,
+		"a window is in the north wall")
+	_assert(String(hfarm.sim.get_tile(10, 6).get("state", "")) == WorldLayout.WALL,
+		"and the wall stands")
+	_assert(String(hfarm.sim.objects[7][12]) == "cot", "the bed is in the room")
+	_assert(hfarm.sim.actors.size() == 1 and hfarm.sim.has_actor(SimWorld.ACTOR_PLAYER),
+		"she is home alone (%d actors)" % hfarm.sim.actors.size())
+
+	# And it draws to completion, frame after frame.
+	for i in 3:
+		hfarm.queue_redraw()
+		await get_tree().process_frame
+	_assert(is_instance_valid(hfarm), "three redraws later the room is still standing")
+
+	home.queue_free()
+	await get_tree().process_frame
 
 
 func _scenario_ac_the_zoo() -> void:

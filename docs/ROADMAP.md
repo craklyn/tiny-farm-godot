@@ -55,6 +55,37 @@ beat 0 reads it and stays complete forever. The regression test
 (`test_gate_lesson_latch_regression`) replays her session to the moment before her
 first sleep and asserts the cot glows, not the gate — it fails against the old code.*
 
+**T-37 — The player's home, indoors** · designer directive, 2026-09-01 ·
+✅ **built 2026-09-01, behind a debug door**
+> *"Please create an indoor space representing the player's home. The home
+> should have the bed, windows, and very few furnishings initially. We'll add
+> those later."*
+
+*Built as another layout, not new machinery — the T-32/Zoo generalization
+carried whole:* `WorldLayout.FLOOR` is a ground the way YARD is (walkable,
+never tillable — the same `not_tillable` gateway guard), `WALL`/`WINDOW` are
+boundaries the way FENCE is (one `is_boundary_state` edit inherits blocking,
+generation shoulders, movement barriers), and `WorldLayout.HOME` is the room:
+floor parcel, wall ring, two windows punched into the north wall, an open
+doorway in the south, the bed and nothing else. **The bed arrives through a
+new layout key, `objects`** — generation reads
+`layout.get("objects", OBJECT_POSITIONS)`, so HOME places its own furniture
+and the farm's fixed stations stay a module constant until the multi-map
+loader moves them (that project's first step, now done). Art is derived, $0.00
+(`tools/gen_interior.py`, CREDITS.md): planks/walls from the fence's own
+browns; the window pane's blue is the one new colour. Reached from the title
+screen's debug row — now a 2x2 grid, four doors — via `ui/home_screen.tscn`
+(the Zoo's detached-state pattern; the farmer stands as scenery, no walking
+yet). **Deliberately not wired into play**: a door on the farm, walking
+indoors, and the cot's move are content sequencing on the ruled onboarding
+flow. Covered by `tests/test_runner.gd:test_home_layout` (the room, the
+shell, walkability, the objects override, the farm's fallback, the till
+refusal for her and by construction for bots, save round-trip) and
+integration **Scenario AE** (the door exists, the room renders detached —
+no replay, no trace, no singleton). 1844 unit / 467 integration green;
+robot session MATCH; visual baseline untouched (the home is behind the
+title screen).
+
 **T-36 — The clock reads 12-hour, AM/PM** · ruled 2026-08-31 by the designer,
 overturning T-34's 24-hour deviation · ✅ SHIPPED 2026-09-01
 *"I'd prefer time of day to be 12-hour clock with AM / PM." The 24h form existed

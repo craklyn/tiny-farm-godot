@@ -366,8 +366,10 @@ func generate(with_layout: Dictionary = WorldLayout.DEFAULT) -> void:
 		if g.x >= 0 and _inside(g.x, g.y):
 			tiles[g.y][g.x] = _create_tile(WorldLayout.GATE_CLOSED)
 
-	# 5. Fixed objects, on cleared ground with cleared shoulders.
-	for obj in OBJECT_POSITIONS:
+	# 5. Fixed objects, on cleared ground with cleared shoulders. A layout may
+	#    carry its own `objects` list (T-37, the home's bed); the farm's default
+	#    layout does not, so the module constant stays the farm's truth.
+	for obj in layout.get("objects", OBJECT_POSITIONS):
 		var tx: int = obj.tx
 		var ty: int = obj.ty
 		tiles[ty][tx] = _create_tile("cleared")
@@ -1574,7 +1576,9 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			# the tap degrades to plain movement — she walks there and stands on it.
 			# The only things that arrive here are a direct Action: a replay
 			# recorded on an older worldgen, or a test asking the question.
-			if verb == "till" and String(tile.get("state", "")) == WorldLayout.YARD:
+			# T-37 extends the same rule to the home's floor: home ground, indoors
+			# or out, is the ground a hoe never opens.
+			if verb == "till" and String(tile.get("state", "")) in [WorldLayout.YARD, WorldLayout.FLOOR]:
 				return _fail("not_tillable")
 			var cost: int = Tools.get_energy_cost(verb)
 			var actor := String(action.get("actor", ""))

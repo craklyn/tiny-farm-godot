@@ -234,7 +234,14 @@ var dirt_texture: Texture2D
 # different colours (tools/gen_yard_ground.py) — so the fence line reads as a
 # boundary between two kinds of land rather than as a seam in one.
 var yard_texture: Texture2D
+# T-37: the home's ground and shell (tools/gen_interior.py — planks and walls
+# derived from the fence's own browns, so indoor wood and outdoor wood match).
+var floor_texture: Texture2D
+var interior_texture: Texture2D
 var biomes_texture: Texture2D
+# T-37: which sheet a boundary/obstacle state draws from. Everything defaults
+# to obstacles.png (biomes_texture); interior states name their own sheet.
+var tile_sheets: Dictionary = {}
 var furniture_texture: Texture2D
 var chest_texture: Texture2D
 var animals_texture: Texture2D
@@ -248,6 +255,9 @@ func _load_textures() -> void:
 	dirt_texture = load("res://assets/sprites/generated/terrain_dirt.png")
 	# terrain_yard: terrain_grass's own pattern in the yard's colours (T-32).
 	yard_texture = load("res://assets/sprites/generated/terrain_yard.png")
+	# terrain_floor: the home's planks, same 3x3 seamless format (T-37).
+	floor_texture = load("res://assets/sprites/generated/terrain_floor.png")
+	interior_texture = load("res://assets/sprites/generated/interior.png")
 	crops_texture = load("res://assets/sprites/generated/crops.png")
 	biomes_texture = load("res://assets/sprites/generated/obstacles.png")
 	furniture_texture = load("res://assets/sprites/generated/objects.png")
@@ -268,6 +278,13 @@ func _load_textures() -> void:
 	tile_regions[WorldLayout.HEDGE] = Rect2(5 * 16, 0, 16, 16)
 	tile_regions[WorldLayout.GATE_CLOSED] = Rect2(6 * 16, 0, 16, 16)
 	tile_regions[WorldLayout.GATE_OPEN] = Rect2(7 * 16, 0, 16, 16)
+	# T-37: the home's shell lives on its own sheet (interior.png), so the
+	# per-state sheet table says so; every state absent from it draws from
+	# obstacles.png as always.
+	tile_regions[WorldLayout.WALL] = Rect2(0 * 16, 0, 16, 16)
+	tile_regions[WorldLayout.WINDOW] = Rect2(1 * 16, 0, 16, 16)
+	tile_sheets[WorldLayout.WALL] = interior_texture
+	tile_sheets[WorldLayout.WINDOW] = interior_texture
 
 	# Crop regions (crops.png: row 0 wheat, row 1 tomato, row 3 pea, 4 visual
 	# stages each; row 2 is the shop iconography — see menus.gd). The pea ships as
@@ -680,7 +697,12 @@ func _draw() -> void:
 			# which is made of its own ground (T-32) and draws the same 16x16 cell
 			# from its own sheet — no autotiling, no edge cases: two flat noise
 			# tiles that happen to meet at the fence.
-			var ground_tex: Texture2D = yard_texture if tile.state == WorldLayout.YARD else tileset_texture
+			var ground_tex: Texture2D = tileset_texture
+			if tile.state == WorldLayout.YARD:
+				ground_tex = yard_texture
+			elif tile.state == WorldLayout.FLOOR:
+				# T-37: the home's planks — the yard's mechanism, indoors.
+				ground_tex = floor_texture
 			draw_texture_rect_region(ground_tex, Rect2(px, py, TILE_SIZE, TILE_SIZE), Rect2(16, 16, 16, 16))
 
 			# Draw tilled soil, edge-matched to its neighbours (see world/autotile.gd)
@@ -704,13 +726,16 @@ func _draw() -> void:
 			# Queue obstacles and boundaries
 			if tile.state in ["border", "obstacle_rock", "obstacle_log", "obstacle_weed",
 					"obstacle_tree", WorldLayout.FENCE, WorldLayout.HEDGE,
-					WorldLayout.GATE_CLOSED, WorldLayout.GATE_OPEN]:
+					WorldLayout.GATE_CLOSED, WorldLayout.GATE_OPEN,
+					WorldLayout.WALL, WorldLayout.WINDOW]:
 				var region: Rect2 = tile_regions.get(tile.state, Rect2())
 				if region.size.x > 0:
 					var ob_rect := _react_rect(px, py, k, TILE_SIZE, shake)
+					# T-37: interior states draw from their own sheet.
+					var sheet: Texture2D = tile_sheets.get(tile.state, biomes_texture)
 					render_queue.append({
 						"y": py,
-						"draw": func(): draw_texture_rect_region(biomes_texture, ob_rect, region)
+						"draw": func(): draw_texture_rect_region(sheet, ob_rect, region)
 					})
 
 			# Queue crops

@@ -25,14 +25,19 @@ func _jsonify(v):
 
 
 func _init() -> void:
-	var doc := {
-		"name": "default",
-		"source": "systems/world_layout.gd WorldLayout.DEFAULT",
-		"grid": [SimWorld.MAP_WIDTH, SimWorld.MAP_HEIGHT],
-		"layout": _jsonify(WorldLayout.DEFAULT),
+	var exports := {
+		"default": WorldLayout.DEFAULT,
+		"home": WorldLayout.HOME,
 	}
-	var f := FileAccess.open("res://hq/data/maps/default.json", FileAccess.WRITE)
-	f.store_string(JSON.stringify(doc, "  "))
-	f.close()
-	print("exported WorldLayout.DEFAULT -> hq/data/maps/default.json")
+	for name in exports:
+		var doc := {
+			"name": name,
+			"source": "systems/world_layout.gd WorldLayout.%s" % String(name).to_upper(),
+			"grid": [SimWorld.MAP_WIDTH, SimWorld.MAP_HEIGHT],
+			"layout": _jsonify(exports[name]),
+		}
+		var f := FileAccess.open("res://hq/data/maps/%s.json" % name, FileAccess.WRITE)
+		f.store_string(JSON.stringify(doc, "  "))
+		f.close()
+		print("exported WorldLayout.%s -> hq/data/maps/%s.json" % [String(name).to_upper(), name])
 	quit()

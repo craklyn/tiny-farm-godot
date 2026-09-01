@@ -31,6 +31,18 @@ const HEDGE := "hedge"
 const GATE_CLOSED := "gate_closed"
 const GATE_OPEN := "gate_open"
 
+# T-37, the designer 2026-09-01: *"create an indoor space representing the
+# player's home. The home should have the bed, windows, and very few
+# furnishings initially."*
+#
+# An interior is not a new kind of world — it is another layout: FLOOR is a
+# ground the way YARD is (walkable, never tillable), and WALL/WINDOW are
+# boundaries the way FENCE and HEDGE are (visible, never walkable, laid as
+# rects). The generator needed nothing new to lay them; a window is a wall
+# that happens to show the sky.
+const WALL := "wall"
+const WINDOW := "window"
+
 # T-32, the designer 2026-09-01: *"create a separate form of ground that cannot
 # be tilled, and fill the initial fenced space with it."*
 #
@@ -44,6 +56,10 @@ const GATE_OPEN := "gate_open"
 # exactly the same kind as *where the fence runs*: a parcel declares the ground
 # it is made of and the generator lays it. Nothing computes it.
 const YARD := "yard"
+
+# T-37: the home's ground. Walkable like the yard, untillable like the yard —
+# the yard's rule, indoors, on wood.
+const FLOOR := "floor"
 
 # Who opens a gate, as recorded on the parcel. "start" means no gate at all.
 const OPENED_BY_START := "start"
@@ -196,6 +212,58 @@ const DEFAULT := {
 }
 
 
+# T-37: the player's home, as its own layout. One room of floor inside a ring
+# of wall, two windows in the north wall, an open doorway in the south wall,
+# and the bed — deliberately little else ("very few furnishings initially.
+# We'll add those later" — the designer, 2026-09-01). The `objects` key
+# overrides the farm's fixed stations (generation falls back to
+# SimWorld.OBJECT_POSITIONS when a layout does not carry one), which is the
+# first step of the multi-map plan: object placement becoming layout data.
+#
+# Reached from the title screen's debug row (the Zoo's precedent) — nothing in
+# the live game leads here yet; wiring the home into play (a door on the farm,
+# the cot moving indoors) is content sequencing on the ruled onboarding flow
+# and stays the designer's call.
+const HOME := {
+	"spawn": Vector2i(15, 9),
+	"parcels": [
+		{
+			"id": "home",
+			"rects": [Rect2i(11, 6, 10, 7)],
+			"obstacle": "",
+			"ground": FLOOR,
+			"boundary": WALL,
+			"density": 0.0,
+			"gate": Vector2i(-1, -1),
+			"opened_by": OPENED_BY_START,
+		},
+	],
+	"boundaries": [
+		# The shell first, then the openings punched into it: later entries
+		# overwrite earlier tiles, so the windows and the doorway are literally
+		# holes cut in the wall.
+		{ "kind": WALL, "rects": [
+			Rect2i(10, 5, 12, 1),   # north wall
+			Rect2i(10, 13, 12, 1),  # south wall
+			Rect2i(10, 6, 1, 7),    # west wall
+			Rect2i(21, 6, 1, 7),    # east wall
+		] },
+		{ "kind": WINDOW, "rects": [Rect2i(13, 5, 1, 1), Rect2i(18, 5, 1, 1)] },
+		{ "kind": GATE_OPEN, "rects": [Rect2i(15, 13, 1, 1)] },  # the doorway
+	],
+	# The bed, and nothing else. Its 16x32 sprite rises into (12,6), the top
+	# floor row, so the headboard stands against the north wall.
+	"objects": [
+		{ "type": "cot", "tx": 12, "ty": 7 },
+	],
+	# Empty on purpose, the Zoo's pattern: no tools, no acorns, and an empty
+	# neighbour plot keeps the cold open done and the neighbour unspawned.
+	"tools": [],
+	"acorns": {},
+	"neighbour_plot": {},
+}
+
+
 static func parcels(layout: Dictionary = DEFAULT) -> Array:
 	return layout.get("parcels", [])
 
@@ -250,7 +318,8 @@ static func gate_for_tool(tool_key: String, layout: Dictionary = DEFAULT) -> Vec
 
 
 static func is_boundary_state(state: String) -> bool:
-	return state == FENCE or state == HEDGE or state == GATE_CLOSED
+	return state == FENCE or state == HEDGE or state == GATE_CLOSED \
+		or state == WALL or state == WINDOW
 
 
 # The ground a parcel is made of, or "" for the ordinary field ground the

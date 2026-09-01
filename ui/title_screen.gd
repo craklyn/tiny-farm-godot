@@ -145,19 +145,26 @@ func _build_ui() -> void:
 		# third one pushed the menu off the bottom of the tablet's screen —
 		# reported from the device the night the Zoo landed. Three across at 104px
 		# fits the 340px column with the row's two 10px separations to spare.
-		var debug_row := HBoxContainer.new()
-		debug_row.alignment = BoxContainer.ALIGNMENT_CENTER
-		debug_row.add_theme_constant_override("separation", 10)
-		debug_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		root_box.add_child(debug_row)
+		# T-37 made it four doors, and four across at 104px does not fit the
+		# 340px column — so a 2x2 grid rather than a longer row, keeping the
+		# height of two rows instead of the stack that pushed the menu off the
+		# tablet the night the Zoo landed.
+		var debug_grid := GridContainer.new()
+		debug_grid.columns = 2
+		debug_grid.add_theme_constant_override("h_separation", 10)
+		debug_grid.add_theme_constant_override("v_separation", 6)
+		debug_grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		debug_grid.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		root_box.add_child(debug_grid)
 		# The look lab, on the Sound Test's own pattern (Q-31): candidates ship in
 		# the build and get A/B'd on device with a thumb. One panel for every open
 		# look (T-27's cot, T-28's two station axes). The Zoo is a door, not a
 		# panel, because what it opens is a *farm* with a clock of its own
-		# (`ui/zoo_screen.gd`).
-		for b in [_make_sound_test_button(), _make_look_lab_button(), _make_zoo_button()]:
+		# (`ui/zoo_screen.gd`); the Home (T-37) is a door for the Zoo's reason.
+		for b in [_make_sound_test_button(), _make_look_lab_button(),
+				_make_zoo_button(), _make_home_button()]:
 			b.custom_minimum_size = Vector2(104, 34)
-			debug_row.add_child(b)
+			debug_grid.add_child(b)
 
 
 func _big_button_style(bg: Color, border: Color) -> StyleBoxFlat:
@@ -689,6 +696,27 @@ func _open_zoo() -> void:
 	InputManager.has_click = false
 	AudioManager.play_sfx("click")
 	get_tree().change_scene_to_file("res://ui/zoo_screen.tscn")
+
+
+# T-37: the home, a scene-changing door on the Zoo's pattern.
+func _make_home_button() -> Button:
+	var btn := Button.new()
+	btn.name = "HomeButton"
+	btn.text = "Home"
+	btn.custom_minimum_size = Vector2(130, 34)
+	btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	btn.add_theme_font_size_override("font_size", 13)
+	_style_button(btn, Color(0.24, 0.18, 0.13), Color(0.70, 0.55, 0.40), Color(0.32, 0.24, 0.18))
+	btn.pressed.connect(_open_home)
+	return btn
+
+
+func _open_home() -> void:
+	if _confirm_open:
+		return
+	InputManager.has_click = false
+	AudioManager.play_sfx("click")
+	get_tree().change_scene_to_file("res://ui/home_screen.tscn")
 
 
 # --- New Farm confirmation ----------------------------------------------------

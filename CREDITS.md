@@ -129,6 +129,19 @@ before the first public build ships.*
   colour the remap does not know, so a future regeneration of the grass cannot silently
   leave the yard half-recoloured. Rights are the generated grass tile's, unchanged —
   this is a local derivation of an asset already covered above.
+- **T-37, the home interior, 2026-09-01** — **not generated, $0.00.** Two new sheets by
+  `tools/gen_interior.py` (idempotent, deterministic, no network):
+  `assets/sprites/generated/terrain_floor.png` (48x48, the terrain_grass format — one
+  seamless 16px wood-plank tile, staggered butt-joints) and
+  `assets/sprites/generated/interior.png` (32x16 — cell 0 plaster wall with wood
+  baseboard, cell 1 the same wall with a paned window). Derived in the T-32 tradition:
+  the planks, trim, and baseboard take the three wood browns read out of the fence cell
+  of `obstacles.png` at generation time (greens filtered out — the fence carries baked-in
+  grass tufts), so indoor wood and outdoor wood are the same wood; the wall plaster is
+  the fence's lightest brown mixed toward cream. The window pane's quiet blue is the one
+  new colour in the pair — no ambient tile in the game is blue, so it reads as sky
+  through glass. All placeholder pending the Q-14 reskin. Rights: original program
+  output derived from assets already covered above.
 - **T-28, the station glyphs, 2026-09-01** — **not generated, $0.00.** Two 16x16 cells
   written into `crops.png`'s **iconography row** (row 2, columns 4 and 5 — the row that
   already holds the shop's seed packets, the scarecrow and T-12's coin), by

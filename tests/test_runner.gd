@@ -83,6 +83,7 @@ func _init() -> void:
 	test_satisfied_states()
 	test_parcel_generation()
 	test_yard_ground()
+	test_home_layout()
 	test_tool_acquisition()
 	test_boundary_tap_answers()
 	test_cold_open()
@@ -8350,6 +8351,84 @@ func test_cot_presentation() -> void:
 		"and a zero scale asks for no shift rather than dividing by zero")
 
 	CotPresentation.set_treatment(was)
+
+
+func test_home_layout() -> void:
+	# T-37, the designer 2026-09-01: *"create an indoor space representing the
+	# player's home. The home should have the bed, windows, and very few
+	# furnishings initially."*
+	#
+	# The claim under test: an interior is not new machinery, it is another
+	# layout — FLOOR is a ground the way YARD is, WALL/WINDOW are boundaries the
+	# way FENCE is, and the bed arrives through the layout's own `objects` list
+	# (the first layout to carry one).
+	print("\n--- T-37: the home is a layout, not a new kind of world ---")
+
+	SimRng.reseed(3737)
+	var w := SimWorld.new()
+	w.generate(WorldLayout.HOME)
+
+	# --- 1. the room ------------------------------------------------------------
+	var room: Rect2i = WorldLayout.HOME["parcels"][0]["rects"][0]
+	var floors := 0
+	for ty in range(room.position.y, room.end.y):
+		for tx in range(room.position.x, room.end.x):
+			_assert_quiet(String(w.get_tile(tx, ty).get("state", "")) == WorldLayout.FLOOR,
+				"(%d,%d) is floor" % [tx, ty])
+			floors += 1
+	_flush_quiet("every tile of the room is floor (%d)" % floors)
+	_assert(floors == room.get_area(), "which is the whole parcel (%d)" % floors)
+
+	# The shell: walls, with the two windows and the doorway punched into it.
+	_assert(String(w.get_tile(10, 5).get("state", "")) == WorldLayout.WALL, "the corner is wall")
+	_assert(String(w.get_tile(13, 5).get("state", "")) == WorldLayout.WINDOW, "window one")
+	_assert(String(w.get_tile(18, 5).get("state", "")) == WorldLayout.WINDOW, "window two")
+	_assert(String(w.get_tile(15, 13).get("state", "")) == WorldLayout.GATE_OPEN, "the doorway")
+
+	# --- 2. what blocks and what doesn't ----------------------------------------
+	_assert(not w.is_walkable(10, 6), "a wall is never walkable")
+	_assert(not w.is_walkable(13, 5), "a window is a wall that shows the sky — still a wall")
+	_assert(w.is_walkable(15, 13), "the doorway is walkable")
+	_assert(w.is_walkable(14, 8), "the floor is walkable")
+
+	# --- 3. the furnishings: the bed, and nothing else --------------------------
+	var found := {}
+	for ty in SimWorld.MAP_HEIGHT:
+		for tx in SimWorld.MAP_WIDTH:
+			var obj := String(w.get_object_at(tx, ty)) if w.has_method("get_object_at") else String(w.objects[ty][tx])
+			if obj != "":
+				found[obj] = Vector2i(tx, ty)
+	_assert(found.get("cot", Vector2i(-1, -1)) == Vector2i(12, 7),
+		"the bed is where the layout put it (%s)" % found)
+	for station in ["shipping_bin", "well", "seed_box"]:
+		_assert(not found.has(station), "%s stays on the farm — the layout's objects override" % station)
+
+	# And the farm itself is untouched by the override's existence: DEFAULT
+	# carries no `objects` key, so it falls back to the module constant.
+	SimRng.reseed(3737)
+	var farm_w := SimWorld.new()
+	farm_w.generate()
+	_assert(String(farm_w.objects[4][2]) == "cot" and String(farm_w.objects[1][6]) == "well",
+		"the default farm still places its four fixed objects")
+
+	# --- 4. never tillable, whoever asks (the yard's rule, indoors) --------------
+	_assert(not Tools.can_act_on_tile(3, WorldLayout.FLOOR), "the hoe cannot act on floor")
+	var gs = load("res://systems/game_state.gd").new()
+	gs.reset()
+	var before: int = gs.energy
+	var r := w.apply_action({ "verb": "till", "target": Vector2i(14, 8), "actor": "player" }, gs)
+	_assert(not r.get("ok", false) and String(r.get("reason", "")) == "not_tillable",
+		"the gateway refuses a till on the floor (%s)" % r)
+	_assert(gs.energy == before, "and it cost nothing — the guard runs before the meter")
+
+	# --- 5. it round-trips ------------------------------------------------------
+	var save: Dictionary = SaveGame.capture(w, gs)
+	var w2 := SimWorld.new()
+	var restored := SaveGame.restore(save, w2, gs)
+	_assert(restored, "a home world saves and restores")
+	_assert(String(w2.get_tile(14, 8).get("state", "")) == WorldLayout.FLOOR
+		and String(w2.get_tile(13, 5).get("state", "")) == WorldLayout.WINDOW,
+		"floor and window states survive a save round-trip")
 
 
 func test_yard_ground() -> void:
