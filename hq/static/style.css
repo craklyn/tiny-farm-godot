@@ -181,7 +181,7 @@ button:disabled { opacity: .5; cursor: default; }
 .ent-card .ds { font-size: 12px; color: var(--muted); margin-top: 4px; min-height: 30px; }
 .crumbs { margin-bottom: 16px; font-size: 14px; }
 .crumbs span { color: var(--muted); margin: 0 4px; }
-.ent-detail { display: flex; gap: 26px; flex-wrap: wrap; }
+.ent-detail { display: flex; gap: 26px; flex-wrap: wrap; align-items: flex-start; }
 .ent-detail canvas { image-rendering: pixelated; background: #1b1710; border-radius: 10px; }
 .facts td { padding: 3px 12px 3px 0; font-size: 13.5px; vertical-align: top; }
 .facts td:first-child { color: var(--muted); white-space: nowrap; }
