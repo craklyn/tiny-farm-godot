@@ -438,7 +438,15 @@ first, since a different answer there changes what the other four are optimising
   opportunistically" was itself superseded, since Q-47 drops her from the loop entirely
   rather than making her non-blocking.*
 
-- **Q-38 (Ruling — still open, but built)** **Daylight instead of an energy bar.**
+- **Q-38** ~~Daylight instead of an energy bar?~~ — ✅ **ruled 2026-08-31: ratified —
+  daylight stays.** The queue's oldest open ruling closes on the strength of a full
+  unprompted session run on it (the gate run: energy refusals arrived only at day's end,
+  as designed). **The ruling carries a rider, filed as T-29:** the ambient tint is not
+  enough on its own — the designer wants an explicit time-of-day display, and a
+  re-partition of the day into round units chosen so that future work-speed multipliers
+  (1.25×, 1.5×, 2×, 2/3×, 1/2×…) keep every action cost integral. Scheme drafted in
+  T-29 for veto. Original entry:
+  **Daylight instead of an energy bar.**
   **Status note 2026-08-29:** `docs/M1_5_PLAN.md` scheduled this as work item WI-1 and
   described Q-38 as ruled; it is not — this entry has never been struck through. T-14 was
   built anyway, *on the recommendation below and nowhere beyond it*, because WI-1 was the

@@ -155,8 +155,42 @@ will not add the check"* — everything else adopted as analyzed:
       footprint — no worldgen change), generated on the existing pipeline; with the
       halo this takes the *effective* touch target to genre minimums.
 - [ ] **the cot must look like sleeping before first use** — final form is the
-      designer's (glow at dusk? the zero-energy pulse, earlier and stronger?).
+      designer's; 2–3 treatments are being drafted behind a toggle for tablet A/B
+      (with Q-68's headboard fix folded into each).
 - [ ] re-evidence: the next fresh adult session scores the cot bar unprompted.
+      **Prerequisite widened by the designer 2026-08-31:** the session waits on the
+      cot look AND on T-28's station passes (sell/buy and water refill), so one fresh
+      adult meets the finished versions of all of them. A post-M2.5 tablet deploy for
+      that session also feeds replay Phase B's human-session prerequisite.
+
+**T-28 — The stations present themselves (sell/buy, water refill)** · raised by the
+designer 2026-08-31 as a prerequisite of the gate session · **awaiting his
+specifics** — the directive is "improve the sell/buy and water refill" places; what he
+observed in the session that wants fixing (first-use discovery? the satisfied-tap
+answers? something else?) is his to name before treatments are drafted, so the fix
+aims at the observed problem the way T-27's did.
+
+**T-29 — The day wears a clock** · Q-38's rider, filed 2026-08-31 · **scheme drafted,
+awaiting veto**
+*So that time-of-day is readable precisely, not only ambiently — and so the day's
+arithmetic survives the exchange-rate future Q-38's correction reserved (a fed farmer
+spends less clock, never rewinds the sun).*
+Proposed scheme, designed for the multiplier test the designer set:
+- [ ] **energy becomes 600 fine units** (was 20 points); base verbs cost **30**
+      (were 1), heavy clears **60** (were 2), plant stays 0. Same day length — 20
+      base actions — bit-for-bit the same gameplay at 1× speed.
+- [ ] **why 30:** a work-speed multiplier m divides an action's clock cost to 30/m.
+      30 is the smallest base where every multiplier in the designer's list lands on
+      an integer — 1.25×→24, 1.5×→20, 2×→15, 2/3×→45, 1/2×→60 — plus 2.5×→12, 3×→10,
+      0.75×→40 for free. (The general rule: any m = n/d with n dividing 30d works;
+      misses exist — e.g., 1.4× — but every named multiplier and its neighbours hit.)
+- [ ] **the display:** a wordless sun-arc — a token sliding sunrise→dusk across a
+      small arc, ticks at morning/midday/dusk (S-7: no digits needed; the debug
+      numeric readout stays debug-only). The ambient tint stays; the arc is the
+      precise read the tint cannot give.
+- [ ] **migration:** saves/replays carrying legacy energy values scale ×30 on load
+      (the additive-shim pattern); `ACTOR_MAX_ENERGY` scales with it; Q-38 semantics
+      untouched — daylight advances per unit spent.
 
 **Built 2026-08-31** (the four boxes above; the two below them stay open). What it
 came out as, and where it differs from the description it was written from:
@@ -778,7 +812,8 @@ remains the data source. The one addition to scope is an injectable game state o
 player; the SessionTrace switch briefly considered here turned out to be unnecessary once
 the playback moved to the intent layer.
 
-**T-14 — Daylight replaces the energy bar** · Q-38 · ✅ built 2026-08-29 (M1.5 WI-1)
+**T-14 — Daylight replaces the energy bar** · Q-38 ✅ ratified 2026-08-31 · ✅ built
+2026-08-29 (M1.5 WI-1) · display rider filed as T-29
 *So that the least readable thing in the HUD becomes something a pre-reader can see.*
 - [x] time of day derived from `energy / max_energy` — presentation only, sim untouched
       (`systems/daylight.gd`, wired from `main.gd`)
