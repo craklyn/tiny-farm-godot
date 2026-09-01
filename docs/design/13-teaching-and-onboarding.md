@@ -558,7 +558,7 @@ default. The default arrangement shipped is:
 
 | Parcel | Boundary | Opened by | Contains |
 |---|---|---|---|
-| **yard** | fence | start | the four fixed objects, the chicken, **no chores at all** |
+| **yard** | fence | start | the four fixed objects, the chicken, **no chores at all** — and since T-32 its own untillable ground |
 | **neighbour** | fence, gate at (11,4) | the cold open | her half-finished row, and the ripe crop |
 | **meadow** | — (contiguous with her plot) | with that gate | weeds |
 | **wood** | hedge, gate at (21,4) | the **axe** | logs, the standing trees they come from, and the acorns |
@@ -570,6 +570,13 @@ instead of watched, and the whole cold open depends on her looking through the f
 And both tool gates sit on the same hedge line, so both promises are visible from the
 open meadow — a pickaxe hidden behind the axe's parcel would not be a promise she can
 see, which is the entire mechanism.
+
+**The yard is home, not field** (designer, 2026-09-01; T-32). Parcel 0 is made of its
+own ground — walkable exactly like the field, visibly a shade deeper, and the one
+state a hoe never opens — so "nothing to do in here" is now true of the soil as well as
+of the chores, farming happens beyond the gate by construction, and the honest answer
+to a hoe held over the yard is the same one a tap beyond a boundary gets: she walks
+there and stands on it, never a refusal she cannot read.
 
 Two consequences to accept deliberately:
 

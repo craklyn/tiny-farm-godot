@@ -138,6 +138,13 @@ static func restore(data: Dictionary, world: SimWorld, gs) -> bool:
 		if not (row is Array) or row.size() != SimWorld.MAP_WIDTH:
 			return false
 
+	# Tile states come back exactly as they were written, and **there is no T-32
+	# migration on purpose**: a save from before the yard existed restores a farm
+	# whose fenced space is ordinary tillable field, including any rows she tilled
+	# in it, and it keeps playing. Rewriting her ground under her would delete work
+	# she did to answer a rule that did not exist when she did it; the yard is a
+	# fact about *generation*, so it reaches a returning player on her next new
+	# farm and not before.
 	world.tiles.clear()
 	for row in in_tiles:
 		var r: Array = []

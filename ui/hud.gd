@@ -371,6 +371,7 @@ const TILE_NOUNS := {
 	"seeded": "planted seed",
 	"tilled": "tilled soil",
 	"cleared": "bare ground",
+	"yard": "the yard",           # T-32: home ground, and never tillable
 	"obstacle_weed": "weed",
 	"obstacle_log": "log",
 	"obstacle_rock": "rock",

@@ -115,6 +115,20 @@ before the first public build ships.*
   any non-binary alpha, so the palette lock is enforced rather than asserted. Cells 0–6
   are byte-identical. Rights are the generated cot's, unchanged — this is a local edit of
   an asset already covered above.
+- **T-32, the yard's ground, 2026-09-01** — **not generated, $0.00.** A new sheet,
+  `assets/sprites/generated/terrain_yard.png` (48x48, three colours), derived from
+  `terrain_grass.png` by `tools/gen_yard_ground.py` (idempotent, no network): the same
+  noise pattern pixel for pixel, with the grass's three colours remapped a step deeper
+  and cooler (`#d1e077`→`#bed37c`, `#bfd470`→`#adc575`, `#a3c263`→`#93b268`).
+  Derived rather than generated because the yard is drawn edge to edge with the field
+  across a one-tile fence line: two independently generated turf tiles would differ in
+  their *pattern* as well as their colour, and the seam would read as a rendering fault
+  instead of as a boundary. Three candidate palettes were rendered side by side against
+  the grass before this one was chosen — a desaturated sage read as dead ground and a
+  halfway shade vanished. The script refuses to write if the grass sheet ever holds a
+  colour the remap does not know, so a future regeneration of the grass cannot silently
+  leave the yard half-recoloured. Rights are the generated grass tile's, unchanged —
+  this is a local derivation of an asset already covered above.
 - **Sprout Lands asset pack** by Cup Nooble — *removed 2026-08-26* (Q-7c ruling:
   drop restrictively-licensed assets; its free license forbids redistribution and
   this repo is public). Q-7b license findings recorded in the git history of this

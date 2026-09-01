@@ -174,6 +174,10 @@ func player_node() -> Node2D:
 
 
 var dirt_texture: Texture2D
+# T-32: the yard's ground. Same 3x3 sheet as the grass, same noise pattern, three
+# different colours (tools/gen_yard_ground.py) — so the fence line reads as a
+# boundary between two kinds of land rather than as a seam in one.
+var yard_texture: Texture2D
 var biomes_texture: Texture2D
 var furniture_texture: Texture2D
 var chest_texture: Texture2D
@@ -186,6 +190,8 @@ func _load_textures() -> void:
 	# terrain_dirt: one tile per neighbour mask (world/autotile.gd), watered at +16 cols.
 	tileset_texture = load("res://assets/sprites/generated/terrain_grass.png")
 	dirt_texture = load("res://assets/sprites/generated/terrain_dirt.png")
+	# terrain_yard: terrain_grass's own pattern in the yard's colours (T-32).
+	yard_texture = load("res://assets/sprites/generated/terrain_yard.png")
 	crops_texture = load("res://assets/sprites/generated/crops.png")
 	biomes_texture = load("res://assets/sprites/generated/obstacles.png")
 	furniture_texture = load("res://assets/sprites/generated/objects.png")
@@ -588,8 +594,12 @@ func _draw() -> void:
 			var k := _react_k(tx, ty)
 			var shake := _refuse_dx(tx, ty)
 
-			# Draw Grass background always
-			draw_texture_rect_region(tileset_texture, Rect2(px, py, TILE_SIZE, TILE_SIZE), Rect2(16, 16, 16, 16))
+			# Draw the ground background always. Grass everywhere, except the yard,
+			# which is made of its own ground (T-32) and draws the same 16x16 cell
+			# from its own sheet — no autotiling, no edge cases: two flat noise
+			# tiles that happen to meet at the fence.
+			var ground_tex: Texture2D = yard_texture if tile.state == WorldLayout.YARD else tileset_texture
+			draw_texture_rect_region(ground_tex, Rect2(px, py, TILE_SIZE, TILE_SIZE), Rect2(16, 16, 16, 16))
 
 			# Draw tilled soil, edge-matched to its neighbours (see world/autotile.gd)
 			if Autotile.is_soil(tile.state):

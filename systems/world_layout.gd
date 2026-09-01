@@ -31,6 +31,20 @@ const HEDGE := "hedge"
 const GATE_CLOSED := "gate_closed"
 const GATE_OPEN := "gate_open"
 
+# T-32, the designer 2026-09-01: *"create a separate form of ground that cannot
+# be tilled, and fill the initial fenced space with it."*
+#
+# **The yard is home, not field.** Walkable exactly like the field ground — she
+# crosses it without noticing it is there — and the one state a hoe can never
+# open. Everything else is indifferent to it: a hen walks it, a scent washes off
+# it, an egg lands on it, a crow flies over it, and nothing in the sim asks
+# whether a tile is yard except the `till` guard in the gateway.
+#
+# It lives here, beside FENCE, because *which land is yard* is a layout fact of
+# exactly the same kind as *where the fence runs*: a parcel declares the ground
+# it is made of and the generator lays it. Nothing computes it.
+const YARD := "yard"
+
 # Who opens a gate, as recorded on the parcel. "start" means no gate at all.
 const OPENED_BY_START := "start"
 const OPENED_BY_COLD_OPEN := "cold_open"
@@ -41,8 +55,8 @@ const OPENED_BY_COLD_OPEN := "cold_open"
 #
 #   x: 0                   11        21              31
 #   y  +--------------------+---------+---------------+
-#   1  |  yard (parcel 0)   |neighbour|  wood (P2)    |   <- gate (11,4) cold open
-#   6  |  cot bin well box  |  (P0b)  |  logs + trees |   <- gate (21,4) axe
+#   1  |     bin well box   |neighbour|  wood (P2)    |   <- gate (11,4) cold open
+#   4  |  cot   YARD (P0)   |  (P0b)  |  logs + trees |   <- gate (21,4) axe
 #   7  +====fence===========+ meadow  |               |
 #   8  |                    (parcel 1)|               |
 #   9  |      weeds                   +===hedge=======+
@@ -53,6 +67,12 @@ const OPENED_BY_COLD_OPEN := "cold_open"
 # so parcel 0 is genuinely enclosed and the gate is the only way out. Both tool
 # gates sit on the same hedge column, so both promises are visible from the open
 # meadow rather than one being hidden behind the other.
+#
+# T-32: parcel 0's ground is YARD rather than field, and the cot sits at (2,4)
+# rather than up in the corner — left-aligned, its two-tile sprite filling rows
+# 3–4 of the yard's rows 1–6, which is as vertically centred as an even span
+# allows. The stations keep the top row: the cot is the object she must find, and
+# it now has the middle of the room to itself.
 const DEFAULT := {
 	"spawn": Vector2i(2, 2),
 	"parcels": [
@@ -60,6 +80,10 @@ const DEFAULT := {
 			"id": "yard",
 			"rects": [Rect2i(1, 1, 10, 6)],
 			"obstacle": "",              # the safe room: nothing to clear, one toy
+			# T-32: and now nothing to *till* either, structurally rather than by
+			# the accident of there being nothing here. The only parcel with a
+			# ground of its own; every other one is field.
+			"ground": YARD,
 			"boundary": FENCE,
 			"density": 0.0,
 			"gate": Vector2i(-1, -1),
@@ -209,3 +233,11 @@ static func gate_for_tool(tool_key: String, layout: Dictionary = DEFAULT) -> Vec
 
 static func is_boundary_state(state: String) -> bool:
 	return state == FENCE or state == HEDGE or state == GATE_CLOSED
+
+
+# The ground a parcel is made of, or "" for the ordinary field ground the
+# generator lays everywhere by default (T-32). A parcel that names one has its
+# plain ground replaced with it; obstacles, boundaries and anything else already
+# written into those tiles are left exactly as they are.
+static func ground_of(parcel: Dictionary) -> String:
+	return String(parcel.get("ground", ""))

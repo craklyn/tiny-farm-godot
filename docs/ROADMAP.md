@@ -151,6 +151,12 @@ will not add the check"* — everything else adopted as analyzed:
       till-with-hoe. Rule: the tapped tile wins whenever it produces a real world
       change; only a tap that produced nothing (or a no-effect refusal) is rescued
       to a high-value interactable adjacent to it. T-18's philosophy, applied.
+      *Cross-reference, 2026-09-01: **T-32 left this halo with even less to rescue.**
+      The ground around the cot is yard now, so the exact miss this box was built from
+      cannot resolve as a till at all — the halo still catches the tap and still
+      records the miss, but it is turning a walk into a sleep rather than heading off
+      a refusal. The mechanism is unchanged and worth keeping: a fat finger beside the
+      bed still means the bed.*
 - [x] **the cot reads bigger.** Drawn taller (a 16×32 sprite on its 1-tile sim
       footprint — no worldgen change), generated on the existing pipeline; with the
       halo this takes the *effective* touch target to genre minimums.
@@ -238,6 +244,110 @@ own argument), so the button floats at the bottom-left at 44×48. Left, and clea
 the top bar, because Q-68 is still open on the top bar's treatment and the
 bottom-right corner is the build stamp's. Filed as **Q-69** — the corner is his to
 move once he has it under a thumb.*
+
+**T-32 — The yard is home, not field** · designer directive, 2026-09-01 ·
+✅ **done 2026-09-01**
+> *"Please lower the cot by 3 tiles so it's somewhat centered vertically, and
+> left-aligned, in the initial space. Please create a separate form of ground that
+> cannot be tilled, and fill the initial fenced space with it."*
+
+- [x] **a new ground state, `WorldLayout.YARD`.** Walkable exactly like the field —
+      she crosses it without noticing it is there — and the one state a hoe never
+      opens. It lives beside `FENCE` because *which land is yard* is a layout fact of
+      the same kind as *where the fence runs*: a parcel declares the ground it is made
+      of (`"ground": YARD`) and the generator lays it. Nothing computes it, and the
+      generator gained a step rather than a special case, so a second kind of ground is
+      one key in `world_layout.gd`.
+- [x] **the refusal lives at the gateway** (`SimWorld.apply_action`, reason
+      `not_tillable`), before the energy is spent, so it binds the neighbour, a crow
+      and a phase-4 bot exactly as it binds her (S-3, ground rule 1). A bot gets no verb
+      the player lacks, and now no ground she cannot work either.
+- [x] **and a tap never meets that refusal — T-18 holds by construction.** `yard` is in
+      no tool's `can_act_on` and in no `is_workable` state, so `ActionRouter.resolve`
+      has no *opinion* about it, `blocked_reason` and `satisfied_reason` are both silent,
+      and the only answer left for a tile nothing can be done to is movement. A hoe held
+      over the yard produces a **walk** — she steps onto the tile — never a wobble.
+      Asserted through the real input path (Scenario AA) on both an adjacent tap and a
+      far one, with the hoe selected and the trace read back: `out: walk`, `tool: 3`, no
+      verb, no halo, zero refusals in the exchange.
+- [x] **the fenced space filled, the cot lowered.** Parcel 0's interior (`Rect2i(1,1,10,6)`,
+      60 tiles) is yard; nothing beyond the fence is. The cot's footprint moved (2,1) →
+      **(2,4)**, its 16x32 sprite filling rows 3–4 of the yard's rows 1–6 — as vertically
+      centred as an even span allows — and left-aligned in the column it already had.
+      The three stations kept the top row, the pen and the spawn (2,2) are untouched, and
+      the neighbour's row and everything past the fence is still field grass, so the cold
+      open plays on exactly the ground it always did.
+- [x] **the fill runs *after* the object step, and that ordering is the design.** Step 5
+      clears a shoulder around every fixed object; laying the yard before it would punch
+      a ring of ordinary tillable field around the cot, the bin, the well and the seed
+      box — precisely the tiles a fat finger misses onto.
+- [x] **it costs the RNG stream nothing.** A fill is not a decision, so no draw is spent
+      and every seeded placement lands where it always did. Proved rather than asserted:
+      the same seed generated with and without the yard's ground differs in **exactly**
+      its 60 tiles and nowhere else, with every object — the acorn stock included — and
+      the hen's tile identical.
+- [x] **the ground reads distinct-but-quiet, for $0.00.** `terrain_yard.png` is
+      `terrain_grass.png`'s own noise pattern with its three colours remapped a step
+      deeper and cooler (`tools/gen_yard_ground.py`). Derived rather than generated
+      because the two grounds meet across a one-tile fence: independently generated turf
+      would differ in *pattern* as well as colour and the seam would read as a fault.
+      Provenance and the two rejected palettes are in CREDITS.md; *how* different it
+      should look is taste and is filed as **Q-70**, with all three candidates described
+      and the change costed at one line.
+- [x] tests: `tests/test_runner.gd:test_yard_ground` (29 assertions — generation,
+      walkability, the tool layer, the gateway for her *and* for a bot, the field still
+      tillable, the RNG-neutrality proof, saves) and integration **Scenario AA**, which
+      does the tap half against the real scene.
+
+**Two consequences worth naming.** First, **the below-cot fat-finger till is now
+structurally impossible.** T-27 box 3 exists because four `no_energy` refusals at
+5m04–10s on 2026-08-30 were taps meant for the cot at (2,1) that resolved as
+till-with-hoe on (2,2). The tile below the cot is yard now, so that tap has no till to
+become; the halo still catches it and still records the miss, but it is rescuing a
+walk rather than heading off a refusal. Second, **farming happens beyond the gate by
+construction.** There is no longer any square inside the fence a hoe will open, so the
+first till of every new game is on the other side of the cold open's gate — which is
+what design/13 §5's "the yard holds nothing to clear" was always reaching for, now
+true of soil as well as of chores.
+
+*Notes and deviations, recorded rather than smoothed over:*
+- **No save migration, deliberately.** A save written before T-32 restores a fenced
+  space of ordinary field, tilled rows and all, and keeps playing. Rewriting her ground
+  underneath her would delete work she did to answer a rule that did not exist when she
+  did it; the yard is a fact about *generation*, so it reaches a returning player on her
+  next new farm and not before. One comment where the restore reads tiles, one test.
+- **The robot session's day of work moved beyond the gate**, because there is nothing
+  inside the fence for it to work any more. It is a better session for it: instead of
+  tapping the tile it spawned beside and never going anywhere, it now walks the length
+  of the yard on the keyboard, **through a parcel gate** — a crossing no robot session
+  had ever made — works (12,5), and walks home until the cot stops it. 22 → 44 replay
+  entries, 4 → 28 free-walk crossings, and it still MATCHes its own autosave.
+- **`tools/verify_replay.gd` flipped MATCH → MISMATCH on the last local human session**,
+  which is the recorded-and-expected pattern for a worldgen change (M1_5_PLAN §1: the
+  determinism proof is the unit replay tests plus a fresh robot session, never an old
+  session replayed across one). Worth knowing: **the build stamp does not catch it** —
+  the stamp is a `git describe` and this ships under the same one until the next tag, so
+  the tool's provenance line reads "matches this build" while the world underneath it
+  has moved. The `playtests/` fixture ledger is now *counted* in `test_replay_v2`
+  (3 reproduce their autosave, 5 do not) with that reason written down; **T-32 moved
+  neither number** — measured on both sides — because M1.5's parcel rebuild had already
+  invalidated the same five.
+- **The demo replay needed no regeneration and got one anyway**: its plot
+  (`PLOT_ROWS`/`PLOT_COLS`) lies entirely inside the neighbour's parcel, and the RNG
+  stream is untouched, so the file is byte-identical across two regenerations *and*
+  identical to the committed one. The farm the attract loop draws from it does change —
+  it is generated fresh — which is the point.
+- **The benchmark's regions never intersected the yard** (the worker's plot starts at
+  x=12; the fleet orbits (10,13)) and its work is unchanged action for action: 73,000
+  actions, 62,000 tiles walked, 186,000 travel ticks, before and after. 105,497x → 106,086x
+  realtime (median of three; one 95,055x outlier on a loaded machine, and identical
+  counts prove it was the machine). The ≥100,000x gate holds.
+- **One hole left open on purpose:** `clear_weed` on a yard tile with no obstacle and no
+  critter on it would set the tile to `cleared`, i.e. convert yard back to field. No tap
+  can produce it — the router offers `clear_weed` only for an obstacle or a stompable
+  critter, the yard has neither, and a stomp leaves the ground alone by design — and
+  guarding an unreachable path would be adding a rule to answer nobody's question. Named
+  here so the next person who *can* reach it knows it was seen.
 
 **T-29 — The day wears a clock** · Q-38's rider, filed 2026-08-31 · **scheme drafted,
 awaiting veto**

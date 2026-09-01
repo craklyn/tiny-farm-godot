@@ -8,7 +8,26 @@ extends Node2D
 
 const ROBOT_SAVE := "user://robot_autosave.json"
 const ROBOT_REPLAY := "user://robot_session_replay.json"
-const TILE := Vector2i(3, 2)  # inside the guaranteed-clear spawn area
+
+# T-32: the yard is home, not field. There is no longer anything inside the fence
+# a hoe will open, so the robot's day of work happens on the other side of the
+# gate the cold open leaves open — (12,5) is the first square of the neighbour's
+# plot, one step past the gate, untouched by her demo row (which starts at x=14).
+#
+# This is a better session than the one it replaces, and not only because it had
+# to move. The robot used to work the tile it spawned beside and never went
+# anywhere: it now walks the length of the yard on the keyboard, **through a
+# parcel gate**, works, and walks home — so the free-walk events in the log are a
+# real journey and the boundary crossing is regression-covered for the first time.
+const WORK_TILE := Vector2i(12, 5)
+const GATE_ROW := 4                  # the cold open's gate is (11,4)
+const OUTBOUND_COL := 4              # clear of the cot's column on the way down
+
+# A walk of a dozen tiles at 3 tiles/sec is seconds of game time, and a headless
+# frame is short, so the legs below need a budget in the thousands rather than the
+# 300 frames a tap-and-act needs. Generous on purpose: it is a timeout, not a
+# schedule, and every use of it prints the tile she actually reached on failure.
+const WALK_FRAMES := 4000
 
 var main_scene: Node2D
 var player: Node2D
@@ -54,35 +73,60 @@ func _ready() -> void:
 	_check(neighbour_entries > 0, "her work is in the replay as actor 'neighbour' (%d entries)" % neighbour_entries)
 	await get_tree().process_frame
 
-	# A short day of real play: till, plant, water the same tile via taps
-	await _tap_and_wait(TILE)   # till (adjacent to spawn, auto-selects hoe)
-	_check(main_scene.farm.get_tile(TILE.x, TILE.y).state == "tilled", "tap tilled the tile")
-	await _tap_and_wait(TILE)   # plant
-	_check(main_scene.farm.get_tile(TILE.x, TILE.y).state == "seeded", "tap planted the tile")
-	await _tap_and_wait(TILE)   # water
-	_check(main_scene.farm.get_tile(TILE.x, TILE.y).watered_today, "tap watered the tile")
-
-	# A real walk, out along the row and back, on the keyboard — the second input
-	# modality, and since M2.5 WI-6 the thing that puts free-walk events in the log
-	# and moves her registry entry. It has to be deliberate: Q-30 stops her
-	# *beside* a workable tile, so the taps above never carried her anywhere, and a
-	# robot that only ever taps its neighbouring tile never crosses a boundary at
-	# all. She ends back on (2,2), facing the cot at (2,1).
+	# Out to the work. The keyboard is the second input modality and since M2.5
+	# WI-6 the thing that puts free-walk events in the log and moves her registry
+	# entry, so the journey is deliberately hers rather than a tap's: right along
+	# the top of the yard, down the column beside the shipping bin (the cot's own
+	# column is blocked by the cot now), then east through the open gate.
 	Input.action_press("move_right")
-	var out := await _wait_until(func(): return player.get_tile_pos().x >= 4, 300)
+	var east := await _wait_until(
+		func(): return player.get_tile_pos().x >= OUTBOUND_COL, WALK_FRAMES)
 	Input.action_release("move_right")
-	_check(out, "keyboard walk carried her out along the row (tile %s)" % player.get_tile_pos())
+	_check(east, "keyboard walk carried her along the yard (tile %s)" % player.get_tile_pos())
 	await get_tree().process_frame
-	Input.action_press("move_left")
-	var back := await _wait_until(func(): return player.get_tile_pos() == Vector2i(2, 2), 300)
-	Input.action_release("move_left")
-	_check(back, "keyboard walk returned to spawn tile")
+	Input.action_press("move_down")
+	var south := await _wait_until(
+		func(): return player.get_tile_pos().y >= GATE_ROW, WALK_FRAMES)
+	Input.action_release("move_down")
+	_check(south, "and down to the gate's row (tile %s)" % player.get_tile_pos())
 	await get_tree().process_frame
-	_check(main_scene.farm.sim.actor_pos(SimWorld.ACTOR_PLAYER) == Vector2i(2, 2),
+	Input.action_press("move_right")
+	var through := await _wait_until(
+		func(): return player.get_tile_pos().x >= WORK_TILE.x, WALK_FRAMES)
+	Input.action_release("move_right")
+	_check(through, "and out through the open gate onto the neighbour's plot (tile %s)"
+		% player.get_tile_pos())
+	await get_tree().process_frame
+	_check(main_scene.farm.sim.actor_pos(SimWorld.ACTOR_PLAYER) == player.get_tile_pos(),
 		"and the registry knows it — her tile is sim truth now (%s)"
 			% main_scene.farm.sim.actor_pos(SimWorld.ACTOR_PLAYER))
 
-	player.facing = "up"
+	# A short day of real play: till, plant, water the same tile via taps.
+	_check(main_scene.farm.get_tile(WORK_TILE.x, WORK_TILE.y).state == "cleared",
+		"the work tile is bare field, ready for a hoe (%s)"
+			% main_scene.farm.get_tile(WORK_TILE.x, WORK_TILE.y).state)
+	await _tap_and_wait(WORK_TILE)   # till (auto-selects hoe)
+	_check(main_scene.farm.get_tile(WORK_TILE.x, WORK_TILE.y).state == "tilled", "tap tilled the tile")
+	await _tap_and_wait(WORK_TILE)   # plant
+	_check(main_scene.farm.get_tile(WORK_TILE.x, WORK_TILE.y).state == "seeded", "tap planted the tile")
+	await _tap_and_wait(WORK_TILE)   # water
+	_check(main_scene.farm.get_tile(WORK_TILE.x, WORK_TILE.y).watered_today, "tap watered the tile")
+
+	# Home to bed, on the keyboard again, and **the cot is what stops her**: she
+	# walks west along row 4 until she runs into it at (2,4), which leaves her on
+	# (3,4) facing it. Nothing here knows the cot's coordinates — T-32 moved it
+	# once already, and a robot that hard-coded where the bed is would have to be
+	# edited every time the designer moves the furniture.
+	Input.action_press("move_left")
+	var home := await _wait_until(
+		func(): return main_scene.farm.get_object(
+			player.get_facing_tile().x, player.get_facing_tile().y) == "cot", WALK_FRAMES)
+	Input.action_release("move_left")
+	_check(home, "keyboard walk carried her home until the cot stopped her (tile %s, facing %s)"
+		% [player.get_tile_pos(), player.get_facing_tile()])
+	await get_tree().process_frame
+
+	player.facing = "left"
 	Input.action_press("action")
 	await get_tree().process_frame
 	Input.action_release("action")

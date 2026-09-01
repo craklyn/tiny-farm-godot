@@ -631,6 +631,24 @@ trace actually says, because several of these looked like bugs and were not.*
   resize it, or leave it — it is four numbers in `ui/hud.gd`. The one thing worth deciding
   deliberately rather than by drift is whether the HUD is now allowed to hold *actions* at
   all; if the answer is no, this button comes back out and the cot carries the beat alone.
+- **Q-70 (Taste)** **How different should the yard's ground look?** T-32 built the
+  untillable ground you asked for and it needed a colour, which your directive did not
+  specify and should not have had to. It is `terrain_grass.png`'s own noise pattern with
+  its three colours remapped — the tile is derived, never generated, so that the two
+  grounds meeting across the fence differ in *colour* and not in *pattern*; changing the
+  shade is one line in `tools/gen_yard_ground.py` plus a re-baseline.
+  Three were rendered side by side against the grass before the pick:
+  **(a) deeper and cooler — SHIPPED.** A step darker and greener: reads as kept lawn
+  against the paler, drier field. Visible at the fence, invisible when you are not
+  looking at the fence.
+  **(b) halfway.** The same move at half strength. Nearly invisible; you have to be
+  told the boundary is there.
+  **(c) desaturated sage.** A fifth of the saturation removed. Unmistakable, and it
+  reads as *dead* ground rather than as tended ground — rejected on that, not on volume.
+  **Recommendation: look at (a) on the tablet and say louder, quieter, or leave it.**
+  The yard is most of the early screen for the first several minutes, so this is a
+  colour you will be staring at longer than any other in the game — which is the whole
+  argument for the quiet end and the reason it is still worth your eye rather than mine.
 
 ## M2.5 — the actor system (filed 2026-08-31, from the entity brainstorm)
 

@@ -254,7 +254,13 @@ static func may_visit(species: String, day: int, planted: int) -> bool:
 
 # Fixed object positions (0-indexed tile coords)
 const OBJECT_POSITIONS: Array[Dictionary] = [
-	{ "type": "cot",          "tx": 2, "ty": 1 },
+	# T-32, the designer 2026-09-01: *"lower the cot by 3 tiles so it's somewhat
+	# centered vertically, and left-aligned, in the initial space."* It sat at
+	# (2,1), in the corner with the three stations, where it was one of four
+	# things in a row and the least legible of them. Its footprint is (2,4) and
+	# its 16x32 sprite rises into (2,3) — rows 3 and 4 of the yard's rows 1..6 —
+	# so it reads as the middle of the room, with the stations still along the top.
+	{ "type": "cot",          "tx": 2, "ty": 4 },
 	{ "type": "shipping_bin", "tx": 4, "ty": 1 },
 	{ "type": "well",         "tx": 6, "ty": 1 },
 	{ "type": "seed_box",     "tx": 8, "ty": 1 },
@@ -373,6 +379,31 @@ func generate(with_layout: Dictionary = WorldLayout.DEFAULT) -> void:
 				if _inside(nx, ny) and objects[ny][nx] == "" \
 						and not WorldLayout.is_boundary_state(String(tiles[ny][nx].state)):
 					tiles[ny][nx] = _create_tile("cleared")
+
+	# 5b. The ground a parcel says it is made of — today only the yard's (T-32).
+	#     **After step 5, and that ordering is the design.** Step 5 clears a
+	#     shoulder around every fixed object, so laying the yard before it would
+	#     punch a ring of ordinary tillable field around the cot, the bin, the
+	#     well and the seed box — which are precisely the tiles a fat finger
+	#     misses onto (T-27 box 3's evidence: four `no_energy` refusals one tile
+	#     off the cot). The yard has the last word on the yard.
+	#
+	#     Only the parcel's *plain* ground is replaced. An obstacle, a boundary or
+	#     a gate inside such a parcel keeps itself, so this stays a statement about
+	#     ground rather than a bulldozer; the yard happens to hold none of them.
+	#
+	#     **No draw.** A fill is not a decision, so the RNG stream is untouched and
+	#     every seeded placement after this one lands where it always did.
+	for p in WorldLayout.parcels(layout):
+		var ground := WorldLayout.ground_of(p)
+		if ground == "":
+			continue
+		for r in p.get("rects", []):
+			var rect: Rect2i = r
+			for ty in range(rect.position.y, rect.end.y):
+				for tx in range(rect.position.x, rect.end.x):
+					if _inside(tx, ty) and String(tiles[ty][tx].state) == "cleared":
+						tiles[ty][tx] = _create_tile(ground)
 
 	# 6. The tools, lying at their gates from the first moment she can see them.
 	#    Q-46 STRAWMAN — the mechanism is in DESIGNER_QUEUE, not settled here.
@@ -1398,6 +1429,20 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			if gs == null: return _fail("no_state")
 			var tile := get_tile(target.x, target.y)
 			if tile.is_empty() or tile.get("state", "") == "": return _fail("out_of_bounds")
+			# T-32: the yard is home, not field, and its ground is the one thing a
+			# hoe never opens. Stated at the gateway rather than in the router so it
+			# binds the neighbour, a crow and a phase-4 bot exactly as it binds her
+			# (S-3, ground rule 1) — a bot gets no verb the player lacks, and no
+			# ground the player cannot work either.
+			#
+			# **T-18 is untouched by this refusal, because a tap can never reach
+			# it.** `yard` is in no tool's `can_act_on` and in no `is_workable`
+			# state, so `ActionRouter.resolve` produces nothing for a yard tile and
+			# the tap degrades to plain movement — she walks there and stands on it.
+			# The only things that arrive here are a direct Action: a replay
+			# recorded on an older worldgen, or a test asking the question.
+			if verb == "till" and String(tile.get("state", "")) == WorldLayout.YARD:
+				return _fail("not_tillable")
 			var cost: int = Tools.get_energy_cost(verb)
 			var actor := String(action.get("actor", ""))
 			var charged: bool = _is_player(actor)

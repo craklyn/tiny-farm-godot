@@ -79,6 +79,7 @@ func _run_scenarios() -> void:
 	await _scenario_x_three_looks_for_the_cot()
 	await _scenario_y_acorns_are_pickable()
 	await _scenario_z_a_bed_button()
+	await _scenario_aa_the_yard_is_home()
 
 func _wait_until(pred: Callable, max_frames: int) -> bool:
 	for i in max_frames:
@@ -2080,3 +2081,137 @@ func _scenario_z_a_bed_button() -> void:
 	GameState.save_path = real_paths[0]
 	GameState.replay_path = real_paths[1]
 	GameState.trace_path = real_paths[2]
+
+
+func _scenario_aa_the_yard_is_home() -> void:
+	# T-32, the designer 2026-09-01: *"create a separate form of ground that cannot
+	# be tilled, and fill the initial fenced space with it."*
+	#
+	# The rule has two halves and they are asserted in two places on purpose:
+	#
+	#   * **the gateway refuses a till on yard ground** — S-3, so it binds a bot and
+	#     a crow the same way it binds her;
+	#   * **the tap never meets that refusal** — T-18. `yard` is in no tool's
+	#     `can_act_on` and in no `is_workable` state, so the router has no opinion
+	#     about it at all, and the only answer left for a tile nothing can be done
+	#     to is movement. A hoe held over the yard must produce a **walk**, not a
+	#     wobble, and this is where that is proved through the real input path.
+	print("\n--- Scenario AA: the yard is home, not field (T-32) ---")
+
+	# 1. What generation makes. A detached farm, because by now the scenarios above
+	#    have farmed half the live yard flat on purpose — which is still legal, it
+	#    is just no longer what a fresh farm looks like.
+	var FarmScript = load("res://world/farm.gd")
+	var fresh = FarmScript.new()
+	fresh.name = "Dooryard"
+	fresh.mute_feedback = true
+	add_child(fresh)
+	await get_tree().process_frame
+
+	var yard_rect: Rect2i = WorldLayout.parcels()[0]["rects"][0]
+	var yard_tiles := 0
+	var strays := 0
+	for ty in range(yard_rect.position.y, yard_rect.end.y):
+		for tx in range(yard_rect.position.x, yard_rect.end.x):
+			if String(fresh.get_tile(tx, ty).get("state", "")) == WorldLayout.YARD:
+				yard_tiles += 1
+			else:
+				strays += 1
+	_assert(strays == 0 and yard_tiles == yard_rect.get_area(),
+		"a fresh farm's fenced space is yard ground, every tile of it (%d/%d)"
+			% [yard_tiles, yard_rect.get_area()])
+	_assert(fresh.sim.is_walkable(5, 3), "which she walks across like any other ground")
+
+	# The cot's move is part of the same directive: down three, left-aligned, its
+	# 16x32 sprite filling rows 3-4 of the yard's rows 1-6.
+	var cot_now := Vector2i(-1, -1)
+	for ty in SimWorld.MAP_HEIGHT:
+		for tx in SimWorld.MAP_WIDTH:
+			if fresh.sim.objects[ty][tx] == "cot":
+				cot_now = Vector2i(tx, ty)
+	_assert(cot_now == Vector2i(2, 4), "the cot stands at (2,4) — %s" % cot_now)
+	_assert(fresh.get_object(cot_now.x, cot_now.y - 1) == "cot",
+		"with its head tile above it, so the pair reads as the middle of the room")
+	_assert(fresh.get_object(4, 1) == "shipping_bin" and fresh.get_object(6, 1) == "well"
+			and fresh.get_object(8, 1) == "seed_box",
+		"and the three stations kept the top row")
+
+	# Nothing beyond the fence changed: the cold open plays on field ground, and its
+	# own tests are what prove that, so all this owes them is the ground they run on.
+	_assert(String(fresh.get_tile(13, 4).get("state", "")) == "cleared"
+			and String(fresh.get_tile(12, 2).get("state", "")) == "cleared",
+		"the neighbour's plot is still ordinary field, untouched by any of this")
+	fresh.queue_free()
+	await get_tree().process_frame
+
+	# 2. The tap. On the live scene, on ground this scenario lays itself — see
+	#    above for why the live yard is no longer pristine by now.
+	var stand := Vector2i(7, 5)
+	var near := Vector2i(8, 5)
+	var far := Vector2i(5, 2)
+	for t in [stand, near, far]:
+		farm.set_tile_state(t.x, t.y, WorldLayout.YARD)
+		farm.sim.set_object(t.x, t.y, "")
+	GameState.set_energy(GameState.max_energy)
+	GameState.selected_tool = 3            # the hoe, exactly as the fat-finger trace had it
+	player.pos = Vector2(stand.x * 16 + 8.0, stand.y * 16 + 8.0)
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+
+	_assert(ActionRouter.resolve(farm, GameState, near, stand, false).is_empty(),
+		"the router has no action for a yard tile, hoe in hand")
+	_assert(not ActionRouter.is_workable(farm, near),
+		"and does not count it workable, so she walks onto it rather than up to it")
+	_assert(ActionRouter.blocked_reason(farm, GameState, near) == ""
+			and ActionRouter.satisfied_reason(farm, GameState, near) == "",
+		"with nothing to say about it either way — no 'cannot', no 'already done'")
+
+	var mark: int = farm.trace.entries.size()
+	InputManager.click_tile = near
+	InputManager.has_click = true
+	# Onto it, not up to it: `is_workable` is false, so this is an ordinary walk
+	# order and Q-30's stop-beside rule does not apply.
+	var stepped := await _wait_until(func(): return player.get_tile_pos() == near, 600)
+	_assert(stepped, "a tap on the yard beside her walks her onto it (tile %s)" % player.get_tile_pos())
+	var e := _last_tap_entry(mark)
+	_assert(String(e.get("out", "")) == "walk",
+		"and the trace calls it a walk, not a refusal (out=%s why=%s)"
+			% [e.get("out", ""), e.get("why", "-")])
+	_assert(int(e.get("tool", -1)) == 3 and String(e.get("verb", "")) == "",
+		"with the hoe still in her hand and no verb attached to it")
+	_assert(not e.has("halo"), "and nothing was rescued: it was simply a place to stand")
+
+	var mark2: int = farm.trace.entries.size()
+	InputManager.click_tile = far
+	InputManager.has_click = true
+	var crossed := await _wait_until(func(): return player.get_tile_pos() == far, 1200)
+	_assert(crossed, "a far tap on the yard walks her across it (tile %s)" % player.get_tile_pos())
+	_assert(String(_last_tap_entry(mark2).get("out", "")) == "walk",
+		"and that one is a walk too — the yard's only answer is movement (T-18)")
+	_assert(_refusals_since(mark) == 0,
+		"not one refusal in the whole exchange (%d)" % _refusals_since(mark))
+
+	# 3. The gateway's half. Asked directly, because a tap can no longer ask it.
+	var r: Dictionary = farm.sim.apply_action(
+		{ "verb": "till", "target": near, "actor": "player" }, GameState)
+	_assert(not r.get("ok", false) and String(r.get("reason", "")) == "not_tillable",
+		"the gateway refuses a till on yard ground, whoever asks (%s)" % r)
+	_assert(String(farm.get_tile(near.x, near.y).get("state", "")) == WorldLayout.YARD,
+		"and the ground is untouched by the asking")
+
+	# 4. And the reason this matters at the cot. The 2026-08-30 session's four
+	#    `no_energy` refusals were taps one tile below the cot resolving as
+	#    till-with-hoe; T-27 rescued them, and T-32 makes the class of mistake
+	#    structurally impossible, because the tile below the cot is not soil any
+	#    more. Asked as a pure query so nobody actually goes to bed here.
+	var cot: Vector2i = main_scene._cot_tile
+	var below := cot + Vector2i(0, 1)
+	var beside := cot + Vector2i(1, 1)
+	farm.set_tile_state(below.x, below.y, WorldLayout.YARD)
+	var rescued := ActionRouter.resolve_with_halo(farm, GameState, below, beside, false)
+	_assert(String(rescued.get("action", "")) == "sleep",
+		"the tile below the cot is yard now, so the fat finger can only ever mean the cot (%s)"
+			% rescued.get("action", "-"))
+	_assert(rescued.get("halo_from", Vector2i(-1, -1)) == below,
+		"rescued by T-27's halo, with the miss still recorded where it happened")

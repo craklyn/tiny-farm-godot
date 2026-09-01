@@ -310,6 +310,13 @@ func satisfied_reason(farm: Node2D, gs: Node, tap_t: Vector2i) -> String:
 ## right for "what happens on tap" but wrong for "how do I walk there": running
 ## out of seeds made her walk on top of the tile instead of up to it, because the
 ## approach logic could no longer tell it was a farmable square.
+##
+## **`WorldLayout.YARD` is absent from this list on purpose (T-32).** The yard is
+## home, not field: there is nothing to do to it, so it is not workable, so a tap
+## on it takes the same route a tap on plain grass takes — she walks over and
+## stands on it. That is T-18's rule holding by construction rather than by a
+## special case: yard is not a tile the router refuses, it is a tile the router
+## has no opinion about, and the only answer left for one of those is movement.
 func is_workable(farm: Node2D, tap_t: Vector2i) -> bool:
 	var obj: String = farm.get_object(tap_t.x, tap_t.y)
 	if obj != "" and SPECIAL_OBJECTS.has(obj):

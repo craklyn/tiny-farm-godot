@@ -55,6 +55,7 @@ func _init() -> void:
 	test_trace_analyses()
 	test_satisfied_states()
 	test_parcel_generation()
+	test_yard_ground()
 	test_tool_acquisition()
 	test_boundary_tap_answers()
 	test_cold_open()
@@ -617,13 +618,15 @@ func test_sim_actions() -> void:
 	r = world.apply_action({ "verb": "lay_egg", "target": t, "actor": "chicken" })
 	_assert(not r.ok, "lay_egg refused on occupied tile")
 
-	# Guards
+	# Guards. The tile is out in the meadow because since T-32 the fenced yard is
+	# not tillable ground at all, and this is a test about the *energy* guard.
 	GameState.energy = 0
 	GameState.hard_energy = true
-	r = world.apply_action({ "verb": "till", "target": Vector2i(6, 5), "actor": "player" }, GameState)
+	var field := Vector2i(6, 9)
+	r = world.apply_action({ "verb": "till", "target": field, "actor": "player" }, GameState)
 	_assert(not r.ok and r.reason == "no_energy", "till refused at 0 energy (hard)")
 	GameState.hard_energy = false
-	r = world.apply_action({ "verb": "till", "target": Vector2i(6, 5), "actor": "player" }, GameState)
+	r = world.apply_action({ "verb": "till", "target": field, "actor": "player" }, GameState)
 	_assert(r.ok and GameState.energy == 0, "soft floor: till allowed at 0 energy, stays 0 (Q-11)")
 	r = world.apply_action({ "verb": "bogus", "target": t }, GameState)
 	_assert(not r.ok, "unknown verb refused")
@@ -1455,8 +1458,11 @@ func test_replay_build_stamp() -> void:
 	SimRng.reseed(99)
 	world.generate()
 	GameState.reset()
-	var yard_tile := Vector2i(5, 3)  # inside the fenced yard, always cleared
-	var a := { "verb": "till", "target": yard_tile, "actor": "player" }
+	# Out in the meadow, beyond the fence: the yard's ground stopped being tillable
+	# at T-32, and a replay regenerates its world, so the tile has to be one a till
+	# still lands on after the regeneration.
+	var field_tile := Vector2i(5, 9)
+	var a := { "verb": "till", "target": field_tile, "actor": "player" }
 	rlog.record(a, world.apply_action(a, GameState))
 	var restored := ReplayLog.from_json(rlog.to_json())
 	_assert(restored.build_id == rlog.build_id, "the stamp survives a save/load round trip")
@@ -1484,7 +1490,7 @@ func test_replay_build_stamp() -> void:
 	var w2 := SimWorld.new()
 	var gs2 = load("res://systems/game_state.gd").new()
 	restored.apply_to(w2, gs2)
-	_assert(w2.get_tile(yard_tile.x, yard_tile.y).get("state", "") == "tilled",
+	_assert(w2.get_tile(field_tile.x, field_tile.y).get("state", "") == "tilled",
 		"a stamped replay still reproduces its world")
 
 
@@ -2899,8 +2905,11 @@ func test_actor_energy() -> void:
 	var gs4 = load("res://systems/game_state.gd").new()
 	SimRng.reseed(606)
 	w4.generate()
+	# Out in the meadow: the replay regenerates the world and re-applies the tills
+	# alone, so the row has to be on ground a till still lands on afterwards, and
+	# since T-32 the fenced yard is not that ground.
 	for i in 3:
-		var tile := Vector2i(5 + i, 3)
+		var tile := Vector2i(5 + i, 9)
 		w4.set_tile_state(tile.x, tile.y, "cleared")
 		var a := { "verb": "till", "target": tile, "actor": "neighbour" }
 		log.record(a, w4.apply_action(a, gs4))
@@ -5419,14 +5428,18 @@ func test_replay_v2() -> void:
 	cont.done()
 
 	# --- v1 logs are read as v1, and nothing new happens to them ---------------
+	# (5,9) rather than (5,2): a v1 log regenerates its world before re-applying,
+	# and since T-32 a till aimed inside the fenced yard is refused there. What
+	# this asserts is that the *legacy path* still applies an action, so the action
+	# is aimed at ground that still takes one.
 	var legacy_text := JSON.stringify({ "gen_seed": 99, "base_save": {}, "build_id": "old" }) \
-		+ "\n" + JSON.stringify({ "verb": "till", "target": [5, 2], "actor": "player" })
+		+ "\n" + JSON.stringify({ "verb": "till", "target": [5, 9], "actor": "player" })
 	var legacy := ReplayLog.from_json(legacy_text)
 	_assert(legacy.version == 1, "a header with no version field is a v1 log")
 	var w_v1 := SimWorld.new()
 	var gs_v1 = load("res://systems/game_state.gd").new()
 	legacy.apply_to(w_v1, gs_v1)
-	_assert(w_v1.get_tile(5, 2).state == "tilled", "and it still applies, action for action")
+	_assert(w_v1.get_tile(5, 9).state == "tilled", "and it still applies, action for action")
 	_assert(w_v1.clock.tick == 0 and legacy.divergence == "",
 		"advancing no clock and recomputing nothing — the legacy path, untouched")
 	gs_v1.free()
@@ -5436,6 +5449,8 @@ func test_replay_v2() -> void:
 	var dir := DirAccess.open("res://playtests")
 	_assert(dir != null, "the playtests fixtures directory is readable")
 	var checked := 0
+	var matched := 0
+	var mismatched := 0
 	for name in dir.get_directories():
 		var path := "res://playtests/%s/session_replay.json" % name
 		if not FileAccess.file_exists(path):
@@ -5450,15 +5465,49 @@ func test_replay_v2() -> void:
 		fixture.apply_to(wf, gsf)
 		_assert_quiet(fixture.divergence == "",
 			"%s takes the legacy path and asserts nothing about brains" % name)
-		# A log with no Actions in it reproduces the save it began from — the one
-		# thing that is true of a v1 fixture whatever build wrote it.
-		if fixture.entries.is_empty() and not fixture.base_save.is_empty():
-			_assert_quiet(SaveGame.replay_matches(fixture, SaveGame.load_dict(
-				"res://playtests/%s/autosave.json" % name)),
-				"%s (no actions) still reproduces its own autosave" % name)
+		if SaveGame.replay_matches(fixture, SaveGame.load_dict(
+				"res://playtests/%s/autosave.json" % name)):
+			matched += 1
+		else:
+			mismatched += 1
 		gsf.free()
 	_flush_quiet("every recorded session in playtests/ still reads and replays as the v1 log it is (%d)"
 		% checked)
+
+	# **Which of them still reproduce their own farm, counted.** This used to be a
+	# single quiet check on the logs with *no* Actions in them — the one case a
+	# worldgen change cannot touch — which meant the interesting half of the shelf
+	# was replayed and then nobody looked at the answer. Written down at T-32,
+	# because a worldgen change is exactly when somebody should.
+	#
+	# 3 match, 5 do not, and **T-32 did not move either number** (measured on both
+	# sides of the change). The three that match are the empty logs of 2026-08-30
+	# 21:52–21:54: a base save and no Actions, so they reproduce it whatever the
+	# generator does. The five that do not are the sessions with real play in them,
+	# and they were already failing before this — M1.5's parcel rebuild is what
+	# invalidated them, exactly as `docs/M1_5_PLAN.md` §1 said it would. T-32 adds
+	# a second independent reason to the same five (every one of them tills tiles
+	# inside the fenced yard, which is not tillable ground any more) and changes
+	# nothing about the count.
+	#
+	# So this is not a regression bar; it is a **ledger**. The determinism proof is
+	# the unit replay tests plus a fresh robot session, never an old session
+	# replayed across a worldgen change. What pinning the numbers buys is that the
+	# next change to move them has to come here and say which, and why.
+	#
+	# Worth knowing and not fixable from here: `build_status()` does **not** flag
+	# any of this. The stamp is a `git describe`, and a worldgen change ships under
+	# the same one until the next tag — so a file's provenance line can read
+	# "matches this build" while the world underneath it has moved. That is what
+	# `tools/verify_replay.gd` did to the last local human session at T-32: MATCH
+	# before, MISMATCH after, with no cross-build warning to explain it.
+	_assert(checked == 8, "there are 8 recorded sessions in playtests/ (%d)" % checked)
+	_assert(matched == 3,
+		"3 of them still reproduce their autosave — the ones with no Actions to re-apply (%d)"
+			% matched)
+	_assert(mismatched == 5,
+		"and 5 do not, unchanged by T-32: M1.5's worldgen already invalidated them (%d)"
+			% mismatched)
 
 	# --- free-walk entries: recorded, applied, compared (M2.5 WI-6) ------------
 	# §3.3's other half, and the switch WI-5 armed and left off. A crossing writes
@@ -7813,3 +7862,169 @@ func test_cot_presentation() -> void:
 		"and a zero scale asks for no shift rather than dividing by zero")
 
 	CotPresentation.set_treatment(was)
+
+
+func test_yard_ground() -> void:
+	# T-32, the designer 2026-09-01: *"create a separate form of ground that cannot
+	# be tilled, and fill the initial fenced space with it."*
+	#
+	# **The yard is home, not field.** Walkable like the field, never tillable, and
+	# everything else in the sim indifferent to it. The three claims in that
+	# sentence are the three sections below; the fourth section is the one that
+	# makes them cheap — the fill costs the RNG stream nothing, so a worldgen
+	# change this large moves no seeded placement at all.
+	print("\n--- T-32: the yard is home, not field ---")
+
+	var yard_rect: Rect2i = WorldLayout.parcels()[0]["rects"][0]
+
+	# --- 1. what generation lays -----------------------------------------------
+	SimRng.reseed(2026)
+	var w := SimWorld.new()
+	w.generate()
+	var inside := 0
+	for ty in range(yard_rect.position.y, yard_rect.end.y):
+		for tx in range(yard_rect.position.x, yard_rect.end.x):
+			_assert_quiet(String(w.get_tile(tx, ty).get("state", "")) == WorldLayout.YARD,
+				"(%d,%d) is yard ground" % [tx, ty])
+			inside += 1
+	_flush_quiet("every tile of the fenced space is yard ground (%d)" % inside)
+	_assert(inside == yard_rect.get_area(), "which is the whole parcel (%d)" % inside)
+
+	# And nowhere else is. The yard is a place, not a texture: a stray yard tile
+	# outside the fence would be land she could walk on and never work, with no
+	# fence to explain why.
+	var outside := 0
+	for ty in SimWorld.MAP_HEIGHT:
+		for tx in SimWorld.MAP_WIDTH:
+			if String(w.get_tile(tx, ty).get("state", "")) == WorldLayout.YARD \
+					and not yard_rect.has_point(Vector2i(tx, ty)):
+				outside += 1
+	_assert(outside == 0, "and no tile beyond the fence is (%d)" % outside)
+
+	# The cot came down three rows with it, and the objects still sit on ground
+	# rather than in it — step 5b runs *after* the object step precisely so the
+	# shoulders it clears do not survive as tillable holes around the furniture.
+	_assert(w.objects[4][2] == "cot", "the cot's footprint is (2,4)")
+	_assert(w.get_object(2, 3) == "cot", "and its head tile is (2,3), from TALL_OBJECTS")
+	_assert(String(w.get_tile(2, 4).get("state", "")) == WorldLayout.YARD
+			and String(w.get_tile(2, 5).get("state", "")) == WorldLayout.YARD,
+		"the cot stands on yard, and so does the tile below it — the fat-finger tile")
+	for obj in SimWorld.OBJECT_POSITIONS:
+		_assert_quiet(String(w.get_tile(obj.tx, obj.ty).get("state", "")) == WorldLayout.YARD,
+			"%s stands on yard ground" % obj.type)
+	_flush_quiet("no fixed object left a ring of tillable field around itself")
+
+	# --- 2. walkable like the field --------------------------------------------
+	_assert(w.is_walkable(5, 3) and w.is_walkable(9, 6),
+		"yard ground is walkable, exactly like the field")
+	var reach := w.reachable_from(WorldLayout.spawn())
+	_assert(reach.size() > 20,
+		"and the whole yard is still hers to cross (%d tiles reachable)" % reach.size())
+	var all_yard := true
+	for t in reach:
+		if String(w.get_tile(t.x, t.y).get("state", "")) != WorldLayout.YARD:
+			all_yard = false
+	_assert(all_yard, "every tile she can reach before the gate opens is yard ground")
+
+	# --- 3. never tillable, whoever asks ---------------------------------------
+	# The tool layer says so, the gateway enforces it, and the router therefore
+	# never has occasion to refuse anything (T-18 — that half is Scenario AA's).
+	_assert(not Tools.can_act_on_tile(3, WorldLayout.YARD),
+		"the hoe cannot act on yard ground")
+	_assert(Tools.get_action(3, WorldLayout.YARD) == "",
+		"so there is no hoe action to name")
+
+	var gs = load("res://systems/game_state.gd").new()
+	gs.reset()
+	var before: int = gs.energy
+	var r := w.apply_action({ "verb": "till", "target": Vector2i(5, 3), "actor": "player" }, gs)
+	_assert(not r.get("ok", false) and String(r.get("reason", "")) == "not_tillable",
+		"the gateway refuses her till on yard ground (%s)" % r)
+	_assert(String(w.get_tile(5, 3).get("state", "")) == WorldLayout.YARD,
+		"the ground is unchanged")
+	_assert(gs.energy == before, "and it cost her nothing — the guard runs before the meter")
+
+	# S-3, ground rule 1: one gateway, so the rule is the same for everybody. A bot
+	# gets no verb the player lacks, and no ground she cannot work either.
+	w.spawn_actor("bot_0", SpeciesDefs.BOT, Vector2i(5, 4))
+	var rb := w.apply_action({ "verb": "till", "target": Vector2i(5, 3), "actor": "bot_0" }, gs)
+	_assert(not rb.get("ok", false) and String(rb.get("reason", "")) == "not_tillable",
+		"and refuses a bot's, identically (%s)" % rb)
+	_assert(w.energy_of("bot_0") == SimWorld.ACTOR_MAX_ENERGY,
+		"which also cost the machine nothing")
+
+	# The field is untouched by any of this: the guard names one state.
+	var rf := w.apply_action({ "verb": "till", "target": Vector2i(13, 4), "actor": "player" }, gs)
+	_assert(rf.get("ok", false) and String(w.get_tile(13, 4).get("state", "")) == "tilled",
+		"a till beyond the fence still lands, on the ordinary field ground it always did")
+
+	# Everything else is indifferent to it, which is what "a form of ground" means
+	# rather than "a new kind of object". A hen lays on it, a crow flies over it,
+	# water washes a trail off it.
+	_assert(w.apply_action({ "verb": "lay_egg", "target": Vector2i(6, 3), "actor": "chicken" }
+			).get("ok", false),
+		"a hen lays an egg on yard ground like any other")
+	_assert(not w.has_crop(5, 3), "nothing grows in it")
+	_assert(String(w.choose_crow_target(0).get("kind", "")) != "",
+		"and a crow still finds something to want")
+
+	# --- 4. the fill costs the RNG stream nothing -------------------------------
+	# The strongest thing that can be said about a worldgen change of this size:
+	# generate the same seed with and without the yard's ground and the two worlds
+	# differ in **exactly** the yard's tiles. Every seeded placement — the acorn
+	# stock, the hen's tile, the obstacle rolls — lands where it always did, so
+	# nothing outside the fence moved because of T-32.
+	var plain: Dictionary = WorldLayout.DEFAULT.duplicate(true)
+	plain["parcels"][0].erase("ground")
+	SimRng.reseed(31337)
+	var a := SimWorld.new()
+	a.generate()
+	SimRng.reseed(31337)
+	var b := SimWorld.new()
+	b.generate(plain)
+	var differ_in := 0
+	var differ_out := 0
+	for ty in SimWorld.MAP_HEIGHT:
+		for tx in SimWorld.MAP_WIDTH:
+			if String(a.get_tile(tx, ty).get("state", "")) \
+					!= String(b.get_tile(tx, ty).get("state", "")):
+				if yard_rect.has_point(Vector2i(tx, ty)):
+					differ_in += 1
+				else:
+					differ_out += 1
+	_assert(differ_in == yard_rect.get_area() and differ_out == 0,
+		"with and without the yard's ground, the same seed differs in exactly its %d tiles (%d in, %d out)"
+			% [yard_rect.get_area(), differ_in, differ_out])
+	_assert(str(a.objects) == str(b.objects),
+		"and not one object moved — the acorn stock included, so no draw was spent")
+	_assert(a.actor_pos(SimWorld.ACTOR_CHICKEN) == b.actor_pos(SimWorld.ACTOR_CHICKEN),
+		"nor did the hen, who is placed from the stream after the fill")
+
+	# --- 5. saves: written, restored, and deliberately not migrated -------------
+	var snapshot = JSON.parse_string(JSON.stringify(SaveGame.capture(a, gs)))
+	var back := SimWorld.new()
+	var gs_back = load("res://systems/game_state.gd").new()
+	_assert(SaveGame.restore(snapshot, back, gs_back), "a farm with a yard in it saves and restores")
+	_assert(String(back.get_tile(5, 3).get("state", "")) == WorldLayout.YARD,
+		"with its ground intact")
+
+	# **No migration, on purpose.** A save from before T-32 restores a fenced space
+	# of ordinary field, including any rows she tilled in it, and keeps playing.
+	# Rewriting her ground underneath her would delete work she did to answer a
+	# rule that did not exist when she did it.
+	var old_save: Dictionary = JSON.parse_string(JSON.stringify(snapshot))
+	old_save["world"]["tiles"][3][5] = { "state": "tilled", "crop_type": "",
+		"growth_stage": 0, "watered_today": false }
+	var legacy := SimWorld.new()
+	var gs_legacy = load("res://systems/game_state.gd").new()
+	_assert(SaveGame.restore(old_save, legacy, gs_legacy),
+		"a save whose yard was tilled before T-32 existed still restores")
+	_assert(String(legacy.get_tile(5, 3).get("state", "")) == "tilled",
+		"keeping her tilled row exactly as she left it")
+	_assert(legacy.apply_action({ "verb": "plant", "target": Vector2i(5, 3),
+			"seed_type": "wheat", "actor": "player" }, gs_legacy).get("ok", false),
+		"and she can go on farming it — the yard is a fact about generation, not a law of physics")
+
+	gs.free()
+	gs_back.free()
+	gs_legacy.free()
