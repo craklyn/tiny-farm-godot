@@ -568,6 +568,21 @@ trace actually says, because several of these looked like bugs and were not.*
   *is* meaningful on bare soil, and hiding it hides a genuine "plant here now and it is
   already watered" signal. Showing it confused her once; hiding it loses something true.
   Currently hidden.
+- **Q-68 (Ruling)** **The bed's head is behind the HUD bar when she stands in the top
+  rows.** Noticed while building T-27 box 4, and it is geometry rather than a bug. The
+  cot sits at (2,1), the first row inside the map border, and a tall object's extra
+  height rises *north* — so the new 16x32 sprite occupies row 0. The camera clamps at
+  the map's top edge, so whenever she is in the top few rows (which the whole yard is)
+  the top third of the bed — headboard and part of the pillow — renders under the HUD's
+  top bar. It clears the moment she walks a couple of tiles south, and the *tap* target
+  is unaffected: taps resolve by tile, and `SimWorld.TALL_OBJECTS` already makes row 0
+  answer as the cot. The old art hid this by only ever drawing in the bottom third of
+  its cell. Three ways out, all cheap, none obviously right: (a) accept it — the bed is
+  legible from anywhere she is likely to be standing when she wants it; (b) move the
+  yard's four tall objects down one row in `SimWorld.OBJECT_POSITIONS`, which costs a
+  regenerated demo replay and a re-baseline; (c) let the top bar float or shrink. This
+  matters most for box 5 below it, since whatever "looks like sleeping" turns out to be
+  will want the whole bed visible. Related: the T-27 entry in `ROADMAP.md`.
 
 ## M2.5 — the actor system (filed 2026-08-31, from the entity brainstorm)
 
