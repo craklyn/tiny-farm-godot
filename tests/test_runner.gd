@@ -62,6 +62,7 @@ func _init() -> void:
 	test_actor_registry()
 	test_takeover_anchoring()
 	test_acorns()
+	test_acorn_pickup()
 	test_economy_teaching()
 	test_offscreen_arrow()
 	test_player_gs_injection()
@@ -2603,6 +2604,149 @@ func test_acorns() -> void:
 		"and a day schedules exactly that many arrivals, so daily loss is bounded by it")
 
 	gs.free()
+
+
+func test_acorn_pickup() -> void:
+	# T-30, Q-48's ruling (2026-09-01). The proof and the acorns both stay exactly
+	# as they are — *"acorns run out by design"* — and what changes is that the
+	# player may run them out herself: an acorn she picks up is an acorn no crow
+	# will eat, so her own hands can bring the turn to crops (and with it Q-12's
+	# three scares) forward. Everything asserted here is about that one sentence.
+	print("\n--- T-30 (Q-48): acorns are pickable ---")
+
+	# 1. Intent, and the ordering question the acorn raises: they are dropped on
+	#    *cleared* ground, which is also the one state that answers "till". The
+	#    object wins — the egg's rule, and the reason `resolve()` reads the object
+	#    table before it reads the tile at all.
+	var FarmScript = load("res://world/farm.gd")
+	var t = FarmScript.new()
+	t.tiles.clear()
+	t.objects.clear()
+	for ty in t.MAP_HEIGHT:
+		t.tiles.append([])
+		t.objects.append([])
+		for tx in t.MAP_WIDTH:
+			t.objects[ty].append("")
+			t.tiles[ty].append({ "state": "cleared", "crop_type": "", "growth_stage": 0, "watered_today": false })
+
+	GameState.reset()
+	GameState.selected_tool = 3           # hoe in hand, as she usually has
+	var acorn_t := Vector2i(4, 4)
+	_assert(ActionRouter.resolve(t, GameState, acorn_t).get("action", "") == "till",
+		"bare cleared ground still answers 'till'")
+	t.objects[acorn_t.y][acorn_t.x] = "acorn"
+	var pick = ActionRouter.resolve(t, GameState, acorn_t)
+	_assert(pick.get("action", "") == "collect",
+		"an acorn on that same ground answers 'collect' — the object wins over the soil")
+	_assert(pick.get("target_t", Vector2i.ZERO) == acorn_t,
+		"and the acorn's own tile is what she is sent to")
+	t.tiles[acorn_t.y][acorn_t.x]["state"] = "tilled"
+	_assert(ActionRouter.resolve(t, GameState, acorn_t).get("action", "") == "collect",
+		"the same rule on tilled soil: she picks the acorn up, she does not plant through it")
+	_assert(ActionRouter.is_workable(t, acorn_t),
+		"so she walks *up to* an acorn rather than onto it, exactly as she does an egg")
+	t.free()
+
+	# 2. The gateway. One verb, no new one: `collect`, actor "player", the egg's
+	#    handler extended.
+	GameState.reset()
+	SimRng.reseed(4242)
+	var world := SimWorld.new()
+	world.generate()
+	var stock := world.count_acorns()
+	_assert(stock > 0, "the farm starts with its finite acorn stock (%d)" % stock)
+	_assert(GameState.acorns == 0, "and she starts with none in her pocket")
+
+	var first: Vector2i = world.choose_crow_target(0).get("tile", Vector2i(-1, -1))
+	var planted_before: int = world.count_planted()
+	var day_actions: int = GameState.actions_today
+	var got := world.apply_action(
+		{ "verb": "collect", "target": first, "actor": "player" }, GameState)
+	_assert(got.get("ok", false) and String(got.get("collected", "")) == "acorn",
+		"she picks up an acorn with the same verb that picks up an egg")
+	_assert(GameState.acorns == 1, "it is in her pocket, counted (1)")
+	_assert(world.count_acorns() == stock - 1, "and out of the stock (%d)" % world.count_acorns())
+	_assert(world.get_object(first.x, first.y) == "", "the tile is bare")
+	_assert(GameState.energy == GameState.max_energy,
+		"picking it up cost no energy, like the egg")
+	_assert(GameState.actions_today == day_actions + 1,
+		"but it did advance the day's action clock, like the egg (bending down is work)")
+	_assert(not world.apply_action(
+		{ "verb": "collect", "target": first, "actor": "player" }, GameState).get("ok", true),
+		"and there is nothing on that tile to pick up twice")
+	_assert(world.count_planted() == planted_before, "no crop was touched")
+
+	# 3. The stock is the crow's larder, so a pocketed acorn is gone from it.
+	var never_picked := true
+	for i in 200:
+		if world.choose_crow_target(i).get("tile", Vector2i(-1, -1)) == first:
+			never_picked = false
+	_assert(never_picked, "no crow ever flies to the acorn she took (200 draws)")
+
+	# 4. Q-48's acceleration, end to end: empty the stock by hand, and the crows
+	#    turn to crops — which is exactly what her hands were for.
+	var guard := 0
+	while world.count_acorns() > 0 and guard < 100:
+		var next: Vector2i = world.choose_crow_target(guard).get("tile", Vector2i(-1, -1))
+		world.apply_action({ "verb": "collect", "target": next, "actor": "player" }, GameState)
+		guard += 1
+	_assert(world.count_acorns() == 0, "she can clear the whole stock herself")
+	_assert(GameState.acorns == stock, "with every one of them in her pocket (%d)" % GameState.acorns)
+	_assert(String(world.choose_crow_target(3).get("kind", "")) == "crop",
+		"and the next crow wants a crop — the turn she just brought forward")
+
+	# 5. T-15's ramp is untouched: nothing she did refills anything, and sleeping
+	#    does not either. (`test_acorns` owns the invariant; this is the version of
+	#    it that has been through her hands.)
+	world.apply_action({ "verb": "sleep", "actor": "world", "weather": "sunny" }, GameState)
+	_assert(world.count_acorns() == 0, "a night does not put the acorns back (no regeneration)")
+	_assert(GameState.acorns == stock, "and she still has the ones she picked up")
+
+	# 6. Recorded, replayed, saved. A pickup is an ordinary Action, so it must
+	#    survive both round trips like every other one.
+	GameState.reset()
+	SimRng.reseed(606)
+	var rlog := ReplayLog.new()
+	rlog.start(606)
+	var live := SimWorld.new()
+	live.generate()
+	var take: Array[Vector2i] = []
+	for ty in SimWorld.MAP_HEIGHT:
+		for tx in SimWorld.MAP_WIDTH:
+			if live.objects[ty][tx] == "acorn":
+				take.append(Vector2i(tx, ty))
+	_assert(take.size() >= 2, "the recorded session has acorns to pick up (%d)" % take.size())
+	_replay_do(live, rlog, { "verb": "collect", "target": take[0], "actor": "player" })
+	_replay_do(live, rlog, { "verb": "sleep", "actor": "world", "weather": "sunny" })
+	_replay_do(live, rlog, { "verb": "collect", "target": take[1], "actor": "player" })
+	var picked_up: int = GameState.acorns
+	_assert(picked_up == 2, "the session picked up two acorns")
+	var live_snap := _replay_snapshot(live)
+
+	var replayed := SimWorld.new()
+	ReplayLog.from_json(rlog.to_json()).apply_to(replayed, GameState)
+	_assert(_replay_snapshot(replayed) == live_snap,
+		"the replay reproduces the farm exactly, acorns and all")
+	_assert(GameState.acorns == picked_up,
+		"including her pocket — the count is in the canonical state, so a replay that lost it fails")
+
+	var on_disk = JSON.parse_string(JSON.stringify(SaveGame.capture(replayed, GameState)))
+	var loaded := SimWorld.new()
+	GameState.reset()
+	_assert(SaveGame.restore(on_disk, loaded, GameState), "the session saves and loads")
+	_assert(GameState.acorns == picked_up, "with her acorns still counted (%d)" % GameState.acorns)
+	_assert(loaded.count_acorns() == live.count_acorns(),
+		"and the stock still short by the ones she took")
+
+	# A save written before T-30 says nothing about acorns, and must load as "none".
+	var old_save: Dictionary = on_disk.duplicate(true)
+	old_save["state"].erase("acorns")
+	GameState.reset()
+	_assert(SaveGame.restore(old_save, SimWorld.new(), GameState),
+		"a save from before T-30 still loads")
+	_assert(GameState.acorns == 0, "and reads as an empty pocket")
+
+	GameState.reset()
 
 
 # --- helpers for the noisier loops above --------------------------------------

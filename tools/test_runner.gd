@@ -77,6 +77,7 @@ func _run_scenarios() -> void:
 	await _scenario_v_the_bot_is_drawn()
 	await _scenario_w_the_cot_presents_itself()
 	await _scenario_x_three_looks_for_the_cot()
+	await _scenario_y_acorns_are_pickable()
 
 func _wait_until(pred: Callable, max_frames: int) -> bool:
 	for i in max_frames:
@@ -1915,3 +1916,41 @@ func _scenario_x_three_looks_for_the_cot() -> void:
 	GameState.save_path = real_paths[0]
 	GameState.replay_path = real_paths[1]
 	GameState.trace_path = real_paths[2]
+
+
+func _scenario_y_acorns_are_pickable() -> void:
+	# T-30 (Q-48), in the real scene: the whole chain a thumb goes through, from a
+	# tap on a nut lying in the grass to the crow's larder being one meal shorter.
+	# The unit suite owns the rule (`test_acorn_pickup`); what this scenario adds
+	# is that the tap actually reaches it — the router, the approach, the walk and
+	# the gateway, wired together in `main.tscn` with nothing stubbed.
+	print("\n--- Scenario Y: acorns are pickable (T-30) ---")
+
+	var stand := Vector2i(6, 6)
+	var nut := Vector2i(7, 6)          # one step east of her, so she is already beside it
+	farm.set_tile_state(stand.x, stand.y, "cleared")
+	farm.set_tile_state(nut.x, nut.y, "cleared")
+	farm.sim.set_object(nut.x, nut.y, "acorn")
+	GameState.seeds["wheat"] = 0        # so cleared soil means "till", never "plant"
+	GameState.selected_tool = 3         # hoe in hand: the tap could have meant "till"
+	GameState.set_energy(GameState.max_energy)
+	player.pos = Vector2(stand.x * 16 + 8.0, stand.y * 16 + 8.0)
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+
+	var had: int = GameState.acorns
+	var stock: int = farm.sim.count_acorns()
+	var mark: int = farm.trace.entries.size()
+	InputManager.click_tile = nut
+	InputManager.has_click = true
+	var picked := await _wait_until(func(): return GameState.acorns == had + 1, 600)
+	_assert(picked, "tapping an acorn picks it up, hoe in hand and tillable ground under it")
+	_assert(farm.get_object(nut.x, nut.y) == "", "the tile is bare afterwards")
+	_assert(farm.get_tile(nut.x, nut.y).state == "cleared",
+		"and the ground beneath it was never tilled — the object answered, not the soil")
+	_assert(farm.sim.count_acorns() == stock - 1,
+		"the crow's stock is one shorter (%d)" % farm.sim.count_acorns())
+	_assert(_refusals_since(mark) == 0, "and nothing was refused along the way")
+
+	GameState.seeds["wheat"] = 5

@@ -65,6 +65,10 @@ static func capture(world: SimWorld, gs) -> Dictionary:
 			"crows_scared": gs.crows_scared,
 			"crows_seen": gs.crows_seen,
 			"crop_crows_seen": gs.crop_crows_seen,
+			# What she has picked up off the ground herself (T-30 / Q-48).
+			# Additive, like every field below it: absent ⇒ 0, which is what every
+			# save written before acorns could be picked up means.
+			"acorns": gs.acorns,
 			"tools_owned": gs.tools_owned.duplicate(),
 			"takeover_day": gs.takeover_day,
 			"clear_counts": gs.clear_counts.duplicate(),
@@ -214,6 +218,7 @@ static func restore(data: Dictionary, world: SimWorld, gs) -> bool:
 	# her axe would be a bug wearing a migration's clothes. No VERSION bump: these
 	# are additive keys in the existing schema (docs/ARCHITECTURE.md).
 	gs.crop_crows_seen = int(s.get("crop_crows_seen", 0))
+	gs.acorns = int(s.get("acorns", 0))  # T-30 (Q-48); absent ⇒ she has none
 	var owned: Dictionary = {}
 	for t in Tools.LIST:
 		owned[t.key] = true

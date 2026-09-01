@@ -1249,6 +1249,20 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 				set_object(target.x, target.y, "")
 				gs.seeds["scarecrow"] = gs.seeds.get("scarecrow", 0) + 1
 				return { "ok": true, "collected": "scarecrow" }
+			# T-30 (Q-48): the same verb, on the acorn the crow was going to eat.
+			# **This is the ramp in her own hands** — the stock is finite and does
+			# not regenerate (T-15), so every acorn she pockets is one fewer meal
+			# between the crows and her crops, and a player who wants the Q-12
+			# proof sooner can bring the pests forward herself. The proof and the
+			# acorn design are otherwise untouched; nothing here refills anything.
+			#
+			# Free, like the egg: `collect` is a special-object verb and costs no
+			# energy. It still advances the day's action clock, exactly as picking
+			# up an egg does (see NON_WORK_VERBS) — bending down is work.
+			if obj == "acorn":
+				set_object(target.x, target.y, "")
+				gs.acorns += 1
+				return { "ok": true, "collected": "acorn" }
 			return _fail("nothing_to_collect")
 
 		# -- day transition --
@@ -1320,8 +1334,10 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 		# -- entity verbs --
 		# T-15 / Q-39: the crow's preferred meal. An entity-only verb like
 		# eat_crop, and like eat_crop it gives the bird no capability the player
-		# could not exercise by hand (she can pick things up; she simply has no
-		# reason to pick up an acorn in phase 1).
+		# could not exercise by hand — which since T-30 (Q-48) she literally has:
+		# the same acorn answers her `collect`, and the tile ends up empty either
+		# way. Two verbs because the outcomes differ (hers goes in a pocket), not
+		# because the bird can reach something she cannot.
 		"eat_acorn":
 			if get_object(target.x, target.y) != "acorn": return _fail("no_acorn")
 			set_object(target.x, target.y, "")

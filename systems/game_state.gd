@@ -34,6 +34,21 @@ var crows_seen: int  # T-2: how many crows have ever arrived (kept for trace/com
 # first crow to go for a **crop**, which is the moment the peace actually ends.
 var crop_crows_seen: int
 
+# T-30 (Q-48): acorns she has picked up herself. A count, because an acorn is
+# indistinguishable from another acorn — the egg's and the scarecrow's shape,
+# minus their dictionary, since there is exactly one kind of thing in here.
+#
+# Deliberately **not** a key in `crops` or `seeds`, which are not neutral
+# cupboards: everything in `crops` is emptied into the bin by `sell_crops_to_bin`
+# and counted into `total_shipped` (so an acorn would quietly pay off Q-12's
+# proof), and everything in `seeds` is a thing the seed pill can select and
+# `plant` can put in the ground. An acorn is neither, yet.
+#
+# It has no use today — collecting one takes it out of the crow's stock (Q-48's
+# whole point) and that is all it does. Phase 2's decoy and feed designs are
+# where it may acquire one.
+var acorns: int
+
 # T-9 (Q-34): tools are acquired, not owned. She starts with hands, hoe, can and
 # seeds; the axe and pickaxe are earned, and each opens the parcel that needs it.
 var tools_owned: Dictionary
@@ -115,6 +130,7 @@ func reset() -> void:
 	crows_scared = 0
 	crows_seen = 0
 	crop_crows_seen = 0
+	acorns = 0
 	tools_owned = {
 		"hands": true, "hoe": true, "watering_can": true, "seeds": true,
 		"axe": false, "pickaxe": false,

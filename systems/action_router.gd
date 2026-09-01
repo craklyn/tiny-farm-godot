@@ -20,6 +20,13 @@ const SPECIAL_OBJECTS := {
 	"shipping_bin": "sell",
 	"egg":          "collect",
 	"scarecrow":    "collect",
+	# T-30 (Q-48). Resolved here, in the object table, which settles the ordering
+	# question it raises: acorns are dropped on **cleared** ground, so the same tap
+	# could mean "pick that up" or "till this". The object wins — block 1 runs
+	# before the tile's state is even read — and that is the rule the egg has
+	# always had (an egg laid on tilled soil is collected, not planted into).
+	# Picking a thing up off a square is what a hand does with that square first.
+	"acorn":        "collect",
 	"tool_axe":     "take_tool",
 	"tool_pickaxe": "take_tool",
 }

@@ -172,10 +172,38 @@ poorly** — the satisfied-tap answers (full can, empty basket, already watered:
 her session) didn't communicate. Treatments to be drafted behind the T-27 A/B toggle
 pattern; walking friction explicitly NOT one of his observations.
 
-**T-30 — Acorns are pickable** · Q-48's ruling, 2026-09-01 · small
+**T-30 — Acorns are pickable** · Q-48's ruling, 2026-09-01 · ✅ **done 2026-09-01**
 *A tap on an acorn collects it into inventory (the egg's `collect` precedent),
 removing it from the crow stock — the player's own hands can accelerate the turn to
 crops and the Q-12 proof. Proof and acorn design otherwise untouched.*
+- [x] **the existing `collect` verb, extended** — `"acorn"` joins the egg and the
+      scarecrow in `SimWorld`'s handler and in `ActionRouter.SPECIAL_OBJECTS`. No
+      new verb, no new sim surface, actor `"player"`; recorded, replayed and
+      refused like any other Action. Free of energy like the egg, and like the egg
+      it still advances T-20's action clock.
+- [x] **the resolution rule, made deliberate rather than incidental:** acorns lie
+      on *cleared* ground, which is also the one state that answers "till", so the
+      same tap could mean either. **The object wins** — `resolve()` reads the
+      object table before it reads the tile at all — which is the rule the egg has
+      always had (an egg on tilled soil is collected, not planted into). Asserted
+      on both cleared and tilled ground so it cannot drift.
+- [x] **inventory: `GameState.acorns`, a plain count**, saved additively (absent ⇒
+      0, so pre-T-30 saves load) and inside `capture_canonical`, so a replay that
+      lost her pocket fails. Deliberately *not* a key in `crops` or `seeds`:
+      everything in `crops` is emptied into the bin and counted into
+      `total_shipped` (an acorn would quietly pay off Q-12's proof), and everything
+      in `seeds` is selectable and plantable. It has no use today; phase 2's decoy
+      and feed designs are where it may get one.
+- [x] **T-15's ramp untouched:** nothing added regenerates anything. Emptying the
+      stock by hand is the Q-48 acceleration and it is tested as such — the next
+      crow wants a crop — and the T-15 invariants (`test_acorns`) are unmodified.
+- [x] tests: `test_acorn_pickup` (unit, 30 assertions: intent order, gateway,
+      the crow's larder, replay, save/load, a pre-T-30 save) and integration
+      Scenario Y, which taps an acorn in the real scene with a hoe in hand and
+      tillable ground under it.
+*Note: a collected acorn is not displayed anywhere — the HUD and the inventory
+menu both list `CropDefs.ORDER` only. It has no use yet, so there is nothing to
+show; whatever gives it one in phase 2 owes it a picture.*
 
 **T-31 — A bed button on the HUD** · Q-49's ruling, 2026-09-01 · small
 *A wordless icon that dispatches an ordinary cot tap (walk, tuck-in, sleep — same
