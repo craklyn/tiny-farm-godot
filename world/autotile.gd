@@ -51,3 +51,25 @@ static func atlas_coord(mask: int, watered: bool = false) -> Vector2i:
 # True when a tile state participates in the tilled-soil region.
 static func is_soil(state: String) -> bool:
 	return state in ["tilled", "seeded", "growing", "ready"]
+
+
+# True when soil should be *drawn* wet — the picture rule, not the sim's flag.
+#
+# Bare `tilled` ground is deliberately absent even when the rain has marked it:
+# nothing mechanical reads the flag there, and drawing it wet led a player to
+# conclude she could water empty tiles (reported 2026-08-30, Q-52's approval —
+# whose residual, whether that signal is worth showing after all, is still the
+# designer's to rule).
+#
+# `ready` is deliberately *present*. It was missing, so a ripe crop on a rainy
+# day stood on dry ground between wet rows (reported 2026-09-01). A ripe crop's
+# soil is still soil with a plant in it; the sim's rain pass was fixed to mark it
+# in the same change, and this is the rule that draws it.
+#
+# Here rather than in the renderer's `_draw` so the headless suite can hold the
+# rule to account without a viewport — this file is presentation, but it is the
+# pure half of it.
+static func draws_wet(state: String, watered_today: bool) -> bool:
+	if not watered_today:
+		return false
+	return state == "seeded" or state == "growing" or state == "ready"

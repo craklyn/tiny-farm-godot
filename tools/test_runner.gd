@@ -1825,6 +1825,15 @@ func _scenario_w_the_cot_presents_itself() -> void:
 	_stage_tile(beside.x, beside.y, "cleared")
 	GameState.seeds["wheat"] = 0               # so cleared soil means "till", never "plant"
 
+	# A wet, unripe crop to watch through the transition. Reported from play
+	# 2026-09-01: "when you go to sleep, the ground re-renders as dry BEFORE the
+	# fade out" — the sleep lands at the tap (D-8, asserted below), so the farm
+	# was already washed dry while the lit world was still on screen.
+	var crop_t := Vector2i(6, 10)
+	_stage_tile(crop_t.x, crop_t.y, "growing", "wheat")
+	farm.sim.tiles[crop_t.y][crop_t.x]["growth_stage"] = 2
+	farm.sim.tiles[crop_t.y][crop_t.x]["watered_today"] = true
+
 	# (a) One tap, one day — however many times she taps during the transition.
 	GameState.set_energy(GameState.max_energy)
 	player.pos = Vector2(below.x * 16 + 8.0, below.y * 16 + 8.0)
@@ -1846,6 +1855,13 @@ func _scenario_w_the_cot_presents_itself() -> void:
 		"with the farmer drawn lying on the cot — her body answers the tap (T-27 box 1)")
 	_assert(player.pos.distance_to(Vector2(below.x * 16 + 8.0, below.y * 16 + 8.0)) < 0.01,
 		"and her actual position never moved: the pose is drawn, not walked (sim truth is untouched)")
+
+	# The ground gets the sky's treatment: held until the screen is black.
+	_assert(farm.is_tile_look_held(), "the ground she fell asleep on is held for the fade")
+	_assert(not farm.sim.get_tile(crop_t.x, crop_t.y).watered_today,
+		"even though the sim washed it dry at the tap (D-8 — the Action is never delayed)")
+	_assert(farm.tile_look(crop_t.x, crop_t.y).watered_today,
+		"so the soil she watered still draws wet while the world is still lit")
 
 	# Now the hostile part, which is simply what a four-year-old does when nothing
 	# appears to have happened yet: keep tapping. This covers the 1.5 s re-tap that
@@ -1872,6 +1888,10 @@ func _scenario_w_the_cot_presents_itself() -> void:
 	_assert(_sleeps_since(mark) == 1,
 		"and the sim saw exactly one sleep, not three (%d)" % _sleeps_since(mark))
 	_assert(player.tuck_tile.x < 0, "she is out of bed by morning")
+	_assert(not farm.is_tile_look_held(),
+		"the ground was released under the black and is the morning's again")
+	_assert(farm.tile_look(crop_t.x, crop_t.y).state == farm.sim.get_tile(crop_t.x, crop_t.y).state,
+		"showing exactly what the sim says, with nothing held over from yesterday")
 	_assert(not InputManager.is_swallowing(),
 		"and the window is shut again — a tap the instant after it is an ordinary tap")
 

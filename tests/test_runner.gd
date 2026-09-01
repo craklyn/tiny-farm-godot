@@ -110,6 +110,8 @@ func _init() -> void:
 	test_cot_presentation()
 	test_station_presentation()
 	test_zoo()
+	test_rain_on_ripe_soil()
+	test_ground_holds_until_black()
 
 	print("")
 	print(String("=").repeat(60))
@@ -8878,4 +8880,141 @@ func test_zoo() -> void:
 	_assert(not Zoo.spawn(world, gs, SpeciesDefs.KANGAROO, 0).is_empty(),
 		"and the zoo refills after a clear")
 
+	gs.free()
+
+
+# Reported from play 2026-09-01: *"When weather is rainy and corn was ready to
+# collect, the ground drew as dry instead of wet under it. Unripe corn still had
+# wet ground."*
+#
+# Confirmed against the code before it was touched, and the confirmation is the
+# interesting part: this was **not** the renderer alone. `advance_day` washes
+# every tile dry and then re-wets what the rain falls on, and its list was the
+# growth pass's list — seeded, growing, plus bare tilled ground — so a crop that
+# ripened was set dry and then skipped. The soil under a ripe crop was dry in the
+# sim, and no picture could have been drawn otherwise. Both halves are asserted
+# here: the flag, and the rule that draws it.
+func test_rain_on_ripe_soil() -> void:
+	print("\n--- Rain falls on ripe soil too (reported 2026-09-01) ---")
+
+	var gs = load("res://systems/game_state.gd").new()
+	var world := SimWorld.new()
+	SimRng.reseed(9701)
+	world.generate()
+
+	# Her exact case: a crop one day from ripe beside one that is not, and a rainy
+	# night over both.
+	var ripe_t := Vector2i(5, 10)
+	var unripe_t := Vector2i(6, 10)
+	world.tiles[ripe_t.y][ripe_t.x] = { "state": "growing", "crop_type": "wheat",
+		"growth_stage": 2, "watered_today": true }
+	world.tiles[unripe_t.y][unripe_t.x] = { "state": "seeded", "crop_type": "tomato",
+		"growth_stage": 0, "watered_today": true }
+	world.apply_action({ "verb": "sleep", "actor": "world", "weather": "rainy" }, gs)
+
+	var ripe: Dictionary = world.get_tile(ripe_t.x, ripe_t.y)
+	var unripe: Dictionary = world.get_tile(unripe_t.x, unripe_t.y)
+	_assert(ripe.state == "ready", "the crop ripened overnight (her corn)")
+	_assert(unripe.state == "growing", "and the one beside it did not")
+	_assert(ripe.watered_today, "the rain wets the ripe crop's soil — it used to skip it")
+	_assert(unripe.watered_today, "and the unripe one's, which it always did")
+	_assert(Autotile.draws_wet(String(ripe.state), ripe.watered_today),
+		"so the ground under ripe corn draws WET on a rainy day")
+	_assert(Autotile.draws_wet(String(unripe.state), unripe.watered_today),
+		"exactly like the row beside it")
+
+	# A tile that was ALREADY ripe when the rain fell — the case a second rainy
+	# night produces, and the one the old list skipped every morning forever.
+	world.apply_action({ "verb": "sleep", "actor": "world", "weather": "rainy" }, gs)
+	var still: Dictionary = world.get_tile(ripe_t.x, ripe_t.y)
+	_assert(still.state == "ready" and still.watered_today,
+		"and a crop that was ripe before the rain started wakes wet as well")
+
+	# --- and it does nothing at all, which is what makes it safe ---------------
+	#
+	# Every reader of `watered_today` outside the renderer is gated on
+	# seeded/growing, so a wet ripe tile cannot grow, cannot be watered and cannot
+	# answer "already watered". Asserted rather than asserted-by-reading, because
+	# this flag is saved and replayed and a mechanical side effect would be a
+	# determinism bug rather than a cosmetic one.
+	var stage_before: int = int(still.growth_stage)
+	world.apply_action({ "verb": "sleep", "actor": "world", "weather": "rainy" }, gs)
+	var after: Dictionary = world.get_tile(ripe_t.x, ripe_t.y)
+	_assert(int(after.growth_stage) == stage_before,
+		"a ripe crop left out in the rain does not keep growing (stage %d)" % stage_before)
+	world.water_tile(ripe_t.x, ripe_t.y)
+	_assert(after.state == "ready", "and `water_tile` still refuses to touch it")
+
+	# --- Q-52's rule is untouched: wet ground with nothing in it stays dry -----
+	_assert(not Autotile.draws_wet("tilled", true),
+		"bare tilled ground the rain has marked still draws DRY (Q-52, reported 2026-08-30)")
+	_assert(Autotile.draws_wet("seeded", true) and Autotile.draws_wet("growing", true),
+		"seeded and growing soil draws wet, as it always has")
+	_assert(not Autotile.draws_wet("ready", false) and not Autotile.draws_wet("growing", false),
+		"and nothing draws wet on a dry tile")
+	_assert(Autotile.is_soil("ready"),
+		"the soil region already counted `ready`; only the wetness rule had forgotten it")
+
+	gs.free()
+
+
+# Reported from play 2026-09-01: *"When you go to sleep, the ground re-renders as
+# dry BEFORE the fade out. Should wait until screen is black to update."*
+#
+# The cause is D-8 working correctly: the sleep Action resolves at the tap, so
+# `advance_day` has already washed the farm dry while the lit world is still on
+# screen. The sky has been held for exactly this reason since T-27
+# (`main.gd:_freeze_daylight`); the ground now is too. **The sim is not delayed by
+# a frame** — that is asserted below, because a fix that delayed it would be a
+# D-8 violation wearing this bug's clothes.
+func test_ground_holds_until_black() -> void:
+	print("\n--- The ground she fell asleep on, held until the screen is black ---")
+
+	var gs = load("res://systems/game_state.gd").new()
+	var farm = load("res://world/farm.gd").new()
+	farm.generate_on_ready = false
+	farm.gs = gs
+	SimRng.reseed(9702)
+	farm.sim.generate()
+
+	var t := Vector2i(5, 10)
+	farm.sim.tiles[t.y][t.x] = { "state": "growing", "crop_type": "wheat",
+		"growth_stage": 2, "watered_today": true }
+
+	_assert(not farm.is_tile_look_held(), "a farm nobody is sleeping on holds nothing")
+	_assert(farm.tile_look(t.x, t.y).state == "growing",
+		"and shows sim truth, which is the whole of its life except one second a day")
+
+	farm.hold_tile_look()
+	_assert(farm.is_tile_look_held(), "the sleep tap holds the picture")
+	farm.sim.apply_action({ "verb": "sleep", "actor": "world", "weather": "sunny" }, gs)
+
+	# The sim moved on the same line the Action landed on (D-8) …
+	var live: Dictionary = farm.sim.get_tile(t.x, t.y)
+	_assert(live.state == "ready" and not live.watered_today,
+		"the sim is already in the new day — the Action was not delayed by a frame (D-8)")
+	# … and the picture did not.
+	var held: Dictionary = farm.tile_look(t.x, t.y)
+	_assert(held.state == "growing" and held.watered_today,
+		"but the ground still shows the wet, unripe tile she went to bed looking at")
+	_assert(Autotile.draws_wet(String(held.state), held.watered_today),
+		"so the soil is still drawn wet through the fade, instead of drying under her")
+
+	# Under the black.
+	farm.release_tile_look()
+	_assert(not farm.is_tile_look_held(), "and the hold is dropped under the black")
+	var thawed: Dictionary = farm.tile_look(t.x, t.y)
+	_assert(thawed.state == "ready" and not thawed.watered_today,
+		"after which the ground is the morning's, dry and ripe")
+
+	# The snapshot is a copy, not a view: mutating the sim under a hold must not
+	# leak through it, or the hold would be decorative.
+	farm.hold_tile_look()
+	farm.sim.tiles[t.y][t.x]["state"] = "cleared"
+	_assert(farm.tile_look(t.x, t.y).state == "ready",
+		"the held picture is a copy — the sim moving under it changes nothing on screen")
+	farm.release_tile_look()
+	_assert(farm.tile_look(t.x, t.y).state == "cleared", "and releasing it catches up in one step")
+
+	farm.free()
 	gs.free()

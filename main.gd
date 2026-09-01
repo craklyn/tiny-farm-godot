@@ -533,11 +533,14 @@ func _process(delta: float) -> void:
 		return
 	if InputManager.is_swallowing():
 		InputManager.swallow_input(false)
-	# Belt and braces: the sky is normally thawed under the black, in the day
-	# cycle's own callback. If a transition ever ends without firing it, the world
-	# must not stay stuck at dusk.
+	# Belt and braces: the sky and the ground are normally thawed under the black,
+	# in the day cycle's own callback. If a transition ever ends without firing it,
+	# the world must not stay stuck at dusk — or, worse, stuck on yesterday's
+	# tiles, which would be a farm that ignores the hoe.
 	if _daylight_frozen:
 		_thaw_daylight()
+	if farm != null and farm.is_tile_look_held():
+		farm.release_tile_look()
 
 	# Skip gameplay while menu is open
 	if menus.is_open():
@@ -710,7 +713,14 @@ func _handle_action_result(action: String) -> void:
 		# brain a day turned and wakes them, so the hen's egg arrives as an ordinary
 		# recorded Action on the next pumped tick rather than as a
 		# `child.on_new_day()` loop over whatever nodes happened to exist.
+		# The sky and the ground are frozen together, one line apart, because they
+		# are the same beat: the world she fell asleep in stays on screen until the
+		# screen is black. Reported from play 2026-09-01 — the ground re-rendered
+		# dry *before* the fade, because `advance_day` washes every watered flag
+		# off the farm the instant the Action lands (D-8, the line below). What
+		# waits is the picture; the sim never does.
 		_freeze_daylight()
+		farm.hold_tile_look()
 		var sleep_result: Dictionary = farm.apply_action({ "verb": "sleep", "actor": "world" }, GameState)
 		persist_session()
 		# The window opens on the same line the Action landed on, and closes when
@@ -722,11 +732,12 @@ func _handle_action_result(action: String) -> void:
 		if player != null and _cot_tile.x >= 0:
 			player.tuck_in(_cot_tile)
 		day_cycle.start_sleep(func():
-			# Under the black: she gets up, the sky catches up with the sim, and the
-			# morning celebrates if the sim said it should.
+			# Under the black: she gets up, the sky and the ground catch up with the
+			# sim, and the morning celebrates if the sim said it should.
 			if player != null:
 				player.wake_up()
 			_thaw_daylight()
+			farm.release_tile_look()
 			if sleep_result.get("phase1_complete_now", false):
 				_celebrate_expansion_morning()
 		, true)

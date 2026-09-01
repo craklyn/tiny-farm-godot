@@ -1673,7 +1673,23 @@ func advance_day(weather: String, gs = null) -> void:
 					tile.state = "ready"
 			tile.watered_today = false
 
-			if weather == "rainy" and tile.state in ["tilled", "seeded", "growing"]:
+			# **Rain falls on ripe soil too.** This list used to be the growth
+			# pass's list — seeded and growing, the states water *does* something
+			# to — plus bare tilled ground, which is why a ripe crop stood on dry
+			# soil while the row beside it was wet. Reported from play 2026-09-01:
+			# "when weather is rainy and corn was ready to collect, the ground drew
+			# as dry instead of wet under it. Unripe corn still had wet ground."
+			# Confirmed against this loop rather than guessed: a tile that ripens
+			# is set dry two lines up and then skipped here, so it is dry in the
+			# sim and no renderer could have drawn it otherwise.
+			#
+			# **Mechanically inert, deliberately.** Every reader of the flag —
+			# this growth pass, `water_tile`, the router's water offer and its
+			# already-watered answer, the vignette's dry-crop beat, the cold open's
+			# brain — is gated on seeded/growing, so a wet ripe tile changes
+			# nothing that happens and only changes what is drawn (a test asserts
+			# it: a ripe tile left in the rain does not grow).
+			if weather == "rainy" and tile.state in ["tilled", "seeded", "growing", "ready"]:
 				tile.watered_today = true
 
 	# ...and the rain does to a trail what her watering can does to one tile of it

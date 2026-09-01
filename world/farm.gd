@@ -56,6 +56,61 @@ var glyph_regions: Dictionary = {}    # T-28 glyph key -> [texture, Rect2]
 # without knowing this exists.
 var cot_turned_down: bool = false
 
+# T-27 (box 1), the ground's half: **the field she fell asleep in, held until the
+# screen is black.**
+#
+# The sleep Action lands at the tap and must (D-8) — `main.gd` applies it before a
+# single frame of the transition is drawn — so `advance_day` has already washed
+# every watered flag off the farm and moved every crop on a day while she is still
+# watching a lit world. Reported from play 2026-09-01: *"when you go to sleep, the
+# ground re-renders as dry BEFORE the fade out. Should wait until screen is
+# black."* The sky already had exactly this treatment (`main.gd`'s
+# `_freeze_daylight`, M2_5_PLAN §9), and for exactly this reason.
+#
+# So the *picture* of the tiles is frozen while the *sim* thaws underneath it: a
+# snapshot taken at the tap, drawn for the length of the fade, dropped under the
+# black. Nothing here delays, gates or reorders anything the sim does — it is a
+# copy of four fields per tile, taken once per day transition and never per frame,
+# and any renderer that never asks for it (the attract loop, the replay viewer)
+# behaves exactly as before.
+var _held_tiles: Array = []
+
+
+## Hold the current tile picture. Called at the sleep tap, alongside the sky's
+## freeze; harmless to call twice (the first snapshot is the one she saw).
+func hold_tile_look() -> void:
+	if not _held_tiles.is_empty():
+		return
+	var snap: Array = []
+	for ty in MAP_HEIGHT:
+		var row: Array = []
+		for tx in MAP_WIDTH:
+			row.append(tiles[ty][tx].duplicate())
+		snap.append(row)
+	_held_tiles = snap
+	queue_redraw()
+
+
+## Let the ground catch up with the sim. Called under the black.
+func release_tile_look() -> void:
+	if _held_tiles.is_empty():
+		return
+	_held_tiles = []
+	queue_redraw()
+
+
+func is_tile_look_held() -> bool:
+	return not _held_tiles.is_empty()
+
+
+# What the *player* is currently looking at on this tile: the held snapshot while
+# a day transition is fading out, sim truth every other frame of the game's life.
+func tile_look(tx: int, ty: int) -> Dictionary:
+	if _held_tiles.is_empty():
+		return tiles[ty][tx]
+	return _held_tiles[ty][tx]
+
+
 func _ready() -> void:
 	_load_textures()
 	actors_node = Node2D.new()
@@ -603,7 +658,7 @@ func _state() -> Node:
 func _is_soil_at(tx: int, ty: int) -> bool:
 	if tx < 0 or ty < 0 or tx >= MAP_WIDTH or ty >= MAP_HEIGHT:
 		return false
-	return Autotile.is_soil(tiles[ty][tx].state)
+	return Autotile.is_soil(tile_look(tx, ty).state)
 
 
 func _draw() -> void:
@@ -611,7 +666,11 @@ func _draw() -> void:
 
 	for ty in MAP_HEIGHT:
 		for tx in MAP_WIDTH:
-			var tile: Dictionary = tiles[ty][tx]
+			# Held while a day transition fades out, live every other frame — see
+			# `hold_tile_look()`. Everything below reads the picture through this,
+			# so the ground, its edges and the crops standing on it can never
+			# disagree about which day they are showing.
+			var tile: Dictionary = tile_look(tx, ty)
 			var px := tx * TILE_SIZE
 			var py := ty * TILE_SIZE
 			var k := _react_k(tx, ty)
@@ -631,15 +690,12 @@ func _draw() -> void:
 					_is_soil_at(tx + 1, ty), _is_soil_at(tx + 1, ty + 1),
 					_is_soil_at(tx, ty + 1), _is_soil_at(tx - 1, ty + 1),
 					_is_soil_at(tx - 1, ty), _is_soil_at(tx - 1, ty - 1))
-				# Draw wet soil only where something is actually growing. Rain marks
-				# bare `tilled` tiles watered too (sim_world.advance_day), which
-				# nothing mechanical uses — growth only reads it on seeded/growing,
-				# and it resets the next morning — so on a rainy morning the player
-				# saw watered ground with no plant in it and reasonably concluded
-				# she could water empty tiles. Reported from play 2026-08-30. The
-				# state is left alone; it is the picture that was lying.
-				var has_crop: bool = tile.state == "seeded" or tile.state == "growing"
-				var coord := Autotile.atlas_coord(mask, tile.watered_today and has_crop)
+				# Which soil is drawn wet is `Autotile.draws_wet` — the picture rule,
+				# stated once, in the pure file the headless suite can hold to
+				# account (Q-52 for why bare tilled ground is dry even when the rain
+				# has marked it; the 2026-09-01 report for why `ready` is wet).
+				var coord := Autotile.atlas_coord(mask,
+					Autotile.draws_wet(tile.state, tile.watered_today))
 				# Ground stays flush: squashing it opens seams to the grass beneath.
 				# Only things standing on the soil react (crops, obstacles).
 				draw_texture_rect_region(dirt_texture, Rect2(px + shake, py, TILE_SIZE, TILE_SIZE),
