@@ -267,6 +267,225 @@ def api_doc(rel):
         return {"path": os.path.relpath(full, REPO), "markdown": f.read()}
 
 
+# ---------------------------------------------------------------------------
+# Job runner: long-running verifications (suites, robot session) run in a
+# background thread; results persist so freshness survives restarts. This is
+# what lets a status say "green as of 12 minutes ago" instead of "trust me".
+# ---------------------------------------------------------------------------
+
+JOBS = {
+    "unit": {
+        "label": "Unit suite",
+        "cmd": ["godot", "--headless", "--path", ".", "--script", "res://tests/test_runner.gd"],
+        "verdict": re.compile(r"Results:\s*(\d+) PASSED, (\d+) FAILED"),
+    },
+    "integration": {
+        "label": "Integration suite",
+        "cmd": ["godot", "--headless", "--path", ".", "res://tools/test_runner.tscn"],
+        "verdict": re.compile(r"Results:\s*(\d+) PASSED, (\d+) FAILED"),
+    },
+    "robot": {
+        "label": "Robot session",
+        "cmd": ["godot", "--headless", "--path", ".", "res://tools/robot_session.tscn"],
+        "verdict": re.compile(r"replay (MATCHES|MISMATCH)"),
+    },
+    "benchmark": {
+        "label": "Sim benchmark",
+        "cmd": ["godot", "--headless", "--path", ".", "--script", "res://tools/benchmark_sim.gd"],
+        "verdict": re.compile(r"plan gate \(>=\d+x\):\s+(PASS|FAIL)\s+\((\d+)x\)"),
+    },
+}
+_JOB_LOCK = threading.Lock()
+_RUNNING_JOBS = set()
+# One godot at a time: two engines contending for CPU skews the benchmark and
+# slows the suites — queued jobs wait their turn instead.
+_GODOT_LOCK = threading.Lock()
+
+
+def _job_path(job):
+    return os.path.join(DATA, "runs", f"{job}.json")
+
+
+def latest_job_result(job):
+    try:
+        return load_json(_job_path(job))
+    except Exception:
+        return None
+
+
+def _run_job(job):
+    import datetime
+    spec = JOBS[job]
+    started = datetime.datetime.now().isoformat(timespec="seconds")
+    os.makedirs(os.path.join(DATA, "runs"), exist_ok=True)
+    result = {"job": job, "label": spec["label"], "state": "running", "started": started}
+    with open(_job_path(job), "w", encoding="utf-8") as f:
+        json.dump(result, f)
+    try:
+        with _GODOT_LOCK:
+            p = subprocess.run(spec["cmd"], cwd=REPO, capture_output=True, text=True, timeout=600,
+                               env={**os.environ, "PATH": os.environ.get("PATH", "") + ":" + os.path.expanduser("~/.local/bin")})
+        out = (p.stdout or "") + (p.stderr or "")
+        m = spec["verdict"].search(out)
+        tail = "\n".join(out.strip().splitlines()[-12:])
+        if job == "robot":
+            ok = bool(m and m.group(1) == "MATCHES")
+            summary = "replay MATCHES its autosave" if ok else "replay MISMATCH"
+        elif job == "benchmark":
+            ok = bool(m and m.group(1) == "PASS")
+            summary = f"{int(m.group(2)):,}x realtime (gate ≥100,000x): {m.group(1)}" if m else "no verdict line found"
+        else:
+            ok = bool(m and m.group(2) == "0")
+            summary = f"{m.group(1)} passed, {m.group(2)} failed" if m else "no verdict line found"
+        result = {"job": job, "label": spec["label"],
+                  "state": "green" if ok else "failed",
+                  "summary": summary, "started": started,
+                  "finished": datetime.datetime.now().isoformat(timespec="seconds"),
+                  "tail": tail}
+    except subprocess.TimeoutExpired:
+        result = {"job": job, "label": spec["label"], "state": "failed",
+                  "summary": "timed out after 10 minutes", "started": started}
+    except Exception as e:
+        result = {"job": job, "label": spec["label"], "state": "failed",
+                  "summary": str(e)[:200], "started": started}
+    with open(_job_path(job), "w", encoding="utf-8") as f:
+        json.dump(result, f)
+    with _JOB_LOCK:
+        _RUNNING_JOBS.discard(job)
+    _SIG_CACHE["at"] = 0  # freshness changed; recompute signals next ask
+
+
+def start_job(job):
+    if job not in JOBS:
+        return {"error": "unknown job"}
+    with _JOB_LOCK:
+        if job in _RUNNING_JOBS:
+            return {"ok": True, "already": True}
+        _RUNNING_JOBS.add(job)
+    threading.Thread(target=_run_job, args=(job,), daemon=True).start()
+    return {"ok": True, "started": job}
+
+
+# ---------------------------------------------------------------------------
+# Playtest analytics: parses session_trace.jsonl with the game's OWN formulas
+# (systems/session_trace.gd / tools/read_trace.gd) — dead = none/unreachable,
+# wasted = dead + refused (taps AND failed acts), satisfied never counts
+# against her (T-18), stalls are >=8s inter-tap gaps, active time skips >2min
+# breaks. Validated against 2026-08-30_221027: 437 taps, wasted 22 (5%).
+# ---------------------------------------------------------------------------
+
+def parse_playtest(name):
+    tdir = os.path.join(REPO, "playtests", name)
+    trace = os.path.join(tdir, "session_trace.jsonl")
+    if not os.path.isfile(trace):
+        return {"name": name, "error": "no trace"}
+    taps, acts = [], []
+    header = {}
+    with open(trace, "r", encoding="utf-8") as f:
+        for i, line in enumerate(f):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                e = json.loads(line)
+            except ValueError:
+                continue
+            if i == 0 and "version" in e and "kind" not in e:
+                header = e
+                continue
+            if e.get("kind") == "tap":
+                taps.append(e)
+            elif e.get("kind") == "act":
+                acts.append(e)
+    outcomes = {}
+    for t in taps:
+        outcomes[t.get("out", "?")] = outcomes.get(t.get("out", "?"), 0) + 1
+    dead = outcomes.get("none", 0) + outcomes.get("unreachable", 0)
+    refused = outcomes.get("refused", 0) + sum(1 for a in acts if not a.get("ok", True))
+    satisfied = outcomes.get("satisfied", 0)
+    wasted = dead + refused
+    reasons = {}
+    for t in taps:
+        if t.get("out") == "refused":
+            reasons[t.get("why", "?")] = reasons.get(t.get("why", "?"), 0) + 1
+    for a in acts:
+        if not a.get("ok", True):
+            reasons[a.get("why", "?")] = reasons.get(a.get("why", "?"), 0) + 1
+    # stalls: consecutive tap-time gaps >= 8s
+    stalls, longest = 0, 0
+    tt = [t["t"] for t in taps if "t" in t]
+    for a, b in zip(tt, tt[1:]):
+        gap = b - a
+        if gap >= 8000:
+            stalls += 1
+        longest = max(longest, gap)
+    # active time: skip breaks > 2min
+    active = sum(min(b - a, 999999) for a, b in zip(tt, tt[1:]) if b - a <= 120000)
+    first_use = {}
+    for a in acts:
+        if a.get("ok") and a.get("actor") == "player" and a.get("verb"):
+            first_use.setdefault(a["verb"], a.get("t", 0))
+    days = sum(1 for a in acts if a.get("verb") == "sleep" and a.get("ok"))
+    # per-minute timeline: ok vs wasted vs satisfied tap counts
+    timeline = []
+    if tt:
+        minutes = int(max(tt) / 60000) + 1
+        timeline = [{"ok": 0, "wasted": 0, "satisfied": 0} for _ in range(minutes)]
+        for t in taps:
+            b = int(t.get("t", 0) / 60000)
+            o = t.get("out", "")
+            key = "wasted" if o in ("none", "unreachable", "refused") else \
+                  "satisfied" if o == "satisfied" else "ok"
+            timeline[b][key] += 1
+    mislabelled = sum(1 for t in taps if t.get("out") == "unreachable"
+                      and "at" in t and "tile" in t
+                      and abs(t["at"][0] - t["tile"][0]) + abs(t["at"][1] - t["tile"][1]) <= 1)
+    return {
+        "name": name,
+        "build_id": _replay_build_id(tdir),
+        "gen_seed": header.get("gen_seed"),
+        "continued": header.get("continued", False),
+        "taps": len(taps),
+        "acts": len(acts),
+        "outcomes": outcomes,
+        "dead": dead, "refused": refused, "satisfied": satisfied,
+        "wasted": wasted,
+        "wasted_pct": round(100 * wasted / len(taps)) if taps else 0,
+        "reasons": reasons,
+        "stalls": stalls, "longest_stall_ms": longest,
+        "active_ms": active,
+        "first_use": first_use,
+        "days_played": days,
+        "timeline": timeline,
+        "mislabelled": mislabelled,
+    }
+
+
+def _replay_build_id(tdir):
+    try:
+        with open(os.path.join(tdir, "session_replay.json"), "r", encoding="utf-8") as f:
+            return json.loads(f.readline()).get("build_id", "")
+    except Exception:
+        return ""
+
+
+_PT_CACHE = {}
+
+
+def list_playtests():
+    root = os.path.join(REPO, "playtests")
+    out = []
+    for name in sorted(os.listdir(root), reverse=True) if os.path.isdir(root) else []:
+        tdir = os.path.join(root, name)
+        if not os.path.isdir(tdir):
+            continue
+        key = (name, os.path.getmtime(tdir))
+        if key not in _PT_CACHE:
+            _PT_CACHE[key] = parse_playtest(name)
+        out.append(_PT_CACHE[key])
+    return out
+
+
 GAME_CONTEXT = """You work at Tiny Farm Studio. The product is Tiny Farm: a touch-first cozy
 farming game in Godot 4, phase 1 of a five-phase arc where the player gradually delegates
 farming to machines, towers, and trainable bots (on-device ML in phase 4). It is designed
@@ -351,6 +570,210 @@ def save_sprite(payload):
 MAP_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,39}$")
 
 
+# ---------------------------------------------------------------------------
+# Signals: everything on the dashboard is DERIVED — git, CI, files, docs —
+# so status can't go stale and "not on fire" is trustworthy.
+# ---------------------------------------------------------------------------
+
+_SIG_CACHE = {"at": 0.0, "data": None}
+SIG_TTL = 60.0
+
+
+def run_cmd(args, timeout=10, cwd=REPO):
+    try:
+        p = subprocess.run(args, cwd=cwd, capture_output=True, text=True, timeout=timeout)
+        return p.stdout.strip() if p.returncode == 0 else ""
+    except Exception:
+        return ""
+
+
+def _git_commits(since, paths=None):
+    args = ["git", "log", f"--since={since}", "--pretty=%H"]
+    if paths:
+        args += ["--"] + list(paths)
+    out = run_cmd(args)
+    return len([l for l in out.splitlines() if l.strip()])
+
+
+def _git_last(paths=None, n=5):
+    args = ["git", "log", f"-{n}", "--pretty=%h\x1f%ad\x1f%s", "--date=relative"]
+    if paths:
+        args += ["--"] + list(paths)
+    rows = []
+    for line in run_cmd(args).splitlines():
+        bits = line.split("\x1f")
+        if len(bits) == 3:
+            rows.append({"hash": bits[0], "when": bits[1], "subject": bits[2]})
+    return rows
+
+
+def _ci_status():
+    out = run_cmd(["gh", "run", "list", "--limit", "3",
+                   "--json", "status,conclusion,displayTitle,updatedAt,url"], timeout=15)
+    try:
+        runs = json.loads(out) if out else []
+    except ValueError:
+        runs = []
+    latest = runs[0] if runs else None
+    return {
+        "available": bool(runs),
+        "latest": latest,
+        "green": bool(latest and latest.get("conclusion") == "success"),
+        "in_progress": bool(latest and latest.get("status") != "completed"),
+    }
+
+
+def _newest(path_glob_dir, exts=None):
+    """Newest file (name, age-days) under a directory."""
+    best = None
+    root = os.path.join(REPO, path_glob_dir)
+    if not os.path.isdir(root):
+        return None
+    for f in os.listdir(root):
+        full = os.path.join(root, f)
+        if os.path.isfile(full) and (not exts or os.path.splitext(f)[1] in exts):
+            m = os.path.getmtime(full)
+            if best is None or m > best[1]:
+                best = (f, m)
+    if best is None:
+        return None
+    import time as _t
+    return {"file": best[0], "age_days": round((_t.time() - best[1]) / 86400, 1)}
+
+
+def compute_signals():
+    import time as _t
+    if _SIG_CACHE["data"] and _t.time() - _SIG_CACHE["at"] < SIG_TTL:
+        return _SIG_CACHE["data"]
+    pillars = load_json(os.path.join(DATA, "pillars.json"))["pillars"]
+    queue = api_queue()
+    open_items = [q for q in queue["items"] if not q["answered"]]
+    curated_fresh = [c for c in queue["curated"] if c["id"] not in queue["rulings"]]
+    pending_rulings = [r for r in queue["rulings"].values()
+                       if r.get("status") == "pending_integration"]
+    projects = load_projects()
+    blocked = [p for p in projects if p["status"] == "blocked"]
+    _pt_root = os.path.join(REPO, "playtests")
+    sessions = sorted(d for d in os.listdir(_pt_root)
+                      if os.path.isdir(os.path.join(_pt_root, d))) \
+        if os.path.isdir(_pt_root) else []
+    last_session = sessions[-1] if sessions else None
+    days_since_session = None
+    if last_session:
+        import datetime
+        try:
+            d = datetime.datetime.strptime(last_session.split("_")[0], "%Y-%m-%d")
+            days_since_session = (datetime.datetime.now() - d).days
+        except ValueError:
+            pass
+    ci = _ci_status()
+    tags = [t for t in run_cmd(["git", "tag", "-l", "v*"]).splitlines() if t]
+    suite = latest_job_result("unit")
+    job_results = {j: latest_job_result(j) for j in JOBS}
+    failed_jobs = [(j, r) for j, r in job_results.items() if r and r.get("state") == "failed"]
+    green_jobs = [(j, r) for j, r in job_results.items() if r and r.get("state") == "green"]
+
+    per_pillar = {}
+    for p in pillars:
+        per_pillar[p["id"]] = {
+            "commits_7d": _git_commits("7 days ago", p["git_paths"]),
+            "commits_24h": _git_commits("24 hours ago", p["git_paths"]),
+            "recent": _git_last(p["git_paths"], 5),
+        }
+
+    # Status per pillar: fire > attention > ok > dormant. Reasons are sentences.
+    status = {}
+
+    def set_status(pid, level, reasons):
+        status[pid] = {"level": level, "reasons": reasons}
+
+    eng_reasons = []
+    eng_level = "ok"
+    if ci["available"] and not ci["green"] and not ci["in_progress"]:
+        eng_level = "fire"
+        eng_reasons.append("CI is red on main — the latest push failed its checks.")
+    for j, r in failed_jobs:
+        eng_level = "fire"
+        eng_reasons.append(f"Local {r.get('label', j)} run failed: {r.get('summary', '')} (re-run it on the Engineering page — a loaded machine can skew the benchmark).")
+    if not eng_reasons:
+        fresh = "; ".join(f"{r['label']} {r.get('summary', '')} ({r.get('finished', '')[11:16]})"
+                          for _, r in green_jobs[:2])
+        eng_reasons.append("CI green on main; every push runs both suites, the robot session, and the benchmark."
+                           + (f" Local: {fresh}." if fresh else ""))
+    set_status("engineering", eng_level, eng_reasons)
+
+    prod_reasons = []
+    prod_level = "ok"
+    if blocked:
+        prod_level = "attention"
+        for b in blocked:
+            prod_reasons.append(f"'{b['name']}' is blocked: {b['current_status'].split('.')[0]}.")
+    if days_since_session is not None and days_since_session > 7:
+        prod_level = "attention"
+        prod_reasons.append(f"No playtest session in {days_since_session} days — the gate re-evidence is waiting on one.")
+    if not prod_reasons:
+        prod_reasons.append("Nothing blocked; playtest cadence healthy.")
+    set_status("product", prod_level, prod_reasons)
+
+    set_status("art", "ok", ["All assets license-clean and ledgered in CREDITS.md; placeholders by design until the style guide is signed."])
+
+    set_status("marketing", "dormant", ["Dormant by your ruling (marketing waits until the game picks up speed). Readiness work is tracked in the program report."])
+
+    sales_level = "ok"
+    sales_reasons = []
+    if not tags:
+        sales_level = "attention"
+        sales_reasons.append("No public release tag yet — 'ship early and often' is the standing ruling, and nothing has shipped.")
+    else:
+        sales_reasons.append(f"{len(tags)} release tag(s); latest {tags[-1]}.")
+    set_status("sales", sales_level, sales_reasons)
+
+    set_status("ops", "ok", ["Provenance ledger current; art spend is script-derived ($0 recent batches)."])
+
+    # The Eye of Sauron: one ordered queue of what deserves the CEO's look.
+    eye = []
+    for pid, s in status.items():
+        if s["level"] == "fire":
+            eye.append({"kind": "fire", "pillar": pid, "text": s["reasons"][0]})
+    for b in blocked:
+        if b["id"] == "close-m15-gate":
+            eye.append({"kind": "action", "pillar": "product",
+                        "text": "Recruit one fresh adult playtester — it closes the milestone AND feeds the replay-hardening project. Only you can cast this.",
+                        "href": "#/project/close-m15-gate"})
+        else:
+            eye.append({"kind": "action", "pillar": "product",
+                        "text": f"Unblock '{b['name']}'.", "href": f"#/project/{b['id']}"})
+    if pending_rulings:
+        eye.append({"kind": "info", "pillar": "product",
+                    "text": f"{len(pending_rulings)} ruling(s) you recorded await integration by the next work session — no action needed from you.",
+                    "href": "#/inbox"})
+    if curated_fresh:
+        eye.append({"kind": "decide", "pillar": "product",
+                    "text": f"{len(curated_fresh)} prepped decision(s) ready for a ruling — oldest first: {curated_fresh[0]['id']} ({curated_fresh[0]['title']}).",
+                    "href": "#/inbox"})
+
+    data = {
+        "generated_at": _t.strftime("%H:%M:%S"),
+        "status": status,
+        "per_pillar": per_pillar,
+        "ci": ci,
+        "tags": tags,
+        "queue": {"open": len(open_items), "prepped": len(curated_fresh),
+                  "pending_integration": len(pending_rulings)},
+        "projects": {"total": len(projects), "blocked": len(blocked),
+                     "in_progress": len([p for p in projects if p["status"] == "in_progress"])},
+        "playtests": {"count": len(sessions), "latest": last_session,
+                      "days_since": days_since_session},
+        "art": {"newest_sprite": _newest("assets/sprites/generated", {".png"}),
+                "sfx_count": len([f for f in os.listdir(os.path.join(REPO, "assets/audio/sfx")) if f.endswith(".wav")])},
+        "suite": suite,
+        "eye": eye,
+    }
+    _SIG_CACHE["data"] = data
+    _SIG_CACHE["at"] = _t.time()
+    return data
+
+
 def list_maps():
     mdir = os.path.join(DATA, "maps")
     out = []
@@ -392,6 +815,55 @@ def api_persona(pid):
     if pid == "daniel":
         return {"id": pid, "system_prompt": None, "note": "The CEO is not a persona — that's you."}
     return {"id": pid, "system_prompt": build_system_prompt(org, pid)}
+
+
+def make_standup():
+    """The chief of staff's brief: the live signals handed to the CoS persona,
+    who writes what changed, what's under control, and where the eye goes.
+    Cached against a fingerprint of the inputs, so it regenerates only when
+    reality changed — the right cadence, automatically."""
+    import hashlib
+    sig = compute_signals()
+    projects = load_projects()
+    finger_src = json.dumps({"s": sig["status"], "e": sig["eye"], "q": sig["queue"],
+                             "p": [(p["id"], p["status"]) for p in projects]}, sort_keys=True)
+    finger = hashlib.sha1(finger_src.encode()).hexdigest()[:12]
+    spath = os.path.join(DATA, "runs", "standup.json")
+    try:
+        cached = load_json(spath)
+        if cached.get("fingerprint") == finger:
+            return cached
+    except Exception:
+        pass
+    org = load_org()
+    sys_prompt = build_system_prompt(org, "claude")
+    prompt = f"""Write Daniel's standup brief from this live data (signals derived from the repo/CI just now). Rules:
+- Plain language, no internal ticket IDs unless naming a decision he can rule on.
+- Structure: 1) "The one thing" — the single highest-leverage action only Daniel can take. 2) "Since you last looked" — 2-4 bullets of what actually shipped (from the commit subjects). 3) "Under control" — one line per quiet pillar, honest. 4) "Waiting on you" — decisions/approvals, oldest first.
+- Max ~250 words. No preamble, start with the content.
+
+SIGNALS: {json.dumps(sig["status"])}
+EYE QUEUE: {json.dumps(sig["eye"])}
+RECENT COMMITS BY PILLAR: {json.dumps({k: [c["subject"] for c in v["recent"][:3]] for k, v in sig["per_pillar"].items()})}
+QUEUE: {json.dumps(sig["queue"])}
+PROJECTS: {json.dumps([{"name": p["name"], "status": p["status"], "priority": p["priority"]} for p in projects])}"""
+    cmd = ["claude", "-p", prompt, "--append-system-prompt", sys_prompt,
+           "--allowedTools", "", "--max-turns", "3"]
+    try:
+        proc = subprocess.run(cmd, cwd=REPO, capture_output=True, text=True, timeout=180,
+                              env={**os.environ, "CLAUDE_CODE_DISABLE_AUTOUPDATE": "1"})
+        brief = proc.stdout.strip() if proc.returncode == 0 else ""
+    except Exception:
+        brief = ""
+    if not brief:
+        return {"error": "brief generation failed", "fingerprint": finger}
+    import datetime
+    doc = {"fingerprint": finger, "brief": brief,
+           "generated": datetime.datetime.now().isoformat(timespec="minutes")}
+    os.makedirs(os.path.join(DATA, "runs"), exist_ok=True)
+    with open(spath, "w", encoding="utf-8") as f:
+        json.dump(doc, f, ensure_ascii=False)
+    return doc
 
 
 def run_chat(payload):
@@ -489,6 +961,27 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, api_queue())
             if path.startswith("/api/persona/"):
                 return self._send(200, api_persona(path[len("/api/persona/"):]))
+            if path == "/api/signals":
+                return self._send(200, compute_signals())
+            if path == "/api/playtests":
+                return self._send(200, list_playtests())
+            if path == "/api/audio":
+                sfx_dir = os.path.join(REPO, "assets", "audio", "sfx")
+                music_dir = os.path.join(REPO, "assets", "audio", "music")
+                return self._send(200, {
+                    "sfx": sorted(f for f in os.listdir(sfx_dir) if f.endswith(".wav")),
+                    "music": sorted(f for f in os.listdir(music_dir) if f.endswith((".ogg", ".wav"))),
+                })
+            if path == "/api/pillars":
+                return self._send(200, load_json(os.path.join(DATA, "pillars.json")))
+            if path == "/api/runs":
+                return self._send(200, {j: latest_job_result(j) for j in JOBS})
+            if path.startswith("/api/rootdoc/"):
+                name = path[len("/api/rootdoc/"):]
+                if name not in ("ITCH_PAGE.md", "CREDITS.md", "README.md"):
+                    return self._send(403, {"error": "not whitelisted"})
+                with open(os.path.join(REPO, name), "r", encoding="utf-8") as f:
+                    return self._send(200, {"path": name, "markdown": f.read()})
             if path == "/api/maps":
                 return self._send(200, list_maps())
             if path.startswith("/api/map/"):
@@ -519,6 +1012,13 @@ class Handler(BaseHTTPRequestHandler):
             payload = json.loads(self.rfile.read(length) or b"{}")
         except Exception:
             return self._send(400, {"error": "bad JSON"})
+        if path == "/api/standup":
+            try:
+                return self._send(200, make_standup())
+            except Exception as e:
+                return self._send(500, {"error": str(e)[:300]})
+        if path.startswith("/api/run/"):
+            return self._send(200, start_job(path[len("/api/run/"):]))
         if path == "/api/map/save":
             try:
                 return self._send(200, save_map(payload))

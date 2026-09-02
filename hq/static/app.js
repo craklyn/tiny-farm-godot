@@ -99,6 +99,7 @@ const routes = {
   "/inbox": renderInbox,
   "/chat": renderChat,
   "/maps": renderMapEditor,
+  "/playtests": renderPlaytests,
 };
 
 let routeSeq = 0;
@@ -115,6 +116,8 @@ async function route() {
     if (hash.startsWith("/project/")) await renderProject(hash.slice("/project/".length));
     else if (hash.startsWith("/entity/")) await renderEntityDetail(hash.slice("/entity/".length));
     else if (hash.startsWith("/sprite/")) await renderSpriteEditor(hash.slice("/sprite/".length));
+    else if (hash.startsWith("/pillar/")) await renderPillar(hash.slice("/pillar/".length));
+    else if (hash.startsWith("/playtest/")) await renderPlaytestDetail(hash.slice("/playtest/".length));
     else if (hash.startsWith("/chat/")) await renderChat(hash.slice("/chat/".length));
     else await (routes[hash] || renderDashboard)();
   } catch (e) {
@@ -129,37 +132,69 @@ window.addEventListener("hashchange", route);
 
 /* ---------------- dashboard ---------------- */
 async function renderDashboard() {
-  const [org, projects, queue] = await Promise.all([api("/api/org"), api("/api/projects"), api("/api/queue")]);
-  const rulings = queue.rulings || {};
-  const prepped = (queue.curated || []).filter(c => !rulings[c.id]);
-  const byStatus = s => projects.filter(p => p.status === s).length;
+  const [org, pillars, sig] = await Promise.all([api("/api/org"), api("/api/pillars"), signals(true)]);
   const hour = new Date().getHours();
   const greet = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  const EYE_META = {
+    fire: ["🔥", "eye-fire"], action: ["👁️", "eye-action"],
+    decide: ["⚖️", "eye-decide"], info: ["ℹ️", "eye-info"],
+  };
+  const eye = sig.eye || [];
   $view.replaceChildren(h(`
-    <h1>${greet}, Daniel 👋</h1>
-    <p class="sub">Here's where Tiny Farm Studio stands today.</p>
-    <div class="statrow">
-      <div class="stat"><b>${prepped.length}</b><span>decisions ready for your call</span></div>
-      <div class="stat"><b>${byStatus("in_progress")}</b><span>projects in flight</span></div>
-      <div class="stat"><b>${byStatus("blocked")}</b><span>projects blocked</span></div>
+    <div class="dash-head">
+      <div><h1>${greet}, Daniel 👋</h1>
+      <p class="sub" style="margin-bottom:0">Everything below is derived live from the repo, CI, and the docs — as of ${esc(sig.generated_at)}. <a class="plain" id="dash-refresh" href="#/">refresh</a></p></div>
+    </div>
+    <h2>👁️ Where to look</h2>
+    <p class="small muted" style="margin-top:-6px">The ordered queue of what deserves your attention. Everything not listed here is under control or dormant by your own ruling.</p>
+    <div id="dash-eye"></div>
+    <div id="dash-standup"><button class="ghost" id="standup-btn">📋 Chief of staff's brief</button>
+      <span class="small muted"> — written by your CoS from the live signals; cached until reality changes.</span></div>
+    <h2>The pillars</h2>
+    <div class="pillar-tiles" id="dash-pillars"></div>
+    <div class="statrow" style="margin-top:18px">
+      <div class="stat"><b>${sig.queue.prepped}</b><span>decisions ready for your call</span></div>
+      <div class="stat"><b>${sig.projects.in_progress}</b><span>projects in flight</span></div>
+      <div class="stat"><b>${sig.projects.blocked}</b><span>blocked</span></div>
+      <div class="stat"><b>${sig.playtests.count}</b><span>playtests recorded</span></div>
       <div class="stat"><b>${org.employees.length - 1}</b><span>people on your team</span></div>
     </div>
-    <h2>Top of the program</h2>
-    <div id="dash-projects"></div>
-    <h2>Waiting on your call</h2>
-    <div id="dash-queue"></div>
-    <div class="card">💬 Need anything chased down? <a class="plain" href="#/chat">Talk to your chief of staff</a> — or ping any team member directly from the <a class="plain" href="#/org">org chart</a>.</div>
+    <div class="card">💬 Need anything chased down? <a class="plain" href="#/chat">Talk to your chief of staff</a> — or any team member from the <a class="plain" href="#/org">org chart</a>. Verification is a click away on <a class="plain" href="#/pillar/engineering">Engineering</a>.</div>
   `));
-  const dp = document.getElementById("dash-projects");
-  projects.slice(0, 3).forEach(p => dp.appendChild(projRow(p, org)));
-  const dq = document.getElementById("dash-queue");
-  if (!prepped.length) dq.appendChild(h(`<div class="card muted">Inbox zero — nothing prepped needs a ruling right now. 🎉</div>`));
-  prepped.slice(0, 4).forEach(c => {
-    const row = h(`<div class="card q-item" style="cursor:pointer"><span class="qid">${c.id}</span> ${esc(c.title)}</div>`).firstElementChild;
-    row.addEventListener("click", () => location.hash = "#/inbox");
-    dq.appendChild(row);
+  const de = document.getElementById("dash-eye");
+  if (!eye.length) de.appendChild(h(`<div class="card eye-card eye-info">🌤️ Nothing needs your eye. Genuinely — every signal is green or dormant-by-ruling.</div>`));
+  eye.slice(0, 5).forEach(it => {
+    const [icon, cls] = EYE_META[it.kind] || EYE_META.info;
+    const card = h(`<div class="card eye-card ${cls}" ${it.href ? 'style="cursor:pointer"' : ""}>${icon} ${esc(it.text)}</div>`).firstElementChild;
+    if (it.href) card.addEventListener("click", () => location.hash = it.href);
+    de.appendChild(card);
   });
-  if (prepped.length > 4) dq.appendChild(h(`<p class="small"><a class="plain" href="#/inbox">…and ${prepped.length - 4} more in the inbox</a></p>`));
+  const dp = document.getElementById("dash-pillars");
+  pillars.pillars.forEach(p => {
+    const st = sig.status[p.id] || { level: "ok", reasons: [""] };
+    const per = sig.per_pillar[p.id] || { commits_24h: 0, commits_7d: 0 };
+    const tile = h(`<div class="pillar-tile">
+      <div class="pt-head">${p.emoji} <b>${esc(p.name)}</b></div>
+      <div style="margin:6px 0">${levelChip(st.level)}</div>
+      <div class="small muted pt-reason">${esc((st.reasons[0] || "").slice(0, 110))}</div>
+      <div class="small" style="margin-top:8px">${per.commits_24h ? `⚡ ${per.commits_24h} commit${per.commits_24h === 1 ? "" : "s"} today` : per.commits_7d ? `${per.commits_7d} commit${per.commits_7d === 1 ? "" : "s"} this week` : "quiet this week"}</div>
+    </div>`).firstElementChild;
+    tile.addEventListener("click", () => location.hash = "#/pillar/" + p.id);
+    dp.appendChild(tile);
+  });
+  const refresh = document.getElementById("dash-refresh");
+  if (refresh) refresh.addEventListener("click", ev => { ev.preventDefault(); renderDashboard(); });
+  const sb = document.getElementById("standup-btn");
+  sb.addEventListener("click", async () => {
+    sb.disabled = true; sb.textContent = "📋 Your chief of staff is writing…";
+    try {
+      const r = await (await fetch("/api/standup", { method: "POST" })).json();
+      const box = document.getElementById("dash-standup");
+      if (r.brief) box.replaceChildren(h(`<div class="card" style="border-left:3px solid var(--accent)">
+        <div class="small muted" style="margin-bottom:6px">📋 Chief of staff's brief · ${esc(r.generated || "")}</div>${md(r.brief)}</div>`));
+      else { sb.disabled = false; sb.textContent = "📋 Chief of staff's brief (retry)"; }
+    } catch { sb.disabled = false; sb.textContent = "📋 Chief of staff's brief (retry)"; }
+  });
 }
 
 /* ---------------- org chart ---------------- */
@@ -251,6 +286,9 @@ function showPerson(org, id) {
     <p class="muted" style="margin:10px 0">${esc(e.persona)}</p>
     <h2>Owns</h2>
     <ul class="req">${e.responsibilities.map(r => `<li>${esc(r)}</li>`).join("")}</ul>
+    ${e.watches ? `<h2>Watches</h2><p class="small">${esc(e.watches.join(" · "))}</p>` : ""}
+    ${e.escalates_when ? `<h2>Escalates to you when</h2><p class="small">${esc(e.escalates_when)}</p>` : ""}
+    ${e.demo && e.id !== "daniel" ? `<p class="small" style="margin-top:8px">🎬 Living demo: <a class="plain" href="${esc(e.demo)}">${esc(e.demo)}</a></p>` : ""}
     ${e.id !== "daniel" ? `<p style="margin-top:18px">
       <button data-chat="${e.id}">💬 Chat with ${esc(e.name.split(" ")[0])}</button>
       <button class="ghost" data-def="${e.id}">🧬 What defines them</button></p>

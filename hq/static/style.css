@@ -206,6 +206,56 @@ code.ref { background: #1b1710; border: 1px solid var(--line); border-radius: 6p
 .plan-step .tick { width: 20px; flex-shrink: 0; text-align: center; }
 .req li { margin: 6px 0 6px 18px; }
 
+/* ---------- eye of sauron + pillars ---------- */
+.eye-card { border-left: 4px solid var(--line); font-size: 15px; padding: 13px 16px; }
+.eye-fire { border-left-color: #e05c48; background: #35201b; }
+.eye-action { border-left-color: var(--accent); }
+.eye-decide { border-left-color: var(--blue); }
+.eye-info { border-left-color: var(--line); color: var(--muted); }
+.pillar-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.pillar-tile {
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 14px 16px; cursor: pointer; transition: border-color .15s;
+}
+.pillar-tile:hover { border-color: var(--accent); }
+.pillar-tile .pt-head { font-size: 15px; }
+.pillar-tile .pt-reason { min-height: 32px; margin-top: 2px; }
+.lvchip { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 11.5px; font-weight: 700; letter-spacing: .3px; }
+.lv-ok { background: #26361f; color: var(--green); }
+.lv-attn { background: #3d3418; color: var(--accent); }
+.lv-fire { background: #43221c; color: #ff8a70; }
+.lv-dorm { background: var(--panel2); color: var(--muted); }
+.pillar-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 22px; align-items: start; }
+@media (max-width: 900px) { .pillar-grid { grid-template-columns: 1fr; } }
+.commitrow { padding: 4px 0; font-size: 13.5px; }
+.jobrow { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.jobrow:last-child { border-bottom: 0; }
+.jobrow > span:nth-child(2) { flex: 1; }
+.small-btn { padding: 4px 12px; font-size: 12.5px; }
+.demo-card { padding: 12px 14px; }
+.team-mini { padding: 12px 14px; }
+.mddoc { max-height: 480px; overflow-y: auto; }
+.mddoc h1, .mddoc h2, .mddoc h3 { font-size: 16px; margin: 14px 0 6px; color: var(--accent); }
+.mddoc p, .mddoc li { font-size: 13.5px; }
+.mddoc ul { margin-left: 20px; }
+
+/* ---------- playtests ---------- */
+.pt-table { border-collapse: collapse; width: 100%; }
+.pt-table th { text-align: left; color: var(--muted); font-size: 12px; padding: 6px 12px 6px 0; border-bottom: 1px solid var(--line); }
+.pt-table td { padding: 8px 12px 8px 0; font-size: 13.5px; border-bottom: 1px solid var(--line); }
+.pt-row { cursor: pointer; }
+.pt-row:hover td { background: var(--panel2); }
+.good { color: var(--green); }
+.warn { color: var(--accent); }
+.bad { color: #ff8a70; }
+.tl-strip { display: flex; gap: 3px; align-items: flex-end; height: 90px; overflow-x: auto; padding-bottom: 4px; }
+.tl-min { flex: 0 0 14px; height: 100%; display: flex; align-items: flex-end; }
+.tl-bar { width: 100%; display: flex; flex-direction: column-reverse; height: 100%; }
+.tl-ok { background: var(--green); border-radius: 2px 2px 0 0; }
+.tl-sat { background: var(--accent); }
+.tl-bad { background: #e05c48; }
+.dash-head { display: flex; justify-content: space-between; align-items: center; }
+
 /* ---------- map editor ---------- */
 .mp-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
 .mp-bar select, .mp-bar input {

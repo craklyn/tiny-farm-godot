@@ -1,0 +1,81 @@
+{
+  "note": "Pillar = a reporting line on the dashboard. Signals and accomplishments are DERIVED (git, files, CI, docs) — no hand-maintained status. 'git_paths' scope the commit feed; 'demos' point at living surfaces that read the same sources the game does.",
+  "pillars": [
+    {
+      "id": "engineering",
+      "name": "Engineering & QA",
+      "emoji": "⚙️",
+      "lead": "elena",
+      "team": "Engineering",
+      "tagline": "The deterministic core, the pipelines, and the proof it all still works.",
+      "git_paths": ["systems/", "world/", "entities/", "player/", "tests/", "tools/", "autoload/", "main.gd"],
+      "demos": [
+        {"label": "Run the unit suite, live", "href": "#/pillar/engineering", "desc": "Grace's demo: the real suite, run from this page, verdict on screen."},
+        {"label": "CI on main", "href": "https://github.com/craklyn/tiny-farm-godot/actions", "desc": "Every push: unit, integration, robot session, benchmark."}
+      ]
+    },
+    {
+      "id": "product",
+      "name": "Product & Program",
+      "emoji": "🧭",
+      "lead": "priya",
+      "team": "Product",
+      "tagline": "What ships when, what's blocked, and what the playtests actually measured.",
+      "git_paths": ["docs/ROADMAP.md", "docs/M1_5_PLAN.md", "docs/M2_5_PLAN.md", "hq/data/projects/"],
+      "demos": [
+        {"label": "Program report", "href": "#/program", "desc": "Sofia's demo: every project, prioritized, with definition of done."},
+        {"label": "Playtest sessions", "href": "#/playtests", "desc": "Wei's demo: every recorded session, scored by the game's own metrics."}
+      ]
+    },
+    {
+      "id": "art",
+      "name": "Art, Audio & Design",
+      "emoji": "🎨",
+      "lead": "ingrid",
+      "team": "Design & Art",
+      "tagline": "Every picture and sound in the build, and the docs that rule them.",
+      "git_paths": ["assets/", "CREDITS.md", "docs/design/", "docs/DESIGNER_QUEUE.md", "docs/DECISION_LOG.md"],
+      "demos": [
+        {"label": "Entity gallery", "href": "#/entities", "desc": "Yuki's demo: every sprite animated from the real sheets, editable in place."},
+        {"label": "Sound board", "href": "#/pillar/art", "desc": "Dmitri's demo: every shipped sound, played from the real files."},
+        {"label": "Design Studio", "href": "#/design", "desc": "Milo's demo: the living GDD, rendered from docs/."}
+      ]
+    },
+    {
+      "id": "marketing",
+      "name": "Marketing & Community",
+      "emoji": "📣",
+      "lead": "carmen",
+      "team": "Marketing",
+      "tagline": "Dormant by your ruling — readiness is the job until the trigger fires.",
+      "git_paths": ["ITCH_PAGE.md"],
+      "demos": [
+        {"label": "The itch page copy", "href": "#/pillar/marketing", "desc": "The one public-facing artifact that exists today, rendered live."}
+      ]
+    },
+    {
+      "id": "sales",
+      "name": "Sales & Platforms",
+      "emoji": "🤝",
+      "lead": "victor",
+      "team": "Sales & BD",
+      "tagline": "Storefronts, releases, and the tags that publish them.",
+      "git_paths": ["export_presets.cfg", "docs/DEPLOY.md", "android/"],
+      "demos": [
+        {"label": "Release history", "href": "#/pillar/sales", "desc": "Every v* tag ever pushed — publishing is a tag, never a push to main."}
+      ]
+    },
+    {
+      "id": "ops",
+      "name": "Finance & Ops",
+      "emoji": "💰",
+      "lead": "harold",
+      "team": "G&A",
+      "tagline": "Spend, support, and the license ledger that keeps releases legal.",
+      "git_paths": ["CREDITS.md", "LICENSE", ".env.example"],
+      "demos": [
+        {"label": "The provenance ledger", "href": "#/pillar/ops", "desc": "Every asset's rights and cost, from CREDITS.md — the real spend record."}
+      ]
+    }
+  ]
+}

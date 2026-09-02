@@ -17,7 +17,13 @@
         "The five-phase delegation-arc vision"
       ],
       "short": "CEO",
-      "focus": "Vision & final rulings"
+      "focus": "Vision & final rulings",
+      "watches": [
+        "everything marked on fire",
+        "the decision inbox"
+      ],
+      "demo": "#/",
+      "escalates_when": "—"
     },
     {
       "id": "claude",
@@ -35,7 +41,14 @@
         "Chase blocked work and surface it before it festers"
       ],
       "short": "Chief of Staff",
-      "focus": "Routing, drafts, chasing"
+      "focus": "Routing, drafts, chasing",
+      "watches": [
+        "every pillar's signals",
+        "ruling backlog age",
+        "blocked projects"
+      ],
+      "demo": "#/",
+      "escalates_when": "any pillar red >24h, or a ruling older than a week"
     },
     {
       "id": "priya",
@@ -52,7 +65,13 @@
         "Prioritization of the program portfolio with the CEO"
       ],
       "short": "Pr. PMT",
-      "focus": "Product strategy"
+      "focus": "Product strategy",
+      "watches": [
+        "program priorities vs. reality",
+        "release cadence"
+      ],
+      "demo": "#/pillar/product",
+      "escalates_when": "two consecutive milestones slip, or a priority inversion persists"
     },
     {
       "id": "marcus",
@@ -69,7 +88,13 @@
         "KPI definitions and weekly business review"
       ],
       "short": "PMT II",
-      "focus": "Economy & live ops"
+      "focus": "Economy & live ops",
+      "watches": [
+        "economy numbers in crop_defs",
+        "post-launch calendar readiness"
+      ],
+      "demo": "#/pillar/product",
+      "escalates_when": "an economy change ships without a designer ruling"
     },
     {
       "id": "sofia",
@@ -86,7 +111,14 @@
         "Playtest scheduling and logistics"
       ],
       "short": "Sr. TPM",
-      "focus": "Program & milestones"
+      "focus": "Program & milestones",
+      "watches": [
+        "project statuses",
+        "blocked-project age",
+        "gate evidence"
+      ],
+      "demo": "#/program",
+      "escalates_when": "a project is blocked >1 week with no owner action"
     },
     {
       "id": "wei",
@@ -103,7 +135,13 @@
         "Experiment design for A/B look-lab questions"
       ],
       "short": "BIE II",
-      "focus": "Analytics & traces"
+      "focus": "Analytics & traces",
+      "watches": [
+        "playtest traces",
+        "gate metrics vs. bars"
+      ],
+      "demo": "#/playtests",
+      "escalates_when": "a fresh session regresses a ruled bar (dead taps, stalls)"
     },
     {
       "id": "elena",
@@ -120,7 +158,14 @@
         "Technical hiring and the phase 2-5 technical runway"
       ],
       "short": "Sr. SDM",
-      "focus": "Engineering org"
+      "focus": "Engineering org",
+      "watches": [
+        "CI on main",
+        "determinism invariants",
+        "benchmark gate"
+      ],
+      "demo": "#/pillar/engineering",
+      "escalates_when": "CI red on main, robot MISMATCH, or benchmark <100k×"
     },
     {
       "id": "tomas",
@@ -137,7 +182,13 @@
         "Replay format stability (it is future ML training data)"
       ],
       "short": "SDE III",
-      "focus": "Sim & replay core"
+      "focus": "Sim & replay core",
+      "watches": [
+        "replay MATCH discipline",
+        "sim purity greps"
+      ],
+      "demo": "#/pillar/engineering",
+      "escalates_when": "any replay-format change lands without a migration note"
     },
     {
       "id": "jade",
@@ -154,7 +205,13 @@
         "Look Lab treatments and A/B rigs"
       ],
       "short": "SDE II",
-      "focus": "Gameplay & touch feel"
+      "focus": "Gameplay & touch feel",
+      "watches": [
+        "dead-tap rate in traces",
+        "input regressions"
+      ],
+      "demo": "#/entities",
+      "escalates_when": "a playtest shows a new class of dead taps"
     },
     {
       "id": "ravi",
@@ -171,7 +228,14 @@
         "CI, benchmarks, and developer tooling"
       ],
       "short": "SDE II",
-      "focus": "Pipeline & deploys"
+      "focus": "Pipeline & deploys",
+      "watches": [
+        "CI pipeline health",
+        "deploy runbook drift",
+        "asset imports"
+      ],
+      "demo": "#/pillar/engineering",
+      "escalates_when": "a deploy needs a step the runbook doesn't have"
     },
     {
       "id": "anna",
@@ -188,7 +252,12 @@
         "Fixture and playtest-session maintenance"
       ],
       "short": "SDE I",
-      "focus": "Crops, weather, scent"
+      "focus": "Crops, weather, scent",
+      "watches": [
+        "crop/weather test coverage"
+      ],
+      "demo": "#/pillar/engineering",
+      "escalates_when": "a sim feature ships without sim-level tests"
     },
     {
       "id": "kenji",
@@ -205,7 +274,13 @@
         "Behavior-cloning experiments against recorded sessions"
       ],
       "short": "AS II",
-      "focus": "Phase-4 ML"
+      "focus": "Phase-4 ML",
+      "watches": [
+        "replay corpus integrity",
+        "fixture ledger"
+      ],
+      "demo": "#/pillar/engineering",
+      "escalates_when": "training-data format breaks without a version stamp"
     },
     {
       "id": "grace",
@@ -222,7 +297,14 @@
         "Device-matrix testing: tablet, desktop, web export"
       ],
       "short": "QAE II",
-      "focus": "Test automation"
+      "focus": "Test automation",
+      "watches": [
+        "both suites",
+        "robot session",
+        "visual baseline"
+      ],
+      "demo": "#/pillar/engineering",
+      "escalates_when": "any suite red >1 commit, or a flaky test appears"
     },
     {
       "id": "ingrid",
@@ -239,7 +321,13 @@
         "Approval of every generated asset before it lands"
       ],
       "short": "Sr. Art Dir",
-      "focus": "Visual identity"
+      "focus": "Visual identity",
+      "watches": [
+        "style-guide compliance of new sprites",
+        "palette drift"
+      ],
+      "demo": "#/entities",
+      "escalates_when": "an asset lands off-palette or unrecorded in CREDITS"
     },
     {
       "id": "milo",
@@ -256,7 +344,13 @@
         "Playtest observation and findings write-ups"
       ],
       "short": "GD II",
-      "focus": "Systems design"
+      "focus": "Systems design",
+      "watches": [
+        "open design questions",
+        "phase-arc coherence"
+      ],
+      "demo": "#/design",
+      "escalates_when": "a mechanic ships that contradicts a settled decision"
     },
     {
       "id": "yuki",
@@ -273,7 +367,13 @@
         "CREDITS.md provenance for every asset"
       ],
       "short": "Artist II",
-      "focus": "Sprites & animation"
+      "focus": "Sprites & animation",
+      "watches": [
+        "sheet organization",
+        "frame metadata accuracy"
+      ],
+      "demo": "#/entities",
+      "escalates_when": "the gallery and the sheets disagree"
     },
     {
       "id": "sam",
@@ -290,7 +390,13 @@
         "Interaction inventory across input modalities"
       ],
       "short": "UXD II",
-      "focus": "Touch UX & HUD"
+      "focus": "Touch UX & HUD",
+      "watches": [
+        "touch-target sizes",
+        "wordless-rule compliance"
+      ],
+      "demo": "#/design",
+      "escalates_when": "a screen ships requiring reading in the core loop"
     },
     {
       "id": "dmitri",
@@ -307,7 +413,13 @@
         "Sound Test tooling and per-verb audio table"
       ],
       "short": "Audio II",
-      "focus": "Sound & music"
+      "focus": "Sound & music",
+      "watches": [
+        "sfx license ledger",
+        "verb-sound coverage"
+      ],
+      "demo": "#/pillar/art",
+      "escalates_when": "a sound ships without provenance"
     },
     {
       "id": "carmen",
@@ -324,7 +436,13 @@
         "Brand voice and the press/creator relationship map"
       ],
       "short": "Sr. MM",
-      "focus": "Marketing strategy"
+      "focus": "Marketing strategy",
+      "watches": [
+        "activation trigger readiness",
+        "channel handles"
+      ],
+      "demo": "#/pillar/marketing",
+      "escalates_when": "the game picks up speed with no ramp plan ready"
     },
     {
       "id": "tessa",
@@ -341,7 +459,12 @@
         "Channel analytics and creative testing"
       ],
       "short": "MM II",
-      "focus": "Instagram"
+      "focus": "Instagram",
+      "watches": [
+        "capture pipeline output"
+      ],
+      "demo": "#/pillar/marketing",
+      "escalates_when": "launch window opens without 30 days of content banked"
     },
     {
       "id": "jordan",
@@ -358,7 +481,12 @@
         "Creator duet/stitch engagement"
       ],
       "short": "MM II",
-      "focus": "TikTok"
+      "focus": "TikTok",
+      "watches": [
+        "capture pipeline output"
+      ],
+      "demo": "#/pillar/marketing",
+      "escalates_when": "same as Instagram — content bank empty at launch"
     },
     {
       "id": "priscilla",
@@ -375,7 +503,12 @@
         "Awards submissions and festival showcases"
       ],
       "short": "PR Mgr",
-      "focus": "Press & embargoes"
+      "focus": "Press & embargoes",
+      "watches": [
+        "press-kit freshness vs. latest build"
+      ],
+      "demo": "#/pillar/marketing",
+      "escalates_when": "an outlet asks for assets we don't have"
     },
     {
       "id": "diego",
@@ -392,7 +525,12 @@
         "Sponsored content deals within brand guardrails"
       ],
       "short": "MM II",
-      "focus": "YouTube & streamers"
+      "focus": "YouTube & streamers",
+      "watches": [
+        "creator list coverage"
+      ],
+      "demo": "#/pillar/marketing",
+      "escalates_when": "a top-tier creator covers the genre without a key from us"
     },
     {
       "id": "amara",
@@ -409,7 +547,13 @@
         "Community sentiment reports to the marketing lead"
       ],
       "short": "CM I",
-      "focus": "Discord & Reddit"
+      "focus": "Discord & Reddit",
+      "watches": [
+        "community channels",
+        "itch comments"
+      ],
+      "demo": "#/pillar/marketing",
+      "escalates_when": "a player-found bug goes unanswered >24h"
     },
     {
       "id": "victor",
@@ -426,7 +570,13 @@
         "Revenue forecasting with Finance"
       ],
       "short": "Sr. BDM",
-      "focus": "Deals & platforms"
+      "focus": "Deals & platforms",
+      "watches": [
+        "storefront presence",
+        "platform requirements"
+      ],
+      "demo": "#/pillar/sales",
+      "escalates_when": "a cert requirement lands that engineering hasn't seen"
     },
     {
       "id": "lena",
@@ -443,7 +593,12 @@
         "Regional pricing management"
       ],
       "short": "BDM II",
-      "focus": "Storefronts & cert"
+      "focus": "Storefronts & cert",
+      "watches": [
+        "store pages vs. latest release"
+      ],
+      "demo": "#/pillar/sales",
+      "escalates_when": "a store page shows a stale build or price"
     },
     {
       "id": "harold",
@@ -460,7 +615,13 @@
         "Contractor and vendor payments"
       ],
       "short": "Fin Mgr",
-      "focus": "Runway & close"
+      "focus": "Runway & close",
+      "watches": [
+        "runway",
+        "art/API spend"
+      ],
+      "demo": "#/pillar/ops",
+      "escalates_when": "monthly spend changes runway by >1 month"
     },
     {
       "id": "fatima",
@@ -477,7 +638,12 @@
         "Refund policy execution"
       ],
       "short": "CS Lead",
-      "focus": "Player support"
+      "focus": "Player support",
+      "watches": [
+        "support macros vs. new features"
+      ],
+      "demo": "#/pillar/ops",
+      "escalates_when": "a top-issue repeats 5x without an eng ticket"
     },
     {
       "id": "oskar",
@@ -494,7 +660,13 @@
         "Regional compliance checks (ratings boards)"
       ],
       "short": "Loc Mgr",
-      "focus": "Store pages, 10 languages"
+      "focus": "Store pages, 10 languages",
+      "watches": [
+        "wordless audits",
+        "store-page locales"
+      ],
+      "demo": "#/pillar/ops",
+      "escalates_when": "any game surface gains required reading"
     }
   ]
 }
