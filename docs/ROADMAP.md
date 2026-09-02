@@ -519,6 +519,12 @@ move once he has it under a thumb.*
       Provenance and the two rejected palettes are in CREDITS.md; *how* different it
       should look is taste and is filed as **Q-70**, with all three candidates described
       and the change costed at one line.
+      *Superseded on the field's side by the Q-70 ruling (2026-09-02: "we need a bigger
+      visual difference right now" — a colour remap is not enough): the field now draws
+      `terrain_field.png`, a generated seamless tall-grassland tile (Retro Diffusion,
+      palette-locked; CREDITS.md), so the fence line differs in pattern as well as
+      colour. The yard tile and its derivation are unchanged; `terrain_grass.png`
+      remains in the repo as the yard's derivation source.*
 - [x] tests: `tests/test_runner.gd:test_yard_ground` (29 assertions — generation,
       walkability, the tool layer, the gateway for her *and* for a bot, the field still
       tillable, the RNG-neutrality proof, saves) and integration **Scenario AA**, which

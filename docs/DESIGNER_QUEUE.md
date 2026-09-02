@@ -701,7 +701,10 @@ trace actually says, because several of these looked like bugs and were not.*
 - **Q-70** ~~How different should the yard's ground look?~~ — ✅ **ruled 2026-09-02:
   much more different, now** — the yard reads as tidy grass, the field as tall
   grassland/weeds. A colour remap is not enough; the field wants its own taller,
-  weedier texture. Art task filed (retro-diffusion pipeline).
+  weedier texture. **Shipped 2026-09-02:** `terrain_field.png`, a generated seamless
+  tall-grassland tile (Retro Diffusion, $0.06, palette-locked to the grass family —
+  CREDITS.md) is the field's ground; the yard keeps its tended-lawn tile, so the fence
+  line now differs in *pattern* as well as colour. Visual baseline re-rendered.
   Original entry: **(Taste)** **How different should the yard's ground look?** T-32 built the
   untillable ground you asked for and it needed a colour, which your directive did not
   specify and should not have had to. It is `terrain_grass.png`'s own noise pattern with

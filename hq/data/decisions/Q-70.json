@@ -10,7 +10,8 @@
   ],
   "attachments": [
     {"type": "image", "src": "assets/sprites/generated/terrain_yard.png", "caption": "Yard ground (as shipped)"},
-    {"type": "image", "src": "assets/sprites/generated/terrain_grass.png", "caption": "Field grass, for comparison"}
+    {"type": "image", "src": "assets/sprites/generated/terrain_grass.png", "caption": "Field grass at the time of the ruling (since replaced)"},
+    {"type": "image", "src": "assets/sprites/generated/terrain_field.png", "caption": "Field grassland shipped 2026-09-02 per this ruling — tall blades, generated"}
   ],
   "links": [
     {"label": "Yard ground in the entity gallery", "href": "#/entity/world/terrain_yard"},

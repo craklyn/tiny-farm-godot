@@ -257,9 +257,11 @@ func player_node() -> Node2D:
 
 
 var dirt_texture: Texture2D
-# T-32: the yard's ground. Same 3x3 sheet as the grass, same noise pattern, three
-# different colours (tools/gen_yard_ground.py) — so the fence line reads as a
-# boundary between two kinds of land rather than as a seam in one.
+# T-32: the yard's ground. Derived from terrain_grass.png's noise pattern in the
+# yard's own colours (tools/gen_yard_ground.py) — the tended lawn. Since Q-70
+# (ruled 2026-09-02) the other side of the fence is terrain_field.png, a
+# generated tall-grassland tile, so the boundary differs in pattern as well as
+# colour: tidy turf against standing blades.
 var yard_texture: Texture2D
 # T-37: the home's ground and shell (tools/gen_interior.py — planks and walls
 # derived from the fence's own browns, so indoor wood and outdoor wood match).
@@ -276,11 +278,14 @@ var tool_icons_texture: Texture2D
 
 func _load_textures() -> void:
 	# Generated sheets (see CREDITS.md — AI-generated via Retro Diffusion).
-	# terrain_grass: 3x3 of the seamless grass tile; draw code reads (16,16).
+	# terrain_field: 3x3 of the seamless tall-grassland tile (Q-70); draw code
+	# reads (16,16). Replaces terrain_grass.png as the field's ground — the field
+	# reads as standing blades, the yard as tidy lawn. terrain_grass.png stays in
+	# the repo as the source tools/gen_yard_ground.py derives the yard from.
 	# terrain_dirt: one tile per neighbour mask (world/autotile.gd), watered at +16 cols.
-	tileset_texture = load("res://assets/sprites/generated/terrain_grass.png")
+	tileset_texture = load("res://assets/sprites/generated/terrain_field.png")
 	dirt_texture = load("res://assets/sprites/generated/terrain_dirt.png")
-	# terrain_yard: terrain_grass's own pattern in the yard's colours (T-32).
+	# terrain_yard: terrain_grass's pattern in the yard's colours (T-32).
 	yard_texture = load("res://assets/sprites/generated/terrain_yard.png")
 	# terrain_floor: the home's planks, same 3x3 seamless format (T-37).
 	floor_texture = load("res://assets/sprites/generated/terrain_floor.png")
@@ -821,10 +826,10 @@ func _draw() -> void:
 			var k := _react_k(tx, ty)
 			var shake := _refuse_dx(tx, ty)
 
-			# Draw the ground background always. Grass everywhere, except the yard,
-			# which is made of its own ground (T-32) and draws the same 16x16 cell
-			# from its own sheet — no autotiling, no edge cases: two flat noise
-			# tiles that happen to meet at the fence.
+			# Draw the ground background always. Tall field grassland everywhere
+			# (Q-70), except the yard, which is made of its own ground (T-32) and
+			# draws the same 16x16 cell from its own sheet — no autotiling, no
+			# edge cases: two seamless tiles that happen to meet at the fence.
 			var ground_tex: Texture2D = tileset_texture
 			if tile.state == WorldLayout.YARD:
 				ground_tex = yard_texture

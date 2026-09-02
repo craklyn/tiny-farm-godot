@@ -362,19 +362,19 @@
           "facts": {"Heavy clears": "rock, log, tree (60 units)", "Light": "weed (30 units)"}
         },
         {
-          "id": "terrain_grass", "name": "Field Grass", "emoji": "🌿",
-          "desc": "The open field — the ground a hoe can open. One seamless tile.",
-          "sheet": "assets/sprites/generated/terrain_grass.png",
+          "id": "terrain_field", "name": "Field Grassland", "emoji": "🌾",
+          "desc": "The open field — the ground a hoe can open. Tall standing blades (generated, Q-70 ruling 2026-09-02): wild grassland against the yard's tidy lawn, so the fence line differs in pattern as well as color.",
+          "sheet": "assets/sprites/generated/terrain_field.png",
           "frames": [[0,0,48,48]],
           "fps": 1,
           "layout": "A 3x3 arrangement of one seamless 16px tile.",
           "sounds": [],
           "code": ["world/farm.gd"],
-          "facts": {"Tillable": "yes"}
+          "facts": {"Tillable": "yes", "Replaced": "terrain_grass.png as the field's ground (Q-70); the old tile remains as the yard's derivation source"}
         },
         {
           "id": "terrain_yard", "name": "Yard Ground", "emoji": "🏡",
-          "desc": "Home ground: walkable like the field, but no hoe ever opens it. Derived from the grass tile — same noise pattern, colors a step deeper and cooler — so the seam at the fence reads as tended lawn, not a fault line.",
+          "desc": "Home ground: walkable like the field, but no hoe ever opens it. Derived from the original grass tile — tended-lawn colors on a quiet noise pattern. Since Q-70 the field beyond the fence is tall generated grassland, so the boundary is unmistakable.",
           "sheet": "assets/sprites/generated/terrain_yard.png",
           "frames": [[0,0,48,48]],
           "fps": 1,

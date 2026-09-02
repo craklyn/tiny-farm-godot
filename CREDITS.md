@@ -163,6 +163,20 @@ before the first public build ships.*
   packet are the refusal table's own cells (finding F-5), so a player who has learnt
   those two glyphs has already learnt most of this vocabulary. Rights are the generated
   sheets', unchanged — these are local additions to assets already covered above.
+- **Q-70, the field's tall grassland, 2026-09-02** — **generated, $0.06** (same Retro
+  Diffusion pipeline and rights as the 2026-08-26 block above). A new sheet,
+  `assets/sprites/generated/terrain_field.png` (48x48, the terrain_grass format — a 3x3
+  arrangement of one seamless 16px tile), from a 64px `rd_tile__single_tile` generation
+  ("seamless tall wild grass texture, top-down 2d farming game ground"), downscaled
+  NEAREST and quantized locally to three colours of the style guide's grass family
+  (`#c0d470`, `#a4c263`, `#78a158`). It replaces `terrain_grass.png` as the ground the
+  *field* draws, per the Q-70 ruling ("the yard reads as tidy grass, the field as tall
+  grassland or weeds — we need a bigger visual difference right now"): the ruled-out
+  option was another colour remap, so this one is generated precisely because its
+  *pattern* — vertical standing blades — must differ from the yard's noise. Two
+  candidates were generated in the one call; the rejected one was another flat noise,
+  i.e. the thing the ruling said was not enough. `terrain_grass.png` stays in the repo
+  as the source `tools/gen_yard_ground.py` derives the yard's lawn from.
 - **Sprout Lands asset pack** by Cup Nooble — *removed 2026-08-26* (Q-7c ruling:
   drop restrictively-licensed assets; its free license forbids redistribution and
   this repo is public). Q-7b license findings recorded in the git history of this

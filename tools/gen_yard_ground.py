@@ -20,6 +20,13 @@ desaturated sage that read as *dead* ground and a halfway shade that vanished.
 Subtlety is the requirement here, not decoration: the yard is most of the early
 screen, so it has to survive being looked at for ten minutes.
 
+**Q-70 postscript (2026-09-02):** the designer ruled the seam should be louder —
+"the yard reads as tidy grass, the field as tall grassland or weeds" — so the
+*field* no longer draws terrain_grass.png at all; it draws terrain_field.png, a
+generated tall-blade tile (CREDITS.md). terrain_grass.png remains in the repo
+purely as this script's source, and the yard tile it derives is unchanged: the
+same-pattern argument above no longer constrains the field side.
+
 Idempotent: run it as often as you like. Costs nothing and needs no network.
 
     python3 tools/gen_yard_ground.py
