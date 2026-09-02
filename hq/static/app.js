@@ -185,16 +185,26 @@ async function renderDashboard() {
   const refresh = document.getElementById("dash-refresh");
   if (refresh) refresh.addEventListener("click", ev => { ev.preventDefault(); renderDashboard(); });
   const sb = document.getElementById("standup-btn");
-  sb.addEventListener("click", async () => {
-    sb.disabled = true; sb.textContent = "📋 Your chief of staff is writing…";
+  const showBrief = r => {
+    const box = document.getElementById("dash-standup");
+    if (!box || !r.brief) return false;
+    box.replaceChildren(h(`<div class="card" style="border-left:3px solid var(--accent)">
+      <div class="small muted" style="margin-bottom:6px">📋 Chief of staff's brief · ${esc(r.generated || "")} · <a class="plain" href="#/" id="brief-refresh">rewrite from current signals</a></div>${md(r.brief)}</div>`));
+    const rf = document.getElementById("brief-refresh");
+    rf.addEventListener("click", ev => { ev.preventDefault(); regen(rf); });
+    return true;
+  };
+  const regen = async el => {
+    if (el) el.textContent = "your chief of staff is writing…";
+    else { sb.disabled = true; sb.textContent = "📋 Your chief of staff is writing…"; }
     try {
       const r = await (await fetch("/api/standup", { method: "POST" })).json();
-      const box = document.getElementById("dash-standup");
-      if (r.brief) box.replaceChildren(h(`<div class="card" style="border-left:3px solid var(--accent)">
-        <div class="small muted" style="margin-bottom:6px">📋 Chief of staff's brief · ${esc(r.generated || "")}</div>${md(r.brief)}</div>`));
-      else { sb.disabled = false; sb.textContent = "📋 Chief of staff's brief (retry)"; }
-    } catch { sb.disabled = false; sb.textContent = "📋 Chief of staff's brief (retry)"; }
-  });
+      if (!showBrief(r) && sb.isConnected) { sb.disabled = false; sb.textContent = "📋 Chief of staff's brief (retry)"; }
+    } catch { if (sb.isConnected) { sb.disabled = false; sb.textContent = "📋 Chief of staff's brief (retry)"; } }
+  };
+  sb.addEventListener("click", () => regen(null));
+  // Show the cached brief instantly if one exists; the button stays for first use.
+  fetch("/api/standup").then(r => r.json()).then(showBrief).catch(() => {});
 }
 
 /* ---------------- org chart ---------------- */

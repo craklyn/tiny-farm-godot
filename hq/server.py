@@ -982,6 +982,11 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, api_persona(path[len("/api/persona/"):]))
             if path == "/api/signals":
                 return self._send(200, compute_signals())
+            if path == "/api/standup":
+                # GET returns only what's cached — instant; POST regenerates.
+                return self._send(200, latest_job_result("standup") or
+                                  (load_json(os.path.join(DATA, "runs", "standup.json"))
+                                   if os.path.isfile(os.path.join(DATA, "runs", "standup.json")) else {}))
             if path == "/api/playtests":
                 return self._send(200, list_playtests())
             if path == "/api/audio":
