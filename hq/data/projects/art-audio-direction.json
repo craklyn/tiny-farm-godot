@@ -16,7 +16,7 @@
     "Bespoke foley recorded for the verb table (the CEO wanted to record these personally)",
     "Credits and provenance updated for every replaced asset"
   ],
-  "current_status": "Blocked on two CEO approvals, both drafts ready to read. Deliberately sequenced after playtest-critical work — the current placeholders are license-clean and complete, so nothing ships worse for waiting.",
+  "current_status": "Blocked on two working sessions the CEO asked for rather than on approvals: he ruled 'not yet — discuss first' on the audio direction and 'not yet — I want a look session' on the art style guide (both 2026-09-02). So the next move is scheduling those two sittings, not re-sending the drafts. Deliberately unhurried: current placeholders are license-clean and complete, so nothing ships worse for waiting.",
   "plan": [
     {
       "step": "Art style guide draft delivered",
@@ -27,7 +27,19 @@
       "done": true
     },
     {
-      "step": "CEO reads both, approves or amends",
+      "step": "CEO ruled: discuss the audio direction before signing (Q-13)",
+      "done": true
+    },
+    {
+      "step": "CEO ruled: hold a look session on the art style guide before signing (Q-14)",
+      "done": true
+    },
+    {
+      "step": "Run the art look session — rendered candidates side by side, judged in chat",
+      "done": false
+    },
+    {
+      "step": "Run the audio discussion — the draft's three taste questions answered live",
       "done": false
     },
     {
@@ -44,8 +56,9 @@
     "docs/design/10-audio-direction.md",
     "CREDITS.md"
   ],
-  "blocked_on": "decisions:Q-13,Q-14",
-  "blocked_since": "2026-08-29",
+  "blocked_on": "ceo-sessions:art-look,audio-discussion",
+  "blocked_since": "2026-09-02",
   "release": "m3",
-  "release_critical": false
+  "release_critical": false,
+  "unblock_action": "Sit down for the art look session and the audio discussion"
 }
