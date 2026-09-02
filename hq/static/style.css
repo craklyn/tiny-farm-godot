@@ -50,6 +50,9 @@ body {
 #sidebar a span { width: 20px; text-align: center; }
 #sidebar a:hover { background: var(--panel); color: var(--text); }
 #sidebar a.active { background: var(--panel2); color: var(--accent); }
+.nav-sub { display: flex; flex-direction: column; gap: 1px; margin: 0 0 4px; }
+.nav-sub a { padding: 4px 12px 4px 40px; font-size: 12.5px; font-weight: 500; }
+.nav-sub a .dot { margin-right: 8px; flex-shrink: 0; }
 .badge {
   background: var(--red); color: #fff; border-radius: 9px;
   font-size: 11px; padding: 1px 7px; margin-left: auto; font-style: normal;
@@ -418,4 +421,6 @@ code.ref { background: #1b1710; border: 1px solid var(--line); border-radius: 6p
   #app { flex-direction: column; }
   #sidebar { width: 100%; height: auto; position: static; flex-direction: row; flex-wrap: wrap; }
   .sidebar-foot { display: none; }
+  .nav-sub { flex-direction: row; flex-wrap: wrap; width: 100%; }
+  .nav-sub a { padding: 4px 10px; }
 }

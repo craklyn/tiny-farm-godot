@@ -699,6 +699,9 @@ async function boot() {
     const d = document.getElementById("health-dot");
     d.classList.add("ok"); d.innerHTML = "<i></i> service healthy";
   } catch { /* leave grey */ }
+  // Populate the nav's pillar dots on any entry page (signals() keeps them
+  // current after that).
+  api("/api/signals").then(updateNavPillars).catch(() => {});
   try {
     // The badge counts decisions PREPPED for the CEO — raw un-curated queue
     // items are the chief of staff's backlog, not his.

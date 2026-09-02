@@ -19,7 +19,26 @@ function levelChip(level) {
 
 async function signals(force) {
   if (force) delete cache["/api/signals"];
-  return api("/api/signals");
+  const s = await api("/api/signals");
+  updateNavPillars(s);   // the sidebar's dots stay current wherever data flows
+  return s;
+}
+
+/* The nav's pillar group: indented under Dashboard (it's the drill-down of
+   the status strip), never collapsed — a folded submenu would hide the
+   status dots, and the dots are the point: a fire reaches the CEO's eye
+   from any page. */
+async function updateNavPillars(sig) {
+  const el = document.getElementById("nav-pillars");
+  if (!el || !sig || !sig.status) return;
+  const pillars = await api("/api/pillars");
+  const hash = location.hash.slice(1) || "/";
+  el.replaceChildren(...pillars.pillars.map(p => {
+    const m = LEVEL_META[(sig.status[p.id] || {}).level] || LEVEL_META.ok;
+    const a = h(`<a href="#/pillar/${p.id}" data-route="/pillar/${p.id}"><i class="dot ${m.dcls}"></i>${esc(p.name.split(/[,&]/)[0].trim())}</a>`).firstElementChild;
+    a.classList.toggle("active", hash.startsWith("/pillar/" + p.id));
+    return a;
+  }));
 }
 
 /* ---------------- pillar page ---------------- */
