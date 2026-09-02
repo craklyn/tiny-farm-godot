@@ -60,6 +60,37 @@ def load_projects():
     return projects
 
 
+def api_program():
+    """The macro view: release trains composed from project declarations.
+    Gates-not-dates on purpose — readiness is done-steps over total-steps on
+    the CRITICAL set, and risk is the blocked critical chain, never a date."""
+    releases = load_json(os.path.join(DATA, "releases.json"))["releases"]
+    projects = load_projects()
+
+    def steps(p):
+        plan = p.get("plan", [])
+        return sum(1 for s in plan if s.get("done")), len(plan)
+
+    out = []
+    for r in releases:
+        members = [p for p in projects if p.get("release") == r["id"]]
+        critical = [p for p in members if p.get("release_critical")]
+        riding = [p for p in members if not p.get("release_critical")]
+        done = total = 0
+        for p in critical:
+            a, b = steps(p)
+            done += a
+            total += b
+        out.append({**r,
+                    "critical": [p["id"] for p in critical],
+                    "riding": [p["id"] for p in riding],
+                    "gating": [p["id"] for p in critical if p["status"] == "blocked"],
+                    "readiness": {"done": done, "total": total}})
+    assigned = {pid for r in out for pid in r["critical"] + r["riding"]}
+    return {"releases": out,
+            "unassigned": [p["id"] for p in projects if p["id"] not in assigned]}
+
+
 def load_dir_json(sub):
     d = os.path.join(DATA, sub)
     if not os.path.isdir(d):
@@ -1100,6 +1131,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, load_json(os.path.join(DATA, "entities.json")))
             if path == "/api/projects":
                 return self._send(200, load_projects())
+            if path == "/api/program":
+                return self._send(200, api_program())
             if path.startswith("/api/project/"):
                 pid = path[len("/api/project/"):]
                 for p in load_projects():

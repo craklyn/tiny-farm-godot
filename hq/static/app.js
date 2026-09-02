@@ -90,6 +90,35 @@ function drawComposite(ctx, canvas, img, ent) {
   });
 }
 
+/* ---------------- nav groups (collapsible submenus) ----------------
+   Generic: any .nav-group[data-grp] with a .nav-caret and a .nav-sub gets
+   collapse/expand with persisted state, auto-expand while a child route is
+   active, and (optional) a .roll dot on the parent that surfaces the worst
+   child status while collapsed — space saved, fires still visible. */
+const NAV_OPEN_KEY = "hq-nav-open";
+function navOpenState() { try { return JSON.parse(localStorage.getItem(NAV_OPEN_KEY)) || {}; } catch { return {}; } }
+function setNavOpen(id, v) {
+  const s = navOpenState(); s[id] = v;
+  try { localStorage.setItem(NAV_OPEN_KEY, JSON.stringify(s)); } catch { }
+  applyNavGroups();
+}
+function applyNavGroups() {
+  const hash = location.hash.slice(1) || "/";
+  const s = navOpenState();
+  document.querySelectorAll(".nav-group").forEach(g => {
+    const id = g.dataset.grp;
+    const sub = g.querySelector(".nav-sub");
+    const caret = g.querySelector(".nav-caret");
+    if (!sub || !caret) return;
+    const childActive = [...sub.querySelectorAll("a[data-route]")].some(a => hash.startsWith(a.dataset.route));
+    const open = childActive || !!s[id];
+    sub.hidden = !open;
+    caret.textContent = open ? "▾" : "▸";
+    const roll = g.querySelector(".roll");
+    if (roll) roll.hidden = open || !["d-fire", "d-attn"].some(c => roll.classList.contains(c));
+  });
+}
+
 /* ---------------- router ---------------- */
 const routes = {
   "/": renderDashboard,
@@ -112,6 +141,7 @@ async function route() {
     const r = a.dataset.route;
     a.classList.toggle("active", r === "/" ? hash === "/" : hash.startsWith(r));
   });
+  applyNavGroups();
   $view.innerHTML = `<p class="muted">Loading…</p>`;
   try {
     if (hash.startsWith("/project/")) await renderProject(hash.slice("/project/".length));
@@ -456,29 +486,99 @@ function showEntity(group, ent) {
   if (eb) eb.addEventListener("click", () => location.hash = `#/sprite/${group.id}/${ent.id}`);
 }
 
-/* ---------------- program report ---------------- */
-function projRow(p, org) {
+/* ---------------- program report ----------------
+   An L7 PTPM's structure, honest to a gates-not-dates program: the default
+   axis is RELEASE TRAINS (what players get, what gates it, what merely rides
+   along), with priority / pillar / blocked as alternate axes over the same
+   projects. Risk renders as blocked critical chains and their ages — never
+   as calendar fiction. */
+const daysSince = d => {
+  if (!d) return null;
+  const t = new Date(d + "T00:00:00");
+  return isNaN(t) ? null : Math.floor((Date.now() - t) / 86400000);
+};
+
+function projRow(p, org, byId) {
   const owner = org ? org.employees.find(e => e.id === p.owner) : null;
+  const days = p.status === "blocked" ? daysSince(p.blocked_since) : null;
+  const waits = (p.depends_on || []).map(id => byId && byId[id]
+    ? `<a class="plain" href="#/project/${id}">${esc(byId[id].name.split("(")[0].trim())}</a>` : esc(id));
   const row = h(`<div class="proj-row">
     <div class="pri">${p.priority}</div>
-    <div>
+    <div style="min-width:0">
       <div class="nm">${esc(p.name)}</div>
-      <div class="small muted">${esc(p.summary.split(". ")[0])}.</div>
+      <div class="small muted">${esc(p.summary.split(". ")[0])}.${waits.length ? ` <span class="waits">waits on ${waits.join(", ")}</span>` : ""}</div>
     </div>
-    <div class="ow">${owner ? owner.emoji + " " + esc(owner.name.split(" ")[0]) : ""} <span class="chip ${p.status}">${p.status.replace("_", " ")}</span></div>
+    <div class="ow">${owner ? esc(owner.name.split(" ")[0]) : ""} <span class="chip ${p.status}">${p.status.replace("_", " ")}${days != null ? ` · ${days}d` : ""}</span></div>
   </div>`).firstElementChild;
-  row.addEventListener("click", () => location.hash = "#/project/" + p.id);
+  row.addEventListener("click", ev => { if (ev.target.tagName !== "A") location.hash = "#/project/" + p.id; });
   return row;
 }
 
+let progTab = "release";
 async function renderProgram() {
-  const [projects, org] = await Promise.all([api("/api/projects"), api("/api/org")]);
-  const frag = h(`<h1>Program Report</h1>
-    <p class="sub">Everything underway and planned, in priority order. Click a project for requirements, status, and plan.</p>
-    <div id="prog-list"></div>`);
-  $view.replaceChildren(frag);
-  const list = document.getElementById("prog-list");
-  projects.forEach(p => list.appendChild(projRow(p, org)));
+  const [projects, org, prog] = await Promise.all([api("/api/projects"), api("/api/org"), api("/api/program")]);
+  const byId = Object.fromEntries(projects.map(p => [p.id, p]));
+  const TABS = [["release", "Release trains"], ["priority", "By priority"], ["pillar", "By pillar"], ["blocked", "Blocked"]];
+  $view.replaceChildren(h(`<h1>Program Report</h1>
+    <p class="sub">One program, four questions. <b>Release trains</b>: what players get next and what gates it. <b>Priority</b>: the ranked list. <b>Pillar</b>: who carries what. <b>Blocked</b>: where the chains are stuck. No dates anywhere — this program runs on gates and evidence.</p>
+    <div class="tabs" id="prog-tabs"></div>
+    <div id="prog-body"></div>`));
+  const tabs = document.getElementById("prog-tabs");
+  TABS.forEach(([id, label]) => {
+    const b = document.createElement("button");
+    b.textContent = label;
+    b.classList.toggle("active", id === progTab);
+    b.addEventListener("click", () => { progTab = id; renderProgram(); });
+    tabs.appendChild(b);
+  });
+  const body = document.getElementById("prog-body");
+
+  if (progTab === "release") {
+    prog.releases.forEach(r => {
+      const pct = r.readiness.total ? Math.round(100 * r.readiness.done / r.readiness.total) : 0;
+      const card = h(`<div class="card rel-card">
+        <div class="rel-head">
+          <b>${esc(r.name)}</b>
+          ${r.tag_intent ? `<code class="ref">${esc(r.tag_intent)}</code>` : ""}
+          <span class="rel-ready small muted">${r.readiness.done}/${r.readiness.total} critical steps · ${r.gating.length ? `<span class="bad">${r.gating.length} gating blocker${r.gating.length === 1 ? "" : "s"}</span>` : '<span class="good">nothing blocking</span>'}</span>
+        </div>
+        <div class="rbar"><i style="width:${pct}%"></i></div>
+        <p class="small muted" style="margin:8px 0 4px">${esc(r.goal)}</p>
+        <div class="rel-sec">Gates this release</div>
+        <div class="rel-crit"></div>
+        ${r.riding.length ? `<div class="rel-sec">Rides along — ships with it, doesn't gate it</div><div class="rel-ride"></div>` : ""}
+      </div>`).firstElementChild;
+      const crit = card.querySelector(".rel-crit");
+      r.critical.forEach(id => byId[id] && crit.appendChild(projRow(byId[id], org, byId)));
+      const ride = card.querySelector(".rel-ride");
+      if (ride) r.riding.forEach(id => byId[id] && ride.appendChild(projRow(byId[id], org, byId)));
+      body.appendChild(card);
+    });
+    if (prog.unassigned.length) {
+      const card = h(`<div class="card rel-card"><div class="rel-head"><b>Long-arc & internal</b>
+        <span class="rel-ready small muted">not tied to a release</span></div><div class="rel-crit"></div></div>`).firstElementChild;
+      const list = card.querySelector(".rel-crit");
+      prog.unassigned.forEach(id => byId[id] && list.appendChild(projRow(byId[id], org, byId)));
+      body.appendChild(card);
+    }
+  } else if (progTab === "priority") {
+    projects.forEach(p => body.appendChild(projRow(p, org, byId)));
+  } else if (progTab === "pillar") {
+    const teams = [...new Set(org.employees.map(e => e.team))];
+    teams.forEach(team => {
+      const members = new Set(org.employees.filter(e => e.team === team).map(e => e.id));
+      const mine = projects.filter(p => members.has(p.owner));
+      if (!mine.length) return;
+      body.appendChild(h(`<h2>${esc(team)}</h2>`).firstElementChild);
+      mine.forEach(p => body.appendChild(projRow(p, org, byId)));
+    });
+  } else {
+    const blocked = projects.filter(p => p.status === "blocked")
+      .sort((a, b) => (daysSince(b.blocked_since) ?? 0) - (daysSince(a.blocked_since) ?? 0));
+    if (!blocked.length) body.appendChild(h(`<div class="card muted">Nothing is blocked. 🎉</div>`));
+    blocked.forEach(p => body.appendChild(projRow(p, org, byId)));
+  }
 }
 
 async function renderProject(id) {
@@ -700,7 +800,12 @@ async function boot() {
     d.classList.add("ok"); d.innerHTML = "<i></i> service healthy";
   } catch { /* leave grey */ }
   // Populate the nav's pillar dots on any entry page (signals() keeps them
-  // current after that).
+  // current after that), and wire the collapsible nav groups.
+  document.querySelectorAll(".nav-caret").forEach(c =>
+    c.addEventListener("click", ev => {
+      ev.preventDefault();
+      setNavOpen(c.dataset.grp, !navOpenState()[c.dataset.grp]);
+    }));
   api("/api/signals").then(updateNavPillars).catch(() => {});
   try {
     // The badge counts decisions PREPPED for the CEO — raw un-curated queue

@@ -34,11 +34,25 @@ async function updateNavPillars(sig) {
   const pillars = await api("/api/pillars");
   const hash = location.hash.slice(1) || "/";
   el.replaceChildren(...pillars.pillars.map(p => {
-    const m = LEVEL_META[(sig.status[p.id] || {}).level] || LEVEL_META.ok;
-    const a = h(`<a href="#/pillar/${p.id}" data-route="/pillar/${p.id}"><i class="dot ${m.dcls}"></i>${esc(p.name.split(/[,&]/)[0].trim())}</a>`).firstElementChild;
+    const st = sig.status[p.id] || { level: "ok", reasons: [] };
+    const m = LEVEL_META[st.level] || LEVEL_META.ok;
+    const a = h(`<a href="#/pillar/${p.id}" data-route="/pillar/${p.id}" title="${esc(p.name)} — ${m.label}${st.reasons[0] ? ": " + esc(st.reasons[0].slice(0, 140)) : ""}"><i class="dot ${m.dcls}"></i>${esc(p.name.split(/[,&]/)[0].trim())}</a>`).firstElementChild;
     a.classList.toggle("active", hash.startsWith("/pillar/" + p.id));
     return a;
   }));
+  // Collapsed-state rollup on the parent: the WORST child status, so a fire
+  // or an attention item still reaches the eye with the submenu folded.
+  const rank = { fire: 3, attention: 2, ok: 1, dormant: 0 };
+  const worst = pillars.pillars
+    .map(p => (sig.status[p.id] || {}).level || "ok")
+    .sort((a, b) => (rank[b] || 0) - (rank[a] || 0))[0];
+  const roll = document.getElementById("nav-dash-roll");
+  if (roll) {
+    const m = LEVEL_META[worst] || LEVEL_META.ok;
+    roll.className = `dot roll ${m.dcls}`;
+    roll.title = `worst pillar status: ${m.label}`;
+  }
+  applyNavGroups();
 }
 
 /* ---------------- pillar page ---------------- */

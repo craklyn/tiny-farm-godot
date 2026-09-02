@@ -16,10 +16,25 @@
   ],
   "current_status": "Shipped 2026-09-01, then rebuilt the same day into the command center: derived pillar signals (git/CI/traces/tags — nothing hand-maintained), the Eye of Sauron queue, pillar pages with living demos, the playtest viewer, the in-app verification runner, and the chief-of-staff brief. Next natural increments: a KPI page once there is revenue, and richer per-persona demo automation.",
   "plan": [
-    {"step": "Server, data model, and frontend", "done": true},
-    {"step": "Chat endpoint through the local Claude CLI", "done": true},
-    {"step": "systemd user service with lingering enabled", "done": true},
-    {"step": "Verified in browser; committed and pushed", "done": true}
+    {
+      "step": "Server, data model, and frontend",
+      "done": true
+    },
+    {
+      "step": "Chat endpoint through the local Claude CLI",
+      "done": true
+    },
+    {
+      "step": "systemd user service with lingering enabled",
+      "done": true
+    },
+    {
+      "step": "Verified in browser; committed and pushed",
+      "done": true
+    }
   ],
-  "links": ["hq/"]
+  "links": [
+    "hq/"
+  ],
+  "release": null
 }

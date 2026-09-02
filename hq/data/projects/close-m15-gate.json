@@ -44,5 +44,7 @@
   ],
   "blocked_on": "fresh-playtest",
   "blocked_since": "2026-08-31",
-  "unblock_action": "Find a fresh human playtester"
+  "unblock_action": "Find a fresh human playtester",
+  "release": "update-1",
+  "release_critical": true
 }

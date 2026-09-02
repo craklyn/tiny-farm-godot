@@ -45,5 +45,7 @@
     "CREDITS.md"
   ],
   "blocked_on": "decisions:Q-13,Q-14",
-  "blocked_since": "2026-08-29"
+  "blocked_since": "2026-08-29",
+  "release": "m3",
+  "release_critical": false
 }

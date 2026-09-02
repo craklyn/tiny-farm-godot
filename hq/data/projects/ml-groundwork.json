@@ -4,7 +4,10 @@
   "priority": 7,
   "status": "planned",
   "owner": "kenji",
-  "contributors": ["tomas", "grace"],
+  "contributors": [
+    "tomas",
+    "grace"
+  ],
   "summary": "Phase 4's promise is bots the player trains by example, learning on-device from recorded play. The groundwork starts long before phase 4: every play session already records as a replayable action log, and those logs are the training corpus. This project keeps the corpus sound and proves the concept early enough to change course if it doesn't hold.",
   "requirements": [
     "Replay corpus stays versioned, verified, and format-stable across sim changes",
@@ -14,11 +17,30 @@
   ],
   "current_status": "Not yet begun as an execution project. The substrate is unusually ready — deterministic sim, one action gateway, bot configs already in the build, sessions recorded since day one. The prototype waits until the corpus has more real human sessions in it.",
   "plan": [
-    {"step": "Corpus hygiene: build stamps on every replay, stale fixtures ledgered", "done": true},
-    {"step": "Accumulate human sessions on stable worldgen (rides on the playtest cadence)", "done": false},
-    {"step": "Offline behavior-cloning prototype against the corpus", "done": false},
-    {"step": "Feasibility read to the CEO before phase-4 design begins", "done": false}
+    {
+      "step": "Corpus hygiene: build stamps on every replay, stale fixtures ledgered",
+      "done": true
+    },
+    {
+      "step": "Accumulate human sessions on stable worldgen (rides on the playtest cadence)",
+      "done": false
+    },
+    {
+      "step": "Offline behavior-cloning prototype against the corpus",
+      "done": false
+    },
+    {
+      "step": "Feasibility read to the CEO before phase-4 design begins",
+      "done": false
+    }
   ],
   "plan_note": "Plan is intentionally incomplete — this project is pre-execution by design; it firms up as the corpus grows.",
-  "links": ["docs/ARCHITECTURE.md", "docs/phases/"]
+  "links": [
+    "docs/ARCHITECTURE.md",
+    "docs/phases/"
+  ],
+  "release": null,
+  "depends_on": [
+    "replay-phase-b"
+  ]
 }

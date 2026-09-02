@@ -37,5 +37,10 @@
     "docs/M2_5_PLAN.md"
   ],
   "blocked_on": "fresh-playtest",
-  "blocked_since": "2026-09-01"
+  "blocked_since": "2026-09-01",
+  "release": "update-1",
+  "release_critical": false,
+  "depends_on": [
+    "close-m15-gate"
+  ]
 }

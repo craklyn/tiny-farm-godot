@@ -1,0 +1,19 @@
+{
+  "note": "Release trains: the macro units players experience. Projects declare release + release_critical + depends_on; everything else derives. No dates on purpose — this program runs on gates and evidence (the repo's standing rule), so 'schedule risk' renders as blocked critical-path chains and their ages, never as fictional calendar cells.",
+  "releases": [
+    {
+      "id": "update-1",
+      "name": "Player Update 1",
+      "tag_intent": "v0.2.0",
+      "goal": "The first public update since v0.1.0: the rebuilt onboarding players can feel — the cot and stations that present themselves, the clock, the yard as home — shipped with the gate evidence behind it, on the ship-early-and-often ruling.",
+      "definition_of_done": "M1.5's exit gate closes on a fresh adult session, and a v0.2.0 tag goes out through the deploy runbook."
+    },
+    {
+      "id": "m3",
+      "name": "M3 — the next content milestone",
+      "tag_intent": null,
+      "goal": "The next slice of the five-phase arc, scoped by your ruling and planned on the M2.5 template. What M3 actually contains is itself the opening decision.",
+      "definition_of_done": "Scope ruled; plan written with a measured exit gate; work items delivered and verified."
+    }
+  ]
+}

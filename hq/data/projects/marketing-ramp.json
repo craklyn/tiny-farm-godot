@@ -4,7 +4,13 @@
   "priority": 8,
   "status": "planned",
   "owner": "carmen",
-  "contributors": ["tessa", "jordan", "priscilla", "diego", "amara"],
+  "contributors": [
+    "tessa",
+    "jordan",
+    "priscilla",
+    "diego",
+    "amara"
+  ],
   "summary": "The standing ruling is that dedicated marketing waits until the game picks up speed — so the channel team's job right now is readiness, not reach. Press kit, capture pipeline, channel handles, and a creator list all get built quietly while the game earns its moment; when a public release shows organic pull, the ramp plan fires.",
   "requirements": [
     "Press kit current with each public release (screens, GIFs, fact sheet, contact)",
@@ -15,11 +21,26 @@
   ],
   "current_status": "Planned. The trigger definition is the interesting open question — 'picks up speed' needs a number (wishlist velocity, itch downloads/week, organic mentions) so the ramp decision is a reading, not a feeling. Marketing lead to propose the trigger for CEO sign-off.",
   "plan": [
-    {"step": "Propose the activation trigger metric to the CEO", "done": false},
-    {"step": "Stand up press kit and capture pipeline", "done": false},
-    {"step": "Secure handles; soft-launch channels with dev-log-grade content", "done": false},
-    {"step": "On trigger: launch-window campaign across all channels", "done": false}
+    {
+      "step": "Propose the activation trigger metric to the CEO",
+      "done": false
+    },
+    {
+      "step": "Stand up press kit and capture pipeline",
+      "done": false
+    },
+    {
+      "step": "Secure handles; soft-launch channels with dev-log-grade content",
+      "done": false
+    },
+    {
+      "step": "On trigger: launch-window campaign across all channels",
+      "done": false
+    }
   ],
   "plan_note": "Plan is intentionally incomplete pending the trigger ruling.",
-  "links": ["ITCH_PAGE.md"]
+  "links": [
+    "ITCH_PAGE.md"
+  ],
+  "release": null
 }

@@ -4,7 +4,10 @@
   "priority": 10,
   "status": "planned",
   "owner": "tomas",
-  "contributors": ["milo", "jade"],
+  "contributors": [
+    "milo",
+    "jade"
+  ],
   "summary": "The HQ map editor edits layout definitions — the same WorldLayout-shaped input the seeded generator already consumes (the Zoo proves a second layout works). What's missing is the game-side half: loading an edited layout JSON into a real game. This project is that bridge, and it deliberately waits on a few design calls.",
   "requirements": [
     "A validated loader (layout JSON -> WorldLayout dictionary) with sim-level tests: bad rects, overlapping parcels, missing gates all refused with reasons",
@@ -15,13 +18,37 @@
   ],
   "current_status": "Moving. The home interior (T-37) became the second real layout: floor/wall/window states exist, layouts can now carry their own object placements (the layout `objects` key — the farm still uses its constant), and the home renders behind a debug door. Still open: the CEO's ruling on how maps connect in play, and the loader for editor-saved JSON maps.",
   "plan": [
-    {"step": "HQ map editor for layout definitions", "done": true},
-    {"step": "Object placement becomes layout data (the `objects` key — shipped with the home, T-37)", "done": true},
-    {"step": "A second real layout generates and renders (the home, behind a debug door)", "done": true},
-    {"step": "CEO ruling: how maps relate in play (doors, transitions, what saves/replays record)", "done": false},
-    {"step": "Loader + validation for editor-saved JSON maps", "done": false},
-    {"step": "First map transition playable (farm door -> home)", "done": false}
+    {
+      "step": "HQ map editor for layout definitions",
+      "done": true
+    },
+    {
+      "step": "Object placement becomes layout data (the `objects` key — shipped with the home, T-37)",
+      "done": true
+    },
+    {
+      "step": "A second real layout generates and renders (the home, behind a debug door)",
+      "done": true
+    },
+    {
+      "step": "CEO ruling: how maps relate in play (doors, transitions, what saves/replays record)",
+      "done": false
+    },
+    {
+      "step": "Loader + validation for editor-saved JSON maps",
+      "done": false
+    },
+    {
+      "step": "First map transition playable (farm door -> home)",
+      "done": false
+    }
   ],
   "plan_note": "Plan is intentionally incomplete pending the maps ruling.",
-  "links": ["systems/world_layout.gd", "hq/data/maps/", "tools/export_layout.gd"]
+  "links": [
+    "systems/world_layout.gd",
+    "hq/data/maps/",
+    "tools/export_layout.gd"
+  ],
+  "release": "m3",
+  "release_critical": false
 }

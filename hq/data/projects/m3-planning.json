@@ -4,7 +4,11 @@
   "priority": 3,
   "status": "in_progress",
   "owner": "priya",
-  "contributors": ["sofia", "milo", "elena"],
+  "contributors": [
+    "sofia",
+    "milo",
+    "elena"
+  ],
   "summary": "The deterministic sim core (M2) and the actor system (M2.5) are complete; M1.5 is one playtest from closing. M3 is the next big block of game, and its plan doesn't exist yet. The M2.5 plan document is the template: work items in dependency order, per-item acceptance criteria, verifier procedures.",
   "requirements": [
     "An M3 scope ruling from the CEO: which slice of the phase arc M3 delivers",
@@ -14,11 +18,28 @@
   ],
   "current_status": "Unblocked and next in line. Planning has not begun in earnest — it was explicitly queued behind the T-35/T-36 fixes, which have both shipped. The first concrete step is a scope proposal for the CEO to rule on.",
   "plan": [
-    {"step": "Draft 2-3 candidate M3 scopes with cost estimates (strawman from Product + Design)", "done": false},
-    {"step": "CEO rules on scope and the opening design questions", "done": false},
-    {"step": "Write the M3 plan on the M2.5 template", "done": false},
-    {"step": "Begin execution", "done": false}
+    {
+      "step": "Draft 2-3 candidate M3 scopes with cost estimates (strawman from Product + Design)",
+      "done": false
+    },
+    {
+      "step": "CEO rules on scope and the opening design questions",
+      "done": false
+    },
+    {
+      "step": "Write the M3 plan on the M2.5 template",
+      "done": false
+    },
+    {
+      "step": "Begin execution",
+      "done": false
+    }
   ],
   "plan_note": "Plan is intentionally incomplete — this project is pre-execution. The plan firms up when the scope ruling lands.",
-  "links": ["docs/ROADMAP.md", "docs/M2_5_PLAN.md"]
+  "links": [
+    "docs/ROADMAP.md",
+    "docs/M2_5_PLAN.md"
+  ],
+  "release": "m3",
+  "release_critical": true
 }

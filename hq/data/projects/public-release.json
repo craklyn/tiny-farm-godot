@@ -4,7 +4,10 @@
   "priority": 5,
   "status": "in_progress",
   "owner": "ravi",
-  "contributors": ["lena", "amara"],
+  "contributors": [
+    "lena",
+    "amara"
+  ],
   "summary": "Standing ruling: release publicly early and as often as possible; all early releases free with no restrictions; dedicated marketing deferred until the game picks up speed. All three original release blockers (art output rights, the restrictively-licensed pack purge, CI green) cleared in late August. Publishing is a pushed version tag; the deploy runbook covers the traps.",
   "requirements": [
     "Every public release cut from a green main via a pushed v* tag",
@@ -14,10 +17,30 @@
   ],
   "current_status": "Ongoing operational project rather than a one-shot. The pipeline works (web, Android, itch); the cadence question — how often is 'as often as possible' in practice — is a standing conversation with Product.",
   "plan": [
-    {"step": "Release blockers cleared (rights verified, pack purged, CI green)", "done": true},
-    {"step": "Deploy runbook written with known traps recorded", "done": true},
-    {"step": "Establish a regular tag cadence tied to milestone closes", "done": false},
-    {"step": "First post-M1.5 public build tagged and announced", "done": false}
+    {
+      "step": "Release blockers cleared (rights verified, pack purged, CI green)",
+      "done": true
+    },
+    {
+      "step": "Deploy runbook written with known traps recorded",
+      "done": true
+    },
+    {
+      "step": "Establish a regular tag cadence tied to milestone closes",
+      "done": false
+    },
+    {
+      "step": "First post-M1.5 public build tagged and announced",
+      "done": false
+    }
   ],
-  "links": ["docs/DEPLOY.md", "ITCH_PAGE.md"]
+  "links": [
+    "docs/DEPLOY.md",
+    "ITCH_PAGE.md"
+  ],
+  "release": "update-1",
+  "release_critical": true,
+  "depends_on": [
+    "close-m15-gate"
+  ]
 }

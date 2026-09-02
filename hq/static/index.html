@@ -18,8 +18,13 @@
         <div class="brand-sub">CEO Operating Surface</div>
       </div>
     </div>
-    <a href="#/" data-route="/"><span>🏠</span> Dashboard</a>
-    <div class="nav-sub" id="nav-pillars"></div>
+    <div class="nav-group" data-grp="dashboard">
+      <div class="nav-parent">
+        <a href="#/" data-route="/"><span>🏠</span> Dashboard <i class="dot roll" id="nav-dash-roll" hidden></i></a>
+        <button class="nav-caret" data-grp="dashboard" aria-label="expand pillar reports">▸</button>
+      </div>
+      <div class="nav-sub" id="nav-pillars" hidden></div>
+    </div>
     <a href="#/org" data-route="/org"><span>🧑‍🤝‍🧑</span> Org Chart</a>
     <a href="#/entities" data-route="/entities"><span>🐔</span> Entities</a>
     <a href="#/program" data-route="/program"><span>🗂️</span> Program Report</a>
@@ -29,6 +34,12 @@
     <a href="#/inbox" data-route="/inbox"><span>📥</span> Decision Inbox <b id="inbox-badge" class="badge" hidden></b></a>
     <a href="#/chat" data-route="/chat"><span>💬</span> Chief of Staff</a>
     <div class="sidebar-foot">
+      <div class="nav-legend">
+        <span><i class="dot d-ok"></i>under control</span>
+        <span><i class="dot d-attn"></i>needs attention</span>
+        <span><i class="dot d-fire"></i>on fire</span>
+        <span><i class="dot d-dorm"></i>dormant</span>
+      </div>
       <div id="health-dot" class="health"><i></i> checking…</div>
     </div>
   </nav>
