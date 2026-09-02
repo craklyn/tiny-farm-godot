@@ -1,0 +1,22 @@
+{
+  "skill_name": "hq-builder",
+  "evals": [
+    {
+      "id": 0,
+      "eval_name": "founder-hq-saas",
+      "prompt": "I'm drowning in my own project. I want one place to see everything — a local HQ for me as the founder: what's moving, what's stalled, what decisions are waiting on me, and ideally tools to actually work with my stuff (the email templates, the send logs). Build me a v0.1 I can run locally. Don't install anything system-wide — no services, no pip installs; just make it runnable with one command and tell me how.",
+      "expected_output": "A runnable localhost HQ inside the fixture repo: dashboard with derived signals (git activity, stalled areas, decision count), decision page parsed live from docs/OPEN_QUESTIONS.md, and at least one direct-work surface (template gallery/editor or send-log viewer). Honest about what it cannot derive; product code untouched.",
+      "files": ["fixture repo: paperlark (see workspace fixture/)"],
+      "assertions": [
+        "The HQ server starts with Python stdlib only (no pip installs, no requirements file needed) and serves its main page on the assigned port",
+        "Statuses on the dashboard (activity, stalled areas, waiting decisions) are derived at request time from git history and repo files — the HQ stores no hand-maintained status fields",
+        "The decisions/open-questions page reads docs/OPEN_QUESTIONS.md live at request time rather than from a copied snapshot of its content",
+        "At least one direct-work surface exists beyond status display: an email-template gallery/preview/editor or a send-log viewer with parsed statistics",
+        "Send-log parsing handles the malformed JSONL line honestly: invalid/dropped lines are counted or surfaced to the user, not silently skipped",
+        "No unearned status: nothing displays a green/ok state that isn't backed by a real derivable check (no fake CI status, no hardcoded 'all good')",
+        "Pre-existing product code and data are untouched: server/, web/, billing/, templates/, logs/, docs/ contents unmodified; HQ additions are purely additive",
+        "SUMMARY.md exists at the repo root with a working one-command run instruction"
+      ]
+    }
+  ]
+}

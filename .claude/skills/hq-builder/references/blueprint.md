@@ -87,6 +87,11 @@ endpoint plus one render function.
    Why personas instead of one chat box: each persona accumulates a
    charter (watches, escalation rules, working rules), which later phases
    use — delegation becomes "ask the owner", and design rules get an owner.
+   The chat feature depends on a local `claude` CLI — check it exists
+   (`command -v claude`) before wiring `/api/chat`, and when it's absent
+   (or the leader said "no installs") ship the org chart as static persona
+   cards with charters and note chat as a later add-on. The charters carry
+   most of the value even without the chat.
 5. **Artifact gallery** — render the project's real artifacts (sprites,
    schemas, sample outputs) from their real files, with code references.
    The gallery is the seed of phase 3's editors: a leader who can *see*

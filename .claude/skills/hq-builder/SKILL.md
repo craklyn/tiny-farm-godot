@@ -35,6 +35,19 @@ attention goes only where it's needed.
 Hold this contract from the first commit. Every later phase — signals,
 trust hardening, the attention model — builds on it.
 
+## Where this skill earns its keep
+
+An A/B trial (skill vs. no skill, same task) showed a capable model builds a
+respectable *status page* unaided: derived signals, live doc parsing, honest
+log stats. What the unaided build lacked — and what you must therefore never
+treat as optional garnish — are the parts that turn a viewer into an
+operating surface: **two-way decision capture** (rulings recorded on-page
+that flow back into the dev process), **write-safety guardrails** on every
+editor (validation, backups, refusing destructive saves), and the
+**attention model** (a ranked queue deduped by unblocking action, not an
+unranked health board). If effort must be rationed, ration it away from the
+basics and toward these.
+
 ## The four phases
 
 Work through these in order for a new HQ; jump to the matching phase when
