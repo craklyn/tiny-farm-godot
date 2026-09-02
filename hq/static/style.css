@@ -206,6 +206,51 @@ code.ref { background: #1b1710; border: 1px solid var(--line); border-radius: 6p
 .plan-step .tick { width: 20px; flex-shrink: 0; text-align: center; }
 .req li { margin: 6px 0 6px 18px; }
 
+/* ---------- the landing page (Rin's hierarchy) ---------- */
+.dash-head { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; margin-bottom: 18px; flex-wrap: wrap; }
+.dash-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr); gap: 26px; align-items: start; }
+@media (max-width: 900px) { .dash-grid { grid-template-columns: 1fr; } }
+.hero-card {
+  background: linear-gradient(135deg, #35290f, var(--panel));
+  border: 1px solid var(--accent); border-radius: 14px;
+  padding: 22px 24px; cursor: pointer; transition: box-shadow .15s;
+}
+.hero-card:hover { box-shadow: 0 0 0 2px var(--accent); }
+.hero-card.hero-calm { border-color: var(--green); background: var(--panel); cursor: default; }
+.hero-eyebrow { font-size: 11px; letter-spacing: 2px; color: var(--accent); font-weight: 700; display: flex; gap: 10px; align-items: center; }
+.hero-text { font-size: 18px; line-height: 1.5; margin-top: 10px; }
+.hero-go { margin-top: 10px; color: var(--accent); font-weight: 700; font-size: 13px; }
+.also { margin-top: 16px; }
+.also-head { font-size: 11px; letter-spacing: 2px; color: var(--muted); font-weight: 700; margin-bottom: 6px; }
+.also-row {
+  display: flex; align-items: baseline; gap: 10px; padding: 7px 10px;
+  border-radius: 8px; cursor: pointer; font-size: 13.5px;
+}
+.also-row:hover { background: var(--panel); }
+.also-rank { color: var(--muted); font-weight: 700; width: 14px; flex-shrink: 0; text-align: right; }
+.also-text { min-width: 0; }
+.kchip { display: inline-block; padding: 1px 7px; border-radius: 8px; font-size: 10px; font-weight: 800; letter-spacing: 1px; flex-shrink: 0; }
+.k-fire { background: #43221c; color: #ff8a70; }
+.k-action { background: #3d3418; color: var(--accent); }
+.k-watch { background: #3a331d; color: #d9c26a; }
+.k-decide { background: #23303d; color: var(--blue); }
+.k-info { background: var(--panel2); color: var(--muted); }
+.dash-side .side-head { font-size: 13px; font-weight: 700; margin-bottom: 8px; }
+.pillar-row {
+  display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+  border-radius: 8px; cursor: pointer; font-size: 13.5px;
+}
+.pillar-row:hover { background: var(--panel); }
+.pillar-row .pr-name { font-weight: 600; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pillar-row .pr-meta { margin-left: auto; white-space: nowrap; }
+.side-nums { display: flex; flex-direction: column; gap: 7px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
+.brief { margin-top: 18px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); }
+.brief summary { padding: 12px 16px; cursor: pointer; font-size: 13.5px; color: var(--muted); list-style: none; }
+.brief summary::-webkit-details-marker { display: none; }
+.brief summary::before { content: "▸ "; }
+.brief[open] summary::before { content: "▾ "; }
+.brief .brief-body { padding: 0 18px 14px; }
+
 /* ---------- eye of sauron + pillars ---------- */
 .eye-card { border-left: 4px solid var(--line); font-size: 15px; padding: 13px 16px; }
 .eye-fire { border-left-color: #e05c48; background: #35201b; }

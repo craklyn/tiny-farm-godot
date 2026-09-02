@@ -918,7 +918,7 @@ def make_standup():
     import hashlib
     sig = compute_signals()
     projects = load_projects()
-    finger_src = json.dumps({"s": sig["status"], "e": sig["eye"], "q": sig["queue"],
+    finger_src = json.dumps({"v": 2, "s": sig["status"], "e": sig["eye"], "q": sig["queue"],
                              "p": [(p["id"], p["status"]) for p in projects]}, sort_keys=True)
     finger = hashlib.sha1(finger_src.encode()).hexdigest()[:12]
     spath = os.path.join(DATA, "runs", "standup.json")
@@ -944,8 +944,8 @@ def _make_standup_locked(finger, spath, sig, projects):
     sys_prompt = build_system_prompt(org, "claude")
     prompt = f"""Write Daniel's standup brief from this live data (signals derived from the repo/CI just now). Rules:
 - Plain language, no internal ticket IDs unless naming a decision he can rule on.
-- Structure: 1) "The one thing" — the single highest-leverage action only Daniel can take. 2) "Since you last looked" — 2-4 bullets of what actually shipped (from the commit subjects). 3) "Under control" — one line per quiet pillar, honest. 4) "Waiting on you" — decisions/approvals, oldest first.
-- Max ~250 words. No preamble, start with the content.
+- The dashboard already shows the #1 action in a hero card — do NOT repeat it as a section. Structure: 1) "Since you last looked" — 2-4 bullets of what actually shipped (from the commit subjects). 2) "Under control" — one line per quiet pillar, honest. 3) "Waiting on you" — decisions/approvals, oldest first, one line each.
+- Max ~200 words. No preamble, start with the content.
 
 SIGNALS: {json.dumps(sig["status"])}
 EYE QUEUE: {json.dumps(sig["eye"])}

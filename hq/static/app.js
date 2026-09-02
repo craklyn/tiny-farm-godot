@@ -134,82 +134,116 @@ async function route() {
 window.addEventListener("hashchange", route);
 
 /* ---------------- dashboard ---------------- */
+/* The landing page, on Rin's first principles: one visual hierarchy —
+   (1) the single thing only the CEO can do, large; (2) the short ranked rest,
+   dense; (3) the state of the world, glanceable; (4) the narrative brief,
+   folded unless something changed since he last read it. */
 async function renderDashboard() {
   const [org, pillars, sig] = await Promise.all([api("/api/org"), api("/api/pillars"), signals(true)]);
   const hour = new Date().getHours();
   const greet = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
-  const EYE_META = {
-    fire: ["🔥", "eye-fire"], action: ["👁️", "eye-action"],
-    watch: ["🟡", "eye-action"], decide: ["⚖️", "eye-decide"], info: ["ℹ️", "eye-info"],
+  const KIND = {
+    fire: ["FIRE", "k-fire"], action: ["FOR YOU", "k-action"],
+    watch: ["WATCH", "k-watch"], decide: ["DECIDE", "k-decide"], info: ["FYI", "k-info"],
   };
   const eye = sig.eye || [];
+  const hero = eye[0];
+  const rest = eye.slice(1, 8);
   $view.replaceChildren(h(`
     <div class="dash-head">
-      <div><h1>${greet}, Daniel 👋</h1>
-      <p class="sub" style="margin-bottom:0">Everything below is derived live from the repo, CI, and the docs — as of ${esc(sig.generated_at)}. <a class="plain" id="dash-refresh" href="#/">refresh</a></p></div>
+      <h1>${greet}, Daniel 👋</h1>
+      <span class="small muted">derived live · ${esc(sig.generated_at)} · <a class="plain" id="dash-refresh" href="#/">refresh</a></span>
     </div>
-    <h2>👁️ Where to look</h2>
-    <p class="small muted" style="margin-top:-6px">The ordered queue of what deserves your attention. Everything not listed here is under control or dormant by your own ruling.</p>
-    <div id="dash-eye"></div>
-    <div id="dash-standup"><button class="ghost" id="standup-btn">📋 Chief of staff's brief</button>
-      <span class="small muted"> — written by your CoS from the live signals; cached until reality changes.</span></div>
-    <h2>The pillars</h2>
-    <div class="pillar-tiles" id="dash-pillars"></div>
-    <div class="statrow" style="margin-top:18px">
-      <div class="stat"><b>${sig.queue.prepped}</b><span>decisions ready for your call</span></div>
-      <div class="stat"><b>${sig.projects.in_progress}</b><span>projects in flight</span></div>
-      <div class="stat"><b>${sig.projects.blocked}</b><span>blocked</span></div>
-      <div class="stat"><b>${sig.playtests.count}</b><span>playtests recorded</span></div>
-      <div class="stat"><b>${org.employees.length - 1}</b><span>people on your team</span></div>
+    <div class="dash-grid">
+      <div class="dash-main">
+        ${hero ? `<div class="hero-card" ${hero.href ? 'data-href="' + esc(hero.href) + '"' : ""}>
+          <div class="hero-eyebrow">👁️ THE ONE THING ${KIND[hero.kind] ? `<span class="kchip ${KIND[hero.kind][1]}">${KIND[hero.kind][0]}</span>` : ""}</div>
+          <div class="hero-text">${esc(hero.text)}</div>
+          ${hero.href ? `<div class="hero-go">open →</div>` : ""}
+        </div>` : `<div class="hero-card hero-calm">
+          <div class="hero-eyebrow">👁️ THE ONE THING</div>
+          <div class="hero-text">Nothing needs you. Genuinely — every signal is green or dormant by your own ruling.</div>
+        </div>`}
+        ${rest.length ? `<div class="also"><div class="also-head">Also needs you, in order</div>${rest.map((it, i) => `
+          <div class="also-row" ${it.href ? 'data-href="' + esc(it.href) + '"' : ""}>
+            <span class="also-rank">${i + 2}</span>
+            <span class="kchip ${(KIND[it.kind] || KIND.info)[1]}">${(KIND[it.kind] || KIND.info)[0]}</span>
+            <span class="also-text">${esc(it.text)}</span>
+          </div>`).join("")}</div>` : ""}
+        <div id="dash-standup"></div>
+      </div>
+      <div class="dash-side">
+        <div class="side-head">The pillars <span class="small muted">· click for detail</span></div>
+        <div id="dash-pillars"></div>
+        <div class="side-nums small">
+          <a class="plain" href="#/inbox">⚖️ ${sig.queue.prepped} decision${sig.queue.prepped === 1 ? "" : "s"} prepped</a>
+          <a class="plain" href="#/program">📁 ${sig.projects.in_progress} in flight · ${sig.projects.blocked} blocked</a>
+          <a class="plain" href="#/playtests">🧪 ${sig.playtests.count} playtests</a>
+          <a class="plain" href="#/org">🧑‍🤝‍🧑 ${org.employees.length - 1} on your team</a>
+          <a class="plain" href="#/chat">💬 chase anything via your chief of staff</a>
+        </div>
+      </div>
     </div>
-    <div class="card">💬 Need anything chased down? <a class="plain" href="#/chat">Talk to your chief of staff</a> — or any team member from the <a class="plain" href="#/org">org chart</a>. Verification is a click away on <a class="plain" href="#/pillar/engineering">Engineering</a>.</div>
   `));
-  const de = document.getElementById("dash-eye");
-  if (!eye.length) de.appendChild(h(`<div class="card eye-card eye-info">🌤️ Nothing needs your eye. Genuinely — every signal is green or dormant-by-ruling.</div>`));
-  eye.slice(0, 8).forEach(it => {
-    const [icon, cls] = EYE_META[it.kind] || EYE_META.info;
-    const card = h(`<div class="card eye-card ${cls}" ${it.href ? 'style="cursor:pointer"' : ""}>${icon} ${esc(it.text)}</div>`).firstElementChild;
-    if (it.href) card.addEventListener("click", () => location.hash = it.href);
-    de.appendChild(card);
-  });
+  $view.querySelectorAll("[data-href]").forEach(el =>
+    el.addEventListener("click", () => location.hash = el.dataset.href));
   const dp = document.getElementById("dash-pillars");
   pillars.pillars.forEach(p => {
     const st = sig.status[p.id] || { level: "ok", reasons: [""] };
     const per = sig.per_pillar[p.id] || { commits_24h: 0, commits_7d: 0 };
-    const tile = h(`<div class="pillar-tile">
-      <div class="pt-head">${p.emoji} <b>${esc(p.name)}</b></div>
-      <div style="margin:6px 0">${levelChip(st.level)}</div>
-      <div class="small muted pt-reason">${esc((st.reasons[0] || "").slice(0, 110))}</div>
-      <div class="small" style="margin-top:8px">${per.commits_24h ? `⚡ ${per.commits_24h} commit${per.commits_24h === 1 ? "" : "s"} today` : per.commits_7d ? `${per.commits_7d} commit${per.commits_7d === 1 ? "" : "s"} this week` : "quiet this week"}</div>
+    const m = LEVEL_META[st.level] || LEVEL_META.ok;
+    const row = h(`<div class="pillar-row" title="${esc((st.reasons[0] || "").slice(0, 200))}">
+      <span class="pr-dot">${m.dot}</span>
+      <span class="pr-name">${p.emoji} ${esc(p.name)}</span>
+      <span class="pr-meta small muted">${st.level === "dormant" ? "dormant" : st.level === "ok" ? "under control" : m.label}${per.commits_24h ? ` · ⚡${per.commits_24h}` : ""}</span>
     </div>`).firstElementChild;
-    tile.addEventListener("click", () => location.hash = "#/pillar/" + p.id);
-    dp.appendChild(tile);
+    row.addEventListener("click", () => location.hash = "#/pillar/" + p.id);
+    dp.appendChild(row);
   });
   const refresh = document.getElementById("dash-refresh");
   // Through route(), not renderDashboard() directly, so the seq guard can
   // cancel it if the user navigates away mid-refresh.
   if (refresh) refresh.addEventListener("click", ev => { ev.preventDefault(); route(); });
-  const sb = document.getElementById("standup-btn");
+  // The brief folds away once read: it auto-opens only when its fingerprint
+  // differs from the one the CEO last saw (reality changed), otherwise it's a
+  // one-line summary he can expand. Rin's rule: narrative never outranks action.
   const showBrief = r => {
     const box = document.getElementById("dash-standup");
     if (!box || !r.brief) return false;
-    box.replaceChildren(h(`<div class="card" style="border-left:3px solid var(--accent)">
-      <div class="small muted" style="margin-bottom:6px">📋 Chief of staff's brief · ${esc(r.generated || "")} · <a class="plain" href="#/" id="brief-refresh">rewrite from current signals</a></div>${md(r.brief)}</div>`));
+    let seen = null;
+    try { seen = localStorage.getItem("hq-brief-seen"); } catch { }
+    const isNew = r.fingerprint && r.fingerprint !== seen;
+    box.replaceChildren(h(`<details class="brief" ${isNew ? "open" : ""}>
+      <summary>📋 Chief of staff's brief · ${esc(r.generated || "")}${isNew ? ' <span class="kchip k-action">NEW</span>' : ""} <a class="plain small" href="#/" id="brief-refresh">rewrite</a></summary>
+      <div class="brief-body">${md(r.brief)}</div>
+    </details>`));
+    const det = box.querySelector("details");
+    const markSeen = () => { try { localStorage.setItem("hq-brief-seen", r.fingerprint || ""); } catch { } };
+    if (isNew) markSeen();
+    det.addEventListener("toggle", () => { if (det.open) markSeen(); });
     const rf = document.getElementById("brief-refresh");
-    rf.addEventListener("click", ev => { ev.preventDefault(); regen(rf); });
+    rf.addEventListener("click", async ev => {
+      ev.preventDefault(); ev.stopPropagation();
+      rf.textContent = "writing…";
+      try { showBrief(await (await fetch("/api/standup", { method: "POST" })).json()); }
+      catch { rf.textContent = "rewrite (failed — retry)"; }
+    });
     return true;
   };
-  const regen = async el => {
-    if (el) el.textContent = "your chief of staff is writing…";
-    else { sb.disabled = true; sb.textContent = "📋 Your chief of staff is writing…"; }
-    try {
-      const r = await (await fetch("/api/standup", { method: "POST" })).json();
-      if (!showBrief(r) && sb.isConnected) { sb.disabled = false; sb.textContent = "📋 Chief of staff's brief (retry)"; }
-    } catch { if (sb.isConnected) { sb.disabled = false; sb.textContent = "📋 Chief of staff's brief (retry)"; } }
-  };
-  sb.addEventListener("click", () => regen(null));
-  // Show the cached brief instantly if one exists; the button stays for first use.
-  fetch("/api/standup").then(r => r.json()).then(showBrief).catch(() => {});
+  // Cached brief renders instantly; if none exists yet, offer to write one.
+  fetch("/api/standup").then(r => r.json()).then(r => {
+    if (!showBrief(r)) {
+      const box = document.getElementById("dash-standup");
+      if (!box) return;
+      const btn = h(`<button class="ghost" style="margin-top:4px">📋 Have your chief of staff write today's brief</button>`).firstElementChild;
+      btn.addEventListener("click", async () => {
+        btn.disabled = true; btn.textContent = "📋 Your chief of staff is writing…";
+        try { if (!showBrief(await (await fetch("/api/standup", { method: "POST" })).json())) { btn.disabled = false; btn.textContent = "📋 Brief (retry)"; } }
+        catch { btn.disabled = false; btn.textContent = "📋 Brief (retry)"; }
+      });
+      box.replaceChildren(btn);
+    }
+  }).catch(() => {});
 }
 
 /* ---------------- org chart ---------------- */
@@ -241,24 +275,6 @@ async function renderOrg() {
     <p class="sub">${org.employees.length} people · every lead reports to you; the chief of staff sits at your side, outside the functional chain. Click anyone to see their charter or start a chat. Levels use Amazon's ladder.</p>
     <div class="org-scroll"><div class="org-root" id="org-root"></div></div>`);
   const rootDiv = frag.getElementById("org-root");
-  const top = document.createElement("div");
-  top.className = "org-top";
-  top.appendChild(personCard(root));
-  if (staff.length) {
-    const sd = document.createElement("div");
-    sd.className = "org-staff";
-    sd.appendChild(h(`<div class="tie"></div>`));
-    staff.forEach(s => {
-      const card = personCard(s, true);
-      card.firstElementChild.insertAdjacentHTML("beforeend", `<div class="role">staff — reports to CEO</div>`);
-      sd.appendChild(card);
-    });
-    top.appendChild(sd);
-  }
-  rootDiv.appendChild(top);
-  rootDiv.appendChild(h(`<div class="org-stub"></div>`));
-  const kids = document.createElement("div");
-  kids.className = "org-kids";
   // Recursive: each person's reports hang off a rail below them, elbow per card.
   const buildSub = id => {
     const reports = byMgr[id] || [];
@@ -275,6 +291,28 @@ async function renderOrg() {
     });
     return sub;
   };
+  const top = document.createElement("div");
+  top.className = "org-top";
+  top.appendChild(personCard(root));
+  if (staff.length) {
+    const sd = document.createElement("div");
+    sd.className = "org-staff";
+    sd.appendChild(h(`<div class="tie"></div>`));
+    staff.forEach(s => {
+      const col = document.createElement("div");
+      const card = personCard(s, true);
+      card.firstElementChild.insertAdjacentHTML("beforeend", `<div class="role">staff — reports to CEO</div>`);
+      col.appendChild(card);
+      const sub = buildSub(s.id);   // staff seats can have reports too (Rin)
+      if (sub) col.appendChild(sub);
+      sd.appendChild(col);
+    });
+    top.appendChild(sd);
+  }
+  rootDiv.appendChild(top);
+  rootDiv.appendChild(h(`<div class="org-stub"></div>`));
+  const kids = document.createElement("div");
+  kids.className = "org-kids";
   leads.forEach(direct => {
     const branch = document.createElement("div");
     branch.className = "org-branch";
