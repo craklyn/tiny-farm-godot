@@ -28,8 +28,10 @@ all landed). Suites at close: unit 1799 / integration 453 / robot MATCH / benchm
   the noun (now holding before it fades), and the clock as built. See T-28 below.
 - ✅ Q-76/77/78 ruled 2026-09-01: no intro skip yet; the tap queue is backlogged as
   D-10 with a trigger; the can keeps 8 charges and its level chip shipped for everyone.
-- The M1.5 gate re-evidence needs a **fresh adult** (the household testers are now
-  both coached); casting is the designer's.
+- The M1.5 gate re-evidence rides the **pre-release green-tester pass** (designer
+  ruling 2026-09-02: no standing fresh-player recruiting at this phase — the designer
+  is the primary playtester, and one genuinely fresh tester is sought before each
+  public feature release; see Standing rules). Not a blocker for current work.
 - Replay v2 Phase B prerequisites are recorded in `M2_5_PLAN.md` §9 — a fresh-farm
   tablet session on a current build is the missing human artifact (the 08-31
   sessions all predate the final worldgen).
@@ -264,6 +266,8 @@ will not add the check"* — everything else adopted as analyzed:
       cot look AND on T-28's station passes (sell/buy and water refill), so one fresh
       adult meets the finished versions of all of them. A post-M2.5 tablet deploy for
       that session also feeds replay Phase B's human-session prerequisite.
+      **Scheduled by the 2026-09-02 ruling:** this session is the pre-v0.2.0
+      green-tester pass — no recruiting before the release approaches.
 
 **T-28 — The stations present themselves (sell/buy, water refill)** · raised by the
 designer 2026-08-31 as a prerequisite of the gate session · **aimed 2026-09-01, his
@@ -1688,6 +1692,11 @@ testable for free).
 ## Standing rules
 - Every vertical-slice milestone (M1, M3, M4, M5, M6) ends in a public, free,
   unrestricted release — release early and as often as possible (Q-6 ruling; D-5 note).
+- **Playtesting cadence (designer ruling 2026-09-02):** frequent fresh-player
+  playtests are not expected at this phase of development. The designer is the
+  primary playtester day to day; one genuinely fresh ("green") playtester is
+  sought before each public release of new features. Gate bars that require an
+  uncoached player (like M1.5's cot bar) score from that pre-release session.
 - Desktop and Android builds stay green at every milestone (P-1).
 - Every milestone lands with sim-level tests (S-8).
 - Docs in `docs/` are updated in the same PR as the design change they reflect.
