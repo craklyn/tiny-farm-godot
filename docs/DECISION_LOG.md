@@ -508,6 +508,15 @@ fast-forward benchmark still measures ~973,000x realtime, because reactions run 
 `apply_action` has already resolved and redraw only while one is in flight. Tier (b)
 would additionally need per-verb actor poses, which is where the art cost starts.
 
+**✅ Settled 2026-09-02 (Q-29): tier (b) — actor + reaction for the five core verbs.**
+The farmer animates too: a per-verb actor pose (swing, stoop, pour) synchronized with
+the existing tile reaction. The determinism constraint above is unchanged — animation
+stays presentation-only, playing after `apply_action` resolves. The full-choreography
+question (c) is *not* closed; the designer asked the same day for an explicit revisit
+trigger. **Revisit trigger (chief-of-staff strawman, adjustable):** when the art reskin
+lands (Q-14 style-guide approval starts that clock), or earlier if a playtest shows a
+player unable to tell what a tap did at tier (b) — whichever comes first.
+
 ### D-9. Does actor position become simulation state, and movement an Action?
 Raised 2026-08-28 from the designer's question: *is the problem just that our action
 replay doesn't record movement taps as actions?*
@@ -588,6 +597,18 @@ once — and the phase-4 corpus question (does a queue's order carry intent?) ri
 whichever arrives first. Cost if deferred long: fast-player sessions keep recording
 replaced-intent taps as dead input, which slightly muddies the dead-tap metric the
 gates use (16 of the speed run's 61 were genuinely aimed elsewhere).
+
+### D-11. An in-game bestiary / field guide (the Zoo, player-facing)?
+Raised 2026-09-02 from the Q-71 ruling: the Zoo stays a debug door, but what it turned
+out to be while being built — the picture, the motion, the sound, the real lifecycle
+per species — is most of a field guide already. The designer's words: *"add a design
+decision somewhere (not prioritized now) on whether we create an in-game bestiary."*
+**Deliberately unprioritized.** If it ever ships it would need the wordless treatment
+(S-7: pictures and behavior, no required reading) and a way to earn entries rather
+than a menu dump.
+**Trigger:** phase-3/4 content planning, when the species roster grows past what a
+player can hold in their head — or earlier if playtesters are seen going looking for
+species information the game doesn't offer.
 
 ---
 

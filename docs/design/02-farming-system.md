@@ -17,6 +17,12 @@ watering-can charges, well refill; shipping bin → gold overnight; day/weather 
 3. **Weather & seasons** — `[Designer]` seasons yes/no is a scope fork: seasons add
    rhythm and replay depth but multiply art, balancing, and pest-behavior work. Weather
    already exists as a variable; minimum viable is rain-waters-crops.
+   **Ruled 2026-09-02 (Q-52): wetness is shown, and it animates so the change reads as
+   caused.** Rain-wet bare tilled soil is visible (reversing the playtest-night hide);
+   freshly tilled ground in rain starts dry and darkens progressively over ~3s
+   `[Playtest]`; a sprinkler fills at the same slow rate; the watering can fills fast,
+   ~1/3 the duration `[Playtest]`. Presentation-only — the sim's watered flag is
+   unchanged; only the renderer eases toward it.
 4. **Energy & time economy** — energy costs per action exist; tuning is `[Playtest]`
    with the kid constraint bounding phase-1 friction (Q-11).
    **Settled 2026-08-29 (designer): energy is per actor, and only the player's is the
@@ -38,6 +44,13 @@ watering-can charges, well refill; shipping bin → gold overnight; day/weather 
    spreadsheet model at M3 planning.
 6. **Land expansion** — how new rings unlock (gold? proofs?), tying into world scale
    plan (`ARCHITECTURE.md`).
+   **Ruled 2026-09-02 (Q-50, direction):** early-game pacing leans on clearing costs.
+   Initial yard debris keeps the hen (and the player's attention) near the start for a
+   while; expanding into debris costs noticeably more than tending already-cleared
+   land; clearing must visibly read as exertion; and costs differ by obstacle —
+   bushes/weeds cheap, trees/rocks dear. Exact numbers `[Playtest]`. This is also why
+   the egg coin flip stays (the Q-50 confusion was silent accumulation, cured upstream
+   by pacing, not by making the hen deterministic).
 
 ## Constraints from decisions
 Grid is truth (S-4); every farm interaction is an Action verb (S-3); phase-1 loop must

@@ -1,0 +1,8 @@
+{
+ "id": "Q-52",
+ "option": "b",
+ "option_label": "Show it",
+ "judgment": "In rain, when a tile is tilled/hoed, we should initially show it dry and then have it animate progresssively wetter over a period of time (maybe 3 seconds, I'm not sure) to indicate the change.  A sprinkler should have a similar slow fill.  A watering can should show a fast fill (maybe 1/3rd the duration, but can be tweaked).",
+ "ruled_at": "2026-09-02T12:42:47",
+ "status": "integrated"
+}

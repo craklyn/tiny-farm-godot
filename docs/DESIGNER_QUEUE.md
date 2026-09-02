@@ -59,11 +59,18 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
 - **Q-12** ~~Phase-1-complete moment~~ — ✅ ruled 2026-08-19: Expansion Morning
   accepted as direction; thresholds and staging explicitly fine-tunable at playtest
   (it is provisional like everything — P-4 spirit).
-- **Q-28 (Joint, from Q-8 ruling)** Interaction inventory: enumerate every game
+- **Q-28** ~~Interaction inventory?~~ — ✅ **ruled 2026-09-02: green-lit now.** The
+  first pass is unblocked and due before M3 planning; it lands in `design/11-ux-ui.md`.
+  Original entry: **(Joint, from Q-8 ruling)** Interaction inventory: enumerate every game
   interaction phase-by-phase and match each to its best input method (touch primary,
   desktop mappings). First pass before M3; re-audit at each phase's design start.
   Home: `design/11-ux-ui.md`.
-- **Q-31 (Creative → designer)** Record bespoke foley for the verb table. Raised
+- **Q-31** ~~Record bespoke foley for the verb table~~ — ✅ **ruled 2026-09-02, and
+  pulled forward: "let's actually schedule it immediately — today is a good time for me
+  to complete it."** The designer's words override the priority note below (which had
+  the session waiting on Q-13's direction; he ruled both the same day, knowingly).
+  Prep owed: a shot list from `design/10`'s verb→foley table.
+  Original entry: **(Creative → designer)** Record bespoke foley for the verb table. Raised
   2026-08-27 after a listening session: synthesis reliably handles percussive
   impacts and UI ticks (`till`, `ui_click`, `cluck`, `squawk` all passed) and
   reliably fails at voiced or reward sounds — four `harvest` takes each landed in
@@ -79,7 +86,10 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   release — the shipped set is complete and licence-clean.* Candidates drop into
   `assets/audio/sfx/` and appear in the in-game Sound Test for A/B on device;
   `tools/gen_sfx.py` remains the source for anything left synthesized.
-- **Q-29 (Ruling, at the playtest)** Verb animation depth — do clearing, tilling,
+- **Q-29** ~~Verb animation depth~~ — ✅ **ruled 2026-09-02: tier (b), actor +
+  reaction, for the five core verbs.** Full per-verb choreography (c) is not closed:
+  the designer asked for an explicit revisit trigger, recorded under D-8.
+  Original entry: **(Ruling, at the playtest)** Verb animation depth — do clearing, tilling,
   planting, watering, and harvesting get animated, and to which tier: (a) tile
   reaction only, (b) actor + reaction, or (c) full per-verb choreography? Recorded as
   **D-8** with the reasoning and the determinism constraint (animation is
@@ -123,9 +133,15 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
 - **Q-13 (Approval)** Audio direction one-pager — **draft ready**:
   `design/10-audio-direction.md` §"Direction proposal v1" (warm acoustic-toy identity,
   delegation arc scored, verb→foley table). Three taste questions at its end.
+  **Ruled 2026-09-02: not yet — discuss first.** Not a rejection: the designer wants a
+  conversation before signing. Owed to him: a plain-language walkthrough of the
+  direction and its three taste questions, in chat, then a re-ask.
 - **Q-14 (Approval)** Art style guide — **draft ready**: `design/09-art-direction.md`
   §"Style guide v1" (measured palette ramps, outline/shape/contrast rules, reserved
   overlay hues, animation budget, reskin spec implications).
+  **Ruled 2026-09-02: not yet — a look session first.** Sign-off waits on rendered
+  captures of the guide applied to the real game (the show-visual-drafts convention),
+  reviewed in a look session, then a re-ask.
 
 - **Q-43** ~~M1's exit gate depends on an unavailable playtester~~ — ✅ ruled 2026-08-28
   by the designer: **user-acceptance test satisfied at this stage.** The 4-year-old is
@@ -532,7 +548,15 @@ trace actually says, because several of these looked like bugs and were not.*
   evening — which is precisely when she most wants it. *Held rather than built because the
   HUD is currently status-only: adding the first action button to it is a shape decision
   about what the HUD is for, and that is yours.*
-- **Q-50 (Ruling)** **The chicken's egg is invisible as a rule.** She saw several eggs one
+- **Q-50** ~~The chicken's egg is invisible as a rule~~ — ✅ **ruled 2026-09-02: keep
+  the coin flip.** The designer re-read the confusion: not intermittency but silent
+  *accumulation* — she didn't know why she found several eggs at once. His remedy is
+  upstream, in early-game pacing: initial yard debris should keep the hen near the
+  start for a while; expanding should cost noticeably more than tending already-cleared
+  land; clearing must visibly read as exertion; and clearing costs should differ by
+  obstacle (bushes/weeds cheap, trees/rocks dear). Folded into `design/02` §Land
+  expansion; implementation filed as a task.
+  Original entry: **(Ruling)** **The chicken's egg is invisible as a rule.** She saw several eggs one
   morning, then spent part of another day waiting in-game for eggs to appear. Both
   readings are reasonable and neither is what happens: the hen lays **at most one egg, at
   the day rollover, on a coin flip** (`entities/chicken.gd`), and a "bunch" is several
@@ -583,7 +607,12 @@ trace actually says, because several of these looked like bugs and were not.*
   building, since the framing fix landed after the report.
 
   **Q-51 is therefore closed.**
-- **Q-52 (Approval)** **Two small changes made on the night, easily reverted.**
+- **Q-52** ~~Rain-wet bare tilled soil: show or hide?~~ — ✅ **ruled 2026-09-02: show
+  it, animated so the change reads as caused.** Freshly tilled ground in rain starts
+  dry and darkens progressively over ~3s `[Playtest]`; a sprinkler fills at the same
+  slow rate; the watering can fills fast (~1/3 the duration `[Playtest]`). Folded into
+  `design/02` §Weather; presentation-layer work filed as a task.
+  Original entry: **(Approval)** **Two small changes made on the night, easily reverted.**
   (1) *"Sunny" at night was confusing*, so the weather line now shows only the time of day
   as an icon (☀️ / 🌇 / 🌙) when the weather is clear, and keeps "🌧️ Rainy" when it is
   not — rain is the half worth naming and the half she can act on. (2) *Rain used to mark
@@ -652,7 +681,11 @@ trace actually says, because several of these looked like bugs and were not.*
   resize it, or leave it — it is four numbers in `ui/hud.gd`. The one thing worth deciding
   deliberately rather than by drift is whether the HUD is now allowed to hold *actions* at
   all; if the answer is no, this button comes back out and the cot carries the beat alone.
-- **Q-70 (Taste)** **How different should the yard's ground look?** T-32 built the
+- **Q-70** ~~How different should the yard's ground look?~~ — ✅ **ruled 2026-09-02:
+  much more different, now** — the yard reads as tidy grass, the field as tall
+  grassland/weeds. A colour remap is not enough; the field wants its own taller,
+  weedier texture. Art task filed (retro-diffusion pipeline).
+  Original entry: **(Taste)** **How different should the yard's ground look?** T-32 built the
   untillable ground you asked for and it needed a colour, which your directive did not
   specify and should not have had to. It is `terrain_grass.png`'s own noise pattern with
   its three colours remapped — the tile is derived, never generated, so that the two
@@ -670,7 +703,11 @@ trace actually says, because several of these looked like bugs and were not.*
   The yard is most of the early screen for the first several minutes, so this is a
   colour you will be staring at longer than any other in the game — which is the whole
   argument for the quiet end and the reason it is still worth your eye rather than mine.
-- **Q-71 (Ruling)** **Does the Zoo stay a debug door, or become something the player
+- **Q-71** ~~Does the Zoo stay a debug door?~~ — ✅ **ruled 2026-09-02: it stays a dev
+  tool.** Whether a player-facing bestiary/field guide ever ships is recorded as
+  **D-11** — deliberately unprioritized, per the designer's words, with its trigger in
+  the log.
+  Original entry: **(Ruling)** **Does the Zoo stay a debug door, or become something the player
   gets?** T-33 built what you asked for: a title-screen door onto a flat field with a
   button per species, spawning each one the way its real lifecycle does. It is behind
   `OS.is_debug_build()` beside the Sound Test and the Look Lab, which is the right place
