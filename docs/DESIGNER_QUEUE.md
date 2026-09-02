@@ -61,6 +61,10 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   (it is provisional like everything — P-4 spirit).
 - **Q-28** ~~Interaction inventory?~~ — ✅ **ruled 2026-09-02: green-lit now.** The
   first pass is unblocked and due before M3 planning; it lands in `design/11-ux-ui.md`.
+  **Landed same day**: 33 interactions tabled across phases 1–5 (phase 1 from shipping
+  code, later phases from their chapters), plus five findings routed to M3/M5 planning
+  (gamepad's placement cursor, the "select, then point" grammar debuting on the dog,
+  manual camera arriving with altitude). Re-audit at each phase design start.
   Original entry: **(Joint, from Q-8 ruling)** Interaction inventory: enumerate every game
   interaction phase-by-phase and match each to its best input method (touch primary,
   desktop mappings). First pass before M3; re-audit at each phase's design start.
