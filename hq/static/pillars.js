@@ -69,8 +69,10 @@ async function renderPillar(pid) {
 /* ---- engineering: the verification panel (Grace's living demo) ---- */
 async function pillarEngineering(root, sig) {
   const draw = async () => {
+    if (!root.isConnected) return;  // page changed — stop polling
     delete cache["/api/runs"];
     const runs = await api("/api/runs");
+    if (!root.isConnected) return;
     root.replaceChildren(h(`<h2>Verification — run it yourself</h2>
       <div class="card"><p class="small muted" style="margin-bottom:10px">These run the real suites on this machine and report the honest verdict. CI runs the same on every push${sig.ci.latest ? ` — latest: <a class="plain" href="${esc(sig.ci.latest.url)}" target="_blank" rel="noopener">${esc(sig.ci.latest.displayTitle)}</a> (${sig.ci.green ? "✅ green" : sig.ci.in_progress ? "⏳ running" : "❌ red"})` : ""}.</p>
       <div id="jobs"></div></div>`));

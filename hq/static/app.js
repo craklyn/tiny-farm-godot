@@ -640,8 +640,10 @@ async function boot() {
     d.classList.add("ok"); d.innerHTML = "<i></i> service healthy";
   } catch { /* leave grey */ }
   try {
+    // The badge counts decisions PREPPED for the CEO — raw un-curated queue
+    // items are the chief of staff's backlog, not his.
     const queue = await api("/api/queue");
-    const n = queue.items.filter(q => !q.answered).length;
+    const n = (queue.curated || []).filter(c => !(queue.rulings || {})[c.id]).length;
     const b = document.getElementById("inbox-badge");
     if (n) { b.textContent = n; b.hidden = false; }
   } catch { /* no badge */ }

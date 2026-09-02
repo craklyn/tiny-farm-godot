@@ -607,20 +607,34 @@ def _git_last(paths=None, n=5):
     return rows
 
 
+_CI_LAST = {}
+
+
 def _ci_status():
-    out = run_cmd(["gh", "run", "list", "--limit", "3",
-                   "--json", "status,conclusion,displayTitle,updatedAt,url"], timeout=15)
+    out = run_cmd(["gh", "run", "list", "--branch", "main", "--limit", "3",
+                   "--json", "status,conclusion,displayTitle,updatedAt,url"], timeout=20)
     try:
         runs = json.loads(out) if out else []
     except ValueError:
         runs = []
+    if not runs and _CI_LAST:
+        # Transient gh failure: better a labeled stale answer than a false one.
+        return {**_CI_LAST, "stale": True}
     latest = runs[0] if runs else None
-    return {
+    # Green/red reads the newest COMPLETED run, so a push that is still running
+    # neither hides an existing red nor claims an unearned green.
+    done = next((r for r in runs if r.get("status") == "completed"), None)
+    result = {
         "available": bool(runs),
         "latest": latest,
-        "green": bool(latest and latest.get("conclusion") == "success"),
+        "has_completed": bool(done),
+        "green": bool(done and done.get("conclusion") == "success"),
         "in_progress": bool(latest and latest.get("status") != "completed"),
+        "stale": False,
     }
+    if runs:
+        _CI_LAST.update(result)
+    return result
 
 
 def _newest(path_glob_dir, exts=None):
@@ -689,17 +703,22 @@ def compute_signals():
 
     eng_reasons = []
     eng_level = "ok"
-    if ci["available"] and not ci["green"] and not ci["in_progress"]:
+    if ci["available"] and ci.get("has_completed") and not ci["green"]:
         eng_level = "fire"
-        eng_reasons.append("CI is red on main — the latest push failed its checks.")
+        eng_reasons.append("CI is red on main — the newest completed run failed its checks"
+                           + (" (a newer run is still in progress)." if ci["in_progress"] else "."))
     for j, r in failed_jobs:
         eng_level = "fire"
         eng_reasons.append(f"Local {r.get('label', j)} run failed: {r.get('summary', '')} (re-run it on the Engineering page — a loaded machine can skew the benchmark).")
     if not eng_reasons:
         fresh = "; ".join(f"{r['label']} {r.get('summary', '')} ({r.get('finished', '')[11:16]})"
                           for _, r in green_jobs[:2])
-        eng_reasons.append("CI green on main; every push runs both suites, the robot session, and the benchmark."
-                           + (f" Local: {fresh}." if fresh else ""))
+        if ci["available"] and ci["green"]:
+            base = "CI green on main" + (" (last known — GitHub unreachable just now)" if ci.get("stale") else "") \
+                + "; every push runs both suites, the robot session, and the benchmark."
+        else:
+            base = "CI status unreachable right now — no green claimed; the local runs below are the evidence."
+        eng_reasons.append(base + (f" Local: {fresh}." if fresh else ""))
     set_status("engineering", eng_level, eng_reasons)
 
     prod_reasons = []

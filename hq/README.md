@@ -1,8 +1,16 @@
 # Tiny Farm HQ
 
-The CEO's local operating surface: org chart with chattable personas, an animated
-entity gallery drawn from the real game sprite sheets, the program report, and a
-decision inbox parsed live from `docs/DESIGNER_QUEUE.md`.
+The CEO's local operating surface. The design contract: **everything is derived
+from real sources (git, CI, files, docs, traces) at request time** — no page
+maintains its own status, so "not marked on fire" is trustworthy, and the
+dashboard's eye queue is the ordered list of what actually needs the CEO.
+
+Surfaces: the Eye of Sauron dashboard (derived pillar statuses + the chief of
+staff's brief), six pillar pages (scoped commit feeds, living demos, team
+charters with escalation rules), org chart with chattable personas, the
+animated/editable entity gallery, the map editor (layout definitions), the
+playtest viewer (traces scored by the game's own formulas), the program
+report, and the decision inbox (curated cards + on-page rulings).
 
 - **URL:** http://localhost:8642
 - **Run by hand:** `python3 hq/server.py` (stdlib only, no dependencies)
