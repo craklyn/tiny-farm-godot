@@ -614,7 +614,11 @@ trace actually says, because several of these looked like bugs and were not.*
   it, animated so the change reads as caused.** Freshly tilled ground in rain starts
   dry and darkens progressively over ~3s `[Playtest]`; a sprinkler fills at the same
   slow rate; the watering can fills fast (~1/3 the duration `[Playtest]`). Folded into
-  `design/02` §Weather; presentation-layer work filed as a task.
+  `design/02` §Weather; **shipped 2026-09-02**: the picture rule is
+  `world/autotile.gd::draws_wet` (bare tilled included; rain wets the picture ahead of
+  the sim's day-turn flag), the soak crossfade is `world/farm.gd` (`WET_RAIN_MS` /
+  `WET_CAN_MS`, both `[Playtest]`). Presentation-only — the sim's watered flag,
+  `apply_action` and replays are untouched (asserted in `test_wetness_soaks_in`).
   Original entry: **(Approval)** **Two small changes made on the night, easily reverted.**
   (1) *"Sunny" at night was confusing*, so the weather line now shows only the time of day
   as an icon (☀️ / 🌇 / 🌙) when the weather is clear, and keeps "🌧️ Rainy" when it is

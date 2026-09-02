@@ -116,6 +116,7 @@ func _init() -> void:
 	test_zoo()
 	test_rain_on_ripe_soil()
 	test_ground_holds_until_black()
+	test_wetness_soaks_in()
 	test_parcel_introduction_pick()
 	test_parcel_scatter()
 
@@ -9171,13 +9172,19 @@ func test_rain_on_ripe_soil() -> void:
 	world.water_tile(ripe_t.x, ripe_t.y)
 	_assert(after.state == "ready", "and `water_tile` still refuses to touch it")
 
-	# --- Q-52's rule is untouched: wet ground with nothing in it stays dry -----
-	_assert(not Autotile.draws_wet("tilled", true),
-		"bare tilled ground the rain has marked still draws DRY (Q-52, reported 2026-08-30)")
+	# --- Q-52, ruled 2026-09-02: wet ground with nothing in it SHOWS now -------
+	# The playtest-night hide is reversed; what answers the 2026-08-30 confusion
+	# instead is the soak animation (test_wetness_soaks_in).
+	_assert(Autotile.draws_wet("tilled", true),
+		"bare tilled ground the rain has marked draws WET (Q-52 ruling, 2026-09-02)")
 	_assert(Autotile.draws_wet("seeded", true) and Autotile.draws_wet("growing", true),
 		"seeded and growing soil draws wet, as it always has")
 	_assert(not Autotile.draws_wet("ready", false) and not Autotile.draws_wet("growing", false),
-		"and nothing draws wet on a dry tile")
+		"and nothing draws wet on a dry tile under a clear sky")
+	_assert(Autotile.draws_wet("tilled", false, true),
+		"a sky raining right now wets open soil ahead of the sim's day-turn flag")
+	_assert(not Autotile.draws_wet("cleared", true, true),
+		"but only soil can look wet — cleared ground never does, rain or flag")
 	_assert(Autotile.is_soil("ready"),
 		"the soil region already counted `ready`; only the wetness rule had forgotten it")
 
@@ -9241,6 +9248,94 @@ func test_ground_holds_until_black() -> void:
 		"the held picture is a copy — the sim moving under it changes nothing on screen")
 	farm.release_tile_look()
 	_assert(farm.tile_look(t.x, t.y).state == "cleared", "and releasing it catches up in one step")
+
+	farm.free()
+	gs.free()
+
+
+# Q-52, ruled 2026-09-02: wetness *animates in*, so the change reads as caused.
+# The sim's flag flips in an instant and stays the only truth (asserted); what
+# eases is the picture — farm.gd crossfades the dry and wet soil cells on a
+# soak timer. Rain and sprinklers soak slow (~3s), the watering can pours fast
+# (~1/3 the duration), both [Playtest] constants. Asserted headless: the timers
+# and their bookkeeping are data; only the blend itself needs a viewport.
+func test_wetness_soaks_in() -> void:
+	print("\n--- Q-52: wetness soaks in (rain slow, can fast) ---")
+
+	var gs = load("res://systems/game_state.gd").new()
+	var farm = load("res://world/farm.gd").new()
+	farm.generate_on_ready = false
+	farm.gs = gs
+	SimRng.reseed(9703)
+	farm.sim.generate()
+
+	_assert(farm.WET_CAN_MS < farm.WET_RAIN_MS,
+		"the can pours faster than the rain soaks (the ruling says ~1/3 the duration)")
+
+	# The watering can: the pour starts at the Action, from dry, at the fast rate.
+	var t := Vector2i(5, 10)
+	farm.sim.tiles[t.y][t.x] = { "state": "seeded", "crop_type": "wheat",
+		"growth_stage": 0, "watered_today": false }
+	var r: Dictionary = farm.apply_action({ "verb": "water", "target": t, "actor": "player" }, gs)
+	_assert(r.get("ok", false), "the water Action resolves")
+	_assert(farm.sim.get_tile(t.x, t.y).watered_today,
+		"sim truth is wet the same instant — the soak is presentation only (D-8)")
+	_assert(farm._wet_alpha(t.x, t.y) < 0.5,
+		"but the picture starts near dry and eases toward it")
+	_assert(farm._wetting[t]["ms"] == farm.WET_CAN_MS, "at the can's fast rate")
+
+	# No soak in flight means fully wet: a farm restored from a save, or any
+	# renderer that never animates, must not re-pour yesterday's water.
+	_assert(farm._wet_alpha(9, 9) == 1.0, "a tile with no soak entry draws fully wet")
+
+	# Freshly tilled ground under rain — the ruling's exact case. The sim keeps
+	# it dry until the day turn; the *picture* soaks, at the rain's slow rate.
+	gs.weather = "rainy"
+	var t2 := Vector2i(6, 10)
+	farm.sim.tiles[t2.y][t2.x] = { "state": "cleared", "crop_type": "",
+		"growth_stage": 0, "watered_today": false }
+	r = farm.apply_action({ "verb": "till", "target": t2, "actor": "player" }, gs)
+	_assert(r.get("ok", false), "the till resolves")
+	_assert(not farm.sim.get_tile(t2.x, t2.y).watered_today,
+		"the sim's flag is untouched — rain marks it at the day turn, as ever")
+	_assert(farm._wetting.has(t2) and farm._wetting[t2]["ms"] == farm.WET_RAIN_MS,
+		"while the picture starts soaking at the tap, at the rain's slow rate")
+
+	# The same till under a clear sky wets nothing and starts nothing.
+	gs.weather = "sunny"
+	var t3 := Vector2i(7, 10)
+	farm.sim.tiles[t3.y][t3.x] = { "state": "cleared", "crop_type": "",
+		"growth_stage": 0, "watered_today": false }
+	r = farm.apply_action({ "verb": "till", "target": t3, "actor": "player" }, gs)
+	_assert(r.get("ok", false) and not farm._wetting.has(t3),
+		"tilling under a clear sky starts no soak")
+
+	# The day turn: rain marks the farm while the look is held (T-27), and the
+	# soaks it queues start at the release — the morning's rain is watched
+	# falling from its start, not mid-pour.
+	var t4 := Vector2i(8, 10)
+	farm.sim.tiles[t4.y][t4.x] = { "state": "tilled", "crop_type": "",
+		"growth_stage": 0, "watered_today": false }
+	farm._wetting.clear()
+	farm.hold_tile_look()
+	r = farm.apply_action({ "verb": "sleep", "actor": "world", "weather": "rainy" }, gs)
+	_assert(r.get("ok", false), "the sleep resolves")
+	_assert(farm.sim.get_tile(t4.x, t4.y).watered_today,
+		"rain marked the bare tilled tile at the turn")
+	_assert(farm._wetting.has(t4) and farm._wetting[t4]["t"] < 0.0,
+		"its soak is queued but not started while the look is held")
+	_assert(farm._wet_alpha(t4.x, t4.y) == 0.0,
+		"so it would still draw dry through the fade")
+	farm.release_tile_look()
+	_assert(farm._wetting[t4]["t"] >= 0.0, "the release under the black starts it")
+	_assert(farm._wetting[t4]["ms"] == farm.WET_RAIN_MS, "at the rain's rate")
+
+	# A second rainy morning re-soaks nothing that never dried: the day turn's
+	# diff compares against what was already drawn wet.
+	farm._wetting.clear()
+	r = farm.apply_action({ "verb": "sleep", "actor": "world", "weather": "rainy" }, gs)
+	_assert(r.get("ok", false) and not farm._wetting.has(t4),
+		"ground that stayed wet through the turn does not animate again")
 
 	farm.free()
 	gs.free()

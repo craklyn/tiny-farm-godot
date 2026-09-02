@@ -75,12 +75,19 @@ var cot_turned_down: bool = false
 # behaves exactly as before.
 var _held_tiles: Array = []
 
+# The *sky* she fell asleep under rides the same hold (Q-52): the rain picture
+# rule (`Autotile.draws_wet`'s `raining` input) reads the live weather, which
+# turns over at the sleep tap — one frame later the fade would show rain-tilled
+# ground popping dry mid-fade. Snapshotted with the tiles, dropped with them.
+var _held_raining := false
+
 
 ## Hold the current tile picture. Called at the sleep tap, alongside the sky's
 ## freeze; harmless to call twice (the first snapshot is the one she saw).
 func hold_tile_look() -> void:
 	if not _held_tiles.is_empty():
 		return
+	_held_raining = _raining_now()
 	var snap: Array = []
 	for ty in MAP_HEIGHT:
 		var row: Array = []
@@ -96,6 +103,12 @@ func release_tile_look() -> void:
 	if _held_tiles.is_empty():
 		return
 	_held_tiles = []
+	# Soaks the day turn queued start now, under the black (Q-52) — so the
+	# morning's rain is watched falling from its start rather than mid-pour.
+	var now := float(Time.get_ticks_msec())
+	for key in _wetting.keys():
+		if _wetting[key]["t"] < 0.0:
+			_wetting[key]["t"] = now
 	queue_redraw()
 
 
@@ -109,6 +122,20 @@ func tile_look(tx: int, ty: int) -> Dictionary:
 	if _held_tiles.is_empty():
 		return tiles[ty][tx]
 	return _held_tiles[ty][tx]
+
+
+# Whether the sky the *player* is looking at is raining — held with the tile
+# picture through a day fade, live otherwise. Presentation truth only; the sim
+# never asks.
+func raining_look() -> bool:
+	if not _held_tiles.is_empty():
+		return _held_raining
+	return _raining_now()
+
+
+func _raining_now() -> bool:
+	var s := _state()
+	return s != null and String(s.weather) == "rainy"
 
 
 func _ready() -> void:
@@ -392,8 +419,17 @@ func advance_sim(ticks: int, gs = null) -> void:
 
 
 func apply_action(action: Dictionary, gs = null) -> Dictionary:
+	# The day turn is when rain marks the ground and the sprinklers pour, all
+	# inside the one sleep Action (`SimWorld.advance_day`) — so the diff that
+	# starts their soaks (Q-52) brackets it here. Both halves run outside the
+	# sim and after resolution; a fast-forward that never draws pays two tile
+	# scans per *day*, not per frame.
+	var day_turn := String(action.get("verb", "")) == "sleep"
+	var pre_wet := _wet_snapshot() if day_turn else {}
 	var result := sim.apply_action(action, gs)
 	_record(action, result, sim.clock.tick)
+	if day_turn and result.get("ok", false):
+		_soak_new_wetness(pre_wet)
 	return result
 
 
@@ -461,6 +497,18 @@ func _record(action: Dictionary, result: Dictionary, at_tick: int,
 		# can be dropped without touching sim truth or replay fidelity (S-3/S-5).
 		if action.has("target"):
 			react_at(action["target"])
+			# Q-52: the picture's water arrives over time. The can pours fast;
+			# ground opened under an open sky soaks at the rain's own slow rate
+			# (the sim leaves it dry until the day turn — `Autotile.draws_wet`'s
+			# `raining` input is what draws it). Both start after the Action has
+			# resolved: presentation reacts, never gates (D-8).
+			var wt = action["target"]
+			if wt is Vector2i:
+				var verb := String(action.get("verb", ""))
+				if verb == "water" and sim.get_tile(wt.x, wt.y).get("watered_today", false):
+					_start_wetting(wt, WET_CAN_MS)
+				elif verb == "till" and _raining_now():
+					_start_wetting(wt, WET_RAIN_MS)
 		if String(action.get("verb", "")) == "sleep":
 			_notify_day_turn()
 		queue_redraw()
@@ -496,6 +544,74 @@ const ACK_MS := 520.0
 # it reads as a label on the answer rather than as a second object in the farm.
 const ACK_NOUN := 12.0
 var _acks: Dictionary = {}  # Vector2i -> { "t": msec, "why": String }
+
+# --- The wetness soaks in (Q-52, ruled 2026-09-02) ----------------------------
+#
+# The sim's watered flag flips in an instant and stays the only truth; what
+# eases is the *picture* — a timed crossfade between the dry and wet cells of
+# the soil atlas, so the change reads as caused: rain and the sprinkler as a
+# slow soak, the watering can as a fast pour. Entries here never touch sim
+# truth, saves or replays; dropping them all would change nothing but a frame.
+const WET_RAIN_MS := 3000.0  # [Playtest] rain and the sprinkler: a slow soak
+const WET_CAN_MS := 1000.0   # [Playtest] the watering can: ~1/3 the soak
+var _wetting: Dictionary = {}  # Vector2i -> { "t": start msec (-1 waits for release_tile_look), "ms": duration }
+
+
+func _start_wetting(t: Vector2i, ms: float) -> void:
+	# A soak restarted mid-pour (rain-soaked ground watered by hand) continues
+	# from the wetness already shown instead of popping back to dry.
+	var start_a := 0.0
+	if _wetting.has(t):
+		start_a = _soak_alpha(_wetting[t])
+	if is_tile_look_held():
+		_wetting[t] = { "t": -1.0, "ms": ms }
+	else:
+		_wetting[t] = { "t": float(Time.get_ticks_msec()) - start_a * ms, "ms": ms }
+	set_process(true)
+
+
+func _soak_alpha(entry: Dictionary) -> float:
+	if entry["t"] < 0.0:
+		return 0.0
+	return clampf((float(Time.get_ticks_msec()) - entry["t"]) / float(entry["ms"]), 0.0, 1.0)
+
+
+# How wet the picture of a tile is, 0..1. No entry means no soak in flight:
+# fully wet — which is what a farm restored from a save, or a renderer that
+# never animates (the replay viewer mid-scrub), should show for a wet flag.
+func _wet_alpha(tx: int, ty: int) -> float:
+	var key := Vector2i(tx, ty)
+	if not _wetting.has(key):
+		return 1.0
+	return _soak_alpha(_wetting[key])
+
+
+# Which tiles the picture currently shows wet — the "before" half of the day
+# turn's diff, taken at the sleep Action so only ground the morning *changed*
+# soaks (a second rainy day must not re-soak soil that never dried).
+func _wet_snapshot() -> Dictionary:
+	var raining := _raining_now()
+	var wet := {}
+	for ty in MAP_HEIGHT:
+		for tx in MAP_WIDTH:
+			var tile: Dictionary = tiles[ty][tx]
+			if Autotile.draws_wet(String(tile.state), bool(tile.watered_today), raining):
+				wet[Vector2i(tx, ty)] = true
+	return wet
+
+
+# …and the "after" half: every tile newly wet starts the rain-rate soak. Covers
+# the rain pass and the sprinklers alike, because both act inside the day turn.
+func _soak_new_wetness(pre_wet: Dictionary) -> void:
+	var raining := _raining_now()
+	for ty in MAP_HEIGHT:
+		for tx in MAP_WIDTH:
+			var tile: Dictionary = tiles[ty][tx]
+			if not Autotile.draws_wet(String(tile.state), bool(tile.watered_today), raining):
+				continue
+			var key := Vector2i(tx, ty)
+			if not pre_wet.has(key):
+				_start_wetting(key, WET_RAIN_MS)
 
 
 func refuse_at(t: Vector2i, why: String) -> void:
@@ -575,7 +691,8 @@ func react_at(t) -> void:
 func _process(_delta: float) -> void:
 	# Only runs while a reaction is in flight; cost scales with acted tiles, not
 	# map area (ARCHITECTURE guardrail).
-	if _reactions.is_empty() and _refusals.is_empty() and _acks.is_empty():
+	if _reactions.is_empty() and _refusals.is_empty() and _acks.is_empty() \
+			and _wetting.is_empty():
 		set_process(false)
 		return
 	var now := Time.get_ticks_msec()
@@ -588,6 +705,10 @@ func _process(_delta: float) -> void:
 	for key in _acks.keys():
 		if now - _acks[key]["t"] > ACK_MS:
 			_acks.erase(key)
+	for key in _wetting.keys():
+		# A held soak (t = -1) waits for release_tile_look; a finished one is done.
+		if _wetting[key]["t"] >= 0.0 and now - _wetting[key]["t"] > _wetting[key]["ms"]:
+			_wetting.erase(key)
 	queue_redraw()
 
 
@@ -649,7 +770,9 @@ func advance_day() -> void:
 	# The state goes through too, so this facade's day turn is the gateway's day
 	# turn: machines fire at the day turn and they act through `apply_action`,
 	# which needs it (M2.5 WI-10).
+	var pre_wet := _wet_snapshot()
 	sim.advance_day(weather, state)
+	_soak_new_wetness(pre_wet)
 	_notify_day_turn()
 	sync_actors()
 	queue_redraw()
@@ -680,6 +803,11 @@ func _is_soil_at(tx: int, ty: int) -> bool:
 
 func _draw() -> void:
 	var render_queue: Array[Dictionary] = []
+
+	# One weather read per frame, not per tile: the rain half of the picture
+	# rule (Q-52, `Autotile.draws_wet`) needs the sky, held through a day fade
+	# alongside the ground it is wetting.
+	var raining := raining_look()
 
 	for ty in MAP_HEIGHT:
 		for tx in MAP_WIDTH:
@@ -714,14 +842,26 @@ func _draw() -> void:
 					_is_soil_at(tx - 1, ty), _is_soil_at(tx - 1, ty - 1))
 				# Which soil is drawn wet is `Autotile.draws_wet` — the picture rule,
 				# stated once, in the pure file the headless suite can hold to
-				# account (Q-52 for why bare tilled ground is dry even when the rain
-				# has marked it; the 2026-09-01 report for why `ready` is wet).
-				var coord := Autotile.atlas_coord(mask,
-					Autotile.draws_wet(tile.state, tile.watered_today))
+				# account (Q-52, ruled 2026-09-02: bare tilled ground included, and
+				# rain wets the picture ahead of the sim's day-turn flag; the
+				# 2026-09-01 report for why `ready` is wet).
+				var wet := Autotile.draws_wet(tile.state, tile.watered_today, raining)
+				var coord := Autotile.atlas_coord(mask, wet)
 				# Ground stays flush: squashing it opens seams to the grass beneath.
 				# Only things standing on the soil react (crops, obstacles).
-				draw_texture_rect_region(dirt_texture, Rect2(px + shake, py, TILE_SIZE, TILE_SIZE),
-					Rect2(coord.x * 16, coord.y * 16, 16, 16))
+				var soil_rect := Rect2(px + shake, py, TILE_SIZE, TILE_SIZE)
+				var soak := _wet_alpha(tx, ty) if wet else 1.0
+				if wet and soak < 1.0:
+					# Mid-soak (Q-52): the wet cell fades in over the dry one, so
+					# rain and the can are *seen* wetting the ground.
+					var dry := Autotile.atlas_coord(mask, false)
+					draw_texture_rect_region(dirt_texture, soil_rect,
+						Rect2(dry.x * 16, dry.y * 16, 16, 16))
+					draw_texture_rect_region(dirt_texture, soil_rect,
+						Rect2(coord.x * 16, coord.y * 16, 16, 16), Color(1, 1, 1, soak))
+				else:
+					draw_texture_rect_region(dirt_texture, soil_rect,
+						Rect2(coord.x * 16, coord.y * 16, 16, 16))
 
 			# Queue obstacles and boundaries
 			if tile.state in ["border", "obstacle_rock", "obstacle_log", "obstacle_weed",
@@ -765,8 +905,9 @@ func _draw() -> void:
 				# the question is. Also a candidate answer to T-18's open box
 				# ("watered soil legible without tapping"), which is why it is drawn
 				# on the *crop* rather than on the soil: rain marks bare tilled
-				# ground watered too, and that is exactly the lie the 2026-08-30
-				# session caught.
+				# ground watered too, and since Q-52's ruling the soil honestly
+				# shows that — so the chip on the plant is what stays unambiguous
+				# about *this crop* having had its day's water.
 				if StationPresentation.satisfied == StationPresentation.SATISFIED_CHIP \
 						and tile.watered_today and tile.state != "ready":
 					var wart: Array = glyph(StationPresentation.GLYPH_DROPLET)

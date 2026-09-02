@@ -55,11 +55,23 @@ static func is_soil(state: String) -> bool:
 
 # True when soil should be *drawn* wet — the picture rule, not the sim's flag.
 #
-# Bare `tilled` ground is deliberately absent even when the rain has marked it:
-# nothing mechanical reads the flag there, and drawing it wet led a player to
-# conclude she could water empty tiles (reported 2026-08-30, Q-52's approval —
-# whose residual, whether that signal is worth showing after all, is still the
-# designer's to rule).
+# Two things can wet the picture:
+#
+# - `watered_today`, the sim's flag. Bare `tilled` ground counts since the Q-52
+#   ruling (2026-09-02) reversed its playtest-night hide: hiding it hid a
+#   genuine "plant here and it is already watered" signal (planting keeps the
+#   wetness). The 2026-08-30 confusion the hide answered — wet empty ground
+#   reading as waterable — is answered instead by the wetness *animating in*
+#   (farm.gd's soak), so it reads as something the rain did, not an invitation.
+#
+# - `raining`, the sky right now. The sim marks rain's water only at the day
+#   turn, so ground tilled in the middle of a rainy day stays dry in the sim
+#   until tomorrow — but a sky pouring on open soil that stays bone-dry would
+#   be the picture lying the other way, and it is the exact case the ruling
+#   describes ("when a tile is tilled/hoed, show it dry and animate it
+#   progressively wetter"). Mechanically inert: every reader of the flag is
+#   gated on seeded/growing (see `advance_day`'s rain pass), so wetting the
+#   picture ahead of the flag changes nothing that happens.
 #
 # `ready` is deliberately *present*. It was missing, so a ripe crop on a rainy
 # day stood on dry ground between wet rows (reported 2026-09-01). A ripe crop's
@@ -69,7 +81,7 @@ static func is_soil(state: String) -> bool:
 # Here rather than in the renderer's `_draw` so the headless suite can hold the
 # rule to account without a viewport — this file is presentation, but it is the
 # pure half of it.
-static func draws_wet(state: String, watered_today: bool) -> bool:
-	if not watered_today:
+static func draws_wet(state: String, watered_today: bool, raining: bool = false) -> bool:
+	if not is_soil(state):
 		return false
-	return state == "seeded" or state == "growing" or state == "ready"
+	return watered_today or raining
