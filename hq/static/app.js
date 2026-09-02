@@ -737,6 +737,7 @@ async function renderInbox() {
   const ruled = curated.filter(c => rulings[c.id]);
   const rawOpen = queue.items.filter(q => !q.answered && !curatedIds.has(q.id) && !rulings[q.id]);
   const done = queue.items.filter(q => q.answered);
+  updateInboxBadge(queue);   // each ruling re-renders here, so the nav count tracks it live
   const frag = h(`<h1>Decision Inbox</h1>
     <p class="sub">${fresh.length} decision${fresh.length === 1 ? "" : "s"} ready for your call — each in plain language, with what you need to judge it. Rulings you record here are picked up by the next work session and folded into the design docs.</p>
     <div id="q-open"></div>
@@ -858,12 +859,17 @@ async function boot() {
     }));
   api("/api/signals").then(updateNavPillars).catch(() => {});
   try {
-    // The badge counts decisions PREPPED for the CEO — raw un-curated queue
-    // items are the chief of staff's backlog, not his.
-    const queue = await api("/api/queue");
-    const n = (queue.curated || []).filter(c => !(queue.rulings || {})[c.id]).length;
-    const b = document.getElementById("inbox-badge");
-    if (n) { b.textContent = n; b.hidden = false; }
+    updateInboxBadge(await api("/api/queue"));
   } catch { /* no badge */ }
+}
+
+// The badge counts decisions PREPPED for the CEO — raw un-curated queue
+// items are the chief of staff's backlog, not his. Recomputed from every
+// fresh queue fetch (boot, each inbox render, each ruling), and it HIDES
+// at zero — a cleared inbox must stop asking for attention.
+function updateInboxBadge(queue) {
+  const n = (queue.curated || []).filter(c => !(queue.rulings || {})[c.id]).length;
+  const b = document.getElementById("inbox-badge");
+  if (b) { b.textContent = n || ""; b.hidden = !n; }
 }
 boot();
