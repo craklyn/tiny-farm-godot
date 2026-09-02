@@ -54,6 +54,14 @@ watering-can charges, well refill; shipping bin → gold overnight; day/weather 
    bushes/weeds cheap, trees/rocks dear. Exact numbers `[Playtest]`. This is also why
    the egg coin flip stays (the Q-50 confusion was silent accumulation, cured upstream
    by pacing, not by making the hen deterministic).
+   **Shipped 2026-09-02 (first numbers, `[Playtest]`):** the clear ladder in
+   `Tools.ENERGY_COSTS` is weed 30 (one base verb — it doubles as the stomp verb,
+   which is tending, not expansion), log 60, tree/rock 90. All costs stay whole
+   multiples of 30 so Q-38's work-speed multipliers keep landing on integers, and
+   Q-11's soft floor means the dearest clear spends clock without ever locking a kid
+   out. Exertion is presentation-only: the clear swing holds one beat per 30 units of
+   cost, a chop sounding and bursting on each beat — a tree *feels* like three swings
+   without the sim knowing anything about animation.
 
 ## Constraints from decisions
 Grid is truth (S-4); every farm interaction is an Action verb (S-3); phase-1 loop must

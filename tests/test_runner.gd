@@ -74,6 +74,7 @@ func _init() -> void:
 	test_crow_schedule()
 	test_daylight()
 	test_energy_repartition()
+	test_q50_clearing_costs()
 	test_clock_digits()
 	test_replay_build_stamp()
 	test_blocked_reason()
@@ -221,6 +222,8 @@ func test_tools() -> void:
 	_assert(Tools.get_energy_cost("water") == 30, "Watering costs 30")
 	_assert(Tools.get_energy_cost("harvest") == 30, "Harvesting costs 30")
 	_assert(Tools.get_energy_cost("clear_log") == 60, "A heavy clear costs 60 — two base verbs")
+	_assert(Tools.get_energy_cost("clear_tree") == 90 and Tools.get_energy_cost("clear_rock") == 90,
+		"a tree or a rock costs 90 — three base verbs, expansion is exertion (Q-50)")
 	_assert(Tools.get_energy_cost("plant") == 0, "Planting is still free")
 	_assert(Tools.DAY_UNITS == 600 and Tools.DAY_UNITS / Tools.BASE_COST == 20,
 		"and the day is still exactly 20 base actions long")
@@ -2009,8 +2012,8 @@ func test_energy_repartition() -> void:
 
 	# --- the constants, as shipped -------------------------------------------
 	_assert(Tools.DAY_UNITS == 600, "a day is 600 fine units")
-	_assert(Tools.BASE_COST == 30 and Tools.HEAVY_COST == 60,
-		"a base verb costs 30 of them and a heavy clear 60")
+	_assert(Tools.BASE_COST == 30 and Tools.HEAVY_COST == 60 and Tools.DEAR_COST == 90,
+		"a base verb costs 30 of them, a heavy clear 60, a dear clear 90 (Q-50)")
 	_assert(SimWorld.ACTOR_MAX_ENERGY == Tools.DAY_UNITS,
 		"an NPC's day is the same length as hers — a bot gets no more clock (S-3)")
 	var fresh = load("res://systems/game_state.gd").new()
@@ -2019,11 +2022,19 @@ func test_energy_repartition() -> void:
 	fresh.free()
 	for verb in ["till", "water", "harvest", "clear_weed"]:
 		_assert_quiet(Tools.get_energy_cost(verb) == 30, "%s costs 30" % verb)
-	for verb in ["clear_log", "clear_rock", "clear_tree"]:
-		_assert_quiet(Tools.get_energy_cost(verb) == 60, "%s costs 60" % verb)
+	_assert_quiet(Tools.get_energy_cost("clear_log") == 60, "clear_log costs 60")
+	for verb in ["clear_rock", "clear_tree"]:
+		_assert_quiet(Tools.get_energy_cost(verb) == 90, "%s costs 90 (Q-50)" % verb)
 	for verb in ["plant", "sell", "refill", "sleep"]:
 		_assert_quiet(Tools.get_energy_cost(verb) == 0, "%s is free" % verb)
-	_flush_quiet("every verb's cost is 30, 60 or nothing")
+	_flush_quiet("every verb's cost is 30, 60, 90 or nothing")
+	# Q-38's divisibility argument holds for every cost, not just the base: any
+	# cost that is a whole multiple of 30 divides evenly under every multiplier
+	# the base does (30k·d/n is whole wherever 30·d/n is).
+	for verb in Tools.ENERGY_COSTS:
+		_assert_quiet(int(Tools.ENERGY_COSTS[verb]) % Tools.BASE_COST == 0,
+			"%s's cost is a whole multiple of 30" % verb)
+	_flush_quiet("every cost is a multiple of the base, so Q-38's multipliers stay whole")
 
 	# --- the same day at 1x ---------------------------------------------------
 	#
@@ -2222,6 +2233,79 @@ func test_energy_repartition() -> void:
 	_flush_quiet("every shelved autosave in playtests/ loads at its own hour (%d)" % checked)
 	_assert(checked == SHELF.size(),
 		"all %d shelved sessions were checked (%d)" % [SHELF.size(), checked])
+
+
+func test_q50_clearing_costs() -> void:
+	print("\n--- Q-50: expansion is exertion — per-obstacle clearing costs ---")
+
+	# The ruling (2026-09-02): early-game pacing leans on clearing costs.
+	# Expanding into debris costs noticeably more than tending cleared land, and
+	# the costs differ by obstacle — a weed is a bare-handed tug, a downed log
+	# heavier, a standing tree or a rock dear. The exact numbers are [Playtest];
+	# the *ordering* is the ruling, so the ordering gets its own asserts below.
+	SimRng.reseed(50)
+	var world := SimWorld.new()
+	world.generate()
+	var gs = load("res://systems/game_state.gd").new()
+	gs.reset()
+
+	# --- the ladder, charged at the gateway -----------------------------------
+	# Each rung through apply_action itself: the cost is sim truth, so a replayed
+	# session spends the identical clock.
+	var ladder := [
+		["obstacle_weed", "clear_weed", 30],
+		["obstacle_log", "clear_log", 60],
+		["obstacle_tree", "clear_tree", 90],
+		["obstacle_rock", "clear_rock", 90],
+	]
+	var col := 4
+	for step in ladder:
+		var tile := Vector2i(col, 4)
+		col += 1
+		world.set_tile_state(tile.x, tile.y, String(step[0]))
+		world.set_object(tile.x, tile.y, "")
+		var before: int = gs.energy
+		var res := world.apply_action({ "verb": String(step[1]), "target": tile, "actor": "player" }, gs)
+		_assert(res.get("ok", false), "%s goes through the gateway" % step[1])
+		_assert(before - gs.energy == int(step[2]),
+			"%s charges %d fine units, sim-side" % [step[1], step[2]])
+		_assert(String(world.get_tile(tile.x, tile.y).get("state", "")) == "cleared",
+			"and the %s tile comes out cleared" % step[0])
+		_assert(int(gs.clear_counts.get(String(step[1]), 0)) == 1,
+			"and the clear is counted (T-10's proof trail)")
+
+	# --- the ordering is the ruling -------------------------------------------
+	_assert(Tools.get_energy_cost("clear_weed") <= Tools.get_energy_cost("clear_log")
+			and Tools.get_energy_cost("clear_log") < Tools.get_energy_cost("clear_tree"),
+		"the ladder climbs: weed <= log < tree")
+	_assert(Tools.get_energy_cost("clear_tree") == Tools.get_energy_cost("clear_rock"),
+		"tree and rock share the dear tier")
+	for verb in ["clear_log", "clear_tree", "clear_rock"]:
+		_assert_quiet(Tools.get_energy_cost(verb) >= 2 * Tools.get_energy_cost("till"),
+			"%s costs at least twice a tend" % verb)
+	_flush_quiet("expanding into standing debris costs at least double any tending verb (Q-50)")
+
+	# --- Q-11's soft floor survives the dearest rung --------------------------
+	# The kid-friction rule checked before tuning upward: at zero energy in
+	# phase 1 the verb still lands — a dear clear spends clock, never locks out.
+	gs.set_energy(0)
+	gs.hard_energy = false
+	world.set_tile_state(8, 4, "obstacle_rock")
+	world.set_object(8, 4, "")
+	var floor_res := world.apply_action({ "verb": "clear_rock", "target": Vector2i(8, 4), "actor": "player" }, gs)
+	_assert(floor_res.get("ok", false) and gs.energy == 0,
+		"a dear clear at zero energy still lands and the meter clamps at 0 (Q-11 soft floor)")
+
+	# --- an NPC pays the same ladder from its own meter (S-3) -----------------
+	world.set_tile_state(9, 4, "obstacle_tree")
+	world.set_object(9, 4, "")
+	var npc_before: int = world.energy_of(SimWorld.ACTOR_CHICKEN)
+	var npc_res := world.apply_action(
+		{ "verb": "clear_tree", "target": Vector2i(9, 4), "actor": SimWorld.ACTOR_CHICKEN }, gs)
+	_assert(npc_res.get("ok", false)
+			and npc_before - world.energy_of(SimWorld.ACTOR_CHICKEN) == Tools.DEAR_COST,
+		"an NPC's tree costs the same 90, from its own meter — no cheaper verb for bots (S-3)")
+	gs.free()
 
 
 func test_clock_digits() -> void:

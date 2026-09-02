@@ -33,10 +33,9 @@ static var LIST: Array[ToolDef] = [
 #
 # Energy *is* the clock (Q-38): the day is one full meter and only actions spend
 # it. T-29 re-partitions that meter from 20 coarse points into **600 fine
-# units**, with a base verb costing 30 and a heavy clear 60. The day is still
-# exactly 20 base actions long, so at 1x this is bit-for-bit the game it was —
-# the same refusal moments, the same soft floor, the same sky at the same
-# instant. Only the ruler got finer.
+# units**, with a base verb costing 30. The day is still exactly 20 base actions
+# long, so at 1x this is bit-for-bit the game it was — the same refusal moments,
+# the same soft floor, the same sky at the same instant. Only the ruler got finer.
 #
 # **Why 30.** A future work-speed multiplier m (Q-38's exchange-rate correction:
 # a fed farmer spends less clock, never rewinds the sun) divides an action's cost
@@ -44,20 +43,31 @@ static var LIST: Array[ToolDef] = [
 # lands on a whole number — 1.25x->24, 1.5x->20, 2x->15, 2/3x->45, 1/2x->60 —
 # and 2.5x->12, 3x->10 and 0.75x->40 come free. (General rule: any m = n/d with n
 # dividing 30d works. Misses exist, 1.4x among them, but every named multiplier
-# and its neighbours hit.)
+# and its neighbours hit.) Every other cost stays a whole multiple of 30 so the
+# same argument covers it — 30k·d/n is whole wherever 30·d/n is.
+#
+# **The clear ladder (Q-50, ruled 2026-09-02).** Early-game pacing leans on
+# clearing costs: expanding into debris must cost noticeably more than tending
+# cleared land, and the costs differ by obstacle — a weed is a bare-handed tug
+# (one base verb, and it doubles as the stomp verb, which is tending, not
+# expansion), a downed log two, a standing tree or a rock three. The exact
+# numbers are [Playtest]; the *ordering* is the ruling. Q-11's soft floor keeps
+# even the dearest clear from ever locking a kid out — it spends clock, never
+# blocks.
 #
 # One number, read by everything: `GameState.max_energy`, `SimWorld
 # .ACTOR_MAX_ENERGY` and `SaveGame`'s ×30 legacy shim all derive from these.
 const DAY_UNITS := 600
 const BASE_COST := 30   # till, water, harvest, clear a weed — 20 of them make a day
-const HEAVY_COST := 60  # log, rock, tree: two base verbs' worth, as it always was
+const HEAVY_COST := 60  # a downed log: two base verbs' worth
+const DEAR_COST := 90   # a standing tree or a rock: three — expansion is exertion (Q-50)
 
 # Energy costs per action, in the units above.
 static var ENERGY_COSTS: Dictionary = {
 	"clear_weed": BASE_COST,
 	"clear_log": HEAVY_COST,
-	"clear_tree": HEAVY_COST,
-	"clear_rock": HEAVY_COST,
+	"clear_tree": DEAR_COST,
+	"clear_rock": DEAR_COST,
 	"till": BASE_COST,
 	"water": BASE_COST,
 	"harvest": BASE_COST,

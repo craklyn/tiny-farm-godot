@@ -562,7 +562,13 @@ trace actually says, because several of these looked like bugs and were not.*
   start for a while; expanding should cost noticeably more than tending already-cleared
   land; clearing must visibly read as exertion; and clearing costs should differ by
   obstacle (bushes/weeds cheap, trees/rocks dear). Folded into `design/02` §Land
-  expansion; implementation filed as a task.
+  expansion; **cost ladder shipped 2026-09-02** — a weed stays one base verb (30, it
+  doubles as the stomp), a log two (60), a tree or rock three (90), charged in
+  `SimWorld.apply_action` via `Tools.ENERGY_COSTS` so replays spend the same clock;
+  numbers `[Playtest]`, ordering is the ruling. Exertion is visible layer-5-only: the
+  swing holds one beat per 30 units with a chop landing on each beat
+  (`player/player.gd`). Q-11's soft floor checked before tuning — the dearest clear
+  spends clock, never blocks.
   Original entry: **(Ruling)** **The chicken's egg is invisible as a rule.** She saw several eggs one
   morning, then spent part of another day waiting in-game for eggs to appear. Both
   readings are reasonable and neither is what happens: the hen lays **at most one egg, at

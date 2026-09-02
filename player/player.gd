@@ -653,8 +653,18 @@ func _execute_resolved_action(pa: Dictionary) -> void:
 
 	if action == "clear_weed" or action == "clear_log" or action == "clear_rock" \
 			or action == "clear_tree":
+		# Q-50: clearing reads as exertion. The swing holds one beat per 30 fine
+		# units of the verb's cost — a weed is one chop, a log two, a tree or
+		# rock three — with a chop heard and seen on every beat. Presentation
+		# only: the sim has already charged and mutated above, and nothing here
+		# gates apply_action.
+		var beats := maxi(1, Tools.get_energy_cost(action) / Tools.BASE_COST)
+		action_timer = ACTION_DURATION * beats
 		AudioManager.play_sfx("till")
 		_emit_particles("chop", target_t)
+		for i in range(1, beats):
+			get_tree().create_timer(ACTION_DURATION * i).timeout.connect(
+				_chop_beat.bind(target_t))
 	elif action == "till":
 		AudioManager.play_sfx("till")
 		_emit_particles("dirt", target_t)
@@ -671,6 +681,16 @@ func _execute_resolved_action(pa: Dictionary) -> void:
 		if result.has("crop_type"):
 			AudioManager.play_sfx("harvest")
 			_emit_particles("harvest", target_t)
+
+
+# One later beat of a multi-beat clear (Q-50). Guarded on is_acting so a swing
+# interrupted by anything (sleep transition, scene teardown) drops its trailing
+# chops instead of chopping thin air.
+func _chop_beat(tile_pos: Vector2i) -> void:
+	if not is_acting or not is_inside_tree():
+		return
+	AudioManager.play_sfx("till")
+	_emit_particles("chop", tile_pos)
 
 
 func _emit_particles(effect_type: String, tile_pos: Vector2i) -> void:
