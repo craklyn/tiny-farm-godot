@@ -196,10 +196,11 @@ before the first public build ships.*
   identifiable provenance and were replaced. Synthesis was abandoned for `harvest`
   after four takes (see below).
 - **Watering can (3 variants, in use)** — `water_pour_01.wav`, `water_pour_02.wav`,
-  `water_pour_03.wav`: original foley recorded by the designer, 2026-09-02 (the Q-31
-  session — a rose head sprinkling onto soil, the sound synthesis reliably failed at
-  and Freesound had zero CC0 takes of). Self-owned, no third-party licence. Phone
-  masters kept by the designer; the in-repo files are the game-ready cuts (~1.05 s,
+  `water_pour_03.wav`: original foley recorded by **Daniel Blackburn** (the game's
+  designer), 2026-09-02 — the Q-31 session: a rose head sprinkling onto soil, the
+  sound synthesis reliably failed at and Freesound had zero CC0 takes of. Copyright
+  Daniel Blackburn, used with permission as the game's own asset; no third-party
+  licence. Phone masters kept by the recordist; the in-repo files are the game-ready cuts (~1.05 s,
   22.05 kHz mono, peak-normalized to −4 dB to match the verb set). These replace the
   synthesized `water.wav` in the pool; `tools/gen_sfx.py` still regenerates that file
   and it remains in-repo as the fallback. Cycled with pitch jitter at play time.
