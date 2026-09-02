@@ -4,7 +4,10 @@
   "priority": 2,
   "status": "blocked",
   "owner": "tomas",
-  "contributors": ["grace", "kenji"],
+  "contributors": [
+    "grace",
+    "kenji"
+  ],
   "summary": "Phase A of the replay-format upgrade shipped with the actor system. Phase B finishes the job: proving that a real human tablet session on the current world generation replays byte-faithfully. These logs are also the future training corpus for the phase-4 trainable bots, so their integrity is a long-term asset, not just a test.",
   "requirements": [
     "A fresh-farm human tablet session recorded on a current build (all existing sessions predate the final world generation)",
@@ -13,10 +16,25 @@
   ],
   "current_status": "All prerequisites except one are met; the missing artifact is a fresh-farm human session on the current build. The M1.5 gate session (project: Close the M1.5 exit gate) satisfies this exactly — one tablet session feeds both projects.",
   "plan": [
-    {"step": "Phase A shipped: format v2, build stamps, three-state verification", "done": true},
-    {"step": "Fixture ledger counted in tests (3 reproduce, 5 known-stale with reasons recorded)", "done": true},
-    {"step": "Capture fresh-farm tablet session on current build (shared with the M1.5 gate run)", "done": false},
-    {"step": "Verify MATCH; complete the Phase B checklist", "done": false}
+    {
+      "step": "Phase A shipped: format v2, build stamps, three-state verification",
+      "done": true
+    },
+    {
+      "step": "Fixture ledger counted in tests (3 reproduce, 5 known-stale with reasons recorded)",
+      "done": true
+    },
+    {
+      "step": "Capture fresh-farm tablet session on current build (shared with the M1.5 gate run)",
+      "done": false
+    },
+    {
+      "step": "Verify MATCH; complete the Phase B checklist",
+      "done": false
+    }
   ],
-  "links": ["docs/M2_5_PLAN.md"]
+  "links": [
+    "docs/M2_5_PLAN.md"
+  ],
+  "blocked_on": "fresh-playtest"
 }

@@ -4,7 +4,10 @@
   "priority": 1,
   "status": "blocked",
   "owner": "sofia",
-  "contributors": ["wei", "grace"],
+  "contributors": [
+    "wei",
+    "grace"
+  ],
   "summary": "The onboarding-rebuild milestone passed four of its five measured bars decisively. The one open bar — the sleeping cot being understood without prompting — was voided because the tester had been coached in earlier sessions. All the fixes it was waiting on (cot presentation, station pips, the yard rework) have since shipped; what's missing is a fresh adult.",
   "requirements": [
     "One unprompted fresh-farm session by an adult who has never played, on the tablet",
@@ -14,11 +17,30 @@
   ],
   "current_status": "Blocked on casting: both household testers are now coached, so a genuinely fresh adult must be recruited — that call is the CEO's. Everything technical is ready: the build carries the cot dusk-glow, the purpose pips, and the yard rework, and the tablet has the current build. This session double-counts as the human artifact Replay Phase B needs.",
   "plan": [
-    {"step": "Ship the cot and station presentation fixes", "done": true},
-    {"step": "Deploy current build to the tablet", "done": true},
-    {"step": "CEO recruits a fresh adult tester (a friend, neighbor, or visiting relative)", "done": false},
-    {"step": "Run the session unprompted; say nothing during play", "done": false},
-    {"step": "Score the trace against the bars; if the cot bar passes, M1.5 closes", "done": false}
+    {
+      "step": "Ship the cot and station presentation fixes",
+      "done": true
+    },
+    {
+      "step": "Deploy current build to the tablet",
+      "done": true
+    },
+    {
+      "step": "CEO recruits a fresh adult tester (a friend, neighbor, or visiting relative)",
+      "done": false
+    },
+    {
+      "step": "Run the session unprompted; say nothing during play",
+      "done": false
+    },
+    {
+      "step": "Score the trace against the bars; if the cot bar passes, M1.5 closes",
+      "done": false
+    }
   ],
-  "links": ["docs/ROADMAP.md", "docs/M1_5_PLAN.md"]
+  "links": [
+    "docs/ROADMAP.md",
+    "docs/M1_5_PLAN.md"
+  ],
+  "blocked_on": "fresh-playtest"
 }

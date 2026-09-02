@@ -142,9 +142,11 @@ async function renderDashboard() {
   const [org, pillars, sig] = await Promise.all([api("/api/org"), api("/api/pillars"), signals(true)]);
   const hour = new Date().getHours();
   const greet = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  // Pills mark EXCEPTIONS only (Rin's rule): everything in this list is for
+  // the CEO by definition, so a "for you" pill is noise. FIRE = emergency,
+  // WATCH = awareness not action, FYI = nothing to do. Plain items get none.
   const KIND = {
-    fire: ["FIRE", "k-fire"], action: ["FOR YOU", "k-action"],
-    watch: ["WATCH", "k-watch"], decide: ["DECIDE", "k-decide"], info: ["FYI", "k-info"],
+    fire: ["FIRE", "k-fire"], watch: ["WATCH", "k-watch"], info: ["FYI", "k-info"],
   };
   const eye = sig.eye || [];
   const hero = eye[0];
@@ -167,7 +169,7 @@ async function renderDashboard() {
         ${rest.length ? `<div class="also"><div class="also-head">Also needs you, in order</div>${rest.map((it, i) => `
           <div class="also-row" ${it.href ? 'data-href="' + esc(it.href) + '"' : ""}>
             <span class="also-rank">${i + 2}</span>
-            <span class="kchip ${(KIND[it.kind] || KIND.info)[1]}">${(KIND[it.kind] || KIND.info)[0]}</span>
+            ${KIND[it.kind] ? `<span class="kchip ${KIND[it.kind][1]}">${KIND[it.kind][0]}</span>` : ""}
             <span class="also-text">${esc(it.text)}</span>
           </div>`).join("")}</div>` : ""}
         <div id="dash-standup"></div>

@@ -825,14 +825,30 @@ def _compute_signals_now():
     for pid, s in status.items():
         if s["level"] == "fire":
             eye.append({"kind": "fire", "pillar": pid, "text": s["reasons"][0]})
+    # One entry per DISTINCT unblocking action (Rin's dedupe rule): projects
+    # sharing a blocker merge into one item, and projects blocked on inbox
+    # decisions fold into the decisions line instead of echoing it.
+    seen_blockers = set()
+    decision_blocked = []
     for b in blocked:
+        key = str(b.get("blocked_on") or b["id"])
+        if key.startswith("decisions:"):
+            decision_blocked.append(b)
+            continue
+        if key in seen_blockers:
+            continue
+        seen_blockers.add(key)
+        siblings = [o["name"] for o in blocked
+                    if o["id"] != b["id"] and o.get("blocked_on") == key]
         if b["id"] == "close-m15-gate":
-            eye.append({"kind": "action", "pillar": "product",
-                        "text": "Recruit one fresh adult playtester — it closes the milestone AND feeds the replay-hardening project. Only you can cast this.",
-                        "href": "#/project/close-m15-gate"})
+            text = "Recruit one fresh adult playtester — it closes the milestone" \
+                + (" and unblocks replay hardening with the same session" if siblings else "") \
+                + ". Only you can cast this."
         else:
-            eye.append({"kind": "action", "pillar": "product",
-                        "text": f"Unblock '{b['name']}'.", "href": f"#/project/{b['id']}"})
+            text = f"Unblock '{b['name']}'." \
+                + (f" The same action frees: {', '.join(siblings)}." if siblings else "")
+        eye.append({"kind": "action", "pillar": "product", "text": text,
+                    "href": f"#/project/{b['id']}"})
     for pid, note in watch_notes:
         eye.append({"kind": "watch", "pillar": pid, "text": note, "href": f"#/pillar/{pid}"})
     if pending_rulings:
@@ -840,9 +856,10 @@ def _compute_signals_now():
                     "text": f"{len(pending_rulings)} ruling(s) you recorded await integration by the next work session — no action needed from you.",
                     "href": "#/inbox"})
     if curated_fresh:
-        eye.append({"kind": "decide", "pillar": "product",
-                    "text": f"{len(curated_fresh)} prepped decision(s) ready for a ruling — oldest first: {curated_fresh[0]['id']} ({curated_fresh[0]['title']}).",
-                    "href": "#/inbox"})
+        text = f"Rule on {len(curated_fresh)} prepped decision(s) — oldest first: {curated_fresh[0]['id']} ({curated_fresh[0]['title']})."
+        if decision_blocked:
+            text += " Ruling also unblocks: " + ", ".join(f"'{b['name']}'" for b in decision_blocked) + "."
+        eye.append({"kind": "decide", "pillar": "product", "text": text, "href": "#/inbox"})
 
     data = {
         "generated_at": _t.strftime("%H:%M:%S"),
