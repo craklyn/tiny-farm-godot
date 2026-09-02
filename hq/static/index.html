@@ -20,9 +20,11 @@
     </div>
     <div class="nav-group" data-grp="dashboard">
       <div class="nav-parent">
-        <a href="#/" data-route="/"><span>🏠</span> Dashboard <i class="dot roll" id="nav-dash-roll" hidden></i></a>
-        <button class="nav-caret" data-grp="dashboard" aria-label="expand pillar reports">▸</button>
+        <a href="#/" data-route="/"><span>🏠</span> Dashboard</a>
+        <button class="nav-caret" data-grp="dashboard" aria-label="expand quiet pillars">▸</button>
       </div>
+      <!-- Exception pillars (fire/attention) never fold: unblocking is the job. -->
+      <div class="nav-sub nav-exc" id="nav-pillars-exc"></div>
       <div class="nav-sub" id="nav-pillars" hidden></div>
     </div>
     <a href="#/org" data-route="/org"><span>🧑‍🤝‍🧑</span> Org Chart</a>

@@ -107,15 +107,15 @@ function applyNavGroups() {
   const s = navOpenState();
   document.querySelectorAll(".nav-group").forEach(g => {
     const id = g.dataset.grp;
-    const sub = g.querySelector(".nav-sub");
+    // Exception rows (.nav-exc) are always visible; the caret governs only
+    // the quiet set.
+    const sub = g.querySelector(".nav-sub:not(.nav-exc)");
     const caret = g.querySelector(".nav-caret");
     if (!sub || !caret) return;
     const childActive = [...sub.querySelectorAll("a[data-route]")].some(a => hash.startsWith(a.dataset.route));
     const open = childActive || !!s[id];
     sub.hidden = !open;
     caret.textContent = open ? "▾" : "▸";
-    const roll = g.querySelector(".roll");
-    if (roll) roll.hidden = open || !["d-fire", "d-attn"].some(c => roll.classList.contains(c));
   });
 }
 
