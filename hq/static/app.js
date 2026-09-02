@@ -102,10 +102,11 @@ const routes = {
   "/playtests": renderPlaytests,
 };
 
-let routeSeq = 0;
+let routeSeq = 0, routeActive = 0;
 async function route() {
   clearAnimators();
   const seq = ++routeSeq;
+  routeActive++;
   const hash = location.hash.slice(1) || "/";
   document.querySelectorAll("#sidebar a").forEach(a => {
     const r = a.dataset.route;
@@ -122,11 +123,13 @@ async function route() {
     else await (routes[hash] || renderDashboard)();
   } catch (e) {
     $view.innerHTML = `<div class="card"><b>Something broke:</b> ${esc(e.message)}</div>`;
+  } finally {
+    routeActive--;
   }
-  // A slow render can land after a newer navigation already painted (e.g. the
-  // initial load racing a late-registered route). Re-run the current route so
-  // the newest navigation always wins.
-  if (seq !== routeSeq) return route();
+  // A slow render can land after a newer navigation already painted. Only the
+  // LAST in-flight render repaints (once) — overlapping renders re-triggering
+  // each other never converged (adversarial-review finding).
+  if (seq !== routeSeq && routeActive === 0) return route();
 }
 window.addEventListener("hashchange", route);
 
@@ -137,7 +140,7 @@ async function renderDashboard() {
   const greet = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
   const EYE_META = {
     fire: ["🔥", "eye-fire"], action: ["👁️", "eye-action"],
-    decide: ["⚖️", "eye-decide"], info: ["ℹ️", "eye-info"],
+    watch: ["🟡", "eye-action"], decide: ["⚖️", "eye-decide"], info: ["ℹ️", "eye-info"],
   };
   const eye = sig.eye || [];
   $view.replaceChildren(h(`
@@ -163,7 +166,7 @@ async function renderDashboard() {
   `));
   const de = document.getElementById("dash-eye");
   if (!eye.length) de.appendChild(h(`<div class="card eye-card eye-info">🌤️ Nothing needs your eye. Genuinely — every signal is green or dormant-by-ruling.</div>`));
-  eye.slice(0, 5).forEach(it => {
+  eye.slice(0, 8).forEach(it => {
     const [icon, cls] = EYE_META[it.kind] || EYE_META.info;
     const card = h(`<div class="card eye-card ${cls}" ${it.href ? 'style="cursor:pointer"' : ""}>${icon} ${esc(it.text)}</div>`).firstElementChild;
     if (it.href) card.addEventListener("click", () => location.hash = it.href);
@@ -183,7 +186,9 @@ async function renderDashboard() {
     dp.appendChild(tile);
   });
   const refresh = document.getElementById("dash-refresh");
-  if (refresh) refresh.addEventListener("click", ev => { ev.preventDefault(); renderDashboard(); });
+  // Through route(), not renderDashboard() directly, so the seq guard can
+  // cancel it if the user navigates away mid-refresh.
+  if (refresh) refresh.addEventListener("click", ev => { ev.preventDefault(); route(); });
   const sb = document.getElementById("standup-btn");
   const showBrief = r => {
     const box = document.getElementById("dash-standup");

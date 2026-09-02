@@ -317,26 +317,34 @@ def _run_job(job):
     import datetime
     spec = JOBS[job]
     started = datetime.datetime.now().isoformat(timespec="seconds")
-    os.makedirs(os.path.join(DATA, "runs"), exist_ok=True)
-    result = {"job": job, "label": spec["label"], "state": "running", "started": started}
-    with open(_job_path(job), "w", encoding="utf-8") as f:
-        json.dump(result, f)
+    result = {"job": job, "label": spec["label"], "state": "failed",
+              "summary": "job thread died before running", "started": started}
     try:
+        os.makedirs(os.path.join(DATA, "runs"), exist_ok=True)
+        with open(_job_path(job), "w", encoding="utf-8") as f:
+            json.dump({**result, "state": "running", "summary": ""}, f)
         with _GODOT_LOCK:
             p = subprocess.run(spec["cmd"], cwd=REPO, capture_output=True, text=True, timeout=600,
                                env={**os.environ, "PATH": os.environ.get("PATH", "") + ":" + os.path.expanduser("~/.local/bin")})
         out = (p.stdout or "") + (p.stderr or "")
         m = spec["verdict"].search(out)
         tail = "\n".join(out.strip().splitlines()[-12:])
+        # The exit code is the primary verdict for every job: the robot session's
+        # FAIL line contains its own success label ("✗ FAIL: ... replay MATCHES
+        # its autosave"), so pattern-matching alone can be fooled — the
+        # adversarial review caught exactly that. Text only adds detail.
+        base_ok = p.returncode == 0
         if job == "robot":
-            ok = bool(m and m.group(1) == "MATCHES")
-            summary = "replay MATCHES its autosave" if ok else "replay MISMATCH"
+            ok = base_ok and bool(m) and "✗" not in out
+            summary = "replay MATCHES its autosave" if ok else "replay verification FAILED"
         elif job == "benchmark":
-            ok = bool(m and m.group(1) == "PASS")
+            ok = base_ok and bool(m and m.group(1) == "PASS")
             summary = f"{int(m.group(2)):,}x realtime (gate ≥100,000x): {m.group(1)}" if m else "no verdict line found"
         else:
-            ok = bool(m and m.group(2) == "0")
+            ok = base_ok and bool(m and m.group(2) == "0")
             summary = f"{m.group(1)} passed, {m.group(2)} failed" if m else "no verdict line found"
+        if not base_ok and ok is False and m and "FAILED" not in summary:
+            summary += f" (exit code {p.returncode})"
         result = {"job": job, "label": spec["label"],
                   "state": "green" if ok else "failed",
                   "summary": summary, "started": started,
@@ -348,11 +356,18 @@ def _run_job(job):
     except Exception as e:
         result = {"job": job, "label": spec["label"], "state": "failed",
                   "summary": str(e)[:200], "started": started}
-    with open(_job_path(job), "w", encoding="utf-8") as f:
-        json.dump(result, f)
-    with _JOB_LOCK:
-        _RUNNING_JOBS.discard(job)
-    _SIG_CACHE["at"] = 0  # freshness changed; recompute signals next ask
+    finally:
+        # Everything here is best-effort, and the discard is unconditional:
+        # a wedged 'already running' job with no thread behind it is worse
+        # than any individual write failing.
+        try:
+            with open(_job_path(job), "w", encoding="utf-8") as f:
+                json.dump(result, f)
+        except OSError:
+            pass
+        with _JOB_LOCK:
+            _RUNNING_JOBS.discard(job)
+        signals_dirty()
 
 
 def start_job(job):
@@ -381,6 +396,7 @@ def parse_playtest(name):
         return {"name": name, "error": "no trace"}
     taps, acts = [], []
     header = {}
+    dropped = 0
     with open(trace, "r", encoding="utf-8") as f:
         for i, line in enumerate(f):
             line = line.strip()
@@ -389,6 +405,7 @@ def parse_playtest(name):
             try:
                 e = json.loads(line)
             except ValueError:
+                dropped += 1
                 continue
             if i == 0 and "version" in e and "kind" not in e:
                 header = e
@@ -437,13 +454,15 @@ def parse_playtest(name):
             key = "wasted" if o in ("none", "unreachable", "refused") else \
                   "satisfied" if o == "satisfied" else "ok"
             timeline[b][key] += 1
+    unknown_outcomes = sum(n for o, n in outcomes.items()
+                           if o not in ("none", "walk", "queued", "acted", "refused", "satisfied", "unreachable"))
     mislabelled = sum(1 for t in taps if t.get("out") == "unreachable"
                       and "at" in t and "tile" in t
                       and abs(t["at"][0] - t["tile"][0]) + abs(t["at"][1] - t["tile"][1]) <= 1)
     return {
         "name": name,
         "build_id": _replay_build_id(tdir),
-        "gen_seed": header.get("gen_seed"),
+        "gen_seed": header.get("gen_seed") if isinstance(header.get("gen_seed"), int) else None,
         "continued": header.get("continued", False),
         "taps": len(taps),
         "acts": len(acts),
@@ -458,6 +477,8 @@ def parse_playtest(name):
         "days_played": days,
         "timeline": timeline,
         "mislabelled": mislabelled,
+        "dropped_lines": dropped,
+        "unknown_outcomes": unknown_outcomes,
     }
 
 
@@ -577,6 +598,15 @@ MAP_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,39}$")
 
 _SIG_CACHE = {"at": 0.0, "data": None}
 SIG_TTL = 60.0
+_SIG_LOCK = threading.Lock()   # single-flight: one recompute at a time
+_SIG_VER = [0]                 # bumped when reality changes mid-compute
+
+
+def signals_dirty():
+    """A job finished (or similar): whatever compute is in flight is already
+    stale, and the version bump stops it from stamping the cache."""
+    _SIG_VER[0] += 1
+    _SIG_CACHE["at"] = 0
 
 
 def run_cmd(args, timeout=10, cwd=REPO):
@@ -611,7 +641,12 @@ _CI_LAST = {}
 
 
 def _ci_status():
-    out = run_cmd(["gh", "run", "list", "--branch", "main", "--limit", "3",
+    import time as _t
+    # Scoped to the tests workflow (a failed release dispatch must not read as
+    # red checks) and a 10-run window (rapid pushes must not scroll a red
+    # completed run out of sight — the review's scenario).
+    out = run_cmd(["gh", "run", "list", "--branch", "main", "--workflow", "tests.yml",
+                   "--limit", "10",
                    "--json", "status,conclusion,displayTitle,updatedAt,url"], timeout=20)
     try:
         runs = json.loads(out) if out else []
@@ -631,8 +666,11 @@ def _ci_status():
         "green": bool(done and done.get("conclusion") == "success"),
         "in_progress": bool(latest and latest.get("status") != "completed"),
         "stale": False,
+        "polled_at": _t.strftime("%m-%d %H:%M"),
     }
-    if runs:
+    if done:
+        # Only a snapshot that actually carries a verdict is worth falling
+        # back on — a completed-free window would poison the stale path.
         _CI_LAST.update(result)
     return result
 
@@ -657,8 +695,19 @@ def _newest(path_glob_dir, exts=None):
 
 def compute_signals():
     import time as _t
-    if _SIG_CACHE["data"] and _t.time() - _SIG_CACHE["at"] < SIG_TTL:
-        return _SIG_CACHE["data"]
+    with _SIG_LOCK:
+        if _SIG_CACHE["data"] and _t.time() - _SIG_CACHE["at"] < SIG_TTL:
+            return _SIG_CACHE["data"]
+        ver = _SIG_VER[0]
+        data = _compute_signals_now()
+        if ver == _SIG_VER[0]:
+            _SIG_CACHE["data"] = data
+            _SIG_CACHE["at"] = _t.time()
+        return data
+
+
+def _compute_signals_now():
+    import time as _t
     pillars = load_json(os.path.join(DATA, "pillars.json"))["pillars"]
     queue = api_queue()
     open_items = [q for q in queue["items"] if not q["answered"]]
@@ -711,15 +760,26 @@ def compute_signals():
         eng_level = "fire"
         eng_reasons.append(f"Local {r.get('label', j)} run failed: {r.get('summary', '')} (re-run it on the Engineering page — a loaded machine can skew the benchmark).")
     if not eng_reasons:
-        fresh = "; ".join(f"{r['label']} {r.get('summary', '')} ({r.get('finished', '')[11:16]})"
+        def _age(r):
+            fin = r.get("finished", "")
+            return f"{fin[5:10]} {fin[11:16]}" if fin else "?"
+        fresh = "; ".join(f"{r['label']} {r.get('summary', '')} ({_age(r)})"
                           for _, r in green_jobs[:2])
         if ci["available"] and ci["green"]:
-            base = "CI green on main" + (" (last known — GitHub unreachable just now)" if ci.get("stale") else "") \
+            base = "CI green on main" \
+                + (f" (last known verdict, polled {ci.get('polled_at', '?')} — GitHub unreachable just now)" if ci.get("stale") else "") \
                 + "; every push runs both suites, the robot session, and the benchmark."
+        elif ci["available"] and not ci.get("has_completed"):
+            base = "CI runs on the latest pushes are still in progress — no completed verdict yet, no green claimed."
         else:
             base = "CI status unreachable right now — no green claimed; the local runs below are the evidence."
         eng_reasons.append(base + (f" Local: {fresh}." if fresh else ""))
     set_status("engineering", eng_level, eng_reasons)
+
+    # Attention-level notes that must ALSO reach the eye queue: the dashboard
+    # claims the queue is complete, so an attention reason that never surfaces
+    # there would be a quiet lie (the adversarial review's finding).
+    watch_notes = []
 
     prod_reasons = []
     prod_level = "ok"
@@ -729,12 +789,19 @@ def compute_signals():
             prod_reasons.append(f"'{b['name']}' is blocked: {b['current_status'].split('.')[0]}.")
     if days_since_session is not None and days_since_session > 7:
         prod_level = "attention"
-        prod_reasons.append(f"No playtest session in {days_since_session} days — the gate re-evidence is waiting on one.")
+        note = f"No playtest session in {days_since_session} days — the gate re-evidence is waiting on one."
+        prod_reasons.append(note)
+        watch_notes.append(("product", note))
     if not prod_reasons:
         prod_reasons.append("Nothing blocked; playtest cadence healthy.")
     set_status("product", prod_level, prod_reasons)
 
-    set_status("art", "ok", ["All assets license-clean and ledgered in CREDITS.md; placeholders by design until the style guide is signed."])
+    newest_sprite = _newest("assets/sprites/generated", {".png"})
+    credits_when = run_cmd(["git", "log", "-1", "--format=%ad", "--date=relative", "--", "CREDITS.md"]) or "unknown"
+    set_status("art", "ok", [
+        (f"Derived: newest sheet {newest_sprite['file']} ({newest_sprite['age_days']}d old); " if newest_sprite else "")
+        + f"CREDITS.md last updated {credits_when}. "
+        + "Policy, not auto-checked: assets stay license-clean and ledgered; placeholders by design until the style guide signs."])
 
     set_status("marketing", "dormant", ["Dormant by your ruling (marketing waits until the game picks up speed). Readiness work is tracked in the program report."])
 
@@ -742,12 +809,16 @@ def compute_signals():
     sales_reasons = []
     if not tags:
         sales_level = "attention"
-        sales_reasons.append("No public release tag yet — 'ship early and often' is the standing ruling, and nothing has shipped.")
+        note = "No public release tag yet — 'ship early and often' is the standing ruling, and nothing has shipped."
+        sales_reasons.append(note)
+        watch_notes.append(("sales", note))
     else:
         sales_reasons.append(f"{len(tags)} release tag(s); latest {tags[-1]}.")
     set_status("sales", sales_level, sales_reasons)
 
-    set_status("ops", "ok", ["Provenance ledger current; art spend is script-derived ($0 recent batches)."])
+    set_status("ops", "ok", [
+        f"Derived: CREDITS.md last updated {credits_when}. "
+        "Policy, not auto-checked: every asset's rights and cost recorded at landing; no automated spend audit exists yet."])
 
     # The Eye of Sauron: one ordered queue of what deserves the CEO's look.
     eye = []
@@ -762,6 +833,8 @@ def compute_signals():
         else:
             eye.append({"kind": "action", "pillar": "product",
                         "text": f"Unblock '{b['name']}'.", "href": f"#/project/{b['id']}"})
+    for pid, note in watch_notes:
+        eye.append({"kind": "watch", "pillar": pid, "text": note, "href": f"#/pillar/{pid}"})
     if pending_rulings:
         eye.append({"kind": "info", "pillar": "product",
                     "text": f"{len(pending_rulings)} ruling(s) you recorded await integration by the next work session — no action needed from you.",
@@ -788,8 +861,6 @@ def compute_signals():
         "suite": suite,
         "eye": eye,
     }
-    _SIG_CACHE["data"] = data
-    _SIG_CACHE["at"] = _t.time()
     return data
 
 
@@ -836,6 +907,9 @@ def api_persona(pid):
     return {"id": pid, "system_prompt": build_system_prompt(org, pid)}
 
 
+_STANDUP_LOCK = threading.Lock()
+
+
 def make_standup():
     """The chief of staff's brief: the live signals handed to the CoS persona,
     who writes what changed, what's under control, and where the eye goes.
@@ -854,6 +928,18 @@ def make_standup():
             return cached
     except Exception:
         pass
+    with _STANDUP_LOCK:
+        # A concurrent regeneration finished while we waited? Serve it.
+        try:
+            cached = load_json(spath)
+            if cached.get("fingerprint") == finger:
+                return cached
+        except Exception:
+            pass
+        return _make_standup_locked(finger, spath, sig, projects)
+
+
+def _make_standup_locked(finger, spath, sig, projects):
     org = load_org()
     sys_prompt = build_system_prompt(org, "claude")
     prompt = f"""Write Daniel's standup brief from this live data (signals derived from the repo/CI just now). Rules:
@@ -869,8 +955,9 @@ PROJECTS: {json.dumps([{"name": p["name"], "status": p["status"], "priority": p[
     cmd = ["claude", "-p", prompt, "--append-system-prompt", sys_prompt,
            "--allowedTools", "", "--max-turns", "3"]
     try:
-        proc = subprocess.run(cmd, cwd=REPO, capture_output=True, text=True, timeout=180,
-                              env={**os.environ, "CLAUDE_CODE_DISABLE_AUTOUPDATE": "1"})
+        with CHAT_LOCK:  # honor the at-most-2-claude-subprocesses invariant
+            proc = subprocess.run(cmd, cwd=REPO, capture_output=True, text=True, timeout=180,
+                                  env={**os.environ, "CLAUDE_CODE_DISABLE_AUTOUPDATE": "1"})
         brief = proc.stdout.strip() if proc.returncode == 0 else ""
     except Exception:
         brief = ""
@@ -1066,8 +1153,29 @@ class Handler(BaseHTTPRequestHandler):
         return self._send(404, {"error": "not found"})
 
 
+def sanitize_runs():
+    """A service restart orphans in-flight jobs; their files still say
+    'running'. Truth first: mark them interrupted."""
+    rdir = os.path.join(DATA, "runs")
+    if not os.path.isdir(rdir):
+        return
+    for f in os.listdir(rdir):
+        if not f.endswith(".json"):
+            continue
+        try:
+            doc = load_json(os.path.join(rdir, f))
+        except Exception:
+            continue
+        if doc.get("state") == "running":
+            doc["state"] = "failed"
+            doc["summary"] = "interrupted by a service restart — run it again"
+            with open(os.path.join(rdir, f), "w", encoding="utf-8") as fh:
+                json.dump(doc, fh)
+
+
 def main():
     check_consistency()
+    sanitize_runs()
     server = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
     print(f"Tiny Farm HQ on http://localhost:{PORT}")
     server.serve_forever()

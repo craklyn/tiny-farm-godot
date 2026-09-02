@@ -22,8 +22,8 @@ async function renderPlaytests() {
     <p class="sub">Every recorded session, scored by the game's own instruments. The bars are the ruled gate bars: wasted taps ≤ ${BAR_WASTED}%, longest stall ≤ ${BAR_STALL_MS / 1000}s. "Satisfied" taps (tapping something already done) never count against a player.</p>
     <div class="card" style="overflow-x:auto"><table class="pt-table">
       <tr><th>Session</th><th>Build</th><th>Taps</th><th>Wasted</th><th>Satisfied</th><th>Longest stall</th><th>Days</th><th>Active</th></tr>
-      ${real.map(s => `<tr class="pt-row" data-name="${s.name}">
-        <td><b>${esc(s.name)}</b>${s.continued ? ' <span class="small muted">(resumed)</span>' : ""}</td>
+      ${real.map(s => `<tr class="pt-row" data-name="${esc(s.name)}">
+        <td><b>${esc(s.name)}</b>${s.continued ? ' <span class="small muted">(resumed)</span>' : ""}${(s.dropped_lines || s.unknown_outcomes || s.mislabelled) ? " ⚠️" : ""}</td>
         <td class="small muted">${esc(s.build_id || "unstamped")}</td>
         <td>${s.taps}</td>
         <td class="${s.wasted_pct <= BAR_WASTED ? "good" : "bad"}">${s.wasted} (${s.wasted_pct}%)</td>
@@ -49,7 +49,7 @@ async function renderPlaytestDetail(name) {
   $view.replaceChildren(h(`
     <p class="crumbs"><a class="plain" href="#/playtests">Playtests</a> <span>›</span> <b>${esc(s.name)}</b></p>
     <h1>🧪 ${esc(s.name)}</h1>
-    <p class="sub">build ${esc(s.build_id || "unstamped")} · seed ${s.gen_seed} ${s.continued ? "· resumed from a save" : "· fresh farm"}</p>
+    <p class="sub">build ${esc(s.build_id || "unstamped")} · seed ${esc(String(s.gen_seed ?? "?"))} ${s.continued ? "· resumed from a save" : "· fresh farm"}</p>
     <div class="statrow">
       <div class="stat"><b>${s.taps}</b><span>taps</span></div>
       <div class="stat"><b class="${s.wasted_pct <= BAR_WASTED ? "good" : "bad"}">${s.wasted_pct}%</b><span>wasted (bar: ≤${BAR_WASTED}%)</span></div>
@@ -59,6 +59,8 @@ async function renderPlaytestDetail(name) {
       <div class="stat"><b>${fmtMs(s.active_ms)}</b><span>active play</span></div>
     </div>
     ${s.mislabelled ? `<div class="card eye-card eye-fire">⚠️ Instrument integrity: ${s.mislabelled} tap(s) mislabelled unreachable — this trace's numbers are not fully trustworthy.</div>` : ""}
+    ${s.dropped_lines ? `<div class="card eye-card eye-fire">⚠️ Trace integrity: ${s.dropped_lines} line(s) failed to parse (truncated pull from the device?) — treat every number here as a floor, not a fact.</div>` : ""}
+    ${s.unknown_outcomes ? `<div class="card eye-card eye-fire">⚠️ Format drift: ${s.unknown_outcomes} tap(s) carry outcome codes this parser doesn't know — its formulas may undercount wasted taps until it learns them.</div>` : ""}
     <h2>The session, minute by minute</h2>
     <div class="card"><div class="tl-strip">${(s.timeline || []).map((m, i) => {
       const tot = m.ok + m.wasted + m.satisfied;
