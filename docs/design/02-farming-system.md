@@ -14,9 +14,12 @@ watering-can charges, well refill; shipping bin → gold overnight; day/weather 
 1. **Crop roster & growth math** — growth stages/days, water sensitivity, price curves.
    Breadth target `[Designer]`: a handful of iconic crops vs. a wide catalog.
 2. **Soil & tile states** — degradation? fertilizer? (keep phase 1 simple per S-7).
-3. **Weather & seasons** — `[Designer]` seasons yes/no is a scope fork: seasons add
-   rhythm and replay depth but multiply art, balancing, and pest-behavior work. Weather
-   already exists as a variable; minimum viable is rain-waters-crops.
+3. **Weather & seasons** — seasons yes/no was the scope fork: seasons add rhythm and
+   replay depth but multiply art, balancing, and pest-behavior work. Weather already
+   exists as a variable; minimum viable is rain-waters-crops.
+   **Ruled 2026-09-02 (Q-20 → P-11): no seasons for now, explicitly without a
+   long-term commitment.** Phase 2 designs without them; see P-11 for the adjustment
+   conditions. `[Designer]` remaining here: crop-roster ambition (§1).
    **Ruled 2026-09-02 (Q-52): wetness is shown, and it animates so the change reads as
    caused.** Rain-wet bare tilled soil is visible (reversing the playtest-night hide);
    freshly tilled ground in rain starts dry and darkens progressively over ~3s

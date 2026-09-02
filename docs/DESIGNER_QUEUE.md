@@ -1202,6 +1202,10 @@ never touched. Session: `playtests/2026-08-31_230643`.*
   alive through phases 2–3) (`design/03` §5).
 - **Q-20 (Ruling)** Farming breadth: seasons yes/no (a real scope fork) and crop roster
   ambition (`design/02` §1, §3).
+  **Seasons half ruled 2026-09-02, provisionally: "For now, no seasons. No long-term
+  decision made."** Phase 2 designs and budgets without seasons; the long-term question
+  stays open as P-11 (with its adjustment conditions), and nothing built now should
+  quietly assume seasons can never come. Crop-roster ambition remains open.
 - **Q-21 (Ruling)** Pacing intent: rough hours-per-phase ambition — sets every content
   budget (`design/12` §1). Best practice: decide total runtime early and defend it.
   **Partially ruled 2026-09-01: phase 1 = 2–3 hours first run** (recorded in

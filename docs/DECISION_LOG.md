@@ -348,6 +348,21 @@ mechanic — a scent layer over the grid that many systems read and write:
   the wilds is written by the enemy itself.
 - **Desire paths:** tiles repeatedly walked (player, bots, animals) wear into visible
   paths. The farm remembers how it is used.
+
+### P-11. No seasons — for now, and explicitly not forever
+**Ruled 2026-09-02 (Q-20, seasons half), in the designer's words: "For now, no
+seasons. No long-term decision made."** Phase 2 is designed, budgeted, and built
+without seasons: no seasonal crops, art variants, or calendar pressure enter the M3
+macro chart. Weather stays what it is today — a per-day variable (rain waters crops).
+**Why provisional rather than settled:** the designer deliberately withheld the
+long-term call. Seasons were the scope fork (they multiply art, balancing, and
+pest-behavior work); declining them *now* buys phase 2 its budget without spending
+the option.
+**Adjustment conditions:** the question returns as a deliberate decision — plausibly
+at phase-3+ content planning or a replay-depth push — and until then, new systems
+should avoid baking in assumptions that would make seasons unusually expensive to add
+(per the standing rule that foreclosure claims need testing, not assertion). The
+crop-roster half of Q-20 is unaffected and still open.
 - **D-4 tie-in:** a scent-overlay toggle is honest AI visualization that doubles as
   gameplay (recorded under D-4).
 - Natural future extension (not yet committed): scent as a bot *observation channel* — a
