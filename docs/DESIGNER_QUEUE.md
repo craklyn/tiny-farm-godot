@@ -69,7 +69,10 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   pulled forward: "let's actually schedule it immediately — today is a good time for me
   to complete it."** The designer's words override the priority note below (which had
   the session waiting on Q-13's direction; he ruled both the same day, knowingly).
-  Prep owed: a shot list from `design/10`'s verb→foley table.
+  **And done the same day for the hardest verb:** three watering-can pours recorded
+  2026-09-02, cut/normalized into `assets/audio/sfx/water_pour_01..03.wav`, cycling
+  with pitch jitter in place of the synthesized water sound (CREDITS.md has the
+  provenance). Remaining verbs can ride later sessions.
   Original entry: **(Creative → designer)** Record bespoke foley for the verb table. Raised
   2026-08-27 after a listening session: synthesis reliably handles percussive
   impacts and UI ticks (`till`, `ui_click`, `cluck`, `squawk` all passed) and

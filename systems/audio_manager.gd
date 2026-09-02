@@ -11,7 +11,14 @@ var num_sfx_players = 8
 var sfx_streams = {
     "click": [preload("res://assets/audio/sfx/ui_click.wav")],
     "till": [preload("res://assets/audio/sfx/till.wav")],
-    "water": [preload("res://assets/audio/sfx/water.wav")],
+    # Q-31 foley: three real can-on-soil pours recorded by the designer
+    # (2026-09-02), replacing the synthesized water.wav — the one verb
+    # synthesis reliably failed at and CC0 had nothing for.
+    "water": [
+        preload("res://assets/audio/sfx/water_pour_01.wav"),
+        preload("res://assets/audio/sfx/water_pour_02.wav"),
+        preload("res://assets/audio/sfx/water_pour_03.wav"),
+    ],
     "harvest": [
         preload("res://assets/audio/sfx/harvest_cc0_699491.wav"),
         preload("res://assets/audio/sfx/harvest_cc0_699492.wav"),
@@ -30,6 +37,10 @@ var sfx_streams = {
 # sim RNG here would consume it out of band and desync replays (S-5).
 var _variant_rng := RandomNumberGenerator.new()
 var _last_variant: Dictionary = {}
+
+# Per-sound pitch jitter (±fraction): a few percent multiplies three takes into
+# a dozen perceived pours. Only the heavy-repetition foley pool opts in.
+var sfx_jitter = {"water": 0.04}
 
 func _ready():
     process_mode = Node.PROCESS_MODE_ALWAYS
@@ -63,13 +74,18 @@ func play_sfx(sound_name: String):
             idx = (idx + 1) % variants.size()
         _last_variant[sound_name] = idx
 
+    var jitter := float(sfx_jitter.get(sound_name, 0.0))
+    var pitch := 1.0 + _variant_rng.randf_range(-jitter, jitter) if jitter > 0.0 else 1.0
+
     for p in sfx_players:
         if not p.playing:
             p.stream = variants[idx]
+            p.pitch_scale = pitch
             p.play()
             return
 
     # All busy: reuse the first player rather than dropping the sound.
     if not sfx_players.is_empty():
         sfx_players[0].stream = variants[idx]
+        sfx_players[0].pitch_scale = pitch
         sfx_players[0].play()

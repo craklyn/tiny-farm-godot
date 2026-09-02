@@ -195,6 +195,14 @@ before the first public build ships.*
   Cleared. The `till`/`water`/`ui_click` files of these names previously had no
   identifiable provenance and were replaced. Synthesis was abandoned for `harvest`
   after four takes (see below).
+- **Watering can (3 variants, in use)** — `water_pour_01.wav`, `water_pour_02.wav`,
+  `water_pour_03.wav`: original foley recorded by the designer, 2026-09-02 (the Q-31
+  session — a rose head sprinkling onto soil, the sound synthesis reliably failed at
+  and Freesound had zero CC0 takes of). Self-owned, no third-party licence. Phone
+  masters kept by the designer; the in-repo files are the game-ready cuts (~1.05 s,
+  22.05 kHz mono, peak-normalized to −4 dB to match the verb set). These replace the
+  synthesized `water.wav` in the pool; `tools/gen_sfx.py` still regenerates that file
+  and it remains in-repo as the fallback. Cycled with pitch jitter at play time.
 - **Harvest (3 variants, in use)** — CC0 1.0 recordings from Freesound, cycled at
   play time so repeated harvesting does not replay one identical buffer:
     - `harvest_cc0_699491.wav` — Freesound #699491 "Plant_Harvest_02" by Valenspire
