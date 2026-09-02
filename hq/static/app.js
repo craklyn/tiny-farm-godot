@@ -151,26 +151,39 @@ async function renderDashboard() {
   const eye = sig.eye || [];
   const hero = eye[0];
   const rest = eye.slice(1, 8);
+  const ownerOf = id => {
+    const e = org.employees.find(x => x.id === id);
+    return e ? e.name.split(" ")[0] : (id || "");
+  };
+  // A referenced project renders as a resolvable row — link, priority,
+  // blocked-since age, owner — never as a name buried in prose.
+  const ubRow = u => `<div class="ub-row">
+      <a class="plain" href="${esc(u.href)}">${esc(u.name)}</a>
+      <span class="ub-meta">P${u.priority ?? "?"}${u.days_blocked != null ? ` · blocked ${u.days_blocked}d${u.days_blocked > 7 ? ' <span class="ub-old">⚠</span>' : ""}` : ""}${u.owner ? ` · ${esc(ownerOf(u.owner))}` : ""}</span>
+    </div>`;
+  const ubBlock = it => (it.unblocks && it.unblocks.length)
+    ? `<div class="ub"><span class="ub-label">unblocks</span>${it.unblocks.map(ubRow).join("")}</div>` : "";
   $view.replaceChildren(h(`
     <div class="dash-head">
-      <h1>${greet}, Daniel 👋</h1>
+      <h1>${greet}, Daniel</h1>
       <span class="small muted">derived live · ${esc(sig.generated_at)} · <a class="plain" id="dash-refresh" href="#/">refresh</a></span>
     </div>
     <div class="dash-grid">
       <div class="dash-main">
         ${hero ? `<div class="hero-card" ${hero.href ? 'data-href="' + esc(hero.href) + '"' : ""}>
-          <div class="hero-eyebrow">👁️ THE ONE THING ${KIND[hero.kind] ? `<span class="kchip ${KIND[hero.kind][1]}">${KIND[hero.kind][0]}</span>` : ""}</div>
-          <div class="hero-text">${esc(hero.text)}</div>
-          ${hero.href ? `<div class="hero-go">open →</div>` : ""}
+          <div class="hero-eyebrow">THE ONE THING ${KIND[hero.kind] ? `<span class="kchip ${KIND[hero.kind][1]}">${KIND[hero.kind][0]}</span>` : ""}</div>
+          <div class="hero-text">${esc(hero.headline || hero.text)}</div>
+          ${hero.why_you ? `<div class="hero-why">${esc(hero.why_you)}.</div>` : ""}
+          ${ubBlock(hero)}
         </div>` : `<div class="hero-card hero-calm">
-          <div class="hero-eyebrow">👁️ THE ONE THING</div>
+          <div class="hero-eyebrow">THE ONE THING</div>
           <div class="hero-text">Nothing needs you. Genuinely — every signal is green or dormant by your own ruling.</div>
         </div>`}
         ${rest.length ? `<div class="also"><div class="also-head">Also needs you, in order</div>${rest.map((it, i) => `
           <div class="also-row" ${it.href ? 'data-href="' + esc(it.href) + '"' : ""}>
             <span class="also-rank">${i + 2}</span>
             ${KIND[it.kind] ? `<span class="kchip ${KIND[it.kind][1]}">${KIND[it.kind][0]}</span>` : ""}
-            <span class="also-text">${esc(it.text)}</span>
+            <span class="also-text">${esc(it.headline || it.text)}${it.why_you ? `<span class="small muted"> — ${esc(it.why_you)}</span>` : ""}${ubBlock(it)}</span>
           </div>`).join("")}</div>` : ""}
         <div id="dash-standup"></div>
       </div>
@@ -178,11 +191,11 @@ async function renderDashboard() {
         <div class="side-head">The pillars <span class="small muted">· click for detail</span></div>
         <div id="dash-pillars"></div>
         <div class="side-nums small">
-          <a class="plain" href="#/inbox">⚖️ ${sig.queue.prepped} decision${sig.queue.prepped === 1 ? "" : "s"} prepped</a>
-          <a class="plain" href="#/program">📁 ${sig.projects.in_progress} in flight · ${sig.projects.blocked} blocked</a>
-          <a class="plain" href="#/playtests">🧪 ${sig.playtests.count} playtests</a>
-          <a class="plain" href="#/org">🧑‍🤝‍🧑 ${org.employees.length - 1} on your team</a>
-          <a class="plain" href="#/chat">💬 chase anything via your chief of staff</a>
+          <a class="plain" href="#/inbox">${sig.queue.prepped} decision${sig.queue.prepped === 1 ? "" : "s"} prepped</a>
+          <a class="plain" href="#/program">${sig.projects.in_progress} in flight · ${sig.projects.blocked} blocked</a>
+          <a class="plain" href="#/playtests">${sig.playtests.count} playtests</a>
+          <a class="plain" href="#/org">${org.employees.length - 1} on your team</a>
+          <a class="plain" href="#/chat">chase anything via your chief of staff</a>
         </div>
       </div>
     </div>
@@ -195,7 +208,7 @@ async function renderDashboard() {
     const per = sig.per_pillar[p.id] || { commits_24h: 0, commits_7d: 0 };
     const m = LEVEL_META[st.level] || LEVEL_META.ok;
     const row = h(`<div class="pillar-row" title="${esc((st.reasons[0] || "").slice(0, 200))}">
-      <span class="pr-dot">${m.dot}</span>
+      <i class="dot ${m.dcls}"></i>
       <span class="pr-name">${p.emoji} ${esc(p.name)}</span>
       <span class="pr-meta small muted">${st.level === "dormant" ? "dormant" : st.level === "ok" ? "under control" : m.label}${per.commits_24h ? ` · ⚡${per.commits_24h}` : ""}</span>
     </div>`).firstElementChild;
@@ -206,44 +219,36 @@ async function renderDashboard() {
   // Through route(), not renderDashboard() directly, so the seq guard can
   // cancel it if the user navigates away mid-refresh.
   if (refresh) refresh.addEventListener("click", ev => { ev.preventDefault(); route(); });
-  // The brief folds away once read: it auto-opens only when its fingerprint
-  // differs from the one the CEO last saw (reality changed), otherwise it's a
-  // one-line summary he can expand. Rin's rule: narrative never outranks action.
-  const showBrief = r => {
+  // The brief maintains itself: cached copy renders instantly; if its
+  // fingerprint no longer matches the live signals, the CoS rewrites it in
+  // the background and it swaps in. No controls — there is never a reason
+  // for the CEO to ask for a rewrite the system wouldn't already be doing.
+  // It folds once read (NEW auto-opens; the fingerprint marks it seen).
+  const renderBriefCard = (r, updating) => {
     const box = document.getElementById("dash-standup");
-    if (!box || !r.brief) return false;
+    if (!box) return;
+    if (!r || !r.brief) {
+      box.replaceChildren(h(`<div class="brief brief-writing small muted">Your chief of staff is writing today's brief…</div>`));
+      return;
+    }
     let seen = null;
     try { seen = localStorage.getItem("hq-brief-seen"); } catch { }
-    const isNew = r.fingerprint && r.fingerprint !== seen;
+    const isNew = r.fingerprint && r.fingerprint !== seen && !updating;
     box.replaceChildren(h(`<details class="brief" ${isNew ? "open" : ""}>
-      <summary>📋 Chief of staff's brief · ${esc(r.generated || "")}${isNew ? ' <span class="kchip k-action">NEW</span>' : ""} <a class="plain small" href="#/" id="brief-refresh">rewrite</a></summary>
+      <summary>Chief of staff's brief · ${esc(r.generated || "")}${isNew ? ' <span class="kchip k-action">NEW</span>' : ""}${updating ? ' <span class="small muted">· reality changed — updating…</span>' : ""}</summary>
       <div class="brief-body">${md(r.brief)}</div>
     </details>`));
     const det = box.querySelector("details");
     const markSeen = () => { try { localStorage.setItem("hq-brief-seen", r.fingerprint || ""); } catch { } };
     if (isNew) markSeen();
     det.addEventListener("toggle", () => { if (det.open) markSeen(); });
-    const rf = document.getElementById("brief-refresh");
-    rf.addEventListener("click", async ev => {
-      ev.preventDefault(); ev.stopPropagation();
-      rf.textContent = "writing…";
-      try { showBrief(await (await fetch("/api/standup", { method: "POST" })).json()); }
-      catch { rf.textContent = "rewrite (failed — retry)"; }
-    });
-    return true;
   };
-  // Cached brief renders instantly; if none exists yet, offer to write one.
-  fetch("/api/standup").then(r => r.json()).then(r => {
-    if (!showBrief(r)) {
-      const box = document.getElementById("dash-standup");
-      if (!box) return;
-      const btn = h(`<button class="ghost" style="margin-top:4px">📋 Have your chief of staff write today's brief</button>`).firstElementChild;
-      btn.addEventListener("click", async () => {
-        btn.disabled = true; btn.textContent = "📋 Your chief of staff is writing…";
-        try { if (!showBrief(await (await fetch("/api/standup", { method: "POST" })).json())) { btn.disabled = false; btn.textContent = "📋 Brief (retry)"; } }
-        catch { btn.disabled = false; btn.textContent = "📋 Brief (retry)"; }
-      });
-      box.replaceChildren(btn);
+  fetch("/api/standup").then(r => r.json()).then(async r => {
+    const stale = !r.brief || (sig.brief_fingerprint && r.fingerprint !== sig.brief_fingerprint);
+    renderBriefCard(r, stale);
+    if (stale) {
+      try { renderBriefCard(await (await fetch("/api/standup", { method: "POST" })).json(), false); }
+      catch { renderBriefCard(r, false); }
     }
   }).catch(() => {});
 }

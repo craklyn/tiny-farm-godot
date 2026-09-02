@@ -3,16 +3,18 @@
    no pillar maintains its own status, so an unlit pillar is trustably quiet. */
 "use strict";
 
+// Status is drawn, not emoji'd: CSS dots render identically everywhere and
+// keep hue reserved for meaning (Rin's rule — color = semantics only).
 const LEVEL_META = {
-  fire: { label: "ON FIRE", cls: "lv-fire", dot: "🔴" },
-  attention: { label: "needs attention", cls: "lv-attn", dot: "🟡" },
-  ok: { label: "under control", cls: "lv-ok", dot: "🟢" },
-  dormant: { label: "dormant by ruling", cls: "lv-dorm", dot: "⚪" },
+  fire: { label: "ON FIRE", cls: "lv-fire", dcls: "d-fire" },
+  attention: { label: "needs attention", cls: "lv-attn", dcls: "d-attn" },
+  ok: { label: "under control", cls: "lv-ok", dcls: "d-ok" },
+  dormant: { label: "dormant by ruling", cls: "lv-dorm", dcls: "d-dorm" },
 };
 
 function levelChip(level) {
   const m = LEVEL_META[level] || LEVEL_META.ok;
-  return `<span class="lvchip ${m.cls}">${m.dot} ${m.label}</span>`;
+  return `<span class="lvchip ${m.cls}"><i class="dot ${m.dcls}"></i>${m.label}</span>`;
 }
 
 async function signals(force) {

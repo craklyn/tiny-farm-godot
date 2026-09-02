@@ -1,0 +1,28 @@
+{
+  "id": "hq-design-system",
+  "name": "HQ design system (Rin's charter)",
+  "priority": 11,
+  "status": "in_progress",
+  "owner": "rin",
+  "contributors": ["claude"],
+  "summary": "The CEO's audit was correct: HQ's visual language was inherited from the game's cozy theme, not derived from how to communicate data. This project rebuilds it deliberately. Shipped so far: pills mark exceptions only; status is CSS-drawn, hue reserved for semantics; referenced things always resolve (link + age + owner, never bare prose mentions); a 12px type floor and tabular numerals; decorative emoji pruned from data surfaces (kept as identity avatars); the brief maintains itself with zero user controls.",
+  "requirements": [
+    "One documented type scale (~5 steps) replacing the ~14 ad-hoc sizes",
+    "Color = semantics: one hue per meaning; brand gold separated from attention amber",
+    "Contrast pass: all text meets readable thresholds on the dark ground",
+    "Trend charts where the question is 'compared to what': commit-velocity sparklines per pillar, wasted-% across playtest sessions against the ruled 12% bar, benchmark over runs",
+    "Emoji policy written down: identity avatars yes, decoration no, status never",
+    "Every HQ page passes Rin's review against the system"
+  ],
+  "current_status": "Structural tranche shipped with the landing-page rework. Remaining: the type-scale consolidation, the gold/amber hue split, contrast audit, the three trend charts, and the org-chart re-envisioning below.",
+  "plan": [
+    {"step": "Landing page hierarchy (hero / ranked list / glance strip / self-updating brief)", "done": true},
+    {"step": "Exception-only pills, CSS status dots, resolvable references with age + owner", "done": true},
+    {"step": "Org chart: emergency fix shipped (staff seat in normal flow, no absolute positioning)", "done": true},
+    {"step": "Org chart re-envisioned. Library evaluation done: vendor d3-hierarchy's tidy-tree layout (small, battle-tested Reingold-Tilford math; we keep our own HTML cards + SVG links and the theme) — full diagram libraries (Mermaid, Treant, GoJS) rejected for styling/interactivity/licensing. Usage-first design: the chart's jobs are (1) find-a-person-fast → chat (add name search), (2) see who owns what, (3) absorb new hires without layout edits. Any org shape must render correctly by construction.", "done": false},
+    {"step": "Type scale + contrast audit across all pages", "done": false},
+    {"step": "Semantic hue separation (brand vs. attention)", "done": false},
+    {"step": "Trend sparklines: pillar velocity, playtest wasted-%, benchmark", "done": false}
+  ],
+  "links": ["hq/static/style.css"]
+}

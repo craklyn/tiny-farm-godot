@@ -827,7 +827,23 @@ def _compute_signals_now():
             eye.append({"kind": "fire", "pillar": pid, "text": s["reasons"][0]})
     # One entry per DISTINCT unblocking action (Rin's dedupe rule): projects
     # sharing a blocker merge into one item, and projects blocked on inbox
-    # decisions fold into the decisions line instead of echoing it.
+    # decisions fold into the decisions line instead of echoing it. Entries are
+    # STRUCTURED — a headline plus resolvable project rows (link, blocked-since
+    # age, owner) — never prose that mentions a thing without referencing it.
+    def _days_since(datestr):
+        import datetime
+        try:
+            d = datetime.datetime.strptime(str(datestr), "%Y-%m-%d")
+            return (datetime.datetime.now() - d).days
+        except (ValueError, TypeError):
+            return None
+
+    def _proj_row(o):
+        return {"id": o["id"], "name": o["name"], "href": f"#/project/{o['id']}",
+                "priority": o.get("priority"), "owner": o.get("owner"),
+                "blocked_since": o.get("blocked_since"),
+                "days_blocked": _days_since(o.get("blocked_since"))}
+
     seen_blockers = set()
     decision_blocked = []
     for b in blocked:
@@ -838,16 +854,14 @@ def _compute_signals_now():
         if key in seen_blockers:
             continue
         seen_blockers.add(key)
-        siblings = [o["name"] for o in blocked
-                    if o["id"] != b["id"] and o.get("blocked_on") == key]
-        if b["id"] == "close-m15-gate":
-            text = "Recruit one fresh adult playtester — it closes the milestone" \
-                + (" and unblocks replay hardening with the same session" if siblings else "") \
-                + ". Only you can cast this."
-        else:
-            text = f"Unblock '{b['name']}'." \
-                + (f" The same action frees: {', '.join(siblings)}." if siblings else "")
-        eye.append({"kind": "action", "pillar": "product", "text": text,
+        group = [b] + [o for o in blocked
+                       if o["id"] != b["id"] and o.get("blocked_on") == key]
+        headline = b.get("unblock_action") or f"Unblock: {b['name']}"
+        why = (b.get("current_status") or "").split(".")[0]
+        eye.append({"kind": "action", "pillar": "product",
+                    "headline": headline, "why_you": why,
+                    "unblocks": [_proj_row(o) for o in group],
+                    "text": headline + " — unblocks " + ", ".join(o["name"] for o in group) + ".",
                     "href": f"#/project/{b['id']}"})
     for pid, note in watch_notes:
         eye.append({"kind": "watch", "pillar": pid, "text": note, "href": f"#/pillar/{pid}"})
@@ -856,10 +870,14 @@ def _compute_signals_now():
                     "text": f"{len(pending_rulings)} ruling(s) you recorded await integration by the next work session — no action needed from you.",
                     "href": "#/inbox"})
     if curated_fresh:
-        text = f"Rule on {len(curated_fresh)} prepped decision(s) — oldest first: {curated_fresh[0]['id']} ({curated_fresh[0]['title']})."
-        if decision_blocked:
-            text += " Ruling also unblocks: " + ", ".join(f"'{b['name']}'" for b in decision_blocked) + "."
-        eye.append({"kind": "decide", "pillar": "product", "text": text, "href": "#/inbox"})
+        eye.append({"kind": "decide", "pillar": "product",
+                    "headline": f"Rule on {len(curated_fresh)} prepped decisions",
+                    "why_you": f"Oldest first: {curated_fresh[0]['id']} — {curated_fresh[0]['title']}",
+                    "unblocks": [_proj_row(b) for b in decision_blocked],
+                    "text": f"Rule on {len(curated_fresh)} prepped decision(s); ruling also unblocks "
+                            + ", ".join(b["name"] for b in decision_blocked) + "." if decision_blocked
+                            else f"Rule on {len(curated_fresh)} prepped decision(s).",
+                    "href": "#/inbox"})
 
     data = {
         "generated_at": _t.strftime("%H:%M:%S"),
@@ -878,6 +896,7 @@ def _compute_signals_now():
         "suite": suite,
         "eye": eye,
     }
+    data["brief_fingerprint"] = brief_fingerprint(status, eye, data["queue"], projects)
     return data
 
 
@@ -927,17 +946,24 @@ def api_persona(pid):
 _STANDUP_LOCK = threading.Lock()
 
 
+def brief_fingerprint(status, eye, queue, projects):
+    """One formula, used by both the signals payload and the brief cache, so
+    'is the brief stale?' has exactly one answer."""
+    import hashlib
+    src = json.dumps({"v": 2, "s": status, "e": eye, "q": queue,
+                      "p": [(p["id"], p["status"]) for p in projects]}, sort_keys=True)
+    return hashlib.sha1(src.encode()).hexdigest()[:12]
+
+
 def make_standup():
     """The chief of staff's brief: the live signals handed to the CoS persona,
     who writes what changed, what's under control, and where the eye goes.
     Cached against a fingerprint of the inputs, so it regenerates only when
     reality changed — the right cadence, automatically."""
-    import hashlib
     sig = compute_signals()
     projects = load_projects()
-    finger_src = json.dumps({"v": 2, "s": sig["status"], "e": sig["eye"], "q": sig["queue"],
-                             "p": [(p["id"], p["status"]) for p in projects]}, sort_keys=True)
-    finger = hashlib.sha1(finger_src.encode()).hexdigest()[:12]
+    finger = sig.get("brief_fingerprint") or brief_fingerprint(
+        sig["status"], sig["eye"], sig["queue"], projects)
     spath = os.path.join(DATA, "runs", "standup.json")
     try:
         cached = load_json(spath)

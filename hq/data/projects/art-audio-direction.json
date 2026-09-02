@@ -44,5 +44,6 @@
     "docs/design/10-audio-direction.md",
     "CREDITS.md"
   ],
-  "blocked_on": "decisions:Q-13,Q-14"
+  "blocked_on": "decisions:Q-13,Q-14",
+  "blocked_since": "2026-08-29"
 }

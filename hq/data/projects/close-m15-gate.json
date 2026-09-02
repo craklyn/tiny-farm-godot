@@ -42,5 +42,7 @@
     "docs/ROADMAP.md",
     "docs/M1_5_PLAN.md"
   ],
-  "blocked_on": "fresh-playtest"
+  "blocked_on": "fresh-playtest",
+  "blocked_since": "2026-08-31",
+  "unblock_action": "Find a fresh human playtester"
 }
