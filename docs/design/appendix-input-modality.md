@@ -1,5 +1,7 @@
 # Appendix — Input Modality: First-Principles Analysis
 
+*Status: reference — a finished derivation, not a maturing chapter.*
+
 *Motivates S-6 (touch is never second-class — the floor) and P-1 (touch-first, desktop
 always supported — the working default). Written 2026-08-18 on designer request. P-1
 carries the operational premise ledger and reconsideration triggers; this appendix is

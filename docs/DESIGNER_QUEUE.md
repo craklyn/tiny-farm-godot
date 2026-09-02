@@ -1098,7 +1098,9 @@ never touched. Session: `playtests/2026-08-31_230643`.*
 
 ## From the 2026-09-01 zoo session (T-33)
 
-- **Q-82 (Ruling, filed 2026-09-01)** **What should the zoo's Ant Forager button show?**
+- **Q-83 (Ruling, filed 2026-09-01; renumbered from a duplicate Q-82 on 2026-09-01 —
+  the scarecrow-acquisition question below keeps the id, since the phase-1 macro chart
+  already cites it)** **What should the zoo's Ant Forager button show?**
   The designer watched ants in the zoo "vanishing after a short period" and others "not
   appearing at all". Two of the causes were bugs, both fixed the same day (a second
   raid's column overwrote the first's ants — forager ids now skip anybody still

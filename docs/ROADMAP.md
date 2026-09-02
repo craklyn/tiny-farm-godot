@@ -1592,7 +1592,7 @@ none, because it reads as coverage. Everything it checked lives in
 `tests/test_runner.gd`; the handful of data-table pins it alone held (`set_energy`
 clamping, the axe/pickaxe/watering-can action rows) were moved there before deletion.*
 
-## M2.5 — The actor system (added 2026-08-31)
+## M2.5 — The actor system ✅ COMPLETE (added and completed 2026-08-31)
 
 *Sits between M2 and M3 because M3's trail pests need actors the sim can move, and the
 phase-4 corpus needs the recording semantics settled (D-9). Born from the 2026-08-31
