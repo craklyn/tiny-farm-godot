@@ -245,84 +245,206 @@ CORE_DOCS = [
     ("docs/DEPLOY.md", "The release runbook"),
 ]
 
+# The phase → milestone / phase-native-chapter joins are structural facts of the
+# roadmap that change once per phase, not per commit; a hardcoded map beats a
+# fragile parse (Milo's rule: don't over-parse what never moves).
+PHASE_MILESTONES = {1: ["M1", "M1.5"], 2: ["M3"], 3: ["M4"], 4: ["M5"], 5: ["M6"]}
+PHASE_CHAPTERS = {
+    1: ["docs/design/02-farming-system.md"],
+    2: ["docs/design/03-automation-system.md"],
+    3: ["docs/design/05-defense-system.md"],
+    4: ["docs/design/06-bots-and-training.md"],
+    5: ["docs/design/07-expedition-system.md"],
+}
+CITE_RE = re.compile(r"\b(?:S|P|D|Q)-\d+\b")
+
+
+def _read(rel):
+    try:
+        with open(os.path.join(REPO, rel), "r", encoding="utf-8") as f:
+            return f.read()
+    except OSError:
+        return ""
+
 
 def _doc_meta(rel, blurb=""):
-    """Title + maturity status for one markdown doc (first heading, first *Status:* line)."""
-    path = os.path.join(REPO, rel)
-    title, status = os.path.basename(rel), ""
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            for line in f:
-                s = line.strip()
-                if s.startswith("# ") and title == os.path.basename(rel):
-                    title = s[2:].strip()
-                if not status:
-                    m = STATUS_RE.match(s)
-                    if m:
-                        status = m.group(1).strip().lower()
-                    elif s.startswith("*Stub"):
-                        status = "stub"
-    except OSError:
+    """Title, maturity status, and git recency for one markdown doc
+    (first heading, first *Status:* line, last commit that touched it)."""
+    text = _read(rel)
+    if not text:
         return None
-    return {"path": rel, "title": title, "status": status, "blurb": blurb}
+    title, status = os.path.basename(rel), ""
+    for line in text.splitlines():
+        s = line.strip()
+        if s.startswith("# ") and title == os.path.basename(rel):
+            title = s[2:].strip()
+        if not status:
+            m = STATUS_RE.match(s)
+            if m:
+                status = m.group(1).strip().lower()
+            elif s.startswith("*Stub"):
+                status = "stub"
+        if status and title != os.path.basename(rel):
+            break
+    return {"path": rel, "title": title, "status": status, "blurb": blurb,
+            "changed": _last_touched(os.path.join(REPO, rel))}
 
 
 def _decision_counts():
-    """S/P/D tier counts, live from DECISION_LOG.md."""
-    try:
-        with open(os.path.join(REPO, "docs", "DECISION_LOG.md"), "r", encoding="utf-8") as f:
-            text = f.read()
-    except OSError:
+    """S/P/D tier counts, live from DECISION_LOG.md. An entry that files under
+    Tier 2/3 but whose body records '✅ Settled' counts as settled (e.g. D-9) —
+    the page must never claim more open deferrals than the log actually holds."""
+    text = _read("docs/DECISION_LOG.md")
+    if not text:
         return {}
-    return {
-        "settled": len(re.findall(r"^### S-\d", text, re.M)),
-        "provisional": len(re.findall(r"^### P-\d", text, re.M)),
-        "deferred": len(re.findall(r"^### D-\d", text, re.M)),
-    }
+    counts = {"settled": 0, "provisional": 0, "deferred": 0}
+    tier = {"S": "settled", "P": "provisional", "D": "deferred"}
+    for m in re.finditer(r"^### ([SPD])-\d+.*\n((?:(?!^### ).*\n?)*)", text, re.M):
+        letter, body = m.group(1), m.group(2)
+        if letter != "S" and "✅ Settled" in body:
+            counts["settled"] += 1
+        else:
+            counts[tier[letter]] += 1
+    return counts
 
 
 def _milestones():
-    """Milestone strip, live from ROADMAP.md headings."""
-    try:
-        with open(os.path.join(REPO, "docs", "ROADMAP.md"), "r", encoding="utf-8") as f:
-            lines = f.readlines()
-    except OSError:
-        return []
-    out = []
-    for line in lines:
+    """Milestone list, live from ROADMAP.md: the `## M… — …` headings, plus the
+    phase-gated milestones (M5/M6) that live as bullets under 'Phase-gated
+    beyond this point' — without them the page claims the game ends at M4."""
+    text = _read("docs/ROADMAP.md")
+    out, seen = [], set()
+    for line in text.splitlines():
         m = MILESTONE_RE.match(line.rstrip())
-        if m:
+        if m and m.group(1) not in seen:
+            seen.add(m.group(1))
             title = re.sub(r"[✅—-]*\s*✅.*$", "", m.group(2)).strip(" —-")
             out.append({"id": m.group(1), "title": title, "done": "✅" in m.group(2)})
+    for m in re.finditer(r"^- \*\*(M[0-9.]+) — ([^:*]+)", text, re.M):
+        if m.group(1) not in seen:
+            seen.add(m.group(1))
+            out.append({"id": m.group(1), "title": m.group(2).strip(), "done": False, "gated": True})
     return out
 
 
+def _queue_state():
+    """Open designer questions, live from DESIGNER_QUEUE.md. Grammar: items are
+    `- **Q-n …` bullets; a ruled item carries ~~strikethrough~~ on its first
+    line (universal in the file). Sections are the `## ` headings, which name
+    the milestone horizon they block ('Before M3 — phase 2 design')."""
+    text = _read("docs/DESIGNER_QUEUE.md")
+    sections, current = [], None
+    for line in text.splitlines():
+        if line.startswith("## "):
+            current = {"name": line[3:].strip(), "open": []}
+            sections.append(current)
+        m = re.match(r"^- \*\*(Q-\d+)", line)
+        if m and current is not None and "~~" not in line:
+            current["open"].append(m.group(1))
+    open_ids = {q for s in sections for q in s["open"]}
+    return {"sections": [s for s in sections if s["open"]], "open": sorted(open_ids)}
+
+
+def _chapter_blurbs():
+    """Per-chapter one-liners from the Covers table in docs/design/README.md —
+    written for exactly this purpose, previously unused by the page."""
+    out = {}
+    for m in re.finditer(r"^\| \S+ \| `(.+?)` \| (.+?) \|", _read("docs/design/README.md"), re.M):
+        out[m.group(1)] = m.group(2).strip()
+    return out
+
+
+def _delegation_cells():
+    """Per-phase 'what gets delegated away', from the spine table in
+    design/01-game-loops.md — the vision's best one-line-per-phase artifact."""
+    out = {}
+    for m in re.finditer(r"^\| ([1-5]) \|(.+)\|", _read("docs/design/01-game-loops.md"), re.M):
+        cells = [c.strip() for c in m.group(2).split("|") if c.strip()]
+        if cells and int(m.group(1)) not in out:
+            out[int(m.group(1))] = cells[-1]
+    return out
+
+
+def _pitch():
+    """The one-sentence pitch, live from GAME_VISION.md."""
+    m = re.search(r"^## One-sentence pitch\n+((?:(?!^#).+\n?)+)", _read("docs/GAME_VISION.md"), re.M)
+    return " ".join(m.group(1).split()) if m else ""
+
+
+def _premise(text):
+    """The **Premise:** paragraph of a phase doc."""
+    m = re.search(r"^\*\*Premise:\*\*\s*((?:.+\n?)+?)(?:\n\s*\n|\Z)", text, re.M)
+    return " ".join(m.group(1).split()) if m else ""
+
+
+def _open_cites(rel, open_qs):
+    """Q-items this doc cites that are still open — the 'blocked on' signal."""
+    cited = set(CITE_RE.findall(_read(rel)))
+    return sorted(q for q in cited if q in open_qs)
+
+
 def api_docs():
-    """Index of the whole design-doc system, grouped, with live statuses."""
+    """Index of the whole design-doc system, grouped, with live statuses,
+    recency, open-question joins, and the five-phase rail."""
+    queue = _queue_state()
+    open_qs = set(queue["open"])
+    blurbs = _chapter_blurbs()
+
     def listing(sub):
         d = os.path.join(REPO, "docs", sub)
         try:
             names = sorted(f for f in os.listdir(d) if f.endswith(".md") and f != "README.md")
         except OSError:
             return []
-        return [m for m in (_doc_meta(f"docs/{sub}/{f}") for f in names) if m]
+        docs = []
+        for f in names:
+            m = _doc_meta(f"docs/{sub}/{f}", blurbs.get(f, ""))
+            if m:
+                m["open_qs"] = _open_cites(m["path"], open_qs)
+                docs.append(m)
+        return docs
+
+    milestones = _milestones()
+    mile_by_id = {m["id"]: m for m in milestones}
+    chapters = {d["path"]: d for d in listing("design")}
+    delegation = _delegation_cells()
+    phases = []
+    phase_docs = {d["path"]: d for d in listing("phases")}
+    for n in range(1, 6):
+        rel = next((p for p in phase_docs if f"phase-{n}-" in p), None)
+        if not rel:
+            continue
+        meta = phase_docs[rel]
+        phases.append({
+            "n": n, "path": rel, "title": meta["title"], "status": meta["status"],
+            "changed": meta["changed"], "open_qs": meta["open_qs"],
+            "premise": _premise(_read(rel)),
+            "delegated": delegation.get(n, ""),
+            "milestones": [mile_by_id[i] for i in PHASE_MILESTONES.get(n, []) if i in mile_by_id],
+            "chapters": [chapters[c] for c in PHASE_CHAPTERS.get(n, []) if c in chapters],
+        })
 
     groups = [
         {"name": "North star & records", "docs": [m for m in (_doc_meta(p, b) for p, b in CORE_DOCS) if m]},
-        {"name": "Design chapters — the living GDD", "docs": listing("design")},
-        {"name": "Phase experience docs", "docs": listing("phases")},
+        {"name": "Design chapters — the living GDD", "docs": list(chapters.values())},
     ]
-    return {"groups": groups, "decisions": _decision_counts(), "milestones": _milestones()}
+    return {"pitch": _pitch(), "phases": phases, "groups": groups,
+            "decisions": _decision_counts(), "milestones": milestones, "queue": queue}
 
 
 def api_doc(rel):
-    """One markdown doc, raw, for client-side rendering. Whitelisted to docs/*.md."""
+    """One markdown doc, raw, for client-side rendering, plus its index meta
+    (title/status/recency) so a deep-linked doc can identify itself.
+    Whitelisted to docs/*.md."""
     full = os.path.realpath(os.path.join(REPO, rel))
     droot = os.path.realpath(os.path.join(REPO, "docs"))
     if not (full.startswith(droot + os.sep) and full.endswith(".md") and os.path.isfile(full)):
         return None
+    rel = os.path.relpath(full, REPO)
+    meta = _doc_meta(rel) or {}
     with open(full, "r", encoding="utf-8") as f:
-        return {"path": os.path.relpath(full, REPO), "markdown": f.read()}
+        return {"path": rel, "markdown": f.read(), "title": meta.get("title", ""),
+                "status": meta.get("status", ""), "changed": meta.get("changed", "")}
 
 
 # ---------------------------------------------------------------------------

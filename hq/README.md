@@ -26,10 +26,13 @@ report, and the decision inbox (curated cards + on-page rulings).
   serving, live designer-queue parsing, and `/api/chat` which shells out to the
   local `claude` CLI with a per-persona system prompt, read-only repo tools).
 - `static/` — the single-page frontend. `design.js`/`design.css` are the Design
-  Studio tab: the living GDD browsed live from `docs/` (chapter maturity board,
-  decision-log tier counts, milestone strip, and full doc rendering via
-  `/api/docs` + `/api/doc/<path>` — served from the repo on every request,
-  never copied).
+  Studio tab: the living GDD browsed live from `docs/` via `/api/docs` +
+  `/api/doc/<path>` — served from the repo on every request, never copied. The
+  index leads with the vision (the one-sentence pitch, a five-phase rail with
+  premise/maturity/milestones per phase, and a computed "design frontier" card
+  joining the next undone phase milestone to its design debt); every doc is a
+  real route (`#/design/doc/<path>[@anchor]`), and rendered docs get heading
+  anchors, a contents rail, and live S-/P-/D-/Q- citation links.
 - `static/vendor/` — vendored third-party libs, fetched once from jsdelivr so the
   app has no runtime network dependency: `marked` 16.4.1 (MIT, markdown parsing)
   and `DOMPurify` 3.2.7 (Apache-2.0/MPL-2.0, HTML sanitization) for chat replies.

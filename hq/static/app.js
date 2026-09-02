@@ -150,6 +150,9 @@ async function route() {
     else if (hash.startsWith("/pillar/")) await renderPillar(hash.slice("/pillar/".length));
     else if (hash.startsWith("/playtest/")) await renderPlaytestDetail(hash.slice("/playtest/".length));
     else if (hash.startsWith("/chat/")) await renderChat(hash.slice("/chat/".length));
+    // Guarded: on a direct page-load design.js hasn't registered yet; it
+    // re-routes itself once loaded (same dance as its /design route).
+    else if (hash.startsWith("/design/doc/") && window.renderDesignDoc) await renderDesignDoc(hash.slice("/design/doc/".length));
     else await (routes[hash] || renderDashboard)();
   } catch (e) {
     $view.innerHTML = `<div class="card"><b>Something broke:</b> ${esc(e.message)}</div>`;
