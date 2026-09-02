@@ -1,0 +1,26 @@
+{
+  "id": "session-player",
+  "name": "Session player: pixel-perfect replay in the browser",
+  "priority": 12,
+  "status": "planned",
+  "owner": "jade",
+  "contributors": ["ravi", "wei"],
+  "summary": "The HQ scrubber replays the recorded event stream honestly, but it draws markers, not the game. This project is the real thing: the game's own renderer playing a session's replay in the browser, via a Godot web export of a dedicated session-player scene. The attract loop already proved the renderer runs standalone off a replay with a detached state; this adds step/seek controls bridged to the page (Godot web exports support JS interop), a session picker fed by HQ, and time-compressed playback.",
+  "requirements": [
+    "A session-player scene: loads any playtests/<name>/session_replay.json, drives a detached world exactly as the attract loop does",
+    "Step forward/back by action, seek to any action index, play at compressed pacing — controlled from the HQ page via the JS bridge",
+    "Honest versioning: the player shows the session's build stamp and warns when it differs from the running build (an old replay on new worldgen renders a reconstruction, not the original — say so on screen)",
+    "Web export of just this scene served by the HQ server; no effect on the game's own exports",
+    "The HQ scrubber remains the fallback for sessions whose replays no longer reproduce"
+  ],
+  "current_status": "Planned. The technical spine exists (attract loop, replay format, web export pipeline); the new work is the control bridge, the export packaging, and the build-mismatch honesty layer.",
+  "plan": [
+    {"step": "HQ event scrubber shipped (the honest marker-level playback)", "done": true},
+    {"step": "Session-player scene over the attract-loop machinery, with step/seek", "done": false},
+    {"step": "JS bridge + HQ embedding with session picker", "done": false},
+    {"step": "Build-stamp honesty: reconstruction warnings for cross-build replays", "done": false}
+  ],
+  "plan_note": "Plan is intentionally incomplete — pre-execution.",
+  "links": ["tools/replay_view.gd", "ui/title_screen.gd", "docs/DEPLOY.md", "hq/static/playtests.js"],
+  "release": null
+}

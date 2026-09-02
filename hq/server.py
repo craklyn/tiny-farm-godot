@@ -53,9 +53,36 @@ def load_org():
     return load_json(os.path.join(DATA, "org.json"))
 
 
+_PROJ_TOUCH_CACHE = {}
+
+
+def _last_touched(path):
+    """When this project's file last changed, per git — honest 'last movement'
+    for drift detection. Cached by mtime so the git calls don't repeat."""
+    try:
+        m = os.path.getmtime(path)
+    except OSError:
+        return ""
+    hit = _PROJ_TOUCH_CACHE.get(path)
+    if hit and hit[0] == m:
+        return hit[1]
+    rel = os.path.relpath(path, REPO)
+    when = run_cmd(["git", "log", "-1", "--format=%ad", "--date=relative", "--", rel]) or "uncommitted"
+    _PROJ_TOUCH_CACHE[path] = (m, when)
+    return when
+
+
 def load_projects():
     pdir = os.path.join(DATA, "projects")
-    projects = [load_json(os.path.join(pdir, f)) for f in sorted(os.listdir(pdir)) if f.endswith(".json")]
+    projects = []
+    for f in sorted(os.listdir(pdir)):
+        if not f.endswith(".json"):
+            continue
+        full = os.path.join(pdir, f)
+        p = load_json(full)
+        p["last_touched"] = _last_touched(full)
+        p["next_step"] = next((s["step"] for s in p.get("plan", []) if not s.get("done")), None)
+        projects.append(p)
     projects.sort(key=lambda p: p.get("priority", 999))
     return projects
 
@@ -519,6 +546,34 @@ def _replay_build_id(tdir):
             return json.loads(f.readline()).get("build_id", "")
     except Exception:
         return ""
+
+
+def playtest_events(name):
+    """The full indexed event stream of one session, for the scrubber: every
+    tap and act in file order (chronological — single writer), untouched
+    except for an index. Renders only what was recorded; no simulation."""
+    tdir = os.path.join(REPO, "playtests", name)
+    trace = os.path.join(tdir, "session_trace.jsonl")
+    if not os.path.isfile(trace):
+        return {"name": name, "error": "no trace"}
+    events = []
+    dropped = 0
+    with open(trace, "r", encoding="utf-8") as f:
+        for i, line in enumerate(f):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                e = json.loads(line)
+            except ValueError:
+                dropped += 1
+                continue
+            if i == 0 and "version" in e and "kind" not in e:
+                continue
+            if e.get("kind") in ("tap", "act"):
+                e["i"] = len(events)
+                events.append(e)
+    return {"name": name, "events": events, "dropped": dropped}
 
 
 _PT_CACHE = {}
@@ -1152,6 +1207,11 @@ class Handler(BaseHTTPRequestHandler):
                                    if os.path.isfile(os.path.join(DATA, "runs", "standup.json")) else {}))
             if path == "/api/playtests":
                 return self._send(200, list_playtests())
+            if path.startswith("/api/playtest-events/"):
+                name = path[len("/api/playtest-events/"):]
+                if not re.match(r"^[0-9_-]{1,40}$", name):
+                    return self._send(400, {"error": "bad session name"})
+                return self._send(200, playtest_events(name))
             if path == "/api/audio":
                 sfx_dir = os.path.join(REPO, "assets", "audio", "sfx")
                 music_dir = os.path.join(REPO, "assets", "audio", "music")

@@ -498,6 +498,32 @@ const daysSince = d => {
   return isNaN(t) ? null : Math.floor((Date.now() - t) / 86400000);
 };
 
+// One-click delegation: opens the owner's chat with the question pre-drafted,
+// so "chase this" costs a click, not a context rebuild.
+function askOwner(p, owner) {
+  try {
+    sessionStorage.setItem("hq-chat-draft",
+      `Where does "${p.name}" stand right now? What's the fastest path to the next step` +
+      (p.status === "blocked" ? " and what exactly would unblock it?" : "?"));
+  } catch { }
+  location.hash = "#/chat/" + owner.id;
+}
+
+// blocked_on -> a resolvable chip: a decision key links the inbox, a shared
+// blocker links the project that carries the unblocking action.
+function blockedOnChip(p, byId) {
+  const b = p.blocked_on;
+  if (!b || p.status !== "blocked") return "";
+  if (String(b).startsWith("decisions:")) {
+    const qs = String(b).slice("decisions:".length);
+    return ` <a class="plain waits" href="#/inbox">→ waits on rulings ${esc(qs)}</a>`;
+  }
+  const carrier = byId && Object.values(byId).find(o => o.id !== p.id && o.blocked_on === b && o.unblock_action);
+  if (carrier) return ` <a class="plain waits" href="#/project/${carrier.id}">→ ${esc(carrier.unblock_action.toLowerCase())}</a>`;
+  if (p.unblock_action) return ` <span class="waits">→ ${esc(p.unblock_action.toLowerCase())}</span>`;
+  return "";
+}
+
 function projRow(p, org, byId) {
   const owner = org ? org.employees.find(e => e.id === p.owner) : null;
   const days = p.status === "blocked" ? daysSince(p.blocked_since) : null;
@@ -507,15 +533,23 @@ function projRow(p, org, byId) {
     <div class="pri">${p.priority}</div>
     <div style="min-width:0">
       <div class="nm">${esc(p.name)}</div>
-      <div class="small muted">${esc(p.summary.split(". ")[0])}.${waits.length ? ` <span class="waits">waits on ${waits.join(", ")}</span>` : ""}</div>
+      <div class="small muted">${esc(p.summary.split(". ")[0])}.${waits.length ? ` <span class="waits">waits on ${waits.join(", ")}</span>` : ""}${blockedOnChip(p, byId)}</div>
+      ${p.next_step ? `<div class="small nxt"><span class="nxt-label">next</span> ${esc(p.next_step)}</div>` : ""}
     </div>
-    <div class="ow">${owner ? esc(owner.name.split(" ")[0]) : ""} <span class="chip ${p.status}">${p.status.replace("_", " ")}${days != null ? ` · ${days}d` : ""}</span></div>
+    <div class="ow">
+      <div>${owner ? `<a class="plain" data-ask="1">${esc(owner.name.split(" ")[0])}</a>` : ""} <span class="chip ${p.status}">${p.status.replace("_", " ")}${days != null ? ` · ${days}d` : ""}</span></div>
+      <div class="small muted" style="margin-top:3px">moved ${esc(p.last_touched || "?")}</div>
+    </div>
   </div>`).firstElementChild;
-  row.addEventListener("click", ev => { if (ev.target.tagName !== "A") location.hash = "#/project/" + p.id; });
+  row.addEventListener("click", ev => {
+    if (ev.target.dataset && ev.target.dataset.ask) { ev.preventDefault(); askOwner(p, owner); return; }
+    if (ev.target.tagName !== "A") location.hash = "#/project/" + p.id;
+  });
   return row;
 }
 
-let progTab = "release";
+// He'll settle into a habitual axis — remember it.
+let progTab = (() => { try { return localStorage.getItem("hq-prog-tab") || "release"; } catch { return "release"; } })();
 async function renderProgram() {
   const [projects, org, prog] = await Promise.all([api("/api/projects"), api("/api/org"), api("/api/program")]);
   const byId = Object.fromEntries(projects.map(p => [p.id, p]));
@@ -529,7 +563,11 @@ async function renderProgram() {
     const b = document.createElement("button");
     b.textContent = label;
     b.classList.toggle("active", id === progTab);
-    b.addEventListener("click", () => { progTab = id; renderProgram(); });
+    b.addEventListener("click", () => {
+      progTab = id;
+      try { localStorage.setItem("hq-prog-tab", id); } catch { }
+      renderProgram();
+    });
     tabs.appendChild(b);
   });
   const body = document.getElementById("prog-body");
@@ -752,6 +790,15 @@ async function renderChat(toId) {
     </div>`));
   const log = document.getElementById("chat-log");
   const hist = chatHistories[to] ||= [];
+  // A pre-drafted ask (the program report's "ask the owner" one-click).
+  try {
+    const draft = sessionStorage.getItem("hq-chat-draft");
+    if (draft) {
+      sessionStorage.removeItem("hq-chat-draft");
+      const ta = document.getElementById("chat-text");
+      if (ta) { ta.value = draft; setTimeout(() => ta.focus(), 50); }
+    }
+  } catch { }
   const draw = () => {
     log.replaceChildren(...hist.map(m => h(`<div class="msg ${m.role === "user" ? "user" : "them"}">
       ${m.role !== "user" ? `<div class="who">${esc(m.name || cur.name)}</div>` : ""}${md(m.text)}</div>`).firstElementChild));
