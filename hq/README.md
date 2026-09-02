@@ -12,7 +12,12 @@ animated/editable entity gallery, the map editor (layout definitions), the
 playtest viewer (traces scored by the game's own formulas), the program
 report, and the decision inbox (curated cards + on-page rulings).
 
-- **URL:** http://localhost:8642
+- **URL:** http://localhost:8642 (on the desktop)
+- **From the laptop / anywhere:** https://daniel-maco.tail445099.ts.net — the same
+  server, shared tailnet-only via `tailscale serve` (set up 2026-09-02; the serve
+  rule and the service both survive reboots). HQ itself stays bound to 127.0.0.1
+  so the chat endpoint is never exposed beyond the tailnet. To stop sharing:
+  `tailscale serve --https=443 off`.
 - **Run by hand:** `python3 hq/server.py` (stdlib only, no dependencies)
 - **Runs at boot:** systemd user service `tiny-farm-hq` (`~/.config/systemd/user/tiny-farm-hq.service`),
   with `loginctl enable-linger` so it starts without a login.
