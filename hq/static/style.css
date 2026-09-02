@@ -14,15 +14,26 @@
   font-size: 15px;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-/* Status marks: drawn, not emoji'd — and SHAPE carries the meaning alongside
-   color (colorblind-safe, and legible at 9px where hues blur):
-   filled circle = under control · rounded square = needs attention ·
-   glowing circle = on fire · hollow ring = dormant by ruling. */
-.dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: baseline; }
+/* Status marks: the vocabulary is BORROWED, not invented — glyphs the CEO
+   already reads daily (Rin's rule: never make him learn what GitHub and
+   Slack already taught him). Green ✓ = passing/under control (CI checks),
+   amber ! = warning/needs attention (signage), red ✕ = failing/on fire
+   (CI checks), gray – = skipped/dormant (CI skipped, Slack away). Color is
+   redundant with the glyph, so it's colorblind-safe by construction. */
+.dot {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 13px; height: 13px; border-radius: 50%; margin-right: 6px;
+  font: 800 9px/1 "Segoe UI", system-ui, sans-serif; color: #17130e;
+  vertical-align: text-bottom; flex-shrink: 0;
+}
 .d-ok { background: var(--green); }
-.d-attn { background: #e0912e; border-radius: 2px; }
+.d-ok::before { content: "✓"; }
+.d-attn { background: #e0912e; }
+.d-attn::before { content: "!"; }
 .d-fire { background: #e05c48; box-shadow: 0 0 6px #e05c48cc; }
-.d-dorm { background: transparent; border: 2px solid var(--muted); width: 8px; height: 8px; }
+.d-fire::before { content: "✕"; }
+.d-dorm { background: transparent; border: 1.5px solid var(--muted); color: var(--muted); }
+.d-dorm::before { content: "–"; }
 body {
   font-family: "Avenir Next", "Segoe UI", system-ui, sans-serif;
   background: var(--bg);
@@ -62,6 +73,9 @@ body {
 .nav-caret:hover { background: var(--panel); color: var(--text); }
 .roll { margin-left: 6px; }
 .nav-sub { display: flex; flex-direction: column; gap: 1px; margin: 0 0 4px; }
+/* `hidden` loses to any author display rule — restate it or the collapse
+   is attribute-only theater (the bug the CEO caught). */
+.nav-sub[hidden] { display: none; }
 .nav-sub a { padding: 4px 12px 4px 40px; font-size: 12.5px; font-weight: 500; }
 .nav-sub a .dot { margin-right: 8px; flex-shrink: 0; }
 .nav-legend { display: flex; flex-wrap: wrap; gap: 4px 10px; color: var(--muted); font-size: 11.5px; padding: 0 8px 8px; }
