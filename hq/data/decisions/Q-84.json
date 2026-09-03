@@ -1,0 +1,20 @@
+{
+  "id": "Q-84",
+  "title": "Should a machine look like a machine at a glance?",
+  "question": "An abandoned prototype carried a rule that was never written down anywhere: machines are square and ride on treads, living things are round and walk. The bot we actually shipped goes the other way — its sheet is a 4x4 walk cycle in the player's exact layout, so today's bot is a small person-shaped helper that walks the way she does, because its renderer *is* her renderer with the texture swapped. The sprinkler, meanwhile, is plainly an object. Nothing says which of those two is the rule and which is the accident.",
+  "why_now": "The sprinkler is the first automation the player ever meets and the shoo-bot is the debut candidate right behind it (Q-56), so the first two machines in the game are about to stand in the same field. A look drifts when its pieces are drawn months apart with no rule between them. Deciding costs nothing today; deciding after both are drawn costs a redraw.",
+  "options": [
+    {"key": "a", "label": "Movement decides it, not machinery", "detail": "Anything that moves under its own power reads as a character — bot included; anything static reads as a built object, as the sprinkler already does. Costs nothing, keeps the shipped sheet, and still gives every future sprite a rule to follow. Bets that attachment to your bots (design/06 §2, and the whole of phase 5) is worth more than appliance-legibility.", "recommended": true},
+    {"key": "b", "label": "Adopt the prototype's rule: square, on treads", "detail": "The strongest at-a-glance signal that this thing was built rather than born — valuable in a game with no words. Costs a new bot sheet and a new animation, not just a texture: treads don't have a four-frame walk, so the renderer stops being the player's."},
+    {"key": "c", "label": "Leave it unruled for now", "detail": "Judge each sprite on its own when it comes. Cheapest today, and honest if the answer really depends on seeing them together — but the sprinkler and the debut bot will be drawn at different times, which is exactly how a look drifts. Write a different cut in the judgment box if neither rule above is the one."}
+  ],
+  "attachments": [
+    {"type": "sprite", "entity": "actors/bot", "caption": "The bot as shipped — a walking figure on the player's own sheet layout"},
+    {"type": "sprite", "entity": "actors/sprinkler", "caption": "The sprinkler — the first machine, and plainly an object"}
+  ],
+  "links": [
+    {"label": "Bot in the entity gallery", "href": "#/entity/actors/bot"},
+    {"label": "Sprinkler in the entity gallery", "href": "#/entity/actors/sprinkler"},
+    {"label": "Original queue entry", "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"}
+  ]
+}

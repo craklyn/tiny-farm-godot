@@ -1227,6 +1227,32 @@ never touched. Session: `playtests/2026-08-31_230643`.*
   budget (`design/12` §1). Best practice: decide total runtime early and defend it.
   **Partially ruled 2026-09-01: phase 1 = 2–3 hours first run** (recorded in
   `phases/phase-1-homestead.md` §2); the other phases' numbers remain open.
+- **Q-84 (Ruling, filed 2026-09-02)** **Should a machine look like a machine at a glance?**
+  Rescued from an abandoned bot-pen prototype (local branch
+  `wip-before-sync-2026-09-02`, written against the pre-sim codebase and dropped
+  2026-09-02 — the feature is superseded by the sprinkler and by Q-56, but two of its
+  ideas outlived it). The prototype assumed a silhouette rule nobody has ever written
+  down: *machines are square and ride on treads, living things are round and walk.* What
+  shipped contradicts it — `assets/sprites/generated/bot.png` is a 4×4 walk cycle in
+  `characters.png`'s exact layout, so the bot is a walking figure drawn by the player's own
+  renderer with the texture swapped, while the sprinkler is plainly an object. Which of
+  those is the rule and which is the accident is unruled. *Recommendation: let movement
+  decide it — static things read as built objects, self-moving things read as characters —
+  which costs nothing, keeps the shipped sheet, and still gives future sprites a rule.
+  Adopting treads means a new sheet and a new animation, not a repaint: treads have no
+  four-frame walk.* Bears on `design/06` §2 (appearance, attachment); lands with Q-15/Q-56
+  at M3 planning, when the first two machines first share a field.
+- **Q-85 (Ruling, filed 2026-09-02)** **When a machine can't do what it was told, what does the player see?**
+  The other idea rescued from the same prototype: a blocked bot stopped, blinked red with a
+  `!`, and waited for the way to clear — never improvising, never failing silently. The
+  shipped bots do neither; a blocked one re-plans or stands still, which looks identical to
+  one that has finished and to one that is broken. `design/06` §4 already demands legible
+  failure, but of phase-4 *training* mistakes — a machine stuck on a rock is earlier and far
+  more common. *Recommendation: stop, show a visible distress state, resume when clear. The
+  sim already produces refusal reasons for the player's own blocked taps, so most of the
+  machinery exists; the missing pieces are a sprite frame and a reportable reason on the
+  actor.* Cheaper to settle before the debut than after: it decides whether the sheet needs
+  a status frame.
 
 ## At D-3 trigger — before M4 (phase-3 content)
 

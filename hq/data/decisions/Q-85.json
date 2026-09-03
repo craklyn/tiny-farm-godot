@@ -1,0 +1,18 @@
+{
+  "id": "Q-85",
+  "title": "When a machine can't do what it was told, what does the player see?",
+  "question": "The same abandoned prototype had one behaviour worth rescuing: a bot that found its way blocked stopped where it stood, blinked red with a single '!', and waited until the way was clear. It never improvised and it never failed quietly. The shipped bots do neither — a blocked one re-plans or simply stands, which from the outside is indistinguishable from a bot that has finished its work, and from a bot that is broken. Design chapter 06 already asks that failure be funny and legible rather than opaque, but it asks that of phase-4 training mistakes. A machine physically stuck on a rock is a far earlier and far more ordinary way for this to come up.",
+  "why_now": "Whatever the first automation is, its first bad day is the impression that sticks, and a machine failing in silence is the worst version of it. The answer also shapes two things that are cheaper to get right before they exist: the sprite sheet needs a frame if there is a status light, and the sim needs to hand out a reason if the machine is going to show one.",
+  "options": [
+    {"key": "a", "label": "Stop, show it, wait", "detail": "The prototype's behaviour: hold position, show a visible distress state, resume when the obstruction clears. Wordless, honest, and it teaches early that a machine's trouble is something you can see and go fix. The sim already produces refusal reasons for the player's own blocked taps, so most of the machinery exists.", "recommended": true},
+    {"key": "b", "label": "Improvise around it", "detail": "The machine re-routes or skips the step and keeps going. Reads as competent and needs no new art. But it hides the failure, which works against the phase-4 lesson that you can watch your bot be wrong and then fix why."},
+    {"key": "c", "label": "Stop quietly — today's behaviour", "detail": "Do nothing extra; a blocked machine just stops. Free, and defensible if machines are meant to be unremarkable. Accepts that a stuck one and a finished one look the same."}
+  ],
+  "attachments": [
+    {"type": "sprite", "entity": "actors/bot", "caption": "The bot — currently has no way to say it is stuck"}
+  ],
+  "links": [
+    {"label": "Bot in the entity gallery", "href": "#/entity/actors/bot"},
+    {"label": "Original queue entry", "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"}
+  ]
+}
