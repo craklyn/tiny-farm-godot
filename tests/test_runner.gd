@@ -17,9 +17,26 @@ var Pathfinding: Node
 # a second reason to the same files; the 08-31 pair are deploy rescues — the first
 # from the pre-M2.5 build, the second a Continue on a pre-T-32 base, this game's
 # first v2 log; 08-21 is the oldest surviving session of all, rescued by hand
-# from the retired com.godot.game install — see its NOTE.md; 09-02 is the first
-# rescue pulled by HQ's Deploy-to-tablet button, 09-02 21:44 the second — that
-# button is now the normal way sessions arrive here).
+# from the retired com.godot.game install — see its NOTE.md).
+#
+# **Five folders were removed on 2026-09-02 and the shelf went 15 → 10.** Every
+# one was redundant, and it is worth being precise about how, because "duplicate"
+# turned out to mean two different things:
+#
+# - `2026-08-28_224740` and the 08-30 pair `215356`/`215452` were **byte-identical
+#   in all three files** to `115934` and `215248` respectively. Copies, nothing
+#   more.
+# - `2026-09-02_211138` and `214427` shared `233943`'s tap trace because the trace
+#   file on the device is never cleared — but their *replays* were a `base_save`
+#   and **one entry**. They recorded no play at all. The play they appear to
+#   contain is `233943`'s, which is still here with all 3450 of its entries.
+#
+# That second pair is also a correction. The commentary below used to argue that
+# `211138` mattered because it was "a real play session — 700-odd entries, not an
+# empty log — and it still replays to its own autosave". It was not: one entry, on
+# a base save. Its "match" was the hollow kind this file already knew about — a
+# saved world with no Actions reproduces itself whatever the generator does — and
+# it was read as evidence of determinism it could not carry.
 #
 # **A folder not listed here does not fail anything** (changed 2026-09-02). It
 # used to fail BY NAME until classified, and that was wrong for a reason worth
@@ -37,17 +54,12 @@ const SHELF := {
 	"2026-08-28_111552": { "format": 1, "verdict": "cross" },
 	"2026-08-28_114839": { "format": 1, "verdict": "cross" },
 	"2026-08-28_115934": { "format": 1, "verdict": "cross" },
-	"2026-08-28_224740": { "format": 1, "verdict": "cross" },
 	"2026-08-30_215248": { "format": 1, "verdict": "match" },
-	"2026-08-30_215356": { "format": 1, "verdict": "match" },
-	"2026-08-30_215452": { "format": 1, "verdict": "match" },
 	"2026-08-30_221027": { "format": 1, "verdict": "cross" },
 	"2026-08-31_220017": { "format": 1, "verdict": "cross" },
 	"2026-08-31_220426": { "format": 2, "verdict": "cross" },
 	"2026-08-31_230643": { "format": 2, "verdict": "cross" },
 	"2026-08-31_233943": { "format": 2, "verdict": "cross" },
-	"2026-09-02_211138": { "format": 2, "verdict": "match" },
-	"2026-09-02_214427": { "format": 2, "verdict": "match" },
 }
 
 
@@ -6058,22 +6070,30 @@ func test_replay_v2() -> void:
 	# was replayed and then nobody looked at the answer. Written down at T-32,
 	# because a worldgen change is exactly when somebody should.
 	#
-	# 3 match, 5 do not, and **T-32 did not move either number** (measured on both
-	# sides of the change). The three that match are the empty logs of 2026-08-30
-	# 21:52–21:54: a base save and no Actions, so they reproduce it whatever the
-	# generator does. The five that do not are the sessions with real play in them,
-	# and they were already failing before this — M1.5's parcel rebuild is what
-	# invalidated them, exactly as `docs/M1_5_PLAN.md` §1 said it would. T-32 adds
-	# a second independent reason to the same five (every one of them tills tiles
-	# inside the fenced yard, which is not tillable ground any more) and changes
-	# nothing about the count.
+	# **1 matches, 9 do not** (2026-09-02, after the shelf was deduplicated: it was
+	# "3 match, 5 do not" across 8 recorded sessions, then briefly 4 across 10).
+	# **T-32 did not move any of it**, measured on both sides of the change.
 	#
-	# **2026-09-02_211138 moves the match count**, and is the first entry that moves
-	# it for an interesting reason: it is a real play session — 700-odd entries, not
-	# an empty log — and it still replays to its own autosave. Nothing separates it
-	# from the five that fail except that no worldgen change has landed between its
-	# recording and now (same build_id, v0.1.0-98-g7452200). That is the shelf
-	# working as designed: a session matches until the world moves under it.
+	# The one that matches is an empty log — 2026-08-30 21:52, a base save and no
+	# Actions — so it reproduces itself whatever the generator does. Read it as a
+	# specimen of that case, not as evidence of anything. The nine that do not are
+	# the sessions with real play in them, and they were already failing before
+	# T-32: M1.5's parcel rebuild is what invalidated them, exactly as
+	# `docs/M1_5_PLAN.md` §1 said it would. T-32 adds a second independent reason to
+	# the same files (every one of them tills tiles inside the fenced yard, which is
+	# not tillable ground any more) and changes nothing about the count.
+	#
+	# **The count fell because two of the old "matches" were not matches of
+	# anything.** 2026-09-02_211138 and _214427 were argued here to be the first
+	# interesting entries — "a real play session, 700-odd entries, not an empty
+	# log". They held one entry each, on a base save. The 700-odd belonged to their
+	# *trace*, which the device had never cleared and which really was a copy of
+	# 233943's play; the replay beside it recorded nothing. So they were the hollow
+	# case in the paragraph above, mistaken for its opposite. Both are gone.
+	#
+	# The lesson is cheap to state and was expensive to spot: **a session's trace
+	# and its replay can disagree about whether anything happened**, and the replay
+	# is the one that decides whether a "match" means a thing.
 	#
 	# So this is not a regression bar; it is a **ledger**. The determinism proof is
 	# the unit replay tests plus a fresh robot session, never an old session
