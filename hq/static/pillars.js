@@ -511,19 +511,21 @@ async function instProduct(root, below, sig, g) {
   const prog = await api("/api/program").catch(() => ({ releases: [] }));
   const pts = await api("/api/playtests").catch(() => []);
 
-  // The gate bars, read from the roadmap's own scored table — the source the
-  // gate was actually judged against, not a copy of it kept here.
-  const bars = [
-    ["taps achieving nothing", "≤ 12%", "5%", true],
-    ["longest stall", "≤ 20s", "44.2s once, attested as conversation", true],
-    ["the sleeping spot understood, unprompted", "≥ 1 sleep", "void — she had been shown it before", false],
-    ["the chain completed", "harvest, plant, water", "42.7s / 44.7s / 47.1s", true],
-    ["instrument integrity", "zero mislabelled taps", "none", true],
-  ];
-  const barRows = bars.map(([name, bar, got, ok]) => `<div class="bar-row">
-      <i class="dot ${ok ? "d-ok" : "d-fire"}"></i>
-      <span>${esc(name)}</span><span class="small muted">${esc(bar)}</span><span>${esc(got)}</span>
-    </div>`).join("");
+  // Parsed from the roadmap's scored table, not transcribed from it. These were
+  // five rows written into this file by hand — which meant they could never
+  // change, could not say which session produced them, and would have gone
+  // quietly stale the moment anybody scored the gate again. Authored data
+  // dressed as a measurement is the one thing this whole system exists to stop.
+  const gate = await api("/api/gate").catch(() => null);
+  const bars = (gate && gate.bars) || [];
+  const barRows = bars.length ? bars.map(b => `<div class="bar-row">
+      <i class="dot ${b.met ? "d-ok" : "d-fire"}" title="${b.met ? "met" : b.void ? "void" : "not met"}"></i>
+      <span>${esc(b.criterion)}</span>
+      <span class="small muted">${esc(b.bar)}</span>
+      <span>${esc(b.measured)}${b.void ? ` <span class="bar-void">void</span>` : ""}</span>
+    </div>`).join("")
+    : `<div class="muted small">The roadmap records no scored gate run, so there is nothing to show
+       here — and that absence is the finding, not an empty table.</div>`;
 
   const decay = lag.state === "broken"
     ? `the build it was scored on cannot be resolved any more`
@@ -541,9 +543,12 @@ async function instProduct(root, below, sig, g) {
   }).join("");
 
   root.replaceChildren(h(`
-    <h2>The onboarding gate</h2>
+    <h2>The onboarding gate ${gate && gate.total ? `<span class="small muted">— ${gate.met} of ${gate.total} bars met, scored ${esc(gate.scored_on)}</span>` : ""}</h2>
     <div class="card gatecard">
       ${barRows}
+      ${gate && gate.session ? `<div class="gate-src small muted">Scored from one session —
+        <a class="plain" href="#/playtest/${esc(gate.session)}">${esc(gate.session)}</a>, read live from
+        <a class="plain" href="${docAnchor("docs/ROADMAP.md", "gate-run-recorded")}">the roadmap's own table</a>.</div>` : ""}
       <div class="decay">${decay}${cond.state !== "green" ? ` — and only <b>${esc(String((cond.reading || {}).numerator ?? 0))} of ${esc(String((cond.reading || {}).denominator ?? "?"))}</b> recorded sessions say who played them, so no bar here can be trusted on its own` : ""}</div>
     </div>
     <h2>The release trains <span class="small muted">— gates, not dates, and the absence of dates is a choice</span></h2>

@@ -135,6 +135,65 @@ Art's palette ribbon is the single licensed exception to *colour = semantics*,
 and it says so on the page. The PNG decoding is stdlib `zlib` + `struct`, cached
 on the sheets' mtimes.
 
+## The five rules a pillar page has to meet
+
+Learned the hard way, mostly from the CEO reading the Sales page as its actual
+audience rather than as its author. Any new pillar, band or instrument is held
+to these.
+
+**1. The page belongs to its audience's job, not to the data that is easy to
+get.** Sales spent a day reporting a commit count, which measures how much work
+happened rather than what any of it gives a player. The commit count was there
+because it was the only quantity that existed — nobody had written down what the
+next release offers. *When the convenient metric belongs to another seat, that is
+a tell that the real record has never been built. Build the record.*
+
+**2. Every finding carries its next action.** A row that names a problem, cites
+the file and line, and stops is half a feature. Every non-green goal names an
+owner and offers one control: open the project, open the card, hand it to the
+pillar that owns it, or file the work. *"What is the intended user flow from
+here?" is the test; if the answer is "he tells somebody in chat", it is not
+finished.*
+
+**3. A check that can only ever read one way is not a check.** The ship gate
+measured "the debug readout is switched off", which is red every single day by
+design, because the readout is *supposed* to be on while we playtest. A status
+permanently red for a good reason teaches him to ignore it. The honest check was
+one level up — *nothing in the release pipeline would stop a tag shipping with it
+on* — which is true until somebody fixes it and then green forever. The same
+error sat in a threshold: a bar of "no more than 40 commits behind" against a
+repo that commits ~33 times a day demanded a release every day and a half.
+*Before shipping a check, ask what it reads today and what it reads in the normal
+case. If either answer is "always", it is aimed at the wrong thing.*
+
+**4. Nothing on the page is authored status.** The gate scorecard was five rows
+written into `pillars.js` by hand — transcribed from the roadmap's scored table,
+which meant it could never change, could not say which session produced it, and
+would go stale the moment anybody scored the gate again. It is parsed from that
+table now. *Goal statements and targets are authored, because a commitment
+cannot be derived. Everything else on a pillar page is read from the thing
+itself, or it says out loud that nobody is checking it.*
+
+**5. Every element is readable without instruction, and is a way in.** A chart
+that needs a sentence underneath explaining how to read it has failed as a
+chart; the labels go on the chart. A coloured block that only whispers a native
+tooltip conveys nothing and leads nowhere; hovering shows what the thing is and
+clicking opens it. And no row is a dead end — every one goes to the project, the
+decision, or the story that carries it.
+
+Two supporting habits that fall out of these:
+
+- **The server reports facts; the page writes sentences.** The manifest once
+  handed the page `"1 of 5 steps done on A stuck machine says so"` — a project
+  name run into a clause with nothing marking the join. The server returns steps
+  done, steps total and the project's name; the page composes the sentence and
+  can make the name a link. The same mistake produced `"0.556 ratio against a
+  target of 1.0 ratio"` where `"5 of 9"` was the fact.
+- **Use the house vocabulary before inventing one.** Controls are `.gbtn`;
+  a person's name is `[data-person]` and gets the peek every other page gives it;
+  status is a `.dot` with its glyph. Blue hyperlinks and plain-text names were
+  both cases of building a new thing next to an existing convention.
+
 ## Recording
 
 Anything HQ wants to chart later has to be written down at the time, and three

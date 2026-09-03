@@ -1001,3 +1001,5 @@ code.ref { background: #1b1710; border: 1px solid var(--line); border-radius: 6p
 .pl-go { background: var(--accent); color: #1d1608; }
 .pl-no { background: var(--panel2); color: var(--muted); }
 .pl-unruled { background: transparent; color: #e0912e; border: 1px dashed #e0912e; text-transform: none; letter-spacing: 0; font-weight: 600; }
+.bar-void { color: #e8927a; font-weight: 700; font-size: 11px; text-transform: uppercase; }
+.gate-src { margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--line); }

@@ -1694,6 +1694,44 @@ def palette_union():
 _MANIFEST_CACHE = {"head": None, "data": None}
 
 
+def gate_scorecard():
+    """The onboarding gate's scored bars, parsed from the roadmap's own table.
+
+    These were five rows hardcoded in the page's JavaScript — the exact thing
+    this whole system exists to prevent. Transcribing a scored table into the
+    view means it can never change, cannot say which session produced it, and
+    goes quietly stale the moment anybody scores the gate again. It is authored
+    data wearing the costume of a measurement.
+
+    The roadmap's table is the real record (it is what the designer attested
+    against), so it gets parsed rather than copied, and the session it was scored
+    from comes with it so every row can lead somewhere."""
+    text = _read("docs/ROADMAP.md")
+    m = re.search(r"^\*\*Gate run recorded ([0-9-]+)\.\*\*(.*?)(?=^\*\*[A-Z])", text, re.M | re.S)
+    if not m:
+        return {"error": "no gate run is recorded in the roadmap"}
+    when, body = m.group(1), m.group(2)
+    sess = re.search(r"playtests/([0-9_-]+)", body)
+    rows = []
+    for line in body.splitlines():
+        cells = [c.strip() for c in line.strip().strip("|").split("|")] if line.strip().startswith("|") else []
+        if len(cells) != 4 or cells[0] in ("Criterion", "---") or set(cells[0]) <= set("-: "):
+            continue
+        verdict = cells[3]
+        rows.append({
+            "criterion": _demd(cells[0]), "bar": _demd(cells[1]),
+            "measured": _demd(cells[2]), "verdict": _demd(verdict),
+            "met": "✅" in verdict, "void": "void" in verdict.lower(),
+        })
+    return {"scored_on": when, "session": sess.group(1) if sess else None,
+            "bars": rows, "met": sum(1 for r in rows if r["met"]), "total": len(rows)}
+
+
+def _demd(t):
+    """Strip the markdown a table cell carries so a page can print it plainly."""
+    return re.sub(r"\*\*|`", "", t).strip()
+
+
 def release_manifest(release_id=None):
     head = run_cmd(["git", "rev-parse", "HEAD"])
     key = (head, release_id)
@@ -3584,6 +3622,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, api_needs(unquote(path[len("/api/needs/"):])))
             if path == "/api/ci/history":
                 return self._send(200, ci_history() or {"error": "not polled yet"})
+            if path == "/api/gate":
+                return self._send(200, gate_scorecard())
             if path == "/api/platforms":
                 return self._send(200, platform_ladder())
             if path.startswith("/api/manifest"):
