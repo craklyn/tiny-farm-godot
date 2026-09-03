@@ -93,8 +93,57 @@ exactly when she is thinking about what the thing should do, so asking then cost
 second trip. Tapping a placed robot later opens the same menu. Picking it up is `collect`,
 the verb an egg already has.
 
-**The menu is the config picker, and it is the first player-facing surface the three
-configs have ever had.** One row per setting, the current one ticked, then "pick it up":
+**Prices** [Playtest]: sprinkler 120g, robot mark-1 150g, robot mark-2 400g. The gap
+between the marks is the ladder's only gate today, and it is a deliberately soft one —
+whether autonomy should be *earned* rather than bought is Q-88.
+
+## The ladder: a mark-1 obeys, a mark-2 decides (designer, 2026-09-03)
+
+> *"Mark-1 should take exact orders from you (e.g. you show it a certain set of tiles to
+> be watered, and it waters those once per day). It is intentionally low capabilities."*
+
+The first robot the player can own **decides nothing**. Its entire program is a list of
+tiles she pointed at, and its entire day is walking that list once. The three autonomous
+behaviours — follow, circle, shoo — are a **mark-2**'s settings, one rung up. That is the
+whole shape of this chapter in miniature, and it is why the mark-1 exists: the arc is
+delegation *earned*, and a first machine that already thought for itself would spend the
+arc's currency on day one.
+
+Both marks are one species and one brain (§"one machine with a setting", above). What a
+mark buys is which settings the machine will answer to.
+
+### Mark-1 — "show it, then send it"
+
+| Menu row | Verb | What it does |
+| --- | --- | --- |
+| Show it what to water (n/8) | `teach` | enters teaching mode: every tap on farm soil toggles that tile in the machine's list, at any distance, free, with the taught squares ringed on the ground |
+| Send it out (n tiles) | `activate` | it walks the list once, watering each square in the order she taught it, and stops |
+| Pick up | `collect` | back in the crate |
+
+Four properties are the design, and each is a deliberate *limit*:
+
+- **Eight tiles, and no more.** `BotBrain.ORDER_LIMIT` [Playtest]. Eight squares is about a
+  third of a 20-action day's watering, so the machine visibly takes a corner of the job
+  rather than the job.
+- **Once a day.** Sending it out spends its turn; a new morning gives it back
+  (`BotBrain.on_new_day`). It is not a cooldown, it is the ceiling.
+- **No initiative whatsoever.** It waters what it was told, whether or not the square
+  needed it, and it never waters anything else. A tile it cannot reach is **skipped** —
+  not retried, not queued, not swapped for a nearer one — so the failure a player sees is
+  "it missed that one", which she can fix by teaching it again. A machine that reasoned
+  its way around an obstacle would be a mark-2.
+- **It spends its own energy meter**, one water at a time, under the same Q-11 soft floor
+  as everybody else.
+
+She teaches it **squares, not crops**: every farm-soil state is teachable, bare ground
+included, so a round taught in the spring is still the right round after she harvests and
+replants. Teaching is deliberately *not* work — no energy, no tick of the day's action
+clock, no walking — because a machine that cost more to instruct than to replace is not
+a delegation, it is a chore with extra steps.
+
+### Mark-2 — the three that decide
+
+One row per setting, the current one ticked, then "pick it up":
 
 | Row | Config | What it does |
 | --- | --- | --- |
@@ -107,6 +156,17 @@ stroke of work), and implemented as a re-deploy at the same tile so a config's `
 built by exactly one piece of code and a switched bot carries no stale field from the
 config it left. Its **energy survives** the change, so a machine cannot be rested by
 twiddling its dial.
+
+### Why the mark-1 is the interesting one for phase 4
+
+A taught list is **the crudest possible policy**, and the pipeline it sits at the bottom of
+is the one this chapter is about. Today the player writes the program by pointing;
+`teach` is one recorded Action per tile, so a session in which she taught a robot replays
+into a robot that knows the same squares — which means the lesson is already *data*, in
+the same log that phase 4 curates into training sets. The ladder from here reads:
+hand-written list (mark-1) → hand-written options (mark-2) → learned policy picking those
+options (P-8) → learned everything. Nothing about the mark-1 has to be thrown away for the
+next rung; it becomes the thing a bot can be *shown*.
 
 Two things this knowingly leaves open. The menu **uses words** — "Chase birds off" — which
 is the first required reading the game has added since the shop was deliberately stripped

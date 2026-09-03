@@ -1347,9 +1347,10 @@ never touched. Session: `playtests/2026-08-31_230643`.*
   actor.* Cheaper to settle before the debut than after: it decides whether the sheet needs
   a status frame.
 
-- **Q-87 (Creative, filed 2026-09-03)** **The machine menu says its settings in words.**
-  Tapping a placed robot opens a panel with three rows — "Chase birds off", "Follow me",
-  "Circle me" — and a "Pick up". That is the first required reading the game has added
+- **Q-87 (Creative, filed 2026-09-03)** **The machine menu says everything in words.**
+  Tapping a placed robot opens a panel of words: a mark-1's "Show it what to water" and
+  "Send it out", a mark-2's "Chase birds off", "Follow me", "Circle me" — and both have a
+  "Pick up". That is the first required reading the game has added
   since the shop was deliberately stripped of it (T-12/Q-35, S-7: a pre-reader must be
   able to play). The shop stayed wordless; this panel did not, because there is no icon
   vocabulary for those three jobs and inventing one is a designer's call, not an
@@ -1361,6 +1362,21 @@ never touched. Session: `playtests/2026-08-31_230643`.*
   farm. *Recommendation: (a) — it reuses sprites that already exist, and "robot + the
   thing it deals with" is a vocabulary the game can keep using for every machine after
   this one.* Bears on `design/06` §2 and `design/11`.
+
+- **Q-88 (Ruling, filed 2026-09-03)** **Is a mark-2 robot bought, or earned?** The
+  capability ladder now exists in the build — a mark-1 that takes exact orders (150g) and
+  a mark-2 that decides for itself (400g) — and today the only thing between them is
+  price. That was my call under the placeholder acquisition rule (P-12), and it is the
+  half of it most likely to be wrong: *autonomy* may be the wrong thing to sell over a
+  counter. Three readings. (a) **As built** — gold is the gate, which keeps the whole
+  catalogue one mechanism and is trivially tunable; the risk is that the game's central
+  arc is purchasable by grinding wheat. (b) **Earned by demonstration** — the mark-2
+  unlocks when she has actually used a mark-1 (sent one out on N days), which makes the
+  ladder a *proof* in the P-4 sense and rhymes with how phase gates already work. (c)
+  **Earned by the phase gate** — the mark-2 simply is not in the shop until phase 2 is
+  complete. *Recommendation: (b), because it is the only one that makes owning the cheap
+  machine mean something, and the sim already computes exactly this kind of proof.*
+  Bears on `design/06`, `design/12`.
 
 ## At D-3 trigger — before M4 (phase-3 content)
 

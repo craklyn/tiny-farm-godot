@@ -42,3 +42,6 @@ tools/looks/
 # tools/capture_machines.tscn; they are review screenshots, not assets.
 tools/shot_shop.png
 tools/shot_machine_menu.png
+tools/shot_mk1_menu.png
+tools/shot_mk2_menu.png
+tools/shot_teaching.png

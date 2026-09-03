@@ -416,6 +416,36 @@ it was bent into `CropDefs` as a crop with `is_object: true`; repeating that ben
 every machine is what this rule would otherwise cost, so a second catalogue was added
 instead.
 
+### P-13. The first version of a capability is deliberately weak
+**Ruled 2026-09-03**, on being shown a robot whose menu offered three autonomous
+behaviours: *"I like these options, but they should be applied to a mark-2 or later
+robot. Mark-1 should take exact orders from you (e.g. you show it a certain set of
+tiles to be watered, and it waters those once per day). It is intentionally low
+capabilities."*
+
+**The rule.** When a machine, tower, bot or system ships its first version, that
+version is deliberately limited, and the capable behaviour is reserved for a later
+tier. The first robot decides nothing — it executes an explicit list the player
+hand-taught it. Autonomy, judgement and standing behaviour are what a later mark
+earns.
+
+**Why it is a decision and not a preference.** Tiny Farm's whole arc is delegation
+across five phases, and a capability ladder only reads as a ladder if the bottom rung
+is visibly lower than the next. A v1 that already does the clever thing spends the
+arc's currency early and leaves the later tier nothing to be. So "what is the dumbest
+useful form of this?" is the first question a new system answers, not an afterthought.
+
+**As built.** `bot_mk1` (150g) is taught a list of up to eight tiles and sent out once
+a day; `bot_mk2` (400g) carries the three configs the mark-1 was refused. One species,
+one brain, two catalogue rows — the mark is `extra.model` on the actor, and it decides
+which settings the machine will answer to (`design/06`).
+
+**Adjustment conditions:** the rule bends where a limit would make the first version
+*pointless* rather than merely modest — a machine nobody would buy teaches nothing. It
+is not a licence to ship broken v1s: a mark-1 must do its small job completely and
+legibly. Where richer behaviour already exists in code, it moves up a tier rather than
+being deleted; the designer said "I like these options", not "remove them".
+
 ---
 
 ## Tier 3 — Deferred (with triggers)

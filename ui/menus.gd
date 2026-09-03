@@ -256,37 +256,70 @@ func _rebuild_options() -> void:
 			menu_panel.size = Vector2(300, 60 + shop_items.size() * 56 + 40)
 
 		"machine":
-			# **The interface a machine gets when you select it.** One row per
-			# setting it can be put on, the current one ticked, then "pick it up" —
-			# which is the same `collect` verb an egg gets, so nothing here is a
-			# capability the player did not already have.
+			# **The interface a machine gets when you select it**, and it is a
+			# different panel per *mark*, because the two robots are different
+			# kinds of thing to own (designer, 2026-09-03).
+			#
+			#   mark-1  you teach it a list of tiles, then send it out for the day.
+			#           It decides nothing; the panel is the two verbs that make
+			#           that true.
+			#   mark-2  you set it to one of three standing behaviours and it gets
+			#           on with them.
+			#   a sprinkler, or anything else with neither, gets the one row every
+			#           machine has: pick it up.
+			#
+			# "Pick up" is the same `collect` verb an egg gets, so nothing here is
+			# a capability the player did not already have.
 			#
 			# Words, for now, and knowingly against S-7's no-required-reading rule:
-			# there is no icon vocabulary yet for "follow me", "circle me" and
-			# "chase birds off". Filed for the designer as Q-87; the shop, which a
-			# pre-reader must use to play at all, stays wordless.
+			# there is no icon vocabulary yet for any of it. Filed for the designer
+			# as Q-87; the shop, which a pre-reader must use to play at all, stays
+			# wordless.
 			var mid: String = machine_id if farm != null and farm.sim.has_actor(machine_id) else ""
-			var mkey: String = MachineDefs.key_for_species(farm.sim.species_of(mid)) if mid != "" else ""
+			var mkey: String = farm.sim.machine_key_of(mid) if mid != "" else ""
 			title_label.text = MachineDefs.name_of(mkey).to_upper() if mkey != "" else ""
 			gold_display.visible = false
 			shop_title_icon.visible = false
 			gold_icon.visible = false
 
 			machine_options.clear()
-			var current: String = String(farm.sim.actor(mid).get("extra", {}).get("config", "")) if mid != "" else ""
-			for config in MachineDefs.configs_of(mkey):
-				# The tick is the whole state readout: which of these it is doing
-				# now. A machine already on this setting still offers the row —
-				# tapping it is a harmless no-op, and greying it out would make the
-				# panel look broken to somebody who just wanted to check.
-				var mark: String = "\u2713 " if config == current else "   "
-				machine_options.append({ "kind": "config", "config": config })
-				_add_option(mark + CONFIG_LABELS.get(config, config), true)
+			var mextra: Dictionary = farm.sim.actor(mid).get("extra", {}) if mid != "" else {}
+			match MachineDefs.program_of(mkey):
+				"orders":
+					var taught: int = BotBrain.orders_of(mextra).size()
+					var been_out: bool = bool(mextra.get("ran_today", false))
+					var out_now: bool = bool(mextra.get("sent", false))
+					machine_options.append({ "kind": "teach" })
+					_add_option("Show it what to water  (%d/%d)"
+						% [taught, BotBrain.ORDER_LIMIT], not out_now)
+					# One row that says all three states it can be in, because
+					# "why is this greyed out" is the question a disabled control
+					# always asks and there is nowhere else here to answer it.
+					machine_options.append({ "kind": "activate" })
+					if out_now:
+						_add_option("Out working…", false)
+					elif been_out:
+						_add_option("Been out today", false)
+					elif taught <= 0:
+						_add_option("Send it out  (nothing to do yet)", false)
+					else:
+						_add_option("Send it out  (%d tiles)" % taught, true)
+				"configs":
+					var current: String = String(mextra.get("config", ""))
+					for config in MachineDefs.configs_of(mkey):
+						# The tick is the whole state readout: which of these it is
+						# doing now. A machine already on this setting still offers
+						# the row — tapping it is a harmless no-op, and greying it
+						# out would make the panel look broken to somebody who just
+						# wanted to check.
+						var mark: String = "\u2713 " if config == current else "   "
+						machine_options.append({ "kind": "config", "config": config })
+						_add_option(mark + CONFIG_LABELS.get(config, config), true)
 			machine_options.append({ "kind": "collect" })
 			_add_option("Pick up", true)
 			machine_options.append({ "kind": "close" })
 			_add_option("\u2715", true, 28)
-			menu_panel.size = Vector2(300, _fit_panel_height())
+			menu_panel.size = Vector2(320, _fit_panel_height())
 
 		"inventory":
 			title_label.text = "INVENTORY"
@@ -614,6 +647,25 @@ func _select_current_option() -> void:
 					AudioManager.play_sfx("jingle")
 					_rebuild_options()
 					menu_action.emit("configured_machine")
+				return
+			if choice.kind == "teach":
+				# The panel gets out of the way: teaching happens on the farm, with
+				# her finger, and a modal over the plot is the one thing that
+				# cannot work. `main.gd` owns the mode.
+				close_menu()
+				menu_action.emit("resume")
+				var main_node := get_tree().get_first_node_in_group("Main")
+				if main_node != null and main_node.has_method("begin_teaching"):
+					main_node.begin_teaching(machine_id)
+				return
+			if choice.kind == "activate":
+				var sent: bool = farm.apply_action({
+					"verb": "activate", "target": mid_tile, "actor": "player",
+				}, GameState).get("ok", false)
+				if sent:
+					AudioManager.play_sfx("jingle")
+				close_menu()
+				menu_action.emit("resume")
 				return
 			if choice.kind == "collect":
 				var took: bool = farm.apply_action({

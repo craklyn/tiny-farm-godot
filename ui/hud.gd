@@ -46,6 +46,19 @@ var clock_label: Label   # T-34: the same hour in digits, beside the arc
 var gold_label: Label
 var menu_button: Button
 var bed_button: Button          # T-31 (Q-49): the HUD's one action control
+var teach_done_button: Button   # 2026-09-03: the only way out of teaching mode
+
+# The main scene this HUD belongs to, handed over by `main.gd` when it builds
+# one (2026-09-03).
+#
+# **Its buttons used to find main by group lookup**, which is right until there
+# is more than one main node in the tree — and there is: the integration suite
+# instantiates a second `main.tscn` to test a restore, and `get_first_node_in_group`
+# then answers with whichever came first. A press on the live HUD went to the
+# other scene's farm, which is a bug with no symptom until the two scenes
+# disagree about something. This is the direct line; the group lookup stays as
+# the fallback for any HUD nobody claimed.
+var main_node: Node = null
 var bed_button_icon: TextureRect
 var tool_icon_rect: TextureRect
 var tool_name_label: Label
@@ -322,6 +335,41 @@ func _build_ui() -> void:
 	bed_button.add_theme_stylebox_override("focus", bed_style)
 	bed_button.pressed.connect(_on_bed_button)
 	add_child(bed_button)
+
+	# **The one way out of teaching mode** (2026-09-03). While she is showing a
+	# mark-1 robot which tiles to water, every tap on the farm is an instruction
+	# to the machine — so there has to be a control that is visibly *not* the
+	# farm, and it has to be the only way the mode ends. Hidden at every other
+	# moment, which is why it can sit where the bed button does without ever
+	# competing with it: teaching pauses nothing else she might want to press.
+	teach_done_button = Button.new()
+	teach_done_button.name = "TeachDoneButton"
+	teach_done_button.text = "Done"
+	teach_done_button.size = Vector2(96, 44)
+	# Clear of the held-item pill, which sits centred just above the bottom bar —
+	# the first placement put the two on top of each other (caught in a capture,
+	# 2026-09-03).
+	teach_done_button.position = Vector2(viewport_size.x / 2.0 - 48,
+		viewport_size.y - 32 - 8 - 44 - 44)
+	teach_done_button.tooltip_text = "Finish showing the robot"
+	var teach_style := StyleBoxFlat.new()
+	teach_style.bg_color = Color(0.14, 0.42, 0.62, 0.94)
+	teach_style.border_color = Color(0.55, 0.9, 1.0, 0.9)
+	teach_style.border_width_left = 2
+	teach_style.border_width_right = 2
+	teach_style.border_width_top = 2
+	teach_style.border_width_bottom = 2
+	teach_style.corner_radius_top_left = 8
+	teach_style.corner_radius_top_right = 8
+	teach_style.corner_radius_bottom_left = 8
+	teach_style.corner_radius_bottom_right = 8
+	teach_done_button.add_theme_stylebox_override("normal", teach_style)
+	teach_done_button.add_theme_stylebox_override("hover", teach_style)
+	teach_done_button.add_theme_stylebox_override("pressed", teach_style)
+	teach_done_button.add_theme_stylebox_override("focus", teach_style)
+	teach_done_button.visible = false
+	teach_done_button.pressed.connect(_on_teach_done_button)
+	add_child(teach_done_button)
 
 	# objects.png cell 0 is the cot, 16x32 — the same cell the world draws (see
 	# `world/farm.gd`'s object_regions). Treatment C's turned-down cell is
@@ -951,16 +999,35 @@ func _on_seed_pill_gui_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
+## Show or hide the teaching control. Called by `main.gd` when the mode begins
+## and ends; the HUD holds no opinion about when that is.
+func set_teaching(on: bool) -> void:
+	if teach_done_button != null:
+		teach_done_button.visible = on
+
+
+func _on_teach_done_button() -> void:
+	_tell_main("done_teaching")
+
+
+# Ask this HUD's own main scene to handle an action — the direct reference when
+# it has one, the group otherwise.
+func _tell_main(action: String) -> void:
+	var main: Node = main_node
+	if main == null or not is_instance_valid(main):
+		main = get_tree().get_first_node_in_group("Main")
+	if main and main.has_method("trigger_action"):
+		main.trigger_action(action)
+
+
 func _on_bed_button() -> void:
 	# Routed through main for the same reason the menu button is: the HUD does not
 	# know where the cot is, and should not learn. Main turns this into a tap on
 	# the cot's tile (T-31). The click is *not* consumed here — during a day
 	# transition `InputManager` drops it and this is silently nothing, which is
 	# T-27 box 2 covering the button for free.
-	var main := get_tree().get_first_node_in_group("Main")
-	if main and main.has_method("trigger_action"):
-		AudioManager.play_sfx("click")
-		main.trigger_action("go_to_bed")
+	AudioManager.play_sfx("click")
+	_tell_main("go_to_bed")
 
 
 func _on_menu_button() -> void:

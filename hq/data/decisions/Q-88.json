@@ -1,0 +1,42 @@
+{
+  "id": "Q-88",
+  "title": "Is a mark-2 robot bought, or earned?",
+  "question": "There are two robots now. A mark-1 (150g) does exactly what you show it — you tap a set of tiles, it waters those tiles once a day, and it has no opinions at all. A mark-2 (400g) decides for itself: it follows you, orbits you, or holds a patch and chases birds out of it. Right now the only thing standing between them is gold, which was my call rather than yours. It is also the half of the placeholder shop rule most likely to be wrong: the whole game is about earning your way out of doing the work, and selling autonomy over a counter may be the one thing that shortcuts the arc.",
+  "why_now": "Both marks are on the shelf in today's build, so the first playtest that gets 400g together answers this by accident. The mark-1 also only *means* something if owning it is a step on the way to something — if you can skip it by saving up, its whole reason for existing (the ladder) is decorative.",
+  "options": [
+    {
+      "key": "a",
+      "label": "As built — gold is the gate",
+      "detail": "One mechanism for the whole catalogue, trivially tunable, and honest about being a placeholder. Raise the price if the ladder feels too easy. The risk is that the game's central arc is purchasable by growing enough wheat, which makes the mark-1 a thing you skip rather than a thing you graduate from.",
+      "recommended": false
+    },
+    {
+      "key": "b",
+      "label": "Earned by demonstration — use a mark-1 first",
+      "detail": "The mark-2 appears in the shop once you have actually sent a mark-1 out on some number of days. It makes the ladder a capability proof in exactly the sense the phase gates already are (P-4), the sim already computes this kind of thing, and it means the cheap machine is the tutorial for the expensive one rather than a lesser purchase. Costs a proof rule and an unlock hook in the shop.",
+      "recommended": true
+    },
+    {
+      "key": "c",
+      "label": "Earned by the phase gate",
+      "detail": "The mark-2 simply is not for sale until phase 2 is complete. Cheapest of the two 'earned' options and it needs no new proof — the gate exists. Blunter, though: it ties autonomy to overall progress rather than to having understood the machine, so a player who never touched a mark-1 still gets one."
+    }
+  ],
+  "attachments": [
+    {
+      "type": "sprite",
+      "entity": "actors/bot",
+      "caption": "The robot — the same sprite for both marks; what differs is what it will answer to"
+    }
+  ],
+  "links": [
+    {
+      "label": "Bot in the entity gallery",
+      "href": "#/entity/actors/bot"
+    },
+    {
+      "label": "Original queue entry",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"
+    }
+  ]
+}

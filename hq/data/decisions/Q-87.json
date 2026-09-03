@@ -1,19 +1,46 @@
 {
   "id": "Q-87",
   "title": "The robot's menu talks. Should it point instead?",
-  "question": "Tapping a robot you have put down opens a small panel with its three jobs on it — \"Chase birds off\", \"Follow me\", \"Circle me\" — plus \"Pick up\". Those are words, and they are the first words the game has *required* anyone to read since we deliberately stripped them out of the shop: that screen is a seed packet, a coin and numerals precisely so a child who cannot read can still play. The robot's panel did not get the same treatment, because there is no picture yet that means \"chase birds off\", and inventing one is a taste call rather than an engineering one.",
-  "why_now": "The robot went on sale today, so the panel is live in the build and every playtest from here sees it. It is also the first of many: every machine after this one that has a setting will want the same panel, so whatever vocabulary we pick now is the one the towers and the later bots inherit. Cheap to settle before there are three panels, expensive after.",
+  "question": "Tapping a robot you have put down opens a small panel of words. A mark-1's says \"Show it what to water\" and \"Send it out\"; a mark-2's says \"Chase birds off\", \"Follow me\", \"Circle me\". Both end with \"Pick up\". Those are the first words the game has *required* anyone to read since we deliberately stripped them out of the shop: that screen is a seed packet, a coin and numerals precisely so a child who cannot read can still play. The robot's panel did not get the same treatment, because there is no picture yet that means \"send it out\" or \"chase birds off\", and inventing one is a taste call rather than an engineering one.",
+  "why_now": "Both robot marks went on sale today, so the panel is live in the build and every playtest from here sees it. It is also the first of many: every machine after this one that has a setting will want the same panel, so whatever vocabulary we pick now is the one the towers and the later bots inherit. Cheap to settle before there are three panels, expensive after.",
   "options": [
-    {"key": "a", "label": "Paired sprites — the robot beside the thing it deals with", "detail": "Chase-birds is the robot next to a crow with a strike through it; follow is the robot next to the farmer; circle is the robot next to the farmer with an orbit arrow. Uses art that already exists (bot.png, the crow, the player sheet) plus one arrow, so it costs an afternoon and no art budget. It also gives every future machine a rule: show the machine and show what it acts on.", "recommended": true},
-    {"key": "b", "label": "Three drawn icons on the next art bench", "detail": "Purpose-made cells through the Retro Diffusion pipeline — cleanest result, most control, and they will read at a glance on a tablet. Costs a generation run and a palette pass, and each new machine setting costs another. Worth it if the machine menu is going to become a real, frequently-used surface rather than a place you visit twice."},
-    {"key": "c", "label": "Keep the words", "detail": "Accept that instructing a machine is a literate act. Defensible: a robot costs 250g, which is several days of farming, so by the time anyone owns one they are probably not the pre-reader the shop rule was written for. Cheapest by far — nothing to do. The risk is that the no-words promise becomes a thing we keep only where it is easy, and the next panel argues from this one."}
+    {
+      "key": "a",
+      "label": "Paired sprites — the robot beside the thing it deals with",
+      "detail": "A row is the robot beside the thing it acts on: next to a watering can for \"show it what to water\", next to a crow with a strike for chase-birds, next to the farmer for follow. Uses art that already exists (bot.png, the crow, the player sheet, the can) plus an arrow or two, so it costs an afternoon and no art budget. It also gives every future machine a rule: show the machine and show what it acts on.",
+      "recommended": true
+    },
+    {
+      "key": "b",
+      "label": "Three drawn icons on the next art bench",
+      "detail": "Purpose-made cells through the Retro Diffusion pipeline — cleanest result, most control, and they will read at a glance on a tablet. Costs a generation run and a palette pass, and each new machine setting costs another. Worth it if the machine menu is going to become a real, frequently-used surface rather than a place you visit twice."
+    },
+    {
+      "key": "c",
+      "label": "Keep the words",
+      "detail": "Accept that instructing a machine is a literate act. Defensible: the cheapest robot is 150g, which is several days of farming, so by the time anyone owns one they are probably not the pre-reader the shop rule was written for. Cheapest by far — nothing to do. The risk is that the no-words promise becomes a thing we keep only where it is easy, and the next panel argues from this one."
+    }
   ],
   "attachments": [
-    {"type": "sprite", "entity": "actors/bot", "caption": "The robot — the machine whose menu this is"},
-    {"type": "sprite", "entity": "actors/crow", "caption": "The crow — what \"chase birds off\" is about, and option (a)'s second half"}
+    {
+      "type": "sprite",
+      "entity": "actors/bot",
+      "caption": "The robot — the machine whose menu this is"
+    },
+    {
+      "type": "sprite",
+      "entity": "actors/crow",
+      "caption": "The crow — what \"chase birds off\" is about, and option (a)'s second half"
+    }
   ],
   "links": [
-    {"label": "Bot in the entity gallery", "href": "#/entity/actors/bot"},
-    {"label": "Original queue entry", "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"}
+    {
+      "label": "Bot in the entity gallery",
+      "href": "#/entity/actors/bot"
+    },
+    {
+      "label": "Original queue entry",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"
+    }
   ]
 }

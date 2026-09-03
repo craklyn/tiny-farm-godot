@@ -192,6 +192,17 @@ func update_player(delta: float) -> void:
 		target_t = InputManager.swipe_tile
 		is_drag = true
 		
+	# **Teaching is pointing, not walking** (2026-09-03). While she is showing a
+	# mark-1 robot which tiles to water, a tap is an instruction to the machine
+	# and nothing else: no route, no approach, no energy, and no distance limit —
+	# she stands beside the robot and shows it the far corner. So the tap is
+	# answered here and taken off the table before the ordinary tap path, which
+	# is entirely about walking to things, ever sees it.
+	if target_t != null and ActionRouter.teaching_machine != "":
+		if is_new_tap:
+			_teach_tap(target_t)
+		target_t = null
+
 	if target_t != null:
 		var target_vec: Vector2i = target_t
 		var player_t := get_tile_pos()
@@ -603,6 +614,38 @@ func refuse_target(t: Vector2i, why: String) -> void:
 			facing = "down" if d.y > 0 else "up"
 
 
+# One tap in teaching mode: toggle that tile in the machine's list, and say so.
+#
+# The indicator is the whole feedback loop for a gesture that changes nothing she
+# can see on the tile itself — green when a tile joined the list, the ordinary
+# refusal wobble when it could not (a rock, a hedge, or a ninth tile on a machine
+# that holds eight).
+func _teach_tap(at: Vector2i) -> void:
+	var resolved := ActionRouter.resolve(farm, gs, at, get_tile_pos(), false, null)
+	if resolved.is_empty():
+		# Not a square a machine could be taught. The wobble is the answer, and it
+		# is the same one an unworkable tile gives her everywhere else.
+		refuse_target(at, "not_teachable")
+		return
+	var result: Dictionary = farm.apply_action({
+		"verb": "teach",
+		"target": at,
+		"machine": String(resolved.get("machine", "")),
+		"actor": "player",
+	}, gs)
+	if not result.get("ok", false):
+		refuse_target(at, String(result.get("reason", "")))
+		return
+	AudioManager.play_sfx("till" if result.get("taught", false) else "nope")
+	# The farm's picture of the list, caught up with the machine's own.
+	var main_node := get_tree().get_first_node_in_group("Main")
+	if main_node != null and main_node.has_method("_refresh_teaching_orders"):
+		main_node._refresh_teaching_orders()
+	var lit: bool = result.get("taught", false)
+	tap_indicator = { "tx": at.x, "ty": at.y, "timer": TAP_INDICATOR_DURATION,
+		"r": 0.2 if lit else 0.9, "g": 0.9 if lit else 0.6, "b": 0.3 }
+
+
 func _execute_resolved_action(pa: Dictionary) -> void:
 	var action: String = pa.get("action", "")
 	var target_t: Vector2i = pa.get("target_t", get_tile_pos())
@@ -671,11 +714,15 @@ func _execute_resolved_action(pa: Dictionary) -> void:
 	# finished: it lands with the jingle a tool pickup uses, and **its menu opens
 	# on top of it**. Placing is the moment she is thinking about what the thing
 	# should do, so asking then costs her no second trip — and a machine with
-	# nothing to decide (a sprinkler) has no menu to open, so it simply lands.
+	# nothing to say (a sprinkler) has no menu to open, so it simply lands.
+	#
+	# Keyed on the row's `program` rather than on its config list: a mark-1 robot
+	# has no configs to choose between and still very much has a menu — it is
+	# where you teach it and where you send it out.
 	if action == "place":
 		AudioManager.play_sfx("jingle")
 		_emit_particles("dirt", target_t)
-		if not MachineDefs.configs_of(String(pa.get("item", ""))).is_empty():
+		if MachineDefs.program_of(String(pa.get("item", ""))) != "":
 			get_tree().get_first_node_in_group("Main").call_deferred(
 				"trigger_machine_menu_for", String(result.get("machine", "")))
 		return

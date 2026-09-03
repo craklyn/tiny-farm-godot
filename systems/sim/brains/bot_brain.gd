@@ -41,11 +41,42 @@
 class_name BotBrain
 extends Brain
 
-# --- the three settings --------------------------------------------------------
+# --- the settings, in two tiers ------------------------------------------------
+#
+# **The mark-1 does not decide anything** (designer, 2026-09-03: *"Mark-1 should
+# take exact orders from you — you show it a certain set of tiles to be watered,
+# and it waters those once per day. It is intentionally low capabilities."*). Its
+# whole program is a list of tiles the player tapped, and its whole day is
+# walking that list once. It has no target selection, no radius, no notion of
+# where she is; a tile that has gone out of reach is skipped rather than reasoned
+# about.
+#
+# The three below it — follow, circle, shoo — decide *for themselves* where to be
+# and what to answer, and are therefore a **mark-2** machine's settings. Keeping
+# them in this file rather than deleting them is the point: the capability ladder
+# is the design, and the mark-2 is the rung above, not a rewrite.
+const CONFIG_ORDERS := "orders"
+
 const CONFIG_FOLLOW := "follow"
 const CONFIG_CIRCLE := "circle"
 const CONFIG_SHOO := "shoo"
+# The mark-2's three. Named as they always were, because the zoo, the tests and
+# `MachineDefs` all mean *these* by "the configs a bot can be set to".
 const CONFIGS: Array[String] = [CONFIG_FOLLOW, CONFIG_CIRCLE, CONFIG_SHOO]
+# ...and every config the brain answers for, mark-1 included.
+const ALL_CONFIGS: Array[String] = [CONFIG_ORDERS, CONFIG_FOLLOW, CONFIG_CIRCLE, CONFIG_SHOO]
+
+# How many tiles a mark-1 will hold. **A capability limit, and the main one** —
+# the machine is meant to retire a corner of the watering round, not the round.
+# Eight is a third of a 20-action day spent watering, which leaves the job
+# visibly shared. [Playtest]
+const ORDER_LIMIT := 8
+
+# How often a mark-1 with nothing to do looks up. It has genuinely nothing to
+# watch for — it is waiting to be *sent*, and being sent is a verb that wakes it
+# on the spot (`SimWorld`'s `activate`) — so this is a safety net rather than a
+# poll, and it is long on purpose (ground rule 8).
+const IDLE_SECONDS := 30.0
 
 # --- the numbers, all [Playtest] ----------------------------------------------
 
@@ -117,6 +148,16 @@ static func deploy(world: SimWorld, actor_id: String, config: String, at: Vector
 		"goal_x": -1, "goal_y": -1,
 	}
 	match config:
+		CONFIG_ORDERS:
+			# The program, flat, because `extra` goes through JSON in the save and
+			# a Vector2i does not survive that round trip (Brain's rule). Stored as
+			# [x1, y1, x2, y2, ...], the shape a worm's `body` already uses.
+			extra["orders"] = params.get("orders", [])
+			# Out on its round right now / has already been out today / how far
+			# down the list it has got. All three are cleared by `on_new_day`.
+			extra["sent"] = false
+			extra["ran_today"] = false
+			extra["at_order"] = 0
 		CONFIG_CIRCLE:
 			extra["radius"] = int(params.get("radius", ORBIT_RADIUS))
 		CONFIG_SHOO:
@@ -143,6 +184,8 @@ func step(world: SimWorld, actor_id: String, tick: int, _gs = null) -> Dictionar
 		return {}
 	var extra: Dictionary = e["extra"]
 	match String(extra.get("config", CONFIG_FOLLOW)):
+		CONFIG_ORDERS:
+			return _orders(world, actor_id, extra, tick)
 		CONFIG_CIRCLE:
 			_circle(world, actor_id, extra, tick)
 		CONFIG_SHOO:
@@ -150,6 +193,90 @@ func step(world: SimWorld, actor_id: String, tick: int, _gs = null) -> Dictionar
 		_:
 			_follow(world, actor_id, extra, tick)
 	return {}
+
+
+# --- the mark-1: exact orders, once a day --------------------------------------
+#
+# The list is `extra.orders`; the position in it is `extra.at_order`; whether it
+# is out is `extra.sent`. There is nothing else, and that is the design.
+#
+# **It never re-decides.** It walks to order N, waters order N, moves to order
+# N+1, and stops at the end of the list. A tile it cannot reach — she fenced it
+# off, a hen is parked on it and will not move, she tore the plot up after
+# teaching it — is *skipped*, not queued, not retried, not replaced with a
+# nearer one. That is what "exact orders" means from the machine's side, and it
+# is what makes a mark-1 legibly stupid rather than mysteriously stuck: the
+# failure mode a player sees is "it missed that one", which is a thing she can
+# fix by teaching it again.
+func _orders(world: SimWorld, actor_id: String, extra: Dictionary, tick: int) -> Dictionary:
+	if not bool(extra.get("sent", false)):
+		extra["wake"] = tick + ticks(IDLE_SECONDS)
+		return {}
+	var list := orders_of(extra)
+	var at := int(extra.get("at_order", 0))
+	if at < 0 or at >= list.size():
+		return _round_done(world, actor_id, extra, tick)
+
+	var goal: Vector2i = list[at]
+	var here := world.actor_pos(actor_id)
+	if here == goal:
+		# Standing on it: water it and move down the list. The index advances
+		# **before** the gateway has answered, deliberately — a refused order (the
+		# ground changed, it is out of energy) is still an order it has been
+		# through, and a machine that retried would stand on a rock all day.
+		extra["at_order"] = at + 1
+		_paced(world, actor_id, extra, tick)
+		return { "verb": "water", "target": goal, "actor": actor_id }
+
+	if Movement.has_route(world, actor_id) and _goal(extra) == goal:
+		match Movement.step(world, actor_id, tick):
+			Movement.MOVED:
+				if world.actor_pos(actor_id) == goal:
+					extra["at_order"] = at + 1
+					_paced(world, actor_id, extra, tick)
+					return { "verb": "water", "target": goal, "actor": actor_id }
+				return {}
+			_:
+				Movement.clear_route(world, actor_id)
+	if _set_out(world, actor_id, extra, tick, goal) == "":
+		# No way there at all. Skip it, and look at the next one on the next
+		# think rather than in this one, so a list of eight unreachable tiles
+		# costs eight thinks instead of eight route searches in one.
+		extra["at_order"] = at + 1
+		_wait(extra, tick)
+	return {}
+
+
+# The end of the round: it is not out any more, and it has had its turn today.
+func _round_done(world: SimWorld, actor_id: String, extra: Dictionary, tick: int) -> Dictionary:
+	extra["sent"] = false
+	extra["at_order"] = 0
+	Movement.clear_route(world, actor_id)
+	_aim(extra, Vector2i(-1, -1))
+	extra["wake"] = tick + ticks(IDLE_SECONDS)
+	return {}
+
+
+# --- the order list, as the rest of the game sees it ---------------------------
+#
+# Stored flat and JSON-plain; handed out as tiles. Static so the gateway's `teach`
+# verb, the menu and the renderer all read the one encoding rather than three.
+static func orders_of(extra: Dictionary) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	var flat: Array = extra.get("orders", [])
+	var i := 0
+	while i + 1 < flat.size():
+		out.append(Vector2i(int(flat[i]), int(flat[i + 1])))
+		i += 2
+	return out
+
+
+static func set_orders(extra: Dictionary, tiles: Array[Vector2i]) -> void:
+	var flat: Array = []
+	for t in tiles:
+		flat.append(t.x)
+		flat.append(t.y)
+	extra["orders"] = flat
 
 
 # --- follow --------------------------------------------------------------------
@@ -535,6 +662,23 @@ func _patrol_tile(world: SimWorld, actor_id: String, extra: Dictionary) -> Vecto
 	if inside.is_empty():
 		return Vector2i(-1, -1)
 	return inside[SimRng.randi() % inside.size()]
+
+
+# A new morning gives a mark-1 its turn back (2026-09-03). Also stands down a
+# round that never finished — she went to bed with it halfway along its list —
+# because "once per day" has to mean the day it was sent, not a queue that
+# survives the night.
+func on_new_day(world: SimWorld, actor_id: String) -> void:
+	var e: Dictionary = world.actor(actor_id)
+	if e.is_empty():
+		return
+	var extra: Dictionary = e["extra"]
+	if String(extra.get("config", "")) != CONFIG_ORDERS:
+		return
+	extra["ran_today"] = false
+	extra["sent"] = false
+	extra["at_order"] = 0
+	Movement.clear_route(world, actor_id)
 
 
 # --- what the gateway made of it ------------------------------------------------

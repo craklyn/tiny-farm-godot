@@ -662,6 +662,13 @@ const ACK_MS := 520.0
 const ACK_NOUN := 12.0
 var _acks: Dictionary = {}  # Vector2i -> { "t": msec, "why": String }
 
+# The tiles a mark-1 robot has been taught, while she is teaching it (2026-09-03).
+# Set by `main.gd` on every `teach` and cleared when the mode ends; empty at every
+# other moment, so this costs a live game exactly one `is_empty()` per frame. Not
+# sim state and not derived here — the machine's own `extra.orders` is the truth,
+# and this is a copy for the one screen that draws it.
+var teaching_orders: Array[Vector2i] = []
+
 # --- The wetness soaks in (Q-52, ruled 2026-09-02) ----------------------------
 #
 # The sim's watered flag flips in an instant and stays the only truth; what
@@ -1070,6 +1077,27 @@ func _draw() -> void:
 						"y": py,
 						"draw": func(): draw_texture_rect_region(tex, Rect2(px, py - (region.size.y - TILE_SIZE), region.size.x, region.size.y), region)
 					})
+
+	# **The orders a mark-1 robot has been taught** (2026-09-03), drawn while she
+	# is teaching it and only then. Without this, teaching is a gesture with no
+	# record: she taps eight tiles and the farm looks exactly as it did, so she
+	# cannot tell what the machine knows, cannot see a double-tap take one back
+	# off, and cannot count what she has spent of its eight.
+	#
+	# A ring on the ground rather than a marker above it, because the mark belongs
+	# to the *square* — and the number beside it is the order it will visit them
+	# in, which is the other half of "exact orders" made visible.
+	for i in teaching_orders.size():
+		var ot: Vector2i = teaching_orders[i]
+		var ocx := ot.x * TILE_SIZE + TILE_SIZE / 2.0
+		var ocy := ot.y * TILE_SIZE + TILE_SIZE / 2.0
+		render_queue.append({
+			"y": 99000.0,
+			"draw": func():
+				draw_circle(Vector2(ocx, ocy), 6.0, Color(0.25, 0.75, 1.0, 0.22))
+				draw_arc(Vector2(ocx, ocy), 6.0, 0.0, TAU, 16,
+					Color(0.55, 0.9, 1.0, 0.9), 1.0)
+		})
 
 	# The done-tick, drawn above everything for the same reason the refusal icon
 	# is: a soft ring opening outward with three sparkles rising off it. No shake,

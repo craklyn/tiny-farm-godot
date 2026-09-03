@@ -13,6 +13,19 @@ extends Node
 ## tile that silently stops meaning what it says.
 const HALO_OBJECTS := { "cot": true }
 
+## **Teaching mode** (2026-09-03): the id of the mark-1 robot the player is
+## currently showing tiles to, or "" when she is not teaching one.
+##
+## It lives here, in the intent layer, because that is exactly what it is — a
+## mode that changes what a tap *means*, and nothing else. It is deliberately not
+## sim state and not saved: what the machine was taught is sim truth on the
+## machine, but *that she is mid-teach* is a fact about a session, and a save
+## reloaded into teaching mode with no way out would be a trap.
+##
+## While it is set, a tap on a teachable tile is a `teach` Action on that tile —
+## at any distance, with no walk and no energy. Pointing is not a chore.
+var teaching_machine: String = ""
+
 const SPECIAL_OBJECTS := {
 	"cot":          "sleep",
 	"well":         "refill",
@@ -73,6 +86,27 @@ func resolve(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, is_drag: 
 			if res.get("tool_idx", -1) != drag_tool_idx:
 				return {}
 		return res
+
+	# 0. Teaching a mark-1 beats every other reading of a tap.
+	#
+	# **It is a mode, and it is the only one in the game**, which is why it sits
+	# above the object table rather than inside the tile blocks: while she is
+	# showing a machine where to work, a tap on the well is not a refill and a tap
+	# on a weed is not a clear. She is pointing, not farming. The mode ends at the
+	# HUD's done button (`main.gd`), never by accident.
+	#
+	# No distance guard, unlike every branch below it: the whole point is that she
+	# can stand by the robot and show it the far corner of the plot.
+	var teach_world = farm.get("sim")
+	if teaching_machine != "" and teach_world != null:
+		if not teach_world.has_actor(teaching_machine):
+			return {}   # it was picked up out from under the mode; main.gd will clear it
+		if not teach_world.teachable_at(tap_t):
+			return {}
+		return check_result.call({
+			"action": "teach", "tool_idx": 0, "target_t": tap_t,
+			"walk_to": false, "seed_type": "", "machine": teaching_machine,
+		})
 
 	# 1. Special objects
 	var obj: String = farm.get_object(tx, ty)

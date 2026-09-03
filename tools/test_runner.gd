@@ -86,6 +86,7 @@ func _run_scenarios() -> void:
 	await _scenario_ad_two_hud_findings()
 	await _scenario_af_a_pour_is_heard_whoever_pours()
 	await _scenario_ag_a_machine_is_bought_placed_and_told_what_to_do()
+	await _scenario_ah_the_mark_one_takes_exact_orders()
 
 func _wait_until(pred: Callable, max_frames: int) -> bool:
 	for i in max_frames:
@@ -3092,7 +3093,7 @@ func _scenario_ag_a_machine_is_bought_placed_and_told_what_to_do() -> void:
 	await get_tree().process_frame
 	var bot_card := -1
 	for i in menus.shop_items.size():
-		if String(menus.shop_items[i].get("seed_type", "")) == "bot":
+		if String(menus.shop_items[i].get("seed_type", "")) == "bot_mk2":
 			bot_card = i
 	_assert(bot_card >= 0, "the robot has a card in the shop")
 	_assert(String(menus.shop_items[bot_card].get("kind", "")) == "machine",
@@ -3100,9 +3101,9 @@ func _scenario_ag_a_machine_is_bought_placed_and_told_what_to_do() -> void:
 	menus.selected_option = bot_card
 	menus._select_current_option()
 	await get_tree().process_frame
-	_assert(GameState.machines.get("bot", 0) == 1, "tapping the card buys a robot")
-	_assert(GameState.gold == 1000 - MachineDefs.price_of("bot"), "and costs its price")
-	_assert(GameState.selected_seed_type == "bot" and GameState.holding_machine(),
+	_assert(GameState.machines.get("bot_mk2", 0) == 1, "tapping the card buys a robot")
+	_assert(GameState.gold == 1000 - MachineDefs.price_of("bot_mk2"), "and costs its price")
+	_assert(GameState.selected_seed_type == "bot_mk2" and GameState.holding_machine(),
 		"and puts it straight into her hands")
 	menus.selected_option = menus.shop_items.size()
 	menus._select_current_option()
@@ -3112,7 +3113,7 @@ func _scenario_ag_a_machine_is_bought_placed_and_told_what_to_do() -> void:
 	# The HUD says what she is carrying, with the machine's own picture.
 	main_scene.hud._update_hud()
 	await get_tree().process_frame
-	_assert(String(main_scene.hud.seed_pill_label.text).begins_with("bot"),
+	_assert(String(main_scene.hud.seed_pill_label.text).begins_with("bot_mk2"),
 		"the held-item pill names the robot")
 	_assert(main_scene.hud.seed_pill_icon.visible,
 		"and shows its picture rather than an empty box")
@@ -3131,12 +3132,12 @@ func _scenario_ag_a_machine_is_bought_placed_and_told_what_to_do() -> void:
 	InputManager.has_click = true
 	var placed := await _wait_until(func(): return farm.sim.machine_at(spot) != "", 200)
 	_assert(placed, "a tap put the robot on that square")
-	_assert(GameState.machines.get("bot", 0) == 0, "and took it out of the crate")
+	_assert(GameState.machines.get("bot_mk2", 0) == 0, "and took it out of the crate")
 
 	# --- ...and its menu opens on top of it -----------------------------------
 	var opened := await _wait_until(func(): return menus.active_menu == "machine", 60)
 	_assert(opened, "the machine's menu opens the moment it lands — the one beat where she is thinking about its job")
-	_assert(menus.machine_options.size() == MachineDefs.configs_of("bot").size() + 2,
+	_assert(menus.machine_options.size() == MachineDefs.configs_of("bot_mk2").size() + 2,
 		"one row per setting, plus pick-up and close")
 	var rows: Array = []
 	_collect_labels(menus.options_container, rows)
@@ -3193,7 +3194,7 @@ func _scenario_ag_a_machine_is_bought_placed_and_told_what_to_do() -> void:
 	menus._select_current_option()
 	await get_tree().process_frame
 	_assert(not farm.sim.has_actor(mid), "'pick up' takes the robot off the farm")
-	_assert(GameState.machines.get("bot", 0) == 1, "and puts it back in the crate")
+	_assert(GameState.machines.get("bot_mk2", 0) == 1, "and puts it back in the crate")
 	_assert(not menus.is_open() and not get_tree().paused, "the panel closes and the world starts again")
 
 	# --- the refusal, and the one it must not become --------------------------
@@ -3215,3 +3216,168 @@ func _scenario_ag_a_machine_is_bought_placed_and_told_what_to_do() -> void:
 
 	GameState.machines = {}
 	GameState.selected_seed_type = "wheat"
+
+
+func _scenario_ah_the_mark_one_takes_exact_orders() -> void:
+	# The designer, 2026-09-03: *"Mark-1 should take exact orders from you — you
+	# show it a certain set of tiles to be watered, and it waters those once per
+	# day. It is intentionally low capabilities."* This is that loop driven the
+	# way a player drives it: the shop, the menu, and a finger on the plot.
+	print("\n--- Scenario AH: she teaches a mark-1 robot its round ---")
+
+	var menus = main_scene.menus
+	GameState.gold = 1000
+	GameState.machines = {}
+	main_scene.end_teaching()
+
+	# --- buy it and put it down -----------------------------------------------
+	menus.open_menu("shop")
+	await get_tree().process_frame
+	var mk1_card := -1
+	for i in menus.shop_items.size():
+		if String(menus.shop_items[i].get("seed_type", "")) == "bot_mk1":
+			mk1_card = i
+	_assert(mk1_card >= 0, "the mark-1 has its own card in the shop")
+	menus.selected_option = mk1_card
+	menus._select_current_option()
+	await get_tree().process_frame
+	menus.close_menu()
+	await get_tree().process_frame
+
+	var spot := Vector2i(14, 9)
+	for tx in range(13, 20):
+		_stage_tile(tx, 9, "cleared")
+		_stage_tile(tx, 11, "seeded", "wheat")
+	player.pos = Vector2(13 * 16.0 + 8.0, 9 * 16.0 + 8.0)
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+	InputManager.click_tile = spot
+	InputManager.has_click = true
+	var placed := await _wait_until(func(): return farm.sim.machine_at(spot) != "", 200)
+	_assert(placed, "a tap puts the mark-1 down")
+	var mk1: String = farm.sim.machine_at(spot)
+	_assert(farm.sim.machine_key_of(mk1) == "bot_mk1",
+		"and it knows which mark it is — both marks are the same species, so nothing else could say")
+
+	# --- its menu is the two verbs, not three behaviours ----------------------
+	var opened := await _wait_until(func(): return menus.active_menu == "machine", 60)
+	_assert(opened, "its menu opens as it lands")
+	var kinds: Array = []
+	for opt in menus.machine_options:
+		kinds.append(String(opt.get("kind", "")))
+	_assert("teach" in kinds and "activate" in kinds,
+		"a mark-1's menu is 'show it what to water' and 'send it out'")
+	_assert(not ("config" in kinds),
+		"...and not one standing behaviour — that is what a mark-2 is for")
+
+	# --- teaching it, with a finger on the plot -------------------------------
+	var teach_row := -1
+	for i in menus.machine_options.size():
+		if String(menus.machine_options[i].get("kind", "")) == "teach":
+			teach_row = i
+	menus.selected_option = teach_row
+	menus._select_current_option()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_assert(main_scene.is_teaching(), "tapping it enters teaching mode")
+	_assert(not menus.is_open() and not get_tree().paused,
+		"and the panel gets out of the way — teaching happens on the farm")
+	_assert(main_scene.hud.teach_done_button.visible,
+		"the done button appears, which is the only way out")
+
+	# She points at three tiles from where she is standing. **No walking**: the
+	# taps are instructions, so distance is not a thing they have.
+	var lesson: Array[Vector2i] = [Vector2i(17, 11), Vector2i(18, 11), Vector2i(19, 11)]
+	var energy_before: int = GameState.energy
+	for t in lesson:
+		InputManager.click_tile = t
+		InputManager.has_click = true
+		await get_tree().process_frame
+		await get_tree().process_frame
+	_assert(str(BotBrain.orders_of(farm.sim.actor(mk1)["extra"])) == str(lesson),
+		"three taps taught it three tiles, in the order she pointed at them")
+	_assert(GameState.energy == energy_before, "and cost her nothing — pointing is not a chore")
+	_assert(player.get_tile_pos() == Vector2i(13, 9),
+		"she never moved: teaching is at any distance, which is the whole point of it")
+	_assert(farm.teaching_orders.size() == 3,
+		"and the farm is drawing what the machine now knows")
+
+	# A second tap on a taught tile takes it back off — the only undo a tap-only
+	# interface can offer.
+	InputManager.click_tile = lesson[1]
+	InputManager.has_click = true
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_assert(BotBrain.orders_of(farm.sim.actor(mk1)["extra"]).size() == 2,
+		"tapping a taught tile again unteaches it")
+	InputManager.click_tile = lesson[1]
+	InputManager.has_click = true
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	# --- done, and out it goes -------------------------------------------------
+	main_scene.hud._on_teach_done_button()
+	await get_tree().process_frame
+	_assert(not main_scene.is_teaching(), "the done button ends the mode")
+	_assert(not main_scene.hud.teach_done_button.visible, "and takes its button away")
+	_assert(farm.teaching_orders.is_empty(), "the farm stops drawing the list")
+	_assert(BotBrain.orders_of(farm.sim.actor(mk1)["extra"]).size() == 3,
+		"but the machine keeps it — that is what she invested in")
+
+	menus.open_machine_menu_for(mk1)
+	await get_tree().process_frame
+	var send_row := -1
+	for i in menus.machine_options.size():
+		if String(menus.machine_options[i].get("kind", "")) == "activate":
+			send_row = i
+	menus.selected_option = send_row
+	menus._select_current_option()
+	await get_tree().process_frame
+	_assert(bool(farm.sim.actor(mk1)["extra"].get("sent", false)), "she sends it out")
+	_assert(bool(farm.sim.actor(mk1)["extra"].get("ran_today", false)),
+		"and that is its turn used up for today")
+
+	menus.open_machine_menu_for(mk1)
+	await get_tree().process_frame
+	var send_again := -1
+	for i in menus.machine_options.size():
+		if String(menus.machine_options[i].get("kind", "")) == "activate":
+			send_again = i
+	var rows: Array = []
+	_collect_labels(menus.options_container, rows)
+	_assert(send_again >= 0 and rows.size() > send_again,
+		"the send row is still there when she looks again")
+	_assert(not _row_button_enabled(menus.options_container, send_again),
+		"...but greyed out, and the row says why rather than leaving her guessing")
+	menus.close_menu()
+	await get_tree().process_frame
+
+	# --- and it does the round it was taught ----------------------------------
+	for t in lesson:
+		farm.sim.get_tile(t.x, t.y).watered_today = false
+	var elsewhere := Vector2i(13, 11)
+	farm.sim.get_tile(elsewhere.x, elsewhere.y).watered_today = false
+	farm.advance_sim(SimClock.RATE * 200, GameState)
+	var did := 0
+	for t in lesson:
+		if farm.sim.get_tile(t.x, t.y).get("watered_today", false):
+			did += 1
+	_assert(did == lesson.size(), "it watered every tile it was shown (%d of %d)" % [did, lesson.size()])
+	_assert(not farm.sim.get_tile(elsewhere.x, elsewhere.y).get("watered_today", false),
+		"and nothing else — it has no opinions, which is the design")
+
+	farm.sim.apply_action({ "verb": "collect", "target": farm.sim.actor_pos(mk1), "actor": "player" }, GameState)
+	GameState.machines = {}
+	GameState.selected_seed_type = "wheat"
+
+
+# Is the button on the nth option row enabled? The rows are PanelContainers with
+# a transparent Button laid over them (`_add_option`), so "greyed out" is a fact
+# about that button rather than about the label beside it.
+func _row_button_enabled(container: Control, index: int) -> bool:
+	if index < 0 or index >= container.get_child_count():
+		return false
+	for btn in container.get_child(index).find_children("*", "Button", true, false):
+		return not btn.disabled
+	return false

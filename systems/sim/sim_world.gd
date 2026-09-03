@@ -847,7 +847,11 @@ const NON_WORK_VERBS := { "sleep": true, "sell": true, "buy_seed": true, "refill
 		# costs no energy and must not tick the clock the crows are scheduled
 		# against. **Placing** one is absent on purpose: carrying a sprinkler out
 		# to the far corner and setting it down is work, and it is charged as such.
-		"buy_machine": true, "configure": true }
+		"buy_machine": true, "configure": true,
+		# Teaching a mark-1 and sending it out are instructions, not strokes of
+		# work (2026-09-03). Charging the day's clock for pointing at eight tiles
+		# would make delegating the round cost more than doing it.
+		"teach": true, "activate": true }
 
 # **Every actor has its own energy meter** (designer, 2026-08-29). The player's
 # meter happens to also be the clock — spending it is what advances the time of
@@ -1151,7 +1155,7 @@ func machine_at(t: Vector2i) -> String:
 	var found: Array[String] = []
 	for raw in actors:
 		var id := String(raw)
-		if MachineDefs.key_for_species(String(actors[id].get("species", ""))) == "":
+		if machine_key_of(id) == "":
 			continue
 		if t in Movement.occupied_tiles(self, id):
 			found.append(id)
@@ -1159,6 +1163,44 @@ func machine_at(t: Vector2i) -> String:
 		return ""
 	found.sort()
 	return found[0]
+
+
+# Which catalogue row a placed machine came from.
+#
+# **Read off the actor, not guessed from its species**, because two rows can
+# share a species: the two robot marks are one `SpeciesDefs.BOT` with different
+# settings, so "what species is it" cannot answer "which one did she buy". `place`
+# stamps `extra.model`; this reads it, and falls back to the species lookup for a
+# machine that has none — a sprinkler in a save written before the marks existed,
+# or a bot a test deployed directly.
+func machine_key_of(actor_id: String) -> String:
+	var e: Dictionary = actor(actor_id)
+	if e.is_empty():
+		return ""
+	var model := String(e.get("extra", {}).get("model", ""))
+	if model != "" and MachineDefs.has(model):
+		return model
+	return MachineDefs.key_for_species(String(e.get("species", "")))
+
+
+# May a mark-1 be *taught* this tile? (2026-09-03)
+#
+# Two halves, and both are about honesty rather than about permission. It has to
+# be able to **stand** there, because its whole method is to walk onto a tile and
+# water it — so a rock, a hedge, the well and the unopened parcel are all out, by
+# the same `is_walkable` every mover already asks. And the square has to be one
+# where watering could ever mean something, so that a taught order is never a
+# tile the machine will visit and do nothing on. Teaching a patch of yard would
+# be a silent trap; refusing it is a wobble she can read.
+const TEACHABLE_STATES := {
+	"cleared": true, "tilled": true, "seeded": true, "growing": true, "ready": true,
+}
+
+
+func teachable_at(t: Vector2i) -> bool:
+	if not is_walkable(t.x, t.y):
+		return false
+	return TEACHABLE_STATES.has(String(get_tile(t.x, t.y).get("state", "")))
 
 
 # The id a newly placed machine gets: the machine key, then the lowest free
@@ -1525,7 +1567,7 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			# the smaller, more perishable thing and is what a tap plainly means.
 			var machine_id := machine_at(target)
 			if machine_id != "":
-				var machine_key := MachineDefs.key_for_species(species_of(machine_id))
+				var machine_key := machine_key_of(machine_id)
 				despawn_actor(machine_id)
 				gs.machines[machine_key] = int(gs.machines.get(machine_key, 0)) + 1
 				return { "ok": true, "collected": machine_key, "machine": machine_id }
@@ -1569,6 +1611,10 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 					{ "owner": placer if placer != "" else ACTOR_PLAYER })
 			else:
 				spawn_actor(machine_id, MachineDefs.species_of(item), target)
+			# Which row it was bought from, stamped on the actor. The two robot
+			# marks share a species, so without this a picked-up mark-1 could go
+			# back into the crate as a mark-2 (see `machine_key_of`).
+			actors[machine_id]["extra"]["model"] = item
 			if placer_charged:
 				gs.machines[item] = int(gs.machines.get(item, 0)) - 1
 			return { "ok": true, "machine": machine_id, "config": config }
@@ -1585,7 +1631,7 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 		"configure":
 			var target_id := machine_at(target)
 			if target_id == "": return _fail("no_machine_here")
-			var target_key := MachineDefs.key_for_species(species_of(target_id))
+			var target_key := machine_key_of(target_id)
 			var wanted := String(action.get("config", ""))
 			if not wanted in MachineDefs.configs_of(target_key): return _fail("bad_config")
 			var before: Dictionary = actor(target_id)
@@ -1593,7 +1639,71 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			var kept_owner := String(before.get("extra", {}).get("owner", ACTOR_PLAYER))
 			BotBrain.deploy(self, target_id, wanted, actor_pos(target_id), { "owner": kept_owner })
 			actors[target_id]["energy"] = kept_energy
+			actors[target_id]["extra"]["model"] = target_key
 			return { "ok": true, "machine": target_id, "config": wanted }
+
+		# **Teaching a mark-1 a tile** (designer, 2026-09-03). One tap, one entry in
+		# the machine's list, one recorded Action — so a session in which she
+		# taught a robot replays into a robot that knows the same eight squares.
+		#
+		# A *toggle*, because that is what a list she is building with her finger
+		# wants: tapping a taught tile takes it back off, which is the only undo a
+		# tap-only interface can offer without inventing a second gesture.
+		#
+		# It costs nothing and does not tick the day's action clock: pointing at
+		# eight tiles is one instruction, not eight strokes of work, and charging
+		# for it would make teaching the machine cost more of the day than doing
+		# the watering herself.
+		#
+		# The machine is named in the Action rather than found under the target,
+		# because the tile she is pointing at is a crop row and the machine is
+		# somewhere else entirely.
+		"teach":
+			var taught_id := String(action.get("machine", ""))
+			if not actors.has(taught_id): return _fail("no_machine_here")
+			var taught_extra: Dictionary = actors[taught_id]["extra"]
+			if String(taught_extra.get("config", "")) != BotBrain.CONFIG_ORDERS:
+				return _fail("not_teachable_machine")
+			if not teachable_at(target): return _fail("not_teachable")
+			var taught := BotBrain.orders_of(taught_extra)
+			var known := taught.find(target)
+			if known >= 0:
+				taught.remove_at(known)
+				BotBrain.set_orders(taught_extra, taught)
+				return { "ok": true, "machine": taught_id, "taught": false,
+					"orders": taught.size() }
+			if taught.size() >= BotBrain.ORDER_LIMIT: return _fail("orders_full")
+			taught.append(target)
+			BotBrain.set_orders(taught_extra, taught)
+			return { "ok": true, "machine": taught_id, "taught": true,
+				"orders": taught.size() }
+
+		# **Sending a mark-1 out for the day.** It walks its list once and stops;
+		# tomorrow morning it may be sent again (`BotBrain.on_new_day`). The
+		# once-a-day limit is the machine's capability ceiling, not a cooldown —
+		# a mark-1 retires one round of watering, and the rest of the day is
+		# still hers.
+		#
+		# Free and off the action clock, like the teaching: giving an instruction
+		# is not labour. What the machine then spends is its **own** energy meter,
+		# one water at a time, exactly as every other actor does.
+		"activate":
+			var sent_id := machine_at(target)
+			if sent_id == "": return _fail("no_machine_here")
+			var sent_extra: Dictionary = actors[sent_id]["extra"]
+			if String(sent_extra.get("config", "")) != BotBrain.CONFIG_ORDERS:
+				return _fail("not_sendable")
+			if BotBrain.orders_of(sent_extra).is_empty(): return _fail("no_orders")
+			if bool(sent_extra.get("ran_today", false)): return _fail("already_sent")
+			sent_extra["sent"] = true
+			sent_extra["ran_today"] = true
+			sent_extra["at_order"] = 0
+			# It is standing still with a long idle wake on it (see the brain's
+			# IDLE_SECONDS): being sent has to wake it now, or she would tap "send"
+			# and watch it do nothing for half a minute.
+			_schedule_brain(sent_id, clock.tick + 1)
+			return { "ok": true, "machine": sent_id,
+				"orders": BotBrain.orders_of(sent_extra).size() }
 
 		# -- day transition --
 		"sleep":

@@ -260,6 +260,9 @@ func _ready() -> void:
 	# Create HUD
 	var HUDScript = load("res://ui/hud.gd")
 	hud = HUDScript.new()
+	# The direct line back (2026-09-03). Its buttons used to find "main" by group,
+	# which answers with the wrong scene as soon as two exist — see `ui/hud.gd`.
+	hud.main_node = self
 	add_child(hud)
 
 	# Create menus
@@ -770,6 +773,8 @@ func _handle_action_result(action: String) -> void:
 		get_tree().change_scene_to_file("res://ui/title_screen.tscn")
 	elif action == "open_shop":
 		menus.open_menu("shop")
+	elif action == "done_teaching":
+		end_teaching()
 	elif action == "look_lab":
 		# The look lab's switch was thrown from the pause menu (debug builds
 		# only). The menu has already advanced one axis; this is the live farm
@@ -815,6 +820,51 @@ func trigger_machine_menu(at: Vector2i) -> void:
 # which machine it just put down.
 func trigger_machine_menu_for(id: String) -> void:
 	menus.open_machine_menu_for(id)
+
+
+# --- teaching a mark-1 (2026-09-03) -------------------------------------------
+#
+# **The mode lives here**, between the router (which reads a tap as a `teach`)
+# and the two things that have to show it: the farm draws the taught tiles, and
+# the HUD offers the one control that ends it. Neither of those is sim state and
+# neither is saved — what the machine knows is on the machine, and *that she is
+# mid-teach* is a fact about this minute of this session.
+func begin_teaching(id: String) -> void:
+	if farm == null or not farm.sim.has_actor(id):
+		return
+	ActionRouter.teaching_machine = id
+	_refresh_teaching_orders()
+	if hud != null and hud.has_method("set_teaching"):
+		hud.set_teaching(true)
+
+
+func end_teaching() -> void:
+	ActionRouter.teaching_machine = ""
+	if farm != null:
+		# `.clear()`, not `= []`: `teaching_orders` is an `Array[Vector2i]`, and
+		# assigning an untyped empty array to a typed one throws at runtime —
+		# which silently abandoned the rest of this function and left the done
+		# button on screen with the mode already over.
+		farm.teaching_orders.clear()
+		farm.queue_redraw()
+	if hud != null and hud.has_method("set_teaching"):
+		hud.set_teaching(false)
+
+
+func is_teaching() -> bool:
+	return ActionRouter.teaching_machine != ""
+
+
+# The picture catching up with the machine, after every tap. Read back off the
+# actor rather than tracked alongside it, so the farm can never draw a list the
+# machine does not actually hold.
+func _refresh_teaching_orders() -> void:
+	var id: String = ActionRouter.teaching_machine
+	if farm == null or id == "" or not farm.sim.has_actor(id):
+		end_teaching()
+		return
+	farm.teaching_orders = BotBrain.orders_of(farm.sim.actor(id).get("extra", {}))
+	farm.queue_redraw()
 
 
 # Q-12 Expansion Morning v1: jingle + a confetti sweep across the farm, no

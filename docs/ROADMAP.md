@@ -1682,6 +1682,14 @@ Sprinklers (first automation), group-pest skirmishes, yield-threshold gate per P
 **Exit gate:** a new player reaches the phase 2→3 capability proof in normal play, and the
 proof is computed by the sim, not by script flags.
 
+**Landed early, 2026-09-03 — the machines are purchasable, and the robot arrived as a
+ladder.** The designer's second ruling the same day (P-13) split the robot into a
+**mark-1** that takes exact orders — she teaches it up to eight tiles and sends it out
+once a day — and a **mark-2** that carries the three autonomous behaviours. That gives
+M3 a working first automation *and* a first example of the delegation ladder the whole
+game is about, ahead of schedule. Q-88 is the open half: whether the mark-2 should be
+earned rather than bought.
+
 **Landed early, 2026-09-03 — both machines are now purchasable.** The designer's
 placeholder acquisition rule (P-12: *"for now make everything we introduce to the farm a
 purchasable item from the shop"*) put the sprinkler and the robot on the seed box's shelf
