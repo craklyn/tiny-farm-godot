@@ -150,6 +150,7 @@ async function route() {
     else if (hash.startsWith("/pillar/")) await renderPillar(hash.slice("/pillar/".length));
     else if (hash.startsWith("/playtest/")) await renderPlaytestDetail(hash.slice("/playtest/".length));
     else if (hash.startsWith("/chat/")) await renderChat(hash.slice("/chat/".length));
+    else if (hash.startsWith("/person/")) await renderPerson(hash.slice("/person/".length));
     // Guarded: on a direct page-load design.js hasn't registered yet; it
     // re-routes itself once loaded (same dance as its /design route).
     else if (hash.startsWith("/design/doc/") && window.renderDesignDoc) await renderDesignDoc(hash.slice("/design/doc/".length));
@@ -165,6 +166,24 @@ async function route() {
   if (seq !== routeSeq && routeActive === 0) return route();
 }
 window.addEventListener("hashchange", route);
+
+/* A person's name means one thing across every page: it opens the quick "who
+   is this" panel, over whatever he was doing. The panel is the peek and it
+   links through to their full page — a name never navigates him away from a
+   queue he is working through. Delegated here so any page can just render
+   [data-person] and get the behaviour for free. */
+async function openPerson(id) {
+  try { showPerson(await api("/api/org"), id); } catch { }
+}
+$view.addEventListener("click", ev => {
+  const t = ev.target.closest && ev.target.closest("[data-person]");
+  if (!t) return;
+  // Capture phase, so a name inside a clickable row opens the person rather
+  // than the row: the enclosing handlers never see the click.
+  ev.preventDefault();
+  ev.stopPropagation();
+  openPerson(t.dataset.person);
+}, true);
 
 /* ---------------- dashboard ---------------- */
 /* The landing page, on Rin's first principles: one visual hierarchy —
@@ -192,7 +211,7 @@ async function renderDashboard() {
   // blocked-since age, owner — never as a name buried in prose.
   const ubRow = u => `<div class="ub-row">
       <a class="plain" href="${esc(u.href)}">${esc(u.name)}</a>
-      <span class="ub-meta">P${u.priority ?? "?"}${u.days_blocked != null ? ` · blocked ${u.days_blocked}d${u.days_blocked > 7 ? ' <span class="ub-old">⚠</span>' : ""}` : ""}${u.owner ? ` · ${esc(ownerOf(u.owner))}` : ""}</span>
+      <span class="ub-meta">P${u.priority ?? "?"}${u.days_blocked != null ? ` · blocked ${u.days_blocked}d${u.days_blocked > 7 ? ' <span class="ub-old">⚠</span>' : ""}` : ""}${u.owner ? ` · <a class="plain" data-person="${esc(u.owner)}">${esc(ownerOf(u.owner))}</a>` : ""}</span>
     </div>`;
   const ubBlock = it => (it.unblocks && it.unblocks.length)
     ? `<div class="ub"><span class="ub-label">unblocks</span>${it.unblocks.map(ubRow).join("")}</div>` : "";
@@ -377,6 +396,7 @@ function showPerson(org, id) {
     <p><span class="chip lvl">${e.level}</span> <span class="chip team">${esc(e.team)}</span> ${e.focus ? `<span class="chip team">${esc(e.focus)}</span>` : ""}</p>
     <p style="margin:10px 0 4px"><b>${esc(e.title)}</b></p>
     <p class="muted" style="margin:10px 0">${esc(e.persona)}</p>
+    <p style="margin:10px 0"><a class="plain" href="#/person/${e.id}">See everything ${esc(e.name.split(" ")[0])} is carrying right now →</a></p>
     <h2>Owns</h2>
     <ul class="req">${e.responsibilities.map(r => `<li>${esc(r)}</li>`).join("")}</ul>
     ${e.watches ? `<h2>Watches</h2><p class="small">${esc(e.watches.join(" · "))}</p>` : ""}
@@ -389,12 +409,106 @@ function showPerson(org, id) {
   </div></div>`);
   document.body.appendChild(ov);
   const overlay = document.getElementById("overlay");
-  overlay.addEventListener("click", ev => { if (ev.target === overlay || ev.target.classList.contains("close")) overlay.remove(); });
+  overlay.addEventListener("click", ev => {
+    if (ev.target === overlay || ev.target.classList.contains("close")) overlay.remove();
+    // Following a link out of the peek closes the peek; nothing worse than a
+    // panel still sitting over the page it sent you to.
+    if (ev.target.tagName === "A") overlay.remove();
+  });
   const cb = overlay.querySelector("[data-chat]");
   if (cb) cb.addEventListener("click", () => { overlay.remove(); location.hash = "#/chat/" + e.id; });
   const db = overlay.querySelector("[data-def]");
   if (db) db.addEventListener("click", async () => {
     const box = overlay.querySelector(".promptbox");
+    if (!box.hidden) { box.hidden = true; return; }
+    box.hidden = false;
+    const pre = box.querySelector("pre");
+    if (!pre.textContent) {
+      pre.textContent = "Loading…";
+      try {
+        const r = await (await fetch("/api/persona/" + e.id)).json();
+        pre.textContent = r.system_prompt || r.note || r.error || "—";
+      } catch (err) { pre.textContent = "Failed to load: " + err.message; }
+    }
+  });
+}
+
+/* ---------------- a person's page ----------------
+   The peek panel answers "who is this". This page answers the question the
+   panel cannot: "what is she actually carrying right now" — so the live plate
+   leads and the standing charter sits underneath it as reference. Everything
+   on it is derived from the same sources the rest of HQ reads; nothing here
+   is a second copy of the truth. */
+const WORK_STATE = {
+  needs_approval: "waiting on your yes",
+  for_review: "finished — wants your verdict",
+  doing: "in flight",
+  waiting_session: "queued for a build session",
+};
+
+async function renderPerson(id) {
+  const org = await api("/api/org");
+  const e = org.employees.find(x => x.id === id);
+  if (!e) {
+    $view.replaceChildren(h(`<div class="card">No such person. <a class="plain" href="#/org">Back to the org chart</a></div>`));
+    return;
+  }
+  const first = e.name.split(" ")[0];
+  // /api/work is polled, never cached — a stale plate would be worse than none.
+  const [projects, work] = await Promise.all([
+    api("/api/projects").catch(() => []),
+    fetch("/api/work").then(r => r.json()).catch(() => ({ items: [] })),
+  ]);
+  const mine = (work.items || []).filter(i => i.owner === id);
+  const waiting = mine.filter(i => i.state === "needs_approval" || i.state === "for_review");
+  const moving = mine.filter(i => i.state === "doing" || i.state === "waiting_session");
+  const live = p => p.status !== "done";
+  const owns = projects.filter(p => p.owner === id && live(p));
+  const helps = projects.filter(p => p.owner !== id && (p.contributors || []).includes(id) && live(p));
+
+  const wRow = it => `<div class="pl-row">
+      <a class="plain" href="#/work">${esc(it.title)}</a>
+      <span class="small muted">${esc(WORK_STATE[it.state] || it.state)}</span>
+    </div>`;
+  const pRow = p => `<div class="pl-row">
+      <a class="plain" href="#/project/${esc(p.id)}">${esc(p.name)}</a>
+      <span class="chip ${esc(p.status)}">${esc(p.status.replace("_", " "))}</span>
+    </div>`;
+  const block = (label, rows) => rows.length ? `<div class="pl-h">${esc(label)}</div>${rows.join("")}` : "";
+
+  const plate = [
+    block(`waiting on you`, waiting.map(wRow)),
+    block(`${first} is doing now`, moving.map(wRow)),
+    block(`projects ${first} owns`, owns.map(pRow)),
+    block(`helping on`, helps.map(pRow)),
+  ].filter(Boolean).join("");
+
+  $view.replaceChildren(h(`
+    <p class="crumbs"><a class="plain" href="#/org">Org Chart</a> <span>›</span> ${esc(e.name)}</p>
+    <h1>${e.emoji} ${esc(e.name)}</h1>
+    <p class="sub">${esc(e.title)} · <span class="chip lvl">${e.level}</span> <span class="chip team">${esc(e.team)}</span>${e.focus ? ` <span class="chip team">${esc(e.focus)}</span>` : ""}</p>
+    <p class="muted" style="margin-bottom:18px">${esc(e.persona)}</p>
+    ${e.id !== "daniel" ? `<p style="margin-bottom:20px">
+      <button data-chat="${e.id}">💬 Chat with ${esc(first)}</button>
+      <button class="ghost" data-def="${e.id}">🧬 What defines them</button></p>
+    <div class="promptbox card" hidden><p class="small muted">The exact system prompt handed to the Claude CLI when you chat with ${esc(first)} — persona + charter + studio context, with read-only access to the repo:</p><pre></pre></div>` : ""}
+    <div class="card" style="margin-top:16px">
+      <h2 style="margin-top:0">On ${esc(first)}'s plate</h2>
+      ${plate || `<p class="muted">Nothing of ${esc(first)}'s is in flight right now.</p>`}
+    </div>
+    <div class="card" style="margin-top:14px">
+      <h2 style="margin-top:0">What ${esc(first)} owns standing</h2>
+      <ul class="req">${e.responsibilities.map(r => `<li>${esc(r)}</li>`).join("")}</ul>
+      ${e.watches ? `<h2>Watches</h2><p class="small">${esc(e.watches.join(" · "))}</p>` : ""}
+      ${e.escalates_when ? `<h2>Escalates to you when</h2><p class="small">${esc(e.escalates_when)}</p>` : ""}
+      ${e.demo && e.id !== "daniel" ? `<p class="small" style="margin-top:10px">🎬 Living demo: <a class="plain" href="${esc(e.demo)}">${esc(e.demo)}</a></p>` : ""}
+    </div>`));
+
+  const cb = $view.querySelector("[data-chat]");
+  if (cb) cb.addEventListener("click", () => location.hash = "#/chat/" + e.id);
+  const db = $view.querySelector("[data-def]");
+  if (db) db.addEventListener("click", async () => {
+    const box = $view.querySelector(".promptbox");
     if (!box.hidden) { box.hidden = true; return; }
     box.hidden = false;
     const pre = box.querySelector("pre");
@@ -540,8 +654,8 @@ function projRow(p, org, byId) {
       ${p.next_step ? `<div class="small nxt"><span class="nxt-label">next</span> ${esc(p.next_step)}</div>` : ""}
     </div>
     <div class="ow">
-      <div>${owner ? `<a class="plain" data-ask="1">${esc(owner.name.split(" ")[0])}</a>` : ""} <span class="chip ${p.status}">${p.status.replace("_", " ")}${days != null ? ` · ${days}d` : ""}</span></div>
-      <div class="small muted" style="margin-top:3px">moved ${esc(p.last_touched || "?")}</div>
+      <div>${owner ? `<a class="plain" data-person="${esc(owner.id)}">${esc(owner.name.split(" ")[0])}</a>` : ""} <span class="chip ${p.status}">${p.status.replace("_", " ")}${days != null ? ` · ${days}d` : ""}</span></div>
+      <div class="small muted" style="margin-top:3px">moved ${esc(p.last_touched || "?")}${owner ? ` · <a class="plain" data-ask="1" title="Ask ${esc(owner.name.split(" ")[0])} where this stands">ask</a>` : ""}</div>
     </div>
   </div>`).firstElementChild;
   row.addEventListener("click", ev => {

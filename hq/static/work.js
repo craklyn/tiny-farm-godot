@@ -60,7 +60,7 @@ function workCard(it, org, pol) {
       <span class="chip ${TIER_CHIP[it.tier] || "t-ask"}">${esc(tier.name)}</span>
       ${why}
       <button class="w-owner" data-person="${esc(it.owner)}"
-        title="Who ${esc(who.name.split(" ")[0])} is, what they own, and how to reach them">${esc(who.emoji)} ${esc(who.name)}</button>
+        title="Who ${esc(who.name.split(" ")[0])} is, what they own, and what else they are carrying">${esc(who.emoji)} ${esc(who.name)}</button>
     </div>
     <h3>${esc(it.title)}</h3>
     ${it.ask ? `<p class="w-ask">“${esc(it.ask)}”</p>` : ""}
@@ -124,12 +124,6 @@ async function renderWork() {
   }
 
   body.addEventListener("click", async ev => {
-    // The owner's name is the answer to "who is this, and why them?" — it opens
-    // the same charter panel the org chart uses, over the page rather than away
-    // from it, so a mid-triage identity check never costs him his place in the
-    // queue. The panel's own "chat with them" button is the way through to them.
-    const person = ev.target.dataset && ev.target.dataset.person;
-    if (person) { showPerson(org, person); return; }
     const act = ev.target.dataset && ev.target.dataset.act;
     if (!act) return;
     ev.target.disabled = true;

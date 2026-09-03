@@ -186,6 +186,18 @@ button:disabled { opacity: .5; cursor: default; }
   content: ""; position: absolute; left: -12px; top: 0; bottom: -8px; width: 2px; background: var(--line);
 }
 
+/* Person page — the live plate reads as one list of things, each with its own
+   state on the right, so "what is she carrying" is answered by scanning one
+   column rather than by reading paragraphs. */
+.pl-h { font-size: 10.5px; letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--accent); font-weight: 700; margin: 16px 0 2px; }
+.pl-h:first-child { margin-top: 0; }
+.pl-row { display: flex; align-items: baseline; gap: 12px; padding: 7px 0;
+  border-bottom: 1px solid var(--line); }
+.pl-row:last-child { border-bottom: 0; }
+.pl-row > a { min-width: 0; }
+.pl-row > .small, .pl-row > .chip { margin-left: auto; white-space: nowrap; }
+
 .promptbox { margin-top: 14px; }
 .promptbox pre {
   background: #1b1710; border: 1px solid var(--line); border-radius: 8px;
