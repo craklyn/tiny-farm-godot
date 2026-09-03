@@ -514,10 +514,10 @@ func _record(action: Dictionary, result: Dictionary, at_tick: int,
 					_start_wetting(wt, WET_CAN_MS)
 				elif verb == "till" and _raining_now():
 					_start_wetting(wt, WET_RAIN_MS)
-				# ...and the rest of what a pour looks like, for a pair of hands
-				# that are not the player's (see `_voice_actor_verb`).
+				# ...and the rest of what the verb looks and sounds like, for a
+				# pair of hands that are not the player's (`_voice_actor_verb`).
 				if String(action.get("actor", "")) != SimWorld.ACTOR_PLAYER:
-					_voice_actor_verb(wt, verb)
+					_voice_actor_verb(wt, verb, result)
 		if String(action.get("verb", "")) == "sleep":
 			_notify_day_turn()
 		queue_redraw()
@@ -535,39 +535,96 @@ func _notify_day_turn() -> void:
 			node.on_day_turn()
 
 
-# The rest of a verb's answer, for an actor who is not the player.
+# --- A verb looks and sounds the same whoever performs it ---------------------
 #
-# Watering has never been only a wet tile. A tap on a crop pours a sound, throws
-# a spray of droplets and marks the tile done for the day, and all three live in
-# `player/player.gd` beside her swing — which is the right place for *her* cues
-# and the wrong place for everybody else's. The neighbour of the cold open (T-13)
-# waters through the same gateway, wets the same tile by the same rule, and was
-# watched doing it in silence.
+# **The cue belongs to the verb, not to whoever performed it** (`[Designer]`,
+# 2026-09-02; `design/10` "the sound belongs to the verb"). If the player tilling
+# a tile makes a sound, throws dirt and marks the tile, then an actor tilling
+# that tile in front of her does all three — the cold open's neighbour, a
+# replayed session, a phase-4 bot doing the chore for her. Silence for a
+# non-player actor is a bug, not a scope line: the first cut of this shipped
+# `water` alone and the neighbour went on hoeing mutely beside her own pour,
+# which is exactly the mismatch the rule exists to forbid.
 #
-# So the farm answers for her, here, at the one place every resolved Action
-# passes through (the argument `_notify_day_turn` already makes just below): the
-# cold open, a replayed session and any future watering bot are all heard and
-# seen the same way, because none of them has a node that knows how a pour looks.
+# It lives here, at the one place every resolved Action passes through (the
+# argument `_notify_day_turn` above already makes), because none of those actors
+# has a node that knows what a verb looks like — and because a table in one file
+# is how "the same treatment" stays true as verbs are added.
 #
-# Presentation only, in the D-8 sense — it runs after the Action has resolved and
-# deleting it would change a frame and nothing else. The player is filtered out
-# by the caller so her cues are never played twice, and a muted farm (the title
-# screen's attract backdrop) stays silent like all the rest of the feedback.
+# **The player is filtered out by the caller.** Her cues stay in
+# `player/player.gd` beside her swing, where they can be timed to the animation;
+# playing them here as well would double every tap.
 #
-# Only `water` speaks so far. Her till, plant and harvest are still silent, which
-# is a deliberate scope line rather than an oversight: each is one more `match`
-# arm here whenever the cold open wants it.
-func _voice_actor_verb(t: Vector2i, verb: String) -> void:
-	if mute_feedback or verb != "water":
+# **The limit is the player's attention, not the actor's nature.** A machine that
+# waters nine tiles inside one day turn answers with a single spray animation
+# rather than nine simultaneous pours — those Actions resolve inside
+# `SimWorld.advance_day` and never reach this function, which is what keeps the
+# rule from turning into noise. A farm nobody is playing (the title screen's
+# attract backdrop) stays muted like all the other feedback.
+#
+# Presentation only, in the D-8 sense: it runs after the Action has resolved, and
+# deleting the whole table would change frames and nothing else.
+#
+# The rows are `player/player.gd`'s own answers, verb for verb. `plant` is absent
+# because it is silent for the player too — there is no plant foley in the mixer
+# yet (`design/10`'s table wants a pat-pat), and inventing one here would make an
+# actor *louder* than the player rather than equal to her. `open_gate` is absent
+# because the cold open answers it with the moving truck's honk, which is a
+# scene's sound rather than a verb's.
+const ACTOR_VERB_CUES := {
+	"till":       { "sfx": "till",    "puff": "dirt" },
+	"water":      { "sfx": "water",   "puff": "water", "ack": "already_watered" },
+	"harvest":    { "sfx": "harvest", "puff": "harvest", "needs": "crop_type" },
+	"collect":    { "sfx": "harvest" },
+	"take_tool":  { "sfx": "jingle" },
+	"clear_weed": { "sfx": "till",    "puff": "chop", "beats": true },
+	"clear_log":  { "sfx": "till",    "puff": "chop", "beats": true },
+	"clear_rock": { "sfx": "till",    "puff": "chop", "beats": true },
+	"clear_tree": { "sfx": "till",    "puff": "chop", "beats": true },
+}
+
+# One beat of a clear, in seconds — `player.gd`'s ACTION_DURATION. Q-50 gives a
+# clear one chop per 30 fine units of the verb's cost (a weed one, a log two, a
+# tree three), and an actor with no multi-beat swing of its own still owes the
+# player the same three chops for a tree: what the rule promises is the *cue*,
+# and hers is three.
+const ACTOR_BEAT_SECONDS := 0.35
+
+
+func _voice_actor_verb(t: Vector2i, verb: String, result: Dictionary) -> void:
+	if mute_feedback or not ACTOR_VERB_CUES.has(verb):
 		return
-	_play_sfx("water")
-	_spawn_particles("water", Vector2(
-		t.x * TILE_SIZE + TILE_SIZE / 2.0,
-		t.y * TILE_SIZE + TILE_SIZE / 2.0))
-	# T-19's cue, for the same reason the player gets it: watering is the verb
-	# that makes a tile done for the day, so the tile says so at the moment it
-	# changes. Silent, because the pour is already playing.
-	acknowledge_at(t, "already_watered", false)
+	var cue: Dictionary = ACTOR_VERB_CUES[verb]
+	# Harvesting bare ground is silent for the player (nothing came up in her
+	# hands); the same emptiness is silent here.
+	if cue.has("needs") and not result.has(String(cue["needs"])):
+		return
+	_beat_cue(t, cue)
+	if cue.get("beats", false) and is_inside_tree():
+		var beats := maxi(1, Tools.get_energy_cost(verb) / Tools.BASE_COST)
+		for i in range(1, beats):
+			get_tree().create_timer(ACTOR_BEAT_SECONDS * i).timeout.connect(
+				_beat_cue.bind(t, cue))
+	if cue.has("ack"):
+		# T-19's cue, for the same reason the player gets it: watering is the verb
+		# that makes a tile done for the day, so the tile says so at the moment it
+		# changes. Silent, because the verb's own sound is already playing.
+		acknowledge_at(t, String(cue["ack"]), false)
+
+
+# One sound and one puff. A later beat of a clear arrives here on a timer, which
+# is why the mute flag is re-read rather than trusted from the first beat: a
+# title screen that takes over mid-swing must get the trailing chops silenced,
+# not delivered into a menu.
+func _beat_cue(t: Vector2i, cue: Dictionary) -> void:
+	if mute_feedback:
+		return
+	if cue.has("sfx"):
+		_play_sfx(String(cue["sfx"]))
+	if cue.has("puff"):
+		_spawn_particles(String(cue["puff"]), Vector2(
+			t.x * TILE_SIZE + TILE_SIZE / 2.0,
+			t.y * TILE_SIZE + TILE_SIZE / 2.0))
 
 
 func _play_sfx(sound: String) -> void:

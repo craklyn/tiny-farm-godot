@@ -55,16 +55,30 @@ clear_log (chop), clear_rock (crack), collect (cluckish pop), sell (coin purse),
 sleep (yawn + night fade), buy_seed (paper rustle + coin). Crow: squawk + wing flaps;
 chicken: cluck family. UI: one soft tick, one soft confirm — nothing else.
 
-**The sound belongs to the verb, not to the tapper.** S-3's table is enumerable from the
-verb list precisely because a verb is one thing whoever performs it — so a pour heard
-when the player waters must also be heard when the cold open's neighbour waters, when a
-replay re-applies that water, and when a phase-4 bot does the chore for her. Implemented
-2026-09-02 for `water` (reported from play: the neighbour watered in silence): the cue —
-sound, droplets, and the tile's "done for the day" mark — moved out of the player's node
-and into the one place every resolved Action passes through (`world/farm.gd`). The other
-verbs' foley is still the player's alone and is one line each to join it; the machines
-are the deliberate exception, since a sprinkler waters nine tiles inside a single day
-turn and answers with one spray animation rather than nine pours.
+**The sound belongs to the verb, not to the tapper** (`[Designer]` ruling, 2026-09-02).
+S-3's table is enumerable from the verb list precisely because a verb is one thing
+whoever performs it — so a pour heard when the player waters is also heard when the cold
+open's neighbour waters, when a replay re-applies that water, and when a phase-4 bot does
+the chore for her. Stated as the rule the designer gave it: **an action in the player's
+focus gets the same treatment of visualization and sound whoever performs it.** Silence
+for a non-player actor is a bug, not a scope line.
+
+Implemented 2026-09-02, reported from play (the neighbour watered in silence): every
+cue — the verb's sound, its particles, and any tile mark it leaves — moved out of the
+player's node into the one place every resolved Action passes through
+(`world/farm.gd:ACTOR_VERB_CUES`), filled from `player/player.gd`'s own answers verb for
+verb, with the player filtered out so her cues are not played twice. A tree cleared by
+anybody still chops three times, because Q-50's beats are part of the cue.
+
+**The limit is the player's attention, not the actor's nature.** Work done in bulk or
+off-screen does not get the per-action treatment: a sprinkler waters nine tiles inside a
+single day turn and answers with one spray animation rather than nine simultaneous pours
+(those Actions resolve inside `SimWorld.advance_day` and never reach the cue table), and
+a farm nobody is playing — the title screen's attract backdrop — stays muted.
+
+**Open gap: `plant` has no foley at all**, so it is silent for the player and therefore
+silent for everyone. It is the one row where parity is reached by both sides being
+silent rather than by both sides being right; the starter table above wants a pat-pat.
 
 **Kid constraints (S-7 spirit):** no harsh stingers; failure/refusal sounds are
 comedic (a wet *bonk*, a shrug-like slide whistle at most); gentle attack envelopes;

@@ -2945,17 +2945,20 @@ func _scenario_ad_two_hud_findings() -> void:
 
 
 func _scenario_af_a_pour_is_heard_whoever_pours() -> void:
-	# Reported from play: the neighbour of the cold open waters tiles in silence.
-	# Her water went through the same gateway as the player's and wet the same
-	# tile by the same rule, but the sound, the spray of droplets and the "done
-	# for the day" cue all lived in `player/player.gd`, so only a tap made them.
-	# They now live at the one place every resolved Action passes through
-	# (`world/farm.gd:_voice_actor_verb`), which is why a replayed session and a
-	# future watering bot get them too.
-	print("\n--- Scenario AF: a pour is heard whoever pours it ---")
+	# `[Designer]` 2026-09-02: **an action in the player's focus gets the same
+	# treatment of visualization and sound whoever performs it.** Reported from
+	# play — the cold open's neighbour watered in silence. Her water went through
+	# the same gateway as the player's and wet the same tile by the same rule, but
+	# the sound, the droplets and the "done for the day" mark all lived in
+	# `player/player.gd`, so only a tap made them. They now live at the one place
+	# every resolved Action passes through (`world/farm.gd:ACTOR_VERB_CUES`),
+	# which is why a replayed session and a future farming bot get them too.
+	print("\n--- Scenario AF: a verb looks and sounds the same whoever performs it ---")
 
 	var audio = get_tree().root.get_node("AudioManager")
 	var t := Vector2i(6, 12)
+
+	# --- watering, the verb the report was about ------------------------------
 	_stage_tile(t.x, t.y, "seeded", "wheat")
 	farm.sim.get_tile(t.x, t.y).watered_today = false
 	farm._acks.erase(t)
@@ -2974,17 +2977,73 @@ func _scenario_af_a_pour_is_heard_whoever_pours() -> void:
 	_assert(main_scene.particles_manager.get_child_count() > puffs_before,
 		"droplets are thrown, the same ones the player's can throws")
 
-	# The player keeps her own cues, beside her swing. If the farm spoke for her
-	# too she would pour twice for one tap — the reason the caller filters her out.
+	# --- and every other verb she has, which is the actual rule ---------------
+	# The first cut of this shipped `water` alone and left her hoeing mutely
+	# beside her own pour. That mismatch is what the rule forbids, so the table
+	# is asserted whole rather than one verb at a time.
+	_stage_tile(t.x, t.y, "cleared")
+	puffs_before = main_scene.particles_manager.get_child_count()
+	audio.last_sfx = ""
+	farm.apply_action({ "verb": "till", "target": t, "actor": SimWorld.ACTOR_NEIGHBOUR }, GameState)
+	_assert(audio.last_sfx == "till", "her hoe is heard too, not only her can")
+	_assert(main_scene.particles_manager.get_child_count() > puffs_before,
+		"and it throws the same dirt")
+
+	_stage_tile(t.x, t.y, "ready", "wheat")
+	puffs_before = main_scene.particles_manager.get_child_count()
+	audio.last_sfx = ""
+	farm.apply_action({ "verb": "harvest", "target": t, "actor": SimWorld.ACTOR_NEIGHBOUR }, GameState)
+	_assert(audio.last_sfx == "harvest", "a crop coming up in her hands is heard")
+	_assert(main_scene.particles_manager.get_child_count() > puffs_before,
+		"and shows the harvest sparkle")
+
+	# Bare ground is silent for the player — nothing came up in her hands — so the
+	# same emptiness is silent here rather than louder.
+	_stage_tile(t.x, t.y, "cleared")
+	var heard_before: int = int(audio.sfx_count)
+	farm.apply_action({ "verb": "harvest", "target": t, "actor": SimWorld.ACTOR_NEIGHBOUR }, GameState)
+	_assert(int(audio.sfx_count) == heard_before,
+		"harvesting bare ground stays silent, exactly as it does for her")
+
+	# Q-50's beats are part of the cue: a tree is three chops for anybody.
+	_stage_tile(t.x, t.y, "obstacle_tree")
+	audio.last_sfx = ""
+	farm.apply_action({ "verb": "clear_tree", "target": t, "actor": SimWorld.ACTOR_NEIGHBOUR }, GameState)
+	_assert(audio.last_sfx == "till", "clearing is heard on the first beat")
+	var chops: int = maxi(1, Tools.get_energy_cost("clear_tree") / Tools.BASE_COST)
+	heard_before = int(audio.sfx_count)
+	# Waited on by condition, not by a frame count: headless runs uncapped, so a
+	# fixed number of frames is a few milliseconds of wall clock and the beats are
+	# spaced in seconds.
+	var beat_target: int = heard_before + chops - 1
+	var beats_landed := await _wait_until(
+		func(): return int(audio.sfx_count) >= beat_target, 4000)
+	_assert(beats_landed,
+		"and the trailing beats land — a tree is %d chops whoever swings (Q-50)" % chops)
+
+	# The table is the player's own answers, verb for verb, so a verb she gets
+	# nothing for gives an actor nothing either — an actor is never louder than
+	# the player. `plant` is the live case: there is no plant foley in the mixer.
+	_stage_tile(t.x, t.y, "tilled")
+	heard_before = int(audio.sfx_count)
+	farm.apply_action({ "verb": "plant", "target": t, "actor": SimWorld.ACTOR_NEIGHBOUR,
+		"seed_type": "wheat" }, GameState)
+	_assert(int(audio.sfx_count) == heard_before,
+		"planting is silent for an actor because it is silent for the player (no foley yet)")
+
+	# --- and the player keeps her own cues, beside her swing -----------------
+	# If the farm spoke for her too she would pour twice for one tap — the reason
+	# the caller filters her out.
 	_stage_tile(t.x, t.y, "seeded", "wheat")
 	farm.sim.get_tile(t.x, t.y).watered_today = false
 	GameState.watering_can_charges = GameState.max_watering_can_charges
-	var heard_before: int = int(audio.sfx_count)
+	heard_before = int(audio.sfx_count)
 	farm.apply_action(
 		{ "verb": "water", "target": t, "actor": SimWorld.ACTOR_PLAYER }, GameState)
 	_assert(int(audio.sfx_count) == heard_before,
 		"a player Action makes no sound here — hers is player.gd's, and is not doubled")
 
+	# --- the limit is attention, not who acted -------------------------------
 	# A farm nobody is playing stays silent, the rule every other cue keeps.
 	_stage_tile(t.x, t.y, "seeded", "wheat")
 	farm.sim.get_tile(t.x, t.y).watered_today = false
@@ -2995,3 +3054,21 @@ func _scenario_af_a_pour_is_heard_whoever_pours() -> void:
 	_assert(int(audio.sfx_count) == heard_before,
 		"a muted farm does not pour into a menu")
 	farm.mute_feedback = false
+
+	# A machine waters nine tiles inside one day turn and answers with one spray
+	# animation, not nine simultaneous pours — those Actions resolve inside
+	# advance_day and never reach the cue table. That restraint is the rule's one
+	# limit and it must not regress into noise.
+	var spr := Vector2i(20, 14)
+	for dy in [-1, 0, 1]:
+		for dx in [-1, 0, 1]:
+			_stage_tile(spr.x + dx, spr.y + dy, "seeded", "wheat")
+	farm.sim.spawn_actor("af_sprinkler", SpeciesDefs.SPRINKLER, spr)
+	GameState.weather = "sunny"
+	heard_before = int(audio.sfx_count)
+	farm.advance_day()
+	_assert(int(audio.sfx_count) == heard_before,
+		"a sprinkler's morning is one spray, not nine pours")
+	_assert(farm.sim.get_tile(spr.x, spr.y).watered_today,
+		"...and it did water — the silence is the cue's, not the machine's")
+	farm.sim.despawn_actor("af_sprinkler")
