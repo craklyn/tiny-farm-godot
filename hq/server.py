@@ -918,9 +918,33 @@ def playtest_events(name):
 _PT_CACHE = {}
 
 
+SHELF_RE = re.compile(r'^\s*"(\d{4}-\d{2}-\d{2}_\d+)"\s*:', re.M)
+
+
+def shelf_names():
+    """The sessions tests/test_runner.gd pins by name.
+
+    A session on the shelf but not in SHELF is *unclassified*: the suite skips
+    it and stays green (it is paperwork, not breakage — 2026-09-02), which is
+    precisely why it has to surface somewhere Daniel actually looks. Here.
+    Parsed rather than duplicated, so the test file stays the single source.
+    """
+    try:
+        with open(os.path.join(REPO, "tests", "test_runner.gd"), encoding="utf-8") as f:
+            body = f.read()
+    except OSError:
+        return None
+    start = body.find("const SHELF")
+    if start < 0:
+        return None
+    end = body.find("\n}", start)
+    return set(SHELF_RE.findall(body[start:end if end > 0 else None]))
+
+
 def list_playtests():
     root = os.path.join(REPO, "playtests")
     out = []
+    shelf = shelf_names()
     for name in sorted(os.listdir(root), reverse=True) if os.path.isdir(root) else []:
         tdir = os.path.join(root, name)
         if not os.path.isdir(tdir):
@@ -928,7 +952,10 @@ def list_playtests():
         key = (name, os.path.getmtime(tdir))
         if key not in _PT_CACHE:
             _PT_CACHE[key] = parse_playtest(name)
-        out.append(_PT_CACHE[key])
+        # Not cached with the parse: SHELF lives in another file, and editing it
+        # does not change this folder's mtime.
+        out.append(dict(_PT_CACHE[key],
+                        classified=(None if shelf is None else name in shelf)))
     return out
 
 

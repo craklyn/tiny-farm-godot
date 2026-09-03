@@ -17,13 +17,21 @@ async function renderPlaytests() {
   const sessions = await api("/api/playtests");
   const real = sessions.filter(s => !s.error && s.taps > 5);
   const tiny = sessions.filter(s => s.error || s.taps <= 5);
+  // Unclassified = shelved but not yet pinned in the suite's SHELF table. The
+  // suite deliberately skips these and stays green (being new is not being
+  // broken), so this banner is the only place the backlog shows up.
+  const unclassified = sessions.filter(s => s.classified === false);
   $view.replaceChildren(h(`
     <h1>🧪 Playtest Sessions</h1>
+    ${unclassified.length ? `<div class="card" style="border-left:3px solid var(--warn,#c98a2e)">
+      <b>⚠️ ${unclassified.length} session(s) not yet classified</b>
+      <p class="small muted">${unclassified.map(s => esc(s.name)).join(", ")} — shelved in <code>playtests/</code> but not pinned in <code>SHELF</code> (tests/test_runner.gd). The suite skips them and stays green on purpose: an unclassified session is paperwork, not a broken build. Pinning one records the log format it is and whether it still replays to its own autosave.</p>
+    </div>` : ""}
     <p class="sub">Every recorded session, scored by the game's own instruments. The bars are the ruled gate bars: wasted taps ≤ ${BAR_WASTED}%, longest stall ≤ ${BAR_STALL_MS / 1000}s. "Satisfied" taps (tapping something already done) never count against a player.</p>
     <div class="card" style="overflow-x:auto"><table class="pt-table">
       <tr><th>Session</th><th>Build</th><th>Taps</th><th>Wasted</th><th>Satisfied</th><th>Longest stall</th><th>Days</th><th>Active</th></tr>
       ${real.map(s => `<tr class="pt-row" data-name="${esc(s.name)}">
-        <td><b>${esc(s.name)}</b>${s.continued ? ' <span class="small muted">(resumed)</span>' : ""}${(s.dropped_lines || s.unknown_outcomes || s.mislabelled) ? " ⚠️" : ""}</td>
+        <td><b>${esc(s.name)}</b>${s.continued ? ' <span class="small muted">(resumed)</span>' : ""}${s.classified === false ? ' <span class="small muted">(unclassified)</span>' : ""}${(s.dropped_lines || s.unknown_outcomes || s.mislabelled) ? " ⚠️" : ""}</td>
         <td class="small muted">${esc(s.build_id || "unstamped")}</td>
         <td>${s.taps}</td>
         <td class="${s.wasted_pct <= BAR_WASTED ? "good" : "bad"}">${s.wasted} (${s.wasted_pct}%)</td>

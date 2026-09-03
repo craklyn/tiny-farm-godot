@@ -73,8 +73,47 @@ if [[ "$got_any" -eq 0 ]]; then
 	exit 1
 fi
 
-# Keep every pull. A playtest is not repeatable: the child is four once, and the
-# second run is a different experiment because she has already seen the game.
+# Two pulls are NOT kept, and both were learned the hard way on 2026-09-02.
+#
+# The rescue takes whatever is sitting on the device, and the device does not
+# forget between deploys. Deploy twice in an afternoon and the same play is
+# shelved twice under two timestamps; on that day one session was shelved three
+# times. Every shelved folder has to be classified in tests/test_runner.gd's
+# SHELF, so the suite went red — not because anything was broken, but because
+# somebody deployed. Red has to mean broken or it stops meaning anything.
+#
+# The rule below is not a heuristic. The trace is the identity of a play: same
+# taps, same session. And a trace with no taps in it is not a playtest at all —
+# it is an app that launched and idled, which is what a dev deploy leaves behind.
+#
+# Nothing is silently binned: both cases say so on the way out, and a real play
+# session is never the thing being dropped. What survives this is exactly what
+# the original rule meant to protect — a playtest is not repeatable, the child is
+# four once, and the second run is a different experiment.
+TRACE="$OUT/session_trace.jsonl"
+if [[ -f "$TRACE" ]]; then
+	TAPS=$(grep -c '"kind":"tap"' "$TRACE" || true)
+	if [[ "${TAPS:-0}" -eq 0 ]]; then
+		rm -rf "$OUT"
+		echo ""
+		echo "Not shelved: nobody touched this one (no taps in the trace)."
+		echo "That is a dev launch, not a playtest. The device still has it."
+		exit 0
+	fi
+	MINE=$(md5sum < "$TRACE" | cut -d" " -f1)
+	for prior in playtests/*/session_trace.jsonl; do
+		[[ -e "$prior" ]] || continue
+		[[ "$prior" == "$OUT/session_trace.jsonl" ]] && continue
+		if [[ "$(md5sum < "$prior" | cut -d" " -f1)" == "$MINE" ]]; then
+			rm -rf "$OUT"
+			echo ""
+			echo "Not shelved: this is the same play as $(dirname "$prior")"
+			echo "(identical tap trace). Already on the shelf; not filing it twice."
+			exit 0
+		fi
+	done
+fi
+
 echo ""
 echo "Saved to $OUT/"
 echo ""

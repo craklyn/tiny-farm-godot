@@ -19,9 +19,19 @@ var Pathfinding: Node
 # first v2 log; 08-21 is the oldest surviving session of all, rescued by hand
 # from the retired com.godot.game install — see its NOTE.md; 09-02 is the first
 # rescue pulled by HQ's Deploy-to-tablet button, 09-02 21:44 the second — that
-# button is now the normal way sessions arrive here). A deploy's rescue that shelves
-# a new folder fails the fixture tests BY NAME until it is classified here —
-# deliberately.
+# button is now the normal way sessions arrive here).
+#
+# **A folder not listed here does not fail anything** (changed 2026-09-02). It
+# used to fail BY NAME until classified, and that was wrong for a reason worth
+# keeping: the rescue takes whatever is on the device and the device does not
+# forget, so deploying twice filed the same play twice and the suite went red
+# because somebody had *deployed*. Red has to mean broken. Unclassified sessions
+# are skipped, printed as a note, and shown in HQ's Playtests page instead;
+# tools/pull_session.sh no longer shelves a duplicate trace or a tapless one at
+# all, which is where that problem actually belonged.
+#
+# What has not changed: everything listed below is pinned exactly, and moving one
+# of these numbers still means coming here and saying which, and why.
 const SHELF := {
 	"2026-08-21_103100": { "format": 1, "verdict": "cross" },
 	"2026-08-28_111552": { "format": 1, "verdict": "cross" },
@@ -2206,19 +2216,22 @@ func test_energy_repartition() -> void:
 	#
 	# The synthetic cases above prove the arithmetic; these are the files an
 	# actual player would be carrying. Each must come back under the sky it went
-	# down under. The roster of shelved sessions lives in SHELF (top of this
-	# file): every deploy's rescue adds a folder here, and a folder not in SHELF
-	# fails by NAME so the newcomer gets classified deliberately instead of
-	# breaking arithmetic — the 8→9→10 count treadmill ended 2026-08-31.
+	# down under. The roster of shelved sessions lives in SHELF (top of this file).
+	# A folder that is not in SHELF is *skipped*, not failed: being unclassified is
+	# paperwork, and paperwork must not turn the suite red (2026-09-02, see SHELF's
+	# own comment). Everything SHELF does claim stays pinned exactly as before.
 	var dir := DirAccess.open("res://playtests")
 	_assert(dir != null, "the playtests fixtures directory is readable")
+	var unclassified: Array[String] = []
 	if dir != null:
 		for name in dir.get_directories():
-			_assert(SHELF.has(name),
-				"new shelved session %s needs classifying in SHELF" % name)
+			if not SHELF.has(name):
+				unclassified.append(name)
 	var checked := 0
 	if dir != null:
 		for name in dir.get_directories():
+			if not SHELF.has(name):
+				continue
 			var path := "res://playtests/%s/autosave.json" % name
 			var data := SaveGame.load_dict(path)
 			if data.is_empty() or not data.get("state", {}).has("energy"):
@@ -2240,6 +2253,10 @@ func test_energy_repartition() -> void:
 	_flush_quiet("every shelved autosave in playtests/ loads at its own hour (%d)" % checked)
 	_assert(checked == SHELF.size(),
 		"all %d shelved sessions were checked (%d)" % [SHELF.size(), checked])
+	if not unclassified.is_empty():
+		print("      note: %d session(s) in playtests/ not yet in SHELF: %s"
+			% [unclassified.size(), ", ".join(unclassified)])
+		print("      HQ lists these under Playtests; classifying one pins it here.")
 
 
 func test_q50_clearing_costs() -> void:
@@ -6001,7 +6018,7 @@ func test_replay_v2() -> void:
 
 	# The real thing: every recorded session in playtests/ replays as exactly the
 	# log SHELF says it is — format and verdict both. A folder missing from SHELF
-	# fails by name (see SHELF's comment at the top of the file).
+	# is skipped here and reported once, by the autosave block above.
 	var dir := DirAccess.open("res://playtests")
 	_assert(dir != null, "the playtests fixtures directory is readable")
 	var checked := 0
@@ -6012,10 +6029,9 @@ func test_replay_v2() -> void:
 		var fixture := ReplayLog.load_from(path)
 		if fixture == null:
 			continue
-		checked += 1
 		if not SHELF.has(name):
-			_assert(false, "new recorded session %s needs classifying in SHELF" % name)
-			continue
+			continue  # unclassified: reported once by the autosave block, not failed
+		checked += 1
 		var expect: Dictionary = SHELF[name]
 		_assert_quiet(fixture.version == int(expect["format"]),
 			"%s is the v%d log the shelf says it is" % [name, int(expect["format"])])

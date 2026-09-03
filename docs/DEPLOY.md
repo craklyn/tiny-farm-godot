@@ -85,6 +85,30 @@ tools/pull_session.sh
 Fetches the trace, replay and autosave into `playtests/<timestamp>/` and prints the
 report. Committed on purpose — a playtest is not repeatable.
 
+**Two pulls are not shelved, and both say so on the way out.** The rescue takes whatever
+is on the device, and the device does not forget between deploys — so deploying twice in
+an afternoon used to file the same play twice under two timestamps. On 2026-09-02 one
+session was filed three times, and because every shelved folder has to be classified in
+`tests/test_runner.gd`'s `SHELF`, the unit suite went red. Nothing was broken; somebody
+had deployed. So:
+
+- **A trace with no taps in it is not shelved.** That is an app that launched and idled —
+  what a dev deploy leaves behind — not a playtest.
+- **A trace identical to one already in `playtests/` is not shelved.** The trace *is* the
+  identity of a play: same taps, same session.
+
+Neither rule is a heuristic and neither can drop a real play session. Audit the shelf for
+duplicates with:
+
+```bash
+for d in playtests/*/session_trace.jsonl; do md5sum "$d"; done | sort | uniq -c -w32 | sort -rn
+```
+
+**A folder that is not in `SHELF` no longer fails the suite.** Being unclassified is
+paperwork, not breakage, and red has to mean broken or it stops meaning anything. The
+suite skips it and prints a note; HQ's Playtests page shows the backlog with a banner.
+Everything `SHELF` *does* claim is still pinned exactly as before.
+
 **Trap:** Godot's `user://` on Android is the app's **internal** storage, reached with
 `run-as`, *not* `/sdcard/Android/data/<pkg>/files`. That external path exists and is
 readable, which is what makes the mistake quiet: it is simply always empty. The first
