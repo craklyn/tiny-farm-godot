@@ -23,7 +23,31 @@
 .w-ask { margin: 4px 0; color: var(--muted); font-style: italic; }
 .w-next { margin: 6px 0; font-size: 13.5px; }
 .w-foot { display: flex; gap: 10px; align-items: baseline; margin-top: 8px; flex-wrap: wrap; }
-.w-foot a { margin-left: auto; }
+.w-foot-acts { margin-left: auto; display: flex; gap: 14px; align-items: baseline; }
+.w-respond { background: transparent; color: var(--blue); border: 1px solid var(--line);
+  border-radius: 20px; padding: 3px 12px; font-size: 12.5px; font-weight: 600; }
+.w-respond:hover { border-color: var(--blue); background: var(--panel2); }
+
+/* The conversation reads as a conversation — his words indented off the left
+   edge, the owner's flush against it — so a long card still shows at a glance
+   who said what. */
+.w-convo { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px;
+  display: flex; flex-direction: column; gap: 10px; }
+.w-msg-w { font-size: 10.5px; letter-spacing: 1.4px; text-transform: uppercase;
+  color: var(--muted); font-weight: 700; margin-bottom: 3px; }
+.w-msg-b { font-size: 13.5px; }
+.w-msg-b p { margin: 5px 0; }
+.w-msg-b > *:first-child { margin-top: 0; }
+.w-msg-you { border-left: 2px solid var(--accent); padding-left: 10px; }
+.w-msg-you .w-msg-w { color: var(--accent); }
+
+.w-reply { margin-top: 10px; }
+.w-reply[hidden] { display: none; }
+.w-reply-t { width: 100%; background: var(--bg2); color: var(--text);
+  border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px;
+  font-family: inherit; font-size: 13.5px; resize: vertical; }
+.w-reply-t:focus { outline: none; border-color: var(--accent); }
+.w-reply p { margin: 7px 0; }
 /* The consequence block sits directly above the buttons, because that is the
    moment he needs it: what each answer does, and — when accepting starts work —
    the exact item it starts, before the click rather than after. */

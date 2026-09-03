@@ -45,6 +45,15 @@ Nobody files anything by hand. The CEO talks to a team member on HQ's chat page,
    finished result awaiting his verdict. Tier 1 waits for a build session. Tier 2 waits for
    his yes.
 4. He accepts, sends back for another go, or drops — from the Work page, in one click.
+5. Or he **responds on the card**. Writing back is a conversation, not a verdict: it accepts
+   nothing, drops nothing and closes nothing. The owner answers on the card itself with the
+   item as context — what was asked, what they produced, and anything already said — so he
+   never has to leave the result he is reading in order to argue with it. The exchange is
+   read for the work it creates exactly like a conversation on the chat page, so what the
+   reply commits to still gets filed. Anything he says there also overrides the original
+   brief on a "have another go", which is what makes a second attempt a second attempt
+   rather than a repeat. Because the conversation can change what should happen next, the
+   card's follow-up is recomputed after every reply rather than left stale.
 
 Team members are told this in their instructions, so they answer briefly and name the next
 step and its owner rather than pretending to carry work out inside a chat reply. That is

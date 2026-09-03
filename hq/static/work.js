@@ -20,6 +20,9 @@ if ((location.hash.slice(1) || "/").startsWith("/work")) route();
 const TIER_CHIP = { 0: "t-go", 1: "t-diff", 2: "t-ask" };
 const TIER_NAME = { 0: "Just do it", 1: "Do it, show the diff", 2: "Ask first" };
 let workPoll = null;
+// Open composers, by item id. Held outside the DOM because the page re-renders
+// itself whenever the company moves, and half-typed words must survive that.
+const replyDrafts = {};
 
 async function workSnap() {
   const r = await fetch("/api/work");
@@ -105,6 +108,45 @@ function spawnedNote(it, org) {
   return `<p class="w-spawned">Your yes started: <b>${esc(s.title)}</b></p>`;
 }
 
+/* Writing back to a card, without leaving it ---------------------------------
+   "Open that thread" takes him to the conversation the work came out of, which
+   is the wrong place to answer a specific card — he loses the result he was
+   reading. Responding happens here instead: the owner answers on the card, and
+   the exchange is read for work exactly like a chat, so what it commits to
+   still gets filed. It is a conversation, not a verdict: it accepts nothing,
+   drops nothing, and closes nothing. */
+function convoBlock(it, org) {
+  const msgs = it.conversation || [];
+  if (!msgs.length && !it.awaiting_reply) return "";
+  const rows = msgs.map(m => {
+    const you = m.role === "daniel";
+    const name = you ? "You" : ownerOf(org, m.role).name.split(" ")[0];
+    return `<div class="w-msg${you ? " w-msg-you" : ""}">
+      <div class="w-msg-w">${esc(name)}</div>
+      <div class="w-msg-b">${you ? `<p>${esc(m.text)}</p>` : md(m.text)}</div>
+    </div>`;
+  });
+  if (it.awaiting_reply) {
+    rows.push(`<div class="w-msg"><div class="w-msg-w">${esc(ownerOf(org, it.owner).name.split(" ")[0])}</div>
+      <div class="w-msg-b muted">reading the card and writing back…</div></div>`);
+  }
+  return `<div class="w-convo">${rows.join("")}</div>`;
+}
+
+function replyBox(it, org) {
+  const first = ownerOf(org, it.owner).name.split(" ")[0];
+  const draft = replyDrafts[it.id];
+  return `<div class="w-reply"${draft === undefined ? " hidden" : ""}>
+    <textarea class="w-reply-t" data-draft="${esc(it.id)}" rows="3"
+      placeholder="Write back to ${esc(first)} about this card…">${esc(draft || "")}</textarea>
+    <p class="small muted">Goes to ${esc(first)} with this card attached — what you asked for, the result, and anything already said here. The reply comes back on this card, and whatever it commits to gets filed as work like any conversation. It accepts nothing and closes nothing.</p>
+    <div class="w-acts">
+      <button data-send="${esc(it.id)}">Send to ${esc(first)}</button>
+      <button class="ghost" data-cancelreply="${esc(it.id)}">Cancel</button>
+    </div>
+  </div>`;
+}
+
 function workCard(it, org, pol) {
   const who = ownerOf(org, it.owner);
   const tier = pol.tiers[String(it.tier)] || { name: "?" };
@@ -123,7 +165,7 @@ function workCard(it, org, pol) {
   const why = it.tier_reason ? `<span class="w-why">${esc(it.tier_reason)}</span>` : "";
   const next = it.first_action && it.state !== "for_review"
     ? `<p class="w-next"><b>Next step:</b> ${esc(it.first_action)}</p>` : "";
-  return h(`<div class="w-card w-${it.state}">
+  return h(`<div class="w-card w-${it.state}" data-id="${esc(it.id)}">
     <div class="w-top">
       <span class="chip w-level">${esc(it.level)}</span>
       <span class="chip ${TIER_CHIP[it.tier] || "t-ask"}">${esc(tier.name)}</span>
@@ -135,10 +177,15 @@ function workCard(it, org, pol) {
     ${it.ask ? `<p class="w-ask">“${esc(it.ask)}”</p>` : ""}
     ${next}
     ${result}
+    ${convoBlock(it, org)}
     <div class="w-foot">
       <span class="small muted">from your chat with ${esc(ownerOf(org, it.thread).name.split(" ")[0])} · ${esc(it.created)}</span>
-      <a class="plain small" href="#/chat/${esc(it.thread)}">open that thread →</a>
+      <span class="w-foot-acts">
+        <button class="w-respond" data-respond="${esc(it.id)}">↩ Respond</button>
+        <a class="plain small" href="#/chat/${esc(it.thread)}">open that thread →</a>
+      </span>
     </div>
+    ${replyBox(it, org)}
     ${spawnedNote(it, org)}
     ${acts ? consequence(it, org) + `<div class="w-acts">${acts}</div>` : ""}
   </div>`).firstElementChild;
@@ -193,23 +240,60 @@ async function renderWork() {
     body.appendChild(hist);
   }
 
+  // Opening and closing a composer touches the DOM only — re-rendering the
+  // whole page to reveal a textarea would cost two fetches and a scroll jump.
+  const card = id => body.querySelector(`.w-card[data-id="${id}"]`);
   body.addEventListener("click", async ev => {
-    const act = ev.target.dataset && ev.target.dataset.act;
+    const d = ev.target.dataset || {};
+    if (d.respond) {
+      replyDrafts[d.respond] = replyDrafts[d.respond] || "";
+      const box = card(d.respond).querySelector(".w-reply");
+      box.hidden = false;
+      box.querySelector("textarea").focus();
+      return;
+    }
+    if (d.cancelreply) {
+      delete replyDrafts[d.cancelreply];
+      const box = card(d.cancelreply).querySelector(".w-reply");
+      box.querySelector("textarea").value = "";
+      box.hidden = true;
+      return;
+    }
+    if (d.send) {
+      const box = card(d.send).querySelector(".w-reply");
+      const text = box.querySelector("textarea").value.trim();
+      if (!text) return;
+      ev.target.disabled = true;
+      delete replyDrafts[d.send];
+      await workPost("/api/work/respond", { id: d.send, message: text });
+      renderWork();
+      return;
+    }
+    const act = d.act;
     if (!act) return;
     ev.target.disabled = true;
     await workPost("/api/work/" + act, { id: ev.target.dataset.id });
     renderWork();
   });
 
+  // Every keystroke is remembered, so a poll landing mid-sentence costs nothing.
+  body.addEventListener("input", ev => {
+    const id = ev.target.dataset && ev.target.dataset.draft;
+    if (id) replyDrafts[id] = ev.target.value;
+  });
+
   // The company keeps moving while he reads; the page should show that.
   if (workPoll) clearInterval(workPoll);
+  // Faster while someone is mid-answer: he is sitting there waiting for it.
+  const period = snap.items.some(i => i.awaiting_reply) ? 5000 : 20000;
   workPoll = setInterval(() => {
     if (!(location.hash.slice(1) || "/").startsWith("/work")) { clearInterval(workPoll); workPoll = null; return; }
     workSnap().then(s => {
-      const stamp = JSON.stringify(s.items.map(i => [i.id, i.state]));
+      const stamp = JSON.stringify(s.items.map(
+        i => [i.id, i.state, (i.conversation || []).length, !!i.awaiting_reply]));
       if (stamp !== workPoll.stamp) { workPoll.stamp = stamp; renderWork(); }
     }).catch(() => { });
-  }, 20000);
+  }, period);
 
   updateWorkBadge(snap);
 }

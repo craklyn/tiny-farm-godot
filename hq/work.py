@@ -343,6 +343,15 @@ def _do_prompt(item, org):
     pol = policy()
     roster = _roster_line(org)
     t0, t1, t2 = (pol["tiers"][k]["means"] for k in ("0", "1", "2"))
+    # Anything he said on the card outranks the original brief — a second
+    # attempt that ignores what he told you is not a second attempt.
+    convo = _convo_lines(item, org)
+    said = (f"""
+WHAT HE HAS SAID ABOUT THIS ON THE CARD — this is the most recent word on it
+and it overrides the brief above wherever they disagree:
+
+{convo}
+""" if convo else "")
     return f"""Daniel asked for this, and the studio norm is that you do reversible
 work now and show him the result — you do not ask permission to start.
 
@@ -359,6 +368,8 @@ as short as the work allows.
 If the step genuinely cannot be finished read-only, say in one line what is
 blocking it and exactly what you would need — that is a useful result too, and
 {name} saying so beats a plausible guess.
+{said}
+
 
 Then say what your result implies, because Daniel decides whether to accept it
 and he is entitled to know what his yes starts before he gives it. End your
@@ -449,6 +460,69 @@ def _process_item(item, org):
     return True
 
 
+def _convo_lines(item, org):
+    """The card's conversation, as the owner will read it back."""
+    out = []
+    for m in item.get("conversation", []):
+        if m.get("role") == "daniel":
+            out.append(f"Daniel: {m.get('text', '')}")
+        else:
+            emp = next((e for e in org["employees"] if e["id"] == m.get("role")), None)
+            out.append(f"{emp['name'] if emp else 'You'}: {m.get('text', '')}")
+    return "\n\n".join(out)
+
+
+def _response_prompt(item, org):
+    result = (item.get("result") or "").strip()
+    return f"""Daniel is looking at this piece of work on HQ's Work page and has
+written back to you about it. Answer him on the card, in your own voice.
+
+WORK ITEM: {item['title']}
+WHAT HE ASKED FOR: {item.get('ask', '')}
+THE STEP THAT WAS YOURS TO TAKE: {item.get('first_action', '')}
+{("THE RESULT YOU GAVE HIM:" + chr(10) + result[:6000]) if result else "This has not been done yet."}
+
+THE CONVERSATION ON THIS CARD SO FAR:
+{_convo_lines(item, org)}
+
+Reply to his last message and nothing else. Plain language, short as the answer
+allows, no preamble and no ticket IDs. The repository is read-only to you and is
+the source of truth — check it rather than guessing.
+
+If he is asking for something that can be settled by reading, drafting or
+analysing, do it here and give him the answer: the studio norm is that you do
+reversible work now rather than promising it. If what he wants changes files,
+say plainly what you would change and leave it — a build session carries that
+out. If he has told you the result was wrong, say what you now think is right,
+briefly, without apologising at length."""
+
+
+def _process_response(item, org):
+    """He asked something on a card; the owner answers on the card. Runs on the
+    worker so the page never blocks on a model call."""
+    text, limited = _run_cli(_response_prompt(item, org),
+                             HOST.build_system_prompt(org, item["owner"]),
+                             "Read,Glob,Grep", HOST.MAX_TURNS, 300)
+    if limited:
+        return False
+    # Re-read: he may have typed again while the owner was thinking, and his
+    # message must not be lost to a stale copy of the item.
+    fresh = HOST.load_json(_item_path(item["id"]))
+    convo = fresh.get("conversation", [])
+    convo.append({"role": item["owner"], "text": text or "(no reply came back)",
+                  "at": _now_iso()})
+    fresh["conversation"] = convo
+    fresh["awaiting_reply"] = False
+    # What he was told may have changed what should follow, so the card must
+    # not keep showing a consequence worked out before the conversation.
+    fresh.pop("follow_up", None)
+    save_item(fresh)
+    last_from_him = next((m["text"] for m in reversed(convo)
+                          if m.get("role") == "daniel"), "")
+    capture_exchange(fresh.get("thread") or fresh["owner"], last_from_him, text or "")
+    return True
+
+
 def _propose_follow_up(item, org):
     """Backfill for results that landed before the card showed consequences.
     New work answers this inside the call that does it and never reaches here."""
@@ -507,6 +581,11 @@ def worker():
             if HOST.limited_until():
                 continue
             org = HOST.load_org()
+            waiting = [i for i in items() if i.get("awaiting_reply")]
+            if waiting:
+                waiting.sort(key=lambda i: i.get("asked_ts", 0))
+                _process_response(waiting[0], org)
+                continue
             pending = sorted(_read_dir(CAPTURES), key=lambda c: c.get("created_ts", 0))
             if pending:
                 _process_capture(pending[0], org)
@@ -578,6 +657,22 @@ def api_post(path, payload):
     if not os.path.isfile(p):
         return {"error": "no such item"}
     item = HOST.load_json(p)
+    if path == "/api/work/respond":
+        # Writing back to a card is a conversation, not a verdict: it changes
+        # no state and closes nothing. The owner answers on the card, and the
+        # exchange is read for work exactly like a conversation on the chat
+        # page — so what it commits to gets filed, and he never has to leave
+        # the thing he was reading in order to say something about it.
+        msg = (payload.get("message") or "").strip()[:4000]
+        if not msg:
+            return {"error": "empty message"}
+        convo = item.get("conversation", [])
+        convo.append({"role": "daniel", "text": msg, "at": _now_iso()})
+        item["conversation"] = convo
+        item["awaiting_reply"] = True
+        item["asked_ts"] = time.time()
+        return save_item(item)
+
     if path == "/api/work/accept":
         item["state"] = "accepted"
         item["closed"] = _now_iso()
