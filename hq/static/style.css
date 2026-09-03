@@ -481,9 +481,7 @@ code.ref { background: #1b1710; border: 1px solid var(--line); border-radius: 6p
   .nav-sub a { padding: 4px 10px; }
 }
 
-/* ---------- tablet deploy (the button that works with no model in the loop) ---------- */
-.deploy-btn { margin-left: auto; }
-.dep-panel { max-width: 720px; }
+/* ---------- tablet deploy: the Engineering & QA pillar's device panel ---------- */
 .dep-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 14px 0 8px; }
 .dep-form input {
   background: var(--panel); color: var(--text); border: 1px solid var(--line);

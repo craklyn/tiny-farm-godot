@@ -18,7 +18,8 @@ var Pathfinding: Node
 # from the pre-M2.5 build, the second a Continue on a pre-T-32 base, this game's
 # first v2 log; 08-21 is the oldest surviving session of all, rescued by hand
 # from the retired com.godot.game install — see its NOTE.md; 09-02 is the first
-# rescue pulled by HQ's Deploy-to-tablet button). A deploy's rescue that shelves
+# rescue pulled by HQ's Deploy-to-tablet button, 09-02 21:44 the second — that
+# button is now the normal way sessions arrive here). A deploy's rescue that shelves
 # a new folder fails the fixture tests BY NAME until it is classified here —
 # deliberately.
 const SHELF := {
@@ -36,6 +37,7 @@ const SHELF := {
 	"2026-08-31_230643": { "format": 2, "verdict": "cross" },
 	"2026-08-31_233943": { "format": 2, "verdict": "cross" },
 	"2026-09-02_211138": { "format": 2, "verdict": "match" },
+	"2026-09-02_214427": { "format": 2, "verdict": "match" },
 }
 
 

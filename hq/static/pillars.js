@@ -99,17 +99,22 @@ async function renderPillar(pid) {
   if (pid === "product") pillarProduct(special, sig);
 }
 
-/* ---- engineering: the verification panel (Grace's living demo) ---- */
+/* ---- engineering: the verification panel (Grace's living demo) + the tablet ---- */
 async function pillarEngineering(root, sig) {
+  // Two independent blocks. The verification panel replaces its own children on
+  // a timer while a suite runs, so the deploy card must not live inside it — a
+  // five-second redraw would wipe a deploy in progress out from under him.
+  root.replaceChildren(h(`<div id="verify-block"></div><div id="tablet-block"></div>`));
+  const vroot = root.querySelector("#verify-block");
   const draw = async () => {
-    if (!root.isConnected) return;  // page changed — stop polling
+    if (!vroot.isConnected) return;  // page changed — stop polling
     delete cache["/api/runs"];
     const runs = await api("/api/runs");
-    if (!root.isConnected) return;
-    root.replaceChildren(h(`<h2>Verification — run it yourself</h2>
+    if (!vroot.isConnected) return;
+    vroot.replaceChildren(h(`<h2>Verification — run it yourself</h2>
       <div class="card"><p class="small muted" style="margin-bottom:10px">These run the real suites on this machine and report the honest verdict. CI runs the same on every push${sig.ci.latest ? ` — latest: <a class="plain" href="${esc(sig.ci.latest.url)}" target="_blank" rel="noopener">${esc(sig.ci.latest.displayTitle)}</a> (${sig.ci.green ? "✅ green" : sig.ci.in_progress ? "⏳ running" : "❌ red"})` : ""}.</p>
       <div id="jobs"></div></div>`));
-    const jobsDiv = root.querySelector("#jobs");
+    const jobsDiv = vroot.querySelector("#jobs");
     for (const [job, r] of Object.entries(runs)) {
       const state = r ? r.state : "never run";
       const icon = state === "green" ? "✅" : state === "failed" ? "❌" : state === "running" ? "⏳" : "▫️";
@@ -128,6 +133,153 @@ async function pillarEngineering(root, sig) {
     if (Object.values(runs).some(r => r && r.state === "running")) setTimeout(draw, 5000);
   };
   await draw();
+  mountTabletDeploy(root.querySelector("#tablet-block"));
+}
+
+/* ---- the tablet: build the code as it stands and put it on the device ----
+
+   It lives in Engineering & QA because that is where the "run it yourself"
+   controls already are and because tools/deploy_android.sh is this pillar's
+   file. It is NOT filed under Sales & Platforms, which formally owns
+   docs/DEPLOY.md: this ships a *debug* APK to one tablet, and the runbook works
+   hardest at keeping that separate from a release.
+
+   It is deliberately the one control in HQ with no model anywhere in it — it
+   exists for the days the token budget is spent and there is nobody to ask what
+   a red line means, so every failure it can hit is answered on the page
+   (hq/server.py, DEPLOY_HINTS) rather than generated. Wireless debugging picks a
+   new port on every toggle and switches itself off on reboot, which is why the
+   address box and the pairing form sit right here instead of in a runbook. */
+const DEP_ADDR_KEY = "hq-deploy-address";
+
+async function depStatus() {
+  const r = await fetch("/api/deploy");                 // never api(): it caches
+  if (!r.ok) throw new Error("The HQ service did not answer (" + r.status + ").");
+  return r.json();
+}
+
+function mountTabletDeploy(root) {
+  root.replaceChildren(h(`
+    <h2>The tablet — send it the build you have now</h2>
+    <div class="card">
+      <p class="small muted">Builds the code exactly as it stands and installs it over wireless
+        debugging — the same steps as <code>tools/deploy_android.sh</code>, narrated. Any play
+        session sitting on the tablet is pulled into <code>playtests/</code> first, so pressing
+        this never loses one.</p>
+      <div class="dep-form">
+        <button id="dep-go">▶ Build &amp; deploy now</button>
+        <input id="dep-addr" placeholder="192.168.1.34:37129" size="20" spellcheck="false">
+      </div>
+      <p class="small muted">Leave the address empty and it goes to whichever tablet it found
+        last time. Fill it in after the tablet reboots or wireless debugging is switched off and
+        on — Android picks a new port every single time, and the old one silently stops working.</p>
+      <div id="dep-body"></div>
+      <details class="dep-trouble">
+        <summary>Pair the tablet — first time on this computer, or pairing lost</summary>
+        <p class="small muted">On the tablet: Settings → Developer options → Wireless debugging
+          → <b>Pair device with pairing code</b>. That dialog shows its own address and a
+          six-digit code. Both are different from the ones on the screen behind it, and both
+          change every time the dialog is reopened, so type them while it is open.</p>
+        <div class="dep-form">
+          <input id="dep-paddr" placeholder="192.168.1.34:41234" size="20" spellcheck="false">
+          <input id="dep-pcode" placeholder="123456" size="8" inputmode="numeric" spellcheck="false">
+          <button class="ghost" id="dep-pair-go">Pair</button>
+        </div>
+        <div id="dep-pair-out"></div>
+      </details>
+    </div>`));
+
+  const body = root.querySelector("#dep-body");
+  const goBtn = root.querySelector("#dep-go");
+  const addr = root.querySelector("#dep-addr");
+  // The address is remembered because it is retyped after every tablet reboot,
+  // and a wrong-port retry is the single most common thing that happens here.
+  try { addr.value = localStorage.getItem(DEP_ADDR_KEY) || ""; } catch { }
+  addr.addEventListener("input", () => {
+    try { localStorage.setItem(DEP_ADDR_KEY, addr.value.trim()); } catch { }
+  });
+
+  const paint = d => {
+    const running = d.state === "running";
+    goBtn.disabled = running;
+    goBtn.textContent = running ? "⏳ Deploying…" : "▶ Build & deploy now";
+    const steps = d.steps || [];
+    const rows = steps.map((st, i) => {
+      const last = i === steps.length - 1;
+      const icon = running && last ? "⏳" : (d.state === "failed" && last) ? "❌" : "✅";
+      return `<li>${icon} ${esc(st)}</li>`;
+    }).join("");
+    const head =
+      d.state === "green" ? `<div class="dep-note ok">✅ ${esc(d.summary)}</div>` :
+      d.state === "failed" ? `<div class="dep-note bad">❌ ${esc(d.summary)}</div>` :
+      running ? `<div class="dep-note run">⏳ ${esc(d.step || "working")}…
+        <span class="small muted">a full build takes a few minutes — you can leave this page</span></div>` :
+      d.finished ? `<p class="small muted">Last deploy: ${esc(d.finished.replace("T", " "))}.</p>` :
+      `<p class="small muted">No deploy has been run from here yet.</p>`;
+    const hint = d.hint ? `<div class="dep-hint">${esc(d.hint)}</div>` : "";
+    const log = (d.log || []).length
+      ? `<details ${d.state === "failed" ? "open" : ""}><summary class="small muted">Show the raw output (${d.log.length} lines)</summary><pre class="dep-log">${esc(d.log.join("\n"))}</pre></details>`
+      : "";
+    body.innerHTML = head + (rows ? `<ul class="dep-steps">${rows}</ul>` : "") + hint + log;
+  };
+
+  const tick = async () => {
+    if (!root.isConnected) return;                      // page changed — stop polling
+    try {
+      const d = await depStatus();
+      if (!root.isConnected) return;
+      paint(d);
+      if (d.state === "running") setTimeout(tick, 2000);
+    } catch (e) {
+      body.innerHTML = `<div class="dep-hint">⚠️ ${esc(e.message)} Is the HQ service running?</div>`;
+    }
+  };
+  tick();
+
+  goBtn.addEventListener("click", async () => {
+    goBtn.disabled = true;
+    body.innerHTML = `<div class="dep-note run">⏳ Starting…</div>`;
+    try {
+      const r = await fetch("/api/deploy", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address: addr.value.trim() }),
+      });
+      const j = await r.json();
+      if (j.error) {
+        body.innerHTML = `<div class="dep-hint">${esc(j.error)}</div>`;
+        goBtn.disabled = false;
+        return;
+      }
+    } catch (e) {
+      body.innerHTML = `<div class="dep-hint">⚠️ Could not reach the HQ service: ${esc(e.message)}</div>`;
+      goBtn.disabled = false;
+      return;
+    }
+    setTimeout(tick, 500);
+  });
+
+  const pairBtn = root.querySelector("#dep-pair-go");
+  const pairOut = root.querySelector("#dep-pair-out");
+  pairBtn.addEventListener("click", async () => {
+    pairBtn.disabled = true;
+    pairOut.innerHTML = `<p class="small muted">Pairing…</p>`;
+    try {
+      const r = await fetch("/api/deploy/pair", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          address: root.querySelector("#dep-paddr").value.trim(),
+          code: root.querySelector("#dep-pcode").value.trim(),
+        }),
+      });
+      const j = await r.json();
+      const msg = j.error || j.message || "";
+      pairOut.innerHTML = `<div class="${j.ok ? "dep-note ok" : "dep-hint"}">${j.ok ? "✅ " : ""}${esc(msg)}</div>`
+        + (j.output ? `<pre class="dep-log">${esc(j.output)}</pre>` : "");
+    } catch (e) {
+      pairOut.innerHTML = `<div class="dep-hint">⚠️ ${esc(e.message)}</div>`;
+    }
+    pairBtn.disabled = false;
+  });
 }
 
 /* ---- art: the sound board (Dmitri's living demo) + newest sprite ---- */

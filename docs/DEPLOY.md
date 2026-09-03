@@ -33,7 +33,8 @@ the device, installs, and launches.
 
 ### Without a terminal: the button in HQ
 
-**http://localhost:8642/#/chat → 📲 Deploy to tablet.** Same script, same steps, narrated
+**HQ → Engineering & QA → "The tablet"** (http://localhost:8642/#/pillar/engineering).
+Same script, same steps, narrated
 on screen: it shows each step as it happens, and when something fails it says in plain
 English what to do about it instead of printing a stack of adb output. The panel also
 carries the two things that fail most often — a box for the tablet's current `IP:PORT`,
@@ -42,7 +43,11 @@ shell.
 
 This exists for the days there is no model in the loop (the token budget is spent, and
 nobody to ask what a red line means), which is why the whole failure vocabulary is
-hard-coded in `hq/server.py` (`DEPLOY_HINTS`) rather than generated. `tools/deploy_android.sh`
+hard-coded in `hq/server.py` (`DEPLOY_HINTS`) rather than generated. It sits under
+Engineering & QA next to the "run it yourself" suites, not under Sales & Platforms —
+that pillar owns this file and the release flow, and a debug APK going to one tablet is
+deliberately not filed beside a release. It is also not on the chat page, which is the
+one page in HQ that stops working when the tokens run out. `tools/deploy_android.sh`
 stays the single source of deploy truth; HQ runs it and narrates it, and the `">>> "`
 step markers in the script are what it parses — renaming one silently blanks the readout.
 
