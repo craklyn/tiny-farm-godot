@@ -1,0 +1,51 @@
+{
+  "id": "machine-distress-state",
+  "name": "A stuck machine says so",
+  "priority": 6,
+  "status": "planned",
+  "owner": "elena",
+  "contributors": [
+    "yuki",
+    "milo",
+    "dmitri"
+  ],
+  "summary": "The designer ruled that a machine which cannot carry out its order stops where it stands, shows a visible distress state, and resumes when the way clears — never improvising, never failing silently (S-10, from Q-85). The robots shipped before that state existed, so a mark-1 blocked on a rock currently looks identical to one that has finished its list and to one that is broken. This adds the missing piece: a reportable reason on the actor, a status frame on the machine sheets, and the same sound-and-glance treatment the player's own blocked tap gets.",
+  "requirements": [
+    "A blocked actor carries a reportable refusal reason, produced by the same sim path that already answers the player's blocked taps",
+    "A status frame on the machine sheets — the bot sheet needs a cell it does not have today",
+    "The distress state is visible at a glance on a tablet without reading, per the wordless rule",
+    "A sound and visual cue of the same weight the player's own blocked action gets (the standing any-actor-gets-the-player's-treatment rule)",
+    "The machine resumes on its own when the obstruction clears — no player intervention needed to un-stick it",
+    "Sim-level test: a bot ordered onto an unreachable tile enters distress deterministically and leaves it when the path opens; the replay reproduces both transitions"
+  ],
+  "current_status": "Filed 2026-09-03 on integrating the Q-85 ruling. Nothing built yet. The reason plumbing largely exists — the sim already produces refusal reasons for the player's own blocked taps — so the real cost is the sheet cell and the presentation pass. Blocked on nothing: it is buildable today.",
+  "plan": [
+    {
+      "step": "Record the ruling as a settled decision (S-10) and annotate the queue entry",
+      "done": true
+    },
+    {
+      "step": "Surface a refusal reason on the actor when its order cannot be executed",
+      "done": false
+    },
+    {
+      "step": "Generate the status frame for the machine sheets through the art pipeline",
+      "done": false
+    },
+    {
+      "step": "Wire the presentation: sprite state, cue sound, and the resume transition",
+      "done": false
+    },
+    {
+      "step": "Sim test for the distress enter/leave transitions, verified through a replay",
+      "done": false
+    }
+  ],
+  "links": [
+    "docs/DECISION_LOG.md",
+    "docs/DESIGNER_QUEUE.md",
+    "docs/design/06-automation.md"
+  ],
+  "release": "update-1",
+  "release_critical": false
+}

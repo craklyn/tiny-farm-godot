@@ -1335,6 +1335,13 @@ never touched. Session: `playtests/2026-08-31_230643`.*
   Adopting treads means a new sheet and a new animation, not a repaint: treads have no
   four-frame walk.* Bears on `design/06` §2 (appearance, attachment); lands with Q-15/Q-56
   at M3 planning, when the first two machines first share a field.
+  **Deferred by the designer 2026-09-02 (option c, leave it unruled):** *"Once we have the
+  mechanics figured out for phases 1 and 2, let's have a design review for how the characters
+  should be represented in the game."* So the silhouette rule is not settled piecemeal at M3 —
+  it waits for a single character-representation review held once phase-1 and phase-2 mechanics
+  are fixed, and that review rules Q-84 together with the rest of the cast. Until then the
+  shipped bot sheet stands and no new machine sprite is drawn to a silhouette rule that does
+  not yet exist.
 - **Q-85 (Ruling, filed 2026-09-02)** **When a machine can't do what it was told, what does the player see?**
   The other idea rescued from the same prototype: a blocked bot stopped, blinked red with a
   `!`, and waited for the way to clear — never improvising, never failing silently. The
@@ -1346,6 +1353,14 @@ never touched. Session: `playtests/2026-08-31_230643`.*
   machinery exists; the missing pieces are a sprite frame and a reportable reason on the
   actor.* Cheaper to settle before the debut than after: it decides whether the sheet needs
   a status frame.
+  **Ruled 2026-09-02 (option a, stop / show it / wait):** *"Better bots will improvise around
+  it, but this is the first programmable bot, so it has intentionally simple behavior."* A
+  machine that cannot carry out its order stops where it is, shows a visible distress state,
+  and resumes when the way clears — it never improvises and never fails silently. The ruling
+  explicitly reads as an instance of P-13 (the first version of a capability is deliberately
+  weak): improvising around an obstacle is a later mark's behaviour, not the mark-1's. The
+  bot sheet therefore does need a status frame. Filed as work under Engineering with Art on
+  the frame; see `docs/DECISION_LOG.md` S-10.
 
 - **Q-87 (Creative, filed 2026-09-03)** **The machine menu says everything in words.**
   Tapping a placed robot opens a panel of words: a mark-1's "Show it what to water" and

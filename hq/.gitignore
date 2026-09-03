@@ -3,3 +3,6 @@ data/runs/
 data/outbox/
 data/captures/
 __pycache__/
+data/history/
+data/probes/
+data/ci_history.json

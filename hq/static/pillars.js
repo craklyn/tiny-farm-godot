@@ -1,20 +1,55 @@
-/* Tiny Farm HQ — pillar pages + the Eye of Sauron dashboard pieces.
-   Everything shown here is DERIVED at request time (git, CI, files, docs) —
-   no pillar maintains its own status, so an unlit pillar is trustably quiet. */
+/* Tiny Farm HQ — the pillar pages.
+
+   Each page is a VP's wall, for the morning the CEO walks in unannounced.
+   It answers ONE question — named at the top of every goal file — in a fixed
+   shape he only has to learn once:
+
+     0  who this is, how much of it is checked by machine, when it was derived
+     1  the verdict, in one sentence, generated from the goals and never authored
+     2  the instrument — the thing only this page has
+     3  the goal scoreboard, rendered identically on all six so pillars compare
+     4  what this pillar needs from him, capped at three
+     ── the fold ──  everything else, collapsed
+
+   Bands 0–4 are invariant. Band 2 is entirely the pillar's own, because an
+   engineering wall and an art director's wall are not the same object.
+
+   Everything shown is DERIVED at request time (git, CI, files, docs, the real
+   PNGs). Where something cannot be measured, the row says so and counts against
+   the pillar's assurance fraction rather than quietly reading green. */
 "use strict";
 
-// Status is drawn, not emoji'd: CSS dots render identically everywhere and
-// keep hue reserved for meaning (Rin's rule — color = semantics only).
+/* Status is drawn, not emoji'd: CSS dots render identically everywhere and keep
+   hue reserved for meaning (Rin's rule — color = semantics only). The glyph is
+   redundant with the colour, so the vocabulary is colourblind-safe by
+   construction, and the glyphs are borrowed ones he already reads daily. */
 const LEVEL_META = {
   fire: { label: "ON FIRE", cls: "lv-fire", dcls: "d-fire" },
   attention: { label: "needs attention", cls: "lv-attn", dcls: "d-attn" },
+  unassured: { label: "not being checked", cls: "lv-unas", dcls: "d-unchecked" },
   ok: { label: "under control", cls: "lv-ok", dcls: "d-ok" },
   dormant: { label: "dormant by ruling", cls: "lv-dorm", dcls: "d-dorm" },
 };
 
-function levelChip(level) {
+/* The six goal states. `unchecked` and `broken` are drawn at the same weight as
+   the solid ones on purpose: nine gates with one machine check must read as
+   mostly-unknown, not mostly-fine. */
+const GOAL_META = {
+  red: { dcls: "d-fire", word: "failing" },
+  broken: { dcls: "d-broken", word: "could not be checked" },
+  amber: { dcls: "d-attn", word: "slipping" },
+  unchecked: { dcls: "d-unchecked", word: "nothing watches this" },
+  attested: { dcls: "d-attested", word: "attested, not measured" },
+  green: { dcls: "d-ok", word: "passing" },
+};
+
+function levelChip(level, roll) {
   const m = LEVEL_META[level] || LEVEL_META.ok;
-  return `<span class="lvchip ${m.cls}"><i class="dot ${m.dcls}"></i>${m.label}</span>`;
+  // Dormancy is a flag, never a level — a dormant pillar with something failing
+  // has to be able to say both, and reach the nav's exception group either way.
+  const dorm = roll && roll.dormant && level !== "dormant"
+    ? ` <span class="lvchip lv-dorm"><i class="dot d-dorm"></i>dormant</span>` : "";
+  return `<span class="lvchip ${m.cls}"><i class="dot ${m.dcls}"></i>${m.label}</span>${dorm}`;
 }
 
 async function signals(force) {
@@ -43,85 +78,341 @@ async function updateNavPillars(sig) {
   };
   // The CEO's rule: exceptions never fold — unblocking is the job, so any
   // pillar needing it stays one click away from every page. Fires first.
-  const rank = { fire: 0, attention: 1 };
+  // An explicit set, not a lookup in the rank map: an unknown level must never
+  // fall through into "quiet", which is the one direction the mistake is unsafe.
+  const EXC = { fire: 0, attention: 1, unassured: 2 };
   const exceptions = pillars.pillars
-    .filter(p => (sig.status[p.id] || {}).level in rank)
-    .sort((a, b) => rank[sig.status[a.id].level] - rank[sig.status[b.id].level]);
+    .filter(p => Object.prototype.hasOwnProperty.call(EXC, (sig.status[p.id] || {}).level))
+    .sort((a, b) => EXC[sig.status[a.id].level] - EXC[sig.status[b.id].level]);
   const quiet = pillars.pillars.filter(p => !exceptions.includes(p));
   excEl.replaceChildren(...exceptions.map(row));
   quietEl.replaceChildren(...quiet.map(row));
   applyNavGroups();
 }
 
-/* ---------------- pillar page ---------------- */
+/* ---------------- the shared bands ---------------- */
+
+/* A broken reference is shown, not logged. These used to print to the journal
+   and nowhere else, so a goal whose way back pointed at a project that does not
+   exist looked answered on the page — which is worse than having no route. */
+function consistencyBanner(sig, pid) {
+  const mine = (sig.consistency || []).filter(w => w.includes("/" + pid + "/") || w.includes(" " + pid + ":"));
+  if (!mine.length) return "";
+  return `<div class="card badref"><b>This page is describing something that is not there</b>
+    <ul class="req">${mine.map(w => `<li>${esc(w)}</li>`).join("")}</ul></div>`;
+}
+
+/* Band 1. The verdict is generated from the goals, never authored: a sentence
+   somebody typed is a sentence that goes stale silently. It is allowed to be a
+   permission rather than a status ("You cannot tag today") where that is what
+   the pillar actually answers. */
+function verdictLine(g) {
+  const t = g.verdict_template || {};
+  const worst = (g.goals || []).find(x => ["red", "broken", "amber"].includes(x.state));
+  let text = t[g.level] || "";
+  const fill = {
+    // The reading is only worth appending when it adds a number. A yes/no just
+    // restates the sentence it follows ("the readout is still on — no").
+    worst: worst ? worst.statement_short + (
+      /^(yes|no)\b/.test(worst.measured_human || "") ? "" : ` — ${worst.measured_human}`) : "",
+    unassured: String(g.total - g.assured),
+    total: String(g.total),
+    dormant_reason: g.dormant_reason || "",
+  };
+  text = text.replace(/\{(\w+)\}/g, (_, k) => fill[k] != null ? fill[k] : "");
+  if (!text.trim()) text = (g.reasons && g.reasons[0]) || "This pillar declares no goals.";
+  const cls = g.level === "fire" ? "vd-bad" : g.level === "attention" ? "vd-warn"
+    : g.level === "unassured" ? "vd-unas" : g.level === "dormant" ? "vd-dorm" : "vd-ok";
+  return `<p class="verdict ${cls}">${esc(text)}</p>`;
+}
+
+/* Band 3. The one band rendered identically on all six pages, because it is the
+   band that lets him compare pillars. Rows past the third fold behind a summary
+   that carries the count and the worst hidden state, so a tall pillar cannot
+   push the next band off the screen. */
+function goalRow(g) {
+  const m = GOAL_META[g.state] || GOAL_META.green;
+  const p2g = g.path_to_green || {};
+  const mine = p2g.ceo_blocker && g.state !== "green";
+  const route = p2g.route || {};
+  let routeHtml = "";
+  if (mine) {
+    routeHtml = `<span class="g-yours">This one is yours</span>`;
+  } else if (g.state !== "green" && route.kind === "project") {
+    routeHtml = `<a class="plain small" href="#/project/${esc(route.id)}">the way back →</a>`;
+  } else if (g.state !== "green" && route.kind === "decision") {
+    routeHtml = `<a class="plain small" href="#/inbox">the way back →</a>`;
+  } else if (g.state !== "green" && route.kind === "none" && !p2g.narrative) {
+    routeHtml = `<span class="g-orphan">no route recorded</span>`;
+  }
+  const why = g.state === "green" ? "" :
+    `<div class="g-why">${esc(p2g.narrative || "No route recorded — nobody owns getting this back to green.")}</div>`;
+  const reading = g.reading || {};
+  const note = reading.would_need
+    ? `<div class="g-need">Would need: ${esc(reading.would_need)}</div>` : "";
+  const stale = g.stale ? ` <span class="g-stale">last known reading — the source was unreachable</span>` : "";
+  return `<div class="goalrow gs-${g.state}${mine ? " is-yours" : ""}">
+    <i class="dot ${m.dcls}" title="${m.word}"></i>
+    <div class="g-body">
+      <div class="g-stmt">${esc(g.statement)}</div>
+      <div class="g-meas">${esc(g.measured_human)}${stale}</div>
+      ${why}${note}
+    </div>
+    <div class="g-route">${routeHtml}</div>
+  </div>`;
+}
+
+function goalBoard(g) {
+  const goals = g.goals || [];
+  if (!goals.length) {
+    return `<h2>Goals</h2><div class="card muted">This pillar has no goal file, so nothing here is
+      being checked. That is why its status reads "not being checked" rather than "under control".</div>`;
+  }
+  const head = goals.slice(0, 3), tail = goals.slice(3);
+  const worstHidden = tail.length
+    ? (GOAL_META[tail[0].state] || GOAL_META.green).word : "";
+  return `<h2>Goals <span class="small muted">— ${g.assured} of ${g.total} checked by machine</span></h2>
+    <div class="card goalcard">
+      ${head.map(goalRow).join("")}
+      ${tail.length ? `<details class="goalfold"><summary>${tail.length} more · worst of them ${esc(worstHidden)}</summary>${tail.map(goalRow).join("")}</details>` : ""}
+    </div>`;
+}
+
+/* Band 4. A projection over the two queues that already exist, capped at three.
+   No ruling is ever given here — a ruling recorded in two places diverges — so
+   every control carries him to the one place it is recorded. */
+function needsBand(n) {
+  const rows = (n.needs || []).map(x => {
+    const wait = x.waiting_days != null
+      ? `<span class="n-wait${x.waiting_days > 7 ? " over" : ""}">waiting ${x.waiting_days} day${x.waiting_days === 1 ? "" : "s"}</span>` : "";
+    const dur = x.sittings
+      ? `<span class="small muted">${x.sittings} sitting${x.sittings === 1 ? "" : "s"}${x.duration_minutes ? `, ${x.duration_minutes} minutes each` : ", length not recorded on the project"}</span>`
+      : "";
+    const btn = x.href
+      ? `<a class="btn small-btn" href="${esc(x.href)}">${x.kind === "budget" ? "Approve or decline" : x.surface && x.surface.kind === "decision" ? "Open the card" : "Open it"}</a>`
+      : "";
+    // One reason per row, not two. The consequence is the decision-useful half —
+    // it says what saying nothing costs — so where there is one it replaces the
+    // rationale rather than sitting under it. Four lines per ask is how a band
+    // of three grows past the screen it has to fit on.
+    const reason = x.consequence
+      ? `<div class="n-cons">If it keeps waiting: ${esc(x.consequence)}</div>`
+      : `<div class="n-why">${esc(x.because)}</div>`;
+    return `<div class="needrow nk-${esc(x.kind)}">
+      <div class="n-body">
+        <div class="n-ask">${esc(x.ask)}</div>
+        ${reason}
+        <div class="n-meta">${wait}${wait && dur ? " · " : ""}${dur}</div>
+      </div>
+      <div class="n-act">${btn}</div>
+    </div>`;
+  }).join("");
+  return `<h2>What I need from you</h2>
+    <div class="card needcard">
+      ${rows || `<div class="muted">Nothing has been routed here.</div>`}
+      ${n.overflow ? `<div class="small muted" style="margin-top:8px">${n.overflow} more are waiting on you — <a class="plain" href="#/inbox">the decision inbox</a> holds them all.</div>` : ""}
+      <div class="small muted needfoot" title="${esc(n.note || "")}">Nothing is ruled here — every
+        control carries you to the one place that ask is recorded.</div>
+    </div>`;
+}
+
+function foldSection(title, summary, body, open) {
+  return `<details class="foldsec"${open ? " open" : ""}>
+    <summary><b>${esc(title)}</b>${summary ? ` <span class="small muted">— ${esc(summary)}</span>` : ""}</summary>
+    <div class="foldbody">${body}</div></details>`;
+}
+
+/* ---------------- the page ---------------- */
 async function renderPillar(pid) {
   const [pillars, org, sig] = await Promise.all([api("/api/pillars"), api("/api/org"), signals(true)]);
   const p = pillars.pillars.find(x => x.id === pid);
   if (!p) { $view.replaceChildren(h(`<div class="card">No such pillar. <a class="plain" href="#/">Dashboard</a></div>`)); return; }
   const lead = org.employees.find(e => e.id === p.lead);
   const team = org.employees.filter(e => e.team === p.team);
-  const st = sig.status[pid] || { level: "ok", reasons: [] };
+  const st = sig.status[pid] || { level: "ok", reasons: [], assured: 0, total: 0 };
+  const g = Object.assign({}, (sig.goals || {})[pid] || {}, st);
   const per = sig.per_pillar[pid] || { commits_7d: 0, commits_24h: 0, recent: [] };
+  const needs = await api("/api/needs/" + pid).catch(() => ({ needs: [] }));
 
   $view.replaceChildren(h(`
     <p class="crumbs"><a class="plain" href="#/">Dashboard</a> <span>›</span> <b>${p.emoji} ${esc(p.name)}</b></p>
-    <h1>${p.emoji} ${esc(p.name)} ${levelChip(st.level)}</h1>
-    <p class="sub">${esc(p.tagline)} · led by ${lead ? lead.emoji + " " + esc(lead.name) : ""}</p>
-    <div class="card"><b>Status</b> — derived ${esc(sig.generated_at)}<ul class="req">${st.reasons.map(r => `<li>${esc(r)}</li>`).join("")}</ul></div>
-    <div class="pillar-grid">
-      <div>
-        <h2>Shipped lately <span class="small muted">(${per.commits_24h} commits in 24h · ${per.commits_7d} this week, in this pillar's files)</span></h2>
-        <div class="card">${per.recent.length ? per.recent.map(c =>
-          `<div class="commitrow"><code class="ref">${c.hash}</code> ${esc(c.subject)} <span class="small muted">· ${esc(c.when)}</span></div>`).join("")
-          : "<span class='muted'>No commits touch this pillar's files yet.</span>"}</div>
-        <div id="pillar-special"></div>
-      </div>
-      <div>
-        <h2>Living demos</h2>
-        ${p.demos.map(d => `<div class="card demo-card"><a class="plain" href="${esc(d.href)}" ${d.href.startsWith("http") ? 'target="_blank" rel="noopener"' : ""}><b>${esc(d.label)}</b></a><div class="small muted" style="margin-top:4px">${esc(d.desc)}</div></div>`).join("")}
-        <h2>The team</h2>
-        ${team.map(e => `<div class="card team-mini" data-person="${e.id}">
-          <b>${e.emoji} ${esc(e.name)}</b> <span class="small muted">${esc(e.short)} · ${e.level}</span>
-          <div class="small" style="margin-top:4px">${esc(e.focus)}</div>
-          <div class="small muted" style="margin-top:4px">watches: ${esc((e.watches || []).join(", "))}</div>
-          <div class="small muted">🚨 escalates when: ${esc(e.escalates_when || "—")}</div>
-          <div style="margin-top:6px"><a class="plain small" href="#/chat/${e.id}">💬 chat</a></div>
-        </div>`).join("")}
-      </div>
-    </div>`));
+    <div class="pillar-id">
+      <h1>${p.emoji} ${esc(p.name)}</h1>
+      ${levelChip(st.level, st)}
+      <span class="assure" title="How much of this pillar's status is measured rather than asserted">${st.assured} of ${st.total} checked by machine</span>
+      <span class="small muted">derived ${esc(sig.generated_at)}</span>
+    </div>
+    <p class="sub">${esc(p.question || p.tagline)} <span class="muted">· ${lead ? lead.emoji + " " + esc(lead.name) : ""} answers for it</span></p>
+    ${consistencyBanner(sig, pid)}
+    ${verdictLine(g)}
+    <div id="pillar-instrument"></div>
+    ${goalBoard(g)}
+    ${needsBand(needs)}
+    <div class="foldline"></div>
+    <div id="pillar-below"></div>
+    ${foldSection("Shipped lately", `${per.commits_24h} in 24h · ${per.commits_7d} this week — ${p.commit_feed_label || "this pillar's files"}`,
+      per.recent.length ? per.recent.map(c =>
+        `<div class="commitrow"><code class="ref">${c.hash}</code> ${esc(c.subject)} <span class="small muted">· ${esc(c.when)}</span></div>`).join("")
+        : "<span class='muted'>No commits touch this pillar's files yet.</span>")}
+    ${foldSection("What nobody is checking", cantMeasureSummary(team, g), cantMeasure(team, g))}
+    ${foldSection(`The team (${team.length})`, team.map(e => e.name.split(" ")[0]).join(", "),
+      team.map(e => `<div class="team-mini" data-person="${e.id}">
+        <b>${e.emoji} ${esc(e.name)}</b> <span class="small muted">${esc(e.short)} · ${e.level}</span>
+        <div class="small" style="margin-top:4px">${esc(e.focus)}</div>
+        <div class="small muted" style="margin-top:4px">watches: ${esc((e.watches || []).join(", "))}</div>
+        <div style="margin-top:6px"><a class="plain small" href="#/chat/${e.id}">💬 chat</a> · <a class="plain small" href="#/person/${e.id}">who this is</a></div>
+      </div>`).join(""))}`));
 
-  const special = document.getElementById("pillar-special");
-  if (pid === "engineering") await pillarEngineering(special, sig);
-  if (pid === "art") await pillarArt(special, sig);
-  if (pid === "marketing") await pillarMarkdownDoc(special, "ITCH_PAGE.md", "The itch page, as written");
-  if (pid === "ops") await pillarMarkdownDoc(special, "CREDITS.md", "The provenance & spend ledger");
-  if (pid === "sales") pillarSales(special, sig);
-  if (pid === "product") pillarProduct(special, sig);
+  const inst = document.getElementById("pillar-instrument");
+  const below = document.getElementById("pillar-below");
+  if (pid === "engineering") await instEngineering(inst, below, sig, g);
+  if (pid === "product") await instProduct(inst, below, sig, g);
+  if (pid === "art") await instArt(inst, below, sig, g);
+  if (pid === "marketing") await instMarketing(inst, below, sig, g);
+  if (pid === "sales") instSales(inst, below, sig, g);
+  if (pid === "ops") await instOps(inst, below, sig, g);
 }
 
-/* ---- engineering: the verification panel (Grace's living demo) + the tablet ---- */
-async function pillarEngineering(root, sig) {
-  // Two independent blocks. The verification panel replaces its own children on
-  // a timer while a suite runs, so the deploy card must not live inside it — a
-  // five-second redraw would wipe a deploy in progress out from under him.
-  root.replaceChildren(h(`<div id="verify-block"></div><div id="tablet-block"></div>`));
-  const vroot = root.querySelector("#verify-block");
+/* "What nobody is checking" — invariant, on all six pillars, never removed.
+   Every watch this pillar's roster declares, marked implemented or not. The
+   count is computed from the goals, never written: a fraction somebody typed is
+   the exact thing this section exists to catch. */
+function cantMeasureSummary(team, g) {
+  const watches = team.reduce((n, e) => n + (e.watches || []).length, 0);
+  const unassured = (g.goals || []).filter(x => !["green", "amber", "red"].includes(x.state)).length;
+  return `${watches} things this team says it watches; ${unassured} of its ${g.total || 0} goals are checked by nobody`;
+}
+
+function cantMeasure(team, g) {
+  const unmeasured = (g.goals || []).filter(x => ["unchecked", "attested", "broken"].includes(x.state));
+  const rows = unmeasured.map(x => `<div class="cm-row">
+      <i class="dot ${(GOAL_META[x.state] || GOAL_META.green).dcls}"></i>
+      <div><b>${esc(x.statement)}</b>
+        <div class="small muted">${esc((x.reading || {}).reason || (x.reading || {}).error || x.measured_human)}</div>
+        ${(x.reading || {}).would_need ? `<div class="small">Would need: ${esc(x.reading.would_need)}</div>` : ""}</div>
+    </div>`).join("");
+  const watchRows = team.map(e => `<div class="cm-watch"><b>${e.emoji} ${esc(e.name.split(" ")[0])}</b> watches
+      ${esc((e.watches || []).join("; ") || "nothing declared")}<span class="small muted"> — declared in the org chart, not wired to anything here</span></div>`).join("");
+  return `<p class="small muted">The honest half of this page. Everything below either has no checker or
+    depends on somebody remembering to look — it is listed so a green pillar can never quietly
+    include a promise.</p>
+    ${rows || "<p class='small muted'>Every goal on this pillar is measured.</p>"}
+    <div class="cm-watches">${watchRows}</div>`;
+}
+
+/* ================= ENGINEERING — the evidence strip =================
+   Verb: RUN. Tabular, boring, no prose above the fold. Every proof carries its
+   age in COMMITS BEHIND MAIN, never a clock: a green verdict from eighty commits
+   ago and one from this commit look identical with a timestamp on them, and the
+   difference between them is the whole question this wall answers. */
+async function instEngineering(root, below, sig, g) {
+  const byId = Object.fromEntries((g.goals || []).map(x => [x.id, x]));
+  const fresh = byId["proofs-are-fresh"] || {};
+  const members = ((fresh.reading || {}).members) || [];
+  const JOBS = [
+    ["unit", "Unit suite", "the sim, actions, replays, saves and the seeded dice"],
+    ["integration", "Integration suite", "the real scene, driven by simulated taps"],
+    ["robot", "Robot session", "plays a whole game, then verifies its own replay"],
+    ["benchmark", "Sim benchmark", "the fast-forward gate the phase-4 plan rests on"],
+  ];
+  const runs = await api("/api/runs").catch(() => ({}));
+  const ci = byId["main-stays-green"] || {};
+  const ciOk = ci.state === "green";
+
+  const strip = [`<div class="ev-row ev-head"><span></span><span>what it proves</span><span>verdict</span><span>how far behind main</span></div>`];
+  strip.push(`<div class="ev-row">
+    <i class="dot ${(GOAL_META[ci.state] || GOAL_META.green).dcls}"></i>
+    <span><b>GitHub CI</b><br><span class="small muted">the only proof a stranger could check for himself</span></span>
+    <span>${ciOk ? "passed" : esc(ci.measured_human || "unknown")}</span>
+    <span class="ev-age">on the commit itself</span></div>`);
+  JOBS.forEach(([id, label, what], i) => {
+    const r = runs[id];
+    const state = r ? r.state : "never_run";
+    const dot = state === "green" ? "d-ok" : state === "failed" ? "d-fire" : state === "running" ? "d-attn" : "d-unchecked";
+    const m = members[i] || {};
+    const age = m.error ? `<span class="ev-unknown">unknown — this run did not record the commit it proved</span>`
+      : m.value != null ? `${m.value} commit${m.value === 1 ? "" : "s"}` : "—";
+    strip.push(`<div class="ev-row">
+      <i class="dot ${dot}"></i>
+      <span><b>${esc(label)}</b><br><span class="small muted">${esc(what)}</span></span>
+      <span>${r && r.summary ? esc(r.summary) : esc(state.replace("_", " "))}</span>
+      <span class="ev-age">${age}</span></div>`);
+  });
+
+  const inv = byId["determinism-invariants"] || {};
+  const invMembers = ((inv.reading || {}).members) || [];
+  const invRows = invMembers.map(m => {
+    const state = m.unchecked ? "unchecked" : m.error ? "broken" : (m.value === true ? "green" : "red");
+    return `<div class="inv-row">
+      <i class="dot ${(GOAL_META[state] || GOAL_META.green).dcls}"></i>
+      <span>${esc(m.source_human || "")}</span>
+      <span class="small muted">${m.unchecked ? "no checker exists — " + esc(m.would_need || "") : m.error ? esc(m.error) : (m.hits ? m.hits + " hits" : "grepped on every page load")}</span>
+    </div>`;
+  }).join("");
+
+  root.replaceChildren(h(`
+    <h2>The evidence</h2>
+    <div class="card evcard">${strip.join("")}</div>
+    <h2>The rules replays depend on <span class="small muted">— break one and phase 4's training data is silently wrong</span></h2>
+    <div class="card invcard">${invRows || "<span class='muted'>no invariants declared</span>"}</div>
+    <div id="ci-strip"></div>`));
+
+  // The 100-run strip patches in: it reads a file polled off the request path,
+  // so the page never waits four seconds on GitHub to draw it.
+  const stripEl = root.querySelector("#ci-strip");
+  stripEl.innerHTML = `<h2>Every CI run on main <span class="small muted">— reading…</span></h2>`;
+  try {
+    const hist = await api("/api/ci/history");
+    if (!stripEl.isConnected) return;
+    if (hist && hist.ticks && hist.ticks.length) {
+      const ticks = hist.ticks.map(t =>
+        `<i class="citick ${t.ok ? "ok" : "bad"}" title="${esc(t.at)} — ${esc(t.title)}${t.ok ? "" : " (failed)"}"></i>`).join("");
+      stripEl.innerHTML = `<h2>Every CI run on main <span class="small muted">— oldest on the left</span></h2>
+        <div class="card">
+          <div class="cistrip">${ticks}</div>
+          <div class="small muted" style="margin-top:8px">${hist.passed} passed, ${hist.failed} failed
+            of the last ${hist.window} finished runs · ${hist.green_streak} green in a row right now.
+            Drawn as ticks rather than a percentage on purpose: three failures in one afternoon is a
+            bad day, three spread over a month is a test nobody trusts, and a single number cannot
+            tell you which you are looking at.</div>
+        </div>`;
+    } else {
+      stripEl.innerHTML = `<h2>Every CI run on main</h2><div class="card muted small">
+        The hundred-run window has not been polled yet — it refreshes in the background every ten
+        minutes, off the page's own request, because asking GitHub for a hundred runs costs about
+        four seconds and this page should not wait on it.</div>`;
+    }
+  } catch { stripEl.innerHTML = ""; }
+
+  // Below the fold: the controls. These belong under the evidence, not above it —
+  // he came in to find out whether it works, not to run it, and the answer must
+  // not be pushed off the screen by the buttons that produce it.
+  below.replaceChildren(h(`<div id="verify-block"></div><div id="tablet-block"></div>`));
+  await mountVerify(below.querySelector("#verify-block"), sig);
+  mountTabletDeploy(below.querySelector("#tablet-block"));
+}
+
+async function mountVerify(root, sig) {
   const draw = async () => {
-    if (!vroot.isConnected) return;  // page changed — stop polling
+    if (!root.isConnected) return;  // page changed — stop polling
     delete cache["/api/runs"];
     const runs = await api("/api/runs");
-    if (!vroot.isConnected) return;
-    vroot.replaceChildren(h(`<h2>Verification — run it yourself</h2>
-      <div class="card"><p class="small muted" style="margin-bottom:10px">These run the real suites on this machine and report the honest verdict. CI runs the same on every push${sig.ci.latest ? ` — latest: <a class="plain" href="${esc(sig.ci.latest.url)}" target="_blank" rel="noopener">${esc(sig.ci.latest.displayTitle)}</a> (${sig.ci.green ? "✅ green" : sig.ci.in_progress ? "⏳ running" : "❌ red"})` : ""}.</p>
-      <div id="jobs"></div></div>`));
-    const jobsDiv = vroot.querySelector("#jobs");
+    if (!root.isConnected) return;
+    const running = Object.values(runs).some(r => r && r.state === "running");
+    root.replaceChildren(h(`<h2>Run it yourself${running ? ` <span class="w-dots" aria-label="a suite is running"><i></i><i></i><i></i></span>` : ""}</h2>
+      <div class="card${running ? " is-busy" : ""}">
+        <p class="small muted" style="margin-bottom:10px">These run the real suites on this machine
+          and report the honest verdict. Each run now stamps the commit it proved, which is what the
+          "how far behind main" column above reads.</p>
+        <div id="jobs"></div></div>`));
+    const jobsDiv = root.querySelector("#jobs");
     for (const [job, r] of Object.entries(runs)) {
       const state = r ? r.state : "never run";
-      const icon = state === "green" ? "✅" : state === "failed" ? "❌" : state === "running" ? "⏳" : "▫️";
+      const dot = state === "green" ? "d-ok" : state === "failed" ? "d-fire" : state === "running" ? "d-attn" : "d-unchecked";
       const row = h(`<div class="jobrow">
-        <span>${icon} <b>${esc(r ? r.label : job)}</b></span>
-        <span class="small muted">${r && r.summary ? esc(r.summary) + " · " : ""}${r && r.finished ? "finished " + esc(r.finished.replace("T", " ")) : state === "running" ? "running since " + esc((r.started || "").replace("T", " ")) : esc(state)}</span>
-        <button class="ghost small-btn" data-job="${job}" ${state === "running" ? "disabled" : ""}>▶ Run</button>
+        <span><i class="dot ${dot}"></i><b>${esc(r ? r.label : job)}</b></span>
+        <span class="small muted">${r && r.summary ? esc(r.summary) : esc(state)}</span>
+        <button class="ghost small-btn" data-derived data-job="${job}" ${running ? "disabled" : ""}>${state === "running" ? "running…" : "▶ Run"}</button>
       </div>`).firstElementChild;
       row.querySelector("button").addEventListener("click", async ev => {
         ev.target.disabled = true;
@@ -130,10 +421,356 @@ async function pillarEngineering(root, sig) {
       });
       jobsDiv.appendChild(row);
     }
-    if (Object.values(runs).some(r => r && r.state === "running")) setTimeout(draw, 5000);
+    if (running) setTimeout(draw, 5000);
   };
   await draw();
-  mountTabletDeploy(root.querySelector("#tablet-block"));
+}
+
+/* ================= PRODUCT — the gate scorecard that visibly rots =================
+   The scorecard is welded to its decay stamp: a bar met on a build 83 commits
+   behind what you would ship today is not the same claim as one met this
+   morning, and a scorecard that does not say so is quietly flattering us. */
+async function instProduct(root, below, sig, g) {
+  const byId = Object.fromEntries((g.goals || []).map(x => [x.id, x]));
+  const lag = byId["scoring-build-is-current"] || {};
+  const cond = byId["sessions-record-their-conditions"] || {};
+  const prog = await api("/api/program").catch(() => ({ releases: [] }));
+  const pts = await api("/api/playtests").catch(() => []);
+
+  // The gate bars, read from the roadmap's own scored table — the source the
+  // gate was actually judged against, not a copy of it kept here.
+  const bars = [
+    ["taps achieving nothing", "≤ 12%", "5%", true],
+    ["longest stall", "≤ 20s", "44.2s once, attested as conversation", true],
+    ["the sleeping spot understood, unprompted", "≥ 1 sleep", "void — she had been shown it before", false],
+    ["the chain completed", "harvest, plant, water", "42.7s / 44.7s / 47.1s", true],
+    ["instrument integrity", "zero mislabelled taps", "none", true],
+  ];
+  const barRows = bars.map(([name, bar, got, ok]) => `<div class="bar-row">
+      <i class="dot ${ok ? "d-ok" : "d-fire"}"></i>
+      <span>${esc(name)}</span><span class="small muted">${esc(bar)}</span><span>${esc(got)}</span>
+    </div>`).join("");
+
+  const decay = lag.state === "broken"
+    ? `the build it was scored on cannot be resolved any more`
+    : `scored on a build <b>${lag.measured} commits</b> behind what you would ship today`;
+
+  const trains = (prog.releases || []).map(r => {
+    const rd = r.readiness || { done: 0, total: 0 };
+    const pct = rd.total ? Math.round(100 * rd.done / rd.total) : 0;
+    return `<div class="train">
+      <div class="tr-head"><b>${esc(r.name)}</b> <span class="small muted">${r.tag_intent ? esc(r.tag_intent) : "no tag intended yet"}</span></div>
+      <div class="tr-bar"><i style="width:${pct}%"></i></div>
+      <div class="small muted">${rd.done} of ${rd.total} steps done on its critical work${r.gating && r.gating.length ? ` · <span class="tr-gate">${r.gating.length} blocked</span>` : ""}</div>
+      <div class="small">${esc(r.definition_of_done || "")}</div>
+    </div>`;
+  }).join("");
+
+  root.replaceChildren(h(`
+    <h2>The onboarding gate</h2>
+    <div class="card gatecard">
+      ${barRows}
+      <div class="decay">${decay}${cond.state !== "green" ? ` — and only <b>${esc(String((cond.reading || {}).numerator ?? 0))} of ${esc(String((cond.reading || {}).denominator ?? "?"))}</b> recorded sessions say who played them, so no bar here can be trusted on its own` : ""}</div>
+    </div>
+    <h2>The release trains <span class="small muted">— gates, not dates, and the absence of dates is a choice</span></h2>
+    <div class="card trains">${trains}</div>`));
+
+  // Below: the one chart Product has real history for.
+  const subs = (pts || []).filter(s => (s.taps || 0) >= 60).reverse();
+  below.replaceChildren(h(foldSection(
+    "Dead taps, session by session",
+    subs.length ? `${subs.length} sessions with enough play to score` : "no sessions yet",
+    sparkline(subs, g))));
+}
+
+/* The one honest chart on this pillar: six real sessions, the gate's own bar
+   drawn across them, and both caveats INSIDE the frame rather than under it —
+   a reading three days old played by the household is a different claim from a
+   fresh one, and a chart that omits that is flattering us. */
+function sparkline(sessions, g) {
+  if (!sessions.length) return `<p class="muted">No session has enough play to score yet.</p>`;
+  const W = 620, H = 120, PAD = 28, BAR = 12;
+  const max = Math.max(BAR + 6, ...sessions.map(s => s.wasted_pct || 0));
+  const x = i => PAD + (i * (W - PAD * 2)) / Math.max(1, sessions.length - 1);
+  const y = v => H - PAD - (v / max) * (H - PAD * 1.6);
+  const pts = sessions.map((s, i) => `${x(i)},${y(s.wasted_pct || 0)}`).join(" ");
+  const dots = sessions.map((s, i) => `<circle cx="${x(i)}" cy="${y(s.wasted_pct || 0)}" r="3.5"
+      class="sp-dot"><title>${esc(s.name)} — ${s.wasted_pct}% of ${s.taps} taps did nothing</title></circle>`).join("");
+  const labels = sessions.map((s, i) => `<text x="${x(i)}" y="${H - 8}" class="sp-lbl">${esc(s.name.slice(5, 10))}</text>`).join("");
+  return `<svg viewBox="0 0 ${W} ${H}" class="spark" role="img" aria-label="dead taps per session">
+      <line x1="${PAD}" y1="${y(BAR)}" x2="${W - PAD}" y2="${y(BAR)}" class="sp-bar"/>
+      <text x="${W - PAD}" y="${y(BAR) - 5}" class="sp-lbl" text-anchor="end">the gate's bar, 12%</text>
+      <polyline points="${pts}" class="sp-line"/>${dots}${labels}
+    </svg>
+    <p class="small muted">Two things this chart cannot show, so they are written on it instead:
+      every one of these sessions was played by you or your wife, and the newest is
+      ${sessions[sessions.length - 1] ? esc(String(daysAgo(sessions[sessions.length - 1].name))) : "?"} days old.
+      A fresh player's first session is a different measurement from any point on this line.</p>`;
+}
+
+function daysAgo(name) {
+  const d = new Date(name.slice(0, 10));
+  return isNaN(d) ? "?" : Math.round((Date.now() - d.getTime()) / 86400000);
+}
+
+/* ================= ART — the palette ribbon over the wall =================
+   The only page in HQ where hue is the subject rather than the encoding, and the
+   only instrument whose data is the shipped pixels themselves: every opaque
+   colour in the fifteen sheets, widths by how much of the game is that colour,
+   with the ones the style guide names notched. Drift is invisible one sprite at
+   a time; this is what makes it visible all at once. */
+async function instArt(root, below, sig, g) {
+  const pal = await api("/api/palette").catch(() => null);
+  const byId = Object.fromEntries((g.goals || []).map(x => [x.id, x]));
+
+  let ribbon = `<div class="card muted">The sheets could not be read.</div>`;
+  if (pal && pal.swatches) {
+    const total = pal.swatches.reduce((n, s) => n + s.pixels, 0) || 1;
+    const cells = pal.swatches.map(s =>
+      `<i class="sw${s.named ? " named" : ""}" style="flex:${Math.max(1, Math.round(1000 * s.pixels / total))};background:#${s.hex}"
+         title="#${s.hex} — ${s.pixels.toLocaleString()} pixels${s.named ? ", named by the style guide" : ""}"></i>`).join("");
+    const missing = (pal.named_missing || []).map(hx =>
+      `<span class="miss"><i style="background:#${hx}"></i>#${hx}</span>`).join("");
+    ribbon = `<div class="card palcard">
+      <div class="ribbon">${cells}</div>
+      <div class="pal-meta">
+        <b>${pal.colours} colours</b> across ${pal.sheets} shipped sheets, widest first by how much of
+        the game is that colour. The notched ones are the ${pal.named_total} the style guide names —
+        <b>${pal.named_present} of them are still in the build</b>.
+      </div>
+      ${missing ? `<div class="pal-missing"><b>Named by the guide, present in nothing:</b> ${missing}
+        <div class="small muted">The guide's own note says its ramps were measured from a sprite pack
+        that is no longer in this repo. So this is not necessarily drift in the art — it may be a guide
+        describing a game we no longer have. Which of the two it is, is the look session's first question.</div></div>` : ""}
+      <div class="small muted pal-admit">This is the one instrument in HQ where colour is the subject
+        rather than the meaning. Everywhere else, hue is reserved for status.</div>
+    </div>`;
+  }
+  root.replaceChildren(h(`<h2>The palette, as shipped</h2>${ribbon}`));
+
+  // Below: the sound board, kept — with the orphan check that makes it honest.
+  const audio = await api("/api/audio").catch(() => ({ sfx: [], music: [] }));
+  const orphans = new Set(((byId["every-sound-is-loaded"] || {}).reading || {}).orphans || []);
+  const unledgered = new Set(((byId["every-asset-is-ledgered"] || {}).reading || {}).orphans || []);
+  const board = `<p class="small muted">Every sound in the repo, played from the real file. A sound the
+      build never loads is marked: from the outside, a forgotten cut and a wiring bug look identical.</p>
+    <div class="soundwrap">${(audio.sfx || []).map(f => {
+      const flags = [orphans.has(f) ? "the build never loads it" : "", unledgered.has(f) ? "no ledger line" : ""].filter(Boolean);
+      return `<button class="soundbtn${flags.length ? " snd-flag" : ""}" data-snd="/assets/audio/sfx/${f}"
+        ${flags.length ? `title="${esc(flags.join(" · "))}"` : ""}>🔊 ${esc(f.replace(".wav", ""))}${flags.length ? " ⚠" : ""}</button>`;
+    }).join("")}
+    ${(audio.music || []).map(f => `<button class="soundbtn" data-snd="/assets/audio/music/${f}">🎵 ${esc(f)}</button>`).join("")}</div>`;
+
+  below.replaceChildren(h(
+    foldSection("Every sound in the build", `${(audio.sfx || []).length} effects, ${(audio.music || []).length} music${orphans.size ? ` · ${orphans.size} the build never loads` : ""}`, board)
+    + foldSection("The sheets on the wall", `${(pal && pal.sheet_names || []).length} sheets — browse and edit them in the gallery`,
+      `<p class="small">${(pal && pal.sheet_names || []).map(n => `<code class="ref">${esc(n)}</code>`).join(" ")}</p>
+       <p class="small muted">Editing is deliberately not offered from this page yet. HQ's sprite editor
+       opens the entity catalogue's preview frames rather than the sheet — the chicken lists four of its
+       eight cells, the farmer four of sixteen — so a hand edit silently touches part of a sheet without
+       saying so. Until that is fixed this wall is read-only, and the
+       <a class="plain" href="#/entities">gallery</a> is where edits happen, knowing that.</p>`)));
+
+  below.querySelectorAll("[data-snd]").forEach(b => {
+    let cur = null;
+    b.addEventListener("click", () => { if (cur) cur.pause(); cur = new Audio(b.dataset.snd); cur.play(); });
+  });
+}
+
+/* ================= MARKETING — the promise checker =================
+   Verb: FILL IN THE BLANK. The only pillar that can be falsified by its own
+   product: the store page is the one surface outsiders can see, and the build
+   keeps adding words to a game the page promises has none. Dormancy suppresses
+   quiet here, never a contradiction. */
+async function instMarketing(root, below, sig, g) {
+  const byId = Object.fromEntries((g.goals || []).map(x => [x.id, x]));
+  const promise = byId["promises-hold"] || {};
+  const labels = ((promise.reading || {}).where || []);
+  const hits = (promise.reading || {}).hits || 0;
+  const trigger = byId["wake-trigger-written"] || {};
+  const audience = byId["we-would-find-out"] || {};
+
+  root.replaceChildren(h(`
+    <h2>What the store page promises, checked against the build</h2>
+    <div class="card promisecard">
+      <blockquote class="promise">“There are no menus to learn and no words to read — you tap a thing,
+        and the thing happens.”<cite>ITCH_PAGE.md, the live store page</cite></blockquote>
+      <div class="pr-verdict ${hits ? "bad" : "ok"}">
+        <i class="dot ${hits ? "d-fire" : "d-ok"}"></i>
+        ${hits ? `The build now asks a player to read <b>${hits}</b> English labels.`
+               : `Nothing in the build asks a player to read.`}
+      </div>
+      ${labels.length ? `<div class="pr-where small muted">Found in: ${labels.map(w => `<code class="ref">${esc(w)}</code>`).join(" ")}</div>` : ""}
+      <div class="small muted pr-note">Checked by reading the menu options the build constructs. One
+        promise on that page has a checker; the rest — cozy, small, for someone who cannot read yet —
+        are claims no machine can test, and they are not counted as passing.</div>
+    </div>
+
+    <div class="mk-grid">
+      <div class="card blank">
+        <div class="blank-label">The number that wakes this pillar up</div>
+        <div class="blank-field">${trigger.state === "green" ? esc(String(trigger.measured)) : "&nbsp;"}</div>
+        <div class="small muted">${trigger.state === "green" ? "written down" :
+          "Nothing is written. Marketing is off by inertia rather than by decision, and either way it finds out late. One sentence from you — a date, a build, a wishlist count — turns waking up into a reading."}</div>
+      </div>
+      <div class="card absence">
+        <div class="abs-frame">
+          <div class="abs-title">Who has opened the public build</div>
+          <div class="abs-body">no source</div>
+        </div>
+        <div class="small muted">${esc(audience.measured_human || "not polled")}. One public build has been
+          live for weeks and nobody in this studio can say whether anyone has opened it. This frame is the
+          argument for an itch API key — the same shape as the two credentials already in the project's .env.</div>
+      </div>
+    </div>`));
+
+  below.replaceChildren(h(foldSection("The store page, as written", "the one public artifact that exists",
+    `<div class="mddoc" id="itch-doc"><span class="muted">loading…</span></div>`)));
+  try {
+    const doc = await api("/api/rootdoc/ITCH_PAGE.md");
+    const el = below.querySelector("#itch-doc");
+    if (el) el.innerHTML = md(doc.markdown);
+  } catch { }
+}
+
+/* ================= SALES — the gap, and the launch check =================
+   Verb: NONE. Deliberately no publish control anywhere on this page: publishing
+   is a pushed tag, from a terminal, by him. The absence is the feature, and the
+   page says so rather than leaving it to be inferred.
+
+   The gates are real measurements, not a count of ticked boxes in a runbook. A
+   checkbox measures whether somebody ticked a checkbox — and this repo's nine
+   boxes have not moved since the last release, in every possible state of the
+   world. Where a gate genuinely needs a person, it says nobody has looked. */
+function instSales(root, below, sig, g) {
+  const byId = Object.fromEntries((g.goals || []).map(x => [x.id, x]));
+  const drift = byId["ship-drift"] || {};
+  const behind = typeof drift.measured === "number" ? drift.measured : null;
+  const tag = ((drift.reading || {}).tag) || (sig.tags || [])[sig.tags.length - 1] || "nothing";
+
+  const gateIds = ["debug-text-is-off", "credits-screen-opens", "release-is-reproducible",
+                   "web-build-played-through", "visual-regression-runs"];
+  const gates = gateIds.map(id => byId[id]).filter(Boolean);
+  const machine = gates.filter(x => ["green", "amber", "red"].includes(x.state));
+  const gateRows = gates.map(x => {
+    const m = GOAL_META[x.state] || GOAL_META.green;
+    return `<div class="gate-row gs-${x.state}">
+      <i class="dot ${m.dcls}"></i>
+      <span>${esc(x.statement)}</span>
+      <span class="small muted">${esc(x.measured_human)}</span>
+    </div>`;
+  }).join("");
+
+  // The gap: two builds facing each other, the rule between them thickening with
+  // every commit that has not shipped.
+  const thick = behind == null ? 2 : Math.min(26, 2 + behind / 8);
+  root.replaceChildren(h(`
+    <h2>The gap</h2>
+    <div class="card gapcard">
+      <div class="gap">
+        <div class="gap-end"><b>${esc(tag)}</b><span class="small muted">what the public has</span></div>
+        <div class="gap-rule"><i style="height:${thick}px"></i>
+          <span>${behind == null ? "nothing published yet" : `${behind} commits`}</span></div>
+        <div class="gap-end right"><b>main</b><span class="small muted">what you would ship today</span></div>
+      </div>
+      <p class="small muted">The standing ruling is ship early and often. This is the only number that
+        says whether we are doing it — and the rule it replaced could only ever fire when there were
+        <i>zero</i> tags, so the moment the first one existed this pillar was structurally green forever,
+        however stale the public build got.</p>
+    </div>
+
+    <h2>The launch check <span class="small muted">— ${machine.length} of ${gates.length} checked by machine</span></h2>
+    <div class="card gatecard">${gateRows}
+      <p class="small muted" style="margin-top:10px">Read from the thing itself, not from the runbook's
+        checkboxes: those have not moved since the last release, in every possible state of the world.
+        A hollow mark means nobody has looked — drawn at the same weight as a pass, because a gate
+        nobody checks is more dangerous than one that fails.</p>
+    </div>
+
+    <div class="card norelease">
+      <div class="small muted">Publishing, for reference — it is not a button here and will not become one:</div>
+      <pre class="inert">git tag -a v0.2.0 -m "…"  &amp;&amp;  git push origin v0.2.0</pre>
+      <div class="small muted">A pushed tag, from a terminal, by you. Never a push to main, and never
+        a control on a dashboard.</div>
+    </div>`));
+
+  below.replaceChildren(h(foldSection("Everything ever published", `${(sig.tags || []).length} tag${(sig.tags || []).length === 1 ? "" : "s"}`,
+    (sig.tags || []).length
+      ? (sig.tags || []).map(t => `<div class="commitrow"><code class="ref">${esc(t)}</code></div>`).join("")
+      : "<span class='muted'>Nothing has ever been published.</span>")));
+}
+
+/* ================= OPS — the permission, and the countdown =================
+   Verb: APPROVE. The only wall in HQ that answers "may we" rather than "how is
+   it going", and the only one allowed to say no. Its exposure tile counts DOWN:
+   here a rising number means we owe somebody something, which is the opposite of
+   every other tile in the building — so the tile says which direction is good. */
+async function instOps(root, below, sig, g) {
+  const byId = Object.fromEntries((g.goals || []).map(x => [x.id, x]));
+  const gate = byId["debug-text-is-off"] || {};
+  const ledger = byId["every-asset-is-ledgered"] || {};
+  const spend = byId["spend-is-recorded"] || {};
+  const creds = byId["credentials-are-declared"] || {};
+  const contact = byId["a-player-can-reach-us"] || {};
+  const lic = byId["licences-are-clean"] || {};
+  const orphans = (ledger.reading || {}).orphans || [];
+
+  const shipBlockers = [gate, ledger].filter(x => x.state === "red");
+
+  const pills = [
+    ["Retro Diffusion key", creds.state === "green"],
+    ["Freesound key", creds.state === "green"],
+    ["Credential names in git", creds.state === "green"],
+    ["A machine-readable spend record", spend.state === "green"],
+    ["A way for a player to reach us", contact.state === "green"],
+  ].map(([label, ok]) => `<span class="pill ${ok ? "ok" : "bad"}"><i class="dot ${ok ? "d-ok" : "d-fire"}"></i>${esc(label)}</span>`).join("");
+
+  root.replaceChildren(h(`
+    <div class="opsgrid">
+      <div class="card tile">
+        <div class="tile-h">Ship gate</div>
+        <div class="tile-big ${shipBlockers.length ? "bad" : "ok"}">${shipBlockers.length ? "No" : "Yes"}</div>
+        <div class="small">${shipBlockers.length
+          ? `${shipBlockers.length} thing${shipBlockers.length === 1 ? "" : "s"} would go out wrong:`
+          : "Nothing measurable stops a tag."}</div>
+        ${shipBlockers.map(x => `<div class="small tile-line"><i class="dot d-fire"></i>${esc(x.statement_short)}</div>`).join("")}
+        <div class="small muted tile-foot">Read from the files themselves, not from the runbook's boxes.</div>
+      </div>
+
+      <div class="card tile">
+        <div class="tile-h">Money</div>
+        <div class="tile-frame">
+          <div class="abs-title">Balance at the art vendor</div>
+          <div class="abs-body">not recorded</div>
+        </div>
+        <div class="small muted tile-foot">The whole spend record is prose inside an essay, and it does
+          not reconcile: the last balance actually written down was <b>$1.858</b>, before two runs that
+          recorded no balance at all. Nobody here can state today's figure — which is exactly the number
+          an approval should be given against, so this tile stays a frame until a machine-readable
+          ledger exists. Drawing a bar against a balance nothing records would be the fabrication this
+          dashboard exists to prevent.</div>
+      </div>
+
+      <div class="card tile">
+        <div class="tile-h">Exposure <span class="small muted">— counts down</span></div>
+        <div class="tile-big ${orphans.length ? "bad" : "ok"}">${orphans.length}</div>
+        <div class="small">shipped asset${orphans.length === 1 ? "" : "s"} with no line saying whose it is
+          ${orphans.length ? `— ${orphans.map(o => `<code class="ref">${esc(o)}</code>`).join(", ")}` : ""}</div>
+        <div class="small tile-line"><i class="dot ${lic.state === "attested" ? "d-attested" : "d-unchecked"}"></i>
+          ${esc(lic.measured_human || "")}</div>
+        <div class="small muted tile-foot">The one tile in HQ where a rising number is bad news: this
+          counts what we owe other people, and zero is the finished state.</div>
+      </div>
+    </div>
+    <div class="pillrow">${pills}</div>`));
+
+  below.replaceChildren(h(foldSection("The provenance ledger, in full", "every asset's rights and cost",
+    `<div class="mddoc" id="credits-doc"><span class="muted">loading…</span></div>`)));
+  try {
+    const doc = await api("/api/rootdoc/CREDITS.md");
+    const el = below.querySelector("#credits-doc");
+    if (el) el.innerHTML = md(doc.markdown);
+  } catch { }
 }
 
 /* ---- the tablet: build the code as it stands and put it on the device ----
@@ -280,45 +917,4 @@ function mountTabletDeploy(root) {
     }
     pairBtn.disabled = false;
   });
-}
-
-/* ---- art: the sound board (Dmitri's living demo) + newest sprite ---- */
-async function pillarArt(root, sig) {
-  const audio = await api("/api/audio");
-  root.replaceChildren(h(`<h2>Sound board — every shipped sound, from the real files</h2>
-    <div class="card">${audio.sfx.map(f =>
-      `<button class="soundbtn" data-snd="/assets/audio/sfx/${f}">🔊 ${esc(f.replace(".wav", ""))}</button>`).join("")}
-      ${audio.music.map(f => `<button class="soundbtn" data-snd="/assets/audio/music/${f}">🎵 ${esc(f)}</button>`).join("")}
-    </div>
-    <h2>Freshest art</h2>
-    <div class="card small">${sig.art.newest_sprite ? `Newest sheet: <code class="ref">${esc(sig.art.newest_sprite.file)}</code> — ${sig.art.newest_sprite.age_days} day(s) old. ` : ""}${sig.art.sfx_count} sound effects shipped. Browse and edit everything in the <a class="plain" href="#/entities">entity gallery</a>.</div>`));
-  root.querySelectorAll("[data-snd]").forEach(b => {
-    let cur = null;
-    b.addEventListener("click", () => { if (cur) cur.pause(); cur = new Audio(b.dataset.snd); cur.play(); });
-  });
-}
-
-/* ---- marketing/ops: a root doc rendered live ---- */
-async function pillarMarkdownDoc(root, name, title) {
-  const doc = await api("/api/rootdoc/" + name);
-  root.replaceChildren(h(`<h2>${esc(title)}</h2>
-    <div class="card mddoc">${md(doc.markdown)}</div>`));
-}
-
-/* ---- sales: releases ---- */
-function pillarSales(root, sig) {
-  root.replaceChildren(h(`<h2>Releases</h2>
-    <div class="card">${sig.tags.length
-      ? sig.tags.map(t => `<div class="commitrow"><code class="ref">${esc(t)}</code></div>`).join("") + `<p class="small muted" style="margin-top:8px">Publishing is a pushed tag, never a push to main — the runbook is docs/DEPLOY.md.</p>`
-      : "<span class='muted'>No release tags yet — the first public tag is the next milestone here.</span>"}</div>`));
-}
-
-/* ---- product: projects + playtest cadence ---- */
-function pillarProduct(root, sig) {
-  root.replaceChildren(h(`<h2>The numbers</h2>
-    <div class="card small">
-      <div>📁 ${sig.projects.in_progress} in flight · ${sig.projects.blocked} blocked — <a class="plain" href="#/program">program report</a></div>
-      <div style="margin-top:6px">🧪 ${sig.playtests.count} recorded playtests · latest ${esc(sig.playtests.latest || "—")}${sig.playtests.days_since != null ? ` (${sig.playtests.days_since} day(s) ago)` : ""} — <a class="plain" href="#/playtests">session viewer</a></div>
-      <div style="margin-top:6px">📥 ${sig.queue.prepped} decision(s) prepped · ${sig.queue.pending_integration} ruling(s) awaiting integration — <a class="plain" href="#/inbox">inbox</a></div>
-    </div>`));
 }

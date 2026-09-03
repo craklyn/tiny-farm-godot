@@ -1,0 +1,216 @@
+{
+  "pillar": "ops",
+  "note": "The money goals stay red until hq/data/spend.json exists. A balance nothing records is not a number this page may draw — the ledger's own figures do not reconcile with the vendor by about twenty cents, and charting prose would launder that gap.",
+  "verdict_template": {
+    "fire": "Red — {worst}.",
+    "attention": "{worst}",
+    "unassured": "Nothing is failing, but {unassured} of {total} of these obligations are checked by somebody remembering to look.",
+    "ok": "Nothing owed, nothing unrecorded, nothing blocking a release.",
+    "dormant": "Dormant. {dormant_reason}"
+  },
+  "goals": [
+    {
+      "id": "spend-is-recorded",
+      "statement": "Every pound this studio spends is written somewhere a machine can read.",
+      "statement_short": "there is no machine-readable record of what this studio spends",
+      "owner": "harold",
+      "severity": "important",
+      "unit": "",
+      "why_it_matters": "The whole spend record is prose inside an essay, and it does not reconcile: the ledger's figures imply about $1.27 remaining, and the last balance actually written down was $1.858 before two runs that recorded no balance at all. Nobody in this studio can state today's balance, which is precisely the number an approval should be given against.",
+      "measure": {
+        "kind": "file_exists",
+        "path": "hq/data/spend.json"
+      },
+      "compare": {
+        "direction": "must_be_true"
+      },
+      "path_to_green": {
+        "narrative": "One record per paid call — date, purpose, dollars, and the balance the vendor returned afterwards — written by the pipeline as it spends. Backfilled from the ledger's existing figures, with the unreconciled tail marked as unreconciled rather than smoothed over.",
+        "route": {
+          "kind": "project",
+          "id": "spend-ledger"
+        },
+        "owner": "harold"
+      },
+      "history": {
+        "record": true,
+        "chart": false
+      }
+    },
+    {
+      "id": "every-asset-is-ledgered",
+      "statement": "Nothing ships whose rights we have not written down.",
+      "statement_short": "a shipped asset has no ledger line, so its terms are unknown",
+      "owner": "harold",
+      "severity": "blocking",
+      "unit": "orphans",
+      "why_it_matters": "CREDITS.md's own opening rule is that every entry must have verified terms before the first public build ships. An asset with no entry is not cleared — it is unexamined, which is the release-blocking kind of unknown.",
+      "measure": {
+        "kind": "orphan_files",
+        "dir": "assets/audio/sfx",
+        "exts": [
+          ".wav"
+        ],
+        "referenced_in": [
+          "CREDITS.md"
+        ],
+        "unit": "shipped file with no ledger line"
+      },
+      "compare": {
+        "direction": "lower_is_better",
+        "target": 0,
+        "amber_at": 0
+      },
+      "path_to_green": {
+        "narrative": "Write the missing lines. Each is one sentence: where it came from, its terms, what it cost.",
+        "route": {
+          "kind": "none"
+        },
+        "owner": "harold"
+      },
+      "history": {
+        "record": true,
+        "chart": false
+      },
+      "signal_key": "asset_ledger"
+    },
+    {
+      "id": "debug-text-is-off",
+      "statement": "A public build would carry no debug text.",
+      "statement_short": "the playtest readout is still on — a public build would show debug text",
+      "owner": "harold",
+      "severity": "blocking",
+      "unit": "",
+      "measure": {
+        "kind": "file_grep",
+        "label": "ui/hud.gd's PLAYTEST_NOTES is false",
+        "paths": [
+          "ui/hud.gd"
+        ],
+        "exts": [
+          ".gd"
+        ],
+        "skip_comments": true,
+        "pattern": "const PLAYTEST_NOTES\\s*:=\\s*true",
+        "expect": "absent",
+        "field": "bool",
+        "says_true": "the playtest readout is switched off"
+      },
+      "compare": {
+        "direction": "must_be_true"
+      },
+      "path_to_green": {
+        "narrative": "One line, flipped before the tag. Sales owns the same gate; it appears here because it is the one thing standing between us and a release.",
+        "route": {
+          "kind": "none"
+        },
+        "owner": "victor"
+      },
+      "history": {
+        "record": true,
+        "chart": false
+      },
+      "signal_key": "ship_gate"
+    },
+    {
+      "id": "credentials-are-declared",
+      "statement": "Every credential this studio depends on is named somewhere a second machine could be set up from.",
+      "statement_short": "the credentials this studio runs on are named nowhere",
+      "owner": "harold",
+      "severity": "important",
+      "unit": "",
+      "why_it_matters": "You work from two machines. A key that exists only in one .env is a machine that cannot be replaced.",
+      "measure": {
+        "kind": "file_exists",
+        "path": ".env.example"
+      },
+      "compare": {
+        "direction": "must_be_true"
+      },
+      "path_to_green": {
+        "narrative": "Names only, never values, tracked in git.",
+        "route": {
+          "kind": "none"
+        },
+        "owner": "harold"
+      },
+      "history": {
+        "record": false,
+        "chart": false
+      }
+    },
+    {
+      "id": "a-player-can-reach-us",
+      "statement": "A player who hits a bug has somewhere to send it.",
+      "statement_short": "a player who hits a bug has nowhere to send it",
+      "owner": "fatima",
+      "severity": "important",
+      "unit": "",
+      "why_it_matters": "One build is public and the store page names no contact of any kind. The first thing a first player would tell us is the one thing we cannot hear.",
+      "measure": {
+        "kind": "file_grep",
+        "label": "the store page names a way to reach us",
+        "paths": [
+          "ITCH_PAGE.md"
+        ],
+        "exts": [
+          ".md"
+        ],
+        "pattern": "(?i)(contact|email|@|report a bug|get in touch)",
+        "expect": "present",
+        "field": "bool",
+        "says_true": "the store page names a way to reach us",
+        "says_false": "the store page names no contact of any kind"
+      },
+      "compare": {
+        "direction": "must_be_true"
+      },
+      "path_to_green": {
+        "narrative": "Itch comments, an email alias, or a plain line saying there is nowhere — all three are fine. Only the omission is not, and it is a public promise about your own time, so it is yours to make.",
+        "route": {
+          "kind": "none"
+        },
+        "owner": "fatima",
+        "ceo_blocker": {
+          "kind": "ruling",
+          "surface": {
+            "kind": "none"
+          },
+          "consequence": "Player Update 1 goes out with no route back, and we learn nothing from whoever plays it.",
+          "waiting_since": "2026-09-03"
+        }
+      },
+      "history": {
+        "record": false,
+        "chart": false
+      }
+    },
+    {
+      "id": "licences-are-clean",
+      "statement": "Everything in the build is ours to ship, and the attribution we owe is in it.",
+      "statement_short": "the licence position has not been re-checked recently",
+      "owner": "harold",
+      "severity": "important",
+      "unit": "",
+      "measure": {
+        "kind": "manual_attest",
+        "attested_by": "daniel",
+        "attested_on": "2026-08-27",
+        "value": true,
+        "expires_days": 90,
+        "note": "Retro Diffusion's output rights were read against their legal terms and cleared for commercial release. Their terms are undated and revocable in place, so this expires and has to be re-read rather than standing forever."
+      },
+      "path_to_green": {
+        "narrative": "Re-read the vendor's terms when this expires, or when the asset set is regenerated.",
+        "route": {
+          "kind": "none"
+        },
+        "owner": "harold"
+      },
+      "history": {
+        "record": false,
+        "chart": false
+      }
+    }
+  ]
+}

@@ -206,26 +206,64 @@ def api_queue():
     return out
 
 
+_CONSISTENCY = []
+
+
 def check_consistency():
-    """Warn (journal-visible) about dangling people/decision references."""
+    """Dangling people, decisions, and goal routes.
+
+    These used to be printed to the journal and nowhere else, which meant a
+    broken reference was invisible on the surface that depends on it. They are
+    collected now and rendered on the pillar page too: a dashboard that hides
+    its own broken references has stopped being trustworthy."""
+    warn = []
+
+    def note(msg):
+        warn.append(msg)
+        print("[consistency] " + msg)
+
     try:
         ids = {e["id"] for e in load_org()["employees"]}
         for p in load_projects():
             for pid in [p.get("owner")] + list(p.get("contributors", [])):
                 if pid and pid not in ids:
-                    print(f"[consistency] project {p['id']}: unknown person '{pid}'")
+                    note(f"project {p['id']}: unknown person '{pid}'")
         open_ids = {i["id"] for i in parse_queue()["items"]}
         published = set(load_looks())
         for c in load_dir_json("decisions"):
             if c["id"] not in open_ids:
-                print(f"[consistency] curated decision {c['id']} not found in DESIGNER_QUEUE.md")
+                note(f"curated decision {c['id']} not found in DESIGNER_QUEUE.md")
             for att in c.get("attachments", []):
                 if att.get("type") == "look" and att.get("scenario") not in published:
-                    print(f"[consistency] decision {c['id']} attaches look "
-                          f"'{att.get('scenario')}' but no sheet is published — "
-                          f"run tools/compose_look_sheets.py")
+                    note(f"decision {c['id']} attaches look '{att.get('scenario')}' "
+                         f"but no sheet is published — run tools/compose_look_sheets.py")
+        # Goal routes: a red goal whose way back points at nothing is worse than
+        # a red goal with no route at all, because it looks answered.
+        pools = {"project": {p["id"] for p in load_projects()},
+                 "work": {i["id"] for i in (work.items() if hasattr(work, "items") else [])},
+                 "decision": {c["id"] for c in load_dir_json("decisions")}}
+        pillars = load_json(os.path.join(DATA, "pillars.json"))["pillars"]
+        people = {e["id"] for e in load_org()["employees"]}
+        for pl in pillars:
+            doc = load_goals(pl["id"]) or {}
+            for g in doc.get("goals", []):
+                if not g.get("measure"):
+                    note(f"goal {pl['id']}/{g.get('id')} declares no measurement — "
+                         "a statement with no measurement is a wish, not a goal")
+                if g.get("owner") and g["owner"] not in people:
+                    note(f"goal {pl['id']}/{g.get('id')}: unknown owner '{g['owner']}'")
+                p2g = g.get("path_to_green") or {}
+                for label, ref in (("route", p2g.get("route")),
+                                   ("blocker surface", (p2g.get("ceo_blocker") or {}).get("surface"))):
+                    if not ref or ref.get("kind") in (None, "none"):
+                        continue
+                    if ref.get("id") not in pools.get(ref["kind"], set()):
+                        note(f"goal {pl['id']}/{g.get('id')}: {label} points at "
+                             f"{ref['kind']} '{ref.get('id')}', which does not exist")
     except Exception as e:
-        print(f"[consistency] check failed: {e}")
+        note(f"check failed: {e}")
+    _CONSISTENCY[:] = warn
+    return warn
 
 
 ITEM_RE = re.compile(r"^- \*\*(Q-\d+[a-z]?)\s*(?:\(([^)]*)\))?\*\*\s*(.*)$")
@@ -370,21 +408,25 @@ def _milestones():
 
 
 def _queue_state():
-    """Open designer questions, live from DESIGNER_QUEUE.md. Grammar: items are
-    `- **Q-n …` bullets; a ruled item carries ~~strikethrough~~ on its first
-    line (universal in the file). Sections are the `## ` headings, which name
-    the milestone horizon they block ('Before M3 — phase 2 design')."""
-    text = _read("docs/DESIGNER_QUEUE.md")
-    sections, current = [], None
-    for line in text.splitlines():
-        if line.startswith("## "):
-            current = {"name": line[3:].strip(), "open": []}
-            sections.append(current)
-        m = re.match(r"^- \*\*(Q-\d+)", line)
-        if m and current is not None and "~~" not in line:
-            current["open"].append(m.group(1))
-    open_ids = {q for s in sections for q in s["open"]}
-    return {"sections": [s for s in sections if s["open"]], "open": sorted(open_ids)}
+    """Open designer questions, grouped by the milestone horizon they block.
+
+    The answered/open grammar is NOT re-implemented here: it delegates to
+    `parse_queue()`, which is canonical. Two parsers meant two counts — this
+    page said 21 open questions while the dashboard said 20, because a ruling
+    marked ✅ without ~~strikethrough~~ (Q-83) read as open to one and answered
+    to the other. One grammar, one number."""
+    parsed = parse_queue()["items"]
+    order, sections = [], {}
+    for it in parsed:
+        name = it["section"]
+        if name not in sections:
+            sections[name] = {"name": name, "open": []}
+            order.append(name)
+        if not it["answered"]:
+            sections[name]["open"].append(it["id"])
+    open_ids = {i["id"] for i in parsed if not i["answered"]}
+    return {"sections": [sections[n] for n in order if sections[n]["open"]],
+            "open": sorted(open_ids)}
 
 
 def _chapter_blurbs():
@@ -539,8 +581,13 @@ def _run_job(job):
     import datetime
     spec = JOBS[job]
     started = datetime.datetime.now().isoformat(timespec="seconds")
+    # The commit this run proves. Without it "green" has no shelf life: a verdict
+    # from 80 commits ago and one from this commit look identical on the page,
+    # and freshness is the whole question Engineering's wall answers.
+    head = run_cmd(["git", "rev-parse", "HEAD"])
     result = {"job": job, "label": spec["label"], "state": "failed",
-              "summary": "job thread died before running", "started": started}
+              "summary": "job thread died before running", "started": started,
+              "head": head}
     try:
         os.makedirs(os.path.join(DATA, "runs"), exist_ok=True)
         with open(_job_path(job), "w", encoding="utf-8") as f:
@@ -571,13 +618,14 @@ def _run_job(job):
                   "state": "green" if ok else "failed",
                   "summary": summary, "started": started,
                   "finished": datetime.datetime.now().isoformat(timespec="seconds"),
-                  "tail": tail}
+                  "head": head, "tail": tail}
     except subprocess.TimeoutExpired:
         result = {"job": job, "label": spec["label"], "state": "failed",
-                  "summary": "timed out after 10 minutes", "started": started}
+                  "summary": "timed out after 10 minutes", "started": started,
+                  "head": head}
     except Exception as e:
         result = {"job": job, "label": spec["label"], "state": "failed",
-                  "summary": str(e)[:200], "started": started}
+                  "summary": str(e)[:200], "started": started, "head": head}
     finally:
         # Everything here is best-effort, and the discard is unconditional:
         # a wedged 'already running' job with no thread behind it is worse
@@ -587,6 +635,7 @@ def _run_job(job):
                 json.dump(result, f)
         except OSError:
             pass
+        append_history("runs", result)
         with _JOB_LOCK:
             _RUNNING_JOBS.discard(job)
         signals_dirty()
@@ -1218,6 +1267,1164 @@ MAP_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,39}$")
 
 
 # ---------------------------------------------------------------------------
+# History: the recorder.
+#
+# Every chart HQ will ever draw honestly depends on somebody having written the
+# number down at the time. Three of the studio's most interesting quantities —
+# how fast the sim runs, how many assertions exist, how often a deploy works —
+# have exactly one datapoint each, ever, because `hq/data/runs/` is overwritten
+# on every run and gitignored besides. This is the fix, and it is deliberately
+# dull: append a line, drop it if nothing changed.
+#
+# Nothing here is written by a request handler. A tracked file written on page
+# render leaves the tree permanently dirty, and `git describe --dirty` is where
+# playtest build ids come from — that is exactly how two recorded sessions
+# already stamped `-dirty` and became impossible to tie to a build.
+# ---------------------------------------------------------------------------
+
+HISTORY = os.path.join(DATA, "history")
+_HIST_LOCK = threading.Lock()
+
+
+def append_history(name, record):
+    """Append one JSON line to hq/data/history/<name>.jsonl. Best-effort."""
+    import datetime
+    try:
+        with _HIST_LOCK:
+            os.makedirs(HISTORY, exist_ok=True)
+            rec = {"at": datetime.datetime.now().isoformat(timespec="seconds"), **record}
+            with open(os.path.join(HISTORY, name + ".jsonl"), "a", encoding="utf-8") as f:
+                f.write(json.dumps(rec) + "\n")
+    except OSError:
+        pass
+
+
+def read_history(name, limit=500):
+    rows = []
+    try:
+        with open(os.path.join(HISTORY, name + ".jsonl"), "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    rows.append(json.loads(line))
+                except ValueError:
+                    continue
+    except OSError:
+        return []
+    return rows[-limit:]
+
+
+# ---------------------------------------------------------------------------
+# CI history: the 100-run window, refreshed off the request path.
+#
+# `_ci_status()` stays at --limit 10 on purpose. Measured on this repo: the gh
+# call costs 0.98s at limit 10 and 3.90s at limit 100, against a cold signals
+# recompute of ~1.4s — widening the call in the render path would roughly
+# triple every post-TTL page visit for a strip nobody is looking at yet.
+# ---------------------------------------------------------------------------
+
+CI_HISTORY_PATH = os.path.join(DATA, "ci_history.json")
+CI_HISTORY_TTL = 600
+
+
+def _refresh_ci_history():
+    import time as _t
+    out = run_cmd(["gh", "run", "list", "--branch", "main", "--workflow", "tests.yml",
+                   "--limit", "100", "--json",
+                   "status,conclusion,displayTitle,updatedAt,url"], timeout=45)
+    if not out:
+        return
+    try:
+        runs = json.loads(out)
+    except ValueError:
+        return
+    done = [r for r in runs if r.get("status") == "completed"]
+    streak = 0
+    for r in done:
+        if r.get("conclusion") == "success":
+            streak += 1
+        else:
+            break
+    passed = sum(1 for r in done if r.get("conclusion") == "success")
+    doc = {
+        "polled_at": _t.strftime("%Y-%m-%dT%H:%M:%S"),
+        "window": len(done),
+        "passed": passed,
+        "failed": len(done) - passed,
+        "pass_rate": round(100 * passed / len(done)) if done else None,
+        "green_streak": streak,
+        # Oldest first, so the strip reads left-to-right like time.
+        "ticks": [{"ok": r.get("conclusion") == "success",
+                   "title": (r.get("displayTitle") or "")[:80],
+                   "at": (r.get("updatedAt") or "")[:10],
+                   "url": r.get("url")} for r in reversed(done)],
+    }
+    try:
+        with open(CI_HISTORY_PATH, "w", encoding="utf-8") as f:
+            json.dump(doc, f)
+    except OSError:
+        pass
+
+
+def ci_history():
+    try:
+        return load_json(CI_HISTORY_PATH)
+    except Exception:
+        return None
+
+
+def _ci_history_thread():
+    import time as _t
+    while True:
+        try:
+            _refresh_ci_history()
+        except Exception:
+            pass
+        _t.sleep(CI_HISTORY_TTL)
+
+
+# ---------------------------------------------------------------------------
+# Goals: the one status pipeline.
+#
+# A pillar's status used to be six hand-written blocks in _compute_signals_now:
+# engineering, product and sales derived theirs, art, marketing and ops carried
+# hardcoded literals. Two of the six could therefore never light up, and nothing
+# on the page distinguished a derived "under control" from a typed one.
+#
+# Now every pillar declares GOALS in hq/data/goals/<pillar>.json, one evaluator
+# reads them, and the pillar's level is the rollup of its goals. The goal's
+# statement and its target are AUTHORED — a commitment cannot be derived, and
+# pretending otherwise would be the lie. Its current value is MEASURED, by a
+# small declarative vocabulary that maps onto things this repo really holds.
+#
+# The load-bearing honesty rule: a goal nothing can measure does not get to look
+# measured. It renders `unchecked` with the reason and the specific recording
+# that would make it real, and it counts AGAINST the pillar's assurance
+# fraction rather than for it. A measurement that fails to run renders `broken`,
+# never green — a broken instrument is a fact about the instrument.
+# ---------------------------------------------------------------------------
+
+GOALS_DIR = os.path.join(DATA, "goals")
+# Closed enum. Anything that maps a level (LEVEL_META in pillars.js, the nav's
+# exception filter, the dashboard rows) must be extended in the same commit.
+LEVELS = ("fire", "attention", "unassured", "ok", "dormant")
+ASSURED_STATES = ("green", "amber", "red")
+
+
+def _safe(rel):
+    """Repo-relative path, no escapes. Every kind that takes a path calls this,
+    which is why no goal file can read /etc/passwd however it is written."""
+    if not isinstance(rel, str) or not rel or os.path.isabs(rel):
+        raise ValueError(f"path must be repo-relative: {rel!r}")
+    full = os.path.normpath(os.path.join(REPO, rel))
+    if not (full == REPO or full.startswith(REPO + os.sep)):
+        raise ValueError(f"path escapes the repo: {rel!r}")
+    return full
+
+
+def _reading(value, unit="", human="", machine="", cost="cheap", stale=False, error=None, extra=None):
+    import time as _t
+    r = {"value": value, "unit": unit, "as_of": _t.strftime("%Y-%m-%dT%H:%M:%S"),
+         "source_human": human, "source_machine": machine, "cost": cost,
+         "stale": stale, "error": error}
+    if extra:
+        r.update(extra)
+    return r
+
+
+def _iter_files(paths, exts=None, exclude=None):
+    exclude = [os.path.normpath(e) for e in (exclude or [])]
+    for rel in paths:
+        full = _safe(rel)
+        if os.path.isfile(full):
+            cands = [(rel, full)]
+        elif os.path.isdir(full):
+            cands = []
+            for root, dirs, files in os.walk(full):
+                dirs[:] = [d for d in dirs if d not in (".godot", ".git", "__pycache__")]
+                for f in files:
+                    fp = os.path.join(root, f)
+                    cands.append((os.path.relpath(fp, REPO), fp))
+        else:
+            continue
+        for r2, f2 in cands:
+            if exts and os.path.splitext(f2)[1] not in exts:
+                continue
+            if any(os.path.normpath(r2) == e or os.path.normpath(r2).startswith(e + os.sep) or os.path.normpath(r2) == os.path.normpath(e)
+                   for e in exclude):
+                continue
+            yield r2, f2
+
+
+_BUILD_ID_CACHE = {}
+
+
+def _norm_build_id(bid):
+    """A recorded build id → a commit git can resolve, or None.
+
+    `git describe --always --dirty` produces `v0.1.0-90-g7866bbb-dirty`. The
+    `-dirty` suffix is not part of any object name, and the tag-relative form is
+    only resolvable while the tag exists — so strip the suffix, try it, and fall
+    back to the short hash the description embeds."""
+    if not bid or not isinstance(bid, str):
+        return None
+    if bid in _BUILD_ID_CACHE:
+        return _BUILD_ID_CACHE[bid]
+    cand = bid[:-6] if bid.endswith("-dirty") else bid
+    tries = [cand]
+    m = re.search(r"g([0-9a-f]{7,40})$", cand)
+    if m:
+        tries.append(m.group(1))
+    out = None
+    for c in tries:
+        if subprocess.run(["git", "cat-file", "-e", c + "^{commit}"], cwd=REPO,
+                          capture_output=True).returncode == 0:
+            out = c
+            break
+    _BUILD_ID_CACHE[bid] = out
+    return out
+
+
+_PT_CACHE = {"at": 0.0, "data": None}
+
+
+def _playtests_cached():
+    import time as _t
+    if _PT_CACHE["data"] and _t.time() - _PT_CACHE["at"] < 60:
+        return _PT_CACHE["data"]
+    rows = []
+    root = os.path.join(REPO, "playtests")
+    if os.path.isdir(root):
+        for name in sorted(d for d in os.listdir(root) if os.path.isdir(os.path.join(root, d))):
+            rows.append(parse_playtest(name))
+    _PT_CACHE["data"] = rows
+    _PT_CACHE["at"] = _t.time()
+    return rows
+
+
+def _pt_select(sel):
+    rows = [r for r in _playtests_cached() if not r.get("error")]
+    if sel.startswith("id:"):
+        want = sel[3:]
+        return [r for r in rows if r["name"] == want]
+    if sel == "all_with_trace":
+        return rows
+    if sel == "newest_with_trace":
+        return rows[-1:] if rows else []
+    if sel == "newest_substantial":
+        # 60 taps is the line between a session and a resumed tablet blip. Ten
+        # folders, nine traces, six real sessions — the denominator is never
+        # "how many directories are there".
+        sub = [r for r in rows if r.get("taps", 0) >= 60]
+        return sub[-1:] if sub else []
+    if sel == "all_substantial":
+        return [r for r in rows if r.get("taps", 0) >= 60]
+    return rows[-1:] if rows else []
+
+
+def _days_since_name(name):
+    import datetime
+    try:
+        d = datetime.datetime.strptime(name.split("_")[0], "%Y-%m-%d")
+        return (datetime.datetime.now() - d).days
+    except (ValueError, TypeError, AttributeError):
+        return None
+
+
+def _pt_metric(row, metric):
+    if metric == "days_since":
+        return _days_since_name(row["name"])
+    if metric.startswith("first_use."):
+        return (row.get("first_use") or {}).get(metric.split(".", 1)[1])
+    return row.get(metric)
+
+
+# ---------------------------------------------------------------------------
+# The palette instrument.
+#
+# Art's central question — "is this still one thing to look at?" — has no answer
+# in git or in a doc. It is in the pixels, so the pixels are what gets read.
+# This decodes the shipped sheets and counts every opaque colour in them, then
+# asks how many of the colours the style guide names are still present.
+#
+# Decoded with zlib and struct rather than an imaging library, because HQ runs
+# on the standard library and nothing else, and because the sheets are all 8-bit
+# RGBA — the one PNG shape this needs to understand. Cached on the sheets' own
+# mtimes: it costs about a second the first time and nothing afterwards.
+# ---------------------------------------------------------------------------
+
+PALETTE_SHEETS_DIR = "assets/sprites/generated"
+PALETTE_EXTRA = ["assets/sprites/tool_icons.png"]
+_PALETTE_CACHE = {"key": None, "data": None}
+
+
+def _png_rgba(path):
+    """Decode an 8-bit RGBA PNG to a flat bytes buffer. Returns (w, h, buf)."""
+    import struct
+    import zlib
+    with open(path, "rb") as f:
+        raw = f.read()
+    if raw[:8] != b"\x89PNG\r\n\x1a\n":
+        raise ValueError("not a PNG")
+    pos, idat, w = 8, bytearray(), None
+    while pos < len(raw):
+        ln = struct.unpack(">I", raw[pos:pos + 4])[0]
+        typ = raw[pos + 4:pos + 8]
+        body = raw[pos + 8:pos + 8 + ln]
+        if typ == b"IHDR":
+            w, h, depth, ctype = struct.unpack(">IIBB", body[:10])
+            if depth != 8 or ctype != 6:
+                raise ValueError(f"unsupported PNG shape depth={depth} colortype={ctype}")
+        elif typ == b"IDAT":
+            idat += body
+        elif typ == b"IEND":
+            break
+        pos += 12 + ln
+    if w is None:
+        raise ValueError("no IHDR")
+    data = zlib.decompress(bytes(idat))
+    stride = w * 4
+    out = bytearray(stride * h)
+    prev = bytearray(stride)
+    p = 0
+    for y in range(h):
+        ft = data[p]
+        p += 1
+        line = bytearray(data[p:p + stride])
+        p += stride
+        if ft == 1:
+            for i in range(4, stride):
+                line[i] = (line[i] + line[i - 4]) & 0xFF
+        elif ft == 2:
+            for i in range(stride):
+                line[i] = (line[i] + prev[i]) & 0xFF
+        elif ft == 3:
+            for i in range(stride):
+                a = line[i - 4] if i >= 4 else 0
+                line[i] = (line[i] + ((a + prev[i]) >> 1)) & 0xFF
+        elif ft == 4:
+            for i in range(stride):
+                a = line[i - 4] if i >= 4 else 0
+                b = prev[i]
+                c = prev[i - 4] if i >= 4 else 0
+                pa, pb, pc = abs(b - c), abs(a - c), abs(a + b - 2 * c)
+                pr = a if (pa <= pb and pa <= pc) else (b if pb <= pc else c)
+                line[i] = (line[i] + pr) & 0xFF
+        out[y * stride:(y + 1) * stride] = line
+        prev = line
+    return w, h, bytes(out)
+
+
+def _sheet_paths():
+    paths = []
+    d = os.path.join(REPO, PALETTE_SHEETS_DIR)
+    if os.path.isdir(d):
+        paths += [os.path.join(PALETTE_SHEETS_DIR, f) for f in sorted(os.listdir(d))
+                  if f.endswith(".png")]
+    paths += [p for p in PALETTE_EXTRA if os.path.isfile(os.path.join(REPO, p))]
+    return paths
+
+
+def _guide_named_colours():
+    """The hexes the style guide names, in the order it names them."""
+    seen, out = set(), []
+    for m in re.finditer(r"#([0-9a-fA-F]{6})\b", _read("docs/design/09-art-direction.md")):
+        h = m.group(1).lower()
+        if h not in seen:
+            seen.add(h)
+            out.append(h)
+    return out
+
+
+def palette_union():
+    """Every opaque colour across the shipped sheets, with its pixel count."""
+    paths = _sheet_paths()
+    key = tuple((p, os.path.getmtime(os.path.join(REPO, p))) for p in paths)
+    if _PALETTE_CACHE["key"] == key:
+        return _PALETTE_CACHE["data"]
+    counts, failed = {}, []
+    for rel in paths:
+        try:
+            w, h, buf = _png_rgba(os.path.join(REPO, rel))
+        except Exception as e:
+            failed.append(f"{rel}: {e}")
+            continue
+        for i in range(0, len(buf), 4):
+            if buf[i + 3] < 255:
+                continue
+            counts[buf[i:i + 3]] = counts.get(buf[i:i + 3], 0) + 1
+    named = _guide_named_colours()
+    present = {c.hex() for c in counts}
+    swatches = sorted(({"hex": c.hex(), "pixels": n, "named": c.hex() in named}
+                       for c, n in counts.items()),
+                      key=lambda s: -s["pixels"])
+    data = {
+        "sheets": len(paths) - len(failed), "sheet_names": [os.path.basename(p) for p in paths],
+        "failed": failed,
+        "colours": len(counts),
+        "named_total": len(named),
+        "named_present": sum(1 for h in named if h in present),
+        "named_missing": [h for h in named if h not in present],
+        "swatches": swatches[:140],
+    }
+    _PALETTE_CACHE["key"] = key
+    _PALETTE_CACHE["data"] = data
+    return data
+
+
+def eval_measure(spec, depth=0):
+    """One declarative measurement -> one normalized Reading."""
+    kind = (spec or {}).get("kind")
+    if depth > 3:
+        return _reading(None, error="composite nested too deep")
+
+    if kind == "unchecked":
+        return _reading(None, human=spec.get("reason", ""),
+                        extra={"unchecked": True,
+                               "reason": spec.get("reason", ""),
+                               "would_need": spec.get("would_need", "")})
+
+    if kind == "manual_attest":
+        import datetime
+        who = spec.get("attested_by")
+        if who != "daniel":
+            # The other org members are personas, not people. A persona cannot
+            # vouch for something nothing measured — that would be inventing
+            # studio activity, which is the one thing HQ may never do.
+            return _reading(None, error="only Daniel may attest; the rest of the org are personas")
+        on = spec.get("attested_on", "")
+        exp = spec.get("expires_days")
+        age = None
+        try:
+            age = (datetime.datetime.now() - datetime.datetime.strptime(on, "%Y-%m-%d")).days
+        except (ValueError, TypeError):
+            pass
+        expired = bool(exp and age is not None and age > exp)
+        return _reading(spec.get("value"), human=f"attested by Daniel on {on}",
+                        extra={"attested": True, "attested_by": who, "attested_on": on,
+                               "attested_days": age, "expired": expired,
+                               "note": spec.get("note", "")})
+
+    try:
+        if kind == "git_commits":
+            paths = list(spec.get("paths") or [])
+            for p in paths:
+                _safe(p)
+            excl = [f":(exclude){p}" for p in (spec.get("exclude_paths") or [])]
+            args = ["git", "log", f"--since={spec.get('since', '7 days ago')}", "--pretty=%H"]
+            if paths or excl:
+                args += ["--"] + paths + excl
+            out = run_cmd(args)
+            n = len([l for l in out.splitlines() if l.strip()])
+            return _reading(n, "commits", f"commits touching {', '.join(paths) or 'the repo'} since {spec.get('since')}",
+                            " ".join(args), "git")
+
+        if kind == "git_file_age":
+            rel = spec["path"]
+            _safe(rel)
+            ct = run_cmd(["git", "log", "-1", "--format=%ct", "--", rel])
+            if not ct:
+                return _reading(None, error=f"{rel} has no commits")
+            import time as _t
+            days = round((_t.time() - int(ct)) / 86400, 1)
+            return _reading(days, "days", f"{rel} last changed", f"git log -1 -- {rel}", "git")
+
+        if kind == "git_tag":
+            pattern = spec.get("pattern", "v*")
+            tags = [t for t in run_cmd(["git", "tag", "-l", pattern, "--sort=creatordate"]).splitlines() if t]
+            field = spec.get("field", "count")
+            if field == "count":
+                return _reading(len(tags), "tags", f"tags matching {pattern}", f"git tag -l {pattern}", "git")
+            if not tags:
+                return _reading(None, error="no tag matches — nothing has ever been published")
+            newest = tags[-1]
+            if field == "newest":
+                return _reading(newest, "", "the newest published tag", f"git tag -l {pattern}", "git")
+            if field == "commits_since":
+                n = run_cmd(["git", "rev-list", "--count", f"{newest}..HEAD"])
+                return _reading(int(n or 0), "commits", f"commits on main since {newest}",
+                                f"git rev-list --count {newest}..HEAD", "git",
+                                extra={"tag": newest})
+            if field == "age_days":
+                ct = run_cmd(["git", "log", "-1", "--format=%ct", newest])
+                import time as _t
+                return _reading(round((_t.time() - int(ct)) / 86400, 1), "days",
+                                f"age of {newest}", "git log -1", "git", extra={"tag": newest})
+
+        if kind == "git_build_lag":
+            src = spec.get("build_id_from", "")
+            bid = None
+            if src.startswith("playtest:"):
+                rows = _pt_select(src.split(":", 1)[1])
+                bid = rows[0].get("build_id") if rows else None
+            elif src.startswith("literal:"):
+                bid = src.split(":", 1)[1]
+            elif src.startswith("job:"):
+                r = latest_job_result(src.split(":", 1)[1]) or {}
+                bid = r.get("head")
+            if not bid:
+                return _reading(None, error="no build id was recorded")
+            norm = _norm_build_id(bid)
+            if not norm:
+                return _reading(None, error=f"the build it was recorded on ({bid}) is not in this history")
+            n = run_cmd(["git", "rev-list", "--count", f"{norm}..HEAD"])
+            return _reading(int(n or 0), "commits", f"commits between {bid} and what you would ship today",
+                            f"git rev-list --count {norm}..HEAD", "git", extra={"build_id": bid})
+
+        if kind == "file_exists":
+            there = os.path.isfile(_safe(spec["path"]))
+            return _reading(there, "", f"whether {spec['path']} exists", f"stat {spec['path']}",
+                            extra={"says_true": f"{spec['path']} is in the repo",
+                                   "says_false": f"{spec['path']} does not exist"})
+
+        if kind == "file_count":
+            import glob as _glob
+            d = _safe(spec.get("dir", "."))
+            pat = spec.get("glob")
+            if pat:
+                n = len(_glob.glob(os.path.join(d, pat), recursive=True))
+            else:
+                exts = set(spec.get("exts") or [])
+                n = sum(1 for _r, f in _iter_files([spec.get("dir", ".")])
+                        if not exts or os.path.splitext(f)[1] in exts)
+            return _reading(n, spec.get("unit", "files"),
+                            f"files under {spec.get('dir')}", "", "cheap")
+
+        if kind == "file_grep":
+            rx = re.compile(spec["pattern"])
+            hits, files = 0, []
+            for rel, full in _iter_files(spec.get("paths") or [], set(spec.get("exts") or []) or None,
+                                         spec.get("exclude_paths")):
+                try:
+                    with open(full, "r", encoding="utf-8", errors="replace") as f:
+                        for i, line in enumerate(f, 1):
+                            if spec.get("skip_comments") and line.lstrip().startswith("#"):
+                                continue
+                            if rx.search(line):
+                                hits += 1
+                                if len(files) < 12:
+                                    files.append(f"{rel}:{i}")
+                except OSError:
+                    continue
+            expect = spec.get("expect", "absent")
+            if spec.get("field", "bool") == "count":
+                val = hits
+            else:
+                val = (hits == 0) if expect == "absent" else (hits > 0)
+            return _reading(val, spec.get("unit", ""),
+                            spec.get("label") or f"/{spec['pattern']}/ across {', '.join(spec.get('paths') or [])}",
+                            f"grep -rE '{spec['pattern']}'", "cheap",
+                            extra={"hits": hits, "where": files,
+                                   "unit_plural": spec.get("unit_plural"),
+                                   "says_true": spec.get("says_true"),
+                                   "says_false": spec.get("says_false")})
+
+        if kind == "orphan_files":
+            refs = ""
+            for rel in spec.get("referenced_in") or []:
+                refs += _read(rel)
+            names = []
+            for rel, full in _iter_files([spec["dir"]], set(spec.get("exts") or []) or None):
+                base = os.path.basename(full)
+                if base not in refs:
+                    names.append(base)
+            return _reading(len(names), spec.get("unit", "files"),
+                            f"files in {spec['dir']} named nowhere in {', '.join(spec.get('referenced_in') or [])}",
+                            "", "cheap", extra={"orphans": sorted(names),
+                                                "unit_plural": spec.get("unit_plural")})
+
+        if kind == "ci_state":
+            field = spec.get("field", "newest_completed")
+            if field in ("newest_completed", "in_progress"):
+                ci = _ci_status()
+                if not ci.get("available"):
+                    return _reading(None, error="GitHub is unreachable right now")
+                if field == "in_progress":
+                    return _reading(bool(ci.get("in_progress")), "", "whether a run is in flight",
+                                    "gh run list --limit 10", "network", stale=ci.get("stale", False))
+                if not ci.get("has_completed"):
+                    return _reading("in_progress", "verdict",
+                                    "the newest finished run of the tests workflow on main",
+                                    "gh run list --limit 10", "network", stale=ci.get("stale", False))
+                return _reading("success" if ci["green"] else "failure", "verdict",
+                                "the newest finished run of the tests workflow on main",
+                                "gh run list --limit 10", "network", stale=ci.get("stale", False),
+                                extra={"url": (ci.get("latest") or {}).get("url")})
+            h = ci_history()
+            if not h:
+                return _reading(None, error="the 100-run window has not been polled yet")
+            import datetime
+            stale = False
+            try:
+                age = (datetime.datetime.now()
+                       - datetime.datetime.strptime(h["polled_at"], "%Y-%m-%dT%H:%M:%S")).total_seconds()
+                stale = age > CI_HISTORY_TTL * 3
+            except (ValueError, KeyError):
+                pass
+            val = h.get({"pass_rate": "pass_rate", "green_streak": "green_streak"}.get(field, field))
+            if val is None:
+                return _reading(None, error=f"no such CI field: {field}")
+            return _reading(val, "%" if field == "pass_rate" else "runs",
+                            f"the last {h.get('window')} finished runs on main",
+                            "gh run list --limit 100 (polled off the page)", "cached", stale=stale)
+
+        if kind == "job_state":
+            r = latest_job_result(spec["job"])
+            field = spec.get("field", "state")
+            if not r:
+                return _reading("never_run", "verdict", f"the {spec['job']} suite", "", "cheap")
+            if field == "state":
+                return _reading(r.get("state", "never_run"), "verdict",
+                                f"the last local run of {r.get('label', spec['job'])}", "", "cheap",
+                                extra={"summary": r.get("summary"), "finished": r.get("finished")})
+            if field == "age_commits":
+                head = r.get("head")
+                if not head:
+                    return _reading(None, error="this run did not record the commit it proved")
+                n = run_cmd(["git", "rev-list", "--count", f"{head}..HEAD"])
+                if n == "":
+                    return _reading(None, error="the commit it proved is not in this history")
+                return _reading(int(n), "commits",
+                                f"commits since {r.get('label', spec['job'])} last ran", "git rev-list", "git")
+            if field in ("passed", "failed", "metric"):
+                m = re.search(r"([\d,]+)\s+passed" if field == "passed" else
+                              r"([\d,]+)\s+failed" if field == "failed" else r"([\d,]+)x",
+                              r.get("summary", ""))
+                if not m:
+                    return _reading(None, error="the run's summary carries no such number")
+                return _reading(int(m.group(1).replace(",", "")), field, r.get("summary", ""), "", "cheap")
+
+        if kind == "count_json":
+            rows = []
+            if spec.get("dir"):
+                d = _safe(spec["dir"])
+                for f in sorted(os.listdir(d)):
+                    if f.endswith(".json"):
+                        try:
+                            rows.append(load_json(os.path.join(d, f)))
+                        except Exception:
+                            continue
+            elif spec.get("path"):
+                doc = load_json(_safe(spec["path"]))
+                rows = doc if isinstance(doc, list) else doc.get(spec.get("key", "items"), [])
+            matched = [r for r in rows if _where_ok(r, spec.get("where") or [])]
+            if spec.get("field") == "bool":
+                return _reading(bool(matched), "", spec.get("label", ""), "", "cheap",
+                                extra={"says_true": spec.get("label", ""),
+                                       "says_false": spec.get("says_false", spec.get("label", ""))})
+            return _reading(len(matched), spec.get("unit", "records"),
+                            spec.get("label") or f"records in {spec.get('dir') or spec.get('path')}",
+                            "", "cheap",
+                            extra={"names": [r.get("name") or r.get("id") or r.get("title")
+                                             for r in matched][:8],
+                                   "unit_plural": spec.get("unit_plural")})
+
+        if kind == "project_field":
+            projects = load_projects()
+            sel = spec.get("project", "*")
+            if sel != "*":
+                projects = [p for p in projects if p["id"] == sel]
+            projects = [p for p in projects if _where_ok(p, spec.get("where") or [])]
+            derive = spec.get("derive")
+            field = spec.get("field")
+            if derive in ("days_since", "max_days_since"):
+                ages = []
+                for p in projects:
+                    d = _days_since_date(p.get(field))
+                    if d is not None:
+                        ages.append((d, p))
+                if not ages:
+                    return _reading(None, "days", "nothing matches — there is nothing to measure",
+                                    "", "cheap", extra={"empty_ok": True})
+                ages.sort(reverse=True)
+                return _reading(ages[0][0], "days",
+                                f"the longest any project has held {field}", "", "cheap",
+                                extra={"worst": ages[0][1]["name"], "worst_id": ages[0][1]["id"]})
+            if derive == "plan_ratio":
+                done = sum(1 for p in projects for st in p.get("plan", []) if st.get("done"))
+                total = sum(len(p.get("plan", [])) for p in projects)
+                return _reading(round(done / total, 3) if total else None, "ratio",
+                                "plan steps done over total", "", "cheap",
+                                extra={"done": done, "total": total})
+            return _reading(len(projects), "projects", "matching projects", "", "cheap")
+
+        if kind == "program_readiness":
+            prog = api_program()
+            rel = next((r for r in prog["releases"] if r["id"] == spec["release"]), None)
+            if not rel:
+                return _reading(None, error=f"no release called {spec['release']}")
+            field = spec.get("field", "done")
+            if field == "gating_count":
+                return _reading(len(rel["gating"]), "projects", f"{rel['name']}'s blocked critical work",
+                                "", "cheap", extra={"gating": rel["gating"]})
+            r = rel["readiness"]
+            if field == "ratio":
+                return _reading(round(r["done"] / r["total"], 3) if r["total"] else None, "ratio",
+                                f"{rel['name']} readiness", "", "cheap", extra=r)
+            return _reading(r.get(field), "steps", f"{rel['name']} readiness", "", "cheap", extra=r)
+
+        if kind == "playtest_metric":
+            rows = _pt_select(spec.get("select", "newest_with_trace"))
+            metric = spec["metric"]
+            if metric == "build_resolvable_ratio":
+                allr = _pt_select("all_with_trace")
+                if not allr:
+                    return _reading(None, error="no recorded sessions")
+                ok = sum(1 for r in allr if _norm_build_id(r.get("build_id")))
+                return _reading(round(ok / len(allr), 3), "ratio",
+                                f"{ok} of {len(allr)} recorded sessions can still be tied to a build",
+                                "", "cheap", extra={"resolvable": ok, "total": len(allr)})
+            if not rows:
+                return _reading(None, error="no session matches that selection")
+            row = rows[-1]
+            val = _pt_metric(row, metric)
+            if val is None:
+                return _reading(None, error=f"the session records no {metric}")
+            return _reading(val, spec.get("unit", ""),
+                            f"{metric} in the session of {row['name'][:10]}", "", "cheap",
+                            extra={"session": row["name"]})
+
+        if kind == "doc_section":
+            text = _read(spec["path"])
+            if not text:
+                return _reading(None, error=f"{spec['path']} could not be read")
+            sec = spec.get("section")
+            if sec:
+                # A section is a heading OR a bold lead-in paragraph. The roadmap
+                # writes its most quotable facts as the latter ("**Gate run
+                # recorded 2026-08-31.**"), and a parser that only knows headings
+                # would report "no such section" for the one thing worth reading.
+                m = re.search(r"^(#{1,6})\s*.*" + re.escape(sec) + r".*$", text, re.M | re.I)
+                if m:
+                    level = len(m.group(1))
+                    rest = text[m.end():]
+                    nxt = re.search(r"^#{1," + str(level) + r"}\s", rest, re.M)
+                    text = rest[:nxt.start()] if nxt else rest
+                else:
+                    m = re.search(r"^\*\*.*" + re.escape(sec) + r".*$", text, re.M | re.I)
+                    if not m:
+                        return _reading(None, error=f"no section matching '{sec}' in {spec['path']}")
+                    rest = text[m.end():]
+                    nxt = re.search(r"^(#{1,6}\s|\*\*[A-Z])", rest, re.M)
+                    text = rest[:nxt.start()] if nxt else rest
+            field = spec.get("field", "count")
+            if field == "unchecked_count":
+                return _reading(len(re.findall(r"^\s*-\s*\[ \]", text, re.M)), "boxes",
+                                f"unticked boxes under '{sec}' in {spec['path']}", "", "cheap")
+            if field == "bool":
+                return _reading(bool(re.search(spec["pattern"], text)), "",
+                                f"whether {spec['path']} says so", "", "cheap")
+            return _reading(len(re.findall(spec["pattern"], text, re.M)), spec.get("unit", "matches"),
+                            spec.get("label") or f"/{spec.get('pattern')}/ in {spec['path']}", "", "cheap")
+
+        if kind == "queue_state":
+            parsed = parse_queue()["items"]
+            q = api_queue()
+            field = spec.get("field", "open")
+            if field == "open":
+                return _reading(len([i for i in parsed if not i["answered"]]), "questions",
+                                "open questions in the designer queue", "", "cheap")
+            if field == "prepped":
+                return _reading(len([c for c in q["curated"] if c["id"] not in q["rulings"]]),
+                                "cards", "decision cards prepped and waiting on you", "", "cheap")
+            if field == "pending_rulings":
+                return _reading(len([r for r in q["rulings"].values()
+                                     if r.get("status") == "pending_integration"]), "rulings",
+                                "rulings recorded but not yet worked in", "", "cheap")
+            if field == "oldest_pending_days":
+                ds = [_days_since_date((r.get("ruled_at") or "")[:10])
+                      for r in q["rulings"].values() if r.get("status") == "pending_integration"]
+                ds = [d for d in ds if d is not None]
+                if not ds:
+                    return _reading(None, "days", "nothing is waiting", "", "cheap",
+                                    extra={"empty_ok": True})
+                return _reading(max(ds), "days", "the oldest ruling still waiting to be worked in",
+                                "", "cheap")
+
+        if kind == "probe_cache":
+            path = os.path.join(DATA, "probes", spec["probe"] + ".json")
+            if not os.path.isfile(path):
+                return _reading(None, error="not polled yet — no credential or no poller")
+            doc = load_json(path)
+            return _reading(doc.get(spec.get("field", "value")), spec.get("unit", ""),
+                            doc.get("source_human", spec["probe"]), "", "cached",
+                            extra={"polled_at": doc.get("polled_at")})
+
+        if kind == "palette_named_present":
+            pal = palette_union()
+            if not pal["named_total"]:
+                return _reading(None, error="the style guide names no colours")
+            return _reading(round(pal["named_present"] / pal["named_total"], 3), "ratio",
+                            f"{pal['named_present']} of {pal['named_total']} colours the guide names "
+                            f"are still somewhere in the {pal['sheets']} shipped sheets",
+                            "decoded from the PNGs", "cached",
+                            extra={"numerator": pal["named_present"],
+                                   "denominator": pal["named_total"],
+                                   "missing": pal["named_missing"]})
+
+        if kind == "composite":
+            members = [eval_measure(m, depth + 1) for m in (spec.get("members") or [])]
+            op = spec.get("op", "worst_of")
+            if op == "ratio":
+                if len(members) != 2:
+                    return _reading(None, error="a ratio needs exactly two members")
+                n, d = members[0]["value"], members[1]["value"]
+                if not d:
+                    return _reading(None, error="the denominator is zero")
+                return _reading(round(n / d, 3), "ratio", spec.get("label", ""), "", "cheap",
+                                extra={"numerator": n, "denominator": d})
+            return _reading(None, "", spec.get("label", ""), "", "cheap",
+                            extra={"members": members, "op": op})
+
+        return _reading(None, error=f"no such measurement kind: {kind!r}")
+    except Exception as e:
+        return _reading(None, error=f"{type(e).__name__}: {str(e)[:160]}")
+
+
+def _where_ok(row, clauses):
+    for field, op, want in clauses:
+        got = row
+        for part in field.split("."):        # dotted paths reach nested records
+            got = got.get(part) if isinstance(got, dict) else None
+        if op == "eq" and got != want:
+            return False
+        if op == "ne" and got == want:
+            return False
+        if op == "in" and got not in want:
+            return False
+        if op == "contains" and (not isinstance(got, (list, str)) or want not in got):
+            return False
+        if op == "empty":
+            isempty = got in (None, "", [], {})
+            if isempty != bool(want):
+                return False
+        if op in ("lt", "lte", "gt", "gte"):
+            try:
+                if op == "lt" and not got < want:
+                    return False
+                if op == "lte" and not got <= want:
+                    return False
+                if op == "gt" and not got > want:
+                    return False
+                if op == "gte" and not got >= want:
+                    return False
+            except TypeError:
+                return False
+    return True
+
+
+def _days_since_date(datestr):
+    import datetime
+    try:
+        return (datetime.datetime.now()
+                - datetime.datetime.strptime(str(datestr)[:10], "%Y-%m-%d")).days
+    except (ValueError, TypeError):
+        return None
+
+
+def _state_from(reading, compare):
+    """Reading + the authored bar -> one of the six goal states.
+
+    The two rules that matter: a reading that errored is `broken`, never green —
+    a failed measurement is a fact about the instrument, not a pass. And an
+    absence is only green where absence genuinely is the answer (no blocked
+    projects means nothing has been stuck), which the reading has to say for
+    itself via empty_ok."""
+    if reading.get("unchecked"):
+        return "unchecked"
+    if reading.get("attested"):
+        return "unchecked" if reading.get("expired") else "attested"
+    if reading.get("error"):
+        return "broken"
+    v = reading.get("value")
+    if v is None:
+        return "green" if reading.get("empty_ok") else "broken"
+    d = (compare or {}).get("direction")
+    t, a = (compare or {}).get("target"), (compare or {}).get("amber_at")
+    try:
+        if d in ("higher_is_better",):
+            if v >= t:
+                return "green"
+            return "amber" if (a is not None and v >= a) else "red"
+        if d in ("lower_is_better", "fresher_than"):
+            if v <= t:
+                return "green"
+            return "amber" if (a is not None and v <= a) else "red"
+        if d == "must_be_true":
+            return "green" if v is True else "red"
+        if d == "must_equal":
+            return "green" if v == t else "red"
+        if d == "in_set":
+            if v in (compare.get("green_set") or []):
+                return "green"
+            if v in (compare.get("amber_set") or []):
+                return "amber"
+            return "red"
+        if d == "ratio":
+            if v >= t:
+                return "green"
+            return "amber" if (a is not None and v >= a) else "red"
+    except TypeError:
+        return "broken"
+    return "broken"
+
+
+_STATE_RANK = {"red": 0, "broken": 1, "amber": 2, "unchecked": 3, "attested": 4, "green": 5}
+
+
+def _composite_state(reading, compare):
+    """A composite's state is a fact about its members, and the honest rule is
+    that an unassured member poisons an `all_of`: nine gates with one machine
+    check must read mostly-unknown, not mostly-fine."""
+    members = reading.get("members") or []
+    op = reading.get("op", "worst_of")
+    states = []
+    for m in members:
+        # A member may carry its own compare; otherwise it inherits the goal's.
+        states.append(_state_from(m, m.get("compare") or compare))
+    if not states:
+        return "broken"
+    if op == "any_of":
+        return "green" if "green" in states else min(states, key=lambda s: _STATE_RANK[s])
+    # all_of and worst_of agree: the page reports the worst thing it knows.
+    return min(states, key=lambda s: _STATE_RANK[s])
+
+
+def _measured_human(reading, compare, state):
+    """The '<measured> against <target>' half of a goal row, in words."""
+    if reading.get("members") is not None:
+        # A composite reports its members, because "nothing to measure" is the
+        # wrong sentence for a check that measured three things and found one of
+        # them watched by nobody.
+        parts = []
+        for m in reading["members"]:
+            st = _state_from(m, m.get("compare") or compare)
+            lab = (m.get("source_human") or "").strip()
+            if m.get("unchecked"):
+                parts.append(("unchecked", lab or m.get("reason", "")))
+            elif m.get("error"):
+                parts.append(("broken", lab or m["error"]))
+            else:
+                parts.append((st, lab))
+        n_ok = sum(1 for st, _ in parts if st == "green")
+        bad = [(st, lab) for st, lab in parts if st != "green"]
+        head = f"{n_ok} of {len(parts)} hold"
+        if bad:
+            st0, lab0 = bad[0]
+            word = {"unchecked": "nothing watches", "broken": "could not check",
+                    "red": "fails", "amber": "is slipping", "attested": "is attested only"}.get(st0, "fails")
+            head += f" — {word}: {lab0[:110]}"
+            if len(bad) > 1:
+                head += f" (and {len(bad) - 1} more)"
+        return head
+    if reading.get("unchecked"):
+        return "nothing watches this"
+    if reading.get("attested"):
+        who = reading.get("attested_on") or "?"
+        return (f"attested {who} — expired" if reading.get("expired")
+                else f"attested by Daniel, {who}")
+    if reading.get("error"):
+        return "could not be measured: " + str(reading["error"])
+    v, unit = reading.get("value"), reading.get("unit") or ""
+    d = (compare or {}).get("direction")
+    t = (compare or {}).get("target")
+    if v is None:
+        return "nothing to measure"
+    if isinstance(v, bool):
+        where = reading.get("where") or []
+        phrase = reading.get("says_true" if v else "says_false")
+        if phrase:
+            return ("yes — " if v else "no — ") + phrase
+        if not v and where:
+            return f"no — found at {', '.join(where[:3])}" + (f" and {len(where) - 3} more" if len(where) > 3 else "")
+        label = (reading.get("source_human") or "").strip()
+        return ("yes" if v else "no") + (f" — {label}" if label else "")
+    if d == "in_set":
+        return str(v)
+    if d in ("lower_is_better", "fresher_than"):
+        # "1 records against a bar of 0 records" is arithmetic homework. A bar of
+        # zero is a sentence about whether any exist at all, so say that.
+        if t == 0:
+            # A bar of zero is a sentence about whether any exist at all. Units
+            # here are authored as singular noun phrases so the count reads like
+            # English rather than like a spreadsheet cell.
+            if not v:
+                return "none"
+            noun = unit or "of them"
+            if v != 1 and reading.get("unit_plural"):
+                noun = reading["unit_plural"]
+            else:
+                noun = _plural(v, noun)
+            return f"{v} {noun} — there should be none"
+        return f"{v}{_u(unit)} against a bar of {t}{_u(unit)}"
+    if d == "higher_is_better":
+        n, dd = _counts(reading)
+        if n is not None and (unit == "ratio" or (isinstance(t, float) and t <= 1.0)):
+            return f"{n} of {dd}" + (" — the bar is all of them" if t == 1.0 and n != dd else "")
+        return f"{v}{_u(unit)} against a target of {t}{_u(unit)}"
+    if d == "ratio":
+        n, dd = reading.get("numerator"), reading.get("denominator")
+        if n is None:
+            n, dd = _counts(reading)
+        if n is not None and dd:
+            return f"{n} of {dd}" + (" — the bar is all of them" if t == 1.0 and n != dd else "")
+        return f"{round(v * 100)}% against a bar of {round((t or 0) * 100)}%"
+    return f"{v}{_u(unit)}"
+
+
+def _u(unit):
+    if not unit:
+        return ""
+    if unit == "%":
+        return "%"
+    return " " + unit
+
+
+def _plural(n, noun):
+    """Pluralize a unit's HEAD noun. Units are authored singular ("blocked
+    project with no way out"); appending the s to the end of the phrase gives
+    "blocked project with no way outs", and leaving it off gives "3 blocked
+    project". Both were bugs the page shipped before this."""
+    if n == 1 or not noun:
+        return noun
+    head, sep, rest = noun.partition(" ")
+    head = head if head.endswith("s") else head + "s"
+    return head + sep + rest
+
+
+def _counts(reading):
+    """The (n, d) a ratio was computed from, whatever the kind called them."""
+    for a, b in (("numerator", "denominator"), ("resolvable", "total"),
+                 ("done", "total"), ("named_present", "named_total")):
+        n, d = reading.get(a), reading.get(b)
+        if n is not None and d:
+            return n, d
+    return None, None
+
+
+def eval_goal(goal):
+    """One declared goal -> the row the page renders. Never raises: a malformed
+    goal renders `broken` rather than taking down the pillar it lives on."""
+    out = dict(goal)
+    try:
+        reading = eval_measure(goal.get("measure") or {})
+        compare = goal.get("compare") or {}
+        if (goal.get("measure") or {}).get("kind") == "composite" and reading.get("members") is not None:
+            state = _composite_state(reading, compare)
+        else:
+            state = _state_from(reading, compare)
+        out["state"] = state
+        out["reading"] = reading
+        out["measured"] = reading.get("value")
+        out["measured_human"] = _measured_human(reading, compare, state)
+        out["assured"] = state in ASSURED_STATES
+        out["attestation_expired"] = bool(reading.get("expired"))
+        out["stale"] = bool(reading.get("stale"))
+    except Exception as e:
+        out["state"] = "broken"
+        out["reading"] = _reading(None, error=str(e)[:160])
+        out["measured_human"] = "could not be measured"
+        out["assured"] = False
+    return out
+
+
+def load_goals(pillar_id):
+    path = os.path.join(GOALS_DIR, pillar_id + ".json")
+    if not os.path.isfile(path):
+        return None
+    try:
+        return load_json(path)
+    except Exception:
+        return None
+
+
+def rollup(pillar_id, goals, dormant_decl, pillar_name=""):
+    """Goal states -> the pillar's level, its reasons, and its queue entries.
+
+    Three things this gets right that a naive 'red else ok' would not:
+    a broken measurement is attention (we could not check, which is not the same
+    as fine); a blocking goal nothing watches is `unassured`, not `ok`; and
+    dormancy is a separate flag, never a level that could swallow a fire."""
+    red_blocking = [g for g in goals if g["state"] == "red" and g.get("severity") == "blocking"]
+    red_other = [g for g in goals if g["state"] == "red" and g.get("severity") != "blocking"]
+    amber_blocking = [g for g in goals if g["state"] == "amber" and g.get("severity") == "blocking"]
+    broken_real = [g for g in goals if g["state"] == "broken" and g.get("severity") in ("blocking", "important")]
+    expired = [g for g in goals if g.get("attestation_expired")]
+    unchecked_blocking = [g for g in goals
+                          if g["state"] in ("unchecked", "attested") and g.get("severity") == "blocking"]
+
+    if not goals:
+        level = "unassured"          # a pillar with no goals is not a healthy pillar
+    elif red_blocking:
+        level = "fire"
+    elif red_other or amber_blocking or broken_real or expired:
+        level = "attention"
+    elif unchecked_blocking:
+        level = "unassured"
+    else:
+        level = "ok"
+
+    dormant = bool(dormant_decl)
+    if dormant and level in ("ok", "unassured"):
+        level = "dormant"
+
+    assured = sum(1 for g in goals if g["assured"])
+    failing = sorted([g for g in goals if g["state"] in ("red", "amber", "broken")],
+                     key=lambda g: (_STATE_RANK[g["state"]], 0 if g.get("severity") == "blocking" else 1))
+
+    if failing:
+        reasons = [f"{g['statement_short']} — {g['measured_human']}." for g in failing[:3]]
+    elif level == "unassured":
+        n = len([g for g in goals if not g["assured"]])
+        reasons = [f"Nothing here is failing, but {n} of {len(goals)} checks on this pillar "
+                   "are run by nobody — they hold by inspection, not by measurement."]
+    elif level == "dormant":
+        why = (dormant_decl or {}).get("reason", "Dormant by your standing instruction.")
+        src = (dormant_decl or {}).get("ruling")
+        reasons = [why + ("" if src else
+                          " Policy, not auto-checked: no ruling records this in the decision log.")]
+    elif goals:
+        unassured_n = len(goals) - assured
+        reasons = [f"All {assured} measured goals on this pillar are passing"
+                   + (f"; {unassured_n} more hold by inspection and nothing watches them."
+                      if unassured_n else ".")]
+    else:
+        reasons = [f"{pillar_name or pillar_id} declares no goals — its goal file is missing."]
+    if not reasons:
+        reasons = [f"{pillar_name or pillar_id} reports {level} with no stated reason — "
+                   "its goal file is malformed."]
+
+    notes = []
+    for g in failing:
+        if g["state"] == "red" and g.get("severity") == "blocking":
+            kind = "fire"
+        elif g["state"] == "broken":
+            kind = "watch"
+        else:
+            kind = "watch"
+        notes.append({"kind": kind, "pillar": pillar_id,
+                      "text": f"{g['statement_short']} — {g['measured_human']}",
+                      "href": f"#/pillar/{pillar_id}",
+                      "signal_key": g.get("signal_key") or f"{pillar_id}:{g['id']}"})
+    if level == "unassured" and not failing:
+        notes.append({"kind": "watch", "pillar": pillar_id, "text": reasons[0],
+                      "href": f"#/pillar/{pillar_id}",
+                      "signal_key": f"{pillar_id}:unassured"})
+
+    return {
+        "level": level,
+        "reasons": reasons,
+        "dormant": dormant,
+        "dormant_reason": (dormant_decl or {}).get("reason", ""),
+        "red_count": len(red_blocking) + len(red_other),
+        "assured": assured,
+        "total": len(goals),
+    }, notes
+
+
+# ---------------------------------------------------------------------------
 # Signals: everything on the dashboard is DERIVED — git, CI, files, docs —
 # so status can't go stale and "not on fire" is trustworthy.
 # ---------------------------------------------------------------------------
@@ -1358,9 +2565,6 @@ def _compute_signals_now():
     ci = _ci_status()
     tags = [t for t in run_cmd(["git", "tag", "-l", "v*"]).splitlines() if t]
     suite = latest_job_result("unit")
-    job_results = {j: latest_job_result(j) for j in JOBS}
-    failed_jobs = [(j, r) for j, r in job_results.items() if r and r.get("state") == "failed"]
-    green_jobs = [(j, r) for j, r in job_results.items() if r and r.get("state") == "green"]
 
     per_pillar = {}
     for p in pillars:
@@ -1370,81 +2574,35 @@ def _compute_signals_now():
             "recent": _git_last(p["git_paths"], 5),
         }
 
-    # Status per pillar: fire > attention > ok > dormant. Reasons are sentences.
-    status = {}
-
-    def set_status(pid, level, reasons):
-        status[pid] = {"level": level, "reasons": reasons}
-
-    eng_reasons = []
-    eng_level = "ok"
-    if ci["available"] and ci.get("has_completed") and not ci["green"]:
-        eng_level = "fire"
-        eng_reasons.append("CI is red on main — the newest completed run failed its checks"
-                           + (" (a newer run is still in progress)." if ci["in_progress"] else "."))
-    for j, r in failed_jobs:
-        eng_level = "fire"
-        eng_reasons.append(f"Local {r.get('label', j)} run failed: {r.get('summary', '')} (re-run it on the Engineering page — a loaded machine can skew the benchmark).")
-    if not eng_reasons:
-        def _age(r):
-            fin = r.get("finished", "")
-            return f"{fin[5:10]} {fin[11:16]}" if fin else "?"
-        fresh = "; ".join(f"{r['label']} {r.get('summary', '')} ({_age(r)})"
-                          for _, r in green_jobs[:2])
-        if ci["available"] and ci["green"]:
-            base = "CI green on main" \
-                + (f" (last known verdict, polled {ci.get('polled_at', '?')} — GitHub unreachable just now)" if ci.get("stale") else "") \
-                + "; every push runs both suites, the robot session, and the benchmark."
-        elif ci["available"] and not ci.get("has_completed"):
-            base = "CI runs on the latest pushes are still in progress — no completed verdict yet, no green claimed."
-        else:
-            base = "CI status unreachable right now — no green claimed; the local runs below are the evidence."
-        eng_reasons.append(base + (f" Local: {fresh}." if fresh else ""))
-    set_status("engineering", eng_level, eng_reasons)
-
-    # Attention-level notes that must ALSO reach the eye queue: the dashboard
-    # claims the queue is complete, so an attention reason that never surfaces
-    # there would be a quiet lie (the adversarial review's finding).
-    watch_notes = []
-
-    prod_reasons = []
-    prod_level = "ok"
-    if blocked:
-        prod_level = "attention"
-        for b in blocked:
-            prod_reasons.append(f"'{b['name']}' is blocked: {b['current_status'].split('.')[0]}.")
-    if days_since_session is not None and days_since_session > 7:
-        prod_level = "attention"
-        note = f"No playtest session in {days_since_session} days — the gate re-evidence is waiting on one."
-        prod_reasons.append(note)
-        watch_notes.append(("product", note))
-    if not prod_reasons:
-        prod_reasons.append("Nothing blocked; playtest cadence healthy.")
-    set_status("product", prod_level, prod_reasons)
-
-    newest_sprite = _newest("assets/sprites/generated", {".png"})
-    credits_when = run_cmd(["git", "log", "-1", "--format=%ad", "--date=relative", "--", "CREDITS.md"]) or "unknown"
-    set_status("art", "ok", [
-        (f"Derived: newest sheet {newest_sprite['file']} ({newest_sprite['age_days']}d old); " if newest_sprite else "")
-        + f"CREDITS.md last updated {credits_when}. "
-        + "Policy, not auto-checked: assets stay license-clean and ledgered; placeholders by design until the style guide signs."])
-
-    set_status("marketing", "dormant", ["Dormant by your ruling (marketing waits until the game picks up speed). Readiness work is tracked in the program report."])
-
-    sales_level = "ok"
-    sales_reasons = []
-    if not tags:
-        sales_level = "attention"
-        note = "No public release tag yet — 'ship early and often' is the standing ruling, and nothing has shipped."
-        sales_reasons.append(note)
-        watch_notes.append(("sales", note))
-    else:
-        sales_reasons.append(f"{len(tags)} release tag(s); latest {tags[-1]}.")
-    set_status("sales", sales_level, sales_reasons)
-
-    set_status("ops", "ok", [
-        f"Derived: CREDITS.md last updated {credits_when}. "
-        "Policy, not auto-checked: every asset's rights and cost recorded at landing; no automated spend audit exists yet."])
+    # Status per pillar: computed from the pillar's declared goals, not written
+    # here. Until this change, engineering/product/sales derived their level and
+    # art/marketing/ops carried hardcoded literals — so two of the six could
+    # never light up, and nothing on the page told a derived "under control"
+    # apart from a typed one. One evaluator now reads hq/data/goals/<pillar>.json
+    # and every pillar's level is the rollup of its own goals. A pillar with no
+    # goal file is `unassured`, never `ok`: a pillar nobody has written goals for
+    # is not a healthy pillar, it is an unexamined one.
+    #
+    # `status[pid]` keeps its {level, reasons} contract exactly — the dashboard,
+    # the nav dots, the standup brief and the chat personas all read it — and
+    # gains additive fields (dormant, assured, total, red_count) that only the
+    # new bands look at.
+    status, all_goals, watch_notes = {}, {}, []
+    for p in pillars:
+        pid = p["id"]
+        doc = load_goals(pid) or {}
+        evaluated = [eval_goal(g) for g in doc.get("goals", [])]
+        # Worst first, so the page, the reasons and the queue agree on what matters.
+        evaluated.sort(key=lambda g: (_STATE_RANK[g["state"]],
+                                      0 if g.get("severity") == "blocking" else
+                                      1 if g.get("severity") == "important" else 2))
+        roll, notes = rollup(pid, evaluated, p.get("dormant_by_ruling"), p.get("name"))
+        status[pid] = roll
+        all_goals[pid] = dict(roll, goals=evaluated,
+                              verdict_template=doc.get("verdict_template", {}),
+                              question=p.get("question", ""),
+                              tagline=p.get("tagline", ""))
+        watch_notes.extend(notes)
 
     # The Eye of Sauron: one ordered queue of what deserves the CEO's look.
     eye = []
@@ -1489,8 +2647,26 @@ def _compute_signals_now():
                     "unblocks": [_proj_row(o) for o in group],
                     "text": headline + " — unblocks " + ", ".join(o["name"] for o in group) + ".",
                     "href": f"#/project/{b['id']}"})
-    for pid, note in watch_notes:
-        eye.append({"kind": "watch", "pillar": pid, "text": note, "href": f"#/pillar/{pid}"})
+    # Goal notes. Deduped by signal_key first, so one artifact that unblocks
+    # three pillars reaches him once rather than three times: the fresh-session
+    # sitting is claimed by both Engineering and Product and belongs in the queue
+    # as one line saying so.
+    by_key = {}
+    for n in watch_notes:
+        k = n.get("signal_key")
+        prior = by_key.get(k)
+        if prior is None:
+            by_key[k] = dict(n, claimants=[n["pillar"]])
+        else:
+            prior["claimants"].append(n["pillar"])
+            if n["kind"] == "fire":
+                prior["kind"] = "fire"
+                prior["text"] = n["text"]
+                prior["href"] = n["href"]
+    for n in by_key.values():
+        if len(n["claimants"]) > 1:
+            n["text"] += f" (the same thing is holding {len(n['claimants'])} pillars)"
+        eye.append(n)
     if pending_rulings:
         eye.append({"kind": "info", "pillar": "product",
                     "text": f"{len(pending_rulings)} ruling(s) you recorded await integration by the next work session — no action needed from you.",
@@ -1520,6 +2696,8 @@ def _compute_signals_now():
         "art": {"newest_sprite": _newest("assets/sprites/generated", {".png"}),
                 "sfx_count": len([f for f in os.listdir(os.path.join(REPO, "assets/audio/sfx")) if f.endswith(".wav")])},
         "suite": suite,
+        "goals": all_goals,
+        "consistency": check_consistency(),
         "eye": eye,
     }
     data["brief_fingerprint"] = brief_fingerprint(status, eye, data["queue"], projects)
@@ -1570,6 +2748,122 @@ def api_persona(pid):
 
 
 _STANDUP_LOCK = threading.Lock()
+
+
+def api_needs(pillar_id):
+    """What this pillar needs from the CEO.
+
+    A projection, not a store. Every ask already lives in one of two queues —
+    the decision cards he rules on, and the tier-2 work items he approves — and
+    a third would be a second inbox competing with the first. So this reads
+    those, filters to the pillar by the owner's team, adds the goals whose route
+    back runs through him, ranks, and caps at three. Nothing is recorded here,
+    and no ruling is ever given here: a ruling recorded in two places diverges.
+
+    The cap is the point. A band that can grow into a backlog stops being read.
+    """
+    pillars = load_json(os.path.join(DATA, "pillars.json"))["pillars"]
+    p = next((x for x in pillars if x["id"] == pillar_id), None)
+    if not p:
+        return {"needs": [], "error": "no such pillar"}
+    org = load_org()
+    team_of = {e["id"]: e.get("team") for e in org["employees"]}
+    pillar_team = p.get("team")
+    mine = {e["id"] for e in org["employees"] if e.get("team") == pillar_team}
+
+    needs = []
+    sig = compute_signals()
+    goals = (sig.get("goals") or {}).get(pillar_id, {}).get("goals", [])
+
+    # 1. Goals whose route back runs through him. These rank first: they are the
+    #    only asks that carry a measured consequence already on the page.
+    for g in goals:
+        cb = (g.get("path_to_green") or {}).get("ceo_blocker")
+        if not cb or g["state"] in ("green",):
+            continue
+        surface = cb.get("surface") or {"kind": "none"}
+        waiting = _days_since_date(cb.get("waiting_since"))
+        needs.append({
+            "kind": cb.get("kind", "ruling"),
+            "ask": (g.get("path_to_green") or {}).get("narrative", ""),
+            "because": g["statement"],
+            "state": g["state"],
+            "consequence": cb.get("consequence", ""),
+            "waiting_days": waiting,
+            "surface": surface,
+            "href": _need_href(surface),
+            "sittings": cb.get("sittings"),
+            "duration_minutes": cb.get("duration_minutes"),
+            "goal": g["id"],
+            "rank": 0 if g["state"] == "red" else 1,
+        })
+
+    # 2. Decision cards this pillar's people own that he has not ruled on.
+    q = api_queue()
+    ruled = set(q["rulings"])
+    for c in q["curated"]:
+        if c["id"] in ruled:
+            continue
+        owner = c.get("owner")
+        card_pillar = c.get("pillar")
+        if card_pillar and card_pillar != pillar_id:
+            continue
+        if not card_pillar and (owner not in mine if owner else True):
+            continue
+        needs.append({
+            "kind": "ruling", "ask": c.get("title", c["id"]),
+            "because": (c.get("why_now") or "")[:220],
+            "consequence": "", "waiting_days": None,
+            "surface": {"kind": "decision", "id": c["id"]},
+            "href": "#/inbox", "rank": 2,
+        })
+
+    # 3. Tier-2 work this pillar's people are waiting on him to approve.
+    try:
+        items = work.items()
+    except Exception:
+        items = []
+    for it in items:
+        if it.get("state") != "needs_approval" or it.get("tier") != 2:
+            continue
+        owner = it.get("owner")
+        if it.get("pillar"):
+            if it["pillar"] != pillar_id:
+                continue
+        elif team_of.get(owner) != pillar_team:
+            continue
+        needs.append({
+            "kind": "budget", "ask": it.get("title", ""),
+            "because": (it.get("ask") or "")[:220],
+            "consequence": "", "waiting_days": _days_since_date((it.get("created") or "")[:10]),
+            "surface": {"kind": "work", "id": it["id"]},
+            "href": "#/work", "rank": 1,
+        })
+
+    needs.sort(key=lambda n: (n["rank"], -(n.get("waiting_days") or 0)))
+    # Dedupe by what the ask actually points at: two goals blocked on the same
+    # sitting are one ask, not two.
+    seen, out = set(), []
+    for n in needs:
+        key = (n["surface"].get("kind"), n["surface"].get("id"), n["kind"])
+        if key in seen and key[1]:
+            continue
+        seen.add(key)
+        out.append(n)
+    return {"needs": out[:3], "overflow": max(0, len(out) - 3),
+            "note": "Every ask here lives in the decision inbox or the work queue. "
+                    "This band carries you to it; it never records a ruling of its own."}
+
+
+def _need_href(surface):
+    kind = (surface or {}).get("kind")
+    if kind == "decision":
+        return "#/inbox"
+    if kind == "work":
+        return "#/work"
+    if kind == "project":
+        return f"#/project/{surface.get('id')}"
+    return None
 
 
 def brief_fingerprint(status, eye, queue, projects):
@@ -2068,6 +3362,20 @@ class Handler(BaseHTTPRequestHandler):
                     "sfx": sorted(f for f in os.listdir(sfx_dir) if f.endswith(".wav")),
                     "music": sorted(f for f in os.listdir(music_dir) if f.endswith((".ogg", ".wav"))),
                 })
+            if path == "/api/goals":
+                return self._send(200, compute_signals().get("goals", {}))
+            if path.startswith("/api/goals/"):
+                pid = unquote(path[len("/api/goals/"):])
+                return self._send(200, compute_signals().get("goals", {}).get(pid) or {})
+            if path.startswith("/api/needs/"):
+                return self._send(200, api_needs(unquote(path[len("/api/needs/"):])))
+            if path == "/api/ci/history":
+                return self._send(200, ci_history() or {"error": "not polled yet"})
+            if path == "/api/palette":
+                return self._send(200, palette_union())
+            if path == "/api/history":
+                q = parse_qs(parts.query)
+                return self._send(200, {"rows": read_history(q.get("name", ["runs"])[0])})
             if path == "/api/pillars":
                 return self._send(200, load_json(os.path.join(DATA, "pillars.json")))
             if path == "/api/runs":
@@ -2201,6 +3509,11 @@ def main():
     sanitize_runs()
     sanitize_outbox()
     threading.Thread(target=_drain_outbox, daemon=True).start()
+    # The 100-run CI window, polled off the request path: at --limit 100 the gh
+    # call costs about four seconds against a one-second call at --limit 10, so
+    # widening it in the render path would triple every post-TTL page visit for
+    # a strip nobody is looking at yet.
+    threading.Thread(target=_ci_history_thread, daemon=True).start()
     work.bind(sys.modules[__name__])
     studio.bind(sys.modules[__name__])
     work.start()

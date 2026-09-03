@@ -1,0 +1,218 @@
+{
+  "pillar": "marketing",
+  "note": "This pillar is dormant by the CEO's standing instruction. Dormancy suppresses quiet, never red: a public promise the build contradicts still reaches him, because the store page is the one surface outsiders can see.",
+  "verdict_template": {
+    "fire": "Dormant — and the store page is promising something the build no longer does: {worst}",
+    "attention": "{worst}",
+    "unassured": "Dormant. {dormant_reason}",
+    "ok": "Dormant, and nothing here is contradicting itself.",
+    "dormant": "Dormant. {dormant_reason}"
+  },
+  "goals": [
+    {
+      "id": "promises-hold",
+      "statement": "The store page does not promise anything the build has stopped doing.",
+      "statement_short": "the store page promises no words to read, and the build now has words to read",
+      "owner": "carmen",
+      "severity": "important",
+      "unit": "words",
+      "why_it_matters": "This is the only pillar that can be falsified by its own product. The page says 'no menus to learn and no words to read'; every English label the build adds makes that sentence less true, and a stranger can check it in ten seconds.",
+      "measure": {
+        "kind": "file_grep",
+        "label": "English labels the build asks a player to read",
+        "paths": [
+          "ui/"
+        ],
+        "exts": [
+          ".gd"
+        ],
+        "skip_comments": true,
+        "pattern": "_add_option\\(\"[A-Za-z]",
+        "expect": "absent",
+        "field": "count",
+        "unit": "English label a player has to read",
+        "unit_plural": "English labels a player has to read"
+      },
+      "compare": {
+        "direction": "lower_is_better",
+        "target": 0,
+        "amber_at": 0
+      },
+      "path_to_green": {
+        "narrative": "Either the machine menu gets pictures, or the store page stops claiming there is nothing to read. Both are honest; the gap between them is not — and it is your taste call, prepped and waiting.",
+        "route": {
+          "kind": "decision",
+          "id": "Q-87"
+        },
+        "owner": "carmen",
+        "ceo_blocker": {
+          "kind": "ruling",
+          "surface": {
+            "kind": "decision",
+            "id": "Q-87"
+          },
+          "consequence": "The wordless promise becomes something we keep only where it is easy, and the next machine panel argues from this one.",
+          "waiting_since": "2026-09-03"
+        }
+      },
+      "history": {
+        "record": true,
+        "chart": false
+      }
+    },
+    {
+      "id": "wake-trigger-written",
+      "statement": "There is a written number that turns this pillar on, so waking up is a reading rather than a feeling.",
+      "statement_short": "nothing is written down that would tell us marketing should wake up",
+      "owner": "carmen",
+      "severity": "important",
+      "unit": "",
+      "why_it_matters": "A dormant org with no trigger is not waiting, it is asleep. The difference is one sentence, and only you can write it.",
+      "measure": {
+        "kind": "count_json",
+        "path": "hq/data/pillars.json",
+        "key": "pillars",
+        "unit": "written wake triggers",
+        "label": "a number is written down that would wake this pillar up",
+        "where": [
+          [
+            "id",
+            "eq",
+            "marketing"
+          ],
+          [
+            "dormant_by_ruling.wake_trigger",
+            "empty",
+            false
+          ]
+        ],
+        "field": "bool",
+        "says_false": "nothing is written down that would wake this pillar up"
+      },
+      "compare": {
+        "direction": "must_be_true"
+      },
+      "path_to_green": {
+        "narrative": "One sentence from you: the event or the number that makes marketing worth switching on. It can be a date, a build, or a wishlist count — it only has to be checkable.",
+        "route": {
+          "kind": "none"
+        },
+        "owner": "carmen",
+        "ceo_blocker": {
+          "kind": "ruling",
+          "surface": {
+            "kind": "none"
+          },
+          "consequence": "Marketing stays off by inertia rather than by decision, and finds out late either way.",
+          "waiting_since": "2026-08-28"
+        }
+      },
+      "history": {
+        "record": false,
+        "chart": false
+      }
+    },
+    {
+      "id": "nothing-goes-public-without-your-yes",
+      "statement": "Nothing reaches the public without you pushing a tag.",
+      "statement_short": "something could reach the public without a tag you pushed",
+      "owner": "carmen",
+      "severity": "important",
+      "unit": "",
+      "why_it_matters": "A floor, not an achievement — but the one guarantee that makes a dormant marketing org safe rather than negligent.",
+      "measure": {
+        "kind": "file_grep",
+        "label": "the release workflow fires on a pushed tag and nothing else",
+        "paths": [
+          ".github/workflows/release.yml"
+        ],
+        "exts": [
+          ".yml"
+        ],
+        "pattern": "tags:",
+        "expect": "present",
+        "field": "bool"
+      },
+      "compare": {
+        "direction": "must_be_true"
+      },
+      "path_to_green": {
+        "narrative": "Nothing to do.",
+        "route": {
+          "kind": "none"
+        },
+        "owner": "carmen"
+      },
+      "history": {
+        "record": false,
+        "chart": false
+      }
+    },
+    {
+      "id": "we-would-find-out",
+      "statement": "If people showed up on the store page, we would know.",
+      "statement_short": "nobody would notice if people started arriving",
+      "owner": "amara",
+      "severity": "watch",
+      "unit": "",
+      "why_it_matters": "One public build has been live for weeks. Whether anybody has opened it is a fact nobody in this studio can state.",
+      "measure": {
+        "kind": "probe_cache",
+        "probe": "itch_daily",
+        "field": "views"
+      },
+      "compare": {
+        "direction": "higher_is_better",
+        "target": 0,
+        "amber_at": 0
+      },
+      "path_to_green": {
+        "narrative": "An itch API key, kept in the project .env like the other two. That single credential turns this whole pillar from guesses into readings.",
+        "route": {
+          "kind": "none"
+        },
+        "owner": "amara",
+        "ceo_blocker": {
+          "kind": "resource",
+          "surface": {
+            "kind": "none"
+          },
+          "consequence": "The first sign of an audience arrives by accident, or not at all.",
+          "waiting_since": "2026-08-28"
+        }
+      },
+      "history": {
+        "record": false,
+        "chart": false
+      }
+    },
+    {
+      "id": "store-copy-is-current",
+      "statement": "The store page still describes the game we have.",
+      "statement_short": "the store page has not been touched since long before the current build",
+      "owner": "carmen",
+      "severity": "watch",
+      "unit": "days",
+      "measure": {
+        "kind": "git_file_age",
+        "path": "ITCH_PAGE.md"
+      },
+      "compare": {
+        "direction": "fresher_than",
+        "target": 30,
+        "amber_at": 60
+      },
+      "path_to_green": {
+        "narrative": "Reread the page against the build before the next tag; the copy is the release's front door.",
+        "route": {
+          "kind": "none"
+        },
+        "owner": "carmen"
+      },
+      "history": {
+        "record": true,
+        "chart": false
+      }
+    }
+  ]
+}

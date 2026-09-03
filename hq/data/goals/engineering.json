@@ -1,0 +1,358 @@
+{
+  "pillar": "engineering",
+  "note": "Goal statements and targets are AUTHORED — a commitment cannot be derived. Every current value is MEASURED by hq/server.py's evaluator. A goal nothing can measure says so and counts against this pillar's assurance fraction.",
+  "verdict_template": {
+    "fire": "Red — {worst}.",
+    "attention": "{worst}",
+    "unassured": "Nothing here is failing, but {unassured} of {total} of these proofs run on nobody's schedule.",
+    "ok": "Green on main, and the proofs are fresh enough to believe.",
+    "dormant": "Dormant. {dormant_reason}"
+  },
+  "goals": [
+    {
+      "id": "main-stays-green",
+      "statement": "Main is always shippable — the newest finished run of the full suite passed.",
+      "statement_short": "the newest finished run of the suite failed on main",
+      "owner": "elena",
+      "severity": "blocking",
+      "unit": "verdict",
+      "why_it_matters": "Every other proof on this page runs on this machine. This is the one a stranger could check.",
+      "measure": {
+        "kind": "ci_state",
+        "field": "newest_completed"
+      },
+      "compare": {
+        "direction": "in_set",
+        "green_set": [
+          "success"
+        ],
+        "amber_set": [
+          "in_progress"
+        ]
+      },
+      "path_to_green": {
+        "narrative": "Open the failed run and fix what it caught.",
+        "route": {
+          "kind": "none"
+        },
+        "owner": "elena"
+      },
+      "history": {
+        "record": true,
+        "chart": false
+      },
+      "signal_key": "ci_main"
+    },
+    {
+      "id": "ci-is-not-leaking",
+      "statement": "The suite passes almost every time — failures are incidents, not a slow leak.",
+      "statement_short": "the suite fails often enough to look like a leak rather than an incident",
+      "owner": "grace",
+      "severity": "watch",
+      "unit": "%",
+      "why_it_matters": "Three failures in one afternoon is a bad day. Three spread over a month is a test nobody trusts.",
+      "measure": {
+        "kind": "ci_state",
+        "field": "pass_rate",
+        "window": 100
+      },
+      "compare": {
+        "direction": "higher_is_better",
+        "target": 95,
+        "amber_at": 90
+      },
+      "path_to_green": {
+        "narrative": "Read the failure ticks on the strip — where they cluster says whether this is one incident or a leak.",
+        "route": {
+          "kind": "none"
+        },
+        "owner": "grace"
+      },
+      "history": {
+        "record": true,
+        "chart": true
+      }
+    },
+    {
+      "id": "local-proofs-pass",
+      "statement": "Every suite that can be run from this page passed the last time it ran.",
+      "statement_short": "a suite failed the last time it ran on this machine",
+      "owner": "elena",
+      "severity": "blocking",
+      "unit": "verdict",
+      "measure": {
+        "kind": "composite",
+        "op": "worst_of",
+        "label": "the four local suites",
+        "members": [
+          {
+            "kind": "job_state",
+            "job": "unit",
+            "field": "state",
+            "compare": {
+              "direction": "in_set",
+              "green_set": [
+                "green"
+              ],
+              "amber_set": [
+                "running",
+                "never_run"
+              ]
+            }
+          },
+          {
+            "kind": "job_state",
+            "job": "integration",
+            "field": "state",
+            "compare": {
+              "direction": "in_set",
+              "green_set": [
+                "green"
+              ],
+              "amber_set": [
+                "running",
+                "never_run"
+              ]
+            }
+          },
+          {
+            "kind": "job_state",
+            "job": "robot",
+            "field": "state",
+            "compare": {
+              "direction": "in_set",
+              "green_set": [
+                "green"
+              ],
+              "amber_set": [
+                "running",
+                "never_run"
+              ]
+            }
+          },
+          {
+            "kind": "job_state",
+            "job": "benchmark",
+            "field": "state",
+            "compare": {
+              "direction": "in_set",
+              "green_set": [
+                "green"
+              ],
+              "amber_set": [
+                "running",
+                "never_run"
+              ]
+            }
+          }
+        ]
+      },
+      "compare": {
+        "direction": "in_set",
+        "green_set": [
+          "green"
+        ],
+        "amber_set": [
+          "running",
+          "never_run"
+        ]
+      },
+      "path_to_green": {
+        "narrative": "Re-run the failing suite from the buttons below — a loaded machine can skew the benchmark on its own.",
+        "route": {
+          "kind": "none"
+        },
+        "owner": "elena"
+      },
+      "history": {
+        "record": true,
+        "chart": false
+      }
+    },
+    {
+      "id": "proofs-are-fresh",
+      "statement": "Those local proofs were run against something close to what is on main now.",
+      "statement_short": "the local proofs are stale — they were run many commits ago",
+      "owner": "grace",
+      "severity": "important",
+      "unit": "commits",
+      "why_it_matters": "A green verdict from eighty commits ago and one from this commit look identical on a page. Age is the difference between proof and reassurance.",
+      "measure": {
+        "kind": "composite",
+        "op": "worst_of",
+        "label": "how far behind main the local proofs were run",
+        "members": [
+          {
+            "kind": "job_state",
+            "job": "unit",
+            "field": "age_commits",
+            "compare": {
+              "direction": "fresher_than",
+              "target": 20,
+              "amber_at": 60
+            }
+          },
+          {
+            "kind": "job_state",
+            "job": "integration",
+            "field": "age_commits",
+            "compare": {
+              "direction": "fresher_than",
+              "target": 20,
+              "amber_at": 60
+            }
+          },
+          {
+            "kind": "job_state",
+            "job": "robot",
+            "field": "age_commits",
+            "compare": {
+              "direction": "fresher_than",
+              "target": 20,
+              "amber_at": 60
+            }
+          },
+          {
+            "kind": "job_state",
+            "job": "benchmark",
+            "field": "age_commits",
+            "compare": {
+              "direction": "fresher_than",
+              "target": 20,
+              "amber_at": 60
+            }
+          }
+        ]
+      },
+      "compare": {
+        "direction": "fresher_than",
+        "target": 20,
+        "amber_at": 60
+      },
+      "path_to_green": {
+        "narrative": "Run the suites again from the buttons below — from now on each run stamps the commit it proved.",
+        "route": {
+          "kind": "none"
+        },
+        "owner": "grace"
+      },
+      "history": {
+        "record": true,
+        "chart": false
+      }
+    },
+    {
+      "id": "determinism-invariants",
+      "statement": "The rules that keep replays reproducible still hold in the code.",
+      "statement_short": "a rule that keeps replays reproducible is broken in the code",
+      "owner": "elena",
+      "severity": "blocking",
+      "unit": "rules",
+      "why_it_matters": "Recorded sessions are the training data phase 4 runs on. A break here is silent until bot training fails, which is the worst possible time to find out.",
+      "measure": {
+        "kind": "composite",
+        "op": "all_of",
+        "label": "three determinism rules",
+        "members": [
+          {
+            "kind": "file_grep",
+            "label": "no raw randomness outside the two sanctioned generators",
+            "paths": [
+              "systems/",
+              "world/",
+              "entities/",
+              "player/",
+              "crops/",
+              "autoload/",
+              "ui/",
+              "effects/"
+            ],
+            "exclude_paths": [
+              "systems/sim_rng.gd",
+              "systems/cosmetic_rng.gd"
+            ],
+            "exts": [
+              ".gd"
+            ],
+            "skip_comments": true,
+            "pattern": "(?<![.\\w])(randi|randf|randi_range|randf_range)\\s*\\(",
+            "expect": "absent",
+            "field": "bool",
+            "compare": {
+              "direction": "must_be_true"
+            }
+          },
+          {
+            "kind": "file_grep",
+            "label": "the sim layer touches no node, autoload or input",
+            "paths": [
+              "systems/sim/"
+            ],
+            "exts": [
+              ".gd"
+            ],
+            "skip_comments": true,
+            "pattern": "extends Node|get_tree\\(|Input\\.|preload\\(\"res://(ui|effects|world)",
+            "expect": "absent",
+            "field": "bool",
+            "compare": {
+              "direction": "must_be_true"
+            }
+          },
+          {
+            "kind": "unchecked",
+            "label": "one gateway for every world mutation",
+            "reason": "Nothing proves every world mutation goes through apply_action. A renderer writing straight into the grid would compile and pass both suites.",
+            "would_need": "A static check over world/, entities/ and player/ for assignments into SimWorld's fields, run as a fifth CI job."
+          }
+        ]
+      },
+      "compare": {
+        "direction": "must_be_true"
+      },
+      "path_to_green": {
+        "narrative": "Two of the three rules are grepped on every page load and hold today. The third has no checker at all; writing one is about half a day.",
+        "route": {
+          "kind": "none"
+        },
+        "owner": "elena"
+      },
+      "history": {
+        "record": true,
+        "chart": false
+      }
+    },
+    {
+      "id": "replay-corpus-usable",
+      "statement": "Recorded sessions can still be tied to the build that produced them.",
+      "statement_short": "most recorded sessions can no longer be tied to any build",
+      "owner": "grace",
+      "severity": "important",
+      "unit": "ratio",
+      "why_it_matters": "A session whose build is unresolvable cannot be replayed or scored. It is evidence that has quietly stopped being evidence.",
+      "measure": {
+        "kind": "playtest_metric",
+        "select": "all_with_trace",
+        "metric": "build_resolvable_ratio"
+      },
+      "compare": {
+        "direction": "higher_is_better",
+        "target": 1.0,
+        "amber_at": 0.8
+      },
+      "path_to_green": {
+        "narrative": "One fresh session on the tablet from a clean tree fixes this — the same sitting Product needs to close the onboarding gate.",
+        "route": {
+          "kind": "project",
+          "id": "replay-phase-b"
+        },
+        "owner": "wei"
+      },
+      "history": {
+        "record": true,
+        "chart": false
+      },
+      "signal_key": "fresh-session"
+    }
+  ]
+}

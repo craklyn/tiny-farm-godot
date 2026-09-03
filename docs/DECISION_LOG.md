@@ -191,6 +191,28 @@ the cautious tier. The reasoning: a studio where every follow-up needs the CEO's
 him the bottleneck for his own company, and "do it, then show the result" is both faster and
 safely walked back. Full statement and the tier table: `HOW_WORK_ORIGINATES.md`.
 
+### S-10. A machine that cannot obey stops, shows it, and waits
+Settled by the designer 2026-09-02, ruling Q-85: *"Better bots will improvise around it,
+but this is the first programmable bot, so it has intentionally simple behavior."* When a
+machine is given an order it cannot carry out — the path is blocked, the tile is gone, the
+target has already been handled — it halts where it stands, displays a visible distress
+state, and resumes the moment the obstruction clears. It never re-plans around the problem
+and it never fails silently.
+
+**Why it is settled and not provisional.** The alternatives both cost the player
+information: a machine that silently re-plans is indistinguishable from one that finished,
+and one that stops without a signal is indistinguishable from one that is broken. Legible
+failure is already the standing demand of `design/06` §4; this extends it from phase-4
+training mistakes to the far more common case of a machine stuck on a rock. It is also the
+first instance of P-13 in the wild — improvising around an obstacle is the capability a
+later mark earns, so the mark-1's refusal to improvise is the ladder working as designed.
+
+**What it costs.** A status frame on the machine sheets and a reportable reason on the
+actor. The sim already produces refusal reasons for the player's own blocked taps, so the
+reason plumbing largely exists; the frame does not. Under the standing rule that any actor's
+action gets the player's own treatment, the distress state carries a sound and a visual cue
+of the same weight the player's blocked tap gets.
+
 ---
 
 ## Tier 2 — Provisional (working answer + adjustment conditions)

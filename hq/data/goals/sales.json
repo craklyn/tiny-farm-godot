@@ -1,0 +1,225 @@
+{
+  "pillar": "sales",
+  "note": "The gates below are real measurements, not a count of ticked boxes in a runbook. A checkbox measures whether somebody ticked a checkbox; these read the thing itself.",
+  "verdict_template": {
+    "fire": "You cannot tag today — {worst}",
+    "attention": "{worst}",
+    "unassured": "Nothing measurable is stopping a tag, but {unassured} of {total} of the launch gates are checked by a person and nobody has looked.",
+    "ok": "Nothing stops a tag.",
+    "dormant": "Dormant. {dormant_reason}"
+  },
+  "goals": [
+    {
+      "id": "debug-text-is-off",
+      "statement": "The playtest readout is switched off, so a public build carries no debug text.",
+      "statement_short": "the playtest readout is still switched on — a public build would put debug text on screen",
+      "owner": "victor",
+      "severity": "blocking",
+      "unit": "",
+      "why_it_matters": "It is four lines of English over the top third of a tablet screen, in a game whose whole promise is that there is nothing to read. The runbook has a checkbox for it and nothing else watches it — not CI, not either suite, not a person.",
+      "measure": {
+        "kind": "file_grep",
+        "label": "ui/hud.gd's PLAYTEST_NOTES is false",
+        "paths": [
+          "ui/hud.gd"
+        ],
+        "exts": [
+          ".gd"
+        ],
+        "skip_comments": true,
+        "pattern": "const PLAYTEST_NOTES\\s*:=\\s*true",
+        "expect": "absent",
+        "field": "bool",
+        "says_true": "the playtest readout is switched off"
+      },
+      "compare": {
+        "direction": "must_be_true"
+      },
+      "path_to_green": {
+        "narrative": "One line in ui/hud.gd, flipped before the tag is cut. It is the last thing on the runbook that is genuinely one keystroke.",
+        "route": {
+          "kind": "none"
+        },
+        "owner": "victor"
+      },
+      "history": {
+        "record": true,
+        "chart": false
+      },
+      "signal_key": "ship_gate"
+    },
+    {
+      "id": "ship-drift",
+      "statement": "The public build should never fall far behind what we have actually made.",
+      "statement_short": "the public build is far behind what we have actually made",
+      "owner": "victor",
+      "severity": "important",
+      "unit": "commits",
+      "why_it_matters": "The standing ruling is ship early and often. This is the only number that says whether we are doing it — and the old rule went quiet the moment the first tag existed, however stale it got.",
+      "measure": {
+        "kind": "git_tag",
+        "pattern": "v*",
+        "field": "commits_since"
+      },
+      "compare": {
+        "direction": "fresher_than",
+        "target": 40,
+        "amber_at": 120
+      },
+      "path_to_green": {
+        "narrative": "The next tag is Player Update 1, and it is waiting on the onboarding gate closing.",
+        "route": {
+          "kind": "project",
+          "id": "public-release"
+        },
+        "owner": "victor"
+      },
+      "history": {
+        "record": true,
+        "chart": true
+      }
+    },
+    {
+      "id": "credits-screen-opens",
+      "statement": "The credits screen exists and opens — the attribution we owe actually ships.",
+      "statement_short": "the credits screen the licence depends on is not wired up",
+      "owner": "lena",
+      "severity": "blocking",
+      "unit": "",
+      "why_it_matters": "One shipped asset is attribution-required. If the screen carrying that attribution does not open in the build, the release is not licence-clean, whatever the ledger says.",
+      "measure": {
+        "kind": "file_grep",
+        "label": "a credits screen is wired into the title menu",
+        "paths": [
+          "ui/"
+        ],
+        "exts": [
+          ".gd"
+        ],
+        "skip_comments": true,
+        "pattern": "[Cc]redits",
+        "expect": "present",
+        "field": "bool",
+        "says_false": "no credits screen is wired into the title menu"
+      },
+      "compare": {
+        "direction": "must_be_true"
+      },
+      "path_to_green": {
+        "narrative": "Wire the credits screen before the tag.",
+        "route": {
+          "kind": "none"
+        },
+        "owner": "lena"
+      },
+      "history": {
+        "record": true,
+        "chart": false
+      },
+      "signal_key": "ship_gate"
+    },
+    {
+      "id": "release-is-reproducible",
+      "statement": "A release can be built by the runbook rather than from memory.",
+      "statement_short": "the export configuration a release needs is missing",
+      "owner": "lena",
+      "severity": "blocking",
+      "unit": "",
+      "measure": {
+        "kind": "composite",
+        "op": "all_of",
+        "label": "the runbook's machine parts",
+        "members": [
+          {
+            "kind": "file_exists",
+            "path": "export_presets.cfg",
+            "compare": {
+              "direction": "must_be_true"
+            }
+          },
+          {
+            "kind": "file_exists",
+            "path": "docs/DEPLOY.md",
+            "compare": {
+              "direction": "must_be_true"
+            }
+          },
+          {
+            "kind": "file_exists",
+            "path": ".github/workflows/release.yml",
+            "compare": {
+              "direction": "must_be_true"
+            }
+          }
+        ]
+      },
+      "compare": {
+        "direction": "must_be_true"
+      },
+      "path_to_green": {
+        "narrative": "Everything the runbook needs is in the repo.",
+        "route": {
+          "kind": "none"
+        },
+        "owner": "lena"
+      },
+      "history": {
+        "record": false,
+        "chart": false
+      }
+    },
+    {
+      "id": "web-build-played-through",
+      "statement": "Somebody played the actual web build end to end before it went out.",
+      "statement_short": "nobody has played the web build this release would ship",
+      "owner": "victor",
+      "severity": "blocking",
+      "unit": "",
+      "why_it_matters": "The runbook's first line, and the one nothing can automate: sound has to arrive after the first tap, and only a person in a browser can tell you it did.",
+      "measure": {
+        "kind": "unchecked",
+        "reason": "Playing a build is a human act. No file records that anyone did it, so the box in the runbook measures only whether somebody ticked a box.",
+        "would_need": "An attestation keyed to the tag being cut — your yes, dated, expiring with each release rather than standing forever."
+      },
+      "path_to_green": {
+        "narrative": "Ten minutes in a browser on the exported build, before the tag.",
+        "route": {
+          "kind": "project",
+          "id": "public-release"
+        },
+        "owner": "victor"
+      },
+      "history": {
+        "record": false,
+        "chart": false
+      },
+      "signal_key": "ship_gate"
+    },
+    {
+      "id": "visual-regression-runs",
+      "statement": "Something checks that the game still looks the way it did before the release.",
+      "statement_short": "the visual check our own docs promise is run by nobody",
+      "owner": "lena",
+      "severity": "important",
+      "unit": "",
+      "why_it_matters": "The command is in the repo's own instructions. It is in no CI workflow and in no runnable job here — a check we claim and nothing runs is worse than one we never claimed.",
+      "measure": {
+        "kind": "unchecked",
+        "reason": "tools/test_visuals.tscn needs a display, so it is in no CI workflow and in no job on the Engineering page. Nothing has ever run it on a schedule.",
+        "would_need": "Either a headless renderer in CI, or a job button here that a person presses before a tag — and a ruling on which."
+      },
+      "path_to_green": {
+        "narrative": "Decide whether the visual check is a release gate or a developer's tool. If it is a gate it needs a home; today it has neither.",
+        "route": {
+          "kind": "none"
+        },
+        "owner": "lena"
+      },
+      "history": {
+        "record": false,
+        "chart": false
+      },
+      "signal_key": "ship_gate"
+    }
+  ]
+}

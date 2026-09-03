@@ -1,5 +1,5 @@
 {
-  "note": "Pillar = a reporting line on the dashboard. Signals and accomplishments are DERIVED (git, files, CI, docs) — no hand-maintained status. 'git_paths' scope the commit feed; 'demos' point at living surfaces that read the same sources the game does.",
+  "note": "Pillar = a reporting line on the dashboard. Signals and accomplishments are DERIVED (git, files, CI, docs) — no hand-maintained status. 'git_paths' scope the commit feed; 'goals' live in hq/data/goals/<id>.json and are what the pillar's status is computed from. 'demos' point at living surfaces that read the same sources the game does.",
   "pillars": [
     {
       "id": "engineering",
@@ -8,11 +8,30 @@
       "lead": "elena",
       "team": "Engineering",
       "tagline": "The deterministic core, the pipelines, and the proof it all still works.",
-      "git_paths": ["systems/", "world/", "entities/", "player/", "tests/", "tools/", "autoload/", "main.gd"],
+      "git_paths": [
+        "systems/",
+        "world/",
+        "entities/",
+        "player/",
+        "tests/",
+        "tools/",
+        "autoload/",
+        "main.gd"
+      ],
       "demos": [
-        {"label": "Run the unit suite, live", "href": "#/pillar/engineering", "desc": "Grace's demo: the real suite, run from this page, verdict on screen."},
-        {"label": "CI on main", "href": "https://github.com/craklyn/tiny-farm-godot/actions", "desc": "Every push: unit, integration, robot session, benchmark."}
-      ]
+        {
+          "label": "Run the unit suite, live",
+          "href": "#/pillar/engineering",
+          "desc": "Grace's demo: the real suite, run from this page, verdict on screen."
+        },
+        {
+          "label": "CI on main",
+          "href": "https://github.com/craklyn/tiny-farm-godot/actions",
+          "desc": "Every push: unit, integration, robot session, benchmark."
+        }
+      ],
+      "commit_feed_label": "Shipped lately — the code behind the proofs above",
+      "question": "Does the game on main actually work right now — and is the proof fresh enough to believe?"
     },
     {
       "id": "product",
@@ -21,11 +40,26 @@
       "lead": "priya",
       "team": "Product",
       "tagline": "What ships when, what's blocked, and what the playtests actually measured.",
-      "git_paths": ["docs/ROADMAP.md", "docs/M1_5_PLAN.md", "docs/M2_5_PLAN.md", "hq/data/projects/"],
+      "git_paths": [
+        "docs/ROADMAP.md",
+        "docs/M1_5_PLAN.md",
+        "docs/M2_5_PLAN.md",
+        "hq/data/projects/"
+      ],
       "demos": [
-        {"label": "Program report", "href": "#/program", "desc": "Sofia's demo: every project, prioritized, with definition of done."},
-        {"label": "Playtest sessions", "href": "#/playtests", "desc": "Wei's demo: every recorded session, scored by the game's own metrics."}
-      ]
+        {
+          "label": "Program report",
+          "href": "#/program",
+          "desc": "Sofia's demo: every project, prioritized, with definition of done."
+        },
+        {
+          "label": "Playtest sessions",
+          "href": "#/playtests",
+          "desc": "Wei's demo: every recorded session, scored by the game's own metrics."
+        }
+      ],
+      "commit_feed_label": "My own bookkeeping — status records I edit, not features shipped",
+      "question": "When does the player get the next thing, and what is standing in front of it?"
     },
     {
       "id": "art",
@@ -34,12 +68,30 @@
       "lead": "ingrid",
       "team": "Design & Art",
       "tagline": "Every picture and sound in the build, and the docs that rule them.",
-      "git_paths": ["assets/", "CREDITS.md", "docs/design/", "docs/DESIGNER_QUEUE.md", "docs/DECISION_LOG.md"],
+      "git_paths": [
+        "assets/",
+        "CREDITS.md",
+        "docs/design/"
+      ],
       "demos": [
-        {"label": "Entity gallery", "href": "#/entities", "desc": "Yuki's demo: every sprite animated from the real sheets, editable in place."},
-        {"label": "Sound board", "href": "#/pillar/art", "desc": "Dmitri's demo: every shipped sound, played from the real files."},
-        {"label": "Design Studio", "href": "#/design", "desc": "Milo's demo: the living GDD, rendered from docs/."}
-      ]
+        {
+          "label": "Entity gallery",
+          "href": "#/entities",
+          "desc": "Yuki's demo: every sprite animated from the real sheets, editable in place."
+        },
+        {
+          "label": "Sound board",
+          "href": "#/pillar/art",
+          "desc": "Dmitri's demo: every shipped sound, played from the real files."
+        },
+        {
+          "label": "Design Studio",
+          "href": "#/design",
+          "desc": "Milo's demo: the living GDD, rendered from docs/."
+        }
+      ],
+      "commit_feed_label": "Shipped lately — pictures, sounds and the chapters that rule them",
+      "question": "What does the game look like right now — and is it still holding together as one thing?"
     },
     {
       "id": "marketing",
@@ -47,11 +99,25 @@
       "emoji": "📣",
       "lead": "carmen",
       "team": "Marketing",
-      "tagline": "Dormant by your ruling — readiness is the job until the trigger fires.",
-      "git_paths": ["ITCH_PAGE.md"],
+      "tagline": "Dormant by your ruling. Readiness is the whole job until something wakes it.",
+      "git_paths": [
+        "ITCH_PAGE.md"
+      ],
       "demos": [
-        {"label": "The itch page copy", "href": "#/pillar/marketing", "desc": "The one public-facing artifact that exists today, rendered live."}
-      ]
+        {
+          "label": "The itch page copy",
+          "href": "#/pillar/marketing",
+          "desc": "The one public-facing artifact that exists today, rendered live."
+        }
+      ],
+      "commit_feed_label": "What the public has not been told about yet",
+      "question": "If people showed up tomorrow, could we meet them — and would we even find out they had?",
+      "dormant_by_ruling": {
+        "ruling": "the CEO's standing ruling that marketing waits until the game picks up speed",
+        "since": "2026-08-28",
+        "wake_trigger": null,
+        "note": "wake_trigger is null on purpose: no number has been written that turns this pillar on. That blank is the pillar's first goal, not an oversight."
+      }
     },
     {
       "id": "sales",
@@ -59,11 +125,21 @@
       "emoji": "🤝",
       "lead": "victor",
       "team": "Sales & BD",
-      "tagline": "Storefronts, releases, and the tags that publish them.",
-      "git_paths": ["export_presets.cfg", "docs/DEPLOY.md", "android/"],
+      "tagline": "Whether we can ship today, and what is holding the tag.",
+      "git_paths": [
+        "export_presets.cfg",
+        "docs/DEPLOY.md",
+        "android/"
+      ],
       "demos": [
-        {"label": "Release history", "href": "#/pillar/sales", "desc": "Every v* tag ever pushed — publishing is a tag, never a push to main."}
-      ]
+        {
+          "label": "Release history",
+          "href": "#/pillar/sales",
+          "desc": "Every v* tag ever pushed — publishing is a tag, never a push to main."
+        }
+      ],
+      "commit_feed_label": "What the runbook learned",
+      "question": "Can we ship today — and if not, what exactly is holding the tag?"
     },
     {
       "id": "ops",
@@ -71,11 +147,22 @@
       "emoji": "💰",
       "lead": "harold",
       "team": "G&A",
-      "tagline": "Spend, support, and the license ledger that keeps releases legal.",
-      "git_paths": ["CREDITS.md", "LICENSE", ".env.example"],
+      "tagline": "Whether we may ship, and whether we can afford what's next.",
+      "git_paths": [
+        "CREDITS.md",
+        "LICENSE",
+        ".env.example",
+        "docs/DEPLOY.md"
+      ],
       "demos": [
-        {"label": "The provenance ledger", "href": "#/pillar/ops", "desc": "Every asset's rights and cost, from CREDITS.md — the real spend record."}
-      ]
+        {
+          "label": "The provenance ledger",
+          "href": "#/pillar/ops",
+          "desc": "Every asset's rights and cost, from CREDITS.md — the real spend record."
+        }
+      ],
+      "commit_feed_label": "Quiet here is good news — these files change slowly on purpose",
+      "question": "Is there anything that stops us shipping — and can we afford what's next?"
     }
   ]
 }

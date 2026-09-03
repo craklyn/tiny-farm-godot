@@ -1,0 +1,275 @@
+{
+  "pillar": "product",
+  "verdict_template": {
+    "fire": "Red — {worst}.",
+    "attention": "{worst}",
+    "unassured": "The program looks healthy, but {unassured} of {total} of its claims are nobody's job to check.",
+    "ok": "Nothing is blocked and the evidence behind these numbers is fresh.",
+    "dormant": "Dormant. {dormant_reason}"
+  },
+  "goals": [
+    {
+      "id": "sessions-record-their-conditions",
+      "statement": "Every recorded session says who played it and whether they had been coached.",
+      "statement_short": "recorded sessions do not say who played them or whether they were coached",
+      "owner": "wei",
+      "severity": "blocking",
+      "unit": "ratio",
+      "why_it_matters": "The onboarding gate's sleeping-spot bar was voided because the player had been shown the cot in an earlier session. That fact lives only in prose, so no score on this page can be trusted on its own.",
+      "measure": {
+        "kind": "composite",
+        "op": "ratio",
+        "label": "sessions with recorded conditions, over sessions with a trace",
+        "members": [
+          {
+            "kind": "file_count",
+            "dir": "playtests",
+            "glob": "*/session.json"
+          },
+          {
+            "kind": "file_count",
+            "dir": "playtests",
+            "glob": "*/session_trace.jsonl"
+          }
+        ]
+      },
+      "compare": {
+        "direction": "ratio",
+        "target": 1.0,
+        "amber_at": 0.8
+      },
+      "path_to_green": {
+        "narrative": "Backfill the existing folders from the roadmap's own prose, each marked as attested rather than measured, and teach the session puller to write it from now on.",
+        "route": {
+          "kind": "project",
+          "id": "session-conditions"
+        },
+        "owner": "wei"
+      },
+      "history": {
+        "record": true,
+        "chart": false
+      }
+    },
+    {
+      "id": "blocked-work-has-a-route",
+      "statement": "Every blocked project says what would unblock it.",
+      "statement_short": "a blocked project records no way out",
+      "owner": "sofia",
+      "severity": "blocking",
+      "unit": "projects",
+      "why_it_matters": "A blocker with no unblock action never reaches your queue. It goes quiet instead of getting solved, which is the exact failure this dashboard exists to prevent.",
+      "measure": {
+        "kind": "count_json",
+        "dir": "hq/data/projects",
+        "label": "blocked projects with no unblock action",
+        "where": [
+          [
+            "status",
+            "eq",
+            "blocked"
+          ],
+          [
+            "unblock_action",
+            "empty",
+            true
+          ]
+        ],
+        "unit": "blocked project with no way out"
+      },
+      "compare": {
+        "direction": "lower_is_better",
+        "target": 0,
+        "amber_at": 0
+      },
+      "path_to_green": {
+        "narrative": "Write the one sentence that would get each stuck project moving again.",
+        "route": {
+          "kind": "project",
+          "id": "replay-phase-b"
+        },
+        "owner": "sofia"
+      },
+      "history": {
+        "record": true,
+        "chart": false
+      }
+    },
+    {
+      "id": "gate-m15-closed",
+      "statement": "The onboarding gate is closed — a fresh player crossed every bar it sets.",
+      "statement_short": "the onboarding gate is still open on one bar",
+      "owner": "priya",
+      "severity": "important",
+      "unit": "bars",
+      "measure": {
+        "kind": "doc_section",
+        "path": "docs/ROADMAP.md",
+        "section": "Gate run recorded",
+        "pattern": "❌",
+        "field": "count",
+        "unit": "gate bar still unmet"
+      },
+      "compare": {
+        "direction": "lower_is_better",
+        "target": 0,
+        "amber_at": 1
+      },
+      "path_to_green": {
+        "narrative": "The cot presentation shipped. One unprompted fresh-player sitting scores the one open bar; the other four are regression baselines and do not need re-running.",
+        "route": {
+          "kind": "project",
+          "id": "close-m15-gate"
+        },
+        "owner": "priya"
+      },
+      "history": {
+        "record": true,
+        "chart": false
+      }
+    },
+    {
+      "id": "scoring-build-is-current",
+      "statement": "The build those playtest numbers were measured on is close to what you would ship today.",
+      "statement_short": "the newest scored session ran on a build far behind what you would ship today",
+      "owner": "priya",
+      "severity": "important",
+      "unit": "commits",
+      "why_it_matters": "Evidence rots. Every commit since the session was recorded is a change the score never saw.",
+      "measure": {
+        "kind": "git_build_lag",
+        "build_id_from": "playtest:newest_substantial"
+      },
+      "compare": {
+        "direction": "fresher_than",
+        "target": 40,
+        "amber_at": 120
+      },
+      "path_to_green": {
+        "narrative": "The same fresh sitting re-scores everything on a current build.",
+        "route": {
+          "kind": "project",
+          "id": "replay-phase-b"
+        },
+        "owner": "wei"
+      },
+      "history": {
+        "record": true,
+        "chart": false
+      },
+      "signal_key": "fresh-session"
+    },
+    {
+      "id": "evidence-is-fresh",
+      "statement": "Somebody has played the game recently enough for these numbers to mean anything.",
+      "statement_short": "nobody has played the game in over a week",
+      "owner": "wei",
+      "severity": "important",
+      "unit": "days",
+      "measure": {
+        "kind": "playtest_metric",
+        "select": "newest_with_trace",
+        "metric": "days_since",
+        "unit": "days"
+      },
+      "compare": {
+        "direction": "lower_is_better",
+        "target": 7,
+        "amber_at": 14
+      },
+      "path_to_green": {
+        "narrative": "One sitting on the tablet.",
+        "route": {
+          "kind": "project",
+          "id": "replay-phase-b"
+        },
+        "owner": "wei"
+      },
+      "history": {
+        "record": true,
+        "chart": false
+      },
+      "signal_key": "fresh-session"
+    },
+    {
+      "id": "dead-taps-under-the-bar",
+      "statement": "Taps that achieve nothing stay at or under the bar the last gate set.",
+      "statement_short": "dead taps are back above the bar the gate set",
+      "owner": "wei",
+      "severity": "important",
+      "unit": "%",
+      "why_it_matters": "A tap that does nothing is the game failing to answer. It is the closest thing this project has to a frustration meter.",
+      "measure": {
+        "kind": "playtest_metric",
+        "select": "newest_substantial",
+        "metric": "wasted_pct",
+        "unit": "%"
+      },
+      "compare": {
+        "direction": "lower_is_better",
+        "target": 12,
+        "amber_at": 17
+      },
+      "path_to_green": {
+        "narrative": "Open the newest session in the scrubber and look at what refused.",
+        "route": {
+          "kind": "none"
+        },
+        "owner": "wei"
+      },
+      "history": {
+        "record": true,
+        "chart": true
+      }
+    },
+    {
+      "id": "nothing-blocked-too-long",
+      "statement": "Nothing has been stuck waiting for longer than a week.",
+      "statement_short": "something has been stuck waiting for over a week",
+      "owner": "sofia",
+      "severity": "important",
+      "unit": "days",
+      "measure": {
+        "kind": "project_field",
+        "project": "*",
+        "field": "blocked_since",
+        "derive": "max_days_since",
+        "where": [
+          [
+            "status",
+            "eq",
+            "blocked"
+          ]
+        ]
+      },
+      "compare": {
+        "direction": "lower_is_better",
+        "target": 7,
+        "amber_at": 14
+      },
+      "path_to_green": {
+        "narrative": "The look session and the audio discussion are both waiting on a date from you.",
+        "route": {
+          "kind": "project",
+          "id": "art-audio-direction"
+        },
+        "owner": "sofia",
+        "ceo_blocker": {
+          "kind": "calendar",
+          "surface": {
+            "kind": "project",
+            "id": "art-audio-direction"
+          },
+          "duration_minutes": null,
+          "sittings": 2,
+          "consequence": "The look guide stays unsigned and the audio direction stays unstarted.",
+          "waiting_since": "2026-09-02"
+        }
+      },
+      "history": {
+        "record": true,
+        "chart": true
+      }
+    }
+  ]
+}

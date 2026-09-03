@@ -39,3 +39,13 @@
 - Picked: **(a) Keep it a dev tool for now**
 - In his words: Let's add a design decision somewhere (not prioritized now) on whether we create an in-game beastiary.
 - Status: pending integration into docs/DESIGNER_QUEUE.md
+
+## Q-84 — ruled 2026-09-02T23:08:35
+- Picked: **(c) Leave it unruled for now**
+- In his words: Once we have the mechanics figured out for phases 1 and 2, let's have a design review for how the characters should be represented in the game
+- Status: integrated 2026-09-03 — Q-84 in docs/DESIGNER_QUEUE.md now defers the silhouette rule to a single character-representation review held after phase-1/2 mechanics are fixed, rather than settling it piecemeal at M3.
+
+## Q-85 — ruled 2026-09-02T23:19:14
+- Picked: **(a) Stop, show it, wait**
+- In his words: Better bots will improvise around it, but this is the first programmable bot, so it has intentionally simple behavior.
+- Status: integrated 2026-09-03 — recorded as S-10 in docs/DECISION_LOG.md (a machine that cannot obey stops, shows it, and waits) and annotated on Q-85 in docs/DESIGNER_QUEUE.md. The status frame and reportable reason are outstanding build work.
