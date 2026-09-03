@@ -9,7 +9,7 @@
 config_version=5
 
 [application]
-config/build_id="v0.1.0-148-gf58af1b-dirty"
+config/build_id="v0.1.0-150-g1048b18-dirty"
 
 config/name="Tiny Farm"
 run/main_scene="res://ui/title_screen.tscn"

@@ -1,4 +1,4 @@
-{"base_save":{},"build_id":"v0.1.0-148-gf58af1b-dirty","gen_seed":20260830,"version":2}
+{"base_save":{},"build_id":"v0.1.0-150-g1048b18-dirty","gen_seed":20260830,"version":2}
 {"actor":"neighbour","target":[16,4],"tick":0,"verb":"water"}
 {"actor":"neighbour","target":[17,4],"tick":0,"verb":"water"}
 {"actor":"world","tick":0,"verb":"sleep","weather":"rainy"}

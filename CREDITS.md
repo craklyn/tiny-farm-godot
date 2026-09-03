@@ -179,7 +179,7 @@ before the first public build ships.*
   as the source `tools/gen_yard_ground.py` derives the yard's lawn from.
 - **T-38, the app icon, 2026-09-02** — **generated, $0.53** (same Retro Diffusion
   pipeline and rights as the 2026-08-26 block above). Sources in
-  `assets/icon/parts/` (`farmer.png`, `axe.png`, `drone.png` — background-keyed and
+  `assets/icon/parts/` (`farmer.png`, `drone.png` — background-keyed and
   trimmed, committed so `tools/gen_icon.py` reproduces every output size from Pillow
   alone); composed outputs in `assets/icon/` and `icon.png`. The prompts are recorded
   in the `retro-diffusion-pixel-art` skill's `styles/tiny-farm.md`.
@@ -197,6 +197,14 @@ before the first public build ships.*
     hand from the generated handle and its own steel ramp. Both were discarded anyway:
     see `tools/gen_icon.py` for why a long thin handle cannot read as a tool at 48px,
     and why the axe that replaced it can.
+  - **Revised the same day, on the designer's eye.** The first version leaned the
+    generated axe at her shoulder; shown the result, they said it "doesn't look right"
+    and it came out, leaving the straw hat to carry the farm on its own — which was the
+    brief's own first option. `axe.png` was deleted from `parts/` rather than left
+    unused; it is in the history of the commit that added it. The drone moved with it,
+    down and left to sit half as far off her hat (18.8px to 9.0px at 192, measured
+    between the two shapes rather than their bounding boxes — the brim's diagonal makes
+    those very different numbers).
   - **Not generated:** the field the subject sits on (a two-stop green gradient with a
     corner vignette, drawn in `tools/gen_icon.py`) and the composition itself. Layout is
     never bought from the generator — one subject per call, arranged locally, which is

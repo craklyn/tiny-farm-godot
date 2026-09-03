@@ -14,14 +14,15 @@ The designer's brief, in their own words: the farmer, and "at least one piece of
 iconography that's more clearly farmer — either a farm implement, or a farm
 identifier, or a piece of clothing", with the note that a near-future read is
 welcome because "late game there will be many elements of technology" and the
-farm learns to defend itself. So: her face under a wide straw hat, goggles
-pushed up on the brim, an axe leaning at her shoulder, and a drone hovering off
-the hat.
+farm learns to defend itself. What ships is her face under a wide straw hat,
+goggles pushed up on the brim, and a drone hovering just off the hat.
 
-Four things is one thing too many for an icon, and the layout below is the
-result of testing that claim rather than asserting it. Every candidate was
-rendered at 48 pixels — the size a launcher actually draws — before being
-judged, because at that size only the silhouette survives:
+**There is no tool in it, and that is the designer's call on seeing it.** The
+first shipped version leaned an axe at her shoulder; their verdict was that it
+"doesn't look right", and it came out. The straw hat carries the farm on its
+own, which was the point of the brief and is the one part of this that small
+sizes agree with. The rest of the search is kept here because it cost real money
+and would otherwise be repeated:
 
 - **The straw hat is doing the work.** Overalls and a face read as "a person";
   the brim is what reads as "a farm". It changes the outline, and outline is all
@@ -29,13 +30,19 @@ judged, because at that size only the silhouette survives:
 - **A hoe was tried first and abandoned.** The generator would not produce one
   (it returned spades for three differently-worded prompts), and the two drawn
   by hand — one upright, one leaning — both read as a fencepost at small size: a
-  long thin handle is a line, and a line is not a tool. The designer then opened
-  the door to any implement, and an axe settled it. A wedge head is a *mass*,
-  and mass survives being shrunk.
-- **A terracotta watering can lost to the axe** for a reason worth writing down:
-  it was perfectly legible on its own and vanished in place, because its warm
+  long thin handle is a line, and a line is not a tool.
+- **An axe read best of the implements and still lost.** A wedge head is a
+  *mass*, and mass is what survives shrinking, so it beat the hoe and the
+  pitchfork on the only test that matters. It was cut anyway on the designer's
+  eye at full size — legibility bought it a place in the running, not a place in
+  the icon.
+- **A terracotta watering can went out earlier** for a reason worth keeping: it
+  was perfectly legible on its own and vanished in place, because its warm
   orange sat on top of her rust jumpsuit. Contrast against the *background* is
   not enough; a companion element needs contrast against whatever it overlaps.
+
+The axe art is not in `assets/icon/parts/` any more. It is in this commit's
+history if a later icon wants it.
 
 ## Sizes, and why the two icons are not the same picture
 
@@ -81,13 +88,16 @@ VIGNETTE = 0.22  # corners darkened, so the subject holds up under a round mask
 # parts carry their own proportions — they are drawn at the size the art is,
 # times the box's shared factor — so there is nothing here to keep in sync.
 FARMER_Y = 0.28
-AXE_XY = (0.00, 0.44)
-DRONE_XY = (0.52, 0.05)
+# The drone sits 9px off her hat at 192 — half the 18.8px it stood off in the
+# first shipped version, measured as the true distance between the two shapes
+# rather than between their bounding boxes, which the hat brim's diagonal makes
+# a very different number.
+DRONE_XY = (0.4742, 0.0886)
 
 # How much of an adaptive canvas the arrangement uses. Android guarantees only
 # the central 66%, but an icon built to that is visibly timid next to its
 # neighbours, and no shipping launcher mask actually crops to it. 78% is the
-# width at which the axe head and the drone's outer rotors still clear a circle.
+# width at which the drone's outer rotors and the hat's brim still clear a circle.
 SAFE_BOX = 0.78
 
 
@@ -137,11 +147,11 @@ def field(size, vignette=VIGNETTE):
 
 
 def subject(size, box_frac=1.0):
-    """The farmer, her axe and the drone on transparency.
+    """The farmer and the drone on transparency.
 
     `box_frac` is how much of the canvas the arrangement is allowed to use. The
     flat icon takes all of it; an adaptive foreground takes a centred slice, so
-    the launcher's mask cannot cut a wing off the drone or the head off the axe.
+    the launcher's mask cannot cut a wing off the drone or the brim off her hat.
     """
     canvas = Image.new("RGBA", (size, size))
     box = size * box_frac
@@ -152,13 +162,10 @@ def subject(size, box_frac=1.0):
         return (int(origin + box * fx), int(origin + box * fy))
 
     farmer = upscale(part("farmer"), f)
-    axe = upscale(part("axe"), f)
     drone = upscale(part("drone"), f)
 
     _, fy = at(0, FARMER_Y)
     canvas.alpha_composite(farmer, ((size - farmer.width) // 2, fy))
-    # The axe goes on *top* of her: behind the brim it was swallowed whole.
-    canvas.alpha_composite(axe, at(*AXE_XY))
     canvas.alpha_composite(drone, at(*DRONE_XY))
     return canvas
 
