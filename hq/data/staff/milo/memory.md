@@ -1,0 +1,1 @@
+- (2026-09-02) The studio has no technical writer seat, so game design notes come to you — you already own the design drafts and the playtest write-ups. First one filed under this: the missing plant sound (docs/design/10-audio-direction.md).
