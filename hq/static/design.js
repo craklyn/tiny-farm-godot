@@ -181,12 +181,15 @@ function annotateDoc(body, docPath) {
   const headings = [...body.querySelectorAll("h1,h2,h3,h4")];
   headings.forEach(el => { el.id = slugify(el.textContent.trim(), used); });
   // Queue items are `**Q-n**` bold runs, not headings — anchor those too.
+  // Roadmap stories (T-n) and decision ids in bold get anchors too, not only
+  // queue items: a feature on the Sales page cites the story that carries it,
+  // and without an anchor there is nowhere for that citation to land.
   body.querySelectorAll("strong,b").forEach(el => {
-    const m = el.textContent.trim().match(/^(Q-\d+)\b/);
+    const m = el.textContent.trim().match(/^([SPDQT]-\d+)\b/);
     if (m && !used.has(m[1])) { el.id = m[1]; used.add(m[1]); }
   });
   // Citations in prose become links to the exact entry they cite.
-  const CITE = /\b([SPD]-\d+|Q-\d+)\b/g;
+  const CITE = /\b([SPD]-\d+|Q-\d+|T-\d+)\b/g;
   const walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT, {
     acceptNode: n => n.parentElement.closest("a,pre,code,h1,h2,h3,h4")
       ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT,
@@ -200,7 +203,8 @@ function annotateDoc(body, docPath) {
       fragm.appendChild(document.createTextNode(n.nodeValue.slice(last, idx)));
       const a = document.createElement("a");
       a.className = "cite";
-      const target = id.startsWith("Q-") ? DOC_QUEUE : DOC_LOG;
+      const target = id.startsWith("Q-") ? DOC_QUEUE
+        : id.startsWith("T-") ? "docs/ROADMAP.md" : DOC_LOG;
       a.href = (target === docPath && used.has(id)) ? "#" + id : docHref(target, id);
       a.textContent = id;
       fragm.appendChild(a);

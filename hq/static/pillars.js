@@ -743,7 +743,10 @@ async function instSales(root, below, sig, g, ctx) {
   // answer to this page's question, not decoration under it.
   const man = await api("/api/manifest/update-1").catch(() => null);
   const rel = man && man.releases && man.releases[0];
-  if (ctx && rel) ctx.replaceChildren(h(manifestStrip(rel, days, tag)));
+  if (ctx && rel) {
+    ctx.replaceChildren(h(manifestStrip(rel, days, tag)));
+    wireManifest(ctx);
+  }
 
   root.replaceChildren(h(`
     <h2>The launch check <span class="small muted">— ${machine.length} of ${gates.length} checked by machine</span></h2>
@@ -820,23 +823,71 @@ function manifestStrip(rel, days, tag) {
     not_built: ["ms-none", "promised, not started"],
     shipped: ["ms-out", "already out"],
   };
-  const cells = feats.map(f => {
-    const [cls, word] = STATE[f.state] || STATE.not_built;
-    return `<i class="ms-cell ${cls}" tabindex="0"
-      title="${esc(f.headline)} — ${word}${f.note ? ` (${esc(f.note)})` : ""}"></i>`;
+
+  // Where a feature lives. Every one of these has a home in the repo — the
+  // decision that settled it, the story that carries it, or the project
+  // building it — and a row that names a feature and goes nowhere is a dead end.
+  const homeOf = f => {
+    if (f.project) return { href: `#/project/${f.project}`,
+                            label: f.project_name ? `Open “${f.project_name}”` : "Open the project" };
+    const ev = f.evidence || "";
+    if (/^Q-\d+$/.test(ev)) return { href: docAnchor("docs/DESIGNER_QUEUE.md", ev), label: `Read ${ev}` };
+    if (/^T-\d+$/.test(ev)) return { href: docAnchor("docs/ROADMAP.md", ev), label: `Read ${ev}` };
+    if (/^[SPD]-\d+$/.test(ev)) return { href: docAnchor("docs/DECISION_LOG.md", ev), label: `Read ${ev}` };
+    return null;
+  };
+
+  // The sentence the server used to write. It handed the page
+  // "1 of 5 steps done on A stuck machine says so" — a project name run into a
+  // clause with nothing marking the join. Facts from the server, sentence here,
+  // and the project's name is a link rather than the tail of a phrase.
+  const progressOf = f => {
+    if (f.broken_ref) return `cites a project that does not exist (${esc(f.broken_ref)})`;
+    if (f.steps_total) return `${f.steps_done} of ${f.steps_total} steps done`;
+    if (f.project_name && f.state === "not_built") return "not started yet";
+    return "";
+  };
+
+  const detail = f => {
+    const [, word] = STATE[f.state] || STATE.not_built;
+    const prog = progressOf(f);
+    const home = homeOf(f);
+    return `<div class="ms-pop">
+      <b>${esc(f.headline)}</b>
+      <div class="ms-pop-state"><i class="ms-dot ${(STATE[f.state] || STATE.not_built)[0]}"></i>${esc(word)}${prog ? ` · ${esc(prog)}` : ""}</div>
+      <div class="small">${esc(f.for_players || "")}</div>
+      ${f.landed && f.landed.length ? `<div class="small muted ms-pop-commits">Landed in ${
+        f.landed.map(c => `<code class="ref">${esc(c.hash)}</code>`).join(" ")}${
+        f.commits > f.landed.length ? ` and ${f.commits - f.landed.length} more` : ""}</div>` : ""}
+      ${home ? `<div class="small muted">${esc(home.label)} →</div>` : ""}
+    </div>`;
+  };
+
+  const cells = feats.map((f, i) => {
+    const [cls] = STATE[f.state] || STATE.not_built;
+    // Hover or focus shows the whole card; click opens the list at that row.
+    // A bare coloured block that only whispers a native tooltip was the thing
+    // that "didn't convey much and didn't let me dive deeper".
+    return `<button class="ms-cell ${cls}" data-feat="${esc(f.id)}"
+      aria-label="${esc(f.headline)}">${detail(f)}</button>`;
   }).join("");
+
   const rows = feats.map(f => {
     const [cls, word] = STATE[f.state] || STATE.not_built;
-    return `<div class="ms-row">
+    const prog = progressOf(f);
+    const home = homeOf(f);
+    return `<div class="ms-row" id="feat-${esc(f.id)}">
       <i class="ms-dot ${cls}" title="${esc(word)}"></i>
       <div>
         <b>${esc(f.headline)}</b>
         <div class="small muted">${esc(f.for_players || "")}</div>
-        ${f.note ? `<div class="small ms-note">${esc(f.note)}</div>` : ""}
+        <div class="small ms-sub">${esc(word)}${prog ? ` · ${esc(prog)}` : ""}</div>
       </div>
-      <span class="ms-state">${esc(word)}</span>
+      ${home ? `<a class="gbtn" href="${esc(home.href)}">${esc(home.label)}</a>`
+             : `<span class="ms-state">no record cited</span>`}
     </div>`;
   }).join("");
+
   return `<div class="card mscard">
     <div class="ms-head">
       <div class="ms-num">${rel.ready}</div>
@@ -851,10 +902,32 @@ function manifestStrip(rel, days, tag) {
       ${rel.in_progress ? `<span><i class="ms-dot ms-wip"></i>${rel.in_progress} still being built</span>` : ""}
       ${rel.not_built ? `<span><i class="ms-dot ms-none"></i>${rel.not_built} promised, not started</span>` : ""}
       ${rel.shipped ? `<span><i class="ms-dot ms-out"></i>${rel.shipped} already out</span>` : ""}
+      <span class="ms-hint">hover any block for what it is; click to open it below</span>
     </div>
-    <details class="ms-fold"><summary>What each one is, in a player's words</summary>
+    <details class="ms-fold"><summary>Details</summary>
       <div class="ms-rows">${rows}</div></details>
   </div>`;
+}
+
+function docAnchor(path, anchor) {
+  return `#/design/doc/${encodeURIComponent(path)}@${encodeURIComponent(anchor)}`;
+}
+
+/* Clicking a block opens the list at its row and flashes it, so the strip is a
+   way into the detail rather than a decoration above it. */
+function wireManifest(root) {
+  root.querySelectorAll(".ms-cell").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const fold = root.querySelector(".ms-fold");
+      if (fold) fold.open = true;
+      const row = root.querySelector("#feat-" + CSS.escape(btn.dataset.feat));
+      if (!row) return;
+      row.scrollIntoView({ block: "nearest" });
+      row.classList.remove("ms-flash");
+      void row.offsetWidth;
+      row.classList.add("ms-flash");
+    });
+  });
 }
 
 /* ================= OPS — the permission, and the countdown =================

@@ -1726,21 +1726,30 @@ def release_manifest(release_id=None):
             # with no code behind it at all. So a feature may name the project
             # carrying it, and an unfinished project overrules the git evidence:
             # what we decided and what a player can do are different facts.
-            note = None
+            # Structured, not a sentence. The page used to be handed
+            # "1 of 5 steps done on A stuck machine says so" — a project's name
+            # jammed into a clause with nothing marking where the clause ended,
+            # which reads as garbage. The server reports the facts; the page
+            # writes the sentence and can make the project's name a link.
             proj_id = f.get("project")
+            proj_name = proj_done = proj_total = None
+            broken_ref = None
             if proj_id:
                 proj = next((x for x in load_projects() if x["id"] == proj_id), None)
                 if proj is None:
-                    note = f"cites a project that does not exist ({proj_id})"
+                    broken_ref = proj_id
                     state = "not_built"
                 elif proj["status"] != "done":
-                    done = sum(1 for st in proj.get("plan", []) if st.get("done"))
-                    total = len(proj.get("plan", []))
-                    state = "in_progress" if done else "not_built"
-                    note = (f"{done} of {total} steps done on {proj['name']}" if total
-                            else proj["name"] + " has not started")
+                    proj_name = proj["name"]
+                    proj_done = sum(1 for st in proj.get("plan", []) if st.get("done"))
+                    proj_total = len(proj.get("plan", []))
+                    state = "in_progress" if proj_done else "not_built"
+                elif proj["status"] == "done":
+                    proj_name = proj["name"]
             feats.append({**f, "state": state, "commits": after, "landed": landed,
-                          "note": note, "project": proj_id})
+                          "project": proj_id, "project_name": proj_name,
+                          "steps_done": proj_done, "steps_total": proj_total,
+                          "broken_ref": broken_ref})
         # Sort so the wall reads as inventory: what we can sell, then what we
         # still owe. Never declaration order.
         rank = {"ready": 0, "in_progress": 1, "not_built": 2, "shipped": 3}

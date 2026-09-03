@@ -832,8 +832,34 @@ code.ref { background: #1b1710; border: 1px solid var(--line); border-radius: 6p
 .ms-num { font-size: 44px; font-weight: 800; line-height: 1; color: var(--green); font-variant-numeric: tabular-nums; }
 .ms-lede { flex: 1; min-width: 0; }
 .msstrip { display: flex; gap: 3px; height: 30px; }
-.ms-cell { flex: 1; border-radius: 3px; cursor: default; transition: transform .08s; }
-.ms-cell:hover, .ms-cell:focus { transform: scaleY(1.18); outline: none; }
+/* Each block carries its own card. A coloured rectangle with a native tooltip
+   conveys nothing and leads nowhere — hovering has to show what the thing IS,
+   and clicking has to take you to it. */
+.ms-cell {
+  flex: 1; border-radius: 3px; cursor: pointer; padding: 0; border: 0;
+  position: relative; transition: transform .08s;
+}
+.ms-cell:hover, .ms-cell:focus-visible { transform: scaleY(1.18); outline: none; }
+.ms-pop {
+  position: absolute; left: 50%; top: calc(100% + 9px); transform: translateX(-50%);
+  width: 310px; max-width: 78vw; text-align: left; z-index: 40;
+  background: var(--panel2); border: 1px solid var(--accent); border-radius: 10px;
+  padding: 11px 13px; color: var(--text); box-shadow: 0 8px 22px #0009;
+  opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .1s;
+  white-space: normal; font-weight: 400;
+}
+.ms-cell:hover .ms-pop, .ms-cell:focus-visible .ms-pop { opacity: 1; visibility: visible; }
+/* Blocks near the right edge open leftward so the card never leaves the page. */
+.ms-cell:nth-last-child(-n+3) .ms-pop { left: auto; right: 0; transform: none; }
+.ms-cell:nth-child(-n+3) .ms-pop { left: 0; right: auto; transform: none; }
+.ms-pop b { display: block; margin-bottom: 4px; }
+.ms-pop-state { font-size: 12px; color: var(--muted); display: flex; align-items: center; margin-bottom: 6px; }
+.ms-pop-commits { margin-top: 6px; }
+.ms-hint { color: var(--muted); font-style: italic; }
+.ms-sub { color: var(--muted); margin-top: 3px; }
+.ms-flash { animation: ms-flash 1.1s ease-out; }
+@keyframes ms-flash { from { background: #e8b04b33; } to { background: transparent; } }
+@media (prefers-reduced-motion: reduce) { .ms-flash { animation: none; outline: 1px solid var(--accent); } }
 .ms-dot { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 6px; flex-shrink: 0; }
 .ms-ready { background: var(--green); }
 .ms-wip { background: #e0912e; }
@@ -844,6 +870,7 @@ code.ref { background: #1b1710; border: 1px solid var(--line); border-radius: 6p
 .ms-rows { border-top: 1px solid var(--line); margin-top: 8px; }
 .ms-row {
   display: grid; grid-template-columns: 12px 1fr auto; gap: 10px;
+  border-radius: 6px;
   align-items: start; padding: 9px 0; border-bottom: 1px solid var(--line);
 }
 .ms-row:last-child { border-bottom: 0; }
