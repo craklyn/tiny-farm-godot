@@ -1,11 +1,12 @@
 {
   "pillar": "product",
   "verdict_template": {
-    "fire": "Red — {worst}.",
+    "fire": "{worst}",
     "attention": "{worst}",
     "unassured": "The program looks healthy, but {unassured} of {total} of its claims are nobody's job to check.",
     "ok": "Nothing is blocked and the evidence behind these numbers is fresh.",
-    "dormant": "Dormant. {dormant_reason}"
+    "dormant": "Dormant. {dormant_reason}",
+    "nothing_for_you": "Nothing here needs you. {ours_line}"
   },
   "goals": [
     {

@@ -135,7 +135,7 @@ Art's palette ribbon is the single licensed exception to *colour = semantics*,
 and it says so on the page. The PNG decoding is stdlib `zlib` + `struct`, cached
 on the sheets' mtimes.
 
-## The five rules a pillar page has to meet
+## The six rules a pillar page has to meet
 
 Learned the hard way, mostly from the CEO reading the Sales page as its actual
 audience rather than as its author. Any new pillar, band or instrument is held
@@ -174,7 +174,19 @@ table now. *Goal statements and targets are authored, because a commitment
 cannot be derived. Everything else on a pillar page is read from the thing
 itself, or it says out loud that nobody is checking it.*
 
-**5. Every element is readable without instruction, and is a way in.** A chart
+**5. Only what needs him reaches him.** Every finding has an owner and a tier,
+and those already decide whose it is. Work the studio can just do — reading,
+tracing, drafting, anything git reverts — is labelled *ours*, filed, and reaches
+him as a count. Only two things earn the top of his page: something needing his
+taste or authority, and something we could have fixed and left sitting long
+enough that the delay is the news. The verdict band used to promote the *worst*
+finding, and worst is not the same as his: tracing an unattributed sound file
+was the headline on the Finance page, which spends the CEO's attention on
+something that should simply have been done. *Corollary: no HQ-internal
+vocabulary on a surface he reads. "A shipped asset has no ledger line" means
+nothing to anybody who does not work on this codebase.*
+
+**6. Every element is readable without instruction, and is a way in.** A chart
 that needs a sentence underneath explaining how to read it has failed as a
 chart; the labels go on the chart. A coloured block that only whispers a native
 tooltip conveys nothing and leads nowhere; hovering shows what the thing is and

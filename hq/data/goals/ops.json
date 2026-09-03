@@ -2,17 +2,18 @@
   "pillar": "ops",
   "note": "The money goals stay red until hq/data/spend.json exists. A balance nothing records is not a number this page may draw — the ledger's own figures do not reconcile with the vendor by about twenty cents, and charting prose would launder that gap.",
   "verdict_template": {
-    "fire": "Red — {worst}.",
+    "fire": "{worst}",
     "attention": "{worst}",
     "unassured": "Nothing is failing, but {unassured} of {total} of these obligations are checked by somebody remembering to look.",
-    "ok": "Nothing owed, nothing unrecorded, nothing blocking a release.",
-    "dormant": "Dormant. {dormant_reason}"
+    "ok": "Nothing owed, nothing unrecorded, and nobody waiting on a reply.",
+    "dormant": "Dormant. {dormant_reason}",
+    "nothing_for_you": "Nothing here needs you. {ours_line}"
   },
   "goals": [
     {
       "id": "spend-is-recorded",
-      "statement": "Every pound this studio spends is written somewhere a machine can read.",
-      "statement_short": "there is no machine-readable record of what this studio spends",
+      "statement": "Every pound this studio spends is written down somewhere a machine can add up.",
+      "statement_short": "nothing adds up what this studio has spent",
       "owner": "harold",
       "severity": "important",
       "unit": "",
@@ -47,12 +48,12 @@
     },
     {
       "id": "every-asset-is-ledgered",
-      "statement": "Nothing ships whose rights we have not written down.",
-      "statement_short": "a shipped asset has no ledger line, so its terms are unknown",
+      "statement": "Nothing ships until we have written down where it came from and whether we may use it.",
+      "statement_short": "a sound in the game has no record of where it came from",
       "owner": "harold",
       "severity": "blocking",
       "unit": "orphans",
-      "why_it_matters": "CREDITS.md's own opening rule is that every entry must have verified terms before the first public build ships. An asset with no entry is not cleared — it is unexamined, which is the release-blocking kind of unknown.",
+      "why_it_matters": "One sound file is in the build with nothing anywhere saying who made it, what its terms are, or what it cost. That is not a small bookkeeping gap: an asset whose rights nobody has established is the kind of unknown that stops a public release, and it stays invisible until somebody looks.",
       "measure": {
         "kind": "orphan_files",
         "dir": "assets/audio/sfx",
@@ -62,7 +63,8 @@
         "referenced_in": [
           "CREDITS.md"
         ],
-        "unit": "shipped file with no ledger line"
+        "unit": "shipped file with no record of where it came from",
+        "unit_plural": "shipped files with no record of where they came from"
       },
       "compare": {
         "direction": "lower_is_better",
@@ -204,7 +206,7 @@
     {
       "id": "model-budget-is-recorded",
       "statement": "We can say what the studio's largest recurring cost is doing over time.",
-      "statement_short": "the studio's biggest running cost has no history at all",
+      "statement_short": "the studio's biggest running cost is never written down",
       "owner": "harold",
       "severity": "important",
       "unit": "",

@@ -2625,6 +2625,15 @@ def eval_goal(goal):
         out["assured"] = state in ASSURED_STATES
         out["attestation_expired"] = bool(reading.get("expired"))
         out["stale"] = bool(reading.get("stale"))
+        # Whose problem is this? The answer was already in the record and
+        # nothing was reading it. A goal blocked on his taste or his authority
+        # is his; a goal whose fix is ordinary work the studio can just do is
+        # ours, and promoting one of those to the top of his page spends his
+        # attention on something that should simply have been done.
+        p2g = goal.get("path_to_green") or {}
+        act = p2g.get("action") or {}
+        out["needs_you"] = bool(p2g.get("ceo_blocker")) or act.get("tier") == 2
+        out["ours"] = state not in ("green",) and not out["needs_you"]
     except Exception as e:
         out["state"] = "broken"
         out["reading"] = _reading(None, error=str(e)[:160])
@@ -2674,11 +2683,24 @@ def rollup(pillar_id, goals, dormant_decl, pillar_name=""):
         level = "dormant"
 
     assured = sum(1 for g in goals if g["assured"])
+    yours = [g for g in goals if g.get("needs_you") and g["state"] != "green"]
+    ours = [g for g in goals if g.get("ours")]
     failing = sorted([g for g in goals if g["state"] in ("red", "amber", "broken")],
                      key=lambda g: (_STATE_RANK[g["state"]], 0 if g.get("severity") == "blocking" else 1))
 
     if failing:
-        reasons = [f"{g['statement_short']} — {g['measured_human']}." for g in failing[:3]]
+        # His reasons first. A pillar whose problems are all ours to fix says
+        # so plainly rather than handing him a list he cannot act on.
+        mine = [g for g in failing if g.get("needs_you")]
+        rest = [g for g in failing if not g.get("needs_you")]
+        reasons = [f"{g['statement_short']} — {g['measured_human']}." for g in mine[:2]]
+        if rest and not reasons:
+            n = len(rest)
+            reasons = [f"{n} thing{'' if n == 1 else 's'} here need doing and "
+                       f"{'it is' if n == 1 else 'they are'} ours, not yours — "
+                       + rest[0]["statement_short"] + ", and the rest are on the pillar's page."]
+        elif rest:
+            reasons.append(f"{len(rest)} more, all of them ours to fix.")
     elif level == "unassured":
         n = len([g for g in goals if not g["assured"]])
         reasons = [f"Nothing here is failing, but {n} of {len(goals)} checks on this pillar "
@@ -2701,16 +2723,22 @@ def rollup(pillar_id, goals, dormant_decl, pillar_name=""):
 
     notes = []
     for g in failing:
-        if g["state"] == "red" and g.get("severity") == "blocking":
-            kind = "fire"
-        elif g["state"] == "broken":
-            kind = "watch"
-        else:
-            kind = "watch"
+        if not g.get("needs_you"):
+            continue           # ours to fix; it does not belong in his queue
+        kind = "fire" if (g["state"] == "red" and g.get("severity") == "blocking") else "watch"
         notes.append({"kind": kind, "pillar": pillar_id,
                       "text": f"{g['statement_short']} — {g['measured_human']}",
                       "href": f"#/pillar/{pillar_id}",
                       "signal_key": g.get("signal_key") or f"{pillar_id}:{g['id']}"})
+    # The rest reach him as a count and nothing more: he should know the pillar
+    # has work outstanding without being handed work he cannot act on.
+    mine_ids = {g["id"] for g in failing if g.get("needs_you")}
+    others = [g for g in failing if g["id"] not in mine_ids]
+    if others:
+        notes.append({"kind": "ours", "pillar": pillar_id, "count": len(others),
+                      "name": pillar_name or pillar_id,
+                      "href": f"#/pillar/{pillar_id}",
+                      "signal_key": f"{pillar_id}:ours"})
     if level == "unassured" and not failing:
         notes.append({"kind": "watch", "pillar": pillar_id, "text": reasons[0],
                       "href": f"#/pillar/{pillar_id}",
@@ -2722,6 +2750,8 @@ def rollup(pillar_id, goals, dormant_decl, pillar_name=""):
         "dormant": dormant,
         "dormant_reason": (dormant_decl or {}).get("reason", ""),
         "red_count": len(red_blocking) + len(red_other),
+        "needs_you": len(yours),
+        "ours": len(ours),
         "assured": assured,
         "total": len(goals),
     }, notes
@@ -2967,10 +2997,25 @@ def _compute_signals_now():
                 prior["kind"] = "fire"
                 prior["text"] = n["text"]
                 prior["href"] = n["href"]
+    # Work the studio can do on its own reaches him as ONE line, not one per
+    # pillar. Six rows all saying "no decision needed from you" is a different
+    # way of spending the attention this split exists to save.
+    ours_notes = [n for n in by_key.values() if n["kind"] == "ours"]
     for n in by_key.values():
+        if n["kind"] == "ours":
+            continue
         if len(n["claimants"]) > 1:
             n["text"] += f" (the same thing is holding {len(n['claimants'])} pillars)"
         eye.append(n)
+    if ours_notes:
+        total = sum(n["count"] for n in ours_notes)
+        where = ", ".join(f"{n['name'].split(' &')[0]} {n['count']}"
+                          for n in sorted(ours_notes, key=lambda x: -x["count"]))
+        eye.append({"kind": "info", "pillar": "product",
+                    "text": f"{total} other thing{'' if total == 1 else 's'} need doing across "
+                            f"{len(ours_notes)} pillar{'' if len(ours_notes) == 1 else 's'} — all of "
+                            f"them the studio's own work, none of them a decision for you ({where}).",
+                    "href": "#/"})
     if pending_rulings:
         eye.append({"kind": "info", "pillar": "product",
                     "text": f"{len(pending_rulings)} ruling(s) you recorded await integration by the next work session — no action needed from you.",

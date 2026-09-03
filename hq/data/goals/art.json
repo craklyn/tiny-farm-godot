@@ -1,17 +1,18 @@
 {
   "pillar": "art",
   "verdict_template": {
-    "fire": "Red — {worst}.",
+    "fire": "{worst}",
     "attention": "{worst}",
     "unassured": "Nothing is visibly wrong, but {unassured} of {total} of the things holding this look together are checked by eye alone.",
     "ok": "The look is holding, and what checks it runs on every page load.",
-    "dormant": "Dormant. {dormant_reason}"
+    "dormant": "Dormant. {dormant_reason}",
+    "nothing_for_you": "Nothing here needs you. {ours_line}"
   },
   "goals": [
     {
       "id": "every-asset-is-ledgered",
-      "statement": "Every shipped picture and sound has a line in the provenance ledger.",
-      "statement_short": "a shipped asset has no line in the provenance ledger",
+      "statement": "Every picture and sound in the game has a written record of where it came from.",
+      "statement_short": "a sound in the game has no record of where it came from",
       "owner": "ingrid",
       "severity": "important",
       "unit": "orphans",
@@ -25,7 +26,8 @@
         "referenced_in": [
           "CREDITS.md"
         ],
-        "unit": "shipped file with no ledger line"
+        "unit": "shipped file with no record of where it came from",
+        "unit_plural": "shipped files with no record of where they came from"
       },
       "compare": {
         "direction": "lower_is_better",

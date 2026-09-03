@@ -108,20 +108,34 @@ function consistencyBanner(sig, pid) {
    the pillar actually answers. */
 function verdictLine(g) {
   const t = g.verdict_template || {};
-  const worst = (g.goals || []).find(x => ["red", "broken", "amber"].includes(x.state));
-  let text = t[g.level] || "";
+  const failing = (g.goals || []).filter(x => ["red", "broken", "amber"].includes(x.state));
+  // The headline is the worst thing that needs HIM, never just the worst thing.
+  // Tracing an unattributed sound file and writing its entry is ordinary work;
+  // putting it at the top of the CEO's page spends his attention on something
+  // that should simply have been done.
+  const yours = failing.filter(x => x.needs_you);
+  const ours = failing.filter(x => !x.needs_you);
+  const worst = yours[0] || null;
+  const oursLine = ours.length
+    ? `${ours.length} thing${ours.length === 1 ? " is" : "s are"} outstanding here and ${ours.length === 1 ? "it is" : "they are"} ours to do.`
+    : "";
+  let text = worst ? (t[g.level] || "") : (t.nothing_for_you || "");
   const fill = {
     // The reading is only worth appending when it adds a number. A yes/no just
     // restates the sentence it follows ("the readout is still on — no").
     worst: worst ? worst.statement_short + (
       /^(yes|no)\b/.test(worst.measured_human || "") ? "" : ` — ${worst.measured_human}`) : "",
+    ours_line: oursLine,
     unassured: String(g.total - g.assured),
     total: String(g.total),
     dormant_reason: g.dormant_reason || "",
   };
   text = text.replace(/\{(\w+)\}/g, (_, k) => fill[k] != null ? fill[k] : "");
   if (!text.trim()) text = (g.reasons && g.reasons[0]) || "This pillar declares no goals.";
-  const cls = g.level === "fire" ? "vd-bad" : g.level === "attention" ? "vd-warn"
+  // A pillar with real work outstanding but nothing needing him is not an alarm
+  // on his page, whatever its health level says.
+  const cls = !worst ? "vd-ours"
+    : g.level === "fire" ? "vd-bad" : g.level === "attention" ? "vd-warn"
     : g.level === "unassured" ? "vd-unas" : g.level === "dormant" ? "vd-dorm" : "vd-ok";
   // It has to be unmistakably a reading rather than a heading: a sentence in
   // large type with a coloured rule beside it is indistinguishable from page
@@ -130,7 +144,8 @@ function verdictLine(g) {
   // was worked out — the three things that mark a number as live in HQ.
   const m = LEVEL_META[g.level] || LEVEL_META.ok;
   return `<div class="verdictbox ${cls}">
-    <div class="vd-cap"><i class="dot ${m.dcls}"></i>Right now${
+    <div class="vd-cap"><i class="dot ${worst ? m.dcls : "d-dorm"}"></i>${
+      worst ? "Needs you" : "Nothing needs you"}${
       g.derived_at ? ` · worked out at ${esc(g.derived_at)}` : ""}</div>
     <p class="verdict">${esc(text)}</p>
   </div>`;
@@ -176,6 +191,9 @@ function goalRow(g) {
   } else if (g.state !== "green" && route.kind === "none") {
     routeHtml = `<span class="g-orphan">no route recorded</span>`;
   }
+  const whose = g.state === "green" ? "" :
+    g.needs_you ? `<span class="g-whose yours">yours</span>`
+                : `<span class="g-whose ours">ours</span>`;
   const owner = g.state === "green" || !p2g.owner ? "" :
     ` <span class="g-owner">— <a class="plain" data-person="${esc(p2g.owner)}">${esc(p2g.owner)}</a> owns it</span>`;
   if (g.state === "attested" && !(g.reading || {}).expired) {
@@ -192,7 +210,7 @@ function goalRow(g) {
   return `<div class="goalrow gs-${g.state}${mine ? " is-yours" : ""}">
     <i class="dot ${m.dcls}" title="${m.word}"></i>
     <div class="g-body">
-      <div class="g-stmt">${esc(g.statement)}</div>
+      <div class="g-stmt">${esc(g.statement)}${whose}</div>
       <div class="g-meas">${esc(g.measured_human)}${stale}</div>
       ${why}${note}
     </div>

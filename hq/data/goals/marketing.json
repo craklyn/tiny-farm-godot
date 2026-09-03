@@ -2,11 +2,12 @@
   "pillar": "marketing",
   "note": "This pillar is dormant by the CEO's standing instruction. Dormancy suppresses quiet, never red: a public promise the build contradicts still reaches him, because the store page is the one surface outsiders can see.",
   "verdict_template": {
-    "fire": "Dormant — and the store page is promising something the build no longer does: {worst}",
+    "fire": "{worst}",
     "attention": "{worst}",
     "unassured": "Dormant. {dormant_reason}",
     "ok": "Dormant, and nothing here is contradicting itself.",
-    "dormant": "Dormant. {dormant_reason}"
+    "dormant": "Dormant. {dormant_reason}",
+    "nothing_for_you": "Nothing here needs you. {ours_line}"
   },
   "goals": [
     {

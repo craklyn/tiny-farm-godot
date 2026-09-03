@@ -1010,3 +1010,14 @@ code.ref { background: #1b1710; border: 1px solid var(--line); border-radius: 6p
 .credrow .pill { text-decoration: none; color: var(--text); }
 .credrow .pill:hover { border-color: var(--accent); }
 .credrow .pill.bad { border-color: var(--red); }
+/* Whose problem it is, on the row and in the verdict. The page used to promote
+   the worst finding, and "worst" is not the same as "his" — ordinary work the
+   studio can just do should never be the first thing he reads. */
+.verdictbox.vd-ours { border-left-color: var(--muted); }
+.verdictbox.vd-ours .verdict { font-weight: 500; }
+.g-whose {
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+  border-radius: 999px; padding: 1px 7px; margin-left: 8px; vertical-align: 1px;
+}
+.g-whose.yours { background: var(--accent); color: #1d1608; }
+.g-whose.ours { background: var(--panel2); color: var(--muted); }

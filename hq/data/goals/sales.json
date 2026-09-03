@@ -2,11 +2,12 @@
   "pillar": "sales",
   "note": "The gates below are real measurements, not a count of ticked boxes in a runbook. A checkbox measures whether somebody ticked a checkbox; these read the thing itself.",
   "verdict_template": {
-    "fire": "You cannot tag today — {worst}",
+    "fire": "{worst}",
     "attention": "{worst}",
     "unassured": "Nothing measurable is stopping a tag, but {unassured} of {total} of the launch gates are checked by a person and nobody has looked.",
     "ok": "Nothing stops a tag.",
-    "dormant": "Dormant. {dormant_reason}"
+    "dormant": "Dormant. {dormant_reason}",
+    "nothing_for_you": "Nothing here needs you. {ours_line}"
   },
   "goals": [
     {

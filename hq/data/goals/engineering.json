@@ -2,11 +2,12 @@
   "pillar": "engineering",
   "note": "Goal statements and targets are AUTHORED — a commitment cannot be derived. Every current value is MEASURED by hq/server.py's evaluator. A goal nothing can measure says so and counts against this pillar's assurance fraction.",
   "verdict_template": {
-    "fire": "Red — {worst}.",
+    "fire": "{worst}",
     "attention": "{worst}",
     "unassured": "Nothing here is failing, but {unassured} of {total} of these proofs run on nobody's schedule.",
     "ok": "Green on main, and the proofs are fresh enough to believe.",
-    "dormant": "Dormant. {dormant_reason}"
+    "dormant": "Dormant. {dormant_reason}",
+    "nothing_for_you": "Nothing here needs you. {ours_line}"
   },
   "goals": [
     {
