@@ -1,0 +1,19 @@
+{
+  "id": "wd5b69e9972d",
+  "title": "Hold the foley recording session until the look is picked",
+  "level": "task",
+  "owner": "dmitri",
+  "tier": 1,
+  "tier_reason": "Pausing a scheduled session is a plan change, but it is easily resumed once the look lands.",
+  "ask": "Hold the foley session until I've picked a look.",
+  "first_action": "Take the foley recording session off the schedule and keep license hygiene and sound-direction prep running in the meantime.",
+  "state": "waiting_session",
+  "thread": "claude",
+  "source": "chat",
+  "source_message": "Yes - go ahead and get the look session captures rendered for me first, and tell Dmitri to hold the foley session until I've picked a look.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-02T21:56",
+  "created_ts": 1788411371.3008063
+}
