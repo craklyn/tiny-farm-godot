@@ -108,7 +108,7 @@ const DISCOVERY_NAMES: Array[String] = [
 	"B · purpose pips",
 ]
 const DISCOVERY_BLURBS: Array[String] = [
-	"nothing until first need — teaching_focus alone",
+	"nothing until she needs it — the game as it is today",
 	"an unused station catches the light now and then",
 	"a glyph floats over the station that is the answer",
 ]

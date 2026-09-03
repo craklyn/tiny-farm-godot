@@ -1218,6 +1218,26 @@ never touched. Session: `playtests/2026-08-31_230643`.*
   not on the tablet, and a rendered sheet reaches him wherever he is. (c) stays cheap to
   add later because it would consume the same scenario definitions — and the one thing
   stills genuinely cannot judge is a pulse's speed, which is the case to reach for it.
+  **✅ Ruled 2026-09-02: (b), the recommendation taken.** Built and validated the same
+  sitting against the three questions that were already answered, so the rig could be
+  checked against rulings whose right answer is known:
+  `tools/look_scenarios.gd` (the questions and the conditions each needs),
+  `tools/capture_looks.tscn` (stages them in the real `main.tscn` and photographs every
+  draft), `tools/compose_look_sheets.py` (crops, enlarges and labels them into one sheet
+  per question, plus a two-exposure `motion.png` for anything whose argument is that it
+  moves). Adding a question is one entry plus one arm of the staging match; the drafts
+  themselves always come from `systems/look_lab.gd`, so a sheet cannot offer a draft the
+  game cannot draw. Four things the validation pass caught, all of which would have
+  produced a confidently wrong sheet: the subject was located by typing coordinates out
+  of a design doc (the cot moved three tiles on 2026-09-01, so the bed was not in shot —
+  objects are looked up in the sim now); the drafts were switched *after* the scenario
+  was staged, so a staged tap was answered by the previous draft; the animals wandered
+  between exposures, which put a difference in the panels that was not the one being
+  asked about (they are frozen for the session); and a draft that is an *event* rather
+  than a state was photographed either before it started or after it ended (the glint
+  swells for a third of a second — the rig now waits for the event and then waits out
+  its peak). *Still open, deliberately:* the sheets are delivered by hand. Wiring them
+  to an HQ decision card as attachments is the obvious next step and is not done.
 
 ## Before M3 — phase 2 design
 

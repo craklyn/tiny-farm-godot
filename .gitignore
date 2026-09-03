@@ -29,5 +29,10 @@ tools/tile_preview.png
 # SFX preview render (regenerate with tools/gen_sfx.py --preview)
 tools/sfx_preview.png
 
+# Look-session captures (Q-86). Regenerate with tools/capture_looks.tscn and
+# tools/compose_look_sheets.py; a sheet is committed only when it is attached to
+# a decision card.
+tools/looks/
+
 # Last wireless-debugging address used by tools/deploy_android.sh
 .adb_target
