@@ -177,6 +177,35 @@ before the first public build ships.*
   candidates were generated in the one call; the rejected one was another flat noise,
   i.e. the thing the ruling said was not enough. `terrain_grass.png` stays in the repo
   as the source `tools/gen_yard_ground.py` derives the yard's lawn from.
+- **T-38, the app icon, 2026-09-02** — **generated, $0.53** (same Retro Diffusion
+  pipeline and rights as the 2026-08-26 block above). Sources in
+  `assets/icon/parts/` (`farmer.png`, `axe.png`, `drone.png` — background-keyed and
+  trimmed, committed so `tools/gen_icon.py` reproduces every output size from Pillow
+  alone); composed outputs in `assets/icon/` and `icon.png`. The prompts are recorded
+  in the `retro-diffusion-pixel-art` skill's `styles/tiny-farm.md`.
+  - **What it replaced, and why it had failed.** `icon.svg` — a blue rounded rectangle
+    with the letters "TF" in an SVG `<text>` element. Godot's SVG rasteriser does not
+    render text, so the tablet's taskbar had been showing a featureless blue box. No
+    error was ever raised. Every icon here is a PNG for that reason.
+  - **What the $0.53 bought, including the misses**, since the frugality rule only
+    means anything if the waste is written down too. Eight two-image calls at $0.066:
+    three subject concepts (sprout / wheat / farmer bust) to choose a direction; three
+    farmer variants (straw hat, hat with pitchfork, near-future); a drone and a hoe; an
+    axe and a watering can. Four calls fed the shipped icon. The hoe was the expensive
+    lesson — **the model returns a spade for every wording of "hoe" tried**, including
+    one that spelled out the right angle and the L shape, so two hoes were then drawn by
+    hand from the generated handle and its own steel ramp. Both were discarded anyway:
+    see `tools/gen_icon.py` for why a long thin handle cannot read as a tool at 48px,
+    and why the axe that replaced it can.
+  - **Not generated:** the field the subject sits on (a two-stop green gradient with a
+    corner vignette, drawn in `tools/gen_icon.py`) and the composition itself. Layout is
+    never bought from the generator — one subject per call, arranged locally, which is
+    the standing rule of the pipeline.
+  - **One palette note.** The drone's body carries the violet `#5c4e92` that the style
+    guide reserves as the *character's* outline. That reservation exists because violet
+    outlines on plants read as mould; on a machine it reads as a machine, and the drone
+    needs to separate from both the green field and her rust jumpsuit. Deliberate, and
+    recorded here so it is not later mistaken for drift.
 - **Sprout Lands asset pack** by Cup Nooble — *removed 2026-08-26* (Q-7c ruling:
   drop restrictively-licensed assets; its free license forbids redistribution and
   this repo is public). Q-7b license findings recorded in the git history of this
