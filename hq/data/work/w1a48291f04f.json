@@ -17,5 +17,44 @@
   "created": "2026-09-02T21:56",
   "created_ts": 1788411371.3004904,
   "finished": "2026-09-02T21:58",
-  "follow_ups": []
+  "follow_ups": [
+    {
+      "title": "Confirm the four looks we test",
+      "owner": "ingrid",
+      "level": "task",
+      "tier": 1,
+      "first_action": "Read the four proposed treatments and either sign off or replace one, writing the final list into the style guide's look-session note",
+      "why": "The art director owns which looks are worth the CEO's attention before anyone renders them."
+    },
+    {
+      "title": "Capture the base frame and produce the three recolors",
+      "owner": "jade",
+      "level": "task",
+      "tier": 1,
+      "first_action": "On the desktop, run the game to day three mid-morning on seed 12345 with the player and one station in frame, save the frame, and grade the warm and cool variants from it",
+      "why": "Three of the four looks are a recolor of one captured frame, so this is the whole render job minus the spend."
+    },
+    {
+      "title": "Generate the higher-fidelity sprite sheet",
+      "owner": "yuki",
+      "level": "task",
+      "tier": 2,
+      "first_action": "Generate one sheet at more shading steps per material through the pixel-art pipeline, palette-locked, and record the cost and provenance",
+      "why": "This is the only treatment that can't be faked, and it's the half of the choice about how detailed the game should look."
+    },
+    {
+      "title": "Bring the four looks back for the pick",
+      "owner": "claude",
+      "level": "task",
+      "tier": 0,
+      "first_action": "Assemble the four captures side by side in HQ and open a decision card with a plain-language quiz and a recommendation",
+      "why": "The session only pays off when he actually picks a look from them."
+    }
+  ],
+  "recommend": {
+    "question": "Do we pay for the more-detailed sprite sheet, or test color only?",
+    "answer": "Pay for it — put all four looks in front of you",
+    "why": "Color you can judge any time; how detailed the game looks is the direction you'd otherwise be guessing at, and it's one cheap sheet.",
+    "instead": "Run the three free recolors first and only spend if color alone doesn't settle it — safer, but costs a round trip before you get the real answer."
+  }
 }

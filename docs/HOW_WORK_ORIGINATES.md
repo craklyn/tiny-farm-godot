@@ -99,6 +99,26 @@ A follow-up enters at **its own** tier, never the parent's. A risky follow-up fr
 result still comes back to him as its own "ask first" card; it does not ride in on the
 acceptance of something harmless. Once he accepts, the card records what his yes started.
 
+### A card that asks a question carries the answer
+
+Settled by the CEO on 2026-09-03, looking at a finished result that ended by asking him
+which of four looks to test:
+
+> "This ticket should have a recommendation that I can approve. Right now it's an open
+> ended question that does nothing if I approve."
+
+An accept button under an open question is a decision point that decides nothing. So when
+a result leaves a real choice that is his, the card carries a **recommendation**: the
+question in one line, the recommended answer, the one reason that decides it, and the
+alternative he might reasonably prefer, named honestly. The follow-ups on that card are
+the work that carries the recommendation out, so **accepting the card is taking it** — and
+the answer is recorded on the card even when no work follows. Refusing it is equally
+concrete: dropping says the question stays open and nothing is filed, and Respond is there
+for "I'd rather do the other thing".
+
+A recommendation is omitted entirely when the result raises no choice. A manufactured
+question costs him more than a missing one.
+
 ## What is not automated yet
 
 - **Tier 1 execution.** The repo edits are queued for a build session rather than performed

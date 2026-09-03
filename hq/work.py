@@ -266,6 +266,17 @@ def _parse_items(raw):
 #   {...}       -> exactly what accepting will file, in full, in advance
 FOLLOW_MARK = "---WHAT FOLLOWS---"
 
+RECOMMEND_NOTE = """If your result leaves a real choice that is his to make, you must recommend an
+answer — his yes has to settle something. Ending on an open question and then
+offering him an accept button is a decision point that decides nothing, which
+is exactly what he has told us not to build. Add:
+
+ "recommend": {"question": "the choice, in one line and in his terms", "answer": "what you recommend he does", "why": "the one reason that decides it", "instead": "the alternative he might reasonably prefer, named honestly"}
+
+and make the items above the work that carries that recommendation out, so that
+accepting the card IS taking it. Leave "recommend" out entirely when the result
+raises no choice — a manufactured question costs him more than a missing one."""
+
 AMEND_NOTE = (
     "\nIf what you have just said changes what this card itself is — its title,\n"
     "what it is asking for, or the next step — add an \"amend\" object saying what\n"
@@ -299,7 +310,8 @@ def _clean_follow(raw, org, fallback_owner):
 
 
 def _parse_follows(tail, org, fallback_owner):
-    """(everything accepting would file, an amendment to this item or None).
+    """(everything accepting would file, an amendment to this item or None, the
+    recommendation his yes takes or None).
 
     One result can imply several pieces of work — a reply naming a fix for the
     tool, a sweep for the artist and a pipeline check for the engineer is three
@@ -307,16 +319,16 @@ def _parse_follows(tail, org, fallback_owner):
     past that it is a plan, and a plan is its own item."""
     txt = (tail or "").strip()
     if not txt or txt.upper().startswith("NONE"):
-        return [], None
+        return [], None, None
     if txt.startswith("```"):
         txt = re.sub(r"^```[a-z]*\n?|```$", "", txt).strip()
     start, end = txt.find("{"), txt.rfind("}")
     if start < 0 or end <= start:
-        return [], None
+        return [], None, None
     try:
         doc = json.loads(txt[start:end + 1])
     except Exception:
-        return [], None
+        return [], None, None
     raw = doc.get("items")
     if raw is None and doc.get("title"):
         raw = [doc]                      # a lone object is still one item
@@ -329,19 +341,29 @@ def _parse_follows(tail, org, fallback_owner):
             amend["title"] = amend["title"][:160]
     else:
         amend = None
-    return [g for g in got if g], (amend or None)
+    # A choice he is being asked to make arrives with the answer proposed, so
+    # that accepting the card settles it. A card that ends on an open question
+    # and offers him an accept button decides nothing.
+    rec = doc.get("recommend")
+    if isinstance(rec, dict) and str(rec.get("answer") or "").strip():
+        rec = {k: str(rec.get(k) or "").strip()[:400]
+               for k in ("question", "answer", "why", "instead")}
+    else:
+        rec = None
+    return [g for g in got if g], (amend or None), rec
 
 
 def _split_result(text, org, fallback_owner):
     """(the deliverable he reads, what accepting it would file or None if the
-    reply never said, any amendment to the item itself). The block is stripped
-    from the result — it is machinery for the card, not part of the work."""
+    reply never said, any amendment to the item itself, the recommendation his
+    yes takes). The block is stripped from the result — it is machinery for the
+    card, not part of the work."""
     raw = text or ""
     if FOLLOW_MARK not in raw:
-        return raw.strip(), None, None
+        return raw.strip(), None, None, None
     body, _, tail = raw.partition(FOLLOW_MARK)
-    got, amend = _parse_follows(tail, org, fallback_owner)
-    return body.strip(), got, amend
+    got, amend, rec = _parse_follows(tail, org, fallback_owner)
+    return body.strip(), got, amend, rec
 
 
 def follow_ups(item):
@@ -414,7 +436,9 @@ it actually is, by id, from this roster:
 
 NONE is the honest answer more often than not, and inventing work to look busy
 costs him the attention this system exists to protect. But a gap you noticed
-and did not file is a gap he has to remember for you — name it."""
+and did not file is a gap he has to remember for you — name it.
+
+{RECOMMEND_NOTE}"""
 
 
 # ---------------------------------------------------------------------------
@@ -515,11 +539,12 @@ def _process_item(item, org):
         item["started"] = ""
         save_item(item)
         return False
-    body, got, _amend = _split_result(text, org, item["owner"])
+    body, got, _amend, rec = _split_result(text, org, item["owner"])
     item["result"] = body or "(no result came back)"
     if got is not None:
         item.pop("follow_up", None)
         item["follow_ups"] = got
+        item["recommend"] = rec or {}
     item["state"] = "for_review"
     item["finished"] = _now_iso()
     save_item(item)
@@ -577,7 +602,7 @@ def _process_response(item, org):
                             "Read,Glob,Grep", HOST.MAX_TURNS, 300)
     if limited:
         return False
-    text, got, amend = _split_result(raw, org, item["owner"])
+    text, got, amend, rec = _split_result(raw, org, item["owner"])
     # Re-read: he may have typed again while the owner was thinking, and his
     # message must not be lost to a stale copy of the item.
     fresh = HOST.load_json(_item_path(item["id"]))
@@ -603,6 +628,7 @@ def _process_response(item, org):
     # keeps showing a consequence worked out before the conversation.
     fresh.pop("follow_up", None)
     fresh["follow_ups"] = got or []
+    fresh["recommend"] = rec or {}
     save_item(fresh)
     last_from_him = next((m["text"] for m in reversed(convo)
                           if m.get("role") == "daniel"), "")
@@ -630,12 +656,13 @@ THE RESULT HE IS LOOKING AT:
                              "", 1, 180)
     if limited:
         return False
-    body, got, _ = _split_result(text, org, item["owner"])
+    body, got, _amend, rec = _split_result(text, org, item["owner"])
     if got is None:
         # No marker came back; the whole reply is the block.
-        got, _amend = _parse_follows(text, org, item["owner"])
+        got, _amend, rec = _parse_follows(text, org, item["owner"])
     item.pop("follow_up", None)
     item["follow_ups"] = got or []
+    item["recommend"] = rec or {}
     save_item(item)
     return True
 
@@ -756,6 +783,12 @@ def api_post(path, payload):
         # His yes starts exactly the work the card showed him and nothing else.
         # The follow-up enters at its own tier, so a risky one still comes back
         # to him rather than riding in on the acceptance of something safe.
+        # A yes on a card that recommended something is the answer to the
+        # question, and the record has to say so even when no work follows.
+        rec = item.get("recommend") or {}
+        if rec.get("answer"):
+            item["decided"] = {"question": rec.get("question", ""),
+                               "answer": rec["answer"], "at": _now_iso()}
         started = []
         for fu in follow_ups(item):
             org = HOST.load_org()

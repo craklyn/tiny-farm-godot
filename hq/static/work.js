@@ -82,6 +82,34 @@ function followUpBox(fus, org) {
   </div>`;
 }
 
+/* A card that raises a choice carries the answer to it. His rule, 2026-09-03:
+   "This ticket should have a recommendation that I can approve. Right now it's
+   an open ended question that does nothing if I approve." So the question, the
+   recommended answer, the reason and the honest alternative sit together right
+   above the buttons — and accepting the card is taking the recommendation. */
+function recommendOf(it) {
+  const r = it.recommend;
+  return r && r.answer ? r : null;
+}
+
+function recommendBlock(it) {
+  const r = recommendOf(it);
+  if (!r) return "";
+  return `<div class="w-rec">
+    <div class="w-rec-h">The call to make</div>
+    ${r.question ? `<p class="w-rec-q">${esc(r.question)}</p>` : ""}
+    <p class="w-rec-a"><span class="w-rec-tag">Recommended</span> ${esc(r.answer)}</p>
+    ${r.why ? `<p class="w-rec-p muted">${esc(r.why)}</p>` : ""}
+    ${r.instead ? `<p class="w-rec-p"><b>If you'd rather:</b> ${esc(r.instead)} — say so with Respond, or send it back for another go.</p>` : ""}
+  </div>`;
+}
+
+function decidedNote(it) {
+  const d = it.decided;
+  if (!d || !d.answer) return "";
+  return `<p class="w-spawned">You took: <b>${esc(d.answer)}</b></p>`;
+}
+
 function consequence(it, org) {
   const first = ownerOf(org, it.owner).name.split(" ")[0];
   const rows = [];
@@ -91,16 +119,22 @@ function consequence(it, org) {
     rows.push(["Not this", `Filed as dropped. Nothing is created and nothing changes.`]);
   } else if (it.state === "for_review") {
     const fus = followUps(it);
+    const rec = recommendOf(it);
+    const takes = rec ? `Takes the recommendation — <b>${esc(rec.answer)}</b> — and files` : "Files";
     if (!("follow_ups" in it) && !("follow_up" in it)) {
       rows.push(["Good — accept", `Files this as approved and closes it. ${esc(first)} is still working out what should follow — this card will say, in a moment, before you decide.`]);
     } else if (fus.length) {
-      rows.push(["Good — accept", `Files this as approved and starts the ${fus.length === 1 ? "one piece of work" : `${fus.length} pieces of work`} below.`]);
+      rows.push(["Good — accept", `${takes} the ${fus.length === 1 ? "one piece of work" : `${fus.length} pieces of work`} below.`]);
       extra = followUpBox(fus, org);
+    } else if (rec) {
+      rows.push(["Good — accept", `Takes ${esc(first)}'s recommendation — <b>${esc(rec.answer)}</b> — and closes the card. The answer is recorded here; no further work is filed.`]);
     } else {
       rows.push(["Good — accept", `Files this as approved and closes it. Nothing follows from it — no task, story, project or goal is created.`]);
     }
     rows.push(["Have another go", `Throws this result away and ${esc(first)} does the same work again, carrying anything you have said on this card.`]);
-    rows.push(["Drop it", `Filed as dropped. Nothing is created and nothing changes.`]);
+    rows.push(["Drop it", rec
+      ? `Filed as dropped. The question above stays open and nothing is filed.`
+      : `Filed as dropped. Nothing is created and nothing changes.`]);
   } else if (it.state === "waiting_session") {
     rows.push(["Nothing is running", `This waits for a build session to pick it up — no agent is doing it unattended.`]);
     rows.push(["Drop it", `Filed as dropped. Nothing is created and nothing changes.`]);
@@ -227,6 +261,8 @@ function wantsLine(it, org) {
   const fus = followUps(it);
   const kids = (childIndex[it.id] || []).length;
   const filed = kids ? ` · already filed ${kids}` : "";
+  const rec = recommendOf(it);
+  if (rec) return `recommends: ${rec.answer}` + filed;
   if (!("follow_ups" in it) && !("follow_up" in it)) return "finished — wants your verdict" + filed;
   return fus.length
     ? `finished — your verdict starts ${fus.length} more${filed}`
@@ -280,7 +316,8 @@ function workCard(it, org, pol) {
       ${convoBlock(it, org)}
       ${childrenNote(it, org)}
       ${spawnedNote(it)}
-      ${acts ? consequence(it, org) + `<div class="w-acts">${acts}</div>` : ""}
+      ${decidedNote(it)}
+      ${acts ? recommendBlock(it) + consequence(it, org) + `<div class="w-acts">${acts}</div>` : ""}
       <div class="w-foot">
         <span class="small muted">from your chat with ${esc(ownerOf(org, it.thread).name.split(" ")[0])} · ${esc(it.created)}</span>
         <span class="w-foot-acts">

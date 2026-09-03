@@ -92,6 +92,22 @@
   font-family: inherit; font-size: 13.5px; resize: vertical; }
 .w-reply-t:focus { outline: none; border-color: var(--accent); }
 .w-reply p { margin: 7px 0; }
+/* The call to make. When a card raises a choice, this is the card — it sits
+   directly above the consequence and the buttons, and it is the only block
+   that gets the accent edge, because everything else on the card is evidence
+   for it. An open question with an accept button underneath decides nothing;
+   this is what makes the yes an answer. */
+.w-rec { margin-top: 12px; border: 1px solid var(--accent); border-radius: 8px;
+  padding: 11px 13px; background: var(--bg2); }
+.w-rec-h { font-size: 10.5px; letter-spacing: 1.4px; text-transform: uppercase;
+  color: var(--accent); font-weight: 700; margin-bottom: 6px; }
+.w-rec-q { font-size: 13.5px; color: var(--muted); margin-bottom: 8px; }
+.w-rec-a { font-size: 14.5px; font-weight: 600; }
+.w-rec-tag { display: inline-block; background: var(--accent); color: #1d1608;
+  border-radius: 10px; padding: 1px 9px; font-size: 11px; font-weight: 700;
+  letter-spacing: .3px; margin-right: 7px; vertical-align: 1px; }
+.w-rec-p { font-size: 13px; margin-top: 7px; }
+
 /* The consequence block sits directly above the buttons, because that is the
    moment he needs it: what each answer does, and — when accepting starts work —
    the exact item it starts, before the click rather than after. */
