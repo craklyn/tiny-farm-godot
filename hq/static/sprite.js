@@ -4,12 +4,79 @@
    onion-skin the previous frame, palette bar built from the sprite's own
    colors, pencil/eraser/eyedropper, per-frame undo, live looping preview.
    Saving composites the edited frames back into the atlas PNG in-browser
-   and POSTs the whole sheet to the server, which backs up the original. */
+   and POSTs the whole sheet to the server, which appends it to that sheet's
+   edit ledger — every save kept in sequence, revertable, and filed to the art
+   director with his own one-line reason and the measurement below. */
 "use strict";
+
+/* ---------- measuring a hand edit ----------
+   The point of the numbers is not accounting; it is that "he warmed the shadow
+   on three frames and introduced a color that is nowhere else on the sheet" is a
+   sentence the art director can act on, and "the PNG changed" is not. */
+
+function spHex(r, g, b) {
+  return "#" + [r, g, b].map(v => v.toString(16).padStart(2, "0")).join("");
+}
+
+function spColorsOf(imgData) {
+  const d = imgData.data, set = new Set();
+  for (let i = 0; i < d.length; i += 4) if (d[i + 3] !== 0) set.add(spHex(d[i], d[i + 1], d[i + 2]));
+  return set;
+}
+
+/* Every color anywhere on the sheet as loaded — the baseline for "this color is
+   new here", which is the closest thing to an off-palette check we can do
+   honestly while the style guide is still an unsigned document. */
+function spSheetColors(img) {
+  const c = document.createElement("canvas");
+  c.width = img.naturalWidth; c.height = img.naturalHeight;
+  const x = c.getContext("2d", { willReadFrequently: true });
+  x.imageSmoothingEnabled = false;
+  x.drawImage(img, 0, 0);
+  return spColorsOf(x.getImageData(0, 0, c.width, c.height));
+}
+
+function spComputeDiff(frames, names, sheetColors) {
+  const out = { frames: [], pixels: 0, colors_added: [], colors_removed: [], new_to_sheet: [] };
+  const gained = new Set(), lost = new Set();
+  frames.forEach((f, i) => {
+    const a = f.orig.data, b = f.data.data, w = f.data.width;
+    let changed = 0, added = 0, erased = 0, recolored = 0, silhouette = false;
+    let x0 = Infinity, y0 = Infinity, x1 = -1, y1 = -1;
+    for (let p = 0; p < a.length; p += 4) {
+      const oA = a[p + 3], nA = b[p + 3];
+      if (oA === nA && (nA === 0 || (a[p] === b[p] && a[p + 1] === b[p + 1] && a[p + 2] === b[p + 2]))) continue;
+      changed++;
+      const px = (p / 4) % w, py = Math.floor((p / 4) / w);
+      if (px < x0) x0 = px; if (py < y0) y0 = py;
+      if (px > x1) x1 = px; if (py > y1) y1 = py;
+      if (oA === 0) { added++; silhouette = true; }
+      else if (nA === 0) { erased++; silhouette = true; }
+      else recolored++;
+    }
+    if (!changed) return;
+    const before = spColorsOf(f.orig), after = spColorsOf(f.data);
+    after.forEach(c => { if (!before.has(c)) gained.add(c); });
+    before.forEach(c => { if (!after.has(c)) lost.add(c); });
+    out.pixels += changed;
+    out.frames.push({
+      index: i, name: names[i] || null, changed, added, erased, recolored,
+      silhouette, bbox: [x0, y0, x1 - x0 + 1, y1 - y0 + 1],
+    });
+  });
+  out.colors_added = [...gained];
+  out.colors_removed = [...lost];
+  out.new_to_sheet = out.colors_added.filter(c => !sheetColors.has(c));
+  return out;
+}
 
 async function renderSpriteEditor(path) {
   const [gid, eid] = path.split("/");
-  const data = await api("/api/entities");
+  const [data, org] = await Promise.all([api("/api/entities"), api("/api/org")]);
+  const nameOf = id => {
+    const e = (org.employees || []).find(x => x.id === id);
+    return e ? e.name : id;
+  };
   const group = data.groups.find(g => g.id === gid);
   const ent = group && group.entities.find(e => e.id === eid);
   if (!ent || !ent.sheet || !(ent.frames || []).length) {
@@ -58,6 +125,8 @@ async function renderSpriteEditor(path) {
     return { rect: [x, y, w, hh], data, orig, undo: [] };
   });
 
+  const sheetColors = spSheetColors(img);   // baseline for "new to this sheet"
+  let lastDiff = { frames: [], pixels: 0, colors_added: [], colors_removed: [], new_to_sheet: [] };
   let cur = 0, playing = false, onion = true, dirty = false;
   let color = null; // null = eraser
   const ERASER = "__eraser__";
@@ -104,12 +173,18 @@ async function renderSpriteEditor(path) {
           ? "Assembled the way the game renderer builds this creature — parts placed, rotated, and joined, with your edits live on the right."
           : "Both loop in sync at the game's own rate — before is the sheet as it was when you opened the editor."}</p>
         <h2>Save</h2>
-        <p class="small muted">Writes your edits back into <code class="ref">${esc(ent.sheet)}</code>. The original is backed up first; git and the visual-regression suite have your back.</p>
+        <p class="small muted">Writes your edits back into <code class="ref">${esc(ent.sheet)}</code> and adds a step to this sheet's history below. Every step is kept — nothing you save is ever overwritten.</p>
+        <label class="sp-note-label" for="sp-note">What were you fixing? <span class="sp-optional">optional</span></label>
+        <input id="sp-note" class="sp-note" maxlength="200" autocomplete="off"
+               placeholder="e.g. the ripe head read too cold against the field">
+        <p class="small muted sp-why">The panel below measures <em>what</em> moved; only you can say what you were going for. Worth a line when you are making a call about the look — skip it freely when you are just tidying something up.</p>
+        <div id="sp-diff" class="sp-diff"></div>
         <p><button id="sp-save">💾 Save to sheet</button>
-        <button id="sp-revert" class="ghost">Revert all</button></p>
+        <button id="sp-revert" class="ghost">Discard my changes</button></p>
         <p class="small" id="sp-status"></p>
       </div>
-    </div>`));
+    </div>
+    <section id="sp-history" class="sp-history"></section>`));
 
   const cv = document.getElementById("sp-canvas");
   const ctx = cv.getContext("2d");
@@ -154,7 +229,38 @@ async function renderSpriteEditor(path) {
     }
     document.getElementById("sp-idx").textContent =
       (names[cur] ? names[cur] + " · " : "") + `${cur + 1} / ${frames.length}`;
+    paintDiff();
   };
+
+  // Hoisted: render() above calls it on every stroke. Frames here are small
+  // (16-48px squared, a handful of them), so re-measuring per repaint is free.
+  function paintDiff() {
+    const box = document.getElementById("sp-diff");
+    if (!box) return;
+    lastDiff = spComputeDiff(frames, names, sheetColors);
+    const d = lastDiff;
+    if (!d.frames.length) {
+      box.className = "sp-diff";
+      box.innerHTML = `<span class="muted small">No changes yet.</span>`;
+      return;
+    }
+    const where = d.frames.map(f => f.name || `frame ${f.index + 1}`).join(", ");
+    const moved = d.frames.some(f => f.silhouette);
+    const swatches = cs => cs.map(c =>
+      `<i class="sp-chip" style="background:${esc(c)}" title="${esc(c)}"></i>`).join("");
+    box.className = "sp-diff live";
+    box.innerHTML = `
+      <div class="sp-diff-head">${d.pixels} pixel${d.pixels === 1 ? "" : "s"} · ${esc(where)}</div>
+      <div class="sp-diff-row">${moved
+        ? "✏️ The silhouette moved — the shape changed, not just the shading."
+        : "🎨 Interior shading only — the silhouette is untouched."}</div>
+      ${d.colors_added.length ? `<div class="sp-diff-row">Added ${swatches(d.colors_added)}</div>` : ""}
+      ${d.colors_removed.length ? `<div class="sp-diff-row">Dropped ${swatches(d.colors_removed)}</div>` : ""}
+      ${d.new_to_sheet.length ? `<div class="sp-diff-warn">⚠ ${d.new_to_sheet.length} of those
+        ${d.new_to_sheet.length === 1 ? "colors is" : "colors are"} new to this whole sheet
+        ${swatches(d.new_to_sheet)} — deliberate is fine, but it is the kind of thing the
+        style guide will want to hear about.</div>` : ""}`;
+  }
 
   const drawAssembled = (dctx, canvas, useOrig) => {
     dctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -292,6 +398,12 @@ async function renderSpriteEditor(path) {
 
   document.getElementById("sp-save").addEventListener("click", async () => {
     const btn = document.getElementById("sp-save");
+    const noteEl = document.getElementById("sp-note");
+    const note = (noteEl.value || "").trim();
+    if (!lastDiff.frames.length) {
+      status.textContent = "Nothing to save — no pixels have changed.";
+      return;
+    }
     btn.disabled = true; status.textContent = "Saving…";
     try {
       const full = document.createElement("canvas");
@@ -308,20 +420,110 @@ async function renderSpriteEditor(path) {
       });
       const r = await fetch("/api/sprite/save", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sheet: ent.sheet, data_url: full.toDataURL("image/png") }),
+        body: JSON.stringify({
+          sheet: ent.sheet, data_url: full.toDataURL("image/png"),
+          group: gid, entity: eid, entity_name: ent.name, note, diff: lastDiff,
+        }),
       });
       const j = await r.json();
       if (j.error) { status.textContent = "⚠️ " + j.error; }
       else {
         dirty = false;
         delete sheets[ent.sheet]; // gallery reloads the fresh bytes
-        status.textContent = `✅ Saved (${(j.bytes / 1024).toFixed(1)} KB). Backup: ${j.backup}`;
+        // What he just saved becomes the new "before": the next edit is measured
+        // against this state, not against whatever the sheet was when he opened it.
+        frames.forEach(f => {
+          f.orig = new ImageData(new Uint8ClampedArray(f.data.data), f.data.width, f.data.height);
+        });
+        noteEl.value = "";
+        paintDiff();
+        renderPreview(0);
+        const filed = j.filed || {};
+        status.innerHTML = `✅ Saved as step ${j.step}. ` + (filed.work_id
+          ? `${esc(nameOf(filed.owner))} has it — <a class="plain" href="#/work">see it in Work</a>.`
+          : `<span class="warn-txt">Saved, but filing it to the art team failed${filed.error ? " (" + esc(filed.error) + ")" : ""}.</span>`);
+        loadHistory();
       }
     } catch (e) { status.textContent = "⚠️ " + e.message; }
     btn.disabled = false;
   });
 
+  /* ---------- the ledger ----------
+     Not a backup list: a straight line of every state this sheet has been in,
+     each with the reason he gave at the time. Reverting appends a step rather
+     than rewinding, so the edit he backed out of is still here to look at. */
+
+  const stepLine = s => {
+    const d = s.diff || {};
+    if (!(d.frames || []).length) return "";
+    const where = d.frames.map(f => f.name || `frame ${f.index + 1}`).join(", ");
+    const moved = d.frames.some(f => f.silhouette);
+    const chips = (d.new_to_sheet || []).map(c =>
+      `<i class="sp-chip" style="background:${esc(c)}" title="${esc(c)}"></i>`).join("");
+    return `<div class="sp-step-diff">${d.pixels} px · ${esc(where)} · ${moved ? "silhouette moved" : "shading only"}${
+      chips ? ` · new to the sheet ${chips}` : ""}</div>`;
+  };
+
+  const KIND = { original: ["as it was", "orig"], revert: ["revert", "rev"], edit: ["edit", "ed"] };
+
+  const stepRow = (s, isCurrent) => {
+    const [label, cls] = KIND[s.kind] || KIND.edit;
+    return `<article class="sp-step${isCurrent ? " cur" : ""}">
+      <img class="sp-shot" src="/ledger/${esc(s.key)}/${esc(s.png)}" alt="the sheet at step ${s.seq}" loading="lazy">
+      <div class="sp-step-body">
+        <div class="sp-step-head">
+          <b>Step ${s.seq}</b>
+          <span class="sp-tag ${cls}">${label}</span>
+          ${isCurrent ? `<span class="sp-tag now">on disk now</span>` : ""}
+          <span class="small muted">${esc(s.created)}${s.entity_name ? " · " + esc(s.entity_name) : ""}</span>
+        </div>
+        ${s.note ? `<div class="sp-step-note">${esc(s.note)}</div>`
+                 : `<div class="sp-step-note none">no note</div>`}
+        ${stepLine(s)}
+        ${s.filed && s.filed.work_id
+          ? `<div class="small muted">Filed to ${esc(nameOf(s.filed.owner))} · <a class="plain" href="#/work">Work</a></div>` : ""}
+        ${isCurrent ? "" : `<button class="ghost sp-back" data-seq="${s.seq}">Revert to this</button>`}
+      </div>
+    </article>`;
+  };
+
+  async function loadHistory() {
+    const box = document.getElementById("sp-history");
+    if (!box) return;
+    let steps = [];
+    try {
+      const r = await fetch("/api/sprite/history?sheet=" + encodeURIComponent(ent.sheet));
+      steps = (await r.json()).steps || [];
+    } catch { }
+    if (!steps.length) {
+      box.innerHTML = `<h2>History</h2>
+        <p class="small muted">Nothing saved to this sheet yet. Your first save banks the sheet
+        exactly as it is now as step 0, so there is always an untouched state to come back to.</p>`;
+      return;
+    }
+    const last = steps[steps.length - 1].seq;
+    box.innerHTML = `<h2>History of <code class="ref">${esc(ent.sheet.split("/").pop())}</code></h2>
+      <p class="small muted">Every state this sheet has been in, newest first — all of it, not one
+      backup a day. ${steps.length} step${steps.length === 1 ? "" : "s"}.</p>
+      <div class="sp-steps">${steps.slice().reverse().map(s => stepRow(s, s.seq === last)).join("")}</div>`;
+    box.querySelectorAll(".sp-back").forEach(b => b.addEventListener("click", async () => {
+      const seq = b.dataset.seq;
+      if (dirty && !confirm("You have unsaved changes. Reverting throws them away. Continue?")) return;
+      b.disabled = true; b.textContent = "Reverting…";
+      const r = await fetch("/api/sprite/revert", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sheet: ent.sheet, seq: Number(seq), group: gid, entity: eid, entity_name: ent.name }),
+      });
+      const j = await r.json();
+      if (j.error) { b.disabled = false; b.textContent = "Revert to this"; status.textContent = "⚠️ " + j.error; return; }
+      delete sheets[ent.sheet];
+      dirty = false;
+      route();   // reload the editor on the reverted bytes
+    }));
+  }
+
   buildPalette();
   render();
+  loadHistory();
   cv.focus();
 }

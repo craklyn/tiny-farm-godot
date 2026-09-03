@@ -1,64 +1,64 @@
 {
-  "id": "art-audio-direction",
-  "name": "Art & audio direction sign-off, then the reskin",
-  "priority": 6,
-  "status": "blocked",
-  "owner": "ingrid",
-  "contributors": [
-    "dmitri",
-    "yuki"
-  ],
-  "summary": "Both direction one-pagers are drafted and waiting on the CEO: the art style guide (palette ramps, outline rules, animation budget) and the audio direction (warm acoustic-toy identity). Once signed, art executes the full reskin off placeholder assets via the generation pipeline, and audio records the bespoke foley the CC0 hunt proved impossible (there is no usable recording of a watering can sprinkling onto soil anywhere in the commons — it has to be made).",
-  "requirements": [
-    "CEO approves the art style guide draft (with any amendments)",
-    "CEO approves the audio direction draft and answers its three taste questions",
-    "Full reskin executed: every placeholder sprite regenerated under the locked style",
-    "Bespoke foley recorded for the verb table (the CEO wanted to record these personally)",
-    "Credits and provenance updated for every replaced asset"
-  ],
-  "current_status": "Blocked on two working sessions the CEO asked for rather than on approvals: he ruled 'not yet — discuss first' on the audio direction and 'not yet — I want a look session' on the art style guide (both 2026-09-02). So the next move is scheduling those two sittings, not re-sending the drafts. Deliberately unhurried: current placeholders are license-clean and complete, so nothing ships worse for waiting.",
-  "plan": [
-    {
-      "step": "Art style guide draft delivered",
-      "done": true
-    },
-    {
-      "step": "Audio direction draft delivered",
-      "done": true
-    },
-    {
-      "step": "CEO ruled: discuss the audio direction before signing (Q-13)",
-      "done": true
-    },
-    {
-      "step": "CEO ruled: hold a look session on the art style guide before signing (Q-14)",
-      "done": true
-    },
-    {
-      "step": "Run the art look session — rendered candidates side by side, judged in chat",
-      "done": false
-    },
-    {
-      "step": "Run the audio discussion — the draft's three taste questions answered live",
-      "done": false
-    },
-    {
-      "step": "Reskin executed in batches (terrain, crops, actors, UI), each behind visual regression",
-      "done": false
-    },
-    {
-      "step": "Foley recording session; new takes A/B'd in the Sound Test on device",
-      "done": false
-    }
-  ],
-  "links": [
-    "docs/design/09-art-direction.md",
-    "docs/design/10-audio-direction.md",
-    "CREDITS.md"
-  ],
-  "blocked_on": "ceo-sessions:art-look,audio-discussion",
-  "blocked_since": "2026-09-02",
-  "release": "m3",
-  "release_critical": false,
-  "unblock_action": "Sit down for the art look session and the audio discussion"
+ "id": "art-audio-direction",
+ "name": "Art & audio direction sign-off, then the reskin",
+ "priority": 6,
+ "status": "blocked",
+ "owner": "ingrid",
+ "contributors": [
+  "dmitri",
+  "yuki"
+ ],
+ "summary": "Both direction one-pagers are drafted and waiting on the CEO: the art style guide (palette ramps, outline rules, animation budget) and the audio direction (warm acoustic-toy identity). Once signed, art executes the full reskin off placeholder assets via the generation pipeline, and audio records the bespoke foley the CC0 hunt proved impossible (there is no usable recording of a watering can sprinkling onto soil anywhere in the commons — it has to be made).",
+ "requirements": [
+  "CEO approves the art style guide draft (with any amendments)",
+  "CEO approves the audio direction draft and answers its three taste questions",
+  "Full reskin executed: every placeholder sprite regenerated under the locked style",
+  "Bespoke foley recorded for the verb table (the CEO wanted to record these personally)",
+  "Credits and provenance updated for every replaced asset"
+ ],
+ "current_status": "Blocked on two working sessions the CEO asked for rather than on approvals: he ruled 'not yet — discuss first' on the audio direction and 'not yet — I want a look session' on the art style guide (both 2026-09-02). So the next move is scheduling those two sittings, not re-sending the drafts. Deliberately unhurried: current placeholders are license-clean and complete, so nothing ships worse for waiting. Since 2026-09-02 the sprite editor also records every hand edit he makes (his own reason plus a measurement of what moved) and files it to Ingrid, so the look session will open on real evidence of his taste rather than on a document he has not signed.",
+ "plan": [
+  {
+   "step": "Art style guide draft delivered",
+   "done": true
+  },
+  {
+   "step": "Audio direction draft delivered",
+   "done": true
+  },
+  {
+   "step": "CEO ruled: discuss the audio direction before signing (Q-13)",
+   "done": true
+  },
+  {
+   "step": "CEO ruled: hold a look session on the art style guide before signing (Q-14)",
+   "done": true
+  },
+  {
+   "step": "Run the art look session — rendered candidates side by side, judged in chat",
+   "done": false
+  },
+  {
+   "step": "Run the audio discussion — the draft's three taste questions answered live",
+   "done": false
+  },
+  {
+   "step": "Reskin executed in batches (terrain, crops, actors, UI), each behind visual regression",
+   "done": false
+  },
+  {
+   "step": "Foley recording session; new takes A/B'd in the Sound Test on device",
+   "done": false
+  }
+ ],
+ "links": [
+  "docs/design/09-art-direction.md",
+  "docs/design/10-audio-direction.md",
+  "CREDITS.md"
+ ],
+ "blocked_on": "ceo-sessions:art-look,audio-discussion",
+ "blocked_since": "2026-09-02",
+ "release": "m3",
+ "release_critical": false,
+ "unblock_action": "Sit down for the art look session and the audio discussion"
 }

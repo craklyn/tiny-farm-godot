@@ -11,11 +11,15 @@ Zero-dependency stdlib server:
   /api/project/<id>     -> one project
   /api/queue            -> open decision items parsed live from docs/DESIGNER_QUEUE.md
   /api/chat  (POST)     -> {to, message, history} routed through the local `claude` CLI
-  /api/deploy           -> live state of the tablet deploy; POST starts one
-  /api/deploy/pair (POST) -> {address, code} one-time adb pairing with the tablet
   /api/chat/queue       -> parked requests + token-limit state (POST enqueues)
   /api/chat/cancel|retry (POST) -> {id} for one parked request
   /api/work             -> work items the org filed from chat (POST: new/approve/accept/drop)
+  /api/sprite/save (POST) -> an edited sheet; appends a step to its ledger (studio.py)
+  /api/sprite/history   -> ?sheet=<path>: every step that sheet has been through
+  /api/sprite/revert (POST) -> {sheet, seq} back to a step; itself recorded as a step
+  /ledger/*             -> historical sheet bytes, for the before/after strip
+  /api/deploy           -> live state of the tablet deploy; POST starts one
+  /api/deploy/pair (POST) -> {address, code} one-time adb pairing with the tablet
   /api/health           -> liveness
 
 Run: python3 hq/server.py   (or via the tiny-farm-hq systemd user service)
@@ -27,8 +31,9 @@ import subprocess
 import sys
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import unquote
+from urllib.parse import parse_qs, unquote, urlparse
 
+import studio  # sibling module: the ledger of hand edits to sprites
 import work  # sibling module: how work originates (see its docstring)
 
 HQ_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -969,6 +974,64 @@ in docs/ (DECISION_LOG.md, DESIGNER_QUEUE.md, ROADMAP.md, design/). The CEO and 
 Director is Daniel — every taste call terminates with him."""
 
 
+# ---------------------------------------------------------------------------
+# What a persona carries between conversations.
+#
+# Chat used to be amnesiac: each reply was a fresh read-only CLI session, so a
+# thing Daniel told Ingrid on Tuesday was gone by Wednesday and nothing filed to
+# anyone could be acted on. Two files close that: a memory the persona writes for
+# itself, and the work already filed to them by work.py.
+# ---------------------------------------------------------------------------
+
+STAFF_MEMORY_MAX = 6000          # tail of the file that rides in the prompt
+REMEMBER_RE = re.compile(r"<remember>(.*?)</remember>", re.S | re.I)
+
+
+def staff_memory_path(pid):
+    d = os.path.join(DATA, "staff", pid)
+    os.makedirs(d, exist_ok=True)
+    return os.path.join(d, "memory.md")
+
+
+def load_staff_memory(pid):
+    p = staff_memory_path(pid)
+    if not os.path.isfile(p):
+        return ""
+    with open(p, "r", encoding="utf-8") as f:
+        return f.read()[-STAFF_MEMORY_MAX:]
+
+
+def append_staff_memory(pid, note):
+    import datetime
+    note = " ".join(str(note).split())[:600]
+    if not note:
+        return
+    with open(staff_memory_path(pid), "a", encoding="utf-8") as f:
+        f.write(f"- ({datetime.date.today().isoformat()}) {note}\n")
+
+
+def take_remembered(pid, reply):
+    """Personas keep their own notes: anything a reply wraps in <remember> is
+    appended to that person's memory file and stripped from what Daniel sees.
+    Cheaper than a second model call, and needs no write tools — the CLI these
+    replies come from runs read-only on purpose."""
+    text = reply or ""
+    notes = REMEMBER_RE.findall(text)
+    for n in notes:
+        append_staff_memory(pid, n)
+    return REMEMBER_RE.sub("", text).strip(), len(notes)
+
+
+def staff_open_work(pid, limit=8):
+    """The items work.py has filed to this person and nobody has closed."""
+    try:
+        return [i for i in work.items()
+                if i.get("owner") == pid
+                and i.get("state") not in ("accepted", "dropped")][:limit]
+    except Exception:
+        return []
+
+
 def build_system_prompt(org, to_id):
     emp = next((e for e in org["employees"] if e["id"] == to_id), None)
     if emp is None or to_id == "daniel":
@@ -1006,7 +1069,28 @@ roster:
 Never invent facts about the game's state; check the repo or say you're unsure."""
     # Collapse source-code line wraps into flowing paragraphs (single \n -> space);
     # keeps the prompt clean for the CLI and readable in the HQ "what defines them" view.
-    return re.sub(r"(?<!\n)\n(?!\n)", " ", prompt)
+    prompt = re.sub(r"(?<!\n)\n(?!\n)", " ", prompt)
+    # Appended AFTER the collapse: these are real lists and must keep their lines.
+    memory = load_staff_memory(emp["id"])
+    if memory.strip():
+        prompt += ("\n\nWHAT YOU REMEMBER from earlier conversations and from work you "
+                   "have done. These are your own notes, written by you; treat them as "
+                   "recollection to check against the repo, not as fact:\n" + memory.strip())
+    plate = staff_open_work(emp["id"])
+    if plate:
+        rows = "\n".join(f"- [{i.get('state', '?')}] {i.get('title', '')} — {i.get('ask', '')[:220]}"
+                          for i in plate)
+        prompt += ("\n\nON YOUR PLATE right now, filed to you by the studio (say so if he "
+                   "asks what you are working on, and use it — this is how things reach "
+                   "you when he is not in the room):\n" + rows)
+    prompt += ("\n\nTO REMEMBER SOMETHING for next time, end your reply with a "
+               "<remember>...</remember> block: one or two sentences of durable, useful "
+               "recollection (a standing preference of his, a decision, a pattern you "
+               "noticed). It is stripped out before he reads the reply and appended to "
+               "your memory. Do not use it for chit-chat or for restating this "
+               "conversation — only for what your future self would be worse off not "
+               "knowing.")
+    return prompt
 
 
 def png_size(raw):
@@ -1017,12 +1101,15 @@ def png_size(raw):
 
 
 def save_sprite(payload):
-    """Write an edited sprite sheet back into assets/. The browser composites
-    edited frames into the full sheet; we validate and persist, backing up the
-    original bytes once per day into hq/data/sprite_backups/."""
+    """Write an edited sheet back into assets/ and append the edit to that sheet's
+    ledger (studio.py): every step kept in sequence, with his own one-line answer
+    to "what were you fixing?" and the browser's measurement of what moved. The
+    step is then filed to the art director as work, so a hand edit reaches the
+    people whose job it is to read the pattern instead of dying as a pixel diff.
+
+    The old once-a-day backup is gone — it lost every edit after the first each
+    day. Step 0 of the ledger is the pristine sheet, and nothing is overwritten."""
     import base64
-    import datetime
-    import shutil
     sheet = str(payload.get("sheet", ""))
     data_url = str(payload.get("data_url", ""))
     full = os.path.realpath(os.path.join(REPO, sheet))
@@ -1039,15 +1126,63 @@ def save_sprite(payload):
         old = f.read()
     if png_size(raw) != png_size(old):
         return {"error": f"sheet dimensions changed ({png_size(old)} -> {png_size(raw)}) — refusing"}
-    bdir = os.path.join(DATA, "sprite_backups")
-    os.makedirs(bdir, exist_ok=True)
-    stamp = datetime.date.today().isoformat()
-    bak = os.path.join(bdir, f"{os.path.basename(full)}.{stamp}.png")
-    if not os.path.exists(bak):
-        shutil.copyfile(full, bak)
+    if raw == old:
+        return {"error": "nothing changed — no step recorded"}
+    rec = studio.record(sheet, old, raw, {
+        "kind": "edit",
+        "group": str(payload.get("group", ""))[:60],
+        "entity": str(payload.get("entity", ""))[:60],
+        "entity_name": str(payload.get("entity_name", ""))[:80],
+        "note": payload.get("note", ""),
+        "diff": payload.get("diff") or {},
+    })
     with open(full, "wb") as f:
         f.write(raw)
-    return {"ok": True, "bytes": len(raw), "backup": os.path.relpath(bak, REPO)}
+    filed = studio.file_to_art(rec, work, load_org())
+    if filed.get("work_id"):
+        studio.attach_filing(rec["key"], rec["seq"], filed)
+    signals_dirty()
+    return {"ok": True, "bytes": len(raw), "step": rec["seq"], "key": rec["key"],
+            "summary": studio.describe(rec), "filed": filed}
+
+
+def revert_sprite(payload):
+    """Go back to any step in a sheet's ledger. A revert is itself a step — it
+    appends rather than rewinding, so the history stays a straight line and the
+    edit he reverted is still there to look at."""
+    sheet = str(payload.get("sheet", ""))
+    try:
+        seq = int(payload.get("seq"))
+    except (TypeError, ValueError):
+        return {"error": "which step?"}
+    full = os.path.realpath(os.path.join(REPO, sheet))
+    root = os.path.realpath(os.path.join(REPO, "assets", "sprites"))
+    if not (full.startswith(root + os.sep) and full.endswith(".png") and os.path.isfile(full)):
+        return {"error": "sheet must be an existing PNG under assets/sprites/"}
+    key = studio.sheet_key(sheet)
+    want = studio.png_at(key, seq)
+    if want is None:
+        return {"error": f"no step {seq} for this sheet"}
+    with open(full, "rb") as f:
+        old = f.read()
+    if want == old:
+        return {"error": "already at that step"}
+    if png_size(want) != png_size(old):
+        return {"error": "that step has different dimensions — refusing"}
+    rec = studio.record(sheet, old, want, {
+        "kind": "revert",
+        "reverted_to": seq,
+        "group": str(payload.get("group", ""))[:60],
+        "entity": str(payload.get("entity", ""))[:60],
+        "entity_name": str(payload.get("entity_name", ""))[:80],
+        "note": f"Reverted to step {seq}." + (
+            f' {str(payload.get("note", "")).strip()}' if payload.get("note") else ""),
+        "diff": {},
+    })
+    with open(full, "wb") as f:
+        f.write(want)
+    signals_dirty()
+    return {"ok": True, "step": rec["seq"], "reverted_to": seq, "key": key}
 
 
 MAP_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,39}$")
@@ -1782,7 +1917,8 @@ def _chat_once(to_id, message, history):
                     "detail": " ".join(out.split())[:200]}
         return {"error": cli_failure(proc)}
     clear_limit()
-    return {"reply": proc.stdout.strip()}
+    reply, kept = take_remembered(to_id, proc.stdout.strip())
+    return {"reply": reply, "remembered": kept}
 
 
 def run_chat(payload):
@@ -1845,7 +1981,8 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def do_GET(self):
-        path = self.path.split("?")[0]
+        parts = urlparse(self.path)
+        path, query = parts.path, parse_qs(parts.query)
         try:
             if path in ("/", "/index.html"):
                 return self._send_file(STATIC, "index.html")
@@ -1853,6 +1990,11 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send_file(STATIC, path[len("/static/"):])
             if path.startswith("/assets/"):
                 return self._send_file(os.path.join(REPO, "assets"), path[len("/assets/"):])
+            if path.startswith("/ledger/"):
+                # Historical sheet bytes, for the before/after strip in the editor.
+                return self._send_file(os.path.join(DATA, "sprite_edits"), path[len("/ledger/"):])
+            if path == "/api/sprite/history":
+                return self._send(200, studio.api_get(path, query))
             if path == "/api/org":
                 return self._send(200, load_org())
             if path == "/api/entities":
@@ -1965,6 +2107,11 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, save_sprite(payload))
             except Exception as e:
                 return self._send(500, {"error": str(e)[:300]})
+        if path == "/api/sprite/revert":
+            try:
+                return self._send(200, revert_sprite(payload))
+            except Exception as e:
+                return self._send(500, {"error": str(e)[:300]})
         if path == "/api/ruling":
             try:
                 return self._send(200, record_ruling(payload))
@@ -2021,6 +2168,7 @@ def main():
     sanitize_outbox()
     threading.Thread(target=_drain_outbox, daemon=True).start()
     work.bind(sys.modules[__name__])
+    studio.bind(sys.modules[__name__])
     work.start()
     server = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
     print(f"Tiny Farm HQ on http://localhost:{PORT}")

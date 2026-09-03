@@ -38,6 +38,23 @@ assets permit free public distribution with credit — Q-6 makes releases public
 - `[Designer]` at Q-14 time: the actual style ruling the reskin targets (palette
   personality, fidelity level, how far from the placeholder look to move).
 
+## Hand edits are evidence (2026-09-02)
+The designer's own strokes in HQ's sprite editor are the only *uncontaminated*
+statement of the intended look — everything else in this chapter is intent
+reconstructed from conversation. So the editor now records them rather than just
+writing the PNG: each save is a step in that sheet's ledger
+(`hq/data/sprite_edits/`) carrying his one-line answer to "what were you fixing?"
+alongside a measurement of what actually moved (frames, pixels, colors
+introduced, whether the silhouette or only the interior shading changed), and is
+filed to the art director to read against this guide.
+
+Deliberately **no automatic amendments to the style guide below**: it is a draft
+the designer has not signed (he ruled "not yet — I want a look session" on
+2026-09-02), and a loop that edits an unsigned guide would be proposing changes to
+a document that does not yet have force. Until the look session, the accumulated
+edits are the material that session is run from — his taste, shown rather than
+described. Amendment proposals turn on once the guide is approved.
+
 ---
 
 ## Style guide v1 — extracted from current assets (Q-14 draft, 2026-08-18)
