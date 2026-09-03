@@ -184,12 +184,12 @@
     },
     {
       "id": "the-editor-edits-the-sheet",
-      "statement": "When you hand-edit a sprite in HQ, you are editing the whole sheet.",
+      "statement": "Hand-editing a sprite edits the whole sheet, not part of it.",
       "statement_short": "the sprite editor silently edits part of a sheet, not all of it",
       "owner": "rin",
       "severity": "important",
       "unit": "",
-      "why_it_matters": "The editor opens the entity catalog's preview frames, not the sheet — Chicken lists four of its eight cells, the farmer four of sixteen. A hand edit therefore touches a quarter of a sheet without saying so.",
+      "why_it_matters": "The sprite editor opens the frames a creature animates with, not the sheet those frames sit in — four of the chicken's eight cells, four of the farmer's sixteen. An edit therefore covers part of a sheet, and nothing says so.",
       "measure": {
         "kind": "unchecked",
         "reason": "No check compares the frames the editor opens against the cells the sheet holds; the defect is known from reading the code, not from a measurement.",

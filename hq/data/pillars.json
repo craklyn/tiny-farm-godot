@@ -30,7 +30,7 @@
           "desc": "Every push: unit, integration, robot session, benchmark."
         }
       ],
-      "commit_feed_label": "Shipped lately — the code behind the proofs above",
+      "commit_feed_label": "the engine and the tests",
       "question": "Does the game on main actually work right now — and is the proof fresh enough to believe?"
     },
     {
@@ -58,7 +58,7 @@
           "desc": "Wei's demo: every recorded session, scored by the game's own metrics."
         }
       ],
-      "commit_feed_label": "My own bookkeeping — status records I edit, not features shipped",
+      "commit_feed_label": "status records and plans, not shipped features",
       "question": "When does the player get the next thing, and what is standing in front of it?"
     },
     {
@@ -90,7 +90,7 @@
           "desc": "Milo's demo: the living GDD, rendered from docs/."
         }
       ],
-      "commit_feed_label": "Shipped lately — pictures, sounds and the chapters that rule them",
+      "commit_feed_label": "pictures, sounds, and the design chapters",
       "question": "What does the game look like right now — and is it still holding together as one thing?"
     },
     {
@@ -110,7 +110,7 @@
           "desc": "The one public-facing artifact that exists today, rendered live."
         }
       ],
-      "commit_feed_label": "What the public has not been told about yet",
+      "commit_feed_label": "what the public has not been told about yet",
       "question": "If people showed up tomorrow, could we meet them — and would we even find out they had?",
       "dormant_by_ruling": {
         "ruling": "the CEO's standing ruling that marketing waits until the game picks up speed",
@@ -138,7 +138,7 @@
           "desc": "Every v* tag ever pushed — publishing is a tag, never a push to main."
         }
       ],
-      "commit_feed_label": "What the runbook learned",
+      "commit_feed_label": "release runbook and export config",
       "question": "What have we got that a player hasn't played yet, and what is holding it back from them?"
     },
     {
@@ -161,7 +161,7 @@
           "desc": "Every asset's rights and cost, from CREDITS.md — the real spend record."
         }
       ],
-      "commit_feed_label": "Quiet here is good news — these files change slowly on purpose",
+      "commit_feed_label": "licences, credentials and the deploy runbook",
       "question": "What do we owe, what do we spend, and can a player who needs us reach us?"
     }
   ]

@@ -487,9 +487,7 @@ async function instEngineering(root, below, sig, g) {
           <div class="cistrip">${ticks}</div>
           <div class="small muted" style="margin-top:8px">${hist.passed} passed, ${hist.failed} failed
             of the last ${hist.window} finished runs · ${hist.green_streak} green in a row right now.
-            Drawn as ticks rather than a percentage on purpose: three failures in one afternoon is a
-            bad day, three spread over a month is a test nobody trusts, and a single number cannot
-            tell you which you are looking at.</div>
+            Failures clustered on one day are an incident; spread out, a flaky test.</div>
         </div>`;
     } else {
       stripEl.innerHTML = `<h2>Every CI run on main</h2><div class="card muted small">
