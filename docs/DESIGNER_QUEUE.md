@@ -1175,6 +1175,50 @@ never touched. Session: `playtests/2026-08-31_230643`.*
   *Recommendation: (b). It keeps Q-62's ruling intact, costs a dozen lines in
   `systems/zoo.gd`, and makes the button do what its tooltip promises.*
 
+## From the 2026-09-02 Look Lab review
+
+- **Q-86 (Ruling, filed 2026-09-02)** **How should a look question be put to the
+  designer?** The Look Lab's title-screen panel was shown to him and rejected as a
+  shape, not as styling: *"The menu is not good. The text overfills the buttons, and I
+  don't know what it means. I think this experience needs to be carefully rethought if
+  we want to maintain it. Each step should draw a scenario under specific conditions,
+  and then quiz me. It shouldn't be something so opaque and require heavy manual
+  intervention."* Three things were wrong with it and all three are the same mistake.
+  The buttons carried three wrapped lines in a 50px box, so the text ran into its own
+  border. They were labelled in our words rather than his — "Stations seen",
+  "teaching_focus alone", "(T-28)" — so the panel could not say what it was asking. And
+  opening it showed **nothing**: every draft it switches between only appears at dusk,
+  or with a crop in the basket, or at a station never used, and the title screen has
+  none of those. It was a switchboard that required him to go and stage the conditions
+  himself before any of it meant anything.
+  **Done already (2026-09-02, revertable):** the title-screen door and its panel are
+  **removed** — all three of its questions were ruled on 2026-09-01 and ship as the
+  defaults, so nothing was waiting on it. The switches themselves are untouched and
+  still in the pause menu, where the farm is in front of you when one flips, and the
+  registry behind them (`systems/look_lab.gd`) is unchanged. The debug row on the title
+  screen is a single row of three again (Sound Test, Zoo, Home), which is what it was
+  before T-37 pushed it to a 2x2 grid.
+  **What replaces it — the ruling.** Whatever asks the next look question has to stage
+  its own scenario: set the hour, put the crop in the basket, frame the thing, draw
+  draft 1, then draft 2, then draft 3 under identical conditions, and ask one question
+  in plain words. The open choice is where that runs.
+  *(a) Out of the game, rendered, ad hoc* — a throwaway rig per question that captures
+  the scenario and sends labelled sheets plus a quiz, which is exactly how the station
+  treatments were ruled on 2026-09-01 and it worked. No machinery to maintain; the
+  staging is rebuilt each time.
+  *(b) Out of the game, rendered, with a reusable rig* — the same delivery, but scenario
+  definitions become a small permanent tool (conditions + framing + which drafts), so a
+  new look question is one definition rather than a new script, and anything that moves
+  can ship as a frame strip. The integration suite already stages these exact
+  situations, so the staging is largely borrowable.
+  *(c) In the game, as a guided look session* — a tap-through mode that stages each
+  scenario live and asks after each one. The only option that shows real motion at real
+  speed, and the only one that needs the tablet in hand.
+  *Recommendation: (b), and keep (c) on the shelf.* Rulings happen in chat and in HQ,
+  not on the tablet, and a rendered sheet reaches him wherever he is. (c) stays cheap to
+  add later because it would consume the same scenario definitions — and the one thing
+  stills genuinely cannot judge is a pulse's speed, which is the case to reach for it.
+
 ## Before M3 — phase 2 design
 
 - **Q-73 (Creative, the designer's own seed, 2026-09-01)** **Evenings as social time.**

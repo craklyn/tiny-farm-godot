@@ -145,26 +145,32 @@ func _build_ui() -> void:
 		# third one pushed the menu off the bottom of the tablet's screen —
 		# reported from the device the night the Zoo landed. Three across at 104px
 		# fits the 340px column with the row's two 10px separations to spare.
-		# T-37 made it four doors, and four across at 104px does not fit the
-		# 340px column — so a 2x2 grid rather than a longer row, keeping the
-		# height of two rows instead of the stack that pushed the menu off the
-		# tablet the night the Zoo landed.
-		var debug_grid := GridContainer.new()
-		debug_grid.columns = 2
-		debug_grid.add_theme_constant_override("h_separation", 10)
-		debug_grid.add_theme_constant_override("v_separation", 6)
-		debug_grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		debug_grid.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		root_box.add_child(debug_grid)
-		# The look lab, on the Sound Test's own pattern (Q-31): candidates ship in
-		# the build and get A/B'd on device with a thumb. One panel for every open
-		# look (T-27's cot, T-28's two station axes). The Zoo is a door, not a
-		# panel, because what it opens is a *farm* with a clock of its own
-		# (`ui/zoo_screen.gd`); the Home (T-37) is a door for the Zoo's reason.
-		for b in [_make_sound_test_button(), _make_look_lab_button(),
-				_make_zoo_button(), _make_home_button()]:
+		# T-37 briefly made it four (a 2x2 grid); the Look Lab's door came back
+		# out on 2026-09-02 and it is a single row again — see the note below.
+		var debug_row := HBoxContainer.new()
+		debug_row.add_theme_constant_override("separation", 10)
+		debug_row.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		debug_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		root_box.add_child(debug_row)
+		# The doors are things to *look at*: the Sound Test plays a sound, the Zoo
+		# runs a farm full of entities, the Home (T-37) opens the house. Each one
+		# shows you the thing itself when you open it.
+		#
+		# The Look Lab's door used to sit here and no longer does. It was a panel
+		# of buttons, one per draft, and opening it showed nothing — every look it
+		# switched between only appears under conditions the title screen does not
+		# have (dusk, a crop in the basket, a station never used). The designer's
+		# verdict, 2026-09-02: *"The text overfills the buttons, and I don't know
+		# what it means... Each step should draw a scenario under specific
+		# conditions, and then quiz me."* All three of its questions were ruled on
+		# 2026-09-01 and ship as the defaults, so nothing is waiting on it. The
+		# switches themselves are unchanged and still in the pause menu, where the
+		# farm is what you are looking at when one flips (`ui/menus.gd`), and the
+		# registry behind them is still `systems/look_lab.gd`. What replaces the
+		# door is a staged scenario, not a menu — Q-86 in `docs/DESIGNER_QUEUE.md`.
+		for b in [_make_sound_test_button(), _make_zoo_button(), _make_home_button()]:
 			b.custom_minimum_size = Vector2(104, 34)
-			debug_grid.add_child(b)
+			debug_row.add_child(b)
 
 
 func _big_button_style(bg: Color, border: Color) -> StyleBoxFlat:
@@ -513,157 +519,6 @@ func _open_sound_test() -> void:
 	back.grab_focus()
 
 
-# --- The look lab (debug builds) ----------------------------------------------
-#
-# Every look that is still the designer's to pick, behind one door. T-27's last
-# box asked "what does a cot look like before you have slept in it?"; T-28 asks
-# two more of exactly the same kind about the bin, the well and the seed box.
-# What each draft *is* lives in `systems/cot_presentation.gd` and
-# `systems/station_presentation.gd`; `systems/look_lab.gd` is the registry, and
-# this is only the door.
-#
-# It is deliberately the Sound Test's door: same gate, same panel, same corner of
-# the title screen, so there is one place in this game where candidates go to be
-# judged — and one place to look when you cannot remember where a switch went.
-#
-# Every selection survives the trip into `main.tscn` and back because it lives on
-# a static, not in the scene. The other door is the pause menu, which is the one
-# to use for a real comparison: these show themselves at dusk, or with a crop in
-# the basket, and the title screen has neither.
-
-func _make_look_lab_button() -> Button:
-	var btn := Button.new()
-	btn.name = "LookLabButton"
-	btn.text = "Look Lab"
-	btn.custom_minimum_size = Vector2(130, 34)
-	btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	btn.add_theme_font_size_override("font_size", 13)
-	_style_button(btn, Color(0.13, 0.24, 0.30), Color(0.45, 0.62, 0.70), Color(0.18, 0.32, 0.40))
-	btn.pressed.connect(_open_look_lab)
-	return btn
-
-
-func _open_look_lab() -> void:
-	if _confirm_open:
-		return
-	_confirm_open = true  # also blocks tap-anywhere while the panel is up
-	_set_attract_paused(true)
-
-	_confirm_layer = Control.new()
-	_confirm_layer.name = "LookLabLayer"
-	_confirm_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_confirm_layer.mouse_filter = Control.MOUSE_FILTER_STOP
-	add_child(_confirm_layer)
-
-	var dim := ColorRect.new()
-	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	dim.color = Color(0.05, 0.09, 0.07, 1.0)
-	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_confirm_layer.add_child(dim)
-
-	var scroll := ScrollContainer.new()
-	scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
-	scroll.offset_left = 20
-	scroll.offset_top = 16
-	scroll.offset_right = -20
-	scroll.offset_bottom = -16
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_confirm_layer.add_child(scroll)
-
-	var box := VBoxContainer.new()
-	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	box.alignment = BoxContainer.ALIGNMENT_CENTER
-	box.add_theme_constant_override("separation", 6)
-	scroll.add_child(box)
-
-	var head := Label.new()
-	head.text = "Look Lab"
-	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	head.add_theme_font_size_override("font_size", 26)
-	head.add_theme_color_override("font_color", Color(1.0, 0.86, 0.45))
-	box.add_child(head)
-
-	var hint := Label.new()
-	hint.text = "Drafts awaiting a pick. Each row is judged on its own.\nPause can swap any of them in-game, which is where to judge them."
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hint.add_theme_font_size_override("font_size", 13)
-	hint.add_theme_color_override("font_color", Color(0.78, 0.86, 0.76))
-	box.add_child(hint)
-
-	# Driven off LookLab's own registry, so this panel cannot drift from what the
-	# game actually draws — the Sound Test's rule, for the same reason.
-	var buttons: Dictionary = {}  # axis -> Array[Button]
-	var refresh := func():
-		for axis in buttons.keys():
-			var row: Array = buttons[axis]
-			for i in row.size():
-				var chosen: bool = (i == LookLab.current(axis))
-				row[i].text = "%s  %s\n%s" % [
-					"▶" if chosen else "  ", LookLab.name_of(axis, i), LookLab.blurb_of(axis, i)]
-				if chosen:
-					_style_button(row[i], Color(0.18, 0.42, 0.22), Color(1.0, 0.72, 0.15),
-						Color(0.24, 0.52, 0.28))
-				else:
-					_style_button(row[i], Color(0.13, 0.24, 0.30), Color(0.45, 0.62, 0.70),
-						Color(0.18, 0.32, 0.40))
-
-	for axis in LookLab.AXES:
-		var axis_head := Label.new()
-		axis_head.text = "%s — %s" % [LookLab.label_of(axis), LookLab.QUESTIONS.get(axis, "")]
-		axis_head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		axis_head.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		axis_head.custom_minimum_size = Vector2(300, 0)
-		axis_head.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		axis_head.add_theme_font_size_override("font_size", 12)
-		axis_head.add_theme_color_override("font_color", Color(1.0, 0.86, 0.45, 0.9))
-		box.add_child(axis_head)
-
-		var row: Array[Button] = []
-		for i in LookLab.count_of(axis):
-			var b := Button.new()
-			b.name = "Look_%s_%d" % [axis, i]
-			b.custom_minimum_size = Vector2(300, 50)
-			b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-			b.add_theme_font_size_override("font_size", 13)
-			b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			var pick_axis := axis
-			var pick_idx := i
-			b.pressed.connect(func():
-				LookLab.set_to(pick_axis, pick_idx)
-				AudioManager.play_sfx("click")
-				refresh.call())
-			row.append(b)
-			box.add_child(b)
-		buttons[axis] = row
-	refresh.call()
-
-	# Q-68 rides along with the cot pick: A and B lower the camera's top limit by
-	# the HUD bar's height so the whole bed clears it; C leaves the camera alone,
-	# because its cue sits below the bar anyway. Choosing a treatment therefore
-	# also chooses a Q-68 ruling, which is exactly what the queue item asked for.
-	var note := Label.new()
-	note.text = "Cot A and B also drop the camera clear of the HUD bar (Q-68); C does not."
-	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	note.custom_minimum_size = Vector2(300, 0)
-	note.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	note.add_theme_font_size_override("font_size", 11)
-	note.add_theme_color_override("font_color", Color(0.70, 0.80, 0.86))
-	box.add_child(note)
-
-	var back := Button.new()
-	back.name = "LookLabBackButton"
-	back.text = "Back"
-	back.custom_minimum_size = Vector2(150, 40)
-	back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	back.add_theme_font_size_override("font_size", 16)
-	_style_button(back, Color(0.18, 0.42, 0.22), Color(1.0, 0.72, 0.15), Color(0.24, 0.52, 0.28))
-	back.pressed.connect(_close_confirm)
-	box.add_child(back)
-
-	back.grab_focus()
-
-
 # --- The zoo (debug builds) ---------------------------------------------------
 #
 # T-33, the designer 2026-09-01: *"Some sort of way for us to experience the new
@@ -672,8 +527,8 @@ func _open_look_lab() -> void:
 #
 # The whole bestiary ships behind `PER_DAY := 0`, so nobody has ever seen a rabbit
 # outside a test's assertions. This is that door, and it is deliberately the Sound
-# Test's and the Look Lab's door — same gate, same row, same corner — because there
-# is one place in this game where things go to be looked at.
+# Test's own door — same gate, same row, same corner — because there is one
+# place in this game where things go to be looked at.
 #
 # It changes scene rather than opening a panel: the zoo is a second farm with a
 # clock of its own, and the attract loop is already running one behind this menu.

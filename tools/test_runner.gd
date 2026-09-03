@@ -2029,30 +2029,17 @@ func _scenario_x_three_looks_for_the_cot() -> void:
 			== CotPresentation.camera_top_limit(main_scene.HUD_TOP_PX, main_scene.CAMERA_SCALE),
 		"the live camera picked up the new treatment's Q-68 answer without a reload")
 
-	# Door 2, Q-31's precedent proper: the title screen's panel, beside the Sound
-	# Test's own button. Built here for real, because a switch that only exists in
-	# a comment is not a switch. Generalised by T-28 into the Look Lab — same
-	# gate, same panel, same corner, now one section per open question.
+	# Door 2 is gone, deliberately, and this is the guard that keeps it gone. The
+	# title screen used to carry a "Look Lab" panel listing every draft as a
+	# button; the designer's verdict on 2026-09-02 was that it showed nothing —
+	# none of these looks exist at the title screen, which has no dusk — and that
+	# a tool asking him to decide should stage the scenario and ask, not hand him
+	# switches. The pause door above is the whole switch now.
 	var title = load("res://ui/title_screen.tscn").instantiate()
 	add_child(title)
 	await get_tree().process_frame
-	var opener := _find_button(title, "LookLabButton")
-	_assert(opener != null, "the title screen offers 'Look Lab' beside 'Sound Test'")
-	if opener != null:
-		opener.pressed.emit()
-		await get_tree().process_frame
-		var picks := 0
-		for i in CotPresentation.COUNT:
-			if _find_button(title, "Look_%s_%d" % [LookLab.COT, i]) != null:
-				picks += 1
-		_assert(picks == CotPresentation.COUNT,
-			"and the panel offers every cot treatment the game can draw (%d)" % picks)
-		var c_button := _find_button(title, "Look_%s_%d" % [LookLab.COT, CotPresentation.TURNDOWN])
-		if c_button != null:
-			c_button.pressed.emit()
-			await get_tree().process_frame
-			_assert(CotPresentation.treatment == CotPresentation.TURNDOWN,
-				"picking one there selects it")
+	_assert(_find_button(title, "LookLabButton") == null,
+		"the title screen no longer offers a Look Lab panel")
 	title.queue_free()
 	await get_tree().process_frame
 
@@ -2461,33 +2448,23 @@ func _scenario_ab_the_stations_present_themselves() -> void:
 	_assert(not main_scene.menus.is_open(),
 		"and closes the menu, so the farm is what he is looking at when it changes")
 
-	# --- door 2: the title screen's Look Lab panel ---------------------------
+	# --- door 2 was removed on 2026-09-02, and stays removed -----------------
+	# The title screen carried a panel of one button per draft. It could not show
+	# any of them — every look here needs dusk, or a crop in the basket, and the
+	# title screen has neither — and the designer could not tell from the buttons
+	# what they meant. The pause line above is the switch; a staged scenario, not
+	# a menu, is what will ask him the next question of this kind.
 	var title = load("res://ui/title_screen.tscn").instantiate()
 	add_child(title)
 	await get_tree().process_frame
-	var opener := _find_button(title, "LookLabButton")
-	_assert(opener != null, "the title screen offers 'Look Lab' beside 'Sound Test'")
-	if opener != null:
-		opener.pressed.emit()
-		await get_tree().process_frame
-		var offered := 0
-		var wanted := 0
-		for axis in LookLab.AXES:
-			for i in LookLab.count_of(axis):
-				wanted += 1
-				if _find_button(title, "Look_%s_%d" % [axis, i]) != null:
-					offered += 1
-		_assert(offered == wanted,
-			"and the panel offers every draft of every axis (%d/%d)" % [offered, wanted])
-		var pick := _find_button(title, "Look_%s_%d"
-			% [LookLab.SATISFIED, StationPresentation.SATISFIED_NOUN])
-		if pick != null:
-			pick.pressed.emit()
-			await get_tree().process_frame
-			_assert(StationPresentation.satisfied == StationPresentation.SATISFIED_NOUN,
-				"picking one there selects it, through the same static the game reads")
+	_assert(_find_button(title, "LookLabButton") == null,
+		"the title screen no longer offers a Look Lab panel")
 	title.queue_free()
 	await get_tree().process_frame
+	# Back to the shipped defaults for the scenario below, which the panel's own
+	# pick used to do on its way past.
+	StationPresentation.set_discovery(StationPresentation.DISCOVERY_PIP)
+	StationPresentation.set_satisfied(StationPresentation.SATISFIED_NOUN)
 
 	# --- the world the drafts need -------------------------------------------
 	if not TeachingFocus.handed_over(farm.sim):
@@ -2719,14 +2696,14 @@ func _scenario_ac_the_zoo() -> void:
 	# it gets the attract loop's proof.
 	print("\n--- Scenario AC: the zoo, and it cannot touch the player's farm (T-33) ---")
 
-	# The door itself. Debug gate, same row as the Sound Test and the Look Lab.
+	# The door itself. Debug gate, same row as the Sound Test and the Home.
 	var title = load("res://ui/title_screen.tscn").instantiate()
 	add_child(title)
 	await get_tree().process_frame
 	_assert(_find_button(title, "ZooButton") != null,
-		"the title screen offers 'Zoo' beside 'Sound Test' and 'Look Lab'")
+		"the title screen offers 'Zoo' beside 'Sound Test'")
 	_assert(_find_button(title, "SoundTestButton") != null
-			and _find_button(title, "LookLabButton") != null,
+			and _find_button(title, "HomeButton") != null,
 		"and the doors that were already there are still there")
 	title.queue_free()
 	await get_tree().process_frame

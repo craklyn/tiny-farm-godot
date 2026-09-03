@@ -361,18 +361,23 @@ touches the volume. The complaint is that the cue says "yes" and never says *to 
 
 - **Where the switches are.** T-27's two doors, **generalised into one look lab** rather
   than copied: `systems/look_lab.gd` is a registry of *axes* (the cot's, and T-28's two),
-  the title screen's button is now **"Look Lab"** and its panel has a section per open
-  question, and the pause menu carries **one line per axis**, each naming where it stands
+  ~~the title screen's button is now **"Look Lab"** and its panel has a section per open
+  question,~~ and the pause menu carries **one line per axis**, each naming where it stands
   and each advancing only itself. A second rig would have meant two panels, two pause
   lines and a designer wondering which menu the thing he wants is under. Debug builds
   only, like the Sound Test. Every pick lives on a static, so it survives the trip to the
   title screen and back and `GameState.reset()` cannot wipe it.
+  *Amended 2026-09-02 (Q-86): the title-screen panel is **gone**. Shown it, the designer
+  could not tell what it was asking, and it could not show him — none of these looks
+  exist at a title screen, which has no dusk and no crop in the basket. The registry and
+  the pause lines are unchanged; what asks the next look question stages its own scenario
+  and quizzes, which is Q-86's open ruling.*
   *Cross-reference, 2026-09-01: **T-33's Zoo joins that row as the third debug door** —
   same `OS.is_debug_build()` gate, same corner of the title screen. It is a scene change
   rather than a panel, because what it opens is a second farm with a clock of its own and
   the attract loop is already running one behind this menu; the debug surfaces are now
-  Sound Test (Q-31), Look Lab (T-27/T-28) and Zoo (T-33), and that is where a new one
-  goes.*
+  Sound Test (Q-31), Zoo (T-33) and Home (T-37), and that is where a new one
+  goes. (The Look Lab's door was here too until Q-86 removed it, 2026-09-02.)*
 - **D-8 held, treatment by treatment.** `StationPresentation` is pure static over sim
   reads — no Node, no autoload, no `Input`, and no randomness of its own. The unit suite
   asserts the world is byte-identical after asking every treatment what to draw, nine
@@ -899,6 +904,8 @@ above stays unticked until he says which one, and the two he does not pick come 
   (`systems/look_lab.gd`), one panel and one pause line per open question. The cot's
   three drafts are unchanged and still reachable — the title button reads "Look Lab" and
   the pause line still reads "Cot look: …".*
+  *Amended 2026-09-02 (Q-86): the title door is removed; the pause line is the whole
+  switch. The drafts and the registry are untouched.*
   The pause door is the one to use — these only show themselves at dusk, and the title
   screen has no dusk. The pick lives on a static in `CotPresentation`, not in the scene
   or in `GameState`, so it survives the trip to the title screen and back and is not
