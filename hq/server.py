@@ -2606,9 +2606,10 @@ def _compute_signals_now():
 
     # The Eye of Sauron: one ordered queue of what deserves the CEO's look.
     eye = []
-    for pid, s in status.items():
-        if s["level"] == "fire":
-            eye.append({"kind": "fire", "pillar": pid, "text": s["reasons"][0]})
+    # Fires used to be appended here, one per burning pillar, reading that
+    # pillar's first reason. The goals emit their own now — with the goal's
+    # signal_key, so one artifact that unblocks three pillars reaches him once —
+    # and appending both put every fire on the dashboard twice.
     # One entry per DISTINCT unblocking action (Rin's dedupe rule): projects
     # sharing a blocker merge into one item, and projects blocked on inbox
     # decisions fold into the decisions line instead of echoing it. Entries are
@@ -2680,6 +2681,14 @@ def _compute_signals_now():
                             + ", ".join(b["name"] for b in decision_blocked) + "." if decision_blocked
                             else f"Rule on {len(curated_fresh)} prepped decision(s).",
                     "href": "#/inbox"})
+
+    # One explicit ranking, applied once, rather than an order that falls out of
+    # the sequence things happen to be appended in. Fires first — the dashboard
+    # promotes eye[0] to "the one thing", and it has to be the worst thing, not
+    # whatever block of code ran first. Stable, so within a rank the order each
+    # producer chose survives.
+    _EYE_RANK = {"fire": 0, "decide": 1, "action": 2, "watch": 3, "info": 4}
+    eye.sort(key=lambda e: _EYE_RANK.get(e.get("kind"), 5))
 
     data = {
         "generated_at": _t.strftime("%H:%M:%S"),

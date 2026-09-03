@@ -6,8 +6,8 @@ maintains its own status, so "not marked on fire" is trustworthy, and the
 dashboard's eye queue is the ordered list of what actually needs the CEO.
 
 Surfaces: the Eye of Sauron dashboard (derived pillar statuses + the chief of
-staff's brief), six pillar pages (scoped commit feeds, living demos, team
-charters with escalation rules), org chart with chattable personas, the
+staff's brief), six pillar pages (each one the wall its VP would brief the CEO
+from — see **Goals** below), org chart with chattable personas, the
 animated/editable entity gallery (whose sprite editor keeps a full per-sheet
 edit history and files each edit to the art director), the map editor (layout
 definitions), the playtest viewer (traces scored by the game's own formulas),
@@ -29,6 +29,115 @@ section 2).
   - status: `systemctl --user status tiny-farm-hq`
   - logs: `journalctl --user -u tiny-farm-hq`
   - restart after editing server/data: `systemctl --user restart tiny-farm-hq`
+
+## Goals — the one status pipeline
+
+Every pillar's status is computed from goals it declares in
+`data/goals/<pillar>.json`. There is exactly one evaluator (`eval_measure` /
+`eval_goal` / `rollup` in `server.py`) and no second status system anywhere.
+
+Before this, three pillars derived their status and three carried hardcoded
+`ok` strings, so half the board could never light up however wrong things got,
+and nothing on screen distinguished a measured verdict from a typed one. Sales
+had a subtler version of the same bug: it only went amber when there were *zero*
+release tags, so the moment `v0.1.0` existed it was structurally green forever.
+
+**The honesty rule.** A goal's *statement* and its *target* are authored — a
+commitment cannot be derived, and pretending otherwise would be the lie. Its
+*current value* is measured, by a small declarative vocabulary that maps onto
+things this repo really holds. A goal nothing can measure does not get to look
+measured: it renders `unchecked` with the reason and the specific recording that
+would make it real, and it counts **against** the pillar's assurance fraction
+rather than for it. Hence the "4 of 6 checked by machine" on every pillar page —
+it is what makes a green pillar with two checks visually different from a green
+pillar with seven.
+
+The six goal states: `green`, `amber`, `red` (measured), `unchecked` (nothing
+watches it), `broken` (the measurement itself failed — never green; a failed
+reading is a fact about the instrument), `attested` (a human declared it, with a
+date, expiring). Only Daniel may attest — the rest of the org are personas, and
+a persona vouching for something nothing measured would be inventing studio
+activity.
+
+**Measurement kinds** (each maps to something the audit verified exists):
+`git_commits`, `git_file_age`, `git_tag`, `git_build_lag`, `file_exists`,
+`file_count`, `file_grep`, `orphan_files`, `ci_state`, `job_state`,
+`count_json`, `project_field`, `program_readiness`, `playtest_metric`,
+`doc_section`, `queue_state`, `probe_cache`, `palette_named_present`,
+`composite`, `manual_attest`, `unchecked`.
+
+Two safety properties are structural, not conventions: **no kind executes a
+shell command or opens a socket** (network readings come from `probe_cache`,
+which reads a file a named background poller writes), and **every path-taking
+kind goes through `_safe()`**, so a goal file cannot read outside the repo.
+
+A `composite` with `op: all_of` is green only if every member is green *and
+assured* — one unwatched member makes the whole thing unchecked. That is what
+stops a nine-gate launch check from reading green because eight of the gates
+were never automated.
+
+**Rollup:** a red blocking goal is `fire`; a red important one, an amber
+blocking one, a broken one, or an expired attestation is `attention`; an
+unwatched blocking goal is `unassured` (never `ok`); a pillar with no goal file
+is `unassured` too, because a pillar nobody has written goals for is not a
+healthy pillar. Dormancy is a **flag, not a level**, so a dormant pillar with a
+failing promise still reaches the nav's exception group.
+
+`status[pid]` keeps its `{level, reasons}` contract exactly — the dashboard, the
+nav dots, the standup brief and the chat personas all read it — and only gains
+additive fields.
+
+## The pillar pages
+
+Five bands, invariant in order so the CEO learns the page once, with band 2
+entirely the pillar's own because an engineering wall and an art director's wall
+are not the same object:
+
+0. identity + the assurance fraction + when it was derived
+1. **the verdict** — one sentence, generated from the goals, never authored. It
+   may be a *permission* rather than a status ("You cannot tag today").
+2. **the instrument** — the thing only this page has. Capped at `30vh` and
+   scrolling inside itself: when the screen is short the picture yields, because
+   the goals and the asks matter more than the picture.
+3. **the goal scoreboard** — the one band rendered identically everywhere, since
+   it is what lets him compare pillars. Rows past the third fold.
+4. **what I need from you** — capped at three.
+
+Then the fold, and below it: what nobody is checking, the commit feed (demoted,
+and relabelled per pillar to say what it actually measures), and the team.
+
+**The needs band creates no records.** It is a projection over the two queues
+that already exist — the decision cards and the tier-2 work items — filtered to
+the pillar, ranked, capped. No ruling is ever *given* from a pillar page: a
+ruling recorded in two places diverges, so every control carries him to the one
+place it is recorded.
+
+| Pillar | Its one question | Its instrument | Its verb |
+|---|---|---|---|
+| Engineering | Is the proof that main works fresh enough to believe? | the evidence strip, aged in **commits behind main**, never a clock; plus 100 CI runs as ticks | RUN |
+| Product | What stands in front of the next thing the player gets? | the gate scorecard welded to its build-decay stamp | CUT |
+| Art | Is the game still one thing to look at? | the palette ribbon, decoded from the shipped PNGs | EDIT (gated) |
+| Marketing | If people showed up tomorrow, would we know? | the promise checker: the store page vs. the build | FILL IN THE BLANK |
+| Sales | What holds the next tag? | the gap, and the launch check at three-state weight | **none — no publish control, ever** |
+| Ops | Can we afford what's next? | three tiles, one of which counts *down* | APPROVE |
+
+Art's palette ribbon is the single licensed exception to *colour = semantics*,
+and it says so on the page. The PNG decoding is stdlib `zlib` + `struct`, cached
+on the sheets' mtimes.
+
+## Recording
+
+Anything HQ wants to chart later has to be written down at the time, and three
+of the studio's most interesting quantities had exactly one datapoint each. So:
+runs stamp the commit they proved and append to `data/history/runs.jsonl`, and
+the 100-run CI window is polled onto `data/ci_history.json` by a background
+thread — deliberately **off** the request path, since `gh --limit 100` costs
+~4s against ~1s at `--limit 10`.
+
+Nothing here is written by a request handler. A tracked file written on page
+render leaves the tree dirty, and `git describe --dirty` is where playtest build
+ids come from — which is exactly how two recorded sessions became impossible to
+tie to a build.
 
 ## Layout
 
