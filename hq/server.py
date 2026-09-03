@@ -1763,6 +1763,54 @@ def release_manifest(release_id=None):
     return data
 
 
+# ---------------------------------------------------------------------------
+# The platform ladder.
+#
+# The other half of what Sales & Platforms owns. The manifest says what we have
+# to sell; this says where we can sell it, and what each storefront we are not
+# on yet would actually cost. Each requirement is a real measurement against the
+# repo where one is possible and an honest "nobody has established this" where
+# it is not — a store account and an age rating are facts about the world, and
+# no amount of reading export_presets.cfg will find them.
+#
+# `pursuing` is deliberately null on the ones nobody has ruled on. The ladder's
+# job is to price the next storefront before anyone commits to it, not to imply
+# a strategy the CEO has never stated.
+# ---------------------------------------------------------------------------
+
+def platform_ladder():
+    doc = load_json(os.path.join(DATA, "platforms.json"))
+    out = []
+    for p in doc["platforms"]:
+        reqs = []
+        for r in p.get("requirements", []):
+            reading = eval_measure(r.get("check") or {})
+            if reading.get("unchecked"):
+                state = "unknown"
+            elif reading.get("error"):
+                state = "unknown"
+            elif reading.get("value") is True:
+                state = "have"
+            else:
+                state = "missing"
+            reqs.append({
+                "label": r["label"], "state": state, "note": r.get("note", ""),
+                "blocks_publish": r.get("blocks_publish", True),
+                "detail": (reading.get("says_true") if reading.get("value") is True
+                           else reading.get("says_false")) or reading.get("reason")
+                          or reading.get("error") or "",
+                "would_need": reading.get("would_need", ""),
+            })
+        have = sum(1 for r in reqs if r["state"] == "have")
+        out.append({**{k: v for k, v in p.items() if k != "requirements"},
+                    "requirements": reqs, "have": have, "total": len(reqs),
+                    "missing": sum(1 for r in reqs if r["state"] == "missing"),
+                    "blocking": sum(1 for r in reqs
+                                    if r["state"] == "missing" and r["blocks_publish"]),
+                    "unknown": sum(1 for r in reqs if r["state"] == "unknown")})
+    return {"platforms": out}
+
+
 def eval_measure(spec, depth=0):
     """One declarative measurement -> one normalized Reading."""
     kind = (spec or {}).get("kind")
@@ -2158,6 +2206,26 @@ def eval_measure(spec, depth=0):
             return _reading(doc.get(spec.get("field", "value")), spec.get("unit", ""),
                             doc.get("source_human", spec["probe"]), "", "cached",
                             extra={"polled_at": doc.get("polled_at")})
+
+        if kind == "platform_ladder":
+            lad = platform_ladder()["platforms"]
+            live = [p for p in lad if p.get("live")]
+            field = spec.get("field", "shippable")
+            if field == "live_are_shippable":
+                # Anything we claim to be live on, we must actually be able to
+                # ship to. A storefront we cannot publish to is worse than one
+                # we are not on: it looks like a channel and is not.
+                # Only what actually stops a build reaching a player. Counting
+                # everything we would merely like made a live, perfectly
+                # publishable storefront read as broken.
+                broken = [p for p in live if p["blocking"]]
+                return _reading(len(broken), spec.get("unit", "live storefronts we can no longer publish to"),
+                                f"{len(live)} storefront(s) live", "", "cheap",
+                                extra={"broken": [p["name"] for p in broken]})
+            if field == "live_count":
+                return _reading(len(live), "storefronts a player can reach us on",
+                                "platforms marked live", "", "cheap")
+            return _reading(None, error=f"no such platform field: {field}")
 
         if kind == "release_manifest":
             m = release_manifest(spec.get("release"))
@@ -3507,6 +3575,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, api_needs(unquote(path[len("/api/needs/"):])))
             if path == "/api/ci/history":
                 return self._send(200, ci_history() or {"error": "not polled yet"})
+            if path == "/api/platforms":
+                return self._send(200, platform_ladder())
             if path.startswith("/api/manifest"):
                 rid = path[len("/api/manifest/"):] if len(path) > len("/api/manifest") else ""
                 return self._send(200, release_manifest(unquote(rid) or None))

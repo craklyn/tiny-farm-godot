@@ -759,7 +759,43 @@ async function instSales(root, below, sig, g, ctx) {
         a control on a dashboard.</div>
     </div>`));
 
-  below.replaceChildren(h(foldSection("Everything ever published", `${(sig.tags || []).length} tag${(sig.tags || []).length === 1 ? "" : "s"}`,
+  // The ladder: where we can sell it, and what the next storefront would cost.
+  // Reference rather than headline — the roll-up is a goal above the fold, and
+  // this is what he opens when he wants to know the price of the next one.
+  const lad = await api("/api/platforms").catch(() => null);
+  const ladderHtml = !lad ? "" : (lad.platforms || []).map(p => {
+    const chip = p.live ? `<span class="pl-live">live</span>`
+      : p.pursuing === true ? `<span class="pl-go">pursuing</span>`
+      : p.pursuing === false ? `<span class="pl-no">not pursuing</span>`
+      : `<span class="pl-unruled">nobody has ruled on this one</span>`;
+    const reqs = p.requirements.map(r => `<div class="pl-req">
+      <i class="dot ${r.state === "have" ? "d-ok"
+        : r.state === "missing" ? (r.blocks_publish ? "d-fire" : "d-attn")
+        : "d-unchecked"}" title="${r.state === "have" ? "in place"
+        : r.state === "missing" ? (r.blocks_publish ? "missing — the build cannot reach a player without it" : "missing — wanted, but it does not stop us publishing")
+        : "nobody has established this"}"></i>
+      <div><b>${esc(r.label)}</b>
+        <div class="small muted">${esc(r.detail || "")}</div>
+        ${r.would_need ? `<div class="small">Would need: ${esc(r.would_need)}</div>` : ""}
+        ${r.note ? `<div class="small pl-note">${esc(r.note)}</div>` : ""}</div>
+    </div>`).join("");
+    return `<div class="pl-plat">
+      <div class="pl-head"><b>${esc(p.name)}</b> ${chip}
+        <span class="small muted">${p.have} of ${p.total} in place${p.unknown ? ` · ${p.unknown} nobody has established` : ""}</span></div>
+      ${p.note ? `<div class="small muted pl-blurb">${esc(p.note)}</div>` : ""}
+      ${reqs}</div>`;
+  }).join("");
+  const live = (lad && lad.platforms || []).filter(p => p.live).length;
+  const unruled = (lad && lad.platforms || []).filter(p => p.pursuing === null).length;
+
+  below.replaceChildren(h(
+    foldSection("Where we can sell it",
+      `${live} storefront${live === 1 ? "" : "s"} live${unruled ? ` · ${unruled} priced but unruled` : ""}`,
+      `<p class="small muted">What each storefront we are not on yet would actually cost. A hollow mark
+        is something no file here can establish — a store account and an age rating are facts about the
+        world. "Nobody has ruled on this one" is not a plan, it is the absence of one, and pricing it
+        is what this table is for.</p>${ladderHtml}`)
+    + foldSection("Everything ever published", `${(sig.tags || []).length} tag${(sig.tags || []).length === 1 ? "" : "s"}`,
     (sig.tags || []).length
       ? (sig.tags || []).map(t => `<div class="commitrow"><code class="ref">${esc(t)}</code></div>`).join("")
       : "<span class='muted'>Nothing has ever been published.</span>")));

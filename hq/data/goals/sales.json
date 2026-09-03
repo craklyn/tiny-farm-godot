@@ -14,7 +14,7 @@
       "statement": "We can say what the next release gives a player, and every one of those claims traces to the build.",
       "statement_short": "we cannot say what the next release actually offers a player",
       "owner": "victor",
-      "severity": "blocking",
+      "severity": "important",
       "unit": "ratio",
       "why_it_matters": "This is the inventory. Without it Sales has nothing to take to a player, a storefront or a press contact — and the only number the wall could show was a commit count, which is how much work happened rather than what any of it gives anybody.",
       "measure": {
@@ -49,21 +49,24 @@
     },
     {
       "id": "we-know-what-players-want",
-      "statement": "We have some signal of what players actually want, so a release can be argued for rather than guessed at.",
-      "statement_short": "nothing anywhere records what a player has asked for",
+      "statement": "We can see what happens after somebody reaches the store page — visits, plays, and what they do next.",
+      "statement_short": "we cannot see anything a player does at the storefront",
       "owner": "victor",
       "severity": "important",
       "unit": "",
-      "why_it_matters": "Sales is supposed to work backwards from demand: hear what people want, push for it, ship it, tell them it landed. Not one of those four is possible here. There is no channel, no analytics, no wishlist and no recorded request — so every feature in the manifest was chosen on taste alone. That may be exactly right for a game this early, but it should be a choice rather than the only option available.",
+      "why_it_matters": "The split with Marketing: they generate demand — the posts, the press, the creators — and they own reach and interest. Sales owns everything from the store page down: who arrived, who played, who came back, who bought, who refunded and why. Wishlists sit exactly on that line, which is why they belong on both walls with different questions attached — Marketing asks whether the campaign moved the number, Sales asks what the number forecasts for launch and whether it clears the visibility bar the storefront uses. None of it is visible here: one free browser build has been live for weeks and nobody in this studio can say whether a single person has opened it.",
       "measure": {
-        "kind": "file_exists",
-        "path": "hq/data/demand.json"
+        "kind": "probe_cache",
+        "probe": "itch_daily",
+        "field": "views"
       },
       "compare": {
-        "direction": "must_be_true"
+        "direction": "higher_is_better",
+        "target": 0,
+        "amber_at": 0
       },
       "path_to_green": {
-        "narrative": "One record of what players ask for, however thin — the itch page's comments, the green tester's session notes, anything said out loud. Today the studio cannot hear anything, so the first release with an audience teaches us nothing.",
+        "narrative": "One credential. The storefront already counts views and plays for us; we have simply never asked it for the numbers. That is the whole demand surface available to this studio today, and it is the cheapest thing on this page.",
         "route": {
           "kind": "none"
         },
@@ -72,8 +75,8 @@
           "label": "Put it on Victor's list",
           "tier": 1,
           "level": "story",
-          "title": "Give the studio somewhere to record what players ask for",
-          "ask": "Nothing in this repo records a single thing a player has wanted. Sales is meant to work backwards from demand and cannot: there is no channel, no analytics and no wishlist. Design the thinnest honest record — hq/data/demand.json — one entry per thing somebody actually asked for, with who said it and where, so a feature can eventually be argued for rather than chosen on taste alone. Do not invent entries to fill it; an empty file that is honestly empty is the correct first state. This depends on Finance & Ops' open ruling about where a player's bug report lands, so read that first.",
+          "title": "Get the storefront's numbers into HQ",
+          "ask": "One free browser build has been public for weeks and nobody can say whether anyone has opened it. The storefront exposes views, downloads and plays through an API key the account can issue. Write the poller (a named entry in hq/server.py's PROBES registry, refreshed off the request path onto hq/data/probes/itch_daily.json, the way every other network reading in HQ works) and put the key in the project .env beside the other two. Do not invent numbers for the empty state: a poller with no key must render as an absence, not a zero. This is the whole demand surface this studio has, so it is the cheapest real thing on the Sales page.",
           "first_action": "Read ITCH_PAGE.md, hq/data/goals/ops.json's a-player-can-reach-us goal, and the playtest session notes, then propose the record's shape."
         }
       },
@@ -317,6 +320,43 @@
         "chart": false
       },
       "signal_key": "ship_gate"
+    },
+    {
+      "id": "live-storefronts-still-work",
+      "statement": "Every storefront we are live on, we can still publish to.",
+      "statement_short": "we are live on a storefront we can no longer publish to",
+      "owner": "lena",
+      "severity": "blocking",
+      "unit": "live storefronts we cannot publish to",
+      "why_it_matters": "A channel we cannot push to is worse than one we are not on: it looks like a way to reach players and is not. This checks the pipeline, the preset and the credential behind each live storefront rather than assuming they still exist.",
+      "measure": {
+        "kind": "platform_ladder",
+        "field": "live_are_shippable"
+      },
+      "compare": {
+        "direction": "lower_is_better",
+        "target": 0,
+        "amber_at": 0
+      },
+      "path_to_green": {
+        "narrative": "Open the ladder below and fix whatever the live storefront is missing.",
+        "route": {
+          "kind": "none"
+        },
+        "owner": "lena",
+        "action": {
+          "label": "Put it on Lena's list",
+          "tier": 1,
+          "level": "task",
+          "title": "Restore publishing to a live storefront",
+          "ask": "A storefront the game is live on is missing something it needs to publish — a preset, a pipeline step or a credential. Find which and restore it. Being live somewhere we cannot push to is worse than not being there: it reads as a channel and is not one.",
+          "first_action": "Open #/pillar/sales, expand the storefront ladder, and read which requirement is marked missing."
+        }
+      },
+      "history": {
+        "record": true,
+        "chart": false
+      }
     }
   ]
 }

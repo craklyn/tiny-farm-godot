@@ -1,0 +1,232 @@
+{
+  "note": "The storefront ladder. Sales & Platforms owns getting the game onto a surface a player can reach it on, and owns what each one demands before it will take us. Every requirement here is either derived from the repo or explicitly marked as a judgment nobody has made yet — the point of the ladder is to say what the NEXT storefront costs before anyone commits to it, not to imply we are pursuing all of them.\n\nStatus is derived; 'pursuing' is the CEO's call and is deliberately null where he has not made it.\n\n'blocks_publish' marks a requirement without which the build cannot reach a player at all, as against one we simply want. Analytics is not a publishing requirement — conflating the two made a live, perfectly publishable storefront read as broken.",
+  "platforms": [
+    {
+      "id": "itch-web",
+      "name": "itch.io — browser",
+      "note": "The one place a player can reach the game today.",
+      "pursuing": true,
+      "live": true,
+      "url": "https://craklyn.itch.io/tiny-farm",
+      "requirements": [
+        {
+          "label": "A web export preset",
+          "check": {
+            "kind": "file_grep",
+            "paths": [
+              "export_presets.cfg"
+            ],
+            "exts": [
+              ".cfg"
+            ],
+            "pattern": "platform=\"Web\"",
+            "expect": "present",
+            "field": "bool",
+            "says_true": "the Web preset is configured",
+            "says_false": "there is no Web export preset"
+          },
+          "blocks_publish": true
+        },
+        {
+          "label": "A publish pipeline that runs on a tag",
+          "check": {
+            "kind": "file_grep",
+            "paths": [
+              ".github/workflows/release.yml"
+            ],
+            "exts": [
+              ".yml"
+            ],
+            "pattern": "butler push",
+            "expect": "present",
+            "field": "bool",
+            "says_true": "butler pushes the build on a tag",
+            "says_false": "nothing publishes the build"
+          },
+          "blocks_publish": true
+        },
+        {
+          "label": "The publishing credential",
+          "check": {
+            "kind": "file_grep",
+            "paths": [
+              ".github/workflows/release.yml"
+            ],
+            "exts": [
+              ".yml"
+            ],
+            "pattern": "BUTLER_API_KEY",
+            "expect": "present",
+            "field": "bool",
+            "says_true": "the workflow reads a publishing key from repository secrets",
+            "says_false": "no publishing credential is wired"
+          },
+          "blocks_publish": true
+        },
+        {
+          "label": "Store analytics we can read",
+          "check": {
+            "kind": "file_exists",
+            "path": "hq/data/probes/itch_daily.json"
+          },
+          "note": "The API key exists as a product; we have not asked for one. This is the only demand signal available to this studio today.",
+          "blocks_publish": false
+        }
+      ]
+    },
+    {
+      "id": "android",
+      "name": "Android — Play Store",
+      "note": "The tablet already runs a debug build. A public one is a different animal.",
+      "pursuing": null,
+      "live": false,
+      "requirements": [
+        {
+          "label": "An Android export preset",
+          "check": {
+            "kind": "file_grep",
+            "paths": [
+              "export_presets.cfg"
+            ],
+            "exts": [
+              ".cfg"
+            ],
+            "pattern": "platform=\"Android\"",
+            "expect": "present",
+            "field": "bool",
+            "says_true": "the Android preset is configured",
+            "says_false": "there is no Android export preset"
+          },
+          "blocks_publish": true
+        },
+        {
+          "label": "A release signing key",
+          "check": {
+            "kind": "file_grep",
+            "paths": [
+              "export_presets.cfg"
+            ],
+            "exts": [
+              ".cfg"
+            ],
+            "pattern": "keystore/release=\"[^\"]+\"",
+            "expect": "present",
+            "field": "bool",
+            "says_true": "a release keystore is configured",
+            "says_false": "only the debug keystore exists — a public build cannot be signed"
+          },
+          "note": "Lose this key after publishing and the app can never be updated again; the store will not accept a differently-signed version. Where it lives is a personal-custody decision.",
+          "blocks_publish": true
+        },
+        {
+          "label": "A Play Console account",
+          "check": {
+            "kind": "unchecked",
+            "reason": "Nothing in this repo can see whether a developer account exists.",
+            "would_need": "Your word, recorded once — it costs a one-off fee and an identity check."
+          },
+          "blocks_publish": true
+        },
+        {
+          "label": "An age rating and a privacy policy",
+          "check": {
+            "kind": "unchecked",
+            "reason": "Both are questionnaires on the store's own site, not artifacts here.",
+            "would_need": "The store's rating questionnaire completed, and a privacy policy hosted somewhere public."
+          },
+          "blocks_publish": true
+        }
+      ]
+    },
+    {
+      "id": "steam",
+      "name": "Steam",
+      "note": "Where a paid PC release would live, and the only storefront with a wishlist worth forecasting from.",
+      "pursuing": null,
+      "live": false,
+      "requirements": [
+        {
+          "label": "A desktop export preset",
+          "check": {
+            "kind": "file_grep",
+            "paths": [
+              "export_presets.cfg"
+            ],
+            "exts": [
+              ".cfg"
+            ],
+            "pattern": "platform=\"(Linux|Windows Desktop|macOS)\"",
+            "expect": "present",
+            "field": "bool",
+            "says_true": "a desktop preset is configured",
+            "says_false": "there is no desktop export preset at all"
+          },
+          "blocks_publish": true
+        },
+        {
+          "label": "A Steamworks account and app fee",
+          "check": {
+            "kind": "unchecked",
+            "reason": "Not visible from this repo.",
+            "would_need": "A decision to spend the one-off app fee, which is recoupable but real money."
+          },
+          "blocks_publish": true
+        },
+        {
+          "label": "A store page — capsules, trailer, copy",
+          "check": {
+            "kind": "unchecked",
+            "reason": "None of it exists; the only public copy in this repo is the itch page.",
+            "would_need": "Capsule art at several sizes, a trailer, and store copy — the largest art and video ask this project has ever had."
+          },
+          "blocks_publish": true
+        },
+        {
+          "label": "A wishlist number to forecast from",
+          "check": {
+            "kind": "unchecked",
+            "reason": "There is no store page, so there is no wishlist. This is the number a launch forecast is built on, and it does not exist yet.",
+            "would_need": "A published store page, and then Marketing driving traffic to it."
+          },
+          "blocks_publish": true
+        }
+      ]
+    },
+    {
+      "id": "ios",
+      "name": "iOS",
+      "note": "Furthest away, and the only one blocked by hardware.",
+      "pursuing": false,
+      "live": false,
+      "requirements": [
+        {
+          "label": "An iOS export preset",
+          "check": {
+            "kind": "file_grep",
+            "paths": [
+              "export_presets.cfg"
+            ],
+            "exts": [
+              ".cfg"
+            ],
+            "pattern": "platform=\"iOS\"",
+            "expect": "present",
+            "field": "bool",
+            "says_true": "the iOS preset is configured",
+            "says_false": "there is no iOS export preset"
+          },
+          "blocks_publish": true
+        },
+        {
+          "label": "A Mac to build and sign on",
+          "check": {
+            "kind": "unchecked",
+            "reason": "Godot emits an Xcode project rather than an artifact, and none of it can be done from Linux.",
+            "would_need": "A Mac. The runbook says so plainly; testing on your own device needs only Xcode and a cable, but shipping needs the whole chain."
+          },
+          "blocks_publish": true
+        }
+      ]
+    }
+  ]
+}
