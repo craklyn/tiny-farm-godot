@@ -112,6 +112,16 @@ the pillar, ranked, capped. No ruling is ever *given* from a pillar page: a
 ruling recorded in two places diverges, so every control carries him to the one
 place it is recorded.
 
+*Known limitation.* Neither queue records which pillar it belongs to, so the
+projection filters by the owner's team, and a decision card with **no owner**
+reaches no pillar's needs band at all. It still reaches the decision inbox,
+which is the canonical surface, and a goal can point at a card explicitly
+through its `ceo_blocker` — which is how the robot-menu question reaches
+Marketing today. The proper fix is a `pillar` field on both record types,
+defaulted from owner → team → pillar; it is deliberately not done here because
+those files are written by a running service and a schema change wants its own
+change.
+
 | Pillar | Its one question | Its instrument | Its verb |
 |---|---|---|---|
 | Engineering | Is the proof that main works fresh enough to believe? | the evidence strip, aged in **commits behind main**, never a clock; plus 100 CI runs as ticks | RUN |
