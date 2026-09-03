@@ -72,6 +72,12 @@ static var ENERGY_COSTS: Dictionary = {
 	"water": BASE_COST,
 	"harvest": BASE_COST,
 	"plant": 0,
+	# Carrying a machine out to where it belongs and setting it down is work
+	# (2026-09-03) — one base verb, the same as tilling the square it stands on.
+	# Buying it and turning its dial are errands and cost nothing (see
+	# `SimWorld.NON_WORK_VERBS`); the walk and the lift are the part that is real.
+	"place": BASE_COST,
+	"configure": 0,
 	"sell": 0,
 	"refill": 0,
 	"sleep": 0,

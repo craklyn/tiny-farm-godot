@@ -149,6 +149,7 @@ func _init() -> void:
 	test_wetness_soaks_in()
 	test_parcel_introduction_pick()
 	test_parcel_scatter()
+	test_machines()
 
 	print("")
 	print(String("=").repeat(60))
@@ -9595,6 +9596,266 @@ func test_parcel_introduction_pick() -> void:
 # A worldgen change, so it is tested over a spread of seeds rather than one: the
 # scatter must be sparse, deterministic, confined to the parcels that ask for it,
 # and incapable of sealing anything off or standing on a beat.
+
+func test_machines() -> void:
+	print("\n--- Buying, placing and instructing a machine (2026-09-03) Tests ---")
+
+	# --- the catalogue ---------------------------------------------------------
+	#
+	# The placeholder acquisition rule, asserted as a rule rather than as two
+	# rows: **everything the game can place is for sale**. A machine added to the
+	# species table and forgotten in the shop is exactly the state this ruling
+	# exists to abolish, so the test is written to fail when that happens.
+	for key in MachineDefs.ORDER:
+		_assert(SpeciesDefs.has(MachineDefs.species_of(key)),
+			"the shop's %s is a species the table knows" % key)
+		_assert(MachineDefs.price_of(key) > 0,
+			"...and it has a price, so it can actually be bought")
+	_assert(MachineDefs.key_for_species(SpeciesDefs.SPRINKLER) == "sprinkler"
+			and MachineDefs.key_for_species(SpeciesDefs.BOT) == "bot",
+		"every placeable species maps back to the shop row it came from")
+	_assert(MachineDefs.key_for_species(SpeciesDefs.CHICKEN) == "",
+		"and a hen does not, so `collect` can never pocket the livestock")
+
+	# The config names are written out in layer 1 and matched in layer 2. This is
+	# the pin that stops them drifting apart silently — rename one in BotBrain and
+	# this fails rather than the menu quietly offering a setting nothing answers.
+	var listed: Array = MachineDefs.configs_of("bot").duplicate()
+	listed.sort()
+	var known: Array = BotBrain.CONFIGS.duplicate()
+	known.sort()
+	_assert(str(listed) == str(known),
+		"the menu's three settings are exactly the brain's three configs (%s)" % str(known))
+	_assert(MachineDefs.default_config("bot") == BotBrain.CONFIG_SHOO,
+		"a freshly placed robot chases birds — Q-56's debut candidate is what it does out of the box")
+	_assert(MachineDefs.configs_of("sprinkler").is_empty(),
+		"a sprinkler has nothing to decide, so it opens no menu")
+
+	# --- buying ---------------------------------------------------------------
+	GameState.reset()
+	SimRng.reseed(9090)
+	var world := SimWorld.new()
+	world.generate()
+
+	GameState.gold = 400
+	var refused: Dictionary = world.apply_action({
+		"verb": "buy_machine", "item": "bot", "actor": "player" }, GameState)
+	_assert(refused.get("ok", false), "she can buy a robot with 400 gold")
+	_assert(GameState.gold == 400 - MachineDefs.price_of("bot"),
+		"and it costs exactly the catalogue price (%dg)" % MachineDefs.price_of("bot"))
+	_assert(GameState.machines.get("bot", 0) == 1,
+		"the robot is in the crate, not in the seed pouch")
+	_assert(GameState.seeds.get("bot", 0) == 0,
+		"...and the seed pouch is untouched — a machine is not a seed")
+	_assert(GameState.selected_seed_type == "bot" and GameState.holding_machine(),
+		"buying one takes hold of it: the next tap is meant to be the placement")
+	_assert(GameState.held_count("bot") == 1 and GameState.held_count("wheat") == 5,
+		"held_count reads whichever cupboard the item lives in")
+
+	GameState.gold = 10
+	_assert(not world.apply_action({
+		"verb": "buy_machine", "item": "bot", "actor": "player" }, GameState).get("ok", false),
+		"and 10 gold buys nothing")
+	_assert(not world.apply_action({
+		"verb": "buy_machine", "item": "hovercraft", "actor": "player" }, GameState).get("ok", false),
+		"nor does a machine the catalogue has never heard of")
+
+	# --- placing --------------------------------------------------------------
+	GameState.gold = 1000
+	var spot := Vector2i(-1, -1)
+	for y in range(4, 16):
+		for x in range(4, 28):
+			if world.placeable_at(Vector2i(x, y)):
+				spot = Vector2i(x, y)
+				break
+		if spot.x >= 0:
+			break
+	_assert(spot.x >= 0, "the generated farm has somewhere a machine could stand")
+
+	var energy_before: int = GameState.energy
+	var placed: Dictionary = world.apply_action({
+		"verb": "place", "target": spot, "item": "bot", "actor": "player" }, GameState)
+	_assert(placed.get("ok", false), "she puts the robot down on that square")
+	_assert(world.actor_pos("bot") == spot and world.species_of("bot") == SpeciesDefs.BOT,
+		"and it is a registry actor standing there — saved, replayed and drawn like anybody else")
+	_assert(GameState.machines.get("bot", 0) == 0, "the crate is empty again")
+	_assert(GameState.energy == energy_before - Tools.get_energy_cost("place"),
+		"carrying it out and setting it down cost her one base verb of the day")
+	_assert(String(world.actor("bot").get("extra", {}).get("config", "")) == BotBrain.CONFIG_SHOO,
+		"it starts on the setting the catalogue names")
+	_assert(String(world.actor("bot").get("extra", {}).get("owner", "")) == SimWorld.ACTOR_PLAYER,
+		"and it belongs to her")
+	_assert(world.machine_at(spot) == "bot" and world.machine_at(spot + Vector2i(0, 1)) == "",
+		"machine_at finds it on its own square and nowhere else")
+	_assert(not world.placeable_at(spot),
+		"the square it stands on will not take a second machine")
+
+	var nothing_left: Dictionary = world.apply_action({
+		"verb": "place", "target": spot + Vector2i(1, 0), "item": "bot", "actor": "player" }, GameState)
+	_assert(not nothing_left.get("ok", false) and nothing_left.get("reason", "") == "no_machine",
+		"and with an empty crate the placement is refused, by name")
+
+	# **Ids are a pure function of the registry, which is what makes them
+	# replayable.** No counter in a field, no die roll: place, place, pick the
+	# second up, place again, and the same name comes back.
+	GameState.machines["bot"] = 3
+	var second := Vector2i(-1, -1)
+	for d in [Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1), Vector2i(2, 0)]:
+		if world.placeable_at(spot + d):
+			second = spot + d
+			break
+	_assert(second.x >= 0, "there is a second free square beside the first")
+	var again: Dictionary = world.apply_action({
+		"verb": "place", "target": second, "item": "bot", "actor": "player" }, GameState)
+	_assert(again.get("ok", false) and String(again.get("machine", "")) == "bot_2",
+		"the second robot placed is called bot_2")
+	world.apply_action({ "verb": "collect", "target": second, "actor": "player" }, GameState)
+	_assert(not world.has_actor("bot_2") and GameState.machines.get("bot", 0) == 3,
+		"picking it up despawns it and puts it back in the crate — the egg's verb, on a machine")
+	var third: Dictionary = world.apply_action({
+		"verb": "place", "target": second, "item": "bot", "actor": "player" }, GameState)
+	_assert(String(third.get("machine", "")) == "bot_2",
+		"...and the next one placed takes the free name back, in a session and in a replay alike")
+	world.apply_action({ "verb": "collect", "target": second, "actor": "player" }, GameState)
+
+	# --- where a machine may not go -------------------------------------------
+	var border := Vector2i(0, 0)
+	_assert(not world.placeable_at(border),
+		"the map border will not take a machine")
+	var refused_border: Dictionary = world.apply_action({
+		"verb": "place", "target": border, "item": "bot", "actor": "player" }, GameState)
+	_assert(not refused_border.get("ok", false) and refused_border.get("reason", "") == "occupied",
+		"and the gateway says so rather than spawning one in the wall")
+
+	# --- instructing ----------------------------------------------------------
+	world.actors["bot"]["energy"] = 123
+	var set_follow: Dictionary = world.apply_action({
+		"verb": "configure", "target": spot, "config": BotBrain.CONFIG_FOLLOW, "actor": "player" }, GameState)
+	_assert(set_follow.get("ok", false)
+			and String(world.actor("bot").get("extra", {}).get("config", "")) == BotBrain.CONFIG_FOLLOW,
+		"the menu's setting change reaches the machine")
+	_assert(not world.actor("bot")["extra"].has("home_x"),
+		"and the shoo config's leftovers go with it — the extra is rebuilt, not patched")
+	_assert(world.energy_of("bot") == 123,
+		"but its tiredness survives: a dial is not a night's sleep")
+	_assert(not world.apply_action({
+		"verb": "configure", "target": spot, "config": "sunbathe", "actor": "player" }, GameState).get("ok", false),
+		"a setting the machine does not have is refused")
+	_assert(not world.apply_action({
+		"verb": "configure", "target": spot + Vector2i(0, 3), "config": BotBrain.CONFIG_SHOO,
+		"actor": "player" }).get("ok", false),
+		"and so is configuring an empty square")
+
+	# The dial is an errand: free, and off the clock the crows are scheduled on.
+	var actions_before: int = GameState.actions_today
+	var energy_now: int = GameState.energy
+	world.apply_action({ "verb": "configure", "target": spot,
+		"config": BotBrain.CONFIG_SHOO, "actor": "player" }, GameState)
+	_assert(GameState.energy == energy_now and GameState.actions_today == actions_before,
+		"turning the dial costs no energy and does not tick the day's action clock")
+
+	# --- the sprinkler takes the same road ------------------------------------
+	GameState.gold = 1000
+	world.apply_action({ "verb": "buy_machine", "item": "sprinkler", "actor": "player" }, GameState)
+	var sprinkler_spot := Vector2i(-1, -1)
+	for y in range(4, 16):
+		for x in range(4, 28):
+			if world.placeable_at(Vector2i(x, y)):
+				sprinkler_spot = Vector2i(x, y)
+				break
+		if sprinkler_spot.x >= 0:
+			break
+	_assert(world.apply_action({ "verb": "place", "target": sprinkler_spot,
+			"item": "sprinkler", "actor": "player" }, GameState).get("ok", false),
+		"the first automation she meets is bought and placed the same way the robot is")
+	_assert(world.species_of("sprinkler") == SpeciesDefs.SPRINKLER,
+		"and it is the machine WI-10 built, not a new one")
+
+	# --- a saved farm remembers both halves ------------------------------------
+	GameState.machines["bot"] = 2
+	var snapshot: Dictionary = SaveGame.capture(world, GameState)
+	GameState.reset()
+	var reloaded := SimWorld.new()
+	_assert(SaveGame.restore(snapshot, reloaded, GameState),
+		"the farm saves and loads")
+	_assert(GameState.machines.get("bot", 0) == 2,
+		"the crate comes back with it")
+	_assert(reloaded.has_actor("bot") and reloaded.actor_pos("bot") == spot,
+		"and so does the robot standing in the field, because a placed machine is just an actor")
+
+	# --- a replay reproduces the whole errand ---------------------------------
+	#
+	# The point of the whole exercise: buy, place, instruct and pick up are
+	# Actions, so a session that did them replays to the same farm — which is what
+	# keeps these logs usable as phase 4's training data (S-3/S-5).
+	GameState.reset()
+	SimRng.reseed(7171)
+	var live := SimWorld.new()
+	live.generate()
+	GameState.gold = 1000
+	# Recorded as a **continued** session (`start_from_save`), because that is the
+	# only honest way to give the log a purse: `apply_to` resets GameState and
+	# regenerates the world itself, so a starting gold set beside the recorder
+	# would simply not exist in the replay.
+	var log := ReplayLog.new()
+	log.start_from_save(SaveGame.capture(live, GameState), 7171)
+	var here := Vector2i(-1, -1)
+	for y in range(4, 16):
+		for x in range(4, 28):
+			if live.placeable_at(Vector2i(x, y)):
+				here = Vector2i(x, y)
+				break
+		if here.x >= 0:
+			break
+	var there := Vector2i(-1, -1)
+	for d in [Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1)]:
+		if live.placeable_at(here + d):
+			there = here + d
+			break
+	_assert(here.x >= 0 and there.x >= 0, "the replayed farm has two free squares to work with")
+	var script: Array[Dictionary] = [
+		{ "verb": "buy_machine", "item": "bot", "actor": "player" },
+		{ "verb": "place", "target": here, "item": "bot", "actor": "player" },
+		{ "verb": "configure", "target": here, "config": BotBrain.CONFIG_CIRCLE, "actor": "player" },
+		{ "verb": "buy_machine", "item": "sprinkler", "actor": "player" },
+		{ "verb": "place", "target": there, "item": "sprinkler", "actor": "player" },
+		{ "verb": "collect", "target": there, "actor": "player" },
+	]
+	for act in script:
+		var res: Dictionary = live.apply_action(act, GameState)
+		_assert(res.get("ok", false), "replay script step %s resolves" % act.verb)
+		log.record(act, res, live.clock.tick)
+	var live_canonical := SaveGame.capture_canonical(live, GameState)
+
+	var replayed := SimWorld.new()
+	log.apply_to(replayed, GameState)
+	_assert(log.divergence == "", "the replay recomputes nothing differently (%s)" % log.divergence)
+	_assert(SaveGame.capture_canonical(replayed, GameState) == live_canonical,
+		"and lands on the same farm, robot, crate and purse as the session did")
+	_assert(replayed.has_actor("bot")
+			and String(replayed.actor("bot")["extra"].get("config", "")) == BotBrain.CONFIG_CIRCLE,
+		"including which job the robot was told to do")
+	_assert(GameState.machines.get("sprinkler", 0) == 1,
+		"and the sprinkler she thought better of is back in the crate")
+
+	# --- the selection ring never strands a machine ---------------------------
+	GameState.reset()
+	GameState.machines = { "bot": 1 }
+	GameState.selected_seed_type = "bot"
+	var seen_bot := false
+	for i in 12:
+		GameState.cycle_seed_type()
+		if GameState.selected_seed_type == "bot":
+			seen_bot = true
+	_assert(seen_bot,
+		"a machine she owns comes round again on the selection ring — owning one is never a dead end")
+	GameState.machines = {}
+	GameState.selected_seed_type = "wheat"
+	for i in 6:
+		GameState.cycle_seed_type()
+		_assert(not MachineDefs.has(GameState.selected_seed_type),
+			"...and a machine she has none of stays out of the ring")
+
 func test_parcel_scatter() -> void:
 	print("\n--- Sparse rocks and logs in the open field (designer, 2026-09-01) ---")
 

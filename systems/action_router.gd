@@ -118,6 +118,46 @@ func resolve(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, is_drag: 
 			"walk_to": true, "seed_type": "",
 		})
 
+	# 1c. A machine she owns answers before the ground does (2026-09-03).
+	#
+	# **A tap on a robot opens its menu**, which is where its three configs and
+	# "pick it up" live. It comes after the stomp for the stomp's own reason — a
+	# critter on the square is the urgent thing — and before the tile blocks
+	# because a machine standing on tilled soil must not be planted into.
+	#
+	# Resolves to `open_machine`, which is UI navigation and not a verb: nothing
+	# about opening a panel belongs in a replay (CLAUDE.md). What the panel does
+	# afterwards is `configure` and `collect`, both ordinary Actions.
+	if world != null and world.machine_at(tap_t) != "":
+		if not is_drag and player_t != null:
+			var pt1: Vector2i = player_t
+			if absi(pt1.x - tx) + absi(pt1.y - ty) > 1:
+				return {}   # far tap: walk over first, exactly like a workable tile
+		return check_result.call({
+			"action": "open_machine", "tool_idx": 0, "target_t": tap_t,
+			"walk_to": true, "seed_type": "",
+		})
+
+	# 1d. Holding a machine → set it down here.
+	#
+	# Asked before the tile's own states so that carrying a sprinkler over tilled
+	# soil offers the placement rather than a plant she has no seed for. Placement
+	# is checked in the sim (`placeable_at`), not restated here: one answer to
+	# "may a machine go there", and the router asks it.
+	if gs != null and gs.has_method("holding_machine") and gs.holding_machine():
+		if world != null and world.placeable_at(tap_t):
+			if not is_drag and player_t != null:
+				var pt2: Vector2i = player_t
+				if absi(pt2.x - tx) + absi(pt2.y - ty) > 1:
+					return {}
+			return check_result.call({
+				"action": "place", "tool_idx": 0, "target_t": tap_t,
+				"walk_to": true, "seed_type": "", "item": gs.selected_seed_type,
+			})
+		# She is holding a machine and this square cannot take one. Fall through
+		# to the ordinary tile handling below, so tapping a weed while carrying a
+		# robot still pulls the weed — the machine in her hands is not a mode.
+
 	# 2. Get tile state
 	var tile: Dictionary = farm.get_tile(tx, ty)
 	if tile.is_empty():
@@ -248,7 +288,24 @@ func blocked_reason(farm: Node2D, gs: Node, tap_t: Vector2i) -> String:
 	var state: String = String(tile.get("state", ""))
 	var seed_type: String = gs.selected_seed_type
 
+	# Carrying a machine onto a square that cannot take one (2026-09-03). Without
+	# this the tap is silent, which is the exact failure S-7 and the 2026-08-28
+	# trace are about: she is holding a robot, she taps the ground, nothing
+	# happens and nothing says why.
+	#
+	# **Narrowed to ground she could otherwise stand on**, which is what keeps T-8
+	# intact: a hedge, a closed gate or the map edge is not "occupied", it is the
+	# wordless *not yet*, and it must stay silent and let her walk to the edge and
+	# stop. What this speaks for is the ordinary square with a hen — or another
+	# machine — already on it.
+	if MachineDefs.has(seed_type) and gs.machines.get(seed_type, 0) > 0:
+		var w = farm.get("sim")
+		if w != null and w.is_walkable(tap_t.x, tap_t.y) and not w.placeable_at(tap_t):
+			return "occupied"
+
 	if state == "tilled":
+		if MachineDefs.has(seed_type):
+			return ""   # she is holding a machine, not a seed; the clause above spoke
 		if gs.seeds.get(seed_type, 0) <= 0:
 			return "no_seeds"
 		return ""
@@ -317,10 +374,27 @@ func satisfied_reason(farm: Node2D, gs: Node, tap_t: Vector2i) -> String:
 ## stands on it. That is T-18's rule holding by construction rather than by a
 ## special case: yard is not a tile the router refuses, it is a tile the router
 ## has no opinion about, and the only answer left for one of those is movement.
-func is_workable(farm: Node2D, tap_t: Vector2i) -> bool:
+func is_workable(farm: Node2D, tap_t: Vector2i, gs: Node = null) -> bool:
 	var obj: String = farm.get_object(tap_t.x, tap_t.y)
 	if obj != "" and SPECIAL_OBJECTS.has(obj):
 		return true
+	# Machines, both directions (2026-09-03). A placed one is a thing she walks up
+	# to and taps, like the well; a square she could set one down on is a thing
+	# she walks up to and acts on, like a tilled row. Without this she walks *onto*
+	# both — standing on the robot to open its menu, and needing a second tap to
+	# put a sprinkler down on plain grass.
+	#
+	# `gs` is optional because the question "is there something to do here" is
+	# usually about the tile alone (the comment below); what she is *carrying* is
+	# the one exception, and callers that do not have a GameState to offer keep
+	# exactly the answer they got before.
+	var w = farm.get("sim")
+	if w != null:
+		if w.machine_at(tap_t) != "":
+			return true
+		if gs != null and gs.has_method("holding_machine") and gs.holding_machine() \
+				and w.placeable_at(tap_t):
+			return true
 	var tile: Dictionary = farm.get_tile(tap_t.x, tap_t.y)
 	if tile.is_empty():
 		return false

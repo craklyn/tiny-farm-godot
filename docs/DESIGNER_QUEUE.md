@@ -848,9 +848,14 @@ fit "scarecrow", and a collapse toggle for the playtest readout).*
   Zombies homage. *Recommendation: design at M3 alongside `design/03`/`design/05`;
   the pea ships now as an ordinary crop (M2.5 WI-10) so the economy has its raw
   material waiting.*
-- **Q-56** ~~When do bots debut for the player?~~ — ✅ **ruled 2026-08-31: hold until at
+- **Q-56** ~~When do bots debut for the player?~~ — ✅ ruled 2026-08-31: hold until at
   least M3 so the sprinkler is the first automation the player meets; then revisit with
-  the shoo-bot as the debut candidate.** The configs are still built (WI-9), test-only.
+  the shoo-bot as the debut candidate. **Superseded 2026-09-03 by the designer's
+  placeholder acquisition rule** — *"for now make everything we introduce to the farm a
+  purchasable item from the shop"* — which debuts both machines at once, on the shop
+  shelf, priced so the sprinkler is still the cheaper and therefore still the likely
+  first (120g against 250g). The hold's *intent* is kept by price rather than by
+  absence; the ordering it was protecting is now a thing the player chooses.
   Original item: **When do bots debut for the player?** The scripted line (follow /
   circle / shoo-birds) exists behind test scenarios after M2.5 WI-9. The roadmap's
   phases put trainable bots at phase 4, but a charming follow-bot could appear far
@@ -1284,8 +1289,19 @@ never touched. Session: `playtests/2026-08-31_230643`.*
 - **Q-82 (Ruling, filed 2026-09-01)** **Scarecrow acquisition**: bought at the seed box
   vs. **built from the wood parcel's logs** (straw-man: built — gives the axe chapter a
   payoff and foreshadows crafting). Sibling of Q-15; both land at M3 planning.
-- **Q-15 (Ruling)** Sprinkler/machine acquisition loop: crafted, bought, or
-  milestone-granted; the resource loop that feeds it (`design/03`).
+  *Unaffected by the 2026-09-03 placeholder rule: the scarecrow already had an
+  acquisition (it is on sale), so this is a question about replacing a shop entry with a
+  better one, not about giving an unreachable thing a route in.*
+- **Q-15 (Ruling)** ~~Sprinkler/machine acquisition loop: crafted, bought, or
+  milestone-granted; the resource loop that feeds it (`design/03`).~~ ✅ **Answered for
+  now, 2026-09-03, by a standing rule rather than a one-off ruling:** *"As a placeholder
+  to a richer experience, for now make everything we introduce to the farm a purchasable
+  item from the shop."* The sprinkler and the robot are both on sale at the seed box
+  today (`systems/machine_defs.gd`), bought with gold, carried, and placed with the
+  `place` verb. **The question is not closed, it is unblocked** — crafted-from-logs
+  (Q-82's straw-man) and milestone-granted are still live for the richer version, and
+  the resource loop behind them is still M3's to design. What has changed is that no new
+  machine has to wait for that design before a player can hold one.
 - **Q-16 (Creative)** Combat verb additions beyond wash/stomp/dig: swat/chase, thrown
   objects, a dog? (`design/04` §4).
 - **Q-17 (Ruling)** Raid readability targets: how visible/telegraphed a forming raid
@@ -1330,6 +1346,21 @@ never touched. Session: `playtests/2026-08-31_230643`.*
   machinery exists; the missing pieces are a sprite frame and a reportable reason on the
   actor.* Cheaper to settle before the debut than after: it decides whether the sheet needs
   a status frame.
+
+- **Q-87 (Creative, filed 2026-09-03)** **The machine menu says its settings in words.**
+  Tapping a placed robot opens a panel with three rows — "Chase birds off", "Follow me",
+  "Circle me" — and a "Pick up". That is the first required reading the game has added
+  since the shop was deliberately stripped of it (T-12/Q-35, S-7: a pre-reader must be
+  able to play). The shop stayed wordless; this panel did not, because there is no icon
+  vocabulary for those three jobs and inventing one is a designer's call, not an
+  engineer's. Three candidates, all cheap: (a) **paired sprites** — the robot beside the
+  farmer for follow, beside a crow with a strike for shoo, with an orbit arrow for circle;
+  (b) **a generated icon each**, three cells on the next art bench (the pipeline makes
+  this ~an hour); (c) **leave the words** and accept that instructing a machine is a
+  literate act, which is defensible if the robot lands late enough that a reader owns the
+  farm. *Recommendation: (a) — it reuses sprites that already exist, and "robot + the
+  thing it deals with" is a vocabulary the game can keep using for every machine after
+  this one.* Bears on `design/06` §2 and `design/11`.
 
 ## At D-3 trigger — before M4 (phase-3 content)
 

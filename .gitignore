@@ -37,3 +37,8 @@ tools/looks/
 
 # Last wireless-debugging address used by tools/deploy_android.sh
 .adb_target
+
+# Machine-shop / machine-menu captures (2026-09-03). Regenerate with
+# tools/capture_machines.tscn; they are review screenshots, not assets.
+tools/shot_shop.png
+tools/shot_machine_menu.png

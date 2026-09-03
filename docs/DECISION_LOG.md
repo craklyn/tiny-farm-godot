@@ -387,6 +387,35 @@ waves against — fallback is hybrid: authored spine paths modulated by scent, n
 scripted paths; (b) scent costs break mobile budgets — fallback is coarser resolution and
 slower decay ticks, never full diffusion.
 
+### P-12. Anything the player can own is bought from the shop — for now
+**Ruled 2026-09-03, in the designer's words: "As a placeholder to a richer
+experience, for now please make everything we introduce to the farm a purchasable
+item from the shop."** When a machine, structure, tool or creature is built and its
+acquisition has not been designed yet, the acquisition is: it goes on sale at the seed
+box for gold, priced `[Playtest]`. No new content waits behind an unanswered
+acquisition question, and none is reachable only from a test.
+
+**What it settled immediately.** Two machines were finished, tested, drawn — and
+unobtainable. The sprinkler (M2.5 WI-10) waited on Q-15's resource loop; the robot
+(M2.5 WI-9) waited on Q-56's debut sequencing. Both are on the shelf as of this
+ruling: sprinkler 120g, robot 250g. Q-56's *intent* — that the sprinkler is the
+first automation she meets — is preserved by price rather than by absence.
+
+**Why provisional rather than settled.** The designer named it a placeholder in the
+same sentence he gave it. Crafting from the wood parcel's logs (Q-82's straw-man for
+the scarecrow), milestone grants, and neighbour gifts are all still live, and the
+resource loop behind them is still M3's to design. What the rule removes is the
+*stall*: a thing nobody can obtain is a thing nobody can play with, judge or test,
+and the shop already exists.
+
+**Adjustment conditions:** a designed acquisition replaces the shop entry for that
+item, one item at a time — the rule does not have to be repealed to be outgrown. The
+one standing obligation it creates is structural: the shop catalogue must stay cheap
+to add a row to (`systems/machine_defs.gd`). When the scarecrow needed to be sellable
+it was bent into `CropDefs` as a crop with `is_object: true`; repeating that bend for
+every machine is what this rule would otherwise cost, so a second catalogue was added
+instead.
+
 ---
 
 ## Tier 3 — Deferred (with triggers)

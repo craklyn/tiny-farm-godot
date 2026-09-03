@@ -109,13 +109,18 @@ One shape for every world mutation, roughly:
 
 ```gdscript
 Action { actor_id, verb, target_tile, params }   # verb: move_to, till, plant, water,
-                                                 # harvest, clear_rock, attack, place_tower,
+                                                 # harvest, clear_rock, attack, place, configure,
                                                  # refill, sleep, ...
 Observation { egocentric grid patch, self stats, nearby-entity summary, day/weather }
 ```
 
 - The verb set grows per phase but never forks per actor: bots get no verb the player
   lacks (S-3).
+- **A spawn is normally not a verb** (see the registry): who is in the world is set up by
+  the sim, not decided by an actor. `place` is the one exception and earns it — putting a
+  machine down is a thing somebody *does*, out of a crate they paid for, and it has to be
+  recorded so the replay, the autosave and a future bot that places machines itself all
+  agree. Its inverse is `collect`, the verb that already picks an egg up.
 - A replay is `[(Observation, Action)]`. Replays are savable, and phase 4's "choose your
   training data" UI operates on saved replays. This costs almost nothing to log from day
   one and is priceless later — start logging at M2.

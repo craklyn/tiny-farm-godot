@@ -235,7 +235,12 @@ func update_player(delta: float) -> void:
 		# Whether to walk *up to* the tile or onto it depends on the tile alone,
 		# never on what she is carrying — asking resolve() meant an empty seed
 		# pouch changed how she approached, which read as a second bug.
-		var approach: bool = ActionRouter.is_workable(farm, target_vec)
+		# ...with one thing she is carrying that *does* change the approach: a
+		# machine (2026-09-03). A square she could set one down on is a square she
+		# should stop beside, and the seed-pouch argument above does not apply —
+		# an empty pouch is a missing resource, a machine in her hands is a
+		# different job.
+		var approach: bool = ActionRouter.is_workable(farm, target_vec, gs)
 
 		approach_target = target_vec if approach else Vector2i(-1, -1)
 
@@ -609,6 +614,18 @@ func _execute_resolved_action(pa: Dictionary) -> void:
 	if action == "open_shop":
 		get_tree().get_first_node_in_group("Main").call_deferred("trigger_action", "open_shop")
 		return
+	# A tap on a machine she owns opens its menu (2026-09-03). **Not a verb** —
+	# CLAUDE.md's line, and the reason this sits beside the shop rather than in
+	# the gateway: opening a panel changes nothing in the world, so nothing about
+	# it belongs in a replay. What the panel then does — reconfigure, pick up —
+	# goes through `apply_action` like everything else.
+	if action == "open_machine":
+		# Resolved to an id here, at the tap, rather than deferred as a tile: a
+		# machine that walks could be one step away by the time the deferred call
+		# lands, and a panel that misses by a step reads as a dead tap.
+		get_tree().get_first_node_in_group("Main").call_deferred(
+			"trigger_machine_menu_for", farm.sim.machine_at(target_t))
+		return
 	# T-9 (Q-34): picking the tool up is what opens its parcel. Two recorded
 	# actions rather than one hidden side effect, so a replay opens the same gate
 	# at the same moment and the sim keeps a single gateway per world change.
@@ -631,12 +648,17 @@ func _execute_resolved_action(pa: Dictionary) -> void:
 		return
 	# Every remaining verb is a sim Action (S-3): the sim validates and mutates;
 	# this side keeps only presentation (tool swap, animation, sfx, particles).
-	var result: Dictionary = farm.apply_action({
+	var act := {
 		"verb": action,
 		"target": target_t,
 		"seed_type": seed_type,
 		"actor": "player",
-	}, gs)
+	}
+	# Added only when it means something, so every other verb's recorded entry —
+	# and therefore its replay signature — is byte-for-byte what it always was.
+	if String(pa.get("item", "")) != "":
+		act["item"] = pa["item"]
+	var result: Dictionary = farm.apply_action(act, gs)
 	if not result.get("ok", false):
 		return
 
@@ -644,6 +666,18 @@ func _execute_resolved_action(pa: Dictionary) -> void:
 		return
 	if action == "collect":
 		AudioManager.play_sfx("harvest")
+		return
+	# Setting a machine down, and the one beat that makes the purchase feel
+	# finished: it lands with the jingle a tool pickup uses, and **its menu opens
+	# on top of it**. Placing is the moment she is thinking about what the thing
+	# should do, so asking then costs her no second trip — and a machine with
+	# nothing to decide (a sprinkler) has no menu to open, so it simply lands.
+	if action == "place":
+		AudioManager.play_sfx("jingle")
+		_emit_particles("dirt", target_t)
+		if not MachineDefs.configs_of(String(pa.get("item", ""))).is_empty():
+			get_tree().get_first_node_in_group("Main").call_deferred(
+				"trigger_machine_menu_for", String(result.get("machine", "")))
 		return
 
 	if pa.has("tool_idx"):

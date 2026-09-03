@@ -19,9 +19,37 @@ const PANEL_PAD := 12.0
 # not want to find this arithmetic by reading it.
 const PAUSE_LAB_FIRST := 2
 
-var active_menu: String = ""  # "", "pause", "shop", "inventory"
+# What each of the robot's three settings is called in its menu (2026-09-03).
+# Plain descriptions of what it will do rather than the engineering words the
+# sim uses ("follow"/"circle"/"shoo"), because the player is choosing a job for a
+# machine, not naming a mode. Q-87 is the open question of doing this with
+# pictures instead of words.
+const CONFIG_LABELS := {
+	"shoo": "Chase birds off",
+	"follow": "Follow me",
+	"circle": "Circle me",
+}
+
+var active_menu: String = ""  # "", "pause", "shop", "inventory", "machine"
 var selected_option: int = 0
 var shop_items: Array[Dictionary] = []
+
+# The machine menu (2026-09-03) — what a tap on a placed machine opens, and what
+# a freshly placed one opens by itself.
+#
+# **It remembers the machine, not the square.** The tap resolves a tile to an
+# actor id once, and from then on the panel follows that actor: a robot on
+# "follow me" is walking the whole time the panel is up, and a menu keyed to the
+# tile it was standing on when she tapped would go dead the moment it took a
+# step. Everything else — which settings exist, which one is ticked, whether it is
+# still there at all — is read back off the sim on every rebuild, so the panel
+# cannot show a stale answer.
+#
+# The Actions it sends are still **tile-targeted**, like every other verb in the
+# game; the tile is looked up from the id at the moment she taps, so the replay
+# records the square the machine was actually standing on.
+var machine_id: String = ""
+var machine_options: Array[Dictionary] = []
 
 # UI elements
 var dim_overlay: ColorRect
@@ -136,6 +164,32 @@ func open_menu(menu_name: String) -> void:
 	_rebuild_options()
 
 
+## Open the machine panel on the machine standing at `at`.
+##
+## Called by `main.gd` for two things that are the same beat: a tap on a machine,
+## and the moment one is placed. If nothing is standing there — she picked it up,
+## or it walked off — nothing opens, because a panel about an absent machine has
+## no honest content.
+func open_machine_menu(at: Vector2i) -> void:
+	if farm == null:
+		return
+	open_machine_menu_for(farm.sim.machine_at(at))
+
+
+## The same panel, opened on a machine by name.
+##
+## The entry point a *placement* uses, and the tap path resolves to it too. Both
+## callers know the id at the moment the player acted, which is what closes the
+## one-frame race a moving machine would otherwise have: a shoo-bot's first
+## thought is scheduled for the tick after it lands, so keying the open on the
+## square it was put down on could miss it by a step.
+func open_machine_menu_for(id: String) -> void:
+	if farm == null or id == "" or not farm.sim.has_actor(id):
+		return
+	machine_id = id
+	open_menu("machine")
+
+
 func close_menu() -> void:
 	active_menu = ""
 	dim_overlay.visible = false
@@ -200,6 +254,39 @@ func _rebuild_options() -> void:
 			# tall, so the *target* was never the problem; the glyph was.
 			_add_option("\u2715", true, 28)
 			menu_panel.size = Vector2(300, 60 + shop_items.size() * 56 + 40)
+
+		"machine":
+			# **The interface a machine gets when you select it.** One row per
+			# setting it can be put on, the current one ticked, then "pick it up" —
+			# which is the same `collect` verb an egg gets, so nothing here is a
+			# capability the player did not already have.
+			#
+			# Words, for now, and knowingly against S-7's no-required-reading rule:
+			# there is no icon vocabulary yet for "follow me", "circle me" and
+			# "chase birds off". Filed for the designer as Q-87; the shop, which a
+			# pre-reader must use to play at all, stays wordless.
+			var mid: String = machine_id if farm != null and farm.sim.has_actor(machine_id) else ""
+			var mkey: String = MachineDefs.key_for_species(farm.sim.species_of(mid)) if mid != "" else ""
+			title_label.text = MachineDefs.name_of(mkey).to_upper() if mkey != "" else ""
+			gold_display.visible = false
+			shop_title_icon.visible = false
+			gold_icon.visible = false
+
+			machine_options.clear()
+			var current: String = String(farm.sim.actor(mid).get("extra", {}).get("config", "")) if mid != "" else ""
+			for config in MachineDefs.configs_of(mkey):
+				# The tick is the whole state readout: which of these it is doing
+				# now. A machine already on this setting still offers the row —
+				# tapping it is a harmless no-op, and greying it out would make the
+				# panel look broken to somebody who just wanted to check.
+				var mark: String = "\u2713 " if config == current else "   "
+				machine_options.append({ "kind": "config", "config": config })
+				_add_option(mark + CONFIG_LABELS.get(config, config), true)
+			machine_options.append({ "kind": "collect" })
+			_add_option("Pick up", true)
+			machine_options.append({ "kind": "close" })
+			_add_option("\u2715", true, 28)
+			menu_panel.size = Vector2(300, _fit_panel_height())
 
 		"inventory":
 			title_label.text = "INVENTORY"
@@ -357,7 +444,7 @@ func _add_shop_card(item: Dictionary) -> void:
 	icon.custom_minimum_size = Vector2(34, 34)
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	icon.texture = crop_icon(int(item.sprite_row))
+	icon.texture = item.icon
 	if not item.unlocked:
 		icon.modulate = Color(0.12, 0.11, 0.18, 0.85)
 	hbox.add_child(icon)
@@ -378,7 +465,7 @@ func _add_shop_card(item: Dictionary) -> void:
 		owned_row.alignment = BoxContainer.ALIGNMENT_END
 		owned_row.custom_minimum_size = Vector2(58, 0)
 		hbox.add_child(owned_row)
-		_add_icon_number(owned_row, crop_icon(int(item.sprite_row)),
+		_add_icon_number(owned_row, item.icon,
 			"\u00d7%d" % int(item.owned), 18.0, Color(0.72, 0.82, 0.7))
 	
 	# Transparent button overlay for clicks
@@ -484,10 +571,17 @@ func _select_current_option() -> void:
 		"shop":
 			if selected_option < shop_items.size():
 				var item: Dictionary = shop_items[selected_option]
-				# Transactions are sim Actions too (P-9 guardrail)
-				var bought: bool = farm.apply_action({
-					"verb": "buy_seed", "seed_type": item.seed_type, "actor": "player",
-				}, GameState).get("ok", false)
+				# Transactions are sim Actions too (P-9 guardrail). Two verbs, one
+				# per catalogue — see `SimWorld`'s `buy_machine` for why the seed
+				# verb was not generalised to cover both.
+				var purchase := { "actor": "player" }
+				if String(item.kind) == "machine":
+					purchase["verb"] = "buy_machine"
+					purchase["item"] = item.seed_type
+				else:
+					purchase["verb"] = "buy_seed"
+					purchase["seed_type"] = item.seed_type
+				var bought: bool = farm.apply_action(purchase, GameState).get("ok", false)
 				if bought:
 					AudioManager.play_sfx("harvest")
 					_rebuild_options()
@@ -496,11 +590,51 @@ func _select_current_option() -> void:
 				close_menu()
 				menu_action.emit("resume")
 
+		"machine":
+			if selected_option >= machine_options.size():
+				close_menu()
+				menu_action.emit("resume")
+				return
+			var choice: Dictionary = machine_options[selected_option]
+			if not farm.sim.has_actor(machine_id) or choice.get("kind", "") == "close":
+				close_menu()
+				menu_action.emit("resume")
+				return
+			# Where it is *now*, not where it was when she tapped: a bot on "follow
+			# me" has been walking the whole time the panel was up.
+			var mid_tile: Vector2i = farm.sim.actor_pos(machine_id)
+			# Both branches are sim Actions (P-9 guardrail): the panel decides
+			# nothing, it asks the one gateway and shows what came back.
+			if choice.kind == "config":
+				var set_ok: bool = farm.apply_action({
+					"verb": "configure", "target": mid_tile,
+					"config": choice.config, "actor": "player",
+				}, GameState).get("ok", false)
+				if set_ok:
+					AudioManager.play_sfx("jingle")
+					_rebuild_options()
+					menu_action.emit("configured_machine")
+				return
+			if choice.kind == "collect":
+				var took: bool = farm.apply_action({
+					"verb": "collect", "target": mid_tile, "actor": "player",
+				}, GameState).get("ok", false)
+				if took:
+					AudioManager.play_sfx("harvest")
+				close_menu()
+				menu_action.emit("resume")
+
 		"inventory":
 			close_menu()
 			menu_action.emit("resume")
 
 
+# The shop's stock: seeds first, then machines (2026-09-03, the placeholder
+# acquisition rule). Two catalogues rather than one, because a seed and a machine
+# are genuinely different purchases — one goes in the ground and one gets placed
+# and starts working — and `kind` is what the card and the transaction below key
+# off. Adding a purchasable thing is a row in `CropDefs.ORDER` or
+# `MachineDefs.ORDER`; nothing in this file has to learn its name.
 func _build_shop_items() -> void:
 	shop_items.clear()
 	for crop_name in CropDefs.ORDER:
@@ -508,11 +642,25 @@ func _build_shop_items() -> void:
 		var unlocked := CropDefs.is_seed_unlocked(crop_name, GameState.harvest_counts)
 		var affordable: bool = GameState.gold >= def.seed_price and unlocked
 		shop_items.append({
+			"kind": "seed",
 			"seed_type": crop_name,
 			"item_name": def.name,
 			"price": def.seed_price,
 			"unlocked": unlocked,
 			"affordable": affordable,
-			"sprite_row": def.sprite_row,
+			"icon": crop_icon(int(def.sprite_row)),
 			"owned": GameState.seeds.get(crop_name, 0)
+		})
+	for machine_key in MachineDefs.ORDER:
+		var mdef: Dictionary = MachineDefs.TYPES[machine_key]
+		var munlocked := MachineDefs.is_unlocked(machine_key, GameState.harvest_counts)
+		shop_items.append({
+			"kind": "machine",
+			"seed_type": machine_key,
+			"item_name": mdef.name,
+			"price": int(mdef.price),
+			"unlocked": munlocked,
+			"affordable": GameState.gold >= int(mdef.price) and munlocked,
+			"icon": MachineDefs.icon_of(machine_key),
+			"owned": GameState.machines.get(machine_key, 0)
 		})

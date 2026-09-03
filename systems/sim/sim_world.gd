@@ -834,13 +834,20 @@ func water_tile(tx: int, ty: int) -> void:
 # on ok. Guards mirror the pre-M2 player checks exactly (no new validation yet).
 # Verbs that can change milestone inputs (harvest counts, gold); other verbs
 # skip the check — it dominated fast-forward throughput when run per action.
-const MILESTONE_VERBS := { "harvest": true, "collect": true, "sell": true, "sleep": true, "buy_seed": true }
+const MILESTONE_VERBS := { "harvest": true, "collect": true, "sell": true, "sleep": true,
+		"buy_seed": true, "buy_machine": true }
 
 
 # Verbs that do not advance the day's clock: sleep ends it, and the shop and bin
 # are errands rather than farm work. Everything else the player successfully does
 # is one tick of the action clock T-20 schedules crows against.
-const NON_WORK_VERBS := { "sleep": true, "sell": true, "buy_seed": true, "refill": true }
+const NON_WORK_VERBS := { "sleep": true, "sell": true, "buy_seed": true, "refill": true,
+		# The machine counter is the seed counter (2026-09-03), and turning a dial
+		# on a machine she already owns is a setting, not a stroke of work — it
+		# costs no energy and must not tick the clock the crows are scheduled
+		# against. **Placing** one is absent on purpose: carrying a sprinkler out
+		# to the far corner and setting it down is work, and it is charged as such.
+		"buy_machine": true, "configure": true }
 
 # **Every actor has its own energy meter** (designer, 2026-08-29). The player's
 # meter happens to also be the clock — spending it is what advances the time of
@@ -1100,6 +1107,76 @@ func spook_source_near(t: Vector2i, ignore: String = "") -> String:
 # actors in it is a four-entry scan.
 func stompable_at(t: Vector2i) -> bool:
 	return not _stompable_ids_at(t).is_empty()
+
+
+# --- placed machines (2026-09-03, the placeholder acquisition rule) -----------
+#
+# A machine the player bought is an ordinary registry actor, so everything the
+# registry already does — saving, replaying, `capture_canonical` comparison,
+# `sync_actors` giving it a sprite in any farm — applies to it with no new
+# machinery. These three functions are the whole of what "placing" needed: where
+# one may go, whether one is here, and what to call it.
+
+
+# May a machine be set down on this tile?
+#
+# **Walkable ground with nobody on it.** Walkable is the same question the movers
+# ask (border, obstacles, boundaries and objects are all out), which means a
+# machine can never be placed into a hedge, on top of the well, or in the parcel
+# she has not opened yet — T-8's wordless "not yet" holds for machines for free.
+# The occupancy clause is what stops her stacking two sprinklers on one square,
+# and it reads the registry rather than a flag, so a hen standing there blocks the
+# placement exactly as another machine does.
+#
+# The player herself is deliberately **not** an obstacle: she is standing next to
+# the tile she taps, and on the tiles she does stand on, a machine set down at her
+# feet is a perfectly ordinary thing to want. Pure — the router asks it before any
+# action exists.
+func placeable_at(t: Vector2i) -> bool:
+	if not is_walkable(t.x, t.y):
+		return false
+	for raw in actors:
+		var id := String(raw)
+		if id == ACTOR_PLAYER:
+			continue
+		if t in Movement.occupied_tiles(self, id):
+			return false
+	return true
+
+
+# The machine standing on this tile, or "". Sorted so that two machines sharing a
+# tile — which `placeable_at` prevents, but a save from a future layout might not
+# — always answer the same one, the registry block's iteration-order rule.
+func machine_at(t: Vector2i) -> String:
+	var found: Array[String] = []
+	for raw in actors:
+		var id := String(raw)
+		if MachineDefs.key_for_species(String(actors[id].get("species", ""))) == "":
+			continue
+		if t in Movement.occupied_tiles(self, id):
+			found.append(id)
+	if found.is_empty():
+		return ""
+	found.sort()
+	return found[0]
+
+
+# The id a newly placed machine gets: the machine key, then the lowest free
+# index — "bot", "bot_2", "bot_3".
+#
+# **A pure function of the registry, which is what makes it replayable.** Nothing
+# random, nothing counted up in a field that a save would have to carry: place
+# three bots and pick the middle one up, and the next one placed is "bot_2" again,
+# in a live session and in a replay of it alike. The first one keeps the bare key
+# so the ids the tests and `BotBrain.deploy`'s own docs already use ("bot",
+# "sprinkler") stay the ones the game produces.
+func next_machine_id(key: String) -> String:
+	if not actors.has(key):
+		return key
+	var n := 2
+	while actors.has("%s_%d" % [key, n]):
+		n += 1
+	return "%s_%d" % [key, n]
 
 
 # Everything a boot on this tile would answer, sorted by id. **All of them, not
@@ -1403,6 +1480,15 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 		"buy_seed":
 			if gs == null: return _fail("no_state")
 			return { "ok": gs.buy_seed(action.get("seed_type", "")) }
+		# The placeholder acquisition rule (2026-09-03): everything the studio
+		# introduces to the farm is bought here until a richer story exists. A
+		# sibling of `buy_seed` rather than a generalisation of it, deliberately —
+		# `buy_seed` is written into every replay log on disk and into the demo
+		# replay, and those are phase 4's training corpus (S-3). A new verb costs
+		# one match arm; reinterpreting an old one costs the archive.
+		"buy_machine":
+			if gs == null: return _fail("no_state")
+			return { "ok": gs.buy_machine(String(action.get("item", ""))) }
 		"collect":
 			if gs == null: return _fail("no_state")
 			var obj := get_object(target.x, target.y)
@@ -1429,7 +1515,85 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 				set_object(target.x, target.y, "")
 				gs.acorns += 1
 				return { "ok": true, "collected": "acorn" }
+			# **A machine is picked back up with the same verb** (2026-09-03), the
+			# egg's and the scarecrow's rule applied to the thing that walks: what
+			# a hand does with a square first is pick up what is on it. No new
+			# verb, no new UI, and a future bot tidying the farm needs nothing the
+			# player lacks (S-3, ground rule 1).
+			#
+			# Asked after the objects, because an egg laid at a sprinkler's feet is
+			# the smaller, more perishable thing and is what a tap plainly means.
+			var machine_id := machine_at(target)
+			if machine_id != "":
+				var machine_key := MachineDefs.key_for_species(species_of(machine_id))
+				despawn_actor(machine_id)
+				gs.machines[machine_key] = int(gs.machines.get(machine_key, 0)) + 1
+				return { "ok": true, "collected": machine_key, "machine": machine_id }
 			return _fail("nothing_to_collect")
+
+		# -- machines (2026-09-03) --------------------------------------------
+		#
+		# Both are verbs rather than sim functions because both change the world:
+		# `place` puts a new actor in it, `configure` changes what an actor does.
+		# A spawn is not normally a verb (see the registry block) — this one is,
+		# because it is *a thing the player does*, with her hands, out of a crate
+		# she paid for, and everything downstream depends on it being recorded:
+		# the replay, the autosave, and the bot that will one day place machines
+		# itself with the same word she used.
+		"place":
+			if gs == null: return _fail("no_state")
+			var item := String(action.get("item", ""))
+			if not MachineDefs.has(item): return _fail("unknown_machine")
+			var ptile := get_tile(target.x, target.y)
+			if ptile.is_empty() or ptile.get("state", "") == "": return _fail("out_of_bounds")
+			if not placeable_at(target): return _fail("occupied")
+			var placer := String(action.get("actor", ""))
+			var placer_charged: bool = _is_player(placer)
+			if placer_charged and int(gs.machines.get(item, 0)) <= 0: return _fail("no_machine")
+			var place_cost: int = Tools.get_energy_cost("place")
+			if placer_charged and gs.hard_energy and gs.energy < place_cost: return _fail("no_energy")
+			if placer_charged:
+				gs.set_energy(gs.energy - place_cost)
+			else:
+				spend_actor_energy(placer, place_cost)
+			var machine_id := next_machine_id(item)
+			var config := String(action.get("config", MachineDefs.default_config(item)))
+			if not config in MachineDefs.configs_of(item):
+				config = MachineDefs.default_config(item)
+			# The bot has one door into a world and this is it: `BotBrain.deploy`
+			# is what builds a valid `extra` for a config, and routing around it
+			# would be the second place that knowledge lives. Every other machine
+			# is a plain registry row.
+			if MachineDefs.species_of(item) == SpeciesDefs.BOT:
+				BotBrain.deploy(self, machine_id, config, target,
+					{ "owner": placer if placer != "" else ACTOR_PLAYER })
+			else:
+				spawn_actor(machine_id, MachineDefs.species_of(item), target)
+			if placer_charged:
+				gs.machines[item] = int(gs.machines.get(item, 0)) - 1
+			return { "ok": true, "machine": machine_id, "config": config }
+
+		# Turning the dial on a machine that is already down. Free, and off the
+		# action clock (NON_WORK_VERBS): it is a setting, not a stroke of work.
+		#
+		# Implemented as a re-deploy at the same tile so that a config's `extra`
+		# is built by exactly one piece of code — a shoo bot switched to circle
+		# must not keep a stale `home_x` that nothing reads and a save still
+		# carries. The one thing carried across is its **energy**, because a
+		# machine that could be rested by twiddling its dial would be a free day's
+		# work (Q-11's meter, `spend_actor_energy`).
+		"configure":
+			var target_id := machine_at(target)
+			if target_id == "": return _fail("no_machine_here")
+			var target_key := MachineDefs.key_for_species(species_of(target_id))
+			var wanted := String(action.get("config", ""))
+			if not wanted in MachineDefs.configs_of(target_key): return _fail("bad_config")
+			var before: Dictionary = actor(target_id)
+			var kept_energy: int = int(before.get("energy", ACTOR_MAX_ENERGY))
+			var kept_owner := String(before.get("extra", {}).get("owner", ACTOR_PLAYER))
+			BotBrain.deploy(self, target_id, wanted, actor_pos(target_id), { "owner": kept_owner })
+			actors[target_id]["energy"] = kept_energy
+			return { "ok": true, "machine": target_id, "config": wanted }
 
 		# -- day transition --
 		"sleep":

@@ -79,6 +79,13 @@ static func capture(world: SimWorld, gs) -> Dictionary:
 			# Additive, like every field below it: absent ⇒ 0, which is what every
 			# save written before acorns could be picked up means.
 			"acorns": gs.acorns,
+			# The crate of machines she has bought and not yet put down
+			# (2026-09-03). Additive, like the acorns above: absent ⇒ empty, which
+			# is what every save written before the shop sold machines means. A
+			# machine already *placed* needs nothing here — it is a registry actor
+			# and the actor block saves it with everybody else.
+			"machines": gs.machines.duplicate(),
+			"machines_bought": gs.machines_bought,
 			"tools_owned": gs.tools_owned.duplicate(),
 			"takeover_day": gs.takeover_day,
 			"clear_counts": gs.clear_counts.duplicate(),
@@ -239,6 +246,8 @@ static func restore(data: Dictionary, world: SimWorld, gs) -> bool:
 	# are additive keys in the existing schema (docs/ARCHITECTURE.md).
 	gs.crop_crows_seen = int(s.get("crop_crows_seen", 0))
 	gs.acorns = int(s.get("acorns", 0))  # T-30 (Q-48); absent ⇒ she has none
+	gs.machines = _int_values(s.get("machines", {}))  # absent ⇒ crate empty
+	gs.machines_bought = int(s.get("machines_bought", 0))
 	var owned: Dictionary = {}
 	for t in Tools.LIST:
 		owned[t.key] = true

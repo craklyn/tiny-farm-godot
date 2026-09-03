@@ -804,6 +804,19 @@ func trigger_action(action: String) -> void:
 	_handle_action_result(action)
 
 
+# The machine panel, opened on the square a machine is standing on (2026-09-03).
+# Deferred to here from `player/player.gd` for the reason the shop is: a menu is
+# presentation, and the player node's job ends at the Action.
+func trigger_machine_menu(at: Vector2i) -> void:
+	menus.open_machine_menu(at)
+
+
+# The same panel, opened by name — what a placement uses, since it knows exactly
+# which machine it just put down.
+func trigger_machine_menu_for(id: String) -> void:
+	menus.open_machine_menu_for(id)
+
+
 # Q-12 Expansion Morning v1: jingle + a confetti sweep across the farm, no
 # text. The literal gate/new-plot staging lands with the M3 world expansion
 # (thresholds and staging are designer-tunable at playtest).

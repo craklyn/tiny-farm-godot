@@ -775,7 +775,7 @@ func _update_hud() -> void:
 
 		# Seed info
 		if tool_def.tool_name == "Seeds":
-			var count: int = GameState.seeds.get(GameState.selected_seed_type, 0)
+			var count: int = GameState.held_count(GameState.selected_seed_type)
 			seed_info_label.text = "[%s x%d]" % [GameState.selected_seed_type, count]
 			seed_info_label.visible = true
 		else:
@@ -794,10 +794,18 @@ func _update_hud() -> void:
 	# through to "?" for the scarecrow, so selecting it showed no icon at all
 	# (reported from play 2026-08-30). Reading the sprite from CropDefs means a
 	# crop added later cannot silently lose its picture.
+	# The pill shows whatever is in her hands, which since 2026-09-03 can be a
+	# machine as well as a seed: `held_count` knows which cupboard to count from,
+	# and the machine carries its own picture (its world sprite, so the pill and
+	# the thing that lands on the grass are visibly one object).
 	var seed_name: String = GameState.selected_seed_type
-	var scount: int = GameState.seeds.get(seed_name, 0)
+	var scount: int = GameState.held_count(seed_name)
 	var seed_def: Dictionary = CropDefs.TYPES.get(seed_name, {})
-	if seed_def.has("sprite_row"):
+	if MachineDefs.has(seed_name):
+		var machine_tex := MachineDefs.icon_of(seed_name)
+		seed_pill_icon.texture = machine_tex
+		seed_pill_icon.visible = machine_tex != null
+	elif seed_def.has("sprite_row"):
 		seed_pill_icon.texture = _crop_icon(int(seed_def.sprite_row))
 		seed_pill_icon.visible = true
 	else:

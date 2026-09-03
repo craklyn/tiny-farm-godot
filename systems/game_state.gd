@@ -49,6 +49,20 @@ var crop_crows_seen: int
 # where it may acquire one.
 var acorns: int
 
+# **The crate** — machines she has bought and not yet put down (2026-09-03, the
+# designer's placeholder acquisition rule; see `systems/machine_defs.gd`).
+#
+# Deliberately not a corner of `seeds`, for the reason the acorn is not one: a
+# thing in `seeds` is planted into soil by the `plant` verb, and a machine is
+# **placed** on the ground by the `place` verb and then starts acting on its own.
+# Keeping them apart is what lets the seed pouch stay a seed pouch while a tower,
+# a fence or a hopper joins this dictionary with no new field.
+var machines: Dictionary
+
+# T-11's shape, for the machines: "has she ever bought one?" — accrued in the sim
+# gateway so a replay earns it identically, saved additively, default 0.
+var machines_bought: int
+
 # T-9 (Q-34): tools are acquired, not owned. She starts with hands, hoe, can and
 # seeds; the axe and pickaxe are earned, and each opens the parcel that needs it.
 var tools_owned: Dictionary
@@ -133,6 +147,8 @@ func reset() -> void:
 	crows_seen = 0
 	crop_crows_seen = 0
 	acorns = 0
+	machines = {}
+	machines_bought = 0
 	tools_owned = {
 		"hands": true, "hoe": true, "watering_can": true, "seeds": true,
 		"axe": false, "pickaxe": false,
@@ -206,7 +222,7 @@ func play_day() -> int:
 # has. The control therefore always responds, and a selection with no stock is a
 # recoverable state rather than a dead end.
 func cycle_seed_type() -> void:
-	var order := CropDefs.ORDER
+	var order := held_order()
 	var current_idx := order.find(selected_seed_type)
 	if current_idx == -1:
 		current_idx = 0
@@ -215,6 +231,11 @@ func cycle_seed_type() -> void:
 	for offset in range(1, order.size() + 1):
 		var idx := (current_idx + offset) % order.size()
 		var seed_type: String = order[idx]
+		if MachineDefs.has(seed_type):
+			# Machines only enter the cycle when she owns one (see held_order), so
+			# reaching one here means it is holdable; no stock test to fail.
+			selected_seed_type = seed_type
+			return
 		var def: Dictionary = CropDefs.TYPES.get(seed_type, {})
 		if not def.has("seed_price") or not CropDefs.is_seed_unlocked(seed_type, harvest_counts):
 			continue
@@ -226,6 +247,37 @@ func cycle_seed_type() -> void:
 	# Nothing in stock anywhere: still move, so the control visibly answers.
 	if first_unlocked != "":
 		selected_seed_type = first_unlocked
+
+
+# What the selection control can land on: every seed, always, plus each machine
+# she actually has in the crate (2026-09-03).
+#
+# **Machines join the cycle so that owning one is never a dead end.** Buying a
+# robot puts it in her hands; without this, one press of the cycle control to get
+# back to wheat would strand the robot in the crate with no way to select it
+# again short of buying a second. The seeds stay unconditional for the reason
+# they always were — the control has to visibly answer even with an empty pouch
+# (the 2026-08-28 scarecrow report) — and a machine with none left simply drops
+# out of the ring the moment it is placed.
+func held_order() -> Array:
+	var order: Array = CropDefs.ORDER.duplicate()
+	for key in MachineDefs.ORDER:
+		if machines.get(key, 0) > 0:
+			order.append(key)
+	return order
+
+
+# How many of the held item she has, whichever cupboard it lives in. The one
+# question every caller actually asks — the router, the HUD pill and the gateway
+# all had to know which dictionary to look in before this existed.
+func held_count(key: String) -> int:
+	if MachineDefs.has(key):
+		return int(machines.get(key, 0))
+	return int(seeds.get(key, 0))
+
+
+func holding_machine() -> bool:
+	return MachineDefs.has(selected_seed_type) and machines.get(selected_seed_type, 0) > 0
 
 
 func buy_seed(seed_type: String) -> bool:
@@ -247,6 +299,31 @@ func buy_seed(seed_type: String) -> bool:
 	# silently stop her planting the wheat she was mid-row on.
 	if seeds.get(selected_seed_type, 0) <= 0:
 		selected_seed_type = seed_type
+	gold_changed.emit(gold)
+	return true
+
+
+# The placeholder acquisition rule, in one function (2026-09-03): a machine is
+# bought exactly the way a seed is, and goes into the crate instead of the pouch.
+#
+# **Always takes hold of what she just bought**, where `buy_seed` deliberately
+# does not. The two cases are different: buying a scarecrow mid-row must not stop
+# her planting wheat, but a machine is bought *in order to put it somewhere* —
+# nobody buys a robot to keep it in a box — and the very next tap she makes is
+# meant to be the placement. Getting back to seeds is one press of the cycle
+# control, which now rings through her machines too (`held_order`).
+func buy_machine(key: String) -> bool:
+	var def: Dictionary = MachineDefs.TYPES.get(key, {})
+	if def.is_empty():
+		return false
+	if gold < int(def.price):
+		return false
+	if not MachineDefs.is_unlocked(key, harvest_counts):
+		return false
+	gold -= int(def.price)
+	machines[key] = machines.get(key, 0) + 1
+	machines_bought += 1
+	selected_seed_type = key
 	gold_changed.emit(gold)
 	return true
 

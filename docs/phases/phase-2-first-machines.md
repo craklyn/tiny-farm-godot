@@ -38,6 +38,9 @@ hoe. Kid-legible by construction.
 
 **Open questions (settle at M3 planning):**
 - Sprinkler acquisition: crafted, bought, or milestone-granted? What resource loop feeds it?
+  *Half answered 2026-09-03 (P-12): it is **bought**, at 120g, as a deliberate placeholder
+  so no machine sits unreachable. The resource loop is still the open half, and crafting or
+  a milestone grant still replaces the shop entry when one is designed.*
 - Trail tuning: decay/reinforcement constants that make raids *readable* (the player
   should be able to see a raid forming and intervene) — and when/how the scent overlay
   (P-10/D-4) is introduced to the player.

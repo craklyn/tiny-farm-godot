@@ -1,7 +1,8 @@
 # 06 — Bots & Training
 
 *Status: outlined (technical path settled further than any other system — see
-`../ARCHITECTURE.md`). Blocking: D-2 spike for algorithms; M5 for content.*
+`../ARCHITECTURE.md`). Blocking: D-2 spike for algorithms; M5 for content. The scripted
+line is now **in the player's hands** — bought, placed and instructed (2026-09-03, P-12).*
 
 ## The player experience: mentorship
 Your bot farms like you because it learned from your replays. The core new verb of
@@ -75,8 +76,44 @@ both grazers, so a bot with a radius would still only pause one.) And a bot's sc
 **counts** toward her Q-12 capability proof, exactly as her own does — Q-66, ruled
 2026-08-31: *credit flows up*, because she built and placed the machine and this chapter's
 whole arc is the farm running without her. The report still says `by`, so which machine did it stays knowable.
-Nothing deploys one: Q-56 is ruled, and the debut waits for at least M3 with the shoo config
-as the candidate.
+## She buys one (2026-09-03) — and the menu is how she tells it what to do
+Q-56 held the bot's debut until at least M3 so the sprinkler would be the first
+automation the player met. That hold is **superseded by the designer's standing
+placeholder rule** (P-12): *"for now make everything we introduce to the farm a
+purchasable item from the shop."* Both machines went on the shelf the same day, and the
+ordering Q-56 was protecting is kept by price instead of by absence — a sprinkler is
+120g, a robot 250g, so the cheap machine is still the one she can afford first, and the
+choice is hers rather than the roadmap's.
+
+**The loop, four taps.** Buy it at the seed box (`buy_machine`); it goes in the crate and
+into her hand. Walk to where it belongs and tap: the `place` verb puts a registry actor on
+that square, and costs one base verb of the day, because carrying a machine out and
+setting it down is work. **The menu opens on top of it the moment it lands** — placing is
+exactly when she is thinking about what the thing should do, so asking then costs her no
+second trip. Tapping a placed robot later opens the same menu. Picking it up is `collect`,
+the verb an egg already has.
+
+**The menu is the config picker, and it is the first player-facing surface the three
+configs have ever had.** One row per setting, the current one ticked, then "pick it up":
+
+| Row | Config | What it does |
+| --- | --- | --- |
+| Chase birds off | `shoo` | patrols a radius around where it was put down, chases any bird-class actor out of it, comes home when the patch is clear |
+| Follow me | `follow` | trails her at two tiles, re-planning as she walks |
+| Circle me | `circle` | orbits her at a fixed radius and comes with her |
+
+Changing the setting is the `configure` verb — free, off the action clock (a dial is not a
+stroke of work), and implemented as a re-deploy at the same tile so a config's `extra` is
+built by exactly one piece of code and a switched bot carries no stale field from the
+config it left. Its **energy survives** the change, so a machine cannot be rested by
+twiddling its dial.
+
+Two things this knowingly leaves open. The menu **uses words** — "Chase birds off" — which
+is the first required reading the game has added since the shop was deliberately stripped
+of it (S-7, T-12/Q-35); the wordless version is filed as **Q-87**, with paired sprites
+(robot + the thing it deals with) as the recommendation. And nothing yet **teaches** that a
+robot is tappable: it is discoverable by poking at it, which is fine for a placeholder and
+is `design/13`'s problem when the debut becomes real content.
 
 ## Constraints from decisions
 Bots emit player verbs only (S-3); observations are egocentric grid patches

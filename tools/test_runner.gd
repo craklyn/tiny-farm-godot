@@ -85,6 +85,7 @@ func _run_scenarios() -> void:
 	await _scenario_ae_the_home()
 	await _scenario_ad_two_hud_findings()
 	await _scenario_af_a_pour_is_heard_whoever_pours()
+	await _scenario_ag_a_machine_is_bought_placed_and_told_what_to_do()
 
 func _wait_until(pred: Callable, max_frames: int) -> bool:
 	for i in max_frames:
@@ -3072,3 +3073,145 @@ func _scenario_af_a_pour_is_heard_whoever_pours() -> void:
 	_assert(farm.sim.get_tile(spr.x, spr.y).watered_today,
 		"...and it did water — the silence is the cue's, not the machine's")
 	farm.sim.despawn_actor("af_sprinkler")
+
+
+func _scenario_ag_a_machine_is_bought_placed_and_told_what_to_do() -> void:
+	# The designer's placeholder acquisition rule (P-12, 2026-09-03): *"for now
+	# make everything we introduce to the farm a purchasable item from the shop."*
+	# Two machines had been finished, tested and drawn and were reachable only
+	# from a test — this is the whole loop that fixed that, driven through the
+	# real shop, the real tap path and the real menu.
+	print("\n--- Scenario AG: she buys a robot, puts it down, and tells it what to do ---")
+
+	var menus = main_scene.menus
+	GameState.gold = 1000
+	GameState.machines = {}
+
+	# --- the shop sells it ----------------------------------------------------
+	menus.open_menu("shop")
+	await get_tree().process_frame
+	var bot_card := -1
+	for i in menus.shop_items.size():
+		if String(menus.shop_items[i].get("seed_type", "")) == "bot":
+			bot_card = i
+	_assert(bot_card >= 0, "the robot has a card in the shop")
+	_assert(String(menus.shop_items[bot_card].get("kind", "")) == "machine",
+		"...listed as a machine rather than bent into the seed catalogue")
+	menus.selected_option = bot_card
+	menus._select_current_option()
+	await get_tree().process_frame
+	_assert(GameState.machines.get("bot", 0) == 1, "tapping the card buys a robot")
+	_assert(GameState.gold == 1000 - MachineDefs.price_of("bot"), "and costs its price")
+	_assert(GameState.selected_seed_type == "bot" and GameState.holding_machine(),
+		"and puts it straight into her hands")
+	menus.selected_option = menus.shop_items.size()
+	menus._select_current_option()
+	await get_tree().process_frame
+	_assert(not menus.is_open(), "the shop closes")
+
+	# The HUD says what she is carrying, with the machine's own picture.
+	main_scene.hud._update_hud()
+	await get_tree().process_frame
+	_assert(String(main_scene.hud.seed_pill_label.text).begins_with("bot"),
+		"the held-item pill names the robot")
+	_assert(main_scene.hud.seed_pill_icon.visible,
+		"and shows its picture rather than an empty box")
+
+	# --- she puts it down through the ordinary tap path ------------------------
+	var spot := Vector2i(12, 9)
+	_stage_tile(spot.x, spot.y, "cleared")
+	_stage_tile(spot.x - 1, spot.y, "cleared")
+	player.pos = Vector2((spot.x - 1) * 16.0 + 8.0, spot.y * 16.0 + 8.0)
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+	_assert(farm.sim.placeable_at(spot), "the square she is beside will take a machine")
+
+	InputManager.click_tile = spot
+	InputManager.has_click = true
+	var placed := await _wait_until(func(): return farm.sim.machine_at(spot) != "", 200)
+	_assert(placed, "a tap put the robot on that square")
+	_assert(GameState.machines.get("bot", 0) == 0, "and took it out of the crate")
+
+	# --- ...and its menu opens on top of it -----------------------------------
+	var opened := await _wait_until(func(): return menus.active_menu == "machine", 60)
+	_assert(opened, "the machine's menu opens the moment it lands — the one beat where she is thinking about its job")
+	_assert(menus.machine_options.size() == MachineDefs.configs_of("bot").size() + 2,
+		"one row per setting, plus pick-up and close")
+	var rows: Array = []
+	_collect_labels(menus.options_container, rows)
+	var ticked := 0
+	for lbl in rows:
+		if String(lbl.text).begins_with("✓"):
+			ticked += 1
+	_assert(ticked == 1, "exactly one setting is ticked — which job it is doing now")
+
+	# --- telling it to do something else --------------------------------------
+	var follow_row := -1
+	for i in menus.machine_options.size():
+		if String(menus.machine_options[i].get("config", "")) == BotBrain.CONFIG_FOLLOW:
+			follow_row = i
+	_assert(follow_row >= 0, "'follow me' is one of the rows")
+	menus.selected_option = follow_row
+	menus._select_current_option()
+	await get_tree().process_frame
+	var mid: String = farm.sim.machine_at(spot)
+	_assert(String(farm.sim.actor(mid)["extra"].get("config", "")) == BotBrain.CONFIG_FOLLOW,
+		"tapping the row changes what the machine does")
+	_assert(menus.active_menu == "machine",
+		"and the panel stays open, so she can see the tick move")
+
+	menus.close_menu()
+	await get_tree().process_frame
+
+	# --- tapping it again reopens the same panel ------------------------------
+	#
+	# Aimed at where the robot **is**, re-read each attempt: it is on "follow me"
+	# now, so it is walking, and a tap aimed at the square it was standing on a
+	# moment ago is a tap on empty grass. That is the real situation a player is
+	# in, which is why this is a retry loop rather than a single shot.
+	var reopened := false
+	for attempt in 8:
+		var at: Vector2i = farm.sim.actor_pos(mid)
+		player.pos = Vector2((at.x - 1) * 16.0 + 8.0, at.y * 16.0 + 8.0)
+		player.path.clear()
+		player.pending_action = {}
+		await get_tree().process_frame
+		InputManager.click_tile = at
+		InputManager.has_click = true
+		reopened = await _wait_until(func(): return menus.active_menu == "machine", 20)
+		if reopened:
+			break
+	_assert(reopened, "a tap on a placed robot opens its menu — that is what selecting one does")
+
+	# --- and picking it up is the verb she already had ------------------------
+	var pickup_row := -1
+	for i in menus.machine_options.size():
+		if String(menus.machine_options[i].get("kind", "")) == "collect":
+			pickup_row = i
+	menus.selected_option = pickup_row
+	menus._select_current_option()
+	await get_tree().process_frame
+	_assert(not farm.sim.has_actor(mid), "'pick up' takes the robot off the farm")
+	_assert(GameState.machines.get("bot", 0) == 1, "and puts it back in the crate")
+	_assert(not menus.is_open() and not get_tree().paused, "the panel closes and the world starts again")
+
+	# --- the refusal, and the one it must not become --------------------------
+	#
+	# A tap that achieves nothing has to say why (S-7, and the 2026-08-28 trace
+	# where 17 of 27 refusals were silent) — but not everywhere. T-8's boundary is
+	# the wordless *not yet*: she walks to the hedge and stops, and refusing her
+	# there would put words on the one thing the game says with land.
+	GameState.machines = { "sprinkler": 1 }
+	GameState.selected_seed_type = "sprinkler"
+	var hen_tile: Vector2i = farm.sim.actor_pos(SimWorld.ACTOR_CHICKEN)
+	_assert(ActionRouter.blocked_reason(farm, GameState, hen_tile) == "occupied",
+		"carrying a machine onto a square the hen is standing on is refused out loud")
+	var edge := Vector2i(0, 0)
+	_assert(not farm.sim.is_walkable(edge.x, edge.y),
+		"the map edge is not walkable")
+	_assert(ActionRouter.blocked_reason(farm, GameState, edge) == "",
+		"...but the edge of the world stays silent — a boundary is 'not yet', never 'no' (T-8)")
+
+	GameState.machines = {}
+	GameState.selected_seed_type = "wheat"

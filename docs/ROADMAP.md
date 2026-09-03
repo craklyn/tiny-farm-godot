@@ -1682,6 +1682,16 @@ Sprinklers (first automation), group-pest skirmishes, yield-threshold gate per P
 **Exit gate:** a new player reaches the phase 2→3 capability proof in normal play, and the
 proof is computed by the sim, not by script flags.
 
+**Landed early, 2026-09-03 — both machines are now purchasable.** The designer's
+placeholder acquisition rule (P-12: *"for now make everything we introduce to the farm a
+purchasable item from the shop"*) put the sprinkler and the robot on the seed box's shelf
+ahead of this milestone, with a `place` verb, a `configure` verb, and a menu that opens
+when a machine is tapped or set down. That takes two things off M3's plate — the sprinkler
+has an acquisition (Q-15's placeholder half) and the bot has a debut (Q-56, superseded) —
+and leaves M3 the parts that were always the real work: the **resource loop** behind
+acquisition, coverage and overlap rules for placed machines, upkeep, and the group-pest
+content the gate is measured on.
+
 ## M4 — Phase 3 vertical slice (tower defense)
 Requires D-3 (enemy identity) resolved first. Towers with manual→autonomous progression,
 wave design on the sim core (waves are just fast-forwardable sims — previewable and
