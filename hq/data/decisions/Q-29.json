@@ -9,6 +9,7 @@
     {"key": "c", "label": "Full per-verb choreography", "detail": "The expensive tier — only if the game feels dead without it."}
   ],
   "attachments": [
+    {"type": "look", "scenario": "already_done", "caption": "The hardest version of your question, staged in the real game: a tap that changes nothing. Panel 2 is what ships — the reply names the thing it is talking about. Nothing here is a verb animation; this is the whole of what a tap says back today."},
     {"type": "sprite", "entity": "actors/player", "caption": "The farmer today — walk cycle only, no per-verb poses"},
     {"type": "audio", "src": "assets/audio/sfx/till.wav", "caption": "Till — sound carries part of the feedback"},
     {"type": "audio", "src": "assets/audio/sfx/harvest_cc0_699491.wav", "caption": "Harvest"}

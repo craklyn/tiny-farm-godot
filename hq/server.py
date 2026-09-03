@@ -18,6 +18,8 @@ Zero-dependency stdlib server:
   /api/sprite/history   -> ?sheet=<path>: every step that sheet has been through
   /api/sprite/revert (POST) -> {sheet, seq} back to a step; itself recorded as a step
   /ledger/*             -> historical sheet bytes, for the before/after strip
+  /api/looks            -> look sheets published to decision cards (Q-86)
+  /looks/*              -> the sheet bytes themselves
   /api/deploy           -> live state of the tablet deploy; POST starts one
   /api/deploy/pair (POST) -> {address, code} one-time adb pairing with the tablet
   /api/health           -> liveness
@@ -40,6 +42,7 @@ HQ_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HQ_DIR)
 STATIC = os.path.join(HQ_DIR, "static")
 DATA = os.path.join(HQ_DIR, "data")
+LOOKS = os.path.join(DATA, "looks")
 PORT = 8642
 
 MIME = {
@@ -175,6 +178,26 @@ def record_ruling(payload):
     return {"ok": True, "ruling": ruling}
 
 
+def load_looks():
+    """The look sheets that decision cards can attach (Q-86).
+
+    A look session stages one question in the real game, photographs every draft
+    of it and composes a labelled sheet; `tools/compose_look_sheets.py` then
+    copies the sheets a card actually cites into `data/looks/<scenario>/`. The
+    working captures under `tools/looks/` stay gitignored — what is committed is
+    what is attached — so this reads the published copies and never the rig's
+    output directory.
+    """
+    out = {}
+    if not os.path.isdir(LOOKS):
+        return out
+    for name in sorted(os.listdir(LOOKS)):
+        doc = os.path.join(LOOKS, name, "look.json")
+        if os.path.isfile(doc):
+            out[name] = load_json(doc)
+    return out
+
+
 def api_queue():
     """Raw queue parse + curated decision cards + any recorded rulings."""
     out = parse_queue()
@@ -192,9 +215,15 @@ def check_consistency():
                 if pid and pid not in ids:
                     print(f"[consistency] project {p['id']}: unknown person '{pid}'")
         open_ids = {i["id"] for i in parse_queue()["items"]}
+        published = set(load_looks())
         for c in load_dir_json("decisions"):
             if c["id"] not in open_ids:
                 print(f"[consistency] curated decision {c['id']} not found in DESIGNER_QUEUE.md")
+            for att in c.get("attachments", []):
+                if att.get("type") == "look" and att.get("scenario") not in published:
+                    print(f"[consistency] decision {c['id']} attaches look "
+                          f"'{att.get('scenario')}' but no sheet is published — "
+                          f"run tools/compose_look_sheets.py")
     except Exception as e:
         print(f"[consistency] check failed: {e}")
 
@@ -1993,6 +2022,9 @@ class Handler(BaseHTTPRequestHandler):
             if path.startswith("/ledger/"):
                 # Historical sheet bytes, for the before/after strip in the editor.
                 return self._send_file(os.path.join(DATA, "sprite_edits"), path[len("/ledger/"):])
+            if path.startswith("/looks/"):
+                # Look-session sheets, attached to decision cards.
+                return self._send_file(LOOKS, path[len("/looks/"):])
             if path == "/api/sprite/history":
                 return self._send(200, studio.api_get(path, query))
             if path == "/api/org":
@@ -2011,6 +2043,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(404, {"error": "no such project"})
             if path == "/api/queue":
                 return self._send(200, api_queue())
+            if path == "/api/looks":
+                return self._send(200, load_looks())
             if path.startswith("/api/persona/"):
                 return self._send(200, api_persona(path[len("/api/persona/"):]))
             if path == "/api/signals":

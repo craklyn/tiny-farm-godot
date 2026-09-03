@@ -1,0 +1,26 @@
+{
+  "id": "already_done",
+  "axis": "satisfied",
+  "question": "She just tapped a crop that already has its water. Which answer tells you why nothing happened?",
+  "note": "The tap has landed and the reply is in flight. The toolbar is in shot too, because one of these drafts answers there instead.",
+  "captured": "2026-09-02",
+  "asked_by": [
+    "Q-29"
+  ],
+  "drafts": [
+    {
+      "name": "off · as today",
+      "blurb": "ring, sparkles and a tick, saying only \"yes\""
+    },
+    {
+      "name": "A · the answer names itself",
+      "blurb": "the same cue, carrying the noun it is talking about"
+    },
+    {
+      "name": "B · the state shows first",
+      "blurb": "can, basket and water readable before she taps"
+    }
+  ],
+  "sheet": "already_done/sheet.png",
+  "motion": "already_done/motion.png"
+}

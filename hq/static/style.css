@@ -416,6 +416,26 @@ code.ref { background: #1b1710; border: 1px solid var(--line); border-radius: 6p
 .att canvas { image-rendering: pixelated; background: #1b1710; border: 1px solid var(--line); border-radius: 8px; }
 .att video { max-width: 260px; border-radius: 8px; }
 .att figcaption { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+.att img { cursor: zoom-in; }
+/* a look sheet is the width of the card, not a thumbnail: it is three panels of
+   the same moment side by side, and the whole point is comparing them */
+.att.look { flex: 1 0 100%; max-width: 100%; text-align: left; }
+.att.look img {
+  display: block; width: 100%; max-width: 100%; max-height: none;
+  border: 1px solid var(--line); border-radius: 8px; background: #12160e; padding: 0;
+}
+.att.look .look-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 6px; }
+.att.look figcaption { margin: 0; text-align: left; }
+.att.look .look-when { margin-left: auto; }
+.att.look button.small { font-size: 11.5px; padding: 4px 9px; }
+.look-missing { border: 1px dashed var(--line); border-radius: 8px; padding: 12px 14px; line-height: 1.6; }
+/* full-size viewer: the image at its own scale, scrolled rather than shrunk */
+#overlay.lightbox .shot {
+  background: var(--bg2); border: 1px solid var(--line); border-radius: 14px;
+  padding: 14px; max-width: 96vw; max-height: 92vh; overflow: auto;
+}
+#overlay.lightbox .shot img { display: block; image-rendering: pixelated; }
+#overlay.lightbox .close { float: right; position: sticky; top: 0; background: transparent; color: var(--muted); font-size: 20px; padding: 0 6px; }
 .d-options { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
 .opt { display: flex; gap: 10px; align-items: flex-start; background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; cursor: pointer; }
 .opt:hover { border-color: var(--accent); }

@@ -662,10 +662,68 @@ function findEntity(entData, path) {
   return g && g.entities.find(x => x.id === eid);
 }
 
-function attachmentEl(att, entData) {
+/* Any attachment picture, at the size it was drawn. A tile texture is 16px and
+   a look sheet is a couple of thousand wide; both are being looked at *because*
+   a small difference matters, so neither can be judged at the card's thumbnail
+   size. Click opens the file at its own scale and scrolls. */
+function showFullSize(src, caption) {
+  const ov = h(`<div id="overlay" class="lightbox"><div class="shot">
+    <button class="close">✕</button>
+    <img src="${esc(src)}" alt="${esc(caption || "")}">
+    ${caption ? `<p class="small muted">${esc(caption)}</p>` : ""}
+  </div></div>`).firstElementChild;
+  document.body.appendChild(ov);
+  const shut = () => { ov.remove(); document.removeEventListener("keydown", onKey); };
+  const onKey = ev => { if (ev.key === "Escape") shut(); };
+  ov.addEventListener("click", ev => {
+    if (ev.target === ov || ev.target.classList.contains("close")) shut();
+  });
+  document.addEventListener("keydown", onKey);
+}
+
+/* A look sheet: one question, staged in the real game, every draft photographed
+   under identical conditions (Q-86). The card cites the scenario by name and the
+   sheet itself is whatever `tools/compose_look_sheets.py` last delivered, so the
+   evidence tracks the build rather than a screenshot somebody kept. */
+function lookEl(att, looks) {
+  const look = looks && looks[att.scenario];
+  const wrap = h(`<figure class="att look"></figure>`).firstElementChild;
+  if (!look || !look.sheet) {
+    wrap.innerHTML = `<div class="look-missing small muted">No sheet published for
+      “${esc(att.scenario || "?")}” yet — capture and deliver it with
+      <code>godot --path . res://tools/capture_looks.tscn</code> then
+      <code>python3 tools/compose_look_sheets.py</code>.</div>`;
+    return wrap;
+  }
+  const img = h(`<img src="/looks/${esc(look.sheet)}" alt="${esc(look.question)}">`).firstElementChild;
+  img.addEventListener("click", () => showFullSize(img.getAttribute("src"), look.question));
+  wrap.appendChild(img);
+  const bar = h(`<div class="look-bar">
+    <figcaption>${esc(att.caption || look.question)}</figcaption>
+    <span class="small muted look-when">staged in the game, ${esc(look.captured || "")}</span>
+  </div>`).firstElementChild;
+  if (look.motion) {
+    // Some drafts argue that they move; the strip is the same sheet a beat later.
+    const b = h(`<button class="ghost small" type="button">▶ see it move</button>`).firstElementChild;
+    let moving = false;
+    b.addEventListener("click", () => {
+      moving = !moving;
+      img.src = "/looks/" + (moving ? look.motion : look.sheet);
+      b.textContent = moving ? "◼ back to stills" : "▶ see it move";
+    });
+    bar.appendChild(b);
+  }
+  wrap.appendChild(bar);
+  return wrap;
+}
+
+function attachmentEl(att, entData, looks) {
+  if (att.type === "look") return lookEl(att, looks);
   const wrap = h(`<figure class="att"><figcaption>${esc(att.caption || "")}</figcaption></figure>`).firstElementChild;
   if (att.type === "image") {
-    wrap.prepend(h(`<img src="/${esc(att.src)}" alt="${esc(att.caption || "")}">`).firstElementChild);
+    const img = h(`<img src="/${esc(att.src)}" alt="${esc(att.caption || "")}">`).firstElementChild;
+    img.addEventListener("click", () => showFullSize(img.getAttribute("src"), att.caption));
+    wrap.prepend(img);
   } else if (att.type === "audio") {
     const b = h(`<button class="soundbtn">🔊 play</button>`).firstElementChild;
     b.addEventListener("click", () => new Audio("/" + att.src).play());
@@ -681,7 +739,7 @@ function attachmentEl(att, entData) {
   return wrap;
 }
 
-function decisionCard(c, ruling, entData, onRuled) {
+function decisionCard(c, ruling, entData, onRuled, looks) {
   const opts = (c.options || []).map(o => `
     <label class="opt ${ruling && ruling.option === o.key ? "picked" : ""}">
       <input type="radio" name="opt-${c.id}" value="${o.key}" data-label="${esc(o.label)}" ${ruling ? "disabled" : ""} ${ruling && ruling.option === o.key ? "checked" : ""}>
@@ -707,7 +765,7 @@ function decisionCard(c, ruling, entData, onRuled) {
         </div>`}
   </div>`).firstElementChild;
   const attRow = card.querySelector(".att-row");
-  if (attRow) (c.attachments || []).forEach(a => attRow.appendChild(attachmentEl(a, entData)));
+  if (attRow) (c.attachments || []).forEach(a => attRow.appendChild(attachmentEl(a, entData, looks)));
   const btn = card.querySelector("[data-rule]");
   if (btn) btn.addEventListener("click", async () => {
     const sel = card.querySelector(`input[name="opt-${c.id}"]:checked`);
@@ -729,7 +787,8 @@ function decisionCard(c, ruling, entData, onRuled) {
 
 async function renderInbox() {
   delete cache["/api/queue"];
-  const [queue, entData] = await Promise.all([api("/api/queue"), api("/api/entities")]);
+  const [queue, entData, looks] = await Promise.all([
+    api("/api/queue"), api("/api/entities"), api("/api/looks")]);
   const rulings = queue.rulings || {};
   const curated = queue.curated || [];
   const curatedIds = new Set(curated.map(c => c.id));
@@ -750,9 +809,9 @@ async function renderInbox() {
   const qo = document.getElementById("q-open");
   if (!fresh.length) qo.appendChild(h(`<div class="card muted">Nothing prepped needs a ruling right now. 🎉</div>`));
   const onRuled = r => { queue.rulings[r.id] = r; renderInbox(); };
-  fresh.forEach(c => qo.appendChild(decisionCard(c, null, entData, onRuled)));
+  fresh.forEach(c => qo.appendChild(decisionCard(c, null, entData, onRuled, looks)));
   const qr = document.getElementById("q-ruled");
-  if (qr) ruled.forEach(c => qr.appendChild(decisionCard(c, rulings[c.id], entData, onRuled)));
+  if (qr) ruled.forEach(c => qr.appendChild(decisionCard(c, rulings[c.id], entData, onRuled, looks)));
   const qraw = document.getElementById("q-raw");
   rawOpen.forEach(q => qraw.appendChild(queueCard(q)));
   const rawTg = document.getElementById("q-raw-toggle");

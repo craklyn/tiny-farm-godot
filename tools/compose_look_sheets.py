@@ -14,19 +14,35 @@ asked in.
 
 Writes `sheet.png` (the drafts side by side, one frame each) and, where a
 scenario asked for a strip, `motion.png` (each draft twice, a beat apart) into the
-same folder as the captures. Both are regenerable and gitignored; a sheet is
-committed only when it is attached to a decision card.
+same folder as the captures. Both are regenerable and gitignored.
+
+Then it **delivers**. A decision card in HQ asks for a sheet by citing the
+scenario — `{"type": "look", "scenario": "already_done"}` in its `attachments` —
+and every cited sheet is copied into `hq/data/looks/<scenario>/` with a small
+`look.json` beside it, which is what HQ serves on the card. Those copies are
+committed, which is exactly what the gitignore means by "a sheet is committed
+only when it is attached to a decision": the rig's output stays disposable and
+the delivered evidence is version-controlled with the card that cites it.
+
+The join runs card -> scenario and not the other way round. A scenario is a
+question about the game and should not have to know which card is asking it;
+one sheet can be evidence on several cards, and a card can be retired without
+editing the rig.
 
 Idempotent, costs nothing, needs no network.
 """
+import datetime
 import json
 import os
+import shutil
 import sys
 
 from PIL import Image, ImageDraw, ImageFont
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LOOKS = os.path.join(ROOT, "tools", "looks")
+DECISIONS = os.path.join(ROOT, "hq", "data", "decisions")
+PUBLISHED = os.path.join(ROOT, "hq", "data", "looks")
 
 FONT_DIR = "/usr/share/fonts/truetype/dejavu"
 SCALE = 2          # nearest-neighbour, so pixel art stays pixel art
@@ -152,10 +168,67 @@ def compose(manifest, panels_per_draft, out_name):
     return out
 
 
+def cited_scenarios():
+    """{scenario id: [decision ids]} — which sheets the cards are asking for.
+
+    Reading the cards is what makes "committed only when attached" enforceable
+    rather than a convention someone has to remember: nothing is copied into the
+    repo that a card does not cite, and nothing a card cites is left undelivered.
+    """
+    wanted = {}
+    if not os.path.isdir(DECISIONS):
+        return wanted
+    for name in sorted(os.listdir(DECISIONS)):
+        if not name.endswith(".json"):
+            continue
+        with open(os.path.join(DECISIONS, name), encoding="utf-8") as fh:
+            card = json.load(fh)
+        for att in card.get("attachments", []):
+            if att.get("type") == "look" and att.get("scenario"):
+                wanted.setdefault(att["scenario"], []).append(card.get("id", name))
+    return wanted
+
+
+def publish(manifest, folder, asked_by):
+    """Copy one scenario's sheets into HQ and describe them in `look.json`.
+
+    The description is copied out of the capture manifest rather than restated
+    here, so the question on the card is the same string the sheet was drawn
+    with and the two cannot drift apart.
+    """
+    dest = os.path.join(PUBLISHED, manifest["id"])
+    os.makedirs(dest, exist_ok=True)
+    stamp = datetime.date.fromtimestamp(
+        os.path.getmtime(os.path.join(folder, "manifest.json"))).isoformat()
+    doc = {
+        "id": manifest["id"],
+        "axis": manifest["axis"],
+        "question": manifest["question"],
+        "note": manifest.get("note", ""),
+        "captured": stamp,
+        "asked_by": sorted(asked_by),
+        "drafts": [{"name": d["name"], "blurb": d["blurb"]} for d in manifest["drafts"]],
+    }
+    for kind in ("sheet", "motion"):
+        src = os.path.join(folder, kind + ".png")
+        out = os.path.join(dest, kind + ".png")
+        if os.path.exists(src):
+            shutil.copyfile(src, out)
+            doc[kind] = "%s/%s.png" % (manifest["id"], kind)
+        elif os.path.exists(out):
+            # A scenario that no longer strips should not leave a stale motion
+            # sheet on the card claiming to show this build moving.
+            os.remove(out)
+    with open(os.path.join(dest, "look.json"), "w", encoding="utf-8") as fh:
+        json.dump(doc, fh, indent=2, ensure_ascii=False)
+        fh.write("\n")
+    return dest
+
+
 def main():
     if not os.path.isdir(LOOKS):
         sys.exit("no captures in tools/looks — run: godot --path . res://tools/capture_looks.tscn")
-    made = []
+    made, composed = [], {}
     for entry in sorted(os.listdir(LOOKS)):
         folder = os.path.join(LOOKS, entry)
         mpath = os.path.join(folder, "manifest.json")
@@ -177,6 +250,7 @@ def main():
                 column.append(crop_rect(os.path.join(folder, d["frames"][0]), also, column[0].width))
             stills.append(column)
         made.append(compose(manifest, stills, "sheet.png"))
+        composed[manifest["id"]] = manifest
 
         if all(len(d["frames"]) > 1 for d in manifest["drafts"]):
             strips = [[crop_panel(os.path.join(folder, f), d["focus_px"], size, min_top)
@@ -187,6 +261,20 @@ def main():
         sys.exit("no manifests found in tools/looks")
     for m in made:
         print("wrote %s" % os.path.relpath(m, ROOT))
+
+    wanted = cited_scenarios()
+    for sid, cards in sorted(wanted.items()):
+        if sid in composed:
+            dest = publish(composed[sid], os.path.join(LOOKS, sid), cards)
+            print("delivered %s -> %s" % (", ".join(sorted(cards)),
+                                          os.path.relpath(dest, ROOT)))
+        else:
+            # Loud, because the card is live in the inbox either way: he would
+            # otherwise meet a decision whose evidence is silently missing.
+            print("MISSING: %s cites look '%s', which this session did not "
+                  "capture" % (", ".join(sorted(cards)), sid))
+    if not wanted:
+        print("no decision card cites a look sheet yet — nothing delivered")
 
 
 if __name__ == "__main__":

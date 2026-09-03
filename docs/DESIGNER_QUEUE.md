@@ -1236,8 +1236,21 @@ never touched. Session: `playtests/2026-08-31_230643`.*
   asked about (they are frozen for the session); and a draft that is an *event* rather
   than a state was photographed either before it started or after it ended (the glint
   swells for a third of a second — the rig now waits for the event and then waits out
-  its peak). *Still open, deliberately:* the sheets are delivered by hand. Wiring them
-  to an HQ decision card as attachments is the obvious next step and is not done.
+  its peak). **Delivery wired 2026-09-02:** a sheet now arrives on the decision card
+  itself. A card asks for one by citing the scenario in its `attachments` —
+  `{"type": "look", "scenario": "already_done"}` — and `compose_look_sheets.py` copies
+  every cited sheet into `hq/data/looks/<scenario>/` for HQ to serve, full width on the
+  card, click for the raw pixels, with a "see it move" toggle where the scenario shot a
+  strip. The join runs card → scenario and not the reverse, so a scenario stays a
+  question about the game: one sheet can be evidence on several cards, and a card can be
+  retired without editing the rig. It is also what makes "committed only when attached"
+  something the tool enforces rather than something a person remembers — nothing is
+  copied into the repo that no card cites, and a card citing a sheet nobody captured is
+  reported loudly by the composer and by HQ's startup consistency check rather than
+  showing him a decision whose evidence is silently missing. First one delivered: the
+  already-watered tap, on Q-29, which asks whether a player can tell what her tap just
+  did. *Still open:* the two other validation scenarios are captured but uncited, which
+  is the system working — no card asks them yet.
 
 ## Before M3 — phase 2 design
 

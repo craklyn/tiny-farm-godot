@@ -86,8 +86,16 @@ section 2).
 - `data/projects/*.json` — the program report, one file per project, ordered by
   `priority`.
 - `data/decisions/*.json` — curated decision cards for the inbox: plain-language
-  question, options with a recommendation, attachments (image/audio/sprite/video),
-  links. Keep in sync with open items in `docs/DESIGNER_QUEUE.md`.
+  question, options with a recommendation, attachments
+  (image/audio/sprite/video/look), links. Keep in sync with open items in
+  `docs/DESIGNER_QUEUE.md`.
+- `data/looks/<scenario>/` — a look sheet delivered to a card (Q-86): the question
+  staged in the real game with every draft photographed under identical conditions,
+  composed into `sheet.png` (and `motion.png` where the argument is that it moves)
+  with a `look.json` describing it. A card asks for one with
+  `{"type": "look", "scenario": "<id>"}`; `tools/compose_look_sheets.py` reads the
+  cards and copies in exactly the sheets they cite, which is why these are the only
+  look captures in git — the rig's own output under `tools/looks/` is gitignored.
 - `data/rulings/` — rulings the CEO records in the inbox (`<Q-id>.json`, plus a
   running `RULINGS.md` ledger). `status: pending_integration` means a work session
   still needs to fold it into the design docs — see CLAUDE.md "Docs and process".
