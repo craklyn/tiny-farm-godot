@@ -1,2 +1,4 @@
 data/sprite_backups/
 data/runs/
+data/outbox/
+__pycache__/

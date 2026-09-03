@@ -12,9 +12,10 @@
     "Org chart with every persona browsable and chattable",
     "Entity gallery with animated sprites and asset/code/sound references",
     "Program report with per-project pages (requirements, status, plan)",
-    "Decision inbox parsed live from the designer queue doc"
+    "Decision inbox parsed live from the designer queue doc",
+    "Chat keeps taking work when the 5-hour token window is dry (queued, then answered on its own)"
   ],
-  "current_status": "Shipped 2026-09-01, then rebuilt the same day into the command center: derived pillar signals (git/CI/traces/tags — nothing hand-maintained), the Eye of Sauron queue, pillar pages with living demos, the playtest viewer, the in-app verification runner, and the chief-of-staff brief. Next natural increments: a KPI page once there is revenue, and richer per-persona demo automation.",
+  "current_status": "Shipped 2026-09-01, then rebuilt the same day into the command center: derived pillar signals (git/CI/traces/tags — nothing hand-maintained), the Eye of Sauron queue, pillar pages with living demos, the playtest viewer, the in-app verification runner, and the chief-of-staff brief. 2026-09-02 added the intake queue: an out-of-tokens window now parks chat requests and answers them when it reopens, instead of the page going dead. Next natural increments: a KPI page once there is revenue, and richer per-persona demo automation.",
   "plan": [
     {
       "step": "Server, data model, and frontend",
@@ -30,6 +31,10 @@
     },
     {
       "step": "Verified in browser; committed and pushed",
+      "done": true
+    },
+    {
+      "step": "Intake queue for the out-of-tokens window",
       "done": true
     }
   ],

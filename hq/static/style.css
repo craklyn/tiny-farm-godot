@@ -457,6 +457,15 @@ code.ref { background: #1b1710; border: 1px solid var(--line); border-radius: 6p
 .msg.user { align-self: flex-end; background: #3a4a2d; }
 .msg.them { align-self: flex-start; background: var(--panel); border: 1px solid var(--line); }
 .msg .who { font-size: 11px; color: var(--muted); margin-bottom: 4px; font-weight: 600; }
+/* Out-of-tokens outbox: a queued reply is visibly a placeholder, not an
+   answer, and the banner says when the window reopens. */
+.chat-banner { border: 1px solid var(--line); background: var(--panel); border-radius: 8px;
+  padding: 9px 12px; margin-bottom: 10px; font-size: 13px; color: var(--muted); line-height: 1.5; }
+.chat-banner.warn { border-color: var(--accent); background: #33290f; color: var(--text); }
+.chat-banner strong { color: var(--accent); }
+.msg.queued { border-style: dashed; color: var(--muted); font-style: italic; }
+.msg-act { margin-top: 6px; }
+.msg-act button { font-size: 11.5px; padding: 3px 9px; }
 .chat-input { display: flex; gap: 10px; margin-top: 12px; }
 .chat-input textarea {
   flex: 1; background: var(--panel); color: var(--text); border: 1px solid var(--line);

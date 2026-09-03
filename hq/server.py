@@ -11,6 +11,8 @@ Zero-dependency stdlib server:
   /api/project/<id>     -> one project
   /api/queue            -> open decision items parsed live from docs/DESIGNER_QUEUE.md
   /api/chat  (POST)     -> {to, message, history} routed through the local `claude` CLI
+  /api/chat/queue       -> parked requests + token-limit state (POST enqueues)
+  /api/chat/cancel|retry (POST) -> {id} for one parked request
   /api/health           -> liveness
 
 Run: python3 hq/server.py   (or via the tiny-farm-hq systemd user service)
@@ -1209,11 +1211,20 @@ PROJECTS: {json.dumps([{"name": p["name"], "status": p["status"], "priority": p[
         with CHAT_LOCK:  # honor the at-most-2-claude-subprocesses invariant
             proc = subprocess.run(cmd, cwd=REPO, capture_output=True, text=True, timeout=180,
                                   env={**os.environ, "CLAUDE_CODE_DISABLE_AUTOUPDATE": "1"})
-        brief = proc.stdout.strip() if proc.returncode == 0 else ""
+        if proc.returncode == 0:
+            brief = proc.stdout.strip()
+            clear_limit()
+        else:
+            brief = ""
+            # Out of tokens shows up here first as often as in chat; recording
+            # it means the chat page can warn before he types a word.
+            if _looks_like_limit((proc.stderr or "") + (proc.stdout or "")):
+                note_limit((proc.stderr or "") + (proc.stdout or ""))
     except Exception:
         brief = ""
     if not brief:
-        return {"error": "brief generation failed", "fingerprint": finger}
+        return {"error": "brief generation failed", "fingerprint": finger,
+                "limited": bool(limited_until())}
     import datetime
     doc = {"fingerprint": finger, "brief": brief,
            "generated": datetime.datetime.now().isoformat(timespec="minutes")}
@@ -1223,15 +1234,254 @@ PROJECTS: {json.dumps([{"name": p["name"], "status": p["status"], "priority": p[
     return doc
 
 
-def run_chat(payload):
+# ---------------------------------------------------------------------------
+# Intake queue — the out-of-tokens outbox.
+#
+# The subscription's 5-hour window can run dry mid-session. The `claude` CLI
+# then exits non-zero and chat used to dead-end on "⚠️ claude CLI failed": the
+# CEO's page went unreactive at exactly the moment he still had things to hand
+# off. Instead we park the message on disk, say when the window reopens, and a
+# background thread sends it and holds the reply until a browser collects it.
+#
+# Delivery does NOT depend on parsing the CLI's reset time — the drainer just
+# retries on a backoff — so a reworded limit message can delay an answer but
+# can never lose a request. The parsed time is only used to say "back at 6:20".
+# ---------------------------------------------------------------------------
+OUTBOX = os.path.join(DATA, "outbox")
+OUTBOX_STATE = os.path.join(OUTBOX, "_limit.json")
+OUTBOX_KEEP_DAYS = 7
+_OUTBOX_LOCK = threading.Lock()   # guards the item files
+_LIMIT_LOCK = threading.Lock()    # guards _LIMIT (never taken with the above)
+_LIMIT = {"until": 0.0, "detail": ""}   # epoch seconds; 0 == not limited
+
+# Only ever matched against the output of a FAILED claude run, so breadth here
+# costs nothing worse than a queued-and-retried message.
+_LIMIT_HINTS = re.compile(
+    r"usage limit reached|rate.?limit|too many requests|5-?hour limit|"
+    r"limit will reset|limit reached|out of (?:tokens|credits)|"
+    r"quota (?:exceeded|exhausted)|\b429\b", re.I)
+_LIMIT_EPOCH = re.compile(r"(?:reached|resets?[ _]?at)\D{0,12}(1[0-9]{9})\b", re.I)
+_LIMIT_CLOCK = re.compile(r"resets?\s+at\s+(\d{1,2})(?::(\d{2}))?\s*([ap])\.?m", re.I)
+
+
+def _looks_like_limit(text):
+    return bool(_LIMIT_HINTS.search(text or ""))
+
+
+def _parse_reset(text, now):
+    """Best-effort reset moment from the CLI's message; 0.0 when it says
+    nothing useful. Cosmetic only — see the section note."""
+    m = _LIMIT_EPOCH.search(text or "")
+    if m:
+        ts = float(m.group(1))
+        if now < ts < now + 24 * 3600:
+            return ts
+    m = _LIMIT_CLOCK.search(text or "")
+    if m:
+        import datetime
+        hour = int(m.group(1)) % 12 + (12 if m.group(3).lower() == "p" else 0)
+        ts = datetime.datetime.fromtimestamp(now).replace(
+            hour=hour, minute=int(m.group(2) or 0), second=0, microsecond=0).timestamp()
+        if ts < now:
+            ts += 24 * 3600
+        return ts
+    return 0.0
+
+
+def _save_limit_locked():
+    try:
+        os.makedirs(OUTBOX, exist_ok=True)
+        with open(OUTBOX_STATE, "w", encoding="utf-8") as f:
+            json.dump(_LIMIT, f)
+    except OSError:
+        pass  # the queue still drains; we'd just re-learn the limit the hard way
+
+
+def note_limit(text):
+    """Record that Claude is out of tokens — from any CLI call, chat or brief."""
+    import time as _t
+    now = _t.time()
+    guess = _parse_reset(text, now) or (now + 20 * 60)
+    with _LIMIT_LOCK:
+        cur = _LIMIT["until"] if _LIMIT["until"] > now else 0.0
+        _LIMIT["until"] = max(cur, guess)
+        _LIMIT["detail"] = " ".join((text or "").split())[:200]
+        _save_limit_locked()
+        return _LIMIT["until"]
+
+
+def clear_limit():
+    """A successful call is proof the window is open again."""
+    with _LIMIT_LOCK:
+        if not _LIMIT["until"]:
+            return
+        _LIMIT["until"] = 0.0
+        _LIMIT["detail"] = ""
+        _save_limit_locked()
+
+
+def limited_until():
+    import time as _t
+    return _LIMIT["until"] if _LIMIT["until"] > _t.time() else 0.0
+
+
+def _outbox_path(item_id):
+    return os.path.join(OUTBOX, f"{item_id}.json")
+
+
+def _write_item(item):
+    os.makedirs(OUTBOX, exist_ok=True)
+    path = _outbox_path(item["id"])
+    tmp = path + ".tmp"
+    with _OUTBOX_LOCK:
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(item, f, ensure_ascii=False)
+        os.replace(tmp, path)  # a half-written item must never be readable
+    return item
+
+
+def list_outbox():
+    try:
+        names = sorted(os.listdir(OUTBOX))
+    except OSError:
+        return []
+    items = []
+    for n in names:
+        if not n.endswith(".json") or n.startswith("_"):
+            continue
+        try:
+            items.append(load_json(os.path.join(OUTBOX, n)))
+        except Exception:
+            continue
+    items.sort(key=lambda i: i.get("created_ts", 0))
+    return items
+
+
+def enqueue_chat(to_id, message, history, reason="limit"):
+    import datetime
+    import time as _t
+    import uuid
+    return _write_item({
+        "id": uuid.uuid4().hex[:12],
+        "to": to_id,
+        "message": message,
+        "history": (history or [])[-12:],
+        "state": "queued",
+        "reason": reason,            # "limit" (auto) or "manual"
+        "created": datetime.datetime.now().isoformat(timespec="seconds"),
+        "created_ts": _t.time(),
+        "attempts": 0,
+        "next_try": 0,
+        "reply": "",
+        "error": "",
+    })
+
+
+def set_queue_state(item_id, state):
+    """Cancel a parked request, or push a failed one back onto the queue."""
+    if state not in ("cancelled", "queued"):
+        return {"error": "bad state"}
+    if not re.match(r"^[0-9a-f]{6,32}$", item_id or ""):
+        return {"error": "bad id"}
+    path = _outbox_path(item_id)
+    if not os.path.isfile(path):
+        return {"error": "no such item"}
+    item = load_json(path)
+    if item["state"] == "sending":
+        return {"error": "already sending"}
+    if state == "queued":
+        item["attempts"] = 0
+        item["next_try"] = 0
+        item["error"] = ""
+    item["state"] = state
+    _write_item(item)
+    return {"ok": True, "item": item}
+
+
+def queue_snapshot():
+    items = list_outbox()
+    return {
+        "limited": bool(limited_until()),
+        "limit_until": limited_until(),
+        "limit_detail": _LIMIT["detail"] if limited_until() else "",
+        "pending": sum(1 for i in items if i["state"] in ("queued", "sending")),
+        "items": items,
+    }
+
+
+def _prune_outbox():
+    """Answered requests stay collectable for a week (long enough for the other
+    machine to pick them up), then go."""
+    import time as _t
+    cutoff = _t.time() - OUTBOX_KEEP_DAYS * 86400
+    for item in list_outbox():
+        if item["state"] in ("done", "cancelled", "failed") and item.get("created_ts", 0) < cutoff:
+            try:
+                os.remove(_outbox_path(item["id"]))
+            except OSError:
+                pass
+
+
+def sanitize_outbox():
+    """A restart orphans an in-flight send; requeue it rather than lose it."""
+    for item in list_outbox():
+        if item.get("state") == "sending":
+            item["state"] = "queued"
+            item["next_try"] = 0
+            _write_item(item)
+    try:
+        saved = load_json(OUTBOX_STATE)
+        _LIMIT["until"] = float(saved.get("until") or 0)
+        _LIMIT["detail"] = saved.get("detail") or ""
+    except Exception:
+        pass
+
+
+def _drain_outbox():
+    """Send parked requests once the window reopens — one at a time, oldest
+    first, so a backlog can't stampede a freshly reset token budget."""
+    import datetime
+    import time as _t
+    while True:
+        _t.sleep(20)
+        try:
+            _prune_outbox()
+            if limited_until():
+                continue
+            now = _t.time()
+            due = [i for i in list_outbox()
+                   if i["state"] == "queued" and i.get("next_try", 0) <= now]
+            if not due:
+                continue
+            item = due[0]
+            item["state"] = "sending"
+            item["attempts"] = item.get("attempts", 0) + 1
+            _write_item(item)
+            res = _chat_once(item["to"], item["message"], item["history"])
+            if res.get("limited"):
+                item["state"] = "queued"
+                item["next_try"] = _t.time() + 60
+            elif res.get("reply"):
+                item["state"] = "done"
+                item["reply"] = res["reply"]
+                item["error"] = ""
+                item["answered"] = datetime.datetime.now().isoformat(timespec="minutes")
+            else:
+                item["error"] = res.get("error", "no reply")[:300]
+                # Three honest tries, then it waits for the CEO rather than
+                # spinning: a non-limit failure won't fix itself.
+                item["state"] = "failed" if item["attempts"] >= 3 else "queued"
+                item["next_try"] = _t.time() + 120 * item["attempts"]
+            _write_item(item)
+        except Exception:
+            continue  # the drainer outlives any single bad item
+
+
+def _chat_once(to_id, message, history):
+    """One real call to the CLI. Returns {"reply"} or {"error"[, "limited"]}."""
     org = load_org()
-    to_id = payload.get("to", "claude")
-    message = (payload.get("message") or "").strip()
-    history = payload.get("history") or []
-    if not message:
-        return {"error": "empty message"}
     convo = ""
-    for h in history[-12:]:
+    for h in (history or [])[-12:]:
         who = "Daniel" if h.get("role") == "user" else h.get("name", "Assistant")
         convo += f"{who}: {h.get('text', '')}\n\n"
     convo += f"Daniel: {message}"
@@ -1252,9 +1502,36 @@ def run_chat(payload):
             return {"error": "The team member took too long to reply (timeout)."}
         except FileNotFoundError:
             return {"error": "claude CLI not found on PATH for the service user."}
+    out = (proc.stdout or "") + "\n" + (proc.stderr or "")
     if proc.returncode != 0:
+        if _looks_like_limit(out):
+            note_limit(out)
+            return {"error": "out of tokens", "limited": True,
+                    "detail": " ".join(out.split())[:200]}
         return {"error": (proc.stderr or "claude CLI failed").strip()[:500]}
+    clear_limit()
     return {"reply": proc.stdout.strip()}
+
+
+def run_chat(payload):
+    """Send now if we can; park it if we can't (or if he asked us to)."""
+    to_id = payload.get("to", "claude")
+    message = (payload.get("message") or "").strip()
+    history = payload.get("history") or []
+    if not message:
+        return {"error": "empty message"}
+    if payload.get("queue") or limited_until():
+        item = enqueue_chat(to_id, message, history,
+                            "manual" if payload.get("queue") else "limit")
+        return {"queued": item["id"], "resume_at": limited_until(),
+                "reason": item["reason"]}
+    res = _chat_once(to_id, message, history)
+    if res.get("limited"):
+        # He typed it before we knew; it is not his job to retype it later.
+        item = enqueue_chat(to_id, message, history)
+        return {"queued": item["id"], "resume_at": limited_until(),
+                "reason": "limit"}
+    return res
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -1368,8 +1645,10 @@ class Handler(BaseHTTPRequestHandler):
                 if doc is None:
                     return self._send(404, {"error": "no such doc"})
                 return self._send(200, doc)
+            if path == "/api/chat/queue":
+                return self._send(200, queue_snapshot())
             if path == "/api/health":
-                return self._send(200, {"ok": True})
+                return self._send(200, {"ok": True, "limit_until": limited_until()})
             return self._send(404, {"error": "not found"})
         except Exception as e:  # keep the service alive whatever happens
             return self._send(500, {"error": str(e)[:300]})
@@ -1408,6 +1687,18 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, run_chat(payload))
             except Exception as e:
                 return self._send(500, {"error": str(e)[:300]})
+        if path == "/api/chat/queue":
+            try:
+                item = enqueue_chat(payload.get("to", "claude"),
+                                    (payload.get("message") or "").strip(),
+                                    payload.get("history") or [], "manual")
+                return self._send(200, {"queued": item["id"],
+                                        "resume_at": limited_until()})
+            except Exception as e:
+                return self._send(500, {"error": str(e)[:300]})
+        if path in ("/api/chat/cancel", "/api/chat/retry"):
+            state = "cancelled" if path.endswith("cancel") else "queued"
+            return self._send(200, set_queue_state(payload.get("id", ""), state))
         return self._send(404, {"error": "not found"})
 
 
@@ -1434,6 +1725,8 @@ def sanitize_runs():
 def main():
     check_consistency()
     sanitize_runs()
+    sanitize_outbox()
+    threading.Thread(target=_drain_outbox, daemon=True).start()
     server = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
     print(f"Tiny Farm HQ on http://localhost:{PORT}")
     server.serve_forever()

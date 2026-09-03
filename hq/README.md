@@ -30,6 +30,17 @@ report, and the decision inbox (curated cards + on-page rulings).
 - `server.py` — zero-dependency HTTP server (static app, JSON APIs, game-asset
   serving, live designer-queue parsing, and `/api/chat` which shells out to the
   local `claude` CLI with a per-persona system prompt, read-only repo tools).
+  - **The intake queue.** When the subscription's 5-hour window runs dry the CLI
+    can't answer, and the chat page used to dead-end on "claude CLI failed".
+    Now a dry window parks the request in `data/outbox/<id>.json`, the page says
+    when tokens come back, and a background thread sends it and holds the reply
+    until a browser collects it — so an idea he has at 9pm isn't lost because the
+    tokens are. Anything that fails for another reason offers "Queue it for
+    later" on the same terms. Delivery never depends on parsing the CLI's reset
+    message: the drainer just retries, so a reworded limit can delay an answer
+    but can't lose a request. `/api/chat/queue` (GET state, POST enqueue),
+    `/api/chat/cancel`, `/api/chat/retry`. Answered items are collectable for
+    seven days, which is what lets the laptop pick up what the desktop queued.
 - `static/` — the single-page frontend. `design.js`/`design.css` are the Design
   Studio tab: the living GDD browsed live from `docs/` via `/api/docs` +
   `/api/doc/<path>` — served from the repo on every request, never copied. The

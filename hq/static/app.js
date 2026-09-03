@@ -773,6 +773,77 @@ async function renderInbox() {
 const chatHistories = JSON.parse(localStorage.getItem("hq-chats") || "{}");
 function saveChats() { localStorage.setItem("hq-chats", JSON.stringify(chatHistories)); }
 
+/* The out-of-tokens outbox (server side: "Intake queue" in hq/server.py).
+   When the 5-hour window runs dry the CLI cannot answer, so the server parks
+   the request and sends it when the window reopens. The page's job is to say
+   so honestly, keep accepting work instead of going dead, and fold the late
+   replies back into the right thread — including replies to something queued
+   from the other machine, which this browser has no placeholder for. */
+let chatPoll = null;   // one timer, reset by every renderChat
+let chatQueue = { items: [], limited: false, limit_until: 0, pending: 0 };
+// Ids this browser has already shown. Without it, "Clear thread" would be
+// undone by the next poll — an answer he deliberately dismissed coming back.
+const chatSeen = new Set(JSON.parse(localStorage.getItem("hq-chat-seen") || "[]"));
+function rememberSeen(id) {
+  chatSeen.add(id);
+  const keep = [...chatSeen].slice(-200);
+  chatSeen.clear(); keep.forEach(k => chatSeen.add(k));
+  localStorage.setItem("hq-chat-seen", JSON.stringify(keep));
+}
+
+function whenText(ts) {
+  if (!ts) return "";
+  const d = new Date(ts * 1000);
+  const mins = Math.round((d - Date.now()) / 60000);
+  const clock = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  return mins > 0 && mins <= 90 ? `${clock} (~${mins} min)` : clock;
+}
+
+function queuedLine(item, snap) {
+  if (item.state === "sending") return "📤 Sending now…";
+  const when = snap && snap.limited ? whenText(snap.limit_until) : "";
+  return when
+    ? `⏳ Queued — tokens are out until about ${when}. This sends itself then; you can close the page.`
+    : "⏳ Queued — this sends itself as soon as the assistant is free.";
+}
+
+/* Fold the server's queue into the threads. Everything is matched on the item
+   id, so a reply lands exactly once no matter which browser collects it. */
+function mergeQueue(snap) {
+  let touched = false;
+  for (const it of snap.items || []) {
+    const hist = chatHistories[it.to] ||= [];
+    if (!hist.some(m => m.qid === it.id)) {
+      // No placeholder here: queued from the other machine (or from a browser
+      // whose storage is gone). Rebuild both sides so the answer isn't
+      // orphaned — but never for one this browser already showed him, or
+      // "Clear thread" would quietly undo itself.
+      if (it.state === "cancelled" || chatSeen.has(it.id)) continue;
+      hist.push({ role: "user", text: it.message, qid: it.id + ":ask" });
+      hist.push({ role: "them", qid: it.id, text: "" });
+      touched = true;
+    }
+    rememberSeen(it.id);
+    const m = hist.find(x => x.qid === it.id);
+    const before = m.text;
+    if (it.state === "done") { m.text = it.reply; m.queued = false; m.failed = false; }
+    else if (it.state === "failed") { m.text = "⚠️ " + (it.error || "send failed"); m.queued = false; m.failed = true; }
+    else if (it.state === "cancelled") { m.text = "🚫 Cancelled before it was sent."; m.queued = false; m.failed = false; }
+    else { m.text = queuedLine(it, snap); m.queued = true; }
+    if (m.text !== before) touched = true;
+  }
+  if (touched) saveChats();
+  return touched;
+}
+
+async function pollQueue() {
+  try {
+    const r = await fetch("/api/chat/queue");
+    chatQueue = await r.json();
+  } catch { return false; }
+  return mergeQueue(chatQueue);
+}
+
 async function renderChat(toId) {
   const org = await api("/api/org");
   const people = org.employees.filter(e => e.id !== "daniel");
@@ -786,6 +857,7 @@ async function renderChat(toId) {
     <div class="chat-wrap">
       <div class="chat-to">To: <select id="chat-to">${opts}</select>
         <button class="ghost" id="chat-clear">Clear thread</button></div>
+      <div id="chat-banner"></div>
       <div class="chat-log" id="chat-log"></div>
       <div class="chat-input">
         <textarea id="chat-text" placeholder="Ask ${esc(cur.name.split(" ")[0])} anything… (Enter to send, Shift+Enter for a new line)"></textarea>
@@ -803,42 +875,109 @@ async function renderChat(toId) {
       if (ta) { ta.value = draft; setTimeout(() => ta.focus(), 50); }
     }
   } catch { }
+
   const draw = () => {
-    log.replaceChildren(...hist.map(m => h(`<div class="msg ${m.role === "user" ? "user" : "them"}">
-      ${m.role !== "user" ? `<div class="who">${esc(m.name || cur.name)}</div>` : ""}${md(m.text)}</div>`).firstElementChild));
+    log.replaceChildren(...hist.map((m, i) => {
+      const cls = ["msg", m.role === "user" ? "user" : "them", m.queued ? "queued" : ""].join(" ").trim();
+      const who = m.role !== "user" ? `<div class="who">${esc(m.name || cur.name)}</div>` : "";
+      // Anything that failed to send is still work he wants done — offer the
+      // queue rather than making him retype it later.
+      const again = (m.failed || m.error) && m.ask ? `<div class="msg-act"><button class="ghost" data-requeue="${i}">Queue it for later</button></div>` : "";
+      const cancel = m.queued ? `<div class="msg-act"><button class="ghost" data-cancel="${esc(m.qid)}">Cancel</button></div>` : "";
+      return h(`<div class="${cls}">${who}${md(m.text)}${again}${cancel}</div>`).firstElementChild;
+    }));
     log.scrollTop = log.scrollHeight;
   };
+
+  const paintBanner = () => {
+    const b = document.getElementById("chat-banner");
+    if (!b) return;
+    const pend = chatQueue.pending || 0;
+    if (chatQueue.limited) {
+      b.className = "chat-banner warn";
+      b.innerHTML = `<strong>Out of tokens until about ${esc(whenText(chatQueue.limit_until))}.</strong>
+        Keep typing — anything you send is queued here and answered automatically when the window reopens.
+        ${pend ? `${pend} request${pend > 1 ? "s" : ""} waiting.` : ""}`;
+    } else if (pend) {
+      b.className = "chat-banner";
+      b.innerHTML = `📤 Working through ${pend} queued request${pend > 1 ? "s" : ""} — the answers land in their threads on their own.`;
+    } else {
+      b.className = "";
+      b.innerHTML = "";
+    }
+  };
+
+  const tick = async () => {
+    if (!(location.hash.slice(1) || "/").includes("chat")) {
+      clearInterval(chatPoll); chatPoll = null; return;
+    }
+    if (await pollQueue()) draw();
+    paintBanner();
+  };
+
   draw();
+  paintBanner();
+  if (chatPoll) clearInterval(chatPoll);
+  chatPoll = setInterval(tick, 15000);
+  tick();
+
   document.getElementById("chat-to").addEventListener("change", ev => location.hash = "#/chat/" + ev.target.value);
   document.getElementById("chat-clear").addEventListener("click", () => { chatHistories[to] = []; saveChats(); renderChat(to); });
-  const send = async () => {
+
+  const post = (url, body) => fetch(url, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  }).then(r => r.json());
+
+  const send = async (text, queueIt) => {
+    const typing = h(`<div class="typing">${queueIt ? "📥 Queueing…" : `✍️ ${esc(cur.name.split(" ")[0])} is thinking…`}</div>`).firstElementChild;
+    log.appendChild(typing); log.scrollTop = log.scrollHeight;
+    const btn = document.getElementById("chat-send");
+    if (btn) btn.disabled = true;
+    try {
+      const j = await post("/api/chat", { to, message: text, history: hist.filter(m => !m.queued && !m.error).slice(-12), queue: !!queueIt });
+      if (j.queued) {
+        hist.push({ role: "them", name: cur.name, qid: j.queued, queued: true, text: queuedLine({ state: "queued" }, { limited: !!j.resume_at, limit_until: j.resume_at }) });
+      } else {
+        hist.push({ role: "them", name: cur.name, text: j.reply || ("⚠️ " + (j.error || "no reply")), error: !j.reply, ask: j.reply ? null : text });
+      }
+    } catch (e) {
+      hist.push({ role: "them", name: cur.name, text: "⚠️ " + e.message, error: true, ask: text });
+    }
+    saveChats();
+    if (btn) btn.disabled = false;
+    if ((location.hash.slice(1) || "/").includes("chat")) { await pollQueue(); draw(); paintBanner(); }
+  };
+
+  const sendTyped = async () => {
     const ta = document.getElementById("chat-text");
     const text = ta.value.trim();
     if (!text) return;
     ta.value = "";
     hist.push({ role: "user", text });
     saveChats(); draw();
-    const typing = h(`<div class="typing">✍️ ${esc(cur.name.split(" ")[0])} is thinking…</div>`).firstElementChild;
-    log.appendChild(typing); log.scrollTop = log.scrollHeight;
-    document.getElementById("chat-send").disabled = true;
-    try {
-      const r = await fetch("/api/chat", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to, message: text, history: hist.slice(0, -1) }),
-      });
-      const j = await r.json();
-      hist.push({ role: "them", name: cur.name, text: j.reply || ("⚠️ " + (j.error || "no reply")) });
-    } catch (e) {
-      hist.push({ role: "them", name: cur.name, text: "⚠️ " + e.message });
-    }
-    saveChats();
-    const btn = document.getElementById("chat-send");
-    if (btn) btn.disabled = false;
-    if ((location.hash.slice(1) || "/").includes("chat")) draw();
+    await send(text, false);
   };
-  document.getElementById("chat-send").addEventListener("click", send);
+
+  log.addEventListener("click", async ev => {
+    const rq = ev.target.dataset && ev.target.dataset.requeue;
+    const cx = ev.target.dataset && ev.target.dataset.cancel;
+    if (rq !== undefined && rq !== null && rq !== "") {
+      const m = hist[Number(rq)];
+      if (!m || !m.ask) return;
+      const ask = m.ask;
+      hist.splice(Number(rq), 1);   // the error bubble is replaced by the queued one
+      saveChats(); draw();
+      await send(ask, true);
+    } else if (cx) {
+      await post("/api/chat/cancel", { id: cx });
+      await pollQueue(); draw(); paintBanner();
+    }
+  });
+
+  document.getElementById("chat-send").addEventListener("click", sendTyped);
   document.getElementById("chat-text").addEventListener("keydown", ev => {
-    if (ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); send(); }
+    if (ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); sendTyped(); }
   });
 }
 
