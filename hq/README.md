@@ -148,12 +148,19 @@ because it was the only quantity that existed — nobody had written down what t
 next release offers. *When the convenient metric belongs to another seat, that is
 a tell that the real record has never been built. Build the record.*
 
-**2. Every finding carries its next action.** A row that names a problem, cites
+**2. Every finding carries its next action — the headline most of all.**  A row that names a problem, cites
 the file and line, and stops is half a feature. Every non-green goal names an
 owner and offers one control: open the project, open the card, hand it to the
 pillar that owns it, or file the work. *"What is the intended user flow from
 here?" is the test; if the answer is "he tells somebody in chat", it is not
-finished.*
+finished.* This was applied to the goal rows and the needs band and **not to the
+verdict**, which is the most prominent statement on the page — so the top of the
+Finance page named a problem and offered nothing for two rounds of review. The
+verdict now carries the same control its row does, plus the sentence saying what
+is actually being asked of him ("This is a ruling only you can make", "This
+wants a date from you") and what waiting costs. Where a ruling has no card
+prepped, the control files the work to prepare one, because an unprepped ask is
+somebody's job to prepare before it is fair to put in front of him.
 
 **3. A check that can only ever read one way is not a check.** The ship gate
 measured "the debug readout is switched off", which is red every single day by

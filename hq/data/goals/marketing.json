@@ -94,6 +94,14 @@
           },
           "consequence": "Marketing stays off by inertia rather than by decision, and finds out late either way.",
           "waiting_since": "2026-08-28"
+        },
+        "action": {
+          "label": "Ask Carmen to prep it",
+          "tier": 1,
+          "level": "task",
+          "title": "Prep the decision on what wakes marketing up",
+          "ask": "Marketing is dormant by standing instruction and nothing anywhere says what would turn it back on, so it is off by inertia rather than by decision. Prep a decision card the CEO can rule on in a minute: two or three concrete triggers with a recommendation — a date, a public build, a number of players, whatever is actually checkable from here — and what each one would commit the studio to doing once it fires. Do not ask him an open question; give him options.",
+          "first_action": "Read the dormancy record in hq/data/pillars.json and ITCH_PAGE.md, then write the card into hq/data/decisions/."
         }
       },
       "history": {
@@ -168,6 +176,14 @@
           },
           "consequence": "The first sign of an audience arrives by accident, or not at all.",
           "waiting_since": "2026-08-28"
+        },
+        "action": {
+          "label": "Ask Amara to set it up",
+          "tier": 1,
+          "level": "task",
+          "title": "Get the storefront's numbers into HQ",
+          "ask": "One free browser build has been public for weeks and nobody can say whether anyone has opened it. The storefront issues an API key that exposes views, downloads and plays. Write the poller as a named entry in hq/server.py's PROBES registry, refreshed off the request path onto hq/data/probes/itch_daily.json the way every other network reading in HQ works, and say plainly what the CEO has to do to obtain the key. Do not invent an empty state that looks like a zero: no key must render as an absence.",
+          "first_action": "Read the probe_cache measurement kind and the PROBES registry in hq/server.py, then write the poller and the one-line instruction for getting the key."
         }
       },
       "history": {

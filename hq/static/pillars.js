@@ -143,11 +143,35 @@ function verdictLine(g) {
   // status dot as everything else, a caption saying what it is, and the time it
   // was worked out — the three things that mark a number as live in HQ.
   const m = LEVEL_META[g.level] || LEVEL_META.ok;
+  // The headline states a problem, so it carries the way out of it — the same
+  // control its row carries, and the sentence saying what he is actually being
+  // asked for. It was the last thing on the page that named something and then
+  // offered nothing.
+  const p2g = (worst && worst.path_to_green) || {};
+  const cb = p2g.ceo_blocker || {};
+  const ASK = {
+    ruling: "This is a ruling only you can make.",
+    calendar: "This wants a date from you.",
+    budget: "This spends money, so it wants your yes.",
+    "tie-break": "Two teams disagree and it needs you to settle it.",
+    role: "This is a decision about who holds something.",
+    resource: "This needs something bought or asked for.",
+  };
+  const waited = cb.waiting_since ? daysAgo(cb.waiting_since) : null;
   return `<div class="verdictbox ${cls}">
     <div class="vd-cap"><i class="dot ${worst ? m.dcls : "d-dorm"}"></i>${
       worst ? "Needs you" : "Nothing needs you"}${
       g.derived_at ? ` · worked out at ${esc(g.derived_at)}` : ""}</div>
     <p class="verdict">${esc(text)}</p>
+    ${worst ? `<div class="vd-act">
+      <div class="vd-why">
+        <b>${esc(ASK[cb.kind] || "This one is yours.")}</b>
+        ${p2g.narrative ? ` ${esc(p2g.narrative)}` : ""}
+        ${cb.consequence ? `<div class="vd-cons">If it keeps waiting: ${esc(cb.consequence)}</div>` : ""}
+      </div>
+      <div class="vd-btn">${routeControl(worst)}${
+        waited != null && waited !== "?" ? `<div class="small muted vd-wait">waiting ${waited} day${waited === 1 ? "" : "s"}</div>` : ""}</div>
+    </div>` : ""}
   </div>`;
 }
 
@@ -155,6 +179,31 @@ function verdictLine(g) {
    band that lets him compare pillars. Rows past the third fold behind a summary
    that carries the count and the worst hidden state, so a tall pillar cannot
    push the next band off the screen. */
+function routeControl(g) {
+  const p2g = g.path_to_green || {};
+  const route = p2g.route || {};
+  if (g.state === "green") return "";
+  if (g.state === "attested" && !(g.reading || {}).expired) {
+    const d = (g.reading || {}).attested_days;
+    const exp = (g.measure || {}).expires_days;
+    return `<span class="g-until">${exp && d != null ? `re-check in ${Math.max(0, exp - d)} days` : "no expiry set"}</span>`;
+  }
+  if (p2g.owned_by_pillar) {
+    return `<a class="gbtn" href="#/pillar/${esc(p2g.owned_by_pillar)}">${esc(p2g.owned_by_label || "Another team owns it")}</a>`;
+  }
+  // Nothing watches it, so the next move is building the checker — not opening
+  // a project that is carrying something else.
+  if (["unchecked", "broken"].includes(g.state) && p2g.action) return fileBtn(g, p2g, p2g.action);
+  if (route.kind === "project") return `<a class="gbtn" href="#/project/${esc(route.id)}">Open the project</a>`;
+  if (route.kind === "decision") return `<a class="gbtn" href="#/inbox">Open the card</a>`;
+  if (p2g.action) return fileBtn(g, p2g, p2g.action);
+  if (g.needs_you) {
+    return `<span class="g-orphan">not prepped — ${esc(p2g.owner || "somebody")} owes you a card
+      on this before it is fair to ask</span>`;
+  }
+  return `<span class="g-orphan">no route recorded — nobody owns this</span>`;
+}
+
 function fileBtn(g, p2g, a) {
   return `<button class="gbtn g-file" data-derived
     data-goal="${esc(g.id)}" data-owner="${esc(p2g.owner || a.owner || "claude")}"
@@ -169,38 +218,14 @@ function goalRow(g) {
   const p2g = g.path_to_green || {};
   const mine = p2g.ceo_blocker && g.state !== "green";
   const route = p2g.route || {};
-  let routeHtml = "";
-  // One control vocabulary in this cell. Every non-green goal offers the same
-  // shaped affordance whether the way back is a project, a card, work to file,
-  // or him — a row that reports a problem and offers nothing is half a feature.
-  if (mine) {
-    routeHtml = `<a class="gbtn is-yours-btn" href="#need-${esc(g.id)}">This one is yours →</a>`;
-  } else if (g.state !== "green" && p2g.owned_by_pillar) {
-    routeHtml = `<a class="gbtn" href="#/pillar/${esc(p2g.owned_by_pillar)}">${esc(p2g.owned_by_label || "Another team owns it")}</a>`;
-  } else if (["unchecked", "broken"].includes(g.state) && p2g.action) {
-    // Nothing watches it, so the next move is building the checker — not
-    // opening a project that is carrying something else.
-    const a = p2g.action;
-    routeHtml = fileBtn(g, p2g, a);
-  } else if (g.state !== "green" && route.kind === "project") {
-    routeHtml = `<a class="gbtn" href="#/project/${esc(route.id)}">Open the project</a>`;
-  } else if (g.state !== "green" && route.kind === "decision") {
-    routeHtml = `<a class="gbtn" href="#/inbox">Open the card</a>`;
-  } else if (g.state !== "green" && p2g.action) {
-    routeHtml = fileBtn(g, p2g, p2g.action);
-  } else if (g.state !== "green" && route.kind === "none") {
-    routeHtml = `<span class="g-orphan">no route recorded</span>`;
-  }
+  let routeHtml = mine
+    ? `<a class="gbtn is-yours-btn" href="#need-${esc(g.id)}">This one is yours →</a>`
+    : routeControl(g);
   const whose = g.state === "green" ? "" :
     g.needs_you ? `<span class="g-whose yours">yours</span>`
                 : `<span class="g-whose ours">ours</span>`;
   const owner = g.state === "green" || !p2g.owner ? "" :
     ` <span class="g-owner">— <a class="plain" data-person="${esc(p2g.owner)}">${esc(p2g.owner)}</a> owns it</span>`;
-  if (g.state === "attested" && !(g.reading || {}).expired) {
-    const d = (g.reading || {}).attested_days;
-    const exp = (g.measure || {}).expires_days;
-    routeHtml = `<span class="g-until">${exp && d != null ? `re-check in ${Math.max(0, exp - d)} days` : "no expiry set"}</span>`;
-  }
   const why = g.state === "green" ? "" :
     `<div class="g-why">${esc(p2g.narrative || "No route recorded — nobody owns getting this back to green.")}${owner}</div>`;
   const reading = g.reading || {};
