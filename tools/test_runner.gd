@@ -84,6 +84,7 @@ func _run_scenarios() -> void:
 	await _scenario_ac_the_zoo()
 	await _scenario_ae_the_home()
 	await _scenario_ad_two_hud_findings()
+	await _scenario_af_a_pour_is_heard_whoever_pours()
 
 func _wait_until(pred: Callable, max_frames: int) -> bool:
 	for i in max_frames:
@@ -2941,3 +2942,56 @@ func _scenario_ad_two_hud_findings() -> void:
 	hud._on_notes_toggle()
 	_assert(not HudScript.notes_collapsed, "and it is put back the same way")
 	await get_tree().process_frame
+
+
+func _scenario_af_a_pour_is_heard_whoever_pours() -> void:
+	# Reported from play: the neighbour of the cold open waters tiles in silence.
+	# Her water went through the same gateway as the player's and wet the same
+	# tile by the same rule, but the sound, the spray of droplets and the "done
+	# for the day" cue all lived in `player/player.gd`, so only a tap made them.
+	# They now live at the one place every resolved Action passes through
+	# (`world/farm.gd:_voice_actor_verb`), which is why a replayed session and a
+	# future watering bot get them too.
+	print("\n--- Scenario AF: a pour is heard whoever pours it ---")
+
+	var audio = get_tree().root.get_node("AudioManager")
+	var t := Vector2i(6, 12)
+	_stage_tile(t.x, t.y, "seeded", "wheat")
+	farm.sim.get_tile(t.x, t.y).watered_today = false
+	farm._acks.erase(t)
+	farm._wetting.erase(t)
+
+	var puffs_before: int = main_scene.particles_manager.get_child_count()
+	audio.last_sfx = ""
+	var res: Dictionary = farm.apply_action(
+		{ "verb": "water", "target": t, "actor": SimWorld.ACTOR_NEIGHBOUR }, GameState)
+
+	_assert(res.get("ok", false), "the neighbour's water resolves through the gateway")
+	_assert(audio.last_sfx == "water", "and it is heard — the same pour a tap makes")
+	_assert(farm._acks.has(t) and String(farm._acks[t]["why"]) == "already_watered",
+		"the tile says it is done for the day, where she is looking (T-19)")
+	_assert(farm._wetting.has(t), "and the ground starts soaking at the can's rate (Q-52)")
+	_assert(main_scene.particles_manager.get_child_count() > puffs_before,
+		"droplets are thrown, the same ones the player's can throws")
+
+	# The player keeps her own cues, beside her swing. If the farm spoke for her
+	# too she would pour twice for one tap — the reason the caller filters her out.
+	_stage_tile(t.x, t.y, "seeded", "wheat")
+	farm.sim.get_tile(t.x, t.y).watered_today = false
+	GameState.watering_can_charges = GameState.max_watering_can_charges
+	var heard_before: int = int(audio.sfx_count)
+	farm.apply_action(
+		{ "verb": "water", "target": t, "actor": SimWorld.ACTOR_PLAYER }, GameState)
+	_assert(int(audio.sfx_count) == heard_before,
+		"a player Action makes no sound here — hers is player.gd's, and is not doubled")
+
+	# A farm nobody is playing stays silent, the rule every other cue keeps.
+	_stage_tile(t.x, t.y, "seeded", "wheat")
+	farm.sim.get_tile(t.x, t.y).watered_today = false
+	farm.mute_feedback = true
+	heard_before = int(audio.sfx_count)
+	farm.apply_action(
+		{ "verb": "water", "target": t, "actor": SimWorld.ACTOR_NEIGHBOUR }, GameState)
+	_assert(int(audio.sfx_count) == heard_before,
+		"a muted farm does not pour into a menu")
+	farm.mute_feedback = false

@@ -514,6 +514,10 @@ func _record(action: Dictionary, result: Dictionary, at_tick: int,
 					_start_wetting(wt, WET_CAN_MS)
 				elif verb == "till" and _raining_now():
 					_start_wetting(wt, WET_RAIN_MS)
+				# ...and the rest of what a pour looks like, for a pair of hands
+				# that are not the player's (see `_voice_actor_verb`).
+				if String(action.get("actor", "")) != SimWorld.ACTOR_PLAYER:
+					_voice_actor_verb(wt, verb)
 		if String(action.get("verb", "")) == "sleep":
 			_notify_day_turn()
 		queue_redraw()
@@ -529,6 +533,57 @@ func _notify_day_turn() -> void:
 		var node = actor_nodes[id]
 		if is_instance_valid(node) and node.has_method("on_day_turn"):
 			node.on_day_turn()
+
+
+# The rest of a verb's answer, for an actor who is not the player.
+#
+# Watering has never been only a wet tile. A tap on a crop pours a sound, throws
+# a spray of droplets and marks the tile done for the day, and all three live in
+# `player/player.gd` beside her swing — which is the right place for *her* cues
+# and the wrong place for everybody else's. The neighbour of the cold open (T-13)
+# waters through the same gateway, wets the same tile by the same rule, and was
+# watched doing it in silence.
+#
+# So the farm answers for her, here, at the one place every resolved Action
+# passes through (the argument `_notify_day_turn` already makes just below): the
+# cold open, a replayed session and any future watering bot are all heard and
+# seen the same way, because none of them has a node that knows how a pour looks.
+#
+# Presentation only, in the D-8 sense — it runs after the Action has resolved and
+# deleting it would change a frame and nothing else. The player is filtered out
+# by the caller so her cues are never played twice, and a muted farm (the title
+# screen's attract backdrop) stays silent like all the rest of the feedback.
+#
+# Only `water` speaks so far. Her till, plant and harvest are still silent, which
+# is a deliberate scope line rather than an oversight: each is one more `match`
+# arm here whenever the cold open wants it.
+func _voice_actor_verb(t: Vector2i, verb: String) -> void:
+	if mute_feedback or verb != "water":
+		return
+	_play_sfx("water")
+	_spawn_particles("water", Vector2(
+		t.x * TILE_SIZE + TILE_SIZE / 2.0,
+		t.y * TILE_SIZE + TILE_SIZE / 2.0))
+	# T-19's cue, for the same reason the player gets it: watering is the verb
+	# that makes a tile done for the day, so the tile says so at the moment it
+	# changes. Silent, because the pour is already playing.
+	acknowledge_at(t, "already_watered", false)
+
+
+func _play_sfx(sound: String) -> void:
+	if Engine.get_main_loop() and Engine.get_main_loop().root.has_node("AudioManager"):
+		Engine.get_main_loop().root.get_node("AudioManager").play_sfx(sound)
+
+
+# The particle manager belongs to `main.gd`, which is where the player's own
+# droplets come from too — reached by group, the way `entities/crow.gd` reaches
+# it for its feathers, so a farm rendered anywhere else simply throws none.
+func _spawn_particles(effect: String, world_pos: Vector2) -> void:
+	if not is_inside_tree():
+		return
+	var main := get_tree().get_first_node_in_group("Main")
+	if main != null and main.has_method("spawn_particles"):
+		main.spawn_particles(effect, world_pos)
 
 
 # --- Verb reactions (D-8 tier (a) prototype) ---------------------------------

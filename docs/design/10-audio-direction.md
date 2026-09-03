@@ -55,6 +55,17 @@ clear_log (chop), clear_rock (crack), collect (cluckish pop), sell (coin purse),
 sleep (yawn + night fade), buy_seed (paper rustle + coin). Crow: squawk + wing flaps;
 chicken: cluck family. UI: one soft tick, one soft confirm — nothing else.
 
+**The sound belongs to the verb, not to the tapper.** S-3's table is enumerable from the
+verb list precisely because a verb is one thing whoever performs it — so a pour heard
+when the player waters must also be heard when the cold open's neighbour waters, when a
+replay re-applies that water, and when a phase-4 bot does the chore for her. Implemented
+2026-09-02 for `water` (reported from play: the neighbour watered in silence): the cue —
+sound, droplets, and the tile's "done for the day" mark — moved out of the player's node
+and into the one place every resolved Action passes through (`world/farm.gd`). The other
+verbs' foley is still the player's alone and is one line each to join it; the machines
+are the deliberate exception, since a sprinkler waters nine tiles inside a single day
+turn and answers with one spray animation rather than nine pours.
+
 **Kid constraints (S-7 spirit):** no harsh stingers; failure/refusal sounds are
 comedic (a wet *bonk*, a shrug-like slide whistle at most); gentle attack envelopes;
 the whole mix listenable at quiet-household volume.

@@ -42,6 +42,13 @@ var _last_variant: Dictionary = {}
 # a dozen perceived pours. Only the heavy-repetition foley pool opts in.
 var sfx_jitter = {"water": 0.04}
 
+# The name of the last sound actually dispatched, and how many have been. A
+# headless run has no audio device, so this is the only way a test can assert
+# that a verb was *heard* — which is what the NPC watering cue needed
+# (`world/farm.gd:_voice_actor_verb`). Written here and read nowhere in the game.
+var last_sfx: String = ""
+var sfx_count: int = 0
+
 func _ready():
     process_mode = Node.PROCESS_MODE_ALWAYS
 
@@ -64,6 +71,8 @@ func play_sfx(sound_name: String):
     var variants = sfx_streams.get(sound_name)
     if variants == null or variants.is_empty():
         return
+    last_sfx = sound_name
+    sfx_count += 1
 
     var idx := 0
     if variants.size() > 1:
