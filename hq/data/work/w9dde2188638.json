@@ -1,0 +1,19 @@
+{
+  "id": "w9dde2188638",
+  "title": "Make the release workflow enforce the pre-release checklist",
+  "level": "task",
+  "owner": "lena",
+  "tier": 1,
+  "tier_reason": "filed by hand",
+  "ask": "Add a guard step to .github/workflows/release.yml that fails the release before the export if ui/hud.gd's PLAYTEST_NOTES is still true. docs/DEPLOY.md's pre-release checklist names this as a manual box; it is a one-line grep and it is the only item on that list that can be enforced mechanically. Do not change the constant itself — it is deliberately on during playtesting, and the point is that the pipeline catches it at tag time rather than that it is off today. While you are there, check whether the credits-screen item can be guarded the same way.",
+  "first_action": "Read docs/DEPLOY.md's 'Before any release' section and .github/workflows/release.yml, then add the guard step ahead of the export.",
+  "state": "waiting_session",
+  "thread": "lena",
+  "source": "chat",
+  "source_message": "Add a guard step to .github/workflows/release.yml that fails the release before the export if ui/hud.gd's PLAYTEST_NOTES is still true. docs/DEPLOY.md's pre-release checklist names this as a manual box; it is a one-line grep and it is the only item on that list that can be enforced mechanically. Do not change the constant itself — it is deliberately on during playtesting, and the point is that the pipeline catches it at tag time rather than that it is off today. While you are there, check whether the credits-screen item can be guarded the same way.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-03T10:49",
+  "created_ts": 1788457794.6928813
+}

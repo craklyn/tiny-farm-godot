@@ -30,7 +30,15 @@
           "kind": "project",
           "id": "spend-ledger"
         },
-        "owner": "harold"
+        "owner": "harold",
+        "action": {
+          "label": "Put it on Harold's list",
+          "tier": 1,
+          "level": "story",
+          "ask": "Design and land hq/data/spend.json — one record per paid call, with the balance the vendor returned afterwards — and have the pixel-art pipeline write it as it spends. See the filed project for the full shape.",
+          "first_action": "Read hq/data/projects/spend-ledger.json and CREDITS.md's spend figures, then write the schema.",
+          "title": "Land a machine-readable spend ledger"
+        }
       },
       "history": {
         "record": true,
@@ -66,7 +74,15 @@
         "route": {
           "kind": "none"
         },
-        "owner": "harold"
+        "owner": "harold",
+        "action": {
+          "label": "Put it on Harold's list",
+          "tier": 1,
+          "level": "task",
+          "ask": "One shipped sound file has no line in CREDITS.md, which breaks that file's own opening rule that every entry must have verified terms before the first public build ships. Find where it came from, write its ledger line — source, terms, cost — and if its provenance cannot be established, say so plainly and recommend dropping it rather than shipping an asset whose rights are unknown.",
+          "first_action": "Run the orphan check on assets/audio/sfx against CREDITS.md, then trace the file through git history to whoever added it.",
+          "title": "Write the missing provenance line, or recommend dropping the asset"
+        }
       },
       "history": {
         "record": true,
@@ -76,41 +92,44 @@
     },
     {
       "id": "debug-text-is-off",
-      "statement": "A public build would carry no debug text.",
-      "statement_short": "the playtest readout is still on — a public build would show debug text",
+      "statement": "The release pipeline refuses to publish a build the runbook says is not shippable.",
+      "statement_short": "nothing would stop a tag shipping the debug readout",
       "owner": "harold",
       "severity": "blocking",
       "unit": "",
       "measure": {
         "kind": "file_grep",
-        "label": "ui/hud.gd's PLAYTEST_NOTES is false",
+        "label": "the release workflow checks the playtest readout before it publishes",
         "paths": [
-          "ui/hud.gd"
+          ".github/workflows/release.yml"
         ],
         "exts": [
-          ".gd"
+          ".yml"
         ],
-        "skip_comments": true,
-        "pattern": "const PLAYTEST_NOTES\\s*:=\\s*true",
-        "expect": "absent",
+        "pattern": "PLAYTEST_NOTES",
+        "expect": "present",
         "field": "bool",
-        "says_true": "the playtest readout is switched off"
+        "says_true": "the release workflow refuses to publish with the readout on",
+        "says_false": "the release workflow publishes without checking the readout at all"
       },
       "compare": {
         "direction": "must_be_true"
       },
       "path_to_green": {
-        "narrative": "One line, flipped before the tag. Sales owns the same gate; it appears here because it is the one thing standing between us and a release.",
+        "narrative": "Sales owns the fix: one guard step in the release workflow.",
         "route": {
           "kind": "none"
         },
-        "owner": "victor"
+        "owner": "lena",
+        "owned_by_pillar": "sales",
+        "owned_by_label": "Sales owns this gate →"
       },
       "history": {
         "record": true,
         "chart": false
       },
-      "signal_key": "ship_gate"
+      "signal_key": "ship_gate",
+      "why_it_matters": "Sales owns this gate; it appears here because a build that ships debug text is the single thing standing between us and a release. The readout being on today is expected — we are playtesting. What is not expected is that nothing checks it at the moment a tag is cut."
     },
     {
       "id": "credentials-are-declared",
@@ -178,6 +197,14 @@
           },
           "consequence": "Player Update 1 goes out with no route back, and we learn nothing from whoever plays it.",
           "waiting_since": "2026-09-03"
+        },
+        "action": {
+          "label": "Draft the three options",
+          "tier": 1,
+          "level": "task",
+          "ask": "Before the next public tag, a player who hits a bug needs somewhere to send it — or an honest line saying there is nowhere. Draft the three options (itch comments, an email alias, or saying plainly that there is no channel) as a decision card with a recommendation, so the CEO can rule on it rather than being asked an open question. It is a public promise about his own time, so the card must be explicit about what each option costs him per week.",
+          "first_action": "Read ITCH_PAGE.md and fatima's record in hq/data/org.json, then write the card into hq/data/decisions/.",
+          "title": "Draft the options for where a player's bug report lands"
         }
       },
       "history": {

@@ -10,37 +10,45 @@
   },
   "goals": [
     {
-      "id": "debug-text-is-off",
-      "statement": "The playtest readout is switched off, so a public build carries no debug text.",
-      "statement_short": "the playtest readout is still switched on — a public build would put debug text on screen",
-      "owner": "victor",
+      "id": "release-enforces-its-own-checklist",
+      "statement": "The release pipeline refuses to publish a build the runbook says is not shippable.",
+      "statement_short": "nothing would stop a tag shipping the debug readout",
+      "owner": "lena",
       "severity": "blocking",
       "unit": "",
-      "why_it_matters": "It is four lines of English over the top third of a tablet screen, in a game whose whole promise is that there is nothing to read. The runbook has a checkbox for it and nothing else watches it — not CI, not either suite, not a person.",
+      "why_it_matters": "The runbook's checks are checkboxes in a document. The playtest readout is on right now — correctly, we are playtesting — and it only has to be off at the moment a tag is cut. That is exactly the moment nobody is watching a checklist, and release.yml checks none of it. We are one distracted tag away from shipping four lines of English into a game whose whole promise is that there is nothing to read.",
       "measure": {
         "kind": "file_grep",
-        "label": "ui/hud.gd's PLAYTEST_NOTES is false",
+        "label": "the release workflow checks the playtest readout before it publishes",
         "paths": [
-          "ui/hud.gd"
+          ".github/workflows/release.yml"
         ],
         "exts": [
-          ".gd"
+          ".yml"
         ],
-        "skip_comments": true,
-        "pattern": "const PLAYTEST_NOTES\\s*:=\\s*true",
-        "expect": "absent",
+        "pattern": "PLAYTEST_NOTES",
+        "expect": "present",
         "field": "bool",
-        "says_true": "the playtest readout is switched off"
+        "says_true": "the release workflow refuses to publish with the readout on",
+        "says_false": "the release workflow publishes without checking the readout at all"
       },
       "compare": {
         "direction": "must_be_true"
       },
       "path_to_green": {
-        "narrative": "One line in ui/hud.gd, flipped before the tag is cut. It is the last thing on the runbook that is genuinely one keystroke.",
+        "narrative": "Add a step to the release workflow that fails the tag if ui/hud.gd still says the readout is on. Half an hour, once, and the checkbox stops depending on somebody remembering.",
         "route": {
           "kind": "none"
         },
-        "owner": "victor"
+        "owner": "lena",
+        "action": {
+          "label": "Put it on Lena's list",
+          "tier": 1,
+          "level": "task",
+          "ask": "Add a guard step to .github/workflows/release.yml that fails the release before the export if ui/hud.gd's PLAYTEST_NOTES is still true. docs/DEPLOY.md's pre-release checklist names this as a manual box; it is a one-line grep and it is the only item on that list that can be enforced mechanically. Do not change the constant itself — it is deliberately on during playtesting, and the point is that the pipeline catches it at tag time rather than that it is off today. While you are there, check whether the credits-screen item can be guarded the same way.",
+          "first_action": "Read docs/DEPLOY.md's 'Before any release' section and .github/workflows/release.yml, then add the guard step ahead of the export.",
+          "title": "Make the release workflow enforce the pre-release checklist"
+        }
       },
       "history": {
         "record": true,
@@ -50,21 +58,21 @@
     },
     {
       "id": "ship-drift",
-      "statement": "The public build should never fall far behind what we have actually made.",
-      "statement_short": "the public build is far behind what we have actually made",
+      "statement": "We release often enough that the public build is never far out of date.",
+      "statement_short": "it has been a long time since anything was released",
       "owner": "victor",
       "severity": "important",
-      "unit": "commits",
-      "why_it_matters": "The standing ruling is ship early and often. This is the only number that says whether we are doing it — and the old rule went quiet the moment the first tag existed, however stale it got.",
+      "unit": "days",
+      "why_it_matters": "The standing ruling is ship early and often, and this is the only number that says whether we are doing it. Measured in days rather than commits: at this repo's pace a commit bar would demand a release every day and a half, which is a bar that can only ever be red.",
       "measure": {
         "kind": "git_tag",
         "pattern": "v*",
-        "field": "commits_since"
+        "field": "age_days"
       },
       "compare": {
         "direction": "fresher_than",
-        "target": 40,
-        "amber_at": 120
+        "target": 14,
+        "amber_at": 30
       },
       "path_to_green": {
         "narrative": "The next tag is Player Update 1, and it is waiting on the onboarding gate closing.",
@@ -187,7 +195,15 @@
           "kind": "project",
           "id": "public-release"
         },
-        "owner": "victor"
+        "owner": "victor",
+        "action": {
+          "label": "Put it on Victor's list",
+          "tier": 1,
+          "level": "task",
+          "ask": "Nothing records that anybody played the exported web build before a tag, so the runbook's first pre-release box measures only whether somebody ticked a box. Design the smallest honest record: an attestation keyed to the tag being cut, so it expires with each release instead of standing forever, and wire it into the launch check on the Sales & Platforms page.",
+          "first_action": "Read docs/DEPLOY.md's 'Before any release' section and hq/data/goals/sales.json, then propose the record's shape.",
+          "title": "Record that somebody played the web build before a tag"
+        }
       },
       "history": {
         "record": false,
@@ -213,7 +229,15 @@
         "route": {
           "kind": "none"
         },
-        "owner": "lena"
+        "owner": "lena",
+        "action": {
+          "label": "Put it on Lena's list",
+          "tier": 1,
+          "level": "task",
+          "ask": "tools/test_visuals.tscn is named in CLAUDE.md's command list and is in no CI workflow and no runnable job in HQ. Work out whether it is a release gate or a developer's tool, and give it a home either way: a headless renderer in CI, or a button on the Engineering page that a person presses before a tag. A check our own docs claim and nothing runs is worse than one we never claimed.",
+          "first_action": "Run tools/test_visuals.tscn against tools/baseline.png, see what it actually needs, and say which home it should have.",
+          "title": "Give the visual check a home, or stop claiming it"
+        }
       },
       "history": {
         "record": false,

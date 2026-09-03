@@ -711,7 +711,6 @@ code.ref { background: #1b1710; border: 1px solid var(--line); border-radius: 6p
 .n-wait { font-size: 12px; color: var(--muted); }
 .n-wait.over { color: #e0912e; font-weight: 600; }
 .n-act { flex-shrink: 0; }
-.needfoot { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); }
 
 /* --- the fold, and what lives below it --- */
 .foldline { border-top: 1px dashed var(--line); margin: 26px 0 14px; }
@@ -813,16 +812,20 @@ code.ref { background: #1b1710; border: 1px solid var(--line); border-radius: 6p
 .abs-title { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .abs-body { font-size: 20px; color: var(--muted); margin-top: 8px; font-style: italic; }
 
-/* --- sales: the gap, and the deliberate absence of a publish control --- */
-.gap { display: grid; grid-template-columns: 1fr auto 1fr; gap: 18px; align-items: center; padding: 10px 0 16px; }
-.gap-end { font-size: 15px; }
-.gap-end span { display: block; }
-.gap-end.right { text-align: right; }
-/* The rule thickens with every commit that has not shipped: the drift is drawn
-   rather than only counted, because "173" and "one release ago" read the same. */
-.gap-rule { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 160px; }
-.gap-rule i { display: block; width: 100%; background: #e0912e; border-radius: 2px; }
-.gap-rule span { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+/* --- sales: the drift strip, and the deliberate absence of a publish control ---
+   The gap was two labels either side of a bar whose thickness encoded the drift.
+   Nobody reads a thickness without a reference, and a bar between two endpoints
+   reads as progress toward something. The number carries it now — and it is a
+   strip rather than a card because the launch check is this page's instrument:
+   "can we ship today" is the question, and how much is unshipped is context. */
+.driftstrip { display: flex; align-items: center; gap: 16px; padding: 12px 18px; }
+.ds-num { font-size: 40px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.ds-num.ok { color: var(--green); }
+.ds-num.bad { color: #e8927a; }
+.ds-body { flex: 1; min-width: 0; }
+.ds-bar { height: 5px; border-radius: 3px; background: var(--bg2); margin-top: 7px; overflow: hidden; }
+.ds-bar i { display: block; height: 100%; background: var(--green); }
+.ds-bar i.over { background: #e0912e; }
 .norelease { border-style: dashed; }
 .inert {
   font-family: ui-monospace, monospace; font-size: 13px; color: var(--muted);
@@ -876,6 +879,45 @@ code.ref { background: #1b1710; border: 1px solid var(--line); border-radius: 6p
 /* A capped instrument that is scrolling says so, rather than looking finished
    at whatever line the cap fell on. */
 #pillar-instrument { scrollbar-width: thin; }
-.needfoot { margin-top: 8px; padding-top: 7px; }
 .n-meta { margin-top: 4px; }
 .n-cons, .n-why { font-size: 12.5px; margin-top: 3px; }
+
+/* One control shape for "what do I do about this".
+   The route cell used to be a blue hyperlink on a page that is otherwise all
+   panels and chips, which read as web-page furniture rather than as part of the
+   instrument. Every affordance in that column is now the same object whether it
+   opens a project, opens a card, or files the work — so the answer to "how do I
+   follow this up" always looks the same, wherever it leads. */
+.gbtn {
+  display: inline-block; background: var(--panel2); color: var(--text);
+  border: 1px solid var(--line); border-radius: 8px;
+  padding: 6px 13px; font-size: 12.5px; font-weight: 600; font-family: inherit;
+  cursor: pointer; text-decoration: none; white-space: nowrap;
+}
+.gbtn:hover { background: var(--line); border-color: var(--accent); color: var(--accent); }
+.gbtn:disabled { opacity: .5; cursor: default; }
+/* The rows that need HIM are the only ones that get the accent, so his own
+   queue is the thing the eye finds in that column. */
+.gbtn.is-yours-btn, .gbtn.gbtn-strong {
+  background: transparent; border-color: var(--accent); color: var(--accent);
+}
+.gbtn.is-yours-btn:hover, .gbtn.gbtn-strong:hover { background: var(--accent); color: #1d1608; }
+.g-filed { font-size: 12.5px; color: var(--green); font-weight: 600; }
+
+/* A name is a name, not a link to somewhere else: inline in prose it reads as
+   the person, with a quiet dotted underline saying it can be opened. Blue
+   belongs to navigation, and these do not navigate — they open the peek. */
+#view [data-person] {
+  color: var(--text); text-decoration: none; cursor: pointer;
+  border-bottom: 1px dotted var(--muted); font-weight: 600;
+}
+#view [data-person]:hover { color: var(--accent); border-bottom-color: var(--accent); }
+.g-owner { color: var(--muted); }
+/* The context slot: an optional single fact that sits with the verdict rather
+   than inside the instrument, because the instrument is the band that yields
+   when the screen is short and a headline that hides on a small window is not a
+   headline. Only pillars with such a fact fill it. */
+#pillar-context:empty { display: none; }
+#pillar-context .card { margin-bottom: 12px; }
+.g-until { font-size: 12px; color: var(--muted); }
+.team-mini .gbtn { font-size: 12px; padding: 5px 10px; }

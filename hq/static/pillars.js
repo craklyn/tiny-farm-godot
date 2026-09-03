@@ -130,23 +130,51 @@ function verdictLine(g) {
    band that lets him compare pillars. Rows past the third fold behind a summary
    that carries the count and the worst hidden state, so a tall pillar cannot
    push the next band off the screen. */
+function fileBtn(g, p2g, a) {
+  return `<button class="gbtn g-file" data-derived
+    data-goal="${esc(g.id)}" data-owner="${esc(p2g.owner || a.owner || "claude")}"
+    data-tier="${esc(String(a.tier ?? 1))}" data-level="${esc(a.level || "task")}"
+    data-title="${esc(a.title || g.statement_short || g.statement)}"
+    data-ask="${esc(a.ask || "")}" data-first="${esc(a.first_action || "")}"
+    >${esc(a.label || "Put it on someone's list")}</button>`;
+}
+
 function goalRow(g) {
   const m = GOAL_META[g.state] || GOAL_META.green;
   const p2g = g.path_to_green || {};
   const mine = p2g.ceo_blocker && g.state !== "green";
   const route = p2g.route || {};
   let routeHtml = "";
+  // One control vocabulary in this cell. Every non-green goal offers the same
+  // shaped affordance whether the way back is a project, a card, work to file,
+  // or him — a row that reports a problem and offers nothing is half a feature.
   if (mine) {
-    routeHtml = `<span class="g-yours">This one is yours</span>`;
+    routeHtml = `<a class="gbtn is-yours-btn" href="#need-${esc(g.id)}">This one is yours →</a>`;
+  } else if (g.state !== "green" && p2g.owned_by_pillar) {
+    routeHtml = `<a class="gbtn" href="#/pillar/${esc(p2g.owned_by_pillar)}">${esc(p2g.owned_by_label || "Another team owns it")}</a>`;
+  } else if (["unchecked", "broken"].includes(g.state) && p2g.action) {
+    // Nothing watches it, so the next move is building the checker — not
+    // opening a project that is carrying something else.
+    const a = p2g.action;
+    routeHtml = fileBtn(g, p2g, a);
   } else if (g.state !== "green" && route.kind === "project") {
-    routeHtml = `<a class="plain small" href="#/project/${esc(route.id)}">the way back →</a>`;
+    routeHtml = `<a class="gbtn" href="#/project/${esc(route.id)}">Open the project</a>`;
   } else if (g.state !== "green" && route.kind === "decision") {
-    routeHtml = `<a class="plain small" href="#/inbox">the way back →</a>`;
-  } else if (g.state !== "green" && route.kind === "none" && !p2g.narrative) {
+    routeHtml = `<a class="gbtn" href="#/inbox">Open the card</a>`;
+  } else if (g.state !== "green" && p2g.action) {
+    routeHtml = fileBtn(g, p2g, p2g.action);
+  } else if (g.state !== "green" && route.kind === "none") {
     routeHtml = `<span class="g-orphan">no route recorded</span>`;
   }
+  const owner = g.state === "green" || !p2g.owner ? "" :
+    ` <span class="g-owner">— <a class="plain" data-person="${esc(p2g.owner)}">${esc(p2g.owner)}</a> owns it</span>`;
+  if (g.state === "attested" && !(g.reading || {}).expired) {
+    const d = (g.reading || {}).attested_days;
+    const exp = (g.measure || {}).expires_days;
+    routeHtml = `<span class="g-until">${exp && d != null ? `re-check in ${Math.max(0, exp - d)} days` : "no expiry set"}</span>`;
+  }
   const why = g.state === "green" ? "" :
-    `<div class="g-why">${esc(p2g.narrative || "No route recorded — nobody owns getting this back to green.")}</div>`;
+    `<div class="g-why">${esc(p2g.narrative || "No route recorded — nobody owns getting this back to green.")}${owner}</div>`;
   const reading = g.reading || {};
   const note = reading.would_need
     ? `<div class="g-need">Would need: ${esc(reading.would_need)}</div>` : "";
@@ -189,7 +217,7 @@ function needsBand(n) {
       ? `<span class="small muted">${x.sittings} sitting${x.sittings === 1 ? "" : "s"}${x.duration_minutes ? `, ${x.duration_minutes} minutes each` : ", length not recorded on the project"}</span>`
       : "";
     const btn = x.href
-      ? `<a class="btn small-btn" href="${esc(x.href)}">${x.kind === "budget" ? "Approve or decline" : x.surface && x.surface.kind === "decision" ? "Open the card" : "Open it"}</a>`
+      ? `<a class="gbtn gbtn-strong" href="${esc(x.href)}">${x.kind === "budget" ? "Approve or decline" : x.surface && x.surface.kind === "decision" ? "Open the card" : "Open it"}</a>`
       : "";
     // One reason per row, not two. The consequence is the decision-useful half —
     // it says what saying nothing costs — so where there is one it replaces the
@@ -198,7 +226,7 @@ function needsBand(n) {
     const reason = x.consequence
       ? `<div class="n-cons">If it keeps waiting: ${esc(x.consequence)}</div>`
       : `<div class="n-why">${esc(x.because)}</div>`;
-    return `<div class="needrow nk-${esc(x.kind)}">
+    return `<div class="needrow nk-${esc(x.kind)}" ${x.goal ? `id="need-${esc(x.goal)}"` : ""}>
       <div class="n-body">
         <div class="n-ask">${esc(x.ask)}</div>
         ${reason}
@@ -209,11 +237,43 @@ function needsBand(n) {
   }).join("");
   return `<h2>What I need from you</h2>
     <div class="card needcard">
-      ${rows || `<div class="muted">Nothing has been routed here.</div>`}
+      ${rows || `<div class="muted">Nothing on this pillar is waiting on you.</div>`}
       ${n.overflow ? `<div class="small muted" style="margin-top:8px">${n.overflow} more are waiting on you — <a class="plain" href="#/inbox">the decision inbox</a> holds them all.</div>` : ""}
-      <div class="small muted needfoot" title="${esc(n.note || "")}">Nothing is ruled here — every
-        control carries you to the one place that ask is recorded.</div>
+
     </div>`;
+}
+
+/* Filing the work is the whole point of the control, so it happens here and
+   lands in the queue that already exists — POST /api/work/new, the same endpoint
+   the Work page uses. Nothing new is invented to hold it, and the button says
+   what happened rather than silently succeeding. */
+function wireFileButtons() {
+  $view.querySelectorAll("button.g-file").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const d = btn.dataset;
+      btn.disabled = true;
+      const was = btn.textContent;
+      btn.textContent = "Filing…";
+      try {
+        const r = await fetch("/api/work/new", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: d.title, owner: d.owner, tier: Number(d.tier),
+            level: d.level, ask: d.ask, first_action: d.first,
+          }),
+        });
+        const j = await r.json();
+        if (j.error) throw new Error(j.error);
+        btn.replaceWith(h(`<span class="g-filed">✓ on ${esc(d.owner)}'s list —
+          <a class="gbtn" href="#/work">open it</a></span>`));
+        delete cache["/api/work"];
+      } catch (e) {
+        btn.disabled = false;
+        btn.textContent = was;
+        btn.title = "Could not file it: " + e.message;
+      }
+    });
+  });
 }
 
 function foldSection(title, summary, body, open) {
@@ -242,9 +302,10 @@ async function renderPillar(pid) {
       <span class="assure" title="How much of this pillar's status is measured rather than asserted">${st.assured} of ${st.total} checked by machine</span>
       <span class="small muted">derived ${esc(sig.generated_at)}</span>
     </div>
-    <p class="sub">${esc(p.question || p.tagline)} <span class="muted">· ${lead ? lead.emoji + " " + esc(lead.name) : ""} answers for it</span></p>
+    <p class="sub">${esc(p.question || p.tagline)} <span class="muted">· ${lead ? `${lead.emoji} <a class="plain" data-person="${esc(lead.id)}">${esc(lead.name)}</a>` : ""} answers for it</span></p>
     ${consistencyBanner(sig, pid)}
     ${verdictLine(g)}
+    <div id="pillar-context"></div>
     <div id="pillar-instrument"></div>
     ${goalBoard(g)}
     ${needsBand(needs)}
@@ -260,16 +321,19 @@ async function renderPillar(pid) {
         <b>${e.emoji} ${esc(e.name)}</b> <span class="small muted">${esc(e.short)} · ${e.level}</span>
         <div class="small" style="margin-top:4px">${esc(e.focus)}</div>
         <div class="small muted" style="margin-top:4px">watches: ${esc((e.watches || []).join(", "))}</div>
-        <div style="margin-top:6px"><a class="plain small" href="#/chat/${e.id}">💬 chat</a> · <a class="plain small" href="#/person/${e.id}">who this is</a></div>
+        <div style="margin-top:8px; display:flex; gap:6px"><a class="gbtn" href="#/chat/${e.id}">💬 Chat</a><a class="gbtn" href="#/person/${e.id}">What they are carrying</a></div>
       </div>`).join(""))}`));
 
+  wireFileButtons();
+
   const inst = document.getElementById("pillar-instrument");
+  const ctx = document.getElementById("pillar-context");
   const below = document.getElementById("pillar-below");
   if (pid === "engineering") await instEngineering(inst, below, sig, g);
   if (pid === "product") await instProduct(inst, below, sig, g);
   if (pid === "art") await instArt(inst, below, sig, g);
   if (pid === "marketing") await instMarketing(inst, below, sig, g);
-  if (pid === "sales") instSales(inst, below, sig, g);
+  if (pid === "sales") instSales(inst, below, sig, g, ctx);
   if (pid === "ops") await instOps(inst, below, sig, g);
 }
 
@@ -642,11 +706,13 @@ async function instMarketing(root, below, sig, g) {
    checkbox measures whether somebody ticked a checkbox — and this repo's nine
    boxes have not moved since the last release, in every possible state of the
    world. Where a gate genuinely needs a person, it says nobody has looked. */
-function instSales(root, below, sig, g) {
+function instSales(root, below, sig, g, ctx) {
   const byId = Object.fromEntries((g.goals || []).map(x => [x.id, x]));
   const drift = byId["ship-drift"] || {};
-  const behind = typeof drift.measured === "number" ? drift.measured : null;
-  const tag = ((drift.reading || {}).tag) || (sig.tags || [])[sig.tags.length - 1] || "nothing";
+  const r = drift.reading || {};
+  const behind = r.commits_since ?? null;      // work unshipped
+  const days = r.tag_age_days ?? null;         // cadence — what the goal measures
+  const tag = r.tag || (sig.tags || [])[(sig.tags || []).length - 1] || "nothing";
 
   const gateIds = ["debug-text-is-off", "credits-screen-opens", "release-is-reproducible",
                    "web-build-played-through", "visual-regression-runs"];
@@ -661,30 +727,23 @@ function instSales(root, below, sig, g) {
     </div>`;
   }).join("");
 
-  // The gap: two builds facing each other, the rule between them thickening with
-  // every commit that has not shipped.
-  const thick = behind == null ? 2 : Math.min(26, 2 + behind / 8);
-  root.replaceChildren(h(`
-    <h2>The gap</h2>
-    <div class="card gapcard">
-      <div class="gap">
-        <div class="gap-end"><b>${esc(tag)}</b><span class="small muted">what the public has</span></div>
-        <div class="gap-rule"><i style="height:${thick}px"></i>
-          <span>${behind == null ? "nothing published yet" : `${behind} commits`}</span></div>
-        <div class="gap-end right"><b>main</b><span class="small muted">what you would ship today</span></div>
+  // The drift lives beside the verdict, not inside the instrument: it is one
+  // fact and it must never be the thing that scrolls away.
+  if (ctx) ctx.replaceChildren(h(`    <div class="card driftstrip">
+      <div class="ds-num ${days != null && days > 14 ? "bad" : "ok"}">${behind == null ? "—" : behind}</div>
+      <div class="ds-body">
+        <b>commits on main that no released build contains</b>
+        <div class="small muted">${days != null ? `${days} days since <code class="ref">${esc(tag)}</code> went out${r.tag_date ? ` on ${esc(r.tag_date)}` : ""}` : "nothing has ever been published"} — the bar is a release every 14 days.</div>
+        <div class="ds-bar"><i style="width:${days == null ? 100 : Math.min(100, (days / 14) * 100)}%"
+          class="${days != null && days > 14 ? "over" : ""}"></i></div>
       </div>
-      <p class="small muted">The standing ruling is ship early and often. This is the only number that
-        says whether we are doing it — and the rule it replaced could only ever fire when there were
-        <i>zero</i> tags, so the moment the first one existed this pillar was structurally green forever,
-        however stale the public build got.</p>
-    </div>
+    </div>`));
 
+  root.replaceChildren(h(`
     <h2>The launch check <span class="small muted">— ${machine.length} of ${gates.length} checked by machine</span></h2>
     <div class="card gatecard">${gateRows}
-      <p class="small muted" style="margin-top:10px">Read from the thing itself, not from the runbook's
-        checkboxes: those have not moved since the last release, in every possible state of the world.
-        A hollow mark means nobody has looked — drawn at the same weight as a pass, because a gate
-        nobody checks is more dangerous than one that fails.</p>
+      <p class="small muted" style="margin-top:8px">A hollow mark means nobody has looked, drawn at
+        the same weight as a pass — a gate nobody checks is more dangerous than one that fails.</p>
     </div>
 
     <div class="card norelease">

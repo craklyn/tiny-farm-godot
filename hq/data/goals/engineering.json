@@ -234,7 +234,15 @@
         "route": {
           "kind": "none"
         },
-        "owner": "grace"
+        "owner": "grace",
+        "action": {
+          "label": "Put it on Grace's list",
+          "tier": 0,
+          "level": "task",
+          "ask": "The stored suite results predate the change that made runs stamp the commit they proved, so their age is unknowable rather than large. Re-run the four suites from the Engineering page so each stamps a commit, then confirm the freshness column reads a number instead of 'unknown'.",
+          "first_action": "Press Run on each of the four suites on #/pillar/engineering and watch the 'how far behind main' column.",
+          "title": "Re-run the suites so each stamps the commit it proved"
+        }
       },
       "history": {
         "record": true,
@@ -315,7 +323,15 @@
         "route": {
           "kind": "none"
         },
-        "owner": "elena"
+        "owner": "elena",
+        "action": {
+          "label": "Put it on Elena's list",
+          "tier": 1,
+          "level": "story",
+          "ask": "Two of the three rules that keep replays reproducible are grepped on every page load and hold today. The third — that every world mutation goes through SimWorld.apply_action — has no checker at all: a renderer writing straight into the grid would compile and pass both suites, and the break would stay silent until phase-4 bot training failed on corrupt data. Write a static check over world/, entities/ and player/ for assignments into SimWorld's fields, and add it as a fifth CI job.",
+          "first_action": "Read docs/ARCHITECTURE.md's layer rules and systems/sim/sim_world.gd, then write the check and prove it catches a deliberate violation.",
+          "title": "Write the checker for the one-gateway rule"
+        }
       },
       "history": {
         "record": true,

@@ -1740,18 +1740,24 @@ def eval_measure(spec, depth=0):
             if not tags:
                 return _reading(None, error="no tag matches — nothing has ever been published")
             newest = tags[-1]
+            import time as _t
+            _ct = run_cmd(["git", "log", "-1", "--format=%ct", newest])
+            common = {
+                "tag": newest,
+                "tag_date": run_cmd(["git", "log", "-1", "--format=%ad", "--date=short", newest]),
+                "tag_age_days": round((_t.time() - int(_ct)) / 86400) if _ct else None,
+                "commits_since": int(run_cmd(["git", "rev-list", "--count", f"{newest}..HEAD"]) or 0),
+            }
             if field == "newest":
-                return _reading(newest, "", "the newest published tag", f"git tag -l {pattern}", "git")
+                return _reading(newest, "", "the newest published tag", f"git tag -l {pattern}", "git",
+                                extra=common)
             if field == "commits_since":
-                n = run_cmd(["git", "rev-list", "--count", f"{newest}..HEAD"])
-                return _reading(int(n or 0), "commits", f"commits on main since {newest}",
-                                f"git rev-list --count {newest}..HEAD", "git",
-                                extra={"tag": newest})
+                return _reading(common["commits_since"], "commits",
+                                f"commits on main since {newest}",
+                                f"git rev-list --count {newest}..HEAD", "git", extra=common)
             if field == "age_days":
-                ct = run_cmd(["git", "log", "-1", "--format=%ct", newest])
-                import time as _t
-                return _reading(round((_t.time() - int(ct)) / 86400, 1), "days",
-                                f"age of {newest}", "git log -1", "git", extra={"tag": newest})
+                return _reading(round((_t.time() - int(_ct)) / 86400, 1) if _ct else None, "days",
+                                f"days since {newest} went out", "git log -1", "git", extra=common)
 
         if kind == "git_build_lag":
             src = spec.get("build_id_from", "")
