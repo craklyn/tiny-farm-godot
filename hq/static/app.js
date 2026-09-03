@@ -856,7 +856,8 @@ async function renderChat(toId) {
     <p class="sub">${esc(cur.title)} · replies come from the real repo state, in character. Your chief of staff can route anything to the right person.</p>
     <div class="chat-wrap">
       <div class="chat-to">To: <select id="chat-to">${opts}</select>
-        <button class="ghost" id="chat-clear">Clear thread</button></div>
+        <button class="ghost" id="chat-clear">Clear thread</button>
+        <button class="deploy-btn" id="chat-deploy">\u{1F4F2} Deploy to tablet</button></div>
       <div id="chat-banner"></div>
       <div class="chat-log" id="chat-log"></div>
       <div class="chat-input">
@@ -921,6 +922,7 @@ async function renderChat(toId) {
   chatPoll = setInterval(tick, 15000);
   tick();
 
+  wireDeployButton(document.getElementById("chat-deploy"));
   document.getElementById("chat-to").addEventListener("change", ev => location.hash = "#/chat/" + ev.target.value);
   document.getElementById("chat-clear").addEventListener("click", () => { chatHistories[to] = []; saveChats(); renderChat(to); });
 
@@ -978,6 +980,161 @@ async function renderChat(toId) {
   document.getElementById("chat-send").addEventListener("click", sendTyped);
   document.getElementById("chat-text").addEventListener("keydown", ev => {
     if (ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); sendTyped(); }
+  });
+}
+
+/* ---------------- tablet deploy ---------------- */
+/* The one control here that has to work with no model in the loop at all: it is
+   for the days the token budget is spent, so it lives where the CEO already is
+   (the chat page) and every failure it can hit explains itself on screen rather
+   than needing someone to ask. It drives tools/deploy_android.sh unchanged —
+   docs/DEPLOY.md section 2 is still the truth about deploying. Server side:
+   hq/server.py, _run_deploy. */
+const DEP_ADDR_KEY = "hq-deploy-address";
+
+async function depStatus() {
+  const r = await fetch("/api/deploy");                 // never api(): it caches
+  if (!r.ok) throw new Error("The HQ service did not answer (" + r.status + ").");
+  return r.json();
+}
+
+function wireDeployButton(btn) {
+  if (!btn) return;
+  btn.addEventListener("click", openDeployPanel);
+  // A deploy started earlier is still running server-side; say so on the button.
+  depStatus().then(d => {
+    if (btn.isConnected && d.state === "running") btn.textContent = "⏳ Deploying…";
+  }).catch(() => { });
+}
+
+function openDeployPanel() {
+  const ov = h(`<div id="overlay"><div class="panel dep-panel">
+    <button class="close">×</button>
+    <h2>\u{1F4F2} Send the game to the tablet</h2>
+    <p class="small muted">Builds the code exactly as it stands and installs it on the tablet
+      over wireless debugging. Any play session sitting on the tablet is pulled into
+      <code>playtests/</code> first, so pressing this never loses one.</p>
+    <div class="dep-form">
+      <button id="dep-go">▶ Build &amp; deploy now</button>
+      <input id="dep-addr" placeholder="192.168.1.34:37129" size="22" spellcheck="false">
+    </div>
+    <p class="small muted">Leave the address empty and it goes to whichever tablet it found
+      last time. Fill it in after the tablet reboots or wireless debugging is switched off and
+      on — Android picks a new port every single time, and the old one silently stops working.</p>
+    <div id="dep-body"></div>
+    <details class="dep-trouble">
+      <summary>Pair the tablet — first time on this computer, or pairing lost</summary>
+      <p class="small muted">On the tablet: Settings → Developer options → Wireless debugging
+        → <b>Pair device with pairing code</b>. That dialog shows its own address and a
+        six-digit code. Both are different from the ones on the screen behind it, and both
+        change every time the dialog is reopened, so type them while it is open.</p>
+      <div class="dep-form">
+        <input id="dep-paddr" placeholder="192.168.1.34:41234" size="20" spellcheck="false">
+        <input id="dep-pcode" placeholder="123456" size="8" inputmode="numeric" spellcheck="false">
+        <button class="ghost" id="dep-pair-go">Pair</button>
+      </div>
+      <div id="dep-pair-out"></div>
+    </details>
+  </div></div>`).firstElementChild;
+  document.body.appendChild(ov);
+  ov.addEventListener("click", ev => {
+    if (ev.target === ov || ev.target.classList.contains("close")) ov.remove();
+  });
+
+  const body = ov.querySelector("#dep-body");
+  const goBtn = ov.querySelector("#dep-go");
+  const addr = ov.querySelector("#dep-addr");
+  // The address is remembered because it is retyped after every tablet reboot,
+  // and a wrong-port retry is the single most common thing that happens here.
+  try { addr.value = localStorage.getItem(DEP_ADDR_KEY) || ""; } catch { }
+  addr.addEventListener("input", () => {
+    try { localStorage.setItem(DEP_ADDR_KEY, addr.value.trim()); } catch { }
+  });
+
+  const paint = d => {
+    const running = d.state === "running";
+    goBtn.disabled = running;
+    goBtn.textContent = running ? "⏳ Deploying…" : "▶ Build & deploy now";
+    const steps = d.steps || [];
+    const rows = steps.map((st, i) => {
+      const last = i === steps.length - 1;
+      const icon = running && last ? "⏳" : (d.state === "failed" && last) ? "❌" : "✅";
+      return `<li>${icon} ${esc(st)}</li>`;
+    }).join("");
+    const head =
+      d.state === "green" ? `<div class="dep-note ok">✅ ${esc(d.summary)}</div>` :
+      d.state === "failed" ? `<div class="dep-note bad">❌ ${esc(d.summary)}</div>` :
+      running ? `<div class="dep-note run">⏳ ${esc(d.step || "working")}…
+        <span class="small muted">a full build takes a few minutes — this page can be left open</span></div>` :
+      d.finished ? `<p class="small muted">Last deploy from here: ${esc(d.finished.replace("T", " "))}.</p>` :
+      `<p class="small muted">No deploy has been run from this page yet.</p>`;
+    const hint = d.hint ? `<div class="dep-hint">${esc(d.hint)}</div>` : "";
+    const log = (d.log || []).length
+      ? `<details ${d.state === "failed" ? "open" : ""}><summary class="small muted">Show the raw output (${d.log.length} lines)</summary><pre class="dep-log">${esc(d.log.join("\n"))}</pre></details>`
+      : "";
+    body.innerHTML = head + (rows ? `<ul class="dep-steps">${rows}</ul>` : "") + hint + log;
+  };
+
+  const tick = async () => {
+    if (!ov.isConnected) return;                        // panel closed: stop polling
+    try {
+      const d = await depStatus();
+      if (!ov.isConnected) return;
+      paint(d);
+      if (d.state === "running") setTimeout(tick, 2000);
+      else {
+        const b = document.getElementById("chat-deploy");
+        if (b) b.textContent = "\u{1F4F2} Deploy to tablet";
+      }
+    } catch (e) {
+      body.innerHTML = `<div class="dep-hint">⚠️ ${esc(e.message)} Is the HQ service running?</div>`;
+    }
+  };
+  tick();
+
+  goBtn.addEventListener("click", async () => {
+    goBtn.disabled = true;
+    body.innerHTML = `<div class="dep-note run">⏳ Starting…</div>`;
+    try {
+      const r = await fetch("/api/deploy", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address: addr.value.trim() }),
+      });
+      const j = await r.json();
+      if (j.error) {
+        body.innerHTML = `<div class="dep-hint">${esc(j.error)}</div>`;
+        goBtn.disabled = false;
+        return;
+      }
+    } catch (e) {
+      body.innerHTML = `<div class="dep-hint">⚠️ Could not reach the HQ service: ${esc(e.message)}</div>`;
+      goBtn.disabled = false;
+      return;
+    }
+    setTimeout(tick, 500);
+  });
+
+  const pairBtn = ov.querySelector("#dep-pair-go");
+  const pairOut = ov.querySelector("#dep-pair-out");
+  pairBtn.addEventListener("click", async () => {
+    pairBtn.disabled = true;
+    pairOut.innerHTML = `<p class="small muted">Pairing…</p>`;
+    try {
+      const r = await fetch("/api/deploy/pair", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          address: ov.querySelector("#dep-paddr").value.trim(),
+          code: ov.querySelector("#dep-pcode").value.trim(),
+        }),
+      });
+      const j = await r.json();
+      const msg = j.error || j.message || "";
+      pairOut.innerHTML = `<div class="${j.ok ? "dep-note ok" : "dep-hint"}">${j.ok ? "✅ " : ""}${esc(msg)}</div>`
+        + (j.output ? `<pre class="dep-log">${esc(j.output)}</pre>` : "");
+    } catch (e) {
+      pairOut.innerHTML = `<div class="dep-hint">⚠️ ${esc(e.message)}</div>`;
+    }
+    pairBtn.disabled = false;
   });
 }
 

@@ -11,6 +11,8 @@ Zero-dependency stdlib server:
   /api/project/<id>     -> one project
   /api/queue            -> open decision items parsed live from docs/DESIGNER_QUEUE.md
   /api/chat  (POST)     -> {to, message, history} routed through the local `claude` CLI
+  /api/deploy           -> live state of the tablet deploy; POST starts one
+  /api/deploy/pair (POST) -> {address, code} one-time adb pairing with the tablet
   /api/chat/queue       -> parked requests + token-limit state (POST enqueues)
   /api/chat/cancel|retry (POST) -> {id} for one parked request
   /api/health           -> liveness
@@ -561,6 +563,215 @@ def start_job(job):
         _RUNNING_JOBS.add(job)
     threading.Thread(target=_run_job, args=(job,), daemon=True).start()
     return {"ok": True, "started": job}
+
+
+# ---------------------------------------------------------------------------
+# Tablet deploy: build the debug APK and put it on the tablet, from a button.
+#
+# This is the one surface in HQ that must work with NO model in the loop, which
+# is the whole reason it exists: it is for the days the token budget is spent
+# and there is nobody to ask what a red line means. So every failure this can
+# hit has to answer itself on screen — hence the plain-language hints below,
+# the address box, and the pairing form. Wireless debugging turns itself off
+# when the tablet reboots and picks a NEW port every time it is toggled, so
+# "no device" is the normal failure, not an exotic one, and a dead end there
+# would make the button worthless exactly when it is needed.
+#
+# tools/deploy_android.sh stays the single source of deploy truth (docs/DEPLOY.md
+# section 2). This runs it and narrates it; it does not reimplement any of it.
+# ---------------------------------------------------------------------------
+
+DEPLOY_SCRIPT = os.path.join(REPO, "tools", "deploy_android.sh")
+DEPLOY_FILE = os.path.join(DATA, "runs", "deploy.json")
+DEPLOY_TIMEOUT = 1500  # a cold export plus install; generous on purpose
+DEPLOY_LOG_LINES = 400
+# Both are shell arguments, so they are validated rather than trusted, and the
+# messages are what the CEO reads when he mistypes one.
+ADDR_RE = re.compile(r"^\d{1,3}(\.\d{1,3}){3}:\d{1,5}$")
+CODE_RE = re.compile(r"^\d{6}$")
+
+_DEPLOY_LOCK = threading.Lock()
+_DEPLOY = None  # live state of the running/last deploy this process ran
+# Godot's exporter colours its progress lines, and those escapes render as
+# literal garbage in an HTML <pre>. Strip them on the way in, so what is stored
+# is what a person can read.
+ANSI_RE = re.compile(r"\x1b\[[0-9;?]*[a-zA-Z]")
+
+# Ordered: the first pattern that matches the output wins, so put the specific
+# device faults above the generic "no device".
+DEPLOY_HINTS = [
+    (re.compile(r"INSTALL_FAILED_UPDATE_INCOMPATIBLE|signatures do not match", re.I),
+     "The tablet already has a Tiny Farm that was signed with a different key. "
+     "Uninstall Tiny Farm on the tablet (long-press the icon \u2192 Uninstall), then press "
+     "Deploy again. Nothing is lost that a pulled session hasn't already saved."),
+    (re.compile(r"INSTALL_FAILED_INSUFFICIENT_STORAGE", re.I),
+     "The tablet is out of space. Free some up on the tablet, then press Deploy again."),
+    (re.compile(r"device unauthorized|failed to authenticate", re.I),
+     "The tablet has not authorised this computer. Unlock the tablet \u2014 there should be "
+     "a permission dialog waiting on it \u2014 accept it, then press Deploy again. If no "
+     "dialog appears, pair again using the form below."),
+    (re.compile(r"No device\.|failed to connect|cannot connect to|more than one device", re.I),
+     "The tablet was not reachable. On the tablet: Settings \u2192 Developer options \u2192 "
+     "Wireless debugging \u2192 ON. It shows an \u201cIP address & Port\u201d \u2014 type that into the "
+     "address box and press Deploy again. That port changes every single time "
+     "wireless debugging is switched on, so a stale one is the usual cause. If it "
+     "still will not connect, pair again with the form below."),
+    (re.compile(r"No export template|export_templates|Unable to find the Android SDK|"
+                r"JAVA_HOME|Android SDK path|keystore", re.I),
+     "This is a build-tools problem on this computer, not a tablet problem: the "
+     "Android SDK, the JDK or the Godot export templates are missing or moved. "
+     "docs/DEPLOY.md section 2 covers the setup. This one genuinely needs a hand."),
+    (re.compile(r"adb: (command )?not found|godot: (command )?not found|No such file or directory", re.I),
+     "A tool the deploy needs is not on this computer's PATH (adb from the Android "
+     "SDK, or godot). Nothing on the tablet needs fixing. docs/DEPLOY.md section 2 "
+     "covers the setup."),
+]
+DEPLOY_HINT_DEFAULT = (
+    "The deploy stopped and the reason is not one this page recognises. The last "
+    "lines of the log below are the real answer \u2014 they can be pasted verbatim into "
+    "a chat here later. The tablet is untouched unless the log says otherwise.")
+
+
+def _deploy_hint(out, code):
+    for pat, hint in DEPLOY_HINTS:
+        if pat.search(out):
+            return hint
+    if code is not None and code < 0:
+        return ("The deploy was still running after 25 minutes and was stopped. That "
+                "usually means it was waiting on a tablet that never answered. Check "
+                "wireless debugging is on, then press Deploy again.")
+    return DEPLOY_HINT_DEFAULT
+
+
+def _deploy_env():
+    return {**os.environ,
+            "PATH": os.environ.get("PATH", "") + ":" + os.path.expanduser("~/.local/bin")}
+
+
+def _deploy_write(doc):
+    # Best-effort, exactly like the job runner: a failed write must never be
+    # what stops a deploy that is otherwise fine.
+    try:
+        os.makedirs(os.path.join(DATA, "runs"), exist_ok=True)
+        with open(DEPLOY_FILE, "w", encoding="utf-8") as f:
+            json.dump(doc, f)
+    except OSError:
+        pass
+
+
+def _run_deploy(doc, address):
+    import datetime
+    cmd = [DEPLOY_SCRIPT] + ([address] if address else [])
+    code = None
+    try:
+        # One Godot at a time, same lock the suites take: the export is a full
+        # engine run, and a benchmark racing it is neither fast nor honest.
+        with _GODOT_LOCK:
+            doc["step"] = "Waiting for the other job to finish"
+            p = subprocess.Popen(cmd, cwd=REPO, stdout=subprocess.PIPE,
+                                 stderr=subprocess.STDOUT, text=True, bufsize=1,
+                                 env=_deploy_env())
+            doc["step"] = "Starting"
+            # A watchdog, not a deadline checked per line: the way this hangs is
+            # adb waiting forever on a tablet that went to sleep, which produces
+            # no output at all, so a check that only runs when a line arrives
+            # would never fire.
+            watchdog = threading.Timer(DEPLOY_TIMEOUT, p.kill)
+            watchdog.daemon = True
+            watchdog.start()
+            try:
+                for line in p.stdout:
+                    line = ANSI_RE.sub("", line).rstrip("\r\n")
+                    doc["log"].append(line)
+                    del doc["log"][:-DEPLOY_LOG_LINES]
+                    if line.startswith(">>> "):
+                        doc["step"] = line[4:]
+                        doc["steps"].append(line[4:])
+                code = p.wait()
+            finally:
+                watchdog.cancel()
+        out = "\n".join(doc["log"])
+        ok = code == 0 and "Installed and launched" in out
+        doc["state"] = "green" if ok else "failed"
+        doc["summary"] = ("Installed and launched on the tablet \u2014 go and look at it"
+                          if ok else
+                          "Stopped at: " + (doc.get("step") or "the very start"))
+        doc["hint"] = "" if ok else _deploy_hint(out, code)
+    except Exception as e:
+        doc["state"] = "failed"
+        doc["summary"] = "The deploy could not be started"
+        doc["hint"] = str(e)[:300]
+    finally:
+        doc["finished"] = datetime.datetime.now().isoformat(timespec="seconds")
+        if doc["state"] == "running":  # belt and braces: never leave it spinning
+            doc["state"] = "failed"
+        _deploy_write(doc)
+
+
+def start_deploy(payload):
+    import datetime
+    global _DEPLOY
+    address = str(payload.get("address") or "").strip()
+    if address and not ADDR_RE.match(address):
+        return {"error": "That address does not look right. It should read like "
+                         "192.168.1.34:37129 \u2014 copy it from the tablet's Wireless "
+                         "debugging screen, port included."}
+    with _DEPLOY_LOCK:
+        if _DEPLOY is not None and _DEPLOY.get("state") == "running":
+            return {"ok": True, "already": True}
+        doc = {"kind": "deploy", "state": "running", "step": "Starting",
+               "steps": [], "log": [], "summary": "", "hint": "",
+               "address": address,
+               "started": datetime.datetime.now().isoformat(timespec="seconds")}
+        _DEPLOY = doc
+        _deploy_write(doc)
+        threading.Thread(target=_run_deploy, args=(doc, address), daemon=True).start()
+    return {"ok": True, "started": True}
+
+
+def deploy_status():
+    if _DEPLOY is not None:
+        return _DEPLOY
+    if os.path.isfile(DEPLOY_FILE):
+        try:
+            return load_json(DEPLOY_FILE)
+        except Exception:
+            pass
+    return {"kind": "deploy", "state": "idle", "steps": [], "log": [],
+            "summary": "", "hint": ""}
+
+
+def deploy_pair(payload):
+    """Pairing is quick and interactive, so it runs inline and answers straight
+    away. It is needed once per machine+device, and again whenever the tablet
+    stops recognising this computer."""
+    address = str(payload.get("address") or "").strip()
+    code = str(payload.get("code") or "").strip()
+    if not ADDR_RE.match(address):
+        return {"error": "The pairing address should read like 192.168.1.34:41234. "
+                         "Use the one in the tablet's \u201cPair device with pairing code\u201d "
+                         "box \u2014 it is a DIFFERENT port from the one on the main "
+                         "wireless debugging screen."}
+    if not CODE_RE.match(code):
+        return {"error": "The pairing code is the six digits shown on the tablet right now."}
+    try:
+        p = subprocess.run([DEPLOY_SCRIPT, "pair", address, code], cwd=REPO,
+                           capture_output=True, text=True, timeout=120,
+                           env=_deploy_env())
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "output": "",
+                "message": "Pairing timed out. The pairing dialog on the tablet closes "
+                           "itself after a while \u2014 open it again for a fresh code and "
+                           "address, and try once more."}
+    out = ((p.stdout or "") + (p.stderr or "")).strip()
+    ok = p.returncode == 0 and "uccessfully paired" in out
+    return {"ok": ok, "output": out[-2000:],
+            "message": ("Paired. Now copy the IP and port from the main Wireless "
+                        "debugging screen into the address box above and press Deploy."
+                        if ok else
+                        "Pairing failed. The address and the code both come from the "
+                        "tablet's pairing dialog while it is open, and both change every "
+                        "time it is reopened \u2014 open it again and use the fresh pair.")}
 
 
 # ---------------------------------------------------------------------------
@@ -1622,6 +1833,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, load_json(os.path.join(DATA, "pillars.json")))
             if path == "/api/runs":
                 return self._send(200, {j: latest_job_result(j) for j in JOBS})
+            if path == "/api/deploy":
+                return self._send(200, deploy_status())
             if path.startswith("/api/rootdoc/"):
                 name = path[len("/api/rootdoc/"):]
                 if name not in ("ITCH_PAGE.md", "CREDITS.md", "README.md"):
@@ -1667,6 +1880,16 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(500, {"error": str(e)[:300]})
         if path.startswith("/api/run/"):
             return self._send(200, start_job(path[len("/api/run/"):]))
+        if path == "/api/deploy":
+            try:
+                return self._send(200, start_deploy(payload))
+            except Exception as e:
+                return self._send(500, {"error": str(e)[:300]})
+        if path == "/api/deploy/pair":
+            try:
+                return self._send(200, deploy_pair(payload))
+            except Exception as e:
+                return self._send(500, {"error": str(e)[:300]})
         if path == "/api/map/save":
             try:
                 return self._send(200, save_map(payload))

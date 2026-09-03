@@ -480,3 +480,33 @@ code.ref { background: #1b1710; border: 1px solid var(--line); border-radius: 6p
   .nav-sub { flex-direction: row; flex-wrap: wrap; width: 100%; }
   .nav-sub a { padding: 4px 10px; }
 }
+
+/* ---------- tablet deploy (the button that works with no model in the loop) ---------- */
+.deploy-btn { margin-left: auto; }
+.dep-panel { max-width: 720px; }
+.dep-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 14px 0 8px; }
+.dep-form input {
+  background: var(--panel); color: var(--text); border: 1px solid var(--line);
+  border-radius: 8px; padding: 9px 11px; font: inherit; font-size: 13px;
+}
+.dep-form input:focus { outline: none; border-color: var(--accent); }
+.dep-note { border-radius: 8px; padding: 10px 12px; margin: 14px 0 6px; font-size: 13.5px; }
+.dep-note.ok { background: #26331f; border: 1px solid #4a6b3a; color: var(--green); }
+.dep-note.bad { background: #38241f; border: 1px solid #6b4034; color: var(--red); }
+.dep-note.run { background: var(--panel); border: 1px solid var(--line); }
+/* The hint is the whole point of this panel: it is the sentence that replaces
+   asking someone what the red line meant, so it is styled to be read, not skimmed. */
+.dep-hint {
+  background: var(--panel2); border-left: 3px solid var(--accent);
+  border-radius: 8px; padding: 12px 14px; margin: 12px 0; font-size: 13.5px; line-height: 1.5;
+}
+.dep-steps { list-style: none; margin: 10px 0 4px; padding: 0; }
+.dep-steps li { padding: 3px 0; font-size: 13px; }
+.dep-log {
+  background: #1b1710; border: 1px solid var(--line); border-radius: 8px;
+  padding: 10px 12px; margin-top: 8px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px; line-height: 1.45; white-space: pre-wrap; word-break: break-word;
+  max-height: 260px; overflow-y: auto; color: var(--muted);
+}
+.dep-trouble { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 14px; }
+.dep-trouble summary { cursor: pointer; color: var(--accent); font-size: 13.5px; }

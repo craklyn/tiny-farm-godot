@@ -18,6 +18,11 @@ export PATH="$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$PATH"
 APK="build/tiny-farm.apk"
 PKG="com.daniel.tinyfarm"
 
+# Progress markers. They read fine in a terminal, and HQ's deploy button parses
+# the ">>> " prefix to narrate the deploy on screen (hq/server.py, _run_deploy)
+# — so renaming or dropping one silently blanks that readout.
+step() { echo ">>> $*"; }
+
 if [[ "${1:-}" == "pair" ]]; then
 	adb pair "$2" "$3"
 	echo "Paired. Now run: $0 <IP:PORT>   (the port under 'Wireless debugging')"
@@ -27,6 +32,7 @@ fi
 # Q-41 stamps every replay with application/config/build_id, which is useless if
 # that value is hand-edited and stale. Derive it from git at build time so a
 # pulled session says which code actually produced it.
+step "Stamping the build id"
 BUILD_ID="$(git describe --always --dirty 2>/dev/null || echo dev)"
 sed -i "s|^config/build_id=.*|config/build_id=\"$BUILD_ID\"|" project.godot
 echo "Build id: $BUILD_ID"
@@ -38,12 +44,15 @@ echo "Build id: $BUILD_ID"
 # farm that never existed. Stamping without regenerating therefore ships an
 # attract loop that silently never appears — which is what the first deploy of
 # this build did.
+step "Regenerating the demo replay"
 godot --headless --path . --script res://tools/gen_demo_replay.gd
 
+step "Exporting the Android APK"
 godot --headless --path . --export-debug "Android" "$APK"
 
 # Connect AFTER the export: the adb daemon can be restarted during a long build,
 # which drops any connection made beforehand.
+step "Finding the tablet"
 LAST_TARGET_FILE=".adb_target"
 
 TARGET="${1:-}"
@@ -94,12 +103,14 @@ printf '%s' "$SERIAL" > "$LAST_TARGET_FILE"
 # repeatable, so the one irreplaceable thing here must not depend on remembering
 # to pull first.
 if adb -s "$SERIAL" shell "run-as $PKG test -s files/session_trace.jsonl" >/dev/null 2>&1; then
+	step "Rescuing the play session already on the tablet"
 	echo "Existing session on device — pulling it before install."
 	"$(dirname "$0")/pull_session.sh" >/dev/null 2>&1 \
 		&& echo "  rescued into playtests/" \
 		|| echo "  WARNING: could not pull; continuing anyway." >&2
 fi
 
+step "Installing on the tablet"
 adb -s "$SERIAL" install -r "$APK"
 # The launcher activity is GodotAppLauncher, not GodotApp; let the system resolve it.
 adb -s "$SERIAL" shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1 >/dev/null

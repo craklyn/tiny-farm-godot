@@ -16,9 +16,13 @@ var Pathfinding: Node
 # them (M1.5's parcels invalidated the 08-28/08-30 play sessions; T-32's yard adds
 # a second reason to the same files; the 08-31 pair are deploy rescues — the first
 # from the pre-M2.5 build, the second a Continue on a pre-T-32 base, this game's
-# first v2 log). A deploy's rescue that shelves a new folder fails the fixture
-# tests BY NAME until it is classified here — deliberately.
+# first v2 log; 08-21 is the oldest surviving session of all, rescued by hand
+# from the retired com.godot.game install — see its NOTE.md; 09-02 is the first
+# rescue pulled by HQ's Deploy-to-tablet button). A deploy's rescue that shelves
+# a new folder fails the fixture tests BY NAME until it is classified here —
+# deliberately.
 const SHELF := {
+	"2026-08-21_103100": { "format": 1, "verdict": "cross" },
 	"2026-08-28_111552": { "format": 1, "verdict": "cross" },
 	"2026-08-28_114839": { "format": 1, "verdict": "cross" },
 	"2026-08-28_115934": { "format": 1, "verdict": "cross" },
@@ -31,6 +35,7 @@ const SHELF := {
 	"2026-08-31_220426": { "format": 2, "verdict": "cross" },
 	"2026-08-31_230643": { "format": 2, "verdict": "cross" },
 	"2026-08-31_233943": { "format": 2, "verdict": "cross" },
+	"2026-09-02_211138": { "format": 2, "verdict": "match" },
 }
 
 
@@ -6044,6 +6049,13 @@ func test_replay_v2() -> void:
 	# a second independent reason to the same five (every one of them tills tiles
 	# inside the fenced yard, which is not tillable ground any more) and changes
 	# nothing about the count.
+	#
+	# **2026-09-02_211138 moves the match count**, and is the first entry that moves
+	# it for an interesting reason: it is a real play session — 700-odd entries, not
+	# an empty log — and it still replays to its own autosave. Nothing separates it
+	# from the five that fail except that no worldgen change has landed between its
+	# recording and now (same build_id, v0.1.0-98-g7452200). That is the shelf
+	# working as designed: a session matches until the world moves under it.
 	#
 	# So this is not a regression bar; it is a **ledger**. The determinism proof is
 	# the unit replay tests plus a fresh robot session, never an old session

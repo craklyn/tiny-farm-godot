@@ -10,7 +10,9 @@ staff's brief), six pillar pages (scoped commit feeds, living demos, team
 charters with escalation rules), org chart with chattable personas, the
 animated/editable entity gallery, the map editor (layout definitions), the
 playtest viewer (traces scored by the game's own formulas), the program
-report, and the decision inbox (curated cards + on-page rulings).
+report, and the decision inbox (curated cards + on-page rulings). The chat page also
+carries the **Deploy to tablet** button — the one control built to work with no model in
+the loop at all, so it explains its own failures on screen (`docs/DEPLOY.md` section 2).
 
 - **URL:** http://localhost:8642 (on the desktop)
 - **From the laptop / anywhere:** https://daniel-maco.tail445099.ts.net — the same

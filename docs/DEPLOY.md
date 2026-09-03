@@ -31,6 +31,25 @@ tools/deploy_android.sh pair <IP:PAIRPORT> <6-digit-code>   # once per machine+d
 Builds a **debug** APK, connects over wireless debugging, rescues any session already on
 the device, installs, and launches.
 
+### Without a terminal: the button in HQ
+
+**http://localhost:8642/#/chat → 📲 Deploy to tablet.** Same script, same steps, narrated
+on screen: it shows each step as it happens, and when something fails it says in plain
+English what to do about it instead of printing a stack of adb output. The panel also
+carries the two things that fail most often — a box for the tablet's current `IP:PORT`,
+and the pairing form — so a tablet that has rebooted can be recovered without opening a
+shell.
+
+This exists for the days there is no model in the loop (the token budget is spent, and
+nobody to ask what a red line means), which is why the whole failure vocabulary is
+hard-coded in `hq/server.py` (`DEPLOY_HINTS`) rather than generated. `tools/deploy_android.sh`
+stays the single source of deploy truth; HQ runs it and narrates it, and the `">>> "`
+step markers in the script are what it parses — renaming one silently blanks the readout.
+
+Pressing it from the laptop over the tailnet is fine, but the build and the install happen
+**on the desktop**, so the tablet has to be reachable from the desktop's network, not the
+laptop's.
+
 **Traps:**
 
 - **Wireless debugging switches off when the tablet reboots**, and the port changes every
