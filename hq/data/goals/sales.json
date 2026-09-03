@@ -10,6 +10,79 @@
   },
   "goals": [
     {
+      "id": "we-know-what-we-are-selling",
+      "statement": "We can say what the next release gives a player, and every one of those claims traces to the build.",
+      "statement_short": "we cannot say what the next release actually offers a player",
+      "owner": "victor",
+      "severity": "blocking",
+      "unit": "ratio",
+      "why_it_matters": "This is the inventory. Without it Sales has nothing to take to a player, a storefront or a press contact — and the only number the wall could show was a commit count, which is how much work happened rather than what any of it gives anybody.",
+      "measure": {
+        "kind": "release_manifest",
+        "release": "update-1",
+        "field": "traceable"
+      },
+      "compare": {
+        "direction": "ratio",
+        "target": 1.0,
+        "amber_at": 0.8
+      },
+      "path_to_green": {
+        "narrative": "Every feature the release claims has to resolve to something in the history or to a project carrying it. One that resolves to neither is a wish on a release plan.",
+        "route": {
+          "kind": "none"
+        },
+        "owner": "victor",
+        "action": {
+          "label": "Put it on Victor's list",
+          "tier": 1,
+          "level": "task",
+          "title": "Reconcile the release manifest against the build",
+          "ask": "A feature on hq/data/releases.json's manifest cannot be traced to a commit or to a project carrying it. Work out whether it was built under a different name, is genuinely not built, or should come off the release, and fix the record either way. A release plan whose contents cannot be verified is a wish.",
+          "first_action": "Open #/pillar/sales, find the feature marked not built, and trace its evidence id through git log."
+        }
+      },
+      "history": {
+        "record": true,
+        "chart": false
+      }
+    },
+    {
+      "id": "we-know-what-players-want",
+      "statement": "We have some signal of what players actually want, so a release can be argued for rather than guessed at.",
+      "statement_short": "nothing anywhere records what a player has asked for",
+      "owner": "victor",
+      "severity": "important",
+      "unit": "",
+      "why_it_matters": "Sales is supposed to work backwards from demand: hear what people want, push for it, ship it, tell them it landed. Not one of those four is possible here. There is no channel, no analytics, no wishlist and no recorded request — so every feature in the manifest was chosen on taste alone. That may be exactly right for a game this early, but it should be a choice rather than the only option available.",
+      "measure": {
+        "kind": "file_exists",
+        "path": "hq/data/demand.json"
+      },
+      "compare": {
+        "direction": "must_be_true"
+      },
+      "path_to_green": {
+        "narrative": "One record of what players ask for, however thin — the itch page's comments, the green tester's session notes, anything said out loud. Today the studio cannot hear anything, so the first release with an audience teaches us nothing.",
+        "route": {
+          "kind": "none"
+        },
+        "owner": "victor",
+        "action": {
+          "label": "Put it on Victor's list",
+          "tier": 1,
+          "level": "story",
+          "title": "Give the studio somewhere to record what players ask for",
+          "ask": "Nothing in this repo records a single thing a player has wanted. Sales is meant to work backwards from demand and cannot: there is no channel, no analytics and no wishlist. Design the thinnest honest record — hq/data/demand.json — one entry per thing somebody actually asked for, with who said it and where, so a feature can eventually be argued for rather than chosen on taste alone. Do not invent entries to fill it; an empty file that is honestly empty is the correct first state. This depends on Finance & Ops' open ruling about where a player's bug report lands, so read that first.",
+          "first_action": "Read ITCH_PAGE.md, hq/data/goals/ops.json's a-player-can-reach-us goal, and the playtest session notes, then propose the record's shape."
+        }
+      },
+      "history": {
+        "record": true,
+        "chart": false
+      }
+    },
+    {
       "id": "release-enforces-its-own-checklist",
       "statement": "The release pipeline refuses to publish a build the runbook says is not shippable.",
       "statement_short": "nothing would stop a tag shipping the debug readout",

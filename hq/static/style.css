@@ -821,20 +821,35 @@ code.ref { background: #1b1710; border: 1px solid var(--line); border-radius: 6p
 .abs-title { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .abs-body { font-size: 20px; color: var(--muted); margin-top: 8px; font-style: italic; }
 
-/* --- sales: the unshipped-work chart, and the absence of a publish control --- */
-.driftcard { padding: 14px 18px; }
-.dc-head { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; }
-.dc-num { font-size: 40px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
-.dc-num.ok { color: var(--green); }
-.dc-num.bad { color: #e8927a; }
-.dc-lede { flex: 1; min-width: 0; }
-.driftsvg { width: 100%; height: auto; display: block; margin: 2px 0 6px; }
-.dc-bar { fill: var(--green); }
-.dc-bar:hover { fill: var(--accent); }
-.dc-axis { stroke: var(--line); stroke-width: 1; }
-/* The deadline is drawn on the chart, not described beside it. */
-.dc-due { stroke: #e0912e; stroke-width: 1.5; stroke-dasharray: 3 3; }
-.dc-lbl { fill: var(--muted); font-size: 9px; }
+/* --- sales: the release manifest, and the absence of a publish control ---
+   The instrument used to be commits per day, which measures how much work
+   happened rather than what any of it gives a player. This is inventory: one
+   cell per thing a player would notice, coloured by whether we can put it in
+   their hands. Hover any cell and it names itself — the chart has to be
+   readable without a sentence underneath telling you how to read it. */
+.mscard { padding: 14px 18px; }
+.ms-head { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
+.ms-num { font-size: 44px; font-weight: 800; line-height: 1; color: var(--green); font-variant-numeric: tabular-nums; }
+.ms-lede { flex: 1; min-width: 0; }
+.msstrip { display: flex; gap: 3px; height: 30px; }
+.ms-cell { flex: 1; border-radius: 3px; cursor: default; transition: transform .08s; }
+.ms-cell:hover, .ms-cell:focus { transform: scaleY(1.18); outline: none; }
+.ms-dot { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 6px; flex-shrink: 0; }
+.ms-ready { background: var(--green); }
+.ms-wip { background: #e0912e; }
+.ms-none { background: transparent; border: 1.5px solid var(--muted); }
+.ms-out { background: var(--line); }
+.ms-key { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 10px 0 4px; font-size: 12px; color: var(--muted); }
+.ms-key span { display: flex; align-items: center; }
+.ms-rows { border-top: 1px solid var(--line); margin-top: 8px; }
+.ms-row {
+  display: grid; grid-template-columns: 12px 1fr auto; gap: 10px;
+  align-items: start; padding: 9px 0; border-bottom: 1px solid var(--line);
+}
+.ms-row:last-child { border-bottom: 0; }
+.ms-row .ms-dot { margin-top: 4px; }
+.ms-state { font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+.ms-note { color: #e0912e; }
 .norelease { border-style: dashed; }
 .inert {
   font-family: ui-monospace, monospace; font-size: 13px; color: var(--muted);
@@ -930,3 +945,12 @@ code.ref { background: #1b1710; border: 1px solid var(--line); border-radius: 6p
 #pillar-context .card { margin-bottom: 12px; }
 .g-until { font-size: 12px; color: var(--muted); }
 .team-mini .gbtn { font-size: 12px; padding: 5px 10px; }
+/* The count and the strip are the decision; the thirteen descriptions are the
+   detail. Detail folds, the decision does not — otherwise the inventory pushes
+   the gates and the asks off the screen entirely. */
+.ms-fold > summary {
+  cursor: pointer; list-style: none; font-size: 12.5px; color: var(--muted);
+  padding: 8px 0 2px; border-top: 1px solid var(--line); margin-top: 8px;
+}
+.ms-fold > summary::before { content: "▸ "; }
+.ms-fold[open] > summary::before { content: "▾ "; }

@@ -125,7 +125,7 @@
       "emoji": "🤝",
       "lead": "victor",
       "team": "Sales & BD",
-      "tagline": "Whether we can ship today, and what is holding the tag.",
+      "tagline": "What is ready to go out, and what stands between it and a player.",
       "git_paths": [
         "export_presets.cfg",
         "docs/DEPLOY.md",
@@ -139,7 +139,7 @@
         }
       ],
       "commit_feed_label": "What the runbook learned",
-      "question": "Can we ship today — and if not, what exactly is holding the tag?"
+      "question": "What have we got that a player hasn't played yet, and what is holding it back from them?"
     },
     {
       "id": "ops",

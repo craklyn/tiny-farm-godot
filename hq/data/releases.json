@@ -1,12 +1,93 @@
 {
-  "note": "Release trains: the macro units players experience. Projects declare release + release_critical + depends_on; everything else derives. No dates on purpose — this program runs on gates and evidence (the repo's standing rule), so 'schedule risk' renders as blocked critical-path chains and their ages, never as fictional calendar cells.",
+  "note": "Release trains: the macro units players experience. Projects declare release + release_critical + depends_on; everything else derives. No dates on purpose — this program runs on gates and evidence, so 'schedule risk' renders as blocked critical-path chains and their ages, never as fictional calendar cells. 'features' is what the release OFFERS A PLAYER, written in their language and not ours: each one cites the decision or story that carries it, and whether it is in the public build is derived by tracing that id through git either side of the newest tag. Sales sells the features; engineering's commit counts are not this list.",
   "releases": [
     {
       "id": "update-1",
       "name": "Player Update 1",
       "tag_intent": "v0.2.0",
-      "goal": "The first public update since v0.1.0: the rebuilt onboarding players can feel — the cot and stations that present themselves, the clock, the yard as home — shipped with the gate evidence behind it, on the ship-early-and-often ruling.",
-      "definition_of_done": "M1.5's exit gate closes on the pre-release green-tester session (the one fresh-player pass per public release, ruled 2026-09-02), and a v0.2.0 tag goes out through the deploy runbook."
+      "goal": "The first public update since v0.1.0. Thirteen things a player would notice, led by the shop and the first robot you can teach — the beginning of the delegation arc the whole game is about — on the ship-early-and-often ruling.",
+      "definition_of_done": "M1.5's exit gate closes on the pre-release green-tester session (the one fresh-player pass per public release, ruled 2026-09-02), and a v0.2.0 tag goes out through the deploy runbook.",
+      "features": [
+        {
+          "id": "shop",
+          "evidence": "P-12",
+          "headline": "A shop that sells everything",
+          "for_players": "Seeds, tools, animals and machines — if you can own it, you can buy it. The whole screen is pictures, coins and numerals, so a child who cannot read can shop on their own."
+        },
+        {
+          "id": "robots",
+          "evidence": "P-13",
+          "headline": "Robots you buy and teach",
+          "for_players": "A mark-1 robot does exactly the job you show it: point at the tiles you want watered and it waters them, once a day, every day. A mark-2 will chase birds, follow you, or patrol. This is the first taste of handing the farm over."
+        },
+        {
+          "id": "home",
+          "evidence": "T-37",
+          "headline": "A home to go inside",
+          "for_players": "The farmhouse opens. There is a room in there, and it is yours."
+        },
+        {
+          "id": "clock",
+          "evidence": "T-36",
+          "headline": "A clock you can read",
+          "for_players": "The day runs from 6 in the morning to 4 in the afternoon, on a clock face that says AM and PM, so you can feel the day running out."
+        },
+        {
+          "id": "bedtime",
+          "evidence": "T-35",
+          "headline": "The game stops nagging once you have learned something",
+          "for_players": "When you have found the gate, it stops pointing at the gate. At bedtime it points at the bed instead."
+        },
+        {
+          "id": "cot",
+          "evidence": "T-27",
+          "headline": "A bed that asks to be slept in",
+          "for_players": "As the light goes, the sleeping spot glows and the farmer looks tired. Nobody has to tell a new player what to do at dusk."
+        },
+        {
+          "id": "pips",
+          "evidence": "T-28",
+          "headline": "Every station says what it is for",
+          "for_players": "A small picture over each station shows what it does before you touch it — no words, no menu, no guessing."
+        },
+        {
+          "id": "water-sound",
+          "evidence": "Q-31",
+          "headline": "The watering can sounds like water",
+          "for_players": "Three real recorded pours, cycled so it never sounds like a loop. Recorded by the designer, in a kitchen."
+        },
+        {
+          "id": "wet-soil",
+          "evidence": "Q-52",
+          "headline": "You can see which soil is wet",
+          "for_players": "Watered ground darkens and dries out again over the day, so rain and your own watering both visibly do something."
+        },
+        {
+          "id": "field",
+          "evidence": "Q-70",
+          "headline": "The wild field looks wild",
+          "for_players": "The land beyond the yard now reads as tall grass you have to clear, not as more lawn."
+        },
+        {
+          "id": "icon",
+          "evidence": "T-38",
+          "headline": "The game has a face on your home screen",
+          "for_players": "A real app icon instead of a blue box."
+        },
+        {
+          "id": "clearing-cost",
+          "evidence": "Q-50",
+          "headline": "Clearing land costs what it looks like it should",
+          "for_players": "A weed is cheap, a log is work, a tree or a rock is a serious morning. Expanding your farm is now a decision about the day's energy."
+        },
+        {
+          "id": "machine-distress",
+          "evidence": "S-10",
+          "headline": "A stuck machine tells you it is stuck",
+          "for_players": "A robot that cannot reach what you told it to do stops, shows it plainly, and waits — instead of standing still exactly like one that has finished.",
+          "project": "machine-distress-state"
+        }
+      ]
     },
     {
       "id": "m3",

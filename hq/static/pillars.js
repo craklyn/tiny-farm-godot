@@ -343,7 +343,7 @@ async function renderPillar(pid) {
   if (pid === "product") await instProduct(inst, below, sig, g);
   if (pid === "art") await instArt(inst, below, sig, g);
   if (pid === "marketing") await instMarketing(inst, below, sig, g);
-  if (pid === "sales") instSales(inst, below, sig, g, ctx);
+  if (pid === "sales") await instSales(inst, below, sig, g, ctx);
   if (pid === "ops") await instOps(inst, below, sig, g);
 }
 
@@ -716,7 +716,7 @@ async function instMarketing(root, below, sig, g) {
    checkbox measures whether somebody ticked a checkbox — and this repo's nine
    boxes have not moved since the last release, in every possible state of the
    world. Where a gate genuinely needs a person, it says nobody has looked. */
-function instSales(root, below, sig, g, ctx) {
+async function instSales(root, below, sig, g, ctx) {
   const byId = Object.fromEntries((g.goals || []).map(x => [x.id, x]));
   const drift = byId["ship-drift"] || {};
   const r = drift.reading || {};
@@ -739,7 +739,11 @@ function instSales(root, below, sig, g, ctx) {
 
   // The drift lives beside the verdict, not inside the instrument: it is one
   // fact and it must never be the thing that scrolls away.
-  if (ctx) ctx.replaceChildren(h(driftChart(behind, days, tag, r)));
+  // The inventory sits with the verdict and never scrolls away: it is the
+  // answer to this page's question, not decoration under it.
+  const man = await api("/api/manifest/update-1").catch(() => null);
+  const rel = man && man.releases && man.releases[0];
+  if (ctx && rel) ctx.replaceChildren(h(manifestStrip(rel, days, tag)));
 
   root.replaceChildren(h(`
     <h2>The launch check <span class="small muted">— ${machine.length} of ${gates.length} checked by machine</span></h2>
@@ -761,71 +765,59 @@ function instSales(root, below, sig, g, ctx) {
       : "<span class='muted'>Nothing has ever been published.</span>")));
 }
 
-/* The unshipped-work chart.
-   It replaced a bar whose length was DAYS sitting next to a number that was
-   COMMITS — two different quantities with nothing saying which was which, which
-   is the reasonable reading of "I don't know what this bar represents".
+/* The release manifest — what Sales actually has to sell.
+   This slot used to hold a chart of commits per day, which is an engineering
+   number: it says how much work happened, not what any of it gives anybody. You
+   cannot take 177 commits to a player. You take "a shop that sells everything"
+   and "robots you buy and teach".
 
-   One story now: each column is a day since the last release and how much work
-   landed that day; the columns accumulate to the number on the left; and the
-   dashed line is the day the next release falls due under the fourteen-day bar.
-   Everything on it is labelled in place — no legend to hold in your head. */
-function driftChart(behind, days, tag, r) {
-  const daily = (r && r.daily) || [];
-  if (!daily.length) {
-    return `<div class="card driftstrip"><div class="ds-num ok">—</div>
-      <div class="ds-body"><b>nothing has ever been published</b>
-      <div class="small muted">There is no last release to measure against.</div></div></div>`;
-  }
-  const DUE = 14;                                  // the bar: a release every 14 days
-  const start = new Date(daily[0].date + "T00:00:00");
-  const dayIndex = d => Math.round((new Date(d + "T00:00:00") - start) / 86400000);
-  const span = Math.max(DUE, dayIndex(daily[daily.length - 1].date)) + 1;
-  const byIdx = {};
-  daily.forEach(d => { byIdx[dayIndex(d.date)] = d.n; });
-  const peak = Math.max(...daily.map(d => d.n), 1);
-
-  const W = 640, H = 96, PADL = 4, PADB = 20, PADT = 8;
-  const colW = (W - PADL * 2) / span;
-  const bars = [];
-  for (let i = 0; i < span; i++) {
-    const n = byIdx[i] || 0;
-    const x = PADL + i * colW;
-    const hgt = n ? Math.max(2, (n / peak) * (H - PADB - PADT)) : 0;
-    const future = i > dayIndex(daily[daily.length - 1].date);
-    bars.push(`<rect x="${x + colW * 0.15}" y="${H - PADB - hgt}" width="${colW * 0.7}" height="${hgt}"
-      class="dc-bar${future ? " dc-future" : ""}"><title>${n} commit${n === 1 ? "" : "s"} on ${
-        new Date(start.getTime() + i * 86400000).toISOString().slice(0, 10)}</title></rect>`);
-  }
-  const dueX = PADL + DUE * colW;
-  const todayX = PADL + (dayIndex(daily[daily.length - 1].date) + 0.5) * colW;
-  // The deadline label goes on whichever side of its line has room, so it can
-  // never run off the edge of the chart.
-  const dueLeft = dueX < W * 0.72;
-  const overdue = days != null && days > DUE;
-  return `<div class="card driftcard">
-    <div class="dc-head">
-      <div class="dc-num ${overdue ? "bad" : "ok"}">${behind == null ? "—" : behind}</div>
-      <div class="dc-lede">
-        <b>commits the public has never seen</b>
-        <div class="small muted">Everything on main since <code class="ref">${esc(tag)}</code> went out${
-          r.tag_date ? ` on ${esc(r.tag_date)}` : ""}, ${days} day${days === 1 ? "" : "s"} ago.</div>
+   So it is inventory now. Each bar of the strip is one thing a player would
+   notice, coloured by whether it is ready to go out, still being built, or
+   promised and not started — and hovering any of them names it. Nothing here is
+   asserted: a feature is "ready" only because its decision id traces to commits
+   after the last tag, and an unfinished project carrying it overrules that. */
+function manifestStrip(rel, days, tag) {
+  const feats = rel.features || [];
+  const STATE = {
+    ready: ["ms-ready", "ready to go out"],
+    in_progress: ["ms-wip", "still being built"],
+    not_built: ["ms-none", "promised, not started"],
+    shipped: ["ms-out", "already out"],
+  };
+  const cells = feats.map(f => {
+    const [cls, word] = STATE[f.state] || STATE.not_built;
+    return `<i class="ms-cell ${cls}" tabindex="0"
+      title="${esc(f.headline)} — ${word}${f.note ? ` (${esc(f.note)})` : ""}"></i>`;
+  }).join("");
+  const rows = feats.map(f => {
+    const [cls, word] = STATE[f.state] || STATE.not_built;
+    return `<div class="ms-row">
+      <i class="ms-dot ${cls}" title="${esc(word)}"></i>
+      <div>
+        <b>${esc(f.headline)}</b>
+        <div class="small muted">${esc(f.for_players || "")}</div>
+        ${f.note ? `<div class="small ms-note">${esc(f.note)}</div>` : ""}
+      </div>
+      <span class="ms-state">${esc(word)}</span>
+    </div>`;
+  }).join("");
+  return `<div class="card mscard">
+    <div class="ms-head">
+      <div class="ms-num">${rel.ready}</div>
+      <div class="ms-lede">
+        <b>things a player can't do yet, sitting finished on main</b>
+        <div class="small muted">${esc(rel.name)}${rel.tag_intent ? ` · would go out as ${esc(rel.tag_intent)}` : ""}${days != null ? ` · nothing has gone out for ${days} days` : ""}. Goal: release every 14 days.</div>
       </div>
     </div>
-    <svg viewBox="0 0 ${W} ${H}" class="driftsvg" role="img"
-      aria-label="${behind} commits over ${days} days since ${tag}; the next release is due on day ${DUE}">
-      <line x1="${PADL}" y1="${H - PADB}" x2="${W - PADL}" y2="${H - PADB}" class="dc-axis"/>
-      ${bars.join("")}
-      <line x1="${dueX}" y1="${PADT - 4}" x2="${dueX}" y2="${H - PADB + 3}" class="dc-due"/>
-      <text x="${dueX + (dueLeft ? 5 : -5)}" y="${PADT + 6}" class="dc-lbl"
-        text-anchor="${dueLeft ? "start" : "end"}">next release due · day ${DUE}</text>
-      ${todayX < dueX - 30 ? `<text x="${(todayX + dueX) / 2}" y="${H - PADB - 6}"
-        class="dc-lbl" text-anchor="middle">${DUE - days} days of runway</text>` : ""}
-      <text x="${PADL}" y="${H - 6}" class="dc-lbl">${esc(r.tag_date || "")} · ${esc(tag)} went out</text>
-      <text x="${todayX}" y="${H - 6}" class="dc-lbl" text-anchor="middle">today · day ${days}</text>
-    </svg>
-    <div class="small muted">One column is one day; its height is how much landed that day.
-      The bar this pillar is measured against is a release every ${DUE} days.</div>
+    <div class="msstrip">${cells}</div>
+    <div class="ms-key">
+      <span><i class="ms-dot ms-ready"></i>${rel.ready} ready to go out</span>
+      ${rel.in_progress ? `<span><i class="ms-dot ms-wip"></i>${rel.in_progress} still being built</span>` : ""}
+      ${rel.not_built ? `<span><i class="ms-dot ms-none"></i>${rel.not_built} promised, not started</span>` : ""}
+      ${rel.shipped ? `<span><i class="ms-dot ms-out"></i>${rel.shipped} already out</span>` : ""}
+    </div>
+    <details class="ms-fold"><summary>What each one is, in a player's words</summary>
+      <div class="ms-rows">${rows}</div></details>
   </div>`;
 }
 

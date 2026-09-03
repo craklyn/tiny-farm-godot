@@ -1674,6 +1674,95 @@ def palette_union():
     return data
 
 
+# ---------------------------------------------------------------------------
+# The release manifest — what a release OFFERS A PLAYER.
+#
+# Sales was reading a commit count, which is an engineering-internal number: it
+# says how much work happened, not what any of it gives anybody. A VP of Sales
+# cannot take 177 commits to a player. They take "a shop that sells everything"
+# and "robots you buy and teach".
+#
+# So the release declares its features in the player's language, and each one
+# cites the decision or story that carries it. Whether it is actually in the
+# public build is then DERIVED, not claimed: trace that id through git either
+# side of the newest tag. A feature whose id appears only after the tag is built
+# and unshipped — that is inventory Sales is sitting on. One that appears before
+# it is already out. One that appears nowhere is promised and not built, and
+# saying so is the point: it is the difference between a release plan and a wish.
+# ---------------------------------------------------------------------------
+
+_MANIFEST_CACHE = {"head": None, "data": None}
+
+
+def release_manifest(release_id=None):
+    head = run_cmd(["git", "rev-parse", "HEAD"])
+    key = (head, release_id)
+    if _MANIFEST_CACHE["head"] == key:
+        return _MANIFEST_CACHE["data"]
+    doc = load_json(os.path.join(DATA, "releases.json"))
+    tags = [t for t in run_cmd(["git", "tag", "-l", "v*", "--sort=creatordate"]).splitlines() if t]
+    newest = tags[-1] if tags else None
+    out = []
+    for r in doc["releases"]:
+        if release_id and r["id"] != release_id:
+            continue
+        feats = []
+        for f in r.get("features", []):
+            ev = f.get("evidence", "")
+            after = before = 0
+            landed = []
+            if ev:
+                rng = f"{newest}..HEAD" if newest else "HEAD"
+                rows = run_cmd(["git", "log", rng, "--grep", ev, "--pretty=%h\x1f%s"]).splitlines()
+                after = len(rows)
+                landed = [{"hash": l.split("\x1f")[0], "subject": l.split("\x1f")[1]}
+                          for l in rows if "\x1f" in l][:3]
+                if newest:
+                    before = len(run_cmd(["git", "log", newest, "--grep", ev,
+                                          "--pretty=%h"]).splitlines())
+            state = ("ready" if after else "shipped" if before else "not_built")
+            # A commit that MENTIONS a decision is not a commit that BUILT it —
+            # recording S-10 in the log made the grep read "ready" for a feature
+            # with no code behind it at all. So a feature may name the project
+            # carrying it, and an unfinished project overrules the git evidence:
+            # what we decided and what a player can do are different facts.
+            note = None
+            proj_id = f.get("project")
+            if proj_id:
+                proj = next((x for x in load_projects() if x["id"] == proj_id), None)
+                if proj is None:
+                    note = f"cites a project that does not exist ({proj_id})"
+                    state = "not_built"
+                elif proj["status"] != "done":
+                    done = sum(1 for st in proj.get("plan", []) if st.get("done"))
+                    total = len(proj.get("plan", []))
+                    state = "in_progress" if done else "not_built"
+                    note = (f"{done} of {total} steps done on {proj['name']}" if total
+                            else proj["name"] + " has not started")
+            feats.append({**f, "state": state, "commits": after, "landed": landed,
+                          "note": note, "project": proj_id})
+        # Sort so the wall reads as inventory: what we can sell, then what we
+        # still owe. Never declaration order.
+        rank = {"ready": 0, "in_progress": 1, "not_built": 2, "shipped": 3}
+        feats.sort(key=lambda f: rank.get(f["state"], 9))
+        ready = [f for f in feats if f["state"] == "ready"]
+        out.append({
+            "id": r["id"], "name": r["name"], "tag_intent": r.get("tag_intent"),
+            "goal": r.get("goal", ""), "definition_of_done": r.get("definition_of_done", ""),
+            "features": feats,
+            "ready": len(ready),
+            "shipped": len([f for f in feats if f["state"] == "shipped"]),
+            "not_built": len([f for f in feats if f["state"] == "not_built"]),
+            "in_progress": len([f for f in feats if f["state"] == "in_progress"]),
+            "total": len(feats),
+            "since_tag": newest,
+        })
+    data = {"releases": out, "newest_tag": newest}
+    _MANIFEST_CACHE["head"] = key
+    _MANIFEST_CACHE["data"] = data
+    return data
+
+
 def eval_measure(spec, depth=0):
     """One declarative measurement -> one normalized Reading."""
     kind = (spec or {}).get("kind")
@@ -2069,6 +2158,26 @@ def eval_measure(spec, depth=0):
             return _reading(doc.get(spec.get("field", "value")), spec.get("unit", ""),
                             doc.get("source_human", spec["probe"]), "", "cached",
                             extra={"polled_at": doc.get("polled_at")})
+
+        if kind == "release_manifest":
+            m = release_manifest(spec.get("release"))
+            rel = (m["releases"] or [None])[0]
+            if not rel:
+                return _reading(None, error=f"no release called {spec.get('release')}")
+            field = spec.get("field", "ready")
+            if field == "traceable":
+                # Every feature we claim has to resolve to something in the
+                # history. One that resolves to nothing is a claim, not a feature.
+                n = rel["ready"] + rel["shipped"]
+                return _reading(round(n / rel["total"], 3) if rel["total"] else None, "ratio",
+                                f"{n} of {rel['total']} declared features can be traced to the build",
+                                "git log --grep per feature", "git",
+                                extra={"numerator": n, "denominator": rel["total"]})
+            if field == "declared":
+                return _reading(rel["total"], "features a player would notice",
+                                f"what {rel['name']} says it offers", "", "cheap")
+            return _reading(rel.get(field), spec.get("unit", "features"),
+                            f"{rel['name']}: {field}", "", "git", extra=rel)
 
         if kind == "palette_named_present":
             pal = palette_union()
@@ -3398,6 +3507,9 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, api_needs(unquote(path[len("/api/needs/"):])))
             if path == "/api/ci/history":
                 return self._send(200, ci_history() or {"error": "not polled yet"})
+            if path.startswith("/api/manifest"):
+                rid = path[len("/api/manifest/"):] if len(path) > len("/api/manifest") else ""
+                return self._send(200, release_manifest(unquote(rid) or None))
             if path == "/api/palette":
                 return self._send(200, palette_union())
             if path == "/api/history":
