@@ -18,6 +18,7 @@ routes["/work"] = renderWork;
 if ((location.hash.slice(1) || "/").startsWith("/work")) route();
 
 const TIER_CHIP = { 0: "t-go", 1: "t-diff", 2: "t-ask" };
+const TIER_NAME = { 0: "Just do it", 1: "Do it, show the diff", 2: "Ask first" };
 let workPoll = null;
 
 async function workSnap() {
@@ -34,6 +35,74 @@ function workPost(path, body) {
 
 function ownerOf(org, id) {
   return (org.employees || []).find(e => e.id === id) || { name: id, emoji: "•", title: "" };
+}
+
+/* What a button does, spelled out before he presses it -----------------------
+   His rule, 2026-09-03: "I don't know what happens if I accept this… it would
+   be better if it already knows what it would build if this is accepted and can
+   show me." So every card states the effect of each answer, and a finished
+   result that implies more work shows that work in full — title, owner, tier,
+   first step — worked out before the click, not after it. Nothing here is
+   guessed by the page: it is the item's own recorded follow-up, or the plain
+   truth that there isn't one. */
+const LANDS = {
+  0: who => `${who} starts on it straight away and brings the result back here for your verdict.`,
+  1: () => `It queues for a build session, which does the work and shows you the diff.`,
+  2: () => `It comes back here as its own card, for you to say yes to before anything happens.`,
+};
+
+function followUpBox(fu, org) {
+  const who = ownerOf(org, fu.owner);
+  const tier = Number(fu.tier ?? 2);
+  return `<div class="w-spawn">
+    <div class="w-spawn-h">Accepting files exactly this — nothing else</div>
+    <div class="w-spawn-t">${esc(fu.title)}</div>
+    <div class="w-spawn-m"><span class="chip w-level">${esc(fu.level || "task")}</span>
+      <span class="chip ${TIER_CHIP[tier] || "t-ask"}">${esc((TIER_NAME[tier] || "?"))}</span>
+      <span>${esc(who.emoji)} ${esc(who.name)}</span></div>
+    ${fu.first_action ? `<p class="w-spawn-p"><b>First step:</b> ${esc(fu.first_action)}</p>` : ""}
+    ${fu.why ? `<p class="w-spawn-p muted">${esc(fu.why)}</p>` : ""}
+    <p class="w-spawn-p muted">${esc(LANDS[tier] ? LANDS[tier](who.name.split(" ")[0]) : "")}</p>
+  </div>`;
+}
+
+function consequence(it, org) {
+  const who = ownerOf(org, it.owner);
+  const first = who.name.split(" ")[0];
+  const rows = [];
+  let extra = "";
+  if (it.state === "needs_approval") {
+    rows.push(["Yes, go ahead", `Nothing runs on its own. It joins the build-session queue, and the next session carries out the step above and shows you the diff.`]);
+    rows.push(["Not this", `Filed as dropped. Nothing is created and nothing changes.`]);
+  } else if (it.state === "for_review") {
+    const fu = it.follow_up;
+    if (fu === undefined) {
+      rows.push(["Good — accept", `Files this as approved and closes it. ${esc(first)} is still working out what should follow — this card will say, in a moment, before you decide.`]);
+    } else if (fu && fu.title) {
+      rows.push(["Good — accept", `Files this as approved and starts the one piece of work below.`]);
+      extra = followUpBox(fu, org);
+    } else {
+      rows.push(["Good — accept", `Files this as approved and closes it. Nothing follows from it — no task, story, project or goal is created.`]);
+    }
+    rows.push(["Have another go", `Throws this result away and ${esc(first)} does the same work again. Nothing else changes.`]);
+    rows.push(["Drop it", `Filed as dropped. Nothing is created and nothing changes.`]);
+  } else if (it.state === "waiting_session") {
+    rows.push(["Nothing is running", `This waits for a build session to pick it up — no agent is doing it unattended.`]);
+    rows.push(["Drop it", `Filed as dropped. Nothing is created and nothing changes.`]);
+  } else {
+    return "";
+  }
+  return `<div class="w-conseq">
+    <div class="w-conseq-h">Before you decide — what each answer does</div>
+    ${rows.map(([k, v]) => `<div class="w-conseq-row"><b>${esc(k)}</b><span>${v}</span></div>`).join("")}
+    ${extra}
+  </div>`;
+}
+
+function spawnedNote(it, org) {
+  if (!it.spawned || !it.spawned.length) return "";
+  const s = it.spawned[0];
+  return `<p class="w-spawned">Your yes started: <b>${esc(s.title)}</b></p>`;
 }
 
 function workCard(it, org, pol) {
@@ -70,7 +139,8 @@ function workCard(it, org, pol) {
       <span class="small muted">from your chat with ${esc(ownerOf(org, it.thread).name.split(" ")[0])} · ${esc(it.created)}</span>
       <a class="plain small" href="#/chat/${esc(it.thread)}">open that thread →</a>
     </div>
-    ${acts ? `<div class="w-acts">${acts}</div>` : ""}
+    ${spawnedNote(it, org)}
+    ${acts ? consequence(it, org) + `<div class="w-acts">${acts}</div>` : ""}
   </div>`).firstElementChild;
 }
 

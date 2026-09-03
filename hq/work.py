@@ -250,6 +250,62 @@ def _parse_items(raw):
     return out
 
 
+# The CEO's rule, 2026-09-03: an approval must show its own consequence before
+# he decides — "it would be better if it already knows what it would build if
+# this is accepted and can show me". So a finished result carries the one piece
+# of work its acceptance would start, worked out in the same call that produced
+# the result (no extra tokens) and shown on the card before he presses anything.
+#   key absent  -> nobody has been asked yet; the worker backfills it
+#   {}          -> asked, and nothing follows: accepting simply closes it
+#   {...}       -> exactly what accepting will file, in full, in advance
+FOLLOW_MARK = "---WHAT FOLLOWS---"
+
+
+def _parse_follow_up(tail, org, fallback_owner):
+    txt = (tail or "").strip()
+    if not txt or txt.upper().startswith("NONE"):
+        return {}
+    if txt.startswith("```"):
+        txt = re.sub(r"^```[a-z]*\n?|```$", "", txt).strip()
+    start, end = txt.find("{"), txt.rfind("}")
+    if start < 0 or end <= start:
+        return {}
+    try:
+        doc = json.loads(txt[start:end + 1])
+    except Exception:
+        return {}
+    title = str(doc.get("title") or "").strip()
+    if not title:
+        return {}
+    try:
+        tier = int(doc.get("tier", 2))
+    except Exception:
+        tier = 2
+    level = str(doc.get("level") or "task").lower()
+    owner = str(doc.get("owner") or "").strip()
+    if not any(e["id"] == owner for e in org["employees"]):
+        owner = fallback_owner
+    return {
+        "title": title[:160],
+        "owner": owner,
+        "level": level if level in LEVELS else "task",
+        "tier": tier if tier in (0, 1, 2) else 2,
+        "first_action": str(doc.get("first_action") or "")[:600],
+        "why": str(doc.get("why") or "")[:300],
+    }
+
+
+def _split_result(text, org, fallback_owner):
+    """(the deliverable he reads, what accepting it would start or None if the
+    reply never said). The block is stripped from the result — it is machinery
+    for the card, not part of the work."""
+    raw = text or ""
+    if FOLLOW_MARK not in raw:
+        return raw.strip(), None
+    body, _, tail = raw.partition(FOLLOW_MARK)
+    return body.strip(), _parse_follow_up(tail, org, fallback_owner)
+
+
 def _file_item(fields, cap, org):
     owner = fields["owner"]
     if not any(e["id"] == owner for e in org["employees"]):
@@ -284,6 +340,9 @@ def _file_item(fields, cap, org):
 def _do_prompt(item, org):
     emp = next((e for e in org["employees"] if e["id"] == item["owner"]), None)
     name = emp["name"] if emp else "you"
+    pol = policy()
+    roster = _roster_line(org)
+    t0, t1, t2 = (pol["tiers"][k]["means"] for k in ("0", "1", "2"))
     return f"""Daniel asked for this, and the studio norm is that you do reversible
 work now and show him the result — you do not ask permission to start.
 
@@ -299,7 +358,32 @@ as short as the work allows.
 
 If the step genuinely cannot be finished read-only, say in one line what is
 blocking it and exactly what you would need — that is a useful result too, and
-{name} saying so beats a plausible guess."""
+{name} saying so beats a plausible guess.
+
+Then say what your result implies, because Daniel decides whether to accept it
+and he is entitled to know what his yes starts before he gives it. End your
+reply with this line exactly:
+
+{FOLLOW_MARK}
+
+and on the next line either the single word NONE — if accepting this finishes
+the matter and nothing more should happen — or one line of raw JSON, no fence
+and no prose, naming the one piece of work his acceptance should start:
+
+{{"title": "short, plain, no ticket IDs", "owner": "<roster id>", "level": "task|story|epic|project|goal", "tier": 0|1|2, "first_action": "the single next concrete step, specific enough to just do", "why": "one sentence: why accepting this makes that the right next move"}}
+
+Tier it by how bad it is to get wrong with nobody reviewing it first:
+0 — {t0}
+1 — {t1}
+2 — {t2}
+Unknown blast radius is a 2, never a 0.
+
+Pick the owner by id from this roster — the person whose job it actually is:
+{roster}
+
+NONE is the honest answer more often than not. One follow-up at most, and only
+work that genuinely follows from this result: inventing work to look busy costs
+him the attention this whole system exists to protect."""
 
 
 def _run_cli(prompt, sys_prompt, tools, turns, timeout):
@@ -355,9 +439,52 @@ def _process_item(item, org):
         item["started"] = ""
         save_item(item)
         return False
-    item["result"] = text or "(no result came back)"
+    body, follow_up = _split_result(text, org, item["owner"])
+    item["result"] = body or "(no result came back)"
+    if follow_up is not None:
+        item["follow_up"] = follow_up
     item["state"] = "for_review"
     item["finished"] = _now_iso()
+    save_item(item)
+    return True
+
+
+def _propose_follow_up(item, org):
+    """Backfill for results that landed before the card showed consequences.
+    New work answers this inside the call that does it and never reaches here."""
+    pol = policy()
+    t0, t1, t2 = (pol["tiers"][k]["means"] for k in ("0", "1", "2"))
+    prompt = f"""A piece of work in Tiny Farm HQ is finished and waiting for the
+CEO's verdict. He is about to accept or reject it, and he is entitled to know
+what his yes starts before he gives it.
+
+THE WORK: {item['title']}
+WHAT HE ASKED FOR: {item.get('ask', '')}
+THE RESULT HE IS LOOKING AT:
+{(item.get('result') or '')[:6000]}
+
+Name the one piece of work his acceptance should start. Reply with the single
+word NONE if accepting this finishes the matter, or with one line of raw JSON,
+no fence and no prose:
+
+{{"title": "short, plain, no ticket IDs", "owner": "<roster id>", "level": "task|story|epic|project|goal", "tier": 0|1|2, "first_action": "the single next concrete step, specific enough to just do", "why": "one sentence: why accepting this makes that the right next move"}}
+
+Tier it by how bad it is to get wrong with nobody reviewing it first:
+0 — {t0}
+1 — {t1}
+2 — {t2}
+Unknown blast radius is a 2, never a 0.
+
+Pick the owner by id from this roster:
+{_roster_line(org)}
+
+NONE is the honest answer more often than not. Inventing work to look busy
+costs him the attention this system exists to protect."""
+    text, limited = _run_cli(prompt, "You answer with NONE or one line of JSON.",
+                             "", 1, 180)
+    if limited:
+        return False
+    item["follow_up"] = _parse_follow_up(text, org, item["owner"])
     save_item(item)
     return True
 
@@ -388,6 +515,12 @@ def worker():
             todo.sort(key=lambda i: i.get("created_ts", 0))
             if todo:
                 _process_item(todo[0], org)
+                continue
+            # No card should sit in front of him with its consequence unknown.
+            blind = [i for i in items()
+                     if i.get("state") == "for_review" and "follow_up" not in i]
+            if blind:
+                _propose_follow_up(blind[0], org)
         except Exception:
             continue      # the company outlives any one bad item
 
@@ -448,6 +581,27 @@ def api_post(path, payload):
     if path == "/api/work/accept":
         item["state"] = "accepted"
         item["closed"] = _now_iso()
+        # His yes starts exactly the work the card showed him and nothing else.
+        # The follow-up enters at its own tier, so a risky one still comes back
+        # to him rather than riding in on the acceptance of something safe.
+        fu = item.get("follow_up") or {}
+        if fu.get("title"):
+            org = HOST.load_org()
+            cap = {"to": item.get("thread") or item["owner"], "id": "follow",
+                   "message": f"Accepted “{item['title']}”. {fu.get('why', '')}".strip()}
+            child = _file_item({
+                "title": fu["title"],
+                "level": fu.get("level", "task"),
+                "owner": fu.get("owner") or item["owner"],
+                "tier": fu.get("tier", 2),
+                "tier_reason": fu.get("why", "follows from an accepted result"),
+                "ask": cap["message"][:600],
+                "first_action": fu.get("first_action", ""),
+            }, cap, org)
+            child["parent"] = item["id"]
+            save_item(child)
+            item["spawned"] = [{"id": child["id"], "title": child["title"],
+                                "state": child["state"]}]
     elif path == "/api/work/drop":
         item["state"] = "dropped"
         item["closed"] = _now_iso()

@@ -24,6 +24,26 @@
 .w-next { margin: 6px 0; font-size: 13.5px; }
 .w-foot { display: flex; gap: 10px; align-items: baseline; margin-top: 8px; flex-wrap: wrap; }
 .w-foot a { margin-left: auto; }
+/* The consequence block sits directly above the buttons, because that is the
+   moment he needs it: what each answer does, and — when accepting starts work —
+   the exact item it starts, before the click rather than after. */
+.w-conseq { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
+.w-conseq-h { font-size: 10.5px; letter-spacing: 1.4px; text-transform: uppercase;
+  color: var(--muted); font-weight: 700; margin-bottom: 7px; }
+.w-conseq-row { display: flex; gap: 10px; font-size: 13px; margin: 4px 0; align-items: baseline; }
+.w-conseq-row b { flex: 0 0 118px; color: var(--text); font-weight: 600; }
+.w-conseq-row span { color: var(--muted); min-width: 0; }
+
+.w-spawn { margin-top: 10px; border: 1px dashed var(--line); border-radius: 8px;
+  padding: 10px 12px; background: var(--bg2); }
+.w-spawn-h { font-size: 10.5px; letter-spacing: 1.4px; text-transform: uppercase;
+  color: var(--accent); font-weight: 700; margin-bottom: 6px; }
+.w-spawn-t { font-weight: 700; font-size: 14px; }
+.w-spawn-m { display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  margin-top: 6px; font-size: 12px; color: var(--muted); }
+.w-spawn-p { font-size: 13px; margin-top: 6px; }
+.w-spawned { font-size: 13px; color: var(--muted); margin-top: 10px; }
+
 .w-acts { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
 .w-acts button { font-size: 12.5px; padding: 5px 12px; }
 

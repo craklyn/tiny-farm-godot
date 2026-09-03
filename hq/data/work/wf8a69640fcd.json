@@ -1,0 +1,28 @@
+{
+  "id": "wf8a69640fcd",
+  "title": "Read Daniel's hand edit to Chicken",
+  "level": "task",
+  "owner": "ingrid",
+  "tier": 0,
+  "tier_reason": "reading his edit and writing down what it implies — nothing to walk back",
+  "ask": "Daniel hand-edited Chicken in the sprite editor and said he was fixing: \"Removed white pixels that should be transparent to see background.\". The measurement: Chicken: 11 pixels across 4 frames. The silhouette moved, not just the interior shading. Look at it against the style guide draft and the rest of the sheet, and say in a few lines what his edit is telling you about the direction — whether it agrees with the guide, quietly contradicts it, or repeats something he has done before. If it is just tidying and there is nothing to learn, say exactly that in one line; a short honest answer beats manufactured significance. Do not propose amendments to the guide yet; he wants a look session before it is signed. This is evidence-gathering for that session.",
+  "first_action": "Open assets/sprites/generated/animals.png and the ledger entry (step 1) in HQ, compare it with the style guide in docs/design/09-art-direction.md, and write down what the edit says about his taste.",
+  "state": "for_review",
+  "thread": "ingrid",
+  "source": "chat",
+  "source_message": "Daniel hand-edited Chicken in the sprite editor and said he was fixing: \"Removed white pixels that should be transparent to see background.\". The measurement: Chicken: 11 pixels across 4 frames. The silhouette moved, not just the interior shading. Look at it against the style guide draft and the rest of the sheet, and say in a few lines what his edit is telling you about the direction — whether it agrees with the guide, quietly contradicts it, or repeats something he has done before. If it is just tidying and there is nothing to learn, say exactly that in one line; a short honest answer beats manufactured significance. Do not propose amendments to the guide yet; he wants a look session before it is signed. This is evidence-gathering for that session.",
+  "result": "Read the ledger entry, the before/after, and the guide.\n\n**Short version: it's tidying — but it's the same tidying twice, and that's the part worth carrying into the look session.**\n\nWhat the numbers actually say. Eleven pixels, all erased, nothing added, nothing recolored. Every one of them sits in the bottom-center of the cell — y 14–15 of a 16px frame, under the hen's feet, shifting with the leg position through the walk. The Farmer edit forty seconds earlier is the identical shape: seventeen pixels, all erased, all at the base of the body. He isn't restating a silhouette. He's removing something opaque from the ground under a character, twice, and both times he wrote the same reason: *I want to see the background through it.*\n\nIgnore the \"silhouette moved\" flag. The tool raises that whenever alpha changes, so any erase trips it. There's no evidence here of him redrawing a shape.\n\nDoes it contradict the guide? No — pure white isn't in any ramp, and the guide already says shadows are hue-shifted, never grey or black. He enforced a rule the guide implies but never writes down: **a sprite may not put opaque pixels on the ground beneath itself.** That's a real gap. The guide talks about ramps, outlines and saturation-pop; it says nothing about the ground-contact zone, which is exactly where a generated sprite's leftover backdrop always lands. One line for the look session, not an amendment now.\n\nThe thing that needs doing regardless of taste: **HQ's sprite editor only showed him a quarter of each sheet.** Chicken exposes cells 0–3, the right-facing walk — but that sheet carries its own left frames at 4–7 rather than mirroring, and he never saw them. Farmer exposes the facing-down row, 4 of 16. So both fixes are almost certainly half-applied: the hen stops occluding the background walking right and keeps doing it walking left. I couldn't confirm at the pixel level from here — I don't have the sandbox permission to inspect the sheet directly — but the layout notes make it near-certain.\n\nNext steps: Yuki sweeps both full sheets for opaque near-white in the ground-contact zone, and Ravi checks whether the generation pipeline's alpha step is what leaves it — this should be fixed once at the pipeline, not hand-erased frame by frame. I'll bring the ground-contact rule to your look session as a candidate line rather than editing the unsigned guide.\n\n<remember>Daniel's hand edits to sprites (Chicken, Farmer, 2026-09-03) are erase-only — no colors added or recolored — and both removed opaque near-white from the ground-contact zone under the character with the same stated reason: the background must show through beneath a sprite. Two data points toward a style-guide rule the draft doesn't have. Also: HQ's sprite editor exposes only one row/direction per entity (Chicken cells 0–3 of 0–7; Farmer the facing-down row of 16), so his fixes are structurally half-applied.</remember>",
+  "started": "2026-09-03T00:20",
+  "attempts": 1,
+  "created": "2026-09-03T00:20",
+  "created_ts": 1788420006.9918768,
+  "finished": "2026-09-03T00:22",
+  "follow_up": {
+    "title": "Sweep both full sprite sheets for opaque near-white under the characters' feet",
+    "owner": "yuki",
+    "level": "task",
+    "tier": 1,
+    "first_action": "Open assets/sprites/generated/animals.png and characters.png, check every frame (all 8 chicken cells, all 16 farmer cells) for near-white opaque pixels in the bottom two rows, and erase them to match Daniel's hand edits",
+    "why": "His edit only reached the frames HQ's editor showed him, so accepting it leaves the same defect in the directions he never saw."
+  }
+}

@@ -50,6 +50,37 @@ Team members are told this in their instructions, so they answer briefly and nam
 step and its owner rather than pretending to carry work out inside a chat reply. That is
 what makes a persona's "I'll get that started" true rather than a pleasantry.
 
+## What his answer does, shown before he answers
+
+Settled by the CEO on 2026-09-03, looking at a finished card he could not read the
+consequences of:
+
+> "I don't know what happens if I accept this. Will it publish certain follow-up tasks,
+> stories, epics, projects, or goals? Will it create a work product? It would be better if
+> it already knows what it would build if this is accepted and can show me."
+
+An approval is only meaningful if the person giving it can see what it sets in motion. So
+every card on the Work page states, above its buttons, what each answer does — and a
+finished result that implies more work shows that work **in full and in advance**: title,
+owner, level, tier, and the single first step.
+
+| The card | Accepting it | Refusing it |
+|---|---|---|
+| **Ask first** (tier 2, not yet done) | Makes it allowed, nothing more. It joins the build-session queue and a session carries it out and shows the diff. | Filed as dropped. Nothing is created. |
+| **Finished result, nothing follows** | Files it as approved and closes it. No task, story, epic, project or goal is created. | Filed as dropped. Nothing is created. |
+| **Finished result with a follow-up** | Files it as approved and files **exactly the one item shown on the card**, at that item's own tier. | Filed as dropped. The follow-up is not created. |
+| **Have another go** | — | Throws the result away; the same owner does the same work again. |
+
+The follow-up is worked out by the owner in the *same* model call that produced the
+result — the reply ends with a `---WHAT FOLLOWS---` block that names one next item or the
+word `NONE` — so knowing the consequence costs no extra tokens, and `NONE` is expected to
+be the common answer. Results that landed before this existed are backfilled by the worker,
+and a card whose consequence is not yet known says so rather than staying silent.
+
+A follow-up enters at **its own** tier, never the parent's. A risky follow-up from a safe
+result still comes back to him as its own "ask first" card; it does not ride in on the
+acceptance of something harmless. Once he accepts, the card records what his yes started.
+
 ## What is not automated yet
 
 - **Tier 1 execution.** The repo edits are queued for a build session rather than performed
