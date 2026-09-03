@@ -2032,9 +2032,12 @@ def eval_measure(spec, depth=0):
                 base = os.path.basename(full)
                 if base not in refs:
                     names.append(base)
+            total = sum(1 for _r, _f in _iter_files(
+                spec.get("count_dirs") or [spec["dir"]], set(spec.get("exts") or []) or None))
             return _reading(len(names), spec.get("unit", "files"),
                             f"files in {spec['dir']} named nowhere in {', '.join(spec.get('referenced_in') or [])}",
                             "", "cheap", extra={"orphans": sorted(names),
+                                                "total_shipped": total,
                                                 "unit_plural": spec.get("unit_plural")})
 
         if kind == "ci_state":

@@ -135,7 +135,7 @@ Art's palette ribbon is the single licensed exception to *colour = semantics*,
 and it says so on the page. The PNG decoding is stdlib `zlib` + `struct`, cached
 on the sheets' mtimes.
 
-## The six rules a pillar page has to meet
+## The seven rules a pillar page has to meet
 
 Learned the hard way, mostly from the CEO reading the Sales page as its actual
 audience rather than as its author. Any new pillar, band or instrument is held
@@ -193,7 +193,18 @@ something that should simply have been done. *Corollary: no HQ-internal
 vocabulary on a surface he reads. "A shipped asset has no ledger line" means
 nothing to anybody who does not work on this codebase.*
 
-**6. Every element is readable without instruction, and is a way in.** A chart
+**6. Report the fact; never the insight, and never the design.** A metric card
+is titled for **what it counts**, and carries a denominator and a target:
+"Assets missing rights clearance · 1 of 30 shipped · target 0". Not "What we
+owe — counts down", footed with "the one tile in HQ where a rising number is bad
+news". That is the author explaining his own encoding, and if the direction
+needs explaining the target was missing. The same tic in prose: "one build is
+public and the page names no contact of any kind, so the first thing a player
+would tell us is the one thing we cannot hear" is a worse sentence than
+"players have no way to send feedback". Design rationale belongs in the code
+comments, where whoever maintains this needs it. It is never rendered.
+
+**7. Every element is readable without instruction, and is a way in.** A chart
 that needs a sentence underneath explaining how to read it has failed as a
 chart; the labels go on the chart. A coloured block that only whispers a native
 tooltip conveys nothing and leads nowhere; hovering shows what the thing is and

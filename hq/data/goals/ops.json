@@ -58,13 +58,21 @@
         "kind": "orphan_files",
         "dir": "assets/audio/sfx",
         "exts": [
-          ".wav"
+          ".wav",
+          ".ogg",
+          ".mp3",
+          ".png"
         ],
         "referenced_in": [
           "CREDITS.md"
         ],
         "unit": "shipped file with no record of where it came from",
-        "unit_plural": "shipped files with no record of where they came from"
+        "unit_plural": "shipped files with no record of where they came from",
+        "count_dirs": [
+          "assets/audio/sfx",
+          "assets/audio/music",
+          "assets/sprites"
+        ]
       },
       "compare": {
         "direction": "lower_is_better",

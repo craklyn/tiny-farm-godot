@@ -410,9 +410,7 @@ function cantMeasure(team, g) {
     </div>`).join("");
   const watchRows = team.map(e => `<div class="cm-watch"><b>${e.emoji} ${esc(e.name.split(" ")[0])}</b> watches
       ${esc((e.watches || []).join("; ") || "nothing declared")}<span class="small muted"> — declared in the org chart, not wired to anything here</span></div>`).join("");
-  return `<p class="small muted">The honest half of this page. Everything below either has no checker or
-    depends on somebody remembering to look — it is listed so a green pillar can never quietly
-    include a promise.</p>
+  return `<p class="small muted">Everything below has no automated check, or depends on somebody remembering to look.</p>
     ${rows || "<p class='small muted'>Every goal on this pillar is measured.</p>"}
     <div class="cm-watches">${watchRows}</div>`;
 }
@@ -470,7 +468,7 @@ async function instEngineering(root, below, sig, g) {
   root.replaceChildren(h(`
     <h2>The evidence</h2>
     <div class="card evcard">${strip.join("")}</div>
-    <h2>The rules replays depend on <span class="small muted">— break one and phase 4's training data is silently wrong</span></h2>
+    <h2>Rules that keep replays reproducible <span class="small muted">— a break here corrupts phase 4's training data</span></h2>
     <div class="card invcard">${invRows || "<span class='muted'>no invariants declared</span>"}</div>
     <div id="ci-strip"></div>`));
 
@@ -594,7 +592,7 @@ async function instProduct(root, below, sig, g) {
         <a class="plain" href="${docAnchor("docs/ROADMAP.md", "gate-run-recorded")}">the roadmap's own table</a>.</div>` : ""}
       <div class="decay">${decay}${cond.state !== "green" ? ` — and only <b>${esc(String((cond.reading || {}).numerator ?? 0))} of ${esc(String((cond.reading || {}).denominator ?? "?"))}</b> recorded sessions say who played them, so no bar here can be trusted on its own` : ""}</div>
     </div>
-    <h2>The release trains <span class="small muted">— gates, not dates, and the absence of dates is a choice</span></h2>
+    <h2>Release trains <span class="small muted">— tracked by gates; no dates are set</span></h2>
     <div class="card trains">${trains}</div>`));
 
   // Below: the one chart Product has real history for.
@@ -624,10 +622,9 @@ function sparkline(sessions, g) {
       <text x="${W - PAD}" y="${y(BAR) - 5}" class="sp-lbl" text-anchor="end">the gate's bar, 12%</text>
       <polyline points="${pts}" class="sp-line"/>${dots}${labels}
     </svg>
-    <p class="small muted">Two things this chart cannot show, so they are written on it instead:
-      every one of these sessions was played by you or your wife, and the newest is
+    <p class="small muted">All sessions played by you or your wife. Newest is
       ${sessions[sessions.length - 1] ? esc(String(daysAgo(sessions[sessions.length - 1].name))) : "?"} days old.
-      A fresh player's first session is a different measurement from any point on this line.</p>`;
+      A first-time player would score differently.</p>`;
 }
 
 function daysAgo(name) {
@@ -664,8 +661,7 @@ async function instArt(root, below, sig, g) {
         <div class="small muted">The guide's own note says its ramps were measured from a sprite pack
         that is no longer in this repo. So this is not necessarily drift in the art — it may be a guide
         describing a game we no longer have. Which of the two it is, is the look session's first question.</div></div>` : ""}
-      <div class="small muted pal-admit">This is the one instrument in HQ where colour is the subject
-        rather than the meaning. Everywhere else, hue is reserved for status.</div>
+      <div class="small muted pal-admit">Colours here are the data, not a status code.</div>
     </div>`;
   }
   root.replaceChildren(h(`<h2>The palette, as shipped</h2>${ribbon}`));
@@ -674,8 +670,7 @@ async function instArt(root, below, sig, g) {
   const audio = await api("/api/audio").catch(() => ({ sfx: [], music: [] }));
   const orphans = new Set(((byId["every-sound-is-loaded"] || {}).reading || {}).orphans || []);
   const unledgered = new Set(((byId["every-asset-is-ledgered"] || {}).reading || {}).orphans || []);
-  const board = `<p class="small muted">Every sound in the repo, played from the real file. A sound the
-      build never loads is marked: from the outside, a forgotten cut and a wiring bug look identical.</p>
+  const board = `<p class="small muted">Every sound in the repo. Marked ones are not loaded by the build.</p>
     <div class="soundwrap">${(audio.sfx || []).map(f => {
       const flags = [orphans.has(f) ? "the build never loads it" : "", unledgered.has(f) ? "no ledger line" : ""].filter(Boolean);
       return `<button class="soundbtn${flags.length ? " snd-flag" : ""}" data-snd="/assets/audio/sfx/${f}"
@@ -687,11 +682,9 @@ async function instArt(root, below, sig, g) {
     foldSection("Every sound in the build", `${(audio.sfx || []).length} effects, ${(audio.music || []).length} music${orphans.size ? ` · ${orphans.size} the build never loads` : ""}`, board)
     + foldSection("The sheets on the wall", `${(pal && pal.sheet_names || []).length} sheets — browse and edit them in the gallery`,
       `<p class="small">${(pal && pal.sheet_names || []).map(n => `<code class="ref">${esc(n)}</code>`).join(" ")}</p>
-       <p class="small muted">Editing is deliberately not offered from this page yet. HQ's sprite editor
-       opens the entity catalogue's preview frames rather than the sheet — the chicken lists four of its
-       eight cells, the farmer four of sixteen — so a hand edit silently touches part of a sheet without
-       saying so. Until that is fixed this wall is read-only, and the
-       <a class="plain" href="#/entities">gallery</a> is where edits happen, knowing that.</p>`)));
+       <p class="small muted">Editing is in the <a class="plain" href="#/entities">gallery</a>, not here.
+       Note that the editor currently opens only a sheet's preview frames — four of the chicken's eight
+       cells, four of the farmer's sixteen — so an edit made there covers part of a sheet.</p>`)));
 
   below.querySelectorAll("[data-snd]").forEach(b => {
     let cur = null;
@@ -723,9 +716,8 @@ async function instMarketing(root, below, sig, g) {
                : `Nothing in the build asks a player to read.`}
       </div>
       ${labels.length ? `<div class="pr-where small muted">Found in: ${labels.map(w => `<code class="ref">${esc(w)}</code>`).join(" ")}</div>` : ""}
-      <div class="small muted pr-note">Checked by reading the menu options the build constructs. One
-        promise on that page has a checker; the rest — cozy, small, for someone who cannot read yet —
-        are claims no machine can test, and they are not counted as passing.</div>
+      <div class="small muted pr-note">Only claims with an automated check are counted; the rest are
+        not treated as passing.</div>
     </div>
 
     <div class="mk-grid">
@@ -799,15 +791,13 @@ async function instSales(root, below, sig, g, ctx) {
   root.replaceChildren(h(`
     <h2>The launch check <span class="small muted">— ${machine.length} of ${gates.length} checked by machine</span></h2>
     <div class="card gatecard">${gateRows}
-      <p class="small muted" style="margin-top:8px">A hollow mark means nobody has looked, drawn at
-        the same weight as a pass — a gate nobody checks is more dangerous than one that fails.</p>
+      <p class="small muted" style="margin-top:8px">A hollow mark means nobody has checked it.</p>
     </div>
 
     <div class="card norelease">
-      <div class="small muted">Publishing, for reference — it is not a button here and will not become one:</div>
+      <div class="small muted">To publish, from a terminal:</div>
       <pre class="inert">git tag -a v0.2.0 -m "…"  &amp;&amp;  git push origin v0.2.0</pre>
-      <div class="small muted">A pushed tag, from a terminal, by you. Never a push to main, and never
-        a control on a dashboard.</div>
+      <div class="small muted">Releases are cut by pushing a tag. There is no publish button here.</div>
     </div>`));
 
   // The ladder: where we can sell it, and what the next storefront would cost.
@@ -842,10 +832,7 @@ async function instSales(root, below, sig, g, ctx) {
   below.replaceChildren(h(
     foldSection("Where we can sell it",
       `${live} storefront${live === 1 ? "" : "s"} live${unruled ? ` · ${unruled} priced but unruled` : ""}`,
-      `<p class="small muted">What each storefront we are not on yet would actually cost. A hollow mark
-        is something no file here can establish — a store account and an age rating are facts about the
-        world. "Nobody has ruled on this one" is not a plan, it is the absence of one, and pricing it
-        is what this table is for.</p>${ladderHtml}`)
+      `<p class="small muted">What each storefront requires. A hollow mark is something no file in this repo can establish — a store account or an age rating has to be confirmed by hand.</p>${ladderHtml}`)
     + foldSection("Everything ever published", `${(sig.tags || []).length} tag${(sig.tags || []).length === 1 ? "" : "s"}`,
     (sig.tags || []).length
       ? (sig.tags || []).map(t => `<div class="commitrow"><code class="ref">${esc(t)}</code></div>`).join("")
@@ -950,7 +937,7 @@ function manifestStrip(rel, days, tag) {
       ${rel.in_progress ? `<span><i class="ms-dot ms-wip"></i>${rel.in_progress} still being built</span>` : ""}
       ${rel.not_built ? `<span><i class="ms-dot ms-none"></i>${rel.not_built} promised, not started</span>` : ""}
       ${rel.shipped ? `<span><i class="ms-dot ms-out"></i>${rel.shipped} already out</span>` : ""}
-      <span class="ms-hint">hover any block for what it is; click to open it below</span>
+      <span class="ms-hint">hover for detail · click to open</span>
     </div>
     <details class="ms-fold"><summary>Details</summary>
       <div class="ms-rows">${rows}</div></details>
@@ -995,54 +982,60 @@ async function instOps(root, below, sig, g) {
   const orphans = (ledger.reading || {}).orphans || [];
   const credR = creds.reading || {};
 
-  // Three tiles, one per job this pillar actually holds: Harold's money,
-  // the obligations we owe other people, and the players Fatima and Oskar
-  // would have to look after. The ship gate used to be the headline here and
-  // has gone back to Sales — a pillar that leads with another pillar's job is
-  // not reporting its own.
+  // Three KPI cards. Each names what it counts, gives the number against a
+  // denominator and a target, and stops. The versions before this were titled
+  // for their theme ("What we owe — counts down") and footed with commentary
+  // about how to read them ("the one tile in HQ where a rising number is bad
+  // news"), which is the author explaining his own encoding instead of
+  // reporting a figure — and it made a card nobody could parse at a glance.
+  const assets = (ledger.reading || {}).total_shipped;
+  const chanLive = [contact.state === "green", words.state === "green"].filter(Boolean).length;
+
   root.replaceChildren(h(`
     <div class="opsgrid">
       <div class="card tile">
-        <div class="tile-h">Money</div>
-        <div class="tile-frame">
-          <div class="abs-title">What this studio costs to run</div>
-          <div class="abs-body">not recorded</div>
+        <div class="tile-h">Spend recorded</div>
+        <div class="tile-big ${spend.state === "green" ? "ok" : "bad"}">0%</div>
+        <div class="kpi-sub">of what this studio has spent · target 100%</div>
+        <div class="kpi-rows">
+          <div class="kpi-row"><i class="dot ${spend.state === "green" ? "d-ok" : "d-fire"}"></i>
+            <span>Art spend: prose in
+              <a class="plain" href="${docAnchor("CREDITS.md", "art")}">CREDITS.md</a>,
+              last balance $1.858, two later runs unrecorded.</span></div>
+          <div class="kpi-row"><i class="dot ${budget.state === "green" ? "d-ok" : "d-fire"}"></i>
+            <span>Model budget: overwritten on each event, no history kept.
+              This is the larger of the two.</span></div>
         </div>
-        <div class="small tile-line"><i class="dot ${spend.state === "green" ? "d-ok" : "d-fire"}"></i>
-          <span>Art spend is prose in a ledger — the last balance written down was
-          <a class="plain" href="${docAnchor("CREDITS.md", "art")}">$1.858</a>, before two runs that
-          recorded none.</span></div>
-        <div class="small tile-line"><i class="dot ${budget.state === "green" ? "d-ok" : "d-fire"}"></i>
-          <span>The model budget is the bigger number by far, and it is overwritten on every
-          event rather than kept.</span></div>
-        <div class="small muted tile-foot">Both are the same defect: the money is spent, and
-          nothing writes down that it was. Until they are fixed this tile stays a frame — drawing
-          a balance nothing records is the fabrication this dashboard exists to prevent.</div>
+        <div class="kpi-foot">No total can be calculated from what is recorded.</div>
       </div>
 
       <div class="card tile">
-        <div class="tile-h">What we owe <span class="small muted">— counts down</span></div>
+        <div class="tile-h">Assets missing rights clearance</div>
         <div class="tile-big ${orphans.length ? "bad" : "ok"}">${orphans.length}</div>
-        <div class="small">shipped file${orphans.length === 1 ? "" : "s"} with nothing saying whose
-          ${orphans.length ? `it is — ${orphans.map(o =>
-            `<a class="plain" href="${docAnchor("CREDITS.md", "audio")}"><code class="ref">${esc(o)}</code></a>`).join(", ")}` : "they are"}</div>
-        <div class="small tile-line"><i class="dot ${lic.state === "attested" ? "d-attested" : "d-unchecked"}"></i>
-          <span>${esc(lic.measured_human || "")}</span></div>
-        <div class="small muted tile-foot">The one tile in HQ where a rising number is bad news:
-          this counts what we owe other people, and zero is the finished state.</div>
+        <div class="kpi-sub">of ${assets != null ? assets : "?"} shipped assets · target 0</div>
+        <div class="kpi-rows">
+          ${orphans.length ? orphans.map(o => `<div class="kpi-row"><i class="dot d-fire"></i>
+            <span><a class="plain" href="${docAnchor("CREDITS.md", "audio")}"><code class="ref">${esc(o)}</code></a>
+              — no record of its source or terms.</span></div>`).join("")
+            : `<div class="kpi-row"><i class="dot d-ok"></i><span>Every shipped asset has a recorded source.</span></div>`}
+          <div class="kpi-row"><i class="dot ${lic.state === "attested" ? "d-attested" : "d-unchecked"}"></i>
+            <span>${esc(lic.measured_human || "")}</span></div>
+        </div>
+        <div class="kpi-foot">Blocks a public release until it reaches zero.</div>
       </div>
 
       <div class="card tile">
-        <div class="tile-h">The people on the other end</div>
-        <div class="tile-line small"><i class="dot ${contact.state === "green" ? "d-ok" : "d-fire"}"></i>
-          <span><b>Nowhere to write to.</b> One build is public and the page names no contact of
-          any kind, so the first thing a player would tell us is the one thing we cannot hear.</span></div>
-        <div class="tile-line small"><i class="dot ${words.state === "green" ? "d-ok" : "d-attn"}"></i>
-          <span><b>No translation plumbing.</b> The game starts almost wordless and gains text as it
-          gets technical, by design — so every string written before the plumbing exists is one
-          somebody has to go back and find.</span></div>
-        <div class="small muted tile-foot">Support and localization both live here, and neither has
-          anything to work with yet. That is the honest state, not an empty tile.</div>
+        <div class="tile-h">Player support in place</div>
+        <div class="tile-big ${chanLive === 2 ? "ok" : "bad"}">${chanLive}</div>
+        <div class="kpi-sub">of 2 · target 2</div>
+        <div class="kpi-rows">
+          <div class="kpi-row"><i class="dot ${contact.state === "green" ? "d-ok" : "d-fire"}"></i>
+            <span><b>Feedback:</b> players have no way to send any. The public page lists no contact.</span></div>
+          <div class="kpi-row"><i class="dot ${words.state === "green" ? "d-ok" : "d-attn"}"></i>
+            <span><b>Translation:</b> not set up. The game gains text as it grows, and each string
+              written before this exists has to be redone.</span></div>
+        </div>
+        <div class="kpi-foot">Owned by Support and Localization.</div>
       </div>
     </div>
 
@@ -1061,9 +1054,7 @@ async function instOps(root, below, sig, g) {
     foldSection("The provenance ledger, in full", "every asset's rights and cost",
       `<div class="mddoc" id="credits-doc"><span class="muted">loading…</span></div>`)
     + foldSection("The gate that stops a release", "Sales owns it — shown here because it is what stands between us and shipping",
-      `<p class="small muted">This pillar used to lead with the ship gate. It belongs to
-        <a class="plain" href="#/pillar/sales">Sales &amp; Platforms</a>, which owns the release, and
-        duplicating it here made the same red appear twice in your queue under two owners.</p>
+      `<p class="small muted">Owned by <a class="plain" href="#/pillar/sales">Sales &amp; Platforms</a>.</p>
        <p><a class="gbtn" href="#/pillar/sales">Open Sales &amp; Platforms</a></p>`)));
   try {
     const doc = await api("/api/rootdoc/CREDITS.md");
