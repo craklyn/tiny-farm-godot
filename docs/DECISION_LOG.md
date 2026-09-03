@@ -637,6 +637,36 @@ than a menu dump.
 player can hold in their head — or earlier if playtesters are seen going looking for
 species information the game doesn't offer.
 
+### D-12. A technical writer seat on the org chart
+Raised 2026-09-02: a design note had to be assigned and the studio had nobody who owns
+writing. It still doesn't, deliberately.
+
+**Working answer: game design notes belong to the designer who owns the system** — today
+Milo, who already writes the design drafts and the playtest write-ups. This is not a
+staffing gap being tolerated, it is the right shape: a note that separates the writing
+from the thinking gets written wrong, and every doc in `docs/design/` is load-bearing for
+code decisions rather than prose for an audience. A writer would not improve them.
+
+**What a technical writer would actually own** is the *player-facing* surface, and the
+reason to hire one is **consistency across surfaces owned by different people** — not
+volume. Today the store page belongs to Lena and Oskar, patch notes to Amara, the press
+kit to Priscilla, in-game help to Sam. Nobody owns the sentence that has to be true in
+all four.
+
+**Trigger — hire when any one of these is true:**
+1. The same player-facing fact must hold in three or more surfaces at once (store page,
+   in-game help, patch notes, press kit) and they have drifted at least once.
+2. Localization is about to freeze. Oskar ships store pages in ten languages, and
+   translation multiplies every inconsistency and every unnecessary sentence by ten;
+   source text is cheapest to fix before it is translated, not after.
+3. A live-ops cadence starts (Marcus's calendar), because recurring patch notes are the
+   one writing job that never stops and cannot be absorbed by whoever shipped the change.
+
+**Why it is later than it would be at most studios:** S-7 means the game itself is
+close to wordless — pictures and behavior, no required reading — so the product carries
+far less text than a comparable title. The writing load lives almost entirely outside the
+game, which is why the trigger watches the storefront and not the build.
+
 ---
 
 ## Awaiting designer input (the M0 exit gate)
