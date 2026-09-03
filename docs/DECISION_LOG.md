@@ -179,6 +179,18 @@ loss is real and is the reason the child's run is retained rather than retired.
 The repo's existing headless test-runner approach survives every refactor. New systems ship
 with simulation-level tests. (S-5 makes this dramatically easier.)
 
+### S-9. Approval attaches to results, not to tasks
+Settled by the CEO 2026-09-02, while designing how follow-up work flows through HQ. Work is
+filed without anyone's permission; only *acting* on it is gated, and the gate is how hard
+the action is to walk back if it turns out wrong with nobody reviewing it — not how
+important it is. Reversible work (reading, drafting, analysing, rendering, running the
+suites) happens immediately and he approves the result; repo changes are done and shown as
+a diff; genuinely hard-to-reverse or taste-settling work (shipping, spending, deleting,
+anything players see, any change of design direction) waits for his yes. Unclear tier means
+the cautious tier. The reasoning: a studio where every follow-up needs the CEO's yes makes
+him the bottleneck for his own company, and "do it, then show the result" is both faster and
+safely walked back. Full statement and the tier table: `HOW_WORK_ORIGINATES.md`.
+
 ---
 
 ## Tier 2 — Provisional (working answer + adjustment conditions)

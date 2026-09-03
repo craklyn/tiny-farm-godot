@@ -1,0 +1,48 @@
+/* Work page — the visual order is the norm: what needs you is loud, what the
+   company is doing on its own is quiet but visible. */
+
+.w-sec { margin: 26px 0 8px; }
+.w-sec h2 { font-size: 16px; color: var(--accent); margin: 0 0 2px; display: flex; align-items: center; gap: 8px; }
+.w-sec .sub { margin: 0 0 12px; }
+.w-count { background: var(--panel2); border: 1px solid var(--line); border-radius: 20px;
+  font-size: 11.5px; color: var(--muted); padding: 1px 8px; font-weight: 600; }
+.w-toggle { cursor: pointer; user-select: none; }
+.w-list { display: flex; flex-direction: column; gap: 12px; }
+
+.w-card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+.w-card h3 { margin: 6px 0 4px; font-size: 15.5px; }
+.w-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.w-owner { margin-left: auto; font-size: 12px; color: var(--muted); }
+.w-why { font-size: 11.5px; color: var(--muted); font-style: italic; }
+.w-ask { margin: 4px 0; color: var(--muted); font-style: italic; }
+.w-next { margin: 6px 0; font-size: 13.5px; }
+.w-foot { display: flex; gap: 10px; align-items: baseline; margin-top: 8px; flex-wrap: wrap; }
+.w-foot a { margin-left: auto; }
+.w-acts { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.w-acts button { font-size: 12.5px; padding: 5px 12px; }
+
+/* Anything that has not happened yet gets the accent edge; finished work that
+   wants a verdict gets the blue one. Work in flight stays deliberately plain. */
+.w-needs_approval { border-left: 3px solid var(--accent); }
+.w-for_review { border-left: 3px solid var(--blue); }
+.w-doing { opacity: 0.86; }
+.w-accepted, .w-dropped { opacity: 0.6; }
+
+.w-result { border-top: 1px solid var(--line); margin-top: 10px; padding-top: 8px; font-size: 14px; }
+.w-result-h { font-size: 11px; color: var(--muted); font-weight: 600; margin-bottom: 6px; }
+.w-result p { margin: 8px 0; }
+.w-result > *:first-child { margin-top: 0; }
+.w-result ul, .w-result ol { margin: 8px 0 8px 22px; }
+.w-result code { background: #1b1710; border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; font-size: 13px; }
+.w-result pre { background: #1b1710; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; overflow-x: auto; }
+
+.chip.t-go { background: transparent; border: 1px solid #6f9a55; color: #a9cf88; }
+.chip.t-diff { background: transparent; border: 1px solid var(--accent); color: var(--accent); }
+.chip.t-ask { background: transparent; border: 1px solid #c96a4b; color: #e59274; }
+.chip.w-level { background: var(--panel2); border: 1px solid var(--line); color: var(--muted); }
+
+/* The strip on the chat page: where he learns that talking files work. */
+.chat-work { border: 1px solid var(--line); background: var(--panel); border-radius: 8px;
+  padding: 8px 12px; margin-top: 10px; font-size: 13px; color: var(--muted); }
+.chat-work b { color: var(--accent); }
+.chat-work a { margin-left: 8px; }

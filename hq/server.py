@@ -15,6 +15,7 @@ Zero-dependency stdlib server:
   /api/deploy/pair (POST) -> {address, code} one-time adb pairing with the tablet
   /api/chat/queue       -> parked requests + token-limit state (POST enqueues)
   /api/chat/cancel|retry (POST) -> {id} for one parked request
+  /api/work             -> work items the org filed from chat (POST: new/approve/accept/drop)
   /api/health           -> liveness
 
 Run: python3 hq/server.py   (or via the tiny-farm-hq systemd user service)
@@ -23,9 +24,12 @@ import json
 import os
 import re
 import subprocess
+import sys
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import unquote
+
+import work  # sibling module: how work originates (see its docstring)
 
 HQ_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HQ_DIR)
@@ -958,6 +962,16 @@ language — no internal ticket IDs or jargon unless he uses them first. Keep re
 conversational and reasonably short unless he asks for depth. You may read the repository
 (read-only) to answer questions about the actual state of the game, docs, or code.
 
+What you agree on here becomes real work without either of you filing anything: HQ reads
+every exchange and files the follow-up automatically, owned by whoever it belongs to. So do
+not try to carry the work out inside this reply, and never imply it is already done. Say
+what should happen and who owns it — that is what gets filed. Reversible work (reading,
+drafting, analysing, rendering, running the suites) then starts on its own and Daniel
+reviews the result; work that changes the repo goes to a build session; anything hard to
+walk back — shipping, spending, deleting, anything players see, any change of design
+direction — waits for his yes. He can see all of it on the Work page. Because of that, keep
+replies short: answer him, name the next step and its owner, and let the filing happen.
+
 If a request belongs to a different member of the team, say so and name them — the full
 roster:
 {roster}
@@ -1675,6 +1689,7 @@ def _drain_outbox():
             elif res.get("reply"):
                 item["state"] = "done"
                 item["reply"] = res["reply"]
+                work.capture_exchange(item["to"], item["message"], res["reply"])
                 item["error"] = ""
                 item["answered"] = datetime.datetime.now().isoformat(timespec="minutes")
             else:
@@ -1686,6 +1701,25 @@ def _drain_outbox():
             _write_item(item)
         except Exception:
             continue  # the drainer outlives any single bad item
+
+
+MAX_TURNS = 24   # 12 was too few: a persona told to go do something spends
+                 # turns reading the repo and dies before it answers.
+
+
+def cli_failure(proc):
+    """What actually went wrong, in his words not ours. The CLI reports some
+    failures on stdout with an empty stderr, so a stderr-only message reads as
+    'claude CLI failed' — which tells him nothing and looks like a dead app."""
+    err = (proc.stderr or "").strip()
+    out = (proc.stdout or "").strip()
+    if "max turns" in out.lower() or "max turns" in err.lower():
+        return (f"Ran out of steps ({MAX_TURNS} tool turns) before finishing the "
+                f"answer — this one needs narrowing, or a bigger step budget.")
+    detail = err or out
+    if not detail:
+        return f"The assistant exited with code {proc.returncode} and said nothing."
+    return " ".join(detail.split())[:400]
 
 
 def _chat_once(to_id, message, history):
@@ -1701,7 +1735,7 @@ def _chat_once(to_id, message, history):
         "claude", "-p", convo,
         "--append-system-prompt", sys_prompt,
         "--allowedTools", "Read,Glob,Grep",
-        "--max-turns", "12",
+        "--max-turns", str(MAX_TURNS),
     ]
     with CHAT_LOCK:
         try:
@@ -1719,7 +1753,7 @@ def _chat_once(to_id, message, history):
             note_limit(out)
             return {"error": "out of tokens", "limited": True,
                     "detail": " ".join(out.split())[:200]}
-        return {"error": (proc.stderr or "claude CLI failed").strip()[:500]}
+        return {"error": cli_failure(proc)}
     clear_limit()
     return {"reply": proc.stdout.strip()}
 
@@ -1737,6 +1771,8 @@ def run_chat(payload):
         return {"queued": item["id"], "resume_at": limited_until(),
                 "reason": item["reason"]}
     res = _chat_once(to_id, message, history)
+    if res.get("reply"):
+        work.capture_exchange(to_id, message, res["reply"])
     if res.get("limited"):
         # He typed it before we knew; it is not his job to retype it later.
         item = enqueue_chat(to_id, message, history)
@@ -1860,6 +1896,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, doc)
             if path == "/api/chat/queue":
                 return self._send(200, queue_snapshot())
+            if path.startswith("/api/work"):
+                return self._send(200, work.api_get(path))
             if path == "/api/health":
                 return self._send(200, {"ok": True, "limit_until": limited_until()})
             return self._send(404, {"error": "not found"})
@@ -1919,6 +1957,11 @@ class Handler(BaseHTTPRequestHandler):
                                         "resume_at": limited_until()})
             except Exception as e:
                 return self._send(500, {"error": str(e)[:300]})
+        if path.startswith("/api/work"):
+            try:
+                return self._send(200, work.api_post(path, payload))
+            except Exception as e:
+                return self._send(500, {"error": str(e)[:300]})
         if path in ("/api/chat/cancel", "/api/chat/retry"):
             state = "cancelled" if path.endswith("cancel") else "queued"
             return self._send(200, set_queue_state(payload.get("id", ""), state))
@@ -1950,6 +1993,8 @@ def main():
     sanitize_runs()
     sanitize_outbox()
     threading.Thread(target=_drain_outbox, daemon=True).start()
+    work.bind(sys.modules[__name__])
+    work.start()
     server = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
     print(f"Tiny Farm HQ on http://localhost:{PORT}")
     server.serve_forever()

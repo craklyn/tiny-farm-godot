@@ -56,6 +56,15 @@ section 2).
 - `static/vendor/` — vendored third-party libs, fetched once from jsdelivr so the
   app has no runtime network dependency: `marked` 16.4.1 (MIT, markdown parsing)
   and `DOMPurify` 3.2.7 (Apache-2.0/MPL-2.0, HTML sanitization) for chat replies.
+- `work.py` — **how work originates.** Every chat exchange is read afterwards for the
+  follow-up it creates, and the follow-up is filed automatically: owner, level, and a tier
+  set by how hard the work is to walk back. Tier 0 (nothing to walk back) is carried out
+  immediately and the CEO reviews the *result*; tier 1 (repo changes) queues for a build
+  session; tier 2 (hard to reverse, or his taste) waits for his yes. Nothing waits on
+  permission to *exist*. `docs/HOW_WORK_ORIGINATES.md` is the norm in prose, S-9 in the
+  decision log settles it, and `data/work_policy.json` is the copy the server reads — edit
+  that to change the norms without touching code. Items live in `data/work/`, the Work page
+  in `static/work.js`.
 - `data/org.json` — org chart + personas (Amazon titles/levels).
 - `data/entities.json` — entity gallery: sprite-sheet frame rects, fps, sounds,
   code refs. Update when a new species/crop/object ships (the Zoo's roster and

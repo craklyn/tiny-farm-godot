@@ -1,0 +1,23 @@
+{
+  "rule": "Approval attaches to results, not to tasks. Work is filed without asking; only acting on it is gated, and only by how hard it is to walk back.",
+  "tiers": {
+    "0": {
+      "name": "Just do it",
+      "means": "Nothing to walk back — reading, drafting, analysing, rendering, running the suites.",
+      "gate": "none; the result is what he reviews",
+      "auto": true
+    },
+    "1": {
+      "name": "Do it, show the diff",
+      "means": "Changes files, but git reverts it — doc edits, code behind tests, a new decision card.",
+      "gate": "a build session does it and shows the diff afterwards",
+      "auto": false
+    },
+    "2": {
+      "name": "Ask first",
+      "means": "Hard to walk back or his taste to settle — shipping, spending, deleting, anything players see, any change of design direction.",
+      "gate": "his yes, before anything happens",
+      "auto": false
+    }
+  }
+}
