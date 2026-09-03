@@ -123,7 +123,17 @@ function verdictLine(g) {
   if (!text.trim()) text = (g.reasons && g.reasons[0]) || "This pillar declares no goals.";
   const cls = g.level === "fire" ? "vd-bad" : g.level === "attention" ? "vd-warn"
     : g.level === "unassured" ? "vd-unas" : g.level === "dormant" ? "vd-dorm" : "vd-ok";
-  return `<p class="verdict ${cls}">${esc(text)}</p>`;
+  // It has to be unmistakably a reading rather than a heading: a sentence in
+  // large type with a coloured rule beside it is indistinguishable from page
+  // furniture, and this one changes with the repo. So it carries the same
+  // status dot as everything else, a caption saying what it is, and the time it
+  // was worked out — the three things that mark a number as live in HQ.
+  const m = LEVEL_META[g.level] || LEVEL_META.ok;
+  return `<div class="verdictbox ${cls}">
+    <div class="vd-cap"><i class="dot ${m.dcls}"></i>Right now${
+      g.derived_at ? ` · worked out at ${esc(g.derived_at)}` : ""}</div>
+    <p class="verdict">${esc(text)}</p>
+  </div>`;
 }
 
 /* Band 3. The one band rendered identically on all six pages, because it is the
@@ -290,7 +300,7 @@ async function renderPillar(pid) {
   const lead = org.employees.find(e => e.id === p.lead);
   const team = org.employees.filter(e => e.team === p.team);
   const st = sig.status[pid] || { level: "ok", reasons: [], assured: 0, total: 0 };
-  const g = Object.assign({}, (sig.goals || {})[pid] || {}, st);
+  const g = Object.assign({}, (sig.goals || {})[pid] || {}, st, { derived_at: sig.generated_at });
   const per = sig.per_pillar[pid] || { commits_7d: 0, commits_24h: 0, recent: [] };
   const needs = await api("/api/needs/" + pid).catch(() => ({ needs: [] }));
 
@@ -729,15 +739,7 @@ function instSales(root, below, sig, g, ctx) {
 
   // The drift lives beside the verdict, not inside the instrument: it is one
   // fact and it must never be the thing that scrolls away.
-  if (ctx) ctx.replaceChildren(h(`    <div class="card driftstrip">
-      <div class="ds-num ${days != null && days > 14 ? "bad" : "ok"}">${behind == null ? "—" : behind}</div>
-      <div class="ds-body">
-        <b>commits on main that no released build contains</b>
-        <div class="small muted">${days != null ? `${days} days since <code class="ref">${esc(tag)}</code> went out${r.tag_date ? ` on ${esc(r.tag_date)}` : ""}` : "nothing has ever been published"} — the bar is a release every 14 days.</div>
-        <div class="ds-bar"><i style="width:${days == null ? 100 : Math.min(100, (days / 14) * 100)}%"
-          class="${days != null && days > 14 ? "over" : ""}"></i></div>
-      </div>
-    </div>`));
+  if (ctx) ctx.replaceChildren(h(driftChart(behind, days, tag, r)));
 
   root.replaceChildren(h(`
     <h2>The launch check <span class="small muted">— ${machine.length} of ${gates.length} checked by machine</span></h2>
@@ -757,6 +759,74 @@ function instSales(root, below, sig, g, ctx) {
     (sig.tags || []).length
       ? (sig.tags || []).map(t => `<div class="commitrow"><code class="ref">${esc(t)}</code></div>`).join("")
       : "<span class='muted'>Nothing has ever been published.</span>")));
+}
+
+/* The unshipped-work chart.
+   It replaced a bar whose length was DAYS sitting next to a number that was
+   COMMITS — two different quantities with nothing saying which was which, which
+   is the reasonable reading of "I don't know what this bar represents".
+
+   One story now: each column is a day since the last release and how much work
+   landed that day; the columns accumulate to the number on the left; and the
+   dashed line is the day the next release falls due under the fourteen-day bar.
+   Everything on it is labelled in place — no legend to hold in your head. */
+function driftChart(behind, days, tag, r) {
+  const daily = (r && r.daily) || [];
+  if (!daily.length) {
+    return `<div class="card driftstrip"><div class="ds-num ok">—</div>
+      <div class="ds-body"><b>nothing has ever been published</b>
+      <div class="small muted">There is no last release to measure against.</div></div></div>`;
+  }
+  const DUE = 14;                                  // the bar: a release every 14 days
+  const start = new Date(daily[0].date + "T00:00:00");
+  const dayIndex = d => Math.round((new Date(d + "T00:00:00") - start) / 86400000);
+  const span = Math.max(DUE, dayIndex(daily[daily.length - 1].date)) + 1;
+  const byIdx = {};
+  daily.forEach(d => { byIdx[dayIndex(d.date)] = d.n; });
+  const peak = Math.max(...daily.map(d => d.n), 1);
+
+  const W = 640, H = 96, PADL = 4, PADB = 20, PADT = 8;
+  const colW = (W - PADL * 2) / span;
+  const bars = [];
+  for (let i = 0; i < span; i++) {
+    const n = byIdx[i] || 0;
+    const x = PADL + i * colW;
+    const hgt = n ? Math.max(2, (n / peak) * (H - PADB - PADT)) : 0;
+    const future = i > dayIndex(daily[daily.length - 1].date);
+    bars.push(`<rect x="${x + colW * 0.15}" y="${H - PADB - hgt}" width="${colW * 0.7}" height="${hgt}"
+      class="dc-bar${future ? " dc-future" : ""}"><title>${n} commit${n === 1 ? "" : "s"} on ${
+        new Date(start.getTime() + i * 86400000).toISOString().slice(0, 10)}</title></rect>`);
+  }
+  const dueX = PADL + DUE * colW;
+  const todayX = PADL + (dayIndex(daily[daily.length - 1].date) + 0.5) * colW;
+  // The deadline label goes on whichever side of its line has room, so it can
+  // never run off the edge of the chart.
+  const dueLeft = dueX < W * 0.72;
+  const overdue = days != null && days > DUE;
+  return `<div class="card driftcard">
+    <div class="dc-head">
+      <div class="dc-num ${overdue ? "bad" : "ok"}">${behind == null ? "—" : behind}</div>
+      <div class="dc-lede">
+        <b>commits the public has never seen</b>
+        <div class="small muted">Everything on main since <code class="ref">${esc(tag)}</code> went out${
+          r.tag_date ? ` on ${esc(r.tag_date)}` : ""}, ${days} day${days === 1 ? "" : "s"} ago.</div>
+      </div>
+    </div>
+    <svg viewBox="0 0 ${W} ${H}" class="driftsvg" role="img"
+      aria-label="${behind} commits over ${days} days since ${tag}; the next release is due on day ${DUE}">
+      <line x1="${PADL}" y1="${H - PADB}" x2="${W - PADL}" y2="${H - PADB}" class="dc-axis"/>
+      ${bars.join("")}
+      <line x1="${dueX}" y1="${PADT - 4}" x2="${dueX}" y2="${H - PADB + 3}" class="dc-due"/>
+      <text x="${dueX + (dueLeft ? 5 : -5)}" y="${PADT + 6}" class="dc-lbl"
+        text-anchor="${dueLeft ? "start" : "end"}">next release due · day ${DUE}</text>
+      ${todayX < dueX - 30 ? `<text x="${(todayX + dueX) / 2}" y="${H - PADB - 6}"
+        class="dc-lbl" text-anchor="middle">${DUE - days} days of runway</text>` : ""}
+      <text x="${PADL}" y="${H - 6}" class="dc-lbl">${esc(r.tag_date || "")} · ${esc(tag)} went out</text>
+      <text x="${todayX}" y="${H - 6}" class="dc-lbl" text-anchor="middle">today · day ${days}</text>
+    </svg>
+    <div class="small muted">One column is one day; its height is how much landed that day.
+      The bar this pillar is measured against is a release every ${DUE} days.</div>
+  </div>`;
 }
 
 /* ================= OPS — the permission, and the countdown =================

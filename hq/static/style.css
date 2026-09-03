@@ -658,15 +658,24 @@ code.ref { background: #1b1710; border: 1px solid var(--line); border-radius: 6p
 
 /* --- band 1: the verdict. No card chrome: it is the page's sentence, not a
    widget on it. The left rule is the only thing carrying its severity. --- */
-.verdict {
-  font-size: 19px; line-height: 1.45; font-weight: 600;
-  border-left: 3px solid var(--line); padding: 2px 0 2px 14px; margin: 18px 0 20px;
+/* The verdict is a reading, not a heading, and it has to look like one — a
+   sentence in large type beside a coloured rule is indistinguishable from page
+   furniture. The caption above it says what it is and when it was worked out. */
+.verdictbox {
+  border-left: 3px solid var(--line); padding: 2px 0 4px 14px; margin: 16px 0 18px;
 }
-.verdict.vd-bad { border-left-color: #e05c48; }
-.verdict.vd-warn { border-left-color: #e0912e; }
-.verdict.vd-unas { border-left-color: #8a8d99; }
-.verdict.vd-ok { border-left-color: var(--green); }
-.verdict.vd-dorm { border-left-color: var(--muted); color: var(--muted); font-weight: 500; }
+.vd-cap {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .07em;
+  color: var(--muted); display: flex; align-items: center; margin-bottom: 4px;
+}
+.vd-cap .dot { width: 11px; height: 11px; font-size: 8px; margin-right: 6px; }
+.verdict { font-size: 19px; line-height: 1.4; font-weight: 600; }
+.verdictbox.vd-bad { border-left-color: #e05c48; }
+.verdictbox.vd-warn { border-left-color: #e0912e; }
+.verdictbox.vd-unas { border-left-color: #8a8d99; }
+.verdictbox.vd-ok { border-left-color: var(--green); }
+.verdictbox.vd-dorm { border-left-color: var(--muted); }
+.verdictbox.vd-dorm .verdict { color: var(--muted); font-weight: 500; }
 
 /* --- band 3: the goal scoreboard. Identical on all six pages — this is the
    band that lets him compare pillars, so it is the one thing that must not be
@@ -812,20 +821,20 @@ code.ref { background: #1b1710; border: 1px solid var(--line); border-radius: 6p
 .abs-title { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .abs-body { font-size: 20px; color: var(--muted); margin-top: 8px; font-style: italic; }
 
-/* --- sales: the drift strip, and the deliberate absence of a publish control ---
-   The gap was two labels either side of a bar whose thickness encoded the drift.
-   Nobody reads a thickness without a reference, and a bar between two endpoints
-   reads as progress toward something. The number carries it now — and it is a
-   strip rather than a card because the launch check is this page's instrument:
-   "can we ship today" is the question, and how much is unshipped is context. */
-.driftstrip { display: flex; align-items: center; gap: 16px; padding: 12px 18px; }
-.ds-num { font-size: 40px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
-.ds-num.ok { color: var(--green); }
-.ds-num.bad { color: #e8927a; }
-.ds-body { flex: 1; min-width: 0; }
-.ds-bar { height: 5px; border-radius: 3px; background: var(--bg2); margin-top: 7px; overflow: hidden; }
-.ds-bar i { display: block; height: 100%; background: var(--green); }
-.ds-bar i.over { background: #e0912e; }
+/* --- sales: the unshipped-work chart, and the absence of a publish control --- */
+.driftcard { padding: 14px 18px; }
+.dc-head { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; }
+.dc-num { font-size: 40px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.dc-num.ok { color: var(--green); }
+.dc-num.bad { color: #e8927a; }
+.dc-lede { flex: 1; min-width: 0; }
+.driftsvg { width: 100%; height: auto; display: block; margin: 2px 0 6px; }
+.dc-bar { fill: var(--green); }
+.dc-bar:hover { fill: var(--accent); }
+.dc-axis { stroke: var(--line); stroke-width: 1; }
+/* The deadline is drawn on the chart, not described beside it. */
+.dc-due { stroke: #e0912e; stroke-width: 1.5; stroke-dasharray: 3 3; }
+.dc-lbl { fill: var(--muted); font-size: 9px; }
 .norelease { border-style: dashed; }
 .inert {
   font-family: ui-monospace, monospace; font-size: 13px; color: var(--muted);

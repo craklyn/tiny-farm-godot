@@ -1742,11 +1742,23 @@ def eval_measure(spec, depth=0):
             newest = tags[-1]
             import time as _t
             _ct = run_cmd(["git", "log", "-1", "--format=%ct", newest])
+            # Daily commit counts since the tag. The strip used to draw a bar
+            # whose length was days while the number beside it was commits —
+            # two different quantities, nothing saying so. This is the series
+            # that makes them one story: the work piling up, day by day, since
+            # the last release, against the date the next one is due.
+            daily = {}
+            for line in run_cmd(["git", "log", f"{newest}..HEAD",
+                                 "--date=short", "--pretty=%ad"]).splitlines():
+                line = line.strip()
+                if line:
+                    daily[line] = daily.get(line, 0) + 1
             common = {
                 "tag": newest,
                 "tag_date": run_cmd(["git", "log", "-1", "--format=%ad", "--date=short", newest]),
                 "tag_age_days": round((_t.time() - int(_ct)) / 86400) if _ct else None,
                 "commits_since": int(run_cmd(["git", "rev-list", "--count", f"{newest}..HEAD"]) or 0),
+                "daily": [{"date": d, "n": n} for d, n in sorted(daily.items())],
             }
             if field == "newest":
                 return _reading(newest, "", "the newest published tag", f"git tag -l {pattern}", "git",
