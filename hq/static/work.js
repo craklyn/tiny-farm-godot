@@ -54,40 +54,52 @@ const LANDS = {
   2: () => `It comes back here as its own card, for you to say yes to before anything happens.`,
 };
 
-function followUpBox(fu, org) {
-  const who = ownerOf(org, fu.owner);
-  const tier = Number(fu.tier ?? 2);
+/* One result can imply several pieces of work — a reply that names a fix for
+   the tool, a sweep for the artist and a check in the pipeline is three items.
+   Cards written before that stored a single object. */
+function followUps(it) {
+  if (Array.isArray(it.follow_ups)) return it.follow_ups.filter(f => f && f.title);
+  return it.follow_up && it.follow_up.title ? [it.follow_up] : [];
+}
+
+function followUpBox(fus, org) {
+  const one = fus.length === 1;
   return `<div class="w-spawn">
-    <div class="w-spawn-h">Accepting files exactly this — nothing else</div>
-    <div class="w-spawn-t">${esc(fu.title)}</div>
-    <div class="w-spawn-m"><span class="chip w-level">${esc(fu.level || "task")}</span>
-      <span class="chip ${TIER_CHIP[tier] || "t-ask"}">${esc((TIER_NAME[tier] || "?"))}</span>
-      <span>${esc(who.emoji)} ${esc(who.name)}</span></div>
-    ${fu.first_action ? `<p class="w-spawn-p"><b>First step:</b> ${esc(fu.first_action)}</p>` : ""}
-    ${fu.why ? `<p class="w-spawn-p muted">${esc(fu.why)}</p>` : ""}
-    <p class="w-spawn-p muted">${esc(LANDS[tier] ? LANDS[tier](who.name.split(" ")[0]) : "")}</p>
+    <div class="w-spawn-h">Accepting files ${one ? "exactly this" : `these ${fus.length}`} — nothing else</div>
+    ${fus.map(fu => {
+    const who = ownerOf(org, fu.owner);
+    const tier = Number(fu.tier ?? 2);
+    return `<div class="w-spawn-i">
+        <div class="w-spawn-t">${esc(fu.title)}</div>
+        <div class="w-spawn-m"><span class="chip w-level">${esc(fu.level || "task")}</span>
+          <span class="chip ${TIER_CHIP[tier] || "t-ask"}">${esc(TIER_NAME[tier] || "?")}</span>
+          <span>${esc(who.emoji)} ${esc(who.name)}</span></div>
+        ${fu.first_action ? `<p class="w-spawn-p"><b>First step:</b> ${esc(fu.first_action)}</p>` : ""}
+        ${fu.why ? `<p class="w-spawn-p muted">${esc(fu.why)}</p>` : ""}
+        <p class="w-spawn-p muted">${esc(LANDS[tier] ? LANDS[tier](who.name.split(" ")[0]) : "")}</p>
+      </div>`;
+  }).join("")}
   </div>`;
 }
 
 function consequence(it, org) {
-  const who = ownerOf(org, it.owner);
-  const first = who.name.split(" ")[0];
+  const first = ownerOf(org, it.owner).name.split(" ")[0];
   const rows = [];
   let extra = "";
   if (it.state === "needs_approval") {
     rows.push(["Yes, go ahead", `Nothing runs on its own. It joins the build-session queue, and the next session carries out the step above and shows you the diff.`]);
     rows.push(["Not this", `Filed as dropped. Nothing is created and nothing changes.`]);
   } else if (it.state === "for_review") {
-    const fu = it.follow_up;
-    if (fu === undefined) {
+    const fus = followUps(it);
+    if (!("follow_ups" in it) && !("follow_up" in it)) {
       rows.push(["Good — accept", `Files this as approved and closes it. ${esc(first)} is still working out what should follow — this card will say, in a moment, before you decide.`]);
-    } else if (fu && fu.title) {
-      rows.push(["Good — accept", `Files this as approved and starts the one piece of work below.`]);
-      extra = followUpBox(fu, org);
+    } else if (fus.length) {
+      rows.push(["Good — accept", `Files this as approved and starts the ${fus.length === 1 ? "one piece of work" : `${fus.length} pieces of work`} below.`]);
+      extra = followUpBox(fus, org);
     } else {
       rows.push(["Good — accept", `Files this as approved and closes it. Nothing follows from it — no task, story, project or goal is created.`]);
     }
-    rows.push(["Have another go", `Throws this result away and ${esc(first)} does the same work again. Nothing else changes.`]);
+    rows.push(["Have another go", `Throws this result away and ${esc(first)} does the same work again, carrying anything you have said on this card.`]);
     rows.push(["Drop it", `Filed as dropped. Nothing is created and nothing changes.`]);
   } else if (it.state === "waiting_session") {
     rows.push(["Nothing is running", `This waits for a build session to pick it up — no agent is doing it unattended.`]);
@@ -102,35 +114,80 @@ function consequence(it, org) {
   </div>`;
 }
 
-function spawnedNote(it, org) {
+/* Work already filed off this card — by accepting it, or by a conversation on
+   it. Without this the stories a reply files land elsewhere on the page with
+   no visible tie to the card he was reading when he asked for them, which
+   reads as nothing having happened. */
+let childIndex = {};
+
+const STATE_WORD = {
+  needs_approval: "waiting on your yes", for_review: "wants your verdict",
+  doing: "in flight", waiting_session: "queued for a build session",
+  accepted: "accepted", dropped: "dropped",
+};
+
+function childrenNote(it, org) {
+  const kids = childIndex[it.id] || [];
+  if (!kids.length) return "";
+  return `<div class="w-kids">
+    <div class="w-kids-h">Already filed off this card — ${kids.length} piece${kids.length > 1 ? "s" : ""} of work</div>
+    ${kids.map(k => `<div class="w-kid">
+      <span class="w-kid-t">${esc(k.title)}</span>
+      <span class="w-kid-m">${esc(ownerOf(org, k.owner).emoji)} ${esc(ownerOf(org, k.owner).name.split(" ")[0])} · ${esc(STATE_WORD[k.state] || k.state)}</span>
+    </div>`).join("")}
+  </div>`;
+}
+
+function spawnedNote(it) {
   if (!it.spawned || !it.spawned.length) return "";
-  const s = it.spawned[0];
-  return `<p class="w-spawned">Your yes started: <b>${esc(s.title)}</b></p>`;
+  return `<p class="w-spawned">Your yes started: ${it.spawned.map(s => `<b>${esc(s.title)}</b>`).join(", ")}</p>`;
+}
+
+/* A reply can change what the card itself says. Recording the old wording
+   rather than overwriting it silently: he is judging this thing, so he has to
+   be able to see that it moved under him. */
+function amendNote(it, org) {
+  const list = it.amendments || [];
+  const a = list[list.length - 1];
+  if (!a) return "";
+  const who = ownerOf(org, a.by).name.split(" ")[0];
+  const fields = Object.keys(a.changed || {});
+  if (!fields.length) return "";
+  return `<details class="w-amend"><summary>${esc(who)} revised this card after you wrote back — ${esc(fields.join(", "))}</summary>
+    ${fields.map(f => `<p class="small muted"><b>was:</b> ${esc(a.changed[f])}</p>`).join("")}
+  </details>`;
 }
 
 /* Writing back to a card, without leaving it ---------------------------------
-   "Open that thread" takes him to the conversation the work came out of, which
-   is the wrong place to answer a specific card — he loses the result he was
-   reading. Responding happens here instead: the owner answers on the card, and
-   the exchange is read for work exactly like a chat, so what it commits to
-   still gets filed. It is a conversation, not a verdict: it accepts nothing,
-   drops nothing, and closes nothing. */
+   "Open that thread" goes to the conversation the work came out of, which is
+   the wrong place to answer a specific card — he loses the result he was
+   reading. Responding happens here instead, and the exchange is read for work
+   exactly like a chat, so what it commits to still gets filed. */
 function convoBlock(it, org) {
   const msgs = it.conversation || [];
   if (!msgs.length && !it.awaiting_reply) return "";
-  const rows = msgs.map(m => {
+  // Long conversations fold to the last exchange: the older turns are context
+  // he has already read, and they are what makes a card taller than a screen.
+  const FOLD = 2;
+  const hidden = Math.max(0, msgs.length - FOLD);
+  const shown = msgs.slice(hidden);
+  const row = m => {
     const you = m.role === "daniel";
     const name = you ? "You" : ownerOf(org, m.role).name.split(" ")[0];
     return `<div class="w-msg${you ? " w-msg-you" : ""}">
       <div class="w-msg-w">${esc(name)}</div>
       <div class="w-msg-b">${you ? `<p>${esc(m.text)}</p>` : md(m.text)}</div>
     </div>`;
-  });
-  if (it.awaiting_reply) {
-    rows.push(`<div class="w-msg"><div class="w-msg-w">${esc(ownerOf(org, it.owner).name.split(" ")[0])}</div>
-      <div class="w-msg-b muted">reading the card and writing back…</div></div>`);
-  }
-  return `<div class="w-convo">${rows.join("")}</div>`;
+  };
+  return `<div class="w-convo">
+    ${hidden ? `<details class="w-earlier"><summary>${hidden} earlier message${hidden > 1 ? "s" : ""}</summary>
+      ${msgs.slice(0, hidden).map(row).join("")}</details>` : ""}
+    ${shown.map(row).join("")}
+    ${it.awaiting_reply ? `<div class="w-msg w-thinking">
+      <div class="w-msg-w">${esc(ownerOf(org, it.owner).name.split(" ")[0])}</div>
+      <div class="w-msg-b muted">reading the card and writing back<span class="w-dots"><i></i><i></i><i></i></span></div>
+    </div>` : ""}
+  </div>`;
 }
 
 function replyBox(it, org) {
@@ -147,9 +204,40 @@ function replyBox(it, org) {
   </div>`;
 }
 
+/* Collapsing, on Rin's rule: a page holding several decisions has to show all
+   of them at once, so the body folds and the header never does. What survives
+   the fold is exactly what he needs to choose which one to open — whose it is,
+   what it is, and what it wants from him. */
+function openSet() {
+  try { return new Set(JSON.parse(localStorage.getItem("hq-work-open") || "[]")); }
+  catch { return new Set(); }
+}
+function saveOpen(set) {
+  try { localStorage.setItem("hq-work-open", JSON.stringify([...set])); } catch { }
+}
+
+function wantsLine(it, org) {
+  const first = ownerOf(org, it.owner).name.split(" ")[0];
+  if (it.awaiting_reply) return `${first} is writing back`;
+  if (it.state === "doing") return `${first} is working on it`;
+  if (it.state === "waiting_session") return "queued for a build session";
+  if (it.state === "needs_approval") return "not started — wants your yes";
+  if (it.state === "accepted") return "accepted";
+  if (it.state === "dropped") return "dropped";
+  const fus = followUps(it);
+  const kids = (childIndex[it.id] || []).length;
+  const filed = kids ? ` · already filed ${kids}` : "";
+  if (!("follow_ups" in it) && !("follow_up" in it)) return "finished — wants your verdict" + filed;
+  return fus.length
+    ? `finished — your verdict starts ${fus.length} more${filed}`
+    : "finished — your verdict, nothing more follows" + filed;
+}
+
 function workCard(it, org, pol) {
   const who = ownerOf(org, it.owner);
   const tier = pol.tiers[String(it.tier)] || { name: "?" };
+  const busy = !!it.awaiting_reply || it.state === "doing";
+  const open = openSet().has(it.id);
   const acts = {
     needs_approval: `<button data-act="approve" data-id="${it.id}">Yes, go ahead</button>
                      <button class="ghost" data-act="drop" data-id="${it.id}">Not this</button>`,
@@ -159,35 +247,49 @@ function workCard(it, org, pol) {
     waiting_session: `<button class="ghost" data-act="drop" data-id="${it.id}">Drop it</button>`,
     doing: "", accepted: "", dropped: "",
   }[it.state] || "";
+  // The result is the tall part of a card. It folds to a readable window with
+  // the rest one click away, rather than pushing the next decision off screen.
+  const long = (it.result || "").length > 900;
   const result = it.result
-    ? `<div class="w-result"><div class="w-result-h">${esc(who.name.split(" ")[0])} did it — here's the result</div>${md(it.result)}</div>`
+    ? `<div class="w-result${long ? " w-clip" : ""}"><div class="w-result-h">${esc(who.name.split(" ")[0])} did it — here's the result</div>${md(it.result)}
+       ${long ? `<button class="w-more" data-more="${esc(it.id)}">Read all of it</button>` : ""}</div>`
     : "";
   const why = it.tier_reason ? `<span class="w-why">${esc(it.tier_reason)}</span>` : "";
   const next = it.first_action && it.state !== "for_review"
     ? `<p class="w-next"><b>Next step:</b> ${esc(it.first_action)}</p>` : "";
-  return h(`<div class="w-card w-${it.state}" data-id="${esc(it.id)}">
-    <div class="w-top">
-      <span class="chip w-level">${esc(it.level)}</span>
-      <span class="chip ${TIER_CHIP[it.tier] || "t-ask"}">${esc(tier.name)}</span>
-      ${why}
-      <button class="w-owner" data-person="${esc(it.owner)}"
-        title="Who ${esc(who.name.split(" ")[0])} is, what they own, and what else they are carrying">${esc(who.emoji)} ${esc(who.name)}</button>
+  return h(`<div class="w-card w-${it.state}${busy ? " w-busy" : ""}${open ? " w-open" : ""}" data-id="${esc(it.id)}">
+    <div class="w-head" data-toggle="${esc(it.id)}">
+      <span class="w-caret">${open ? "▾" : "▸"}</span>
+      <div class="w-head-b">
+        <div class="w-top">
+          <span class="chip w-level">${esc(it.level)}</span>
+          <span class="chip ${TIER_CHIP[it.tier] || "t-ask"}">${esc(tier.name)}</span>
+          ${why}
+          <span class="w-owner-wrap"><button class="w-owner" data-person="${esc(it.owner)}"
+            title="Who ${esc(who.name.split(" ")[0])} is, what they own, and what else they are carrying">${esc(who.emoji)} ${esc(who.name)}</button></span>
+        </div>
+        <h3>${esc(it.title)}</h3>
+        <div class="w-wants">${esc(wantsLine(it, org))}${busy ? `<span class="w-dots"><i></i><i></i><i></i></span>` : ""}</div>
+      </div>
     </div>
-    <h3>${esc(it.title)}</h3>
-    ${it.ask ? `<p class="w-ask">“${esc(it.ask)}”</p>` : ""}
-    ${next}
-    ${result}
-    ${convoBlock(it, org)}
-    <div class="w-foot">
-      <span class="small muted">from your chat with ${esc(ownerOf(org, it.thread).name.split(" ")[0])} · ${esc(it.created)}</span>
-      <span class="w-foot-acts">
-        <button class="w-respond" data-respond="${esc(it.id)}">↩ Respond</button>
-        <a class="plain small" href="#/chat/${esc(it.thread)}">open that thread →</a>
-      </span>
+    <div class="w-body">
+      ${it.ask ? `<p class="w-ask">“${esc(it.ask)}”</p>` : ""}
+      ${amendNote(it, org)}
+      ${next}
+      ${result}
+      ${convoBlock(it, org)}
+      ${childrenNote(it, org)}
+      ${spawnedNote(it)}
+      ${acts ? consequence(it, org) + `<div class="w-acts">${acts}</div>` : ""}
+      <div class="w-foot">
+        <span class="small muted">from your chat with ${esc(ownerOf(org, it.thread).name.split(" ")[0])} · ${esc(it.created)}</span>
+        <span class="w-foot-acts">
+          <button class="w-respond" data-respond="${esc(it.id)}">↩ Respond</button>
+          <a class="plain small" href="#/chat/${esc(it.thread)}">open that thread →</a>
+        </span>
+      </div>
+      ${replyBox(it, org)}
     </div>
-    ${replyBox(it, org)}
-    ${spawnedNote(it, org)}
-    ${acts ? consequence(it, org) + `<div class="w-acts">${acts}</div>` : ""}
   </div>`).firstElementChild;
 }
 
@@ -207,8 +309,15 @@ async function renderWork() {
   const snap = await workSnap();
   const pol = snap.policy;
   const by = st => snap.items.filter(i => i.state === st);
+  childIndex = {};
+  snap.items.forEach(i => { if (i.parent) (childIndex[i.parent] ||= []).push(i); });
   const waiting = [...by("needs_approval"), ...by("for_review")];
   const closed = [...by("accepted"), ...by("dropped")];
+  // First visit: the top decision is open and everything else is one line, so
+  // the page opens showing how many things want him rather than one of them.
+  if (localStorage.getItem("hq-work-open") === null && waiting.length) {
+    saveOpen(new Set([waiting[0].id]));
+  }
 
   $view.replaceChildren(h(`
     <h1>🧾 Work</h1>
@@ -243,8 +352,33 @@ async function renderWork() {
   // Opening and closing a composer touches the DOM only — re-rendering the
   // whole page to reveal a textarea would cost two fetches and a scroll jump.
   const card = id => body.querySelector(`.w-card[data-id="${id}"]`);
+  // Nothing he pressed is still pressable while it runs: the card locks and
+  // says so, rather than looking idle and inviting a second click.
+  const lock = (el, note) => {
+    el.classList.add("w-busy");
+    el.querySelectorAll("button, textarea").forEach(b => { b.disabled = true; });
+    const w = el.querySelector(".w-wants");
+    if (w && note) w.innerHTML = `${esc(note)}<span class="w-dots"><i></i><i></i><i></i></span>`;
+  };
   body.addEventListener("click", async ev => {
     const d = ev.target.dataset || {};
+    const toggle = ev.target.closest("[data-toggle]");
+    if (toggle && !d.person) {
+      const id = toggle.dataset.toggle;
+      const set = openSet();
+      const el = card(id);
+      if (set.has(id)) { set.delete(id); el.classList.remove("w-open"); }
+      else { set.add(id); el.classList.add("w-open"); }
+      el.querySelector(".w-caret").textContent = set.has(id) ? "▾" : "▸";
+      saveOpen(set);
+      return;
+    }
+    if (d.more) {
+      const r = card(d.more).querySelector(".w-result");
+      r.classList.remove("w-clip");
+      ev.target.remove();
+      return;
+    }
     if (d.respond) {
       replyDrafts[d.respond] = replyDrafts[d.respond] || "";
       const box = card(d.respond).querySelector(".w-reply");
@@ -260,18 +394,18 @@ async function renderWork() {
       return;
     }
     if (d.send) {
-      const box = card(d.send).querySelector(".w-reply");
-      const text = box.querySelector("textarea").value.trim();
+      const el = card(d.send);
+      const text = el.querySelector(".w-reply textarea").value.trim();
       if (!text) return;
-      ev.target.disabled = true;
       delete replyDrafts[d.send];
+      lock(el, "sending");
       await workPost("/api/work/respond", { id: d.send, message: text });
       renderWork();
       return;
     }
     const act = d.act;
     if (!act) return;
-    ev.target.disabled = true;
+    lock(card(ev.target.dataset.id), "filing your answer");
     await workPost("/api/work/" + act, { id: ev.target.dataset.id });
     renderWork();
   });
@@ -280,6 +414,13 @@ async function renderWork() {
   body.addEventListener("input", ev => {
     const id = ev.target.dataset && ev.target.dataset.draft;
     if (id) replyDrafts[id] = ev.target.value;
+  });
+
+  // The same lock, for work that was already in flight when the page loaded.
+  snap.items.filter(i => i.awaiting_reply).forEach(i => {
+    const el = card(i.id);
+    if (el) el.querySelectorAll("button:not([data-toggle]):not([data-person]):not([data-more])")
+      .forEach(b => { b.disabled = true; });
   });
 
   // The company keeps moving while he reads; the page should show that.

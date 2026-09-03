@@ -53,7 +53,13 @@ Nobody files anything by hand. The CEO talks to a team member on HQ's chat page,
    reply commits to still gets filed. Anything he says there also overrides the original
    brief on a "have another go", which is what makes a second attempt a second attempt
    rather than a repeat. Because the conversation can change what should happen next, the
-   card's follow-up is recomputed after every reply rather than left stale.
+   card's follow-ups are recomputed after every reply rather than left stale. A reply may
+   also **amend the card itself** — its title, what it is asking for, or the next step —
+   when the conversation has genuinely moved it on; the previous wording is recorded and
+   shown on the card rather than overwritten silently, because he is judging that card and
+   has to be able to see it move. Work filed by a conversation is stamped with the card it
+   happened on, so the card shows what it has already set in motion instead of the stories
+   appearing elsewhere on the page with no visible connection to the request.
 
 Team members are told this in their instructions, so they answer briefly and name the next
 step and its owner rather than pretending to carry work out inside a chat reply. That is
@@ -77,13 +83,16 @@ owner, level, tier, and the single first step.
 |---|---|---|
 | **Ask first** (tier 2, not yet done) | Makes it allowed, nothing more. It joins the build-session queue and a session carries it out and shows the diff. | Filed as dropped. Nothing is created. |
 | **Finished result, nothing follows** | Files it as approved and closes it. No task, story, epic, project or goal is created. | Filed as dropped. Nothing is created. |
-| **Finished result with a follow-up** | Files it as approved and files **exactly the one item shown on the card**, at that item's own tier. | Filed as dropped. The follow-up is not created. |
+| **Finished result with follow-ups** | Files it as approved and files **exactly the items shown on the card** — up to four, each at its own tier. | Filed as dropped. None of them are created. |
 | **Have another go** | — | Throws the result away; the same owner does the same work again. |
 
-The follow-up is worked out by the owner in the *same* model call that produced the
-result — the reply ends with a `---WHAT FOLLOWS---` block that names one next item or the
-word `NONE` — so knowing the consequence costs no extra tokens, and `NONE` is expected to
-be the common answer. Results that landed before this existed are backfilled by the worker,
+The follow-ups are worked out by the owner in the *same* model call that produced the
+result — the reply ends with a `---WHAT FOLLOWS---` block naming the work or the word
+`NONE` — so knowing the consequence costs no extra tokens, and `NONE` is expected to be
+the common answer. **One result can imply several pieces of work**: a fix to a tool, a
+sweep for the artist and a check in the pipeline is three items with three owners, and
+filing only the first quietly drops two. Four is the cap — past that it is a plan, and a
+plan is its own item. Results that landed before this existed are backfilled by the worker,
 and a card whose consequence is not yet known says so rather than staying silent.
 
 A follow-up enters at **its own** tier, never the parent's. A risky follow-up from a safe

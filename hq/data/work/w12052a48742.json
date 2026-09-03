@@ -1,0 +1,20 @@
+{
+  "id": "w12052a48742",
+  "title": "Sprite editor opens the whole sheet, not just the preview frames",
+  "level": "story",
+  "owner": "rin",
+  "tier": 1,
+  "tier_reason": "Changes HQ dashboard files only; git reverts it, and it's a tool surface rather than anything players see.",
+  "ask": "The sprite editor should show every cell of a sheet, with the preview frames just highlighted as what animates.",
+  "first_action": "In HQ's sprite editor, derive the cell grid from the actual sheet dimensions and cell size instead of the catalog's preview frame list, and render preview frames as a highlighted subset.",
+  "state": "waiting_session",
+  "thread": "ingrid",
+  "source": "chat",
+  "source_message": "> HQ's sprite editor only showed him a quarter of each sheet. \n\nWhy aren't you also creating a story to fix this?",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-03T00:50",
+  "created_ts": 1788421828.8856351,
+  "parent": "wf8a69640fcd"
+}

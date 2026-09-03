@@ -1,0 +1,20 @@
+{
+  "id": "we7a0d7228ec",
+  "title": "Check whether the generation pipeline's alpha step leaves near-white behind",
+  "level": "task",
+  "owner": "ravi",
+  "tier": 1,
+  "tier_reason": "Investigation plus a pipeline fix in repo code; worst case is a bad transparency threshold, caught by regenerating and revertable.",
+  "ask": "Find out if the generation pipeline's alpha step is leaving that white behind, and if so fix it there so nobody hand-erases backdrop pixels.",
+  "first_action": "Run the Retro Diffusion post-processing alpha step on a known sample generation and inspect the output for opaque near-white pixels where the backdrop should be transparent.",
+  "state": "waiting_session",
+  "thread": "ingrid",
+  "source": "chat",
+  "source_message": "> HQ's sprite editor only showed him a quarter of each sheet. \n\nWhy aren't you also creating a story to fix this?",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-03T00:50",
+  "created_ts": 1788421828.8860135,
+  "parent": "wf8a69640fcd"
+}

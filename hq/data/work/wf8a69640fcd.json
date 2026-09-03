@@ -17,12 +17,19 @@
   "created": "2026-09-03T00:20",
   "created_ts": 1788420006.9918768,
   "finished": "2026-09-03T00:22",
-  "follow_up": {
-    "title": "Sweep both full sprite sheets for opaque near-white under the characters' feet",
-    "owner": "yuki",
-    "level": "task",
-    "tier": 1,
-    "first_action": "Open assets/sprites/generated/animals.png and characters.png, check every frame (all 8 chicken cells, all 16 farmer cells) for near-white opaque pixels in the bottom two rows, and erase them to match Daniel's hand edits",
-    "why": "His edit only reached the frames HQ's editor showed him, so accepting it leaves the same defect in the directions he never saw."
-  }
+  "conversation": [
+    {
+      "role": "daniel",
+      "text": "> HQ's sprite editor only showed him a quarter of each sheet. \n\nWhy aren't you also creating a story to fix this?",
+      "at": "2026-09-03T00:49"
+    },
+    {
+      "role": "ingrid",
+      "text": "You're right — I flagged it and stopped there. That's the gap you've told me not to leave.\n\nChecked it just now so the story is accurate: the editor doesn't read the sheet, it reads the preview frame list in HQ's entity catalog. Chicken's entry lists four rectangles; the sheet has eight, and its own note says cells 4–7 are the left-facing walk rather than a mirror. Farmer lists four of sixteen. So the editor is showing exactly what the catalog told it to show, and the catalog was written for a little looping preview, not for editing.\n\nWhat I want filed, three pieces:\n\n**Rin** — the sprite editor opens the whole sheet, every cell, with the preview frames just highlighted as \"this is what animates.\" Editing a quarter of a sheet without being told so is the actual bug.\n\n**Yuki** — fill in the full frame lists in the catalog and sweep both sheets for opaque near-white in the ground-contact zone, so your two fixes land on every frame instead of half.\n\n**Ravi** — check whether the generation pipeline's alpha step is leaving that white behind. If it is, fix it there; nobody should be hand-erasing backdrop pixels.\n\nThe ground-contact rule still waits for your look session — that one's taste, not tidying.\n\n<remember>Daniel expects a gap I notice to arrive as a filed story with an owner, not as an observation in prose — he pushed back on this directly (2026-09-03, sprite editor showing only preview frames). HQ's sprite editor edits the preview frame list in hq/data/entities.json, not the actual sheet, which is why entity edits are partial: Chicken lists 4 of 8 cells, Farmer 4 of 16.</remember>",
+      "at": "2026-09-03T00:50"
+    }
+  ],
+  "awaiting_reply": false,
+  "asked_ts": 1788421746.760818,
+  "follow_ups": []
 }

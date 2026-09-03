@@ -17,12 +17,5 @@
   "created": "2026-09-02T21:56",
   "created_ts": 1788411371.3004904,
   "finished": "2026-09-02T21:58",
-  "follow_up": {
-    "title": "Capture the look-session frames and produce the three recolor treatments",
-    "owner": "jade",
-    "level": "story",
-    "tier": 0,
-    "first_action": "On the desktop, run the game to the field mid-morning of day three on seed 12345 with the player and one station in frame, capture that single frame, and produce the warmer-cozy and cooler-quieter recolors of it alongside the untouched original",
-    "why": "Accepting the plan settles the staging and the first three treatments, so the only thing standing between him and a side-by-side pick is a build session that can actually launch Godot."
-  }
+  "follow_ups": []
 }

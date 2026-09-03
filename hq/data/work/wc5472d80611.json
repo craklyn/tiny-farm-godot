@@ -1,0 +1,20 @@
+{
+  "id": "wc5472d80611",
+  "title": "Fill in full frame lists and sweep both sheets for near-white at ground contact",
+  "level": "story",
+  "owner": "yuki",
+  "tier": 1,
+  "tier_reason": "Catalog metadata and pixel cleanup on placeholder art, both revertable in git; the taste call on the ground-contact rule stays with Ingrid's look session.",
+  "ask": "Complete the frame lists in the catalog and sweep every frame of both sheets for opaque near-white in the ground-contact zone, so the fixes land on all frames instead of half.",
+  "first_action": "Extend the Chicken entry in hq/data/entities.json from 4 to all 8 cells and Farmer from 4 to all 16, then scan each listed cell for opaque near-white pixels in the ground-contact zone.",
+  "state": "waiting_session",
+  "thread": "ingrid",
+  "source": "chat",
+  "source_message": "> HQ's sprite editor only showed him a quarter of each sheet. \n\nWhy aren't you also creating a story to fix this?",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-03T00:50",
+  "created_ts": 1788421828.8858883,
+  "parent": "wf8a69640fcd"
+}

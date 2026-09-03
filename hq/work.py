@@ -152,10 +152,15 @@ def _sanitize():
 # capture: every exchange gets read for the work it creates
 # ---------------------------------------------------------------------------
 
-def capture_exchange(to_id, message, reply):
+def capture_exchange(to_id, message, reply, origin=None):
     """Called after a chat reply lands. Parks the exchange; the worker reads it.
     Deliberately does no model work inline — chat must never get slower because
-    the company is taking notes."""
+    the company is taking notes.
+
+    `origin` is the work item the exchange happened on, when it happened on a
+    card rather than on the chat page. Without it the stories a conversation
+    files land on the page with no visible connection to the thing he was
+    reading when he asked for them — which reads as nothing having happened."""
     if not message or not reply:
         return None
     cid = uuid.uuid4().hex[:12]
@@ -164,6 +169,7 @@ def capture_exchange(to_id, message, reply):
         "to": to_id,
         "message": message,
         "reply": reply,
+        "origin": origin or "",
         "created": _now_iso(),
         "created_ts": time.time(),
         "attempts": 0,
@@ -260,29 +266,26 @@ def _parse_items(raw):
 #   {...}       -> exactly what accepting will file, in full, in advance
 FOLLOW_MARK = "---WHAT FOLLOWS---"
 
+AMEND_NOTE = (
+    "\nIf what you have just said changes what this card itself is — its title,\n"
+    "what it is asking for, or the next step — add an \"amend\" object saying what\n"
+    "it should now read. Use it when the card has genuinely moved on, not to\n"
+    "reword it.\n"
+)
 
-def _parse_follow_up(tail, org, fallback_owner):
-    txt = (tail or "").strip()
-    if not txt or txt.upper().startswith("NONE"):
-        return {}
-    if txt.startswith("```"):
-        txt = re.sub(r"^```[a-z]*\n?|```$", "", txt).strip()
-    start, end = txt.find("{"), txt.rfind("}")
-    if start < 0 or end <= start:
-        return {}
-    try:
-        doc = json.loads(txt[start:end + 1])
-    except Exception:
-        return {}
-    title = str(doc.get("title") or "").strip()
+
+def _clean_follow(raw, org, fallback_owner):
+    if not isinstance(raw, dict):
+        return None
+    title = str(raw.get("title") or "").strip()
     if not title:
-        return {}
+        return None
     try:
-        tier = int(doc.get("tier", 2))
+        tier = int(raw.get("tier", 2))
     except Exception:
         tier = 2
-    level = str(doc.get("level") or "task").lower()
-    owner = str(doc.get("owner") or "").strip()
+    level = str(raw.get("level") or "task").lower()
+    owner = str(raw.get("owner") or "").strip()
     if not any(e["id"] == owner for e in org["employees"]):
         owner = fallback_owner
     return {
@@ -290,20 +293,69 @@ def _parse_follow_up(tail, org, fallback_owner):
         "owner": owner,
         "level": level if level in LEVELS else "task",
         "tier": tier if tier in (0, 1, 2) else 2,
-        "first_action": str(doc.get("first_action") or "")[:600],
-        "why": str(doc.get("why") or "")[:300],
+        "first_action": str(raw.get("first_action") or "")[:600],
+        "why": str(raw.get("why") or "")[:300],
     }
 
 
+def _parse_follows(tail, org, fallback_owner):
+    """(everything accepting would file, an amendment to this item or None).
+
+    One result can imply several pieces of work — a reply naming a fix for the
+    tool, a sweep for the artist and a pipeline check for the engineer is three
+    items, and filing only the first would quietly drop two. Four is the cap:
+    past that it is a plan, and a plan is its own item."""
+    txt = (tail or "").strip()
+    if not txt or txt.upper().startswith("NONE"):
+        return [], None
+    if txt.startswith("```"):
+        txt = re.sub(r"^```[a-z]*\n?|```$", "", txt).strip()
+    start, end = txt.find("{"), txt.rfind("}")
+    if start < 0 or end <= start:
+        return [], None
+    try:
+        doc = json.loads(txt[start:end + 1])
+    except Exception:
+        return [], None
+    raw = doc.get("items")
+    if raw is None and doc.get("title"):
+        raw = [doc]                      # a lone object is still one item
+    got = [_clean_follow(r, org, fallback_owner) for r in (raw or [])[:4]]
+    amend = doc.get("amend")
+    if isinstance(amend, dict):
+        amend = {k: str(amend[k])[:600].strip()
+                 for k in ("title", "ask", "first_action") if amend.get(k)}
+        if amend.get("title"):
+            amend["title"] = amend["title"][:160]
+    else:
+        amend = None
+    return [g for g in got if g], (amend or None)
+
+
 def _split_result(text, org, fallback_owner):
-    """(the deliverable he reads, what accepting it would start or None if the
-    reply never said). The block is stripped from the result — it is machinery
-    for the card, not part of the work."""
+    """(the deliverable he reads, what accepting it would file or None if the
+    reply never said, any amendment to the item itself). The block is stripped
+    from the result — it is machinery for the card, not part of the work."""
     raw = text or ""
     if FOLLOW_MARK not in raw:
-        return raw.strip(), None
+        return raw.strip(), None, None
     body, _, tail = raw.partition(FOLLOW_MARK)
-    return body.strip(), _parse_follow_up(tail, org, fallback_owner)
+    got, amend = _parse_follows(tail, org, fallback_owner)
+    return body.strip(), got, amend
+
+
+def follow_ups(item):
+    """Normalised: cards written before one result could imply several stored a
+    single object under `follow_up`."""
+    got = item.get("follow_ups")
+    if isinstance(got, list):
+        return [g for g in got if isinstance(g, dict) and g.get("title")]
+    one = item.get("follow_up")
+    return [one] if isinstance(one, dict) and one.get("title") else []
+
+
+def _asked_what_follows(item):
+    return "follow_ups" in item or "follow_up" in item
 
 
 def _file_item(fields, cap, org):
@@ -333,6 +385,38 @@ def _file_item(fields, cap, org):
     })
 
 
+def _follows_spec(org, amendable=False):
+    pol = policy()
+    t0, t1, t2 = (pol["tiers"][k]["means"] for k in ("0", "1", "2"))
+    amend = AMEND_NOTE if amendable else ""
+    amend_field = (',\n "amend": {"title": ..., "ask": ..., "first_action": ...}'
+                   if amendable else "")
+    return f"""End your reply with this line exactly:
+
+{FOLLOW_MARK}
+
+and on the next line either the single word NONE — if nothing more should
+happen — or raw JSON, no fence and no prose, naming every piece of work his
+acceptance should start. One result often implies several: a fix to a tool, a
+sweep for the artist and a check in the pipeline are three items with three
+owners, and naming only the first quietly drops the other two. Four at most —
+past that it is a plan, and a plan is its own item.
+{amend}
+{{"items": [{{"title": "short, plain, no ticket IDs", "owner": "<roster id>", "level": "task|story|epic|project|goal", "tier": 0|1|2, "first_action": "the single next concrete step, specific enough to just do", "why": "one sentence: why this follows"}}]{amend_field}}}
+
+Tier each by how bad it is to get wrong with nobody reviewing it first:
+0 — {t0}
+1 — {t1}
+2 — {t2}
+Unknown blast radius is a 2, never a 0. Each item goes to the person whose job
+it actually is, by id, from this roster:
+{_roster_line(org)}
+
+NONE is the honest answer more often than not, and inventing work to look busy
+costs him the attention this system exists to protect. But a gap you noticed
+and did not file is a gap he has to remember for you — name it."""
+
+
 # ---------------------------------------------------------------------------
 # doing the tier-0 work
 # ---------------------------------------------------------------------------
@@ -340,9 +424,7 @@ def _file_item(fields, cap, org):
 def _do_prompt(item, org):
     emp = next((e for e in org["employees"] if e["id"] == item["owner"]), None)
     name = emp["name"] if emp else "you"
-    pol = policy()
-    roster = _roster_line(org)
-    t0, t1, t2 = (pol["tiers"][k]["means"] for k in ("0", "1", "2"))
+    spec = _follows_spec(org)
     # Anything he said on the card outranks the original brief — a second
     # attempt that ignores what he told you is not a second attempt.
     convo = _convo_lines(item, org)
@@ -371,30 +453,10 @@ blocking it and exactly what you would need — that is a useful result too, and
 {said}
 
 
-Then say what your result implies, because Daniel decides whether to accept it
-and he is entitled to know what his yes starts before he gives it. End your
-reply with this line exactly:
+Then say what your result implies, because Daniel decides whether to accept
+it and he is entitled to know what his yes starts before he gives it.
 
-{FOLLOW_MARK}
-
-and on the next line either the single word NONE — if accepting this finishes
-the matter and nothing more should happen — or one line of raw JSON, no fence
-and no prose, naming the one piece of work his acceptance should start:
-
-{{"title": "short, plain, no ticket IDs", "owner": "<roster id>", "level": "task|story|epic|project|goal", "tier": 0|1|2, "first_action": "the single next concrete step, specific enough to just do", "why": "one sentence: why accepting this makes that the right next move"}}
-
-Tier it by how bad it is to get wrong with nobody reviewing it first:
-0 — {t0}
-1 — {t1}
-2 — {t2}
-Unknown blast radius is a 2, never a 0.
-
-Pick the owner by id from this roster — the person whose job it actually is:
-{roster}
-
-NONE is the honest answer more often than not. One follow-up at most, and only
-work that genuinely follows from this result: inventing work to look busy costs
-him the attention this whole system exists to protect."""
+{spec}"""
 
 
 def _run_cli(prompt, sys_prompt, tools, turns, timeout):
@@ -431,7 +493,10 @@ def _process_capture(cap, org):
     if limited:
         return False                      # tokens are dry; try again later
     for fields in _parse_items(text):
-        _file_item(fields, cap, org)
+        child = _file_item(fields, cap, org)
+        if cap.get("origin"):
+            child["parent"] = cap["origin"]
+            save_item(child)
     try:
         os.remove(os.path.join(CAPTURES, f"{cap['id']}.json"))
     except OSError:
@@ -450,10 +515,11 @@ def _process_item(item, org):
         item["started"] = ""
         save_item(item)
         return False
-    body, follow_up = _split_result(text, org, item["owner"])
+    body, got, _amend = _split_result(text, org, item["owner"])
     item["result"] = body or "(no result came back)"
-    if follow_up is not None:
-        item["follow_up"] = follow_up
+    if got is not None:
+        item.pop("follow_up", None)
+        item["follow_ups"] = got
     item["state"] = "for_review"
     item["finished"] = _now_iso()
     save_item(item)
@@ -474,6 +540,7 @@ def _convo_lines(item, org):
 
 def _response_prompt(item, org):
     result = (item.get("result") or "").strip()
+    spec = _follows_spec(org, amendable=True)
     return f"""Daniel is looking at this piece of work on HQ's Work page and has
 written back to you about it. Answer him on the card, in your own voice.
 
@@ -494,17 +561,23 @@ analysing, do it here and give him the answer: the studio norm is that you do
 reversible work now rather than promising it. If what he wants changes files,
 say plainly what you would change and leave it — a build session carries that
 out. If he has told you the result was wrong, say what you now think is right,
-briefly, without apologising at length."""
+briefly, without apologising at length.
+
+A gap you name in prose is a gap he has to remember for you — so anything your
+answer commits to belongs in the block below, where his acceptance files it.
+
+{spec}"""
 
 
 def _process_response(item, org):
     """He asked something on a card; the owner answers on the card. Runs on the
     worker so the page never blocks on a model call."""
-    text, limited = _run_cli(_response_prompt(item, org),
-                             HOST.build_system_prompt(org, item["owner"]),
-                             "Read,Glob,Grep", HOST.MAX_TURNS, 300)
+    raw, limited = _run_cli(_response_prompt(item, org),
+                            HOST.build_system_prompt(org, item["owner"]),
+                            "Read,Glob,Grep", HOST.MAX_TURNS, 300)
     if limited:
         return False
+    text, got, amend = _split_result(raw, org, item["owner"])
     # Re-read: he may have typed again while the owner was thinking, and his
     # message must not be lost to a stale copy of the item.
     fresh = HOST.load_json(_item_path(item["id"]))
@@ -513,21 +586,34 @@ def _process_response(item, org):
                   "at": _now_iso()})
     fresh["conversation"] = convo
     fresh["awaiting_reply"] = False
-    # What he was told may have changed what should follow, so the card must
-    # not keep showing a consequence worked out before the conversation.
+    # A conversation can change what the card is, not just what follows it. An
+    # amendment is recorded rather than applied silently: he must be able to see
+    # that the thing he is judging moved, and what it used to say.
+    if amend:
+        changed = {k: [fresh.get(k, ""), v] for k, v in amend.items()
+                   if str(fresh.get(k, "")).strip() != v.strip()}
+        if changed:
+            fresh.setdefault("amendments", []).append({
+                "at": _now_iso(), "by": item["owner"],
+                "changed": {k: v[0] for k, v in changed.items()},
+            })
+            for k, v in changed.items():
+                fresh[k] = v[1]
+    # What he was told may have changed what should follow, so the card never
+    # keeps showing a consequence worked out before the conversation.
     fresh.pop("follow_up", None)
+    fresh["follow_ups"] = got or []
     save_item(fresh)
     last_from_him = next((m["text"] for m in reversed(convo)
                           if m.get("role") == "daniel"), "")
-    capture_exchange(fresh.get("thread") or fresh["owner"], last_from_him, text or "")
+    capture_exchange(fresh.get("thread") or fresh["owner"], last_from_him, text or "",
+                     origin=fresh["id"])
     return True
 
 
 def _propose_follow_up(item, org):
     """Backfill for results that landed before the card showed consequences.
     New work answers this inside the call that does it and never reaches here."""
-    pol = policy()
-    t0, t1, t2 = (pol["tiers"][k]["means"] for k in ("0", "1", "2"))
     prompt = f"""A piece of work in Tiny Farm HQ is finished and waiting for the
 CEO's verdict. He is about to accept or reject it, and he is entitled to know
 what his yes starts before he gives it.
@@ -537,28 +623,19 @@ WHAT HE ASKED FOR: {item.get('ask', '')}
 THE RESULT HE IS LOOKING AT:
 {(item.get('result') or '')[:6000]}
 
-Name the one piece of work his acceptance should start. Reply with the single
-word NONE if accepting this finishes the matter, or with one line of raw JSON,
-no fence and no prose:
+{_convo_lines(item, org)}
 
-{{"title": "short, plain, no ticket IDs", "owner": "<roster id>", "level": "task|story|epic|project|goal", "tier": 0|1|2, "first_action": "the single next concrete step, specific enough to just do", "why": "one sentence: why accepting this makes that the right next move"}}
-
-Tier it by how bad it is to get wrong with nobody reviewing it first:
-0 — {t0}
-1 — {t1}
-2 — {t2}
-Unknown blast radius is a 2, never a 0.
-
-Pick the owner by id from this roster:
-{_roster_line(org)}
-
-NONE is the honest answer more often than not. Inventing work to look busy
-costs him the attention this system exists to protect."""
+{_follows_spec(org)}"""
     text, limited = _run_cli(prompt, "You answer with NONE or one line of JSON.",
                              "", 1, 180)
     if limited:
         return False
-    item["follow_up"] = _parse_follow_up(text, org, item["owner"])
+    body, got, _ = _split_result(text, org, item["owner"])
+    if got is None:
+        # No marker came back; the whole reply is the block.
+        got, _amend = _parse_follows(text, org, item["owner"])
+    item.pop("follow_up", None)
+    item["follow_ups"] = got or []
     save_item(item)
     return True
 
@@ -597,7 +674,7 @@ def worker():
                 continue
             # No card should sit in front of him with its consequence unknown.
             blind = [i for i in items()
-                     if i.get("state") == "for_review" and "follow_up" not in i]
+                     if i.get("state") == "for_review" and not _asked_what_follows(i)]
             if blind:
                 _propose_follow_up(blind[0], org)
         except Exception:
@@ -679,8 +756,8 @@ def api_post(path, payload):
         # His yes starts exactly the work the card showed him and nothing else.
         # The follow-up enters at its own tier, so a risky one still comes back
         # to him rather than riding in on the acceptance of something safe.
-        fu = item.get("follow_up") or {}
-        if fu.get("title"):
+        started = []
+        for fu in follow_ups(item):
             org = HOST.load_org()
             cap = {"to": item.get("thread") or item["owner"], "id": "follow",
                    "message": f"Accepted “{item['title']}”. {fu.get('why', '')}".strip()}
@@ -695,8 +772,10 @@ def api_post(path, payload):
             }, cap, org)
             child["parent"] = item["id"]
             save_item(child)
-            item["spawned"] = [{"id": child["id"], "title": child["title"],
-                                "state": child["state"]}]
+            started.append({"id": child["id"], "title": child["title"],
+                            "state": child["state"], "owner": child["owner"]})
+        if started:
+            item["spawned"] = started
     elif path == "/api/work/drop":
         item["state"] = "dropped"
         item["closed"] = _now_iso()
