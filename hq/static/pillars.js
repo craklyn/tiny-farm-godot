@@ -942,65 +942,86 @@ function wireManifest(root) {
    every other tile in the building — so the tile says which direction is good. */
 async function instOps(root, below, sig, g) {
   const byId = Object.fromEntries((g.goals || []).map(x => [x.id, x]));
-  const gate = byId["debug-text-is-off"] || {};
-  const ledger = byId["every-asset-is-ledgered"] || {};
   const spend = byId["spend-is-recorded"] || {};
-  const creds = byId["credentials-are-declared"] || {};
-  const contact = byId["a-player-can-reach-us"] || {};
+  const budget = byId["model-budget-is-recorded"] || {};
+  const ledger = byId["every-asset-is-ledgered"] || {};
   const lic = byId["licences-are-clean"] || {};
+  const creds = byId["every-credential-is-present"] || {};
+  const contact = byId["a-player-can-reach-us"] || {};
+  const words = byId["ready-to-grow-words"] || {};
   const orphans = (ledger.reading || {}).orphans || [];
+  const credR = creds.reading || {};
 
-  const shipBlockers = [gate, ledger].filter(x => x.state === "red");
-
-  const pills = [
-    ["Retro Diffusion key", creds.state === "green"],
-    ["Freesound key", creds.state === "green"],
-    ["Credential names in git", creds.state === "green"],
-    ["A machine-readable spend record", spend.state === "green"],
-    ["A way for a player to reach us", contact.state === "green"],
-  ].map(([label, ok]) => `<span class="pill ${ok ? "ok" : "bad"}"><i class="dot ${ok ? "d-ok" : "d-fire"}"></i>${esc(label)}</span>`).join("");
-
+  // Three tiles, one per job this pillar actually holds: Harold's money,
+  // the obligations we owe other people, and the players Fatima and Oskar
+  // would have to look after. The ship gate used to be the headline here and
+  // has gone back to Sales — a pillar that leads with another pillar's job is
+  // not reporting its own.
   root.replaceChildren(h(`
     <div class="opsgrid">
       <div class="card tile">
-        <div class="tile-h">Ship gate</div>
-        <div class="tile-big ${shipBlockers.length ? "bad" : "ok"}">${shipBlockers.length ? "No" : "Yes"}</div>
-        <div class="small">${shipBlockers.length
-          ? `${shipBlockers.length} thing${shipBlockers.length === 1 ? "" : "s"} would go out wrong:`
-          : "Nothing measurable stops a tag."}</div>
-        ${shipBlockers.map(x => `<div class="small tile-line"><i class="dot d-fire"></i>${esc(x.statement_short)}</div>`).join("")}
-        <div class="small muted tile-foot">Read from the files themselves, not from the runbook's boxes.</div>
-      </div>
-
-      <div class="card tile">
         <div class="tile-h">Money</div>
         <div class="tile-frame">
-          <div class="abs-title">Balance at the art vendor</div>
+          <div class="abs-title">What this studio costs to run</div>
           <div class="abs-body">not recorded</div>
         </div>
-        <div class="small muted tile-foot">The whole spend record is prose inside an essay, and it does
-          not reconcile: the last balance actually written down was <b>$1.858</b>, before two runs that
-          recorded no balance at all. Nobody here can state today's figure — which is exactly the number
-          an approval should be given against, so this tile stays a frame until a machine-readable
-          ledger exists. Drawing a bar against a balance nothing records would be the fabrication this
-          dashboard exists to prevent.</div>
+        <div class="small tile-line"><i class="dot ${spend.state === "green" ? "d-ok" : "d-fire"}"></i>
+          <span>Art spend is prose in a ledger — the last balance written down was
+          <a class="plain" href="${docAnchor("CREDITS.md", "art")}">$1.858</a>, before two runs that
+          recorded none.</span></div>
+        <div class="small tile-line"><i class="dot ${budget.state === "green" ? "d-ok" : "d-fire"}"></i>
+          <span>The model budget is the bigger number by far, and it is overwritten on every
+          event rather than kept.</span></div>
+        <div class="small muted tile-foot">Both are the same defect: the money is spent, and
+          nothing writes down that it was. Until they are fixed this tile stays a frame — drawing
+          a balance nothing records is the fabrication this dashboard exists to prevent.</div>
       </div>
 
       <div class="card tile">
-        <div class="tile-h">Exposure <span class="small muted">— counts down</span></div>
+        <div class="tile-h">What we owe <span class="small muted">— counts down</span></div>
         <div class="tile-big ${orphans.length ? "bad" : "ok"}">${orphans.length}</div>
-        <div class="small">shipped asset${orphans.length === 1 ? "" : "s"} with no line saying whose it is
-          ${orphans.length ? `— ${orphans.map(o => `<code class="ref">${esc(o)}</code>`).join(", ")}` : ""}</div>
+        <div class="small">shipped file${orphans.length === 1 ? "" : "s"} with nothing saying whose
+          ${orphans.length ? `it is — ${orphans.map(o =>
+            `<a class="plain" href="${docAnchor("CREDITS.md", "audio")}"><code class="ref">${esc(o)}</code></a>`).join(", ")}` : "they are"}</div>
         <div class="small tile-line"><i class="dot ${lic.state === "attested" ? "d-attested" : "d-unchecked"}"></i>
-          ${esc(lic.measured_human || "")}</div>
-        <div class="small muted tile-foot">The one tile in HQ where a rising number is bad news: this
-          counts what we owe other people, and zero is the finished state.</div>
+          <span>${esc(lic.measured_human || "")}</span></div>
+        <div class="small muted tile-foot">The one tile in HQ where a rising number is bad news:
+          this counts what we owe other people, and zero is the finished state.</div>
+      </div>
+
+      <div class="card tile">
+        <div class="tile-h">The people on the other end</div>
+        <div class="tile-line small"><i class="dot ${contact.state === "green" ? "d-ok" : "d-fire"}"></i>
+          <span><b>Nowhere to write to.</b> One build is public and the page names no contact of
+          any kind, so the first thing a player would tell us is the one thing we cannot hear.</span></div>
+        <div class="tile-line small"><i class="dot ${words.state === "green" ? "d-ok" : "d-attn"}"></i>
+          <span><b>No translation plumbing.</b> The game starts almost wordless and gains text as it
+          gets technical, by design — so every string written before the plumbing exists is one
+          somebody has to go back and find.</span></div>
+        <div class="small muted tile-foot">Support and localization both live here, and neither has
+          anything to work with yet. That is the honest state, not an empty tile.</div>
       </div>
     </div>
-    <div class="pillrow">${pills}</div>`));
 
-  below.replaceChildren(h(foldSection("The provenance ledger, in full", "every asset's rights and cost",
-    `<div class="mddoc" id="credits-doc"><span class="muted">loading…</span></div>`)));
+    <div class="credrow">
+      <b class="small">Credentials this studio runs on</b>
+      ${(credR.declared || []).map(k => {
+        const have = (credR.present || []).includes(k);
+        return `<a class="pill ${have ? "ok" : "bad"}" href="${docAnchor(".env.example", "")}"
+          title="${have ? "present in this machine's .env" : "declared, but not on this machine"}"
+          ><i class="dot ${have ? "d-ok" : "d-fire"}"></i>${esc(k)}</a>`;
+      }).join("")}
+      <span class="small muted">read by name only — no value is ever opened</span>
+    </div>`));
+
+  below.replaceChildren(h(
+    foldSection("The provenance ledger, in full", "every asset's rights and cost",
+      `<div class="mddoc" id="credits-doc"><span class="muted">loading…</span></div>`)
+    + foldSection("The gate that stops a release", "Sales owns it — shown here because it is what stands between us and shipping",
+      `<p class="small muted">This pillar used to lead with the ship gate. It belongs to
+        <a class="plain" href="#/pillar/sales">Sales &amp; Platforms</a>, which owns the release, and
+        duplicating it here made the same red appear twice in your queue under two owners.</p>
+       <p><a class="gbtn" href="#/pillar/sales">Open Sales &amp; Platforms</a></p>`)));
   try {
     const doc = await api("/api/rootdoc/CREDITS.md");
     const el = below.querySelector("#credits-doc");

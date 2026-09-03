@@ -91,74 +91,6 @@
       "signal_key": "asset_ledger"
     },
     {
-      "id": "debug-text-is-off",
-      "statement": "The release pipeline refuses to publish a build the runbook says is not shippable.",
-      "statement_short": "nothing would stop a tag shipping the debug readout",
-      "owner": "harold",
-      "severity": "blocking",
-      "unit": "",
-      "measure": {
-        "kind": "file_grep",
-        "label": "the release workflow checks the playtest readout before it publishes",
-        "paths": [
-          ".github/workflows/release.yml"
-        ],
-        "exts": [
-          ".yml"
-        ],
-        "pattern": "PLAYTEST_NOTES",
-        "expect": "present",
-        "field": "bool",
-        "says_true": "the release workflow refuses to publish with the readout on",
-        "says_false": "the release workflow publishes without checking the readout at all"
-      },
-      "compare": {
-        "direction": "must_be_true"
-      },
-      "path_to_green": {
-        "narrative": "Sales owns the fix: one guard step in the release workflow.",
-        "route": {
-          "kind": "none"
-        },
-        "owner": "lena",
-        "owned_by_pillar": "sales",
-        "owned_by_label": "Sales owns this gate →"
-      },
-      "history": {
-        "record": true,
-        "chart": false
-      },
-      "signal_key": "ship_gate",
-      "why_it_matters": "Sales owns this gate; it appears here because a build that ships debug text is the single thing standing between us and a release. The readout being on today is expected — we are playtesting. What is not expected is that nothing checks it at the moment a tag is cut."
-    },
-    {
-      "id": "credentials-are-declared",
-      "statement": "Every credential this studio depends on is named somewhere a second machine could be set up from.",
-      "statement_short": "the credentials this studio runs on are named nowhere",
-      "owner": "harold",
-      "severity": "important",
-      "unit": "",
-      "why_it_matters": "You work from two machines. A key that exists only in one .env is a machine that cannot be replaced.",
-      "measure": {
-        "kind": "file_exists",
-        "path": ".env.example"
-      },
-      "compare": {
-        "direction": "must_be_true"
-      },
-      "path_to_green": {
-        "narrative": "Names only, never values, tracked in git.",
-        "route": {
-          "kind": "none"
-        },
-        "owner": "harold"
-      },
-      "history": {
-        "record": false,
-        "chart": false
-      }
-    },
-    {
       "id": "a-player-can-reach-us",
       "statement": "A player who hits a bug has somewhere to send it.",
       "statement_short": "a player who hits a bug has nowhere to send it",
@@ -236,6 +168,117 @@
       },
       "history": {
         "record": false,
+        "chart": false
+      }
+    },
+    {
+      "id": "every-credential-is-present",
+      "statement": "Every credential this studio depends on is present on the machine that needs it.",
+      "statement_short": "a credential this studio depends on is missing from this machine",
+      "owner": "harold",
+      "severity": "important",
+      "unit": "credentials missing on this machine",
+      "why_it_matters": "You work from two machines, and a key that exists on only one is a machine that cannot do the work. This reads key NAMES from .env and compares them to what .env.example declares — the value is dropped at the split and never read, stored or shown. It replaces a row of pills where three separate 'keys' were all wired to one check for whether a file existed: one measurement rendered three times and presented as three facts.",
+      "measure": {
+        "kind": "env_present",
+        "example": ".env.example",
+        "path": ".env"
+      },
+      "compare": {
+        "direction": "lower_is_better",
+        "target": 0,
+        "amber_at": 0
+      },
+      "path_to_green": {
+        "narrative": "Copy the missing name into this machine's .env from wherever the key is kept.",
+        "route": {
+          "kind": "none"
+        },
+        "owner": "harold"
+      },
+      "history": {
+        "record": true,
+        "chart": false
+      }
+    },
+    {
+      "id": "model-budget-is-recorded",
+      "statement": "We can say what the studio's largest recurring cost is doing over time.",
+      "statement_short": "the studio's biggest running cost has no history at all",
+      "owner": "harold",
+      "severity": "important",
+      "unit": "",
+      "why_it_matters": "The model budget is by a wide margin the largest ongoing expense here — far more than the $2.23 of art this pillar reports carefully. HQ already detects when the window runs dry and parks the work that was waiting, so the events happen; hq/data/outbox/_limit.json is simply overwritten each time. One append instead of one overwrite and the studio's real cost curve exists. Until then, the only spend Finance can talk about is the small one.",
+      "measure": {
+        "kind": "file_exists",
+        "path": "hq/data/history/limits.jsonl"
+      },
+      "compare": {
+        "direction": "must_be_true"
+      },
+      "path_to_green": {
+        "narrative": "Append the limit events instead of overwriting them — when the window ran dry, when it came back, and how much work was parked meanwhile.",
+        "route": {
+          "kind": "none"
+        },
+        "owner": "harold",
+        "action": {
+          "label": "Put it on Harold's list",
+          "tier": 1,
+          "level": "task",
+          "title": "Record the model budget instead of overwriting it",
+          "ask": "hq/data/outbox/_limit.json holds one limit event and is overwritten by the next, so the studio's largest recurring cost has no history whatsoever. Append each event to hq/data/history/limits.jsonl instead — hit at, reset at, and how many requests were parked — beside the run and deploy histories that already work this way. It is a few lines, and it is the difference between Finance reporting a $2.23 art spend and Finance reporting what this studio actually costs to run.",
+          "first_action": "Read note_limit and _save_limit_locked in hq/server.py, and the append_history helper beside them."
+        }
+      },
+      "history": {
+        "record": true,
+        "chart": false
+      }
+    },
+    {
+      "id": "ready-to-grow-words",
+      "statement": "When the game starts needing words, they can be translated without going back over the code.",
+      "statement_short": "there is no translation plumbing, so every word added now is a retrofit later",
+      "owner": "oskar",
+      "severity": "watch",
+      "unit": "",
+      "why_it_matters": "The game starts almost wordless and gains text as it gets technical — S-7 binds phase 1's farming loop, not the whole arc, and programmable bots will need words by design. So text is coming on purpose. There is no i18n here at all: no tr(), no locale setting, no translation files. Every string written before the plumbing exists is one somebody has to go back and find. This is the cheapest it will ever be to fix, and it gets more expensive with each phase.",
+      "measure": {
+        "kind": "file_grep",
+        "label": "the project has translation plumbing",
+        "paths": [
+          "project.godot"
+        ],
+        "exts": [
+          ".godot"
+        ],
+        "pattern": "(?i)translations|locale/translation",
+        "expect": "present",
+        "field": "bool",
+        "says_true": "the project declares translations",
+        "says_false": "the project declares no translations, and nothing in the code calls tr()"
+      },
+      "compare": {
+        "direction": "must_be_true"
+      },
+      "path_to_green": {
+        "narrative": "Put the plumbing in before the words arrive, not after. Phase 2's machines are where text starts, so this wants doing before them.",
+        "route": {
+          "kind": "none"
+        },
+        "owner": "oskar",
+        "action": {
+          "label": "Put it on Oskar's list",
+          "tier": 1,
+          "level": "story",
+          "title": "Put the translation plumbing in before the words arrive",
+          "ask": "The game starts wordless and grows text as it gets technical — the machine panel already has words and later phases will need more. There is no i18n at all: no tr(), no locale config, no translation files. Set up the plumbing now and route the handful of existing strings through it, so text written from here is translatable by default rather than something somebody has to go back and find. Do not add words to the farming loop while doing it: S-7 binds phase 1's core loop and that constraint is unchanged.",
+          "first_action": "Read S-7 in docs/DECISION_LOG.md for what the constraint actually covers, then list every player-facing string in ui/ and where it is built."
+        }
+      },
+      "history": {
+        "record": true,
         "chart": false
       }
     }

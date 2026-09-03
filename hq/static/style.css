@@ -1003,3 +1003,10 @@ code.ref { background: #1b1710; border: 1px solid var(--line); border-radius: 6p
 .pl-unruled { background: transparent; color: #e0912e; border: 1px dashed #e0912e; text-transform: none; letter-spacing: 0; font-weight: 600; }
 .bar-void { color: #e8927a; font-weight: 700; font-size: 11px; text-transform: uppercase; }
 .gate-src { margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--line); }
+/* Ops' credential row. Each pill is now one real check of one real name — the
+   row it replaces had three pills all wired to a single check for whether a
+   file existed, which asserted three facts it had never established. */
+.credrow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 14px; }
+.credrow .pill { text-decoration: none; color: var(--text); }
+.credrow .pill:hover { border-color: var(--accent); }
+.credrow .pill.bad { border-color: var(--red); }

@@ -10,49 +10,37 @@
   },
   "goals": [
     {
-      "id": "promises-hold",
-      "statement": "The store page does not promise anything the build has stopped doing.",
-      "statement_short": "the store page promises no words to read, and the build now has words to read",
+      "id": "store-copy-describes-this-build",
+      "statement": "The store page describes the game we have, not the one we had at the last release.",
+      "statement_short": "the store page has never mentioned most of what the game now does",
       "owner": "carmen",
       "severity": "important",
-      "unit": "words",
-      "why_it_matters": "This is the only pillar that can be falsified by its own product. The page says 'no menus to learn and no words to read'; every English label the build adds makes that sentence less true, and a stranger can check it in ten seconds.",
+      "unit": "features the page has never mentioned",
+      "why_it_matters": "This pillar owns the one surface outsiders can see, and it is the surface that goes stale fastest. The page still promises 'no menus to learn and no words to read' — which is a claim about phase 1's farming loop (S-7 binds the core loop, and only phase 1), made about a whole game whose later phases run to programmable bots and will need words by design. The build growing text is the design working; the copy not keeping up is the failure, and it is ours.",
       "measure": {
-        "kind": "file_grep",
-        "label": "English labels the build asks a player to read",
-        "paths": [
-          "ui/"
-        ],
-        "exts": [
-          ".gd"
-        ],
-        "skip_comments": true,
-        "pattern": "_add_option\\(\"[A-Za-z]",
-        "expect": "absent",
-        "field": "count",
-        "unit": "English label a player has to read",
-        "unit_plural": "English labels a player has to read"
+        "kind": "copy_drift",
+        "release": "update-1",
+        "path": "ITCH_PAGE.md",
+        "unit": "features the page has never mentioned"
       },
       "compare": {
         "direction": "lower_is_better",
         "target": 0,
-        "amber_at": 0
+        "amber_at": 3
       },
       "path_to_green": {
-        "narrative": "Either the machine menu gets pictures, or the store page stops claiming there is nothing to read. Both are honest; the gap between them is not — and it is your taste call, prepped and waiting.",
+        "narrative": "Rewrite the page against what the build now does, and say what the wordless promise actually covers — the farming loop a pre-reader can play — rather than implying the whole game has no text.",
         "route": {
-          "kind": "decision",
-          "id": "Q-87"
+          "kind": "none"
         },
         "owner": "carmen",
-        "ceo_blocker": {
-          "kind": "ruling",
-          "surface": {
-            "kind": "decision",
-            "id": "Q-87"
-          },
-          "consequence": "The wordless promise becomes something we keep only where it is easy, and the next machine panel argues from this one.",
-          "waiting_since": "2026-09-03"
+        "action": {
+          "label": "Put it on Carmen's list",
+          "tier": 1,
+          "level": "task",
+          "title": "Rewrite the store page against the build",
+          "ask": "The store page describes the game as it was at v0.1.0 and promises 'no menus to learn and no words to read'. That promise is S-7's, and S-7 binds phase 1's core farming loop only — the arc runs to programmable bots that will need words by design, so the build gaining text is not a broken promise, it is the plan. Rewrite the page against what the game now does (the shop, the robots, the home, the clock — see the release manifest on the Sales page), and phrase the accessibility claim so it says what is actually true: a child who cannot read can farm.",
+          "first_action": "Read ITCH_PAGE.md, S-7 in docs/DECISION_LOG.md, and the Sales page's release manifest, then draft the new copy."
         }
       },
       "history": {
@@ -211,6 +199,39 @@
       },
       "history": {
         "record": true,
+        "chart": false
+      }
+    },
+    {
+      "id": "the-farming-loop-needs-no-reading",
+      "statement": "A child who cannot read can still play the farming loop.",
+      "statement_short": "nobody is checking that the farming loop stays readable-free",
+      "owner": "sam",
+      "severity": "important",
+      "unit": "",
+      "why_it_matters": "S-7's actual promise, and the accessibility claim the store page is really making. The shop was deliberately stripped of words and builds itself from icons and numerals; the machine panel has words and is reached at 150g, days of farming away. Which surfaces a pre-reader must cross is the whole question, and it is a judgment about the game rather than a property of the source.",
+      "measure": {
+        "kind": "unchecked",
+        "reason": "No grep can tell the shop apart from the machine panel — both are labels in ui/menus.gd, and whether one sits on the farming loop is a judgment about which surfaces a player has to cross to farm. A check counting every English string in the build would go redder with every phase, by design, which is the wrong shape of check entirely.",
+        "would_need": "A named list of the surfaces the farming loop crosses, so a check can scan those and ignore the rest — which is a design ruling before it is a checker."
+      },
+      "path_to_green": {
+        "narrative": "Name the surfaces the farming loop crosses. Then this becomes a real check instead of a promise nobody tests.",
+        "route": {
+          "kind": "none"
+        },
+        "owner": "sam",
+        "action": {
+          "label": "Put it on Sam's list",
+          "tier": 1,
+          "level": "task",
+          "title": "Name the surfaces a pre-reader has to cross",
+          "ask": "S-7 says phase 1's core loop needs no reading, but nothing lists which surfaces that covers. Walk the farming loop — clear, till, plant, water, sleep, harvest, buy seeds — and name every surface a player crosses to do it. That list turns an untested promise into a check, and it also settles the scope argument in the open robot-menu question: whether a machine panel is inside the loop or outside it.",
+          "first_action": "Play the loop on the tablet build and write down every panel it passes through."
+        }
+      },
+      "history": {
+        "record": false,
         "chart": false
       }
     }

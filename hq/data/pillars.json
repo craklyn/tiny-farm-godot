@@ -147,7 +147,7 @@
       "emoji": "💰",
       "lead": "harold",
       "team": "G&A",
-      "tagline": "Whether we may ship, and whether we can afford what's next.",
+      "tagline": "The money, the obligations, and the people on the other end of the build.",
       "git_paths": [
         "CREDITS.md",
         "LICENSE",
@@ -162,7 +162,7 @@
         }
       ],
       "commit_feed_label": "Quiet here is good news — these files change slowly on purpose",
-      "question": "Is there anything that stops us shipping — and can we afford what's next?"
+      "question": "What do we owe, what do we spend, and can a player who needs us reach us?"
     }
   ]
 }

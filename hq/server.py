@@ -2254,6 +2254,67 @@ def eval_measure(spec, depth=0):
                             doc.get("source_human", spec["probe"]), "", "cached",
                             extra={"polled_at": doc.get("polled_at")})
 
+        if kind == "env_present":
+            # Which declared credentials this machine actually has. Reads KEY
+            # NAMES only — the line is split at the first '=' and the value is
+            # dropped on the floor, never stored, never returned, never logged.
+            # This replaces a row of pills where three separate "keys" were all
+            # wired to one check for whether .env.example exists: one
+            # measurement rendered three times and presented as three facts.
+            def _keys(rel):
+                out = []
+                try:
+                    with open(_safe(rel), "r", encoding="utf-8") as f:
+                        for line in f:
+                            line = line.strip()
+                            if not line or line.startswith("#") or "=" not in line:
+                                continue
+                            out.append(line.split("=", 1)[0].strip())
+                except OSError:
+                    return None
+                return out
+            declared = _keys(spec.get("example", ".env.example"))
+            if declared is None:
+                return _reading(None, error="no .env.example declares what this studio needs")
+            have = _keys(spec.get("path", ".env"))
+            if have is None:
+                return _reading(len(declared), spec.get("unit", "credentials missing on this machine"),
+                                "no .env on this machine at all", "", "cheap",
+                                extra={"declared": declared, "present": [], "missing": declared})
+            missing = [k for k in declared if k not in have]
+            return _reading(len(missing), spec.get("unit", "credentials missing on this machine"),
+                            f"{len(declared) - len(missing)} of {len(declared)} declared credentials are present",
+                            "key names only; no value is ever read", "cheap",
+                            extra={"declared": declared, "missing": missing,
+                                   "present": [k for k in declared if k in have]})
+
+        if kind == "copy_drift":
+            # How many things a player would notice have landed since the store
+            # copy was last written. This replaces a check that counted English
+            # strings in the build against a bar of zero — which was aimed at the
+            # wrong thing entirely: S-7 binds phase 1's *core loop*, not the whole
+            # game, and the arc runs to programmable bots that will need words.
+            # A game that grows text by design makes the COPY the thing that goes
+            # stale, not the build.
+            rel = (release_manifest(spec.get("release"))["releases"] or [None])[0]
+            if not rel:
+                return _reading(None, error=f"no release called {spec.get('release')}")
+            copy_ct = run_cmd(["git", "log", "-1", "--format=%ct", "--", spec["path"]])
+            if not copy_ct:
+                return _reading(None, error=f"{spec['path']} has no commits")
+            copy_ct = int(copy_ct)
+            stale = []
+            for f in rel["features"]:
+                for c in f.get("landed", []):
+                    ct = run_cmd(["git", "log", "-1", "--format=%ct", c["hash"]])
+                    if ct and int(ct) > copy_ct:
+                        stale.append(f["headline"])
+                        break
+            return _reading(len(stale), spec.get("unit", "features the page has never mentioned"),
+                            f"features that landed since {spec['path']} was last written",
+                            "git log -1 per landing commit", "git",
+                            extra={"stale": stale[:8], "copy_path": spec["path"]})
+
         if kind == "platform_ladder":
             lad = platform_ladder()["platforms"]
             live = [p for p in lad if p.get("live")]
