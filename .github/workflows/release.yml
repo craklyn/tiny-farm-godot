@@ -23,8 +23,44 @@ env:
   ITCH_TARGET: "craklyn/tiny-farm"
 
 jobs:
+  # The runbook's machine-checkable boxes, first: a tag that is not ready to
+  # ship fails here in seconds, before the test suite spends its fifteen
+  # minutes on a build that was never going out.
+  guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+    - uses: actions/checkout@v4
+
+  # docs/DEPLOY.md "Before any release": the playtest readout must be off
+  # before anything public ships. The constant stays `true` in the repo on
+  # purpose — it's what a playtest build needs — so this is deliberately a
+  # release-time check, not a change to the default. Placed first, ahead of
+  # the export (and ahead of the Godot download), so a release that isn't
+  # ready fails in seconds rather than after a 30-minute build.
+    - name: "Guard: playtest readout must be off"
+      run: |
+        if grep -qE '^const PLAYTEST_NOTES := true' ui/hud.gd; then
+          echo "::error::ui/hud.gd has 'const PLAYTEST_NOTES := true'. Set it to false before tagging a release (docs/DEPLOY.md, 'Before any release') — it draws four lines of debug text over the game." >&2
+          exit 1
+        fi
+
+  # docs/DEPLOY.md "Before any release": the CC BY 4.0 music licence
+  # requires an attribution line, and it ships only on the Credits screen.
+  # This checks the attribution text is actually present in the constant
+  # the screen renders (ui/title_screen.gd CREDITS_TEXT) — it cannot check
+  # that the screen opens or that a human read it, so the runbook's "play
+  # the credits screen" box still needs a person.
+    - name: "Guard: credits screen carries the CC BY attribution"
+      run: |
+        if ! grep -q 'Creative Commons: By Attribution 4.0' ui/title_screen.gd; then
+          echo "::error::ui/title_screen.gd's CREDITS_TEXT no longer contains the CC BY 4.0 attribution line for the bundled music. Restore it (see CREDITS.md and docs/DEPLOY.md, 'Before any release') before tagging a release — shipping without it breaches the licence." >&2
+          exit 1
+        fi
+
   # Same suite the normal CI runs, called rather than copied.
   tests:
+    needs: guard
     uses: ./.github/workflows/tests.yml
 
   publish:

@@ -156,16 +156,26 @@ trace mislabelled its own categories and where the crow schedule desynced replay
 
 - [ ] Play the web build through in a real browser. Sound must arrive after the first tap
       (browsers suspend audio until a user gesture), and a farm must survive a reload.
-- [ ] **Check the Credits screen opens.** This is a licence check, not polish: the CC BY
-      music's attribution appears *only* there, so a release without it breaches the
-      licence. Attribution lives in `ui/title_screen.gd` `CREDITS_TEXT` and `CREDITS.md`,
-      and the two change together.
+- [ ] **Check the Credits screen opens, and that the CC BY line is on it.** This is a
+      licence check, not polish: the CC BY music's attribution appears *only* there, so a
+      release without it breaches the licence. Attribution lives in `ui/title_screen.gd`
+      `CREDITS_TEXT` and `CREDITS.md`, and the two change together. **The attribution text
+      is enforced by the release workflow** (`.github/workflows/release.yml`, "Guard:
+      credits screen carries the CC BY attribution") — it greps `CREDITS_TEXT` for the
+      attribution line and fails the tag before export if it's gone. That only proves the
+      text is still in the source, not that the screen opens or that a human read it —
+      still play it through.
 - [ ] **Turn off the playtest readout.** `ui/hud.gd`'s `PLAYTEST_NOTES` must be `false`.
       It draws four lines of English at the top of the screen naming the current beat and
       every unlock threshold — indispensable for a playtest, and a direct breach of S-7's
       no-required-reading promise in anything public. It is deliberately *not* gated on
       `OS.is_debug_build()`, because a playtest build handed to a tester is often a debug
       export and the readout has to survive that; the cost of that choice is this line.
+      **Enforced by the release workflow** (`.github/workflows/release.yml`, "Guard:
+      playtest readout must be off") — forgetting to flip it now fails the tag before
+      export instead of shipping. The constant itself stays `true` in the repo day to day,
+      since that's what a playtest build needs; flip it to `false` only when cutting the
+      tag, same as before.
 - [ ] **Settle the cot look before a public release.** T-27 box 5 ships *three*
       treatments at once so the designer can A/B them on the tablet (`Cot Look` on the
       title screen, `Cot look:` in the pause menu — both `OS.is_debug_build()`-gated, so

@@ -793,6 +793,8 @@ def _run_deploy(doc, address):
         if doc["state"] == "running":  # belt and braces: never leave it spinning
             doc["state"] = "failed"
         _deploy_write(doc)
+        append_history("deploys", {"state": doc["state"], "summary": doc.get("summary", ""),
+                                   "started": doc.get("started", "")})
 
 
 def start_deploy(payload):
@@ -3379,7 +3381,13 @@ def note_limit(text):
         _LIMIT["until"] = max(cur, guess)
         _LIMIT["detail"] = " ".join((text or "").split())[:200]
         _save_limit_locked()
-        return _LIMIT["until"]
+        until = _LIMIT["until"]
+    if not cur:
+        # cur is 0 only on the call that opens a fresh outage — later calls
+        # while it's still in force just refine the guess and must not each
+        # log a line, or the history would grow one row per failed retry.
+        append_history("limits", {"event": "hit", "until": until})
+    return until
 
 
 def clear_limit():
@@ -3390,6 +3398,8 @@ def clear_limit():
         _LIMIT["until"] = 0.0
         _LIMIT["detail"] = ""
         _save_limit_locked()
+    parked = sum(1 for i in list_outbox() if i["state"] in ("queued", "sending"))
+    append_history("limits", {"event": "clear", "parked": parked})
 
 
 def limited_until():

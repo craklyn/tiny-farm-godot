@@ -7,13 +7,15 @@
   "tier_reason": "filed by hand",
   "ask": "Add a guard step to .github/workflows/release.yml that fails the release before the export if ui/hud.gd's PLAYTEST_NOTES is still true. docs/DEPLOY.md's pre-release checklist names this as a manual box; it is a one-line grep and it is the only item on that list that can be enforced mechanically. Do not change the constant itself — it is deliberately on during playtesting, and the point is that the pipeline catches it at tag time rather than that it is off today. While you are there, check whether the credits-screen item can be guarded the same way.",
   "first_action": "Read docs/DEPLOY.md's 'Before any release' section and .github/workflows/release.yml, then add the guard step ahead of the export.",
-  "state": "waiting_session",
+  "state": "accepted",
   "thread": "lena",
   "source": "chat",
   "source_message": "Add a guard step to .github/workflows/release.yml that fails the release before the export if ui/hud.gd's PLAYTEST_NOTES is still true. docs/DEPLOY.md's pre-release checklist names this as a manual box; it is a one-line grep and it is the only item on that list that can be enforced mechanically. Do not change the constant itself — it is deliberately on during playtesting, and the point is that the pipeline catches it at tag time rather than that it is off today. While you are there, check whether the credits-screen item can be guarded the same way.",
-  "result": "",
+  "result": "Executed by a Sonnet worker holding only Lena's seat context; verified and amended by the chief of staff. release.yml gains two tag-time guards — PLAYTEST_NOTES must be false, and the credits screen's CC BY attribution text must be present — with plain failure messages naming the file to fix. Triggers verified tag-only, so routine CI can never go red from this. The runbook's two boxes now say they are enforced. Amendment on review: the guards moved into their own first job that tests and publish depend on — placed inside publish they would only have fired after the suite spent its fifteen minutes; the lesson is in Lena's notes.",
   "started": "",
   "attempts": 0,
   "created": "2026-09-03T18:10",
-  "created_ts": 1788484229.824918
+  "created_ts": 1788484229.824918,
+  "finished": "2026-09-03T22:19",
+  "closed": "2026-09-03T22:19"
 }

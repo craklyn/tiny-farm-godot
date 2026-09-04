@@ -200,20 +200,32 @@
     {
       "id": "model-budget-is-recorded",
       "statement": "We can say what the studio's largest recurring cost is doing over time.",
-      "statement_short": "the studio's biggest running cost is never written down",
+      "statement_short": "nothing records the model budget's history",
       "owner": "harold",
       "severity": "important",
       "unit": "",
       "why_it_matters": "The model budget is by a wide margin the largest ongoing expense here — far more than the $2.23 of art this pillar reports carefully. HQ already detects when the window runs dry and parks the work that was waiting, so the events happen; hq/data/outbox/_limit.json is simply overwritten each time. One append instead of one overwrite and the studio's real cost curve exists. Until then, the only spend Finance can talk about is the small one.",
       "measure": {
-        "kind": "file_exists",
-        "path": "hq/data/history/limits.jsonl"
+        "kind": "file_grep",
+        "label": "limit events are appended to a history, not overwritten",
+        "paths": [
+          "hq/server.py"
+        ],
+        "exts": [
+          ".py"
+        ],
+        "skip_comments": true,
+        "pattern": "append_history\\(\"limits\"",
+        "expect": "present",
+        "field": "bool",
+        "says_true": "every window outage and recovery is appended to hq/data/history/limits.jsonl",
+        "says_false": "limit events are overwritten, so the cost has no history"
       },
       "compare": {
         "direction": "must_be_true"
       },
       "path_to_green": {
-        "narrative": "Append the limit events instead of overwriting them — when the window ran dry, when it came back, and how much work was parked meanwhile.",
+        "narrative": "Recording is in; the first chart draws itself as events accumulate.",
         "route": {
           "kind": "work",
           "id": "wb259e9ed81b"
