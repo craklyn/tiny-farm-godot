@@ -1,0 +1,1 @@
+- (2026-09-03) Daniel rejects section headings that gesture at completeness ("The full picture", "Overview") on HQ surfaces — a heading must state what the section actually contains so a reader landing mid-page needs no caption.

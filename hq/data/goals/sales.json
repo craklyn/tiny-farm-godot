@@ -60,7 +60,7 @@
         "amber_at": 0
       },
       "path_to_green": {
-        "narrative": "One credential. The storefront already counts views and plays for us; we have simply never asked it for the numbers. That is the whole demand surface available to this studio today, and it is the cheapest thing on this page.",
+        "narrative": "One credential. The storefront already counts views and plays for us; we have simply never asked it for the numbers. That is the whole demand surface available to this studio today, and it is the cheapest real thing on my list.",
         "route": {
           "kind": "work",
           "id": "wc8b36764ebc"
@@ -293,7 +293,7 @@
       "owner": "lena",
       "severity": "blocking",
       "unit": "live storefronts we cannot publish to",
-      "why_it_matters": "A channel we cannot push to is worse than one we are not on: it looks like a way to reach players and is not. This checks the pipeline, the preset and the credential behind each live storefront rather than assuming they still exist.",
+      "why_it_matters": "A channel we cannot push to is worse than one we are not on: it looks like a way to reach players and is not. The pipeline, the preset and the credential behind each live storefront are verified rather than assumed.",
       "measure": {
         "kind": "platform_ladder",
         "field": "live_are_shippable"
@@ -316,5 +316,6 @@
         "chart": false
       }
     }
-  ]
+  ],
+  "scoreboard_title": "Where every deal stands"
 }

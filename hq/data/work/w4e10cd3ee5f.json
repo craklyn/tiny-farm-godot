@@ -1,0 +1,19 @@
+{
+  "id": "w4e10cd3ee5f",
+  "title": "Rename Elena's goal-list heading to \"Where my areas stand\"",
+  "level": "task",
+  "owner": "claude",
+  "tier": 1,
+  "tier_reason": "A string change in a repo file on Daniel's own dashboard — git reverts it.",
+  "ask": "Swap the \"The full picture\" heading on Elena's pillar page for her own wording, \"Where my areas stand\".",
+  "first_action": "Find the \"The full picture\" string on Elena's pillar page in hq/ and replace it with \"Where my areas stand\".",
+  "state": "waiting_session",
+  "thread": "elena",
+  "source": "chat",
+  "source_message": "Quick one from the chief of staff, at Daniel's ask. Your pillar page is your live stand-up report to him: what needs him sits on top, and below it sits your complete goal list, worst first — every area you own with its current reading. That section is currently headed \"The full picture\", which Daniel flagged as a poor name. Per the writing rules in your notes: what do you call that section on YOUR page? First line: the heading only, 2-5 words. Second line: one sentence of why.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-03T18:41",
+  "created_ts": 1788486113.4556987
+}

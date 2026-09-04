@@ -16,7 +16,7 @@
       "owner": "wei",
       "severity": "blocking",
       "unit": "ratio",
-      "why_it_matters": "The onboarding gate's sleeping-spot bar was voided because the player had been shown the cot in an earlier session. That fact lives only in prose, so no score on this page can be trusted on its own.",
+      "why_it_matters": "The onboarding gate's sleeping-spot bar was voided because the player had been shown the cot in an earlier session. That fact lives only in prose, so no score I report can be trusted on its own.",
       "measure": {
         "kind": "composite",
         "op": "ratio",
@@ -59,7 +59,7 @@
       "owner": "sofia",
       "severity": "blocking",
       "unit": "projects",
-      "why_it_matters": "A blocker with no unblock action never reaches your queue. It goes quiet instead of getting solved, which is the exact failure this dashboard exists to prevent.",
+      "why_it_matters": "A blocker with no unblock action never reaches your queue. It goes quiet instead of getting solved.",
       "measure": {
         "kind": "count_json",
         "dir": "hq/data/projects",
@@ -272,5 +272,6 @@
         "chart": true
       }
     }
-  ]
+  ],
+  "scoreboard_title": "What I own, worst first"
 }

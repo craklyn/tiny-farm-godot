@@ -1,0 +1,19 @@
+{
+  "id": "w209c92f359a",
+  "title": "Rename the goal section on Ingrid's pillar page",
+  "level": "task",
+  "owner": "rin",
+  "tier": 1,
+  "tier_reason": "A wording change in HQ's own files — git reverts it, and Daniel already asked for the rename.",
+  "ask": "Replace \"The full picture\" on the art pillar page with Ingrid's own heading, \"Where the art stands\".",
+  "first_action": "In the pillar page template/data behind hq/static/pillars.js, set the art pillar's goal-list heading to \"Where the art stands\" and reload HQ to confirm it renders.",
+  "state": "waiting_session",
+  "thread": "ingrid",
+  "source": "chat",
+  "source_message": "Quick one from the chief of staff, at Daniel's ask. Your pillar page is your live stand-up report to him: what needs him sits on top, and below it sits your complete goal list, worst first — every area you own with its current reading. That section is currently headed \"The full picture\", which Daniel flagged as a poor name. Per the writing rules in your notes: what do you call that section on YOUR page? First line: the heading only, 2-5 words. Second line: one sentence of why.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-03T18:42",
+  "created_ts": 1788486154.0089273
+}

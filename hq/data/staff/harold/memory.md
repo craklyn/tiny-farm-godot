@@ -1,0 +1,1 @@
+- (2026-09-03) 2026-09-03: Daniel rejects HQ section headings that gesture at completeness ("The full picture", "Overview") — a heading must state what the section actually contains, so a reader landing mid-page needs no caption. My finance pillar page's goal list is now "Where the money stands".

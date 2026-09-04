@@ -261,7 +261,8 @@ function goalBoard(g) {
   const head = goals.slice(0, 3), tail = goals.slice(3);
   const worstHidden = tail.length
     ? (GOAL_META[tail[0].state] || GOAL_META.green).word : "";
-  return `<h2>The full picture <span class="small muted">— worst first</span></h2>
+  const title = g.scoreboard_title || "Where my areas stand";
+  return `<h2>${esc(title)}${/worst/i.test(title) ? "" : ` <span class="small muted">— worst first</span>`}</h2>
     <div class="card goalcard">
       ${head.map(goalRow).join("")}
       ${tail.length ? `<details class="goalfold"><summary>${tail.length} more · worst of them ${esc(worstHidden)}</summary>${tail.map(goalRow).join("")}</details>` : ""}
@@ -483,9 +484,7 @@ async function instEngineering(root, below, sig, g) {
         </div>`;
     } else {
       stripEl.innerHTML = `<h2>Every CI run on main</h2><div class="card muted small">
-        The hundred-run window has not been polled yet — it refreshes in the background every ten
-        minutes, off the page's own request, because asking GitHub for a hundred runs costs about
-        four seconds and this page should not wait on it.</div>`;
+        The hundred-run window has not been polled yet; it refreshes every ten minutes.</div>`;
     }
   } catch { stripEl.innerHTML = ""; }
 
@@ -506,9 +505,7 @@ async function mountVerify(root, sig) {
     const running = Object.values(runs).some(r => r && r.state === "running");
     root.replaceChildren(h(`<h2>Run it yourself${running ? ` <span class="w-dots" aria-label="a suite is running"><i></i><i></i><i></i></span>` : ""}</h2>
       <div class="card${running ? " is-busy" : ""}">
-        <p class="small muted" style="margin-bottom:10px">These run the real suites on this machine
-          and report the honest verdict. Each run now stamps the commit it proved, which is what the
-          "how far behind main" column above reads.</p>
+        <p class="small muted" style="margin-bottom:10px">These run the real suites on this machine; each run stamps the commit it proved.</p>
         <div id="jobs"></div></div>`));
     const jobsDiv = root.querySelector("#jobs");
     for (const [job, r] of Object.entries(runs)) {
@@ -578,8 +575,7 @@ async function instProduct(root, below, sig, g) {
     <div class="card gatecard">
       ${barRows}
       ${gate && gate.session ? `<div class="gate-src small muted">Scored from one session —
-        <a class="plain" href="#/playtest/${esc(gate.session)}">${esc(gate.session)}</a>, read live from
-        <a class="plain" href="${docAnchor("docs/ROADMAP.md", "gate-run-recorded")}">the roadmap's own table</a>.</div>` : ""}
+        <a class="plain" href="#/playtest/${esc(gate.session)}">${esc(gate.session)}</a>; recorded in <a class="plain" href="${docAnchor("docs/ROADMAP.md", "gate-run-recorded")}">the roadmap</a>.</div>` : ""}
       <div class="decay">${decay}${cond.state !== "green" ? ` — and only <b>${esc(String((cond.reading || {}).numerator ?? 0))} of ${esc(String((cond.reading || {}).denominator ?? "?"))}</b> recorded sessions say who played them, so no bar here can be trusted on its own` : ""}</div>
     </div>
     <h2>Release trains <span class="small muted">— tracked by gates; no dates are set</span></h2>
@@ -651,7 +647,6 @@ async function instArt(root, below, sig, g) {
         <div class="small muted">The guide's own note says its ramps were measured from a sprite pack
         that is no longer in this repo. So this is not necessarily drift in the art — it may be a guide
         describing a game we no longer have. Which of the two it is, is the look session's first question.</div></div>` : ""}
-      <div class="small muted pal-admit">Colours here are the data, not a status code.</div>
     </div>`;
   }
   root.replaceChildren(h(`<h2>The palette, as shipped</h2>${ribbon}`));
@@ -723,8 +718,7 @@ async function instMarketing(root, below, sig, g) {
           <div class="abs-body">no source</div>
         </div>
         <div class="small muted">${esc(audience.measured_human || "not polled")}. One public build has been
-          live for weeks and nobody in this studio can say whether anyone has opened it. This frame is the
-          argument for an itch API key — the same shape as the two credentials already in the project's .env.</div>
+          live for weeks and nobody in this studio can say whether anyone has opened it. Plan filed: an itch API key gets us views and plays — <a class="plain" href="#/work">see it</a>.</div>
       </div>
     </div>`));
 
@@ -781,13 +775,12 @@ async function instSales(root, below, sig, g, ctx) {
   root.replaceChildren(h(`
     <h2>The launch check <span class="small muted">— ${machine.length} of ${gates.length} monitored</span></h2>
     <div class="card gatecard">${gateRows}
-      <p class="small muted" style="margin-top:8px">A hollow mark means nobody has checked it.</p>
     </div>
 
     <div class="card norelease">
       <div class="small muted">To publish, from a terminal:</div>
       <pre class="inert">git tag -a v0.2.0 -m "…"  &amp;&amp;  git push origin v0.2.0</pre>
-      <div class="small muted">Releases are cut by pushing a tag. There is no publish button here.</div>
+      <div class="small muted">Releases are cut by pushing a tag.</div>
     </div>`));
 
   // The ladder: where we can sell it, and what the next storefront would cost.
@@ -822,7 +815,7 @@ async function instSales(root, below, sig, g, ctx) {
   below.replaceChildren(h(
     foldSection("Where we can sell it",
       `${live} storefront${live === 1 ? "" : "s"} live${unruled ? ` · ${unruled} priced but unruled` : ""}`,
-      `<p class="small muted">What each storefront requires. A hollow mark is something no file in this repo can establish — a store account or an age rating has to be confirmed by hand.</p>${ladderHtml}`)
+      `<p class="small muted">What each storefront requires.</p>${ladderHtml}`)
     + foldSection("Everything ever published", `${(sig.tags || []).length} tag${(sig.tags || []).length === 1 ? "" : "s"}`,
     (sig.tags || []).length
       ? (sig.tags || []).map(t => `<div class="commitrow"><code class="ref">${esc(t)}</code></div>`).join("")
@@ -1029,7 +1022,7 @@ async function instOps(root, below, sig, g) {
       </div>
     </div>
 
-    <div class="credrow">
+    <div class="credrow" title="Read by key name only; no value is ever opened.">
       <b class="small">Credentials this studio runs on</b>
       ${(credR.declared || []).map(k => {
         const have = (credR.present || []).includes(k);
@@ -1037,15 +1030,13 @@ async function instOps(root, below, sig, g) {
           title="${have ? "present in this machine's .env" : "declared, but not on this machine"}"
           ><i class="dot ${have ? "d-ok" : "d-fire"}"></i>${esc(k)}</a>`;
       }).join("")}
-      <span class="small muted">read by name only — no value is ever opened</span>
+
     </div>`));
 
   below.replaceChildren(h(
     foldSection("The provenance ledger, in full", "every asset's rights and cost",
       `<div class="mddoc" id="credits-doc"><span class="muted">loading…</span></div>`)
-    + foldSection("The gate that stops a release", "Sales owns it — shown here because it is what stands between us and shipping",
-      `<p class="small muted">Owned by <a class="plain" href="#/pillar/sales">Sales &amp; Platforms</a>.</p>
-       <p><a class="gbtn" href="#/pillar/sales">Open Sales &amp; Platforms</a></p>`)));
+));
   try {
     const doc = await api("/api/rootdoc/CREDITS.md");
     const el = below.querySelector("#credits-doc");

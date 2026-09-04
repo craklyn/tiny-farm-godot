@@ -17,7 +17,7 @@
       "owner": "elena",
       "severity": "blocking",
       "unit": "verdict",
-      "why_it_matters": "Every other proof on this page runs on this machine. This is the one a stranger could check.",
+      "why_it_matters": "Every other proof runs on our own machine; this is the one a stranger could check.",
       "measure": {
         "kind": "ci_state",
         "field": "newest_completed"
@@ -76,7 +76,7 @@
     },
     {
       "id": "local-proofs-pass",
-      "statement": "Every suite that can be run from this page passed the last time it ran.",
+      "statement": "Every suite we can run ourselves passed the last time it ran.",
       "statement_short": "a suite failed the last time it ran on this machine",
       "owner": "elena",
       "severity": "blocking",
@@ -357,5 +357,6 @@
       },
       "signal_key": "fresh-session"
     }
-  ]
+  ],
+  "scoreboard_title": "Where my areas stand"
 }

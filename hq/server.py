@@ -2936,6 +2936,7 @@ def _compute_signals_now():
         roll, notes = rollup(pid, evaluated, p.get("dormant_by_ruling"), p.get("name"))
         status[pid] = roll
         all_goals[pid] = dict(roll, goals=evaluated,
+                              scoreboard_title=doc.get("scoreboard_title", ""),
                               verdict_template=doc.get("verdict_template", {}),
                               question=p.get("question", ""),
                               tagline=p.get("tagline", ""))

@@ -1,0 +1,19 @@
+{
+  "id": "w84c23f2b2b9",
+  "title": "Rename the goal-list heading on Harold's pillar page",
+  "level": "task",
+  "owner": "claude",
+  "tier": 1,
+  "tier_reason": "A one-line string change in an HQ page, reverted by git if wrong.",
+  "ask": "Harold's finance pillar page should head its goal list \"Where the money stands\" instead of \"The full picture\".",
+  "first_action": "In hq/static/pillars.js, change the goal-section heading string for the finance pillar to \"Where the money stands\", alongside the same per-pillar headings from Elena and Priya.",
+  "state": "waiting_session",
+  "thread": "harold",
+  "source": "chat",
+  "source_message": "Quick one from the chief of staff, at Daniel's ask. Your pillar page is your live stand-up report to him: what needs him sits on top, and below it sits your complete goal list, worst first — every area you own with its current reading. That section is currently headed \"The full picture\", which Daniel flagged as a poor name. Per the writing rules in your notes: what do you call that section on YOUR page? First line: the heading only, 2-5 words. Second line: one sentence of why.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-03T18:43",
+  "created_ts": 1788486235.4997249
+}

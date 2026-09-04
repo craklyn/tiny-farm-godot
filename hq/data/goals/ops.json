@@ -174,7 +174,7 @@
       "owner": "harold",
       "severity": "important",
       "unit": "credentials missing on this machine",
-      "why_it_matters": "You work from two machines, and a key that exists on only one is a machine that cannot do the work. This reads key NAMES from .env and compares them to what .env.example declares — the value is dropped at the split and never read, stored or shown. It replaces a row of pills where three separate 'keys' were all wired to one check for whether a file existed: one measurement rendered three times and presented as three facts.",
+      "why_it_matters": "You work from two machines, and a key that exists on only one is a machine that cannot do the work. Key names are compared against what .env.example declares; the value is dropped at the split and never read, stored or shown.",
       "measure": {
         "kind": "env_present",
         "example": ".env.example",
@@ -264,5 +264,6 @@
         "chart": false
       }
     }
-  ]
+  ],
+  "scoreboard_title": "Where the money stands"
 }

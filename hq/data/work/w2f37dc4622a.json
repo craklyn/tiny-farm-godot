@@ -1,0 +1,19 @@
+{
+  "id": "w2f37dc4622a",
+  "title": "Rename the section heading on Priya's pillar page",
+  "level": "task",
+  "owner": "claude",
+  "tier": 1,
+  "tier_reason": "A one-line string edit in the repo — git reverts it, and Priya already chose the wording for her own page.",
+  "ask": "Swap the \"The full picture\" heading on Priya's pillar page to \"What I own, worst first\", the same one-line edit we just did for Elena's.",
+  "first_action": "Find the \"The full picture\" string in the HQ pillar-page source for Priya and replace it with \"What I own, worst first\", then restart the HQ service on the desktop so the page shows it.",
+  "state": "waiting_session",
+  "thread": "priya",
+  "source": "chat",
+  "source_message": "Quick one from the chief of staff, at Daniel's ask. Your pillar page is your live stand-up report to him: what needs him sits on top, and below it sits your complete goal list, worst first — every area you own with its current reading. That section is currently headed \"The full picture\", which Daniel flagged as a poor name. Per the writing rules in your notes: what do you call that section on YOUR page? First line: the heading only, 2-5 words. Second line: one sentence of why.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-03T18:42",
+  "created_ts": 1788486133.8448787
+}
