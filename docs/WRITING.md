@@ -1,9 +1,14 @@
 # How this studio writes to people
 
-*The house rules for any sentence a person will read. Internal records — ids in
-data files, keys in code, cross-references between design docs — are exempt:
-those are lookup, not reading, and short handles are the right tool there.
-Everything a human reads to understand or decide follows this.*
+*The house rules for writing that humans see. The line is drawn by the
+reader, not the surface: text written for an agent or a machine — a work
+item's ask body, a persona prompt, a data record, code — is written however is
+most efficient and natural for its writer, paths and ids included, with no
+style obligations. Everything a person sees follows this: the dashboard, the
+docs people read, our marketing, and the game's own text. Where one record
+serves both readers, the part the person sees — a work card's title, the
+one-line ask shown on the Work page — follows the rules, and the body written
+for the agent does not.*
 
 *Born 2026-09-03 from a pressure test of the pillar pages, in which the same
 failures kept surfacing in different clothes. Every rule below carries the real
@@ -90,10 +95,10 @@ that explains itself, in the same plain register.
 | **HQ pages** | The CEO, cold, deciding where his attention goes | The page's one question answered in the headline; every finding names its owner and carries its control; metric cards titled by what they count, with denominator and target; nothing editorial |
 | **Decision cards** | The CEO, ruling | Rulable in one minute: plain setup, concrete options with what each causes, recommendation first, no ids in the question |
 | **Chat (chief of staff, personas)** | The CEO, talking | A person talking to a person; what needs him first; plain names; short |
-| **Work-item asks** | A stranger — usually an agent — executing later, with no conversation context | Self-contained: file paths and exact references belong here, in full sentences; the test is whether someone who never saw the conversation could do the work |
 | **Commit subjects** | Anyone scanning a feed | One sentence: what changed, for whom, present tense. The existing house style ("A card that asks a question now carries the answer") is the standard |
 | **Design docs & decision log** | A teammate looking something up | Reference material: ids are load-bearing and cross-linked; each entry still opens with a plain statement of what it settles |
-| **Player-facing copy** (store page, release notes) | Someone who has never heard of the game | No studio vocabulary at all; claims match the build (the copy-drift check enforces this); short enough to read standing up |
+| **Marketing copy** (store page, release notes, posts) | Someone who has never heard of the game | No studio vocabulary at all; claims match the build (the copy-drift check enforces this); short enough to read standing up |
+| **In-game text** | A player mid-play — in phase 1, possibly someone who cannot read | The fewest words that do the job, and a label says what the thing does. Phase 1's farming loop needs no words at all (S-7). The one register where charm is worth a word — never at the cost of clarity |
 
 ## Accessibility
 
