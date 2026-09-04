@@ -87,7 +87,8 @@
           "for_players": "A robot that cannot reach what you told it to do stops, shows it plainly, and waits — instead of standing still exactly like one that has finished.",
           "project": "machine-distress-state"
         }
-      ]
+      ],
+      "subtitle": "the shop, the robots, and the rebuilt first day"
     },
     {
       "id": "m3",

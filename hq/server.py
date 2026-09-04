@@ -1794,7 +1794,8 @@ def release_manifest(release_id=None):
         feats.sort(key=lambda f: rank.get(f["state"], 9))
         ready = [f for f in feats if f["state"] == "ready"]
         out.append({
-            "id": r["id"], "name": r["name"], "tag_intent": r.get("tag_intent"),
+            "id": r["id"], "name": r["name"], "subtitle": r.get("subtitle", ""),
+            "tag_intent": r.get("tag_intent"),
             "goal": r.get("goal", ""), "definition_of_done": r.get("definition_of_done", ""),
             "features": feats,
             "ready": len(ready),

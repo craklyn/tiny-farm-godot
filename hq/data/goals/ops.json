@@ -137,7 +137,7 @@
           "surface": {
             "kind": "none"
           },
-          "consequence": "Player Update 1 goes out with no route back, and we learn nothing from whoever plays it.",
+          "consequence": "[Player Update 1](#/program) — the next public release — goes out with no way for players to reply, and we learn nothing from whoever plays it.",
           "waiting_since": "2026-09-03"
         },
         "action": {

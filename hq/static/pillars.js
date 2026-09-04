@@ -102,6 +102,14 @@ function consistencyBanner(sig, pid) {
     <ul class="req">${mine.map(w => `<li>${esc(w)}</li>`).join("")}</ul></div>`;
 }
 
+/* Inline links in authored prose (docs/WRITING.md: a name is a door). Prose
+   fields in the goal files may carry [name](#/route) and nothing else; text is
+   escaped first and only in-app routes become anchors. */
+function mdInline(text) {
+  return esc(text).replace(/\[([^\]]{1,80})\]\((#\/[\w/@%.~-]*)\)/g,
+    (_, label, href) => `<a class="plain" href="${href}">${label}</a>`);
+}
+
 /* Band 1. The verdict is generated from the goals, never authored: a sentence
    somebody typed is a sentence that goes stale silently. It is allowed to be a
    permission rather than a status ("You cannot tag today") where that is what
@@ -166,8 +174,8 @@ function verdictLine(g) {
     ${worst ? `<div class="vd-act">
       <div class="vd-why">
         <b>${esc(ASK[cb.kind] || "This one is yours.")}</b>
-        ${p2g.narrative ? ` ${esc(p2g.narrative)}` : ""}
-        ${cb.consequence ? `<div class="vd-cons">If it keeps waiting: ${esc(cb.consequence)}</div>` : ""}
+        ${p2g.narrative ? ` ${mdInline(p2g.narrative)}` : ""}
+        ${cb.consequence ? `<div class="vd-cons">If it keeps waiting: ${mdInline(cb.consequence)}</div>` : ""}
       </div>
       <div class="vd-btn">${routeControl(worst)}${
         waited != null && waited !== "?" ? `<div class="small muted vd-wait">waiting ${waited} day${waited === 1 ? "" : "s"}</div>` : ""}</div>
@@ -227,7 +235,7 @@ function goalRow(g) {
   const owner = g.state === "green" || !p2g.owner ? "" :
     ` <span class="g-owner">— <a class="plain" data-person="${esc(p2g.owner)}">${esc(p2g.owner)}</a> owns it</span>`;
   const why = g.state === "green" ? "" :
-    `<div class="g-why">${esc(p2g.narrative || "No route recorded — nobody owns getting this back to green.")}${owner}</div>`;
+    `<div class="g-why">${mdInline(p2g.narrative || "No route recorded — nobody owns getting this back to green.")}${owner}</div>`;
   const reading = g.reading || {};
   const note = reading.would_need
     ? `<div class="g-need">Would need: ${esc(reading.would_need)}</div>` : "";
@@ -277,8 +285,8 @@ function needsBand(n) {
     // rationale rather than sitting under it. Four lines per ask is how a band
     // of three grows past the screen it has to fit on.
     const reason = x.consequence
-      ? `<div class="n-cons">If it keeps waiting: ${esc(x.consequence)}</div>`
-      : `<div class="n-why">${esc(x.because)}</div>`;
+      ? `<div class="n-cons">If it keeps waiting: ${mdInline(x.consequence)}</div>`
+      : `<div class="n-why">${mdInline(x.because)}</div>`;
     return `<div class="needrow nk-${esc(x.kind)}" ${x.goal ? `id="need-${esc(x.goal)}"` : ""}>
       <div class="n-body">
         <div class="n-ask">${esc(x.ask)}</div>
@@ -574,7 +582,7 @@ async function instProduct(root, below, sig, g) {
     const rd = r.readiness || { done: 0, total: 0 };
     const pct = rd.total ? Math.round(100 * rd.done / rd.total) : 0;
     return `<div class="train">
-      <div class="tr-head"><b>${esc(r.name)}</b> <span class="small muted">${r.tag_intent ? esc(r.tag_intent) : "no tag intended yet"}</span></div>
+      <div class="tr-head"><b>${esc(r.name)}</b> <span class="small muted">${r.subtitle ? esc(r.subtitle) + " · " : ""}${r.tag_intent ? esc(r.tag_intent) : "no tag intended yet"}</span></div>
       <div class="tr-bar"><i style="width:${pct}%"></i></div>
       <div class="small muted">${rd.done} of ${rd.total} steps done on its critical work${r.gating && r.gating.length ? ` · <span class="tr-gate">${r.gating.length} blocked</span>` : ""}</div>
       <div class="small">${esc(r.definition_of_done || "")}</div>
@@ -926,7 +934,7 @@ function manifestStrip(rel, days, tag) {
       <div class="ms-num">${rel.ready}</div>
       <div class="ms-lede">
         <b>things a player can't do yet, sitting finished on main</b>
-        <div class="small muted">${esc(rel.name)}${rel.tag_intent ? ` · would go out as ${esc(rel.tag_intent)}` : ""}${days != null ? ` · nothing has gone out for ${days} days` : ""}. Goal: release every 14 days.</div>
+        <div class="small muted">${esc(rel.name)}${rel.subtitle ? ` — ${esc(rel.subtitle)}` : ""}${rel.tag_intent ? ` · would go out as ${esc(rel.tag_intent)}` : ""}${days != null ? ` · nothing has gone out for ${days} days` : ""}. Goal: release every 14 days.</div>
       </div>
     </div>
     <div class="msstrip">${cells}</div>

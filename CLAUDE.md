@@ -126,6 +126,9 @@ the game proper.
   the work it unblocks, then set the ruling's status to `"integrated"`. Curated decision
   cards live in `hq/data/decisions/` — when new Q-items open or close, keep those cards
   in sync (plain language, options with a recommendation, attachments).
+- `docs/WRITING.md` — how anything human-facing is worded. Internal ids are for
+  lookup; every surface a person reads (HQ pages, decision cards, chat, commit
+  subjects, player copy) is written for a reader who arrives with no context.
 - `docs/ROADMAP.md` — milestones M0–M6 with exit gates (M2, the deterministic sim core,
   is complete). `docs/M2_SPEC.md` records how; `docs/design/` holds the GDD chapters.
 

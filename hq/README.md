@@ -137,6 +137,11 @@ on the sheets' mtimes.
 
 ## The seven rules a pillar page has to meet
 
+These govern a page's *structure*. The words on any surface follow
+[docs/WRITING.md](../docs/WRITING.md) — the studio's rules for writing to
+humans, chief among them: write for the reader's incoming context, introduce a
+name before using it, and state the fact rather than the observation about it.
+
 Learned the hard way, mostly from the CEO reading the Sales page as its actual
 audience rather than as its author. Any new pillar, band or instrument is held
 to these.

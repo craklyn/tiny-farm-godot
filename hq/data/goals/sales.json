@@ -152,7 +152,7 @@
         "amber_at": 30
       },
       "path_to_green": {
-        "narrative": "The next tag is Player Update 1, and it is waiting on the onboarding gate closing.",
+        "narrative": "The next tag is [Player Update 1](#/program), and it is waiting on the onboarding gate closing.",
         "route": {
           "kind": "project",
           "id": "public-release"
