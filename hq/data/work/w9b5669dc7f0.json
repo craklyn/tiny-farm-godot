@@ -1,0 +1,28 @@
+{
+  "id": "w9b5669dc7f0",
+  "title": "Write the design note reversing the sell-then-buy economy",
+  "level": "task",
+  "owner": "milo",
+  "tier": 1,
+  "tier_reason": "Daniel's proposal reopens a fork the docs already argued against by name; the reversal has to land in the docs before anyone builds against it.",
+  "ask": "Accepted “What the first session becomes if the shop is delayed”. Daniel's proposal reopens a fork the docs already argued against by name; the reversal has to land in the docs before anyone builds against it.\n\nDaniel attached this when he accepted the card that filed this work, and it changes the constraint you are working under: \"I'd like to loosen the belief that everything is wordless. Instead, the game should be generally understandable with minimal literacy. We can show text too, but let's try every time to see how far we can get communicating without the words, since that'll always make the game more accessible to players.\" So wordless is the target to push for, not an absolute to obey — and where words genuinely serve the player better, they are allowed and should be as few as possible.",
+  "first_action": "Update the onboarding chapter's rejected-fork note and record the storage-tier numbers (on-person cap, what a silo raises it to) in the design docs and decision log",
+  "state": "waiting_session",
+  "thread": "sam",
+  "source": "chat",
+  "source_message": "Accepted “What the first session becomes if the shop is delayed”. Daniel's proposal reopens a fork the docs already argued against by name; the reversal has to land in the docs before anyone builds against it.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-04T13:59",
+  "created_ts": 1788555574.8105981,
+  "parent": "w7fde4ef846b",
+  "conversation": [
+    {
+      "role": "daniel",
+      "text": "Daniel attached this when he accepted the card that filed this work, and it changes the constraint you are working under: \"I'd like to loosen the belief that everything is wordless. Instead, the game should be generally understandable with minimal literacy. We can show text too, but let's try every time to see how far we can get communicating without the words, since that'll always make the game more accessible to players.\" So wordless is the target to push for, not an absolute to obey — and where words genuinely serve the player better, they are allowed and should be as few as possible.",
+      "at": "2026-09-04T14:01",
+      "with": "accept"
+    }
+  ]
+}

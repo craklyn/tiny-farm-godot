@@ -1,0 +1,28 @@
+{
+  "id": "w0cfbed3146e",
+  "title": "Merge seed and crop stock so a harvest is directly plantable",
+  "level": "story",
+  "owner": "tomas",
+  "tier": 1,
+  "tier_reason": "The whole first-session simplification depends on this sim change; nothing today lets a harvested crop go back in the ground.",
+  "ask": "Accepted “What the first session becomes if the shop is delayed”. The whole first-session simplification depends on this sim change; nothing today lets a harvested crop go back in the ground.\n\nDaniel attached this when he accepted the card that filed this work, and it changes the constraint you are working under: \"I'd like to loosen the belief that everything is wordless. Instead, the game should be generally understandable with minimal literacy. We can show text too, but let's try every time to see how far we can get communicating without the words, since that'll always make the game more accessible to players.\" So wordless is the target to push for, not an absolute to obey — and where words genuinely serve the player better, they are allowed and should be as few as possible.",
+  "first_action": "Replace the two separate seed/crop dictionaries with one plantable/sellable stock per crop type, capped at the on-person excess threshold, and re-check the existing no-soft-lock proof against the new model since it no longer depends on a coin step",
+  "state": "waiting_session",
+  "thread": "sam",
+  "source": "chat",
+  "source_message": "Accepted “What the first session becomes if the shop is delayed”. The whole first-session simplification depends on this sim change; nothing today lets a harvested crop go back in the ground.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-04T13:59",
+  "created_ts": 1788555574.8112993,
+  "parent": "w7fde4ef846b",
+  "conversation": [
+    {
+      "role": "daniel",
+      "text": "Daniel attached this when he accepted the card that filed this work, and it changes the constraint you are working under: \"I'd like to loosen the belief that everything is wordless. Instead, the game should be generally understandable with minimal literacy. We can show text too, but let's try every time to see how far we can get communicating without the words, since that'll always make the game more accessible to players.\" So wordless is the target to push for, not an absolute to obey — and where words genuinely serve the player better, they are allowed and should be as few as possible.",
+      "at": "2026-09-04T14:01",
+      "with": "accept"
+    }
+  ]
+}

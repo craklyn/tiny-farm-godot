@@ -7,7 +7,7 @@
   "tier_reason": "filed by hand",
   "ask": "Daniel's words, verbatim:\n\n\"I recommend we change the game so it's not necessary to buy seeds for the starting\nplants. Rather, the plants when harvested can be planted as seeds. They can also be used\nas consumables (e.g. pea shooter). Only when the player acquires an excess can they be\nsold. Excess will be defined by game phase. Early game, the player only has storage on\ntheir person and so excess is not a large number.. 5 or 10 maybe. Later, they'll get a\ngrain silo and other storage options that increases excess (so they can properly arm and\nstock their defensive structures).\n\nNote that if w",
   "first_action": "Read docs/DECISION_LOG.md S-7 and the onboarding gate in docs/ROADMAP.md, then the actual first-session flow (ui/, player/, the cold open in systems/sim/cold_open.gd). Answer: (1) what the first ten minutes becomes if there is no shop and no need for gold — what does the player do, in order, and is it emptier or cleaner than today; (2) whether an arriving-shipment unlock can be delivered to a player who cannot read, and what it would have to look like if it can — a letter is words, so either it is not a letter or S-7 gives way, and that is a ruling, not your call; (3) what teaches the player t",
-  "state": "for_review",
+  "state": "accepted",
   "thread": "sam",
   "source": "chat",
   "source_message": "Daniel's words, verbatim:\n\n\"I recommend we change the game so it's not necessary to buy seeds for the starting\nplants. Rather, the plants when harvested can be planted as seeds. They can also be used\nas consumables (e.g. pea shooter). Only when the player acquires an excess can they be\nsold. Excess will be defined by game phase. Early game, the player only has storage on\ntheir person and so excess is not a large number.. 5 or 10 maybe. Later, they'll get a\ngrain silo and other storage options that increases excess (so they can properly arm and\nstock their defensive structures).\n\nNote that if w",
@@ -124,5 +124,39 @@
     ],
     "escalates": null,
     "escalation_reason": null
-  }
+  },
+  "conversation": [
+    {
+      "role": "daniel",
+      "text": "I'd like to loosen the belief that everything is wordless.  Instead, the game should be generally understandable with minimal literacy.  We can show text too, but let's try every time to see how far we can get communicating without the words, since that'll always make the game more accessible to players.",
+      "at": "2026-09-04T13:59",
+      "with": "accept"
+    }
+  ],
+  "closed": "2026-09-04T13:59",
+  "decided": {
+    "question": "Should an actual written letter ever deliver a shipment or unlock, anywhere in the game?",
+    "answer": "No — every arrival stays wordless, reusing the locked-icon-lights-up and single-highlight vocabulary already shipped; nothing mechanical needs a sentence.",
+    "at": "2026-09-04T13:59"
+  },
+  "spawned": [
+    {
+      "id": "w9b5669dc7f0",
+      "title": "Write the design note reversing the sell-then-buy economy",
+      "state": "waiting_session",
+      "owner": "milo"
+    },
+    {
+      "id": "w0cfbed3146e",
+      "title": "Merge seed and crop stock so a harvest is directly plantable",
+      "state": "waiting_session",
+      "owner": "tomas"
+    },
+    {
+      "id": "we69b8f43065",
+      "title": "Spec the wordless 'storage full, time to sell' signal",
+      "state": "doing",
+      "owner": "sam"
+    }
+  ]
 }

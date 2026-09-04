@@ -144,6 +144,27 @@ Phase 1's core loop must be playable by a pre-reader: chunky tap targets, forgiv
 interactions, no fail states that destroy progress, no reading required to farm. This is a
 hard constraint on phase 1 only (see P-2 for how later phases relate).
 
+**Loosened 2026-09-04 — the goal is minimal literacy, and wordless is what we push
+toward.** In the designer's words: *"I'd like to loosen the belief that everything is
+wordless. Instead, the game should be generally understandable with minimal literacy. We
+can show text too, but let's try every time to see how far we can get communicating
+without the words, since that'll always make the game more accessible to players."*
+
+So the rule has two halves and they are different in kind. **The bar** is that the game is
+generally understandable with minimal literacy — that is what must hold. **The practice**
+is that every surface is attempted wordlessly first, and words are added only where they
+genuinely serve the player better than a picture, and then as few as possible. Reaching
+for words early is the failure this guards against; refusing them where they are the
+clearer answer is the failure the loosening removes.
+
+What this changes in practice: a design may no longer be rejected *solely* on the grounds
+that it contains a word, and a specification may no longer be written as "the wordless X"
+as though wordlessness were the requirement rather than the aim. What it does not change:
+phase 1's core farming loop — clear, till, plant, water, sleep, harvest — is still the
+place where the wordless attempt is expected to succeed, because it is the loop a
+pre-reader plays, and every word admitted anywhere still has to earn itself against a
+picture that would have done the job.
+
 **Gate mechanism revised 2026-08-28 (the constraint itself is unchanged).** M1's exit
 gate was written as "the 4-year-old plays unaided", which made a milestone hostage to a
 four-year-old's availability — and she is, in the designer's words, "consistently not

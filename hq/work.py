@@ -844,13 +844,21 @@ def api_post(path, payload):
             org = HOST.load_org()
             cap = {"to": item.get("thread") or item["owner"], "id": "follow",
                    "message": f"Accepted “{item['title']}”. {fu.get('why', '')}".strip()}
+            # A condition he attached to the yes travels into everything the yes
+            # starts. Without this the note sits on a card that is now closed
+            # while the work it was meant to steer runs on the old brief — which
+            # is how "accept, but do it this way" becomes "accept".
+            ask = cap["message"][:600]
+            if said:
+                ask += ("\n\nDaniel attached this when he accepted, and it is part of "
+                        "the brief:\n" + said)
             child = _file_item({
                 "title": fu["title"],
                 "level": fu.get("level", "task"),
                 "owner": fu.get("owner") or item["owner"],
                 "tier": fu.get("tier", 2),
                 "tier_reason": fu.get("why", "follows from an accepted result"),
-                "ask": cap["message"][:600],
+                "ask": ask,
                 "first_action": fu.get("first_action", ""),
             }, cap, org)
             child["parent"] = item["id"]
@@ -859,14 +867,34 @@ def api_post(path, payload):
                             "state": child["state"], "owner": child["owner"]})
         if started:
             item["spawned"] = started
+        if said:
+            # And it is read for the work it creates, exactly like anything else
+            # he says: a note may commit the studio to something no follow-up on
+            # this card covers, and a commitment nobody filed is one he has to
+            # remember for us.
+            capture_exchange(item.get("thread") or item["owner"], said,
+                             f"Accepted “{item['title']}”."
+                             + (f" It started: {', '.join(s['title'] for s in started)}."
+                                if started else " Nothing else followed from it."),
+                             origin=item["id"])
     elif path == "/api/work/drop":
         item["state"] = "dropped"
         item["closed"] = _now_iso()
+        if said:
+            # Why he said no is the most useful sentence on a dropped card, and
+            # it is worth reading for what it implies instead of filing it away.
+            capture_exchange(item.get("thread") or item["owner"], said,
+                             f"Dropped “{item['title']}”.", origin=item["id"])
     elif path == "/api/work/approve":
         # His yes on a tier-2 item does not make it reversible; it makes it
-        # allowed. A build session still carries it out.
+        # allowed. A build session still carries it out — with whatever he
+        # attached to the yes, since a condition on an approval is a condition
+        # on the work, not a note about it.
         item["state"] = "waiting_session"
         item["approved"] = _now_iso()
+        if said:
+            item["ask"] = (item.get("ask", "").rstrip()
+                           + "\n\nDaniel attached this when he approved it:\n" + said)
     elif path == "/api/work/redo":
         # Back to whichever lane can actually carry it out. Tier 0 goes to the
         # read-only worker; anything that changes the repo goes back to the

@@ -149,7 +149,7 @@ function consequence(it, org) {
     if (!("follow_ups" in it) && !("follow_up" in it)) {
       rows.push(["Good — accept", `Files this as approved and closes it. ${esc(first)} is still working out what should follow — this card will say, in a moment, before you decide.`]);
     } else if (fus.length) {
-      rows.push(["Good — accept", `${takes} the ${fus.length === 1 ? "one piece of work" : `${fus.length} pieces of work`} below.`]);
+      rows.push(["Good — accept", `${takes} the ${fus.length === 1 ? "one piece of work" : `${fus.length} pieces of work`} below. Anything you write above goes into their brief.`]);
       extra = followUpBox(fus, org);
     } else if (rec) {
       rows.push(["Good — accept", `Takes ${esc(first)}'s recommendation — <b>${esc(rec.answer)}</b> — and closes the card. The answer is recorded here; no further work is filed.`]);
@@ -273,7 +273,7 @@ function replyBox(it, org) {
     <textarea class="w-reply-t" data-draft="${esc(it.id)}" rows="2"
       placeholder="Anything ${esc(first)} should know — optional, and it goes with whichever button you press">${esc(draft)}</textarea>
     <p class="w-needreason" hidden>Say what you want changed before sending it back — it becomes ${esc(first)}'s brief for the second attempt, and without it you get the same work again.</p>
-    <p class="small muted">“Just comment” files it without deciding anything: ${esc(first)} reads it against this card and answers here, and whatever the answer commits to gets filed as work.</p>
+    <p class="small muted">A note is acted on, not just filed: it goes into the brief of whatever your answer starts, and it is read for any further work it implies. “Just comment” decides nothing — ${esc(first)} reads it against this card and answers here.</p>
   </div>`;
 }
 

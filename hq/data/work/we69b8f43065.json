@@ -1,0 +1,38 @@
+{
+  "id": "we69b8f43065",
+  "title": "Spec the 'storage full, time to sell' signal, wordless if it can be",
+  "level": "task",
+  "owner": "sam",
+  "tier": 0,
+  "tier_reason": "The HUD already has the right shape (pips that stop counting past five); it just needs pointing at the new trigger.",
+  "ask": "Accepted “What the first session becomes if the shop is delayed”. The HUD already has the right shape (pips that stop counting past five); it just needs pointing at the new trigger.\n\nDaniel attached this when he accepted the card that filed this work, and it changes the constraint you are working under: \"I'd like to loosen the belief that everything is wordless. Instead, the game should be generally understandable with minimal literacy. We can show text too, but let's try every time to see how far we can get communicating without the words, since that'll always make the game more accessible to players.\" So wordless is the target to push for, not an absolute to obey — and where words genuinely serve the player better, they are allowed and should be as few as possible.",
+  "first_action": "Once the excess number is fixed, extend the existing basket-pip pattern into an overflow state rather than adding a new gauge",
+  "state": "doing",
+  "thread": "sam",
+  "source": "chat",
+  "source_message": "Accepted “What the first session becomes if the shop is delayed”. The HUD already has the right shape (pips that stop counting past five); it just needs pointing at the new trigger.",
+  "result": "",
+  "started": "2026-09-04T14:01",
+  "attempts": 2,
+  "created": "2026-09-04T13:59",
+  "created_ts": 1788555574.8118167,
+  "parent": "w7fde4ef846b",
+  "conversation": [
+    {
+      "role": "daniel",
+      "text": "Daniel attached this when he accepted the card that filed this work, and it changes the constraint you are working under: \"I'd like to loosen the belief that everything is wordless. Instead, the game should be generally understandable with minimal literacy. We can show text too, but let's try every time to see how far we can get communicating without the words, since that'll always make the game more accessible to players.\" So wordless is the target to push for, not an absolute to obey — and where words genuinely serve the player better, they are allowed and should be as few as possible.",
+      "at": "2026-09-04T14:01",
+      "with": "accept"
+    }
+  ],
+  "amendments": [
+    {
+      "at": "2026-09-04T14:01",
+      "by": "claude",
+      "changed": {
+        "title": "Spec the wordless 'storage full, time to sell' signal"
+      },
+      "why": "Daniel loosened the wordless rule to minimal literacy when he accepted the card that filed this, so the title was naming a constraint he had just changed."
+    }
+  ]
+}

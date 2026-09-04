@@ -7,56 +7,56 @@
   "tier_reason": "filed by hand",
   "ask": "Daniel's words, verbatim:\n\n\"I recommend we change the game so it's not necessary to buy seeds for the starting\nplants. Rather, the plants when harvested can be planted as seeds. They can also be used\nas consumables (e.g. pea shooter). Only when the player acquires an excess can they be\nsold. Excess will be defined by game phase. Early game, the player only has storage on\ntheir person and so excess is not a large number.. 5 or 10 maybe. Later, they'll get a\ngrain silo and other storage options that increases excess (so they can properly arm and\nstock their defensive structures).\n\nNote that if w",
   "first_action": "Read systems/sim/sim_world.gd (inventory, the shop verbs, apply_action), systems/sim/save_game.gd, systems/sim/replay_log.gd and docs/ARCHITECTURE.md's layer rules. Then answer: (1) what actually changes in the sim — new verbs, changed verbs, new state — and which of those are additions versus changes to existing behaviour; (2) what it does to saves (a version bump? migration of existing saves?) and to the replay format, which is future bot-training data and must not break casually; (3) whether a per-actor carry capacity is the same object as the per-actor energy meter already in the sim, or a",
-  "state": "doing",
+  "state": "for_review",
   "thread": "elena",
   "source": "chat",
   "source_message": "Daniel's words, verbatim:\n\n\"I recommend we change the game so it's not necessary to buy seeds for the starting\nplants. Rather, the plants when harvested can be planted as seeds. They can also be used\nas consumables (e.g. pea shooter). Only when the player acquires an excess can they be\nsold. Excess will be defined by game phase. Early game, the player only has storage on\ntheir person and so excess is not a large number.. 5 or 10 maybe. Later, they'll get a\ngrain silo and other storage options that increases excess (so they can properly arm and\nstock their defensive structures).\n\nNote that if w",
-  "result": "",
-  "started": "",
-  "attempts": 4,
+  "result": "## The short version\n\nThe sim change is small. The pools already exist and already move through the gateway. What this costs is the **`sell` verb**, which has to invert, and the **recorded replay corpus**, which retires the day it lands.\n\n---\n\n## 1. What actually changes in the sim\n\nFirst, a correction to a common assumption about our own code: **inventory is not in SimWorld.** `seeds` (the pouch `plant` draws from) and `crops` (the basket `sell` empties) are fields on the `GameState` autoload; SimWorld writes them from inside `apply_action` and nowhere else. So we already have two pools of the same substance and they're already gateway-clean. Harvest-as-seed is mostly \"these are one pool,\" not new machinery.\n\n**Additions — cheap:**\n\n- **A carry cap.** New sim state. It must be *derived* from world state, not stored — a grain silo is an object on the grid, and a cap kept as a saved number will eventually disagree with the silo standing next to it. Derive it in SimWorld from phase plus placed storage.\n- **A `pouch_full` refusal on `harvest`.** New failure reason, and the one that will actually hurt in play: harvest is the reward verb and it now has a \"no.\" We have evidence about silent refusals — one real session logged 17 unexplained refusals out of 27. This one needs a visible reason from day one, not as a follow-up.\n\n**Changes to existing behaviour — the expensive kind:**\n\n- **`plant`** draws from the merged pouch instead of `seeds`. One line mechanically; semantically it is the whole change.\n- **`sell` inverts.** Today `sell_crops_to_bin()` sells *everything* and zeroes every stack — no partial, no keep line. Under your rule that is a softlock generator: sell your wheat, own no wheat, can't plant. Sell has to become \"sell down to the keep line,\" and the keep line is what \"excess\" means. This is the biggest behavioural change in the ask.\n- **`buy_seed` does not get deleted.** It is written into every replay log on disk. Keep the verb; take starter seeds out of the shop's list — the shop iterates `seed_price` in `ui/menus.gd`, so that's a data change, not a verb change. Costs nothing, keeps the archive parseable.\n- One thing in your favour: **the pea already lives under your rule.** It ships as an ordinary crop and the shop deliberately doesn't sell pea seeds — meaning today the pea has no acquisition path at all. Harvest-as-seed gives it one. This change makes wheat and tomato behave like the pea, not the reverse.\n\n## 2. Saves and replays\n\n**Saves: version bump to 3.** The migration is mechanical and total — sum `seeds` and `crops` per key into one pouch, and carry over-cap stacks rather than clamping them. Clamping on load deletes a player's things, which is the one thing a migration may never do. The version chain already has the hook. Maybe fifteen lines. Low risk.\n\n**Replays: the format does not change.** No new fields, still v2, training-data shape untouched. What changes is what the recorded verbs *mean*. A log recorded today carries `buy_seed` entries and `sell` entries that assumed sell-everything; re-run against new rules it builds a different farm and says nothing about it. That is silent corruption, and it is precisely what the build stamp exists to catch — the stamp lets a replay say \"different game, refuse me\" instead of quietly lying.\n\nSo the cost is honest and bounded: **the ten recorded sessions in `playtests/` and the demo replay stop being verification evidence** the day this lands. They stay readable. The robot session records its own, so CI is fine. Whether that corpus has phase-4 value worth re-recording is Kenji's call, not mine — my read is that ten short sessions of an economy we're deliberately replacing are worth very little.\n\n## 3. Carry capacity is not the energy meter\n\nThey look alike and they are not the same object.\n\nEnergy is a **scalar in the actor registry that resets to full every day**, and the player's deliberately isn't there at all — hers reads `-1` in the registry and lives in GameState, because her meter is also the clock. Carry capacity is a **cap on a dictionary that must survive the day boundary**. Different shape, different lifetime, opposite reset rule. Housing inventory in the energy field means either wiping the player's pouch every morning or special-casing the day turn — the first is a bug, the second is how invariants rot.\n\nThey should share exactly one thing: the *pattern*. Per-actor state in the registry entry, the player's in GameState, mirroring energy. And for phase 1 no NPC needs a pouch — there's a note in the sim already saying an NPC seed pouch buys nothing and would be state to save, replay and keep coherent for no gain. Still true. Give the cap to the player only; give it to actors when a bot actually carries something.\n\n## What your yes starts\n\nAbout a day of sim work from Tomás, a retired replay corpus, and one number set that's a designer ruling rather than an engineering call. The sim is not where the risk is — `sell` is, and the fact that a beloved one-tap \"sell everything\" button becomes a button that sometimes leaves things behind.",
+  "started": "2026-09-04T13:56",
+  "attempts": 5,
   "created": "2026-09-04T13:04",
   "created_ts": 1788552265.8313036,
   "follow_ups": [
     {
-      "title": "Make the save migration chain actually chain, and put the player's basket under the gateway checker",
-      "owner": "anna",
-      "level": "task",
-      "tier": 1,
-      "first_action": "Turn the early returns in SaveGame.migrate into a loop over version steps, then add a test that carries playtests/2026-08-21_103100/autosave.json through two migrations and checks its contents, not just that it loaded.",
-      "why": "The next save version silently mis-loads every version-1 file, and the static check that guards world state does not watch the player's economy at all — both are guards that would miss exactly this change."
-    },
-    {
-      "title": "Write harvest-as-seed into the farming design doc",
-      "owner": "milo",
-      "level": "story",
-      "tier": 1,
-      "first_action": "Draft the section: one basket instead of two stores, selling only what is over the line, the limit raised later by storage, what happens to a harvest when the basket is full, and where a bot's harvest goes when the player is full.",
-      "why": "The design doc is the source of intent and the code change has to cite it, and the bot-harvest and overflow rules are decisions somebody has to make before anyone writes the code."
-    },
-    {
-      "title": "Merge the two stores into one basket and add a sell-the-overflow verb",
+      "title": "Make harvested crops plantable and cap what the player can carry",
       "owner": "tomas",
       "level": "story",
-      "tier": 2,
-      "first_action": "Change the harvest branch of the gateway to deposit into the planting store, add the new selling verb beside the existing one rather than redefining it, and bump the save format with a step that folds the old crop store into the basket.",
-      "why": "This is the change itself, and it is the half that touches the gateway, the save format and what a player sees."
+      "tier": 1,
+      "first_action": "Merge gs.seeds and gs.crops into one per-item pouch in systems/game_state.gd; make the plant verb draw from it and harvest deposit to it; derive a carry cap in SimWorld from phase plus placed storage objects (never a stored scalar); add a pouch_full refusal on harvest that leaves the crop ripe on the tile; change sell_crops_to_bin to sell only above the keep line; keep the buy_seed verb but drop starter seeds from the shop's seed_price iteration in ui/menus.gd; bump SaveGame VERSION to 3 with a _migrate_2_to_3 that sums seeds+crops per key and carries over-cap stacks without clamping.",
+      "why": "It is the sim change the ask requires, and every piece of it is behind the two suites."
     },
     {
-      "title": "Mark the replay corpus boundary before the rules change",
+      "title": "Judge whether the recorded playtest replays keep any value after the economy change",
       "owner": "kenji",
       "level": "task",
       "tier": 0,
-      "first_action": "Record which shelved sessions and which build stamps predate harvest-as-seed, and state whether pre-change sessions stay in the phase-4 training set or are held aside.",
-      "why": "Sessions recorded before the change are play under different rules, and once the change lands nothing in the files themselves says so."
+      "first_action": "Audit the ten session_replay.json files in playtests/ plus the demo replay: report which carry a Q-41 build stamp, and whether any have phase-4 corpus value that justifies re-recording sessions after the pouch change lands.",
+      "why": "The change retires the corpus, and only the person who owns replay-corpus quality can say whether that matters."
+    },
+    {
+      "title": "Draft the carry-limit numbers for each game phase",
+      "owner": "marcus",
+      "level": "task",
+      "tier": 1,
+      "first_action": "Draft a decision card proposing the on-person carry limit for early game (Daniel suggested 5 or 10) and the increments each storage tier adds, with a recommendation, framed against how many plantings a player needs in hand to never stall.",
+      "why": "The keep line is economy tuning, which is a designer ruling and not an engineering constant."
+    },
+    {
+      "title": "Design the wordless sign that the pouch is full",
+      "owner": "sam",
+      "level": "task",
+      "tier": 1,
+      "first_action": "Design the icon and feedback for a harvest refused because the pouch is full, per the S-7 wordless rule; harvest is the reward verb and gaining a silent 'no' would repeat the unexplained-refusal problem a real session already surfaced.",
+      "why": "The new refusal is the only part of this change a pre-reader has to understand unaided."
     }
   ],
   "recommend": {
-    "question": "Do we make harvested plants the seed stock now, or wait and fold it into the storage and ammo economy next milestone?",
-    "answer": "Do it now, and let anything over the carry limit fall into the shipping bin and pay out overnight.",
-    "why": "The recorded sessions this would reinterpret have already stopped verifying, so the price of the change will never be lower than it is today — and the bin already exists, is already saved and already pays, so overflow needs no new screen and a tap on a ripe crop never refuses a child.",
-    "instead": "A full basket refuses the harvest and the crop stays ripe in the ground, which teaches scarcity harder and makes the grain silo matter more, at the cost of a tap that visibly does nothing."
+    "question": "When the pouch is full, does harvesting refuse, or does the extra crop fall on the ground to pick up later?",
+    "answer": "Refuse the harvest, leave the crop ripe on the tile, and show a wordless reason.",
+    "why": "Crops lying on the ground is a whole new class of world state — items on tiles, saved, replayed, picked up — and this change already spends the replay corpus; don't spend two invariants in one week.",
+    "instead": "Drop-on-ground reads far more generous and is the right thing for the silo era, so it is a real candidate for the version after this one rather than a bad idea."
   },
-  "finished": "2026-09-04T13:12",
+  "finished": "2026-09-04T13:59",
   "done_by": {
     "seat": "elena",
     "model": "opus",
