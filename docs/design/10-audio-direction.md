@@ -76,9 +76,24 @@ single day turn and answers with one spray animation rather than nine simultaneo
 (those Actions resolve inside `SimWorld.advance_day` and never reach the cue table), and
 a farm nobody is playing — the title screen's attract backdrop — stays muted.
 
-**Open gap: `plant` has no foley at all**, so it is silent for the player and therefore
-silent for everyone. It is the one row where parity is reached by both sides being
-silent rather than by both sides being right; the starter table above wants a pat-pat.
+**Open gap: `plant` has no foley at all** — nothing in the mixer and no entry in the cue
+table. Under the 2026-09-02 rule above that a verb sounds the same whoever performs it,
+that silence is everybody's: the cold open's neighbour, a replay re-applying the action,
+and a future phase-4 bot all plant as silently as the player does. Parity reached by
+nobody being heard is not parity worth having.
+
+Several rows of the starter table above are unfinished — `sell`, `sleep` and `buy_seed`
+have no cue either, and the three clears currently reuse the till *chunk* instead of the
+rip, chop and crack the table promises. `plant` is the one to fix first: it is the verb
+the player performs most, so it is the largest amount of silence in the game.
+
+What the sound needs to do: a pat-pat, soft and low — soil closing over a seed. It should
+read as tucking something in, not as an achievement. Harvest already owns the payoff
+sound (pop + chime); `plant` must not borrow any of that — no rising pitch, no chime, no
+reward sting — or a planted seed will sound like a finished crop.
+
+Sourcing it is Dmitri's: find or record a couple of soft, low pats and pick the one that
+reads as closing rather than landing.
 
 **Kid constraints (S-7 spirit):** no harsh stingers; failure/refusal sounds are
 comedic (a wet *bonk*, a shrug-like slide whistle at most); gentle attack envelopes;
