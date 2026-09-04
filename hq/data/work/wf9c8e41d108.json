@@ -7,13 +7,15 @@
   "tier_reason": "A wording change in one HQ file that git reverts; it is Carmen's own phrasing on an internal surface, not a player-facing or design decision.",
   "ask": "\"The full picture\" is a bad name for the goal list, so put the heading Carmen chose on her page.",
   "first_action": "In hq/static/pillars.js, replace the marketing pillar's \"The full picture\" section heading with \"Every marketing goal, worst first\", and reload the pillar page to confirm it renders.",
-  "state": "waiting_session",
+  "state": "accepted",
   "thread": "carmen",
   "source": "chat",
   "source_message": "Quick one from the chief of staff, at Daniel's ask. Your pillar page is your live stand-up report to him: what needs him sits on top, and below it sits your complete goal list, worst first — every area you own with its current reading. That section is currently headed \"The full picture\", which Daniel flagged as a poor name. Per the writing rules in your notes: what do you call that section on YOUR page? First line: the heading only, 2-5 words. Second line: one sentence of why.",
-  "result": "",
+  "result": "Done before this card was processed: the heading each VP chose ships in commit 69ee964 — it lives in that pillar's goal file as scoreboard_title and the page renders it.",
   "started": "",
   "attempts": 0,
   "created": "2026-09-03T18:43",
-  "created_ts": 1788486182.1603315
+  "created_ts": 1788486182.1603315,
+  "finished": "2026-09-03T18:46",
+  "closed": "2026-09-03T18:46"
 }

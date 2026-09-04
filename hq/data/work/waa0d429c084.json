@@ -7,13 +7,15 @@
   "tier_reason": "A text change in an HQ file that git reverts, on a surface only Daniel reads.",
   "ask": "Replace \"The full picture\" on Victor's business development page with his own heading, \"Where every deal stands\".",
   "first_action": "Edit the goal-list section heading for the business development pillar in hq/static/pillars.js (or the pillar's goal data file) from \"The full picture\" to \"Where every deal stands\".",
-  "state": "waiting_session",
+  "state": "accepted",
   "thread": "victor",
   "source": "chat",
   "source_message": "Quick one from the chief of staff, at Daniel's ask. Your pillar page is your live stand-up report to him: what needs him sits on top, and below it sits your complete goal list, worst first — every area you own with its current reading. That section is currently headed \"The full picture\", which Daniel flagged as a poor name. Per the writing rules in your notes: what do you call that section on YOUR page? First line: the heading only, 2-5 words. Second line: one sentence of why.",
-  "result": "",
+  "result": "Done before this card was processed: the heading each VP chose ships in commit 69ee964 — it lives in that pillar's goal file as scoreboard_title and the page renders it.",
   "started": "",
   "attempts": 0,
   "created": "2026-09-03T18:43",
-  "created_ts": 1788486202.4405084
+  "created_ts": 1788486202.4405084,
+  "finished": "2026-09-03T18:46",
+  "closed": "2026-09-03T18:46"
 }
