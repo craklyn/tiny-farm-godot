@@ -377,10 +377,10 @@ async function renderPillar(pid) {
     ${goalBoard(g)}
     <div class="foldline"></div>
     <div id="pillar-below"></div>
-    ${foldSection("Shipped lately", `${per.commits_24h} in 24h · ${per.commits_7d} this week — ${p.commit_feed_label || "this pillar's files"}`,
+    ${pid !== "engineering" ? "" : foldSection("What we shipped this week", `${per.commits_7d} changes · ${per.commits_24h} in the last day`,
       per.recent.length ? per.recent.map(c =>
         `<div class="commitrow"><code class="ref">${c.hash}</code> ${esc(c.subject)} <span class="small muted">· ${esc(c.when)}</span></div>`).join("")
-        : "<span class='muted'>No commits touch this pillar's files yet.</span>")}
+        : "<span class='muted'>Nothing this week.</span>")}
     ${foldSection(`My team (${team.length})`, team.map(e => e.name.split(" ")[0]).join(", "),
       team.map(e => `<div class="team-mini" data-person="${e.id}">
         <b>${e.emoji} ${esc(e.name)}</b> <span class="small muted">${esc(e.short)} · ${e.level}</span>
