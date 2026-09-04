@@ -1,0 +1,19 @@
+{
+  "id": "wb259e9ed81b",
+  "title": "Record the model budget instead of overwriting it",
+  "level": "task",
+  "owner": "harold",
+  "tier": 1,
+  "tier_reason": "filed by hand",
+  "ask": "hq/data/outbox/_limit.json holds one limit event and is overwritten by the next, so the studio's largest recurring cost has no history whatsoever. Append each event to hq/data/history/limits.jsonl instead — hit at, reset at, and how many requests were parked — beside the run and deploy histories that already work this way. It is a few lines, and it is the difference between Finance reporting a $2.23 art spend and Finance reporting what this studio actually costs to run.",
+  "first_action": "Read note_limit and _save_limit_locked in hq/server.py, and the append_history helper beside them.",
+  "state": "waiting_session",
+  "thread": "harold",
+  "source": "chat",
+  "source_message": "hq/data/outbox/_limit.json holds one limit event and is overwritten by the next, so the studio's largest recurring cost has no history whatsoever. Append each event to hq/data/history/limits.jsonl instead — hit at, reset at, and how many requests were parked — beside the run and deploy histories that already work this way. It is a few lines, and it is the difference between Finance reporting a $2.23 art spend and Finance reporting what this studio actually costs to run.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-03T18:10",
+  "created_ts": 1788484229.8185413
+}

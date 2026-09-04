@@ -3,7 +3,7 @@
   "verdict_template": {
     "fire": "{worst}",
     "attention": "{worst}",
-    "unassured": "The program looks healthy, but {unassured} of {total} of its claims are nobody's job to check.",
+    "unassured": "Nothing is failing; monitoring is still landing on {unassured} of {total} areas, and the plans are filed.",
     "ok": "Nothing is blocked and the evidence behind these numbers is fresh.",
     "dormant": "Dormant. {dormant_reason}",
     "nothing_for_you": "Nothing here needs you. {ours_line}"

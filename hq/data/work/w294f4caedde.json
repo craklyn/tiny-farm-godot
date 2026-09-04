@@ -1,0 +1,19 @@
+{
+  "id": "w294f4caedde",
+  "title": "Name the surfaces a pre-reader has to cross",
+  "level": "task",
+  "owner": "sam",
+  "tier": 1,
+  "tier_reason": "filed by hand",
+  "ask": "S-7 says phase 1's core loop needs no reading, but nothing lists which surfaces that covers. Walk the farming loop — clear, till, plant, water, sleep, harvest, buy seeds — and name every surface a player crosses to do it. That list turns an untested promise into a check, and it also settles the scope argument in the open robot-menu question: whether a machine panel is inside the loop or outside it.",
+  "first_action": "Play the loop on the tablet build and write down every panel it passes through.",
+  "state": "waiting_session",
+  "thread": "sam",
+  "source": "chat",
+  "source_message": "S-7 says phase 1's core loop needs no reading, but nothing lists which surfaces that covers. Walk the farming loop — clear, till, plant, water, sleep, harvest, buy seeds — and name every surface a player crosses to do it. That list turns an untested promise into a check, and it also settles the scope argument in the open robot-menu question: whether a machine panel is inside the loop or outside it.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-03T18:10",
+  "created_ts": 1788484229.813233
+}

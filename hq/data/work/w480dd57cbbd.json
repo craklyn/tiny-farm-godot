@@ -1,0 +1,19 @@
+{
+  "id": "w480dd57cbbd",
+  "title": "Draft the options for where a player's bug report lands",
+  "level": "task",
+  "owner": "fatima",
+  "tier": 1,
+  "tier_reason": "filed by hand",
+  "ask": "Before the next public tag, a player who hits a bug needs somewhere to send it — or an honest line saying there is nowhere. Draft the three options (itch comments, an email alias, or saying plainly that there is no channel) as a decision card with a recommendation, so the CEO can rule on it rather than being asked an open question. It is a public promise about his own time, so the card must be explicit about what each option costs him per week.",
+  "first_action": "Read ITCH_PAGE.md and fatima's record in hq/data/org.json, then write the card into hq/data/decisions/.",
+  "state": "waiting_session",
+  "thread": "fatima",
+  "source": "chat",
+  "source_message": "Before the next public tag, a player who hits a bug needs somewhere to send it — or an honest line saying there is nowhere. Draft the three options (itch comments, an email alias, or saying plainly that there is no channel) as a decision card with a recommendation, so the CEO can rule on it rather than being asked an open question. It is a public promise about his own time, so the card must be explicit about what each option costs him per week.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-03T18:10",
+  "created_ts": 1788484229.8173904
+}

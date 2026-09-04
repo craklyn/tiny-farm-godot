@@ -1,0 +1,20 @@
+{
+  "id": "w457e8a534cb",
+  "title": "Get the storefront's numbers into HQ",
+  "level": "story",
+  "owner": "victor",
+  "tier": 1,
+  "tier_reason": "filed by hand",
+  "ask": "One free browser build has been public for weeks and nobody can say whether anyone has opened it. The storefront exposes views, downloads and plays through an API key the account can issue. Write the poller (a named entry in hq/server.py's PROBES registry, refreshed off the request path onto hq/data/probes/itch_daily.json, the way every other network reading in HQ works) and put the key in the project .env beside the other two. Do not invent numbers for the empty state: a poller with no key must render as an absence, not a zero. This is the whole demand surface this studio has, so it is the ch",
+  "first_action": "Read ITCH_PAGE.md, hq/data/goals/ops.json's a-player-can-reach-us goal, and the playtest session notes, then propose the record's shape.",
+  "state": "dropped",
+  "thread": "victor",
+  "source": "chat",
+  "source_message": "One free browser build has been public for weeks and nobody can say whether anyone has opened it. The storefront exposes views, downloads and plays through an API key the account can issue. Write the poller (a named entry in hq/server.py's PROBES registry, refreshed off the request path onto hq/data/probes/itch_daily.json, the way every other network reading in HQ works) and put the key in the project .env beside the other two. Do not invent numbers for the empty state: a poller with no key must render as an absence, not a zero. This is the whole demand surface this studio has, so it is the ch",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-03T18:10",
+  "created_ts": 1788484229.8238432,
+  "closed": "2026-09-03T18:11"
+}

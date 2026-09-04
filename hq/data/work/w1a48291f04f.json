@@ -7,7 +7,7 @@
   "tier_reason": "Rendering captures and bringing them into chat changes nothing players see; the pick itself comes back to Daniel.",
   "ask": "Get the look session captures rendered so I can pick a look.",
   "first_action": "Ask Ingrid to name the treatments worth showing, then have Jade render one capture per treatment from the real game on the same farm, time of day, and seed.",
-  "state": "for_review",
+  "state": "accepted",
   "thread": "claude",
   "source": "chat",
   "source_message": "Yes - go ahead and get the look session captures rendered for me first, and tell Dmitri to hold the foley session until I've picked a look.",
@@ -56,5 +56,37 @@
     "answer": "Pay for it — put all four looks in front of you",
     "why": "Color you can judge any time; how detailed the game looks is the direction you'd otherwise be guessing at, and it's one cheap sheet.",
     "instead": "Run the three free recolors first and only spend if color alone doesn't settle it — safer, but costs a round trip before you get the real answer."
-  }
+  },
+  "closed": "2026-09-03T01:23",
+  "decided": {
+    "question": "Do we pay for the more-detailed sprite sheet, or test color only?",
+    "answer": "Pay for it — put all four looks in front of you",
+    "at": "2026-09-03T01:23"
+  },
+  "spawned": [
+    {
+      "id": "wf1b3b951813",
+      "title": "Confirm the four looks we test",
+      "state": "waiting_session",
+      "owner": "ingrid"
+    },
+    {
+      "id": "wf58107bb342",
+      "title": "Capture the base frame and produce the three recolors",
+      "state": "waiting_session",
+      "owner": "jade"
+    },
+    {
+      "id": "w3e8d6660477",
+      "title": "Generate the higher-fidelity sprite sheet",
+      "state": "needs_approval",
+      "owner": "yuki"
+    },
+    {
+      "id": "w3537cf842ae",
+      "title": "Bring the four looks back for the pick",
+      "state": "doing",
+      "owner": "claude"
+    }
+  ]
 }

@@ -3,7 +3,7 @@
   "verdict_template": {
     "fire": "{worst}",
     "attention": "{worst}",
-    "unassured": "Nothing is visibly wrong, but {unassured} of {total} of the things holding this look together are checked by eye alone.",
+    "unassured": "Nothing is visibly wrong; monitoring is still landing on {unassured} of {total} areas, and the plans are filed.",
     "ok": "The look is holding, and what checks it runs on every page load.",
     "dormant": "Dormant. {dormant_reason}",
     "nothing_for_you": "Nothing here needs you. {ours_line}"
@@ -45,17 +45,10 @@
       "path_to_green": {
         "narrative": "Write the missing ledger lines — where each file came from, its terms, and what it cost.",
         "route": {
-          "kind": "none"
+          "kind": "work",
+          "id": "w8e5e7387217"
         },
-        "owner": "ingrid",
-        "action": {
-          "label": "Put it on Ingrid's list",
-          "tier": 1,
-          "level": "task",
-          "ask": "A shipped sound has no provenance line. Trace it and write the entry, or recommend dropping it — the standing policy is to drop a restrictively-licensed or unprovenanced asset rather than work around its terms.",
-          "first_action": "Trace the file through git history to the commit that added it, then write or recommend.",
-          "title": "Trace the unledgered sound and write its entry"
-        }
+        "owner": "ingrid"
       },
       "history": {
         "record": true,
@@ -89,17 +82,10 @@
       "path_to_green": {
         "narrative": "Either wire it up or delete it. The sound board below marks which files the build never loads.",
         "route": {
-          "kind": "none"
+          "kind": "work",
+          "id": "wf1d5bfcab8a"
         },
-        "owner": "dmitri",
-        "action": {
-          "label": "Put it on Dmitri's list",
-          "tier": 1,
-          "level": "task",
-          "ask": "A sound file ships that systems/audio_manager.gd never loads. From outside, a forgotten cut and a wiring bug look identical — work out which this is, then either wire it up or delete it and say why in the commit.",
-          "first_action": "Compare assets/audio/sfx against the preloads in systems/audio_manager.gd, then listen to the orphan and decide.",
-          "title": "Wire up the orphaned sound or delete it"
-        }
+        "owner": "dmitri"
       },
       "history": {
         "record": true,
@@ -198,17 +184,10 @@
       "path_to_green": {
         "narrative": "The editor should open every cell of a sheet, with the animating frames only highlighted. Filed against the design-technology seat.",
         "route": {
-          "kind": "none"
+          "kind": "work",
+          "id": "w5a4005536e1"
         },
-        "owner": "rin",
-        "action": {
-          "label": "Put it on Rin's list",
-          "tier": 1,
-          "level": "story",
-          "ask": "HQ's sprite editor opens the entity catalogue's preview frame list rather than the sheet — Chicken lists four of its eight cells, the farmer four of sixteen — so a hand edit silently touches part of a sheet without saying so. The editor should open every cell of a sheet, with the animating frames only highlighted as what animates.",
-          "first_action": "Read hq/static/sprite.js and hq/data/entities.json, and confirm the frame-count mismatch on Chicken and Farmer before changing anything.",
-          "title": "Make the sprite editor open the whole sheet"
-        }
+        "owner": "rin"
       },
       "history": {
         "record": false,

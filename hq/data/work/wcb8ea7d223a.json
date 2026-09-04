@@ -1,0 +1,19 @@
+{
+  "id": "wcb8ea7d223a",
+  "title": "Re-run the suites so each stamps the commit it proved",
+  "level": "task",
+  "owner": "grace",
+  "tier": 1,
+  "tier_reason": "filed by hand",
+  "ask": "The stored suite results predate the change that made runs stamp the commit they proved, so their age is unknowable rather than large. Re-run the four suites from the Engineering page so each stamps a commit, then confirm the freshness column reads a number instead of 'unknown'.",
+  "first_action": "Press Run on each of the four suites on #/pillar/engineering and watch the 'how far behind main' column.",
+  "state": "waiting_session",
+  "thread": "grace",
+  "source": "chat",
+  "source_message": "The stored suite results predate the change that made runs stamp the commit they proved, so their age is unknowable rather than large. Re-run the four suites from the Engineering page so each stamps a commit, then confirm the freshness column reads a number instead of 'unknown'.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-03T18:10",
+  "created_ts": 1788484229.8060782
+}

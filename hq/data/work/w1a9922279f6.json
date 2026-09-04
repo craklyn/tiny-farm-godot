@@ -1,0 +1,19 @@
+{
+  "id": "w1a9922279f6",
+  "title": "Put the translation plumbing in before the words arrive",
+  "level": "story",
+  "owner": "oskar",
+  "tier": 1,
+  "tier_reason": "filed by hand",
+  "ask": "The game starts wordless and grows text as it gets technical — the machine panel already has words and later phases will need more. There is no i18n at all: no tr(), no locale config, no translation files. Set up the plumbing now and route the handful of existing strings through it, so text written from here is translatable by default rather than something somebody has to go back and find. Do not add words to the farming loop while doing it: S-7 binds phase 1's core loop and that constraint is unchanged.",
+  "first_action": "Read S-7 in docs/DECISION_LOG.md for what the constraint actually covers, then list every player-facing string in ui/ and where it is built.",
+  "state": "waiting_session",
+  "thread": "oskar",
+  "source": "chat",
+  "source_message": "The game starts wordless and grows text as it gets technical — the machine panel already has words and later phases will need more. There is no i18n at all: no tr(), no locale config, no translation files. Set up the plumbing now and route the handful of existing strings through it, so text written from here is translatable by default rather than something somebody has to go back and find. Do not add words to the farming loop while doing it: S-7 binds phase 1's core loop and that constraint is unchanged.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-03T18:10",
+  "created_ts": 1788484229.8203137
+}

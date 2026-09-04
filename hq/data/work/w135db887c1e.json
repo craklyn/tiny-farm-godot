@@ -1,0 +1,19 @@
+{
+  "id": "w135db887c1e",
+  "title": "Write the missing provenance line, or recommend dropping the asset",
+  "level": "task",
+  "owner": "harold",
+  "tier": 1,
+  "tier_reason": "filed by hand",
+  "ask": "One shipped sound file has no line in CREDITS.md, which breaks that file's own opening rule that every entry must have verified terms before the first public build ships. Find where it came from, write its ledger line — source, terms, cost — and if its provenance cannot be established, say so plainly and recommend dropping it rather than shipping an asset whose rights are unknown.",
+  "first_action": "Run the orphan check on assets/audio/sfx against CREDITS.md, then trace the file through git history to whoever added it.",
+  "state": "waiting_session",
+  "thread": "harold",
+  "source": "chat",
+  "source_message": "One shipped sound file has no line in CREDITS.md, which breaks that file's own opening rule that every entry must have verified terms before the first public build ships. Find where it came from, write its ledger line — source, terms, cost — and if its provenance cannot be established, say so plainly and recommend dropping it rather than shipping an asset whose rights are unknown.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-03T18:10",
+  "created_ts": 1788484229.8158607
+}

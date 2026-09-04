@@ -1,0 +1,19 @@
+{
+  "id": "wcd3806bc3a4",
+  "title": "Reconcile the release manifest against the build",
+  "level": "task",
+  "owner": "victor",
+  "tier": 1,
+  "tier_reason": "filed by hand",
+  "ask": "A feature on hq/data/releases.json's manifest cannot be traced to a commit or to a project carrying it. Work out whether it was built under a different name, is genuinely not built, or should come off the release, and fix the record either way. A release plan whose contents cannot be verified is a wish.",
+  "first_action": "Open #/pillar/sales, find the feature marked not built, and trace its evidence id through git log.",
+  "state": "waiting_session",
+  "thread": "victor",
+  "source": "chat",
+  "source_message": "A feature on hq/data/releases.json's manifest cannot be traced to a commit or to a project carrying it. Work out whether it was built under a different name, is genuinely not built, or should come off the release, and fix the record either way. A release plan whose contents cannot be verified is a wish.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-03T18:10",
+  "created_ts": 1788484229.8222742
+}

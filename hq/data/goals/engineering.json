@@ -4,7 +4,7 @@
   "verdict_template": {
     "fire": "{worst}",
     "attention": "{worst}",
-    "unassured": "Nothing here is failing, but {unassured} of {total} of these proofs run on nobody's schedule.",
+    "unassured": "Nothing is failing; monitoring is still landing on {unassured} of {total} areas, and the plans are filed.",
     "ok": "Green on main, and the proofs are fresh enough to believe.",
     "dormant": "Dormant. {dormant_reason}",
     "nothing_for_you": "Nothing here needs you. {ours_line}"
@@ -233,17 +233,10 @@
       "path_to_green": {
         "narrative": "Run the suites again from the buttons below — from now on each run stamps the commit it proved.",
         "route": {
-          "kind": "none"
+          "kind": "work",
+          "id": "wcb8ea7d223a"
         },
-        "owner": "grace",
-        "action": {
-          "label": "Put it on Grace's list",
-          "tier": 0,
-          "level": "task",
-          "ask": "The stored suite results predate the change that made runs stamp the commit they proved, so their age is unknowable rather than large. Re-run the four suites from the Engineering page so each stamps a commit, then confirm the freshness column reads a number instead of 'unknown'.",
-          "first_action": "Press Run on each of the four suites on #/pillar/engineering and watch the 'how far behind main' column.",
-          "title": "Re-run the suites so each stamps the commit it proved"
-        }
+        "owner": "grace"
       },
       "history": {
         "record": true,
@@ -322,17 +315,10 @@
       "path_to_green": {
         "narrative": "Two of the three rules are grepped on every page load and hold today. The third has no checker at all; writing one is about half a day.",
         "route": {
-          "kind": "none"
+          "kind": "work",
+          "id": "wc1886486f14"
         },
-        "owner": "elena",
-        "action": {
-          "label": "Put it on Elena's list",
-          "tier": 1,
-          "level": "story",
-          "ask": "Two of the three rules that keep replays reproducible are grepped on every page load and hold today. The third — that every world mutation goes through SimWorld.apply_action — has no checker at all: a renderer writing straight into the grid would compile and pass both suites, and the break would stay silent until phase-4 bot training failed on corrupt data. Write a static check over world/, entities/ and player/ for assignments into SimWorld's fields, and add it as a fifth CI job.",
-          "first_action": "Read docs/ARCHITECTURE.md's layer rules and systems/sim/sim_world.gd, then write the check and prove it catches a deliberate violation.",
-          "title": "Write the checker for the one-gateway rule"
-        }
+        "owner": "elena"
       },
       "history": {
         "record": true,

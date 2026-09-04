@@ -1,0 +1,19 @@
+{
+  "id": "wc1886486f14",
+  "title": "Write the checker for the one-gateway rule",
+  "level": "story",
+  "owner": "elena",
+  "tier": 1,
+  "tier_reason": "filed by hand",
+  "ask": "Two of the three rules that keep replays reproducible are grepped on every page load and hold today. The third — that every world mutation goes through SimWorld.apply_action — has no checker at all: a renderer writing straight into the grid would compile and pass both suites, and the break would stay silent until phase-4 bot training failed on corrupt data. Write a static check over world/, entities/ and player/ for assignments into SimWorld's fields, and add it as a fifth CI job.",
+  "first_action": "Read docs/ARCHITECTURE.md's layer rules and systems/sim/sim_world.gd, then write the check and prove it catches a deliberate violation.",
+  "state": "waiting_session",
+  "thread": "elena",
+  "source": "chat",
+  "source_message": "Two of the three rules that keep replays reproducible are grepped on every page load and hold today. The third — that every world mutation goes through SimWorld.apply_action — has no checker at all: a renderer writing straight into the grid would compile and pass both suites, and the break would stay silent until phase-4 bot training failed on corrupt data. Write a static check over world/, entities/ and player/ for assignments into SimWorld's fields, and add it as a fifth CI job.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-03T18:10",
+  "created_ts": 1788484229.8071287
+}

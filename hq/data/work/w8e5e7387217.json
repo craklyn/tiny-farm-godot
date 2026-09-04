@@ -1,0 +1,19 @@
+{
+  "id": "w8e5e7387217",
+  "title": "Trace the unledgered sound and write its entry",
+  "level": "task",
+  "owner": "ingrid",
+  "tier": 1,
+  "tier_reason": "filed by hand",
+  "ask": "A shipped sound has no provenance line. Trace it and write the entry, or recommend dropping it — the standing policy is to drop a restrictively-licensed or unprovenanced asset rather than work around its terms.",
+  "first_action": "Trace the file through git history to the commit that added it, then write or recommend.",
+  "state": "waiting_session",
+  "thread": "ingrid",
+  "source": "chat",
+  "source_message": "A shipped sound has no provenance line. Trace it and write the entry, or recommend dropping it — the standing policy is to drop a restrictively-licensed or unprovenanced asset rather than work around its terms.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-03T18:10",
+  "created_ts": 1788484229.8005993
+}

@@ -1,0 +1,20 @@
+{
+  "id": "wf1b3b951813",
+  "title": "Confirm the four looks we test",
+  "level": "task",
+  "owner": "ingrid",
+  "tier": 1,
+  "tier_reason": "The art director owns which looks are worth the CEO's attention before anyone renders them.",
+  "ask": "Accepted “Render side-by-side look captures for the CEO to pick from”. The art director owns which looks are worth the CEO's attention before anyone renders them.",
+  "first_action": "Read the four proposed treatments and either sign off or replace one, writing the final list into the style guide's look-session note",
+  "state": "waiting_session",
+  "thread": "claude",
+  "source": "chat",
+  "source_message": "Accepted “Render side-by-side look captures for the CEO to pick from”. The art director owns which looks are worth the CEO's attention before anyone renders them.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-03T01:23",
+  "created_ts": 1788423831.4263427,
+  "parent": "w1a48291f04f"
+}

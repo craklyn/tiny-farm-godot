@@ -1,0 +1,53 @@
+{
+  "id": "w3537cf842ae",
+  "title": "Bring the four looks back for the pick",
+  "level": "task",
+  "owner": "claude",
+  "tier": 0,
+  "tier_reason": "The session only pays off when he actually picks a look from them.",
+  "ask": "Accepted “Render side-by-side look captures for the CEO to pick from”. The session only pays off when he actually picks a look from them.",
+  "first_action": "Assemble the four captures side by side in HQ and open a decision card with a plain-language quiz and a recommendation",
+  "state": "for_review",
+  "thread": "claude",
+  "source": "chat",
+  "source_message": "Accepted “Render side-by-side look captures for the CEO to pick from”. The session only pays off when he actually picks a look from them.",
+  "result": "Nothing to assemble yet — and I found the reason it's worth *not* just fixing that quickly.\n\n**Where the four actually stand.** Ingrid hasn't confirmed the list, Jade's capture hasn't run, and the higher-fidelity sheet is sitting on your spend approval. So there are no captures in HQ. The looks folder holds one published sheet, and it's from the earlier session about how a finished action answers you — not this.\n\n**The useful part.** A real staged frame already exists on this machine from that session: day six, the farmer standing at the fence, the bin, well and seed box all in shot, seed 12345, shot from the actual game by the same rig the visual test uses. So the \"capture a base frame\" half of Jade's job is effectively already done.\n\n**The part that should change the plan.** The look rig only photographs looks the game can genuinely draw — that's its one hard rule, so a comparison sheet can never show you something the engine can't produce. And the game today has exactly three things it can switch: the bed, the station discovery cue, and the already-done reply. There is no switch for the world's colour. Which means \"warmer cozy\" and \"cooler, quieter world\" as currently filed would be a Python recolour of a screenshot — a picture of a game that doesn't exist. You'd pick one, and then someone would have to go find out whether the engine can actually hit it.\n\nMaking the world tint a real switch is small: a colour grade over the world layer, warm and cool settings, HUD untouched. Then the existing rig shoots all of them at the same moment with nothing else moving, and what you approve is what ships.\n\n**The card I'd open, once there's a sheet:**\n\n> *The farm, same morning, four ways. Which one is Tiny Farm?*\n> 1. As it ships today — the control.\n> 2. Warmer — same sprites, richer colour, shadows shifted warm. Cozier, further from the near-future door you said you want left open.\n> 3. Cooler and quieter — the ground greyed toward grey-green so the only saturated things on screen are the things you can touch. Reads as design, not decoration, and keeps that door open.\n> 4. More detail — more shading steps per material. Costs money to produce.\n>\n> My pick: **3**, with the detail sheet in the lineup so you're choosing colour *and* fidelity in one sitting. Cool-and-quiet is the only one that does a job beyond taste — it makes the interactive things the loudest pixels on screen, which is free teaching for a player who can't read.\n\n**What this means if you say yes:** Jade spends a build session making the world tint a real switch in the game and shooting the sheet, I open the card, and Grace keeps the visual regression test from going red on the change. The detail sheet still needs your separate yes on the spend — that one's already waiting for you on the Work page.\n\n<remember>Tiny Farm's Look Lab can only photograph looks the game can actually draw (three axes today: cot, station discovery cue, already-done reply). Any new look question — including whole-world colour treatments — has to become a real switch in systems/look_lab.gd first; grading a screenshot in an image editor violates the rig's rule that a comparison sheet cannot drift from the build.</remember>",
+  "started": "2026-09-03T01:24",
+  "attempts": 1,
+  "created": "2026-09-03T01:23",
+  "created_ts": 1788423831.4280975,
+  "parent": "w1a48291f04f",
+  "follow_ups": [
+    {
+      "title": "Make the world's colour a real switch in the game",
+      "owner": "jade",
+      "level": "story",
+      "tier": 1,
+      "first_action": "Add a world-tint axis to systems/look_lab.gd with warm and cool settings applied as a colour grade over the world layer only (HUD untouched), plus one arm in tools/capture_looks.gd so the rig shoots it at the station moment",
+      "why": "The comparison sheet must not be able to show a look the engine cannot produce, and today the game has no colour switch at all."
+    },
+    {
+      "title": "Open the look decision card with the sheet attached",
+      "owner": "claude",
+      "level": "task",
+      "tier": 1,
+      "first_action": "Once the sheet exists, publish it into the looks folder and write the card with the four panels, the plain-language quiz and the cool-and-quiet recommendation",
+      "why": "The session only pays off when he picks a look, and the pick happens on a card."
+    },
+    {
+      "title": "Keep the visual test honest when the world tint lands",
+      "owner": "grace",
+      "level": "task",
+      "tier": 1,
+      "first_action": "Pin the visual regression run to the shipping tint setting and refresh the baseline frame in the same change that adds the tint",
+      "why": "Adding a world colour grade changes every rendered pixel, and a red suite must mean something is broken, not that a baseline is stale."
+    }
+  ],
+  "recommend": {
+    "question": "Do we show you the colour looks as recoloured screenshots now, or build them into the game first?",
+    "answer": "Build them in — make the world tint a real switch, then shoot the sheet from the running game",
+    "why": "A picture edited outside the engine is a promise nobody has checked the game can keep, and you'd be approving it.",
+    "instead": "Recolour the existing frame today for a same-day read, accepting that you're picking from a mock-up rather than the game."
+  },
+  "finished": "2026-09-03T01:27"
+}

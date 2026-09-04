@@ -1887,7 +1887,7 @@ def eval_measure(spec, depth=0):
         except (ValueError, TypeError):
             pass
         expired = bool(exp and age is not None and age > exp)
-        return _reading(spec.get("value"), human=f"attested by you on {on}",
+        return _reading(spec.get("value"), human=f"verified by you on {on}",
                         extra={"attested": True, "attested_by": who, "attested_on": on,
                                "attested_days": age, "expired": expired,
                                "note": spec.get("note", "")})
@@ -2520,18 +2520,18 @@ def _measured_human(reading, compare, state):
         head = f"{n_ok} of {len(parts)} hold"
         if bad:
             st0, lab0 = bad[0]
-            word = {"unchecked": "nothing watches", "broken": "could not check",
+            word = {"unchecked": "not monitored", "broken": "could not check",
                     "red": "fails", "amber": "is slipping", "attested": "is attested only"}.get(st0, "fails")
             head += f" — {word}: {lab0[:110]}"
             if len(bad) > 1:
                 head += f" (and {len(bad) - 1} more)"
         return head
     if reading.get("unchecked"):
-        return "nothing watches this"
+        return "not monitored yet"
     if reading.get("attested"):
         who = reading.get("attested_on") or "?"
-        return (f"attested {who} — expired" if reading.get("expired")
-                else f"attested by you, {who}")
+        return (f"verified by you {who} — lapsed" if reading.get("expired")
+                else f"verified by you, {who}")
     if reading.get("error"):
         return "could not be measured: " + str(reading["error"])
     v, unit = reading.get("value"), reading.get("unit") or ""
@@ -2707,8 +2707,8 @@ def rollup(pillar_id, goals, dormant_decl, pillar_name=""):
             reasons.append(f"{len(rest)} more, all of them ours to fix.")
     elif level == "unassured":
         n = len([g for g in goals if not g["assured"]])
-        reasons = [f"Nothing here is failing, but {n} of {len(goals)} checks on this pillar "
-                   "are run by nobody — they hold by inspection, not by measurement."]
+        reasons = [f"Nothing is failing; monitoring is still landing on {n} of {len(goals)} "
+                   "areas, and the plans are filed."]
     elif level == "dormant":
         why = (dormant_decl or {}).get("reason", "Dormant by your standing instruction.")
         src = (dormant_decl or {}).get("ruling")
@@ -2717,7 +2717,7 @@ def rollup(pillar_id, goals, dormant_decl, pillar_name=""):
     elif goals:
         unassured_n = len(goals) - assured
         reasons = [f"All {assured} measured goals on this pillar are passing"
-                   + (f"; {unassured_n} more hold by inspection and nothing watches them."
+                   + (f"; monitoring plans are filed for {unassured_n} more."
                       if unassured_n else ".")]
     else:
         reasons = [f"{pillar_name or pillar_id} declares no goals — its goal file is missing."]

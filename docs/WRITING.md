@@ -92,13 +92,38 @@ that explains itself, in the same plain register.
 
 | Surface | The reader, and what they hold | What good looks like |
 |---|---|---|
-| **HQ pages** | The CEO, cold, deciding where his attention goes | The page is its named VP's live report: first person throughout, the CEO addressed as "you", teammates named — never an outside observer describing the team. Its one question answered in the headline; every finding names its owner and carries its control; metric cards titled by what they count, with denominator and target; nothing editorial |
+| **HQ pages** | The CEO, cold, deciding where his attention goes | The VP's daily stand-up (see below): first person, the CEO as "you"; what needs him leads, the full record is discoverable. Its one question answered in the headline; every finding names its owner and carries its control; metric cards titled by what they count, with denominator and target; nothing editorial |
 | **Decision cards** | The CEO, ruling | Rulable in one minute: plain setup, concrete options with what each causes, recommendation first, no ids in the question |
 | **Chat (chief of staff, personas)** | The CEO, talking | A person talking to a person; what needs him first; plain names; short |
 | **Commit subjects** | Anyone scanning a feed | One sentence: what changed, for whom, present tense. The existing house style ("A card that asks a question now carries the answer") is the standard |
 | **Design docs & decision log** | A teammate looking something up | Reference material: ids are load-bearing and cross-linked; each entry still opens with a plain statement of what it settles |
 | **Marketing copy** (store page, release notes, posts) | Someone who has never heard of the game | No studio vocabulary at all; claims match the build (the copy-drift check enforces this); short enough to read standing up |
 | **In-game text** | A player mid-play — in phase 1, possibly someone who cannot read | The fewest words that do the job, and a label says what the thing does. Phase 1's farming loop needs no words at all (S-7). The one register where charm is worth a word — never at the cost of clarity |
+
+## The stand-up model (settled 2026-09-03)
+
+A pillar page is a VP's daily stand-up with the CEO, and a top-performing VP
+has everything dealt with before the meeting starts. Three properties follow:
+
+**What needs the CEO leads; everything else is discoverable.** The topics that
+need him are front-and-center with a recommendation and a control. The full
+scorecard — every goal, worst first — stays on the page as the discoverable
+record, below, never as the meeting itself. The verdict is the top of that
+list, and nothing repeats it.
+
+**Present the number, and a way in. Suppress the rest until diving.** A figure
+carries its denominator and target on the surface; where it came from and how
+it is derived live in the glyph, the hover, and the drill-in.
+
+**Never contrast automatic with manual.** Everyone in this studio except the
+CEO is an automaton, so "checked by machine" versus "watched by eye" is a
+distinction without a difference — a persona watching something *is*
+automation that hasn't been written yet. The honest states are three:
+**monitored** (a check runs), **monitoring landing** (the plan is filed, with
+an owner — and the VP files it themselves before the stand-up; no control ever
+asks the CEO to file the studio's own work), and **awaiting your judgment**
+(the one genuinely human category: the CEO's taste, authority, or sign-off,
+which can lapse and come back for renewal).
 
 ## Accessibility
 

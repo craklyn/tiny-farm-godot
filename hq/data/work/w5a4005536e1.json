@@ -1,0 +1,19 @@
+{
+  "id": "w5a4005536e1",
+  "title": "Make the sprite editor open the whole sheet",
+  "level": "story",
+  "owner": "rin",
+  "tier": 1,
+  "tier_reason": "filed by hand",
+  "ask": "HQ's sprite editor opens the entity catalogue's preview frame list rather than the sheet — Chicken lists four of its eight cells, the farmer four of sixteen — so a hand edit silently touches part of a sheet without saying so. The editor should open every cell of a sheet, with the animating frames only highlighted as what animates.",
+  "first_action": "Read hq/static/sprite.js and hq/data/entities.json, and confirm the frame-count mismatch on Chicken and Farmer before changing anything.",
+  "state": "waiting_session",
+  "thread": "rin",
+  "source": "chat",
+  "source_message": "HQ's sprite editor opens the entity catalogue's preview frame list rather than the sheet — Chicken lists four of its eight cells, the farmer four of sixteen — so a hand edit silently touches part of a sheet without saying so. The editor should open every cell of a sheet, with the animating frames only highlighted as what animates.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-03T18:10",
+  "created_ts": 1788484229.804272
+}

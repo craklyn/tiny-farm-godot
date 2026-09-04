@@ -1,0 +1,19 @@
+{
+  "id": "wb95a0985e33",
+  "title": "Prep the decision on what wakes marketing up",
+  "level": "task",
+  "owner": "carmen",
+  "tier": 1,
+  "tier_reason": "filed by hand",
+  "ask": "Marketing is dormant by standing instruction and nothing anywhere says what would turn it back on, so it is off by inertia rather than by decision. Prep a decision card the CEO can rule on in a minute: two or three concrete triggers with a recommendation — a date, a public build, a number of players, whatever is actually checkable from here — and what each one would commit the studio to doing once it fires. Do not ask him an open question; give him options.",
+  "first_action": "Read the dormancy record in hq/data/pillars.json and ITCH_PAGE.md, then write the card into hq/data/decisions/.",
+  "state": "waiting_session",
+  "thread": "carmen",
+  "source": "chat",
+  "source_message": "Marketing is dormant by standing instruction and nothing anywhere says what would turn it back on, so it is off by inertia rather than by decision. Prep a decision card the CEO can rule on in a minute: two or three concrete triggers with a recommendation — a date, a public build, a number of players, whatever is actually checkable from here — and what each one would commit the studio to doing once it fires. Do not ask him an open question; give him options.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-03T18:10",
+  "created_ts": 1788484229.8107662
+}

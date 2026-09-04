@@ -1,0 +1,20 @@
+{
+  "id": "w3e8d6660477",
+  "title": "Generate the higher-fidelity sprite sheet",
+  "level": "task",
+  "owner": "yuki",
+  "tier": 2,
+  "tier_reason": "This is the only treatment that can't be faked, and it's the half of the choice about how detailed the game should look.",
+  "ask": "Accepted “Render side-by-side look captures for the CEO to pick from”. This is the only treatment that can't be faked, and it's the half of the choice about how detailed the game should look.",
+  "first_action": "Generate one sheet at more shading steps per material through the pixel-art pipeline, palette-locked, and record the cost and provenance",
+  "state": "needs_approval",
+  "thread": "claude",
+  "source": "chat",
+  "source_message": "Accepted “Render side-by-side look captures for the CEO to pick from”. This is the only treatment that can't be faked, and it's the half of the choice about how detailed the game should look.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-03T01:23",
+  "created_ts": 1788423831.4276047,
+  "parent": "w1a48291f04f"
+}

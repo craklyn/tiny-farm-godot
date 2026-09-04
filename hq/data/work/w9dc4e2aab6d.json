@@ -1,0 +1,19 @@
+{
+  "id": "w9dc4e2aab6d",
+  "title": "Give the visual check a home, or stop claiming it",
+  "level": "task",
+  "owner": "lena",
+  "tier": 1,
+  "tier_reason": "filed by hand",
+  "ask": "tools/test_visuals.tscn is named in CLAUDE.md's command list and is in no CI workflow and no runnable job in HQ. Work out whether it is a release gate or a developer's tool, and give it a home either way: a headless renderer in CI, or a button on the Engineering page that a person presses before a tag. A check our own docs claim and nothing runs is worse than one we never claimed.",
+  "first_action": "Run tools/test_visuals.tscn against tools/baseline.png, see what it actually needs, and say which home it should have.",
+  "state": "waiting_session",
+  "thread": "lena",
+  "source": "chat",
+  "source_message": "tools/test_visuals.tscn is named in CLAUDE.md's command list and is in no CI workflow and no runnable job in HQ. Work out whether it is a release gate or a developer's tool, and give it a home either way: a headless renderer in CI, or a button on the Engineering page that a person presses before a tag. A check our own docs claim and nothing runs is worse than one we never claimed.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-03T18:10",
+  "created_ts": 1788484229.8259587
+}

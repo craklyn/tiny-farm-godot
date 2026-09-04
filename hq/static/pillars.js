@@ -26,7 +26,7 @@
 const LEVEL_META = {
   fire: { label: "ON FIRE", cls: "lv-fire", dcls: "d-fire" },
   attention: { label: "needs attention", cls: "lv-attn", dcls: "d-attn" },
-  unassured: { label: "not being checked", cls: "lv-unas", dcls: "d-unchecked" },
+  unassured: { label: "monitoring gaps", cls: "lv-unas", dcls: "d-unchecked" },
   ok: { label: "under control", cls: "lv-ok", dcls: "d-ok" },
   dormant: { label: "dormant by ruling", cls: "lv-dorm", dcls: "d-dorm" },
 };
@@ -38,8 +38,8 @@ const GOAL_META = {
   red: { dcls: "d-fire", word: "failing" },
   broken: { dcls: "d-broken", word: "could not be checked" },
   amber: { dcls: "d-attn", word: "slipping" },
-  unchecked: { dcls: "d-unchecked", word: "nothing watches this" },
-  attested: { dcls: "d-attested", word: "attested, not measured" },
+  unchecked: { dcls: "d-unchecked", word: "not monitored yet" },
+  attested: { dcls: "d-attested", word: "verified by you" },
   green: { dcls: "d-ok", word: "passing" },
 };
 
@@ -204,6 +204,7 @@ function routeControl(g) {
   if (["unchecked", "broken"].includes(g.state) && p2g.action) return fileBtn(g, p2g, p2g.action);
   if (route.kind === "project") return `<a class="gbtn" href="#/project/${esc(route.id)}">Open the project</a>`;
   if (route.kind === "decision") return `<a class="gbtn" href="#/inbox">Open the card</a>`;
+  if (route.kind === "work") return `<a class="gbtn" href="#/work">See the filed plan</a>`;
   if (p2g.action) return fileBtn(g, p2g, p2g.action);
   if (g.needs_you) {
     return `<span class="g-orphan">not prepped — ${esc(p2g.owner || "somebody")} owes you a card
@@ -260,7 +261,7 @@ function goalBoard(g) {
   const head = goals.slice(0, 3), tail = goals.slice(3);
   const worstHidden = tail.length
     ? (GOAL_META[tail[0].state] || GOAL_META.green).word : "";
-  return `<h2>My goals <span class="small muted">— ${g.assured} of ${g.total} machine-checked</span></h2>
+  return `<h2>The full picture <span class="small muted">— worst first</span></h2>
     <div class="card goalcard">
       ${head.map(goalRow).join("")}
       ${tail.length ? `<details class="goalfold"><summary>${tail.length} more · worst of them ${esc(worstHidden)}</summary>${tail.map(goalRow).join("")}</details>` : ""}
@@ -270,8 +271,12 @@ function goalBoard(g) {
 /* Band 4. A projection over the two queues that already exist, capped at three.
    No ruling is ever given here — a ruling recorded in two places diverges — so
    every control carries him to the one place it is recorded. */
-function needsBand(n) {
-  const rows = (n.needs || []).map(x => {
+function needsBand(n, shownInVerdict) {
+  // The verdict is the top of the stand-up, so the band below it carries only
+  // what remains — the same ask twice in a row is a report reading itself back.
+  const items = (n.needs || []).filter(x => !shownInVerdict || x.goal !== shownInVerdict);
+  if (!items.length && shownInVerdict) return "";
+  const rows = items.map(x => {
     const wait = x.waiting_days != null
       ? `<span class="n-wait${x.waiting_days > 7 ? " over" : ""}">waiting ${x.waiting_days} day${x.waiting_days === 1 ? "" : "s"}</span>` : "";
     const dur = x.sittings
@@ -296,7 +301,7 @@ function needsBand(n) {
       <div class="n-act">${btn}</div>
     </div>`;
   }).join("");
-  return `<h2>What I need from you</h2>
+  return `<h2>${shownInVerdict ? "What else I need from you" : "What I need from you"}</h2>
     <div class="card needcard">
       ${rows || `<div class="muted">I have nothing waiting on you.</div>`}
       ${n.overflow ? `<div class="small muted" style="margin-top:8px">${n.overflow} more are waiting on you — <a class="plain" href="#/inbox">the decision inbox</a> holds them all.</div>` : ""}
@@ -360,23 +365,21 @@ async function renderPillar(pid) {
     <div class="pillar-id">
       <h1>${p.emoji} ${esc(p.name)}</h1>
       ${levelChip(st.level, st)}
-      <span class="assure" title="How much of this pillar's status is measured rather than asserted">${st.assured} of ${st.total} checked by machine</span>
       <span class="small muted">derived ${esc(sig.generated_at)}</span>
     </div>
     <p class="sub">${esc(p.question || p.tagline)} <span class="muted">· ${lead ? `${lead.emoji} <a class="plain" data-person="${esc(lead.id)}">${esc(lead.name)}</a>` : ""} reports</span></p>
     ${consistencyBanner(sig, pid)}
     ${verdictLine(g)}
+    ${needsBand(needs, ((g.goals || []).find(x => ["red", "broken", "amber"].includes(x.state) && x.needs_you) || {}).id)}
     <div id="pillar-context"></div>
     <div id="pillar-instrument"></div>
     ${goalBoard(g)}
-    ${needsBand(needs)}
     <div class="foldline"></div>
     <div id="pillar-below"></div>
     ${foldSection("Shipped lately", `${per.commits_24h} in 24h · ${per.commits_7d} this week — ${p.commit_feed_label || "this pillar's files"}`,
       per.recent.length ? per.recent.map(c =>
         `<div class="commitrow"><code class="ref">${c.hash}</code> ${esc(c.subject)} <span class="small muted">· ${esc(c.when)}</span></div>`).join("")
         : "<span class='muted'>No commits touch this pillar's files yet.</span>")}
-    ${foldSection("What I'm watching by eye", cantMeasureSummary(team, g), cantMeasure(team, g, p.lead))}
     ${foldSection(`My team (${team.length})`, team.map(e => e.name.split(" ")[0]).join(", "),
       team.map(e => `<div class="team-mini" data-person="${e.id}">
         <b>${e.emoji} ${esc(e.name)}</b> <span class="small muted">${esc(e.short)} · ${e.level}</span>
@@ -402,28 +405,7 @@ async function renderPillar(pid) {
    Every watch this pillar's roster declares, marked implemented or not. The
    count is computed from the goals, never written: a fraction somebody typed is
    the exact thing this section exists to catch. */
-function cantMeasureSummary(team, g) {
-  const watches = team.reduce((n, e) => n + (e.watches || []).length, 0);
-  const unassured = (g.goals || []).filter(x => !["green", "amber", "red"].includes(x.state)).length;
-  return `${unassured} of my ${g.total || 0} goals ${unassured === 1 ? "has" : "have"} no automated check · ${watches} standing watch${watches === 1 ? "" : "es"} held by eye`;
-}
 
-function cantMeasure(team, g, leadId) {
-  const unmeasured = (g.goals || []).filter(x => ["unchecked", "attested", "broken"].includes(x.state));
-  const rows = unmeasured.map(x => `<div class="cm-row">
-      <i class="dot ${(GOAL_META[x.state] || GOAL_META.green).dcls}"></i>
-      <div><b>${esc(x.statement)}</b>
-        <div class="small muted">${esc((x.reading || {}).reason || (x.reading || {}).error || x.measured_human)}</div>
-        ${(x.reading || {}).would_need ? `<div class="small">Would need: ${esc(x.reading.would_need)}</div>` : ""}</div>
-    </div>`).join("");
-  const watchRows = team.map(e => {
-    const who = e.id === leadId ? "I watch" : `${e.emoji} ${esc(e.name.split(" ")[0])} watches`;
-    return `<div class="cm-watch"><b>${who}</b> ${esc((e.watches || []).join("; ") || "nothing yet")}<span class="small muted"> — by eye, no check behind it</span></div>`;
-  }).join("");
-  return `<p class="small muted">None of this has an automated check yet; my team and I watch it by eye.</p>
-    ${rows || "<p class='small muted'>Every goal I hold is measured.</p>"}
-    <div class="cm-watches">${watchRows}</div>`;
-}
 
 /* ================= ENGINEERING — the evidence strip =================
    Verb: RUN. Tabular, boring, no prose above the fold. Every proof carries its
@@ -797,7 +779,7 @@ async function instSales(root, below, sig, g, ctx) {
   }
 
   root.replaceChildren(h(`
-    <h2>The launch check <span class="small muted">— ${machine.length} of ${gates.length} checked by machine</span></h2>
+    <h2>The launch check <span class="small muted">— ${machine.length} of ${gates.length} monitored</span></h2>
     <div class="card gatecard">${gateRows}
       <p class="small muted" style="margin-top:8px">A hollow mark means nobody has checked it.</p>
     </div>

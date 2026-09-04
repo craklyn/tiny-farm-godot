@@ -1,0 +1,19 @@
+{
+  "id": "w3169ae0d4da",
+  "title": "Record that somebody played the web build before a tag",
+  "level": "task",
+  "owner": "victor",
+  "tier": 1,
+  "tier_reason": "filed by hand",
+  "ask": "Nothing records that anybody played the exported web build before a tag, so the runbook's first pre-release box measures only whether somebody ticked a box. Design the smallest honest record: an attestation keyed to the tag being cut, so it expires with each release instead of standing forever, and wire it into the launch check on the Sales & Platforms page.",
+  "first_action": "Read docs/DEPLOY.md's 'Before any release' section and hq/data/goals/sales.json, then propose the record's shape.",
+  "state": "waiting_session",
+  "thread": "victor",
+  "source": "chat",
+  "source_message": "Nothing records that anybody played the exported web build before a tag, so the runbook's first pre-release box measures only whether somebody ticked a box. Design the smallest honest record: an attestation keyed to the tag being cut, so it expires with each release instead of standing forever, and wire it into the launch check on the Sales & Platforms page.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-03T18:11",
+  "created_ts": 1788484262.2097147
+}

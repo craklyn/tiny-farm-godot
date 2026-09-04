@@ -1,0 +1,19 @@
+{
+  "id": "wadf051cd6c7",
+  "title": "Rewrite the store page against the build",
+  "level": "task",
+  "owner": "carmen",
+  "tier": 1,
+  "tier_reason": "filed by hand",
+  "ask": "The store page describes the game as it was at v0.1.0 and promises 'no menus to learn and no words to read'. That promise is S-7's, and S-7 binds phase 1's core farming loop only — the arc runs to programmable bots that will need words by design, so the build gaining text is not a broken promise, it is the plan. Rewrite the page against what the game now does (the shop, the robots, the home, the clock — see the release manifest on the Sales page), and phrase the accessibility claim so it says what is actually true: a child who cannot read can farm.",
+  "first_action": "Read ITCH_PAGE.md, S-7 in docs/DECISION_LOG.md, and the Sales page's release manifest, then draft the new copy.",
+  "state": "waiting_session",
+  "thread": "carmen",
+  "source": "chat",
+  "source_message": "The store page describes the game as it was at v0.1.0 and promises 'no menus to learn and no words to read'. That promise is S-7's, and S-7 binds phase 1's core farming loop only — the arc runs to programmable bots that will need words by design, so the build gaining text is not a broken promise, it is the plan. Rewrite the page against what the game now does (the shop, the robots, the home, the clock — see the release manifest on the Sales page), and phrase the accessibility claim so it says what is actually true: a child who cannot read can farm.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-03T18:10",
+  "created_ts": 1788484229.8092117
+}

@@ -4,7 +4,7 @@
   "verdict_template": {
     "fire": "{worst}",
     "attention": "{worst}",
-    "unassured": "Nothing measurable is stopping a tag, but {unassured} of {total} of the launch gates are checked by a person and nobody has looked.",
+    "unassured": "Nothing measurable is stopping a tag; monitoring is still landing on {unassured} of {total} gates, and the plans are filed.",
     "ok": "Nothing stops a tag.",
     "dormant": "Dormant. {dormant_reason}",
     "nothing_for_you": "Nothing here needs you. {ours_line}"
@@ -31,17 +31,10 @@
       "path_to_green": {
         "narrative": "Every feature the release claims has to resolve to something in the history or to a project carrying it. One that resolves to neither is a wish on a release plan.",
         "route": {
-          "kind": "none"
+          "kind": "work",
+          "id": "wcd3806bc3a4"
         },
-        "owner": "victor",
-        "action": {
-          "label": "Put it on Victor's list",
-          "tier": 1,
-          "level": "task",
-          "title": "Reconcile the release manifest against the build",
-          "ask": "A feature on hq/data/releases.json's manifest cannot be traced to a commit or to a project carrying it. Work out whether it was built under a different name, is genuinely not built, or should come off the release, and fix the record either way. A release plan whose contents cannot be verified is a wish.",
-          "first_action": "Open #/pillar/sales, find the feature marked not built, and trace its evidence id through git log."
-        }
+        "owner": "victor"
       },
       "history": {
         "record": true,
@@ -69,17 +62,10 @@
       "path_to_green": {
         "narrative": "One credential. The storefront already counts views and plays for us; we have simply never asked it for the numbers. That is the whole demand surface available to this studio today, and it is the cheapest thing on this page.",
         "route": {
-          "kind": "none"
+          "kind": "work",
+          "id": "wc8b36764ebc"
         },
-        "owner": "victor",
-        "action": {
-          "label": "Put it on Victor's list",
-          "tier": 1,
-          "level": "story",
-          "title": "Get the storefront's numbers into HQ",
-          "ask": "One free browser build has been public for weeks and nobody can say whether anyone has opened it. The storefront exposes views, downloads and plays through an API key the account can issue. Write the poller (a named entry in hq/server.py's PROBES registry, refreshed off the request path onto hq/data/probes/itch_daily.json, the way every other network reading in HQ works) and put the key in the project .env beside the other two. Do not invent numbers for the empty state: a poller with no key must render as an absence, not a zero. This is the whole demand surface this studio has, so it is the cheapest real thing on the Sales page.",
-          "first_action": "Read ITCH_PAGE.md, hq/data/goals/ops.json's a-player-can-reach-us goal, and the playtest session notes, then propose the record's shape."
-        }
+        "owner": "victor"
       },
       "history": {
         "record": true,
@@ -115,17 +101,10 @@
       "path_to_green": {
         "narrative": "Add a step to the release workflow that fails the tag if ui/hud.gd still says the readout is on. Half an hour, once, and the checkbox stops depending on somebody remembering.",
         "route": {
-          "kind": "none"
+          "kind": "work",
+          "id": "w525b8b03d26"
         },
-        "owner": "lena",
-        "action": {
-          "label": "Put it on Lena's list",
-          "tier": 1,
-          "level": "task",
-          "ask": "Add a guard step to .github/workflows/release.yml that fails the release before the export if ui/hud.gd's PLAYTEST_NOTES is still true. docs/DEPLOY.md's pre-release checklist names this as a manual box; it is a one-line grep and it is the only item on that list that can be enforced mechanically. Do not change the constant itself — it is deliberately on during playtesting, and the point is that the pipeline catches it at tag time rather than that it is off today. While you are there, check whether the credits-screen item can be guarded the same way.",
-          "first_action": "Read docs/DEPLOY.md's 'Before any release' section and .github/workflows/release.yml, then add the guard step ahead of the export.",
-          "title": "Make the release workflow enforce the pre-release checklist"
-        }
+        "owner": "lena"
       },
       "history": {
         "record": true,
@@ -256,7 +235,7 @@
     {
       "id": "web-build-played-through",
       "statement": "Somebody played the actual web build end to end before it went out.",
-      "statement_short": "nobody has played the web build this release would ship",
+      "statement_short": "nothing records that the web build was played before a tag",
       "owner": "victor",
       "severity": "blocking",
       "unit": "",
@@ -269,18 +248,10 @@
       "path_to_green": {
         "narrative": "Ten minutes in a browser on the exported build, before the tag.",
         "route": {
-          "kind": "project",
-          "id": "public-release"
+          "kind": "work",
+          "id": "w3169ae0d4da"
         },
-        "owner": "victor",
-        "action": {
-          "label": "Put it on Victor's list",
-          "tier": 1,
-          "level": "task",
-          "ask": "Nothing records that anybody played the exported web build before a tag, so the runbook's first pre-release box measures only whether somebody ticked a box. Design the smallest honest record: an attestation keyed to the tag being cut, so it expires with each release instead of standing forever, and wire it into the launch check on the Sales & Platforms page.",
-          "first_action": "Read docs/DEPLOY.md's 'Before any release' section and hq/data/goals/sales.json, then propose the record's shape.",
-          "title": "Record that somebody played the web build before a tag"
-        }
+        "owner": "victor"
       },
       "history": {
         "record": false,
@@ -304,17 +275,10 @@
       "path_to_green": {
         "narrative": "Decide whether the visual check is a release gate or a developer's tool. If it is a gate it needs a home; today it has neither.",
         "route": {
-          "kind": "none"
+          "kind": "work",
+          "id": "w9dc4e2aab6d"
         },
-        "owner": "lena",
-        "action": {
-          "label": "Put it on Lena's list",
-          "tier": 1,
-          "level": "task",
-          "ask": "tools/test_visuals.tscn is named in CLAUDE.md's command list and is in no CI workflow and no runnable job in HQ. Work out whether it is a release gate or a developer's tool, and give it a home either way: a headless renderer in CI, or a button on the Engineering page that a person presses before a tag. A check our own docs claim and nothing runs is worse than one we never claimed.",
-          "first_action": "Run tools/test_visuals.tscn against tools/baseline.png, see what it actually needs, and say which home it should have.",
-          "title": "Give the visual check a home, or stop claiming it"
-        }
+        "owner": "lena"
       },
       "history": {
         "record": false,
@@ -342,17 +306,10 @@
       "path_to_green": {
         "narrative": "Open the ladder below and fix whatever the live storefront is missing.",
         "route": {
-          "kind": "none"
+          "kind": "work",
+          "id": "w1416158aea6"
         },
-        "owner": "lena",
-        "action": {
-          "label": "Put it on Lena's list",
-          "tier": 1,
-          "level": "task",
-          "title": "Restore publishing to a live storefront",
-          "ask": "A storefront the game is live on is missing something it needs to publish — a preset, a pipeline step or a credential. Find which and restore it. Being live somewhere we cannot push to is worse than not being there: it reads as a channel and is not one.",
-          "first_action": "Open #/pillar/sales, expand the storefront ladder, and read which requirement is marked missing."
-        }
+        "owner": "lena"
       },
       "history": {
         "record": true,

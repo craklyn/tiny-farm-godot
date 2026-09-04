@@ -1,0 +1,20 @@
+{
+  "id": "wf58107bb342",
+  "title": "Capture the base frame and produce the three recolors",
+  "level": "task",
+  "owner": "jade",
+  "tier": 1,
+  "tier_reason": "Three of the four looks are a recolor of one captured frame, so this is the whole render job minus the spend.",
+  "ask": "Accepted “Render side-by-side look captures for the CEO to pick from”. Three of the four looks are a recolor of one captured frame, so this is the whole render job minus the spend.",
+  "first_action": "On the desktop, run the game to day three mid-morning on seed 12345 with the player and one station in frame, save the frame, and grade the warm and cool variants from it",
+  "state": "waiting_session",
+  "thread": "claude",
+  "source": "chat",
+  "source_message": "Accepted “Render side-by-side look captures for the CEO to pick from”. Three of the four looks are a recolor of one captured frame, so this is the whole render job minus the spend.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-03T01:23",
+  "created_ts": 1788423831.4269843,
+  "parent": "w1a48291f04f"
+}

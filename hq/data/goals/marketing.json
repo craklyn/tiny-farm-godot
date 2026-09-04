@@ -32,17 +32,10 @@
       "path_to_green": {
         "narrative": "Rewrite the page against what the build now does, and say what the wordless promise actually covers — the farming loop a pre-reader can play — rather than implying the whole game has no text.",
         "route": {
-          "kind": "none"
+          "kind": "work",
+          "id": "wadf051cd6c7"
         },
-        "owner": "carmen",
-        "action": {
-          "label": "Put it on Carmen's list",
-          "tier": 1,
-          "level": "task",
-          "title": "Rewrite the store page against the build",
-          "ask": "The store page describes the game as it was at v0.1.0 and promises 'no menus to learn and no words to read'. That promise is S-7's, and S-7 binds phase 1's core farming loop only — the arc runs to programmable bots that will need words by design, so the build gaining text is not a broken promise, it is the plan. Rewrite the page against what the game now does (the shop, the robots, the home, the clock — see the release manifest on the Sales page), and phrase the accessibility claim so it says what is actually true: a child who cannot read can farm.",
-          "first_action": "Read ITCH_PAGE.md, S-7 in docs/DECISION_LOG.md, and the Sales page's release manifest, then draft the new copy."
-        }
+        "owner": "carmen"
       },
       "history": {
         "record": true,
@@ -84,7 +77,8 @@
       "path_to_green": {
         "narrative": "One sentence from you: the event or the number that makes marketing worth switching on. It can be a date, a build, or a wishlist count — it only has to be checkable.",
         "route": {
-          "kind": "none"
+          "kind": "work",
+          "id": "wb95a0985e33"
         },
         "owner": "carmen",
         "ceo_blocker": {
@@ -94,14 +88,6 @@
           },
           "consequence": "Marketing stays off by inertia rather than by decision, and finds out late either way.",
           "waiting_since": "2026-08-28"
-        },
-        "action": {
-          "label": "Ask Carmen to prep it",
-          "tier": 1,
-          "level": "task",
-          "title": "Prep the decision on what wakes marketing up",
-          "ask": "Marketing is dormant by standing instruction and nothing anywhere says what would turn it back on, so it is off by inertia rather than by decision. Prep a decision card the CEO can rule on in a minute: two or three concrete triggers with a recommendation — a date, a public build, a number of players, whatever is actually checkable from here — and what each one would commit the studio to doing once it fires. Do not ask him an open question; give him options.",
-          "first_action": "Read the dormancy record in hq/data/pillars.json and ITCH_PAGE.md, then write the card into hq/data/decisions/."
         }
       },
       "history": {
@@ -166,7 +152,8 @@
       "path_to_green": {
         "narrative": "An itch API key, kept in the project .env like the other two. That single credential turns this whole pillar from guesses into readings.",
         "route": {
-          "kind": "none"
+          "kind": "work",
+          "id": "wc8b36764ebc"
         },
         "owner": "amara",
         "ceo_blocker": {
@@ -176,14 +163,6 @@
           },
           "consequence": "The first sign of an audience arrives by accident, or not at all.",
           "waiting_since": "2026-08-28"
-        },
-        "action": {
-          "label": "Ask Amara to set it up",
-          "tier": 1,
-          "level": "task",
-          "title": "Get the storefront's numbers into HQ",
-          "ask": "One free browser build has been public for weeks and nobody can say whether anyone has opened it. The storefront issues an API key that exposes views, downloads and plays. Write the poller as a named entry in hq/server.py's PROBES registry, refreshed off the request path onto hq/data/probes/itch_daily.json the way every other network reading in HQ works, and say plainly what the CEO has to do to obtain the key. Do not invent an empty state that looks like a zero: no key must render as an absence.",
-          "first_action": "Read the probe_cache measurement kind and the PROBES registry in hq/server.py, then write the poller and the one-line instruction for getting the key."
         }
       },
       "history": {
@@ -222,7 +201,7 @@
     {
       "id": "the-farming-loop-needs-no-reading",
       "statement": "A child who cannot read can still play the farming loop.",
-      "statement_short": "nobody is checking that the farming loop stays readable-free",
+      "statement_short": "the promise that the farming loop needs no reading has no check behind it",
       "owner": "sam",
       "severity": "important",
       "unit": "",
@@ -235,17 +214,10 @@
       "path_to_green": {
         "narrative": "Name the surfaces the farming loop crosses. Then this becomes a real check instead of a promise nobody tests.",
         "route": {
-          "kind": "none"
+          "kind": "work",
+          "id": "w294f4caedde"
         },
-        "owner": "sam",
-        "action": {
-          "label": "Put it on Sam's list",
-          "tier": 1,
-          "level": "task",
-          "title": "Name the surfaces a pre-reader has to cross",
-          "ask": "S-7 says phase 1's core loop needs no reading, but nothing lists which surfaces that covers. Walk the farming loop — clear, till, plant, water, sleep, harvest, buy seeds — and name every surface a player crosses to do it. That list turns an untested promise into a check, and it also settles the scope argument in the open robot-menu question: whether a machine panel is inside the loop or outside it.",
-          "first_action": "Play the loop on the tablet build and write down every panel it passes through."
-        }
+        "owner": "sam"
       },
       "history": {
         "record": false,
