@@ -798,6 +798,19 @@ def api_post(path, payload):
     if not os.path.isfile(p):
         return {"error": "no such item"}
     item = HOST.load_json(p)
+
+    # Every verdict may carry a reason, and the reason is recorded on the card
+    # before the verdict is applied — so a second attempt knows why it is a
+    # second attempt, and an acceptance teaches a standard rather than leaving
+    # one to be guessed. His rule, 2026-09-04: a control that disposes of work
+    # without asking why is a control he cannot use.
+    said = (payload.get("comment") or "").strip()[:4000]
+    if said and path in ("/api/work/accept", "/api/work/drop",
+                         "/api/work/redo", "/api/work/approve"):
+        item.setdefault("conversation", []).append(
+            {"role": "daniel", "text": said, "at": _now_iso(),
+             "with": path.rsplit("/", 1)[-1]})
+
     if path == "/api/work/respond":
         # Writing back to a card is a conversation, not a verdict: it changes
         # no state and closes nothing. The owner answers on the card, and the

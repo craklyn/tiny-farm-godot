@@ -7,11 +7,11 @@
   "tier_reason": "Pausing a scheduled session is a plan change, but it is easily resumed once the look lands.",
   "ask": "Hold the foley session until I've picked a look.",
   "first_action": "Take the foley recording session off the schedule and keep license hygiene and sound-direction prep running in the meantime.",
-  "state": "for_review",
+  "state": "waiting_session",
   "thread": "claude",
   "source": "chat",
   "source_message": "Yes - go ahead and get the look session captures rendered for me first, and tell Dmitri to hold the foley session until I've picked a look.",
-  "result": "The foley session is off the schedule. Updated the two design docs that carry it: `docs/DESIGNER_QUEUE.md`'s Q-31 entry now says the next recording session — plant is the verb most needing it — waits until you've picked a look in the Q-14 session, and `docs/design/10-audio-direction.md` splits the plant sound's sourcing note the same way: the recording half is paused, but hunting for a CC0 candidate isn't, since that doesn't need you.\n\nNothing about the shipped set changes and neither the playtest nor the first release depends on this — same as when Q-31 was first filed.\n\nI also re-checked `CREDITS.md` against every file actually sitting in `assets/audio/` — still complete and clean, nothing new to log there.\n\nOne thing already on your board, not new: the plant-sound sourcing task filed to me off the design note is still queued and doesn't need you either — I just don't have network/API access from this worktree to actually run the CC0 search this session, so that part waits for a normal build session.\n\nDone, uncommitted in the worktree (house rule — I don't commit). Nothing pushed. Safe to hand off.",
+  "result": "",
   "started": "",
   "attempts": 1,
   "created": "2026-09-02T21:56",
@@ -23,38 +23,6 @@
     "seat": "dmitri",
     "model": "sonnet",
     "lane": "drain"
-  },
-  "diff": {
-    "stat": "docs/DESIGNER_QUEUE.md            | 6 ++++++\n docs/design/10-audio-direction.md | 5 ++++-\n 2 files changed, 10 insertions(+), 1 deletion(-)",
-    "files": [
-      "docs/DESIGNER_QUEUE.md",
-      "docs/design/10-audio-direction.md"
-    ],
-    "applied": true,
-    "why_not": ""
-  },
-  "check": {
-    "verdict": "concerns",
-    "summary": "The hold landed exactly where it belongs (Q-31 in the queue and the plant-sound note in design/10, both pointing at the Q-14 look session), CREDITS.md really does cover every file in assets/audio/, and nothing code-side was touched; the only wobble is Dmitri calling the plant-sound sourcing task 'filed and queued' when it is still just a proposed follow-up on Milo's unreviewed card.",
-    "findings": [
-      {
-        "what": "Reply says the plant-sound sourcing task is filed to Dmitri and queued; it exists only as a follow_up entry inside Milo's card wb4060acf7128 (state for_review), not as its own work item, so it will not be picked up by the drain until that card is accepted and the follow-up is filed.",
-        "where": "dmitri's reply; hq/data/work/wb4060acf7128.json:19-28",
-        "fix": "When Milo's card is accepted, file the follow-up as a real item for Dmitri and carry the earlier checker's amendment (add a plant branch in player.gd beside till/water/harvest, not just ACTOR_VERB_CUES). No change to this diff."
-      }
-    ],
-    "escalates": null,
-    "escalation_reason": null
-  },
-  "suites": {
-    "unit": {
-      "ok": true,
-      "tail": "  ✓ and a replay of a session in which she taught a robot lands on the same farm and the same robot\n  ✓ knowing the same tiles, in the same order — a lesson is training data (S-3/S-5)\n\n============================================================\nResults: 1983 PASSED, 0 FAILED\n============================================================"
-    },
-    "integration": {
-      "ok": true,
-      "tail": "  ✓ it watered every tile it was shown (3 of 3)\n  ✓ and nothing else — it has no opinions, which is the design\n\n============================================================\nResults: 528 PASSED, 0 FAILED\n============================================================"
-    }
   },
   "usage": {
     "calls": 2,
@@ -75,6 +43,21 @@
         "title": "Hold the foley recording session until the look is picked"
       },
       "why": "\"Hold\" reads as both delay and conduct, and the queue is read title-first."
+    }
+  ],
+  "prior_checks": [
+    {
+      "verdict": "concerns",
+      "summary": "The hold landed exactly where it belongs (Q-31 in the queue and the plant-sound note in design/10, both pointing at the Q-14 look session), CREDITS.md really does cover every file in assets/audio/, and nothing code-side was touched; the only wobble is Dmitri calling the plant-sound sourcing task 'filed and queued' when it is still just a proposed follow-up on Milo's unreviewed card.",
+      "findings": [
+        {
+          "what": "Reply says the plant-sound sourcing task is filed to Dmitri and queued; it exists only as a follow_up entry inside Milo's card wb4060acf7128 (state for_review), not as its own work item, so it will not be picked up by the drain until that card is accepted and the follow-up is filed.",
+          "where": "dmitri's reply; hq/data/work/wb4060acf7128.json:19-28",
+          "fix": "When Milo's card is accepted, file the follow-up as a real item for Dmitri and carry the earlier checker's amendment (add a plant branch in player.gd beside till/water/harvest, not just ACTOR_VERB_CUES). No change to this diff."
+        }
+      ],
+      "escalates": null,
+      "escalation_reason": null
     }
   ]
 }

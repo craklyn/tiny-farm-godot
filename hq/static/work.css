@@ -212,3 +212,22 @@
   border-radius: 8px; padding: 8px 12px; margin: 10px 0 4px;
 }
 .w-tokens b { color: var(--text); }
+
+/* ---- saying why, and seeing what happened ------------------------------
+   The comment box sits above the buttons rather than behind a Respond
+   control, because a verdict he cannot annotate is a verdict that teaches
+   nobody anything — and a card that leaves the list without a word reads as
+   data loss. */
+.w-reply { margin: 10px 0 8px; }
+.w-reply textarea {
+  width: 100%; box-sizing: border-box; resize: vertical; font: inherit;
+  font-size: 13px; padding: 8px 10px; border-radius: 8px;
+  border: 1px solid var(--line); background: var(--bg); color: var(--text);
+}
+.w-reply textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.w-reply p { margin: 5px 2px 0; }
+.w-done {
+  margin-top: 10px; padding: 9px 12px; border-radius: 8px; font-size: 13px;
+  background: rgba(60, 160, 90, .10); border: 1px solid var(--line);
+}
+.w-done b { color: var(--text); }

@@ -92,8 +92,22 @@ read as tucking something in, not as an achievement. Harvest already owns the pa
 sound (pop + chime); `plant` must not borrow any of that — no rising pitch, no chime, no
 reward sting — or a planted seed will sound like a finished crop.
 
-Sourcing it is Dmitri's: find or record a couple of soft, low pats and pick the one that
-reads as closing rather than landing. The recording half is on hold — the designer wants
+Sourcing it is Dmitri's, and there is an order to it.
+
+**How a sound gets into this game (ruled 2026-09-04).** Free-to-use sounds are tried
+first, always. Dmitri searches the CC0 and other free sources, brings the candidates back
+as a decision card the designer can *listen to*, and the designer marks which — if any —
+clear the bar. Only what nothing free can cover goes on the **foley list**, and that list
+is recorded in a batch: a recording session costs the designer an afternoon whether it
+captures one sound or eight, so single sounds never justify one and the list waits until
+it is worth a sitting.
+
+The consequence that matters for scheduling: **searching is not held when recording is.**
+They are two different jobs with two different costs — one costs the studio nothing and
+needs the designer only for a minute of listening, the other costs him a session — so a
+hold on the recording batch must never stop the search. Every candidate arrives with its
+source and its licence, or it does not arrive; `CREDITS.md` is written in the same change
+that adds the file. The recording half is on hold — the designer wants
 his next foley session to wait until he has picked a look in the Q-14 look session
 (held 2026-09-04, DESIGNER_QUEUE.md Q-31) — but a CC0 search for candidates does not need
 him and can continue now.

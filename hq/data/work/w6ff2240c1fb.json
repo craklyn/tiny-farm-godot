@@ -7,13 +7,112 @@
   "tier_reason": "filed by hand",
   "ask": "Daniel's words, verbatim:\n\n\"I recommend we change the game so it's not necessary to buy seeds for the starting\nplants. Rather, the plants when harvested can be planted as seeds. They can also be used\nas consumables (e.g. pea shooter). Only when the player acquires an excess can they be\nsold. Excess will be defined by game phase. Early game, the player only has storage on\ntheir person and so excess is not a large number.. 5 or 10 maybe. Later, they'll get a\ngrain silo and other storage options that increases excess (so they can properly arm and\nstock their defensive structures).\n\nNote that if w",
   "first_action": "Read crops/crop_defs.gd for the current prices and growth times, systems/machine_defs.gd for what gold currently buys, and the shop verbs in systems/sim/sim_world.gd. Then work out: (1) where gold comes from and goes today, and what removing the forced seed purchase does to that loop — does the player end up with too much gold, or none at all, and when; (2) whether a carry cap of 5-10 is a real constraint or a rounding error against current yields and prices; (3) what the silo tier has to be worth to be worth building, and roughly what it should cost; (4) whether machines being earned by demon",
-  "state": "doing",
+  "state": "for_review",
   "thread": "marcus",
   "source": "chat",
   "source_message": "Daniel's words, verbatim:\n\n\"I recommend we change the game so it's not necessary to buy seeds for the starting\nplants. Rather, the plants when harvested can be planted as seeds. They can also be used\nas consumables (e.g. pea shooter). Only when the player acquires an excess can they be\nsold. Excess will be defined by game phase. Early game, the player only has storage on\ntheir person and so excess is not a large number.. 5 or 10 maybe. Later, they'll get a\ngrain silo and other storage options that increases excess (so they can properly arm and\nstock their defensive structures).\n\nNote that if w",
-  "result": "",
+  "result": "Ran the numbers against `crops/crop_defs.gd`, `systems/machine_defs.gd`, `systems/tools.gd`, `systems/game_state.gd`, and the shop/harvest verbs in `systems/sim/sim_world.gd`. Nothing in the repo is changed — this is the analysis, and the change itself needs a ruling before it's code.\n\n**The fact that decides everything:** today, one planted seed makes exactly one harvested crop. Harvest clears the tile back to bare dirt; there's no yield bonus anywhere in the sim. So \"replant your harvest instead of buying seed\" doesn't shrink the gold loop from crop-selling — it removes it. A farm that stays the same size and fully replants itself produces zero excess crop, forever. A carry cap of 5-10 isn't a rounding error against that; it's not even the thing regulating anything, because there's usually nothing to regulate. The only excess that shows up is one-off — the first harvest, before every plot is re-tilled, or a deliberate choice to harvest more than gets replanted (feed some to a future pea-shooter, or shrink the farm). Neither repeats the way selling does today.\n\nThat matters for what's left to spend gold on. The hen's egg (10g, free, already in the game, lands about half the days) is untouched by this and becomes the main gold source by default — roughly 5g/day expected. Today's loop is nothing like that: wheat sells at 15g against a 5g seed, tomato 30g against 10g, so a working farm throws off gold fast, and that pays for the scarecrow (50g) and the sprinkler (120g). Those two are the only gold-priced things left in the shop — both robots are already headed off it entirely under a separate ruling (earned by using the cheap one first, not bought; the design note for that is queued to Milo already) — so under this proposal as written, 50g and 120g would be funded almost entirely by egg luck: about 10 days and 24 days of eggs respectively, with no farming to speed it up. That's a much bigger ask than \"grow some wheat, buy a scarecrow,\" and I don't think it's what was pictured by \"only when the player acquires an excess can they be sold\" — that phrasing assumes excess shows up in the normal course of farming, and today's numbers say it won't.\n\nMy read is the ask assumes crops give back more than they cost to grow once replanting is free — a yield multiplier (a planting gives more than one crop back) — which the sim doesn't have. That's the real decision hiding inside this item, and it's a taste call: does harvest give back more than was planted, or does phase 1 accept that gold becomes chicken-egg-driven and the scarecrow/sprinkler get re-priced down to match? I'd take the first — without some multiplier, \"excess\" and a grain silo don't mean anything, and nothing in the ask reads like \"make gold thinner and slower than it is now.\"\n\nOn the silo: it's a storage system, not a production one — a bigger cap doesn't grow more crop, it just lets a bigger farm run without spilling. Sized against the day's action budget, a fully worked wheat farm tops out around 10-12 tiles on a 3-day cycle at 20 actions/day, so a cap meant to \"properly arm and stock defensive structures\" wants to clear that by a lot — something like 30-40, not a small bump to 15, or it's the same ceiling moved slightly. Price it under the sprinkler, maybe 80-100g, `[Playtest]` the same way the sprinkler's 120 is — it's pure storage, not a machine that does new work, and the real number is the designer's.",
   "started": "2026-09-04T13:04",
-  "attempts": 0,
+  "attempts": 1,
   "created": "2026-09-04T13:04",
-  "created_ts": 1788552265.8276346
+  "created_ts": 1788552265.8276346,
+  "follow_ups": [
+    {
+      "title": "File the harvest-as-seed economy question for a ruling",
+      "owner": "marcus",
+      "level": "task",
+      "tier": 1,
+      "first_action": "Write it up in docs/DESIGNER_QUEUE.md as a new item: the one-seed-one-crop math, the egg-only gold trickle it leaves behind, what that does to the scarecrow and sprinkler prices, and the recommended crop yield multiplier, with today's numbers as the starting point for the ruling.",
+      "why": "Economy tuning proposals go through a designer ruling before they touch code, and this one changes what gold means in phase 1."
+    }
+  ],
+  "recommend": {
+    "question": "should a harvested crop give back more than the one seed that grew it, or should phase-1 gold become mostly egg-driven and the scarecrow/sprinkler get re-priced down to match?",
+    "answer": "add a yield multiplier to the core crops once replanting is free",
+    "why": "without one, excess never shows up in ordinary play, which makes both the 5-10 carry cap and a grain silo pointless — there'd be nothing for either to hold back",
+    "instead": "keep strict one-for-one and accept that gold becomes a slow, chance-driven trickle from the hen's egg instead of something farming itself produces — workable, but a much thinner resource than the game has today, and worth choosing on purpose rather than by default"
+  },
+  "finished": "2026-09-04T13:12",
+  "done_by": {
+    "seat": "marcus",
+    "model": "sonnet",
+    "lane": "drain"
+  },
+  "diff": {
+    "stat": "",
+    "files": [],
+    "applied": false,
+    "why_not": "nothing changed"
+  },
+  "check": {
+    "verdict": "concerns",
+    "summary": "Marcus's analysis is right on the numbers (one seed makes one crop, the egg is a 50% coin flip worth 10g, scarecrow 50g and sprinkler 120g, robots already off the shop under Q-88), and it surfaces a real hidden decision in Daniel's proposal, but nothing was written into the repo, so the finding lives only in this reply until someone files it.",
+    "findings": [
+      {
+        "what": "The analysis has no home: the diff is empty and the designer-queue item is proposed as a follow-up task instead of written now",
+        "where": "docs/DESIGNER_QUEUE.md",
+        "fix": "Marcus should add the Q-item in this pass, with the one-for-one harvest math, the egg-only gold rate, the scarecrow/sprinkler timing, and the yield-multiplier recommendation, so the ruling can be recorded against it rather than against a chat reply"
+      },
+      {
+        "what": "Step (4) of the ask, how earned-not-bought machines interact with this economy, is only mentioned in passing (the robots leave the shop) and not worked out",
+        "where": "reply, paragraph on the shop",
+        "fix": "Add one paragraph: with robots earned and seeds free, gold's only remaining jobs are the scarecrow and sprinkler, so say whether gold should keep existing in phase 1 at all or whether those two should move to earned unlocks too"
+      },
+      {
+        "what": "The verbatim item text is cut off mid-sentence (\"Note that if w...\"), so part of Daniel's ask was not checkable against the reply",
+        "where": "work item body",
+        "fix": "Whoever files the Q-item should paste Daniel's full wording from the HQ card so the ruling is against what he actually said"
+      }
+    ],
+    "escalates": "Your harvest-as-seed proposal, as the sim stands, removes all farm income (one seed yields exactly one crop, so a replanting farm produces zero excess), leaving the hen's coin-flip egg as the only gold; Marcus recommends giving core crops a yield above one so excess and the silo mean something, and the alternative is accepting egg-only gold and re-pricing the scarecrow and sprinkler down. Which way do you want it?",
+    "escalation_reason": "authority"
+  },
+  "usage": {
+    "calls_detail": [
+      {
+        "input": 52,
+        "output": 23739,
+        "cache_read": 2010419,
+        "cache_write": 103306,
+        "turns": 30,
+        "seconds": 348.3,
+        "list_usd": 1.0559,
+        "tokens": 2137516,
+        "fresh": 127097,
+        "phase": "drain-work",
+        "model": "sonnet",
+        "seat": "marcus"
+      },
+      {
+        "input": 282,
+        "output": 5030,
+        "cache_read": 305386,
+        "cache_write": 37195,
+        "turns": 14,
+        "seconds": 72.6,
+        "list_usd": 1.0775,
+        "tokens": 347893,
+        "fresh": 42507,
+        "phase": "drain-check",
+        "model": "fable",
+        "seat": "claude"
+      }
+    ],
+    "input": 334,
+    "output": 28769,
+    "cache_read": 2315805,
+    "cache_write": 140501,
+    "tokens": 2485409,
+    "fresh": 169604,
+    "turns": 44,
+    "seconds": 420.9,
+    "list_usd": 2.1334,
+    "calls": 2
+  },
+  "spent": {
+    "attempts": 1,
+    "tokens": 2485409,
+    "fresh": 169604,
+    "list_usd": 2.1334
+  }
 }

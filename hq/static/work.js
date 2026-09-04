@@ -135,7 +135,7 @@ function consequence(it, org) {
   } else if (it.state === "for_review" && heldReason(it)) {
     // Nothing to accept: the work is not in the repo. The only two honest
     // answers are "go again" and "we are not doing this".
-    rows.push(["Send it back", `${esc(first)} does it again, and what the check found goes with it — so this is a second attempt rather than a repeat.`]);
+    rows.push(["Send it back", `${esc(first)} does it again, and what the check found goes with it — along with anything you write above, which becomes part of the brief. That is what makes it a second attempt rather than a repeat.`]);
     rows.push(["Drop it", `Filed as dropped. The work stays undone and nothing is created.`]);
     return `<div class="w-conseq">
       <div class="w-conseq-h">Nothing landed, so there is nothing to accept</div>
@@ -155,7 +155,7 @@ function consequence(it, org) {
     } else {
       rows.push(["Good — accept", `Files this as approved and closes it. Nothing follows from it — no task, story, project or goal is created.`]);
     }
-    rows.push(["Have another go", `Throws this result away and ${esc(first)} does the same work again, carrying anything you have said on this card.`]);
+    rows.push(["Have another go", `Throws this result away and ${esc(first)} does the work again, carrying anything you write above and everything already said on this card.`]);
     rows.push(["Drop it", rec
       ? `Filed as dropped. The question above stays open and nothing is filed.`
       : `Filed as dropped. Nothing is created and nothing changes.`]);
@@ -253,18 +253,44 @@ function convoBlock(it, org) {
   </div>`;
 }
 
+/* Say why, in place, whatever you are about to press ------------------------
+   His rule, 2026-09-04, after a card vanished under a "Send it back" that never
+   asked him anything: "I wanted to give this feedback directly in the HQ page to
+   the work agent… it vanished without giving me any opportunity to specify why I
+   was sending it back and what I wanted changed… maybe comments should be
+   allowed for all options?"
+
+   So the comment is the primitive and the verdict rides on it. One box, always
+   there, and every button below carries whatever is in it: a note on an
+   acceptance is how a standard gets learned, and a send-back with no note buys
+   the same mistake twice. Comment on its own is a legitimate answer — the owner
+   reads it and decides what to do. */
 function replyBox(it, org) {
   const first = ownerOf(org, it.owner).name.split(" ")[0];
-  const draft = replyDrafts[it.id];
-  return `<div class="w-reply"${draft === undefined ? " hidden" : ""}>
-    <textarea class="w-reply-t" data-draft="${esc(it.id)}" rows="3"
-      placeholder="Write back to ${esc(first)} about this card…">${esc(draft || "")}</textarea>
-    <p class="small muted">Goes to ${esc(first)} with this card attached — what you asked for, the result, and anything already said here. The reply comes back on this card, and whatever it commits to gets filed as work like any conversation. It accepts nothing and closes nothing.</p>
-    <div class="w-acts">
-      <button data-send="${esc(it.id)}">Send to ${esc(first)}</button>
-      <button class="ghost" data-cancelreply="${esc(it.id)}">Cancel</button>
-    </div>
+  const draft = replyDrafts[it.id] || "";
+  return `<div class="w-reply">
+    <textarea class="w-reply-t" data-draft="${esc(it.id)}" rows="2"
+      placeholder="Anything ${esc(first)} should know — optional, and it goes with whichever button you press">${esc(draft)}</textarea>
+    <p class="small muted">“Just comment” files it without deciding anything: ${esc(first)} reads it against this card and answers here, and whatever the answer commits to gets filed as work.</p>
   </div>`;
+}
+
+function itemById(snap, id) {
+  return (snap.items || []).find(i => i.id === id) || {};
+}
+
+/* What just happened, said where he pressed the button. A card that silently
+   leaves the list reads as data loss; this names the section it moved to. */
+function outcomeLine(act, it, org, comment) {
+  const first = ownerOf(org, it.owner || "").name.split(" ")[0];
+  const noted = comment ? ` Your note went with it.` : "";
+  const where = {
+    accept: `Accepted and closed. It is under <b>Closed</b> at the foot of this page.${noted}`,
+    approve: `Approved. It has moved to <b>Queued for a build session</b> below, and the next session carries it out.${noted}`,
+    redo: `Sent back to ${esc(first)}. It has moved to <b>Queued for a build session</b> below, and the next drain does it again${comment ? " with your note as part of the brief" : ""}.`,
+    drop: `Dropped. It is under <b>Closed</b> at the foot of this page, and nothing was created.${noted}`,
+  }[act] || `Filed.${noted}`;
+  return `<div class="w-done">${where}</div>`;
 }
 
 /* Collapsing, on Rin's rule: a page holding several decisions has to show all
@@ -388,6 +414,11 @@ function workCard(it, org, pol) {
     waiting_session: `<button class="ghost" data-act="drop" data-id="${it.id}">Drop it</button>`,
     doing: "", accepted: "", dropped: "",
   }[it.state] || "";
+  // Comment with no verdict: the note is filed and the owner answers on the
+  // card. Available wherever a verdict is, and on work still in flight.
+  const canTalk = !["accepted", "dropped"].includes(it.state);
+  const talkBtn = canTalk
+    ? `<button class="ghost" data-send="${esc(it.id)}">Just comment</button>` : "";
   // The result is the tall part of a card. It folds to a readable window with
   // the rest one click away, rather than pushing the next decision off screen.
   const long = (it.result || "").length > 900;
@@ -426,15 +457,12 @@ function workCard(it, org, pol) {
       ${childrenNote(it, org)}
       ${spawnedNote(it)}
       ${decidedNote(it)}
-      ${acts ? (heldReason(it) ? "" : recommendBlock(it)) + consequence(it, org) + `<div class="w-acts">${acts}</div>` : ""}
+      ${acts || talkBtn ? (heldReason(it) ? "" : recommendBlock(it)) + consequence(it, org)
+          + replyBox(it, org) + `<div class="w-acts">${acts}${talkBtn}</div>` : ""}
+      <div class="w-outcome" hidden></div>
       <div class="w-foot">
         <span class="small muted">from your chat with ${esc(ownerOf(org, it.thread).name.split(" ")[0])} · ${esc(it.created)}</span>
-        <span class="w-foot-acts">
-          <button class="w-respond" data-respond="${esc(it.id)}">↩ Respond</button>
-          <a class="plain small" href="#/chat/${esc(it.thread)}">open that thread →</a>
-        </span>
       </div>
-      ${replyBox(it, org)}
     </div>
   </div>`).firstElementChild;
 }
@@ -541,35 +569,36 @@ async function renderWork(focusId) {
       ev.target.remove();
       return;
     }
-    if (d.respond) {
-      replyDrafts[d.respond] = replyDrafts[d.respond] || "";
-      const box = card(d.respond).querySelector(".w-reply");
-      box.hidden = false;
-      box.querySelector("textarea").focus();
-      return;
-    }
-    if (d.cancelreply) {
-      delete replyDrafts[d.cancelreply];
-      const box = card(d.cancelreply).querySelector(".w-reply");
-      box.querySelector("textarea").value = "";
-      box.hidden = true;
-      return;
-    }
     if (d.send) {
       const el = card(d.send);
-      const text = el.querySelector(".w-reply textarea").value.trim();
-      if (!text) return;
+      const text = (el.querySelector(".w-reply textarea") || {}).value || "";
+      if (!text.trim()) {
+        el.querySelector(".w-reply textarea").focus();
+        return;
+      }
       delete replyDrafts[d.send];
-      lock(el, "sending");
-      await workPost("/api/work/respond", { id: d.send, message: text });
+      lock(el, "sending it to " + ownerOf(org, itemById(snap, d.send).owner).name.split(" ")[0]);
+      await workPost("/api/work/respond", { id: d.send, message: text.trim() });
       renderWork();
       return;
     }
     const act = d.act;
     if (!act) return;
-    lock(card(ev.target.dataset.id), "filing your answer");
-    await workPost("/api/work/" + act, { id: ev.target.dataset.id });
-    renderWork();
+    const id = ev.target.dataset.id;
+    const el = card(id);
+    const box = el.querySelector(".w-reply textarea");
+    const comment = box ? box.value.trim() : "";
+    delete replyDrafts[id];
+    lock(el, "filing your answer");
+    await workPost("/api/work/" + act, { id, comment });
+    // Never let a card appear to vanish. It has moved to another part of this
+    // page; say so where he pressed the button, and let the poll re-render.
+    const out = el.querySelector(".w-outcome");
+    if (out) {
+      out.hidden = false;
+      out.innerHTML = outcomeLine(act, itemById(snap, id), org, comment);
+    }
+    el.classList.remove("w-busy");
   });
 
   // Every keystroke is remembered, so a poll landing mid-sentence costs nothing.

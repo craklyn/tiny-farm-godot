@@ -7,13 +7,133 @@
   "tier_reason": "filed by hand",
   "ask": "Daniel's words, verbatim:\n\n\"I recommend we change the game so it's not necessary to buy seeds for the starting\nplants. Rather, the plants when harvested can be planted as seeds. They can also be used\nas consumables (e.g. pea shooter). Only when the player acquires an excess can they be\nsold. Excess will be defined by game phase. Early game, the player only has storage on\ntheir person and so excess is not a large number.. 5 or 10 maybe. Later, they'll get a\ngrain silo and other storage options that increases excess (so they can properly arm and\nstock their defensive structures).\n\nNote that if w",
   "first_action": "Read crops/crop_defs.gd, systems/sim/sim_world.gd's inventory and shop verbs, docs/design/ (especially the crop and economy chapters) and DECISION_LOG's S- and P- entries that bear on the loop. Then answer, in this order: (1) does harvest-as-seed make the first hour better or worse, and why — name the specific moment it changes; (2) does the consumable role (a pea used as pea-shooter ammunition) strengthen or muddle the crop's identity, given phase 3 is tower defence; (3) is a carry cap of 5-10 the right shape of pressure early, or does it just make the player walk to a box more often; (4) wha",
-  "state": "doing",
+  "state": "for_review",
   "thread": "milo",
   "source": "chat",
   "source_message": "Daniel's words, verbatim:\n\n\"I recommend we change the game so it's not necessary to buy seeds for the starting\nplants. Rather, the plants when harvested can be planted as seeds. They can also be used\nas consumables (e.g. pea shooter). Only when the player acquires an excess can they be\nsold. Excess will be defined by game phase. Early game, the player only has storage on\ntheir person and so excess is not a large number.. 5 or 10 maybe. Later, they'll get a\ngrain silo and other storage options that increases excess (so they can properly arm and\nstock their defensive structures).\n\nNote that if w",
-  "result": "",
+  "result": "Read `crops/crop_defs.gd`, the inventory/shop verbs in `systems/sim/sim_world.gd` and `systems/game_state.gd`, `docs/design/02` (farming), `docs/design/03` (machines), `docs/design/05` (towers), `docs/design/12` (gates), and the S-/P- entries in `DECISION_LOG.md`. This is a design review, not a build — nothing in the repo changed.\n\n**The brief that reached me is cut off mid-sentence twice** — after \"Note that if w\" and again after question 4's \"wha\". I'm answering the three questions I have in full; I'm not guessing at the missing fourth question or Daniel's aside, because guessing his own words back to him is worse than saying they didn't arrive.\n\n**1. Does harvest-as-seed make the first hour better or worse?**\nBetter, and it changes one specific moment: the first replant. Today, planting past your starting five wheat requires a shop trip — sell what you grew, then buy the same crop back with the gold. That's a mandatory currency lesson on day one, even though nothing about farming needed money to explain it. Under Daniel's model, that trip disappears: what you pick is what you plant, no shop involved, until you're holding more than you can carry. Gold only enters once there's a surplus problem worth solving. That's a stronger fit for the no-required-reading rule (S-7) than what ships today. One thing that makes this safe: the axe and pickaxe are already earned by harvest/clear counts, not gold (Q-46), so removing gold's role in day-one replanting doesn't stall tool progression — gold's only current job in the first hour is re-buying seed, which is exactly the job this proposal removes.\n\n**2. Does the pea-as-ammo role strengthen or muddle crop identity?**\nStrengthens it, and it isn't new territory — it's the pea's original job. The code comment on the pea (Q-55) already says it exists as \"the raw material\" for \"the shooters, towers, storage and delivery economy,\" seeded early and left out of the shop on purpose so it'd arrive tested before the ammo economy needed it. Daniel's proposal is that economy showing up. The one guardrail worth naming: keep the ammo role on peas only. Wheat and tomato should stay food/gold crops — if every crop becomes a potential weapon, the roster stops telling you anything by looking at it. A clean identity: wheat and tomato are what you sell, peas are what you keep for defense.\n\n**3. Is a 5-10 carry cap the right shape of pressure, or just more walking?**\nRight shape, with one fix. It isn't inventing a new trip — tapping the shipping bin to sell already exists (`sell` → `shipping_bin` object on the grid), so a cap doesn't add a destination, it gives that destination a reason to matter regularly instead of never. The fix: the cap should gate what's *sellable*, not what she can *carry*. Every fail-state precedent in this codebase (Q-11's energy soft floor, the no-punishing-fail-state spirit of S-7) resolves an action rather than blocking it. A cap that stops harvest cold the moment she's full breaks that pattern and would read as the farm punishing her for doing well. A cap that just says \"only what's above this line is worth gold\" costs nothing and still creates the tension Daniel's after.\n\n**What this settles that wasn't asked:** it's a real answer to the open half of Q-15 (the machine acquisition resource loop, still marked M3's-to-design) and it quietly answers Q-56's still-open question of how a player first meets a pea — she can grow her first one from a found seed or milestone gift and never see a shop for it.\n\nNothing here is implemented. This is my read on Daniel's proposal, for him to rule on.",
   "started": "2026-09-04T13:04",
-  "attempts": 0,
+  "attempts": 1,
   "created": "2026-09-04T13:04",
-  "created_ts": 1788552265.8245125
+  "created_ts": 1788552265.8245125,
+  "follow_ups": [
+    {
+      "title": "Recover the part of the brief that got cut off",
+      "owner": "claude",
+      "level": "task",
+      "tier": 0,
+      "first_action": "Check the source of this work item for the full text after \"Note that if w\" and after question 4, and refile it so the ruling reflects everything Daniel actually said.",
+      "why": "Two sentences of Daniel's own note didn't reach me; guessing them would put words in his mouth."
+    },
+    {
+      "title": "Write the seed/ammo/surplus economy into the design doc",
+      "owner": "milo",
+      "level": "task",
+      "tier": 1,
+      "first_action": "Once Daniel rules, update docs/design/02 §5 (money economy) and docs/design/05's pea-ammo tie-in, and record the ruling in DECISION_LOG/DESIGNER_QUEUE.",
+      "why": "House rule: a design change lands in the same commit as the doc that records it, and none of that doc work happened this session."
+    },
+    {
+      "title": "Build harvest-replants-as-seed and the excess-gated sell rule",
+      "owner": "tomas",
+      "level": "story",
+      "tier": 2,
+      "first_action": "Change `plant` to accept harvested crop stock alongside bought seed, and make `sell` treat only holdings above the per-crop cap as sellable, never blocking harvest at the cap.",
+      "why": "This is the core economy change Daniel is proposing — player-visible, changes the first-hour loop, needs review before it lands."
+    }
+  ],
+  "recommend": {
+    "question": "Adopt harvest-as-seed/ammo/surplus for wheat, tomato and pea, with a 5-10 on-person carry cap that grows with later storage?",
+    "answer": "Yes, with two refinements: the cap gates what's sellable, never what she can carry (harvesting must never block or fail), and the ammo role stays on peas only.",
+    "why": "It removes the one mandatory shop trip from day one without weakening gold's later purpose, and it retires Q-55's open question of how the player first meets a pea.",
+    "instead": "Keep gold-mediated seed buying as-is and bolt 'excess-only sale' on as a separate storage feature — safer to tune in isolation, but it leaves day one's currency lesson mandatory and doesn't answer the pea's debut question."
+  },
+  "finished": "2026-09-04T13:12",
+  "done_by": {
+    "seat": "milo",
+    "model": "sonnet",
+    "lane": "drain"
+  },
+  "diff": {
+    "stat": "",
+    "files": [],
+    "applied": false,
+    "why_not": "nothing changed"
+  },
+  "check": {
+    "verdict": "concerns",
+    "summary": "Milo answered the three questions that reached him honestly and with a sound recommendation (cap gates sale, not carry; ammo stays on peas), but two citations are wrong and one suggestion quietly contradicts Daniel's standing shop rule — and the brief itself arrived truncated, which is a drain defect, not Milo's.",
+    "findings": [
+      {
+        "what": "The brief reached the worker cut off twice ('Note that if w', 'wha'), so question 4 and Daniel's aside were never answered; the source card is not in this worktree's hq/data/work to check",
+        "where": "hq/drain.py (prompt assembly)",
+        "fix": "Find where the drain slices ask text to a character budget, remove or raise it, and re-run this item with the full text before Daniel rules on it"
+      },
+      {
+        "what": "Says harvest-as-seed 'answers Q-56's still-open question of how a player first meets a pea' — Q-56 is the bot debut, already superseded on 2026-09-03; the recommendation block cites Q-55 for the same claim, so the reply contradicts itself",
+        "where": "docs/DESIGNER_QUEUE.md:866-883",
+        "fix": "Cite Q-55 only, and note the pea's debut today is the one-line ORDER change in crops/crop_defs.gd:79, not an open design question"
+      },
+      {
+        "what": "Proposes the pea arrives via 'a found seed or milestone gift', which contradicts the 2026-09-03 placeholder rule that everything new is bought at the shop (Q-15/Q-56 rulings) and reaches past Daniel's ask, which was scoped to the starting plants",
+        "where": "docs/DESIGNER_QUEUE.md:1320-1329",
+        "fix": "Strike the found-seed suggestion or present it as a separate question for Daniel; the verdict should cover wheat and tomato as asked and treat the pea's entry as still bought"
+      },
+      {
+        "what": "Claims 'gold's only current job in the first hour is re-buying seed' — the scarecrow is on the shop shelf at 50g today, within reach of one wheat harvest",
+        "where": "crops/crop_defs.gd:63-79",
+        "fix": "Correct to: removing seed re-buy frees gold for the scarecrow and machines rather than removing gold's first-hour purpose — the conclusion survives, the premise doesn't"
+      }
+    ],
+    "escalates": null,
+    "escalation_reason": null
+  },
+  "usage": {
+    "calls_detail": [
+      {
+        "input": 36,
+        "output": 22148,
+        "cache_read": 1155429,
+        "cache_write": 88726,
+        "turns": 29,
+        "seconds": 290.5,
+        "list_usd": 0.8106,
+        "tokens": 1266339,
+        "fresh": 110910,
+        "phase": "drain-work",
+        "model": "sonnet",
+        "seat": "milo"
+      },
+      {
+        "input": 226,
+        "output": 5201,
+        "cache_read": 242294,
+        "cache_write": 35455,
+        "turns": 16,
+        "seconds": 71.5,
+        "list_usd": 1.0351,
+        "tokens": 283176,
+        "fresh": 40882,
+        "phase": "drain-check",
+        "model": "fable",
+        "seat": "claude"
+      }
+    ],
+    "input": 262,
+    "output": 27349,
+    "cache_read": 1397723,
+    "cache_write": 124181,
+    "tokens": 1549515,
+    "fresh": 151792,
+    "turns": 45,
+    "seconds": 362.0,
+    "list_usd": 1.8457,
+    "calls": 2
+  },
+  "spent": {
+    "attempts": 1,
+    "tokens": 1549515,
+    "fresh": 151792,
+    "list_usd": 1.8457
+  }
 }

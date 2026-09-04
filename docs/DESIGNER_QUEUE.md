@@ -101,12 +101,16 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   2026-09-02, cut/normalized into `assets/audio/sfx/water_pour_01..03.wav`, cycling
   with pitch jitter in place of the synthesized water sound (CREDITS.md has the
   provenance). Remaining verbs can ride later sessions.
-  **Held again, 2026-09-04:** the designer wants the next session — plant chief
-  among the remaining verbs — to wait until he has picked a look in the Q-14
-  look session, so it is off the schedule until then. Nothing about the shipped
-  set changes and the playtest and first release stay unblocked, same as before.
-  License hygiene (CREDITS.md) and CC0 sourcing prep for the remaining verbs
-  keep moving in the meantime — only the designer's own recording is paused.
+  **Re-scoped 2026-09-04, and the hold is narrower than it was first written.**
+  The designer set the order sounds are acquired in: free sources are searched
+  first and the candidates come back to him as a card he can listen to and mark
+  approved; **foley recording is only for what nothing free can cover**, and it
+  is batched, because a recording session costs him an afternoon whether it
+  captures one sound or eight. So what waits on the Q-14 look pick is the
+  *recording batch* and nothing else — searching, auditioning and the listening
+  card all keep moving, because they cost him a minute rather than a session.
+  An earlier reading of this hold stopped the search too, which had a cheap job
+  waiting on an expensive one for no reason.
   Original entry: **(Creative → designer)** Record bespoke foley for the verb table. Raised
   2026-08-27 after a listening session: synthesis reliably handles percussive
   impacts and UI ticks (`till`, `ui_click`, `cluck`, `squawk` all passed) and

@@ -1,12 +1,12 @@
 {
   "id": "wc721830ca0e",
-  "title": "Source or record the plant sound",
+  "title": "Find free candidates for the plant sound and bring them to be heard",
   "level": "task",
   "owner": "dmitri",
   "tier": 1,
   "tier_reason": "The design note now specifies exactly what the sound needs to do; sourcing it is the concrete next step and it's Dmitri's seat.",
-  "ask": "Accepted “Write the design note for the missing plant sound”. The design note now specifies exactly what the sound needs to do; sourcing it is the concrete next step and it's Dmitri's seat.",
-  "first_action": "Find or record 2-3 soft, low pat-pat candidates for soil closing over a seed and pick the one that reads as closing rather than landing, then wire it into AudioManager and ACTOR_VERB_CUES for plant.",
+  "ask": "Daniel's ruling 2026-09-04: free-to-use sounds are tried first and brought to him as a card he can listen to; foley recording is only for what nothing free can cover, and it is batched because a session costs him an afternoon. So this card is the search, and it is not held by the look pick — only the recording batch is.",
+  "first_action": "Search the free/CC0 sources for a soft, low pat-pat — soil closing over a seed, reading as tucking in rather than as a reward, per the design note in docs/design/10-audio-direction.md. Bring back two to four candidates as a decision card in hq/data/decisions/ with each sound attached, each carrying its source URL and licence, and a recommendation. If nothing clears the bar, say so and add plant to the foley batch instead — that is a real result.",
   "state": "waiting_session",
   "thread": "claude",
   "source": "chat",
@@ -16,5 +16,17 @@
   "attempts": 0,
   "created": "2026-09-04T09:41",
   "created_ts": 1788540062.005882,
-  "parent": "wb4060acf7128"
+  "parent": "wb4060acf7128",
+  "amendments": [
+    {
+      "at": "2026-09-04T13:49",
+      "by": "claude",
+      "changed": {
+        "title": "Source or record the plant sound",
+        "ask": "Accepted “Write the design note for the missing plant sound”. The design note now specifies exactly what the sound needs to do; sourcing it is the concrete next step and it's Dmitri's seat.",
+        "first_action": "Find or record 2-3 soft, low pat-pat candidates for soil closing over a seed and pick the one that reads as closing rather than landing, then wire it into AudioManager and ACTOR_VERB_CUES for plant."
+      },
+      "why": "Daniel ruled the sourcing order: free sounds first and a listening card; foley only as the fallback, batched."
+    }
+  ]
 }

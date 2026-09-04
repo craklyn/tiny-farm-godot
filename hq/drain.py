@@ -63,7 +63,12 @@ CHECK_TIMEOUT = 900
 GAME_PATHS = ("world/", "player/", "entities/", "systems/", "ui/", "effects/",
               "crops/", "tests/", "tools/", "assets/", "project.godot", "main.gd",
               "main.tscn")
-WRITE_TOOLS = "Read,Glob,Grep,Edit,Write,MultiEdit,NotebookEdit,Bash,TodoWrite,WebFetch"
+# WebSearch is here because the studio's own sourcing rule needs it: free-to-use
+# assets are searched for before anything is made by hand, and a worker that
+# cannot search cannot do that job. Anything it brings back carries its source
+# and its licence into CREDITS.md in the same change, or it does not come back.
+WRITE_TOOLS = ("Read,Glob,Grep,Edit,Write,MultiEdit,NotebookEdit,Bash,TodoWrite,"
+               "WebFetch,WebSearch")
 # Tier 0 has nothing to walk back, so it gets nothing that could: the seat reads
 # the repo and answers. The one executor runs both lanes, because two executors
 # with different context is how a studio ends up with two answers.
