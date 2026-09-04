@@ -88,11 +88,24 @@ that explains itself, in the same plain register.
 > ✓ "No gate run is recorded, so there is nothing to show here."
 > ✓ "Nothing on this pillar is waiting on you."
 
+**10. A title's verb must not have two opposite readings.** A title is read on
+its own — in a queue, in a list, in a notification — detached from the body that
+would settle what it means. Read the verb cold and ask whether it could mean the
+opposite; if it could, use the longer, unambiguous one. Watch the verbs that
+flip on context (*hold*, *table*, *screen*, *dust*, *sanction*, *left*,
+*overlook*) and be especially careful when the object is an event, because *hold
+a session*, *run a check* and *drop a feature* all read two ways.
+> ✗ "Hold the foley recording session until the look is picked" — *the CEO,
+> reading the queue: "Does 'Hold' mean 'delay', or does it mean to 'Run' the
+> session?"*
+> ✓ "Take the foley session off the schedule until the look is picked"
+
 ## Registers — the same rules, tuned to each surface
 
 | Surface | The reader, and what they hold | What good looks like |
 |---|---|---|
 | **HQ pages** | The CEO, cold, deciding where his attention goes | The VP's daily stand-up (see below): first person, the CEO as "you"; what needs him leads, the full record is discoverable. Its one question answered in the headline; every finding names its owner and carries its control; metric cards titled by what they count, with denominator and target; nothing editorial |
+| **Work cards** | The CEO, giving a verdict on a result | The *title* and the one-line ask are his, and follow every rule above — rule 10 especially, since the queue is read title-first. The body, the brief and the next step are written for the agent that executes them and carry no style obligation at all |
 | **Decision cards** | The CEO, ruling | Rulable in one minute: plain setup, concrete options with what each causes, recommendation first, no ids in the question |
 | **Chat (chief of staff, personas)** | The CEO, talking | A person talking to a person; what needs him first; plain names; short |
 | **Commit subjects** | Anyone scanning a feed | One sentence: what changed, for whom, present tense. The existing house style ("A card that asks a question now carries the answer") is the standard |

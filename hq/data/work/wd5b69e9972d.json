@@ -1,6 +1,6 @@
 {
   "id": "wd5b69e9972d",
-  "title": "Hold the foley recording session until the look is picked",
+  "title": "Take the foley session off the schedule until the look is picked",
   "level": "task",
   "owner": "dmitri",
   "tier": 1,
@@ -66,5 +66,15 @@
     "turns": 41,
     "seconds": 281.5,
     "list_usd": 1.7369
-  }
+  },
+  "amendments": [
+    {
+      "at": "2026-09-04T13:38",
+      "by": "claude",
+      "changed": {
+        "title": "Hold the foley recording session until the look is picked"
+      },
+      "why": "\"Hold\" reads as both delay and conduct, and the queue is read title-first."
+    }
+  ]
 }

@@ -1,6 +1,6 @@
 {
   "id": "w6c764b842b5",
-  "title": "Open the look decision card with the sheet attached",
+  "title": "Publish the look decision card, with its sheet attached",
   "level": "task",
   "owner": "claude",
   "tier": 1,
@@ -128,5 +128,15 @@
     "tokens": 1940796,
     "fresh": 131317,
     "list_usd": 3.6761
-  }
+  },
+  "amendments": [
+    {
+      "at": "2026-09-04T13:38",
+      "by": "claude",
+      "changed": {
+        "title": "Open the look decision card with the sheet attached"
+      },
+      "why": "\"Open\" reads as both create and go and read, which are opposite jobs here."
+    }
+  ]
 }
