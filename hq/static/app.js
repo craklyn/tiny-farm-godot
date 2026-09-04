@@ -9,9 +9,33 @@ async function api(path) {
   if (cache[path]) return cache[path];
   const r = await fetch(path);
   if (!r.ok) throw new Error(`${path}: ${r.status}`);
+  noteVersion(r);
   const j = await r.json();
   cache[path] = j;
   return j;
+}
+
+/* This page is long-lived — it is left open for hours — so a deploy does not
+   reach it. Every JSON answer carries the version of the code that produced it;
+   the first one seen is what this page is running, and any later mismatch means
+   the buttons on screen are yesterday's. That is worth interrupting for: it is
+   how a genuinely fixed control gets reported as still broken. */
+let appVersion = null;
+function noteVersion(res) {
+  const v = res.headers && res.headers.get("X-HQ-Version");
+  if (!v) return;
+  if (appVersion === null) { appVersion = v; return; }
+  if (v !== appVersion) showStaleBanner();
+}
+
+function showStaleBanner() {
+  if (document.getElementById("hq-stale")) return;
+  const el = h(`<div id="hq-stale" role="status">
+    <span>HQ has been updated since you opened this page. The controls on screen are the old ones.</span>
+    <button type="button">Reload</button>
+  </div>`).firstElementChild;
+  el.querySelector("button").addEventListener("click", () => location.reload());
+  document.body.appendChild(el);
 }
 
 function h(html) { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content; }

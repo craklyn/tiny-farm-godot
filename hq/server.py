@@ -1284,6 +1284,28 @@ MAP_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,39}$")
 # already stamped `-dirty` and became impossible to tie to a build.
 # ---------------------------------------------------------------------------
 
+_APP_VER = {"at": 0.0, "v": ""}
+
+
+def app_version():
+    """A fingerprint of the code this page is running: the newest change among
+    the front-end files and the server itself. Cheap, and recomputed at most
+    every few seconds."""
+    import time as _t
+    if _t.time() - _APP_VER["at"] < 5 and _APP_VER["v"]:
+        return _APP_VER["v"]
+    newest = 0.0
+    try:
+        for name in os.listdir(STATIC):
+            if name.endswith((".js", ".css", ".html")):
+                newest = max(newest, os.path.getmtime(os.path.join(STATIC, name)))
+        newest = max(newest, os.path.getmtime(os.path.abspath(__file__)))
+    except OSError:
+        pass
+    _APP_VER.update({"at": _t.time(), "v": str(int(newest))})
+    return _APP_VER["v"]
+
+
 HISTORY = os.path.join(DATA, "history")
 _HIST_LOCK = threading.Lock()
 
@@ -4073,6 +4095,13 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store" if ctype.startswith("application/json") else "max-age=3600")
+        # Every JSON answer carries the version of the app that produced it, so a
+        # page left open across a deploy can notice it is running yesterday's
+        # code. Without this, a fix ships, the page keeps the old JavaScript, and
+        # the person using it is told a thing is fixed while pressing the broken
+        # version of the button — which is exactly how a "still broken" report
+        # arrives about work that was genuinely done.
+        self.send_header("X-HQ-Version", app_version())
         self.end_headers()
         self.wfile.write(body)
 

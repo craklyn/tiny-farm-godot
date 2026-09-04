@@ -1098,3 +1098,17 @@ button.linkbtn:hover, button.linkbtn:focus-visible { text-decoration: underline;
 .vd-cons { margin-top: 4px; color: var(--muted); }
 .vd-btn { flex-shrink: 0; text-align: right; }
 .vd-wait { margin-top: 5px; }
+
+/* A page left open across a deploy is a page whose buttons are yesterday's.
+   It says so, and offers the one thing that fixes it. */
+#hq-stale {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: 18px; z-index: 90;
+  display: flex; gap: 12px; align-items: center; max-width: min(680px, 92vw);
+  padding: 10px 14px; border-radius: 10px; font-size: 13px;
+  background: var(--card); color: var(--text); border: 1px solid var(--accent);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, .35);
+}
+#hq-stale button {
+  padding: 5px 12px; border-radius: 7px; cursor: pointer; font: inherit;
+  font-weight: 600; border: 1px solid var(--accent); background: var(--accent); color: #fff;
+}

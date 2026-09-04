@@ -26,6 +26,7 @@ const replyDrafts = {};
 
 async function workSnap() {
   const r = await fetch("/api/work");
+  noteVersion(r);          // this page polls, so it is the fastest to notice a deploy
   return r.json();
 }
 
@@ -271,6 +272,7 @@ function replyBox(it, org) {
   return `<div class="w-reply">
     <textarea class="w-reply-t" data-draft="${esc(it.id)}" rows="2"
       placeholder="Anything ${esc(first)} should know — optional, and it goes with whichever button you press">${esc(draft)}</textarea>
+    <p class="w-needreason" hidden>Say what you want changed before sending it back — it becomes ${esc(first)}'s brief for the second attempt, and without it you get the same work again.</p>
     <p class="small muted">“Just comment” files it without deciding anything: ${esc(first)} reads it against this card and answers here, and whatever the answer commits to gets filed as work.</p>
   </div>`;
 }
@@ -284,10 +286,16 @@ function itemById(snap, id) {
 function outcomeLine(act, it, org, comment) {
   const first = ownerOf(org, it.owner || "").name.split(" ")[0];
   const noted = comment ? ` Your note went with it.` : "";
+  // Where it goes depends on the tier, because the two lanes are different: work
+  // with nothing to walk back starts immediately, work that changes the repo
+  // waits for a session. Naming the wrong section is as bad as naming none.
+  const lane = Number(it.tier) === 0
+    ? `<b>Happening now</b> above, and ${esc(first)} starts on it straight away`
+    : `<b>Queued for a build session</b> below, and the next session carries it out`;
   const where = {
     accept: `Accepted and closed. It is under <b>Closed</b> at the foot of this page.${noted}`,
-    approve: `Approved. It has moved to <b>Queued for a build session</b> below, and the next session carries it out.${noted}`,
-    redo: `Sent back to ${esc(first)}. It has moved to <b>Queued for a build session</b> below, and the next drain does it again${comment ? " with your note as part of the brief" : ""}.`,
+    approve: `Approved. It has moved to ${lane}.${noted}`,
+    redo: `Sent back to ${esc(first)}. It has moved to ${lane}, doing it again${comment ? " with your note as part of the brief" : ""}.`,
     drop: `Dropped. It is under <b>Closed</b> at the foot of this page, and nothing was created.${noted}`,
   }[act] || `Filed.${noted}`;
   return `<div class="w-done">${where}</div>`;
@@ -588,6 +596,16 @@ async function renderWork(focusId) {
     const el = card(id);
     const box = el.querySelector(".w-reply textarea");
     const comment = box ? box.value.trim() : "";
+    // Sending work back with no reason produces a second attempt that is a
+    // repeat, and the studio pays for the same mistake twice. So this one asks.
+    // Accepting and dropping do not: a note there is welcome, never required.
+    if (act === "redo" && !comment && box) {
+      const note = el.querySelector(".w-needreason");
+      if (note) note.hidden = false;
+      box.focus();
+      box.scrollIntoView({ block: "center", behavior: "smooth" });
+      return;
+    }
     delete replyDrafts[id];
     lock(el, "filing your answer");
     await workPost("/api/work/" + act, { id, comment });

@@ -11,8 +11,8 @@
   "thread": "sam",
   "source": "chat",
   "source_message": "Daniel's words, verbatim:\n\n\"I recommend we change the game so it's not necessary to buy seeds for the starting\nplants. Rather, the plants when harvested can be planted as seeds. They can also be used\nas consumables (e.g. pea shooter). Only when the player acquires an excess can they be\nsold. Excess will be defined by game phase. Early game, the player only has storage on\ntheir person and so excess is not a large number.. 5 or 10 maybe. Later, they'll get a\ngrain silo and other storage options that increases excess (so they can properly arm and\nstock their defensive structures).\n\nNote that if w",
-  "result": "What I found, working through the current onboarding code and docs against Daniel's proposal:\n\n**1. The first ten minutes gets cleaner, not emptier — and less needs to change than the note suggests.**\n\nDays 1 and 2 of the current opening (harvest → plant → water → sleep, then repeat with a swipe-chained row and the hoe) already never touch gold or the shop — that's stated outright in the onboarding design (\"No shop\" is one of the things day 1 deliberately withholds). The shop only enters once the seed pouch runs dry, which the design notes place around day 3–4, as a two-step lesson: sell a crop, then spend the coins on three seeds.\n\nMaking a harvest itself replantable removes that two-step lesson from the must-teach path entirely, rather than just delaying it — a pre-reader who can already replant what she grew has no reason to ever see a coin, a price, or a shop screen in the opening days. That's one fewer screen and one fewer new verb inside the exact window the game measures for the pre-reader gate. It also collapses \"crop becomes coins becomes three new seeds\" (two hops, a number, a multiplication) into \"crop becomes seed\" (one hop, nothing to count) — a shorter causal chain for the same lesson, which is a straight improvement for a pre-reader.\n\nOne thing worth knowing: the onboarding design already considered exactly this model by name — \"a harvest yields a seed as well as a crop\" — and turned it down, on the grounds that the existing sell-then-buy economy was worth teaching for its own sake. Daniel's note reopens that specific, already-argued decision. That reversal needs to be written back into the design docs, not just built — I'm not the owner of that chapter and haven't touched it.\n\nThe mechanism itself (a harvest count feeding a plantable stock directly, with a per-person cap of 5–10 before anything becomes sellable) is a simulation-layer change: today seeds and crops are two separate stocks connected only by buying and selling, and that split is the thing that would need to merge. That's not mine to build.\n\n**2. It doesn't need to be a letter, and this half isn't actually a ruling.**\n\nWhatever tells the player something new has arrived can be entirely wordless, using vocabulary the game already ships: a locked object drawn as the same picture, darkened, that lights up the moment it's earned (already built for the shop), and a single glowing highlight on the thing that just became usable (the same mechanism that has taught every verb in the opening days). Nothing about \"you now have this\" requires a sentence — the studio has already solved harder versions of this exact problem without one.\n\nThe one part of this that is genuinely his: whether he wants an actual written note to exist anywhere as flavor — a supplier's voice, some personality — even though nothing mechanical needs it. That's a tone choice about content a player sees, not a mechanical requirement, so I'm flagging it rather than deciding it.\n\n**3. On teaching the storage cap** (the brief cut off here, so I'm answering what I could reconstruct: what signals \"you're full, time to sell\"): the HUD already has almost exactly this. The basket display caps out visually at five pips and stops counting past that — \"past five, lots is the honest reading\" is the comment already in the code. That's the same number Daniel guessed for the early-game excess threshold. The natural move is to point that same full-basket state at the new sell trigger once the excess number is settled, rather than building a second gauge.\n\n**What I didn't do:** I didn't touch the simulation layer, the design docs, or the HUD code — this was reading, and the actual seed/crop merge and the storage-tier numbers aren't settled yet, so there's nothing safe to build against.",
-  "started": "2026-09-04T13:04",
+  "result": "",
+  "started": "",
   "attempts": 1,
   "created": "2026-09-04T13:04",
   "created_ts": 1788552265.8293746,
@@ -53,35 +53,6 @@
     "seat": "sam",
     "model": "sonnet",
     "lane": "drain"
-  },
-  "diff": {
-    "stat": "",
-    "files": [],
-    "applied": false,
-    "why_not": "nothing changed"
-  },
-  "check": {
-    "verdict": "concerns",
-    "summary": "Sam's reading holds up against the docs and code — days 1–2 already skip the shop, the seed-from-harvest fork is named in the onboarding chapter, and the five-pip basket exists — but the reply overstates two small things the follow-up owners should know before building.",
-    "findings": [
-      {
-        "what": "The basket pips Sam calls 'already in the HUD' are treatment B's draft, only drawn when that treatment is on, and the five-pip cap is tagged as a playtest guess",
-        "where": "ui/hud.gd:524, ui/hud.gd:609-626",
-        "fix": "The tier-0 'storage full' item should say it is promoting a draft treatment to the shipped HUD, not repointing something live; settle the treatment before the excess number"
-      },
-      {
-        "what": "The onboarding chapter does not just 'turn down' seed-from-harvest — it names it as the fallback and calls it cheap to switch to, which makes the doc change a promotion of a planned fallback rather than a reversal",
-        "where": "docs/design/13-teaching-and-onboarding.md:706-711",
-        "fix": "Milo's note should cite the fallback clause and record the no-soft-lock property at lines 702-704 as still required under the new model"
-      },
-      {
-        "what": "The recommendation claims the studio has solved wordless unlocks 'three times'; the reply itself names two mechanisms (darkened locked icon, single glow), and nothing was counted",
-        "where": "reply, recommend.why",
-        "fix": "Drop the number or name the third case; the claim stands fine on the two"
-      }
-    ],
-    "escalates": null,
-    "escalation_reason": null
   },
   "usage": {
     "calls_detail": [
@@ -130,5 +101,28 @@
     "tokens": 1745024,
     "fresh": 173327,
     "list_usd": 2.1172
+  },
+  "check": {
+    "verdict": "concerns",
+    "summary": "Sam's reading holds up against the docs and code — days 1–2 already skip the shop, the seed-from-harvest fork is named in the onboarding chapter, and the five-pip basket exists — but the reply overstates two small things the follow-up owners should know before building.",
+    "findings": [
+      {
+        "what": "The basket pips Sam calls 'already in the HUD' are treatment B's draft, only drawn when that treatment is on, and the five-pip cap is tagged as a playtest guess",
+        "where": "ui/hud.gd:524, ui/hud.gd:609-626",
+        "fix": "The tier-0 'storage full' item should say it is promoting a draft treatment to the shipped HUD, not repointing something live; settle the treatment before the excess number"
+      },
+      {
+        "what": "The onboarding chapter does not just 'turn down' seed-from-harvest — it names it as the fallback and calls it cheap to switch to, which makes the doc change a promotion of a planned fallback rather than a reversal",
+        "where": "docs/design/13-teaching-and-onboarding.md:706-711",
+        "fix": "Milo's note should cite the fallback clause and record the no-soft-lock property at lines 702-704 as still required under the new model"
+      },
+      {
+        "what": "The recommendation claims the studio has solved wordless unlocks 'three times'; the reply itself names two mechanisms (darkened locked icon, single glow), and nothing was counted",
+        "where": "reply, recommend.why",
+        "fix": "Drop the number or name the third case; the claim stands fine on the two"
+      }
+    ],
+    "escalates": null,
+    "escalation_reason": null
   }
 }
