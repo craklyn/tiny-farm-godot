@@ -7,14 +7,66 @@
   "tier_reason": "Catalog metadata and pixel cleanup on placeholder art, both revertable in git; the taste call on the ground-contact rule stays with Ingrid's look session.",
   "ask": "Complete the frame lists in the catalog and sweep every frame of both sheets for opaque near-white in the ground-contact zone, so the fixes land on all frames instead of half.",
   "first_action": "Extend the Chicken entry in hq/data/entities.json from 4 to all 8 cells and Farmer from 4 to all 16, then scan each listed cell for opaque near-white pixels in the ground-contact zone.",
-  "state": "waiting_session",
+  "state": "for_review",
   "thread": "ingrid",
   "source": "chat",
   "source_message": "> HQ's sprite editor only showed him a quarter of each sheet. \n\nWhy aren't you also creating a story to fix this?",
-  "result": "",
+  "result": "I filled in the two catalog entries and finished what was half-done.\n\n**Catalog:** Chicken now lists all 8 cells (right walk 0–3, left walk 4–7) instead of just the right-facing 4. Farmer now lists all 16 cells of the 4×4 grid (down/up/left/right × 4-frame walk) instead of just the down row. The HQ sprite editor reads this list, so it can now show and edit every direction of both, not a quarter of the sheet.\n\n**The sweep:** every pixel it found was the exact same color — `#f8f4e6`, opaque — which is the pipeline's flood-fill background key plate. Nothing ambiguous, no white feathers or white shirt buttons caught in it: 75 pixels total, all leftover backdrop trapped in the ground-contact zone across frames Daniel never touched by hand. I erased them the same way he did (alpha to zero, nothing recolored) — 51 in the farmer sheet, 24 in the chicken sheet — so his two hand fixes now cover every frame instead of the 4 of 16 and 4 of 8 he was able to reach through the old preview.\n\nBoth sheets sweep clean now. This is pixel cleanup of existing placeholder art, not a new generation, so no new CREDITS.md entry applies.\n\nOne thing worth Ravi's attention, already known from the parent thread: this confirms the pipeline's flood-fill keying is the actual source — it can't reach background pockets enclosed by the sprite, so it leaves opaque key-color pixels behind. That's a pipeline fix, already filed to him; I only cleaned up its output here.\n\nDone, not committed — left in the working tree per the house rule. Nothing pushed.",
   "started": "",
-  "attempts": 0,
+  "attempts": 1,
   "created": "2026-09-03T00:50",
   "created_ts": 1788421828.8858883,
-  "parent": "wf8a69640fcd"
+  "parent": "wf8a69640fcd",
+  "follow_ups": [],
+  "recommend": {},
+  "finished": "2026-09-04T09:46",
+  "done_by": {
+    "seat": "yuki",
+    "model": "sonnet",
+    "lane": "drain"
+  },
+  "diff": {
+    "stat": "assets/sprites/generated/animals.png    | Bin 1593 -> 1597 bytes\n assets/sprites/generated/characters.png | Bin 6313 -> 6347 bytes\n hq/data/entities.json                   |   4 ++--\n 3 files changed, 2 insertions(+), 2 deletions(-)",
+    "files": [
+      "assets/sprites/generated/animals.png",
+      "assets/sprites/generated/characters.png",
+      "hq/data/entities.json"
+    ],
+    "applied": false,
+    "why_not": "the patch no longer applies — assets/sprites/generated/animals.png, assets/sprites/generated/characters.png have changed since it was written"
+  },
+  "check": {
+    "verdict": "concerns",
+    "summary": "The catalog now lists every cell of both sheets and both PNGs changed in the ground-contact rows, but the change leaves HQ's own text and art goal saying the editor still covers a quarter of each sheet, and the entity previews now cycle through all four directions instead of one walk.",
+    "findings": [
+      {
+        "what": "HQ text still tells Daniel the editor opens four of the chicken's eight cells and four of the farmer's sixteen; that is false after this change.",
+        "where": "hq/static/pillars.js:778, hq/data/goals/art.json:178",
+        "fix": "Update or remove the note in the same change, and mark the art goal's gap as closed for these two sheets."
+      },
+      {
+        "what": "The frame list doubles as the entity card's preview animation, so the farmer card now loops down, up, left, right walks as one 16-frame cycle and the chicken flips between right and left; the reply presents this only as an editor win.",
+        "where": "hq/static/app.js:63",
+        "fix": "Accept it as a stopgap and say so, or land the filed proper fix (editor derives the grid from sheet size, preview frames highlighted) and keep the preview list to one walk."
+      },
+      {
+        "what": "I could not independently rerun the pixel sweep in this session, so the 75-pixel count and 'both sheets sweep clean' rest on the worker's word; the sheets did visibly change in the foot rows.",
+        "where": "assets/sprites/generated/characters.png, assets/sprites/generated/animals.png",
+        "fix": "Before committing, run a pixel diff against HEAD and confirm every changed pixel went from opaque #f8f4e6 to alpha zero, then rerun test_visuals and refresh tools/baseline.png if the farmer's feet moved it."
+      }
+    ],
+    "escalates": null,
+    "escalation_reason": null
+  },
+  "usage": {
+    "calls": 2,
+    "input": 312,
+    "output": 14497,
+    "cache_read": 1249326,
+    "cache_write": 98774,
+    "tokens": 1362909,
+    "turns": 27,
+    "seconds": 183.2,
+    "list_usd": 1.9265
+  }
 }

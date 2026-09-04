@@ -54,6 +54,7 @@ import server                      # noqa: E402  (path set above)
 import work                        # noqa: E402
 
 WORKTREES = os.path.expanduser("~/.cache/tiny-farm-drain")
+PATCHES = os.path.join(REPO, "hq", "data", "patches")
 WORKER_TURNS = 60
 WORKER_TIMEOUT = 3600
 CHECK_TIMEOUT = 900
@@ -134,6 +135,24 @@ The rest of the roster, for naming the right owner of anything you find:
     return text
 
 
+def prior_checks(item):
+    """Why earlier attempts were sent back. Without this a second attempt is a
+    repeat, and the studio pays twice for the same mistake."""
+    rows = item.get("prior_checks") or []
+    if not rows:
+        return ""
+    out = []
+    for i, c in enumerate(rows[-2:], 1):
+        lines = [f"Attempt {i} was held: {c.get('summary', '')}"]
+        for f in (c.get("findings") or [])[:6]:
+            lines.append(f"  - {f.get('what', '')}"
+                         + (f" ({f.get('where')})" if f.get("where") else "")
+                         + (f" — fix: {f.get('fix')}" if f.get("fix") else ""))
+        out.append("\n".join(lines))
+    return ("\n\nWHY YOUR EARLIER ATTEMPT WAS SENT BACK — this is the brief now, as much "
+            "as the item is. Do not hand back the same work:\n\n" + "\n\n".join(out) + "\n")
+
+
 def task_prompt(item, org):
     convo = work._convo_lines(item, org)
     said = (f"\n\nWHAT DANIEL HAS SAID ABOUT THIS ON THE CARD — the most recent word on it, "
@@ -143,7 +162,7 @@ def task_prompt(item, org):
 What Daniel asked for: {item.get('ask', '')}
 
 The next step, which is yours to take now: {item.get('first_action', '')}
-{said}
+{said}{prior_checks(item)}
 Do the work in your worktree. Then reply with the deliverable Daniel reads: what
 you changed, what it now does, and anything you found that he should know.
 Plain language, no preamble, no ticket IDs, as short as the work allows. Do not
@@ -289,6 +308,28 @@ def worktree_patch(path):
     return p.stdout, stat, files
 
 
+def save_patch(item_id, patch):
+    """A held patch is kept on disk so it can be tried again when whatever was
+    in its way has moved. Re-running the seat costs a model call; re-applying a
+    patch costs nothing, and a drain that discards its own output makes the
+    expensive half of the work the disposable half."""
+    if not patch.strip():
+        return ""
+    os.makedirs(PATCHES, exist_ok=True)
+    path = os.path.join(PATCHES, item_id + ".patch")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(patch)
+    return path
+
+
+def load_patch(item_id):
+    try:
+        with open(os.path.join(PATCHES, item_id + ".patch"), encoding="utf-8") as f:
+            return f.read()
+    except OSError:
+        return ""
+
+
 def touches_game(files):
     return any(f.startswith(g) or f == g for f in files for g in GAME_PATHS)
 
@@ -320,6 +361,7 @@ def do_item(item, org, run_id, log):
         rec["result"] = text
         rec["error"] = err
         rec["patch"], rec["stat"], rec["files"] = worktree_patch(tree)
+        save_patch(item["id"], rec["patch"])
         # The chief of staff reads the diff, on his own seat's model.
         cmodel = server.seat_model(org, "claude")
         ctext, cusage, cerr = run_cli(check_prompt(item, text, rec["patch"]), CHECK_SYSTEM,
@@ -371,6 +413,61 @@ def parse_check(raw):
     }
 
 
+# Files Godot regenerates whenever anything opens the project. A worker that
+# ran the suites leaves these behind, they have nothing to do with the item, and
+# one of them colliding with an untracked copy in the real tree held three
+# otherwise-good patches on the first drain. They may be dropped from a patch;
+# nothing else may.
+EDITOR_NOISE = re.compile(r"(^|/)\.godot/|\.uid$|\.import$")
+
+
+def _failed_paths(stderr):
+    """The paths git named when it refused. Only editor noise is ever dropped —
+    a substantive file that will not apply is a hold, not something to skip."""
+    out = []
+    for m in re.finditer(r"^error: ([^:\n]+):", stderr or "", re.M):
+        path = m.group(1).strip()
+        if EDITOR_NOISE.search(path):
+            out.append(path)
+    return sorted(set(out))
+
+
+def _snapshot(files):
+    """The exact bytes of the files a patch is about to touch."""
+    shot = {}
+    for f in files or []:
+        full = os.path.join(REPO, f)
+        try:
+            with open(full, "rb") as fh:
+                shot[f] = fh.read()
+        except OSError:
+            shot[f] = None            # did not exist; putting it back means removing it
+    return shot
+
+
+def _restore(shot):
+    """Put those exact bytes back, and nothing else.
+
+    The first draft of this used `git checkout --merge -- <paths>`, which
+    restores from the INDEX — so when one item's patch failed, it silently threw
+    away the working-tree changes two earlier items had already applied to the
+    same file. A visual-regression job registered by one seat vanished that way
+    and was only noticed because the goal pointing at it had nothing to read.
+    Recovery has to mean "undo what I just did", never "reset this file"."""
+    for f, data in (shot or {}).items():
+        full = os.path.join(REPO, f)
+        try:
+            if data is None:
+                if os.path.exists(full):
+                    os.remove(full)
+            else:
+                os.makedirs(os.path.dirname(full), exist_ok=True)
+                with open(full, "wb") as fh:
+                    fh.write(data)
+        except OSError:
+            pass
+
+
 def apply_patch(patch, files):
     """Onto the real working tree, one item at a time.
 
@@ -382,6 +479,7 @@ def apply_patch(patch, files):
     tree is left exactly as shaped as it was found."""
     if not patch.strip():
         return True, "nothing to apply"
+    before = _snapshot(files)
     plain = subprocess.run(["git", "apply", "--whitespace=nowarn", "-"], cwd=REPO,
                            input=patch, capture_output=True, text=True, timeout=180)
     if plain.returncode == 0:
@@ -393,11 +491,36 @@ def apply_patch(patch, files):
             subprocess.run(["git", "restore", "--staged", "--"] + files, cwd=REPO,
                            capture_output=True, text=True, timeout=120)
         return True, ""
-    # A real conflict. Put back only what this patch touched, and nothing else.
-    if files:
-        subprocess.run(["git", "checkout", "--merge", "--"] + files, cwd=REPO,
-                       capture_output=True, text=True, timeout=120)
-    return False, (three.stderr or plain.stderr or "").strip()[:500]
+    # One retry, with Godot's regenerated files dropped. Nothing substantive is
+    # ever excluded: if the patch still will not apply, that is a real conflict.
+    noise = _failed_paths(three.stderr) or _failed_paths(plain.stderr)
+    if noise:
+        again = subprocess.run(
+            ["git", "apply", "--3way", "--whitespace=nowarn"]
+            + [f"--exclude={n}" for n in noise] + ["-"],
+            cwd=REPO, input=patch, capture_output=True, text=True, timeout=180)
+        if again.returncode == 0:
+            keep = [f for f in (files or []) if f not in noise]
+            if keep:
+                subprocess.run(["git", "restore", "--staged", "--"] + keep, cwd=REPO,
+                               capture_output=True, text=True, timeout=120)
+            return True, ""
+    # A real conflict. Put back exactly the bytes that were there before this
+    # patch was tried — not the index's idea of them.
+    _restore(before)
+    return False, _held_reason(three.stderr or plain.stderr or "")
+
+
+def _held_reason(stderr):
+    """One sentence Daniel can read, not a wall of git output. The paths are
+    what matter — they say whose change is in the way."""
+    paths = sorted({m.group(1).strip() for m in
+                    re.finditer(r"^error: ([^:\n]+):", stderr or "", re.M)})
+    if not paths:
+        return "the patch no longer applies to the tree as it stands"
+    shown = ", ".join(paths[:3]) + (f" and {len(paths) - 3} more" if len(paths) > 3 else "")
+    return (f"the patch no longer applies — {shown} "
+            f"{'has' if len(paths) == 1 else 'have'} changed since it was written")
 
 
 def run_suites():
@@ -425,9 +548,34 @@ def run_suites():
 # writing the result back onto the card
 # ---------------------------------------------------------------------------
 
+def plain_failure(text, applied=None):
+    """A card is something Daniel reads. A raw CLI envelope pasted into the
+    result field — session ids, cache counters, a `duration_api_ms` — tells him
+    nothing and buries the one fact that matters, which is that the attempt did
+    not finish. Recognise it and say the fact instead."""
+    raw = (text or "").strip()
+    if not raw:
+        return ""
+    # An envelope that was truncated on its way into the card is still an
+    # envelope, and is the common case: it was clipped to fit an error field.
+    if not (raw.startswith("{") and '"duration_api_ms"' in raw[:400]):
+        return raw
+    stop = re.search(r'"stop_reason"\s*:\s*"([a-z_]+)"', raw)
+    why = {"max_turns": "it used all the turns it was given",
+           "tool_use": "it used all the turns it was given, mid-edit",
+           "refusal": "the model declined the task"}.get(
+               stop.group(1) if stop else "", "it did not finish cleanly")
+    tail = ("What it had already changed did land, and the check below is what "
+            "the chief of staff made of it." if applied else
+            "Nothing it left behind was applied.")
+    return f"This attempt did not finish — {why}. {tail}"
+
+
 def write_back(item, rec, applied, why_not, suites, org):
     body, follows, _amend, recommend = work._split_result(rec["result"], org, item["owner"])
-    item["result"] = body or rec["error"] or "(no result came back)"
+    item["result"] = (plain_failure(body, applied)
+                      or (f"This attempt did not finish — {rec['error']}." if rec["error"]
+                          else "(no result came back)"))
     if follows is not None:
         item.pop("follow_up", None)
         item["follow_ups"] = follows
@@ -442,7 +590,18 @@ def write_back(item, rec, applied, why_not, suites, org):
         item["check"] = rec["check"]
     if suites:
         item["suites"] = suites
-    item["usage"] = {"calls": rec["usage"], **server.sum_usage(rec["usage"])}
+    this = server.sum_usage(rec["usage"])
+    item["usage"] = {"calls_detail": rec["usage"], **this}
+    # What the card has cost in total, not just this time round. A card sent
+    # back twice has been paid for three times, and the running total is the
+    # number that answers whether it was worth having.
+    prev = item.get("spent") or {}
+    item["spent"] = {
+        "attempts": int(prev.get("attempts") or 0) + 1,
+        "tokens": int(prev.get("tokens") or 0) + this["tokens"],
+        "fresh": int(prev.get("fresh") or 0) + this["fresh"],
+        "list_usd": round(float(prev.get("list_usd") or 0.0) + this["list_usd"], 4),
+    }
     work.save_item(item)
     return item
 
@@ -463,12 +622,49 @@ def main():
     ap.add_argument("--jobs", type=int, default=3, help="seats working at once")
     ap.add_argument("--list", action="store_true", help="what is queued, and nothing else")
     ap.add_argument("--dry-run", action="store_true", help="say what would run")
+    ap.add_argument("--apply", action="store_true",
+                    help="re-apply held patches from hq/data/patches/, without running any model")
+    ap.add_argument("--repair", action="store_true",
+                    help="rewrite any card whose result is a raw CLI envelope, and nothing else")
     ap.add_argument("--no-suites", action="store_true", help="skip the suites (they run by default "
                                                             "when a patch touches the game)")
     args = ap.parse_args()
 
     work.bind(server)
     org = server.load_org()
+
+    if args.apply:
+        want = set(args.ids)
+        n = 0
+        for it in work.items():
+            if want and it["id"] not in want:
+                continue
+            if (it.get("diff") or {}).get("applied") or not load_patch(it["id"]):
+                continue
+            patch = load_patch(it["id"])
+            ok, why = apply_patch(patch, (it.get("diff") or {}).get("files") or [])
+            print(f"  {'applied ' if ok else 'still held'} {it['id']}  {why or it['title'][:50]}")
+            if ok:
+                it.setdefault("diff", {})["applied"] = True
+                it["diff"]["why_not"] = ""
+                work.save_item(it)
+                n += 1
+        print(f"{n} held patch(es) applied.")
+        return 0
+
+    if args.repair:
+        n = 0
+        for it in work.items():
+            fixed = plain_failure(it.get("result") or "",
+                                  (it.get("diff") or {}).get("applied"))
+            if fixed and fixed != it.get("result"):
+                it["result"] = fixed
+                work.save_item(it)
+                print(f"  repaired {it['id']}  {it['title'][:60]}")
+                n += 1
+        print(f"{n} card(s) repaired.")
+        return 0
+
     pool = queued()
     if args.ids:
         want = set(args.ids)

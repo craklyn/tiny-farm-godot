@@ -7,14 +7,89 @@
   "tier_reason": "The art director owns which looks are worth the CEO's attention before anyone renders them.",
   "ask": "Accepted “Render side-by-side look captures for the CEO to pick from”. The art director owns which looks are worth the CEO's attention before anyone renders them.",
   "first_action": "Read the four proposed treatments and either sign off or replace one, writing the final list into the style guide's look-session note",
-  "state": "waiting_session",
+  "state": "for_review",
   "thread": "claude",
   "source": "chat",
   "source_message": "Accepted “Render side-by-side look captures for the CEO to pick from”. The art director owns which looks are worth the CEO's attention before anyone renders them.",
-  "result": "",
+  "result": "I signed off on three of the four looks and replaced one.\n\n**The four we now test**, written into the art direction chapter as a closed list, with the queue entry pointing at it: the game as it looks today; a quiet world where only the things you can touch are bright; cold light; and more detail per surface. Staging is identical across all four — same field, same morning, same seed, same frame — so the only difference your eye has to account for is the treatment.\n\n**What I dropped and why.** The warmer, cosier grade. The game today is already the warm cosy end, so that capture would have come back to you as today turned up rather than as a direction — you'd have spent two of four slots looking at nearly the same picture. It also fights the one rule in the guide that's actually load-bearing: crops and tools read as tappable because they're the most saturated pixels on the screen, and saturating the whole world takes that away. If you see the four and want warmer, it's an hour on a frame we'll already have.\n\n**What I put in its place.** Cold light — the drained ambient, but shadows going blue-violet instead of green, and the cyan and magenta we currently hold back for pest overlays brought forward into the machines. You've said the outward identity can lean near-future and lightly military. The old lineup only claimed to leave that door open; this one shows you what's through it. Colour only — shape follows a direction rather than leading it.\n\n**Two things you should know.** The style guide was measured from the bought Sprout Lands sprites, and that set is no longer in the repository — the build ships generated sheets. The captures are of the real game so the session still works, but \"the guide's rules applied\" isn't something anyone can render any more, and the guide needs re-measuring against what actually ships. Separately: the art scoreboard says four of the sixteen colours the guide names have vanished. They haven't. All four are in the build one step darker in red and identical in green and blue — the asset pipeline is shifting a channel by one. That's a pipeline fix, not an art problem, and it's currently making a healthy number look like drift.\n\nNothing here needs Godot run and nothing outside those two documents changed.",
   "started": "",
-  "attempts": 0,
+  "attempts": 1,
   "created": "2026-09-03T01:23",
   "created_ts": 1788423831.4263427,
-  "parent": "w1a48291f04f"
+  "parent": "w1a48291f04f",
+  "follow_ups": [
+    {
+      "title": "Render the four looks, including cold light",
+      "owner": "jade",
+      "level": "task",
+      "tier": 1,
+      "first_action": "On the desktop, capture the base frame at day three mid-morning on seed 12345 with the player and one station in frame, then grade the quiet-world and cold-light variants from it",
+      "why": "The list of looks is closed, and three of the four are grades of a single capture."
+    },
+    {
+      "title": "Stop the asset pipeline shifting red by one",
+      "owner": "ravi",
+      "level": "task",
+      "tier": 1,
+      "first_action": "Find the step between generation and the shipped PNG that turns d2e077 into d1e077, and re-run the four affected sheets through it once fixed",
+      "why": "Four palette colours read as lost from the build when they are present one red step off, so the art scoreboard is reporting drift that has not happened."
+    },
+    {
+      "title": "Re-measure the style guide against the sprites that actually ship",
+      "owner": "ingrid",
+      "level": "task",
+      "tier": 1,
+      "first_action": "Decode the generated sheets and rewrite the guide's ramps, anchors and current-state section from them instead of from the removed Sprout Lands set",
+      "why": "The guide's whole measured baseline cites a sprite set the repository no longer contains."
+    }
+  ],
+  "recommend": {
+    "question": "Do we show you cold light instead of a warmer, cosier version of today?",
+    "answer": "Yes — run the four as I've set them, with cold light in and warm out",
+    "why": "Warm is where the game already sits, so it would tell you nothing you can't see now, while cold light is the only capture that shows you the near-future look you asked about.",
+    "instead": "Keep warm as a fifth capture — it costs almost nothing to grade, but five pixel-art frames side by side means a smaller look at each one, which is the opposite of what a look session is for."
+  },
+  "finished": "2026-09-04T09:46",
+  "done_by": {
+    "seat": "ingrid",
+    "model": "opus",
+    "lane": "drain"
+  },
+  "diff": {
+    "stat": "docs/DESIGNER_QUEUE.md          |  7 ++++-\n docs/design/09-art-direction.md | 65 +++++++++++++++++++++++++++++++++++++++++\n 2 files changed, 71 insertions(+), 1 deletion(-)",
+    "files": [
+      "docs/DESIGNER_QUEUE.md",
+      "docs/design/09-art-direction.md"
+    ],
+    "applied": true,
+    "why_not": ""
+  },
+  "check": {
+    "verdict": "concerns",
+    "summary": "nobody checked this — the check call did not come back",
+    "findings": [],
+    "escalates": null,
+    "escalation_reason": null
+  },
+  "suites": {
+    "unit": {
+      "ok": true,
+      "tail": "  ✓ and a replay of a session in which she taught a robot lands on the same farm and the same robot\n  ✓ knowing the same tiles, in the same order — a lesson is training data (S-3/S-5)\n\n============================================================\nResults: 1983 PASSED, 0 FAILED\n============================================================"
+    },
+    "integration": {
+      "ok": true,
+      "tail": "  ✓ it watered every tile it was shown (3 of 3)\n  ✓ and nothing else — it has no opinions, which is the design\n\n============================================================\nResults: 528 PASSED, 0 FAILED\n============================================================"
+    }
+  },
+  "usage": {
+    "calls": 2,
+    "input": 452,
+    "output": 16776,
+    "cache_read": 1258629,
+    "cache_write": 90370,
+    "tokens": 1366227,
+    "turns": 28,
+    "seconds": 248.9,
+    "list_usd": 2.3387
+  }
 }

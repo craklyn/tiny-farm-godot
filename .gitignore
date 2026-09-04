@@ -14,6 +14,10 @@ build/
 # belt-and-braces so a stray local copy can never be re-added.
 retrodiff.env
 
+# Python bytecode (tools/ has scripts now; a drained patch tried to commit a .pyc)
+__pycache__/
+*.pyc
+
 # OS noise
 .DS_Store
 
@@ -45,3 +49,7 @@ tools/shot_machine_menu.png
 tools/shot_mk1_menu.png
 tools/shot_mk2_menu.png
 tools/shot_teaching.png
+
+# Held patches the drain keeps so a blocked item can be re-applied without
+# paying for the model call again. Recoverable scratch, not a record.
+hq/data/patches/

@@ -7,13 +7,69 @@
   "tier_reason": "filed by hand",
   "ask": "HQ's sprite editor opens the entity catalogue's preview frame list rather than the sheet — Chicken lists four of its eight cells, the farmer four of sixteen — so a hand edit silently touches part of a sheet without saying so. The editor should open every cell of a sheet, with the animating frames only highlighted as what animates.",
   "first_action": "Read hq/static/sprite.js and hq/data/entities.json, and confirm the frame-count mismatch on Chicken and Farmer before changing anything.",
-  "state": "waiting_session",
+  "state": "for_review",
   "thread": "rin",
   "source": "chat",
   "source_message": "HQ's sprite editor opens the entity catalogue's preview frame list rather than the sheet — Chicken lists four of its eight cells, the farmer four of sixteen — so a hand edit silently touches part of a sheet without saying so. The editor should open every cell of a sheet, with the animating frames only highlighted as what animates.",
-  "result": "",
+  "result": "This attempt did not finish — it used all the turns it was given, mid-edit. What it had already changed did land, and the check below is what the chief of staff made of it.",
   "started": "",
-  "attempts": 0,
+  "attempts": 1,
   "created": "2026-09-03T18:10",
-  "created_ts": 1788484229.804272
+  "created_ts": 1788484229.804272,
+  "finished": "2026-09-04T09:46",
+  "done_by": {
+    "seat": "rin",
+    "model": "opus",
+    "lane": "drain"
+  },
+  "diff": {
+    "stat": "hq/static/sprite.js | 215 +++++++++++++++++++++++++++++++++++++++++++---------\n hq/static/style.css |  21 +++++\n 2 files changed, 199 insertions(+), 37 deletions(-)",
+    "files": [
+      "hq/static/sprite.js",
+      "hq/static/style.css"
+    ],
+    "applied": true,
+    "why_not": ""
+  },
+  "check": {
+    "verdict": "concerns",
+    "summary": "The editor now opens every cell of a sheet with the animating cells marked, saves only cells actually painted on, and I confirmed the Chicken and Farmer mismatch from the catalogue myself since no reply came back; watch the red \"not listed\" tag, which paints designed cells as if they were a problem.",
+    "findings": [
+      {
+        "what": "Cells the catalogue's preview list omits by design (Farmer's other 12 direction cells, Chicken's left-facing walk in cells 4–7, Crow's perched cell 8) are tagged \"not listed\" in red, so the map reads as broken on the very sheets the item was about",
+        "where": "hq/static/style.css .sp-cell.stray / hq/static/sprite.js cellTag",
+        "fix": "Use a neutral colour for unlisted-but-inked cells, and let entities.json carry a per-sheet cell inventory so the map can label them (\"Farmer, walking up, frame 2\") instead of \"row 2, column 1\""
+      },
+      {
+        "what": "No reply came back, so the required confirmation step has no record and the change was not exercised in a browser",
+        "where": "hq/static/sprite.js renderSpriteEditor",
+        "fix": "Open Chicken, Farmer, Sprinkler (shared objects sheet, straddled by the 16×32 cot) and Tilled Soil (64px cells on a 512×256 sheet) in HQ once before committing; the grid math checks out on paper for all four"
+      }
+    ],
+    "escalates": null,
+    "escalation_reason": null
+  },
+  "suites": {
+    "unit": {
+      "ok": true,
+      "tail": "  ✓ and a replay of a session in which she taught a robot lands on the same farm and the same robot\n  ✓ knowing the same tiles, in the same order — a lesson is training data (S-3/S-5)\n\n============================================================\nResults: 1983 PASSED, 0 FAILED\n============================================================"
+    },
+    "integration": {
+      "ok": true,
+      "tail": "  ✓ it watered every tile it was shown (3 of 3)\n  ✓ and nothing else — it has no opinions, which is the design\n\n============================================================\nResults: 528 PASSED, 0 FAILED\n============================================================"
+    }
+  },
+  "usage": {
+    "calls": 2,
+    "input": 488,
+    "output": 53559,
+    "cache_read": 6690169,
+    "cache_write": 162682,
+    "tokens": 6906898,
+    "turns": 72,
+    "seconds": 711.9,
+    "list_usd": 6.9294
+  },
+  "follow_ups": [],
+  "recommend": {}
 }

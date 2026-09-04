@@ -49,3 +49,21 @@
 - Picked: **(a) Stop, show it, wait**
 - In his words: Better bots will improvise around it, but this is the first programmable bot, so it has intentionally simple behavior.
 - Status: integrated 2026-09-03 — recorded as S-10 in docs/DECISION_LOG.md (a machine that cannot obey stops, shows it, and waits) and annotated on Q-85 in docs/DESIGNER_QUEUE.md. The status frame and reportable reason are outstanding build work.
+
+## Q-87 — ruled 2026-09-04T09:11:02
+- Picked: **(a) Paired sprites — the robot beside the thing it deals with**
+- Status: pending integration into docs/DESIGNER_QUEUE.md
+
+## Q-88 — ruled 2026-09-04T09:12:23
+- Picked: **(b) Earned by demonstration — use a mark-1 first**
+- In his words: Mark-1 release should be triggered, too.  How about after a player spends more than half their energy in one day watering?
+- Status: pending integration into docs/DESIGNER_QUEUE.md
+
+## Q-89 — ruled 2026-09-04T09:58:59
+- Picked: **(a) Itch comments — already on, say nothing new**
+- In his words: We should have our community manager review at regular intervals any player feedback.  RIght now, it consists of comments on the itch page. In the future, we might add a 'provide feedback' option in game, for example under the main pause menu or under a more detailed settings or about page.
+
+The email alias would be another place it checks and rounds up feedback.
+
+The feedback should be provided to me in an effective way.  At first, we're just glad to receive our first feedback at all, so it can just be shown to me with links.  Later, if the feedback becomes significant, we need to run statistics on the classes of feedback we received and think about when to escalate, when to reply to specific comments, and when to suppress that information from me (because it'll be a drain on productivity). But initially, since throughput is low, we don't need to focus on suppressing the right information.
+- Status: pending integration into docs/DESIGNER_QUEUE.md

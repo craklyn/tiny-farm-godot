@@ -7,7 +7,7 @@
   "tier_reason": "A design-doc note is a repo change, and it is one revert away if the framing is wrong.",
   "ask": "Add a game design note that we need to find and attach the right sound for planting.",
   "first_action": "Write the note into docs/design/10-audio-direction.md: planting is the one verb with no foley in the mixer at all, so it is silent for the player and therefore silent for every actor under the 2026-09-02 rule that a verb sounds the same whoever performs it. Say what the sound needs to do (design/10's starter table wants a pat-pat: soil closing over a seed, soft and low, no reward sting - the reward belongs to harvest), and hand the sourcing to Dmitri.",
-  "state": "for_review",
+  "state": "accepted",
   "thread": "claude",
   "source": "chat",
   "source_message": "Add a game design note that we need to find and attach the right sound. (I mean, assign to our technical writer to add the game design note)",
@@ -74,5 +74,14 @@
     "turns": 22,
     "seconds": 114.2,
     "list_usd": 1.8659
-  }
+  },
+  "closed": "2026-09-04T09:41",
+  "spawned": [
+    {
+      "id": "wc721830ca0e",
+      "title": "Source or record the plant sound",
+      "state": "waiting_session",
+      "owner": "dmitri"
+    }
+  ]
 }

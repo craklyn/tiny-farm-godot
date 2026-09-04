@@ -11,9 +11,59 @@
   "thread": "lena",
   "source": "chat",
   "source_message": "tools/test_visuals.tscn is named in CLAUDE.md's command list and is in no CI workflow and no runnable job in HQ. Work out whether it is a release gate or a developer's tool, and give it a home either way: a headless renderer in CI, or a button on the Engineering page that a person presses before a tag. A check our own docs claim and nothing runs is worse than one we never claimed.",
-  "result": "",
+  "result": "This attempt did not finish — it used all the turns it was given, mid-edit. What it had already changed did land, and the check below is what the chief of staff made of it.",
   "started": "",
-  "attempts": 0,
+  "attempts": 1,
   "created": "2026-09-03T18:10",
-  "created_ts": 1788484229.8259587
+  "created_ts": 1788484229.8259587,
+  "finished": "2026-09-04T09:46",
+  "done_by": {
+    "seat": "lena",
+    "model": "sonnet",
+    "lane": "drain"
+  },
+  "usage": {
+    "calls": 2,
+    "input": 544,
+    "output": 38636,
+    "cache_read": 5864140,
+    "cache_write": 181057,
+    "tokens": 6084377,
+    "turns": 83,
+    "seconds": 620.2,
+    "list_usd": 4.1121
+  },
+  "follow_ups": [],
+  "recommend": {},
+  "prior_checks": [
+    {
+      "verdict": "concerns",
+      "summary": "The visual check now has a home as a Run button on the Engineering page under a virtual display, with a regenerated baseline, but nothing in the diff or a reply shows that button was ever pressed and passed, and the release runbook still says a tag is the whole release.",
+      "findings": [
+        {
+          "what": "No evidence the new job runs green: the worker sent no reply, baseline.png was regenerated (49913 to 44916 bytes) but no run against it is recorded, and I could not execute godot in this sandbox to confirm",
+          "where": "tools/baseline.png, hq/server.py:571",
+          "fix": "Owner runs the visual job twice from the Engineering page on the desktop (or `xvfb-run -a godot --path . res://tools/test_visuals.tscn`) and confirms PASSED both times before this lands; two runs because xvfb's software renderer must be stable run-to-run for a pixel-exact diff to mean anything"
+        },
+        {
+          "what": "Runbook contradicts the code: DEPLOY.md says the tag command 'is the whole release', while the goal narrative and the server comment now say press Run on the Engineering page before cutting a tag",
+          "where": "docs/DEPLOY.md:123-126, hq/data/goals/sales.json path_to_green",
+          "fix": "Either add the pre-tag step to DEPLOY.md section 3, or better, drop the 'before a tag' framing entirely since the ruling is developer's tool not gate, and a remembered manual step before each release is the defect Daniel said to engineer away"
+        },
+        {
+          "what": "The reason for keeping it out of CI is asserted, not measured: 'a GitHub runner would fail commits on rendering drift' was never tried, and the code comment only hedges it as 'not guaranteed'",
+          "where": "hq/data/goals/sales.json path_to_green narrative, hq/server.py:561-569",
+          "fix": "Reword the narrative to say it is untested on a runner, or spend one CI run with xvfb-run to find out; a foreclosure claim should be tested before it settles a home"
+        },
+        {
+          "what": "CLAUDE.md still lists the bare command with 'needs a display' and does not point at the new home, so the next agent reading the command list will not know the button exists",
+          "where": "CLAUDE.md:49-50",
+          "fix": "One line: runs under xvfb from the Engineering page's Run button; the bare command is for a developer at a desk"
+        }
+      ],
+      "escalates": null,
+      "escalation_reason": null
+    }
+  ],
+  "requeued": "The visual-regression job it registered in HQ's server was lost to a bug in the drain's own recovery step, which reset a file instead of undoing one patch. The rest of its change landed. Re-queued to finish the job registration."
 }

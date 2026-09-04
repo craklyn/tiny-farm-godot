@@ -7,13 +7,96 @@
   "tier_reason": "filed by hand",
   "ask": "The store page describes the game as it was at v0.1.0 and promises 'no menus to learn and no words to read'. That promise is S-7's, and S-7 binds phase 1's core farming loop only — the arc runs to programmable bots that will need words by design, so the build gaining text is not a broken promise, it is the plan. Rewrite the page against what the game now does (the shop, the robots, the home, the clock — see the release manifest on the Sales page), and phrase the accessibility claim so it says what is actually true: a child who cannot read can farm.",
   "first_action": "Read ITCH_PAGE.md, S-7 in docs/DECISION_LOG.md, and the Sales page's release manifest, then draft the new copy.",
-  "state": "waiting_session",
+  "state": "for_review",
   "thread": "carmen",
   "source": "chat",
   "source_message": "The store page describes the game as it was at v0.1.0 and promises 'no menus to learn and no words to read'. That promise is S-7's, and S-7 binds phase 1's core farming loop only — the arc runs to programmable bots that will need words by design, so the build gaining text is not a broken promise, it is the plan. Rewrite the page against what the game now does (the shop, the robots, the home, the clock — see the release manifest on the Sales page), and phrase the accessibility claim so it says what is actually true: a child who cannot read can farm.",
-  "result": "",
+  "result": "The store page now describes the game as it actually plays, and the wordless promise says the thing that is true.\n\n**What the page says now.** It opens on a small farming game you play with one finger, walks through the loop — clear, till, plant, water, sleep — and then leads with what is new: you sell the harvest and buy the things that do the work instead, a sprinkler that waters its patch every morning and a robot you teach by pointing at the tiles you want done. The clock is there (six in the morning to four in the afternoon), and the bed that glows when the light goes. It closes on the arc: first machines, then defences, then robots you train yourself.\n\n**The accessibility claim.** \"A child who cannot read can farm.\" Walking, clearing, planting, watering, harvesting and shopping are pictures, coins and numbers; the one screen with words in it is the panel for setting a robot going, and the page says so plainly — an adult starts the robot, the farming stays wordless. That is exactly what the build does, and it stops the page making a promise about a game whose later phases are meant to need words.\n\n**Three things I found while checking the copy against the build, which you should know.**\n\nThe release manifest on the Sales page overstates three of its thirteen features, and I left all three off the page. The home is a debug screen with nothing in the live game leading to it — \"the farmhouse opens\" is not true for a player. The stuck-machine notice is a planned project, one step of five done. And the shop sells seeds and machines only, not \"tools, animals and machines\" — tools are picked up at the gates and no animal is for sale. The manifest is a good candidate list; it is not the build.\n\nThe page was offering an Android download that does not exist. The release workflow publishes the browser build and nothing else, and the only APK this studio makes is a debug build for one tablet — a signed release needs a keystore nobody has made. I removed the download claim and wrote down why, so it does not come back.\n\nYour Marketing page still quotes the sentence I just deleted. It opens with \"There are no menus to learn and no words to read\", cited to the live store page, under a verdict reading \"Nothing in the build asks a player to read\" — and that verdict comes from a goal that was removed some time ago, so the page is printing a green result from nothing. It was already wrong before today; my rewrite makes the quote wrong too. Filed for Rin.\n\n**The one call that is yours.** The page now describes the build in the repo, and what is live on itch is still the older release. Recommendation and items below.",
   "started": "",
-  "attempts": 0,
+  "attempts": 1,
   "created": "2026-09-03T18:10",
-  "created_ts": 1788484229.8092117
+  "created_ts": 1788484229.8092117,
+  "follow_ups": [
+    {
+      "title": "Stop a release tag when the store page is older than what it ships",
+      "owner": "lena",
+      "level": "task",
+      "tier": 1,
+      "first_action": "Add a step to .github/workflows/release.yml that fails the tag if ITCH_PAGE.md's last commit predates the newest commit behind any feature the release claims — the same comparison the marketing copy-drift measure already makes.",
+      "why": "Pasting the description is a manual step somebody has to remember, which is how the page fell a release behind in the first place."
+    },
+    {
+      "title": "The Marketing page quotes store copy that no longer exists and shows a verdict from a deleted goal",
+      "owner": "rin",
+      "level": "task",
+      "tier": 1,
+      "first_action": "In hq/static/pillars.js, replace instMarketing's hardcoded promise blockquote and its promises-hold lookup — that goal is gone, so it renders a green 'nothing asks a player to read' from an empty object — with the store-copy-describes-this-build and the-farming-loop-needs-no-reading goals that actually exist.",
+      "why": "It is the opening panel of a pillar page and it currently states something false on the CEO's dashboard."
+    },
+    {
+      "title": "Three features in the release manifest describe things a player cannot do",
+      "owner": "victor",
+      "level": "task",
+      "tier": 1,
+      "first_action": "In hq/data/releases.json, correct the shop line to seeds and machines, and mark the home and the stuck-machine notice as not reachable in play — the home screen has no door leading to it and the distress project is one step of five.",
+      "why": "Sales sells from that list, and three of its thirteen lines promise more than the build gives."
+    },
+    {
+      "title": "The store page has no screenshots",
+      "owner": "tessa",
+      "level": "task",
+      "tier": 2,
+      "first_action": "Capture three frames from the current build — the farm mid-play, the shop open, and a robot working a taught row — at the page's 1280x720 viewport.",
+      "why": "The page now leads with the shop and the robot and shows a player neither of them."
+    }
+  ],
+  "recommend": {
+    "question": "Put the new store page text live now, or hold it until the next release tag goes out?",
+    "answer": "Hold it, and ship the page and the build together on the tag.",
+    "why": "Anyone who clicks play today gets the older build, so publishing now promises a shop and a robot that are not there — the same failure as the old page, pointed the other way.",
+    "instead": "Publish now, on the grounds that the page is wrong either way and no date is set for the tag — which is defensible if the tag slips much further."
+  },
+  "finished": "2026-09-04T09:46",
+  "done_by": {
+    "seat": "carmen",
+    "model": "opus",
+    "lane": "drain"
+  },
+  "diff": {
+    "stat": "ITCH_PAGE.md                 | 64 ++++++++++++++++++++++++++++++++------------\n hq/data/goals/marketing.json |  7 +++--\n 2 files changed, 50 insertions(+), 21 deletions(-)",
+    "files": [
+      "ITCH_PAGE.md",
+      "hq/data/goals/marketing.json"
+    ],
+    "applied": true,
+    "why_not": ""
+  },
+  "check": {
+    "verdict": "concerns",
+    "summary": "nobody checked this — the check call did not come back",
+    "findings": [],
+    "escalates": null,
+    "escalation_reason": null
+  },
+  "suites": {
+    "unit": {
+      "ok": true,
+      "tail": "  ✓ and a replay of a session in which she taught a robot lands on the same farm and the same robot\n  ✓ knowing the same tiles, in the same order — a lesson is training data (S-3/S-5)\n\n============================================================\nResults: 1983 PASSED, 0 FAILED\n============================================================"
+    },
+    "integration": {
+      "ok": true,
+      "tail": "  ✓ it watered every tile it was shown (3 of 3)\n  ✓ and nothing else — it has no opinions, which is the design\n\n============================================================\nResults: 528 PASSED, 0 FAILED\n============================================================"
+    }
+  },
+  "usage": {
+    "calls": 2,
+    "input": 504,
+    "output": 25275,
+    "cache_read": 3712816,
+    "cache_write": 120911,
+    "tokens": 3859506,
+    "turns": 58,
+    "seconds": 381.0,
+    "list_usd": 4.0595
+  }
 }

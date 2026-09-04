@@ -17,7 +17,7 @@
       "owner": "carmen",
       "severity": "important",
       "unit": "features the page has never mentioned",
-      "why_it_matters": "This pillar owns the one surface outsiders can see, and it is the surface that goes stale fastest. The page still promises 'no menus to learn and no words to read' — which is a claim about phase 1's farming loop (S-7 binds the core loop, and only phase 1), made about a whole game whose later phases run to programmable bots and will need words by design. The build growing text is the design working; the copy not keeping up is the failure, and it is ours.",
+      "why_it_matters": "This pillar owns the one surface outsiders can see, and it is the surface that goes stale fastest — the build gains something a player would notice most weeks, and the page only changes when somebody rewrites it. The page used to promise 'no menus to learn and no words to read', which is a claim about phase 1's farming loop (S-7 binds the core loop, and only phase 1) made about a whole game whose later phases run to programmable bots and will need words by design. It now promises no reading to farm, which is what the build actually does. Keeping that true as the build moves is the standing job.",
       "measure": {
         "kind": "copy_drift",
         "release": "update-1",
@@ -30,10 +30,9 @@
         "amber_at": 3
       },
       "path_to_green": {
-        "narrative": "Rewrite the page against what the build now does, and say what the wordless promise actually covers — the farming loop a pre-reader can play — rather than implying the whole game has no text.",
+        "narrative": "Rewrite the page against what the build now does. Every feature listed here is a candidate, not a claim — check each one against what a player can actually reach before it goes on the page, and keep the wordless promise scoped to the farming loop rather than to the whole game.",
         "route": {
-          "kind": "work",
-          "id": "wadf051cd6c7"
+          "kind": "none"
         },
         "owner": "carmen"
       },

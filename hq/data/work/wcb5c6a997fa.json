@@ -1,0 +1,20 @@
+{
+  "id": "wcb5c6a997fa",
+  "title": "Keep the visual test honest when the world tint lands",
+  "level": "task",
+  "owner": "grace",
+  "tier": 1,
+  "tier_reason": "Adding a world colour grade changes every rendered pixel, and a red suite must mean something is broken, not that a baseline is stale.",
+  "ask": "Accepted “Bring the four looks back for the pick”. Adding a world colour grade changes every rendered pixel, and a red suite must mean something is broken, not that a baseline is stale.",
+  "first_action": "Pin the visual regression run to the shipping tint setting and refresh the baseline frame in the same change that adds the tint",
+  "state": "waiting_session",
+  "thread": "claude",
+  "source": "chat",
+  "source_message": "Accepted “Bring the four looks back for the pick”. Adding a world colour grade changes every rendered pixel, and a red suite must mean something is broken, not that a baseline is stale.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-04T09:42",
+  "created_ts": 1788540162.3586676,
+  "parent": "w3537cf842ae"
+}

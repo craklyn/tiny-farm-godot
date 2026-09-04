@@ -243,17 +243,18 @@
       "owner": "victor",
       "severity": "blocking",
       "unit": "",
-      "why_it_matters": "The runbook's first line, and the one nothing can automate: sound has to arrive after the first tap, and only a person in a browser can tell you it did.",
+      "why_it_matters": "The runbook's first line, and the one nothing can automate: sound has to arrive after the first tap, and only a person in a browser can tell you it did. So it is recorded rather than measured — your yes, against the tag being cut and the commit the build came from. It is spent when that tag goes out, and it lapses early if the game changes after you played it.",
       "measure": {
-        "kind": "unchecked",
-        "reason": "Playing a build is a human act. No file records that anyone did it, so the box in the runbook measures only whether somebody ticked a box.",
-        "would_need": "An attestation keyed to the tag being cut — your yes, dated, expiring with each release rather than standing forever."
+        "kind": "attestation",
+        "of": "web_build_played"
+      },
+      "compare": {
+        "direction": "must_be_true"
       },
       "path_to_green": {
-        "narrative": "Ten minutes in a browser on the exported build, before the tag.",
+        "narrative": "Ten minutes in a browser on the build the next tag would ship, then the button on this row.",
         "route": {
-          "kind": "work",
-          "id": "w3169ae0d4da"
+          "kind": "none"
         },
         "owner": "victor"
       },
@@ -270,14 +271,24 @@
       "owner": "lena",
       "severity": "important",
       "unit": "",
-      "why_it_matters": "The command is in the repo's own instructions. It is in no CI workflow and in no runnable job here — a check we claim and nothing runs is worse than one we never claimed.",
+      "why_it_matters": "The command is in the repo's own instructions. A check we claim and nothing runs is worse than one we never claimed — it has a home now: a job button on the Engineering page.",
       "measure": {
-        "kind": "unchecked",
-        "reason": "tools/test_visuals.tscn needs a display, so it is in no CI workflow and in no job on the Engineering page. Nothing has ever run it on a schedule.",
-        "would_need": "Either a headless renderer in CI, or a job button here that a person presses before a tag — and a ruling on which."
+        "kind": "job_state",
+        "job": "visual",
+        "field": "state",
+        "compare": {
+          "direction": "in_set",
+          "green_set": [
+            "green"
+          ],
+          "amber_set": [
+            "running",
+            "never_run"
+          ]
+        }
       },
       "path_to_green": {
-        "narrative": "Decide whether the visual check is a release gate or a developer's tool. If it is a gate it needs a home; today it has neither.",
+        "narrative": "It stays a developer's tool, not a CI gate: pixel-exact rendering only matches within one machine's driver stack, so a GitHub runner would fail commits on rendering drift, not real regressions. Press ▶ Run beside 'Visual regression' on the Engineering page before cutting a tag; amber until someone has.",
         "route": {
           "kind": "work",
           "id": "w9dc4e2aab6d"

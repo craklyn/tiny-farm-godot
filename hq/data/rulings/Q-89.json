@@ -1,0 +1,8 @@
+{
+  "id": "Q-89",
+  "option": "a",
+  "option_label": "Itch comments — already on, say nothing new",
+  "judgment": "We should have our community manager review at regular intervals any player feedback.  RIght now, it consists of comments on the itch page. In the future, we might add a 'provide feedback' option in game, for example under the main pause menu or under a more detailed settings or about page.\n\nThe email alias would be another place it checks and rounds up feedback.\n\nThe feedback should be provided to me in an effective way.  At first, we're just glad to receive our first feedback at all, so it can just be shown to me with links.  Later, if the feedback becomes significant, we need to run statistics on the classes of feedback we received and think about when to escalate, when to reply to specific comments, and when to suppress that information from me (because it'll be a drain on productivity). But initially, since throughput is low, we don't need to focus on suppressing the right information.",
+  "ruled_at": "2026-09-04T09:58:59",
+  "status": "pending_integration"
+}

@@ -33,6 +33,23 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
 - **Q-7** ~~Asset licensing audit~~ — ✅ ruled 2026-08-18: no audit now — current art is
   *placeholder*; full reskin once art style is aligned (Q-14 / `design/09`), sourced
   from openly released datasets or made original. Residual check: Q-7b below.
+- **Q-89 (Ruling, filed 2026-09-04)** **Where does a player's bug report go?** The itch
+  page ships no answer to the question every released game gets asked. Comments happen
+  to be on because that's itch's default (`ITCH_PAGE.md`), not because anyone chose them
+  as the support channel, and nothing else exists. Because there is no one else at the
+  studio to read whatever gets picked, every option below is a promise about your own
+  week. (a) **Itch comments** — already on, builds nothing, costs whatever time you
+  already spend on the itch dashboard plus an occasional public reply; a report sitting
+  unanswered is visible to the next visitor too, which is real pressure without being a
+  private inbox with its own clock. (b) **A dedicated email alias** — there's no studio
+  domain (the page runs under your personal `craklyn.itch.io/tiny-farm`), so this means a
+  fresh mailbox, ~15 minutes to set up, and then a new inbox to check every week forever,
+  including the weeks it's empty, because a posted address nobody checks is worse than no
+  address. (c) **Say plainly there's no channel yet** — zero cost ever, but a real bug then
+  has nowhere to go but a public review or comment nobody promised to read.
+  *Recommendation: (a) — it's already switched on, adds nothing to check, and the public
+  visibility does the reminding for you.* Card: `hq/data/decisions/Q-89.json`. Blocks the
+  next public tag.
 
 ## M1 — phase 1 detail (active now)
 
@@ -77,6 +94,12 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   2026-09-02, cut/normalized into `assets/audio/sfx/water_pour_01..03.wav`, cycling
   with pitch jitter in place of the synthesized water sound (CREDITS.md has the
   provenance). Remaining verbs can ride later sessions.
+  **Held again, 2026-09-04:** the designer wants the next session — plant chief
+  among the remaining verbs — to wait until he has picked a look in the Q-14
+  look session, so it is off the schedule until then. Nothing about the shipped
+  set changes and the playtest and first release stay unblocked, same as before.
+  License hygiene (CREDITS.md) and CC0 sourcing prep for the remaining verbs
+  keep moving in the meantime — only the designer's own recording is paused.
   Original entry: **(Creative → designer)** Record bespoke foley for the verb table. Raised
   2026-08-27 after a listening session: synthesis reliably handles percussive
   impacts and UI ticks (`till`, `ui_click`, `cluck`, `squawk` all passed) and
@@ -148,7 +171,12 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   overlay hues, animation budget, reskin spec implications).
   **Ruled 2026-09-02: not yet — a look session first.** Sign-off waits on rendered
   captures of the guide applied to the real game (the show-visual-drafts convention),
-  reviewed in a look session, then a re-ask.
+  reviewed in a look session, then a re-ask. **2026-09-04:** the art director closed the
+  list of looks that session tests — the game as it looks today, a quiet world with
+  bright touchables, cold light, and more detail per surface — in
+  `design/09-art-direction.md` §"The look session". A warmer, cosier grade was dropped
+  for being too close to today's look to be a direction. Rendering the four is the
+  remaining work before the re-ask.
 
 - **Q-43** ~~M1's exit gate depends on an unavailable playtester~~ — ✅ ruled 2026-08-28
   by the designer: **user-acceptance test satisfied at this stage.** The 4-year-old is

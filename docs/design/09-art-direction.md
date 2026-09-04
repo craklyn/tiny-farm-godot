@@ -57,6 +57,71 @@ described. Amendment proposals turn on once the guide is approved.
 
 ---
 
+## The look session — the four looks (2026-09-04)
+
+**What this settles:** which treatments get rendered for the designer to choose
+between, and which do not. Four captures, and the list is closed.
+
+The designer declined to sign the style guide below on 2026-09-02 and asked to see
+it working first — rendered captures of the real game, side by side, before he
+rules on palette personality and fidelity (Q-14). This section is the list those
+captures are made from. It replaces the strawman of four treatments circulated on
+2026-09-02: one is dropped, and the reason is written down here.
+
+**Staging, identical across all four.** The field at mid-morning on day three,
+random seed 12345 (the seed the visual-regression check already uses), crops at
+mixed growth, the player and one station in frame, same camera, same frame. A
+difference the designer sees has to be a difference of treatment and nothing else.
+
+**1. The game as it looks today.** No grading. Every other capture is judged
+against this one, and "today" is a legitimate answer to the session.
+
+**2. Quiet world, bright things you can touch.** The ambient world — grass, soil,
+fences — pulled toward grey-green and drained of saturation, so the crops, tools
+and stations hold every saturated pixel on screen. This is the contrast rule in
+the style guide below taken to its end. It is also the treatment that matters most
+to test: finding the tappable thing at arm's length on a tablet, without being
+told, is this game's hardest readability requirement (S-6/S-7), and this is the
+strongest version of the answer to it.
+
+**3. Cold light.** The same drained ambient, but the light turns cold — shadows
+shift blue-violet instead of the warmer green the guide specifies, and cyan and
+magenta, currently held back for the pest and repellent overlays, come forward
+into the machines and meters. This is what a near-future, lightly military
+identity looks like from across a room, in colour alone. Shape — hard angles,
+panel lines — is not tested here; shape follows a direction rather than the other
+way round.
+
+**4. More detail per surface.** More shading steps per material and softer edges,
+on the same 16-pixel grid. This is the only one of the four that cannot be graded
+out of the captured frame: it needs sheets regenerated through the image pipeline,
+which is why it costs money and the other three do not. It is also the only one
+that answers how detailed this game should be, which is half of what Q-14 asks.
+
+**What was dropped, and why.** The circulated strawman offered a warmer, cosier
+grade — richer saturation, deeper shadows — in the slot cold light now holds. It
+went for two reasons. It is barely a different picture: the game today is already
+the warm cosy end, so that capture reads as today turned up rather than as a
+direction, and a session with two near-identical captures in it spends half its
+screen twice. And it works against the contrast rule below — saturating the
+ambient world means the crops and tools stop being the most saturated pixels in
+it, which is the whole mechanism that makes them read as tappable. If the designer
+sees the four and wants warmer, that grade is an hour's work on a frame already
+captured.
+
+**One caution for whoever renders capture 1.** The style guide below was measured
+from a bought sprite set (Sprout Lands) that this repository no longer contains;
+the build ships generated sheets instead. The captures are of the real game, so
+the session does not depend on the guide being current — but "the guide's rules,
+applied" is no longer something anyone can render, and re-measuring the guide
+against the shipping sheets is filed as its own work. Related and separate: four
+of the sixteen colours named below read as absent from the build, and all four are
+in fact present one step darker in red and identical in green and blue. That is
+the asset pipeline shifting a channel by one, not the art drifting, and it is also
+filed.
+
+---
+
 ## Style guide v1 — extracted from current assets (Q-14 draft, 2026-08-18)
 
 *Measured from the sheets in `assets/sprites/sprout_lands/` (visual inspection +

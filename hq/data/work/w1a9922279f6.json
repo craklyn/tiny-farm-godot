@@ -7,13 +7,86 @@
   "tier_reason": "filed by hand",
   "ask": "The game starts wordless and grows text as it gets technical — the machine panel already has words and later phases will need more. There is no i18n at all: no tr(), no locale config, no translation files. Set up the plumbing now and route the handful of existing strings through it, so text written from here is translatable by default rather than something somebody has to go back and find. Do not add words to the farming loop while doing it: S-7 binds phase 1's core loop and that constraint is unchanged.",
   "first_action": "Read S-7 in docs/DECISION_LOG.md for what the constraint actually covers, then list every player-facing string in ui/ and where it is built.",
-  "state": "waiting_session",
+  "state": "for_review",
   "thread": "oskar",
   "source": "chat",
   "source_message": "The game starts wordless and grows text as it gets technical — the machine panel already has words and later phases will need more. There is no i18n at all: no tr(), no locale config, no translation files. Set up the plumbing now and route the handful of existing strings through it, so text written from here is translatable by default rather than something somebody has to go back and find. Do not add words to the farming loop while doing it: S-7 binds phase 1's core loop and that constraint is unchanged.",
-  "result": "",
+  "result": "This attempt did not finish — it used all the turns it was given, mid-edit. Nothing it left behind was applied.",
   "started": "",
-  "attempts": 0,
+  "attempts": 1,
   "created": "2026-09-03T18:10",
-  "created_ts": 1788484229.8203137
+  "created_ts": 1788484229.8203137,
+  "finished": "2026-09-04T09:46",
+  "done_by": {
+    "seat": "oskar",
+    "model": "sonnet",
+    "lane": "drain"
+  },
+  "diff": {
+    "stat": "locale/strings.csv            | 56 +++++++++++++++++++++++++++++++++++++++++++\n tools/capture_machines.gd.uid |  1 +\n ui/hud.gd                     | 12 +++++-----\n ui/title_screen.gd            | 26 ++++++++++----------\n 4 files changed, 76 insertions(+), 19 deletions(-)",
+    "files": [
+      "locale/strings.csv",
+      "tools/capture_machines.gd.uid",
+      "ui/hud.gd",
+      "ui/title_screen.gd"
+    ],
+    "applied": false,
+    "why_not": "the check said it should not land as it stands"
+  },
+  "check": {
+    "verdict": "fail",
+    "summary": "Oskar wrapped the title-screen and HUD labels in tr() and wrote a strings CSV, but Godot is never told to load it, the machine panel the item names is untouched, and no reply came back to say what was done or left.",
+    "findings": [
+      {
+        "what": "The CSV is inert: project.godot has no internationalization/locale/translations entry and locale/strings.csv has no .import, so every tr() call falls through to its key and nothing is actually translatable yet",
+        "where": "project.godot; locale/strings.csv",
+        "fix": "Import the CSV (godot --headless --import), register the generated strings.en.translation under internationalization/locale/translations in project.godot, and commit both"
+      },
+      {
+        "what": "The machine panel and pause/inventory menus still build strings raw even though their text was copied into the CSV — Resume, Return to Title, Show it what to water, Send it out, Out working…, Pick up, Chase birds off, Follow me, PAUSED, INVENTORY",
+        "where": "ui/menus.gd:28-29, :214-219, :293-345",
+        "fix": "Route those through tr(); it is the one panel the item called out as already having words"
+      },
+      {
+        "what": "Definition-layer names (crop, machine, species, tool) and milestone toasts are in the CSV but only the tool name is wrapped at display time; crops, machines, and milestones are still shown untranslated",
+        "where": "systems/machine_defs.gd:37-79; systems/game_state.gd:406; ui/menus.gd:339,352",
+        "fix": "Keep defs as keys (data layer stays logic-free) and wrap tr() where they are rendered"
+      },
+      {
+        "what": "CSV keys include leading-newline strings copied verbatim from layout hacks (\"\\nHarvested Crops:\", \"\\nClose\"), which will not survive a translator or a later spacing tweak",
+        "where": "locale/strings.csv:36-41",
+        "fix": "Key the bare phrase and put the spacing in the layout"
+      },
+      {
+        "what": "No design-doc trace: nothing in docs/ says text is keyed through tr() or where new strings go, so the next author has no way to know the rule exists",
+        "where": "docs/ARCHITECTURE.md; docs/DECISION_LOG.md",
+        "fix": "Add a short entry stating the convention (tr() at render, keys in locale/strings.csv, defs stay keys) alongside S-7"
+      },
+      {
+        "what": "Stray tools/capture_machines.gd.uid is an editor side-effect unrelated to the item",
+        "where": "tools/capture_machines.gd.uid",
+        "fix": "Drop it from this change or commit it separately as housekeeping"
+      },
+      {
+        "what": "No reply came back, and I could not run the suites from this seat, so nothing here has been verified green — the edits are label-only and low risk, but that is an inference, not a result",
+        "where": "(reply)",
+        "fix": "Owner re-runs both suites and reports what was routed and what was deliberately left, before this lands"
+      }
+    ],
+    "escalates": null,
+    "escalation_reason": null
+  },
+  "usage": {
+    "calls": 2,
+    "input": 290,
+    "output": 35493,
+    "cache_read": 6569178,
+    "cache_write": 149497,
+    "tokens": 6754458,
+    "turns": 70,
+    "seconds": 513.7,
+    "list_usd": 2.918
+  },
+  "follow_ups": [],
+  "recommend": {}
 }

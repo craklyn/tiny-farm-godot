@@ -1,0 +1,20 @@
+{
+  "id": "w1c5c5980f45",
+  "title": "Make the world's colour a real switch in the game",
+  "level": "story",
+  "owner": "jade",
+  "tier": 1,
+  "tier_reason": "The comparison sheet must not be able to show a look the engine cannot produce, and today the game has no colour switch at all.",
+  "ask": "Accepted “Bring the four looks back for the pick”. The comparison sheet must not be able to show a look the engine cannot produce, and today the game has no colour switch at all.",
+  "first_action": "Add a world-tint axis to systems/look_lab.gd with warm and cool settings applied as a colour grade over the world layer only (HUD untouched), plus one arm in tools/capture_looks.gd so the rig shoots it at the station moment",
+  "state": "waiting_session",
+  "thread": "claude",
+  "source": "chat",
+  "source_message": "Accepted “Bring the four looks back for the pick”. The comparison sheet must not be able to show a look the engine cannot produce, and today the game has no colour switch at all.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-04T09:42",
+  "created_ts": 1788540162.3569877,
+  "parent": "w3537cf842ae"
+}

@@ -209,8 +209,18 @@ function routeControl(g) {
   const p2g = g.path_to_green || {};
   const route = p2g.route || {};
   if (g.state === "green") return "";
+  // A gate that waits on him doing something in the real world gets the control
+  // that records it, not a link to somebody else's plan.
+  if ((g.reading || {}).can_attest) {
+    const r = g.reading;
+    return `<button class="gbtn g-attest" data-of="${esc(r.attest_of)}"
+      data-confirm="${esc(r.attest_confirm || "")}"
+      data-claim="${esc(r.attest_claim || "")}">${esc(r.attest_label)}</button>`;
+  }
   if (g.state === "attested" && !(g.reading || {}).expired) {
-    const d = (g.reading || {}).attested_days;
+    const r = g.reading || {};
+    if (r.expires_when) return `<span class="g-until">${esc(r.expires_when)}</span>`;
+    const d = r.attested_days;
     const exp = (g.measure || {}).expires_days;
     return `<span class="g-until">${exp && d != null ? `re-check in ${Math.max(0, exp - d)} days` : "no expiry set"}</span>`;
   }
@@ -366,6 +376,43 @@ function wireFileButtons() {
   });
 }
 
+/* Recording that he did something in the real world. The first press only arms
+   the button — it names the claim in full and waits — because one stray click
+   would otherwise put a sentence on the wall that nobody can check. The server,
+   not the page, decides which tag and which commit the record is against. */
+function wireAttestButtons() {
+  $view.querySelectorAll("button.g-attest").forEach(btn => {
+    const was = btn.textContent, claim = btn.dataset.claim;
+    let armed = false;
+    btn.addEventListener("click", async () => {
+      if (!armed && btn.dataset.confirm) {
+        armed = true;
+        btn.classList.add("g-armed");
+        btn.textContent = btn.dataset.confirm;
+        btn.title = claim;
+        return;
+      }
+      btn.disabled = true;
+      btn.textContent = "Recording…";
+      try {
+        const r = await fetch("/api/attest", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ of: btn.dataset.of }),
+        });
+        const j = await r.json();
+        if (j.error) throw new Error(j.error);
+        btn.replaceWith(h(`<span class="g-filed">✓ recorded against ${esc(j.record.for_tag)}</span>`));
+      } catch (e) {
+        armed = false;
+        btn.disabled = false;
+        btn.classList.remove("g-armed");
+        btn.textContent = was;
+        btn.title = "Could not record it: " + e.message;
+      }
+    });
+  });
+}
+
 function foldSection(title, summary, body, open) {
   return `<details class="foldsec"${open ? " open" : ""}>
     <summary><b>${esc(title)}</b>${summary ? ` <span class="small muted">— ${esc(summary)}</span>` : ""}</summary>
@@ -413,6 +460,7 @@ async function renderPillar(pid) {
       </div>`).join(""))}`));
 
   wireFileButtons();
+  wireAttestButtons();
 
   const inst = document.getElementById("pillar-instrument");
   const ctx = document.getElementById("pillar-context");
@@ -477,7 +525,7 @@ async function instEngineering(root, below, sig, g) {
     return `<div class="inv-row">
       <i class="dot ${(GOAL_META[state] || GOAL_META.green).dcls}"></i>
       <span>${esc(m.source_human || "")}</span>
-      <span class="small muted">${m.unchecked ? "no checker exists — " + esc(m.would_need || "") : m.error ? esc(m.error) : (m.hits ? m.hits + " hits" : "grepped on every page load")}</span>
+      <span class="small muted">${m.unchecked ? "no checker exists — " + esc(m.would_need || "") : m.error ? esc(m.error) : (m.hits ? m.hits + " hits" : esc(m.checked_human || "grepped on every page load"))}</span>
     </div>`;
   }).join("");
 

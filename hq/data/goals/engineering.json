@@ -302,10 +302,13 @@
             }
           },
           {
-            "kind": "unchecked",
-            "label": "one gateway for every world mutation",
-            "reason": "Nothing proves every world mutation goes through apply_action. A renderer writing straight into the grid would compile and pass both suites.",
-            "would_need": "A static check over world/, entities/ and player/ for assignments into SimWorld's fields, run as a fifth CI job."
+            "kind": "gateway_rule",
+            "label": "one gateway for every world change",
+            "checker": "tools/check_gateway.py",
+            "field": "bool",
+            "compare": {
+              "direction": "must_be_true"
+            }
           }
         ]
       },
@@ -313,10 +316,9 @@
         "direction": "must_be_true"
       },
       "path_to_green": {
-        "narrative": "Two of the three rules are grepped on every page load and hold today. The third has no checker at all; writing one is about half a day.",
+        "narrative": "Run `python3 tools/check_gateway.py` — a broken rule names the line that broke it, and what the line should have done instead.",
         "route": {
-          "kind": "work",
-          "id": "wc1886486f14"
+          "kind": "none"
         },
         "owner": "elena"
       },

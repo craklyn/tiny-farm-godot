@@ -7,13 +7,56 @@
   "tier_reason": "filed by hand",
   "ask": "Add a guard step to .github/workflows/release.yml that fails the release before the export if ui/hud.gd's PLAYTEST_NOTES is still true. docs/DEPLOY.md's pre-release checklist names this as a manual box; it is a one-line grep and it is the only item on that list that can be enforced mechanically. Do not change the constant itself — it is deliberately on during playtesting, and the point is that the pipeline catches it at tag time rather than that it is off today. While you are there, check whether the credits-screen item can be guarded the same way.",
   "first_action": "Read docs/DEPLOY.md's 'Before any release' section and .github/workflows/release.yml, then add the guard step ahead of the export.",
-  "state": "waiting_session",
+  "state": "for_review",
   "thread": "lena",
   "source": "chat",
   "source_message": "Add a guard step to .github/workflows/release.yml that fails the release before the export if ui/hud.gd's PLAYTEST_NOTES is still true. docs/DEPLOY.md's pre-release checklist names this as a manual box; it is a one-line grep and it is the only item on that list that can be enforced mechanically. Do not change the constant itself — it is deliberately on during playtesting, and the point is that the pipeline catches it at tag time rather than that it is off today. While you are there, check whether the credits-screen item can be guarded the same way.",
-  "result": "",
+  "result": "Everything the item asked for is already in place. `.github/workflows/release.yml` has a `guard` job that runs first — no dependencies, checkout only — with two steps: one greps `ui/hud.gd` for `const PLAYTEST_NOTES := true` and fails the tag with a message pointing at the runbook if it's still on, and one greps `ui/title_screen.gd` for the CC BY 4.0 attribution line and fails if it's missing from the credits screen. `tests` depends on `guard`, and `publish` depends on `tests`, so a bad tag fails in seconds, before the fifteen-minute suite or the export ever runs — the placement my own earlier review flagged as necessary. The constant itself is untouched, still `true` for playtest builds. `docs/DEPLOY.md`'s \"Before any release\" checklist already documents both boxes as machine-enforced, with the honest caveat that the credits guard proves the text exists in source, not that a human opened the screen.\n\nI checked the actual files, not just the workflow: `PLAYTEST_NOTES` is `true` in `ui/hud.gd` today (correct, playtesting is live) and the CC BY line is present in `ui/title_screen.gd`'s `CREDITS_TEXT`, so both guards would pass a tag cut right now and both would correctly fail one that regressed. Nothing to change — this card was already executed and landed on main in commit `93f9d97`.\n\nThe cot-look box on that same checklist (T-27 box 5, three treatments shipping at once) is the one item left that still needs a person: it's a design ruling, not a grep. That's Milo's or Daniel's call, not mine to guard.\n\nNothing changed in my worktree — working tree is clean, nothing to commit or push. Safe to archive; there was no work here to lose.",
   "started": "",
-  "attempts": 0,
+  "attempts": 1,
   "created": "2026-09-03T10:49",
-  "created_ts": 1788457794.6928813
+  "created_ts": 1788457794.6928813,
+  "follow_ups": [],
+  "recommend": {},
+  "finished": "2026-09-04T09:46",
+  "done_by": {
+    "seat": "lena",
+    "model": "sonnet",
+    "lane": "drain"
+  },
+  "diff": {
+    "stat": "",
+    "files": [],
+    "applied": false,
+    "why_not": "nothing changed"
+  },
+  "check": {
+    "verdict": "pass",
+    "summary": "Nothing landed because nothing needed to: the guard job (playtest readout off, CC BY line present) is already on main from commit 93f9d97, runs before tests and export, and both greps match today's files; the only thing to watch is that a card for already-finished work got queued, so the drain should check for landed work before dispatching.",
+    "findings": [
+      {
+        "what": "The card duplicated work already on main; the worker spent a run confirming it rather than building it",
+        "where": "hq/data/work/ (this item) vs .github/workflows/release.yml guard job, commit 93f9d97",
+        "fix": "Close the card as already-done and have the drain's intake check whether the ask is already satisfied on main before dispatching a worker"
+      },
+      {
+        "what": "'Fails in seconds' is inferred from job structure (checkout-only guard, no deps), not measured on a real tag run",
+        "where": "reply text; .github/workflows/release.yml guard job",
+        "fix": "Acceptable as stated since the structure supports it, but the next tagged release should be the proof; no action now"
+      }
+    ],
+    "escalates": null,
+    "escalation_reason": null
+  },
+  "usage": {
+    "calls": 2,
+    "input": 178,
+    "output": 3805,
+    "cache_read": 351108,
+    "cache_write": 58423,
+    "tokens": 413514,
+    "turns": 11,
+    "seconds": 57.6,
+    "list_usd": 0.8495
+  }
 }

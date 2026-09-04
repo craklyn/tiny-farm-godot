@@ -851,9 +851,23 @@ def api_post(path, payload):
         item["state"] = "waiting_session"
         item["approved"] = _now_iso()
     elif path == "/api/work/redo":
-        item["state"] = "doing"
+        # Back to whichever lane can actually carry it out. Tier 0 goes to the
+        # read-only worker; anything that changes the repo goes back to the
+        # build-session queue, because the tier-0 worker cannot write and would
+        # simply hand back a description of the work a second time.
+        item["state"] = "doing" if item.get("tier") == 0 else "waiting_session"
         item["started"] = ""
         item["result"] = ""
+        # A second attempt is only a second attempt if it knows why the first
+        # was sent back. The check that held it is kept and given to the worker
+        # as part of the brief; the diff and the suite results are not, because
+        # they described a change that no longer exists.
+        prior = item.pop("check", None)
+        if prior:
+            item.setdefault("prior_checks", []).append(prior)
+        item.pop("diff", None)
+        item.pop("suites", None)
+        item.pop("error", None)
     else:
         return {"error": "not found"}
     return save_item(item)

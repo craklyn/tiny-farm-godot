@@ -7,13 +7,92 @@
   "tier_reason": "filed by hand",
   "ask": "The release manifest lists 'A stuck machine tells you it is stuck' (evidence S-10) as still being built — 1 of 5 steps done on hq/data/projects/machine-distress-state.json. When that project finishes, verify the manifest reads it as ready; if the release ships without it, take it off hq/data/releases.json's feature list rather than shipping a claim. A release plan whose contents cannot be verified is a wish.",
   "first_action": "Open #/pillar/sales, find the feature marked not built, and trace its evidence id through git log.",
-  "state": "waiting_session",
+  "state": "for_review",
   "thread": "victor",
   "source": "chat",
   "source_message": "A feature on hq/data/releases.json's manifest cannot be traced to a commit or to a project carrying it. Work out whether it was built under a different name, is genuinely not built, or should come off the release, and fix the record either way. A release plan whose contents cannot be verified is a wish.",
-  "result": "",
+  "result": "Player Update 1 was promising thirteen things and could deliver twelve. I traced every one of them through the history, not just the flagged one.\n\n**The stuck machine was never real.** The manifest showed it as \"1 of 5 steps done,\" which sounds like a fifth of the way built. The one step marked done is *recording the decision in the log* — no code exists. And the single commit in the history that names its evidence id is an HQ dashboard change that mentions the ruling in a footnote. Nothing about a robot showing distress has been written.\n\nNothing was holding the release for it either: it was never on the critical path, and the release closes on the onboarding gate and the green-tester session, neither of which touches it. So Update 1 would have gone out with a feature list claiming a robot that tells you it is stuck. I took it off. The design still stands and the project still exists — it now rides the next content milestone instead of a release that was never waiting for it, and I wrote the reason into the project record so nobody re-adds it by accident.\n\n**The other twelve check out.** Each traces to a commit that actually built it — the shop, the mark-1 robot, the home, the clock, the cot, the pips, the water sound, the wet soil, the field, the icon, the clearing costs, the bedtime prompt. Sales can say all twelve out loud.\n\n**The check you asked for failed, so I fixed it.** You asked me to confirm the manifest would read the feature as ready once its project finished. It would not have. Completion was read from a hand-set status label rather than from the plan, which was wrong in both directions: ticking the final step left the feature reading \"still being built\" until someone remembered to flip a second field, and a project labelled done with four steps outstanding would have handed the wall \"ready to go out\" on work nobody had done. The plan now decides. Ticking the last step is the only act required, and an unfinished plan can no longer be overridden by a label.\n\nYour Sales goal — every claim traces to the build — now reads 12 of 12, at target. It got there by dropping a promise, not by building anything.\n\n**One thing worth knowing.** The manifest infers \"built\" by grepping commit messages for an evidence id, and a commit that *mentions* a decision looks identical to one that *builds* it. The stuck machine only got caught because it named a project, and it was the sole feature on the list that did. The other twelve are real, but nothing keeps them that way.",
   "started": "",
-  "attempts": 0,
+  "attempts": 1,
   "created": "2026-09-03T18:10",
-  "created_ts": 1788484229.8222742
+  "created_ts": 1788484229.8222742,
+  "follow_ups": [
+    {
+      "title": "Every release feature names the project that carries it",
+      "owner": "sofia",
+      "level": "task",
+      "tier": 1,
+      "first_action": "Add a project id to each of the twelve features in update-1's list in hq/data/releases.json, so the manifest checks a real work record instead of trusting a commit-message match.",
+      "why": "The one feature that named a project was the only one whose false claim got caught; the rest rest on a grep that cannot tell a mention from a build."
+    },
+    {
+      "title": "Write the next milestone's feature list from the projects riding it",
+      "owner": "sofia",
+      "level": "task",
+      "tier": 1,
+      "first_action": "Once M3's scope is ruled, add a features list to the m3 entry in hq/data/releases.json and include the stuck machine, which now rides that train with no player-facing claim attached to it.",
+      "why": "Taking the feature off Update 1 leaves it with no release declaring it, so it drops off what Sales sells unless the next train picks it up."
+    }
+  ],
+  "recommend": {
+    "question": "Does Update 1 wait for the robot that tells you it is stuck, or go out with twelve features?",
+    "answer": "Go out with twelve — I have already taken it off the list.",
+    "why": "Nothing of it is built and nothing was holding the release for it, so waiting would delay a finished update for unstarted work.",
+    "instead": "You could make it release-critical and hold the tag until a robot can show it is stuck, which puts the delegation arc's first failure state in players' hands at the same moment as the robots themselves."
+  },
+  "finished": "2026-09-04T09:46",
+  "done_by": {
+    "seat": "victor",
+    "model": "opus",
+    "lane": "drain"
+  },
+  "diff": {
+    "stat": "hq/data/projects/machine-distress-state.json |  4 ++--\n hq/data/releases.json                        |  9 +--------\n hq/server.py                                 | 23 +++++++++++++++++------\n 3 files changed, 20 insertions(+), 16 deletions(-)",
+    "files": [
+      "hq/data/projects/machine-distress-state.json",
+      "hq/data/releases.json",
+      "hq/server.py"
+    ],
+    "applied": true,
+    "why_not": ""
+  },
+  "check": {
+    "verdict": "concerns",
+    "summary": "The stuck-machine claim is off Player Update 1, the manifest now reads completion from the plan instead of a hand-set label, and every factual claim in the reply checks out against git; the only thing to watch is that the new completion logic has no test and no live feature exercises it now.",
+    "findings": [
+      {
+        "what": "The rewritten completion check is verified by reading only: no feature in releases.json names a project any more, so nothing on the wall exercises the new path, and hq/server.py has no test suite to pin it.",
+        "where": "hq/server.py:1796",
+        "fix": "When the first follow-up lands (features naming projects), confirm the Sales wall shows a fully ticked plan as ready and a partly ticked one as in progress; until then treat the change as reviewed, not proven."
+      },
+      {
+        "what": "The moved feature now belongs to a release with no features list, so 'A stuck machine tells you it is stuck' appears on no player-facing list anywhere.",
+        "where": "hq/data/releases.json:87",
+        "fix": "Already filed as the second follow-up for Sofia; nothing else needed unless M3 scoping slips."
+      }
+    ],
+    "escalates": null,
+    "escalation_reason": null
+  },
+  "suites": {
+    "unit": {
+      "ok": true,
+      "tail": "  ✓ and a replay of a session in which she taught a robot lands on the same farm and the same robot\n  ✓ knowing the same tiles, in the same order — a lesson is training data (S-3/S-5)\n\n============================================================\nResults: 1983 PASSED, 0 FAILED\n============================================================"
+    },
+    "integration": {
+      "ok": true,
+      "tail": "  ✓ it watered every tile it was shown (3 of 3)\n  ✓ and nothing else — it has no opinions, which is the design\n\n============================================================\nResults: 528 PASSED, 0 FAILED\n============================================================"
+    }
+  },
+  "usage": {
+    "calls": 2,
+    "input": 338,
+    "output": 29077,
+    "cache_read": 2302744,
+    "cache_write": 105036,
+    "tokens": 2437195,
+    "turns": 56,
+    "seconds": 425.6,
+    "list_usd": 3.3962
+  }
 }

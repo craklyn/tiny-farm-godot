@@ -144,6 +144,9 @@ func _ready() -> void:
 	actors_node.name = "Entities"
 	add_child(actors_node)
 	if generate_on_ready:
+		# gateway-ok: making a world is not changing one — there is nothing here
+		# yet for an action to have acted on, and a replay regenerates from the
+		# same seed rather than replaying this.
 		sim.generate()
 	sync_actors()
 
@@ -404,6 +407,9 @@ func advance_sim(ticks: int, gs = null) -> void:
 	if ticks <= 0:
 		sync_actors()
 		return
+	# gateway-ok: this moves the clock, and every decision a brain reaches inside
+	# it is an Action that went through the gateway — which is what the loop body
+	# is recording.
 	for taken in sim.advance_ticks(ticks, gs):
 		# **The dispatch tick, not the clock's** — this loop runs after the whole
 		# advance has finished, so `sim.clock.tick` is already up to four ticks
@@ -454,6 +460,9 @@ func apply_action(action: Dictionary, gs = null) -> Dictionary:
 # a replay could reproduce, and writing one would fail comparisons for a reason
 # that says nothing about the farm.
 func note_player_walk(event: String, dir: String, at: Vector2i) -> void:
+	# gateway-ok: the one sanctioned write of a position from presentation (M2.5
+	# WI-6, and `docs/ARCHITECTURE.md` names it) — recorded on the next line, so a
+	# replay applies the crossing back rather than losing it.
 	sim.set_actor_pos(SimWorld.ACTOR_PLAYER, at, dir)
 	if replay != null:
 		replay.record_walk(event, dir, at, sim.clock.tick)
@@ -876,12 +885,20 @@ func is_walkable(tx: int, ty: int) -> bool:
 	return sim.is_walkable(tx, ty)
 
 
+# The three below are how a test or a capture tool builds a farm to look at: put
+# a ripe crop here, wet that tile, turn the day. **No game code calls any of
+# them** — the player's tap becomes a verb and reaches the world through
+# `apply_action` above. They stand outside the gateway on purpose and are marked
+# as such, so a renderer that starts calling one is a violation the checker
+# reports rather than a quiet hole in the rule (`tools/check_gateway.py`).
 func set_tile_state(tx: int, ty: int, new_state: String, crop_type: String = "") -> void:
+	# gateway-ok: scenario setup for tests and capture tools; no game code calls it.
 	sim.set_tile_state(tx, ty, new_state, crop_type)
 	queue_redraw()
 
 
 func water_tile(tx: int, ty: int) -> void:
+	# gateway-ok: scenario setup for tests and capture tools; no game code calls it.
 	sim.water_tile(tx, ty)
 	queue_redraw()
 
@@ -895,6 +912,8 @@ func advance_day() -> void:
 	# turn: machines fire at the day turn and they act through `apply_action`,
 	# which needs it (M2.5 WI-10).
 	var pre_wet := _wet_snapshot()
+	# gateway-ok: scenario setup for tests and capture tools; the played game
+	# turns the day inside the `sleep` verb and never arrives here.
 	sim.advance_day(weather, state)
 	_soak_new_wetness(pre_wet)
 	_notify_day_turn()

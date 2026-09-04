@@ -7,13 +7,54 @@
   "tier_reason": "filed by hand",
   "ask": "A storefront the game is live on is missing something it needs to publish — a preset, a pipeline step or a credential. Find which and restore it. Being live somewhere we cannot push to is worse than not being there: it reads as a channel and is not one.",
   "first_action": "Open #/pillar/sales, expand the storefront ladder, and read which requirement is marked missing.",
-  "state": "waiting_session",
+  "state": "for_review",
   "thread": "lena",
   "source": "chat",
   "source_message": "A storefront the game is live on is missing something it needs to publish — a preset, a pipeline step or a credential. Find which and restore it. Being live somewhere we cannot push to is worse than not being there: it reads as a channel and is not one.",
-  "result": "",
+  "result": "Good — that's the pre-existing production HQ server (running since yesterday from the main checkout), not something I started. My own attempt failed to bind and exited cleanly. Nothing left running that I need to clean up.\n\nNow, the final report.\n\n---\n\nI checked itch.io — the only storefront we're live on — end to end: the web export preset, the tag-triggered publish pipeline, and the publishing credential are all present and correctly wired, the credential is actually registered on GitHub, and the last real release (Aug 29) pushed successfully. I went further than the dashboard's checks and loaded the actual live page in a real browser: the game boots, shows the title screen, and \"Start Farming\" works right now. There is nothing missing here to restore.\n\nWhat happened is that the storefront ladder used to conflate \"we can't read store analytics\" with \"we can't publish,\" so a fully working storefront read as broken — but that was already fixed yesterday, before this card was filed. The premise of the card no longer holds.\n\nOne real bug I did find while checking, unrelated to itch itself: the dashboard's own broken-reference checker runs before it loads the current work items, so right now it's falsely reporting every goal-to-work-item link across every pillar as pointing at something that \"does not exist\" — including this very card. It's a one-line ordering bug in `hq/server.py`, not a data problem, and it makes the dashboard's self-check untrustworthy until it's fixed. I've filed that below for the chief of staff, since HQ itself is that seat's build.\n\nSmall, separate thing worth your attention next time you're in the itch.io dashboard: the store page lists Android as a supported platform and shows \"Download: currently unavailable,\" even though we've only ever pushed a browser build there. Doesn't affect anyone playing the game — just page hygiene, and it needs your itch.io login to fix, not something I can reach from here.\n\nNothing was changed in the repo — there was nothing to fix. Nothing to commit or push; safe to archive.",
   "started": "",
-  "attempts": 0,
+  "attempts": 1,
   "created": "2026-09-03T18:10",
-  "created_ts": 1788484229.8271189
+  "created_ts": 1788484229.8271189,
+  "follow_ups": [
+    {
+      "title": "Fix HQ's broken-reference checker running before work items load",
+      "owner": "claude",
+      "level": "task",
+      "tier": 1,
+      "first_action": "In hq/server.py's main(), call work.bind(sys.modules[__name__]) before check_consistency() (currently check_consistency() runs first, so work.items() sees an unbound WORK path and returns empty, making every goal's work-item route falsely report as missing).",
+      "why": "The dashboard's own consistency check is currently wrong for every pillar, which defeats its purpose of surfacing real broken references."
+    }
+  ],
+  "recommend": {},
+  "finished": "2026-09-04T09:46",
+  "done_by": {
+    "seat": "lena",
+    "model": "sonnet",
+    "lane": "drain"
+  },
+  "diff": {
+    "stat": "",
+    "files": [],
+    "applied": false,
+    "why_not": "nothing changed"
+  },
+  "check": {
+    "verdict": "concerns",
+    "summary": "nobody checked this — the check call did not come back",
+    "findings": [],
+    "escalates": null,
+    "escalation_reason": null
+  },
+  "usage": {
+    "calls": 1,
+    "input": 114,
+    "output": 30169,
+    "cache_read": 5334657,
+    "cache_write": 105849,
+    "tokens": 5470789,
+    "turns": 58,
+    "seconds": 427.6,
+    "list_usd": 1.7951
+  }
 }

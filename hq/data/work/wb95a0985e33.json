@@ -11,9 +11,76 @@
   "thread": "carmen",
   "source": "chat",
   "source_message": "Marketing is dormant by standing instruction and nothing anywhere says what would turn it back on, so it is off by inertia rather than by decision. Prep a decision card the CEO can rule on in a minute: two or three concrete triggers with a recommendation — a date, a public build, a number of players, whatever is actually checkable from here — and what each one would commit the studio to doing once it fires. Do not ask him an open question; give him options.",
-  "result": "",
+  "result": "Done. Here's what I did and what I found.\n\n**The card.** `hq/data/decisions/Q-89.json` — \"What turns marketing back on?\" — with three triggers, each one something we can check ourselves and each one saying what the studio does the week it fires:\n\n- **The next public release turns it on** (recommended). The day the second build goes out — the one with the robot you teach — the store page gets rewritten against the build, we cut one capture of a robot watering for Instagram and TikTok, and your itch.io account key goes in so the release has a readable audience number. No press, no creators, no spend. Thirty days later you get one page of numbers that decides whether the rest of the team wakes.\n- **A number of players turns it on.** 100 visitors to the store page in any seven days with nothing pushed by us.\n- **The delegation half of the game turns it on.** A new player playing through to the end of phase 2 — then a trailer, a press build, creator keys, weekly posting.\n\nI filed the matching entry in `docs/DESIGNER_QUEUE.md` so the card has a home in the docs, and the dashboard's own reference check comes back clean.\n\n**Why I recommend the release, not the player count.** Waiting for an audience to arrive before doing the work that makes an audience is a circle. A free prototype nobody talks about gets found mostly by people already browsing the site, so the 100-visitor trigger has a real chance of never firing — and marketing then stays off for a reason that reads like a decision but isn't one. The release trigger is the only one of the three we control.\n\n**Two things you should know, separate from the ruling.**\n\nThe store page currently tells people the game has \"no menus to learn and no words to read.\" That stopped being true when robots arrived with a menu of written commands. It's the only description of this game strangers can read, and it goes out in front of the next release either way — so I'd fix it whichever trigger you pick.\n\nAnd nobody in this studio can tell you whether one person has ever opened the game. It has been public since 28 August. The fix is your itch.io account key in the project's credentials file; the reader is already built and waiting for it.",
   "started": "",
-  "attempts": 0,
+  "attempts": 1,
   "created": "2026-09-03T18:10",
-  "created_ts": 1788484229.8107662
+  "created_ts": 1788484229.8107662,
+  "follow_ups": [
+    {
+      "title": "Record the marketing wake trigger where it is read",
+      "owner": "claude",
+      "level": "task",
+      "tier": 1,
+      "first_action": "Write the chosen trigger into the marketing pillar's wake_trigger field in hq/data/pillars.json, strike Q-89 in docs/DESIGNER_QUEUE.md with the date, and annotate D-5 in docs/DECISION_LOG.md.",
+      "why": "The blank that made marketing dormant by inertia is a field on the dashboard; the ruling only counts once it is written there."
+    },
+    {
+      "title": "Rewrite the store page against the build we are about to ship",
+      "owner": "carmen",
+      "level": "story",
+      "tier": 2,
+      "first_action": "Rewrite ITCH_PAGE.md's description and controls against the current build — the shop, the robots you teach, the home — and replace the blanket no-words promise with what it actually covers: the farming loop a child who cannot read can play.",
+      "why": "The page is the only description strangers can read and it currently promises something the build no longer does, whichever trigger is chosen."
+    },
+    {
+      "title": "Make it possible to see whether anyone is playing",
+      "owner": "amara",
+      "level": "task",
+      "tier": 2,
+      "first_action": "Get the itch.io API key from Daniel, put it in the project .env alongside the other two credentials, and run the daily reader once to confirm it returns a visitor count.",
+      "why": "Every trigger and every review after it is a number nobody can currently read."
+    },
+    {
+      "title": "Cut the robot-at-work clip for Instagram and TikTok",
+      "owner": "tessa",
+      "level": "story",
+      "tier": 2,
+      "first_action": "Record a capture of a mark-1 robot watering a taught patch across one in-game day, and cut it to a vertical clip Instagram and TikTok can both post the day the release tag goes out.",
+      "why": "It is the first public beat the recommended trigger commits to, and the footage has to exist before the tag, not after."
+    }
+  ],
+  "recommend": {
+    "question": "What should turn marketing back on?",
+    "answer": "The next public release — the update with the robot you teach.",
+    "why": "It is the only trigger the studio can make happen rather than wait for, and it puts the delegation story in front of people the week it first exists.",
+    "instead": "Wait for 100 visitors in a week to show up on their own — closer to what you originally said, but an unmarketed page may never produce that number, and marketing stays off forever without anyone deciding it should."
+  },
+  "finished": "2026-09-04T09:46",
+  "done_by": {
+    "seat": "carmen",
+    "model": "opus",
+    "lane": "drain"
+  },
+  "usage": {
+    "calls": 2,
+    "input": 462,
+    "output": 23763,
+    "cache_read": 1762526,
+    "cache_write": 108665,
+    "tokens": 1895416,
+    "turns": 38,
+    "seconds": 333.7,
+    "list_usd": 3.0731
+  },
+  "prior_checks": [
+    {
+      "verdict": "concerns",
+      "summary": "nobody checked this — the check call did not come back",
+      "findings": [],
+      "escalates": null,
+      "escalation_reason": null
+    }
+  ],
+  "requeued": "Held: docs/DESIGNER_QUEUE.md had moved under it while it worked. Re-queued against the current tree."
 }

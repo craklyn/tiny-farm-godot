@@ -1,0 +1,20 @@
+{
+  "id": "w6c764b842b5",
+  "title": "Open the look decision card with the sheet attached",
+  "level": "task",
+  "owner": "claude",
+  "tier": 1,
+  "tier_reason": "The session only pays off when he picks a look, and the pick happens on a card.",
+  "ask": "Accepted “Bring the four looks back for the pick”. The session only pays off when he picks a look, and the pick happens on a card.",
+  "first_action": "Once the sheet exists, publish it into the looks folder and write the card with the four panels, the plain-language quiz and the cool-and-quiet recommendation",
+  "state": "waiting_session",
+  "thread": "claude",
+  "source": "chat",
+  "source_message": "Accepted “Bring the four looks back for the pick”. The session only pays off when he picks a look, and the pick happens on a card.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-04T09:42",
+  "created_ts": 1788540162.357958,
+  "parent": "w3537cf842ae"
+}

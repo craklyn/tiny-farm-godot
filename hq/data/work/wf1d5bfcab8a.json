@@ -11,9 +11,63 @@
   "thread": "dmitri",
   "source": "chat",
   "source_message": "A sound file ships that systems/audio_manager.gd never loads. From outside, a forgotten cut and a wiring bug look identical — work out which this is, then either wire it up or delete it and say why in the commit.",
-  "result": "",
+  "result": "I found the orphan and worked out which kind it is: a forgotten cut, not a wiring bug. `water.wav` was the synthesized watering sound `systems/audio_manager.gd` used before Q-31 (the foley session where you recorded three real can-on-soil pours, 2026-09-02). The wiring was already correct — `audio_manager.gd` plays the pours, exactly as ruled. The synthesized file just kept shipping in `assets/` after nothing referenced it anymore.\n\nI deleted `water.wav` and its `.import` file. `tools/gen_sfx.py` keeps the `water()` recipe (marked \"superseded... kept for reference\") but no longer writes the file — the same treatment `harvest()` already got when the CC0 recordings replaced it, so this follows precedent already in the repo rather than inventing a new one.\n\nDeleting it exposed three other spots still pointing at the dead file, which I fixed so nothing silently 404s: the Sound Test entity registry (`hq/data/entities.json`) still listed `water.wav` for the player, watering can, and well; and two HQ decision cards (Q-13, Q-31) had it as an audio attachment. All four now point at `water_pour_01.wav`. CREDITS.md's watering-can entry no longer claims the deleted file is \"kept as a fallback\" — there was no fallback code, so that line was already wrong.\n\nBoth suites are green (1983 + 528 tests) after a fresh `--import`.\n\nOne thing worth naming while I was in the audio table: the sprinkler has a built entity and zero sound wired — no \"sprinkler\" row exists in the mixer at all. You already ruled the shape of that fix on 2026-09-02 (one shared cue per morning, not one per machine, with density handled in the mix), but it was never filed as work, so I'm filing it now rather than letting it sit as something only I remember.",
   "started": "",
-  "attempts": 0,
+  "attempts": 1,
   "created": "2026-09-03T18:10",
-  "created_ts": 1788484229.8027472
+  "created_ts": 1788484229.8027472,
+  "follow_ups": [
+    {
+      "title": "Wire the sprinkler's own sound cue",
+      "owner": "dmitri",
+      "level": "task",
+      "tier": 1,
+      "first_action": "Add a 'sprinkler' entry to sfx_streams in audio_manager.gd and fire it once per day-turn (not once per machine) from wherever farm.gd resolves the day turn, with a mix treatment (duck/limit) so a field of sprinklers firing on the same frame doesn't stack into one loud hit.",
+      "why": "Daniel ruled the approach verbally on 2026-09-02 but it was never filed, and the sprinkler is now built and tested with no sound at all — the same silent-gap failure this item just fixed for water, on a machine about to become the first automation players meet."
+    }
+  ],
+  "recommend": {},
+  "finished": "2026-09-04T09:46",
+  "done_by": {
+    "seat": "dmitri",
+    "model": "sonnet",
+    "lane": "drain"
+  },
+  "usage": {
+    "calls": 2,
+    "input": 234,
+    "output": 20646,
+    "cache_read": 2530279,
+    "cache_write": 115272,
+    "tokens": 2666431,
+    "turns": 49,
+    "seconds": 301.3,
+    "list_usd": 2.0587
+  },
+  "prior_checks": [
+    {
+      "verdict": "pass",
+      "summary": "The orphan was a forgotten cut, correctly diagnosed and deleted, with every stale reference (credits, HQ entity registry, two decision cards, the generator table) cleaned up in the same change; the sprinkler follow-up is real and backed by Dmitri's own notes, and the only thing I could not confirm is the green-suite claim, because the checker seat cannot run Godot here.",
+      "findings": [
+        {
+          "what": "Q-31's attachment caption now opens 'The recording that beat it' with no antecedent for 'it' once the synthesized attachment is gone; a reader arriving cold has to parse the parenthetical to learn what was beaten",
+          "where": "hq/data/decisions/Q-31.json:12",
+          "fix": "Reword to name the thing directly, e.g. 'One of the three can-on-soil pours from this session, which replaced the synthesized water.wav (now deleted; see CREDITS.md)'"
+        },
+        {
+          "what": "Suite results (1983 + 528) are the worker's report, not independently verified in this check; the change removes a preload target so a red integration run would be the failure mode",
+          "where": "assets/audio/sfx/water.wav",
+          "fix": "Run both suites once before committing, per the drain's standing rule"
+        },
+        {
+          "what": "tools/capture_machines.gd.uid is an unrelated Godot-generated file that rode along with the import step",
+          "where": "tools/capture_machines.gd.uid",
+          "fix": "Keep it; other tools/*.gd.uid files are already tracked, so leaving it out would just mean the next import regenerates it"
+        }
+      ],
+      "escalates": null,
+      "escalation_reason": null
+    }
+  ],
+  "requeued": "Held by a Godot-generated .uid file colliding with an untracked copy here — nothing to do with the work. The drain drops those now; re-queued."
 }

@@ -69,8 +69,17 @@ There is no per-test filter. Both suites are single-file custom runners: tests a
 and `tools/test_runner.gd` (`_ready`). To add a test, write the function and add the call
 there. The whole suite runs in seconds, so running everything is the normal workflow.
 
-CI (`.github/workflows/tests.yml`) runs unit, integration, robot session, and the
-benchmark on every push.
+CI (`.github/workflows/tests.yml`) runs five jobs on every push: unit, integration,
+robot session, the benchmark, and the one-gateway check below.
+
+```bash
+# The one-gateway rule, checked statically over world/, entities/ and player/
+python3 tools/check_gateway.py              # --self-test plants each break and proves it is caught
+```
+
+The visual regression check has no CI job on purpose — pixel-exact rendering only matches
+within one machine's driver stack — so it is a Run button on HQ's Engineering page,
+pressed before cutting a tag.
 
 ## Architecture
 

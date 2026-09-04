@@ -394,7 +394,12 @@ Current map is 32×20 tiles; phase 4 fiction says "too large to manage manually"
 - Game truth changes only through `SimWorld.apply_action` (S-3). A fixed truth tick is
   deferred until phase-4 prep (`M2_SPEC.md` step 2): entity `_process` code may run
   timers and decision processes, but every world mutation they decide on goes through
-  the gateway.
+  the gateway. **This one is checked, not trusted**: `tools/check_gateway.py` reads the
+  simulation's own fields and mutating functions out of `sim_world.gd`, scans `world/`,
+  `entities/` and `player/` for anything that writes them directly, and fails CI if it
+  finds one. A line that genuinely has to break the rule says so with a
+  `# gateway-ok: <reason>` comment and is listed in the check's output rather than
+  hidden by it — six lines are excused today, each with its reason on the line.
 - No per-tile per-frame work **in the sim**; per-tick work scales with *active entities*,
   not map area. *Honest exception, recorded 2026-08-30 (finding F-6): the **renderer** does
   walk every tile every frame — `player.gd` calls `farm.queue_redraw()` unconditionally and

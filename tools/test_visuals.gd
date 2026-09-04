@@ -29,6 +29,15 @@ func _ready() -> void:
 			main_scene.hud.notes_toggle.visible = false
 		await get_tree().process_frame
 
+	# BuildOverlay (autoload/build_overlay.gd) stamps "Build: <git describe>" in
+	# the corner of every scene, main included. That string changes on every
+	# commit, so leaving it in the captured frame would fail this test on every
+	# commit regardless of whether anything actually looks different — the same
+	# scaffold-in-the-baseline trap as the playtest readout above.
+	if BuildOverlay != null:
+		BuildOverlay.visible = false
+		await get_tree().process_frame
+
 	var img: Image = get_viewport().get_texture().get_image()
 	
 	if not FileAccess.file_exists(BASELINE_PATH):

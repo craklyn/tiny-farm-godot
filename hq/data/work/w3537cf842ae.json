@@ -7,7 +7,7 @@
   "tier_reason": "The session only pays off when he actually picks a look from them.",
   "ask": "Accepted “Render side-by-side look captures for the CEO to pick from”. The session only pays off when he actually picks a look from them.",
   "first_action": "Assemble the four captures side by side in HQ and open a decision card with a plain-language quiz and a recommendation",
-  "state": "for_review",
+  "state": "accepted",
   "thread": "claude",
   "source": "chat",
   "source_message": "Accepted “Render side-by-side look captures for the CEO to pick from”. The session only pays off when he actually picks a look from them.",
@@ -49,5 +49,31 @@
     "why": "A picture edited outside the engine is a promise nobody has checked the game can keep, and you'd be approving it.",
     "instead": "Recolour the existing frame today for a same-day read, accepting that you're picking from a mock-up rather than the game."
   },
-  "finished": "2026-09-03T01:27"
+  "finished": "2026-09-03T01:27",
+  "closed": "2026-09-04T09:42",
+  "decided": {
+    "question": "Do we show you the colour looks as recoloured screenshots now, or build them into the game first?",
+    "answer": "Build them in — make the world tint a real switch, then shoot the sheet from the running game",
+    "at": "2026-09-04T09:42"
+  },
+  "spawned": [
+    {
+      "id": "w1c5c5980f45",
+      "title": "Make the world's colour a real switch in the game",
+      "state": "waiting_session",
+      "owner": "jade"
+    },
+    {
+      "id": "w6c764b842b5",
+      "title": "Open the look decision card with the sheet attached",
+      "state": "waiting_session",
+      "owner": "claude"
+    },
+    {
+      "id": "wcb5c6a997fa",
+      "title": "Keep the visual test honest when the world tint lands",
+      "state": "waiting_session",
+      "owner": "grace"
+    }
+  ]
 }

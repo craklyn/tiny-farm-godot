@@ -64,7 +64,19 @@ activity.
 `file_count`, `file_grep`, `orphan_files`, `ci_state`, `job_state`,
 `count_json`, `project_field`, `program_readiness`, `playtest_metric`,
 `doc_section`, `queue_state`, `probe_cache`, `palette_named_present`,
-`composite`, `manual_attest`, `unchecked`.
+`composite`, `manual_attest`, `attestation`, `unchecked`.
+
+`attestation` is the one for gates that are human acts rather than facts about
+the repo — "somebody played the web build end to end" is a person in a browser,
+and no amount of reading the source finds it. It reads
+`hq/data/attestations.json`, where each record names the tag it was made for and
+the commit the build came from. Those two keys are what make it perishable: the
+record is spent when that tag is cut, because the next release wants a different
+tag and no record exists for it, and it lapses early when the game changes under
+the commit it was made on. The goal row carries the button that writes it, and
+the server — not the page — stamps the tag, the commit and the date, so a record
+cannot claim a build nobody played. `manual_attest` is the older, simpler form:
+a value typed into the goal file, expiring on a timer.
 
 Two safety properties are structural, not conventions: **no kind executes a
 shell command or opens a socket** (network readings come from `probe_cache`,

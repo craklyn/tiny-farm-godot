@@ -93,7 +93,10 @@ sound (pop + chime); `plant` must not borrow any of that — no rising pitch, no
 reward sting — or a planted seed will sound like a finished crop.
 
 Sourcing it is Dmitri's: find or record a couple of soft, low pats and pick the one that
-reads as closing rather than landing.
+reads as closing rather than landing. The recording half is on hold — the designer wants
+his next foley session to wait until he has picked a look in the Q-14 look session
+(held 2026-09-04, DESIGNER_QUEUE.md Q-31) — but a CC0 search for candidates does not need
+him and can continue now.
 
 **Kid constraints (S-7 spirit):** no harsh stingers; failure/refusal sounds are
 comedic (a wet *bonk*, a shrug-like slide whistle at most); gentle attack envelopes;

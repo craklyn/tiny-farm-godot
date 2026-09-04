@@ -18,7 +18,7 @@
     "The machine resumes on its own when the obstruction clears — no player intervention needed to un-stick it",
     "Sim-level test: a bot ordered onto an unreachable tile enters distress deterministically and leaves it when the path opens; the replay reproduces both transitions"
   ],
-  "current_status": "Filed 2026-09-03 on integrating the Q-85 ruling. Nothing built yet. The reason plumbing largely exists — the sim already produces refusal reasons for the player's own blocked taps — so the real cost is the sheet cell and the presentation pass. Blocked on nothing: it is buildable today.",
+  "current_status": "Filed 2026-09-03 on integrating the Q-85 ruling. Nothing built yet: the only step marked done is recording the decision, and the one commit in the history naming S-10 is an HQ dashboard change that mentions the ruling in passing. The reason plumbing largely exists — the sim already produces refusal reasons for the player's own blocked taps — so the real cost is the sheet cell and the presentation pass. Blocked on nothing: it is buildable today. Moved off Player Update 1 on 2026-09-04: that release never waited on this work, so the release plan was offering players a robot that says it is stuck while no part of it had been built. The design stands and the work is still wanted — it rides the next content milestone instead.",
   "plan": [
     {
       "step": "Record the ruling as a settled decision (S-10) and annotate the queue entry",
@@ -46,6 +46,6 @@
     "docs/DESIGNER_QUEUE.md",
     "docs/design/06-automation.md"
   ],
-  "release": "update-1",
+  "release": "m3",
   "release_critical": false
 }

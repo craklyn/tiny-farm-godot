@@ -1,8 +1,12 @@
 /* Tiny Farm HQ — sprite editor.
-   Aseprite-inspired, scoped to this project's atlases: edit one animation
-   frame at a time (never the flat sheet), step frames with wrap-around,
-   onion-skin the previous frame, palette bar built from the sprite's own
-   colors, pencil/eraser/eyedropper, per-frame undo, live looping preview.
+   Aseprite-inspired, scoped to this project's atlases: opens every cell of the
+   sheet the entity is drawn on — the catalogue's frame list is only the subset
+   that animates, so opening that list alone would edit part of a sheet without
+   saying so. One cell is edited at a time, picked from a map of the whole
+   sheet; the animating cells are marked as such, as are the cells another
+   entity uses and the cells nothing in the catalogue lists. Onion-skins the
+   previous frame, palette bar built from the sheet's own colors,
+   pencil/eraser/eyedropper, per-cell undo, live looping preview.
    Saving composites the edited frames back into the atlas PNG in-browser
    and POSTs the whole sheet to the server, which appends it to that sheet's
    edit ledger — every save kept in sequence, revertable, and filed to the art
@@ -40,6 +44,7 @@ function spComputeDiff(frames, names, sheetColors) {
   const out = { frames: [], pixels: 0, colors_added: [], colors_removed: [], new_to_sheet: [] };
   const gained = new Set(), lost = new Set();
   frames.forEach((f, i) => {
+    if (f.touched === false) return;   // never painted on since it was loaded
     const a = f.orig.data, b = f.data.data, w = f.data.width;
     let changed = 0, added = 0, erased = 0, recolored = 0, silhouette = false;
     let x0 = Infinity, y0 = Infinity, x1 = -1, y1 = -1;
@@ -84,22 +89,12 @@ async function renderSpriteEditor(path) {
     return;
   }
 
-  // Unique frames only (some cycles revisit a cell), keeping any part names
-  // aligned and a map from original frame index -> unique index (composites
-  // reference original indices).
-  const seen = new Map();
-  const rects = [], names = [], idxMap = [];
-  ent.frames.forEach((f, i) => {
-    const k = f.join(",");
-    if (!seen.has(k)) {
-      seen.set(k, rects.length);
-      rects.push(f);
-      names.push((ent.frame_names || [])[i] || null);
-    }
-    idxMap[i] = seen.get(k);
-  });
+  // The cell size is the size of this entity's frames; every frame in the
+  // catalogue sits on that grid with its origin at the sheet's top-left corner.
+  const cellW = Math.max(...ent.frames.map(f => f[2]));
+  const cellH = Math.max(...ent.frames.map(f => f[3]));
   const comp = (ent.composite && ent.composite.length) ? ent.composite : null;
-  const fw = Math.max(...rects.map(r => r[2])), fh = Math.max(...rects.map(r => r[3]));
+  const fw = cellW, fh = cellH;
   const zoom = Math.max(4, Math.min(28, Math.floor(430 / Math.max(fw, fh))));
   const compCols = comp ? Math.max(...comp.map(c => c.dx)) + 1 : 1;
   const compRows = comp ? Math.max(...comp.map(c => c.dy)) + 1 : 1;
@@ -112,7 +107,44 @@ async function renderSpriteEditor(path) {
     i.src = "/" + ent.sheet + "?t=" + Date.now();
   });
 
-  // Extract each frame as ImageData.
+  // Every cell of the sheet, left to right and top to bottom. A sheet whose
+  // width or height is not a whole number of cells still has all of its pixels
+  // reachable: the last cell in a row or column is clipped to what is there.
+  const sheetW = img.naturalWidth, sheetH = img.naturalHeight;
+  const cols = Math.max(1, Math.ceil(sheetW / cellW)), rows = Math.max(1, Math.ceil(sheetH / cellH));
+  const rects = [];
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    rects.push([c * cellW, r * cellH,
+                Math.min(cellW, sheetW - c * cellW), Math.min(cellH, sheetH - r * cellH)]);
+  }
+  const cellAt = (x, y) => Math.floor(y / cellH) * cols + Math.floor(x / cellW);
+
+  // Which cell each catalogue frame lands on, in animation order. Composites
+  // reference the catalogue's frame indices, so this doubles as their lookup.
+  const animCells = ent.frames.map(f => cellAt(f[0], f[1]));
+  const animOrder = new Map();   // cell index -> its first position in the cycle
+  animCells.forEach((c, i) => { if (!animOrder.has(c)) animOrder.set(c, i); });
+
+  // Cells other entities are drawn from. Sheets are shared, and an entity drawn
+  // at another cell size can straddle this grid, so a frame claims every cell
+  // it overlaps.
+  const claims = new Map();
+  (data.groups || []).forEach(g => (g.entities || []).forEach(o => {
+    if (o.sheet !== ent.sheet || o.id === eid) return;
+    (o.frames || []).forEach((f, i) => {
+      const c0 = Math.floor(f[0] / cellW), c1 = Math.floor((f[0] + f[2] - 1) / cellW);
+      const r0 = Math.floor(f[1] / cellH), r1 = Math.floor((f[1] + f[3] - 1) / cellH);
+      for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) {
+        const k = r * cols + c;
+        if (k < 0 || k >= rects.length) continue;
+        if (!claims.has(k)) claims.set(k, []);
+        const at = claims.get(k);
+        if (!at.some(e => e.id === o.id)) at.push({ id: o.id, gid: g.id, name: o.name, k: i + 1, of: o.frames.length });
+      }
+    });
+  }));
+
+  // Extract each cell as ImageData.
   const work = document.createElement("canvas");
   const wctx = work.getContext("2d", { willReadFrequently: true });
   const frames = rects.map(([x, y, w, hh]) => {
@@ -120,14 +152,54 @@ async function renderSpriteEditor(path) {
     wctx.clearRect(0, 0, w, hh);
     wctx.drawImage(img, x, y, w, hh, 0, 0, w, hh);
     const data = wctx.getImageData(0, 0, w, hh);
+    let ink = false;
+    for (let p = 3; p < data.data.length; p += 4) if (data.data[p] !== 0) { ink = true; break; }
     // untouched copy from load time, for the before/after preview
     const orig = new ImageData(new Uint8ClampedArray(data.data), w, hh);
-    return { rect: [x, y, w, hh], data, orig, undo: [] };
+    return { rect: [x, y, w, hh], data, orig, undo: [], ink, touched: false };
   });
+
+  // A name for every cell, used by the map, the frame counter and the record of
+  // what an edit changed — so a saved edit says "Crow frame 1", not "frame 10".
+  const names = rects.map((_, i) => {
+    if (animOrder.has(i)) {
+      const k = animOrder.get(i);
+      return (ent.frame_names || [])[k] || (ent.frames.length > 1 ? `frame ${k + 1}` : ent.name);
+    }
+    const cl = claims.get(i);
+    if (cl) return cl.map(c => c.of > 1 ? `${c.name} frame ${c.k}` : c.name).join(", ");
+    return `row ${Math.floor(i / cols) + 1}, column ${i % cols + 1}`;
+  });
+  const cellKind = i => animOrder.has(i) ? "anim"
+    : claims.has(i) ? "other"
+    : frames[i].ink ? "stray" : "blank";
+  const cellTag = i => {
+    const k = cellKind(i);
+    return k === "stray" ? "not listed" : k === "blank" ? "empty" : names[i];
+  };
+
+  const countOf = k => frames.reduce((n, _, i) => n + (cellKind(i) === k ? 1 : 0), 0);
+  const nAnim = countOf("anim"), nOther = countOf("other");
+  const nStray = countOf("stray"), nBlank = countOf("blank");
+  const others = [];
+  claims.forEach((v, i) => { if (!animOrder.has(i)) v.forEach(e => { if (!others.some(o => o.id === e.id)) others.push(e); }); });
+  const otherLinks = others.map(o =>
+    `<a class="plain" href="#/entity/${esc(o.gid)}/${esc(o.id)}">${esc(o.name)}</a>`);
+  const listNames = ns => ns.length <= 1 ? (ns[0] || "")
+    : ns.slice(0, -1).join(", ") + " and " + ns[ns.length - 1];
+  const sheetLine = [
+    `This is all ${frames.length} cell${frames.length === 1 ? "" : "s"} of the sheet, ${cellW}×${cellH} pixels each.`,
+    nAnim ? `${nAnim} of them ${ent.frames.length > 1
+      ? (nAnim === 1 ? "animates" : "animate") : (nAnim === 1 ? "draws" : "draw")} ${esc(ent.name)}.` : "",
+    nOther ? `${nOther} ${nOther === 1 ? "draws" : "draw"} ${listNames(otherLinks)}.` : "",
+    nStray ? `${nStray} ${nStray === 1 ? "holds" : "hold"} art that nothing in the entity gallery lists.` : "",
+    nBlank ? `${nBlank} ${nBlank === 1 ? "is" : "are"} empty.` : "",
+  ].filter(Boolean).join(" ");
 
   const sheetColors = spSheetColors(img);   // baseline for "new to this sheet"
   let lastDiff = { frames: [], pixels: 0, colors_added: [], colors_removed: [], new_to_sheet: [] };
-  let cur = 0, playing = false, onion = true, dirty = false;
+  let cur = animCells.length ? animCells[0] : 0;
+  let playing = false, onion = true, dirty = false;
   let color = null; // null = eraser
   const ERASER = "__eraser__";
 
@@ -149,19 +221,24 @@ async function renderSpriteEditor(path) {
     <p class="crumbs"><a class="plain" href="#/entities">Entities</a> <span>›</span>
       <a class="plain" href="#/entity/${gid}/${eid}">${ent.emoji} ${esc(ent.name)}</a> <span>›</span> <b>Edit sprite</b></p>
     <h1>✏️ ${esc(ent.name)}</h1>
-    <p class="sub">Pencil paints the selected color · eraser (or right-click) makes a pixel transparent · alt-click picks a color from the canvas · arrow keys step frames · Ctrl+Z undoes.</p>
+    <p class="sub">You are editing <code class="ref">${esc(ent.sheet)}</code>. ${sheetLine}</p>
+    <p class="sub">Pencil paints the selected color · eraser (or right-click) makes a pixel transparent · alt-click picks a color from the canvas · arrow keys move to the next cell · Ctrl+Z undoes.</p>
     <div class="sp-wrap">
       <div>
         <canvas id="sp-canvas" width="${fw * zoom}" height="${fh * zoom}" tabindex="0"></canvas>
         <div class="sp-controls">
-          <button id="sp-prev" title="previous frame">◀</button>
+          <button id="sp-prev" title="previous cell">◀</button>
           <span id="sp-idx" class="sp-idx"></span>
-          <button id="sp-next" title="next frame">▶</button>
+          <button id="sp-next" title="next cell">▶</button>
           <button id="sp-play" class="ghost">▶ Play</button>
           <label class="small"><input type="checkbox" id="sp-onion" checked> onion skin</label>
           <button id="sp-undo" class="ghost" title="Ctrl+Z">↩ Undo</button>
         </div>
         <div class="sp-palette" id="sp-palette"></div>
+        <section class="sp-map">
+          <h2>Every cell of the sheet</h2>
+          <div class="sp-cells" id="sp-cells"></div>
+        </section>
       </div>
       <div class="sp-side">
         <h2 style="margin-top:0">Live preview</h2>
@@ -218,8 +295,14 @@ async function renderSpriteEditor(path) {
       ctx.fillStyle = (x + y) % 2 ? "#221c13" : "#2a2318";
       ctx.fillRect(x * zoom, y * zoom, zoom, zoom);
     }
+    // On a cell that animates, the ghost is the frame the eye saw a moment
+    // earlier in the cycle; anywhere else on the sheet it is the cell to the left.
     if (onion && frames.length > 1 && !playing) {
-      blit(frames[(cur - 1 + frames.length) % frames.length], ctx, zoom, 0.28);
+      const k = animCells.indexOf(cur);
+      const prev = (k >= 0 && animCells.length > 1)
+        ? animCells[(k - 1 + animCells.length) % animCells.length]
+        : (cur - 1 + frames.length) % frames.length;
+      if (prev !== cur) blit(frames[prev], ctx, zoom, 0.28);
     }
     blit(f, ctx, zoom, 1);
     if (zoom >= 8) {
@@ -228,12 +311,13 @@ async function renderSpriteEditor(path) {
       for (let y = 1; y < hh; y++) { ctx.beginPath(); ctx.moveTo(0, y * zoom + .5); ctx.lineTo(w * zoom, y * zoom + .5); ctx.stroke(); }
     }
     document.getElementById("sp-idx").textContent =
-      (names[cur] ? names[cur] + " · " : "") + `${cur + 1} / ${frames.length}`;
+      (names[cur] ? names[cur] + " · " : "") + `cell ${cur + 1} / ${frames.length}`;
+    syncMap();
     paintDiff();
   };
 
-  // Hoisted: render() above calls it on every stroke. Frames here are small
-  // (16-48px squared, a handful of them), so re-measuring per repaint is free.
+  // Hoisted: render() above calls it on every stroke. Only cells that have been
+  // painted on are measured, so a large sheet costs no more than a small one.
   function paintDiff() {
     const box = document.getElementById("sp-diff");
     if (!box) return;
@@ -265,7 +349,7 @@ async function renderSpriteEditor(path) {
   const drawAssembled = (dctx, canvas, useOrig) => {
     dctx.clearRect(0, 0, canvas.width, canvas.height);
     comp.forEach(c => {
-      const f = frames[idxMap[c.f]];
+      const f = frames[animCells[c.f]];
       const [, , w, hh] = f.rect;
       tmp.width = w; tmp.height = hh;
       tctx.putImageData(useOrig ? f.orig : f.data, 0, 0);
@@ -277,25 +361,30 @@ async function renderSpriteEditor(path) {
       dctx.restore();
     });
   };
+  // The preview and Play run the animation — the cells the catalogue lists, in
+  // its order — while the canvas can be on any cell of the sheet.
   const renderPreview = i => {
     if (comp) { drawAssembled(pctx, pv, false); drawAssembled(bctx, bv, true); return; }
-    const f = frames[i % frames.length];
+    const f = frames[animCells[i % animCells.length]];
     pctx.clearRect(0, 0, pv.width, pv.height);
     blit(f, pctx, 3, 1);
     bctx.clearRect(0, 0, bv.width, bv.height);
     blit(f, bctx, 3, 1, true);
   };
   let pvi = 0;
-  if (!comp) animators.push(setInterval(() => { pvi = (pvi + 1) % frames.length; renderPreview(pvi); }, 1000 / (ent.fps || 4)));
+  if (!comp) animators.push(setInterval(() => { pvi = (pvi + 1) % animCells.length; renderPreview(pvi); }, 1000 / (ent.fps || 4)));
   renderPreview(0);
 
   let playTimer = null;
   const setPlaying = p => {
-    playing = p;
-    document.getElementById("sp-play").textContent = p ? "⏸ Pause" : "▶ Play";
+    playing = p && animCells.length > 1;
+    document.getElementById("sp-play").textContent = playing ? "⏸ Pause" : "▶ Play";
     if (playTimer) { clearInterval(playTimer); playTimer = null; }
-    if (p) {
-      playTimer = setInterval(() => { cur = (cur + 1) % frames.length; render(); }, 1000 / (ent.fps || 4));
+    if (playing) {
+      let k = Math.max(0, animCells.indexOf(cur));
+      playTimer = setInterval(() => {
+        k = (k + 1) % animCells.length; cur = animCells[k]; render();
+      }, 1000 / (ent.fps || 4));
       animators.push(playTimer);
     }
     render();
@@ -334,6 +423,47 @@ async function renderSpriteEditor(path) {
     bar.appendChild(picker);
   };
 
+  /* ---------- the map of the sheet ----------
+     The sheet as it actually is, cell by cell, each one labelled with what it
+     is: a frame of this animation, a cell another entity is drawn from, art
+     nothing lists, or nothing at all. Clicking a cell opens it for editing. */
+
+  const thumbZoom = Math.max(1, Math.min(4, Math.floor(72 / Math.max(cellW, cellH))));
+  const thumbs = [];
+
+  const paintThumb = i => {
+    const c = thumbs[i];
+    if (!c) return;
+    const t = c.getContext("2d");
+    t.imageSmoothingEnabled = false;
+    t.clearRect(0, 0, c.width, c.height);
+    blit(frames[i], t, thumbZoom, 1);
+  };
+
+  const buildMap = () => {
+    const box = document.getElementById("sp-cells");
+    if (!box) return;
+    box.replaceChildren();
+    frames.forEach((f, i) => {
+      const [, , w, hh] = f.rect;
+      const b = h(`<button class="sp-cell ${cellKind(i)}" type="button" title="${esc(names[i])}">
+        <canvas width="${w * thumbZoom}" height="${hh * thumbZoom}"></canvas>
+        <span class="sp-cell-tag">${esc(cellTag(i))}</span></button>`).firstElementChild;
+      b.addEventListener("click", () => { cur = i; render(); cv.focus(); });
+      box.appendChild(b);
+      thumbs[i] = b.querySelector("canvas");
+      paintThumb(i);
+    });
+  };
+
+  // Hoisted: render() calls it on every repaint.
+  function syncMap() {
+    const box = document.getElementById("sp-cells");
+    if (!box) return;
+    box.querySelectorAll(".sp-cell").forEach((b, i) => b.classList.toggle("cur", i === cur));
+    paintThumb(cur);
+  }
+
   const pixAt = ev => {
     const r = cv.getBoundingClientRect();
     const x = Math.floor((ev.clientX - r.left) / zoom), y = Math.floor((ev.clientY - r.top) / zoom);
@@ -346,6 +476,7 @@ async function renderSpriteEditor(path) {
     const d = f.data.data;
     if (erase || color === null) { d[i + 3] = 0; }
     else { d[i] = color[0]; d[i + 1] = color[1]; d[i + 2] = color[2]; d[i + 3] = 255; }
+    f.touched = true;
     dirty = true;
   };
   const pushUndo = () => {
@@ -391,7 +522,12 @@ async function renderSpriteEditor(path) {
 
   document.getElementById("sp-next").addEventListener("click", () => { cur = (cur + 1) % frames.length; render(); cv.focus(); });
   document.getElementById("sp-prev").addEventListener("click", () => { cur = (cur - 1 + frames.length) % frames.length; render(); cv.focus(); });
-  document.getElementById("sp-play").addEventListener("click", () => setPlaying(!playing));
+  const playBtn = document.getElementById("sp-play");
+  playBtn.addEventListener("click", () => setPlaying(!playing));
+  if (animCells.length < 2) {
+    playBtn.disabled = true;
+    playBtn.title = `${ent.name} is drawn from a single frame, so there is nothing to play.`;
+  }
   document.getElementById("sp-onion").addEventListener("change", ev => { onion = ev.target.checked; render(); });
   document.getElementById("sp-undo").addEventListener("click", doUndo);
   document.getElementById("sp-revert").addEventListener("click", () => route());
@@ -411,7 +547,10 @@ async function renderSpriteEditor(path) {
       const fctx = full.getContext("2d");
       fctx.imageSmoothingEnabled = false;
       fctx.drawImage(img, 0, 0);
+      // Only the cells that were painted on are written back; every other pixel
+      // of the sheet leaves as the exact bytes it arrived as.
       frames.forEach(f => {
+        if (!f.touched) return;
         const [x, y, w, hh] = f.rect;
         fctx.clearRect(x, y, w, hh);
         tmp.width = w; tmp.height = hh;
@@ -434,6 +573,7 @@ async function renderSpriteEditor(path) {
         // against this state, not against whatever the sheet was when he opened it.
         frames.forEach(f => {
           f.orig = new ImageData(new Uint8ClampedArray(f.data.data), f.data.width, f.data.height);
+          f.touched = false;
         });
         noteEl.value = "";
         paintDiff();
@@ -523,6 +663,7 @@ async function renderSpriteEditor(path) {
   }
 
   buildPalette();
+  buildMap();
   render();
   loadHistory();
   cv.focus();

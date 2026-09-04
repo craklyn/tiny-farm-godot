@@ -110,6 +110,21 @@ function decidedNote(it) {
   return `<p class="w-spawned">You took: <b>${esc(d.answer)}</b></p>`;
 }
 
+/* A drained item whose work did not land is not a result awaiting a verdict,
+   and it must not be offered one. Accepting a card means "this is good, close
+   it" — pressed on work that never reached the repo it would close the card and
+   leave the job undone, which is exactly the ambiguity Daniel hit on the i18n
+   card: "does it mean I accept it even though it failed the check?"
+
+   A patch that simply had nothing to change is NOT held — an analysis or a
+   blocked report is a real result with no diff, and it is accepted normally. */
+function heldReason(it) {
+  const d = it.diff;
+  if (!d || d.applied) return "";
+  if ((d.why_not || "") === "nothing changed") return "";
+  return d.why_not || "nothing landed";
+}
+
 function consequence(it, org) {
   const first = ownerOf(org, it.owner).name.split(" ")[0];
   const rows = [];
@@ -117,6 +132,15 @@ function consequence(it, org) {
   if (it.state === "needs_approval") {
     rows.push(["Yes, go ahead", `Nothing runs on its own. It joins the build-session queue, and the next session carries out the step above and shows you the diff.`]);
     rows.push(["Not this", `Filed as dropped. Nothing is created and nothing changes.`]);
+  } else if (it.state === "for_review" && heldReason(it)) {
+    // Nothing to accept: the work is not in the repo. The only two honest
+    // answers are "go again" and "we are not doing this".
+    rows.push(["Send it back", `${esc(first)} does it again, and what the check found goes with it — so this is a second attempt rather than a repeat.`]);
+    rows.push(["Drop it", `Filed as dropped. The work stays undone and nothing is created.`]);
+    return `<div class="w-conseq">
+      <div class="w-conseq-h">Nothing landed, so there is nothing to accept</div>
+      ${rows.map(([k, v]) => `<div class="w-conseq-r"><b>${esc(k)}</b><span>${v}</span></div>`).join("")}
+    </div>`;
   } else if (it.state === "for_review") {
     const fus = followUps(it);
     const rec = recommendOf(it);
@@ -263,6 +287,8 @@ function wantsLine(it, org) {
   if (it.state === "needs_approval") return "not started — wants your yes";
   if (it.state === "accepted") return "accepted";
   if (it.state === "dropped") return "dropped";
+  const held = heldReason(it);
+  if (held) return `nothing landed — ${held}`;
   const fus = followUps(it);
   const kids = (childIndex[it.id] || []).length;
   const filed = kids ? ` · already filed ${kids}` : "";
@@ -321,9 +347,13 @@ function costLine(it) {
   const mins = Math.round((u.seconds || 0) / 60);
   // Records written before "fresh" was split out still carry its three parts.
   const fresh = u.fresh || ((u.input || 0) + (u.output || 0) + (u.cache_write || 0));
-  return `<div class="w-cost">Producing this took ${u.calls} model call${u.calls === 1 ? "" : "s"}${
+  const tries = it.spent && it.spent.attempts > 1
+    ? ` Across ${it.spent.attempts} attempts this card has cost ${it.spent.tokens.toLocaleString()} tokens.`
+    : "";
+  return `<div class="w-cost">${it.spent && it.spent.attempts > 1 ? "This attempt" : "Producing this"} took
+    ${u.calls} model call${u.calls === 1 ? "" : "s"}${
     mins ? ` and ${mins} minute${mins === 1 ? "" : "s"}` : ""}: ${u.tokens.toLocaleString()} tokens
-    through the model, ${fresh.toLocaleString()} of them new.</div>`;
+    through the model, ${fresh.toLocaleString()} of them new.${tries}</div>`;
 }
 
 /* The Work page's own header line: what the company's unattended work has spent
@@ -349,17 +379,22 @@ function workCard(it, org, pol) {
   const acts = {
     needs_approval: `<button data-act="approve" data-id="${it.id}">Yes, go ahead</button>
                      <button class="ghost" data-act="drop" data-id="${it.id}">Not this</button>`,
-    for_review: `<button data-act="accept" data-id="${it.id}">Good — accept</button>
-                 <button class="ghost" data-act="redo" data-id="${it.id}">Have another go</button>
-                 <button class="ghost" data-act="drop" data-id="${it.id}">Drop it</button>`,
+    for_review: heldReason(it)
+      ? `<button data-act="redo" data-id="${it.id}">Send it back</button>
+         <button class="ghost" data-act="drop" data-id="${it.id}">Drop it</button>`
+      : `<button data-act="accept" data-id="${it.id}">Good — accept</button>
+         <button class="ghost" data-act="redo" data-id="${it.id}">Have another go</button>
+         <button class="ghost" data-act="drop" data-id="${it.id}">Drop it</button>`,
     waiting_session: `<button class="ghost" data-act="drop" data-id="${it.id}">Drop it</button>`,
     doing: "", accepted: "", dropped: "",
   }[it.state] || "";
   // The result is the tall part of a card. It folds to a readable window with
   // the rest one click away, rather than pushing the next decision off screen.
   const long = (it.result || "").length > 900;
+  const held = heldReason(it);
   const result = it.result
-    ? `<div class="w-result${long ? " w-clip" : ""}"><div class="w-result-h">${esc(who.name.split(" ")[0])} did it — here's the result</div>${md(it.result)}
+    ? `<div class="w-result${long ? " w-clip" : ""}"><div class="w-result-h">${esc(who.name.split(" ")[0])}${
+        held ? "'s attempt — what came back" : " did it — here's the result"}</div>${md(it.result)}
        ${long ? `<button class="w-more" data-more="${esc(it.id)}">Read all of it</button>` : ""}</div>`
     : "";
   const why = it.tier_reason ? `<span class="w-why">${esc(it.tier_reason)}</span>` : "";
@@ -391,7 +426,7 @@ function workCard(it, org, pol) {
       ${childrenNote(it, org)}
       ${spawnedNote(it)}
       ${decidedNote(it)}
-      ${acts ? recommendBlock(it) + consequence(it, org) + `<div class="w-acts">${acts}</div>` : ""}
+      ${acts ? (heldReason(it) ? "" : recommendBlock(it)) + consequence(it, org) + `<div class="w-acts">${acts}</div>` : ""}
       <div class="w-foot">
         <span class="small muted">from your chat with ${esc(ownerOf(org, it.thread).name.split(" ")[0])} · ${esc(it.created)}</span>
         <span class="w-foot-acts">

@@ -7,13 +7,45 @@
   "tier_reason": "filed by hand",
   "ask": "The stored suite results predate the change that made runs stamp the commit they proved, so their age is unknowable rather than large. Re-run the four suites from the Engineering page so each stamps a commit, then confirm the freshness column reads a number instead of 'unknown'.",
   "first_action": "Press Run on each of the four suites on #/pillar/engineering and watch the 'how far behind main' column.",
-  "state": "waiting_session",
+  "state": "for_review",
   "thread": "grace",
   "source": "chat",
   "source_message": "The stored suite results predate the change that made runs stamp the commit they proved, so their age is unknowable rather than large. Re-run the four suites from the Engineering page so each stamps a commit, then confirm the freshness column reads a number instead of 'unknown'.",
-  "result": "",
+  "result": "Ran all four suites — unit, integration, robot session, sim benchmark — from the live Engineering page's Run buttons. All four passed and each now stamps `4b20852` (main's current tip) as the commit it proved. The \"how far behind main\" column reads 0 commits for every row, and the freshness goal shows \"4 of 4 hold,\" green.\n\nNo code change was needed. The commit-stamping logic was already in place from the earlier fix; the stored results were just old runs from before that logic existed, so they had no commit to check against. Re-running them was the whole fix — the worktree is clean, nothing to diff.\n\nNothing else to flag: the suites themselves are green, and the freshness reading now resolves cleanly for all four.",
   "started": "",
-  "attempts": 0,
+  "attempts": 1,
   "created": "2026-09-03T18:10",
-  "created_ts": 1788484229.8060782
+  "created_ts": 1788484229.8060782,
+  "follow_ups": [],
+  "recommend": {},
+  "finished": "2026-09-04T09:46",
+  "done_by": {
+    "seat": "grace",
+    "model": "sonnet",
+    "lane": "drain"
+  },
+  "diff": {
+    "stat": "",
+    "files": [],
+    "applied": false,
+    "why_not": "nothing changed"
+  },
+  "check": {
+    "verdict": "pass",
+    "summary": "All four suites were re-run at 09:20 today and each stored result stamps 4b20852, the current tip of main, so the freshness column now reads 0 commits behind for every row; the empty diff is correct because run results live in the gitignored hq/data/runs/ on the desktop, so there was nothing to commit. Watch the sim benchmark: it cleared its 100,000x gate at 103,810x, a margin under 4% that a busy machine could flip red.",
+    "findings": [],
+    "escalates": null,
+    "escalation_reason": null
+  },
+  "usage": {
+    "calls": 2,
+    "input": 418,
+    "output": 11334,
+    "cache_read": 1701448,
+    "cache_write": 73568,
+    "tokens": 1786768,
+    "turns": 42,
+    "seconds": 238.0,
+    "list_usd": 1.4627
+  }
 }

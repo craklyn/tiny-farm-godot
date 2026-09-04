@@ -146,7 +146,9 @@ trace mislabelled its own categories and where the crow schedule desynced replay
 - **"Disable new downloads & purchases" does not stop browser play.** It blocks the
   downloadable files only; the embed still runs for anyone with the link. For "playable
   but not discoverable", use *Unlisted in search & browse*.
-- **Manual export**, if ever needed without a tag:
+- **Manual export.** This is how you get a build to play before a tag exists, which the
+  first box of "Before any release" below asks you to do — so it is a step in the normal
+  path, not a rescue:
   ```bash
   godot --headless --path . --export-release "Web" build/web/index.html
   ```
@@ -156,6 +158,18 @@ trace mislabelled its own categories and where the crow schedule desynced replay
 
 - [ ] Play the web build through in a real browser. Sound must arrive after the first tap
       (browsers suspend audio until a user gesture), and a farm must survive a reload.
+      The tag is what builds and publishes the web export, so at this point there is
+      nothing public to play: export one from the commit you are about to tag with the
+      manual-export command above, and serve it over HTTP.
+      **Then record that you did.** Tiny Farm HQ — the dashboard at
+      http://localhost:8642 — carries this box as a row on its Sales & Platforms page
+      (`#/pillar/sales`), and the button on that row writes the record: the tag it was
+      made for, the commit you were on, and the date. The record is deliberately
+      perishable. Cutting that tag spends it, and it lapses early if anything a player
+      would meet changes after you played — the game folders, the assets, the project
+      file. So the row can only ever say yes about a build somebody has actually played.
+      Nothing yet stops a tag that has no record; the two boxes below are enforced by the
+      release workflow and this one is not.
 - [ ] **Check the Credits screen opens, and that the CC BY line is on it.** This is a
       licence check, not polish: the CC BY music's attribution appears *only* there, so a
       release without it breaches the licence. Attribution lives in `ui/title_screen.gd`

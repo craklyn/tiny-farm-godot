@@ -1,0 +1,20 @@
+{
+  "id": "wc721830ca0e",
+  "title": "Source or record the plant sound",
+  "level": "task",
+  "owner": "dmitri",
+  "tier": 1,
+  "tier_reason": "The design note now specifies exactly what the sound needs to do; sourcing it is the concrete next step and it's Dmitri's seat.",
+  "ask": "Accepted “Write the design note for the missing plant sound”. The design note now specifies exactly what the sound needs to do; sourcing it is the concrete next step and it's Dmitri's seat.",
+  "first_action": "Find or record 2-3 soft, low pat-pat candidates for soil closing over a seed and pick the one that reads as closing rather than landing, then wire it into AudioManager and ACTOR_VERB_CUES for plant.",
+  "state": "waiting_session",
+  "thread": "claude",
+  "source": "chat",
+  "source_message": "Accepted “Write the design note for the missing plant sound”. The design note now specifies exactly what the sound needs to do; sourcing it is the concrete next step and it's Dmitri's seat.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-04T09:41",
+  "created_ts": 1788540062.005882,
+  "parent": "wb4060acf7128"
+}

@@ -11,6 +11,29 @@ env:
   GODOT_VERSION: "4.7.2"
 
 jobs:
+  # Every world change goes through SimWorld.apply_action (S-3), and until this
+  # job existed nothing checked it. A renderer that wrote into the grid directly
+  # compiled, passed the unit suite, passed the integration suite, and quietly
+  # corrupted every replay recorded from then on — recordings that are phase 4's
+  # training data, so the break would have surfaced when bot training failed on
+  # the corpus. It reads the code rather than running it, needs no engine, and
+  # finishes in about a second, so it is a job of its own rather than a step
+  # behind the Godot download.
+  gateway:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      # First the check proves itself against deliberately planted violations,
+      # then it runs for real. A checker nobody has watched fail is only a claim
+      # that the rule holds.
+      - name: The check catches a planted violation
+        run: python3 tools/check_gateway.py --self-test
+
+      - name: One gateway for every world change
+        run: python3 tools/check_gateway.py
+
   tests:
     runs-on: ubuntu-latest
     timeout-minutes: 15

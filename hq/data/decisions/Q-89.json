@@ -1,0 +1,29 @@
+{
+  "id": "Q-89",
+  "title": "Where does a player's bug report go?",
+  "question": "The itch page ships no answer to the question every released game gets asked: if something breaks, where does a player tell you? Right now nothing does — comments happen to be switched on because that's itch's default, not because anyone chose it as the support channel, and nothing else exists. Before the next tag goes out, the page should either point somewhere real or say plainly that it doesn't. Because there is no one else at the studio to read whatever gets chosen, every option is really a promise about your own week, not Fatima's or anyone else's.",
+  "why_now": "The next public tag is the trigger the item was filed against — once it ships, whatever the page says (or doesn't say) about bug reports is live in front of players. Cheaper to decide the promise before it's made than to walk one back after someone's already relied on it.",
+  "options": [
+    {
+      "key": "a",
+      "label": "Itch comments — already on, say nothing new",
+      "detail": "Comments are already enabled on the page (ITCH_PAGE.md), so this option builds nothing — it just means keeping them and treating them as the channel instead of an accident. Cost per week: whatever you already spend glancing at the itch dashboard, plus a short public reply on the rare week someone posts. Nothing new to remember to check — and because a report sits in public, an unanswered one is visible to the next visitor too, not just to you, which is real pressure to eventually answer but not a private inbox with its own clock.",
+      "recommended": true
+    },
+    {
+      "key": "b",
+      "label": "A dedicated email alias",
+      "detail": "The itch page runs under your personal account (craklyn.itch.io/tiny-farm) — there's no studio domain, so this means standing up a fresh mailbox and putting it on the page as \"report a bug here.\" One-time setup is small, maybe fifteen minutes. The real cost is every week after: a new inbox added to the ones you already check, forever, including every week it's empty, because a posted address nobody checks is worse than no address. It's private, so a report that sits unread is caught by no one but you."
+    },
+    {
+      "key": "c",
+      "label": "Say plainly there's no channel yet",
+      "detail": "A line on the page: no dedicated way to report a bug yet, issues get found and fixed as the team plays it. Zero setup, zero standing cost, ever — the honest version of the current accident. The cost lands on the player instead: a real bug has nowhere to go but a public review or a comment nobody promised to read, which is the outcome most likely to cost you a rating instead of a fix."
+    }
+  ],
+  "links": [
+    {"label": "itch page draft (ITCH_PAGE.md)", "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/ITCH_PAGE.md"},
+    {"label": "Live page", "href": "https://craklyn.itch.io/tiny-farm"},
+    {"label": "Original queue entry", "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"}
+  ]
+}

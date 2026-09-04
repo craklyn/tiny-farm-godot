@@ -7,13 +7,74 @@
   "tier_reason": "filed by hand",
   "ask": "Before the next public tag, a player who hits a bug needs somewhere to send it — or an honest line saying there is nowhere. Draft the three options (itch comments, an email alias, or saying plainly that there is no channel) as a decision card with a recommendation, so the CEO can rule on it rather than being asked an open question. It is a public promise about his own time, so the card must be explicit about what each option costs him per week.",
   "first_action": "Read ITCH_PAGE.md and fatima's record in hq/data/org.json, then write the card into hq/data/decisions/.",
-  "state": "waiting_session",
+  "state": "for_review",
   "thread": "fatima",
   "source": "chat",
   "source_message": "Before the next public tag, a player who hits a bug needs somewhere to send it — or an honest line saying there is nowhere. Draft the three options (itch comments, an email alias, or saying plainly that there is no channel) as a decision card with a recommendation, so the CEO can rule on it rather than being asked an open question. It is a public promise about his own time, so the card must be explicit about what each option costs him per week.",
-  "result": "",
+  "result": "Done. The itch page for Tiny Farm has never actually decided where a bug report goes — comments are on because that's itch's default, not because anyone chose it as the support channel, and nothing else exists. Before the next tag ships, that needs to be a real choice instead of an accident, so I wrote it up as a decision card (Q-89, in HQ's decision inbox) with the three options you named, and put the same summary in the designer queue so it's not orphaned there.\n\nEach option is really a promise about your own week, since nobody else at the studio reads a support channel:\n\n- **Itch comments** (recommended) — already switched on, builds nothing new, and costs whatever time you already spend on the itch dashboard plus an occasional public reply. Nothing new to remember to check, and because it's public, an unanswered report is visible to the next visitor too — pressure to eventually answer, but not a private inbox with its own clock.\n- **A dedicated email alias** — there's no studio domain, so this means a fresh mailbox and ~15 minutes of setup, then a new inbox added to the ones you check every week, forever, including the weeks it's empty.\n- **Plainly saying there's no channel yet** — zero cost ever, but a real bug then has nowhere to go except a public review or a comment nobody promised to read.\n\nI recommend itch comments: it's the only option that adds nothing to your week beyond what you already do, and it's honest about being a real (if informal) channel rather than either a fresh standing obligation or a shrug. The card's in HQ waiting on your ruling.",
   "started": "",
-  "attempts": 0,
+  "attempts": 1,
   "created": "2026-09-03T18:10",
-  "created_ts": 1788484229.8173904
+  "created_ts": 1788484229.8173904,
+  "follow_ups": [],
+  "recommend": {
+    "question": "Where does a player's bug report go before the next public tag?",
+    "answer": "Keep itch comments as the channel — no new build, no new inbox.",
+    "why": "It's the only option that adds nothing to your week beyond what you already spend on the itch dashboard, while still being a real, visible channel.",
+    "instead": "Saying plainly there's no channel yet, if you'd rather promise nothing at all than a low-key channel — it costs you zero forever, but a real bug then has nowhere to go but a public review."
+  },
+  "finished": "2026-09-04T09:46",
+  "done_by": {
+    "seat": "fatima",
+    "model": "sonnet",
+    "lane": "drain"
+  },
+  "diff": {
+    "stat": "docs/DESIGNER_QUEUE.md      | 17 +++++++++++++++++\n hq/data/decisions/Q-89.json | 29 +++++++++++++++++++++++++++++\n 2 files changed, 46 insertions(+)",
+    "files": [
+      "docs/DESIGNER_QUEUE.md",
+      "hq/data/decisions/Q-89.json"
+    ],
+    "applied": true,
+    "why_not": ""
+  },
+  "check": {
+    "verdict": "concerns",
+    "summary": "The card and queue entry landed as asked, with per-week cost on every option and a recommendation, but the recommended option as written changes nothing on the page, so a player still isn't told that comments are the place to report a bug.",
+    "findings": [
+      {
+        "what": "Option (a) is 'already on, say nothing new', which leaves the itch page silent about where bugs go — the item's premise was that the player needs to be told somewhere to send it",
+        "where": "hq/data/decisions/Q-89.json (options[0]) and docs/DESIGNER_QUEUE.md:36",
+        "fix": "Amend option (a) to include one line on the page ('Found a bug? Leave a comment below') with its cost stated as a single edit to ITCH_PAGE.md; the recommendation still holds, it just becomes a real pointer instead of an unchanged default"
+      },
+      {
+        "what": "The 'fifteen minutes' setup figure for the email alias is an unmeasured estimate presented as a fact in both the card and the reply",
+        "where": "hq/data/decisions/Q-89.json (options[1]), docs/DESIGNER_QUEUE.md:36",
+        "fix": "Leave it — it's hedged in the card ('maybe fifteen minutes') and the weekly cost, not the setup, is what the ruling turns on; no action needed beyond knowing it's a guess"
+      }
+    ],
+    "escalates": null,
+    "escalation_reason": null
+  },
+  "suites": {
+    "unit": {
+      "ok": true,
+      "tail": "  ✓ and a replay of a session in which she taught a robot lands on the same farm and the same robot\n  ✓ knowing the same tiles, in the same order — a lesson is training data (S-3/S-5)\n\n============================================================\nResults: 1983 PASSED, 0 FAILED\n============================================================"
+    },
+    "integration": {
+      "ok": true,
+      "tail": "  ✓ it watered every tile it was shown (3 of 3)\n  ✓ and nothing else — it has no opinions, which is the design\n\n============================================================\nResults: 528 PASSED, 0 FAILED\n============================================================"
+    }
+  },
+  "usage": {
+    "calls": 2,
+    "input": 264,
+    "output": 16190,
+    "cache_read": 1361136,
+    "cache_write": 80432,
+    "tokens": 1458022,
+    "turns": 42,
+    "seconds": 213.2,
+    "list_usd": 1.4425
+  }
 }

@@ -2163,6 +2163,29 @@ def eval_measure(spec, depth=0):
                                    "says_true": spec.get("says_true"),
                                    "says_false": spec.get("says_false")})
 
+        # The one-gateway rule (S-3), which no grep can ask: whether a line
+        # changes the world depends on what the simulation's own fields and
+        # mutating functions are called today. `tools/check_gateway.py` reads
+        # those out of the simulation source and then reads the presentation
+        # layer; the same check runs as its own CI job, so the page and the
+        # runner cannot disagree about whether the rule holds.
+        if kind == "gateway_rule":
+            import importlib.util as _ilu
+            path = _safe(spec.get("checker", "tools/check_gateway.py"))
+            _spec = _ilu.spec_from_file_location("check_gateway", path)
+            mod = _ilu.module_from_spec(_spec)
+            _spec.loader.exec_module(mod)
+            violations, waived = mod.scan(repo=REPO)
+            where = ["%s:%d" % (v["file"], v["line"]) for v in violations[:12]]
+            return _reading(len(violations) == 0, "",
+                            spec.get("label") or "one gateway for every world change",
+                            "python3 tools/check_gateway.py", "cheap",
+                            extra={"hits": len(violations), "where": where,
+                                   "checked_human": "checked on every page load and in CI"
+                                                    + (" — %d line%s exempt, each with a written reason"
+                                                       % (len(waived), "" if len(waived) == 1 else "s")
+                                                       if waived else "")})
+
         if kind == "orphan_files":
             refs = ""
             for rel in spec.get("referenced_in") or []:

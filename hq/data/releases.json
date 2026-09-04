@@ -5,7 +5,7 @@
       "id": "update-1",
       "name": "Player Update 1",
       "tag_intent": "v0.2.0",
-      "goal": "The first public update since v0.1.0. Thirteen things a player would notice, led by the shop and the first robot you can teach — the beginning of the delegation arc the whole game is about — on the ship-early-and-often ruling.",
+      "goal": "The first public update since v0.1.0. Twelve things a player would notice, led by the shop and the first robot you can teach — the beginning of the delegation arc the whole game is about — on the ship-early-and-often ruling.",
       "definition_of_done": "M1.5's exit gate closes on the pre-release green-tester session (the one fresh-player pass per public release, ruled 2026-09-02), and a v0.2.0 tag goes out through the deploy runbook.",
       "features": [
         {
@@ -79,13 +79,6 @@
           "evidence": "Q-50",
           "headline": "Clearing land costs what it looks like it should",
           "for_players": "A weed is cheap, a log is work, a tree or a rock is a serious morning. Expanding your farm is now a decision about the day's energy."
-        },
-        {
-          "id": "machine-distress",
-          "evidence": "S-10",
-          "headline": "A stuck machine tells you it is stuck",
-          "for_players": "A robot that cannot reach what you told it to do stops, shows it plainly, and waits — instead of standing still exactly like one that has finished.",
-          "project": "machine-distress-state"
         }
       ],
       "subtitle": "the shop, the robots, and the rebuilt first day"
