@@ -7,13 +7,106 @@
   "tier_reason": "filed by hand",
   "ask": "Daniel, 2026-09-04: \"We need a way to eradicate all of this hard to handle text. It's only causing friction, and the friction is so severe that it's getting in way of the process.\" tools/check_writing.py now finds these automatically and CI fails on them. About 50 are in the front-end string literals you own.",
   "first_action": "Run `python3 tools/check_writing.py` and fix every MUST FIX it reports under hq/static/*.js. Each finding names the word, what it actually means, and the plain wording to reach for. Rewrite the sentence rather than swapping the word — 'the proof is fresh enough to believe' wants to become something like 'the tests were run recently enough to trust'. Where a word genuinely has to stay, put `plain-ok: <reason>` on the line, which the check reports rather than hides. Do not touch code comments: rationale belongs there and is written for whoever maintains the file. Re-run the check until only soft",
-  "state": "waiting_session",
+  "state": "for_review",
   "thread": "rin",
   "source": "chat",
   "source_message": "Daniel, 2026-09-04: \"We need a way to eradicate all of this hard to handle text. It's only causing friction, and the friction is so severe that it's getting in way of the process.\" tools/check_writing.py now finds these automatically and CI fails on them. About 50 are in the front-end string literals you own.",
-  "result": "",
+  "result": "Done. Here's what changed and what I found.\n\n**What I changed.** About thirty sentences across HQ's front end — the Program page, the six pillar pages, Playtests, Design and Work — now say the thing rather than the studio's word for it. The rewrites, not swaps:\n\n- The Engineering evidence wall's column header was \"what it proves\"; it now says \"what it checks\". \"Unit suite\" and \"Integration suite\" are \"Unit tests\" and \"Integration tests\". \"the fast-forward gate the phase-4 plan rests on\" became \"how fast a farm can be fast-forwarded — phase 4 needs the speed\". The run button's note said each run \"stamps the commit it proved\" — it now says it \"records which commit it tested\".\n- The roadmap's exit gate is called **the release checklist** everywhere on the page, and its bars are **conditions**: \"The onboarding checklist has to pass — one condition is still unmet, a new player reaching the sleeping cot without being prompted\", \"3 of 6 conditions still unmet\".\n- On the Program page, \"Gates this release\" is \"This release waits for these\", and the section under it that used to say \"doesn't gate it\" now says \"the release does not wait for it\".\n- Playtests said \"Instrument integrity\" and \"Trace integrity\" over its two warnings. They now open \"The measurements are off\" and \"The recording is incomplete\", and say what went wrong in the same sentence. Sessions with no build recorded said \"unstamped\"; they say \"not recorded\".\n- A sound with no rights record was flagged \"no ledger line\" — the exact sentence our own writing rules use as the wrong example. It now reads \"no record of where it came from\", and the fold that opens the full list is titled \"Where every asset came from\".\n- One word stays: the map editor's parcel field for a **gate** is a real gate in a real fence, the gap a player walks through. It carries a `plain-ok` note saying so, so the check reports it rather than hiding it.\n\n**Two things you should know.**\n\nThe checker itself isn't in my copy of the repo — `tools/check_writing.py` and `docs/glossary.json` don't exist on main yet, so they're landing from a parallel piece of work. I swept using the word list written into my brief instead. Everything I changed is right, but I can't claim the check comes back clean until it exists and someone runs it.\n\nAnd the back half of that page is still in the old vocabulary. HQ's server and its pillar data file hold about thirty-seven more of these words in text that renders — including the run buttons labelled \"Unit suite\" sitting directly below the strip I just renamed to \"Unit tests\". Same page, two names for the same thing, today. Those aren't my files, so I left them; the first item below closes that.\n\nOne judgment call worth naming: I renamed the gate to \"the release checklist\" on HQ but left `docs/ROADMAP.md` calling it an exit gate. That's deliberate — our writing rules say design docs are reference material for teammates where the ids are load-bearing, and only what a person reads cold has to be plain.",
   "started": "",
-  "attempts": 0,
+  "attempts": 1,
   "created": "2026-09-04T14:15",
-  "created_ts": 1788556504.403331
+  "created_ts": 1788556504.403331,
+  "follow_ups": [
+    {
+      "title": "Match HQ's back-end labels to the plain wording now on its pages",
+      "owner": "claude",
+      "level": "task",
+      "tier": 1,
+      "first_action": "In hq/server.py, rename the JOBS labels 'Unit suite'/'Integration suite' to 'Unit tests'/'Integration tests' so the run rows match the evidence strip above them; then sweep the ~37 remaining glossary words in rendered strings across hq/server.py and hq/data/pillars.json (start with the ops pillar demo labelled 'The provenance ledger', now titled 'Where every asset came from' on the page).",
+      "why": "The Engineering page currently shows both names for the same test run, because the front-end half was reworded and the server-side labels were not."
+    },
+    {
+      "title": "Re-run the writing check over HQ's pages once the checker lands",
+      "owner": "claude",
+      "level": "task",
+      "tier": 0,
+      "first_action": "After tools/check_writing.py and docs/glossary.json are on main, run `python3 tools/check_writing.py` and confirm hq/static/*.js reports no MUST FIX and only the one plain-ok line in map.js; fix anything the checker flags that the word list in the brief did not cover.",
+      "why": "This sweep was done from the word list in the brief because the checker was not yet in the working tree, so nothing has actually been verified against it."
+    }
+  ],
+  "recommend": {},
+  "finished": "2026-09-04T14:22",
+  "done_by": {
+    "seat": "rin",
+    "model": "opus",
+    "lane": "drain"
+  },
+  "diff": {
+    "stat": "hq/static/app.js       |  8 ++++----\n hq/static/design.js    |  4 ++--\n hq/static/map.js       |  5 ++++-\n hq/static/pillars.js   | 40 ++++++++++++++++++++--------------------\n hq/static/playtests.js | 14 +++++++-------\n hq/static/work.js      |  2 +-\n 6 files changed, 38 insertions(+), 35 deletions(-)",
+    "files": [
+      "hq/static/app.js",
+      "hq/static/design.js",
+      "hq/static/map.js",
+      "hq/static/pillars.js",
+      "hq/static/playtests.js",
+      "hq/static/work.js"
+    ],
+    "applied": true,
+    "why_not": ""
+  },
+  "check": {
+    "verdict": "concerns",
+    "summary": "nobody checked this — the check call did not come back",
+    "findings": [],
+    "escalates": null,
+    "escalation_reason": null
+  },
+  "usage": {
+    "calls_detail": [
+      {
+        "input": 62,
+        "output": 23426,
+        "cache_read": 2357348,
+        "cache_write": 80756,
+        "turns": 31,
+        "seconds": 323.3,
+        "list_usd": 2.5754,
+        "tokens": 2461592,
+        "fresh": 104244,
+        "phase": "drain-work",
+        "model": "opus",
+        "seat": "rin"
+      },
+      {
+        "input": 424,
+        "output": 3959,
+        "cache_read": 461822,
+        "cache_write": 42780,
+        "turns": 9,
+        "seconds": 54.7,
+        "list_usd": 1.1841,
+        "tokens": 508985,
+        "fresh": 47163,
+        "phase": "drain-check",
+        "model": "fable",
+        "seat": "claude"
+      }
+    ],
+    "input": 486,
+    "output": 27385,
+    "cache_read": 2819170,
+    "cache_write": 123536,
+    "tokens": 2970577,
+    "fresh": 151407,
+    "turns": 40,
+    "seconds": 378.0,
+    "list_usd": 3.7595,
+    "calls": 2
+  },
+  "spent": {
+    "attempts": 1,
+    "tokens": 2970577,
+    "fresh": 151407,
+    "list_usd": 3.7595
+  }
 }

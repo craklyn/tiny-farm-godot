@@ -17,7 +17,7 @@
       "owner": "carmen",
       "severity": "important",
       "unit": "features the page has never mentioned",
-      "why_it_matters": "This pillar owns the one surface outsiders can see, and it is the surface that goes stale fastest — the build gains something a player would notice most weeks, and the page only changes when somebody rewrites it. The page used to promise 'no menus to learn and no words to read', which is a claim about phase 1's farming loop (S-7 binds the core loop, and only phase 1) made about a whole game whose later phases run to programmable bots and will need words by design. It now promises no reading to farm, which is what the build actually does. Keeping that true as the build moves is the standing job.",
+      "why_it_matters": "Marketing owns the one page outsiders can see, and it is the page that goes stale fastest — the build gains something a player would notice most weeks, and the page only changes when somebody rewrites it. The page used to promise 'no menus to learn and no words to read', which is a claim about phase 1's farming loop (S-7 binds the core loop, and only phase 1) made about a whole game whose later phases run to programmable bots and will need words by design. It now promises no reading to farm, which is what the build actually does. Keeping that true as the build moves is the standing job.",
       "measure": {
         "kind": "copy_drift",
         "release": "update-1",
@@ -47,7 +47,7 @@
     },
     {
       "id": "wake-trigger-written",
-      "statement": "There is a written number that turns this pillar on, so waking up is a reading rather than a feeling.",
+      "statement": "There is a written number that turns marketing on, so waking up is a reading rather than a feeling.",
       "statement_short": "nothing is written down that would tell us marketing should wake up",
       "owner": "carmen",
       "severity": "important",
@@ -157,7 +157,7 @@
         "amber_at": 0
       },
       "path_to_green": {
-        "narrative": "An itch API key, kept in the project .env like the other two. That single credential turns this whole pillar from guesses into readings.",
+        "narrative": "An itch API key, kept in the project .env like the other two. That single credential turns every marketing number from a guess into a reading.",
         "route": {
           "kind": "work",
           "id": "wc8b36764ebc"
@@ -216,14 +216,14 @@
       "owner": "sam",
       "severity": "important",
       "unit": "",
-      "why_it_matters": "S-7's actual promise, and the accessibility claim the store page is really making. The shop was deliberately stripped of words and builds itself from icons and numerals; the machine panel has words and is reached at 150g, days of farming away. Which surfaces a pre-reader must cross is the whole question, and it is a judgment about the game rather than a property of the source.",
+      "why_it_matters": "S-7's actual promise, and the accessibility claim the store page is really making. The shop was deliberately stripped of words and builds itself from icons and numerals; the machine panel has words and is reached at 150g, days of farming away. Which screens a pre-reader must cross is the whole question, and it is a judgment about the game rather than something the code can tell us.",
       "measure": {
         "kind": "unchecked",
         "reason": "No grep can tell the shop apart from the machine panel — both are labels in ui/menus.gd, and whether one sits on the farming loop is a judgment about which surfaces a player has to cross to farm. A check counting every English string in the build would go redder with every phase, by design, which is the wrong shape of check entirely.",
         "would_need": "A named list of the surfaces the farming loop crosses, so a check can scan those and ignore the rest — which is a design ruling before it is a checker."
       },
       "path_to_green": {
-        "narrative": "Name the surfaces the farming loop crosses. Then this becomes a real check instead of a promise nobody tests.",
+        "narrative": "Name the screens the farming loop crosses. Then this becomes a real check instead of a promise nobody tests.",
         "route": {
           "kind": "work",
           "id": "w294f4caedde"

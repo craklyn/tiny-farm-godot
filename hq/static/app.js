@@ -699,7 +699,7 @@ async function renderProgram() {
   const byId = Object.fromEntries(projects.map(p => [p.id, p]));
   const TABS = [["release", "Release trains"], ["priority", "By priority"], ["pillar", "By pillar"], ["blocked", "Blocked"]];
   $view.replaceChildren(h(`<h1>Program Report</h1>
-    <p class="sub">One program, four questions. <b>Release trains</b>: what players get next and what gates it. <b>Priority</b>: the ranked list. <b>Pillar</b>: who carries what. <b>Blocked</b>: where the chains are stuck. No dates anywhere — this program runs on gates and evidence.</p>
+    <p class="sub">One program, four questions. <b>Release trains</b>: what players get next and what it waits for. <b>Priority</b>: the ranked list. <b>Pillar</b>: who carries what. <b>Blocked</b>: where the chains are stuck. No dates anywhere — a release moves when its work is done and checked, not when a date arrives.</p>
     <div class="tabs" id="prog-tabs"></div>
     <div id="prog-body"></div>`));
   const tabs = document.getElementById("prog-tabs");
@@ -723,13 +723,13 @@ async function renderProgram() {
         <div class="rel-head">
           <b>${esc(r.name)}</b>
           ${r.tag_intent ? `<code class="ref">${esc(r.tag_intent)}</code>` : ""}
-          <span class="rel-ready small muted">${r.readiness.done}/${r.readiness.total} critical steps · ${r.gating.length ? `<span class="bad">${r.gating.length} gating blocker${r.gating.length === 1 ? "" : "s"}</span>` : '<span class="good">nothing blocking</span>'}</span>
+          <span class="rel-ready small muted">${r.readiness.done}/${r.readiness.total} critical steps · ${r.gating.length ? `<span class="bad">${r.gating.length} project${r.gating.length === 1 ? "" : "s"} blocked</span>` : '<span class="good">nothing blocking</span>'}</span>
         </div>
         <div class="rbar"><i style="width:${pct}%"></i></div>
         <p class="small muted" style="margin:8px 0 4px">${esc(r.goal)}</p>
-        <div class="rel-sec">Gates this release</div>
+        <div class="rel-sec">This release waits for these</div>
         <div class="rel-crit"></div>
-        ${r.riding.length ? `<div class="rel-sec">Rides along — ships with it, doesn't gate it</div><div class="rel-ride"></div>` : ""}
+        ${r.riding.length ? `<div class="rel-sec">Rides along — ships with it, but the release does not wait for it</div><div class="rel-ride"></div>` : ""}
       </div>`).firstElementChild;
       const crit = card.querySelector(".rel-crit");
       r.critical.forEach(id => byId[id] && crit.appendChild(projRow(byId[id], org, byId)));

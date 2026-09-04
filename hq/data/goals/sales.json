@@ -4,7 +4,7 @@
   "verdict_template": {
     "fire": "{worst}",
     "attention": "{worst}",
-    "unassured": "Nothing measurable is stopping a tag; monitoring is still landing on {unassured} of {total} gates, and the plans are filed.",
+    "unassured": "Nothing measurable is stopping a tag; monitoring is still landing on {unassured} of {total} checks a release has to pass, and the plans are filed.",
     "ok": "Nothing stops a tag.",
     "dormant": "Dormant. {dormant_reason}",
     "nothing_for_you": "Nothing here needs you. {ours_line}"
@@ -12,7 +12,7 @@
   "goals": [
     {
       "id": "we-know-what-we-are-selling",
-      "statement": "We can say what the next release gives a player, and every one of those claims traces to the build.",
+      "statement": "We can say what the next release gives a player, and every one of those claims matches something in the build or a project building it.",
       "statement_short": "we cannot say what the next release actually offers a player",
       "owner": "victor",
       "severity": "important",
@@ -60,7 +60,7 @@
         "amber_at": 0
       },
       "path_to_green": {
-        "narrative": "One credential. The storefront already counts views and plays for us; we have simply never asked it for the numbers. That is the whole demand surface available to this studio today, and it is the cheapest real thing on my list.",
+        "narrative": "One credential. The storefront already counts views and plays for us; we have simply never asked it for the numbers. That is the only view of demand this studio has today, and it is the cheapest real thing on my list.",
         "route": {
           "kind": "work",
           "id": "wc8b36764ebc"
@@ -131,7 +131,7 @@
         "amber_at": 30
       },
       "path_to_green": {
-        "narrative": "The next tag is [Player Update 1](#/program), and it is waiting on the onboarding gate closing.",
+        "narrative": "The next tag is [Player Update 1](#/program), and it is waiting on the onboarding rebuild being finished — one uncoached first-time player finding the cot on their own.",
         "route": {
           "kind": "project",
           "id": "public-release"
@@ -288,7 +288,7 @@
         }
       },
       "path_to_green": {
-        "narrative": "It stays a developer's tool, not a CI gate: pixel-exact rendering only matches within one machine's driver stack, so a GitHub runner would fail commits on rendering drift, not real regressions. Press ▶ Run beside 'Visual regression' on the Engineering page before cutting a tag; amber until someone has.",
+        "narrative": "It stays a developer's tool and never runs on GitHub: pixel-exact rendering only matches within one machine's graphics drivers, so a GitHub runner would fail commits on driver differences rather than on anything that broke. Press ▶ Run beside 'Visual regression' on the Engineering page before cutting a tag; amber until someone has.",
         "route": {
           "kind": "work",
           "id": "w9dc4e2aab6d"

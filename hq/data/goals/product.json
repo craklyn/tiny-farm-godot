@@ -16,7 +16,7 @@
       "owner": "wei",
       "severity": "blocking",
       "unit": "ratio",
-      "why_it_matters": "The onboarding gate's sleeping-spot bar was voided because the player had been shown the cot in an earlier session. That fact lives only in prose, so no score I report can be trusted on its own.",
+      "why_it_matters": "The onboarding rebuild's sleeping-spot result was voided because the player had been shown the cot in an earlier session. That fact lives only in prose, so no score I report can be trusted on its own.",
       "measure": {
         "kind": "composite",
         "op": "ratio",
@@ -40,7 +40,7 @@
         "amber_at": 0.8
       },
       "path_to_green": {
-        "narrative": "Backfill the existing folders from the roadmap's own prose, each marked as attested rather than measured, and teach the session puller to write it from now on.",
+        "narrative": "Backfill the existing folders from the roadmap's own prose, each marked as your word after the fact rather than a measurement, and teach the session puller to write it from now on.",
         "route": {
           "kind": "project",
           "id": "session-conditions"
@@ -98,8 +98,8 @@
     },
     {
       "id": "gate-m15-closed",
-      "statement": "The onboarding gate is closed — a fresh player crossed every bar it sets.",
-      "statement_short": "the onboarding gate is still open on one bar",
+      "statement": "The onboarding rebuild counts as finished: one uncoached first-time player cleared every bar set for it.",
+      "statement_short": "the onboarding rebuild still has one bar no uncoached first-time player has cleared",
       "owner": "priya",
       "severity": "important",
       "unit": "bars",
@@ -117,7 +117,7 @@
         "amber_at": 1
       },
       "path_to_green": {
-        "narrative": "The cot presentation shipped. One unprompted fresh-player sitting scores the one open bar; the other four are regression baselines and do not need re-running.",
+        "narrative": "The cot presentation shipped. One uncoached first-time sitting scores the one open bar, the cot being found and used without prompting; the other four bars were met in the last session and do not need re-running.",
         "route": {
           "kind": "project",
           "id": "close-m15-gate"
@@ -194,8 +194,8 @@
     },
     {
       "id": "dead-taps-under-the-bar",
-      "statement": "Taps that achieve nothing stay at or under the bar the last gate set.",
-      "statement_short": "dead taps are back above the bar the gate set",
+      "statement": "Taps that achieve nothing stay at or under the bar the last milestone set.",
+      "statement_short": "taps that achieve nothing are back above the bar the last milestone set",
       "owner": "wei",
       "severity": "important",
       "unit": "%",

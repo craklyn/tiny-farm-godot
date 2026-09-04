@@ -11,6 +11,9 @@
 "use strict";
 
 const MAP_CELL = 30;
+// The label for a parcel's gate: a real gate in a real fence, the gap a player
+// walks through — not a release gate.
+const GATE_LABEL = "gate (x,y or -1,-1)";  // plain-ok: the opening in a fence
 const OBSTACLE_CELLS = { obstacle_rock: 0, obstacle_log: 1, obstacle_weed: 2, obstacle_tree: 3, fence: 4, hedge: 5, gate_closed: 6, gate_open: 7 };
 
 async function renderMapEditor() {
@@ -140,7 +143,7 @@ async function renderMapEditor() {
       <label class="mp-f">obstacle <select data-k="obstacle">${["", "obstacle_weed", "obstacle_log", "obstacle_rock", "obstacle_tree"].map(o => opt(o, p.obstacle)).join("")}</select></label>
       <label class="mp-f">density <input data-k="density" type="number" step="0.01" min="0" max="1" value="${p.density || 0}"></label>
       <label class="mp-f">boundary <select data-k="boundary">${["", "fence", "hedge"].map(o => opt(o, p.boundary)).join("")}</select></label>
-      <label class="mp-f">gate (x,y or -1,-1) <input data-k="gate" value="${(p.gate || [-1, -1]).join(",")}"></label>
+      <label class="mp-f">${GATE_LABEL} <input data-k="gate" value="${(p.gate || [-1, -1]).join(",")}"></label>
       <label class="mp-f">opened_by <input data-k="opened_by" value="${esc(p.opened_by || "start")}"></label>
       <p style="margin-top:10px"><button id="mp-apply">Apply</button> <button class="ghost" id="mp-delp">Delete parcel</button></p>
     </div>`));

@@ -388,7 +388,7 @@ function drainBlock(it, org) {
         f.where ? ` <span class="muted">${esc(f.where)}</span>` : ""}${
         f.fix ? `<br>${esc(f.fix)}` : ""}</li>`).join("")}</ul>` : "";
   const suites = s ? `<div class="w-suites">${Object.entries(s).map(([k, v]) =>
-    `<span class="${v.ok ? "w-sui-ok" : "w-sui-bad"}">${esc(k)} suite ${v.ok ? "green" : "RED"}</span>`
+    `<span class="${v.ok ? "w-sui-ok" : "w-sui-bad"}">${esc(k)} tests ${v.ok ? "green" : "RED"}</span>`
   ).join(" · ")}</div>` : "";
   return `<div class="w-drain">
     <div class="w-drain-h">${esc(seat || "The owner")} did this on their own${

@@ -7,13 +7,97 @@
   "tier_reason": "filed by hand",
   "ask": "Same instruction, applied to the six goal files. These are the studio's written promises and Daniel reads all of them; about 33 use words that mean something only here — gate, proof, suite, attested, orphan, instrument, trace.",
   "first_action": "Run `python3 tools/check_writing.py` and fix every MUST FIX under hq/data/goals/*.json: statement, statement_short, why_it_matters and the path_to_green narratives. A goal's statement is a commitment, so change the wording and never the commitment — if a plain rewrite would change what is being promised, leave it and say so. 'gate' is the hardest: say what must actually be true before something ships, rather than naming the bar. Re-run the check until it passes.",
-  "state": "waiting_session",
+  "state": "for_review",
   "thread": "claude",
   "source": "chat",
   "source_message": "Same instruction, applied to the six goal files. These are the studio's written promises and Daniel reads all of them; about 33 use words that mean something only here — gate, proof, suite, attested, orphan, instrument, trace.",
-  "result": "",
+  "result": "Done. The six goal files now pass the writing check with nothing left to fix, and every promise still promises the same thing.\n\n**What changed.** Thirty-three phrases across five files (art was already clean). The rewrites fall into four kinds:\n\n- **\"suite\", \"proof\", \"stamps\"** became test suite, test run, and records. The local-tests promise now names the four suites it covers (unit, integration, robot session, benchmark) instead of \"every suite\".\n- **\"gate\"** became what must actually be true. The onboarding promise now reads \"one uncoached first-time player cleared every bar set for it\", and the three places that said a release waits on \"the gate closing\" now say it waits on a first-time player finding the cot on their own, which is the one bar still open per the roadmap.\n- **\"plumbing\", \"surface\", \"trace\", \"attested\", \"tier-2\"** became the literal thing: the translation files and the code that loads them, the page or screen, \"matches something in the build or a project building it\", \"your word after the fact\", and \"work cards whose result would be hard to undo\".\n- **\"this pillar\"** became Marketing or Finance in the four sentences where it appeared. Those were only flagged as worth a look, but each was a one-word swap in a sentence I was already in.\n\n**No commitment changed.** The one rewrite closest to the line is the release-inventory promise: \"every claim traces to the build\" now says \"matches something in the build or a project building it\". That is what the measurement already counts, so the words moved toward the promise, not away from it.\n\n**Two things you should know.**\n\n- **The checker and its glossary landed on main while I worked**, one commit past my copy. They were not in my worktree, so I ran a copy from the main checkout against my files. My diff sits cleanly on top of that commit. The glossary still carries a \"pending rewrite\" waiver for the old engineering wording, which this change makes dead; it is a one-line deletion I could not make from here.\n- **Six goal-file fields reach your screen but the checker never reads them**: the measurement label, the \"would need\" note, the true and false phrasings, the blocker consequence, and the escalation reason. Four of them still carry \"attestation\", \"surfaces\", \"the four local suites\" and \"with a trace\". Extending the checker's field list catches them; I filed that below.\n\nAcross the rest of HQ the check still reports 57 hard phrases, almost all in the page scripts, and CI now runs the check on every push. Main stays red until the sibling items for those surfaces land. I have not filed those, since the brief says this instruction is being applied surface by surface.\n\nNot committed and not pushed. The work is in my worktree for the session to apply.",
   "started": "",
-  "attempts": 0,
+  "attempts": 1,
   "created": "2026-09-04T14:15",
-  "created_ts": 1788556504.4051957
+  "created_ts": 1788556504.4051957,
+  "follow_ups": [
+    {
+      "title": "Check the goal-page fields that reach the screen but the writing check skips",
+      "owner": "claude",
+      "level": "task",
+      "tier": 1,
+      "first_action": "In tools/check_writing.py DATA_SOURCES add goals[].measure.label, goals[].measure.reason, goals[].measure.would_need, goals[].measure.says_true, goals[].measure.says_false, goals[].path_to_green.ceo_blocker.consequence, goals[].escalates.because and goals[].path_to_green.action.title; delete the engineering.json waiver from docs/glossary.json; reword what the run then flags (art would_need 'attestation', marketing reason/would_need 'surfaces', engineering label 'the four local suites', product label 'with a trace'); re-run until it passes.",
+      "why": "pillars.js and server.py render these fields to Daniel, so the check passing today does not mean the goal pages are clean."
+    }
+  ],
+  "recommend": {},
+  "finished": "2026-09-04T14:22",
+  "done_by": {
+    "seat": "claude",
+    "model": "fable",
+    "lane": "drain"
+  },
+  "diff": {
+    "stat": "hq/data/goals/engineering.json | 28 ++++++++++++++--------------\n hq/data/goals/marketing.json   | 10 +++++-----\n hq/data/goals/ops.json         | 10 +++++-----\n hq/data/goals/product.json     | 14 +++++++-------\n hq/data/goals/sales.json       | 10 +++++-----\n 5 files changed, 36 insertions(+), 36 deletions(-)",
+    "files": [
+      "hq/data/goals/engineering.json",
+      "hq/data/goals/marketing.json",
+      "hq/data/goals/ops.json",
+      "hq/data/goals/product.json",
+      "hq/data/goals/sales.json"
+    ],
+    "applied": true,
+    "why_not": ""
+  },
+  "check": {
+    "verdict": "concerns",
+    "summary": "nobody checked this — the check call did not come back",
+    "findings": [],
+    "escalates": null,
+    "escalation_reason": null
+  },
+  "usage": {
+    "calls_detail": [
+      {
+        "input": 1680,
+        "output": 25000,
+        "cache_read": 1736891,
+        "cache_write": 130609,
+        "turns": 61,
+        "seconds": 303.0,
+        "list_usd": 4.3163,
+        "tokens": 1894180,
+        "fresh": 157289,
+        "phase": "drain-work",
+        "model": "fable",
+        "seat": "claude"
+      },
+      {
+        "input": 424,
+        "output": 8299,
+        "cache_read": 455824,
+        "cache_write": 48277,
+        "turns": 9,
+        "seconds": 106.6,
+        "list_usd": 1.5066,
+        "tokens": 512824,
+        "fresh": 57000,
+        "phase": "drain-check",
+        "model": "fable",
+        "seat": "claude"
+      }
+    ],
+    "input": 2104,
+    "output": 33299,
+    "cache_read": 2192715,
+    "cache_write": 178886,
+    "tokens": 2407004,
+    "fresh": 214289,
+    "turns": 70,
+    "seconds": 409.6,
+    "list_usd": 5.8229,
+    "calls": 2
+  },
+  "spent": {
+    "attempts": 1,
+    "tokens": 2407004,
+    "fresh": 214289,
+    "list_usd": 5.8229
+  }
 }

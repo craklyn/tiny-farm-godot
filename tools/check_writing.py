@@ -130,12 +130,48 @@ def strings_in_js(text):
     return out
 
 
+def rendered_text(s):
+    """What a person actually sees, out of a string that is mostly markup.
+
+    The first version of this checked the raw literal and reported a CSS class
+    called `g-orphan`, a field called `gate.total` and a local named `tier` — all
+    of them invisible to any reader, none of them a writing problem. A check that
+    cries wolf on identifiers is a check people learn to skip, which leaves the
+    real ones exactly as unfound as before. So the markup and the interpolated
+    code come out first, and only the words between the tags are read."""
+    out, depth, i, n = [], 0, 0, len(s)
+    while i < n:                       # ${ ... } is code, however deeply nested
+        if s.startswith("${", i):
+            depth += 1; i += 2; continue
+        if depth:
+            if s[i] == "{":
+                depth += 1
+            elif s[i] == "}":
+                depth -= 1
+            i += 1
+            continue
+        out.append(s[i]); i += 1
+    text = "".join(out)
+    text = re.sub(r"<[^>]*>", " ", text)          # tags, and every attribute in them
+    text = re.sub(r"&[a-z]+;|\\[nt]", " ", text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
 def is_prose(s):
     """A string worth checking: real words, not a class name, path or id."""
     s = s.strip()
     if len(s) < 12 or " " not in s:
         return False
     if s.startswith(("/", "#", ".", "http")) or "/" in s.split(" ")[0]:
+        return False
+    # A hand-rolled scanner mis-pairs a quote now and then — an apostrophe in the
+    # wrong place swallows the code that follows it — and the result reads as a
+    # sentence full of syntax. Nothing a person sees contains an arrow function.
+    if re.search(r"=>|\);|\bfunction\b|\bconst\b|\breturn\b|//|\$\{", s):
+        return False
+    # `gate-src small muted` is a list of CSS classes, not a sentence: no capital,
+    # no punctuation, and every word a lowercase identifier.
+    if re.fullmatch(r"[a-z][a-z0-9-]*(?: [a-z][a-z0-9-]*)*", s):
         return False
     return len(re.findall(r"[a-z]{3,}", s)) >= 3
 
@@ -190,10 +226,11 @@ def scan(repo=REPO, terms=None, waivers=None):
         src = open(path, encoding="utf-8").read()
         lines = src.splitlines()
         for line_no, body in strings_in_js(src):
-            if not is_prose(body):
+            text = rendered_text(body)
+            if not is_prose(text):
                 continue
             near = "\n".join(lines[max(0, line_no - 2):line_no + 1])
-            check(body, rel, f"page text · line {line_no}", near)
+            check(text, rel, f"page text · line {line_no}", near)
     return hits, excused
 
 
@@ -236,6 +273,16 @@ def self_test():
         else:
             print(f"  MISSED  only {len(found)} of {want} in “{text}” — {found}")
             ok = False
+    # Markup and interpolated code are not writing, and reporting them is how a
+    # checker gets ignored. This one is a class name and a field, and must pass.
+    markup = rendered_text('<span class="g-orphan">nobody owns this</span> '
+                           '<b>${gate.total - gate.met}</b> still to do')
+    if any(t["rx"].search(markup) for t in terms if t.get("hard", True)):
+        print(f"  MISSED  markup and code were read as writing: “{markup}”")
+        ok = False
+    else:
+        print("  caught  a CSS class and a field name are not reported as prose")
+
     clean = "Run the four test suites again so each result records which version it tested"
     bad = [t["term"] for t in terms if t.get("hard", True) and t["rx"].search(clean)]
     if bad:

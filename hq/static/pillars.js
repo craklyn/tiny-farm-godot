@@ -489,19 +489,19 @@ async function instEngineering(root, below, sig, g) {
   const fresh = byId["proofs-are-fresh"] || {};
   const members = ((fresh.reading || {}).members) || [];
   const JOBS = [
-    ["unit", "Unit suite", "the sim, actions, replays, saves and the seeded dice"],
-    ["integration", "Integration suite", "the real scene, driven by simulated taps"],
+    ["unit", "Unit tests", "the sim, actions, replays, saves and the seeded dice"],
+    ["integration", "Integration tests", "the real scene, driven by simulated taps"],
     ["robot", "Robot session", "plays a whole game, then verifies its own replay"],
-    ["benchmark", "Sim benchmark", "the fast-forward gate the phase-4 plan rests on"],
+    ["benchmark", "Sim benchmark", "how fast a farm can be fast-forwarded — phase 4 needs the speed"],
   ];
   const runs = await api("/api/runs").catch(() => ({}));
   const ci = byId["main-stays-green"] || {};
   const ciOk = ci.state === "green";
 
-  const strip = [`<div class="ev-row ev-head"><span></span><span>what it proves</span><span>verdict</span><span>how far behind main</span></div>`];
+  const strip = [`<div class="ev-row ev-head"><span></span><span>what it checks</span><span>verdict</span><span>how far behind main</span></div>`];
   strip.push(`<div class="ev-row">
     <i class="dot ${(GOAL_META[ci.state] || GOAL_META.green).dcls}"></i>
-    <span><b>GitHub CI</b><br><span class="small muted">the only proof a stranger could check for himself</span></span>
+    <span><b>GitHub CI</b><br><span class="small muted">the only result someone outside the studio can check for themselves</span></span>
     <span>${ciOk ? "passed" : esc(ci.measured_human || "unknown")}</span>
     <span class="ev-age">on the commit itself</span></div>`);
   JOBS.forEach(([id, label, what], i) => {
@@ -509,7 +509,7 @@ async function instEngineering(root, below, sig, g) {
     const state = r ? r.state : "never_run";
     const dot = state === "green" ? "d-ok" : state === "failed" ? "d-fire" : state === "running" ? "d-attn" : "d-unchecked";
     const m = members[i] || {};
-    const age = m.error ? `<span class="ev-unknown">unknown — this run did not record the commit it proved</span>`
+    const age = m.error ? `<span class="ev-unknown">unknown — this run did not record which commit it tested</span>`
       : m.value != null ? `${m.value} commit${m.value === 1 ? "" : "s"}` : "—";
     strip.push(`<div class="ev-row">
       <i class="dot ${dot}"></i>
@@ -525,7 +525,7 @@ async function instEngineering(root, below, sig, g) {
     return `<div class="inv-row">
       <i class="dot ${(GOAL_META[state] || GOAL_META.green).dcls}"></i>
       <span>${esc(m.source_human || "")}</span>
-      <span class="small muted">${m.unchecked ? "no checker exists — " + esc(m.would_need || "") : m.error ? esc(m.error) : (m.hits ? m.hits + " hits" : esc(m.checked_human || "grepped on every page load"))}</span>
+      <span class="small muted">${m.unchecked ? "no checker exists — " + esc(m.would_need || "") : m.error ? esc(m.error) : (m.hits ? m.hits + " hits" : esc(m.checked_human || "checked on every page load"))}</span>
     </div>`;
   }).join("");
 
@@ -533,7 +533,7 @@ async function instEngineering(root, below, sig, g) {
     <h2>The evidence</h2>
     <div class="card evcard">${strip.join("")}</div>
     <h2>Rules that keep replays reproducible <span class="small muted">— a break here corrupts phase 4's training data</span></h2>
-    <div class="card invcard">${invRows || "<span class='muted'>no invariants declared</span>"}</div>
+    <div class="card invcard">${invRows || "<span class='muted'>No rules are recorded here yet.</span>"}</div>
     <div id="ci-strip"></div>`));
 
   // The 100-run strip patches in: it reads a file polled off the request path,
@@ -574,9 +574,9 @@ async function mountVerify(root, sig) {
     const runs = await api("/api/runs");
     if (!root.isConnected) return;
     const running = Object.values(runs).some(r => r && r.state === "running");
-    root.replaceChildren(h(`<h2>Run it yourself${running ? ` <span class="w-dots" aria-label="a suite is running"><i></i><i></i><i></i></span>` : ""}</h2>
+    root.replaceChildren(h(`<h2>Run it yourself${running ? ` <span class="w-dots" aria-label="a test run is under way"><i></i><i></i><i></i></span>` : ""}</h2>
       <div class="card${running ? " is-busy" : ""}">
-        <p class="small muted" style="margin-bottom:10px">These run the real suites on this machine; each run stamps the commit it proved.</p>
+        <p class="small muted" style="margin-bottom:10px">These run the real tests on this machine, and each run records which commit it tested.</p>
         <div id="jobs"></div></div>`));
     const jobsDiv = root.querySelector("#jobs");
     for (const [job, r] of Object.entries(runs)) {
@@ -645,7 +645,7 @@ async function instProduct(root, below, sig, g) {
       <span class="small muted">${esc(b.bar)}</span>
       <span>${esc(b.measured)}${b.void ? ` <span class="bar-void">void</span>` : ""}</span>
     </div>`).join("")
-    : `<div class="muted small">The roadmap records no scored gate run, so there is nothing to show
+    : `<div class="muted small">The roadmap records no scored run of the release checklist, so there is nothing to show
        here — and that absence is the finding, not an empty table.</div>`;
 
   // One blocker line: a dot with its own glyph, a plain statement, the fact with
@@ -672,8 +672,8 @@ async function instProduct(root, below, sig, g) {
     //    means; the project carries the work.
     const cg = proj["close-m15-gate"];
     if (cg) rows += blocker(dotFor(cg), wordFor(cg),
-      `The onboarding gate has to close — one bar is still open, a new player reaching the sleeping cot without being prompted.`,
-      gate && gate.total ? `${gate.total - gate.met} of ${gate.total} gate bars still unmet` : stepsOf(cg),
+      `The onboarding checklist has to pass — one condition is still unmet, a new player reaching the sleeping cot without being prompted.`,
+      gate && gate.total ? `${gate.total - gate.met} of ${gate.total} conditions still unmet` : stepsOf(cg),
       projRoute(cg.id));
 
     // 2. Why that bar cannot simply be re-scored and believed — the two
@@ -684,7 +684,7 @@ async function instProduct(root, below, sig, g) {
       cond.measured_human || "0 recorded sessions carry their conditions",
       routeControl(cond));
     if (lag.state && lag.state !== "green") rows += blocker("d-attn", "slipping",
-      `The last time the gate was scored, it ran on a build well behind what you would ship today.`,
+      `The last time the checklist was scored, it ran on a build well behind what you would ship today.`,
       lag.state === "broken" ? "the build it was scored on cannot be resolved any more"
         : (lag.measured_human || `${lag.measured} commits behind`),
       routeControl(lag));
@@ -692,7 +692,7 @@ async function instProduct(root, below, sig, g) {
     // 3. Then it ships — the tag-out half of the definition of done.
     const pr = proj["public-release"];
     if (pr) rows += blocker(dotFor(pr), wordFor(pr),
-      `Then the release is published — a ${esc(near.tag_intent || "version")} tag through the deploy runbook — once the gate closes.`,
+      `Then the release is published — a ${esc(near.tag_intent || "version")} tag through the deploy runbook — once the checklist passes.`,
       stepsOf(pr),
       projRoute(pr.id));
   }
@@ -706,8 +706,8 @@ async function instProduct(root, below, sig, g) {
     <h2>The next public release</h2>
     <div class="card releasecard">
       <p class="rel-lead"><b><a class="plain" href="#/program">${esc(near.name)}</a></b> — the next public release —
-        ships as <b>${esc(near.tag_intent || "an untagged build")}</b> once the onboarding gate closes on a
-        fresh-player sitting and the tag goes out.</p>
+        ships as <b>${esc(near.tag_intent || "an untagged build")}</b> once the onboarding checklist passes on a
+        sitting with a brand-new player, and the tag goes out.</p>
       <div class="tr-bar" role="img" aria-label="${rd.done} of ${rd.total} critical steps done"><i style="width:${pct}%"></i></div>
       <div class="small muted"><b>${rd.done} of ${rd.total} steps</b> done on its critical work.</div>
       <div class="rb-title">What stands in front of it</div>
@@ -722,7 +722,7 @@ async function instProduct(root, below, sig, g) {
     : `Scored ${gate && gate.scored_on ? esc(gate.scored_on) + " " : ""}on a build <b>${esc(String(lag.measured ?? "?"))} commits</b> behind what you would ship today.`;
 
   const gateCard = `
-    <h2>The gate it closes on ${gate && gate.total ? `<span class="small muted">— ${gate.met} of ${gate.total} bars met, last scored ${esc(gate.scored_on)}</span>` : ""}</h2>
+    <h2>The checklist it ships on ${gate && gate.total ? `<span class="small muted">— ${gate.met} of ${gate.total} conditions met, last scored ${esc(gate.scored_on)}</span>` : ""}</h2>
     <div class="card gatecard">
       ${barRows}
       ${gate && gate.session ? `<div class="gate-src small muted">From one session —
@@ -760,7 +760,7 @@ function sparkline(sessions, g) {
   const labels = sessions.map((s, i) => `<text x="${x(i)}" y="${H - 8}" class="sp-lbl">${esc(s.name.slice(5, 10))}</text>`).join("");
   return `<svg viewBox="0 0 ${W} ${H}" class="spark" role="img" aria-label="dead taps per session">
       <line x1="${PAD}" y1="${y(BAR)}" x2="${W - PAD}" y2="${y(BAR)}" class="sp-bar"/>
-      <text x="${W - PAD}" y="${y(BAR) - 5}" class="sp-lbl" text-anchor="end">the gate's bar, 12%</text>
+      <text x="${W - PAD}" y="${y(BAR) - 5}" class="sp-lbl" text-anchor="end">the most we allow, 12%</text>
       <polyline points="${pts}" class="sp-line"/>${dots}${labels}
     </svg>
     <p class="small muted">Every session here was played by you or your wife — none by a
@@ -812,7 +812,7 @@ async function instArt(root, below, sig, g) {
   const unledgered = new Set(((byId["every-asset-is-ledgered"] || {}).reading || {}).orphans || []);
   const board = `<p class="small muted">Every sound in the repo. Marked ones are not loaded by the build.</p>
     <div class="soundwrap">${(audio.sfx || []).map(f => {
-      const flags = [orphans.has(f) ? "the build never loads it" : "", unledgered.has(f) ? "no ledger line" : ""].filter(Boolean);
+      const flags = [orphans.has(f) ? "the build never loads it" : "", unledgered.has(f) ? "no record of where it came from" : ""].filter(Boolean);
       return `<button class="soundbtn${flags.length ? " snd-flag" : ""}" data-snd="/assets/audio/sfx/${f}"
         ${flags.length ? `title="${esc(flags.join(" · "))}"` : ""}>🔊 ${esc(f.replace(".wav", ""))}${flags.length ? " ⚠" : ""}</button>`;
     }).join("")}
@@ -1330,7 +1330,7 @@ async function instOps(root, below, sig, g) {
     (money ? foldSection("Spend, itemized",
       `${money.count} run${money.count === 1 ? "" : "s"} written down · ${fmtMoney(money.total, money.currency)} in total`,
       spendFoldBody(money)) : "")
-    + foldSection("The provenance ledger, in full", "every asset's rights and cost",
+    + foldSection("Where every asset came from", "each one's rights and cost",
       `<div class="mddoc" id="credits-doc"><span class="muted">loading…</span></div>`)
 ));
 

@@ -5,19 +5,19 @@
     "fire": "{worst}",
     "attention": "{worst}",
     "unassured": "Nothing is failing; monitoring is still landing on {unassured} of {total} areas, and the plans are filed.",
-    "ok": "Green on main, and the proofs are fresh enough to believe.",
+    "ok": "Green on main, and the test runs are recent enough to believe.",
     "dormant": "Dormant. {dormant_reason}",
     "nothing_for_you": "Nothing here needs you. {ours_line}"
   },
   "goals": [
     {
       "id": "main-stays-green",
-      "statement": "Main is always shippable — the newest finished run of the full suite passed.",
-      "statement_short": "the newest finished run of the suite failed on main",
+      "statement": "Main is always shippable — the newest finished run of the full test suite passed.",
+      "statement_short": "the newest finished run of the test suite failed on main",
       "owner": "elena",
       "severity": "blocking",
       "unit": "verdict",
-      "why_it_matters": "Every other proof runs on our own machine; this is the one a stranger could check.",
+      "why_it_matters": "Every other test run happens on our own machine; this one runs on GitHub, where a stranger could check it.",
       "measure": {
         "kind": "ci_state",
         "field": "newest_completed"
@@ -46,8 +46,8 @@
     },
     {
       "id": "ci-is-not-leaking",
-      "statement": "The suite passes almost every time — failures are incidents, not a slow leak.",
-      "statement_short": "the suite fails often enough to look like a leak rather than an incident",
+      "statement": "The test suite passes almost every time — failures are incidents, not a slow leak.",
+      "statement_short": "the test suite fails often enough to look like a leak rather than an incident",
       "owner": "grace",
       "severity": "watch",
       "unit": "%",
@@ -76,8 +76,8 @@
     },
     {
       "id": "local-proofs-pass",
-      "statement": "Every suite we can run ourselves passed the last time it ran.",
-      "statement_short": "a suite failed the last time it ran on this machine",
+      "statement": "All four test suites we run on this machine — unit, integration, robot session and benchmark — passed the last time they ran.",
+      "statement_short": "a test suite failed the last time it ran on this machine",
       "owner": "elena",
       "severity": "blocking",
       "unit": "verdict",
@@ -159,7 +159,7 @@
         ]
       },
       "path_to_green": {
-        "narrative": "Re-run the failing suite from the buttons below — a loaded machine can skew the benchmark on its own.",
+        "narrative": "Run the failing test suite again from the buttons below — a busy machine can fail the benchmark on its own.",
         "route": {
           "kind": "none"
         },
@@ -172,12 +172,12 @@
     },
     {
       "id": "proofs-are-fresh",
-      "statement": "Those local proofs were run against something close to what is on main now.",
-      "statement_short": "the local proofs are stale — they were run many commits ago",
+      "statement": "Those four test suites were last run on a version close to what is on main now.",
+      "statement_short": "the test suites on this machine were last run many commits ago",
       "owner": "grace",
       "severity": "important",
       "unit": "commits",
-      "why_it_matters": "A green verdict from eighty commits ago and one from this commit look identical on a page. Age is the difference between proof and reassurance.",
+      "why_it_matters": "A pass from eighty commits ago and a pass from this commit look identical on a page. Only the age says whether the result is evidence or reassurance.",
       "measure": {
         "kind": "composite",
         "op": "worst_of",
@@ -231,7 +231,7 @@
         "amber_at": 60
       },
       "path_to_green": {
-        "narrative": "Run the suites again from the buttons below — from now on each run stamps the commit it proved.",
+        "narrative": "Run the test suites again from the buttons below — each run now records which commit it tested.",
         "route": {
           "kind": "work",
           "id": "wcb8ea7d223a"
@@ -346,7 +346,7 @@
         "amber_at": 0.8
       },
       "path_to_green": {
-        "narrative": "One fresh session on the tablet from a clean tree fixes this — the same sitting Product needs to close the onboarding gate.",
+        "narrative": "One fresh session on the tablet, from a build with nothing uncommitted in it, fixes this — the same sitting Product needs to show a first-time player finds the cot on their own.",
         "route": {
           "kind": "project",
           "id": "replay-phase-b"

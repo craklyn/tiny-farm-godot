@@ -43,7 +43,7 @@
         "direction": "must_be_true"
       },
       "path_to_green": {
-        "narrative": "The record is backfilled from the ledger and the pipeline appends as it spends; the remaining step is spend estimates on tier-2 cards.",
+        "narrative": "The record is backfilled from the ledger and the pipeline appends as it spends; the remaining step is a spend estimate on every work card whose result would be hard to undo.",
         "route": {
           "kind": "project",
           "id": "spend-ledger"
@@ -233,7 +233,7 @@
       "owner": "harold",
       "severity": "important",
       "unit": "",
-      "why_it_matters": "The model budget is by a wide margin the largest ongoing expense here — far more than the $2.23 of art this pillar reports carefully. HQ already detects when the window runs dry and parks the work that was waiting, so the events happen; hq/data/outbox/_limit.json is simply overwritten each time. One append instead of one overwrite and the studio's real cost curve exists. Until then, the only spend Finance can talk about is the small one.",
+      "why_it_matters": "The model budget is by a wide margin the largest ongoing expense here — far more than the $2.23 of art Finance reports carefully. HQ already detects when the window runs dry and parks the work that was waiting, so the events happen; hq/data/outbox/_limit.json is simply overwritten each time. One append instead of one overwrite and the studio's real cost curve exists. Until then, the only spend Finance can talk about is the small one.",
       "measure": {
         "kind": "file_grep",
         "label": "limit events are appended to a history, not overwritten",
@@ -269,11 +269,11 @@
     {
       "id": "ready-to-grow-words",
       "statement": "When the game starts needing words, they can be translated without going back over the code.",
-      "statement_short": "there is no translation plumbing, so every word added now is a retrofit later",
+      "statement_short": "there are no translation files and nothing that loads them, so every word added now has to be found again later",
       "owner": "oskar",
       "severity": "watch",
       "unit": "",
-      "why_it_matters": "The game starts almost wordless and gains text as it gets technical — S-7 binds phase 1's farming loop, not the whole arc, and programmable bots will need words by design. So text is coming on purpose. There is no i18n here at all: no tr(), no locale setting, no translation files. Every string written before the plumbing exists is one somebody has to go back and find. This is the cheapest it will ever be to fix, and it gets more expensive with each phase.",
+      "why_it_matters": "The game starts almost wordless and gains text as it gets technical — S-7 binds phase 1's farming loop, not the whole arc, and programmable bots will need words by design. So text is coming on purpose. There is no translation support here at all: no translation files, no language setting, and no code that looks a word up before showing it. Every word written before that exists is one somebody has to go back and find. This is the cheapest it will ever be to fix, and it gets more expensive with each phase.",
       "measure": {
         "kind": "file_grep",
         "label": "the project has translation plumbing",
@@ -293,7 +293,7 @@
         "direction": "must_be_true"
       },
       "path_to_green": {
-        "narrative": "Put the plumbing in before the words arrive, not after. Phase 2's machines are where text starts, so this wants doing before them.",
+        "narrative": "Put the translation files and the code that loads them in before the words arrive, not after. Phase 2's machines are where text starts, so this wants doing before them.",
         "route": {
           "kind": "work",
           "id": "w1a9922279f6"

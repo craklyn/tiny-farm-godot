@@ -25,14 +25,14 @@ async function renderPlaytests() {
     <h1>🧪 Playtest Sessions</h1>
     ${unclassified.length ? `<div class="card" style="border-left:3px solid var(--warn,#c98a2e)">
       <b>⚠️ ${unclassified.length} session(s) not yet classified</b>
-      <p class="small muted">${unclassified.map(s => esc(s.name)).join(", ")} — shelved in <code>playtests/</code> but not pinned in <code>SHELF</code> (tests/test_runner.gd). The suite skips them and stays green on purpose: an unclassified session is paperwork, not a broken build. Pinning one records the log format it is and whether it still replays to its own autosave.</p>
+      <p class="small muted">${unclassified.map(s => esc(s.name)).join(", ")} — shelved in <code>playtests/</code> but not pinned in <code>SHELF</code> (tests/test_runner.gd). The tests skip them and stay green on purpose: an unclassified session is paperwork, not a broken build. Pinning one records the log format it is and whether it still replays to its own autosave.</p>
     </div>` : ""}
-    <p class="sub">Every recorded session, scored by the game's own instruments. The bars are the ruled gate bars: wasted taps ≤ ${BAR_WASTED}%, longest stall ≤ ${BAR_STALL_MS / 1000}s. "Satisfied" taps (tapping something already done) never count against a player.</p>
+    <p class="sub">Every recorded session, scored from measurements the game takes while it is played. The targets are the ones ruled for the release checklist: wasted taps ≤ ${BAR_WASTED}%, longest stall ≤ ${BAR_STALL_MS / 1000}s. "Satisfied" taps (tapping something already done) never count against a player.</p>
     <div class="card" style="overflow-x:auto"><table class="pt-table">
       <tr><th>Session</th><th>Build</th><th>Taps</th><th>Wasted</th><th>Satisfied</th><th>Longest stall</th><th>Days</th><th>Active</th></tr>
       ${real.map(s => `<tr class="pt-row" data-name="${esc(s.name)}">
         <td><b>${esc(s.name)}</b>${s.continued ? ' <span class="small muted">(resumed)</span>' : ""}${s.classified === false ? ' <span class="small muted">(unclassified)</span>' : ""}${(s.dropped_lines || s.unknown_outcomes || s.mislabelled) ? " ⚠️" : ""}</td>
-        <td class="small muted">${esc(s.build_id || "unstamped")}</td>
+        <td class="small muted">${esc(s.build_id || "not recorded")}</td>
         <td>${s.taps}</td>
         <td class="${s.wasted_pct <= BAR_WASTED ? "good" : "bad"}">${s.wasted} (${s.wasted_pct}%)</td>
         <td>${s.satisfied}</td>
@@ -41,7 +41,7 @@ async function renderPlaytests() {
         <td>${fmtMs(s.active_ms)}</td>
       </tr>`).join("")}
     </table></div>
-    ${tiny.length ? `<p class="small muted">${tiny.length} session(s) hidden as trivial/broken traces (≤5 taps): ${tiny.map(t => esc(t.name)).join(", ")}</p>` : ""}
+    ${tiny.length ? `<p class="small muted">${tiny.length} session(s) hidden as trivial or broken recordings (≤5 taps): ${tiny.map(t => esc(t.name)).join(", ")}</p>` : ""}
   `));
   $view.querySelectorAll(".pt-row").forEach(r =>
     r.addEventListener("click", () => location.hash = "#/playtest/" + r.dataset.name));
@@ -57,7 +57,7 @@ async function renderPlaytestDetail(name) {
   $view.replaceChildren(h(`
     <p class="crumbs"><a class="plain" href="#/playtests">Playtests</a> <span>›</span> <b>${esc(s.name)}</b></p>
     <h1>🧪 ${esc(s.name)}</h1>
-    <p class="sub">build ${esc(s.build_id || "unstamped")} · seed ${esc(String(s.gen_seed ?? "?"))} ${s.continued ? "· resumed from a save" : "· fresh farm"}</p>
+    <p class="sub">build ${esc(s.build_id || "not recorded")} · seed ${esc(String(s.gen_seed ?? "?"))} ${s.continued ? "· resumed from a save" : "· fresh farm"}</p>
     <div class="statrow">
       <div class="stat"><b>${s.taps}</b><span>taps</span></div>
       <div class="stat"><b class="${s.wasted_pct <= BAR_WASTED ? "good" : "bad"}">${s.wasted_pct}%</b><span>wasted (bar: ≤${BAR_WASTED}%)</span></div>
@@ -66,8 +66,8 @@ async function renderPlaytestDetail(name) {
       <div class="stat"><b>${s.days_played}</b><span>days played</span></div>
       <div class="stat"><b>${fmtMs(s.active_ms)}</b><span>active play</span></div>
     </div>
-    ${s.mislabelled ? `<div class="card eye-card eye-fire">⚠️ Instrument integrity: ${s.mislabelled} tap(s) mislabelled unreachable — this trace's numbers are not fully trustworthy.</div>` : ""}
-    ${s.dropped_lines ? `<div class="card eye-card eye-fire">⚠️ Trace integrity: ${s.dropped_lines} line(s) failed to parse (truncated pull from the device?) — treat every number here as a floor, not a fact.</div>` : ""}
+    ${s.mislabelled ? `<div class="card eye-card eye-fire">⚠️ The measurements are off: ${s.mislabelled} tap(s) were wrongly recorded as reaching nothing, so this session's numbers are not fully trustworthy.</div>` : ""}
+    ${s.dropped_lines ? `<div class="card eye-card eye-fire">⚠️ The recording is incomplete: ${s.dropped_lines} line(s) could not be read (a copy from the device that stopped part-way?), so treat every number here as a floor, not a fact.</div>` : ""}
     ${s.unknown_outcomes ? `<div class="card eye-card eye-fire">⚠️ Format drift: ${s.unknown_outcomes} tap(s) carry outcome codes this parser doesn't know — its formulas may undercount wasted taps until it learns them.</div>` : ""}
     <div id="scrub-root"></div>
     <h2>The session, minute by minute</h2>
