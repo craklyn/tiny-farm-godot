@@ -3579,7 +3579,17 @@ def cli_failure(proc):
     return " ".join(detail.split())[:400]
 
 
-def _chat_once(to_id, message, history):
+def seat_model(org, to_id, override=None):
+    """The model a persona runs on: an explicit override for this occasion wins,
+    else the seat's default from its org record. The default is never binding —
+    that is the ruling, not an accident of the plumbing."""
+    if override:
+        return str(override)
+    emp = next((e for e in org["employees"] if e["id"] == to_id), None)
+    return (emp or {}).get("model") or ""
+
+
+def _chat_once(to_id, message, history, model=None):
     """One real call to the CLI. Returns {"reply"} or {"error"[, "limited"]}."""
     org = load_org()
     convo = ""
@@ -3594,6 +3604,9 @@ def _chat_once(to_id, message, history):
         "--allowedTools", "Read,Glob,Grep",
         "--max-turns", str(MAX_TURNS),
     ]
+    m = seat_model(org, to_id, model)
+    if m:
+        cmd += ["--model", m]
     with CHAT_LOCK:
         try:
             proc = subprocess.run(
@@ -3628,7 +3641,7 @@ def run_chat(payload):
                             "manual" if payload.get("queue") else "limit")
         return {"queued": item["id"], "resume_at": limited_until(),
                 "reason": item["reason"]}
-    res = _chat_once(to_id, message, history)
+    res = _chat_once(to_id, message, history, model=payload.get("model"))
     if res.get("reply"):
         work.capture_exchange(to_id, message, res["reply"])
     if res.get("limited"):

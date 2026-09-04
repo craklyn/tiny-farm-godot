@@ -126,7 +126,11 @@ the game proper.
   the work it unblocks, then set the ruling's status to `"integrated"`. Sweep
   `hq/data/work/` for items in `waiting_session` in the same pass — they are queued
   precisely for a session like this one, and a queue nothing drains is a design
-  problem wearing a to-do list. Curated decision
+  problem wearing a to-do list. Execute each through a subagent holding only the
+  owner's seat context (org record, `hq/data/staff/<id>/memory.md`, the card), on
+  the owner's default `model` from `org.json` — override for the occasion when it
+  warrants — then verify the result yourself before committing: diff, both suites,
+  a writing-rules pass. A verification failure gets written into the seat's notes. Curated decision
   cards live in `hq/data/decisions/` — when new Q-items open or close, keep those cards
   in sync (plain language, options with a recommendation, attachments).
 - `docs/WRITING.md` — how anything a human sees is worded (HQ pages, decision

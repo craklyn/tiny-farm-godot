@@ -1,6 +1,6 @@
 {
   "company": "Tiny Farm Studio",
-  "notes": "Org sized for: commercial game built in ~1.5 years, $20M revenue in first 6 months. Levels use Amazon's system (L4 entry, L5 experienced, L6 senior/lead, L7 principal/director, L8 director+).",
+  "notes": "Org sized for: commercial game built in ~1.5 years, $20M revenue in first 6 months. Levels use Amazon's system (L4 entry, L5 experienced, L6 senior/lead, L7 principal/director, L8 director+). Each employee's 'model' is the seat's DEFAULT model, read by both lanes that run personas (HQ chat and build-session agent spawns); any invocation may override it when the occasion warrants — the default is never binding (ruled 2026-09-03).",
   "employees": [
     {
       "id": "daniel",
@@ -48,7 +48,8 @@
         "blocked projects"
       ],
       "demo": "#/",
-      "escalates_when": "any pillar red >24h, or a ruling older than a week"
+      "escalates_when": "any pillar red >24h, or a ruling older than a week",
+      "model": "fable"
     },
     {
       "id": "rin",
@@ -73,7 +74,8 @@
         "whether the CEO ever has to ask 'where do I look?'"
       ],
       "demo": "#/",
-      "escalates_when": "the landing page fails the glance test — if Daniel can't find the one thing in 3 seconds, the interface failed, not Daniel"
+      "escalates_when": "the landing page fails the glance test — if Daniel can't find the one thing in 3 seconds, the interface failed, not Daniel",
+      "model": "opus"
     },
     {
       "id": "priya",
@@ -96,7 +98,8 @@
         "release cadence"
       ],
       "demo": "#/pillar/product",
-      "escalates_when": "two consecutive milestones slip, or a priority inversion persists"
+      "escalates_when": "two consecutive milestones slip, or a priority inversion persists",
+      "model": "opus"
     },
     {
       "id": "marcus",
@@ -119,7 +122,8 @@
         "post-launch calendar readiness"
       ],
       "demo": "#/pillar/product",
-      "escalates_when": "an economy change ships without a designer ruling"
+      "escalates_when": "an economy change ships without a designer ruling",
+      "model": "sonnet"
     },
     {
       "id": "sofia",
@@ -145,7 +149,8 @@
         "gate evidence"
       ],
       "demo": "#/program",
-      "escalates_when": "a project is blocked >1 week with no owner action"
+      "escalates_when": "a project is blocked >1 week with no owner action",
+      "model": "opus"
     },
     {
       "id": "wei",
@@ -168,7 +173,8 @@
         "gate metrics vs. bars"
       ],
       "demo": "#/playtests",
-      "escalates_when": "a fresh session regresses a ruled bar (dead taps, stalls)"
+      "escalates_when": "a fresh session regresses a ruled bar (dead taps, stalls)",
+      "model": "sonnet"
     },
     {
       "id": "elena",
@@ -192,7 +198,8 @@
         "benchmark gate"
       ],
       "demo": "#/pillar/engineering",
-      "escalates_when": "CI red on main, robot MISMATCH, or benchmark <100k×"
+      "escalates_when": "CI red on main, robot MISMATCH, or benchmark <100k×",
+      "model": "opus"
     },
     {
       "id": "tomas",
@@ -215,7 +222,8 @@
         "sim purity greps"
       ],
       "demo": "#/pillar/engineering",
-      "escalates_when": "any replay-format change lands without a migration note"
+      "escalates_when": "any replay-format change lands without a migration note",
+      "model": "opus"
     },
     {
       "id": "jade",
@@ -238,7 +246,8 @@
         "input regressions"
       ],
       "demo": "#/entities",
-      "escalates_when": "a playtest shows a new class of dead taps"
+      "escalates_when": "a playtest shows a new class of dead taps",
+      "model": "sonnet"
     },
     {
       "id": "ravi",
@@ -262,7 +271,8 @@
         "asset imports"
       ],
       "demo": "#/pillar/engineering",
-      "escalates_when": "a deploy needs a step the runbook doesn't have"
+      "escalates_when": "a deploy needs a step the runbook doesn't have",
+      "model": "sonnet"
     },
     {
       "id": "anna",
@@ -284,7 +294,8 @@
         "crop/weather test coverage"
       ],
       "demo": "#/pillar/engineering",
-      "escalates_when": "a sim feature ships without sim-level tests"
+      "escalates_when": "a sim feature ships without sim-level tests",
+      "model": "sonnet"
     },
     {
       "id": "kenji",
@@ -307,7 +318,8 @@
         "fixture ledger"
       ],
       "demo": "#/pillar/engineering",
-      "escalates_when": "training-data format breaks without a version stamp"
+      "escalates_when": "training-data format breaks without a version stamp",
+      "model": "sonnet"
     },
     {
       "id": "grace",
@@ -331,7 +343,8 @@
         "visual baseline"
       ],
       "demo": "#/pillar/engineering",
-      "escalates_when": "any suite red >1 commit, or a flaky test appears"
+      "escalates_when": "any suite red >1 commit, or a flaky test appears",
+      "model": "sonnet"
     },
     {
       "id": "ingrid",
@@ -354,7 +367,8 @@
         "palette drift"
       ],
       "demo": "#/entities",
-      "escalates_when": "an asset lands off-palette or unrecorded in CREDITS"
+      "escalates_when": "an asset lands off-palette or unrecorded in CREDITS",
+      "model": "opus"
     },
     {
       "id": "milo",
@@ -377,7 +391,8 @@
         "phase-arc coherence"
       ],
       "demo": "#/design",
-      "escalates_when": "a mechanic ships that contradicts a settled decision"
+      "escalates_when": "a mechanic ships that contradicts a settled decision",
+      "model": "sonnet"
     },
     {
       "id": "yuki",
@@ -400,7 +415,8 @@
         "frame metadata accuracy"
       ],
       "demo": "#/entities",
-      "escalates_when": "the gallery and the sheets disagree"
+      "escalates_when": "the gallery and the sheets disagree",
+      "model": "sonnet"
     },
     {
       "id": "sam",
@@ -423,7 +439,8 @@
         "wordless-rule compliance"
       ],
       "demo": "#/design",
-      "escalates_when": "a screen ships requiring reading in the core loop"
+      "escalates_when": "a screen ships requiring reading in the core loop",
+      "model": "sonnet"
     },
     {
       "id": "dmitri",
@@ -446,7 +463,8 @@
         "verb-sound coverage"
       ],
       "demo": "#/pillar/art",
-      "escalates_when": "a sound ships without provenance"
+      "escalates_when": "a sound ships without provenance",
+      "model": "sonnet"
     },
     {
       "id": "carmen",
@@ -469,7 +487,8 @@
         "channel handles"
       ],
       "demo": "#/pillar/marketing",
-      "escalates_when": "the game picks up speed with no ramp plan ready"
+      "escalates_when": "the game picks up speed with no ramp plan ready",
+      "model": "opus"
     },
     {
       "id": "tessa",
@@ -491,7 +510,8 @@
         "capture pipeline output"
       ],
       "demo": "#/pillar/marketing",
-      "escalates_when": "launch window opens without 30 days of content banked"
+      "escalates_when": "launch window opens without 30 days of content banked",
+      "model": "sonnet"
     },
     {
       "id": "jordan",
@@ -513,7 +533,8 @@
         "capture pipeline output"
       ],
       "demo": "#/pillar/marketing",
-      "escalates_when": "same as Instagram — content bank empty at launch"
+      "escalates_when": "same as Instagram — content bank empty at launch",
+      "model": "sonnet"
     },
     {
       "id": "priscilla",
@@ -535,7 +556,8 @@
         "press-kit freshness vs. latest build"
       ],
       "demo": "#/pillar/marketing",
-      "escalates_when": "an outlet asks for assets we don't have"
+      "escalates_when": "an outlet asks for assets we don't have",
+      "model": "sonnet"
     },
     {
       "id": "diego",
@@ -557,7 +579,8 @@
         "creator list coverage"
       ],
       "demo": "#/pillar/marketing",
-      "escalates_when": "a top-tier creator covers the genre without a key from us"
+      "escalates_when": "a top-tier creator covers the genre without a key from us",
+      "model": "sonnet"
     },
     {
       "id": "amara",
@@ -580,7 +603,8 @@
         "itch comments"
       ],
       "demo": "#/pillar/marketing",
-      "escalates_when": "a player-found bug goes unanswered >24h"
+      "escalates_when": "a player-found bug goes unanswered >24h",
+      "model": "sonnet"
     },
     {
       "id": "victor",
@@ -603,7 +627,8 @@
         "platform requirements"
       ],
       "demo": "#/pillar/sales",
-      "escalates_when": "a cert requirement lands that engineering hasn't seen"
+      "escalates_when": "a cert requirement lands that engineering hasn't seen",
+      "model": "opus"
     },
     {
       "id": "lena",
@@ -625,7 +650,8 @@
         "store pages vs. latest release"
       ],
       "demo": "#/pillar/sales",
-      "escalates_when": "a store page shows a stale build or price"
+      "escalates_when": "a store page shows a stale build or price",
+      "model": "sonnet"
     },
     {
       "id": "harold",
@@ -648,7 +674,8 @@
         "art/API spend"
       ],
       "demo": "#/pillar/ops",
-      "escalates_when": "monthly spend changes runway by >1 month"
+      "escalates_when": "monthly spend changes runway by >1 month",
+      "model": "opus"
     },
     {
       "id": "fatima",
@@ -670,7 +697,8 @@
         "support macros vs. new features"
       ],
       "demo": "#/pillar/ops",
-      "escalates_when": "a top-issue repeats 5x without an eng ticket"
+      "escalates_when": "a top-issue repeats 5x without an eng ticket",
+      "model": "sonnet"
     },
     {
       "id": "oskar",
@@ -693,7 +721,8 @@
         "store-page locales"
       ],
       "demo": "#/pillar/ops",
-      "escalates_when": "any game surface gains required reading"
+      "escalates_when": "any game surface gains required reading",
+      "model": "sonnet"
     }
   ]
 }

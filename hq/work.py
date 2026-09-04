@@ -483,12 +483,14 @@ it and he is entitled to know what his yes starts before he gives it.
 {spec}"""
 
 
-def _run_cli(prompt, sys_prompt, tools, turns, timeout):
+def _run_cli(prompt, sys_prompt, tools, turns, timeout, model=""):
     """One CLI call, with the intake queue's token-limit accounting. Returns
     (text, limited)."""
     import subprocess
     cmd = ["claude", "-p", prompt, "--append-system-prompt", sys_prompt,
            "--allowedTools", tools, "--max-turns", str(turns)]
+    if model:
+        cmd += ["--model", model]
     try:
         with HOST.CHAT_LOCK:
             proc = subprocess.run(
@@ -534,7 +536,8 @@ def _process_item(item, org):
     save_item(item)
     sys_prompt = HOST.build_system_prompt(org, item["owner"])
     text, limited = _run_cli(_do_prompt(item, org), sys_prompt, "Read,Glob,Grep",
-                             HOST.MAX_TURNS, 420)
+                             HOST.MAX_TURNS, 420,
+                             model=item.get("model") or HOST.seat_model(org, item["owner"]))
     if limited:
         item["started"] = ""
         save_item(item)
@@ -599,7 +602,8 @@ def _process_response(item, org):
     worker so the page never blocks on a model call."""
     raw, limited = _run_cli(_response_prompt(item, org),
                             HOST.build_system_prompt(org, item["owner"]),
-                            "Read,Glob,Grep", HOST.MAX_TURNS, 300)
+                            "Read,Glob,Grep", HOST.MAX_TURNS, 300,
+                            model=item.get("model") or HOST.seat_model(org, item["owner"]))
     if limited:
         return False
     text, got, amend, rec = _split_result(raw, org, item["owner"])
