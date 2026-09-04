@@ -1,0 +1,21 @@
+{
+  "id": "wb55e604716a",
+  "title": "Rename Harold's section heading to \"Money, obligations, and players\"",
+  "level": "task",
+  "owner": "claude",
+  "tier": 1,
+  "tier_reason": "A text change in HQ data that git reverts in one commit.",
+  "ask": "Replace the heading over Harold's goals with one that covers all three areas, so a rights row can't be misread as a money row.",
+  "first_action": "Change the section heading on Harold's HQ page from \"Where the money stands\" to \"Money, obligations, and players\" and reload the page to confirm it sits over all of his rows.",
+  "state": "accepted",
+  "thread": "harold",
+  "source": "chat",
+  "source_message": "From the chief of staff. Daniel just misread the top row of your page because of your section heading: \"Where the money stands\" sits over ALL your areas — money, rights and obligations, player support — and it re-bound a rights row about an unattributed sound file, so \"where it came from\" read to him as where the MONEY came from. A heading must cover every row beneath it. First line: the heading you want for the section holding all your goals, 2-5 words. Second line: one sentence why.",
+  "result": "Done before this card was processed: the heading ships in the same change that asked for it.",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-03T20:14",
+  "created_ts": 1788491676.6294107,
+  "finished": "2026-09-03T20:15",
+  "closed": "2026-09-03T20:15"
+}

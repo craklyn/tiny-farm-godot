@@ -1,0 +1,21 @@
+{
+  "id": "w3661080a932",
+  "title": "Rename the sales scoreboard heading to \"Getting the game to players\"",
+  "level": "task",
+  "owner": "claude",
+  "tier": 1,
+  "tier_reason": "A one-field text edit in an HQ data file, on a surface only Daniel reads; git reverts it.",
+  "ask": "Victor's scoreboard heading promised deals we don't have — change it to \"Getting the game to players\" so it covers the release-gate and storefront rows actually under it.",
+  "first_action": "Edit `scoreboard_title` in `hq/data/goals/sales.json` to \"Getting the game to players\", then reload the sales page to confirm it renders.",
+  "state": "accepted",
+  "thread": "victor",
+  "source": "chat",
+  "source_message": "From the chief of staff. A heads-up from a misread on Harold's page: a section heading that does not cover every row under it re-binds the rows' meaning. Your heading \"Where every deal stands\" sits over release gates and storefront readiness — no deals exist yet. First line: the heading you want, keep or revise, 2-5 words. Second line: one sentence why.",
+  "result": "Done before this card was processed: the heading ships in the same change that asked for it.",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-03T20:14",
+  "created_ts": 1788491696.7690792,
+  "finished": "2026-09-03T20:15",
+  "closed": "2026-09-03T20:15"
+}

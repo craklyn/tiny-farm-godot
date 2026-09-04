@@ -12,7 +12,7 @@
   "goals": [
     {
       "id": "spend-is-recorded",
-      "statement": "Every pound this studio spends is written down somewhere a machine can add up.",
+      "statement": "Every dollar this studio spends is written down somewhere a machine can add up.",
       "statement_short": "nothing adds up what this studio has spent",
       "owner": "harold",
       "severity": "important",
@@ -48,7 +48,7 @@
     },
     {
       "id": "every-asset-is-ledgered",
-      "statement": "Nothing ships until we have written down where it came from and whether we may use it.",
+      "statement": "Every asset in the build has a written record of its origin, its terms, and its cost.",
       "statement_short": "a sound in the game has no record of where it came from",
       "owner": "harold",
       "severity": "blocking",
@@ -80,7 +80,7 @@
         "amber_at": 0
       },
       "path_to_green": {
-        "narrative": "Write the missing lines. Each is one sentence: where it came from, its terms, what it cost.",
+        "narrative": "Write the missing entries — one sentence each: the asset's source, its terms, its cost.",
         "route": {
           "kind": "work",
           "id": "w135db887c1e"
@@ -265,5 +265,5 @@
       }
     }
   ],
-  "scoreboard_title": "Where the money stands"
+  "scoreboard_title": "Money, obligations, and players"
 }
