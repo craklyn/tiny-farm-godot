@@ -1,0 +1,19 @@
+{
+  "id": "wd2ac4cb762d",
+  "title": "Give HQ a status for work that is waiting on purpose",
+  "level": "story",
+  "owner": "sofia",
+  "tier": 1,
+  "tier_reason": "filed by hand",
+  "ask": "Daniel ruled Q-90 option (a): projects get a third status — waiting — which carries the event that will wake it and the decision that put it there. Today a project parked by his own ruling reads either `blocked`, which puts an instruction to do the parked thing at the top of his dashboard and starts a 7-day amber clock against Product, or `planned`, which hides the wait completely.",
+  "first_action": "Add the status to the project schema with its two fields (the waking event, and the decision that set it), teach hq/server.py's signals and the program report to read it — it must not enter the Eye of Sauron as an unblock action, must not feed nothing-blocked-too-long, and must not join api_program's gating set — then move replay-phase-b and close-m15-gate onto it and show the wake-up on the project page.",
+  "state": "waiting_session",
+  "thread": "sofia",
+  "source": "chat",
+  "source_message": "Daniel ruled Q-90 option (a): projects get a third status — waiting — which carries the event that will wake it and the decision that put it there. Today a project parked by his own ruling reads either `blocked`, which puts an instruction to do the parked thing at the top of his dashboard and starts a 7-day amber clock against Product, or `planned`, which hides the wait completely.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-04T13:05",
+  "created_ts": 1788552344.6573584
+}

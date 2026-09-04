@@ -64,6 +64,10 @@ GAME_PATHS = ("world/", "player/", "entities/", "systems/", "ui/", "effects/",
               "crops/", "tests/", "tools/", "assets/", "project.godot", "main.gd",
               "main.tscn")
 WRITE_TOOLS = "Read,Glob,Grep,Edit,Write,MultiEdit,NotebookEdit,Bash,TodoWrite,WebFetch"
+# Tier 0 has nothing to walk back, so it gets nothing that could: the seat reads
+# the repo and answers. The one executor runs both lanes, because two executors
+# with different context is how a studio ends up with two answers.
+READ_TOOLS = "Read,Glob,Grep"
 
 
 def sh(args, cwd=REPO, timeout=120, check=False):
@@ -77,7 +81,7 @@ def sh(args, cwd=REPO, timeout=120, check=False):
 # the seat, as the worker holds it
 # ---------------------------------------------------------------------------
 
-def seat_prompt(org, seat_id):
+def seat_prompt(org, seat_id, thinking=False):
     """The seat's own context and nothing else. Deliberately not
     build_system_prompt: that one frames the persona as chatting with Daniel,
     and a worker that thinks it is chatting will describe the work instead of
@@ -99,11 +103,7 @@ the studio filed to you, on your own. You hold your seat's context only: you did
 not see the conversation that created this item and must not assume what it said
 beyond the brief you are given.
 
-You have write access to a private copy of the repository — your own git
-worktree. Nothing you change here reaches main until the chief of staff has read
-your diff and the test suites have run, so make the change properly rather than
-hedging. Change only what this item asks for: a diff that also tidies three
-other things is a diff nobody can review.
+{"You are reading, not building. The repository is open to you and is the source of truth; you cannot change it, and you are not being asked to. What you produce is the answer itself — the verdict, the recommendation, the survey — written so that somebody can act on it without asking you a follow-up question." if thinking else "You have write access to a private copy of the repository — your own git worktree. Nothing you change here reaches main until the chief of staff has read your diff and the test suites have run, so make the change properly rather than hedging. Change only what this item asks for: a diff that also tidies three other things is a diff nobody can review."}
 
 House rules that bind you:
 - The design docs in docs/ are the source of truth for intent, and a change to a
@@ -343,15 +343,20 @@ def do_item(item, org, run_id, log):
     the session applies and writes back."""
     seat = item["owner"]
     model = item.get("model") or server.seat_model(org, seat)
+    thinking = int(item.get("tier") or 0) == 0
     rec = {"id": item["id"], "seat": seat, "model": model, "usage": [],
            "patch": "", "stat": "", "files": [], "result": "", "check": None,
            "error": "", "limited": False}
     tree = None
     try:
+        if thinking:                      # claim it before the server's worker can
+            item["started"] = work._now_iso()
+            work.save_item(item)
         tree = make_worktree(run_id, item["id"])
         log(f"{item['id']} · {seat} on {model or 'the default model'} · {item['title'][:60]}")
-        text, usage, err = run_cli(task_prompt(item, org), seat_prompt(org, seat),
-                                   WRITE_TOOLS, model, tree, WORKER_TIMEOUT,
+        text, usage, err = run_cli(task_prompt(item, org), seat_prompt(org, seat, thinking),
+                                   READ_TOOLS if thinking else WRITE_TOOLS,
+                                   model, tree, WORKER_TIMEOUT,
                                    WORKER_TURNS, "drain-work", seat, item["id"])
         if usage:
             rec["usage"].append(dict(usage, phase="drain-work", model=model, seat=seat))
@@ -610,14 +615,23 @@ def write_back(item, rec, applied, why_not, suites, org):
 # main
 # ---------------------------------------------------------------------------
 
-def queued():
-    return [i for i in work.items() if i.get("state") == "waiting_session"]
+def queued(include_thinking=False):
+    """What the drain may pick up. Tier 1 always; tier 0 on request, and then it
+    is claimed by stamping `started` — the HQ server runs its own tier-0 worker
+    and skips anything already claimed, so the two never take the same item."""
+    out = [i for i in work.items() if i.get("state") == "waiting_session"]
+    if include_thinking:
+        out += [i for i in work.items()
+                if i.get("state") == "doing" and not i.get("started")]
+    return out
 
 
 def main():
     ap = argparse.ArgumentParser(description="Drain HQ's build-session queue.")
     ap.add_argument("ids", nargs="*", help="work item ids; default is every queued item")
     ap.add_argument("--all", action="store_true", help="every queued item")
+    ap.add_argument("--thinking", action="store_true",
+                    help="also run tier-0 items (analysis and drafting, read-only)")
     ap.add_argument("--limit", type=int, default=0, help="stop after N items")
     ap.add_argument("--jobs", type=int, default=3, help="seats working at once")
     ap.add_argument("--list", action="store_true", help="what is queued, and nothing else")
@@ -665,7 +679,7 @@ def main():
         print(f"{n} card(s) repaired.")
         return 0
 
-    pool = queued()
+    pool = queued(args.thinking)
     if args.ids:
         want = set(args.ids)
         pool = [i for i in pool if i["id"] in want]

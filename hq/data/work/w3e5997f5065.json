@@ -7,14 +7,127 @@
   "tier_reason": "filed by hand",
   "ask": "The program owner found, working replay-phase-b, that HQ has no way to distinguish a project waiting on a scheduled event by the CES ruling from one that is genuinely stuck. replay-phase-b is deferred by the 2026-09-02 no-fresh-recruiting ruling until the next release nears — nothing impedes it — yet status blocked reads as five-alarm trouble and (were it critical) would false-alarm the release train. Proposal: a status like deferred that carries its wake trigger, counts as neither fire nor a routeless blocker, but stays visible with its trigger shown. This changes what the CEO sees on the das",
   "first_action": "Read compute_signals in hq/server.py for every place status==blocked is tested, and hq/data/projects/replay-phase-b.json, then draft the status semantics for the CEO to rule on.",
-  "state": "waiting_session",
+  "state": "for_review",
   "thread": "sofia",
   "source": "chat",
   "source_message": "The program owner found, working replay-phase-b, that HQ has no way to distinguish a project waiting on a scheduled event by the CES ruling from one that is genuinely stuck. replay-phase-b is deferred by the 2026-09-02 no-fresh-recruiting ruling until the next release nears — nothing impedes it — yet status blocked reads as five-alarm trouble and (were it critical) would false-alarm the release train. Proposal: a status like deferred that carries its wake trigger, counts as neither fire nor a routeless blocker, but stays visible with its trigger shown. This changes what the CEO sees on the das",
-  "result": "",
+  "result": "Read every place HQ tests `status == \"blocked\"`, then wrote the ruling and the spec behind it.\n\n**What I found.** The 2 September playtesting ruling parked two projects on one event — the green-tester sitting before the next public release scores the last onboarding bar *and* produces the human session the replay-verification work needs. HQ has no status for that, so the two ends of the same wait wear opposite wrong labels: the replay project says `blocked`, the onboarding-gate project says `planned`.\n\n`blocked` is the expensive one. Every blocked project's unblock sentence becomes an entry in your dashboard queue, so before I filed this, the first line on your dashboard read *\"record one never-before-played tester's first unguided session…\"* — an instruction to go do the thing you ruled should not happen yet. Its blocked-since date also feeds the \"nothing stuck over a week\" check, which turns Product amber on 8 September for a wait you ordered. If a *release-critical* project were parked this way it would also enter the release train's risk list and false-alarm Player Update 1. `planned` is the quieter error: it reads as ready to start and hides the wait completely.\n\n**What I changed.** A decision card for you, and the drafted semantics behind it in the designer queue: a fifth project status, `deferred`, carrying the decision that chose the wait, the event that ends it, and — the part that earns it — that event bound to something HQ can watch on its own, so a wait that outlives its trigger becomes a fire instead of a quiet row. Deferred work leaves your queue and the stuck clock but keeps its row on the program report reading *waits for the next public release*. The queue entry spells out all five rules and every place in the code that changes. Your dashboard's top line is now the card itself.\n\nI did not re-tag the two projects or touch the dashboard code — whether a scheduled wait gets to leave your queue is the thing being ruled, and doing it first would decide it.",
   "started": "",
-  "attempts": 0,
+  "attempts": 1,
   "created": "2026-09-03T23:15",
   "created_ts": 1788502524.7345746,
-  "approved": "2026-09-04T09:38"
+  "approved": "2026-09-04T09:38",
+  "follow_ups": [
+    {
+      "title": "Teach HQ the waiting status",
+      "owner": "claude",
+      "level": "story",
+      "tier": 1,
+      "first_action": "In hq/server.py, exclude deferred projects from the blocked list in _compute_signals_now and from api_program's gating set, then add the stale-wait goal to hq/data/goals/product.json, following the five rules in the Q-90 queue entry.",
+      "why": "The ruling only takes effect once the dashboard can tell a scheduled wait from a stuck one."
+    },
+    {
+      "title": "Re-tag the parked projects and sweep the rest",
+      "owner": "sofia",
+      "level": "task",
+      "tier": 1,
+      "first_action": "Set the replay-verification and onboarding-gate project files to the waiting status with their wake triggers, then read the other thirteen project files for waits currently wearing planned or blocked.",
+      "why": "Two projects are mislabelled today and the same ruling will park more before each release."
+    },
+    {
+      "title": "Decide how a wait reads on the dashboard and the program page",
+      "owner": "rin",
+      "level": "task",
+      "tier": 1,
+      "first_action": "Choose the word and row treatment for a waiting project — the dashboard's in-flight/blocked chip, and the program page's Blocked tab heading, which would then cover rows it does not describe.",
+      "why": "A third status changes what the CEO's glanceable counts mean, which is her charter."
+    }
+  ],
+  "recommend": {
+    "question": "Should work that is waiting on an event you scheduled still count as blocked?",
+    "answer": "No — rule for the third status, with the event that wakes it recorded and watched.",
+    "why": "Until it lands, your dashboard's top line tells you to do the thing you ruled should not be done yet, and the Product pillar goes amber on 8 September for a wait you ordered.",
+    "instead": "Keep one blocked status and snooze the two projects until a date — half the work, but blocked keeps meaning two different things and somebody has to re-pick the date every time it lapses."
+  },
+  "finished": "2026-09-04T10:27",
+  "done_by": {
+    "seat": "sofia",
+    "model": "opus",
+    "lane": "drain"
+  },
+  "diff": {
+    "stat": "docs/DESIGNER_QUEUE.md      | 57 +++++++++++++++++++++++++++++++++++++++++++++\n hq/data/decisions/Q-90.json | 30 ++++++++++++++++++++++++\n 2 files changed, 87 insertions(+)",
+    "files": [
+      "docs/DESIGNER_QUEUE.md",
+      "hq/data/decisions/Q-90.json"
+    ],
+    "applied": true,
+    "why_not": ""
+  },
+  "check": {
+    "verdict": "concerns",
+    "summary": "Sofia did exactly the asked step — the deferred-status semantics are drafted in the queue and a clean decision card is on the inbox, with every code claim (Eye of Sauron entry, blocked-too-long clock, release-train gating set) checked out true — but the amber date she gives you is one day early.",
+    "findings": [
+      {
+        "what": "The card and queue entry say Product goes amber on 8 September; the goal is green while days-blocked is at or under 7, so a 2026-09-01 blocked_since first reads amber on 9 September (and 'in four days' should be five).",
+        "where": "hq/data/decisions/Q-90.json (question, why_now, option c); docs/DESIGNER_QUEUE.md Q-90 entry",
+        "fix": "Change the date to 9 September in all four places, or drop the specific date and say 'later this week'. Owner: sofia."
+      },
+      {
+        "what": "The queue entry leans on internal names — Eye of Sauron, _compute_signals_now, api_program's gating set — which the card avoids; fine as the implementer's spec, but the queue is a CEO-facing doc per WRITING.md.",
+        "where": "docs/DESIGNER_QUEUE.md Q-90 entry",
+        "fix": "Acceptable as-is since the card carries the plain-language version; if anyone reworks the entry, fold the code names into a parenthetical 'where in the code' line at the end rather than the narrative."
+      }
+    ],
+    "escalates": null,
+    "escalation_reason": null
+  },
+  "usage": {
+    "calls_detail": [
+      {
+        "input": 58,
+        "output": 25310,
+        "cache_read": 2396159,
+        "cache_write": 88512,
+        "turns": 36,
+        "seconds": 378.5,
+        "list_usd": 2.7192,
+        "tokens": 2510039,
+        "fresh": 113880,
+        "phase": "drain-work",
+        "model": "opus",
+        "seat": "sofia"
+      },
+      {
+        "input": 282,
+        "output": 3808,
+        "cache_read": 306876,
+        "cache_write": 37183,
+        "turns": 7,
+        "seconds": 58.8,
+        "list_usd": 1.0188,
+        "tokens": 348149,
+        "fresh": 41273,
+        "phase": "drain-check",
+        "model": "fable",
+        "seat": "claude"
+      }
+    ],
+    "input": 340,
+    "output": 29118,
+    "cache_read": 2703035,
+    "cache_write": 125695,
+    "tokens": 2858188,
+    "fresh": 155153,
+    "turns": 43,
+    "seconds": 437.3,
+    "list_usd": 3.738,
+    "calls": 2
+  },
+  "spent": {
+    "attempts": 1,
+    "tokens": 2858188,
+    "fresh": 155153,
+    "list_usd": 3.738
+  }
 }

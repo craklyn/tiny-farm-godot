@@ -1,0 +1,20 @@
+{
+  "id": "w559bf20d689",
+  "title": "Fix HQ's broken-reference checker running before work items load",
+  "level": "task",
+  "owner": "claude",
+  "tier": 1,
+  "tier_reason": "The dashboard's own consistency check is currently wrong for every pillar, which defeats its purpose of surfacing real broken references.",
+  "ask": "Accepted “Restore publishing to a live storefront”. The dashboard's own consistency check is currently wrong for every pillar, which defeats its purpose of surfacing real broken references.",
+  "first_action": "In hq/server.py's main(), call work.bind(sys.modules[__name__]) before check_consistency() (currently check_consistency() runs first, so work.items() sees an unbound WORK path and returns empty, making every goal's work-item route falsely report as missing).",
+  "state": "waiting_session",
+  "thread": "lena",
+  "source": "chat",
+  "source_message": "Accepted “Restore publishing to a live storefront”. The dashboard's own consistency check is currently wrong for every pillar, which defeats its purpose of surfacing real broken references.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-04T10:19",
+  "created_ts": 1788542399.2512898,
+  "parent": "w1416158aea6"
+}

@@ -7,14 +7,109 @@
   "tier_reason": "The comparison sheet must not be able to show a look the engine cannot produce, and today the game has no colour switch at all.",
   "ask": "Accepted “Bring the four looks back for the pick”. The comparison sheet must not be able to show a look the engine cannot produce, and today the game has no colour switch at all.",
   "first_action": "Add a world-tint axis to systems/look_lab.gd with warm and cool settings applied as a colour grade over the world layer only (HUD untouched), plus one arm in tools/capture_looks.gd so the rig shoots it at the station moment",
-  "state": "waiting_session",
+  "state": "for_review",
   "thread": "claude",
   "source": "chat",
   "source_message": "Accepted “Bring the four looks back for the pick”. The comparison sheet must not be able to show a look the engine cannot produce, and today the game has no colour switch at all.",
-  "result": "",
+  "result": "This attempt did not finish — it used all 60 of its turns mid-edit.",
   "started": "",
-  "attempts": 0,
+  "attempts": 1,
   "created": "2026-09-04T09:42",
   "created_ts": 1788540162.3569877,
-  "parent": "w3537cf842ae"
+  "parent": "w3537cf842ae",
+  "finished": "2026-09-04T10:27",
+  "done_by": {
+    "seat": "jade",
+    "model": "sonnet",
+    "lane": "drain"
+  },
+  "diff": {
+    "stat": "main.gd                            | 32 +++++++++++---\n systems/look_lab.gd                | 15 ++++++-\n systems/world_tint_presentation.gd | 88 ++++++++++++++++++++++++++++++++++++++\n tests/test_runner.gd               | 52 +++++++++++++++++++++-\n tools/capture_looks.gd             | 10 ++++-\n tools/look_scenarios.gd            | 11 +++++\n 6 files changed, 198 insertions(+), 10 deletions(-)",
+    "files": [
+      "main.gd",
+      "systems/look_lab.gd",
+      "systems/world_tint_presentation.gd",
+      "tests/test_runner.gd",
+      "tools/capture_looks.gd",
+      "tools/look_scenarios.gd"
+    ],
+    "applied": false,
+    "why_not": "the check said it should not land as it stands"
+  },
+  "check": {
+    "verdict": "fail",
+    "summary": "The colour axis itself is sound and wired into the pause menu, the title panel and the capture rig, but the new test breaks the unit suite at load and the axis ships the warm grade the art direction doc explicitly dropped, with no doc touched.",
+    "findings": [
+      {
+        "what": "The new test calls a zero-argument function with an argument (`WorldTintPresentation.multiplier(WorldTintPresentation.NEUTRAL)`); Godot's analyzer rejects that at load, so the whole unit runner fails to compile and the suite goes red. I could not run the suite from this seat (command not approved), so this is from reading, not from a run.",
+        "where": "tests/test_runner.gd:9097",
+        "fix": "Set the grade to NEUTRAL first and assert `multiplier() == Color(1,1,1)`, or give `multiplier` an optional argument; then run the unit suite before landing."
+      },
+      {
+        "what": "`test_world_tint_presentation()` is defined but never called from `_init`, so even once it compiles it never runs.",
+        "where": "tests/test_runner.gd:145",
+        "fix": "Add `test_world_tint_presentation()` beside `test_station_presentation()` in `_init`."
+      },
+      {
+        "what": "The design doc's closed list of four looks contains no warm grade; it records warm as dropped on 2026-09-04 for being too close to today's look and for fighting the contrast rule. The diff ships exactly that warm grade, and the file header claims 'two of those four are ambient colour', which the doc does not say. The doc's two graded looks (quiet ambient with saturated touchables, and cold light) ",
+        "where": "systems/world_tint_presentation.gd:3-8; docs/design/09-art-direction.md:60-110",
+        "fix": "Either annotate §\"The look session\" that warm is back in as a cheap sanity draft and cool is a whole-world tint approximation of cold light (and note the rig shoots the station moment, not the doc's day-three field), or drop WARM and rename COOL to match capture 3. Update DESIGNER_QUEUE.md Q-14's 'rendering the four is the remaining work' line in the same change."
+      },
+      {
+        "what": "`_apply_world_tint_treatment` deliberately bypasses the daylight freeze and re-derives the hour from current energy, so a switch thrown during the tuck-in beat snaps the held dusk sky to full-energy noon. The rig also calls it after staging every scenario.",
+        "where": "main.gd:483",
+        "fix": "Keep the hour colour cached separately from the grade (hour × grade computed at write time), so re-applying the grade under a freeze multiplies the held sky rather than recomputing it."
+      }
+    ],
+    "escalates": null,
+    "escalation_reason": null
+  },
+  "usage": {
+    "calls_detail": [
+      {
+        "input": 120,
+        "output": 35954,
+        "cache_read": 6456319,
+        "cache_write": 116081,
+        "turns": 61,
+        "seconds": 400.5,
+        "list_usd": 2.1182,
+        "tokens": 6608474,
+        "fresh": 152155,
+        "phase": "drain-work",
+        "model": "sonnet",
+        "seat": "jade"
+      },
+      {
+        "input": 170,
+        "output": 5813,
+        "cache_read": 189442,
+        "cache_write": 35641,
+        "turns": 12,
+        "seconds": 80.2,
+        "list_usd": 1.0596,
+        "tokens": 231066,
+        "fresh": 41624,
+        "phase": "drain-check",
+        "model": "fable",
+        "seat": "claude"
+      }
+    ],
+    "input": 290,
+    "output": 41767,
+    "cache_read": 6645761,
+    "cache_write": 151722,
+    "tokens": 6839540,
+    "fresh": 193779,
+    "turns": 73,
+    "seconds": 480.7,
+    "list_usd": 3.1778,
+    "calls": 2
+  },
+  "spent": {
+    "attempts": 1,
+    "tokens": 6839540,
+    "fresh": 193779,
+    "list_usd": 3.1778
+  }
 }

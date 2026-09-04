@@ -1,0 +1,19 @@
+{
+  "id": "w7fde4ef846b",
+  "title": "What the first session becomes if the shop is delayed",
+  "level": "story",
+  "owner": "sam",
+  "tier": 0,
+  "tier_reason": "filed by hand",
+  "ask": "Daniel's words, verbatim:\n\n\"I recommend we change the game so it's not necessary to buy seeds for the starting\nplants. Rather, the plants when harvested can be planted as seeds. They can also be used\nas consumables (e.g. pea shooter). Only when the player acquires an excess can they be\nsold. Excess will be defined by game phase. Early game, the player only has storage on\ntheir person and so excess is not a large number.. 5 or 10 maybe. Later, they'll get a\ngrain silo and other storage options that increases excess (so they can properly arm and\nstock their defensive structures).\n\nNote that if w",
+  "first_action": "Read docs/DECISION_LOG.md S-7 and the onboarding gate in docs/ROADMAP.md, then the actual first-session flow (ui/, player/, the cold open in systems/sim/cold_open.gd). Answer: (1) what the first ten minutes becomes if there is no shop and no need for gold — what does the player do, in order, and is it emptier or cleaner than today; (2) whether an arriving-shipment unlock can be delivered to a player who cannot read, and what it would have to look like if it can — a letter is words, so either it is not a letter or S-7 gives way, and that is a ruling, not your call; (3) what teaches the player t",
+  "state": "doing",
+  "thread": "sam",
+  "source": "chat",
+  "source_message": "Daniel's words, verbatim:\n\n\"I recommend we change the game so it's not necessary to buy seeds for the starting\nplants. Rather, the plants when harvested can be planted as seeds. They can also be used\nas consumables (e.g. pea shooter). Only when the player acquires an excess can they be\nsold. Excess will be defined by game phase. Early game, the player only has storage on\ntheir person and so excess is not a large number.. 5 or 10 maybe. Later, they'll get a\ngrain silo and other storage options that increases excess (so they can properly arm and\nstock their defensive structures).\n\nNote that if w",
+  "result": "",
+  "started": "2026-09-04T13:04",
+  "attempts": 0,
+  "created": "2026-09-04T13:04",
+  "created_ts": 1788552265.8293746
+}

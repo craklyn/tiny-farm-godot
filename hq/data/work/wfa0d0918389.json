@@ -1,0 +1,19 @@
+{
+  "id": "wfa0d0918389",
+  "title": "What harvest-as-seed costs us in the simulation, honestly",
+  "level": "story",
+  "owner": "elena",
+  "tier": 0,
+  "tier_reason": "filed by hand",
+  "ask": "Daniel's words, verbatim:\n\n\"I recommend we change the game so it's not necessary to buy seeds for the starting\nplants. Rather, the plants when harvested can be planted as seeds. They can also be used\nas consumables (e.g. pea shooter). Only when the player acquires an excess can they be\nsold. Excess will be defined by game phase. Early game, the player only has storage on\ntheir person and so excess is not a large number.. 5 or 10 maybe. Later, they'll get a\ngrain silo and other storage options that increases excess (so they can properly arm and\nstock their defensive structures).\n\nNote that if w",
+  "first_action": "Read systems/sim/sim_world.gd (inventory, the shop verbs, apply_action), systems/sim/save_game.gd, systems/sim/replay_log.gd and docs/ARCHITECTURE.md's layer rules. Then answer: (1) what actually changes in the sim — new verbs, changed verbs, new state — and which of those are additions versus changes to existing behaviour; (2) what it does to saves (a version bump? migration of existing saves?) and to the replay format, which is future bot-training data and must not break casually; (3) whether a per-actor carry capacity is the same object as the per-actor energy meter already in the sim, or a",
+  "state": "doing",
+  "thread": "elena",
+  "source": "chat",
+  "source_message": "Daniel's words, verbatim:\n\n\"I recommend we change the game so it's not necessary to buy seeds for the starting\nplants. Rather, the plants when harvested can be planted as seeds. They can also be used\nas consumables (e.g. pea shooter). Only when the player acquires an excess can they be\nsold. Excess will be defined by game phase. Early game, the player only has storage on\ntheir person and so excess is not a large number.. 5 or 10 maybe. Later, they'll get a\ngrain silo and other storage options that increases excess (so they can properly arm and\nstock their defensive structures).\n\nNote that if w",
+  "result": "",
+  "started": "2026-09-04T13:04",
+  "attempts": 0,
+  "created": "2026-09-04T13:04",
+  "created_ts": 1788552265.8313036
+}

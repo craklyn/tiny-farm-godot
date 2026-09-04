@@ -1,0 +1,30 @@
+{
+  "id": "Q-90",
+  "title": "How should the dashboard show work that is waiting on purpose?",
+  "question": "Two pieces of work are on hold because you decided they should be. On 2 September you ruled that the studio does not go recruiting fresh playtesters at this phase — one genuinely new player is found before each public release, and that one sitting does double duty: it scores the last open bar on the onboarding milestone, and it produces the human play session that the replay-verification work has been waiting for. Both projects are therefore waiting for a single event that has not arrived. Neither is stuck, and nobody is being held up.\n\nThe dashboard has no way to say that. It knows a project is either moving or blocked. So the replay work is marked blocked, and the first line of your dashboard this morning reads \"record one never-before-played tester's first unguided session\" — an instruction to go and do the exact thing you ruled should not happen yet. On 8 September the same project crosses the check that says nothing should sit stuck for over a week, and turns the Product pillar amber for a wait you ordered. Meanwhile the onboarding-gate project, waiting on the identical event, is marked planned, which reads as ready to start and hides the wait entirely. One decision of yours, two wrong labels.",
+  "why_now": "The false instruction is at the top of your queue today, and the pillar goes amber in four days. Both are the dashboard misreading a decision you have already made — and the same thing will happen to every future project you park on a trigger.",
+  "options": [
+    {
+      "key": "a",
+      "label": "A third status: waiting, with the event that wakes it",
+      "detail": "A project can say it is waiting, name the event that will wake it, and name the decision that put it there. Waiting work leaves your queue and stops the stuck clock, but keeps its row on the program report — reading \"waits for the next public release\" instead of \"blocked 3 days\" — so it stays visible without asking anything of you. The safety catch is the part that earns it: the wake-up event has to be something the dashboard can watch by itself — a release, another project finishing, a date — so when the event arrives and the work is still asleep, that becomes a fire. A wait can go stale, and it tells you rather than sitting quietly forever. Cost: about a day of dashboard work, and from then on every parked project has to name its trigger or it fails the existing check that stuck work must say what would move it.",
+      "recommended": true
+    },
+    {
+      "key": "b",
+      "label": "Keep two statuses, and let a blocked project be snoozed until a date",
+      "detail": "Leave blocked meaning both things, and give the two projects a \"don't mention this until\" date. Half a day of work and no new vocabulary to learn. The cost is that blocked keeps meaning two different things, so the program report can never tell you which of its blocked projects is genuinely stuck; the release train's risk list still counts a scheduled wait as a risk. And a snooze date is a date — this program measures readiness in evidence rather than calendar cells on purpose, and a date somebody has to re-pick each time it lapses is a recurring manual step, which is the shape of the thing we keep trying to design out."
+    },
+    {
+      "key": "c",
+      "label": "Leave it as it is",
+      "detail": "Nothing to build. You keep reading one wrong instruction at the top of the dashboard; the Product pillar goes amber on 8 September for a wait you ordered; and the next time something is genuinely stuck, the amber will have stopped meaning anything. Defensible only if you expect parked work to stay rare — but the ruling that parked these two is a standing rule about every release from here on, so it will not stay rare."
+    }
+  ],
+  "links": [
+    {"label": "The replay-verification project", "href": "#/project/replay-phase-b"},
+    {"label": "The onboarding-gate project", "href": "#/project/close-m15-gate"},
+    {"label": "The program report", "href": "#/program"},
+    {"label": "Original queue entry", "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"}
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "id": "wa8ea2ed3df8",
+  "title": "Verdict: should a harvest be the seed, the ammunition and the surplus?",
+  "level": "story",
+  "owner": "milo",
+  "tier": 0,
+  "tier_reason": "filed by hand",
+  "ask": "Daniel's words, verbatim:\n\n\"I recommend we change the game so it's not necessary to buy seeds for the starting\nplants. Rather, the plants when harvested can be planted as seeds. They can also be used\nas consumables (e.g. pea shooter). Only when the player acquires an excess can they be\nsold. Excess will be defined by game phase. Early game, the player only has storage on\ntheir person and so excess is not a large number.. 5 or 10 maybe. Later, they'll get a\ngrain silo and other storage options that increases excess (so they can properly arm and\nstock their defensive structures).\n\nNote that if w",
+  "first_action": "Read crops/crop_defs.gd, systems/sim/sim_world.gd's inventory and shop verbs, docs/design/ (especially the crop and economy chapters) and DECISION_LOG's S- and P- entries that bear on the loop. Then answer, in this order: (1) does harvest-as-seed make the first hour better or worse, and why — name the specific moment it changes; (2) does the consumable role (a pea used as pea-shooter ammunition) strengthen or muddle the crop's identity, given phase 3 is tower defence; (3) is a carry cap of 5-10 the right shape of pressure early, or does it just make the player walk to a box more often; (4) wha",
+  "state": "doing",
+  "thread": "milo",
+  "source": "chat",
+  "source_message": "Daniel's words, verbatim:\n\n\"I recommend we change the game so it's not necessary to buy seeds for the starting\nplants. Rather, the plants when harvested can be planted as seeds. They can also be used\nas consumables (e.g. pea shooter). Only when the player acquires an excess can they be\nsold. Excess will be defined by game phase. Early game, the player only has storage on\ntheir person and so excess is not a large number.. 5 or 10 maybe. Later, they'll get a\ngrain silo and other storage options that increases excess (so they can properly arm and\nstock their defensive structures).\n\nNote that if w",
+  "result": "",
+  "started": "2026-09-04T13:04",
+  "attempts": 0,
+  "created": "2026-09-04T13:04",
+  "created_ts": 1788552265.8245125
+}

@@ -1,0 +1,9 @@
+{
+  "id": "Q-90",
+  "option": "a",
+  "option_label": "A third status: waiting, with the event that wakes it",
+  "judgment": null,
+  "ruled_at": "2026-09-04T12:27:03",
+  "status": "integrated",
+  "integrated_at": "2026-09-04"
+}

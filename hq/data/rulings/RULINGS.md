@@ -67,3 +67,7 @@ The email alias would be another place it checks and rounds up feedback.
 
 The feedback should be provided to me in an effective way.  At first, we're just glad to receive our first feedback at all, so it can just be shown to me with links.  Later, if the feedback becomes significant, we need to run statistics on the classes of feedback we received and think about when to escalate, when to reply to specific comments, and when to suppress that information from me (because it'll be a drain on productivity). But initially, since throughput is low, we don't need to focus on suppressing the right information.
 - Status: pending integration into docs/DESIGNER_QUEUE.md
+
+## Q-90 — ruled 2026-09-04T12:27:03
+- Picked: **(a) A third status: waiting, with the event that wakes it**
+- Status: pending integration into docs/DESIGNER_QUEUE.md

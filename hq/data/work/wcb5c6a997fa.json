@@ -7,14 +7,103 @@
   "tier_reason": "Adding a world colour grade changes every rendered pixel, and a red suite must mean something is broken, not that a baseline is stale.",
   "ask": "Accepted “Bring the four looks back for the pick”. Adding a world colour grade changes every rendered pixel, and a red suite must mean something is broken, not that a baseline is stale.",
   "first_action": "Pin the visual regression run to the shipping tint setting and refresh the baseline frame in the same change that adds the tint",
-  "state": "waiting_session",
+  "state": "for_review",
   "thread": "claude",
   "source": "chat",
   "source_message": "Accepted “Bring the four looks back for the pick”. Adding a world colour grade changes every rendered pixel, and a red suite must mean something is broken, not that a baseline is stale.",
-  "result": "",
+  "result": "I checked what's actually in this worktree before touching anything, and the ask can't be done yet — here's why, and what I found instead.\n\n**What's missing.** The world tint isn't a real switch in the game yet. `systems/look_lab.gd` only has three axes today (cot look, station discovery, already-done reply) — no tint axis, no colour grade. That work belongs to a separate item already queued to Jade (\"Make the world's colour a real switch in the game\"), and it hasn't run. My worktree is a snapshot of the game as it ships today, with nothing to pin the visual test to and no new pixels to bake into a baseline. \"Refresh the baseline in the same change that adds the tint\" only makes sense as one change owned by whoever writes the tint — I can't fake that from the outside without guessing at Jade's implementation.\n\n**What I did check.** The visual regression harness (`tools/test_visuals.gd`) has no hook for `LookLab` at all right now — it resets the HUD debug readout and the build-version stamp before capturing, but nothing about look-axis state. That's fine today because the three existing axes default to the values the baseline was shot with, so nothing drifts by accident. It means the seam this item wants — an explicit pin — doesn't exist yet either; it has to be added alongside whatever Jade names the new axis, not invented ahead of it.\n\n**One thing worth flagging to Jade directly:** `main.gd` already has a variable called `world_tint` — that's the existing day/night `CanvasModulate` (T-14/Q-38), unrelated to the new look-axis idea. Same words, different feature. Worth Jade picking a name for the new axis that doesn't collide with that in code or in conversation.\n\n**Blocked on:** Jade's item landing first. Once the tint axis exists in the shared tree, I can pin the test to its shipping value and regenerate `tools/baseline.png` in one pass — that's a fast follow, not a redesign.\n\nNothing changed in the working tree this session.",
   "started": "",
-  "attempts": 0,
+  "attempts": 1,
   "created": "2026-09-04T09:42",
   "created_ts": 1788540162.3586676,
-  "parent": "w3537cf842ae"
+  "parent": "w3537cf842ae",
+  "follow_ups": [
+    {
+      "title": "Pin the visual test to the shipping tint and refresh the baseline",
+      "owner": "grace",
+      "level": "task",
+      "tier": 1,
+      "first_action": "Once systems/look_lab.gd has the world-tint axis, pin tools/test_visuals.gd to its shipping value the same way the HUD notes and build stamp are already reset, and regenerate tools/baseline.png against it",
+      "why": "This item can't be done until the axis it needs to pin to actually exists in code."
+    }
+  ],
+  "recommend": {},
+  "finished": "2026-09-04T10:27",
+  "done_by": {
+    "seat": "grace",
+    "model": "sonnet",
+    "lane": "drain"
+  },
+  "diff": {
+    "stat": "",
+    "files": [],
+    "applied": false,
+    "why_not": "nothing changed"
+  },
+  "check": {
+    "verdict": "concerns",
+    "summary": "Nothing landed, correctly: the tint axis this item pins to does not exist yet, and Grace's account checks out against the tree; the only thing to watch is that the refiled follow-up gets chained behind Jade's tint item so the drain does not re-run it into the same wall.",
+    "findings": [
+      {
+        "what": "The refiled task depends on Jade's queued story (w1c5c5980f45, still waiting_session) but nothing in the item records that dependency, so a later drain pass can pick it up first and spend budget re-discovering the block",
+        "where": "hq/data/work/ (the new item created from the 'what follows' block)",
+        "fix": "Mark the refiled item as blocked on w1c5c5980f45, or fold the baseline refresh into Jade's item as its last step, which is what the original ask ('in the same change that adds the tint') literally describes"
+      },
+      {
+        "what": "The naming collision Grace flagged (main.gd's existing `world_tint` is the day/night CanvasModulate, not the new look axis) is only in this reply and will not reach Jade's worker, which sees just its own card",
+        "where": "main.gd:35",
+        "fix": "Add one line to Jade's item card or hq/data/staff/jade/memory.md saying the new axis needs a name other than world_tint"
+      }
+    ],
+    "escalates": null,
+    "escalation_reason": null
+  },
+  "usage": {
+    "calls_detail": [
+      {
+        "input": 32,
+        "output": 22928,
+        "cache_read": 1015212,
+        "cache_write": 56718,
+        "turns": 29,
+        "seconds": 276.6,
+        "list_usd": 0.6621,
+        "tokens": 1094890,
+        "fresh": 79678,
+        "phase": "drain-work",
+        "model": "sonnet",
+        "seat": "grace"
+      },
+      {
+        "input": 114,
+        "output": 2126,
+        "cache_read": 119756,
+        "cache_write": 26193,
+        "turns": 7,
+        "seconds": 32.8,
+        "list_usd": 0.6633,
+        "tokens": 148189,
+        "fresh": 28433,
+        "phase": "drain-check",
+        "model": "fable",
+        "seat": "claude"
+      }
+    ],
+    "input": 146,
+    "output": 25054,
+    "cache_read": 1134968,
+    "cache_write": 82911,
+    "tokens": 1243079,
+    "fresh": 108111,
+    "turns": 36,
+    "seconds": 309.4,
+    "list_usd": 1.3254,
+    "calls": 2
+  },
+  "spent": {
+    "attempts": 1,
+    "tokens": 1243079,
+    "fresh": 108111,
+    "list_usd": 1.3254
+  }
 }

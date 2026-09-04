@@ -48,6 +48,16 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   for the sorting to pay for itself. Filed to Amara: the review cadence, and the HQ panel
   that shows the comments with a link to each.
 
+- **Q-90** ~~How should the dashboard show work that is waiting on purpose?~~ — ✅ ruled
+  2026-09-04: **a third status — waiting, carrying the event that will wake it and the
+  decision that put it there.** Two projects were parked on a ruling the designer himself
+  made, and the dashboard had no way to say so: one read `blocked`, which put "recruit a
+  fresh tester" at the top of his page as an instruction to do the thing he had ruled
+  should not be done yet, and would have turned Product amber on 8 September for a wait he
+  ordered; the other read `planned`, which hid the wait entirely. A status that names its
+  own wake-up event is the difference between a queue that is stuck and a queue that is
+  patient. Filed to Sofia: the status, its two fields, and the two projects moved onto it.
+
 ## M1 — phase 1 detail (active now)
 
 - **Q-7b** ~~Placeholder-asset license sanity check~~ — ✅ checked 2026-08-26

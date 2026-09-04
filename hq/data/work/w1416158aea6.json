@@ -7,7 +7,7 @@
   "tier_reason": "filed by hand",
   "ask": "A storefront the game is live on is missing something it needs to publish — a preset, a pipeline step or a credential. Find which and restore it. Being live somewhere we cannot push to is worse than not being there: it reads as a channel and is not one.",
   "first_action": "Open #/pillar/sales, expand the storefront ladder, and read which requirement is marked missing.",
-  "state": "for_review",
+  "state": "accepted",
   "thread": "lena",
   "source": "chat",
   "source_message": "A storefront the game is live on is missing something it needs to publish — a preset, a pipeline step or a credential. Find which and restore it. Being live somewhere we cannot push to is worse than not being there: it reads as a channel and is not one.",
@@ -56,5 +56,14 @@
     "turns": 58,
     "seconds": 427.6,
     "list_usd": 1.7951
-  }
+  },
+  "closed": "2026-09-04T10:19",
+  "spawned": [
+    {
+      "id": "w559bf20d689",
+      "title": "Fix HQ's broken-reference checker running before work items load",
+      "state": "waiting_session",
+      "owner": "claude"
+    }
+  ]
 }
