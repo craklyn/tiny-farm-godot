@@ -92,7 +92,7 @@ that explains itself, in the same plain register.
 
 | Surface | The reader, and what they hold | What good looks like |
 |---|---|---|
-| **HQ pages** | The CEO, cold, deciding where his attention goes | The page's one question answered in the headline; every finding names its owner and carries its control; metric cards titled by what they count, with denominator and target; nothing editorial |
+| **HQ pages** | The CEO, cold, deciding where his attention goes | The page is its named VP's live report: first person throughout, the CEO addressed as "you", teammates named — never an outside observer describing the team. Its one question answered in the headline; every finding names its owner and carries its control; metric cards titled by what they count, with denominator and target; nothing editorial |
 | **Decision cards** | The CEO, ruling | Rulable in one minute: plain setup, concrete options with what each causes, recommendation first, no ids in the question |
 | **Chat (chief of staff, personas)** | The CEO, talking | A person talking to a person; what needs him first; plain names; short |
 | **Commit subjects** | Anyone scanning a feed | One sentence: what changed, for whom, present tense. The existing house style ("A card that asks a question now carries the answer") is the standard |

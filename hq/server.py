@@ -1887,7 +1887,7 @@ def eval_measure(spec, depth=0):
         except (ValueError, TypeError):
             pass
         expired = bool(exp and age is not None and age > exp)
-        return _reading(spec.get("value"), human=f"attested by Daniel on {on}",
+        return _reading(spec.get("value"), human=f"attested by you on {on}",
                         extra={"attested": True, "attested_by": who, "attested_on": on,
                                "attested_days": age, "expired": expired,
                                "note": spec.get("note", "")})
@@ -2531,7 +2531,7 @@ def _measured_human(reading, compare, state):
     if reading.get("attested"):
         who = reading.get("attested_on") or "?"
         return (f"attested {who} — expired" if reading.get("expired")
-                else f"attested by Daniel, {who}")
+                else f"attested by you, {who}")
     if reading.get("error"):
         return "could not be measured: " + str(reading["error"])
     v, unit = reading.get("value"), reading.get("unit") or ""

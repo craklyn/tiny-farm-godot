@@ -125,7 +125,7 @@ function verdictLine(g) {
   const ours = failing.filter(x => !x.needs_you);
   const worst = yours[0] || null;
   const oursLine = ours.length
-    ? `${ours.length} thing${ours.length === 1 ? " is" : "s are"} outstanding here and ${ours.length === 1 ? "it is" : "they are"} ours to do.`
+    ? `${ours.length} thing${ours.length === 1 ? " is" : "s are"} open here — ${ours.length === 1 ? "it's" : "they're"} mine to handle.`
     : "";
   let text = worst ? (t[g.level] || "") : (t.nothing_for_you || "");
   const fill = {
@@ -254,13 +254,13 @@ function goalRow(g) {
 function goalBoard(g) {
   const goals = g.goals || [];
   if (!goals.length) {
-    return `<h2>Goals</h2><div class="card muted">This pillar has no goal file, so nothing here is
-      being checked. That is why its status reads "not being checked" rather than "under control".</div>`;
+    return `<h2>My goals</h2><div class="card muted">I have not declared goals for this area yet,
+      so nothing here is being measured.</div>`;
   }
   const head = goals.slice(0, 3), tail = goals.slice(3);
   const worstHidden = tail.length
     ? (GOAL_META[tail[0].state] || GOAL_META.green).word : "";
-  return `<h2>Goals <span class="small muted">— ${g.assured} of ${g.total} checked by machine</span></h2>
+  return `<h2>My goals <span class="small muted">— ${g.assured} of ${g.total} machine-checked</span></h2>
     <div class="card goalcard">
       ${head.map(goalRow).join("")}
       ${tail.length ? `<details class="goalfold"><summary>${tail.length} more · worst of them ${esc(worstHidden)}</summary>${tail.map(goalRow).join("")}</details>` : ""}
@@ -298,7 +298,7 @@ function needsBand(n) {
   }).join("");
   return `<h2>What I need from you</h2>
     <div class="card needcard">
-      ${rows || `<div class="muted">Nothing on this pillar is waiting on you.</div>`}
+      ${rows || `<div class="muted">I have nothing waiting on you.</div>`}
       ${n.overflow ? `<div class="small muted" style="margin-top:8px">${n.overflow} more are waiting on you — <a class="plain" href="#/inbox">the decision inbox</a> holds them all.</div>` : ""}
 
     </div>`;
@@ -363,7 +363,7 @@ async function renderPillar(pid) {
       <span class="assure" title="How much of this pillar's status is measured rather than asserted">${st.assured} of ${st.total} checked by machine</span>
       <span class="small muted">derived ${esc(sig.generated_at)}</span>
     </div>
-    <p class="sub">${esc(p.question || p.tagline)} <span class="muted">· ${lead ? `${lead.emoji} <a class="plain" data-person="${esc(lead.id)}">${esc(lead.name)}</a>` : ""} answers for it</span></p>
+    <p class="sub">${esc(p.question || p.tagline)} <span class="muted">· ${lead ? `${lead.emoji} <a class="plain" data-person="${esc(lead.id)}">${esc(lead.name)}</a>` : ""} reports</span></p>
     ${consistencyBanner(sig, pid)}
     ${verdictLine(g)}
     <div id="pillar-context"></div>
@@ -376,8 +376,8 @@ async function renderPillar(pid) {
       per.recent.length ? per.recent.map(c =>
         `<div class="commitrow"><code class="ref">${c.hash}</code> ${esc(c.subject)} <span class="small muted">· ${esc(c.when)}</span></div>`).join("")
         : "<span class='muted'>No commits touch this pillar's files yet.</span>")}
-    ${foldSection("What nobody is checking", cantMeasureSummary(team, g), cantMeasure(team, g))}
-    ${foldSection(`The team (${team.length})`, team.map(e => e.name.split(" ")[0]).join(", "),
+    ${foldSection("What I'm watching by eye", cantMeasureSummary(team, g), cantMeasure(team, g, p.lead))}
+    ${foldSection(`My team (${team.length})`, team.map(e => e.name.split(" ")[0]).join(", "),
       team.map(e => `<div class="team-mini" data-person="${e.id}">
         <b>${e.emoji} ${esc(e.name)}</b> <span class="small muted">${esc(e.short)} · ${e.level}</span>
         <div class="small" style="margin-top:4px">${esc(e.focus)}</div>
@@ -405,10 +405,10 @@ async function renderPillar(pid) {
 function cantMeasureSummary(team, g) {
   const watches = team.reduce((n, e) => n + (e.watches || []).length, 0);
   const unassured = (g.goals || []).filter(x => !["green", "amber", "red"].includes(x.state)).length;
-  return `${watches} things this team says it watches; ${unassured} of its ${g.total || 0} goals are checked by nobody`;
+  return `${unassured} of my ${g.total || 0} goals ${unassured === 1 ? "has" : "have"} no automated check · ${watches} standing watch${watches === 1 ? "" : "es"} held by eye`;
 }
 
-function cantMeasure(team, g) {
+function cantMeasure(team, g, leadId) {
   const unmeasured = (g.goals || []).filter(x => ["unchecked", "attested", "broken"].includes(x.state));
   const rows = unmeasured.map(x => `<div class="cm-row">
       <i class="dot ${(GOAL_META[x.state] || GOAL_META.green).dcls}"></i>
@@ -416,10 +416,12 @@ function cantMeasure(team, g) {
         <div class="small muted">${esc((x.reading || {}).reason || (x.reading || {}).error || x.measured_human)}</div>
         ${(x.reading || {}).would_need ? `<div class="small">Would need: ${esc(x.reading.would_need)}</div>` : ""}</div>
     </div>`).join("");
-  const watchRows = team.map(e => `<div class="cm-watch"><b>${e.emoji} ${esc(e.name.split(" ")[0])}</b> watches
-      ${esc((e.watches || []).join("; ") || "nothing declared")}<span class="small muted"> — declared in the org chart, not wired to anything here</span></div>`).join("");
-  return `<p class="small muted">Everything below has no automated check, or depends on somebody remembering to look.</p>
-    ${rows || "<p class='small muted'>Every goal on this pillar is measured.</p>"}
+  const watchRows = team.map(e => {
+    const who = e.id === leadId ? "I watch" : `${e.emoji} ${esc(e.name.split(" ")[0])} watches`;
+    return `<div class="cm-watch"><b>${who}</b> ${esc((e.watches || []).join("; ") || "nothing yet")}<span class="small muted"> — by eye, no check behind it</span></div>`;
+  }).join("");
+  return `<p class="small muted">None of this has an automated check yet; my team and I watch it by eye.</p>
+    ${rows || "<p class='small muted'>Every goal I hold is measured.</p>"}
     <div class="cm-watches">${watchRows}</div>`;
 }
 
