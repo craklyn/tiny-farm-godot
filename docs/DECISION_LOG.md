@@ -430,6 +430,14 @@ resource loop behind them is still M3's to design. What the rule removes is the
 *stall*: a thing nobody can obtain is a thing nobody can play with, judge or test,
 and the shop already exists.
 
+**First item to outgrow it: the machines (ruled 2026-09-04, Q-88).** The mark-2 robot is
+**earned by demonstration** — it unlocks once the player has actually used a mark-1 —
+and the designer extended the ruling to the mark-1 as well: it should be triggered too,
+his strawman being *after a player spends more than half a day's energy watering*, so the
+first machine arrives when the work has been felt rather than when the coins add up. Both
+robots therefore leave the shop as the designed triggers land, exactly as the adjustment
+condition below anticipates. The design note for the two triggers is Milo's.
+
 **Adjustment conditions:** a designed acquisition replaces the shop entry for that
 item, one item at a time — the rule does not have to be repealed to be outgrown. The
 one standing obligation it creates is structural: the shop catalogue must stay cheap
@@ -776,3 +784,23 @@ history. M0 closes when the queue's "Now" section is cleared.
    it is decided at D-1. Mirrored in `design/07-expedition-system.md` and the phase-5
    stub.
 7. **Repo process** → open as **Q-4** in `DESIGNER_QUEUE.md`, with recommendation.
+
+
+### D-14. An in-game "give feedback" channel
+Raised 2026-09-04 inside the Q-89 ruling. The channel today is **itch comments** and the
+store page says nothing new about it; the community manager reviews what arrives at
+regular intervals and brings it to the designer. Two extensions were named and neither is
+built: an **email alias** as a second place to round feedback up, and an **in-game option**
+— under the pause menu, or a fuller settings or about page — which is the likelier future
+answer because it reaches the player where the bug happened.
+
+**Also deferred: what to do with feedback once there is some.** While the volume is low
+the designer wants the feedback itself, shown to him with links; the sorting is not worth
+its own cost yet. Statistics on the classes of feedback, rules for when to escalate, when
+to reply publicly, and when to keep something from him because reading it would cost more
+attention than it is worth — all of that is a real design problem and all of it waits.
+
+**Trigger:** the volume of arriving feedback is enough that reading it whole is a drain on
+the designer's week. That is the moment the classifier, the escalation rule and the
+suppression rule have to exist, and not before — a triage system with nothing to triage is
+a surface that lies about how busy the studio is.

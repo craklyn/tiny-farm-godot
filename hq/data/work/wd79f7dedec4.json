@@ -1,0 +1,19 @@
+{
+  "id": "wd79f7dedec4",
+  "title": "Set up the feedback round-up and put it in HQ",
+  "level": "story",
+  "owner": "amara",
+  "tier": 1,
+  "tier_reason": "filed by hand",
+  "ask": "Daniel ruled Q-89 option a — itch comments are the channel and the page says nothing new — and set the process: the community manager reviews player feedback at regular intervals and brings it to him. While throughput is low it is enough to show him the feedback itself with links; statistics, escalation rules and deciding what to keep from him come later, when there is enough of it to be a drain.",
+  "first_action": "Write down the review cadence and where feedback lands, then add the panel to HQ that shows the itch comments with a link to each.",
+  "state": "waiting_session",
+  "thread": "amara",
+  "source": "chat",
+  "source_message": "Daniel ruled Q-89 option a — itch comments are the channel and the page says nothing new — and set the process: the community manager reviews player feedback at regular intervals and brings it to him. While throughput is low it is enough to show him the feedback itself with links; statistics, escalation rules and deciding what to keep from him come later, when there is enough of it to be a drain.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-04T10:14",
+  "created_ts": 1788542079.0951357
+}

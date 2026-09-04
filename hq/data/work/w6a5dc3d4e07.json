@@ -1,0 +1,19 @@
+{
+  "id": "w6a5dc3d4e07",
+  "title": "Swap the robot menu's words for the paired sprites",
+  "level": "story",
+  "owner": "sam",
+  "tier": 1,
+  "tier_reason": "filed by hand",
+  "ask": "Q-87 is ruled: the robot's job menu speaks in paired sprites, not words. Once Yuki's three cells exist, the menu shows them and the phase-1 loop is wordless again.",
+  "first_action": "Find where the three job labels are built in the machine menu and replace each with its paired sprite, keeping the tap targets the size they are now.",
+  "state": "waiting_session",
+  "thread": "sam",
+  "source": "chat",
+  "source_message": "Q-87 is ruled: the robot's job menu speaks in paired sprites, not words. Once Yuki's three cells exist, the menu shows them and the phase-1 loop is wordless again.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-04T10:14",
+  "created_ts": 1788542079.0417202
+}

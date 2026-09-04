@@ -1,0 +1,19 @@
+{
+  "id": "w472b419ad5e",
+  "title": "Draw the paired sprites for the robot's three jobs",
+  "level": "story",
+  "owner": "yuki",
+  "tier": 1,
+  "tier_reason": "filed by hand",
+  "ask": "Daniel ruled Q-87 option a: the robot's menu shows paired sprites — the robot beside the thing it deals with — instead of the words \"Chase birds off\", \"Follow me\", \"Circle me\". That removes the first required reading added since the shop was stripped of it, and it gives every machine after this one the same vocabulary.",
+  "first_action": "Draw three paired cells on the existing sprite sheet: robot+crow, robot+farmer, robot+farmer-with-a-ring. Reuse the art that exists rather than drawing new subjects.",
+  "state": "waiting_session",
+  "thread": "yuki",
+  "source": "chat",
+  "source_message": "Daniel ruled Q-87 option a: the robot's menu shows paired sprites — the robot beside the thing it deals with — instead of the words \"Chase birds off\", \"Follow me\", \"Circle me\". That removes the first required reading added since the shop was stripped of it, and it gives every machine after this one the same vocabulary.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-04T10:14",
+  "created_ts": 1788542079.0142171
+}

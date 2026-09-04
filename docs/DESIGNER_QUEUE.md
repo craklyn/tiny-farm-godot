@@ -33,23 +33,20 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
 - **Q-7** ~~Asset licensing audit~~ — ✅ ruled 2026-08-18: no audit now — current art is
   *placeholder*; full reskin once art style is aligned (Q-14 / `design/09`), sourced
   from openly released datasets or made original. Residual check: Q-7b below.
-- **Q-89 (Ruling, filed 2026-09-04)** **Where does a player's bug report go?** The itch
-  page ships no answer to the question every released game gets asked. Comments happen
-  to be on because that's itch's default (`ITCH_PAGE.md`), not because anyone chose them
-  as the support channel, and nothing else exists. Because there is no one else at the
-  studio to read whatever gets picked, every option below is a promise about your own
-  week. (a) **Itch comments** — already on, builds nothing, costs whatever time you
-  already spend on the itch dashboard plus an occasional public reply; a report sitting
-  unanswered is visible to the next visitor too, which is real pressure without being a
-  private inbox with its own clock. (b) **A dedicated email alias** — there's no studio
-  domain (the page runs under your personal `craklyn.itch.io/tiny-farm`), so this means a
-  fresh mailbox, ~15 minutes to set up, and then a new inbox to check every week forever,
-  including the weeks it's empty, because a posted address nobody checks is worse than no
-  address. (c) **Say plainly there's no channel yet** — zero cost ever, but a real bug then
-  has nowhere to go but a public review or comment nobody promised to read.
-  *Recommendation: (a) — it's already switched on, adds nothing to check, and the public
-  visibility does the reminding for you.* Card: `hq/data/decisions/Q-89.json`. Blocks the
-  next public tag.
+- **Q-89** ~~Where does a player's bug report go?~~ — ✅ ruled 2026-09-04: **(a) itch
+  comments.** They are already on, they add nothing to check, and a report left unanswered
+  is visible to the next visitor, which does the reminding. The store page says nothing
+  new about it. The ruling came with the process, which is the part that matters: **the
+  community manager reviews player feedback at regular intervals and brings it to Daniel.**
+  Today that means the itch comments; an email alias would be a second place to round up;
+  and an in-game "give feedback" option — under the pause menu, or a fuller settings or
+  about page — is the likely future channel (deferred, D-14). While the volume is low he
+  wants the feedback itself, shown to him with links, because the first feedback of any
+  kind is worth reading whole. Statistics on the classes of feedback, rules for when to
+  escalate, when to reply publicly, and when to keep something from him because it would
+  cost more attention than it is worth — all of that waits until there is enough feedback
+  for the sorting to pay for itself. Filed to Amara: the review cadence, and the HQ panel
+  that shows the comments with a link to each.
 
 ## M1 — phase 1 detail (active now)
 
@@ -1390,36 +1387,24 @@ never touched. Session: `playtests/2026-08-31_230643`.*
   bot sheet therefore does need a status frame. Filed as work under Engineering with Art on
   the frame; see `docs/DECISION_LOG.md` S-10.
 
-- **Q-87 (Creative, filed 2026-09-03)** **The machine menu says everything in words.**
-  Tapping a placed robot opens a panel of words: a mark-1's "Show it what to water" and
-  "Send it out", a mark-2's "Chase birds off", "Follow me", "Circle me" — and both have a
-  "Pick up". That is the first required reading the game has added
-  since the shop was deliberately stripped of it (T-12/Q-35, S-7: a pre-reader must be
-  able to play). The shop stayed wordless; this panel did not, because there is no icon
-  vocabulary for those three jobs and inventing one is a designer's call, not an
-  engineer's. Three candidates, all cheap: (a) **paired sprites** — the robot beside the
-  farmer for follow, beside a crow with a strike for shoo, with an orbit arrow for circle;
-  (b) **a generated icon each**, three cells on the next art bench (the pipeline makes
-  this ~an hour); (c) **leave the words** and accept that instructing a machine is a
-  literate act, which is defensible if the robot lands late enough that a reader owns the
-  farm. *Recommendation: (a) — it reuses sprites that already exist, and "robot + the
-  thing it deals with" is a vocabulary the game can keep using for every machine after
-  this one.* Bears on `design/06` §2 and `design/11`.
+- **Q-87** ~~The machine menu says everything in words~~ — ✅ ruled 2026-09-04: **(a)
+  paired sprites** — the robot beside the thing it deals with. It reuses art that already
+  exists, and it gives every machine after this one the same vocabulary, so the panel stops
+  being the only required reading in a loop that was deliberately stripped of it (S-7).
+  Filed: three paired cells to Yuki, and the menu swap to Sam. Bears on `design/06` §2 and
+  `design/11`.
 
-- **Q-88 (Ruling, filed 2026-09-03)** **Is a mark-2 robot bought, or earned?** The
-  capability ladder now exists in the build — a mark-1 that takes exact orders (150g) and
-  a mark-2 that decides for itself (400g) — and today the only thing between them is
-  price. That was my call under the placeholder acquisition rule (P-12), and it is the
-  half of it most likely to be wrong: *autonomy* may be the wrong thing to sell over a
-  counter. Three readings. (a) **As built** — gold is the gate, which keeps the whole
-  catalogue one mechanism and is trivially tunable; the risk is that the game's central
-  arc is purchasable by grinding wheat. (b) **Earned by demonstration** — the mark-2
-  unlocks when she has actually used a mark-1 (sent one out on N days), which makes the
-  ladder a *proof* in the P-4 sense and rhymes with how phase gates already work. (c)
-  **Earned by the phase gate** — the mark-2 simply is not in the shop until phase 2 is
-  complete. *Recommendation: (b), because it is the only one that makes owning the cheap
-  machine mean something, and the sim already computes exactly this kind of proof.*
-  Bears on `design/06`, `design/12`.
+- **Q-88** ~~Is a mark-2 robot bought, or earned?~~ — ✅ ruled 2026-09-04: **(b) earned by
+  demonstration** — the mark-2 unlocks once she has actually used a mark-1, which makes the
+  ladder a proof in the P-4 sense and stops the game's central arc from being purchasable
+  by grinding wheat. Daniel extended the ruling past the question asked: **the mark-1
+  should be triggered too**, and his strawman is *after a player spends more than half a
+  day's energy watering* — so the first machine arrives when the work has been felt rather
+  than when the coins add up. That turns the placeholder shop rule (P-12) off for machines,
+  which is what P-12 always said would happen once a better acquisition design existed.
+  Filed to Milo: the design note for both triggers — what the sim already counts that could
+  prove them, what the player sees when one fires, and what becomes of the shop entries the
+  machines carry today. Bears on `design/06`, `design/12`.
 
 ## At D-3 trigger — before M4 (phase-3 content)
 

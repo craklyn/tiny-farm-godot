@@ -1,0 +1,19 @@
+{
+  "id": "w2e02e638f47",
+  "title": "Design how a machine is earned rather than bought",
+  "level": "story",
+  "owner": "milo",
+  "tier": 1,
+  "tier_reason": "filed by hand",
+  "ask": "Daniel ruled Q-88 option b — the mark-2 robot is earned by demonstration, by having actually used a mark-1 — and asked for the mark-1 to be triggered too, suggesting: after a player spends more than half a day's energy watering. That turns the placeholder shop rule off for machines and makes owning one mean something.",
+  "first_action": "Write the design note for both triggers: what the sim already counts that could prove them, what the player sees when one fires, and what happens to the shop entries the machines have today.",
+  "state": "waiting_session",
+  "thread": "milo",
+  "source": "chat",
+  "source_message": "Daniel ruled Q-88 option b — the mark-2 robot is earned by demonstration, by having actually used a mark-1 — and asked for the mark-1 to be triggered too, suggesting: after a player spends more than half a day's energy watering. That turns the placeholder shop rule off for machines and makes owning one mean something.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-04T10:14",
+  "created_ts": 1788542079.0684009
+}

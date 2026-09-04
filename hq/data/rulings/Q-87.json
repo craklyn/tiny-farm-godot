@@ -4,5 +4,6 @@
   "option_label": "Paired sprites — the robot beside the thing it deals with",
   "judgment": null,
   "ruled_at": "2026-09-04T09:11:02",
-  "status": "pending_integration"
+  "status": "integrated",
+  "integrated_at": "2026-09-04"
 }
