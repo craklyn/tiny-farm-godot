@@ -203,8 +203,8 @@ function routeControl(g) {
   // a project that is carrying something else.
   if (["unchecked", "broken"].includes(g.state) && p2g.action) return fileBtn(g, p2g, p2g.action);
   if (route.kind === "project") return `<a class="gbtn" href="#/project/${esc(route.id)}">Open the project</a>`;
-  if (route.kind === "decision") return `<a class="gbtn" href="#/inbox">Open the card</a>`;
-  if (route.kind === "work") return `<a class="gbtn" href="#/work">See the filed plan</a>`;
+  if (route.kind === "decision") return `<a class="gbtn" href="#/inbox/${esc(route.id)}">Open the card</a>`;
+  if (route.kind === "work") return `<a class="gbtn" href="#/work/${esc(route.id)}">See the filed plan</a>`;
   if (p2g.action) return fileBtn(g, p2g, p2g.action);
   if (g.needs_you) {
     return `<span class="g-orphan">not prepped — ${esc(p2g.owner || "somebody")} owes you a card
@@ -718,7 +718,7 @@ async function instMarketing(root, below, sig, g) {
           <div class="abs-body">no source</div>
         </div>
         <div class="small muted">${esc(audience.measured_human || "not polled")}. One public build has been
-          live for weeks and nobody in this studio can say whether anyone has opened it. Plan filed: an itch API key gets us views and plays — <a class="plain" href="#/work">see it</a>.</div>
+          live for weeks and nobody in this studio can say whether anyone has opened it. Plan filed: an itch API key gets us views and plays — <a class="plain" href="#/work/${esc(((audience.path_to_green || {}).route || {}).id || "")}">see it</a>.</div>
       </div>
     </div>`));
 

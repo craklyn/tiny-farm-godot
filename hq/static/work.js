@@ -341,9 +341,14 @@ function workSection(title, sub, list, org, pol, opts = {}) {
   return wrap;
 }
 
-async function renderWork() {
+async function renderWork(focusId) {
   const org = await api("/api/org");
   const snap = await workSnap();
+  // A link that names one card lands with that card open — arriving at the
+  // whole queue and hunting for it is a dead end wearing a destination.
+  if (focusId && snap.items.some(i => i.id === focusId)) {
+    const set = openSet(); set.add(focusId); saveOpen(set);
+  }
   const pol = snap.policy;
   const by = st => snap.items.filter(i => i.state === st);
   childIndex = {};
@@ -384,6 +389,16 @@ async function renderWork() {
       hist.querySelector("#w-hist-t").textContent = `${box.hidden ? "▸" : "▾"} Closed (${closed.length})`;
     });
     body.appendChild(hist);
+  }
+
+  if (focusId) {
+    const el = body.querySelector(`.w-card[data-id="${focusId}"]`);
+    if (el) {
+      const hist = el.closest("#w-hist");
+      if (hist && hist.hidden) document.getElementById("w-hist-t").click();
+      el.scrollIntoView({ block: "center" });
+      el.classList.add("ms-flash");
+    }
   }
 
   // Opening and closing a composer touches the DOM only — re-rendering the

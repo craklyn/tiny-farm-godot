@@ -3220,9 +3220,9 @@ def api_needs(pillar_id):
 def _need_href(surface):
     kind = (surface or {}).get("kind")
     if kind == "decision":
-        return "#/inbox"
+        return f"#/inbox/{surface.get('id')}" if surface.get("id") else "#/inbox"
     if kind == "work":
-        return "#/work"
+        return f"#/work/{surface.get('id')}" if surface.get("id") else "#/work"
     if kind == "project":
         return f"#/project/{surface.get('id')}"
     return None

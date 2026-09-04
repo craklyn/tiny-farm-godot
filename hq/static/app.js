@@ -151,6 +151,8 @@ async function route() {
     else if (hash.startsWith("/playtest/")) await renderPlaytestDetail(hash.slice("/playtest/".length));
     else if (hash.startsWith("/chat/")) await renderChat(hash.slice("/chat/".length));
     else if (hash.startsWith("/person/")) await renderPerson(hash.slice("/person/".length));
+    else if (hash.startsWith("/work/")) await renderWork(hash.slice("/work/".length));
+    else if (hash.startsWith("/inbox/")) await renderInbox(hash.slice("/inbox/".length));
     // Guarded: on a direct page-load design.js hasn't registered yet; it
     // re-routes itself once loaded (same dance as its /design route).
     else if (hash.startsWith("/design/doc/") && window.renderDesignDoc) await renderDesignDoc(hash.slice("/design/doc/".length));
@@ -865,7 +867,7 @@ function decisionCard(c, ruling, entData, onRuled, looks) {
   const links = (c.links || []).map(l =>
     `<a class="plain small" href="${esc(l.href)}" ${l.href.startsWith("http") ? 'target="_blank" rel="noopener"' : ""}>🔗 ${esc(l.label)}</a>`).join(" · ");
   const card = h(`<div class="card d-card">
-    <div class="d-head"><span class="qid">${c.id}</span> <b>${esc(c.title)}</b></div>
+    <div class="d-head" id="card-${c.id}"><span class="qid">${c.id}</span> <b>${esc(c.title)}</b></div>
     <p>${esc(c.question)}</p>
     ${c.why_now ? `<p class="small muted"><b>Why now:</b> ${esc(c.why_now)}</p>` : ""}
     ${atts}
@@ -899,7 +901,7 @@ function decisionCard(c, ruling, entData, onRuled, looks) {
   return card;
 }
 
-async function renderInbox() {
+async function renderInbox(focusId) {
   delete cache["/api/queue"];
   const [queue, entData, looks] = await Promise.all([
     api("/api/queue"), api("/api/entities"), api("/api/looks")]);
@@ -928,6 +930,14 @@ async function renderInbox() {
   if (qr) ruled.forEach(c => qr.appendChild(decisionCard(c, rulings[c.id], entData, onRuled, looks)));
   const qraw = document.getElementById("q-raw");
   rawOpen.forEach(q => qraw.appendChild(queueCard(q)));
+  if (focusId) {
+    const el = document.getElementById("card-" + focusId);
+    if (el) {
+      const target = el.closest(".card") || el;
+      target.scrollIntoView({ block: "center" });
+      target.classList.add("ms-flash");
+    }
+  }
   const rawTg = document.getElementById("q-raw-toggle");
   rawTg.addEventListener("click", () => {
     qraw.hidden = !qraw.hidden;
