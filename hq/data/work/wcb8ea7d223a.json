@@ -1,6 +1,6 @@
 {
   "id": "wcb8ea7d223a",
-  "title": "Re-run the suites so each stamps the commit it proved",
+  "title": "Run the four test suites again so each result records which version it tested",
   "level": "task",
   "owner": "grace",
   "tier": 1,
@@ -47,5 +47,15 @@
     "turns": 42,
     "seconds": 238.0,
     "list_usd": 1.4627
-  }
+  },
+  "amendments": [
+    {
+      "at": "2026-09-04T14:13",
+      "by": "claude",
+      "changed": {
+        "title": "Re-run the suites so each stamps the commit it proved"
+      },
+      "why": "Reworded in plain language: the old title used words that mean something precise inside this studio and nothing outside it."
+    }
+  ]
 }

@@ -1,6 +1,6 @@
 {
   "id": "wf1d5bfcab8a",
-  "title": "Wire up the orphaned sound or delete it",
+  "title": "Wire up the sound that nothing loads, or delete it",
   "level": "task",
   "owner": "dmitri",
   "tier": 1,
@@ -69,5 +69,15 @@
       "escalation_reason": null
     }
   ],
-  "requeued": "Held by a Godot-generated .uid file colliding with an untracked copy here — nothing to do with the work. The drain drops those now; re-queued."
+  "requeued": "Held by a Godot-generated .uid file colliding with an untracked copy here — nothing to do with the work. The drain drops those now; re-queued.",
+  "amendments": [
+    {
+      "at": "2026-09-04T14:13",
+      "by": "claude",
+      "changed": {
+        "title": "Wire up the orphaned sound or delete it"
+      },
+      "why": "Reworded in plain language: the old title used words that mean something precise inside this studio and nothing outside it."
+    }
+  ]
 }

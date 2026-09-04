@@ -553,6 +553,12 @@ JOBS = {
         "cmd": ["godot", "--headless", "--path", ".", "res://tools/robot_session.tscn"],
         "verdict": re.compile(r"replay (MATCHES|MISMATCH)"),
     },
+    "writing": {
+        "label": "Plain-language check",
+        "cmd": ["python3", "tools/check_writing.py"],
+        "verdict": re.compile(r"(\d+) phrase\(s\) Daniel would have to decode"),
+        "clean": re.compile(r"No house vocabulary on any surface"),
+    },
     "benchmark": {
         "label": "Sim benchmark",
         "cmd": ["godot", "--headless", "--path", ".", "--script", "res://tools/benchmark_sim.gd"],
@@ -606,6 +612,13 @@ def _run_job(job):
         if job == "robot":
             ok = base_ok and bool(m) and "✗" not in out
             summary = "replay MATCHES its autosave" if ok else "replay verification FAILED"
+        elif job == "writing":
+            clean = bool(spec["clean"].search(out))
+            ok = base_ok and clean
+            summary = ("nothing on your screens needs decoding" if clean
+                       else f"{m.group(1)} phrase(s) on your screens use words that mean "
+                            "something only inside this studio" if m
+                       else "the check did not finish")
         elif job == "benchmark":
             ok = base_ok and bool(m and m.group(1) == "PASS")
             summary = f"{int(m.group(2)):,}x realtime (gate ≥100,000x): {m.group(1)}" if m else "no verdict line found"

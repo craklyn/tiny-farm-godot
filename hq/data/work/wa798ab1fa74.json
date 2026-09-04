@@ -1,0 +1,19 @@
+{
+  "id": "wa798ab1fa74",
+  "title": "Reword the promises on the pillar pages so they read without a decoder",
+  "level": "story",
+  "owner": "claude",
+  "tier": 1,
+  "tier_reason": "filed by hand",
+  "ask": "Same instruction, applied to the six goal files. These are the studio's written promises and Daniel reads all of them; about 33 use words that mean something only here — gate, proof, suite, attested, orphan, instrument, trace.",
+  "first_action": "Run `python3 tools/check_writing.py` and fix every MUST FIX under hq/data/goals/*.json: statement, statement_short, why_it_matters and the path_to_green narratives. A goal's statement is a commitment, so change the wording and never the commitment — if a plain rewrite would change what is being promised, leave it and say so. 'gate' is the hardest: say what must actually be true before something ships, rather than naming the bar. Re-run the check until it passes.",
+  "state": "waiting_session",
+  "thread": "claude",
+  "source": "chat",
+  "source_message": "Same instruction, applied to the six goal files. These are the studio's written promises and Daniel reads all of them; about 33 use words that mean something only here — gate, proof, suite, attested, orphan, instrument, trace.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-04T14:15",
+  "created_ts": 1788556504.4051957
+}

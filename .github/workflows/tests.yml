@@ -34,6 +34,23 @@ jobs:
       - name: One gateway for every world change
         run: python3 tools/check_gateway.py
 
+  writing:
+    # The same shape as the gateway check, for the same reason. "No house
+    # vocabulary on a surface a human reads" has been a written rule since
+    # 2026-09-03 and kept being broken, because it depended on somebody
+    # noticing — and the person who notices is the CEO, which is the friction
+    # the rule exists to remove.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: The check catches a phrase he has actually had to decode
+        run: python3 tools/check_writing.py --self-test
+
+      - name: Plain language on every surface he reads
+        run: python3 tools/check_writing.py
+
   tests:
     runs-on: ubuntu-latest
     timeout-minutes: 15

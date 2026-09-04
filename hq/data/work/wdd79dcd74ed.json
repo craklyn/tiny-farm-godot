@@ -1,0 +1,19 @@
+{
+  "id": "wdd79dcd74ed",
+  "title": "Reword every phrase on HQ's pages that only makes sense inside this studio",
+  "level": "story",
+  "owner": "rin",
+  "tier": 1,
+  "tier_reason": "filed by hand",
+  "ask": "Daniel, 2026-09-04: \"We need a way to eradicate all of this hard to handle text. It's only causing friction, and the friction is so severe that it's getting in way of the process.\" tools/check_writing.py now finds these automatically and CI fails on them. About 50 are in the front-end string literals you own.",
+  "first_action": "Run `python3 tools/check_writing.py` and fix every MUST FIX it reports under hq/static/*.js. Each finding names the word, what it actually means, and the plain wording to reach for. Rewrite the sentence rather than swapping the word — 'the proof is fresh enough to believe' wants to become something like 'the tests were run recently enough to trust'. Where a word genuinely has to stay, put `plain-ok: <reason>` on the line, which the check reports rather than hides. Do not touch code comments: rationale belongs there and is written for whoever maintains the file. Re-run the check until only soft",
+  "state": "waiting_session",
+  "thread": "rin",
+  "source": "chat",
+  "source_message": "Daniel, 2026-09-04: \"We need a way to eradicate all of this hard to handle text. It's only causing friction, and the friction is so severe that it's getting in way of the process.\" tools/check_writing.py now finds these automatically and CI fails on them. About 50 are in the front-end string literals you own.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-04T14:15",
+  "created_ts": 1788556504.403331
+}

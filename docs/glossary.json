@@ -1,0 +1,32 @@
+{
+  "note": "Words that may not appear on a surface Daniel reads. This is the machine-readable half of docs/WRITING.md rule 4 (no house vocabulary) and rule 3 (state the fact, not a term of art for it); tools/check_writing.py reads it and CI runs the check. Adding a term here is how a writing rule stops depending on somebody noticing. Each entry: `term` is a regular expression matched case-insensitively against whole words; `means` is what it actually refers to, for whoever has to rewrite the line; `instead` is the plain wording to reach for; `hard` false means the check reports it without failing, for words that are borderline rather than wrong.",
+  "why": "Daniel, 2026-09-04, reading 'Re-run the suites so each stamps the commit it proved': \"What are the suites? I think it's test suites, but I don't have enough context on this page to know. 'stamps' and 'proves' are terms of art, not literal? ... We need a way to eradicate all of this hard to handle text. It's only causing friction, and the friction is so severe that it's getting in way of the process.\"",
+  "terms": [
+    {"term": "(?<!test )(?<!four )suites?\\b", "means": "the automated test runs", "instead": "test suite, or name it: the unit tests, the integration tests", "hard": true},
+    {"term": "stamps?\\b|stamped\\b|stamping\\b", "means": "writing a value onto a record", "instead": "records / recorded", "hard": true},
+    {"term": "proves?\\b|proved\\b|proven\\b|proofs?\\b", "means": "a test run passing", "instead": "tested / what it tested / evidence", "hard": true},
+    {"term": "attestations?\\b|attests?\\b|attested\\b", "means": "Daniel personally confirming something no machine can check", "instead": "your written confirmation that you checked it yourself", "hard": true},
+    {"term": "rollups?\\b|rolled[- ]up\\b", "means": "combining several statuses into one", "instead": "the combined status", "hard": true},
+    {"term": "invariants?\\b", "means": "a rule the code must never break", "instead": "a rule that must always hold", "hard": true},
+    {"term": "provenance\\b", "means": "the record of where an asset came from and on what terms", "instead": "where it came from", "hard": true},
+    {"term": "cadence\\b", "means": "how often something happens", "instead": "how often", "hard": true},
+    {"term": "parity\\b", "means": "the same behaviour for every actor", "instead": "the same for everyone", "hard": true},
+    {"term": "plumbing\\b", "means": "the supporting code that makes a feature possible", "instead": "name the thing: the translation files and the code that loads them", "hard": true},
+    {"term": "orphans?\\b|orphaned\\b", "means": "a file nothing references", "instead": "not used by anything", "hard": true},
+    {"term": "(?<!release )manifests?\\b", "means": "the list of what a release contains", "instead": "the list of what the release includes", "hard": true},
+    {"term": "harness(es)?\\b", "means": "the code that runs the tests", "instead": "the test setup", "hard": true},
+    {"term": "hygiene\\b", "means": "keeping records tidy and correct", "instead": "housekeeping, or say the actual task", "hard": true},
+    {"term": "tiers?\\b", "means": "how hard a piece of work is to walk back", "instead": "how hard it is to undo", "hard": true},
+    {"term": "traces?\\b|tracing\\b", "means": "a recording of a play session", "instead": "recorded play session", "hard": true},
+    {"term": "gates?\\b|gating\\b", "means": "a bar a milestone must clear before it counts as finished", "instead": "name the bar, or say what must be true before it ships", "hard": true},
+    {"term": "instrument(s|ation)?\\b", "means": "the one picture a pillar page carries", "instead": "name the picture: the palette strip, the evidence row", "hard": true},
+    {"term": "surfaces?\\b", "means": "a screen or page a person reads", "instead": "screen, page", "hard": true},
+    {"term": "signal[- ]key\\b|signals?\\b", "means": "a derived reading about the project's health", "instead": "reading, sign, what we can see", "hard": false},
+    {"term": "regressions?\\b", "means": "something that used to work and no longer does", "instead": "something that broke", "hard": false},
+    {"term": "pillars?\\b", "means": "one of HQ's six areas of the company", "instead": "the area's own name: Engineering, Art, Sales", "hard": false},
+    {"term": "drain(s|ed|ing)?\\b", "means": "the tool that works through the queued build tasks", "instead": "working through the queue", "hard": false}
+  ],
+  "waivers": [
+    {"where": "hq/data/goals/engineering.json", "phrase": "the newest finished run of the suite failed on main", "why": "pending rewrite"}
+  ]
+}

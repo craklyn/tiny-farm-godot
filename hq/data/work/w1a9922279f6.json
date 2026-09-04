@@ -1,6 +1,6 @@
 {
   "id": "w1a9922279f6",
-  "title": "Put the translation plumbing in before the words arrive",
+  "title": "Set up translation files and the code that loads them, before the game needs words",
   "level": "story",
   "owner": "oskar",
   "tier": 1,
@@ -88,5 +88,15 @@
     "list_usd": 2.918
   },
   "follow_ups": [],
-  "recommend": {}
+  "recommend": {},
+  "amendments": [
+    {
+      "at": "2026-09-04T14:13",
+      "by": "claude",
+      "changed": {
+        "title": "Put the translation plumbing in before the words arrive"
+      },
+      "why": "Reworded in plain language: the old title used words that mean something precise inside this studio and nothing outside it."
+    }
+  ]
 }

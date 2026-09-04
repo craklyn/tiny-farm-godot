@@ -1,6 +1,6 @@
 {
   "id": "w294f4caedde",
-  "title": "Name the surfaces a pre-reader has to cross",
+  "title": "List every screen a child who cannot read has to get through in order to farm",
   "level": "task",
   "owner": "sam",
   "tier": 1,
@@ -88,5 +88,15 @@
     "turns": 57,
     "seconds": 368.9,
     "list_usd": 2.4596
-  }
+  },
+  "amendments": [
+    {
+      "at": "2026-09-04T14:13",
+      "by": "claude",
+      "changed": {
+        "title": "Name the surfaces a pre-reader has to cross"
+      },
+      "why": "Reworded in plain language: the old title used words that mean something precise inside this studio and nothing outside it."
+    }
+  ]
 }

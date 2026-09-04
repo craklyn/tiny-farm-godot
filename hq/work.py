@@ -217,7 +217,7 @@ Pick the owner from this roster by id — the person whose job it actually is:
 Reply with raw JSON and nothing else (no prose, no code fence):
 {{"items": [{{"title": "short and plain", "level": "task|story|epic|project|goal", "owner": "<roster id>", "ask": "one sentence in Daniel's own terms", "first_action": "the single next concrete step, specific enough to just do", "tier": 0, "tier_reason": "why that tier"}}]}}
 
-TITLES: Daniel reads the queue title-first, so a title is read with nothing around it to settle what it means: no ticket IDs, and no verb that could mean its own opposite. "Hold the foley session" was read as both delay it and run it. Prefer the longer unambiguous verb — "Take the foley session off the schedule". The ask and first_action below are read by the agent that does the work, so write those for efficiency.
+TITLES: Daniel reads the queue title-first, so a title is read with nothing around it to settle what it means: no ticket IDs, and no verb that could mean its own opposite. "Hold the foley session" was read as both delay it and run it. Prefer the longer unambiguous verb — "Take the foley session off the schedule". The ask and first_action below are read by the agent that does the work, so write those for efficiency. Never put these words in a title — each is exact inside this studio and empty three feet away: suite (say "test suite"), stamp (say "record"), prove or proof (say "test" or "evidence"), attestation, invariant, provenance, cadence, parity, plumbing, orphan, manifest, harness, hygiene, tier, trace, gate, instrument, surface. Say the literal thing. docs/glossary.json is the full list and the build fails on it.
 
 {{"items": []}} if this exchange created no work. Be strict: a wrongly filed item
 costs him attention, which is the thing this system exists to protect."""
@@ -428,7 +428,7 @@ past that it is a plan, and a plan is its own item.
 {amend}
 {{"items": [{{"title": "short and plain", "owner": "<roster id>", "level": "task|story|epic|project|goal", "tier": 0|1|2, "first_action": "the single next concrete step, specific enough to just do", "why": "one sentence: why this follows"}}]{amend_field}}}
 
-TITLES: Daniel reads the queue title-first, so a title is read with nothing around it to settle what it means: no ticket IDs, and no verb that could mean its own opposite. "Hold the foley session" was read as both delay it and run it. Prefer the longer unambiguous verb — "Take the foley session off the schedule". The ask and first_action below are read by the agent that does the work, so write those for efficiency.
+TITLES: Daniel reads the queue title-first, so a title is read with nothing around it to settle what it means: no ticket IDs, and no verb that could mean its own opposite. "Hold the foley session" was read as both delay it and run it. Prefer the longer unambiguous verb — "Take the foley session off the schedule". The ask and first_action below are read by the agent that does the work, so write those for efficiency. Never put these words in a title — each is exact inside this studio and empty three feet away: suite (say "test suite"), stamp (say "record"), prove or proof (say "test" or "evidence"), attestation, invariant, provenance, cadence, parity, plumbing, orphan, manifest, harness, hygiene, tier, trace, gate, instrument, surface. Say the literal thing. docs/glossary.json is the full list and the build fails on it.
 
 Tier each by how bad it is to get wrong with nobody reviewing it first:
 0 — {t0}

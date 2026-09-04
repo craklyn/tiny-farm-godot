@@ -7,7 +7,7 @@
       "emoji": "⚙️",
       "lead": "elena",
       "team": "Engineering",
-      "tagline": "The deterministic core, the pipelines, and the proof it all still works.",
+      "tagline": "The simulation, the build pipelines, and the tests that show it all still works.",
       "git_paths": [
         "systems/",
         "world/",
@@ -31,7 +31,7 @@
         }
       ],
       "commit_feed_label": "the engine and the tests",
-      "question": "Does the game on main actually work right now — and is the proof fresh enough to believe?"
+      "question": "Does the game actually work right now — and were the tests that say so run recently enough to believe?"
     },
     {
       "id": "product",
