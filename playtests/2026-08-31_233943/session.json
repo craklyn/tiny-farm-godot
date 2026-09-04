@@ -1,0 +1,8 @@
+{
+  "tester": "Daniel's wife",
+  "fresh": false,
+  "prompted": null,
+  "attested_by": "daniel",
+  "attested_on": "2026-09-03",
+  "source": "docs/ROADMAP.md:43-45: 'his wife's third session (233943, the largest replay recorded: 3,389 action/walk entries, 3% dead taps — the best human score to date)' — 'third' is the doc's own word establishing she was not fresh to the game. docs/ROADMAP.md:47-58 (T-35) describes 'her first prompted trip to bed' within this session, but that 'prompted' is the in-game vignette pointer aiming at the gate, not a person speaking, so the human-coaching sense of prompted is left null rather than read out of that sentence."
+}

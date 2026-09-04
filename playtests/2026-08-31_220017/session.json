@@ -1,0 +1,8 @@
+{
+  "tester": null,
+  "fresh": null,
+  "prompted": null,
+  "attested_by": "daniel",
+  "attested_on": "2026-09-03",
+  "source": "no record — not named in docs/ROADMAP.md:41-45's roundup of 'the three 08-31 evening sessions' (which names only 230643, 233943, and 220426). The folder's own session_replay.json is 13 entries on a base_save with session_trace.jsonl marked continued:true — consistent with playtests/README.md's note that 'a resumed session inherits the device's un-cleared tap trace while its own replay records almost nothing' — but no doc attaches a tester to this specific folder."
+}

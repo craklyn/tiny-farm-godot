@@ -528,22 +528,44 @@ async function mountVerify(root, sig) {
   await draw();
 }
 
-/* ================= PRODUCT — the gate scorecard that visibly rots =================
-   The scorecard is welded to its decay stamp: a bar met on a build 83 commits
-   behind what you would ship today is not the same claim as one met this
-   morning, and a scorecard that does not say so is quietly flattering us. */
+/* ================= PRODUCT — the release path, gate as its evidence =================
+   Verb: CUT. This pillar's one question is "what stands in front of the next
+   thing the player gets?", so the instrument LEADS with the release itself and
+   everything blocking it, and the onboarding gate sits underneath as the
+   evidence the release's exit criterion is measured against — not as the
+   headline. (An earlier version opened on the gate scorecard, which read a
+   mostly-fine "4 of 5 bars met" and buried the two things actually failing.)
+
+   The failures that matter here are about evidence trust, not the gate's face
+   value: when a recorded session does not say who played it, a voided bar cannot
+   be told from a real miss; and a score that ran on a build well behind what you
+   would ship today has not seen every change since. Whichever of those is live
+   leads the blocker list — each row is guarded on its goal's state, never
+   hardcoded, so a gap that gets backfilled to green simply drops off.
+
+   The gate scorecard stays welded to its build-decay stamp — a bar met on a
+   build 110 commits behind is not the same claim as one met this morning. The
+   stamp lives on the gate card as that evidence's provenance; the conclusion it
+   forces (the score cannot yet be trusted) leads the blockers above, so each
+   fact has exactly one home rather than being argued twice. The bars themselves
+   are parsed from the roadmap's scored table, never transcribed into this file —
+   authored data dressed as a measurement is the one thing this system exists to
+   stop. */
 async function instProduct(root, below, sig, g) {
   const byId = Object.fromEntries((g.goals || []).map(x => [x.id, x]));
   const lag = byId["scoring-build-is-current"] || {};
   const cond = byId["sessions-record-their-conditions"] || {};
   const prog = await api("/api/program").catch(() => ({ releases: [] }));
+  const projects = await api("/api/projects").catch(() => []);
+  const proj = Object.fromEntries((projects || []).map(p => [p.id, p]));
   const pts = await api("/api/playtests").catch(() => []);
 
-  // Parsed from the roadmap's scored table, not transcribed from it. These were
-  // five rows written into this file by hand — which meant they could never
-  // change, could not say which session produced them, and would have gone
-  // quietly stale the moment anybody scored the gate again. Authored data
-  // dressed as a measurement is the one thing this whole system exists to stop.
+  // The near release: the first train that still intends a tag. Anything after
+  // it is scoped later and has no critical work to draw a bar for yet.
+  const releases = prog.releases || [];
+  const near = releases.find(r => r.tag_intent) || releases[0] || null;
+  const later = releases.filter(r => r !== near);
+
   const gate = await api("/api/gate").catch(() => null);
   const bars = (gate && gate.bars) || [];
   const barRows = bars.length ? bars.map(b => `<div class="bar-row">
@@ -555,33 +577,95 @@ async function instProduct(root, below, sig, g) {
     : `<div class="muted small">The roadmap records no scored gate run, so there is nothing to show
        here — and that absence is the finding, not an empty table.</div>`;
 
+  // One blocker line: a dot with its own glyph, a plain statement, the fact with
+  // its denominator, and one control that opens where the fix lives. `stmt` is
+  // trusted static markup (bold on the load-bearing phrase); `fact` is escaped.
+  const blocker = (dot, word, stmt, fact, routeHtml) => `<div class="rb-row">
+    <i class="dot ${dot}" title="${esc(word)}"></i>
+    <div class="rb-body"><div class="rb-stmt">${stmt}</div>
+      <div class="rb-fact small muted">${esc(fact)}</div></div>
+    <div class="rb-route">${routeHtml}</div>
+  </div>`;
+  const projRoute = id => `<a class="gbtn" href="#/project/${esc(id)}">Open the project</a>`;
+  const stepsOf = p => { const pl = (p && p.plan) || []; return `${pl.filter(s => s.done).length} of ${pl.length} steps done`; };
+
+  let rows = "";
+  if (near) {
+    // `gating` is api_program's blocked-critical set; a member in it is stuck,
+    // not merely open, and earns the fire dot. Empty here — stated plainly below.
+    const gatingSet = new Set(near.gating || []);
+    const dotFor = p => gatingSet.has(p.id) ? "d-fire" : "d-attn";
+    const wordFor = p => gatingSet.has(p.id) ? "blocked" : "open";
+
+    // 1. The gate has to close. Measured in bars, since that is what "closing"
+    //    means; the project carries the work.
+    const cg = proj["close-m15-gate"];
+    if (cg) rows += blocker(dotFor(cg), wordFor(cg),
+      `The onboarding gate has to close — one bar is still open, a new player reaching the sleeping cot without being prompted.`,
+      gate && gate.total ? `${gate.total - gate.met} of ${gate.total} gate bars still unmet` : stepsOf(cg),
+      projRoute(cg.id));
+
+    // 2. Why that bar cannot simply be re-scored and believed — the two
+    //    evidence-trust failures. Routes reuse routeControl so they read
+    //    identically to the same goals on the scoreboard below.
+    if (cond.state && cond.state !== "green") rows += blocker("d-fire", "failing",
+      `<b>No recorded session says who played it</b> or whether they had been coached, so that open bar could be a real miss or a tester who had already been shown the cot — nothing here tells them apart.`,
+      cond.measured_human || "0 recorded sessions carry their conditions",
+      routeControl(cond));
+    if (lag.state && lag.state !== "green") rows += blocker("d-attn", "slipping",
+      `The last time the gate was scored, it ran on a build well behind what you would ship today.`,
+      lag.state === "broken" ? "the build it was scored on cannot be resolved any more"
+        : (lag.measured_human || `${lag.measured} commits behind`),
+      routeControl(lag));
+
+    // 3. Then it ships — the tag-out half of the definition of done.
+    const pr = proj["public-release"];
+    if (pr) rows += blocker(dotFor(pr), wordFor(pr),
+      `Then the release is published — a ${esc(near.tag_intent || "version")} tag through the deploy runbook — once the gate closes.`,
+      stepsOf(pr),
+      projRoute(pr.id));
+  }
+
+  const rd = (near && near.readiness) || { done: 0, total: 0 };
+  const pct = rd.total ? Math.round(100 * rd.done / rd.total) : 0;
+  const gatingClear = near && (near.gating || []).length === 0
+    ? `<div class="rb-clear small muted">Nothing on the critical path is blocked — this is open work, not stuck work.</div>` : "";
+
+  const releaseCard = near ? `
+    <h2>The next public release</h2>
+    <div class="card releasecard">
+      <p class="rel-lead"><b><a class="plain" href="#/program">${esc(near.name)}</a></b> — the next public release —
+        ships as <b>${esc(near.tag_intent || "an untagged build")}</b> once the onboarding gate closes on a
+        fresh-player sitting and the tag goes out.</p>
+      <div class="tr-bar" role="img" aria-label="${rd.done} of ${rd.total} critical steps done"><i style="width:${pct}%"></i></div>
+      <div class="small muted"><b>${rd.done} of ${rd.total} steps</b> done on its critical work.</div>
+      <div class="rb-title">What stands in front of it</div>
+      <div class="rb-list">${rows || `<div class="muted small">No critical work is recorded against this release yet.</div>`}</div>
+      ${gatingClear}
+    </div>`
+    : `<h2>The next public release</h2>
+       <div class="card muted">No release train is declared, so there is nothing to ship toward.</div>`;
+
   const decay = lag.state === "broken"
-    ? `the build it was scored on cannot be resolved any more`
-    : `scored on a build <b>${lag.measured} commits</b> behind what you would ship today`;
+    ? `Scored on a build that cannot be resolved any more.`
+    : `Scored ${gate && gate.scored_on ? esc(gate.scored_on) + " " : ""}on a build <b>${esc(String(lag.measured ?? "?"))} commits</b> behind what you would ship today.`;
 
-  const trains = (prog.releases || []).map(r => {
-    const rd = r.readiness || { done: 0, total: 0 };
-    const pct = rd.total ? Math.round(100 * rd.done / rd.total) : 0;
-    return `<div class="train">
-      <div class="tr-head"><b>${esc(r.name)}</b> <span class="small muted">${r.subtitle ? esc(r.subtitle) + " · " : ""}${r.tag_intent ? esc(r.tag_intent) : "no tag intended yet"}</span></div>
-      <div class="tr-bar"><i style="width:${pct}%"></i></div>
-      <div class="small muted">${rd.done} of ${rd.total} steps done on its critical work${r.gating && r.gating.length ? ` · <span class="tr-gate">${r.gating.length} blocked</span>` : ""}</div>
-      <div class="small">${esc(r.definition_of_done || "")}</div>
-    </div>`;
-  }).join("");
-
-  root.replaceChildren(h(`
-    <h2>The onboarding gate ${gate && gate.total ? `<span class="small muted">— ${gate.met} of ${gate.total} bars met, scored ${esc(gate.scored_on)}</span>` : ""}</h2>
+  const gateCard = `
+    <h2>The gate it closes on ${gate && gate.total ? `<span class="small muted">— ${gate.met} of ${gate.total} bars met, last scored ${esc(gate.scored_on)}</span>` : ""}</h2>
     <div class="card gatecard">
       ${barRows}
-      ${gate && gate.session ? `<div class="gate-src small muted">Scored from one session —
+      ${gate && gate.session ? `<div class="gate-src small muted">From one session —
         <a class="plain" href="#/playtest/${esc(gate.session)}">${esc(gate.session)}</a>; recorded in <a class="plain" href="${docAnchor("docs/ROADMAP.md", "gate-run-recorded")}">the roadmap</a>.</div>` : ""}
-      <div class="decay">${decay}${cond.state !== "green" ? ` — and only <b>${esc(String((cond.reading || {}).numerator ?? 0))} of ${esc(String((cond.reading || {}).denominator ?? "?"))}</b> recorded sessions say who played them, so no bar here can be trusted on its own` : ""}</div>
-    </div>
-    <h2>Release trains <span class="small muted">— tracked by gates; no dates are set</span></h2>
-    <div class="card trains">${trains}</div>`));
+      <div class="decay">${decay}</div>
+    </div>`;
 
-  // Below: the one chart Product has real history for.
+  const laterNote = later.length
+    ? `<div class="rel-later small muted">After this one, ${later.length === 1 ? "one more release is" : later.length + " more releases are"}
+        on the board, still being scoped — <a class="plain" href="#/program">see the program</a>.</div>` : "";
+
+  root.replaceChildren(h(releaseCard + gateCard + laterNote));
+
+  // Below the fold: the one chart Product has real history for.
   const subs = (pts || []).filter(s => (s.taps || 0) >= 60).reverse();
   below.replaceChildren(h(foldSection(
     "Dead taps, session by session",
@@ -608,9 +692,9 @@ function sparkline(sessions, g) {
       <text x="${W - PAD}" y="${y(BAR) - 5}" class="sp-lbl" text-anchor="end">the gate's bar, 12%</text>
       <polyline points="${pts}" class="sp-line"/>${dots}${labels}
     </svg>
-    <p class="small muted">All sessions played by you or your wife. Newest is
-      ${sessions[sessions.length - 1] ? esc(String(daysAgo(sessions[sessions.length - 1].name))) : "?"} days old.
-      A first-time player would score differently.</p>`;
+    <p class="small muted">Every session here was played by you or your wife — none by a
+      first-time player. The newest is
+      ${sessions[sessions.length - 1] ? esc(String(daysAgo(sessions[sessions.length - 1].name))) : "?"} days old.</p>`;
 }
 
 function daysAgo(name) {

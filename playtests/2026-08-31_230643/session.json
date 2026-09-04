@@ -1,0 +1,8 @@
+{
+  "tester": "Daniel (the designer)",
+  "fresh": null,
+  "prompted": null,
+  "attested_by": "daniel",
+  "attested_on": "2026-09-03",
+  "source": "docs/ROADMAP.md:41-43: 'the designer's speed run (230643)'. docs/DESIGNER_QUEUE.md:1120-1122: 'The designer played \"as a more serious gamer might\" — 63% of taps under 500ms, bursts of 48 ... Session: playtests/2026-08-31_230643.' Neither passage states whether he was fresh (he built the game, but no doc uses the word for this session) or whether anyone else was present — left null rather than inferred from his role."
+}

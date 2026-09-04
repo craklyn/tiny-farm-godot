@@ -2,9 +2,12 @@
   "id": "session-conditions",
   "name": "Every recorded session says who played it",
   "priority": 4,
-  "status": "planned",
+  "status": "in_progress",
   "owner": "wei",
-  "contributors": ["sofia", "grace"],
+  "contributors": [
+    "sofia",
+    "grace"
+  ],
   "summary": "The onboarding gate's sleeping-spot bar was voided because the player had already been shown the cot in earlier sessions. That fact — the single most important thing about that session — lives only in a paragraph of prose in the roadmap. None of the recorded sessions carry who played them, whether they were fresh, or whether anyone spoke during play, so no score computed from them can be trusted on its own however well the arithmetic works.",
   "requirements": [
     "playtests/<session>/session.json recording tester, whether they were fresh to the game, whether they were prompted, and who attests to it",
@@ -12,14 +15,30 @@
     "tools/pull_session.sh writes the record when it shelves a session, so this cannot drift again",
     "Product's gate scorecard reads the conditions rather than assuming them"
   ],
-  "current_status": "Filed 2026-09-03 while rebuilding the pillar pages. This is the goal that puts Product on fire, and correctly: it is the difference between evidence and a number. Nothing about it is hard — it is a four-field JSON file per session — it has simply never been written down.",
+  "current_status": "Backfilled 2026-09-03 by the BI seat, verified by the chief of staff: every playtest folder with a trace now carries session.json with who played it and whether they were fresh, sourced to the doc line each fact came from and null where the docs do not say. The 2026-08-30 gate run is recorded fresh:false — 'fresh farm' meant a new save, not a new player, which is the exact conflation that voided the cot bar. Open: teach tools/pull_session.sh to write the file live (a TODO with the field list is in place); a live prompt-capture needs the tablet.",
   "plan": [
-    { "step": "Agree the four fields and write the schema", "done": false },
-    { "step": "Backfill the existing session folders from the roadmap's prose, marked as attested", "done": false },
-    { "step": "Teach the session puller to write the record", "done": false },
-    { "step": "Have the gate scorecard read it instead of assuming it", "done": false }
+    {
+      "step": "Agree the four fields and write the schema",
+      "done": true
+    },
+    {
+      "step": "Backfill the existing session folders from the roadmap's prose, marked as attested",
+      "done": true
+    },
+    {
+      "step": "Teach the session puller to write the record",
+      "done": false
+    },
+    {
+      "step": "Have the gate scorecard read it instead of assuming it",
+      "done": false
+    }
   ],
-  "links": ["docs/ROADMAP.md", "playtests/README.md", "hq/data/goals/product.json"],
+  "links": [
+    "docs/ROADMAP.md",
+    "playtests/README.md",
+    "hq/data/goals/product.json"
+  ],
   "release": null,
   "release_critical": false
 }

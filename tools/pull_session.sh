@@ -14,6 +14,29 @@
 #
 # Pulled together and kept together: a replay without its autosave cannot be
 # verified, and a trace without its replay cannot be watched.
+#
+# TODO(session-conditions, filed 2026-09-03): this script does not yet write a
+# fourth file, session.json, recording who was on the other end of the trace.
+# No score computed from the three files above can be trusted on its own —
+# the M1.5 gate's cot bar was voided precisely because "was this player fresh
+# to the game" lived only in a paragraph of roadmap prose, not next to the
+# session it described (see hq/data/projects/session-conditions.json and the
+# backfilled playtests/*/session.json files this same change added).
+#
+# Shape (same as the backfilled files):
+#   {"tester": "<name or role>", "fresh": <true|false|null>,
+#    "prompted": <true|false|null>, "attested_by": "<who is vouching>",
+#    "attested_on": "<YYYY-MM-DD>", "source": "<how this was captured>"}
+#
+# Not built here on purpose: this needs an interactive prompt (who is playing,
+# are they new to the game, is anyone talking them through it) at the moment
+# of the pull, on the tablet or from whoever hands it over — not something
+# this script can infer from adb output alone. A future session with the
+# tablet in hand should add that prompt (default `attested_by` to whoever runs
+# the script, `attested_on` to $STAMP's date) and write it to "$OUT/session.json"
+# right after the three files below are confirmed pulled. Until then, a session
+# this script shelves has no session.json, and the next backfill has to read
+# the docs again rather than an interactive answer.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."

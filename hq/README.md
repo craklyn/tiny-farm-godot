@@ -198,6 +198,14 @@ something that should simply have been done. *Corollary: no HQ-internal
 vocabulary on a surface he reads. "A shipped asset has no ledger line" means
 nothing to anybody who does not work on this codebase.*
 
+**5b. The instrument leads with the pillar's question, not its calmest data.**
+Product's page opened for weeks on the onboarding-gate scorecard — 4 of 5 bars
+met, mostly fine — while the pillar's actual question is what stands in front of
+the next release. A stand-up leads with the problem: the instrument now opens on
+the release path and its blockers, with the gate demoted to the evidence beneath
+it. Ask what the VP would put first in a fifteen-minute stand-up, not what the
+code renders most readily.
+
 **6. Report the fact; never the insight, and never the design.** A metric card
 is titled for **what it counts**, and carries a denominator and a target:
 "Assets missing rights clearance · 1 of 30 shipped · target 0". Not "What we

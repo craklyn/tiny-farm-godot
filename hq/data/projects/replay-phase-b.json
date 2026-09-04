@@ -38,6 +38,7 @@
   ],
   "blocked_on": "fresh-playtest",
   "blocked_since": "2026-09-01",
+  "unblock_action": "When the next public update nears, record one never-before-played tester's first unguided session on the tablet's current build — the same sitting that scores the onboarding gate — and confirm it replays exactly against its autosave.",
   "release": "update-1",
   "release_critical": false,
   "depends_on": [

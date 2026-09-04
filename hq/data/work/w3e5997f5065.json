@@ -1,0 +1,19 @@
+{
+  "id": "w3e5997f5065",
+  "title": "A project can be deferred by a ruling without reading as stuck",
+  "level": "story",
+  "owner": "sofia",
+  "tier": 2,
+  "tier_reason": "filed by hand",
+  "ask": "The program owner found, working replay-phase-b, that HQ has no way to distinguish a project waiting on a scheduled event by the CES ruling from one that is genuinely stuck. replay-phase-b is deferred by the 2026-09-02 no-fresh-recruiting ruling until the next release nears — nothing impedes it — yet status blocked reads as five-alarm trouble and (were it critical) would false-alarm the release train. Proposal: a status like deferred that carries its wake trigger, counts as neither fire nor a routeless blocker, but stays visible with its trigger shown. This changes what the CEO sees on the das",
+  "first_action": "Read compute_signals in hq/server.py for every place status==blocked is tested, and hq/data/projects/replay-phase-b.json, then draft the status semantics for the CEO to rule on.",
+  "state": "needs_approval",
+  "thread": "sofia",
+  "source": "chat",
+  "source_message": "The program owner found, working replay-phase-b, that HQ has no way to distinguish a project waiting on a scheduled event by the CES ruling from one that is genuinely stuck. replay-phase-b is deferred by the 2026-09-02 no-fresh-recruiting ruling until the next release nears — nothing impedes it — yet status blocked reads as five-alarm trouble and (were it critical) would false-alarm the release train. Proposal: a status like deferred that carries its wake trigger, counts as neither fire nor a routeless blocker, but stays visible with its trigger shown. This changes what the CEO sees on the das",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-03T23:15",
+  "created_ts": 1788502524.7345746
+}

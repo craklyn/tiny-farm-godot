@@ -1,0 +1,8 @@
+{
+  "tester": null,
+  "fresh": null,
+  "prompted": null,
+  "attested_by": "daniel",
+  "attested_on": "2026-09-03",
+  "source": "no record — appears only in tests/test_runner.gd's SHELF table (format 1, verdict match) and as the source of two byte-identical duplicate folders removed 2026-09-02 (tests/test_runner.gd:27-28). No prose in ROADMAP.md, DESIGNER_QUEUE.md, or M1_5_PLAN.md names a tester or conditions for this specific folder."
+}

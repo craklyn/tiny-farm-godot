@@ -1,0 +1,8 @@
+{
+  "tester": "Daniel's wife",
+  "fresh": false,
+  "prompted": null,
+  "attested_by": "daniel",
+  "attested_on": "2026-09-03",
+  "source": "docs/ROADMAP.md:205-208 (M1.5 gate): 'The 2026-08-30 tablet session (playtests/2026-08-30_221027 ...) was the gate run: Daniel's wife, fresh farm, 10m14s, and the designer attested the session conditions after the fact.' Recorded fresh:false rather than true: the same section's scoring table, docs/ROADMAP.md:214, voids the cot criterion because 'she had been shown the cot in earlier playthroughs' — the save/farm was fresh, the player was not, and that is the fact the gate actually turned on (see hq/data/projects/session-conditions.json). docs/ROADMAP.md:213 also notes 'the designer attests the 44s [stall] was the two of them talking, not play' — Daniel was present and conversing during the session, but whether that included instructing her is not stated, and the gate's own 'no adult words' criterion (docs/ROADMAP.md:197) was defined but not among the rows actually scored for this run (docs/ROADMAP.md:210-215) — so prompted is left null rather than assumed either way."
+}
