@@ -119,19 +119,78 @@ for "I'd rather do the other thing".
 A recommendation is omitted entirely when the result raises no choice. A manufactured
 question costs him more than a missing one.
 
+## Tier 1 executes itself
+
+Settled by the CEO on 2026-09-04, looking at twenty-two tier-1 items that had been queued
+for a build session nobody was running:
+
+> "Twenty-two items sit in `hq/data/work/` waiting for a build session and nothing drains
+> them — so a pillar showing 'ours to fix' is claiming work is in hand when nothing is
+> touching it."
+
+A queue nothing drains is a design problem wearing a to-do list. `hq/drain.py` is the
+drain, and it is the shape the pilot ran by hand on 2026-09-03:
+
+| | who | on what | in what |
+|---|---|---|---|
+| **work** | the seat that owns the item | that seat's default `model` from `org.json` | its own git worktree |
+| **check** | the chief of staff | the chief of staff's default model | the same worktree, read-only |
+| **apply** | the drain | — | the real working tree, one item at a time |
+| **prove** | the drain | — | both suites, once, if an applied patch touched the game |
+
+The worker holds **only its seat's context** — its org record, its own notes, the card. Not
+the conversation that filed the work, and not the session running the drain. That is the
+architecture the CEO asked for when he asked whether org members should run as their own
+agents, and it is what makes the check meaningful: the checker is reading work it did not
+do. The pilot's most useful findings both came from there — a worker's overclaim about
+what it had measured, and a false premise in a card the studio itself had written.
+
+Nothing is committed and nothing is pushed. The item goes back to `for_review` carrying the
+diff, the check, the suites and the bill, and he approves the **result**. That is the rule,
+not a limitation of the tool.
+
+```bash
+python3 hq/drain.py --list          # what is queued
+python3 hq/drain.py --all --jobs 3  # drain it
+python3 hq/drain.py w5a4005536e1    # one item
+```
+
+A worker that finds the item needs Daniel — his taste, a direction, a date, money, a
+credential — stops and says so rather than guessing. That is a real result, and it is how
+the queue produces escalations instead of swallowing them.
+
+## What a result cost
+
+Work the studio does on its own draws on the same Claude allotment Daniel draws on when he
+talks to HQ, and nothing recorded it: `limits.jsonl` recorded the moment a five-hour window
+ran dry and never what emptied it. Every model call the company makes unattended now
+appends a line to `hq/data/history/tokens.jsonl` — phase, seat, model, item, tokens — so:
+
+- a finished result on the Work page says what producing it spent, in tokens and model
+  calls, which is part of judging whether it was worth having;
+- the Work page's header says what all of it has spent in the trailing five hours, against
+  the only measured ceiling this machine holds: what had been spent the last time a window
+  actually ran dry. A subscription publishes no token cap, so an invented bar would be
+  fiction; an amount that has genuinely exhausted a window is a fact.
+
+Dollars are recorded too, as `list_usd`, but they are the API list-price equivalent of the
+same tokens — an order of magnitude, never a bill. What runs out here is a window.
+
 ## What is not automated yet
 
-- **Tier 1 execution.** The repo edits are queued for a build session rather than performed
-  by an unattended agent. The natural next increment is to have tier 1 work done into a
-  branch or worktree and presented as a diff — that keeps the "approve the result" shape
-  while making the walk-back a `git revert` rather than a promise.
 - **Learning the thresholds.** Every accept, drop, and "have another go" is a labelled
   judgement about whether the tier was right. Once there is a run of them, the tiering
   should be calibrated against his actual decisions instead of the model's guess.
+- **Deciding when to drain.** The drain is a command a session runs, not a thing that
+  happens on its own. Making it a schedule is the obvious next step and it wants a token
+  policy first — which is what the ledger above exists to inform.
 
 ## Where this lives
 
 - `hq/work.py` — capture, tiering, filing, and the tier-0 worker.
+- `hq/drain.py` — the tier-1 drain: seat-scoped workers, the chief of staff's check, the
+  patch, the suites and the bill.
+- `hq/data/history/tokens.jsonl` — one line per model call the studio makes unattended.
 - `hq/data/work_policy.json` — the tiers as data; the source HQ actually reads.
 - `hq/data/work/*.json` — one file per work item, the company's record of what it did.
 - `hq/static/work.js` — the Work page, ordered so that what needs him is loud and what the

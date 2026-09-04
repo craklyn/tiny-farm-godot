@@ -123,13 +123,14 @@ the game proper.
   `status: "pending_integration"`. **At the start of any work session, check that
   directory.** Integrate each pending ruling: strike/annotate the item in
   `docs/DESIGNER_QUEUE.md` (and `DECISION_LOG.md` if it settles a decision), do or file
-  the work it unblocks, then set the ruling's status to `"integrated"`. Sweep
-  `hq/data/work/` for items in `waiting_session` in the same pass — they are queued
-  precisely for a session like this one, and a queue nothing drains is a design
-  problem wearing a to-do list. Execute each through a subagent holding only the
-  owner's seat context (org record, `hq/data/staff/<id>/memory.md`, the card), on
-  the owner's default `model` from `org.json` — override for the occasion when it
-  warrants — then verify the result yourself before committing: diff, both suites,
+  the work it unblocks, then set the ruling's status to `"integrated"`. Drain
+  `hq/data/work/` in the same pass: `python3 hq/drain.py --list` shows what is
+  queued and `python3 hq/drain.py --all` works it. Each item goes to a worker
+  holding only the owner's seat context (org record, `hq/data/staff/<id>/memory.md`,
+  the card) on the owner's default `model` from `org.json`, in its own git worktree;
+  the chief of staff checks the diff; surviving patches land on the working tree and
+  the suites run. Nothing is committed by the drain — **verify the results yourself
+  before committing**: read the diff, read the checker's findings, run both suites, do
   a writing-rules pass. A verification failure gets written into the seat's notes. Curated decision
   cards live in `hq/data/decisions/` — when new Q-items open or close, keep those cards
   in sync (plain language, options with a recommendation, attachments).

@@ -180,7 +180,11 @@
         "record": true,
         "chart": false
       },
-      "signal_key": "ship_gate"
+      "signal_key": "ship_gate",
+      "escalates": {
+        "reason": "external_commitment",
+        "because": "The attribution is owed to the person whose work we shipped, and it is owed the moment the build is public — not when we get round to the screen."
+      }
     },
     {
       "id": "release-is-reproducible",
@@ -314,6 +318,10 @@
       "history": {
         "record": true,
         "chart": false
+      },
+      "escalates": {
+        "reason": "exposure",
+        "because": "Players can reach this storefront today, and a channel we cannot publish to leaves whatever is on it standing."
       }
     }
   ],

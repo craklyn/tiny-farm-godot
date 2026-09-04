@@ -274,6 +274,73 @@ function wantsLine(it, org) {
     : "finished — your verdict, nothing more follows" + filed;
 }
 
+/* What a drained item actually did to the repo, what the chief of staff found
+   reading it, and what the suites said afterwards. A result you cannot see the
+   consequences of is a result you cannot honestly approve. */
+const CHECK_WORD = {
+  pass: ["checked — nothing to flag", "w-chk-ok"],
+  concerns: ["checked — worth knowing", "w-chk-warn"],
+  fail: ["checked — should not land as it stands", "w-chk-bad"],
+};
+
+function drainBlock(it, org) {
+  const d = it.diff, c = it.check, s = it.suites;
+  if (!d && !c && !s) return "";
+  const by = it.done_by || {};
+  const seat = by.seat ? ownerOf(org, by.seat).name.split(" ")[0] : "";
+  const files = (d && d.files || []);
+  const filesLine = !d ? "" : d.applied
+    ? `${files.length} file${files.length === 1 ? "" : "s"} changed, already in your working tree`
+    : `nothing landed — ${d.why_not || "it was held"}`;
+  const stat = d && d.stat
+    ? `<pre class="w-stat">${esc(d.stat)}</pre>` : "";
+  const [word, cls] = c ? (CHECK_WORD[c.verdict] || CHECK_WORD.concerns) : ["", ""];
+  const findings = c && c.findings && c.findings.length
+    ? `<ul class="w-find">${c.findings.map(f => `<li><b>${esc(f.what)}</b>${
+        f.where ? ` <span class="muted">${esc(f.where)}</span>` : ""}${
+        f.fix ? `<br>${esc(f.fix)}` : ""}</li>`).join("")}</ul>` : "";
+  const suites = s ? `<div class="w-suites">${Object.entries(s).map(([k, v]) =>
+    `<span class="${v.ok ? "w-sui-ok" : "w-sui-bad"}">${esc(k)} suite ${v.ok ? "green" : "RED"}</span>`
+  ).join(" · ")}</div>` : "";
+  return `<div class="w-drain">
+    <div class="w-drain-h">${esc(seat || "The owner")} did this on their own${
+      by.model ? `, on ${esc(by.model)}` : ""} — ${esc(filesLine)}</div>
+    ${stat}
+    ${c ? `<div class="w-chk ${cls}"><b>${esc(word)}.</b> ${esc(c.summary || "")}${findings}</div>` : ""}
+    ${suites}
+  </div>`;
+}
+
+/* What producing this result spent. He and the studio draw on one Claude
+   allotment, so a finished result carries its own price the way a finished
+   result carries its own diff. Tokens, not dollars: this is a subscription, and
+   what runs out is a window's worth of tokens. */
+function costLine(it) {
+  const u = it.usage;
+  if (!u || !u.tokens) return "";
+  const mins = Math.round((u.seconds || 0) / 60);
+  // Records written before "fresh" was split out still carry its three parts.
+  const fresh = u.fresh || ((u.input || 0) + (u.output || 0) + (u.cache_write || 0));
+  return `<div class="w-cost">Producing this took ${u.calls} model call${u.calls === 1 ? "" : "s"}${
+    mins ? ` and ${mins} minute${mins === 1 ? "" : "s"}` : ""}: ${u.tokens.toLocaleString()} tokens
+    through the model, ${fresh.toLocaleString()} of them new.</div>`;
+}
+
+/* The Work page's own header line: what the company's unattended work has spent
+   in the trailing five hours, against the only measured ceiling this machine
+   has — what it had spent the last time a window actually ran dry. */
+function tokenStrip(t) {
+  if (!t || !t.calls) return "";
+  const m = n => (n >= 1e6 ? (n / 1e6).toFixed(1) + "M"
+    : n >= 1000 ? Math.round(n / 1000) + "k" : String(n));
+  const against = t.dry_spend
+    ? `The last time a window ran dry it had spent ${m(t.dry_spend)}.`
+    : `No window has run dry since this started recording, so there is no measured ceiling yet.`;
+  return `<div class="w-tokens">Work the studio did on its own has put
+    <b>${m(t.tokens)} tokens</b> through the model in the last ${t.hours} hours — ${m(t.fresh || 0)}
+    of them new — over ${t.calls} model calls. ${against}</div>`;
+}
+
 function workCard(it, org, pol) {
   const who = ownerOf(org, it.owner);
   const tier = pol.tiers[String(it.tier)] || { name: "?" };
@@ -318,6 +385,8 @@ function workCard(it, org, pol) {
       ${amendNote(it, org)}
       ${next}
       ${result}
+      ${drainBlock(it, org)}
+      ${costLine(it)}
       ${convoBlock(it, org)}
       ${childrenNote(it, org)}
       ${spawnedNote(it)}
@@ -370,6 +439,7 @@ async function renderWork(focusId) {
     <h1>🧾 Work</h1>
     <p class="sub">Everything the org started because you said something. Nothing here
     asked permission to <em>exist</em> — ${esc(pol.rule)}${snap.capturing ? ` · reading ${snap.capturing} new exchange${snap.capturing > 1 ? "s" : ""} for work…` : ""}</p>
+    ${tokenStrip(snap.tokens)}
     <div id="w-body"></div>`));
   const body = document.getElementById("w-body");
 

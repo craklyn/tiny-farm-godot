@@ -108,7 +108,11 @@
         "record": true,
         "chart": false
       },
-      "signal_key": "asset_ledger"
+      "signal_key": "asset_ledger",
+      "escalates": {
+        "reason": "exposure",
+        "because": "This is about an asset in a build people can already download, whose terms nobody has established."
+      }
     },
     {
       "id": "a-player-can-reach-us",
@@ -182,6 +186,10 @@
       "history": {
         "record": false,
         "chart": false
+      },
+      "escalates": {
+        "reason": "external_commitment",
+        "because": "What we owe here is owed to whoever made the work, and a public build is where we owe it."
       }
     },
     {
@@ -212,6 +220,10 @@
       "history": {
         "record": true,
         "chart": false
+      },
+      "escalates": {
+        "reason": "authority",
+        "because": "Only you hold these; nobody in the studio can put a key on your machine for you."
       }
     },
     {

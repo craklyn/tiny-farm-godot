@@ -7,14 +7,15 @@
   "tier_reason": "Changes HQ dashboard files only; git reverts it, and it's a tool surface rather than anything players see.",
   "ask": "The sprite editor should show every cell of a sheet, with the preview frames just highlighted as what animates.",
   "first_action": "In HQ's sprite editor, derive the cell grid from the actual sheet dimensions and cell size instead of the catalog's preview frame list, and render preview frames as a highlighted subset.",
-  "state": "waiting_session",
+  "state": "dropped",
   "thread": "ingrid",
   "source": "chat",
   "source_message": "> HQ's sprite editor only showed him a quarter of each sheet. \n\nWhy aren't you also creating a story to fix this?",
-  "result": "",
+  "result": "Dropped as a duplicate. The same request is filed to Rin as w5a4005536e1, which carries the fuller brief — it names the actual mismatch (Chicken shows four of its eight cells, the farmer four of sixteen) and asks her to confirm it before changing anything. Two cards for one change would have had two seats editing the same file.",
   "started": "",
   "attempts": 0,
   "created": "2026-09-03T00:50",
   "created_ts": 1788421828.8856351,
-  "parent": "wf8a69640fcd"
+  "parent": "wf8a69640fcd",
+  "closed": "2026-09-04T08:51"
 }

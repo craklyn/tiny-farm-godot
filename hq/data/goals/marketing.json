@@ -40,6 +40,10 @@
       "history": {
         "record": true,
         "chart": false
+      },
+      "escalates": {
+        "reason": "external_commitment",
+        "because": "The store page is the only description of this game that people outside the studio read, and it is currently promising them something the build does not do."
       }
     },
     {
@@ -129,6 +133,10 @@
       "history": {
         "record": false,
         "chart": false
+      },
+      "escalates": {
+        "reason": "exposure",
+        "because": "If this ever fails, something can reach players without you having said yes to it."
       }
     },
     {
@@ -196,6 +204,10 @@
       "history": {
         "record": true,
         "chart": false
+      },
+      "escalates": {
+        "reason": "external_commitment",
+        "because": "Strangers are reading this page right now; a page that describes an older build is a promise we are still making."
       }
     },
     {

@@ -184,3 +184,31 @@
   padding: 8px 12px; margin-top: 10px; font-size: 13px; color: var(--muted); }
 .chat-work b { color: var(--accent); }
 .chat-work a { margin-left: 8px; }
+
+/* ---- what a drained item did, and what it cost -------------------------
+   A finished result the studio produced without him carries three things he
+   would otherwise have to go and find: what it changed in the repo, what the
+   chief of staff found reading that change, and what producing it spent. */
+.w-drain { margin-top: 12px; border-left: 3px solid var(--line); padding: 8px 0 2px 12px; }
+.w-drain-h { font-size: 12.5px; font-weight: 600; color: var(--text); }
+.w-stat {
+  font-size: 11.5px; color: var(--muted); margin: 6px 0 0; white-space: pre-wrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.w-chk { margin-top: 8px; font-size: 12.5px; border-radius: 6px; padding: 7px 10px; }
+.w-chk-ok { background: rgba(60, 160, 90, .10); }
+.w-chk-warn { background: rgba(224, 145, 46, .12); }
+.w-chk-bad { background: rgba(200, 60, 60, .12); }
+.w-find { margin: 6px 0 0; padding-left: 18px; }
+.w-find li { margin: 4px 0; }
+.w-suites { margin-top: 8px; font-size: 12px; }
+.w-sui-ok { color: var(--green, #3ca05a); font-weight: 600; }
+.w-sui-bad { color: var(--red); font-weight: 700; }
+.w-cost { margin-top: 8px; font-size: 12px; color: var(--muted); }
+/* The page's own denominator: one allotment, shared between him and the work
+   the company does while he is elsewhere. */
+.w-tokens {
+  font-size: 12.5px; color: var(--muted); border: 1px solid var(--line);
+  border-radius: 8px; padding: 8px 12px; margin: 10px 0 4px;
+}
+.w-tokens b { color: var(--text); }

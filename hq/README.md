@@ -87,6 +87,50 @@ failing promise still reaches the nav's exception group.
 nav dots, the standup brief and the chat personas all read it — and only gains
 additive fields.
 
+## The dot is his, so it answers his question
+
+The dot used to answer *is anything wrong on this pillar?* — which is how a
+twenty-two-item queue of ordinary work nobody had got to could light up the CEO's
+board as though it were his to fix. Wrong is not the same as his. It answers one
+question now: **does this pillar need him?** Four tests, and a failing goal
+reaches the dot only by passing one:
+
+| Test | It means | Where it comes from |
+|---|---|---|
+| **authority** | Only he can settle it — his taste, a direction, a commitment, a date, money, a credential | a recorded `ceo_blocker`, an attestation that has lapsed (only Daniel attests), or an authored `escalates` |
+| **external commitment** | We have told somebody outside the studio something this contradicts, or we owe an outsider something | authored on the goal |
+| **exposure** | A player or an outsider can hit this right now | authored on the goal |
+| **age or trend** | Ours, but it has waited long enough — or is getting worse fast enough — that the delay is itself the news | measured |
+
+The first three are **authored**, for the same reason a goal's statement and
+target are: whether a promise was made outside this studio is not something a
+measurement can discover. The fourth is **measured**, from the oldest honest
+start date available — what a CEO blocker says it has been waiting, when the work
+filed against it was filed, and when the goal journal first saw it non-green. A
+goal with none of those has no clock and says so rather than inventing one.
+Patience is 7 days on a blocking promise, 14 on an important one, 30 on a watch,
+halved for anything getting worse. `data/history/goals.jsonl` is the journal —
+one line an hour, written by a background thread, because a tracked file written
+on page render leaves the tree dirty.
+
+**What is deliberately not a test: needing an approval.** A tier-2 item and a
+prepped decision card serve Daniel *as an approver*, and they already have two
+surfaces built for answering them one after another — the Work page and the
+decision inbox. Firing a pillar red because something waits on a yes makes the
+board a third copy of those queues, which is how a board stops meaning anything.
+Before this, any goal whose route carried a tier-2 action counted as his; that
+clause is gone.
+
+Everything that does not escalate is still measured, still on the pillar's own
+page in the scoreboard, and still reaches the dashboard — as a count on the
+pillar's row ("3 ours to fix") and one line in the eye queue. He should know a
+pillar has work outstanding without being handed work he cannot act on.
+
+`fire` is reserved for a reading that is actually bad *and* either aimed outward
+or blocking; an attestation that has merely lapsed is `attention`. A pillar with
+nothing escalated but a check that could not be read at all is `unassured`, never
+`ok` — a failed reading is a fact about the instrument.
+
 ## The pillar pages
 
 Five bands, invariant in order so the CEO learns the page once, with band 2
@@ -246,6 +290,21 @@ the 100-run CI window is polled onto `data/ci_history.json` by a background
 thread — deliberately **off** the request path, since `gh --limit 100` costs
 ~4s against ~1s at `--limit 10`.
 
+**What the studio's own work costs.** Every model call the company makes
+unattended — reading an exchange for the work it creates, a seat doing a tier-0
+task, a drain worker, the chief of staff's check — spends the same Claude
+allotment Daniel spends when he talks to HQ, and nothing recorded it:
+`data/history/limits.jsonl` records the moment a five-hour window ran dry and
+never what emptied it. One line per call now lands in
+`data/history/tokens.jsonl` (phase, seat, model, item, tokens), which is what
+lets a finished result on the Work page say what producing it spent, and lets
+that page's header say what all of it has spent in the trailing five hours —
+against the only measured ceiling this machine holds, which is what had been
+spent the last time a window actually ran dry. A subscription publishes no token
+cap, so a bar we invented would be fiction. Dollars are recorded as `list_usd`
+and are the API list-price equivalent of the same tokens: an order of magnitude,
+never a bill.
+
 Nothing here is written by a request handler. A tracked file written on page
 render leaves the tree dirty, and `git describe --dirty` is where playtest build
 ids come from — which is exactly how two recorded sessions became impossible to
@@ -300,6 +359,20 @@ tie to a build.
   decision log settles it, and `data/work_policy.json` is the copy the server reads — edit
   that to change the norms without touching code. Items live in `data/work/`, the Work page
   in `static/work.js`.
+- `drain.py` — **the studio working its own queue.** Tier 1 is "do it, show the
+  diff", and the second half of that had no machinery: items were filed, marked
+  `waiting_session`, and waited for a human. Twenty-two accumulated. The drain
+  runs each one through a worker holding *only* the owning seat's context — its
+  org record, its own notes, the card — on that seat's default `model` from
+  `org.json`, in its own git worktree, so several seats can be wrong at once
+  without standing on each other. The chief of staff then reads the diff against
+  the brief; patches that survive land on the working tree one at a time, and
+  both suites run once if any of them touched the game. Nothing is committed:
+  the item goes back to `for_review` with the diff, the check, the suites and the
+  bill, and Daniel approves the result. A worker that finds the item needs *him*
+  stops and says what it needs, which is how the queue produces escalations
+  rather than swallowing them. `python3 hq/drain.py --list` to see the queue,
+  `--all` to drain it. `docs/HOW_WORK_ORIGINATES.md` is the norm in prose.
 - `data/org.json` — org chart + personas (Amazon titles/levels).
 - `data/entities.json` — entity gallery: sprite-sheet frame rects, fps, sounds,
   code refs. Update when a new species/crop/object ships (the Zoo's roster and

@@ -483,12 +483,15 @@ it and he is entitled to know what his yes starts before he gives it.
 {spec}"""
 
 
-def _run_cli(prompt, sys_prompt, tools, turns, timeout, model=""):
+def _run_cli(prompt, sys_prompt, tools, turns, timeout, model="", phase="", seat="", item=""):
     """One CLI call, with the intake queue's token-limit accounting. Returns
-    (text, limited)."""
+    (text, limited); the call's cost is appended to the token ledger, because
+    work the company does on its own spends the same allotment Daniel does and
+    nothing used to say how much."""
     import subprocess
     cmd = ["claude", "-p", prompt, "--append-system-prompt", sys_prompt,
-           "--allowedTools", tools, "--max-turns", str(turns)]
+           "--allowedTools", tools, "--max-turns", str(turns),
+           "--output-format", "json"]
     if model:
         cmd += ["--model", model]
     try:
@@ -505,7 +508,23 @@ def _run_cli(prompt, sys_prompt, tools, turns, timeout, model=""):
             return "", True
         return HOST.cli_failure(proc), False
     HOST.clear_limit()
-    return proc.stdout.strip(), False
+    text, usage = _read_cli_json(proc.stdout)
+    HOST.record_model_usage(phase or "work", seat, model, usage, item)
+    return text, False
+
+
+def _read_cli_json(stdout):
+    """(the reply, what the call cost). A CLI that stops answering in JSON must
+    not cost us the reply, so the raw text is the fallback and the price is
+    simply unknown — an unpriced call is a record, not a silent zero."""
+    raw = (stdout or "").strip()
+    try:
+        doc = json.loads(raw)
+    except ValueError:
+        return raw, None
+    if not isinstance(doc, dict):
+        return raw, None
+    return str(doc.get("result") or "").strip(), HOST.usage_from_cli(doc)
 
 
 # ---------------------------------------------------------------------------
@@ -515,7 +534,8 @@ def _run_cli(prompt, sys_prompt, tools, turns, timeout, model=""):
 def _process_capture(cap, org):
     text, limited = _run_cli(_capture_prompt(org, cap),
                              "You file work items for a small game studio. You "
-                             "answer with JSON only.", "", 1, 180)
+                             "answer with JSON only.", "", 1, 180,
+                             phase="filing", seat=cap.get("to", ""))
     if limited:
         return False                      # tokens are dry; try again later
     for fields in _parse_items(text):
@@ -535,9 +555,10 @@ def _process_item(item, org):
     item["attempts"] = item.get("attempts", 0) + 1
     save_item(item)
     sys_prompt = HOST.build_system_prompt(org, item["owner"])
+    model = item.get("model") or HOST.seat_model(org, item["owner"])
     text, limited = _run_cli(_do_prompt(item, org), sys_prompt, "Read,Glob,Grep",
-                             HOST.MAX_TURNS, 420,
-                             model=item.get("model") or HOST.seat_model(org, item["owner"]))
+                             HOST.MAX_TURNS, 420, model=model,
+                             phase="tier0", seat=item["owner"], item=item["id"])
     if limited:
         item["started"] = ""
         save_item(item)
@@ -603,7 +624,8 @@ def _process_response(item, org):
     raw, limited = _run_cli(_response_prompt(item, org),
                             HOST.build_system_prompt(org, item["owner"]),
                             "Read,Glob,Grep", HOST.MAX_TURNS, 300,
-                            model=item.get("model") or HOST.seat_model(org, item["owner"]))
+                            model=item.get("model") or HOST.seat_model(org, item["owner"]),
+                            phase="reply", seat=item["owner"], item=item["id"])
     if limited:
         return False
     text, got, amend, rec = _split_result(raw, org, item["owner"])
@@ -657,7 +679,8 @@ THE RESULT HE IS LOOKING AT:
 
 {_follows_spec(org)}"""
     text, limited = _run_cli(prompt, "You answer with NONE or one line of JSON.",
-                             "", 1, 180)
+                             "", 1, 180, phase="consequence", seat=item["owner"],
+                             item=item["id"])
     if limited:
         return False
     body, got, _amend, rec = _split_result(text, org, item["owner"])
@@ -728,6 +751,12 @@ def snapshot():
         "capturing": len(_read_dir(CAPTURES)),
         "waiting_on_you": sum(1 for i in got if i["state"] in ("needs_approval", "for_review")),
         "in_progress": sum(1 for i in got if i["state"] == "doing"),
+        "queued": sum(1 for i in got if i["state"] == "waiting_session"),
+        # What the company's unattended work has cost lately. It shares one
+        # allotment with him, so a result he is reading should be able to say
+        # what producing it spent, and the page should say what the whole of it
+        # has spent since the current window opened.
+        "tokens": HOST.token_window(),
     }
 
 

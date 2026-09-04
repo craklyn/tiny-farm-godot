@@ -246,6 +246,7 @@ async function renderDashboard() {
         <div id="dash-pillars"></div>
         <div class="side-nums small">
           <a class="plain" href="#/inbox">${sig.queue.prepped} decision${sig.queue.prepped === 1 ? "" : "s"} prepped</a>
+          <a class="plain" href="#/work">${sig.work.waiting_on_you} result${sig.work.waiting_on_you === 1 ? "" : "s"} want your verdict · ${sig.work.queued} queued</a>
           <a class="plain" href="#/program">${sig.projects.in_progress} in flight · ${sig.projects.blocked} blocked</a>
           <a class="plain" href="#/playtests">${sig.playtests.count} playtests</a>
           <a class="plain" href="#/org">${org.employees.length - 1} on your team</a>
@@ -264,7 +265,7 @@ async function renderDashboard() {
     const row = h(`<div class="pillar-row" title="${esc((st.reasons[0] || "").slice(0, 200))}">
       <i class="dot ${m.dcls}"></i>
       <span class="pr-name">${p.emoji} ${esc(p.name)}</span>
-      <span class="pr-meta small muted">${st.level === "dormant" ? "dormant" : st.level === "ok" ? "under control" : m.label}${per.commits_24h ? ` · ⚡${per.commits_24h}` : ""}</span>
+      <span class="pr-meta small muted">${st.level === "dormant" ? "dormant" : st.level === "ok" ? "under control" : m.label}${st.ours ? ` · ${st.ours} ours to fix` : ""}${per.commits_24h ? ` · ⚡${per.commits_24h}` : ""}</span>
     </div>`).firstElementChild;
     row.addEventListener("click", () => location.hash = "#/pillar/" + p.id);
     dp.appendChild(row);

@@ -690,6 +690,10 @@ code.ref { background: #1b1710; border: 1px solid var(--line); border-radius: 6p
 .g-stmt { font-weight: 600; }
 .g-meas { font-size: 13px; color: var(--muted); margin-top: 3px; }
 .g-why { font-size: 13px; margin-top: 6px; color: var(--text); opacity: .85; }
+/* Which of the four tests made this promise his rather than ours. It sits above
+   the route because it answers the question the row raises — why am I reading
+   this? — before the row says what to do about it. */
+.g-esc { font-size: 12.5px; margin-top: 6px; color: var(--text); font-weight: 600; }
 .g-need { font-size: 12.5px; margin-top: 4px; color: var(--muted); font-style: italic; }
 .g-stale { color: #e0912e; }
 .g-orphan { color: var(--red); font-size: 12px; }

@@ -1319,6 +1319,143 @@ def read_history(name, limit=500):
 
 
 # ---------------------------------------------------------------------------
+# What the studio's own work costs.
+#
+# Every model call the company makes on its own — reading an exchange for the
+# work it creates, a seat doing a tier-0 task, a build-session worker draining
+# the queue — spends the same Claude allotment Daniel spends when he talks to
+# HQ. Nothing recorded that. `limits.jsonl` records the moment a five-hour
+# window ran dry and never what emptied it, so "is the studio's autonomous work
+# eating my allotment?" had no answer at all, let alone one attributed to the
+# work that caused it.
+#
+# One line per call, so a finished result can carry its own price and a window
+# can be attributed to the work that spent it. There is no dollar budget to
+# report against: this is a subscription, so `list_usd` is what the same tokens
+# would have cost at API list price — an order-of-magnitude figure, never a bill.
+# The quantity that actually runs out is tokens in a window.
+# ---------------------------------------------------------------------------
+
+TOKEN_WINDOW_HOURS = 5.0     # the subscription window; what runs dry is this
+
+
+def usage_from_cli(doc):
+    """The bill for one `claude -p --output-format json` call."""
+    u = (doc or {}).get("usage") or {}
+
+    def n(key):
+        try:
+            return int(u.get(key) or 0)
+        except (TypeError, ValueError):
+            return 0
+
+    out = {
+        "input": n("input_tokens"),
+        "output": n("output_tokens"),
+        "cache_read": n("cache_read_input_tokens"),
+        "cache_write": n("cache_creation_input_tokens"),
+        "turns": int((doc or {}).get("num_turns") or 0),
+        "seconds": round(((doc or {}).get("duration_ms") or 0) / 1000.0, 1),
+        "list_usd": round(float((doc or {}).get("total_cost_usd") or 0.0), 4),
+    }
+    out["tokens"] = out["input"] + out["output"] + out["cache_read"] + out["cache_write"]
+    # Most of a long agent session's tokens are the same context read back from
+    # cache on every turn. Both numbers are facts and neither alone is honest:
+    # the total is what went through the model, `fresh` is what was new to it.
+    out["fresh"] = out["input"] + out["output"] + out["cache_write"]
+    return out
+
+
+def record_model_usage(phase, seat, model, usage, item=""):
+    """Append one call to hq/data/history/tokens.jsonl. Best-effort: a failure
+    to record must never fail the work it was measuring."""
+    if not usage:
+        return usage
+    append_history("tokens", {"phase": phase, "seat": seat or "", "model": model or "",
+                              "item": item or "", **usage})
+    return usage
+
+
+def _fresh_of(row):
+    """What was new to the model in this call. Rows recorded before `fresh`
+    existed still carry its three parts, so it is derived rather than lost."""
+    row = row or {}
+    if row.get("fresh"):
+        return row["fresh"]
+    return (row.get("input") or 0) + (row.get("output") or 0) + (row.get("cache_write") or 0)
+
+
+def sum_usage(rows):
+    """Several calls billed as one result."""
+    total = {k: 0 for k in ("input", "output", "cache_read", "cache_write",
+                           "tokens", "fresh", "turns")}
+    total["seconds"] = 0.0
+    total["list_usd"] = 0.0
+    for r in rows or []:
+        for k in total:
+            try:
+                total[k] += _fresh_of(r) if k == "fresh" else ((r or {}).get(k) or 0)
+            except TypeError:
+                pass
+    total["calls"] = len(rows or [])
+    total["seconds"] = round(total["seconds"], 1)
+    total["list_usd"] = round(total["list_usd"], 4)
+    return total
+
+
+def token_window(hours=TOKEN_WINDOW_HOURS):
+    """What the studio's own work has spent in the trailing window, and the only
+    honest denominator this machine holds: what it had spent in the window that
+    last ran dry. A subscription publishes no token cap, so a bar we invented
+    would be fiction — but the amount that has actually exhausted a window is a
+    measured fact, and it is the number that answers 'are we close?'."""
+    import time as _t
+    now = _t.time()
+    span = hours * 3600.0
+    rows = []
+    for r in read_history("tokens", 20000):
+        ts = _parse_iso(r.get("at"))
+        if ts:
+            rows.append((ts, r))
+    recent = [r for ts, r in rows if now - ts <= span]
+    by_phase = {}
+    for r in recent:
+        p = r.get("phase") or "other"
+        by_phase[p] = by_phase.get(p, 0) + (r.get("tokens") or 0)
+    # The last time a window ran dry, how much had the studio's own work spent
+    # in the five hours before it? Absent that, we have no denominator and say so.
+    dry_at, dry_spend = "", None
+    for ev in read_history("limits", 500):
+        if ev.get("event") != "hit":
+            continue
+        ts = _parse_iso(ev.get("at"))
+        if not ts:
+            continue
+        spend = sum(r.get("tokens") or 0 for t, r in rows if 0 <= ts - t <= span)
+        if spend:
+            dry_at, dry_spend = ev.get("at", ""), spend
+    return {
+        "hours": hours,
+        "tokens": sum(r.get("tokens") or 0 for r in recent),
+        "fresh": sum(_fresh_of(r) for r in recent),
+        "calls": len(recent),
+        "list_usd": round(sum(r.get("list_usd") or 0.0 for r in recent), 2),
+        "by_phase": by_phase,
+        "dry_at": dry_at,
+        "dry_spend": dry_spend,
+        "recorded_since": (rows[0][1].get("at", "") if rows else ""),
+    }
+
+
+def _parse_iso(text):
+    import datetime as _dt
+    try:
+        return _dt.datetime.fromisoformat(str(text)).timestamp()
+    except (TypeError, ValueError):
+        return 0.0
+
+
+# ---------------------------------------------------------------------------
 # CI history: the 100-run window, refreshed off the request path.
 #
 # `_ci_status()` stays at --limit 10 on purpose. Measured on this repo: the gh
@@ -2613,6 +2750,204 @@ def _counts(reading):
     return None, None
 
 
+# ---------------------------------------------------------------------------
+# Escalation: what earns the CEO's dot
+#
+# The dot used to answer "is anything wrong on this pillar?" — so a pillar went
+# red for work the studio could simply have done, and the twenty-two-item queue
+# nobody was draining lit up his dashboard as if it were his to fix. Wrong is
+# not the same as his. The dot answers one question now: does this pillar need
+# HIM? Everything else is still on the pillar's page, in the scoreboard, where a
+# person looking for it will find it — and reaches the dashboard as a count.
+#
+# Four tests, and a failing goal reaches him only by passing one:
+#
+#   authority            only he can settle it — his taste, a direction, a
+#                        commitment, a date, money, a credential. A recorded
+#                        ceo_blocker is this test, already written down. So is an
+#                        expired attestation, because only Daniel may attest.
+#   external_commitment  we have told somebody outside the studio something that
+#                        is not true, or we owe an outsider something.
+#   exposure             a player or an outsider can be hit by this now.
+#   age                  ours to fix, but it has waited long enough — or is
+#                        getting worse fast enough — that the delay is the news.
+#
+# Deliberately NOT a test: needing an approval. A tier-2 item and a prepped
+# decision card serve Daniel as an approver, and approvals belong on the Work
+# page and in the decision inbox where he answers them one after another. Firing
+# a pillar red because something is waiting on a yes turns his whole board into a
+# second copy of those two queues, which is how the board stops meaning anything.
+# ---------------------------------------------------------------------------
+
+ESCALATION_REASONS = ("authority", "external_commitment", "exposure", "age")
+
+# What the reason means, in his words, on the page. No HQ vocabulary.
+ESCALATION_WORDS = {
+    "authority": "Only you can settle this",
+    "external_commitment": "We have told people outside the studio something this contradicts",
+    "exposure": "Somebody outside the studio can hit this right now",
+    "age": "This is ours, but it has waited long enough that the delay is the news",
+}
+
+# How long ours-to-fix may sit before the waiting is itself worth his attention.
+AGE_LIMIT_DAYS = {"blocking": 7, "important": 14, "watch": 30}
+
+
+def _days_since(text):
+    """Whole days since an ISO date or timestamp, or None if there is no date."""
+    import datetime as _dt
+    if not text:
+        return None
+    try:
+        when = _dt.datetime.fromisoformat(str(text)[:19])
+    except (TypeError, ValueError):
+        return None
+    return max(0, (_dt.datetime.now() - when).days)
+
+
+_OPEN_SINCE = {"at": 0.0, "by_route": {}}
+
+
+def _open_since_index():
+    """When each record a goal routes to was opened. Cheap, and rebuilt at most
+    twice a minute: this runs once per goal per signals recompute."""
+    import time as _t
+    if _t.time() - _OPEN_SINCE["at"] < 30 and _OPEN_SINCE["by_route"]:
+        return _OPEN_SINCE["by_route"]
+    idx = {}
+    try:
+        for it in work.items():
+            if it.get("state") in ("accepted", "dropped"):
+                continue
+            idx[("work", it.get("id"))] = it.get("created", "")
+    except Exception:
+        pass
+    try:
+        for name in os.listdir(os.path.join(DATA, "projects")):
+            if not name.endswith(".json"):
+                continue
+            doc = load_json(os.path.join(DATA, "projects", name))
+            if doc.get("blocked_since"):
+                idx[("project", doc.get("id"))] = doc["blocked_since"]
+    except Exception:
+        pass
+    _OPEN_SINCE.update({"at": _t.time(), "by_route": idx})
+    return idx
+
+
+def _goal_open_since(goal):
+    """The oldest honest start date for 'how long has this been failing?': what
+    the CEO blocker says it has been waiting, when the work filed against it was
+    filed, and when the goal-state journal first saw it non-green. A goal nothing
+    has been filed against and that nothing has journalled yet has no clock, and
+    says so rather than guessing at one."""
+    p2g = goal.get("path_to_green") or {}
+    dates = [(p2g.get("ceo_blocker") or {}).get("waiting_since")]
+    route = p2g.get("route") or {}
+    if route.get("kind") and route.get("id"):
+        dates.append(_open_since_index().get((route["kind"], route["id"])))
+    dates.append(_goal_journal().get(goal.get("id"), {}).get("since"))
+    days = [d for d in (_days_since(x) for x in dates) if d is not None]
+    return max(days) if days else None
+
+
+def _escalation(goal, state, reading):
+    """Which of the four tests this failing goal passes, or None — in which case
+    it is ours, and it reaches him as a count and not as an alarm."""
+    if state == "green":
+        return None
+    p2g = goal.get("path_to_green") or {}
+    decl = goal.get("escalates") or {}
+    days = _goal_open_since(goal)
+    since = {"days": days, "worsening": _goal_journal().get(goal.get("id"), {}).get("worsening", False)}
+
+    # Authored: whether a promise is one we made outside the studio, or one only
+    # Daniel can keep, is a property of the promise. It cannot be derived, so it
+    # is written on the goal exactly as its statement and target are.
+    reason = str(decl.get("reason") or "").strip().lower()
+    if reason not in ("authority", "external_commitment", "exposure"):
+        reason = ""
+    # A recorded CEO blocker IS the authority test, in the field the pages
+    # already read. So is an attestation that has run out: only Daniel attests,
+    # so only Daniel can renew one.
+    if not reason and (p2g.get("ceo_blocker") or (reading or {}).get("expired")):
+        reason = "authority"
+    if reason:
+        return {"reason": reason, "why": decl.get("because", "") or ESCALATION_WORDS[reason],
+                **since}
+
+    # Measured: ours, but the waiting has become the story. A goal that is
+    # getting worse rather than merely sitting escalates at half the patience.
+    limit = decl.get("after_days")
+    try:
+        limit = int(limit)
+    except (TypeError, ValueError):
+        limit = AGE_LIMIT_DAYS.get(goal.get("severity"), 14)
+    if since["worsening"]:
+        limit = max(1, limit // 2)
+    if days is not None and days >= limit:
+        return {"reason": "age", "why": ESCALATION_WORDS["age"], "limit": limit, **since}
+    return None
+
+
+# ---------------------------------------------------------------------------
+# The goal journal: how long a promise has been failing, and which way it is
+# going. Written by a background thread, never by a request — a tracked file
+# written on page render leaves the tree dirty, and `git describe --dirty` is
+# where playtest build ids come from. Until a goal appears here its age comes
+# from the work filed against it, and a goal with neither says "not known".
+# ---------------------------------------------------------------------------
+
+GOAL_JOURNAL_TTL = 300
+_GOAL_JOURNAL = {"at": 0.0, "by_id": {}}
+
+
+def _goal_journal():
+    """{goal_id: {"since": iso, "worsening": bool}} from the journal's tail."""
+    import time as _t
+    if _t.time() - _GOAL_JOURNAL["at"] < GOAL_JOURNAL_TTL and _GOAL_JOURNAL["by_id"]:
+        return _GOAL_JOURNAL["by_id"]
+    out = {}
+    rows = read_history("goals", 4000)
+    for row in rows:
+        for gid, state in (row.get("states") or {}).items():
+            seen = out.setdefault(gid, {"since": "", "last": "green", "worsening": False})
+            if state == "green":
+                seen["since"], seen["worsening"] = "", False
+            else:
+                if not seen["since"]:
+                    seen["since"] = row.get("at", "")
+                if _STATE_RANK.get(state, 9) < _STATE_RANK.get(seen["last"], 9):
+                    seen["worsening"] = True      # amber -> red, or red -> broken
+            seen["last"] = state
+    _GOAL_JOURNAL.update({"at": _t.time(), "by_id": out})
+    return out
+
+
+def _journal_goals():
+    """One line per sweep: every non-green goal and the state it is in. Two of
+    the four escalation tests are about time, and time cannot be measured from a
+    single reading."""
+    try:
+        sig = compute_signals()
+    except Exception:
+        return
+    states = {}
+    for pid, block in (sig.get("goals") or {}).items():
+        for g in block.get("goals", []):
+            if g.get("state") != "green":
+                states[g["id"]] = g["state"]
+    append_history("goals", {"states": states})
+    _GOAL_JOURNAL["at"] = 0.0
+
+
+def _goal_journal_thread():
+    import time as _t
+    while True:
+        _journal_goals()
+        _t.sleep(3600)     # hourly: the quantity is days, not minutes
+
+
 def eval_goal(goal):
     """One declared goal -> the row the page renders. Never raises: a malformed
     goal renders `broken` rather than taking down the pillar it lives on."""
@@ -2631,14 +2966,14 @@ def eval_goal(goal):
         out["assured"] = state in ASSURED_STATES
         out["attestation_expired"] = bool(reading.get("expired"))
         out["stale"] = bool(reading.get("stale"))
-        # Whose problem is this? The answer was already in the record and
-        # nothing was reading it. A goal blocked on his taste or his authority
-        # is his; a goal whose fix is ordinary work the studio can just do is
-        # ours, and promoting one of those to the top of his page spends his
-        # attention on something that should simply have been done.
-        p2g = goal.get("path_to_green") or {}
-        act = p2g.get("action") or {}
-        out["needs_you"] = bool(p2g.get("ceo_blocker")) or act.get("tier") == 2
+        # Whose problem is this? A goal reaches him only by passing one of the
+        # four escalation tests above; everything else is ours, and reaches him
+        # as a count. Note what is gone: a tier-2 action used to make a goal
+        # his, which meant every pillar holding something awaiting a yes glowed
+        # at him. Approvals are the Work page's job and the inbox's job — they
+        # serve him as an approver, and the board is not a third copy of them.
+        out["escalation"] = _escalation(goal, state, reading)
+        out["needs_you"] = bool(out["escalation"])
         out["ours"] = state not in ("green",) and not out["needs_you"]
     except Exception as e:
         out["state"] = "broken"
@@ -2667,19 +3002,33 @@ def rollup(pillar_id, goals, dormant_decl, pillar_name=""):
     dormancy is a separate flag, never a level that could swallow a fire."""
     red_blocking = [g for g in goals if g["state"] == "red" and g.get("severity") == "blocking"]
     red_other = [g for g in goals if g["state"] == "red" and g.get("severity") != "blocking"]
-    amber_blocking = [g for g in goals if g["state"] == "amber" and g.get("severity") == "blocking"]
     broken_real = [g for g in goals if g["state"] == "broken" and g.get("severity") in ("blocking", "important")]
-    expired = [g for g in goals if g.get("attestation_expired")]
     unchecked_blocking = [g for g in goals
                           if g["state"] in ("unchecked", "attested") and g.get("severity") == "blocking"]
 
+    # The dot is his, so it is built from what escalated to him and nothing
+    # else. A pillar can hold six failing goals and still be quiet here — they
+    # are on its own page, in the scoreboard, and counted on the dashboard row.
+    escalated = [g for g in goals if g.get("escalation")]
+    # Fire is reserved for a reading that is actually bad AND either aimed
+    # outward or blocking. An attestation that has merely lapsed, or a promise
+    # nothing watches, still needs him — but it is not the building burning, and
+    # a dot that cannot tell those apart teaches him to stop reading it.
+    loud = [g for g in escalated
+            if g["state"] in ("red", "broken")
+            and (g["escalation"]["reason"] in ("external_commitment", "exposure")
+                 or g.get("severity") == "blocking")]
+
     if not goals:
         level = "unassured"          # a pillar with no goals is not a healthy pillar
-    elif red_blocking:
+    elif loud:
         level = "fire"
-    elif red_other or amber_blocking or broken_real or expired:
+    elif escalated:
         level = "attention"
-    elif unchecked_blocking:
+    elif unchecked_blocking or broken_real:
+        # Nothing is asking for him, but the board cannot vouch for itself here:
+        # either a promise nothing watches, or a reading that failed. Both are
+        # facts about the instrument, and neither may read as "under control".
         level = "unassured"
     else:
         level = "ok"
@@ -2689,28 +3038,36 @@ def rollup(pillar_id, goals, dormant_decl, pillar_name=""):
         level = "dormant"
 
     assured = sum(1 for g in goals if g["assured"])
-    yours = [g for g in goals if g.get("needs_you") and g["state"] != "green"]
-    ours = [g for g in goals if g.get("ours")]
-    failing = sorted([g for g in goals if g["state"] in ("red", "amber", "broken")],
-                     key=lambda g: (_STATE_RANK[g["state"]], 0 if g.get("severity") == "blocking" else 1))
+    rank = lambda g: (_STATE_RANK[g["state"]], 0 if g.get("severity") == "blocking" else 1)
+    yours = sorted([g for g in goals if g.get("needs_you") and g["state"] != "green"], key=rank)
+    ours = sorted([g for g in goals if g.get("ours")], key=rank)
+    failing = sorted([g for g in goals if g["state"] in ("red", "amber", "broken")], key=rank)
 
-    if failing:
-        # His reasons first. A pillar whose problems are all ours to fix says
-        # so plainly rather than handing him a list he cannot act on.
-        mine = [g for g in failing if g.get("needs_you")]
-        rest = [g for g in failing if not g.get("needs_you")]
-        reasons = [f"{g['statement_short']} — {g['measured_human']}." for g in mine[:2]]
-        if rest and not reasons:
-            n = len(rest)
-            reasons = [f"{n} thing{'' if n == 1 else 's'} here need doing and "
+    ours_phrase = ""
+    if ours:
+        n = len(ours)
+        ours_phrase = (f"{n} thing{'' if n == 1 else 's'} here need doing and "
                        f"{'it is' if n == 1 else 'they are'} ours, not yours — "
-                       + rest[0]["statement_short"] + ", and the rest are on the pillar's page."]
-        elif rest:
-            reasons.append(f"{len(rest)} more, all of them ours to fix.")
+                       + ours[0]["statement_short"]
+                       + (", and the rest are on the pillar's page." if n > 1 else "."))
+    if yours:
+        # His reasons first, and never more than two: the rest of what is wrong
+        # is on the pillar's own page, which is where somebody looking for it
+        # goes. A pillar whose problems are all ours says so plainly instead of
+        # handing him a list he cannot act on.
+        reasons = [f"{g['statement_short']} — {g['measured_human']}." for g in yours[:2]]
+        if ours:
+            reasons.append(f"{len(ours)} more, all of them ours to fix.")
     elif level == "unassured":
+        broken_n = len(broken_real)
         n = len([g for g in goals if not g["assured"]])
-        reasons = [f"Nothing is failing; monitoring is still landing on {n} of {len(goals)} "
-                   "areas, and the plans are filed."]
+        head = (f"{broken_n} check{'' if broken_n == 1 else 's'} here could not be read at "
+                "all, so this pillar cannot vouch for itself." if broken_n else
+                f"Nothing here needs you; monitoring is still landing on {n} of {len(goals)} "
+                "areas, and the plans are filed.")
+        reasons = [head + (" " + ours_phrase if ours_phrase else "")]
+    elif ours:
+        reasons = ["Nothing here needs you. " + ours_phrase]
     elif level == "dormant":
         why = (dormant_decl or {}).get("reason", "Dormant by your standing instruction.")
         src = (dormant_decl or {}).get("ruling")
@@ -2728,24 +3085,24 @@ def rollup(pillar_id, goals, dormant_decl, pillar_name=""):
                    "its goal file is malformed."]
 
     notes = []
-    for g in failing:
-        if not g.get("needs_you"):
-            continue           # ours to fix; it does not belong in his queue
-        kind = "fire" if (g["state"] == "red" and g.get("severity") == "blocking") else "watch"
+    # Everything that escalated, not everything that is failing: an attestation
+    # that has run out is not a red reading, and only he can renew it, so it
+    # belongs in his queue even though it never shows up as a failure.
+    for g in yours:
+        kind = "fire" if g in loud else "watch"
         notes.append({"kind": kind, "pillar": pillar_id,
                       "text": f"{g['statement_short']} — {g['measured_human']}",
+                      "why_you": ESCALATION_WORDS.get(g["escalation"]["reason"], ""),
                       "href": f"#/pillar/{pillar_id}",
                       "signal_key": g.get("signal_key") or f"{pillar_id}:{g['id']}"})
     # The rest reach him as a count and nothing more: he should know the pillar
     # has work outstanding without being handed work he cannot act on.
-    mine_ids = {g["id"] for g in failing if g.get("needs_you")}
-    others = [g for g in failing if g["id"] not in mine_ids]
-    if others:
-        notes.append({"kind": "ours", "pillar": pillar_id, "count": len(others),
+    if ours:
+        notes.append({"kind": "ours", "pillar": pillar_id, "count": len(ours),
                       "name": pillar_name or pillar_id,
                       "href": f"#/pillar/{pillar_id}",
                       "signal_key": f"{pillar_id}:ours"})
-    if level == "unassured" and not failing:
+    if level == "unassured" and not yours:
         notes.append({"kind": "watch", "pillar": pillar_id, "text": reasons[0],
                       "href": f"#/pillar/{pillar_id}",
                       "signal_key": f"{pillar_id}:unassured"})
@@ -2758,6 +3115,9 @@ def rollup(pillar_id, goals, dormant_decl, pillar_name=""):
         "red_count": len(red_blocking) + len(red_other),
         "needs_you": len(yours),
         "ours": len(ours),
+        "escalations": [{"goal": g["id"], "statement_short": g.get("statement_short", ""),
+                         "reason": g["escalation"]["reason"],
+                         "days": g["escalation"].get("days")} for g in escalated],
         "assured": assured,
         "total": len(goals),
     }, notes
@@ -3037,6 +3397,28 @@ def _compute_signals_now():
                             else f"Rule on {len(curated_fresh)} prepped decision(s).",
                     "href": "#/inbox"})
 
+    # Finished work waiting on his verdict. It reaches him as ONE line pointing
+    # at the page built for answering these in a row — never as a pillar going
+    # red, because approving a result is a thing he does as the approver and not
+    # as the CEO, and a board that cannot tell those apart is a second copy of
+    # this queue. Without the line the drain could finish twenty results and the
+    # dashboard would say nothing at all.
+    try:
+        work_items = work.items()
+    except Exception:
+        work_items = []
+    verdicts = [i for i in work_items if i.get("state") in ("for_review", "needs_approval")]
+    work_queued = sum(1 for i in work_items if i.get("state") == "waiting_session")
+    if verdicts:
+        done = [i for i in verdicts if i.get("state") == "for_review"]
+        eye.append({"kind": "decide", "pillar": "product",
+                    "headline": f"Give your verdict on {len(verdicts)} piece"
+                                f"{'' if len(verdicts) == 1 else 's'} of work",
+                    "why_you": (f"{len(done)} finished and waiting to be accepted or sent back"
+                                if done else "none of it has started — each one wants your yes"),
+                    "text": f"{len(verdicts)} piece(s) of work want your verdict.",
+                    "href": "#/work"})
+
     # One explicit ranking, applied once, rather than an order that falls out of
     # the sequence things happen to be appended in. Fires first — the dashboard
     # promotes eye[0] to "the one thing", and it has to be the worst thing, not
@@ -3060,6 +3442,7 @@ def _compute_signals_now():
         "art": {"newest_sprite": _newest("assets/sprites/generated", {".png"}),
                 "sfx_count": len([f for f in os.listdir(os.path.join(REPO, "assets/audio/sfx")) if f.endswith(".wav")])},
         "suite": suite,
+        "work": {"waiting_on_you": len(verdicts), "queued": work_queued},
         "goals": all_goals,
         "consistency": check_consistency(),
         "eye": eye,
@@ -3918,6 +4301,9 @@ def main():
     # widening it in the render path would triple every post-TTL page visit for
     # a strip nobody is looking at yet.
     threading.Thread(target=_ci_history_thread, daemon=True).start()
+    # Two of the four escalation tests are about time, which needs more than one
+    # reading. Hourly, off the request path, because it writes a tracked file.
+    threading.Thread(target=_goal_journal_thread, daemon=True).start()
     work.bind(sys.modules[__name__])
     studio.bind(sys.modules[__name__])
     work.start()

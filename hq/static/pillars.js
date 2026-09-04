@@ -110,6 +110,16 @@ function mdInline(text) {
     (_, label, href) => `<a class="plain" href="${href}">${label}</a>`);
 }
 
+/* Why a goal is his and not ours — the four tests the server applies, said in
+   the words he reads. A pillar page never states the rule; it states which of
+   them this particular promise met. */
+const ESC_WHY = {
+  authority: "Only you can settle this.",
+  external_commitment: "We have told people outside the studio something this contradicts.",
+  exposure: "Somebody outside the studio can hit this right now.",
+  age: "This is ours, but it has waited long enough that the delay is the news.",
+};
+
 /* Band 1. The verdict is generated from the goals, never authored: a sentence
    somebody typed is a sentence that goes stale silently. It is allowed to be a
    permission rather than a status ("You cannot tag today") where that is what
@@ -121,8 +131,13 @@ function verdictLine(g) {
   // Tracing an unattributed sound file and writing its entry is ordinary work;
   // putting it at the top of the CEO's page spends his attention on something
   // that should simply have been done.
-  const yours = failing.filter(x => x.needs_you);
-  const ours = failing.filter(x => !x.needs_you);
+  // "Needs him" is now the escalation test the server applies — his authority, a
+  // promise made outside the studio, something an outsider can hit today, or a
+  // delay that has become the story. Wrong is not the same as his: everything
+  // else on this pillar is real work with an owner, and it is counted here and
+  // listed in the scoreboard below rather than shouted at the top of his page.
+  const yours = (g.goals || []).filter(x => x.needs_you && x.state !== "green");
+  const ours = (g.goals || []).filter(x => x.ours);
   const worst = yours[0] || null;
   const oursLine = ours.length
     ? `${ours.length} thing${ours.length === 1 ? " is" : "s are"} open here — ${ours.length === 1 ? "it's" : "they're"} mine to handle.`
@@ -165,7 +180,10 @@ function verdictLine(g) {
     role: "This is a decision about who holds something.",
     resource: "This needs something bought or asked for.",
   };
-  const waited = cb.waiting_since ? daysAgo(cb.waiting_since) : null;
+  const esc0 = (worst && worst.escalation) || {};
+  const askLine = ASK[cb.kind] || ESC_WHY[esc0.reason] || "This one is yours.";
+  const waited = cb.waiting_since ? daysAgo(cb.waiting_since)
+    : (esc0.days != null ? esc0.days : null);
   return `<div class="verdictbox ${cls}">
     <div class="vd-cap"><i class="dot ${worst ? m.dcls : "d-dorm"}"></i>${
       worst ? "Needs you" : "Nothing needs you"}${
@@ -173,12 +191,12 @@ function verdictLine(g) {
     <p class="verdict">${esc(text)}</p>
     ${worst ? `<div class="vd-act">
       <div class="vd-why">
-        <b>${esc(ASK[cb.kind] || "This one is yours.")}</b>
+        <b>${esc(askLine)}</b>
         ${p2g.narrative ? ` ${mdInline(p2g.narrative)}` : ""}
         ${cb.consequence ? `<div class="vd-cons">If it keeps waiting: ${mdInline(cb.consequence)}</div>` : ""}
       </div>
       <div class="vd-btn">${routeControl(worst)}${
-        waited != null && waited !== "?" ? `<div class="small muted vd-wait">waiting ${waited} day${waited === 1 ? "" : "s"}</div>` : ""}</div>
+        typeof waited === "number" && waited >= 1 ? `<div class="small muted vd-wait">waiting ${waited} day${waited === 1 ? "" : "s"}</div>` : ""}</div>
     </div>` : ""}
   </div>`;
 }
@@ -235,8 +253,13 @@ function goalRow(g) {
                 : `<span class="g-whose ours">ours</span>`;
   const owner = g.state === "green" || !p2g.owner ? "" :
     ` <span class="g-owner">— <a class="plain" data-person="${esc(p2g.owner)}">${esc(p2g.owner)}</a> owns it</span>`;
+  const escWhy = g.escalation && ESC_WHY[g.escalation.reason]
+    ? `<div class="g-esc">${esc(ESC_WHY[g.escalation.reason])}${
+        g.escalation.reason === "age" && g.escalation.days != null
+          ? ` It has been open ${g.escalation.days} day${g.escalation.days === 1 ? "" : "s"}.` : ""}</div>`
+    : "";
   const why = g.state === "green" ? "" :
-    `<div class="g-why">${mdInline(p2g.narrative || "No route recorded — nobody owns getting this back to green.")}${owner}</div>`;
+    `${escWhy}<div class="g-why">${mdInline(p2g.narrative || "No route recorded — nobody owns getting this back to green.")}${owner}</div>`;
   const reading = g.reading || {};
   const note = reading.would_need
     ? `<div class="g-need">Would need: ${esc(reading.would_need)}</div>` : "";
