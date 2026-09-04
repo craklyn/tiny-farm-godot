@@ -19,6 +19,24 @@ if ((location.hash.slice(1) || "/").startsWith("/work")) route();
 
 const TIER_CHIP = { 0: "t-go", 1: "t-diff", 2: "t-ask" };
 const TIER_NAME = { 0: "Just do it", 1: "Do it, show the diff", 2: "Ask first" };
+/* The tier names are instructions — they say what is allowed to happen next —
+   and on a card whose work is finished they are a lie in the wrong tense:
+   "Do it, show the diff" over a completed investigation reads as an outstanding
+   order. A tier is really a statement about how hard the work is to walk back,
+   so once the work is done the chip says that instead. */
+const TIER_DONE = {
+  0: "Nothing to walk back",
+  1: "Revertable if wrong",     // a class, not a claim: this card may have changed nothing
+  2: "Needed your yes",
+};
+const FINISHED = ["for_review", "accepted", "dropped"];
+function tierChip(it, pol) {
+  const t = Number(it.tier);
+  const done = FINISHED.includes(it.state);
+  const name = done ? (TIER_DONE[t] || "?")
+    : ((pol.tiers[String(t)] || {}).name || TIER_NAME[t] || "?");
+  return `<span class="chip ${TIER_CHIP[t] || "t-ask"}">${esc(name)}</span>`;
+}
 let workPoll = null;
 // Open composers, by item id. Held outside the DOM because the page re-renders
 // itself whenever the company moves, and half-typed words must survive that.
@@ -346,12 +364,22 @@ const CHECK_WORD = {
 function drainBlock(it, org) {
   const d = it.diff, c = it.check, s = it.suites;
   if (!d && !c && !s) return "";
+  // A card tiered "changes files" that changed no files is either an honest
+  // "nothing needed changing" or work that did not happen. The card cannot tell
+  // which, so it states the fact and leaves the judgement where it belongs.
+  const emptyDiff = Number(it.tier) > 0 && d && !d.applied
+    && (d.why_not || "") === "nothing changed"
+    ? `<div class="w-nodiff">No files changed. This card was filed as a repo change, so
+       read the result for whether nothing needing changing is the right answer.</div>`
+    : "";
   const by = it.done_by || {};
   const seat = by.seat ? ownerOf(org, by.seat).name.split(" ")[0] : "";
   const files = (d && d.files || []);
   const filesLine = !d ? "" : d.applied
     ? `${files.length} file${files.length === 1 ? "" : "s"} changed, already in your working tree`
-    : `nothing landed — ${d.why_not || "it was held"}`;
+    : (d.why_not || "") === "nothing changed"
+      ? "no files changed"
+      : `nothing landed — ${d.why_not || "it was held"}`;
   const stat = d && d.stat
     ? `<pre class="w-stat">${esc(d.stat)}</pre>` : "";
   const [word, cls] = c ? (CHECK_WORD[c.verdict] || CHECK_WORD.concerns) : ["", ""];
@@ -365,6 +393,7 @@ function drainBlock(it, org) {
   return `<div class="w-drain">
     <div class="w-drain-h">${esc(seat || "The owner")} did this on their own${
       by.model ? `, on ${esc(by.model)}` : ""} — ${esc(filesLine)}</div>
+    ${emptyDiff}
     ${stat}
     ${c ? `<div class="w-chk ${cls}"><b>${esc(word)}.</b> ${esc(c.summary || "")}${findings}</div>` : ""}
     ${suites}
@@ -407,7 +436,6 @@ function tokenStrip(t) {
 
 function workCard(it, org, pol) {
   const who = ownerOf(org, it.owner);
-  const tier = pol.tiers[String(it.tier)] || { name: "?" };
   const busy = !!it.awaiting_reply || it.state === "doing";
   const open = openSet().has(it.id);
   const acts = {
@@ -445,7 +473,7 @@ function workCard(it, org, pol) {
       <div class="w-head-b">
         <div class="w-top">
           <span class="chip w-level">${esc(it.level)}</span>
-          <span class="chip ${TIER_CHIP[it.tier] || "t-ask"}">${esc(tier.name)}</span>
+          ${tierChip(it, pol)}
           ${why}
           <span class="w-owner-wrap"><button class="w-owner" data-person="${esc(it.owner)}"
             title="Who ${esc(who.name.split(" ")[0])} is, what they own, and what else they are carrying">${esc(who.emoji)} ${esc(who.name)}</button></span>

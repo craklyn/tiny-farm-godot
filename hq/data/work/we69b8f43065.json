@@ -7,11 +7,11 @@
   "tier_reason": "The HUD already has the right shape (pips that stop counting past five); it just needs pointing at the new trigger.",
   "ask": "Accepted “What the first session becomes if the shop is delayed”. The HUD already has the right shape (pips that stop counting past five); it just needs pointing at the new trigger.\n\nDaniel attached this when he accepted the card that filed this work, and it changes the constraint you are working under: \"I'd like to loosen the belief that everything is wordless. Instead, the game should be generally understandable with minimal literacy. We can show text too, but let's try every time to see how far we can get communicating without the words, since that'll always make the game more accessible to players.\" So wordless is the target to push for, not an absolute to obey — and where words genuinely serve the player better, they are allowed and should be as few as possible.",
   "first_action": "Once the excess number is fixed, extend the existing basket-pip pattern into an overflow state rather than adding a new gauge",
-  "state": "doing",
+  "state": "for_review",
   "thread": "sam",
   "source": "chat",
   "source_message": "Accepted “What the first session becomes if the shop is delayed”. The HUD already has the right shape (pips that stop counting past five); it just needs pointing at the new trigger.",
-  "result": "",
+  "result": "## The overflow-pip spec\n\n**Trigger.** Once the excess number lands (Tomás's merge work), \"storage full\" means the basket's total count has reached that cap. Right now that's a design placeholder — the pip HUD should read whatever field Tomás exposes, not a number Sam owns.\n\n**The pip row itself changes shape, not just color.** Today's row is 5 pips that fill one-per-crop and stop counting past 5 — \"past five, lots is the honest reading,\" because there was no real ceiling to point at. There is one now. So the row should be resized to exactly match the cap (5 pips for a cap of 5) rather than kept at a fixed 5 that happens to coincide. A pip row sized to the real limit means \"all lit\" now means something precise — *this is the ceiling* — not an approximation.\n\n**The full state.** When the basket hits the cap, every pip is lit already — that alone doesn't read as urgent, it reads the same as \"four, and doing fine.\" So at the cap, the whole row switches from steady gold to a slow pulse (brighten/dim, about a one-second cycle) — the same gold-pulse language the bin's directive ring already uses for \"do this now,\" reused rather than reinvented. No new color, no numeral, no gauge.\n\n**Why this has to live in the HUD chip and not the existing highlight.** The game already has a \"go sell\" cue — the gold ring on the bin — but it's wired to fire once, the very first time the basket fills, as a teaching beat, then it retires for good. Every time after that, hitting the cap has nothing pointing at it. That gap is exactly what this pip treatment closes: an always-on, ambient answer to \"am I full\" that doesn't cost a one-time highlight to say it again.\n\n**Scope boundary.** This is the on-person tier only — 5, maybe 10 crops. A silo-scale cap won't fit one-pip-per-crop at any readable size; that's a different, later treatment, not a stretch of this one.\n\n**One constraint that bears on the number itself, which is why it belongs in this reply and not left implicit:** the basket-pip slot in the HUD only has room for 5 discrete pips before the can-chip starts at the current layout. Ten pips would either overlap the can or need the whole chip strip redesigned. That's a real cost against the \"10\" option Daniel left open, and worth knowing before the number gets set rather than after someone tries to draw it.",
   "started": "2026-09-04T14:01",
   "attempts": 2,
   "created": "2026-09-04T13:59",
@@ -34,5 +34,30 @@
       },
       "why": "Daniel loosened the wordless rule to minimal literacy when he accepted the card that filed this, so the title was naming a constraint he had just changed."
     }
-  ]
+  ],
+  "follow_ups": [
+    {
+      "title": "Build the storage-full pulse into the basket pip HUD",
+      "owner": "jade",
+      "level": "task",
+      "tier": 1,
+      "first_action": "Once GameState exposes the early-game storage cap, resize basket_pips in ui/hud.gd to match the cap exactly (not a fixed 5) and add a slow pulse to the whole row when basket count reaches the cap, reusing the bin's existing directive-glow color/cadence rather than a new one",
+      "why": "This is the concrete HUD change the spec calls for, and it depends on the cap field Tomás's merge work is about to add."
+    },
+    {
+      "title": "Set the early-game excess threshold to 5, not 10",
+      "owner": "milo",
+      "level": "task",
+      "tier": 1,
+      "first_action": "When recording the storage-tier numbers in the onboarding/economy design note, set the on-person cap to 5 — the HUD's basket-pip slot only fits 5 discrete pips before the can chip starts, so 10 would force a HUD redesign this spec doesn't call for",
+      "why": "Daniel left the number open ('5 or 10 maybe'); the HUD layout already answers it, and Milo's design note is where that number gets recorded."
+    }
+  ],
+  "recommend": {
+    "question": "Should the early-game storage cap be 5 or 10 crops?",
+    "answer": "5",
+    "why": "The basket-pip HUD slot only has room for 5 discrete pips before the can chip starts, so 5 keeps this wordless and needs no layout change; 10 would force a redesign just to make room.",
+    "instead": "10, if he wants a longer early runway before the first sell — but that means widening or restacking the state-chip strip, which is its own small HUD task, not a free choice."
+  },
+  "finished": "2026-09-04T14:04"
 }
