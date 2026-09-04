@@ -5,7 +5,7 @@
   "owner": "victor",
   "tier": 1,
   "tier_reason": "filed by hand",
-  "ask": "A feature on hq/data/releases.json's manifest cannot be traced to a commit or to a project carrying it. Work out whether it was built under a different name, is genuinely not built, or should come off the release, and fix the record either way. A release plan whose contents cannot be verified is a wish.",
+  "ask": "The release manifest lists 'A stuck machine tells you it is stuck' (evidence S-10) as still being built — 1 of 5 steps done on hq/data/projects/machine-distress-state.json. When that project finishes, verify the manifest reads it as ready; if the release ships without it, take it off hq/data/releases.json's feature list rather than shipping a claim. A release plan whose contents cannot be verified is a wish.",
   "first_action": "Open #/pillar/sales, find the feature marked not built, and trace its evidence id through git log.",
   "state": "waiting_session",
   "thread": "victor",

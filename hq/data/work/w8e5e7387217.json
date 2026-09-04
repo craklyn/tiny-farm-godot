@@ -7,13 +7,15 @@
   "tier_reason": "filed by hand",
   "ask": "A shipped sound has no provenance line. Trace it and write the entry, or recommend dropping it — the standing policy is to drop a restrictively-licensed or unprovenanced asset rather than work around its terms.",
   "first_action": "Trace the file through git history to the commit that added it, then write or recommend.",
-  "state": "waiting_session",
+  "state": "accepted",
   "thread": "ingrid",
   "source": "chat",
   "source_message": "A shipped sound has no provenance line. Trace it and write the entry, or recommend dropping it — the standing policy is to drop a restrictively-licensed or unprovenanced asset rather than work around its terms.",
-  "result": "",
+  "result": "Done in this session. assets/audio/sfx/nope.wav is our own sound: synthesized by tools/gen_sfx.py, added 2026-08-27 in the same commit as the refusal feedback it voices (7707b3a), reproducible byte-for-byte by rerunning the generator. Its CREDITS.md entry is written; no third-party rights exist and nothing needs dropping. The ledger's stale paragraph describing the deleted water_cc0 candidates was corrected in the same edit.",
   "started": "",
   "attempts": 0,
   "created": "2026-09-03T18:10",
-  "created_ts": 1788484229.8005993
+  "created_ts": 1788484229.8005993,
+  "finished": "2026-09-03T22:07",
+  "closed": "2026-09-03T22:07"
 }

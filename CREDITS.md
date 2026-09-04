@@ -240,6 +240,13 @@ before the first public build ships.*
   standing in for the moving truck that design/13 §4a deliberately does not draw.
   Same voicing constraints as the rest (docs/design/10: gentle attacks, no stingers).
   Rerunning the generator reproduces every existing file byte-for-byte. Cleared.
+- `assets/audio/sfx/nope.wav` — original, synthesized by `tools/gen_sfx.py`
+  (added 2026-08-27, in the same commit as the refusal feedback it voices): the
+  soft two-thud "uh-uh" a refused tap plays — docs/design/10 rules out harsh
+  stingers for this audience. Rerunning the generator reproduces it
+  byte-for-byte. Cleared. *(Entry written 2026-09-03: the file landed in a
+  gameplay commit two days before the audio ledger pass and was its one
+  omission, caught by the orphan check on the Finance & Ops page.)*
 - `assets/audio/sfx/till.wav`, `water.wav`, `ui_click.wav`, `cluck.wav`, `squawk.wav` —
   original, synthesized by `tools/gen_sfx.py` (2026-08-27), which *is* their source:
   rerun it to reproduce or retune them. Voiced to the docs/design/10 verb table.
@@ -265,13 +272,10 @@ before the first public build ships.*
     and redistribution are permitted with no attribution required. Credit is given
     here by choice. Fetched via `tools/fetch_sfx_candidates.py`, which re-checks
     each result's licence field rather than trusting the search filter.
-- `assets/audio/sfx/water_cc0_*.wav` — **candidates awaiting selection**, fetched by
-  `tools/fetch_sfx_candidates.py` from Freesound under **CC0 1.0** (public domain
-  dedication: commercial use, modification and redistribution permitted, no
-  attribution required). Per-file source, Freesound ID and author are recorded in
-  `assets/audio/sfx/CANDIDATES.json`; the fetcher re-checks each result's licence
-  field rather than trusting the search filter. Unselected candidates get deleted;
-  selected ones move into the list above with their author credited by choice.
+- `assets/audio/sfx/water_cc0_*.wav` — CC0 candidates fetched from Freesound for
+  the watering-can search; none was selected (the designer recorded his own
+  pours instead, above) and all were deleted 2026-09-02. Recorded because the
+  fetch happened; nothing from that batch ships.
 - `assets/audio/music/bgm.wav` — unreferenced and provenance-unknown; deleted
   2026-08-26 (remains in git history only).
 

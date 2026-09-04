@@ -136,8 +136,13 @@ function consequence(it, org) {
       ? `Filed as dropped. The question above stays open and nothing is filed.`
       : `Filed as dropped. Nothing is created and nothing changes.`]);
   } else if (it.state === "waiting_session") {
-    rows.push(["Nothing is running", `This waits for a build session to pick it up — no agent is doing it unattended.`]);
-    rows.push(["Drop it", `Filed as dropped. Nothing is created and nothing changes.`]);
+    return `<div class="w-conseq">
+      <div class="w-conseq-h">Nothing needed from you</div>
+      <div class="w-conseq-row"><b>What happens</b><span>The next work session with repo access
+        picks this up, does it, and shows you the diff. It never runs unattended.</span></div>
+      <div class="w-conseq-row"><b>Drop it</b><span>Only if you want it not done — filed as dropped,
+        nothing changes.</span></div>
+    </div>`;
   } else {
     return "";
   }
