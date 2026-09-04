@@ -2,9 +2,11 @@
   "id": "spend-ledger",
   "name": "Write down what we spend, as we spend it",
   "priority": 13,
-  "status": "planned",
+  "status": "in_progress",
   "owner": "harold",
-  "contributors": ["yuki"],
+  "contributors": [
+    "yuki"
+  ],
   "summary": "The studio's entire spend record is prose inside CREDITS.md, and it does not reconcile. The last balance actually written down was $1.858, before two runs ($0.06 and $0.53) that recorded no balance at all — so today's figure is arithmetic on an essay, and nobody can state it with confidence. This adds a machine-readable ledger the art pipeline writes as it spends, which is what lets Finance & Ops show a balance at all and what lets a spend approval be given against a number rather than a guess.",
   "requirements": [
     "hq/data/spend.json — one record per paid call: date, purpose, model, dollars, credits, the balance the vendor returned afterwards, and the work item it served",
@@ -13,14 +15,29 @@
     "Tier-2 work items that spend money carry an estimate, so an approval can be drawn against the balance",
     "The Finance & Ops money tile stops being a framed absence and starts showing a number"
   ],
-  "current_status": "Filed 2026-09-03 while rebuilding the pillar pages. The Finance & Ops wall currently shows a drawn empty frame where the balance belongs, with the two figures the ledger does record and the sentence 'no current balance is recorded anywhere'. That frame is deliberate: drawing a spend bar against a balance nothing records would be exactly the fabrication HQ exists to prevent.",
+  "current_status": "Three of four steps done 2026-09-03, executed by seat-scoped workers on their default models and verified by the chief of staff: hq/data/spend.json holds twelve backfilled entries with the unreconciled tail marked; tools/record_spend.py appends live runs in the same shape; the money tile shows the last recorded balance ($1.858, 2026-08-31) with the itemized ledger below the fold. Open: spend estimates on tier-2 work cards, and the finance seat recommends one manual reading of the vendor's real balance to confirm the implied $1.27.",
   "plan": [
-    { "step": "Agree the record shape and backfill from CREDITS.md", "done": false },
-    { "step": "Teach the pipeline to append a record on every paid call", "done": false },
-    { "step": "Add a spend estimate to tier-2 work items that cost money", "done": false },
-    { "step": "Replace the money tile's frame with the live figure and the pending spend drawn against it", "done": false }
+    {
+      "step": "Agree the record shape and backfill from CREDITS.md",
+      "done": true
+    },
+    {
+      "step": "Teach the pipeline to append a record on every paid call",
+      "done": true
+    },
+    {
+      "step": "Add a spend estimate to tier-2 work items that cost money",
+      "done": false
+    },
+    {
+      "step": "Replace the money tile's frame with the live figure and the pending spend drawn against it",
+      "done": true
+    }
   ],
-  "links": ["CREDITS.md", "hq/data/goals/ops.json"],
+  "links": [
+    "CREDITS.md",
+    "hq/data/goals/ops.json"
+  ],
   "release": null,
   "release_critical": false
 }

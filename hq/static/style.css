@@ -892,8 +892,28 @@ code.ref { background: #1b1710; border: 1px solid var(--line); border-radius: 6p
 .tile-big { font-size: 42px; font-weight: 800; line-height: 1.1; margin: 6px 0 8px; }
 .tile-big.ok { color: var(--green); }
 .tile-big.bad { color: #e8927a; }
-.tile-line { display: flex; gap: 8px; align-items: flex-start; margin-top: 6px; }
-.tile-foot { margin-top: auto; padding-top: 10px; }
+.kpi-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.kpi-rows { margin-top: 8px; }
+.kpi-row { display: flex; gap: 8px; align-items: flex-start; margin-top: 6px; font-size: 12.5px; }
+.kpi-row .dot { margin-top: 2px; flex-shrink: 0; }
+.kpi-foot { margin-top: auto; padding-top: 10px; font-size: 12px; color: var(--muted); }
+/* A control that lives inside a sentence — the money tile's way into the
+   itemized ledger below the fold. A button rather than a bare anchor, because an
+   <a> with no href is not reachable by keyboard. */
+button.linkbtn {
+  background: none; border: 0; padding: 0; font: inherit;
+  color: var(--blue); cursor: pointer;
+}
+button.linkbtn:hover, button.linkbtn:focus-visible { text-decoration: underline; }
+/* The spend ledger, itemized. Money is right-aligned and tabular so the decimal
+   points line up down the column: a ledger whose figures do not line up cannot
+   be scanned, which is the whole reason to itemize it. */
+.spendtab { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+.spendtab th { text-align: left; color: var(--muted); font-size: 12px; padding: 6px 12px 6px 0; border-bottom: 1px solid var(--line); }
+.spendtab td { padding: 8px 12px 8px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+.spendtab tr:last-child td { border-bottom: 0; }
+.spendtab .n { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.spendtab .dt { white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--muted); }
 .pillrow { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 0; }
 .pill {
   display: inline-flex; align-items: center; font-size: 12.5px;

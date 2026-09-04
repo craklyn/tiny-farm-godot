@@ -3747,6 +3747,18 @@ class Handler(BaseHTTPRequestHandler):
                     "sfx": sorted(f for f in os.listdir(sfx_dir) if f.endswith(".wav")),
                     "music": sorted(f for f in os.listdir(music_dir) if f.endswith((".ogg", ".wav"))),
                 })
+            if path == "/api/spend":
+                # The money ledger, as written. Absent until the art pipeline has
+                # something to record, and half-written while it appends — both
+                # answer 200 with `missing`, so the page frames the absence
+                # rather than showing a broken tile or, worse, a made-up number.
+                sp = os.path.join(DATA, "spend.json")
+                if not os.path.isfile(sp):
+                    return self._send(200, {"missing": True})
+                try:
+                    return self._send(200, load_json(sp))
+                except Exception as e:
+                    return self._send(200, {"missing": True, "unreadable": str(e)[:200]})
             if path == "/api/goals":
                 return self._send(200, compute_signals().get("goals", {}))
             if path.startswith("/api/goals/"):

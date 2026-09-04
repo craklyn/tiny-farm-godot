@@ -17,16 +17,33 @@
       "owner": "harold",
       "severity": "important",
       "unit": "",
-      "why_it_matters": "The whole spend record is prose inside an essay, and it does not reconcile: the ledger's figures imply about $1.27 remaining, and the last balance actually written down was $1.858 before two runs that recorded no balance at all. Nobody in this studio can state today's balance, which is precisely the number an approval should be given against.",
+      "why_it_matters": "The ledger's own arithmetic is good — the missing thing was records. The last balance anyone wrote down is $1.858 on 2026-08-31; $0.59 has been spent since with no balance recorded, two runs carry no price at all, and the original credit purchase — the actual cash — is recorded nowhere. One reading of the vendor's real balance closes the tail.",
       "measure": {
-        "kind": "file_exists",
-        "path": "hq/data/spend.json"
+        "kind": "composite",
+        "op": "all_of",
+        "label": "the ledger and the recorder",
+        "members": [
+          {
+            "kind": "file_exists",
+            "path": "hq/data/spend.json",
+            "compare": {
+              "direction": "must_be_true"
+            }
+          },
+          {
+            "kind": "file_exists",
+            "path": "tools/record_spend.py",
+            "compare": {
+              "direction": "must_be_true"
+            }
+          }
+        ]
       },
       "compare": {
         "direction": "must_be_true"
       },
       "path_to_green": {
-        "narrative": "One record per paid call — date, purpose, dollars, and the balance the vendor returned afterwards — written by the pipeline as it spends. Backfilled from the ledger's existing figures, with the unreconciled tail marked as unreconciled rather than smoothed over.",
+        "narrative": "The record is backfilled from the ledger and the pipeline appends as it spends; the remaining step is spend estimates on tier-2 cards.",
         "route": {
           "kind": "project",
           "id": "spend-ledger"

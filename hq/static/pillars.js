@@ -948,6 +948,147 @@ function wireManifest(root) {
   });
 }
 
+/* ---- the money tile's source: the spend ledger, hq/data/spend.json ----
+
+   The ledger stores records only: no totals, no carried balance. So the tile
+   shows exactly two kinds of number and never mixes them — the balance the
+   vendor reported (reproduced with the date it was reported, which is why the
+   surface says "not a live reading") and the total, which is this page's own
+   arithmetic over the records and is a floor for as long as any run is unpriced.
+   The balance is drawn uncoloured on purpose: a balance is neither passing nor
+   failing, and hue in HQ means semantics. */
+const MONEY_SYMBOL = { USD: "$" };
+
+function fmtMoney(v, currency) {
+  if (typeof v !== "number" || !isFinite(v)) return null;
+  const sym = MONEY_SYMBOL[currency] || ((currency || "USD") + " ");
+  // A generation costs fractions of a cent, so the third decimal is real money
+  // here; it is dropped only where it is a trailing zero.
+  return sym + v.toFixed(3).replace(/(\.\d\d)0$/, "$1");
+}
+
+/* Never api(): that cache lives as long as the page load, and this file is
+   appended to by the art pipeline while HQ is running — a cached "nothing is
+   recorded" would outlive the record. Any failure reads as absent, because the
+   absence is drawn honestly and a broken tile is not. */
+async function readSpend() {
+  try {
+    const r = await fetch("/api/spend");
+    if (!r.ok) return { missing: true };
+    return await r.json();
+  } catch { return { missing: true }; }
+}
+
+/* Everything the tile and the itemized list need, or null when nothing is
+   recorded. Tolerant by design: the file is backfilled and appended to by other
+   hands, so a missing field is read as "not recorded" rather than as zero. */
+function spendSummary(doc) {
+  const all = (doc && Array.isArray(doc.entries) ? doc.entries : [])
+    .filter(e => e && typeof e === "object");
+  if (!all.length) return null;
+  const num = v => (typeof v === "number" && isFinite(v)) ? v : null;
+  // Newest first. The file is written date-ascending; reversing before a stable
+  // sort keeps runs sharing one date in reverse-written order rather than
+  // scrambling them, and undated entries fall to the bottom.
+  const rows = all.slice().reverse()
+    .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+  const withBalance = rows.find(e => num(e.balance_after) !== null);
+  // A run recorded at $0.00 was never a charge, so no vendor balance could
+  // confirm it and counting it among the unconfirmed would overstate what is
+  // actually floating. A run with no cost written down does stay in: at a
+  // vendor, an unpriced run still cost something.
+  const paid = all.filter(e => num(e.dollars) !== 0);
+  return {
+    currency: doc.currency || "USD",
+    rows,
+    count: all.length,
+    total: all.reduce((s, e) => s + (num(e.dollars) || 0), 0),
+    unpriced: all.filter(e => num(e.dollars) === null).length,
+    paidCount: paid.length,
+    unconfirmed: paid.filter(e => e.reconciled !== true).length,
+    balance: withBalance ? num(withBalance.balance_after) : null,
+    balanceDate: withBalance ? String(withBalance.date || "") : "",
+    // A file that never marks runs confirmed gets no column claiming they aren't.
+    marksConfirmed: all.some(e => "reconciled" in e),
+  };
+}
+
+/* The first ops tile. Two states: a number when the ledger has records, and the
+   framed absence — unchanged, and the only honest thing to draw — when it does
+   not. `budgetLine` is passed in so the model-budget line is one string shared
+   by both states rather than two that can drift apart. */
+function moneyTile(s, budgetLine, spend, unreadable) {
+  if (!s) {
+    return `<div class="card tile">
+        <div class="tile-h">Spend recorded</div>
+        <div class="tile-big ${spend.state === "green" ? "ok" : "bad"}">0%</div>
+        <div class="kpi-sub">of what this studio has spent · target 100%</div>
+        <div class="kpi-rows">
+          <div class="kpi-row"><i class="dot ${spend.state === "green" ? "d-ok" : "d-fire"}"></i>
+            <span>Art spend: prose in
+              <a class="plain" href="${docAnchor("CREDITS.md", "art")}">CREDITS.md</a>,
+              last balance $1.858, two later runs unrecorded.</span></div>
+          ${budgetLine}
+          ${unreadable ? `<div class="kpi-row"><i class="dot d-broken"></i>
+            <span>A spend record file exists but could not be read: ${esc(unreadable)}</span></div>` : ""}
+        </div>
+        <div class="kpi-foot">No total can be calculated from what is recorded.</div>
+      </div>`;
+  }
+  const gaps = [];
+  if (s.unconfirmed) gaps.push(`${s.unconfirmed} of the ${s.paidCount} run${s.paidCount === 1 ? "" : "s"} that cost money ${s.unconfirmed === 1 ? "is" : "are"} not confirmed against the vendor's own figure`);
+  if (s.unpriced) gaps.push(`${s.unpriced} of ${s.count} ${s.unpriced === 1 ? "has" : "have"} no cost written down, so the total is a floor rather than a figure`);
+  const gapLine = gaps.length ? gaps.join("; ").replace(/^./, c => c.toUpperCase()) + "." : "";
+  return `<div class="card tile">
+        <div class="tile-h">Money left to spend on art</div>
+        ${s.balance != null
+      ? `<div class="tile-big">${esc(fmtMoney(s.balance, s.currency))}</div>
+           <div class="kpi-sub">last recorded ${esc(s.balanceDate || "on no stated date")} — not a live reading</div>`
+      : `<div class="tile-frame"><div class="abs-body">not recorded</div></div>
+           <div class="kpi-sub">No run has written down the balance the vendor reported afterwards.</div>`}
+        <div class="kpi-rows">
+          <div class="kpi-row"><i class="dot ${gaps.length ? "d-attn" : "d-ok"}"></i>
+            <span><b>Spent so far:</b> ${esc(fmtMoney(s.total, s.currency))} across ${s.count}
+              recorded run${s.count === 1 ? "" : "s"} —
+              <button class="linkbtn" id="spend-jump">see every one of them</button>.</span></div>
+          ${budgetLine}
+        </div>
+        ${gapLine ? `<div class="kpi-foot">${esc(gapLine)}</div>` : ""}
+      </div>`;
+}
+
+/* One row per record, newest first. The cost and the balance are separate
+   columns because they answer different questions — what a run took, and what
+   the vendor said was left — and either can be absent without the other. */
+function spendFoldBody(s) {
+  const cell = v => {
+    const m = fmtMoney(v, s.currency);
+    return m ? esc(m) : `<span class="muted">not recorded</span>`;
+  };
+  const rows = s.rows.map(e => `<tr>
+      <td class="dt">${esc(e.date || "no date")}</td>
+      <td>${esc(e.purpose || "not recorded")}
+        ${e.note ? `<div class="small muted">${esc(e.note)}</div>` : ""}</td>
+      <td class="n">${cell(e.dollars)}</td>
+      <td class="n">${cell(e.balance_after)}</td>
+      ${s.marksConfirmed ? `<td class="n">${e.dollars === 0
+      // A run that cost nothing is not something a vendor balance could confirm,
+      // and it is left out of the tile's count for the same reason — so the "no"s
+      // in this column add up to the number the tile states.
+      ? `<span class="muted">no charge</span>`
+      : `<i class="dot ${e.reconciled === true ? "d-ok" : "d-unchecked"}"></i>${e.reconciled === true ? "yes" : "no"}`}</td>` : ""}
+    </tr>`).join("");
+  return `<div id="spend-itemized" style="overflow-x:auto">
+      <p class="small muted">Every run written down, newest first — what it paid for, what it cost,
+        and the balance the vendor reported afterwards.</p>
+      <table class="spendtab">
+        <thead><tr><th class="dt">Date</th><th>What it paid for</th><th class="n">Cost</th>
+          <th class="n">Balance after</th>${s.marksConfirmed ? `<th class="n">Confirmed</th>` : ""}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
 /* ================= OPS — the permission, and the countdown =================
    Verb: APPROVE. The only wall in HQ that answers "may we" rather than "how is
    it going", and the only one allowed to say no. Its exposure tile counts DOWN:
@@ -974,23 +1115,20 @@ async function instOps(root, below, sig, g) {
   const assets = (ledger.reading || {}).total_shipped;
   const chanLive = [contact.state === "green", words.state === "green"].filter(Boolean).length;
 
+  // The money tile reads the spend ledger; until that file exists it draws the
+  // same framed absence it always has.
+  const spendDoc = await readSpend();
+  const money = spendSummary(spendDoc);
+  const budgetLine = budget.state === "green"
+    ? `<div class="kpi-row"><i class="dot d-ok"></i>
+        <span>Model budget: window outages and recoveries now append to
+        <code class="ref">hq/data/history/limits.jsonl</code>; the cost curve draws as events land.</span></div>`
+    : `<div class="kpi-row"><i class="dot d-fire"></i>
+        <span>Model budget: overwritten on each event, no history kept.</span></div>`;
+
   root.replaceChildren(h(`
     <div class="opsgrid">
-      <div class="card tile">
-        <div class="tile-h">Spend recorded</div>
-        <div class="tile-big ${spend.state === "green" ? "ok" : "bad"}">0%</div>
-        <div class="kpi-sub">of what this studio has spent · target 100%</div>
-        <div class="kpi-rows">
-          <div class="kpi-row"><i class="dot ${spend.state === "green" ? "d-ok" : "d-fire"}"></i>
-            <span>Art spend: prose in
-              <a class="plain" href="${docAnchor("CREDITS.md", "art")}">CREDITS.md</a>,
-              last balance $1.858, two later runs unrecorded.</span></div>
-          <div class="kpi-row"><i class="dot ${budget.state === "green" ? "d-ok" : "d-fire"}"></i>
-            <span>Model budget: overwritten on each event, no history kept.
-              This is the larger of the two.</span></div>
-        </div>
-        <div class="kpi-foot">No total can be calculated from what is recorded.</div>
-      </div>
+      ${moneyTile(money, budgetLine, spend, spendDoc.unreadable)}
 
       <div class="card tile">
         <div class="tile-h">Assets missing rights clearance</div>
@@ -1034,9 +1172,26 @@ async function instOps(root, below, sig, g) {
     </div>`));
 
   below.replaceChildren(h(
-    foldSection("The provenance ledger, in full", "every asset's rights and cost",
+    (money ? foldSection("Spend, itemized",
+      `${money.count} run${money.count === 1 ? "" : "s"} written down · ${fmtMoney(money.total, money.currency)} in total`,
+      spendFoldBody(money)) : "")
+    + foldSection("The provenance ledger, in full", "every asset's rights and cost",
       `<div class="mddoc" id="credits-doc"><span class="muted">loading…</span></div>`)
 ));
+
+  // The tile's total is a way into the records, not a decoration on top of them:
+  // clicking it opens the itemized list and puts it on screen, the same move the
+  // release manifest's blocks make.
+  const jump = root.querySelector("#spend-jump");
+  const itemized = below.querySelector("#spend-itemized");
+  if (jump && itemized) {
+    jump.addEventListener("click", () => {
+      const fold = itemized.closest("details");
+      if (fold) fold.open = true;
+      itemized.scrollIntoView({ block: "start" });
+    });
+  }
+
   try {
     const doc = await api("/api/rootdoc/CREDITS.md");
     const el = below.querySelector("#credits-doc");
