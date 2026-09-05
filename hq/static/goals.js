@@ -51,20 +51,57 @@ function glForm(area, g, org) {
   </form>`;
 }
 
+/* How the goal is measured, in the evaluator's own plain words — never a
+   phrase invented here, because a description that drifts from the check is
+   worse than no description. */
+function glMetric(g) {
+  const m = g.measure || {}, reading = g.reading || {};
+  if (m.kind === "unchecked" || reading.unchecked) {
+    return "Nothing measures this yet" + (m.reason ? ` — ${m.reason}` : "") + ".";
+  }
+  return reading.source_human || m.label || "Measured, but the check does not say how.";
+}
+
+/* Green says why it is green; anything else says the way out. */
+function glStatus(g) {
+  const facts = g.measured_human || "";
+  if (g.state === "green" || g.state === "attested") return facts || "Passing.";
+  if (g.state === "unchecked") {
+    const need = (g.measure || {}).would_need;
+    return need ? `Nobody is measuring this. It would take ${need}.`
+                : "Nobody is measuring this, so nothing can be said about it either way.";
+  }
+  const path = (g.path_to_green || {}).narrative || "";
+  const route = g.route_target;
+  return `${facts}${facts && path ? ". " : ""}${path}`
+    + (route && route.href ? ` <a class="plain" href="${esc(route.href)}">${esc(route.title || "the work that closes it")}</a>` : "");
+}
+
 function glRow(area, g, org) {
   const meta = (typeof GOAL_META !== "undefined" && GOAL_META[g.state]) || { dcls: "d-unchecked", word: "" };
   const owner = org.employees.find(e => e.id === g.owner);
   const sev = (GL_SEVERITY.find(s => s[0] === g.severity) || ["", g.severity || ""])[1].split(" —")[0];
+  // Collapsed is the resting state: forty goals open at once is a wall, and
+  // the dot and the sentence are all he needs to decide which one to open.
   return `<div class="gl-row" data-area="${esc(area)}" data-id="${esc(g.id)}">
-    <i class="dot ${meta.dcls}" title="${esc(meta.word)}"></i>
-    <div class="gl-body">
-      <div class="gl-statement">${esc(g.statement)}</div>
-      <div class="small muted">${owner ? `<a class="plain" data-person="${esc(g.owner)}">${esc(owner.name)}</a> carries it` : "nobody carries it"}
-        · ${esc(sev)} · ${esc(g.measured_human || meta.word || "not monitored yet")}</div>
-      ${g.why_it_matters ? `<div class="small muted gl-why">${esc(g.why_it_matters)}</div>` : ""}
+    <button class="gl-head" data-open aria-expanded="false">
+      <i class="dot ${meta.dcls}" title="${esc(meta.word)}"></i>
+      <span class="gl-statement">${esc(g.statement)}</span>
+      <span class="gl-caret">▸</span>
+    </button>
+    <div class="gl-detail" hidden>
+      <div class="gl-field"><span class="gl-label">Owner</span>${owner
+        ? `<a class="plain" data-person="${esc(g.owner)}">${esc(owner.name)}</a> — ${esc(owner.title)}`
+        : "nobody"}</div>
+      <div class="gl-field"><span class="gl-label">Metric</span>${esc(glMetric(g))}</div>
+      <div class="gl-field"><span class="gl-label">Status summary</span>${glStatus(g)}</div>
+      <div class="gl-field"><span class="gl-label">Matters</span>${esc(sev)}${
+        g.why_it_matters ? ` — ${esc(g.why_it_matters)}` : ""}</div>
+      <div class="gl-detail-btns">
+        <button class="linkbtn" data-edit>edit this goal</button>
+        <button class="linkbtn gl-remove" data-del>remove it</button>
+      </div>
     </div>
-    <button class="linkbtn gl-edit" data-edit>edit</button>
-    <button class="ps-del" data-del title="remove this goal">×</button>
   </div>`;
 }
 
@@ -93,6 +130,12 @@ async function renderGoals() {
     }).join("")}
   `));
 
+  $view.querySelectorAll("[data-open]").forEach(b => b.addEventListener("click", () => {
+    const detail = b.parentElement.querySelector(".gl-detail");
+    detail.hidden = !detail.hidden;
+    b.setAttribute("aria-expanded", detail.hidden ? "false" : "true");
+    b.querySelector(".gl-caret").textContent = detail.hidden ? "▸" : "▾";
+  }));
   $view.querySelectorAll("[data-add]").forEach(b => b.addEventListener("click", () => {
     glEditing = b.dataset.add + ":"; renderGoals();
   }));

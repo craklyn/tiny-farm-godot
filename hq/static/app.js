@@ -157,6 +157,7 @@ const routes = {
 let routeSeq = 0, routeActive = 0;
 async function route() {
   clearAnimators();
+  hidePersonTip();
   const seq = ++routeSeq;
   routeActive++;
   const hash = location.hash.slice(1) || "/";
@@ -212,6 +213,72 @@ window.addEventListener("hashchange", route);
 async function openPerson(id) {
   try { showPerson(await api("/api/org"), id); } catch { }
 }
+/* Hover (or keyboard focus) on a name: who they are, without leaving the page.
+   The CEO does not carry thirty job descriptions in his head, so a name has to
+   explain itself where it stands. ONE implementation, delegated on any
+   [data-person] anywhere — redesign it here and every page changes with it. */
+let personTipEl = null;
+function personTip() {
+  if (!personTipEl) {
+    personTipEl = h(`<div id="person-tip" role="tooltip" hidden></div>`).firstElementChild;
+    document.body.appendChild(personTipEl);
+  }
+  return personTipEl;
+}
+
+/* Everyone between this person and the top, in order. */
+function personChain(org, person) {
+  const names = [];
+  let cur = person, guard = 0;
+  while (cur && cur.manager && guard++ < 8) {
+    const boss = org.employees.find(x => x.id === cur.manager);
+    if (!boss) break;
+    names.push(boss.name);
+    cur = boss;
+  }
+  return names;
+}
+
+async function showPersonTip(el, id) {
+  let org;
+  try { org = await api("/api/org"); } catch { return; }
+  // The fetch can land after the pointer has moved on; do not flash a card at
+  // a name he is no longer pointing at.
+  if (!el.isConnected || !(el.matches(":hover") || el.matches(":focus"))) return;
+  const e = org.employees.find(x => x.id === id);
+  if (!e) return;
+  const chain = personChain(org, e);
+  const tip = personTip();
+  tip.innerHTML = `<div class="pt-name">${esc(e.emoji || "")} ${esc(e.name)}</div>
+    <div class="pt-title">${esc(e.title)}${e.level ? " · " + esc(e.level) : ""}${e.team ? " · " + esc(e.team) : ""}</div>
+    ${chain.length ? `<div class="pt-line">Reports up through ${chain.map(esc).join(" → ")}</div>` : ""}
+    ${(e.responsibilities || []).length
+      ? `<ul class="pt-resp">${e.responsibilities.map(r => `<li>${esc(r)}</li>`).join("")}</ul>` : ""}`;
+  tip.hidden = false;
+  const r = el.getBoundingClientRect(), t = tip.getBoundingClientRect();
+  let top = r.bottom + 8;
+  if (top + t.height > window.innerHeight - 8) top = Math.max(8, r.top - t.height - 8);
+  tip.style.top = top + "px";
+  tip.style.left = Math.min(Math.max(8, r.left), Math.max(8, window.innerWidth - t.width - 8)) + "px";
+}
+
+function hidePersonTip() { if (personTipEl) personTipEl.hidden = true; }
+
+$view.addEventListener("mouseover", ev => {
+  const t = ev.target.closest && ev.target.closest("[data-person]");
+  if (t) showPersonTip(t, t.dataset.person);
+});
+$view.addEventListener("mouseout", ev => {
+  const t = ev.target.closest && ev.target.closest("[data-person]");
+  if (t && !(ev.relatedTarget && t.contains(ev.relatedTarget))) hidePersonTip();
+});
+$view.addEventListener("focusin", ev => {
+  const t = ev.target.closest && ev.target.closest("[data-person]");
+  if (t) showPersonTip(t, t.dataset.person);
+});
+$view.addEventListener("focusout", hidePersonTip);
+window.addEventListener("scroll", hidePersonTip, true);
+
 $view.addEventListener("click", ev => {
   const t = ev.target.closest && ev.target.closest("[data-person]");
   if (!t) return;
