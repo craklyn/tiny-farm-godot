@@ -2,11 +2,34 @@
   "note": "The switchboard. Written for maintainers, never rendered. A route listed under 'parked' is switched off: its page renders a notice instead of itself, every link to it stops navigating, and it is drawn as unavailable wherever it appears. Parking a route parks everything under it. Nothing else in the front end knows which routes are off — the front end asks /api/surface — so a page can be switched off or back on without editing the page.",
   "reason": "The six reporting lines on this dashboard, and the promises scored under each one, were invented before you had said what each part of the studio is for. Every one of them is off until you and I go through it together and either rebuild it or drop it.",
   "parked": {
-    "/pillar/engineering": { "title": "Engineering & QA", "since": "2026-09-04" },
-    "/pillar/product": { "title": "Product & Program", "since": "2026-09-04" },
-    "/pillar/art": { "title": "Art, Audio & Design", "since": "2026-09-04" },
-    "/pillar/marketing": { "title": "Marketing & Community", "since": "2026-09-04" },
-    "/pillar/sales": { "title": "Sales & Platforms", "since": "2026-09-04" },
-    "/pillar/ops": { "title": "Finance & Ops", "since": "2026-09-04" }
+    "/pillar/engineering": {
+      "title": "Engineering & QA",
+      "since": "2026-09-04"
+    },
+    "/pillar/product": {
+      "title": "Product & Program",
+      "since": "2026-09-04"
+    },
+    "/pillar/art": {
+      "title": "Art, Audio & Design",
+      "since": "2026-09-04"
+    },
+    "/pillar/marketing": {
+      "title": "Marketing & Community",
+      "since": "2026-09-04"
+    },
+    "/pillar/sales": {
+      "title": "Sales & Platforms",
+      "since": "2026-09-04"
+    },
+    "/pillar/ops": {
+      "title": "Finance & Ops",
+      "since": "2026-09-04"
+    },
+    "/org": {
+      "title": "Org Chart",
+      "since": "2026-09-04",
+      "reason": "The chart draws the studio as a company with six departments, and that shape was assumed rather than decided. The seats themselves keep working — they are how work is actually carried out — but the picture of them is off until you and I go through the roster one seat at a time and keep, merge or cut each one."
+    }
   }
 }

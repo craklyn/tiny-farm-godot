@@ -15,6 +15,10 @@
 "use strict";
 
 routes["/work"] = renderWork;
+// One queue, one page. #/inbox stays a working address because links all over
+// HQ (and the server's own signals) point at it, but it lands on the same page
+// rather than a second one that asks him the same question.
+routes["/inbox"] = renderWork;
 if ((location.hash.slice(1) || "/").startsWith("/work")) route();
 
 const TIER_CHIP = { 0: "t-go", 1: "t-diff", 2: "t-ask" };
@@ -514,9 +518,43 @@ function workSection(title, sub, list, org, pol, opts = {}) {
   return wrap;
 }
 
+/* A section he can fold away: history and other people's backlogs are on this
+   page to be findable, not to be read. */
+function workFold(title, note, count, buildCards) {
+  const sec = h(`<section class="w-sec"><h2 class="w-toggle">▸ ${esc(title)} (${count})</h2>
+    ${note ? `<p class="sub" hidden>${esc(note)}</p>` : ""}
+    <div class="w-list" hidden></div></section>`).firstElementChild;
+  const box = sec.querySelector(".w-list"), sub = sec.querySelector(".sub");
+  const tg = sec.querySelector(".w-toggle");
+  // Built on first open, not on render. This page polls and re-renders itself,
+  // and history runs to hundreds of cards — paying for all of them every few
+  // seconds to show none of them made the live queue stutter.
+  let built = false;
+  tg.addEventListener("click", () => {
+    if (!built) { built = true; buildCards().forEach(c => box.appendChild(c)); }
+    box.hidden = !box.hidden;
+    if (sub) sub.hidden = box.hidden;
+    tg.textContent = `${box.hidden ? "▸" : "▾"} ${title} (${count})`;
+  });
+  return sec;
+}
+
 async function renderWork(focusId) {
   const org = await api("/api/org");
-  const snap = await workSnap();
+  // The decision queue is kept in different files from work items, but for him
+  // it is the same job — say yes or no — so one page carries both. Never
+  // cached: a ruling recorded here must change what the next render shows.
+  delete cache["/api/queue"];
+  const [snap, queue, entData, looks] = await Promise.all([
+    workSnap(), api("/api/queue"), api("/api/entities"), api("/api/looks")]);
+  const rulings = queue.rulings || {};
+  const curated = queue.curated || [];
+  const curatedIds = new Set(curated.map(c => c.id));
+  const decisions = curated.filter(c => !rulings[c.id]);
+  const ruled = curated.filter(c => rulings[c.id]);
+  const rawOpen = (queue.items || []).filter(q => !q.answered && !curatedIds.has(q.id) && !rulings[q.id]);
+  const answered = (queue.items || []).filter(q => q.answered);
+  updateQueueBadge({ decisions: decisions.length });
   // A link that names one card lands with that card open — arriving at the
   // whole queue and hunting for it is a dead end wearing a destination.
   if (focusId && snap.items.some(i => i.id === focusId)) {
@@ -535,12 +573,27 @@ async function renderWork(focusId) {
   }
 
   $view.replaceChildren(h(`
-    <h1>🧾 Work</h1>
-    <p class="sub">Everything the org started because you said something. Nothing here
-    asked permission to <em>exist</em> — ${esc(pol.rule)}${snap.capturing ? ` · reading ${snap.capturing} new exchange${snap.capturing > 1 ? "s" : ""} for work…` : ""}</p>
+    <h1>🧾 Your queue</h1>
+    <p class="sub">Design questions waiting for your ruling, and everything the studio
+    started because you said something. Nothing here asked permission to
+    <em>exist</em> — ${esc(pol.rule)}${snap.capturing ? ` · reading ${snap.capturing} new exchange${snap.capturing > 1 ? "s" : ""} for work…` : ""}</p>
     ${tokenStrip(snap.tokens)}
     <div id="w-body"></div>`));
   const body = document.getElementById("w-body");
+
+  // His rulings come first: a design question he has not settled is holding up
+  // work, and the work below it is already done.
+  if (decisions.length) {
+    const sec = h(`<section class="w-sec">
+      <h2>Waiting for your ruling <span class="w-count">${decisions.length}</span></h2>
+      <p class="sub">Design questions prepped for you, each in plain language with what you
+      need to judge it. What you record here is folded into the design documents by the
+      next work session.</p>
+      <div class="w-list" id="q-open"></div></section>`).firstElementChild;
+    body.appendChild(sec);
+    const qo = sec.querySelector("#q-open");
+    decisions.forEach(c => qo.appendChild(decisionCard(c, null, entData, () => renderWork(), looks)));
+  }
 
   const secs = [
     workSection("Waiting on you", "Two kinds: work that has not happened because it is hard to undo, and work that is finished and wants your verdict on the result.", waiting, org, pol, { always: true }),
@@ -565,7 +618,35 @@ async function renderWork(focusId) {
     body.appendChild(hist);
   }
 
+  let settledFold = null, rawFold = null;
+  if (ruled.length || answered.length) {
+    settledFold = workFold("Decisions already settled", "", ruled.length + answered.length,
+      () => [...ruled.map(c => decisionCard(c, rulings[c.id], entData, () => renderWork(), looks)),
+             ...answered.map(queueCard)]);
+    body.appendChild(settledFold);
+  }
+  if (rawOpen.length) {
+    rawFold = workFold("Questions not yet prepped for you",
+      "Open questions still in raw internal form. Ask your chief of staff to turn any of these into a decision you can rule on.",
+      rawOpen.length, () => rawOpen.map(queueCard));
+    body.appendChild(rawFold);
+  }
+
   if (focusId) {
+    // A link naming one card has to land on it even when it now lives inside a
+    // folded section — arriving at a page that does not contain the thing the
+    // link named is the dead end the fold was never meant to create.
+    const inFold = (fold, list) => {
+      if (fold && list.some(x => x.id === focusId)) fold.querySelector(".w-toggle").click();
+    };
+    inFold(settledFold, [...ruled, ...answered]);
+    inFold(rawFold, rawOpen);
+    const card = body.querySelector("#card-" + focusId);
+    if (card) {
+      const target = card.closest(".card") || card;
+      target.scrollIntoView({ block: "center" });
+      target.classList.add("ms-flash");
+    }
     const el = body.querySelector(`.w-card[data-id="${focusId}"]`);
     if (el) {
       const hist = el.closest("#w-hist");
@@ -677,11 +758,7 @@ async function renderWork(focusId) {
 }
 
 function updateWorkBadge(snap) {
-  const b = document.getElementById("work-badge");
-  if (!b) return;
-  const n = snap.waiting_on_you || 0;
-  b.textContent = n || "";
-  b.hidden = !n;
+  updateQueueBadge({ work: snap.waiting_on_you || 0 });
 }
 
 /* ---- the strip on the chat page ----------------------------------------

@@ -149,7 +149,6 @@ const routes = {
   "/org": renderOrg,
   "/entities": renderEntities,
   "/program": renderProgram,
-  "/inbox": renderInbox,
   "/chat": renderChat,
   "/maps": renderMapEditor,
   "/playtests": renderPlaytests,
@@ -161,9 +160,12 @@ async function route() {
   const seq = ++routeSeq;
   routeActive++;
   const hash = location.hash.slice(1) || "/";
+  // #/inbox is an alias for the one queue, so the nav highlights the row that
+  // actually holds it rather than nothing at all.
+  const navHash = hash.startsWith("/inbox") ? "/work" + hash.slice("/inbox".length) : hash;
   document.querySelectorAll("#sidebar a").forEach(a => {
     const r = a.dataset.route;
-    a.classList.toggle("active", r === "/" ? hash === "/" : hash.startsWith(r));
+    a.classList.toggle("active", r === "/" ? navHash === "/" : navHash.startsWith(r));
   });
   applyNavGroups();
   $view.innerHTML = `<p class="muted">Loading…</p>`;
@@ -180,7 +182,7 @@ async function route() {
     else if (hash.startsWith("/chat/")) await renderChat(hash.slice("/chat/".length));
     else if (hash.startsWith("/person/")) await renderPerson(hash.slice("/person/".length));
     else if (hash.startsWith("/work/")) await renderWork(hash.slice("/work/".length));
-    else if (hash.startsWith("/inbox/")) await renderInbox(hash.slice("/inbox/".length));
+    else if (hash.startsWith("/inbox/")) await renderWork(hash.slice("/inbox/".length));
     // Guarded: on a direct page-load design.js hasn't registered yet; it
     // re-routes itself once loaded (same dance as its /design route).
     else if (hash.startsWith("/design/doc/") && window.renderDesignDoc) await renderDesignDoc(hash.slice("/design/doc/".length));
@@ -274,8 +276,7 @@ async function renderDashboard() {
         <div class="side-head">The pillars <span class="small muted">· ${pillars.pillars.every(p => surfaceParked("/pillar/" + p.id)) ? "detail pages are switched off" : "click for detail"}</span></div>
         <div id="dash-pillars"></div>
         <div class="side-nums small">
-          <a class="plain" href="#/inbox">${sig.queue.prepped} decision${sig.queue.prepped === 1 ? "" : "s"} prepped</a>
-          <a class="plain" href="#/work">${sig.work.waiting_on_you} result${sig.work.waiting_on_you === 1 ? "" : "s"} want your verdict · ${sig.work.queued} queued</a>
+          <a class="plain" href="#/work">${sig.queue.prepped + sig.work.waiting_on_you} waiting on you · ${sig.work.queued} queued</a>
           <a class="plain" href="#/program">${sig.projects.in_progress} in flight · ${sig.projects.blocked} blocked</a>
           <a class="plain" href="#/playtests">${sig.playtests.count} playtests</a>
           <a class="plain" href="#/org">${org.employees.length - 1} on your team</a>
@@ -932,57 +933,6 @@ function decisionCard(c, ruling, entData, onRuled, looks) {
   return card;
 }
 
-async function renderInbox(focusId) {
-  delete cache["/api/queue"];
-  const [queue, entData, looks] = await Promise.all([
-    api("/api/queue"), api("/api/entities"), api("/api/looks")]);
-  const rulings = queue.rulings || {};
-  const curated = queue.curated || [];
-  const curatedIds = new Set(curated.map(c => c.id));
-  const fresh = curated.filter(c => !rulings[c.id]);
-  const ruled = curated.filter(c => rulings[c.id]);
-  const rawOpen = queue.items.filter(q => !q.answered && !curatedIds.has(q.id) && !rulings[q.id]);
-  const done = queue.items.filter(q => q.answered);
-  updateInboxBadge(queue);   // each ruling re-renders here, so the nav count tracks it live
-  const frag = h(`<h1>Decision Inbox</h1>
-    <p class="sub">${fresh.length} decision${fresh.length === 1 ? "" : "s"} ready for your call — each in plain language, with what you need to judge it. Rulings you record here are picked up by the next work session and folded into the design docs.</p>
-    <div id="q-open"></div>
-    ${ruled.length ? `<h2>Ruled by you (${ruled.length})</h2><div id="q-ruled"></div>` : ""}
-    <h2 style="cursor:pointer" id="q-raw-toggle">▸ Not yet prepped (${rawOpen.length})</h2>
-    <div id="q-raw" hidden><p class="small muted">Open items still in raw internal form — ask your chief of staff to prep any of these into a proper decision card.</p></div>
-    <h2 style="cursor:pointer" id="q-toggle">▸ Answered history (${done.length})</h2>
-    <div id="q-done" hidden></div>`);
-  $view.replaceChildren(frag);
-  const qo = document.getElementById("q-open");
-  if (!fresh.length) qo.appendChild(h(`<div class="card muted">Nothing prepped needs a ruling right now. 🎉</div>`));
-  const onRuled = r => { queue.rulings[r.id] = r; renderInbox(); };
-  fresh.forEach(c => qo.appendChild(decisionCard(c, null, entData, onRuled, looks)));
-  const qr = document.getElementById("q-ruled");
-  if (qr) ruled.forEach(c => qr.appendChild(decisionCard(c, rulings[c.id], entData, onRuled, looks)));
-  const qraw = document.getElementById("q-raw");
-  rawOpen.forEach(q => qraw.appendChild(queueCard(q)));
-  if (focusId) {
-    const el = document.getElementById("card-" + focusId);
-    if (el) {
-      const target = el.closest(".card") || el;
-      target.scrollIntoView({ block: "center" });
-      target.classList.add("ms-flash");
-    }
-  }
-  const rawTg = document.getElementById("q-raw-toggle");
-  rawTg.addEventListener("click", () => {
-    qraw.hidden = !qraw.hidden;
-    rawTg.textContent = (qraw.hidden ? "▸" : "▾") + ` Not yet prepped (${rawOpen.length})`;
-  });
-  const qd = document.getElementById("q-done");
-  done.forEach(q => qd.appendChild(queueCard(q)));
-  const tg = document.getElementById("q-toggle");
-  tg.addEventListener("click", () => {
-    qd.hidden = !qd.hidden;
-    tg.textContent = (qd.hidden ? "▸" : "▾") + ` Answered history (${done.length})`;
-  });
-}
-
 /* ---------------- chat ---------------- */
 const chatHistories = JSON.parse(localStorage.getItem("hq-chats") || "{}");
 function saveChats() { localStorage.setItem("hq-chats", JSON.stringify(chatHistories)); }
@@ -1212,17 +1162,24 @@ async function boot() {
     }));
   api("/api/signals").then(updateNavPillars).catch(() => {});
   try {
-    updateInboxBadge(await api("/api/queue"));
+    const q = await api("/api/queue");
+    updateQueueBadge({
+      decisions: (q.curated || []).filter(c => !(q.rulings || {})[c.id]).length,
+    });
   } catch { /* no badge */ }
 }
 
-// The badge counts decisions PREPPED for the CEO — raw un-curated queue
-// items are the chief of staff's backlog, not his. Recomputed from every
-// fresh queue fetch (boot, each inbox render, each ruling), and it HIDES
-// at zero — a cleared inbox must stop asking for attention.
-function updateInboxBadge(queue) {
-  const n = (queue.curated || []).filter(c => !(queue.rulings || {})[c.id]).length;
-  const b = document.getElementById("inbox-badge");
-  if (b) { b.textContent = n || ""; b.hidden = !n; }
+// One badge for the one queue, fed from two places: the decisions prepped for
+// him and the finished work wanting his verdict. Raw un-curated questions are
+// the chief of staff's backlog, not his, and are not counted. It HIDES at zero
+// — an empty queue must stop asking for attention.
+const queueCounts = { work: 0, decisions: 0 };
+function updateQueueBadge(part) {
+  Object.assign(queueCounts, part);
+  const b = document.getElementById("work-badge");
+  if (!b) return;
+  const n = (queueCounts.work || 0) + (queueCounts.decisions || 0);
+  b.textContent = n || "";
+  b.hidden = !n;
 }
 boot();
