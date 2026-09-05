@@ -273,8 +273,10 @@ async function renderDashboard() {
         <div id="dash-standup"></div>
       </div>
       <div class="dash-side">
-        <div class="side-head">The pillars <span class="small muted">· ${pillars.pillars.every(p => surfaceParked("/pillar/" + p.id)) ? "detail pages are switched off" : "click for detail"}</span></div>
-        <div id="dash-pillars"></div>
+        <details class="side-fold" id="dash-pillars-fold">
+          <summary class="side-head">The pillars <span class="small muted">· ${pillars.pillars.every(p => surfaceParked("/pillar/" + p.id)) ? "detail pages are switched off" : "click for detail"}</span></summary>
+          <div id="dash-pillars"></div>
+        </details>
         <div class="side-nums small">
           <a class="plain" href="#/work">${sig.queue.prepped + sig.work.waiting_on_you} waiting on you · ${sig.work.queued} queued</a>
           <a class="plain" href="#/program">${sig.projects.in_progress} in flight · ${sig.projects.blocked} blocked</a>
@@ -301,42 +303,53 @@ async function renderDashboard() {
     if (!off) row.addEventListener("click", () => location.hash = "#/pillar/" + p.id);
     dp.appendChild(row);
   });
+  // Folded away by default: while the pages under it are off it is six rows of
+  // colour that lead nowhere, and his front door is for what needs him.
+  const pfold = document.getElementById("dash-pillars-fold");
+  try { pfold.open = localStorage.getItem("hq-pillars-open") === "1"; } catch { }
+  pfold.addEventListener("toggle", () => {
+    try { localStorage.setItem("hq-pillars-open", pfold.open ? "1" : "0"); } catch { }
+  });
   const refresh = document.getElementById("dash-refresh");
   // Through route(), not renderDashboard() directly, so the seq guard can
   // cancel it if the user navigates away mid-refresh.
   if (refresh) refresh.addEventListener("click", ev => { ev.preventDefault(); route(); });
-  // The brief maintains itself: cached copy renders instantly; if its
-  // fingerprint no longer matches the live signals, the CoS rewrites it in
-  // the background and it swaps in. No controls — there is never a reason
-  // for the CEO to ask for a rewrite the system wouldn't already be doing.
-  // It folds once read (NEW auto-opens; the fingerprint marks it seen).
-  const renderBriefCard = (r, updating) => {
+  // The brief costs tokens to write, so it is never rewritten just because he
+  // opened the page: the cached one renders instantly, says when it was
+  // written and whether the picture has moved since, and he asks for a new one
+  // when he wants one.
+  const renderBriefCard = (r, writing) => {
     const box = document.getElementById("dash-standup");
     if (!box) return;
+    const open = !!(box.querySelector("details") || {}).open;
+    const stale = r && r.fingerprint && sig.brief_fingerprint && r.fingerprint !== sig.brief_fingerprint;
+    const button = writing
+      ? `<span class="small muted">Your chief of staff is writing it…</span>`
+      : `<button class="linkbtn" id="brief-write">Write a new one</button>`;
     if (!r || !r.brief) {
-      box.replaceChildren(h(`<div class="brief brief-writing small muted">Your chief of staff is writing today's brief…</div>`));
-      return;
+      box.replaceChildren(h(`<div class="brief brief-writing small muted">No brief written yet. ${button}</div>`));
+    } else {
+      let seen = null;
+      try { seen = localStorage.getItem("hq-brief-seen"); } catch { }
+      const isNew = r.fingerprint && r.fingerprint !== seen;
+      box.replaceChildren(h(`<details class="brief" ${isNew || open ? "open" : ""}>
+        <summary>Chief of staff's brief · ${esc(r.generated || "")}${isNew ? ' <span class="kchip k-action">NEW</span>' : ""}${stale ? ' <span class="small muted">· written before the latest changes</span>' : ""}</summary>
+        <div class="brief-body">${md(r.brief)}</div>
+        <div class="brief-foot">${button}</div>
+      </details>`));
+      const det = box.querySelector("details");
+      const markSeen = () => { try { localStorage.setItem("hq-brief-seen", r.fingerprint || ""); } catch { } };
+      if (isNew) markSeen();
+      det.addEventListener("toggle", () => { if (det.open) markSeen(); });
     }
-    let seen = null;
-    try { seen = localStorage.getItem("hq-brief-seen"); } catch { }
-    const isNew = r.fingerprint && r.fingerprint !== seen && !updating;
-    box.replaceChildren(h(`<details class="brief" ${isNew ? "open" : ""}>
-      <summary>Chief of staff's brief · ${esc(r.generated || "")}${isNew ? ' <span class="kchip k-action">NEW</span>' : ""}${updating ? ' <span class="small muted">· reality changed — updating…</span>' : ""}</summary>
-      <div class="brief-body">${md(r.brief)}</div>
-    </details>`));
-    const det = box.querySelector("details");
-    const markSeen = () => { try { localStorage.setItem("hq-brief-seen", r.fingerprint || ""); } catch { } };
-    if (isNew) markSeen();
-    det.addEventListener("toggle", () => { if (det.open) markSeen(); });
-  };
-  fetch("/api/standup").then(r => r.json()).then(async r => {
-    const stale = !r.brief || (sig.brief_fingerprint && r.fingerprint !== sig.brief_fingerprint);
-    renderBriefCard(r, stale);
-    if (stale) {
+    const btn = document.getElementById("brief-write");
+    if (btn) btn.addEventListener("click", async () => {
+      renderBriefCard(r, true);
       try { renderBriefCard(await (await fetch("/api/standup", { method: "POST" })).json(), false); }
       catch { renderBriefCard(r, false); }
-    }
-  }).catch(() => {});
+    });
+  };
+  fetch("/api/standup").then(r => r.json()).then(r => renderBriefCard(r, false)).catch(() => { });
 }
 
 /* ---------------- org chart ---------------- */

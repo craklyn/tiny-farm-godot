@@ -3543,7 +3543,9 @@ def _compute_signals_now():
         "consistency": check_consistency(),
         "eye": eye,
     }
-    data["brief_fingerprint"] = brief_fingerprint(status, eye, data["queue"], projects)
+    # Fingerprinted over what the brief actually covers, so "the picture
+    # changed" never fires for a change in an area he has paused.
+    data["brief_fingerprint"] = brief_fingerprint(status, live_eye(eye), data["queue"], projects)
     return data
 
 
@@ -3709,6 +3711,26 @@ def _need_href(surface):
     return None
 
 
+def parked_routes():
+    """Routes the CEO has switched off (hq/data/surface.json). The front end
+    reads the same file; the server needs it so that anything it WRITES for him
+    — the brief above all — stops talking about areas he has paused."""
+    try:
+        return list(load_json(os.path.join(DATA, "surface.json")).get("parked", {}))
+    except Exception:
+        return []
+
+
+def live_eye(eye):
+    """Signals whose only destination is a switched-off page are dropped: a
+    paragraph about something he cannot open is a paragraph he cannot act on."""
+    off = parked_routes()
+    def parked(href):
+        r = (href or "").lstrip("#")
+        return any(r == k or r.startswith(k + "/") for k in off)
+    return [e for e in eye if not parked(e.get("href"))]
+
+
 def brief_fingerprint(status, eye, queue, projects):
     """One formula, used by both the signals payload and the brief cache, so
     'is the brief stale?' has exactly one answer."""
@@ -3726,7 +3748,7 @@ def make_standup():
     sig = compute_signals()
     projects = load_projects()
     finger = sig.get("brief_fingerprint") or brief_fingerprint(
-        sig["status"], sig["eye"], sig["queue"], projects)
+        sig["status"], live_eye(sig["eye"]), sig["queue"], projects)
     spath = os.path.join(DATA, "runs", "standup.json")
     try:
         cached = load_json(spath)
@@ -3749,13 +3771,14 @@ def _make_standup_locked(finger, spath, sig, projects):
     org = load_org()
     sys_prompt = build_system_prompt(org, "claude")
     prompt = f"""Write Daniel's standup brief from this live data (signals derived from the repo/CI just now). Rules:
+- SCOPE: the game itself and nothing else — what shipped, whether the build and its checks are healthy, and what ships next. The studio's business areas (marketing, community, sales, storefronts, finance, art-direction sign-off) are paused by his ruling and their pages are switched off: say nothing about them. They come back one at a time as he rebuilds their goals, and the data below is already filtered to what is live.
 - Plain language, no internal ticket IDs unless naming a decision he can rule on.
-- The dashboard already shows the #1 action in a hero card — do NOT repeat it as a section. Structure: 1) "Since you last looked" — 2-4 bullets of what actually shipped (from the commit subjects). 2) "Under control" — one line per quiet pillar, honest. 3) "Waiting on you" — decisions/approvals, oldest first, one line each.
+- The dashboard already shows the #1 action in a hero card — do NOT repeat it as a section. Structure: 1) "Since you last looked" — 2-4 bullets of what actually shipped (from the commit subjects). 2) "The build right now" — is it green, were the checks run recently enough to believe. 3) "Waiting on you" — decisions/approvals, oldest first, one line each.
 - Max ~200 words. No preamble, start with the content.
 
 SIGNALS: {json.dumps(sig["status"])}
-EYE QUEUE: {json.dumps(sig["eye"])}
-RECENT COMMITS BY PILLAR: {json.dumps({k: [c["subject"] for c in v["recent"][:3]] for k, v in sig["per_pillar"].items()})}
+EYE QUEUE: {json.dumps(live_eye(sig["eye"]))}
+RECENT COMMITS: {json.dumps({k: [c["subject"] for c in v["recent"][:3]] for k, v in sig["per_pillar"].items()})}
 QUEUE: {json.dumps(sig["queue"])}
 PROJECTS: {json.dumps([{"name": p["name"], "status": p["status"], "priority": p["priority"]} for p in projects])}"""
     cmd = ["claude", "-p", prompt, "--append-system-prompt", sys_prompt,

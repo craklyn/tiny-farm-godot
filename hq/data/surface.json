@@ -30,6 +30,11 @@
       "title": "Org Chart",
       "since": "2026-09-04",
       "reason": "The chart draws the studio as a company with six departments, and that shape was assumed rather than decided. The seats themselves keep working — they are how work is actually carried out — but the picture of them is off until you and I go through the roster one seat at a time and keep, merge or cut each one."
+    },
+    "/program": {
+      "title": "Program Report",
+      "since": "2026-09-04",
+      "reason": "The report is laid out around the six reporting lines and a release plan drawn before you had settled what the studio is doing, so it is off until it is rebuilt. The projects it listed are still reachable from the items on your dashboard."
     }
   }
 }

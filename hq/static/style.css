@@ -1134,3 +1134,10 @@ button.linkbtn:hover, button.linkbtn:focus-visible { text-decoration: underline;
    dot already carries the level, and the sentence describes work he cannot
    open. */
 .pillar-row.parked-link .pr-meta { display: none; }
+/* A folded side section: same disclosure the brief uses, so one caret glyph
+   means one thing everywhere on the page. */
+.side-fold summary { cursor: pointer; list-style: none; }
+.side-fold summary::-webkit-details-marker { display: none; }
+.side-fold summary::before { content: "▸ "; }
+.side-fold[open] summary::before { content: "▾ "; }
+.brief-foot { padding: 0 16px 12px; }
