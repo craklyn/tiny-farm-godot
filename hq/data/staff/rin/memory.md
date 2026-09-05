@@ -8,3 +8,4 @@
   targets, never render design rationale. Any surface this seat builds renders
   prose to that standard; the rationale for a layout lives in code comments,
   never on the page.
+- (2026-09-05) Person names are a shared component, not a string. The CEO does not hold the thirty seats in his head, so any name on any HQ surface explains itself in place: hovering (or keyboard-focusing) anything carrying `data-person` shows title, level, team, the reporting chain up to Daniel, and that person's responsibilities. It is ONE delegated implementation in `hq/static/app.js` beside the click-to-panel handler, deliberately so that redesigning the card changes every page at once — his words: "standardized and re-used across the page. If we update its design later, that'll translate across the page." The general rule for this seat: an affordance that appears on two surfaces is built once and driven by a data attribute; a second copy is a defect even when it is quicker.
