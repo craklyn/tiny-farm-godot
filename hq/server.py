@@ -3712,15 +3712,21 @@ def _need_href(surface):
 
 
 def product_plan():
-    """What the Product & Program page shows: when the last release actually
-    went out, what the next one is and when it is meant to go, and what the
-    ones after it are about. Dates and themes are authored (hq/data/
-    release_plan.json) because no repository state implies them; everything
-    else is derived — the shipped tag from git, the next release's features
-    from hq/data/releases.json."""
+    """What the Product & Program page shows. Every date here is COMPUTED from
+    the work still outstanding beneath it — milestone, stories, an estimate in
+    days of work on each — because the CEO ruled (2026-09-04) that a date is an
+    output of the plan, never something typed into it. Releases run in order,
+    each starting where the one before it lands. A release with an unestimated
+    story has no date, and neither does anything after it: a chain built on one
+    guess is worse than an honest blank.
+
+    Derived either side of that: the last shipped release comes from the git
+    tags, and the next release's player-facing feature list from
+    hq/data/releases.json."""
     import datetime
     plan = load_json(os.path.join(DATA, "release_plan.json"))
     today = datetime.date.today()
+    cap = float(plan.get("capacity_days_per_week") or 0) or 5.0
 
     tags = [t for t in run_cmd(["git", "tag", "-l", "v*", "--sort=-creatordate"]).splitlines() if t]
     last = None
@@ -3732,21 +3738,87 @@ def product_plan():
         except ValueError:
             last["days_ago"] = None
 
-    nxt = dict(plan.get("next") or {})
-    if nxt:
-        try:
-            nxt["days_away"] = (datetime.date.fromisoformat(nxt["target_date"]) - today).days
-        except (KeyError, ValueError):
-            nxt["days_away"] = None
-        rel = next((r for r in load_json(os.path.join(DATA, "releases.json"))["releases"]
-                    if r["id"] == nxt.get("release_id")), None)
-        if rel:
-            nxt["definition_of_done"] = rel.get("definition_of_done", "")
-            nxt["features"] = [{"headline": f.get("headline", ""),
+    trains = {r["id"]: r for r in load_json(os.path.join(DATA, "releases.json"))["releases"]}
+    cursor, chain_broken = today, False
+    out = []
+    for r in plan.get("releases", []):
+        stories = r.get("stories", []) or []
+        def est(st):
+            v = st.get("estimate_days")
+            return None if v is None or v == "" else float(v)
+        open_ = [st for st in stories if not st.get("done")]
+        unestimated = [st for st in open_ if est(st) is None]
+        remaining = sum(est(st) or 0 for st in open_ if est(st) is not None)
+        row = dict(r)
+        row["done_count"] = len(stories) - len(open_)
+        row["open_count"] = len(open_)
+        row["unestimated"] = len(unestimated)
+        row["remaining_days"] = round(remaining, 1)
+        row["total_days"] = round(remaining + sum(est(st) or 0 for st in stories if st.get("done")), 1)
+        row["estimated_date"] = None
+        row["days_away"] = None
+        row["no_date_because"] = ""
+        if not stories:
+            row["no_date_because"] = "its stories have not been sketched yet"
+            chain_broken = True
+        elif unestimated:
+            n = len(unestimated)
+            row["no_date_because"] = (f"{n} story still needs an estimate" if n == 1
+                                      else f"{n} stories still need an estimate")
+            chain_broken = True
+        elif chain_broken:
+            row["no_date_because"] = "the release before it has no date yet"
+        else:
+            span = remaining / cap * 7
+            cursor = cursor + datetime.timedelta(days=int(span) + (1 if span > int(span) else 0))
+            row["estimated_date"] = cursor.isoformat()
+            row["days_away"] = (cursor - today).days
+        train = trains.get(r.get("release_id"))
+        if train:
+            row["definition_of_done"] = train.get("definition_of_done", "")
+            row["features"] = [{"headline": f.get("headline", ""),
                                 "for_players": f.get("for_players", "")}
-                               for f in rel.get("features", [])]
-    return {"last_shipped": last, "next": nxt, "planned": plan.get("planned", []),
-            "today": today.isoformat()}
+                               for f in train.get("features", [])]
+        out.append(row)
+    return {"last_shipped": last, "releases": out, "today": today.isoformat(),
+            "capacity_days_per_week": cap}
+
+
+def save_product_plan(payload):
+    """The CEO's own edits to the plan: an estimate on a story, a story ticked
+    off, how much work fits in a week. Written whole, because the page holds
+    the whole plan and one person edits it."""
+    if not isinstance(payload, dict) or not isinstance(payload.get("releases"), list):
+        return {"error": "a plan needs a list of releases"}
+    kept = load_json(os.path.join(DATA, "release_plan.json"))
+    doc = {"note": kept.get("note", ""),
+           "capacity_days_per_week": float(payload.get("capacity_days_per_week") or 5) or 5.0,
+           "releases": []}
+    for r in payload["releases"]:
+        stories = []
+        for st in r.get("stories", []) or []:
+            title = str(st.get("title", "")).strip()
+            if not title:
+                continue
+            raw = st.get("estimate_days")
+            try:
+                estimate = None if raw in (None, "") else max(0.0, round(float(raw), 2))
+            except (TypeError, ValueError):
+                estimate = None
+            stories.append({"id": str(st.get("id") or f"s{len(stories) + 1}"),
+                            "title": title, "estimate_days": estimate,
+                            "done": bool(st.get("done"))})
+        doc["releases"].append({
+            "id": str(r.get("id", "")), "release_id": r.get("release_id"),
+            "name": str(r.get("name", "")), "codename": r.get("codename") or None,
+            "contains": str(r.get("contains", "")), "stories": stories})
+    path = os.path.join(DATA, "release_plan.json")
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(doc, f, ensure_ascii=False, indent=2)
+        f.write("\n")
+    os.replace(tmp, path)
+    return product_plan()
 
 
 def parked_routes():
@@ -4377,6 +4449,8 @@ class Handler(BaseHTTPRequestHandler):
             payload = json.loads(self.rfile.read(length) or b"{}")
         except Exception:
             return self._send(400, {"error": "bad JSON"})
+        if path == "/api/product/plan":
+            return self._send(200, save_product_plan(payload))
         if path == "/api/standup":
             try:
                 return self._send(200, make_standup())

@@ -1,28 +1,89 @@
 {
-  "note": "The release plan, for the Product & Program page. Authored, not derived — a target date and what a future release is thematically about are the CEO's calls, and no repository state implies them. What IS derived stays derived: the last shipped release comes from the git tags, and the next release's feature list comes from hq/data/releases.json by release_id. Written 2026-09-04 as a strawman for the CEO to correct.",
-  "next": {
-    "release_id": "update-1",
-    "name": "Player Update 1",
-    "codename": "v0.2.0",
-    "target_date": "2026-09-12",
-    "contains": "The shop, and the first robot you can teach — the beginning of the delegation arc, plus eleven other things a player would notice."
-  },
-  "planned": [
+  "note": "The release plan for the Product & Program page. Milestones hold stories, stories hold an estimate in days of work, and every date on the page is computed from what is still outstanding — nothing here is a hand-typed date (the CEO's ruling, 2026-09-04). Releases run in the order listed; each one's estimated date is the previous one's plus its own remaining work. A release with unestimated stories has no date, and neither does anything after it, because a chain built on a guess is worse than an honest blank. Seeded 2026-09-05: v0.2.0's stories are the real remaining requirements of its two critical projects; everything after it is a placeholder waiting to be sketched with the CEO.",
+  "capacity_days_per_week": 5.0,
+  "releases": [
     {
+      "id": "update-1",
+      "release_id": "update-1",
+      "name": "Player Update 1",
+      "codename": "v0.2.0",
+      "contains": "The shop, and the first robot you can teach — the beginning of the delegation arc, plus eleven other things a player would notice.",
+      "stories": [
+        {
+          "id": "s1",
+          "title": "One unprompted first session by an adult who has never played, on the tablet",
+          "estimate_days": null,
+          "done": false
+        },
+        {
+          "id": "s2",
+          "title": "Score the sleeping-cot bar from that session's trace: at least one sleep, unprompted",
+          "estimate_days": null,
+          "done": false
+        },
+        {
+          "id": "s3",
+          "title": "Confirm no regression on the standing bars — dead taps at or under 12%, longest stall at or under 16.3 seconds",
+          "estimate_days": null,
+          "done": false
+        },
+        {
+          "id": "s4",
+          "title": "Record the session and verify it replays to its own autosave",
+          "estimate_days": null,
+          "done": false
+        },
+        {
+          "id": "s5",
+          "title": "Write the release notes a player will read",
+          "estimate_days": null,
+          "done": false
+        },
+        {
+          "id": "s6",
+          "title": "Cut the v0.2.0 tag from a green main through the deploy runbook",
+          "estimate_days": null,
+          "done": false
+        },
+        {
+          "id": "s7",
+          "title": "Bring the store page up to date with what this release adds",
+          "estimate_days": null,
+          "done": false
+        }
+      ]
+    },
+    {
+      "id": "m3",
+      "release_id": null,
       "name": "Machines that pay for themselves",
-      "contains": "Automation you place and maintain: sprinkler coverage and overlap, upkeep, and the resource loop behind buying a machine — plus the first group-pest skirmishes to spend it on."
+      "codename": null,
+      "contains": "Automation you place and maintain: sprinkler coverage and overlap, upkeep, and the resource loop behind buying a machine — plus the first group-pest skirmishes to spend it on.",
+      "stories": []
     },
     {
+      "id": "m4",
+      "release_id": null,
       "name": "Towers and waves",
-      "contains": "The tower-defense slice. Towers that start out taking orders and end up running themselves, and waves designed against the simulation rather than by hand."
+      "codename": null,
+      "contains": "The tower-defense slice. Towers that start out taking orders and end up running themselves, and waves designed against the simulation rather than by hand.",
+      "stories": []
     },
     {
+      "id": "m5",
+      "release_id": null,
       "name": "A bot that learns from you",
-      "contains": "The first bot trained on your own recorded sessions, with the overnight training loop running on the tablet itself."
+      "codename": null,
+      "contains": "The first bot trained on your own recorded sessions, with the overnight training loop running on the tablet itself.",
+      "stories": []
     },
     {
+      "id": "m6",
+      "release_id": null,
       "name": "The last phase",
-      "contains": "The genre and interface experiments that close the five-phase arc, then content and polish."
+      "codename": null,
+      "contains": "The genre and interface experiments that close the five-phase arc, then content and polish.",
+      "stories": []
     }
   ]
 }
