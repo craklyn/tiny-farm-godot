@@ -1112,3 +1112,7 @@ button.linkbtn:hover, button.linkbtn:focus-visible { text-decoration: underline;
   padding: 5px 12px; border-radius: 7px; cursor: pointer; font: inherit;
   font-weight: 600; border: 1px solid var(--accent); background: var(--accent); color: #fff;
 }
+/* Where a goal's work actually is: the thing, who holds it, how far it has got.
+   A link that only says "see it" cannot answer "where is this filed?". */
+.g-filed { font-size: 12.5px; margin-top: 5px; color: var(--muted); }
+.g-filed a { color: var(--text); }

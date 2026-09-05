@@ -7,7 +7,7 @@
   "tier_reason": "filed by hand",
   "ask": "Daniel, 2026-09-04: \"We need a way to eradicate all of this hard to handle text. It's only causing friction, and the friction is so severe that it's getting in way of the process.\" tools/check_writing.py now finds these automatically and CI fails on them. About 50 are in the front-end string literals you own.",
   "first_action": "Run `python3 tools/check_writing.py` and fix every MUST FIX it reports under hq/static/*.js. Each finding names the word, what it actually means, and the plain wording to reach for. Rewrite the sentence rather than swapping the word — 'the proof is fresh enough to believe' wants to become something like 'the tests were run recently enough to trust'. Where a word genuinely has to stay, put `plain-ok: <reason>` on the line, which the check reports rather than hides. Do not touch code comments: rationale belongs there and is written for whoever maintains the file. Re-run the check until only soft",
-  "state": "for_review",
+  "state": "accepted",
   "thread": "rin",
   "source": "chat",
   "source_message": "Daniel, 2026-09-04: \"We need a way to eradicate all of this hard to handle text. It's only causing friction, and the friction is so severe that it's getting in way of the process.\" tools/check_writing.py now finds these automatically and CI fails on them. About 50 are in the front-end string literals you own.",
@@ -108,5 +108,20 @@
     "tokens": 2970577,
     "fresh": 151407,
     "list_usd": 3.7595
-  }
+  },
+  "closed": "2026-09-04T14:29",
+  "spawned": [
+    {
+      "id": "w9b453fb70c7",
+      "title": "Match HQ's back-end labels to the plain wording now on its pages",
+      "state": "waiting_session",
+      "owner": "claude"
+    },
+    {
+      "id": "w8e71933a1a9",
+      "title": "Re-run the writing check over HQ's pages once the checker lands",
+      "state": "doing",
+      "owner": "claude"
+    }
+  ]
 }

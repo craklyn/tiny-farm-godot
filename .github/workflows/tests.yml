@@ -51,6 +51,16 @@ jobs:
       - name: Plain language on every surface he reads
         run: python3 tools/check_writing.py
 
+      # HQ's front-end files are plain scripts sharing one global scope, so the
+      # same name in two of them is a SyntaxError that blanks every page — and
+      # each file passes a per-file syntax check on its own, which is how one
+      # got shipped.
+      - name: The check catches a planted name clash
+        run: python3 tools/check_frontend.py --self-test
+
+      - name: No name declared twice across HQ's front-end
+        run: python3 tools/check_frontend.py
+
   tests:
     runs-on: ubuntu-latest
     timeout-minutes: 15

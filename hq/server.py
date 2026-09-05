@@ -3006,6 +3006,43 @@ def _goal_journal_thread():
         _t.sleep(3600)     # hourly: the quantity is days, not minutes
 
 
+def _route_target(route):
+    """What a goal's route actually points at — its name, who holds it, and where
+    it has got to.
+
+    A link that says "see it" cannot answer "where is this filed?", which is
+    exactly what Daniel asked of the Marketing page while looking at one. The
+    route already knows the id; resolving it here means every page that offers
+    the link can name the thing at the other end instead of asking him to click
+    and find out."""
+    kind, rid = (route or {}).get("kind"), (route or {}).get("id")
+    if not kind or not rid:
+        return None
+    try:
+        if kind == "work":
+            for it in work.items():
+                if it.get("id") == rid:
+                    return {"kind": kind, "id": rid, "title": it.get("title", ""),
+                            "owner": it.get("owner", ""), "state": it.get("state", ""),
+                            "href": f"#/work/{rid}"}
+        elif kind == "project":
+            doc = load_json(os.path.join(DATA, "projects", rid + ".json"))
+            return {"kind": kind, "id": rid, "title": doc.get("name", rid),
+                    "owner": doc.get("owner", ""), "state": doc.get("status", ""),
+                    "href": f"#/project/{rid}"}
+        elif kind == "decision":
+            doc = load_json(os.path.join(DATA, "decisions", rid + ".json"))
+            return {"kind": kind, "id": rid, "title": doc.get("title", rid),
+                    "owner": doc.get("owner", ""), "state": "waiting on you",
+                    "href": f"#/inbox/{rid}"}
+    except (OSError, ValueError, KeyError):
+        pass
+    # The route names something that is not there. Say so rather than rendering a
+    # link into nothing: a dead link is worse than an admitted gap.
+    return {"kind": kind, "id": rid, "title": "", "owner": "", "state": "missing",
+            "href": ""}
+
+
 def eval_goal(goal):
     """One declared goal -> the row the page renders. Never raises: a malformed
     goal renders `broken` rather than taking down the pillar it lives on."""
@@ -3030,6 +3067,7 @@ def eval_goal(goal):
         # his, which meant every pillar holding something awaiting a yes glowed
         # at him. Approvals are the Work page's job and the inbox's job — they
         # serve him as an approver, and the board is not a third copy of them.
+        out["route_target"] = _route_target((goal.get("path_to_green") or {}).get("route"))
         out["escalation"] = _escalation(goal, state, reading)
         out["needs_you"] = bool(out["escalation"])
         out["ours"] = state not in ("green",) and not out["needs_you"]

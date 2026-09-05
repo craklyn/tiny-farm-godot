@@ -1,0 +1,32 @@
+{
+  "id": "w8e71933a1a9",
+  "title": "Re-run the writing check over HQ's pages once the checker lands",
+  "level": "task",
+  "owner": "claude",
+  "tier": 0,
+  "tier_reason": "This sweep was done from the word list in the brief because the checker was not yet in the working tree, so nothing has actually been verified against it.",
+  "ask": "Accepted “Reword every phrase on HQ's pages that only makes sense inside this studio”. This sweep was done from the word list in the brief because the checker was not yet in the working tree, so nothing has actually been verified against it.",
+  "first_action": "After tools/check_writing.py and docs/glossary.json are on main, run `python3 tools/check_writing.py` and confirm hq/static/*.js reports no MUST FIX and only the one plain-ok line in map.js; fix anything the checker flags that the word list in the brief did not cover.",
+  "state": "for_review",
+  "thread": "rin",
+  "source": "chat",
+  "source_message": "Accepted “Reword every phrase on HQ's pages that only makes sense inside this studio”. This sweep was done from the word list in the brief because the checker was not yet in the working tree, so nothing has actually been verified against it.",
+  "result": "I could not execute the checker from this session, since running commands was blocked, so this is a by-hand reproduction of exactly what it does, not its output.\n\n**What I checked.** The checker and glossary are both committed on main, and CI now runs the checker on every push. I searched the seven page scripts for every hard-fail glossary word and judged each hit the way the checker judges it: comments are skipped, code is skipped, markup and interpolated expressions are stripped, and only real sentences count.\n\n**Result: no MUST FIX in the page scripts.** Every hit is one of these:\n\n- **Comments** explaining design intent, which the checker ignores on purpose. This is the bulk of them, in every file.\n- **Identifiers and class names** like `g-orphan`, `gate-src`, `data-tier`, `w-suites`, which are stripped as markup and never reach the screen.\n- **Rendered text that is already plain.** Where a word survives to the screen it is a rewrite: \"the build never loads it\", \"no record of where it came from\", \"conditions still unmet\", \"verified by you\".\n\nI also traced the four places that nest one template string inside another, since the checker's own scanner can mis-pair those. None of the fragments that result contains a glossary word as visible text.\n\n**One expectation in the brief is stale.** The map editor's fence label is no longer reported at all, not even as \"allowed\". The last commit tightened the prose filter so a label with only one real word is not checked, and that label has one. So the live run should end with \"No house vocabulary on any surface he reads\" plus a few \"consider\" lines for the soft words like pillar and signal, with nothing from the map editor. That is a better outcome than the brief asked for, not a problem.\n\n**What this implies.** Reading by hand is not the same as the machine saying yes. The live confirmation already exists in CI for the last commit, so the remaining step is to read that result rather than run anything new. It is mine and it changes nothing.",
+  "started": "2026-09-04T14:30",
+  "attempts": 1,
+  "created": "2026-09-04T14:29",
+  "created_ts": 1788557392.8329446,
+  "parent": "wdd79dcd74ed",
+  "follow_ups": [
+    {
+      "title": "Confirm the writing check passed in CI for the latest commit on main",
+      "owner": "claude",
+      "level": "task",
+      "tier": 0,
+      "first_action": "Run `gh run list --branch main --limit 1 --json conclusion,url` and open the writing-check step of that run; if it is not green, paste its MUST FIX lines into this card.",
+      "why": "The by-hand scan found nothing, but the checker itself has not been seen to pass, and CI already ran it on the last push."
+    }
+  ],
+  "recommend": {},
+  "finished": "2026-09-04T14:33"
+}

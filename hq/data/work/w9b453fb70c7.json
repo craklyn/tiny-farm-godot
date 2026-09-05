@@ -1,0 +1,20 @@
+{
+  "id": "w9b453fb70c7",
+  "title": "Match HQ's back-end labels to the plain wording now on its pages",
+  "level": "task",
+  "owner": "claude",
+  "tier": 1,
+  "tier_reason": "The Engineering page currently shows both names for the same test run, because the front-end half was reworded and the server-side labels were not.",
+  "ask": "Accepted “Reword every phrase on HQ's pages that only makes sense inside this studio”. The Engineering page currently shows both names for the same test run, because the front-end half was reworded and the server-side labels were not.",
+  "first_action": "In hq/server.py, rename the JOBS labels 'Unit suite'/'Integration suite' to 'Unit tests'/'Integration tests' so the run rows match the evidence strip above them; then sweep the ~37 remaining glossary words in rendered strings across hq/server.py and hq/data/pillars.json (start with the ops pillar demo labelled 'The provenance ledger', now titled 'Where every asset came from' on the page).",
+  "state": "waiting_session",
+  "thread": "rin",
+  "source": "chat",
+  "source_message": "Accepted “Reword every phrase on HQ's pages that only makes sense inside this studio”. The Engineering page currently shows both names for the same test run, because the front-end half was reworded and the server-side labels were not.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-04T14:29",
+  "created_ts": 1788557392.8323948,
+  "parent": "wdd79dcd74ed"
+}

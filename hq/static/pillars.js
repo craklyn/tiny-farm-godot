@@ -205,6 +205,35 @@ function verdictLine(g) {
    band that lets him compare pillars. Rows past the third fold behind a summary
    that carries the count and the worst hidden state, so a tall pillar cannot
    push the next band off the screen. */
+/* "Where is this task filed?" — Daniel, reading the Marketing page, of a link
+   whose whole text was "see it". A link has to name what is at the other end,
+   and for work that means the thing, the person holding it, and how far it has
+   got. The server resolves the route; this writes the sentence. */
+let ORG = null;
+const FILED_STATE = {
+  needs_approval: "waiting on your yes",
+  for_review: "finished, waiting on your verdict",
+  doing: "being worked on now",
+  waiting_session: "queued, and the next build session does it",
+  accepted: "accepted and closed",
+  dropped: "dropped",
+  missing: "",
+};
+
+function filedLine(g, org) {
+  const t = g.route_target;
+  if (!t || !t.title) return "";
+  const who = t.owner ? ownerName(org, t.owner) : "";
+  const state = FILED_STATE[t.state] || esc(t.state || "");
+  return `<div class="g-filed">Filed${who ? ` to ${esc(who)}` : ""} as
+    <a class="plain" href="${esc(t.href)}">${esc(t.title)}</a>${state ? ` — ${state}` : ""}.</div>`;
+}
+
+function ownerName(org, id) {
+  const e = ((org || {}).employees || []).find(x => x.id === id);
+  return e ? e.name : id;
+}
+
 function routeControl(g) {
   const p2g = g.path_to_green || {};
   const route = p2g.route || {};
@@ -269,7 +298,7 @@ function goalRow(g) {
           ? ` It has been open ${g.escalation.days} day${g.escalation.days === 1 ? "" : "s"}.` : ""}</div>`
     : "";
   const why = g.state === "green" ? "" :
-    `${escWhy}<div class="g-why">${mdInline(p2g.narrative || "No route recorded — nobody owns getting this back to green.")}${owner}</div>`;
+    `${escWhy}<div class="g-why">${mdInline(p2g.narrative || "No route recorded — nobody owns getting this back to green.")}${owner}</div>${filedLine(g, ORG)}`;
   const reading = g.reading || {};
   const note = reading.would_need
     ? `<div class="g-need">Would need: ${esc(reading.would_need)}</div>` : "";
@@ -422,6 +451,7 @@ function foldSection(title, summary, body, open) {
 /* ---------------- the page ---------------- */
 async function renderPillar(pid) {
   const [pillars, org, sig] = await Promise.all([api("/api/pillars"), api("/api/org"), signals(true)]);
+  ORG = org;        // goal rows name the person holding the work they point at
   const p = pillars.pillars.find(x => x.id === pid);
   if (!p) { $view.replaceChildren(h(`<div class="card">No such pillar. <a class="plain" href="#/">Dashboard</a></div>`)); return; }
   const lead = org.employees.find(e => e.id === p.lead);
@@ -873,7 +903,8 @@ async function instMarketing(root, below, sig, g) {
           <div class="abs-body">no source</div>
         </div>
         <div class="small muted">${esc(audience.measured_human || "not polled")}. One public build has been
-          live for weeks and nobody in this studio can say whether anyone has opened it. Plan filed: an itch API key gets us views and plays — <a class="plain" href="#/work/${esc(((audience.path_to_green || {}).route || {}).id || "")}">see it</a>.</div>
+          live for weeks and nobody in this studio can say whether anyone has opened it. An itch.io API key
+          would give us views and plays.${filedLine(audience, ORG)}</div>
       </div>
     </div>`));
 
