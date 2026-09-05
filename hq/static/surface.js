@@ -50,6 +50,14 @@ function surfaceParkedPage(entry) {
     </div>`;
 }
 
+/* The way out of a page is the one link that can never be a dead end, so a
+   "back to X" crumb falls through to somewhere live when X is switched off. */
+function surfaceCrumb(href, label, altHref, altLabel) {
+  return surfaceParked(href)
+    ? `<a class="plain" href="${altHref}">${esc(altLabel)}</a>`
+    : `<a class="plain" href="${href}">${esc(label)}</a>`;
+}
+
 /* One guard for the whole app: a click into a parked route stops here, no
    matter which page drew the link. Capture phase, so the element's own click
    handler never runs either. */

@@ -123,7 +123,7 @@ async function renderDesign() {
       <div class="card"><b>📚 Living chapters</b><p class="small muted">No 150-page tome. One small chapter per system, each marked with how far along it is (skeleton → outlined → drafted → playtested), updated in the same commit as the design it records.</p></div>
       <div class="card"><b>📐 A macro chart per phase</b><p class="small muted">The Cerny method: each phase reads from one beat table — what's introduced, what pressures the player, and a measurable exit per beat. The macro locks early; the detail stays flexible.</p></div>
       <div class="card"><b>⚖️ Decisions, and how settled each one is</b><p class="small muted">Chapters cite decisions; they never re-argue them. Every decision is settled, provisional (with adjustment conditions), or deferred (with a trigger).</p></div>
-      <div class="card"><b>🧪 Evidence, not calendars</b><p class="small muted">A phase ends when the simulation can be measured doing the thing it promised — never when a date arrives. Open numbers are tagged for playtest, and anything needing your taste lands in the <a class="plain" href="#/inbox">Decision Inbox</a>.</p></div>
+      <div class="card"><b>🧪 Evidence, not calendars</b><p class="small muted">A phase ends when the simulation can be measured doing the thing it promised — never when a date arrives. Open numbers are tagged for playtest, and anything needing your taste lands in <a class="plain" href="#/work">your queue</a>.</p></div>
     </div>
     <p class="small muted">Conventions in full: <a class="plain" href="${docHref("docs/design/README.md")}">how to read these docs →</a>
     Everything is parsed straight out of <code class="ref">docs/</code> on every visit — never a copy.</p>

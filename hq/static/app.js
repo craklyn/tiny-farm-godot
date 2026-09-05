@@ -531,7 +531,7 @@ async function renderPerson(id) {
   ].filter(Boolean).join("");
 
   $view.replaceChildren(h(`
-    <p class="crumbs"><a class="plain" href="#/org">Org Chart</a> <span>›</span> ${esc(e.name)}</p>
+    <p class="crumbs">${surfaceCrumb("#/org", "Org Chart", "#/", "Dashboard")} <span>›</span> ${esc(e.name)}</p>
     <h1>${e.emoji} ${esc(e.name)}</h1>
     <p class="sub">${esc(e.title)} · <span class="chip lvl">${e.level}</span> <span class="chip team">${esc(e.team)}</span>${e.focus ? ` <span class="chip team">${esc(e.focus)}</span>` : ""}</p>
     <p class="muted" style="margin-bottom:18px">${esc(e.persona)}</p>
@@ -793,7 +793,7 @@ async function renderProject(id) {
   const plan = (p.plan || []).map(s =>
     `<div class="plan-step"><span class="tick">${s.done ? "✅" : "⬜"}</span><span class="${s.done ? "muted" : ""}">${esc(s.step)}</span></div>`).join("");
   $view.replaceChildren(h(`
-    <p><a class="plain" href="#/program">← back to the program</a></p>
+    <p>${surfaceCrumb("#/program", "← back to the program", "#/", "← back to the dashboard")}</p>
     <h1>${esc(p.name)}</h1>
     <p class="sub">Priority ${p.priority} · <span class="chip ${p.status}">${p.status.replace("_", " ")}</span>
       · owner: ${owner ? owner.emoji + " " + esc(owner.name) + " (" + esc(owner.title) + ")" : esc(p.owner)}
