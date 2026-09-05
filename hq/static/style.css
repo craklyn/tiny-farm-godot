@@ -1116,3 +1116,21 @@ button.linkbtn:hover, button.linkbtn:focus-visible { text-decoration: underline;
    A link that only says "see it" cannot answer "where is this filed?". */
 .g-filed { font-size: 12.5px; margin-top: 5px; color: var(--muted); }
 .g-filed a { color: var(--text); }
+
+/* Switched-off routes (hq/data/surface.json). Dimmed, unhoverable, and
+   labelled OFF where the label fits — the CEO must be able to tell at a
+   glance that a row is still listed but cannot be opened, without a caption
+   telling him how to read it. */
+.parked-link { opacity: .5; cursor: default; }
+#sidebar a.parked-link:hover, .pillar-row.parked-link:hover { background: none; color: var(--muted); }
+.nav-sub a.parked-link::after, .pillar-row.parked-link::after {
+  content: "OFF"; margin-left: 8px; font-size: 9px; font-weight: 700; letter-spacing: .1em;
+  color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px;
+}
+.nav-sub a.parked-link::after { margin-left: auto; }
+.parked-card { max-width: 620px; }
+.parked-card p + p { margin-top: 12px; }
+/* A switched-off pillar drops its status sentence and keeps its full name: the
+   dot already carries the level, and the sentence describes work he cannot
+   open. */
+.pillar-row.parked-link .pr-meta { display: none; }

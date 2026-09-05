@@ -80,13 +80,18 @@ async function updateNavPillars(sig) {
   // pillar needing it stays one click away from every page. Fires first.
   // An explicit set, not a lookup in the rank map: an unknown level must never
   // fall through into "quiet", which is the one direction the mistake is unsafe.
+  // A pillar whose page is switched off is never an exception, whatever its
+  // status: there is nothing to click through to, so pinning it above the fold
+  // would be shouting with no way to answer.
   const EXC = { fire: 0, attention: 1, unassured: 2 };
   const exceptions = pillars.pillars
+    .filter(p => !surfaceParked("/pillar/" + p.id))
     .filter(p => Object.prototype.hasOwnProperty.call(EXC, (sig.status[p.id] || {}).level))
     .sort((a, b) => EXC[sig.status[a.id].level] - EXC[sig.status[b.id].level]);
   const quiet = pillars.pillars.filter(p => !exceptions.includes(p));
   excEl.replaceChildren(...exceptions.map(row));
   quietEl.replaceChildren(...quiet.map(row));
+  surfaceMarkLinks(document.getElementById("sidebar"));
   applyNavGroups();
 }
 

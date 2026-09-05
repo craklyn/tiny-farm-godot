@@ -4268,6 +4268,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, {"rows": read_history(q.get("name", ["runs"])[0])})
             if path == "/api/pillars":
                 return self._send(200, load_json(os.path.join(DATA, "pillars.json")))
+            if path == "/api/surface":
+                return self._send(200, load_json(os.path.join(DATA, "surface.json")))
             if path == "/api/runs":
                 return self._send(200, {j: latest_job_result(j) for j in JOBS})
             if path == "/api/deploy":

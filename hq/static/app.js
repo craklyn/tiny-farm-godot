@@ -167,8 +167,12 @@ async function route() {
   });
   applyNavGroups();
   $view.innerHTML = `<p class="muted">Loading…</p>`;
+  // The switchboard answers first: a parked route never reaches its page.
+  await surfaceReady;
+  const parked = surfaceParked(hash);
   try {
-    if (hash.startsWith("/project/")) await renderProject(hash.slice("/project/".length));
+    if (parked) $view.replaceChildren(h(surfaceParkedPage(parked)));
+    else if (hash.startsWith("/project/")) await renderProject(hash.slice("/project/".length));
     else if (hash.startsWith("/entity/")) await renderEntityDetail(hash.slice("/entity/".length));
     else if (hash.startsWith("/sprite/")) await renderSpriteEditor(hash.slice("/sprite/".length));
     else if (hash.startsWith("/pillar/")) await renderPillar(hash.slice("/pillar/".length));
@@ -186,6 +190,7 @@ async function route() {
   } finally {
     routeActive--;
   }
+  surfaceMarkLinks(document);
   // A slow render can land after a newer navigation already painted. Only the
   // LAST in-flight render repaints (once) — overlapping renders re-triggering
   // each other never converged (adversarial-review finding).
@@ -266,7 +271,7 @@ async function renderDashboard() {
         <div id="dash-standup"></div>
       </div>
       <div class="dash-side">
-        <div class="side-head">The pillars <span class="small muted">· click for detail</span></div>
+        <div class="side-head">The pillars <span class="small muted">· ${pillars.pillars.every(p => surfaceParked("/pillar/" + p.id)) ? "detail pages are switched off" : "click for detail"}</span></div>
         <div id="dash-pillars"></div>
         <div class="side-nums small">
           <a class="plain" href="#/inbox">${sig.queue.prepped} decision${sig.queue.prepped === 1 ? "" : "s"} prepped</a>
@@ -286,12 +291,13 @@ async function renderDashboard() {
     const st = sig.status[p.id] || { level: "ok", reasons: [""] };
     const per = sig.per_pillar[p.id] || { commits_24h: 0, commits_7d: 0 };
     const m = LEVEL_META[st.level] || LEVEL_META.ok;
-    const row = h(`<div class="pillar-row" title="${esc((st.reasons[0] || "").slice(0, 200))}">
+    const off = surfaceParked("/pillar/" + p.id);
+    const row = h(`<div class="pillar-row${off ? " parked-link" : ""}" title="${off ? "Switched off while it is redesigned — " : ""}${esc((st.reasons[0] || "").slice(0, 200))}">
       <i class="dot ${m.dcls}"></i>
       <span class="pr-name">${p.emoji} ${esc(p.name)}</span>
       <span class="pr-meta small muted">${st.level === "dormant" ? "dormant" : st.level === "ok" ? "under control" : m.label}${st.ours ? ` · ${st.ours} ours to fix` : ""}${per.commits_24h ? ` · ⚡${per.commits_24h}` : ""}</span>
     </div>`).firstElementChild;
-    row.addEventListener("click", () => location.hash = "#/pillar/" + p.id);
+    if (!off) row.addEventListener("click", () => location.hash = "#/pillar/" + p.id);
     dp.appendChild(row);
   });
   const refresh = document.getElementById("dash-refresh");
