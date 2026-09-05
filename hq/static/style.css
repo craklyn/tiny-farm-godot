@@ -1141,3 +1141,37 @@ button.linkbtn:hover, button.linkbtn:focus-visible { text-decoration: underline;
 .side-fold summary::before { content: "▸ "; }
 .side-fold[open] summary::before { content: "▾ "; }
 .brief-foot { padding: 0 16px 12px; }
+
+/* ---- Product & Program (rebuilt 2026-09-04) ---- */
+.pr-last { color: var(--muted); font-size: 14px; margin-bottom: 20px; }
+.pr-next {
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 20px 22px; margin-bottom: 26px;
+}
+.pr-head { display: flex; align-items: flex-start; gap: 20px; }
+.pr-eyebrow { font-size: 10.5px; letter-spacing: .16em; color: var(--muted); font-weight: 700; }
+.pr-head h2 { font-size: 21px; margin-top: 4px; }
+.pr-target { margin-left: auto; text-align: right; color: var(--accent); white-space: nowrap; }
+.pr-target .pr-date { font-size: 17px; font-weight: 700; }
+.pr-target .small { color: var(--muted); }
+.pr-target.pr-late { color: var(--red); }
+.pr-target.pr-late .small { color: var(--red); }
+.pr-contains { margin-top: 12px; }
+.pr-gate {
+  margin-top: 14px; padding: 10px 14px; border-left: 3px solid var(--line);
+  background: var(--bg2); border-radius: 0 8px 8px 0; font-size: 13.5px;
+}
+.pr-next h3 { margin-top: 20px; font-size: 14px; }
+.pr-feats { list-style: none; margin-top: 10px; display: flex; flex-direction: column; gap: 9px; }
+.pr-feats li { padding-left: 14px; border-left: 2px solid var(--line); font-size: 13.5px; }
+.pr-feats b { display: block; }
+.pr-later h2 { font-size: 17px; }
+.pr-row {
+  display: flex; gap: 12px; align-items: baseline; padding: 10px 0;
+  border-bottom: 1px solid var(--line); font-size: 13.5px;
+}
+.pr-row:last-child { border-bottom: 0; }
+.pr-rank {
+  color: var(--muted); font-variant-numeric: tabular-nums; min-width: 18px;
+  font-size: 12px; font-weight: 700;
+}

@@ -1,0 +1,28 @@
+{
+  "note": "The release plan, for the Product & Program page. Authored, not derived — a target date and what a future release is thematically about are the CEO's calls, and no repository state implies them. What IS derived stays derived: the last shipped release comes from the git tags, and the next release's feature list comes from hq/data/releases.json by release_id. Written 2026-09-04 as a strawman for the CEO to correct.",
+  "next": {
+    "release_id": "update-1",
+    "name": "Player Update 1",
+    "codename": "v0.2.0",
+    "target_date": "2026-09-12",
+    "contains": "The shop, and the first robot you can teach — the beginning of the delegation arc, plus eleven other things a player would notice."
+  },
+  "planned": [
+    {
+      "name": "Machines that pay for themselves",
+      "contains": "Automation you place and maintain: sprinkler coverage and overlap, upkeep, and the resource loop behind buying a machine — plus the first group-pest skirmishes to spend it on."
+    },
+    {
+      "name": "Towers and waves",
+      "contains": "The tower-defense slice. Towers that start out taking orders and end up running themselves, and waves designed against the simulation rather than by hand."
+    },
+    {
+      "name": "A bot that learns from you",
+      "contains": "The first bot trained on your own recorded sessions, with the overnight training loop running on the tablet itself."
+    },
+    {
+      "name": "The last phase",
+      "contains": "The genre and interface experiments that close the five-phase arc, then content and polish."
+    }
+  ]
+}

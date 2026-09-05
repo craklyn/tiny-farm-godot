@@ -174,6 +174,10 @@ async function route() {
   const parked = surfaceParked(hash);
   try {
     if (parked) $view.replaceChildren(h(surfaceParkedPage(parked)));
+    // Exact routes win over the prefix chain, so a page can claim one address
+    // out of a family — /pillar/product is its own rebuilt page — by
+    // registering it, without this router learning about it.
+    else if (routes[hash]) await routes[hash]();
     else if (hash.startsWith("/project/")) await renderProject(hash.slice("/project/".length));
     else if (hash.startsWith("/entity/")) await renderEntityDetail(hash.slice("/entity/".length));
     else if (hash.startsWith("/sprite/")) await renderSpriteEditor(hash.slice("/sprite/".length));
@@ -186,7 +190,7 @@ async function route() {
     // Guarded: on a direct page-load design.js hasn't registered yet; it
     // re-routes itself once loaded (same dance as its /design route).
     else if (hash.startsWith("/design/doc/") && window.renderDesignDoc) await renderDesignDoc(hash.slice("/design/doc/".length));
-    else await (routes[hash] || renderDashboard)();
+    else await renderDashboard();
   } catch (e) {
     $view.innerHTML = `<div class="card"><b>Something broke:</b> ${esc(e.message)}</div>`;
   } finally {

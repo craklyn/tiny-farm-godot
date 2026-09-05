@@ -3711,6 +3711,44 @@ def _need_href(surface):
     return None
 
 
+def product_plan():
+    """What the Product & Program page shows: when the last release actually
+    went out, what the next one is and when it is meant to go, and what the
+    ones after it are about. Dates and themes are authored (hq/data/
+    release_plan.json) because no repository state implies them; everything
+    else is derived — the shipped tag from git, the next release's features
+    from hq/data/releases.json."""
+    import datetime
+    plan = load_json(os.path.join(DATA, "release_plan.json"))
+    today = datetime.date.today()
+
+    tags = [t for t in run_cmd(["git", "tag", "-l", "v*", "--sort=-creatordate"]).splitlines() if t]
+    last = None
+    if tags:
+        when = (run_cmd(["git", "log", "-1", "--format=%cI", tags[0]]) or "")[:10]
+        last = {"tag": tags[0], "date": when}
+        try:
+            last["days_ago"] = (today - datetime.date.fromisoformat(when)).days
+        except ValueError:
+            last["days_ago"] = None
+
+    nxt = dict(plan.get("next") or {})
+    if nxt:
+        try:
+            nxt["days_away"] = (datetime.date.fromisoformat(nxt["target_date"]) - today).days
+        except (KeyError, ValueError):
+            nxt["days_away"] = None
+        rel = next((r for r in load_json(os.path.join(DATA, "releases.json"))["releases"]
+                    if r["id"] == nxt.get("release_id")), None)
+        if rel:
+            nxt["definition_of_done"] = rel.get("definition_of_done", "")
+            nxt["features"] = [{"headline": f.get("headline", ""),
+                                "for_players": f.get("for_players", "")}
+                               for f in rel.get("features", [])]
+    return {"last_shipped": last, "next": nxt, "planned": plan.get("planned", []),
+            "today": today.isoformat()}
+
+
 def parked_routes():
     """Routes the CEO has switched off (hq/data/surface.json). The front end
     reads the same file; the server needs it so that anything it WRITES for him
@@ -4291,6 +4329,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, {"rows": read_history(q.get("name", ["runs"])[0])})
             if path == "/api/pillars":
                 return self._send(200, load_json(os.path.join(DATA, "pillars.json")))
+            if path == "/api/product":
+                return self._send(200, product_plan())
             if path == "/api/surface":
                 return self._send(200, load_json(os.path.join(DATA, "surface.json")))
             if path == "/api/runs":
