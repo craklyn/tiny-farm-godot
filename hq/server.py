@@ -3821,6 +3821,84 @@ def save_product_plan(payload):
     return product_plan()
 
 
+GOAL_AREA_RE = re.compile(r"^[a-z][a-z0-9_-]{0,30}$")
+
+
+def _goal_slug(text):
+    slug = re.sub(r"[^a-z0-9]+", "-", str(text).lower()).strip("-")
+    return slug[:60].strip("-") or "goal"
+
+
+def _write_goals(area, doc):
+    path = os.path.join(GOALS_DIR, area + ".json")
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(doc, f, ensure_ascii=False, indent=2)
+        f.write("\n")
+    os.replace(tmp, path)
+
+
+def save_goal(payload):
+    """Write or rewrite one goal. The CEO writes the words, who carries it and
+    how much it matters. A machine check is a separate job for a work session,
+    so a goal written here declares itself unchecked — which the evaluator
+    already renders honestly as 'not monitored yet' and counts against the
+    area's assurance rather than reading green."""
+    area = str(payload.get("area", ""))
+    if not GOAL_AREA_RE.match(area):
+        return {"error": "unknown area"}
+    path = os.path.join(GOALS_DIR, area + ".json")
+    if not os.path.isfile(path):
+        return {"error": "unknown area"}
+    statement = str(payload.get("statement", "")).strip()
+    if not statement:
+        return {"error": "a goal needs to say what has to be true"}
+    owner = str(payload.get("owner", "")).strip()
+    if not owner:
+        return {"error": "a goal needs an owner"}
+    severity = payload.get("severity")
+    if severity not in ("blocking", "important", "watch"):
+        severity = "important"
+    why = str(payload.get("why_it_matters", "")).strip()
+    short = str(payload.get("statement_short", "")).strip() or statement
+    doc = load_json(path)
+    gid = str(payload.get("id") or "").strip() or _goal_slug(statement)
+    existing = next((g for g in doc["goals"] if g.get("id") == gid), None)
+    if existing:
+        existing.update({"statement": statement, "statement_short": short,
+                         "owner": owner, "severity": severity, "why_it_matters": why})
+    else:
+        doc["goals"].append({
+            "id": gid, "statement": statement, "statement_short": short,
+            "owner": owner, "severity": severity, "unit": "state",
+            "why_it_matters": why,
+            "measure": {"kind": "unchecked",
+                        "reason": "nothing measures this yet",
+                        "would_need": ""},
+            "path_to_green": {"narrative": "", "owner": owner},
+            "history": {"record": False, "chart": False},
+        })
+    _write_goals(area, doc)
+    return {"ok": True, "id": gid, "area": area}
+
+
+def delete_goal(payload):
+    area = str(payload.get("area", ""))
+    gid = str(payload.get("id", ""))
+    if not GOAL_AREA_RE.match(area):
+        return {"error": "unknown area"}
+    path = os.path.join(GOALS_DIR, area + ".json")
+    if not os.path.isfile(path):
+        return {"error": "unknown area"}
+    doc = load_json(path)
+    before = len(doc["goals"])
+    doc["goals"] = [g for g in doc["goals"] if g.get("id") != gid]
+    if len(doc["goals"]) == before:
+        return {"error": "no goal with that name here"}
+    _write_goals(area, doc)
+    return {"ok": True}
+
+
 def parked_routes():
     """Routes the CEO has switched off (hq/data/surface.json). The front end
     reads the same file; the server needs it so that anything it WRITES for him
@@ -4449,6 +4527,10 @@ class Handler(BaseHTTPRequestHandler):
             payload = json.loads(self.rfile.read(length) or b"{}")
         except Exception:
             return self._send(400, {"error": "bad JSON"})
+        if path == "/api/goal/save":
+            return self._send(200, save_goal(payload))
+        if path == "/api/goal/delete":
+            return self._send(200, delete_goal(payload))
         if path == "/api/product/plan":
             return self._send(200, save_product_plan(payload))
         if path == "/api/standup":

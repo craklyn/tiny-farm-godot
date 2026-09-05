@@ -30,7 +30,8 @@
     "/program": {
       "title": "Program Report",
       "since": "2026-09-04",
-      "reason": "The report is laid out around the six reporting lines and a release plan drawn before you had settled what the studio is doing, so it is off until it is rebuilt. The projects it listed are still reachable from the items on your dashboard."
+      "reason": "The report is laid out around the six reporting lines and a release plan drawn before you had settled what the studio is doing, so it is off until it is rebuilt. The goals page beneath it is live, and the projects it listed are still reachable from the items on your dashboard.",
+      "exact": true
     },
     "/maps": {
       "title": "Map Editor",

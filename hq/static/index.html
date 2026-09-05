@@ -30,7 +30,14 @@
     </div>
     <a href="#/org" data-route="/org"><span>🧑‍🤝‍🧑</span> Org Chart</a>
     <a href="#/entities" data-route="/entities"><span>🐔</span> Entities</a>
-    <a href="#/program" data-route="/program"><span>🗂️</span> Program Report</a>
+    <div class="nav-group" data-grp="program">
+      <a href="#/program" data-route="/program"><span>🗂️</span> Program Report</a>
+      <!-- One child and no caret: folding a single row saves nothing and hides
+           the only live page in this section. -->
+      <div class="nav-sub nav-exc">
+        <a href="#/program/goals" data-route="/program/goals">🎯 Goals</a>
+      </div>
+    </div>
     <a href="#/playtests" data-route="/playtests"><span>🧪</span> Playtests</a>
     <a href="#/design" data-route="/design"><span>🎨</span> Design Studio</a>
     <a href="#/maps" data-route="/maps"><span>🗺️</span> Map Editor</a>
@@ -58,6 +65,7 @@
 <script src="/static/playtests.js"></script>
 <script src="/static/app.js"></script>
 <script src="/static/product.js"></script>
+<script src="/static/goals.js"></script>
 <script src="/static/design.js"></script>
 <script src="/static/work.js"></script>
 </body>

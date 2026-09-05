@@ -19,13 +19,15 @@ const surfaceReady = fetch("/api/surface")
   .catch(() => surfaceCfg);
 
 /* Longest match wins, and parking a route parks everything under it:
-   "/pillar/art" also parks "/pillar/art/whatever". */
+   "/pillar/art" also parks "/pillar/art/whatever". An entry marked `exact`
+   parks only itself, which is how a section can be off while a page beneath it
+   stays on — the program report is off, its goals page is not. */
 function surfaceParked(route) {
   const r = String(route || "").replace(/^#/, "");
   if (!r.startsWith("/")) return null;
   let best = null;
   for (const key of Object.keys(surfaceCfg.parked || {})) {
-    if (r !== key && !r.startsWith(key + "/")) continue;
+    if (r !== key && (surfaceCfg.parked[key].exact || !r.startsWith(key + "/"))) continue;
     if (!best || key.length > best.key.length) best = Object.assign({ key }, surfaceCfg.parked[key]);
   }
   return best;
