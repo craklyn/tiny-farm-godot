@@ -56,7 +56,11 @@ function md(src) {
 const sheets = {};
 function getSheet(src) {
   if (!sheets[src]) {
-    sheets[src] = new Promise(res => { const img = new Image(); img.onload = () => res(img); img.src = "/" + src; });
+    // Cache-busted: these are fetched by the app after page load, so a hard
+    // refresh never touches them — an hour-stale sheet survived exactly that
+    // way (2026-09-07). The promise memoizes, so it is one fetch per sheet
+    // per page load regardless.
+    sheets[src] = new Promise(res => { const img = new Image(); img.onload = () => res(img); img.src = "/" + src + "?v=" + Date.now(); });
   }
   return sheets[src];
 }
