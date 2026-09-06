@@ -2708,8 +2708,8 @@ def _state_from(reading, compare):
 # `amber` no longer means "between the bar and the target" — there is no such
 # band any more. It means failing WITH someone on it, which is why it sits
 # above red: the CEO's move is only needed on the ones nobody is holding.
-_STATE_RANK = {"red": 0, "broken": 1, "amber": 2, "paused": 3,
-               "unchecked": 4, "attested": 5, "green": 6}
+_STATE_RANK = {"red": 0, "broken": 1, "amber": 2,
+               "unchecked": 3, "attested": 4, "green": 5}
 
 
 def _composite_state(reading, compare):
@@ -3081,9 +3081,12 @@ def _goal_response(goal, state, reading):
     """Whether a failure is red or amber is a fact about US, not about the
     reading (the CEO's ruling, 2026-09-05). Failing with a seat holding it and
     a date it has not passed is amber — he is waiting, not acting. Failing with
-    nobody on it, or with the date run out, is red — his move. A pause is a
-    third thing: a failure he has accepted, time-boxed, which reads quiet and
-    says why until its date passes."""
+    nobody on it, or with the date run out, is red — his move.
+
+    There is no third, quieter state. Planned downtime is not an exception to
+    the goal, it is a failure of it that happens to be planned: on schedule it
+    is amber like any other held failure, and off schedule it is red like any
+    other broken promise. The plan goes in the commitment's own words."""
     import datetime
     today = datetime.date.today()
 
@@ -3094,16 +3097,8 @@ def _goal_response(goal, state, reading):
             return None
 
     url = (reading or {}).get("url")
-    sit = {"who": None, "doing": "", "until": None, "lapsed": False, "note": "",
+    sit = {"who": None, "doing": "", "until": None, "lapsed": False,
            "link": {"label": "See the run", "href": url} if url else None}
-
-    pause = goal.get("paused")
-    if pause:
-        p_until = until_of(pause)
-        if p_until is None or p_until >= today:
-            sit["note"] = str(pause.get("note", ""))
-            sit["until"] = p_until.isoformat() if p_until else None
-            return "paused", sit
 
     if state != "red":
         return state, sit
@@ -4076,29 +4071,6 @@ def set_commitment(payload):
     return {"ok": True}
 
 
-def set_pause(payload):
-    """A failure he has accepted, time-boxed, with the reason in his own words —
-    planned downtime, a migration. It reads quiet and says why until its date
-    passes, and then the goal speaks for itself again. Sending no note clears
-    it."""
-    doc, goal, err = _goal_at(str(payload.get("area", "")), str(payload.get("id", "")))
-    if err:
-        return err
-    note = str(payload.get("note", "")).strip()
-    if not note:
-        goal.pop("paused", None)
-    else:
-        until = str(payload.get("until", "")).strip()
-        try:
-            import datetime
-            datetime.date.fromisoformat(until)
-        except ValueError:
-            return {"error": "a pause needs a date it runs to"}
-        goal["paused"] = {"note": note, "until": until}
-    _write_goals(payload["area"], doc)
-    return {"ok": True}
-
-
 def park_goal(payload):
     """Take one goal out of every reading, or put it back. Nothing is deleted:
     the record keeps its wording, owner and measurement so it can be compared
@@ -4777,8 +4749,6 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, save_goal(payload))
         if path == "/api/goal/commitment":
             return self._send(200, set_commitment(payload))
-        if path == "/api/goal/pause":
-            return self._send(200, set_pause(payload))
         if path == "/api/goal/park":
             return self._send(200, park_goal(payload))
         if path == "/api/goal/delete":

@@ -101,12 +101,8 @@ function glStatus(g, org) {
   const by = sit.who
     ? `<b>${esc(sit.who.label)}</b>${holder ? ` (<a class="plain" data-person="${esc(holder.id)}">${esc(holder.name)}</a>)` : ""}`
     : "";
-  const doing = sit.doing ? `, ${esc(sit.doing)}` : "";
+  const doing = sit.doing ? ` — ${esc(sit.doing)}` : "";
 
-  if (g.state === "paused") {
-    return `Paused${sit.until ? ` until ${esc(surfaceDate(sit.until))}` : ""}${
-      sit.note ? `: ${esc(sit.note)}` : "."}${detail}`;
-  }
   if (g.state === "green" || g.state === "attested") return `Holding${detail || "."}`;
   if (g.state === "unchecked") {
     const need = (g.measure || {}).would_need;
@@ -115,47 +111,43 @@ function glStatus(g, org) {
   }
   if (g.state === "broken") return `The check could not run${detail}.${link}`;
   if (g.state === "amber") {
-    return `Failing${detail}. ${by} is on it${doing}${
-      sit.until ? `, until ${esc(surfaceDate(sit.until))}` : ""}.${link}`;
+    return `Failing${detail}. ${by} has it${
+      sit.until ? ` until ${esc(surfaceDate(sit.until))}` : ""}${doing}.${link}`;
   }
   // red
   if (sit.lapsed) {
-    return `Failing${detail}. ${by} was holding it${
+    return `Failing${detail}. ${by} had it${
       sit.until ? ` until ${esc(surfaceDate(sit.until))}` : " with no date set"
-    }, and that has run out with no update — it is back with you.${link}`;
+    }, and that has passed with no update — it is back with you.${link}`;
   }
   return `Failing${detail}. Nobody is holding it.${link}`;
 }
 
-/* Saying who is holding a failing goal, or that its failure is accepted for
-   now. Both carry a date, because both are promises and a promise with no end
-   is how amber turns into a place failures are forgotten. */
-function glSitForm(area, g, kind, seats) {
-  const hold = g.commitment || {}, pause = g.paused || {};
-  const body = kind === "commitment"
-    ? `<div class="gl-form-row">
+/* Who is holding a failing goal, what they are doing about it, and until when.
+   Planned work goes here too — "planned downtime while migrating file formats"
+   is a plan like any other, and it keeps the goal amber only for as long as it
+   runs to schedule. The date is not optional: a promise with no end is how
+   amber turns into a place failures are forgotten. */
+function glSitForm(area, g, seats) {
+  const hold = g.commitment || {};
+  const body = `<div class="gl-form-row">
          <label>Which seat is on it
            <select name="seat">${seats.filter(st => st.id !== "unassigned").map(st =>
              `<option value="${esc(st.id)}" ${st.id === hold.seat ? "selected" : ""}>${esc(st.label)}</option>`).join("")}</select></label>
          <label>Holding it until
            <input name="until" type="date" required value="${esc(hold.until || "")}"></label>
        </div>
-       <label>What they are doing
-         <input name="doing" type="text" value="${esc(hold.doing || "")}" placeholder="Under triage"></label>
+       <label>What is being done about it
+         <input name="doing" type="text" value="${esc(hold.doing || "")}"
+                placeholder="under triage — or, planned downtime while migrating file formats"></label>
        <label>Link to the evidence, if there is one
-         <input name="href" type="text" value="${esc((hold.link || {}).href || "")}" placeholder="https://..."></label>`
-    : `<label>Why it is paused
-         <input name="note" type="text" required value="${esc(pause.note || "")}"
-                placeholder="planned downtime while migrating file formats"></label>
-       <label>Paused until
-         <input name="until" type="date" required value="${esc(pause.until || "")}"></label>`;
-  const set = kind === "commitment" ? !!g.commitment : !!g.paused;
-  return `<form class="gl-form" data-kind="${kind}" data-area="${esc(area)}" data-id="${esc(g.id)}">
+         <input name="href" type="text" value="${esc((hold.link || {}).href || "")}" placeholder="https://..."></label>`;
+  return `<form class="gl-form" data-kind="commitment" data-area="${esc(area)}" data-id="${esc(g.id)}">
     ${body}
     <div class="gl-form-btns">
       <button type="submit">Save</button>
       <button type="button" class="ghost" data-cancel>Cancel</button>
-      ${set ? `<button type="button" class="linkbtn gl-remove" data-clear>Clear it</button>` : ""}
+      ${g.commitment ? `<button type="button" class="linkbtn gl-remove" data-clear>Clear it</button>` : ""}
       <span class="gl-err small"></span>
     </div>
   </form>`;
@@ -178,11 +170,10 @@ function glRow(area, g, seats, org) {
       <div class="gl-field"><span class="gl-label">Status summary</span>${glStatus(g, org)}</div>
       <div class="gl-field"><span class="gl-label">Matters</span>${esc(sev)}${
         g.why_it_matters ? ` — ${esc(g.why_it_matters)}` : ""}</div>
-      ${glSituating === area + ":" + g.id + ":commitment" ? glSitForm(area, g, "commitment", seats)
-        : glSituating === area + ":" + g.id + ":pause" ? glSitForm(area, g, "pause", seats)
+      ${glSituating === area + ":" + g.id
+        ? glSitForm(area, g, seats)
         : `<div class="gl-detail-btns">
-        <button class="linkbtn" data-sit="commitment">${g.commitment ? "change who is on it" : "say who is on it"}</button>
-        <button class="linkbtn" data-sit="pause">${g.paused ? "change the pause" : "pause it"}</button>
+        <button class="linkbtn" data-sit>${g.commitment ? "change who is on it" : "say who is on it"}</button>
         <button class="linkbtn" data-edit>edit this goal</button>
         <button class="linkbtn" data-park>park it</button>
         <button class="linkbtn gl-remove" data-del>drop it</button>
@@ -267,7 +258,7 @@ async function renderGoals() {
   }));
   $view.querySelectorAll("[data-sit]").forEach(b => b.addEventListener("click", () => {
     const row = b.closest(".gl-row");
-    glSituating = `${row.dataset.area}:${row.dataset.id}:${b.dataset.sit}`;
+    glSituating = `${row.dataset.area}:${row.dataset.id}`;
     renderGoals();
   }));
   const goalPost = (path, body) => fetch(path, {
@@ -303,13 +294,11 @@ async function renderGoals() {
     f.addEventListener("submit", ev => {
       ev.preventDefault();
       const d = Object.fromEntries(new FormData(f).entries());
-      sitPost(f, f.dataset.kind === "commitment"
-        ? { seat: d.seat, until: d.until, doing: d.doing, link: { href: d.href, label: "See it" } }
-        : { note: d.note, until: d.until });
+      sitPost(f, { seat: d.seat, until: d.until, doing: d.doing,
+                   link: { href: d.href, label: "See it" } });
     });
     const clear = f.querySelector("[data-clear]");
-    if (clear) clear.addEventListener("click", () => sitPost(f, f.dataset.kind === "commitment"
-      ? { seat: "" } : { note: "" }));
+    if (clear) clear.addEventListener("click", () => sitPost(f, { seat: "" }));
   });
   $view.querySelectorAll(".gl-form:not([data-kind])").forEach(f => f.addEventListener("submit", async ev => {
     ev.preventDefault();

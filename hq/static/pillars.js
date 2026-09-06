@@ -38,12 +38,13 @@ const LEVEL_META = {
    CEO's ruling, 2026-09-05). Red is his move — failing with nobody holding it,
    or a promise that ran out. Amber is failing with somebody on it and a date
    they have not passed: he is waiting, not acting. There is no measured band
-   between healthy and unhealthy any more; a goal is met or it is not. */
+   between healthy and unhealthy any more; a goal is met or it is not. Nor is
+   there a quiet third state: planned downtime is a failure of the goal that
+   happens to be planned, so it is amber on schedule and red off it. */
 const GOAL_META = {
   red: { dcls: "d-fire", word: "failing" },
   broken: { dcls: "d-broken", word: "could not be checked" },
   amber: { dcls: "d-attn", word: "failing, someone is on it" },
-  paused: { dcls: "d-dorm", word: "paused by you" },
   unchecked: { dcls: "d-unchecked", word: "not monitored yet" },
   attested: { dcls: "d-attested", word: "verified by you" },
   green: { dcls: "d-ok", word: "holding" },
