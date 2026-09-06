@@ -169,7 +169,7 @@
       "owner": "vp-engineering",
       "severity": "blocking",
       "unit": "state",
-      "why_it_matters": "A game that doesn't work can't be released.  Failed builds gate releasing.",
+      "why_it_matters": "A game that doesn't work can't be released.  Failed builds block releasing.",
       "measure": {
         "kind": "ci_state",
         "field": "newest_completed"
