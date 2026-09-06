@@ -395,9 +395,10 @@ async function renderSpriteEditor(path) {
     // On a cell of the selected animation, the ghost is the frame the eye saw a
     // moment earlier in that animation (for a set of poses, the neighbouring
     // pose — the stance to stay consistent with); anywhere else on the sheet it
-    // is the cell to the left.
-    if (onion && frames.length > 1 && !playing) {
-      const k = curClip.assembled ? -1 : curClip.cells.indexOf(cur);
+    // is the cell to the left. An assembled clip gets no ghost at all: a part
+    // has no "previous frame", and its reference is the assembled live preview.
+    if (onion && frames.length > 1 && !playing && !curClip.assembled) {
+      const k = curClip.cells.indexOf(cur);
       const prev = (k >= 0 && curClip.cells.length > 1)
         ? curClip.cells[(k - 1 + curClip.cells.length) % curClip.cells.length]
         : (cur - 1 + frames.length) % frames.length;
@@ -636,6 +637,14 @@ async function renderSpriteEditor(path) {
     if (jump && cl.cells.length && !cl.cells.includes(cur)) cur = cl.cells[0];
     syncClips();
     syncPlayBtn();
+    // The onion skin has nothing true to show on an assembled clip.
+    const onionBox = document.getElementById("sp-onion");
+    if (onionBox) {
+      onionBox.disabled = cl.assembled;
+      onionBox.parentElement.title = cl.assembled
+        ? "A part of an assembly has no previous frame — the reference is the live preview." : "";
+      onionBox.parentElement.style.opacity = cl.assembled ? ".45" : "";
+    }
     startPreview();
     const note = document.getElementById("sp-pv-note");
     if (note) {

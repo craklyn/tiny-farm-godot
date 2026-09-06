@@ -174,16 +174,15 @@
           "frame_names": ["head", "body", "tail", "body (vertical) / joint"],
           "fps": 2,
           "anims": [
-            {"id": "crawl", "label": "crawling", "fps": 2, "frames": [
-              {"parts": [{"f": 2, "dx": 0, "dy": 0}, {"f": 1, "dx": 1, "dy": 0}, {"f": 0, "dx": 2, "dy": 0}]},
-              {"parts": [{"f": 2, "dx": 0, "dy": 0}, {"f": 3, "dx": 1, "dy": 0, "rot": 90}, {"f": 0, "dx": 2, "dy": 0}]}
+            {"id": "straight", "label": "moving straight", "kind": "stills", "frames": [
+              {"parts": [{"f": 2, "dx": 0, "dy": 0}, {"f": 1, "dx": 1, "dy": 0}, {"f": 0, "dx": 2, "dy": 0}]}
             ]},
             {"id": "bend", "label": "turning a corner", "kind": "stills", "frames": [
               {"parts": [{"f": 2, "dx": 0, "dy": 0}, {"f": 1, "dx": 1, "dy": 0}, {"f": 3, "dx": 2, "dy": 0},
                          {"f": 3, "dx": 2, "dy": 1}, {"f": 0, "dx": 2, "dy": 2, "rot": 90}]}
             ]}
           ],
-          "layout": "Head, body, tail, vertical-body/joint parts, assembled one per occupied tile (the only multi-cell actor). Directional parts mirror leftward and rotate 90° for vertical travel; a bend draws the symmetric cell as a knuckle. The preview shows a bent worm exactly as the game renderer assembles it.",
+          "layout": "Head, body, tail, vertical-body/joint parts, assembled one per occupied tile (the only multi-cell actor). Directional parts mirror leftward and rotate 90° for vertical travel; a bend draws the symmetric cell as a knuckle. A moving worm has no texture animation — each segment takes the tile of the one ahead, so seen in his own frame he looks constant and motion is purely positional; the two poses here are the shapes he holds.",
           "sounds": [],
           "code": ["entities/worm.gd", "systems/sim/brains/worm_brain.gd"],
           "facts": {"Speed": "6 px/s", "Grows": "+1 segment per crop eaten", "Starts at": "2 segments", "Bends": "joint cell at corners; head/tail rotate for vertical travel"}
