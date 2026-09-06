@@ -99,7 +99,35 @@ function glRow(area, g, org) {
         g.why_it_matters ? ` — ${esc(g.why_it_matters)}` : ""}</div>
       <div class="gl-detail-btns">
         <button class="linkbtn" data-edit>edit this goal</button>
-        <button class="linkbtn gl-remove" data-del>remove it</button>
+        <button class="linkbtn" data-park>park it</button>
+        <button class="linkbtn gl-remove" data-del>drop it</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* A parked goal is out of every reading but keeps its record, so this row
+   shows what it would need to be judged against a new one: what it claimed,
+   who carried it, and why it was written. Nothing measures it, so there is no
+   state to draw. */
+function glParkedRow(area, g, org) {
+  const owner = org.employees.find(e => e.id === g.owner);
+  return `<div class="gl-row gl-parked" data-area="${esc(area)}" data-id="${esc(g.id)}">
+    <button class="gl-head" data-open aria-expanded="false">
+      <i class="dot d-dorm" title="parked"></i>
+      <span class="gl-statement">${esc(g.statement)}</span>
+      <span class="gl-caret">▸</span>
+    </button>
+    <div class="gl-detail" hidden>
+      <div class="gl-field"><span class="gl-label">Was carried by</span>${owner
+        ? `<a class="plain" data-person="${esc(g.owner)}">${esc(owner.name)}</a> — ${esc(owner.title)}`
+        : "nobody"}</div>
+      ${g.why_it_matters ? `<div class="gl-field"><span class="gl-label">Why it was written</span>${esc(g.why_it_matters)}</div>` : ""}
+      <div class="gl-field"><span class="gl-label">Parked</span>${esc(g.parked_on || "")}</div>
+      <div class="gl-detail-btns">
+        <button class="linkbtn" data-unpark>bring it back as it is</button>
+        <button class="linkbtn" data-edit>rewrite it and bring it back</button>
+        <button class="linkbtn gl-remove" data-del>drop it</button>
       </div>
     </div>
   </div>`;
@@ -115,17 +143,24 @@ async function renderGoals() {
     These are what every area's status is worked out from — an area with no goals is an
     area nothing can be said about. A goal you write here has nothing measuring it yet, so
     it reads "not monitored yet" until a check is built for it, and it never reads green
-    on its own.</p>
+    on its own. Parked goals are kept, not deleted: they are out of every reading, and
+    each one waits to be brought back, rewritten, or dropped.</p>
     ${pillars.pillars.map(p => {
       const a = areas[p.id] || { goals: [] };
-      const goals = a.goals || [];
+      const goals = a.goals || [], parked = a.parked || [];
       return `<section class="gl-area" data-area="${esc(p.id)}">
         <h2>${p.emoji} ${esc(p.name)} <span class="small muted">${goals.length
-          ? `${goals.length} goal${goals.length === 1 ? "" : "s"}` : "no goals yet"}</span></h2>
+          ? `${goals.length} goal${goals.length === 1 ? "" : "s"}`
+          : "measured on nothing"}</span></h2>
         <div class="gl-list">${goals.map(g => glEditing === p.id + ":" + g.id
           ? glForm(p.id, g, org) : glRow(p.id, g, org)).join("")}</div>
         ${glEditing === p.id + ":" ? glForm(p.id, {}, org)
           : `<button class="linkbtn gl-add" data-add="${esc(p.id)}">+ write a goal for this area</button>`}
+        ${parked.length ? `<details class="gl-parkfold">
+          <summary>Parked — ${parked.length} goal${parked.length === 1 ? "" : "s"} this area used to be measured on</summary>
+          <div class="gl-list">${parked.map(g => glEditing === p.id + ":" + g.id
+            ? glForm(p.id, g, org) : glParkedRow(p.id, g, org)).join("")}</div>
+        </details>` : ""}
       </section>`;
     }).join("")}
   `));
@@ -145,6 +180,17 @@ async function renderGoals() {
   }));
   $view.querySelectorAll("[data-cancel]").forEach(b => b.addEventListener("click", () => {
     glEditing = null; renderGoals();
+  }));
+  const goalPost = (path, body) => fetch(path, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  $view.querySelectorAll("[data-park], [data-unpark]").forEach(b => b.addEventListener("click", async () => {
+    const row = b.closest(".gl-row");
+    await goalPost("/api/goal/park", {
+      area: row.dataset.area, id: row.dataset.id, parked: b.hasAttribute("data-park"),
+    });
+    renderGoals();
   }));
   $view.querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", async () => {
     const row = b.closest(".gl-row");

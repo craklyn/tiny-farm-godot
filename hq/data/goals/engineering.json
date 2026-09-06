@@ -42,7 +42,9 @@
         "record": true,
         "chart": false
       },
-      "signal_key": "ci_main"
+      "signal_key": "ci_main",
+      "parked": true,
+      "parked_on": "2026-09-05"
     },
     {
       "id": "ci-is-not-leaking",
@@ -72,7 +74,9 @@
       "history": {
         "record": true,
         "chart": true
-      }
+      },
+      "parked": true,
+      "parked_on": "2026-09-05"
     },
     {
       "id": "local-proofs-pass",
@@ -168,7 +172,9 @@
       "history": {
         "record": true,
         "chart": false
-      }
+      },
+      "parked": true,
+      "parked_on": "2026-09-05"
     },
     {
       "id": "proofs-are-fresh",
@@ -241,7 +247,9 @@
       "history": {
         "record": true,
         "chart": false
-      }
+      },
+      "parked": true,
+      "parked_on": "2026-09-05"
     },
     {
       "id": "determinism-invariants",
@@ -325,7 +333,9 @@
       "history": {
         "record": true,
         "chart": false
-      }
+      },
+      "parked": true,
+      "parked_on": "2026-09-05"
     },
     {
       "id": "replay-corpus-usable",
@@ -357,7 +367,9 @@
         "record": true,
         "chart": false
       },
-      "signal_key": "fresh-session"
+      "signal_key": "fresh-session",
+      "parked": true,
+      "parked_on": "2026-09-05"
     }
   ],
   "scoreboard_title": "Where my areas stand"

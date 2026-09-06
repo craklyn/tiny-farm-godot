@@ -43,7 +43,9 @@
       "escalates": {
         "reason": "external_commitment",
         "because": "The store page is the only description of this game that people outside the studio read, and it is currently promising them something the build does not do."
-      }
+      },
+      "parked": true,
+      "parked_on": "2026-09-05"
     },
     {
       "id": "wake-trigger-written",
@@ -96,7 +98,9 @@
       "history": {
         "record": false,
         "chart": false
-      }
+      },
+      "parked": true,
+      "parked_on": "2026-09-05"
     },
     {
       "id": "nothing-goes-public-without-your-yes",
@@ -136,7 +140,9 @@
       "escalates": {
         "reason": "exposure",
         "because": "If this ever fails, something can reach players without you having said yes to it."
-      }
+      },
+      "parked": true,
+      "parked_on": "2026-09-05"
     },
     {
       "id": "we-would-find-out",
@@ -175,7 +181,9 @@
       "history": {
         "record": false,
         "chart": false
-      }
+      },
+      "parked": true,
+      "parked_on": "2026-09-05"
     },
     {
       "id": "store-copy-is-current",
@@ -207,7 +215,9 @@
       "escalates": {
         "reason": "external_commitment",
         "because": "Strangers are reading this page right now; a page that describes an older build is a promise we are still making."
-      }
+      },
+      "parked": true,
+      "parked_on": "2026-09-05"
     },
     {
       "id": "the-farming-loop-needs-no-reading",
@@ -233,7 +243,9 @@
       "history": {
         "record": false,
         "chart": false
-      }
+      },
+      "parked": true,
+      "parked_on": "2026-09-05"
     }
   ],
   "scoreboard_title": "Every marketing goal, worst first"

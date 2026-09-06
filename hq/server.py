@@ -246,7 +246,7 @@ def check_consistency():
         people = {e["id"] for e in load_org()["employees"]}
         for pl in pillars:
             doc = load_goals(pl["id"]) or {}
-            for g in doc.get("goals", []):
+            for g in live_goals(doc):
                 if not g.get("measure"):
                     note(f"goal {pl['id']}/{g.get('id')} declares no measurement — "
                          "a statement with no measurement is a wish, not a goal")
@@ -3089,7 +3089,19 @@ def load_goals(pillar_id):
         return None
 
 
-def rollup(pillar_id, goals, dormant_decl, pillar_name=""):
+def live_goals(doc):
+    """The goals an area is actually measured on. A parked goal keeps its
+    record — its wording, its owner, its measurement — but is out of every
+    reading until it is brought back or dropped, so the CEO can empty an area
+    and rebuild it a goal at a time without losing what was there."""
+    return [g for g in (doc or {}).get("goals", []) if not g.get("parked")]
+
+
+def parked_goals(doc):
+    return [g for g in (doc or {}).get("goals", []) if g.get("parked")]
+
+
+def rollup(pillar_id, goals, dormant_decl, pillar_name="", parked_n=0):
     """Goal states -> the pillar's level, its reasons, and its queue entries.
 
     Three things this gets right that a naive 'red else ok' would not:
@@ -3146,7 +3158,12 @@ def rollup(pillar_id, goals, dormant_decl, pillar_name=""):
                        f"{'it is' if n == 1 else 'they are'} ours, not yours — "
                        + ours[0]["statement_short"]
                        + (", and the rest are on the pillar's page." if n > 1 else "."))
-    if yours:
+    if not goals and parked_n:
+        # Nothing live to describe, so describe the actual situation rather
+        # than falling through to a sentence about zero of zero.
+        reasons = [f"Every goal here is parked — {parked_n} of them, waiting to be "
+                   "rewritten or dropped. Nothing about this area is being measured."]
+    elif yours:
         # His reasons first, and never more than two: the rest of what is wrong
         # is on the pillar's own page, which is where somebody looking for it
         # goes. A pillar whose problems are all ours says so plainly instead of
@@ -3198,7 +3215,10 @@ def rollup(pillar_id, goals, dormant_decl, pillar_name=""):
                       "name": pillar_name or pillar_id,
                       "href": f"#/pillar/{pillar_id}",
                       "signal_key": f"{pillar_id}:ours"})
-    if level == "unassured" and not yours:
+    # An area he emptied on purpose does not get its own row: five identical
+    # rows saying "nothing is measured here" is noise about a state he created,
+    # and compute_signals says it once instead, pointing at the goals page.
+    if level == "unassured" and not yours and goals:
         notes.append({"kind": "watch", "pillar": pillar_id, "text": reasons[0],
                       "href": f"#/pillar/{pillar_id}",
                       "signal_key": f"{pillar_id}:unassured"})
@@ -3382,18 +3402,21 @@ def _compute_signals_now():
     # the nav dots, the standup brief and the chat personas all read it — and
     # gains additive fields (dormant, assured, total, red_count) that only the
     # new bands look at.
-    status, all_goals, watch_notes = {}, {}, []
+    status, all_goals, watch_notes, emptied = {}, {}, [], []
     for p in pillars:
         pid = p["id"]
         doc = load_goals(pid) or {}
-        evaluated = [eval_goal(g) for g in doc.get("goals", [])]
+        evaluated = [eval_goal(g) for g in live_goals(doc)]
+        parked = parked_goals(doc)
         # Worst first, so the page, the reasons and the queue agree on what matters.
         evaluated.sort(key=lambda g: (_STATE_RANK[g["state"]],
                                       0 if g.get("severity") == "blocking" else
                                       1 if g.get("severity") == "important" else 2))
-        roll, notes = rollup(pid, evaluated, p.get("dormant_by_ruling"), p.get("name"))
+        roll, notes = rollup(pid, evaluated, p.get("dormant_by_ruling"), p.get("name"), len(parked))
+        if not evaluated and parked:
+            emptied.append((p.get("name", pid), len(parked)))
         status[pid] = roll
-        all_goals[pid] = dict(roll, goals=evaluated,
+        all_goals[pid] = dict(roll, goals=evaluated, parked=parked,
                               scoreboard_title=doc.get("scoreboard_title", ""),
                               verdict_template=doc.get("verdict_template", {}),
                               question=p.get("question", ""),
@@ -3514,6 +3537,19 @@ def _compute_signals_now():
                                 if done else "none of it has started — each one wants your yes"),
                     "text": f"{len(verdicts)} piece(s) of work want your verdict.",
                     "href": "#/work"})
+
+    if emptied:
+        n_goals = sum(n for _, n in emptied)
+        eye.append({
+            "kind": "info", "pillar": "product",
+            "headline": (f"{len(emptied)} area{'' if len(emptied) == 1 else 's'} of the studio "
+                         f"are measured on nothing — {n_goals} goal"
+                         f"{'' if n_goals == 1 else 's'} are parked"),
+            "why_you": "you parked them to rebuild them one at a time; each waits to be "
+                       "brought back, rewritten or dropped",
+            "text": (f"{n_goals} parked goal(s) across {len(emptied)} area(s); "
+                     "nothing is measuring those areas."),
+            "href": "#/program/goals"})
 
     # One explicit ranking, applied once, rather than an order that falls out of
     # the sequence things happen to be appended in. Fires first — the dashboard
@@ -3867,6 +3903,10 @@ def save_goal(payload):
     if existing:
         existing.update({"statement": statement, "statement_short": short,
                          "owner": owner, "severity": severity, "why_it_matters": why})
+        # Saving a parked goal is how it comes back — that is what "update it
+        # rather than drop it" means at the end of the rebuild.
+        existing.pop("parked", None)
+        existing.pop("parked_on", None)
     else:
         doc["goals"].append({
             "id": gid, "statement": statement, "statement_short": short,
@@ -3880,6 +3920,33 @@ def save_goal(payload):
         })
     _write_goals(area, doc)
     return {"ok": True, "id": gid, "area": area}
+
+
+def park_goal(payload):
+    """Take one goal out of every reading, or put it back. Nothing is deleted:
+    the record keeps its wording, owner and measurement so it can be compared
+    against whatever replaces it."""
+    import datetime
+    area = str(payload.get("area", ""))
+    gid = str(payload.get("id", ""))
+    park = bool(payload.get("parked", True))
+    if not GOAL_AREA_RE.match(area):
+        return {"error": "unknown area"}
+    path = os.path.join(GOALS_DIR, area + ".json")
+    if not os.path.isfile(path):
+        return {"error": "unknown area"}
+    doc = load_json(path)
+    goal = next((g for g in doc["goals"] if g.get("id") == gid), None)
+    if goal is None:
+        return {"error": "no goal with that name here"}
+    if park:
+        goal["parked"] = True
+        goal["parked_on"] = datetime.date.today().isoformat()
+    else:
+        goal.pop("parked", None)
+        goal.pop("parked_on", None)
+    _write_goals(area, doc)
+    return {"ok": True}
 
 
 def delete_goal(payload):
@@ -4529,6 +4596,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(400, {"error": "bad JSON"})
         if path == "/api/goal/save":
             return self._send(200, save_goal(payload))
+        if path == "/api/goal/park":
+            return self._send(200, park_goal(payload))
         if path == "/api/goal/delete":
             return self._send(200, delete_goal(payload))
         if path == "/api/product/plan":

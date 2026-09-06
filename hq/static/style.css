@@ -1264,3 +1264,11 @@ button.linkbtn:hover, button.linkbtn:focus-visible { text-decoration: underline;
 #person-tip .pt-resp { margin: 8px 0 0 16px; font-size: 12px; color: var(--text); }
 #person-tip .pt-resp li { margin-top: 3px; }
 [data-person] { cursor: pointer; border-bottom: 1px dotted var(--line); }
+.gl-parkfold { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 10px; }
+.gl-parkfold summary {
+  cursor: pointer; list-style: none; color: var(--muted); font-size: 12.5px;
+}
+.gl-parkfold summary::-webkit-details-marker { display: none; }
+.gl-parkfold summary::before { content: "▸ "; }
+.gl-parkfold[open] summary::before { content: "▾ "; }
+.gl-parked .gl-statement { color: var(--muted); }

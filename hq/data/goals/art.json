@@ -53,7 +53,9 @@
       "history": {
         "record": true,
         "chart": false
-      }
+      },
+      "parked": true,
+      "parked_on": "2026-09-05"
     },
     {
       "id": "every-sound-is-loaded",
@@ -90,7 +92,9 @@
       "history": {
         "record": true,
         "chart": false
-      }
+      },
+      "parked": true,
+      "parked_on": "2026-09-05"
     },
     {
       "id": "palette-holds",
@@ -130,7 +134,9 @@
       "history": {
         "record": true,
         "chart": true
-      }
+      },
+      "parked": true,
+      "parked_on": "2026-09-05"
     },
     {
       "id": "style-guide-signed",
@@ -166,7 +172,9 @@
       "history": {
         "record": false,
         "chart": false
-      }
+      },
+      "parked": true,
+      "parked_on": "2026-09-05"
     },
     {
       "id": "the-editor-edits-the-sheet",
@@ -192,7 +200,9 @@
       "history": {
         "record": false,
         "chart": false
-      }
+      },
+      "parked": true,
+      "parked_on": "2026-09-05"
     }
   ],
   "scoreboard_title": "Where the art stands"

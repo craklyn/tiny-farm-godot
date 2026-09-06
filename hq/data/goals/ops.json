@@ -61,7 +61,9 @@
       "history": {
         "record": true,
         "chart": false
-      }
+      },
+      "parked": true,
+      "parked_on": "2026-09-05"
     },
     {
       "id": "every-asset-is-ledgered",
@@ -112,7 +114,9 @@
       "escalates": {
         "reason": "exposure",
         "because": "This is about an asset in a build people can already download, whose terms nobody has established."
-      }
+      },
+      "parked": true,
+      "parked_on": "2026-09-05"
     },
     {
       "id": "a-player-can-reach-us",
@@ -159,7 +163,9 @@
       "history": {
         "record": false,
         "chart": false
-      }
+      },
+      "parked": true,
+      "parked_on": "2026-09-05"
     },
     {
       "id": "licences-are-clean",
@@ -190,7 +196,9 @@
       "escalates": {
         "reason": "external_commitment",
         "because": "What we owe here is owed to whoever made the work, and a public build is where we owe it."
-      }
+      },
+      "parked": true,
+      "parked_on": "2026-09-05"
     },
     {
       "id": "every-credential-is-present",
@@ -224,7 +232,9 @@
       "escalates": {
         "reason": "authority",
         "because": "Only you hold these; nobody in the studio can put a key on your machine for you."
-      }
+      },
+      "parked": true,
+      "parked_on": "2026-09-05"
     },
     {
       "id": "model-budget-is-recorded",
@@ -264,7 +274,9 @@
       "history": {
         "record": true,
         "chart": false
-      }
+      },
+      "parked": true,
+      "parked_on": "2026-09-05"
     },
     {
       "id": "ready-to-grow-words",
@@ -303,7 +315,9 @@
       "history": {
         "record": true,
         "chart": false
-      }
+      },
+      "parked": true,
+      "parked_on": "2026-09-05"
     }
   ],
   "scoreboard_title": "Money, obligations, and players"

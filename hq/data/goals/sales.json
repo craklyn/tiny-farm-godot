@@ -39,7 +39,9 @@
       "history": {
         "record": true,
         "chart": false
-      }
+      },
+      "parked": true,
+      "parked_on": "2026-09-05"
     },
     {
       "id": "we-know-what-players-want",
@@ -70,7 +72,9 @@
       "history": {
         "record": true,
         "chart": false
-      }
+      },
+      "parked": true,
+      "parked_on": "2026-09-05"
     },
     {
       "id": "release-enforces-its-own-checklist",
@@ -110,7 +114,9 @@
         "record": true,
         "chart": false
       },
-      "signal_key": "ship_gate"
+      "signal_key": "ship_gate",
+      "parked": true,
+      "parked_on": "2026-09-05"
     },
     {
       "id": "ship-drift",
@@ -141,7 +147,9 @@
       "history": {
         "record": true,
         "chart": true
-      }
+      },
+      "parked": true,
+      "parked_on": "2026-09-05"
     },
     {
       "id": "credits-screen-opens",
@@ -184,7 +192,9 @@
       "escalates": {
         "reason": "external_commitment",
         "because": "The attribution is owed to the person whose work we shipped, and it is owed the moment the build is public — not when we get round to the screen."
-      }
+      },
+      "parked": true,
+      "parked_on": "2026-09-05"
     },
     {
       "id": "release-is-reproducible",
@@ -234,7 +244,9 @@
       "history": {
         "record": false,
         "chart": false
-      }
+      },
+      "parked": true,
+      "parked_on": "2026-09-05"
     },
     {
       "id": "web-build-played-through",
@@ -262,7 +274,9 @@
         "record": false,
         "chart": false
       },
-      "signal_key": "ship_gate"
+      "signal_key": "ship_gate",
+      "parked": true,
+      "parked_on": "2026-09-05"
     },
     {
       "id": "visual-regression-runs",
@@ -299,7 +313,9 @@
         "record": false,
         "chart": false
       },
-      "signal_key": "ship_gate"
+      "signal_key": "ship_gate",
+      "parked": true,
+      "parked_on": "2026-09-05"
     },
     {
       "id": "live-storefronts-still-work",
@@ -333,7 +349,9 @@
       "escalates": {
         "reason": "exposure",
         "because": "Players can reach this storefront today, and a channel we cannot publish to leaves whatever is on it standing."
-      }
+      },
+      "parked": true,
+      "parked_on": "2026-09-05"
     }
   ],
   "scoreboard_title": "Getting the game to players"
