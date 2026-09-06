@@ -1275,7 +1275,9 @@ button.linkbtn:hover, button.linkbtn:focus-visible { text-decoration: underline;
 /* Writing a goal is an action on the area, so it sits with the area's name and
    its count rather than as a row of its own under the list. */
 .gl-plus {
-  width: 19px; height: 19px; border-radius: 50%; flex-shrink: 0;
+  /* padding: 0 is load-bearing — the global button rule's 8px/16px padding sets
+     a minimum width of 32px, which turns the circle into an oval. */
+  width: 20px; height: 20px; padding: 0; border-radius: 50%; flex-shrink: 0;
   background: var(--green); color: var(--bg); border: 0;
   font-size: 15px; font-weight: 700; line-height: 1; cursor: pointer;
   display: inline-flex; align-items: center; justify-content: center;
