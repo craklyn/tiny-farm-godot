@@ -80,6 +80,7 @@ func _init() -> void:
 	
 	test_crop_defs()
 	test_tools()
+	test_rain_wets_fresh_soil()
 	test_player()
 	test_farm()
 	test_integration()
@@ -673,6 +674,39 @@ func test_milestones() -> void:
 	GameState.check_milestones()
 	_assert(not GameState._milestones_earned.has("first_harvest"),
 		"Egg alone does not earn First Harvest (harvest totals exclude eggs)")
+
+func test_rain_wets_fresh_soil() -> void:
+	print("\n--- Rain wets soil bared mid-storm ---")
+	# Reported from play 2026-09-07: on a rainy day, soil tilled mid-day drew
+	# wet (the renderer reads the live weather) but was dry in the sim — so the
+	# router offered water for ground the picture said was soaked. The rule now:
+	# rain falls all day, and soil bared while it rains is wet from the start.
+	var world := SimWorld.new()
+	SimRng.reseed(11)
+	world.generate()
+	GameState.energy = Tools.DAY_UNITS
+	GameState.max_energy = Tools.DAY_UNITS
+	GameState.seeds = { "wheat": 2 }
+	GameState.weather = "rainy"
+
+	var t := Vector2i(5, 5)
+	world.tiles[t.y][t.x] = { "state": "cleared", "crop_type": "", "growth_stage": 0, "watered_today": false }
+	world.objects[t.y][t.x] = ""
+	var r := world.apply_action({ "verb": "till", "target": t, "actor": "player" }, GameState)
+	_assert(r.ok and world.get_tile(t.x, t.y).watered_today,
+		"soil tilled during rain is wet the moment it is bared")
+	r = world.apply_action({ "verb": "plant", "target": t, "seed_type": "wheat", "actor": "player" }, GameState)
+	_assert(r.ok and world.get_tile(t.x, t.y).watered_today,
+		"and planting into it keeps the rain (the 2026-08-30 rule)")
+	# The same day on sunny weather: tilled soil is dry, exactly as before.
+	GameState.weather = "sunny"
+	var t2 := Vector2i(6, 5)
+	world.tiles[t2.y][t2.x] = { "state": "cleared", "crop_type": "", "growth_stage": 0, "watered_today": false }
+	world.objects[t2.y][t2.x] = ""
+	r = world.apply_action({ "verb": "till", "target": t2, "actor": "player" }, GameState)
+	_assert(r.ok and not world.get_tile(t2.x, t2.y).watered_today,
+		"soil tilled on a sunny day starts dry, as it always has")
+
 
 func test_sim_actions() -> void:
 	print("\n--- SimWorld apply_action Tests ---")
@@ -9488,16 +9522,19 @@ func test_wetness_soaks_in() -> void:
 	# renderer that never animates, must not re-pour yesterday's water.
 	_assert(farm._wet_alpha(9, 9) == 1.0, "a tile with no soak entry draws fully wet")
 
-	# Freshly tilled ground under rain — the ruling's exact case. The sim keeps
-	# it dry until the day turn; the *picture* soaks, at the rain's slow rate.
+	# Freshly tilled ground under rain. Updated 2026-09-07 (reported from play:
+	# the soil animated wet, yet the router offered water for it): rain falls
+	# all day, so the sim flag is wet the moment the soil is bared. The ruling's
+	# presentation half stands — the *picture* still soaks in at the rain's own
+	# slow rate rather than snapping.
 	gs.weather = "rainy"
 	var t2 := Vector2i(6, 10)
 	farm.sim.tiles[t2.y][t2.x] = { "state": "cleared", "crop_type": "",
 		"growth_stage": 0, "watered_today": false }
 	r = farm.apply_action({ "verb": "till", "target": t2, "actor": "player" }, gs)
 	_assert(r.get("ok", false), "the till resolves")
-	_assert(not farm.sim.get_tile(t2.x, t2.y).watered_today,
-		"the sim's flag is untouched — rain marks it at the day turn, as ever")
+	_assert(farm.sim.get_tile(t2.x, t2.y).watered_today,
+		"sim truth is wet the moment the soil is bared — rain falls all day")
 	_assert(farm._wetting.has(t2) and farm._wetting[t2]["ms"] == farm.WET_RAIN_MS,
 		"while the picture starts soaking at the tap, at the rain's slow rate")
 

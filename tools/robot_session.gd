@@ -182,8 +182,16 @@ func _ready() -> void:
 	_check(main_scene.farm.get_tile(WORK_TILE.x, WORK_TILE.y).state == "tilled", "tap tilled the tile")
 	await _tap_and_wait(WORK_TILE)   # plant
 	_check(main_scene.farm.get_tile(WORK_TILE.x, WORK_TILE.y).state == "seeded", "tap planted the tile")
-	await _tap_and_wait(WORK_TILE)   # water
-	_check(main_scene.farm.get_tile(WORK_TILE.x, WORK_TILE.y).watered_today, "tap watered the tile")
+	# On a rainy day the freshly planted tile is already wet (2026-09-07: rain
+	# falls all day, not only at dawn), so the water tap resolves as "already
+	# done" and no action animates — which is exactly right. Only expect the
+	# pour when there is something to pour on.
+	if String(GameState.weather) == "rainy":
+		_check(main_scene.farm.get_tile(WORK_TILE.x, WORK_TILE.y).watered_today,
+			"the rain already watered the fresh planting — no tap needed")
+	else:
+		await _tap_and_wait(WORK_TILE)   # water
+		_check(main_scene.farm.get_tile(WORK_TILE.x, WORK_TILE.y).watered_today, "tap watered the tile")
 
 	# --- she hires a machine ---------------------------------------------------
 	#

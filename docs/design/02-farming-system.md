@@ -24,8 +24,10 @@ watering-can charges, well refill; shipping bin → gold overnight; day/weather 
    caused.** Rain-wet bare tilled soil is visible (reversing the playtest-night hide);
    freshly tilled ground in rain starts dry and darkens progressively over ~3s
    `[Playtest]`; a sprinkler fills at the same slow rate; the watering can fills fast,
-   ~1/3 the duration `[Playtest]`. Presentation-only — the sim's watered flag is
-   unchanged; only the renderer eases toward it.
+   ~1/3 the duration `[Playtest]`. **Amended 2026-09-07 (CEO, from play): rain falls
+   all day, so soil bared mid-storm is wet in the sim the moment it is bared** — the
+   original split left the picture soaked while the router offered water for it. The
+   animation half of the ruling stands: only the renderer eases toward the wet state.
 4. **Energy & time economy** — energy costs per action exist; tuning is `[Playtest]`
    with the kid constraint bounding phase-1 friction (Q-11).
    **Settled 2026-08-29 (designer): energy is per actor, and only the player's is the

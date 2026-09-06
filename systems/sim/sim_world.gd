@@ -2065,6 +2065,7 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			# gateway would then refuse it.
 			if has_crop(target.x, target.y):
 				set_tile_state(target.x, target.y, "tilled")
+				_rain_wets_fresh_soil(target, gs)
 				return { "ok": true }
 			return _fail("no_crop")
 		"lay_egg":
@@ -2188,6 +2189,7 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 						gs.clear_counts[verb] = int(gs.clear_counts.get(verb, 0)) + 1
 				"till":
 					set_tile_state(target.x, target.y, "tilled")
+					_rain_wets_fresh_soil(target, gs)
 				"plant":
 					var is_obj: bool = CropDefs.TYPES.get(seed_type, {}).get("is_object", false)
 					if is_obj:
@@ -2225,6 +2227,22 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 
 func _fail(reason: String) -> Dictionary:
 	return { "ok": false, "reason": reason }
+
+
+# Rain falls all day, not only at dawn (2026-09-07). The day-turn pass wets
+# everything that was soil at sunrise, but ground bared *during* a storm — a
+# mid-day till, a pest eating a crop back to earth — used to come up dry in the
+# sim while the renderer rightly drew it soaked, so the router offered water
+# for a tile the picture said needed none. Reported from play: "I tilled soil
+# (it animated getting wet) and planted wheat... when I clicked on the wheat,
+# it watered it again." gs carries the weather in, the gateway's own pattern;
+# planting already preserves the wetness from here on (the 2026-08-30 rule).
+func _rain_wets_fresh_soil(target: Vector2i, gs) -> void:
+	if gs == null or String(gs.weather) != "rainy":
+		return
+	var tile := get_tile(target.x, target.y)
+	if not tile.is_empty() and tile.state == "tilled":
+		tile.watered_today = true
 
 
 # T-20: each crow has a single scheduled arrival, given as a point in the day's
