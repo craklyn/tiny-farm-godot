@@ -48,7 +48,7 @@ static func targets(world: SimWorld, gs, player_t: Vector2i = Vector2i(-1, -1)) 
 		return parcel
 	# 4. T-11: the economy, taught at first need. Lowest priority on purpose —
 	#    these are errands, and an errand must never interrupt a lesson.
-	return economy_beat(world, gs)
+	return economy_beat(world, gs, player_t)
 
 
 # Placed tools whose capability proof has NOT fired yet. Presentation draws these
@@ -107,22 +107,28 @@ static func handed_over(world: SimWorld) -> bool:
 # Never points at a shop she cannot buy from: the seed-box beat also requires
 # enough gold for the cheapest seed, because pointing a pre-reader at a screen
 # that will refuse her is worse than not pointing at all.
-static func economy_beat(world: SimWorld, gs) -> Array[Vector2i]:
+#
+# Scoped to the page she is standing on since 2026-09-06 (the door): the three
+# stations are out in the yard, and pointing an off-screen arrow at the well from
+# inside the bedroom would be an errand she cannot start until she has come back
+# through the door — which is not the moment of need this beat is named for.
+static func economy_beat(world: SimWorld, gs, player_t: Vector2i = Vector2i(-1, -1)) -> Array[Vector2i]:
 	var out: Array[Vector2i] = []
 	if gs == null:
 		return out
+	var rows := VignetteState.page_rows(world, player_t)
 
 	var basket := 0
 	for count in gs.crops.values():
 		basket += int(count)
 	if basket >= SELL_BEAT_CROPS and int(gs.total_shipped) == 0:
-		return _find_object(world, "shipping_bin")
+		return _find_object(world, "shipping_bin", rows)
 
 	if int(gs.cans_refilled) == 0 and int(gs.watering_can_charges) <= 0:
-		return _find_object(world, "well")
+		return _find_object(world, "well", rows)
 
 	if int(gs.seeds_bought) == 0 and _pouch_empty(gs) and gs.gold >= cheapest_seed():
-		return _find_object(world, "seed_box")
+		return _find_object(world, "seed_box", rows)
 
 	return out
 
@@ -153,9 +159,9 @@ static func cheapest_seed() -> int:
 	return maxi(best, 0)
 
 
-static func _find_object(world: SimWorld, kind: String) -> Array[Vector2i]:
+static func _find_object(world: SimWorld, kind: String, rows: Vector2i) -> Array[Vector2i]:
 	var out: Array[Vector2i] = []
-	for ty in SimWorld.MAP_HEIGHT:
+	for ty in range(rows.x, rows.y):
 		for tx in SimWorld.MAP_WIDTH:
 			if world.objects[ty][tx] == kind:
 				out.append(Vector2i(tx, ty))

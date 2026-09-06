@@ -6,12 +6,20 @@ extends Node
 
 ## T-27 (box 3): the objects a tap that achieved nothing may be *rescued* to.
 ##
-## **The cot only**, deliberately. The mechanism is written so the shipping bin
-## and the well can join it whenever the designer says so — they are the other
-## two things in the yard worth a fat finger — but wiring one object is the
-## smallest change that answers the evidence, and every extra entry here is a
-## tile that silently stops meaning what it says.
-const HALO_OBJECTS := { "cot": true }
+## **The cot, and the door it moved behind** (2026-09-06). The halo was written
+## for one piece of evidence — four `no_energy` refusals at dusk, every one of
+## them a tap meant for the cot and landing one tile short of it — and the cot is
+## indoors now. Outdoors, the thing a tired child aims at at dusk is the front
+## door, and it is the same aim with the same miss available: the only ground
+## beside it is the yard tile below, so a finger that falls short lands on grass
+## that can do nothing and would answer with silence.
+##
+## The home-side doorway is deliberately **not** here. Its one neighbour is the
+## floor tile she stands on to use it, and rescuing a tap there would send her
+## back out into the yard every time she tapped the floor by her own front door —
+## a tile that silently stops meaning what it says, which is the exact cost this
+## table is kept short to avoid.
+const HALO_OBJECTS := { "cot": true, "house_door": true }
 
 ## **Teaching mode** (2026-09-03): the id of the mark-1 robot the player is
 ## currently showing tiles to, or "" when she is not teaching one.
@@ -42,6 +50,17 @@ const SPECIAL_OBJECTS := {
 	"acorn":        "collect",
 	"tool_axe":     "take_tool",
 	"tool_pickaxe": "take_tool",
+	# The door, both ends of it (2026-09-06). A tap on the farmhouse's door or on
+	# the home's own doorway is `use_door`, and it takes the ordinary special-object
+	# route — she walks up to it and reaches for it, exactly as she does for the
+	# well. Nothing here knows where a door leads; the pair is layout data and the
+	# gateway reads it (`SimWorld._apply`'s `use_door`), so this table stays what it
+	# has always been: a map from a picture to a verb.
+	#
+	# Keys are the literal object types (`WorldLayout.HOUSE_DOOR` / `HOME_DOORWAY`),
+	# written out like every other entry so the table reads as a table.
+	"house_door":   "use_door",
+	"home_doorway": "use_door",
 }
 
 # T-9 (Q-34): which tool an obstacle needs. A tool she has not acquired yields no
@@ -178,8 +197,13 @@ func resolve(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, is_drag: 
 	# soil offers the placement rather than a plant she has no seed for. Placement
 	# is checked in the sim (`placeable_at`), not restated here: one answer to
 	# "may a machine go there", and the router asks it.
+	#
+	# **What she is holding goes with the question** (2026-09-06). Since the stall,
+	# the answer depends on the item as well as on the square — a robot may be set
+	# down in a stall bay and a second stall may not — and threading it through is
+	# what keeps that rule in the sim rather than restated here in the intent layer.
 	if gs != null and gs.has_method("holding_machine") and gs.holding_machine():
-		if world != null and world.placeable_at(tap_t):
+		if world != null and world.placeable_at(tap_t, gs.selected_seed_type):
 			if not is_drag and player_t != null:
 				var pt2: Vector2i = player_t
 				if absi(pt2.x - tx) + absi(pt2.y - ty) > 1:
@@ -334,7 +358,7 @@ func blocked_reason(farm: Node2D, gs: Node, tap_t: Vector2i) -> String:
 	# machine — already on it.
 	if MachineDefs.has(seed_type) and gs.machines.get(seed_type, 0) > 0:
 		var w = farm.get("sim")
-		if w != null and w.is_walkable(tap_t.x, tap_t.y) and not w.placeable_at(tap_t):
+		if w != null and w.is_walkable(tap_t.x, tap_t.y) and not w.placeable_at(tap_t, seed_type):
 			return "occupied"
 
 	if state == "tilled":
@@ -427,7 +451,7 @@ func is_workable(farm: Node2D, tap_t: Vector2i, gs: Node = null) -> bool:
 		if w.machine_at(tap_t) != "":
 			return true
 		if gs != null and gs.has_method("holding_machine") and gs.holding_machine() \
-				and w.placeable_at(tap_t):
+				and w.placeable_at(tap_t, gs.selected_seed_type):
 			return true
 	var tile: Dictionary = farm.get_tile(tap_t.x, tap_t.y)
 	if tile.is_empty():

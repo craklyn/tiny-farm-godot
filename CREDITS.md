@@ -240,6 +240,21 @@ before the first public build ships.*
   dated batch (with their `*_meta.json`) before compositing. The surviving raws from
   the 2026-08-29 through 2026-09-02 batches were recovered from session scratchpads
   into that archive; the 2026-08-26 style-lock run's raws were already gone.
+- **T-39, the farmhouse and the robot stall, 2026-09-06** — **generated, $0.21**
+  (same Retro Diffusion pipeline, rights and post-processing as above; raws with
+  `*_meta.json` archived per the standing policy at
+  `assets/raw/2026-09-06-farmhouse-and-robot-stall/`). Two sheets:
+  - `farmhouse.png` — 48x32, the cottage facade the yard's door tiles wear
+    ((1,1)–(3,2)); the front door occupies the bottom-centre 16px cell, which is
+    the `house_door` tile the `use_door` verb answers on. Two candidates
+    generated, one shipped.
+  - `robot_stall.png` — 32x32, the two-bay robot stall; bottom 32x16 row is the
+    open bays (the walkable footprint), top row the shed rising behind. Four
+    candidates over two calls — the first pair baked robot figures into the bays,
+    which would double against the game's own bot sprite, so an "empty bays"
+    regeneration was run and its cleaner candidate shipped, with the roof band
+    extended locally to fill the 32px height.
+  Both palette-locked against colours sampled from the shipped sheets.
 - **Sprout Lands asset pack** by Cup Nooble — *removed 2026-08-26* (Q-7c ruling:
   drop restrictively-licensed assets; its free license forbids redistribution and
   this repo is public). Q-7b license findings recorded in the git history of this

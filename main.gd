@@ -190,7 +190,13 @@ func _ready() -> void:
 		farm.start_trace(gen_seed, false)
 	farm.queue_redraw()
 
-	# Locate the cot for the low-energy pulse (survives layout changes)
+	# Where the bed actually is, scanned rather than assumed so it survives a
+	# layout change — and since 2026-09-06 it is indoors, on page 1. This stays
+	# **the real cot** and has exactly one consumer left: the tuck-in pose, because
+	# sleeping happens in the bed. Everything that used to point *at* it from
+	# across the farm — the dusk glow, the low-energy pulse, the HUD's bed button —
+	# now asks `way_to_bed()` instead, which answers with the front door while she
+	# is still outside.
 	for ty in MAP_HEIGHT:
 		for tx in MAP_WIDTH:
 			if farm.sim.objects[ty][tx] == "cot":
@@ -202,7 +208,18 @@ func _ready() -> void:
 	player.name = "Player"
 	add_child(player)
 	player.farm = farm
-	var spawn := _find_spawn_tile(WorldLayout.spawn())  # inside the fenced yard
+	# **Where the sim says she is**, which on a fresh farm is the layout's own
+	# spawn and on a continued one is the tile she went to sleep on. This used to
+	# read `WorldLayout.spawn()` — the *default* layout's spawn, asked without the
+	# world's layout — which was harmless while there was one farm with one spawn
+	# and stopped being harmless the day the world got a second page (2026-09-06):
+	# the composed world starts her at (2,4) rather than (2,2), and a farm restored
+	# from a night spent in the bedroom would have put her body out in the yard
+	# while her registry entry was still indoors.
+	var from_sim: Vector2i = farm.sim.actor_pos(SimWorld.ACTOR_PLAYER)
+	if from_sim.x < 0:
+		from_sim = WorldLayout.spawn(farm.sim.layout)
+	var spawn := _find_spawn_tile(from_sim)
 	player.init_position(spawn.x, spawn.y)
 
 	# The cast, drawn by the farm from the registry (M2.5 WI-6). The neighbour if
@@ -225,16 +242,16 @@ func _ready() -> void:
 	camera.zoom = Vector2(CAMERA_SCALE, CAMERA_SCALE)
 	camera.position_smoothing_enabled = true
 	camera.position_smoothing_speed = 8.0
-	# Set camera limits to clamp within the map
+	# Set camera limits to clamp within the map. Left and right are the map's, and
+	# always were; the vertical pair is **the page she is on** rather than the
+	# whole grid (`_refresh_camera_limits`, 2026-09-06) — set below for the page
+	# she starts on and kept in step from `_process`, because without it the view
+	# would drift down into twenty rows of darkness the moment she walked near the
+	# bottom of the farm.
 	camera.limit_left = 0
-	# Q-68, via T-27's treatments: `limit_top` is not always 0 any more. See
-	# `CotPresentation.camera_top_limit` — under the treatments that want the whole
-	# bed visible it goes negative by the HUD bar's height, so at the top clamp the
-	# world sits *below* the bar instead of under it.
-	camera.limit_top = 0
 	camera.limit_right = MAP_WIDTH * TILE_SIZE
-	camera.limit_bottom = MAP_HEIGHT * TILE_SIZE
 	player.add_child(camera)
+	_refresh_camera_limits(true)
 	
 	# Create rain particles attached to camera
 	rain_particles = CPUParticles2D.new()
@@ -447,9 +464,68 @@ func _update_cot_look() -> void:
 # (Q-68's fix, which A and B carry and C does not) and the cot's cell. Cheap
 # enough to just re-run, and it is only ever called from `_ready` and the switch.
 func _apply_cot_treatment() -> void:
-	if camera != null:
-		camera.limit_top = CotPresentation.camera_top_limit(HUD_TOP_PX, CAMERA_SCALE)
+	_refresh_camera_limits()
 	_update_cot_look()
+
+
+# --- The camera is page-scoped (2026-09-06, the door) -------------------------
+#
+# The world is two maps stacked in one grid — the farm on rows 0-19, the home on
+# rows 20-39 — so "clamp to the map" is no longer one pair of numbers. The camera
+# clamps to **the page she is standing on**: at the bottom of the farm the view
+# stops at the farm's own edge instead of drifting into the dark above the
+# bedroom, and indoors it stops at the room's page instead of showing the field
+# she is no longer in.
+#
+# Kept in step by `_process` (a crossing) and told outright by `note_page_change`
+# (a door), which are the only two ways her page can change.
+var _camera_page: int = -1
+
+func _refresh_camera_limits(snap: bool = false) -> void:
+	if camera == null or player == null or farm == null:
+		return
+	var page: int = farm.sim.page_of(player.get_tile_pos())
+	_camera_page = page
+	var page_px: int = SimWorld.PAGE_ROWS * TILE_SIZE
+	# Q-68, via T-27's treatments, still applied — **and only to the farm.** The
+	# nudge exists because the stations in row 0-1 rise into the map's top row and
+	# the HUD's top bar eats it (see `CotPresentation.camera_top_limit`), which is
+	# a fact about page 0. On page 1 the top rows are void, so there is nothing up
+	# there to reveal, and a negative nudge would do the one thing this whole
+	# function exists to prevent: show a strip of the page above.
+	var nudge: int = CotPresentation.camera_top_limit(HUD_TOP_PX, CAMERA_SCALE) if page == 0 else 0
+	camera.limit_top = page * page_px + nudge
+	camera.limit_bottom = (page + 1) * page_px
+	if snap:
+		# A door is not a walk: without this the view glides twenty rows through
+		# the dark to catch up with a farmer who is already indoors.
+		camera.reset_smoothing()
+
+
+# Told by the player the instant a door has moved her (`player.gd`'s `use_door`).
+# Public because that is the whole contract — nothing else may call it.
+func note_page_change() -> void:
+	_refresh_camera_limits(true)
+
+
+# Where "to bed" points from where she is standing: the bed when she is in the
+# room with it, the front door when she is outside (`SimWorld.way_to_bed` — one
+# answer, so the glow, the pulse and the HUD's bed button cannot disagree).
+#
+# Cached per page rather than asked per frame. The sim's answer is a scan of the
+# object grid, neither the bed nor the door can move, and the two callbacks below
+# it feeds run on every frame the world draws.
+var _bed_way: Vector2i = Vector2i(-1, -1)
+var _bed_way_page: int = -1
+
+func way_to_bed() -> Vector2i:
+	if farm == null or player == null:
+		return _cot_tile
+	var page: int = farm.sim.page_of(player.get_tile_pos())
+	if page != _bed_way_page:
+		_bed_way_page = page
+		_bed_way = farm.sim.way_to_bed(player.get_tile_pos())
+	return _bed_way
 
 
 # T-28's two axes, applied live. Both are read per frame by whoever draws them
@@ -564,7 +640,14 @@ func _process(delta: float) -> void:
 
 	# Player update
 	player.update_player(delta)
-	
+
+	# She may have crossed into the other map on her own feet. She cannot — the
+	# pages are not foot-connected — but this costs one integer compare and it is
+	# the honest way to say "the camera follows her page", rather than trusting
+	# that a door is the only thing that will ever move her between them.
+	if farm.sim.page_of(player.get_tile_pos()) != _camera_page:
+		_refresh_camera_limits()
+
 	persist_timer += delta
 	if persist_timer >= PERSIST_INTERVAL:
 		persist_timer = 0.0
@@ -760,8 +843,16 @@ func _handle_action_result(action: String) -> void:
 		# Two behaviours fall out of that rather than being written: a press during
 		# the day transition does nothing (T-27 box 2 drops the tap at the input
 		# boundary), and a press mid-walk retargets exactly like any new tap.
-		if _cot_tile.x >= 0:
-			InputManager.tap_tile(_cot_tile)
+		#
+		# **What it aims at is the way to bed, not the bed** (2026-09-06). The cot
+		# moved indoors, so from the yard the button walks her to her own front
+		# door and takes her through it; pressed again inside, it walks her to the
+		# bed. Two presses to sleep from outdoors, which is the honest cost of the
+		# bed being in a room — and the button still never does anything a finger
+		# could not, because each press is one ordinary tap.
+		var bed_way := way_to_bed()
+		if bed_way.x >= 0:
+			InputManager.tap_tile(bed_way)
 	elif action == "open_pause":
 		menus.open_menu("pause")
 	elif action == "return_to_title":
@@ -1053,7 +1144,8 @@ func _tick_station_glints(delta: float) -> void:
 		return
 	_glint_next = CosmeticRng.randf_range(
 		StationPresentation.GLINT_MIN_S, StationPresentation.GLINT_MAX_S)
-	var candidates: Array[Vector2i] = StationPresentation.glint_candidates(farm.sim, GameState)
+	var candidates: Array[Vector2i] = StationPresentation.glint_candidates(
+		farm.sim, GameState, player.get_tile_pos() if player else Vector2i(-1, -1))
 	if candidates.is_empty():
 		return
 	_glint_at = candidates[CosmeticRng.randi_range(0, candidates.size() - 1)]
@@ -1163,10 +1255,17 @@ const PIP_LIFT := 5.0
 # it does can reach `apply_action`, so a sleep dispatched under any treatment
 # resolves at the tap exactly as Scenario W proves for the default (D-8).
 func _draw_cot_presentation(overlay: CanvasItem) -> void:
-	if _cot_tile.x < 0:
+	# **Drawn on the way to bed, not on the bed** (2026-09-06). Since the cot moved
+	# indoors, the thing that has to say "the day ends here" from the yard is the
+	# front door — so at dusk the door pulses outside and the bed pulses inside,
+	# and either way the cue is on the tile the next tap should land on. The
+	# geometry is unchanged (the tile and the one above it), which is the bed's own
+	# 16x32 footprint and, on the door, the doorway and the wall over it.
+	var at := way_to_bed()
+	if at.x < 0:
 		return
 	var t := Time.get_ticks_msec() / 1000.0
-	var cot_rect := Rect2(_cot_tile.x * TILE_SIZE, (_cot_tile.y - 1) * TILE_SIZE,
+	var cot_rect := Rect2(at.x * TILE_SIZE, (at.y - 1) * TILE_SIZE,
 		TILE_SIZE, TILE_SIZE * 2)
 
 	# Treatment B replaces the Q-11 pulse with a superset of itself — earlier,
@@ -1192,14 +1291,17 @@ func _draw_cot_presentation(overlay: CanvasItem) -> void:
 # `CotGlowRenderer`, which blends additively — see where it is built for why that
 # is not a detail.
 func _draw_cot_glow(glow: CanvasItem) -> void:
-	if _cot_tile.x < 0:
+	# On the way to bed, for `_draw_cot_presentation`'s reason: outside at dusk the
+	# lamp is in the doorway she is meant to walk to, and inside it is over the bed.
+	var at := way_to_bed()
+	if at.x < 0:
 		return
 	var a := CotPresentation.glow_alpha(
 		GameState.energy, GameState.max_energy, Time.get_ticks_msec() / 1000.0)
 	if a <= 0.0:
 		return
-	var wick := Vector2(_cot_tile.x * TILE_SIZE + TILE_SIZE / 2.0,
-		(_cot_tile.y - 1) * TILE_SIZE + TILE_SIZE)
+	var wick := Vector2(at.x * TILE_SIZE + TILE_SIZE / 2.0,
+		(at.y - 1) * TILE_SIZE + TILE_SIZE)
 	for i in range(CotPresentation.GLOW_RINGS - 1, -1, -1):
 		var r: float = CotPresentation.GLOW_INNER_R + i * CotPresentation.GLOW_RING_STEP
 		# Deliberately *not* daylight-compensated. Compensation exists to stop a

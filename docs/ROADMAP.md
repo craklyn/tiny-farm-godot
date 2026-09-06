@@ -57,8 +57,42 @@ beat 0 reads it and stays complete forever. The regression test
 (`test_gate_lesson_latch_regression`) replays her session to the moment before her
 first sleep and asserts the cot glows, not the gate — it fails against the old code.*
 
+**T-39 — The home is wired into play, and the robot gets a stall** · designer
+directive, 2026-09-06 (overnight) · ✅ **shipped 2026-09-06**
+> *"1. Player can see an entrance to their house from the outdoor space.
+> 2. When the player goes inside, they enter a new map that has their bed. They
+> have a door to go back outside. 3. There is a robot stall that can hold two
+> robots. The player can buy a robot, leave it in the stall, and teach it using
+> the expected teaching behavior. After taught, it works productively to grow
+> crops… Useful = more work done with it than without it in a day."*
+
+*Built on S-11 (maps are door-linked pages of one world):* the grid grows a page
+(32×40), the farmhouse facade stands in the yard at (1,1)–(3,2) with its door at
+(2,2), and the `use_door` verb — the only way between pages — lands her indoors
+at the doorway of the T-37 room, now at rows 25–33, with the bed at (12,27) and
+the doorway back at (15,33). The cot left the yard, so the whole T-27/T-35
+bedtime chain re-routes through one resolver (`way_to_bed`): at dusk the *door*
+glows from outside and the *bed* glows inside; the HUD bed button walks her
+through both taps. Old saves migrate (save v3 pads the grid; a padded farm keeps
+its outdoor cot and simply has no door). The stall (`machine_defs.gd`, 80g,
+P-12's shop path) writes two walkable bay objects; a mark-1 placed in a bay
+records it as home, and a parked, taught mark-1 is **auto-sent every morning**
+in the sprinkler's recompute-on-replay slot, waters its list, and walks back to
+its bay (P-13 status note: the stall automates the daily tap, never the
+judgement). Usefulness is a measured claim, not a vibe:
+`test_robot_usefulness` runs the same scripted player-day twice, same seed, and
+asserts the stalled robot's day waters more and grows more;
+`tools/demo_robot_value.gd` prints the same comparison as a table. Covered
+end-to-end by integration Scenarios AI (the door, both ways, camera pages,
+dusk targets) and AJ (shop → stall → park → teach → sleep → the morning round
+with no tap), the robot session (which now lives the full day: door, bed,
+stall), and the save/replay round-trips in `test_world_pages`, `test_the_door`,
+`test_save_v3_migration`, `test_robot_stall`. Art: `farmhouse.png` and
+`robot_stall.png`, Retro Diffusion ($0.21, raws archived
+`assets/raw/2026-09-06-farmhouse-and-robot-stall/`, CREDITS.md).*
+
 **T-37 — The player's home, indoors** · designer directive, 2026-09-01 ·
-✅ **built 2026-09-01, behind a debug door**
+✅ **built 2026-09-01, behind a debug door** · *wired into live play 2026-09-06 (T-39)*
 > *"Please create an indoor space representing the player's home. The home
 > should have the bed, windows, and very few furnishings initially. We'll add
 > those later."*
@@ -78,9 +112,10 @@ loader moves them (that project's first step, now done). Art is derived, $0.00
 browns; the window pane's blue is the one new colour. Reached from the title
 screen's debug row — now a 2x2 grid, four doors — via `ui/home_screen.tscn`
 (the Zoo's detached-state pattern; the farmer stands as scenery, no walking
-yet). **Deliberately not wired into play**: a door on the farm, walking
-indoors, and the cot's move are content sequencing on the ruled onboarding
-flow. Covered by `tests/test_runner.gd:test_home_layout` (the room, the
+yet). **Deliberately not wired into play** *(superseded 2026-09-06 — T-39 wired
+the door, the walk indoors, and the cot's move into the live game)*: a door on
+the farm, walking indoors, and the cot's move are content sequencing on the
+ruled onboarding flow. Covered by `tests/test_runner.gd:test_home_layout` (the room, the
 shell, walkability, the objects override, the farm's fallback, the till
 refusal for her and by construction for bots, save round-trip) and
 integration **Scenario AE** (the door exists, the room renders detached —

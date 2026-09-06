@@ -1,54 +1,54 @@
 {
-  "id": "multi-map",
-  "name": "Multiple maps: game-side loader for edited layouts",
-  "priority": 10,
-  "status": "planned",
-  "owner": "tomas",
-  "contributors": [
-    "milo",
-    "jade"
-  ],
-  "summary": "The HQ map editor edits layout definitions — the same WorldLayout-shaped input the seeded generator already consumes (the Zoo proves a second layout works). What's missing is the game-side half: loading an edited layout JSON into a real game. This project is that bridge, and it deliberately waits on a few design calls.",
-  "requirements": [
-    "A validated loader (layout JSON -> WorldLayout dictionary) with sim-level tests: bad rects, overlapping parcels, missing gates all refused with reasons",
-    "Station positions (cot, bin, well, seed box, pen) move from sim code constants into the layout, so maps can place them",
-    "A ruled answer on how multiple maps relate: alternate farms? connected areas? phase-2 spaces? (designer call — shapes the save format)",
-    "Save/replay integrity: a session records which map it was generated from, so replays and the build-stamp discipline survive multiple maps",
-    "Determinism proof extended: same seed + same layout = identical world, per map"
-  ],
-  "current_status": "Moving. The home interior (T-37) became the second real layout: floor/wall/window states exist, layouts can now carry their own object placements (the layout `objects` key — the farm still uses its constant), and the home renders behind a debug door. Still open: the CEO's ruling on how maps connect in play, and the loader for editor-saved JSON maps.",
-  "plan": [
-    {
-      "step": "HQ map editor for layout definitions",
-      "done": true
-    },
-    {
-      "step": "Object placement becomes layout data (the `objects` key — shipped with the home, T-37)",
-      "done": true
-    },
-    {
-      "step": "A second real layout generates and renders (the home, behind a debug door)",
-      "done": true
-    },
-    {
-      "step": "CEO ruling: how maps relate in play (doors, transitions, what saves/replays record)",
-      "done": false
-    },
-    {
-      "step": "Loader + validation for editor-saved JSON maps",
-      "done": false
-    },
-    {
-      "step": "First map transition playable (farm door -> home)",
-      "done": false
-    }
-  ],
-  "plan_note": "Plan is intentionally incomplete pending the maps ruling.",
-  "links": [
-    "systems/world_layout.gd",
-    "hq/data/maps/",
-    "tools/export_layout.gd"
-  ],
-  "release": "m3",
-  "release_critical": false
+ "id": "multi-map",
+ "name": "Multiple maps: game-side loader for edited layouts",
+ "priority": 10,
+ "status": "planned",
+ "owner": "tomas",
+ "contributors": [
+  "milo",
+  "jade"
+ ],
+ "summary": "The HQ map editor edits layout definitions \u2014 the same WorldLayout-shaped input the seeded generator already consumes (the Zoo proves a second layout works). What's missing is the game-side half: loading an edited layout JSON into a real game. This project is that bridge, and it deliberately waits on a few design calls.",
+ "requirements": [
+  "A validated loader (layout JSON -> WorldLayout dictionary) with sim-level tests: bad rects, overlapping parcels, missing gates all refused with reasons",
+  "Station positions (cot, bin, well, seed box, pen) move from sim code constants into the layout, so maps can place them",
+  "A ruled answer on how multiple maps relate: alternate farms? connected areas? phase-2 spaces? (designer call \u2014 shapes the save format)",
+  "Save/replay integrity: a session records which map it was generated from, so replays and the build-stamp discipline survive multiple maps",
+  "Determinism proof extended: same seed + same layout = identical world, per map"
+ ],
+ "current_status": "Moving. The maps ruling landed 2026-09-06 as S-11 (door-linked pages of one world) and the first transition is live: the farmhouse door on the farm leads into the T-37 home, now page 1 of a 32x40 grid, with the bed indoors and a doorway back. Transitions are the use_door verb, so saves (v3) and replays carry them. Still open: the loader + validation for editor-saved JSON maps, and moving the farm's fixed stations into layout data (the composed WORLD layout already carries its own objects; the DEFAULT farm still uses the module constant).",
+ "plan": [
+  {
+   "step": "HQ map editor for layout definitions",
+   "done": true
+  },
+  {
+   "step": "Object placement becomes layout data (the `objects` key \u2014 shipped with the home, T-37)",
+   "done": true
+  },
+  {
+   "step": "A second real layout generates and renders (the home, behind a debug door)",
+   "done": true
+  },
+  {
+   "step": "CEO ruling: how maps relate in play (doors, transitions, what saves/replays record)",
+   "done": true
+  },
+  {
+   "step": "Loader + validation for editor-saved JSON maps",
+   "done": false
+  },
+  {
+   "step": "First map transition playable (farm door -> home)",
+   "done": true
+  }
+ ],
+ "plan_note": "Plan is intentionally incomplete pending the maps ruling.",
+ "links": [
+  "systems/world_layout.gd",
+  "hq/data/maps/",
+  "tools/export_layout.gd"
+ ],
+ "release": "m3",
+ "release_critical": false
 }

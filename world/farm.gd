@@ -9,6 +9,24 @@ const EGG_SIZE := TILE_SIZE / 2.0  # half a tile, centred (see the egg draw belo
 const MAP_WIDTH := SimWorld.MAP_WIDTH
 const MAP_HEIGHT := SimWorld.MAP_HEIGHT
 
+# What the dark outside a room looks like (2026-09-06, `WorldLayout.VOID`). Not
+# black, a shade off it — a hair of blue so it reads as unlit air rather than as a
+# hole punched in the screen — and flat, with no texture at all, because the one
+# thing it must never suggest is somewhere to go. It is drawn *inside* the canvas
+# the day's tint multiplies, so it darkens with the hour like everything else,
+# which is right: the dark does not get lighter at noon.
+const VOID_COLOR := Color(0.035, 0.035, 0.055)
+
+# The farmhouse's facade: 48x32, three tiles wide and two tall, drawn as **one**
+# picture rather than as six wall cells (2026-09-06) — a house is one thing, and a
+# wall tile drawn on its own would have to know which corner of the house it was.
+#
+# Anchored off the door: the door object is the facade's bottom-centre cell, so
+# the picture's top-left is one tile up and one tile left of it. Derived rather
+# than written down, so the house is wherever the layout put its door.
+const HOUSE_SIZE := Vector2(48, 32)
+const HOUSE_DOOR_OFFSET := Vector2i(-1, -1)
+
 var sim: SimWorld = SimWorld.new()
 var replay: ReplayLog = null  # set via start_replay_log(); records every ok action
 var trace: SessionTrace = null  # diagnostic stream; records refusals too (see systems/session_trace.gd)
@@ -354,6 +372,24 @@ func _load_textures() -> void:
 	# No new art needed for either.
 	object_regions["tool_axe"] = [tool_icons_texture, Rect2(1 * 16, 0, 16, 16)]
 	object_regions["tool_pickaxe"] = [tool_icons_texture, Rect2(2 * 16, 0, 16, 16)]
+
+	# The farmhouse (2026-09-06). Keyed on the **door** object, because the door is
+	# the one tile of the house the sim has an opinion about — it is what the tap
+	# resolves against and what the layout's door table names — and the wall tiles
+	# beside it draw nothing at all (see the object pass). Its region is the whole
+	# 48x32 sheet rather than a 16-wide cell, which is what makes the draw below a
+	# special case instead of another row in this table.
+	object_regions[WorldLayout.HOUSE_DOOR] = [
+		load("res://assets/sprites/generated/farmhouse.png"), Rect2(Vector2.ZERO, HOUSE_SIZE)]
+
+	# The robot stall (2026-09-06): 32x32, two tiles wide, and **one tile tall in
+	# the world** — its bottom row is the two open bays standing on the two stall
+	# tiles, and the 16 pixels above that are the shed rising behind them. That is
+	# the ordinary tall-object draw this file already does for the cot and the well
+	# (see the object pass: the picture is hung from its bottom edge), so it needs
+	# no special case at all, only a region that is two cells wide instead of one.
+	object_regions[WorldLayout.ROBOT_STALL] = [
+		load("res://assets/sprites/generated/robot_stall.png"), Rect2(0, 0, 32, 32)]
 
 	# T-28's pictograms, resolved from `StationPresentation.GLYPH_ATLAS` — which
 	# is pure data, so the table can be asserted headlessly and the two renderers
@@ -974,6 +1010,15 @@ func _draw() -> void:
 			# draws the same 16x16 cell from its own sheet — no autotiling, no
 			# edge cases: two seamless tiles that happen to meet at the fence.
 			var ground_tex: Texture2D = tileset_texture
+			if tile.state == WorldLayout.VOID:
+				# The dark a room is cut out of (2026-09-06). Flat, textureless and
+				# near-black: it is not ground, and it must never read as ground she
+				# could reach if only she found the way round. Everything below is
+				# skipped with it — a void tile carries no soil, no crop and nothing
+				# standing on it by construction, so this is the same picture the
+				# whole block would draw, in one call instead of a dozen.
+				draw_rect(Rect2(px, py, TILE_SIZE, TILE_SIZE), VOID_COLOR, true)
+				continue
 			if tile.state == WorldLayout.YARD:
 				ground_tex = yard_texture
 			elif tile.state == WorldLayout.FLOOR:
@@ -1070,6 +1115,43 @@ func _draw() -> void:
 
 			# Queue objects
 			var obj: String = objects[ty][tx]
+			if obj == WorldLayout.ROBOT_STALL_SLOT:
+				# The stall's second bay. Real to the sim — a robot parks in it and
+				# nothing may be farmed there — and drawn by its left-hand neighbour,
+				# whose picture is two tiles wide. A cell of its own would be the
+				# right half of the shed drawn twice, half a tile to the right.
+				continue
+			if obj == WorldLayout.HOUSE_WALL or obj == WorldLayout.HOME_DOORWAY:
+				# Two objects that are real to the sim and invisible to the
+				# renderer (2026-09-06). A house wall is part of the facade the
+				# door draws, just below, so a cell of its own would be drawing the
+				# house a second time; the home's doorway is the hole cut in the
+				# south wall, and the hole is already the art (`GATE_OPEN`'s open
+				# gateway, laid with the boundaries above). Both still block walking
+				# and both still answer a tap — having no picture here is a fact
+				# about the sheet, not about the world.
+				continue
+			if obj == WorldLayout.HOUSE_DOOR:
+				# The farmhouse, drawn once over its own three-by-two footprint. It
+				# joins the queue on the door's row exactly as a tall object does —
+				# the door is the facade's bottom-centre cell, so the house's feet
+				# and the door's tile are the same row — which is what puts the
+				# farmer crossing the yard below in front of it and the yard above
+				# behind it.
+				var house_data = object_regions.get(obj)
+				if house_data:
+					var house_tex: Texture2D = house_data[0]
+					var house_reg: Rect2 = house_data[1]
+					var origin := Vector2i(tx, ty) + HOUSE_DOOR_OFFSET
+					var house_rect := Rect2(
+						origin.x * TILE_SIZE, origin.y * TILE_SIZE,
+						HOUSE_SIZE.x, HOUSE_SIZE.y)
+					render_queue.append({
+						"y": py,
+						"draw": func(): draw_texture_rect_region(
+							house_tex, house_rect, house_reg)
+					})
+				continue
 			if obj == "egg" or obj == "acorn":
 				# Drawn at half a tile and centred: at full tile size it read as
 				# boulder-sized next to the chicken that laid it. The tap target is

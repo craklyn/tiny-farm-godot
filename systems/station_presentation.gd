@@ -285,7 +285,7 @@ static func pips(world, gs, player_t: Vector2i = Vector2i(-1, -1)) -> Array[Dict
 	for kind in STATIONS:
 		if used(gs, kind) or not relevant(gs, kind):
 			continue
-		var at := find_station(world, kind)
+		var at := find_station(world, kind, VignetteState.page_rows(world, player_t))
 		if at.x < 0 or taught.has(at):
 			continue
 		out.append({ "at": at, "glyph": String(STATION_GLYPHS[kind]) })
@@ -297,16 +297,17 @@ static func pips(world, gs, player_t: Vector2i = Vector2i(-1, -1)) -> Array[Dict
 # Which stations are allowed to catch the light: the ones she has never used.
 # *When* one does is cosmetic and is rolled in `main.gd` — one station at a time,
 # on a long random interval, from `CosmeticRng`.
-static func glint_candidates(world, gs) -> Array[Vector2i]:
+static func glint_candidates(world, gs, player_t: Vector2i = Vector2i(-1, -1)) -> Array[Vector2i]:
 	var out: Array[Vector2i] = []
 	if discovery != DISCOVERY_GLINT or world == null or gs == null:
 		return out
 	if not TeachingFocus.handed_over(world):
 		return out
+	var rows := VignetteState.page_rows(world, player_t)
 	for kind in STATIONS:
 		if used(gs, kind):
 			continue
-		var at := find_station(world, kind)
+		var at := find_station(world, kind, rows)
 		if at.x >= 0:
 			out.append(at)
 	return out
@@ -343,8 +344,13 @@ static func glint_sweep(elapsed: float) -> float:
 
 # --- Shared -------------------------------------------------------------------
 
-static func find_station(world, kind: String) -> Vector2i:
-	for ty in SimWorld.MAP_HEIGHT:
+# Scoped to a row range since 2026-09-06 (the door) — the page she is standing on,
+# from `VignetteState.page_rows`, so a station out in the yard neither glints nor
+# wears a pip while she is in the room next door. The default is the whole grid,
+# which is what every caller without a position to offer has always got.
+static func find_station(world, kind: String,
+		rows: Vector2i = Vector2i(0, SimWorld.MAP_HEIGHT)) -> Vector2i:
+	for ty in range(rows.x, rows.y):
 		for tx in SimWorld.MAP_WIDTH:
 			if world.objects[ty][tx] == kind:
 				return Vector2i(tx, ty)

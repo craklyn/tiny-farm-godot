@@ -61,6 +61,58 @@ const YARD := "yard"
 # the yard's rule, indoors, on wood.
 const FLOOR := "floor"
 
+# The dark a room is cut out of (2026-09-06, the door).
+#
+# Two maps that are one grid need something between them, and "grass she cannot
+# reach" is not it: a page of ordinary ground below the farm would read as land
+# with an inexplicable wall around it. VOID is the honest answer — not walkable,
+# not tillable, no verb applies to it, and drawn near-black — so the home page is
+# a lit room in darkness and the two pages are never foot-connected.
+#
+# It is deliberately **not** a boundary state (`is_boundary_state` below). A
+# boundary is a promise — a fence she will one day open, land that says "not yet"
+# — and the void promises nothing. Everything that asks "is this a boundary"
+# is asking about that promise; `is_walkable` refuses the void on its own line.
+const VOID := "void"
+
+# --- Pages: how two maps live in one grid (2026-09-06) ------------------------
+#
+# The world is one `SimWorld` whose rows are stacked in pages of PAGE_ROWS: page
+# 0 is the farm (rows 0–19, every coordinate the game has ever had, unmoved),
+# page 1 is the home interior (rows 20–39). A door is the only way between them
+# (`doors` below and the `use_door` verb), which is what keeps saves, replays and
+# the Action record indifferent to there being more than one map: a transition is
+# an Action like any other, and every tile in the game still has one address.
+#
+# The number lives here rather than in the sim because it is a fact about how
+# *layouts* are laid out — `compose()` shifts the home's rects by exactly one
+# page — and layer 2 reads it from here (`SimWorld.PAGE_ROWS`).
+const PAGE_ROWS := 20
+
+# Page 1's origin. The home layout is written in its own coordinates (T-37, the
+# debug screen still generates it that way); the composed world is that layout
+# moved down one page, and nothing else.
+const HOME_ORIGIN := Vector2i(0, PAGE_ROWS)
+
+# The farmhouse, and the two ends of the door it holds. Object types rather than
+# tile states: the house is a thing standing on the yard, the way the well is.
+const HOUSE_WALL := "house_wall"
+const HOUSE_DOOR := "house_door"
+const HOME_DOORWAY := "home_doorway"
+
+# The robot stall (CEO, 2026-09-06), which is two tiles of one shed: the left cell
+# is the one that is *drawn* and the right cell is its second bay. Two object types
+# rather than one repeated, because they answer different questions — the renderer
+# hangs the 32x32 picture off the left one and draws nothing at all for the right —
+# and because a stall that lost its second cell to a save, a layout or a bug is
+# then a visible half-shed rather than two sheds standing in each other.
+#
+# **Neither of them blocks walking.** The stall is open-fronted and its whole
+# purpose is to be stood in: a bot walks home into a bay, and the farmer can walk
+# through it as she can walk over an egg (`SimWorld.OPEN_OBJECTS`).
+const ROBOT_STALL := "robot_stall"
+const ROBOT_STALL_SLOT := "robot_stall_slot"
+
 # Who opens a gate, as recorded on the parcel. "start" means no gate at all.
 const OPENED_BY_START := "start"
 const OPENED_BY_COLD_OPEN := "cold_open"
@@ -264,6 +316,156 @@ const HOME := {
 }
 
 
+# --- WORLD: the farm and the home, in one grid (2026-09-06) -------------------
+#
+# The CEO, 2026-09-06: *"the player can see an entrance to their house from the
+# outdoor space, and going inside enters a new map with their bed; a door leads
+# back outside."*
+#
+# This is that, and it is also the ruling the multi-map project was parked on:
+# **maps connect in play as door-linked pages of one SimWorld.** Not a second
+# world object, not a scene swap — one grid, two pages, and a verb between them.
+# Everything the sim already does (saving, replaying, the actor registry, the
+# Action record phase 4 trains on) works on it unchanged, because as far as any
+# of them can tell the world simply got taller.
+#
+# DEFAULT and HOME above are untouched and stay the source: DEFAULT is still the
+# farm on its own (the tests' plain world), HOME is still the home on its own
+# (the title screen's debug room). WORLD is **composed** from them by the pure
+# function below rather than written out a third time, so a fence moved in
+# DEFAULT or a window cut in HOME lands in the live game with no second edit.
+#
+# What compose() does, in one sentence each:
+#   * everything DEFAULT has — parcels, boundaries, tools, acorns, the
+#     neighbour's plot — kept exactly as it is, on page 0;
+#   * the farm's fixed objects, minus the cot (it has moved indoors) and plus
+#     the farmhouse: five wall tiles and the door in the middle of them;
+#   * she wakes at (2,4), the cot's old spot, because (2,2) is now the door;
+#   * the home, moved down one page: its room, its walls, its windows, its
+#     doorway and its bed, every rect translated by +20y and nothing else;
+#   * VOID over the rest of page 1, so the room stands in darkness and row 20
+#     is a solid line nobody can walk across;
+#   * and the two ends of the door, as a table the `use_door` verb reads.
+static func compose() -> Dictionary:
+	var world: Dictionary = DEFAULT.duplicate(true)
+	# The cot was the thing she had to find in the yard (T-32); it is now the
+	# thing she has to go *inside* to find, so she wakes where it used to stand.
+	world["spawn"] = Vector2i(2, 4)
+	# The farm's own parcels and boundaries are already here, deep-copied by the
+	# duplicate above; the home's are appended, one page down. Copies throughout,
+	# so nothing the generator or a test does to the composed world can reach back
+	# into the two constants it was made from.
+	world["parcels"] = (world["parcels"] as Array) + _shifted_parcels(parcels(HOME), HOME_ORIGIN)
+	world["boundaries"] = (world["boundaries"] as Array) \
+		+ _shifted_boundaries(boundaries(HOME), HOME_ORIGIN)
+	world["objects"] = farm_objects() \
+		+ _shifted_objects(HOME.get("objects", []), HOME_ORIGIN) \
+		+ [
+			# The doorway is a hole cut in the home's south wall, and this object
+			# is what makes the hole tappable. `bare` because everything else the
+			# generator places gets cleared ground and a cleared shoulder around
+			# it (T-27 box 3's fat-finger rule) — which here would fill in the
+			# hole and punch a ring of walkable floor into the dark outside.
+			{ "type": HOME_DOORWAY, "tx": 15, "ty": 13 + PAGE_ROWS, "bare": true },
+		]
+	# The whole of page 1, laid before the room is: the generator writes VOID
+	# over every tile of this rect that no parcel claims. Wider than the map on
+	# purpose — the generator clamps, and a fill that had to know the map's width
+	# would be a third place that number lives.
+	world["void_fill"] = Rect2i(0, PAGE_ROWS, 64, PAGE_ROWS)
+	world["doors"] = doors_of_world()
+	return world
+
+
+# The two ends of the one door, as data.
+#
+# `at` is the tile you tap (an object stands on it, so nobody walks through a
+# door by accident); `to` is where you come out, which is always a tile beside
+# the door on the far side; `face` is which way you are looking when you get
+# there — into the room going in, out into the yard coming back.
+#
+# A table rather than a pair of hard-coded tiles because the second door was
+# free once the first one was data, and because a save whose world has no such
+# table must refuse the verb rather than teleport somebody into the dark
+# (`SimWorld._apply`'s `door_leads_nowhere`).
+static func doors_of_world() -> Array:
+	return [
+		{ "at": Vector2i(2, 2), "to": Vector2i(15, 12 + PAGE_ROWS), "face": "up",
+			"object": HOUSE_DOOR },
+		{ "at": Vector2i(15, 13 + PAGE_ROWS), "to": Vector2i(2, 3), "face": "down",
+			"object": HOME_DOORWAY },
+	]
+
+
+# The farm's fixed objects in the composed world: the three stations exactly
+# where `SimWorld.OBJECT_POSITIONS` has always put them, the cot **gone** (it is
+# indoors now, and it arrives with the home's own object list), and the farmhouse
+# it went into — a 3x2 facade whose bottom-centre cell is the door.
+#
+# Written out rather than read from the sim's constant because layer 1 does not
+# import layer 2; a test pins the two together so they cannot drift.
+static func farm_objects() -> Array:
+	return [
+		{ "type": "shipping_bin", "tx": 4, "ty": 1 },
+		{ "type": "well",         "tx": 6, "ty": 1 },
+		{ "type": "seed_box",     "tx": 8, "ty": 1 },
+		{ "type": HOUSE_WALL, "tx": 1, "ty": 1 },
+		{ "type": HOUSE_WALL, "tx": 2, "ty": 1 },
+		{ "type": HOUSE_WALL, "tx": 3, "ty": 1 },
+		{ "type": HOUSE_WALL, "tx": 1, "ty": 2 },
+		{ "type": HOUSE_WALL, "tx": 3, "ty": 2 },
+		{ "type": HOUSE_DOOR, "tx": 2, "ty": 2 },
+	]
+
+
+# Built once, when this class is first touched. A `const` cannot call a
+# function, and composing per generation would be work done over and over for an
+# answer that cannot change — the inputs are two constants.
+static var WORLD: Dictionary = compose()
+
+
+# The translations, and they are the whole of "the home is on page 1": pure
+# Rect2i/Vector2i arithmetic over copies, so HOME itself is never touched and the
+# debug home screen keeps generating the room at its own coordinates.
+static func _shifted_rects(rects: Array, by: Vector2i) -> Array:
+	var out: Array = []
+	for r in rects:
+		var rect: Rect2i = r
+		out.append(Rect2i(rect.position + by, rect.size))
+	return out
+
+
+static func _shifted_parcels(list: Array, by: Vector2i) -> Array:
+	var out: Array = []
+	for raw in list:
+		var p: Dictionary = (raw as Dictionary).duplicate(true)
+		p["rects"] = _shifted_rects(p.get("rects", []), by)
+		var g: Vector2i = p.get("gate", Vector2i(-1, -1))
+		if g.x >= 0:
+			p["gate"] = g + by
+		out.append(p)
+	return out
+
+
+static func _shifted_boundaries(list: Array, by: Vector2i) -> Array:
+	var out: Array = []
+	for raw in list:
+		var b: Dictionary = (raw as Dictionary).duplicate(true)
+		b["rects"] = _shifted_rects(b.get("rects", []), by)
+		out.append(b)
+	return out
+
+
+static func _shifted_objects(list: Array, by: Vector2i) -> Array:
+	var out: Array = []
+	for raw in list:
+		var o: Dictionary = (raw as Dictionary).duplicate(true)
+		o["tx"] = int(o.get("tx", 0)) + by.x
+		o["ty"] = int(o.get("ty", 0)) + by.y
+		out.append(o)
+	return out
+
+
 static func parcels(layout: Dictionary = DEFAULT) -> Array:
 	return layout.get("parcels", [])
 
@@ -315,6 +517,38 @@ static func gate_for_tool(tool_key: String, layout: Dictionary = DEFAULT) -> Vec
 		if String(e.get("tool", "")) == tool_key:
 			return e.get("gate", Vector2i(-1, -1))
 	return Vector2i(-1, -1)
+
+
+# --- Doors (2026-09-06) -------------------------------------------------------
+
+# Every door this layout has, or [] for a layout that has none — which is every
+# layout but WORLD, and every save written before doors existed. A world with no
+# doors refuses `use_door` instead of moving anybody, which is what keeps an old
+# farm playable rather than dangerous.
+static func doors(layout: Dictionary = DEFAULT) -> Array:
+	return layout.get("doors", [])
+
+
+# The door standing on this tile, or {}.
+static func door_at(t: Vector2i, layout: Dictionary = DEFAULT) -> Dictionary:
+	for d in doors(layout):
+		if d.get("at", Vector2i(-1, -1)) == t:
+			return d
+	return {}
+
+
+# Is this object one you can go through? The router asks it to decide that a tap
+# on a door means the door rather than the ground under it, and the gateway asks
+# it as the verb's own guard.
+static func is_door_object(obj: String) -> bool:
+	return obj == HOUSE_DOOR or obj == HOME_DOORWAY
+
+
+# Is this object one of a stall's two bays? Asked wherever "a robot may be parked
+# here, and nothing may be farmed here" is the question — `SimWorld.is_stall_tile`
+# is the one that reads it off the grid.
+static func is_stall_object(obj: String) -> bool:
+	return obj == ROBOT_STALL or obj == ROBOT_STALL_SLOT
 
 
 static func is_boundary_state(state: String) -> bool:

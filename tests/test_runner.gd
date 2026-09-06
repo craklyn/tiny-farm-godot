@@ -62,6 +62,12 @@ const SHELF := {
 	"2026-08-31_233943": { "format": 2, "verdict": "cross" },
 }
 
+# The robot-value measurement, shared with the tool that prints it as a table for
+# a human (`test_robot_usefulness` at the bottom of this file says why it is
+# shared rather than copied). Only its static functions are used — the script's
+# own `_init` is the demo's, and preloading never runs it.
+const RobotValue := preload("res://tools/demo_robot_value.gd")
+
 
 func _init() -> void:
 	GameState = load("res://systems/game_state.gd").new()
@@ -151,6 +157,11 @@ func _init() -> void:
 	test_parcel_scatter()
 	test_machines()
 	test_mark_one_robot()
+	test_world_pages()
+	test_the_door()
+	test_save_v3_migration()
+	test_robot_stall()
+	test_robot_usefulness()
 
 	print("")
 	print(String("=").repeat(60))
@@ -975,18 +986,31 @@ func test_vignette_multiday() -> void:
 
 	world.apply_action({ "verb": "water", "target": to_plant, "actor": "player" }, gs)
 
-	# Beat 4 (T-4) — the cot, and only once nothing else is asking. This is what
-	# turns "I did some things" into "I did some things and then something
-	# happened"; without it the first session has no resolution.
+	# Beat 4 (T-4) — bed, and only once nothing else is asking. This is what turns
+	# "I did some things" into "I did some things and then something happened";
+	# without it the first session has no resolution.
+	#
+	# **What it points at is the way to bed** (2026-09-06, the door). The cot is in
+	# a room now, so out on the farm the beat aims her at her own front door and
+	# inside it aims at the bed — the same one answer the dusk glow and the HUD's
+	# bed button take, so the three can never point three different ways.
 	var beat4 := VignetteState.target_tiles(world, gs, plot_tile)
 	_assert(beat4.size() == 1, "beat 4 highlights exactly one thing")
-	_assert(world.objects[beat4[0].y][beat4[0].x] == "cot", "and it is the cot")
-	# T-35's reported moment, in miniature: the cot is home-side, so she is
-	# standing in the yard when this beat should fire — and it must be the cot
-	# she sees there, never the gate again.
+	_assert(world.objects[beat4[0].y][beat4[0].x] == WorldLayout.HOUSE_DOOR,
+		"and out on the farm it is the house door — the way to a bed she cannot see from here")
+	# ...and asked from the room the bed is in, it is the bed itself.
+	var by_the_bed: Vector2i = world.find_object("cot") + Vector2i(0, 1)
+	var beat4_inside := VignetteState.target_tiles(world, gs, by_the_bed)
+	_assert(beat4_inside.size() == 1
+			and world.objects[beat4_inside[0].y][beat4_inside[0].x] == "cot",
+		"indoors, the same beat points at the cot")
+	# T-35's reported moment, in miniature: she is standing in the yard when this
+	# beat should fire, and what she must see there is the way to bed — never the
+	# gate again.
 	var beat4_home := VignetteState.target_tiles(world, gs, yard_tile)
-	_assert(beat4_home.size() == 1 and world.objects[beat4_home[0].y][beat4_home[0].x] == "cot",
-		"asked from the yard, bedtime points at the cot, not the gate (T-35)")
+	_assert(beat4_home.size() == 1
+			and world.objects[beat4_home[0].y][beat4_home[0].x] == WorldLayout.HOUSE_DOOR,
+		"asked from the yard, bedtime points at the way to bed, not the gate (T-35)")
 
 	# T-4: day 1's phase ends by **sleeping**, not by the day counter passing 1.
 	world.apply_action({ "verb": "sleep", "actor": "world", "weather": "sunny" }, gs)
@@ -1077,8 +1101,9 @@ func test_gate_lesson_latch_regression() -> void:
 	var gate := WorldLayout.gate_of("neighbour")
 	_assert(not glowing.has(gate),
 		"the gate does not glow at her again — the lesson latched (T-35)")
-	_assert(glowing.size() == 1 and world.objects[glowing[0].y][glowing[0].x] == "cot",
-		"what glows at her bedtime is the cot")
+	_assert(glowing.size() == 1
+			and world.objects[glowing[0].y][glowing[0].x] == WorldLayout.HOUSE_DOOR,
+		"what glows at her bedtime is the way to bed — from the yard, her own front door")
 
 	# And the latch is part of the farm, not the run: it survives a save.
 	var reloaded := SimWorld.new()
@@ -2180,7 +2205,10 @@ func test_energy_repartition() -> void:
 		"state": { "energy": 14, "max_energy": 20 },
 	}
 	var migrated := SaveGame.migrate(legacy)
-	_assert(int(migrated.get("version", 0)) == 2, "a v1 save migrates to v2")
+	# Migration is a chain since v3 (the door, 2026-09-06): a v1 file is scaled to
+	# v2 and then padded to v3, and what a caller gets back is always current.
+	_assert(int(migrated.get("version", 0)) == SaveGame.VERSION,
+		"a v1 save migrates all the way to the current version")
 	_assert(int(legacy["state"]["energy"]) == 14,
 		"and the caller's own dictionary is left alone — migrate copies, it does not rewrite")
 	var w1 := SimWorld.new()
@@ -2663,18 +2691,23 @@ func test_parcel_generation() -> void:
 	# The yard: the four fixed objects at their known coordinates, and nothing to
 	# clear. The integration suite and the robot session both assert these, and
 	# moving them would buy nothing.
-	for obj in SimWorld.OBJECT_POSITIONS:
+	# Read off the world's own layout rather than the module constant: since the
+	# door (2026-09-06) the generated world is `WorldLayout.WORLD`, which carries
+	# its own object list — the same three stations, the farmhouse, and the cot
+	# indoors. The claim is unchanged ("every fixed object generation promises is
+	# where it says"); what it is asked of is the world the game actually plays.
+	for obj in a.layout.get("objects", SimWorld.OBJECT_POSITIONS):
 		_assert(a.objects[obj.ty][obj.tx] == obj.type,
 			"%s is still at (%d,%d)" % [obj.type, obj.tx, obj.ty])
-	var spawn := WorldLayout.spawn()
+	var spawn := WorldLayout.spawn(a.layout)
 	_assert(a.is_walkable(spawn.x, spawn.y), "the spawn tile is walkable")
-	_assert(String(WorldLayout.parcel_at(spawn).get("id", "")) == "yard",
+	_assert(String(WorldLayout.parcel_at(spawn, a.layout).get("id", "")) == "yard",
 		"and it is inside the fenced yard")
 
 	# The pen has a toy in it, not a chore: the yard must contain nothing to
 	# clear, or she ignores the neighbour and tidies up instead (design/13 §4a).
 	var yard_obstacles := 0
-	for r in WorldLayout.parcel_at(spawn).get("rects", []):
+	for r in WorldLayout.parcel_at(spawn, a.layout).get("rects", []):
 		var rect: Rect2i = r
 		for ty in range(rect.position.y, rect.end.y):
 			for tx in range(rect.position.x, rect.end.x):
@@ -3610,7 +3643,7 @@ func test_actor_registry() -> void:
 	world.generate()
 
 	_assert(world.has_actor(SimWorld.ACTOR_PLAYER), "a generated world contains the player")
-	_assert(world.actor_pos(SimWorld.ACTOR_PLAYER) == WorldLayout.spawn(),
+	_assert(world.actor_pos(SimWorld.ACTOR_PLAYER) == WorldLayout.spawn(world.layout),
 		"at the layout's spawn point (nothing moves her yet — WI-4/WI-6)")
 	_assert(world.has_actor(SimWorld.ACTOR_CHICKEN), "and the chicken")
 	_assert(world.has_actor(SimWorld.ACTOR_NEIGHBOUR),
@@ -4802,6 +4835,11 @@ func _ref_walkable(world: SimWorld, tx: int, ty: int) -> bool:
 	var state: String = tile.state
 	if state == "border":
 		return false
+	# The dark outside a room (2026-09-06), mirrored here the moment the real
+	# function gained it: this copy is only worth having while it asks the same
+	# questions in the same order.
+	if state == WorldLayout.VOID:
+		return false
 	if state.begins_with("obstacle"):
 		return false
 	if WorldLayout.is_boundary_state(state):
@@ -5204,8 +5242,14 @@ func test_movement() -> void:
 		for tx in SimWorld.MAP_WIDTH:
 			var t := Vector2i(tx, ty)
 			var st := String(farm.get_tile(tx, ty).get("state", ""))
+			# The whole class, written out by hand — the walls and windows T-37
+			# added included, which a generated farm only started containing when
+			# the home became page 1 of it (2026-09-06). VOID is deliberately not
+			# in the list: darkness is not a boundary, it is the edge of the map
+			# drawn inside the grid, and a hopper does not clear it.
 			var is_barrier_state := st == WorldLayout.FENCE or st == WorldLayout.HEDGE \
-				or st == WorldLayout.GATE_CLOSED
+				or st == WorldLayout.GATE_CLOSED or st == WorldLayout.WALL \
+				or st == WorldLayout.WINDOW
 			_assert_quiet(Movement.passable(farm, SpeciesDefs.HOP, t)
 					== (farm.is_walkable(tx, ty) or is_barrier_state),
 				"hop passability at %s (%s)" % [t, st])
@@ -6736,8 +6780,12 @@ func test_grazers() -> void:
 	_assert(booked.gs.visitor_schedules.get(SpeciesDefs.RABBIT, []).is_empty(),
 		"and the appointment is spent, whether the visit comes to anything or not")
 	var arrived_at := booked.world.actor_pos(SpeciesDefs.RABBIT)
-	_assert(arrived_at.x <= 1 or arrived_at.y <= 1
-			or arrived_at.x >= SimWorld.MAP_WIDTH - 2 or arrived_at.y >= SimWorld.MAP_HEIGHT - 2,
+	# The edge of its **page**, since the grid became two of them (2026-09-06).
+	# The farm's own bottom row is still the hole in the hedge it came through;
+	# what changed is that `MAP_HEIGHT - 2` stopped naming it.
+	var arrived_y := arrived_at.y % SimWorld.PAGE_ROWS
+	_assert(arrived_at.x <= 1 or arrived_y <= 1
+			or arrived_at.x >= SimWorld.MAP_WIDTH - 2 or arrived_y >= SimWorld.PAGE_ROWS - 2,
 		"coming in at the edge of the map, which is also the way it will leave %s" % arrived_at)
 	_assert(Brains.of_species(SpeciesDefs.RABBIT).arrive(
 			booked.world, booked.gs, SpeciesDefs.RABBIT, 9) == "",
@@ -6828,8 +6876,13 @@ func test_grazers() -> void:
 	})
 	# The same farm, the same seed, the same mouthful and the same fright: the two
 	# runs differ in one field of one row and in nothing else.
-	var paused := _bite_then_scare(4242, SpeciesDefs.RABBIT)
-	var ended := _bite_then_scare(4242, "test_bolter")
+	# Seed 99 rather than the 4242 this pair ran on until 2026-09-06: the world it
+	# runs in is the composed one now, so the same draws put the rabbit in a
+	# different corner of the same meadow, and on 4242 it wandered past its
+	# patience before finding a second mouthful. The claim is unchanged and so is
+	# the fixture — one number moved, and it is the number that says "some farm".
+	var paused := _bite_then_scare(99, SpeciesDefs.RABBIT)
+	var ended := _bite_then_scare(99, "test_bolter")
 	_assert(paused["bit"] and paused["bolted"] and ended["bit"] and ended["bolted"],
 		"both animals take a bite, and both bolt when she walks up — the fright is the same fright")
 	_assert(paused["lost"] == SimWorld.GRAZER_BITES,
@@ -8383,11 +8436,13 @@ func test_cot_halo() -> void:
 	_assert(plain.get("action", "") == "sleep" and not plain.has("halo_from"),
 		"a tap on the cot is a plain cot tap, not a rescue")
 
-	# The halo is wired to the cot and nothing else, on purpose (smallest true
-	# change). If this ever fails, the bin and the well arrived — check the
-	# designer actually asked for them.
-	_assert(ActionRouter.HALO_OBJECTS.size() == 1 and ActionRouter.HALO_OBJECTS.has("cot"),
-		"exactly one object is haloed today, and it is the cot")
+	# The halo is wired to the cot and to the door the cot moved behind
+	# (2026-09-06), and to nothing else. If this ever fails, the bin and the well
+	# arrived — check the designer actually asked for them.
+	_assert(ActionRouter.HALO_OBJECTS.size() == 2
+			and ActionRouter.HALO_OBJECTS.has("cot")
+			and ActionRouter.HALO_OBJECTS.has(WorldLayout.HOUSE_DOOR),
+		"two objects are haloed today: the bed, and the front door that leads to it")
 
 	GameState.energy = Tools.DAY_UNITS  # T-29
 	GameState.seeds = { "wheat": 5 }
@@ -8542,10 +8597,13 @@ func test_home_layout() -> void:
 		_assert(not found.has(station), "%s stays on the farm — the layout's objects override" % station)
 
 	# And the farm itself is untouched by the override's existence: DEFAULT
-	# carries no `objects` key, so it falls back to the module constant.
+	# carries no `objects` key, so it falls back to the module constant. Asked of
+	# DEFAULT by name since the door (2026-09-06) — the world the game generates
+	# now carries an object list of its own, and the fallback is exactly what this
+	# line is about.
 	SimRng.reseed(3737)
 	var farm_w := SimWorld.new()
-	farm_w.generate()
+	farm_w.generate(WorldLayout.DEFAULT)
 	_assert(String(farm_w.objects[4][2]) == "cot" and String(farm_w.objects[1][6]) == "well",
 		"the default farm still places its four fixed objects")
 
@@ -8582,10 +8640,15 @@ func test_yard_ground() -> void:
 
 	var yard_rect: Rect2i = WorldLayout.parcels()[0]["rects"][0]
 
-	# --- 1. what generation lays -----------------------------------------------
+	# **On DEFAULT, deliberately** (2026-09-06). T-32 is a claim about the farm
+	# layout, and the farm layout is what this generates — the composed world the
+	# game now plays keeps the identical yard on page 0 (`test_world_pages` asserts
+	# it tile for tile), but the cot it once held has moved indoors, and asserting
+	# the cot's yard tile here would be asserting it of a world where the cot is
+	# not in the yard at all.
 	SimRng.reseed(2026)
 	var w := SimWorld.new()
-	w.generate()
+	w.generate(WorldLayout.DEFAULT)
 	var inside := 0
 	for ty in range(yard_rect.position.y, yard_rect.end.y):
 		for tx in range(yard_rect.position.x, yard_rect.end.x):
@@ -8683,7 +8746,7 @@ func test_yard_ground() -> void:
 	plain["parcels"][0].erase("ground")
 	SimRng.reseed(31337)
 	var a := SimWorld.new()
-	a.generate()
+	a.generate(WorldLayout.DEFAULT)
 	SimRng.reseed(31337)
 	var b := SimWorld.new()
 	b.generate(plain)
@@ -9609,8 +9672,18 @@ func test_machines() -> void:
 	# species table and forgotten in the shop is exactly the state this ruling
 	# exists to abolish, so the test is written to fail when that happens.
 	for key in MachineDefs.ORDER:
-		_assert(SpeciesDefs.has(MachineDefs.species_of(key)),
-			"the shop's %s is a species the table knows" % key)
+		# **Unless it is a structure** (2026-09-06): the stall becomes an object on
+		# the grid rather than an actor in the registry, so it names no species and
+		# there is nothing for the table to know. The rule this asserts is the one
+		# that matters either way — a row that *does* name a species names a real
+		# one, so a machine can never be sold into a world that cannot spawn it.
+		if MachineDefs.spawns_actor(key):
+			_assert(SpeciesDefs.has(MachineDefs.species_of(key)),
+				"the shop's %s is a species the table knows" % key)
+		else:
+			_assert(MachineDefs.configs_of(key).is_empty()
+					and MachineDefs.program_of(key) == "",
+				"the shop's %s is a structure: no species, no brain, and so no menu" % key)
 		_assert(MachineDefs.price_of(key) > 0,
 			"...and it has a price, so it can actually be bought")
 	_assert(MachineDefs.key_for_species(SpeciesDefs.SPRINKLER) == "sprinkler"
@@ -10255,3 +10328,733 @@ func test_mark_one_robot() -> void:
 		"and a replay of a session in which she taught a robot lands on the same farm and the same robot")
 	_assert(str(BotBrain.orders_of(replayed.actor("bot_mk1")["extra"])) == str(lesson),
 		"knowing the same tiles, in the same order — a lesson is training data (S-3/S-5)")
+
+
+# --- The door (2026-09-06) ----------------------------------------------------
+#
+# The CEO asked for three things and the first two are one feature: *"the player
+# can see an entrance to their house from the outdoor space"*, and *"going inside
+# enters a new map with their bed; a door leads back outside."*
+#
+# The architecture that answers it is the ruling the multi-map project was parked
+# on: **maps connect in play as door-linked pages of one SimWorld.** So these
+# three tests are not really about a house. They are about that claim — that a
+# second map costs the sim nothing but rows, that going through a door is an
+# Action like any other, and that a farm saved before any of this existed still
+# loads and still plays.
+func test_world_pages() -> void:
+	print("\n--- The world is two pages, and page 0 did not move ---")
+
+	# --- 1. compose() is pure ---------------------------------------------------
+	# The composed world is built from DEFAULT and HOME, and building it must not
+	# touch either: the tests above generate DEFAULT on its own and the title
+	# screen's debug row still generates HOME at its own coordinates.
+	_assert(WorldLayout.spawn(WorldLayout.DEFAULT) == Vector2i(2, 2)
+			and not WorldLayout.DEFAULT.has("objects"),
+		"DEFAULT is untouched by composition — still spawning at (2,2), still no object list")
+	_assert(Rect2i(WorldLayout.HOME["parcels"][0]["rects"][0]) == Rect2i(11, 6, 10, 7)
+			and WorldLayout.HOME["objects"][0]["ty"] == 7,
+		"and HOME is untouched — its room and its bed are where the debug screen expects them")
+	_assert(str(WorldLayout.compose()) == str(WorldLayout.WORLD),
+		"and composing again produces the same world, because its inputs are constants")
+
+	# --- 2. page 0 is the farm, unmoved ----------------------------------------
+	# The strongest thing that can be said for a change that doubles the grid: the
+	# same seed lays the same farm, tile for tile, over the whole of page 0.
+	SimRng.reseed(20260906)
+	var w := SimWorld.new()
+	w.generate()
+	SimRng.reseed(20260906)
+	var farm := SimWorld.new()
+	farm.generate(WorldLayout.DEFAULT)
+	for ty in SimWorld.PAGE_ROWS:
+		for tx in SimWorld.MAP_WIDTH:
+			_assert_quiet(String(w.get_tile(tx, ty).get("state", ""))
+					== String(farm.get_tile(tx, ty).get("state", "")),
+				"(%d,%d) reads %s on the farm and %s in the world"
+					% [tx, ty, farm.get_tile(tx, ty).get("state", ""),
+						w.get_tile(tx, ty).get("state", "")])
+	_flush_quiet("every tile of page 0 is the tile the farm layout lays on its own")
+	_assert(String(w.get_tile(0, SimWorld.PAGE_ROWS - 1).get("state", "")) == "border",
+		"the farm's bottom row is still its border, not ground that appeared under it")
+
+	# What did change on page 0 is furniture, and only furniture: the cot went
+	# indoors and the house it went into arrived.
+	var moved: Array[String] = []
+	for ty in SimWorld.PAGE_ROWS:
+		for tx in SimWorld.MAP_WIDTH:
+			if w.objects[ty][tx] != farm.objects[ty][tx]:
+				moved.append("%d,%d %s->%s" % [tx, ty, farm.objects[ty][tx], w.objects[ty][tx]])
+	_assert(moved.size() == 7, "seven tiles of the farm hold something different: %s" % str(moved))
+	_assert(w.objects[4][2] == "" and w.get_object(2, 4) == "",
+		"the cot is gone from the yard — she has to go inside to find her bed")
+	for t in [Vector2i(1, 1), Vector2i(2, 1), Vector2i(3, 1), Vector2i(1, 2), Vector2i(3, 2)]:
+		_assert_quiet(w.objects[t.y][t.x] == WorldLayout.HOUSE_WALL, "%s is house" % t)
+	_flush_quiet("and a farmhouse stands where it was, five tiles of wall")
+	_assert(w.objects[2][2] == WorldLayout.HOUSE_DOOR, "with a door in the middle of them")
+	_assert(not w.is_walkable(2, 2) and not w.is_walkable(1, 1),
+		"the house is solid — she walks up to the door rather than through the wall")
+	_assert(WorldLayout.spawn(w.layout) == Vector2i(2, 4) and w.is_walkable(2, 4),
+		"and she wakes on the cot's old tile, which is now free")
+
+	# The stations are still the stations. Written out in the layout (layer 1 does
+	# not read layer 2), so this is what stops the two copies drifting apart.
+	var pinned := {}
+	for obj in SimWorld.OBJECT_POSITIONS:
+		if String(obj.type) != "cot":
+			pinned[String(obj.type)] = Vector2i(obj.tx, obj.ty)
+	for obj in WorldLayout.farm_objects():
+		if pinned.has(String(obj.type)):
+			_assert_quiet(pinned[String(obj.type)] == Vector2i(obj.tx, obj.ty),
+				"%s at %d,%d" % [obj.type, obj.tx, obj.ty])
+			pinned.erase(String(obj.type))
+	_assert(pinned.is_empty(),
+		"every station in SimWorld.OBJECT_POSITIONS but the cot is in the composed farm too")
+	_flush_quiet("at exactly the coordinates the sim's own constant gives them")
+
+	# --- 3. page 1 is the home, one page down ----------------------------------
+	var room := Rect2i(11, 6 + SimWorld.PAGE_ROWS, 10, 7)
+	var floors := 0
+	for ty in range(room.position.y, room.end.y):
+		for tx in range(room.position.x, room.end.x):
+			_assert_quiet(String(w.get_tile(tx, ty).get("state", "")) == WorldLayout.FLOOR,
+				"(%d,%d) is floor" % [tx, ty])
+			floors += 1
+	_flush_quiet("the home's room is laid out on page 1, floor and all (%d)" % floors)
+	_assert(String(w.get_tile(13, 25).get("state", "")) == WorldLayout.WINDOW
+			and String(w.get_tile(10, 26).get("state", "")) == WorldLayout.WALL,
+		"with its windows and its walls, every rect moved by exactly one page")
+	_assert(String(w.get_tile(15, 33).get("state", "")) == WorldLayout.GATE_OPEN,
+		"and the doorway still cut in the south wall — the object on it kept the hole")
+	_assert(w.objects[27][12] == "cot", "the bed is on page 1, at (12,27)")
+	_assert(w.objects[33][15] == WorldLayout.HOME_DOORWAY, "and the way out stands in the doorway")
+
+	# --- 4. the dark ------------------------------------------------------------
+	var lit := 0
+	var dark := 0
+	for ty in range(SimWorld.PAGE_ROWS, SimWorld.MAP_HEIGHT):
+		for tx in SimWorld.MAP_WIDTH:
+			if String(w.get_tile(tx, ty).get("state", "")) == WorldLayout.VOID:
+				dark += 1
+				_assert_quiet(not w.is_walkable(tx, ty), "(%d,%d) is not walkable" % [tx, ty])
+			else:
+				lit += 1
+	_flush_quiet("no tile of the void can be stood on (%d)" % dark)
+	_assert(dark > 0 and lit > 0, "page 1 is a lit room in darkness (%d dark, %d not)" % [dark, lit])
+	for tx in SimWorld.MAP_WIDTH:
+		_assert_quiet(String(w.get_tile(tx, SimWorld.PAGE_ROWS).get("state", "")) == WorldLayout.VOID,
+			"(%d,20) is void" % tx)
+	_flush_quiet("and row 20 is a solid line of it, so the two pages never touch")
+
+	# Which is the point: no walker can get from one page to the other on foot.
+	var downstairs := 0
+	for t in w.reachable_from(WorldLayout.spawn(w.layout)):
+		if w.page_of(t) != 0:
+			downstairs += 1
+	_assert(downstairs == 0, "nothing walkable from the farm reaches page 1 (%d)" % downstairs)
+	var upstairs := 0
+	for t in w.reachable_from(Vector2i(15, 30)):
+		if w.page_of(t) != 1:
+			upstairs += 1
+	_assert(upstairs == 0, "and nothing walkable from the home reaches page 0 (%d)" % upstairs)
+	_assert(w.page_of(Vector2i(2, 4)) == 0 and w.page_of(Vector2i(15, 32)) == 1,
+		"which is what `page_of` says: rows 0-19 are the farm, 20-39 are the home")
+
+	# --- 5. nothing can be done to the dark ------------------------------------
+	var gs = load("res://systems/game_state.gd").new()
+	gs.reset()
+	var void_tile := Vector2i(3, 22)
+	_assert(String(w.get_tile(void_tile.x, void_tile.y).get("state", "")) == WorldLayout.VOID,
+		"a tile out in the dark is void")
+	var before: int = gs.energy
+	for verb in ["till", "plant", "water", "harvest", "clear_weed"]:
+		var r := w.apply_action({ "verb": verb, "target": void_tile, "seed_type": "wheat",
+			"actor": "player" }, gs)
+		_assert_quiet(not r.get("ok", false), "%s refused (%s)" % [verb, r.get("reason", "")])
+	_flush_quiet("every verb the gateway costs energy for is refused on it")
+	_assert(gs.energy == before, "and none of them cost her anything — the guard runs first")
+	_assert(not w.placeable_at(void_tile), "nor may a machine be set down in it")
+
+	# --- 6. the same seed makes the same two pages -----------------------------
+	SimRng.reseed(4242)
+	var one := SimWorld.new()
+	one.generate()
+	SimRng.reseed(4242)
+	var two := SimWorld.new()
+	two.generate()
+	var gs_one = load("res://systems/game_state.gd").new()
+	var gs_two = load("res://systems/game_state.gd").new()
+	_assert(SaveGame.capture_canonical(one, gs_one) == SaveGame.capture_canonical(two, gs_two),
+		"the same seed generates a byte-identical world, both pages of it")
+	gs_one.free()
+	gs_two.free()
+	gs.free()
+
+
+func test_the_door() -> void:
+	print("\n--- Going indoors is an Action, and it comes back ---")
+
+	var gs = load("res://systems/game_state.gd").new()
+	gs.reset()
+	SimRng.reseed(606)
+	var w := SimWorld.new()
+	w.generate()
+	var door := Vector2i(2, 2)
+	var doorway := Vector2i(15, 33)
+
+	# --- 1. she has to be standing at it ---------------------------------------
+	w.set_actor_pos(SimWorld.ACTOR_PLAYER, Vector2i(6, 5))
+	var far := w.apply_action({ "verb": "use_door", "target": door, "actor": "player" }, gs)
+	_assert(not far.get("ok", false) and String(far.get("reason", "")) == "too_far",
+		"a door across the yard is refused — she walks to it, like every special object (%s)" % far)
+	_assert(w.actor_pos(SimWorld.ACTOR_PLAYER) == Vector2i(6, 5), "and she has not moved")
+
+	# --- 2. in ------------------------------------------------------------------
+	w.set_actor_pos(SimWorld.ACTOR_PLAYER, Vector2i(2, 3), "up")
+	var before_energy: int = gs.energy
+	var before_actions: int = gs.actions_today
+	var went := w.apply_action({ "verb": "use_door", "target": door, "actor": "player" }, gs)
+	_assert(went.get("ok", false) and went.get("dest", Vector2i()) == Vector2i(15, 32),
+		"standing under her own door, one tap puts her inside (%s)" % went)
+	_assert(String(went.get("face", "")) == "up", "facing into the room she just walked into")
+	_assert(w.actor_pos(SimWorld.ACTOR_PLAYER) == Vector2i(15, 32),
+		"and the registry says so — where she is has been sim truth since Q-53")
+	_assert(w.page_of(w.actor_pos(SimWorld.ACTOR_PLAYER)) == 1, "she is on the home page")
+	_assert(gs.energy == before_energy and gs.actions_today == before_actions,
+		"a door costs no energy and does not tick the day's clock (NON_WORK_VERBS)")
+	_assert(SimWorld.NON_WORK_VERBS.has("use_door"), "which is stated once, in the table")
+
+	# --- 3. and out again -------------------------------------------------------
+	var back := w.apply_action({ "verb": "use_door", "target": doorway, "actor": "player" }, gs)
+	_assert(back.get("ok", false) and back.get("dest", Vector2i()) == Vector2i(2, 3)
+			and String(back.get("face", "")) == "down",
+		"the doorway leads back out, to the tile below the door, facing the yard (%s)" % back)
+	_assert(w.actor_pos(SimWorld.ACTOR_PLAYER) == Vector2i(2, 3), "she is home on the farm")
+
+	# --- 4. what it refuses -----------------------------------------------------
+	var nothing := w.apply_action({ "verb": "use_door", "target": Vector2i(5, 5),
+		"actor": "player" }, gs)
+	_assert(not nothing.get("ok", false) and String(nothing.get("reason", "")) == "no_door_here",
+		"a tap on ordinary ground is not a door (%s)" % nothing)
+	w.set_actor_pos(SimWorld.ACTOR_CHICKEN, Vector2i(2, 3))
+	var hen := w.apply_action({ "verb": "use_door", "target": door, "actor": "chicken" }, gs)
+	_assert(not hen.get("ok", false) and String(hen.get("reason", "")) == "not_the_player",
+		"and nobody but the player goes indoors in phase 1 (%s)" % hen)
+
+	# **The migration's safety net, from the other side.** A world with no door
+	# table is every farm ever saved before today: even with a door object sitting
+	# on a tile, the verb has nowhere to send her and says so rather than guessing.
+	SimRng.reseed(606)
+	var old := SimWorld.new()
+	old.generate(WorldLayout.DEFAULT)
+	old.set_object(5, 5, WorldLayout.HOUSE_DOOR)
+	old.set_actor_pos(SimWorld.ACTOR_PLAYER, Vector2i(5, 6))
+	var nowhere := old.apply_action({ "verb": "use_door", "target": Vector2i(5, 5),
+		"actor": "player" }, gs)
+	_assert(not nowhere.get("ok", false)
+			and String(nowhere.get("reason", "")) == "door_leads_nowhere",
+		"a door in a world that has no doors leads nowhere, and is refused (%s)" % nowhere)
+
+	# --- 5. the way to bed ------------------------------------------------------
+	# One resolver, so the dusk glow, the bedtime nudge and the HUD's bed button
+	# cannot come to disagree about where she is being sent.
+	_assert(w.way_to_bed(Vector2i(6, 5)) == door,
+		"outside at dusk, the way to bed is the front door")
+	_assert(w.way_to_bed(Vector2i(15, 32)) == Vector2i(12, 27),
+		"and once she is inside, it is the bed itself")
+	SimRng.reseed(606)
+	var bedless := SimWorld.new()
+	bedless.generate(WorldLayout.DEFAULT)
+	bedless.set_object(2, 4, "")
+	_assert(bedless.way_to_bed(Vector2i(5, 5)) == Vector2i(-1, -1),
+		"a world with no bed in it says so, rather than pointing at the origin")
+	_assert(old.way_to_bed(Vector2i(9, 9)) == Vector2i(2, 4),
+		"and on an old farm, where the cot is still out in the yard, it is the cot")
+	gs.free()
+
+	# --- 6. recorded, and replayed ---------------------------------------------
+	# A transition is an ordinary logged Action, which is the whole reason it is a
+	# verb: a session in which she went indoors, slept and came out replays to the
+	# same world — her position included.
+	var s := LiveSession.new(8080)
+	s.walk("begin", "up", Vector2i(2, 3))
+	_assert(s.act({ "verb": "use_door", "target": door, "actor": "player" }).get("ok", false),
+		"the session's farmer goes inside")
+	s.walk("step", "up", Vector2i(15, 31))
+	s.walk("turn", "left", Vector2i(13, 28))
+	_assert(s.act({ "verb": "sleep", "actor": "player", "weather": "sunny" }).get("ok", false),
+		"sleeps in her own bed")
+	s.walk("step", "down", Vector2i(15, 32))
+	_assert(s.act({ "verb": "use_door", "target": doorway, "actor": "player" }).get("ok", false),
+		"and comes back out in the morning")
+	_assert(s.world.actor_pos(SimWorld.ACTOR_PLAYER) == Vector2i(2, 3), "into her own yard")
+	var live := SaveGame.capture_canonical(s.world, s.gs)
+
+	var replayed := SimWorld.new()
+	var gs_replay = load("res://systems/game_state.gd").new()
+	var rlog := ReplayLog.from_json(s.log.to_json())
+	_assert(rlog.apply_to(replayed, gs_replay), "the log replays")
+	_assert(rlog.divergence == "", "with nothing recomputed differently (%s)" % rlog.divergence)
+	_assert(SaveGame.capture_canonical(replayed, gs_replay) == live,
+		"onto the same farm, the same home and the same farmer standing in her own yard")
+	_assert(replayed.actor_pos(SimWorld.ACTOR_PLAYER) == Vector2i(2, 3),
+		"a door transit reproduces exactly, because it is an Action and not a teleport")
+	gs_replay.free()
+	s.done()
+
+
+func test_save_v3_migration() -> void:
+	# The recon's first finding: `restore` checks a save's grid against the world's
+	# height exactly, so a world that grows a page breaks every save on disk unless
+	# the save is grown first. v3 is that padding — twenty rows of void, which is
+	# the honest picture of a farm from before there was anywhere else to be.
+	print("\n--- A farm saved before the door still loads, and still plays ---")
+
+	GameState.reset()
+	SimRng.reseed(1907)
+	var world := SimWorld.new()
+	world.generate(WorldLayout.DEFAULT)
+	world.apply_action({ "verb": "till", "target": Vector2i(5, 9), "actor": "player" }, GameState)
+	world.apply_action({ "verb": "plant", "target": Vector2i(5, 9), "seed_type": "wheat",
+		"actor": "player" }, GameState)
+	GameState.gold = 87
+
+	# A genuine v2 file: today's capture with the second page cut back off it,
+	# which is byte for byte what every build before this one wrote.
+	var v2 = JSON.parse_string(JSON.stringify(SaveGame.capture(world, GameState)))
+	v2["version"] = 2
+	v2["world"]["tiles"] = (v2["world"]["tiles"] as Array).slice(0, SaveGame.LEGACY_MAP_HEIGHT)
+	v2["world"]["objects"] = (v2["world"]["objects"] as Array).slice(0, SaveGame.LEGACY_MAP_HEIGHT)
+
+	var migrated := SaveGame.migrate(v2)
+	_assert(int(migrated.get("version", 0)) == 3, "a v2 save migrates to v3")
+	_assert((v2["world"]["tiles"] as Array).size() == SaveGame.LEGACY_MAP_HEIGHT,
+		"and the caller's own dictionary is left alone — migrate copies, it does not rewrite")
+	var rows: Array = migrated["world"]["tiles"]
+	_assert(rows.size() == SimWorld.MAP_HEIGHT, "the grid is a two-page grid now (%d)" % rows.size())
+	var padded := 0
+	for ty in range(SaveGame.LEGACY_MAP_HEIGHT, SimWorld.MAP_HEIGHT):
+		for tx in SimWorld.MAP_WIDTH:
+			_assert_quiet(String(rows[ty][tx].get("state", "")) == WorldLayout.VOID,
+				"(%d,%d) padded with void" % [tx, ty])
+			_assert_quiet(String(migrated["world"]["objects"][ty][tx]) == "",
+				"(%d,%d) padded with nothing on it" % [tx, ty])
+			padded += 1
+	_flush_quiet("padded with a page of darkness and nothing else (%d tiles)" % padded)
+	_assert(str(rows[9]) == str(v2["world"]["tiles"][9]),
+		"and her farm is untouched — no regeneration, no house built under her")
+
+	# --- it restores, and it plays ---------------------------------------------
+	var back := SimWorld.new()
+	var gs_back = load("res://systems/game_state.gd").new()
+	_assert(SaveGame.restore(v2, back, gs_back), "a v2 save restores into the two-page world")
+	_assert(gs_back.gold == 87 and String(back.get_tile(5, 9).get("state", "")) == "seeded",
+		"with her gold and her planted row exactly as she left them")
+	_assert(back.objects[4][2] == "cot",
+		"her cot is still out in the yard, where the build that saved it put it")
+	_assert(back.is_walkable(5, 8) and not back.is_walkable(2, 4)
+			and not back.is_walkable(5, SimWorld.PAGE_ROWS + 2),
+		"the farm is walkable, the cot is not, and the page below is dark")
+	_assert(back.apply_action({ "verb": "water", "target": Vector2i(5, 9), "actor": "player" },
+			gs_back).get("ok", false),
+		"and she can go on farming it")
+
+	# The door she does not have refuses politely, which is the whole reason the
+	# verb looks its destination up rather than assuming one.
+	back.set_actor_pos(SimWorld.ACTOR_PLAYER, Vector2i(2, 3))
+	var no_door := back.apply_action({ "verb": "use_door", "target": Vector2i(2, 2),
+		"actor": "player" }, gs_back)
+	_assert(not no_door.get("ok", false) and String(no_door.get("reason", "")) == "no_door_here",
+		"there is no door on an old farm, so `use_door` refuses (%s)" % no_door)
+	_assert(back.way_to_bed(Vector2i(6, 6)) == Vector2i(2, 4),
+		"and the way to bed is the cot in the yard, as it always was")
+
+	# A save that is short for a reason other than its age is still refused: the
+	# padding is keyed to the exact old height, so a truncated file cannot sneak in.
+	var truncated = JSON.parse_string(JSON.stringify(v2))
+	truncated["world"]["tiles"] = (truncated["world"]["tiles"] as Array).slice(0, 12)
+	_assert(not SaveGame.restore(truncated, SimWorld.new(), gs_back),
+		"a truncated save is still refused, rather than padded into a plausible one")
+	gs_back.free()
+
+
+# --- The robot stall (CEO, 2026-09-06) ----------------------------------------
+#
+# *"A robot stall holds two robots. The player buys a robot, leaves it in the
+# stall, teaches it, and after teaching it works productively growing crops."*
+#
+# The mark-1 already walked a taught round; what it did not have was anywhere to
+# live. This is the shed that gives it one, and the three things that follow from
+# an address: a robot may be **parked** in a bay, it comes **home** at the end of
+# its round, and it goes out again **the next morning without being told**. That
+# last one is the whole value of the 80 gold — a machine that has to be sent out
+# by hand every day is a chore with a sprite.
+func test_robot_stall() -> void:
+	print("\n--- The robot stall: a robot with an address (CEO, 2026-09-06) Tests ---")
+
+	# --- the catalogue row -----------------------------------------------------
+	_assert(MachineDefs.has(SimWorld.STALL_ITEM), "the shop sells a stall")
+	_assert(MachineDefs.price_of("stall") == 80
+			and MachineDefs.price_of("stall") < MachineDefs.price_of("sprinkler"),
+		"at 80 gold — under the sprinkler, because an empty shed waters nothing")
+	_assert(not MachineDefs.spawns_actor("stall") and MachineDefs.species_of("stall") == "",
+		"and it names no species: a shed is an object on the grid, never an actor")
+	_assert(MachineDefs.key_for_species("") == "",
+		"...which must not make it the answer for an actor with no species of its own")
+	_assert(MachineDefs.ORDER.find("stall") > MachineDefs.ORDER.find("sprinkler")
+			and MachineDefs.ORDER.find("stall") < MachineDefs.ORDER.find("bot_mk1"),
+		"the shop lists it between the sprinkler and the robots it holds")
+
+	GameState.reset()
+	SimRng.reseed(4242)
+	var world := SimWorld.new()
+	world.generate()
+	GameState.gold = 1000
+
+	# Somewhere with room for a two-tile shed and a crop row under it.
+	var stall := Vector2i(-1, -1)
+	for y in range(9, 16):
+		for x in range(5, 23):
+			if world.placeable_at(Vector2i(x, y), "stall"):
+				stall = Vector2i(x, y)
+				break
+		if stall.x >= 0:
+			break
+	_assert(stall.x >= 0, "the generated farm has two free squares side by side")
+	var bay := stall + Vector2i(1, 0)
+
+	# A clean patch to work in: the ground the shed stands on and the row the
+	# robot is going to water, staged rather than hoped for.
+	for dy in range(-1, 4):
+		for dx in range(-2, 6):
+			var t: Vector2i = stall + Vector2i(dx, dy)
+			world.set_tile_state(t.x, t.y, "cleared")
+	var row: Array[Vector2i] = []
+	for i in 3:
+		var t := Vector2i(stall.x + i, stall.y + 2)
+		world.set_tile_state(t.x, t.y, "seeded", "wheat")
+		row.append(t)
+
+	# --- buying and putting it down --------------------------------------------
+	var purse: int = GameState.gold
+	_assert(world.apply_action({ "verb": "buy_machine", "item": "stall",
+			"actor": "player" }, GameState).get("ok", false),
+		"she buys one from the shop, the way she buys everything (P-12)")
+	_assert(GameState.gold == purse - 80 and GameState.machines.get("stall", 0) == 1,
+		"it costs its price and goes into the crate")
+	_assert(GameState.holding_machine() and GameState.selected_seed_type == "stall",
+		"and lands in her hands, so the next tap is the placement")
+
+	var energy_before: int = GameState.energy
+	var built: Dictionary = world.apply_action({ "verb": "place", "target": stall,
+		"item": "stall", "actor": "player" }, GameState)
+	_assert(built.get("ok", false), "she puts it down")
+	_assert(world.get_object(stall.x, stall.y) == WorldLayout.ROBOT_STALL
+			and world.get_object(bay.x, bay.y) == WorldLayout.ROBOT_STALL_SLOT,
+		"two tiles of shed go onto the grid, left bay and right (%s, %s)" % [stall, bay])
+	_assert(built.get("slot", Vector2i(-1, -1)) == bay,
+		"and the result says where the second bay landed, for whatever draws it")
+	_assert(GameState.energy == energy_before - Tools.get_energy_cost("place"),
+		"carrying it out cost her exactly what setting a machine down costs")
+	_assert(GameState.machines.get("stall", 0) == 0, "the crate is empty again")
+	_assert(world.machine_at(stall) == "" and world.machine_at(bay) == "",
+		"and nothing was spawned: a stall is not an actor and never thinks")
+
+	# --- what a bay is, and is not ---------------------------------------------
+	_assert(world.is_stall_tile(stall) and world.is_stall_tile(bay),
+		"both tiles answer as stall")
+	_assert(world.is_walkable(stall.x, stall.y) and world.is_walkable(bay.x, bay.y),
+		"and both are walkable — an open-fronted shed is a thing you stand in")
+	for verb in ["till", "plant", "water", "harvest", "clear_weed"]:
+		var refused: Dictionary = world.apply_action({ "verb": verb, "target": stall,
+			"seed_type": "wheat", "actor": "player" }, GameState)
+		_assert(not refused.get("ok", false) and String(refused.get("reason", "")) == "occupied",
+			"...and there is no farming the floor of a shed: %s is refused" % verb)
+	_assert(not world.teachable_at(stall) and not world.teachable_at(bay),
+		"nor may a robot be taught to water its own garage")
+	_assert(not world.apply_action({ "verb": "collect", "target": stall,
+			"actor": "player" }, GameState).get("ok", false),
+		"and v1 cannot pick it back up — deliberately weak first version (P-13)")
+
+	# --- where a stall may not go ----------------------------------------------
+	GameState.machines["stall"] = 3
+	_assert(not world.placeable_at(stall, "stall"),
+		"a second shed will not go on top of the first")
+	var edge := Vector2i(SimWorld.MAP_WIDTH - 2, stall.y)
+	_assert(not world.placeable_at(edge, "stall"),
+		"nor against the right-hand wall, where its second bay would be off the map")
+	var edge_try: Dictionary = world.apply_action({ "verb": "place", "target": edge,
+		"item": "stall", "actor": "player" }, GameState)
+	_assert(not edge_try.get("ok", false) and String(edge_try.get("reason", "")) == "occupied",
+		"the gateway says so rather than building half a shed")
+	_assert(world.get_object(edge.x, edge.y) == "",
+		"...and writes nothing at all when it refuses")
+
+	var blocked := Vector2i(stall.x, stall.y + 3)
+	world.set_tile_state(blocked.x + 1, blocked.y, "obstacle_rock")
+	_assert(world.placeable_at(blocked) and not world.placeable_at(blocked, "stall"),
+		"a square that would take a sprinkler will not take a stall if its neighbour is a rock")
+	world.set_tile_state(blocked.x + 1, blocked.y, "cleared")
+	GameState.machines["stall"] = 0
+
+	# --- a robot parks in a bay -------------------------------------------------
+	GameState.machines["sprinkler"] = 1
+	GameState.selected_seed_type = "sprinkler"
+	var wrong_thing: Dictionary = world.apply_action({ "verb": "place", "target": stall,
+		"item": "sprinkler", "actor": "player" }, GameState)
+	_assert(not wrong_thing.get("ok", false),
+		"a bay is for robots: a sprinkler set down in one is refused")
+	_assert(not world.placeable_at(stall) and world.placeable_at(stall, "bot_mk1"),
+		"...which is what the item in her hand decides, and nothing else about the square")
+
+	GameState.machines["bot_mk1"] = 3
+	GameState.selected_seed_type = "bot_mk1"
+	var parked: Dictionary = world.apply_action({ "verb": "place", "target": stall,
+		"item": "bot_mk1", "actor": "player" }, GameState)
+	var mk1: String = String(parked.get("machine", ""))
+	_assert(parked.get("ok", false) and mk1 != "", "she stands a robot in the left bay")
+	_assert(world.actor(mk1)["extra"].get("home_x", -1) == stall.x
+			and world.actor(mk1)["extra"].get("home_y", -1) == stall.y,
+		"and it now has an address — the tile it was parked on (%s)" % stall)
+	_assert(world.machine_at(stall) == mk1,
+		"a tap on the bay finds the robot in it, which is how its menu opens")
+
+	var second_in_bay: Dictionary = world.apply_action({ "verb": "place", "target": stall,
+		"item": "bot_mk1", "actor": "player" }, GameState)
+	_assert(not second_in_bay.get("ok", false)
+			and String(second_in_bay.get("reason", "")) == "occupied",
+		"a second robot will not fit in an occupied bay — capacity is spatial")
+	var neighbour: Dictionary = world.apply_action({ "verb": "place", "target": bay,
+		"item": "bot_mk1", "actor": "player" }, GameState)
+	var mk1_b: String = String(neighbour.get("machine", ""))
+	_assert(neighbour.get("ok", false) and world.has_actor(mk1) and world.has_actor(mk1_b),
+		"but the right-hand bay takes the second one: a stall holds two robots")
+	_assert(world.actor(mk1_b)["extra"].get("home_x", -1) == bay.x,
+		"and that one's address is its own bay")
+
+	# A robot set down on open ground has no home at all, and behaves exactly as
+	# the machine that shipped: sent by hand, stopping wherever it finishes.
+	var open_ground := Vector2i(stall.x, stall.y - 1)
+	var homeless: Dictionary = world.apply_action({ "verb": "place", "target": open_ground,
+		"item": "bot_mk1", "actor": "player" }, GameState)
+	var loose: String = String(homeless.get("machine", ""))
+	_assert(homeless.get("ok", false) and not world.actor(loose)["extra"].has("home_x"),
+		"a robot put down on the grass has no address, and nothing about it changed")
+
+	# --- it comes home ----------------------------------------------------------
+	for t in row:
+		world.apply_action({ "verb": "teach", "target": t, "machine": mk1, "actor": "player" }, GameState)
+		world.get_tile(t.x, t.y).watered_today = false
+	_assert(BotBrain.orders_of(world.actor(mk1)["extra"]).size() == row.size(),
+		"she teaches the parked robot its round")
+	world.apply_action({ "verb": "activate", "target": stall, "actor": "player" }, GameState)
+	world.advance_to_tick(world.clock.tick + SimClock.RATE * 240, GameState)
+
+	var watered := 0
+	for t in row:
+		if world.get_tile(t.x, t.y).get("watered_today", false):
+			watered += 1
+	_assert(watered == row.size(),
+		"it walks out and waters every tile it was shown (%d of %d)" % [watered, row.size()])
+	_assert(world.actor_pos(mk1) == stall,
+		"and then it goes home and stands in its bay (%s)" % world.actor_pos(mk1))
+	_assert(not bool(world.actor(mk1)["extra"].get("sent", false)),
+		"the round is over once it is parked, not once the list runs out")
+
+	# --- and it lets itself out in the morning ----------------------------------
+	#
+	# The point of the shed. Nobody taps anything: the day turns, and a machine
+	# with an address, a list and a turn it has not used goes back to work.
+	for t in row:
+		world.apply_action({ "verb": "teach", "target": t, "machine": mk1_b, "actor": "player" }, GameState)
+	world.apply_action({ "verb": "teach", "target": row[0], "machine": loose, "actor": "player" }, GameState)
+	world.apply_action({ "verb": "sleep", "actor": "world", "weather": "sunny" }, GameState)
+
+	_assert(bool(world.actor(mk1)["extra"].get("sent", false))
+			and bool(world.actor(mk1)["extra"].get("ran_today", false)),
+		"the parked robot is out working the moment the day turns, with no send tap")
+	_assert(bool(world.actor(mk1_b)["extra"].get("sent", false)),
+		"and so is the one in the other bay — both bays are employed")
+	_assert(not bool(world.actor(loose)["extra"].get("sent", false)),
+		"the robot on the grass is not: without a stall it still waits to be sent (that is what the 80g buys)")
+	_assert(not world.apply_action({ "verb": "activate", "target": stall,
+			"actor": "player" }, GameState).get("ok", false),
+		"...and the morning used its one turn, so a hand cannot send it twice")
+
+	for t in row:
+		_assert(not world.get_tile(t.x, t.y).get("watered_today", false),
+			"the morning starts dry (%s)" % t)
+	world.advance_to_tick(world.clock.tick + SimClock.RATE * 240, GameState)
+	var morning_watered := 0
+	for t in row:
+		if world.get_tile(t.x, t.y).get("watered_today", false):
+			morning_watered += 1
+	_assert(morning_watered == row.size(),
+		"and the round happens: %d of %d tiles watered without her lifting a finger"
+			% [morning_watered, row.size()])
+	_assert(world.actor_pos(mk1) == stall and world.actor_pos(mk1_b) == bay,
+		"with both robots back in their own bays by the end of it")
+
+	# --- and the arrangement survives being put down ---------------------------
+	#
+	# The address is the thing that could quietly be lost: it is two ints in the
+	# machine's `extra` and two objects on the grid, and if either half failed to
+	# save, a reloaded farm would look identical and simply stop working in the
+	# morning — the worst kind of break, because nothing about it looks broken.
+	var snapshot: Dictionary = SaveGame.capture(world, GameState)
+	var reloaded := SimWorld.new()
+	_assert(SaveGame.restore(snapshot, reloaded, GameState), "the farm saves and loads")
+	_assert(reloaded.get_object(stall.x, stall.y) == WorldLayout.ROBOT_STALL
+			and reloaded.is_stall_tile(bay),
+		"the shed comes back with it, both bays")
+	_assert(int(reloaded.actor(mk1)["extra"].get("home_x", -1)) == stall.x,
+		"and so does the robot's address, which is what the morning routine reads")
+
+	# --- and every bit of it replays -------------------------------------------
+	#
+	# The morning routine is **recomputed, not recorded** (Q-53, the sprinkler's
+	# rule): the log holds one `sleep`, and the send that happens inside it has to
+	# happen inside the replay's `sleep` too. If it did not, the reproduction would
+	# wake up with a robot standing idle in a shed and the canonical states would
+	# part company on the spot.
+	GameState.reset()
+	SimRng.reseed(6363)
+	var live := SimWorld.new()
+	live.generate()
+	GameState.gold = 1000
+	var here := Vector2i(-1, -1)
+	for y in range(9, 16):
+		for x in range(5, 23):
+			if live.placeable_at(Vector2i(x, y), "stall"):
+				here = Vector2i(x, y)
+				break
+		if here.x >= 0:
+			break
+	for dy in range(-1, 4):
+		for dx in range(-2, 6):
+			var t: Vector2i = here + Vector2i(dx, dy)
+			live.set_tile_state(t.x, t.y, "cleared")
+	var lesson: Array[Vector2i] = []
+	for i in 2:
+		var t := Vector2i(here.x + i, here.y + 2)
+		live.set_tile_state(t.x, t.y, "seeded", "wheat")
+		lesson.append(t)
+	# Staged before the base save, because the replay rebuilds the world from it.
+	var log := ReplayLog.new()
+	log.start_from_save(SaveGame.capture(live, GameState), 6363)
+	SimRng.reseed(6363)
+	var script: Array[Dictionary] = [
+		{ "verb": "buy_machine", "item": "stall", "actor": "player" },
+		{ "verb": "place", "target": here, "item": "stall", "actor": "player" },
+		{ "verb": "buy_machine", "item": "bot_mk1", "actor": "player" },
+		{ "verb": "place", "target": here, "item": "bot_mk1", "actor": "player" },
+		{ "verb": "teach", "target": lesson[0], "machine": "bot_mk1", "actor": "player" },
+		{ "verb": "teach", "target": lesson[1], "machine": "bot_mk1", "actor": "player" },
+		{ "verb": "sleep", "actor": "world", "weather": "sunny" },
+	]
+	for act in script:
+		var res: Dictionary = live.apply_action(act, GameState)
+		_assert(res.get("ok", false), "stall replay step %s resolves" % act.verb)
+		log.record(act, res, live.clock.tick)
+	_assert(bool(live.actor("bot_mk1")["extra"].get("sent", false)),
+		"the recorded session's robot let itself out at the day turn")
+	for taken in live.advance_to_tick(live.clock.tick + SimClock.RATE * 200, GameState):
+		log.record(taken["action"], taken["result"], int(taken["tick"]), true)
+	log.mark_tick(live.clock.tick)
+	var live_canonical := SaveGame.capture_canonical(live, GameState)
+
+	var replayed := SimWorld.new()
+	log.apply_to(replayed, GameState)
+	_assert(log.divergence == "", "the stalled session recomputes cleanly (%s)" % log.divergence)
+	_assert(SaveGame.capture_canonical(replayed, GameState) == live_canonical,
+		"and a replay lands on the same farm, the same shed and the same robot in it")
+	_assert(replayed.get_object(here.x, here.y) == WorldLayout.ROBOT_STALL,
+		"with the stall standing where she built it")
+	_assert(replayed.actor_pos("bot_mk1") == here,
+		"and the robot home in its bay, having done a morning's work nobody recorded")
+
+
+# The measured version of the CEO's sentence — *"after teaching it works
+# productively growing crops"* — and it is deliberately the only test in this file
+# that asks whether the farm is **better off** rather than whether a mechanism
+# fires. Everything above proves the machine goes out, waters what it was shown
+# and comes home; none of it rules out the machine simply doing work the farmer
+# would have done anyway, which would be a robot that moves the day around instead
+# of adding to it.
+#
+# The design is a controlled comparison and the fairness is the whole of it. Two
+# farms, one seed, the same staged plot. In **both**, the farmer works the
+# identical day — the same verbs on the same squares, twenty of them, which is
+# exactly the energy a day holds — and one farm additionally has a stall with a
+# taught mark-1 in it, whose eight squares her identical day never touches. Both
+# clocks advance by the same amount, both farms sleep under the same sky.
+#
+# The measurement itself lives in `tools/demo_robot_value.gd`, which prints it as
+# a table for a human to read. Sharing it is the point: the number in the morning
+# report and the number this test gates on are the same number, produced by the
+# same code, so neither can quietly drift away from the other.
+func test_robot_usefulness() -> void:
+	print("\n--- A taught robot makes the farm do more in a day (CEO, 2026-09-06) Tests ---")
+
+	var runs: Dictionary = RobotValue.compare()
+	var alone: Dictionary = runs["control"]
+	var employed: Dictionary = runs["treatment"]
+	var round_size: int = RobotValue.ROBOT_ROW_LEN
+
+	# --- the two days really are the same day ---------------------------------
+	#
+	# Asserted first, because every number below it is worthless if they are not.
+	_assert(int(alone["watered_by_her"]) == int(employed["watered_by_her"]),
+		"the farmer waters the same %d squares with a robot as without one"
+			% alone["watered_by_her"])
+	_assert(int(alone["energy_left"]) == 0 and int(employed["energy_left"]) == 0,
+		"and works herself out on both farms — a full day, not a half one (%d / %d left)"
+			% [alone["energy_left"], employed["energy_left"]])
+	_assert(alone["her_tiles"] == employed["her_tiles"],
+		"her own squares end the night in identical states on the two farms")
+
+	# --- (a) more ground is wet by dusk ---------------------------------------
+	_assert(int(employed["watered_by_robot"]) == round_size
+			and int(alone["watered_by_robot"]) == 0,
+		"the machine waters its whole round and the farm without one waters none by machine (%d / %d)"
+			% [employed["watered_by_robot"], alone["watered_by_robot"]])
+	_assert(int(employed["wet_at_dusk"]) > int(alone["wet_at_dusk"]),
+		"so more of the farm is wet at dusk with a robot on it (%d vs %d)"
+			% [employed["wet_at_dusk"], alone["wet_at_dusk"]])
+	_assert(int(employed["wet_at_dusk"]) - int(alone["wet_at_dusk"])
+			== int(employed["watered_by_robot"]),
+		"and the whole of the difference is the machine's own watering (%d)"
+			% (int(employed["wet_at_dusk"]) - int(alone["wet_at_dusk"])))
+
+	# --- (b) and more crops grow for it ---------------------------------------
+	#
+	# Which is the claim that matters: wet ground is a means, and a growth stage
+	# is the farm actually being further along in the morning.
+	_assert(int(employed["grew_overnight"]) > int(alone["grew_overnight"]),
+		"more crops advance a growth stage overnight on the farm with the robot (%d vs %d)"
+			% [employed["grew_overnight"], alone["grew_overnight"]])
+	_assert(int(employed["grew_overnight"]) - int(alone["grew_overnight"]) == round_size,
+		"one for every square it was taught (%d)"
+			% (int(employed["grew_overnight"]) - int(alone["grew_overnight"])))
+
+	# --- (c) additive, not a redistribution -----------------------------------
+	#
+	# The failure this rules out: a machine that "helps" by watering squares she
+	# was going to water anyway, leaving the day's total exactly where it was. The
+	# taught row is the tell — untouched on one farm, a stage further on on the
+	# other, with her own row identical on both.
+	var stood_still := 0
+	for i in alone["robot_tiles"].size():
+		if String(alone["robot_tiles"][i]) != String(employed["robot_tiles"][i]):
+			stood_still += 1
+	_assert(stood_still == round_size,
+		"every one of the %d taught squares is in a different state on the two farms (%d)"
+			% [round_size, stood_still])
+	_assert(String(alone["robot_tiles"][0]).ends_with(":1")
+			and String(employed["robot_tiles"][0]).ends_with(":2"),
+		"the row she never reaches stands still without a robot and moves on with one (%s / %s)"
+			% [alone["robot_tiles"][0], employed["robot_tiles"][0]])
+	_assert(int(employed["gold_spent"]) == 230 and int(alone["gold_spent"]) == 0,
+		"and the whole of it cost 230 gold, once (%d)" % employed["gold_spent"])
+	_assert(bool(employed["parked_home"]),
+		"with the machine back in its bay at the end of it, ready for a morning nobody has to run")

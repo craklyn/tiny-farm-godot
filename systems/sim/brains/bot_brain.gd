@@ -158,6 +158,16 @@ static func deploy(world: SimWorld, actor_id: String, config: String, at: Vector
 			extra["sent"] = false
 			extra["ran_today"] = false
 			extra["at_order"] = 0
+			# **Where it lives, if it was set down somewhere that is a home**
+			# (the stall, CEO 2026-09-06). The same two fields the shoo config
+			# uses for the middle of its patch, on purpose: a mark-1 in a stall
+			# and a mark-2 holding a patch are both machines with a place they
+			# belong to, and one concept gets one name. A bot put down on open
+			# ground has no home and neither field is written — `_home` answers
+			# (-1,-1) and every behaviour below it is the one that shipped.
+			if world.is_stall_tile(at):
+				extra["home_x"] = at.x
+				extra["home_y"] = at.y
 		CONFIG_CIRCLE:
 			extra["radius"] = int(params.get("radius", ORBIT_RADIUS))
 		CONFIG_SHOO:
@@ -247,8 +257,51 @@ func _orders(world: SimWorld, actor_id: String, extra: Dictionary, tick: int) ->
 	return {}
 
 
-# The end of the round: it is not out any more, and it has had its turn today.
+# The end of the round — but not the end of the errand, if it has somewhere to be.
+#
+# **A machine that lives somewhere goes back there** (the stall, CEO 2026-09-06).
+# Without a home it stops on the last tile of its list and stands in the crop row
+# it just watered, which is what shipped and is still exactly what a bot on open
+# ground does. With one, the round is not over until it is parked: the list runs
+# out, it walks home on the same engine its orders walk on, and only when it
+# arrives is it no longer out.
+#
+# It stays `sent` for the walk home, deliberately: it *is* still out, the menu says
+# "Out working…" while it crosses the yard, and a player who sends it and watches
+# it come back sees one errand rather than two.
 func _round_done(world: SimWorld, actor_id: String, extra: Dictionary, tick: int) -> Dictionary:
+	var home := _home(extra)
+	if home.x >= 0 and world.actor_pos(actor_id) != home:
+		return _walk_home(world, actor_id, extra, tick, home)
+	return _park(world, actor_id, extra, tick)
+
+
+# One step of the way back to the stall. The orders' own shape (plan once, step
+# while the route holds, re-plan when it does not), because it is the same
+# journey: a tile it must be on, walked to at its own pace.
+func _walk_home(world: SimWorld, actor_id: String, extra: Dictionary, tick: int,
+		home: Vector2i) -> Dictionary:
+	if Movement.has_route(world, actor_id) and _goal(extra) == home:
+		match Movement.step(world, actor_id, tick):
+			Movement.MOVED:
+				if world.actor_pos(actor_id) == home:
+					return _park(world, actor_id, extra, tick)
+				return {}
+			_:
+				Movement.clear_route(world, actor_id)
+	if _set_out(world, actor_id, extra, tick, home) == "":
+		# It cannot get back — she fenced the stall off, something is standing in
+		# its bay, the ground changed while it was out. It parks where it stands,
+		# which is the mark-1's answer to everything it cannot do: stop, visibly,
+		# somewhere she can see it and pick it up.
+		return _park(world, actor_id, extra, tick)
+	if world.actor_pos(actor_id) == home:
+		return _park(world, actor_id, extra, tick)
+	return {}
+
+
+# Standing down for the day: it is not out any more, and it has had its turn.
+func _park(world: SimWorld, actor_id: String, extra: Dictionary, tick: int) -> Dictionary:
 	extra["sent"] = false
 	extra["at_order"] = 0
 	Movement.clear_route(world, actor_id)
@@ -668,6 +721,50 @@ func _patrol_tile(world: SimWorld, actor_id: String, extra: Dictionary) -> Vecto
 # round that never finished — she went to bed with it halfway along its list —
 # because "once per day" has to mean the day it was sent, not a queue that
 # survives the night.
+# **The morning routine, which is the whole point of the stall** (CEO, 2026-09-06:
+# a robot she buys, parks, teaches, and which then *works*). A mark-1 that lives in
+# a stall and has been taught a round is sent out as the day turns, with nobody
+# tapping anything: the machine has an address, a list and a turn it has not used,
+# and those three facts are the instruction.
+#
+# **A bot on open ground is untouched.** It still needs the daily "send it out" tap
+# it has always needed — which is what the stall is *for*, and is why an 80g shed
+# is worth buying at all.
+#
+# It decides nothing (P-13 holds): it repeats the list she taught it, in her order,
+# and stops. The Action is the `activate` verb she taps herself, put through the
+# same gateway, so a bot gets no capability the player lacks — and being an Action
+# at the day turn is what makes it **recomputed rather than recorded** (Q-53, the
+# sprinkler's seat): a replay re-applies the one `sleep` entry, this runs inside
+# it, and the corpus does not grow a verb nobody performed.
+func day_actions(world: SimWorld, actor_id: String, _gs = null) -> Array[Dictionary]:
+	var e: Dictionary = world.actor(actor_id)
+	if e.is_empty():
+		return []
+	var extra: Dictionary = e["extra"]
+	if String(extra.get("config", "")) != CONFIG_ORDERS:
+		return []
+	# Its turn is spent, or it is already out — either way the morning has nothing
+	# to add. (`on_new_day` has already run by the time `advance_day` gets here, so
+	# on an ordinary morning both of these are false.)
+	if bool(extra.get("sent", false)) or bool(extra.get("ran_today", false)):
+		return []
+	if orders_of(extra).is_empty():
+		return []
+	# A home, and it has to be a stall: `home_x`/`home_y` is also the middle of a
+	# shoo bot's patch, and a patch is not an employer. Read off the grid, so a
+	# stall she picked up (which v1 cannot do) or a save from before it existed
+	# leaves the machine on the manual routine rather than in a routine with no
+	# building behind it.
+	var home := _home(extra)
+	if home.x < 0 or not world.is_stall_tile(home):
+		return []
+	# Aimed at where it is *standing*, not at its stall: it may have been caught out
+	# in the field at bedtime, and a machine that failed to get home last night
+	# still has a job this morning. `activate` finds the machine under the tile.
+	return [{ "verb": "activate", "target": world.actor_pos(actor_id), "actor": actor_id }]
+
+
 func on_new_day(world: SimWorld, actor_id: String) -> void:
 	var e: Dictionary = world.actor(actor_id)
 	if e.is_empty():

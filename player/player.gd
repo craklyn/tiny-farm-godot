@@ -689,6 +689,48 @@ func _execute_resolved_action(pa: Dictionary) -> void:
 		if gate.x >= 0:
 			farm.apply_action({ "verb": "open_gate", "target": gate, "actor": "world" }, gs)
 		return
+	# **Through the door** (2026-09-06). A verb like any other — the gateway
+	# validates it, moves her registry entry and hands back where she came out —
+	# and then this side does the one thing the sim cannot: put her *body* there.
+	#
+	# `init_position` rather than a walk, because **a teleport is not a crossing**
+	# (that is init_position's own documented rule, and spawn's). Her new tile is
+	# already sim truth; walking her to it here would post a step she never took
+	# into the replay's free-walk stream and leave the recorded route running
+	# through a wall. Everything the old room was still asking for goes with her:
+	# the path she was following, the action she was walking toward, the tile she
+	# tapped to get here.
+	#
+	# A refusal needs nothing from here. `farm.apply_action` already wobbles the
+	# tile a player action was refused on (`_record`), which is the idiom every
+	# other special object uses — the well and the bin return in silence too.
+	if action == "use_door":
+		var through: Dictionary = farm.apply_action({
+			"verb": "use_door",
+			"target": target_t,
+			"actor": "player",
+		}, gs)
+		if not through.get("ok", false):
+			return
+		var dest: Vector2i = through.get("dest", get_tile_pos())
+		init_position(dest.x, dest.y)
+		facing = String(through.get("face", facing))
+		is_moving = false
+		path = []
+		pending_action = {}
+		approach_target = Vector2i(-1, -1)
+		tap_indicator = {}
+		# The camera clamps to one page at a time, and the page just changed under
+		# it (`main.gd`'s `note_page_change`, which also snaps the view rather than
+		# letting it glide twenty rows through the dark). Told rather than polled so
+		# the snap happens on the frame she steps through; a farm with no Main above
+		# it — the title screen's attract loop — simply has nobody to tell.
+		var main_node = get_tree().get_first_node_in_group("Main")
+		if main_node != null and main_node.has_method("note_page_change"):
+			main_node.note_page_change()
+		if farm != null:
+			farm.queue_redraw()
+		return
 	# Every remaining verb is a sim Action (S-3): the sim validates and mutates;
 	# this side keeps only presentation (tool swap, animation, sfx, particles).
 	var act := {

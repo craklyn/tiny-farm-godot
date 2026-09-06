@@ -234,6 +234,29 @@ reason plumbing largely exists; the frame does not. Under the standing rule that
 action gets the player's own treatment, the distress state carries a sound and a visual cue
 of the same weight the player's blocked tap gets.
 
+### S-11. Maps connect in play as door-linked pages of one world
+Settled by the designer 2026-09-06, in the overnight directive that wired the home into
+play: the player must *see* the entrance from the yard, walk in to a second map holding
+the bed, and walk back out through a door. This was the exact question the multi-map
+project had parked ("how do multiple maps relate in play?"), and the answer is the
+cheapest shape that keeps every load-bearing rule intact: **one `SimWorld`, whose grid
+grows a page** (32×20 → 32×40; the farm is rows 0–19, the home rows 20–39), with a
+`use_door` verb through the one gateway as the only way between pages. A transition is
+an ordinary recorded action, so replays reproduce it; the home page is VOID outside the
+room, so pages never connect by foot and a stray path cannot leak between them.
+
+**Why it is settled and not provisional.** Any answer that splits maps across separate
+sim instances or scenes forks the clock, the action log and the save file — three
+formats the phase-4 training plan depends on. Door-linked pages of one world keep one
+clock, one log, one save, and generalize: another interior, a cave, a phase-2 space is
+another page and another door pair in layout data. What stays open (deliberately) is
+*content*: which doors exist and where they lead is per-layout design, not architecture.
+
+**What it costs.** Full-grid passes (day turn, renderer) walk twice the tiles — the
+sim benchmark's informational 100k× plan gate now reads ~97k× (the CI floor is 10k×);
+saves roughly double (~49KB → ~98KB). Both are recorded here so the numbers have an
+owner rather than a mystery.
+
 ---
 
 ## Tier 2 — Provisional (working answer + adjustment conditions)
@@ -490,6 +513,14 @@ useful form of this?" is the first question a new system answers, not an afterth
 a day; `bot_mk2` (400g) carries the three configs the mark-1 was refused. One species,
 one brain, two catalogue rows — the mark is `extra.model` on the actor, and it decides
 which settings the machine will answer to (`design/06`).
+
+**Status note (2026-09-06, the robot stall).** The stall (80g, two bays) gives a
+mark-1 an address, and a parked, taught mark-1 now goes out *every* morning on its
+own — the daily "send it out" tap is what the stall automates, nothing else. This
+stays inside the rule: the machine still decides nothing and executes only the
+hand-taught list; what changed hands is a chore, not a judgement. A loose mark-1 on
+open ground still needs its daily tap, so the stall is itself a small rung — housing
+is what buys routine.
 
 **Adjustment conditions:** the rule bends where a limit would make the first version
 *pointless* rather than merely modest — a machine nobody would buy teaches nothing. It

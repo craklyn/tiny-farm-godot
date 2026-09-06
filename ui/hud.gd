@@ -304,11 +304,17 @@ func _build_ui() -> void:
 	# fixes make the cot findable **once it is on screen**, and by evening it
 	# usually is not.
 	#
-	# It is a *tap on the cot*, not a sleep (see `main.gd`'s `go_to_bed`): the
-	# button knows nothing about where the cot is or what sleeping costs — it asks
-	# main, main injects the tap, and the walk, the tuck-in and the Action all take
-	# the ordinary route. So there is no new verb, no shortcut, and nothing new in
-	# a replay but an ordinary cot tap.
+	# It is a *tap on the way to bed*, not a sleep (see `main.gd`'s `go_to_bed`):
+	# the button knows nothing about where the bed is or what sleeping costs — it
+	# asks main, main injects the tap, and the walk, the tuck-in and the Action all
+	# take the ordinary route. So there is no new verb, no shortcut, and nothing new
+	# in a replay but an ordinary tap.
+	#
+	# Since the cot moved indoors (2026-09-06) the tile main aims at is the bed when
+	# she is in the room with it and her own front door when she is not, so pressed
+	# from the yard the button walks her to the door and takes her through it, and
+	# pressed again inside it walks her to bed. Two presses from outdoors — and the
+	# button is still doing nothing a finger could not, which is the whole of T-31.
 	#
 	# Wordless (S-7), and the picture is the cot's own sprite cell rather than a
 	# glyph: the affordance is "that thing over there", so showing the thing is the

@@ -147,10 +147,21 @@ static func ticks_per_tile(species: String) -> int:
 static func edge_tile(world: SimWorld, species: String, draw: int) -> Vector2i:
 	var mode := Movement.mode_of(species)
 	var edges: Array[Vector2i] = []
-	for t in Movement.reachable(world, mode, WorldLayout.spawn()):
+	# **This world's spawn, not the default layout's.** It read `WorldLayout.spawn()`
+	# with no argument, which is the farm's start tile whatever world it was handed
+	# — harmless while every world was that farm, and wrong the moment one is not.
+	# Latent rather than live (every `per_day` in the visitors' table is 0), and
+	# fixed on sight (2026-09-06).
+	for t in Movement.reachable(world, mode, WorldLayout.spawn(world.layout)):
 		if not Movement.can_stop(world, mode, t):
 			continue
-		if t.x <= 1 or t.y <= 1 or t.x >= SimWorld.MAP_WIDTH - 2 or t.y >= SimWorld.MAP_HEIGHT - 2:
+		# The edge of the **page**, not of the grid (2026-09-06). A map is a page
+		# now (`SimWorld.PAGE_ROWS`); the bottom row of the farm is still an edge a
+		# rabbit can come in at, and it stopped being row `MAP_HEIGHT - 2` when the
+		# grid grew a second page underneath it.
+		var page_y := t.y % SimWorld.PAGE_ROWS
+		if t.x <= 1 or page_y <= 1 or t.x >= SimWorld.MAP_WIDTH - 2 \
+				or page_y >= SimWorld.PAGE_ROWS - 2:
 			edges.append(t)
 	if edges.is_empty():
 		return Vector2i(-1, -1)

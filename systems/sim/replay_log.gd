@@ -181,7 +181,17 @@ func record_walk(event: String, dir: String, from: Vector2i, tick: int) -> void:
 # bump: it reseeds from the session's own seed, it advances the clock to each
 # entry's tick so the brains live through the same sim time the session did, and
 # it checks what they decided against what was recorded (`divergence`).
-func apply_to(world: SimWorld, gs) -> void:
+#
+# **Returns false when the replay could not be started at all** (2026-09-06). A
+# continued session replays from the snapshot embedded in its header, and
+# `SaveGame.restore` can legitimately refuse one — a save from a build whose
+# world was a different size, a truncated file, a version this build cannot read.
+# The refusal used to be discarded: the replay then ran its whole action stream
+# against a world nobody had generated, every action failed against empty grids,
+# and the tools reported a state mismatch or crashed rather than "that save
+# cannot be loaded". Now it stops where the honest answer is, says so in
+# `divergence`, and hands the caller a false it can act on.
+func apply_to(world: SimWorld, gs) -> bool:
 	divergence = ""
 	if gs != null and gs.has_method("reset"):
 		gs.reset()
@@ -191,7 +201,10 @@ func apply_to(world: SimWorld, gs) -> void:
 		# reproduction agree about every `SimRng.stateless()` draw for the rest of
 		# the run. A v1 log, or one whose save predates `SimWorld.gen_seed`, has
 		# no seed to go back to and keeps the old behaviour exactly.
-		SaveGame.restore(base_save, world, gs)
+		if not SaveGame.restore(base_save, world, gs):
+			divergence = "base save could not be restored (save version %d)" \
+				% int(base_save.get("version", 0))
+			return false
 		if version >= 2 and gen_seed != 0:
 			SimRng.reseed(gen_seed)
 	else:
@@ -202,8 +215,9 @@ func apply_to(world: SimWorld, gs) -> void:
 		# applied exactly as recorded (M2's semantics, Q-41's build stamp).
 		for e in entries:
 			world.apply_action(_decode(e), gs)
-		return
+		return true
 	_apply_v2(world, gs)
+	return true
 
 
 # The dual-record net (plan §4, WI-5 Phase A).

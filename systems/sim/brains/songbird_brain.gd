@@ -142,8 +142,10 @@ func step(world: SimWorld, actor_id: String, tick: int, _gs = null) -> Dictionar
 # Two draws rather than a list, so choosing costs nothing that scales with the map
 # (ground rule 8).
 func _choose_perch(extra: Dictionary, tick: int) -> void:
+	# Anywhere on the **farm page** (2026-09-06): "in bounds" is a page now, and a
+	# small brown bird perching in the bedroom is not the picture.
 	extra["tgt_x"] = SimRng.randi() % SimWorld.MAP_WIDTH
-	extra["tgt_y"] = SimRng.randi() % SimWorld.MAP_HEIGHT
+	extra["tgt_y"] = SimRng.randi() % SimWorld.PAGE_ROWS
 	extra["state"] = STATE_FLYING
 	extra["wake"] = tick + 1
 
@@ -166,4 +168,4 @@ func _target_centre(extra: Dictionary) -> Vector2:
 func _off_the_map(world: SimWorld, actor_id: String) -> bool:
 	var at := Movement.float_pos(world, actor_id)
 	return at.x < -DESPAWN_TILES or at.y < -DESPAWN_TILES \
-		or at.x > SimWorld.MAP_WIDTH + DESPAWN_TILES or at.y > SimWorld.MAP_HEIGHT + DESPAWN_TILES
+		or at.x > SimWorld.MAP_WIDTH + DESPAWN_TILES or at.y > SimWorld.PAGE_ROWS + DESPAWN_TILES

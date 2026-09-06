@@ -8,7 +8,16 @@ class_name SimWorld
 extends RefCounted
 
 const MAP_WIDTH := 32
-const MAP_HEIGHT := 20
+# Two pages of 20 rows (2026-09-06). The farm is page 0 and every coordinate it
+# has ever had is unmoved; the home interior is page 1. See WorldLayout's page
+# block: a door is the only way between them, and it is a verb.
+const MAP_HEIGHT := 40
+
+# How tall a page is, read from the layout data that defines it so the two
+# cannot drift. A page is a map: it has its own border ring, its own walls, and
+# nothing walks off the bottom of one onto the top of the next. `page_of()`,
+# below, is the only page arithmetic anything outside this file should need.
+const PAGE_ROWS := WorldLayout.PAGE_ROWS
 
 # T-8 / Q-34: the world is parcels now. Where the land is and what opens it is
 # data in systems/world_layout.gd; this file only knows how to fill a region
@@ -16,7 +25,13 @@ const MAP_HEIGHT := 20
 # tile constants are gone with it — obstacle *type* is now a property of the
 # parcel a tile belongs to, so a rock the player cannot break is a legible
 # future behind a hedge rather than noise in her yard.
-var layout: Dictionary = WorldLayout.DEFAULT
+# **The composed world** since 2026-09-06 (the door): the farm on page 0 and the
+# home on page 1, built by `WorldLayout.compose()` from the same DEFAULT and HOME
+# the tests and the debug screen still generate on their own. A world that is
+# restored rather than generated keeps this, which is what lets an old save —
+# one farm page and nothing else — answer a question about the parcel a tile is
+# in exactly as it always did.
+var layout: Dictionary = WorldLayout.WORLD
 
 # T-2 / design/13 §4: the first session contains no threat at all.
 #
@@ -298,7 +313,7 @@ var scent := Scent.new()
 var gen_seed: int = 0
 
 
-func generate(with_layout: Dictionary = WorldLayout.DEFAULT) -> void:
+func generate(with_layout: Dictionary = WorldLayout.WORLD) -> void:
 	layout = with_layout
 	tiles.clear()
 	objects.clear()
@@ -313,17 +328,35 @@ func generate(with_layout: Dictionary = WorldLayout.DEFAULT) -> void:
 	# 1. Bare ground inside the map border. Every later step overwrites; nothing
 	#    below reads a tile it has not written, so the fill order is the only
 	#    thing determinism depends on.
+	#
+	#    **The border is per page** (2026-09-06). It used to be the edge of the
+	#    one map there was; now it is the edge of each of them, which is what
+	#    keeps page 0 the map it has always been — the farm's bottom row is still
+	#    a border rather than a row of field that appeared when the grid got
+	#    taller — and what stops anybody walking off the bottom of the farm into
+	#    the home's ceiling.
 	for ty in MAP_HEIGHT:
 		var row: Array[Dictionary] = []
 		var obj_row: Array[String] = []
+		var page_y := ty % PAGE_ROWS
 		for tx in MAP_WIDTH:
-			if ty == 0 or ty == MAP_HEIGHT - 1 or tx == 0 or tx == MAP_WIDTH - 1:
+			if page_y == 0 or page_y == PAGE_ROWS - 1 or tx == 0 or tx == MAP_WIDTH - 1:
 				row.append(_create_tile("border"))
 			else:
 				row.append(_create_tile("cleared"))
 			obj_row.append("")
 		tiles.append(row)
 		objects.append(obj_row)
+
+	# 1b. The dark, over everything on a page that no parcel claims (2026-09-06).
+	#     Laid **before** the room so the room can be cut out of it: a parcel's
+	#     own tiles are spared here and filled by the ordinary steps below, which
+	#     is why an interior needed no new generator step of its own — it is still
+	#     ground, boundaries and objects, with darkness where the walls end.
+	#
+	#     **No draw**, exactly like the yard's fill in 5b: a fill is not a
+	#     decision, so every seeded placement after it lands where it always did.
+	_fill_void()
 
 	# 2. Each parcel's own obstacle, at its own density — this is the whole of
 	#    T-8. One new obstacle type per parcel (design/13 §5, Valve principle 4);
@@ -372,8 +405,17 @@ func generate(with_layout: Dictionary = WorldLayout.DEFAULT) -> void:
 	for obj in layout.get("objects", OBJECT_POSITIONS):
 		var tx: int = obj.tx
 		var ty: int = obj.ty
-		tiles[ty][tx] = _create_tile("cleared")
 		objects[ty][tx] = obj.type
+		# **A `bare` object keeps the land it stands on** (2026-09-06). The
+		# clearing below exists because a fat finger misses onto the tiles around
+		# a station (T-27 box 3), and it is right for everything that stands *on*
+		# ground. The home's doorway is not one of those: it is the hole cut in
+		# the south wall, with darkness on the far side, and clearing it would
+		# both fill in the hole and lay three tiles of walkable floor outside the
+		# house.
+		if bool(obj.get("bare", false)):
+			continue
+		tiles[ty][tx] = _create_tile("cleared")
 		for dy in range(-1, 2):
 			for dx in range(-1, 2):
 				var nx := tx + dx
@@ -442,8 +484,29 @@ func generate(with_layout: Dictionary = WorldLayout.DEFAULT) -> void:
 	spawn_default_actors(true)
 
 
+# Inside the *page's* border ring — the tiles generation is allowed to write.
+# Page-local since 2026-09-06 and identical to what it always answered while
+# there was one page: row 19 is the farm's bottom border, and no parcel, gate,
+# tool or object may be laid into it.
 func _inside(tx: int, ty: int) -> bool:
-	return tx >= 1 and tx <= MAP_WIDTH - 2 and ty >= 1 and ty <= MAP_HEIGHT - 2
+	if tx < 1 or tx > MAP_WIDTH - 2 or ty < 0 or ty >= MAP_HEIGHT:
+		return false
+	var page_y := ty % PAGE_ROWS
+	return page_y >= 1 and page_y <= PAGE_ROWS - 2
+
+
+# Step 1b: darkness over a page, minus the rooms cut out of it. The rect comes
+# from the layout (`void_fill`) and is clamped here, so a layout may say "the
+# whole page" without knowing how wide the map is.
+func _fill_void() -> void:
+	var spec = layout.get("void_fill", null)
+	if spec == null:
+		return
+	var rect: Rect2i = spec
+	for ty in range(maxi(rect.position.y, 0), mini(rect.end.y, MAP_HEIGHT)):
+		for tx in range(maxi(rect.position.x, 0), mini(rect.end.x, MAP_WIDTH)):
+			if WorldLayout.parcel_at(Vector2i(tx, ty), layout).is_empty():
+				tiles[ty][tx] = _create_tile(WorldLayout.VOID)
 
 
 # Sparse rocks and logs through a parcel that is already open (the designer,
@@ -627,6 +690,26 @@ func get_crop_type(tx: int, ty: int) -> String:
 # each of them (Q-67). Same list, same answer, no allocation.
 const TALL_OBJECTS: Array[String] = ["cot", "well", "seed_box"]
 
+# The objects a foot may land on. An object on a tile normally means "something is
+# standing here, go round" — the well, the cot, the shipping bin — and these are
+# the exceptions: things that lie on the ground (the egg, the acorn) and, since
+# 2026-09-06, the two bays of a robot stall, which are open-fronted by design and
+# exist in order to be stood in.
+#
+# A dictionary rather than a chain of `!=`, for `is_walkable`'s reason (Q-67): it
+# is asked about every neighbour of every node of every route the sim plans, so the
+# test is one hash rather than one comparison per exception.
+const OPEN_OBJECTS := {
+	"egg": true, "acorn": true,
+	WorldLayout.ROBOT_STALL: true, WorldLayout.ROBOT_STALL_SLOT: true,
+}
+
+# The catalogue row a stall is bought from, and where its second bay lands
+# relative to the tile she tapped: one tile to the **right**, always, because two
+# bays side by side is the shape of the shed and v1 does not rotate (P-13).
+const STALL_ITEM := "stall"
+const STALL_SLOT_OFFSET := Vector2i(1, 0)
+
 
 func get_object(tx: int, ty: int) -> String:
 	if ty >= 0 and ty < MAP_HEIGHT and tx >= 0 and tx < MAP_WIDTH:
@@ -713,6 +796,11 @@ func is_walkable(tx: int, ty: int) -> bool:
 	var state: String = tile.state
 	if state == "border":
 		return false
+	# The dark outside a room is not land (2026-09-06). Checked beside the border
+	# because that is what it is: the edge of the map, drawn on the inside of a
+	# page rather than around it.
+	if state == WorldLayout.VOID:
+		return false
 	if state.begins_with("obstacle"):
 		return false
 	# T-8: a boundary is land, and land is what says "not yet". An open gate is
@@ -724,7 +812,7 @@ func is_walkable(tx: int, ty: int) -> bool:
 		var below: String = objects[ty + 1][tx]
 		if below in TALL_OBJECTS:
 			obj = below
-	if obj != "" and obj != "egg" and obj != "acorn":
+	if obj != "" and not OPEN_OBJECTS.has(obj):
 		return false
 	return true
 
@@ -786,6 +874,60 @@ func choose_crow_target(prefer_seed: int) -> Dictionary:
 	if not crops.is_empty():
 		return { "kind": "crop", "tile": crops[posmod(prefer_seed, crops.size())] }
 	return { "kind": "none", "tile": Vector2i(-1, -1) }
+
+
+# Which map a tile is on — rows 0-19 are the farm, 20-39 are the home. The
+# camera clamps to it, the vignette scopes its scans to it, and `way_to_bed`
+# below asks it whether she is already in the room the bed is in.
+func page_of(t: Vector2i) -> int:
+	return t.y / PAGE_ROWS
+
+
+# Where the one of something is, or (-1,-1). Scanned rather than remembered: an
+# object's tile is grid truth, and a cached copy of it is a thing that can be
+# wrong after a save, a replay, or a `collect`. O(map) and called by hand — at
+# dusk, when the HUD asks the way to bed — never per frame.
+func find_object(type: String) -> Vector2i:
+	for ty in MAP_HEIGHT:
+		for tx in MAP_WIDTH:
+			if objects[ty][tx] == type:
+				return Vector2i(tx, ty)
+	return Vector2i(-1, -1)
+
+
+# **The way to bed, from wherever she is standing** (2026-09-06).
+#
+# The cot moved indoors, which broke a chain of things that all quietly assumed
+# the bed was a tile she could walk to: the dusk glow, the vignette's bedtime
+# beat, the teaching focus and the HUD's bed button. Every one of them now asks
+# this instead, so there is exactly one answer to "where do I point her" and it
+# cannot go stale in four places independently.
+#
+# The rule is one sentence: **the bed if she is on the bed's page, otherwise the
+# door that leads to it.** Outside at dusk the house door glows and the nudge
+# points at it; inside, the bed does. Two taps to sleep rather than one, which is
+# the honest cost of the bed being in a room (and it is what a house is for).
+#
+# Returns (-1,-1) when the world has no bed at all — a layout that never placed
+# one, which the caller must be able to say nothing about rather than point at
+# the origin.
+func way_to_bed(player_tile: Vector2i) -> Vector2i:
+	var bed := find_object("cot")
+	if bed.x < 0:
+		return bed
+	var here := page_of(player_tile)
+	if here == page_of(bed):
+		return bed
+	var fallback := Vector2i(-1, -1)
+	for d in WorldLayout.doors(layout):
+		var at: Vector2i = d.get("at", Vector2i(-1, -1))
+		if at.x < 0 or page_of(at) != here:
+			continue
+		if page_of(d.get("to", Vector2i(-1, -1))) == page_of(bed):
+			return at  # this one opens onto the room the bed is in
+		if fallback.x < 0:
+			fallback = at
+	return fallback if fallback.x >= 0 else bed
 
 
 func count_acorns() -> int:
@@ -851,7 +993,12 @@ const NON_WORK_VERBS := { "sleep": true, "sell": true, "buy_seed": true, "refill
 		# Teaching a mark-1 and sending it out are instructions, not strokes of
 		# work (2026-09-03). Charging the day's clock for pointing at eight tiles
 		# would make delegating the round cost more than doing it.
-		"teach": true, "activate": true }
+		"teach": true, "activate": true,
+		# Walking through her own front door is not work (2026-09-06). It costs no
+		# energy and does not tick the clock the crows are scheduled against, for
+		# the same reason crossing the yard does not: going somewhere is how you
+		# reach the thing you are going to do.
+		"use_door": true }
 
 # **Every actor has its own energy meter** (designer, 2026-08-29). The player's
 # meter happens to also be the clock — spending it is what advances the time of
@@ -1136,8 +1283,26 @@ func stompable_at(t: Vector2i) -> bool:
 # the tile she taps, and on the tiles she does stand on, a machine set down at her
 # feet is a perfectly ordinary thing to want. Pure — the router asks it before any
 # action exists.
-func placeable_at(t: Vector2i) -> bool:
+#
+# **`item` is what she is carrying, and it is the second half of the question**
+# (2026-09-06). Until the stall existed, "may a machine go there" was a fact about
+# the *square* alone; a stall bay is a square that takes a robot and nothing else,
+# so the answer now depends on what is in her hand. Everything that asks about
+# ordinary ground may go on omitting it and gets exactly the answer it always got:
+# a bay with no item named is not placeable, which is the safe direction — an
+# unaware caller refuses a bay rather than dropping a sprinkler into one.
+func placeable_at(t: Vector2i, item: String = "") -> bool:
 	if not is_walkable(t.x, t.y):
+		return false
+	# A bay is for robots. A second stall, a sprinkler or a bare `placeable_at`
+	# is refused here, and the emptiness of the bay is the actor loop below.
+	if is_stall_tile(t):
+		if MachineDefs.species_of(item) != SpeciesDefs.BOT:
+			return false
+	# ...and a stall itself is two tiles wide, so both of them have to be free
+	# ground. The companion is on the same row and therefore on the same page by
+	# construction; off the right-hand edge of the map is `is_walkable`'s answer.
+	elif item == STALL_ITEM and not placeable_at(t + STALL_SLOT_OFFSET):
 		return false
 	for raw in actors:
 		var id := String(raw)
@@ -1146,6 +1311,16 @@ func placeable_at(t: Vector2i) -> bool:
 		if t in Movement.occupied_tiles(self, id):
 			return false
 	return true
+
+
+# Is this tile one of a stall's two bays? Read off the grid rather than off
+# `get_object`, deliberately: `get_object` answers with a *tall* object standing on
+# the tile below, and the tile above a stall is ordinary ground that ordinary
+# things happen to — it is only the shed's roof that leans over it.
+func is_stall_tile(t: Vector2i) -> bool:
+	if t.y < 0 or t.y >= MAP_HEIGHT or t.x < 0 or t.x >= MAP_WIDTH:
+		return false
+	return WorldLayout.is_stall_object(objects[t.y][t.x])
 
 
 # The machine standing on this tile, or "". Sorted so that two machines sharing a
@@ -1199,6 +1374,12 @@ const TEACHABLE_STATES := {
 
 func teachable_at(t: Vector2i) -> bool:
 	if not is_walkable(t.x, t.y):
+		return false
+	# ...including the square the machine parks on (2026-09-06). A stall bay is
+	# walkable and may well be standing on soil, but the gateway refuses every
+	# energy-costed verb there, so teaching one would be exactly the silent trap
+	# the paragraph above is about: an order it walks to and can do nothing with.
+	if is_stall_tile(t):
 		return false
 	return TEACHABLE_STATES.has(String(get_tile(t.x, t.y).get("state", "")))
 
@@ -1315,7 +1496,7 @@ func spend_actor_energy(actor_id: String, cost: int) -> void:
 func spawn_default_actors(from_stream: bool = false) -> void:
 	actors.clear()
 	_brain_events.clear()
-	var start := WorldLayout.spawn(layout)
+	var start := _start_tile()
 	spawn_actor(ACTOR_PLAYER, SpeciesDefs.PLAYER, start)
 	# She is in the world exactly while her scene is: an unopened cold-open gate
 	# is the same evidence `ColdOpen.is_done()` reads, so a save restored
@@ -1324,6 +1505,35 @@ func spawn_default_actors(from_stream: bool = false) -> void:
 		var plot: Dictionary = layout.get("neighbour_plot", {})
 		spawn_actor(ACTOR_NEIGHBOUR, SpeciesDefs.NEIGHBOUR, plot.get("wave_at", start))
 	spawn_actor(ACTOR_CHICKEN, SpeciesDefs.CHICKEN, _chicken_tile(start, from_stream))
+
+
+# Where the cast stands when nobody is on record: the layout's spawn, unless
+# **this world disagrees with the layout it is being read against** (2026-09-06).
+#
+# A generated world never disagrees. A *restored* one can: an autosave written
+# before the door still has the cot standing out in the yard, on the very tile
+# the composed world now starts her on, and the legacy load path would have put
+# her — and then the hen, drawn from the tiles reachable from her — inside the
+# furniture. So the start tile steps aside to the nearest walkable one.
+#
+# By rule and never by a draw, for `spawn_default_actors`' reason: a load must
+# not consume the shared RNG stream. Nearest first, then row-major, so the answer
+# is the same on every machine and in every replay.
+func _start_tile() -> Vector2i:
+	var start := WorldLayout.spawn(layout)
+	if is_walkable(start.x, start.y):
+		return start
+	var best := start
+	var best_d := MAP_WIDTH * MAP_HEIGHT
+	for ty in MAP_HEIGHT:
+		for tx in MAP_WIDTH:
+			if not is_walkable(tx, ty):
+				continue
+			var d := absi(tx - start.x) + absi(ty - start.y)
+			if d < best_d:
+				best_d = d
+				best = Vector2i(tx, ty)
+	return best
 
 
 func _chicken_tile(start: Vector2i, from_stream: bool) -> Vector2i:
@@ -1573,6 +1783,54 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 				return { "ok": true, "collected": machine_key, "machine": machine_id }
 			return _fail("nothing_to_collect")
 
+		# -- the door (2026-09-06) --------------------------------------------
+		#
+		# **Going indoors is an Action.** The farm and the home are two pages of
+		# one grid (see WorldLayout's page block), and the only way between them
+		# is this verb — not a scene swap, not a presentation teleport. It is a
+		# verb because it changes where an actor is, and where an actor is has
+		# been sim truth since Q-53: a save knows which room she is in, a replay
+		# puts her back through the same door at the same point in the stream, and
+		# the phase-4 corpus records the transition like everything else she does.
+		#
+		# **Player-only, deliberately** — the one place the ground rule ("a bot
+		# gets no verb the player lacks") is knowingly held from the other side.
+		# Nothing else in the game has business indoors in phase 1: a hen that
+		# wandered through the door would be standing in a room nobody is looking
+		# at, and no brain has any notion of pages. When something else is meant
+		# to follow her in, this guard is the one line that has to change.
+		#
+		# **It refuses rather than guesses.** A world with no door table — every
+		# save written before today, migrated to v3 as one farm page and a page of
+		# darkness — has no pair to look up, so the verb fails cleanly and an old
+		# farm keeps playing exactly as it did.
+		"use_door":
+			if not _is_player(String(action.get("actor", ""))):
+				return _fail("not_the_player")
+			if not WorldLayout.is_door_object(get_object(target.x, target.y)):
+				return _fail("no_door_here")
+			var pair := WorldLayout.door_at(target, layout)
+			if pair.is_empty():
+				return _fail("door_leads_nowhere")
+			# Adjacency is the special-object idiom (`Pathfinding.find_path_toward`
+			# walks her to a neighbouring tile and stops): she stands beside the
+			# door and reaches for it. Manhattan ≤ 1 rather than = 1, so standing
+			# *on* one — which nothing can do today, since a door blocks — is not
+			# a refusal some future layout would have to work around.
+			var from := actor_pos(ACTOR_PLAYER)
+			if absi(from.x - target.x) + absi(from.y - target.y) > 1:
+				return _fail("too_far")
+			var dest: Vector2i = pair.get("to", Vector2i(-1, -1))
+			if not is_walkable(dest.x, dest.y):
+				return _fail("door_is_blocked")
+			var face := String(pair.get("face", "down"))
+			# The same write a walk makes (M2.5 WI-6's one sanctioned exception),
+			# so her tile is sim truth on the far side too. Presentation reads
+			# `dest` off the result and puts her body there — a teleport is not a
+			# crossing, which is spawn's rule.
+			set_actor_pos(ACTOR_PLAYER, dest, face)
+			return { "ok": true, "dest": dest, "face": face }
+
 		# -- machines (2026-09-03) --------------------------------------------
 		#
 		# Both are verbs rather than sim functions because both change the world:
@@ -1588,7 +1846,10 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			if not MachineDefs.has(item): return _fail("unknown_machine")
 			var ptile := get_tile(target.x, target.y)
 			if ptile.is_empty() or ptile.get("state", "") == "": return _fail("out_of_bounds")
-			if not placeable_at(target): return _fail("occupied")
+			# **What she is holding is part of the question** (2026-09-06): a stall
+			# needs the square beside it as well, and a robot is the one thing that
+			# may be set down *in* a stall.
+			if not placeable_at(target, item): return _fail("occupied")
 			var placer := String(action.get("actor", ""))
 			var placer_charged: bool = _is_player(placer)
 			if placer_charged and int(gs.machines.get(item, 0)) <= 0: return _fail("no_machine")
@@ -1598,6 +1859,19 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 				gs.set_energy(gs.energy - place_cost)
 			else:
 				spend_actor_energy(placer, place_cost)
+			# **A structure is put down, not deployed** (the stall, 2026-09-06). It
+			# spawns nobody: two objects go onto the grid, the crate loses one, and
+			# setting it down costs exactly what setting a machine down costs — the
+			# work is in her arms, not in what she built. The same verb because it is
+			# the same act, which is what keeps a future bot able to build one with
+			# nothing new to learn (S-3, ground rule 1).
+			if not MachineDefs.spawns_actor(item):
+				set_object(target.x, target.y, WorldLayout.ROBOT_STALL)
+				var slot := target + STALL_SLOT_OFFSET
+				set_object(slot.x, slot.y, WorldLayout.ROBOT_STALL_SLOT)
+				if placer_charged:
+					gs.machines[item] = int(gs.machines.get(item, 0)) - 1
+				return { "ok": true, "structure": item, "slot": slot }
 			var machine_id := next_machine_id(item)
 			var config := String(action.get("config", MachineDefs.default_config(item)))
 			if not config in MachineDefs.configs_of(item):
@@ -1838,6 +2112,14 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			if gs == null: return _fail("no_state")
 			var tile := get_tile(target.x, target.y)
 			if tile.is_empty() or tile.get("state", "") == "": return _fail("out_of_bounds")
+			# The dark outside a room is not land, so nothing can be done to it
+			# (2026-09-06). Named as what it is rather than given a refusal of its
+			# own: a void tile is the edge of the map, drawn on the inside of a page.
+			# Nobody can tap one — nothing walks there and the router offers nothing
+			# on it — so this is the gateway's backstop, exactly like the yard's rule
+			# below.
+			if String(tile.get("state", "")) == WorldLayout.VOID:
+				return _fail("out_of_bounds")
 			# T-32: the yard is home, not field, and its ground is the one thing a
 			# hoe never opens. Stated at the gateway rather than in the router so it
 			# binds the neighbour, a crow and a phase-4 bot exactly as it binds her
@@ -1852,6 +2134,15 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			# recorded on an older worldgen, or a test asking the question.
 			# T-37 extends the same rule to the home's floor: home ground, indoors
 			# or out, is the ground a hoe never opens.
+			# A shed is standing here (2026-09-06). A stall bay is walkable — it is
+			# a building she and her robots step into — so it is the one kind of
+			# square where "there is soil under my feet" and "there is a structure
+			# on this tile" are both true, and the gateway has to say which wins.
+			# The structure does: no tilling the floor of the shed, no planting in
+			# it, no watering it. Stated for every actor at once, like the yard's
+			# rule below, so a bot is bound by it exactly as she is.
+			if is_stall_tile(target):
+				return _fail("occupied")
 			if verb == "till" and String(tile.get("state", "")) in [WorldLayout.YARD, WorldLayout.FLOOR]:
 				return _fail("not_tillable")
 			var cost: int = Tools.get_energy_cost(verb)

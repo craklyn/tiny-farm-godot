@@ -87,6 +87,8 @@ func _run_scenarios() -> void:
 	await _scenario_af_a_pour_is_heard_whoever_pours()
 	await _scenario_ag_a_machine_is_bought_placed_and_told_what_to_do()
 	await _scenario_ah_the_mark_one_takes_exact_orders()
+	await _scenario_ai_the_house_has_a_door()
+	await _scenario_aj_the_robot_lives_in_a_stall()
 
 func _wait_until(pred: Callable, max_frames: int) -> bool:
 	for i in max_frames:
@@ -132,18 +134,24 @@ func _stage_tile(tx: int, ty: int, state: String, crop_type: String = "") -> voi
 func _scenario_a() -> void:
 	print("\n--- Scenario A: Movement & Collisions ---")
 	
-	# Initial position should be at spawn (2.5, 2.5 in tile coords, pos is px)
+	# Initial position should be at spawn. She wakes at (2,4) since 2026-09-06:
+	# (2,2) is her own front door now, and the cot that used to stand on (2,4)
+	# moved indoors — so she starts on the tile the bed left behind, two south of
+	# the doorstep, and her body starts where the sim's registry says she is.
+	var spawn: Vector2i = farm.sim.actor_pos(SimWorld.ACTOR_PLAYER)
+	_assert(spawn == Vector2i(2, 4), "the sim wakes her on the yard's own tile (%s)" % spawn)
 	var spawn_pos = player.position
-	_assert(spawn_pos.distance_to(Vector2(2.5 * 16.0, 2.5 * 16.0)) < 1.0, "Player spawned at correct position")
-	
+	_assert(spawn_pos.distance_to(Vector2(2.5 * 16.0, 4.5 * 16.0)) < 1.0,
+		"Player spawned at correct position")
+
 	# Block the right side with a rock
-	_stage_tile(3, 2, "obstacle_rock")
-	
+	_stage_tile(3, 4, "obstacle_rock")
+
 	# Press right for 10 frames
 	Input.action_press("move_right")
 	for i in 10: await get_tree().process_frame
 	Input.action_release("move_right")
-	
+
 	# Should be blocked by the rock, x should be < 3.0 * 16.0 (minus player radius)
 	var blocked_pos = player.position
 	_assert(blocked_pos.x < (3.0 * 16.0) - 2.0, "Player collision blocked by obstacle_rock")
@@ -315,7 +323,11 @@ func _scenario_f() -> void:
 	# the plot). The properties asserted are the ones the 2026-08-28 report was
 	# about and have not changed; only where they live has.
 	var w := float(SimWorld.MAP_WIDTH)
-	var h := float(SimWorld.MAP_HEIGHT)
+	# The rectangle a bird flies over is the **farm page**, not the whole grid
+	# (2026-09-06): rows 20-39 are indoors, and the farm's bottom edge — the one a
+	# crow enters over — is `PAGE_ROWS`. Same property, same numbers this assertion
+	# was written against; only the name of the height changed underneath it.
+	var h := float(SimWorld.PAGE_ROWS)
 
 	var left: Vector2 = CrowBrain.entry_point(0, 100)
 	var right: Vector2 = CrowBrain.entry_point(1, 100)
@@ -1966,6 +1978,22 @@ func _scenario_w_the_cot_presents_itself() -> void:
 	GameState.trace_path = real_paths[2]
 
 
+# What `limit_top` must read right now, and it is two rules stacked: the top of
+# **the page she is standing on** (2026-09-06 — the world is the farm on rows 0-19
+# and the home on rows 20-39, and the camera clamps to one of them at a time),
+# plus Q-68's HUD-bar nudge on the farm page only. Out on the farm this is exactly
+# what `CotPresentation.camera_top_limit()` answered on its own before the pages
+# arrived; indoors the nudge is deliberately absent, because the rows above the
+# room are void and a negative nudge there would show a strip of the farm.
+func _expected_camera_top() -> int:
+	var page: int = farm.sim.page_of(player.get_tile_pos())
+	var nudge: int = 0
+	if page == 0:
+		nudge = CotPresentation.camera_top_limit(
+			main_scene.HUD_TOP_PX, main_scene.CAMERA_SCALE)
+	return page * SimWorld.PAGE_ROWS * 16 + nudge
+
+
 func _find_button(root: Node, node_name: String) -> Button:
 	if root is Button and root.name == node_name:
 		return root
@@ -2032,8 +2060,7 @@ func _scenario_x_three_looks_for_the_cot() -> void:
 		"tapping it advances the treatment")
 	_assert(not main_scene.menus.is_open(),
 		"and closes the menu, so the farm is what he is looking at when it changes")
-	_assert(main_scene.camera.limit_top
-			== CotPresentation.camera_top_limit(main_scene.HUD_TOP_PX, main_scene.CAMERA_SCALE),
+	_assert(main_scene.camera.limit_top == _expected_camera_top(),
 		"the live camera picked up the new treatment's Q-68 answer without a reload")
 
 	# Door 2 is gone, deliberately, and this is the guard that keeps it gone. The
@@ -2061,8 +2088,7 @@ func _scenario_x_three_looks_for_the_cot() -> void:
 		GameState.set_energy(60)
 		await get_tree().process_frame
 
-		_assert(main_scene.camera.limit_top
-				== CotPresentation.camera_top_limit(main_scene.HUD_TOP_PX, main_scene.CAMERA_SCALE),
+		_assert(main_scene.camera.limit_top == _expected_camera_top(),
 			"%s: the camera carries this treatment's Q-68 answer" % label)
 		_assert(farm.cot_turned_down == (t == CotPresentation.TURNDOWN),
 			"%s: the bed is turned down under C and made under the others" % label)
@@ -2197,8 +2223,13 @@ func _scenario_z_a_bed_button() -> void:
 	_assert(not bar.intersects(Rect2(bed.position, bed.size)),
 		"it sits clear of the top bar, so Q-68's ruling cannot collide with it")
 
-	# 3. The walk. She is across the yard from the cot; the button must take her
-	#    there on her own feet, not put her to bed where she stands.
+	# 3. The walk — and since 2026-09-06 it is **two** walks, because the bed is in
+	#    a room. The button aims at the way to bed (`main.gd`'s `way_to_bed`), so
+	#    the first press walks her across the yard to her own front door and takes
+	#    her through it, and the second walks her to the bed and puts her in it.
+	#    What has to survive the move is T-31's whole sentence: the button never
+	#    does anything a finger could not, so it must still be a walk on her own
+	#    feet at every step and never a sleep where she stands.
 	GameState.set_energy(GameState.max_energy)
 	var start := Vector2i(6, 5)
 	_stage_tile(start.x, start.y, "cleared")
@@ -2209,11 +2240,34 @@ func _scenario_z_a_bed_button() -> void:
 
 	var day_before: int = GameState.day
 	var mark: int = farm.trace.entries.size()
+	var door: Vector2i = farm.sim.find_object(WorldLayout.HOUSE_DOOR)
+	_assert(door.x >= 0, "the farmhouse she has to walk to has a door")
+	_assert(main_scene.way_to_bed() == door,
+		"standing out in the yard, the way to bed is that door (%s)" % main_scene.way_to_bed())
+
 	bed.pressed.emit()
 	_assert(GameState.day == day_before,
 		"pressing it does not sleep her on the spot — there is a farm to cross first")
 	var walking := await _wait_until(func(): return not player.path.is_empty(), 300)
-	_assert(walking, "she sets off toward the cot")
+	_assert(walking, "she sets off toward the door")
+	var indoors := await _wait_until(
+		func(): return farm.sim.page_of(player.get_tile_pos()) == 1, 12000)
+	_assert(indoors, "and when she gets there she goes through it, into the room with the bed")
+	_assert(GameState.day == day_before,
+		"walking indoors is not sleeping — the day has not turned (`use_door` is free)")
+	_assert(main_scene.camera.limit_top == _expected_camera_top()
+			and main_scene.camera.limit_bottom == 40 * 16,
+		"and the camera came with her, clamped to the room's page (%d..%d)"
+			% [main_scene.camera.limit_top, main_scene.camera.limit_bottom])
+	_assert(main_scene.way_to_bed() == cot,
+		"from in here the way to bed is the bed itself (%s)" % main_scene.way_to_bed())
+
+	# The second press: the same button, the same one tap, and now it is the cot
+	# tap it has always been.
+	bed.pressed.emit()
+	var walking2 := await _wait_until(
+		func(): return not player.path.is_empty() or main_scene.day_cycle.is_active(), 300)
+	_assert(walking2, "she sets off across the room toward the bed")
 	var started := await _wait_until(func(): return main_scene.day_cycle.is_active(), 12000)
 	_assert(started, "and when she gets there, she goes to bed")
 	var at_cot: Vector2i = player.get_tile_pos()
@@ -2317,16 +2371,34 @@ func _scenario_aa_the_yard_is_home() -> void:
 			% [yard_tiles, yard_rect.get_area()])
 	_assert(fresh.sim.is_walkable(5, 3), "which she walks across like any other ground")
 
-	# The cot's move is part of the same directive: down three, left-aligned, its
-	# 16x32 sprite filling rows 3-4 of the yard's rows 1-6.
+	# T-32 moved the cot into the middle of the yard; 2026-09-06 moved it out of
+	# the yard altogether, into the room the farmhouse's door leads to. So what
+	# stands in the yard now is the house, and the bed is on the other page — its
+	# 16x32 sprite still rising one tile north of its footprint, which is what
+	# makes the headboard stand against the bedroom's north wall.
 	var cot_now := Vector2i(-1, -1)
 	for ty in SimWorld.MAP_HEIGHT:
 		for tx in SimWorld.MAP_WIDTH:
 			if fresh.sim.objects[ty][tx] == "cot":
 				cot_now = Vector2i(tx, ty)
-	_assert(cot_now == Vector2i(2, 4), "the cot stands at (2,4) — %s" % cot_now)
+	_assert(cot_now == Vector2i(12, 27), "the bed stands indoors at (12,27) — %s" % cot_now)
+	_assert(fresh.sim.page_of(cot_now) == 1,
+		"which is the home's page, not the farm's")
 	_assert(fresh.get_object(cot_now.x, cot_now.y - 1) == "cot",
 		"with its head tile above it, so the pair reads as the middle of the room")
+	# And the yard keeps the house it left behind: a door in the middle of five
+	# wall tiles, all six of them things she cannot walk through.
+	_assert(fresh.get_object(2, 2) == WorldLayout.HOUSE_DOOR,
+		"the farmhouse's door faces the yard at (2,2)")
+	var walls := 0
+	for w in [Vector2i(1, 1), Vector2i(2, 1), Vector2i(3, 1), Vector2i(1, 2), Vector2i(3, 2)]:
+		if fresh.get_object(w.x, w.y) == WorldLayout.HOUSE_WALL and not fresh.is_walkable(w.x, w.y):
+			walls += 1
+	_assert(walls == 5, "with five wall tiles around it, none of them walkable (%d/5)" % walls)
+	_assert(not fresh.is_walkable(2, 2) and fresh.is_walkable(2, 3),
+		"the door blocks like the wall does — she stands on the step below and reaches for it")
+	_assert(WorldLayout.spawn(fresh.sim.layout) == Vector2i(2, 4),
+		"and she wakes on the tile the bed used to stand on")
 	_assert(fresh.get_object(4, 1) == "shipping_bin" and fresh.get_object(6, 1) == "well"
 			and fresh.get_object(8, 1) == "seed_box",
 		"and the three stations kept the top row")
@@ -3376,6 +3448,168 @@ func _scenario_ah_the_mark_one_takes_exact_orders() -> void:
 	GameState.selected_seed_type = "wheat"
 
 
+func _scenario_ai_the_house_has_a_door() -> void:
+	# The CEO, 2026-09-06: *"the player can see an entrance to their house from the
+	# outdoor space, and going inside enters a new map with their bed; a door leads
+	# back outside."*
+	#
+	# The unit suite proves the verb and the composed layout. This is the whole
+	# chain in the real scene, because every failure this design can have is a
+	# failure of the chain rather than of any one function in it: the house standing
+	# in the yard, a tap on its door, the walk, the step through, the camera that
+	# has to come with her, the way back out, and — since the bed went with the
+	# house — what the game points her at when it is time for bed on either side of
+	# the wall.
+	print("\n--- Scenario AI: the house has a door, and it goes both ways (2026-09-06) ---")
+
+	# The sleep at the end autosaves, and the real game's autosave is the file
+	# `verify_replay.gd` checks a human session against (Scenario W's borrow).
+	var real_paths := [GameState.save_path, GameState.replay_path, GameState.trace_path]
+	GameState.save_path = "user://door_autosave.json"
+	GameState.replay_path = "user://door_replay.json"
+	GameState.trace_path = "user://door_trace.jsonl"
+
+	var door: Vector2i = farm.sim.find_object(WorldLayout.HOUSE_DOOR)
+	var doorway: Vector2i = farm.sim.find_object(WorldLayout.HOME_DOORWAY)
+	var cot: Vector2i = main_scene._cot_tile
+	_assert(door == Vector2i(2, 2) and doorway == Vector2i(15, 33),
+		"the two ends of the one door are where the layout put them (%s, %s)" % [door, doorway])
+	_assert(cot == Vector2i(12, 27) and farm.sim.page_of(cot) == 1,
+		"and the bed is through it, on the home's page (%s)" % cot)
+
+	# 1. She can see it from the yard, and it behaves like a house: a facade she
+	#    cannot walk into, with one tile in the middle of it that answers a tap.
+	GameState.set_energy(GameState.max_energy)
+	GameState.selected_tool = 3            # the hoe, so a miss would till rather than nothing
+	var out_in_the_yard := Vector2i(5, 4)
+	_stage_tile(out_in_the_yard.x, out_in_the_yard.y, "cleared")
+	player.pos = Vector2(out_in_the_yard.x * 16 + 8.0, out_in_the_yard.y * 16 + 8.0)
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+
+	_assert(farm.object_regions.has(WorldLayout.HOUSE_DOOR),
+		"the renderer has a facade to draw where the door stands")
+	var solid := 0
+	for w in [Vector2i(1, 1), Vector2i(2, 1), Vector2i(3, 1), Vector2i(1, 2), Vector2i(3, 2)]:
+		if farm.get_object(w.x, w.y) == WorldLayout.HOUSE_WALL and not farm.is_walkable(w.x, w.y):
+			solid += 1
+	_assert(solid == 5 and not farm.is_walkable(door.x, door.y),
+		"the house is solid — five wall tiles and a door, none of them walked through (%d/5)" % solid)
+	var offered := ActionRouter.resolve(farm, GameState, door, player.get_tile_pos(), false)
+	_assert(offered.get("action", "") == "use_door" and offered.get("walk_to", false),
+		"and a tap on the door means go inside, with a walk first (%s)"
+			% offered.get("action", "nothing"))
+
+	# 2. The tap, through the real input path — she crosses the yard on her own
+	#    feet and steps through, and the sim agrees about where she ended up.
+	var day_before: int = GameState.day
+	InputManager.click_tile = door
+	InputManager.has_click = true
+	var inside := await _wait_until(
+		func(): return farm.sim.page_of(player.get_tile_pos()) == 1, 12000)
+	_assert(inside, "tapping it walks her to the doorstep and takes her through")
+	_assert(player.get_tile_pos() == Vector2i(15, 32),
+		"landing on the room's side of the doorway (%s)" % player.get_tile_pos())
+	_assert(farm.sim.actor_pos(SimWorld.ACTOR_PLAYER) == Vector2i(15, 32),
+		"and her registry entry is there with her — which room she is in is sim truth")
+	_assert(player.facing == "up", "facing into the room (%s)" % player.facing)
+	_assert(player.path.is_empty() and player.pending_action.is_empty()
+			and player.tap_indicator.is_empty() and player.approach_target.x < 0,
+		"with nothing left over from the walk that got her here")
+	_assert(GameState.day == day_before, "going indoors costs her nothing — no day, no energy")
+	_assert(main_scene.camera.limit_top == _expected_camera_top()
+			and main_scene.camera.limit_top == 20 * 16
+			and main_scene.camera.limit_bottom == 40 * 16,
+		"and the camera came with her, clamped to the room's page (%d..%d)"
+			% [main_scene.camera.limit_top, main_scene.camera.limit_bottom])
+
+	# 3. And back out. The doorway is the hole cut in the south wall; she is
+	#    standing beside it, so this is a tap with no walk at all.
+	InputManager.click_tile = doorway
+	InputManager.has_click = true
+	var outside := await _wait_until(
+		func(): return farm.sim.page_of(player.get_tile_pos()) == 0, 12000)
+	_assert(outside, "tapping the doorway from inside puts her back out")
+	_assert(player.get_tile_pos() == Vector2i(2, 3),
+		"on her own doorstep (%s)" % player.get_tile_pos())
+	_assert(player.facing == "down", "facing out into the yard (%s)" % player.facing)
+	_assert(main_scene.camera.limit_top == _expected_camera_top()
+			and main_scene.camera.limit_bottom == 20 * 16,
+		"and the camera is back on the farm's page (%d..%d)"
+			% [main_scene.camera.limit_top, main_scene.camera.limit_bottom])
+
+	# 4. Dusk in the yard. The bed is in a room now, so the one thing every cue
+	#    points at — the lamp, the low-energy pulse and the HUD's bed button — is
+	#    the way to bed rather than the bed: out here, her own front door.
+	GameState.set_energy(60)               # the hour all of this is about (Scenario X's dusk)
+	await get_tree().process_frame
+	_assert(CotPresentation.glow_alpha(GameState.energy, GameState.max_energy, 0.0) > 0.0,
+		"at dusk there is a lamp to draw")
+	_assert(main_scene.way_to_bed() == door,
+		"and in the yard it burns in the doorway (%s)" % main_scene.way_to_bed())
+	var drew: int = main_scene.cot_draws
+	for i in 4:
+		await get_tree().process_frame
+	_assert(main_scene.cot_draws > drew,
+		"the bedtime block draws to completion on it, frame after frame (%d)"
+			% [main_scene.cot_draws - drew])
+	InputManager.has_click = false
+	InputManager.click_tile = Vector2i(-1, -1)
+	main_scene.trigger_action("go_to_bed")
+	_assert(InputManager.has_click and InputManager.click_tile == door,
+		"and the HUD's bed button aims her at the same tile, not at a bed she cannot see (%s)"
+			% InputManager.click_tile)
+
+	# That press is a real tap and it is still buffered, so let it play: this is the
+	# first half of the two-press chain Scenario Z asserts end to end.
+	var back_in := await _wait_until(
+		func(): return farm.sim.page_of(player.get_tile_pos()) == 1, 12000)
+	_assert(back_in, "pressing it walks her to the door and through it")
+	_assert(main_scene.way_to_bed() == cot,
+		"and from inside the room the same question answers with the bed (%s)"
+			% main_scene.way_to_bed())
+	var drew_in: int = main_scene.cot_draws
+	for i in 4:
+		await get_tree().process_frame
+	_assert(main_scene.cot_draws > drew_in,
+		"which is where the lamp burns once she is indoors")
+
+	# 5. And the bed at the end of it. Indoors this is the ordinary cot tap it has
+	#    always been — Scenario W's whole chain, one page down.
+	var day_at_bed: int = GameState.day
+	var mark: int = farm.trace.entries.size()
+	InputManager.click_tile = cot
+	InputManager.has_click = true
+	var started := await _wait_until(func(): return main_scene.day_cycle.is_active(), 12000)
+	_assert(started, "tapping the bed starts the day transition")
+	_assert(GameState.day == day_at_bed + 1,
+		"and the sim is ALREADY in the new day — the Action resolved at the tap (D-8)")
+	_assert(player.tuck_tile == cot, "with the farmer drawn lying in it (T-27 box 1)")
+	await _wait_until(func(): return not main_scene.day_cycle.is_active(), 4000)
+	for i in 30:
+		await get_tree().process_frame
+	_assert(player.tuck_tile.x < 0, "she is out of bed by morning")
+	_assert(_sleeps_since(mark) == 1,
+		"and the sim saw exactly one sleep (%d)" % _sleeps_since(mark))
+	_assert(farm.sim.page_of(player.get_tile_pos()) == 1,
+		"waking where she slept — indoors, in the room with the bed")
+	_assert(main_scene.camera.limit_bottom == 40 * 16,
+		"so the morning opens on the room's page, not on the farm")
+
+	# Put her back out on the farm for whatever runs next, the way she would walk.
+	InputManager.click_tile = doorway
+	InputManager.has_click = true
+	await _wait_until(func(): return farm.sim.page_of(player.get_tile_pos()) == 0, 12000)
+	GameState.set_energy(GameState.max_energy)
+	for p in [GameState.save_path, GameState.replay_path, GameState.trace_path]:
+		if FileAccess.file_exists(p):
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(p))
+	GameState.save_path = real_paths[0]
+	GameState.replay_path = real_paths[1]
+	GameState.trace_path = real_paths[2]
+
+
 # Is the button on the nth option row enabled? The rows are PanelContainers with
 # a transparent Button laid over them (`_add_option`), so "greyed out" is a fact
 # about that button rather than about the label beside it.
@@ -3385,3 +3619,227 @@ func _row_button_enabled(container: Control, index: int) -> bool:
 	for btn in container.get_child(index).find_children("*", "Button", true, false):
 		return not btn.disabled
 	return false
+
+
+func _scenario_aj_the_robot_lives_in_a_stall() -> void:
+	# The CEO, 2026-09-06: *"A robot stall holds two robots. The player buys a
+	# robot, leaves it in the stall, teaches it, and after teaching it works
+	# productively growing crops."*
+	#
+	# The unit suite proves the shed, the address and the morning routine. This is
+	# the same claim driven the way a player drives it, because the value of the
+	# stall is a *chain* and every link of it is somewhere else: the shop sells it,
+	# a tap builds it, a tap parks a robot in it, the teaching flow fills its list,
+	# the bed turns the day — and then, with nobody touching anything, the machine
+	# lets itself out and goes to work. If any one link is broken the player has
+	# bought a shed that does nothing.
+	print("\n--- Scenario AJ: the robot lives in a stall, and lets itself out (2026-09-06) ---")
+
+	# The sleep at the end autosaves; the real autosave is the file `verify_replay`
+	# checks a human session against (Scenario AI's borrow).
+	var real_paths := [GameState.save_path, GameState.replay_path, GameState.trace_path]
+	GameState.save_path = "user://stall_autosave.json"
+	GameState.replay_path = "user://stall_replay.json"
+	GameState.trace_path = "user://stall_trace.jsonl"
+
+	var menus = main_scene.menus
+	GameState.gold = 1000
+	GameState.machines = {}
+	GameState.set_energy(GameState.max_energy)
+	main_scene.end_teaching()
+
+	var stall := Vector2i(15, 9)
+	var bay := stall + Vector2i(1, 0)
+	for tx in range(12, 20):
+		_stage_tile(tx, 9, "cleared")
+		_stage_tile(tx, 10, "cleared")
+		_stage_tile(tx, 11, "seeded", "wheat")
+
+	# --- the shop sells a shed -------------------------------------------------
+	menus.open_menu("shop")
+	await get_tree().process_frame
+	var stall_card := -1
+	for i in menus.shop_items.size():
+		if String(menus.shop_items[i].get("seed_type", "")) == "stall":
+			stall_card = i
+	_assert(stall_card >= 0, "the stall has a card in the shop, like everything else she can own (P-12)")
+	_assert(String(menus.shop_items[stall_card].get("kind", "")) == "machine",
+		"...listed with the machines it houses")
+	menus.selected_option = stall_card
+	menus._select_current_option()
+	await get_tree().process_frame
+	menus.close_menu()
+	await get_tree().process_frame
+	_assert(GameState.machines.get("stall", 0) == 1 and GameState.holding_machine(),
+		"tapping the card buys one and puts it in her hands")
+
+	# --- a tap builds it -------------------------------------------------------
+	player.pos = Vector2(14 * 16.0 + 8.0, 9 * 16.0 + 8.0)
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+	InputManager.click_tile = stall
+	InputManager.has_click = true
+	var built := await _wait_until(
+		func(): return farm.get_object(stall.x, stall.y) == WorldLayout.ROBOT_STALL, 200)
+	_assert(built, "a tap puts the shed down on the square she is standing beside")
+	_assert(farm.get_object(bay.x, bay.y) == WorldLayout.ROBOT_STALL_SLOT,
+		"and its second bay lands beside it — one shed, two tiles")
+	_assert(farm.object_regions.has(WorldLayout.ROBOT_STALL),
+		"the renderer has a picture to hang on it")
+	_assert(farm.is_walkable(stall.x, stall.y) and farm.is_walkable(bay.x, bay.y),
+		"both bays are open: she and her robots can walk into them")
+	_assert(not menus.is_open(),
+		"nothing opens over it — a shed has no settings, so there is nothing to ask her")
+
+	# --- and a tap parks a robot in it -----------------------------------------
+	menus.open_menu("shop")
+	await get_tree().process_frame
+	var mk1_card := -1
+	for i in menus.shop_items.size():
+		if String(menus.shop_items[i].get("seed_type", "")) == "bot_mk1":
+			mk1_card = i
+	menus.selected_option = mk1_card
+	menus._select_current_option()
+	await get_tree().process_frame
+	menus.close_menu()
+	await get_tree().process_frame
+
+	player.pos = Vector2(14 * 16.0 + 8.0, 9 * 16.0 + 8.0)
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+	_assert(ActionRouter.resolve(farm, GameState, stall, player.get_tile_pos(), false)
+			.get("action", "") == "place",
+		"holding a robot, a tap on the bay means 'park it here' — the one thing a bay takes")
+	InputManager.click_tile = stall
+	InputManager.has_click = true
+	var parked := await _wait_until(func(): return farm.sim.machine_at(stall) != "", 200)
+	_assert(parked, "a tap stands the robot in the bay")
+	var mk1: String = farm.sim.machine_at(stall)
+	var mextra: Dictionary = farm.sim.actor(mk1)["extra"]
+	_assert(int(mextra.get("home_x", -1)) == stall.x and int(mextra.get("home_y", -1)) == stall.y,
+		"and it has an address now: the bay it was parked in (%s)" % stall)
+	var opened := await _wait_until(func(): return menus.active_menu == "machine", 60)
+	_assert(opened, "its menu opens on top of it, which is where she teaches it")
+
+	# --- she teaches it its round ----------------------------------------------
+	var teach_row := -1
+	for i in menus.machine_options.size():
+		if String(menus.machine_options[i].get("kind", "")) == "teach":
+			teach_row = i
+	menus.selected_option = teach_row
+	menus._select_current_option()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_assert(main_scene.is_teaching(), "the teach row puts her in teaching mode")
+
+	var lesson: Array[Vector2i] = [Vector2i(17, 11), Vector2i(18, 11)]
+	for t in lesson:
+		InputManager.click_tile = t
+		InputManager.has_click = true
+		await get_tree().process_frame
+		await get_tree().process_frame
+	_assert(str(BotBrain.orders_of(farm.sim.actor(mk1)["extra"])) == str(lesson),
+		"two taps teach it two tiles, in the order she pointed at them")
+	main_scene.hud._on_teach_done_button()
+	await get_tree().process_frame
+	_assert(not main_scene.is_teaching(), "and the done button ends the lesson")
+	_assert(not bool(farm.sim.actor(mk1)["extra"].get("sent", false)),
+		"she has not sent it anywhere: no send tap, and none coming")
+
+	# --- she goes to bed, and the morning does the sending ----------------------
+	var door: Vector2i = farm.sim.find_object(WorldLayout.HOUSE_DOOR)
+	var cot: Vector2i = main_scene._cot_tile
+	for t in lesson:
+		farm.sim.get_tile(t.x, t.y).watered_today = false
+	InputManager.click_tile = door
+	InputManager.has_click = true
+	var inside := await _wait_until(
+		func(): return farm.sim.page_of(player.get_tile_pos()) == 1, 12000)
+	_assert(inside, "she walks in through her own front door")
+	var day_before: int = GameState.day
+	InputManager.click_tile = cot
+	InputManager.has_click = true
+	var slept := await _wait_until(func(): return GameState.day > day_before, 12000)
+	_assert(slept, "and sleeps in the bed — the ordinary bedtime chain, one page down")
+	await _wait_until(func(): return not main_scene.day_cycle.is_active(), 4000)
+
+	_assert(bool(farm.sim.actor(mk1)["extra"].get("sent", false)),
+		"and while she was asleep the robot let itself out — nobody sent it")
+	_assert(bool(farm.sim.actor(mk1)["extra"].get("ran_today", false)),
+		"that is its one turn for the day, spent by the morning rather than by her")
+	menus.open_machine_menu_for(mk1)
+	await get_tree().process_frame
+	var send_row := -1
+	for i in menus.machine_options.size():
+		if String(menus.machine_options[i].get("kind", "")) == "activate":
+			send_row = i
+	var rows: Array = []
+	_collect_labels(menus.options_container, rows)
+	_assert(send_row >= 0 and String(rows[send_row].text).begins_with("Out working"),
+		"and its panel says so in the one row that reports its state (%s)"
+			% (String(rows[send_row].text) if send_row >= 0 and rows.size() > send_row else "-"))
+	menus.close_menu()
+	await get_tree().process_frame
+
+	# --- and it does the round, and comes home ---------------------------------
+	farm.advance_sim(SimClock.RATE * 240, GameState)
+	var did := 0
+	for t in lesson:
+		if farm.sim.get_tile(t.x, t.y).get("watered_today", false):
+			did += 1
+	_assert(did == lesson.size(),
+		"it waters the tiles she taught it, the morning after she taught them (%d of %d)"
+			% [did, lesson.size()])
+	_assert(farm.sim.actor_pos(mk1) == stall,
+		"and then it walks home and stands in its bay again (%s)" % farm.sim.actor_pos(mk1))
+	_assert(not bool(farm.sim.actor(mk1)["extra"].get("sent", false)),
+		"round over, parked, and ready to do it all again tomorrow without being asked")
+
+	# --- and she can see it in there -------------------------------------------
+	#
+	# A robot parked inside a shed is the one picture this feature has, and it is
+	# a **draw-order** picture: the stall's back wall rises into the row above its
+	# bays, so a bot that queued behind it would be a robot filed inside a wall.
+	# Two facts compose the answer, and both are checked rather than assumed —
+	# the sprite's row, which is observable, and the queue's tie-break, which is
+	# farm.gd's own rule (Scenario G's precedent for pinning a structural fact).
+	var queue: Array[Dictionary] = []
+	var bot_node = farm.actor_nodes.get(mk1)
+	_assert(bot_node != null and bot_node.has_method("queue_render"),
+		"the parked robot has a sprite of its own on the farm")
+	if bot_node != null:
+		# The sprite walks to where the sim put it, so let it finish arriving: the
+		# fast-forward above moved the registry in one call and the picture catches
+		# up over frames, exactly as it does in a played session.
+		await _wait_until(
+			func(): return absf(bot_node.position.y - stall.y * 16.0) < 0.5, 600)
+		bot_node.queue_render(farm, queue)
+		_assert(queue.size() == 1 and absf(float(queue[0].y) - stall.y * 16.0) < 0.5,
+			"which queues on the row its feet are on — the stall's own row, so it ties rather than losing (%s)"
+				% (queue[0].y if queue.size() == 1 else -1))
+	var draw_src := (farm.get_script().source_code as String)
+	var draw_body := draw_src.substr(draw_src.find("func _draw()"))
+	_assert(draw_body.find("object_regions.get(key)") < draw_body.find("child.queue_render"),
+		"and farm.gd queues every object before any actor")
+	_assert(draw_body.find("a.order < b.order") > 0
+			and draw_body.find("child.queue_render") < draw_body.find("a.order < b.order"),
+		"...with insertion order breaking the tie, which is what puts the robot in front of the shed")
+
+	# Put her back on the farm and tidy up after the scenario.
+	InputManager.click_tile = farm.sim.find_object(WorldLayout.HOME_DOORWAY)
+	InputManager.has_click = true
+	await _wait_until(func(): return farm.sim.page_of(player.get_tile_pos()) == 0, 12000)
+	farm.sim.apply_action({ "verb": "collect", "target": stall, "actor": "player" }, GameState)
+	farm.sim.set_object(stall.x, stall.y, "")
+	farm.sim.set_object(bay.x, bay.y, "")
+	GameState.machines = {}
+	GameState.selected_seed_type = "wheat"
+	GameState.set_energy(GameState.max_energy)
+	for p in [GameState.save_path, GameState.replay_path, GameState.trace_path]:
+		if FileAccess.file_exists(p):
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(p))
+	GameState.save_path = real_paths[0]
+	GameState.replay_path = real_paths[1]
+	GameState.trace_path = real_paths[2]

@@ -12,10 +12,22 @@ extends RefCounted
 # something thirty times smaller, and no amount of defaulting can tell the two
 # apart. So it rides an explicit marker rather than a value heuristic ("is this
 # 14 an old full-ish day or a new nearly-empty one?" has no honest answer).
-const VERSION := 2
+#
+# v3 (2026-09-06, the door): the world is two pages of 20 rows instead of one
+# map of 20. Every save ever written holds a 20-row grid, and `restore` checks
+# the grid's height against the world's exactly — for good reason, a truncated
+# save must be refused rather than restored into undersized arrays — so a save
+# that predates the second page has to be *grown* before that check sees it, not
+# excused past it. Same reasoning as v2: the schema did not gain a key, an
+# existing one changed shape, and no value heuristic can tell "a 20-row save" from
+# "a corrupt 40-row one".
+const VERSION := 3
 
 # 600 / 20. The one place the old scale is written down.
 const LEGACY_ENERGY_SCALE := 30
+
+# The world every save before v3 was written from: one page, 20 rows.
+const LEGACY_MAP_HEIGHT := 20
 
 
 static func capture(world: SimWorld, gs) -> Dictionary:
@@ -298,10 +310,19 @@ static func migrate(data: Dictionary) -> Dictionary:
 	var v := int(data.get("version", 0))
 	if v == VERSION:
 		return data
+	# A chain, now that there is more than one link in it: a v1 file goes through
+	# both steps. Each step copies rather than edits, so a caller's dictionary is
+	# never rewritten under it (see `_migrate_1_to_2`).
+	var out := data
 	if v == 1:
-		return _migrate_1_to_2(data)
-	# future: if v == 2: data = _migrate_2_to_3(data); ...
-	return {}
+		out = _migrate_1_to_2(out)
+		v = 2
+	if v == 2:
+		out = _migrate_2_to_3(out)
+		v = 3
+	if v != VERSION:
+		return {}
+	return out
 
 
 # v1 -> v2 (T-29): every energy in the file is in the old 20-point day, so every
@@ -344,6 +365,55 @@ static func _migrate_1_to_2(data: Dictionary) -> Dictionary:
 			for id in legacy.keys():
 				legacy[id] = _scale_energy(int(legacy[id]))
 	return out
+
+
+# v2 -> v3 (2026-09-06): the grid grew a second page, so an old farm is padded
+# with one — twenty rows of VOID, which is the honest picture of a save from
+# before there was anywhere else to be. Nothing on the farm page is touched.
+#
+# What an old save loads as, exactly: her farm as she left it, the cot still out
+# in the yard where that build put it, no house, no door objects, and a page of
+# darkness below that nothing can walk to, tap, or work. `use_door` refuses
+# ("no_door_here"), the bedtime chain finds the cot on her own page and points at
+# it as it always did, and she keeps playing. **No re-generation, and no attempt
+# to build her a house** — the same rule the yard's absent T-32 migration states
+# in `restore`: worldgen reaches a returning player on her next new farm, never
+# by rewriting the one she is standing on.
+#
+# Padding rather than regenerating is also what makes this cheap to be right
+# about: there is no seed to re-run, no draw to re-take, and the result cannot
+# depend on which build wrote the file.
+static func _migrate_2_to_3(data: Dictionary) -> Dictionary:
+	var out: Dictionary = data.duplicate(true)
+	out["version"] = 3
+	var w = out.get("world", {})
+	if typeof(w) != TYPE_DICTIONARY:
+		return out
+	var in_tiles = w.get("tiles", [])
+	if in_tiles is Array and in_tiles.size() == LEGACY_MAP_HEIGHT:
+		while in_tiles.size() < SimWorld.MAP_HEIGHT:
+			var row: Array = []
+			for tx in SimWorld.MAP_WIDTH:
+				row.append(_void_tile())
+			in_tiles.append(row)
+	var in_objects = w.get("objects", [])
+	if in_objects is Array and in_objects.size() == LEGACY_MAP_HEIGHT:
+		while in_objects.size() < SimWorld.MAP_HEIGHT:
+			var row: Array = []
+			for tx in SimWorld.MAP_WIDTH:
+				row.append("")
+			in_objects.append(row)
+	return out
+
+
+# One padded tile, in the shape every tile in the file already has.
+static func _void_tile() -> Dictionary:
+	return {
+		"state": WorldLayout.VOID,
+		"crop_type": "",
+		"growth_stage": 0,
+		"watered_today": false,
+	}
 
 
 # One value in a registry entry's `energy` field is not a quantity: **-1 is the
@@ -458,17 +528,23 @@ static func replay_matches(rlog: ReplayLog, save: Dictionary) -> bool:
 static func replay_report(rlog: ReplayLog, save: Dictionary) -> Dictionary:
 	var gs_replay = load("res://systems/game_state.gd").new()
 	var world_replay := SimWorld.new()
-	rlog.apply_to(world_replay, gs_replay)
+	# Both halves can refuse before they compare (2026-09-06): a replay whose base
+	# save will not restore, and a save this build cannot read. Either way the two
+	# worlds below are empty and comparing them would say "matched" about nothing,
+	# so the outcome carries whether each side actually loaded.
+	var applied := rlog.apply_to(world_replay, gs_replay)
 	var gs_save = load("res://systems/game_state.gd").new()
 	var world_save := SimWorld.new()
-	restore(save, world_save, gs_save)
+	var restored := restore(save, world_save, gs_save)
 	var same_state := capture_canonical(world_replay, gs_replay) \
 		== capture_canonical(world_save, gs_save)
 	gs_replay.free()
 	gs_save.free()
 	return {
-		"matched": same_state and rlog.divergence == "",
+		"matched": applied and restored and same_state and rlog.divergence == "",
 		"state_matched": same_state,
+		"applied": applied,
+		"restored": restored,
 		"divergence": rlog.divergence,
 	}
 

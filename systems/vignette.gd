@@ -37,18 +37,33 @@ static func _gate_open(world: SimWorld) -> bool:
 	return String(world.get_tile(g.x, g.y).get("state", "")) == WorldLayout.GATE_OPEN
 
 
-static func _all_with_state(world: SimWorld, want: String) -> Array[Vector2i]:
+# The rows a scan is allowed to look at: **the page she is standing on**, or the
+# whole grid when there is no position to scope by (2026-09-06, the door).
+#
+# The world is two maps stacked in one grid now, and a scan that ignored that
+# would let a beat point through a wall — an arrow pinned to the edge of the
+# screen aiming at a ripe crop on the farm while she is standing in her bedroom,
+# or a highlight glowing in a room nobody is in. Half-open, `[y, y)`, so it drops
+# straight into a `range`.
+static func page_rows(world: SimWorld, player_t: Vector2i) -> Vector2i:
+	if player_t.x < 0:
+		return Vector2i(0, SimWorld.MAP_HEIGHT)
+	var page: int = world.page_of(player_t)
+	return Vector2i(page * SimWorld.PAGE_ROWS, (page + 1) * SimWorld.PAGE_ROWS)
+
+
+static func _all_with_state(world: SimWorld, want: String, rows: Vector2i) -> Array[Vector2i]:
 	var out: Array[Vector2i] = []
-	for ty in SimWorld.MAP_HEIGHT:
+	for ty in range(rows.x, rows.y):
 		for tx in SimWorld.MAP_WIDTH:
 			if String(world.tiles[ty][tx].get("state", "")) == want:
 				out.append(Vector2i(tx, ty))
 	return out
 
 
-static func _dry_crops(world: SimWorld) -> Array[Vector2i]:
+static func _dry_crops(world: SimWorld, rows: Vector2i) -> Array[Vector2i]:
 	var out: Array[Vector2i] = []
-	for ty in SimWorld.MAP_HEIGHT:
+	for ty in range(rows.x, rows.y):
 		for tx in SimWorld.MAP_WIDTH:
 			var t: Dictionary = world.tiles[ty][tx]
 			var st := String(t.get("state", ""))
@@ -62,14 +77,6 @@ static func _has_seeds(gs) -> bool:
 		if int(c) > 0:
 			return true
 	return false
-
-
-static func _cot(world: SimWorld) -> Vector2i:
-	for ty in SimWorld.MAP_HEIGHT:
-		for tx in SimWorld.MAP_WIDTH:
-			if world.objects[ty][tx] == "cot":
-				return Vector2i(tx, ty)
-	return Vector2i(-1, -1)
 
 
 # The beats, as an array of tiles — an array because day 2's whole point is that
@@ -92,6 +99,9 @@ static func target_tiles(world: SimWorld, gs, player_t: Vector2i = Vector2i(-1, 
 	if play > LAST_TAUGHT_PLAY_DAY:
 		return none
 
+	# Every scan below is over the page she is on and no other (see `page_rows`).
+	var rows := page_rows(world, player_t)
+
 	# Beat 0 — the handoff. The gate she has not yet walked through is the only
 	# target; the ripe crop beyond it is the reason to.
 	#
@@ -112,13 +122,13 @@ static func target_tiles(world: SimWorld, gs, player_t: Vector2i = Vector2i(-1, 
 
 	# Beat 1 / beat 5 — a ripe crop, and it cannot fail, cannot be refused and
 	# costs nothing but a tap. The safest possible room (Valve principle 2).
-	var ready := _all_with_state(world, "ready")
+	var ready := _all_with_state(world, "ready", rows)
 	if not ready.is_empty():
 		var first_ready: Array[Vector2i] = [ready[0]]
 		return first_ready
 
-	var tilled := _all_with_state(world, "tilled")
-	var dry := _dry_crops(world)
+	var tilled := _all_with_state(world, "tilled", rows)
+	var dry := _dry_crops(world, rows)
 
 	if play == 1:
 		# Beat 2 — plant. Fires only while the neighbour's single seeded tile is
@@ -126,7 +136,7 @@ static func target_tiles(world: SimWorld, gs, player_t: Vector2i = Vector2i(-1, 
 		# spent. Derived from the takeover contract rather than from a counter,
 		# which is what keeps this state machine flag-free — and it is honest
 		# about being an *authored opening* rather than a general rule.
-		var seeded := _all_with_state(world, "seeded")
+		var seeded := _all_with_state(world, "seeded", rows)
 		if seeded.size() <= 1 and not tilled.is_empty() and _has_seeds(gs):
 			var one_tilled: Array[Vector2i] = [tilled[0]]
 			return one_tilled
@@ -134,14 +144,23 @@ static func target_tiles(world: SimWorld, gs, player_t: Vector2i = Vector2i(-1, 
 		if not dry.is_empty():
 			var one_dry: Array[Vector2i] = [dry[0]]
 			return one_dry
-		# Beat 4 — the cot, once nothing else is asking. T-4: this is what turns
-		# "I did some things" into "I did some things *and then something
-		# happened*", and the day-1 phase ends by **sleeping** rather than by the
-		# day counter reaching a magic number.
-		var cot := _cot(world)
-		if cot.x >= 0:
-			var cot_only: Array[Vector2i] = [cot]
-			return cot_only
+		# Beat 4 — bed, once nothing else is asking. T-4: this is what turns "I did
+		# some things" into "I did some things *and then something happened*", and
+		# the day-1 phase ends by **sleeping** rather than by the day counter
+		# reaching a magic number.
+		#
+		# **The way to bed, not the bed** (2026-09-06). The cot is in a room now, so
+		# from the yard the beat points at the front door and from inside it points
+		# at the bed — one answer, asked of the sim (`way_to_bed`), shared with the
+		# dusk glow and the HUD's bed button so the three cannot drift apart. This
+		# is also what keeps T-35's promise intact under the move: asked from the
+		# yard at bedtime, the beat still says "go to bed" and never re-arms the
+		# gate. A caller with no position to offer is answered from the farm, which
+		# is where every other beat lives.
+		var bed_way := world.way_to_bed(player_t if player_t.x >= 0 else Vector2i(0, 0))
+		if bed_way.x >= 0:
+			var bed_only: Array[Vector2i] = [bed_way]
+			return bed_only
 		return none
 
 	# Play-day 2 — the payoff. Day 1 taught four gestures; today reveals that

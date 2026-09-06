@@ -52,6 +52,10 @@ godot --path . res://tools/test_visuals.tscn
 # Sim fast-forward benchmark
 godot --headless --path . --script res://tools/benchmark_sim.gd
 
+# What a taught robot is worth in a day (T-39): two identical player-days, one with
+# a stalled mark-1 — prints the comparison table the unit test asserts on
+godot --headless --path . --script res://tools/demo_robot_value.gd
+
 # Verify the last human play session replays to the autosave
 godot --headless --path . --script res://tools/verify_replay.gd
 ```

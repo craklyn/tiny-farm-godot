@@ -122,22 +122,27 @@ static func send(world: SimWorld, gs, arrival: int) -> String:
 # fixed point off the top-left corner and leave along the same diagonal, which
 # made standing near the left edge block every crow in the game — an accidental
 # mechanic nobody designed and no player could reason about (reported 2026-08-28).
+# **The rectangle is the page, not the grid** (2026-09-06). The world is two pages
+# stacked in one array of rows and the second one is indoors; a bird that entered
+# "along the map's height" would be flying in from beside the farmhouse's bedroom.
+# So every number here is the farm page's, which is exactly what these numbers were
+# before the grid grew a second page underneath the first.
 static func entry_point(side: int, along: int) -> Vector2:
 	match posmod(side, 4):
 		0:  # left
-			return Vector2(-OFFSCREEN_TILES, float(posmod(along, SimWorld.MAP_HEIGHT)) + 0.5)
+			return Vector2(-OFFSCREEN_TILES, float(posmod(along, SimWorld.PAGE_ROWS)) + 0.5)
 		1:  # right
-			return Vector2(SimWorld.MAP_WIDTH + OFFSCREEN_TILES, float(posmod(along, SimWorld.MAP_HEIGHT)) + 0.5)
+			return Vector2(SimWorld.MAP_WIDTH + OFFSCREEN_TILES, float(posmod(along, SimWorld.PAGE_ROWS)) + 0.5)
 		2:  # top
 			return Vector2(float(posmod(along, SimWorld.MAP_WIDTH)) + 0.5, -OFFSCREEN_TILES)
 	# bottom
-	return Vector2(float(posmod(along, SimWorld.MAP_WIDTH)) + 0.5, SimWorld.MAP_HEIGHT + OFFSCREEN_TILES)
+	return Vector2(float(posmod(along, SimWorld.MAP_WIDTH)) + 0.5, SimWorld.PAGE_ROWS + OFFSCREEN_TILES)
 
 
 # The way out, set from the way in: a crow entering from the right leaves to the
 # right rather than crossing the whole farm to exit where crows always used to.
 static func exit_direction(from: Vector2) -> Vector2:
-	var away := from - Vector2(SimWorld.MAP_WIDTH / 2.0, SimWorld.MAP_HEIGHT / 2.0)
+	var away := from - Vector2(SimWorld.MAP_WIDTH / 2.0, SimWorld.PAGE_ROWS / 2.0)
 	if away.length() <= 0.001:
 		return Vector2(-1, -1).normalized()
 	return away.normalized()
@@ -245,7 +250,9 @@ func _spooked(world: SimWorld, actor_id: String) -> bool:
 	return world.is_protected_by_scarecrow(t.x, t.y)
 
 
+# Off the **page** it came in over (2026-09-06): the farm's bottom edge is where a
+# bird leaves the world, not where the home's floorboards start.
 func _off_the_map(world: SimWorld, actor_id: String) -> bool:
 	var at := Movement.float_pos(world, actor_id)
 	return at.x < -DESPAWN_TILES or at.y < -DESPAWN_TILES \
-		or at.x > SimWorld.MAP_WIDTH + DESPAWN_TILES or at.y > SimWorld.MAP_HEIGHT + DESPAWN_TILES
+		or at.x > SimWorld.MAP_WIDTH + DESPAWN_TILES or at.y > SimWorld.PAGE_ROWS + DESPAWN_TILES

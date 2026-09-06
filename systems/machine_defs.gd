@@ -28,6 +28,13 @@ extends RefCounted
 # The catalogue. `species` is the row in `systems/species_defs.gd` that a placed
 # one becomes; `configs` is what the player may choose between once it is down
 # (empty when the machine has nothing to decide).
+#
+# **A row may name no species at all** (2026-09-06, the stall). What the shop
+# sells is "a thing that gets placed", and the two halves of that turn out to be
+# separable: a machine becomes an *actor* and starts deciding, a structure becomes
+# an *object* on the grid and never thinks. `species: ""` is what says which — and
+# `place` reads it, so a structure costs the gateway one branch rather than a
+# second catalogue.
 static var TYPES: Dictionary = {
 	# The first automation the player meets — `design/03`'s "watch your old job
 	# happen without you". Priced above every seed and below the robot: a day of
@@ -45,6 +52,43 @@ static var TYPES: Dictionary = {
 		# the idle frame `entities/sprinkler.gd` draws.
 		"icon": { "sheet": "res://assets/sprites/generated/sprinkler.png",
 			"region": Rect2(0, 0, 16, 16) },
+	},
+	# --- the stall (CEO, 2026-09-06) -------------------------------------------
+	#
+	# *"A robot stall holds two robots. The player buys a robot, leaves it in the
+	# stall, teaches it, and after teaching it works productively growing crops."*
+	# So the stall is the robot's **address**: a bot parked in one comes home to it
+	# at the end of its round and is sent out again the next morning without being
+	# asked, which is the difference between owning a machine and employing one.
+	#
+	# **It is a shed, not a machine**, and that is why it sits here above the bots
+	# rather than below them: it has no species, becomes no actor, decides nothing
+	# and thinks never — `place` writes two objects onto the grid and stops. Priced
+	# under the sprinkler (80g) because it is the cheapest thing on this list to
+	# build and because it is worth nothing on its own: an empty stall does not
+	# water a single tile, so what she is really buying is the day her robot stops
+	# needing to be told.
+	#
+	# **Deliberately weak first version** (P-13). Two bays, fixed, side by side; it
+	# cannot be picked back up, moved, upgraded or extended. Every one of those is a
+	# thing a later tier can be, and a first version that already did them would
+	# leave the tier above it with nothing to be.
+	"stall": {
+		"name": "Robot Stall",
+		"price": 80,
+		# No species: nothing is spawned, so there is nothing for a species row to
+		# describe. See `SimWorld._apply`'s `place`.
+		"species": "",
+		"program": "",
+		"configs": [],
+		"default_config": "",
+		"unlock_requirement": null,
+		# The whole 32x32 sheet, which is also exactly what is drawn on the farm:
+		# its bottom half is the two open bays standing on the two tiles, its top
+		# half the shed rising behind them. One picture in the shop card, the HUD
+		# pill and the yard.
+		"icon": { "sheet": "res://assets/sprites/generated/robot_stall.png",
+			"region": Rect2(0, 0, 32, 32) },
 	},
 	# --- the robot, in two marks (designer, 2026-09-03) ------------------------
 	#
@@ -94,7 +138,7 @@ static var TYPES: Dictionary = {
 
 # Display order — and, because the shop iterates it, the list of what is actually
 # for sale. `CropDefs.ORDER`'s role, for machines.
-static var ORDER: Array[String] = ["sprinkler", "bot_mk1", "bot_mk2"]
+static var ORDER: Array[String] = ["sprinkler", "stall", "bot_mk1", "bot_mk2"]
 
 
 static func has(key: String) -> bool:
@@ -129,10 +173,23 @@ static func default_config(key: String) -> String:
 # answers for a machine with no `model` on it: a sprinkler from a save written
 # before the marks existed, or a bot a test deployed directly.
 static func key_for_species(species: String) -> String:
+	if species == "":
+		# A structure names no species (the stall), so "no species" is not a
+		# question this can answer — without this guard the first speciesless row
+		# in ORDER would answer for every actor that has lost its own.
+		return ""
 	for key in ORDER:
 		if species_of(key) == species:
 			return key
 	return ""
+
+
+# Does placing this row put an **actor** in the world, or an object on the grid?
+# The stall is the second kind (2026-09-06): a shed decides nothing, so it needs
+# no species, no brain and no registry entry. One question, asked by `place` and
+# by the tests that hold this catalogue to account.
+static func spawns_actor(key: String) -> bool:
+	return species_of(key) != ""
 
 
 # What this row's menu is about: "orders" (taught a list of tiles, then sent out)

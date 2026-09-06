@@ -120,7 +120,12 @@ static func raid_is_live(world: SimWorld) -> bool:
 # scout where "home" is, and that is one number in `extra`.
 static func nest_tile(world: SimWorld, draw: int) -> Vector2i:
 	var far: Array[Vector2i] = []
-	var spawn := WorldLayout.spawn()
+	# **This world's spawn, not the default layout's** (2026-09-06). The same
+	# latent bug `Brain.edge_tile` had: harmless while every world was the same
+	# farm, and wrong the moment one is not — a world whose start tile is not this
+	# layout's has no reachable set from it at all, and the raid silently never
+	# arrives.
+	var spawn := WorldLayout.spawn(world.layout)
 	for t in world.reachable_from(spawn):
 		if absi(t.x - spawn.x) + absi(t.y - spawn.y) >= MIN_NEST_DISTANCE:
 			far.append(t)
