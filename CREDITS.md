@@ -229,6 +229,12 @@ before the first public build ships.*
   Completed the same day: `spares.png` split into `fox.png`, `duck.png` and
   `squirrel.png` (three unshipped candidates, one file each), and `interior.png`
   into `interior_wall.png` and `interior_window.png`.
+- **The worm's elbow, 2026-09-07** — **not generated, $0.00.** `worm.png` cell 4,
+  derived by `tools/gen_worm_elbow.py` in the droplet-and-basket tradition: a
+  quarter-turn tube whose radial shading is read from the horizontal body's own
+  slice, replacing the vertical-body knuckle that bends had drawn since the M2.5
+  bench (worm.gd's header had carried the IOU; the CEO called the corner "weird"
+  in HQ's zoomed preview, where the knuckle read as a break in the animal).
 - **Raw generations archived, 2026-09-06** — **not generated, $0.00.** Standing policy
   from this date: every generation run's raw API outputs land in `assets/raw/` as a
   dated batch (with their `*_meta.json`) before compositing. The surviving raws from

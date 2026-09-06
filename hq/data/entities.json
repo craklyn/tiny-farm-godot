@@ -170,15 +170,15 @@
           "id": "worm", "name": "Worm", "emoji": "🪱",
           "desc": "The slowest thing in the game. Hunts crops and grows a body segment for every crop eaten — its own lengthening body becomes its main obstacle. Stompable on any tile it occupies. Not an animation cycle: the renderer draws one part per occupied tile, mirroring and rotating the directional parts to follow the path and drawing the symmetric cell as a joint at bends.",
           "sheet": "assets/sprites/generated/worm.png",
-          "frames": [[0,0,16,16],[16,0,16,16],[32,0,16,16],[48,0,16,16]],
-          "frame_names": ["head", "body", "tail", "body (vertical) / joint"],
+          "frames": [[0,0,16,16],[16,0,16,16],[32,0,16,16],[48,0,16,16],[64,0,16,16]],
+          "frame_names": ["head", "body", "tail", "body (vertical)", "elbow / corner"],
           "fps": 2,
           "anims": [
             {"id": "straight", "label": "moving straight", "kind": "stills", "frames": [
               {"parts": [{"f": 2, "dx": 0, "dy": 0}, {"f": 1, "dx": 1, "dy": 0}, {"f": 0, "dx": 2, "dy": 0}]}
             ]},
             {"id": "bend", "label": "turning a corner", "kind": "stills", "frames": [
-              {"parts": [{"f": 2, "dx": 0, "dy": 0}, {"f": 1, "dx": 1, "dy": 0}, {"f": 3, "dx": 2, "dy": 0},
+              {"parts": [{"f": 2, "dx": 0, "dy": 0}, {"f": 1, "dx": 1, "dy": 0}, {"f": 4, "dx": 2, "dy": 0},
                          {"f": 3, "dx": 2, "dy": 1}, {"f": 0, "dx": 2, "dy": 2, "rot": 90}]}
             ]}
           ],

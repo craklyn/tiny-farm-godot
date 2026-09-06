@@ -16,17 +16,15 @@
 #   * and each segment slides toward its own tile at the species' own speed, so a
 #     growing worm's new segment grows out of the tail rather than appearing.
 #
-# critters.png row 3 is head / body / tail / vertical body: four cells, and the
+# worm.png is head / body / tail / vertical body / elbow: five cells, and the
 # renderer stretches them over every orientation a path can take (designer
 # directive, 2026-09-01 — the worm used to draw a sideways head when crawling
 # vertically and a broken body at bends):
 #   * the directional cells (head, tail, horizontal body) mirror for leftward
 #     travel and rotate 90° for vertical travel;
-#   * a bend draws the vertical-body cell as a joint — it is the one symmetric
-#     cell on the row, so it reads as a knuckle connecting the two runs rather
-#     than a break in the animal.
-# A dedicated corner cell is still one more cell whenever the art bench comes
-# back; the joint reads fine at 16 px.
+#   * a bend draws the elbow cell (tools/gen_worm_elbow.py, derived 2026-09-07
+#     from the body's own slice after the knuckle read as a break in HQ's
+#     zoomed preview), rotated to face the two runs it connects.
 #
 # **Nothing spawns one in the live game** (`SimWorld.WORM_VISITS_PER_DAY` is 0, and
 # the debut is a designer's content-sequencing call), so this is exercised in a
@@ -45,8 +43,10 @@ const CELL_HEAD := 0
 const CELL_BODY := 1
 const CELL_TAIL := 2
 const CELL_BODY_VERTICAL := 3
-# The one symmetric cell doubles as the bend joint (see the header comment).
-const CELL_JOINT := CELL_BODY_VERTICAL
+# The derived corner cell; as drawn it opens left and down, and segment_draws
+# rotates it for the other three bend orientations.
+const CELL_ELBOW := 4
+const CELL_JOINT := CELL_ELBOW
 
 # A long frame must not teleport it — the hen's cap.
 const MAX_STEP := TILE_SIZE * 0.5
@@ -112,6 +112,18 @@ func segment_draws() -> Array[Dictionary]:
 			d = tiles[i - 1] - tiles[i + 1]
 			if d.x != 0 and d.y != 0:
 				cell = CELL_JOINT
+				# The elbow opens left and down as drawn; turn it toward the two
+				# neighbours this bend actually connects.
+				var to_prev := tiles[i - 1] - tiles[i]
+				var to_next := tiles[i + 1] - tiles[i]
+				var opens_left: bool = to_prev.x < 0 or to_next.x < 0
+				var opens_up: bool = to_prev.y < 0 or to_next.y < 0
+				if opens_left and opens_up:
+					rot = PI / 2
+				elif opens_up:
+					rot = PI          # up and right
+				elif not opens_left:
+					rot = -PI / 2     # right and down
 			elif d.x == 0:
 				cell = CELL_BODY_VERTICAL
 			else:
