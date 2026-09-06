@@ -23,8 +23,31 @@ const GL_SEVERITY = [
 
 let glEditing = null;   // "area:id", or "area:" for a new one
 
-function glForm(area, g, org) {
-  const people = org.employees.filter(e => e.id !== "daniel");
+/* A goal is carried by a seat, never by a person: if whoever is in the seat
+   leaves, the seat is refilled and the goal carries on. The name shown beside
+   it is who holds that seat today. */
+function glSeat(seats, ownerId) {
+  return seats.find(s => s.id === ownerId)
+      || seats.find(s => s.held_by === ownerId)   // written before seats existed
+      || null;
+}
+
+/* Seat, then who is in it today — the name still carries the person card. */
+function glOwnerLine(seats, org, ownerId) {
+  const seat = glSeat(seats, ownerId);
+  if (!seat) return "nobody";
+  const holder = org.employees.find(e => e.id === seat.held_by);
+  return `<b>${esc(seat.label)}</b>${holder
+    ? ` — held by <a class="plain" data-person="${esc(holder.id)}">${esc(holder.name)}</a>` : ""}`;
+}
+
+function glForm(area, g, seats, org) {
+  const teams = [];
+  seats.forEach(s => {
+    const t = teams.find(x => x.name === s.team) || (teams.push({ name: s.team, seats: [] }), teams[teams.length - 1]);
+    t.seats.push(s);
+  });
+  const chosen = (glSeat(seats, g.owner) || {}).id || "unassigned";
   return `<form class="gl-form" data-area="${esc(area)}" data-id="${esc(g.id || "")}">
     <label>What has to be true
       <input name="statement" type="text" required value="${esc(g.statement || "")}"
@@ -36,9 +59,10 @@ function glForm(area, g, org) {
       <textarea name="why_it_matters" rows="2"
                 placeholder="What goes wrong for you if this is false.">${esc(g.why_it_matters || "")}</textarea></label>
     <div class="gl-form-row">
-      <label>Who carries it
-        <select name="owner">${people.map(e => `<option value="${esc(e.id)}"
-          ${e.id === g.owner ? "selected" : ""}>${esc(e.name)} — ${esc(e.short || e.title)}</option>`).join("")}</select></label>
+      <label>Which seat carries it
+        <select name="owner">${teams.map(t => `<optgroup label="${esc(t.name)}">${t.seats.map(st =>
+          `<option value="${esc(st.id)}" ${st.id === chosen ? "selected" : ""}>${esc(st.label)}</option>`
+        ).join("")}</optgroup>`).join("")}</select></label>
       <label>How much it matters
         <select name="severity">${GL_SEVERITY.map(([v, label]) => `<option value="${v}"
           ${v === (g.severity || "important") ? "selected" : ""}>${esc(label)}</option>`).join("")}</select></label>
@@ -77,9 +101,8 @@ function glStatus(g) {
     + (route && route.href ? ` <a class="plain" href="${esc(route.href)}">${esc(route.title || "the work that closes it")}</a>` : "");
 }
 
-function glRow(area, g, org) {
+function glRow(area, g, seats, org) {
   const meta = (typeof GOAL_META !== "undefined" && GOAL_META[g.state]) || { dcls: "d-unchecked", word: "" };
-  const owner = org.employees.find(e => e.id === g.owner);
   const sev = (GL_SEVERITY.find(s => s[0] === g.severity) || ["", g.severity || ""])[1].split(" —")[0];
   // Collapsed is the resting state: forty goals open at once is a wall, and
   // the dot and the sentence are all he needs to decide which one to open.
@@ -90,9 +113,7 @@ function glRow(area, g, org) {
       <span class="gl-caret">▸</span>
     </button>
     <div class="gl-detail" hidden>
-      <div class="gl-field"><span class="gl-label">Owner</span>${owner
-        ? `<a class="plain" data-person="${esc(g.owner)}">${esc(owner.name)}</a> — ${esc(owner.title)}`
-        : "nobody"}</div>
+      <div class="gl-field"><span class="gl-label">Carried by</span>${glOwnerLine(seats, org, g.owner)}</div>
       <div class="gl-field"><span class="gl-label">Metric</span>${esc(glMetric(g))}</div>
       <div class="gl-field"><span class="gl-label">Status summary</span>${glStatus(g)}</div>
       <div class="gl-field"><span class="gl-label">Matters</span>${esc(sev)}${
@@ -110,8 +131,7 @@ function glRow(area, g, org) {
    shows what it would need to be judged against a new one: what it claimed,
    who carried it, and why it was written. Nothing measures it, so there is no
    state to draw. */
-function glParkedRow(area, g, org) {
-  const owner = org.employees.find(e => e.id === g.owner);
+function glParkedRow(area, g, seats, org) {
   return `<div class="gl-row gl-parked" data-area="${esc(area)}" data-id="${esc(g.id)}">
     <button class="gl-head" data-open aria-expanded="false">
       <i class="dot d-dorm" title="parked"></i>
@@ -119,9 +139,7 @@ function glParkedRow(area, g, org) {
       <span class="gl-caret">▸</span>
     </button>
     <div class="gl-detail" hidden>
-      <div class="gl-field"><span class="gl-label">Was carried by</span>${owner
-        ? `<a class="plain" data-person="${esc(g.owner)}">${esc(owner.name)}</a> — ${esc(owner.title)}`
-        : "nobody"}</div>
+      <div class="gl-field"><span class="gl-label">Was carried by</span>${glOwnerLine(seats, org, g.owner)}</div>
       ${g.why_it_matters ? `<div class="gl-field"><span class="gl-label">Why it was written</span>${esc(g.why_it_matters)}</div>` : ""}
       <div class="gl-field"><span class="gl-label">Parked</span>${esc(g.parked_on || "")}</div>
       <div class="gl-detail-btns">
@@ -134,8 +152,10 @@ function glParkedRow(area, g, org) {
 }
 
 async function renderGoals() {
-  const [areas, pillars, org] = await Promise.all([
-    fetch("/api/goals").then(r => r.json()), api("/api/pillars"), api("/api/org")]);
+  const [areas, pillars, org, seatDoc] = await Promise.all([
+    fetch("/api/goals").then(r => r.json()), api("/api/pillars"), api("/api/org"),
+    api("/api/seats")]);
+  const seats = seatDoc.seats || [];
 
   $view.replaceChildren(h(`
     <h1>🎯 Goals</h1>
@@ -153,13 +173,13 @@ async function renderGoals() {
           ? `${goals.length} goal${goals.length === 1 ? "" : "s"}`
           : "measured on nothing"}</span></h2>
         <div class="gl-list">${goals.map(g => glEditing === p.id + ":" + g.id
-          ? glForm(p.id, g, org) : glRow(p.id, g, org)).join("")}</div>
-        ${glEditing === p.id + ":" ? glForm(p.id, {}, org)
+          ? glForm(p.id, g, seats, org) : glRow(p.id, g, seats, org)).join("")}</div>
+        ${glEditing === p.id + ":" ? glForm(p.id, {}, seats, org)
           : `<button class="linkbtn gl-add" data-add="${esc(p.id)}">+ write a goal for this area</button>`}
         ${parked.length ? `<details class="gl-parkfold">
           <summary>Parked — ${parked.length} goal${parked.length === 1 ? "" : "s"} this area used to be measured on</summary>
           <div class="gl-list">${parked.map(g => glEditing === p.id + ":" + g.id
-            ? glForm(p.id, g, org) : glParkedRow(p.id, g, org)).join("")}</div>
+            ? glForm(p.id, g, seats, org) : glParkedRow(p.id, g, seats, org)).join("")}</div>
         </details>` : ""}
       </section>`;
     }).join("")}

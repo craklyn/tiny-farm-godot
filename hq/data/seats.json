@@ -1,0 +1,35 @@
+{
+  "note": "Seats, not people. A goal is carried by a seat so that it survives whoever happens to be sitting in it — if the person leaves, the seat is refilled and the goal carries on unbroken (the CEO's ruling, 2026-09-05). 'held_by' names the org record currently in the seat, which is how a name and a hover card still appear beside a goal; it is display, never identity. The unassigned seat is deliberately held by the CEO: a goal nobody has been given is still somebody's, so it cannot quietly fall off the board.",
+  "seats": [
+    { "id": "unassigned", "label": "Unassigned (CEO until assigned)", "team": "Not yet assigned", "held_by": "daniel" },
+
+    { "id": "ceo", "label": "CEO", "team": "Executive", "held_by": "daniel" },
+    { "id": "chief-of-staff", "label": "Chief of Staff", "team": "Executive", "held_by": "claude" },
+    { "id": "design-technology-lead", "label": "Design Technology Lead", "team": "Executive", "held_by": "rin" },
+
+    { "id": "vp-engineering", "label": "VP of Engineering", "team": "Engineering", "held_by": "elena" },
+    { "id": "engineering-lead", "label": "Lead in Engineering", "team": "Engineering", "held_by": "tomas" },
+    { "id": "quality-lead", "label": "Quality Lead", "team": "Engineering", "held_by": "grace" },
+    { "id": "applied-science-lead", "label": "Applied Science Lead", "team": "Engineering", "held_by": "kenji" },
+
+    { "id": "vp-product", "label": "VP of Product", "team": "Product", "held_by": "priya" },
+    { "id": "program-lead", "label": "Program Lead", "team": "Product", "held_by": "sofia" },
+    { "id": "analytics-lead", "label": "Analytics Lead", "team": "Product", "held_by": "wei" },
+
+    { "id": "vp-design", "label": "VP of Design & Art", "team": "Design & Art", "held_by": "ingrid" },
+    { "id": "design-lead", "label": "Design Lead", "team": "Design & Art", "held_by": "milo" },
+    { "id": "art-lead", "label": "Art Lead", "team": "Design & Art", "held_by": "yuki" },
+    { "id": "ux-lead", "label": "UX Lead", "team": "Design & Art", "held_by": "sam" },
+    { "id": "audio-lead", "label": "Audio Lead", "team": "Design & Art", "held_by": "dmitri" },
+
+    { "id": "vp-marketing", "label": "VP of Marketing", "team": "Marketing", "held_by": "carmen" },
+    { "id": "community-lead", "label": "Community Lead", "team": "Marketing", "held_by": "amara" },
+
+    { "id": "vp-sales", "label": "VP of Sales & Platforms", "team": "Sales & Platforms", "held_by": "victor" },
+    { "id": "platforms-lead", "label": "Platforms Lead", "team": "Sales & Platforms", "held_by": "lena" },
+
+    { "id": "vp-finance", "label": "VP of Finance & Ops", "team": "Finance & Ops", "held_by": "harold" },
+    { "id": "support-lead", "label": "Support Lead", "team": "Finance & Ops", "held_by": "fatima" },
+    { "id": "localization-lead", "label": "Localization Lead", "team": "Finance & Ops", "held_by": "oskar" }
+  ]
+}

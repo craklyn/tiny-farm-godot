@@ -243,15 +243,15 @@ def check_consistency():
                  "work": {i["id"] for i in (work.items() if hasattr(work, "items") else [])},
                  "decision": {c["id"] for c in load_dir_json("decisions")}}
         pillars = load_json(os.path.join(DATA, "pillars.json"))["pillars"]
-        people = {e["id"] for e in load_org()["employees"]}
         for pl in pillars:
             doc = load_goals(pl["id"]) or {}
             for g in live_goals(doc):
                 if not g.get("measure"):
                     note(f"goal {pl['id']}/{g.get('id')} declares no measurement — "
                          "a statement with no measurement is a wish, not a goal")
-                if g.get("owner") and g["owner"] not in people:
-                    note(f"goal {pl['id']}/{g.get('id')}: unknown owner '{g['owner']}'")
+                if g.get("owner") and not seat_for(g["owner"]):
+                    note(f"goal {pl['id']}/{g.get('id')}: '{g['owner']}' is not a seat "
+                         "anyone could carry this")
                 p2g = g.get("path_to_green") or {}
                 for label, ref in (("route", p2g.get("route")),
                                    ("blocker surface", (p2g.get("ceo_blocker") or {}).get("surface"))):
@@ -3860,6 +3860,24 @@ def save_product_plan(payload):
 GOAL_AREA_RE = re.compile(r"^[a-z][a-z0-9_-]{0,30}$")
 
 
+def load_seats():
+    """The seats work is carried by. A goal names a SEAT, never a person, so it
+    survives the person leaving it (the CEO's ruling, 2026-09-05); who is in the
+    seat today is display, and comes from the org record."""
+    try:
+        return load_json(os.path.join(DATA, "seats.json")).get("seats", [])
+    except Exception:
+        return []
+
+
+def seat_for(owner_id):
+    """A goal's owner as a seat: the seat itself, or — for a goal written before
+    seats existed — whichever seat that person holds."""
+    seats = load_seats()
+    return (next((s for s in seats if s["id"] == owner_id), None)
+            or next((s for s in seats if s.get("held_by") == owner_id), None))
+
+
 def _goal_slug(text):
     slug = re.sub(r"[^a-z0-9]+", "-", str(text).lower()).strip("-")
     return slug[:60].strip("-") or "goal"
@@ -3889,9 +3907,9 @@ def save_goal(payload):
     statement = str(payload.get("statement", "")).strip()
     if not statement:
         return {"error": "a goal needs to say what has to be true"}
-    owner = str(payload.get("owner", "")).strip()
-    if not owner:
-        return {"error": "a goal needs an owner"}
+    owner = str(payload.get("owner", "")).strip() or "unassigned"
+    if not any(st["id"] == owner for st in load_seats()):
+        return {"error": "no such seat"}
     severity = payload.get("severity")
     if severity not in ("blocking", "important", "watch"):
         severity = "important"
@@ -4548,6 +4566,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, load_json(os.path.join(DATA, "pillars.json")))
             if path == "/api/product":
                 return self._send(200, product_plan())
+            if path == "/api/seats":
+                return self._send(200, {"seats": load_seats()})
             if path == "/api/surface":
                 return self._send(200, load_json(os.path.join(DATA, "surface.json")))
             if path == "/api/runs":
