@@ -103,48 +103,6 @@
       "parked_on": "2026-09-05"
     },
     {
-      "id": "nothing-goes-public-without-your-yes",
-      "statement": "Nothing reaches the public without you pushing a tag.",
-      "statement_short": "something could reach the public without a tag you pushed",
-      "owner": "carmen",
-      "severity": "important",
-      "unit": "",
-      "why_it_matters": "A floor, not an achievement — but the one guarantee that makes a dormant marketing org safe rather than negligent.",
-      "measure": {
-        "kind": "file_grep",
-        "label": "the release workflow fires on a pushed tag and nothing else",
-        "paths": [
-          ".github/workflows/release.yml"
-        ],
-        "exts": [
-          ".yml"
-        ],
-        "pattern": "tags:",
-        "expect": "present",
-        "field": "bool"
-      },
-      "compare": {
-        "direction": "must_be_true"
-      },
-      "path_to_green": {
-        "narrative": "Nothing to do.",
-        "route": {
-          "kind": "none"
-        },
-        "owner": "carmen"
-      },
-      "history": {
-        "record": false,
-        "chart": false
-      },
-      "escalates": {
-        "reason": "exposure",
-        "because": "If this ever fails, something can reach players without you having said yes to it."
-      },
-      "parked": true,
-      "parked_on": "2026-09-05"
-    },
-    {
       "id": "we-would-find-out",
       "statement": "If people showed up on the store page, we would know.",
       "statement_short": "nobody would notice if people started arriving",
