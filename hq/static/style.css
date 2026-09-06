@@ -1212,7 +1212,12 @@ button.linkbtn:hover, button.linkbtn:focus-visible { text-decoration: underline;
 /* ---- Goals (written and tracked, 2026-09-05) ---- */
 .gl-area { margin-top: 28px; }
 .gl-area h2 { font-size: 16px; display: flex; align-items: baseline; gap: 10px; }
-.gl-list { margin-top: 8px; }
+/* Goals sit under their area, not beside it: an indent plus a rail so the
+   grouping is visible without reading a single word. */
+.gl-list {
+  margin: 8px 0 0 20px; padding-left: 16px;
+  border-left: 1px solid var(--line);
+}
 .gl-row { border-bottom: 1px solid var(--line); }
 .gl-head {
   display: grid; grid-template-columns: 12px 1fr 14px; gap: 12px; width: 100%;
@@ -1223,7 +1228,9 @@ button.linkbtn:hover, button.linkbtn:focus-visible { text-decoration: underline;
 .gl-head .dot { margin-top: 6px; }
 .gl-statement { font-size: 15px; }
 .gl-caret { color: var(--muted); font-size: 12px; margin-top: 3px; }
-.gl-detail { padding: 4px 4px 16px 36px; display: flex; flex-direction: column; gap: 7px; }
+/* 28px lines the detail up under the statement itself: 4 of row padding, the
+   12px dot, and the 12px gap after it. */
+.gl-detail { padding: 4px 4px 16px 28px; display: flex; flex-direction: column; gap: 7px; }
 /* `display: flex` on the class beats the browser's own [hidden] rule, so the
    fold has to say so itself or every goal opens on load. */
 .gl-detail[hidden] { display: none; }
@@ -1235,6 +1242,7 @@ button.linkbtn:hover, button.linkbtn:focus-visible { text-decoration: underline;
 .gl-detail-btns { display: flex; gap: 14px; margin-top: 6px; }
 .gl-remove:hover { color: var(--red); }
 .gl-add { margin-top: 10px; }
+.gl-area h2 { padding-bottom: 2px; }
 .gl-form {
   display: flex; flex-direction: column; gap: 12px; margin: 12px 0;
   background: var(--panel); border: 1px solid var(--line);
@@ -1264,7 +1272,7 @@ button.linkbtn:hover, button.linkbtn:focus-visible { text-decoration: underline;
 #person-tip .pt-resp { margin: 8px 0 0 16px; font-size: 12px; color: var(--text); }
 #person-tip .pt-resp li { margin-top: 3px; }
 [data-person] { cursor: pointer; border-bottom: 1px dotted var(--line); }
-.gl-parkfold { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 10px; }
+.gl-parkfold { margin: 14px 0 0 20px; border-top: 1px solid var(--line); padding-top: 10px; }
 .gl-parkfold summary {
   cursor: pointer; list-style: none; color: var(--muted); font-size: 12.5px;
 }
