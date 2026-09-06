@@ -496,6 +496,7 @@ func _refresh_camera_limits(snap: bool = false) -> void:
 	var nudge: int = CotPresentation.camera_top_limit(HUD_TOP_PX, CAMERA_SCALE) if page == 0 else 0
 	camera.limit_top = page * page_px + nudge
 	camera.limit_bottom = (page + 1) * page_px
+	_update_rain()   # the page is also what decides whether the sky shows
 	if snap:
 		# A door is not a walk: without this the view glides twenty rows through
 		# the dark to catch up with a farmer who is already indoors.
@@ -563,9 +564,19 @@ func _thaw_daylight() -> void:
 	_update_daylight()
 
 
-func _on_weather_changed(weather: String) -> void:
-	if rain_particles:
-		rain_particles.emitting = (weather == "rainy")
+func _on_weather_changed(_weather: String) -> void:
+	_update_rain()
+
+
+# Rain is a sky, and the home's page has a roof (2026-09-07): the overlay shows
+# only while the player stands on the farm page. Visibility switches with
+# emitting so a door does not leave a second of drizzle falling in the bedroom.
+func _update_rain() -> void:
+	if rain_particles == null:
+		return
+	var outdoors: bool = _camera_page != 1
+	rain_particles.emitting = outdoors and String(GameState.weather) == "rainy"
+	rain_particles.visible = outdoors
 
 
 func _process(delta: float) -> void:

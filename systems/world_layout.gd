@@ -300,7 +300,9 @@ const HOME := {
 			Rect2i(10, 6, 1, 7),    # west wall
 			Rect2i(21, 6, 1, 7),    # east wall
 		] },
-		{ "kind": WINDOW, "rects": [Rect2i(13, 5, 1, 1), Rect2i(18, 5, 1, 1)] },
+		# Two-tile windows (2026-09-07, the designer: bigger windows) — each a
+		# side-by-side pair, symmetric about the doorway below.
+		{ "kind": WINDOW, "rects": [Rect2i(13, 5, 2, 1), Rect2i(17, 5, 2, 1)] },
 		{ "kind": GATE_OPEN, "rects": [Rect2i(15, 13, 1, 1)] },  # the doorway
 	],
 	# The bed, and nothing else. Its 16x32 sprite rises into (12,6), the top
