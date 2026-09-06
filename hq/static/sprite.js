@@ -338,6 +338,22 @@ async function renderSpriteEditor(path) {
     dctx.globalAlpha = 1;
   };
 
+  // The onion skin draws washed toward one cool blue-grey, so a ghost can never
+  // be mistaken for the frame's own pixels — full-colour at low alpha looked
+  // like surviving paint on a frame that had just been erased clean.
+  const blitGhost = (frame, dctx, scale) => {
+    const [, , w, hh] = frame.rect;
+    tmp.width = w; tmp.height = hh;
+    tctx.putImageData(frame.data, 0, 0);
+    tctx.globalCompositeOperation = "source-atop";
+    tctx.fillStyle = "rgba(122, 168, 190, 0.75)";
+    tctx.fillRect(0, 0, w, hh);
+    tctx.globalCompositeOperation = "source-over";
+    dctx.globalAlpha = 0.3;
+    dctx.drawImage(tmp, 0, 0, w, hh, 0, 0, w * scale, hh * scale);
+    dctx.globalAlpha = 1;
+  };
+
   const render = () => {
     const f = frames[cur];
     const [, , w, hh] = f.rect;
@@ -356,7 +372,7 @@ async function renderSpriteEditor(path) {
       const prev = (k >= 0 && curClip.cells.length > 1)
         ? curClip.cells[(k - 1 + curClip.cells.length) % curClip.cells.length]
         : (cur - 1 + frames.length) % frames.length;
-      if (prev !== cur) blit(frames[prev], ctx, zoom, 0.28);
+      if (prev !== cur) blitGhost(frames[prev], ctx, zoom);
     }
     blit(f, ctx, zoom, 1);
     if (zoom >= 8) {
