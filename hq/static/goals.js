@@ -85,6 +85,11 @@ function glMetric(g) {
     const extra = why && why.toLowerCase() !== "nothing measures this yet" ? ` — ${why}` : "";
     return "Nothing measures this yet" + extra + ".";
   }
+  // An attestation's reading IS "verified by you on <date>", which is the
+  // answer, not the method — saying it here repeats the status line back.
+  if (m.kind === "manual_attest") {
+    return `Your own check${m.expires_days ? `, which runs out ${m.expires_days} days after you sign it` : ""}.`;
+  }
   return reading.source_human || m.label || "Measured, but the check does not say how.";
 }
 
@@ -115,6 +120,9 @@ function glStatus(g, org) {
       sit.until ? ` until ${esc(surfaceDate(sit.until))}` : ""}${doing}.${link}`;
   }
   // red
+  if (g.attestation_expired) {
+    return `Failing${detail}. Your last check of this ran out, and only you can renew it.`;
+  }
   if (sit.lapsed) {
     return `Failing${detail}. ${by} had it${
       sit.until ? ` until ${esc(surfaceDate(sit.until))}` : " with no date set"
@@ -226,11 +234,12 @@ async function renderGoals() {
       return `<section class="gl-area" data-area="${esc(p.id)}">
         <h2>${p.emoji} ${esc(p.name)} <span class="small muted">${goals.length
           ? `${goals.length} goal${goals.length === 1 ? "" : "s"}`
-          : "measured on nothing"}</span></h2>
+          : "measured on nothing"}</span>
+          <button class="gl-plus" data-add="${esc(p.id)}" title="Write a goal for this area"
+                  aria-label="Write a goal for ${esc(p.name)}">+</button></h2>
         <div class="gl-list">${goals.map(g => glEditing === p.id + ":" + g.id
           ? glForm(p.id, g, seats, org) : glRow(p.id, g, seats, org)).join("")}</div>
-        ${glEditing === p.id + ":" ? glForm(p.id, {}, seats, org)
-          : `<button class="linkbtn gl-add" data-add="${esc(p.id)}">+ write a goal for this area</button>`}
+        ${glEditing === p.id + ":" ? glForm(p.id, {}, seats, org) : ""}
         ${parked.length ? `<details class="gl-parkfold">
           <summary>Parked — ${parked.length} goal${parked.length === 1 ? "" : "s"} this area used to be measured on</summary>
           <div class="gl-list">${parked.map(g => glEditing === p.id + ":" + g.id

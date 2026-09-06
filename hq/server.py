@@ -2677,7 +2677,11 @@ def _state_from(reading, compare):
     if reading.get("unchecked"):
         return "unchecked"
     if reading.get("attested"):
-        return "unchecked" if reading.get("expired") else "attested"
+        # An attestation that has run out is his move, not a grey unknown: a
+        # promise ended and only he can renew it, which is exactly what red
+        # means (the CEO's ruling, 2026-09-05). Same rule as a commitment whose
+        # date has passed.
+        return "red" if reading.get("expired") else "attested"
     if reading.get("error"):
         return "broken"
     v = reading.get("value")
@@ -2946,7 +2950,11 @@ def _goal_open_since(goal):
 def _escalation(goal, state, reading):
     """Which of the four tests this failing goal passes, or None — in which case
     it is ours, and it reaches him as a count and not as an alarm."""
-    if state == "green":
+    # A goal that is being MET escalates to nobody, and an attestation he signed
+    # and that has not run out is being met — by his own word rather than by a
+    # machine, which is a fact about assurance, not about whether it needs him.
+    # An expired one is a different thing entirely and is red by now.
+    if state in ("green", "attested"):
         return None
     p2g = goal.get("path_to_green") or {}
     decl = goal.get("escalates") or {}

@@ -203,6 +203,37 @@
       },
       "parked": true,
       "parked_on": "2026-09-05"
+    },
+    {
+      "id": "rights-on-record-for-every-asset",
+      "statement": "Rights on record for every art, sound and font asset",
+      "owner": "vp-design",
+      "severity": "important",
+      "unit": "",
+      "why_it_matters": "The rights we rely on came from a vendor whose terms are undated and can be revoked in place, so a clearance cannot stand forever. And what we owe is owed to whoever made the work — a public build is where we owe it.",
+      "measure": {
+        "kind": "manual_attest",
+        "attested_by": "daniel",
+        "attested_on": "2026-08-27",
+        "value": true,
+        "expires_days": 90,
+        "note": "Retro Diffusion's output rights were read against their legal terms and cleared for commercial release. Their terms are undated and revocable in place, so this expires and has to be re-read rather than standing forever."
+      },
+      "path_to_green": {
+        "narrative": "Re-read the vendor's terms, and any licence that came with an asset added since the last check.",
+        "route": {
+          "kind": "none"
+        },
+        "owner": "vp-design"
+      },
+      "history": {
+        "record": false,
+        "chart": false
+      },
+      "escalates": {
+        "reason": "external_commitment",
+        "because": "What we owe here is owed to whoever made the work, and a public build is where we owe it."
+      }
     }
   ],
   "scoreboard_title": "Where the art stands"
