@@ -285,6 +285,36 @@ def plotted_ants(with_pea):
     return frames
 
 
+# ---------- the artist's pass ------------------------------------------------
+#
+# Derivation is the draft: single-pixel anatomy (an eye, a nose) cannot survive
+# statistical downscaling, so the last pass is explicit hand-placed pixels —
+# versioned here so re-running the tool can never lose them, and applied after
+# the palette snap so nothing eats them. (frame, x, y, rgb) per sheet.
+EYE = (47, 43, 61)          # the sheets' own darkest
+MOLE_EYE = (33, 30, 42)     # one darker anchor; the mole's body is itself dark
+PINK = (217, 154, 154)      # the shared pink already on both sheets
+TOUCH_UPS = {
+    "rabbit.png": [
+        (2, 9, 8, EYE),                    # the eye the downscale dropped
+        (2, 8, 3, (160, 146, 136)),        # stray dark dot on the crown -> fur
+        (3, 10, 8, EYE),                   # the other dropped eye
+    ],
+    "mole.png": [
+        (1, 6, 9, MOLE_EYE), (1, 9, 9, MOLE_EYE),      # emerging: eyes...
+        (1, 7, 10, PINK), (1, 8, 10, PINK),            # ...and nose
+        (2, 6, 6, MOLE_EYE), (2, 9, 6, MOLE_EYE),      # surfaced: eyes...
+        (2, 7, 7, PINK), (2, 8, 7, PINK),              # ...and nose (was a crumb)
+    ],
+}
+
+
+def apply_touch_ups(name, cells):
+    for f, x, y, rgb in TOUCH_UPS.get(name, []):
+        cells[f].putpixel((x, y), (*rgb, 255))
+    return cells
+
+
 def main():
     # --- ants: plotted, not derived. A 64px ant k-centroids to a smudge at
     # 16px — an ant this small is a plotting problem (the basket's precedent).
@@ -302,7 +332,7 @@ def main():
         trimmed = [trim(f) for f in picks]
         s = h / max(t.height for t in trimmed)
         cells = [seat(t, max(1, round(t.height * s))) for t in trimmed]
-        save_sheet(name, snap_shared_palette(cells, 8))
+        save_sheet(name, apply_touch_ups(name, snap_shared_palette(cells, 8)))
 
     # --- songbird: three raws; the generations disagreed about belly colour
     # (bird_up came back yellow), so yellows remap to the perch's cream before
@@ -328,7 +358,7 @@ def main():
     ink_rows = [y for y in range(CELL) if any(sp[x, y][3] for x in range(CELL))]
     head = surfaced.crop((0, ink_rows[0], CELL, ink_rows[0] + 7))   # head + shoulders
     emerging.paste(head, (0, 6), head)   # rising from the hole, over the rim
-    cells = snap_shared_palette([mound, emerging, surfaced], 7)
+    cells = apply_touch_ups("mole.png", snap_shared_palette([mound, emerging, surfaced], 7))
     save_sheet("mole.png", cells)
     return 0
 

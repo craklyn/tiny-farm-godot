@@ -4699,8 +4699,10 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(data)))
-        # Static app files change with the repo; only heavy game assets are worth caching.
-        self.send_header("Cache-Control", "max-age=3600" if root.endswith("assets") else "no-cache")
+        # Nothing here is worth a stale hour: the sprite sheets are exactly what
+        # gets edited during a session, and the gallery kept showing hour-old art
+        # (2026-09-07). no-cache still lets the browser revalidate cheaply.
+        self.send_header("Cache-Control", "no-cache")
         self.end_headers()
         self.wfile.write(data)
 

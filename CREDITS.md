@@ -251,7 +251,11 @@ before the first public build ships.*
   the hoppers' four hop frames now come from their 8-frame walk GIFs, and the
   ants are hand-plotted in the basket's tradition (colors read from the raws,
   legs alternating so the 2-frame gait walks instead of bobbing; the forager
-  carries pea.png's pea). Every mob now holds 3-8 colors.
+  carries pea.png's pea). Every mob now holds 3-8 colors. Later the same day the
+  tool gained its **artist's pass** — versioned hand-placed pixels applied after
+  derivation, because single-pixel anatomy cannot survive statistical
+  downscaling: the rabbit's eyes restored in hop frames 3-4, and eyes and a pink
+  nose for the emerging and surfaced mole, whose derived cells read as blobs.
 - **Raw generations archived, 2026-09-06** — **not generated, $0.00.** Standing policy
   from this date: every generation run's raw API outputs land in `assets/raw/` as a
   dated batch (with their `*_meta.json`) before compositing. The surviving raws from
