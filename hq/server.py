@@ -954,9 +954,18 @@ def parse_playtest(name):
     mislabelled = sum(1 for t in taps if t.get("out") == "unreachable"
                       and "at" in t and "tile" in t
                       and abs(t["at"][0] - t["tile"][0]) + abs(t["at"][1] - t["tile"][1]) <= 1)
+    # A session whose build was destroyed by a history rewrite says so on its
+    # own record. It cannot be replayed and never will be, so counting it as an
+    # open failure asks somebody to fix something that no longer exists.
+    lost = None
+    try:
+        lost = load_json(os.path.join(tdir, "session.json")).get("build_lost")
+    except Exception:
+        pass
     return {
         "name": name,
         "build_id": _replay_build_id(tdir),
+        "build_lost": lost,
         "gen_seed": header.get("gen_seed") if isinstance(header.get("gen_seed"), int) else None,
         "continued": header.get("continued", False),
         "taps": len(taps),
@@ -2389,10 +2398,17 @@ def eval_measure(spec, depth=0):
                 allr = _pt_select("all_with_trace")
                 if not allr:
                     return _reading(None, error="no recorded sessions")
-                ok = sum(1 for r in allr if _norm_build_id(r.get("build_id")))
-                return _reading(round(ok / len(allr), 3), "ratio",
-                                f"{ok} of {len(allr)} recorded sessions can still be tied to a build",
-                                "", "cheap", extra={"resolvable": ok, "total": len(allr)})
+                live = [r for r in allr if not r.get("build_lost")]
+                written_off = len(allr) - len(live)
+                if not live:
+                    return _reading(None, error="every recorded session has lost its build")
+                ok = sum(1 for r in live if _norm_build_id(r.get("build_id")))
+                return _reading(round(ok / len(live), 3), "ratio",
+                                f"{ok} of {len(live)} recorded sessions can still be tied to a build"
+                                + (f", with {written_off} written off" if written_off else ""),
+                                "", "cheap",
+                                extra={"resolvable": ok, "total": len(live),
+                                       "written_off": written_off})
             if not rows:
                 return _reading(None, error="no session matches that selection")
             row = rows[-1]

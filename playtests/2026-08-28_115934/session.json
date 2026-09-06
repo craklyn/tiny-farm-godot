@@ -4,5 +4,9 @@
   "prompted": false,
   "attested_by": "daniel",
   "attested_on": "2026-09-03",
-  "source": "docs/ROADMAP.md:121-123 (M1 exit gate): 'Three sessions were captured on 2026-08-28 ... and the last — a fresh farm, no instructions given — showed the full phase-1 loop discovered without help.' Corroborated by docs/DESIGNER_QUEUE.md:284-285: 'Raised 2026-08-28 from the second adult session (playtests/2026-08-28_115934), the first on a fresh farm.' Neither doc names who the adult was. Note: ROADMAP calls this the 'last' of three 08-28 sessions while DESIGNER_QUEUE calls it the 'second adult session' — the two docs disagree on the ordinal, though both agree on fresh-farm and unprompted."
+  "source": "docs/ROADMAP.md:121-123 (M1 exit gate): 'Three sessions were captured on 2026-08-28 ... and the last — a fresh farm, no instructions given — showed the full phase-1 loop discovered without help.' Corroborated by docs/DESIGNER_QUEUE.md:284-285: 'Raised 2026-08-28 from the second adult session (playtests/2026-08-28_115934), the first on a fresh farm.' Neither doc names who the adult was. Note: ROADMAP calls this the 'last' of three 08-28 sessions while DESIGNER_QUEUE calls it the 'second adult session' — the two docs disagree on the ordinal, though both agree on fresh-farm and unprompted.",
+  "build_lost": {
+    "since": "2026-08-29",
+    "why": "The commit this was recorded against no longer exists: the repository's history was rewritten with git filter-repo on 2026-08-29 to purge a leaked Retro Diffusion API key (see CREDITS.md, 'Repository history rewrites'). The session cannot be replayed and never will be. Its trace, its autosave and its attested conditions are unaffected."
+  }
 }

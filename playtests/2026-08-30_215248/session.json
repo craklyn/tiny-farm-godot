@@ -4,5 +4,9 @@
   "prompted": null,
   "attested_by": "daniel",
   "attested_on": "2026-09-03",
-  "source": "no record — appears only in tests/test_runner.gd's SHELF table (format 1, verdict match) and as the source of two byte-identical duplicate folders removed 2026-09-02 (tests/test_runner.gd:27-28). No prose in ROADMAP.md, DESIGNER_QUEUE.md, or M1_5_PLAN.md names a tester or conditions for this specific folder."
+  "source": "no record — appears only in tests/test_runner.gd's SHELF table (format 1, verdict match) and as the source of two byte-identical duplicate folders removed 2026-09-02 (tests/test_runner.gd:27-28). No prose in ROADMAP.md, DESIGNER_QUEUE.md, or M1_5_PLAN.md names a tester or conditions for this specific folder.",
+  "build_lost": {
+    "since": "2026-08-29",
+    "why": "The commit this was recorded against no longer exists: the repository's history was rewritten with git filter-repo on 2026-08-29 to purge a leaked Retro Diffusion API key (see CREDITS.md, 'Repository history rewrites'). The session cannot be replayed and never will be. Its trace, its autosave and its attested conditions are unaffected."
+  }
 }
