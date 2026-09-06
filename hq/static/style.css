@@ -1219,15 +1219,32 @@ button.linkbtn:hover, button.linkbtn:focus-visible { text-decoration: underline;
   border-left: 1px solid var(--line);
 }
 .gl-row { border-bottom: 1px solid var(--line); }
+.gl-headrow { display: flex; align-items: start; gap: 10px; padding-right: 4px; }
 .gl-head {
-  display: grid; grid-template-columns: 12px 1fr 14px; gap: 12px; width: 100%;
+  display: grid; grid-template-columns: 12px 1fr; gap: 12px; flex: 1; min-width: 0;
   align-items: start; padding: 12px 4px; background: none; border: 0;
   color: var(--text); font: inherit; text-align: left; cursor: pointer;
 }
-.gl-head:hover { background: var(--panel); }
+.gl-headrow:hover { background: var(--panel); }
+/* The card's own control, top right, and only once the card is open. */
+.gl-editbtn {
+  align-self: center; visibility: hidden; padding: 3px 10px; border-radius: 999px;
+  background: var(--panel2); border: 1px solid var(--line); color: var(--muted);
+  font: inherit; font-size: 11.5px; cursor: pointer;
+}
+.gl-row.gl-open .gl-editbtn { visibility: visible; }
+.gl-editbtn:hover { color: var(--text); border-color: var(--muted); }
+.gl-caret { align-self: center; }
 .gl-head .dot { margin-top: 6px; }
 .gl-statement { font-size: 15px; }
-.gl-caret { color: var(--muted); font-size: 12px; margin-top: 3px; }
+.gl-caret { color: var(--muted); font-size: 12px; }
+/* Changing anything about a goal happens in one form, so the destructive half
+   sits apart from Save rather than beside it as an equal. */
+.gl-fieldset { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px 14px;
+  display: flex; flex-direction: column; gap: 12px; }
+.gl-fieldset legend { color: var(--muted); font-size: 11px; letter-spacing: .06em;
+  text-transform: uppercase; padding: 0 6px; }
+.gl-danger { margin-left: auto; display: flex; gap: 14px; }
 /* 28px lines the detail up under the statement itself: 4 of row padding, the
    12px dot, and the 12px gap after it. */
 .gl-detail { padding: 4px 4px 16px 28px; display: flex; flex-direction: column; gap: 7px; }

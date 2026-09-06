@@ -22,7 +22,6 @@ const GL_SEVERITY = [
 ];
 
 let glEditing = null;    // "area:id", or "area:" for a new one
-let glSituating = null;  // "area:id:commitment" | "area:id:pause"
 
 /* A goal is carried by a seat, never by a person: if whoever is in the seat
    leaves, the seat is refilled and the goal carries on. The name shown beside
@@ -44,16 +43,18 @@ function glOwnerLine(seats, org, ownerId) {
 
 function glForm(area, g, seats, org, pillars) {
   const teams = [];
-  seats.forEach(s => {
-    const t = teams.find(x => x.name === s.team) || (teams.push({ name: s.team, seats: [] }), teams[teams.length - 1]);
-    t.seats.push(s);
+  seats.forEach(st => {
+    const t = teams.find(x => x.name === st.team) || (teams.push({ name: st.team, seats: [] }), teams[teams.length - 1]);
+    t.seats.push(st);
   });
   const chosen = (glSeat(seats, g.owner) || {}).id || "unassigned";
+  const hold = g.commitment || {};
+  const existing = !!g.id;
   return `<form class="gl-form" data-area="${esc(area)}" data-id="${esc(g.id || "")}">
     <label>What has to be true
       <input name="statement" type="text" required value="${esc(g.statement || "")}"
              placeholder="Every recorded session says who played it."></label>
-    <label>Why it matters
+    <label>Description
       <textarea name="why_it_matters" rows="2"
                 placeholder="What goes wrong for you if this is false.">${esc(g.why_it_matters || "")}</textarea></label>
     <div class="gl-form-row gl-form-row3">
@@ -68,10 +69,29 @@ function glForm(area, g, seats, org, pillars) {
         <select name="severity">${GL_SEVERITY.map(([v, label]) => `<option value="${v}"
           ${v === (g.severity || "important") ? "selected" : ""}>${esc(label)}</option>`).join("")}</select></label>
     </div>
+    ${existing ? `<fieldset class="gl-fieldset">
+      <legend>Who is on it, while it is failing</legend>
+      <div class="gl-form-row gl-form-row3">
+        <label>Seat holding it
+          <select name="seat"><option value="">Nobody</option>${seats.filter(st => st.id !== "unassigned").map(st =>
+            `<option value="${esc(st.id)}" ${st.id === hold.seat ? "selected" : ""}>${esc(st.label)}</option>`).join("")}</select></label>
+        <label>Holding it until
+          <input name="until" type="date" value="${esc(hold.until || "")}"></label>
+        <label>Link to the evidence
+          <input name="href" type="text" value="${esc((hold.link || {}).href || "")}" placeholder="https://..."></label>
+      </div>
+      <label>What is being done about it
+        <input name="doing" type="text" value="${esc(hold.doing || "")}"
+               placeholder="under triage — or, planned downtime while migrating file formats"></label>
+    </fieldset>` : ""}
     <div class="gl-form-btns">
-      <button type="submit">${g.id ? "Save the goal" : "Write the goal"}</button>
+      <button type="submit">${existing ? "Save the goal" : "Write the goal"}</button>
       <button type="button" class="ghost" data-cancel>Cancel</button>
       <span class="gl-err small"></span>
+      ${existing ? `<span class="gl-danger">
+        <button type="button" class="linkbtn" data-park>${g.parked ? "Enable" : "Disable"}</button>
+        <button type="button" class="linkbtn gl-remove" data-del>Delete</button>
+      </span>` : ""}
     </div>
   </form>`;
 }
@@ -134,59 +154,24 @@ function glStatus(g, org) {
   return `Failing${detail}. Nobody is holding it.${link}`;
 }
 
-/* Who is holding a failing goal, what they are doing about it, and until when.
-   Planned work goes here too — "planned downtime while migrating file formats"
-   is a plan like any other, and it keeps the goal amber only for as long as it
-   runs to schedule. The date is not optional: a promise with no end is how
-   amber turns into a place failures are forgotten. */
-function glSitForm(area, g, seats) {
-  const hold = g.commitment || {};
-  const body = `<div class="gl-form-row">
-         <label>Which seat is on it
-           <select name="seat">${seats.filter(st => st.id !== "unassigned").map(st =>
-             `<option value="${esc(st.id)}" ${st.id === hold.seat ? "selected" : ""}>${esc(st.label)}</option>`).join("")}</select></label>
-         <label>Holding it until
-           <input name="until" type="date" required value="${esc(hold.until || "")}"></label>
-       </div>
-       <label>What is being done about it
-         <input name="doing" type="text" value="${esc(hold.doing || "")}"
-                placeholder="under triage — or, planned downtime while migrating file formats"></label>
-       <label>Link to the evidence, if there is one
-         <input name="href" type="text" value="${esc((hold.link || {}).href || "")}" placeholder="https://..."></label>`;
-  return `<form class="gl-form" data-kind="commitment" data-area="${esc(area)}" data-id="${esc(g.id)}">
-    ${body}
-    <div class="gl-form-btns">
-      <button type="submit">Save</button>
-      <button type="button" class="ghost" data-cancel>Cancel</button>
-      ${g.commitment ? `<button type="button" class="linkbtn gl-remove" data-clear>Clear it</button>` : ""}
-      <span class="gl-err small"></span>
-    </div>
-  </form>`;
-}
-
 function glRow(area, g, seats, org) {
   const meta = (typeof GOAL_META !== "undefined" && GOAL_META[g.state]) || { dcls: "d-unchecked", word: "" };
   // Collapsed is the resting state: forty goals open at once is a wall, and
   // the dot and the sentence are all he needs to decide which one to open.
   return `<div class="gl-row" data-area="${esc(area)}" data-id="${esc(g.id)}">
-    <button class="gl-head" data-open aria-expanded="false">
-      <i class="dot ${meta.dcls}" title="${esc(meta.word)}"></i>
-      <span class="gl-statement">${esc(g.statement)}</span>
+    <div class="gl-headrow">
+      <button class="gl-head" data-open aria-expanded="false">
+        <i class="dot ${meta.dcls}" title="${esc(meta.word)}"></i>
+        <span class="gl-statement">${esc(g.statement)}</span>
+      </button>
+      <button class="gl-editbtn" data-edit>edit</button>
       <span class="gl-caret">▸</span>
-    </button>
+    </div>
     <div class="gl-detail" hidden>
       <div class="gl-field"><span class="gl-label">Assigned to</span>${glOwnerLine(seats, org, g.owner)}</div>
       <div class="gl-field"><span class="gl-label">Metric</span>${esc(glMetric(g))}</div>
       <div class="gl-field"><span class="gl-label">Status summary</span>${glStatus(g, org)}</div>
       <div class="gl-field"><span class="gl-label">Description</span>${esc(g.why_it_matters || "")}</div>
-      ${glSituating === area + ":" + g.id
-        ? glSitForm(area, g, seats)
-        : `<div class="gl-detail-btns">
-        <button class="linkbtn" data-sit>${g.commitment ? "change who is on it" : "say who is on it"}</button>
-        <button class="linkbtn" data-edit>edit this goal</button>
-        <button class="linkbtn" data-park>park it</button>
-        <button class="linkbtn gl-remove" data-del>drop it</button>
-      </div>`}
     </div>
   </div>`;
 }
@@ -197,20 +182,18 @@ function glRow(area, g, seats, org) {
    state to draw. */
 function glParkedRow(area, g, seats, org) {
   return `<div class="gl-row gl-parked" data-area="${esc(area)}" data-id="${esc(g.id)}">
-    <button class="gl-head" data-open aria-expanded="false">
-      <i class="dot d-dorm" title="parked"></i>
-      <span class="gl-statement">${esc(g.statement)}</span>
+    <div class="gl-headrow">
+      <button class="gl-head" data-open aria-expanded="false">
+        <i class="dot d-dorm" title="parked"></i>
+        <span class="gl-statement">${esc(g.statement)}</span>
+      </button>
+      <button class="gl-editbtn" data-edit>edit</button>
       <span class="gl-caret">▸</span>
-    </button>
+    </div>
     <div class="gl-detail" hidden>
       <div class="gl-field"><span class="gl-label">Was assigned to</span>${glOwnerLine(seats, org, g.owner)}</div>
       ${g.why_it_matters ? `<div class="gl-field"><span class="gl-label">Why it was written</span>${esc(g.why_it_matters)}</div>` : ""}
       <div class="gl-field"><span class="gl-label">Parked</span>${esc(g.parked_on || "")}</div>
-      <div class="gl-detail-btns">
-        <button class="linkbtn" data-unpark>bring it back as it is</button>
-        <button class="linkbtn" data-edit>rewrite it and bring it back</button>
-        <button class="linkbtn gl-remove" data-del>drop it</button>
-      </div>
     </div>
   </div>`;
 }
@@ -246,11 +229,18 @@ async function renderGoals() {
     }).join("")}
   `));
 
+  const goalPost = (path, body) => fetch(path, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
   $view.querySelectorAll("[data-open]").forEach(b => b.addEventListener("click", () => {
-    const detail = b.parentElement.querySelector(".gl-detail");
+    const row = b.closest(".gl-row"), detail = row.querySelector(".gl-detail");
     detail.hidden = !detail.hidden;
+    // The class is what lets the edit control appear only on an open card: six
+    // edit buttons at rest is the clutter the collapsed list exists to avoid.
+    row.classList.toggle("gl-open", !detail.hidden);
     b.setAttribute("aria-expanded", detail.hidden ? "false" : "true");
-    b.querySelector(".gl-caret").textContent = detail.hidden ? "▸" : "▾";
+    row.querySelector(".gl-caret").textContent = detail.hidden ? "▸" : "▾";
   }));
   $view.querySelectorAll("[data-add]").forEach(b => b.addEventListener("click", () => {
     glEditing = "new"; renderGoals();
@@ -260,61 +250,40 @@ async function renderGoals() {
     glEditing = row.dataset.area + ":" + row.dataset.id; renderGoals();
   }));
   $view.querySelectorAll("[data-cancel]").forEach(b => b.addEventListener("click", () => {
-    glEditing = null; glSituating = null; renderGoals();
+    glEditing = null; renderGoals();
   }));
-  $view.querySelectorAll("[data-sit]").forEach(b => b.addEventListener("click", () => {
-    const row = b.closest(".gl-row");
-    glSituating = `${row.dataset.area}:${row.dataset.id}`;
-    renderGoals();
-  }));
-  const goalPost = (path, body) => fetch(path, {
-    method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  $view.querySelectorAll("[data-park], [data-unpark]").forEach(b => b.addEventListener("click", async () => {
-    const row = b.closest(".gl-row");
+  $view.querySelectorAll(".gl-form [data-park]").forEach(b => b.addEventListener("click", async () => {
+    const f = b.closest(".gl-form");
     await goalPost("/api/goal/park", {
-      area: row.dataset.area, id: row.dataset.id, parked: b.hasAttribute("data-park"),
+      area: f.dataset.area, id: f.dataset.id, parked: b.textContent.trim() === "Disable",
     });
+    glEditing = null;
     renderGoals();
   }));
-  $view.querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", async () => {
-    const row = b.closest(".gl-row");
-    if (!confirm("Remove this goal? Its area stops being measured on it.")) return;
-    await fetch("/api/goal/delete", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ area: row.dataset.area, id: row.dataset.id }),
-    });
+  $view.querySelectorAll(".gl-form [data-del]").forEach(b => b.addEventListener("click", async () => {
+    const f = b.closest(".gl-form");
+    if (!confirm("Delete this goal? Its area stops being measured on it, and the record goes.")) return;
+    await goalPost("/api/goal/delete", { area: f.dataset.area, id: f.dataset.id });
+    glEditing = null;
     renderGoals();
   }));
-  const sitPost = async (f, body) => {
-    const r = await (await fetch("/api/goal/" + f.dataset.kind, {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(Object.assign({ area: f.dataset.area, id: f.dataset.id }, body)),
-    })).json();
-    if (r.error) { f.querySelector(".gl-err").textContent = r.error; return; }
-    glSituating = null;
-    renderGoals();
-  };
-  $view.querySelectorAll(".gl-form[data-kind]").forEach(f => {
-    f.addEventListener("submit", ev => {
-      ev.preventDefault();
-      const d = Object.fromEntries(new FormData(f).entries());
-      sitPost(f, { seat: d.seat, until: d.until, doing: d.doing,
-                   link: { href: d.href, label: "See it" } });
-    });
-    const clear = f.querySelector("[data-clear]");
-    if (clear) clear.addEventListener("click", () => sitPost(f, { seat: "" }));
-  });
-  $view.querySelectorAll(".gl-form:not([data-kind])").forEach(f => f.addEventListener("submit", async ev => {
+  $view.querySelectorAll(".gl-form").forEach(f => f.addEventListener("submit", async ev => {
     ev.preventDefault();
     const d = Object.fromEntries(new FormData(f).entries());
     if (f.dataset.id) d.id = f.dataset.id;   // d.area comes from the form itself
-    const r = await (await fetch("/api/goal/save", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(d),
-    })).json();
-    if (r.error) { f.querySelector(".gl-err").textContent = r.error; return; }
+    const say = msg => { f.querySelector(".gl-err").textContent = msg; };
+    let r = await (await goalPost("/api/goal/save", d)).json();
+    if (r.error) return say(r.error);
+    // Who is on it lives in the same form but a different record, so it is a
+    // second write — and it addresses the goal where it has just landed, which
+    // may be a different area from the one it was opened in.
+    if (f.dataset.id) {
+      const c = await (await goalPost("/api/goal/commitment", {
+        area: r.area, id: r.id, seat: d.seat || "", until: d.until,
+        doing: d.doing, link: { href: d.href, label: "See it" },
+      })).json();
+      if (c.error) return say(c.error);
+    }
     glEditing = null;
     renderGoals();
   }));
