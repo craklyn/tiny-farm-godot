@@ -259,7 +259,8 @@ async function renderSpriteEditor(path) {
   };
 
   $view.replaceChildren(h(`
-    <p class="crumbs"><a class="plain" href="#/entities">Entities</a> <span>›</span>
+    <p class="crumbs"><a class="plain" href="#/entities" data-crumb-tab="">Entities</a> <span>›</span>
+      <a class="plain" href="#/entities" data-crumb-tab="${esc(group.id)}">${esc(group.name)}</a> <span>›</span>
       <a class="plain" href="#/entity/${gid}/${eid}">${ent.emoji} ${esc(ent.name)}</a> <span>›</span> <b>Edit sprite</b></p>
     <h1>✏️ ${esc(ent.name)}</h1>
     <p class="sub">You are editing <code class="ref">${esc(ent.sheet)}</code>. ${sheetLine}</p>
@@ -308,6 +309,11 @@ async function renderSpriteEditor(path) {
       </div>
     </div>
     <section id="sp-history" class="sp-history"></section>`));
+
+  // The group crumb lands on the gallery with that group's tab already open —
+  // the same wiring the entity detail page uses.
+  $view.querySelectorAll("[data-crumb-tab]").forEach(a =>
+    a.addEventListener("click", () => { if (a.dataset.crumbTab) entTab = a.dataset.crumbTab; }));
 
   const cv = document.getElementById("sp-canvas");
   const ctx = cv.getContext("2d");
