@@ -9,12 +9,14 @@ zoomed, a bend is visibly two disconnected runs with a gap where the corner
 should be. The CEO called it (2026-09-07): "turning a corner looks weird".
 
 So the elbow is derived, in the droplet-and-basket tradition: a quarter-turn
-tube joining the horizontal body's left opening (rows 6-13) to the vertical
-body's bottom opening (cols 4-11), swept about C=(0,17) at centerline radius
-7.5, half-width 4. The radial shading mirrors the horizontal body's own slice,
-read from the sheet rather than typed here — outline, rose shadow x2, pink x3,
-cream highlight, outline — with the highlight on the outer curve, where the
-body art keeps its light.
+tube joining the horizontal body's left opening to the vertical body's bottom
+opening — both centered in their cells (rows/cols 4-11; the 2026-09-07 head
+misalignment fix centered the horizontal family, so rotation about a cell's
+center preserves the tube's centerline in all four directions) — swept about
+C=(0,16) at centerline radius 8, half-width 4. The radial shading mirrors the
+horizontal body's own slice, read from the sheet rather than typed here —
+outline, rose shadow x2, pink x3, cream highlight, outline — with the
+highlight on the outer curve, where the body art keeps its light.
 
 The base cell opens LEFT and DOWN; worm.gd rotates it for the other three
 bend orientations. Written as cell 4 of worm.png (widening 64x16 to 80x16).
@@ -34,8 +36,8 @@ SHEET = os.path.join(HERE, "..", "assets", "sprites", "generated", "worm.png")
 CELL = 16
 BODY_COL = 1      # the horizontal body, whose slice the shading mirrors
 ELBOW_COL = 4
-C = (0.0, 17.0)   # center of the sweep, just past the bottom-left corner
-R = 7.5           # centerline radius
+C = (0.0, 16.0)   # center of the sweep, the cell's bottom-left corner
+R = 8.0           # centerline radius
 HALF = 4          # tube half-width
 
 

@@ -235,6 +235,12 @@ before the first public build ships.*
   slice, replacing the vertical-body knuckle that bends had drawn since the M2.5
   bench (worm.gd's header had carried the IOU; the CEO called the corner "weird"
   in HQ's zoomed preview, where the knuckle read as a break in the animal).
+  Same day, the head/body/tail cells shifted up 2px so the tube is centered in
+  every cell: the renderer rotates segments about the cell's centre, and the
+  off-centre tube had every vertical head and tail landing 2px off its body —
+  the misalignment the CEO caught in the corner pose. With the tube centred,
+  rotation preserves the centerline in all four directions and the elbow was
+  re-swept to the centred openings (C=(0,16), R=8).
 - **Raw generations archived, 2026-09-06** — **not generated, $0.00.** Standing policy
   from this date: every generation run's raw API outputs land in `assets/raw/` as a
   dated batch (with their `*_meta.json`) before compositing. The surviving raws from
