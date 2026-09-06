@@ -34,13 +34,19 @@ const LEVEL_META = {
 /* The six goal states. `unchecked` and `broken` are drawn at the same weight as
    the solid ones on purpose: nine gates with one machine check must read as
    mostly-unknown, not mostly-fine. */
+/* Colour says how much of HIS attention this wants, and nothing else (the
+   CEO's ruling, 2026-09-05). Red is his move — failing with nobody holding it,
+   or a promise that ran out. Amber is failing with somebody on it and a date
+   they have not passed: he is waiting, not acting. There is no measured band
+   between healthy and unhealthy any more; a goal is met or it is not. */
 const GOAL_META = {
   red: { dcls: "d-fire", word: "failing" },
   broken: { dcls: "d-broken", word: "could not be checked" },
-  amber: { dcls: "d-attn", word: "slipping" },
+  amber: { dcls: "d-attn", word: "failing, someone is on it" },
+  paused: { dcls: "d-dorm", word: "paused by you" },
   unchecked: { dcls: "d-unchecked", word: "not monitored yet" },
   attested: { dcls: "d-attested", word: "verified by you" },
-  green: { dcls: "d-ok", word: "passing" },
+  green: { dcls: "d-ok", word: "holding" },
 };
 
 function levelChip(level, roll) {

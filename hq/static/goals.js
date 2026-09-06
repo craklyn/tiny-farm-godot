@@ -21,7 +21,8 @@ const GL_SEVERITY = [
   ["watch", "Worth watching"],
 ];
 
-let glEditing = null;   // "area:id", or "area:" for a new one
+let glEditing = null;    // "area:id", or "area:" for a new one
+let glSituating = null;  // "area:id:commitment" | "area:id:pause"
 
 /* A goal is carried by a seat, never by a person: if whoever is in the seat
    leaves, the seat is refilled and the goal carries on. The name shown beside
@@ -52,9 +53,6 @@ function glForm(area, g, seats, org) {
     <label>What has to be true
       <input name="statement" type="text" required value="${esc(g.statement || "")}"
              placeholder="Every recorded session says who played it."></label>
-    <label>The same thing said as a problem — this is what your dashboard shows when it fails
-      <input name="statement_short" type="text" value="${esc(g.statement_short || "")}"
-             placeholder="recorded sessions do not say who played them"></label>
     <label>Why it matters
       <textarea name="why_it_matters" rows="2"
                 placeholder="What goes wrong for you if this is false.">${esc(g.why_it_matters || "")}</textarea></label>
@@ -81,24 +79,86 @@ function glForm(area, g, seats, org) {
 function glMetric(g) {
   const m = g.measure || {}, reading = g.reading || {};
   if (m.kind === "unchecked" || reading.unchecked) {
-    return "Nothing measures this yet" + (m.reason ? ` — ${m.reason}` : "") + ".";
+    // The default reason IS this sentence, so repeating it says the same thing
+    // twice with a dash in the middle.
+    const why = (m.reason || "").trim();
+    const extra = why && why.toLowerCase() !== "nothing measures this yet" ? ` — ${why}` : "";
+    return "Nothing measures this yet" + extra + ".";
   }
   return reading.source_human || m.label || "Measured, but the check does not say how.";
 }
 
-/* Green says why it is green; anything else says the way out. */
-function glStatus(g) {
-  const facts = g.measured_human || "";
-  if (g.state === "green" || g.state === "attested") return facts || "Passing.";
+/* The line he reads, composed rather than authored: the verdict, the reading,
+   who is holding it, until when, and the way to the evidence. It changes as the
+   situation changes, which a sentence typed into the goal never could. */
+function glStatus(g, org) {
+  const sit = g.situation || {}, facts = g.measured_human || "";
+  const detail = facts ? ` — ${esc(facts)}` : "";
+  const link = sit.link && sit.link.href
+    ? ` <a class="plain" href="${esc(sit.link.href)}" ${/^https?:/.test(sit.link.href) ? 'target="_blank" rel="noreferrer"' : ""}>${esc(sit.link.label || "See it")}</a>`
+    : "";
+  const holder = sit.who ? org.employees.find(e => e.id === sit.who.held_by) : null;
+  const by = sit.who
+    ? `<b>${esc(sit.who.label)}</b>${holder ? ` (<a class="plain" data-person="${esc(holder.id)}">${esc(holder.name)}</a>)` : ""}`
+    : "";
+  const doing = sit.doing ? `, ${esc(sit.doing)}` : "";
+
+  if (g.state === "paused") {
+    return `Paused${sit.until ? ` until ${esc(surfaceDate(sit.until))}` : ""}${
+      sit.note ? `: ${esc(sit.note)}` : "."}${detail}`;
+  }
+  if (g.state === "green" || g.state === "attested") return `Holding${detail || "."}`;
   if (g.state === "unchecked") {
     const need = (g.measure || {}).would_need;
-    return need ? `Nobody is measuring this. It would take ${need}.`
+    return need ? `Nobody is measuring this. It would take ${esc(need)}.`
                 : "Nobody is measuring this, so nothing can be said about it either way.";
   }
-  const path = (g.path_to_green || {}).narrative || "";
-  const route = g.route_target;
-  return `${facts}${facts && path ? ". " : ""}${path}`
-    + (route && route.href ? ` <a class="plain" href="${esc(route.href)}">${esc(route.title || "the work that closes it")}</a>` : "");
+  if (g.state === "broken") return `The check could not run${detail}.${link}`;
+  if (g.state === "amber") {
+    return `Failing${detail}. ${by} is on it${doing}${
+      sit.until ? `, until ${esc(surfaceDate(sit.until))}` : ""}.${link}`;
+  }
+  // red
+  if (sit.lapsed) {
+    return `Failing${detail}. ${by} was holding it${
+      sit.until ? ` until ${esc(surfaceDate(sit.until))}` : " with no date set"
+    }, and that has run out with no update — it is back with you.${link}`;
+  }
+  return `Failing${detail}. Nobody is holding it.${link}`;
+}
+
+/* Saying who is holding a failing goal, or that its failure is accepted for
+   now. Both carry a date, because both are promises and a promise with no end
+   is how amber turns into a place failures are forgotten. */
+function glSitForm(area, g, kind, seats) {
+  const hold = g.commitment || {}, pause = g.paused || {};
+  const body = kind === "commitment"
+    ? `<div class="gl-form-row">
+         <label>Which seat is on it
+           <select name="seat">${seats.filter(st => st.id !== "unassigned").map(st =>
+             `<option value="${esc(st.id)}" ${st.id === hold.seat ? "selected" : ""}>${esc(st.label)}</option>`).join("")}</select></label>
+         <label>Holding it until
+           <input name="until" type="date" required value="${esc(hold.until || "")}"></label>
+       </div>
+       <label>What they are doing
+         <input name="doing" type="text" value="${esc(hold.doing || "")}" placeholder="Under triage"></label>
+       <label>Link to the evidence, if there is one
+         <input name="href" type="text" value="${esc((hold.link || {}).href || "")}" placeholder="https://..."></label>`
+    : `<label>Why it is paused
+         <input name="note" type="text" required value="${esc(pause.note || "")}"
+                placeholder="planned downtime while migrating file formats"></label>
+       <label>Paused until
+         <input name="until" type="date" required value="${esc(pause.until || "")}"></label>`;
+  const set = kind === "commitment" ? !!g.commitment : !!g.paused;
+  return `<form class="gl-form" data-kind="${kind}" data-area="${esc(area)}" data-id="${esc(g.id)}">
+    ${body}
+    <div class="gl-form-btns">
+      <button type="submit">Save</button>
+      <button type="button" class="ghost" data-cancel>Cancel</button>
+      ${set ? `<button type="button" class="linkbtn gl-remove" data-clear>Clear it</button>` : ""}
+      <span class="gl-err small"></span>
+    </div>
+  </form>`;
 }
 
 function glRow(area, g, seats, org) {
@@ -115,14 +175,18 @@ function glRow(area, g, seats, org) {
     <div class="gl-detail" hidden>
       <div class="gl-field"><span class="gl-label">Carried by</span>${glOwnerLine(seats, org, g.owner)}</div>
       <div class="gl-field"><span class="gl-label">Metric</span>${esc(glMetric(g))}</div>
-      <div class="gl-field"><span class="gl-label">Status summary</span>${glStatus(g)}</div>
+      <div class="gl-field"><span class="gl-label">Status summary</span>${glStatus(g, org)}</div>
       <div class="gl-field"><span class="gl-label">Matters</span>${esc(sev)}${
         g.why_it_matters ? ` — ${esc(g.why_it_matters)}` : ""}</div>
-      <div class="gl-detail-btns">
+      ${glSituating === area + ":" + g.id + ":commitment" ? glSitForm(area, g, "commitment", seats)
+        : glSituating === area + ":" + g.id + ":pause" ? glSitForm(area, g, "pause", seats)
+        : `<div class="gl-detail-btns">
+        <button class="linkbtn" data-sit="commitment">${g.commitment ? "change who is on it" : "say who is on it"}</button>
+        <button class="linkbtn" data-sit="pause">${g.paused ? "change the pause" : "pause it"}</button>
         <button class="linkbtn" data-edit>edit this goal</button>
         <button class="linkbtn" data-park>park it</button>
         <button class="linkbtn gl-remove" data-del>drop it</button>
-      </div>
+      </div>`}
     </div>
   </div>`;
 }
@@ -199,7 +263,12 @@ async function renderGoals() {
     glEditing = row.dataset.area + ":" + row.dataset.id; renderGoals();
   }));
   $view.querySelectorAll("[data-cancel]").forEach(b => b.addEventListener("click", () => {
-    glEditing = null; renderGoals();
+    glEditing = null; glSituating = null; renderGoals();
+  }));
+  $view.querySelectorAll("[data-sit]").forEach(b => b.addEventListener("click", () => {
+    const row = b.closest(".gl-row");
+    glSituating = `${row.dataset.area}:${row.dataset.id}:${b.dataset.sit}`;
+    renderGoals();
   }));
   const goalPost = (path, body) => fetch(path, {
     method: "POST", headers: { "Content-Type": "application/json" },
@@ -221,7 +290,28 @@ async function renderGoals() {
     });
     renderGoals();
   }));
-  $view.querySelectorAll(".gl-form").forEach(f => f.addEventListener("submit", async ev => {
+  const sitPost = async (f, body) => {
+    const r = await (await fetch("/api/goal/" + f.dataset.kind, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(Object.assign({ area: f.dataset.area, id: f.dataset.id }, body)),
+    })).json();
+    if (r.error) { f.querySelector(".gl-err").textContent = r.error; return; }
+    glSituating = null;
+    renderGoals();
+  };
+  $view.querySelectorAll(".gl-form[data-kind]").forEach(f => {
+    f.addEventListener("submit", ev => {
+      ev.preventDefault();
+      const d = Object.fromEntries(new FormData(f).entries());
+      sitPost(f, f.dataset.kind === "commitment"
+        ? { seat: d.seat, until: d.until, doing: d.doing, link: { href: d.href, label: "See it" } }
+        : { note: d.note, until: d.until });
+    });
+    const clear = f.querySelector("[data-clear]");
+    if (clear) clear.addEventListener("click", () => sitPost(f, f.dataset.kind === "commitment"
+      ? { seat: "" } : { note: "" }));
+  });
+  $view.querySelectorAll(".gl-form:not([data-kind])").forEach(f => f.addEventListener("submit", async ev => {
     ev.preventDefault();
     const d = Object.fromEntries(new FormData(f).entries());
     d.area = f.dataset.area;

@@ -2628,14 +2628,52 @@ def _days_since_date(datestr):
         return None
 
 
-def _state_from(reading, compare):
-    """Reading + the authored bar -> one of the six goal states.
+def ramp_target(compare, on=None):
+    """Where a ramped goal is meant to be TODAY.
 
-    The two rules that matter: a reading that errored is `broken`, never green —
-    a failed measurement is a fact about the instrument, not a pass. And an
-    absence is only green where absence genuinely is the answer (no blocked
-    projects means nothing has been stuck), which the reading has to say for
-    itself via empty_ok."""
+    Some targets are approached over time rather than met at once — a wishlist
+    count, an audience. For those the honest question is not "have we hit the
+    eventual number" but "are we where the ramp says we should be by now", so
+    the reading stays a straight pass or fail and the alarm goes off at the
+    moment the trajectory stops being good enough. `ramp` is a list of
+    {date, value} points; between two points the expectation moves in a
+    straight line, before the first it is the first, after the last it is the
+    last (which is the eventual target)."""
+    import datetime
+    pts = []
+    for pt in (compare or {}).get("ramp") or []:
+        try:
+            pts.append((datetime.date.fromisoformat(pt["date"]), float(pt["value"])))
+        except (KeyError, TypeError, ValueError):
+            continue
+    if not pts:
+        return None
+    pts.sort()
+    day = on or datetime.date.today()
+    if day <= pts[0][0]:
+        return pts[0][1]
+    if day >= pts[-1][0]:
+        return pts[-1][1]
+    for (d0, v0), (d1, v1) in zip(pts, pts[1:]):
+        if d0 <= day <= d1:
+            span = (d1 - d0).days or 1
+            return v0 + (v1 - v0) * ((day - d0).days / span)
+    return pts[-1][1]
+
+
+def _state_from(reading, compare):
+    """Reading + the authored bar -> is this goal being met, or not?
+
+    Binary by the CEO's ruling (2026-09-05): we are either meeting the goal or
+    failing it, and there is no measured band in between. Whether a failure is
+    being worked on is a separate question, answered in eval_goal, because that
+    is a fact about us rather than about the reading.
+
+    The two rules that survive unchanged: a reading that errored is `broken`,
+    never green — a failed measurement is a fact about the instrument, not a
+    pass. And an absence is only green where absence genuinely is the answer
+    (no blocked projects means nothing has been stuck), which the reading has
+    to say for itself via empty_ok."""
     if reading.get("unchecked"):
         return "unchecked"
     if reading.get("attested"):
@@ -2646,36 +2684,32 @@ def _state_from(reading, compare):
     if v is None:
         return "green" if reading.get("empty_ok") else "broken"
     d = (compare or {}).get("direction")
-    t, a = (compare or {}).get("target"), (compare or {}).get("amber_at")
+    # A ramped goal is judged against where it is meant to be today, not
+    # against the number it is eventually aiming at.
+    t = ramp_target(compare)
+    if t is None:
+        t = (compare or {}).get("target")
     try:
-        if d in ("higher_is_better",):
-            if v >= t:
-                return "green"
-            return "amber" if (a is not None and v >= a) else "red"
+        if d in ("higher_is_better", "ratio"):
+            return "green" if v >= t else "red"
         if d in ("lower_is_better", "fresher_than"):
-            if v <= t:
-                return "green"
-            return "amber" if (a is not None and v <= a) else "red"
+            return "green" if v <= t else "red"
         if d == "must_be_true":
             return "green" if v is True else "red"
         if d == "must_equal":
             return "green" if v == t else "red"
         if d == "in_set":
-            if v in (compare.get("green_set") or []):
-                return "green"
-            if v in (compare.get("amber_set") or []):
-                return "amber"
-            return "red"
-        if d == "ratio":
-            if v >= t:
-                return "green"
-            return "amber" if (a is not None and v >= a) else "red"
+            return "green" if v in (compare.get("green_set") or []) else "red"
     except TypeError:
         return "broken"
     return "broken"
 
 
-_STATE_RANK = {"red": 0, "broken": 1, "amber": 2, "unchecked": 3, "attested": 4, "green": 5}
+# `amber` no longer means "between the bar and the target" — there is no such
+# band any more. It means failing WITH someone on it, which is why it sits
+# above red: the CEO's move is only needed on the ones nobody is holding.
+_STATE_RANK = {"red": 0, "broken": 1, "amber": 2, "paused": 3,
+               "unchecked": 4, "attested": 5, "green": 6}
 
 
 def _composite_state(reading, compare):
@@ -3043,6 +3077,54 @@ def _route_target(route):
             "href": ""}
 
 
+def _goal_response(goal, state, reading):
+    """Whether a failure is red or amber is a fact about US, not about the
+    reading (the CEO's ruling, 2026-09-05). Failing with a seat holding it and
+    a date it has not passed is amber — he is waiting, not acting. Failing with
+    nobody on it, or with the date run out, is red — his move. A pause is a
+    third thing: a failure he has accepted, time-boxed, which reads quiet and
+    says why until its date passes."""
+    import datetime
+    today = datetime.date.today()
+
+    def until_of(rec):
+        try:
+            return datetime.date.fromisoformat(str((rec or {}).get("until", "")))
+        except (TypeError, ValueError):
+            return None
+
+    url = (reading or {}).get("url")
+    sit = {"who": None, "doing": "", "until": None, "lapsed": False, "note": "",
+           "link": {"label": "See the run", "href": url} if url else None}
+
+    pause = goal.get("paused")
+    if pause:
+        p_until = until_of(pause)
+        if p_until is None or p_until >= today:
+            sit["note"] = str(pause.get("note", ""))
+            sit["until"] = p_until.isoformat() if p_until else None
+            return "paused", sit
+
+    if state != "red":
+        return state, sit
+
+    hold = goal.get("commitment")
+    if not hold:
+        return "red", sit
+    sit["doing"] = str(hold.get("doing", ""))
+    sit["who"] = seat_for(hold.get("seat"))
+    if hold.get("link"):
+        sit["link"] = hold["link"]
+    h_until = until_of(hold)
+    sit["until"] = h_until.isoformat() if h_until else None
+    # An undated promise is not a promise, and a date that has passed without an
+    # update is the news. Either way it goes back to being his.
+    if h_until is None or h_until < today:
+        sit["lapsed"] = True
+        return "red", sit
+    return "amber", sit
+
+
 def eval_goal(goal):
     """One declared goal -> the row the page renders. Never raises: a malformed
     goal renders `broken` rather than taking down the pillar it lives on."""
@@ -3054,6 +3136,7 @@ def eval_goal(goal):
             state = _composite_state(reading, compare)
         else:
             state = _state_from(reading, compare)
+        state, out["situation"] = _goal_response(goal, state, reading)
         out["state"] = state
         out["reading"] = reading
         out["measured"] = reading.get("value")
@@ -3069,8 +3152,10 @@ def eval_goal(goal):
         # serve him as an approver, and the board is not a third copy of them.
         out["route_target"] = _route_target((goal.get("path_to_green") or {}).get("route"))
         out["escalation"] = _escalation(goal, state, reading)
-        out["needs_you"] = bool(out["escalation"])
-        out["ours"] = state not in ("green",) and not out["needs_you"]
+        # Red IS "his move" now, so it always reaches him; amber is the one
+        # somebody is holding, which is what "ours to fix" has always meant.
+        out["needs_you"] = state == "red" or bool(out["escalation"])
+        out["ours"] = state == "amber"
     except Exception as e:
         out["state"] = "broken"
         out["reading"] = _reading(None, error=str(e)[:160])
@@ -3156,7 +3241,7 @@ def rollup(pillar_id, goals, dormant_decl, pillar_name="", parked_n=0):
         n = len(ours)
         ours_phrase = (f"{n} thing{'' if n == 1 else 's'} here need doing and "
                        f"{'it is' if n == 1 else 'they are'} ours, not yours — "
-                       + ours[0]["statement_short"]
+                       + (ours[0].get("statement_short") or ours[0]["statement"])
                        + (", and the rest are on the pillar's page." if n > 1 else "."))
     if not goals and parked_n:
         # Nothing live to describe, so describe the actual situation rather
@@ -3168,7 +3253,8 @@ def rollup(pillar_id, goals, dormant_decl, pillar_name="", parked_n=0):
         # is on the pillar's own page, which is where somebody looking for it
         # goes. A pillar whose problems are all ours says so plainly instead of
         # handing him a list he cannot act on.
-        reasons = [f"{g['statement_short']} — {g['measured_human']}." for g in yours[:2]]
+        reasons = [f"{g.get('statement_short') or g['statement']} — {g['measured_human']}."
+                   for g in yours[:2]]
         if ours:
             reasons.append(f"{len(ours)} more, all of them ours to fix.")
     elif level == "unassured":
@@ -3204,7 +3290,7 @@ def rollup(pillar_id, goals, dormant_decl, pillar_name="", parked_n=0):
     for g in yours:
         kind = "fire" if g in loud else "watch"
         notes.append({"kind": kind, "pillar": pillar_id,
-                      "text": f"{g['statement_short']} — {g['measured_human']}",
+                      "text": f"{g.get('statement_short') or g['statement']} — {g['measured_human']}",
                       "why_you": ESCALATION_WORDS.get(g["escalation"]["reason"], ""),
                       "href": f"#/pillar/{pillar_id}",
                       "signal_key": g.get("signal_key") or f"{pillar_id}:{g['id']}"})
@@ -3231,7 +3317,8 @@ def rollup(pillar_id, goals, dormant_decl, pillar_name="", parked_n=0):
         "red_count": len(red_blocking) + len(red_other),
         "needs_you": len(yours),
         "ours": len(ours),
-        "escalations": [{"goal": g["id"], "statement_short": g.get("statement_short", ""),
+        "escalations": [{"goal": g["id"],
+                         "statement_short": g.get("statement_short") or g.get("statement", ""),
                          "reason": g["escalation"]["reason"],
                          "days": g["escalation"].get("days")} for g in escalated],
         "assured": assured,
@@ -3914,30 +4001,102 @@ def save_goal(payload):
     if severity not in ("blocking", "important", "watch"):
         severity = "important"
     why = str(payload.get("why_it_matters", "")).strip()
-    short = str(payload.get("statement_short", "")).strip() or statement
+    # Nothing authored describes the failure any more: the line the CEO reads is
+    # composed from the statement, the reading and whoever is holding it. Older
+    # goals keep the sentence they were written with until they are rewritten.
+    short = str(payload.get("statement_short", "")).strip()
     doc = load_json(path)
     gid = str(payload.get("id") or "").strip() or _goal_slug(statement)
     existing = next((g for g in doc["goals"] if g.get("id") == gid), None)
     if existing:
-        existing.update({"statement": statement, "statement_short": short,
-                         "owner": owner, "severity": severity, "why_it_matters": why})
+        existing.update({"statement": statement, "owner": owner,
+                         "severity": severity, "why_it_matters": why})
+        if short:
+            existing["statement_short"] = short
         # Saving a parked goal is how it comes back — that is what "update it
         # rather than drop it" means at the end of the rebuild.
         existing.pop("parked", None)
         existing.pop("parked_on", None)
     else:
         doc["goals"].append({
-            "id": gid, "statement": statement, "statement_short": short,
+            "id": gid, "statement": statement,
             "owner": owner, "severity": severity, "unit": "state",
             "why_it_matters": why,
-            "measure": {"kind": "unchecked",
-                        "reason": "nothing measures this yet",
-                        "would_need": ""},
+            # The page writes the "nothing measures this yet" sentence itself;
+            # a reason here is for saying something more than that.
+            "measure": {"kind": "unchecked", "reason": "", "would_need": ""},
             "path_to_green": {"narrative": "", "owner": owner},
             "history": {"record": False, "chart": False},
         })
     _write_goals(area, doc)
     return {"ok": True, "id": gid, "area": area}
+
+
+def _goal_at(area, gid):
+    if not GOAL_AREA_RE.match(area or ""):
+        return None, None, {"error": "unknown area"}
+    path = os.path.join(GOALS_DIR, area + ".json")
+    if not os.path.isfile(path):
+        return None, None, {"error": "unknown area"}
+    doc = load_json(path)
+    goal = next((g for g in doc["goals"] if g.get("id") == gid), None)
+    if goal is None:
+        return None, None, {"error": "no goal with that name here"}
+    return doc, goal, None
+
+
+def set_commitment(payload):
+    """Who is holding a failing goal and until when. This is what makes a red
+    goal amber: he is waiting on somebody rather than being asked to act. It
+    carries a date on purpose — when the date passes with no update, the goal
+    goes back to being his, which is the only thing that stops amber becoming
+    somewhere failures go to be forgotten. Sending no seat clears it."""
+    doc, goal, err = _goal_at(str(payload.get("area", "")), str(payload.get("id", "")))
+    if err:
+        return err
+    seat = str(payload.get("seat", "")).strip()
+    if not seat:
+        goal.pop("commitment", None)
+    else:
+        if not any(st["id"] == seat for st in load_seats()):
+            return {"error": "no such seat"}
+        until = str(payload.get("until", "")).strip()
+        try:
+            import datetime
+            datetime.date.fromisoformat(until)
+        except ValueError:
+            return {"error": "a commitment needs a date it runs to"}
+        entry = {"seat": seat, "doing": str(payload.get("doing", "")).strip(), "until": until}
+        href = str((payload.get("link") or {}).get("href", "")).strip()
+        if href.startswith(("http://", "https://", "#/")):
+            entry["link"] = {"label": str((payload["link"].get("label") or "See it")).strip()[:40],
+                             "href": href}
+        goal["commitment"] = entry
+    _write_goals(payload["area"], doc)
+    return {"ok": True}
+
+
+def set_pause(payload):
+    """A failure he has accepted, time-boxed, with the reason in his own words —
+    planned downtime, a migration. It reads quiet and says why until its date
+    passes, and then the goal speaks for itself again. Sending no note clears
+    it."""
+    doc, goal, err = _goal_at(str(payload.get("area", "")), str(payload.get("id", "")))
+    if err:
+        return err
+    note = str(payload.get("note", "")).strip()
+    if not note:
+        goal.pop("paused", None)
+    else:
+        until = str(payload.get("until", "")).strip()
+        try:
+            import datetime
+            datetime.date.fromisoformat(until)
+        except ValueError:
+            return {"error": "a pause needs a date it runs to"}
+        goal["paused"] = {"note": note, "until": until}
+    _write_goals(payload["area"], doc)
+    return {"ok": True}
 
 
 def park_goal(payload):
@@ -4616,6 +4775,10 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(400, {"error": "bad JSON"})
         if path == "/api/goal/save":
             return self._send(200, save_goal(payload))
+        if path == "/api/goal/commitment":
+            return self._send(200, set_commitment(payload))
+        if path == "/api/goal/pause":
+            return self._send(200, set_pause(payload))
         if path == "/api/goal/park":
             return self._send(200, park_goal(payload))
         if path == "/api/goal/delete":
