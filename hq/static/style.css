@@ -403,6 +403,12 @@ code.ref { background: #1b1710; border: 1px solid var(--line); border-radius: 6p
 
 /* ---------- sprite editor ---------- */
 .sp-wrap { display: flex; gap: 30px; flex-wrap: wrap; align-items: flex-start; }
+/* The workspace column is capped at the map's width so no label inside it can
+   widen it and knock the side panel down a row. */
+.sp-main { min-width: 0; max-width: 560px; }
+/* One line held open even when empty, so stepping between single-job and
+   many-job cells never shifts the palette and map below. */
+.sp-also { min-height: 18px; margin: 6px 0 0; }
 #sp-canvas { image-rendering: pixelated; border: 1px solid var(--line); border-radius: 8px; cursor: crosshair; outline: none; }
 #sp-canvas:focus { border-color: var(--accent); }
 .sp-controls { display: flex; gap: 10px; align-items: center; margin-top: 12px; flex-wrap: wrap; }

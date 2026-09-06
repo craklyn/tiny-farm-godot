@@ -265,7 +265,7 @@ async function renderSpriteEditor(path) {
     <p class="sub">You are editing <code class="ref">${esc(ent.sheet)}</code>. ${sheetLine}</p>
     <p class="sub">Pencil paints the selected color · eraser (or right-click) makes a pixel transparent · alt-click picks a color from the canvas · arrow keys move to the next cell · Ctrl+Z undoes.</p>
     <div class="sp-wrap">
-      <div>
+      <div class="sp-main">
         <canvas id="sp-canvas" width="${fw * zoom}" height="${fh * zoom}" tabindex="0"></canvas>
         <div class="sp-controls">
           <button id="sp-prev" title="previous cell">◀</button>
@@ -275,6 +275,7 @@ async function renderSpriteEditor(path) {
           <label class="small"><input type="checkbox" id="sp-onion" checked> onion skin</label>
           <button id="sp-undo" class="ghost" title="Ctrl+Z">↩ Undo</button>
         </div>
+        <p class="small muted sp-also" id="sp-also"></p>
         <div class="sp-palette" id="sp-palette"></div>
         <section class="sp-map">
           <h2>Every cell of the sheet</h2>
@@ -357,8 +358,16 @@ async function renderSpriteEditor(path) {
       for (let x = 1; x < w; x++) { ctx.beginPath(); ctx.moveTo(x * zoom + .5, 0); ctx.lineTo(x * zoom + .5, hh * zoom); ctx.stroke(); }
       for (let y = 1; y < hh; y++) { ctx.beginPath(); ctx.moveTo(0, y * zoom + .5); ctx.lineTo(w * zoom, y * zoom + .5); ctx.stroke(); }
     }
+    // The counter carries the cell's first job only; its other jobs go on the
+    // reserved line below, so a many-hatted cell never rewidens the column or
+    // jolts the layout as the cursor steps through frames.
+    const ms = cellClips.get(cur) || [];
+    const named = (ent.frame_names || [])[poolAt.get(cur)];
+    const primary = named || (ms.length ? clipNameOf(ms[0]) : names[cur]);
     document.getElementById("sp-idx").textContent =
-      (names[cur] ? names[cur] + " · " : "") + `cell ${cur + 1} / ${frames.length}`;
+      (primary ? primary + " · " : "") + `cell ${cur + 1} / ${frames.length}`;
+    document.getElementById("sp-also").textContent =
+      (!named && ms.length > 1) ? "also " + ms.slice(1).map(clipNameOf).join(" · ") : "";
     if (curClip.stills && !comp) renderPreview(0);   // a pose preview follows the cursor
     syncMap();
     paintDiff();
