@@ -241,6 +241,17 @@ before the first public build ships.*
   the misalignment the CEO caught in the corner pose. With the tube centred,
   rotation preserves the centerline in all four directions and the elbow was
   re-swept to the centred openings (C=(0,16), R=8).
+- **The critters re-derived, 2026-09-07** — **not generated, $0.00.** The rabbit,
+  kangaroo, songbird, mole and both ants were rebuilt from their archived 64px
+  raws by `tools/rederive_critters.py`, replacing the original averaging
+  downscale (which had smeared features away and invented colors — the shipped
+  ants were red-brown because black ant, green grass and cream backdrop were
+  averaged together). Method: k-centroid downscaling (Astropulse's algorithm —
+  Retro Diffusion's own author) plus a shared per-mob palette snap in OKLab;
+  the hoppers' four hop frames now come from their 8-frame walk GIFs, and the
+  ants are hand-plotted in the basket's tradition (colors read from the raws,
+  legs alternating so the 2-frame gait walks instead of bobbing; the forager
+  carries pea.png's pea). Every mob now holds 3-8 colors.
 - **Raw generations archived, 2026-09-06** — **not generated, $0.00.** Standing policy
   from this date: every generation run's raw API outputs land in `assets/raw/` as a
   dated batch (with their `*_meta.json`) before compositing. The surviving raws from
