@@ -110,7 +110,7 @@
       "owner": "vp-engineering",
       "severity": "blocking",
       "unit": "state",
-      "why_it_matters": "Failed builds block releasing.",
+      "why_it_matters": "Builds failing blocks us releasing.",
       "measure": {
         "kind": "ci_state",
         "field": "newest_completed"

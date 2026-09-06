@@ -166,7 +166,6 @@ function glSitForm(area, g, seats) {
 
 function glRow(area, g, seats, org) {
   const meta = (typeof GOAL_META !== "undefined" && GOAL_META[g.state]) || { dcls: "d-unchecked", word: "" };
-  const sev = (GL_SEVERITY.find(s => s[0] === g.severity) || ["", g.severity || ""])[1].split(" —")[0];
   // Collapsed is the resting state: forty goals open at once is a wall, and
   // the dot and the sentence are all he needs to decide which one to open.
   return `<div class="gl-row" data-area="${esc(area)}" data-id="${esc(g.id)}">
@@ -179,8 +178,7 @@ function glRow(area, g, seats, org) {
       <div class="gl-field"><span class="gl-label">Assigned to</span>${glOwnerLine(seats, org, g.owner)}</div>
       <div class="gl-field"><span class="gl-label">Metric</span>${esc(glMetric(g))}</div>
       <div class="gl-field"><span class="gl-label">Status summary</span>${glStatus(g, org)}</div>
-      <div class="gl-field"><span class="gl-label">Matters</span>${esc(sev)}${
-        g.why_it_matters ? ` — ${esc(g.why_it_matters)}` : ""}</div>
+      <div class="gl-field"><span class="gl-label">Description</span>${esc(g.why_it_matters || "")}</div>
       ${glSituating === area + ":" + g.id
         ? glSitForm(area, g, seats)
         : `<div class="gl-detail-btns">
