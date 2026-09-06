@@ -331,6 +331,13 @@ func _load_textures() -> void:
 	# thing she can see. Closed and open gates are different pictures, because
 	# "closed became open" is the cheapest celebration in the game.
 	tile_regions["obstacle_tree"] = Rect2(3 * 16, 0, 16, 16)
+	# Q-50's chips (2026-09-07): the stages a multi-beat clear shrinks an
+	# obstacle through, one per landed impact (tools/gen_obstacle_chips.py).
+	_chip_regions = {
+		"clear_rock": [Rect2(0, 0, 16, 16), Rect2(8 * 16, 0, 16, 16), Rect2(9 * 16, 0, 16, 16)],
+		"clear_log":  [Rect2(1 * 16, 0, 16, 16), Rect2(10 * 16, 0, 16, 16)],
+		"clear_tree": [Rect2(3 * 16, 0, 16, 16), Rect2(11 * 16, 0, 16, 16), Rect2(12 * 16, 0, 16, 16)],
+	}
 	tile_regions[WorldLayout.FENCE] = Rect2(4 * 16, 0, 16, 16)
 	tile_regions[WorldLayout.HEDGE] = Rect2(5 * 16, 0, 16, 16)
 	tile_regions[WorldLayout.GATE_CLOSED] = Rect2(6 * 16, 0, 16, 16)
@@ -730,6 +737,42 @@ const WET_RAIN_MS := 3000.0  # [Playtest] rain and the sprinkler: a slow soak
 const WET_CAN_MS := 1000.0   # [Playtest] the watering can: ~1/3 the soak
 var _wetting: Dictionary = {}  # Vector2i -> { "t": start msec (-1 waits for release_tile_look), "ms": duration }
 
+# --- Q-50's other half: the obstacle a multi-beat clear is still chopping -----
+#
+# The sim clears the tile at the tap (D-8 — nothing gates apply_action), but the
+# swing has beats left, so without this the rock vanished on the first chop and
+# the farmer mimed the rest at bare ground. Reported 2026-09-07: "animate the
+# boulder and wood being reduced over each impact, to indicate why three hits
+# occur." The farm keeps drawing the obstacle, one chip stage smaller per landed
+# beat, until the last chop. Presentation only, on the wall clock like the
+# wetting soak; a renderer that never animates draws nothing extra. Any actor
+# whose clears perform beats gets the same treatment by calling the same note.
+var _chipping: Dictionary = {}   # Vector2i -> { "verb", "beats", "t0", "ms" }
+var _chip_regions: Dictionary = {}
+
+
+func note_clear_performance(t: Vector2i, verb: String, beats: int, beat_ms: int) -> void:
+	if not _chip_regions.has(verb) or beats < 2:
+		return
+	_chipping[t] = { "verb": verb, "beats": beats,
+		"t0": float(Time.get_ticks_msec()), "ms": float(beat_ms) }
+
+
+# The region to draw for a mid-clear tile right now, or a zero rect once the
+# last beat has landed (the entry erases itself on expiry). Impact one has
+# already landed when the entry is made, so the first stage shown is the first
+# chip, and the smallest stage holds through the final beat's wind-up.
+func chip_region(t: Vector2i) -> Rect2:
+	if not _chipping.has(t):
+		return Rect2()
+	var e: Dictionary = _chipping[t]
+	var k := int((float(Time.get_ticks_msec()) - e["t0"]) / e["ms"])
+	if k >= int(e["beats"]):
+		_chipping.erase(t)
+		return Rect2()
+	var stages: Array = _chip_regions.get(e["verb"], [])
+	return stages[mini(k + 1, stages.size() - 1)]
+
 
 func _start_wetting(t: Vector2i, ms: float) -> void:
 	# A soak restarted mid-pour (rain-soaked ground watered by hand) continues
@@ -1069,6 +1112,16 @@ func _draw() -> void:
 					render_queue.append({
 						"y": py,
 						"draw": func(): draw_texture_rect_region(sheet, ob_rect, region)
+					})
+			elif _chipping.has(Vector2i(tx, ty)):
+				# The tile is already cleared in the sim, but the clear's beats
+				# are still landing — draw what is left of the obstacle (Q-50).
+				var chip := chip_region(Vector2i(tx, ty))
+				if chip.size.x > 0:
+					var chip_rect := _react_rect(px, py, k, TILE_SIZE, shake)
+					render_queue.append({
+						"y": py,
+						"draw": func(): draw_texture_rect_region(biomes_texture, chip_rect, chip)
 					})
 
 			# Queue crops

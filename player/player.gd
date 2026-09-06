@@ -788,6 +788,10 @@ func _execute_resolved_action(pa: Dictionary) -> void:
 		for i in range(1, beats):
 			get_tree().create_timer(ACTION_DURATION * i).timeout.connect(
 				_chop_beat.bind(target_t))
+		# The obstacle keeps standing on screen, one chip smaller per beat, so
+		# the beats explain themselves (Q-50's other half, 2026-09-07).
+		if beats > 1 and farm != null:
+			farm.note_clear_performance(target_t, action, beats, int(ACTION_DURATION * 1000.0))
 	elif action == "till":
 		AudioManager.play_sfx("till")
 		_emit_particles("dirt", target_t)

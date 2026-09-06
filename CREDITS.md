@@ -256,6 +256,12 @@ before the first public build ships.*
   derivation, because single-pixel anatomy cannot survive statistical
   downscaling: the rabbit's eyes restored in hop frames 3-4, and eyes and a pink
   nose for the emerging and surfaced mole, whose derived cells read as blobs.
+- **The obstacles' chip stages, 2026-09-07** — **not generated, $0.00.** Cells 8-12
+  of `obstacles.png`, derived by `tools/gen_obstacle_chips.py`: each stage is the
+  base rock, log or tree k-centroid-shrunk and re-seated on its ground line, so a
+  multi-beat clear (Q-50 — a log is two chops, a rock or tree three) visibly
+  reduces the obstacle with every landed impact instead of vanishing it at the
+  first swing. Drawn by the farm's clear performance, presentation only.
 - **Raw generations archived, 2026-09-06** — **not generated, $0.00.** Standing policy
   from this date: every generation run's raw API outputs land in `assets/raw/` as a
   dated batch (with their `*_meta.json`) before compositing. The surviving raws from

@@ -154,6 +154,7 @@ func _init() -> void:
 	test_rain_on_ripe_soil()
 	test_ground_holds_until_black()
 	test_wetness_soaks_in()
+	test_clear_chips_the_obstacle()
 	test_parcel_introduction_pick()
 	test_parcel_scatter()
 	test_machines()
@@ -9493,6 +9494,36 @@ func test_ground_holds_until_black() -> void:
 # soak timer. Rain and sprinklers soak slow (~3s), the watering can pours fast
 # (~1/3 the duration), both [Playtest] constants. Asserted headless: the timers
 # and their bookkeeping are data; only the blend itself needs a viewport.
+# Q-50's other half (2026-09-07: "animate the boulder and wood being reduced
+# over each impact, to indicate why three hits occur"): the sim clears at the
+# tap, so the farm keeps drawing the obstacle, one chip stage smaller per
+# landed beat, until the last chop.
+func test_clear_chips_the_obstacle() -> void:
+	print("\n--- Q-50: a multi-beat clear chips the obstacle down ---")
+	var farm = load("res://world/farm.gd").new()
+	farm.generate_on_ready = false
+	farm._load_textures()
+
+	var t := Vector2i(4, 4)
+	farm.note_clear_performance(t, "clear_rock", 3, 350)
+	_assert(farm.chip_region(t) == farm._chip_regions["clear_rock"][1],
+		"the first impact has landed, so the rock draws its first chip stage")
+	farm._chipping[t]["t0"] -= 350.0
+	_assert(farm.chip_region(t) == farm._chip_regions["clear_rock"][2],
+		"the second beat shows the second chip")
+	farm._chipping[t]["t0"] -= 350.0
+	_assert(farm.chip_region(t) == farm._chip_regions["clear_rock"][2],
+		"the smallest stage holds through the final beat's wind-up")
+	farm._chipping[t]["t0"] -= 350.0
+	_assert(farm.chip_region(t) == Rect2() and not farm._chipping.has(t),
+		"and the last chop finishes it — the entry erases itself")
+
+	# A one-beat weed never performs: there is nothing to explain.
+	farm.note_clear_performance(t, "clear_weed", 1, 350)
+	_assert(not farm._chipping.has(t), "a single-chop clear draws no chips")
+	farm.free()
+
+
 func test_wetness_soaks_in() -> void:
 	print("\n--- Q-52: wetness soaks in (rain slow, can fast) ---")
 
