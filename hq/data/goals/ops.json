@@ -64,55 +64,6 @@
       },
       "parked": true,
       "parked_on": "2026-09-05"
-    },
-    {
-      "id": "a-player-can-reach-us",
-      "statement": "A player who hits a bug has somewhere to send it.",
-      "statement_short": "a player who hits a bug has nowhere to send it",
-      "owner": "fatima",
-      "severity": "important",
-      "unit": "",
-      "why_it_matters": "One build is public and the store page names no contact of any kind. The first thing a first player would tell us is the one thing we cannot hear.",
-      "measure": {
-        "kind": "file_grep",
-        "label": "the store page names a way to reach us",
-        "paths": [
-          "ITCH_PAGE.md"
-        ],
-        "exts": [
-          ".md"
-        ],
-        "pattern": "(?i)(contact|email|@|report a bug|get in touch)",
-        "expect": "present",
-        "field": "bool",
-        "says_true": "the store page names a way to reach us",
-        "says_false": "the store page names no contact of any kind"
-      },
-      "compare": {
-        "direction": "must_be_true"
-      },
-      "path_to_green": {
-        "narrative": "Itch comments, an email alias, or a plain line saying there is nowhere — all three are fine. Only the omission is not, and it is a public promise about your own time, so it is yours to make.",
-        "route": {
-          "kind": "work",
-          "id": "w480dd57cbbd"
-        },
-        "owner": "fatima",
-        "ceo_blocker": {
-          "kind": "ruling",
-          "surface": {
-            "kind": "none"
-          },
-          "consequence": "[Player Update 1](#/program) — the next public release — goes out with no way for players to reply, and we learn nothing from whoever plays it.",
-          "waiting_since": "2026-09-03"
-        }
-      },
-      "history": {
-        "record": false,
-        "chart": false
-      },
-      "parked": true,
-      "parked_on": "2026-09-05"
     }
   ],
   "scoreboard_title": "Money, obligations, and players"

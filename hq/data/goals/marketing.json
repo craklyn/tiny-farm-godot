@@ -9,44 +9,6 @@
     "dormant": "Dormant. {dormant_reason}",
     "nothing_for_you": "Nothing here needs you. {ours_line}"
   },
-  "goals": [
-    {
-      "id": "store-copy-describes-this-build",
-      "statement": "The store page describes the game we have, not the one we had at the last release.",
-      "statement_short": "the store page has never mentioned most of what the game now does",
-      "owner": "carmen",
-      "severity": "important",
-      "unit": "features the page has never mentioned",
-      "why_it_matters": "Marketing owns the one page outsiders can see, and it is the page that goes stale fastest — the build gains something a player would notice most weeks, and the page only changes when somebody rewrites it. The page used to promise 'no menus to learn and no words to read', which is a claim about phase 1's farming loop (S-7 binds the core loop, and only phase 1) made about a whole game whose later phases run to programmable bots and will need words by design. It now promises no reading to farm, which is what the build actually does. Keeping that true as the build moves is the standing job.",
-      "measure": {
-        "kind": "copy_drift",
-        "release": "update-1",
-        "path": "ITCH_PAGE.md",
-        "unit": "features the page has never mentioned"
-      },
-      "compare": {
-        "direction": "lower_is_better",
-        "target": 0,
-        "amber_at": 3
-      },
-      "path_to_green": {
-        "narrative": "Rewrite the page against what the build now does. Every feature listed here is a candidate, not a claim — check each one against what a player can actually reach before it goes on the page, and keep the wordless promise scoped to the farming loop rather than to the whole game.",
-        "route": {
-          "kind": "none"
-        },
-        "owner": "carmen"
-      },
-      "history": {
-        "record": true,
-        "chart": false
-      },
-      "escalates": {
-        "reason": "external_commitment",
-        "because": "The store page is the only description of this game that people outside the studio read, and it is currently promising them something the build does not do."
-      },
-      "parked": true,
-      "parked_on": "2026-09-05"
-    }
-  ],
+  "goals": [],
   "scoreboard_title": "Every marketing goal, worst first"
 }

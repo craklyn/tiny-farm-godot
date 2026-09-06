@@ -11,17 +11,16 @@
   },
   "goals": [
     {
-      "id": "determinism-invariants",
-      "statement": "The rules that keep replays reproducible still hold in the code.",
-      "statement_short": "a rule that keeps replays reproducible is broken in the code",
-      "owner": "elena",
+      "id": "games-deterministically-replayable",
+      "statement": "Games deterministically replayable",
+      "owner": "vp-engineering",
       "severity": "blocking",
       "unit": "rules",
-      "why_it_matters": "Recorded sessions are the training data phase 4 runs on. A break here is silent until bot training fails, which is the worst possible time to find out.",
+      "why_it_matters": "Recorded games are the training data phase 4 runs on. A break here is silent until bot training fails, which is the worst possible time to find out.",
       "measure": {
         "kind": "composite",
         "op": "all_of",
-        "label": "three determinism rules",
+        "label": "the rules that keep a replay reproducible, and whether the recorded games still replay",
         "members": [
           {
             "kind": "file_grep",
@@ -76,6 +75,16 @@
             "compare": {
               "direction": "must_be_true"
             }
+          },
+          {
+            "kind": "playtest_metric",
+            "select": "all_with_trace",
+            "metric": "build_resolvable_ratio",
+            "label": "recorded games that can still be tied to the build that made them",
+            "compare": {
+              "direction": "higher_is_better",
+              "target": 1.0
+            }
           }
         ]
       },
@@ -87,48 +96,12 @@
         "route": {
           "kind": "none"
         },
-        "owner": "elena"
+        "owner": "vp-engineering"
       },
       "history": {
         "record": true,
         "chart": false
-      },
-      "parked": true,
-      "parked_on": "2026-09-05"
-    },
-    {
-      "id": "replay-corpus-usable",
-      "statement": "Recorded sessions can still be tied to the build that produced them.",
-      "statement_short": "most recorded sessions can no longer be tied to any build",
-      "owner": "grace",
-      "severity": "important",
-      "unit": "ratio",
-      "why_it_matters": "A session whose build is unresolvable cannot be replayed or scored. It is evidence that has quietly stopped being evidence.",
-      "measure": {
-        "kind": "playtest_metric",
-        "select": "all_with_trace",
-        "metric": "build_resolvable_ratio"
-      },
-      "compare": {
-        "direction": "higher_is_better",
-        "target": 1.0,
-        "amber_at": 0.8
-      },
-      "path_to_green": {
-        "narrative": "One fresh session on the tablet, from a build with nothing uncommitted in it, fixes this — the same sitting Product needs to show a first-time player finds the cot on their own.",
-        "route": {
-          "kind": "project",
-          "id": "replay-phase-b"
-        },
-        "owner": "wei"
-      },
-      "history": {
-        "record": true,
-        "chart": false
-      },
-      "signal_key": "fresh-session",
-      "parked": true,
-      "parked_on": "2026-09-05"
+      }
     },
     {
       "id": "build-branch-builds-green",
