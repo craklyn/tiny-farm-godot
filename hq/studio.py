@@ -188,6 +188,8 @@ def describe(rec):
     where = f" ({', '.join(named[:4])})" if named else ""
     bits.append(f"{what}: {px} pixel{'s' if px != 1 else ''} across "
                 f"{n} frame{'s' if n != 1 else ''}{where}.")
+    if d.get("anims"):
+        bits.append("The change shows up in: " + ", ".join(d["anims"][:8]) + ".")
     if d.get("colors_added"):
         fresh = d.get("new_to_sheet") or []
         tail = (" (all already used on this sheet)" if not fresh

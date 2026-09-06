@@ -119,11 +119,36 @@ async function renderSpriteEditor(path) {
   }
   const cellAt = (x, y) => Math.floor(y / cellH) * cols + Math.floor(x / cellW);
 
-  // Which cell each catalogue frame lands on, in animation order. Composites
-  // reference the catalogue's frame indices, so this doubles as their lookup.
-  const animCells = ent.frames.map(f => cellAt(f[0], f[1]));
-  const animOrder = new Map();   // cell index -> its first position in the cycle
-  animCells.forEach((c, i) => { if (!animOrder.has(c)) animOrder.set(c, i); });
+  // Which cell each catalogue frame lands on. Composites reference the
+  // catalogue's frame indices, so this doubles as their lookup.
+  const catCells = ent.frames.map(f => cellAt(f[0], f[1]));
+
+  /* The catalogue's frame list is the pool of cells this entity draws from; its
+     animations (ent.anims) are named, ordered references into that pool — so one
+     cell can sit in several animations (the walk's first frame is also the
+     standing idle) without being stored twice. An entity that declares no anims
+     gets one implicit clip, the frame list itself at the catalogue's rate, which
+     is exactly every entity's behaviour before anims existed. A clip marked
+     "stills" is a set of poses or variants, not a cycle — it never plays. */
+  const clips = ((ent.anims && ent.anims.length) ? ent.anims : [{
+    id: "cycle", label: ent.frames.length > 1 ? "animation" : ent.name,
+    frames: ent.frames.map((_, i) => i), fps: ent.fps,
+  }]).map(a => ({
+    id: a.id, label: a.label || a.id,
+    cells: (a.frames || []).map(fi => catCells[fi]).filter(c => c !== undefined),
+    fps: a.fps || ent.fps || 4,
+    stills: a.kind === "stills",
+  }));
+  let curClip = clips[0];
+
+  // cell -> the clips it appears in, with its first position in each. Computed,
+  // never stored: an inverse kept in the data would drift from the truth.
+  const cellClips = new Map();
+  clips.forEach(cl => cl.cells.forEach((c, p) => {
+    if (!cellClips.has(c)) cellClips.set(c, []);
+    const at = cellClips.get(c);
+    if (!at.some(e => e.clip === cl)) at.push({ clip: cl, pos: p });
+  }));
 
   // Cells other entities are drawn from. Sheets are shared, and an entity drawn
   // at another cell size can straddle this grid, so a frame claims every cell
@@ -160,29 +185,45 @@ async function renderSpriteEditor(path) {
   });
 
   // A name for every cell, used by the map, the frame counter and the record of
-  // what an edit changed — so a saved edit says "Crow frame 1", not "frame 10".
+  // what an edit changed — so a saved edit says "walk up 2", not "frame 10". A
+  // cell in several animations carries all of its jobs: "walk down 1 · standing
+  // idle". An explicit frame_names entry (the sprinkler's "spraying") wins.
+  const poolAt = new Map();   // cell -> first catalogue frame index landing on it
+  catCells.forEach((c, k) => { if (!poolAt.has(c)) poolAt.set(c, k); });
+  const clipNameOf = m => {
+    const one = m.clip.cells.length === 1;
+    return one ? m.clip.label
+      : clips.length > 1 ? `${m.clip.label} ${m.pos + 1}`
+      : ent.frames.length > 1 ? `frame ${m.pos + 1}` : ent.name;
+  };
   const names = rects.map((_, i) => {
-    if (animOrder.has(i)) {
-      const k = animOrder.get(i);
-      return (ent.frame_names || [])[k] || (ent.frames.length > 1 ? `frame ${k + 1}` : ent.name);
-    }
+    const named = (ent.frame_names || [])[poolAt.get(i)];
+    if (named) return named;
+    const ms = cellClips.get(i);
+    if (ms) return ms.map(clipNameOf).join(" · ");
     const cl = claims.get(i);
     if (cl) return cl.map(c => c.of > 1 ? `${c.name} frame ${c.k}` : c.name).join(", ");
     return `row ${Math.floor(i / cols) + 1}, column ${i % cols + 1}`;
   });
-  const cellKind = i => animOrder.has(i) ? "anim"
+  const cellKind = i => cellClips.has(i) ? "anim"
     : claims.has(i) ? "other"
     : frames[i].ink ? "stray" : "blank";
   const cellTag = i => {
     const k = cellKind(i);
-    return k === "stray" ? "not listed" : k === "blank" ? "empty" : names[i];
+    if (k === "stray") return "not listed";
+    if (k === "blank") return "empty";
+    // The tag under a small thumbnail gets the cell's first job; the full list
+    // lives in the tooltip and the counter under the canvas.
+    const ms = cellClips.get(i);
+    if (ms && !(ent.frame_names || [])[poolAt.get(i)]) return clipNameOf(ms[0]);
+    return names[i];
   };
 
   const countOf = k => frames.reduce((n, _, i) => n + (cellKind(i) === k ? 1 : 0), 0);
   const nAnim = countOf("anim"), nOther = countOf("other");
   const nStray = countOf("stray"), nBlank = countOf("blank");
   const others = [];
-  claims.forEach((v, i) => { if (!animOrder.has(i)) v.forEach(e => { if (!others.some(o => o.id === e.id)) others.push(e); }); });
+  claims.forEach((v, i) => { if (!cellClips.has(i)) v.forEach(e => { if (!others.some(o => o.id === e.id)) others.push(e); }); });
   const otherLinks = others.map(o =>
     `<a class="plain" href="#/entity/${esc(o.gid)}/${esc(o.id)}">${esc(o.name)}</a>`);
   const listNames = ns => ns.length <= 1 ? (ns[0] || "")
@@ -198,7 +239,7 @@ async function renderSpriteEditor(path) {
 
   const sheetColors = spSheetColors(img);   // baseline for "new to this sheet"
   let lastDiff = { frames: [], pixels: 0, colors_added: [], colors_removed: [], new_to_sheet: [] };
-  let cur = animCells.length ? animCells[0] : 0;
+  let cur = curClip.cells.length ? curClip.cells[0] : 0;
   let playing = false, onion = true, dirty = false;
   let color = null; // null = eraser
   const ERASER = "__eraser__";
@@ -241,12 +282,16 @@ async function renderSpriteEditor(path) {
         </section>
       </div>
       <div class="sp-side">
-        <h2 style="margin-top:0">Live preview</h2>
+        ${clips.length > 1 ? `<h2 style="margin-top:0">Animations</h2>
+        <p class="small muted">Everything this sheet animates. Pick one to preview it and edit its
+        frames — a dot marks the ones your unsaved edits touch.</p>
+        <div class="sp-clips" id="sp-clips"></div>` : ""}
+        <h2 ${clips.length > 1 ? "" : `style="margin-top:0"`}>Live preview</h2>
         <div class="sp-previews">
           <figure><canvas id="sp-before" width="${pvW}" height="${pvH}"></canvas><figcaption>before</figcaption></figure>
           <figure><canvas id="sp-preview" width="${pvW}" height="${pvH}"></canvas><figcaption>after (your edits)</figcaption></figure>
         </div>
-        <p class="small muted">${comp
+        <p class="small muted" id="sp-pv-note">${comp
           ? "Assembled the way the game renderer builds this creature — parts placed, rotated, and joined, with your edits live on the right."
           : "Both loop in sync at the game's own rate — before is the sheet as it was when you opened the editor."}</p>
         <h2>Save</h2>
@@ -295,12 +340,14 @@ async function renderSpriteEditor(path) {
       ctx.fillStyle = (x + y) % 2 ? "#221c13" : "#2a2318";
       ctx.fillRect(x * zoom, y * zoom, zoom, zoom);
     }
-    // On a cell that animates, the ghost is the frame the eye saw a moment
-    // earlier in the cycle; anywhere else on the sheet it is the cell to the left.
+    // On a cell of the selected animation, the ghost is the frame the eye saw a
+    // moment earlier in that animation (for a set of poses, the neighbouring
+    // pose — the stance to stay consistent with); anywhere else on the sheet it
+    // is the cell to the left.
     if (onion && frames.length > 1 && !playing) {
-      const k = animCells.indexOf(cur);
-      const prev = (k >= 0 && animCells.length > 1)
-        ? animCells[(k - 1 + animCells.length) % animCells.length]
+      const k = curClip.cells.indexOf(cur);
+      const prev = (k >= 0 && curClip.cells.length > 1)
+        ? curClip.cells[(k - 1 + curClip.cells.length) % curClip.cells.length]
         : (cur - 1 + frames.length) % frames.length;
       if (prev !== cur) blit(frames[prev], ctx, zoom, 0.28);
     }
@@ -312,6 +359,7 @@ async function renderSpriteEditor(path) {
     }
     document.getElementById("sp-idx").textContent =
       (names[cur] ? names[cur] + " · " : "") + `cell ${cur + 1} / ${frames.length}`;
+    if (curClip.stills && !comp) renderPreview(0);   // a pose preview follows the cursor
     syncMap();
     paintDiff();
   };
@@ -322,6 +370,12 @@ async function renderSpriteEditor(path) {
     const box = document.getElementById("sp-diff");
     if (!box) return;
     lastDiff = spComputeDiff(frames, names, sheetColors);
+    // Which animations those cells sit in — a cell shared between the walk and
+    // the idle marks both, because both are what the player will see change.
+    lastDiff.anims = clips.length > 1
+      ? clips.filter(cl => lastDiff.frames.some(f => cl.cells.includes(f.index))).map(cl => cl.label)
+      : [];
+    syncClipBadges();
     const d = lastDiff;
     if (!d.frames.length) {
       box.className = "sp-diff";
@@ -335,6 +389,7 @@ async function renderSpriteEditor(path) {
     box.className = "sp-diff live";
     box.innerHTML = `
       <div class="sp-diff-head">${d.pixels} pixel${d.pixels === 1 ? "" : "s"} · ${esc(where)}</div>
+      ${d.anims.length ? `<div class="sp-diff-row">▶ Shows up in ${esc(listNames(d.anims))}.</div>` : ""}
       <div class="sp-diff-row">${moved
         ? "✏️ The silhouette moved — the shape changed, not just the shading."
         : "🎨 Interior shading only — the silhouette is untouched."}</div>
@@ -349,7 +404,7 @@ async function renderSpriteEditor(path) {
   const drawAssembled = (dctx, canvas, useOrig) => {
     dctx.clearRect(0, 0, canvas.width, canvas.height);
     comp.forEach(c => {
-      const f = frames[animCells[c.f]];
+      const f = frames[catCells[c.f]];
       const [, , w, hh] = f.rect;
       tmp.width = w; tmp.height = hh;
       tctx.putImageData(useOrig ? f.orig : f.data, 0, 0);
@@ -361,30 +416,41 @@ async function renderSpriteEditor(path) {
       dctx.restore();
     });
   };
-  // The preview and Play run the animation — the cells the catalogue lists, in
-  // its order — while the canvas can be on any cell of the sheet.
+  // The preview and Play run the selected animation, while the canvas can be on
+  // any cell of the sheet. A stills clip has no cycle to run: its preview holds
+  // the pose under the cursor (or its first, when the cursor is elsewhere).
   const renderPreview = i => {
     if (comp) { drawAssembled(pctx, pv, false); drawAssembled(bctx, bv, true); return; }
-    const f = frames[animCells[i % animCells.length]];
+    const f = curClip.stills
+      ? frames[curClip.cells.includes(cur) ? cur : curClip.cells[0]]
+      : frames[curClip.cells[i % curClip.cells.length]];
     pctx.clearRect(0, 0, pv.width, pv.height);
     blit(f, pctx, 3, 1);
     bctx.clearRect(0, 0, bv.width, bv.height);
     blit(f, bctx, 3, 1, true);
   };
   let pvi = 0;
-  if (!comp) animators.push(setInterval(() => { pvi = (pvi + 1) % animCells.length; renderPreview(pvi); }, 1000 / (ent.fps || 4)));
-  renderPreview(0);
+  let pvTimer = null;
+  const startPreview = () => {
+    if (pvTimer) { clearInterval(pvTimer); pvTimer = null; }
+    pvi = 0;
+    if (!comp && !curClip.stills && curClip.cells.length > 1) {
+      pvTimer = setInterval(() => { pvi = (pvi + 1) % curClip.cells.length; renderPreview(pvi); }, 1000 / curClip.fps);
+      animators.push(pvTimer);
+    }
+    renderPreview(0);
+  };
 
   let playTimer = null;
   const setPlaying = p => {
-    playing = p && animCells.length > 1;
+    playing = p && !curClip.stills && curClip.cells.length > 1;
     document.getElementById("sp-play").textContent = playing ? "⏸ Pause" : "▶ Play";
     if (playTimer) { clearInterval(playTimer); playTimer = null; }
     if (playing) {
-      let k = Math.max(0, animCells.indexOf(cur));
+      let k = Math.max(0, curClip.cells.indexOf(cur));
       playTimer = setInterval(() => {
-        k = (k + 1) % animCells.length; cur = animCells[k]; render();
-      }, 1000 / (ent.fps || 4));
+        k = (k + 1) % curClip.cells.length; cur = curClip.cells[k]; render();
+      }, 1000 / curClip.fps);
       animators.push(playTimer);
     }
     render();
@@ -423,6 +489,95 @@ async function renderSpriteEditor(path) {
     bar.appendChild(picker);
   };
 
+  /* ---------- the animation list ----------
+     Every animation this entity has, each previewing live, each badged the
+     moment an unsaved edit touches one of its frames — including edits made
+     through another animation that shares the frame. Picking one scopes the
+     featured preview, the Play button and the onion skin to it. */
+
+  const clipTimers = [];
+  const buildClips = () => {
+    const box = document.getElementById("sp-clips");
+    if (!box) return;
+    while (clipTimers.length) clearInterval(clipTimers.pop());
+    box.replaceChildren();
+    const ts = Math.max(1, Math.min(3, Math.floor(34 / Math.max(cellW, cellH))));
+    clips.forEach(cl => {
+      const meta = cl.stills
+        ? (cl.cells.length === 1 ? "one pose" : `${cl.cells.length} poses`)
+        : `${cl.cells.length} frames · ${cl.fps} fps`;
+      const row = h(`<button class="sp-clip" type="button">
+        <canvas width="${cellW * ts}" height="${cellH * ts}"></canvas>
+        <span class="sp-clip-name">${esc(cl.label)}<small>${esc(meta)}</small></span>
+        <i class="sp-clip-dot" title="your unsaved edits touch this animation"></i></button>`).firstElementChild;
+      row.addEventListener("click", () => selectClip(cl, true));
+      box.appendChild(row);
+      const t = row.querySelector("canvas").getContext("2d");
+      t.imageSmoothingEnabled = false;
+      let k = 0;
+      const draw = () => {
+        t.clearRect(0, 0, cellW * ts, cellH * ts);
+        blit(frames[cl.cells[k % cl.cells.length]], t, ts, 1);
+      };
+      draw();
+      cl.redraw = draw;
+      if (!cl.stills && cl.cells.length > 1) {
+        const timer = setInterval(() => { k++; draw(); }, 1000 / cl.fps);
+        clipTimers.push(timer); animators.push(timer);
+      }
+    });
+    syncClips();
+  };
+  function syncClips() {
+    const box = document.getElementById("sp-clips");
+    if (!box) return;
+    box.querySelectorAll(".sp-clip").forEach((b, i) => b.classList.toggle("cur", clips[i] === curClip));
+  }
+  // Hoisted: paintDiff calls it on every stroke.
+  function syncClipBadges() {
+    const box = document.getElementById("sp-clips");
+    if (!box) return;
+    box.querySelectorAll(".sp-clip").forEach((b, i) =>
+      b.classList.toggle("edited", (lastDiff.anims || []).includes(clips[i].label)));
+  }
+  const repaintClipThumbs = () => {
+    (cellClips.get(cur) || []).forEach(m => { if (m.clip.redraw) m.clip.redraw(); });
+  };
+
+  const playBtn = document.getElementById("sp-play");
+  const syncPlayBtn = () => {
+    const single = curClip.cells.length < 2;
+    playBtn.disabled = single || curClip.stills;
+    playBtn.title = curClip.stills && !single ? "Poses, not a cycle — there is nothing to play."
+      : single ? `${ent.name} is drawn from a single frame, so there is nothing to play.` : "";
+  };
+
+  const selectClip = (cl, jump) => {
+    if (playing) setPlaying(false);
+    curClip = cl;
+    if (jump && cl.cells.length && !cl.cells.includes(cur)) cur = cl.cells[0];
+    syncClips();
+    syncPlayBtn();
+    startPreview();
+    const note = document.getElementById("sp-pv-note");
+    if (note && !comp) {
+      note.textContent = cl.stills
+        ? (cl.cells.length > 1
+          ? "Poses, not a cycle — the preview holds the pose under your cursor. Before is the sheet as it was when you opened the editor."
+          : "A single pose — before is the sheet as it was when you opened the editor.")
+        : "Both loop in sync at the game's own rate — before is the sheet as it was when you opened the editor.";
+    }
+    render();
+  };
+
+  // Moving to a cell outside the selected animation follows it there, so the
+  // onion skin and preview always describe the animation the cursor is in.
+  const followCur = () => {
+    if (curClip.cells.includes(cur)) return;
+    const ms = cellClips.get(cur);
+    if (ms && ms.length && ms[0].clip !== curClip) selectClip(ms[0].clip, false);
+  };
+
   /* ---------- the map of the sheet ----------
      The sheet as it actually is, cell by cell, each one labelled with what it
      is: a frame of this animation, a cell another entity is drawn from, art
@@ -449,7 +604,7 @@ async function renderSpriteEditor(path) {
       const b = h(`<button class="sp-cell ${cellKind(i)}" type="button" title="${esc(names[i])}">
         <canvas width="${w * thumbZoom}" height="${hh * thumbZoom}"></canvas>
         <span class="sp-cell-tag">${esc(cellTag(i))}</span></button>`).firstElementChild;
-      b.addEventListener("click", () => { cur = i; render(); cv.focus(); });
+      b.addEventListener("click", () => { cur = i; followCur(); render(); cv.focus(); });
       box.appendChild(b);
       thumbs[i] = b.querySelector("canvas");
       paintThumb(i);
@@ -460,7 +615,10 @@ async function renderSpriteEditor(path) {
   function syncMap() {
     const box = document.getElementById("sp-cells");
     if (!box) return;
-    box.querySelectorAll(".sp-cell").forEach((b, i) => b.classList.toggle("cur", i === cur));
+    box.querySelectorAll(".sp-cell").forEach((b, i) => {
+      b.classList.toggle("cur", i === cur);
+      b.classList.toggle("inclip", clips.length > 1 && curClip.cells.includes(i));
+    });
     paintThumb(cur);
   }
 
@@ -487,7 +645,7 @@ async function renderSpriteEditor(path) {
   const doUndo = () => {
     const f = frames[cur];
     const prev = f.undo.pop();
-    if (prev) { f.data.data.set(prev); render(); renderPreview(pvi); }
+    if (prev) { f.data.data.set(prev); render(); renderPreview(pvi); repaintClipThumbs(); }
   };
 
   let stroke = null; // "paint" | "erase" while mouse is down
@@ -504,30 +662,25 @@ async function renderSpriteEditor(path) {
     pushUndo();
     stroke = ev.button === 2 ? "erase" : "paint";
     putPixel(p[0], p[1], stroke === "erase");
-    render(); renderPreview(pvi);
+    render(); renderPreview(pvi); repaintClipThumbs();
   });
   cv.addEventListener("mousemove", ev => {
     if (!stroke) return;
     const p = pixAt(ev);
     if (!p) return;
     putPixel(p[0], p[1], stroke === "erase");
-    render(); renderPreview(pvi);
+    render(); renderPreview(pvi); repaintClipThumbs();
   });
   window.addEventListener("mouseup", () => { stroke = null; });
   cv.addEventListener("keydown", ev => {
-    if (ev.key === "ArrowRight") { cur = (cur + 1) % frames.length; render(); }
-    else if (ev.key === "ArrowLeft") { cur = (cur - 1 + frames.length) % frames.length; render(); }
+    if (ev.key === "ArrowRight") { cur = (cur + 1) % frames.length; followCur(); render(); }
+    else if (ev.key === "ArrowLeft") { cur = (cur - 1 + frames.length) % frames.length; followCur(); render(); }
     else if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === "z") { ev.preventDefault(); doUndo(); }
   });
 
-  document.getElementById("sp-next").addEventListener("click", () => { cur = (cur + 1) % frames.length; render(); cv.focus(); });
-  document.getElementById("sp-prev").addEventListener("click", () => { cur = (cur - 1 + frames.length) % frames.length; render(); cv.focus(); });
-  const playBtn = document.getElementById("sp-play");
+  document.getElementById("sp-next").addEventListener("click", () => { cur = (cur + 1) % frames.length; followCur(); render(); cv.focus(); });
+  document.getElementById("sp-prev").addEventListener("click", () => { cur = (cur - 1 + frames.length) % frames.length; followCur(); render(); cv.focus(); });
   playBtn.addEventListener("click", () => setPlaying(!playing));
-  if (animCells.length < 2) {
-    playBtn.disabled = true;
-    playBtn.title = `${ent.name} is drawn from a single frame, so there is nothing to play.`;
-  }
   document.getElementById("sp-onion").addEventListener("change", ev => { onion = ev.target.checked; render(); });
   document.getElementById("sp-undo").addEventListener("click", doUndo);
   document.getElementById("sp-revert").addEventListener("click", () => route());
@@ -600,7 +753,8 @@ async function renderSpriteEditor(path) {
     const moved = d.frames.some(f => f.silhouette);
     const chips = (d.new_to_sheet || []).map(c =>
       `<i class="sp-chip" style="background:${esc(c)}" title="${esc(c)}"></i>`).join("");
-    return `<div class="sp-step-diff">${d.pixels} px · ${esc(where)} · ${moved ? "silhouette moved" : "shading only"}${
+    return `<div class="sp-step-diff">${d.pixels} px · ${esc(where)}${
+      (d.anims || []).length ? ` · shows up in ${esc(d.anims.join(", "))}` : ""} · ${moved ? "silhouette moved" : "shading only"}${
       chips ? ` · new to the sheet ${chips}` : ""}</div>`;
   };
 
@@ -663,7 +817,10 @@ async function renderSpriteEditor(path) {
   }
 
   buildPalette();
+  buildClips();
   buildMap();
+  syncPlayBtn();
+  startPreview();
   render();
   loadHistory();
   cv.focus();

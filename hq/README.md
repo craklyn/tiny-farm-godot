@@ -388,7 +388,15 @@ tie to a build.
 - `data/org.json` — org chart + personas (Amazon titles/levels).
 - `data/entities.json` — entity gallery: sprite-sheet frame rects, fps, sounds,
   code refs. Update when a new species/crop/object ships (the Zoo's roster and
-  `systems/species_defs.gd` are the source of truth to mirror).
+  `systems/species_defs.gd` are the source of truth to mirror). `frames` is the
+  pool of cells an entity draws from; the optional `anims` list names its
+  animations as ordered index lists into that pool (`{id, label, frames, fps,
+  kind}` — `kind: "stills"` marks poses/variants that never cycle). One cell may
+  sit in several animations; the editor computes the reverse lookup, so it is
+  never stored. No `anims` means one implicit animation: the frame list itself,
+  which is how every entity behaved before the field existed. The game code
+  being mirrored (e.g. `player/player.gd::_load_sprites`) stays the source of
+  truth for what each row and column means.
 - `data/projects/*.json` — the program report, one file per project, ordered by
   `priority`.
 - `data/decisions/*.json` — curated decision cards for the inbox: plain-language

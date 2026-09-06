@@ -78,11 +78,15 @@ async function animate(canvas, ent, scale) {
     drawComposite(ctx, canvas, img, ent);
     return;
   }
-  const frames = ent.frames;
+  // An entity that declares animations is previewed by its first one; the flat
+  // frame list is the whole sheet pool, not a cycle. A "stills" first animation
+  // (poses, variants) holds its first frame rather than flipbooking.
+  const anim = (ent.anims && ent.anims.length) ? ent.anims[0] : null;
+  const frames = anim ? anim.frames.map(k => ent.frames[k]) : ent.frames;
   const maxW = Math.max(...frames.map(f => f[2])), maxH = Math.max(...frames.map(f => f[3]));
   const s = scale || Math.floor(Math.min(canvas.width / maxW, canvas.height / maxH));
   let i = 0;
-  const interval = 1000 / (ent.fps || 4);
+  const interval = 1000 / ((anim && anim.fps) || ent.fps || 4);
   const draw = () => {
     const [x, y, w, hh] = frames[i % frames.length];
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -90,7 +94,7 @@ async function animate(canvas, ent, scale) {
     i++;
   };
   draw();
-  if (frames.length > 1) animators.push(setInterval(draw, interval));
+  if (frames.length > 1 && !(anim && anim.kind === "stills")) animators.push(setInterval(draw, interval));
 }
 
 function clearAnimators() { while (animators.length) clearInterval(animators.pop()); }
