@@ -11,17 +11,16 @@
   },
   "goals": [
     {
-      "id": "spend-is-recorded",
-      "statement": "Every dollar this studio spends is written down somewhere a machine can add up.",
-      "statement_short": "nothing adds up what this studio has spent",
-      "owner": "harold",
+      "id": "every-dollar-in-and-out-on-record",
+      "statement": "Every dollar in and out on record",
+      "owner": "vp-finance",
       "severity": "important",
       "unit": "",
-      "why_it_matters": "The ledger's own arithmetic is good — the missing thing was records. The last balance anyone wrote down is $1.858 on 2026-08-31; $0.59 has been spent since with no balance recorded, two runs carry no price at all, and the original credit purchase — the actual cash — is recorded nowhere. One reading of the vendor's real balance closes the tail.",
+      "why_it_matters": "The studio spends money while you are not watching — the model budget is by a wide margin the largest ongoing cost — and it will start taking money in the moment a release is something people can pay for. If you cannot say what came in and what went out, you cannot say whether this is worth running.",
       "measure": {
         "kind": "composite",
         "op": "all_of",
-        "label": "the ledger and the recorder",
+        "label": "the ledger, the recorder, and whatever records income when there is any",
         "members": [
           {
             "kind": "file_exists",
@@ -36,6 +35,11 @@
             "compare": {
               "direction": "must_be_true"
             }
+          },
+          {
+            "kind": "unchecked",
+            "reason": "nothing takes money in yet, so there is nothing to record",
+            "would_need": "a record of receipts once a release is something a player can pay for"
           }
         ]
       },
@@ -48,7 +52,7 @@
           "kind": "project",
           "id": "spend-ledger"
         },
-        "owner": "harold",
+        "owner": "vp-finance",
         "action": {
           "label": "Put it on Harold's list",
           "tier": 1,
@@ -61,9 +65,7 @@
       "history": {
         "record": true,
         "chart": false
-      },
-      "parked": true,
-      "parked_on": "2026-09-05"
+      }
     }
   ],
   "scoreboard_title": "Money, obligations, and players"

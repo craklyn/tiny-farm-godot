@@ -132,6 +132,67 @@
           "in_progress"
         ]
       }
+    },
+    {
+      "id": "automatic-release-pipeline",
+      "statement": "Automatic release pipeline",
+      "owner": "vp-engineering",
+      "severity": "important",
+      "unit": "",
+      "why_it_matters": "Shipping should happen on its own when the conditions hold, rather than being a ritual you perform. Your judgement belongs in the standing policy — ship whenever these things are true — and the pipeline should carry it from there, all the way to players. Every step that still waits on a person is a step that will be forgotten, delayed, or done at midnight.",
+      "measure": {
+        "kind": "composite",
+        "op": "all_of",
+        "label": "what a tag does on its own, from build to the page a player lands on",
+        "members": [
+          {
+            "kind": "file_grep",
+            "label": "a tag publishes the build to the storefront with no hand on it",
+            "paths": [
+              ".github/workflows/release.yml"
+            ],
+            "exts": [
+              ".yml"
+            ],
+            "pattern": "butler push",
+            "expect": "present",
+            "field": "bool",
+            "compare": {
+              "direction": "must_be_true"
+            }
+          },
+          {
+            "kind": "file_grep",
+            "label": "the release updates the store page rather than a person doing it",
+            "paths": [
+              ".github/workflows/release.yml"
+            ],
+            "exts": [
+              ".yml"
+            ],
+            "pattern": "ITCH_PAGE",
+            "expect": "present",
+            "field": "bool",
+            "compare": {
+              "direction": "must_be_true"
+            }
+          }
+        ]
+      },
+      "compare": {
+        "direction": "must_be_true"
+      },
+      "path_to_green": {
+        "narrative": "Teach the release workflow to publish the page copy in ITCH_PAGE.md alongside the build.",
+        "route": {
+          "kind": "none"
+        },
+        "owner": "vp-engineering"
+      },
+      "history": {
+        "record": false,
+        "chart": false
+      }
     }
   ],
   "scoreboard_title": "Where my areas stand"
