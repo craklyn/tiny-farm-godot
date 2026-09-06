@@ -3633,7 +3633,7 @@ def _compute_signals_now():
         eye.append({
             "kind": "info", "pillar": "product",
             "headline": (f"{len(emptied)} area{'' if len(emptied) == 1 else 's'} of the studio "
-                         f"are measured on nothing — {n_goals} goal"
+                         f"ha{'s' if len(emptied) == 1 else 've'} no goals — {n_goals} goal"
                          f"{'' if n_goals == 1 else 's'} are parked"),
             "why_you": "you parked them to rebuild them one at a time; each waits to be "
                        "brought back, rewritten or dropped",

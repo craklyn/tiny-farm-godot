@@ -234,7 +234,7 @@ async function renderGoals() {
       return `<section class="gl-area" data-area="${esc(p.id)}">
         <h2>${p.emoji} ${esc(p.name)} <span class="small muted">${goals.length
           ? `${goals.length} goal${goals.length === 1 ? "" : "s"}`
-          : "measured on nothing"}</span>
+          : "No goals"}</span>
           <button class="gl-plus" data-add="${esc(p.id)}" title="Write a goal for this area"
                   aria-label="Write a goal for ${esc(p.name)}">+</button></h2>
         <div class="gl-list">${goals.map(g => glEditing === p.id + ":" + g.id
