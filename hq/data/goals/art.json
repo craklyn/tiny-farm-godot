@@ -10,54 +10,6 @@
   },
   "goals": [
     {
-      "id": "every-asset-is-ledgered",
-      "statement": "Every picture and sound in the game has a written record of where it came from.",
-      "statement_short": "a sound in the game has no record of where it came from",
-      "owner": "ingrid",
-      "severity": "important",
-      "unit": "orphans",
-      "why_it_matters": "CREDITS.md's own rule is that nothing ships without verified terms. An asset with no line is the release-blocking kind of unknown, and it is invisible until somebody looks.",
-      "measure": {
-        "kind": "orphan_files",
-        "dir": "assets/audio/sfx",
-        "exts": [
-          ".wav",
-          ".ogg",
-          ".mp3",
-          ".png"
-        ],
-        "referenced_in": [
-          "CREDITS.md"
-        ],
-        "unit": "shipped file with no record of where it came from",
-        "unit_plural": "shipped files with no record of where they came from",
-        "count_dirs": [
-          "assets/audio/sfx",
-          "assets/audio/music",
-          "assets/sprites"
-        ]
-      },
-      "compare": {
-        "direction": "lower_is_better",
-        "target": 0,
-        "amber_at": 0
-      },
-      "path_to_green": {
-        "narrative": "Write the missing ledger lines — where each file came from, its terms, and what it cost.",
-        "route": {
-          "kind": "work",
-          "id": "w8e5e7387217"
-        },
-        "owner": "ingrid"
-      },
-      "history": {
-        "record": true,
-        "chart": false
-      },
-      "parked": true,
-      "parked_on": "2026-09-05"
-    },
-    {
       "id": "style-guide-signed",
       "statement": "The art direction is signed, so a new sprite has a rule to follow rather than a taste to guess.",
       "statement_short": "the art direction is still a draft nobody is bound by",
@@ -103,12 +55,46 @@
       "unit": "",
       "why_it_matters": "The rights we rely on came from a vendor whose terms are undated and can be revoked in place, so a clearance cannot stand forever. And what we owe is owed to whoever made the work — a public build is where we owe it.",
       "measure": {
-        "kind": "manual_attest",
-        "attested_by": "daniel",
-        "attested_on": "2026-08-27",
-        "value": true,
-        "expires_days": 90,
-        "note": "Retro Diffusion's output rights were read against their legal terms and cleared for commercial release. Their terms are undated and revocable in place, so this expires and has to be re-read rather than standing forever."
+        "kind": "composite",
+        "op": "worst_of",
+        "label": "the credits file, and your own reading of the vendor's terms",
+        "members": [
+          {
+            "kind": "orphan_files",
+            "dir": "assets/audio/sfx",
+            "exts": [
+              ".wav",
+              ".ogg",
+              ".mp3",
+              ".png"
+            ],
+            "referenced_in": [
+              "CREDITS.md"
+            ],
+            "unit": "shipped file with no record of where it came from",
+            "unit_plural": "shipped files with no record of where they came from",
+            "count_dirs": [
+              "assets/audio/sfx",
+              "assets/audio/music",
+              "assets/sprites"
+            ],
+            "compare": {
+              "direction": "lower_is_better",
+              "target": 0
+            }
+          },
+          {
+            "kind": "manual_attest",
+            "attested_by": "daniel",
+            "attested_on": "2026-08-27",
+            "value": true,
+            "expires_days": 90,
+            "note": "Retro Diffusion's output rights were read against their legal terms and cleared for commercial release. Their terms are undated and revocable in place, so this expires and has to be re-read rather than standing forever.",
+            "compare": {
+              "direction": "must_be_true"
+            }
+          }
+        ]
       },
       "path_to_green": {
         "narrative": "Re-read the vendor's terms, and any licence that came with an asset added since the last check.",
@@ -124,6 +110,9 @@
       "escalates": {
         "reason": "external_commitment",
         "because": "What we owe here is owed to whoever made the work, and a public build is where we owe it."
+      },
+      "compare": {
+        "direction": "must_be_true"
       }
     }
   ],

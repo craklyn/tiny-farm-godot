@@ -11,39 +11,6 @@
   },
   "goals": [
     {
-      "id": "we-know-what-we-are-selling",
-      "statement": "We can say what the next release gives a player, and every one of those claims matches something in the build or a project building it.",
-      "statement_short": "we cannot say what the next release actually offers a player",
-      "owner": "victor",
-      "severity": "important",
-      "unit": "ratio",
-      "why_it_matters": "This is the inventory. Without it Sales has nothing to take to a player, a storefront or a press contact — and the only number the wall could show was a commit count, which is how much work happened rather than what any of it gives anybody.",
-      "measure": {
-        "kind": "release_manifest",
-        "release": "update-1",
-        "field": "traceable"
-      },
-      "compare": {
-        "direction": "ratio",
-        "target": 1.0,
-        "amber_at": 0.8
-      },
-      "path_to_green": {
-        "narrative": "Every feature the release claims has to resolve to something in the history or to a project carrying it. One that resolves to neither is a wish on a release plan.",
-        "route": {
-          "kind": "work",
-          "id": "wcd3806bc3a4"
-        },
-        "owner": "victor"
-      },
-      "history": {
-        "record": true,
-        "chart": false
-      },
-      "parked": true,
-      "parked_on": "2026-09-05"
-    },
-    {
       "id": "we-know-what-players-want",
       "statement": "We can see what happens after somebody reaches the store page — visits, plays, and what they do next.",
       "statement_short": "we cannot see anything a player does at the storefront",

@@ -142,40 +142,6 @@
       },
       "parked": true,
       "parked_on": "2026-09-05"
-    },
-    {
-      "id": "store-copy-is-current",
-      "statement": "The store page still describes the game we have.",
-      "statement_short": "the store page has not been touched since long before the current build",
-      "owner": "carmen",
-      "severity": "watch",
-      "unit": "days",
-      "measure": {
-        "kind": "git_file_age",
-        "path": "ITCH_PAGE.md"
-      },
-      "compare": {
-        "direction": "fresher_than",
-        "target": 30,
-        "amber_at": 60
-      },
-      "path_to_green": {
-        "narrative": "Reread the page against the build before the next tag; the copy is the release's front door.",
-        "route": {
-          "kind": "none"
-        },
-        "owner": "carmen"
-      },
-      "history": {
-        "record": true,
-        "chart": false
-      },
-      "escalates": {
-        "reason": "external_commitment",
-        "because": "Strangers are reading this page right now; a page that describes an older build is a promise we are still making."
-      },
-      "parked": true,
-      "parked_on": "2026-09-05"
     }
   ],
   "scoreboard_title": "Every marketing goal, worst first"

@@ -66,59 +66,6 @@
       "parked_on": "2026-09-05"
     },
     {
-      "id": "every-asset-is-ledgered",
-      "statement": "Every asset in the build has a written record of its origin, its terms, and its cost.",
-      "statement_short": "a sound in the game has no record of where it came from",
-      "owner": "harold",
-      "severity": "blocking",
-      "unit": "orphans",
-      "why_it_matters": "One sound file is in the build with nothing anywhere saying who made it, what its terms are, or what it cost. That is not a small bookkeeping gap: an asset whose rights nobody has established is the kind of unknown that stops a public release, and it stays invisible until somebody looks.",
-      "measure": {
-        "kind": "orphan_files",
-        "dir": "assets/audio/sfx",
-        "exts": [
-          ".wav",
-          ".ogg",
-          ".mp3",
-          ".png"
-        ],
-        "referenced_in": [
-          "CREDITS.md"
-        ],
-        "unit": "shipped file with no record of where it came from",
-        "unit_plural": "shipped files with no record of where they came from",
-        "count_dirs": [
-          "assets/audio/sfx",
-          "assets/audio/music",
-          "assets/sprites"
-        ]
-      },
-      "compare": {
-        "direction": "lower_is_better",
-        "target": 0,
-        "amber_at": 0
-      },
-      "path_to_green": {
-        "narrative": "Write the missing entries — one sentence each: the asset's source, its terms, its cost.",
-        "route": {
-          "kind": "work",
-          "id": "w135db887c1e"
-        },
-        "owner": "harold"
-      },
-      "history": {
-        "record": true,
-        "chart": false
-      },
-      "signal_key": "asset_ledger",
-      "escalates": {
-        "reason": "exposure",
-        "because": "This is about an asset in a build people can already download, whose terms nobody has established."
-      },
-      "parked": true,
-      "parked_on": "2026-09-05"
-    },
-    {
       "id": "a-player-can-reach-us",
       "statement": "A player who hits a bug has somewhere to send it.",
       "statement_short": "a player who hits a bug has nowhere to send it",
@@ -162,48 +109,6 @@
       },
       "history": {
         "record": false,
-        "chart": false
-      },
-      "parked": true,
-      "parked_on": "2026-09-05"
-    },
-    {
-      "id": "model-budget-is-recorded",
-      "statement": "We can say what the studio's largest recurring cost is doing over time.",
-      "statement_short": "nothing records the model budget's history",
-      "owner": "harold",
-      "severity": "important",
-      "unit": "",
-      "why_it_matters": "The model budget is by a wide margin the largest ongoing expense here — far more than the $2.23 of art Finance reports carefully. HQ already detects when the window runs dry and parks the work that was waiting, so the events happen; hq/data/outbox/_limit.json is simply overwritten each time. One append instead of one overwrite and the studio's real cost curve exists. Until then, the only spend Finance can talk about is the small one.",
-      "measure": {
-        "kind": "file_grep",
-        "label": "limit events are appended to a history, not overwritten",
-        "paths": [
-          "hq/server.py"
-        ],
-        "exts": [
-          ".py"
-        ],
-        "skip_comments": true,
-        "pattern": "append_history\\(\"limits\"",
-        "expect": "present",
-        "field": "bool",
-        "says_true": "every window outage and recovery is appended to hq/data/history/limits.jsonl",
-        "says_false": "limit events are overwritten, so the cost has no history"
-      },
-      "compare": {
-        "direction": "must_be_true"
-      },
-      "path_to_green": {
-        "narrative": "Recording is in; the first chart draws itself as events accumulate.",
-        "route": {
-          "kind": "work",
-          "id": "wb259e9ed81b"
-        },
-        "owner": "harold"
-      },
-      "history": {
-        "record": true,
         "chart": false
       },
       "parked": true,

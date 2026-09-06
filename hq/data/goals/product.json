@@ -10,52 +10,6 @@
   },
   "goals": [
     {
-      "id": "blocked-work-has-a-route",
-      "statement": "Every blocked project says what would unblock it.",
-      "statement_short": "a blocked project records no way out",
-      "owner": "sofia",
-      "severity": "blocking",
-      "unit": "projects",
-      "why_it_matters": "A blocker with no unblock action never reaches your queue. It goes quiet instead of getting solved.",
-      "measure": {
-        "kind": "count_json",
-        "dir": "hq/data/projects",
-        "label": "blocked projects with no unblock action",
-        "where": [
-          [
-            "status",
-            "eq",
-            "blocked"
-          ],
-          [
-            "unblock_action",
-            "empty",
-            true
-          ]
-        ],
-        "unit": "blocked project with no way out"
-      },
-      "compare": {
-        "direction": "lower_is_better",
-        "target": 0,
-        "amber_at": 0
-      },
-      "path_to_green": {
-        "narrative": "Write the one sentence that would get each stuck project moving again.",
-        "route": {
-          "kind": "project",
-          "id": "replay-phase-b"
-        },
-        "owner": "sofia"
-      },
-      "history": {
-        "record": true,
-        "chart": false
-      },
-      "parked": true,
-      "parked_on": "2026-09-05"
-    },
-    {
       "id": "gate-m15-closed",
       "statement": "The onboarding rebuild counts as finished: one uncoached first-time player cleared every bar set for it.",
       "statement_short": "the onboarding rebuild still has one bar no uncoached first-time player has cleared",
