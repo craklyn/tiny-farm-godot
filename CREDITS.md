@@ -226,6 +226,11 @@ before the first public build ships.*
   was carried over pixel-identical (verified programmatically at cut time); only
   empty padding cells were dropped. Provenance for the art itself is unchanged —
   see the dated entries above, which describe the sheets as they were generated.
+- **Raw generations archived, 2026-09-06** — **not generated, $0.00.** Standing policy
+  from this date: every generation run's raw API outputs land in `assets/raw/` as a
+  dated batch (with their `*_meta.json`) before compositing. The surviving raws from
+  the 2026-08-29 through 2026-09-02 batches were recovered from session scratchpads
+  into that archive; the 2026-08-26 style-lock run's raws were already gone.
 - **Sprout Lands asset pack** by Cup Nooble — *removed 2026-08-26* (Q-7c ruling:
   drop restrictively-licensed assets; its free license forbids redistribution and
   this repo is public). Q-7b license findings recorded in the git history of this

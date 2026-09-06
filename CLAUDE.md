@@ -160,4 +160,6 @@ Working agreements (from README):
   `retro-diffusion-pixel-art` skill; output rights verified) makes a sprite cheap, so
   "that needs new art" is no longer on its own a reason to reject a design. Stay
   frugal: generate what the design needs and no more, keep the palette-locking and
-  post-processing steps, and record provenance in `CREDITS.md`.
+  post-processing steps, and record provenance in `CREDITS.md`. Every generation
+  run archives its raw API outputs (with their `*_meta.json`) as a dated batch
+  under `assets/raw/` before anything is composited — see that directory's README.
