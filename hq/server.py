@@ -4073,6 +4073,23 @@ def save_goal(payload):
     doc = load_json(path)
     gid = str(payload.get("id") or "").strip() or _goal_slug(statement)
     existing = next((g for g in doc["goals"] if g.get("id") == gid), None)
+    # Editing a goal into a different area moves it, carrying its measurement,
+    # its commitment and its history with it — the area is a filing decision,
+    # and re-filing must not cost the goal anything.
+    if existing is None and payload.get("id"):
+        for other in sorted(os.listdir(GOALS_DIR)):
+            if not other.endswith(".json") or other[:-5] == area:
+                continue
+            src = os.path.join(GOALS_DIR, other)
+            sdoc = load_json(src)
+            found = next((g for g in sdoc["goals"] if g.get("id") == gid), None)
+            if found is None:
+                continue
+            sdoc["goals"] = [g for g in sdoc["goals"] if g.get("id") != gid]
+            _write_goals(other[:-5], sdoc)
+            doc["goals"].append(found)
+            existing = found
+            break
     if existing:
         existing.update({"statement": statement, "owner": owner,
                          "severity": severity, "why_it_matters": why})

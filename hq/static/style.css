@@ -1280,15 +1280,16 @@ button.linkbtn:hover, button.linkbtn:focus-visible { text-decoration: underline;
 .gl-parkfold summary::before { content: "▸ "; }
 .gl-parkfold[open] summary::before { content: "▾ "; }
 .gl-parked .gl-statement { color: var(--muted); }
-/* Writing a goal is an action on the area, so it sits with the area's name and
-   its count rather than as a row of its own under the list. */
-.gl-plus {
-  /* padding: 0 is load-bearing — the global button rule's 8px/16px padding sets
-     a minimum width of 32px, which turns the circle into an oval. */
-  width: 20px; height: 20px; padding: 0; border-radius: 50%; flex-shrink: 0;
-  background: var(--green); color: var(--bg); border: 0;
-  font-size: 15px; font-weight: 700; line-height: 1; cursor: pointer;
-  display: inline-flex; align-items: center; justify-content: center;
+/* One control for the whole page, top right of the title, where a list view's
+   create action is looked for. It carries a word because at page level a bare
+   + cannot say what it adds — the area is chosen inside the form instead, which
+   is also what lets an existing goal be re-filed. */
+.gl-title { display: flex; align-items: center; gap: 16px; }
+.gl-new {
+  margin-left: auto; flex-shrink: 0;
+  background: var(--green); color: var(--bg); border: 0; border-radius: 999px;
+  padding: 7px 15px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
 }
-.gl-plus:hover { filter: brightness(1.2); }
-.gl-plus:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.gl-new:hover { filter: brightness(1.15); }
+.gl-new:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.gl-form-row3 { grid-template-columns: 1fr 1fr 1fr; }

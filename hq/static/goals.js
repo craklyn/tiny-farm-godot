@@ -42,7 +42,7 @@ function glOwnerLine(seats, org, ownerId) {
     ? ` — held by <a class="plain" data-person="${esc(holder.id)}">${esc(holder.name)}</a>` : ""}`;
 }
 
-function glForm(area, g, seats, org) {
+function glForm(area, g, seats, org, pillars) {
   const teams = [];
   seats.forEach(s => {
     const t = teams.find(x => x.name === s.team) || (teams.push({ name: s.team, seats: [] }), teams[teams.length - 1]);
@@ -56,7 +56,10 @@ function glForm(area, g, seats, org) {
     <label>Why it matters
       <textarea name="why_it_matters" rows="2"
                 placeholder="What goes wrong for you if this is false.">${esc(g.why_it_matters || "")}</textarea></label>
-    <div class="gl-form-row">
+    <div class="gl-form-row gl-form-row3">
+      <label>Which area it belongs to
+        <select name="area">${pillars.map(p => `<option value="${esc(p.id)}"
+          ${p.id === area ? "selected" : ""}>${esc(p.name)}</option>`).join("")}</select></label>
       <label>Which seat carries it
         <select name="owner">${teams.map(t => `<optgroup label="${esc(t.name)}">${t.seats.map(st =>
           `<option value="${esc(st.id)}" ${st.id === chosen ? "selected" : ""}>${esc(st.label)}</option>`
@@ -221,13 +224,17 @@ async function renderGoals() {
   const seats = seatDoc.seats || [];
 
   $view.replaceChildren(h(`
-    <h1>🎯 Goals</h1>
+    <div class="gl-title">
+      <h1>🎯 Goals</h1>
+      <button class="gl-new" data-add>+ Write a goal</button>
+    </div>
     <p class="sub">What has to be true, who carries it, and whether it is true right now.
     These are what every area's status is worked out from — an area with no goals is an
     area nothing can be said about. A goal you write here has nothing measuring it yet, so
     it reads "not monitored yet" until a check is built for it, and it never reads green
     on its own. Parked goals are kept, not deleted: they are out of every reading, and
     each one waits to be brought back, rewritten, or dropped.</p>
+    ${glEditing === "new" ? glForm(pillars.pillars[0].id, {}, seats, org, pillars.pillars) : ""}
     ${pillars.pillars.map(p => {
       const a = areas[p.id] || { goals: [] };
       const goals = a.goals || [], parked = a.parked || [];
@@ -235,15 +242,13 @@ async function renderGoals() {
         <h2>${p.emoji} ${esc(p.name)} <span class="small muted">${goals.length
           ? `${goals.length} goal${goals.length === 1 ? "" : "s"}`
           : "No goals"}</span>
-          <button class="gl-plus" data-add="${esc(p.id)}" title="Write a goal for this area"
-                  aria-label="Write a goal for ${esc(p.name)}">+</button></h2>
+          </h2>
         <div class="gl-list">${goals.map(g => glEditing === p.id + ":" + g.id
-          ? glForm(p.id, g, seats, org) : glRow(p.id, g, seats, org)).join("")}</div>
-        ${glEditing === p.id + ":" ? glForm(p.id, {}, seats, org) : ""}
+          ? glForm(p.id, g, seats, org, pillars.pillars) : glRow(p.id, g, seats, org)).join("")}</div>
         ${parked.length ? `<details class="gl-parkfold">
           <summary>Parked — ${parked.length} goal${parked.length === 1 ? "" : "s"} this area used to be measured on</summary>
           <div class="gl-list">${parked.map(g => glEditing === p.id + ":" + g.id
-            ? glForm(p.id, g, seats, org) : glParkedRow(p.id, g, seats, org)).join("")}</div>
+            ? glForm(p.id, g, seats, org, pillars.pillars) : glParkedRow(p.id, g, seats, org)).join("")}</div>
         </details>` : ""}
       </section>`;
     }).join("")}
@@ -256,7 +261,7 @@ async function renderGoals() {
     b.querySelector(".gl-caret").textContent = detail.hidden ? "▸" : "▾";
   }));
   $view.querySelectorAll("[data-add]").forEach(b => b.addEventListener("click", () => {
-    glEditing = b.dataset.add + ":"; renderGoals();
+    glEditing = "new"; renderGoals();
   }));
   $view.querySelectorAll("[data-edit]").forEach(b => b.addEventListener("click", () => {
     const row = b.closest(".gl-row");
@@ -312,8 +317,7 @@ async function renderGoals() {
   $view.querySelectorAll(".gl-form:not([data-kind])").forEach(f => f.addEventListener("submit", async ev => {
     ev.preventDefault();
     const d = Object.fromEntries(new FormData(f).entries());
-    d.area = f.dataset.area;
-    if (f.dataset.id) d.id = f.dataset.id;
+    if (f.dataset.id) d.id = f.dataset.id;   // d.area comes from the form itself
     const r = await (await fetch("/api/goal/save", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(d),
