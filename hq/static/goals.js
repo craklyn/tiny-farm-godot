@@ -228,12 +228,6 @@ async function renderGoals() {
       <h1>🎯 Goals</h1>
       <button class="gl-new" data-add>+ Write a goal</button>
     </div>
-    <p class="sub">What has to be true, who carries it, and whether it is true right now.
-    These are what every area's status is worked out from — an area with no goals is an
-    area nothing can be said about. A goal you write here has nothing measuring it yet, so
-    it reads "not monitored yet" until a check is built for it, and it never reads green
-    on its own. Parked goals are kept, not deleted: they are out of every reading, and
-    each one waits to be brought back, rewritten, or dropped.</p>
     ${glEditing === "new" ? glForm(pillars.pillars[0].id, {}, seats, org, pillars.pillars) : ""}
     ${pillars.pillars.map(p => {
       const a = areas[p.id] || { goals: [] };
