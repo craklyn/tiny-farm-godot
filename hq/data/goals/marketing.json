@@ -218,34 +218,6 @@
       },
       "parked": true,
       "parked_on": "2026-09-05"
-    },
-    {
-      "id": "the-farming-loop-needs-no-reading",
-      "statement": "A child who cannot read can still play the farming loop.",
-      "statement_short": "the promise that the farming loop needs no reading has no check behind it",
-      "owner": "sam",
-      "severity": "important",
-      "unit": "",
-      "why_it_matters": "S-7's actual promise, and the accessibility claim the store page is really making. The shop was deliberately stripped of words and builds itself from icons and numerals; the machine panel has words and is reached at 150g, days of farming away. Which screens a pre-reader must cross is the whole question, and it is a judgment about the game rather than something the code can tell us.",
-      "measure": {
-        "kind": "unchecked",
-        "reason": "No grep can tell the shop apart from the machine panel — both are labels in ui/menus.gd, and whether one sits on the farming loop is a judgment about which surfaces a player has to cross to farm. A check counting every English string in the build would go redder with every phase, by design, which is the wrong shape of check entirely.",
-        "would_need": "A named list of the surfaces the farming loop crosses, so a check can scan those and ignore the rest — which is a design ruling before it is a checker."
-      },
-      "path_to_green": {
-        "narrative": "Name the screens the farming loop crosses. Then this becomes a real check instead of a promise nobody tests.",
-        "route": {
-          "kind": "work",
-          "id": "w294f4caedde"
-        },
-        "owner": "sam"
-      },
-      "history": {
-        "record": false,
-        "chart": false
-      },
-      "parked": true,
-      "parked_on": "2026-09-05"
     }
   ],
   "scoreboard_title": "Every marketing goal, worst first"
