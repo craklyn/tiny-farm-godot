@@ -3329,10 +3329,21 @@ def rollup(pillar_id, goals, dormant_decl, pillar_name="", parked_n=0):
     # that has run out is not a red reading, and only he can renew it, so it
     # belongs in his queue even though it never shows up as a failure.
     for g in yours:
-        kind = "fire" if g in loud else "watch"
+        # A red goal reaches him whether or not it declared an escalation
+        # reason: nobody is holding it, and that IS the reason. Before the
+        # colour rule changed, needs_you implied an escalation and this read
+        # g["escalation"]["reason"] straight — which threw on the first red
+        # goal that had never declared one, and took every page down with it.
+        esc = g.get("escalation") or {}
+        # WATCH means awareness, not action — so it cannot be the pill on a red
+        # goal, which by the colour rule is his move. Blocking and red with
+        # nobody holding it is the building burning; red otherwise is something
+        # to do; only a non-red thing that still needs him is a watch.
+        kind = ("fire" if (g in loud or (g["state"] == "red" and g.get("severity") == "blocking"))
+                else "action" if g["state"] == "red" else "watch")
         notes.append({"kind": kind, "pillar": pillar_id,
                       "text": f"{g.get('statement_short') or g['statement']} — {g['measured_human']}",
-                      "why_you": ESCALATION_WORDS.get(g["escalation"]["reason"], ""),
+                      "why_you": ESCALATION_WORDS.get(esc.get("reason"), "Nobody is holding this"),
                       "href": f"#/pillar/{pillar_id}",
                       "signal_key": g.get("signal_key") or f"{pillar_id}:{g['id']}"})
     # The rest reach him as a count and nothing more: he should know the pillar
@@ -3540,7 +3551,20 @@ def _compute_signals_now():
         evaluated.sort(key=lambda g: (_STATE_RANK[g["state"]],
                                       0 if g.get("severity") == "blocking" else
                                       1 if g.get("severity") == "important" else 2))
-        roll, notes = rollup(pid, evaluated, p.get("dormant_by_ruling"), p.get("name"), len(parked))
+        # One area must not be able to take down every page. A goal that cannot
+        # be rolled up says so, loudly, in the place that area's status goes —
+        # rather than throwing and leaving the CEO with a dashboard of "No
+        # goals" and no clue why.
+        try:
+            roll, notes = rollup(pid, evaluated, p.get("dormant_by_ruling"), p.get("name"), len(parked))
+        except Exception as exc:
+            roll, notes = {
+                "level": "unassured", "dormant": False,
+                "reasons": [f"This area's goals could not be read: {type(exc).__name__}: "
+                            f"{str(exc)[:160]}"],
+                "red_count": 0, "needs_you": [], "ours": [], "escalations": [],
+                "assured": 0, "total": len(evaluated),
+            }, []
         if not evaluated and parked:
             emptied.append((p.get("name", pid), len(parked)))
         status[pid] = roll
