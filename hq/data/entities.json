@@ -72,7 +72,11 @@
           "id": "crow", "name": "Crow", "emoji": "🐦‍⬛",
           "desc": "The joke, not the threat. Flies in on a daily schedule, prefers acorns over crops, eats one thing, and flees any scare. One chance per day — shooing it is a win, not a reprieve.",
           "sheet": "assets/sprites/generated/animals.png",
-          "frames": [[144,0,16,16],[160,0,16,16]],
+          "frames": [[128,0,16,16],[144,0,16,16],[160,0,16,16]],
+          "anims": [
+            {"id": "flap", "label": "flying", "frames": [1,2], "fps": 6},
+            {"id": "perched", "label": "perched / eating", "frames": [0], "kind": "stills"}
+          ],
           "fps": 6,
           "layout": "Cells 8–10 of the animals row: perched (while eating), wings up, wings down — a 2-frame flap in flight.",
           "sounds": ["assets/audio/sfx/squawk.wav", "assets/audio/sfx/till.wav"],
