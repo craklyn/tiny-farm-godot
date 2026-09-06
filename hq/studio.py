@@ -124,7 +124,7 @@ def record(sheet, old_bytes, new_bytes, meta):
                 f.write(old_bytes)
             _write_json(os.path.join(d, "0000.json"), {
                 "seq": 0, "kind": "original", "sheet": sheet, "key": key,
-                "note": "The sheet as it was before anyone edited it here.",
+                "note": "The sheet before anyone edited it here.",
                 "bytes": len(old_bytes), "png": "0000.png",
                 "created": _now(), "created_ts": time.time(),
             })

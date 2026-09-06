@@ -296,7 +296,7 @@ async function renderSpriteEditor(path) {
           ? "Assembled the way the game renderer builds this creature — parts placed, rotated, and joined, with your edits live on the right."
           : "Both loop in sync at the game's own rate — before is the sheet as it was when you opened the editor."}</p>
         <h2>Save</h2>
-        <p class="small muted">Writes your edits back into <code class="ref">${esc(ent.sheet)}</code> and adds a step to this sheet's history below. Every step is kept — nothing you save is ever overwritten.</p>
+        <p class="small muted">Writes your edits back into <code class="ref">${esc(ent.sheet)}</code> and adds a revision to this sheet's history below. Every revision is kept — nothing you save is ever overwritten.</p>
         <label class="sp-note-label" for="sp-note">What were you fixing? <span class="sp-optional">optional</span></label>
         <input id="sp-note" class="sp-note" maxlength="200" autocomplete="off"
                placeholder="e.g. the ripe head read too cold against the field">
@@ -741,7 +741,7 @@ async function renderSpriteEditor(path) {
         paintDiff();
         renderPreview(0);
         const filed = j.filed || {};
-        status.innerHTML = `✅ Saved as step ${j.step}. ` + (filed.work_id
+        status.innerHTML = `✅ Saved as revision ${j.step}. ` + (filed.work_id
           ? `${esc(nameOf(filed.owner))} has it — <a class="plain" href="#/work">see it in Work</a>.`
           : `<span class="warn-txt">Saved, but filing it to the art team failed${filed.error ? " (" + esc(filed.error) + ")" : ""}.</span>`);
         loadHistory();
@@ -767,16 +767,18 @@ async function renderSpriteEditor(path) {
       chips ? ` · new to the sheet ${chips}` : ""}</div>`;
   };
 
-  const KIND = { original: ["as it was", "orig"], revert: ["revert", "rev"], edit: ["edit", "ed"] };
+  // The original banked revision carries no tag: its note already says what it
+  // is, and "Revision 0" at the bottom of the list reads as the start on its own.
+  const KIND = { original: ["", "orig"], revert: ["revert", "rev"], edit: ["edit", "ed"] };
 
   const stepRow = (s, isCurrent) => {
     const [label, cls] = KIND[s.kind] || KIND.edit;
     return `<article class="sp-step${isCurrent ? " cur" : ""}">
-      <img class="sp-shot" src="/ledger/${esc(s.key)}/${esc(s.png)}" alt="the sheet at step ${s.seq}" loading="lazy">
+      <img class="sp-shot" src="/ledger/${esc(s.key)}/${esc(s.png)}" alt="the sheet at revision ${s.seq}" loading="lazy">
       <div class="sp-step-body">
         <div class="sp-step-head">
-          <b>Step ${s.seq}</b>
-          <span class="sp-tag ${cls}">${label}</span>
+          <b>Revision ${s.seq}</b>
+          ${label ? `<span class="sp-tag ${cls}">${label}</span>` : ""}
           ${isCurrent ? `<span class="sp-tag now">on disk now</span>` : ""}
           <span class="small muted">${esc(s.created)}${s.entity_name ? " · " + esc(s.entity_name) : ""}</span>
         </div>
@@ -801,13 +803,11 @@ async function renderSpriteEditor(path) {
     if (!steps.length) {
       box.innerHTML = `<h2>History</h2>
         <p class="small muted">Nothing saved to this sheet yet. Your first save banks the sheet
-        exactly as it is now as step 0, so there is always an untouched state to come back to.</p>`;
+        exactly as it is now as revision 0, so there is always an untouched state to come back to.</p>`;
       return;
     }
     const last = steps[steps.length - 1].seq;
-    box.innerHTML = `<h2>History of <code class="ref">${esc(ent.sheet.split("/").pop())}</code></h2>
-      <p class="small muted">Every state this sheet has been in, newest first — all of it, not one
-      backup a day. ${steps.length} step${steps.length === 1 ? "" : "s"}.</p>
+    box.innerHTML = `<h2>History</h2>
       <div class="sp-steps">${steps.slice().reverse().map(s => stepRow(s, s.seq === last)).join("")}</div>`;
     box.querySelectorAll(".sp-back").forEach(b => b.addEventListener("click", async () => {
       const seq = b.dataset.seq;
