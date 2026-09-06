@@ -39,7 +39,7 @@ function glOwnerLine(seats, org, ownerId) {
   if (!seat) return "nobody";
   const holder = org.employees.find(e => e.id === seat.held_by);
   return `<b>${esc(seat.label)}</b>${holder
-    ? ` — held by <a class="plain" data-person="${esc(holder.id)}">${esc(holder.name)}</a>` : ""}`;
+    ? ` (<a class="plain" data-person="${esc(holder.id)}">${esc(holder.name)}</a>)` : ""}`;
 }
 
 function glForm(area, g, seats, org, pillars) {
