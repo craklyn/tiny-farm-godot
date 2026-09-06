@@ -3784,6 +3784,16 @@ func _scenario_aj_the_robot_lives_in_a_stall() -> void:
 	await get_tree().process_frame
 
 	# --- and it does the round, and comes home ---------------------------------
+	#
+	# The machines wait for her day to start (2026-09-07): nothing moves while
+	# she is still in the house, so first she gets up and steps outside — the
+	# same door walk that took her in, in reverse.
+	var home_doorway: Vector2i = farm.sim.find_object(WorldLayout.HOME_DOORWAY)
+	InputManager.click_tile = home_doorway
+	InputManager.has_click = true
+	var outside := await _wait_until(
+		func(): return farm.sim.page_of(farm.sim.actor_pos(SimWorld.ACTOR_PLAYER)) == 0, 12000)
+	_assert(outside, "she steps outside, which is what tells the machines the day has begun")
 	farm.advance_sim(SimClock.RATE * 240, GameState)
 	var did := 0
 	for t in lesson:

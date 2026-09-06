@@ -536,10 +536,14 @@ static var ROWS: Dictionary = {
 		# P-9 / ground rule 1. Shared, not copied — see above.
 		"verbs": PLAYER_VERBS,
 		# 48 px/s: her own pace exactly, which is the honest speed for a machine
-		# whose first job is to keep up with her and whose second is to not
-		# outrun her. A slower bot could never close a gap she opened; a faster
-		# one would arrive at the crow before she could decide to. [Playtest].
-		"speed": 0.3,
+		# **Ruled from play, 2026-09-07 (CEO, on the mark-1): the bot walks at
+		# two thirds of her speed** — 0.2 tiles/tick = 32 px/s against her 48.
+		# At her own speed it read as "so fast"; a machine that trails her pace
+		# reads as labour. The old value (0.3, matching her exactly) was argued
+		# from the shoo config — a chaser that must keep up — which has not
+		# debuted; if the shoo comes and cannot close on a crow, its speed is a
+		# per-config question to reopen then, not a species fact to pre-spend.
+		"speed": 0.2,
 		"movement": { "mode": GROUND, "body_len": 1, "tile_exclusive": false },
 		# **It notices nothing, and the omission is the design.** What a shoo-bot
 		# watches for is a *configuration* (`extra.quarry`, a class), not a

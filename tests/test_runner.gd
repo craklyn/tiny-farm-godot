@@ -8036,8 +8036,8 @@ func test_bots() -> void:
 			and SpeciesDefs.is_persistent(SpeciesDefs.BOT)
 			and not SpeciesDefs.is_stompable(SpeciesDefs.BOT),
 		"it walks, it is part of a snapshot of the farm, and a boot does not answer it")
-	_assert(is_equal_approx(SpeciesDefs.speed_of(SpeciesDefs.BOT), SimClock.tiles_per_tick(48.0)),
-		"at 48 px/s — her own pace exactly, so it can keep station and cannot outrun her")
+	_assert(is_equal_approx(SpeciesDefs.speed_of(SpeciesDefs.BOT), SimClock.tiles_per_tick(32.0)),
+		"at 32 px/s — two thirds of her pace (ruled from play 2026-09-07: a machine that trails her reads as labour)")
 	_assert(Brains.of_species(SpeciesDefs.BOT) is BotBrain,
 		"and one brain answers for all three configs")
 

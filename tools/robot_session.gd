@@ -78,7 +78,10 @@ const ACT_FRAMES := 1200
 # Each frame is MAX_TICKS_PER_FRAME ticks — 0.4 s of sim time — so this is four
 # minutes of farm, which is what a robot needs to walk out to a two-tile round
 # three rows away and park itself back in its bay.
-const MORNING_FRAMES := 700
+# Sized for the machine's whole round at its 2026-09-07 pace (two thirds of
+# the player's — the walk out, the watering and the walk home all take half
+# again as long as they did at her speed).
+const MORNING_FRAMES := 1100
 
 var main_scene: Node2D
 var player: Node2D
@@ -282,6 +285,17 @@ func _ready() -> void:
 	# frame takes rather than a private door into the clock. Then the session is
 	# persisted again: the save and the replay are written together, which is the
 	# pairing everything below verifies.
+	# The machines wait for her day to start (2026-09-07): no bot moves while
+	# she is still in the house, so the robot's first act of the morning is the
+	# player's — up, and out through the doorway.
+	var out_doorway: Vector2i = main_scene.farm.sim.find_object(WorldLayout.HOME_DOORWAY)
+	InputManager.click_tile = out_doorway
+	InputManager.has_click = true
+	var outside := await _wait_until(func():
+		return main_scene.farm.sim.page_of(
+			main_scene.farm.sim.actor_pos(SimWorld.ACTOR_PLAYER)) == 0, 900)
+	_check(outside, "she steps out of the house — the machines' cue that the day has begun")
+
 	var ticks_before: int = main_scene.farm.sim.clock.tick
 	for _i in MORNING_FRAMES:
 		main_scene._pump_sim_clock(float(main_scene.MAX_TICKS_PER_FRAME) / SimClock.RATE)
@@ -308,7 +322,7 @@ func _ready() -> void:
 		if t in poured and main_scene.farm.get_tile(t.x, t.y).get("watered_today", false):
 			watered += 1
 	_check(watered == BOT_ROW.size(),
-		"the round happened: the machine watered %d of the %d tiles it was taught, while she was in bed"
+		"the round happened: the machine watered %d of the %d tiles it was taught, once she was up"
 			% [watered, BOT_ROW.size()])
 	_check(main_scene.farm.sim.actor_pos(mk1) == STALL_TILE,
 		"and the machine walked itself home to its bay afterwards (%s)"

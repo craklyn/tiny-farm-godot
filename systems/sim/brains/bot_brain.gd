@@ -193,6 +193,15 @@ func step(world: SimWorld, actor_id: String, tick: int, _gs = null) -> Dictionar
 	if e.is_empty():
 		return {}
 	var extra: Dictionary = e["extra"]
+	# **The machines wait for her day to start** (CEO, 2026-09-07, from play):
+	# no bot lifts a tool while the player is still in the house. Every config,
+	# because the rule is about the farm's rhythm, not one setting. Sim-pure and
+	# deterministic — her tile is registry truth, its page is grid arithmetic,
+	# and her crossings are recorded and replayed. A player who never leaves is
+	# a farm where nothing happens, which is exactly what it looks like.
+	if world.page_of(world.actor_pos(SimWorld.ACTOR_PLAYER)) == 1:
+		extra["wake"] = tick + ticks(IDLE_SECONDS)
+		return {}
 	match String(extra.get("config", CONFIG_FOLLOW)):
 		CONFIG_ORDERS:
 			return _orders(world, actor_id, extra, tick)

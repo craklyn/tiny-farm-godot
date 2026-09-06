@@ -120,6 +120,18 @@ mark buys is which settings the machine will answer to.
 | Send it out (n tiles) | `activate` | it walks the list once, watering each square in the order she taught it, and stops |
 | Pick up | `collect` | back in the crate |
 
+Two rulings from play, 2026-09-07 (CEO, testing the mark-1), apply to the whole
+bot line:
+
+- **The machines wait for her day to start.** No bot lifts a tool while the
+  player is still in the house; stepping out the door is the farm's starting
+  bell. Sim-pure — her tile is registry truth — and it gives the morning a
+  rhythm: she walks out, and the machine sets off.
+- **A bot walks at two thirds of her speed** (32 px/s against her 48). At her
+  own pace it read as "so fast"; a machine that trails her reads as labour. The
+  shoo config's old keep-up-with-her argument reopens as a per-config question
+  if that config ever debuts and cannot close on a crow.
+
 Four properties are the design, and each is a deliberate *limit*:
 
 - **Eight tiles, and no more.** `BotBrain.ORDER_LIMIT` [Playtest]. Eight squares is about a
