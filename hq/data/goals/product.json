@@ -10,51 +10,6 @@
   },
   "goals": [
     {
-      "id": "sessions-record-their-conditions",
-      "statement": "Every recorded session says who played it and whether they had been coached.",
-      "statement_short": "recorded sessions do not say who played them or whether they were coached",
-      "owner": "wei",
-      "severity": "blocking",
-      "unit": "ratio",
-      "why_it_matters": "The onboarding rebuild's sleeping-spot result was voided because the player had been shown the cot in an earlier session. That fact lives only in prose, so no score I report can be trusted on its own.",
-      "measure": {
-        "kind": "composite",
-        "op": "ratio",
-        "label": "sessions with recorded conditions, over sessions with a trace",
-        "members": [
-          {
-            "kind": "file_count",
-            "dir": "playtests",
-            "glob": "*/session.json"
-          },
-          {
-            "kind": "file_count",
-            "dir": "playtests",
-            "glob": "*/session_trace.jsonl"
-          }
-        ]
-      },
-      "compare": {
-        "direction": "ratio",
-        "target": 1.0,
-        "amber_at": 0.8
-      },
-      "path_to_green": {
-        "narrative": "Backfill the existing folders from the roadmap's own prose, each marked as your word after the fact rather than a measurement, and teach the session puller to write it from now on.",
-        "route": {
-          "kind": "project",
-          "id": "session-conditions"
-        },
-        "owner": "wei"
-      },
-      "history": {
-        "record": true,
-        "chart": false
-      },
-      "parked": true,
-      "parked_on": "2026-09-05"
-    },
-    {
       "id": "blocked-work-has-a-route",
       "statement": "Every blocked project says what would unblock it.",
       "statement_short": "a blocked project records no way out",
@@ -132,73 +87,6 @@
         "record": true,
         "chart": false
       },
-      "parked": true,
-      "parked_on": "2026-09-05"
-    },
-    {
-      "id": "scoring-build-is-current",
-      "statement": "The build those playtest numbers were measured on is close to what you would ship today.",
-      "statement_short": "the newest scored session ran on a build far behind what you would ship today",
-      "owner": "priya",
-      "severity": "important",
-      "unit": "commits",
-      "why_it_matters": "Evidence rots. Every commit since the session was recorded is a change the score never saw.",
-      "measure": {
-        "kind": "git_build_lag",
-        "build_id_from": "playtest:newest_substantial"
-      },
-      "compare": {
-        "direction": "fresher_than",
-        "target": 40,
-        "amber_at": 120
-      },
-      "path_to_green": {
-        "narrative": "The same fresh sitting re-scores everything on a current build.",
-        "route": {
-          "kind": "project",
-          "id": "replay-phase-b"
-        },
-        "owner": "wei"
-      },
-      "history": {
-        "record": true,
-        "chart": false
-      },
-      "signal_key": "fresh-session",
-      "parked": true,
-      "parked_on": "2026-09-05"
-    },
-    {
-      "id": "evidence-is-fresh",
-      "statement": "Somebody has played the game recently enough for these numbers to mean anything.",
-      "statement_short": "nobody has played the game in over a week",
-      "owner": "wei",
-      "severity": "important",
-      "unit": "days",
-      "measure": {
-        "kind": "playtest_metric",
-        "select": "newest_with_trace",
-        "metric": "days_since",
-        "unit": "days"
-      },
-      "compare": {
-        "direction": "lower_is_better",
-        "target": 7,
-        "amber_at": 14
-      },
-      "path_to_green": {
-        "narrative": "One sitting on the tablet.",
-        "route": {
-          "kind": "project",
-          "id": "replay-phase-b"
-        },
-        "owner": "wei"
-      },
-      "history": {
-        "record": true,
-        "chart": false
-      },
-      "signal_key": "fresh-session",
       "parked": true,
       "parked_on": "2026-09-05"
     },

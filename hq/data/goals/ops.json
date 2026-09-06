@@ -168,42 +168,6 @@
       "parked_on": "2026-09-05"
     },
     {
-      "id": "every-credential-is-present",
-      "statement": "Every credential this studio depends on is present on the machine that needs it.",
-      "statement_short": "a credential this studio depends on is missing from this machine",
-      "owner": "harold",
-      "severity": "important",
-      "unit": "credentials missing on this machine",
-      "why_it_matters": "You work from two machines, and a key that exists on only one is a machine that cannot do the work. Key names are compared against what .env.example declares; the value is dropped at the split and never read, stored or shown.",
-      "measure": {
-        "kind": "env_present",
-        "example": ".env.example",
-        "path": ".env"
-      },
-      "compare": {
-        "direction": "lower_is_better",
-        "target": 0,
-        "amber_at": 0
-      },
-      "path_to_green": {
-        "narrative": "Copy the missing name into this machine's .env from wherever the key is kept.",
-        "route": {
-          "kind": "none"
-        },
-        "owner": "harold"
-      },
-      "history": {
-        "record": true,
-        "chart": false
-      },
-      "escalates": {
-        "reason": "authority",
-        "because": "Only you hold these; nobody in the studio can put a key on your machine for you."
-      },
-      "parked": true,
-      "parked_on": "2026-09-05"
-    },
-    {
       "id": "model-budget-is-recorded",
       "statement": "We can say what the studio's largest recurring cost is doing over time.",
       "statement_short": "nothing records the model budget's history",

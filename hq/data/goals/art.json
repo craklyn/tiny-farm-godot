@@ -58,87 +58,6 @@
       "parked_on": "2026-09-05"
     },
     {
-      "id": "every-sound-is-loaded",
-      "statement": "Every sound in the repo is one the build actually plays.",
-      "statement_short": "a sound file ships that the build never loads",
-      "owner": "dmitri",
-      "severity": "watch",
-      "unit": "orphans",
-      "why_it_matters": "A sound nobody loads is either a forgotten cut or a wiring bug, and from the outside those look identical.",
-      "measure": {
-        "kind": "orphan_files",
-        "dir": "assets/audio/sfx",
-        "exts": [
-          ".wav"
-        ],
-        "referenced_in": [
-          "systems/audio_manager.gd"
-        ],
-        "unit": "sound the build never loads"
-      },
-      "compare": {
-        "direction": "lower_is_better",
-        "target": 0,
-        "amber_at": 1
-      },
-      "path_to_green": {
-        "narrative": "Either wire it up or delete it. The sound board below marks which files the build never loads.",
-        "route": {
-          "kind": "work",
-          "id": "wf1d5bfcab8a"
-        },
-        "owner": "dmitri"
-      },
-      "history": {
-        "record": true,
-        "chart": false
-      },
-      "parked": true,
-      "parked_on": "2026-09-05"
-    },
-    {
-      "id": "palette-holds",
-      "statement": "The colours the style guide names are still the colours in the build.",
-      "statement_short": "colours the style guide names have vanished from the build",
-      "owner": "yuki",
-      "severity": "important",
-      "unit": "ratio",
-      "why_it_matters": "Drift is invisible one sprite at a time. A named colour disappearing is the first measurable sign the guide and the game have parted company.",
-      "measure": {
-        "kind": "palette_named_present"
-      },
-      "compare": {
-        "direction": "ratio",
-        "target": 1.0,
-        "amber_at": 0.7
-      },
-      "path_to_green": {
-        "narrative": "The look session decides whether the missing names come back into the art or come out of the guide. Both are fine; the split is not.",
-        "route": {
-          "kind": "project",
-          "id": "art-audio-direction"
-        },
-        "owner": "ingrid",
-        "ceo_blocker": {
-          "kind": "calendar",
-          "surface": {
-            "kind": "project",
-            "id": "art-audio-direction"
-          },
-          "duration_minutes": null,
-          "sittings": 1,
-          "consequence": "The style guide stays a draft nobody is bound by, and every new sprite is a fresh taste call.",
-          "waiting_since": "2026-09-02"
-        }
-      },
-      "history": {
-        "record": true,
-        "chart": true
-      },
-      "parked": true,
-      "parked_on": "2026-09-05"
-    },
-    {
       "id": "style-guide-signed",
       "statement": "The art direction is signed, so a new sprite has a rule to follow rather than a taste to guess.",
       "statement_short": "the art direction is still a draft nobody is bound by",
@@ -168,34 +87,6 @@
           "consequence": "Every sprite generated before the signing is a guess that may have to be redone.",
           "waiting_since": "2026-09-02"
         }
-      },
-      "history": {
-        "record": false,
-        "chart": false
-      },
-      "parked": true,
-      "parked_on": "2026-09-05"
-    },
-    {
-      "id": "the-editor-edits-the-sheet",
-      "statement": "Hand-editing a sprite edits the whole sheet, not part of it.",
-      "statement_short": "the sprite editor silently edits part of a sheet, not all of it",
-      "owner": "rin",
-      "severity": "important",
-      "unit": "",
-      "why_it_matters": "The sprite editor opens the frames a creature animates with, not the sheet those frames sit in — four of the chicken's eight cells, four of the farmer's sixteen. An edit therefore covers part of a sheet, and nothing says so.",
-      "measure": {
-        "kind": "unchecked",
-        "reason": "No check compares the frames the editor opens against the cells the sheet holds; the defect is known from reading the code, not from a measurement.",
-        "would_need": "A check that every sheet's cell count equals the frame count the editor opens for it — cheap, and it would have caught this."
-      },
-      "path_to_green": {
-        "narrative": "The editor should open every cell of a sheet, with the animating frames only highlighted. Filed against the design-technology seat.",
-        "route": {
-          "kind": "work",
-          "id": "w5a4005536e1"
-        },
-        "owner": "rin"
       },
       "history": {
         "record": false,

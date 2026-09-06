@@ -11,38 +11,6 @@
   },
   "goals": [
     {
-      "id": "ci-is-not-leaking",
-      "statement": "The test suite passes almost every time — failures are incidents, not a slow leak.",
-      "statement_short": "the test suite fails often enough to look like a leak rather than an incident",
-      "owner": "grace",
-      "severity": "watch",
-      "unit": "%",
-      "why_it_matters": "Three failures in one afternoon is a bad day. Three spread over a month is a test nobody trusts.",
-      "measure": {
-        "kind": "ci_state",
-        "field": "pass_rate",
-        "window": 100
-      },
-      "compare": {
-        "direction": "higher_is_better",
-        "target": 95,
-        "amber_at": 90
-      },
-      "path_to_green": {
-        "narrative": "Read the failure ticks on the strip — where they cluster says whether this is one incident or a leak.",
-        "route": {
-          "kind": "none"
-        },
-        "owner": "grace"
-      },
-      "history": {
-        "record": true,
-        "chart": true
-      },
-      "parked": true,
-      "parked_on": "2026-09-05"
-    },
-    {
       "id": "determinism-invariants",
       "statement": "The rules that keep replays reproducible still hold in the code.",
       "statement_short": "a rule that keeps replays reproducible is broken in the code",

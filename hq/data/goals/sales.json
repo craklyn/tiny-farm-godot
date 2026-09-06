@@ -77,48 +77,6 @@
       "parked_on": "2026-09-05"
     },
     {
-      "id": "release-enforces-its-own-checklist",
-      "statement": "The release pipeline refuses to publish a build the runbook says is not shippable.",
-      "statement_short": "nothing would stop a tag shipping the debug readout",
-      "owner": "lena",
-      "severity": "blocking",
-      "unit": "",
-      "why_it_matters": "The runbook's checks are checkboxes in a document. The playtest readout is on right now — correctly, we are playtesting — and it only has to be off at the moment a tag is cut. That is exactly the moment nobody is watching a checklist, and release.yml checks none of it. We are one distracted tag away from shipping four lines of English into a game whose whole promise is that there is nothing to read.",
-      "measure": {
-        "kind": "file_grep",
-        "label": "the release workflow checks the playtest readout before it publishes",
-        "paths": [
-          ".github/workflows/release.yml"
-        ],
-        "exts": [
-          ".yml"
-        ],
-        "pattern": "PLAYTEST_NOTES",
-        "expect": "present",
-        "field": "bool",
-        "says_true": "the release workflow refuses to publish with the readout on",
-        "says_false": "the release workflow publishes without checking the readout at all"
-      },
-      "compare": {
-        "direction": "must_be_true"
-      },
-      "path_to_green": {
-        "narrative": "Add a step to the release workflow that fails the tag if ui/hud.gd still says the readout is on. Half an hour, once, and the checkbox stops depending on somebody remembering.",
-        "route": {
-          "kind": "work",
-          "id": "w525b8b03d26"
-        },
-        "owner": "lena"
-      },
-      "history": {
-        "record": true,
-        "chart": false
-      },
-      "signal_key": "ship_gate",
-      "parked": true,
-      "parked_on": "2026-09-05"
-    },
-    {
       "id": "credits-screen-opens",
       "statement": "The credits screen exists and opens — the attribution we owe actually ships.",
       "statement_short": "the credits screen the licence depends on is not wired up",
@@ -164,58 +122,6 @@
       "parked_on": "2026-09-05"
     },
     {
-      "id": "release-is-reproducible",
-      "statement": "A release can be built by the runbook rather than from memory.",
-      "statement_short": "the export configuration a release needs is missing",
-      "owner": "lena",
-      "severity": "blocking",
-      "unit": "",
-      "measure": {
-        "kind": "composite",
-        "op": "all_of",
-        "label": "the runbook's machine parts",
-        "members": [
-          {
-            "kind": "file_exists",
-            "path": "export_presets.cfg",
-            "compare": {
-              "direction": "must_be_true"
-            }
-          },
-          {
-            "kind": "file_exists",
-            "path": "docs/DEPLOY.md",
-            "compare": {
-              "direction": "must_be_true"
-            }
-          },
-          {
-            "kind": "file_exists",
-            "path": ".github/workflows/release.yml",
-            "compare": {
-              "direction": "must_be_true"
-            }
-          }
-        ]
-      },
-      "compare": {
-        "direction": "must_be_true"
-      },
-      "path_to_green": {
-        "narrative": "Everything the runbook needs is in the repo.",
-        "route": {
-          "kind": "none"
-        },
-        "owner": "lena"
-      },
-      "history": {
-        "record": false,
-        "chart": false
-      },
-      "parked": true,
-      "parked_on": "2026-09-05"
-    },
-    {
       "id": "web-build-played-through",
       "statement": "Somebody played the actual web build end to end before it went out.",
       "statement_short": "nothing records that the web build was played before a tag",
@@ -236,45 +142,6 @@
           "kind": "none"
         },
         "owner": "victor"
-      },
-      "history": {
-        "record": false,
-        "chart": false
-      },
-      "signal_key": "ship_gate",
-      "parked": true,
-      "parked_on": "2026-09-05"
-    },
-    {
-      "id": "visual-regression-runs",
-      "statement": "Something checks that the game still looks the way it did before the release.",
-      "statement_short": "the visual check our own docs promise is run by nobody",
-      "owner": "lena",
-      "severity": "important",
-      "unit": "",
-      "why_it_matters": "The command is in the repo's own instructions. A check we claim and nothing runs is worse than one we never claimed — it has a home now: a job button on the Engineering page.",
-      "measure": {
-        "kind": "job_state",
-        "job": "visual",
-        "field": "state",
-        "compare": {
-          "direction": "in_set",
-          "green_set": [
-            "green"
-          ],
-          "amber_set": [
-            "running",
-            "never_run"
-          ]
-        }
-      },
-      "path_to_green": {
-        "narrative": "It stays a developer's tool and never runs on GitHub: pixel-exact rendering only matches within one machine's graphics drivers, so a GitHub runner would fail commits on driver differences rather than on anything that broke. Press ▶ Run beside 'Visual regression' on the Engineering page before cutting a tag; amber until someone has.",
-        "route": {
-          "kind": "work",
-          "id": "w9dc4e2aab6d"
-        },
-        "owner": "lena"
       },
       "history": {
         "record": false,
