@@ -173,12 +173,15 @@
           "frames": [[0,0,16,16],[16,0,16,16],[32,0,16,16],[48,0,16,16]],
           "frame_names": ["head", "body", "tail", "body (vertical) / joint"],
           "fps": 2,
-          "composite": [
-            {"f": 2, "dx": 0, "dy": 0},
-            {"f": 1, "dx": 1, "dy": 0},
-            {"f": 3, "dx": 2, "dy": 0},
-            {"f": 3, "dx": 2, "dy": 1},
-            {"f": 0, "dx": 2, "dy": 2, "rot": 90}
+          "anims": [
+            {"id": "crawl", "label": "crawling", "fps": 2, "frames": [
+              {"parts": [{"f": 2, "dx": 0, "dy": 0}, {"f": 1, "dx": 1, "dy": 0}, {"f": 0, "dx": 2, "dy": 0}]},
+              {"parts": [{"f": 2, "dx": 0, "dy": 0}, {"f": 3, "dx": 1, "dy": 0, "rot": 90}, {"f": 0, "dx": 2, "dy": 0}]}
+            ]},
+            {"id": "bend", "label": "turning a corner", "kind": "stills", "frames": [
+              {"parts": [{"f": 2, "dx": 0, "dy": 0}, {"f": 1, "dx": 1, "dy": 0}, {"f": 3, "dx": 2, "dy": 0},
+                         {"f": 3, "dx": 2, "dy": 1}, {"f": 0, "dx": 2, "dy": 2, "rot": 90}]}
+            ]}
           ],
           "layout": "Head, body, tail, vertical-body/joint parts, assembled one per occupied tile (the only multi-cell actor). Directional parts mirror leftward and rotate 90° for vertical travel; a bend draws the symmetric cell as a knuckle. The preview shows a bent worm exactly as the game renderer assembles it.",
           "sounds": [],
@@ -443,16 +446,26 @@
           "facts": {"Tillable": "never", "Home": "the player's house (T-37)"}
         },
         {
-          "id": "interior_walls", "name": "Walls & Window", "emoji": "🪟",
-          "desc": "The home's shell: plaster wall with a wood baseboard, and the window — the same wall with sky through glass. Both are boundary tiles like the fence and hedge: never walkable, drawn edge to edge.",
-          "sheet": "assets/sprites/generated/interior.png",
-          "frames": [[0,0,16,16],[16,0,16,16]],
-          "frame_names": ["wall", "window"],
-          "fps": 0.8,
-          "layout": "interior.png — cell 0 wall, cell 1 window. The pane's blue is the one new colour: no ambient tile in the game is blue, so it reads as outdoors seen from indoors.",
+          "id": "interior_wall", "name": "Wall", "emoji": "🧱",
+          "desc": "The home's shell: plaster wall with a wood baseboard. A boundary tile like the fence and hedge: never walkable, drawn edge to edge.",
+          "sheet": "assets/sprites/generated/interior_wall.png",
+          "frames": [[0,0,16,16]],
+          "fps": 1,
+          "layout": "One tile, derived from the fence's browns by tools/gen_interior.py.",
           "sounds": [],
           "code": ["systems/world_layout.gd", "tools/gen_interior.py"],
-          "facts": {"Walkable": "never — boundary states, like the fence", "Windows": "wall variant; more furnishings come later"}
+          "facts": {"Walkable": "never — a boundary state, like the fence"}
+        },
+        {
+          "id": "interior_window", "name": "Window", "emoji": "🪟",
+          "desc": "The wall with sky through glass. A boundary tile like the wall it is cut into: never walkable, drawn edge to edge.",
+          "sheet": "assets/sprites/generated/interior_window.png",
+          "frames": [[0,0,16,16]],
+          "fps": 1,
+          "layout": "The wall cell with a pane. The pane's blue is the one new colour: no ambient tile in the game is blue, so it reads as outdoors seen from indoors.",
+          "sounds": [],
+          "code": ["systems/world_layout.gd", "tools/gen_interior.py"],
+          "facts": {"Walkable": "never — a boundary state, like the wall", "Furnishings": "more come later"}
         },
         {
           "id": "terrain_dirt", "name": "Tilled Soil (Autotile)", "emoji": "🟫",
@@ -473,12 +486,34 @@
       "blurb": "Art that exists with no species row, no brain, no renderer — candidates waiting for a design ruling.",
       "entities": [
         {
-          "id": "spares", "name": "Fox, Duck & Squirrel", "emoji": "🦊",
-          "desc": "Three finished sprites sitting in the critter sheet's spare row. No species row references them; they cost nothing to keep and are ready the day a phase-2 ruling gives one of them a job.",
-          "sheet": "assets/sprites/generated/spares.png",
-          "frames": [[0,0,16,16],[16,0,16,16],[32,0,16,16]],
-          "fps": 1.5,
-          "layout": "The art bench's spare row, now its own sheet.",
+          "id": "fox", "name": "Fox", "emoji": "🦊",
+          "desc": "A finished sprite with no species row, no brain, no renderer — ready the day a phase-2 ruling gives it a job.",
+          "sheet": "assets/sprites/generated/fox.png",
+          "frames": [[0,0,16,16]],
+          "fps": 1,
+          "layout": "One sitting pose from the M2.5 art bench's spare row.",
+          "sounds": [],
+          "code": [],
+          "facts": {"Status": "no brain, no registry row — pure potential"}
+        },
+        {
+          "id": "duck", "name": "Duck", "emoji": "🦆",
+          "desc": "A finished sprite with no species row, no brain, no renderer — ready the day a phase-2 ruling gives it a job.",
+          "sheet": "assets/sprites/generated/duck.png",
+          "frames": [[0,0,16,16]],
+          "fps": 1,
+          "layout": "One standing pose from the M2.5 art bench's spare row.",
+          "sounds": [],
+          "code": [],
+          "facts": {"Status": "no brain, no registry row — pure potential"}
+        },
+        {
+          "id": "squirrel", "name": "Squirrel", "emoji": "🐿️",
+          "desc": "A finished sprite with no species row, no brain, no renderer — ready the day a phase-2 ruling gives it a job.",
+          "sheet": "assets/sprites/generated/squirrel.png",
+          "frames": [[0,0,16,16]],
+          "fps": 1,
+          "layout": "One pose, acorn in paw, from the M2.5 art bench's spare row.",
           "sounds": [],
           "code": [],
           "facts": {"Status": "no brain, no registry row — pure potential"}

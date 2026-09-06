@@ -267,7 +267,8 @@ var yard_texture: Texture2D
 # T-37: the home's ground and shell (tools/gen_interior.py — planks and walls
 # derived from the fence's own browns, so indoor wood and outdoor wood match).
 var floor_texture: Texture2D
-var interior_texture: Texture2D
+var interior_wall_texture: Texture2D
+var interior_window_texture: Texture2D
 var biomes_texture: Texture2D
 # T-37: which sheet a boundary/obstacle state draws from. Everything defaults
 # to obstacles.png (biomes_texture); interior states name their own sheet.
@@ -289,7 +290,8 @@ func _load_textures() -> void:
 	yard_texture = load("res://assets/sprites/generated/terrain_yard.png")
 	# terrain_floor: the home's planks, same 3x3 seamless format (T-37).
 	floor_texture = load("res://assets/sprites/generated/terrain_floor.png")
-	interior_texture = load("res://assets/sprites/generated/interior.png")
+	interior_wall_texture = load("res://assets/sprites/generated/interior_wall.png")
+	interior_window_texture = load("res://assets/sprites/generated/interior_window.png")
 	# One sheet per entity (2026-09-06): a sheet's edit history then belongs to
 	# exactly one thing, and regenerating one sprite is a file swap.
 	crop_sheets = {
@@ -315,13 +317,13 @@ func _load_textures() -> void:
 	tile_regions[WorldLayout.HEDGE] = Rect2(5 * 16, 0, 16, 16)
 	tile_regions[WorldLayout.GATE_CLOSED] = Rect2(6 * 16, 0, 16, 16)
 	tile_regions[WorldLayout.GATE_OPEN] = Rect2(7 * 16, 0, 16, 16)
-	# T-37: the home's shell lives on its own sheet (interior.png), so the
-	# per-state sheet table says so; every state absent from it draws from
-	# obstacles.png as always.
-	tile_regions[WorldLayout.WALL] = Rect2(0 * 16, 0, 16, 16)
-	tile_regions[WorldLayout.WINDOW] = Rect2(1 * 16, 0, 16, 16)
-	tile_sheets[WorldLayout.WALL] = interior_texture
-	tile_sheets[WorldLayout.WINDOW] = interior_texture
+	# T-37: the home's shell lives on its own sheets (one per tile, 2026-09-06),
+	# so the per-state sheet table says so; every state absent from it draws
+	# from obstacles.png as always.
+	tile_regions[WorldLayout.WALL] = Rect2(0, 0, 16, 16)
+	tile_regions[WorldLayout.WINDOW] = Rect2(0, 0, 16, 16)
+	tile_sheets[WorldLayout.WALL] = interior_wall_texture
+	tile_sheets[WorldLayout.WINDOW] = interior_window_texture
 
 	# Crop regions (each crop's own sheet: its four visual stages in one row).
 	# The pea ships as an ordinary crop (Q-55, M2.5 WI-10) and nothing plants one

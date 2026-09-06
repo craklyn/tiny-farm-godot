@@ -38,20 +38,21 @@ async function renderMapEditor() {
   const cv = document.getElementById("mp-canvas");
   const ctx = cv.getContext("2d");
   const status = document.getElementById("mp-status");
-  const [grass, yard, floorImg, interior, obstacles, tools] = await Promise.all([
+  const [grass, yard, floorImg, wallImg, windowImg, obstacles, tools] = await Promise.all([
     getSheet("assets/sprites/generated/terrain_grass.png"),
     getSheet("assets/sprites/generated/terrain_yard.png"),
     getSheet("assets/sprites/generated/terrain_floor.png"),
-    getSheet("assets/sprites/generated/interior.png"),
+    getSheet("assets/sprites/generated/interior_wall.png"),
+    getSheet("assets/sprites/generated/interior_window.png"),
     getSheet("assets/sprites/generated/obstacles.png"),
     getSheet("assets/sprites/tool_icons.png"),
   ]);
   const GROUNDS = { yard, floor: floorImg };
-  // boundary kind -> [sheet, cell x-offset]; interior kinds live on their own sheet
+  // boundary kind -> [sheet, cell x-offset]; interior kinds live on their own sheets
   const BOUNDS = {
     fence: [obstacles, 4 * 16], hedge: [obstacles, 5 * 16],
     gate_closed: [obstacles, 6 * 16], gate_open: [obstacles, 7 * 16],
-    wall: [interior, 0], window: [interior, 16],
+    wall: [wallImg, 0], window: [windowImg, 0],
   };
 
   const cellAt = (img, sx, sy, x, y, alpha) => {

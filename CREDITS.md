@@ -226,6 +226,9 @@ before the first public build ships.*
   was carried over pixel-identical (verified programmatically at cut time); only
   empty padding cells were dropped. Provenance for the art itself is unchanged —
   see the dated entries above, which describe the sheets as they were generated.
+  Completed the same day: `spares.png` split into `fox.png`, `duck.png` and
+  `squirrel.png` (three unshipped candidates, one file each), and `interior.png`
+  into `interior_wall.png` and `interior_window.png`.
 - **Raw generations archived, 2026-09-06** — **not generated, $0.00.** Standing policy
   from this date: every generation run's raw API outputs land in `assets/raw/` as a
   dated batch (with their `*_meta.json`) before compositing. The surviving raws from

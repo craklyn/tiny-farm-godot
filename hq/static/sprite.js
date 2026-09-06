@@ -93,12 +93,9 @@ async function renderSpriteEditor(path) {
   // catalogue sits on that grid with its origin at the sheet's top-left corner.
   const cellW = Math.max(...ent.frames.map(f => f[2]));
   const cellH = Math.max(...ent.frames.map(f => f[3]));
-  const comp = (ent.composite && ent.composite.length) ? ent.composite : null;
   const fw = cellW, fh = cellH;
   const zoom = Math.max(4, Math.min(28, Math.floor(430 / Math.max(fw, fh))));
-  const compCols = comp ? Math.max(...comp.map(c => c.dx)) + 1 : 1;
-  const compRows = comp ? Math.max(...comp.map(c => c.dy)) + 1 : 1;
-  const pvW = fw * 3 * compCols, pvH = fh * 3 * compRows;
+  const pvW = fw * 3, pvH = fh * 3;   // initial size; startPreview refits per clip
 
   // Load the sheet fresh (no cache) so we always edit current bytes.
   const img = await new Promise((res, rej) => {
@@ -129,16 +126,48 @@ async function renderSpriteEditor(path) {
      standing idle) without being stored twice. An entity that declares no anims
      gets one implicit clip, the frame list itself at the catalogue's rate, which
      is exactly every entity's behaviour before anims existed. A clip marked
-     "stills" is a set of poses or variants, not a cycle — it never plays. */
-  const clips = ((ent.anims && ent.anims.length) ? ent.anims : [{
-    id: "cycle", label: ent.frames.length > 1 ? "animation" : ent.name,
-    frames: ent.frames.map((_, i) => i), fps: ent.fps,
-  }]).map(a => ({
-    id: a.id, label: a.label || a.id,
-    cells: (a.frames || []).map(fi => catCells[fi]).filter(c => c !== undefined),
-    fps: a.fps || ent.fps || 4,
-    stills: a.kind === "stills",
-  }));
+     "stills" is a set of poses or variants, not a cycle — it never plays.
+
+     One moment of an animation is a *drawing*, and a drawing is either a single
+     cell or an assembly of placed parts — the worm draws one cell per tile of
+     itself, so its exemplar poses are assemblies. An anims frame entry is a
+     frame index for a cell, or {parts:[{f,dx,dy,rot,flip}]} for an assembly.
+     The legacy ent.composite field is read as one assembled still. */
+  const toDrawing = fi => {
+    if (typeof fi === "number") {
+      const c = catCells[fi];
+      return c === undefined ? null : { cell: c };
+    }
+    if (fi && fi.parts && fi.parts.length) {
+      const parts = fi.parts.map(p => ({ f: p.f, dx: p.dx, dy: p.dy, rot: p.rot, flip: p.flip,
+        cell: catCells[p.f] })).filter(p => p.cell !== undefined);
+      if (!parts.length) return null;
+      return { parts,
+        cols: Math.max(...parts.map(p => p.dx)) + 1,
+        rows: Math.max(...parts.map(p => p.dy)) + 1 };
+    }
+    return null;
+  };
+  const rawAnims = (ent.anims && ent.anims.length) ? ent.anims
+    : (ent.composite && ent.composite.length)
+      ? [{ id: "assembled", label: "assembled", kind: "stills", frames: [{ parts: ent.composite }] }]
+      : [{ id: "cycle", label: ent.frames.length > 1 ? "animation" : ent.name,
+           frames: ent.frames.map((_, i) => i), fps: ent.fps }];
+  const clips = rawAnims.map(a => {
+    const drawings = (a.frames || []).map(toDrawing).filter(Boolean);
+    const cells = [];
+    drawings.forEach(d => (d.parts ? d.parts.map(p => p.cell) : [d.cell])
+      .forEach(c => { if (!cells.includes(c)) cells.push(c); }));
+    return {
+      id: a.id, label: a.label || a.id,
+      drawings, cells,
+      assembled: drawings.some(d => d.parts),
+      cols: Math.max(1, ...drawings.map(d => d.cols || 1)),
+      rows: Math.max(1, ...drawings.map(d => d.rows || 1)),
+      fps: a.fps || ent.fps || 4,
+      stills: a.kind === "stills",
+    };
+  });
   let curClip = clips[0];
 
   // cell -> the clips it appears in, with its first position in each. Computed,
@@ -191,6 +220,8 @@ async function renderSpriteEditor(path) {
   const poolAt = new Map();   // cell -> first catalogue frame index landing on it
   catCells.forEach((c, k) => { if (!poolAt.has(c)) poolAt.set(c, k); });
   const clipNameOf = m => {
+    // A cell in an assembled clip is a part of every drawing, not frame n of it.
+    if (m.clip.assembled) return m.clip.label;
     const one = m.clip.cells.length === 1;
     return one ? m.clip.label
       : clips.length > 1 ? `${m.clip.label} ${m.pos + 1}`
@@ -293,9 +324,7 @@ async function renderSpriteEditor(path) {
           <figure><canvas id="sp-before" width="${pvW}" height="${pvH}"></canvas><figcaption>before</figcaption></figure>
           <figure><canvas id="sp-preview" width="${pvW}" height="${pvH}"></canvas><figcaption>after (your edits)</figcaption></figure>
         </div>
-        <p class="small muted" id="sp-pv-note">${comp
-          ? "Assembled the way the game renderer builds this creature — parts placed, rotated, and joined, with your edits live on the right."
-          : "Both loop in sync at the game's own rate — before is the sheet as it was when you opened the editor."}</p>
+        <p class="small muted" id="sp-pv-note">Both loop in sync at the game's own rate — before is the sheet as it was when you opened the editor.</p>
         <h2>Save</h2>
         <p class="small muted">Writes your edits back into <code class="ref">${esc(ent.sheet)}</code> and adds a revision to this sheet's history below. Every revision is kept — nothing you save is ever overwritten.</p>
         <label class="sp-note-label" for="sp-note">What were you fixing? <span class="sp-optional">optional</span></label>
@@ -368,7 +397,7 @@ async function renderSpriteEditor(path) {
     // pose — the stance to stay consistent with); anywhere else on the sheet it
     // is the cell to the left.
     if (onion && frames.length > 1 && !playing) {
-      const k = curClip.cells.indexOf(cur);
+      const k = curClip.assembled ? -1 : curClip.cells.indexOf(cur);
       const prev = (k >= 0 && curClip.cells.length > 1)
         ? curClip.cells[(k - 1 + curClip.cells.length) % curClip.cells.length]
         : (cur - 1 + frames.length) % frames.length;
@@ -390,7 +419,7 @@ async function renderSpriteEditor(path) {
       (primary ? primary + " · " : "") + `cell ${cur + 1} / ${frames.length}`;
     document.getElementById("sp-also").textContent =
       (!named && ms.length > 1) ? "also " + ms.slice(1).map(clipNameOf).join(" · ") : "";
-    if (curClip.stills && !comp) renderPreview(0);   // a pose preview follows the cursor
+    if (curClip.stills) renderPreview(0);   // a pose preview follows the cursor
     syncMap();
     paintDiff();
   };
@@ -432,41 +461,54 @@ async function renderSpriteEditor(path) {
         style guide will want to hear about.</div>` : ""}`;
   }
 
-  const drawAssembled = (dctx, canvas, useOrig) => {
-    dctx.clearRect(0, 0, canvas.width, canvas.height);
-    comp.forEach(c => {
-      const f = frames[catCells[c.f]];
-      const [, , w, hh] = f.rect;
-      tmp.width = w; tmp.height = hh;
-      tctx.putImageData(useOrig ? f.orig : f.data, 0, 0);
-      dctx.save();
-      dctx.translate((c.dx + 0.5) * fw * 3, (c.dy + 0.5) * fh * 3);
-      if (c.rot) dctx.rotate(c.rot * Math.PI / 180);
-      if (c.flip) dctx.scale(-1, 1);
-      dctx.drawImage(tmp, 0, 0, w, hh, -w * 1.5, -hh * 1.5, w * 3, hh * 3);
-      dctx.restore();
-    });
+  // One drawing onto one canvas — a single cell, or parts placed, rotated and
+  // joined on the clip's grid. The one path the featured preview, the clip rows
+  // and any future assembly-style mob all share.
+  let pvScale = 3;
+  const paintDrawing = (dctx, d, s, useOrig) => {
+    if (!d) return;
+    if (d.parts) {
+      d.parts.forEach(c => {
+        const f = frames[c.cell];
+        const [, , w, hh] = f.rect;
+        tmp.width = w; tmp.height = hh;
+        tctx.putImageData(useOrig ? f.orig : f.data, 0, 0);
+        dctx.save();
+        dctx.translate((c.dx + 0.5) * fw * s, (c.dy + 0.5) * fh * s);
+        if (c.rot) dctx.rotate(c.rot * Math.PI / 180);
+        if (c.flip) dctx.scale(-1, 1);
+        dctx.drawImage(tmp, 0, 0, w, hh, -w * s / 2, -hh * s / 2, w * s, hh * s);
+        dctx.restore();
+      });
+    } else {
+      blit(frames[d.cell], dctx, s, 1, useOrig);
+    }
   };
+
   // The preview and Play run the selected animation, while the canvas can be on
   // any cell of the sheet. A stills clip has no cycle to run: its preview holds
   // the pose under the cursor (or its first, when the cursor is elsewhere).
   const renderPreview = i => {
-    if (comp) { drawAssembled(pctx, pv, false); drawAssembled(bctx, bv, true); return; }
-    const f = curClip.stills
-      ? frames[curClip.cells.includes(cur) ? cur : curClip.cells[0]]
-      : frames[curClip.cells[i % curClip.cells.length]];
-    pctx.clearRect(0, 0, pv.width, pv.height);
-    blit(f, pctx, 3, 1);
-    bctx.clearRect(0, 0, bv.width, bv.height);
-    blit(f, bctx, 3, 1, true);
+    const d = curClip.stills
+      ? (curClip.drawings.find(dd => dd.cell === cur) || curClip.drawings[0])
+      : curClip.drawings[i % curClip.drawings.length];
+    if (!d) return;
+    pctx.clearRect(0, 0, pv.width, pv.height); paintDrawing(pctx, d, pvScale, false);
+    bctx.clearRect(0, 0, bv.width, bv.height); paintDrawing(bctx, d, pvScale, true);
   };
   let pvi = 0;
   let pvTimer = null;
   const startPreview = () => {
     if (pvTimer) { clearInterval(pvTimer); pvTimer = null; }
     pvi = 0;
-    if (!comp && !curClip.stills && curClip.cells.length > 1) {
-      pvTimer = setInterval(() => { pvi = (pvi + 1) % curClip.cells.length; renderPreview(pvi); }, 1000 / curClip.fps);
+    // Refit the preview canvases to the clip's grid — an assembly spans tiles.
+    pvScale = Math.max(1, Math.min(3,
+      Math.floor(150 / (curClip.cols * fw)), Math.floor(150 / (curClip.rows * fh))));
+    pv.width = curClip.cols * fw * pvScale; pv.height = curClip.rows * fh * pvScale;
+    bv.width = pv.width; bv.height = pv.height;
+    pctx.imageSmoothingEnabled = false; bctx.imageSmoothingEnabled = false;
+    if (!curClip.stills && curClip.drawings.length > 1) {
+      pvTimer = setInterval(() => { pvi = (pvi + 1) % curClip.drawings.length; renderPreview(pvi); }, 1000 / curClip.fps);
       animators.push(pvTimer);
     }
     renderPreview(0);
@@ -474,13 +516,14 @@ async function renderSpriteEditor(path) {
 
   let playTimer = null;
   const setPlaying = p => {
-    playing = p && !curClip.stills && curClip.cells.length > 1;
+    playing = p && !curClip.stills && !curClip.assembled && curClip.drawings.length > 1;
     document.getElementById("sp-play").textContent = playing ? "⏸ Pause" : "▶ Play";
     if (playTimer) { clearInterval(playTimer); playTimer = null; }
     if (playing) {
-      let k = Math.max(0, curClip.cells.indexOf(cur));
+      let k = Math.max(0, curClip.drawings.findIndex(d => d.cell === cur));
       playTimer = setInterval(() => {
-        k = (k + 1) % curClip.cells.length; cur = curClip.cells[k]; render();
+        k = (k + 1) % curClip.drawings.length;
+        cur = curClip.drawings[k].cell; render();
       }, 1000 / curClip.fps);
       animators.push(playTimer);
     }
@@ -535,10 +578,11 @@ async function renderSpriteEditor(path) {
     const ts = Math.max(1, Math.min(3, Math.floor(34 / Math.max(cellW, cellH))));
     clips.forEach(cl => {
       const meta = cl.stills
-        ? (cl.cells.length === 1 ? "one pose" : `${cl.cells.length} poses`)
-        : `${cl.cells.length} frames · ${cl.fps} fps`;
+        ? (cl.drawings.length === 1 ? "one pose" : `${cl.drawings.length} poses`)
+        : `${cl.drawings.length} frames · ${cl.fps} fps`;
+      const tw = cellW * cl.cols * ts, th = cellH * cl.rows * ts;
       const row = h(`<button class="sp-clip" type="button">
-        <canvas width="${cellW * ts}" height="${cellH * ts}"></canvas>
+        <canvas width="${tw}" height="${th}"></canvas>
         <span class="sp-clip-name">${esc(cl.label)}<small>${esc(meta)}</small></span>
         <i class="sp-clip-dot" title="your unsaved edits touch this animation"></i></button>`).firstElementChild;
       row.addEventListener("click", () => selectClip(cl, true));
@@ -547,12 +591,12 @@ async function renderSpriteEditor(path) {
       t.imageSmoothingEnabled = false;
       let k = 0;
       const draw = () => {
-        t.clearRect(0, 0, cellW * ts, cellH * ts);
-        blit(frames[cl.cells[k % cl.cells.length]], t, ts, 1);
+        t.clearRect(0, 0, tw, th);
+        paintDrawing(t, cl.drawings[k % cl.drawings.length], ts, false);
       };
       draw();
       cl.redraw = draw;
-      if (!cl.stills && cl.cells.length > 1) {
+      if (!cl.stills && cl.drawings.length > 1) {
         const timer = setInterval(() => { k++; draw(); }, 1000 / cl.fps);
         clipTimers.push(timer); animators.push(timer);
       }
@@ -577,9 +621,12 @@ async function renderSpriteEditor(path) {
 
   const playBtn = document.getElementById("sp-play");
   const syncPlayBtn = () => {
-    const single = curClip.cells.length < 2;
-    playBtn.disabled = single || curClip.stills;
-    playBtn.title = curClip.stills && !single ? "Poses, not a cycle — there is nothing to play."
+    const single = curClip.drawings.length < 2;
+    playBtn.disabled = single || curClip.stills || curClip.assembled;
+    playBtn.title = curClip.assembled
+      ? (single ? "One assembled pose — it shows in the live preview."
+                : "Assembled drawings — they play in the live preview.")
+      : curClip.stills && !single ? "Poses, not a cycle — there is nothing to play."
       : single ? `${ent.name} is drawn from a single frame, so there is nothing to play.` : "";
   };
 
@@ -591,12 +638,16 @@ async function renderSpriteEditor(path) {
     syncPlayBtn();
     startPreview();
     const note = document.getElementById("sp-pv-note");
-    if (note && !comp) {
-      note.textContent = cl.stills
-        ? (cl.cells.length > 1
-          ? "Poses, not a cycle — the preview holds the pose under your cursor. Before is the sheet as it was when you opened the editor."
-          : "A single pose — before is the sheet as it was when you opened the editor.")
-        : "Both loop in sync at the game's own rate — before is the sheet as it was when you opened the editor.";
+    if (note) {
+      note.textContent = cl.assembled
+        ? (cl.stills
+          ? "Assembled the way the game renderer builds this creature — parts placed, rotated and joined, with your edits live on the right."
+          : "Assembled drawings playing in sequence, built the way the game renderer builds this creature — your edits live on the right.")
+        : cl.stills
+          ? (cl.drawings.length > 1
+            ? "Poses, not a cycle — the preview holds the pose under your cursor. Before is the sheet as it was when you opened the editor."
+            : "A single pose — before is the sheet as it was when you opened the editor.")
+          : "Both loop in sync at the game's own rate — before is the sheet as it was when you opened the editor.";
     }
     render();
   };
@@ -850,9 +901,7 @@ async function renderSpriteEditor(path) {
   buildPalette();
   buildClips();
   buildMap();
-  syncPlayBtn();
-  startPreview();
-  render();
+  selectClip(curClip, false);   // fits the preview, the play button and the note to the first clip
   loadHistory();
   cv.focus();
 }

@@ -8,8 +8,8 @@ furnishings initially."* These are the pictures of that space:
   assets/sprites/generated/terrain_floor.png  48x48 — 3x3 of one seamless
       16px wood-plank tile (the terrain_grass.png format, so the renderer
       treats it exactly like the other grounds)
-  assets/sprites/generated/interior.png       32x16 — cell 0 wall, cell 1
-      window (a wall cell with a pane)
+  assets/sprites/generated/interior_wall.png — 16x16 plaster wall
+  assets/sprites/generated/interior_window.png — 16x16, the wall cell with a pane
 
 Derived, not generated, in the yard-ground tradition (tools/gen_yard_ground.py):
 the planks and trim take their browns from the fence cell of obstacles.png, so
@@ -139,11 +139,9 @@ def main():
 
     wall = wall_cell(dark, mid, light)
     window = window_cell(wall, dark, mid)
-    sheet = Image.new("RGBA", (32, 16))
-    sheet.paste(wall, (0, 0))
-    sheet.paste(window, (16, 0))
-    sheet.save(os.path.join(SPRITES, "interior.png"))
-    print("wrote terrain_floor.png (48x48) and interior.png (32x16)"
+    wall.save(os.path.join(SPRITES, "interior_wall.png"))
+    window.save(os.path.join(SPRITES, "interior_window.png"))
+    print("wrote terrain_floor.png (48x48), interior_wall.png and interior_window.png (16x16)"
           f" from fence browns {dark} / {mid} / {light}")
 
 

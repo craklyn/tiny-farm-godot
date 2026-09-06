@@ -72,51 +72,52 @@ async function animate(canvas, ent, scale) {
   const img = await getSheet(ent.sheet);
   const ctx = canvas.getContext("2d");
   ctx.imageSmoothingEnabled = false;
-  if (ent.composite && ent.composite.length) {
-    // Composite entities (e.g. the worm) aren't a frame cycle: parts assemble
-    // into one creature, mirroring the game renderer's own rules.
-    drawComposite(ctx, canvas, img, ent);
-    return;
-  }
   // An entity that declares animations is previewed by its first one; the flat
   // frame list is the whole sheet pool, not a cycle. A "stills" first animation
-  // (poses, variants) holds its first frame rather than flipbooking.
-  const anim = (ent.anims && ent.anims.length) ? ent.anims[0] : null;
-  const frames = anim ? anim.frames.map(k => ent.frames[k]) : ent.frames;
-  const maxW = Math.max(...frames.map(f => f[2])), maxH = Math.max(...frames.map(f => f[3]));
-  const s = scale || Math.floor(Math.min(canvas.width / maxW, canvas.height / maxH));
+  // (poses, variants) holds its first frame rather than flipbooking. One frame
+  // of an animation is a *drawing*: a frame index for a single cell, or
+  // {parts:[{f,dx,dy,rot,flip}]} for an assembly (the worm draws one cell per
+  // tile of itself). A legacy ent.composite reads as one assembled still.
+  const anim = (ent.anims && ent.anims.length) ? ent.anims[0]
+    : (ent.composite && ent.composite.length)
+      ? { kind: "stills", frames: [{ parts: ent.composite }] } : null;
+  const refs = anim ? anim.frames : ent.frames.map((_, i) => i);
+  const ds = refs.map(r => (typeof r === "number")
+    ? { rect: ent.frames[r] }
+    : { parts: r.parts,
+        cols: Math.max(...r.parts.map(c => c.dx)) + 1,
+        rows: Math.max(...r.parts.map(c => c.dy)) + 1 });
+  const fw = Math.max(...ent.frames.map(f => f[2])), fh = Math.max(...ent.frames.map(f => f[3]));
+  const gcols = Math.max(1, ...ds.map(d => d.cols || 1)), grows = Math.max(1, ...ds.map(d => d.rows || 1));
+  const s = scale || Math.max(1, Math.floor(Math.min(canvas.width / (gcols * fw), canvas.height / (grows * fh))));
   let i = 0;
   const interval = 1000 / ((anim && anim.fps) || ent.fps || 4);
   const draw = () => {
-    const [x, y, w, hh] = frames[i % frames.length];
+    const d = ds[i % ds.length];
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(img, x, y, w, hh, (canvas.width - w * s) / 2, (canvas.height - hh * s) / 2, w * s, hh * s);
+    if (d.parts) {
+      const ox = (canvas.width - d.cols * fw * s) / 2, oy = (canvas.height - d.rows * fh * s) / 2;
+      d.parts.forEach(c => {
+        const [x, y, w, hh] = ent.frames[c.f];
+        ctx.save();
+        ctx.translate(ox + (c.dx + 0.5) * fw * s, oy + (c.dy + 0.5) * fh * s);
+        if (c.rot) ctx.rotate(c.rot * Math.PI / 180);
+        if (c.flip) ctx.scale(-1, 1);
+        ctx.drawImage(img, x, y, w, hh, -w * s / 2, -hh * s / 2, w * s, hh * s);
+        ctx.restore();
+      });
+    } else {
+      const [x, y, w, hh] = d.rect;
+      ctx.drawImage(img, x, y, w, hh, (canvas.width - w * s) / 2, (canvas.height - hh * s) / 2, w * s, hh * s);
+    }
     i++;
   };
   draw();
-  if (frames.length > 1 && !(anim && anim.kind === "stills")) animators.push(setInterval(draw, interval));
+  if (ds.length > 1 && !(anim && anim.kind === "stills")) animators.push(setInterval(draw, interval));
 }
 
 function clearAnimators() { while (animators.length) clearInterval(animators.pop()); }
 
-function drawComposite(ctx, canvas, img, ent) {
-  const cells = ent.composite;
-  const cols = Math.max(...cells.map(c => c.dx)) + 1;
-  const rows = Math.max(...cells.map(c => c.dy)) + 1;
-  const fw = Math.max(...ent.frames.map(f => f[2])), fh = Math.max(...ent.frames.map(f => f[3]));
-  const s = Math.max(1, Math.floor(Math.min(canvas.width / (cols * fw), canvas.height / (rows * fh))));
-  const ox = (canvas.width - cols * fw * s) / 2, oy = (canvas.height - rows * fh * s) / 2;
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  cells.forEach(c => {
-    const [x, y, w, hh] = ent.frames[c.f];
-    ctx.save();
-    ctx.translate(ox + (c.dx + 0.5) * fw * s, oy + (c.dy + 0.5) * fh * s);
-    if (c.rot) ctx.rotate(c.rot * Math.PI / 180);
-    if (c.flip) ctx.scale(-1, 1);
-    ctx.drawImage(img, x, y, w, hh, -w * s / 2, -hh * s / 2, w * s, hh * s);
-    ctx.restore();
-  });
-}
 
 /* ---------------- nav groups (collapsible submenus) ----------------
    Generic: any .nav-group[data-grp] with a .nav-caret and a .nav-sub gets
