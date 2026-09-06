@@ -10,44 +10,6 @@
   },
   "goals": [
     {
-      "id": "style-guide-signed",
-      "statement": "The art direction is signed, so a new sprite has a rule to follow rather than a taste to guess.",
-      "statement_short": "the art direction is still a draft nobody is bound by",
-      "owner": "ingrid",
-      "severity": "important",
-      "unit": "",
-      "measure": {
-        "kind": "unchecked",
-        "reason": "Whether a style guide is signed is a judgment you make in a room, not a string in a file. Nothing here can measure it, and a checkbox in the document would only measure whether somebody ticked a checkbox.",
-        "would_need": "Your yes in a look session, recorded as a ruling — then this row becomes an attestation with a date rather than a blank."
-      },
-      "path_to_green": {
-        "narrative": "One look session. You asked for it before signing, and it has not been booked.",
-        "route": {
-          "kind": "project",
-          "id": "art-audio-direction"
-        },
-        "owner": "ingrid",
-        "ceo_blocker": {
-          "kind": "calendar",
-          "surface": {
-            "kind": "project",
-            "id": "art-audio-direction"
-          },
-          "duration_minutes": null,
-          "sittings": 1,
-          "consequence": "Every sprite generated before the signing is a guess that may have to be redone.",
-          "waiting_since": "2026-09-02"
-        }
-      },
-      "history": {
-        "record": false,
-        "chart": false
-      },
-      "parked": true,
-      "parked_on": "2026-09-05"
-    },
-    {
       "id": "rights-on-record-for-every-asset",
       "statement": "Rights on record for every art, sound and font asset",
       "owner": "vp-design",

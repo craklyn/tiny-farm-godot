@@ -11,39 +11,6 @@
   },
   "goals": [
     {
-      "id": "we-know-what-players-want",
-      "statement": "We can see what happens after somebody reaches the store page — visits, plays, and what they do next.",
-      "statement_short": "we cannot see anything a player does at the storefront",
-      "owner": "victor",
-      "severity": "important",
-      "unit": "",
-      "why_it_matters": "The split with Marketing: they generate demand — the posts, the press, the creators — and they own reach and interest. Sales owns everything from the store page down: who arrived, who played, who came back, who bought, who refunded and why. Wishlists sit exactly on that line, which is why they belong on both walls with different questions attached — Marketing asks whether the campaign moved the number, Sales asks what the number forecasts for launch and whether it clears the visibility bar the storefront uses. None of it is visible here: one free browser build has been live for weeks and nobody in this studio can say whether a single person has opened it.",
-      "measure": {
-        "kind": "probe_cache",
-        "probe": "itch_daily",
-        "field": "views"
-      },
-      "compare": {
-        "direction": "higher_is_better",
-        "target": 0,
-        "amber_at": 0
-      },
-      "path_to_green": {
-        "narrative": "One credential. The storefront already counts views and plays for us; we have simply never asked it for the numbers. That is the only view of demand this studio has today, and it is the cheapest real thing on my list.",
-        "route": {
-          "kind": "work",
-          "id": "wc8b36764ebc"
-        },
-        "owner": "victor"
-      },
-      "history": {
-        "record": true,
-        "chart": false
-      },
-      "parked": true,
-      "parked_on": "2026-09-05"
-    },
-    {
       "id": "credits-screen-opens",
       "statement": "The credits screen exists and opens — the attribution we owe actually ships.",
       "statement_short": "the credits screen the licence depends on is not wired up",
@@ -85,36 +52,6 @@
         "reason": "external_commitment",
         "because": "The attribution is owed to the person whose work we shipped, and it is owed the moment the build is public — not when we get round to the screen."
       },
-      "parked": true,
-      "parked_on": "2026-09-05"
-    },
-    {
-      "id": "web-build-played-through",
-      "statement": "Somebody played the actual web build end to end before it went out.",
-      "statement_short": "nothing records that the web build was played before a tag",
-      "owner": "victor",
-      "severity": "blocking",
-      "unit": "",
-      "why_it_matters": "The runbook's first line, and the one nothing can automate: sound has to arrive after the first tap, and only a person in a browser can tell you it did. So it is recorded rather than measured — your yes, against the tag being cut and the commit the build came from. It is spent when that tag goes out, and it lapses early if the game changes after you played it.",
-      "measure": {
-        "kind": "attestation",
-        "of": "web_build_played"
-      },
-      "compare": {
-        "direction": "must_be_true"
-      },
-      "path_to_green": {
-        "narrative": "Ten minutes in a browser on the build the next tag would ship, then the button on this row.",
-        "route": {
-          "kind": "none"
-        },
-        "owner": "victor"
-      },
-      "history": {
-        "record": false,
-        "chart": false
-      },
-      "signal_key": "ship_gate",
       "parked": true,
       "parked_on": "2026-09-05"
     },

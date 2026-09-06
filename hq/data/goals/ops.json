@@ -113,47 +113,6 @@
       },
       "parked": true,
       "parked_on": "2026-09-05"
-    },
-    {
-      "id": "ready-to-grow-words",
-      "statement": "When the game starts needing words, they can be translated without going back over the code.",
-      "statement_short": "there are no translation files and nothing that loads them, so every word added now has to be found again later",
-      "owner": "oskar",
-      "severity": "watch",
-      "unit": "",
-      "why_it_matters": "The game starts almost wordless and gains text as it gets technical — S-7 binds phase 1's farming loop, not the whole arc, and programmable bots will need words by design. So text is coming on purpose. There is no translation support here at all: no translation files, no language setting, and no code that looks a word up before showing it. Every word written before that exists is one somebody has to go back and find. This is the cheapest it will ever be to fix, and it gets more expensive with each phase.",
-      "measure": {
-        "kind": "file_grep",
-        "label": "the project has translation plumbing",
-        "paths": [
-          "project.godot"
-        ],
-        "exts": [
-          ".godot"
-        ],
-        "pattern": "(?i)translations|locale/translation",
-        "expect": "present",
-        "field": "bool",
-        "says_true": "the project declares translations",
-        "says_false": "the project declares no translations, and nothing in the code calls tr()"
-      },
-      "compare": {
-        "direction": "must_be_true"
-      },
-      "path_to_green": {
-        "narrative": "Put the translation files and the code that loads them in before the words arrive, not after. Phase 2's machines are where text starts, so this wants doing before them.",
-        "route": {
-          "kind": "work",
-          "id": "w1a9922279f6"
-        },
-        "owner": "oskar"
-      },
-      "history": {
-        "record": true,
-        "chart": false
-      },
-      "parked": true,
-      "parked_on": "2026-09-05"
     }
   ],
   "scoreboard_title": "Money, obligations, and players"

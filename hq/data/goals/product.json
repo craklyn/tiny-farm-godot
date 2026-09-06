@@ -10,41 +10,6 @@
   },
   "goals": [
     {
-      "id": "gate-m15-closed",
-      "statement": "The onboarding rebuild counts as finished: one uncoached first-time player cleared every bar set for it.",
-      "statement_short": "the onboarding rebuild still has one bar no uncoached first-time player has cleared",
-      "owner": "priya",
-      "severity": "important",
-      "unit": "bars",
-      "measure": {
-        "kind": "doc_section",
-        "path": "docs/ROADMAP.md",
-        "section": "Gate run recorded",
-        "pattern": "❌",
-        "field": "count",
-        "unit": "gate bar still unmet"
-      },
-      "compare": {
-        "direction": "lower_is_better",
-        "target": 0,
-        "amber_at": 1
-      },
-      "path_to_green": {
-        "narrative": "The cot presentation shipped. One uncoached first-time sitting scores the one open bar, the cot being found and used without prompting; the other four bars were met in the last session and do not need re-running.",
-        "route": {
-          "kind": "project",
-          "id": "close-m15-gate"
-        },
-        "owner": "priya"
-      },
-      "history": {
-        "record": true,
-        "chart": false
-      },
-      "parked": true,
-      "parked_on": "2026-09-05"
-    },
-    {
       "id": "dead-taps-under-the-bar",
       "statement": "Taps that achieve nothing stay at or under the bar the last milestone set.",
       "statement_short": "taps that achieve nothing are back above the bar the last milestone set",

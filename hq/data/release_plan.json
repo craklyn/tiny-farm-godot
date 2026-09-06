@@ -40,6 +40,12 @@
           "done": false
         },
         {
+          "id": "s8",
+          "title": "Play the web build end to end before the tag goes out — only a person in a browser can tell you the sound arrives after the first tap",
+          "estimate_days": null,
+          "done": false
+        },
+        {
           "id": "s6",
           "title": "Cut the v0.2.0 tag from a green main through the deploy runbook",
           "estimate_days": null,
