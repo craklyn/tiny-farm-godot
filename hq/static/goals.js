@@ -60,7 +60,7 @@ function glForm(area, g, seats, org, pillars) {
       <label>Which area it belongs to
         <select name="area">${pillars.map(p => `<option value="${esc(p.id)}"
           ${p.id === area ? "selected" : ""}>${esc(p.name)}</option>`).join("")}</select></label>
-      <label>Which seat carries it
+      <label>Assigned to
         <select name="owner">${teams.map(t => `<optgroup label="${esc(t.name)}">${t.seats.map(st =>
           `<option value="${esc(st.id)}" ${st.id === chosen ? "selected" : ""}>${esc(st.label)}</option>`
         ).join("")}</optgroup>`).join("")}</select></label>
@@ -176,7 +176,7 @@ function glRow(area, g, seats, org) {
       <span class="gl-caret">▸</span>
     </button>
     <div class="gl-detail" hidden>
-      <div class="gl-field"><span class="gl-label">Carried by</span>${glOwnerLine(seats, org, g.owner)}</div>
+      <div class="gl-field"><span class="gl-label">Assigned to</span>${glOwnerLine(seats, org, g.owner)}</div>
       <div class="gl-field"><span class="gl-label">Metric</span>${esc(glMetric(g))}</div>
       <div class="gl-field"><span class="gl-label">Status summary</span>${glStatus(g, org)}</div>
       <div class="gl-field"><span class="gl-label">Matters</span>${esc(sev)}${
@@ -205,7 +205,7 @@ function glParkedRow(area, g, seats, org) {
       <span class="gl-caret">▸</span>
     </button>
     <div class="gl-detail" hidden>
-      <div class="gl-field"><span class="gl-label">Was carried by</span>${glOwnerLine(seats, org, g.owner)}</div>
+      <div class="gl-field"><span class="gl-label">Was assigned to</span>${glOwnerLine(seats, org, g.owner)}</div>
       ${g.why_it_matters ? `<div class="gl-field"><span class="gl-label">Why it was written</span>${esc(g.why_it_matters)}</div>` : ""}
       <div class="gl-field"><span class="gl-label">Parked</span>${esc(g.parked_on || "")}</div>
       <div class="gl-detail-btns">
