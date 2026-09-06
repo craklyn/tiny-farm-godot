@@ -22,15 +22,14 @@ extends Node2D
 
 const TILE_SIZE := 16
 
-# critters.png (CREDITS.md, the 2026-08-30 art bench): **row 1** is the rabbit's
-# four-frame hop, **row 4** is the kangaroo's. Every cell faces right and is
-# mirrored for the other direction, as the ants' are — the flip is a negative
-# width on the destination rect, because unlike the hen's sheet this one does not
-# carry its own left-facing frames.
-const SPRITES := preload("res://assets/sprites/generated/critters.png")
-const SHEET_ROW := {
-	SpeciesDefs.RABBIT: 1,
-	SpeciesDefs.KANGAROO: 4,
+# One sheet per species (CREDITS.md, the 2026-08-30 art bench; split 2026-09-06):
+# each is its four-frame hop in one row. Every cell faces right and is mirrored
+# for the other direction, as the ants' are — the flip is a negative width on
+# the destination rect, because unlike the hen's sheet these do not carry their
+# own left-facing frames.
+const SPRITES := {
+	SpeciesDefs.RABBIT: preload("res://assets/sprites/generated/rabbit.png"),
+	SpeciesDefs.KANGAROO: preload("res://assets/sprites/generated/kangaroo.png"),
 }
 const HOP_FRAMES := 4
 const FRAME_TIME := 0.13
@@ -42,7 +41,7 @@ const MAX_STEP := TILE_SIZE * 0.5
 var actor_id: String = SpeciesDefs.RABBIT
 var farm: Node2D = null
 
-var sheet_row: int = 1
+var sprites: Texture2D = SPRITES[SpeciesDefs.RABBIT]
 # Pixels per second, derived from the species' own tiles-per-tick rather than
 # written down again here: the sprite then moves at exactly the speed the sim
 # moves the animal, so it trails by less than a tile and cannot drift as the row
@@ -64,7 +63,7 @@ func init_actor(farm_ref: Node2D, id: String = SpeciesDefs.RABBIT) -> void:
 	farm = farm_ref
 	actor_id = id
 	var species: String = farm.sim.species_of(actor_id)
-	sheet_row = int(SHEET_ROW.get(species, 1))
+	sprites = SPRITES.get(species, SPRITES[SpeciesDefs.RABBIT])
 	speed_px = SpeciesDefs.speed_of(species) * TILE_SIZE * float(SimClock.RATE)
 	position = sim_position()
 
@@ -115,5 +114,5 @@ func queue_render(canvas: CanvasItem, render_queue: Array) -> void:
 			if facing_left:
 				dest = Rect2(position.x + TILE_SIZE, position.y, -TILE_SIZE, TILE_SIZE)
 			canvas.draw_texture_rect_region(
-				SPRITES, dest, Rect2(hop_frame * 16, sheet_row * 16, 16, 16))
+				sprites, dest, Rect2(hop_frame * 16, 0, 16, 16))
 	})

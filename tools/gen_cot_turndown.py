@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Derive the turned-down cot cell from the made one (T-27 box 5, treatment C).
 
-Not generated. `objects.png` cell 0 is the cot as the Retro Diffusion run of
+Not generated. `cot.png` cell 0 is the cot as the Retro Diffusion run of
 2026-08-31 left it; cell 7 is that same cell with its blanket pulled down, edited
 here from the cell's own nine colours. This is the house pattern for a second
 state of one object — the sprinkler's idle frame is its spraying frame with the
@@ -25,9 +25,9 @@ import sys
 
 from PIL import Image
 
-SHEET = os.path.join(os.path.dirname(__file__), "..", "assets", "sprites", "generated", "objects.png")
+SHEET = os.path.join(os.path.dirname(__file__), "..", "assets", "sprites", "generated", "cot.png")
 SRC_COL = 0          # the made bed
-DST_COL = 7          # the turned-down bed
+DST_COL = 1          # the turned-down bed
 CELL_W, CELL_H = 16, 32
 
 CREAM = (248, 244, 230, 255)   # the sheet

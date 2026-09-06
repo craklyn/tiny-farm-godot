@@ -371,7 +371,7 @@ func _build_ui() -> void:
 	teach_done_button.pressed.connect(_on_teach_done_button)
 	add_child(teach_done_button)
 
-	# objects.png cell 0 is the cot, 16x32 — the same cell the world draws (see
+	# cot.png cell 0 is the made cot, 16x32 — the same cell the world draws (see
 	# `world/farm.gd`'s object_regions). Treatment C's turned-down cell is
 	# deliberately *not* followed here: the button is a signpost to the bed, and a
 	# signpost that changes picture at dusk is a second thing to learn.
@@ -383,7 +383,7 @@ func _build_ui() -> void:
 	bed_button_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	bed_button_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var cot_icon := AtlasTexture.new()
-	cot_icon.atlas = load("res://assets/sprites/generated/objects.png")
+	cot_icon.atlas = load("res://assets/sprites/generated/cot.png")
 	cot_icon.region = Rect2(0, 0, 16, 32)
 	bed_button_icon.texture = cot_icon
 	bed_button.add_child(bed_button_icon)
@@ -590,7 +590,7 @@ func _glyph_icon(key: String):
 		return null
 	var atlas := AtlasTexture.new()
 	atlas.atlas = tool_icons_texture if entry["sheet"] == "tools" \
-		else load("res://assets/sprites/generated/crops.png")
+		else load("res://assets/sprites/generated/shop_icons.png")
 	var r: Array = entry["rect"]
 	atlas.region = Rect2(r[0], r[1], r[2], r[3])
 	return atlas
@@ -853,8 +853,8 @@ func _update_hud() -> void:
 		var machine_tex := MachineDefs.icon_of(seed_name)
 		seed_pill_icon.texture = machine_tex
 		seed_pill_icon.visible = machine_tex != null
-	elif seed_def.has("sprite_row"):
-		seed_pill_icon.texture = _crop_icon(int(seed_def.sprite_row))
+	elif seed_def.has("icon_col"):
+		seed_pill_icon.texture = _crop_icon(int(seed_def.icon_col))
 		seed_pill_icon.visible = true
 	else:
 		seed_pill_icon.visible = false
@@ -954,11 +954,11 @@ func _draw_sun_arc() -> void:
 		sun_arc.draw_circle(at, ARC_TOKEN_R, warm)
 
 
-# crops.png row 2: one shop icon per crop, indexed by its sprite_row.
-func _crop_icon(sprite_row: int) -> AtlasTexture:
+# shop_icons.png: one shop icon per crop, indexed by its icon_col.
+func _crop_icon(icon_col: int) -> AtlasTexture:
 	var atlas := AtlasTexture.new()
-	atlas.atlas = load("res://assets/sprites/generated/crops.png")
-	atlas.region = Rect2(sprite_row * 16, 32, 16, 16)
+	atlas.atlas = load("res://assets/sprites/generated/shop_icons.png")
+	atlas.region = Rect2(icon_col * 16, 0, 16, 16)
 	return atlas
 
 

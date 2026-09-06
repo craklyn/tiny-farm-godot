@@ -5803,10 +5803,11 @@ func test_pea() -> void:
 		"priced between them [Playtest]: worth growing, never the obvious choice")
 	_assert(int(pea.sell_price) > int(pea.seed_price),
 		"and worth more than its seed, which is the only balance rule that is not taste")
-	_assert(int(pea.sprite_row) == 3, "it draws from crops.png row 3 (WI-11 widened the sheet for it)")
-	var sheet: Texture2D = load("res://assets/sprites/generated/crops.png")
-	_assert(sheet != null and sheet.get_image().get_height() >= (int(pea.sprite_row) + 1) * 16,
-		"and that row is really in the sheet, not a cell off the bottom of it")
+	var sheet: Texture2D = load("res://assets/sprites/generated/pea.png")
+	_assert(sheet != null and sheet.get_image().get_width() >= int(pea.stages) * 16,
+		"its growth stages are really in pea.png, not cells off the end of it")
+	_assert(int(pea.icon_col) == 3, "its icon column still points at the coin — the documented trap "
+		+ "for whoever debuts it in the shop (see crop_defs.gd)")
 
 	# The shop does not sell it yet: every shop, HUD and seed-picker path iterates
 	# ORDER, and the pea is deliberately not in it (Q-55/Q-56 — the debut is content
@@ -8832,7 +8833,7 @@ func test_station_presentation() -> void:
 			art_ok = false
 	_assert(art_ok, "every station has a glyph and every glyph has a cell on a sheet")
 
-	var sheets := { "crops": "res://assets/sprites/generated/crops.png",
+	var sheets := { "icons": "res://assets/sprites/generated/shop_icons.png",
 		"tools": "res://assets/sprites/tool_icons.png" }
 	var cells_ok := true
 	for key in StationPresentation.GLYPH_ATLAS.keys():
@@ -8851,14 +8852,14 @@ func test_station_presentation() -> void:
 	# the can and the bin, no art spend) are actually in the file — an empty cell
 	# would draw as nothing at all and fail silently, which is the worst failure
 	# a wordless cue can have.
-	var crops_img: Image = (load(sheets["crops"]) as Texture2D).get_image()
+	var icons_img: Image = (load(sheets["icons"]) as Texture2D).get_image()
 	var drawn_ok := true
 	for key in [StationPresentation.GLYPH_DROPLET, StationPresentation.GLYPH_BASKET]:
 		var r2: Array = StationPresentation.GLYPH_ATLAS[key]["rect"]
 		var ink := 0
 		for y in range(r2[1], r2[1] + r2[3]):
 			for x in range(r2[0], r2[0] + r2[2]):
-				if crops_img.get_pixel(x, y).a > 0.15:
+				if icons_img.get_pixel(x, y).a > 0.15:
 					ink += 1
 		if ink < 40:
 			drawn_ok = false

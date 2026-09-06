@@ -26,8 +26,8 @@ const SPEED = 20.0
 # what walks the sprite between them.
 const MAX_STEP := TILE_SIZE * 0.5
 
-# animals.png cells: 0-3 walk cycle facing right, 4-7 the same facing left
-const SPRITES := preload("res://assets/sprites/generated/animals.png")
+# chicken.png cells: 0-3 walk cycle facing right, 4-7 the same facing left
+const SPRITES := preload("res://assets/sprites/generated/chicken.png")
 const WALK_FRAMES := 4
 const FRAME_TIME := 0.14  # matches the 4-frame walk budget in docs/design/09
 

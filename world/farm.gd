@@ -40,7 +40,7 @@ var objects: Array[Array]:
 
 # Sprite resources
 var tileset_texture: Texture2D
-var crops_texture: Texture2D
+var crop_sheets: Dictionary = {}      # crop_type -> Texture2D, one sheet per crop
 
 # Quad regions (Rect2 for atlas lookups)
 var tile_regions: Dictionary = {}     # state_name -> Rect2
@@ -173,14 +173,12 @@ const ACTOR_RENDERERS := {
 	SpeciesDefs.CHICKEN: "res://entities/chicken.gd",
 	SpeciesDefs.CROW: "res://entities/crow.gd",
 	SpeciesDefs.SPRINKLER: "res://entities/sprinkler.gd",
-	# Both ants, one script: they differ by which cells of critters.png they draw
-	# and how fast they walk, and both of those come off the species row
-	# (M2.5 WI-8a/8b).
+	# Both ants, one script: they differ by which sheet they draw and how fast
+	# they walk, and both of those come off the species row (M2.5 WI-8a/8b).
 	SpeciesDefs.ANT_SCOUT: "res://entities/ant.gd",
 	SpeciesDefs.ANT_FORAGER: "res://entities/ant.gd",
 	# The rabbit and the kangaroo share a script as well as a brain: they differ
-	# by a row of critters.png and a speed, and both come off the species row
-	# (M2.5 WI-8c/8f).
+	# by a sheet and a speed, and both come off the species row (M2.5 WI-8c/8f).
 	SpeciesDefs.RABBIT: "res://entities/grazer.gd",
 	SpeciesDefs.KANGAROO: "res://entities/grazer.gd",
 	SpeciesDefs.SONGBIRD: "res://entities/songbird.gd",
@@ -274,9 +272,8 @@ var biomes_texture: Texture2D
 # T-37: which sheet a boundary/obstacle state draws from. Everything defaults
 # to obstacles.png (biomes_texture); interior states name their own sheet.
 var tile_sheets: Dictionary = {}
-var furniture_texture: Texture2D
-var chest_texture: Texture2D
-var animals_texture: Texture2D
+var icons_texture: Texture2D          # shop_icons.png, the wordless shop's one row
+var egg_texture: Texture2D
 var tool_icons_texture: Texture2D
 
 func _load_textures() -> void:
@@ -293,11 +290,16 @@ func _load_textures() -> void:
 	# terrain_floor: the home's planks, same 3x3 seamless format (T-37).
 	floor_texture = load("res://assets/sprites/generated/terrain_floor.png")
 	interior_texture = load("res://assets/sprites/generated/interior.png")
-	crops_texture = load("res://assets/sprites/generated/crops.png")
+	# One sheet per entity (2026-09-06): a sheet's edit history then belongs to
+	# exactly one thing, and regenerating one sprite is a file swap.
+	crop_sheets = {
+		"wheat": load("res://assets/sprites/generated/wheat.png"),
+		"tomato": load("res://assets/sprites/generated/tomato.png"),
+		"pea": load("res://assets/sprites/generated/pea.png"),
+	}
 	biomes_texture = load("res://assets/sprites/generated/obstacles.png")
-	furniture_texture = load("res://assets/sprites/generated/objects.png")
-	chest_texture = furniture_texture
-	animals_texture = load("res://assets/sprites/generated/animals.png")
+	icons_texture = load("res://assets/sprites/generated/shop_icons.png")
+	egg_texture = load("res://assets/sprites/generated/egg.png")
 	tool_icons_texture = load("res://assets/sprites/tool_icons.png")
 
 	# Tile regions (obstacles.png: rock, log, weed, tree, fence, hedge, gates)
@@ -321,29 +323,30 @@ func _load_textures() -> void:
 	tile_sheets[WorldLayout.WALL] = interior_texture
 	tile_sheets[WorldLayout.WINDOW] = interior_texture
 
-	# Crop regions (crops.png: row 0 wheat, row 1 tomato, row 3 pea, 4 visual
-	# stages each; row 2 is the shop iconography — see menus.gd). The pea ships as
-	# an ordinary crop (Q-55, M2.5 WI-10) and nothing plants one yet, so this cell
-	# binding is what stops the first thing that does from growing invisibly.
-	crop_regions["wheat"] = {}
-	crop_regions["tomato"] = {}
-	crop_regions["pea"] = {}
-	for stage in 4: crop_regions["wheat"][stage] = Rect2(stage * 16, 0 * 16, 16, 16)
-	for stage in 4: crop_regions["tomato"][stage] = Rect2(stage * 16, 1 * 16, 16, 16)
-	for stage in 4: crop_regions["pea"][stage] = Rect2(stage * 16, 3 * 16, 16, 16)
+	# Crop regions (each crop's own sheet: its four visual stages in one row).
+	# The pea ships as an ordinary crop (Q-55, M2.5 WI-10) and nothing plants one
+	# yet, so this cell binding is what stops the first thing that does from
+	# growing invisibly.
+	for crop in ["wheat", "tomato", "pea"]:
+		crop_regions[crop] = {}
+		for stage in 4: crop_regions[crop][stage] = Rect2(stage * 16, 0, 16, 16)
 
-	# Object regions map (objects.png: cot, well, seed_box 16x32; bin 16x16)
-	# Format: object_name -> [texture, rect]
-	object_regions["cot"] = [furniture_texture, Rect2(0 * 16, 0, 16, 32)]
+	# Object regions map, one sheet per object (cot, well, seed_box 16x32;
+	# bin, acorn, egg 16x16). Format: object_name -> [texture, rect]
+	object_regions["cot"] = [load("res://assets/sprites/generated/cot.png"), Rect2(0, 0, 16, 32)]
 	# T-27 box 5, treatment C. Not an object the sim knows about — no verb, no
-	# footprint, nothing in `OBJECT_POSITIONS`: it is cell 0 with its blanket
-	# pulled back, and `cot_turned_down` chooses between the two below.
-	object_regions["cot_turned_down"] = [furniture_texture, Rect2(7 * 16, 0, 16, 32)]
-	object_regions["well"] = [furniture_texture, Rect2(1 * 16, 0, 16, 32)]
-	object_regions["shipping_bin"] = [chest_texture, Rect2(3 * 16, 16, 16, 16)]
-	object_regions["seed_box"] = [furniture_texture, Rect2(2 * 16, 0, 16, 32)]
-	object_regions["scarecrow"] = [crops_texture, Rect2(2 * 16, 2 * 16, 16, 16)]
-	object_regions["acorn"] = [furniture_texture, Rect2(4 * 16, 16, 16, 16)]
+	# footprint, nothing in `OBJECT_POSITIONS`: it is the cot with its blanket
+	# pulled back, cell 1 of the cot's sheet, and `cot_turned_down` chooses
+	# between the two below.
+	object_regions["cot_turned_down"] = [object_regions["cot"][0], Rect2(16, 0, 16, 32)]
+	object_regions["well"] = [load("res://assets/sprites/generated/well.png"), Rect2(0, 0, 16, 32)]
+	object_regions["shipping_bin"] = [load("res://assets/sprites/generated/shipping_bin.png"), Rect2(0, 0, 16, 16)]
+	object_regions["seed_box"] = [load("res://assets/sprites/generated/seed_box.png"), Rect2(0, 0, 16, 32)]
+	# The scarecrow's world sprite is its shop icon (S-placeholder: new things
+	# are bought, so the picture in the shop and on the grass are one cell).
+	object_regions["scarecrow"] = [icons_texture, Rect2(2 * 16, 0, 16, 16)]
+	object_regions["acorn"] = [load("res://assets/sprites/generated/acorn.png"), Rect2(0, 0, 16, 16)]
+	object_regions["egg"] = [egg_texture, Rect2(0, 0, 16, 16)]
 	# T-9: a tool lying at its gate is drawn with the icon the HUD already uses
 	# for it, so what she picks up and what she then holds are the same picture.
 	# No new art needed for either.
@@ -360,7 +363,7 @@ func _load_textures() -> void:
 		var entry: Dictionary = StationPresentation.GLYPH_ATLAS[key]
 		var r: Array = entry["rect"]
 		glyph_regions[key] = [
-			tool_icons_texture if entry["sheet"] == "tools" else crops_texture,
+			tool_icons_texture if entry["sheet"] == "tools" else icons_texture,
 			Rect2(r[0], r[1], r[2], r[3]),
 		]
 
@@ -781,7 +784,7 @@ func _refuse_dx(tx: int, ty: int) -> float:
 const REFUSE_ICONS := {
 	"no_seeds":  { "sheet": "tools",   "rect": [5 * 16, 0, 16, 16] },
 	"no_water":  { "sheet": "tools",   "rect": [4 * 16, 0, 16, 16] },
-	"no_energy": { "sheet": "objects", "rect": [0, 0, 16, 32] },
+	"no_energy": { "sheet": "cot", "rect": [0, 0, 16, 32] },
 }
 
 
@@ -790,7 +793,7 @@ func _refuse_icon(why: String) -> Array:
 	if entry.is_empty():
 		return []
 	var r: Array = entry["rect"]
-	var tex: Texture2D = tool_icons_texture if entry["sheet"] == "tools" else furniture_texture
+	var tex: Texture2D = tool_icons_texture if entry["sheet"] == "tools" else object_regions["cot"][0]
 	return [tex, Rect2(r[0], r[1], r[2], r[3])]
 
 
@@ -1033,11 +1036,12 @@ func _draw() -> void:
 				# waterable, and eventually they were harvested".
 				var stage: int = CropDefs.get_visual_stage(tile.crop_type, tile.growth_stage)
 				var region: Rect2 = crop_regions.get(tile.crop_type, {}).get(stage, Rect2())
-				if region.size.x > 0:
+				var crop_tex: Texture2D = crop_sheets.get(tile.crop_type)
+				if region.size.x > 0 and crop_tex != null:
 					var crop_rect := _react_rect(px, py, k, TILE_SIZE, shake)
 					render_queue.append({
 						"y": py,
-						"draw": func(): draw_texture_rect_region(crops_texture, crop_rect, region)
+						"draw": func(): draw_texture_rect_region(crop_tex, crop_rect, region)
 					})
 
 				# T-28, satisfied treatment B: **the state shows before the tap.**
@@ -1073,7 +1077,7 @@ func _draw() -> void:
 					px + (TILE_SIZE - EGG_SIZE) / 2.0,
 					py + (TILE_SIZE - EGG_SIZE) / 2.0,
 					EGG_SIZE, EGG_SIZE)
-				var small_data: Array = object_regions.get(obj, [animals_texture, Rect2(11 * 16, 0, 16, 16)])
+				var small_data: Array = object_regions.get(obj, [egg_texture, Rect2(0, 0, 16, 16)])
 				var small_tex: Texture2D = small_data[0]
 				var small_reg: Rect2 = small_data[1]
 				render_queue.append({

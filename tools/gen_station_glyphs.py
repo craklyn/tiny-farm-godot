@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Derive T-28's two missing nouns into the iconography row of crops.png.
+"""Derive T-28's two missing nouns into shop_icons.png, the iconography row.
 
 **No art was generated for T-28.** The stations' drafts need pictures for the
 things the player is being told about, and the game already owns most of them:
-the coin (crops.png row 2 col 3, added for T-12), the watering can and the seed
+the coin (shop_icons.png col 3, added for T-12), the watering can and the seed
 packet (tool_icons cells 4 and 5, which the refusal table already uses — see
 `world/farm.gd` REFUSE_ICONS). Two nouns had no picture anywhere:
 
@@ -13,10 +13,10 @@ packet (tool_icons cells 4 and 5, which the refusal table already uses — see
     tool_icons cell 4, so the can and the water it carries read as one family.
   * **an empty basket** — what she is holding when the shipping bin has nothing
     to take. Drawn in the shipping bin's own three wood colours, lifted from
-    objects.png cell (3,1), for the same reason: the bin and the basket you
+    shipping_bin.png, for the same reason: the bin and the basket you
     bring to it must not look like they come from different games.
 
-Both land in **crops.png row 2**, which is the sheet's iconography row by
+Both land in **shop_icons.png**, which is the shop's iconography row by
 existing convention ("wheat packet, tomato packet, scarecrow, and a coin" —
 `ui/menus.gd`). Columns 4 and 5 were empty; they are now the droplet and the
 basket. No sheet grows, no new import is created, and nothing that was already
@@ -33,12 +33,12 @@ import sys
 from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SHEET = os.path.join(HERE, "..", "assets", "sprites", "generated", "crops.png")
+SHEET = os.path.join(HERE, "..", "assets", "sprites", "generated", "shop_icons.png")
 CAN_SHEET = os.path.join(HERE, "..", "assets", "sprites", "tool_icons.png")
-BIN_SHEET = os.path.join(HERE, "..", "assets", "sprites", "generated", "objects.png")
+BIN_SHEET = os.path.join(HERE, "..", "assets", "sprites", "generated", "shipping_bin.png")
 
 CELL = 16
-ICON_ROW = 2      # crops.png's iconography row
+ICON_ROW = 0      # shop_icons.png is one row
 DROPLET_COL = 4
 BASKET_COL = 5
 
@@ -171,7 +171,7 @@ def preview(img, title):
 
 def main():
     can = palette_of(CAN_SHEET, 4, 0)
-    wood = palette_of(BIN_SHEET, 3, 1)
+    wood = palette_of(BIN_SHEET, 0, 0)
     if len(can) < 4 or len(wood) < 3:
         print("source cells lost their colours — refusing to guess", file=sys.stderr)
         return 1

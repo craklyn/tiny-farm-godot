@@ -36,11 +36,11 @@ extends Node2D
 
 const TILE_SIZE := 16
 
-# critters.png row 3 (CREDITS.md, the 2026-08-31 art bench). Every cell faces
-# right and is mirrored for the other direction, as every other row of this sheet
-# is.
-const SPRITES := preload("res://assets/sprites/generated/critters.png")
-const SHEET_ROW := 3
+# worm.png (CREDITS.md, the 2026-08-31 art bench; split to its own sheet
+# 2026-09-06). Every cell faces right and is mirrored for the other direction,
+# as the other critters' are.
+const SPRITES := preload("res://assets/sprites/generated/worm.png")
+const SHEET_ROW := 0
 const CELL_HEAD := 0
 const CELL_BODY := 1
 const CELL_TAIL := 2

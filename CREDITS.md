@@ -214,6 +214,18 @@ before the first public build ships.*
     outlines on plants read as mould; on a machine it reads as a machine, and the drone
     needs to separate from both the green field and her rust jumpsuit. Deliberate, and
     recorded here so it is not later mistaken for drift.
+- **One sheet per entity, 2026-09-06** — **not generated, $0.00.** The four shared
+  atlases (`animals.png`, `critters.png`, `crops.png`, `objects.png`) were cut into
+  per-entity sheets — `chicken.png`, `crow.png`, `egg.png`, `ant_scout.png`,
+  `ant_forager.png`, `rabbit.png`, `mole.png`, `worm.png`, `kangaroo.png`,
+  `songbird.png`, `spares.png`, `wheat.png`, `tomato.png`, `pea.png`,
+  `shop_icons.png` (the iconography row, kept together as one designed set),
+  `cot.png`, `well.png`, `seed_box.png`, `shipping_bin.png`, `acorn.png`,
+  `sprinkler.png` — so a sheet's edit history in HQ's sprite editor belongs to
+  exactly one thing and regenerating one sprite is a file swap. Every inked cell
+  was carried over pixel-identical (verified programmatically at cut time); only
+  empty padding cells were dropped. Provenance for the art itself is unchanged —
+  see the dated entries above, which describe the sheets as they were generated.
 - **Sprout Lands asset pack** by Cup Nooble — *removed 2026-08-26* (Q-7c ruling:
   drop restrictively-licensed assets; its free license forbids redistribution and
   this repo is public). Q-7b license findings recorded in the git history of this

@@ -144,21 +144,19 @@ const ICON_CELL := {
 	# [down, up, left, right] x [idle, walk, walk, walk]; cell (0,0) is standing.
 	SpeciesDefs.NEIGHBOUR: Rect2(0, 0, 48, 48),
 	SpeciesDefs.BOT: Rect2(0, 0, 48, 48),
-	# animals.png is one 16px row: 0-3 hen walking right, 8 crow perched.
+	# Every other species has its own one-row sheet (split 2026-09-06), so the
+	# standing-still cell is the first — except the mole, whose first cell is a
+	# bare mound; "surfaced" (cell 2) is the one that reads as the animal.
 	SpeciesDefs.CHICKEN: Rect2(0, 0, 16, 16),
-	SpeciesDefs.CROW: Rect2(8 * 16, 0, 16, 16),
-	# objects.png row 1: the sprinkler idle beside its spray frame.
-	SpeciesDefs.SPRINKLER: Rect2(5 * 16, 16, 16, 16),
-	# critters.png, 4x7 of 16px cells: row 0 ants (scout 0-1, forager 2-3),
-	# row 1 rabbit, row 2 mole (mound, emerging, surfaced), row 3 worm
-	# (head, body, tail), row 4 kangaroo, row 5 songbird (perched first).
+	SpeciesDefs.CROW: Rect2(0, 0, 16, 16),
+	SpeciesDefs.SPRINKLER: Rect2(0, 0, 16, 16),
 	SpeciesDefs.ANT_SCOUT: Rect2(0, 0, 16, 16),
-	SpeciesDefs.ANT_FORAGER: Rect2(2 * 16, 0, 16, 16),
-	SpeciesDefs.RABBIT: Rect2(0, 16, 16, 16),
-	SpeciesDefs.MOLE: Rect2(2 * 16, 2 * 16, 16, 16),
-	SpeciesDefs.WORM: Rect2(0, 3 * 16, 16, 16),
-	SpeciesDefs.KANGAROO: Rect2(0, 4 * 16, 16, 16),
-	SpeciesDefs.SONGBIRD: Rect2(0, 5 * 16, 16, 16),
+	SpeciesDefs.ANT_FORAGER: Rect2(0, 0, 16, 16),
+	SpeciesDefs.RABBIT: Rect2(0, 0, 16, 16),
+	SpeciesDefs.MOLE: Rect2(2 * 16, 0, 16, 16),
+	SpeciesDefs.WORM: Rect2(0, 0, 16, 16),
+	SpeciesDefs.KANGAROO: Rect2(0, 0, 16, 16),
+	SpeciesDefs.SONGBIRD: Rect2(0, 0, 16, 16),
 }
 
 
@@ -190,6 +188,10 @@ static func icon_of(species: String) -> Array:
 	if renderer == null:
 		return []
 	var sheet = renderer.get_script_constant_map().get("SPRITES", null)
+	# A script that renders several species (the ants, the grazers) holds one
+	# sheet per species; pick this one's.
+	if sheet is Dictionary:
+		sheet = sheet.get(species, null)
 	if sheet == null:
 		return []
 	return [sheet, ICON_CELL[species]]

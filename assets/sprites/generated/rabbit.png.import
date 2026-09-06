@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ccpfrocsemhow"
-path="res://.godot/imported/animals.png-0d588ccdbe729b623400703162e83a94.ctex"
+uid="uid://c1nnn8hic1kkr"
+path="res://.godot/imported/rabbit.png-5bbfdcde4a0dbda664560532634ad333.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/generated/animals.png"
-dest_files=["res://.godot/imported/animals.png-0d588ccdbe729b623400703162e83a94.ctex"]
+source_file="res://assets/sprites/generated/rabbit.png"
+dest_files=["res://.godot/imported/rabbit.png-5bbfdcde4a0dbda664560532634ad333.ctex"]
 
 [params]
 

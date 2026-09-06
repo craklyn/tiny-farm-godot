@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://800a3y5vl0eb"
-path="res://.godot/imported/critters.png-cbaaebb6f98faaeb7a284add078561fa.ctex"
+uid="uid://hr8jou2jlcfn"
+path="res://.godot/imported/shipping_bin.png-8c11e1d0a1a5b39a4e9be793cbbe0c66.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/generated/critters.png"
-dest_files=["res://.godot/imported/critters.png-cbaaebb6f98faaeb7a284add078561fa.ctex"]
+source_file="res://assets/sprites/generated/shipping_bin.png"
+dest_files=["res://.godot/imported/shipping_bin.png-8c11e1d0a1a5b39a4e9be793cbbe0c66.ctex"]
 
 [params]
 

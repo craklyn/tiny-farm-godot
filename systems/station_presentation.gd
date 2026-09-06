@@ -70,13 +70,13 @@ const STATION_GLYPHS := {
 # Where each pictogram lives. Data rather than five `preload`s, so it can be
 # walked by the headless suite and so the two renderers that draw these — the
 # world overlay in `main.gd` and the HUD's chips — cannot end up pointing at
-# different cells. `sheet` is "crops" (crops.png's iconography row, the one that
-# already holds the shop's packets and T-12's coin) or "tools" (tool_icons.png,
-# the one the HUD and the refusal table already read).
+# different cells. `sheet` is "icons" (shop_icons.png, the wordless shop's one
+# row: the packets, T-12's coin, and T-28's droplet and basket) or "tools"
+# (tool_icons.png, the one the HUD and the refusal table already read).
 const GLYPH_ATLAS := {
-	GLYPH_COIN:    { "sheet": "crops", "rect": [3 * 16, 2 * 16, 16, 16] },
-	GLYPH_DROPLET: { "sheet": "crops", "rect": [4 * 16, 2 * 16, 16, 16] },
-	GLYPH_BASKET:  { "sheet": "crops", "rect": [5 * 16, 2 * 16, 16, 16] },
+	GLYPH_COIN:    { "sheet": "icons", "rect": [3 * 16, 0, 16, 16] },
+	GLYPH_DROPLET: { "sheet": "icons", "rect": [4 * 16, 0, 16, 16] },
+	GLYPH_BASKET:  { "sheet": "icons", "rect": [5 * 16, 0, 16, 16] },
 	GLYPH_CAN:     { "sheet": "tools", "rect": [4 * 16, 0, 16, 16] },
 	GLYPH_PACKET:  { "sheet": "tools", "rect": [5 * 16, 0, 16, 16] },
 }

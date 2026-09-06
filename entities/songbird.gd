@@ -18,12 +18,12 @@ extends Node2D
 
 const TILE_SIZE := 16
 
-# critters.png row 5 (CREDITS.md, the 2026-08-30 art bench): col 0 perched,
-# col 1 wings up, col 2 wings down. The three generations disagreed about belly
-# colour and were remapped to one cream belly precisely so this two-frame flap
-# does not strobe.
-const SPRITES := preload("res://assets/sprites/generated/critters.png")
-const SHEET_ROW := 5
+# songbird.png (CREDITS.md, the 2026-08-30 art bench; split to its own sheet
+# 2026-09-06): col 0 perched, col 1 wings up, col 2 wings down. The three
+# generations disagreed about belly colour and were remapped to one cream belly
+# precisely so this two-frame flap does not strobe.
+const SPRITES := preload("res://assets/sprites/generated/songbird.png")
+const SHEET_ROW := 0
 const CELL_PERCHED := 0
 const CELL_WINGS_UP := 1
 const CELL_WINGS_DOWN := 2
@@ -93,7 +93,7 @@ func queue_render(canvas: CanvasItem, render_queue: Array) -> void:
 			if not perched():
 				cell = CELL_WINGS_UP if flap_state == 0 else CELL_WINGS_DOWN
 			# A negative width flips the cell; the sheet faces right, like the
-			# rest of critters.png.
+			# rest of the critter sheets.
 			var dest := Rect2(position.x, position.y, TILE_SIZE, TILE_SIZE)
 			if facing_left:
 				dest = Rect2(position.x + TILE_SIZE, position.y, -TILE_SIZE, TILE_SIZE)

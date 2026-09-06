@@ -15,11 +15,11 @@ extends Node2D
 
 const TILE_SIZE := 16
 
-# objects.png row 1: col 5 idle, col 6 spraying. Generated as a pair so they
-# cannot drift (CREDITS.md, the 2026-08-30 art bench).
-const SPRITES := preload("res://assets/sprites/generated/objects.png")
-const IDLE_CELL := Rect2(5 * 16, 16, 16, 16)
-const SPRAY_CELL := Rect2(6 * 16, 16, 16, 16)
+# sprinkler.png: col 0 idle, col 1 spraying. Generated as a pair so they cannot
+# drift (CREDITS.md, the 2026-08-30 art bench; split to its own sheet 2026-09-06).
+const SPRITES := preload("res://assets/sprites/generated/sprinkler.png")
+const IDLE_CELL := Rect2(0, 0, 16, 16)
+const SPRAY_CELL := Rect2(16, 0, 16, 16)
 
 # How long the spray frame is held after the day turn. [Playtest] — long enough
 # to read across a room, short enough that a machine is not permanently mid-act.

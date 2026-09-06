@@ -23,11 +23,10 @@ extends Node2D
 
 const TILE_SIZE := 16
 
-# critters.png row 2: col 0 the mound, col 1 emerging, col 2 surfaced
-# (CREDITS.md, the 2026-08-31 art bench). Every cell faces right and is mirrored
-# for the other direction, as the ants' and the grazers' are.
-const SPRITES := preload("res://assets/sprites/generated/critters.png")
-const SHEET_ROW := 2
+# mole.png: col 0 the mound, col 1 emerging, col 2 surfaced (CREDITS.md, the
+# 2026-08-31 art bench; split to its own sheet 2026-09-06). Every cell faces
+# right and is mirrored for the other direction, as the ants' and the grazers' are.
+const SPRITES := preload("res://assets/sprites/generated/mole.png")
 const CELL_MOUND := 0
 const CELL_EMERGING := 1
 const CELL_SURFACED := 2
@@ -105,5 +104,5 @@ func queue_render(canvas: CanvasItem, render_queue: Array) -> void:
 			if facing_left:
 				dest = Rect2(position.x + TILE_SIZE, position.y, -TILE_SIZE, TILE_SIZE)
 			canvas.draw_texture_rect_region(
-				SPRITES, dest, Rect2(cell() * 16, SHEET_ROW * 16, 16, 16))
+				SPRITES, dest, Rect2(cell() * 16, 0, 16, 16))
 	})

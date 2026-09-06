@@ -20,15 +20,14 @@ extends Node2D
 
 const TILE_SIZE := 16
 
-# critters.png row 0: cols 0–1 the scout's two-frame walk, cols 2–3 the
-# forager's (CREDITS.md, the 2026-08-30 art bench). Every cell faces **right**
-# and is mirrored for the other direction, as the hen's are — she has her left
-# frames drawn into the sheet; this sheet does not, so the flip is a negative
-# width on the destination rect.
-const SPRITES := preload("res://assets/sprites/generated/critters.png")
-const FIRST_CELL := {
-	SpeciesDefs.ANT_SCOUT: 0,
-	SpeciesDefs.ANT_FORAGER: 2,
+# One sheet per species (CREDITS.md, the 2026-08-30 art bench; split 2026-09-06):
+# each is its two-frame walk, cells 0–1. Every cell faces **right** and is
+# mirrored for the other direction, as the hen's are — she has her left frames
+# drawn into her sheet; these do not, so the flip is a negative width on the
+# destination rect.
+const SPRITES := {
+	SpeciesDefs.ANT_SCOUT: preload("res://assets/sprites/generated/ant_scout.png"),
+	SpeciesDefs.ANT_FORAGER: preload("res://assets/sprites/generated/ant_forager.png"),
 }
 const WALK_FRAMES := 2
 const FRAME_TIME := 0.16
@@ -40,7 +39,7 @@ const MAX_STEP := TILE_SIZE * 0.5
 var actor_id: String = SimWorld.ACTOR_ANT_SCOUT
 var farm: Node2D = null
 
-var first_cell: int = 0
+var sprites: Texture2D = SPRITES[SpeciesDefs.ANT_SCOUT]
 # Pixels per second, derived from the species' own tiles-per-tick rather than
 # written down again here: the sprite then walks at exactly the speed the sim
 # moves the ant, so it trails by less than a tile and cannot drift as the row is
@@ -61,7 +60,7 @@ func init_actor(farm_ref: Node2D, id: String = SimWorld.ACTOR_ANT_SCOUT) -> void
 	farm = farm_ref
 	actor_id = id
 	var species: String = farm.sim.species_of(actor_id)
-	first_cell = int(FIRST_CELL.get(species, 0))
+	sprites = SPRITES.get(species, SPRITES[SpeciesDefs.ANT_SCOUT])
 	speed_px = SpeciesDefs.speed_of(species) * TILE_SIZE * float(SimClock.RATE)
 	position = sim_position()
 
@@ -110,5 +109,5 @@ func queue_render(canvas: CanvasItem, render_queue: Array) -> void:
 			if facing_left:
 				dest = Rect2(position.x + TILE_SIZE, position.y, -TILE_SIZE, TILE_SIZE)
 			canvas.draw_texture_rect_region(
-				SPRITES, dest, Rect2((first_cell + walk_frame) * 16, 0, 16, 16))
+				sprites, dest, Rect2(walk_frame * 16, 0, 16, 16))
 	})

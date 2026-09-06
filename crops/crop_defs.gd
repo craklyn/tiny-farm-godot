@@ -12,7 +12,7 @@ static var TYPES: Dictionary = {
 		"seed_price": 5,
 		"stages": 4,
 		"unlock_requirement": null,
-		"sprite_row": 0,
+		"icon_col": 0,
 	},
 	"tomato": {
 		"name": "Tomato",
@@ -21,7 +21,7 @@ static var TYPES: Dictionary = {
 		"seed_price": 10,
 		"stages": 4,
 		"unlock_requirement": { "crop": "wheat", "count": 1 },
-		"sprite_row": 1,
+		"icon_col": 1,
 	},
 	# Q-55, ruled 2026-08-31: **the pea ships now as an ordinary crop** (M2.5
 	# WI-10); the shooters, towers, storage and delivery economy it is eventually
@@ -47,16 +47,16 @@ static var TYPES: Dictionary = {
 		"seed_price": 8,        # [Playtest]
 		"stages": 4,
 		"unlock_requirement": { "crop": "wheat", "count": 1 },
-		# crops.png row 3 — four growth stages in the same order and cell shape as
-		# wheat and tomato (WI-11 widened the sheet for it). Bound to the renderer
-		# in `world/farm.gd`'s crop_regions, exactly as those two are.
+		# pea.png — four growth stages in the same order and cell shape as wheat
+		# and tomato (WI-11 drew it; the 2026-09-06 split gave it its own sheet).
+		# Bound to the renderer in `world/farm.gd`'s crop_regions, exactly as
+		# those two are.
 		#
-		# **Trap for whoever puts the pea in the shop:** this one number does double
-		# duty — the growth *row* here, and the icon *column* of row 2 in
-		# `ui/menus.gd:crop_icon`. Row 2 column 3 is the **coin** (T-12), so a pea
-		# in the shop today would be priced with a picture of a coin. Debuting it
-		# means a pea packet somewhere the coin is not, or splitting the two uses.
-		"sprite_row": 3,
+		# **Trap for whoever puts the pea in the shop:** column 3 of
+		# shop_icons.png is the **coin** (T-12), so a pea in the shop today would
+		# be priced with a picture of a coin. Debuting it means drawing a pea
+		# packet into the icon row and pointing this number at it.
+		"icon_col": 3,
 	},
 	"egg": {
 		"name": "Egg",
@@ -68,7 +68,7 @@ static var TYPES: Dictionary = {
 		"is_object": true,
 		"stages": 1,
 		"unlock_requirement": null,
-		"sprite_row": 2, # Shop icon column in crops.png row 2 (see menus.gd)
+		"icon_col": 2, # Shop icon column in shop_icons.png (see menus.gd)
 	},
 }
 

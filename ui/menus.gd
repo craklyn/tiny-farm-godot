@@ -378,23 +378,24 @@ func _fit_panel_height() -> float:
 	return OPTIONS_TOP + n * OPTION_H + (n - 1) * OPTION_SEP + PANEL_PAD
 
 
-# crops.png row 2 holds the shop iconography: wheat packet, tomato packet,
-# scarecrow, and (added 2026-08-30 for T-12) a coin.
-const ICON_SHEET := preload("res://assets/sprites/generated/crops.png")
+# shop_icons.png is the shop iconography in one row: wheat packet, tomato
+# packet, scarecrow, (added 2026-08-30 for T-12) a coin, then T-28's droplet
+# and basket.
+const ICON_SHEET := preload("res://assets/sprites/generated/shop_icons.png")
 const COIN_COL := 3
 
 
-static func crop_icon(sprite_row: int) -> AtlasTexture:
+static func crop_icon(icon_col: int) -> AtlasTexture:
 	var atlas := AtlasTexture.new()
 	atlas.atlas = ICON_SHEET
-	atlas.region = Rect2(sprite_row * 16, 32, 16, 16)
+	atlas.region = Rect2(icon_col * 16, 0, 16, 16)
 	return atlas
 
 
 static func coin_icon() -> AtlasTexture:
 	var atlas := AtlasTexture.new()
 	atlas.atlas = ICON_SHEET
-	atlas.region = Rect2(COIN_COL * 16, 32, 16, 16)
+	atlas.region = Rect2(COIN_COL * 16, 0, 16, 16)
 	return atlas
 
 
@@ -700,7 +701,7 @@ func _build_shop_items() -> void:
 			"price": def.seed_price,
 			"unlocked": unlocked,
 			"affordable": affordable,
-			"icon": crop_icon(int(def.sprite_row)),
+			"icon": crop_icon(int(def.icon_col)),
 			"owned": GameState.seeds.get(crop_name, 0)
 		})
 	for machine_key in MachineDefs.ORDER:

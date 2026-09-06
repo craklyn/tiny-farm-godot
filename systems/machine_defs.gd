@@ -41,10 +41,10 @@ static var TYPES: Dictionary = {
 		"default_config": "",
 		"unlock_requirement": null,
 		# Its own world sprite, so the shop card, the HUD pill and the thing that
-		# appears on the grass are visibly one object. objects.png row 1 col 5 is
+		# appears on the grass are visibly one object. sprinkler.png cell 0 is
 		# the idle frame `entities/sprinkler.gd` draws.
-		"icon": { "sheet": "res://assets/sprites/generated/objects.png",
-			"region": Rect2(5 * 16, 16, 16, 16) },
+		"icon": { "sheet": "res://assets/sprites/generated/sprinkler.png",
+			"region": Rect2(0, 0, 16, 16) },
 	},
 	# --- the robot, in two marks (designer, 2026-09-03) ------------------------
 	#
@@ -157,7 +157,7 @@ static func is_unlocked(key: String, harvest_counts: Dictionary) -> bool:
 
 # The shop card's and the HUD pill's picture, built from the row above. Returns
 # null for a key with no icon, which every caller already has to handle (a seed
-# without a `sprite_row` shows no picture either).
+# without an `icon_col` shows no picture either).
 static func icon_of(key: String) -> AtlasTexture:
 	var icon: Dictionary = TYPES.get(key, {}).get("icon", {})
 	if icon.is_empty():

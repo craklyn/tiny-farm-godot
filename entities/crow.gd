@@ -21,7 +21,7 @@ extends Node2D
 
 const TILE_SIZE := 16
 
-const SPRITES := preload("res://assets/sprites/generated/animals.png")
+const SPRITES := preload("res://assets/sprites/generated/crow.png")
 
 # Inbound and outbound flight speeds in px/s. The sim moves the bird in tiles per
 # tick at the same rates (`SpeciesDefs` and `CrowBrain.EXIT_PX_PER_SECOND`); these
@@ -183,10 +183,10 @@ func queue_render(canvas: CanvasItem, render_queue: Array) -> void:
 	render_queue.append({
 		"y": position.y,
 		"draw": func():
-			# animals.png cells: 8 perched, 9 wings up, 10 wings down
-			var cell := 8
+			# crow.png cells: 0 perched, 1 wings up, 2 wings down
+			var cell := 0
 			if _state() != "eating":
-				cell = 9 if flap_state == 0 else 10
+				cell = 1 if flap_state == 0 else 2
 			canvas.draw_texture_rect_region(
 				SPRITES,
 				Rect2(position.x - TILE_SIZE / 2.0, position.y - TILE_SIZE / 2.0, TILE_SIZE, TILE_SIZE),

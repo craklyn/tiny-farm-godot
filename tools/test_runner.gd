@@ -1403,7 +1403,7 @@ func _scenario_r_attract_shows_the_neighbour() -> void:
 		"spawning a sprinkler in the registry gives it a sprite, with no renderer change")
 	if machine != null:
 		_assert(machine.position == Vector2(6 * 16, 8 * 16), "standing on its own tile")
-		_assert(machine._spray_timer <= 0.0, "idle to begin with (objects.png row 1 col 5)")
+		_assert(machine._spray_timer <= 0.0, "idle to begin with (sprinkler.png cell 0)")
 		# A machine acts *inside* the day turn, so there is no tick to notice it
 		# on: the farm tells its sprites a morning happened.
 		loop.farm.apply_action({ "verb": "sleep", "actor": "world" }, loop.gs)
@@ -1453,10 +1453,12 @@ func _scenario_s_a_raid_is_drawn() -> void:
 		return
 
 	_assert(scout.position == Vector2(nest.x * 16, nest.y * 16), "standing on its own tile")
-	# critters.png row 0: cols 0–1 the scout, cols 2–3 the forager (CREDITS.md).
-	# The two species differ by a number off the species row, not by a class.
-	_assert(scout.first_cell == 0 and forager.first_cell == 2,
-		"drawing its own two cells of the sheet, chosen from the species and nothing else")
+	# One sheet per ant (CREDITS.md): the scout's and the forager's 2-frame walks.
+	# The two species differ by a row of the species table, not by a class.
+	_assert(scout.sprites != forager.sprites \
+		and scout.sprites == scout.SPRITES[SpeciesDefs.ANT_SCOUT] \
+		and forager.sprites == forager.SPRITES[SpeciesDefs.ANT_FORAGER],
+		"each drawing its own sheet, chosen from the species and nothing else")
 	_assert(scout.get_script() == forager.get_script(),
 		"and both are the same script — they differ by their row, which is the point")
 
@@ -1522,10 +1524,12 @@ func _scenario_t_the_bestiary_is_drawn() -> void:
 		return
 
 	_assert(rabbit.position == Vector2(at.x * 16, at.y * 16), "each standing on its own tile")
-	# critters.png row 1 is the rabbit's hop, row 4 the kangaroo's (CREDITS.md).
-	# The two species differ by a number off the species row, not by a class.
-	_assert(rabbit.sheet_row == 1 and roo.sheet_row == 4,
-		"each drawing its own row of the sheet, chosen from the species and nothing else")
+	# rabbit.png and kangaroo.png each hold their own hop (CREDITS.md).
+	# The two species differ by a row of the species table, not by a class.
+	_assert(rabbit.sprites != roo.sprites \
+		and rabbit.sprites == rabbit.SPRITES[SpeciesDefs.RABBIT] \
+		and roo.sprites == roo.SPRITES[SpeciesDefs.KANGAROO],
+		"each drawing its own sheet, chosen from the species and nothing else")
 	_assert(rabbit.get_script() == roo.get_script(),
 		"and both are the same script — as they are the same brain, which is the point")
 	_assert(roo.speed_px > rabbit.speed_px,
@@ -1614,7 +1618,7 @@ func _scenario_u_under_and_over() -> void:
 		return
 
 	# --- the mole: three cells, and the sim picks which ----------------------
-	# critters.png row 2 is mound / emerging / surfaced (CREDITS.md). The renderer
+	# mole.png is mound / emerging / surfaced (CREDITS.md). The renderer
 	# holds no animation state of its own: it asks `Movement.is_under` and the
 	# brain's own state, so it cannot disagree with the world about what is
 	# happening.
