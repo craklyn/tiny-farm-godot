@@ -2279,9 +2279,23 @@ def eval_measure(spec, depth=0):
             if not r:
                 return _reading("never_run", "verdict", f"the {spec['job']} suite", "", "cheap")
             if field == "state":
-                return _reading(r.get("state", "never_run"), "verdict",
-                                f"the last local run of {r.get('label', spec['job'])}", "", "cheap",
-                                extra={"summary": r.get("summary"), "finished": r.get("finished")})
+                # How far behind the code this run is decides whether its
+                # verdict still means anything. A pass from eighty commits ago
+                # and a pass from this commit look identical until you ask.
+                behind, head = None, r.get("head")
+                if head:
+                    n = run_cmd(["git", "rev-list", "--count", f"{head}..HEAD"])
+                    if n:
+                        behind = int(n)
+                limit = int(spec.get("fresh_within_commits", 20))
+                stale = behind is not None and behind > limit
+                human = f"the last local run of {r.get('label', spec['job'])}"
+                if stale:
+                    human += f", {behind} commits ago"
+                return _reading(r.get("state", "never_run"), "verdict", human, "", "cheap",
+                                stale=stale,
+                                extra={"summary": r.get("summary"), "finished": r.get("finished"),
+                                       "behind_commits": behind, "fresh_within": limit})
             if field == "age_commits":
                 head = r.get("head")
                 if not head:
@@ -2569,7 +2583,17 @@ def eval_measure(spec, depth=0):
                                    "missing": pal["named_missing"]})
 
         if kind == "composite":
-            members = [eval_measure(m, depth + 1) for m in (spec.get("members") or [])]
+            members = []
+            for m in (spec.get("members") or []):
+                r = eval_measure(m, depth + 1)
+                # Carry the member's own bar onto its reading. Without this the
+                # "a member may carry its own compare" rule below never fired —
+                # every member silently inherited the goal's bar, which is only
+                # harmless while every member happens to be measured the same
+                # way as the goal.
+                if m.get("compare"):
+                    r["compare"] = m["compare"]
+                members.append(r)
             op = spec.get("op", "worst_of")
             if op == "ratio":
                 if len(members) != 2:
@@ -2662,6 +2686,16 @@ def ramp_target(compare, on=None):
 
 
 def _state_from(reading, compare):
+    """The comparison, then one rule on top of it: a check that no longer
+    applies to the code we have is not a pass. You do not get credit for a run
+    from twenty-eight commits ago. Freshness is a property of a reading, not a
+    goal of its own that watches another goal (the CEO's rule about goals being
+    detached from their mechanism, pushed one step, 2026-09-05)."""
+    state = _compare_state(reading, compare)
+    return "red" if state == "green" and reading.get("stale") else state
+
+
+def _compare_state(reading, compare):
     """Reading + the authored bar -> is this goal being met, or not?
 
     Binary by the CEO's ruling (2026-09-05): we are either meeting the goal or
@@ -2703,7 +2737,11 @@ def _state_from(reading, compare):
         if d == "must_equal":
             return "green" if v == t else "red"
         if d == "in_set":
-            return "green" if v in (compare.get("green_set") or []) else "red"
+            if v in (compare.get("green_set") or []):
+                return "green"
+            # "running", "never_run" — no answer yet, which is not the same as
+            # a failing answer and must not read as one.
+            return "unchecked" if v in (compare.get("unknown_set") or []) else "red"
     except TypeError:
         return "broken"
     return "broken"

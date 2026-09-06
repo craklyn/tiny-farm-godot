@@ -11,42 +11,6 @@
   },
   "goals": [
     {
-      "id": "main-stays-green",
-      "statement": "Main is always shippable — the newest finished run of the full test suite passed.",
-      "statement_short": "the newest finished run of the test suite failed on main",
-      "owner": "elena",
-      "severity": "blocking",
-      "unit": "verdict",
-      "why_it_matters": "Every other test run happens on our own machine; this one runs on GitHub, where a stranger could check it.",
-      "measure": {
-        "kind": "ci_state",
-        "field": "newest_completed"
-      },
-      "compare": {
-        "direction": "in_set",
-        "green_set": [
-          "success"
-        ],
-        "amber_set": [
-          "in_progress"
-        ]
-      },
-      "path_to_green": {
-        "narrative": "Open the failed run and fix what it caught.",
-        "route": {
-          "kind": "none"
-        },
-        "owner": "elena"
-      },
-      "history": {
-        "record": true,
-        "chart": false
-      },
-      "signal_key": "ci_main",
-      "parked": true,
-      "parked_on": "2026-09-05"
-    },
-    {
       "id": "ci-is-not-leaking",
       "statement": "The test suite passes almost every time — failures are incidents, not a slow leak.",
       "statement_short": "the test suite fails often enough to look like a leak rather than an incident",
@@ -74,179 +38,6 @@
       "history": {
         "record": true,
         "chart": true
-      },
-      "parked": true,
-      "parked_on": "2026-09-05"
-    },
-    {
-      "id": "local-proofs-pass",
-      "statement": "All four test suites we run on this machine — unit, integration, robot session and benchmark — passed the last time they ran.",
-      "statement_short": "a test suite failed the last time it ran on this machine",
-      "owner": "elena",
-      "severity": "blocking",
-      "unit": "verdict",
-      "measure": {
-        "kind": "composite",
-        "op": "worst_of",
-        "label": "the four local suites",
-        "members": [
-          {
-            "kind": "job_state",
-            "job": "unit",
-            "field": "state",
-            "compare": {
-              "direction": "in_set",
-              "green_set": [
-                "green"
-              ],
-              "amber_set": [
-                "running",
-                "never_run"
-              ]
-            }
-          },
-          {
-            "kind": "job_state",
-            "job": "integration",
-            "field": "state",
-            "compare": {
-              "direction": "in_set",
-              "green_set": [
-                "green"
-              ],
-              "amber_set": [
-                "running",
-                "never_run"
-              ]
-            }
-          },
-          {
-            "kind": "job_state",
-            "job": "robot",
-            "field": "state",
-            "compare": {
-              "direction": "in_set",
-              "green_set": [
-                "green"
-              ],
-              "amber_set": [
-                "running",
-                "never_run"
-              ]
-            }
-          },
-          {
-            "kind": "job_state",
-            "job": "benchmark",
-            "field": "state",
-            "compare": {
-              "direction": "in_set",
-              "green_set": [
-                "green"
-              ],
-              "amber_set": [
-                "running",
-                "never_run"
-              ]
-            }
-          }
-        ]
-      },
-      "compare": {
-        "direction": "in_set",
-        "green_set": [
-          "green"
-        ],
-        "amber_set": [
-          "running",
-          "never_run"
-        ]
-      },
-      "path_to_green": {
-        "narrative": "Run the failing test suite again from the buttons below — a busy machine can fail the benchmark on its own.",
-        "route": {
-          "kind": "none"
-        },
-        "owner": "elena"
-      },
-      "history": {
-        "record": true,
-        "chart": false
-      },
-      "parked": true,
-      "parked_on": "2026-09-05"
-    },
-    {
-      "id": "proofs-are-fresh",
-      "statement": "Those four test suites were last run on a version close to what is on main now.",
-      "statement_short": "the test suites on this machine were last run many commits ago",
-      "owner": "grace",
-      "severity": "important",
-      "unit": "commits",
-      "why_it_matters": "A pass from eighty commits ago and a pass from this commit look identical on a page. Only the age says whether the result is evidence or reassurance.",
-      "measure": {
-        "kind": "composite",
-        "op": "worst_of",
-        "label": "how far behind main the local proofs were run",
-        "members": [
-          {
-            "kind": "job_state",
-            "job": "unit",
-            "field": "age_commits",
-            "compare": {
-              "direction": "fresher_than",
-              "target": 20,
-              "amber_at": 60
-            }
-          },
-          {
-            "kind": "job_state",
-            "job": "integration",
-            "field": "age_commits",
-            "compare": {
-              "direction": "fresher_than",
-              "target": 20,
-              "amber_at": 60
-            }
-          },
-          {
-            "kind": "job_state",
-            "job": "robot",
-            "field": "age_commits",
-            "compare": {
-              "direction": "fresher_than",
-              "target": 20,
-              "amber_at": 60
-            }
-          },
-          {
-            "kind": "job_state",
-            "job": "benchmark",
-            "field": "age_commits",
-            "compare": {
-              "direction": "fresher_than",
-              "target": 20,
-              "amber_at": 60
-            }
-          }
-        ]
-      },
-      "compare": {
-        "direction": "fresher_than",
-        "target": 20,
-        "amber_at": 60
-      },
-      "path_to_green": {
-        "narrative": "Run the test suites again from the buttons below — each run now records which commit it tested.",
-        "route": {
-          "kind": "work",
-          "id": "wcb8ea7d223a"
-        },
-        "owner": "grace"
-      },
-      "history": {
-        "record": true,
-        "chart": false
       },
       "parked": true,
       "parked_on": "2026-09-05"
@@ -370,6 +161,36 @@
       "signal_key": "fresh-session",
       "parked": true,
       "parked_on": "2026-09-05"
+    },
+    {
+      "id": "build-branch-builds-green",
+      "statement": "Build branch builds green",
+      "statement_short": "Build fails either do to code/syntax errors or due to failures in the test suite.",
+      "owner": "vp-engineering",
+      "severity": "blocking",
+      "unit": "state",
+      "why_it_matters": "A game that doesn't work can't be released.  Failed builds gate releasing.",
+      "measure": {
+        "kind": "ci_state",
+        "field": "newest_completed"
+      },
+      "path_to_green": {
+        "narrative": "",
+        "owner": "vp-engineering"
+      },
+      "history": {
+        "record": false,
+        "chart": false
+      },
+      "compare": {
+        "direction": "in_set",
+        "green_set": [
+          "success"
+        ],
+        "unknown_set": [
+          "in_progress"
+        ]
+      }
     }
   ],
   "scoreboard_title": "Where my areas stand"
