@@ -587,10 +587,13 @@ func _update_rain() -> void:
 func _process(delta: float) -> void:
 	# Update camera offset for input manager
 	var cam_offset := Vector2.ZERO
+	var cam_scale := float(CAMERA_SCALE)
 	if camera:
 		var viewport_size := get_viewport().get_visible_rect().size
-		cam_offset = camera.get_screen_center_position() * CAMERA_SCALE - viewport_size / 2.0
-	InputManager.update_camera_offset(cam_offset)
+		cam_scale = camera.zoom.x
+		cam_offset = camera.get_screen_center_position() * cam_scale - viewport_size / 2.0
+	InputManager.update_camera_offset(cam_offset, cam_scale)
+	_apply_altitude_gesture()
 
 	# Sim time first, before either early return: entities have always kept living
 	# through the day-cycle fade (their own `_process` ran), and the two returns
@@ -882,6 +885,8 @@ func _handle_action_result(action: String) -> void:
 		menus.open_menu("shop")
 	elif action == "done_teaching":
 		end_teaching()
+	elif action == "clear_teaching":
+		clear_teaching()
 	elif action == "look_lab":
 		# The look lab's switch was thrown from the pause menu (debug builds
 		# only). The menu has already advanced one axis; this is the live farm
@@ -998,6 +1003,67 @@ func _rise_to_altitude() -> void:
 	tw.tween_property(camera, "position", here, TEACH_GLIDE)
 
 
+# **Her own altitude, between the whole farm and standing in it.**
+#
+# Pinch arrives here rather than with combat tempo (design/11 row 26) at the
+# designer's call, 2026-09-07. It costs the budget nothing that was not already
+# spent: two fingers were reserved *for the camera*, and this is the camera.
+#
+# The two ends of the range are the two things worth seeing and nothing between
+# them is arbitrary: **out** stops where the whole page fits, because past that
+# she would be zooming into the dark around a farm she can already see all of;
+# **in** stops at the game's own art scale, because closer than that is just
+# bigger pixels. So the gesture ranges between "the whole farm" and "standing in
+# it", which are the two postures the mode is about.
+#
+# Pinch without pan would recreate the bug this mode was built to fix — zoom in
+# and part of the farm is unreachable again — so they arrive together, and the
+# pan is clamped to the page for the same reason.
+func _apply_altitude_gesture() -> void:
+	if camera == null or not is_teaching():
+		return
+	var g: Dictionary = InputManager.consume_gesture()
+	var z: float = float(g.get("zoom", 1.0))
+	var pan: Vector2 = g.get("pan", Vector2.ZERO)
+	if is_equal_approx(z, 1.0) and pan.length_squared() < 0.01:
+		return
+	var out_stop := _altitude_zoom()
+	var was := camera.zoom.x
+	var now: float = clampf(was * z, out_stop, float(CAMERA_SCALE))
+	camera.zoom = Vector2(now, now)
+	# A drag of the fingers should move the farm with them, so the world travels
+	# by the screen distance divided by the zoom it is drawn at.
+	if pan.length_squared() > 0.0:
+		camera.position -= pan / now
+	_clamp_altitude_view()
+
+
+# Keep the view on the page. At the far-out end the whole page is in frame and
+# there is nothing to clamp; zoomed in, the edges of the page are the edges of
+# where she can look, so panning stops there instead of drifting into the void
+# above the bedroom or off the side of the world.
+func _clamp_altitude_view() -> void:
+	var z: float = camera.zoom.x
+	var vp := get_viewport_rect().size
+	var half := vp / (2.0 * z)
+	var page: int = farm.sim.page_of(player.get_tile_pos())
+	var page_px := float(SimWorld.PAGE_ROWS * TILE_SIZE)
+	var left := 0.0
+	var right := float(MAP_WIDTH * TILE_SIZE)
+	var top := page * page_px
+	var bottom := (page + 1) * page_px
+	var eye: Vector2 = player.global_position + camera.position
+	if half.x * 2.0 >= right - left:
+		eye.x = (left + right) / 2.0
+	else:
+		eye.x = clampf(eye.x, left + half.x, right - half.x)
+	if half.y * 2.0 >= bottom - top:
+		eye.y = (top + bottom) / 2.0 - (HUD_TOP_PX - HUD_BOTTOM_PX) / 2.0 / z
+	else:
+		eye.y = clampf(eye.y, top + half.y, bottom - half.y)
+	camera.position = eye - player.global_position
+
+
 func _settle_from_altitude() -> void:
 	if camera == null:
 		return
@@ -1042,6 +1108,25 @@ func end_teaching() -> void:
 		farm.queue_redraw()
 	if hud != null and hud.has_method("set_teaching"):
 		hud.set_teaching(false)
+
+
+# **Every square back off the list, said as the taps it stands for.** `teach`
+# toggles, so clearing is the eight taps she would have made — one gateway, no
+# new verb, and a replay of the session sees exactly the removals that happened
+# rather than a bulk operation it would have to learn. Iterated over a copy,
+# because each call is what shortens the list underneath it.
+func clear_teaching() -> void:
+	var id: String = ActionRouter.teaching_machine
+	if farm == null or id == "" or not farm.sim.has_actor(id):
+		return
+	var marked: Array[Vector2i] = farm.teaching_orders.duplicate()
+	if marked.is_empty():
+		return
+	for t in marked:
+		farm.apply_action({ "verb": "teach", "target": t, "machine": id, "actor": "player" },
+			GameState)
+	AudioManager.play_sfx("nope")
+	_refresh_teaching_orders()
 
 
 func is_teaching() -> bool:

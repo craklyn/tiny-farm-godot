@@ -47,6 +47,7 @@ var gold_label: Label
 var menu_button: Button
 var bed_button: Button          # T-31 (Q-49): the HUD's one action control
 var teach_done_button: Button   # 2026-09-03: the only way out of teaching mode
+var teach_clear_button: Button  # 2026-09-07: take every square back off at once
 var _teach_home: Vector2 = Vector2.ZERO
 
 # The main scene this HUD belongs to, handed over by `main.gd` when it builds
@@ -380,6 +381,35 @@ func _build_ui() -> void:
 	teach_done_button.visible = false
 	teach_done_button.pressed.connect(_on_teach_done_button)
 	add_child(teach_done_button)
+
+	# **Take every square back off at once** (designer, 2026-09-07). Eight taps to
+	# undo eight taps is the kind of arithmetic an interface should absorb, and it
+	# is what makes marking cheap to experiment with: a round she does not like is
+	# one press away from a blank farm, not a careful hunt for the squares she
+	# regrets. It sits beside Done rather than above it, so the thumb reaching for
+	# the safe control never passes over this one.
+	teach_clear_button = Button.new()
+	teach_clear_button.text = "\u2715 Clear"
+	teach_clear_button.size = Vector2(96, 44)
+	teach_clear_button.position = Vector2(-200, -200)
+	var clear_style := StyleBoxFlat.new()
+	clear_style.bg_color = Color(0.30, 0.20, 0.16, 0.94)
+	clear_style.border_color = Color(0.85, 0.55, 0.45, 0.9)
+	clear_style.border_width_left = 2
+	clear_style.border_width_right = 2
+	clear_style.border_width_top = 2
+	clear_style.border_width_bottom = 2
+	clear_style.corner_radius_top_left = 8
+	clear_style.corner_radius_top_right = 8
+	clear_style.corner_radius_bottom_left = 8
+	clear_style.corner_radius_bottom_right = 8
+	teach_clear_button.add_theme_stylebox_override("normal", clear_style)
+	teach_clear_button.add_theme_stylebox_override("hover", clear_style)
+	teach_clear_button.add_theme_stylebox_override("pressed", clear_style)
+	teach_clear_button.add_theme_stylebox_override("focus", clear_style)
+	teach_clear_button.visible = false
+	teach_clear_button.pressed.connect(_on_teach_clear_button)
+	add_child(teach_clear_button)
 
 	# cot.png cell 0 is the made cot, 16x32 — the same cell the world draws (see
 	# `world/farm.gd`'s object_regions). Treatment C's turned-down cell is
@@ -1023,15 +1053,32 @@ func set_teaching(on: bool, taught: int = -1, limit: int = 0) -> void:
 	if teach_done_button == null:
 		return
 	teach_done_button.visible = on
+	if teach_clear_button != null:
+		teach_clear_button.visible = on
 	if not on:
 		teach_done_button.position = _teach_home
 		teach_done_button.text = "Done"
 		return
 	var vp := get_viewport().get_visible_rect().size
-	teach_done_button.position = Vector2(
-		vp.x - teach_done_button.size.x - 10.0,
-		vp.y - 32.0 - 8.0 - teach_done_button.size.y)
-	teach_done_button.text = "\u2713 %d/%d" % [taught, limit] if taught >= 0 and limit > 0 else "Done" 
+	# Clear of the build stamp, which draws on its own layer above this one in the
+	# same corner (autoload/build_overlay.gd, 40px up from the bottom) and sat
+	# across the button the first time these moved here.
+	var row_y: float = vp.y - 58.0 - teach_done_button.size.y
+	teach_done_button.position = Vector2(vp.x - teach_done_button.size.x - 10.0, row_y)
+	teach_done_button.text = "\u2713 %d/%d" % [taught, limit] if taught >= 0 and limit > 0 else "Done"
+	if teach_clear_button != null:
+		teach_clear_button.position = Vector2(
+			teach_done_button.position.x - teach_clear_button.size.x - 8.0, row_y)
+		# Nothing marked, nothing to clear. Greyed rather than hidden: a control
+		# that comes and goes is one she has to find twice.
+		teach_clear_button.disabled = taught <= 0
+		teach_clear_button.tooltip_text = ("Take every square back off the list"
+			if taught > 0 else "Nothing is marked yet")
+
+
+func _on_teach_clear_button() -> void:
+	AudioManager.play_sfx("click")
+	_tell_main("clear_teaching")
 
 
 func _on_teach_done_button() -> void:

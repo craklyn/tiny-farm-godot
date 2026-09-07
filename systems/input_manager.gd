@@ -25,11 +25,34 @@ var swipe_active: bool = false
 var swipe_tile: Vector2i = Vector2i(-1, -1)
 var swipe_moved: bool = false  # true for one frame when finger enters a new tile
 
+# --- two fingers: the camera's own gesture (design/11 row 26) -----------------
+#
+# Reserved from the first inventory pass for the camera and nothing else, and
+# that is exactly what it drives here. One finger keeps every meaning it has;
+# the moment a second lands, the pair is a camera gesture and the first finger's
+# pending tap is dropped — a pinch that marks a square on the way in would make
+# the gesture cost something to try, which is the one thing a view control must
+# never do.
+var touches: Dictionary = {}          # finger index -> last screen position
+var pinch_scale: float = 1.0          # >1 this frame means the fingers spread
+var pan_delta: Vector2 = Vector2.ZERO # midpoint travel in screen pixels
+var gesture_active: bool = false      # two or more fingers are down right now
+var _pinch_span: float = -1.0
+var _pinch_mid: Vector2 = Vector2.ZERO
+
 # Tile conversion constants
 const TILE_SIZE := 16
-const SCALE := 3
+const SCALE := 3          # the ground-level zoom, and the fallback before main reports one
 
 var _camera_offset: Vector2 = Vector2.ZERO
+# **The camera's live zoom, not the constant.** This used to be `SCALE` inline in
+# both conversions, which was true for as long as the camera never moved off its
+# fixed close-up altitude. The moment it could — showing a mark-1 where to work
+# frames the whole farm at about 1.5× — every tap on the glass resolved to a
+# square about half as far from the centre as the one under the finger. Nothing
+# caught it: the integration suite injects tiles straight into `click_tile`, so
+# the one path that was wrong was the one path no test used.
+var _camera_scale: float = float(SCALE)
 
 # T-27 (box 2): the consumption window.
 #
@@ -58,6 +81,13 @@ func swallow_input(on: bool) -> void:
 		swipe_active = false
 		swipe_moved = false
 		swipe_tile = Vector2i(-1, -1)
+		# Fingers that were down when the window opened will never send their
+		# release here, so forget them rather than leave a phantom pinch running.
+		touches.clear()
+		pinch_scale = 1.0
+		pan_delta = Vector2.ZERO
+		gesture_active = false
+		_pinch_span = -1.0
 
 
 func is_swallowing() -> bool:
@@ -84,6 +114,28 @@ func tap_tile(t: Vector2i) -> bool:
 	click_tile = t
 	has_click = true
 	return true
+
+
+# What two fingers are doing, recomputed whenever either of them moves. Reported
+# as a *ratio* and a *delta* rather than absolute values so the camera can apply
+# them to whatever zoom it currently holds without this layer knowing anything
+# about cameras.
+func _regather() -> void:
+	if touches.size() < 2:
+		_pinch_span = -1.0
+		gesture_active = false
+		return
+	var pts: Array = touches.values()
+	var a: Vector2 = pts[0]
+	var b: Vector2 = pts[1]
+	var span: float = a.distance_to(b)
+	var mid: Vector2 = (a + b) * 0.5
+	if _pinch_span > 0.0 and span > 0.0:
+		pinch_scale = span / _pinch_span
+		pan_delta = mid - _pinch_mid
+	_pinch_span = span
+	_pinch_mid = mid
+	gesture_active = true
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -119,17 +171,35 @@ func _unhandled_input(event: InputEvent) -> void:
 		_last_touch_ms = Time.get_ticks_msec()
 		_set_mode(Mode.TOUCH)
 		if event.pressed:
-			# Treat touch-press as a click
-			click_tile = screen_to_tile(event.position)
-			has_click  = true
-			swipe_active = false
+			touches[event.index] = event.position
+			if touches.size() >= 2:
+				# The second finger cancels the first one's tap. Whatever she is
+				# doing now, it is not marking a square.
+				has_click = false
+				swipe_active = false
+				_regather()
+			else:
+				click_tile = screen_to_tile(event.position)
+				has_click  = true
+				swipe_active = false
 		else:
-			# Finger lifted
+			touches.erase(event.index)
+			_regather()
+			# Lifting one of two fingers must not hand the survivor a tap: the
+			# gesture is over, and the leftover finger is on its way off the glass.
+			if touches.size() <= 1:
+				has_click = false
 			swipe_active = false
 			swipe_tile   = Vector2i(-1, -1)
 	elif event is InputEventScreenDrag:
 		_last_touch_ms = Time.get_ticks_msec()
 		_set_mode(Mode.TOUCH)
+		touches[event.index] = event.position
+		if touches.size() >= 2:
+			_regather()
+			has_click = false
+			swipe_active = false
+			return
 		var new_tile := screen_to_tile(event.position)
 		if new_tile != swipe_tile:
 			swipe_tile   = new_tile
@@ -140,6 +210,15 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		click_tile = screen_to_tile(event.position)
 		has_click = true
+
+
+## What the two fingers did since the last time anyone asked, and clearing it in
+## the same breath — a zoom ratio applied twice is a zoom that runs away.
+func consume_gesture() -> Dictionary:
+	var out := {"zoom": pinch_scale, "pan": pan_delta, "active": gesture_active}
+	pinch_scale = 1.0
+	pan_delta = Vector2.ZERO
+	return out
 
 
 func _process(_delta: float) -> void:
@@ -159,21 +238,23 @@ func _process(_delta: float) -> void:
 
 
 func screen_to_tile(screen_pos: Vector2) -> Vector2i:
-	var world_x := (screen_pos.x + _camera_offset.x) / SCALE
-	var world_y := (screen_pos.y + _camera_offset.y) / SCALE
-	var tx := int(world_x / TILE_SIZE)
-	var ty := int(world_y / TILE_SIZE)
-	return Vector2i(tx, ty)
+	var world_x := (screen_pos.x + _camera_offset.x) / _camera_scale
+	var world_y := (screen_pos.y + _camera_offset.y) / _camera_scale
+	# floor, not truncate: `int()` rounds toward zero, so every negative world
+	# coordinate collapsed onto tile 0 and a tap just off the left edge read as a
+	# tap on the first column. Off the map should stay off the map.
+	return Vector2i(floori(world_x / TILE_SIZE), floori(world_y / TILE_SIZE))
 
 
 func tile_to_screen(tile_pos: Vector2i) -> Vector2:
-	var world_x := (tile_pos.x * TILE_SIZE + TILE_SIZE / 2.0) * SCALE - _camera_offset.x
-	var world_y := (tile_pos.y * TILE_SIZE + TILE_SIZE / 2.0) * SCALE - _camera_offset.y
+	var world_x := (tile_pos.x * TILE_SIZE + TILE_SIZE / 2.0) * _camera_scale - _camera_offset.x
+	var world_y := (tile_pos.y * TILE_SIZE + TILE_SIZE / 2.0) * _camera_scale - _camera_offset.y
 	return Vector2(world_x, world_y)
 
 
-func update_camera_offset(offset: Vector2) -> void:
+func update_camera_offset(offset: Vector2, scale: float = float(SCALE)) -> void:
 	_camera_offset = offset
+	_camera_scale = maxf(0.01, scale)
 
 
 func consume_click() -> Vector2i:

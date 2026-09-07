@@ -3403,6 +3403,71 @@ func _scenario_ah_the_mark_one_takes_exact_orders() -> void:
 		"the button that ends the mode carries the count: '%s'"
 			% main_scene.hud.teach_done_button.text)
 
+	# **A finger lands on the square it is over.** The conversion between glass
+	# and grid used to divide by a constant 3, which was true only while the
+	# camera never left its close-up. At altitude every tap resolved to a square
+	# about half as far from the centre as the one under the finger — and no test
+	# saw it, because every other assertion in this file injects a tile straight
+	# into `click_tile` and never touches the conversion. So this one goes through
+	# the glass.
+	await get_tree().process_frame
+	var missed := 0
+	var probes: Array[Vector2i] = [Vector2i(4, 3), Vector2i(16, 9), Vector2i(28, 16),
+		Vector2i(2, 18), Vector2i(30, 1)]
+	for t in probes:
+		var screen := InputManager.tile_to_screen(t)
+		if InputManager.screen_to_tile(screen) != t:
+			missed += 1
+	_assert(missed == 0,
+		"the glass and the grid agree at altitude — %d of %d probes landed elsewhere"
+			% [missed, probes.size()])
+
+	# And the same conversion under a pinch, which is the case that has no fixed
+	# scale at all.
+	main_scene.camera.zoom = Vector2(2.4, 2.4)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var missed_zoomed := 0
+	for t in probes:
+		if InputManager.screen_to_tile(InputManager.tile_to_screen(t)) != t:
+			missed_zoomed += 1
+	_assert(missed_zoomed == 0,
+		"and at any zoom the player can pinch to — %d of %d missed" % [missed_zoomed, probes.size()])
+
+	# **Pinch stops at the two postures the mode is about.** Out ends where the
+	# whole page fits, because past that is dark around a farm she can already see
+	# all of; in ends at the game's own art scale, because closer is just bigger
+	# pixels.
+	var fit: float = main_scene._altitude_zoom()
+	InputManager.pinch_scale = 0.2          # a hard squeeze outward
+	InputManager.gesture_active = true
+	main_scene._apply_altitude_gesture()
+	_assert(is_equal_approx(main_scene.camera.zoom.x, fit),
+		"squeezing out stops with the whole farm framed (%.2f)" % main_scene.camera.zoom.x)
+	InputManager.pinch_scale = 8.0          # and a hard spread inward
+	InputManager.gesture_active = true
+	main_scene._apply_altitude_gesture()
+	_assert(is_equal_approx(main_scene.camera.zoom.x, float(main_scene.CAMERA_SCALE)),
+		"and spreading in stops at standing-in-it (%.2f)" % main_scene.camera.zoom.x)
+
+	# Zoomed in, a pan cannot wander off the page — the void above the bedroom is
+	# not somewhere she can be shown.
+	InputManager.pan_delta = Vector2(-4000, -4000)
+	InputManager.gesture_active = true
+	main_scene._apply_altitude_gesture()
+	var look: Vector2 = main_scene.player.global_position + main_scene.camera.position
+	var halfw: float = main_scene.get_viewport_rect().size.x / (2.0 * main_scene.camera.zoom.x)
+	var halfh: float = main_scene.get_viewport_rect().size.y / (2.0 * main_scene.camera.zoom.x)
+	_assert(look.x - halfw >= -1.0 and look.x + halfw <= SimWorld.MAP_WIDTH * 16 + 1.0,
+		"a hard pan sideways stops at the edge of the farm (x %.1f)" % look.x)
+	_assert(look.y - halfh >= page_no * SimWorld.PAGE_ROWS * 16 - 1.0,
+		"and upward at the top of the page she is standing on (y %.1f)" % look.y)
+	InputManager.pinch_scale = 0.01
+	InputManager.gesture_active = true
+	main_scene._apply_altitude_gesture()
+	InputManager.gesture_active = false
+	await get_tree().process_frame
+
 	# She points at three tiles from where she is standing. **No walking**: the
 	# taps are instructions, so distance is not a thing they have.
 	var lesson: Array[Vector2i] = [Vector2i(17, 11), Vector2i(18, 11), Vector2i(19, 11)]
@@ -3420,11 +3485,19 @@ func _scenario_ah_the_mark_one_takes_exact_orders() -> void:
 	_assert(farm.teaching_orders.size() == 3,
 		"and the farm is drawing what the machine now knows")
 
-	# A sweep across squares she has already taught adds and never removes: drag
-	# is many taps with the intent locked, and one that toggled would undo its own
-	# beginning the moment it crossed something already on the list.
+	# **One square, one tap** (designer, 2026-09-07). A finger dragged across the
+	# glass marks nothing at all: each square is a separate instruction out of a
+	# budget of eight, and a brush on the way to the square she meant must not
+	# spend three of them. So the sweep grammar stops at this mode's door.
 	var before_sweep: int = farm.teaching_orders.size()
-	for t in lesson:
+	var untouched: Vector2i = Vector2i(-1, -1)
+	for tx in range(lesson[2].x + 1, lesson[2].x + 5):
+		var cand := Vector2i(tx, lesson[0].y)
+		if farm.sim.teachable_at(cand) and not farm.teaching_orders.has(cand):
+			untouched = cand
+			break
+	_assert(untouched.x >= 0, "there is an unmarked square to drag over")
+	for t in [lesson[0], lesson[1], untouched]:
 		InputManager.swipe_tile = t
 		InputManager.swipe_active = true
 		InputManager.swipe_moved = true
@@ -3433,7 +3506,9 @@ func _scenario_ah_the_mark_one_takes_exact_orders() -> void:
 	InputManager.swipe_active = false
 	InputManager.swipe_moved = false
 	_assert(farm.teaching_orders.size() == before_sweep,
-		"a drag back across taught squares leaves them taught — a sweep adds, never removes")
+		"a drag marks nothing — neither adding the square it crosses nor taking one back")
+	_assert(not farm.teaching_orders.has(untouched),
+		"the unmarked square it passed over is still unmarked")
 
 	# **At the limit the picture says "full" without a sentence.** Nothing new is
 	# lit, so there is nothing left to tap by mistake; the taught squares stay lit
@@ -3477,6 +3552,34 @@ func _scenario_ah_the_mark_one_takes_exact_orders() -> void:
 	InputManager.has_click = true
 	await get_tree().process_frame
 	await get_tree().process_frame
+
+	# **Clear takes the whole round off at once**, and is greyed when there is
+	# nothing to take. Eight taps to undo eight taps is arithmetic the interface
+	# should absorb.
+	_assert(main_scene.hud.teach_clear_button.visible,
+		"the clear button is on screen while she is marking")
+	_assert(not main_scene.hud.teach_clear_button.disabled,
+		"and offered, because three squares are marked")
+	_assert(main_scene.hud.teach_clear_button.position.x
+			< main_scene.hud.teach_done_button.position.x,
+		"it sits beside Done, not on the way to it")
+	main_scene.hud._on_teach_clear_button()
+	await get_tree().process_frame
+	_assert(farm.teaching_orders.is_empty(),
+		"pressing it takes every square back off (%d left)" % farm.teaching_orders.size())
+	_assert(BotBrain.orders_of(farm.sim.actor(mk1)["extra"]).is_empty(),
+		"and the machine agrees — it is the same toggle her taps make, eight times")
+	_assert(main_scene.hud.teach_clear_button.disabled,
+		"with nothing marked it greys out rather than vanishing")
+	_assert(String(main_scene.hud.teach_done_button.text) == "\u2713 0/8",
+		"the count follows: '%s'" % main_scene.hud.teach_done_button.text)
+	# Teach it back, so what follows still describes a machine that learned something.
+	for t in lesson:
+		InputManager.click_tile = t
+		InputManager.has_click = true
+		await get_tree().process_frame
+		await get_tree().process_frame
+	_assert(farm.teaching_orders.size() == 3, "and she can mark them again afterwards")
 
 	# --- done, and out it goes -------------------------------------------------
 	main_scene.hud._on_teach_done_button()
