@@ -430,19 +430,81 @@ code.ref { background: #1b1710; border: 1px solid var(--line); border-radius: 6p
 /* The workspace column is capped at the map's width so no label inside it can
    widen it and knock the side panel down a row. */
 .sp-main { min-width: 0; max-width: 560px; }
-/* One line held open even when empty, so stepping between single-job and
-   many-job cells never shifts the palette and map below. */
-.sp-also { min-height: 18px; margin: 6px 0 0; }
 #sp-canvas { image-rendering: pixelated; border: 1px solid var(--line); border-radius: 8px; cursor: crosshair; outline: none; }
 #sp-canvas:focus { border-color: var(--accent); }
-.sp-controls { display: flex; gap: 10px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
-.sp-idx { font-weight: 700; color: var(--accent); min-width: 48px; text-align: center; }
-.sp-palette { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 14px; max-width: 460px; }
+/* The pencil is put down while tones are being picked, so it stops offering. */
+#sp-canvas.picking { cursor: default; }
+
+/* The readout is a caption of the canvas, and the toolbar below it is the set
+   of actions on the canvas. Separating them is what makes the bar stable: a
+   label of any length now has nothing to push, where before it shared a row
+   with the buttons and a longer animation name — or Play turning into Pause —
+   was enough to wrap Undo onto a line of its own and back again. One line is
+   held open even when the cell has only one job, so stepping through the sheet
+   never jolts what sits below. */
+.sp-read { min-height: 20px; margin: 10px 0 0; font-size: 13px; }
+.sp-idx { font-weight: 700; color: var(--accent); }
+.sp-also { color: var(--muted); }
+.sp-controls { display: flex; gap: 8px; align-items: center; margin-top: 6px; flex-wrap: wrap; }
+/* Prev and next are one control, so they read as one control. */
+.sp-seg { display: flex; }
+.sp-seg button { border-radius: 0; padding: 8px 14px; }
+.sp-seg button:first-child { border-radius: 8px 0 0 8px; }
+.sp-seg button:last-child { border-radius: 0 8px 8px 0; margin-left: 1px; }
+/* A toggle holds its width across both of its labels — Play must not resize
+   into Pause — and shows its state by being lit, the way a pressed key is. */
+.sp-tgl { min-width: 104px; text-align: center; }
+.sp-tgl.on { background: var(--accent); color: #1d1608; border-color: var(--accent); }
+.sp-last { margin-left: auto; }
+
+/* ---- the tones of the sheet ---- */
+/* Head, strip and bar share one right edge — the strip's width is what sets
+   the section's, so nothing in it hangs past the tones themselves. */
+.sp-tones { margin-top: 16px; max-width: 460px; }
+.sp-tones-head { display: flex; align-items: baseline; gap: 12px; }
+.sp-tones h3 { font-size: 14px; margin: 0; font-weight: 700; }
+.sp-tones-count { color: var(--muted); font-weight: 400; font-size: 12.5px; }
+.sp-mini { margin-left: auto; font-size: 12.5px; padding: 4px 10px; }
+.sp-mini.on { background: var(--accent); color: #1d1608; }
+.sp-palette { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
 .sw { width: 30px; height: 30px; border-radius: 6px; border: 2px solid var(--line); padding: 0; cursor: pointer; }
 .sw.sel { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
 .sw.eraser { background: repeating-conic-gradient(#221c13 0% 25%, #2a2318 0% 50%) 0 0/10px 10px; color: var(--text); font-size: 14px; }
 .sw.addc { background: var(--panel2); color: var(--accent); font-size: 16px; font-weight: 700; }
 .sw.custom { border-style: dashed; }
+/* Picking mode. A tick has to survive being drawn on top of any colour in the
+   sheet, so it is white cut against its own dark outline rather than a hue. */
+.sp-palette.picking .sw { border-radius: 4px; }
+.sw.pick.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.sw.pick.on::after {
+  content: "✓"; display: block; color: #fff; font-size: 15px; font-weight: 800;
+  line-height: 26px; text-shadow: 0 0 3px #000, 0 1px 2px #000;
+}
+.sp-merge {
+  margin-top: 10px; background: #1b1710; border: 1px solid var(--line);
+  border-radius: 10px; padding: 11px 13px;
+}
+.sp-merge-say { margin: 0; font-size: 13px; }
+/* Held open so the bar does not grow and shrink as the cursor crosses the
+   strip — the buttons below it would move under the hand reaching for them. */
+.sp-merge-hint { min-height: 17px; margin: 6px 0 0; font-size: 12px; color: var(--muted); }
+.sp-merge-act { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.sp-merge-act button { font-size: 13px; padding: 6px 12px; }
+.sp-merge-in.done { font-size: 13px; color: var(--muted); }
+/* Which of the chosen tones lives. The default is the one covering the most
+   pixels; every candidate is here to be clicked instead, transparency included. */
+.sp-keep { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+.sp-keepsw {
+  display: flex; align-items: center; gap: 6px; background: var(--panel2);
+  border: 2px solid var(--line); border-radius: 8px; padding: 3px 8px 3px 4px;
+  color: var(--muted); font-size: 11.5px; font-weight: 600; cursor: pointer;
+}
+.sp-keepsw i { width: 18px; height: 18px; border-radius: 4px; display: block; flex: none; }
+.sp-keepsw i.er {
+  background: repeating-conic-gradient(#221c13 0% 25%, #2a2318 0% 50%) 0 0/8px 8px;
+  font-style: normal; font-size: 11px; text-align: center; line-height: 18px; color: var(--text);
+}
+.sp-keepsw.on { border-color: var(--accent); color: var(--accent); }
 .sp-side { max-width: 340px; }
 .sp-previews { display: flex; gap: 14px; }
 .sp-previews figure { margin: 0; text-align: center; }

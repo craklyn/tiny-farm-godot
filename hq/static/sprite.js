@@ -210,7 +210,7 @@ async function renderSpriteEditor(path) {
     for (let p = 3; p < data.data.length; p += 4) if (data.data[p] !== 0) { ink = true; break; }
     // untouched copy from load time, for the before/after preview
     const orig = new ImageData(new Uint8ClampedArray(data.data), w, hh);
-    return { rect: [x, y, w, hh], data, orig, undo: [], ink, touched: false };
+    return { rect: [x, y, w, hh], data, orig, ink, touched: false };
   });
 
   // A name for every cell, used by the map, the frame counter and the record of
@@ -272,22 +272,37 @@ async function renderSpriteEditor(path) {
   let lastDiff = { frames: [], pixels: 0, colors_added: [], colors_removed: [], new_to_sheet: [] };
   let cur = curClip.cells.length ? curClip.cells[0] : 0;
   let playing = false, onion = true, dirty = false;
+  const undoStack = [];        // [{i, bytes}] per entry — see doUndo
+  const UNDO_DEPTH = 60;
+  const pushUndo = (indices) => {
+    undoStack.push((indices || [cur]).map(i => ({ i, bytes: new Uint8ClampedArray(frames[i].data.data) })));
+    if (undoStack.length > UNDO_DEPTH) undoStack.shift();
+  };
   let color = null; // null = eraser
   const ERASER = "__eraser__";
 
+  // Every tone in the sheet, with how much of it there is and how far it
+  // spreads. The count is what separates a colour someone chose from residue
+  // an image arrived with: three pixels of a brown is not a decision, and a
+  // tone that shows up in one cell out of sixteen is rarely a real one either.
+  const lum = c => c[0] * 0.299 + c[1] * 0.587 + c[2] * 0.114;
   const paletteOf = () => {
     const set = new Map();
-    frames.forEach(f => {
+    frames.forEach((f, fi) => {
       const d = f.data.data;
       for (let i = 0; i < d.length; i += 4) {
         if (d[i + 3] === 0) continue;
         const key = `${d[i]},${d[i + 1]},${d[i + 2]}`;
-        if (!set.has(key)) set.set(key, [d[i], d[i + 1], d[i + 2]]);
+        const e = set.get(key);
+        if (e) { e.n++; e.cells.add(fi); }
+        else set.set(key, { key, rgb: [d[i], d[i + 1], d[i + 2]], n: 1, cells: new Set([fi]) });
       }
     });
-    return [...set.values()].sort((a, b) =>
-      (a[0] * 0.299 + a[1] * 0.587 + a[2] * 0.114) - (b[0] * 0.299 + b[1] * 0.587 + b[2] * 0.114));
+    return [...set.values()].sort((a, b) => lum(a.rgb) - lum(b.rgb));
   };
+  const toneHex = rgb => "#" + rgb.map(v => v.toString(16).padStart(2, "0")).join("");
+  const px = n => n === 1 ? "1 pixel" : `${n} pixels`;
+  const cellsWord = n => `${n} cell${n === 1 ? "" : "s"}`;
 
   $view.replaceChildren(h(`
     <p class="crumbs"><a class="plain" href="#/entities" data-crumb-tab="">Entities</a> <span>›</span>
@@ -299,16 +314,29 @@ async function renderSpriteEditor(path) {
     <div class="sp-wrap">
       <div class="sp-main">
         <canvas id="sp-canvas" width="${fw * zoom}" height="${fh * zoom}" tabindex="0"></canvas>
+        <!-- What you are looking at reads under the canvas; what you can do to it
+             sits in the bar below. Keeping them apart is what stops a longer
+             animation name — or Play becoming Pause — from shoving a button
+             onto a second row. -->
+        <p class="sp-read"><b class="sp-idx" id="sp-idx"></b><span class="sp-also" id="sp-also"></span></p>
         <div class="sp-controls">
-          <button id="sp-prev" title="previous cell">◀</button>
-          <span id="sp-idx" class="sp-idx"></span>
-          <button id="sp-next" title="next cell">▶</button>
-          <button id="sp-play" class="ghost">▶ Play</button>
-          <label class="small"><input type="checkbox" id="sp-onion" checked> onion skin</label>
-          <button id="sp-undo" class="ghost" title="Ctrl+Z">↩ Undo</button>
+          <div class="sp-seg">
+            <button id="sp-prev" title="previous cell">◀</button>
+            <button id="sp-next" title="next cell">▶</button>
+          </div>
+          <button id="sp-play" class="ghost sp-tgl">▶ Play</button>
+          <button id="sp-onion" class="ghost sp-tgl on" aria-pressed="true"
+                  title="show the frame before this one as a ghost">◐ Onion skin</button>
+          <button id="sp-undo" class="ghost sp-last" title="Ctrl+Z">↩ Undo</button>
         </div>
-        <p class="small muted sp-also" id="sp-also"></p>
-        <div class="sp-palette" id="sp-palette"></div>
+        <section class="sp-tones">
+          <div class="sp-tones-head">
+            <h3>Tones <span class="sp-tones-count" id="sp-tones-count"></span></h3>
+            <button id="sp-merge-start" class="ghost sp-mini">⬗ Merge tones</button>
+          </div>
+          <div class="sp-palette" id="sp-palette"></div>
+          <div class="sp-merge" id="sp-merge" hidden></div>
+        </section>
         <section class="sp-map">
           <h2>Every cell of the sheet</h2>
           <div class="sp-cells" id="sp-cells"></div>
@@ -383,6 +411,25 @@ async function renderSpriteEditor(path) {
     dctx.globalAlpha = 1;
   };
 
+  // While a tone is under the cursor in the merge picker, everything that is
+  // not that tone dims away. "Is this a colour someone chose, or antialiasing
+  // residue?" is a question answered by looking, not by trusting a number.
+  const isolate = (frame, dctx, scale, rgb) => {
+    const [, , w, hh] = frame.rect;
+    dctx.fillStyle = "rgba(23,19,14,.76)";
+    dctx.fillRect(0, 0, w * scale, hh * scale);
+    const d = frame.data.data;
+    const fill = `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+    for (let y = 0; y < hh; y++) for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
+      if (!d[i + 3] || d[i] !== rgb[0] || d[i + 1] !== rgb[1] || d[i + 2] !== rgb[2]) continue;
+      dctx.fillStyle = fill;
+      dctx.fillRect(x * scale, y * scale, scale, scale);
+      dctx.strokeStyle = "rgba(232,176,75,.85)"; dctx.lineWidth = 1;
+      dctx.strokeRect(x * scale + .5, y * scale + .5, scale - 1, scale - 1);
+    }
+  };
+
   const render = () => {
     const f = frames[cur];
     const [, , w, hh] = f.rect;
@@ -410,16 +457,17 @@ async function renderSpriteEditor(path) {
       for (let x = 1; x < w; x++) { ctx.beginPath(); ctx.moveTo(x * zoom + .5, 0); ctx.lineTo(x * zoom + .5, hh * zoom); ctx.stroke(); }
       for (let y = 1; y < hh; y++) { ctx.beginPath(); ctx.moveTo(0, y * zoom + .5); ctx.lineTo(w * zoom, y * zoom + .5); ctx.stroke(); }
     }
-    // The counter carries the cell's first job only; its other jobs go on the
-    // reserved line below, so a many-hatted cell never rewidens the column or
-    // jolts the layout as the cursor steps through frames.
+    if (hoverTone) isolate(f, ctx, zoom, hoverTone);
+    // The readout carries the cell's first job; its other jobs trail it on the
+    // same line, which is free to be any length — it sits above the toolbar and
+    // has nothing to push.
     const ms = cellClips.get(cur) || [];
     const named = (ent.frame_names || [])[poolAt.get(cur)];
     const primary = named || (ms.length ? clipNameOf(ms[0]) : names[cur]);
     document.getElementById("sp-idx").textContent =
       (primary ? primary + " · " : "") + `cell ${cur + 1} / ${frames.length}`;
     document.getElementById("sp-also").textContent =
-      (!named && ms.length > 1) ? "also " + ms.slice(1).map(clipNameOf).join(" · ") : "";
+      (!named && ms.length > 1) ? " · also " + ms.slice(1).map(clipNameOf).join(" · ") : "";
     if (curClip.stills) renderPreview(0);   // a pose preview follows the cursor
     syncMap();
     paintDiff();
@@ -531,26 +579,64 @@ async function renderSpriteEditor(path) {
     render();
   };
 
+  /* ---------- the tones of the sheet ----------
+     Two jobs share one strip. Normally it is the brush: click a tone, paint
+     with it. Put it in merge mode and it becomes a picker: tick the tones that
+     should have been one tone, and they are folded together across every cell
+     at once. That second job exists because art does not always arrive as
+     pixel art — a generated or resized image carries a fringe of near-duplicate
+     tones from antialiasing, and hunting those down a pixel at a time is not
+     work a person should be doing. */
+
   // Colors the user added via the picker this session; they join the image's
   // real palette the moment they're painted with.
   const customColors = [];
+  let mergeMode = false;          // the strip is picking tones, not painting
+  let mergeKeep = null;           // tone key, or ERASER — which one survives
+  let mergeNote = "";             // what the last merge did, kept on screen
+  let hoverTone = null;           // rgb being isolated on the canvas right now
+  const mergeSel = new Set();     // tone keys ticked for folding
+
   const buildPalette = () => {
     const bar = document.getElementById("sp-palette");
+    const used = paletteOf();
+    const count = document.getElementById("sp-tones-count");
+    if (count) count.textContent = `· ${used.length} in this sheet`;
     bar.replaceChildren();
+    bar.classList.toggle("picking", mergeMode);
+    cv.classList.toggle("picking", mergeMode);
+
+    if (mergeMode) {
+      used.forEach(t => {
+        const on = mergeSel.has(t.key);
+        const b = h(`<button class="sw pick ${on ? "on" : ""}" style="background:${toneHex(t.rgb)}"
+          title="${toneHex(t.rgb)} — ${px(t.n)} in ${cellsWord(t.cells.size)}"></button>`).firstElementChild;
+        b.addEventListener("click", () => {
+          if (on) { mergeSel.delete(t.key); if (mergeKeep === t.key) mergeKeep = null; }
+          else mergeSel.add(t.key);
+          buildPalette();
+        });
+        b.addEventListener("mouseenter", () => { hoverTone = t.rgb; toneHint(t); render(); });
+        b.addEventListener("mouseleave", () => { hoverTone = null; toneHint(null); render(); });
+        bar.appendChild(b);
+      });
+      buildMergeBar();
+      return;
+    }
+
     const er = h(`<button class="sw eraser ${color === null ? "sel" : ""}" title="eraser — makes pixels transparent">⌫</button>`).firstElementChild;
     er.addEventListener("click", () => { color = null; buildPalette(); });
     bar.appendChild(er);
-    const used = paletteOf();
-    const usedKeys = new Set(used.map(c => c.join(",")));
-    const swatch = (rgb, extra) => {
-      const hex = "#" + rgb.map(v => v.toString(16).padStart(2, "0")).join("");
+    const usedKeys = new Set(used.map(t => t.key));
+    const swatch = (rgb, note) => {
+      const hex = toneHex(rgb);
       const sel = color && color.join(",") === rgb.join(",");
-      const b = h(`<button class="sw ${sel ? "sel" : ""} ${extra || ""}" style="background:${hex}" title="${hex}${extra ? " (new — not yet in the image)" : ""}"></button>`).firstElementChild;
+      const b = h(`<button class="sw ${sel ? "sel" : ""} ${note ? "custom" : ""}" style="background:${hex}" title="${hex} — ${note}"></button>`).firstElementChild;
       b.addEventListener("click", () => { color = rgb; buildPalette(); });
       bar.appendChild(b);
     };
-    used.forEach(rgb => swatch(rgb));
-    customColors.filter(c => !usedKeys.has(c.join(","))).forEach(rgb => swatch(rgb, "custom"));
+    used.forEach(t => swatch(t.rgb, `${px(t.n)} in ${cellsWord(t.cells.size)}`));
+    customColors.filter(c => !usedKeys.has(c.join(","))).forEach(rgb => swatch(rgb, "new — not in the image yet"));
     const add = h(`<button class="sw addc" title="add a new color to the palette">＋</button>`).firstElementChild;
     const picker = h(`<input type="color" style="position:absolute;width:0;height:0;opacity:0;border:0;padding:0">`).firstElementChild;
     picker.addEventListener("input", () => {
@@ -562,6 +648,165 @@ async function renderSpriteEditor(path) {
     add.addEventListener("click", () => picker.click());
     bar.appendChild(add);
     bar.appendChild(picker);
+    buildMergeBar();
+  };
+
+  // A tone's own numbers, live under the cursor. It says how much of the tone
+  // is in the cell on screen as well as in the sheet, because a tone with none
+  // here would otherwise light nothing up and read as a tone that isn't there.
+  const toneHint = t => {
+    const el = document.getElementById("sp-merge-hint");
+    if (!el) return;
+    if (!t) { el.textContent = ""; return; }
+    const d = frames[cur].data.data;
+    let here = 0;
+    for (let i = 0; i < d.length; i += 4)
+      if (d[i + 3] && d[i] === t.rgb[0] && d[i + 1] === t.rgb[1] && d[i + 2] === t.rgb[2]) here++;
+    el.textContent = `${toneHex(t.rgb)} — ${px(t.n)} across ${cellsWord(t.cells.size)}, `
+      + (here ? `${here} of them on screen now.` : "none of them in the cell on screen.");
+  };
+
+  // The survivor defaults to whichever ticked tone covers the most pixels: an
+  // antialiasing fringe folds into the body colour it was smeared out of, which
+  // is right nearly every time. The keep row below lets you say otherwise.
+  const keeperOf = sel => {
+    if (mergeKeep === ERASER) return ERASER;
+    return sel.find(t => t.key === mergeKeep) || sel.reduce((a, b) => (b.n > a.n ? b : a));
+  };
+
+  /* Antialiasing never leaves one stray tone; it leaves a small cloud of them
+     around a real one. Gathering that cloud in a click is the difference
+     between this being usable on a sheet carrying sixty tones and not. It only
+     ticks them — every number in the bar updates and nothing changes in the
+     image until Fold is pressed, so the shortcut can never do more than the
+     hand would have. Distance is weighted the way the eye weighs it: green
+     hardest, blue least. */
+  const NEAR = 42;
+  const toneDist = (a, b) => {
+    const rm = (a[0] + b[0]) / 2, dr = a[0] - b[0], dg = a[1] - b[1], db = a[2] - b[2];
+    return Math.sqrt((2 + rm / 256) * dr * dr + 4 * dg * dg + (2 + (255 - rm) / 256) * db * db);
+  };
+
+  const buildMergeBar = () => {
+    const box = document.getElementById("sp-merge");
+    if (!box) return;
+    if (!mergeMode) {
+      box.hidden = !mergeNote;
+      if (mergeNote) box.replaceChildren(h(`<div class="sp-merge-in done">${esc(mergeNote)}</div>`).firstElementChild);
+      return;
+    }
+    box.hidden = false;
+    const all = paletteOf();
+    const byKey = new Map(all.map(t => [t.key, t]));
+    const sel = [...mergeSel].map(k => byKey.get(k)).filter(Boolean);
+    // The cloud is measured around the biggest tone you have ticked — the one
+    // the fringe was smeared out of — never around the fringe itself.
+    const anchor = sel.length ? sel.reduce((a, b) => (b.n > a.n ? b : a)) : null;
+    const near = anchor ? all.filter(t => !mergeSel.has(t.key) && toneDist(t.rgb, anchor.rgb) < NEAR) : [];
+    const gather = near.length
+      ? `<button class="ghost" data-act="near">＋ ${near.length} near-duplicate${near.length === 1 ? "" : "s"}</button>` : "";
+
+    if (sel.length < 2) {
+      box.replaceChildren(h(`<div class="sp-merge-in">
+        <p class="sp-merge-say">Tick two or more tones above and they fold into one, across all
+          ${cellsWord(frames.length)} of the sheet. Hover a tone to see where it sits.</p>
+        <p class="sp-merge-hint" id="sp-merge-hint"></p>
+        <div class="sp-merge-act">${gather}<button class="ghost" data-act="cancel">Done</button></div>
+      </div>`).firstElementChild);
+    } else {
+      const keeper = keeperOf(sel);
+      const erasing = keeper === ERASER;
+      const drop = erasing ? sel : sel.filter(t => t.key !== keeper.key);
+      const nPx = drop.reduce((n, t) => n + t.n, 0);
+      const cells = new Set();
+      drop.forEach(t => t.cells.forEach(c => cells.add(c)));
+      box.replaceChildren(h(`<div class="sp-merge-in">
+        <p class="sp-merge-say">${px(nPx)} in ${cellsWord(cells.size)} ${erasing
+          ? "become transparent — the tones leave the sheet and the silhouette tightens."
+          : "change to the tone marked <b>keep</b>."}</p>
+        <div class="sp-keep" id="sp-keep"></div>
+        <p class="sp-merge-hint" id="sp-merge-hint"></p>
+        <div class="sp-merge-act">
+          <button data-act="merge">${erasing ? `Erase ${sel.length} tones` : `Fold ${sel.length} tones into one`}</button>
+          ${gather}<button class="ghost" data-act="cancel">Cancel</button>
+        </div>
+      </div>`).firstElementChild);
+      const row = box.querySelector("#sp-keep");
+      const chip = (on, swatch, label, title, pick) => {
+        const b = h(`<button class="sp-keepsw ${on ? "on" : ""}" title="${title}">${swatch}<span>${label}</span></button>`).firstElementChild;
+        b.addEventListener("click", () => { mergeKeep = pick; buildMergeBar(); });
+        row.appendChild(b);
+      };
+      // Survivor first, then the rest biggest-first: the eye should land on
+      // what is being kept before it reads what is going away.
+      const ordered = [...sel].sort((a, b) =>
+        (b.key === (erasing ? null : keeper.key)) - (a.key === (erasing ? null : keeper.key)) || b.n - a.n);
+      ordered.forEach(t => chip(!erasing && t.key === keeper.key,
+        `<i style="background:${toneHex(t.rgb)}"></i>`,
+        (!erasing && t.key === keeper.key ? "keep · " : "") + `${t.n} px`,
+        `keep ${toneHex(t.rgb)} and fold the rest into it`, t.key));
+      // Around a silhouette the honest answer is often that the fringe should
+      // not be a colour at all, so transparency is offered as a survivor too.
+      chip(erasing, `<i class="er">⌫</i>`, erasing ? "erase all" : "erase",
+        "erase every ticked tone instead of folding them together", ERASER);
+    }
+    box.querySelectorAll("[data-act]").forEach(b => b.addEventListener("click", () => {
+      if (b.dataset.act === "merge") applyMerge();
+      else if (b.dataset.act === "near") { near.forEach(t => mergeSel.add(t.key)); buildPalette(); }
+      else exitMerge();
+    }));
+  };
+
+  const setMergeBtn = () => {
+    const b = document.getElementById("sp-merge-start");
+    if (!b) return;
+    b.textContent = mergeMode ? "✕ Stop merging" : "⬗ Merge tones";
+    b.classList.toggle("on", mergeMode);
+  };
+  const exitMerge = () => {
+    mergeMode = false; mergeSel.clear(); mergeKeep = null; hoverTone = null;
+    setMergeBtn(); buildPalette(); render();
+  };
+  const enterMerge = () => {
+    if (mergeMode) return exitMerge();
+    if (playing) setPlaying(false);
+    mergeMode = true; mergeNote = ""; mergeSel.clear(); mergeKeep = null;
+    setMergeBtn(); buildPalette(); render();
+  };
+
+  const applyMerge = () => {
+    const byKey = new Map(paletteOf().map(t => [t.key, t]));
+    const sel = [...mergeSel].map(k => byKey.get(k)).filter(Boolean);
+    if (sel.length < 2) return;
+    const keeper = keeperOf(sel);
+    const erasing = keeper === ERASER;
+    const drop = new Set((erasing ? sel : sel.filter(t => t.key !== keeper.key)).map(t => t.key));
+    const [kr, kg, kb] = erasing ? [0, 0, 0] : keeper.rgb;
+    const snaps = [];
+    let changed = 0;
+    frames.forEach((f, i) => {
+      const d = f.data.data;
+      let snap = null;
+      for (let q = 0; q < d.length; q += 4) {
+        if (d[q + 3] === 0 || !drop.has(`${d[q]},${d[q + 1]},${d[q + 2]}`)) continue;
+        if (!snap) snap = new Uint8ClampedArray(d);
+        if (erasing) d[q + 3] = 0;
+        else { d[q] = kr; d[q + 1] = kg; d[q + 2] = kb; }
+        changed++;
+      }
+      if (snap) { snaps.push({ i, bytes: snap }); f.touched = true; }
+    });
+    if (!snaps.length) { exitMerge(); return; }
+    undoStack.push(snaps);
+    if (undoStack.length > UNDO_DEPTH) undoStack.shift();
+    dirty = true;
+    if (!erasing) color = keeper.rgb.slice();   // paint on with the tone that survived
+    mergeNote = erasing
+      ? `Erased ${drop.size} tones — ${px(changed)} across ${cellsWord(snaps.length)} are now transparent. Ctrl+Z puts them back.`
+      : `Folded ${drop.size + 1} tones into ${toneHex(keeper.rgb)} — ${px(changed)} across ${cellsWord(snaps.length)} changed. Ctrl+Z puts them back.`;
+    mergeMode = false; mergeSel.clear(); mergeKeep = null; hoverTone = null;
+    setMergeBtn(); buildPalette();
+    render(); renderPreview(pvi); repaintClipThumbs();
   };
 
   /* ---------- the animation list ----------
@@ -621,6 +866,12 @@ async function renderSpriteEditor(path) {
   };
 
   const playBtn = document.getElementById("sp-play");
+  const onionBtn = document.getElementById("sp-onion");
+  const syncOnionBtn = () => {
+    const on = onion && !onionBtn.disabled;
+    onionBtn.classList.toggle("on", on);
+    onionBtn.setAttribute("aria-pressed", String(on));
+  };
   const syncPlayBtn = () => {
     const single = curClip.drawings.length < 2;
     playBtn.disabled = single || curClip.stills || curClip.assembled;
@@ -638,13 +889,11 @@ async function renderSpriteEditor(path) {
     syncClips();
     syncPlayBtn();
     // The onion skin has nothing true to show on an assembled clip.
-    const onionBox = document.getElementById("sp-onion");
-    if (onionBox) {
-      onionBox.disabled = cl.assembled;
-      onionBox.parentElement.title = cl.assembled
-        ? "A part of an assembly has no previous frame — the reference is the live preview." : "";
-      onionBox.parentElement.style.opacity = cl.assembled ? ".45" : "";
-    }
+    onionBtn.disabled = cl.assembled;
+    onionBtn.title = cl.assembled
+      ? "A part of an assembly has no previous frame — the reference is the live preview."
+      : "show the frame before this one as a ghost";
+    syncOnionBtn();
     startPreview();
     const note = document.getElementById("sp-pv-note");
     if (note) {
@@ -728,21 +977,27 @@ async function renderSpriteEditor(path) {
     f.touched = true;
     dirty = true;
   };
-  const pushUndo = () => {
-    const f = frames[cur];
-    f.undo.push(new Uint8ClampedArray(f.data.data));
-    if (f.undo.length > 60) f.undo.shift();
-  };
+  /* One history for the whole sheet rather than one per cell. A stroke is a
+     one-cell entry and a tone merge is an entry holding every cell it rewrote,
+     so both come back in a single Ctrl+Z — and undo always takes back the last
+     thing you did, not the last thing you did to whichever cell you happen to
+     be standing on. */
   const doUndo = () => {
-    const f = frames[cur];
-    const prev = f.undo.pop();
-    if (prev) { f.data.data.set(prev); render(); renderPreview(pvi); repaintClipThumbs(); }
+    const entry = undoStack.pop();
+    if (!entry) return;
+    entry.forEach(({ i, bytes }) => frames[i].data.data.set(bytes));
+    // Land on what changed: an undo you cannot see is indistinguishable from
+    // one that did not happen.
+    if (!entry.some(e => e.i === cur)) { cur = entry[0].i; followCur(); }
+    mergeNote = "";
+    buildPalette();
+    render(); renderPreview(pvi); repaintClipThumbs();
   };
 
   let stroke = null; // "paint" | "erase" while mouse is down
   cv.addEventListener("contextmenu", ev => ev.preventDefault());
   cv.addEventListener("mousedown", ev => {
-    if (playing) return;
+    if (playing || mergeMode) return;
     const p = pixAt(ev);
     if (!p) return;
     if (ev.altKey) { // eyedropper
@@ -762,7 +1017,9 @@ async function renderSpriteEditor(path) {
     putPixel(p[0], p[1], stroke === "erase");
     render(); renderPreview(pvi); repaintClipThumbs();
   });
-  window.addEventListener("mouseup", () => { stroke = null; });
+  // A stroke can introduce a tone or use the last of another one, so the strip
+  // is rebuilt when the hand comes off — once per stroke, never per pixel.
+  window.addEventListener("mouseup", () => { if (stroke) { stroke = null; buildPalette(); } });
   cv.addEventListener("keydown", ev => {
     if (ev.key === "ArrowRight") { cur = (cur + 1) % frames.length; followCur(); render(); }
     else if (ev.key === "ArrowLeft") { cur = (cur - 1 + frames.length) % frames.length; followCur(); render(); }
@@ -772,8 +1029,9 @@ async function renderSpriteEditor(path) {
   document.getElementById("sp-next").addEventListener("click", () => { cur = (cur + 1) % frames.length; followCur(); render(); cv.focus(); });
   document.getElementById("sp-prev").addEventListener("click", () => { cur = (cur - 1 + frames.length) % frames.length; followCur(); render(); cv.focus(); });
   playBtn.addEventListener("click", () => setPlaying(!playing));
-  document.getElementById("sp-onion").addEventListener("change", ev => { onion = ev.target.checked; render(); });
+  onionBtn.addEventListener("click", () => { onion = !onion; syncOnionBtn(); render(); });
   document.getElementById("sp-undo").addEventListener("click", doUndo);
+  document.getElementById("sp-merge-start").addEventListener("click", enterMerge);
   document.getElementById("sp-revert").addEventListener("click", () => route());
 
   document.getElementById("sp-save").addEventListener("click", async () => {
