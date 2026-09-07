@@ -317,13 +317,24 @@ func _ready() -> void:
 		var at = e.get("target", [])
 		if at is Array and at.size() == 2:
 			poured.append(Vector2i(int(at[0]), int(at[1])))
-	var watered := 0
+	# Every square it was taught is dealt with — poured on by the machine, or
+	# already wet when it got there and rightly walked past.
+	#
+	# **The weather is a roll this session does not get to choose**, and since
+	# 2026-09-07 that changes what the round looks like rather than only what the
+	# ground says: rain wets every soil square at dawn, so on a wet morning the
+	# machine correctly pours nothing at all and walks its list looking. Demanding
+	# a pour was demanding the old behaviour, where it watered squares that were
+	# already wet. What is invariant in both weathers is that no square it was
+	# taught is left dry and unattended.
+	var dealt_with := 0
 	for t in BOT_ROW:
-		if t in poured and main_scene.farm.get_tile(t.x, t.y).get("watered_today", false):
-			watered += 1
-	_check(watered == BOT_ROW.size(),
-		"the round happened: the machine watered %d of the %d tiles it was taught, once she was up"
-			% [watered, BOT_ROW.size()])
+		var wet: bool = main_scene.farm.get_tile(t.x, t.y).get("watered_today", false)
+		if wet and (t in poured or String(GameState.weather) == "rainy"):
+			dealt_with += 1
+	_check(dealt_with == BOT_ROW.size(),
+		"the round happened: %d of the %d squares it was taught are watered — %d by the machine, weather %s"
+			% [dealt_with, BOT_ROW.size(), poured.size(), GameState.weather])
 	_check(main_scene.farm.sim.actor_pos(mk1) == STALL_TILE,
 		"and the machine walked itself home to its bay afterwards (%s)"
 			% main_scene.farm.sim.actor_pos(mk1))
