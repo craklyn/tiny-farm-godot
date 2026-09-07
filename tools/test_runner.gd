@@ -3434,27 +3434,70 @@ func _scenario_ah_the_mark_one_takes_exact_orders() -> void:
 	_assert(missed_zoomed == 0,
 		"and at any zoom the player can pinch to — %d of %d missed" % [missed_zoomed, probes.size()])
 
+	# **A two-finger drag pans and does not zoom** — the bug the tablet found on
+	# 2026-09-07: "it likes to zoom me in and out when I do it, and barely moves
+	# the page left/right." Fingers do not move in step, so the events arrive one
+	# finger at a time; measuring each against the one before it read a pure pan
+	# as the fingers spreading and closing on alternate events, and overwrote the
+	# pan so only the last event of a frame survived. This walks two fingers
+	# across the glass exactly that way — one at a time, interleaved — and asks
+	# for the two things that were wrong.
+	InputManager.touches.clear()
+	InputManager.gesture_active = false
+	InputManager._span0 = -1.0
+	var f0 := Vector2(300, 300)
+	var f1 := Vector2(400, 300)
+	InputManager.touches[0] = f0
+	InputManager.touches[1] = f1
+	InputManager._measure_gesture()
+	_assert(InputManager.gesture_began, "two fingers down begins a gesture")
+	var worst_ratio := 0.0
+	for step in 12:
+		# The events arrive one finger at a time — that is the real case, and the
+		# old code measured on each of them. The frame is where both are current,
+		# so that is where the gesture is measured now.
+		f0 += Vector2(9, 0)
+		InputManager.touches[0] = f0          # event
+		f1 += Vector2(9, 0)
+		InputManager.touches[1] = f1          # event
+		InputManager._measure_gesture()       # frame
+		worst_ratio = maxf(worst_ratio, absf(InputManager.gesture_span_ratio - 1.0))
+	_assert(is_equal_approx(InputManager.gesture_span_ratio, 1.0),
+		"a two-finger drag ends at no zoom at all (ratio %.4f)" % InputManager.gesture_span_ratio)
+	_assert(worst_ratio < 0.001,
+		"and never zooms at any point along the way — worst was %.2f%%" % (worst_ratio * 100.0))
+	_assert(is_equal_approx(InputManager.gesture_pan.x, 108.0),
+		"the pan is the whole distance the fingers travelled, not the last event's share (%.0f of 108)"
+			% InputManager.gesture_pan.x)
+	InputManager.touches.clear()
+	InputManager._measure_gesture()
+	_assert(not InputManager.gesture_active, "lifting the fingers ends it")
+
 	# **Pinch stops at the two postures the mode is about.** Out ends where the
 	# whole page fits, because past that is dark around a farm she can already see
 	# all of; in ends at the game's own art scale, because closer is just bigger
 	# pixels.
 	var fit: float = main_scene._altitude_zoom()
-	InputManager.pinch_scale = 0.2          # a hard squeeze outward
-	InputManager.gesture_active = true
-	main_scene._apply_altitude_gesture()
+	var squeeze := func(ratio: float, pan: Vector2) -> void:
+		InputManager.gesture_active = true
+		InputManager.gesture_began = true
+		InputManager.gesture_span_ratio = 1.0
+		InputManager.gesture_pan = Vector2.ZERO
+		main_scene._apply_altitude_gesture()      # takes the reference
+		InputManager.gesture_began = false
+		InputManager.gesture_span_ratio = ratio
+		InputManager.gesture_pan = pan
+		main_scene._apply_altitude_gesture()
+	squeeze.call(0.2, Vector2.ZERO)               # a hard squeeze outward
 	_assert(is_equal_approx(main_scene.camera.zoom.x, fit),
 		"squeezing out stops with the whole farm framed (%.2f)" % main_scene.camera.zoom.x)
-	InputManager.pinch_scale = 8.0          # and a hard spread inward
-	InputManager.gesture_active = true
-	main_scene._apply_altitude_gesture()
+	squeeze.call(8.0, Vector2.ZERO)               # and a hard spread inward
 	_assert(is_equal_approx(main_scene.camera.zoom.x, float(main_scene.CAMERA_SCALE)),
 		"and spreading in stops at standing-in-it (%.2f)" % main_scene.camera.zoom.x)
 
 	# Zoomed in, a pan cannot wander off the page — the void above the bedroom is
 	# not somewhere she can be shown.
-	InputManager.pan_delta = Vector2(-4000, -4000)
-	InputManager.gesture_active = true
-	main_scene._apply_altitude_gesture()
+	squeeze.call(1.0, Vector2(4000, 4000))
 	var look: Vector2 = main_scene.player.global_position + main_scene.camera.position
 	var halfw: float = main_scene.get_viewport_rect().size.x / (2.0 * main_scene.camera.zoom.x)
 	var halfh: float = main_scene.get_viewport_rect().size.y / (2.0 * main_scene.camera.zoom.x)
@@ -3462,10 +3505,9 @@ func _scenario_ah_the_mark_one_takes_exact_orders() -> void:
 		"a hard pan sideways stops at the edge of the farm (x %.1f)" % look.x)
 	_assert(look.y - halfh >= page_no * SimWorld.PAGE_ROWS * 16 - 1.0,
 		"and upward at the top of the page she is standing on (y %.1f)" % look.y)
-	InputManager.pinch_scale = 0.01
-	InputManager.gesture_active = true
-	main_scene._apply_altitude_gesture()
+	squeeze.call(0.01, Vector2.ZERO)              # back out to the whole farm
 	InputManager.gesture_active = false
+	InputManager.touches.clear()
 	await get_tree().process_frame
 
 	# She points at three tiles from where she is standing. **No walking**: the

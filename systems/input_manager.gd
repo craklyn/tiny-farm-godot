@@ -33,12 +33,23 @@ var swipe_moved: bool = false  # true for one frame when finger enters a new til
 # pending tap is dropped — a pinch that marks a square on the way in would make
 # the gesture cost something to try, which is the one thing a view control must
 # never do.
-var touches: Dictionary = {}          # finger index -> last screen position
-var pinch_scale: float = 1.0          # >1 this frame means the fingers spread
-var pan_delta: Vector2 = Vector2.ZERO # midpoint travel in screen pixels
-var gesture_active: bool = false      # two or more fingers are down right now
-var _pinch_span: float = -1.0
-var _pinch_mid: Vector2 = Vector2.ZERO
+# Measured **against the moment the gesture started**, not against the previous
+# event. The first version compared each event to the one before it, and fingers
+# do not move in step: a two-finger drag arrives as finger A moved, then finger B
+# moved, so every span was computed with one finger current and one stale. A pure
+# pan therefore reported the fingers spreading and closing on alternate events —
+# which is what "it zooms me in and out when I pan" was — and because each event
+# *overwrote* the pan instead of adding to it, only the last one in a frame
+# survived, which is what "barely moves left/right" was. One mistake, both
+# symptoms. Absolute measurements have neither failure by construction, and they
+# cannot drift, because nothing accumulates.
+var touches: Dictionary = {}            # finger index -> current screen position
+var gesture_active: bool = false        # two or more fingers are down right now
+var gesture_began: bool = false         # true for the one frame the pair landed
+var gesture_span_ratio: float = 1.0     # fingers' spread now ÷ spread at the start
+var gesture_pan: Vector2 = Vector2.ZERO # midpoint travel since the start, screen px
+var _span0: float = -1.0
+var _mid0: Vector2 = Vector2.ZERO
 
 # Tile conversion constants
 const TILE_SIZE := 16
@@ -84,10 +95,11 @@ func swallow_input(on: bool) -> void:
 		# Fingers that were down when the window opened will never send their
 		# release here, so forget them rather than leave a phantom pinch running.
 		touches.clear()
-		pinch_scale = 1.0
-		pan_delta = Vector2.ZERO
+		gesture_span_ratio = 1.0
+		gesture_pan = Vector2.ZERO
 		gesture_active = false
-		_pinch_span = -1.0
+		gesture_began = false
+		_span0 = -1.0
 
 
 func is_swallowing() -> bool:
@@ -116,26 +128,35 @@ func tap_tile(t: Vector2i) -> bool:
 	return true
 
 
-# What two fingers are doing, recomputed whenever either of them moves. Reported
-# as a *ratio* and a *delta* rather than absolute values so the camera can apply
-# them to whatever zoom it currently holds without this layer knowing anything
-# about cameras.
-func _regather() -> void:
+# What the two fingers add up to, measured once a frame with both positions
+# current — never per event, which is what made a pan read as a pinch.
+func _measure_gesture() -> void:
+	gesture_began = false
 	if touches.size() < 2:
-		_pinch_span = -1.0
-		gesture_active = false
+		if gesture_active:
+			gesture_active = false
+			_span0 = -1.0
+		gesture_span_ratio = 1.0
+		gesture_pan = Vector2.ZERO
 		return
 	var pts: Array = touches.values()
 	var a: Vector2 = pts[0]
 	var b: Vector2 = pts[1]
 	var span: float = a.distance_to(b)
 	var mid: Vector2 = (a + b) * 0.5
-	if _pinch_span > 0.0 and span > 0.0:
-		pinch_scale = span / _pinch_span
-		pan_delta = mid - _pinch_mid
-	_pinch_span = span
-	_pinch_mid = mid
-	gesture_active = true
+	if not gesture_active or _span0 <= 0.0:
+		# The reference the whole gesture is measured from. Re-taken whenever the
+		# pair changes, so lifting a finger and putting it back is a new gesture
+		# rather than a jump.
+		_span0 = maxf(span, 1.0)
+		_mid0 = mid
+		gesture_active = true
+		gesture_began = true
+		gesture_span_ratio = 1.0
+		gesture_pan = Vector2.ZERO
+		return
+	gesture_span_ratio = span / _span0
+	gesture_pan = mid - _mid0
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -177,14 +198,12 @@ func _unhandled_input(event: InputEvent) -> void:
 				# doing now, it is not marking a square.
 				has_click = false
 				swipe_active = false
-				_regather()
 			else:
 				click_tile = screen_to_tile(event.position)
 				has_click  = true
 				swipe_active = false
 		else:
 			touches.erase(event.index)
-			_regather()
 			# Lifting one of two fingers must not hand the survivor a tap: the
 			# gesture is over, and the leftover finger is on its way off the glass.
 			if touches.size() <= 1:
@@ -196,7 +215,6 @@ func _unhandled_input(event: InputEvent) -> void:
 		_set_mode(Mode.TOUCH)
 		touches[event.index] = event.position
 		if touches.size() >= 2:
-			_regather()
 			has_click = false
 			swipe_active = false
 			return
@@ -212,16 +230,17 @@ func _unhandled_input(event: InputEvent) -> void:
 		has_click = true
 
 
-## What the two fingers did since the last time anyone asked, and clearing it in
-## the same breath — a zoom ratio applied twice is a zoom that runs away.
-func consume_gesture() -> Dictionary:
-	var out := {"zoom": pinch_scale, "pan": pan_delta, "active": gesture_active}
-	pinch_scale = 1.0
-	pan_delta = Vector2.ZERO
-	return out
+## Where the two fingers have got to, relative to where they started. Nothing is
+## consumed or cleared: the numbers are absolute, so reading them twice in a
+## frame is the same as reading them once, and a dropped frame loses nothing.
+func gesture() -> Dictionary:
+	return {"active": gesture_active, "began": gesture_began,
+		"ratio": gesture_span_ratio, "pan": gesture_pan}
 
 
 func _process(_delta: float) -> void:
+	# Both fingers are current here; in `_unhandled_input` only one ever is.
+	_measure_gesture()
 	# Only a real pointing device has a hover position worth tracking.
 	#
 	# Reported from play 2026-08-30: "yellow box is moving around as screen

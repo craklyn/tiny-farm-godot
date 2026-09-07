@@ -1019,22 +1019,31 @@ func _rise_to_altitude() -> void:
 # Pinch without pan would recreate the bug this mode was built to fix — zoom in
 # and part of the farm is unreachable again — so they arrive together, and the
 # pan is clamped to the page for the same reason.
+var _g_zoom0: float = 0.0
+var _g_eye0: Vector2 = Vector2.ZERO
+
 func _apply_altitude_gesture() -> void:
 	if camera == null or not is_teaching():
 		return
-	var g: Dictionary = InputManager.consume_gesture()
-	var z: float = float(g.get("zoom", 1.0))
-	var pan: Vector2 = g.get("pan", Vector2.ZERO)
-	if is_equal_approx(z, 1.0) and pan.length_squared() < 0.01:
+	var g: Dictionary = InputManager.gesture()
+	if not bool(g.get("active", false)):
+		return
+	# Where the camera was when the fingers landed. Everything below is measured
+	# from here rather than nudged from the last frame, which is what keeps a long
+	# gesture from drifting and lets the view follow the fingers back exactly if
+	# she changes her mind mid-pinch.
+	if bool(g.get("began", false)):
+		_g_zoom0 = camera.zoom.x
+		_g_eye0 = player.global_position + camera.position
+	if _g_zoom0 <= 0.0:
 		return
 	var out_stop := _altitude_zoom()
-	var was := camera.zoom.x
-	var now: float = clampf(was * z, out_stop, float(CAMERA_SCALE))
+	var now: float = clampf(_g_zoom0 * float(g.get("ratio", 1.0)), out_stop, float(CAMERA_SCALE))
 	camera.zoom = Vector2(now, now)
-	# A drag of the fingers should move the farm with them, so the world travels
-	# by the screen distance divided by the zoom it is drawn at.
-	if pan.length_squared() > 0.0:
-		camera.position -= pan / now
+	# The farm travels with her fingers: screen pixels become world pixels at the
+	# zoom it is drawn at, so the ground keeps up with the hand at any altitude.
+	var pan: Vector2 = g.get("pan", Vector2.ZERO)
+	camera.position = (_g_eye0 - pan / now) - player.global_position
 	_clamp_altitude_view()
 
 
