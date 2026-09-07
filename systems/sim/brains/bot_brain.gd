@@ -243,7 +243,27 @@ func step(world: SimWorld, actor_id: String, tick: int, _gs = null) -> Dictionar
 # square itself says which of the two it needs. What the machine has gained is a
 # way to be *useful* on the list she already gave it.
 static func order_verb(world: SimWorld, t: Vector2i) -> String:
-	return "till" if String(world.get_tile(t.x, t.y).get("state", "")) == "cleared" else "water"
+	var tile := world.get_tile(t.x, t.y)
+	if tile.is_empty():
+		return ""
+	if String(tile.get("state", "")) == "cleared":
+		return "till"
+	# **Only a square that can take water gets watered**, and only if it has not
+	# had any (CEO, from play on a rainy morning, 2026-09-07: *"it went out and
+	# watered the already-watered tiles. Instead, it should go out and look at
+	# the tiles but not water if already watered."*). Rain wets every soil square
+	# at dawn, so on a wet day the whole round used to be strokes that changed
+	# nothing at all. The set is `SimWorld.WETTABLE_STATES` rather than a list of
+	# its own, so the squares the machine offers to water and the squares water
+	# actually shows on can never drift apart.
+	#
+	# The empty string is "walk here, look, and move on". It still walks: the
+	# round is a patrol, and a machine that stayed home on a wet day would give
+	# her nothing to look at and no sign it had understood the weather.
+	if String(tile.get("state", "")) in SimWorld.WETTABLE_STATES \
+			and not bool(tile.get("watered_today", false)):
+		return "water"
+	return ""
 
 
 func _orders(world: SimWorld, actor_id: String, extra: Dictionary, tick: int) -> Dictionary:
@@ -264,7 +284,7 @@ func _orders(world: SimWorld, actor_id: String, extra: Dictionary, tick: int) ->
 		# through, and a machine that retried would stand on a rock all day.
 		extra["at_order"] = at + 1
 		_paced(world, actor_id, extra, tick)
-		return { "verb": order_verb(world, goal), "target": goal, "actor": actor_id }
+		return _work(world, actor_id, goal)
 
 	if Movement.has_route(world, actor_id) and _goal(extra) == goal:
 		match Movement.step(world, actor_id, tick):
@@ -272,7 +292,7 @@ func _orders(world: SimWorld, actor_id: String, extra: Dictionary, tick: int) ->
 				if world.actor_pos(actor_id) == goal:
 					extra["at_order"] = at + 1
 					_paced(world, actor_id, extra, tick)
-					return { "verb": order_verb(world, goal), "target": goal, "actor": actor_id }
+					return _work(world, actor_id, goal)
 				return {}
 			_:
 				Movement.clear_route(world, actor_id)
@@ -283,6 +303,24 @@ func _orders(world: SimWorld, actor_id: String, extra: Dictionary, tick: int) ->
 		extra["at_order"] = at + 1
 		_wait(extra, tick)
 	return {}
+
+
+# The action for the square it is standing on, or none at all. Written as one
+# place so "arrive, look, move on" cannot drift apart from "arrive, work, move
+# on" — the index has already advanced either way, because a square it has looked
+# at is a square it has been through.
+func _work(world: SimWorld, actor_id: String, goal: Vector2i) -> Dictionary:
+	var verb := order_verb(world, goal)
+	if verb == "":
+		return {}
+	return { "verb": verb, "target": goal, "actor": actor_id }
+
+
+# Is every machine on the farm standing still because she has not come outside?
+# The rule lives in `step`; this is the same question asked from the menu, so the
+# panel can say what is true instead of guessing (`ui/menus.gd`).
+static func waiting_for_player(world: SimWorld) -> bool:
+	return world.page_of(world.actor_pos(SimWorld.ACTOR_PLAYER)) == 1
 
 
 # The end of the round — but not the end of the errand, if it has somewhere to be.

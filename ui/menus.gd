@@ -299,7 +299,15 @@ func _rebuild_options() -> void:
 					# "why is this greyed out" is the question a disabled control
 					# always asks and there is nowhere else here to answer it.
 					machine_options.append({ "kind": "activate" })
-					if out_now:
+					if out_now and BotBrain.waiting_for_player(farm.sim):
+						# It is sent, and standing in its bay because she is indoors
+						# — the machines wait for her day to start (CEO, 2026-09-07).
+						# Saying "Out working…" here was a straight lie, and the one
+						# she caught: sent on a rainy morning from inside the house,
+						# the panel claimed it was working while it had not moved.
+						# A disabled row has to answer "why", and the answer is her.
+						_add_option("Waiting for you outside", false)
+					elif out_now:
 						_add_option("Out working…", false)
 					elif been_out:
 						_add_option("Been out today", false)

@@ -963,9 +963,24 @@ func set_tile_state(tx: int, ty: int, new_state: String, crop_type: String = "")
 		# thing: rain waters what you plant that day. Which is what rain is for.
 
 
+# **Soil that can be wet**, which is a bigger set than soil that can *grow*.
+# Growth reads `watered_today` only on seeded and growing squares, so wetting a
+# bare bed or a ripe crop changes nothing that happens — but it changes what she
+# sees, and the ground being visibly wet where water has fallen is the whole
+# point of drawing it wet at all.
+const WETTABLE_STATES := ["tilled", "seeded", "growing", "ready"]
+
+
 func water_tile(tx: int, ty: int) -> void:
 	var tile := get_tile(tx, ty)
-	if not tile.is_empty() and (tile.state == "seeded" or tile.state == "growing"):
+	# Was seeded-or-growing only, which is the set that can *use* the water. That
+	# left a sprinkler's own square looking parched the day its crop ripened —
+	# reported from day 35 of a real session, 2026-09-07: *"the sprinkler only
+	# watered some adjacent tiles... it's visually unclear why the dirt is dry."*
+	# The dirt was dry because the crop no longer needed a drink, which is not a
+	# thing a picture can say. Rain has always wet all four states; a can and a
+	# sprinkler now wet the same four, so water looks like water whoever poured it.
+	if not tile.is_empty() and String(tile.get("state", "")) in WETTABLE_STATES:
 		tile.watered_today = true
 
 
@@ -1829,6 +1844,18 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			# `dest` off the result and puts her body there — a teleport is not a
 			# crossing, which is spawn's rule.
 			set_actor_pos(ACTOR_PLAYER, dest, face)
+			# **Stepping outside is the farm's starting bell, so ring it.** The
+			# machines stand still while she is indoors (`BotBrain.step`) and then
+			# nap for `IDLE_SECONDS` before looking again — so she came out and
+			# watched a machine that had already been sent do nothing for up to
+			# half a minute. Reported from play, 2026-09-07: "after some delay, it
+			# then went out". Waking them here is the same move `activate` makes
+			# for the same reason: the thing that changes their situation is an
+			# Action, so it can tell them, and nothing has to poll.
+			if page_of(dest) == 0:
+				for wake_id in actors.keys():
+					if String(actors[wake_id].get("species", "")) == SpeciesDefs.BOT:
+						_schedule_brain(wake_id, clock.tick + 1)
 			return { "ok": true, "dest": dest, "face": face }
 
 		# -- machines (2026-09-03) --------------------------------------------
@@ -2404,7 +2431,7 @@ func advance_day(weather: String, gs = null) -> void:
 			# brain — is gated on seeded/growing, so a wet ripe tile changes
 			# nothing that happens and only changes what is drawn (a test asserts
 			# it: a ripe tile left in the rain does not grow).
-			if weather == "rainy" and tile.state in ["tilled", "seeded", "growing", "ready"]:
+			if weather == "rainy" and String(tile.get("state", "")) in WETTABLE_STATES:
 				tile.watered_today = true
 
 	# ...and the rain does to a trail what her watering can does to one tile of it

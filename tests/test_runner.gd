@@ -10313,8 +10313,24 @@ func test_mark_one_robot() -> void:
 	# nothing — so a round taught over a crop row used to achieve nothing at all
 	# the day after she picked it. The machine now tills what has gone bare and
 	# waters what is soil, off the same list she already gave it.
-	_assert(BotBrain.order_verb(world, orders[0]) == "water",
-		"soil asks to be watered")
+	var dry: Vector2i = orders[0]
+	world.set_tile_state(dry.x, dry.y, "seeded", "wheat")
+	world.get_tile(dry.x, dry.y).watered_today = false
+	_assert(BotBrain.order_verb(world, dry) == "water", "a dry sown square asks to be watered")
+	world.get_tile(dry.x, dry.y).watered_today = true
+	_assert(BotBrain.order_verb(world, dry) == "",
+		"one the rain already soaked asks for nothing — it is walked to and looked at, not watered")
+	# A ripe square still takes water — not to grow, which it is past, but so the
+	# ground under it looks like ground that has been watered. One rule for both:
+	# wettable and not yet wet.
+	world.set_tile_state(dry.x, dry.y, "ready", "wheat")
+	world.get_tile(dry.x, dry.y).watered_today = false
+	_assert(BotBrain.order_verb(world, dry) == "water",
+		"a ripe square with dry ground still asks for water, so the dirt does not read as parched")
+	world.apply_action({ "verb": "water", "target": dry, "actor": "player" }, GameState)
+	_assert(bool(world.get_tile(dry.x, dry.y).get("watered_today", false)),
+		"and the water shows on it — a can wets the same four states the rain does")
+	_assert(BotBrain.order_verb(world, dry) == "", "after which it asks for nothing")
 	var reset_tile: Vector2i = orders[0]
 	world.set_tile_state(reset_tile.x, reset_tile.y, "cleared")
 	_assert(BotBrain.order_verb(world, reset_tile) == "till",
@@ -10622,6 +10638,39 @@ func test_the_door() -> void:
 			and String(back.get("face", "")) == "down",
 		"the doorway leads back out, to the tile below the door, facing the yard (%s)" % back)
 	_assert(w.actor_pos(SimWorld.ACTOR_PLAYER) == Vector2i(2, 3), "she is home on the farm")
+
+	# --- 3b. and the machines are told -----------------------------------------
+	#
+	# **Stepping outside is the farm's starting bell.** A bot stands still while
+	# she is indoors and then naps for `IDLE_SECONDS` before looking again, so
+	# without this she came out and watched an already-sent machine do nothing for
+	# up to half a minute — reported from play, 2026-09-07: "after some delay, it
+	# then went out". The door is an Action, so it can tell them, exactly as
+	# `activate` does.
+	#
+	# Asserted through the brain actually thinking rather than through a field:
+	# the schedule is a clock event, and `extra.wake` is what a think *writes*, so
+	# a wake that has been overwritten is proof the machine looked up.
+	BotBrain.deploy(w, "bell_bot", BotBrain.CONFIG_ORDERS, Vector2i(6, 6))
+	var parked := w.clock.tick + 100000
+	var doze := func():
+		w.actor("bell_bot")["extra"]["wake"] = parked
+		w._schedule_brain("bell_bot", parked)
+	var thought := func() -> bool:
+		return int(w.actor("bell_bot")["extra"].get("wake", 0)) != parked
+
+	w.set_actor_pos(SimWorld.ACTOR_PLAYER, Vector2i(2, 3), "up")
+	doze.call()
+	w.apply_action({ "verb": "use_door", "target": door, "actor": "player" }, gs)
+	w.advance_to_tick(w.clock.tick + 20, gs)
+	_assert(not thought.call(),
+		"walking *in* wakes nothing — the farm's day has not started")
+
+	doze.call()
+	w.apply_action({ "verb": "use_door", "target": doorway, "actor": "player" }, gs)
+	w.advance_to_tick(w.clock.tick + 20, gs)
+	_assert(thought.call(),
+		"walking *out* wakes every machine on the spot, rather than leaving it mid-nap")
 
 	# --- 4. what it refuses -----------------------------------------------------
 	var nothing := w.apply_action({ "verb": "use_door", "target": Vector2i(5, 5),

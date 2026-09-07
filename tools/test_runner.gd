@@ -3646,6 +3646,8 @@ func _scenario_ah_the_mark_one_takes_exact_orders() -> void:
 	menus._select_current_option()
 	await get_tree().process_frame
 	_assert(bool(farm.sim.actor(mk1)["extra"].get("sent", false)), "she sends it out")
+	_assert(not BotBrain.waiting_for_player(farm.sim),
+		"and it is not waiting on her, because she is outdoors")
 	_assert(bool(farm.sim.actor(mk1)["extra"].get("ran_today", false)),
 		"and that is its turn used up for today")
 
@@ -4012,11 +4014,17 @@ func _scenario_aj_the_robot_lives_in_a_stall() -> void:
 			send_row = i
 	var rows: Array = []
 	_collect_labels(menus.options_container, rows)
-	_assert(send_row >= 0 and String(rows[send_row].text).begins_with("Out working"),
-		"and its panel says so in the one row that reports its state (%s)"
+	# She is indoors — she has just woken up — and the machines wait for her day to
+	# start, so the honest row is not "Out working…". It said that until
+	# 2026-09-07, and this is the scenario the CEO caught it in: sent on a rainy
+	# morning, the panel claimed the robot was working while it had not moved.
+	_assert(send_row >= 0 and String(rows[send_row].text).begins_with("Waiting for you"),
+		"and its panel says what is actually true, which is that it is waiting on her (%s)"
 			% (String(rows[send_row].text) if send_row >= 0 and rows.size() > send_row else "-"))
 	menus.close_menu()
 	await get_tree().process_frame
+
+
 
 	# --- and it does the round, and comes home ---------------------------------
 	#
