@@ -115,6 +115,17 @@ async function renderDesign() {
   const frag = h(`<h1>🎨 Design Studio</h1>
     <p class="sub">${esc(dx.pitch || "The living game design document.")}</p>
     ${frontierCard(dx)}
+    <h2>Design tools</h2>
+    <p class="small muted">Pages where you work on an artifact of the game itself — not a
+    document about it. Changes made here land in the repo like any other work.</p>
+    <div class="grid cols4">
+      <a class="card tool-card" href="#/entities"><b>🐔 Entities</b>
+        <p class="small muted">Every creature, crop, and object, live from the real sprite
+        sheets — with an editor that repaints any frame and keeps every revision.</p></a>
+      <a class="card tool-card" href="#/maps"><b>🗺️ Map Editor</b>
+        <p class="small muted">The farm's layout definitions — parcels, boundaries,
+        stations — edited as data the world generator fills in at play time.</p></a>
+    </div>
     <h2>The five phases <span class="small muted">(the arc, live from docs/phases/)</span></h2>
     <div class="phase-rail"></div>
     <div id="doc-groups"></div>

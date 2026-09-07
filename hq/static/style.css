@@ -1336,3 +1336,8 @@ button.linkbtn:hover, button.linkbtn:focus-visible { text-decoration: underline;
 .gl-new:hover { filter: brightness(1.15); }
 .gl-new:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .gl-form-row3 { grid-template-columns: 1fr 1fr 1fr; }
+
+/* Design tools: a card that is a link, drawn like its card siblings. */
+a.tool-card { display: block; color: var(--text); text-decoration: none; }
+a.tool-card:hover { border-color: var(--accent); }
+a.tool-card b { display: block; margin-bottom: 4px; }

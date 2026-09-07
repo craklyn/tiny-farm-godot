@@ -7,10 +7,13 @@ dashboard's eye queue is the ordered list of what actually needs the CEO.
 
 Surfaces: the Eye of Sauron dashboard (derived pillar statuses + the chief of
 staff's brief), six pillar pages (each one the wall its VP would brief the CEO
-from — see **Goals** below), org chart with chattable personas, the
-animated/editable entity gallery (whose sprite editor keeps a full per-sheet
-edit history and files each edit to the art director), the map editor (layout
-definitions), the playtest viewer (traces scored by the game's own formulas),
+from — see **Goals** below), org chart with chattable personas, the **design
+tools** — pages where an artifact of the game itself is worked on directly
+rather than reported on, bucketed under the Design Studio in the nav
+(2026-09-07): today the entity gallery (whose sprite editor keeps a full
+per-sheet edit history and files each edit to the art director) and the map
+editor (layout definitions), with any future hands-on editor joining the same
+sublist — the playtest viewer (traces scored by the game's own formulas),
 the program report, and the decision inbox (curated cards + on-page rulings). The Engineering & QA
 pillar page carries **The tablet** — build the code as it stands and install it on the
 device, beside the "run it yourself" suites. It is the one control built to work with no

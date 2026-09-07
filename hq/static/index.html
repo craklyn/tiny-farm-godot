@@ -29,7 +29,6 @@
       <div class="nav-sub" id="nav-pillars" hidden></div>
     </div>
     <a href="#/org" data-route="/org"><span>🧑‍🤝‍🧑</span> Org Chart</a>
-    <a href="#/entities" data-route="/entities"><span>🐔</span> Entities</a>
     <div class="nav-group" data-grp="program">
       <a href="#/program" data-route="/program"><span>🗂️</span> Program Report</a>
       <!-- One child and no caret: folding a single row saves nothing and hides
@@ -39,8 +38,18 @@
       </div>
     </div>
     <a href="#/playtests" data-route="/playtests"><span>🧪</span> Playtests</a>
-    <a href="#/design" data-route="/design"><span>🎨</span> Design Studio</a>
-    <a href="#/maps" data-route="/maps"><span>🗺️</span> Map Editor</a>
+    <div class="nav-group" data-grp="design">
+      <div class="nav-parent">
+        <a href="#/design" data-route="/design"><span>🎨</span> Design Studio</a>
+        <button class="nav-caret" data-grp="design" aria-label="expand design tools">▸</button>
+      </div>
+      <!-- The design tools: pages where an artifact of the game is worked on
+           directly — sprites, maps — as opposed to pages that report on it. -->
+      <div class="nav-sub" hidden>
+        <a href="#/entities" data-route="/entities">🐔 Entities</a>
+        <a href="#/maps" data-route="/maps">🗺️ Map Editor</a>
+      </div>
+    </div>
     <a href="#/work" data-route="/work"><span>🧾</span> Your Queue <b id="work-badge" class="badge" hidden></b></a>
     <a href="#/chat" data-route="/chat"><span>💬</span> Chief of Staff</a>
     <div class="sidebar-foot">
