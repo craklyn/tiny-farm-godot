@@ -224,6 +224,63 @@ One row per setting, the current one ticked, then "pick it up":
 | Chase birds off | `shoo` | patrols a radius around where it was put down, chases any bird-class actor out of it, comes home when the patch is clear |
 | Follow me | `follow` | trails her at two tiles, re-planning as she walks |
 | Circle me | `circle` | orbits her at a fixed radius and comes with her |
+| Wait here | `idle` | stands still — what a freshly placed one is, and how she stops a running one without picking it up |
+
+### Mark-2 first contact, P0 — the floor (designer, 2026-09-07)
+
+**The technical milestone, not the scene.** P0 says what must be true for the machine to
+be *usable*; the authored beat is P1 and waits on a trigger named at the end of this
+section. The distinction was drawn after the first play session with a mark-2 found both
+of its halves broken at once — the machine started working before it had been told to,
+and then could not be reopened at all.
+
+**The sentence P0 guarantees**, and every clause is an assertion:
+
+> She buys one. She puts it down. **It waits.** She tells it a job and it starts. She can
+> reach its panel at any moment, from anywhere, whatever it is doing. She can tell it to
+> stop. She can pick it up. All of that survives a save, a load and a replay.
+
+Clause by clause, with the reason each is in the floor rather than assumed:
+
+1. **Buying and placing are the verbs she already has** — `buy_machine` into the crate,
+   `place` onto a square, and placement opens the panel by name because a placement knows
+   exactly which machine it just put down.
+2. **It waits.** `idle` is the catalogue's `default_config`. Putting a machine down is not
+   the same act as starting it, and a first sight of a robot that has chosen its own job
+   and set off is not a first contact, it is an accident.
+3. **A job starts on a tap** and the tick moves in place, so the panel is the readout as
+   well as the control.
+4. **The panel opens from anywhere, in every config.** This is the clause that earns its
+   place: a `follow` bot holds two tiles behind her, so walking at it moves it away, and
+   the panel was *unreachable* for the one setting most likely to be chosen first.
+   Opening a panel is UI navigation and never an Action (P-9), so distance was never
+   buying anything.
+5. **"Wait here" stops it**, without picking it up. Three always-active settings and no
+   off switch is a machine you can only silence by putting it in your pocket.
+6. **Pick up works while it is running**, and returns it to the crate.
+7. **Save, load and replay hold in every config**, because a config is data on the actor
+   and that is what makes it savable, replayable and comparable.
+8. **Two on the farm do not interfere** — the brain is per-actor, and a second machine
+   must not be able to make the first one wrong.
+
+**What P0 deliberately is not.** It is not a lesson, has no glow, no vignette, and does
+not teach the player what a mark-2 is *for*. It only guarantees that nothing about the
+machine is broken or unreachable while she finds out.
+
+**Why P1 waits, and on what.** An authored first contact needs to know *when* she meets
+the machine and *what she did to earn it*, and both are open: Q-88 ruled the mark-2 is
+earned by demonstration — she unlocks it by having used a mark-1 — and that design note is
+filed and unwritten; Q-56 puts the debut at M3 or later with `shoo` as the candidate
+behaviour to show off. So the moment and the behaviour the scene would be built around are
+both undecided. **The trigger for P1 is Q-88's unlock design landing**, not a date. That is
+also the right time for it, because the mark-2 is where the game's thesis turns: the first
+machine that decides rather than obeys.
+
+**The cost of P0 being missing, observed.** The integration suite reopened a mark-2's panel
+by teleporting the player next to it and retrying eight times, under a comment reading
+*"that is the real situation a player is in"*. The coverage had been shaped around the
+defect instead of asserting the intent, so the bug was documented and survived. A floor
+written as assertions is what turns that workaround into a failure.
 
 Changing the setting is the `configure` verb — free, off the action clock (a dial is not a
 stroke of work), and implemented as a re-deploy at the same tile so a config's `extra` is

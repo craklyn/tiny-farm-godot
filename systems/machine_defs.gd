@@ -128,8 +128,12 @@ static var TYPES: Dictionary = {
 		# first entry is what a freshly placed one starts as. Shoo leads because
 		# it is the config that does a job on its own — Q-56 named it the debut
 		# candidate for exactly that reason.
-		"configs": ["shoo", "follow", "circle"],
-		"default_config": "shoo",
+		# "idle" is last because the three jobs are the point of the machine, and it
+		# sits beside "Pick up" where the two ways to stop it belong together.
+		"configs": ["shoo", "follow", "circle", "idle"],
+		# ...but it is what a freshly placed one *is*, so putting a machine down
+		# is never the same thing as starting it (from play, 2026-09-07).
+		"default_config": "idle",
 		"unlock_requirement": null,
 		"icon": { "sheet": "res://assets/sprites/generated/bot.png",
 			"region": Rect2(0, 0, 48, 48) },

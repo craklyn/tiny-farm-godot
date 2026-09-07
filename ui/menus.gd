@@ -28,6 +28,11 @@ const CONFIG_LABELS := {
 	"shoo": "Chase birds off",
 	"follow": "Follow me",
 	"circle": "Circle me",
+	# Both a job and the off switch: it is what a machine is before she has
+	# chosen one, and what she picks when she wants it to stop without picking
+	# it up. Named for what the machine does rather than for the absence of a
+	# setting — "none selected" would be a fact about the panel, not about the farm.
+	"idle": "Wait here",
 }
 
 var active_menu: String = ""  # "", "pause", "shop", "inventory", "machine"

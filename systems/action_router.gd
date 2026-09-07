@@ -182,13 +182,22 @@ func resolve(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, is_drag: 
 	# about opening a panel belongs in a replay (CLAUDE.md). What the panel does
 	# afterwards is `configure` and `collect`, both ordinary Actions.
 	if world != null and world.machine_at(tap_t) != "":
-		if not is_drag and player_t != null:
-			var pt1: Vector2i = player_t
-			if absi(pt1.x - tx) + absi(pt1.y - ty) > 1:
-				return {}   # far tap: walk over first, exactly like a workable tile
+		# **At any distance, because opening a panel is not work.** It used to
+		# demand she stand beside the machine first, borrowed from the grammar of
+		# a workable tile — and that is the rule for a tile, which cannot walk.
+		# A machine can. A follow bot deliberately holds two tiles behind her, so
+		# walking at it moved it away and she could never reach the thing she was
+		# trying to open; a shoo bot was simply somewhere else by the time she
+		# arrived. Reported from play, 2026-09-07: "I couldn't figure out how to
+		# open the menu again."
+		#
+		# Nothing is lost by dropping the walk: `open_machine` is UI navigation,
+		# never an Action (P-9), it costs no energy, it ticks no clock and it
+		# reaches no replay. The only thing the adjacency rule was buying was a
+		# walk nobody asked for.
 		return check_result.call({
 			"action": "open_machine", "tool_idx": 0, "target_t": tap_t,
-			"walk_to": true, "seed_type": "",
+			"walk_to": false, "seed_type": "",
 		})
 
 	# 1d. Holding a machine → set it down here.

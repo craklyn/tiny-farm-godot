@@ -3247,23 +3247,37 @@ func _scenario_ag_a_machine_is_bought_placed_and_told_what_to_do() -> void:
 
 	# --- tapping it again reopens the same panel ------------------------------
 	#
-	# Aimed at where the robot **is**, re-read each attempt: it is on "follow me"
-	# now, so it is walking, and a tap aimed at the square it was standing on a
-	# moment ago is a tap on empty grass. That is the real situation a player is
-	# in, which is why this is a retry loop rather than a single shot.
-	var reopened := false
-	for attempt in 8:
-		var at: Vector2i = farm.sim.actor_pos(mid)
-		player.pos = Vector2((at.x - 1) * 16.0 + 8.0, at.y * 16.0 + 8.0)
-		player.path.clear()
-		player.pending_action = {}
-		await get_tree().process_frame
-		InputManager.click_tile = at
-		InputManager.has_click = true
-		reopened = await _wait_until(func(): return menus.active_menu == "machine", 20)
-		if reopened:
-			break
-	_assert(reopened, "a tap on a placed robot opens its menu — that is what selecting one does")
+	# **P0 clause 4** (`design/06`). This used to teleport the player beside the
+	# robot and try eight times, under a comment saying "that is the real
+	# situation a player is in" — which was true, and was the bug: a follow bot
+	# holds two tiles behind her, so walking at it moved it away and the panel
+	# was unreachable for the one setting a new owner is most likely to pick.
+	# The workaround documented the defect and let it survive. One tap now, from
+	# wherever she happens to be standing, while the machine is walking.
+	# A follow bot settles two tiles behind her but passes through adjacency on
+	# the way, so wait for the separation the test is actually about rather than
+	# sampling whenever this line happens to run.
+	var apart := func() -> int:
+		var h: Vector2i = player.get_tile_pos()
+		var b: Vector2i = farm.sim.actor_pos(mid)
+		return absi(h.x - b.x) + absi(h.y - b.y)
+	await _wait_until(func(): return apart.call() > 1, 8000)
+	var gap: int = apart.call()
+	_assert(gap > 1, "it has settled away from her, so the tap under test is a far one (%d tiles)" % gap)
+	var walking_at: Vector2i = farm.sim.actor_pos(mid)
+	InputManager.click_tile = walking_at
+	InputManager.has_click = true
+	var reopened := await _wait_until(func(): return menus.active_menu == "machine", 2000)
+	_assert(reopened, "one tap on a walking robot, from across the yard, opens its panel")
+	# That she does not have to walk to it is the router's own answer, so ask the
+	# router rather than watching her feet: measuring movement meant measuring
+	# whether she happened to be standing still mid-scenario, which she is not.
+	var from_afar: Dictionary = ActionRouter.resolve(farm, GameState,
+		farm.sim.actor_pos(mid), player.get_tile_pos(), false, null)
+	_assert(String(from_afar.get("action", "")) == "open_machine",
+		"and the router reads a far tap on a machine as 'open its panel' (%s)" % from_afar)
+	_assert(not bool(from_afar.get("walk_to", true)),
+		"asking for no walk at all — she never has to catch a machine to talk to it")
 
 	# --- and picking it up is the verb she already had ------------------------
 	var pickup_row := -1
@@ -3348,6 +3362,8 @@ func _scenario_ah_the_mark_one_takes_exact_orders() -> void:
 		kinds.append(String(opt.get("kind", "")))
 	_assert("teach" in kinds and "activate" in kinds,
 		"a mark-1's menu is 'show it where to work' and 'send it out'")
+
+
 	_assert(not ("config" in kinds),
 		"...and not one standing behaviour — that is what a mark-2 is for")
 

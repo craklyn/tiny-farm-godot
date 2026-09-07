@@ -57,6 +57,19 @@ extends Brain
 # is the design, and the mark-2 is the rung above, not a rewrite.
 const CONFIG_ORDERS := "orders"
 
+# **A machine you have just put down is waiting, not already deciding** (from
+# play, 2026-09-07: *"I accidentally put mark 2 in motion first time I
+# interacted with it"*). Placing one used to deploy it straight into its default
+# behaviour, so the first thing a new owner saw was a robot that had chosen its
+# own job and set off — and with all three settings active, there was no way to
+# tell it to stop short of picking it up.
+#
+# Idle is therefore two things at once: what a mark-2 is until she picks a job,
+# and the job called "stand still". It is also the fallback for an unset config,
+# which used to be `follow` — an unreadable field should mean a machine that does
+# nothing, never a machine that starts trailing her.
+const CONFIG_IDLE := "idle"
+
 const CONFIG_FOLLOW := "follow"
 const CONFIG_CIRCLE := "circle"
 const CONFIG_SHOO := "shoo"
@@ -64,7 +77,8 @@ const CONFIG_SHOO := "shoo"
 # `MachineDefs` all mean *these* by "the configs a bot can be set to".
 const CONFIGS: Array[String] = [CONFIG_FOLLOW, CONFIG_CIRCLE, CONFIG_SHOO]
 # ...and every config the brain answers for, mark-1 included.
-const ALL_CONFIGS: Array[String] = [CONFIG_ORDERS, CONFIG_FOLLOW, CONFIG_CIRCLE, CONFIG_SHOO]
+const ALL_CONFIGS: Array[String] = [CONFIG_ORDERS, CONFIG_IDLE,
+		CONFIG_FOLLOW, CONFIG_CIRCLE, CONFIG_SHOO]
 
 # How many tiles a mark-1 will hold. **A capability limit, and the main one** —
 # the machine is meant to retire a corner of the watering round, not the round.
@@ -202,15 +216,20 @@ func step(world: SimWorld, actor_id: String, tick: int, _gs = null) -> Dictionar
 	if world.page_of(world.actor_pos(SimWorld.ACTOR_PLAYER)) == 1:
 		extra["wake"] = tick + ticks(IDLE_SECONDS)
 		return {}
-	match String(extra.get("config", CONFIG_FOLLOW)):
+	match String(extra.get("config", CONFIG_IDLE)):
 		CONFIG_ORDERS:
 			return _orders(world, actor_id, extra, tick)
 		CONFIG_CIRCLE:
 			_circle(world, actor_id, extra, tick)
 		CONFIG_SHOO:
 			return _shoo(world, actor_id, extra, tick)
-		_:
+		CONFIG_FOLLOW:
 			_follow(world, actor_id, extra, tick)
+		_:
+			# Idle, and anything unrecognised with it. A long wake rather than a
+			# tight one: it is waiting to be *told*, and being told is a verb that
+			# wakes it on the spot (`SimWorld`'s `configure`).
+			extra["wake"] = tick + ticks(IDLE_SECONDS)
 	return {}
 
 

@@ -9766,11 +9766,21 @@ func test_machines() -> void:
 	var listed: Array = MachineDefs.configs_of("bot_mk2").duplicate()
 	listed.sort()
 	var known: Array = BotBrain.CONFIGS.duplicate()
+	known.append(BotBrain.CONFIG_IDLE)
 	known.sort()
 	_assert(str(listed) == str(known),
-		"the menu's three settings are exactly the brain's three configs (%s)" % str(known))
-	_assert(MachineDefs.default_config("bot_mk2") == BotBrain.CONFIG_SHOO,
-		"a freshly placed robot chases birds — Q-56's debut candidate is what it does out of the box")
+		"the panel offers the brain's three jobs and standing still, and nothing else (%s)" % str(known))
+	# **Putting a machine down is not the same as starting it** (from play,
+	# 2026-09-07: "I accidentally put mark 2 in motion first time I interacted
+	# with it"). It used to deploy straight into `shoo`, so a new owner's first
+	# sight of the machine was one that had chosen its own job and set off. Q-56's
+	# ruling that shoo is the interesting config at the debut is untouched — that
+	# is about which behaviour sells the machine, not about whether it starts
+	# without being asked.
+	_assert(MachineDefs.default_config("bot_mk2") == BotBrain.CONFIG_IDLE,
+		"a freshly placed robot waits for instructions rather than picking a job for itself")
+	_assert(BotBrain.CONFIG_IDLE in MachineDefs.configs_of("bot_mk2"),
+		"and standing still is a setting she can choose, so a running machine can be stopped without picking it up")
 	_assert(MachineDefs.configs_of("sprinkler").is_empty(),
 		"a sprinkler has nothing to decide, so it opens no menu")
 
@@ -9824,14 +9834,75 @@ func test_machines() -> void:
 	_assert(GameState.machines.get("bot_mk2", 0) == 0, "the crate is empty again")
 	_assert(GameState.energy == energy_before - Tools.get_energy_cost("place"),
 		"carrying it out and setting it down cost her one base verb of the day")
-	_assert(String(world.actor("bot_mk2").get("extra", {}).get("config", "")) == BotBrain.CONFIG_SHOO,
-		"it starts on the setting the catalogue names")
+	_assert(String(world.actor("bot_mk2").get("extra", {}).get("config", "")) == BotBrain.CONFIG_IDLE,
+		"it starts on the setting the catalogue names, which is standing still")
+	# ...and it really does stand still: a machine that is idle must not drift.
+	var idle_from := world.actor_pos("bot_mk2")
+	world.advance_to_tick(world.clock.tick + SimClock.RATE * 90, GameState)
+	_assert(world.actor_pos("bot_mk2") == idle_from,
+		"and it is still on that square a minute and a half later — waiting is a job it does properly")
 	_assert(String(world.actor("bot_mk2").get("extra", {}).get("owner", "")) == SimWorld.ACTOR_PLAYER,
 		"and it belongs to her")
 	_assert(world.machine_at(spot) == "bot_mk2" and world.machine_at(spot + Vector2i(0, 1)) == "",
 		"machine_at finds it on its own square and nowhere else")
 	_assert(not world.placeable_at(spot),
 		"the square it stands on will not take a second machine")
+
+	# --- P0 clauses 6, 7 and 8 (`design/06`, "Mark-2 first contact") -----------
+	#
+	# The end of the sentence P0 guarantees: she can stop it, pick it up while it
+	# is running, and none of it comes apart across a save, a load, a replay or a
+	# second machine.
+	for job in [BotBrain.CONFIG_SHOO, BotBrain.CONFIG_FOLLOW, BotBrain.CONFIG_CIRCLE]:
+		var set_it: Dictionary = world.apply_action({ "verb": "configure", "target": spot,
+			"config": job, "actor": "player" }, GameState)
+		_assert(set_it.get("ok", false), "she can set it to %s" % job)
+		# Clause 7, per config: a setting is data on the actor, which is what makes
+		# it savable — so every one of them has to survive the round trip on disk.
+		var frozen = JSON.parse_string(JSON.stringify(SaveGame.capture(world, GameState)))
+		var thawed := SimWorld.new()
+		var gs2 = load("res://systems/game_state.gd").new()
+		gs2.reset()
+		_assert(SaveGame.restore(frozen, thawed, gs2), "the farm saves and loads with it on %s" % job)
+		_assert(String(thawed.actor("bot_mk2")["extra"].get("config", "")) == job,
+			"and it comes back still set to %s" % job)
+		_assert(thawed.actor_pos("bot_mk2") == world.actor_pos("bot_mk2"),
+			"standing where it stood")
+	# Clause 5 at the gateway: stopping it is a setting like any other.
+	world.apply_action({ "verb": "configure", "target": spot,
+		"config": BotBrain.CONFIG_IDLE, "actor": "player" }, GameState)
+	var halted := world.actor_pos("bot_mk2")
+	world.advance_to_tick(world.clock.tick + SimClock.RATE * 60, GameState)
+	_assert(world.actor_pos("bot_mk2") == halted,
+		"and telling a working machine to wait stops it where it stands")
+
+	# Clause 8: a second machine must not be able to make the first one wrong.
+	GameState.machines["bot_mk2"] = 1
+	var mate := spot + Vector2i(2, 0)
+	if not world.placeable_at(mate):
+		mate = spot + Vector2i(0, 2)
+	var pair: Dictionary = world.apply_action({ "verb": "place", "target": mate,
+		"item": "bot_mk2", "actor": "player" }, GameState)
+	if pair.get("ok", false):
+		var other := String(pair.get("machine", ""))
+		world.apply_action({ "verb": "configure", "target": mate,
+			"config": BotBrain.CONFIG_CIRCLE, "actor": "player" }, GameState)
+		_assert(String(world.actor("bot_mk2")["extra"].get("config", "")) == BotBrain.CONFIG_IDLE,
+			"setting the second machine's dial leaves the first one's alone")
+		var still := world.actor_pos("bot_mk2")
+		world.advance_to_tick(world.clock.tick + SimClock.RATE * 45, GameState)
+		_assert(world.actor_pos("bot_mk2") == still,
+			"and a busy neighbour does not start a machine that was told to wait")
+		# Clause 6: picked up mid-job, and back in the crate. Aimed at where it
+		# **is** rather than where it was put down — a circling machine has left
+		# that square, and a tap in the real game resolves against its current
+		# position for exactly this reason.
+		var lifted: Dictionary = world.apply_action({ "verb": "collect",
+			"target": world.actor_pos(other), "actor": "player" }, GameState)
+		_assert(lifted.get("ok", false) and not world.has_actor(other),
+			"a machine can be picked up while it is working (%s)" % lifted)
+		_assert(GameState.machines.get("bot_mk2", 0) >= 1, "and it goes back in the crate")
+	GameState.machines["bot_mk2"] = 0
 
 	var nothing_left: Dictionary = world.apply_action({
 		"verb": "place", "target": spot + Vector2i(1, 0), "item": "bot_mk2", "actor": "player" }, GameState)
