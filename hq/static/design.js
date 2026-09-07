@@ -13,6 +13,7 @@
 "use strict";
 
 routes["/design"] = renderDesign;
+routes["/design/gdd"] = renderDesignGdd;
 /* app.js's boot() routed a direct #/design page-load to the dashboard before
    this script registered; re-route now that the route exists (route()'s
    supersede guard makes the newest call win even if the first paints late). */
@@ -52,7 +53,7 @@ function mdDoc(src) {
 
 let designScrollY = 0;   // last scroll position on the index, for round-trips
 window.addEventListener("scroll", () => {
-  if ((location.hash.slice(1) || "/") === "/design") designScrollY = window.scrollY;
+  if ((location.hash.slice(1) || "/") === "/design/gdd") designScrollY = window.scrollY;
 }, { passive: true });
 
 function maturityTally(docs) {
@@ -108,13 +109,19 @@ function phaseCard(p) {
   </div>`;
 }
 
+/* The studio's front room: the pitch, the tools, and the door to the GDD. */
 async function renderDesign() {
   delete cache["/api/docs"];       // statuses/recency must be live per visit
   const dx = await api("/api/docs");
-  const d = dx.decisions || {};
   const frag = h(`<h1>🎨 Design Studio</h1>
     <p class="sub">${esc(dx.pitch || "The living game design document.")}</p>
-    ${frontierCard(dx)}
+    <h2>The design doc</h2>
+    <div class="grid cols4">
+      <a class="card tool-card" href="#/design/gdd"><b>📖 Game Design Doc</b>
+        <p class="small muted">The living GDD — the five phases, one chapter per system,
+        and every decision with how settled it is. Parsed straight out of
+        <code class="ref">docs/</code> on every visit.</p></a>
+    </div>
     <h2>Design tools</h2>
     <p class="small muted">Pages where you work on an artifact of the game itself — not a
     document about it. Changes made here land in the repo like any other work.</p>
@@ -125,7 +132,21 @@ async function renderDesign() {
       <a class="card tool-card" href="#/maps"><b>🗺️ Map Editor</b>
         <p class="small muted">The farm's layout definitions — parcels, boundaries,
         stations — edited as data the world generator fills in at play time.</p></a>
-    </div>
+    </div>`);
+  $view.replaceChildren(frag);
+}
+
+
+/* The GDD itself, one page: frontier, phases, chapters, method. */
+async function renderDesignGdd() {
+  delete cache["/api/docs"];       // statuses/recency must be live per visit
+  const dx = await api("/api/docs");
+  const d = dx.decisions || {};
+  const frag = h(`<p class="crumbs"><a class="plain" href="#/design">Design Studio</a>
+      <span>›</span> <b>Game Design Doc</b></p>
+    <h1>📖 Game Design Doc</h1>
+    <p class="sub">${esc(dx.pitch || "The living game design document.")}</p>
+    ${frontierCard(dx)}
     <h2>The five phases <span class="small muted">(the arc, live from docs/phases/)</span></h2>
     <div class="phase-rail"></div>
     <div id="doc-groups"></div>
@@ -275,7 +296,7 @@ async function renderDesignDoc(spec) {
   delete cache[url];               // "never a copy" applies to re-opens too
   const doc = await api(url);
   const frag = h(`
-    <p class="doc-crumbs"><a class="plain" href="#/design">← Design Studio</a></p>
+    <p class="doc-crumbs"><a class="plain" href="#/design/gdd">← Game Design Doc</a></p>
     <div class="doc-head">
       <h1>${esc(doc.title || path)}</h1>
       <span>${docStatusChip(doc.status)}</span>
