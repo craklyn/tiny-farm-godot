@@ -1,0 +1,92 @@
+{
+  "seq": 2,
+  "kind": "edit",
+  "sheet": "assets/sprites/generated/obstacles.png",
+  "key": "assets_sprites_generated_obstacles",
+  "group": "world",
+  "entity": "obstacles",
+  "entity_name": "Obstacle Set",
+  "note": "",
+  "diff": {
+    "frames": [
+      {
+        "index": 3,
+        "name": "frame 4",
+        "changed": 1,
+        "added": 0,
+        "erased": 1,
+        "recolored": 0,
+        "silhouette": true,
+        "bbox": [
+          2,
+          14,
+          1,
+          1
+        ]
+      },
+      {
+        "index": 6,
+        "name": "frame 7",
+        "changed": 29,
+        "added": 0,
+        "erased": 29,
+        "recolored": 0,
+        "silhouette": true,
+        "bbox": [
+          2,
+          0,
+          11,
+          14
+        ]
+      },
+      {
+        "index": 7,
+        "name": "frame 8",
+        "changed": 4,
+        "added": 0,
+        "erased": 4,
+        "recolored": 0,
+        "silhouette": true,
+        "bbox": [
+          1,
+          6,
+          14,
+          2
+        ]
+      },
+      {
+        "index": 11,
+        "name": "frame 12",
+        "changed": 1,
+        "added": 0,
+        "erased": 1,
+        "recolored": 0,
+        "silhouette": true,
+        "bbox": [
+          4,
+          15,
+          1,
+          1
+        ]
+      }
+    ],
+    "pixels": 35,
+    "colors_added": [],
+    "colors_removed": [
+      "#f8f4e6",
+      "#bfd470"
+    ],
+    "new_to_sheet": [],
+    "anims": []
+  },
+  "reverted_to": null,
+  "bytes": 2616,
+  "png": "0002.png",
+  "created": "2026-09-07T16:37",
+  "created_ts": 1788824266.8642368,
+  "filed": {
+    "work_id": "w2d641a31a52",
+    "owner": "ingrid",
+    "title": "Read Daniel's hand edit to Obstacle Set"
+  }
+}
