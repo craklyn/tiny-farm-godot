@@ -72,12 +72,36 @@ body {
 }
 .nav-caret:hover { background: var(--panel); color: var(--text); }
 .roll { margin-left: 6px; }
-.nav-sub { display: flex; flex-direction: column; gap: 1px; margin: 0 0 4px; }
+/* Children hang off a spine that drops from the centre of the parent's icon
+   (34px = 12px sidebar padding + the row's own 12px padding + half the 20px
+   icon column), and their own icons sit a clear step right of the parent's.
+   Depth is carried by geometry and type weight, never colour — colour in this
+   house means "this wants Daniel's attention", and nesting is not a claim
+   on it.
+
+   Every child rule below is written under #sidebar on purpose. The submenu
+   used to ask for a 40px left pad and lose it silently to `#sidebar a`, whose
+   ID outranks a class: the indent was in the stylesheet but never on screen,
+   which is why the nav read as one flush column with only a caret to tell
+   parent from child. Keep the #sidebar prefix on anything `#sidebar a` also
+   sets — padding, gap, font-weight, colour. */
+.nav-sub {
+  display: flex; flex-direction: column; gap: 1px; margin: 0 0 4px 22px;
+  border-left: 1px solid var(--line);
+}
+/* The exception rows and the quiet rows are two blocks of one list, so their
+   spines have to meet rather than show a gap between them. */
+.nav-sub.nav-exc { margin-bottom: 0; }
 /* `hidden` loses to any author display rule — restate it or the collapse
    is attribute-only theater (the bug the CEO caught). */
 .nav-sub[hidden] { display: none; }
-.nav-sub a { padding: 4px 12px 4px 40px; font-size: 12.5px; font-weight: 500; }
-.nav-sub a .dot { margin-right: 8px; flex-shrink: 0; }
+#sidebar .nav-sub a {
+  padding: 4px 12px 4px 14px; font-size: 12.5px; font-weight: 400; gap: 8px;
+}
+/* One icon column for both kinds of child row: a status dot (pillars) and an
+   emoji (pages) sit on the same 13px column, so every child label lines up. */
+#sidebar .nav-sub a span { width: 13px; min-width: 0; font-size: 11.5px; }
+#sidebar .nav-sub a .dot { margin-right: 0; flex-shrink: 0; }
 .nav-legend { display: flex; flex-wrap: wrap; gap: 4px 10px; color: var(--muted); font-size: 11.5px; padding: 0 8px 8px; }
 .nav-legend span { white-space: nowrap; }
 .badge {
@@ -556,8 +580,10 @@ code.ref { background: #1b1710; border: 1px solid var(--line); border-radius: 6p
   #app { flex-direction: column; }
   #sidebar { width: 100%; height: auto; position: static; flex-direction: row; flex-wrap: wrap; }
   .sidebar-foot { display: none; }
-  .nav-sub { flex-direction: row; flex-wrap: wrap; width: 100%; }
-  .nav-sub a { padding: 4px 10px; }
+  /* Stacked into a wrapping row, the spine would be a stray tick beside the
+     first item and the indent would push the block off the edge. */
+  .nav-sub { flex-direction: row; flex-wrap: wrap; width: 100%; margin-left: 0; border-left: 0; }
+  #sidebar .nav-sub a { padding: 4px 10px; }
 }
 
 /* ---------- tablet deploy: the Engineering & QA pillar's device panel ---------- */
