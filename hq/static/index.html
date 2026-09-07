@@ -30,10 +30,11 @@
     </div>
     <a href="#/org" data-route="/org"><span>🧑‍🤝‍🧑</span> Org Chart</a>
     <div class="nav-group" data-grp="program">
-      <a href="#/program" data-route="/program"><span>🗂️</span> Program Report</a>
-      <!-- One child and no caret: folding a single row saves nothing and hides
-           the only live page in this section. -->
-      <div class="nav-sub nav-exc">
+      <div class="nav-parent">
+        <a href="#/program" data-route="/program"><span>🗂️</span> Program Report</a>
+        <button class="nav-caret" data-grp="program" aria-label="expand program pages">▸</button>
+      </div>
+      <div class="nav-sub" hidden>
         <a href="#/program/goals" data-route="/program/goals">🎯 Goals</a>
       </div>
     </div>
