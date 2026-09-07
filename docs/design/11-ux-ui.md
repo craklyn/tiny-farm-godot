@@ -5,6 +5,10 @@
 chapters. Interface philosophy settled as P-1's premise ledger. Re-audit the inventory
 at each phase design start.*
 
+*Amended 2026-09-07 (Q-91): **Altitude** added below — when the view rises off the
+farmer, why, and what it means for every planned interaction. Rows 21b/21c added
+(teaching a mark-1 was built and never inventoried) and Findings 3 and 4 updated.*
+
 ## Foundation
 Tap-to-command everything (P-1); input/intent separation already in code
 (`systems/input_manager.gd` → `systems/action_router.gd`); context-sensitive action
@@ -89,6 +93,8 @@ tap-ahead queueing is deferred with a trigger (D-10).
 | 19 | Build fencing | World | Drag along the line — row-3's swipe-chain grammar reused for building | Same | ◻ |
 | 20 | Scent overlay toggle | UI | HUD toggle (P-10/D-4; taught per Q-17) | Same; hotkey candidate | ◻ |
 | 21 | Yield-gate progress | UI (passive) | Presentation only — open question: legible without spreadsheet UI | — | ◻ |
+| 21b | **Show a mark-1 what to water** | World (`teach` verb) | Select the robot, then tap up to 8 tiles anywhere on the page; tap again to remove, drag to add a row. The game's only mode, and the first interaction at altitude | Same; movement is off for all devices while pointing | ✅ built, 📐 altitude unbuilt (Q-91) |
+| 21c | Send a mark-1 out | World (`activate`) | One row in its panel, disabled with its own reason when it cannot | Same | ✅ |
 
 ### Phase 3 — The Siege (◻ blocked on D-3; from `design/05`)
 
@@ -132,7 +138,8 @@ play, remappable inputs later.
 
 In use: **tap** (intent), **drag** (chain/paint/build — always "many taps," never a
 different verb class). Reserved: **pinch + two-finger pan** for camera only (from
-phase 3); **long-press** unassigned — candidate for inspect, spend it carefully.
+phase 3 — and still reserved after the 2026-09-07 altitude ruling, which moves the
+camera *for* the player rather than giving her a gesture to move it with); **long-press** unassigned — candidate for inspect, spend it carefully.
 **Double-tap must never mean anything** in phases the kid constraint touches: a
 4-year-old's repeated taps are ordinary input (S-7), so a double-tap meaning would
 misfire constantly.
@@ -150,12 +157,184 @@ misfire constantly.
 3. **Manual camera does not exist and the altitude pillar guarantees it will.**
    Pinch/pan (touch) and wheel/drag (mouse) should arrive with the first whole-farm
    moment — phase 3 at latest, possibly late phase 2. Flag for M3/M4 planning.
+   *Updated 2026-09-07:* the first whole-farm moment turned out to be showing a mark-1
+   where to water (row 21b), and it arrived before anyone planned for it — on a tablet
+   the mode could only reach tiles that happened to be on screen (Q-91). The ruling
+   splits the finding in two: an **automatic** whole-farm view arrives now, with the
+   entity that needs it, spending no gesture; **manual** camera still debuts at row 26.
+   See *Altitude* above, which also replaces "phase 3 at latest" with a checkable
+   trigger — the page outgrowing one screenful at fit-zoom.
 4. **"Select, then point" debuts with the dog (row 17)** and then carries towers
    (23), bots (27), and squads (phase 5). Prototype the two-tap grammar once, early,
    on the dog — it is the second sentence of the game's input language and the last
    one it needs.
+   *Corrected 2026-09-07:* it has already debuted, and not on the dog. Showing a mark-1
+   what to water (row 21b) is select-then-point and has been shipping since 2026-09-03;
+   this pass missed it because the inventory read phase-1 rows from code and took the
+   later phases from design chapters, and the mark-1 is phase-2 content that got built
+   early. The finding's advice stands and now has a subject: the two-tap grammar is
+   being prototyped on the robot, which is the smallest case there is, and row 27's zone
+   painter is the same interaction with the unit of selection widened.
 5. **Text entry appears exactly once** (row 30). Keep it optional; nothing else in
    five phases should require a keyboard on glass.
+
+## Altitude — the view rises as the work is handed over
+
+*Ruled 2026-09-07 (Q-91): the pull-back is an automatic, mode-scoped camera move; manual
+camera still debuts with row 26. Altitude arrives with the first entity that needs it,
+not at a phase boundary — "the watering robot will unlock later, probably. We're just
+putting elements of the game together right now."*
+
+### The sentence this completes
+
+The chapter already names two sentences the whole game speaks. **A tap names a tile; the
+router picks the verb** (phase 1, built). **Select, then point** (Finding 4, the second
+and last sentence the input language needs). Altitude is not a third sentence. It is the
+punctuation of the second one:
+
+> **Selection happens at ground level. Direction happens at altitude.**
+
+Every "select, then point" interaction has two halves that want different views. Choosing
+*which* agent is a tap on a thing standing in the world, and the world is where you can
+see it. Choosing *where it should work* is a decision about a region she is not standing
+in, and a camera parked on her shoulder cannot show it to her. So the two halves get two
+altitudes, and the mode's boundaries are exactly where the camera moves.
+
+### The altitude test
+
+A mode takes the whole-farm view **if and only if its subject is a place the player is
+not standing in.** Acting with her own hands keeps her in the dirt; telling something else
+where to act lifts her far enough to see everywhere it could go.
+
+The test is deliberately about the *job*, not the phase and not the tool. A scarecrow
+sited from where she stands is a ground-level act even though it is a placement; a fence
+line drawn across the plot is an altitude act even though it uses the same drag she
+already knows from chaining a row. When a new interaction is designed, run the test on it
+rather than copying the answer from the row above.
+
+### Why this is worth more than reaching the far corner
+
+Reach is the reason it became urgent — on a tablet the teaching mode could only be shown
+tiles that happened to be on screen (Q-91) — but it is the least interesting of three
+things the pull-back does.
+
+1. **Reach.** Everything the mode can address is on screen, so no part of the decision is
+   unreachable. Nothing has to be walked to and no gesture has to be discovered.
+2. **The plan becomes legible.** She can see the *set* she is building rather than the
+   last tile she touched. Eight tiles taught to a robot through a keyhole is eight
+   decisions; the same eight seen together is a route, and a route is a thing a person
+   can judge, correct and be proud of. This is the half that makes delegation feel like
+   authorship rather than data entry.
+3. **Posture, said without words.** The camera moving is the mode announcing itself, and
+   it costs no text (S-7) and no icon vocabulary. The player is told what kind of act she
+   is performing by being moved into the position from which that act is performed.
+
+### The arc across five phases
+
+Altitude is not a feature that ships once. It changes *character* three times, and each
+change is the delegation arc showing up in the camera.
+
+| Tier | What altitude is | Arrives with | Control |
+|---|---|---|---|
+| 1 | A mode you are put into and returned from | The first entity the player directs rather than operates — the mark-1 robot as things stand | None; the game moves the camera |
+| 2 | A place you can choose to be | Row 26 — combat tempo, where the player must decide where to look rather than have it decided | Pinch + two-finger pan (touch), wheel + drag (mouse) |
+| 3 | Where the game simply lives | Phase 5, "camera is fully off the avatar" | Manual, and the ground-level view becomes the special case |
+
+The keyboard column tells the same story and already says so: row 26's *"WASD migrates
+from avatar-steer to camera-pan as altitude rises — same keys, rising meaning."* The
+camera migrates from her shoulder to the sky over five phases, exactly as the work
+migrates from her hands to the machines. The interface narrates the arc (P-1 premise 3),
+and P-3 already commits to "rising camera altitude" as the world grows outward.
+
+**Tier 1 spends no gesture.** Nothing new is added to the touch budget: the pull-back is
+automatic, so a player who never learns to pinch loses nothing, and pinch + two-finger pan
+stay reserved for row 26 exactly as budgeted. Tier 2 then arrives to a player who is
+already used to seeing the whole farm and only needs to learn to *steer* a view she has
+been shown many times.
+
+**The trigger for tier 2 is checkable, and better than a phase number.** Tier 1 works
+only while the whole page fits on the screen at once. The moment the farm outgrows one
+screenful at fit-zoom — which P-3's outward growth guarantees — an automatic altitude can
+no longer show everything, and manual camera stops being a convenience and becomes
+required. Watch the page rectangle against the viewport; that ratio crossing 1.0 is the
+alarm, not the phase.
+
+### How a pointing mode behaves (tier 1)
+
+The mark-1's teaching mode is the first instance and therefore the specification. Every
+later pointing mode inherits this shape unless it has a reason not to.
+
+- **Entering glides, it does not cut.** Roughly a quarter of a second, eased. A cut reads
+  as a scene change; a glide reads as stepping back, which is what it is. Leaving glides
+  back and re-anchors to the farmer.
+- **The frame is computed, never a constant.** Fit the page rectangle into the viewport
+  minus the HUD's furniture, and move the mode's own control out of the field so nothing
+  it covers is a tile she needs. On today's 800×600 canvas with a 32×20 page that lands
+  near 1.56×, putting a tile at about 25 screen pixels — roughly 6.5mm on a ten-inch
+  tablet, under the usual fingertip guideline but with no gaps between targets to miss
+  into.
+- **What the mode can address stays lit; everything else dims.** This is what removes the
+  silent tap (T-18, Q-34) without a refusal: she can see what a tap will do before she
+  makes it. It also does the mode's arithmetic for it — when a limit is reached, the
+  remaining candidates simply stop being lit, and the picture says "full" without a
+  sentence.
+- **Tapping a chosen tile again removes it.** Small targets are only affordable because a
+  slip costs one tap. Any mode that makes selection expensive to undo must not use small
+  targets.
+- **A drag adds; it never removes.** Drag is "many taps with the intent locked" (the
+  swipe-chain grammar of row 3), and a drag that toggled would fight itself the moment it
+  crossed something already chosen. A row just planted should be one sweep.
+- **She stands still.** Movement is off for the duration on every input device, keyboard
+  included. There is nothing left for walking to reveal, and the divergence is what hid
+  Q-91: arrow keys kept working, so the mode looked complete on the machine it was built
+  on and was broken on the machine it ships to.
+- **The mode's one control carries its own count.** The button that ends the mode reads
+  `✓ 5/8`. It is the only furniture the mode adds and it answers "how many have I got"
+  without reopening a panel. Digits only — inside the literacy bar gold and seed counts
+  already set.
+
+### What this means for every planned interaction
+
+Running the altitude test over the inventory. Ground-level rows are unaffected and not
+listed; what follows is every row the test lifts.
+
+| # | Interaction | Why it lifts | Notes |
+|---|---|---|---|
+| 14 | Place a machine | Choosing among all soil, not the tile underfoot; the coverage ghost is only meaningful against the plot it will and will not reach | The first *placement* at altitude |
+| 17 | Command the dog | Select, then point — the point half names somewhere she is not | Ground for the select, altitude for the point |
+| 19 | Build fencing | A fence line spans the farm; drawn at altitude a whole boundary is one sweep | Row-3 drag grammar, unchanged |
+| — | **Show a mark-1 what to water** | The debut. Up to 8 tiles anywhere on the page, and the set only reads as a route when seen together | Missing from the Q-28 inventory; added below |
+| 22 | Place / remove a tower | Towers cost farmable tiles, so the decision is a whole-farm tradeoff and must be seen as one | Confirm stays UI (P-9) |
+| 23 | Aim a manual tower | Select, then point at combat tempo — **and the handover point.** Here the player must choose where to look, so tier 2 takes over from tier 1 | Automatic altitude ends exactly where row 26 begins |
+| 25 | Wave preview | A forecast about the whole farm | Overlay at altitude |
+| 27 | Assign bot roles / zones | The mark-1's mode grown up: regions instead of tiles | See below — this is why the teach mode's grammar matters now |
+| 29 | Observe a bot / exams | Watching a run means watching all of it | |
+| 31 | Build training drills | Placement of scenario elements across the plot | Rows 13/14/22 grammar |
+| 32 | Command verb / pings | Tap-command aimed at somewhere she is not | |
+| — | Phase 5 squad orders | By then altitude is not a mode at all; it is where the game lives | Camera fully off the avatar |
+
+**Row 27 is why the teach mode's details are worth arguing about now.** Assigning a bot a
+*zone* is the same interaction as showing a mark-1 a *list of tiles*, with the unit of
+selection widened. Drag-adds-only, dim-the-ineligible, tap-to-remove and the count on the
+exit control are all the zone painter's grammar, being prototyped early on the smallest
+possible case — exactly the argument Finding 4 makes for prototyping select-then-point on
+the dog. Getting the mark-1 right is cheap; getting it wrong sets the phase-4 fleet
+interface against itself.
+
+### Open questions
+
+- **Phones.** A tile at fit-zoom is comfortable on a tablet and the doc requires row 27 to
+  stay phone-legible. The honest answer is probably that a phone gets tier 2 earlier
+  rather than a different tier 1, but it needs a real device before it is asserted.
+- **Gamepad** (Finding 1). Placement needs a pointer the pad does not have. Altitude
+  mildly helps — fewer screen pixels per tile means a virtual tile cursor crosses the farm
+  in less time — but it does not answer the finding. Still due at M3 planning.
+- **The scarecrow (row 13).** Sited from where she stands, so the test leaves it at ground
+  level, and phase 1 keeps the locked camera of row 12. Re-run the test if its coverage
+  radius ever becomes a decision about the plot rather than about the spot.
+- **Overlays** (row 20, scent). An overlay is a whole-farm read wearing a ground-level
+  view. Whether toggling one should also lift the camera is unresolved and should be
+  settled when the overlay is designed, not inherited from here.
 
 ## Sections to fill
 1. **Movement scheme (Q-8)** — ✅ ruled 2026-08-19: tap-to-move with pathfinding only;

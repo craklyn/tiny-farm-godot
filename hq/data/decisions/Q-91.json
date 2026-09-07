@@ -38,5 +38,11 @@
       "label": "Input modality appendix",
       "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/appendix-input-modality.md"
     }
-  ]
+  ],
+  "ruled": {
+    "date": "2026-09-07",
+    "option": "a",
+    "summary": "Step back to point, as an automatic camera move — the game frames the whole farm when it hands her a directing job and returns her when it is done, so no gesture has to be discovered and pinch stays reserved for the phase-3 camera. Ruled past the question asked: altitude arrives with the first entity that needs it rather than at a phase boundary, because the build is still assembled elements and the unlock order will move.",
+    "written_up": "docs/design/11-ux-ui.md — the Altitude section"
+  }
 }

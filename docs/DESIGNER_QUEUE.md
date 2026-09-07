@@ -11,7 +11,23 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
 
 ## Now — blocks M0 close or current work
 
-- **Q-91** **On a tablet, a mark-1 can only be shown tiles that happen to be on screen.**
+- **Q-91** ~~On a tablet, a mark-1 can only be shown tiles that happen to be on screen.~~ —
+  ✅ ruled 2026-09-07: **(a) step back to point**, as an *automatic* camera move. Entering a
+  pointing mode frames the whole page and leaving it returns to her, so there is no
+  off-screen left to reach and no gesture to discover; pinch and two-finger pan stay
+  reserved for row 26 as budgeted. Daniel ruled past the question asked, and the wider
+  ruling is the more useful one: **altitude arrives with the first entity that needs it,
+  not at a phase boundary** — "the watering robot will unlock later, probably. We're just
+  putting elements of the game together right now." So the design is written as a test on
+  the job rather than a phase schedule, and the trigger for manual camera became checkable
+  too (the page outgrowing one screenful at fit-zoom) instead of "phase 3 at latest".
+  Written up as **Altitude** in `design/11`, which also adds the mark-1's teaching rows the
+  Q-28 inventory had missed and corrects Finding 4 — select-then-point debuted on the
+  robot, not the dog, and has been shipping since 3 September. Left to build: the camera
+  move itself, the dim-the-ineligible pass, and the count on the done button. Original
+  finding below.
+
+  **On a tablet, a mark-1 can only be shown tiles that happen to be on screen.**
   Found 2026-09-07 by the designer, reading the menu. The camera sits at 3× on an 800×600
   viewport, so the view is ~16×12 tiles of a 32×20 page — about half the plot. Teaching is
   the game's only mode, and it takes taps at priority 0 (`action_router.gd`), which is what
