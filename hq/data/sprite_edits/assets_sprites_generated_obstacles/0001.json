@@ -1,0 +1,46 @@
+{
+  "seq": 1,
+  "kind": "edit",
+  "sheet": "assets/sprites/generated/obstacles.png",
+  "key": "assets_sprites_generated_obstacles",
+  "group": "world",
+  "entity": "obstacles",
+  "entity_name": "Obstacle Set",
+  "note": "Space between fenceposts should be transparent",
+  "diff": {
+    "frames": [
+      {
+        "index": 4,
+        "name": "frame 5",
+        "changed": 14,
+        "added": 0,
+        "erased": 14,
+        "recolored": 0,
+        "silhouette": true,
+        "bbox": [
+          4,
+          7,
+          7,
+          2
+        ]
+      }
+    ],
+    "pixels": 14,
+    "colors_added": [],
+    "colors_removed": [
+      "#f8f4e6"
+    ],
+    "new_to_sheet": [],
+    "anims": []
+  },
+  "reverted_to": null,
+  "bytes": 2635,
+  "png": "0001.png",
+  "created": "2026-09-07T16:36",
+  "created_ts": 1788824207.9600446,
+  "filed": {
+    "work_id": "wae35fb20cb7",
+    "owner": "ingrid",
+    "title": "Read Daniel's hand edit to Obstacle Set"
+  }
+}
