@@ -1,0 +1,33 @@
+{
+  "id": "Q-93",
+  "title": "Should the robot harvest a ripe crop on its round?",
+  "question": "The mark-1 now does whatever each square it was shown actually needs: it tills ground that has gone bare, waters soil that is dry, and walks past anything already dealt with. That last part is new, and it has an edge case you found. Rain soaks every field at dawn — so on a rainy morning the robot walks its whole round and does nothing, because there was nothing to do. That is honest, and it might also just look broken. You wondered aloud whether it should be looking for ripe crops while it is out there. That is a bigger question than it sounds: a robot that picks crops is putting things in your pocket, which is the first time a machine would earn you anything rather than save you effort.",
+  "why_now": "It is the last unanswered piece of the robot's behaviour, and the answer shapes what every later machine is allowed to do. Deciding it now means the first machine sets the rule; deciding it after two more machines exist means changing three things instead of one.",
+  "options": [
+    {
+      "key": "a",
+      "label": "Let it harvest ripe squares",
+      "detail": "The round becomes worth walking on any day: it picks what is ready, then tills the square back to bare soil for you to replant. This is the version that makes a rainy morning still feel productive. The cost is that a machine now generates income, not just saves labour — crops appear in your stores without you touching them, which changes what the farm's economy is measuring and makes the machine's value much harder to price against its cost."
+    },
+    {
+      "key": "b",
+      "label": "Let it say it has nothing to do (Recommended)",
+      "detail": "Keep it to tilling and watering, and when a round would achieve nothing, have the panel say so instead of sending it on an empty walk. Costs an afternoon. It keeps machines firmly in the labour-saving column, where the whole delegation arc has them, and it turns the awkward moment into the machine explaining itself — which is the same move that fixed the panel claiming it was working while it stood still."
+    },
+    {
+      "key": "c",
+      "label": "Leave it as it is — an empty round is fine",
+      "detail": "It walks the list, finds nothing to do, and comes home. Costs nothing and is completely truthful. The risk is exactly what you noticed from the outside: a machine going through the motions is hard to distinguish from a machine that is broken, and a player who sees that on day one may conclude the robot does not work."
+    }
+  ],
+  "links": [
+    {
+      "label": "Queue entry (Q-93)",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"
+    },
+    {
+      "label": "The robot's design",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/06-bots-and-training.md"
+    }
+  ]
+}

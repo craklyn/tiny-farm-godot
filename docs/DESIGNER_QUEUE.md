@@ -11,6 +11,38 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
 
 ## Now — blocks M0 close or current work
 
+- **Q-92** **How does a player put up a fence?** Designed 2026-09-07 on request, not yet
+  built. A fence today is not an object but a tile *state* laid at worldgen, and it is the
+  game's word for **"not yet"** — the edge of a parcel she has not unlocked. Four things
+  fall out. (a) *Hers must be a different state from the game's*, for the router rather
+  than for looks: tapping her own fence should take it back and tapping a parcel boundary
+  must refuse, and the router can only tell those apart if they differ — which also stops
+  a fence she built reading as a lock. Costs one 16×16 tile of art, the only part that
+  needs the designer. (b) *A new verb `build`, not `place`*: `place` spawns an actor, and a
+  twenty-tile fence would be twenty actors against the rule that per-tick cost scales with
+  entities. A fence is terrain, so write it like terrain — `build` sets a tile state as
+  `till` does. (c) *Stock, bought in bundles*: `GameState.machines` is already documented
+  as where "a tower, a fence or a hopper" lives; spend one per square, refund on taking it
+  back, which is what makes a long run of squares safe to try. (d) *Ground level and a
+  drag* — she carries the posts, so she stays in the dirt (see `design/11`'s correction).
+  **What it is worth:** rabbits only. Crows fly, the kangaroo hops it (Q-57: "a boundary is
+  the player's rule and not nature's"), the mole tunnels under. One of four pests, which is
+  the ecology's existing design rather than a nerf. **Not in v1:** gates — she can always
+  take a section back up. **Check when building:** whether a grazer with no route to a crop
+  leaves cleanly or gets stuck; fencing is the first thing that can make a route impossible.
+  Bears on `design/04`, `design/11` row 19.
+
+- **Q-93** **Should a mark-1 harvest a ripe square on its round?** Raised by the designer
+  2026-09-07 from play: *"it needs to go out to see if any tiles are ready for harvest, I
+  think."* The machine now tills bare ground, waters dry soil, and walks past anything that
+  needs nothing. On a rainy day — rain wets every soil square at dawn — that means a round
+  where it walks eight squares and comes home having done nothing, which is honest and may
+  read as broken. Three answers: **(a)** accept the empty patrol, **(b)** have it decline
+  the errand and say so in its panel ("nothing to do today"), or **(c)** let it harvest.
+  (c) is the one with teeth: it hands her a crop she did not pick, which is an economy
+  change rather than a convenience, and it is the first time a machine would put something
+  in her pocket. Deliberately left un-built pending this ruling. Bears on `design/06`.
+
 - **Q-91** ~~On a tablet, a mark-1 can only be shown tiles that happen to be on screen.~~ —
   ✅ ruled 2026-09-07: **(a) step back to point**, as an *automatic* camera move. Entering a
   pointing mode frames the whole page and leaving it returns to her, so there is no

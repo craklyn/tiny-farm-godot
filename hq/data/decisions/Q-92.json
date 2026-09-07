@@ -1,0 +1,33 @@
+{
+  "id": "Q-92",
+  "title": "How should a player put up a fence?",
+  "question": "A fence in Tiny Farm is not an object you drop — it is a kind of ground, laid down when the world is generated, and it already means something specific: it is how the game says \"this land isn't yours yet\". Letting the player build fences means letting her make something that currently reads as a lock. The design is worked out and everything about it is settled except one thing, which is yours: whether her fence looks different from the game's. It has to be a different *kind* of ground under the hood regardless, because tapping your own fence should pick it back up while tapping the edge of a locked field should refuse, and the game can only tell those apart if they are different things. The open question is whether it should also *look* different, which costs one small piece of art.",
+  "why_now": "Fencing is the player's only answer to rabbits, and it is the first thing she can build that is neither a crop nor a machine. It is also cheap to get wrong in a way that is expensive later: if her fence looks like the game's boundary, the picture that currently means \"not yet\" stops meaning anything, and that picture is load-bearing for how the farm opens up over the whole first phase.",
+  "options": [
+    {
+      "key": "a",
+      "label": "Give her fence its own look — a lighter post-and-rail (Recommended)",
+      "detail": "One new 16x16 tile, in the style pipeline that already exists. Her fence reads as something she made; the heavier boundary keeps meaning \"not yours yet\". Costs one art generation and about a day of work for the rest of the feature. This is the version that protects the thing the progression system leans on, and the extra cost over the alternative is genuinely one tile."
+    },
+    {
+      "key": "b",
+      "label": "Reuse the existing fence picture",
+      "detail": "Zero art. Her fence and the game's locked-field boundary look identical, so the only way to tell them apart is to tap one and see whether it comes up. Cheaper today; the cost is paid every time a player looks at the farm and cannot tell which fences are the world's and which are hers, and it lands hardest on a new player who has not yet learned what a boundary means."
+    },
+    {
+      "key": "c",
+      "label": "Hold the whole feature until fencing has a job worth doing",
+      "detail": "Fences stop rabbits and nothing else — crows fly over, the kangaroo hops them, the mole tunnels under. That is a deliberate design, but it does mean a fence is a narrow tool today. Waiting until livestock need penning would give it two jobs instead of one and would let both be designed together. Costs nothing now; the risk is that rabbits stay unanswered in the meantime."
+    }
+  ],
+  "links": [
+    {
+      "label": "Queue entry (Q-92)",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"
+    },
+    {
+      "label": "Pests and what counters them",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/04-pests-and-ecology.md"
+    }
+  ]
+}

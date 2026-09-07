@@ -1,0 +1,15 @@
+{
+  "id": "w4b88f3a33dc8",
+  "title": "Stop the chicken-walk assertion failing at random in CI",
+  "level": "task",
+  "owner": "grace",
+  "tier": 1,
+  "tier_reason": "a timing tolerance in a test; nothing about the game changes",
+  "ask": "tools/test_runner.gd's assertion \"she walks while the game is running\" (the chicken entity, around line 752) failed once and passed on an immediate re-run on 2026-09-07, with no related change in the diff. It waits a fixed 20 process frames for the chicken's sprite to move after its registry position is set, which is a wall-clock assumption on a machine that may be loaded. Replace the frame count with the file's own `_wait_until` helper and a generous timeout, the way the door and teaching scenarios already do, so a slow frame is not a failure. Check the file for other fixed-frame waits with the same shape while you are there.",
+  "first_action": "Reproduce by running the integration suite under load, then swap the fixed frame count for _wait_until.",
+  "why": "Daniel's standing rule is that a red suite must mean something is broken, not that bookkeeping is pending — a test that fails at random teaches the team to ignore red.",
+  "state": "waiting_session",
+  "source": "chat",
+  "created": "2026-09-07T16:04",
+  "created_ts": 1788822248.7192595
+}

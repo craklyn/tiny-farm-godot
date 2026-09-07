@@ -137,7 +137,49 @@ choosing *which squares*; she still chooses every one of them, and the square it
 which of two verbs it needs. Both cost the same energy, so the round's price is unchanged.
 The obvious next rung — harvesting a ripe square before resetting it — is deliberately
 **not** taken: that would hand her a crop she did not pick, which is an economy change
-wearing a convenience's clothes.
+wearing a convenience's clothes. **Open as Q-93**, because leaving it out has a cost of
+its own (below).
+
+**A square that needs nothing gets nothing, and the round happens anyway.** The full rule
+is *wettable and not yet wet gets watered; bare ground gets tilled; everything else gets
+walked to and looked at.* Reported the same day: rain wets every soil square at dawn, so
+on a wet morning the machine's whole round was strokes that changed nothing at all. It
+still walks the list — *"it should go out and look at the tiles but not water if already
+watered"* — because a machine that stayed home would give her nothing to watch and no sign
+it had understood the weather.
+
+The wettable set is `SimWorld.WETTABLE_STATES`, shared with the watering can and the rain,
+so what the machine offers to do and what water actually shows on cannot drift apart. That
+sharing came from the other half of the same report: a sprinkler left the dirt looking
+parched under a ripe crop, because watering only ever marked the squares that could *use*
+the water, while rain marked all four soil states. Water now looks like water whoever
+poured it.
+
+**This is the cost of not harvesting, stated plainly.** On a rainy day with nothing gone
+bare, the round is a patrol that achieves nothing — she watches a machine walk eight
+squares and come home. That is honest, and it may also be boring in a way that reads as
+broken. Q-93 is the choice between accepting it, having the machine say it has nothing to
+do, and letting it harvest.
+
+### The panel says what is true, including why it is not moving
+
+The mark-1's second row reports one of four states, and it is the only place the machine
+explains itself. *"Out working…"* used to be shown whenever it had been sent — which was a
+lie on the morning that caught it, because the machines wait for her day to start and she
+was still in the house. A disabled control always asks "why", and here the answer was her.
+
+| It shows | When |
+| --- | --- |
+| Send it out (n tiles) | taught, and its turn is unspent |
+| Send it out (nothing to do yet) | nothing taught |
+| Waiting for you outside | sent, but she is indoors, so no machine has started |
+| Out working… | sent, and actually out |
+| Been out today | its one turn is spent |
+
+**And stepping outside is the starting bell, rung rather than waited for.** A machine that
+is waiting on her naps before looking up again, so she came out and watched an already-sent
+robot do nothing for up to half a minute. Going through her own door is an Action, so it
+tells them on the spot — the same move sending one makes, and nothing has to poll.
 
 Two rulings from play, 2026-09-07 (CEO, testing the mark-1), apply to the whole
 bot line:

@@ -93,7 +93,7 @@ tap-ahead queueing is deferred with a trigger (D-10).
 | 19 | Build fencing | World | Drag along the line — row-3's swipe-chain grammar reused for building | Same | ◻ |
 | 20 | Scent overlay toggle | UI | HUD toggle (P-10/D-4; taught per Q-17) | Same; hotkey candidate | ◻ |
 | 21 | Yield-gate progress | UI (passive) | Presentation only — open question: legible without spreadsheet UI | — | ◻ |
-| 21b | **Show a mark-1 where to work** | World (`teach` verb) | Select the robot, then tap up to 8 squares anywhere on the page — one square per tap, tap again to unmark, and a drag marks nothing. Pinch and two-finger pan move the view. The game's only mode, and the first interaction at altitude | Same; movement is off for all devices while pointing | ✅ built |
+| 21b | **Show a mark-1 where to work** | World (`teach` verb) | Select the robot, then tap up to 8 squares anywhere on the page — one square per tap, tap again to unmark, and a drag marks nothing. Pinch and two-finger pan move the view; one control clears the whole round. The game's only mode, and the first interaction at altitude | Same; movement is off for all devices while pointing | ✅ built |
 | 21c | Send a mark-1 out | World (`activate`) | One row in its panel, disabled with its own reason when it cannot | Same | ✅ |
 
 ### Phase 3 — The Siege (◻ blocked on D-3; from `design/05`)
@@ -246,11 +246,26 @@ camera migrates from her shoulder to the sky over five phases, exactly as the wo
 migrates from her hands to the machines. The interface narrates the arc (P-1 premise 3),
 and P-3 already commits to "rising camera altitude" as the world grows outward.
 
-**Tier 1 spends no gesture.** Nothing new is added to the touch budget: the pull-back is
-automatic, so a player who never learns to pinch loses nothing, and pinch + two-finger pan
-stay reserved for row 26 exactly as budgeted. Tier 2 then arrives to a player who is
-already used to seeing the whole farm and only needs to learn to *steer* a view she has
-been shown many times.
+**Tier 1 spends no gesture, and tier 2 arrived the same afternoon anyway.** The pull-back
+is automatic, so a player who never learns to pinch loses nothing — that part still
+holds, and it is why the automatic move is the floor rather than the whole answer.
+
+*Amended 2026-09-07, from the tablet:* the designer asked for pinch immediately, and it
+shipped with the mode rather than waiting for row 26. It costs the gesture budget nothing
+that was not already spent — two fingers were reserved **for the camera**, and this is
+the camera — so this is an early arrival, not a raid on the budget. Two consequences were
+not optional. **Pan ships with pinch**, because zooming in without a way to move puts part
+of the farm out of reach again, which is the exact bug Q-91 was about. And the range is
+clamped to the two postures the mode is about: **out** stops where the whole page fits,
+**in** stops at the game's own art scale. Ranging between "the whole farm" and "standing
+in it" is a choice a player can make without being told what the ends mean.
+
+What that costs: nothing in the design, and one real bug in the code. `screen_to_tile`
+divided by a hard-coded scale, true only while the camera never moved, so at altitude
+every tap resolved to a square about half as far from the centre as the one under the
+finger. It ships in the conversion now, and the lesson is in the test suite's shape:
+every existing assertion injected a tile straight into the click buffer, so the one path
+that was wrong was the one path no test used.
 
 **The trigger for tier 2 is checkable, and better than a phase number.** Tier 1 works
 only while the whole page fits on the screen at once. The moment the farm outgrows one
@@ -281,9 +296,20 @@ later pointing mode inherits this shape unless it has a reason not to.
 - **Tapping a chosen tile again removes it.** Small targets are only affordable because a
   slip costs one tap. Any mode that makes selection expensive to undo must not use small
   targets.
-- **A drag adds; it never removes.** Drag is "many taps with the intent locked" (the
-  swipe-chain grammar of row 3), and a drag that toggled would fight itself the moment it
-  crossed something already chosen. A row just planted should be one sweep.
+- **One square, one tap; a drag marks nothing** (designer, 2026-09-07, replacing this
+  section's first answer). The first version reused row 3's swipe-chain — drag to add a
+  run, adding only so a sweep could not undo its own beginning — on the grounds that a row
+  just planted should be one stroke. The ruling from play went the other way, and the
+  reason generalises: **a selection out of a budget is not a stroke of work.** Each square
+  is one of eight instructions to a machine, and a finger that brushes the glass on the
+  way to the square it meant must not spend three of them. Chaining is right where the
+  squares are cheap and the verb is labour; it is wrong where each pick is scarce and
+  deliberate. Any later mode should ask which of those it is rather than inherit an answer.
+- **Deselect everything is one control**, bottom-right beside the button that ends the
+  mode, greyed rather than hidden when there is nothing to clear. Eight taps to undo eight
+  taps is arithmetic an interface should absorb, and being one press from a blank farm is
+  what makes a long selection safe to experiment with. It speaks as the taps it stands for
+  — one `teach` toggle per marked square — so no bulk verb enters the vocabulary.
 - **She stands still.** Movement is off for the duration on every input device, keyboard
   included. There is nothing left for walking to reveal, and the divergence is what hid
   Q-91: arrow keys kept working, so the mode looked complete on the machine it was built
