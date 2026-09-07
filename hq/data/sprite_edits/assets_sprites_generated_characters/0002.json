@@ -1,0 +1,247 @@
+{
+  "seq": 2,
+  "kind": "edit",
+  "sheet": "assets/sprites/generated/characters.png",
+  "key": "assets_sprites_generated_characters",
+  "group": "actors",
+  "entity": "player",
+  "entity_name": "Farmer",
+  "note": "White cells that were supposed to be transparent in order to see what's behind the character..",
+  "diff": {
+    "frames": [
+      {
+        "index": 0,
+        "name": "walk down 1 · standing idle 1",
+        "changed": 7,
+        "added": 0,
+        "erased": 7,
+        "recolored": 0,
+        "silhouette": true,
+        "bbox": [
+          22,
+          40,
+          2,
+          5
+        ]
+      },
+      {
+        "index": 1,
+        "name": "walk down 2",
+        "changed": 2,
+        "added": 0,
+        "erased": 2,
+        "recolored": 0,
+        "silhouette": true,
+        "bbox": [
+          23,
+          42,
+          1,
+          2
+        ]
+      },
+      {
+        "index": 3,
+        "name": "walk down 4 · action swing 1",
+        "changed": 7,
+        "added": 0,
+        "erased": 7,
+        "recolored": 0,
+        "silhouette": true,
+        "bbox": [
+          22,
+          39,
+          5,
+          6
+        ]
+      },
+      {
+        "index": 4,
+        "name": "walk up 1 · standing idle 2",
+        "changed": 2,
+        "added": 0,
+        "erased": 2,
+        "recolored": 0,
+        "silhouette": true,
+        "bbox": [
+          22,
+          42,
+          1,
+          2
+        ]
+      },
+      {
+        "index": 5,
+        "name": "walk up 2",
+        "changed": 2,
+        "added": 0,
+        "erased": 2,
+        "recolored": 0,
+        "silhouette": true,
+        "bbox": [
+          24,
+          43,
+          1,
+          2
+        ]
+      },
+      {
+        "index": 6,
+        "name": "walk up 3",
+        "changed": 3,
+        "added": 0,
+        "erased": 3,
+        "recolored": 0,
+        "silhouette": true,
+        "bbox": [
+          24,
+          42,
+          1,
+          3
+        ]
+      },
+      {
+        "index": 7,
+        "name": "walk up 4 · action swing 2 · sleeping on the cot",
+        "changed": 1,
+        "added": 0,
+        "erased": 1,
+        "recolored": 0,
+        "silhouette": true,
+        "bbox": [
+          23,
+          43,
+          1,
+          1
+        ]
+      },
+      {
+        "index": 8,
+        "name": "walk left 1 · standing idle 3",
+        "changed": 9,
+        "added": 0,
+        "erased": 9,
+        "recolored": 0,
+        "silhouette": true,
+        "bbox": [
+          23,
+          41,
+          4,
+          3
+        ]
+      },
+      {
+        "index": 9,
+        "name": "walk left 2",
+        "changed": 6,
+        "added": 0,
+        "erased": 6,
+        "recolored": 0,
+        "silhouette": true,
+        "bbox": [
+          23,
+          42,
+          4,
+          2
+        ]
+      },
+      {
+        "index": 11,
+        "name": "walk left 4 · action swing 3",
+        "changed": 1,
+        "added": 0,
+        "erased": 1,
+        "recolored": 0,
+        "silhouette": true,
+        "bbox": [
+          24,
+          44,
+          1,
+          1
+        ]
+      },
+      {
+        "index": 12,
+        "name": "walk right 1 · standing idle 4",
+        "changed": 9,
+        "added": 0,
+        "erased": 9,
+        "recolored": 0,
+        "silhouette": true,
+        "bbox": [
+          21,
+          41,
+          4,
+          3
+        ]
+      },
+      {
+        "index": 13,
+        "name": "walk right 2",
+        "changed": 4,
+        "added": 0,
+        "erased": 4,
+        "recolored": 0,
+        "silhouette": true,
+        "bbox": [
+          20,
+          42,
+          3,
+          2
+        ]
+      },
+      {
+        "index": 14,
+        "name": "walk right 3",
+        "changed": 2,
+        "added": 0,
+        "erased": 2,
+        "recolored": 0,
+        "silhouette": true,
+        "bbox": [
+          21,
+          43,
+          4,
+          2
+        ]
+      },
+      {
+        "index": 15,
+        "name": "walk right 4 · action swing 4",
+        "changed": 1,
+        "added": 0,
+        "erased": 1,
+        "recolored": 0,
+        "silhouette": true,
+        "bbox": [
+          22,
+          44,
+          1,
+          1
+        ]
+      }
+    ],
+    "pixels": 56,
+    "colors_added": [],
+    "colors_removed": [],
+    "new_to_sheet": [],
+    "anims": [
+      "walk down",
+      "walk up",
+      "walk left",
+      "walk right",
+      "standing idle",
+      "action swing",
+      "sleeping on the cot"
+    ]
+  },
+  "reverted_to": null,
+  "bytes": 7241,
+  "png": "0002.png",
+  "created": "2026-09-07T08:21",
+  "created_ts": 1788794509.8267624,
+  "filed": {
+    "work_id": "wa73d55562e9",
+    "owner": "ingrid",
+    "title": "Read Daniel's hand edit to Farmer"
+  }
+}
