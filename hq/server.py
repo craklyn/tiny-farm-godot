@@ -1202,6 +1202,63 @@ def png_size(raw):
     return (int.from_bytes(raw[16:20], "big"), int.from_bytes(raw[20:24], "big"))
 
 
+def land_sprite_edit(rec, work_id=""):
+    """Put a hand edit into git the moment it is made, and push it.
+
+    His pixels are the only copy of themselves. Before this, an edit sat in the
+    working tree until somebody noticed — one sat there for an hour and a half on
+    2026-09-07 and was found only because a rollback question made someone look.
+    Remembering to commit your own art is a recurring manual step, which is the
+    shape of defect the studio is run to remove, not a process.
+
+    Three rules make it safe to do automatically:
+
+      * **Only the two paths this edit wrote** are staged — the sheet and its
+        ledger step. Never `-A`, never `.`: several sessions share this working
+        tree, and sweeping up someone's half-finished work is how an automatic
+        commit turns into a problem worth more than it saved.
+      * **Never fail the save.** The bytes are already on disk by the time this
+        runs; git trouble is reported, not raised.
+      * **Push in the background.** A commit is local and instant; a push crosses
+        a network. The browser waits for the first and not the second.
+    """
+    import threading
+    sheet = rec.get("sheet", "")
+    ledger = os.path.join("hq", "data", "sprite_edits", rec.get("key", ""))
+    paths = [sheet, ledger]
+    if run_cmd(["git", "rev-parse", "--git-dir"]) == "":
+        return {"ok": False, "why": "not a git repository"}
+    # A tree mid-merge or mid-rebase is somebody's unfinished business; adding a
+    # commit to it is the one thing that would make an automatic commit unwelcome.
+    gitdir = os.path.join(REPO, ".git")
+    for busy in ("MERGE_HEAD", "REBASE_HEAD", "rebase-merge", "rebase-apply", "CHERRY_PICK_HEAD"):
+        if os.path.exists(os.path.join(gitdir, busy)):
+            return {"ok": False, "why": f"git is mid-{busy} — left uncommitted on purpose"}
+    add = subprocess.run(["git", "add", "--"] + paths, cwd=REPO,
+                         capture_output=True, text=True, timeout=20)
+    if add.returncode != 0:
+        return {"ok": False, "why": (add.stderr or "git add failed")[:200]}
+    if run_cmd(["git", "diff", "--cached", "--name-only", "--"] + paths) == "":
+        return {"ok": False, "why": "nothing staged — already committed?"}
+    msg = studio.commit_message(rec, work_id)
+    com = subprocess.run(["git", "commit", "-m", msg, "--only", "--"] + paths,
+                         cwd=REPO, capture_output=True, text=True, timeout=30)
+    if com.returncode != 0:
+        return {"ok": False, "why": (com.stderr or com.stdout or "git commit failed")[:200]}
+    sha = run_cmd(["git", "rev-parse", "--short", "HEAD"])
+    state = {"ok": True, "sha": sha, "subject": msg.splitlines()[0], "pushed": None}
+
+    def _push():
+        r = subprocess.run(["git", "push", "origin", "HEAD"], cwd=REPO,
+                           capture_output=True, text=True, timeout=120)
+        state["pushed"] = (r.returncode == 0)
+        if r.returncode != 0:
+            state["push_why"] = (r.stderr or "")[-200:]
+
+    threading.Thread(target=_push, daemon=True).start()
+    return state
+
+
 def save_sprite(payload):
     """Write an edited sheet back into assets/ and append the edit to that sheet's
     ledger (studio.py): every step kept in sequence, with his own one-line answer
@@ -1243,9 +1300,10 @@ def save_sprite(payload):
     filed = studio.file_to_art(rec, work, load_org())
     if filed.get("work_id"):
         studio.attach_filing(rec["key"], rec["seq"], filed)
+    landed = land_sprite_edit(rec, filed.get("work_id", ""))
     signals_dirty()
     return {"ok": True, "bytes": len(raw), "step": rec["seq"], "key": rec["key"],
-            "summary": studio.describe(rec), "filed": filed}
+            "summary": studio.describe(rec), "filed": filed, "landed": landed}
 
 
 def revert_sprite(payload):

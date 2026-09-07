@@ -166,6 +166,20 @@ def attach_filing(key, seq, filed):
         _write_json(p, rec)
 
 
+def commit_of(key, seq):
+    """Which commit carries this step, asked of git rather than remembered.
+
+    Storing the answer was the obvious version and the wrong one: the record of
+    where a step landed cannot be inside the commit it describes, so writing it
+    back left every step's json dirty forever — an automatic commit whose own
+    bookkeeping is the thing left uncommitted. The step's PNG is in exactly one
+    commit and git already knows which, so ask it."""
+    if not KEY_RE.match(key or ""):
+        return ""
+    rel = os.path.relpath(os.path.join(_dir(key), f"{int(seq):04d}.png"), HOST.REPO)
+    return HOST.run_cmd(["git", "log", "-1", "--format=%h", "--", rel])
+
+
 def _now():
     import datetime
     return datetime.datetime.now().isoformat(timespec="minutes")
@@ -174,6 +188,77 @@ def _now():
 # ---------------------------------------------------------------------------
 # what the art team is told
 # ---------------------------------------------------------------------------
+
+def commit_subject(rec):
+    """The one line a commit gets. His own answer to "what were you fixing?" is
+    the subject, because it is the only sentence in the record that says *why* —
+    the measurement below it says what moved, and a subject made of pixel counts
+    tells a reader nothing they could not get from the diff.
+
+    Written to the studio's rules (docs/WRITING.md): plain, for a reader who
+    arrives with no context, so the sheet is named rather than assumed."""
+    what = (rec.get("entity_name") or rec.get("entity") or "").strip()
+    note = " ".join((rec.get("note") or "").split()).strip(" .")
+    if rec.get("kind") == "revert":
+        back = rec.get("reverted_to")
+        head = f"{what}: back to step {back}" if what else f"Back to step {back}"
+        return (head + (f" — {note}" if note else ""))[:72]
+    if not note:
+        d = rec.get("diff") or {}
+        px = d.get("pixels") or 0
+        n = len(d.get("frames") or [])
+        body = f"{px} pixel{'s' if px != 1 else ''} changed by hand across {n} frame{'s' if n != 1 else ''}"
+        return (f"{what}: {body}" if what else body.capitalize())[:72]
+    # His sentence, joined to the thing it is about. Lower-cased at the join so
+    # the subject reads as one sentence rather than two stuck together.
+    if what and not note.lower().startswith(what.lower()):
+        note = note[0].lower() + note[1:] if note[:1].isupper() and not note[:2].isupper() else note
+        line = f"{what}: {note}"
+    else:
+        line = note[0].upper() + note[1:] if note else what
+    return _fit(line)
+
+
+# Words that must not be the last thing a subject says. Cutting a sentence to
+# length lands on one of these often enough to be worth undoing — "…supposed to
+# be transparent in order to" is a worse line than "…transparent in order".
+_DANGLING = {"a", "an", "and", "as", "at", "be", "but", "by", "for", "from", "in",
+             "into", "is", "it", "of", "on", "or", "so", "that", "the", "then",
+             "to", "was", "were", "with"}
+
+
+def _fit(line, limit=72):
+    """Cut to length at a word, never mid-word, and say that it was cut. The
+    whole sentence is the next paragraph of the message, so the ellipsis costs
+    a reader nothing — it just stops the subject ending in the middle of one."""
+    line = line.strip()
+    if len(line) <= limit:
+        return line.rstrip(" ,;:—-")
+    words = line[:limit - 1].split(" ")[:-1]
+    while words and words[-1].strip(",;:.—-").lower() in _DANGLING:
+        words.pop()
+    cut = " ".join(words).rstrip(" ,;:—-")
+    return (cut + "…") if cut else line[:limit - 1] + "…"
+
+
+def commit_message(rec, work_id=""):
+    """Subject, his words, the measurement, and where to read the rest. Composed
+    from the record we already hold, so making an edit never waits on a model —
+    the art director's reading of what the edit *means* arrives separately, on
+    the work item this points at."""
+    lines = [commit_subject(rec), ""]
+    note = " ".join((rec.get("note") or "").split())
+    summary = describe(rec)
+    if note and note not in lines[0]:
+        lines += [note, ""]
+    if summary:
+        lines += [summary, ""]
+    where = f"Hand edit in HQ's sprite editor, step {rec.get('seq')} of {rec.get('sheet', '')}'s ledger."
+    if work_id:
+        where += f" Filed to the art director to read as {work_id}."
+    lines.append(where)
+    return "\n".join(lines).strip() + "\n"
+
 
 def describe(rec):
     """The plain-language version of a diff — what a person would say about it.
