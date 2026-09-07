@@ -1,0 +1,15 @@
+{
+  "id": "wbbbcc2086a1f",
+  "title": "Let a seat keep what it learns while working, not only while chatting",
+  "level": "story",
+  "owner": "jade",
+  "tier": 1,
+  "tier_reason": "a write path into files the studio already writes to by another route; reversible and reviewable as a diff",
+  "ask": "Only one lane can write hq/data/staff/<id>/memory.md: take_remembered() at server.py:4637, which runs on the CHAT lane — a persona wraps a note in <remember> and it is appended. The DRAIN lane has no write path at all. drain.py:135 loads the seat's memory into the worker's prompt and nothing ever writes back, so anything a seat works out while doing a real piece of work is lost when the worker exits. This is the lane that processes Daniel's sprite-editor edits: he edits a sheet, leaves a note, HQ files the measured diff to the art director, she reads it and answers — and if that answer contains a durable rule about his taste, nothing keeps it. He believes the seat is learning from his feedback; today it only learns when he happens to talk to it in chat. Give the drain the same contract the chat lane has: a worker may emit <remember>...</remember>, it is stripped from the result Daniel reads and appended to that seat's memory with the date. Reuse take_remembered rather than writing a second parser — one contract, two lanes. Two things to get right that the chat lane does not have to: the drain runs a worker in a worktree, so the append must happen in the main tree after the diff is checked, not inside the sandbox; and a memory written by an item Daniel later rejects should not survive, so tie the append to the item reaching accepted rather than to the worker finishing.",
+  "first_action": "Read take_remembered and REMEMBER_RE in hq/server.py, then _process_item in hq/drain.py, and decide where in the item lifecycle the append belongs so a rejected item leaves no memory behind.",
+  "why": "Daniel asked today whether the graphics seat still learns his art rules from his sprite-edit notes. The filing and the reading still work — an item was raised and answered within three minutes this morning — but the learning step does not exist on that lane. A loop that only closes when he remembers to chat is a manual step, which is the shape of defect his own doctrine names.",
+  "state": "waiting_session",
+  "source": "chat",
+  "created": "2026-09-07T09:47",
+  "created_ts": 1788799647.011435
+}

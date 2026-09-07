@@ -1,0 +1,88 @@
+{
+  "seq": 1,
+  "kind": "edit",
+  "sheet": "assets/sprites/generated/animals.png",
+  "key": "assets_sprites_generated_animals",
+  "group": "actors",
+  "entity": "chicken",
+  "entity_name": "Chicken",
+  "note": "Removed white pixels that should be transparent to see background.",
+  "diff": {
+    "frames": [
+      {
+        "index": 0,
+        "name": null,
+        "changed": 2,
+        "added": 0,
+        "erased": 2,
+        "recolored": 0,
+        "silhouette": true,
+        "bbox": [
+          7,
+          14,
+          1,
+          2
+        ]
+      },
+      {
+        "index": 1,
+        "name": null,
+        "changed": 4,
+        "added": 0,
+        "erased": 4,
+        "recolored": 0,
+        "silhouette": true,
+        "bbox": [
+          6,
+          14,
+          3,
+          2
+        ]
+      },
+      {
+        "index": 2,
+        "name": null,
+        "changed": 2,
+        "added": 0,
+        "erased": 2,
+        "recolored": 0,
+        "silhouette": true,
+        "bbox": [
+          7,
+          15,
+          2,
+          1
+        ]
+      },
+      {
+        "index": 3,
+        "name": null,
+        "changed": 3,
+        "added": 0,
+        "erased": 3,
+        "recolored": 0,
+        "silhouette": true,
+        "bbox": [
+          5,
+          14,
+          4,
+          2
+        ]
+      }
+    ],
+    "pixels": 11,
+    "colors_added": [],
+    "colors_removed": [],
+    "new_to_sheet": []
+  },
+  "reverted_to": null,
+  "bytes": 1973,
+  "png": "0001.png",
+  "created": "2026-09-03T00:20",
+  "created_ts": 1788420006.9910498,
+  "filed": {
+    "work_id": "wf8a69640fcd",
+    "owner": "ingrid",
+    "title": "Read Daniel's hand edit to Chicken"
+  }
+}

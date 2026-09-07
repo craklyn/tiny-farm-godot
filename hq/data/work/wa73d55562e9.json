@@ -1,0 +1,60 @@
+{
+  "id": "wa73d55562e9",
+  "title": "Read Daniel's hand edit to Farmer",
+  "level": "task",
+  "owner": "ingrid",
+  "tier": 0,
+  "tier_reason": "reading his edit and writing down what it implies — nothing to walk back",
+  "ask": "Daniel hand-edited Farmer in the sprite editor and said he was fixing: \"White cells that were supposed to be transparent in order to see what's behind the character..\". The measurement: Farmer: 56 pixels across 14 frames (walk down 1 · standing idle 1, walk down 2, walk down 4 · action swing 1, walk up 1 · standing idle 2). The change shows up in: walk down, walk up, walk left, walk right, standing idle, action swing, sleeping on the cot. The silhouette moved, not just the interior shading. Look at it against the style guide draft and the rest of the sheet, and say in a few lines what his edit is telling you about the direction — whether it agrees with the guide, quietly contradicts it, or repeats something he has done before. If it is just tidying and there is nothing to learn, say exactly that in one line; a short honest answer beats manufactured significance. Do not propose amendments to the guide yet; he wants a look session before it is signed. This is evidence-gathering for that session.",
+  "first_action": "Open assets/sprites/generated/characters.png and the ledger entry (step 2) in HQ, compare it with the style guide in docs/design/09-art-direction.md, and write down what the edit says about his taste.",
+  "state": "for_review",
+  "thread": "ingrid",
+  "source": "chat",
+  "source_message": "Daniel hand-edited Farmer in the sprite editor and said he was fixing: \"White cells that were supposed to be transparent in order to see what's behind the character..\". The measurement: Farmer: 56 pixels across 14 frames (walk down 1 · standing idle 1, walk down 2, walk down 4 · action swing 1, walk up 1 · standing idle 2). The change shows up in: walk down, walk up, walk left, walk right, standing idle, action swing, sleeping on the cot. The silhouette moved, not just the interior shading. Look at it against the style guide draft and the rest of the sheet, and say in a few lines what his edit is telling you about the direction — whether it agrees with the guide, quietly contradicts it, or repeats something he has done before. If it is just tidying and there is nothing to learn, say exactly that in one line; a short honest answer beats manufactured significance. Do not propose amendments to the guide yet; he wants a look session before it is signed. This is evidence-gathering for that session.",
+  "result": "I read the ledger entry against the sheet and the guide draft. Here's what it says.\n\n**It isn't a taste statement — it's the same bug, three times.**\n\nFifty-six pixels erased, nothing painted. Zero colours added, zero removed, zero recoloured. He isn't restyling the Farmer; he's deleting opaque white. Every changed pixel sits in a narrow band at the bottom-centre of the cell — roughly x 20–27, y 39–45 of a 48×48 frame. That's the gap between the legs and the ground under the feet. He wants to see soil, crop and shadow through the farmer's stance.\n\nHe has now done this three times in five days, in his own words each time:\n\n- Sept 3, Farmer — \"Some squares were white when they should be transparent. This occluded the background behind the character.\" 17 pixels, 3 frames.\n- Sept 3, animals sheet — \"Removed white pixels that should be transparent to see background.\"\n- Sept 7, Farmer — the entry I was filed. 56 pixels, 14 frames.\n\nAnd the Sept 7 edit re-erased pixels he already erased on Sept 3. Walk down 2 is the clean case: both edits report a 1×2 box at the same spot, two pixels, erased. A pixel can only be erased once. So his first fix didn't survive — and the sheet has never been regenerated (no raw batch for characters since August) and still shows as uncommitted against the last commit. The most likely cause is the dullest one: the fix was never committed, and something restored the file from git.\n\n**Against the guide:** no contradiction, but a hole. The style guide draft talks only about interior colour — ramps, coloured outlines, hue-shifted shadows, saturation-pop. It says nothing about what should be transparent, and nothing about how a character meets the ground. The nearest rule is \"shadows are hue-shifted, never grey/black,\" and untinted opaque white under the feet is that rule's opposite failure. Same instinct, unwritten.\n\nThe ledger flags \"silhouette moved\" on all fourteen frames, and that's true but easy to over-read: the opaque region's outline changed because he cut holes in it. The Farmer's body shape is untouched.\n\nOne thing I couldn't do: run a pixel-level diff of the three snapshots — the shell here is read-only and wouldn't run it. The above rests on the ledger's own bounding boxes, which for walk down 2 are exact enough to settle it.\n\n**What this implies.** Nothing here needs the look session. The four captures stay as they are. What it needs is the pipeline fixed so white stops arriving where transparency belongs, the existing sheets swept, and his hand edits actually landing in git so he isn't doing this a fourth time. The only art-side residue is a small gap in the guide — a transparency and ground-contact rule — which I'll carry into the look session as material rather than propose now, since the guide is still unsigned.",
+  "started": "2026-09-07T08:21",
+  "attempts": 1,
+  "created": "2026-09-07T08:21",
+  "created_ts": 1788794509.8280473,
+  "follow_ups": [
+    {
+      "title": "Stop the sprite pipeline producing opaque white where transparency belongs",
+      "owner": "ravi",
+      "level": "story",
+      "tier": 1,
+      "first_action": "Inspect the Retro Diffusion post-processing path that writes assets/sprites/generated/*.png: find where near-white pixels intended as background survive as opaque, fix it, and add a check that fails when a generated sheet contains fully-opaque pixels above ~#e6e6e6 outside a declared white material.",
+      "why": "Daniel has hand-deleted the same class of pixel three times in five days across two sheets; the producer is generating the defect."
+    },
+    {
+      "title": "Clear leftover opaque white pixels from every generated sprite sheet",
+      "owner": "yuki",
+      "level": "task",
+      "tier": 1,
+      "first_action": "Scan every PNG in assets/sprites/generated/ for fully-opaque near-white pixels inside character and creature bodies, especially the bottom-centre ground-contact band, and erase the ones that should read as background. Record which sheets were affected.",
+      "why": "The Farmer and the animals sheet both carried it, so the rest of the generated set most likely does too."
+    },
+    {
+      "title": "Commit the Farmer sheet's hand edits so they stop being lost",
+      "owner": "ravi",
+      "level": "task",
+      "tier": 1,
+      "first_action": "Commit the current assets/sprites/generated/characters.png (7241 bytes, matching sprite-edit ledger step 2), then check whether HQ's sprite editor leaves its saves uncommitted by default and make each save land in git.",
+      "why": "Daniel's September 3 fix was re-done on September 7 because it never reached a commit and was restored from git."
+    },
+    {
+      "title": "Add transparency and ground contact to the look session material",
+      "owner": "ingrid",
+      "level": "task",
+      "tier": 0,
+      "first_action": "Write a short note for the look session covering what should be transparent in a character cell and how a figure meets the ground, drawn from the three hand edits — as material for the session, not as an amendment to the unsigned guide.",
+      "why": "The style guide draft has no rule here, and Daniel's edits are the only statement of what he wants."
+    }
+  ],
+  "recommend": {
+    "question": "Is the white-pixels problem material for the look session, or just a bug to fix?",
+    "answer": "Treat it as a bug: fix the pipeline, sweep the sheets, get the edits committed, and keep the look session to its four captures.",
+    "why": "He erased nothing but opaque white and added no colour — there is no taste question in it, only a defect he has now paid for three times.",
+    "instead": "You could write a transparency rule into the style guide now, but the guide is unsigned and that would be amending a document that has no force yet."
+  },
+  "finished": "2026-09-07T08:24"
+}
