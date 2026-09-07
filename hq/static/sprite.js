@@ -310,6 +310,9 @@ async function renderSpriteEditor(path) {
     return [...set.values()].sort((a, b) => lum(a.rgb) - lum(b.rgb));
   };
   const toneHex = rgb => "#" + rgb.map(v => v.toString(16).padStart(2, "0")).join("");
+  // Channels are how a tone is named in this editor; the brackets keep three
+  // numbers from reading as three separate figures in a sentence full of them.
+  const toneName = rgb => `(${rgb.join(", ")})`;
   const px = n => n === 1 ? "1 pixel" : `${n} pixels`;
   const cellsWord = n => `${n} cell${n === 1 ? "" : "s"}`;
 
@@ -637,7 +640,7 @@ async function renderSpriteEditor(path) {
       used.forEach(t => {
         const on = mergeSel.has(t.key);
         const b = h(`<button class="sw pick ${on ? "on" : ""}" style="background:${toneHex(t.rgb)}"
-          title="${toneHex(t.rgb)} — ${px(t.n)} in ${cellsWord(t.cells.size)}"></button>`).firstElementChild;
+          title="${toneName(t.rgb)} ${toneHex(t.rgb)} — ${px(t.n)} in ${cellsWord(t.cells.size)}"></button>`).firstElementChild;
         b.addEventListener("click", () => {
           if (on) { mergeSel.delete(t.key); if (mergeKeep === t.key) mergeKeep = null; }
           else mergeSel.add(t.key);
@@ -691,8 +694,8 @@ async function renderSpriteEditor(path) {
     let here = 0;
     for (let i = 0; i < d.length; i += 4)
       if (d[i + 3] && d[i] === t.rgb[0] && d[i + 1] === t.rgb[1] && d[i + 2] === t.rgb[2]) here++;
-    el.textContent = `${toneHex(t.rgb)} — ${px(t.n)} across ${cellsWord(t.cells.size)}, `
-      + (here ? `${here} of them on screen now.` : "none of them in the cell on screen.");
+    el.textContent = `${toneName(t.rgb)} ${toneHex(t.rgb)} — ${px(t.n)} across ${cellsWord(t.cells.size)}, `
+      + (here ? `${here} in the cell on screen.` : "none in the cell on screen.");
   };
 
   // The survivor defaults to whichever ticked tone covers the most pixels: an
@@ -715,7 +718,7 @@ async function renderSpriteEditor(path) {
     const keep = erasing ? null : sel.find(t => t.key === pick);
     return `${px(nPx)} in ${cellsWord(cells.size)} ${erasing
       ? "become transparent"
-      : `change to <b>${keep.rgb.join(", ")}</b>`}. The canvas and the preview are showing it
+      : `change to <b>${toneName(keep.rgb)}</b>`}. The canvas and the preview are showing it
       already — nothing is written until you press the button below.`;
   };
 
@@ -794,9 +797,9 @@ async function renderSpriteEditor(path) {
       const row = box.querySelector("#sp-opts");
       const opt = (on, pick, sw, name, sub, use, moves, showing) => {
         const b = h(`<button class="sp-opt ${on ? "on" : ""}">${sw}
-          <span class="sp-opt-id">${name}<small>${sub}</small></span>
+          <span class="sp-opt-keep">keep</span>
           <span class="sp-opt-use">${use}<small>${moves}</small></span>
-          <span class="sp-opt-keep">keep</span></button>`).firstElementChild;
+          <span class="sp-opt-id">${name}<small>${sub}</small></span></button>`).firstElementChild;
         b.addEventListener("click", () => { mergeKeep = pick; considering = null; buildMergeBar(); });
         const consider = () => {
           considering = pick; setProposal(sel, pick);
@@ -823,9 +826,9 @@ async function renderSpriteEditor(path) {
       [...sel].sort((a, b) => b.n - a.n).forEach(t => opt(
         !erasing && t.key === keeper.key, t.key,
         `<i class="sp-opt-sw" style="background:${toneHex(t.rgb)}"></i>`,
-        t.rgb.join(", "), toneHex(t.rgb),
+        toneName(t.rgb), toneHex(t.rgb),
         `${t.n} px in ${t.cells.size} of ${frames.length} cells`,
-        `${total - t.n} px would change to it`, t.rgb.join(", ")));
+        `${total - t.n} px would change to it`, toneName(t.rgb)));
       // Around a silhouette the honest answer is often that the fringe should
       // not be a colour at all, so transparency is offered as a survivor too.
       opt(erasing, ERASER, `<i class="sp-opt-sw er">⌫</i>`,
@@ -888,7 +891,7 @@ async function renderSpriteEditor(path) {
     if (!erasing) color = keeper.rgb.slice();   // paint on with the tone that survived
     mergeNote = erasing
       ? `Erased ${drop.size} tones — ${px(changed)} across ${cellsWord(snaps.length)} are now transparent. Ctrl+Z puts them back.`
-      : `Folded ${drop.size + 1} tones into ${toneHex(keeper.rgb)} — ${px(changed)} across ${cellsWord(snaps.length)} changed. Ctrl+Z puts them back.`;
+      : `Folded ${drop.size + 1} tones into ${toneName(keeper.rgb)} — ${px(changed)} across ${cellsWord(snaps.length)} changed. Ctrl+Z puts them back.`;
     mergeMode = false; mergeSel.clear(); mergeKeep = null;
     hoverTone = null; proposal = null; considering = null;
     setMergeBtn(); buildPalette(); redrawAll();
