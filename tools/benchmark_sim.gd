@@ -305,6 +305,16 @@ func _fleet_run(count: int, config: String) -> Dictionary:
 	var moved := 0
 	for i in count:
 		moved += 1 if world.actor_pos("bot_%d" % i) != ring[(i * stride) % ring.size()] else 0
+	# A fleet on a fixed-period orbit can lap back to its exact start on the
+	# final tick — at the 2026-09-07 speed (0.2 tiles/tick, 5 ticks a tile) a
+	# 16-tile ring is an 80-tick lap and 10,000 ticks is exactly 125 of them,
+	# which read here as "the fleet did not move". A second look a prime number
+	# of ticks later (outside the timed window, so the measurement is untouched)
+	# tells a finished marathon from a frozen fleet.
+	if moved == 0 and count > 0 and config == BotBrain.CONFIG_CIRCLE:
+		world.advance_ticks(7, gs)
+		for i in count:
+			moved += 1 if world.actor_pos("bot_%d" % i) != ring[(i * stride) % ring.size()] else 0
 	gs.free()
 	return { "count": count, "config": config, "elapsed": elapsed,
 		"actions": taken.size(), "moved": moved }

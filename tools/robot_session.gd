@@ -486,9 +486,18 @@ func _tap_and_wait(tile: Vector2i) -> void:
 # the tap landed is the farm changing rather than the farmer moving.
 func _tap_until(tile: Vector2i, done: Callable) -> bool:
 	await _walk_beside(tile)
-	InputManager.click_tile = tile
-	InputManager.has_click = true
-	return await _wait_until(done, ACT_FRAMES)
+	# A tap can land while a hen is parked on the tile and be refused. A player
+	# just taps again once she has wandered off, so the robot does too — the
+	# 2026-09-06 CI run where the stall would not build was one seed's loiterer
+	# (nothing can scatter there; the parcel's density is zero).
+	for _attempt in 5:
+		InputManager.click_tile = tile
+		InputManager.has_click = true
+		if await _wait_until(done, ACT_FRAMES):
+			return true
+		for _i in 40:
+			await get_tree().process_frame
+	return false
 
 
 # **A far tap is a walk order, and the tap that acts is the second one** — the
