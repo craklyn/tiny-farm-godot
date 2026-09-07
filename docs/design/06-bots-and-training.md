@@ -116,9 +116,28 @@ mark buys is which settings the machine will answer to.
 
 | Menu row | Verb | What it does |
 | --- | --- | --- |
-| Show it what to water (n/8) | `teach` | enters teaching mode: every tap on farm soil toggles that tile in the machine's list, at any distance, free, with the taught squares ringed on the ground |
-| Send it out (n tiles) | `activate` | it walks the list once, watering each square in the order she taught it, and stops |
+| Show it where to work (n/8) | `teach` | enters teaching mode: the view rises to frame the whole farm (chapter 11, *Altitude*), every tap toggles that square in the machine's list at any distance and for free, and the squares it cannot be sent to dim |
+| Send it out (n tiles) | `activate` | it walks the list once, doing each square in the order she taught it, and stops |
 | Pick up | `collect` | back in the crate |
+
+**What it does to a square is the square's answer, not the machine's** (designer,
+2026-09-07: *"make the robot till if it's grass, and water if it's soil — basically,
+reset after a harvest"*). Bare ground gets tilled; soil gets watered. `BotBrain.order_verb`
+is the whole rule and it is two lines long.
+
+This closes a hole rather than adding a capability. Harvesting sets a square back to
+`cleared`, and watering bare ground is not *refused* — it is simply nothing, because only
+soil can be wet — so a round taught over a crop row achieved nothing at all the morning
+after she picked the crop, and the machine gave no sign of it. That is exactly the silent
+trap `SimWorld.TEACHABLE_STATES` was written to keep out of the teaching menu, arriving by
+a different door.
+
+It does not move the machine up the ladder. Deciding, in the sense the mark-2 owns, is
+choosing *which squares*; she still chooses every one of them, and the square itself says
+which of two verbs it needs. Both cost the same energy, so the round's price is unchanged.
+The obvious next rung — harvesting a ripe square before resetting it — is deliberately
+**not** taken: that would hand her a crop she did not pick, which is an economy change
+wearing a convenience's clothes.
 
 Two rulings from play, 2026-09-07 (CEO, testing the mark-1), apply to the whole
 bot line:
@@ -139,12 +158,13 @@ Four properties are the design, and each is a deliberate *limit*:
   rather than the job.
 - **Once a day.** Sending it out spends its turn; a new morning gives it back
   (`BotBrain.on_new_day`). It is not a cooldown, it is the ceiling.
-- **No initiative whatsoever.** It waters what it was told, whether or not the square
-  needed it, and it never waters anything else. A tile it cannot reach is **skipped** —
+- **No initiative whatsoever.** It works the squares it was told, whether or not they
+  needed it, and it never touches anything else. A tile it cannot reach is **skipped** —
   not retried, not queued, not swapped for a nearer one — so the failure a player sees is
   "it missed that one", which she can fix by teaching it again. A machine that reasoned
-  its way around an obstacle would be a mark-2.
-- **It spends its own energy meter**, one water at a time, under the same Q-11 soft floor
+  its way around an obstacle would be a mark-2. Reading a square's state to pick between
+  till and water is not initiative: it chose neither the square nor the moment.
+- **It spends its own energy meter**, one stroke at a time, under the same Q-11 soft floor
   as everybody else.
 
 She teaches it **squares, not crops**: every farm-soil state is teachable, bare ground

@@ -219,14 +219,33 @@ func step(world: SimWorld, actor_id: String, tick: int, _gs = null) -> Dictionar
 # The list is `extra.orders`; the position in it is `extra.at_order`; whether it
 # is out is `extra.sent`. There is nothing else, and that is the design.
 #
-# **It never re-decides.** It walks to order N, waters order N, moves to order
-# N+1, and stops at the end of the list. A tile it cannot reach — she fenced it
+# **It never re-decides.** It walks to order N, works order N — tilling it if the
+# ground is bare and watering it if it is soil (see `order_verb`) — moves to
+# order N+1, and stops at the end of the list. A tile it cannot reach — she fenced it
 # off, a hen is parked on it and will not move, she tore the plot up after
 # teaching it — is *skipped*, not queued, not retried, not replaced with a
 # nearer one. That is what "exact orders" means from the machine's side, and it
 # is what makes a mark-1 legibly stupid rather than mysteriously stuck: the
 # failure mode a player sees is "it missed that one", which is a thing she can
 # fix by teaching it again.
+# **What the square is asking for**, out of the two things a mark-1 does
+# (designer, 2026-09-07: *"make the robot till if it's grass, and water if it's
+# soil — basically, reset after a harvest"*).
+#
+# Harvesting sets a tile back to `cleared`, so a round taught over a crop row
+# becomes a round over bare ground the moment she picks the crop. Watering bare
+# ground is not refused — it is simply nothing, because `water_tile` only wets
+# soil — so before this the machine walked its whole list and achieved nothing
+# the day after a harvest, which is precisely the silent trap `TEACHABLE_STATES`
+# was written to keep out of the teaching menu and quietly let in here.
+#
+# It is still not deciding in the mark-2's sense: she chose every square, and the
+# square itself says which of the two it needs. What the machine has gained is a
+# way to be *useful* on the list she already gave it.
+static func order_verb(world: SimWorld, t: Vector2i) -> String:
+	return "till" if String(world.get_tile(t.x, t.y).get("state", "")) == "cleared" else "water"
+
+
 func _orders(world: SimWorld, actor_id: String, extra: Dictionary, tick: int) -> Dictionary:
 	if not bool(extra.get("sent", false)):
 		extra["wake"] = tick + ticks(IDLE_SECONDS)
@@ -245,7 +264,7 @@ func _orders(world: SimWorld, actor_id: String, extra: Dictionary, tick: int) ->
 		# through, and a machine that retried would stand on a rock all day.
 		extra["at_order"] = at + 1
 		_paced(world, actor_id, extra, tick)
-		return { "verb": "water", "target": goal, "actor": actor_id }
+		return { "verb": order_verb(world, goal), "target": goal, "actor": actor_id }
 
 	if Movement.has_route(world, actor_id) and _goal(extra) == goal:
 		match Movement.step(world, actor_id, tick):
@@ -253,7 +272,7 @@ func _orders(world: SimWorld, actor_id: String, extra: Dictionary, tick: int) ->
 				if world.actor_pos(actor_id) == goal:
 					extra["at_order"] = at + 1
 					_paced(world, actor_id, extra, tick)
-					return { "verb": "water", "target": goal, "actor": actor_id }
+					return { "verb": order_verb(world, goal), "target": goal, "actor": actor_id }
 				return {}
 			_:
 				Movement.clear_route(world, actor_id)

@@ -93,7 +93,7 @@ tap-ahead queueing is deferred with a trigger (D-10).
 | 19 | Build fencing | World | Drag along the line — row-3's swipe-chain grammar reused for building | Same | ◻ |
 | 20 | Scent overlay toggle | UI | HUD toggle (P-10/D-4; taught per Q-17) | Same; hotkey candidate | ◻ |
 | 21 | Yield-gate progress | UI (passive) | Presentation only — open question: legible without spreadsheet UI | — | ◻ |
-| 21b | **Show a mark-1 what to water** | World (`teach` verb) | Select the robot, then tap up to 8 tiles anywhere on the page; tap again to remove, drag to add a row. The game's only mode, and the first interaction at altitude | Same; movement is off for all devices while pointing | ✅ built, 📐 altitude unbuilt (Q-91) |
+| 21b | **Show a mark-1 where to work** | World (`teach` verb) | Select the robot, then tap up to 8 squares anywhere on the page — one square per tap, tap again to unmark, and a drag marks nothing. Pinch and two-finger pan move the view. The game's only mode, and the first interaction at altitude | Same; movement is off for all devices while pointing | ✅ built |
 | 21c | Send a mark-1 out | World (`activate`) | One row in its panel, disabled with its own reason when it cannot | Same | ✅ |
 
 ### Phase 3 — The Siege (◻ blocked on D-3; from `design/05`)
@@ -158,7 +158,7 @@ misfire constantly.
    Pinch/pan (touch) and wheel/drag (mouse) should arrive with the first whole-farm
    moment — phase 3 at latest, possibly late phase 2. Flag for M3/M4 planning.
    *Updated 2026-09-07:* the first whole-farm moment turned out to be showing a mark-1
-   where to water (row 21b), and it arrived before anyone planned for it — on a tablet
+   where to work (row 21b), and it arrived before anyone planned for it — on a tablet
    the mode could only reach tiles that happened to be on screen (Q-91). The ruling
    splits the finding in two: an **automatic** whole-farm view arrives now, with the
    entity that needs it, spending no gesture; **manual** camera still debuts at row 26.
@@ -169,7 +169,7 @@ misfire constantly.
    on the dog — it is the second sentence of the game's input language and the last
    one it needs.
    *Corrected 2026-09-07:* it has already debuted, and not on the dog. Showing a mark-1
-   what to water (row 21b) is select-then-point and has been shipping since 2026-09-03;
+   where to work (row 21b) is select-then-point and has been shipping since 2026-09-03;
    this pass missed it because the inventory read phase-1 rows from code and took the
    later phases from design chapters, and the mark-1 is phase-2 content that got built
    early. The finding's advice stands and now has a subject: the two-tap grammar is
@@ -303,7 +303,7 @@ listed; what follows is every row the test lifts.
 | 14 | Place a machine | Choosing among all soil, not the tile underfoot; the coverage ghost is only meaningful against the plot it will and will not reach | The first *placement* at altitude |
 | 17 | Command the dog | Select, then point — the point half names somewhere she is not | Ground for the select, altitude for the point |
 | 19 | Build fencing | A fence line spans the farm; drawn at altitude a whole boundary is one sweep | Row-3 drag grammar, unchanged |
-| — | **Show a mark-1 what to water** | The debut. Up to 8 tiles anywhere on the page, and the set only reads as a route when seen together | Missing from the Q-28 inventory; added below |
+| — | **Show a mark-1 where to work** | The debut. Up to 8 squares anywhere on the page, and the set only reads as a round when seen together | Missing from the Q-28 inventory; added below |
 | 22 | Place / remove a tower | Towers cost farmable tiles, so the decision is a whole-farm tradeoff and must be seen as one | Confirm stays UI (P-9) |
 | 23 | Aim a manual tower | Select, then point at combat tempo — **and the handover point.** Here the player must choose where to look, so tier 2 takes over from tier 1 | Automatic altitude ends exactly where row 26 begins |
 | 25 | Wave preview | A forecast about the whole farm | Overlay at altitude |

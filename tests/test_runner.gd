@@ -10306,6 +10306,30 @@ func test_mark_one_robot() -> void:
 	_assert(world.energy_of(mk1) < SimWorld.ACTOR_MAX_ENERGY,
 		"and it spent its own meter doing it, like every other actor")
 
+	# --- the square decides which of the two verbs it gets --------------------
+	#
+	# **Reset after a harvest** (designer, 2026-09-07). Harvesting sets a tile
+	# back to `cleared`, and watering bare ground is not refused — it is simply
+	# nothing — so a round taught over a crop row used to achieve nothing at all
+	# the day after she picked it. The machine now tills what has gone bare and
+	# waters what is soil, off the same list she already gave it.
+	_assert(BotBrain.order_verb(world, orders[0]) == "water",
+		"soil asks to be watered")
+	var reset_tile: Vector2i = orders[0]
+	world.set_tile_state(reset_tile.x, reset_tile.y, "cleared")
+	_assert(BotBrain.order_verb(world, reset_tile) == "till",
+		"and the same square asks to be tilled once it has been harvested back to bare ground")
+
+	# Now send it round again and watch it actually do it, through the gateway.
+	world.actor(mk1)["extra"]["ran_today"] = false
+	world.actor(mk1)["extra"]["at_order"] = 0
+	world.apply_action({ "verb": "activate", "target": world.actor_pos(mk1),
+		"machine": mk1, "actor": "player" }, GameState)
+	world.advance_to_tick(world.clock.tick + SimClock.RATE * 240, GameState)
+	_assert(String(world.get_tile(reset_tile.x, reset_tile.y).get("state", "")) == "tilled",
+		"sent out again, it tilled the bare square back to soil (%s)"
+			% world.get_tile(reset_tile.x, reset_tile.y).get("state", ""))
+
 	# --- a new morning gives it its turn back ---------------------------------
 	_assert(bool(world.actor(mk1)["extra"].get("ran_today", false)),
 		"it has had its turn today")

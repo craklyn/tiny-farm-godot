@@ -3347,7 +3347,7 @@ func _scenario_ah_the_mark_one_takes_exact_orders() -> void:
 	for opt in menus.machine_options:
 		kinds.append(String(opt.get("kind", "")))
 	_assert("teach" in kinds and "activate" in kinds,
-		"a mark-1's menu is 'show it what to water' and 'send it out'")
+		"a mark-1's menu is 'show it where to work' and 'send it out'")
 	_assert(not ("config" in kinds),
 		"...and not one standing behaviour — that is what a mark-2 is for")
 

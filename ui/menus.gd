@@ -290,7 +290,10 @@ func _rebuild_options() -> void:
 					var been_out: bool = bool(mextra.get("ran_today", false))
 					var out_now: bool = bool(mextra.get("sent", false))
 					machine_options.append({ "kind": "teach" })
-					_add_option("Show it what to water  (%d/%d)"
+					# Not "what to water" since 2026-09-07: it tills bare ground and
+					# waters soil, so the row has to name the job rather than one of
+					# the two verbs it might turn out to be.
+					_add_option("Show it where to work  (%d/%d)"
 						% [taught, BotBrain.ORDER_LIMIT], not out_now)
 					# One row that says all three states it can be in, because
 					# "why is this greyed out" is the question a disabled control
