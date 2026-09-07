@@ -1,0 +1,42 @@
+{
+  "id": "Q-91",
+  "title": "How does she reach a tile she cannot see, while teaching a robot?",
+  "question": "Telling a mark-1 robot which squares to water is the only mode in the game: while it is open, every tap means \"point at this square\" rather than \"do something here\". That is what makes it work, and it is also what breaks it on a tablet. Tapping the ground is how you walk, so with taps taken over by pointing there is no way to walk — and no way to move the view. The camera shows roughly half the farm at a time, centred wherever the farmer happens to be standing when she opens the mode. So the squares she can point at are frozen at whatever is around the robot, and reaching the rest of the farm means closing the mode, walking, and opening it again. On a desktop the arrow keys still move her, so none of this shows up until you play it on the tablet. The robot's own rules were written for the opposite: it will happily accept a square on the far side of the plot. This is a question about what she looks at while she is pointing, not about what the robot is allowed to be told.",
+  "why_now": "The mark-1 is the first machine in the game, and showing it what to do is the moment the whole five-phase arc starts — the first time the player hands work to something else. It is also about to become easier to reach: Q-88 ruled the mark-1 should be triggered by effort rather than bought, so more players will meet this sooner. Whatever the mode feels like is the first impression the delegation idea ever makes.",
+  "options": [
+    {
+      "key": "a",
+      "label": "Step back to point — the view pulls out to the whole farm",
+      "detail": "Opening the mode glides the camera back until the entire farm is on screen; closing it glides back down to her. There is no off-screen left, so nothing new has to be learned — a tap still means point, a drag still sweeps a row. The pull-back is also the mode's announcement, with no words and no banner, and it changes what the mode is about: instead of pointing at squares one at a time through a keyhole, she is looking at the whole plot and laying out a plan she can see all of. Squares the robot can actually be sent to stay lit and everything else dims, so what a tap will do is visible before she makes it, and the greyed-out farm says \"full\" for her when eight are chosen. Squares end up about a quarter smaller than a fingertip target usually wants, but they sit edge to edge with no gaps to miss into, and tapping a chosen one again removes it, so a slip costs one tap. Costs a day or so of camera and drawing work; the robot's rules do not change at all.",
+      "recommended": true
+    },
+    {
+      "key": "b",
+      "label": "Let her walk while she is pointing",
+      "detail": "Keep the close-up view, and let a tap on grass or path still walk her there, so the camera follows and different squares come into reach. The smallest change of the three, and it keeps every square at its full size. The cost is that the mode stops having one rule: what a tap means now depends on the square underneath it, which is exactly the thing the mode was built to make unconditional. It also keeps her pointing through a keyhole — she can never see the set of squares she has chosen, only the two or three near her — and reaching the far corner is still a walk across the farm, just with the mode left open while she does it."
+    },
+    {
+      "key": "c",
+      "label": "Add a two-finger drag to move the view",
+      "detail": "Keep the close-up view and let two fingers slide the camera around, the way a map app works. Familiar to anyone who has used a phone, gives access to every square, and leaves the mode's one rule intact. The problem is that the game has no second gesture anywhere — everything so far is a tap or a drag with one finger — so this one has nothing to teach it and nothing to hint it, on a screen with no cursor to change shape. A player who never discovers it experiences exactly the bug this item is about, and never finds out there was a way out."
+    }
+  ],
+  "links": [
+    {
+      "label": "Queue entry (Q-91)",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"
+    },
+    {
+      "label": "The machine menu (ui/menus.gd)",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/ui/menus.gd"
+    },
+    {
+      "label": "The mode's tap rule (systems/action_router.gd)",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/systems/action_router.gd"
+    },
+    {
+      "label": "Input modality appendix",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/appendix-input-modality.md"
+    }
+  ]
+}

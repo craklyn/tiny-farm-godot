@@ -11,6 +11,23 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
 
 ## Now — blocks M0 close or current work
 
+- **Q-91** **On a tablet, a mark-1 can only be shown tiles that happen to be on screen.**
+  Found 2026-09-07 by the designer, reading the menu. The camera sits at 3× on an 800×600
+  viewport, so the view is ~16×12 tiles of a 32×20 page — about half the plot. Teaching is
+  the game's only mode, and it takes taps at priority 0 (`action_router.gd`), which is what
+  kills tap-to-walk for its duration; there is no pan or pinch gesture. So the reachable
+  set is frozen at whatever surrounds the robot when the mode opens, and the rest of the
+  farm can only be taught by ending the mode, walking, and starting again. Arrow keys still
+  work, because `player.gd` reads `Input.get_vector` directly and never passes the router —
+  which is why this is invisible on a desktop and total on the tablet. The sim was built
+  for the opposite: the router's own comment says *"the whole point is that she can stand
+  by the robot and show it the far corner of the plot"*, and `teachable_at` has no distance
+  guard. Nothing in layers 1–3 needs to change (D-8 holds: this is what is *drawn*, never
+  what may be *done*). Three ways out, in `hq/data/decisions/Q-91.json`; the recommendation
+  is **(a) step back to point** — entering the mode pulls the camera back to frame the
+  whole page, so there is no off-screen left to reach. Bears on `design/06` §2 and the
+  input-modality appendix.
+
 - **Q-1 (Ruling)** Tiering sign-off on `DECISION_LOG.md`. **In progress (2026-08-18):**
   S-2 ✓, S-3 ✓, S-4 ✓ (first-principles note added to the entry on request), S-5 ✓
   (designer introspection note added; drills mechanic seeded in `design/06` §8), S-6 ✓
