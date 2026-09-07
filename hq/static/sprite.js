@@ -631,7 +631,11 @@ async function renderSpriteEditor(path) {
     const bar = document.getElementById("sp-palette");
     const used = paletteOf();
     const count = document.getElementById("sp-tones-count");
-    if (count) count.textContent = `· ${used.length} in this sheet`;
+    const mineNow = customColors.filter(c => !used.some(t => t.key === c.join(","))).length;
+    // The dashed outline says what it is right here rather than waiting to be
+    // hovered — it only appears once there is something for it to describe.
+    if (count) count.textContent = `· ${used.length} in this sheet`
+      + (mineNow ? ` · ${mineNow} dashed: mixed by you, not painted with yet` : "");
     bar.replaceChildren();
     bar.classList.toggle("picking", mergeMode);
     cv.classList.toggle("picking", mergeMode);
@@ -660,15 +664,21 @@ async function renderSpriteEditor(path) {
     er.addEventListener("click", () => { color = null; buildPalette(); });
     bar.appendChild(er);
     const usedKeys = new Set(used.map(t => t.key));
-    const swatch = (rgb, note) => {
+    // A dashed swatch is one you mixed with ＋ and have not painted with yet,
+    // so it is not a tone of the sheet — the solid ones all are. The flag is
+    // its own argument rather than "did a note get passed", which is what it
+    // used to be: the moment every swatch gained a tooltip, every swatch went
+    // dashed and the distinction quietly stopped meaning anything.
+    const swatch = (rgb, note, mine) => {
       const hex = toneHex(rgb);
       const sel = color && color.join(",") === rgb.join(",");
-      const b = h(`<button class="sw ${sel ? "sel" : ""} ${note ? "custom" : ""}" style="background:${hex}" title="${hex} — ${note}"></button>`).firstElementChild;
+      const b = h(`<button class="sw ${sel ? "sel" : ""} ${mine ? "custom" : ""}" style="background:${hex}" title="${toneName(rgb)} ${hex} — ${note}"></button>`).firstElementChild;
       b.addEventListener("click", () => { color = rgb; buildPalette(); });
       bar.appendChild(b);
     };
-    used.forEach(t => swatch(t.rgb, `${px(t.n)} in ${cellsWord(t.cells.size)}`));
-    customColors.filter(c => !usedKeys.has(c.join(","))).forEach(rgb => swatch(rgb, "new — not in the image yet"));
+    used.forEach(t => swatch(t.rgb, `${px(t.n)} in ${cellsWord(t.cells.size)}`, false));
+    const mine = customColors.filter(c => !usedKeys.has(c.join(",")));
+    mine.forEach(rgb => swatch(rgb, "mixed by you, not painted with yet", true));
     const add = h(`<button class="sw addc" title="add a new color to the palette">＋</button>`).firstElementChild;
     const picker = h(`<input type="color" style="position:absolute;width:0;height:0;opacity:0;border:0;padding:0">`).firstElementChild;
     picker.addEventListener("input", () => {
