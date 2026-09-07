@@ -8,6 +8,10 @@ var main_scene: Node2D
 var farm: Node2D
 var player: Node2D
 
+# Long enough for main.gd's TEACH_GLIDE (0.26s) plus a frame either side.
+const TEACH_GLIDE_WAIT := 0.4
+
+
 func _ready() -> void:
 	print("=".repeat(60))
 	print("TINY FARM — In-Situ Integration Test Runner")
@@ -3362,6 +3366,43 @@ func _scenario_ah_the_mark_one_takes_exact_orders() -> void:
 	_assert(main_scene.hud.teach_done_button.visible,
 		"the done button appears, which is the only way out")
 
+	# --- altitude: the whole page is reachable (design/11 "Altitude", Q-91) ----
+	#
+	# **The regression test for the bug this mode shipped with.** On a tablet the
+	# camera showed about half the farm and every tap was taken by the mode, so
+	# tap-to-walk was gone and the squares she could point at were frozen at
+	# whatever surrounded the robot. It was invisible on a desktop because the
+	# arrow keys still moved her. So the assertion is not "the camera zoomed out"
+	# — it is *every square this mode can address is on screen*, which is the
+	# thing that was actually untrue.
+	await get_tree().create_timer(TEACH_GLIDE_WAIT).timeout
+	var cam: Camera2D = main_scene.camera
+	var vp_size: Vector2 = main_scene.get_viewport().get_visible_rect().size
+	var half: Vector2 = vp_size / (2.0 * cam.zoom.x)
+	var eye: Vector2 = cam.get_screen_center_position()
+	var seen := Rect2(eye - half, half * 2.0)
+	var page_no: int = farm.sim.page_of(player.get_tile_pos())
+	var offscreen := 0
+	var teachable := 0
+	for ty in range(page_no * SimWorld.PAGE_ROWS, (page_no + 1) * SimWorld.PAGE_ROWS):
+		for tx in SimWorld.MAP_WIDTH:
+			if not farm.sim.teachable_at(Vector2i(tx, ty)):
+				continue
+			teachable += 1
+			var centre := Vector2(tx * 16 + 8, ty * 16 + 8)
+			if not seen.has_point(centre):
+				offscreen += 1
+	_assert(teachable > 0, "the page has squares a machine could be taught (%d)" % teachable)
+	_assert(offscreen == 0,
+		"every one of them is on screen at altitude — %d of %d were not" % [offscreen, teachable])
+	_assert(cam.zoom.x < 3.0,
+		"the view rose off her shoulder to get there (zoom %.2f, was 3.00)" % cam.zoom.x)
+	_assert(farm.teaching_eligible.size() >= teachable,
+		"and what a tap can reach is lit, so the choice is visible before she makes it")
+	_assert(String(main_scene.hud.teach_done_button.text).contains("/"),
+		"the button that ends the mode carries the count: '%s'"
+			% main_scene.hud.teach_done_button.text)
+
 	# She points at three tiles from where she is standing. **No walking**: the
 	# taps are instructions, so distance is not a thing they have.
 	var lesson: Array[Vector2i] = [Vector2i(17, 11), Vector2i(18, 11), Vector2i(19, 11)]
@@ -3378,6 +3419,51 @@ func _scenario_ah_the_mark_one_takes_exact_orders() -> void:
 		"she never moved: teaching is at any distance, which is the whole point of it")
 	_assert(farm.teaching_orders.size() == 3,
 		"and the farm is drawing what the machine now knows")
+
+	# A sweep across squares she has already taught adds and never removes: drag
+	# is many taps with the intent locked, and one that toggled would undo its own
+	# beginning the moment it crossed something already on the list.
+	var before_sweep: int = farm.teaching_orders.size()
+	for t in lesson:
+		InputManager.swipe_tile = t
+		InputManager.swipe_active = true
+		InputManager.swipe_moved = true
+		await get_tree().process_frame
+		await get_tree().process_frame
+	InputManager.swipe_active = false
+	InputManager.swipe_moved = false
+	_assert(farm.teaching_orders.size() == before_sweep,
+		"a drag back across taught squares leaves them taught — a sweep adds, never removes")
+
+	# **At the limit the picture says "full" without a sentence.** Nothing new is
+	# lit, so there is nothing left to tap by mistake; the taught squares stay lit
+	# because tapping one is how she takes it back.
+	var spare: Array[Vector2i] = []
+	for ty in range(page_no * SimWorld.PAGE_ROWS, (page_no + 1) * SimWorld.PAGE_ROWS):
+		for tx in SimWorld.MAP_WIDTH:
+			var st := Vector2i(tx, ty)
+			if farm.sim.teachable_at(st) and not lesson.has(st):
+				spare.append(st)
+	for st in spare:
+		if farm.teaching_orders.size() >= BotBrain.ORDER_LIMIT:
+			break
+		InputManager.click_tile = st
+		InputManager.has_click = true
+		await get_tree().process_frame
+		await get_tree().process_frame
+	_assert(farm.teaching_orders.size() == BotBrain.ORDER_LIMIT,
+		"she can fill the machine's whole round (%d)" % farm.teaching_orders.size())
+	_assert(farm.teaching_eligible.size() == BotBrain.ORDER_LIMIT,
+		"and at the limit only the taught squares stay lit — the dimmed farm is the 'full' message")
+	_assert(String(main_scene.hud.teach_done_button.text) == "\u2713 8/8",
+		"the button says so too: '%s'" % main_scene.hud.teach_done_button.text)
+	# Back down to three, so the assertions below still describe what she taught.
+	for i in range(farm.teaching_orders.size() - 1, 2, -1):
+		InputManager.click_tile = farm.teaching_orders[i]
+		InputManager.has_click = true
+		await get_tree().process_frame
+		await get_tree().process_frame
+	_assert(farm.teaching_orders.size() == 3, "and tapping them back off empties it again")
 
 	# A second tap on a taught tile takes it back off — the only undo a tap-only
 	# interface can offer.
@@ -3396,6 +3482,10 @@ func _scenario_ah_the_mark_one_takes_exact_orders() -> void:
 	main_scene.hud._on_teach_done_button()
 	await get_tree().process_frame
 	_assert(not main_scene.is_teaching(), "the done button ends the mode")
+	await get_tree().create_timer(TEACH_GLIDE_WAIT).timeout
+	_assert(is_equal_approx(main_scene.camera.zoom.x, 3.0),
+		"and puts her back down in the farm (zoom %.2f)" % main_scene.camera.zoom.x)
+	_assert(farm.teaching_eligible.is_empty(), "nothing is dimmed once she is done pointing")
 	_assert(not main_scene.hud.teach_done_button.visible, "and takes its button away")
 	_assert(farm.teaching_orders.is_empty(), "the farm stops drawing the list")
 	_assert(BotBrain.orders_of(farm.sim.actor(mk1)["extra"]).size() == 3,

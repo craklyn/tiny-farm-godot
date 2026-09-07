@@ -50,8 +50,9 @@ func _ready() -> void:
 	main.farm.apply_action({ "verb": "teach", "target": Vector2i(here.x + 2, here.y + 3),
 		"machine": mk1, "actor": "player" }, gs)
 	main._refresh_teaching_orders()
-	for i in 8:
-		await get_tree().process_frame
+	# Long enough for the camera to finish rising (main.TEACH_GLIDE): a shot taken
+	# mid-glide shows an altitude the player never sits at.
+	await get_tree().create_timer(0.5).timeout
 	get_viewport().get_texture().get_image().save_png("res://tools/shot_teaching.png")
 	main.end_teaching()
 	for i in 4:

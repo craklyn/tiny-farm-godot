@@ -484,6 +484,11 @@ var _camera_page: int = -1
 func _refresh_camera_limits(snap: bool = false) -> void:
 	if camera == null or player == null or farm == null:
 		return
+	# While she is at altitude the view is the whole page and then some, so the
+	# page's own limits would clamp it back down mid-glide. The mode owns the
+	# camera until it ends, and `_settle_from_altitude` calls this to hand it back.
+	if is_teaching():
+		return
 	var page: int = farm.sim.page_of(player.get_tile_pos())
 	_camera_page = page
 	var page_px: int = SimWorld.PAGE_ROWS * TILE_SIZE
@@ -931,18 +936,104 @@ func trigger_machine_menu_for(id: String) -> void:
 # the HUD offers the one control that ends it. Neither of those is sim state and
 # neither is saved — what the machine knows is on the machine, and *that she is
 # mid-teach* is a fact about this minute of this session.
+# --- altitude (design/11 "Altitude", ruled 2026-09-07 as Q-91) --------------
+#
+# **The view rises as the work is handed over.** Selection happens at ground
+# level and direction happens at altitude, so the camera moves exactly at this
+# mode's boundaries: pointing at squares she is not standing in is not something
+# a camera parked on her shoulder can show her.
+#
+# Tier 1 of three, and the only one that exists: the game moves the camera *for*
+# her. No gesture is spent — pinch and two-finger pan stay reserved for the
+# manual camera that debuts with combat tempo (design/11 row 26), and a player
+# who never learns to pinch loses nothing here. This tier holds only while the
+# page still fits on one screen; the page outgrowing the viewport at fit-zoom is
+# the alarm that manual camera has stopped being optional.
+const TEACH_GLIDE := 0.26          # a glide reads as stepping back; a cut reads as a scene change
+const TEACH_MARGIN := 10.0         # breathing room so the outermost row is not flush to the edge
+const CAM_FREE := 1_000_000        # "no limit" while the mode owns the camera
+
+var _teach_cam: Dictionary = {}
+
+# Fit the page into what the HUD leaves, computed rather than tuned: a different
+# device, window or a future larger page all work without a constant to maintain.
+func _altitude_zoom() -> float:
+	var vp := get_viewport_rect().size
+	var page_w := float(MAP_WIDTH * TILE_SIZE)
+	var page_h := float(SimWorld.PAGE_ROWS * TILE_SIZE)
+	var free_w: float = maxf(64.0, vp.x - TEACH_MARGIN * 2.0)
+	var free_h: float = maxf(64.0, vp.y - HUD_TOP_PX - HUD_BOTTOM_PX - TEACH_MARGIN * 2.0)
+	return clampf(minf(free_w / page_w, free_h / page_h), 0.5, float(CAMERA_SCALE))
+
+
+func _altitude_centre(z: float) -> Vector2:
+	var page: int = farm.sim.page_of(player.get_tile_pos())
+	var page_px := float(SimWorld.PAGE_ROWS * TILE_SIZE)
+	# The free band sits between the two bars rather than in the middle of the
+	# screen, so the page is centred on the band and not on the viewport — else
+	# the bottom row hides under the tool bar on a short window.
+	var band_shift := (HUD_TOP_PX - HUD_BOTTOM_PX) / 2.0 / z
+	return Vector2(MAP_WIDTH * TILE_SIZE / 2.0,
+		page * page_px + page_px / 2.0 - band_shift)
+
+
+func _rise_to_altitude() -> void:
+	if camera == null or player == null or farm == null:
+		return
+	_teach_cam = {
+		"zoom": camera.zoom,
+		"smoothing": camera.position_smoothing_enabled,
+	}
+	# Smoothing is the camera chasing the farmer; the tween below *is* the motion
+	# now, and leaving both on makes the glide fight itself.
+	camera.position_smoothing_enabled = false
+	camera.limit_left = -CAM_FREE
+	camera.limit_top = -CAM_FREE
+	camera.limit_right = CAM_FREE
+	camera.limit_bottom = CAM_FREE
+	var z := _altitude_zoom()
+	var here := _altitude_centre(z) - player.global_position
+	var tw := create_tween().set_parallel(true).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.tween_property(camera, "zoom", Vector2(z, z), TEACH_GLIDE)
+	tw.tween_property(camera, "position", here, TEACH_GLIDE)
+
+
+func _settle_from_altitude() -> void:
+	if camera == null:
+		return
+	var back: Vector2 = _teach_cam.get("zoom", Vector2(CAMERA_SCALE, CAMERA_SCALE))
+	var smooth: bool = bool(_teach_cam.get("smoothing", true))
+	_teach_cam = {}
+	var tw := create_tween().set_parallel(true).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_property(camera, "zoom", back, TEACH_GLIDE)
+	tw.tween_property(camera, "position", Vector2.ZERO, TEACH_GLIDE)
+	# The limits come back only once she is home: restoring them mid-glide would
+	# clamp the view she is still travelling through.
+	tw.chain().tween_callback(func():
+		camera.position_smoothing_enabled = smooth
+		_camera_page = -1          # force the refresh below to actually recompute
+		_refresh_camera_limits(true))
+
+
 func begin_teaching(id: String) -> void:
 	if farm == null or not farm.sim.has_actor(id):
 		return
 	ActionRouter.teaching_machine = id
+	_rise_to_altitude()
+	# `_refresh_teaching_orders` shows the button *and* puts the count on it, so
+	# a bare `set_teaching(true)` after it only wiped the count back to "Done".
+	# It is also the one that bails out if the machine has gone, and calling this
+	# afterwards would have left the button up over a mode that had already ended.
 	_refresh_teaching_orders()
-	if hud != null and hud.has_method("set_teaching"):
-		hud.set_teaching(true)
 
 
 func end_teaching() -> void:
+	var was_teaching := is_teaching()
 	ActionRouter.teaching_machine = ""
+	if was_teaching:
+		_settle_from_altitude()
 	if farm != null:
+		farm.teaching_eligible.clear()
 		# `.clear()`, not `= []`: `teaching_orders` is an `Array[Vector2i]`, and
 		# assigning an untyped empty array to a typed one throws at runtime —
 		# which silently abandoned the rest of this function and left the done
@@ -966,7 +1057,39 @@ func _refresh_teaching_orders() -> void:
 		end_teaching()
 		return
 	farm.teaching_orders = BotBrain.orders_of(farm.sim.actor(id).get("extra", {}))
+	_refresh_teaching_eligible()
+	if hud != null and hud.has_method("set_teaching"):
+		hud.set_teaching(true, farm.teaching_orders.size(), BotBrain.ORDER_LIMIT)
 	farm.queue_redraw()
+
+
+# **What a tap can do, made visible before she makes it.** Everything the mode
+# can address stays lit and the rest dims, which is what removes the silent tap
+# (T-18, Q-34) without a refusal: she can see the shape of the choice.
+#
+# It also does the mode's arithmetic. At the order limit nothing new is eligible,
+# so the untaught squares simply stop being lit and the picture says "full"
+# without a sentence — the taught ones stay lit because tapping one takes it back.
+#
+# Computed here rather than in `_draw`: nothing can change a tile's state while
+# she is pointing (the mode spends no energy and works no soil), so this is once
+# per tap instead of 640 sim calls a frame.
+func _refresh_teaching_eligible() -> void:
+	if farm == null:
+		return
+	var lit: Dictionary = {}
+	var full: bool = farm.teaching_orders.size() >= BotBrain.ORDER_LIMIT
+	for t in farm.teaching_orders:
+		lit[t] = true
+	if not full:
+		var page: int = farm.sim.page_of(player.get_tile_pos())
+		var y0: int = page * SimWorld.PAGE_ROWS
+		for ty in range(y0, y0 + SimWorld.PAGE_ROWS):
+			for tx in MAP_WIDTH:
+				var t := Vector2i(tx, ty)
+				if farm.sim.teachable_at(t):
+					lit[t] = true
+	farm.teaching_eligible = lit
 
 
 # Q-12 Expansion Morning v1: jingle + a confetti sweep across the farm, no

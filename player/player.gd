@@ -199,8 +199,11 @@ func update_player(delta: float) -> void:
 	# answered here and taken off the table before the ordinary tap path, which
 	# is entirely about walking to things, ever sees it.
 	if target_t != null and ActionRouter.teaching_machine != "":
-		if is_new_tap:
-			_teach_tap(target_t)
+		# A drag adds; it never removes. Drag is "many taps with the intent
+		# locked" (the swipe-chain of design/11 row 3), so a row just planted is
+		# one sweep — but a drag that toggled would fight itself the moment it
+		# crossed a square already taught, undoing its own beginning.
+		_teach_tap(target_t, is_drag)
 		target_t = null
 
 	if target_t != null:
@@ -398,6 +401,16 @@ func update_player(delta: float) -> void:
 					String(resolved.get("action", "")), out_kind,
 					satisfied2 if satisfied2 != "" else why,
 					target_vec if halo_t.x >= 0 else Vector2i(-1, -1))
+
+	# **She stands still while she is pointing.** There is nothing left for walking
+	# to reveal once the whole page is on screen, and the divergence is what hid
+	# Q-91 for four days: the arrow keys kept working, so the mode looked complete
+	# on the desktop it was built on and could only reach half the farm on the
+	# tablet it ships to. Off for every device, so the two cannot disagree again.
+	if ActionRouter.teaching_machine != "":
+		path = []
+		pending_action = {}
+		return
 
 	# Keyboard / gamepad movement (cancels path)
 	var input_vec := Input.get_vector("move_left", "move_right", "move_up", "move_down")
@@ -620,9 +633,24 @@ func refuse_target(t: Vector2i, why: String) -> void:
 # can see on the tile itself — green when a tile joined the list, the ordinary
 # refusal wobble when it could not (a rock, a hedge, or a ninth tile on a machine
 # that holds eight).
-func _teach_tap(at: Vector2i) -> void:
+# Is this square already on the machine's list? Read off the farm's picture of
+# it, which `main._refresh_teaching_orders` keeps in step with the machine itself
+# after every tap — so this can never disagree with what she can see.
+func teaching_holds(at: Vector2i) -> bool:
+	return farm != null and farm.teaching_orders.has(at)
+
+
+func _teach_tap(at: Vector2i, is_drag: bool = false) -> void:
+	# Already on the list and this is a sweep, not a tap: silently leave it. The
+	# sim's `teach` verb toggles, which is right for a tap and wrong for a drag,
+	# and answering here keeps the toggle where it belongs instead of teaching the
+	# gateway about gestures.
+	if is_drag and teaching_holds(at):
+		return
 	var resolved := ActionRouter.resolve(farm, gs, at, get_tile_pos(), false, null)
 	if resolved.is_empty():
+		if is_drag:
+			return   # a sweep across grass is aimed at the soil it crosses, not a refusal per square
 		# Not a square a machine could be taught. The wobble is the answer, and it
 		# is the same one an unworkable tile gives her everywhere else.
 		refuse_target(at, "not_teachable")

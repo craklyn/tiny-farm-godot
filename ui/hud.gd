@@ -47,6 +47,7 @@ var gold_label: Label
 var menu_button: Button
 var bed_button: Button          # T-31 (Q-49): the HUD's one action control
 var teach_done_button: Button   # 2026-09-03: the only way out of teaching mode
+var _teach_home: Vector2 = Vector2.ZERO
 
 # The main scene this HUD belongs to, handed over by `main.gd` when it builds
 # one (2026-09-03).
@@ -348,6 +349,8 @@ func _build_ui() -> void:
 	# farm, and it has to be the only way the mode ends. Hidden at every other
 	# moment, which is why it can sit where the bed button does without ever
 	# competing with it: teaching pauses nothing else she might want to press.
+	# Where the button sits when it is not at altitude, kept so `set_teaching`
+	# can put it back rather than recomputing a layout it does not own.
 	teach_done_button = Button.new()
 	teach_done_button.name = "TeachDoneButton"
 	teach_done_button.text = "Done"
@@ -357,6 +360,7 @@ func _build_ui() -> void:
 	# 2026-09-03).
 	teach_done_button.position = Vector2(viewport_size.x / 2.0 - 48,
 		viewport_size.y - 32 - 8 - 44 - 44)
+	_teach_home = teach_done_button.position
 	teach_done_button.tooltip_text = "Finish showing the robot"
 	var teach_style := StyleBoxFlat.new()
 	teach_style.bg_color = Color(0.14, 0.42, 0.62, 0.94)
@@ -1007,9 +1011,27 @@ func _on_seed_pill_gui_input(event: InputEvent) -> void:
 
 ## Show or hide the teaching control. Called by `main.gd` when the mode begins
 ## and ends; the HUD holds no opinion about when that is.
-func set_teaching(on: bool) -> void:
-	if teach_done_button != null:
-		teach_done_button.visible = on
+# **The mode's one control carries its own count** (design/11, Altitude). It is
+# the only furniture the mode adds, and it answers "how many have I got" without
+# reopening the panel — digits only, which is inside the literacy bar the gold and
+# seed counts already set (S-7).
+#
+# It also moves out of the field while she is at altitude. Parked in the middle
+# it would sit on top of squares she needs to tap, and a control that covers its
+# own subject is worse than one that is slightly further to reach.
+func set_teaching(on: bool, taught: int = -1, limit: int = 0) -> void:
+	if teach_done_button == null:
+		return
+	teach_done_button.visible = on
+	if not on:
+		teach_done_button.position = _teach_home
+		teach_done_button.text = "Done"
+		return
+	var vp := get_viewport().get_visible_rect().size
+	teach_done_button.position = Vector2(
+		vp.x - teach_done_button.size.x - 10.0,
+		vp.y - 32.0 - 8.0 - teach_done_button.size.y)
+	teach_done_button.text = "\u2713 %d/%d" % [taught, limit] if taught >= 0 and limit > 0 else "Done" 
 
 
 func _on_teach_done_button() -> void:

@@ -724,7 +724,15 @@ var _acks: Dictionary = {}  # Vector2i -> { "t": msec, "why": String }
 # other moment, so this costs a live game exactly one `is_empty()` per frame. Not
 # sim state and not derived here — the machine's own `extra.orders` is the truth,
 # and this is a copy for the one screen that draws it.
+# Deep enough that a lit square reads as chosen at a glance, shallow enough that
+# the dimmed farm is still legible — she is deciding about the whole plot, so the
+# part she is not choosing must stay a picture rather than become a hole.
+const TEACH_DIM := Color(0.05, 0.04, 0.03, 0.62)
+
 var teaching_orders: Array[Vector2i] = []
+# The squares a tap can reach while she is at altitude, keyed by tile. Empty
+# means the mode is off — see `_draw`'s dimming pass and `main._refresh_teaching_eligible`.
+var teaching_eligible: Dictionary = {}
 
 # --- The wetness soaks in (Q-52, ruled 2026-09-02) ----------------------------
 #
@@ -1247,6 +1255,29 @@ func _draw() -> void:
 	# A ring on the ground rather than a marker above it, because the mark belongs
 	# to the *square* — and the number beside it is the order it will visit them
 	# in, which is the other half of "exact orders" made visible.
+	# **Everything a tap cannot reach dims** while she is pointing, so the shape of
+	# the choice is visible before she makes one. Drawn under the order rings and
+	# over everything else: the scrim is about the ground, not about the marks on
+	# it. One queued call per ineligible square, on the same pass the tiles are
+	# already drawn in — the set itself is computed once per tap, not per frame.
+	if not teaching_eligible.is_empty():
+		var dim_rects: Array[Rect2] = []
+		for ty in MAP_HEIGHT:
+			for tx in MAP_WIDTH:
+				var dt := Vector2i(tx, ty)
+				if teaching_eligible.has(dt):
+					continue
+				if tile_look(tx, ty).state == WorldLayout.VOID:
+					continue
+				dim_rects.append(Rect2(tx * TILE_SIZE, ty * TILE_SIZE, TILE_SIZE, TILE_SIZE))
+		if not dim_rects.is_empty():
+			render_queue.append({
+				"y": 98500.0,
+				"draw": func():
+					for r in dim_rects:
+						draw_rect(r, TEACH_DIM, true)
+			})
+
 	for i in teaching_orders.size():
 		var ot: Vector2i = teaching_orders[i]
 		var ocx := ot.x * TILE_SIZE + TILE_SIZE / 2.0
