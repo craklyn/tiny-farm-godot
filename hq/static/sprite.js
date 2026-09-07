@@ -272,6 +272,15 @@ async function renderSpriteEditor(path) {
   let lastDiff = { frames: [], pixels: 0, colors_added: [], colors_removed: [], new_to_sheet: [] };
   let cur = curClip.cells.length ? curClip.cells[0] : 0;
   let playing = false, onion = true, dirty = false;
+  /* The tone picker's state. It lives up here with the rest of the editor's
+     because the drawing helpers below read it: a merge under consideration is
+     drawn everywhere the finished one would be. */
+  let mergeMode = false;          // the strip is picking tones, not painting
+  let mergeKeep = null;           // tone key, or ERASER — which one survives
+  let mergeNote = "";             // what the last merge did, kept on screen
+  let hoverTone = null;           // rgb being isolated on the canvas right now
+  let proposal = null;            // {drop:Set, rgb|null} drawn instead of the truth
+  const mergeSel = new Set();     // tone keys ticked for folding
   const undoStack = [];        // [{i, bytes}] per entry — see doUndo
   const UNDO_DEPTH = 60;
   const pushUndo = (indices) => {
@@ -386,10 +395,29 @@ async function renderSpriteEditor(path) {
   const tmp = document.createElement("canvas");
   const tctx = tmp.getContext("2d");
 
+  /* Every surface that draws a frame draws through here, so a merge you are
+     only considering appears wherever the finished one would: the canvas, the
+     live preview, the animation thumbnails. You see the sprite in its new
+     colours before anything is written. "before" is exempt by definition — it
+     is the sheet as it arrived. */
+  const pixelsOf = (frame, useOrig) => {
+    // While a tone is isolated the question is where that tone sits *now*, so
+    // a proposal would answer the wrong question and is stood down.
+    if (useOrig || !proposal || hoverTone) return useOrig ? frame.orig : frame.data;
+    const out = new ImageData(new Uint8ClampedArray(frame.data.data), frame.data.width, frame.data.height);
+    const d = out.data;
+    for (let i = 0; i < d.length; i += 4) {
+      if (!d[i + 3] || !proposal.drop.has(`${d[i]},${d[i + 1]},${d[i + 2]}`)) continue;
+      if (proposal.rgb) { d[i] = proposal.rgb[0]; d[i + 1] = proposal.rgb[1]; d[i + 2] = proposal.rgb[2]; }
+      else d[i + 3] = 0;
+    }
+    return out;
+  };
+
   const blit = (frame, dctx, scale, alpha, useOrig) => {
     const [, , w, hh] = frame.rect;
     tmp.width = w; tmp.height = hh;
-    tctx.putImageData(useOrig ? frame.orig : frame.data, 0, 0);
+    tctx.putImageData(pixelsOf(frame, useOrig), 0, 0);
     dctx.globalAlpha = alpha;
     dctx.drawImage(tmp, 0, 0, w, hh, 0, 0, w * scale, hh * scale);
     dctx.globalAlpha = 1;
@@ -401,7 +429,10 @@ async function renderSpriteEditor(path) {
   const blitGhost = (frame, dctx, scale) => {
     const [, , w, hh] = frame.rect;
     tmp.width = w; tmp.height = hh;
-    tctx.putImageData(frame.data, 0, 0);
+    // The ghost rehearses too. It is a reference drawn from the same sheet, so
+    // showing it un-merged behind a merged frame would compare the frame
+    // against a sheet that is about to stop existing.
+    tctx.putImageData(pixelsOf(frame, false), 0, 0);
     tctx.globalCompositeOperation = "source-atop";
     tctx.fillStyle = "rgba(122, 168, 190, 0.75)";
     tctx.fillRect(0, 0, w, hh);
@@ -521,7 +552,7 @@ async function renderSpriteEditor(path) {
         const f = frames[c.cell];
         const [, , w, hh] = f.rect;
         tmp.width = w; tmp.height = hh;
-        tctx.putImageData(useOrig ? f.orig : f.data, 0, 0);
+        tctx.putImageData(pixelsOf(f, useOrig), 0, 0);
         dctx.save();
         dctx.translate((c.dx + 0.5) * fw * s, (c.dy + 0.5) * fh * s);
         if (c.rot) dctx.rotate(c.rot * Math.PI / 180);
@@ -591,11 +622,7 @@ async function renderSpriteEditor(path) {
   // Colors the user added via the picker this session; they join the image's
   // real palette the moment they're painted with.
   const customColors = [];
-  let mergeMode = false;          // the strip is picking tones, not painting
-  let mergeKeep = null;           // tone key, or ERASER — which one survives
-  let mergeNote = "";             // what the last merge did, kept on screen
-  let hoverTone = null;           // rgb being isolated on the canvas right now
-  const mergeSel = new Set();     // tone keys ticked for folding
+  let considering = null;         // the option under the cursor, drawn live
 
   const buildPalette = () => {
     const bar = document.getElementById("sp-palette");
@@ -614,10 +641,12 @@ async function renderSpriteEditor(path) {
         b.addEventListener("click", () => {
           if (on) { mergeSel.delete(t.key); if (mergeKeep === t.key) mergeKeep = null; }
           else mergeSel.add(t.key);
-          buildPalette();
+          buildPalette(); redrawAll();
         });
-        b.addEventListener("mouseenter", () => { hoverTone = t.rgb; toneHint(t); render(); });
-        b.addEventListener("mouseleave", () => { hoverTone = null; toneHint(null); render(); });
+        // Isolating stands the rehearsal down and puts it back, so both the
+        // canvas and the previews follow the cursor together.
+        b.addEventListener("mouseenter", () => { hoverTone = t.rgb; toneHint(t); redrawAll(); });
+        b.addEventListener("mouseleave", () => { hoverTone = null; toneHint(null); redrawAll(); });
         bar.appendChild(b);
       });
       buildMergeBar();
@@ -673,6 +702,36 @@ async function renderSpriteEditor(path) {
     if (mergeKeep === ERASER) return ERASER;
     return sel.find(t => t.key === mergeKeep) || sel.reduce((a, b) => (b.n > a.n ? b : a));
   };
+  const keyOf = k => k === ERASER ? ERASER : k.key;
+
+  // What one option would do, in a sentence — and the reassurance that the
+  // sprite already changing on screen is a rehearsal, not the edit.
+  const sayFor = (sel, pick) => {
+    const erasing = pick === ERASER;
+    const drop = erasing ? sel : sel.filter(t => t.key !== pick);
+    const nPx = drop.reduce((n, t) => n + t.n, 0);
+    const cells = new Set();
+    drop.forEach(t => t.cells.forEach(c => cells.add(c)));
+    const keep = erasing ? null : sel.find(t => t.key === pick);
+    return `${px(nPx)} in ${cellsWord(cells.size)} ${erasing
+      ? "become transparent"
+      : `change to <b>${keep.rgb.join(", ")}</b>`}. The canvas and the preview are showing it
+      already — nothing is written until you press the button below.`;
+  };
+
+  // The picture the canvas and the previews should draw right now: the sheet as
+  // it is, or the sheet as one of the options would leave it.
+  const setProposal = (sel, pick) => {
+    if (!sel || sel.length < 2 || !pick) { proposal = null; return; }
+    const erasing = pick === ERASER;
+    const keep = erasing ? null : sel.find(t => t.key === pick);
+    if (!erasing && !keep) { proposal = null; return; }
+    proposal = {
+      drop: new Set((erasing ? sel : sel.filter(t => t.key !== pick)).map(t => t.key)),
+      rgb: erasing ? null : keep.rgb,
+    };
+  };
+  const redrawAll = () => { render(); renderPreview(pvi); repaintClipThumbs(); };
 
   /* Antialiasing never leaves one stray tone; it leaves a small cloud of them
      around a real one. Gathering that cloud in a click is the difference
@@ -699,6 +758,7 @@ async function renderSpriteEditor(path) {
     const all = paletteOf();
     const byKey = new Map(all.map(t => [t.key, t]));
     const sel = [...mergeSel].map(k => byKey.get(k)).filter(Boolean);
+    setProposal(sel, sel.length > 1 ? keyOf(keeperOf(sel)) : null);
     // The cloud is measured around the biggest tone you have ticked — the one
     // the fringe was smeared out of — never around the fringe itself.
     const anchor = sel.length ? sel.reduce((a, b) => (b.n > a.n ? b : a)) : null;
@@ -716,43 +776,66 @@ async function renderSpriteEditor(path) {
     } else {
       const keeper = keeperOf(sel);
       const erasing = keeper === ERASER;
-      const drop = erasing ? sel : sel.filter(t => t.key !== keeper.key);
-      const nPx = drop.reduce((n, t) => n + t.n, 0);
-      const cells = new Set();
-      drop.forEach(t => t.cells.forEach(c => cells.add(c)));
+      const total = sel.reduce((n, t) => n + t.n, 0);
       box.replaceChildren(h(`<div class="sp-merge-in">
-        <p class="sp-merge-say">${px(nPx)} in ${cellsWord(cells.size)} ${erasing
-          ? "become transparent — the tones leave the sheet and the silhouette tightens."
-          : "change to the tone marked <b>keep</b>."}</p>
-        <div class="sp-keep" id="sp-keep"></div>
+        <p class="sp-merge-say">${sayFor(sel, keyOf(keeper))}</p>
+        <div class="sp-opts" id="sp-opts"></div>
         <p class="sp-merge-hint" id="sp-merge-hint"></p>
         <div class="sp-merge-act">
           <button data-act="merge">${erasing ? `Erase ${sel.length} tones` : `Fold ${sel.length} tones into one`}</button>
           ${gather}<button class="ghost" data-act="cancel">Cancel</button>
         </div>
       </div>`).firstElementChild);
-      const row = box.querySelector("#sp-keep");
-      const chip = (on, swatch, label, title, pick) => {
-        const b = h(`<button class="sp-keepsw ${on ? "on" : ""}" title="${title}">${swatch}<span>${label}</span></button>`).firstElementChild;
-        b.addEventListener("click", () => { mergeKeep = pick; buildMergeBar(); });
+      /* The survivors are a list rather than a row of chips because they are
+         being compared, not just picked from: near-duplicate tones are hard to
+         tell apart as adjacent squares, so each gets its own line with the
+         numbers that separate it — its channels, its hex, how much of the sheet
+         it covers, and what choosing it would move. Hovering one draws it. */
+      const row = box.querySelector("#sp-opts");
+      const opt = (on, pick, sw, name, sub, use, moves, showing) => {
+        const b = h(`<button class="sp-opt ${on ? "on" : ""}">${sw}
+          <span class="sp-opt-id">${name}<small>${sub}</small></span>
+          <span class="sp-opt-use">${use}<small>${moves}</small></span>
+          <span class="sp-opt-keep">keep</span></button>`).firstElementChild;
+        b.addEventListener("click", () => { mergeKeep = pick; considering = null; buildMergeBar(); });
+        const consider = () => {
+          considering = pick; setProposal(sel, pick);
+          const hint = document.getElementById("sp-merge-hint");
+          if (hint) hint.textContent = `Showing ${showing} — click to keep it.`;
+          redrawAll();
+        };
+        const drop = () => {
+          considering = null; setProposal(sel, keyOf(keeperOf(sel)));
+          const hint = document.getElementById("sp-merge-hint");
+          if (hint) hint.textContent = "";
+          redrawAll();
+        };
+        // Focus does what hover does, so tabbing through the options shows them
+        // as readily as pointing at them.
+        b.addEventListener("mouseenter", consider);
+        b.addEventListener("focus", consider);
+        b.addEventListener("mouseleave", drop);
+        b.addEventListener("blur", drop);
         row.appendChild(b);
       };
-      // Survivor first, then the rest biggest-first: the eye should land on
-      // what is being kept before it reads what is going away.
-      const ordered = [...sel].sort((a, b) =>
-        (b.key === (erasing ? null : keeper.key)) - (a.key === (erasing ? null : keeper.key)) || b.n - a.n);
-      ordered.forEach(t => chip(!erasing && t.key === keeper.key,
-        `<i style="background:${toneHex(t.rgb)}"></i>`,
-        (!erasing && t.key === keeper.key ? "keep · " : "") + `${t.n} px`,
-        `keep ${toneHex(t.rgb)} and fold the rest into it`, t.key));
+      // Biggest first: the tone most of the sheet is already made of is the one
+      // a fringe was smeared out of, and it is the answer most of the time.
+      [...sel].sort((a, b) => b.n - a.n).forEach(t => opt(
+        !erasing && t.key === keeper.key, t.key,
+        `<i class="sp-opt-sw" style="background:${toneHex(t.rgb)}"></i>`,
+        t.rgb.join(", "), toneHex(t.rgb),
+        `${t.n} px in ${t.cells.size} of ${frames.length} cells`,
+        `${total - t.n} px would change to it`, t.rgb.join(", ")));
       // Around a silhouette the honest answer is often that the fringe should
       // not be a colour at all, so transparency is offered as a survivor too.
-      chip(erasing, `<i class="er">⌫</i>`, erasing ? "erase all" : "erase",
-        "erase every ticked tone instead of folding them together", ERASER);
+      opt(erasing, ERASER, `<i class="sp-opt-sw er">⌫</i>`,
+        "transparent", "no colour at all",
+        `${total} px would leave the sheet`, "the silhouette tightens",
+        "every ticked tone erased");
     }
     box.querySelectorAll("[data-act]").forEach(b => b.addEventListener("click", () => {
       if (b.dataset.act === "merge") applyMerge();
-      else if (b.dataset.act === "near") { near.forEach(t => mergeSel.add(t.key)); buildPalette(); }
+      else if (b.dataset.act === "near") { near.forEach(t => mergeSel.add(t.key)); buildPalette(); redrawAll(); }
       else exitMerge();
     }));
   };
@@ -764,14 +847,16 @@ async function renderSpriteEditor(path) {
     b.classList.toggle("on", mergeMode);
   };
   const exitMerge = () => {
-    mergeMode = false; mergeSel.clear(); mergeKeep = null; hoverTone = null;
-    setMergeBtn(); buildPalette(); render();
+    mergeMode = false; mergeSel.clear(); mergeKeep = null;
+    hoverTone = null; proposal = null; considering = null;
+    setMergeBtn(); buildPalette(); redrawAll();
   };
   const enterMerge = () => {
     if (mergeMode) return exitMerge();
     if (playing) setPlaying(false);
     mergeMode = true; mergeNote = ""; mergeSel.clear(); mergeKeep = null;
-    setMergeBtn(); buildPalette(); render();
+    proposal = null; considering = null;
+    setMergeBtn(); buildPalette(); redrawAll();
   };
 
   const applyMerge = () => {
@@ -804,9 +889,9 @@ async function renderSpriteEditor(path) {
     mergeNote = erasing
       ? `Erased ${drop.size} tones — ${px(changed)} across ${cellsWord(snaps.length)} are now transparent. Ctrl+Z puts them back.`
       : `Folded ${drop.size + 1} tones into ${toneHex(keeper.rgb)} — ${px(changed)} across ${cellsWord(snaps.length)} changed. Ctrl+Z puts them back.`;
-    mergeMode = false; mergeSel.clear(); mergeKeep = null; hoverTone = null;
-    setMergeBtn(); buildPalette();
-    render(); renderPreview(pvi); repaintClipThumbs();
+    mergeMode = false; mergeSel.clear(); mergeKeep = null;
+    hoverTone = null; proposal = null; considering = null;
+    setMergeBtn(); buildPalette(); redrawAll();
   };
 
   /* ---------- the animation list ----------

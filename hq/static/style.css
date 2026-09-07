@@ -491,20 +491,40 @@ code.ref { background: #1b1710; border: 1px solid var(--line); border-radius: 6p
 .sp-merge-act { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
 .sp-merge-act button { font-size: 13px; padding: 6px 12px; }
 .sp-merge-in.done { font-size: 13px; color: var(--muted); }
-/* Which of the chosen tones lives. The default is the one covering the most
-   pixels; every candidate is here to be clicked instead, transparency included. */
-.sp-keep { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
-.sp-keepsw {
-  display: flex; align-items: center; gap: 6px; background: var(--panel2);
-  border: 2px solid var(--line); border-radius: 8px; padding: 3px 8px 3px 4px;
-  color: var(--muted); font-size: 11.5px; font-weight: 600; cursor: pointer;
+/* Which of the chosen tones lives. A stacked list, not a row of chips: these
+   are near-duplicates being compared, and two 18px squares of almost the same
+   brown tell you nothing. Each option gets a line wide enough to carry what
+   actually separates it — its channels, its hex, how much of the sheet it
+   covers, and what choosing it would move — and hovering one draws it on the
+   canvas and in the preview. */
+.sp-opts { display: flex; flex-direction: column; gap: 4px; margin-top: 9px; }
+.sp-opt {
+  display: grid; grid-template-columns: 22px minmax(0, 1fr) auto 34px;
+  align-items: center; gap: 10px; text-align: left; width: 100%;
+  background: var(--panel2); border: 2px solid var(--line); border-radius: 8px;
+  padding: 5px 8px; color: var(--text); font-size: 12px; font-weight: 600;
+  font-family: inherit; cursor: pointer;
 }
-.sp-keepsw i { width: 18px; height: 18px; border-radius: 4px; display: block; flex: none; }
-.sp-keepsw i.er {
+.sp-opt:hover { border-color: var(--muted); }
+.sp-opt.on { border-color: var(--accent); }
+.sp-opt-sw { width: 22px; height: 22px; border-radius: 4px; display: block; }
+.sp-opt-sw.er {
   background: repeating-conic-gradient(#221c13 0% 25%, #2a2318 0% 50%) 0 0/8px 8px;
-  font-style: normal; font-size: 11px; text-align: center; line-height: 18px; color: var(--text);
+  font-style: normal; font-size: 12px; text-align: center; line-height: 22px; color: var(--text);
 }
-.sp-keepsw.on { border-color: var(--accent); color: var(--accent); }
+/* Channels lead, because that is the number that separates two tones the eye
+   cannot; the hex sits under it for anyone carrying one in from elsewhere. */
+.sp-opt-id, .sp-opt-use { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.sp-opt-use { text-align: right; font-weight: 500; color: var(--muted); }
+.sp-opt small { font-size: 10.5px; font-weight: 500; color: var(--muted); }
+.sp-opt-id small { font-family: ui-monospace, Menlo, Consolas, monospace; }
+/* The word is always in the layout and only sometimes visible, so choosing a
+   different survivor never shuffles the rows under the hand picking them. */
+.sp-opt-keep {
+  visibility: hidden; text-align: right; font-size: 10.5px;
+  letter-spacing: .4px; text-transform: uppercase; color: var(--accent);
+}
+.sp-opt.on .sp-opt-keep { visibility: visible; }
 .sp-side { max-width: 340px; }
 .sp-previews { display: flex; gap: 14px; }
 .sp-previews figure { margin: 0; text-align: center; }
