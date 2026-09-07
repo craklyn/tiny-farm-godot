@@ -648,12 +648,12 @@ async function renderSpriteEditor(path) {
         b.addEventListener("click", () => {
           if (on) { mergeSel.delete(t.key); if (mergeKeep === t.key) mergeKeep = null; }
           else mergeSel.add(t.key);
-          buildPalette(); redrawAll();
+          buildPalette(); redrawAll(true);
         });
-        // Isolating stands the rehearsal down and puts it back, so both the
-        // canvas and the previews follow the cursor together.
-        b.addEventListener("mouseenter", () => { hoverTone = t.rgb; toneHint(t); redrawAll(); });
-        b.addEventListener("mouseleave", () => { hoverTone = null; toneHint(null); redrawAll(); });
+        // Isolating stands the rehearsal down and puts it back, so the canvas,
+        // the previews and the map all follow the cursor together.
+        b.addEventListener("mouseenter", () => { hoverTone = t.rgb; toneHint(t); redrawAll(true); });
+        b.addEventListener("mouseleave", () => { hoverTone = null; toneHint(null); redrawAll(true); });
         bar.appendChild(b);
       });
       buildMergeBar();
@@ -744,7 +744,18 @@ async function renderSpriteEditor(path) {
       rgb: erasing ? null : keep.rgb,
     };
   };
-  const redrawAll = () => { render(); renderPreview(pvi); repaintClipThumbs(); };
+  /* Painting only ever touches the cell under the cursor, so a stroke repaints
+     that one thumbnail and the animations it belongs to — that is the cheap
+     path, and it stays cheap. A merge is the other kind of change: real or only
+     rehearsed, it rewrites every cell of the sheet, so every picture of the
+     sheet has to be redrawn or the map below goes on showing tones the sprite
+     no longer has. Still per action, never per frame. */
+  const redrawAll = wholeSheet => {
+    render(); renderPreview(pvi);
+    if (!wholeSheet) return repaintClipThumbs();
+    frames.forEach((_, i) => paintThumb(i));
+    clips.forEach(cl => { if (cl.redraw) cl.redraw(); });
+  };
 
   /* Antialiasing never leaves one stray tone; it leaves a small cloud of them
      around a real one. Gathering that cloud in a click is the difference
@@ -815,13 +826,13 @@ async function renderSpriteEditor(path) {
           considering = pick; setProposal(sel, pick);
           const hint = document.getElementById("sp-merge-hint");
           if (hint) hint.textContent = `Showing ${showing} — click to keep it.`;
-          redrawAll();
+          redrawAll(true);
         };
         const drop = () => {
           considering = null; setProposal(sel, keyOf(keeperOf(sel)));
           const hint = document.getElementById("sp-merge-hint");
           if (hint) hint.textContent = "";
-          redrawAll();
+          redrawAll(true);
         };
         // Focus does what hover does, so tabbing through the options shows them
         // as readily as pointing at them.
@@ -848,7 +859,7 @@ async function renderSpriteEditor(path) {
     }
     box.querySelectorAll("[data-act]").forEach(b => b.addEventListener("click", () => {
       if (b.dataset.act === "merge") applyMerge();
-      else if (b.dataset.act === "near") { near.forEach(t => mergeSel.add(t.key)); buildPalette(); redrawAll(); }
+      else if (b.dataset.act === "near") { near.forEach(t => mergeSel.add(t.key)); buildPalette(); redrawAll(true); }
       else exitMerge();
     }));
   };
@@ -862,14 +873,14 @@ async function renderSpriteEditor(path) {
   const exitMerge = () => {
     mergeMode = false; mergeSel.clear(); mergeKeep = null;
     hoverTone = null; proposal = null; considering = null;
-    setMergeBtn(); buildPalette(); redrawAll();
+    setMergeBtn(); buildPalette(); redrawAll(true);
   };
   const enterMerge = () => {
     if (mergeMode) return exitMerge();
     if (playing) setPlaying(false);
     mergeMode = true; mergeNote = ""; mergeSel.clear(); mergeKeep = null;
     proposal = null; considering = null;
-    setMergeBtn(); buildPalette(); redrawAll();
+    setMergeBtn(); buildPalette(); redrawAll(true);
   };
 
   const applyMerge = () => {
@@ -904,7 +915,7 @@ async function renderSpriteEditor(path) {
       : `Folded ${drop.size + 1} tones into ${toneName(keeper.rgb)} — ${px(changed)} across ${cellsWord(snaps.length)} changed. Ctrl+Z puts them back.`;
     mergeMode = false; mergeSel.clear(); mergeKeep = null;
     hoverTone = null; proposal = null; considering = null;
-    setMergeBtn(); buildPalette(); redrawAll();
+    setMergeBtn(); buildPalette(); redrawAll(true);
   };
 
   /* ---------- the animation list ----------
@@ -1089,7 +1100,8 @@ async function renderSpriteEditor(path) {
     if (!entry.some(e => e.i === cur)) { cur = entry[0].i; followCur(); }
     mergeNote = "";
     buildPalette();
-    render(); renderPreview(pvi); repaintClipThumbs();
+    // A one-cell entry is a stroke; anything wider was a merge.
+    redrawAll(entry.length > 1);
   };
 
   let stroke = null; // "paint" | "erase" while mouse is down
