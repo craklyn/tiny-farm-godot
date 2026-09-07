@@ -249,8 +249,14 @@ def commit_message(rec, work_id=""):
     lines = [commit_subject(rec), ""]
     note = " ".join((rec.get("note") or "").split())
     summary = describe(rec)
-    if note and note not in lines[0]:
-        lines += [note, ""]
+    # Say whose sentence this is. Unlabelled, his own words and the paragraph of
+    # measurement below them read as one voice, and a reader of the log has no
+    # way to tell what a person typed from what the editor counted. The label
+    # carries "(optional)" because the field is, which is what explains a commit
+    # that has nothing here — the alternative is an absence that looks like a
+    # tool that failed. The line is always present for the same reason.
+    lines += [f"User comment (optional): {note}" if note
+              else "User comment (optional): none given.", ""]
     if summary:
         lines += [summary, ""]
     where = f"Hand edit in HQ's sprite editor, step {rec.get('seq')} of {rec.get('sheet', '')}'s ledger."
