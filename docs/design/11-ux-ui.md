@@ -302,7 +302,6 @@ listed; what follows is every row the test lifts.
 |---|---|---|---|
 | 14 | Place a machine | Choosing among all soil, not the tile underfoot; the coverage ghost is only meaningful against the plot it will and will not reach | The first *placement* at altitude |
 | 17 | Command the dog | Select, then point — the point half names somewhere she is not | Ground for the select, altitude for the point |
-| 19 | Build fencing | A fence line spans the farm; drawn at altitude a whole boundary is one sweep | Row-3 drag grammar, unchanged |
 | — | **Show a mark-1 where to work** | The debut. Up to 8 squares anywhere on the page, and the set only reads as a round when seen together | Missing from the Q-28 inventory; added below |
 | 22 | Place / remove a tower | Towers cost farmable tiles, so the decision is a whole-farm tradeoff and must be seen as one | Confirm stays UI (P-9) |
 | 23 | Aim a manual tower | Select, then point at combat tempo — **and the handover point.** Here the player must choose where to look, so tier 2 takes over from tier 1 | Automatic altitude ends exactly where row 26 begins |
@@ -320,6 +319,15 @@ exit control are all the zone painter's grammar, being prototyped early on the s
 possible case — exactly the argument Finding 4 makes for prototyping select-then-point on
 the dog. Getting the mark-1 right is cheap; getting it wrong sets the phase-4 fleet
 interface against itself.
+
+### Corrections to this section
+
+- **Building a fence is not an altitude interaction** (2026-09-07, caught while
+  designing it). The first version of this table lifted row 19 on the grounds that a fence
+  line spans the farm — but the test is not "how big is the subject", it is *is she doing
+  it, or is something else doing it*. She carries the posts and puts them in the ground,
+  which is her own hands, so she stays in the dirt and the interaction is row 3's
+  swipe-chain unchanged. Size of the thing is not the test; whose hands do the work is.
 
 ### Open questions
 
