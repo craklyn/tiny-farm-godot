@@ -365,6 +365,7 @@ async function renderSpriteEditor(path) {
           <figure><canvas id="sp-preview" width="${pvW}" height="${pvH}"></canvas><figcaption>after (your edits)</figcaption></figure>
         </div>
         <p class="small muted" id="sp-pv-note">Both loop in sync at the game's own rate — before is the sheet as it was when you opened the editor.</p>
+        <div id="sp-field"></div>
         <h2>Save</h2>
         <p class="small muted">Writes your edits back into <code class="ref">${esc(ent.sheet)}</code> and adds a revision to this sheet's history below. Every revision is kept — nothing you save is ever overwritten.</p>
         <label class="sp-note-label" for="sp-note">What were you fixing? <span class="sp-optional">optional</span></label>
@@ -602,6 +603,135 @@ async function renderSpriteEditor(path) {
     pctx.clearRect(0, 0, pv.width, pv.height); paintDrawing(pctx, d, pvScale, false);
     bctx.clearRect(0, 0, bv.width, bv.height); paintDrawing(bctx, d, pvScale, true);
   };
+  /* ---------- ripe, as the field draws it ----------
+
+     A crop's page shows its cells and a flipbook of its growth stages, which is
+     the sheet. It did not show the one thing a ripe crop actually *does*: since
+     2026-09-08 a ready plant sways gently and gives off its own ripe colour
+     (Q-94). Asked for by the designer the same day — this is the page he will be
+     on when he decides how much a tomato should move, so it is the page that has
+     to show him.
+
+     **The numbers come out of the game, not out of this file.** `/api/ripe`
+     reads them from `systems/crop_presentation.gd`; a constant that has been
+     renamed comes back in `missing` and is said on screen, because a preview
+     quietly animating on last month's numbers is worse than no preview — it is a
+     picture of a game nobody ships, shown at the moment somebody is deciding
+     what a crop should look like. The three lines of maths are mirrored here and
+     that mirroring is the residual risk; the constants cannot drift.
+
+     Three plants rather than one, out of step with each other, because "no two
+     sway together" is half of what the cue is. Their phases are spread evenly
+     rather than hashed: in the game the phase comes from the square's own
+     coordinates, and a sprite page has no square — pretending otherwise would be
+     precision this preview does not have. And it draws from your unsaved edits,
+     so repainting the ripe cell shows up here swaying and lit, which is the
+     whole reason it is on this page. */
+  const startFieldPreview = async () => {
+    const host = document.getElementById("sp-field");
+    if (!host || gid !== "crops") return;
+    const readyCell = catCells[ent.frames.length - 1];
+    if (readyCell === undefined || !frames[readyCell]) return;
+
+    let look;
+    try { look = await api("/api/ripe"); } catch (e) { return; }
+    if (!look || look.error) return;
+    const n = look.nums || {};
+    const need = ["NOD_PERIOD", "NOD_LEAN", "NOD_RISE", "NOD_SPLIT", "BLOOM_RINGS",
+                  "BLOOM_INNER_R", "BLOOM_RING_STEP", "BLOOM_RING_A", "BLOOM_DROP"];
+    const gone = (look.missing || []).concat(need.filter(k => !(k in n)));
+    const tile = look.tile || 16;
+    const light = (look.light || {})[ent.id] || (look.light || {})._fallback || [1, 1, 1];
+
+    const PLANTS = 3, SCALE = 4;
+    host.innerHTML = `<h2>Ripe, as the field draws it</h2>
+      <p class="small muted">What this crop does once it is ready to pick: a gentle sway and a
+      pool of its own ripe colour. Drawn with the numbers read out of
+      <code class="ref">${esc(look.source)}</code>, over the game's tilled soil, and from your
+      unsaved edits — repaint the last cell and watch it here.</p>
+      ${gone.length ? `<p class="small" style="color:var(--bad)">Out of date: the game no longer
+        has ${esc(gone.join(", "))}. This preview is not showing what ships — fix the reader in
+        <code class="ref">hq/server.py</code>.</p>` : ""}
+      <canvas id="sp-fieldcv" class="sp-field-cv" width="${PLANTS * tile * SCALE}" height="${tile * 2 * SCALE}"></canvas>`;
+    if (gone.length) return;
+
+    const fcv = document.getElementById("sp-fieldcv");
+    const fx = fcv.getContext("2d");
+    fx.imageSmoothingEnabled = false;
+
+    // The soil behind the plant is the *interior* tile — the one with soil on
+    // every side, which is what the middle of a plot looks like and is the only
+    // one that is opaque. The server works out which cell that is from
+    // `world/autotile.gd`; the sheet's top-left is the lone-square tile and is
+    // transparent at the corners, which is how the first version of this came
+    // out with a see-through field.
+    const soil = await new Promise(res => {
+      const i = new Image();
+      i.onload = () => res(i); i.onerror = () => res(null);
+      i.src = "/" + look.soil + "?t=" + Date.now();
+    });
+
+    const plant = document.createElement("canvas");
+    plant.width = frames[readyCell].rect[2];
+    plant.height = frames[readyCell].rect[3];
+    const pcx = plant.getContext("2d");
+    pcx.imageSmoothingEnabled = false;
+
+    const sc = look.soil_cell || [0, 0, tile, tile];
+    const t0 = Date.now();
+    const drawField = () => {
+      const secs = (Date.now() - t0) / 1000;
+      pcx.clearRect(0, 0, plant.width, plant.height);
+      pcx.putImageData(pixelsOf(frames[readyCell], false), 0, 0);
+
+      fx.clearRect(0, 0, fcv.width, fcv.height);
+      if (soil) {
+        for (let c = 0; c < PLANTS; c++) for (let r = 0; r < 2; r++) {
+          fx.drawImage(soil, sc[0], sc[1], sc[2], sc[3],
+            c * tile * SCALE, r * tile * SCALE, tile * SCALE, tile * SCALE);
+        }
+      }
+
+      // The plant, in two pieces: the base stays rooted and the head travels.
+      // `world/farm.gd` draws it exactly this way, and for the same reason — a
+      // plant that slides whole reads as a sprite being moved.
+      const split = n.NOD_SPLIT / tile;
+      const cy = Math.round(tile * 0.5);
+      for (let i = 0; i < PLANTS; i++) {
+        const phase = i / PLANTS;               // evenly out of step; see the note above
+        const a = 2 * Math.PI * (secs / n.NOD_PERIOD + phase);
+        const dx = Math.sin(a) * n.NOD_LEAN, dy = -Math.abs(Math.sin(a)) * n.NOD_RISE;
+        const ox = i * tile * SCALE, oy = cy * SCALE;
+        const hh = plant.height * split;
+        fx.drawImage(plant, 0, hh, plant.width, plant.height - hh,
+          ox, oy + hh * SCALE, plant.width * SCALE, (plant.height - hh) * SCALE);
+        fx.drawImage(plant, 0, 0, plant.width, hh,
+          ox + dx * SCALE, oy + dy * SCALE, plant.width * SCALE, hh * SCALE);
+      }
+
+      // And the light, added over everything — which is where the farm's own
+      // additive layer sits, and the only way a glow can be brighter than the
+      // tan soil it is lying on.
+      fx.save();
+      fx.globalCompositeOperation = "lighter";
+      for (let i = 0; i < PLANTS; i++) {
+        const cx = (i * tile + tile / 2) * SCALE;
+        const gy = (cy + tile / 2 + n.BLOOM_DROP) * SCALE;
+        for (let k = 0; k < n.BLOOM_RINGS; k++) {
+          const r = n.BLOOM_INNER_R + n.BLOOM_RING_STEP * (n.BLOOM_RINGS - 1 - k);
+          fx.beginPath();
+          fx.arc(cx, gy, r * SCALE, 0, Math.PI * 2);
+          fx.fillStyle = `rgba(${Math.round(light[0] * 255)},${Math.round(light[1] * 255)},`
+            + `${Math.round(light[2] * 255)},${n.BLOOM_RING_A})`;
+          fx.fill();
+        }
+      }
+      fx.restore();
+    };
+    drawField();
+    animators.push(setInterval(drawField, 33));   // cleared with every other animator on navigation
+  };
+
   let pvi = 0;
   let pvTimer = null;
   const startPreview = () => {
@@ -1027,6 +1157,7 @@ async function renderSpriteEditor(path) {
       : "show the frame before this one as a ghost";
     syncOnionBtn();
     startPreview();
+    startFieldPreview();
     const note = document.getElementById("sp-pv-note");
     if (note) {
       note.textContent = cl.assembled

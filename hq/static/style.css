@@ -1455,3 +1455,12 @@ button.linkbtn:hover, button.linkbtn:focus-visible { text-decoration: underline;
 a.tool-card { display: block; color: var(--text); text-decoration: none; }
 a.tool-card:hover { border-color: var(--accent); }
 a.tool-card b { display: block; margin-bottom: 4px; }
+
+/* The crop pages' ripe preview: what a ready plant does in the field, drawn
+   with the game's own numbers over the game's own soil (see sprite.js). */
+.sp-field-cv {
+  image-rendering: pixelated;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  max-width: 100%;
+}

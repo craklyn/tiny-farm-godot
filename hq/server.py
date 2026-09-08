@@ -1884,6 +1884,92 @@ def _guide_named_colours():
     return out
 
 
+def _read_repo(rel):
+    try:
+        with open(os.path.join(REPO, rel), encoding="utf-8") as fh:
+            return fh.read()
+    except OSError:
+        return ""
+
+
+RIPE_SOURCE = "systems/crop_presentation.gd"
+RIPE_SOIL = "assets/sprites/generated/terrain_dirt.png"
+
+
+def ripe_look():
+    """The numbers the game draws a ripe crop with, **read out of the game**.
+
+    The sprite editor previews a ripe crop moving and glowing the way it does in
+    the field. The maths is three lines and the page mirrors them; the *numbers*
+    are not retyped, because a preview that can drift from the build is worse
+    than no preview — it is a picture of a game nobody ships, shown at exactly
+    the moment somebody is deciding what a crop should look like.
+
+    Missing constants are reported rather than defaulted, for the same reason: a
+    rename would otherwise leave the page quietly animating on last month's
+    numbers, and nothing on screen would say so.
+    """
+    src = os.path.join(REPO, RIPE_SOURCE)
+    try:
+        with open(src, encoding="utf-8") as fh:
+            text = fh.read()
+    except OSError as e:
+        return {"error": f"cannot read {RIPE_SOURCE}: {e}"}
+
+    wanted = ["NOD_PERIOD", "NOD_SPREAD", "NOD_LEAN", "NOD_RISE", "NOD_SPLIT",
+              "BLOOM_RINGS", "BLOOM_INNER_R", "BLOOM_RING_STEP", "BLOOM_RING_A",
+              "BLOOM_VARY", "BLOOM_DROP"]
+    nums, missing = {}, []
+    for name in wanted:
+        m = re.search(r"^const %s\s*:=\s*(-?[\d.]+)" % name, text, re.M)
+        if m:
+            nums[name] = float(m.group(1))
+        else:
+            missing.append(name)
+
+    # The per-crop light, and the fallback a crop nobody sampled gets.
+    light = {}
+    block = re.search(r"const RIPE_LIGHT\s*:=\s*\{(.*?)\n\}", text, re.S)
+    if block:
+        for crop, r, g, b in re.findall(
+                r'"(\w+)":\s*Color\(([\d.]+),\s*([\d.]+),\s*([\d.]+)\)', block.group(1)):
+            light[crop] = [float(r), float(g), float(b)]
+    else:
+        missing.append("RIPE_LIGHT")
+    fb = re.search(r"const RIPE_LIGHT_FALLBACK\s*:=\s*Color\(([\d.]+),\s*([\d.]+),\s*([\d.]+)\)",
+                   text)
+    if fb:
+        light["_fallback"] = [float(fb.group(1)), float(fb.group(2)), float(fb.group(3))]
+    else:
+        missing.append("RIPE_LIGHT_FALLBACK")
+
+    # **Which cell of the soil sheet to draw behind the plant.** Not the sheet's
+    # top-left: that is the *isolated* tile, mask 0, which is a lone square of
+    # soil in a field of grass and is therefore transparent at its corners so the
+    # grass shows through. Behind a crop the honest cell is the one with soil on
+    # every side — mask 255, the middle of a plot — which is opaque. The grid
+    # comes out of `world/autotile.gd` so a resheet cannot leave this pointing at
+    # the wrong square.
+    grid, tile = 16, 16
+    gm = re.search(r"^const GRID\s*:=\s*(\d+)", _read_repo("world/autotile.gd"), re.M)
+    if gm:
+        grid = int(gm.group(1))
+    else:
+        missing.append("Autotile.GRID")
+    interior = 255
+    soil_cell = [(interior % grid) * tile, (interior // grid) * tile, tile, tile]
+
+    return {
+        "source": RIPE_SOURCE,
+        "soil": RIPE_SOIL,
+        "soil_cell": soil_cell,
+        "tile": tile,
+        "nums": nums,
+        "light": light,
+        "missing": missing,
+    }
+
+
 def palette_union():
     """Every opaque colour across the shipped sheets, with its pixel count."""
     paths = _sheet_paths()
@@ -4858,6 +4944,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, release_manifest(unquote(rid) or None))
             if path == "/api/palette":
                 return self._send(200, palette_union())
+            if path == "/api/ripe":
+                return self._send(200, ripe_look())
             if path == "/api/history":
                 q = parse_qs(parts.query)
                 return self._send(200, {"rows": read_history(q.get("name", ["runs"])[0])})
