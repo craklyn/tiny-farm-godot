@@ -10377,6 +10377,26 @@ func test_mark_one_robot() -> void:
 	_assert(world.energy_of(mk1) < SimWorld.ACTOR_MAX_ENERGY,
 		"and it spent its own meter doing it, like every other actor")
 
+	# --- a round with nothing in it is declined, not walked (Q-93) ------------
+	#
+	# The machine does not harvest, so on a morning when the rain has watered
+	# everything and nothing has gone bare, every square on its list needs
+	# nothing. Walking it would spend its one turn of the day to change nothing.
+	_assert(BotBrain.round_has_work(world, world.actor(mk1)["extra"]) == false
+			or BotBrain.round_has_work(world, world.actor(mk1)["extra"]) == true,
+		"round_has_work answers for the list the machine actually holds")
+	for t in orders:
+		world.set_tile_state(t.x, t.y, "seeded", "wheat")
+		world.get_tile(t.x, t.y).watered_today = true
+	_assert(not BotBrain.round_has_work(world, world.actor(mk1)["extra"]),
+		"with every taught square already watered there is nothing worth walking to")
+	world.get_tile(orders[0].x, orders[0].y).watered_today = false
+	_assert(BotBrain.round_has_work(world, world.actor(mk1)["extra"]),
+		"one dry square is enough to make the round worth its turn")
+	world.set_tile_state(orders[0].x, orders[0].y, "cleared")
+	_assert(BotBrain.round_has_work(world, world.actor(mk1)["extra"]),
+		"and so is one that has gone bare and wants tilling")
+
 	# --- the square decides which of the two verbs it gets --------------------
 	#
 	# **Reset after a harvest** (designer, 2026-09-07). Harvesting sets a tile

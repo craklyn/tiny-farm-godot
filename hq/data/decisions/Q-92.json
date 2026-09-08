@@ -29,5 +29,11 @@
       "label": "Pests and what counters them",
       "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/04-pests-and-ecology.md"
     }
-  ]
+  ],
+  "ruled": {
+    "date": "2026-09-07",
+    "option": "b-amended",
+    "summary": "Use the fence art the game already has and make it interactive. The premise of the question was slightly wrong: the hedge is the lock vocabulary and the fence is the domestic one, so a player-built fence reusing the fence cell already reads as hers. Art cost zero. Her fence still needs its own state so the router can tell hers from the world's — same picture, different word — because the cold open's fence is a lock she must not be able to dismantle.",
+    "written_up": "docs/DESIGNER_QUEUE.md — Q-92"
+  }
 }

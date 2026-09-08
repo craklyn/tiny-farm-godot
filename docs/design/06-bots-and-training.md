@@ -155,11 +155,18 @@ parched under a ripe crop, because watering only ever marked the squares that co
 the water, while rain marked all four soil states. Water now looks like water whoever
 poured it.
 
-**This is the cost of not harvesting, stated plainly.** On a rainy day with nothing gone
-bare, the round is a patrol that achieves nothing — she watches a machine walk eight
-squares and come home. That is honest, and it may also be boring in a way that reads as
-broken. Q-93 is the choice between accepting it, having the machine say it has nothing to
-do, and letting it harvest.
+**It does not harvest** — ✅ ruled 2026-09-07 (Q-93): *"Mark-1 should not harvest."*
+Machines stay in the labour-saving column. Nothing a machine does puts a crop in her stores
+without her hand on it, which keeps a machine's worth legible against its price and leaves
+the first one that *earns* rather than *saves* as a later rung of the ladder.
+
+**So an empty round is declined rather than walked.** The cost of not harvesting is that on
+a rainy morning with nothing gone bare, every square on the list already needs nothing, and
+the round would spend the machine's one turn of the day changing nothing. That is honest
+and it looks broken, which is the worse of the two. The panel says *"Send it out (nothing
+needs doing today)"* and she keeps the turn. `BotBrain.round_has_work` asks the same
+`order_verb` the round itself uses, so the panel and the machine cannot disagree about
+whether there is work.
 
 ### The panel says what is true, including why it is not moving
 
@@ -174,6 +181,7 @@ was still in the house. A disabled control always asks "why", and here the answe
 | Send it out (nothing to do yet) | nothing taught |
 | Waiting for you outside | sent, but she is indoors, so no machine has started |
 | Out working… | sent, and actually out |
+| Send it out (nothing needs doing today) | taught and unspent, but every square already needs nothing (Q-93) |
 | Been out today | its one turn is spent |
 
 **And stepping outside is the starting bell, rung rather than waited for.** A machine that

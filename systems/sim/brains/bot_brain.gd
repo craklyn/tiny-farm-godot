@@ -335,6 +335,25 @@ func _work(world: SimWorld, actor_id: String, goal: Vector2i) -> Dictionary:
 	return { "verb": verb, "target": goal, "actor": actor_id }
 
 
+# Is there anything on this machine's list worth walking to today?
+#
+# **A round that would achieve nothing is declined rather than walked** (Q-93,
+# ruled 2026-09-07). The machine does not harvest — the designer's call, and the
+# reason machines stay in the labour-saving column rather than filling her stores
+# without her hand on it — so on a rainy morning, with nothing gone bare, every
+# square on its list already needs nothing. It would walk eight squares and come
+# home having done not one thing. That is honest and it looks broken, which is
+# the worse of the two, so the panel says so instead and she keeps the turn.
+#
+# Pure, and asked of the same `order_verb` the round itself uses, so the panel
+# and the machine can never disagree about whether there is work.
+static func round_has_work(world: SimWorld, extra: Dictionary) -> bool:
+	for t in orders_of(extra):
+		if order_verb(world, t) != "":
+			return true
+	return false
+
+
 # Is every machine on the farm standing still because she has not come outside?
 # The rule lives in `step`; this is the same question asked from the menu, so the
 # panel can say what is true instead of guessing (`ui/menus.gd`).

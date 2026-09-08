@@ -318,6 +318,12 @@ func _rebuild_options() -> void:
 						_add_option("Been out today", false)
 					elif taught <= 0:
 						_add_option("Send it out  (nothing to do yet)", false)
+					elif not BotBrain.round_has_work(farm.sim, mextra):
+						# Taught, unspent, and every square on the list already
+						# needs nothing — rain has watered them and none has gone
+						# bare. Sending it would spend its one turn on a walk that
+						# changes nothing (Q-93).
+						_add_option("Send it out  (nothing needs doing today)", false)
 					else:
 						_add_option("Send it out  (%d tiles)" % taught, true)
 				"configs":

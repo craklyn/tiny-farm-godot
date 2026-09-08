@@ -11,7 +11,24 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
 
 ## Now — blocks M0 close or current work
 
-- **Q-92** **How does a player put up a fence?** Designed 2026-09-07 on request, not yet
+- **Q-92** ~~How does a player put up a fence?~~ — ✅ ruled 2026-09-07: **use the fence art
+  the game already has, and make it interactive.** *"We already have fences that look
+  different than game boundary... we should continue to use that fence, and make it
+  interactive."* He is right, and more precisely right than the question assumed: the
+  **hedge** is the lock vocabulary (it bounds the parcels she has not unlocked) and the
+  **fence** is the domestic one (it bounds her yard and her first plot). Two different
+  cells in the sheet already. So the one part of the design that needed a designer — new
+  art, so her fence would not read as a lock — is answered by using what exists, and the
+  art cost is zero.
+  **What survives from the design unchanged:** her fence still needs its own *state*
+  (`fence_built`, drawn with the existing fence cell), because the router has to tell "yours,
+  takeable" from "the world's, refuse" — the cold open's fence between two yards is
+  load-bearing for the first lock, and she must not be able to dismantle it. Same picture,
+  different word. Also unchanged: a `build` verb rather than `place` (a fence is terrain,
+  not an actor); stock in the crate, refunded on take-back; ground level and a drag; worth
+  only against rabbits. Ready to build on request — no open questions left.
+
+  Original entry: **How does a player put up a fence?** Designed 2026-09-07 on request, not yet
   built. A fence today is not an object but a tile *state* laid at worldgen, and it is the
   game's word for **"not yet"** — the edge of a parcel she has not unlocked. Four things
   fall out. (a) *Hers must be a different state from the game's*, for the router rather
@@ -32,7 +49,16 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   leaves cleanly or gets stuck; fencing is the first thing that can make a route impossible.
   Bears on `design/04`, `design/11` row 19.
 
-- **Q-93** **Should a mark-1 harvest a ripe square on its round?** Raised by the designer
+- **Q-93** ~~Should a mark-1 harvest a ripe square on its round?~~ — ✅ ruled 2026-09-07:
+  **no.** *"Mark-1 should not harvest."* Machines stay in the labour-saving column; nothing
+  a machine does puts a crop in her stores without her hand on it, which keeps the mark-1's
+  value legible against its cost and leaves the first machine that *earns* rather than
+  *saves* as a later rung of the ladder. The remainder of the card — whether an empty round
+  is walked or declined — was not part of the question; taken as the card's recommendation
+  (decline it and say so), because it is the same move that fixed the panel claiming to be
+  working while the robot stood still, and it is one line to revert.
+
+  Original entry: **Should a mark-1 harvest a ripe square on its round?** Raised by the designer
   2026-09-07 from play: *"it needs to go out to see if any tiles are ready for harvest, I
   think."* The machine now tills bare ground, waters dry soil, and walks past anything that
   needs nothing. On a rainy day — rain wets every soil square at dawn — that means a round
