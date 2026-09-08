@@ -1,0 +1,17 @@
+{
+  "seq": 5,
+  "kind": "revert",
+  "sheet": "assets/sprites/generated/obstacles.png",
+  "key": "assets_sprites_generated_obstacles",
+  "group": "world",
+  "entity": "obstacles",
+  "entity_name": "Obstacle Set",
+  "note": "Reverted to step 3.",
+  "diff": {},
+  "reverted_to": 3,
+  "bytes": 2601,
+  "png": "0005.png",
+  "created": "2026-09-07T22:08",
+  "created_ts": 1788844127.251756,
+  "filed": null
+}

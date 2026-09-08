@@ -1341,8 +1341,13 @@ def revert_sprite(payload):
     })
     with open(full, "wb") as f:
         f.write(want)
+    # **A revert is an edit, so it lands like one.** Saving has committed itself
+    # since 2026-09-07 and this did not, which left the sheet changed on disk and
+    # nothing in git saying so — the one state the auto-commit exists to prevent.
+    landed = land_sprite_edit(rec)
     signals_dirty()
-    return {"ok": True, "step": rec["seq"], "reverted_to": seq, "key": key}
+    return {"ok": True, "step": rec["seq"], "reverted_to": seq, "key": key,
+            "landed": landed}
 
 
 MAP_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,39}$")
