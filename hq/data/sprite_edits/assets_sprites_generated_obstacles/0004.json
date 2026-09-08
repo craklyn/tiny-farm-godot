@@ -1,0 +1,44 @@
+{
+  "seq": 4,
+  "kind": "edit",
+  "sheet": "assets/sprites/generated/obstacles.png",
+  "key": "assets_sprites_generated_obstacles",
+  "group": "world",
+  "entity": "obstacles",
+  "entity_name": "Obstacle Set",
+  "note": "Checking that a second save does not undo the first one",
+  "diff": {
+    "frames": [
+      {
+        "index": 0,
+        "name": "frame 1",
+        "changed": 1,
+        "added": 0,
+        "erased": 1,
+        "recolored": 0,
+        "silhouette": true,
+        "bbox": [
+          5,
+          4,
+          1,
+          1
+        ]
+      }
+    ],
+    "pixels": 1,
+    "colors_added": [],
+    "colors_removed": [],
+    "new_to_sheet": [],
+    "anims": []
+  },
+  "reverted_to": null,
+  "bytes": 2609,
+  "png": "0004.png",
+  "created": "2026-09-07T22:05",
+  "created_ts": 1788843946.5697916,
+  "filed": {
+    "work_id": "wcdd64247df8",
+    "owner": "ingrid",
+    "title": "Read Daniel's hand edit to Obstacle Set"
+  }
+}
