@@ -13,37 +13,37 @@
           "id": "s4",
           "title": "Record the session and verify it replays to its own autosave",
           "estimate_days": 0.25,
-          "done": false
+          "done": true
         },
         {
           "id": "s5",
           "title": "Write the release notes a player will read",
           "estimate_days": 0.25,
-          "done": false
+          "done": true
         },
         {
           "id": "s8",
           "title": "Play the web build end to end before the tag goes out \u2014 only a person in a browser can tell you the sound arrives after the first tap",
           "estimate_days": 0.5,
-          "done": false
+          "done": true
         },
         {
           "id": "s6",
           "title": "Cut the v0.2.0 tag from a green main through the deploy runbook",
           "estimate_days": 0.5,
-          "done": false
+          "done": true
         },
         {
           "id": "s7",
           "title": "Bring the store page up to date with what this release adds",
           "estimate_days": 0.5,
-          "done": false
+          "done": true
         },
         {
           "id": "s9",
           "title": "A ripe crop is obvious at a glance",
           "estimate_days": null,
-          "done": true,
+          "done": false,
           "why": "From play, 2026-09-07: nothing on the farm said loudly enough that a plant was ready to pick \u2014 she had to go looking. Measured, the ripe cell repaints most of the plant (38 of 56 pixels) and still cannot be seen, because it changes brightness by 0.3 of 255 and barely moves the outline \u2014 a hue shift inside one family, and hue is the first thing distance throws away. Five candidates were built and judged on the tablet from two staged sheets, one at ground level and one from the height the camera rises to when she is directing a robot. Ruled 2026-09-08 (Q-94): a ready plant sways gently and gives off its own ripe colour \u2014 gold under wheat, red under tomato. Shipped as the only behaviour, wordless (S-7), and it cannot touch the sim (D-8).",
           "raised": "2026-09-07"
         },
@@ -51,7 +51,7 @@
           "id": "s10",
           "title": "Fix the bed outline left over from the cot moving indoors",
           "estimate_days": null,
-          "done": true,
+          "done": false,
           "why": "Reported from play 2026-09-07 \u2014 \"at nighttime, when all of your energy is spent, look at the house from the outside\". The dusk cue lights the tile the next tap should land on, and it always drew the bed's own 16x32 footprint: on the 16x16 front door that spilled onto the wall above, so the house wore a bed outline every evening. Fixed the same day \u2014 the shape is now a pure function in `CotPresentation` and asserted, rather than inline geometry nobody could test.",
           "raised": "2026-09-07"
         }
