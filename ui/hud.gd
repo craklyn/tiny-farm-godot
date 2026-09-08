@@ -109,7 +109,7 @@ var hint_label: Label
 # Everything shown here is read from the sim's own gate functions
 # (`tool_proof_progress`, `phase1_progress`), never recomputed alongside them, so
 # a number on screen cannot disagree with the rule it is describing.
-const PLAYTEST_NOTES := false
+const PLAYTEST_NOTES := true
 # The obstacle count is an O(map) scan, so it is refreshed on a timer rather than
 # every frame — the no-per-tile-per-frame guardrail applies to debug UI too.
 const NOTES_REFRESH := 0.5
