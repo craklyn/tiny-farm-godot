@@ -646,7 +646,7 @@ async function renderSpriteEditor(path) {
     try { look = await api("/api/ripe"); } catch (e) { return; }
     if (!look || look.error) return;
     const n = look.nums || {};
-    const need = ["NOD_PERIOD", "NOD_LEAN", "NOD_RISE", "NOD_SPLIT", "BLOOM_RINGS",
+    const need = ["NOD_PERIOD", "NOD_LEAN", "NOD_DROP", "NOD_SPLIT", "NOD_OVERLAP", "BLOOM_RINGS",
                   "BLOOM_INNER_R", "BLOOM_RING_STEP", "BLOOM_RING_A", "BLOOM_DROP"];
     const gone = (look.missing || []).concat(need.filter(k => !(k in n)));
     const tile = look.tile || 16;
@@ -704,18 +704,20 @@ async function renderSpriteEditor(path) {
       // The plant, in two pieces: the base stays rooted and the head travels.
       // `world/farm.gd` draws it exactly this way, and for the same reason — a
       // plant that slides whole reads as a sprite being moved.
-      const split = n.NOD_SPLIT / tile;
+      const split = n.NOD_SPLIT / tile, over = n.NOD_OVERLAP / tile;
       const cy = Math.round(tile * 0.5);
       for (let i = 0; i < PLANTS; i++) {
         const phase = i / PLANTS;               // evenly out of step; see the note above
         const a = 2 * Math.PI * (secs / n.NOD_PERIOD + phase);
-        const dx = Math.sin(a) * n.NOD_LEAN, dy = -Math.abs(Math.sin(a)) * n.NOD_RISE;
+        const dx = Math.sin(a) * n.NOD_LEAN, dy = Math.abs(Math.sin(a)) * n.NOD_DROP;
         const ox = i * tile * SCALE, oy = cy * SCALE;
-        const hh = plant.height * split;
+        // The head's piece reaches past the cut and is drawn second, so the two
+        // rectangles cannot leave a hairline between them — see NOD_OVERLAP.
+        const hh = plant.height * split, hd = plant.height * (split + over);
         fx.drawImage(plant, 0, hh, plant.width, plant.height - hh,
           ox, oy + hh * SCALE, plant.width * SCALE, (plant.height - hh) * SCALE);
-        fx.drawImage(plant, 0, 0, plant.width, hh,
-          ox + dx * SCALE, oy + dy * SCALE, plant.width * SCALE, hh * SCALE);
+        fx.drawImage(plant, 0, 0, plant.width, hd,
+          ox + dx * SCALE, oy + dy * SCALE, plant.width * SCALE, hd * SCALE);
       }
 
       // And the light, added over everything — which is where the farm's own

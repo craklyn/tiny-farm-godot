@@ -8638,12 +8638,26 @@ func test_crop_presentation() -> void:
 	# --- the sway ------------------------------------------------------------
 	var here := Vector2i(6, 11)
 	var swing: float = 0.0
+	var lifted := false
 	for i in 400:
 		var o: Vector2 = CropPresentation.nod_offset(here, i * 0.05)
 		swing = maxf(swing, absf(o.x))
+		if o.y < 0.0:
+			lifted = true
 		_assert_quiet(absf(o.x) <= CropPresentation.NOD_LEAN + 0.001
-				and o.y <= 0.001 and o.y >= -CropPresentation.NOD_RISE - 0.001,
+				and o.y >= -0.001 and o.y <= CropPresentation.NOD_DROP + 0.001,
 			"the sway stays inside its stated bounds")
+
+	# **The head never rises**, which is what keeps the plant in one piece. The
+	# renderer draws it as a travelling head over a rooted base; a head that lifts
+	# takes its bottom edge off the base's top edge and opens a seam, reported
+	# from the crop page on 2026-09-08 as a horizontal line across every ripe
+	# plant. The guarantee is the sign of this number, so it is asserted on the
+	# number rather than left to the renderer to be careful about.
+	_assert(not lifted,
+		"the head only ever sinks as it leans — a rising one would part from its own base")
+	_assert(CropPresentation.NOD_OVERLAP >= 1,
+		"and its piece reaches past the cut, so two rounded rectangles cannot leave a hairline")
 	_assert(swing > CropPresentation.NOD_LEAN * 0.9,
 		"the head reaches the sway it is drawn for (%.2f of %.2f world px)"
 			% [swing, CropPresentation.NOD_LEAN])

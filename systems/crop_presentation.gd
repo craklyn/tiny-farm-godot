@@ -110,11 +110,36 @@ static func spread(tile: Vector2i, salt: int, amount: float) -> float:
 const NOD_PERIOD := 2.97      # [Playtest] seconds for one full sway
 const NOD_SPREAD := 0.5       # [Playtest] how much that period varies square to square
 const NOD_LEAN := 1.0         # [Playtest] world px the head travels either side of centre
-const NOD_RISE := 0.35        # [Playtest] and how far it rises at the ends of the sway
+
+# **The head drops as it leans, and never rises.** Two reasons, and they are the
+# same reason twice.
+#
+# It is what a stalk does. The tip of something bending sideways travels an arc,
+# so it gets *lower* the further it goes — the plant is not growing taller at the
+# ends of its sway. The first version had it rising, which is backwards.
+#
+# And it is what keeps the plant in one piece. The renderer draws a ready plant
+# in two pieces, a travelling head over a rooted base, and a head that rises
+# lifts its bottom edge off the base's top edge and opens a seam — reported from
+# the crop page on 2026-09-08 as a horizontal line across every ripe plant, and
+# it was on the tablet too. With the movement only ever downward the head's
+# bottom edge can never be above the base's top edge, so the seam cannot open:
+# the guarantee is in the sign, not in a tolerance. The unit suite asserts it.
+const NOD_DROP := 0.35        # [Playtest] world px the head sinks at the ends of the sway
+
 # Where the plant is cut into head and base, in rows of the 16px cell. Ten leaves
 # a base a third of the cell tall, which is enough that the sway never looks like
 # the whole plant sliding off its square.
 const NOD_SPLIT := 10
+
+# How far the head's piece reaches down *past* the cut, in rows. Belt and braces
+# beside the sign rule above: the two pieces are drawn as separate rectangles and
+# a renderer is free to round their edges apart, which would leave a hairline at
+# the seam even with the head exactly in place. The head is drawn second, so this
+# band is simply the head's own pixels covering the base's first row — at rest
+# the picture is identical to the sheet, and mid-sway it is the row where the
+# bend happens.
+const NOD_OVERLAP := 1
 
 
 static func nod_period(tile: Vector2i) -> float:
@@ -122,9 +147,10 @@ static func nod_period(tile: Vector2i) -> float:
 
 
 ## Where the head of this plant is, relative to where it is drawn at rest.
+## **Y is never negative** — see `NOD_DROP`.
 static func nod_offset(tile: Vector2i, t_sec: float) -> Vector2:
 	var a: float = TAU * (t_sec / nod_period(tile) + hash01(tile, 0))
-	return Vector2(sin(a) * NOD_LEAN, -absf(sin(a)) * NOD_RISE)
+	return Vector2(sin(a) * NOD_LEAN, absf(sin(a)) * NOD_DROP)
 
 
 # --- The light ----------------------------------------------------------------

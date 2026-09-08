@@ -1155,13 +1155,23 @@ func _queue_ripe(queue: Array[Dictionary], at: Vector2i, tex: Texture2D,
 	# Drawn in two pieces so the base stays rooted while the head travels: a plant
 	# that slides whole reads as a sprite being moved, and a plant whose top leans
 	# over fixed feet reads as a plant.
+	#
+	# **The two pieces must never come apart**, which is why the head's piece
+	# reaches `NOD_OVERLAP` rows past the cut and is drawn second, over the base.
+	# Reported from the crop page on 2026-09-08 as a horizontal line across every
+	# ripe plant: the head used to rise at the ends of its sway and lifted its
+	# bottom edge clear of the base. The sign of the movement is the real fix
+	# (`CropPresentation.NOD_DROP`); this band covers the hairline that separate
+	# rounded rectangles can leave even when nothing has moved.
 	var f: float = float(CropPresentation.NOD_SPLIT) / float(TILE_SIZE)
-	var head_src := Rect2(region.position, Vector2(region.size.x, region.size.y * f))
+	var over: float = float(CropPresentation.NOD_OVERLAP) / float(TILE_SIZE)
+	var head_src := Rect2(region.position,
+		Vector2(region.size.x, region.size.y * (f + over)))
 	var foot_src := Rect2(region.position + Vector2(0.0, region.size.y * f),
 		Vector2(region.size.x, region.size.y * (1.0 - f)))
 	var head_dst := Rect2(
 		rect.position + CropPresentation.nod_offset(at, Time.get_ticks_msec() / 1000.0),
-		Vector2(rect.size.x, rect.size.y * f))
+		Vector2(rect.size.x, rect.size.y * (f + over)))
 	var foot_dst := Rect2(rect.position + Vector2(0.0, rect.size.y * f),
 		Vector2(rect.size.x, rect.size.y * (1.0 - f)))
 	queue.append({

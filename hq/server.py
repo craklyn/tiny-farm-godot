@@ -1916,7 +1916,7 @@ def ripe_look():
     except OSError as e:
         return {"error": f"cannot read {RIPE_SOURCE}: {e}"}
 
-    wanted = ["NOD_PERIOD", "NOD_SPREAD", "NOD_LEAN", "NOD_RISE", "NOD_SPLIT",
+    wanted = ["NOD_PERIOD", "NOD_SPREAD", "NOD_LEAN", "NOD_DROP", "NOD_SPLIT", "NOD_OVERLAP",
               "BLOOM_RINGS", "BLOOM_INNER_R", "BLOOM_RING_STEP", "BLOOM_RING_A",
               "BLOOM_VARY", "BLOOM_DROP"]
     nums, missing = {}, []
