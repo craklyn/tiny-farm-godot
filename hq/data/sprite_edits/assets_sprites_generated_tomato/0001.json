@@ -1,0 +1,91 @@
+{
+  "seq": 1,
+  "kind": "edit",
+  "sheet": "assets/sprites/generated/tomato.png",
+  "key": "assets_sprites_generated_tomato",
+  "group": "crops",
+  "entity": "tomato",
+  "entity_name": "Tomato",
+  "note": "Removing white tiles that should be transparent",
+  "diff": {
+    "frames": [
+      {
+        "index": 0,
+        "name": "frame 1",
+        "changed": 2,
+        "added": 0,
+        "erased": 2,
+        "recolored": 0,
+        "silhouette": true,
+        "bbox": [
+          6,
+          9,
+          3,
+          1
+        ]
+      },
+      {
+        "index": 1,
+        "name": "frame 2",
+        "changed": 2,
+        "added": 0,
+        "erased": 2,
+        "recolored": 0,
+        "silhouette": true,
+        "bbox": [
+          6,
+          9,
+          3,
+          1
+        ]
+      },
+      {
+        "index": 2,
+        "name": "frame 3",
+        "changed": 7,
+        "added": 0,
+        "erased": 5,
+        "recolored": 2,
+        "silhouette": true,
+        "bbox": [
+          6,
+          2,
+          4,
+          14
+        ]
+      },
+      {
+        "index": 3,
+        "name": "frame 4",
+        "changed": 6,
+        "added": 0,
+        "erased": 5,
+        "recolored": 1,
+        "silhouette": true,
+        "bbox": [
+          6,
+          4,
+          3,
+          12
+        ]
+      }
+    ],
+    "pixels": 17,
+    "colors_added": [],
+    "colors_removed": [
+      "#f8f4e6"
+    ],
+    "new_to_sheet": [],
+    "anims": []
+  },
+  "reverted_to": null,
+  "bytes": 743,
+  "png": "0001.png",
+  "created": "2026-09-08T10:49",
+  "created_ts": 1788889775.0153024,
+  "filed": {
+    "work_id": "w3281cd7b66d",
+    "owner": "ingrid",
+    "title": "Read Daniel's hand edit to Tomato"
+  }
+}
