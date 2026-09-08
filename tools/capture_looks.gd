@@ -195,6 +195,21 @@ func _stage(scenario: Dictionary) -> void:
 			InputManager.has_click = true
 			for i in 20:
 				await get_tree().process_frame
+		"ripe_at_a_glance", "ripe_from_above":
+			# One plot, two heights. The staging is identical for both questions
+			# on purpose — the only thing that differs between the two sheets is
+			# where the camera is, which is the comparison the pair exists to
+			# make.
+			_stage_ripe_plot()
+			await _put_her_at(scenario["stand"])
+
+	# A question asked from altitude is framed by **the game's own pull-back**
+	# rather than by a zoom typed in here, for the reason the cot's crop is
+	# looked up in the sim rather than read off a design doc: a rig that can be
+	# wrong about the frame photographs a farm nobody plays. The reset runs
+	# unconditionally so that a question shot after one of these is not
+	# photographed from the sky.
+	await _set_altitude(bool(scenario.get("altitude", false)))
 
 
 # Some drafts are events rather than states: they are not on screen until the
@@ -225,12 +240,112 @@ func _after_switch(id: String) -> bool:
 	return false
 
 
+# The plot both ripe questions are asked about: a block planted over several
+# days, so it holds ripe plants, half-grown ones and fresh seed at once. Written
+# out as a picture rather than generated, because the whole question is whether a
+# ripe plant stands out of a **mixed** field — a plot that was ten ripe squares
+# and nothing else would answer it for free, and the story this comes from is
+# specifically about a busy one.
+#
+#   w  ripe wheat        t  ripe tomato
+#   W  wheat, half up    V  wheat, just sprouted     T  tomato, half up
+#   s  just seeded       .  bare tilled soil
+#   (space)              left exactly as the generator made it — grass, a weed,
+#                        whatever is there, so the plot has a ragged edge and
+#                        never reads as a rectangle stamped on the field
+const RIPE_PLOT: Array[String] = [
+	"WwV.tWsW",
+	"wT WV wt",
+	".VwsW TW",
+	"WtV WwT.",
+	" TWw VtW",
+]
+const RIPE_PLOT_AT := Vector2i(3, 10)
+
+
+func _stage_ripe_plot() -> void:
+	# Mid-morning, which is when a farmer is out looking at her plot and is the
+	# hour design/09 stages every look session at. The day is measured in energy
+	# (Q-38), so the hour *is* this fraction and there is no clock to set.
+	GameState.set_energy(int(round(GameState.max_energy * 0.86)))
+	GameState.watering_can_charges = GameState.max_watering_can_charges
+	if not TeachingFocus.handed_over(farm.sim):
+		farm.apply_action({
+			"verb": "open_gate",
+			"target": WorldLayout.gate_of("neighbour"),
+			"actor": "neighbour",
+		}, GameState)
+	# No lesson and no errand pointing at anything: a gold teaching ring landing
+	# on one of these squares would be a second cue in a picture that is asking
+	# about one.
+	GameState.day = GameState.takeover_day + 6
+	GameState.clear_counts["clear_weed"] = 1
+	GameState.gold = 0
+	GameState.crops = { "wheat": 0, "tomato": 0 }
+	for row in RIPE_PLOT.size():
+		var line: String = RIPE_PLOT[row]
+		for col in line.length():
+			var tx: int = RIPE_PLOT_AT.x + col
+			var ty: int = RIPE_PLOT_AT.y + row
+			match line[col]:
+				"w": _plant(tx, ty, "wheat", 3)     # three days to grow: ripe
+				"t": _plant(tx, ty, "tomato", 5)    # five days: ripe
+				"W": _plant(tx, ty, "wheat", 2)
+				"V": _plant(tx, ty, "wheat", 1)
+				"T": _plant(tx, ty, "tomato", 3)
+				"s": _plant(tx, ty, "wheat", 0)
+				".": _clear_tile(tx, ty, "tilled")
+
+
+# One square of the plot. `growth` is days grown, which is what the sim counts;
+# `CropDefs.get_visual_stage` turns it into one of the sheet's four cells, so a
+# crop whose growing time changes keeps its picture here without this being
+# edited.
+func _plant(tx: int, ty: int, crop: String, growth: int) -> void:
+	var state := "seeded" if growth <= 0 else \
+		("ready" if CropDefs.is_ready(crop, growth) else "growing")
+	_clear_tile(tx, ty, state, crop)
+	var tile: Dictionary = farm.sim.get_tile(tx, ty)
+	if not tile.is_empty():
+		tile.growth_stage = growth
+
+
+# Up to the height the teaching mode rises to, or back down to the ground.
+func _set_altitude(on: bool) -> void:
+	var cam: Camera2D = main_scene.camera
+	if cam == null:
+		return
+	var up: bool = not is_equal_approx(cam.zoom.x, float(main_scene.CAMERA_SCALE))
+	if not on and not up:
+		return   # already standing where every other question is asked from
+	main_scene._teach_cam = {}
+	cam.zoom = Vector2(main_scene.CAMERA_SCALE, main_scene.CAMERA_SCALE)
+	cam.position = Vector2.ZERO
+	cam.position_smoothing_enabled = true
+	main_scene._refresh_camera_limits(true)
+	if not on:
+		return
+	main_scene._rise_to_altitude()
+	# The glide is a quarter of a second and the scenario's own settle follows
+	# this, but a frame photographed mid-glide is a frame at no altitude at all.
+	for i in 24:
+		await get_tree().process_frame
+
+
 func _put_her_at(tile: Vector2i) -> void:
 	player.pos = Vector2(tile.x * 16 + 8.0, tile.y * 16 + 8.0)
 	player.path.clear()
 	player.pending_action = {}
 	for i in 4:
 		await get_tree().process_frame
+	# She was put down, not walked, so the camera has to be put down with her.
+	# Without this the view is still gliding toward her when the shutter opens,
+	# and a question that takes two exposures a beat apart comes back with the
+	# whole plot slid sideways between them — which reads as every draft moving,
+	# including the three that do not. The game snaps the camera for exactly this
+	# reason whenever she arrives somewhere without walking (`main.gd`, a door).
+	if main_scene.camera != null:
+		main_scene.camera.reset_smoothing()
 
 
 func _clear_tile(tx: int, ty: int, state: String, crop_type: String = "") -> void:

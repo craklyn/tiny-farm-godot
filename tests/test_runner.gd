@@ -150,6 +150,7 @@ func _init() -> void:
 	test_cot_halo()
 	test_cot_presentation()
 	test_station_presentation()
+	test_crop_presentation()
 	test_zoo()
 	test_rain_on_ripe_soil()
 	test_ground_holds_until_black()
@@ -8581,6 +8582,154 @@ func test_cot_presentation() -> void:
 		"and a zero scale asks for no shift rather than dividing by zero")
 
 	CotPresentation.set_treatment(was)
+
+
+func test_crop_presentation() -> void:
+	# "A ripe crop is obvious at a glance", raised from play 2026-09-07. Four
+	# positions in one build — today's game and three treatments — switched on
+	# device, and the pick is the designer's. What is asserted here is only what a
+	# treatment is *allowed* to be: pure arithmetic over a tile coordinate and a
+	# clock, with no way to reach the sim and no way to reach a die.
+	print("\n--- A ripe crop is obvious at a glance: the four positions ---")
+
+	var was: int = CropPresentation.treatment
+
+	# --- the switch ----------------------------------------------------------
+	CropPresentation.set_treatment(CropPresentation.OFF)
+	_assert(CropPresentation.cycle() == CropPresentation.NOD, "cycling off gives A")
+	_assert(CropPresentation.cycle() == CropPresentation.STAND, "cycling A gives B")
+	_assert(CropPresentation.cycle() == CropPresentation.BLOOM, "cycling B gives C")
+	_assert(CropPresentation.cycle() == CropPresentation.OFF, "cycling C comes back to off")
+	_assert(CropPresentation.NAMES.size() == CropPresentation.COUNT
+			and CropPresentation.BLURBS.size() == CropPresentation.COUNT,
+		"every position has a name and a blurb for the sheet")
+	_assert(LookLab.count_of(LookLab.RIPE) == CropPresentation.COUNT
+			and LookLab.AXES.has(LookLab.RIPE),
+		"and the Look Lab carries it as its fourth axis")
+
+	# --- only a ripe square, and only when a treatment is on ------------------
+	CropPresentation.set_treatment(CropPresentation.OFF)
+	_assert(not CropPresentation.shows("ready"),
+		"off treats nothing at all — it is today's game, which is what makes it a draft")
+	CropPresentation.set_treatment(CropPresentation.NOD)
+	_assert(CropPresentation.shows("ready"), "a ready square is treated")
+	for other in ["seeded", "growing", "tilled", "cleared", "obstacle_weed"]:
+		_assert_quiet(not CropPresentation.shows(other), "and %s is not" % other)
+	_assert(true, "and nothing else is — seeded, growing, bare soil, an obstacle")
+
+	# --- the variation is a function of the square, never a die ---------------
+	#
+	# The load-bearing property of the whole file. A cue whose phase came out of
+	# an RNG would put a replay's screenshot a beat away from the session's, and
+	# the visual-regression check would never settle.
+	seed(1)
+	var first: float = CropPresentation.hash01(Vector2i(7, 3))
+	seed(999)
+	_assert(CropPresentation.hash01(Vector2i(7, 3)) == first,
+		"the same square hashes the same however the engine's dice were last rolled")
+	var in_range := true
+	var flat := true
+	for x in 32:
+		for y in 20:
+			var h: float = CropPresentation.hash01(Vector2i(x, y))
+			if h < 0.0 or h >= 1.0:
+				in_range = false
+			if h != first:
+				flat = false
+	_assert(in_range, "and every square on the map hashes into [0, 1)")
+	_assert(not flat, "and they are not all the same number")
+	_assert(CropPresentation.hash01(Vector2i(7, 3), 1) != first,
+		"a salt gives one square a second, independent number — its rate is not its phase")
+
+	# **Not regular**, which is the difference between this and the ground
+	# tiling's `tx % 3`. That one is pure and also predictable, and a repeat the
+	# eye can predict stops being texture and becomes wallpaper — which is the
+	# exact complaint the CEO made of the mirrored ground on 2026-09-07. A cue
+	# arriving on a three-square beat would fail the same way.
+	var periodic := true
+	for x in 12:
+		if not is_equal_approx(CropPresentation.hash01(Vector2i(x, 5)),
+				CropPresentation.hash01(Vector2i(x + 3, 5))):
+			periodic = false
+	_assert(not periodic, "and a row of squares does not repeat on a three-square beat")
+
+	# --- A: the nod ----------------------------------------------------------
+	CropPresentation.set_treatment(CropPresentation.NOD)
+	var here := Vector2i(6, 11)
+	var swing: float = 0.0
+	for i in 240:
+		var o: Vector2 = CropPresentation.nod_offset(here, i * 0.05)
+		swing = maxf(swing, absf(o.x))
+		_assert_quiet(absf(o.x) <= CropPresentation.NOD_LEAN + 0.001
+				and o.y <= 0.001 and o.y >= -CropPresentation.NOD_RISE - 0.001,
+			"the sway stays inside its stated bounds")
+	_assert(swing > CropPresentation.NOD_LEAN * 0.9,
+		"A's head reaches the sway it is drawn for (%.2f of %.2f world px)"
+			% [swing, CropPresentation.NOD_LEAN])
+	_assert(CropPresentation.nod_offset(here, 0.0).is_equal_approx(
+			CropPresentation.nod_offset(here, CropPresentation.nod_period(here))),
+		"and comes back to where it started, one period later")
+	var apart := false
+	for t in [0.3, 0.9, 1.7]:
+		if not is_equal_approx(CropPresentation.nod_offset(here, t).x,
+				CropPresentation.nod_offset(here + Vector2i(1, 0), t).x):
+			apart = true
+	_assert(apart, "two neighbouring plants are never at the same point of the sway")
+	CropPresentation.set_treatment(CropPresentation.STAND)
+	_assert(CropPresentation.nod_offset(here, 1.0) == Vector2.ZERO,
+		"and nothing sways under any other treatment")
+
+	# --- B: standing up ------------------------------------------------------
+	var base := Rect2(96.0, 176.0, 16.0, 16.0)
+	CropPresentation.set_treatment(CropPresentation.STAND)
+	var tall := CropPresentation.stand_rect(base, here)
+	_assert(tall.size.x > base.size.x and tall.size.y > base.size.y,
+		"B draws a ready plant bigger than the sheet's own cell")
+	_assert(absf((tall.position.y + tall.size.y)
+			- (base.position.y + base.size.y - CropPresentation.STAND_LIFT)) < 0.001,
+		"grown about its own feet and then lifted, so it never sinks into the square below")
+	_assert(absf(tall.position.x - base.position.x) < base.size.x / 2.0,
+		"and stays on its square")
+	var neighbour := CropPresentation.stand_rect(
+		Rect2(112.0, 176.0, 16.0, 16.0), here + Vector2i(1, 0))
+	_assert(not is_equal_approx(tall.size.y, neighbour.size.y),
+		"two ready plants are not the same height — a plot of these is plants, not stamps")
+	var shade := CropPresentation.shadow_rect(base, here)
+	_assert(shade.size.y < tall.size.y * 0.5 and shade.size.x == tall.size.x,
+		"the shadow is the plant's own silhouette, flattened")
+	_assert(shade.position.y > base.position.y,
+		"and lies on the ground under it rather than behind it")
+	CropPresentation.set_treatment(CropPresentation.NOD)
+	_assert(CropPresentation.stand_rect(base, here) == base,
+		"and no other treatment moves or grows the plant")
+
+	# --- C: the light --------------------------------------------------------
+	CropPresentation.set_treatment(CropPresentation.BLOOM)
+	_assert(CropPresentation.bloom_radius(0)
+			> CropPresentation.bloom_radius(CropPresentation.BLOOM_RINGS - 1),
+		"C's rings come back widest first, which is the order light has to accumulate in")
+	var lit := true
+	for i in CropPresentation.BLOOM_RINGS:
+		if CropPresentation.bloom_ring_alpha(here, i) <= 0.0:
+			lit = false
+	_assert(lit, "and every ring of the pool carries light")
+	_assert(not is_equal_approx(CropPresentation.bloom_ring_alpha(here, 0),
+			CropPresentation.bloom_ring_alpha(here + Vector2i(1, 0), 0)),
+		"two ready plants do not glow at identical strength")
+	_assert(CropPresentation.bloom_light("wheat") != CropPresentation.bloom_light("tomato"),
+		"a ripe wheat and a ripe tomato give off different light — the crop's own colour")
+	_assert(CropPresentation.bloom_light("nasturtium") == CropPresentation.RIPE_LIGHT_FALLBACK,
+		"and a crop nobody sampled still lights up rather than silently losing the cue")
+	var sampled := true
+	for crop in CropPresentation.RIPE_LIGHT.keys():
+		if not CropDefs.TYPES.has(crop):
+			sampled = false
+	_assert(sampled, "every sampled colour belongs to a crop this game actually has")
+	CropPresentation.set_treatment(CropPresentation.STAND)
+	_assert(CropPresentation.bloom_ring_alpha(here, 0) == 0.0,
+		"and no other treatment emits any light at all")
+
+	CropPresentation.set_treatment(was)
 
 
 func test_home_layout() -> void:

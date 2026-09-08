@@ -94,6 +94,7 @@ func _run_scenarios() -> void:
 	await _scenario_ai_the_house_has_a_door()
 	await _scenario_aj_the_robot_lives_in_a_stall()
 	await _scenario_ak_she_puts_up_a_fence()
+	await _scenario_al_a_ripe_crop_carries()
 
 func _wait_until(pred: Callable, max_frames: int) -> bool:
 	for i in max_frames:
@@ -4210,3 +4211,115 @@ func _scenario_ak_she_puts_up_a_fence() -> void:
 			% farm.sim.get_tile(spot.x, spot.y).get("state", ""))
 
 	GameState.selected_seed_type = "wheat"
+
+
+func _scenario_al_a_ripe_crop_carries() -> void:
+	# "A ripe crop is obvious at a glance", raised from play 2026-09-07 and
+	# carried in Player Update 1. Four positions in one build — today's game and
+	# three treatments — and the pick is the designer's.
+	#
+	# The load-bearing property is D-8, exactly as in Scenarios X and AB: a
+	# presentation treatment is precisely the kind of change that could quietly
+	# turn a harvest into a wind-up, so the tap is re-proved once per treatment
+	# against the real main scene. The rest is a witness that each one actually
+	# renders — `farm.ripe_draws` rather than the log, because a draw callback
+	# that throws half way through is only a red line nobody fails a suite over.
+	print("\n--- Scenario AL: a ripe crop carries, and none of it gates the tap ---")
+
+	var was: int = CropPresentation.treatment
+
+	# --- the pause menu grew a fourth line, and it moves nothing else ---------
+	CropPresentation.set_treatment(CropPresentation.OFF)
+	var was_cot2: int = CotPresentation.treatment
+	var was_d3: int = StationPresentation.discovery
+	main_scene.menus.open_menu("pause")
+	await get_tree().process_frame
+	var lab_labels: Array = []
+	_collect_labels(main_scene.menus.options_container, lab_labels)
+	var found_ripe := false
+	for l in lab_labels:
+		if String(l.text) == LookLab.option_label(LookLab.RIPE):
+			found_ripe = true
+	_assert(found_ripe, "the pause menu carries the ripe-crop line, naming where it stands")
+	main_scene.menus.selected_option = 2 + LookLab.AXES.find(LookLab.RIPE)
+	main_scene.menus._select_current_option()
+	await get_tree().process_frame
+	_assert(CropPresentation.treatment == CropPresentation.NOD,
+		"tapping it advances that axis")
+	_assert(CotPresentation.treatment == was_cot2
+			and StationPresentation.discovery == was_d3,
+		"and moves nothing else — four axes, judged one at a time")
+
+	# --- a plot with some of it ready and some of it not ---------------------
+	#
+	# Some and not all, on purpose: the complaint from play is that a ripe square
+	# does not stand out of a *busy* field, and a field where everything is ripe
+	# cannot show that either way.
+	var ripe: Array[Vector2i] = [Vector2i(5, 9), Vector2i(6, 9), Vector2i(7, 9)]
+	for r in ripe:
+		_stage_tile(r.x, r.y, "ready", "wheat")
+		farm.sim.get_tile(r.x, r.y).growth_stage = CropDefs.TYPES["wheat"]["days_to_grow"]
+	_stage_tile(5, 10, "growing", "wheat")
+	farm.sim.get_tile(5, 10).growth_stage = 1
+	_stage_tile(6, 10, "cleared")
+	player.pos = Vector2(6.5 * 16.0, 10.5 * 16.0)
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+
+	var glow: Node2D = farm.get_node_or_null("RipeGlowRenderer")
+	_assert(glow != null, "the farm carries a layer for the light treatment to emit onto")
+	_assert(glow != null and glow.material is CanvasItemMaterial
+			and (glow.material as CanvasItemMaterial).blend_mode
+				== CanvasItemMaterial.BLEND_MODE_ADD,
+		"and it adds light to the world rather than painting a colour over it")
+
+	# --- each position renders, and only the treated squares cost anything ---
+	for t in [CropPresentation.OFF, CropPresentation.NOD, CropPresentation.STAND,
+			CropPresentation.BLOOM]:
+		var label: String = CropPresentation.name_of(t)
+		CropPresentation.set_treatment(t)
+		farm.queue_redraw()
+		await get_tree().process_frame
+		await get_tree().process_frame
+
+		var drew: int = farm.ripe_draws
+		for i in 4:
+			await get_tree().process_frame
+		var per_frame: int = farm.ripe_draws - drew
+		if t == CropPresentation.OFF:
+			_assert(per_frame == 0,
+				"%s: nothing is drawn on a ripe square at all — this is today's game" % label)
+		else:
+			_assert(per_frame >= ripe.size(),
+				"%s: every ripe square is drawn, frame after frame (%d over 4 frames, %d ripe)"
+					% [label, per_frame, ripe.size()])
+		_assert(farm._ripe_glow.size() == (ripe.size() if t == CropPresentation.BLOOM else 0),
+			"%s: %d pools of light, one per ripe square"
+				% [label, farm._ripe_glow.size()])
+
+	# --- D-8, once per position: the tap still picks the crop ----------------
+	for t2 in [CropPresentation.OFF, CropPresentation.NOD, CropPresentation.STAND,
+			CropPresentation.BLOOM]:
+		var label2: String = CropPresentation.name_of(t2)
+		CropPresentation.set_treatment(t2)
+		var target := Vector2i(6, 9)
+		_stage_tile(target.x, target.y, "ready", "wheat")
+		farm.sim.get_tile(target.x, target.y).growth_stage = \
+			CropDefs.TYPES["wheat"]["days_to_grow"]
+		GameState.crops = { "wheat": 0, "tomato": 0 }
+		GameState.set_energy(GameState.max_energy)
+		player.pos = Vector2(6.5 * 16.0, 10.5 * 16.0)
+		player.path.clear()
+		player.pending_action = {}
+		await get_tree().process_frame
+		InputManager.click_tile = target
+		InputManager.has_click = true
+		var picked := await _wait_until(
+			func(): return int(GameState.crops.get("wheat", 0)) > 0, 240)
+		_assert(picked, "%s: a tap on a ripe crop still picks it, at the tap (D-8)" % label2)
+		_assert(String(farm.sim.get_tile(target.x, target.y).get("state", "")) != "ready",
+			"%s: and the square stops being ripe, so the sim moved and not just the picture"
+				% label2)
+
+	CropPresentation.set_treatment(was)

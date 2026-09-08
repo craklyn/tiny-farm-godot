@@ -1,0 +1,54 @@
+{
+  "id": "Q-94",
+  "title": "How should a ripe crop announce itself?",
+  "question": "You said from play that nothing on the farm says loudly enough that a plant is ready to pick, and you have to go looking for it. That is true and it is worse than it sounds: counted off the sprite sheet, a ripe wheat differs from the half-grown one beside it by nine pixels on a sixteen-pixel square. On one plant at arm's length that is a difference. On a plot of thirty, and from the height the camera now rises to when you are pointing a robot at squares, it is nothing. Three treatments are built and ride along in this build, switchable on the tablet from the pause menu. The two sheets below are the real game — same plot, same mid-morning, ten ripe plants among thirty-one — once standing in the plot, once from the robot-directing height, because a cue that carries in the hand and dies at that height would be no fix at all. Panel 1 of each is the game exactly as it is today. None of these adds a word, and none of them changes what a tap does. There is deliberately no recommendation on this one: the three fail in three different places, and which failure matters is the thing only the pictures can tell you.",
+  "why_now": "Player Update 1 is the release where a player first hands work to a machine, and picking what is ready is the one job she still does entirely by hand — so the moment the robot walks its round, the plot is full of crops she has to hunt for. It is also cheapest to answer now: the three are already built and switchable, so the answer costs one line, and whatever you pick becomes the game's word for \"this is finished, come and get it\" — which every crop, machine and tower after this one will reuse.",
+  "options": [
+    {
+      "key": "a",
+      "label": "A — the ripe ones nod",
+      "detail": "A ready plant sways where it stands and nothing else about it changes. No two squares sway together, so a ripe row ripples rather than ticking in time. Movement is the strongest thing there is for catching an eye that is looking somewhere else, and it spends no colour and no new artwork. What it costs: it is invisible in a still picture — a screenshot, a trailer frame, or a decision made from a photograph, which is why the sheets have a \"see it move\" button and why this option is the hardest of the four to judge fairly here. And a field that moves might read as wind rather than as an announcement."
+    },
+    {
+      "key": "b",
+      "label": "B — the ripe ones stand up",
+      "detail": "A ready plant is drawn heavier and sitting a little proud of the soil, with a shadow of its own shape underneath, so the ripe ones break the flat grid the rest of the field lies in. It is the one that survives everything: a still picture, a small screen, a colourblind player, and the pull-back — from the robot-directing height it is the one whose ripe squares you can still count. What it costs: it is the quietest of the three when you are standing in the plot, and a ripe plant now overlaps the square above it slightly, which will need looking at again the day plants get taller."
+    },
+    {
+      "key": "c",
+      "label": "C — the ripe ones give off their own colour",
+      "detail": "A ready plant pools light on the ground around it in its own ripe colour — gold under wheat, red under tomato — so the plot has bright spots in it that the eye lands on before it has read anything. The loudest of the three at any distance, and it is the style guide's own rule taken to its end: the things you can touch carry the brightest pixels on screen. What it costs: colour, which this game has little of left. Gold already means \"do this now\" here — the teaching ring and the sun — so a field of ripe wheat is a field of gold with the teaching gold somewhere inside it. And the pea has no ripe colour of its own, so it would barely light up at all."
+    },
+    {
+      "key": "d",
+      "label": "Leave it as it is, and fix the wheat instead",
+      "detail": "Panel 1. The fourth picture already changes, and a ripe tomato does read — you found this on wheat, which is the crop whose ripe picture changes least. So the honest version of this answer is that the problem is in the drawing rather than in the engine: redraw wheat's ripe cell so the change is a real one, and spend nothing on a cue at all. What it costs: an art pass now, and the same art pass again for every crop added after this, with nothing in the game to catch the next one that comes out too subtle."
+    }
+  ],
+  "attachments": [
+    {
+      "type": "look",
+      "scenario": "ripe_at_a_glance",
+      "caption": "Standing in the plot. Ten of these thirty-one plants are ripe — panel 1 is the game today, and it is the panel where you have to count."
+    },
+    {
+      "type": "look",
+      "scenario": "ripe_from_above",
+      "caption": "The same plot at the same moment, from the height the camera rises to when it hands you a robot to direct. This is the half a close-up cue can quietly fail."
+    }
+  ],
+  "links": [
+    {
+      "label": "Queue entry (Q-94)",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"
+    },
+    {
+      "label": "Art direction — how this game uses colour",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/09-art-direction.md"
+    },
+    {
+      "label": "Why the camera pulls back (Altitude)",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/11-ux-ui.md"
+    }
+  ]
+}

@@ -89,6 +89,37 @@ const SCENARIOS: Array[Dictionary] = [
 		"settle": 8,
 		"strip": 6,
 	},
+	# **One question, asked twice from two heights** (the v0.2.0 story, raised from
+	# play 2026-09-07). The complaint was not that a ripe crop is invisible on the
+	# square you are standing on — it is that it does not carry across a plot. So
+	# a sheet shot only at close range would answer the easy half and miss the
+	# whole of the difficulty, and one shot only from above would not show whether
+	# a cue loud enough to carry is too loud in the hand. Same farm, same hour,
+	# same drafts, two altitudes: any draft that only works at one of them has
+	# told the designer something he could not have got from either sheet alone.
+	{
+		"id": "ripe_at_a_glance",
+		"axis": "ripe",
+		"question": "You are standing in your plot. Which of these tells you, without looking twice, which plants are ready to pick?",
+		"note": "Mid-morning. The plot was planted over several days, so eight of its thirty-odd plants are ripe and the rest are still coming on. Only the ripe ones are treated — everything else in the picture is the game exactly as it is today.",
+		"focus_tile": Vector2i(6, 12),
+		"stand": Vector2i(6, 15),
+		"crop": Vector2i(380, 250),
+		"settle": 30,
+		"strip": 34,        # a third of a sway: one of these drafts is motion and nothing else
+	},
+	{
+		"id": "ripe_from_above",
+		"axis": "ripe",
+		"question": "Now step back to where the game puts you when you are pointing a robot at squares. From up here, which one still tells you what is ready?",
+		"note": "The same plot at the same moment, seen from the height the camera rises to when it hands you a machine to direct — about half the size the game is normally drawn at. The teaching mode's own dimming is deliberately not in the shot: what is being asked is whether the cue survives the distance, not how it competes with the grey.",
+		"focus_tile": Vector2i(6, 12),
+		"stand": Vector2i(6, 15),
+		"altitude": true,   # framed by the game's own pull-back, not by a guess
+		"crop": Vector2i(330, 230),
+		"settle": 40,       # the glide is a quarter of a second and must land before the shutter
+		"strip": 34,
+	},
 ]
 
 

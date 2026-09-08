@@ -76,6 +76,24 @@ var glyph_regions: Dictionary = {}    # T-28 glyph key -> [texture, Rect2]
 # without knowing this exists.
 var cot_turned_down: bool = false
 
+# How many ripe crops this renderer has drawn a cue on, ever. The integration
+# suite's witness that each treatment renders (Scenario RC), and it exists for
+# the reason `main.gd`'s `cot_draws` does: a draw callback that throws half way
+# through is only a red line in the log and would not fail a suite, so the
+# counter is checked instead of the log. One int, no branch.
+var ripe_draws: int = 0
+
+# The pools of light treatment C is currently emitting: one entry per ripe square
+# on the farm, `{ "at": Vector2, "light": Color }`, collected by the tile pass
+# that is already walking the map and drawn by the additive child above.
+#
+# **This is what keeps the cost per ripe square rather than per square of map.**
+# Nothing new scans the grid: the list is a by-product of the draw that was
+# happening anyway, so an empty farm costs one empty array and a plot of twenty
+# ripe crops costs twenty pools.
+var _ripe_glow: Array[Dictionary] = []
+var _ripe_glow_node: Node2D = null
+
 # T-27 (box 1), the ground's half: **the field she fell asleep in, held until the
 # screen is black.**
 #
@@ -163,6 +181,24 @@ func _ready() -> void:
 	actors_node = Node2D.new()
 	actors_node.name = "Entities"
 	add_child(actors_node)
+	# **A light is not a colour laid on top of the world, it is light added to
+	# it** — `main.gd`'s `CotGlowRenderer` learnt this for the lamp and treatment
+	# C of the ripe cue needs the same thing. Painting a pale glow over tilled
+	# soil in ordinary alpha cannot work: the soil is already a light warm tan, so
+	# a pale wash on it only approaches the brightness it already has, and the
+	# first capture came back with the ripe squares indistinguishable from the
+	# rest of the plot. Adding light has no such ceiling.
+	#
+	# A child of the farm rather than of `main.gd`, so every renderer of a farm
+	# gets it — the title screen's attract loop and the replay viewer included —
+	# and so nothing here needs a GameState (finding F-4).
+	_ripe_glow_node = Node2D.new()
+	_ripe_glow_node.name = "RipeGlowRenderer"
+	var glow_mat := CanvasItemMaterial.new()
+	glow_mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	_ripe_glow_node.material = glow_mat
+	_ripe_glow_node.draw.connect(_draw_ripe_glow)
+	add_child(_ripe_glow_node)
 	if generate_on_ready:
 		# gateway-ok: making a world is not changing one — there is nothing here
 		# yet for an action to have acted on, and a replay regenerates from the
@@ -1090,8 +1126,91 @@ func _is_soil_at(tx: int, ty: int) -> bool:
 	return Autotile.is_soil(tile_look(tx, ty).state)
 
 
+# **What a ripe crop looks like**, on top of the picture the sheet already gives
+# it — the v0.2.0 story "a ripe crop is obvious at a glance" (2026-09-07). One
+# arm per treatment; the drafts and every number in them live in
+# `systems/crop_presentation.gd`, which is pure and can be asserted headlessly.
+#
+# **The whole per-frame cost is here, and it is per ripe square.** No square that
+# is not ready pays anything, nothing new walks the map, and the farm's redraw
+# cadence is untouched: `player/player.gd` already asks for a redraw every frame
+# of ordinary play, so the one treatment that moves adds frames to nobody's bill.
+# On a plot of twenty ripe crops that is twenty extra sprite draws under A and B
+# and about a hundred small ones under C.
+#
+# Everything that differs from square to square comes out of
+# `CropPresentation.hash01`, a pure function of the square's coordinates — never
+# `SimRng`, never `randi()` — so a save, a replay and a screenshot land on the
+# same farm.
+func _queue_ripe(queue: Array[Dictionary], at: Vector2i, tex: Texture2D,
+		region: Rect2, rect: Rect2, py: int, crop_type: String) -> void:
+	var t: float = Time.get_ticks_msec() / 1000.0
+	match CropPresentation.treatment:
+		CropPresentation.NOD:
+			# Drawn in two pieces so the base stays rooted while the head
+			# travels: a plant that slides whole reads as a sprite being moved,
+			# and a plant whose top leans over fixed feet reads as a plant.
+			var f: float = float(CropPresentation.NOD_SPLIT) / float(TILE_SIZE)
+			var head_src := Rect2(region.position,
+				Vector2(region.size.x, region.size.y * f))
+			var foot_src := Rect2(region.position + Vector2(0.0, region.size.y * f),
+				Vector2(region.size.x, region.size.y * (1.0 - f)))
+			var head_dst := Rect2(rect.position + CropPresentation.nod_offset(at, t),
+				Vector2(rect.size.x, rect.size.y * f))
+			var foot_dst := Rect2(rect.position + Vector2(0.0, rect.size.y * f),
+				Vector2(rect.size.x, rect.size.y * (1.0 - f)))
+			queue.append({
+				"y": py,
+				"draw": func():
+					draw_texture_rect_region(tex, foot_dst, foot_src)
+					draw_texture_rect_region(tex, head_dst, head_src)
+					ripe_draws += 1
+			})
+		CropPresentation.STAND:
+			# The plant's own silhouette, flattened into the ground under it,
+			# then the plant grown about its feet and lifted off the soil. A
+			# drawn shadow rather than a painted ellipse, so the shape on the
+			# floor is the shape of the plant and a reskin carries it for free.
+			var shadow := CropPresentation.shadow_rect(rect, at)
+			var plant := CropPresentation.stand_rect(rect, at)
+			queue.append({
+				"y": py,
+				"draw": func():
+					draw_texture_rect_region(tex, shadow, region,
+						Color(0.10, 0.09, 0.13, CropPresentation.SHADOW_ALPHA))
+					draw_texture_rect_region(tex, plant, region)
+					ripe_draws += 1
+			})
+		CropPresentation.BLOOM:
+			# The plant is drawn exactly as it always was; the light is *added*
+			# on the layer above, which is the only way a glow can be brighter
+			# than the tilled soil it is lying on. The pool is registered here,
+			# where the square is already being visited, rather than found by a
+			# second walk over the map.
+			_ripe_glow.append({
+				"at": rect.position + rect.size / 2.0
+					+ Vector2(0.0, CropPresentation.BLOOM_DROP),
+				"light": CropPresentation.bloom_light(crop_type),
+				"tile": at,
+			})
+			queue.append({
+				"y": py,
+				"draw": func():
+					draw_texture_rect_region(tex, rect, region)
+					ripe_draws += 1
+			})
+		_:
+			queue.append({
+				"y": py,
+				"draw": func(): draw_texture_rect_region(tex, rect, region)
+			})
+
+
 func _draw() -> void:
 	var render_queue: Array[Dictionary] = []
+	# Rebuilt every pass by the tile loop below, then handed to the additive
+	# child at the end of it.
+	_ripe_glow.clear()
 
 	# One weather read per frame, not per tile: the rain half of the picture
 	# rule (Q-52, `Autotile.draws_wet`) needs the sky, held through a day fade
@@ -1222,10 +1341,19 @@ func _draw() -> void:
 				var crop_tex: Texture2D = crop_sheets.get(tile.crop_type)
 				if region.size.x > 0 and crop_tex != null:
 					var crop_rect := _react_rect(px, py, k, TILE_SIZE, shake)
-					render_queue.append({
-						"y": py,
-						"draw": func(): draw_texture_rect_region(crop_tex, crop_rect, region)
-					})
+					# **A ripe square gets more than its fourth cell** — the
+					# v0.2.0 story, raised from play 2026-09-07. Which "more"
+					# is the designer's open question, so the ordinary draw is
+					# still here as the OFF position and every other square in
+					# the field goes down it untouched (`_queue_ripe`).
+					if CropPresentation.shows(tile.state):
+						_queue_ripe(render_queue, Vector2i(tx, ty), crop_tex,
+							region, crop_rect, py, tile.crop_type)
+					else:
+						render_queue.append({
+							"y": py,
+							"draw": func(): draw_texture_rect_region(crop_tex, crop_rect, region)
+						})
 
 				# T-28, satisfied treatment B: **the state shows before the tap.**
 				# Thirteen of the eighteen "already done" taps in the gate session
@@ -1492,5 +1620,30 @@ func _draw() -> void:
 	# Execute drawing commands
 	for entity in render_queue:
 		entity.draw.call()
+
+	# And the light the ripe squares are giving off, on the layer that adds
+	# rather than paints. Told rather than polled: the layer has no idea which
+	# squares are ripe and never looks.
+	if _ripe_glow_node != null:
+		_ripe_glow_node.queue_redraw()
+
+
+# Treatment C's light, drawn on the additive child built in `_ready`. Rings
+# widest first, so the added light accumulates toward the plant and the pool has
+# a falloff rather than an edge — the cot lamp's own shape, at a crop's scale.
+#
+# Deliberately **not** daylight-compensated, for `main.gd`'s reason at the lamp:
+# compensation exists to stop a painted hint going muddy under the day's tint,
+# and this is emitted light. A ripe crop catching a low afternoon sun should warm
+# with the sky rather than fight it.
+func _draw_ripe_glow() -> void:
+	for pool in _ripe_glow:
+		var light: Color = pool["light"]
+		var centre: Vector2 = pool["at"]
+		var tile: Vector2i = pool["tile"]
+		for i in CropPresentation.BLOOM_RINGS:
+			_ripe_glow_node.draw_circle(centre, CropPresentation.bloom_radius(i),
+				Color(light.r, light.g, light.b,
+					CropPresentation.bloom_ring_alpha(tile, i)))
 
 

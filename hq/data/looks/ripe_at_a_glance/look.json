@@ -1,0 +1,30 @@
+{
+  "id": "ripe_at_a_glance",
+  "axis": "ripe",
+  "question": "You are standing in your plot. Which of these tells you, without looking twice, which plants are ready to pick?",
+  "note": "Mid-morning. The plot was planted over several days, so eight of its thirty-odd plants are ripe and the rest are still coming on. Only the ripe ones are treated — everything else in the picture is the game exactly as it is today.",
+  "captured": "2026-09-07",
+  "asked_by": [
+    "Q-94"
+  ],
+  "drafts": [
+    {
+      "name": "off · as today",
+      "blurb": "the fourth picture and nothing else — the game as it is today"
+    },
+    {
+      "name": "A · the ripe ones nod",
+      "blurb": "a ready plant sways, and no two squares sway together"
+    },
+    {
+      "name": "B · the ripe ones stand up",
+      "blurb": "a ready plant is heavier, sits proud of the soil and throws a shadow"
+    },
+    {
+      "name": "C · the ripe ones give off their own colour",
+      "blurb": "a soft bloom in the crop's own ripe colour — gold wheat, red tomato"
+    }
+  ],
+  "sheet": "ripe_at_a_glance/sheet.png",
+  "motion": "ripe_at_a_glance/motion.png"
+}

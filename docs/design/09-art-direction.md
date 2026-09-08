@@ -122,6 +122,82 @@ filed.
 
 ---
 
+## The ripe crop, and what colour is left (2026-09-07)
+
+*Open at Q-94. Three treatments are built and switchable on the tablet; the pick
+is the designer's and this section records the material rather than an answer.*
+
+**The problem, measured.** Reported from play: nothing on the farm says loudly
+enough that a plant is ready to pick, so she has to go looking. The state is
+there and so is the picture — a crop has four cells and the fourth is ripe — but
+counted off the shipping sheet, **wheat's ready cell differs from the one before
+it by nine pixels**, three of them a pale gold highlight, on a 16x16 square. A
+tomato is better and still small. That is a real difference on one plant at
+arm's length and nothing at all on a plot of thirty, which is exactly what the
+report describes.
+
+**The three drafts, and why they are three.** Each spends a different channel,
+because they fail in different places and one tuned treatment cannot tell you
+which failure matters:
+
+| | Draft | Reads through | Fails where |
+|---|---|---|---|
+| A | the ripe ones nod | movement — the strongest signal for an eye looking elsewhere | a still picture: a screenshot, a trailer frame, or a decision made from a photograph |
+| B | the ripe ones stand up | silhouette — survives grey, distance, a small screen, colourblindness | loudness: it is the quietest of the three in the hand |
+| C | the ripe ones give off their own colour | light and saturation — the contrast rule below, taken to its end | colour, which this game has little of left (see the ledger) |
+
+**The colour ledger.** A hue is not free here, and this is what each one is
+already spending itself on. Anything new has to survive being read against this
+table before it is drawn.
+
+| Colour | Already means | Where |
+|---|---|---|
+| Gold on a dark backing ring | *do this now* | the teaching highlight and its chevron (`main.gd`) |
+| Gold | the hour | the sun-arc's token in the HUD (T-29) |
+| Blue-white | *done*, and *this square is on the machine's list* | the tap acknowledgement and the mark-1's order rings |
+| Magenta / cyan / warm orange | reserved, unspent | the scent overlays (P-10, D-4) |
+| White / green / red | the cursor's own states | `main.gd`'s tile cursor |
+
+Draft C therefore spends **no new hue**: it emits the crop's *own* ripe colour,
+sampled off the sheets the build actually ships rather than copied out of the
+guide below — gold under wheat, red under tomato. The honest costs are on the
+card: wheat's own ripe colour is a gold, so a field of ripe wheat is a field of
+gold with the teaching gold somewhere inside it, and the pea's ready cell is all
+leaf green with no ripe colour to emit.
+
+### Two rules this produced, whichever draft wins
+
+**A light has to be added to the picture, not painted over it.** C's first
+version laid the crop's colour on the tile in ordinary alpha and the capture came
+back with the ripe squares indistinguishable from the rest of the plot. That is
+arithmetic, not tuning: tilled soil is already a light warm tan, so a pale wash
+on it can only ever approach the brightness it has. This is the same wall the
+teaching highlight hit — *"pale-on-pale was invisible in practice"* — and the
+cot's lamp solved it the same way, on a canvas that blends additively. Any glow
+in this game goes on such a layer, and its colour is sampled from the saturated
+body of what is glowing rather than from its pale highlight, or the core clips to
+white and the colour that was the whole idea is gone.
+
+**Square-to-square variation must be irregular, not periodic.** The ground tiling
+picks its cell with `tx % 3` — pure, which is what determinism needs, and also
+*predictable*, which is what the CEO rejected on 2026-09-07: a repeat the eye can
+predict stops being texture and becomes wallpaper. A cue arriving on a
+three-square beat would fail the same way and worse, because a pattern that
+regular starts to read as a rule about the farm rather than a fact about each
+plant. So every per-square difference in the ripe cue comes from a hash of the
+square's coordinates — still a pure function of position, so a save, a replay and
+a screenshot land on the same farm, but with no beat in it. Asserted in the unit
+suite rather than left as an intention.
+
+**How it was asked.** Two look questions rather than one (`tools/look_scenarios.gd`):
+the same plot at the same mid-morning, ten ripe plants among thirty-one, shot once
+from the ground and once from the height the camera rises to when the player is
+directing a robot (design/11, "Altitude"). A cue that carries in the hand and dies
+at that height is not a fix, and neither is one loud enough to carry that shouts up
+close — and no single sheet can show both.
+
+---
+
 ## Style guide v1 — extracted from current assets (Q-14 draft, 2026-08-18)
 
 *Measured from the sheets in `assets/sprites/sprout_lands/` (visual inspection +

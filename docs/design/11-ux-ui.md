@@ -7,7 +7,10 @@ at each phase design start.*
 
 *Amended 2026-09-07 (Q-91): **Altitude** added below — when the view rises off the
 farmer, why, and what it means for every planned interaction. Rows 21b/21c added
-(teaching a mark-1 was built and never inventoried) and Findings 3 and 4 updated.*
+(teaching a mark-1 was built and never inventoried) and Findings 3 and 4 updated.
+Amended again the same day: "What altitude costs a cue" — the pull-back gives the
+game a second viewing distance, so anything read off the world is now a
+two-distance question.*
 
 ## Foundation
 Tap-to-command everything (P-1); input/intent separation already in code
@@ -354,6 +357,27 @@ interface against itself.
   it, or is something else doing it*. She carries the posts and puts them in the ground,
   which is her own hands, so she stays in the dirt and the interaction is row 3's
   swipe-chain unchanged. Size of the thing is not the test; whose hands do the work is.
+
+### What altitude costs a cue
+
+The pull-back gives this game a **second viewing distance**, and it arrived after
+every existing cue had been tuned at the first one. A tile is about 48 screen
+pixels standing in the farm and about 25 from altitude, so anything the player
+has to *read off the world* — not just tap — now has to work at both, and a cue
+can fail either way round: too quiet to survive the distance, or loud enough to
+carry and therefore shouting in the hand.
+
+The first cue designed against that is the ripe crop's (raised from play
+2026-09-07, open at Q-94, treatments in `systems/crop_presentation.gd`). The
+method is the part worth keeping: **the look question is staged twice, from both
+heights, on the same farm at the same moment**, so the pair of sheets shows what
+neither sheet alone can. Any later cue about tile state — a machine's coverage, a
+scent overlay, a tower's range, a bot's assigned zone — gets asked the same way.
+
+This is the flip side of the altitude test above. That test decides which
+*interactions* lift the camera; this one says that once the camera can lift at
+all, the **legibility** of everything standing on the ground is a two-distance
+question, whether or not the interaction that reads it is one of the lifted rows.
 
 ### Open questions
 

@@ -1,0 +1,30 @@
+{
+  "id": "ripe_from_above",
+  "axis": "ripe",
+  "question": "Now step back to where the game puts you when you are pointing a robot at squares. From up here, which one still tells you what is ready?",
+  "note": "The same plot at the same moment, seen from the height the camera rises to when it hands you a machine to direct — about half the size the game is normally drawn at. The teaching mode's own dimming is deliberately not in the shot: what is being asked is whether the cue survives the distance, not how it competes with the grey.",
+  "captured": "2026-09-07",
+  "asked_by": [
+    "Q-94"
+  ],
+  "drafts": [
+    {
+      "name": "off · as today",
+      "blurb": "the fourth picture and nothing else — the game as it is today"
+    },
+    {
+      "name": "A · the ripe ones nod",
+      "blurb": "a ready plant sways, and no two squares sway together"
+    },
+    {
+      "name": "B · the ripe ones stand up",
+      "blurb": "a ready plant is heavier, sits proud of the soil and throws a shadow"
+    },
+    {
+      "name": "C · the ripe ones give off their own colour",
+      "blurb": "a soft bloom in the crop's own ripe colour — gold wheat, red tomato"
+    }
+  ],
+  "sheet": "ripe_from_above/sheet.png",
+  "motion": "ripe_from_above/motion.png"
+}

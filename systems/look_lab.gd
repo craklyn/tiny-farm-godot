@@ -18,7 +18,9 @@
 # It is a lookup table with a `match` in it, deliberately: GDScript has no clean
 # way to put setters in a const table, and a nine-line match that the whole game
 # reads through is better than a plugin system for three entries. Adding a
-# fourth axis is this file plus nothing.
+# fourth axis is this file plus nothing — and the fourth arrived on 2026-09-07
+# ("how does a ripe crop carry across a whole plot?"), costing exactly that: six
+# lines here, and the pause menu and the capture rig picked it up on their own.
 #
 # Layer note: pure static over other pure statics. No Node, no autoload, no sim.
 class_name LookLab
@@ -26,14 +28,16 @@ class_name LookLab
 const COT := "cot"
 const DISCOVERY := "discovery"
 const SATISFIED := "satisfied"
+const RIPE := "ripe"
 
-const AXES: Array[String] = [COT, DISCOVERY, SATISFIED]
+const AXES: Array[String] = [COT, DISCOVERY, SATISFIED, RIPE]
 
 # Short enough to fit a pause-menu line beside its current value.
 const LABELS := {
 	COT: "Cot look",
 	DISCOVERY: "Stations seen",
 	SATISFIED: "Already done",
+	RIPE: "Ripe crops",
 }
 
 # The question each axis is asking, for the title screen's panel. Developer text,
@@ -42,6 +46,7 @@ const QUESTIONS := {
 	COT: "What does a bed look like before you have slept in it? (T-27)",
 	DISCOVERY: "How does a station say what it is for, first time? (T-28)",
 	SATISFIED: "How does \"already done\" say what is already done? (T-28)",
+	RIPE: "How does a ripe crop carry across a whole plot? (v0.2.0, from play)",
 }
 
 # Which axis the last `cycle()` moved, so a toast can name it.
@@ -56,6 +61,8 @@ static func count_of(axis: String) -> int:
 			return StationPresentation.DISCOVERY_COUNT
 		SATISFIED:
 			return StationPresentation.SATISFIED_COUNT
+		RIPE:
+			return CropPresentation.COUNT
 	return 0
 
 
@@ -67,6 +74,8 @@ static func current(axis: String) -> int:
 			return StationPresentation.discovery
 		SATISFIED:
 			return StationPresentation.satisfied
+		RIPE:
+			return CropPresentation.treatment
 	return 0
 
 
@@ -79,6 +88,8 @@ static func set_to(axis: String, value: int) -> int:
 			return StationPresentation.set_discovery(value)
 		SATISFIED:
 			return StationPresentation.set_satisfied(value)
+		RIPE:
+			return CropPresentation.set_treatment(value)
 	return 0
 
 
@@ -94,6 +105,8 @@ static func name_of(axis: String, value: int) -> String:
 			return StationPresentation.discovery_name(value)
 		SATISFIED:
 			return StationPresentation.satisfied_name(value)
+		RIPE:
+			return CropPresentation.name_of(value)
 	return ""
 
 
@@ -105,6 +118,8 @@ static func blurb_of(axis: String, value: int) -> String:
 			return StationPresentation.discovery_blurb(value)
 		SATISFIED:
 			return StationPresentation.satisfied_blurb(value)
+		RIPE:
+			return CropPresentation.blurb_of(value)
 	return ""
 
 
