@@ -1,0 +1,44 @@
+{
+  "seq": 1,
+  "kind": "edit",
+  "sheet": "assets/sprites/generated/terrain_field.png",
+  "key": "assets_sprites_generated_terrain_field",
+  "group": "world",
+  "entity": "terrain_field",
+  "entity_name": "Field Grassland",
+  "note": "",
+  "diff": {
+    "frames": [
+      {
+        "index": 0,
+        "name": "Field Grassland",
+        "changed": 107,
+        "added": 0,
+        "erased": 0,
+        "recolored": 107,
+        "silhouette": false,
+        "bbox": [
+          0,
+          2,
+          45,
+          39
+        ]
+      }
+    ],
+    "pixels": 107,
+    "colors_added": [],
+    "colors_removed": [],
+    "new_to_sheet": [],
+    "anims": []
+  },
+  "reverted_to": null,
+  "bytes": 1517,
+  "png": "0001.png",
+  "created": "2026-09-07T18:43",
+  "created_ts": 1788831832.3514776,
+  "filed": {
+    "work_id": "w56a634c94f6",
+    "owner": "ingrid",
+    "title": "Read Daniel's hand edit to Field Grassland"
+  }
+}
