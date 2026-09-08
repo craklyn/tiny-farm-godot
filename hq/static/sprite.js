@@ -398,6 +398,29 @@ async function renderSpriteEditor(path) {
   const tmp = document.createElement("canvas");
   const tctx = tmp.getContext("2d");
 
+  /* **The sheet as it stands on disk**, which is not the same thing as the sheet
+     this page opened with — and confusing the two destroyed a saved edit.
+     Reported 2026-09-07: "somehow revision 2 was lost when I made revision 3."
+
+     A save composites the whole sheet and posts it: the cells painted on this
+     visit, over everything else. "Everything else" used to come from `img`, the
+     bytes the browser fetched when the page loaded, and a successful save clears
+     every `touched` flag. So the second save of a session started from the
+     *original* sheet again and wrote it back over the first save's work — his
+     fence gap came back opaque because he had gone on to edit a different cell
+     and saved that. The measurements are in the ledger: step 1 took the fence
+     cell to zero white pixels, step 2 put all fourteen back without touching it.
+
+     Keeping the composited bytes here and drawing from them means a second save
+     builds on the first, and a session of many saves behaves like a session of
+     one. `img` is left alone: it is what "before" is measured against. */
+  const sheetNow = document.createElement("canvas");
+  sheetNow.width = img.naturalWidth;
+  sheetNow.height = img.naturalHeight;
+  const sheetCtx = sheetNow.getContext("2d");
+  sheetCtx.imageSmoothingEnabled = false;
+  sheetCtx.drawImage(img, 0, 0);
+
   /* Every surface that draws a frame draws through here, so a merge you are
      only considering appears wherever the finished one would: the canvas, the
      live preview, the animation thumbnails. You see the sprite in its new
@@ -1158,9 +1181,10 @@ async function renderSpriteEditor(path) {
       full.width = img.naturalWidth; full.height = img.naturalHeight;
       const fctx = full.getContext("2d");
       fctx.imageSmoothingEnabled = false;
-      fctx.drawImage(img, 0, 0);
-      // Only the cells that were painted on are written back; every other pixel
-      // of the sheet leaves as the exact bytes it arrived as.
+      fctx.drawImage(sheetNow, 0, 0);
+      // Only the cells painted on this visit are written back; every other pixel
+      // leaves as the exact bytes it currently has on disk — which is what
+      // `sheetNow` tracks, and what `img` stopped being at the first save.
       frames.forEach(f => {
         if (!f.touched) return;
         const [x, y, w, hh] = f.rect;
@@ -1180,6 +1204,9 @@ async function renderSpriteEditor(path) {
       if (j.error) { status.textContent = "⚠️ " + j.error; }
       else {
         dirty = false;
+        // What went to disk is what the next save must build on.
+        sheetCtx.clearRect(0, 0, sheetNow.width, sheetNow.height);
+        sheetCtx.drawImage(full, 0, 0);
         delete sheets[ent.sheet]; // gallery reloads the fresh bytes
         // What he just saved becomes the new "before": the next edit is measured
         // against this state, not against whatever the sheet was when he opened it.
