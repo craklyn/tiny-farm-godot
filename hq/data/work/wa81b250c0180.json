@@ -1,0 +1,15 @@
+{
+  "title": "Make the integration suite exit when it finishes, and fail fast when it does not",
+  "level": "task",
+  "owner": "grace",
+  "tier": 1,
+  "tier_reason": "test-harness lifecycle; nothing about the game changes",
+  "ask": "Two faults in the same family — the integration suite's assertions are trustworthy and its timing and exit behaviour are not.\n\n1. **It can finish and not exit.** On 2026-09-07 a run of `tools/test_runner.tscn` printed `Results: 655 PASSED, 0 FAILED` and then sat as a live process for 1 hour 49 minutes at ~1.2% CPU. It did not reproduce on an immediate clean re-run, so it is intermittent — most likely a coroutine still awaiting when `get_tree().quit()` fires, which shutdown then waits on. Find it, and add a belt-and-braces guard: after the results are printed, if the tree has not exited within a few seconds, quit hard.\n\n2. **A fixed-frame wait is flaky.** `tools/test_runner.gd`'s chicken-movement assertion (\"she walks while the game is running\", around line 752) waits a fixed 20 process frames for a sprite to move, which is a wall-clock assumption on a loaded machine. It failed once and passed on re-run the same day. Replace it with the file's own `_wait_until` helper and a generous timeout, the way the door and teaching scenarios already do, and sweep the file for other fixed-frame waits with the same shape.",
+  "first_action": "Reproduce the hang by running the suite repeatedly under load, and read the end of `_run_scenarios` and `_ready` in tools/test_runner.gd.",
+  "why": "CI runs five jobs on every push. A job that prints its answer and then hangs holds a runner until the platform's timeout rather than failing fast, and a test that goes red at random teaches the team to ignore red — which is the CEO's standing rule about what a failing build must mean.",
+  "id": "wa81b250c0180",
+  "state": "waiting_session",
+  "source": "chat",
+  "created": "2026-09-07T23:33",
+  "created_ts": 1788849212.885795
+}

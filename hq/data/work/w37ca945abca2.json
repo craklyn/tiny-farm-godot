@@ -1,0 +1,15 @@
+{
+  "title": "Give each test run its own log file instead of one shared path",
+  "level": "task",
+  "owner": "claude",
+  "tier": 0,
+  "tier_reason": "a habit of mine, written down so the next session does not repeat it",
+  "ask": "Through the 2026-09-07 session every integration run was redirected to the same scratchpad path and then grepped for its result. When an earlier run outlived its shell — see the companion item about the suite not exiting — a live writer and a reader shared one file, and a result could have been read that belonged to another run. It did not go wrong that day (a clean re-run matched), but it is a way to believe a number that is not yours.\n\nThe habit to keep: one log path per run, named for the run, and check the file's size or the process's exit code before believing a grep. A grep that finds nothing means 'never started' at least as often as it means 'still running' — that mistake cost several rounds of the same session, reporting a suite as running when it had died on a parse error in one second.",
+  "first_action": "No code to change — this is guidance for whoever runs the suites next.",
+  "why": "Reported results are the whole basis on which work gets committed and deployed.",
+  "id": "w37ca945abca2",
+  "state": "waiting_session",
+  "source": "chat",
+  "created": "2026-09-07T23:33",
+  "created_ts": 1788849212.8862
+}
