@@ -1,0 +1,20 @@
+{
+  "id": "w732a04c20f43",
+  "title": "Delete the look candidates the game can no longer reach — and decide the one that is not a loser",
+  "level": "task",
+  "owner": "elena",
+  "tier": 2,
+  "tier_reason": "Unreachable branches in shipped renderers read as live code to the next person in them, and one of these is a good idea that lost an A/B about something else.",
+  "ask": "The Look Lab's axes were removed on 2026-09-08 (the designer: 'clean up the debug menu options for the other things, if they are no longer needed'). The ripe-crop axis was collapsed to its ruled behaviour in the same change and its losers deleted. The other three were ruled on 2026-09-01 and their losing branches are still in the tree, now unreachable — the statics sit on their shipped values and nothing can move them.\n\nStraight deletions, all ruled, all losers:\n  * CotPresentation PULSE and TURNDOWN — pulse_alpha, pulse_strength, turned_down, PULSE_F; farm.gd's cot_turned_down and the second sprite cell it draws; main.gd's pulse branch (keep Q-11's floor pulse, which is the fallback under it and is a settled behaviour, not a treatment); camera_top_limit becomes unconditional, which is Q-68 ruled as (d) and worth saying out loud in the comment.\n  * StationPresentation DISCOVERY_OFF and DISCOVERY_GLINT — glint_candidates, glint_alpha, glint_sweep, the GLINT_* constants, main.gd's _tick_station_glints and _glint_at/_glint_start/_glint_next and the glint drawing.\n  * SATISFIED_OFF.\n\n**And one that is NOT a loser, which is why this is a decision and not a chore.** SATISFIED_CHIP lost an A/B about how a tap that changes nothing answers — the designer picked the noun-and-tick reply. But the CHIP treatment carried a second, separable thing: a HUD that shows the can's fullness and the basket's contents as pictures instead of 'Water: 8/8' and 'Wh:0'. That is a wordless-HUD idea that happened to be bundled into the losing side of a different question, and the studio's direction is toward minimal literacy. Deleting it quietly would be the wrong call. Put it to the designer as its own question — do you want the pictures on the HUD? — and delete only after he answers. Until then leave that branch alone and say in the code why it is there.\n\nBoth suites and tools/check_gateway.py cover this; Scenarios X and AB were already narrowed to assert only what ships, so they will not need touching except to drop references to deleted names.",
+  "first_action": "Do the three straight deletions and run both suites. Then file the HUD-pictures question as a decision card with a capture of both HUDs side by side, rather than folding it into this cleanup.",
+  "state": "queued",
+  "thread": "",
+  "source": "chief-of-staff",
+  "source_message": "Daniel, 2026-09-08: \"clean up the debug menu options for the other things, if they are no longer needed.\" The options are gone; this is the code they were the only way to reach.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-08T01:11",
+  "created_ts": 1788855099.978923,
+  "conversation": []
+}

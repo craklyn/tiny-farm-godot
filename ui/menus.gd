@@ -247,7 +247,11 @@ func _rebuild_options() -> void:
 			# there is nothing to undo, which is the answer design/11 already gave
 			# for the teaching mode's clear-all — a control that comes and goes is
 			# one he has to hunt for.
-			if OS.is_debug_build():
+			#
+			# Nothing at all while no look question is open, which is the state
+			# as of 2026-09-08 — a put-back line for a set of zero switches is
+			# furniture that explains nothing.
+			if OS.is_debug_build() and not LookLab.AXES.is_empty():
 				for axis in LookLab.AXES:
 					_add_option(LookLab.option_label(axis), true)
 				_add_option(LookLab.restore_label(),

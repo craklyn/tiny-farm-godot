@@ -55,5 +55,11 @@
       "label": "Why the camera pulls back (Altitude)",
       "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/11-ux-ui.md"
     }
-  ]
+  ],
+  "ruled": {
+    "date": "2026-09-08",
+    "option": "e",
+    "summary": "The two together, with the movement turned down — a ready plant sways gently and gives off its own ripe colour. Movement finds an eye that is looking elsewhere, light holds it once it arrives, and halving the sway is what stops the two competing to be the thing you notice. Ruled past the question asked: the switch comes out with the answer, and so do the four losing drafts — the sheets on this card are the record of what was compared, and a record does not need to be code.",
+    "written_up": "docs/design/09-art-direction.md, docs/design/11-ux-ui.md"
+  }
 }

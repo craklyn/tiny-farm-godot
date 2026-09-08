@@ -22,6 +22,15 @@
 # currently draw. That is the same rule the old panel had, and the one thing about
 # it that was right — a comparison sheet must not be able to drift from the build.
 #
+# **Empty as of 2026-09-08, and that is the file at rest.** Four questions were
+# staged and answered here — the bed at dusk, a station seen for the first time,
+# the reply to a tap that changes nothing, and how a ripe crop carries across a
+# plot. Each retired with its axis, because a scenario whose drafts have been
+# deleted photographs the same picture four times. The sheets they produced are
+# committed under `hq/data/looks/` beside the decision cards that cited them:
+# that is the record of what was compared, and it does not need to be code to be
+# a record. The next question re-enters here.
+#
 # Layer note: data only. No Node, no autoload, no sim.
 class_name LookScenarios
 
@@ -46,81 +55,7 @@ class_name LookScenarios
 # whole argument is that it moves. `catch` replaces `settle` for a draft the rig
 # had to wait for — how many frames after the event its own effect looks most like
 # itself.
-const SCENARIOS: Array[Dictionary] = [
-	{
-		"id": "bed_at_dusk",
-		"axis": "cot",
-		"question": "It is late and she is nearly out of energy. Which bed tells you it is time to sleep?",
-		"note": "Same hour, same spot, same everything else — only the bed differs.",
-		"focus_object": "cot",
-		"focus_nudge": Vector2i(0, -8),  # the sprite is 16x32 and rises a tile north
-		"stand": Vector2i(2, 7),
-		"crop": Vector2i(210, 160),
-		"settle": 45,
-		"strip": 12,
-	},
-	{
-		"id": "station_first_time",
-		"axis": "discovery",
-		"question": "She has never used any of these. Which picture tells you what they are for?",
-		"note": "Five days in, one wheat in the basket, and she has never touched the bin, the well or the seed box.",
-		"focus_object": "well",          # the middle of the three, so all three are in shot
-		"focus_nudge": Vector2i(0, -4),
-		"stand": Vector2i(6, 6),
-		"crop": Vector2i(310, 200),
-		"settle": 40,
-		"catch": 20,          # the glint peaks a third of a second in
-		"strip": 14,
-	},
-	{
-		"id": "already_done",
-		"axis": "satisfied",
-		"question": "She just tapped a crop that already has its water. Which answer tells you why nothing happened?",
-		"note": "The tap has landed and the reply is in flight. The toolbar is in shot too, because one of these drafts answers there instead.",
-		"focus_tile": Vector2i(12, 8),
-		"focus_nudge": Vector2i(0, 10),
-		"stand": Vector2i(11, 8),
-		"crop": Vector2i(300, 180),
-		"catch": 5,
-		# One of these drafts answers on the toolbar rather than on the tile, so the
-		# corner of the screen it answers in is stacked under each panel. A rect in
-		# frame coordinates, because the toolbar does not move with the camera.
-		"also_rect": Rect2i(500, 564, 300, 36),
-		"settle": 8,
-		"strip": 6,
-	},
-	# **One question, asked twice from two heights** (the v0.2.0 story, raised from
-	# play 2026-09-07). The complaint was not that a ripe crop is invisible on the
-	# square you are standing on — it is that it does not carry across a plot. So
-	# a sheet shot only at close range would answer the easy half and miss the
-	# whole of the difficulty, and one shot only from above would not show whether
-	# a cue loud enough to carry is too loud in the hand. Same farm, same hour,
-	# same drafts, two altitudes: any draft that only works at one of them has
-	# told the designer something he could not have got from either sheet alone.
-	{
-		"id": "ripe_at_a_glance",
-		"axis": "ripe",
-		"question": "You are standing in your plot. Which of these tells you, without looking twice, which plants are ready to pick?",
-		"note": "Mid-morning. The plot was planted over several days, so ten of its thirty-one plants are ripe and the rest are still coming on. Only the ripe ones are treated — everything else in the picture is the game exactly as it is today.",
-		"focus_tile": Vector2i(6, 12),
-		"stand": Vector2i(6, 15),
-		"crop": Vector2i(380, 250),
-		"settle": 30,
-		"strip": 34,        # a third of a sway: one of these drafts is motion and nothing else
-	},
-	{
-		"id": "ripe_from_above",
-		"axis": "ripe",
-		"question": "Now step back to where the game puts you when you are pointing a robot at squares. From up here, which one still tells you what is ready?",
-		"note": "The same plot at the same moment, seen from the height the camera rises to when it hands you a machine to direct — about half the size the game is normally drawn at. The teaching mode's own dimming is deliberately not in the shot: what is being asked is whether the cue survives the distance, not how it competes with the grey.",
-		"focus_tile": Vector2i(6, 12),
-		"stand": Vector2i(6, 15),
-		"altitude": true,   # framed by the game's own pull-back, not by a guess
-		"crop": Vector2i(330, 230),
-		"settle": 40,       # the glide is a quarter of a second and must land before the shutter
-		"strip": 34,
-	},
-]
+const SCENARIOS: Array[Dictionary] = []
 
 
 static func by_id(id: String) -> Dictionary:

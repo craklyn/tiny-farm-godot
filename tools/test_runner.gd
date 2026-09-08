@@ -2022,16 +2022,16 @@ func _find_button(root: Node, node_name: String) -> Button:
 
 
 func _scenario_x_three_looks_for_the_cot() -> void:
-	# T-27's last box, drafted rather than decided: three treatments for "the cot
-	# must look like sleeping before first use", all three in this build, switched
-	# on device (Q-31's Sound Test precedent). The designer picks; this scenario
-	# only holds the drafts to the rules they have to obey either way.
+	# T-27's last box: "the cot must look like sleeping before first use". Three
+	# treatments were built and switched on device (Q-31's Sound Test precedent);
+	# the designer picked the dusk glow on 2026-09-01, and on 2026-09-08 the
+	# switch came out along with every other answered look question.
 	#
-	# The load-bearing one is D-8. Scenario W proves that a cot tap resolves *at
-	# the tap* under the default; a presentation treatment is exactly the kind of
-	# change that could quietly turn that into a wind-up, so the same property is
-	# re-proved once per treatment against the real main scene.
-	print("\n--- Scenario X: three looks for the cot, and none of them gates the tap (T-27) ---")
+	# The load-bearing property is D-8. Scenario W proves that a cot tap resolves
+	# *at the tap*; a presentation cue is exactly the kind of change that could
+	# quietly turn that into a wind-up, so it is re-proved here against the real
+	# main scene with the cue actually drawing.
+	print("\n--- Scenario X: the cot says sleep, and it does not gate the tap (T-27) ---")
 
 	var real_paths := [GameState.save_path, GameState.replay_path, GameState.trace_path]
 	GameState.save_path = "user://t27x_autosave.json"
@@ -2047,20 +2047,15 @@ func _scenario_x_three_looks_for_the_cot() -> void:
 	_stage_tile(below.x, below.y, "cleared")
 	GameState.seeds["wheat"] = 0
 
-	# The switch itself. Both doors write the same static, and it is the static —
-	# not the scene — that carries the pick across a return to the title screen.
-	CotPresentation.set_treatment(CotPresentation.GLOW)
-	var seen: Array[int] = []
-	for i in CotPresentation.COUNT:
-		seen.append(CotPresentation.treatment)
-		CotPresentation.cycle()
-	_assert(seen == [CotPresentation.GLOW, CotPresentation.PULSE, CotPresentation.TURNDOWN],
-		"the toggle cycles A → B → C")
-	_assert(CotPresentation.treatment == CotPresentation.GLOW,
-		"and wraps back to A, so a thumb can never park it on nothing")
-
-	# Door 1, the one that matters at dusk: pause → the cot option, which advances
-	# and closes so the farm is visible again immediately.
+	# **The switch is gone** (2026-09-08). Every look question the lab carried has
+	# been ruled, so the pause menu is back to the two lines a player has, and
+	# what is asserted here is the cot as it *ships* rather than three candidates
+	# one of which won. The other two still exist in `cot_presentation.gd` and are
+	# no longer reachable from the game; removing them is filed separately, and
+	# this scenario deliberately does not exercise them, because a suite that
+	# tests unreachable code reports health it cannot vouch for.
+	CotPresentation.set_treatment(CotPresentation.SHIPPED)
+	main_scene._apply_cot_treatment()
 	main_scene.menus.open_menu("pause")
 	await get_tree().process_frame
 	var labels: Array = []
@@ -2069,75 +2064,63 @@ func _scenario_x_three_looks_for_the_cot() -> void:
 	for l in labels:
 		if String(l.text).begins_with("Cot look:"):
 			has_switch = true
-	_assert(has_switch, "the pause menu carries the cot switch (debug builds), naming the current look")
-	main_scene.menus.selected_option = 2
-	main_scene.menus._select_current_option()
+	_assert(not has_switch,
+		"the pause menu no longer carries a cot switch — the look was ruled on 2026-09-01")
+	main_scene.menus.close_menu()
 	await get_tree().process_frame
-	_assert(CotPresentation.treatment == CotPresentation.PULSE,
-		"tapping it advances the treatment")
-	_assert(not main_scene.menus.is_open(),
-		"and closes the menu, so the farm is what he is looking at when it changes")
-	_assert(main_scene.camera.limit_top == _expected_camera_top(),
-		"the live camera picked up the new treatment's Q-68 answer without a reload")
 
-	# Door 2 is gone, deliberately, and this is the guard that keeps it gone. The
-	# title screen used to carry a "Look Lab" panel listing every draft as a
-	# button; the designer's verdict on 2026-09-02 was that it showed nothing —
-	# none of these looks exist at the title screen, which has no dusk — and that
-	# a tool asking him to decide should stage the scenario and ask, not hand him
-	# switches. The pause door above is the whole switch now.
+	# Door 2 has been gone since 2026-09-02, and this is the guard that keeps it
+	# gone. The title screen used to carry a "Look Lab" panel listing every draft
+	# as a button; the designer's verdict was that it showed nothing — none of
+	# these looks exist at a title screen, which has no dusk — and that a tool
+	# asking him to decide should stage the scenario and ask, not hand him
+	# switches.
 	var title = load("res://ui/title_screen.tscn").instantiate()
 	add_child(title)
 	await get_tree().process_frame
 	_assert(_find_button(title, "LookLabButton") == null,
-		"the title screen no longer offers a Look Lab panel")
+		"and the title screen has no Look Lab panel either")
 	title.queue_free()
 	await get_tree().process_frame
 
-	# Each treatment, in the real scene: it draws, it looks like itself, and the
+	# The shipped cot, in the real scene: it draws, it looks like itself, and the
 	# tap still resolves at the tap.
-	for t in [CotPresentation.GLOW, CotPresentation.PULSE, CotPresentation.TURNDOWN]:
-		var label: String = CotPresentation.name_of(t)
-		CotPresentation.set_treatment(t)
-		main_scene._apply_cot_treatment()
-		# Dusk, which is the hour every one of these is about. 60 of 600 is where
-		# `energy = 2` sat on the old 20-point day (T-29) — the same instant.
-		GameState.set_energy(60)
+	var label: String = CotPresentation.name_of(CotPresentation.SHIPPED)
+	# Dusk, which is the hour this cue is about. 60 of 600 is where `energy = 2`
+	# sat on the old 20-point day (T-29) — the same instant.
+	GameState.set_energy(60)
+	await get_tree().process_frame
+
+	_assert(main_scene.camera.limit_top == _expected_camera_top(),
+		"%s: the camera carries this look's Q-68 answer" % label)
+	_assert(not farm.cot_turned_down,
+		"%s: and the bed is made, not turned down" % label)
+
+	# Renders. The counter is the witness: a draw callback that throws part way
+	# through prints a red line and fails nothing, so the assertion is that the
+	# block reached its end, not that the log was quiet.
+	var drew: int = main_scene.cot_draws
+	for i in 4:
 		await get_tree().process_frame
+	_assert(main_scene.cot_draws > drew,
+		"%s: the cot block draws to completion, frame after frame (%d)"
+			% [label, main_scene.cot_draws - drew])
 
-		_assert(main_scene.camera.limit_top == _expected_camera_top(),
-			"%s: the camera carries this treatment's Q-68 answer" % label)
-		_assert(farm.cot_turned_down == (t == CotPresentation.TURNDOWN),
-			"%s: the bed is turned down under C and made under the others" % label)
-		if t == CotPresentation.TURNDOWN:
-			_assert(farm.object_regions.has("cot_turned_down"),
-				"%s: and the second cell it draws from exists on the sheet" % label)
-
-		# Renders. The counter is the witness: a draw callback that throws part way
-		# through prints a red line and fails nothing, so the assertion is that the
-		# block reached its end, not that the log was quiet.
-		var drew: int = main_scene.cot_draws
-		for i in 4:
-			await get_tree().process_frame
-		_assert(main_scene.cot_draws > drew,
-			"%s: the cot block draws to completion, frame after frame (%d)"
-				% [label, main_scene.cot_draws - drew])
-
-		# D-8, once per treatment: presentation never gates the gateway.
-		var day_before: int = GameState.day
-		player.pos = Vector2(below.x * 16 + 8.0, below.y * 16 + 8.0)
-		player.path.clear()
-		player.pending_action = {}
+	# D-8: presentation never gates the gateway.
+	var day_before: int = GameState.day
+	player.pos = Vector2(below.x * 16 + 8.0, below.y * 16 + 8.0)
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+	InputManager.click_tile = cot
+	InputManager.has_click = true
+	var started := await _wait_until(func(): return main_scene.day_cycle.is_active(), 200)
+	_assert(started, "%s: tapping the cot starts the day transition" % label)
+	_assert(GameState.day == day_before + 1,
+		"%s: and the sim is ALREADY in the new day — the Action resolved at the tap (D-8)" % label)
+	await _wait_until(func(): return not main_scene.day_cycle.is_active(), 600)
+	for i in 5:
 		await get_tree().process_frame
-		InputManager.click_tile = cot
-		InputManager.has_click = true
-		var started := await _wait_until(func(): return main_scene.day_cycle.is_active(), 200)
-		_assert(started, "%s: tapping the cot starts the day transition" % label)
-		_assert(GameState.day == day_before + 1,
-			"%s: and the sim is ALREADY in the new day — the Action resolved at the tap (D-8)" % label)
-		await _wait_until(func(): return not main_scene.day_cycle.is_active(), 600)
-		for i in 5:
-			await get_tree().process_frame
 
 	# Put everything back: the default is A, and the next scenario (and the human
 	# holding the tablet) gets the game as shipped.
@@ -2517,32 +2500,29 @@ func _scenario_ab_the_stations_present_themselves() -> void:
 	var was_s: int = StationPresentation.satisfied
 	var was_cot: int = CotPresentation.treatment
 
-	# --- door 1: the pause menu, one line per open question ------------------
+	# --- door 1: the pause menu no longer carries look lines -----------------
+	#
+	# It carried one per open question, and every one of them has been ruled
+	# (2026-09-08). The assertion is now that the menu is *clean*: a switch
+	# between candidates that no longer exist is furniture, and a debug control
+	# nobody needs is one the designer meets cold and cannot interpret — which is
+	# exactly what happened on the tablet on 2026-09-08 and what removing them
+	# answers.
 	main_scene.menus.open_menu("pause")
 	await get_tree().process_frame
 	var labels: Array = []
 	_collect_labels(main_scene.menus.options_container, labels)
-	var seen_axes := 0
-	for axis in LookLab.AXES:
-		for l in labels:
-			if String(l.text) == LookLab.option_label(axis):
-				seen_axes += 1
-				break
-	_assert(seen_axes == LookLab.AXES.size(),
-		"the pause menu carries a line per open look (%d/%d), each naming where it stands"
-			% [seen_axes, LookLab.AXES.size()])
-
-	var d_before: int = StationPresentation.discovery
-	main_scene.menus.selected_option = 2 + LookLab.AXES.find(LookLab.DISCOVERY)
-	main_scene.menus._select_current_option()
+	_assert(labels.size() == 2
+			and String(labels[0].text) == "Resume"
+			and String(labels[1].text) == "Return to Title",
+		"the pause menu is back to two lines, both of them the player's (%d)" % labels.size())
+	var lab_line := false
+	for l in labels:
+		if String(l.text).contains("ships as") or String(l.text) == LookLab.restore_label():
+			lab_line = true
+	_assert(not lab_line, "and no look-lab furniture is left standing in it")
+	main_scene.menus.close_menu()
 	await get_tree().process_frame
-	_assert(StationPresentation.discovery == posmod(d_before + 1, StationPresentation.DISCOVERY_COUNT),
-		"tapping the discovery line advances that axis")
-	_assert(CotPresentation.treatment == was_cot
-			and StationPresentation.satisfied == was_s,
-		"and moves nothing else — three axes, judged one at a time")
-	_assert(not main_scene.menus.is_open(),
-		"and closes the menu, so the farm is what he is looking at when it changes")
 
 	# --- door 2 was removed on 2026-09-02, and stays removed -----------------
 	# The title screen carried a panel of one button per draft. It could not show
@@ -4225,80 +4205,16 @@ func _scenario_ak_she_puts_up_a_fence() -> void:
 
 
 func _scenario_al_a_ripe_crop_carries() -> void:
-	# "A ripe crop is obvious at a glance", raised from play 2026-09-07 and
-	# carried in Player Update 1. Four positions in one build — today's game and
-	# three treatments — and the pick is the designer's.
+	# "A ripe crop is obvious at a glance", raised from play 2026-09-07 and ruled
+	# 2026-09-08: a ready plant sways gently and gives off its own ripe colour.
+	# Five candidates were switchable while the question was open; the pick ships
+	# and the losers are deleted, so what is left to assert is the behaviour
+	# rather than a switch.
 	#
 	# The load-bearing property is D-8, exactly as in Scenarios X and AB: a
-	# presentation treatment is precisely the kind of change that could quietly
-	# turn a harvest into a wind-up, so the tap is re-proved once per treatment
-	# against the real main scene. The rest is a witness that each one actually
-	# renders — `farm.ripe_draws` rather than the log, because a draw callback
-	# that throws half way through is only a red line nobody fails a suite over.
-	print("\n--- Scenario AL: a ripe crop carries, and none of it gates the tap ---")
-
-	var was: int = CropPresentation.treatment
-
-	# --- the pause menu grew a fourth line, and it moves nothing else ---------
-	CropPresentation.set_treatment(CropPresentation.OFF)
-	var was_cot2: int = CotPresentation.treatment
-	var was_d3: int = StationPresentation.discovery
-	main_scene.menus.open_menu("pause")
-	await get_tree().process_frame
-	var lab_labels: Array = []
-	_collect_labels(main_scene.menus.options_container, lab_labels)
-	var found_ripe := false
-	for l in lab_labels:
-		if String(l.text) == LookLab.option_label(LookLab.RIPE):
-			found_ripe = true
-	_assert(found_ripe, "the pause menu carries the ripe-crop line, naming where it stands")
-	main_scene.menus.selected_option = 2 + LookLab.AXES.find(LookLab.RIPE)
-	main_scene.menus._select_current_option()
-	await get_tree().process_frame
-	_assert(CropPresentation.treatment == CropPresentation.NOD,
-		"tapping it advances that axis")
-	_assert(CotPresentation.treatment == was_cot2
-			and StationPresentation.discovery == was_d3,
-		"and moves nothing else — four axes, judged one at a time")
-
-	# --- and one press puts every look back ----------------------------------
-	#
-	# 2026-09-08, from the designer at the tablet: he opened this menu, met lines
-	# he did not recognise, and was two axes away from the shipped game without
-	# knowing it. A look line advances on a tap and closes the menu — good for
-	# comparing, easy to move in passing — so the menu has to be able to say what
-	# is off its pick and to undo the lot.
-	LookLab.set_to(LookLab.DISCOVERY,
-		posmod(StationPresentation.DISCOVERY_SHIPPED + 1, StationPresentation.DISCOVERY_COUNT))
-	main_scene.menus.open_menu("pause")
-	await get_tree().process_frame
-	var back_labels: Array = []
-	_collect_labels(main_scene.menus.options_container, back_labels)
-	var saw_restore := false
-	var saw_marked := false
-	for l in back_labels:
-		if String(l.text) == LookLab.restore_label():
-			saw_restore = true
-		if String(l.text) == LookLab.option_label(LookLab.DISCOVERY) \
-				and String(l.text).contains("ships as"):
-			saw_marked = true
-	_assert(saw_marked,
-		"a look that is off its pick says so on its own line, and says what the pick is")
-	_assert(saw_restore, "and the menu carries a line to put them all back: \"%s\""
-		% LookLab.restore_label())
-	# Read off the menu rather than restated here: the look lines start after
-	# Resume and Return to Title, and the put-back line sits under all of them.
-	main_scene.menus.selected_option = \
-		main_scene.menus.PAUSE_LAB_FIRST + LookLab.AXES.size()
-	main_scene.menus._select_current_option()
-	await get_tree().process_frame
-	_assert(LookLab.changed_axes().is_empty(),
-		"pressing it dresses the farm the way the game ships (%s)" % LookLab.summary())
-	_assert(not main_scene.menus.is_open(),
-		"and gets out of the way, so the farm is what he is looking at when it changes back")
-	_assert(StationPresentation.discovery == StationPresentation.DISCOVERY_SHIPPED
-			and CropPresentation.treatment == CropPresentation.SHIPPED,
-		"including the axis he had nudged and the one this scenario nudged itself")
+	# presentation cue is precisely the kind of change that could quietly turn a
+	# harvest into a wind-up, so the tap is re-proved against the real main scene.
+	print("\n--- Scenario AL: a ripe crop says so, and none of it gates the tap ---")
 
 	# --- a plot with some of it ready and some of it not ---------------------
 	#
@@ -4318,69 +4234,60 @@ func _scenario_al_a_ripe_crop_carries() -> void:
 	await get_tree().process_frame
 
 	var glow: Node2D = farm.get_node_or_null("RipeGlowRenderer")
-	_assert(glow != null, "the farm carries a layer for the light treatment to emit onto")
+	_assert(glow != null, "the farm carries a layer for the ripe crops to emit light onto")
 	_assert(glow != null and glow.material is CanvasItemMaterial
 			and (glow.material as CanvasItemMaterial).blend_mode
 				== CanvasItemMaterial.BLEND_MODE_ADD,
 		"and it adds light to the world rather than painting a colour over it")
 
-	# --- each position renders, and only the treated squares cost anything ---
-	# Every position, counted rather than listed: a treatment added later is
-	# covered here the day it exists instead of the day somebody remembers.
-	for t in CropPresentation.COUNT:
-		var label: String = CropPresentation.name_of(t)
-		CropPresentation.set_treatment(t)
-		farm.queue_redraw()
+	# --- every ripe square is drawn, and only ripe squares cost anything ------
+	#
+	# **Counted off the farm, not off the three this scenario planted.** The first
+	# version compared against what it staged and went intermittently red: this
+	# scenario runs last, and whether an earlier one left a fourth ripe square
+	# standing depends on how many sim ticks the suite happened to burn getting
+	# here. A test that fails on timing teaches everyone to ignore a red bar.
+	var ready_now := _ready_tiles()
+	_assert(ready_now >= ripe.size(), "the farm has %d ripe squares on it" % ready_now)
+
+	var drew: int = farm.ripe_draws
+	for i in 4:
 		await get_tree().process_frame
-		await get_tree().process_frame
+	var per_frame: int = farm.ripe_draws - drew
+	_assert(per_frame >= ready_now,
+		"every one of them is drawn, frame after frame (%d draws over 4 frames)" % per_frame)
+	_assert(farm._ripe_glow.size() == ready_now,
+		"and each has exactly one pool of light — %d, none anywhere else"
+			% farm._ripe_glow.size())
 
-		# **Counted off the farm, not off the three this scenario planted.** The
-		# first version of these two assertions compared against `ripe.size()`
-		# and went intermittently red: this scenario runs last, and whether an
-		# earlier one has left a fourth ripe square standing depends on how many
-		# sim ticks the suite happened to burn on the way here. A test that fails
-		# on timing teaches everyone to ignore a red bar.
-		var ready_now := _ready_tiles()
-		_assert(ready_now >= ripe.size(),
-			"%s: the farm has %d ripe squares on it" % [label, ready_now])
+	# It moves. Two reads a beat apart, through the same pure function the
+	# renderer uses, so this asserts the cue rather than a screenshot of it.
+	var t0 := Time.get_ticks_msec() / 1000.0
+	var moved := false
+	for step in [0.4, 0.9, 1.5]:
+		if not is_equal_approx(
+				CropPresentation.nod_offset(ripe[0], t0).x,
+				CropPresentation.nod_offset(ripe[0], t0 + step).x):
+			moved = true
+	_assert(moved, "and it sways — the picture is not the same one a beat later")
 
-		var drew: int = farm.ripe_draws
-		for i in 4:
-			await get_tree().process_frame
-		var per_frame: int = farm.ripe_draws - drew
-		if t == CropPresentation.OFF:
-			_assert(per_frame == 0,
-				"%s: nothing is drawn on a ripe square at all — this is today's game" % label)
-		else:
-			_assert(per_frame >= ready_now,
-				"%s: every one of them is drawn, frame after frame (%d draws over 4 frames)"
-					% [label, per_frame])
-		var wants_light: bool = CropPresentation.emits_light()
-		_assert(farm._ripe_glow.size() == (ready_now if wants_light else 0),
-			"%s: %d pools of light — one per ripe square, and none anywhere else"
-				% [label, farm._ripe_glow.size()])
-
-	# --- D-8, once per position: the tap still picks the crop ----------------
-	for t2 in CropPresentation.COUNT:
-		var label2: String = CropPresentation.name_of(t2)
-		CropPresentation.set_treatment(t2)
-		var target := Vector2i(6, 9)
-		_stage_tile(target.x, target.y, "ready", "wheat")
-		farm.sim.get_tile(target.x, target.y).growth_stage = \
-			CropDefs.TYPES["wheat"]["days_to_grow"]
-		GameState.crops = { "wheat": 0, "tomato": 0 }
-		GameState.set_energy(GameState.max_energy)
-		player.pos = Vector2(6.5 * 16.0, 10.5 * 16.0)
-		player.path.clear()
-		player.pending_action = {}
-		await get_tree().process_frame
-		InputManager.click_tile = target
-		InputManager.has_click = true
-		var picked := await _wait_until(
-			func(): return int(GameState.crops.get("wheat", 0)) > 0, 240)
-		_assert(picked, "%s: a tap on a ripe crop still picks it, at the tap (D-8)" % label2)
-		_assert(String(farm.sim.get_tile(target.x, target.y).get("state", "")) != "ready",
-			"%s: and the square stops being ripe, so the sim moved and not just the picture"
-				% label2)
-
-	CropPresentation.set_treatment(was)
+	# --- D-8: the tap still picks the crop -----------------------------------
+	var target := Vector2i(6, 9)
+	_stage_tile(target.x, target.y, "ready", "wheat")
+	farm.sim.get_tile(target.x, target.y).growth_stage = \
+		CropDefs.TYPES["wheat"]["days_to_grow"]
+	GameState.crops = { "wheat": 0, "tomato": 0 }
+	GameState.set_energy(GameState.max_energy)
+	player.pos = Vector2(6.5 * 16.0, 10.5 * 16.0)
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+	InputManager.click_tile = target
+	InputManager.has_click = true
+	var picked := await _wait_until(
+		func(): return int(GameState.crops.get("wheat", 0)) > 0, 240)
+	_assert(picked, "a tap on a ripe crop still picks it, at the tap (D-8)")
+	_assert(String(farm.sim.get_tile(target.x, target.y).get("state", "")) != "ready",
+		"and the square stops being ripe, so the sim moved and not just the picture")
+	_assert(farm._ripe_glow.size() == _ready_tiles(),
+		"and its light goes out with it — the pool follows the state, not a timer")

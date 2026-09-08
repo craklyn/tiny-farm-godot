@@ -11,28 +11,28 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
 
 ## Now — blocks M0 close or current work
 
-- **Q-94 (Ruling, filed 2026-09-07)** **How should a ripe crop announce itself?**
-  From play the same day: nothing on the farm says loudly enough that a plant is ready
-  to pick, so she has to go looking. Measured, the complaint is exact — wheat's ripe
-  cell differs from the half-grown one beside it by **nine pixels on a 16x16 square**,
-  which is a difference on one plant and nothing at all on a plot of thirty, or from
-  the height the camera now rises to when she is pointing a robot at squares (Q-91's
-  Altitude). Three treatments are built and switchable on the tablet from the pause
-  menu — **A** the ripe ones nod, **B** the ripe ones stand up and throw a shadow,
-  **C** the ripe ones give off their own ripe colour — plus today's game as the fourth
-  position, because a draft with nothing to be compared against is not a draft. Each
-  spends a different channel (movement, silhouette, light) and each fails somewhere
-  different, which is why there are three rather than one tuned one. All four are
-  wordless (S-7) and none of them touches what a tap does (D-8), asserted treatment by
-  treatment in both suites. **Deliberately no recommendation**: which failure matters
-  is a matter of taste and the pictures are the argument. Two look sheets are on the
-  card in `hq/data/decisions/Q-94.json` — the same plot at the same mid-morning, ten
-  ripe plants among thirty-one, shot once standing in it and once from the
-  robot-directing height, because a cue can fail either way round. Whichever he names
-  ships as the default and the others stay switchable, the way the cot's and the
-  stations' picks landed. Written up in `design/09` (the colour ledger, and the two
-  rules the work produced) and `design/11` ("What altitude costs a cue"). **Blocks the
-  v0.2.0 story "A ripe crop is obvious at a glance", which stays open until he picks.**
+- **Q-94** ~~How should a ripe crop announce itself?~~ — ✅ ruled 2026-09-08: **the two
+  together, with the movement turned down.** A ready plant **sways gently and gives off its
+  own ripe colour** — gold under wheat, red under tomato. Raised from play the day before:
+  wheat's ripe cell differs from the half-grown one beside it by nine pixels on a
+  sixteen-pixel square, which is a difference on one plant and nothing on a plot of thirty
+  or from the height the camera rises to when she is directing a robot. Five candidates
+  were built and switched on the tablet — three spending one channel each (movement,
+  silhouette, light), today's game, and the designer's own combination of two of them —
+  and judged from two staged sheets, one at ground level and one at that height. His words
+  on asking for the combination: *"make the ripe ones dance slightly more subtly, but also
+  have their glow."* Movement finds an eye that is looking elsewhere, light holds it once
+  it arrives, and halving the sway is what stops the two competing to be the thing you
+  notice.
+  **Ruled past the question asked:** the switch comes out with the answer, and so do the
+  four losing drafts — this project's own rule for a settled A/B ("the loser is deleted
+  rather than argued about"). The sheets on the card are the record of what was compared,
+  and a record does not need to be code. With it went the other three look switches, all
+  of them ruled back on 2026-09-01, so the pause menu is back to two lines and the Look Lab
+  registry is empty and waiting for the next question. Written up in `design/09` (the
+  colour ledger, and the two rules the work produced) and `design/11` ("What altitude costs
+  a cue"). Still open beside it and filed to the art director: **should each crop sway by a
+  different amount**, the designer's own idea, now unblocked by this ruling.
 
 - **Q-92** ~~How does a player put up a fence?~~ — ✅ ruled 2026-09-07: **use the fence art
   the game already has, and make it interactive.** *"We already have fences that look

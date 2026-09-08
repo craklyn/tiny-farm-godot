@@ -368,11 +368,13 @@ can fail either way round: too quiet to survive the distance, or loud enough to
 carry and therefore shouting in the hand.
 
 The first cue designed against that is the ripe crop's (raised from play
-2026-09-07, open at Q-94, treatments in `systems/crop_presentation.gd`). The
-method is the part worth keeping: **the look question is staged twice, from both
-heights, on the same farm at the same moment**, so the pair of sheets shows what
-neither sheet alone can. Any later cue about tile state — a machine's coverage, a
-scent overlay, a tower's range, a bot's assigned zone — gets asked the same way.
+2026-09-07, ruled 2026-09-08 as Q-94, shipped in
+`systems/crop_presentation.gd`). The method is the part worth keeping: **the look
+question is staged twice, from both heights, on the same farm at the same
+moment**, so the pair of sheets shows what neither sheet alone can. It earned its
+keep immediately — the draft that won is the one that carries at both, and two of
+the five read at only one. Any later cue about tile state — a machine's coverage,
+a scent overlay, a tower's range, a bot's assigned zone — gets asked the same way.
 
 This is the flip side of the altitude test above. That test decides which
 *interactions* lift the camera; this one says that once the camera can lift at

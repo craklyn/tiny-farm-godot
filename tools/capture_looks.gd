@@ -156,55 +156,15 @@ func _stage(scenario: Dictionary) -> void:
 	# below so a question only has to describe what is different about it.
 	await _put_her_at(scenario["stand"])
 	match String(scenario["id"]):
-		"bed_at_dusk":
-			# Dusk is the hour every cot draft is about: 60 of 600 is where
-			# `energy = 2` sat on the old 20-point day, which is the instant the
-			# treatments were drawn for.
-			GameState.set_energy(60)
-			await _put_her_at(Vector2i(2, 3))
-		"station_first_time":
-			# Her farm, five days in, one wheat in the basket and nothing ever
-			# used — the state a station's first-time cue is written for.
-			if not TeachingFocus.handed_over(farm.sim):
-				farm.apply_action({
-					"verb": "open_gate",
-					"target": WorldLayout.gate_of("neighbour"),
-					"actor": "neighbour",
-				}, GameState)
-			GameState.day = GameState.takeover_day + 5
-			GameState.clear_counts["clear_weed"] = 1  # no lesson outranking the errand
-			GameState.set_energy(GameState.max_energy)
-			GameState.gold = 0
-			GameState.total_shipped = 0
-			GameState.cans_refilled = 0
-			GameState.seeds_bought = 0
-			GameState.watering_can_charges = GameState.max_watering_can_charges
-			GameState.crops = { "wheat": 1, "tomato": 0 }
-			await _put_her_at(Vector2i(5, 6))
-		"already_done":
-			# A crop that already has its water, and a tap on it that has just
-			# landed. The reply is what is being judged, so the shutter has to
-			# open while it is still in flight.
-			GameState.set_energy(GameState.max_energy)
-			GameState.watering_can_charges = GameState.max_watering_can_charges
-			_clear_tile(11, 8, "cleared")
-			_clear_tile(12, 8, "seeded", "wheat")
-			farm.water_tile(12, 8)
-			await _put_her_at(Vector2i(11, 8))
-			InputManager.click_tile = Vector2i(12, 8)
-			InputManager.has_click = true
-			for i in 20:
-				await get_tree().process_frame
-		"ripe_at_a_glance", "ripe_from_above":
-			# One plot, two heights. The staging is identical for both questions
-			# on purpose — the only thing that differs between the two sheets is
-			# where the camera is, which is the comparison the pair exists to
-			# make.
-			_stage_ripe_plot()
-			await _put_her_at(scenario["stand"])
+		_:
+			# No question is open (see `tools/look_scenarios.gd`). The four that
+			# were staged here retired with the axes they compared; a new one adds
+			# its arm back, and `_stage_ripe_plot` below is left standing as the
+			# worked example of what an arm does.
+			pass
 
 	# A question asked from altitude is framed by **the game's own pull-back**
-	# rather than by a zoom typed in here, for the reason the cot's crop is
+	# rather than by a zoom typed in here, for the reason the cot's crop was
 	# looked up in the sim rather than read off a design doc: a rig that can be
 	# wrong about the frame photographs a farm nobody plays. The reset runs
 	# unconditionally so that a question shot after one of these is not
@@ -216,27 +176,11 @@ func _stage(scenario: Dictionary) -> void:
 # thing they are about happens. This waits for that, and reports whether it had
 # to — a draft caught this way is photographed immediately, not after a settle
 # that would outlast it.
-func _after_switch(id: String) -> bool:
-	match id:
-		"station_first_time":
-			if StationPresentation.discovery != StationPresentation.DISCOVERY_GLINT:
-				return false
-			# A is "an unused station catches the light now and then", so there is
-			# nothing to photograph until it has. Waiting is the difference between
-			# a fair capture of A and an empty yard captioned "idle glints".
-			for i in 900:
-				if main_scene._glint_at.x >= 0:
-					return true
-				await get_tree().process_frame
-			push_warning("station_first_time: no glint appeared in 900 frames")
-		"already_done":
-			# The reply to the tap. `farm._acks` is what the integration suite
-			# checks for the same reason: it is the thing the treatments draw on.
-			for i in 300:
-				if farm._acks.has(Vector2i(12, 8)):
-					return true
-				await get_tree().process_frame
-			push_warning("already_done: the tap was never answered")
+func _after_switch(_id: String) -> bool:
+	# Some drafts are events rather than states: they are not on screen until the
+	# thing they are about happens, and this waits for that. Nothing open needs
+	# it today; a draft that does adds its arm back and is photographed on its own
+	# event rather than after a settle that would outlast it.
 	return false
 
 

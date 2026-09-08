@@ -8585,38 +8585,20 @@ func test_cot_presentation() -> void:
 
 
 func test_crop_presentation() -> void:
-	# "A ripe crop is obvious at a glance", raised from play 2026-09-07. Four
-	# positions in one build — today's game and three treatments — switched on
-	# device, and the pick is the designer's. What is asserted here is only what a
-	# treatment is *allowed* to be: pure arithmetic over a tile coordinate and a
-	# clock, with no way to reach the sim and no way to reach a die.
-	print("\n--- A ripe crop is obvious at a glance: the four positions ---")
+	# "A ripe crop is obvious at a glance", raised from play 2026-09-07 and ruled
+	# 2026-09-08: a ready plant sways gently and gives off its own ripe colour.
+	# What is asserted here is only what the cue is *allowed* to be — pure
+	# arithmetic over a tile coordinate and a clock, with no way to reach the sim
+	# and no way to reach a die.
+	print("\n--- A ripe crop is obvious at a glance ---")
 
-	var was: int = CropPresentation.treatment
-
-	# --- the switch ----------------------------------------------------------
-	CropPresentation.set_treatment(CropPresentation.OFF)
-	_assert(CropPresentation.cycle() == CropPresentation.NOD, "cycling off gives A")
-	_assert(CropPresentation.cycle() == CropPresentation.STAND, "cycling A gives B")
-	_assert(CropPresentation.cycle() == CropPresentation.BLOOM, "cycling B gives C")
-	_assert(CropPresentation.cycle() == CropPresentation.SWAY_GLOW, "cycling C gives D")
-	_assert(CropPresentation.cycle() == CropPresentation.OFF, "cycling D comes back to off")
-	_assert(CropPresentation.NAMES.size() == CropPresentation.COUNT
-			and CropPresentation.BLURBS.size() == CropPresentation.COUNT,
-		"every position has a name and a blurb for the sheet")
-	_assert(LookLab.count_of(LookLab.RIPE) == CropPresentation.COUNT
-			and LookLab.AXES.has(LookLab.RIPE),
-		"and the Look Lab carries it as its fourth axis")
-
-	# --- only a ripe square, and only when a treatment is on ------------------
-	CropPresentation.set_treatment(CropPresentation.OFF)
-	_assert(not CropPresentation.shows("ready"),
-		"off treats nothing at all — it is today's game, which is what makes it a draft")
-	CropPresentation.set_treatment(CropPresentation.NOD)
+	# --- only a ripe square --------------------------------------------------
 	_assert(CropPresentation.shows("ready"), "a ready square is treated")
 	for other in ["seeded", "growing", "tilled", "cleared", "obstacle_weed"]:
 		_assert_quiet(not CropPresentation.shows(other), "and %s is not" % other)
 	_assert(true, "and nothing else is — seeded, growing, bare soil, an obstacle")
+	_assert(LookLab.AXES.is_empty(),
+		"and it is no longer a switch: every look question the lab carried is answered")
 
 	# --- the variation is a function of the square, never a die ---------------
 	#
@@ -8644,9 +8626,8 @@ func test_crop_presentation() -> void:
 
 	# **Not regular**, which is the difference between this and the ground
 	# tiling's `tx % 3`. That one is pure and also predictable, and a repeat the
-	# eye can predict stops being texture and becomes wallpaper — which is the
-	# exact complaint the CEO made of the mirrored ground on 2026-09-07. A cue
-	# arriving on a three-square beat would fail the same way.
+	# eye can predict stops being texture and becomes wallpaper — the exact
+	# complaint the CEO made of the mirrored ground on 2026-09-07.
 	var periodic := true
 	for x in 12:
 		if not is_equal_approx(CropPresentation.hash01(Vector2i(x, 5)),
@@ -8654,18 +8635,17 @@ func test_crop_presentation() -> void:
 			periodic = false
 	_assert(not periodic, "and a row of squares does not repeat on a three-square beat")
 
-	# --- A: the nod ----------------------------------------------------------
-	CropPresentation.set_treatment(CropPresentation.NOD)
+	# --- the sway ------------------------------------------------------------
 	var here := Vector2i(6, 11)
 	var swing: float = 0.0
-	for i in 240:
+	for i in 400:
 		var o: Vector2 = CropPresentation.nod_offset(here, i * 0.05)
 		swing = maxf(swing, absf(o.x))
 		_assert_quiet(absf(o.x) <= CropPresentation.NOD_LEAN + 0.001
 				and o.y <= 0.001 and o.y >= -CropPresentation.NOD_RISE - 0.001,
 			"the sway stays inside its stated bounds")
 	_assert(swing > CropPresentation.NOD_LEAN * 0.9,
-		"A's head reaches the sway it is drawn for (%.2f of %.2f world px)"
+		"the head reaches the sway it is drawn for (%.2f of %.2f world px)"
 			% [swing, CropPresentation.NOD_LEAN])
 	_assert(CropPresentation.nod_offset(here, 0.0).is_equal_approx(
 			CropPresentation.nod_offset(here, CropPresentation.nod_period(here))),
@@ -8676,75 +8656,23 @@ func test_crop_presentation() -> void:
 				CropPresentation.nod_offset(here + Vector2i(1, 0), t).x):
 			apart = true
 	_assert(apart, "two neighbouring plants are never at the same point of the sway")
-	CropPresentation.set_treatment(CropPresentation.STAND)
-	_assert(CropPresentation.nod_offset(here, 1.0) == Vector2.ZERO,
-		"and nothing sways under B or C")
 
-	# --- D: the same dance turned down, over C's light -----------------------
-	#
-	# The designer, 2026-09-08, looking at the first sheet: *"make the ripe ones
-	# dance slightly more subtly, but also have their glow."* Both halves are
-	# asserted, because the value of D is precisely that it is A quieter and C
-	# untouched — if either drifts, it stops being the thing he asked for.
-	CropPresentation.set_treatment(CropPresentation.SWAY_GLOW)
-	var d_swing: float = 0.0
-	var a_swing: float = 0.0
-	for i in 400:
-		d_swing = maxf(d_swing, absf(CropPresentation.nod_offset(here, i * 0.05).x))
-	CropPresentation.set_treatment(CropPresentation.NOD)
-	for i in 400:
-		a_swing = maxf(a_swing, absf(CropPresentation.nod_offset(here, i * 0.05).x))
-	_assert(d_swing > 0.0 and d_swing < a_swing,
-		"D still dances (%.2f world px) and dances less than A (%.2f)" % [d_swing, a_swing])
-	CropPresentation.set_treatment(CropPresentation.SWAY_GLOW)
-	_assert(is_equal_approx(CropPresentation.nod_scale(), CropPresentation.SWAY_AMOUNT)
-			and CropPresentation.nod_scale() < 1.0,
-		"by exactly the fraction the file states, not by a second set of tuned numbers")
-	CropPresentation.set_treatment(CropPresentation.NOD)
-	var a_period := CropPresentation.nod_period(here)
-	CropPresentation.set_treatment(CropPresentation.SWAY_GLOW)
-	_assert(CropPresentation.nod_period(here) > a_period,
-		"and takes longer over it — slower as well as smaller, or it reads as A done timidly")
-	_assert(CropPresentation.emits_light(),
-		"and it glows")
-	CropPresentation.set_treatment(CropPresentation.BLOOM)
-	var c_ring := CropPresentation.bloom_ring_alpha(here, 0)
-	CropPresentation.set_treatment(CropPresentation.SWAY_GLOW)
-	_assert(is_equal_approx(CropPresentation.bloom_ring_alpha(here, 0), c_ring),
-		"with C's light unchanged — he asked for the sway turned down, not the light")
-	CropPresentation.set_treatment(CropPresentation.STAND)
-	_assert(not CropPresentation.emits_light() and CropPresentation.nod_scale() == 0.0,
-		"and B is still silhouette and nothing else")
+	# **The sway is gentle, and gentle is a number.** The designer asked for the
+	# dance turned down once he saw it beside the light (2026-09-08), so the cue
+	# is deliberately at the quiet end — but it is a *state* cue, so there is a
+	# floor under it too: a plant that moved by a fraction of a pixel would be a
+	# cue nobody can see, which is the failure this whole story was about.
+	_assert(CropPresentation.NOD_LEAN >= 0.75 and CropPresentation.NOD_LEAN <= 1.5,
+		"the head travels %.2f world px — visible, and not a wave for attention"
+			% CropPresentation.NOD_LEAN)
+	_assert(CropPresentation.NOD_PERIOD > 2.5,
+		"over %.2f seconds, which is weather rather than a heartbeat (the cot owns pulsing)"
+			% CropPresentation.NOD_PERIOD)
 
-	# --- B: standing up ------------------------------------------------------
-	var base := Rect2(96.0, 176.0, 16.0, 16.0)
-	CropPresentation.set_treatment(CropPresentation.STAND)
-	var tall := CropPresentation.stand_rect(base, here)
-	_assert(tall.size.x > base.size.x and tall.size.y > base.size.y,
-		"B draws a ready plant bigger than the sheet's own cell")
-	_assert(absf((tall.position.y + tall.size.y)
-			- (base.position.y + base.size.y - CropPresentation.STAND_LIFT)) < 0.001,
-		"grown about its own feet and then lifted, so it never sinks into the square below")
-	_assert(absf(tall.position.x - base.position.x) < base.size.x / 2.0,
-		"and stays on its square")
-	var neighbour := CropPresentation.stand_rect(
-		Rect2(112.0, 176.0, 16.0, 16.0), here + Vector2i(1, 0))
-	_assert(not is_equal_approx(tall.size.y, neighbour.size.y),
-		"two ready plants are not the same height — a plot of these is plants, not stamps")
-	var shade := CropPresentation.shadow_rect(base, here)
-	_assert(shade.size.y < tall.size.y * 0.5 and shade.size.x == tall.size.x,
-		"the shadow is the plant's own silhouette, flattened")
-	_assert(shade.position.y > base.position.y,
-		"and lies on the ground under it rather than behind it")
-	CropPresentation.set_treatment(CropPresentation.NOD)
-	_assert(CropPresentation.stand_rect(base, here) == base,
-		"and no other treatment moves or grows the plant")
-
-	# --- C: the light --------------------------------------------------------
-	CropPresentation.set_treatment(CropPresentation.BLOOM)
+	# --- the light -----------------------------------------------------------
 	_assert(CropPresentation.bloom_radius(0)
 			> CropPresentation.bloom_radius(CropPresentation.BLOOM_RINGS - 1),
-		"C's rings come back widest first, which is the order light has to accumulate in")
+		"the rings come back widest first, which is the order light has to accumulate in")
 	var lit := true
 	for i in CropPresentation.BLOOM_RINGS:
 		if CropPresentation.bloom_ring_alpha(here, i) <= 0.0:
@@ -8764,11 +8692,10 @@ func test_crop_presentation() -> void:
 	_assert(sampled, "every sampled colour belongs to a crop this game actually has")
 
 	# **And every crop that can ripen has one.** The other direction, and it is
-	# the one that rots: the table above was written by hand off three sheets, so
-	# the day a fourth crop is added it gets the warm neutral fallback and looks
-	# subtly wrong on a farm nobody is inspecting. Growable means it can reach a
-	# `ready` tile at all — the scarecrow is an object and the egg does not grow,
-	# so neither is ever treated.
+	# the one that rots: the table is written by hand off three sheets, so the day
+	# a fourth crop is added it gets the warm neutral fallback and looks subtly
+	# wrong on a farm nobody is inspecting. Growable means it can reach a `ready`
+	# tile at all — the scarecrow is an object and the egg does not grow.
 	var unsampled: Array[String] = []
 	for crop in CropDefs.TYPES.keys():
 		var def: Dictionary = CropDefs.TYPES[crop]
@@ -8779,13 +8706,6 @@ func test_crop_presentation() -> void:
 	_assert(unsampled.is_empty(),
 		"and every crop that can ripen has a colour of its own to give off (missing: %s)"
 			% str(unsampled))
-	for dark in [CropPresentation.OFF, CropPresentation.NOD, CropPresentation.STAND]:
-		CropPresentation.set_treatment(dark)
-		_assert_quiet(CropPresentation.bloom_ring_alpha(here, 0) == 0.0,
-			"%s emits no light" % CropPresentation.name_of(dark))
-	_assert(true, "and off, A and B emit no light at all")
-
-	CropPresentation.set_treatment(was)
 
 
 func test_home_layout() -> void:
@@ -9093,79 +9013,31 @@ func test_station_presentation() -> void:
 			and StationPresentation.SATISFIED_BLURBS.size() == StationPresentation.SATISFIED_COUNT,
 		"every treatment on both axes has a name and a blurb for the two switches")
 
-	# --- the look lab reaches all of it --------------------------------------
+	# --- the look lab, at rest ------------------------------------------------
 	#
-	# One door for every look that is still his to pick. A second rig would have
-	# meant two panels and two pause lines to remember.
-	_assert(LookLab.AXES.has(LookLab.COT) and LookLab.AXES.has(LookLab.DISCOVERY)
-			and LookLab.AXES.has(LookLab.SATISFIED),
-		"the look lab carries all three open questions (%d)" % LookLab.AXES.size())
-	var lab_ok := true
-	for axis in LookLab.AXES:
-		if LookLab.count_of(axis) <= 0 or LookLab.label_of(axis) == "":
-			lab_ok = false
-		for i in LookLab.count_of(axis):
-			if LookLab.name_of(axis, i) == "" or LookLab.blurb_of(axis, i) == "":
-				lab_ok = false
-	_assert(lab_ok, "and every axis knows how many drafts it has and what each is called")
-	_assert(LookLab.count_of("no_such_axis") == 0 and LookLab.name_of("no_such_axis", 0) == "",
-		"an axis that does not exist answers empty rather than crashing the panel")
-
-	LookLab.set_to(LookLab.DISCOVERY, StationPresentation.DISCOVERY_GLINT)
-	_assert(StationPresentation.discovery == StationPresentation.DISCOVERY_GLINT
-			and LookLab.current(LookLab.DISCOVERY) == StationPresentation.DISCOVERY_GLINT,
-		"the lab writes the same static the game reads — one source of truth per axis")
-	LookLab.cycle(LookLab.SATISFIED)
-	_assert(LookLab.last_axis == LookLab.SATISFIED,
-		"and remembers which axis it moved, so the toast can name it")
-	_assert(CotPresentation.treatment == was_cot,
-		"and T-27's cot pick is untouched by any of it")
-	_assert(LookLab.option_label(LookLab.COT).begins_with("Cot look:"),
-		"the pause line names the axis and where it stands (%s)"
-			% LookLab.option_label(LookLab.COT))
-
-	# --- a look he nudged must not go on quietly changing the game -----------
-	#
-	# 2026-09-08, from the designer at the tablet: he opened the pause menu, met
-	# lines he did not recognise, and read back two axes that were not on their
-	# picks. A look line advances on a tap and then closes the menu, which is
-	# what makes it good for comparing and what makes it easy to move in
-	# passing — and everything he plays and reports afterwards is then a report
-	# about a build nobody ships.
-	LookLab.restore_all()
-	_assert(LookLab.changed_axes().is_empty(),
-		"put back, every axis is wearing the pick the game ships with")
-	var ships_ok := true
-	for axis in LookLab.AXES:
-		if LookLab.current(axis) != LookLab.shipped(axis) or not LookLab.is_shipped(axis):
-			ships_ok = false
-		if LookLab.option_label(axis).contains("ships as"):
-			ships_ok = false
-	_assert(ships_ok, "and no line is claiming otherwise")
-	_assert(LookLab.restore_label() == "Every look is as it ships",
-		"the line under them says there is nothing to undo (%s)" % LookLab.restore_label())
-
-	LookLab.cycle(LookLab.DISCOVERY)
-	var nudged: Array[String] = LookLab.changed_axes()
-	_assert(nudged.size() == 1 and nudged[0] == LookLab.DISCOVERY,
-		"nudge one and exactly that one is named as changed (%s)" % str(nudged))
-	_assert(LookLab.option_label(LookLab.DISCOVERY).contains(
-			LookLab.name_of(LookLab.DISCOVERY, LookLab.shipped(LookLab.DISCOVERY))),
-		"its line says what the game normally wears, beside what it is wearing (%s)"
-			% LookLab.option_label(LookLab.DISCOVERY))
-	_assert(LookLab.restore_label() == "Put 1 look back to what ships",
-		"and the line under them counts it (%s)" % LookLab.restore_label())
-	LookLab.cycle(LookLab.COT)
-	_assert(LookLab.restore_label() == "Put 2 looks back to what ships",
-		"two of them, and it says two (%s)" % LookLab.restore_label())
-	_assert(LookLab.last_change_text() == LookLab.option_label(LookLab.COT).split("  (")[0],
-		"the toast after a nudge names the axis that moved (%s)" % LookLab.last_change_text())
-
+	# One door for every look that is still his to pick, and as of 2026-09-08
+	# there are none: the cot's look, both station axes and the ripe crop have all
+	# been ruled from staged captures, so the registry is empty and the pause menu
+	# carries no look lines. What is asserted is that the empty state is *safe* —
+	# the accessors answer for the empty set instead of reaching into a treatment
+	# that is no longer switchable — because the rig is kept for the next question
+	# and a rig that only works when populated is a rig that breaks on the day it
+	# is needed.
+	_assert(LookLab.AXES.is_empty(),
+		"no look question is open, so the lab offers nothing to switch")
+	_assert(LookLab.changed_axes().is_empty()
+			and LookLab.restore_label() == "Every look is as it ships",
+		"and there is nothing to put back")
+	_assert(LookLab.count_of("no_such_axis") == 0
+			and LookLab.name_of("no_such_axis", 0) == ""
+			and LookLab.option_label("no_such_axis") == "no_such_axis: ",
+		"an axis that does not exist answers empty rather than crashing the menu")
 	LookLab.restore_all()
 	_assert(LookLab.last_change_text() == "Every look back to what ships",
-		"and after a put-back it speaks for the whole set rather than for whichever went last")
-	_assert(LookLab.is_shipped(LookLab.COT) and LookLab.is_shipped(LookLab.DISCOVERY),
-		"which is what it did")
+		"and a put-back with nothing in it is still a sentence, not a crash")
+	_assert(LookScenarios.SCENARIOS.is_empty()
+			and LookScenarios.by_id("bed_at_dusk").is_empty(),
+		"and the capture rig has no question staged either — the two retire together")
 
 	# --- the pictures exist --------------------------------------------------
 	#

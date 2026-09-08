@@ -1126,17 +1126,16 @@ func _is_soil_at(tx: int, ty: int) -> bool:
 	return Autotile.is_soil(tile_look(tx, ty).state)
 
 
-# **What a ripe crop looks like**, on top of the picture the sheet already gives
-# it — the v0.2.0 story "a ripe crop is obvious at a glance" (2026-09-07). One
-# arm per treatment; the drafts and every number in them live in
+# **What a ripe crop does**, on top of the picture the sheet already gives it —
+# raised from play 2026-09-07 and ruled 2026-09-08: it sways gently and gives off
+# its own ripe colour. The numbers, and why they are those numbers, live in
 # `systems/crop_presentation.gd`, which is pure and can be asserted headlessly.
 #
 # **The whole per-frame cost is here, and it is per ripe square.** No square that
 # is not ready pays anything, nothing new walks the map, and the farm's redraw
 # cadence is untouched: `player/player.gd` already asks for a redraw every frame
-# of ordinary play, so the one treatment that moves adds frames to nobody's bill.
-# On a plot of twenty ripe crops that is twenty extra sprite draws under A and B
-# and about a hundred small ones under C.
+# of ordinary play, so the sway adds frames to nobody's bill. On a plot of twenty
+# ripe crops that is twenty extra sprite draws and twenty pools of light.
 #
 # Everything that differs from square to square comes out of
 # `CropPresentation.hash01`, a pure function of the square's coordinates — never
@@ -1144,71 +1143,34 @@ func _is_soil_at(tx: int, ty: int) -> bool:
 # same farm.
 func _queue_ripe(queue: Array[Dictionary], at: Vector2i, tex: Texture2D,
 		region: Rect2, rect: Rect2, py: int, crop_type: String) -> void:
-	var t: float = Time.get_ticks_msec() / 1000.0
-	# D emits C's light as well as swaying, so the pool is registered before the
-	# match rather than inside one arm of it. `emits_light()` is the single place
-	# that says which treatments glow, so a new one cannot pick up the light by
-	# accident or lose it by omission.
-	if CropPresentation.emits_light():
-		_ripe_glow.append({
-			"at": rect.position + rect.size / 2.0
-				+ Vector2(0.0, CropPresentation.BLOOM_DROP),
-			"light": CropPresentation.bloom_light(crop_type),
-			"tile": at,
-		})
-	match CropPresentation.treatment:
-		CropPresentation.NOD, CropPresentation.SWAY_GLOW:
-			# Drawn in two pieces so the base stays rooted while the head
-			# travels: a plant that slides whole reads as a sprite being moved,
-			# and a plant whose top leans over fixed feet reads as a plant. D
-			# uses the same two pieces at half the travel — the gesture is the
-			# same one, turned down, which is what "more subtly" asked for.
-			var f: float = float(CropPresentation.NOD_SPLIT) / float(TILE_SIZE)
-			var head_src := Rect2(region.position,
-				Vector2(region.size.x, region.size.y * f))
-			var foot_src := Rect2(region.position + Vector2(0.0, region.size.y * f),
-				Vector2(region.size.x, region.size.y * (1.0 - f)))
-			var head_dst := Rect2(rect.position + CropPresentation.nod_offset(at, t),
-				Vector2(rect.size.x, rect.size.y * f))
-			var foot_dst := Rect2(rect.position + Vector2(0.0, rect.size.y * f),
-				Vector2(rect.size.x, rect.size.y * (1.0 - f)))
-			queue.append({
-				"y": py,
-				"draw": func():
-					draw_texture_rect_region(tex, foot_dst, foot_src)
-					draw_texture_rect_region(tex, head_dst, head_src)
-					ripe_draws += 1
-			})
-		CropPresentation.STAND:
-			# The plant's own silhouette, flattened into the ground under it,
-			# then the plant grown about its feet and lifted off the soil. A
-			# drawn shadow rather than a painted ellipse, so the shape on the
-			# floor is the shape of the plant and a reskin carries it for free.
-			var shadow := CropPresentation.shadow_rect(rect, at)
-			var plant := CropPresentation.stand_rect(rect, at)
-			queue.append({
-				"y": py,
-				"draw": func():
-					draw_texture_rect_region(tex, shadow, region,
-						Color(0.10, 0.09, 0.13, CropPresentation.SHADOW_ALPHA))
-					draw_texture_rect_region(tex, plant, region)
-					ripe_draws += 1
-			})
-		CropPresentation.BLOOM:
-			# The plant is drawn exactly as it always was; the light is *added*
-			# on the layer above (registered just above this match), which is the
-			# only way a glow can be brighter than the tilled soil it lies on.
-			queue.append({
-				"y": py,
-				"draw": func():
-					draw_texture_rect_region(tex, rect, region)
-					ripe_draws += 1
-			})
-		_:
-			queue.append({
-				"y": py,
-				"draw": func(): draw_texture_rect_region(tex, rect, region)
-			})
+	# The light is registered where the square is already being visited, rather
+	# than found by a second walk over the map, and drawn on the additive child
+	# built in `_ready` — the only way a glow can be brighter than the tilled soil
+	# it is lying on.
+	_ripe_glow.append({
+		"at": rect.position + rect.size / 2.0 + Vector2(0.0, CropPresentation.BLOOM_DROP),
+		"light": CropPresentation.bloom_light(crop_type),
+		"tile": at,
+	})
+	# Drawn in two pieces so the base stays rooted while the head travels: a plant
+	# that slides whole reads as a sprite being moved, and a plant whose top leans
+	# over fixed feet reads as a plant.
+	var f: float = float(CropPresentation.NOD_SPLIT) / float(TILE_SIZE)
+	var head_src := Rect2(region.position, Vector2(region.size.x, region.size.y * f))
+	var foot_src := Rect2(region.position + Vector2(0.0, region.size.y * f),
+		Vector2(region.size.x, region.size.y * (1.0 - f)))
+	var head_dst := Rect2(
+		rect.position + CropPresentation.nod_offset(at, Time.get_ticks_msec() / 1000.0),
+		Vector2(rect.size.x, rect.size.y * f))
+	var foot_dst := Rect2(rect.position + Vector2(0.0, rect.size.y * f),
+		Vector2(rect.size.x, rect.size.y * (1.0 - f)))
+	queue.append({
+		"y": py,
+		"draw": func():
+			draw_texture_rect_region(tex, foot_dst, foot_src)
+			draw_texture_rect_region(tex, head_dst, head_src)
+			ripe_draws += 1
+	})
 
 
 func _draw() -> void:
@@ -1347,10 +1309,9 @@ func _draw() -> void:
 				if region.size.x > 0 and crop_tex != null:
 					var crop_rect := _react_rect(px, py, k, TILE_SIZE, shake)
 					# **A ripe square gets more than its fourth cell** — the
-					# v0.2.0 story, raised from play 2026-09-07. Which "more"
-					# is the designer's open question, so the ordinary draw is
-					# still here as the OFF position and every other square in
-					# the field goes down it untouched (`_queue_ripe`).
+					# v0.2.0 story, raised from play 2026-09-07 and ruled the
+					# next day. Every other square in the field goes down the
+					# ordinary path below, untouched.
 					if CropPresentation.shows(tile.state):
 						_queue_ripe(render_queue, Vector2i(tx, ty), crop_tex,
 							region, crop_rect, py, tile.crop_type)

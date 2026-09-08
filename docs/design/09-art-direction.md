@@ -122,10 +122,12 @@ filed.
 
 ---
 
-## The ripe crop, and what colour is left (2026-09-07)
+## The ripe crop, and what colour is left (2026-09-07, ruled 2026-09-08)
 
-*Open at Q-94. Three treatments are built and switchable on the tablet; the pick
-is the designer's and this section records the material rather than an answer.*
+*Ruled at Q-94: **a ready plant sways gently and gives off its own ripe colour.**
+Five candidates were built and switched on the tablet; the losers are deleted and
+the two sheets on the decision card are the record of what was compared. This
+section keeps the reasoning, because the reasoning outlives the pick.*
 
 **The problem, measured.** Reported from play: nothing on the farm says loudly
 enough that a plant is ready to pick, so she has to go looking. The state is
@@ -145,15 +147,23 @@ which failure matters:
 | A | the ripe ones nod | movement — the strongest signal for an eye looking elsewhere | a still picture: a screenshot, a trailer frame, or a decision made from a photograph |
 | B | the ripe ones stand up | silhouette — survives grey, distance, a small screen, colourblindness | loudness: it is the quietest of the three in the hand |
 | C | the ripe ones give off their own colour | light and saturation — the contrast rule below, taken to its end | colour, which this game has little of left (see the ledger) |
-| D | a gentler sway, and the glow | both at once — movement finds the eye, light holds it | it pays C's colour bill in full, and it is the one draft a still picture cannot show at all |
+| **D** | **a gentler sway, and the glow — the pick** | both at once — movement finds the eye, light holds it | it pays C's colour bill in full, and it is the one draft a still picture cannot show at all |
 
-D was added on 2026-09-08 at the designer's request, looking at the first sheet:
+**D is what ships.** It was added on 2026-09-08 at the designer's request, looking
+at the first sheet:
 *"make the ripe ones dance slightly more subtly, but also have their glow."* It is
 A at half the travel and a third again as slow, over C's light unchanged. It is a
 *fifth position* rather than a replacement, because A, B and C are the isolated
 channels and that is the whole reason the sheet can answer anything — a
 combination that swallowed its components would leave nobody able to say which
 half was doing the work.
+
+**The ruling's own reasoning.** Movement finds an eye that is looking somewhere
+else; light holds it once it arrives. Halving the sway is not timidity, it is what
+stops the two competing to be the thing you notice — with the light doing half
+the work, the motion only has to catch, not to hold. That division of labour is
+the transferable part: **when two channels carry one cue, the one that catches
+should be quieter than the one that holds.**
 
 **The colour ledger.** A hue is not free here, and this is what each one is
 already spending itself on. Anything new has to survive being read against this
