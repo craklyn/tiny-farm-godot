@@ -277,7 +277,17 @@ func held_count(key: String) -> int:
 
 
 func holding_machine() -> bool:
-	return MachineDefs.has(selected_seed_type) and machines.get(selected_seed_type, 0) > 0
+	return MachineDefs.has(selected_seed_type) and machines.get(selected_seed_type, 0) > 0 \
+		and MachineDefs.terrain_of(selected_seed_type) == ""
+
+
+# Is what she has in hand a thing that lays ground rather than a thing that walks
+# (Q-92)? Fencing lives in the same crate as the machines and is selected the same
+# way; what it becomes when she puts it down is the only difference, and that is
+# the gateway's business rather than this flag's.
+func holding_buildable() -> bool:
+	return MachineDefs.has(selected_seed_type) and machines.get(selected_seed_type, 0) > 0 \
+		and MachineDefs.terrain_of(selected_seed_type) != ""
 
 
 func buy_seed(seed_type: String) -> bool:
@@ -321,7 +331,10 @@ func buy_machine(key: String) -> bool:
 	if not MachineDefs.is_unlocked(key, harvest_counts):
 		return false
 	gold -= int(def.price)
-	machines[key] = machines.get(key, 0) + 1
+	# A card can be a bundle. Fencing is sold ten posts at a time because a fence
+	# is a run rather than an object, and buying twenty squares one card at a time
+	# is an errand rather than a decision (Q-92). Everything else is one.
+	machines[key] = machines.get(key, 0) + int(def.get("bundle", 1))
 	machines_bought += 1
 	selected_seed_type = key
 	gold_changed.emit(gold)

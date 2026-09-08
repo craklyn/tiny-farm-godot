@@ -93,6 +93,7 @@ func _run_scenarios() -> void:
 	await _scenario_ah_the_mark_one_takes_exact_orders()
 	await _scenario_ai_the_house_has_a_door()
 	await _scenario_aj_the_robot_lives_in_a_stall()
+	await _scenario_ak_she_puts_up_a_fence()
 
 func _wait_until(pred: Callable, max_frames: int) -> bool:
 	for i in max_frames:
@@ -4112,3 +4113,51 @@ func _scenario_aj_the_robot_lives_in_a_stall() -> void:
 	GameState.save_path = real_paths[0]
 	GameState.replay_path = real_paths[1]
 	GameState.trace_path = real_paths[2]
+
+
+# --- AK: she puts up a fence (Q-92, 2026-09-07) -------------------------------
+#
+# The gateway's own tests cover what `build` does. This covers the half they
+# cannot: that a **tap** reaches it. Between her finger and the verb sit the
+# router's reading of what she is holding, the walk to the square, and the
+# player's dispatch — and a feature can be perfect at the gateway and
+# unreachable on the glass, which is how the mark-1's teaching mode shipped
+# able to reach only half the farm.
+func _scenario_ak_she_puts_up_a_fence() -> void:
+	print("\n--- Scenario AK: she puts up a fence, and takes it back down ---")
+	var here: Vector2i = player.get_tile_pos()
+	var spot := Vector2i(-1, -1)
+	for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		farm.sim.set_tile_state((here + d).x, (here + d).y, "cleared")
+		if farm.sim.buildable_at(here + d):
+			spot = here + d
+			break
+	_assert(spot.x >= 0, "there is bare ground beside her to build on")
+
+	GameState.machines["fence"] = 3
+	GameState.selected_seed_type = "fence"
+	_assert(GameState.holding_buildable(), "with fencing in hand she is holding a thing that lays ground")
+	_assert(not GameState.holding_machine(),
+		"and not a machine — the crate holds both and they are not the same word")
+
+	var energy_before: int = GameState.energy
+	InputManager.click_tile = spot
+	InputManager.has_click = true
+	var built := await _wait_until(func(): return String(
+		farm.sim.get_tile(spot.x, spot.y).get("state", "")) == WorldLayout.FENCE_BUILT, 6000)
+	_assert(built, "one tap on the square beside her puts a post in it")
+	_assert(GameState.machines.get("fence", 0) == 2, "out of the crate, one at a time")
+	_assert(GameState.energy < energy_before, "and it cost her a stroke of work")
+	_assert(not farm.sim.is_walkable(spot.x, spot.y), "nothing walks through it now")
+
+	# ...and a tap on her own post takes it back up, which is what makes a run
+	# she regrets cost nothing.
+	InputManager.click_tile = spot
+	InputManager.has_click = true
+	var lifted := await _wait_until(func(): return String(
+		farm.sim.get_tile(spot.x, spot.y).get("state", "")) == "cleared", 6000)
+	_assert(lifted, "tapping her own fence takes it back up")
+	_assert(GameState.machines.get("fence", 0) == 3, "and refunds the post")
+
+	GameState.machines["fence"] = 0
+	GameState.selected_seed_type = "wheat"

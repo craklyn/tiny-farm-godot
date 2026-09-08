@@ -1306,6 +1306,32 @@ func stompable_at(t: Vector2i) -> bool:
 # ordinary ground may go on omitting it and gets exactly the answer it always got:
 # a bay with no item named is not placeable, which is the safe direction — an
 # unaware caller refuses a bay rather than dropping a sprinkler into one.
+# **Where a fence post may go** (Q-92). Walkable ground she has cleared, and
+# nothing else: not a crop she is growing, not the yard, not a square something
+# is already standing on. Restricting it to bare ground is a design choice as
+# much as a safety one — you fence the edges of a plot, not the beds — and it
+# means building can never destroy work.
+#
+# Asked here rather than in the router for the same reason `placeable_at` is:
+# one answer to "may a fence go there", and the intent layer asks it.
+func buildable_at(t: Vector2i) -> bool:
+	if not is_walkable(t.x, t.y):
+		return false
+	if is_stall_tile(t):
+		return false
+	if get_object(t.x, t.y) != "":
+		return false
+	if String(get_tile(t.x, t.y).get("state", "")) != "cleared":
+		return false
+	# Nobody may be walled in where they stand, the player included: a post that
+	# lands under a hen makes a tile that is occupied and impassable at once.
+	for raw in actors:
+		var id := String(raw)
+		if t in Movement.occupied_tiles(self, id):
+			return false
+	return true
+
+
 func placeable_at(t: Vector2i, item: String = "") -> bool:
 	if not is_walkable(t.x, t.y):
 		return false
@@ -1796,6 +1822,20 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 				despawn_actor(machine_id)
 				gs.machines[machine_key] = int(gs.machines.get(machine_key, 0)) + 1
 				return { "ok": true, "collected": machine_key, "machine": machine_id }
+			# **And a fence she built comes back up** (Q-92). Only hers: the
+			# world's own fences and hedges are the boundary that says "not yet",
+			# and the cold open is built on one — a player who could pull those up
+			# could dismantle the game's first lock. The states differ for exactly
+			# this test, which is why hers has its own word despite sharing a
+			# picture.
+			#
+			# Free and instant, like the egg. Being able to undo a long run of
+			# posts one square at a time is what makes fencing safe to try, and a
+			# refund is what stops a mistake costing her the gold as well.
+			if String(get_tile(target.x, target.y).get("state", "")) == WorldLayout.FENCE_BUILT:
+				set_tile_state(target.x, target.y, "cleared")
+				gs.machines["fence"] = int(gs.machines.get("fence", 0)) + 1
+				return { "ok": true, "collected": "fence" }
 			return _fail("nothing_to_collect")
 
 		# -- the door (2026-09-06) --------------------------------------------
@@ -1867,9 +1907,43 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 		# she paid for, and everything downstream depends on it being recorded:
 		# the replay, the autosave, and the bot that will one day place machines
 		# itself with the same word she used.
+		# **A fence is terrain, so it is built rather than placed** (Q-92, ruled
+		# 2026-09-07). `place` puts an *actor* in the world, and a twenty-tile
+		# fence would be twenty actors — against the rule that per-tick cost
+		# scales with entities rather than map area. A post is a square of ground
+		# that has become impassable, which is exactly what `till` is, so it is
+		# written the way `till` is written.
+		#
+		# One verb rather than a family: what it lays down comes from the item,
+		# so a wall, a hedge she plants or a low stone border are the same word
+		# with a different thing in hand, and a bot that tidies the farm one day
+		# needs nothing the player lacks (ground rule 1).
+		"build":
+			if gs == null: return _fail("no_state")
+			var mat := String(action.get("item", ""))
+			var lays := MachineDefs.terrain_of(mat)
+			if lays == "": return _fail("not_buildable_item")
+			if not buildable_at(target): return _fail("cannot_build_here")
+			var builder := String(action.get("actor", ""))
+			var builder_charged: bool = _is_player(builder)
+			if builder_charged and int(gs.machines.get(mat, 0)) <= 0: return _fail("none_left")
+			var build_cost: int = Tools.get_energy_cost("build")
+			if builder_charged and gs.hard_energy and gs.energy < build_cost:
+				return _fail("no_energy")
+			if builder_charged:
+				gs.set_energy(gs.energy - build_cost)
+				gs.machines[mat] = int(gs.machines.get(mat, 0)) - 1
+			else:
+				spend_actor_energy(builder, build_cost)
+			set_tile_state(target.x, target.y, lays)
+			return { "ok": true, "built": lays, "item": mat }
+
 		"place":
 			if gs == null: return _fail("no_state")
 			var item := String(action.get("item", ""))
+			# Terrain is `build`'s job; refused here so the two can never both
+			# claim the same item and disagree about what it becomes.
+			if MachineDefs.terrain_of(item) != "": return _fail("not_a_machine")
 			if not MachineDefs.has(item): return _fail("unknown_machine")
 			var ptile := get_tile(target.x, target.y)
 			if ptile.is_empty() or ptile.get("state", "") == "": return _fail("out_of_bounds")

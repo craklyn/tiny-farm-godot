@@ -161,6 +161,7 @@ func _init() -> void:
 	test_mark_one_robot()
 	test_world_pages()
 	test_the_door()
+	test_fencing()
 	test_save_v3_migration()
 	test_robot_stall()
 	test_robot_usefulness()
@@ -10688,6 +10689,100 @@ func test_world_pages() -> void:
 	gs_one.free()
 	gs_two.free()
 	gs.free()
+
+
+# --- Q-92: she puts up a fence -----------------------------------------------
+func test_fencing() -> void:
+	print("\n--- Fencing: bought in the crate, built on bare ground, taken back up ---")
+	var gs = load("res://systems/game_state.gd").new()
+	gs.reset()
+	SimRng.reseed(92)
+	var w := SimWorld.new()
+	w.generate()
+
+	# Somewhere bare, beside her, and not the yard.
+	var here := Vector2i(6, 10)
+	w.set_actor_pos(SimWorld.ACTOR_PLAYER, here)
+	var spot := here + Vector2i(1, 0)
+	w.set_tile_state(spot.x, spot.y, "cleared")
+	_assert(w.buildable_at(spot), "bare cleared ground will take a post")
+
+	# --- the crate, and the bundle -------------------------------------------
+	gs.gold = 200
+	var before_gold: int = gs.gold
+	_assert(gs.buy_machine("fence"), "she buys a card of fencing at the seed box")
+	_assert(gs.gold == before_gold - MachineDefs.price_of("fence"), "and pays for it")
+	_assert(gs.machines.get("fence", 0) == 10,
+		"a card is ten posts — a fence is a run, not an object (%d)" % gs.machines.get("fence", 0))
+	_assert(MachineDefs.terrain_of("fence") == WorldLayout.FENCE_BUILT,
+		"the crate row says what it lays down, which is what sends it to `build`")
+
+	# --- building -------------------------------------------------------------
+	var e0: int = gs.energy
+	var put: Dictionary = w.apply_action({ "verb": "build", "target": spot,
+		"item": "fence", "actor": "player" }, gs)
+	_assert(put.get("ok", false), "one tap puts a post in that square (%s)" % put)
+	_assert(String(w.get_tile(spot.x, spot.y).get("state", "")) == WorldLayout.FENCE_BUILT,
+		"the square is her fence now")
+	_assert(gs.machines.get("fence", 0) == 9, "one post out of the crate")
+	_assert(gs.energy == e0 - Tools.get_energy_cost("build"),
+		"and it cost a stroke of work, like breaking the ground would have")
+	_assert(not w.is_walkable(spot.x, spot.y), "nothing walks through it")
+	_assert(Movement.is_barrier(w, spot), "it is a boundary, so a rabbit paths around it")
+	_assert(not w.buildable_at(spot), "and a second post cannot go in the same square")
+
+	# --- what it refuses ------------------------------------------------------
+	var crop := here + Vector2i(0, 1)
+	w.set_tile_state(crop.x, crop.y, "seeded", "wheat")
+	var over_crop: Dictionary = w.apply_action({ "verb": "build", "target": crop,
+		"item": "fence", "actor": "player" }, gs)
+	_assert(not over_crop.get("ok", false)
+			and String(over_crop.get("reason", "")) == "cannot_build_here",
+		"a growing crop will not take one — building can never destroy her work (%s)" % over_crop)
+	_assert(String(w.get_tile(crop.x, crop.y).get("state", "")) == "seeded", "the crop is untouched")
+	var under_her: Dictionary = w.apply_action({ "verb": "build", "target": here,
+		"item": "fence", "actor": "player" }, gs)
+	_assert(not under_her.get("ok", false),
+		"nor the square she is standing on — nobody gets walled in where they stand")
+	var not_terrain: Dictionary = w.apply_action({ "verb": "build", "target": spot + Vector2i(1, 0),
+		"item": "sprinkler", "actor": "player" }, gs)
+	_assert(not not_terrain.get("ok", false)
+			and String(not_terrain.get("reason", "")) == "not_buildable_item",
+		"and a sprinkler is not something you build — that is `place`'s word (%s)" % not_terrain)
+	var placed_fence: Dictionary = w.apply_action({ "verb": "place", "target": spot + Vector2i(1, 0),
+		"item": "fence", "actor": "player" }, gs)
+	_assert(not placed_fence.get("ok", false)
+			and String(placed_fence.get("reason", "")) == "not_a_machine",
+		"the two verbs cannot both claim the same item (%s)" % placed_fence)
+
+	# --- taking it back, and only hers ---------------------------------------
+	var back: Dictionary = w.apply_action({ "verb": "collect", "target": spot,
+		"actor": "player" }, gs)
+	_assert(back.get("ok", false) and String(back.get("collected", "")) == "fence",
+		"tapping her own fence takes it back up (%s)" % back)
+	_assert(String(w.get_tile(spot.x, spot.y).get("state", "")) == "cleared",
+		"the ground is bare again")
+	_assert(gs.machines.get("fence", 0) == 10,
+		"and the post is back in the crate — a run she regrets costs her nothing")
+
+	# **The world's own boundary is not hers to pull up.** The cold open is built
+	# on a fence between two yards; a player who could collect one could dismantle
+	# the game's first lock. Same picture, different word, and this is the test
+	# that the word is doing its job.
+	var theirs := Vector2i(-1, -1)
+	for ty in range(0, 20):
+		for tx in range(0, 32):
+			if String(w.get_tile(tx, ty).get("state", "")) == WorldLayout.FENCE:
+				theirs = Vector2i(tx, ty)
+				break
+		if theirs.x >= 0: break
+	_assert(theirs.x >= 0, "the farm has a fence of the world's own (%s)" % theirs)
+	var steal: Dictionary = w.apply_action({ "verb": "collect", "target": theirs,
+		"actor": "player" }, gs)
+	_assert(not steal.get("ok", false),
+		"which she cannot pick up, however much it looks like hers (%s)" % steal)
+	_assert(String(w.get_tile(theirs.x, theirs.y).get("state", "")) == WorldLayout.FENCE,
+		"and it is still standing")
 
 
 func test_the_door() -> void:

@@ -781,6 +781,13 @@ func _execute_resolved_action(pa: Dictionary) -> void:
 	# Keyed on the row's `program` rather than on its config list: a mark-1 robot
 	# has no configs to choose between and still very much has a menu — it is
 	# where you teach it and where you send it out.
+	# A post going in reads as work, not as a purchase: the same dirt and the same
+	# thump the ground gets when she breaks it (Q-92).
+	if action == "build":
+		AudioManager.play_sfx("till")
+		_emit_particles("dirt", target_t)
+		return
+
 	if action == "place":
 		AudioManager.play_sfx("jingle")
 		_emit_particles("dirt", target_t)

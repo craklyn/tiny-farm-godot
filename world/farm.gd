@@ -343,6 +343,11 @@ func _load_textures() -> void:
 		"clear_tree": [Rect2(3 * 16, 0, 16, 16), Rect2(11 * 16, 0, 16, 16), Rect2(12 * 16, 0, 16, 16)],
 	}
 	tile_regions[WorldLayout.FENCE] = Rect2(4 * 16, 0, 16, 16)
+	# The fence she puts up herself is the same picture as the yard's (Q-92): the
+	# hedge is the word for "not yours yet", so the fence is free to mean "yours"
+	# for both of them. The states differ so the router can tell whose is whose;
+	# nothing about the drawing does.
+	tile_regions[WorldLayout.FENCE_BUILT] = tile_regions[WorldLayout.FENCE]
 	tile_regions[WorldLayout.HEDGE] = Rect2(5 * 16, 0, 16, 16)
 	tile_regions[WorldLayout.GATE_CLOSED] = Rect2(6 * 16, 0, 16, 16)
 	tile_regions[WorldLayout.GATE_OPEN] = Rect2(7 * 16, 0, 16, 16)

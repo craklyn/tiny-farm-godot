@@ -40,6 +40,33 @@ static var TYPES: Dictionary = {
 	# happen without you". Priced above every seed and below the robot: a day of
 	# good tomatoes buys one, which makes it the natural first purchase after the
 	# scarecrow rather than a project.  [Playtest]
+	# --- fencing (Q-92, ruled 2026-09-07) --------------------------------------
+	#
+	# In the crate with the machines because that is what the crate is: things she
+	# has bought and not yet put down. `GameState.machines` has said so since it
+	# was written — "a tower, a fence or a hopper joins this dictionary with no
+	# new field" — so this is that sentence coming true rather than a new home.
+	#
+	# `terrain` is what separates it from everything else here: it lays a kind of
+	# ground rather than putting an actor on the farm, so the gateway sends it to
+	# `build` and refuses it to `place`. Sold in tens because a fence is a run of
+	# posts and buying twenty squares one card at a time is not a decision, it is
+	# an errand.
+	"fence": {
+		"name": "Fencing ×10",
+		"price": 40,
+		"species": "",
+		"terrain": WorldLayout.FENCE_BUILT,
+		"bundle": 10,
+		"configs": [],
+		"default_config": "",
+		"unlock_requirement": null,
+		# The fence cell the world's own fences are drawn from: the designer's
+		# ruling is that the picture is already right, because the hedge is what
+		# says "not yours yet" and the fence already says "yours".
+		"icon": { "sheet": "res://assets/sprites/generated/obstacles.png",
+			"region": Rect2(4 * 16, 0, 16, 16) },
+	},
 	"sprinkler": {
 		"name": "Sprinkler",
 		"price": 120,
@@ -159,6 +186,12 @@ static func species_of(key: String) -> String:
 
 static func name_of(key: String) -> String:
 	return String(TYPES.get(key, {}).get("name", key))
+
+
+# The ground a crate item lays down, or "" for the ones that put an actor on the
+# farm instead. This is what tells `build` from `place` — see the gateway.
+static func terrain_of(key: String) -> String:
+	return String(TYPES.get(key, {}).get("terrain", ""))
 
 
 static func configs_of(key: String) -> Array:

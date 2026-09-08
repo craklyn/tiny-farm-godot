@@ -69,6 +69,9 @@ static var ENERGY_COSTS: Dictionary = {
 	"clear_tree": DEAR_COST,
 	"clear_rock": DEAR_COST,
 	"till": BASE_COST,
+	# Carrying a post out and putting it in the ground is the same stroke of work
+	# as breaking the ground it goes into (Q-92).
+	"build": BASE_COST,
 	"water": BASE_COST,
 	"harvest": BASE_COST,
 	"plant": 0,

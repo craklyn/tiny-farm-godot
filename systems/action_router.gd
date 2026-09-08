@@ -200,6 +200,38 @@ func resolve(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, is_drag: 
 			"walk_to": false, "seed_type": "",
 		})
 
+	# 1c-ii. A fence she built answers before the ground does (Q-92). Tapping one
+	# takes it back up — the egg's verb, on the thing she made — and the world's
+	# own fences and hedges fall through to nothing, because they are the boundary
+	# that says "not yet" and she must not be able to dismantle the cold open.
+	if world != null and String(world.get_tile(tx, ty).get("state", "")) == WorldLayout.FENCE_BUILT:
+		if not is_drag and player_t != null:
+			var pt0: Vector2i = player_t
+			if absi(pt0.x - tx) + absi(pt0.y - ty) > 1:
+				return {}   # far tap: walk over first, as with any object she reaches for
+		return check_result.call({
+			"action": "collect", "tool_idx": 0, "target_t": tap_t,
+			"walk_to": true, "seed_type": "",
+		})
+
+	# 1c-iii. Holding fencing → put a post in this square (Q-92).
+	#
+	# Before the machine branch below and before the ground's own states, for the
+	# same reason placement is: what she is carrying is the strongest statement of
+	# intent she can make, and a post on bare ground must not be read as a hoe.
+	# `buildable_at` is the sim's answer, asked rather than restated — bare ground
+	# only, so building can never destroy a crop.
+	if gs != null and gs.has_method("holding_buildable") and gs.holding_buildable():
+		if world != null and world.buildable_at(tap_t):
+			if not is_drag and player_t != null:
+				var pt3: Vector2i = player_t
+				if absi(pt3.x - tx) + absi(pt3.y - ty) > 1:
+					return {}
+			return check_result.call({
+				"action": "build", "tool_idx": 0, "target_t": tap_t,
+				"walk_to": true, "seed_type": "", "item": gs.selected_seed_type,
+			})
+
 	# 1d. Holding a machine → set it down here.
 	#
 	# Asked before the tile's own states so that carrying a sprinkler over tilled

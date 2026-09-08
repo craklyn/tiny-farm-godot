@@ -553,9 +553,25 @@ static func is_stall_object(obj: String) -> bool:
 	return obj == ROBOT_STALL or obj == ROBOT_STALL_SLOT
 
 
+# **The fence she puts up herself** (Q-92, ruled 2026-09-07: *"we already have
+# fences that look different than game boundary... we should continue to use that
+# fence, and make it interactive"*).
+#
+# Drawn with the very same cell as FENCE, because the designer is right that the
+# game already speaks two boundary words and the fence is the domestic one — the
+# hedge is what says "not yours yet". So this needs no art at all.
+#
+# It is a separate *state* for one reason, and it is not appearance: the router
+# has to tell "yours, takeable" from "the world's, refuse". The cold open's fence
+# between two yards is the game's first lock, and a player who could pick it up
+# could dismantle the thing the opening is built around. Same picture, different
+# word.
+const FENCE_BUILT := "fence_built"
+
+
 static func is_boundary_state(state: String) -> bool:
 	return state == FENCE or state == HEDGE or state == GATE_CLOSED \
-		or state == WALL or state == WINDOW
+		or state == WALL or state == WINDOW or state == FENCE_BUILT
 
 
 # The ground a parcel is made of, or "" for the ordinary field ground the

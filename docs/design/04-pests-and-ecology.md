@@ -56,6 +56,19 @@ If the two ever need to *feel* different, that is a behaviour to add on purpose,
 difference to preserve; today the honest statement is that a kangaroo is a rabbit that
 does not care about your fence.
 
+**And she can put up fences of her own now** (Q-92, built 2026-09-07). Bought as a card of
+ten at the seed box, one post per tap on bare ground, taken back up by tapping it and
+refunded — so a run she regrets costs her nothing, which is what makes a long line safe to
+try. Drawn with the game's own fence cell, because the **hedge** is the word for "not yours
+yet" and the fence already means "yours"; hers is a separate tile state only so the world's
+own boundaries stay hers to look at rather than to dismantle.
+
+It changes exactly one row of the table above, and that is the design rather than a
+shortfall: **a fence answers the rabbit and nothing else.** The crow flies over it, the
+kangaroo clears it by the ruling that made it a kangaroo (Q-57), and the mole tunnels in
+underneath. One counter for one pest, bought and placed by hand — the ecology was written
+as though player fences already existed, and this is that assumption arriving.
+
 **The mole steals seed, and that is a different loss from a bite.** Its visit is: tunnel in
 under the boundary → surface on a tile somebody has sown → take the seed (the soil is left
 tilled, which is what `eat_crop` has always done to a sown tile) → go back down → do it once
