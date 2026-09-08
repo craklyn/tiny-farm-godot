@@ -4250,6 +4250,45 @@ func _scenario_al_a_ripe_crop_carries() -> void:
 			and StationPresentation.discovery == was_d3,
 		"and moves nothing else — four axes, judged one at a time")
 
+	# --- and one press puts every look back ----------------------------------
+	#
+	# 2026-09-08, from the designer at the tablet: he opened this menu, met lines
+	# he did not recognise, and was two axes away from the shipped game without
+	# knowing it. A look line advances on a tap and closes the menu — good for
+	# comparing, easy to move in passing — so the menu has to be able to say what
+	# is off its pick and to undo the lot.
+	LookLab.set_to(LookLab.DISCOVERY,
+		posmod(StationPresentation.DISCOVERY_SHIPPED + 1, StationPresentation.DISCOVERY_COUNT))
+	main_scene.menus.open_menu("pause")
+	await get_tree().process_frame
+	var back_labels: Array = []
+	_collect_labels(main_scene.menus.options_container, back_labels)
+	var saw_restore := false
+	var saw_marked := false
+	for l in back_labels:
+		if String(l.text) == LookLab.restore_label():
+			saw_restore = true
+		if String(l.text) == LookLab.option_label(LookLab.DISCOVERY) \
+				and String(l.text).contains("ships as"):
+			saw_marked = true
+	_assert(saw_marked,
+		"a look that is off its pick says so on its own line, and says what the pick is")
+	_assert(saw_restore, "and the menu carries a line to put them all back: \"%s\""
+		% LookLab.restore_label())
+	# Read off the menu rather than restated here: the look lines start after
+	# Resume and Return to Title, and the put-back line sits under all of them.
+	main_scene.menus.selected_option = \
+		main_scene.menus.PAUSE_LAB_FIRST + LookLab.AXES.size()
+	main_scene.menus._select_current_option()
+	await get_tree().process_frame
+	_assert(LookLab.changed_axes().is_empty(),
+		"pressing it dresses the farm the way the game ships (%s)" % LookLab.summary())
+	_assert(not main_scene.menus.is_open(),
+		"and gets out of the way, so the farm is what he is looking at when it changes back")
+	_assert(StationPresentation.discovery == StationPresentation.DISCOVERY_SHIPPED
+			and CropPresentation.treatment == CropPresentation.SHIPPED,
+		"including the axis he had nudged and the one this scenario nudged itself")
+
 	# --- a plot with some of it ready and some of it not ---------------------
 	#
 	# Some and not all, on purpose: the complaint from play is that a ripe square

@@ -91,7 +91,9 @@ const BLURBS: Array[String] = [
 # it. Defaults to OFF until the designer rules, so the shipped game is unchanged
 # while the question is open and the status quo is one of the things on the
 # sheet.
-static var treatment: int = OFF
+const SHIPPED := OFF   # until Q-94 is ruled; see `CotPresentation.SHIPPED`
+
+static var treatment: int = SHIPPED
 
 
 static func set_treatment(t: int) -> int:

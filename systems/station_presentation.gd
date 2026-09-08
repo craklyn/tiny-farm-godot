@@ -19,9 +19,11 @@
 # cot. The two problems are **separate axes** on purpose: they are different
 # failures with different fixes, and a build that only lets you judge them as
 # four fixed combinations is a build that cannot tell you which half worked.
-# Both default to OFF, which is today's game exactly: the designer needs to see
+# Both defaulted to OFF while the question was open — the designer needs to see
 # what he complained about beside the drafts, and a draft that cannot be
-# compared to the status quo is not a draft.
+# compared to the status quo is not a draft. He ruled on 2026-09-01, so each axis
+# now ships wearing his pick (`DISCOVERY_SHIPPED`, `SATISFIED_SHIPPED`) and the
+# switch stays so the pick can be revisited against OFF on the device.
 #
 # Layer note: **presentation only, and pure.** Static functions over sim reads,
 # like `teaching_focus.gd` — no Node, no autoload, no rendering, no `Input`, and
@@ -100,7 +102,9 @@ const DISCOVERY_COUNT := 3
 # the pip is the default the game ships with — the same way the cot's dusk-glow
 # pick landed (T-27). The axis stays in the Look Lab so the pick can be
 # revisited against OFF on the device.
-static var discovery: int = DISCOVERY_PIP
+const DISCOVERY_SHIPPED := DISCOVERY_PIP   # see `CotPresentation.SHIPPED`
+
+static var discovery: int = DISCOVERY_SHIPPED
 
 const DISCOVERY_NAMES: Array[String] = [
 	"off · as today",
@@ -135,7 +139,9 @@ const SATISFIED_COUNT := 3
 # *show, then fade*, not fade from birth (its alpha used to ride the ring's
 # decaying envelope; `world/farm.gd` now holds it full until the cue's last
 # third). Default ships as the pick, axis stays in the Look Lab, as above.
-static var satisfied: int = SATISFIED_NOUN
+const SATISFIED_SHIPPED := SATISFIED_NOUN
+
+static var satisfied: int = SATISFIED_SHIPPED
 
 const SATISFIED_NAMES: Array[String] = [
 	"off · as today",

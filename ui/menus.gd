@@ -234,10 +234,25 @@ func _rebuild_options() -> void:
 			# he left it: tap, the menu closes, the world is wearing the next
 			# treatment. Debug builds only, exactly like the Sound Test, so a public
 			# build never shows it (S-7: no words in the game).
+			#
+			# **And one line under them that puts them all back** (2026-09-08).
+			# The designer opened this menu at the tablet, met lines he did not
+			# recognise, and read back two axes that were not on their picks —
+			# because a look line advances on a tap and closes the menu, which is
+			# what makes it good for comparing and what makes it easy to nudge in
+			# passing. A switch that changes the game quietly is a trap: every
+			# session he plays and reports afterwards is a report about a build
+			# nobody ships. So a line off its pick now says what the pick is, and
+			# this puts the lot back in one press. Greyed rather than hidden when
+			# there is nothing to undo, which is the answer design/11 already gave
+			# for the teaching mode's clear-all — a control that comes and goes is
+			# one he has to hunt for.
 			if OS.is_debug_build():
 				for axis in LookLab.AXES:
 					_add_option(LookLab.option_label(axis), true)
-			menu_panel.size = Vector2(300, _fit_panel_height())
+				_add_option(LookLab.restore_label(),
+					not LookLab.changed_axes().is_empty())
+			menu_panel.size = Vector2(_fit_panel_width(300.0), _fit_panel_height())
 
 		"shop":
 			# T-12 (Q-35): **the shop is the one screen in phase 1 that required
@@ -398,6 +413,40 @@ func _fit_panel_height() -> float:
 	if n <= 0:
 		return OPTIONS_TOP + PANEL_PAD
 	return OPTIONS_TOP + n * OPTION_H + (n - 1) * OPTION_SEP + PANEL_PAD
+
+
+# **Wide enough to read the longest line on it**, measured rather than guessed.
+#
+# The pause menu was a fixed 300 wide and the look-lab lines have long outgrown
+# it — "Already done: A · the answer names itself" was already running off the
+# edge before anything was added to it (found 2026-09-08, when the designer met
+# these lines on the tablet and could not tell what they were; a line he cannot
+# read is a switch with no label). Only the pause menu asks for this: every other
+# menu's rows are short, or are pictures.
+#
+# Clamped to the viewport with a margin, so a narrow phone gets a panel that
+# fits the screen and clips the text rather than a panel that runs off it.
+func _fit_panel_width(minimum: float) -> float:
+	var widest := minimum
+	for child in options_container.get_children():
+		for label in _labels_in(child):
+			var f: Font = label.get_theme_font("font")
+			var size: int = label.get_theme_font_size("font_size")
+			if f == null:
+				continue
+			widest = maxf(widest,
+				f.get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+					+ PANEL_PAD * 2.0)
+	return minf(widest, get_viewport().get_visible_rect().size.x - PANEL_PAD * 2.0)
+
+
+func _labels_in(node: Node) -> Array[Label]:
+	var out: Array[Label] = []
+	if node is Label:
+		out.append(node)
+	for child in node.get_children():
+		out.append_array(_labels_in(child))
+	return out
 
 
 # shop_icons.png is the shop iconography in one row: wheat packet, tomato
@@ -621,6 +670,14 @@ func _select_current_option() -> void:
 				# treatment in a toast. Each axis moves on its own, because T-28's
 				# two problems have to be judgeable one at a time.
 				LookLab.cycle(LookLab.AXES[selected_option - PAUSE_LAB_FIRST])
+				close_menu()
+				menu_action.emit("look_lab")
+			elif OS.is_debug_build() \
+					and selected_option == PAUSE_LAB_FIRST + LookLab.AXES.size() \
+					and not LookLab.changed_axes().is_empty():
+				# Back to the picks, and out of the way like every other look line
+				# — the farm is what he should be looking at when it changes back.
+				LookLab.restore_all()
 				close_menu()
 				menu_action.emit("look_lab")
 

@@ -889,15 +889,14 @@ func _handle_action_result(action: String) -> void:
 		clear_teaching()
 	elif action == "look_lab":
 		# The look lab's switch was thrown from the pause menu (debug builds
-		# only). The menu has already advanced one axis; this is the live farm
-		# catching up without a reload — camera limit, cot cell, station state —
-		# and a toast so a tablet says out loud which axis moved and to what.
+		# only). The menu has already moved something — one axis advanced, or the
+		# whole set put back to the picks; this is the live farm catching up
+		# without a reload — camera limit, cot cell, station state — and a toast
+		# so a tablet says out loud what changed and to what.
 		_apply_cot_treatment()
 		_apply_station_treatment()
 		if hud != null and hud.has_method("show_toast"):
-			var axis: String = LookLab.last_axis
-			hud.show_toast("%s: %s" % [LookLab.label_of(axis),
-				LookLab.name_of(axis, LookLab.current(axis))])
+			hud.show_toast(LookLab.last_change_text())
 
 
 # Reported from play 2026-08-28: "Return to title" did nothing.

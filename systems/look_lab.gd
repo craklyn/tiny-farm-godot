@@ -53,6 +53,56 @@ const QUESTIONS := {
 static var last_axis: String = COT
 
 
+# **What the game ships wearing on each axis** — the ruled picks, and OFF for a
+# question still open. Every one of these lives beside the treatment it names, so
+# this cannot drift from what the game actually starts as.
+static func shipped(axis: String) -> int:
+	match axis:
+		COT:
+			return CotPresentation.SHIPPED
+		DISCOVERY:
+			return StationPresentation.DISCOVERY_SHIPPED
+		SATISFIED:
+			return StationPresentation.SATISFIED_SHIPPED
+		RIPE:
+			return CropPresentation.SHIPPED
+	return 0
+
+
+## Is this farm dressed the way the game ships?
+##
+## **Why this exists** (2026-09-08, from the designer at the tablet). He opened
+## the pause menu, met three lines he did not recognise, and read back values
+## that were not the shipped ones — because a look line advances on a tap and
+## then closes the menu, which is exactly what makes it good for comparing and
+## exactly what makes it easy to nudge in passing. A switch that changes the game
+## silently and then says nothing is a trap: everything he plays and reports
+## afterwards is a report about a build nobody ships. So the menu now says which
+## lines are off their pick, and offers one press to put them all back.
+static func is_shipped(axis: String) -> bool:
+	return current(axis) == shipped(axis)
+
+
+static func changed_axes() -> Array[String]:
+	var out: Array[String] = []
+	for axis in AXES:
+		if not is_shipped(axis):
+			out.append(axis)
+	return out
+
+
+## Everything back to the picks. One press, for the same reason the teaching
+## mode's clear-all is one press: undoing four taps one at a time is arithmetic
+## an interface should absorb.
+static func restore_all() -> void:
+	for axis in AXES:
+		set_to(axis, shipped(axis))
+	# `set_to` has been naming each axis in turn; none of them is what just
+	# happened, so the toast is told to speak for the whole set instead of for
+	# whichever one went last.
+	last_axis = ""
+
+
 static func count_of(axis: String) -> int:
 	match axis:
 		COT:
@@ -129,8 +179,35 @@ static func label_of(axis: String) -> String:
 
 ## "Cot look: A · dusk glow" — one pause-menu line, naming the axis and where it
 ## currently stands, so the menu itself is the readout.
+##
+## A line that is off its shipped pick says so, and says what the pick is. That
+## trailing clause is the whole of the fix described at `is_shipped`: the reason
+## he could not tell his farm was wearing two non-shipping looks is that the line
+## reporting them looked exactly like the two that were fine.
 static func option_label(axis: String) -> String:
-	return "%s: %s" % [label_of(axis), name_of(axis, current(axis))]
+	var line := "%s: %s" % [label_of(axis), name_of(axis, current(axis))]
+	if is_shipped(axis):
+		return line
+	return "%s  (ships as %s)" % [line, name_of(axis, shipped(axis))]
+
+
+## The line under them all. Names how many looks are off their pick, so the
+## count is on screen rather than something he has to work out by reading four
+## lines against a memory of what they should say.
+static func restore_label() -> String:
+	var n := changed_axes().size()
+	if n == 0:
+		return "Every look is as it ships"
+	return "Put %d look%s back to what ships" % [n, "" if n == 1 else "s"]
+
+
+## What the last press did, in one line, for the toast the tablet shows. It is
+## here rather than in `main.gd` because only this file knows whether a press
+## moved one axis or put the whole set back.
+static func last_change_text() -> String:
+	if last_axis == "":
+		return "Every look back to what ships"
+	return "%s: %s" % [label_of(last_axis), name_of(last_axis, current(last_axis))]
 
 
 ## Everything the game is currently wearing, for a trace line or a toast.

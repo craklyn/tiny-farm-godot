@@ -9068,6 +9068,49 @@ func test_station_presentation() -> void:
 		"the pause line names the axis and where it stands (%s)"
 			% LookLab.option_label(LookLab.COT))
 
+	# --- a look he nudged must not go on quietly changing the game -----------
+	#
+	# 2026-09-08, from the designer at the tablet: he opened the pause menu, met
+	# lines he did not recognise, and read back two axes that were not on their
+	# picks. A look line advances on a tap and then closes the menu, which is
+	# what makes it good for comparing and what makes it easy to move in
+	# passing — and everything he plays and reports afterwards is then a report
+	# about a build nobody ships.
+	LookLab.restore_all()
+	_assert(LookLab.changed_axes().is_empty(),
+		"put back, every axis is wearing the pick the game ships with")
+	var ships_ok := true
+	for axis in LookLab.AXES:
+		if LookLab.current(axis) != LookLab.shipped(axis) or not LookLab.is_shipped(axis):
+			ships_ok = false
+		if LookLab.option_label(axis).contains("ships as"):
+			ships_ok = false
+	_assert(ships_ok, "and no line is claiming otherwise")
+	_assert(LookLab.restore_label() == "Every look is as it ships",
+		"the line under them says there is nothing to undo (%s)" % LookLab.restore_label())
+
+	LookLab.cycle(LookLab.DISCOVERY)
+	var nudged: Array[String] = LookLab.changed_axes()
+	_assert(nudged.size() == 1 and nudged[0] == LookLab.DISCOVERY,
+		"nudge one and exactly that one is named as changed (%s)" % str(nudged))
+	_assert(LookLab.option_label(LookLab.DISCOVERY).contains(
+			LookLab.name_of(LookLab.DISCOVERY, LookLab.shipped(LookLab.DISCOVERY))),
+		"its line says what the game normally wears, beside what it is wearing (%s)"
+			% LookLab.option_label(LookLab.DISCOVERY))
+	_assert(LookLab.restore_label() == "Put 1 look back to what ships",
+		"and the line under them counts it (%s)" % LookLab.restore_label())
+	LookLab.cycle(LookLab.COT)
+	_assert(LookLab.restore_label() == "Put 2 looks back to what ships",
+		"two of them, and it says two (%s)" % LookLab.restore_label())
+	_assert(LookLab.last_change_text() == LookLab.option_label(LookLab.COT).split("  (")[0],
+		"the toast after a nudge names the axis that moved (%s)" % LookLab.last_change_text())
+
+	LookLab.restore_all()
+	_assert(LookLab.last_change_text() == "Every look back to what ships",
+		"and after a put-back it speaks for the whole set rather than for whichever went last")
+	_assert(LookLab.is_shipped(LookLab.COT) and LookLab.is_shipped(LookLab.DISCOVERY),
+		"which is what it did")
+
 	# --- the pictures exist --------------------------------------------------
 	#
 	# Finding F-5's lesson, applied before it can happen again: the refusal icons

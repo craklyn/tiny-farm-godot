@@ -53,7 +53,14 @@ const BLURBS: Array[String] = [
 # "across the session" means here. Deliberately NOT in GameState — this is a
 # developer's A/B dial, not farm state, and `GameState.reset()` must not touch it
 # any more than it touches which sound the Sound Test last played.
-static var treatment: int = GLOW
+
+# **What the game ships wearing**, named rather than left as the initialiser
+# below, so "is this farm dressed the way it ships?" is a question anything can
+# ask — the pause-menu switch does, so a look he cycled an hour ago cannot go on
+# quietly changing the game he is judging. The designer picked A on 2026-09-01.
+const SHIPPED := GLOW
+
+static var treatment: int = SHIPPED
 
 
 # **The cue is the size of the thing it points at.**
