@@ -409,8 +409,27 @@ question, whether or not the interaction that reads it is one of the lifted rows
    the 2026-08-28 finding that the vignette teaches verbs rather than goals. Still
    wordless, still `[Playtest]`-refereed by the 4-year-old, still no reading in the core
    loop (S-7). Open rulings Q-32–Q-36 live there.
-3. **HUD** — current: energy, gold, day, tools (`ui/hud.gd`). To spec: phase-scalable
-   HUD (what appears as systems unlock; screen real estate on phones).
+3. **HUD** — ✅ layout method ruled from live play, 2026-09-08 (the second tablet
+   session; both findings were the designer's, watching a repeat player). Still to
+   spec: phase-scalable HUD (what appears as systems unlock).
+
+   **The screen is strips and corners, and the map is never under either.**
+   - **Strips.** A thin bar top and bottom belongs to the HUD alone — readouts,
+     counts, gauges. The camera owes the map back every row a strip covers: the
+     top bar has done this since Q-68 (the camera's top limit is nudged so row 0
+     clears the bar), and the bottom bar now does the same at the map's bottom
+     edge. A strip may hold small *readouts* only; nothing in a strip is a
+     primary touch target.
+   - **Corners.** Anything a finger must hit is a **card in a corner**: the bed
+     button's look (dark panel, light border, rounded, ~44×48 minimum — T-22's
+     tap-target floor), a wordless face (icon + digits, S-7), one card per
+     corner, and corners assigned so two tappable cards are never neighbours —
+     the bed button holds bottom-left, the held-item card bottom-right. A thin
+     pill was tried and a real thumb missed it; pills are retired for anything
+     tappable.
+   - **The centre band is the game's.** Between the strips, overlays are modal
+     and temporary (teaching controls, toasts) and must move out of the field
+     they talk about (the Altitude section's rule).
 4. **Kid mode boundary (P-2)** — phase 1 kid-bound; the "sandbox farm" relaxed mode
    spec; what settings a parent sets (session limits? energy off?).
 5. **Scent overlay (P-10/D-4)** — toggle UX, color mapping (with 09), when the game

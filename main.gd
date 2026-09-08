@@ -500,7 +500,15 @@ func _refresh_camera_limits(snap: bool = false) -> void:
 	# function exists to prevent: show a strip of the page above.
 	var nudge: int = CotPresentation.camera_top_limit(HUD_TOP_PX, CAMERA_SCALE) if page == 0 else 0
 	camera.limit_top = page * page_px + nudge
-	camera.limit_bottom = (page + 1) * page_px
+	# **The bottom strip owes the map back too** (designer, 2026-09-08, watching
+	# live play: "the bottom strip of the map is overlapped by HUD"). The bottom
+	# bar is opaque furniture exactly like the top bar, so the camera may scroll
+	# a bar's height past the page edge — at the clamp, the page's last row sits
+	# above the bar instead of under it. Both pages: page 0's bottom rows are
+	# field she works, page 1's are the room's doorway wall, and past either
+	# edge is only border/void, so the revealed strip shows nothing that is not
+	# already the page's own dark margin. design/11 "strips and corners".
+	camera.limit_bottom = (page + 1) * page_px + int(round(HUD_BOTTOM_PX / float(CAMERA_SCALE)))
 	_update_rain()   # the page is also what decides whether the sky shows
 	if snap:
 		# A door is not a walk: without this the view glides twenty rows through

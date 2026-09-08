@@ -2002,6 +2002,14 @@ func _scenario_w_the_cot_presents_itself() -> void:
 # what `CotPresentation.camera_top_limit()` answered on its own before the pages
 # arrived; indoors the nudge is deliberately absent, because the rows above the
 # room are void and a negative nudge there would show a strip of the farm.
+# The bottom limit owes the map the bottom bar's height (design/11 "strips
+# and corners", 2026-09-08): at the clamp, the page's last row sits above the
+# opaque bar instead of under it.
+func _expected_camera_bottom(page: int) -> int:
+	return (page + 1) * SimWorld.PAGE_ROWS * 16 \
+		+ int(round(main_scene.HUD_BOTTOM_PX / float(main_scene.CAMERA_SCALE)))
+
+
 func _expected_camera_top() -> int:
 	var page: int = farm.sim.page_of(player.get_tile_pos())
 	var nudge: int = 0
@@ -2256,7 +2264,7 @@ func _scenario_z_a_bed_button() -> void:
 	_assert(GameState.day == day_before,
 		"walking indoors is not sleeping — the day has not turned (`use_door` is free)")
 	_assert(main_scene.camera.limit_top == _expected_camera_top()
-			and main_scene.camera.limit_bottom == 40 * 16,
+			and main_scene.camera.limit_bottom == _expected_camera_bottom(1),
 		"and the camera came with her, clamped to the room's page (%d..%d)"
 			% [main_scene.camera.limit_top, main_scene.camera.limit_bottom])
 	_assert(main_scene.way_to_bed() == cot,
@@ -2921,66 +2929,50 @@ func _scenario_ac_the_zoo() -> void:
 	await get_tree().process_frame
 
 
-# Two HUD findings from the tablet, 2026-09-01. Both are about the overlay rather
-# than the world, so both are asserted against the real HUD the real scene built.
+# Two HUD findings from the tablet, 2026-09-01, and the card that replaced the
+# pill after a second tablet finding on 2026-09-08. All are about the overlay
+# rather than the world, so all are asserted against the real HUD the real
+# scene built.
 func _scenario_ad_two_hud_findings() -> void:
-	print("\n--- Scenario AD: the pill fits its words, and the debug block folds away ---")
+	print("\n--- Scenario AD: the held-item card is a corner target, and the debug block folds away ---")
 
 	var hud = main_scene.hud
+	var view: Vector2 = main_scene.get_viewport().get_visible_rect().size
 
-	# --- the pill sizes to its content ---------------------------------------
+	# --- the held-item control is a card, not a pill (2026-09-08) -------------
 	#
-	# *"The pill drawn beneath the current selected item (e.g. scarecrow) .. the
-	# pill isn't big enough so the words spill over."* The pill was a fixed 100
-	# pixels with an 82-pixel label in it; "scarecrow x1" does not fit in 82.
-	var font: Font = hud.seed_pill_label.get_theme_font("font")
-	var font_size: int = hud.seed_pill_label.get_theme_font_size("font_size")
-	var widest := ""
-	var widest_px := 0.0
-	for seed_name in CropDefs.TYPES.keys():
-		var sample := "%s x%d" % [seed_name, 12]
-		var px: float = font.get_string_size(sample, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
-		if px > widest_px:
-			widest_px = px
-			widest = sample
-	_assert(widest_px > 82.0,
-		"the longest label in the game ('%s', %.0fpx) really did overflow the old 82px slot"
-			% [widest, widest_px])
+	# *"The touch target on the bottom to switch between seeds and other stuff
+	# is too small... give it a card instead of a pill, and put it onto a
+	# corner... bottom right so it's not next to the go to sleep button."*
+	# T-22's tap-target risk, met by a real finger in the second live session.
+	_assert(hud.seed_pill.size.x >= hud.bed_button.size.x
+		and hud.seed_pill.size.y >= hud.bed_button.size.y,
+		"the card's target is at least the bed button's (%s vs %s)"
+			% [hud.seed_pill.size, hud.bed_button.size])
+	_assert(hud.seed_pill.position.x + hud.seed_pill.size.x >= view.x - 12.0,
+		"it holds the bottom-right corner")
+	var bed_right: float = hud.bed_button.position.x + hud.bed_button.size.x
+	_assert(hud.seed_pill.position.x - bed_right > view.x * 0.5,
+		"a farm's width from the bed button, so the two thumbs-targets are never neighbours")
 
-	var spilled: PackedStringArray = []
-	for seed_name in CropDefs.TYPES.keys():
+	# The face is wordless: whatever is held, the label is digits (the icon is
+	# the identity), and every pouch item keeps a picture — the 2026-08-30
+	# scarecrow finding, still pinned under the new face.
+	# Over the pouch's own cycle (CropDefs.ORDER), not every sellable row: the
+	# egg is carried to the bin, never held for placing, so it has no card face.
+	for seed_name in CropDefs.ORDER:
 		GameState.selected_seed_type = seed_name
 		GameState.seeds[seed_name] = 12
 		hud._update_hud()
-		var text_px: float = font.get_string_size(hud.seed_pill_label.text,
-			HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
-		var room: float = hud.seed_pill.size.x - hud.PILL_ICON_W
-		if text_px > room:
-			spilled.append("%s (%.0f > %.0f)" % [hud.seed_pill_label.text, text_px, room])
-	_assert(spilled.is_empty(),
-		"every seed, tool and object in the pouch fits inside its pill (%s)"
-			% ("none spill" if spilled.is_empty() else ", ".join(spilled)))
-
-	# The scarecrow by name, because it is the one she reported.
-	GameState.selected_seed_type = "scarecrow"
-	GameState.seeds["scarecrow"] = 1
-	hud._update_hud()
-	_assert(hud.seed_pill.size.x > 100.0,
-		"the scarecrow's pill grew past the old fixed 100px (%.0f)" % hud.seed_pill.size.x)
-	_assert(hud.seed_pill_label.size.x + hud.PILL_ICON_W <= hud.seed_pill.size.x,
-		"and the label still sits inside it, icon included")
-	var centre_gap: float = absf(
-		hud.seed_pill.position.x + hud.seed_pill.size.x / 2.0
-		- main_scene.get_viewport().get_visible_rect().size.x / 2.0)
-	_assert(centre_gap <= 1.0,
-		"a wider pill is still centred, not stretched off to one side (%.1fpx off)" % centre_gap)
+		_assert(hud.seed_pill_label.text == "x12",
+			"the card face is a count, not a name (%s)" % seed_name)
+		_assert(hud.seed_pill_icon.visible and hud.seed_pill_icon.texture != null,
+			"and %s still has its picture" % seed_name)
 
 	GameState.selected_seed_type = "wheat"
 	GameState.seeds["wheat"] = 5
 	hud._update_hud()
-	_assert(absf(hud.seed_pill.size.x - hud.PILL_MIN_W) <= 4.0,
-		"and a short label leaves the pill within a pixel or two of the size it has always been (%.1f)"
-			% hud.seed_pill.size.x)
+	_assert(hud.seed_pill_label.text == "x5", "the count follows the pouch")
 
 	# --- the debug readout folds away ----------------------------------------
 	#
@@ -3186,8 +3178,10 @@ func _scenario_ag_a_machine_is_bought_placed_and_told_what_to_do() -> void:
 	# The HUD says what she is carrying, with the machine's own picture.
 	main_scene.hud._update_hud()
 	await get_tree().process_frame
-	_assert(String(main_scene.hud.seed_pill_label.text).begins_with("bot_mk2"),
-		"the held-item pill names the robot")
+	# The card is wordless (design/11 "strips and corners", 2026-09-08): the
+	# machine's own picture is the identity, the count is digits.
+	_assert(String(main_scene.hud.seed_pill_label.text) == "x1",
+		"the held-item card counts the robot")
 	_assert(main_scene.hud.seed_pill_icon.visible,
 		"and shows its picture rather than an empty box")
 
@@ -3766,7 +3760,7 @@ func _scenario_ai_the_house_has_a_door() -> void:
 	_assert(GameState.day == day_before, "going indoors costs her nothing — no day, no energy")
 	_assert(main_scene.camera.limit_top == _expected_camera_top()
 			and main_scene.camera.limit_top == 20 * 16
-			and main_scene.camera.limit_bottom == 40 * 16,
+			and main_scene.camera.limit_bottom == _expected_camera_bottom(1),
 		"and the camera came with her, clamped to the room's page (%d..%d)"
 			% [main_scene.camera.limit_top, main_scene.camera.limit_bottom])
 
@@ -3781,7 +3775,7 @@ func _scenario_ai_the_house_has_a_door() -> void:
 		"on her own doorstep (%s)" % player.get_tile_pos())
 	_assert(player.facing == "down", "facing out into the yard (%s)" % player.facing)
 	_assert(main_scene.camera.limit_top == _expected_camera_top()
-			and main_scene.camera.limit_bottom == 20 * 16,
+			and main_scene.camera.limit_bottom == _expected_camera_bottom(0),
 		"and the camera is back on the farm's page (%d..%d)"
 			% [main_scene.camera.limit_top, main_scene.camera.limit_bottom])
 
@@ -3840,7 +3834,7 @@ func _scenario_ai_the_house_has_a_door() -> void:
 		"and the sim saw exactly one sleep (%d)" % _sleeps_since(mark))
 	_assert(farm.sim.page_of(player.get_tile_pos()) == 1,
 		"waking where she slept — indoors, in the room with the bed")
-	_assert(main_scene.camera.limit_bottom == 40 * 16,
+	_assert(main_scene.camera.limit_bottom == _expected_camera_bottom(1),
 		"so the morning opens on the room's page, not on the farm")
 
 	# Put her back out on the farm for whatever runs next, the way she would walk.

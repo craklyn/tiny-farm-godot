@@ -6,7 +6,10 @@ func _ready() -> void:
 	var container := MarginContainer.new()
 	container.set_anchors_preset(Control.PRESET_FULL_RECT)
 	container.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	container.add_theme_constant_override("margin_right", 8)
+	# Clear of the held-item card, which took the bottom-right corner on
+	# 2026-09-08 (the bed button's mirror). The watermark yields: it is for
+	# screenshots, the card is for thumbs.
+	container.add_theme_constant_override("margin_right", 84)
 	container.add_theme_constant_override("margin_bottom", 40)
 	
 	var label := Label.new()

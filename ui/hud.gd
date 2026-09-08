@@ -71,25 +71,19 @@ var seed_pill: Panel
 var seed_pill_label: Label
 var seed_pill_icon: TextureRect
 
-# The pill sizes to its own words. Reported from play 2026-09-01: *"The pill drawn
-# beneath the current selected item (e.g. scarecrow) .. the pill isn't big enough
-# so the words spill over."* It was a fixed 100x24 with an 82px label inside it,
-# which holds "wheat x5" and does not hold "scarecrow x1" — and the scarecrow is
-# the one thing in the pouch with a long name, so the bug arrived with the item.
-#
-# The minimum is the width the pill has always been, so short names look exactly
-# as they did; the maximum is a pill that still fits across a phone. Between them
-# it is the icon, the measured string and a little air.
-const PILL_ICON_W := 18.0
-const PILL_PAD := 12.0
-const PILL_MIN_W := 100.0
-const PILL_MAX_W := 240.0
-const PILL_H := 24.0
-
-
-# Pure, so the suites can ask what a given string would need without a viewport.
-static func pill_width(text_width: float) -> float:
-	return clampf(PILL_ICON_W + text_width + PILL_PAD, PILL_MIN_W, PILL_MAX_W)
+# The held-item card (2026-09-08, from the second live tablet session): the
+# thin centred pill was too small a target for a thumb on glass — T-22's known
+# risk, met by a real finger. It is now a **card in the bottom-right corner**,
+# the bed button's mirror: same styling family, a target the size of the other
+# card, and deliberately the far corner so the two tappable controls are never
+# neighbours. The words went with the pill — the icon is the identity (the same
+# sprite that lands on the grass) and the count is digits, which is inside the
+# literacy bar the gold count already set (S-7). That also retires the
+# word-fitting machinery the pill needed (2026-09-01's spill fix): a card with
+# no words cannot spill.
+const CARD_W := 64.0
+const CARD_H := 48.0
+const CARD_ICON := 28.0
 
 # T-28's satisfied treatment B — "the state shows before the tap". Built always,
 # shown only under that treatment, so the default build is byte-for-byte the HUD
@@ -356,9 +350,9 @@ func _build_ui() -> void:
 	teach_done_button.name = "TeachDoneButton"
 	teach_done_button.text = "Done"
 	teach_done_button.size = Vector2(96, 44)
-	# Clear of the held-item pill, which sits centred just above the bottom bar —
-	# the first placement put the two on top of each other (caught in a capture,
-	# 2026-09-03).
+	# It kept this raised spot when the held-item control left the centre for its
+	# bottom-right card (2026-09-08) — a mode control hovering clear of the bar
+	# reads as "not the farm", which is its whole job.
 	teach_done_button.position = Vector2(viewport_size.x / 2.0 - 48,
 		viewport_size.y - 32 - 8 - 44 - 44)
 	_teach_home = teach_done_button.position
@@ -479,42 +473,39 @@ func _build_ui() -> void:
 		add_child(notes_label)
 		_apply_notes_collapsed()
 
-	# --- Active Seed Pill (above hint) ---
+	# --- Held-item card (bottom-right, the bed button's mirror) ---
 	seed_pill = Panel.new()
+	seed_pill.name = "HeldItemCard"
 	var pill_style := StyleBoxFlat.new()
 	pill_style.bg_color = Color(0.18, 0.52, 0.22, 0.88)
-	pill_style.corner_radius_top_left = 12
-	pill_style.corner_radius_top_right = 12
-	pill_style.corner_radius_bottom_left = 12
-	pill_style.corner_radius_bottom_right = 12
-	pill_style.border_width_bottom = 1
-	pill_style.border_width_top = 1
-	pill_style.border_width_left = 1
-	pill_style.border_width_right = 1
-	pill_style.border_color = Color(1, 1, 1, 0.3)
+	pill_style.border_color = Color(0.62, 0.72, 0.58)
+	pill_style.set_border_width_all(2)
+	pill_style.set_corner_radius_all(8)
 	seed_pill.add_theme_stylebox_override("panel", pill_style)
-	seed_pill.size = Vector2(PILL_MIN_W, PILL_H)
-	seed_pill.position = Vector2(viewport_size.x / 2 - PILL_MIN_W / 2.0,
-		viewport_size.y - 60 - PILL_H)
+	seed_pill.size = Vector2(CARD_W, CARD_H)
+	seed_pill.position = Vector2(viewport_size.x - 10 - CARD_W,
+		viewport_size.y - 32 - 8 - CARD_H)
 	seed_pill.gui_input.connect(_on_seed_pill_gui_input)
 	add_child(seed_pill)
 
 	seed_pill_icon = TextureRect.new()
 	seed_pill_icon.name = "seed_pill_icon"
-	seed_pill_icon.position = Vector2(4, 4)
-	seed_pill_icon.size = Vector2(16, 16)
+	seed_pill_icon.position = Vector2(6, (CARD_H - CARD_ICON) / 2.0)
+	seed_pill_icon.size = Vector2(CARD_ICON, CARD_ICON)
 	seed_pill_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	seed_pill_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	seed_pill_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	seed_pill_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	seed_pill.add_child(seed_pill_icon)
 
 	seed_pill_label = Label.new()
-	seed_pill_label.position = Vector2(PILL_ICON_W, 2)
-	seed_pill_label.size = Vector2(PILL_MIN_W - PILL_ICON_W - 4.0, 20)
+	seed_pill_label.position = Vector2(6 + CARD_ICON, 0)
+	seed_pill_label.size = Vector2(CARD_W - CARD_ICON - 12, CARD_H)
 	seed_pill_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	# Belt and braces behind `_fit_seed_pill`: a name longer than the widest pill
-	# we will draw gets trimmed rather than spilling out of the rounded rect.
+	seed_pill_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	seed_pill_label.clip_text = true
 	seed_pill_label.add_theme_color_override("font_color", Color(1, 1, 0.9))
+	seed_pill_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	seed_pill.add_child(seed_pill_label)
 
 	# --- Toast ---
@@ -687,24 +678,6 @@ func _process(delta: float) -> void:
 
 # Measure, pad, then draw — and stay centred while doing it, because the pill's
 # position is where it is *drawn from*, not where its middle is.
-func _fit_seed_pill() -> void:
-	if seed_pill == null or seed_pill_label == null:
-		return
-	var font: Font = seed_pill_label.get_theme_font("font")
-	var font_size: int = seed_pill_label.get_theme_font_size("font_size")
-	var text_w := 0.0
-	if font != null:
-		text_w = font.get_string_size(seed_pill_label.text,
-			HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
-	var w := pill_width(text_w)
-	if is_equal_approx(w, seed_pill.size.x):
-		return
-	var viewport_size := get_viewport().get_visible_rect().size
-	seed_pill.size = Vector2(w, PILL_H)
-	seed_pill.position = Vector2(round(viewport_size.x / 2.0 - w / 2.0), seed_pill.position.y)
-	seed_pill_label.size = Vector2(w - PILL_ICON_W - 4.0, 20)
-
-
 func _on_notes_toggle() -> void:
 	notes_collapsed = not notes_collapsed
 	_apply_notes_collapsed()
@@ -898,8 +871,7 @@ func _update_hud() -> void:
 		seed_pill_icon.visible = true
 	else:
 		seed_pill_icon.visible = false
-	seed_pill_label.text = "%s x%d" % [seed_name, scount]
-	_fit_seed_pill()
+	seed_pill_label.text = "x%d" % scount
 
 	var style: StyleBoxFlat = seed_pill.get_theme_stylebox("panel")
 	if scount > 0:
