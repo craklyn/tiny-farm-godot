@@ -5,6 +5,8 @@
 extends Node2D
 
 const TILE_SIZE := 16
+# Ground sheets are 3×3 grids of interchangeable cells for one kind of ground.
+const GROUND_VARIANTS := 3
 const EGG_SIZE := TILE_SIZE / 2.0  # half a tile, centred (see the egg draw below)
 const MAP_WIDTH := SimWorld.MAP_WIDTH
 const MAP_HEIGHT := SimWorld.MAP_HEIGHT
@@ -302,6 +304,8 @@ func _load_textures() -> void:
 	# reads as standing blades, the yard as tidy lawn. terrain_grass.png stays in
 	# the repo as the source tools/gen_yard_ground.py derives the yard from.
 	# terrain_dirt: one tile per neighbour mask (world/autotile.gd), watered at +16 cols.
+	# The ground sheets are 3×3 grids of 16px cells; see the draw call's note on
+	# why a square picks its cell from its own coordinates.
 	tileset_texture = load("res://assets/sprites/generated/terrain_field.png")
 	dirt_texture = load("res://assets/sprites/generated/terrain_dirt.png")
 	# terrain_yard: terrain_grass's pattern in the yard's colours (T-32).
@@ -1075,7 +1079,24 @@ func _draw() -> void:
 			elif tile.state == WorldLayout.FLOOR:
 				# T-37: the home's planks — the yard's mechanism, indoors.
 				ground_tex = floor_texture
-			draw_texture_rect_region(ground_tex, Rect2(px, py, TILE_SIZE, TILE_SIZE), Rect2(16, 16, 16, 16))
+			# **Which of the sheet's cells this square gets, from the square's own
+			# coordinates** (2026-09-07). Every ground sheet is a 3×3 of 16px
+			# cells and the renderer used to take the middle one and only ever
+			# that one — so a lawn was one tile printed 640 times, and the eye
+			# reads that as wallpaper however clean the joins are. Seams and
+			# repetition are different problems: mirroring the tile kills the
+			# seam and leaves the wallpaper, which is what the CEO saw when he
+			# looked at it.
+			#
+			# Position, not a die roll: `tx % 3` is pure, so a save, a replay and
+			# a screenshot all land on the same farm, and nothing here has to
+			# reach for SimRng. A sheet whose nine cells are identical — the yard
+			# and the floor today — draws exactly as it did before, so this costs
+			# them nothing and is waiting for them if they are ever varied.
+			var vx: int = (tx % GROUND_VARIANTS) * TILE_SIZE
+			var vy: int = (ty % GROUND_VARIANTS) * TILE_SIZE
+			draw_texture_rect_region(ground_tex, Rect2(px, py, TILE_SIZE, TILE_SIZE),
+				Rect2(vx, vy, TILE_SIZE, TILE_SIZE))
 
 			# Draw tilled soil, edge-matched to its neighbours (see world/autotile.gd)
 			if Autotile.is_soil(tile.state):
