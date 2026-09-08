@@ -1,0 +1,44 @@
+{
+  "seq": 1,
+  "kind": "edit",
+  "sheet": "assets/sprites/generated/shop_icons.png",
+  "key": "assets_sprites_generated_shop_icons",
+  "group": "crops",
+  "entity": "scarecrow",
+  "entity_name": "Scarecrow",
+  "note": "",
+  "diff": {
+    "frames": [
+      {
+        "index": 2,
+        "name": "Scarecrow",
+        "changed": 2,
+        "added": 0,
+        "erased": 2,
+        "recolored": 0,
+        "silhouette": true,
+        "bbox": [
+          8,
+          14,
+          1,
+          2
+        ]
+      }
+    ],
+    "pixels": 2,
+    "colors_added": [],
+    "colors_removed": [],
+    "new_to_sheet": [],
+    "anims": []
+  },
+  "reverted_to": null,
+  "bytes": 1144,
+  "png": "0001.png",
+  "created": "2026-09-07T22:56",
+  "created_ts": 1788846975.331191,
+  "filed": {
+    "work_id": "weca50916647",
+    "owner": "ingrid",
+    "title": "Read Daniel's hand edit to Scarecrow"
+  }
+}
