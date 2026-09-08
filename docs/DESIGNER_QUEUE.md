@@ -11,6 +11,19 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
 
 ## Now — blocks M0 close or current work
 
+- **Q-95 (Ruling)** **What does a returning player's old farm get when an update
+  lands?** Found by the designer minutes after v0.2.0 went live: the itch page
+  offered Continue on his eleven-day-old farm, which has no fences and no
+  farmhouse — land is generated at farm creation, and his predates both. The
+  save carries forward on purpose, but a returning player who presses Continue
+  sees none of what the update page promised, and nothing tells them the new
+  land lives behind New Farm (which costs their progress). First update with
+  returning players to disappoint; every later one widens the gap, and the
+  ruling sets whether save migrations may ever renovate land or only keep it
+  loadable. Three ways out in `hq/data/decisions/Q-95.json`; the
+  recommendation is the cheap honest one — say it at Continue, and build farm
+  renovation only when farms hold real investment.
+
 - **Q-94** ~~How should a ripe crop announce itself?~~ — ✅ ruled 2026-09-08: **the two
   together, with the movement turned down.** A ready plant **sways gently and gives off its
   own ripe colour** — gold under wheat, red under tomato. Raised from play the day before.
