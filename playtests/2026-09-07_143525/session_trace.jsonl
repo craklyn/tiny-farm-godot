@@ -1,0 +1,10 @@
+{"continued":true,"gen_seed":0,"version":1}
+{"at":[6,6],"in":"tap","kind":"tap","out":"acted","t":1813,"tile":[6,5],"tool":5,"verb":"open_machine"}
+{"actor":"player","kind":"act","ok":true,"t":5658,"tile":[12,9],"verb":"teach"}
+{"actor":"player","kind":"act","ok":true,"t":7558,"tile":[11,9],"verb":"teach"}
+{"actor":"player","kind":"act","ok":true,"t":8214,"tile":[11,9],"verb":"teach"}
+{"actor":"player","kind":"act","ok":true,"t":8435,"tile":[12,9],"verb":"teach"}
+{"actor":"player","kind":"act","ok":true,"t":9028,"tile":[13,9],"verb":"teach"}
+{"actor":"player","kind":"act","ok":true,"t":10073,"tile":[13,9],"verb":"teach"}
+{"actor":"player","kind":"act","ok":true,"t":11224,"tile":[9,8],"verb":"teach"}
+{"actor":"player","kind":"act","ok":true,"t":12464,"tile":[9,8],"verb":"teach"}

@@ -1,0 +1,52 @@
+{
+  "id": "w2d641a31a52",
+  "title": "Read Daniel's hand edit to Obstacle Set",
+  "level": "task",
+  "owner": "ingrid",
+  "tier": 0,
+  "tier_reason": "reading his edit and writing down what it implies — nothing to walk back",
+  "ask": "Daniel hand-edited Obstacle Set in the sprite editor. He left no note, which usually means routine cleanup rather than a decision about the look. The measurement: Obstacle Set: 35 pixels across 4 frames (frame 4, frame 7, frame 8, frame 12). Colors dropped: #f8f4e6, #bfd470. The silhouette moved, not just the interior shading. Look at it against the style guide draft and the rest of the sheet, and say in a few lines what his edit is telling you about the direction — whether it agrees with the guide, quietly contradicts it, or repeats something he has done before. If it is just tidying and there is nothing to learn, say exactly that in one line; a short honest answer beats manufactured significance. Do not propose amendments to the guide yet; he wants a look session before it is signed. This is evidence-gathering for that session.",
+  "first_action": "Open assets/sprites/generated/obstacles.png and the ledger entry (step 2) in HQ, compare it with the style guide in docs/design/09-art-direction.md, and write down what the edit says about his taste.",
+  "state": "for_review",
+  "thread": "ingrid",
+  "source": "chat",
+  "source_message": "Daniel hand-edited Obstacle Set in the sprite editor. He left no note, which usually means routine cleanup rather than a decision about the look. The measurement: Obstacle Set: 35 pixels across 4 frames (frame 4, frame 7, frame 8, frame 12). Colors dropped: #f8f4e6, #bfd470. The silhouette moved, not just the interior shading. Look at it against the style guide draft and the rest of the sheet, and say in a few lines what his edit is telling you about the direction — whether it agrees with the guide, quietly contradicts it, or repeats something he has done before. If it is just tidying and there is nothing to learn, say exactly that in one line; a short honest answer beats manufactured significance. Do not propose amendments to the guide yet; he wants a look session before it is signed. This is evidence-gathering for that session.",
+  "result": "Frames 4, 7, 8 and 12 of that sheet are the tree, the closed gate, the open gate, and the tree's first chipped stage. Every one of the 35 pixels was **erased** — nothing added, nothing recoloured. The 29 in the closed gate are a tall scatter 11 wide and 14 tall: the gaps between the bars. The 4 in the open gate are a two-pixel band straight across the middle: the rail line.\n\nSo this is the same edit he made a minute earlier with a note on it — \"space between fenceposts should be transparent\" — carried across the rest of the fencing row. It's the same edit he made on the Farmer, and on the characters and animals sheets before that. Five times now, same fix: punch the baked backdrop out of the negative space so the ground shows through.\n\nOne thing in it is worth keeping, though, and it isn't tidying. The two colours he dropped were `#f8f4e6`, the generator's cream backdrop, and `#bfd470` — which is the grass sheet's own base green. He erased fill that was *already the colour of the ground it sits on*. Standing still in the field, nobody would have seen it. It only breaks when something walks behind the gate, or when the same gate stands on the yard's deeper green instead of the field's. That tells me his rule is not \"white is wrong\", it's \"anything that is not the object is transparent, whatever colour it happens to be\" — and the style guide never says that. It talks about ramps, outlines and saturation, and is silent on negative space inside a prop cell.\n\nThat's the whole finding. The edit agrees with the guide, doesn't contradict it, and fills a gap in it. It's material for the look session, not an amendment.\n\nThe part that should not repeat is him being the one who catches it. Generated cells arrive with a filled background and it has survived post-processing five times running.\n\n**What accepting this starts:** a check in the asset pipeline that refuses to let a sheet land with enclosed background-coloured fill inside a prop cell, a sweep of the sheets already in the build for the same defect, and the transparency rule written into my notes for the look session rather than into the unsigned guide.",
+  "started": "2026-09-07T16:39",
+  "attempts": 1,
+  "created": "2026-09-07T16:37",
+  "created_ts": 1788824266.8650556,
+  "follow_ups": [
+    {
+      "title": "Catch baked-in background fill before a generated sheet lands",
+      "owner": "ravi",
+      "level": "story",
+      "tier": 1,
+      "first_action": "Add a check to the sprite post-processing step that flags fully-enclosed regions inside a prop cell filled with the generator backdrop (#f8f4e6) or a terrain colour (#bfd470/#c0d470/#a4c263), and run it over every sheet in assets/sprites/generated/ to see what it finds today.",
+      "why": "Daniel has hand-erased the same defect five times across four sheets; it is a pipeline miss, not a taste call."
+    },
+    {
+      "title": "Clear leftover background fill from the sheets already in the build",
+      "owner": "yuki",
+      "level": "task",
+      "tier": 1,
+      "first_action": "Using Ravi's check output, erase enclosed backdrop and terrain-coloured fill from the flagged cells in assets/sprites/generated/, keeping the palette lock and leaving intentional interior colour alone.",
+      "why": "The fix so far has only reached the cells Daniel personally opened; the rest of the sheets were never swept."
+    },
+    {
+      "title": "Record the transparent-negative-space rule as material for the look session",
+      "owner": "ingrid",
+      "level": "task",
+      "tier": 0,
+      "first_action": "Write into the art director's session notes that a prop cell's negative space is transparent regardless of what colour the fill is, citing the obstacle and Farmer edits as the evidence, and hold it for the look session rather than editing the unsigned style guide.",
+      "why": "The guide is silent on this and cannot be amended before Daniel signs it, so the rule needs somewhere to live until then."
+    }
+  ],
+  "recommend": {
+    "question": "Should the asset pipeline start rejecting sheets with baked-in background fill, or do we keep fixing it by hand when it shows up?",
+    "answer": "Make the pipeline catch it, and sweep the existing sheets once.",
+    "why": "Five hand fixes on four sheets means the next one is already on its way, and the person catching it is the most expensive person in the studio.",
+    "instead": "Leave it alone — each fix is under a minute in the sprite editor, and a check that is too eager will start flagging interior colour that is meant to be there."
+  },
+  "finished": "2026-09-07T16:41"
+}

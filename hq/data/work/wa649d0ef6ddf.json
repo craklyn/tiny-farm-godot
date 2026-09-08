@@ -1,0 +1,15 @@
+{
+  "id": "wa649d0ef6ddf",
+  "title": "Give the sprite editor tools for checking how ground tiles meet",
+  "level": "story",
+  "owner": "sam",
+  "tier": 1,
+  "tier_reason": "editor-only, reversible, and judged by eye against a rendered farm",
+  "ask": "Ground sheets are 3x3 grids of 16px cells and `world/farm.gd` now draws cell (tx % 3, ty % 3), so the nine cells are neighbours of each other in nine different combinations. The editor cannot show any of that: it treats the sheet as one image and has no way to see a join. Two tools. (1) A **neighbour preview**: lay the nine cells out the way the renderer lays them, repeated far enough that the 3x3 period is visible, before and after, so a change can be judged against the farm it will make rather than against a single square. (2) An **offset action** on the selected cell: roll it by half its width and height with wraparound so the joins land in the middle where they can be painted, pressing twice returning it exactly. It is an edit, so it goes through the editor's existing undo history like a brush stroke.\n\nA first attempt was abandoned on 2026-09-07 and deliberately not kept. It was built to the wrong brief — a 3x3 of the WHOLE 48x48 sheet — which was written before anyone had noticed the sheet is nine separate cells. It answered a question nobody has. Do not go looking for it.",
+  "first_action": "Read hq/static/sprite.js around `renderPreview` and the `.sp-previews` markup, and world/farm.gd's ground draw call, before designing the layout.",
+  "why": "The CEO drew nine distinct grass cells by hand on 2026-09-07 to stop the lawn reading as wallpaper. Measured after the fact, the top-bottom joins are clean (0.9x an ordinary step inside a cell) and the left-right joins are 1.3x — a faint vertical line where cells meet. He could not have seen either while drawing them, which is the gap.",
+  "state": "waiting_session",
+  "source": "chat",
+  "created": "2026-09-07T18:55",
+  "created_ts": 1788832540.704894
+}

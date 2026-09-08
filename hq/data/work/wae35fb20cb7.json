@@ -1,0 +1,52 @@
+{
+  "id": "wae35fb20cb7",
+  "title": "Read Daniel's hand edit to Obstacle Set",
+  "level": "task",
+  "owner": "ingrid",
+  "tier": 0,
+  "tier_reason": "reading his edit and writing down what it implies — nothing to walk back",
+  "ask": "Daniel hand-edited Obstacle Set in the sprite editor and said he was fixing: \"Space between fenceposts should be transparent\". The measurement: Obstacle Set: 14 pixels across 1 frame (frame 5). Colors dropped: #f8f4e6. The silhouette moved, not just the interior shading. Look at it against the style guide draft and the rest of the sheet, and say in a few lines what his edit is telling you about the direction — whether it agrees with the guide, quietly contradicts it, or repeats something he has done before. If it is just tidying and there is nothing to learn, say exactly that in one line; a short honest answer beats manufactured significance. Do not propose amendments to the guide yet; he wants a look session before it is signed. This is evidence-gathering for that session.",
+  "first_action": "Open assets/sprites/generated/obstacles.png and the ledger entry (step 1) in HQ, compare it with the style guide in docs/design/09-art-direction.md, and write down what the edit says about his taste.",
+  "state": "for_review",
+  "thread": "ingrid",
+  "source": "chat",
+  "source_message": "Daniel hand-edited Obstacle Set in the sprite editor and said he was fixing: \"Space between fenceposts should be transparent\". The measurement: Obstacle Set: 14 pixels across 1 frame (frame 5). Colors dropped: #f8f4e6. The silhouette moved, not just the interior shading. Look at it against the style guide draft and the rest of the sheet, and say in a few lines what his edit is telling you about the direction — whether it agrees with the guide, quietly contradicts it, or repeats something he has done before. If it is just tidying and there is nothing to learn, say exactly that in one line; a short honest answer beats manufactured significance. Do not propose amendments to the guide yet; he wants a look session before it is signed. This is evidence-gathering for that session.",
+  "result": "Read both obstacle edits together — he made a second one a minute later, filed separately, and they're clearly one sitting.\n\n**What he changed.** Edit one: 14 pixels, all erasures, one colour dropped — `#f8f4e6` — in a 7×2 band at x 4–10, y 7–8 of the fence tile. That is exactly the span between the two posts, under the top rail and over the bottom one. Edit two, 60 seconds later: 35 more erasures, same colour plus `#bfd470`, across the closed gate, the open gate, the tree's bottom row and one chip frame. Nothing added, nothing recoloured, in either.\n\n**It repeats — this is the third time.** The chicken on 3 September, the farmer this morning, the obstacle set tonight: four edits, 116 pixels, one hundred percent erasures, every one of them the same colour. `#f8f4e6` is the image pipeline's background plate. The keying flood-fills inward from the four corners, so it cannot reach background that the sprite encloses. The gap between two fenceposts is enclosed on all four sides. He is hand-finishing the same defect for the third sheet running, and the fix for it was written and tested but never applied, because the pipeline code lives in your skills folder outside this repository.\n\n**What is new, and worth the look session.** Two things. `#bfd470` is grass — a ramp colour, not the plate. Something baked a patch of ground into the closed gate, which the keying step doesn't even look for. And the location matters more than the farmer's did. A white chip under the boots was cosmetic. An opaque fence tile is a different object: the fence stops being a line you see the field through and becomes a wall. The catalogue's own words for that set are \"'not yet' is always a hedge you can see, never a refusal you can't read\" — so this one erasure is the difference between the boundary reading as information and reading as a barrier.\n\n**Against the guide.** No contradiction, because the guide is silent. Every rule in it is about colour — ramps, outlines, saturation-pop, reserved hues. He has never once touched any of those by hand. Four sittings, and his entire recorded taste is about where the sprite stops and the world starts. That is the single most useful thing the ledger has told us, and I'd rather say it in the session than write it into an unsigned document.\n\n**One gap I noticed in our own staging.** The four captures are framed on \"the player and one station.\" No fence, no boundary. Given that the boundary is the thing his hand keeps going to, and that capture two drains the ambient world the fence lives in, I want the fence line and an open boundary in every frame.\n\n**What this implies.** Accepting this starts the pipeline fix that has been sitting written-but-unapplied through three sheets, a sweep of the remaining generated sheets so Yuki finds these before you do, and a change to what the look-session captures show you.",
+  "started": "2026-09-07T16:37",
+  "attempts": 1,
+  "created": "2026-09-07T16:36",
+  "created_ts": 1788824207.9608638,
+  "follow_ups": [
+    {
+      "title": "Apply the written fix to the background-keying step in the art pipeline",
+      "owner": "ravi",
+      "level": "task",
+      "tier": 1,
+      "first_action": "The fix was written and verified in work item we7a0d7228ec but never applied because the code is at ~/.claude/skills/retro-diffusion-pixel-art/scripts/postprocess.py, outside the repo. Run a session with full filesystem access: add the non-propagating second pass that clears remaining near-plate pixels bordering cleared ones, and extend key_background to also clear enclosed pockets the corner flood cannot reach. Re-verify against the archived raws under assets/raw/.",
+      "why": "Three sheets in a row have needed the CEO's hand to erase the same key colour, and every sheet generated before the reskin inherits the defect."
+    },
+    {
+      "title": "Sweep the remaining generated sheets for trapped background pixels",
+      "owner": "yuki",
+      "level": "task",
+      "tier": 1,
+      "first_action": "Sweep every sheet in assets/sprites/generated/ for opaque #f8f4e6 the way characters.png and chicken were swept in wc5472d80611 — alpha to zero, nothing recoloured. Separately check obstacles.png frame 7 (closed gate) for baked grass at #bfd470: decide per pixel whether it is backdrop or intended shading, and report the count rather than guessing.",
+      "why": "The CEO cleaned four frames of one sheet by hand; the same trapped pixels are almost certainly sitting in sheets nobody has looked at."
+    },
+    {
+      "title": "Put the fence line and an open boundary in every look-session capture",
+      "owner": "ingrid",
+      "level": "task",
+      "tier": 1,
+      "first_action": "Amend the staging paragraph in the look-session section of docs/design/09-art-direction.md so all four captures frame the fence line and an open boundary alongside the player and one station, keeping seed 12345 and everything else identical.",
+      "why": "The boundary is where the CEO's own hand edits keep landing, and the current staging would show him four pictures that do not contain it."
+    }
+  ],
+  "recommend": {
+    "question": "Keep hand-cleaning sheets as they come up, or stop and fix the pipeline that keeps producing them?",
+    "answer": "Fix the pipeline first, then sweep what already shipped.",
+    "why": "The reskin regenerates every sheet through this same step, so a defect left in it multiplies rather than stays put.",
+    "instead": "You could let it ride until after the look session — the cleanup is minutes per sheet — but that bets on nobody generating art in the meantime."
+  },
+  "finished": "2026-09-07T16:39"
+}

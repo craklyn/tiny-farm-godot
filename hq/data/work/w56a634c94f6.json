@@ -1,0 +1,44 @@
+{
+  "id": "w56a634c94f6",
+  "title": "Read Daniel's hand edit to Field Grassland",
+  "level": "task",
+  "owner": "ingrid",
+  "tier": 0,
+  "tier_reason": "reading his edit and writing down what it implies — nothing to walk back",
+  "ask": "Daniel hand-edited Field Grassland in the sprite editor. He left no note, which usually means routine cleanup rather than a decision about the look. The measurement: Field Grassland: 107 pixels across 1 frame (Field Grassland). Interior shading only — the silhouette is untouched. Look at it against the style guide draft and the rest of the sheet, and say in a few lines what his edit is telling you about the direction — whether it agrees with the guide, quietly contradicts it, or repeats something he has done before. If it is just tidying and there is nothing to learn, say exactly that in one line; a short honest answer beats manufactured significance. Do not propose amendments to the guide yet; he wants a look session before it is signed. This is evidence-gathering for that session.",
+  "first_action": "Open assets/sprites/generated/terrain_field.png and the ledger entry (step 1) in HQ, compare it with the style guide in docs/design/09-art-direction.md, and write down what the edit says about his taste.",
+  "state": "for_review",
+  "thread": "ingrid",
+  "source": "chat",
+  "source_message": "Daniel hand-edited Field Grassland in the sprite editor. He left no note, which usually means routine cleanup rather than a decision about the look. The measurement: Field Grassland: 107 pixels across 1 frame (Field Grassland). Interior shading only — the silhouette is untouched. Look at it against the style guide draft and the rest of the sheet, and say in a few lines what his edit is telling you about the direction — whether it agrees with the guide, quietly contradicts it, or repeats something he has done before. If it is just tidying and there is nothing to learn, say exactly that in one line; a short honest answer beats manufactured significance. Do not propose amendments to the guide yet; he wants a look session before it is signed. This is evidence-gathering for that session.",
+  "result": "Opened the sheet, the ledger step, and the guide.\n\n**What the edit is.** 107 pixels recoloured, no colour added, none removed, silhouette untouched, spread thinly across the whole 48×48 rather than clustered. The sheet was palette-locked at generation to three greens of the guide's grass family, and he stayed inside all three. That's grain work on a texture — redistributing mid and shadow inside the blades — not a statement about palette personality or fidelity, which are the two things the look session actually has to settle.\n\n**What it says about his taste.** Two honest lines, and no more than two:\n\n- He does not reach for new colour. Three edits running now — the fence gap, the farmer's white cells, this — and every one of them took something away or moved it inside the existing ramp. That agrees with the guide's palette discipline rather than contradicting it, and it's the strongest evidence I have that the ramp rule survives the look session.\n- Three of his last four edits are about *less mass* — pixels removed so the background reads through. This one is recolour rather than erase, but it's the same instinct: break up flat fill. Worth putting in front of him at the session as a question, not written into the guide.\n\nOtherwise: this is tidying, and I'd rather say so than dress it up.\n\n**The thing that isn't about taste.** HQ shows this sheet as one 48×48 picture. The game draws one 16×16 cell out of it — `Rect2(16, 16, 16, 16)` in `world/farm.gd:1078`. The file is nine copies of a single seamless tile, and he painted freehand across all nine. So roughly a ninth of his 107 pixels is on screen, the nine copies no longer agree with each other, and his brush crossed the tile's own edges — which is where a seamless tile stops being seamless. The editor even has a half-roll button built for painting seams out, and it happens to work here only because 48 divides the way it does.\n\nI could not run the pixel comparison to confirm how far the nine copies have diverged — Python is blocked in this session — so the seam check is filed rather than answered.\n\n**What your yes starts.** Someone renders the field with the edited tile and looks for seams, and HQ stops letting a seamless ground sheet be painted as nine independent copies. Neither touches the guide; it stays unsigned until the look session.",
+  "started": "2026-09-07T18:44",
+  "attempts": 1,
+  "created": "2026-09-07T18:43",
+  "created_ts": 1788831832.3521025,
+  "follow_ups": [
+    {
+      "title": "Look for seams in the field grassland after Daniel's edit",
+      "owner": "ravi",
+      "level": "task",
+      "tier": 0,
+      "first_action": "Render a frame of the field filled with assets/sprites/generated/terrain_field.png and inspect tile boundaries; also compare the nine 16x16 cells of that 48x48 file against each other and report how far they now differ, and whether cell (16,16,16,16) — the only one farm.gd draws — still wraps edge-to-edge.",
+      "why": "His brush crossed the tile's own edges on a sheet the game repeats everywhere, so the field may now show a grid."
+    },
+    {
+      "title": "Make the sprite editor treat a seamless ground sheet as its single tile",
+      "owner": "rin",
+      "level": "story",
+      "tier": 1,
+      "first_action": "In hq/data/entities.json, terrain_field and terrain_floor declare frames [[0,0,48,48]] but the game draws only the centre 16x16 cell. Give a seamless ground sheet a frame definition of that one cell, and write the edited cell back into all nine copies on save, so what he paints is what ships.",
+      "why": "Eight ninths of his work on that sheet never reaches the screen and the copies silently drift apart."
+    }
+  ],
+  "recommend": {
+    "question": "Fix the field tile's seams now, or leave the nine cells alone until the look session?",
+    "answer": "Fix it now — check for seams, and make the editor paint the one cell the game draws.",
+    "why": "It is a tool defect, not a taste call: he is painting pixels that never reach the screen, and that will keep happening on every ground sheet.",
+    "instead": "Leave it and let the nine cells become nine variants the renderer picks between, which would break up the visible repeat — but that is a change of direction and belongs in the look session, not in a cleanup."
+  },
+  "finished": "2026-09-07T18:46"
+}
