@@ -286,7 +286,20 @@ func holding_machine() -> bool:
 # way; what it becomes when she puts it down is the only difference, and that is
 # the gateway's business rather than this flag's.
 func holding_buildable() -> bool:
-	return MachineDefs.has(selected_seed_type) and machines.get(selected_seed_type, 0) > 0 \
+	return holding_terrain() and machines.get(selected_seed_type, 0) > 0
+
+
+# Is the thing in her hand a *kind* of ground, whether or not she has any left?
+#
+# The stock-free question, and it exists because of the moment the stocked one
+# gets wrong: she lays her tenth post, the crate empties, and the eleventh tap
+# lands on bare ground with fencing still selected. Asking "is she holding
+# fencing" and getting *no* there sends the tap down to the ground's own states,
+# where cleared soil means **till** — so running out silently turned her fence
+# into a hoe. A tap that quietly does something else is the failure this game
+# keeps stamping out; running out has to say so.
+func holding_terrain() -> bool:
+	return MachineDefs.has(selected_seed_type) \
 		and MachineDefs.terrain_of(selected_seed_type) != ""
 
 

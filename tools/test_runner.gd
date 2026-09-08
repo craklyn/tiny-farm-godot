@@ -4125,6 +4125,7 @@ func _scenario_aj_the_robot_lives_in_a_stall() -> void:
 # able to reach only half the farm.
 func _scenario_ak_she_puts_up_a_fence() -> void:
 	print("\n--- Scenario AK: she puts up a fence, and takes it back down ---")
+	var menus = main_scene.menus
 	var here: Vector2i = player.get_tile_pos()
 	var spot := Vector2i(-1, -1)
 	for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
@@ -4134,8 +4135,33 @@ func _scenario_ak_she_puts_up_a_fence() -> void:
 			break
 	_assert(spot.x >= 0, "there is bare ground beside her to build on")
 
-	GameState.machines["fence"] = 3
-	GameState.selected_seed_type = "fence"
+	# **Bought through the shop, not set by hand.** Every assertion about fencing
+	# before this one either drove the gateway directly or filled the crate in
+	# code, which is how it shipped with a verb, a state, a refund and no way for
+	# anyone to buy one: the shop walks `MachineDefs.ORDER` and the row was only
+	# in `TYPES`. The journey starts at the seed box now.
+	GameState.gold = 200
+	menus.open_menu("shop")
+	await get_tree().process_frame
+	var fence_row := -1
+	for i in menus.shop_items.size():
+		if String(menus.shop_items[i].get("seed_type", "")) == "fence":
+			fence_row = i
+	_assert(fence_row >= 0, "fencing is on the shelf at the seed box")
+	_assert(bool(menus.shop_items[fence_row].get("affordable", false)),
+		"and she can afford a card of it (%dg)" % int(menus.shop_items[fence_row].get("price", 0)))
+	menus.selected_option = fence_row
+	menus._select_current_option()
+	await get_tree().process_frame
+	_assert(GameState.machines.get("fence", 0) == 10,
+		"one tap on the card buys ten posts (%d)" % GameState.machines.get("fence", 0))
+	menus.close_menu()
+	await get_tree().process_frame
+	_assert(GameState.selected_seed_type == "fence",
+		"and buying puts it in her hand, so the next tap is a post and not a hunt through the pill")
+	_assert("fence" in GameState.held_order(),
+		"the pill can come back to it once she has some")
+
 	_assert(GameState.holding_buildable(), "with fencing in hand she is holding a thing that lays ground")
 	_assert(not GameState.holding_machine(),
 		"and not a machine — the crate holds both and they are not the same word")
@@ -4146,7 +4172,9 @@ func _scenario_ak_she_puts_up_a_fence() -> void:
 	var built := await _wait_until(func(): return String(
 		farm.sim.get_tile(spot.x, spot.y).get("state", "")) == WorldLayout.FENCE_BUILT, 6000)
 	_assert(built, "one tap on the square beside her puts a post in it")
-	_assert(GameState.machines.get("fence", 0) == 2, "out of the crate, one at a time")
+	_assert(GameState.machines.get("fence", 0) == 9,
+		"out of the crate, one at a time (%d of the card's ten left)"
+			% GameState.machines.get("fence", 0))
 	_assert(GameState.energy < energy_before, "and it cost her a stroke of work")
 	_assert(not farm.sim.is_walkable(spot.x, spot.y), "nothing walks through it now")
 
@@ -4157,7 +4185,28 @@ func _scenario_ak_she_puts_up_a_fence() -> void:
 	var lifted := await _wait_until(func(): return String(
 		farm.sim.get_tile(spot.x, spot.y).get("state", "")) == "cleared", 6000)
 	_assert(lifted, "tapping her own fence takes it back up")
-	_assert(GameState.machines.get("fence", 0) == 3, "and refunds the post")
+	_assert(GameState.machines.get("fence", 0) == 10, "and refunds the post")
 
+	# **Running out has to say so.** She lays her last post, the crate empties, and
+	# the next tap lands on bare ground with fencing still in her hand. Asking
+	# only "does she have any" sent that tap down to the ground's own states,
+	# where cleared soil means *till* — so running out silently turned her fence
+	# into a hoe.
 	GameState.machines["fence"] = 0
+	await get_tree().process_frame
+	_assert(GameState.holding_terrain() and not GameState.holding_buildable(),
+		"empty-handed but still holding fencing")
+	var ground_before := String(farm.sim.get_tile(spot.x, spot.y).get("state", ""))
+	_assert(ActionRouter.resolve(farm, GameState, spot, player.get_tile_pos(), false, null).is_empty(),
+		"a tap on buildable ground resolves to nothing rather than to a till")
+	_assert(ActionRouter.blocked_reason(farm, GameState, spot) == "none_left",
+		"and the refusal has a name, so the square can wobble instead of quietly changing")
+	InputManager.click_tile = spot
+	InputManager.has_click = true
+	for i in 30:
+		await get_tree().process_frame
+	_assert(String(farm.sim.get_tile(spot.x, spot.y).get("state", "")) == ground_before,
+		"the ground she meant to fence is not tilled behind her back (%s)"
+			% farm.sim.get_tile(spot.x, spot.y).get("state", ""))
+
 	GameState.selected_seed_type = "wheat"

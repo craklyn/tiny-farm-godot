@@ -221,7 +221,12 @@ func resolve(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, is_drag: 
 	# intent she can make, and a post on bare ground must not be read as a hoe.
 	# `buildable_at` is the sim's answer, asked rather than restated — bare ground
 	# only, so building can never destroy a crop.
-	if gs != null and gs.has_method("holding_buildable") and gs.holding_buildable():
+	if gs != null and gs.has_method("holding_terrain") and gs.holding_terrain():
+		# Out of posts, but still holding fencing: the tap resolves to nothing so
+		# `blocked_reason` can say why, rather than falling through to the ground's
+		# own states and tilling the square she meant to fence.
+		if world != null and world.buildable_at(tap_t) and not gs.holding_buildable():
+			return {}
 		if world != null and world.buildable_at(tap_t):
 			if not is_drag and player_t != null:
 				var pt3: Vector2i = player_t
@@ -401,6 +406,14 @@ func blocked_reason(farm: Node2D, gs: Node, tap_t: Vector2i) -> String:
 		var w = farm.get("sim")
 		if w != null and w.is_walkable(tap_t.x, tap_t.y) and not w.placeable_at(tap_t, seed_type):
 			return "occupied"
+
+	# ...and the same for a hand with nothing left in it (Q-92). She laid her last
+	# post and kept tapping; the square can take one and she has none.
+	if gs.has_method("holding_terrain") and gs.holding_terrain() \
+			and int(gs.machines.get(seed_type, 0)) <= 0:
+		var bw = farm.get("sim")
+		if bw != null and bw.buildable_at(tap_t):
+			return "none_left"
 
 	if state == "tilled":
 		if MachineDefs.has(seed_type):

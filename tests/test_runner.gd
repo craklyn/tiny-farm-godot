@@ -10716,6 +10716,14 @@ func test_fencing() -> void:
 		"a card is ten posts — a fence is a run, not an object (%d)" % gs.machines.get("fence", 0))
 	_assert(MachineDefs.terrain_of("fence") == WorldLayout.FENCE_BUILT,
 		"the crate row says what it lays down, which is what sends it to `build`")
+	# **It has to be on the shelf, not merely in the catalogue.** The shop walks
+	# `ORDER`, so fencing first shipped with a verb, a state, a refund and every
+	# gateway assertion passing — and no way for anyone to buy one. Every row of
+	# the table is checked, because the next thing added will make the same
+	# mistake in the same place.
+	for key in MachineDefs.TYPES.keys():
+		_assert(String(key) in MachineDefs.ORDER,
+			"%s is on the shop's shelf and not only in its catalogue" % key)
 
 	# --- building -------------------------------------------------------------
 	var e0: int = gs.energy

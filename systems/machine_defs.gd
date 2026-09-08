@@ -169,7 +169,13 @@ static var TYPES: Dictionary = {
 
 # Display order — and, because the shop iterates it, the list of what is actually
 # for sale. `CropDefs.ORDER`'s role, for machines.
-static var ORDER: Array[String] = ["sprinkler", "stall", "bot_mk1", "bot_mk2"]
+# **Adding a row to `TYPES` is not adding a thing for sale.** The shop walks this
+# list, not the table, so a row missing from here exists to every rule in the game
+# and cannot be bought by anybody — which is how fencing shipped on 2026-09-07
+# with a verb, a state, a refund and 23 passing assertions, and no way to get any.
+# Fencing leads: it is the cheapest thing on the shelf and the only one that is
+# not a machine.
+static var ORDER: Array[String] = ["fence", "sprinkler", "stall", "bot_mk1", "bot_mk2"]
 
 
 static func has(key: String) -> bool:
