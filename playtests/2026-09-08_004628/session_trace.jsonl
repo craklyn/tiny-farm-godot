@@ -1,0 +1,6 @@
+{"continued":true,"gen_seed":0,"version":1}
+{"at":[19,4],"in":"tap","kind":"tap","out":"walk","t":11882,"tile":[27,0],"tool":4,"verb":""}
+{"at":[22,4],"in":"tap","kind":"tap","out":"walk","t":12767,"tile":[19,5],"tool":4,"verb":""}
+{"at":[20,5],"in":"tap","kind":"tap","out":"walk","t":14023,"tile":[28,0],"tool":4,"verb":""}
+{"at":[22,4],"in":"tap","kind":"tap","out":"walk","t":14962,"tile":[19,5],"tool":4,"verb":""}
+{"at":[20,5],"in":"tap","kind":"tap","out":"walk","t":15773,"tile":[16,5],"tool":4,"verb":""}
