@@ -1,30 +1,30 @@
 {
-  "note": "Release trains: the macro units players experience. Projects declare release + release_critical + depends_on; everything else derives. Gates decide when a release is DONE — evidence, not a calendar — so 'schedule risk' renders here as blocked critical-path chains and their ages. The CEO's target dates are a separate, authored file (hq/data/release_plan.json) and are the plan, never the evidence. 'features' is what the release OFFERS A PLAYER, written in their language and not ours: each one cites the decision or story that carries it, and whether it is in the public build is derived by tracing that id through git either side of the newest tag. Sales sells the features; engineering's commit counts are not this list.",
+  "note": "Release trains: the macro units players experience. Projects declare release + release_critical + depends_on; everything else derives. Gates decide when a release is DONE \u2014 evidence, not a calendar \u2014 so 'schedule risk' renders here as blocked critical-path chains and their ages. The CEO's target dates are a separate, authored file (hq/data/release_plan.json) and are the plan, never the evidence. 'features' is what the release OFFERS A PLAYER, written in their language and not ours: each one cites the decision or story that carries it, and whether it is in the public build is derived by tracing that id through git either side of the newest tag. Sales sells the features; engineering's commit counts are not this list.",
   "releases": [
     {
       "id": "update-1",
       "name": "Player Update 1",
       "tag_intent": "v0.2.0",
-      "goal": "The first public update since v0.1.0. Twelve things a player would notice, led by the shop and the first robot you can teach — the beginning of the delegation arc the whole game is about — on the ship-early-and-often ruling.",
-      "definition_of_done": "M1.5's exit gate closes on the pre-release green-tester session (the one fresh-player pass per public release, ruled 2026-09-02), and a v0.2.0 tag goes out through the deploy runbook.",
+      "goal": "The first public update since v0.1.0. Twelve things a player would notice, led by the shop and the first robot you can teach \u2014 the beginning of the delegation arc the whole game is about \u2014 on the ship-early-and-often ruling.",
+      "definition_of_done": "Amended by the designer 2026-09-08: v0.2.0 ships on the automated evidence \u2014 both suites, the robot session, the replay round-trip, and the release checklist (web build played through, credits screen, readout off). The fresh-tester pass that closes M1.5's exit gate moves to v0.2.1, once a tester is found. A v0.2.0 tag goes out through the deploy runbook.",
       "features": [
         {
           "id": "shop",
           "evidence": "P-12",
           "headline": "A shop that sells everything",
-          "for_players": "Seeds, tools, animals and machines — if you can own it, you can buy it. The whole screen is pictures, coins and numerals, so a child who cannot read can shop on their own."
+          "for_players": "Seeds, tools, animals and machines \u2014 if you can own it, you can buy it. The whole screen is pictures, coins and numerals, so a child who cannot read can shop on their own."
         },
         {
           "id": "robots",
-          "evidence": "P-13",
+          "evidence": "P-13, S-11",
           "headline": "Robots you buy and teach",
-          "for_players": "A mark-1 robot does exactly the job you show it: point at the tiles you want watered and it waters them, once a day, every day. A mark-2 will chase birds, follow you, or patrol. This is the first taste of handing the farm over."
+          "for_players": "A mark-1 robot does exactly the job you show it: point at the tiles you want watered and it waters them. Buy it a stall to live in and it heads out every morning on its own, does its rounds, and walks back to its bay. A mark-2 will chase birds, follow you, or patrol. This is the first taste of handing the farm over."
         },
         {
           "id": "home",
-          "evidence": "T-37",
+          "evidence": "T-37, T-39",
           "headline": "A home to go inside",
-          "for_players": "The farmhouse opens. There is a room in there, and it is yours."
+          "for_players": "The farmhouse stands in your yard with a front door you can walk through. Inside is a room with your bed \u2014 at dusk the door glows to show you the way, and the bed glows once you are in."
         },
         {
           "id": "clock",
@@ -48,7 +48,7 @@
           "id": "pips",
           "evidence": "T-28",
           "headline": "Every station says what it is for",
-          "for_players": "A small picture over each station shows what it does before you touch it — no words, no menu, no guessing."
+          "for_players": "A small picture over each station shows what it does before you touch it \u2014 no words, no menu, no guessing."
         },
         {
           "id": "water-sound",
@@ -85,7 +85,7 @@
     },
     {
       "id": "m3",
-      "name": "M3 — the next content milestone",
+      "name": "M3 \u2014 the next content milestone",
       "tag_intent": null,
       "goal": "The next slice of the five-phase arc, scoped by your ruling and planned on the M2.5 template. What M3 actually contains is itself the opening decision.",
       "definition_of_done": "Scope ruled; plan written with a measured exit gate; work items delivered and verified."

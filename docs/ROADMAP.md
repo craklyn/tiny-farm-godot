@@ -32,6 +32,12 @@ all landed). Suites at close: unit 1799 / integration 453 / robot MATCH / benchm
   ruling 2026-09-02: no standing fresh-player recruiting at this phase — the designer
   is the primary playtester, and one genuinely fresh tester is sought before each
   public feature release; see Standing rules). Not a blocker for current work.
+  **Amended 2026-09-08 (designer):** the fresh-tester pass no longer holds a release —
+  v0.2.0 ships on the automated evidence (suites, robot session, replay round-trip,
+  the release checklist), and the fresh-player session with its cot-bar and
+  standing-bar scoring moves to v0.2.1, once a tester is found. The deployment north
+  star is the reason: a release chained to recruiting a human is the defect, and the
+  gate rides the *next* update rather than blocking this one.
 - Replay v2 Phase B prerequisites are recorded in `M2_5_PLAN.md` §9 — a fresh-farm
   tablet session on a current build is the missing human artifact (the 08-31
   sessions all predate the final worldgen).

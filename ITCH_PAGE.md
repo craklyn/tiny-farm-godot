@@ -7,10 +7,11 @@ credits screen all change together.*
 
 *Two rules for whoever edits this next. Every claim below is something a player can do in
 the build at the commit this file was last written against — the release manifest in
-`hq/data/releases.json` lists what Update 1 offers, but three of its entries are not
-reachable in play yet (the home is a debug screen with nothing leading to it, the
-distress state is a planned project, and the shop sells seeds and machines only, not
-tools or animals), so the manifest is the candidate list and the build is the authority.
+`hq/data/releases.json` lists what Update 1 offers, but not all of its entries are
+reachable in play (as of 2026-09-08 the home IS reachable — T-39 wired the farmhouse
+door into the live game — but the distress state is still a planned project, and the
+shop sells seeds and machines only, not tools or animals), so the manifest is the
+candidate list and the build is the authority.
 And the wordless claim is scoped: S-7 binds phase 1's farming loop, not the whole game,
 so the page promises no reading **to farm** rather than no words anywhere.*
 
@@ -55,11 +56,13 @@ page must not offer an Android download until one exists.
 Clear the weeds, till the soil, plant a seed, water it, and sleep. In the morning it has
 grown. Sell the harvest, and the shop sells you the things that do the work instead: a
 sprinkler that waters its patch every morning, and a robot you teach by pointing at the
-tiles you want done. Send it out and it does that job, every day, while you get on with
-something else.
+tiles you want done. Give the robot a stall to live in and it heads out every morning on
+its own, does its rounds, and walks back to its bay — the farm starts running without
+you.
 
 The day runs from six in the morning to four in the afternoon, on a clock in the corner
-of the screen. As the light goes the bed starts to glow, and you sleep.
+of the screen. As the light goes your front door glows; walk in, and your bed is
+waiting.
 
 **A child who cannot read can farm.** Walking, clearing, planting, watering, harvesting
 and shopping are pictures, coins and numbers — no words to read, targets sized for small
@@ -79,6 +82,7 @@ where that starts.
 - **Swipe** across several tiles to work a row
 - **Tap the seed box** to open the shop, then tap a tile to put down what you bought
 - **Tap a robot** to teach it: point at the tiles you want done, then send it out
+- **Tap your front door** to go inside your house
 - **Tap the bed** to sleep and start the next day
 
 ## Credits — deliberately NOT on the page

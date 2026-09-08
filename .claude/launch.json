@@ -6,6 +6,12 @@
       "runtimeExecutable": "python3",
       "runtimeArgs": ["hq/server.py"],
       "port": 8642
+    },
+    {
+      "name": "tiny-farm-web",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8899", "--directory", "build/web"],
+      "port": 8899
     }
   ]
 }
