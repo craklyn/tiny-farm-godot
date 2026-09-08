@@ -56,6 +56,22 @@
           "title": "Bring the store page up to date with what this release adds",
           "estimate_days": null,
           "done": false
+        },
+        {
+          "id": "s9",
+          "title": "A ripe crop is obvious at a glance",
+          "estimate_days": null,
+          "done": false,
+          "why": "From play, 2026-09-07: nothing on the farm says loudly enough that a plant is ready to pick. The state exists in the sim and the crop's fourth cell draws it, but the reading is a small change of picture on a busy field — she has to go looking. Wants a treatment that carries across a whole plot at the altitude the teaching mode now uses, without words (S-7).",
+          "raised": "2026-09-07"
+        },
+        {
+          "id": "s10",
+          "title": "Fix the bed outline left over from the cot moving indoors",
+          "estimate_days": null,
+          "done": true,
+          "why": "Reported from play 2026-09-07 — \"at nighttime, when all of your energy is spent, look at the house from the outside\". The dusk cue lights the tile the next tap should land on, and it always drew the bed's own 16x32 footprint: on the 16x16 front door that spilled onto the wall above, so the house wore a bed outline every evening. Fixed the same day — the shape is now a pure function in `CotPresentation` and asserted, rather than inline geometry nobody could test.",
+          "raised": "2026-09-07"
         }
       ]
     },

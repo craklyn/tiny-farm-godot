@@ -7,206 +7,1325 @@
       "blurb": "Everything with a brain. All 13 species live in one registry; each acts only through the same action gateway as the player.",
       "entities": [
         {
-          "id": "player", "name": "Farmer", "emoji": "🧑‍🌾",
+          "id": "player",
+          "name": "Farmer",
+          "emoji": "🧑‍🌾",
           "desc": "The player character. Walks the farm and performs every player verb — clearing, tilling, planting, watering, harvesting, collecting, selling, refilling, buying, taking tools, sleeping.",
           "sheet": "assets/sprites/generated/characters.png",
-          "frames": [[0,0,48,48],[48,0,48,48],[96,0,48,48],[144,0,48,48],
-                     [0,48,48,48],[48,48,48,48],[96,48,48,48],[144,48,48,48],
-                     [0,96,48,48],[48,96,48,48],[96,96,48,48],[144,96,48,48],
-                     [0,144,48,48],[48,144,48,48],[96,144,48,48],[144,144,48,48]],
+          "frames": [
+            [
+              0,
+              0,
+              48,
+              48
+            ],
+            [
+              48,
+              0,
+              48,
+              48
+            ],
+            [
+              96,
+              0,
+              48,
+              48
+            ],
+            [
+              144,
+              0,
+              48,
+              48
+            ],
+            [
+              0,
+              48,
+              48,
+              48
+            ],
+            [
+              48,
+              48,
+              48,
+              48
+            ],
+            [
+              96,
+              48,
+              48,
+              48
+            ],
+            [
+              144,
+              48,
+              48,
+              48
+            ],
+            [
+              0,
+              96,
+              48,
+              48
+            ],
+            [
+              48,
+              96,
+              48,
+              48
+            ],
+            [
+              96,
+              96,
+              48,
+              48
+            ],
+            [
+              144,
+              96,
+              48,
+              48
+            ],
+            [
+              0,
+              144,
+              48,
+              48
+            ],
+            [
+              48,
+              144,
+              48,
+              48
+            ],
+            [
+              96,
+              144,
+              48,
+              48
+            ],
+            [
+              144,
+              144,
+              48,
+              48
+            ]
+          ],
           "anims": [
-            {"id": "walk_down", "label": "walk down", "frames": [0,1,2,3], "fps": 7},
-            {"id": "walk_up", "label": "walk up", "frames": [4,5,6,7], "fps": 7},
-            {"id": "walk_left", "label": "walk left", "frames": [8,9,10,11], "fps": 7},
-            {"id": "walk_right", "label": "walk right", "frames": [12,13,14,15], "fps": 7},
-            {"id": "idle", "label": "standing idle", "frames": [0,4,8,12], "kind": "stills"},
-            {"id": "action", "label": "action swing", "frames": [3,7,11,15], "kind": "stills"},
-            {"id": "sleep", "label": "sleeping on the cot", "frames": [7], "kind": "stills"}
+            {
+              "id": "walk_down",
+              "label": "walk down",
+              "frames": [
+                0,
+                1,
+                2,
+                3
+              ],
+              "fps": 7
+            },
+            {
+              "id": "walk_up",
+              "label": "walk up",
+              "frames": [
+                4,
+                5,
+                6,
+                7
+              ],
+              "fps": 7
+            },
+            {
+              "id": "walk_left",
+              "label": "walk left",
+              "frames": [
+                8,
+                9,
+                10,
+                11
+              ],
+              "fps": 7
+            },
+            {
+              "id": "walk_right",
+              "label": "walk right",
+              "frames": [
+                12,
+                13,
+                14,
+                15
+              ],
+              "fps": 7
+            },
+            {
+              "id": "idle",
+              "label": "standing idle",
+              "frames": [
+                0,
+                4,
+                8,
+                12
+              ],
+              "kind": "stills"
+            },
+            {
+              "id": "action",
+              "label": "action swing",
+              "frames": [
+                3,
+                7,
+                11,
+                15
+              ],
+              "kind": "stills"
+            },
+            {
+              "id": "sleep",
+              "label": "sleeping on the cot",
+              "frames": [
+                7
+              ],
+              "kind": "stills"
+            }
           ],
           "fps": 7,
           "layout": "48px 4x4 grid — row per direction (down, up, left, right), 4-frame walk, column 0 is the standing idle. Column 3 of the up row doubles as the sleeping pose on the cot.",
-          "sounds": ["assets/audio/sfx/jingle.wav", "assets/audio/sfx/till.wav", "assets/audio/sfx/water.wav", "assets/audio/sfx/harvest_cc0_699491.wav"],
-          "code": ["player/player.gd", "systems/species_defs.gd", "systems/action_router.gd"],
-          "facts": {"Speed": "48 px/s", "Movement": "ground", "Energy": "600 units = one 6:00 AM – 4:00 PM day"}
+          "sounds": [
+            "assets/audio/sfx/jingle.wav",
+            "assets/audio/sfx/till.wav",
+            "assets/audio/sfx/water.wav",
+            "assets/audio/sfx/harvest_cc0_699491.wav"
+          ],
+          "code": [
+            "player/player.gd",
+            "systems/species_defs.gd",
+            "systems/action_router.gd"
+          ],
+          "facts": {
+            "Speed": "48 px/s",
+            "Movement": "ground",
+            "Energy": "600 units = one 6:00 AM – 4:00 PM day"
+          }
         },
         {
-          "id": "neighbour", "name": "Neighbour", "emoji": "👧",
+          "id": "neighbour",
+          "name": "Neighbour",
+          "emoji": "👧",
           "desc": "The departing child of the cold open: she tills, plants, and waters a demo plot while the player watches, then opens the gate, waves, and leaves the map — the farm is inherited, not given.",
           "sheet": "assets/sprites/generated/neighbour.png",
-          "frames": [[0,0,48,48],[48,0,48,48],[96,0,48,48],[144,0,48,48],
-                     [0,48,48,48],[48,48,48,48],[96,48,48,48],[144,48,48,48],
-                     [0,96,48,48],[48,96,48,48],[96,96,48,48],[144,96,48,48],
-                     [0,144,48,48],[48,144,48,48],[96,144,48,48],[144,144,48,48]],
+          "frames": [
+            [
+              0,
+              0,
+              48,
+              48
+            ],
+            [
+              48,
+              0,
+              48,
+              48
+            ],
+            [
+              96,
+              0,
+              48,
+              48
+            ],
+            [
+              144,
+              0,
+              48,
+              48
+            ],
+            [
+              0,
+              48,
+              48,
+              48
+            ],
+            [
+              48,
+              48,
+              48,
+              48
+            ],
+            [
+              96,
+              48,
+              48,
+              48
+            ],
+            [
+              144,
+              48,
+              48,
+              48
+            ],
+            [
+              0,
+              96,
+              48,
+              48
+            ],
+            [
+              48,
+              96,
+              48,
+              48
+            ],
+            [
+              96,
+              96,
+              48,
+              48
+            ],
+            [
+              144,
+              96,
+              48,
+              48
+            ],
+            [
+              0,
+              144,
+              48,
+              48
+            ],
+            [
+              48,
+              144,
+              48,
+              48
+            ],
+            [
+              96,
+              144,
+              48,
+              48
+            ],
+            [
+              144,
+              144,
+              48,
+              48
+            ]
+          ],
           "anims": [
-            {"id": "walk_down", "label": "walk down", "frames": [0,1,2,3], "fps": 7},
-            {"id": "walk_up", "label": "walk up", "frames": [4,5,6,7], "fps": 7},
-            {"id": "walk_left", "label": "walk left", "frames": [8,9,10,11], "fps": 7},
-            {"id": "walk_right", "label": "walk right", "frames": [12,13,14,15], "fps": 7},
-            {"id": "idle", "label": "standing idle", "frames": [0,4,8,12], "kind": "stills"},
-            {"id": "wave", "label": "wave / action pose", "frames": [3,7,11,15], "kind": "stills"}
+            {
+              "id": "walk_down",
+              "label": "walk down",
+              "frames": [
+                0,
+                1,
+                2,
+                3
+              ],
+              "fps": 7
+            },
+            {
+              "id": "walk_up",
+              "label": "walk up",
+              "frames": [
+                4,
+                5,
+                6,
+                7
+              ],
+              "fps": 7
+            },
+            {
+              "id": "walk_left",
+              "label": "walk left",
+              "frames": [
+                8,
+                9,
+                10,
+                11
+              ],
+              "fps": 7
+            },
+            {
+              "id": "walk_right",
+              "label": "walk right",
+              "frames": [
+                12,
+                13,
+                14,
+                15
+              ],
+              "fps": 7
+            },
+            {
+              "id": "idle",
+              "label": "standing idle",
+              "frames": [
+                0,
+                4,
+                8,
+                12
+              ],
+              "kind": "stills"
+            },
+            {
+              "id": "wave",
+              "label": "wave / action pose",
+              "frames": [
+                3,
+                7,
+                11,
+                15
+              ],
+              "kind": "stills"
+            }
           ],
           "fps": 7,
           "layout": "Same 4x4 layout as the farmer — the sheet is a palette remap (teal hair, green outfit), not a fresh generation.",
-          "sounds": ["assets/audio/sfx/honk.wav"],
-          "code": ["entities/neighbour.gd", "systems/sim/cold_open.gd", "systems/sim/brains/cold_open_brain.gd"],
-          "facts": {"Speed": "26 px/s", "Movement": "ground", "Note": "Deregistered the moment she opens the gate"}
+          "sounds": [
+            "assets/audio/sfx/honk.wav"
+          ],
+          "code": [
+            "entities/neighbour.gd",
+            "systems/sim/cold_open.gd",
+            "systems/sim/brains/cold_open_brain.gd"
+          ],
+          "facts": {
+            "Speed": "26 px/s",
+            "Movement": "ground",
+            "Note": "Deregistered the moment she opens the gate"
+          }
         },
         {
-          "id": "chicken", "name": "Chicken", "emoji": "🐔",
+          "id": "chicken",
+          "name": "Chicken",
+          "emoji": "🐔",
           "desc": "The toy, not a chore. Wanders the yard, lays an egg on a coin flip at the day turn, and clucks when tapped. (Whether the coin flip stays is an open question for the CEO — Q-50.)",
           "sheet": "assets/sprites/generated/chicken.png",
-          "frames": [[0,0,16,16],[16,0,16,16],[32,0,16,16],[48,0,16,16],
-                     [64,0,16,16],[80,0,16,16],[96,0,16,16],[112,0,16,16]],
+          "frames": [
+            [
+              0,
+              0,
+              16,
+              16
+            ],
+            [
+              16,
+              0,
+              16,
+              16
+            ],
+            [
+              32,
+              0,
+              16,
+              16
+            ],
+            [
+              48,
+              0,
+              16,
+              16
+            ],
+            [
+              64,
+              0,
+              16,
+              16
+            ],
+            [
+              80,
+              0,
+              16,
+              16
+            ],
+            [
+              96,
+              0,
+              16,
+              16
+            ],
+            [
+              112,
+              0,
+              16,
+              16
+            ]
+          ],
           "anims": [
-            {"id": "walk_right", "label": "walk right", "frames": [0,1,2,3], "fps": 7},
-            {"id": "walk_left", "label": "walk left", "frames": [4,5,6,7], "fps": 7},
-            {"id": "idle", "label": "standing rest", "frames": [0,4], "kind": "stills"}
+            {
+              "id": "walk_right",
+              "label": "walk right",
+              "frames": [
+                0,
+                1,
+                2,
+                3
+              ],
+              "fps": 7
+            },
+            {
+              "id": "walk_left",
+              "label": "walk left",
+              "frames": [
+                4,
+                5,
+                6,
+                7
+              ],
+              "fps": 7
+            },
+            {
+              "id": "idle",
+              "label": "standing rest",
+              "frames": [
+                0,
+                4
+              ],
+              "kind": "stills"
+            }
           ],
           "fps": 7,
           "layout": "16px single row: cells 0–3 walk right, cells 4–7 the same walk facing left — the one creature that carries its own left frames instead of mirroring.",
-          "sounds": ["assets/audio/sfx/cluck.wav"],
-          "code": ["entities/chicken.gd", "systems/sim/brains/chicken_brain.gd"],
-          "facts": {"Speed": "20 px/s", "Movement": "ground", "Lays": "≤1 egg per day rollover, 50/50"}
+          "sounds": [
+            "assets/audio/sfx/cluck.wav"
+          ],
+          "code": [
+            "entities/chicken.gd",
+            "systems/sim/brains/chicken_brain.gd"
+          ],
+          "facts": {
+            "Speed": "20 px/s",
+            "Movement": "ground",
+            "Lays": "≤1 egg per day rollover, 50/50"
+          }
         },
         {
-          "id": "crow", "name": "Crow", "emoji": "🐦‍⬛",
+          "id": "crow",
+          "name": "Crow",
+          "emoji": "🐦‍⬛",
           "desc": "The joke, not the threat. Flies in on a daily schedule, prefers acorns over crops, eats one thing, and flees any scare. One chance per day — shooing it is a win, not a reprieve.",
           "sheet": "assets/sprites/generated/crow.png",
-          "frames": [[0,0,16,16],[16,0,16,16],[32,0,16,16]],
+          "frames": [
+            [
+              0,
+              0,
+              16,
+              16
+            ],
+            [
+              16,
+              0,
+              16,
+              16
+            ],
+            [
+              32,
+              0,
+              16,
+              16
+            ]
+          ],
           "anims": [
-            {"id": "flap", "label": "flying", "frames": [1,2], "fps": 6},
-            {"id": "perched", "label": "perched / eating", "frames": [0], "kind": "stills"}
+            {
+              "id": "flap",
+              "label": "flying",
+              "frames": [
+                1,
+                2
+              ],
+              "fps": 6
+            },
+            {
+              "id": "perched",
+              "label": "perched / eating",
+              "frames": [
+                0
+              ],
+              "kind": "stills"
+            }
           ],
           "fps": 6,
           "layout": "Perched (while eating), wings up, wings down — a 2-frame flap in flight.",
-          "sounds": ["assets/audio/sfx/squawk.wav", "assets/audio/sfx/till.wav"],
-          "code": ["entities/crow.gd", "systems/sim/brains/crow_brain.gd"],
-          "facts": {"Speed": "60 px/s in, 80 out", "Movement": "fly", "Diet": "acorns first, crops when the stock runs dry"}
+          "sounds": [
+            "assets/audio/sfx/squawk.wav",
+            "assets/audio/sfx/till.wav"
+          ],
+          "code": [
+            "entities/crow.gd",
+            "systems/sim/brains/crow_brain.gd"
+          ],
+          "facts": {
+            "Speed": "60 px/s in, 80 out",
+            "Movement": "fly",
+            "Diet": "acorns first, crops when the stock runs dry"
+          }
         },
         {
-          "id": "sprinkler", "name": "Sprinkler", "emoji": "💦",
+          "id": "sprinkler",
+          "name": "Sprinkler",
+          "emoji": "💦",
           "desc": "The first machine. A static actor that never moves; at the day turn its brain issues ordinary water actions over its radius — automation through the exact same gateway as a thumb.",
           "sheet": "assets/sprites/generated/sprinkler.png",
-          "frames": [[0,0,16,16],[16,0,16,16]],
-          "frame_names": ["idle", "spraying"],
+          "frames": [
+            [
+              0,
+              0,
+              16,
+              16
+            ],
+            [
+              16,
+              0,
+              16,
+              16
+            ]
+          ],
+          "frame_names": [
+            "idle",
+            "spraying"
+          ],
           "fps": 1.2,
           "layout": "Two state cells (idle, spraying) — a threshold swap, not an animation; the spray frame holds ~1.4s after the day turn.",
           "sounds": [],
-          "code": ["entities/sprinkler.gd", "systems/sim/brains/sprinkler_brain.gd"],
-          "facts": {"Movement": "static", "Status": "built and tested; nothing places one yet (debut awaits a design ruling)"}
+          "code": [
+            "entities/sprinkler.gd",
+            "systems/sim/brains/sprinkler_brain.gd"
+          ],
+          "facts": {
+            "Movement": "static",
+            "Status": "built and tested; nothing places one yet (debut awaits a design ruling)"
+          }
         },
         {
-          "id": "ant_scout", "name": "Ant Scout", "emoji": "🐜",
+          "id": "ant_scout",
+          "name": "Ant Scout",
+          "emoji": "🐜",
           "desc": "Wanders until it finds a crop, then walks home laying a scent trail for the foragers. Has no verbs at all — it only moves and deposits. Stompable.",
           "sheet": "assets/sprites/generated/ant_scout.png",
-          "frames": [[0,0,16,16],[16,0,16,16]],
-          "fps": 6, "mirror": true,
+          "frames": [
+            [
+              0,
+              0,
+              16,
+              16
+            ],
+            [
+              16,
+              0,
+              16,
+              16
+            ]
+          ],
+          "fps": 6,
+          "mirror": true,
           "layout": "A 2-frame walk facing right; left is a mirror.",
           "sounds": [],
-          "code": ["entities/ant.gd", "systems/sim/brains/ant_scout_brain.gd"],
-          "facts": {"Speed": "10 px/s", "Senses": "smells crops within 3 tiles", "Counterplay": "stomp it"}
+          "code": [
+            "entities/ant.gd",
+            "systems/sim/brains/ant_scout_brain.gd"
+          ],
+          "facts": {
+            "Speed": "10 px/s",
+            "Senses": "smells crops within 3 tiles",
+            "Counterplay": "stomp it"
+          }
         },
         {
-          "id": "ant_forager", "name": "Ant Forager", "emoji": "🐜",
+          "id": "ant_forager",
+          "name": "Ant Forager",
+          "emoji": "🐜",
           "desc": "Follows the scout's scent gradient, takes exactly one crop, and carries it home — reinforcing the trail as it goes. The raid mechanic in miniature.",
           "sheet": "assets/sprites/generated/ant_forager.png",
-          "frames": [[0,0,16,16],[16,0,16,16]],
-          "fps": 6, "mirror": true,
+          "frames": [
+            [
+              0,
+              0,
+              16,
+              16
+            ],
+            [
+              16,
+              0,
+              16,
+              16
+            ]
+          ],
+          "fps": 6,
+          "mirror": true,
           "layout": "A 2-frame walk — the scout carrying a pea; left is a mirror.",
           "sounds": [],
-          "code": ["entities/ant.gd", "systems/sim/brains/ant_forager_brain.gd"],
-          "facts": {"Speed": "8 px/s", "Takes": "exactly one crop per trip"}
+          "code": [
+            "entities/ant.gd",
+            "systems/sim/brains/ant_forager_brain.gd"
+          ],
+          "facts": {
+            "Speed": "8 px/s",
+            "Takes": "exactly one crop per trip"
+          }
         },
         {
-          "id": "rabbit", "name": "Rabbit", "emoji": "🐇",
+          "id": "rabbit",
+          "name": "Rabbit",
+          "emoji": "🐇",
           "desc": "Garden thief. Smells a crop within five tiles, hops over, and takes a bite — but bolts whenever the player comes within three tiles. Not stompable; your footsteps are the counterplay.",
           "sheet": "assets/sprites/generated/rabbit.png",
-          "frames": [[0,0,16,16],[16,0,16,16],[32,0,16,16],[48,0,16,16]],
-          "fps": 7, "mirror": true,
+          "frames": [
+            [
+              0,
+              0,
+              16,
+              16
+            ],
+            [
+              16,
+              0,
+              16,
+              16
+            ],
+            [
+              32,
+              0,
+              16,
+              16
+            ],
+            [
+              48,
+              0,
+              16,
+              16
+            ]
+          ],
+          "fps": 7,
+          "mirror": true,
           "layout": "A 4-frame hop; left is a mirror.",
           "sounds": [],
-          "code": ["entities/grazer.gd", "systems/sim/brains/grazer_brain.gd"],
-          "facts": {"Speed": "30 px/s", "Spooks at": "3 tiles", "Returns": "when you walk away"}
+          "code": [
+            "entities/grazer.gd",
+            "systems/sim/brains/grazer_brain.gd"
+          ],
+          "facts": {
+            "Speed": "30 px/s",
+            "Spooks at": "3 tiles",
+            "Returns": "when you walk away"
+          }
         },
         {
-          "id": "kangaroo", "name": "Kangaroo", "emoji": "🦘",
+          "id": "kangaroo",
+          "name": "Kangaroo",
+          "emoji": "🦘",
           "desc": "The rabbit over the fence — same brain, same senses, one difference: its hop crosses fences, hedges, and closed gates. The pest that makes walls insufficient.",
           "sheet": "assets/sprites/generated/kangaroo.png",
-          "frames": [[0,0,16,16],[16,0,16,16],[32,0,16,16],[48,0,16,16]],
-          "fps": 7, "mirror": true,
+          "frames": [
+            [
+              0,
+              0,
+              16,
+              16
+            ],
+            [
+              16,
+              0,
+              16,
+              16
+            ],
+            [
+              32,
+              0,
+              16,
+              16
+            ],
+            [
+              48,
+              0,
+              16,
+              16
+            ]
+          ],
+          "fps": 7,
+          "mirror": true,
           "layout": "A 4-frame hop, same cadence as the rabbit; left is a mirror.",
           "sounds": [],
-          "code": ["entities/grazer.gd", "systems/sim/brains/grazer_brain.gd"],
-          "facts": {"Speed": "45 px/s", "Movement": "hop — ignores barriers"}
+          "code": [
+            "entities/grazer.gd",
+            "systems/sim/brains/grazer_brain.gd"
+          ],
+          "facts": {
+            "Speed": "45 px/s",
+            "Movement": "hop — ignores barriers"
+          }
         },
         {
-          "id": "songbird", "name": "Songbird", "emoji": "🐦",
+          "id": "songbird",
+          "name": "Songbird",
+          "emoji": "🐦",
           "desc": "Pure charm. Drifts across the farm, perches, drifts on. Zero verbs — its brain can never return an action, so it never appears in a replay log. The farm's ambient life.",
           "sheet": "assets/sprites/generated/songbird.png",
-          "frames": [[0,0,16,16],[16,0,16,16],[32,0,16,16]],
-          "anims": [
-            {"id": "flap", "label": "flying", "frames": [1,2], "fps": 9},
-            {"id": "perched", "label": "perched", "frames": [0], "kind": "stills"}
+          "frames": [
+            [
+              0,
+              0,
+              16,
+              16
+            ],
+            [
+              16,
+              0,
+              16,
+              16
+            ],
+            [
+              32,
+              0,
+              16,
+              16
+            ]
           ],
-          "fps": 9, "mirror": true,
+          "anims": [
+            {
+              "id": "flap",
+              "label": "flying",
+              "frames": [
+                1,
+                2
+              ],
+              "fps": 9
+            },
+            {
+              "id": "perched",
+              "label": "perched",
+              "frames": [
+                0
+              ],
+              "kind": "stills"
+            }
+          ],
+          "fps": 9,
+          "mirror": true,
           "layout": "Perched, wings up, wings down — a 2-frame flap in flight.",
           "sounds": [],
-          "code": ["entities/songbird.gd", "systems/sim/brains/songbird_brain.gd"],
-          "facts": {"Speed": "35 px/s", "Movement": "fly", "Harm": "none, ever"}
+          "code": [
+            "entities/songbird.gd",
+            "systems/sim/brains/songbird_brain.gd"
+          ],
+          "facts": {
+            "Speed": "35 px/s",
+            "Movement": "fly",
+            "Harm": "none, ever"
+          }
         },
         {
-          "id": "mole", "name": "Mole", "emoji": "🦔",
+          "id": "mole",
+          "name": "Mole",
+          "emoji": "🦔",
           "desc": "Travels under the farm ignoring all terrain, surfaces on a freshly-sown tile, eats the seed, and goes back down. Stompable only in the seconds it is surfaced — its mound stays visible while it travels.",
           "sheet": "assets/sprites/generated/mole.png",
-          "frames": [[0,0,16,16],[16,0,16,16],[32,0,16,16]],
-          "frame_names": ["mound", "emerging", "surfaced"],
+          "frames": [
+            [
+              0,
+              0,
+              16,
+              16
+            ],
+            [
+              16,
+              0,
+              16,
+              16
+            ],
+            [
+              32,
+              0,
+              16,
+              16
+            ]
+          ],
+          "frame_names": [
+            "mound",
+            "emerging",
+            "surfaced"
+          ],
           "fps": 2,
           "layout": "Three state cells (mound, emerging, surfaced), shown here as a cycle.",
           "sounds": [],
-          "code": ["entities/mole.gd", "systems/sim/brains/mole_brain.gd"],
-          "facts": {"Movement": "burrow", "Eats": "fresh seeds", "Window": "vulnerable only while surfaced"}
+          "code": [
+            "entities/mole.gd",
+            "systems/sim/brains/mole_brain.gd"
+          ],
+          "facts": {
+            "Movement": "burrow",
+            "Eats": "fresh seeds",
+            "Window": "vulnerable only while surfaced"
+          }
         },
         {
-          "id": "worm", "name": "Worm", "emoji": "🪱",
+          "id": "worm",
+          "name": "Worm",
+          "emoji": "🪱",
           "desc": "The slowest thing in the game. Hunts crops and grows a body segment for every crop eaten — its own lengthening body becomes its main obstacle. Stompable on any tile it occupies. Not an animation cycle: the renderer draws one part per occupied tile, mirroring and rotating the directional parts to follow the path and drawing the symmetric cell as a joint at bends.",
           "sheet": "assets/sprites/generated/worm.png",
-          "frames": [[0,0,16,16],[16,0,16,16],[32,0,16,16],[48,0,16,16],[64,0,16,16]],
-          "frame_names": ["head", "body", "tail", "body (vertical)", "elbow / corner"],
+          "frames": [
+            [
+              0,
+              0,
+              16,
+              16
+            ],
+            [
+              16,
+              0,
+              16,
+              16
+            ],
+            [
+              32,
+              0,
+              16,
+              16
+            ],
+            [
+              48,
+              0,
+              16,
+              16
+            ],
+            [
+              64,
+              0,
+              16,
+              16
+            ]
+          ],
+          "frame_names": [
+            "head",
+            "body",
+            "tail",
+            "body (vertical)",
+            "elbow / corner"
+          ],
           "fps": 2,
           "anims": [
-            {"id": "straight", "label": "moving straight", "kind": "stills", "frames": [
-              {"parts": [{"f": 2, "dx": 0, "dy": 0}, {"f": 1, "dx": 1, "dy": 0}, {"f": 0, "dx": 2, "dy": 0}]}
-            ]},
-            {"id": "bend", "label": "turning a corner", "kind": "stills", "frames": [
-              {"parts": [{"f": 2, "dx": 0, "dy": 0}, {"f": 1, "dx": 1, "dy": 0}, {"f": 4, "dx": 2, "dy": 0},
-                         {"f": 3, "dx": 2, "dy": 1}, {"f": 0, "dx": 2, "dy": 2, "rot": 90}]}
-            ]}
+            {
+              "id": "straight",
+              "label": "moving straight",
+              "kind": "stills",
+              "frames": [
+                {
+                  "parts": [
+                    {
+                      "f": 2,
+                      "dx": 0,
+                      "dy": 0
+                    },
+                    {
+                      "f": 1,
+                      "dx": 1,
+                      "dy": 0
+                    },
+                    {
+                      "f": 0,
+                      "dx": 2,
+                      "dy": 0
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "bend",
+              "label": "turning a corner",
+              "kind": "stills",
+              "frames": [
+                {
+                  "parts": [
+                    {
+                      "f": 2,
+                      "dx": 0,
+                      "dy": 0
+                    },
+                    {
+                      "f": 1,
+                      "dx": 1,
+                      "dy": 0
+                    },
+                    {
+                      "f": 4,
+                      "dx": 2,
+                      "dy": 0
+                    },
+                    {
+                      "f": 3,
+                      "dx": 2,
+                      "dy": 1
+                    },
+                    {
+                      "f": 0,
+                      "dx": 2,
+                      "dy": 2,
+                      "rot": 90
+                    }
+                  ]
+                }
+              ]
+            }
           ],
           "layout": "Head, body, tail, vertical-body/joint parts, assembled one per occupied tile (the only multi-cell actor). Directional parts mirror leftward and rotate 90° for vertical travel; a bend draws the symmetric cell as a knuckle. A moving worm has no texture animation — each segment takes the tile of the one ahead, so seen in his own frame he looks constant and motion is purely positional; the two poses here are the shapes he holds.",
           "sounds": [],
-          "code": ["entities/worm.gd", "systems/sim/brains/worm_brain.gd"],
-          "facts": {"Speed": "6 px/s", "Grows": "+1 segment per crop eaten", "Starts at": "2 segments", "Bends": "joint cell at corners; head/tail rotate for vertical travel"}
+          "code": [
+            "entities/worm.gd",
+            "systems/sim/brains/worm_brain.gd"
+          ],
+          "facts": {
+            "Speed": "6 px/s",
+            "Grows": "+1 segment per crop eaten",
+            "Starts at": "2 segments",
+            "Bends": "joint cell at corners; head/tail rotate for vertical travel"
+          }
         },
         {
-          "id": "bot", "name": "Bot", "emoji": "🤖",
-          "desc": "The scripted automation line and the phase-4 promise. One species, three configs — follow, circle, shoo — carrying the full player verb set (the same array, not a copy). Nothing in the game hands one out yet.",
+          "id": "bot",
+          "name": "Robot Mk I",
+          "emoji": "🤖",
+          "desc": "The robot that obeys: you show it a list of squares and it works them once a day, deciding nothing. Its violet is what tells it apart from the mark-2 on the farm.",
           "sheet": "assets/sprites/generated/bot.png",
-          "frames": [[0,0,48,48],[48,0,48,48],[96,0,48,48],[144,0,48,48],
-                     [0,48,48,48],[48,48,48,48],[96,48,48,48],[144,48,48,48],
-                     [0,96,48,48],[48,96,48,48],[96,96,48,48],[144,96,48,48],
-                     [0,144,48,48],[48,144,48,48],[96,144,48,48],[144,144,48,48]],
+          "frames": [
+            [
+              0,
+              0,
+              48,
+              48
+            ],
+            [
+              48,
+              0,
+              48,
+              48
+            ],
+            [
+              96,
+              0,
+              48,
+              48
+            ],
+            [
+              144,
+              0,
+              48,
+              48
+            ],
+            [
+              0,
+              48,
+              48,
+              48
+            ],
+            [
+              48,
+              48,
+              48,
+              48
+            ],
+            [
+              96,
+              48,
+              48,
+              48
+            ],
+            [
+              144,
+              48,
+              48,
+              48
+            ],
+            [
+              0,
+              96,
+              48,
+              48
+            ],
+            [
+              48,
+              96,
+              48,
+              48
+            ],
+            [
+              96,
+              96,
+              48,
+              48
+            ],
+            [
+              144,
+              96,
+              48,
+              48
+            ],
+            [
+              0,
+              144,
+              48,
+              48
+            ],
+            [
+              48,
+              144,
+              48,
+              48
+            ],
+            [
+              96,
+              144,
+              48,
+              48
+            ],
+            [
+              144,
+              144,
+              48,
+              48
+            ]
+          ],
           "anims": [
-            {"id": "walk_down", "label": "walk down", "frames": [0,1,2,3], "fps": 7},
-            {"id": "walk_up", "label": "walk up", "frames": [4,5,6,7], "fps": 7},
-            {"id": "walk_left", "label": "walk left", "frames": [8,9,10,11], "fps": 7},
-            {"id": "walk_right", "label": "walk right", "frames": [12,13,14,15], "fps": 7},
-            {"id": "idle", "label": "standing idle", "frames": [0,4,8,12], "kind": "stills"}
+            {
+              "id": "walk_down",
+              "label": "walk down",
+              "frames": [
+                0,
+                1,
+                2,
+                3
+              ],
+              "fps": 7
+            },
+            {
+              "id": "walk_up",
+              "label": "walk up",
+              "frames": [
+                4,
+                5,
+                6,
+                7
+              ],
+              "fps": 7
+            },
+            {
+              "id": "walk_left",
+              "label": "walk left",
+              "frames": [
+                8,
+                9,
+                10,
+                11
+              ],
+              "fps": 7
+            },
+            {
+              "id": "walk_right",
+              "label": "walk right",
+              "frames": [
+                12,
+                13,
+                14,
+                15
+              ],
+              "fps": 7
+            },
+            {
+              "id": "idle",
+              "label": "standing idle",
+              "frames": [
+                0,
+                4,
+                8,
+                12
+              ],
+              "kind": "stills"
+            }
           ],
           "fps": 7,
           "layout": "Generated to the farmer's exact 4x4 layout so it reuses the player's draw path verbatim.",
           "sounds": [],
-          "code": ["entities/bot.gd", "systems/sim/brains/bot_brain.gd"],
-          "facts": {"Speed": "48 px/s (the player's)", "Configs": "follow / circle / shoo", "Rule": "a bot gets no verb the player lacks"}
+          "code": [
+            "entities/bot.gd",
+            "systems/sim/brains/bot_brain.gd"
+          ],
+          "facts": {
+            "Speed": "48 px/s (the player's)",
+            "Configs": "follow / circle / shoo",
+            "Rule": "a bot gets no verb the player lacks"
+          }
+        },
+        {
+          "id": "bot_mk2",
+          "name": "Robot Mk II",
+          "emoji": "🤖",
+          "desc": "The robot that decides: set it to one of three standing behaviours and it gets on with them. Copper rather than violet — a placeholder distinction, recoloured from the mark-1's own sheet, until the two marks are designed as different machines rather than the same one twice.",
+          "sheet": "assets/sprites/generated/bot_mk2.png",
+          "frames": [
+            [
+              0,
+              0,
+              48,
+              48
+            ],
+            [
+              48,
+              0,
+              48,
+              48
+            ],
+            [
+              96,
+              0,
+              48,
+              48
+            ],
+            [
+              144,
+              0,
+              48,
+              48
+            ],
+            [
+              0,
+              48,
+              48,
+              48
+            ],
+            [
+              48,
+              48,
+              48,
+              48
+            ],
+            [
+              96,
+              48,
+              48,
+              48
+            ],
+            [
+              144,
+              48,
+              48,
+              48
+            ],
+            [
+              0,
+              96,
+              48,
+              48
+            ],
+            [
+              48,
+              96,
+              48,
+              48
+            ],
+            [
+              96,
+              96,
+              48,
+              48
+            ],
+            [
+              144,
+              96,
+              48,
+              48
+            ],
+            [
+              0,
+              144,
+              48,
+              48
+            ],
+            [
+              48,
+              144,
+              48,
+              48
+            ],
+            [
+              96,
+              144,
+              48,
+              48
+            ],
+            [
+              144,
+              144,
+              48,
+              48
+            ]
+          ],
+          "anims": [
+            {
+              "id": "walk_down",
+              "label": "walk down",
+              "frames": [
+                0,
+                1,
+                2,
+                3
+              ],
+              "fps": 7
+            },
+            {
+              "id": "walk_up",
+              "label": "walk up",
+              "frames": [
+                4,
+                5,
+                6,
+                7
+              ],
+              "fps": 7
+            },
+            {
+              "id": "walk_left",
+              "label": "walk left",
+              "frames": [
+                8,
+                9,
+                10,
+                11
+              ],
+              "fps": 7
+            },
+            {
+              "id": "walk_right",
+              "label": "walk right",
+              "frames": [
+                12,
+                13,
+                14,
+                15
+              ],
+              "fps": 7
+            },
+            {
+              "id": "idle",
+              "label": "standing idle",
+              "frames": [
+                0,
+                4,
+                8,
+                12
+              ],
+              "kind": "stills"
+            }
+          ],
+          "fps": 7,
+          "layout": "Generated to the farmer's exact 4x4 layout so it reuses the player's draw path verbatim.",
+          "sounds": [],
+          "code": [
+            "entities/bot.gd",
+            "systems/sim/brains/bot_brain.gd"
+          ],
+          "facts": {
+            "Speed": "48 px/s (the player's)",
+            "Configs": "follow / circle / shoo",
+            "Rule": "a bot gets no verb the player lacks"
+          }
         }
       ]
     },
@@ -216,59 +1335,199 @@
       "blurb": "One shared sheet, one row per crop, four columns of growth. The animation here is the plant growing.",
       "entities": [
         {
-          "id": "wheat", "name": "Wheat", "emoji": "🌾",
+          "id": "wheat",
+          "name": "Wheat",
+          "emoji": "🌾",
           "desc": "The first crop and the tutorial's spine. Three days seed to harvest, 5 coins in, 15 out.",
           "sheet": "assets/sprites/generated/wheat.png",
-          "frames": [[0,0,16,16],[16,0,16,16],[32,0,16,16],[48,0,16,16]],
+          "frames": [
+            [
+              0,
+              0,
+              16,
+              16
+            ],
+            [
+              16,
+              0,
+              16,
+              16
+            ],
+            [
+              32,
+              0,
+              16,
+              16
+            ],
+            [
+              48,
+              0,
+              16,
+              16
+            ]
+          ],
           "fps": 1.5,
           "layout": "The four visual growth stages (seed, sprout, mid-growth, ready).",
-          "sounds": ["assets/audio/sfx/harvest_cc0_699491.wav"],
-          "code": ["crops/crop_defs.gd"],
-          "facts": {"Grows in": "3 days", "Seed": "5 coins", "Sells": "15 coins"}
+          "sounds": [
+            "assets/audio/sfx/harvest_cc0_699491.wav"
+          ],
+          "code": [
+            "crops/crop_defs.gd"
+          ],
+          "facts": {
+            "Grows in": "3 days",
+            "Seed": "5 coins",
+            "Sells": "15 coins"
+          }
         },
         {
-          "id": "tomato", "name": "Tomato", "emoji": "🍅",
+          "id": "tomato",
+          "name": "Tomato",
+          "emoji": "🍅",
           "desc": "The second crop — slower and richer. Unlocks in the shop after the first wheat harvest.",
           "sheet": "assets/sprites/generated/tomato.png",
-          "frames": [[0,0,16,16],[16,0,16,16],[32,0,16,16],[48,0,16,16]],
+          "frames": [
+            [
+              0,
+              0,
+              16,
+              16
+            ],
+            [
+              16,
+              0,
+              16,
+              16
+            ],
+            [
+              32,
+              0,
+              16,
+              16
+            ],
+            [
+              48,
+              0,
+              16,
+              16
+            ]
+          ],
           "fps": 1.5,
           "layout": "Four growth stages.",
-          "sounds": ["assets/audio/sfx/harvest_cc0_699492.wav"],
-          "code": ["crops/crop_defs.gd"],
-          "facts": {"Grows in": "5 days", "Seed": "10 coins", "Sells": "30 coins", "Unlock": "1 wheat harvested"}
+          "sounds": [
+            "assets/audio/sfx/harvest_cc0_699492.wav"
+          ],
+          "code": [
+            "crops/crop_defs.gd"
+          ],
+          "facts": {
+            "Grows in": "5 days",
+            "Seed": "10 coins",
+            "Sells": "30 coins",
+            "Unlock": "1 wheat harvested"
+          }
         },
         {
-          "id": "pea", "name": "Pea", "emoji": "🫛",
+          "id": "pea",
+          "name": "Pea",
+          "emoji": "🫛",
           "desc": "Shipped with the actor system as an ordinary crop, but deliberately absent from the crop order — so no shop or HUD path lists it yet. A crop waiting for its debut.",
           "sheet": "assets/sprites/generated/pea.png",
-          "frames": [[0,0,16,16],[16,0,16,16],[32,0,16,16],[48,0,16,16]],
+          "frames": [
+            [
+              0,
+              0,
+              16,
+              16
+            ],
+            [
+              16,
+              0,
+              16,
+              16
+            ],
+            [
+              32,
+              0,
+              16,
+              16
+            ],
+            [
+              48,
+              0,
+              16,
+              16
+            ]
+          ],
           "fps": 1.5,
           "layout": "Four growth stages. (Its shop-icon column still points at the coin — the documented trap in the crop defs.)",
-          "sounds": ["assets/audio/sfx/harvest_cc0_699493.wav"],
-          "code": ["crops/crop_defs.gd"],
-          "facts": {"Grows in": "3 days", "Seed": "8 coins", "Sells": "20 coins", "Status": "not yet in the shop"}
+          "sounds": [
+            "assets/audio/sfx/harvest_cc0_699493.wav"
+          ],
+          "code": [
+            "crops/crop_defs.gd"
+          ],
+          "facts": {
+            "Grows in": "3 days",
+            "Seed": "8 coins",
+            "Sells": "20 coins",
+            "Status": "not yet in the shop"
+          }
         },
         {
-          "id": "egg", "name": "Egg", "emoji": "🥚",
+          "id": "egg",
+          "name": "Egg",
+          "emoji": "🥚",
           "desc": "Inventory item, not a crop — laid by the chicken at the day turn, collected with a tap, sold for 10 coins. Has no growth art because it doesn't grow.",
           "sheet": "assets/sprites/generated/egg.png",
-          "frames": [[0,0,16,16]],
+          "frames": [
+            [
+              0,
+              0,
+              16,
+              16
+            ]
+          ],
           "fps": 1,
           "layout": "One cell — also the renderer's fallback picture for any small object it has no region for.",
           "sounds": [],
-          "code": ["crops/crop_defs.gd", "entities/chicken.gd"],
-          "facts": {"Sells": "10 coins", "Source": "the hen, mornings"}
+          "code": [
+            "crops/crop_defs.gd",
+            "entities/chicken.gd"
+          ],
+          "facts": {
+            "Sells": "10 coins",
+            "Source": "the hen, mornings"
+          }
         },
         {
-          "id": "scarecrow", "name": "Scarecrow", "emoji": "🎃",
+          "id": "scarecrow",
+          "name": "Scarecrow",
+          "emoji": "🎃",
           "desc": "A placeable object bought in the shop: protects a radius, and any crow that gets close flees. Collectable back into inventory and placeable again.",
           "sheet": "assets/sprites/generated/shop_icons.png",
-          "frames": [[32,0,16,16]],
+          "frames": [
+            [
+              32,
+              0,
+              16,
+              16
+            ]
+          ],
           "fps": 1,
           "layout": "Cell 2 of shop_icons.png — its shop icon and its world sprite are deliberately the same picture.",
-          "sounds": ["assets/audio/sfx/squawk.wav"],
-          "code": ["crops/crop_defs.gd", "systems/sim/sim_world.gd"],
-          "facts": {"Costs": "50 coins", "Effect": "crows flee its radius", "Movable": "collect and re-place"}
+          "sounds": [
+            "assets/audio/sfx/squawk.wav"
+          ],
+          "code": [
+            "crops/crop_defs.gd",
+            "systems/sim/sim_world.gd"
+          ],
+          "facts": {
+            "Costs": "50 coins",
+            "Effect": "crows flee its radius",
+            "Movable": "collect and re-place"
+          }
         }
       ]
     },
@@ -278,58 +1537,167 @@
       "blurb": "Six tools, one icon strip. The axe and pickaxe are earned — each sits visible at its parcel gate until its proof fires.",
       "entities": [
         {
-          "id": "hands", "name": "Hands", "emoji": "✋",
+          "id": "hands",
+          "name": "Hands",
+          "emoji": "✋",
           "desc": "Clears weeds and harvests ripe crops. The tool you always have.",
-          "sheet": "assets/sprites/tool_icons.png", "frames": [[0,0,16,16]], "fps": 1,
+          "sheet": "assets/sprites/tool_icons.png",
+          "frames": [
+            [
+              0,
+              0,
+              16,
+              16
+            ]
+          ],
+          "fps": 1,
           "layout": "tool_icons.png cell 0.",
-          "sounds": ["assets/audio/sfx/harvest_cc0_699491.wav"],
-          "code": ["systems/tools.gd"],
-          "facts": {"Verbs": "clear weed, harvest", "Cost": "30 units (half an hour)"}
+          "sounds": [
+            "assets/audio/sfx/harvest_cc0_699491.wav"
+          ],
+          "code": [
+            "systems/tools.gd"
+          ],
+          "facts": {
+            "Verbs": "clear weed, harvest",
+            "Cost": "30 units (half an hour)"
+          }
         },
         {
-          "id": "axe", "name": "Axe", "emoji": "🪓",
+          "id": "axe",
+          "name": "Axe",
+          "emoji": "🪓",
           "desc": "Clears logs and trees. Earned after 5 harvests — it waits at its parcel gate as a silhouette until then.",
-          "sheet": "assets/sprites/tool_icons.png", "frames": [[16,0,16,16]], "fps": 1,
+          "sheet": "assets/sprites/tool_icons.png",
+          "frames": [
+            [
+              16,
+              0,
+              16,
+              16
+            ]
+          ],
+          "fps": 1,
           "layout": "tool_icons.png cell 1; the same cell is drawn in-world at its pickup spot.",
-          "sounds": ["assets/audio/sfx/till.wav"],
-          "code": ["systems/tools.gd"],
-          "facts": {"Verbs": "clear log, clear tree", "Cost": "60 units (heavy)", "Earned by": "5 harvests"}
+          "sounds": [
+            "assets/audio/sfx/till.wav"
+          ],
+          "code": [
+            "systems/tools.gd"
+          ],
+          "facts": {
+            "Verbs": "clear log, clear tree",
+            "Cost": "60 units (heavy)",
+            "Earned by": "5 harvests"
+          }
         },
         {
-          "id": "pickaxe", "name": "Pickaxe", "emoji": "⛏️",
+          "id": "pickaxe",
+          "name": "Pickaxe",
+          "emoji": "⛏️",
           "desc": "Clears rocks. Earned after 3 logs cleared; opens the parcel behind it.",
-          "sheet": "assets/sprites/tool_icons.png", "frames": [[32,0,16,16]], "fps": 1,
+          "sheet": "assets/sprites/tool_icons.png",
+          "frames": [
+            [
+              32,
+              0,
+              16,
+              16
+            ]
+          ],
+          "fps": 1,
           "layout": "tool_icons.png cell 2.",
-          "sounds": ["assets/audio/sfx/till.wav"],
-          "code": ["systems/tools.gd"],
-          "facts": {"Verbs": "clear rock", "Cost": "60 units (heavy)", "Earned by": "3 logs cleared"}
+          "sounds": [
+            "assets/audio/sfx/till.wav"
+          ],
+          "code": [
+            "systems/tools.gd"
+          ],
+          "facts": {
+            "Verbs": "clear rock",
+            "Cost": "60 units (heavy)",
+            "Earned by": "3 logs cleared"
+          }
         },
         {
-          "id": "hoe", "name": "Hoe", "emoji": "🧑‍🌾",
+          "id": "hoe",
+          "name": "Hoe",
+          "emoji": "🧑‍🌾",
           "desc": "Tills cleared ground into soil. Refuses politely on the yard — home ground can't be farmed, by design.",
-          "sheet": "assets/sprites/tool_icons.png", "frames": [[48,0,16,16]], "fps": 1,
+          "sheet": "assets/sprites/tool_icons.png",
+          "frames": [
+            [
+              48,
+              0,
+              16,
+              16
+            ]
+          ],
+          "fps": 1,
           "layout": "tool_icons.png cell 3.",
-          "sounds": ["assets/audio/sfx/till.wav"],
-          "code": ["systems/tools.gd"],
-          "facts": {"Verbs": "till", "Cost": "30 units"}
+          "sounds": [
+            "assets/audio/sfx/till.wav"
+          ],
+          "code": [
+            "systems/tools.gd"
+          ],
+          "facts": {
+            "Verbs": "till",
+            "Cost": "30 units"
+          }
         },
         {
-          "id": "watering_can", "name": "Watering Can", "emoji": "🚿",
+          "id": "watering_can",
+          "name": "Watering Can",
+          "emoji": "🚿",
           "desc": "Waters seeded and growing tiles. Eight charges, refilled at the well; its icon doubles as the well's purpose pip.",
-          "sheet": "assets/sprites/tool_icons.png", "frames": [[64,0,16,16]], "fps": 1,
+          "sheet": "assets/sprites/tool_icons.png",
+          "frames": [
+            [
+              64,
+              0,
+              16,
+              16
+            ]
+          ],
+          "fps": 1,
           "layout": "tool_icons.png cell 4.",
-          "sounds": ["assets/audio/sfx/water.wav"],
-          "code": ["systems/tools.gd"],
-          "facts": {"Verbs": "water", "Cost": "30 units", "Charges": "8"}
+          "sounds": [
+            "assets/audio/sfx/water.wav"
+          ],
+          "code": [
+            "systems/tools.gd"
+          ],
+          "facts": {
+            "Verbs": "water",
+            "Cost": "30 units",
+            "Charges": "8"
+          }
         },
         {
-          "id": "seeds", "name": "Seed Pouch", "emoji": "🌰",
+          "id": "seeds",
+          "name": "Seed Pouch",
+          "emoji": "🌰",
           "desc": "Plants into tilled soil. Planting is free — the day's clock only moves for real work.",
-          "sheet": "assets/sprites/tool_icons.png", "frames": [[80,0,16,16]], "fps": 1,
+          "sheet": "assets/sprites/tool_icons.png",
+          "frames": [
+            [
+              80,
+              0,
+              16,
+              16
+            ]
+          ],
+          "fps": 1,
           "layout": "tool_icons.png cell 5; doubles as the seed box's purpose pip.",
           "sounds": [],
-          "code": ["systems/tools.gd"],
-          "facts": {"Verbs": "plant", "Cost": "0 units"}
+          "code": [
+            "systems/tools.gd"
+          ],
+          "facts": {
+            "Verbs": "plant",
+            "Cost": "0 units"
+          }
         }
       ]
     },
@@ -339,59 +1707,144 @@
       "blurb": "The fixed furniture of the farm — each one owns a verb, and each has learned to announce what it's for.",
       "entities": [
         {
-          "id": "cot", "name": "Cot", "emoji": "🛏️",
+          "id": "cot",
+          "name": "Cot",
+          "emoji": "🛏️",
           "desc": "Tap to sleep and end the day. The most-worked-on object in the game: it glows at dusk, halos a near-miss tap, tucks her in before the fade, and has a HUD button that taps it for you.",
           "sheet": "assets/sprites/generated/cot.png",
-          "frames": [[0,0,16,32],[16,0,16,32]],
+          "frames": [
+            [
+              0,
+              0,
+              16,
+              32
+            ],
+            [
+              16,
+              0,
+              16,
+              32
+            ]
+          ],
           "fps": 0.8,
           "layout": "A tall 16x32 cell; the second cell (blanket turned down) swaps in at dusk under one of the Look Lab treatments.",
           "sounds": [],
-          "code": ["systems/sim/sim_world.gd", "systems/cot_presentation.gd"],
-          "facts": {"Verb": "sleep", "Home": "the yard, vertically centered, left-aligned"}
+          "code": [
+            "systems/sim/sim_world.gd",
+            "systems/cot_presentation.gd"
+          ],
+          "facts": {
+            "Verb": "sleep",
+            "Home": "the yard, vertically centered, left-aligned"
+          }
         },
         {
-          "id": "well", "name": "Well", "emoji": "🪣",
+          "id": "well",
+          "name": "Well",
+          "emoji": "🪣",
           "desc": "Refills the watering can, free. Shows a watering-can pip after your first sip of water is spent.",
           "sheet": "assets/sprites/generated/well.png",
-          "frames": [[0,0,16,32]],
+          "frames": [
+            [
+              0,
+              0,
+              16,
+              32
+            ]
+          ],
           "fps": 1,
           "layout": "Tall 16x32 cell.",
-          "sounds": ["assets/audio/sfx/water.wav"],
-          "code": ["systems/sim/sim_world.gd", "systems/station_presentation.gd"],
-          "facts": {"Verb": "refill"}
+          "sounds": [
+            "assets/audio/sfx/water.wav"
+          ],
+          "code": [
+            "systems/sim/sim_world.gd",
+            "systems/station_presentation.gd"
+          ],
+          "facts": {
+            "Verb": "refill"
+          }
         },
         {
-          "id": "seed_box", "name": "Seed Box (Shop)", "emoji": "🛍️",
+          "id": "seed_box",
+          "name": "Seed Box (Shop)",
+          "emoji": "🛍️",
           "desc": "Opens the shop — the one screen that had to work with zero words: crop icons and coin counts only. Never shows its pip when you can't afford the cheapest seed.",
           "sheet": "assets/sprites/generated/seed_box.png",
-          "frames": [[0,0,16,32]],
+          "frames": [
+            [
+              0,
+              0,
+              16,
+              32
+            ]
+          ],
           "fps": 1,
           "layout": "Tall 16x32 cell.",
-          "sounds": ["assets/audio/sfx/ui_click.wav"],
-          "code": ["systems/sim/sim_world.gd", "ui/menus.gd"],
-          "facts": {"Verb": "open shop", "Design rule": "digits allowed, words never"}
+          "sounds": [
+            "assets/audio/sfx/ui_click.wav"
+          ],
+          "code": [
+            "systems/sim/sim_world.gd",
+            "ui/menus.gd"
+          ],
+          "facts": {
+            "Verb": "open shop",
+            "Design rule": "digits allowed, words never"
+          }
         },
         {
-          "id": "shipping_bin", "name": "Shipping Bin", "emoji": "📦",
+          "id": "shipping_bin",
+          "name": "Shipping Bin",
+          "emoji": "📦",
           "desc": "Sells the basket at a tap — the whole economy's exit. Wears a coin pip from your very first crop.",
           "sheet": "assets/sprites/generated/shipping_bin.png",
-          "frames": [[0,0,16,16]],
+          "frames": [
+            [
+              0,
+              0,
+              16,
+              16
+            ]
+          ],
           "fps": 1,
           "layout": "Standard 16px cell.",
-          "sounds": ["assets/audio/sfx/jingle.wav"],
-          "code": ["systems/sim/sim_world.gd", "systems/station_presentation.gd"],
-          "facts": {"Verb": "sell"}
+          "sounds": [
+            "assets/audio/sfx/jingle.wav"
+          ],
+          "code": [
+            "systems/sim/sim_world.gd",
+            "systems/station_presentation.gd"
+          ],
+          "facts": {
+            "Verb": "sell"
+          }
         },
         {
-          "id": "acorn", "name": "Acorn", "emoji": "🌰",
+          "id": "acorn",
+          "name": "Acorn",
+          "emoji": "🌰",
           "desc": "A finite stock of eight near the trees, never regenerating. Crows prefer them to crops — a mercy with a countdown — and the player can pick them up to hurry the countdown along.",
           "sheet": "assets/sprites/generated/acorn.png",
-          "frames": [[0,0,16,16]],
+          "frames": [
+            [
+              0,
+              0,
+              16,
+              16
+            ]
+          ],
           "fps": 1,
           "layout": "Standard 16px cell.",
           "sounds": [],
-          "code": ["systems/sim/sim_world.gd", "entities/crow.gd"],
-          "facts": {"Stock": "8, never refills", "Collectable": "yes — the egg's precedent"}
+          "code": [
+            "systems/sim/sim_world.gd",
+            "entities/crow.gd"
+          ],
+          "facts": {
+            "Stock": "8, never refills",
+            "Collectable": "yes — the egg's precedent"
+          }
         }
       ]
     },
@@ -401,82 +1854,370 @@
       "blurb": "The ground itself and the things standing in the way of a farm.",
       "entities": [
         {
-          "id": "obstacles", "name": "Obstacle Set", "emoji": "🪨",
-          "desc": "Rock (pickaxe), log (axe), weed (hands), tree (axe) — plus the boundary grammar: fence, hedge, closed gate, open gate. 'Not yet' is always a hedge you can see, never a refusal you can't read.",
-          "sheet": "assets/sprites/generated/obstacles.png",
-          "frames": [[0,0,16,16],[16,0,16,16],[32,0,16,16],[48,0,16,16],[64,0,16,16],[80,0,16,16],[96,0,16,16],[112,0,16,16],
-                     [128,0,16,16],[144,0,16,16],[160,0,16,16],[176,0,16,16],[192,0,16,16]],
-          "fps": 1,
-          "layout": "Eight cells in one row: rock, log, weed, tree, fence, hedge, gate closed, gate open.",
-          "sounds": ["assets/audio/sfx/till.wav"],
-          "code": ["systems/world_layout.gd", "world/farm.gd"],
-          "facts": {"Heavy clears": "rock, log, tree (60 units)", "Light": "weed (30 units)"}
-        },
-        {
-          "id": "terrain_field", "name": "Field Grassland", "emoji": "🌾",
+          "id": "terrain_field",
+          "name": "Field Grassland",
+          "emoji": "🌾",
           "desc": "The open field — the ground a hoe can open. Tall standing blades (generated, Q-70 ruling 2026-09-02): wild grassland against the yard's tidy lawn, so the fence line differs in pattern as well as color.",
           "sheet": "assets/sprites/generated/terrain_field.png",
-          "frames": [[0,0,48,48]],
+          "frames": [
+            [
+              0,
+              0,
+              48,
+              48
+            ]
+          ],
           "fps": 1,
           "layout": "A 3x3 arrangement of one seamless 16px tile.",
           "sounds": [],
-          "code": ["world/farm.gd"],
-          "facts": {"Tillable": "yes", "Replaced": "terrain_grass.png as the field's ground (Q-70); the old tile remains as the yard's derivation source"}
+          "code": [
+            "world/farm.gd"
+          ],
+          "facts": {
+            "Tillable": "yes",
+            "Replaced": "terrain_grass.png as the field's ground (Q-70); the old tile remains as the yard's derivation source"
+          }
         },
         {
-          "id": "terrain_yard", "name": "Yard Ground", "emoji": "🏡",
+          "id": "terrain_yard",
+          "name": "Yard Ground",
+          "emoji": "🏡",
           "desc": "Home ground: walkable like the field, but no hoe ever opens it. Derived from the original grass tile — tended-lawn colors on a quiet noise pattern. Since Q-70 the field beyond the fence is tall generated grassland, so the boundary is unmistakable.",
           "sheet": "assets/sprites/generated/terrain_yard.png",
-          "frames": [[0,0,48,48]],
+          "frames": [
+            [
+              0,
+              0,
+              48,
+              48
+            ]
+          ],
           "fps": 1,
           "layout": "The grass tile recolored by a script — derived, never independently generated.",
           "sounds": [],
-          "code": ["systems/world_layout.gd", "tools/gen_yard_ground.py"],
-          "facts": {"Tillable": "never", "Consequence": "the first till of every game is beyond the gate"}
+          "code": [
+            "systems/world_layout.gd",
+            "tools/gen_yard_ground.py"
+          ],
+          "facts": {
+            "Tillable": "never",
+            "Consequence": "the first till of every game is beyond the gate"
+          }
         },
         {
-          "id": "terrain_floor", "name": "Home Floor", "emoji": "🪵",
+          "id": "terrain_floor",
+          "name": "Home Floor",
+          "emoji": "🪵",
           "desc": "The player's home floor: wood planks derived from the fence's own browns, so indoor wood and outdoor wood are the same wood. Walkable, never tillable — the yard's rule, indoors.",
           "sheet": "assets/sprites/generated/terrain_floor.png",
-          "frames": [[0,0,48,48]],
+          "frames": [
+            [
+              0,
+              0,
+              48,
+              48
+            ]
+          ],
           "fps": 1,
           "layout": "A 3x3 arrangement of one seamless 16px plank tile — the terrain_grass.png format.",
           "sounds": [],
-          "code": ["systems/world_layout.gd", "tools/gen_interior.py"],
-          "facts": {"Tillable": "never", "Home": "the player's house (T-37)"}
+          "code": [
+            "systems/world_layout.gd",
+            "tools/gen_interior.py"
+          ],
+          "facts": {
+            "Tillable": "never",
+            "Home": "the player's house (T-37)"
+          }
         },
         {
-          "id": "interior_wall", "name": "Wall", "emoji": "🧱",
+          "id": "interior_wall",
+          "name": "Wall",
+          "emoji": "🧱",
           "desc": "The home's shell: plaster wall with a wood baseboard. A boundary tile like the fence and hedge: never walkable, drawn edge to edge.",
           "sheet": "assets/sprites/generated/interior_wall.png",
-          "frames": [[0,0,16,16]],
+          "frames": [
+            [
+              0,
+              0,
+              16,
+              16
+            ]
+          ],
           "fps": 1,
           "layout": "One tile, derived from the fence's browns by tools/gen_interior.py.",
           "sounds": [],
-          "code": ["systems/world_layout.gd", "tools/gen_interior.py"],
-          "facts": {"Walkable": "never — a boundary state, like the fence"}
+          "code": [
+            "systems/world_layout.gd",
+            "tools/gen_interior.py"
+          ],
+          "facts": {
+            "Walkable": "never — a boundary state, like the fence"
+          }
         },
         {
-          "id": "interior_window", "name": "Window", "emoji": "🪟",
+          "id": "interior_window",
+          "name": "Window",
+          "emoji": "🪟",
           "desc": "The wall with sky through glass. A boundary tile like the wall it is cut into: never walkable, drawn edge to edge.",
           "sheet": "assets/sprites/generated/interior_window.png",
-          "frames": [[0,0,16,16]],
+          "frames": [
+            [
+              0,
+              0,
+              16,
+              16
+            ]
+          ],
           "fps": 1,
           "layout": "The wall cell with a pane. The pane's blue is the one new colour: no ambient tile in the game is blue, so it reads as outdoors seen from indoors.",
           "sounds": [],
-          "code": ["systems/world_layout.gd", "tools/gen_interior.py"],
-          "facts": {"Walkable": "never — a boundary state, like the wall", "Furnishings": "more come later"}
+          "code": [
+            "systems/world_layout.gd",
+            "tools/gen_interior.py"
+          ],
+          "facts": {
+            "Walkable": "never — a boundary state, like the wall",
+            "Furnishings": "more come later"
+          }
         },
         {
-          "id": "terrain_dirt", "name": "Tilled Soil (Autotile)", "emoji": "🟫",
+          "id": "terrain_dirt",
+          "name": "Tilled Soil (Autotile)",
+          "emoji": "🟫",
           "desc": "Tilled and watered soil as a full autotile set — one 16px tile per neighbor mask, with a parallel watered block. The lookup is the identity function on the mask.",
           "sheet": "assets/sprites/generated/terrain_dirt.png",
-          "frames": [[0,0,64,64],[256,0,64,64]],
+          "frames": [
+            [
+              0,
+              0,
+              64,
+              64
+            ],
+            [
+              256,
+              0,
+              64,
+              64
+            ]
+          ],
           "fps": 0.7,
           "layout": "512x256: dry block in columns 0–15, watered block offset 16 columns right. Alternating here between dry and watered corners.",
-          "sounds": ["assets/audio/sfx/till.wav"],
-          "code": ["world/autotile.gd", "tools/gen_terrain_autotile.py"],
-          "facts": {"Cells": "512 (256 dry + 256 watered)", "Generated by": "a local script, no network"}
+          "sounds": [
+            "assets/audio/sfx/till.wav"
+          ],
+          "code": [
+            "world/autotile.gd",
+            "tools/gen_terrain_autotile.py"
+          ],
+          "facts": {
+            "Cells": "512 (256 dry + 256 watered)",
+            "Generated by": "a local script, no network"
+          }
+        },
+        {
+          "id": "obstacle_rock",
+          "name": "Rock",
+          "emoji": "🪨",
+          "desc": "A heavy clear: 60 units, and the pickaxe is the tool that answers it. The two cells after the rock are what is left of it between the beats of a clear (Q-50) — a clear you can watch shrink rather than a tile that blinks empty.",
+          "sheet": "assets/sprites/generated/obstacle_rock.png",
+          "frames": [
+            [
+              0,
+              0,
+              16,
+              16
+            ],
+            [
+              16,
+              0,
+              16,
+              16
+            ],
+            [
+              32,
+              0,
+              16,
+              16
+            ]
+          ],
+          "fps": 1,
+          "layout": "Three cells: the rock, then the two stages it shrinks through as the pickaxe lands.",
+          "sounds": [
+            "assets/audio/sfx/till.wav"
+          ],
+          "code": [
+            "systems/world_layout.gd",
+            "world/farm.gd"
+          ]
+        },
+        {
+          "id": "obstacle_log",
+          "name": "Log",
+          "emoji": "🪵",
+          "desc": "A heavy clear: 60 units, answered by the axe. The second cell is what is left of it after the first landed blow (Q-50).",
+          "sheet": "assets/sprites/generated/obstacle_log.png",
+          "frames": [
+            [
+              0,
+              0,
+              16,
+              16
+            ],
+            [
+              16,
+              0,
+              16,
+              16
+            ]
+          ],
+          "fps": 1,
+          "layout": "Two cells: the log, then the stage it shrinks through as the axe lands.",
+          "sounds": [
+            "assets/audio/sfx/till.wav"
+          ],
+          "code": [
+            "systems/world_layout.gd",
+            "world/farm.gd"
+          ]
+        },
+        {
+          "id": "obstacle_weed",
+          "name": "Weed",
+          "emoji": "🌿",
+          "desc": "The light clear: 30 units, and hands are enough. One beat, so it has no in-between stage to draw. Its picture doubles as the map's own edge — the one place two states deliberately share a cell.",
+          "sheet": "assets/sprites/generated/obstacle_weed.png",
+          "frames": [
+            [
+              0,
+              0,
+              16,
+              16
+            ]
+          ],
+          "fps": 1,
+          "layout": "One cell.",
+          "sounds": [
+            "assets/audio/sfx/till.wav"
+          ],
+          "code": [
+            "systems/world_layout.gd",
+            "world/farm.gd"
+          ]
+        },
+        {
+          "id": "obstacle_tree",
+          "name": "Tree",
+          "emoji": "🌳",
+          "desc": "The dearest clear, answered by the axe. The two cells after the tree are the stages it shrinks through as the blows land (Q-50).",
+          "sheet": "assets/sprites/generated/obstacle_tree.png",
+          "frames": [
+            [
+              0,
+              0,
+              16,
+              16
+            ],
+            [
+              16,
+              0,
+              16,
+              16
+            ],
+            [
+              32,
+              0,
+              16,
+              16
+            ]
+          ],
+          "fps": 1,
+          "layout": "Three cells: the tree, then the two stages it shrinks through.",
+          "sounds": [
+            "assets/audio/sfx/till.wav"
+          ],
+          "code": [
+            "systems/world_layout.gd",
+            "world/farm.gd"
+          ]
+        },
+        {
+          "id": "fence",
+          "name": "Fence",
+          "emoji": "🚧",
+          "desc": "The boundary that means **yours** — it edges her yard and her first plot, and it is the picture a fence she builds herself is drawn with (Q-92). Not to be confused with the hedge, which is the boundary that means not yet.",
+          "sheet": "assets/sprites/generated/fence.png",
+          "frames": [
+            [
+              0,
+              0,
+              16,
+              16
+            ]
+          ],
+          "fps": 1,
+          "layout": "One cell, shared by the world's fences and the player's.",
+          "sounds": [
+            "assets/audio/sfx/till.wav"
+          ],
+          "code": [
+            "systems/world_layout.gd",
+            "world/farm.gd"
+          ]
+        },
+        {
+          "id": "hedge",
+          "name": "Hedge",
+          "emoji": "🌳",
+          "desc": "The boundary that means **not yet** — it edges the parcels she has not unlocked. 'Not yet' is always a hedge you can see, never a refusal you cannot read.",
+          "sheet": "assets/sprites/generated/hedge.png",
+          "frames": [
+            [
+              0,
+              0,
+              16,
+              16
+            ]
+          ],
+          "fps": 1,
+          "layout": "One cell.",
+          "sounds": [
+            "assets/audio/sfx/till.wav"
+          ],
+          "code": [
+            "systems/world_layout.gd",
+            "world/farm.gd"
+          ]
+        },
+        {
+          "id": "gate",
+          "name": "Gate",
+          "emoji": "🚪",
+          "desc": "Closed and open are different pictures on purpose: closed becoming open is the cheapest celebration in the game, and it needs no words.",
+          "sheet": "assets/sprites/generated/gate.png",
+          "frames": [
+            [
+              0,
+              0,
+              16,
+              16
+            ],
+            [
+              16,
+              0,
+              16,
+              16
+            ]
+          ],
+          "fps": 1,
+          "layout": "Two cells: closed, then open.",
+          "sounds": [
+            "assets/audio/sfx/till.wav"
+          ],
+          "code": [
+            "systems/world_layout.gd",
+            "world/farm.gd"
+          ]
         }
       ]
     },
@@ -486,37 +2227,70 @@
       "blurb": "Art that exists with no species row, no brain, no renderer — candidates waiting for a design ruling.",
       "entities": [
         {
-          "id": "fox", "name": "Fox", "emoji": "🦊",
+          "id": "fox",
+          "name": "Fox",
+          "emoji": "🦊",
           "desc": "A finished sprite with no species row, no brain, no renderer — ready the day a phase-2 ruling gives it a job.",
           "sheet": "assets/sprites/generated/fox.png",
-          "frames": [[0,0,16,16]],
+          "frames": [
+            [
+              0,
+              0,
+              16,
+              16
+            ]
+          ],
           "fps": 1,
           "layout": "One sitting pose from the M2.5 art bench's spare row.",
           "sounds": [],
           "code": [],
-          "facts": {"Status": "no brain, no registry row — pure potential"}
+          "facts": {
+            "Status": "no brain, no registry row — pure potential"
+          }
         },
         {
-          "id": "duck", "name": "Duck", "emoji": "🦆",
+          "id": "duck",
+          "name": "Duck",
+          "emoji": "🦆",
           "desc": "A finished sprite with no species row, no brain, no renderer — ready the day a phase-2 ruling gives it a job.",
           "sheet": "assets/sprites/generated/duck.png",
-          "frames": [[0,0,16,16]],
+          "frames": [
+            [
+              0,
+              0,
+              16,
+              16
+            ]
+          ],
           "fps": 1,
           "layout": "One standing pose from the M2.5 art bench's spare row.",
           "sounds": [],
           "code": [],
-          "facts": {"Status": "no brain, no registry row — pure potential"}
+          "facts": {
+            "Status": "no brain, no registry row — pure potential"
+          }
         },
         {
-          "id": "squirrel", "name": "Squirrel", "emoji": "🐿️",
+          "id": "squirrel",
+          "name": "Squirrel",
+          "emoji": "🐿️",
           "desc": "A finished sprite with no species row, no brain, no renderer — ready the day a phase-2 ruling gives it a job.",
           "sheet": "assets/sprites/generated/squirrel.png",
-          "frames": [[0,0,16,16]],
+          "frames": [
+            [
+              0,
+              0,
+              16,
+              16
+            ]
+          ],
           "fps": 1,
           "layout": "One pose, acorn in paw, from the M2.5 art bench's spare row.",
           "sounds": [],
           "code": [],
-          "facts": {"Status": "no brain, no registry row — pure potential"}
+          "facts": {
+            "Status": "no brain, no registry row — pure potential"
+          }
         }
       ]
     }

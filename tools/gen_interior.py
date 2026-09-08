@@ -40,10 +40,12 @@ def mix(a, b, t):
 
 def fence_palette():
     """The fence cell's browns: darkest, median, lightest by luminance."""
-    img = Image.open(os.path.join(SPRITES, "obstacles.png")).convert("RGBA")
+    # The fence has its own sheet since the obstacle atlas was cut up (2026-09-07),
+    # so this reads the whole of it rather than cell 4 of something bigger.
+    img = Image.open(os.path.join(SPRITES, "fence.png")).convert("RGBA")
     colors = {}
     for y in range(16):
-        for x in range(64, 80):  # cell 4: the fence
+        for x in range(16):
             r, g, b, a = img.getpixel((x, y))
             if a > 0:
                 colors[(r, g, b)] = colors.get((r, g, b), 0) + 1

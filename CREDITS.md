@@ -28,6 +28,14 @@ before the first public build ships.*
 - **M1.5 additions, 2026-08-29** (same Retro Diffusion pipeline and rights as above,
   same palette-locking and post-processing steps; prompts and composition recorded in
   the `retro-diffusion-pixel-art` skill's `styles/tiny-farm.md`):
+  - `bot_mk2.png` (2026-09-07) is **derived, not generated**: `bot.png` with the violet
+    body's hue rotated to copper and nothing else touched — same silhouette, same tone
+    count, metal and lens and trim untouched. A placeholder so the two robot marks can be
+    told apart on the farm, at the designer's request, until they are designed as different
+    machines. Cost nothing; no model was called.
+  - `obstacle_rock.png`, `obstacle_log.png`, `obstacle_weed.png`, `obstacle_tree.png`,
+    `fence.png`, `hedge.png`, `gate.png` (2026-09-07) are `obstacles.png` cut into one sheet
+    per thing, every cell moved pixel-identical. Same provenance as the sheet they came from.
   - `obstacles.png` widened from 3 to 8 cells — the new cells are **tree, fence,
     hedge, gate (closed) and gate (open)**, the land that T-8's parcels are bounded
     by. Six generations at $0.027 each, $0.162 for the run. The four boundary cells

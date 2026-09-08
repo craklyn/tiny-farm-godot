@@ -1,0 +1,36 @@
+{
+  "id": "wcdd64247df8",
+  "title": "Read Daniel's hand edit to Obstacle Set",
+  "level": "task",
+  "owner": "ingrid",
+  "tier": 0,
+  "tier_reason": "reading his edit and writing down what it implies — nothing to walk back",
+  "ask": "Daniel hand-edited Obstacle Set in the sprite editor and said he was fixing: \"Checking that a second save does not undo the first one\". The measurement: Obstacle Set: 1 pixel across 1 frame (frame 1). The silhouette moved, not just the interior shading. Look at it against the style guide draft and the rest of the sheet, and say in a few lines what his edit is telling you about the direction — whether it agrees with the guide, quietly contradicts it, or repeats something he has done before. If it is just tidying and there is nothing to learn, say exactly that in one line; a short honest answer beats manufactured significance. Do not propose amendments to the guide yet; he wants a look session before it is signed. This is evidence-gathering for that session.",
+  "first_action": "Open assets/sprites/generated/obstacles.png and the ledger entry (step 4) in HQ, compare it with the style guide in docs/design/09-art-direction.md, and write down what the edit says about his taste.",
+  "state": "for_review",
+  "thread": "ingrid",
+  "source": "chat",
+  "source_message": "Daniel hand-edited Obstacle Set in the sprite editor and said he was fixing: \"Checking that a second save does not undo the first one\". The measurement: Obstacle Set: 1 pixel across 1 frame (frame 1). The silhouette moved, not just the interior shading. Look at it against the style guide draft and the rest of the sheet, and say in a few lines what his edit is telling you about the direction — whether it agrees with the guide, quietly contradicts it, or repeats something he has done before. If it is just tidying and there is nothing to learn, say exactly that in one line; a short honest answer beats manufactured significance. Do not propose amendments to the guide yet; he wants a look session before it is signed. This is evidence-gathering for that session.",
+  "result": "Nothing to learn from this one, and I'd rather say that plainly than dress it up.\n\nStep 4 is one erased pixel at (5,4) in the first cell — the top-left bush. His note says what it is: he was testing whether the editor's second save clobbers the first, not making a decision about the look. Three minutes later step 5 reverted the sheet back to step 3, and the shipping `assets/sprites/generated/obstacles.png` is byte-identical to the step-3 and step-5 snapshots. The test pixel is not in the build and it's committed clean.\n\nThe one pixel does technically break the silhouette of that bush, which is why the measurement flagged it — but a single erased edge pixel on a 16px rounded shape is exactly the kind of thing the silhouette flag will always catch and never mean anything by. His real obstacle edits are the earlier ones: steps 2 and 3, both erasing `#f8f4e6` out of the gaps between fenceposts. That's the pattern worth carrying into the look session — he wants to see the world through his props, not a white card behind them — and I've already got it noted from those two cards.\n\n**What this implies:** nothing about the art. The only thing it exposes is a filing gap — the editor filed this to me as taste evidence, and the revert three minutes later didn't withdraw it, so I read a card about a pixel that no longer exists. Two of the six obstacle cards on my plate are now noise of that shape. Worth fixing before the ledger gets long enough that I stop trusting it.",
+  "started": "2026-09-07T22:09",
+  "attempts": 2,
+  "created": "2026-09-07T22:05",
+  "created_ts": 1788843946.5708764,
+  "follow_ups": [
+    {
+      "title": "Close the art-director card when a sprite edit is reverted",
+      "owner": "rin",
+      "level": "task",
+      "tier": 1,
+      "first_action": "In HQ's sprite editor, when a revert step is written to hq/data/sprite_edits/<key>/, find the work item filed by each step being undone (the step's filed.work_id) and mark it withdrawn with the reason 'reverted at step N', so it leaves the art director's queue.",
+      "why": "Step 4 was reverted by step 5 but its card stayed open, so the art director read evidence about a pixel that is no longer in the sheet."
+    }
+  ],
+  "recommend": {
+    "question": "Should a hand edit you later revert still reach me as something to read?",
+    "answer": "No — have HQ withdraw the card automatically when the step is undone, and let reverted steps stay in the ledger as history only.",
+    "why": "Evidence of your taste is what makes those cards worth my time, and an edit you took back is not evidence of anything.",
+    "instead": "Leave every card open and let me judge relevance myself — honest, but it makes the ledger noisier the longer you use the editor."
+  },
+  "finished": "2026-09-07T22:10"
+}

@@ -162,6 +162,7 @@ func _init() -> void:
 	test_world_pages()
 	test_the_door()
 	test_fencing()
+	test_bed_cue_shape()
 	test_save_v3_migration()
 	test_robot_stall()
 	test_robot_usefulness()
@@ -10692,6 +10693,31 @@ func test_world_pages() -> void:
 
 
 # --- Q-92: she puts up a fence -----------------------------------------------
+# --- the go-to-bed cue fits what it points at (2026-09-07) -------------------
+func test_bed_cue_shape() -> void:
+	print("\n--- The dusk cue is the size of the thing it points at ---")
+	var bed := Vector2i(12, 27)
+	var door := Vector2i(2, 2)
+	var on_bed := CotPresentation.cue_rect(bed, 16, false)
+	var on_door := CotPresentation.cue_rect(door, 16, true)
+	_assert(on_bed.size == Vector2(16, 32),
+		"on the cot it is the bed's own two-tile footprint (%s)" % on_bed.size)
+	_assert(on_bed.position == Vector2(12 * 16, 26 * 16),
+		"starting a tile above it, because a bed lies along two squares (%s)" % on_bed.position)
+	# **The bug this exists for.** Outside, the cue lands on the front door, and
+	# the bed's footprint painted a bed outline over the doorway and the wall
+	# above it — so from the yard the house wore a bed every dusk.
+	_assert(on_door.size == Vector2(16, 16),
+		"on the door it is one tile, not a bed (%s)" % on_door.size)
+	_assert(on_door.position == Vector2(2 * 16, 2 * 16),
+		"and it starts on the door itself, with nothing spilled onto the wall above (%s)"
+			% on_door.position)
+	_assert(CotPresentation.cue_centre(door, 16, true) == Vector2(2 * 16 + 8, 2 * 16 + 8),
+		"the lamp hangs in the middle of the doorway")
+	_assert(CotPresentation.cue_centre(bed, 16, false) == Vector2(12 * 16 + 8, 27 * 16),
+		"and in the middle of the bed, which is the seam between its two squares")
+
+
 func test_fencing() -> void:
 	print("\n--- Fencing: bought in the crate, built on bare ground, taken back up ---")
 	var gs = load("res://systems/game_state.gd").new()

@@ -1,0 +1,15 @@
+{
+  "id": "w8a9b147387c6",
+  "title": "Retire obstacles.png now that nothing draws from it",
+  "level": "task",
+  "owner": "ravi",
+  "tier": 1,
+  "tier_reason": "deleting a file nothing renders from, once its one remaining generator is repointed",
+  "ask": "`assets/sprites/generated/obstacles.png` was cut into seven per-thing sheets on 2026-09-07 (obstacle_rock/log/weed/tree, fence, hedge, gate) and the renderer and the catalogue both moved. The file itself is still there because `tools/gen_obstacle_chips.py` writes into it — it derives the chip stages a multi-beat clear shrinks an obstacle through and appends them as cells 8-12. Those stages now live beside the obstacle they came off, so the generator needs to write into `obstacle_rock.png`, `obstacle_log.png` and `obstacle_tree.png` instead. Once it does, delete obstacles.png and its .import, the way the four shared atlases were deleted on 6 September.\n\n`tools/gen_interior.py` is already repointed at fence.png and needs nothing.",
+  "first_action": "Read tools/gen_obstacle_chips.py and world/farm.gd's `_chip_regions`, which is where the new layout is written down.",
+  "why": "A sheet nothing renders from is a trap: somebody edits it, sees no change, and loses an afternoon. That happened this week with a fence edit for a different reason, and the lesson is the same — a file that looks live and is not costs more than the disk it uses.",
+  "state": "waiting_session",
+  "source": "chat",
+  "created": "2026-09-07T23:12",
+  "created_ts": 1788847939.8343365
+}

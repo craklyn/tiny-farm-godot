@@ -289,9 +289,19 @@ var yard_texture: Texture2D
 var floor_texture: Texture2D
 var interior_wall_texture: Texture2D
 var interior_window_texture: Texture2D
-var biomes_texture: Texture2D
-# T-37: which sheet a boundary/obstacle state draws from. Everything defaults
-# to obstacles.png (biomes_texture); interior states name their own sheet.
+var obstacle_rock_texture: Texture2D
+var obstacle_log_texture: Texture2D
+var obstacle_weed_texture: Texture2D
+var obstacle_tree_texture: Texture2D
+var fence_texture: Texture2D
+var hedge_texture: Texture2D
+var gate_texture: Texture2D
+# Which sheet a clear's chip stages come from, keyed by the clearing verb.
+var _chip_sheets: Dictionary = {}
+# Which sheet a boundary or obstacle state draws from. Every state names its own
+# since the shared obstacle atlas was cut up (2026-09-07); a state absent from
+# here has no picture and is not drawn, which is louder than falling back to
+# whatever sheet happened to be the default.
 var tile_sheets: Dictionary = {}
 var icons_texture: Texture2D          # shop_icons.png, the wordless shop's one row
 var egg_texture: Texture2D
@@ -321,36 +331,71 @@ func _load_textures() -> void:
 		"tomato": load("res://assets/sprites/generated/tomato.png"),
 		"pea": load("res://assets/sprites/generated/pea.png"),
 	}
-	biomes_texture = load("res://assets/sprites/generated/obstacles.png")
+	obstacle_rock_texture = load("res://assets/sprites/generated/obstacle_rock.png")
+	obstacle_log_texture = load("res://assets/sprites/generated/obstacle_log.png")
+	obstacle_weed_texture = load("res://assets/sprites/generated/obstacle_weed.png")
+	obstacle_tree_texture = load("res://assets/sprites/generated/obstacle_tree.png")
+	fence_texture = load("res://assets/sprites/generated/fence.png")
+	hedge_texture = load("res://assets/sprites/generated/hedge.png")
+	gate_texture = load("res://assets/sprites/generated/gate.png")
 	icons_texture = load("res://assets/sprites/generated/shop_icons.png")
 	egg_texture = load("res://assets/sprites/generated/egg.png")
 	tool_icons_texture = load("res://assets/sprites/tool_icons.png")
 
-	# Tile regions (obstacles.png: rock, log, weed, tree, fence, hedge, gates)
-	tile_regions["obstacle_rock"] = Rect2(0 * 16, 0, 16, 16)
-	tile_regions["obstacle_log"] = Rect2(1 * 16, 0, 16, 16)
-	tile_regions["obstacle_weed"] = Rect2(2 * 16, 0, 16, 16)
-	tile_regions["border"] = Rect2(2 * 16, 0, 16, 16)
+	# **One thing, one sheet** (2026-09-07). `obstacles.png` was seven different
+	# subjects in one file — four obstacles with their chip stages, and the three
+	# pieces of boundary grammar — behind a single entry in the design studio. So
+	# a revert of the fence rolled back the rock, one entity's edit history was
+	# really seven histories interleaved, and regenerating a tree meant touching
+	# the file the gates live in. The same cut the shared animal atlases got on
+	# 6 September; this is the instance that hid from it, because it was one
+	# catalogue entry rather than several sharing a file.
+	#
+	# Every cell moved pixel-identical. Each state names its own sheet below, the
+	# way the interior states already did.
+	tile_regions["obstacle_rock"] = Rect2(0, 0, 16, 16)
+	tile_regions["obstacle_log"] = Rect2(0, 0, 16, 16)
+	tile_regions["obstacle_weed"] = Rect2(0, 0, 16, 16)
+	# The map's edge is drawn with the weed's picture — it always was, and it is
+	# the one place two states deliberately share a cell.
+	tile_regions["border"] = Rect2(0, 0, 16, 16)
+	tile_sheets["obstacle_rock"] = obstacle_rock_texture
+	tile_sheets["obstacle_log"] = obstacle_log_texture
+	tile_sheets["obstacle_weed"] = obstacle_weed_texture
+	tile_sheets["border"] = obstacle_weed_texture
 	# T-8 (Q-34): the boundary is the design's real content, so it has to be a
 	# thing she can see. Closed and open gates are different pictures, because
 	# "closed became open" is the cheapest celebration in the game.
-	tile_regions["obstacle_tree"] = Rect2(3 * 16, 0, 16, 16)
 	# Q-50's chips (2026-09-07): the stages a multi-beat clear shrinks an
 	# obstacle through, one per landed impact (tools/gen_obstacle_chips.py).
 	_chip_regions = {
-		"clear_rock": [Rect2(0, 0, 16, 16), Rect2(8 * 16, 0, 16, 16), Rect2(9 * 16, 0, 16, 16)],
-		"clear_log":  [Rect2(1 * 16, 0, 16, 16), Rect2(10 * 16, 0, 16, 16)],
-		"clear_tree": [Rect2(3 * 16, 0, 16, 16), Rect2(11 * 16, 0, 16, 16), Rect2(12 * 16, 0, 16, 16)],
+		"clear_rock": [Rect2(0, 0, 16, 16), Rect2(1 * 16, 0, 16, 16), Rect2(2 * 16, 0, 16, 16)],
+		"clear_log":  [Rect2(0, 0, 16, 16), Rect2(1 * 16, 0, 16, 16)],
+		"clear_tree": [Rect2(0, 0, 16, 16), Rect2(1 * 16, 0, 16, 16), Rect2(2 * 16, 0, 16, 16)],
 	}
-	tile_regions[WorldLayout.FENCE] = Rect2(4 * 16, 0, 16, 16)
+	# A chip is a stage of the obstacle it came off, so it draws from that
+	# obstacle's own sheet — the stages sit beside the thing they are stages of.
+	_chip_sheets = {
+		"clear_rock": obstacle_rock_texture,
+		"clear_log": obstacle_log_texture,
+		"clear_tree": obstacle_tree_texture,
+	}
+	tile_regions["obstacle_tree"] = Rect2(0, 0, 16, 16)
+	tile_sheets["obstacle_tree"] = obstacle_tree_texture
+	tile_regions[WorldLayout.FENCE] = Rect2(0, 0, 16, 16)
+	tile_sheets[WorldLayout.FENCE] = fence_texture
+	tile_sheets[WorldLayout.FENCE_BUILT] = fence_texture
+	tile_sheets[WorldLayout.HEDGE] = hedge_texture
+	tile_sheets[WorldLayout.GATE_CLOSED] = gate_texture
+	tile_sheets[WorldLayout.GATE_OPEN] = gate_texture
 	# The fence she puts up herself is the same picture as the yard's (Q-92): the
 	# hedge is the word for "not yours yet", so the fence is free to mean "yours"
 	# for both of them. The states differ so the router can tell whose is whose;
 	# nothing about the drawing does.
 	tile_regions[WorldLayout.FENCE_BUILT] = tile_regions[WorldLayout.FENCE]
-	tile_regions[WorldLayout.HEDGE] = Rect2(5 * 16, 0, 16, 16)
-	tile_regions[WorldLayout.GATE_CLOSED] = Rect2(6 * 16, 0, 16, 16)
-	tile_regions[WorldLayout.GATE_OPEN] = Rect2(7 * 16, 0, 16, 16)
+	tile_regions[WorldLayout.HEDGE] = Rect2(0, 0, 16, 16)
+	tile_regions[WorldLayout.GATE_CLOSED] = Rect2(0, 0, 16, 16)
+	tile_regions[WorldLayout.GATE_OPEN] = Rect2(1 * 16, 0, 16, 16)
 	# T-37: the home's shell lives on its own sheets (one per tile, 2026-09-06),
 	# so the per-state sheet table says so; every state absent from it draws
 	# from obstacles.png as always.
@@ -1142,7 +1187,9 @@ func _draw() -> void:
 				if region.size.x > 0:
 					var ob_rect := _react_rect(px, py, k, TILE_SIZE, shake)
 					# T-37: interior states draw from their own sheet.
-					var sheet: Texture2D = tile_sheets.get(tile.state, biomes_texture)
+					var sheet: Texture2D = tile_sheets.get(tile.state, null)
+					if sheet == null:
+						continue
 					render_queue.append({
 						"y": py,
 						"draw": func(): draw_texture_rect_region(sheet, ob_rect, region)
@@ -1151,11 +1198,13 @@ func _draw() -> void:
 				# The tile is already cleared in the sim, but the clear's beats
 				# are still landing — draw what is left of the obstacle (Q-50).
 				var chip := chip_region(Vector2i(tx, ty))
-				if chip.size.x > 0:
+				var chip_sheet: Texture2D = _chip_sheets.get(
+					String(_chipping.get(Vector2i(tx, ty), {}).get("verb", "")), null)
+				if chip.size.x > 0 and chip_sheet != null:
 					var chip_rect := _react_rect(px, py, k, TILE_SIZE, shake)
 					render_queue.append({
 						"y": py,
-						"draw": func(): draw_texture_rect_region(biomes_texture, chip_rect, chip)
+						"draw": func(): draw_texture_rect_region(chip_sheet, chip_rect, chip)
 					})
 
 			# Queue crops

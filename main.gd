@@ -1493,8 +1493,15 @@ func _draw_cot_presentation(overlay: CanvasItem) -> void:
 	if at.x < 0:
 		return
 	var t := Time.get_ticks_msec() / 1000.0
-	var cot_rect := Rect2(at.x * TILE_SIZE, (at.y - 1) * TILE_SIZE,
-		TILE_SIZE, TILE_SIZE * 2)
+	# **The cue is the size of the thing it points at** (2026-09-07, from play:
+	# "look at the house from the outside at night"). The geometry used to be the
+	# bed's own 16x32 footprint wherever it landed, which was right on the bed and
+	# wrong on the door: outside, a bed-shaped box was painted over the doorway
+	# *and the wall above it*, so the house wore a bed outline every dusk. The
+	# rationale at the time — "the doorway and the wall over it" — described what
+	# it did rather than what it should do. A door is one tile, so it gets one.
+	var cot_rect := CotPresentation.cue_rect(at, TILE_SIZE,
+		WorldLayout.is_door_object(farm.get_object(at.x, at.y)))
 
 	# Treatment B replaces the Q-11 pulse with a superset of itself — earlier,
 	# deeper, quicker — so the two are never drawn together and nothing is lost
@@ -1528,8 +1535,10 @@ func _draw_cot_glow(glow: CanvasItem) -> void:
 		GameState.energy, GameState.max_energy, Time.get_ticks_msec() / 1000.0)
 	if a <= 0.0:
 		return
-	var wick := Vector2(at.x * TILE_SIZE + TILE_SIZE / 2.0,
-		(at.y - 1) * TILE_SIZE + TILE_SIZE)
+	# The lamp hangs in the middle of what it lights, which is a two-tile bed
+	# indoors and a one-tile doorway outside — same reason as the pulse above.
+	var wick := CotPresentation.cue_centre(at, TILE_SIZE,
+		WorldLayout.is_door_object(farm.get_object(at.x, at.y)))
 	for i in range(CotPresentation.GLOW_RINGS - 1, -1, -1):
 		var r: float = CotPresentation.GLOW_INNER_R + i * CotPresentation.GLOW_RING_STEP
 		# Deliberately *not* daylight-compensated. Compensation exists to stop a

@@ -1,0 +1,22 @@
+{
+  "id": "weca50916647",
+  "title": "Read Daniel's hand edit to Scarecrow",
+  "level": "task",
+  "owner": "ingrid",
+  "tier": 0,
+  "tier_reason": "reading his edit and writing down what it implies — nothing to walk back",
+  "ask": "Daniel hand-edited Scarecrow in the sprite editor. He left no note, which usually means routine cleanup rather than a decision about the look. The measurement: Scarecrow: 2 pixels across 1 frame (Scarecrow). The silhouette moved, not just the interior shading. Look at it against the style guide draft and the rest of the sheet, and say in a few lines what his edit is telling you about the direction — whether it agrees with the guide, quietly contradicts it, or repeats something he has done before. If it is just tidying and there is nothing to learn, say exactly that in one line; a short honest answer beats manufactured significance. Do not propose amendments to the guide yet; he wants a look session before it is signed. This is evidence-gathering for that session.",
+  "first_action": "Open assets/sprites/generated/shop_icons.png and the ledger entry (step 1) in HQ, compare it with the style guide in docs/design/09-art-direction.md, and write down what the edit says about his taste.",
+  "state": "for_review",
+  "thread": "ingrid",
+  "source": "chat",
+  "source_message": "Daniel hand-edited Scarecrow in the sprite editor. He left no note, which usually means routine cleanup rather than a decision about the look. The measurement: Scarecrow: 2 pixels across 1 frame (Scarecrow). The silhouette moved, not just the interior shading. Look at it against the style guide draft and the rest of the sheet, and say in a few lines what his edit is telling you about the direction — whether it agrees with the guide, quietly contradicts it, or repeats something he has done before. If it is just tidying and there is nothing to learn, say exactly that in one line; a short honest answer beats manufactured significance. Do not propose amendments to the guide yet; he wants a look session before it is signed. This is evidence-gathering for that session.",
+  "result": "Two pixels, erased, at the bottom-centre of the scarecrow cell — column 8, rows 14 and 15, the very bottom of its 16×16 frame. Alpha only: nothing recoloured, no colour added to the sheet, none removed from it. That's the base of the post, and what he did was punch the last two pixels of it back to transparent.\n\nHere's the part worth your time. That's now the seventh hand edit in the ledger, and every single one of them is the same move: opaque background erased back to transparent. Farmer, twice on the fenceposts, the grassland, the obstacles, now the scarecrow. Across all of them the recolour count is zero. He has never once used the editor to change how something looks — he has used it to delete background the generator left behind.\n\nSo the honest answer to \"what does this tell you about the direction\" is: nothing. This is tidying. It doesn't agree with the style guide and it doesn't contradict it — palette, ramps, outlines, contrast, all untouched. It is the same repair, done for the seventh time.\n\nWhat it does tell me is about our pipeline, not his taste. Generated sheets are coming out of the image pipeline with opaque fill where transparency belongs, and the CEO is finding it one sprite at a time by eye. That's exactly backwards.\n\nOne thing to correct on my side: this reached me labelled \"the silhouette moved, not just interior shading,\" which is why it got filed as taste evidence. Technically true — alpha changed, so the flag trips — but every background cleanup will trip it. The measurement is reading a repair as a design decision, and it will keep doing that.\n\nNothing here belongs in the look session. It stays four captures, and the guide stays unsigned until you've seen them.\n\n**What accepting this starts:** Ravi fixes the pipeline so sheets come out with real transparency; Yuki sweeps the sheets that already shipped so you stop finding these by hand; Rin makes the editor call a cleanup a cleanup. Yuki's sweep touches art players see, so it comes back to you before it lands.",
+  "started": "2026-09-07T22:56",
+  "attempts": 1,
+  "created": "2026-09-07T22:56",
+  "created_ts": 1788846975.3376613,
+  "follow_ups": [],
+  "recommend": {},
+  "finished": "2026-09-07T22:58"
+}

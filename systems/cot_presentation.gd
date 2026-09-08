@@ -56,6 +56,28 @@ const BLURBS: Array[String] = [
 static var treatment: int = GLOW
 
 
+# **The cue is the size of the thing it points at.**
+#
+# At dusk the game says "the day ends here" by lighting the tile the next tap
+# should land on — the bed when she is in the room with it, the front door when
+# she is outside. Those are different shapes: a cot is two tiles tall, a doorway
+# is one. Drawing the bed's own 16x32 footprint on the door painted a bed outline
+# over the doorway *and the wall above it*, so from the yard the house wore a bed
+# every evening (reported from play, 2026-09-07). Here rather than inline in
+# `main.gd` because it is a pure fact about the shape, and a pure fact can be
+# asserted without a canvas.
+static func cue_rect(at: Vector2i, tile: int, is_door: bool) -> Rect2:
+	var tall: int = 1 if is_door else 2
+	var top: int = at.y if is_door else at.y - 1
+	return Rect2(at.x * tile, top * tile, tile, tile * tall)
+
+
+# Where the lamp hangs: the middle of what it lights, for `cue_rect`'s reason.
+static func cue_centre(at: Vector2i, tile: int, is_door: bool) -> Vector2:
+	var r := cue_rect(at, tile, is_door)
+	return r.position + r.size / 2.0
+
+
 static func set_treatment(t: int) -> int:
 	treatment = posmod(t, COUNT)
 	return treatment

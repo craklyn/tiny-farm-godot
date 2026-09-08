@@ -25,6 +25,24 @@ const TILE_SIZE := 16
 # 4x4 of 48 px: rows are down / up / left / right, columns are the walk cycle with
 # frame 0 the standing idle (CREDITS.md, the 2026-08-30 art bench).
 const SPRITES := preload("res://assets/sprites/generated/bot.png")
+
+# **A mark-2 is the same machine in different paint** (designer, 2026-09-07:
+# "can we give the mark 2 a palette swap at least for now?"). Both marks were one
+# sheet and one shop icon, so the robot that obeys and the robot that decides
+# were the same picture — and the whole ladder is that they are not the same
+# thing. The copper is a placeholder for that distinction rather than an answer
+# to it: it says *which one is this* while the two marks wait to be designed.
+#
+# Derived from `bot.png` by rotating the violet body's hue and nothing else — the
+# metal, the lens and the trim are untouched, so the silhouette is identical by
+# construction and the tone count is unchanged. It reads as the same chassis
+# because it is.
+const SPRITES_MK2 := preload("res://assets/sprites/generated/bot_mk2.png")
+
+# Which sheet this one draws from, decided once when it joins the farm rather
+# than asked per frame: a machine cannot change model.
+var _sheet: Texture2D = SPRITES
+
 const CELL := 48
 const WALK_FRAMES := 4
 const FRAME_TIME := 0.14  # the 4-frame walk budget in docs/design/09, as the hen's
@@ -54,6 +72,7 @@ func init_actor(farm_ref: Node2D, id: String = SpeciesDefs.BOT) -> void:
 	speed_px = SpeciesDefs.speed_of(farm.sim.species_of(actor_id)) * TILE_SIZE * float(SimClock.RATE)
 	position = sim_position()
 	facing = String(farm.sim.actor(actor_id).get("facing", "down"))
+	_sheet = SPRITES_MK2 if farm.sim.machine_key_of(actor_id) == "bot_mk2" else SPRITES
 	# Cosmetic, and the only die roll in this file: two bots off the same line
 	# should not march in lockstep.
 	_frame_timer = CosmeticRng.randf_range(0.0, FRAME_TIME)
@@ -122,5 +141,5 @@ func queue_render(canvas: CanvasItem, render_queue: Array) -> void:
 		"y": position.y,
 		"draw": func():
 			canvas.draw_texture_rect_region(
-				SPRITES, Rect2(draw_pos, Vector2(CELL, CELL)), region)
+				_sheet, Rect2(draw_pos, Vector2(CELL, CELL)), region)
 	})

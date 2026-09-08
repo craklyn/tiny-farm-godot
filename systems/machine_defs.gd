@@ -64,8 +64,8 @@ static var TYPES: Dictionary = {
 		# The fence cell the world's own fences are drawn from: the designer's
 		# ruling is that the picture is already right, because the hedge is what
 		# says "not yours yet" and the fence already says "yours".
-		"icon": { "sheet": "res://assets/sprites/generated/obstacles.png",
-			"region": Rect2(4 * 16, 0, 16, 16) },
+		"icon": { "sheet": "res://assets/sprites/generated/fence.png",
+			"region": Rect2(0, 0, 16, 16) },
 	},
 	"sprinkler": {
 		"name": "Sprinkler",
@@ -162,7 +162,7 @@ static var TYPES: Dictionary = {
 		# is never the same thing as starting it (from play, 2026-09-07).
 		"default_config": "idle",
 		"unlock_requirement": null,
-		"icon": { "sheet": "res://assets/sprites/generated/bot.png",
+		"icon": { "sheet": "res://assets/sprites/generated/bot_mk2.png",
 			"region": Rect2(0, 0, 48, 48) },
 	},
 }
