@@ -8762,6 +8762,23 @@ func test_crop_presentation() -> void:
 		if not CropDefs.TYPES.has(crop):
 			sampled = false
 	_assert(sampled, "every sampled colour belongs to a crop this game actually has")
+
+	# **And every crop that can ripen has one.** The other direction, and it is
+	# the one that rots: the table above was written by hand off three sheets, so
+	# the day a fourth crop is added it gets the warm neutral fallback and looks
+	# subtly wrong on a farm nobody is inspecting. Growable means it can reach a
+	# `ready` tile at all — the scarecrow is an object and the egg does not grow,
+	# so neither is ever treated.
+	var unsampled: Array[String] = []
+	for crop in CropDefs.TYPES.keys():
+		var def: Dictionary = CropDefs.TYPES[crop]
+		if not def.has("days_to_grow") or bool(def.get("is_object", false)):
+			continue
+		if not CropPresentation.RIPE_LIGHT.has(crop):
+			unsampled.append(String(crop))
+	_assert(unsampled.is_empty(),
+		"and every crop that can ripen has a colour of its own to give off (missing: %s)"
+			% str(unsampled))
 	for dark in [CropPresentation.OFF, CropPresentation.NOD, CropPresentation.STAND]:
 		CropPresentation.set_treatment(dark)
 		_assert_quiet(CropPresentation.bloom_ring_alpha(here, 0) == 0.0,
