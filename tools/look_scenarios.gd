@@ -101,7 +101,7 @@ const SCENARIOS: Array[Dictionary] = [
 		"id": "ripe_at_a_glance",
 		"axis": "ripe",
 		"question": "You are standing in your plot. Which of these tells you, without looking twice, which plants are ready to pick?",
-		"note": "Mid-morning. The plot was planted over several days, so eight of its thirty-odd plants are ripe and the rest are still coming on. Only the ripe ones are treated — everything else in the picture is the game exactly as it is today.",
+		"note": "Mid-morning. The plot was planted over several days, so ten of its thirty-one plants are ripe and the rest are still coming on. Only the ripe ones are treated — everything else in the picture is the game exactly as it is today.",
 		"focus_tile": Vector2i(6, 12),
 		"stand": Vector2i(6, 15),
 		"crop": Vector2i(380, 250),

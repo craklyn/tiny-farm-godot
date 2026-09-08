@@ -1145,11 +1145,24 @@ func _is_soil_at(tx: int, ty: int) -> bool:
 func _queue_ripe(queue: Array[Dictionary], at: Vector2i, tex: Texture2D,
 		region: Rect2, rect: Rect2, py: int, crop_type: String) -> void:
 	var t: float = Time.get_ticks_msec() / 1000.0
+	# D emits C's light as well as swaying, so the pool is registered before the
+	# match rather than inside one arm of it. `emits_light()` is the single place
+	# that says which treatments glow, so a new one cannot pick up the light by
+	# accident or lose it by omission.
+	if CropPresentation.emits_light():
+		_ripe_glow.append({
+			"at": rect.position + rect.size / 2.0
+				+ Vector2(0.0, CropPresentation.BLOOM_DROP),
+			"light": CropPresentation.bloom_light(crop_type),
+			"tile": at,
+		})
 	match CropPresentation.treatment:
-		CropPresentation.NOD:
+		CropPresentation.NOD, CropPresentation.SWAY_GLOW:
 			# Drawn in two pieces so the base stays rooted while the head
 			# travels: a plant that slides whole reads as a sprite being moved,
-			# and a plant whose top leans over fixed feet reads as a plant.
+			# and a plant whose top leans over fixed feet reads as a plant. D
+			# uses the same two pieces at half the travel — the gesture is the
+			# same one, turned down, which is what "more subtly" asked for.
 			var f: float = float(CropPresentation.NOD_SPLIT) / float(TILE_SIZE)
 			var head_src := Rect2(region.position,
 				Vector2(region.size.x, region.size.y * f))
@@ -1183,16 +1196,8 @@ func _queue_ripe(queue: Array[Dictionary], at: Vector2i, tex: Texture2D,
 			})
 		CropPresentation.BLOOM:
 			# The plant is drawn exactly as it always was; the light is *added*
-			# on the layer above, which is the only way a glow can be brighter
-			# than the tilled soil it is lying on. The pool is registered here,
-			# where the square is already being visited, rather than found by a
-			# second walk over the map.
-			_ripe_glow.append({
-				"at": rect.position + rect.size / 2.0
-					+ Vector2(0.0, CropPresentation.BLOOM_DROP),
-				"light": CropPresentation.bloom_light(crop_type),
-				"tile": at,
-			})
+			# on the layer above (registered just above this match), which is the
+			# only way a glow can be brighter than the tilled soil it lies on.
 			queue.append({
 				"y": py,
 				"draw": func():

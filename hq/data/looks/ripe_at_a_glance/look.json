@@ -2,8 +2,8 @@
   "id": "ripe_at_a_glance",
   "axis": "ripe",
   "question": "You are standing in your plot. Which of these tells you, without looking twice, which plants are ready to pick?",
-  "note": "Mid-morning. The plot was planted over several days, so eight of its thirty-odd plants are ripe and the rest are still coming on. Only the ripe ones are treated — everything else in the picture is the game exactly as it is today.",
-  "captured": "2026-09-07",
+  "note": "Mid-morning. The plot was planted over several days, so ten of its thirty-one plants are ripe and the rest are still coming on. Only the ripe ones are treated — everything else in the picture is the game exactly as it is today.",
+  "captured": "2026-09-08",
   "asked_by": [
     "Q-94"
   ],
@@ -23,6 +23,10 @@
     {
       "name": "C · the ripe ones give off their own colour",
       "blurb": "a soft bloom in the crop's own ripe colour — gold wheat, red tomato"
+    },
+    {
+      "name": "D · a gentler sway, and the glow",
+      "blurb": "half A's sway, slower, over C's light — the two together, quieter"
     }
   ],
   "sheet": "ripe_at_a_glance/sheet.png",

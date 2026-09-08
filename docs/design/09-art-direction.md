@@ -145,6 +145,15 @@ which failure matters:
 | A | the ripe ones nod | movement — the strongest signal for an eye looking elsewhere | a still picture: a screenshot, a trailer frame, or a decision made from a photograph |
 | B | the ripe ones stand up | silhouette — survives grey, distance, a small screen, colourblindness | loudness: it is the quietest of the three in the hand |
 | C | the ripe ones give off their own colour | light and saturation — the contrast rule below, taken to its end | colour, which this game has little of left (see the ledger) |
+| D | a gentler sway, and the glow | both at once — movement finds the eye, light holds it | it pays C's colour bill in full, and it is the one draft a still picture cannot show at all |
+
+D was added on 2026-09-08 at the designer's request, looking at the first sheet:
+*"make the ripe ones dance slightly more subtly, but also have their glow."* It is
+A at half the travel and a third again as slow, over C's light unchanged. It is a
+*fifth position* rather than a replacement, because A, B and C are the isolated
+channels and that is the whole reason the sheet can answer anything — a
+combination that swallowed its components would leave nobody able to say which
+half was doing the work.
 
 **The colour ledger.** A hue is not free here, and this is what each one is
 already spending itself on. Anything new has to survive being read against this

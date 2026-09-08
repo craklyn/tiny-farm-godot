@@ -66,8 +66,18 @@ const STAND := 2
 #     the crop's own ripe colour — gold for wheat, red for tomato — and the
 #     plant's own pixels lifted toward it.
 const BLOOM := 3
+# D — **both, with the dance turned down** (the designer, 2026-09-08, looking at
+#     the first sheet: *"make the ripe ones dance slightly more subtly, but also
+#     have their glow"*). Half A's sway and slower, over C's light.
+#
+#     Kept as its own position rather than folded into A and C, because the
+#     three above are the *isolated* channels and that is what makes the sheet
+#     answer anything: if a combination replaced them, nobody could say
+#     afterwards which half was doing the work. He gets his picture; the
+#     comparison keeps its controls.
+const SWAY_GLOW := 4
 
-const COUNT := 4
+const COUNT := 5
 
 # For the pause-menu switch, the capture rig and the sheet the designer reads.
 # Not shown anywhere the player looks.
@@ -76,12 +86,14 @@ const NAMES: Array[String] = [
 	"A · the ripe ones nod",
 	"B · the ripe ones stand up",
 	"C · the ripe ones give off their own colour",
+	"D · a gentler sway, and the glow",
 ]
 const BLURBS: Array[String] = [
 	"the fourth picture and nothing else — the game as it is today",
 	"a ready plant sways, and no two squares sway together",
 	"a ready plant is heavier, sits proud of the soil and throws a shadow",
 	"a soft bloom in the crop's own ripe colour — gold wheat, red tomato",
+	"half A's sway, slower, over C's light — the two together, quieter",
 ]
 
 # The selection, and the whole of its persistence: a static on a `class_name`
@@ -171,17 +183,38 @@ const NOD_RISE := 0.7         # [Playtest] and how far it rises at the ends of t
 const NOD_SPLIT := 10
 
 
+# **How far D turns the dance down**, as a fraction of A's. Half the travel and
+# a third again as long a breath: a plant that is *noticing* the light on it
+# rather than one waving for attention. The two numbers move together on purpose
+# — halving the swing alone reads as the same gesture done timidly, and slowing
+# it as well is what makes it read as a different, calmer motion.
+const SWAY_AMOUNT := 0.5    # [Playtest] of A's lean and rise
+const SWAY_SLOWER := 1.35   # [Playtest] of A's period
+
+
+## Which treatments move the plant, and by how much of A's travel. Zero for the
+## ones that do not, which is what keeps A and D out of B and C.
+static func nod_scale() -> float:
+	match treatment:
+		NOD:
+			return 1.0
+		SWAY_GLOW:
+			return SWAY_AMOUNT
+	return 0.0
+
+
 static func nod_period(tile: Vector2i) -> float:
-	return NOD_PERIOD * (1.0 + spread(tile, 1, NOD_SPREAD * 0.5))
+	var slower: float = SWAY_SLOWER if treatment == SWAY_GLOW else 1.0
+	return NOD_PERIOD * slower * (1.0 + spread(tile, 1, NOD_SPREAD * 0.5))
 
 
 ## Where the head of this plant is, relative to where it is drawn at rest.
-## Zero under every other treatment, which is what keeps A out of B and C.
 static func nod_offset(tile: Vector2i, t_sec: float) -> Vector2:
-	if treatment != NOD:
+	var k := nod_scale()
+	if k <= 0.0:
 		return Vector2.ZERO
 	var a: float = TAU * (t_sec / nod_period(tile) + hash01(tile, 0))
-	return Vector2(sin(a) * NOD_LEAN, -absf(sin(a)) * NOD_RISE)
+	return Vector2(sin(a) * NOD_LEAN * k, -absf(sin(a)) * NOD_RISE * k)
 
 
 # --- B · the ripe ones stand up -----------------------------------------------
@@ -283,9 +316,15 @@ static func bloom_radius(i: int) -> float:
 	return BLOOM_INNER_R + BLOOM_RING_STEP * float(BLOOM_RINGS - 1 - i)
 
 
-## The i-th ring's alpha on this square. Zero under every other treatment.
+## The i-th ring's alpha on this square. Zero under the treatments that emit no
+## light — C and D are the two that do, and D's is C's unchanged: he asked for
+## the sway turned down and the glow kept, so the glow is kept exactly.
+static func emits_light() -> bool:
+	return treatment == BLOOM or treatment == SWAY_GLOW
+
+
 static func bloom_ring_alpha(tile: Vector2i, i: int) -> float:
-	if treatment != BLOOM:
+	if not emits_light():
 		return 0.0
 	if i < 0 or i >= BLOOM_RINGS:
 		return 0.0

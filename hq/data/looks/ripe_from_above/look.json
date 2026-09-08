@@ -3,7 +3,7 @@
   "axis": "ripe",
   "question": "Now step back to where the game puts you when you are pointing a robot at squares. From up here, which one still tells you what is ready?",
   "note": "The same plot at the same moment, seen from the height the camera rises to when it hands you a machine to direct — about half the size the game is normally drawn at. The teaching mode's own dimming is deliberately not in the shot: what is being asked is whether the cue survives the distance, not how it competes with the grey.",
-  "captured": "2026-09-07",
+  "captured": "2026-09-08",
   "asked_by": [
     "Q-94"
   ],
@@ -23,6 +23,10 @@
     {
       "name": "C · the ripe ones give off their own colour",
       "blurb": "a soft bloom in the crop's own ripe colour — gold wheat, red tomato"
+    },
+    {
+      "name": "D · a gentler sway, and the glow",
+      "blurb": "half A's sway, slower, over C's light — the two together, quieter"
     }
   ],
   "sheet": "ripe_from_above/sheet.png",

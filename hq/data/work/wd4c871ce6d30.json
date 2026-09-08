@@ -1,0 +1,20 @@
+{
+  "id": "wd4c871ce6d30",
+  "title": "A rescued play session can never be verified against the build that recorded it",
+  "level": "task",
+  "owner": "grace",
+  "tier": 2,
+  "tier_reason": "It quietly disarms the one check that says a recorded session is trustworthy, and v0.2.0 has a story riding on that check.",
+  "ask": "tools/deploy_android.sh pulls the session off the tablet before installing (good, and deliberate), but by the time anyone runs tools/verify_replay.gd the working tree is already stamped with the NEW build_id and the new code is checked out. So the rescued session is always replayed cross-build. Seen live 2026-09-08: playtests/2026-09-08_002629 was recorded on v0.1.0-310-gf4ba1b7-dirty, was rescued by the deploy, and now mismatches at entry 53 (a chicken lay_egg at tick 914 of 922) against v0.1.0-316-g362ba9c. verify_replay.gd correctly prints 'cross-build replay. A failure below may be drift, not a bug' — which is exactly the problem: the result is uninterpretable either way, so a real regression and harmless drift look identical. Worse, the recording build was '-dirty', so the code that produced that session is not in git at all and the session can never be verified, by anyone, ever.\n\nTwo halves to fix. (1) Verify at rescue time, before the stamp and the export: the deploy already knows it has just pulled a session and the tree is still the old build at that moment. (2) Refuse to make a tablet build from a dirty tree, or record enough to reconstruct it — a '-dirty' build_id means every session it records is unverifiable by construction, which is a strange thing for a project whose replays are the phase-4 training data.\n\nDo not 'fix' this by widening what verify_replay accepts. The check earning its keep is the point.",
+  "first_action": "Reproduce: check out f4ba1b7, run tools/verify_replay.gd against playtests/2026-09-08_002629, and see whether the mismatch is drift (passes on the old build) or a real divergence (fails there too). That answer decides whether this is only a process fix or also a bug.",
+  "state": "queued",
+  "thread": "",
+  "source": "chief-of-staff",
+  "source_message": "Found while deploying the tablet on 2026-09-08 so the designer could see the ripe-crop drafts.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-08T00:29",
+  "created_ts": 1788852556.6379728,
+  "conversation": []
+}

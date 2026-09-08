@@ -132,6 +132,17 @@ func _wait_for_action() -> void:
 # them on the same harmless tiles every run. So: a scenario that stages a tile
 # claims the object layer too, and the lottery is out of the suite without
 # touching the hen, who is behaving exactly as designed.
+# How many squares on the farm are ripe right now. Scenario AL asserts against
+# this rather than against what it planted, because it runs last and the farm it
+# inherits is not empty.
+func _ready_tiles() -> int:
+	var n := 0
+	for ty in SimWorld.MAP_HEIGHT:
+		for tx in SimWorld.MAP_WIDTH:
+			if String(farm.sim.get_tile(tx, ty).get("state", "")) == "ready":
+				n += 1
+	return n
+
 func _stage_tile(tx: int, ty: int, state: String, crop_type: String = "") -> void:
 	farm.set_tile_state(tx, ty, state, crop_type)
 	if farm.get_object(tx, ty) != "":
@@ -4314,13 +4325,24 @@ func _scenario_al_a_ripe_crop_carries() -> void:
 		"and it adds light to the world rather than painting a colour over it")
 
 	# --- each position renders, and only the treated squares cost anything ---
-	for t in [CropPresentation.OFF, CropPresentation.NOD, CropPresentation.STAND,
-			CropPresentation.BLOOM]:
+	# Every position, counted rather than listed: a treatment added later is
+	# covered here the day it exists instead of the day somebody remembers.
+	for t in CropPresentation.COUNT:
 		var label: String = CropPresentation.name_of(t)
 		CropPresentation.set_treatment(t)
 		farm.queue_redraw()
 		await get_tree().process_frame
 		await get_tree().process_frame
+
+		# **Counted off the farm, not off the three this scenario planted.** The
+		# first version of these two assertions compared against `ripe.size()`
+		# and went intermittently red: this scenario runs last, and whether an
+		# earlier one has left a fourth ripe square standing depends on how many
+		# sim ticks the suite happened to burn on the way here. A test that fails
+		# on timing teaches everyone to ignore a red bar.
+		var ready_now := _ready_tiles()
+		_assert(ready_now >= ripe.size(),
+			"%s: the farm has %d ripe squares on it" % [label, ready_now])
 
 		var drew: int = farm.ripe_draws
 		for i in 4:
@@ -4330,16 +4352,16 @@ func _scenario_al_a_ripe_crop_carries() -> void:
 			_assert(per_frame == 0,
 				"%s: nothing is drawn on a ripe square at all — this is today's game" % label)
 		else:
-			_assert(per_frame >= ripe.size(),
-				"%s: every ripe square is drawn, frame after frame (%d over 4 frames, %d ripe)"
-					% [label, per_frame, ripe.size()])
-		_assert(farm._ripe_glow.size() == (ripe.size() if t == CropPresentation.BLOOM else 0),
-			"%s: %d pools of light, one per ripe square"
+			_assert(per_frame >= ready_now,
+				"%s: every one of them is drawn, frame after frame (%d draws over 4 frames)"
+					% [label, per_frame])
+		var wants_light: bool = CropPresentation.emits_light()
+		_assert(farm._ripe_glow.size() == (ready_now if wants_light else 0),
+			"%s: %d pools of light — one per ripe square, and none anywhere else"
 				% [label, farm._ripe_glow.size()])
 
 	# --- D-8, once per position: the tap still picks the crop ----------------
-	for t2 in [CropPresentation.OFF, CropPresentation.NOD, CropPresentation.STAND,
-			CropPresentation.BLOOM]:
+	for t2 in CropPresentation.COUNT:
 		var label2: String = CropPresentation.name_of(t2)
 		CropPresentation.set_treatment(t2)
 		var target := Vector2i(6, 9)

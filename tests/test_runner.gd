@@ -8599,7 +8599,8 @@ func test_crop_presentation() -> void:
 	_assert(CropPresentation.cycle() == CropPresentation.NOD, "cycling off gives A")
 	_assert(CropPresentation.cycle() == CropPresentation.STAND, "cycling A gives B")
 	_assert(CropPresentation.cycle() == CropPresentation.BLOOM, "cycling B gives C")
-	_assert(CropPresentation.cycle() == CropPresentation.OFF, "cycling C comes back to off")
+	_assert(CropPresentation.cycle() == CropPresentation.SWAY_GLOW, "cycling C gives D")
+	_assert(CropPresentation.cycle() == CropPresentation.OFF, "cycling D comes back to off")
 	_assert(CropPresentation.NAMES.size() == CropPresentation.COUNT
 			and CropPresentation.BLURBS.size() == CropPresentation.COUNT,
 		"every position has a name and a blurb for the sheet")
@@ -8677,7 +8678,43 @@ func test_crop_presentation() -> void:
 	_assert(apart, "two neighbouring plants are never at the same point of the sway")
 	CropPresentation.set_treatment(CropPresentation.STAND)
 	_assert(CropPresentation.nod_offset(here, 1.0) == Vector2.ZERO,
-		"and nothing sways under any other treatment")
+		"and nothing sways under B or C")
+
+	# --- D: the same dance turned down, over C's light -----------------------
+	#
+	# The designer, 2026-09-08, looking at the first sheet: *"make the ripe ones
+	# dance slightly more subtly, but also have their glow."* Both halves are
+	# asserted, because the value of D is precisely that it is A quieter and C
+	# untouched — if either drifts, it stops being the thing he asked for.
+	CropPresentation.set_treatment(CropPresentation.SWAY_GLOW)
+	var d_swing: float = 0.0
+	var a_swing: float = 0.0
+	for i in 400:
+		d_swing = maxf(d_swing, absf(CropPresentation.nod_offset(here, i * 0.05).x))
+	CropPresentation.set_treatment(CropPresentation.NOD)
+	for i in 400:
+		a_swing = maxf(a_swing, absf(CropPresentation.nod_offset(here, i * 0.05).x))
+	_assert(d_swing > 0.0 and d_swing < a_swing,
+		"D still dances (%.2f world px) and dances less than A (%.2f)" % [d_swing, a_swing])
+	CropPresentation.set_treatment(CropPresentation.SWAY_GLOW)
+	_assert(is_equal_approx(CropPresentation.nod_scale(), CropPresentation.SWAY_AMOUNT)
+			and CropPresentation.nod_scale() < 1.0,
+		"by exactly the fraction the file states, not by a second set of tuned numbers")
+	CropPresentation.set_treatment(CropPresentation.NOD)
+	var a_period := CropPresentation.nod_period(here)
+	CropPresentation.set_treatment(CropPresentation.SWAY_GLOW)
+	_assert(CropPresentation.nod_period(here) > a_period,
+		"and takes longer over it — slower as well as smaller, or it reads as A done timidly")
+	_assert(CropPresentation.emits_light(),
+		"and it glows")
+	CropPresentation.set_treatment(CropPresentation.BLOOM)
+	var c_ring := CropPresentation.bloom_ring_alpha(here, 0)
+	CropPresentation.set_treatment(CropPresentation.SWAY_GLOW)
+	_assert(is_equal_approx(CropPresentation.bloom_ring_alpha(here, 0), c_ring),
+		"with C's light unchanged — he asked for the sway turned down, not the light")
+	CropPresentation.set_treatment(CropPresentation.STAND)
+	_assert(not CropPresentation.emits_light() and CropPresentation.nod_scale() == 0.0,
+		"and B is still silhouette and nothing else")
 
 	# --- B: standing up ------------------------------------------------------
 	var base := Rect2(96.0, 176.0, 16.0, 16.0)
@@ -8725,9 +8762,11 @@ func test_crop_presentation() -> void:
 		if not CropDefs.TYPES.has(crop):
 			sampled = false
 	_assert(sampled, "every sampled colour belongs to a crop this game actually has")
-	CropPresentation.set_treatment(CropPresentation.STAND)
-	_assert(CropPresentation.bloom_ring_alpha(here, 0) == 0.0,
-		"and no other treatment emits any light at all")
+	for dark in [CropPresentation.OFF, CropPresentation.NOD, CropPresentation.STAND]:
+		CropPresentation.set_treatment(dark)
+		_assert_quiet(CropPresentation.bloom_ring_alpha(here, 0) == 0.0,
+			"%s emits no light" % CropPresentation.name_of(dark))
+	_assert(true, "and off, A and B emit no light at all")
 
 	CropPresentation.set_treatment(was)
 
