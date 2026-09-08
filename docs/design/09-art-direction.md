@@ -129,14 +129,36 @@ Five candidates were built and switched on the tablet; the losers are deleted an
 the two sheets on the decision card are the record of what was compared. This
 section keeps the reasoning, because the reasoning outlives the pick.*
 
-**The problem, measured.** Reported from play: nothing on the farm says loudly
-enough that a plant is ready to pick, so she has to go looking. The state is
-there and so is the picture — a crop has four cells and the fourth is ripe — but
-counted off the shipping sheet, **wheat's ready cell differs from the one before
-it by nine pixels**, three of them a pale gold highlight, on a 16x16 square. A
-tomato is better and still small. That is a real difference on one plant at
-arm's length and nothing at all on a plot of thirty, which is exactly what the
-report describes.
+**The problem, measured — and the measurement matters.** Reported from play:
+nothing on the farm says loudly enough that a plant is ready to pick, so she has
+to go looking. The state is there and so is the picture — a crop has four cells
+and the fourth is ripe. The surprise is that the ripe cell is **not a small
+change**. Off the shipping sheet, wheat's ripe step repaints **38 of the plant's
+56 pixels**. Most of the plant is redrawn and it is still invisible.
+
+What it does not change is the point:
+
+| | growing → ready, wheat |
+|---|---|
+| Pixels repainted | 38 of 56 — most of the plant |
+| Silhouette | 59 opaque pixels become 53; 18 pixels of outline differ |
+| Mean brightness | 127.7 → 127.4, a change of **0.3 of 255** |
+
+So the entire step is a **hue shift inside one colour family, at constant
+luminance, on an outline that barely moves**. Distance and peripheral vision
+both throw hue away and keep luminance and silhouette — which is to say the ripe
+cell spends the one channel that survives none of the conditions the cue has to
+work in. That is why "make the ripe cell more different" was never the answer,
+and why the drafts below are motion, silhouette and light rather than four more
+shades of gold.
+
+*Corrected 2026-09-08. This section first said "nine pixels", from a bad
+measurement — a diff of the two cells' colour histograms rather than of their
+pixels. It was wrong, and it was weaker: it framed the problem as a change too
+small to see, when the real problem is a large change in a channel that does not
+carry. The conclusion the drafts were built on is unaffected and better
+supported. The number was caught by the crop pages' own contact sheet, which now
+prints the per-state pixel delta under the growth ladder.*
 
 **The three drafts, and why they are three.** Each spends a different channel,
 because they fail in different places and one tuned treatment cannot tell you

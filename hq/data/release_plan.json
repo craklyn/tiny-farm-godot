@@ -62,7 +62,7 @@
           "title": "A ripe crop is obvious at a glance",
           "estimate_days": null,
           "done": true,
-          "why": "From play, 2026-09-07: nothing on the farm said loudly enough that a plant was ready to pick — she had to go looking. Measured, wheat's ripe cell differs from the half-grown one beside it by nine pixels on a sixteen-pixel square. Five candidates were built and judged on the tablet from two staged sheets, one at ground level and one from the height the camera rises to when she is directing a robot. Ruled 2026-09-08 (Q-94): a ready plant sways gently and gives off its own ripe colour — gold under wheat, red under tomato. Shipped as the only behaviour, wordless (S-7), and it cannot touch the sim (D-8).",
+          "why": "From play, 2026-09-07: nothing on the farm said loudly enough that a plant was ready to pick — she had to go looking. Measured, the ripe cell repaints most of the plant (38 of 56 pixels) and still cannot be seen, because it changes brightness by 0.3 of 255 and barely moves the outline — a hue shift inside one family, and hue is the first thing distance throws away. Five candidates were built and judged on the tablet from two staged sheets, one at ground level and one from the height the camera rises to when she is directing a robot. Ruled 2026-09-08 (Q-94): a ready plant sways gently and gives off its own ripe colour — gold under wheat, red under tomato. Shipped as the only behaviour, wordless (S-7), and it cannot touch the sim (D-8).",
           "raised": "2026-09-07"
         },
         {

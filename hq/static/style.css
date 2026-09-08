@@ -533,6 +533,10 @@ code.ref { background: #1b1710; border: 1px solid var(--line); border-radius: 6p
 .sp-opt.on .sp-opt-keep { visibility: visible; }
 .sp-side { max-width: 340px; }
 .sp-previews { display: flex; gap: 14px; }
+/* A class with `display` beats the browser's own [hidden] rule, so hiding
+   the flipbook for a contact sheet has to say so here (found on screen,
+   2026-09-08 — both were drawn at once). */
+.sp-previews[hidden], .sp-contact[hidden] { display: none; }
 .sp-previews figure { margin: 0; text-align: center; }
 .sp-previews figcaption { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
 #sp-preview, #sp-before { image-rendering: pixelated; background: #1b1710; border: 1px solid var(--line); border-radius: 8px; }
@@ -1464,3 +1468,20 @@ a.tool-card b { display: block; margin-bottom: 4px; }
   border-radius: 8px;
   max-width: 100%;
 }
+
+/* A set of states — poses, variants, a crop's growth ladder — shown all at once
+   instead of flipbooked, because the player never sees them in sequence and the
+   comparison across them is the whole job (see sprite.js). */
+.sp-contact-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.sp-contact-col {
+  margin: 0; text-align: center; padding: 4px; border-radius: 8px;
+  border: 2px solid transparent; cursor: pointer;
+}
+.sp-contact-col.on { border-color: var(--accent, #ffdb73); background: #1b1710; }
+.sp-contact-col canvas {
+  image-rendering: pixelated; background: #1b1710;
+  border: 1px solid var(--line); border-radius: 6px; display: block;
+}
+.sp-contact-col canvas + canvas { margin-top: 4px; }
+.sp-contact-col figcaption { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+.sp-contact-key { display: flex; gap: 10px; margin: 6px 0 0; opacity: .75; }

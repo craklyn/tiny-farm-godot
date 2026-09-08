@@ -1,0 +1,20 @@
+{
+  "id": "wd8f0a89af5b3",
+  "title": "A planted tomato shows the same picture for its first two days",
+  "level": "task",
+  "owner": "yuki",
+  "tier": 2,
+  "tier_reason": "A player who plants a tomato waters it, sleeps, and sees no change — the one moment the game most needs to say 'it is working'.",
+  "ask": "Cells 0 and 1 of assets/sprites/generated/tomato.png are byte-identical: zero pixels differ. The tomato takes five days to grow, and `CropDefs.get_visual_stage` maps day 1 onto cell 1 (progress 0.2, under half, so the sprout cell) — which is the same drawing as the seed she planted. So her first tomato looks untouched the morning after she plants and waters it.\n\nFor comparison, from the same measurement: wheat's four stages differ by 56, 54 and 38 pixels; the pea's by 31, 48 and 99; the tomato's by 0, 84 and 77. Only the tomato has a dead step, so this is a gap in one sheet rather than a rule about the art.\n\nDraw a distinct sprout for the tomato: a first true leaf, or the seed leaves opening — something a player can see has changed overnight. Keep it inside the crop ramp the style guide sets out (design/09), and keep the silhouette small: the growth ladder should read as getting bigger, and the pea's ladder is the one that already does that well (21 → 29 → 47 → 93 opaque pixels).\n\nFound by the crop pages' contact sheet on the day it shipped — it prints the pixel delta between consecutive states under the growth ladder, and a zero is unmissable. Check the other sheets there while you are in it.",
+  "first_action": "Open http://localhost:8642/#/sprite/crops/tomato and look at the growth ladder — the first two states are the same drawing and the delta line under them reads 0. Paint the sprout cell there; the page saves back into the sheet and keeps a revision.",
+  "state": "queued",
+  "thread": "",
+  "source": "chief-of-staff",
+  "source_message": "Surfaced by the per-state pixel delta added to the crop pages on 2026-09-08.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-08T10:38",
+  "created_ts": 1788889138.591362,
+  "conversation": []
+}

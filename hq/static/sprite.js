@@ -165,7 +165,15 @@ async function renderSpriteEditor(path) {
       cols: Math.max(1, ...drawings.map(d => d.cols || 1)),
       rows: Math.max(1, ...drawings.map(d => d.rows || 1)),
       fps: a.fps || ent.fps || 4,
-      stills: a.kind === "stills",
+      // A set of drawings the player never sees in sequence. Two flavours:
+      // "stills" is unordered (poses, variants — down/up/left/right), "ladder"
+      // is ordered and the order means something (a crop's seed → ready). Both
+      // are shown side by side rather than flipbooked; only a ladder gets the
+      // neighbour-difference read, because "how different is this one from the
+      // one before it" is a question about a progression and noise about poses.
+      stills: a.kind === "stills" || a.kind === "ladder",
+      ladder: a.kind === "ladder",
+      labels: a.labels || null,
     };
   });
   let curClip = clips[0];
@@ -359,11 +367,12 @@ async function renderSpriteEditor(path) {
         <p class="small muted">Everything this sheet animates. Pick one to preview it and edit its
         frames — a dot marks the ones your unsaved edits touch.</p>
         <div class="sp-clips" id="sp-clips"></div>` : ""}
-        <h2 ${clips.length > 1 ? "" : `style="margin-top:0"`}>Live preview</h2>
-        <div class="sp-previews">
+        <h2 id="sp-pv-head" ${clips.length > 1 ? "" : `style="margin-top:0"`}>Live preview</h2>
+        <div class="sp-previews" id="sp-previews">
           <figure><canvas id="sp-before" width="${pvW}" height="${pvH}"></canvas><figcaption>before</figcaption></figure>
           <figure><canvas id="sp-preview" width="${pvW}" height="${pvH}"></canvas><figcaption>after (your edits)</figcaption></figure>
         </div>
+        <div id="sp-contact" class="sp-contact" hidden></div>
         <p class="small muted" id="sp-pv-note">Both loop in sync at the game's own rate — before is the sheet as it was when you opened the editor.</p>
         <div id="sp-field"></div>
         <h2>Save</h2>
@@ -526,7 +535,7 @@ async function renderSpriteEditor(path) {
       (primary ? primary + " · " : "") + `cell ${cur + 1} / ${frames.length}`;
     document.getElementById("sp-also").textContent =
       (!named && ms.length > 1) ? " · also " + ms.slice(1).map(clipNameOf).join(" · ") : "";
-    if (curClip.stills) renderPreview(0);   // a pose preview follows the cursor
+    if (curClip.stills) { renderPreview(0); renderContact(); }  // the set follows the cursor
     syncMap();
     paintDiff();
   };
@@ -732,6 +741,100 @@ async function renderSpriteEditor(path) {
     animators.push(setInterval(drawField, 33));   // cleared with every other animator on navigation
   };
 
+  /* ---------- a set of states is a contact sheet, not a flipbook ----------
+
+     The designer, 2026-09-08, on a crop page: *"the live preview shows a cycle
+     between different plants. However, the player never sees the different plant
+     stages animate."* Exactly right, and it is a category error rather than a
+     tuning problem. Four growth cells are four things a player meets days apart;
+     running them at 1.5fps invents an animation the game does not have — and
+     worse, it *hides the failure this page exists to catch*, because the eye
+     reads change from the frames swapping rather than from the drawings
+     differing.
+
+     So a stills set is drawn the way a professional tool draws one: every state
+     at once, in order, before above after, columns aligned, each labelled. The
+     comparison across states is the whole job — a flipbook can only answer "does
+     it move well", which is not a question this sheet has.
+
+     **And a ladder is measured.** The story that produced the ripe cue was that
+     wheat's ready cell differs from the one before it by nine pixels, which
+     nobody could see until it was counted. That number belongs here, under the
+     sheet, where the next crop's ripe cell gets checked before anybody plays it
+     rather than after. Only for ladders: "how different is this from the one
+     before it" is a question about a progression and noise about a pose set. */
+  const contact = document.getElementById("sp-contact");
+  const previews = document.getElementById("sp-previews");
+
+  // Opaque pixels that differ between two cells of the *current* sheet.
+  const cellDelta = (a, b) => {
+    const pa = pixelsOf(frames[a], false).data, pb = pixelsOf(frames[b], false).data;
+    if (pa.length !== pb.length) return null;
+    let n = 0;
+    for (let i = 0; i < pa.length; i += 4) {
+      const oa = pa[i + 3] > 8, ob = pb[i + 3] > 8;
+      if (oa !== ob || (oa && (pa[i] !== pb[i] || pa[i + 1] !== pb[i + 1] || pa[i + 2] !== pb[i + 2]))) n++;
+    }
+    return n;
+  };
+
+  const renderContact = () => {
+    if (!contact || !previews) return;
+    const on = !!curClip.stills;
+    contact.hidden = !on;
+    previews.hidden = on;
+    const head = document.getElementById("sp-pv-head");
+    if (head) head.textContent = on ? "Every state, side by side" : "Live preview";
+    document.getElementById("sp-pv-note").textContent = on
+      ? "Every state of this sheet at once, in order — before on top, your edits underneath. "
+        + "The player meets these one at a time, so they are shown side by side rather than played."
+      : "Both loop in sync at the game's own rate — before is the sheet as it was when you opened the editor.";
+    if (!on) return;
+
+    const cells = curClip.drawings.map(d => d.cell).filter(c => c !== undefined);
+    if (!cells.length) { contact.hidden = true; previews.hidden = false; return; }
+    const s = Math.max(2, Math.min(4, Math.floor(230 / (cells.length * fw))));
+    contact.innerHTML = `<div class="sp-contact-row">${cells.map((c, i) => `
+      <figure class="sp-contact-col${c === cur ? " on" : ""}" data-cell="${c}">
+        <canvas class="sp-cc-before" width="${fw * s}" height="${fh * s}"></canvas>
+        <canvas class="sp-cc-after" width="${fw * s}" height="${fh * s}"></canvas>
+        <figcaption>${esc((curClip.labels || [])[i] || String(i + 1))}</figcaption>
+      </figure>`).join("")}</div>
+      <p class="small muted sp-contact-key"><span>before</span><span>your edits</span></p>
+      ${curClip.ladder ? `<p class="small muted" id="sp-ladder-delta"></p>` : ""}`;
+
+    contact.querySelectorAll(".sp-contact-col").forEach((fig, i) => {
+      const c = cells[i];
+      [["before", true], ["after", false]].forEach(([which, orig]) => {
+        const cv = fig.querySelector(".sp-cc-" + which);
+        const cx = cv.getContext("2d");
+        cx.imageSmoothingEnabled = false;
+        cx.clearRect(0, 0, cv.width, cv.height);
+        blit(frames[c], cx, s, 1, orig);
+      });
+      // Clicking a state puts the canvas on it — the sheet doubles as navigation,
+      // which is what makes it worth the space it takes.
+      fig.addEventListener("click", () => { cur = c; render(); });
+    });
+
+    const line = document.getElementById("sp-ladder-delta");
+    if (line) {
+      const steps = [];
+      for (let i = 1; i < cells.length; i++) {
+        const n = cellDelta(cells[i - 1], cells[i]);
+        steps.push(n === null ? "?" : String(n));
+      }
+      const lab = curClip.labels || [];
+      const last = steps.length ? steps[steps.length - 1] : "0";
+      line.innerHTML = `Pixels that change from one state to the next: <b>${esc(steps.join(" → "))}</b>`
+        + (steps.length
+          ? ` — the last step, ${esc(lab[lab.length - 2] || "the one before")} to `
+            + `<b>${esc(lab[lab.length - 1] || "the last")}</b>, is <b>${esc(last)}</b>. `
+            + `That is the one a player has to notice from across the plot.`
+          : "");
+    }
+  };
+
   let pvi = 0;
   let pvTimer = null;
   const startPreview = () => {
@@ -748,6 +851,7 @@ async function renderSpriteEditor(path) {
       animators.push(pvTimer);
     }
     renderPreview(0);
+    renderContact();
   };
 
   let playTimer = null;

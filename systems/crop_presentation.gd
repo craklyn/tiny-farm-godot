@@ -2,12 +2,25 @@
 # play on 2026-09-07 ("a ripe crop is obvious at a glance") and ruled 2026-09-08.
 #
 # The state was always there and so was the picture: a crop has four cells and
-# the fourth one is ripe. The trouble was how *little* the fourth cell is.
-# Counted off the shipping sheet, wheat's ready cell differs from the one before
-# it by nine pixels — three of them a pale gold highlight — on a 16x16 square. On
-# one tile at arm's length that is a difference. On a plot of thirty, seen from
-# the altitude the teaching mode pulls back to (design/11, "Altitude"), it is
-# nothing, and the report from play said exactly that: she had to go looking.
+# the fourth one is ripe. The trouble is *which channel* the fourth cell spends.
+#
+# Measured off the shipping sheet, wheat's ripe step repaints **38 of the
+# plant's 56 pixels** — most of it — and yet it is invisible from any distance,
+# because of what those repaints do and do not change. The silhouette barely
+# moves (59 opaque pixels become 53), and the mean brightness moves by **0.3 of
+# 255**. The whole step is a hue shift inside one colour family, at constant
+# luminance, on an unchanged outline.
+#
+# That is the explanation, and it is why the fix is the fix. Distance and
+# peripheral vision both discard hue and keep luminance and silhouette — so a
+# change that spends only hue is a change that survives none of the conditions
+# this cue has to work in, however many pixels it touches. The report from play
+# said she had to go looking; the sheet says why.
+#
+# (An earlier version of this comment said "nine pixels", from a bad
+# measurement — a diff of the two cells' colour *histograms* rather than of
+# their pixels. Wrong, and weaker: it framed the problem as too small a change
+# when the real problem is a change in the one channel that does not carry.)
 #
 # **What ships, and why.** Five candidates rode along in one build and were
 # switched on the tablet with a thumb — Q-31's Sound Test precedent. The designer

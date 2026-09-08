@@ -1378,7 +1378,26 @@
             "Grows in": "3 days",
             "Seed": "5 coins",
             "Sells": "15 coins"
-          }
+          },
+          "anims": [
+            {
+              "id": "stages",
+              "label": "growth stages",
+              "kind": "ladder",
+              "labels": [
+                "seed",
+                "sprout",
+                "growing",
+                "ready"
+              ],
+              "frames": [
+                0,
+                1,
+                2,
+                3
+              ]
+            }
+          ]
         },
         {
           "id": "tomato",
@@ -1425,7 +1444,26 @@
             "Seed": "10 coins",
             "Sells": "30 coins",
             "Unlock": "1 wheat harvested"
-          }
+          },
+          "anims": [
+            {
+              "id": "stages",
+              "label": "growth stages",
+              "kind": "ladder",
+              "labels": [
+                "seed",
+                "sprout",
+                "growing",
+                "ready"
+              ],
+              "frames": [
+                0,
+                1,
+                2,
+                3
+              ]
+            }
+          ]
         },
         {
           "id": "pea",
@@ -1472,7 +1510,26 @@
             "Seed": "8 coins",
             "Sells": "20 coins",
             "Status": "not yet in the shop"
-          }
+          },
+          "anims": [
+            {
+              "id": "stages",
+              "label": "growth stages",
+              "kind": "ladder",
+              "labels": [
+                "seed",
+                "sprout",
+                "growing",
+                "ready"
+              ],
+              "frames": [
+                0,
+                1,
+                2,
+                3
+              ]
+            }
+          ]
         },
         {
           "id": "egg",

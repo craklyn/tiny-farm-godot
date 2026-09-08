@@ -13,10 +13,12 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
 
 - **Q-94** ~~How should a ripe crop announce itself?~~ — ✅ ruled 2026-09-08: **the two
   together, with the movement turned down.** A ready plant **sways gently and gives off its
-  own ripe colour** — gold under wheat, red under tomato. Raised from play the day before:
-  wheat's ripe cell differs from the half-grown one beside it by nine pixels on a
-  sixteen-pixel square, which is a difference on one plant and nothing on a plot of thirty
-  or from the height the camera rises to when she is directing a robot. Five candidates
+  own ripe colour** — gold under wheat, red under tomato. Raised from play the day before.
+  The measurement is worth keeping: wheat's ripe step repaints 38 of the plant's 56 pixels —
+  most of it — and still cannot be seen, because it changes the brightness by 0.3 of 255 and
+  barely moves the outline. It is a hue shift inside one family, and hue is the first thing
+  distance throws away. (Corrected 2026-09-08 from "nine pixels", which came from diffing the
+  cells' colour histograms rather than their pixels.) Five candidates
   were built and switched on the tablet — three spending one channel each (movement,
   silhouette, light), today's game, and the designer's own combination of two of them —
   and judged from two staged sheets, one at ground level and one at that height. His words
