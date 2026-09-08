@@ -122,6 +122,7 @@ func _init() -> void:
 	test_yard_ground()
 	test_home_layout()
 	test_tool_acquisition()
+	test_lessons_never_point_through_a_door()
 	test_boundary_tap_answers()
 	test_cold_open()
 	test_actor_energy()
@@ -2932,6 +2933,53 @@ func test_tool_acquisition() -> void:
 	gs_old.free()
 	gs_rt.free()
 	farm.free()
+
+
+# Reported from live play 2026-09-08, the first session with the door in it: a
+# repeat player earned the axe, walked home to bed, and a gold edge-arrow
+# pointed at the tool *through the roof* — the farm page is literally up in
+# world coordinates from the bedroom. The arbitration now filters every beat's
+# answer to the page she is standing on, and a beat whose whole answer is
+# elsewhere falls through, exactly as the priority order already promises.
+func test_lessons_never_point_through_a_door() -> void:
+	print("\n--- A lesson never points through a door (2026-09-08) Tests ---")
+
+	var gs = load("res://systems/game_state.gd").new()
+	var world := SimWorld.new()
+	SimRng.reseed(77)
+	world.generate()
+
+	# Past the handover and past the vignette's two days, so the arbitration is
+	# live — the tool-acquisition fixture's own preamble.
+	world.apply_action({ "verb": "open_gate", "target": WorldLayout.gate_of("neighbour"),
+		"actor": "neighbour" }, gs)
+	gs.day = gs.takeover_day + 5
+
+	# Earn the axe and leave it lying at its gate: the ready-tool beat is live.
+	var axe_entry: Dictionary = WorldLayout.tool_for_gate(WorldLayout.gate_for_tool("axe"), world.layout)
+	var at: Vector2i = axe_entry.get("at", Vector2i(-1, -1))
+	gs.harvest_counts["wheat"] = int(axe_entry.get("threshold", 5))
+	_assert(SimWorld.tool_proof_met(axe_entry, gs), "the axe's proof is met")
+
+	# From the yard, the announcement stands.
+	var outdoors := Vector2i(5, 5)
+	_assert(TeachingFocus.targets(world, gs, outdoors).has(at),
+		"from her own page, the earned tool glows")
+
+	# From the bedroom, it does not follow her through the door.
+	var indoors := Vector2i(15, 32)
+	_assert(world.page_of(indoors) != world.page_of(at), "the fixture spans the two pages")
+	var pointed := TeachingFocus.targets(world, gs, indoors)
+	_assert(not pointed.has(at), "an earned tool on the farm does not glow from the bedroom")
+	for t in pointed:
+		_assert_quiet(world.page_of(t) == world.page_of(indoors),
+			"nothing the arbitration returns indoors is on another page")
+
+	# And with no known player tile (the detached farms), nothing is filtered.
+	_assert(TeachingFocus.targets(world, gs).has(at),
+		"with no player position the filter scopes nothing out")
+
+	gs.free()
 
 
 func test_boundary_tap_answers() -> void:

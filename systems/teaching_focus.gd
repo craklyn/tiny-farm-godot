@@ -29,26 +29,51 @@ static func targets(world: SimWorld, gs, player_t: Vector2i = Vector2i(-1, -1)) 
 	if not handed_over(world):
 		var nothing: Array[Vector2i] = []
 		return nothing
-	# 1. The onboarding vignette owns the first two play-days outright.
-	var vignette := VignetteState.target_tiles(world, gs, player_t)
+	# 1. The onboarding vignette owns the first two play-days outright. Its
+	#    bedtime fallback already routes through `way_to_bed`, so its answer is
+	#    on her page by construction — but it goes through the same filter as
+	#    everything else, because "by construction" is a promise a later beat
+	#    can silently break.
+	var vignette := _on_her_page(VignetteState.target_tiles(world, gs, player_t), world, player_t)
 	if not vignette.is_empty():
 		return vignette
 	# 2. Q-46(a): the moment a placed tool becomes takeable, say so. This is the
 	#    only announcement it gets — before the proof fires the tool is drawn as a
 	#    silhouette of itself and asks for nothing, and once she picks it up the
 	#    object is gone, so the beat ends itself with no flag.
-	var ready := ready_tools(world, gs)
+	var ready := _on_her_page(ready_tools(world, gs), world, player_t)
 	if not ready.is_empty():
 		return ready
 	# 3. T-10: a parcel that has just opened points at **one** obstacle of its new
 	#    type, until she clears one of those — then never again. A new tool gets a
 	#    safe room containing exactly one new kind of thing (Valve principle 4).
-	var parcel := parcel_introduction(world, gs)
+	var parcel := _on_her_page(parcel_introduction(world, gs), world, player_t)
 	if not parcel.is_empty():
 		return parcel
 	# 4. T-11: the economy, taught at first need. Lowest priority on purpose —
 	#    these are errands, and an errand must never interrupt a lesson.
 	return economy_beat(world, gs, player_t)
+
+
+# **A lesson never points through a door** (reported from live play, 2026-09-08:
+# a repeat player earned the axe, went home to bed, and a gold arrow pointed at
+# the tool through the roof — the farm page is literally *up* from the bedroom).
+# A target on another page is not wrong, it is just not *now*: the beat stays
+# alive and reclaims the glow the moment she is back on its page, so nothing
+# here needs a flag or an expiry. Filtering the arbitration's answers in one
+# place covers every beat, including ones not written yet; a beat whose whole
+# answer is elsewhere falls through to the next lesson, which is what the
+# priority order already means. With no known player tile (tests, the title
+# screen's detached farm), everything passes — the filter scopes, it never gates.
+static func _on_her_page(tiles: Array[Vector2i], world: SimWorld, player_t: Vector2i) -> Array[Vector2i]:
+	if player_t.x < 0 or tiles.is_empty():
+		return tiles
+	var page := world.page_of(player_t)
+	var out: Array[Vector2i] = []
+	for t in tiles:
+		if world.page_of(t) == page:
+			out.append(t)
+	return out
 
 
 # Placed tools whose capability proof has NOT fired yet. Presentation draws these
