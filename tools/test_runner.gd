@@ -2978,6 +2978,14 @@ func _scenario_ad_two_hud_findings() -> void:
 	#
 	# *"We should add a 'hide debug' button in the top left that collapses the
 	# debug information printed in the top left."*
+	#
+	# Guarded on the constant it tests around: PLAYTEST_NOTES is deliberately
+	# flipped false on a release tag (docs/DEPLOY.md), and red has to mean
+	# broken, not "a release is being cut" — the first v0.2.0 tag attempt is
+	# what caught this. The skip prints, so a green run says what it skipped.
+	if not hud.PLAYTEST_NOTES:
+		print("  (playtest readout is off — release build; fold-away checks skipped)")
+		return
 	_assert(hud.notes_toggle != null and hud.notes_label != null,
 		"the playtest readout has a toggle beside it")
 	_assert(hud.notes_toggle.position.x < 40.0 and hud.notes_toggle.position.y < 60.0,
