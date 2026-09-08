@@ -274,9 +274,14 @@ func _rebuild_options() -> void:
 			_build_shop_items()
 			for item in shop_items:
 				_add_shop_card(item)
-			# ✕ — a symbol, not a word. The row is already full-width and 52px
-			# tall, so the *target* was never the problem; the glyph was.
-			_add_option("\u2715", true, 28)
+			# × — a symbol, not a word. The row is already full-width and 52px
+			# tall, so the *target* was never the problem; the glyph was — twice:
+			# U+2715 ✕ lives outside the bundled font, and the web export has no
+			# system-font fallback, so the itch build drew the close button as a
+			# codepoint-in-a-box (found by the designer on v0.2.0's launch day).
+			# U+00D7 is Latin-1, which the bundled font carries on every platform.
+			# Any symbol on a surface a player sees must be Latin-1 or drawn art.
+			_add_option("\u00d7", true, 28)
 			menu_panel.size = Vector2(300, 60 + shop_items.size() * 56 + 40)
 
 		"machine":
@@ -353,13 +358,13 @@ func _rebuild_options() -> void:
 						# the row — tapping it is a harmless no-op, and greying it
 						# out would make the panel look broken to somebody who just
 						# wanted to check.
-						var mark: String = "\u2713 " if config == current else "   "
+						var mark: String = "\u00bb " if config == current else "   "
 						machine_options.append({ "kind": "config", "config": config })
 						_add_option(mark + CONFIG_LABELS.get(config, config), true)
 			machine_options.append({ "kind": "collect" })
 			_add_option("Pick up", true)
 			machine_options.append({ "kind": "close" })
-			_add_option("\u2715", true, 28)
+			_add_option("\u00d7", true, 28)
 			menu_panel.size = Vector2(320, _fit_panel_height())
 
 		"inventory":

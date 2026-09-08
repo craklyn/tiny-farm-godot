@@ -383,7 +383,7 @@ func _build_ui() -> void:
 	# regrets. It sits beside Done rather than above it, so the thumb reaching for
 	# the safe control never passes over this one.
 	teach_clear_button = Button.new()
-	teach_clear_button.text = "\u2715 Clear"
+	teach_clear_button.text = "\u00d7 Clear"
 	teach_clear_button.size = Vector2(96, 44)
 	teach_clear_button.position = Vector2(-200, -200)
 	var clear_style := StyleBoxFlat.new()
@@ -731,7 +731,7 @@ func _update_playtest_notes() -> void:
 	var ph: Dictionary = world.phase1_progress(GameState)
 	lines.append("PHASE 1: shipped %d/%d · crows scared %d/%d · obstacles left %d%s" % [
 		ph.shipped, ph.shipped_target, ph.scared, ph.scared_target, ph.obstacles_left,
-		"  ✓ COMPLETE" if ph.met else ""])
+		"  COMPLETE" if ph.met else ""])
 
 	notes_label.text = "\n".join(lines)
 
@@ -1037,7 +1037,7 @@ func set_teaching(on: bool, taught: int = -1, limit: int = 0) -> void:
 	# across the button the first time these moved here.
 	var row_y: float = vp.y - 58.0 - teach_done_button.size.y
 	teach_done_button.position = Vector2(vp.x - teach_done_button.size.x - 10.0, row_y)
-	teach_done_button.text = "\u2713 %d/%d" % [taught, limit] if taught >= 0 and limit > 0 else "Done"
+	teach_done_button.text = "%d/%d" % [taught, limit] if taught >= 0 and limit > 0 else "Done"
 	if teach_clear_button != null:
 		teach_clear_button.position = Vector2(
 			teach_done_button.position.x - teach_clear_button.size.x - 8.0, row_y)

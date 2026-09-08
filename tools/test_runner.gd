@@ -3218,7 +3218,7 @@ func _scenario_ag_a_machine_is_bought_placed_and_told_what_to_do() -> void:
 	_collect_labels(menus.options_container, rows)
 	var ticked := 0
 	for lbl in rows:
-		if String(lbl.text).begins_with("✓"):
+		if String(lbl.text).begins_with("\u00bb"):
 			ticked += 1
 	_assert(ticked == 1, "exactly one setting is ticked — which job it is doing now")
 
@@ -3583,7 +3583,7 @@ func _scenario_ah_the_mark_one_takes_exact_orders() -> void:
 		"she can fill the machine's whole round (%d)" % farm.teaching_orders.size())
 	_assert(farm.teaching_eligible.size() == BotBrain.ORDER_LIMIT,
 		"and at the limit only the taught squares stay lit — the dimmed farm is the 'full' message")
-	_assert(String(main_scene.hud.teach_done_button.text) == "\u2713 8/8",
+	_assert(String(main_scene.hud.teach_done_button.text) == "8/8",
 		"the button says so too: '%s'" % main_scene.hud.teach_done_button.text)
 	# Back down to three, so the assertions below still describe what she taught.
 	for i in range(farm.teaching_orders.size() - 1, 2, -1):
@@ -3624,7 +3624,7 @@ func _scenario_ah_the_mark_one_takes_exact_orders() -> void:
 		"and the machine agrees — it is the same toggle her taps make, eight times")
 	_assert(main_scene.hud.teach_clear_button.disabled,
 		"with nothing marked it greys out rather than vanishing")
-	_assert(String(main_scene.hud.teach_done_button.text) == "\u2713 0/8",
+	_assert(String(main_scene.hud.teach_done_button.text) == "0/8",
 		"the count follows: '%s'" % main_scene.hud.teach_done_button.text)
 	# Teach it back, so what follows still describes a machine that learned something.
 	for t in lesson:

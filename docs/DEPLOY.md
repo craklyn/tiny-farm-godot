@@ -135,6 +135,13 @@ trace mislabelled its own categories and where the crow schedule desynced replay
 
 **Traps:**
 
+- **A symbol outside Latin-1 renders as a codepoint-in-a-box on web.** Desktop and
+  Android quietly borrow missing glyphs from system fonts; the web export has no
+  system fonts to borrow from, so the bundled font is all there is. The shop's ✕
+  (U+2715) shipped as a numbered box on v0.2.0's launch day and no local run ever
+  showed it. Any character a player sees must be Latin-1 (× and » are; ✕ and ✓ are
+  not) or drawn art — and the only place this fails visibly is the published page,
+  so check symbols there, not just locally.
 - **butler lives at `broth.itch.zone`.** `broth.itch.ovh` no longer resolves and is what
   most older documentation still says. It failed the first tagged run.
 - **An itch project defaults to Draft, and saving does not publish it.** A draft serves
