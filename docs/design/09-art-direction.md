@@ -174,6 +174,35 @@ card: wheat's own ripe colour is a gold, so a field of ripe wheat is a field of
 gold with the teaching gold somewhere inside it, and the pea's ready cell is all
 leaf green with no ripe colour to emit.
 
+### Open beside it: should each crop move in its own way? (2026-09-08)
+
+The designer, on being told the sway is one global number: *"I thought we'd just
+need to make different crops sway different amounts."* He is right, and the
+reason is already half-built — C and D emit the crop's **own** ripe colour, so
+*the cue takes on the character of the plant wearing it* is a principle this
+feature already follows in the light channel. Motion is the same principle
+unapplied: a wheat ear whips, a tomato on a heavy vine nods slowly, and today
+they move identically because one constant serves all three.
+
+The shape it would take is a per-crop multiplier looked up exactly as the ripe
+colours are, setting the centre that the per-square hash then varies around —
+crop character first, plant-to-plant variation on top. Cheap, and it would make
+the sprite editor's per-crop page the right home for that crop's number, beside
+its frames, which is where the designer went looking for it.
+
+**The constraint that comes with it.** This is a *state* cue, not decoration. A
+per-crop difference in how loudly a cue speaks can be read as a difference in
+what it is saying — a tomato that barely moves reads as less ready rather than as
+a heavier plant, and a cue that means the wrong thing is the failure this project
+guards hardest against. So the floor is fixed and asserted: **every ripe plant
+moves enough to be obviously moving**, and the per-crop number varies character
+above that floor without ever deciding legibility.
+
+Held until Q-94 is ruled, for one reason: only two of the five drafts move at
+all, so this is either a small piece of work or a deletion depending on his pick,
+and changing what the drafts look like underneath an open decision moves the
+thing he is deciding on. Filed to the art director.
+
 ### Two rules this produced, whichever draft wins
 
 **A light has to be added to the picture, not painted over it.** C's first
