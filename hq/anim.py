@@ -658,6 +658,15 @@ def _draw(run_id, prompt, known_slug=""):
         p = types.SimpleNamespace(returncode=p.returncode, stderr=stderr, stdout="")
         reply = str(doc.get("result") or "")
         cost = HOST.usage_from_cli(doc) if hasattr(HOST, "usage_from_cli") else None
+        # Into the same ledger every other lane writes to. Without this the Lab
+        # is the one place in the studio that can spend the shared allotment
+        # without the studio's own accounting seeing it.
+        if cost and hasattr(HOST, "record_model_usage"):
+            try:
+                HOST.record_model_usage("anim-rework" if known_slug else "anim-draw",
+                                        "claude", DRAW_MODEL, cost, known_slug or run_id)
+            except Exception:
+                pass
         slug = known_slug
         m = re.search(r"SLUG:\s*([a-z0-9_]{1,64})", reply)
         if m and not known_slug:
