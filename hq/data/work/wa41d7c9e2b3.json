@@ -1,0 +1,20 @@
+{
+  "id": "wa41d7c9e2b3",
+  "title": "A tool for sprite frames derived from pixels we already ship",
+  "level": "story",
+  "owner": "yuki",
+  "tier": 2,
+  "tier_reason": "The derived-art lane already carries real shipped assets (bot_mk2, neighbour, the worm body, the sprinkler idle) but has no tool, so every one of them was a throwaway script.",
+  "ask": "Build tools/spritesmith.py: a small library for authoring sprite frames out of pixels already in assets/sprites/, with no model call.\n\nWhy: a growing share of shipped art is derived rather than generated (see CREDITS.md \u2014 bot_mk2 is a hue rotation of bot, neighbour is a palette remap of characters, the worm body is one repeated cross-section, the sprinkler idle is its spraying frame minus droplets, the rabbit's eyes were restored by hand after downscaling). Each was written as a one-off script and thrown away. Derived frames cannot drift from their source, introduce no new palette entries, and cost nothing, so this lane should be a tool rather than an improvisation.\n\nRequired operations, all preserving the pipeline's invariants (colours snapped to the union of the shipped sheets' palettes, alpha strictly 0 or 255, cells aligned to the sheet's grid):\n- pivot rotation: rotate a sprite about a named pixel with nearest-neighbour sampling, then snap back to the source palette (a tool swung about the butt of its handle)\n- palette remap: map one ramp onto another by name, the neighbour.png operation\n- cell compose: assemble frames into a sheet in a named layout, and mirror a row\n- depth compose: paste a held object behind or in front of a body per frame\n- verify: assert a finished sheet adds no colour absent from the shipped sheets and no partial alpha\n\nA scratch proof of the rotation and depth steps exists in this session's scratchpad (a four-frame axe swing built from characters.png plus tool_icons.png, 14 colours, alpha 0/255). It reads as a swing but is not shippable: the wind-up frame is hidden behind the body and the second frame crosses her face. Treat it as evidence the mechanism works and the per-frame judgement is the real cost, not as a starting sprite.\n\nThe first real use is the player's action frame. player/player.gd:885 reuses walk frame 3 as the swing (D-8 tier-(a) budget, 'one frame doing a second job'). A derived swing would replace that stand-in without a generation call.",
+  "first_action": "Write tools/spritesmith.py with the pivot-rotation and palette-verify operations, and prove them by regenerating bot_mk2.png from bot.png so the checked-in file is reproduced byte for byte",
+  "state": "waiting_session",
+  "thread": "yuki",
+  "source": "chat",
+  "source_message": "Filed out of Daniel's 2026-09-08 question about whether to switch from Retro Diffusion to an LLM driving Aseprite. The recommendation was to keep Retro Diffusion and adopt the underlying idea \u2014 authoring pixels directly at native resolution in a locked palette \u2014 in the derived-frame lane, which is where our pipeline is weakest.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-08T21:08",
+  "created_ts": 1788926905.59939,
+  "conversation": []
+}
