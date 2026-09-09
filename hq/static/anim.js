@@ -131,6 +131,13 @@ async function renderAnimLab() {
   $view.replaceChildren(frag);
 }
 
+/* 8.0 reads as 8, 0.50 as 0.5 — a scale end is noise if it carries zeros
+   nobody chose. */
+function anNum(n) {
+  const x = Number(n);
+  return Number.isFinite(x) ? String(+x.toFixed(4)) : String(n);
+}
+
 function anTitle(slug) {
   return slug.replace(/[_-]+/g, " ").replace(/\b\w/g, c => c.toUpperCase());
 }
@@ -199,11 +206,26 @@ async function renderAnimLoop(slug) {
           <div class="an-params">${(L.params || []).map(p => {
             const [k, def, mn, mx, , why] = p;
             const v = (L.values || {})[k];
-            const pct = (mx - mn) ? Math.max(0, Math.min(100, ((v - mn) / (mx - mn)) * 100)) : 0;
+            /* A position in a range, not a quantity — so the value is a mark on a
+               scale with its ends written down, and not a filled bar. A fill says
+               "this much of something" and invites a drag that does nothing; the
+               question here is only ever "where in the range was this drawn, and
+               how far is it from where it started". */
+            const at = x => (mx - mn) ? Math.max(0, Math.min(100, ((x - mn) / (mx - mn)) * 100)) : 0;
+            const moved = Number(v) !== Number(def);
             return `<div class="an-param">
-              <div class="an-param-top"><span>${esc(k)}</span><b>${esc(String(v))}</b></div>
-              <div class="an-bar"><i style="width:${pct}%"></i></div>
-              <div class="small muted">${esc(why || "")}</div>
+              <div class="an-param-top"><span>${esc(k)}</span><b>${esc(anNum(v))}</b></div>
+              <div class="an-scale">
+                <span class="an-end">${esc(anNum(mn))}</span>
+                <span class="an-track">
+                  ${moved ? `<i class="an-was" style="left:${at(def)}%"
+                       title="drawn at ${esc(anNum(def))} by default"></i>` : ""}
+                  <i class="an-at" style="left:${at(v)}%"></i>
+                </span>
+                <span class="an-end">${esc(anNum(mx))}</span>
+              </div>
+              <div class="small muted">${esc(why || "")}${
+                moved ? ` <span class="an-moved">moved from ${esc(anNum(def))}</span>` : ""}</div>
             </div>`;
           }).join("") || `<p class="small muted">This loop declared no parameters.</p>`}</div>
           ${L.script ? `<div class="an-rerun">

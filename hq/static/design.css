@@ -141,11 +141,21 @@ h2 .tally .chip { font-size: 11px; }
 .an-thumb canvas { image-rendering: pixelated; }
 .an-tile-name { font-weight: 600; margin-bottom: 2px; }
 .an-foot { margin-top: 16px; }
-.an-param { margin-bottom: 11px; }
+.an-param { margin-bottom: 13px; }
 .an-param-top { display: flex; justify-content: space-between; font-size: 13px; }
 .an-param-top b { color: var(--accent); }
-.an-bar { height: 4px; background: var(--panel2); border-radius: 3px; overflow: hidden; margin: 3px 0 2px; }
-.an-bar i { display: block; height: 100%; background: var(--accent); }
+/* the scale: ends written down, the value marked on it. Not a fill — a fill
+   means "this much of something" and this is a position in a range. */
+.an-scale { display: flex; align-items: center; gap: 6px; margin: 5px 0 3px; }
+.an-end { font-size: 10.5px; color: var(--muted); flex: none; font-variant-numeric: tabular-nums; }
+.an-track { position: relative; flex: 1; height: 9px; }
+.an-track::before { content: ""; position: absolute; left: 0; right: 0; top: 4px;
+  height: 1px; background: var(--line); }
+.an-at { position: absolute; top: 1px; width: 7px; height: 7px; margin-left: -3.5px;
+  border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--panel); }
+.an-was { position: absolute; top: 0; width: 1px; height: 9px; margin-left: -0.5px;
+  background: var(--muted); opacity: .75; }
+.an-moved { color: var(--muted); font-style: italic; }
 .an-rerun { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 10px; }
 .an-cmd { display: block; margin-top: 6px; padding: 7px 8px; background: var(--bg); border: 1px solid var(--line);
-  border-radius: 6px; font-size: 11.5px; overflow-x: auto; white-space: nowrap; user-select: all; }
+  border-radius: 6px; font-size: 11.5px; line-height: 1.5; word-break: break-all; user-select: all; }
