@@ -79,6 +79,24 @@ PARAMS = [
   # key, default, min, max, step, why it is worth a control
   ("turns", 2.3, 0.5, 4.0, 0.1, "How many times a seed circles her on the way up."),
 ]
+P = {k: d for k, d, *_ in PARAMS}
+OUT = sys.argv[1] if len(sys.argv) > 1 else "tools/experiments/out/<slug>"
+if len(sys.argv) > 2:                      # an overrides file, same shape as `values`
+    P.update(json.load(open(sys.argv[2])))
+```
+
+**Both arguments are required, not optional.** The Animation Lab's sliders work by
+re-running your script with an overrides file, so a script that ignores a second
+argument is a loop nobody can tune from the dashboard. Read every number the
+render uses out of `P`, never from a constant further down the file.
+
+And write `params.json` beside your output, because that file is the only thing
+the page knows about a loop it has never seen:
+
+```python
+json.dump({"params": [list(p) for p in PARAMS], "values": P,
+           "frames": F, "canvas": [W, H], "colours": len(cols)},
+          open(OUT + "/params.json", "w"), indent=2)
 ```
 
 Rules for choosing them: a parameter earns a slot only if a reasonable person

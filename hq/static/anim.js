@@ -202,36 +202,37 @@ async function renderAnimLoop(slug) {
 
       <div class="an-side">
         <div class="card">
-          <h2>Drawn at</h2>
+          <h2>Instruments</h2>
           <div class="an-params">${(L.params || []).map(p => {
-            const [k, def, mn, mx, , why] = p;
+            const [k, def, mn, mx, step, why] = p;
             const v = (L.values || {})[k];
-            /* A position in a range, not a quantity — so the value is a mark on a
-               scale with its ends written down, and not a filled bar. A fill says
-               "this much of something" and invites a drag that does nothing; the
-               question here is only ever "where in the range was this drawn, and
-               how far is it from where it started". */
+            /* The scale ends are written down because "18" means nothing without
+               them, and the faint tick marks where this loop was drawn — so a drag
+               always shows how far it has been taken from the render on disk. */
             const at = x => (mx - mn) ? Math.max(0, Math.min(100, ((x - mn) / (mx - mn)) * 100)) : 0;
-            const moved = Number(v) !== Number(def);
-            return `<div class="an-param">
-              <div class="an-param-top"><span>${esc(k)}</span><b>${esc(anNum(v))}</b></div>
+            return `<div class="an-param" data-k="${esc(k)}" data-drawn="${esc(String(v))}">
+              <div class="an-param-top"><span>${esc(k)}</span><b data-out>${esc(anNum(v))}</b></div>
               <div class="an-scale">
                 <span class="an-end">${esc(anNum(mn))}</span>
                 <span class="an-track">
-                  ${moved ? `<i class="an-was" style="left:${at(def)}%"
-                       title="drawn at ${esc(anNum(def))} by default"></i>` : ""}
-                  <i class="an-at" style="left:${at(v)}%"></i>
+                  <i class="an-was" style="left:${at(v)}%" title="drawn at ${esc(anNum(v))}"></i>
+                  <input type="range" min="${mn}" max="${mx}" step="${step || 1}" value="${v}"
+                         data-p="${esc(k)}" aria-label="${esc(k)}">
                 </span>
                 <span class="an-end">${esc(anNum(mx))}</span>
               </div>
-              <div class="small muted">${esc(why || "")}${
-                moved ? ` <span class="an-moved">moved from ${esc(anNum(def))}</span>` : ""}</div>
+              <div class="small muted">${esc(why || "")} <span class="an-moved" hidden></span></div>
             </div>`;
           }).join("") || `<p class="small muted">This loop declared no parameters.</p>`}</div>
-          ${L.script ? `<div class="an-rerun">
-            <div class="small muted">To try other values, re-run the script — the dashboard does not
-              execute anything itself.</div>
-            <code class="an-cmd">python3 ${esc(L.script)} ${esc("tools/experiments/out/" + L.slug)} overrides.json</code>
+          ${L.params && L.params.length ? `<div class="an-rerun">
+            <div class="an-runrow">
+              <button id="an-draw">Draw it</button>
+              <button id="an-revert" class="ghost" disabled>back to the drawn values</button>
+            </div>
+            <div class="small muted" id="an-runnote">Moving a control re-runs
+              <code class="ref">${esc(L.script || "the loop's script")}</code> — the same file, the same
+              override you would pass by hand. About a second, no model, nothing billed. The render on
+              disk is not touched until you say so.</div>
           </div>` : ""}
         </div>
       </div>
@@ -284,6 +285,7 @@ async function renderAnimLoop(slug) {
   });
 
   document.getElementById("an-palette").innerHTML = await anPaletteCard(frames);
+  anWireInstruments(L, w, hh);
 
   document.querySelectorAll(".an-verdicts button").forEach(b => {
     b.onclick = () => {
@@ -299,6 +301,97 @@ async function renderAnimLoop(slug) {
       note.textContent = `Not wired yet — nothing was filed. Built, “${b.dataset.v}” and your reason would go to Ingrid.`;
     };
   });
+}
+
+/* ---------- the instruments ----------
+   A drag re-runs the loop's own script on the server and swaps the frames in.
+   Dragging fires continuously, so the render waits for the drag to settle: the
+   value and the "moved from" note update the instant you move, and the picture
+   catches up about a second later. The card says which of those two states it
+   is in at all times, because a control that looks finished while it is still
+   working teaches you to distrust it. */
+function anWireInstruments(L, w, hh) {
+  const params = document.querySelector(".an-params");
+  const draw = document.getElementById("an-draw");
+  const revert = document.getElementById("an-revert");
+  const note = document.getElementById("an-runnote");
+  if (!params || !draw) return;
+
+  const drawnAt = {};
+  (L.params || []).forEach(([k]) => { drawnAt[k] = Number((L.values || {})[k]); });
+  let timer = null, busy = false, queued = false;
+
+  const current = () => {
+    const out = {};
+    params.querySelectorAll("input[data-p]").forEach(i => { out[i.dataset.p] = Number(i.value); });
+    return out;
+  };
+  const dirty = () => Object.entries(current()).some(([k, v]) => v !== drawnAt[k]);
+
+  function reflect() {
+    params.querySelectorAll(".an-param").forEach(row => {
+      const k = row.dataset.k;
+      const v = Number(row.querySelector("input[data-p]").value);
+      row.querySelector("[data-out]").textContent = anNum(v);
+      const tag = row.querySelector(".an-moved");
+      const moved = v !== drawnAt[k];
+      tag.hidden = !moved;
+      if (moved) tag.textContent = `drawn at ${anNum(drawnAt[k])}`;
+    });
+    revert.disabled = !dirty();
+  }
+
+  async function render() {
+    if (busy) { queued = true; return; }
+    busy = true; queued = false;
+    draw.disabled = true;
+    params.classList.add("an-working");
+    note.textContent = "Re-running the script…";
+    note.className = "small an-busy";
+    try {
+      const r = await fetch("/api/loop/render", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: L.slug, values: current() }),
+      }).then(x => x.json());
+      if (r.error) {
+        note.className = "small an-need";
+        note.textContent = r.error + (r.detail ? " — " + r.detail.split("\n").slice(-1)[0] : "");
+      } else {
+        const img = await anLoadImage(r.sheet);
+        const frames = anSlice(img, r.canvas[0], r.canvas[1], r.frames);
+        anPlayer.frames = frames;
+        anPlayer.idx = anPlayer.idx % frames.length;
+        anPaint();
+        document.getElementById("an-palette").innerHTML = await anPaletteCard(frames);
+        note.className = "small muted";
+        note.textContent = `Redrawn in ${r.seconds}s · ${r.colours} colours · a preview only, ` +
+          `the render on disk is untouched.`;
+      }
+    } catch (e) {
+      note.className = "small an-need";
+      note.textContent = "Could not reach the server to re-run the script.";
+    } finally {
+      busy = false;
+      draw.disabled = false;
+      params.classList.remove("an-working");
+      if (queued) render();
+    }
+  }
+
+  params.addEventListener("input", ev => {
+    if (!ev.target.dataset.p) return;
+    reflect();
+    clearTimeout(timer);
+    timer = setTimeout(render, 320);
+  });
+  draw.onclick = () => { clearTimeout(timer); render(); };
+  revert.onclick = () => {
+    params.querySelectorAll("input[data-p]").forEach(i => { i.value = drawnAt[i.dataset.p]; });
+    reflect();
+    clearTimeout(timer);
+    render();
+  };
+  reflect();
 }
 
 function anPaint() {

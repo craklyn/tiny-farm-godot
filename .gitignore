@@ -53,3 +53,8 @@ tools/shot_teaching.png
 # Held patches the drain keeps so a blocked item can be re-applied without
 # paying for the model call again. Recoverable scratch, not a record.
 hq/data/patches/
+
+# What the Animation Lab's sliders draw. A preview is one dial-turn on the way
+# to an opinion, reproducible from its script in about a second, and it is
+# deliberately not the render on disk — that only changes when somebody says so.
+hq/data/loop_previews/

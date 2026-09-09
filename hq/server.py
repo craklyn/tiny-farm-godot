@@ -1971,6 +1971,84 @@ def ripe_look():
 
 
 LOOPS_DIR = "tools/experiments/out"
+LOOP_PREVIEWS = os.path.join(DATA, "loop_previews")
+LOOP_RENDER_LOCK = threading.Semaphore(2)   # cheap, but not free
+
+
+def loop_render(payload):
+    """Re-draw one loop at the values just dialled in on the page.
+
+    This runs the loop's OWN script, with the same override argument a person
+    would pass on the command line, so what the dashboard shows and what the
+    repo produces cannot drift apart.
+
+    It is the only thing here that executes project code, so it is fenced: the
+    slug must name a loop that already exists, the script path is derived rather
+    than accepted, every override must be a number whose key that loop actually
+    declares and is clamped to that key's own range, and the output lands in a
+    scratch directory instead of over the committed render. Promoting a preview
+    to the real thing stays a separate, deliberate act.
+
+    No model is called and nothing is billed — the cost is about a second of CPU."""
+    import time as _t
+    slug = str(payload.get("slug") or "")
+    if not re.fullmatch(r"[a-z0-9_]{1,64}", slug):
+        return {"error": "bad loop name"}
+    known = {L["slug"]: L for L in loops_index()["loops"]}
+    L = known.get(slug)
+    if not L:
+        return {"error": f"no loop called {slug}"}
+    script = os.path.join(REPO, f"tools/experiments/vfx_{slug}.py")
+    if not os.path.isfile(script):
+        return {"error": "this loop has no script to re-run"}
+
+    declared = {row[0]: row for row in (L.get("params") or [])}
+    values, bad = {}, []
+    for k, v in (payload.get("values") or {}).items():
+        row = declared.get(k)
+        try:
+            x = float(v)
+        except (TypeError, ValueError):
+            row = None
+        if not row:
+            bad.append(k)
+            continue
+        values[k] = min(max(x, float(row[2])), float(row[3]))    # clamped, never trusted
+    if bad:
+        return {"error": "unknown or non-numeric parameters: " + ", ".join(sorted(bad)[:5])}
+    if not values:
+        return {"error": "no parameters given"}
+
+    out = os.path.join(LOOP_PREVIEWS, slug)
+    os.makedirs(out, exist_ok=True)
+    ov = os.path.join(out, "overrides.json")
+    with open(ov, "w", encoding="utf-8") as fh:
+        json.dump(values, fh)
+    t0 = _t.time()
+    try:
+        with LOOP_RENDER_LOCK:
+            p = subprocess.run([sys.executable, script, out, ov], cwd=REPO,
+                               capture_output=True, text=True, timeout=60)
+    except subprocess.TimeoutExpired:
+        return {"error": "the script ran for over a minute and was stopped"}
+    if p.returncode != 0:
+        tail = (p.stderr or p.stdout or "").strip().splitlines()
+        return {"error": "the script failed", "detail": "\n".join(tail[-6:])[:600]}
+
+    meta = os.path.join(out, "params.json")
+    if not os.path.isfile(meta):
+        return {"error": "the script wrote no params.json, so its output cannot be read"}
+    with open(meta, encoding="utf-8") as fh:
+        m = json.load(fh)
+    sheet = next((f for f in sorted(os.listdir(out)) if f.endswith("_sheet.png")), None)
+    if not sheet:
+        return {"error": "the script wrote no sprite sheet"}
+    return {
+        "slug": slug, "values": m.get("values", values),
+        "frames": m.get("frames"), "canvas": m.get("canvas"), "colours": m.get("colours"),
+        "sheet": f"/loop-preview/{slug}/{sheet}?t={int(_t.time() * 1000)}",
+        "seconds": round(_t.time() - t0, 2),
+    }
 
 
 def loops_index():
@@ -4913,6 +4991,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send_file(os.path.join(REPO, "assets"), path[len("/assets/"):])
             if path.startswith("/loops/"):
                 return self._send_file(os.path.join(REPO, LOOPS_DIR), path[len("/loops/"):])
+            if path.startswith("/loop-preview/"):
+                return self._send_file(LOOP_PREVIEWS, path[len("/loop-preview/"):])
             if path.startswith("/ledger/"):
                 # Historical sheet bytes, for the before/after strip in the editor.
                 return self._send_file(os.path.join(DATA, "sprite_edits"), path[len("/ledger/"):])
@@ -5076,6 +5156,11 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/deploy/pair":
             try:
                 return self._send(200, deploy_pair(payload))
+            except Exception as e:
+                return self._send(500, {"error": str(e)[:300]})
+        if path == "/api/loop/render":
+            try:
+                return self._send(200, loop_render(payload))
             except Exception as e:
                 return self._send(500, {"error": str(e)[:300]})
         if path == "/api/map/save":

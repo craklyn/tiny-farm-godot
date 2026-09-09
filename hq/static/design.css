@@ -144,18 +144,33 @@ h2 .tally .chip { font-size: 11px; }
 .an-param { margin-bottom: 13px; }
 .an-param-top { display: flex; justify-content: space-between; font-size: 13px; }
 .an-param-top b { color: var(--accent); }
-/* the scale: ends written down, the value marked on it. Not a fill — a fill
-   means "this much of something" and this is a position in a range. */
-.an-scale { display: flex; align-items: center; gap: 6px; margin: 5px 0 3px; }
+/* A real slider, on a scale whose ends are written down — "18" is unreadable
+   without them — and over a faint tick marking where this loop was drawn, so a
+   drag always shows how far it has been taken from the render on disk. */
+.an-scale { display: flex; align-items: center; gap: 6px; margin: 4px 0 3px; }
 .an-end { font-size: 10.5px; color: var(--muted); flex: none; font-variant-numeric: tabular-nums; }
-.an-track { position: relative; flex: 1; height: 9px; }
-.an-track::before { content: ""; position: absolute; left: 0; right: 0; top: 4px;
-  height: 1px; background: var(--line); }
-.an-at { position: absolute; top: 1px; width: 7px; height: 7px; margin-left: -3.5px;
-  border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--panel); }
-.an-was { position: absolute; top: 0; width: 1px; height: 9px; margin-left: -0.5px;
-  background: var(--muted); opacity: .75; }
+.an-track { position: relative; flex: 1; height: 18px; display: flex; align-items: center; }
+.an-track::before { content: ""; position: absolute; left: 0; right: 0; top: 50%;
+  height: 2px; margin-top: -1px; border-radius: 2px; background: var(--panel2); }
+.an-was { position: absolute; top: 2px; bottom: 2px; width: 1px; margin-left: -0.5px;
+  background: var(--muted); opacity: .8; pointer-events: none; }
+.an-track input[type=range] { position: relative; width: 100%; margin: 0; background: none;
+  -webkit-appearance: none; appearance: none; height: 18px; cursor: pointer; }
+.an-track input[type=range]::-webkit-slider-runnable-track { height: 18px; background: none; }
+.an-track input[type=range]::-moz-range-track { height: 18px; background: none; }
+.an-track input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none;
+  width: 12px; height: 12px; margin-top: 3px; border-radius: 50%; background: var(--accent);
+  border: 0; box-shadow: 0 0 0 2px var(--panel); cursor: grab; }
+.an-track input[type=range]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%;
+  background: var(--accent); border: 0; box-shadow: 0 0 0 2px var(--panel); cursor: grab; }
+.an-track input[type=range]:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .an-moved { color: var(--muted); font-style: italic; }
-.an-rerun { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 10px; }
-.an-cmd { display: block; margin-top: 6px; padding: 7px 8px; background: var(--bg); border: 1px solid var(--line);
-  border-radius: 6px; font-size: 11.5px; line-height: 1.5; word-break: break-all; user-select: all; }
+/* while the script re-runs, the controls say so rather than looking settled */
+.an-params.an-working { opacity: .62; }
+.an-params.an-working input[type=range] { pointer-events: none; }
+.an-busy { color: var(--accent); }
+.an-busy::after { content: ""; display: inline-block; width: 6px; height: 6px; margin-left: 6px;
+  border-radius: 50%; background: var(--accent); animation: an-pulse .9s ease-in-out infinite; }
+@keyframes an-pulse { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
+.an-rerun { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 11px; }
+.an-runrow { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 7px; }
