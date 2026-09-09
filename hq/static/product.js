@@ -76,6 +76,14 @@ function prStories(r, ri) {
   </div>`;
 }
 
+/* "v0.2.0.1" reads as "v0.2.1" at a glance — it misled the CEO within minutes
+   of shipping one. A fourth number means a small fix to the release the first
+   three name, and the line has to say so itself rather than trust the eye. */
+function hotfixNote(tag) {
+  const m = /^(v\d+\.\d+\.\d+)\.\d+$/.exec(tag || "");
+  return m ? ` (a small fix to ${m[1]})` : "";
+}
+
 function paintPlan() {
   const p = planState, last = p.last_shipped;
   $view.replaceChildren(h(`
@@ -85,7 +93,7 @@ function paintPlan() {
 
     <div class="pr-last">
       ${last
-        ? `Last shipped: <b>${esc(last.tag)}</b> on ${esc(surfaceDate(last.date))}${
+        ? `Last shipped: <b>${esc(last.tag)}</b>${esc(hotfixNote(last.tag))} on ${esc(surfaceDate(last.date))}${
             last.days_ago === null ? "" : ` — ${last.days_ago} day${last.days_ago === 1 ? "" : "s"} ago`}.`
         : "Nothing has shipped yet: the repository has no release tag."}
       <span class="pr-cap">Counting on
@@ -93,14 +101,28 @@ function paintPlan() {
         days of work a week.</span>
     </div>
 
-    ${p.releases.map((r, ri) => `<section class="pr-next">
+    ${(() => {
+      /* A release with every story done is history, not a plan — labelling it
+         NEXT RELEASE put "5 of 5 done" above the actual next one, and the CEO
+         read the pair as the next release having shipped with work unchecked
+         (2026-09-08, minutes after v0.2.0 went out). SHIPPED for the finished,
+         NEXT RELEASE for the first with work left, THEN for the rest. */
+      let nextSeen = false;
+      return p.releases.map((r, ri) => {
+        const done = (r.stories || []).length > 0 && r.done_count === r.stories.length;
+        let eyebrow = "THEN";
+        if (done) eyebrow = "SHIPPED";
+        else if (!nextSeen) { eyebrow = "NEXT RELEASE"; nextSeen = true; }
+        return `<section class="pr-next${done ? " pr-shipped" : ""}">
       <div class="pr-head">
         <div>
-          <div class="pr-eyebrow">${ri === 0 ? "NEXT RELEASE" : "THEN"}</div>
+          <div class="pr-eyebrow">${eyebrow}</div>
           <h2>${r.codename ? esc(r.codename) + " · " : ""}${esc(r.name)}</h2>
         </div>
-        <div class="pr-target ${r.estimated_date ? "" : "pr-nodate"}">
-          ${r.estimated_date
+        <div class="pr-target ${done || r.estimated_date ? "" : "pr-nodate"}">
+          ${done
+            ? `<div class="small">Out the door</div>`
+            : r.estimated_date
             ? `<div class="pr-date">${esc(surfaceDate(r.estimated_date))}</div>
                <div class="small">${esc(prWhen(r.days_away))}</div>`
             : `<div class="small">No date yet</div>
@@ -115,7 +137,9 @@ function paintPlan() {
         <ul class="pr-feats">${r.features.map(f => `<li><b>${esc(f.headline)}</b>
           <span class="small muted">${esc(f.for_players)}</span></li>`).join("")}</ul>
       </details>` : ""}
-    </section>`).join("")}
+    </section>`;
+      }).join("");
+    })()}
   `));
 
   const cap = document.getElementById("pr-capacity");
