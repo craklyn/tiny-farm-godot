@@ -17,9 +17,10 @@ func _ready() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 
-	# The playtest readout (ui/hud.gd PLAYTEST_NOTES) is a scaffold, not the game.
-	# Baking four lines of debug text into the baseline would make this test fail
-	# the day it is switched off for a release — exactly when it should be quiet.
+	# The playtest readout (ui/hud.gd playtest_notes_active) is a scaffold, not
+	# the game — public builds switch it off themselves via the Web preset's
+	# `public_build` feature. Baking four lines of debug text into the baseline
+	# would chain this test to a scaffold no public build draws.
 	# Its collapse toggle (the designer, 2026-09-01) is the same scaffold and goes
 	# with it, for the same reason: a debug control in the baseline is a debug
 	# control this test would start demanding.

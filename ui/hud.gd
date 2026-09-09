@@ -102,14 +102,30 @@ var hint_label: Label
 #
 # **A scaffold, not the game.** Asked for on 2026-08-29 so a playtester can see
 # what the game currently wants and what is gating the next thing; the shipping
-# game is wordless by S-7 and none of this belongs in it. It is one constant to
-# switch off, and `docs/DEPLOY.md`'s pre-release checklist says to do exactly
-# that before any public build.
+# game is wordless by S-7 and none of this belongs in it.
+#
+# Whether it draws is decided by the build, not by hand — the hand-flip blocked
+# both of 2026-09-08's release tags. Any export whose preset carries the
+# `public_build` custom feature (the Web preset, i.e. everything that reaches
+# the public — see `export_presets.cfg` and `docs/DEPLOY.md`) turns it off;
+# everywhere else — the editor, the headless suites, the tablet's debug APK —
+# falls back to the constant below. Deliberately *not* gated on
+# `OS.is_debug_build()`: a playtest build handed to a tester is often a debug
+# export, and the readout has to survive that. The release workflow's guard
+# fails a `v*` tag if the Web preset loses the feature or this file stops
+# consulting it.
 #
 # Everything shown here is read from the sim's own gate functions
 # (`tool_proof_progress`, `phase1_progress`), never recomputed alongside them, so
 # a number on screen cannot disagree with the rule it is describing.
 const PLAYTEST_NOTES := true
+
+
+func playtest_notes_active() -> bool:
+	if OS.has_feature("public_build"):
+		return false
+	return PLAYTEST_NOTES
+
 # The obstacle count is an O(map) scan, so it is refreshed on a timer rather than
 # every frame — the no-per-tile-per-frame guardrail applies to debug UI too.
 const NOTES_REFRESH := 0.5
@@ -433,7 +449,7 @@ func _build_ui() -> void:
 	hint_label.text = ""
 	add_child(hint_label)
 
-	if PLAYTEST_NOTES:
+	if playtest_notes_active():
 		# The designer, 2026-09-01: *"We should add a 'hide debug' button in the top
 		# left that collapses the debug information printed in the top left."* The
 		# readout is a scaffold that covers the top third of the screen, and on a

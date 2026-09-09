@@ -32,16 +32,54 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-  # docs/DEPLOY.md "Before any release": the playtest readout must be off
-  # before anything public ships. The constant stays `true` in the repo on
-  # purpose — it's what a playtest build needs — so this is deliberately a
-  # release-time check, not a change to the default. Placed first, ahead of
-  # the export (and ahead of the Godot download), so a release that isn't
-  # ready fails in seconds rather than after a 30-minute build.
-    - name: "Guard: playtest readout must be off"
+  # docs/DEPLOY.md "Before any release": the playtest readout must never reach
+  # a public build. Since 2026-09-08 that is not a hand-flip (the flip-dance
+  # blocked two tags in one day): ui/hud.gd turns the readout off in any
+  # export whose preset carries the `public_build` custom feature, and the
+  # Web preset — the only thing this workflow ships — carries it. This guard
+  # proves both halves are still wired: the preset declares the feature, and
+  # the HUD consults it. Placed first, ahead of the export (and ahead of the
+  # Godot download), so a release that isn't ready fails in seconds rather
+  # than after a 30-minute build.
+    - name: "Guard: public build turns the playtest readout off"
       run: |
-        if grep -qE '^const PLAYTEST_NOTES := true' ui/hud.gd; then
-          echo "::error::ui/hud.gd has 'const PLAYTEST_NOTES := true'. Set it to false before tagging a release (docs/DEPLOY.md, 'Before any release') — it draws four lines of debug text over the game." >&2
+        set -euo pipefail
+        python3 - <<'EOF'
+        import re, sys
+
+        sections = {}
+        current = None
+        for line in open("export_presets.cfg"):
+            line = line.strip()
+            m = re.fullmatch(r"\[(.+)\]", line)
+            if m:
+                current = m.group(1)
+                sections[current] = {}
+            elif "=" in line and current is not None:
+                key, value = line.split("=", 1)
+                sections[current][key] = value.strip('"')
+
+        web = [name for name, keys in sections.items()
+               if re.fullmatch(r"preset\.\d+", name) and keys.get("name") == "Web"]
+        if not web:
+            print("::error::export_presets.cfg has no preset named 'Web'. The "
+                  "export step below builds from that preset, so this tag has "
+                  "nothing to ship (docs/DEPLOY.md, 'Web / itch.io').")
+            sys.exit(1)
+
+        features = [f.strip() for f in
+                    sections[web[0]].get("custom_features", "").split(",")]
+        if "public_build" not in features:
+            print("::error::the 'Web' preset in export_presets.cfg does not carry "
+                  "the 'public_build' custom feature. That feature is what turns "
+                  "the playtest readout off in a public build (ui/hud.gd); without "
+                  "it this release draws four lines of debug text over the game. "
+                  "Add public_build to the preset's custom_features "
+                  "(docs/DEPLOY.md, 'Before any release').")
+            sys.exit(1)
+        EOF
+        if ! grep -q 'OS.has_feature("public_build")' ui/hud.gd; then
+          echo "::error::ui/hud.gd no longer consults OS.has_feature(\"public_build\"), so the 'public_build' feature on the Web export preset does nothing and this release would draw the playtest readout — four lines of debug text over the game. Restore the check in playtest_notes_active() (docs/DEPLOY.md, 'Before any release')." >&2
           exit 1
         fi
 
