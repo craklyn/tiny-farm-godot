@@ -105,10 +105,22 @@ async function renderAnimLab() {
     <h1>🌻 Animation Lab</h1>
     <p class="sub">Loops that are not entities — set pieces and effects, drawn from parameters
       rather than painted cell by cell.</p>
+    <div class="card an-ask">
+      <div class="an-askrow">
+        <textarea id="an-subject" rows="2"
+          placeholder="Describe one — what happens, and where the motion goes. e.g. the watering can tips and droplets arc onto the tile, splashing twice"></textarea>
+        <button id="an-draw-new">Draw it</button>
+      </div>
+      <div class="small muted" id="an-asknote">Runs unattended with
+        <code class="ref">ANIMATION_PROMPT.md</code> and what earlier loops learned. Takes
+        several minutes and <b>spends real tokens</b>; it appears below as it works, and lands
+        in your queue for a verdict when it is done.</div>
+    </div>
     ${loops.length ? "" : `<div class="card"><b>Nothing drawn yet.</b>
       <p class="small muted">Loops appear here on their own once a script writes one into
-      <code class="ref">${esc(dx.dir)}</code>. The prompt that makes them is
-      <code class="ref">tools/experiments/ANIMATION_PROMPT.md</code>.</p></div>`}
+      <code class="ref">${esc(dx.dir)}</code>, whether you asked for it above or a session
+      drew it by hand.</p></div>`}
+    <div class="an-runs"></div>
     <div class="an-gallery"></div>
     <p class="small muted an-foot"><span class="an-watch"></span>
       Everything in <code class="ref">${esc(dx.dir)}</code> — nothing is registered, loops appear
@@ -117,6 +129,76 @@ async function renderAnimLab() {
   $view.replaceChildren(frag);
   anFill(dx);
   anWatch();
+  anWireAsk();
+}
+
+/* ---------- asking for a new one ----------
+   Drawing costs money and minutes, so it happens only on this button, never as
+   a side effect of arriving at the page. The button says what pressing it will
+   cause before it is pressed. */
+function anWireAsk() {
+  const box = document.getElementById("an-subject");
+  const go = document.getElementById("an-draw-new");
+  const note = document.getElementById("an-asknote");
+  if (!box || !go) return;
+  const rest = note.innerHTML;
+  go.onclick = async () => {
+    const subject = box.value.trim();
+    if (subject.length < 12) {
+      note.className = "small an-need";
+      note.textContent = "Say a sentence or two about what should happen.";
+      box.focus();
+      return;
+    }
+    go.disabled = true;
+    note.className = "small an-busy";
+    note.textContent = "Starting…";
+    try {
+      const r = await fetch("/api/loop/draw", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subject }),
+      }).then(x => x.json());
+      if (r.error) {
+        note.className = "small an-need";
+        note.textContent = r.error;
+      } else {
+        box.value = "";
+        note.className = "small muted";
+        note.innerHTML = rest;
+        anRefresh();
+      }
+    } catch (e) {
+      note.className = "small an-need";
+      note.textContent = "Could not reach the server to start it.";
+    } finally {
+      go.disabled = false;
+    }
+  };
+}
+
+/* A run is not a loop — it has no frames to show — so it gets its own row above
+   the gallery, and disappears into the gallery as a real tile once it lands. */
+function anRuns(runs) {
+  const wrap = document.querySelector(".an-runs");
+  if (!wrap) return;
+  if (!runs || !runs.length) { wrap.innerHTML = ""; return; }
+  wrap.innerHTML = runs.map(r => {
+    const drawing = r.state === "drawing";
+    const mins = r.started_ts ? Math.max(0, Math.round((Date.now() / 1000 - r.started_ts) / 60)) : null;
+    const cost = r.cost && typeof r.cost.list_usd === "number"
+      ? ` · $${r.cost.list_usd.toFixed(2)}` : "";
+    const head = drawing
+      ? `<b class="an-busy">Drawing…</b> <span class="small muted">${mins} min so far</span>`
+      : r.state === "done"
+        ? `<b>Drew <a class="plain" href="#/design/anim/${encodeURIComponent(r.slug)}">${esc(anTitle(r.slug))}</a></b>
+           <span class="small muted">${esc(r.finished || "")}${cost}${
+             r.work_item ? ` · <a class="plain" href="#/work">waiting on your verdict</a>` : ""}</span>`
+        : `<b class="an-need">Did not finish</b> <span class="small muted">${esc(r.error || "")}${cost}</span>`;
+    return `<div class="card an-run${drawing ? " an-run-live" : ""}">
+      <div>${head}</div>
+      <div class="small muted an-run-subject">“${esc(r.subject || "")}”</div>
+    </div>`;
+  }).join("");
 }
 
 /* ---------- keep looking ----------
@@ -158,6 +240,7 @@ function anWatch() {
 function anFill(dx) {
   const gal = document.querySelector(".an-gallery");
   if (!gal) return;
+  anRuns(dx.runs);
   const loops = dx.loops || [];
   const seen = new Set();
 
@@ -179,14 +262,15 @@ function anFill(dx) {
     if (!seen.has(el.dataset.tile)) el.remove();
   });
 
+  const live = (dx.runs || []).filter(r => r.state === "drawing").length;
   const looked = document.getElementById("an-looked");
   if (looked) {
-    looked.textContent = dx.pending
-      ? `${dx.pending} still being drawn — this page is watching.`
+    looked.textContent = (dx.pending || live)
+      ? `${dx.pending + live} still being drawn — this page is watching.`
       : `Looked at ${dx.looked || ""}.`;
   }
   const dot = document.querySelector(".an-watch");
-  if (dot) dot.className = "an-watch" + (dx.pending ? " an-watch-live" : "");
+  if (dot) dot.className = "an-watch" + ((dx.pending || live) ? " an-watch-live" : "");
 }
 
 function anTile(L, key) {

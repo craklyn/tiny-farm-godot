@@ -35,6 +35,7 @@ import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, unquote, urlparse
 
+import anim  # sibling module: the Animation Lab (see its docstring)
 import studio  # sibling module: the ledger of hand edits to sprites
 import work  # sibling module: how work originates (see its docstring)
 
@@ -1969,225 +1970,6 @@ def ripe_look():
         "missing": missing,
     }
 
-
-LOOPS_DIR = "tools/experiments/out"
-LOOP_PREVIEWS = os.path.join(DATA, "loop_previews")
-LOOP_RENDER_LOCK = threading.Semaphore(2)   # cheap, but not free
-_LOOP_SRC_CACHE = {}                        # script path -> (mtime, [asset paths])
-
-
-def loop_sources(script_rel):
-    """The sprite sheets a loop's script draws from, read out of the script.
-
-    Taken from the source rather than declared, so it stays true for scripts
-    written before anybody thought to ask — including whatever an agent wrote
-    ten minutes ago."""
-    full = os.path.join(REPO, script_rel)
-    try:
-        m = os.path.getmtime(full)
-    except OSError:
-        return []
-    hit = _LOOP_SRC_CACHE.get(script_rel)
-    if hit and hit[0] == m:
-        return hit[1]
-    try:
-        with open(full, encoding="utf-8") as fh:
-            src = fh.read()
-    except OSError:
-        return []
-    found = sorted({p for p in re.findall(r"assets/[A-Za-z0-9_/.-]+\.png", src)
-                    if os.path.isfile(os.path.join(REPO, p))})
-    _LOOP_SRC_CACHE[script_rel] = (m, found)
-    return found
-
-
-def loop_render(payload):
-    """Re-draw one loop at the values just dialled in on the page.
-
-    This runs the loop's OWN script, with the same override argument a person
-    would pass on the command line, so what the dashboard shows and what the
-    repo produces cannot drift apart.
-
-    It is the only thing here that executes project code, so it is fenced: the
-    slug must name a loop that already exists, the script path is derived rather
-    than accepted, every override must be a number whose key that loop actually
-    declares and is clamped to that key's own range, and the output lands in a
-    scratch directory instead of over the committed render. Promoting a preview
-    to the real thing stays a separate, deliberate act.
-
-    No model is called and nothing is billed — the cost is about a second of CPU."""
-    import time as _t
-    slug = str(payload.get("slug") or "")
-    if not re.fullmatch(r"[a-z0-9_]{1,64}", slug):
-        return {"error": "bad loop name"}
-    known = {L["slug"]: L for L in loops_index()["loops"]}
-    L = known.get(slug)
-    if not L:
-        return {"error": f"no loop called {slug}"}
-    script = os.path.join(REPO, f"tools/experiments/vfx_{slug}.py")
-    if not os.path.isfile(script):
-        return {"error": "this loop has no script to re-run"}
-
-    declared = {row[0]: row for row in (L.get("params") or [])}
-    values, bad = {}, []
-    for k, v in (payload.get("values") or {}).items():
-        row = declared.get(k)
-        try:
-            x = float(v)
-        except (TypeError, ValueError):
-            row = None
-        if not row:
-            bad.append(k)
-            continue
-        values[k] = min(max(x, float(row[2])), float(row[3]))    # clamped, never trusted
-    if bad:
-        return {"error": "unknown or non-numeric parameters: " + ", ".join(sorted(bad)[:5])}
-    if not values:
-        # Redrawing after the base art moved asks no question about the numbers:
-        # keep the ones it was drawn at and let the new sheets through.
-        values = {k: v for k, v in (L.get("values") or {}).items() if k in declared}
-    if not values:
-        return {"error": "no parameters given"}
-
-    # "keep" writes over the loop's real render — the deliberate act that a plain
-    # drag must never be. Everything else lands in scratch.
-    keep = bool(payload.get("keep"))
-    out = (os.path.join(REPO, LOOPS_DIR, slug) if keep
-           else os.path.join(LOOP_PREVIEWS, slug))
-    os.makedirs(out, exist_ok=True)
-    # The overrides file always lives in scratch, never beside a render: a loop's
-    # directory holds the loop, and only what the script itself puts there.
-    os.makedirs(os.path.join(LOOP_PREVIEWS, slug), exist_ok=True)
-    ov = os.path.join(LOOP_PREVIEWS, slug, "overrides.json")
-    with open(ov, "w", encoding="utf-8") as fh:
-        json.dump(values, fh)
-    # These scripts are written by agents that may still be working on them, so a
-    # render can execute a file that is being rewritten underneath it. Let a very
-    # recent write settle, then note the version we ran, so a failure can say
-    # whether it was the values or the moment.
-    def _stamp():
-        try:
-            st = os.stat(script)
-            return (st.st_mtime, st.st_size)
-        except OSError:
-            return None
-    before = _stamp()
-    if before and _t.time() - before[0] < 1.5:
-        _t.sleep(1.5)
-        before = _stamp()
-
-    t0 = _t.time()
-    try:
-        with LOOP_RENDER_LOCK:
-            p = subprocess.run([sys.executable, script, out, ov], cwd=REPO,
-                               capture_output=True, text=True, timeout=60)
-    except subprocess.TimeoutExpired:
-        return {"error": "the script ran for over a minute and was stopped"}
-    if p.returncode != 0:
-        tail = (p.stderr or p.stdout or "").strip().splitlines()
-        detail = "\n".join(tail[-6:])[:600]
-        if _stamp() != before:
-            return {"error": "the script was being edited while it ran, so this says nothing "
-                             "about your values — try again",
-                    "detail": detail, "raced": True}
-        blew = next((ln for ln in reversed(tail) if "Error" in ln), "")
-        if "AssertionError" in blew:
-            # The script's own guard, not a crash: it checked its work and refused.
-            return {"error": "the script refused these values: "
-                             + blew.split("AssertionError:", 1)[-1].strip()[:200],
-                    "detail": detail, "refused": True}
-        return {"error": "the script failed", "detail": detail}
-
-    meta = os.path.join(out, "params.json")
-    if not os.path.isfile(meta):
-        return {"error": "the script wrote no params.json, so its output cannot be read"}
-    with open(meta, encoding="utf-8") as fh:
-        m = json.load(fh)
-    sheet = next((f for f in sorted(os.listdir(out)) if f.endswith("_sheet.png")), None)
-    if not sheet:
-        return {"error": "the script wrote no sprite sheet"}
-    # A script that ignores its overrides argument renders its defaults and exits
-    # cleanly, which would let the page report a redraw that never happened.
-    wrote = m.get("values") or {}
-    ignored = sorted(k for k, v in values.items()
-                     if k in wrote and abs(float(wrote[k]) - float(v)) > 1e-9)
-    base = "/loops" if keep else "/loop-preview"
-    return {
-        "slug": slug, "values": wrote or values, "kept": keep,
-        "frames": m.get("frames"), "canvas": m.get("canvas"), "colours": m.get("colours"),
-        "sheet": f"{base}/{slug}/{sheet}?t={int(_t.time() * 1000)}",
-        "seconds": round(_t.time() - t0, 2),
-        "ignored": ignored,
-    }
-
-
-def loops_index():
-    """Every parametric loop rendered into tools/experiments/out/.
-
-    Discovery is the whole point: a loop appears here because it was drawn, not
-    because anybody registered it. Each directory carries a params.json written
-    by the script that made it — frames, canvas, the parameter table and the
-    values it was rendered at — so the page can play and describe a loop it has
-    never heard of.
-
-    Each loop also reports the sprite sheets its script draws from, and which of
-    them have changed since the render was made. The scripts read the live sheets,
-    so a loop is never wrong for long — but the PNG on disk is a snapshot, and
-    without this a repainted crow would leave every crow animation quietly showing
-    the old bird."""
-    import time as _t
-    root = os.path.join(REPO, LOOPS_DIR)
-    out = []
-    if not os.path.isdir(root):
-        return {"loops": [], "dir": LOOPS_DIR}
-    scripts = {f[len("vfx_"):-len(".py")]
-               for f in os.listdir(os.path.join(REPO, "tools/experiments"))
-               if f.startswith("vfx_") and f.endswith(".py")}
-    for slug in sorted(set(os.listdir(root)) | scripts):
-        d = os.path.join(root, slug)
-        meta = os.path.join(d, "params.json")
-        if not os.path.isfile(meta):
-            # A script with no finished render, or a directory an agent has made
-            # but not filled: say so rather than showing nothing. "Still being
-            # drawn" and "the page has not looked lately" are different answers
-            # to "where is my animation", and only one of them means wait.
-            if slug in scripts or os.path.isdir(d):
-                out.append({"slug": slug, "pending": True,
-                            "script": f"tools/experiments/vfx_{slug}.py" if slug in scripts else None})
-            continue
-        try:
-            with open(meta, encoding="utf-8") as fh:
-                m = json.load(fh)
-        except Exception as e:
-            out.append({"slug": slug, "error": f"params.json unreadable: {e}"})
-            continue
-        files = set(os.listdir(d))
-        pick = lambda suffix: next((f for f in sorted(files) if f.endswith(suffix)), None)
-        sheet = pick("_sheet.png")
-        script = f"tools/experiments/vfx_{slug}.py"
-        has_script = os.path.isfile(os.path.join(REPO, script))
-        drawn_at = os.path.getmtime(meta)
-        sources = loop_sources(script) if has_script else []
-        stale = [p for p in sources
-                 if os.path.getmtime(os.path.join(REPO, p)) > drawn_at]
-        out.append({
-            "slug": slug,
-            "sheet": f"/loops/{slug}/{sheet}" if sheet else None,
-            "gif": (lambda g: f"/loops/{slug}/{g}" if g else None)(pick(".gif")),
-            "contact": (lambda c: f"/loops/{slug}/{c}" if c else None)(pick("_contact.png")),
-            "frames": m.get("frames"), "canvas": m.get("canvas"),
-            "colours": m.get("colours"),
-            "params": m.get("params", []), "values": m.get("values", {}),
-            "script": script if has_script else None,
-            "sources": sources, "stale": stale,
-            "drawn": _t.strftime("%Y-%m-%d %H:%M", _t.localtime(drawn_at)),
-        })
-    # Newest finished first; anything still being drawn sits at the top, because
-    # the thing you are waiting for is what you came to the page to see.
-    out.sort(key=lambda x: (bool(x.get("pending")), x.get("drawn") or ""), reverse=True)
-    return {"loops": out, "dir": LOOPS_DIR,
-            "looked": _t.strftime("%H:%M:%S"),
-            "pending": sum(1 for x in out if x.get("pending"))}
 
 
 def palette_union():
@@ -5086,9 +4868,9 @@ class Handler(BaseHTTPRequestHandler):
             if path.startswith("/assets/"):
                 return self._send_file(os.path.join(REPO, "assets"), path[len("/assets/"):])
             if path.startswith("/loops/"):
-                return self._send_file(os.path.join(REPO, LOOPS_DIR), path[len("/loops/"):])
+                return self._send_file(os.path.join(REPO, anim.LOOPS_DIR), path[len("/loops/"):])
             if path.startswith("/loop-preview/"):
-                return self._send_file(LOOP_PREVIEWS, path[len("/loop-preview/"):])
+                return self._send_file(anim.PREVIEWS, path[len("/loop-preview/"):])
             if path.startswith("/ledger/"):
                 # Historical sheet bytes, for the before/after strip in the editor.
                 return self._send_file(os.path.join(DATA, "sprite_edits"), path[len("/ledger/"):])
@@ -5167,7 +4949,7 @@ class Handler(BaseHTTPRequestHandler):
                 rid = path[len("/api/manifest/"):] if len(path) > len("/api/manifest") else ""
                 return self._send(200, release_manifest(unquote(rid) or None))
             if path == "/api/loops":
-                return self._send(200, loops_index())
+                return self._send(200, anim.loops_index())
             if path == "/api/palette":
                 return self._send(200, palette_union())
             if path == "/api/ripe":
@@ -5254,9 +5036,14 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, deploy_pair(payload))
             except Exception as e:
                 return self._send(500, {"error": str(e)[:300]})
+        if path == "/api/loop/draw":
+            try:
+                return self._send(200, anim.start_run(payload))
+            except Exception as e:
+                return self._send(500, {"error": str(e)[:300]})
         if path == "/api/loop/render":
             try:
-                return self._send(200, loop_render(payload))
+                return self._send(200, anim.loop_render(payload))
             except Exception as e:
                 return self._send(500, {"error": str(e)[:300]})
         if path == "/api/map/save":
@@ -5339,6 +5126,7 @@ def main():
     threading.Thread(target=_goal_journal_thread, daemon=True).start()
     work.bind(sys.modules[__name__])
     studio.bind(sys.modules[__name__])
+    anim.bind(sys.modules[__name__])
     work.start()
     server = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
     print(f"Tiny Farm HQ on http://localhost:{PORT}")

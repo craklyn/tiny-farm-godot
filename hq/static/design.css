@@ -168,6 +168,12 @@ h2 .tally .chip { font-size: 11px; }
 .an-watch { display: inline-block; width: 6px; height: 6px; border-radius: 50%;
   background: var(--muted); margin-right: 5px; vertical-align: middle; }
 .an-watch-live { background: var(--accent); animation: an-pulse 1.4s ease-in-out infinite; }
+/* a drawing run has no frames to show yet, so it sits above the gallery as a
+   line of text and drops into it as a real tile once it lands */
+.an-runs { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+.an-run { padding: 11px 14px; }
+.an-run-live { border-color: var(--accent); }
+.an-run-subject { margin-top: 3px; font-style: italic; }
 .an-param { margin-bottom: 13px; }
 .an-param-top { display: flex; justify-content: space-between; font-size: 13px; }
 .an-param-top b { color: var(--accent); }
