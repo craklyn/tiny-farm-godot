@@ -186,17 +186,20 @@ trace mislabelled its own categories and where the crow schedule desynced replay
       attribution line and fails the tag before export if it's gone. That only proves the
       text is still in the source, not that the screen opens or that a human read it —
       still play it through.
-- [ ] **Turn off the playtest readout.** `ui/hud.gd`'s `PLAYTEST_NOTES` must be `false`.
-      It draws four lines of English at the top of the screen naming the current beat and
-      every unlock threshold — indispensable for a playtest, and a direct breach of S-7's
-      no-required-reading promise in anything public. It is deliberately *not* gated on
-      `OS.is_debug_build()`, because a playtest build handed to a tester is often a debug
-      export and the readout has to survive that; the cost of that choice is this line.
-      **Enforced by the release workflow** (`.github/workflows/release.yml`, "Guard:
-      playtest readout must be off") — forgetting to flip it now fails the tag before
-      export instead of shipping. The constant itself stays `true` in the repo day to day,
-      since that's what a playtest build needs; flip it to `false` only when cutting the
-      tag, same as before.
+- **The playtest readout turns itself off — nothing to flip.** The readout
+  (`ui/hud.gd`) draws four lines of English at the top of the screen naming the current
+  beat and every unlock threshold — indispensable for a playtest, and a direct breach of
+  S-7's no-required-reading promise in anything public. It used to be a constant flipped
+  by hand right here, and that flip-dance blocked both of 2026-09-08's tags. Now the Web
+  export preset carries a `public_build` custom feature (`export_presets.cfg`) and the
+  HUD checks `OS.has_feature("public_build")`, so every build made from that preset —
+  including your manual pre-tag export from the first box, so what you play is what
+  ships — has the readout off, while the editor, the headless suites, and the tablet's
+  debug APK keep it. It is deliberately *not* gated on `OS.is_debug_build()`, because a
+  playtest build handed to a tester is often a debug export and the readout has to
+  survive that. **Enforced by the release workflow** (`.github/workflows/release.yml`,
+  "Guard: public build turns the playtest readout off") — a tag fails before export if
+  the Web preset loses the feature or `ui/hud.gd` stops consulting it.
 - [ ] **Settle the cot look before a public release.** T-27 box 5 ships *three*
       treatments at once so the designer can A/B them on the tablet (`Cot Look` on the
       title screen, `Cot look:` in the pause menu — both `OS.is_debug_build()`-gated, so
