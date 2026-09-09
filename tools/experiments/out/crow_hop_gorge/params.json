@@ -1,0 +1,75 @@
+{
+ "params": [
+  [
+   "hop_height",
+   30.0,
+   8.0,
+   36.0,
+   1.0,
+   "How high she rises at the top of each hop, in pixels. Low is a shuffle along the row; high is a proper leap with air under her."
+  ],
+  [
+   "hop_hang",
+   0.55,
+   0.0,
+   1.0,
+   0.05,
+   "How long she floats at the top of the hop. Zero crosses the gap at one steady speed; high launches hard, hangs, then drops onto the plant."
+  ],
+  [
+   "lunge",
+   18.0,
+   8.0,
+   28.0,
+   1.0,
+   "How far her head drives into the tomato on each strike, in pixels. The violence of a single peck."
+  ],
+  [
+   "tear_shake",
+   3.0,
+   0.0,
+   7.0,
+   0.5,
+   "How hard she shakes her head side to side while tearing flesh off the fruit, in pixels."
+  ],
+  [
+   "splat_count",
+   15,
+   4,
+   28,
+   1,
+   "How many juice, seed and pulp particles each bite throws. The size of the mess she leaves on the row."
+  ],
+  [
+   "gravity",
+   0.9,
+   0.2,
+   2.0,
+   0.1,
+   "The pull on the juice she throws off. Low leaves it hanging in the air; high drops it straight into the soil."
+  ],
+  [
+   "slide_ease",
+   0.6,
+   0.0,
+   1.0,
+   0.05,
+   "How the stripped plant leaves the frame. Zero drags it off at a constant speed; high whips it away and lets the last of it coast out."
+  ]
+ ],
+ "values": {
+  "hop_height": 30.0,
+  "hop_hang": 0.55,
+  "lunge": 18.0,
+  "tear_shake": 3.0,
+  "splat_count": 15,
+  "gravity": 0.9,
+  "slide_ease": 0.6
+ },
+ "frames": 32,
+ "canvas": [
+  200,
+  112
+ ],
+ "colours": 25
+}
