@@ -1,0 +1,20 @@
+{
+  "id": "we22d5b8c4a03",
+  "title": "Nothing tests hq/anim.py",
+  "level": "story",
+  "owner": "rin",
+  "tier": 3,
+  "tier_reason": "anim.",
+  "ask": "anim.py now carries loop discovery, staleness detection, script re-running with clamped overrides, and an unattended run launcher that spends money. It was verified by hand at every step \u2014 including with the CLI stubbed \u2014 but none of that is repeatable, and hq/ has no Python test harness at all while the Godot suites have two.\n\nThe pieces worth pinning are the ones where being wrong is expensive or silent: overrides clamped to a parameter's declared range, a slug that fails the name pattern being refused, the ignored-overrides comparison that stops the page reporting a redraw that did not happen, staleness computed against the right mtime, and a run that fails filing no work item. A stub for subprocess.run is enough for the last of those; it is how the launcher was checked before it ever ran.",
+  "first_action": "Add hq/test_anim.py with a plain runner, covering clamping, slug refusal, ignored-overrides detection, staleness, and the run launcher's two failure paths",
+  "state": "waiting_session",
+  "thread": "rin",
+  "source": "chat",
+  "source_message": "Filed 2026-09-09 when Daniel asked whether any shortcuts taken while building the Animation Lab should be refactored or hardened. The module extraction and index caching were done in d417023; these two were not.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-09T09:56",
+  "created_ts": 1788973001.833627,
+  "conversation": []
+}

@@ -1,0 +1,20 @@
+{
+  "id": "we11c4a7b3f92",
+  "title": "The in-page verdict buttons now contradict the queue",
+  "level": "story",
+  "owner": "rin",
+  "tier": 2,
+  "tier_reason": "The Animation Lab's loop page still has Keep it / Send it back / Drop it buttons that collect a reason and do nothing with it.",
+  "ask": "The Animation Lab's loop page still has Keep it / Send it back / Drop it buttons that collect a reason and do nothing with it. Since d417023 a drawn loop files a real for_review item to Ingrid carrying the same question, so the page now offers two ways to give a verdict, one of which silently discards it. That is worse than before: it looks answered.\n\nEither wire the buttons to the same work item the run filed (find it by slug, append the verdict and reason to its conversation, move its state), or remove them and point at the queue. Wiring is better if a loop drawn by hand \u2014 with no run behind it and so no work item \u2014 should still be judgeable in place; deciding that is the first question.",
+  "first_action": "Decide whether an in-page verdict writes to the run's work item or the buttons come out, then make the page tell one story about where a verdict goes",
+  "state": "waiting_session",
+  "thread": "rin",
+  "source": "chat",
+  "source_message": "Filed 2026-09-09 when Daniel asked whether any shortcuts taken while building the Animation Lab should be refactored or hardened. The module extraction and index caching were done in d417023; these two were not.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-09T09:56",
+  "created_ts": 1788973001.8334365,
+  "conversation": []
+}
