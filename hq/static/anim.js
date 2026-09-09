@@ -31,6 +31,7 @@ function anStop() {
   if (anPlayer && anPlayer.ro) anPlayer.ro.disconnect();
   anPlayer = null;
   if (anPoll) { clearInterval(anPoll); anPoll = null; }
+  if (anBusyTimer) { clearInterval(anBusyTimer); anBusyTimer = null; }
 }
 
 /* Slice a horizontal sheet into its frames, once, and keep them as canvases. */
@@ -568,6 +569,117 @@ async function renderAnimLoop(slug) {
 
   anAsks(L);
   anWireVerdict(L);
+  anBusyWatch(L.slug, dx);
+}
+
+/* ---------- while it is being reworked ----------
+   The page's question changes. "Is this any good" cannot be answered about
+   something being rewritten as you look at it, so the verdicts go away and the
+   only action left is stopping it. What is on the stage is the version being
+   replaced — and the run re-renders into the same directory, so it may be a
+   half-finished state at any moment. Saying that is better than hiding it,
+   because a broken intermediate is a normal thing to see here, not a fault. */
+let anBusyTimer = null;
+
+function anBusyWatch(slug, dx) {
+  clearInterval(anBusyTimer);
+  const paint = d => {
+    const run = (d.runs || []).find(r => r.state === "drawing" && r.slug === slug);
+    anBusyCard(run, slug);
+    return !!run;
+  };
+  if (!paint(dx)) return;
+  anBusyTimer = setInterval(async () => {
+    if (!document.querySelector(".an-call, .an-busy-card")) { clearInterval(anBusyTimer); return; }
+    if (document.hidden) return;
+    try {
+      delete cache["/api/loops"];
+      const d = await api("/api/loops");
+      if (!paint(d)) {                       // it finished while we watched
+        clearInterval(anBusyTimer);
+        route();                             // re-render the page on the new version
+      }
+    } catch (e) { /* a missed look is not worth saying anything about */ }
+  }, 4000);
+}
+
+function anBusyCard(run, slug) {
+  const call = document.querySelector(".an-call");
+  const params = document.querySelector(".an-params");
+  const rerun = document.querySelector(".an-rerun");
+  const stage = document.querySelector(".an-stage-card");
+
+  if (!run) {
+    document.querySelector(".an-busy-card")?.remove();
+    document.querySelector(".an-stage-warn")?.remove();
+    if (call) call.hidden = false;
+    if (params) params.classList.remove("an-working");
+    document.querySelectorAll(".an-params input[data-p], #an-draw, #an-revert")
+      .forEach(el => { el.disabled = false; });
+    if (rerun) rerun.hidden = false;
+    return;
+  }
+
+  // A verdict and the instruments are both meaningless right now: one judges a
+  // thing that is changing, the other re-runs a script mid-edit.
+  if (call) call.hidden = true;
+  if (params) params.classList.add("an-working");
+  document.querySelectorAll(".an-params input[data-p], #an-draw, #an-revert")
+    .forEach(el => { el.disabled = true; });
+  if (rerun) rerun.hidden = true;
+
+  const mins = run.started_ts
+    ? Math.max(0, Math.round((Date.now() / 1000 - run.started_ts) / 60)) : 0;
+  const ask = (run.subject || "").trim();
+  let card = document.querySelector(".an-busy-card");
+  if (!card) {
+    card = h(`<div class="card an-busy-card"></div>`).firstElementChild;
+    (call || document.querySelector(".an-bottom"))?.parentElement
+      ?.insertBefore(card, call || null);
+  }
+  card.innerHTML = `
+    <h2 class="an-busy">Being reworked</h2>
+    <div class="an-busy-facts">
+      <span><b>${mins}</b> min of 45</span>
+      <span><b>${run.turns || 0}</b> steps</span>
+      <span class="an-busy-step">${esc(anStep(run.step)) || "starting"}</span>
+    </div>
+    <div class="small muted an-busy-ask">Working from: “${esc(ask.slice(0, 260))}${
+      ask.length > 260 ? "…" : ""}”</div>
+    <div class="small muted">The loop above is the version being replaced. The run re-renders
+      into the same place as it goes, so what you see may be part-way through a change — or
+      briefly broken. That is normal while one is running, not a fault.</div>
+    <div class="an-busy-actions">
+      <button id="an-cancel" class="ghost">Stop it</button>
+      <span class="small muted" id="an-cancelnote">Nothing is undone by stopping: whatever it
+        has already written stays on disk, and the script may be part-way through an edit.</span>
+    </div>`;
+  const stop = card.querySelector("#an-cancel");
+  stop.onclick = async () => {
+    stop.disabled = true;
+    const note = card.querySelector("#an-cancelnote");
+    note.className = "small an-busy";
+    note.textContent = "Stopping…";
+    try {
+      const r = await fetch("/api/loop/cancel", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ run: run.id }),
+      }).then(x => x.json());
+      note.className = r.error ? "small an-need" : "small muted";
+      note.textContent = r.error || r.note || "Stopped.";
+      if (!r.error) { clearInterval(anBusyTimer); setTimeout(route, 1200); }
+      else stop.disabled = false;
+    } catch (e) {
+      note.className = "small an-need";
+      note.textContent = "Could not reach the server to stop it.";
+      stop.disabled = false;
+    }
+  };
+
+  if (stage && !document.querySelector(".an-stage-warn")) {
+    stage.appendChild(h(`<div class="small muted an-stage-warn">Showing the version being
+      replaced — this may change under you while the rework runs.</div>`).firstElementChild);
+  }
 }
 
 /* ---------- the loop's provenance ---------- */

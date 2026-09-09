@@ -19,6 +19,7 @@ ever started by a button.
 import json
 import os
 import re
+import signal
 import subprocess
 import sys
 import types
@@ -626,6 +627,9 @@ def _draw(run_id, prompt, known_slug=""):
             p = subprocess.Popen(cmd, cwd=REPO, stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE, text=True, bufsize=1,
                                  env={**os.environ, "CLAUDE_CODE_DISABLE_AUTOUPDATE": "1"})
+            rec = _load_run(run_id)
+            rec["pid"] = p.pid          # so it can be stopped from the page
+            _save_run(rec)
             doc, turns, last_write = {}, 0, 0.0
             for line in p.stdout:
                 if time.time() - started > DRAW_TIMEOUT:
@@ -682,8 +686,10 @@ def _draw(run_id, prompt, known_slug=""):
                             break
                     except OSError:
                         pass
-        ok = p.returncode == 0 and bool(slug)
         rec = _load_run(run_id)
+        if rec.get("state") == "cancelled":
+            return                      # somebody stopped it; its record is already written
+        ok = p.returncode == 0 and bool(slug)
         rec.update({
             "state": "done" if ok else "failed",
             "finished": time.strftime("%Y-%m-%dT%H:%M:%S"),
@@ -714,6 +720,43 @@ def _draw(run_id, prompt, known_slug=""):
         rec.update({"state": "failed", "finished": time.strftime("%Y-%m-%dT%H:%M:%S"),
                     "error": f"{type(e).__name__}: {e}"[:300]})
         _save_run(rec)
+
+
+def cancel_run(payload):
+    """Stop a run in flight.
+
+    The only action that makes sense while one is going: its loop cannot be
+    judged and cannot be tuned, because the script behind it is being rewritten
+    as you look at it. What it leaves behind is whatever the run had written by
+    the time it stopped, which may be a half-edited script — so say so rather
+    than implying a clean undo."""
+    run_id = str(payload.get("run") or "")
+    if not re.fullmatch(r"r[0-9a-f]{1,32}", run_id):
+        return {"error": "bad run id"}
+    rec = _load_run(run_id)
+    if rec.get("state") != "drawing":
+        return {"error": "that run is not running"}
+    pid = rec.get("pid")
+    stopped = False
+    if pid:
+        try:
+            os.kill(int(pid), signal.SIGTERM)
+            stopped = True
+        except (OSError, ValueError, TypeError):
+            pass
+    if not stopped:
+        return {"error": "could not find the process to stop — it may have been started "
+                         "before the server last restarted"}
+    rec.update({"state": "cancelled", "finished": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                "error": "stopped on request"})
+    _save_run(rec)
+    if rec.get("slug"):
+        _append_ask(rec["slug"], {"at": rec["finished"], "kind": "cancelled",
+                                  "text": "The rework was stopped before it finished. "
+                                          "Whatever it had already written is still on disk.",
+                                  "run_id": run_id})
+    return {"ok": True, "note": "Stopped. Whatever it had written by then is still on disk, "
+                                "so the script may be part-way through an edit."}
 
 
 def _load_run(run_id):
