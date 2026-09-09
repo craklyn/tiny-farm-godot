@@ -141,6 +141,14 @@ h2 .tally .chip { font-size: 11px; }
 .an-thumb canvas { image-rendering: pixelated; }
 .an-tile-name { font-weight: 600; margin-bottom: 2px; }
 .an-foot { margin-top: 16px; }
+/* a loop an agent is still drawing: named, so waiting is distinguishable from
+   a page that stopped looking */
+.an-tile.an-pending { border-style: dashed; }
+.an-drawing { color: var(--muted); font-size: 12px; animation: an-pulse 1.4s ease-in-out infinite; }
+.an-tile-bad { border-color: var(--red); }
+.an-watch { display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--muted); margin-right: 5px; vertical-align: middle; }
+.an-watch-live { background: var(--accent); animation: an-pulse 1.4s ease-in-out infinite; }
 .an-param { margin-bottom: 13px; }
 .an-param-top { display: flex; justify-content: space-between; font-size: 13px; }
 .an-param-top b { color: var(--accent); }

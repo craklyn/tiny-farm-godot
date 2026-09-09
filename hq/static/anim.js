@@ -29,6 +29,7 @@ let anPlayer = null;          // { frames, idx, timer, stages, playing }
 function anStop() {
   if (anPlayer && anPlayer.timer) clearInterval(anPlayer.timer);
   anPlayer = null;
+  if (anPoll) { clearInterval(anPoll); anPoll = null; }
 }
 
 /* Slice a horizontal sheet into its frames, once, and keep them as canvases. */
@@ -108,27 +109,104 @@ async function renderAnimLab() {
       <code class="ref">${esc(dx.dir)}</code>. The prompt that makes them is
       <code class="ref">tools/experiments/ANIMATION_PROMPT.md</code>.</p></div>`}
     <div class="an-gallery"></div>
-    <p class="small muted an-foot">Every loop found in <code class="ref">${esc(dx.dir)}</code> —
-      nothing is registered, they appear because they were drawn.</p>`);
-
-  const gal = frag.querySelector(".an-gallery");
-  loops.forEach(L => {
-    if (L.error) {
-      gal.appendChild(h(`<div class="card"><b>${esc(L.slug)}</b>
-        <p class="small muted">${esc(L.error)}</p></div>`).firstElementChild);
-      return;
-    }
-    const card = h(`<a class="card an-tile" href="#/design/anim/${encodeURIComponent(L.slug)}">
-      <div class="an-thumb"><canvas data-slug="${esc(L.slug)}"></canvas></div>
-      <div class="an-tile-name">${esc(anTitle(L.slug))}</div>
-      <div class="small muted">${L.frames} frames · ${L.canvas ? L.canvas.join("×") : "?"} ·
-        ${L.colours} colours · drawn ${esc(L.drawn || "")}</div>
-    </a>`).firstElementChild;
-    gal.appendChild(card);
-    anThumb(card.querySelector("canvas"), L);
-  });
+    <p class="small muted an-foot"><span class="an-watch"></span>
+      Everything in <code class="ref">${esc(dx.dir)}</code> — nothing is registered, loops appear
+      because they were drawn. <span id="an-looked"></span></p>`);
 
   $view.replaceChildren(frag);
+  anFill(dx);
+  anWatch();
+}
+
+/* ---------- keep looking ----------
+   Loops are drawn by agents working in the background, so the page cannot be a
+   snapshot: a person staring at it has no way to tell "still being drawn" from
+   "this page stopped looking twenty minutes ago". Polling costs a directory
+   listing and no model, so it just keeps looking. */
+let anPoll = null;
+
+async function anRefresh() {
+  if (!document.querySelector(".an-gallery")) return false;
+  try {
+    delete cache["/api/loops"];
+    anFill(await api("/api/loops"));
+    return true;
+  } catch (e) {
+    return false;   // a missed look is not worth saying anything about
+  }
+}
+
+function anWatch() {
+  clearInterval(anPoll);
+  anPoll = setInterval(() => {
+    if (!document.querySelector(".an-gallery")) { clearInterval(anPoll); anPoll = null; return; }
+    if (document.hidden) return;          // a tab nobody is looking at asks for nothing
+    anRefresh();
+  }, 4000);
+  /* Coming back to the tab must not mean waiting out the interval: a page that
+     shows a stale gallery for four seconds after you look at it is the same
+     defect as one that never refreshes, just briefer. */
+  if (!anWatch.bound) {
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) anRefresh(); });
+    anWatch.bound = true;
+  }
+}
+
+/* Rebuild only what changed — a tile that is already animating must not be torn
+   down and restarted every four seconds. */
+function anFill(dx) {
+  const gal = document.querySelector(".an-gallery");
+  if (!gal) return;
+  const loops = dx.loops || [];
+  const seen = new Set();
+
+  loops.forEach(L => {
+    seen.add(L.slug);
+    const key = L.error ? "error" : L.pending ? "pending" : String(L.drawn || "");
+    const had = gal.querySelector(`[data-tile="${CSS.escape(L.slug)}"]`);
+    if (had && had.dataset.key === key) return;          // unchanged, leave it alone
+    const el = anTile(L, key);
+    if (had) had.replaceWith(el); else gal.appendChild(el);
+    if (!L.error && !L.pending) anThumb(el.querySelector("canvas"), L);
+  });
+
+  gal.querySelectorAll("[data-tile]").forEach(el => {
+    if (!seen.has(el.dataset.tile)) el.remove();
+  });
+
+  const looked = document.getElementById("an-looked");
+  if (looked) {
+    looked.textContent = dx.pending
+      ? `${dx.pending} still being drawn — this page is watching.`
+      : `Looked at ${dx.looked || ""}.`;
+  }
+  const dot = document.querySelector(".an-watch");
+  if (dot) dot.className = "an-watch" + (dx.pending ? " an-watch-live" : "");
+}
+
+function anTile(L, key) {
+  if (L.error) {
+    return h(`<div class="card an-tile-bad" data-tile="${esc(L.slug)}" data-key="${esc(key)}">
+      <b>${esc(anTitle(L.slug))}</b>
+      <p class="small muted">${esc(L.error)}</p></div>`).firstElementChild;
+  }
+  if (L.pending) {
+    return h(`<div class="card an-tile an-pending" data-tile="${esc(L.slug)}" data-key="${esc(key)}">
+      <div class="an-thumb"><span class="an-drawing">being drawn…</span></div>
+      <div class="an-tile-name">${esc(anTitle(L.slug))}</div>
+      <div class="small muted">${L.script
+        ? `<code class="ref">${esc(L.script)}</code> exists but has written no finished render yet.`
+        : "A folder is here but nothing has been rendered into it yet."}
+        It appears the moment its <code class="ref">params.json</code> lands.</div>
+    </div>`).firstElementChild;
+  }
+  return h(`<a class="card an-tile" data-tile="${esc(L.slug)}" data-key="${esc(key)}"
+       href="#/design/anim/${encodeURIComponent(L.slug)}">
+    <div class="an-thumb"><canvas></canvas></div>
+    <div class="an-tile-name">${esc(anTitle(L.slug))}</div>
+    <div class="small muted">${L.frames} frames · ${L.canvas ? L.canvas.join("×") : "?"} ·
+      ${L.colours} colours · drawn ${esc(L.drawn || "")}</div>
+  </a>`).firstElementChild;
 }
 
 /* 8.0 reads as 8, 0.50 as 0.5 — a scale end is noise if it carries zeros

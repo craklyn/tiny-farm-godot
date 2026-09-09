@@ -2064,10 +2064,20 @@ def loops_index():
     out = []
     if not os.path.isdir(root):
         return {"loops": [], "dir": LOOPS_DIR}
-    for slug in sorted(os.listdir(root)):
+    scripts = {f[len("vfx_"):-len(".py")]
+               for f in os.listdir(os.path.join(REPO, "tools/experiments"))
+               if f.startswith("vfx_") and f.endswith(".py")}
+    for slug in sorted(set(os.listdir(root)) | scripts):
         d = os.path.join(root, slug)
         meta = os.path.join(d, "params.json")
-        if not os.path.isdir(d) or not os.path.isfile(meta):
+        if not os.path.isfile(meta):
+            # A script with no finished render, or a directory an agent has made
+            # but not filled: say so rather than showing nothing. "Still being
+            # drawn" and "the page has not looked lately" are different answers
+            # to "where is my animation", and only one of them means wait.
+            if slug in scripts or os.path.isdir(d):
+                out.append({"slug": slug, "pending": True,
+                            "script": f"tools/experiments/vfx_{slug}.py" if slug in scripts else None})
             continue
         try:
             with open(meta, encoding="utf-8") as fh:
@@ -2090,8 +2100,12 @@ def loops_index():
             "script": script if os.path.isfile(os.path.join(REPO, script)) else None,
             "drawn": _t.strftime("%Y-%m-%d %H:%M", _t.localtime(os.path.getmtime(meta))),
         })
-    out.sort(key=lambda x: x.get("drawn") or "", reverse=True)
-    return {"loops": out, "dir": LOOPS_DIR}
+    # Newest finished first; anything still being drawn sits at the top, because
+    # the thing you are waiting for is what you came to the page to see.
+    out.sort(key=lambda x: (bool(x.get("pending")), x.get("drawn") or ""), reverse=True)
+    return {"loops": out, "dir": LOOPS_DIR,
+            "looked": _t.strftime("%H:%M:%S"),
+            "pending": sum(1 for x in out if x.get("pending"))}
 
 
 def palette_union():
