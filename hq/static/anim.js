@@ -28,6 +28,7 @@ let anPlayer = null;          // { frames, idx, timer, stages, playing }
 
 function anStop() {
   if (anPlayer && anPlayer.timer) clearInterval(anPlayer.timer);
+  if (anPlayer && anPlayer.ro) anPlayer.ro.disconnect();
   anPlayer = null;
   if (anPoll) { clearInterval(anPoll); anPoll = null; }
 }
@@ -355,12 +356,24 @@ async function renderAnimLoop(slug) {
   const img = await anLoadImage(L.sheet);
   const frames = anSlice(img, w, hh, L.frames);
   const stages = [document.getElementById("an-1x"), document.getElementById("an-4x")];
-  stages.forEach(st => {
-    const z = Number(st.dataset.zoom);
-    st.width = w * z; st.height = hh * z;
-  });
-  anPlayer = { frames, idx: 0, playing: true, stages, timer: null };
+  anPlayer = { frames, idx: 0, playing: true, stages, timer: null, w, hh };
+  anFitStages();
   anPaint();
+  /* Loops are whatever size their subject needed — 64 wide for a girl, 200 for a
+     crow on a plant — so the zoom is worked out from the room available rather
+     than fixed, and stays an integer because a pixel loop scaled by 3.4 stops
+     being pixel art. */
+  if (anPlayer.ro) anPlayer.ro.disconnect();
+  anPlayer.ro = new ResizeObserver(() => { anFitStages(); anPaint(); });
+  anPlayer.ro.observe(document.querySelector(".an-stages"));
+  /* A window resize as well as the observer: the observer is the right tool and
+     catches layout changes the window never hears about, but it is the one path
+     that could not be exercised here, so the common case does not depend on it
+     alone. Both end in the same idempotent refit. */
+  if (!anFitStages.bound) {
+    window.addEventListener("resize", () => { anFitStages(); anPaint(); });
+    anFitStages.bound = true;
+  }
   anPlayer.timer = setInterval(() => {
     if (!anPlayer || !anPlayer.playing) return;
     if (!document.body.contains(stages[0])) { anStop(); return; }
@@ -456,6 +469,8 @@ function anWireInstruments(L, w, hh) {
         const frames = anSlice(img, r.canvas[0], r.canvas[1], r.frames);
         anPlayer.frames = frames;
         anPlayer.idx = anPlayer.idx % frames.length;
+        anPlayer.w = r.canvas[0]; anPlayer.hh = r.canvas[1];
+        anFitStages();
         anPaint();
         document.getElementById("an-palette").innerHTML = await anPaletteCard(frames);
         if (r.ignored && r.ignored.length) {
@@ -506,6 +521,29 @@ function anWireInstruments(L, w, hh) {
     render();
   };
   reflect();
+}
+
+/* Size the two stages to the room there actually is: true size never scales, and
+   the zoomed one takes the largest whole-number multiple that still fits beside
+   it, both across and down. Its caption says the factor it landed on rather than
+   claiming a number it is not. */
+function anFitStages() {
+  if (!anPlayer) return;
+  const { w, hh, stages } = anPlayer;
+  const box = document.querySelector(".an-stages");
+  if (!box) return;
+  const style = getComputedStyle(box);
+  const pad = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+  /* Measured against the full row, not the space left beside the true-size copy:
+     a wide loop simply wraps onto its own line and zooms there, which beats
+     sitting next to its twin at 1x for the sake of staying on one row. */
+  const avail = Math.max(120, box.clientWidth - pad);
+  const MAX_TALL = 430;
+  const z = Math.max(1, Math.min(6, Math.floor(avail / w), Math.floor(MAX_TALL / hh)));
+  stages[0].width = w; stages[0].height = hh;
+  stages[1].width = w * z; stages[1].height = hh * z;
+  const cap = stages[1].parentElement.querySelector("figcaption");
+  if (cap) cap.textContent = z === 1 ? "true size again — there is no room to zoom" : `${z}×`;
 }
 
 function anPaint() {

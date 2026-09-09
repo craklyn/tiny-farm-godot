@@ -97,13 +97,19 @@ h2 .tally .chip { font-size: 11px; }
    at 1x and at 4x, and judging one only zoomed is how a small sprite passes for
    a polished illustration. True size sits first because it is the honest one. */
 .an-demo-note b { color: var(--accent); }
-.an-grid { display: grid; grid-template-columns: minmax(320px, 1fr) minmax(260px, 340px); gap: 14px; align-items: start; }
+/* minmax(0, …) on the stage column: a grid track's default min-content floor is
+   the widest thing inside it, which let a wide loop push the whole page sideways
+   instead of the canvas being asked to fit. */
+.an-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, 340px); gap: 14px; align-items: start; }
 @media (max-width: 900px) { .an-grid { grid-template-columns: 1fr; } }
 .an-stage-card { display: flex; flex-direction: column; gap: 12px; }
 .an-stages { display: flex; gap: 22px; align-items: flex-end; flex-wrap: wrap; justify-content: center;
   background: #17130e; border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
-.an-stages figure { display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.an-stages canvas { image-rendering: pixelated; border: 1px solid var(--line); border-radius: 3px; }
+/* min-width:0 or the figure refuses to shrink below its canvas, the flex row
+   never narrows, and the observer that resizes the canvas never hears about it */
+.an-stages figure { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
+.an-stages canvas { image-rendering: pixelated; border: 1px solid var(--line); border-radius: 3px;
+  max-width: 100%; height: auto; }
 .an-stages figcaption { font-size: 11.5px; color: var(--muted); }
 .an-transport { display: flex; align-items: center; gap: 10px; }
 .an-transport input[type=range] { flex: 1; }
