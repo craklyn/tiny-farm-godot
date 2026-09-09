@@ -1,0 +1,20 @@
+{
+  "id": "wc73a1e5d802",
+  "title": "A verdict on a loop reaches nobody",
+  "level": "story",
+  "owner": "ingrid",
+  "tier": 2,
+  "tier_reason": "The Animation Lab's Keep it / Send it back / Drop it buttons collect a reason and then do nothing with it.",
+  "ask": "The Animation Lab's Keep it / Send it back / Drop it buttons collect a reason and then do nothing with it. Wire them to the same place any other verdict goes: a record under hq/data/ carrying the loop slug, the verdict, the reason, the values it was judged at, and the time \u2014 then surface it on the art director's surface as work. Until this exists the page can gather Daniel's taste and then drop it on the floor, which is worse than not asking.",
+  "first_action": "Decide where a loop verdict is filed so it matches how rulings and work items already travel, then wire the three buttons to it",
+  "state": "waiting_session",
+  "thread": "ingrid",
+  "source": "chat",
+  "source_message": "Filed 2026-09-08 when Daniel asked whether there is now a system for adding animations to the Design Studio's animation page. The answer was most of one; these are the places it is not closed.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-08T23:16",
+  "created_ts": 1788934585.6352696,
+  "conversation": []
+}

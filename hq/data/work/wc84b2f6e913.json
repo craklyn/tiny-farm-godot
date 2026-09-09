@@ -1,0 +1,20 @@
+{
+  "id": "wc84b2f6e913",
+  "title": "Tuned values cannot be made the real render",
+  "level": "story",
+  "owner": "rin",
+  "tier": 2,
+  "tier_reason": "The sliders re-render into hq/data/loop_previews/ and never touch tools/experiments/out/.",
+  "ask": "The sliders re-render into hq/data/loop_previews/ and never touch tools/experiments/out/. There is no way to say 'these are the values now' except running the script by hand at a terminal, which is the recurring manual step the studio is supposed to be removing. Add the promotion: write the tuned values into the loop's own out/ directory, and record what changed so the move is legible afterwards.",
+  "first_action": "Add a control that promotes the current preview to the loop's committed render, writing the values it used alongside it",
+  "state": "waiting_session",
+  "thread": "rin",
+  "source": "chat",
+  "source_message": "Filed 2026-09-08 when Daniel asked whether there is now a system for adding animations to the Design Studio's animation page. The answer was most of one; these are the places it is not closed.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-08T23:16",
+  "created_ts": 1788934585.6355515,
+  "conversation": []
+}

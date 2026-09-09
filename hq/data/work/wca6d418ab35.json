@@ -1,0 +1,20 @@
+{
+  "id": "wca6d418ab35",
+  "title": "Landing a finished loop is still a manual step",
+  "level": "story",
+  "owner": "claude",
+  "tier": 3,
+  "tier_reason": "The animation prompt tells each parallel run not to commit, because they share one working tree.",
+  "ask": "The animation prompt tells each parallel run not to commit, because they share one working tree. That is right, but it leaves a person to land every finished loop by hand, which is the shape of defect Daniel's own doctrine names: a recurring manual step is not a process. Work out how a finished loop reaches main without anybody remembering to do it \u2014 a drain pass that picks up completed out/ directories and their scripts, or the runs committing to their own branches.",
+  "first_action": "Decide how a finished loop lands on main without a human step, and write it up against whichever lane already does the closest thing",
+  "state": "waiting_session",
+  "thread": "claude",
+  "source": "chat",
+  "source_message": "Filed 2026-09-08 when Daniel asked whether there is now a system for adding animations to the Design Studio's animation page. The answer was most of one; these are the places it is not closed.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-08T23:16",
+  "created_ts": 1788934585.635783,
+  "conversation": []
+}

@@ -1,0 +1,20 @@
+{
+  "id": "wc95c307fa24",
+  "title": "A script that ignores its overrides file fails silently",
+  "level": "story",
+  "owner": "rin",
+  "tier": 3,
+  "tier_reason": "loop_render passes an overrides path as the script's second argument, but nothing checks the script honoured it.",
+  "ask": "loop_render passes an overrides path as the script's second argument, but nothing checks the script honoured it. A script that ignores that argument re-renders its defaults and returns success, so the slider moves, the card says 'Redrawn in 0.3s', and the picture is unchanged \u2014 the page lies. The returned params.json carries the values actually used, so compare them against what was asked and say plainly when they disagree.",
+  "first_action": "Compare the requested values against the values in the params.json the render wrote, and surface a clear message when a script ignored its overrides",
+  "state": "waiting_session",
+  "thread": "rin",
+  "source": "chat",
+  "source_message": "Filed 2026-09-08 when Daniel asked whether there is now a system for adding animations to the Design Studio's animation page. The answer was most of one; these are the places it is not closed.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-08T23:16",
+  "created_ts": 1788934585.6356733,
+  "conversation": []
+}
