@@ -205,7 +205,7 @@ function anRuns(runs) {
 function anRunTile(r) {
   const mins = r.started_ts
     ? Math.max(0, Math.round((Date.now() / 1000 - r.started_ts) / 60)) : 0;
-  const step = r.step ? esc(r.step) : "reading the notes and the sheets";
+  const step = r.step ? esc(anStep(r.step)) : "reading the notes and the sheets";
   const turns = r.turns ? ` · ${r.turns} step${r.turns === 1 ? "" : "s"}` : "";
   return h(`<div class="card an-tile an-pending an-run-live" data-tile="run:${esc(r.id)}"
        data-key="run:${esc(r.state)}:${esc(r.step || "")}:${r.turns || 0}:${mins}">
@@ -260,7 +260,13 @@ function anFill(dx) {
   const loops = dx.loops || [];
   const seen = new Set();
 
-  (dx.runs || []).filter(r => r.state === "drawing").forEach(r => {
+  /* Only a run with no loop yet gets a tile of its own. A rework does not add a
+     loop, it changes one — so it marks the tile that already exists. Two tiles
+     for one animation says a second one is being made, which is exactly the
+     wrong thing to say. */
+  const drawing = (dx.runs || []).filter(r => r.state === "drawing");
+  const reworking = new Map(drawing.filter(r => r.slug).map(r => [r.slug, r]));
+  drawing.filter(r => !r.slug).forEach(r => {
     const key = `run:${r.state}:${r.step || ""}:${r.turns || 0}:${
       r.started_ts ? Math.round((Date.now() / 1000 - r.started_ts) / 60) : 0}`;
     seen.add("run:" + r.id);
@@ -275,11 +281,14 @@ function anFill(dx) {
     /* Staleness belongs in the key: repainting a sheet makes a tile go amber
        without redrawing it, so keying on the draw time alone would leave the
        page showing "fine" for exactly the change this flag exists to catch. */
+    const busy = reworking.get(L.slug);
     const key = L.error ? "error" : L.pending ? "pending"
-      : `${L.drawn || ""}|${(L.stale || []).join(",")}`;
+      : `${L.drawn || ""}|${(L.stale || []).join(",")}|${busy
+          ? `rw:${busy.turns || 0}:${busy.started_ts
+              ? Math.round((Date.now() / 1000 - busy.started_ts) / 60) : 0}` : ""}`;
     const had = gal.querySelector(`[data-tile="${CSS.escape(L.slug)}"]`);
     if (had && had.dataset.key === key) return;          // unchanged, leave it alone
-    const el = anTile(L, key);
+    const el = anTile(L, key, busy);
     if (had) had.replaceWith(el); else gal.appendChild(el);
     if (!L.error && !L.pending) anThumb(el.querySelector("canvas"), L);
   });
@@ -299,7 +308,13 @@ function anFill(dx) {
   if (dot) dot.className = "an-watch" + ((dx.pending || live) ? " an-watch-live" : "");
 }
 
-function anTile(L, key) {
+/* A tool call, as a phrase rather than the shell it was typed into. */
+function anStep(step) {
+  const s = String(step || "").replace(/\s+/g, " ").trim();
+  return s.length > 58 ? s.slice(0, 58) + "…" : s;
+}
+
+function anTile(L, key, busy) {
   if (L.error) {
     return h(`<div class="card an-tile-bad" data-tile="${esc(L.slug)}" data-key="${esc(key)}">
       <b>${esc(anTitle(L.slug))}</b>
@@ -316,13 +331,19 @@ function anTile(L, key) {
     </div>`).firstElementChild;
   }
   const stale = (L.stale || []).length;
-  return h(`<a class="card an-tile${stale ? " an-stale" : ""}" data-tile="${esc(L.slug)}"
+  const mins = busy && busy.started_ts
+    ? Math.max(0, Math.round((Date.now() / 1000 - busy.started_ts) / 60)) : 0;
+  return h(`<a class="card an-tile${stale ? " an-stale" : ""}${busy ? " an-run-live" : ""}"
+       data-tile="${esc(L.slug)}"
        data-key="${esc(key)}" href="#/design/anim/${encodeURIComponent(L.slug)}">
     <div class="an-thumb"><canvas></canvas></div>
     <div class="an-tile-name">${esc(anTitle(L.slug))}</div>
-    <div class="small muted">${L.frames} frames · ${L.canvas ? L.canvas.join("×") : "?"} ·
-      ${L.colours} colours · drawn ${esc(L.drawn || "")}</div>
-    ${stale ? `<div class="small an-stale-note">! drawn before ${stale === 1
+    ${busy ? `<div class="small an-busy">Being reworked · ${mins} min ·
+      ${busy.turns || 0} steps</div>
+      <div class="small muted">${esc(anStep(busy.step)) || "working"}</div>`
+      : `<div class="small muted">${L.frames} frames · ${L.canvas ? L.canvas.join("×") : "?"} ·
+      ${L.colours} colours · drawn ${esc(L.drawn || "")}</div>`}
+    ${stale && !busy ? `<div class="small an-stale-note">! drawn before ${stale === 1
       ? esc((L.stale[0] || "").split("/").pop()) + " changed"
       : stale + " of its sheets changed"}</div>` : ""}
   </a>`).firstElementChild;

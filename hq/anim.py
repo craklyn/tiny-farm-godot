@@ -603,10 +603,11 @@ def _step_of(event):
         arg = block.get("input") or {}
         target = arg.get("file_path") or arg.get("path") or arg.get("pattern") or ""
         if name == "Bash":
-            target = (arg.get("description") or arg.get("command") or "")[:60]
-        if target:
-            target = str(target).replace(REPO + "/", "")
-        return f"{name.lower()} {target}".strip()[:80]
+            # A heredoc'd script is not a description of what is happening, so
+            # prefer the model's own words and fall back to the first clause.
+            target = arg.get("description") or (arg.get("command") or "").split("\n")[0]
+        target = " ".join(str(target).split()).replace(REPO + "/", "")
+        return f"{name.lower()} {target}".strip()[:70]
     return None
 
 
