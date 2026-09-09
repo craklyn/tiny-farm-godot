@@ -129,6 +129,9 @@ async function renderDesign() {
       <a class="card tool-card" href="#/entities"><b>🐔 Entities</b>
         <p class="small muted">Every creature, crop, and object, live from the real sprite
         sheets — with an editor that repaints any frame and keeps every revision.</p></a>
+      <a class="card tool-card" href="#/design/anim"><b>🌻 Animation Lab</b>
+        <p class="small muted">Loops that are not entities — set pieces and effects, drawn from
+        parameters rather than painted cell by cell, and checked against the shipped palette.</p></a>
       <a class="card tool-card" href="#/maps"><b>🗺️ Map Editor</b>
         <p class="small muted">The farm's layout definitions — parcels, boundaries,
         stations — edited as data the world generator fills in at play time.</p></a>
