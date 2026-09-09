@@ -2061,6 +2061,21 @@ def loop_render(payload):
     ov = os.path.join(LOOP_PREVIEWS, slug, "overrides.json")
     with open(ov, "w", encoding="utf-8") as fh:
         json.dump(values, fh)
+    # These scripts are written by agents that may still be working on them, so a
+    # render can execute a file that is being rewritten underneath it. Let a very
+    # recent write settle, then note the version we ran, so a failure can say
+    # whether it was the values or the moment.
+    def _stamp():
+        try:
+            st = os.stat(script)
+            return (st.st_mtime, st.st_size)
+        except OSError:
+            return None
+    before = _stamp()
+    if before and _t.time() - before[0] < 1.5:
+        _t.sleep(1.5)
+        before = _stamp()
+
     t0 = _t.time()
     try:
         with LOOP_RENDER_LOCK:
@@ -2070,7 +2085,18 @@ def loop_render(payload):
         return {"error": "the script ran for over a minute and was stopped"}
     if p.returncode != 0:
         tail = (p.stderr or p.stdout or "").strip().splitlines()
-        return {"error": "the script failed", "detail": "\n".join(tail[-6:])[:600]}
+        detail = "\n".join(tail[-6:])[:600]
+        if _stamp() != before:
+            return {"error": "the script was being edited while it ran, so this says nothing "
+                             "about your values — try again",
+                    "detail": detail, "raced": True}
+        blew = next((ln for ln in reversed(tail) if "Error" in ln), "")
+        if "AssertionError" in blew:
+            # The script's own guard, not a crash: it checked its work and refused.
+            return {"error": "the script refused these values: "
+                             + blew.split("AssertionError:", 1)[-1].strip()[:200],
+                    "detail": detail, "refused": True}
+        return {"error": "the script failed", "detail": detail}
 
     meta = os.path.join(out, "params.json")
     if not os.path.isfile(meta):

@@ -295,8 +295,8 @@ async function renderAnimLoop(slug) {
           <button id="an-play" class="ghost">⏸ pause</button>
           <input id="an-scrub" type="range" min="0" max="${L.frames - 1}" value="0">
           <span class="small muted" id="an-frameno">frame 1 / ${L.frames}</span>
-          <label class="an-cmp-toggle"><input type="checkbox" id="an-compare">
-            <span>compare with as-drawn</span></label>
+          <button id="an-compare" class="ghost" aria-pressed="false"
+                  title="show the render on disk beside your changes">compare</button>
         </div>
         <div class="small muted an-cmp-hint" id="an-cmp-hint" hidden></div>
       </div>
@@ -402,15 +402,23 @@ async function renderAnimLoop(slug) {
     anPaint();
   });
 
+  /* On/off in the page's own vocabulary: outlined when off, filled when on, the
+     same pair the transport's pause button and Draw it already use. */
   const cmp = document.getElementById("an-compare");
-  cmp.checked = localStorage.getItem("an-compare") === "1";
-  anPlayer.compare = cmp.checked;
-  cmp.addEventListener("change", () => {
-    anPlayer.compare = cmp.checked;
-    try { localStorage.setItem("an-compare", cmp.checked ? "1" : "0"); } catch (e) { /* private mode */ }
+  const setCompare = on => {
+    anPlayer.compare = on;
+    cmp.classList.toggle("ghost", !on);
+    cmp.setAttribute("aria-pressed", on ? "true" : "false");
     anFitStages(); anPaint(); anCompareHint();
-  });
-  anFitStages(); anPaint(); anCompareHint();
+  };
+  let want = false;
+  try { want = localStorage.getItem("an-compare") === "1"; } catch (e) { /* private mode */ }
+  setCompare(want);
+  cmp.onclick = () => {
+    const on = !anPlayer.compare;
+    try { localStorage.setItem("an-compare", on ? "1" : "0"); } catch (e) { /* private mode */ }
+    setCompare(on);
+  };
 
   document.getElementById("an-palette").innerHTML = await anPaletteCard(frames);
   anWireInstruments(L, w, hh);
