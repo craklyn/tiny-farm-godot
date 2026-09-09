@@ -38,22 +38,6 @@
           "title": "Bring the store page up to date with what this release adds",
           "estimate_days": 0.5,
           "done": true
-        },
-        {
-          "id": "s9",
-          "title": "A ripe crop is obvious at a glance",
-          "estimate_days": null,
-          "done": false,
-          "why": "From play, 2026-09-07: nothing on the farm said loudly enough that a plant was ready to pick \u2014 she had to go looking. Measured, the ripe cell repaints most of the plant (38 of 56 pixels) and still cannot be seen, because it changes brightness by 0.3 of 255 and barely moves the outline \u2014 a hue shift inside one family, and hue is the first thing distance throws away. Five candidates were built and judged on the tablet from two staged sheets, one at ground level and one from the height the camera rises to when she is directing a robot. Ruled 2026-09-08 (Q-94): a ready plant sways gently and gives off its own ripe colour \u2014 gold under wheat, red under tomato. Shipped as the only behaviour, wordless (S-7), and it cannot touch the sim (D-8).",
-          "raised": "2026-09-07"
-        },
-        {
-          "id": "s10",
-          "title": "Fix the bed outline left over from the cot moving indoors",
-          "estimate_days": null,
-          "done": false,
-          "why": "Reported from play 2026-09-07 \u2014 \"at nighttime, when all of your energy is spent, look at the house from the outside\". The dusk cue lights the tile the next tap should land on, and it always drew the bed's own 16x32 footprint: on the 16x16 front door that spilled onto the wall above, so the house wore a bed outline every evening. Fixed the same day \u2014 the shape is now a pure function in `CotPresentation` and asserted, rather than inline geometry nobody could test.",
-          "raised": "2026-09-07"
         }
       ]
     },
@@ -62,7 +46,7 @@
       "release_id": "update-1-1",
       "name": "Player Update 1.1",
       "codename": "v0.2.1",
-      "contains": "The fresh-player evidence v0.2.0 shipped without (designer amendment 2026-09-08): one unprompted adult session on the tablet, the sleeping-cot bar and the standing bars scored from its trace \u2014 plus whatever that session teaches.",
+      "contains": "The fresh-player evidence v0.2.0 shipped without (designer amendment 2026-09-08) \u2014 one unprompted adult session on the tablet, the sleeping-cot bar and the standing bars scored from its trace \u2014 plus the two player-visible follow-ups that missed the v0.2.0 boat: the ripe-crop glance and the bed outline.",
       "stories": [
         {
           "id": "s1",
@@ -81,6 +65,22 @@
           "title": "Confirm no regression on the standing bars \u2014 dead taps at or under 12%, longest stall at or under 16.3 seconds",
           "estimate_days": null,
           "done": false
+        },
+        {
+          "id": "s9",
+          "title": "A ripe crop is obvious at a glance",
+          "estimate_days": null,
+          "done": false,
+          "why": "From play, 2026-09-07: nothing on the farm said loudly enough that a plant was ready to pick \u2014 she had to go looking. Measured, the ripe cell repaints most of the plant (38 of 56 pixels) and still cannot be seen, because it changes brightness by 0.3 of 255 and barely moves the outline \u2014 a hue shift inside one family, and hue is the first thing distance throws away. Five candidates were built and judged on the tablet from two staged sheets, one at ground level and one from the height the camera rises to when she is directing a robot. Ruled 2026-09-08 (Q-94): a ready plant sways gently and gives off its own ripe colour \u2014 gold under wheat, red under tomato. Shipped as the only behaviour, wordless (S-7), and it cannot touch the sim (D-8).",
+          "raised": "2026-09-07"
+        },
+        {
+          "id": "s10",
+          "title": "Fix the bed outline left over from the cot moving indoors",
+          "estimate_days": null,
+          "done": false,
+          "why": "Reported from play 2026-09-07 \u2014 \"at nighttime, when all of your energy is spent, look at the house from the outside\". The dusk cue lights the tile the next tap should land on, and it always drew the bed's own 16x32 footprint: on the 16x16 front door that spilled onto the wall above, so the house wore a bed outline every evening. Fixed the same day \u2014 the shape is now a pure function in `CotPresentation` and asserted, rather than inline geometry nobody could test.",
+          "raised": "2026-09-07"
         }
       ]
     },

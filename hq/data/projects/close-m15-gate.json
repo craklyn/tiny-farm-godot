@@ -1,47 +1,47 @@
 {
-  "id": "close-m15-gate",
-  "name": "Close the M1.5 exit gate (cot re-evidence)",
-  "priority": 1,
-  "status": "planned",
-  "owner": "sofia",
-  "contributors": [
-    "wei",
-    "grace"
-  ],
-  "summary": "The onboarding-rebuild milestone passed four of its five measured bars decisively. The one open bar — the sleeping cot being understood without prompting — was voided because the tester had been coached in earlier sessions. All the fixes it was waiting on (cot presentation, station pips, the yard rework) have since shipped; the scoring session now rides the pre-release green-tester pass.",
-  "requirements": [
-    "One unprompted fresh-farm session by an adult who has never played, on the tablet",
-    "The cot bar scored from the session trace: at least one sleep, unprompted",
-    "No regression on the standing bars: dead taps ≤ 12% (current baseline 5%), longest honest stall ≤ 16.3s",
-    "Session recorded to playtests/ and verified against its autosave"
-  ],
-  "current_status": "Rescheduled by the CEO's 2026-09-02 ruling: no standing fresh-player recruiting at this phase — the CEO is the primary playtester, and one genuinely fresh (green) tester is sought before each public feature release. The cot re-evidence session therefore happens as the pre-v0.2.0 green-tester pass, not before. Everything technical is ready: the build carries the cot dusk-glow, the purpose pips, and the yard rework, and the tablet has the current build. That session double-counts as the human artifact Replay Phase B needs.",
-  "plan": [
-    {
-      "step": "Ship the cot and station presentation fixes",
-      "done": true
-    },
-    {
-      "step": "Deploy current build to the tablet",
-      "done": true
-    },
-    {
-      "step": "When v0.2.0 approaches, find one green tester for the pre-release pass (ruled 2026-09-02: not before)",
-      "done": false
-    },
-    {
-      "step": "Run the session unprompted; say nothing during play",
-      "done": false
-    },
-    {
-      "step": "Score the trace against the bars; if the cot bar passes, M1.5 closes",
-      "done": false
-    }
-  ],
-  "links": [
-    "docs/ROADMAP.md",
-    "docs/M1_5_PLAN.md"
-  ],
-  "release": "update-1",
-  "release_critical": true
+ "id": "close-m15-gate",
+ "name": "Close the M1.5 exit gate (cot re-evidence)",
+ "priority": 1,
+ "status": "planned",
+ "owner": "sofia",
+ "contributors": [
+  "wei",
+  "grace"
+ ],
+ "summary": "The onboarding-rebuild milestone passed four of its five measured bars decisively. The one open bar \u2014 the sleeping cot being understood without prompting \u2014 was voided because the tester had been coached in earlier sessions. All the fixes it was waiting on (cot presentation, station pips, the yard rework) have since shipped; the scoring session now rides the pre-release green-tester pass.",
+ "requirements": [
+  "One unprompted fresh-farm session by an adult who has never played, on the tablet",
+  "The cot bar scored from the session trace: at least one sleep, unprompted",
+  "No regression on the standing bars: dead taps \u2264 12% (current baseline 5%), longest honest stall \u2264 16.3s",
+  "Session recorded to playtests/ and verified against its autosave"
+ ],
+ "current_status": "Rescheduled by the CEO's 2026-09-02 ruling: no standing fresh-player recruiting at this phase \u2014 the CEO is the primary playtester, and one genuinely fresh (green) tester is sought before each public feature release. The cot re-evidence session therefore happens as the pre-v0.2.0 green-tester pass, not before. Everything technical is ready: the build carries the cot dusk-glow, the purpose pips, and the yard rework, and the tablet has the current build. That session double-counts as the human artifact Replay Phase B needs.",
+ "plan": [
+  {
+   "step": "Ship the cot and station presentation fixes",
+   "done": true
+  },
+  {
+   "step": "Deploy current build to the tablet",
+   "done": true
+  },
+  {
+   "step": "When v0.2.0 approaches, find one green tester for the pre-release pass (ruled 2026-09-02: not before)",
+   "done": false
+  },
+  {
+   "step": "Run the session unprompted; say nothing during play",
+   "done": false
+  },
+  {
+   "step": "Score the trace against the bars; if the cot bar passes, M1.5 closes",
+   "done": false
+  }
+ ],
+ "links": [
+  "docs/ROADMAP.md",
+  "docs/M1_5_PLAN.md"
+ ],
+ "release": "update-1-1",
+ "release_critical": true
 }

@@ -84,6 +84,13 @@
       "subtitle": "the shop, the robots, and the rebuilt first day"
     },
     {
+      "id": "update-1-1",
+      "name": "Player Update 1.1",
+      "tag_intent": "v0.2.1",
+      "goal": "The evidence release: the fresh-player tablet session v0.2.0 shipped without, its cot-bar and standing-bar scoring, and the two small player-facing follow-ups that missed the v0.2.0 boat.",
+      "definition_of_done": "One genuinely fresh adult session recorded on the tablet and scored; the two follow-up stories done; a v0.2.1 tag out through the runbook."
+    },
+    {
       "id": "m3",
       "name": "M3 \u2014 the next content milestone",
       "tag_intent": null,
