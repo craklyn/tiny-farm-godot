@@ -2,11 +2,11 @@
  "params": [
   [
    "hop_height",
-   30.0,
-   8.0,
    36.0,
+   28.0,
+   48.0,
    1.0,
-   "How high she rises at the top of each hop, in pixels. Low is a shuffle along the row; high is a proper leap with air under her."
+   "How high she rises at the top of each hop, in pixels. She is hopping over the plant, not along a row, so even the low end is a real leap; the high end sends her up among the leaves at the top of the frame."
   ],
   [
    "hop_hang",
@@ -14,7 +14,7 @@
    0.0,
    1.0,
    0.05,
-   "How long she floats at the top of the hop. Zero crosses the gap at one steady speed; high launches hard, hangs, then drops onto the plant."
+   "How long she floats over the plant. Zero crosses the gap at one steady speed; high launches hard, hangs above the fruit, then drops onto the far side."
   ],
   [
    "lunge",
@@ -22,7 +22,7 @@
    8.0,
    28.0,
    1.0,
-   "How far her head drives into the tomato on each strike, in pixels. The violence of a single peck."
+   "How far her head drives into the fruit on each strike, in pixels. The violence of a single peck. It is the same on both sides."
   ],
   [
    "tear_shake",
@@ -38,7 +38,7 @@
    4,
    28,
    1,
-   "How many juice, seed and pulp particles each bite throws. The size of the mess she leaves on the row."
+   "How many juice, seed and pulp particles each bite throws. The size of the mess she leaves behind her."
   ],
   [
    "gravity",
@@ -54,11 +54,11 @@
    0.0,
    1.0,
    0.05,
-   "How the stripped plant leaves the frame. Zero drags it off at a constant speed; high whips it away and lets the last of it coast out."
+   "How the stripped plant leaves, back the way she came. Zero drags it off at a constant speed; high whips it away under her and lets the last of it coast out of frame."
   ]
  ],
  "values": {
-  "hop_height": 30.0,
+  "hop_height": 36.0,
   "hop_hang": 0.55,
   "lunge": 18.0,
   "tear_shake": 3.0,
@@ -69,7 +69,7 @@
  "frames": 32,
  "canvas": [
   200,
-  112
+  126
  ],
- "colours": 25
+ "colours": 24
 }
