@@ -5036,6 +5036,11 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, deploy_pair(payload))
             except Exception as e:
                 return self._send(500, {"error": str(e)[:300]})
+        if path == "/api/loop/verdict":
+            try:
+                return self._send(200, anim.record_verdict(payload))
+            except Exception as e:
+                return self._send(500, {"error": str(e)[:300]})
         if path == "/api/loop/draw":
             try:
                 return self._send(200, anim.start_run(payload))

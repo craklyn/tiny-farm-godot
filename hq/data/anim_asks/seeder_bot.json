@@ -1,0 +1,17 @@
+{
+  "slug": "seeder_bot",
+  "entries": [
+    {
+      "at": "2026-09-09T11:03:07",
+      "kind": "draw",
+      "text": "A 18-inch robot that drives on treads. It has a rucksack of seeds, with a carrot drawing on the side indicating it's carrot seeds. \n\nIts upper half is a camera mounted on a stick, and a piston arm that ends in a semicircular shell as two \"fingers' that can grip something.  It is driving left to right across a field. It comes to a hole with a small mount of soil beside it, pulls a clump of seeds from the bag, scatters them in the hole, pushes the soil over to cover the hole, then drives on (repeating the animation to the next hole it comes across).",
+      "run_id": "r17889769879f89"
+    },
+    {
+      "at": "2026-09-09T15:01:24",
+      "kind": "rework",
+      "text": "Please fix the carrot bag.  The carrot should taper at the bottom (currently the top). The carrot leaves should be thicker, connected to the carrot base, and resemble real carrot plant's leaves.  It's okay to make the carrot itself smaller to accomodate this, and possibly to increase the side of the bag.\n\nThere are some portions of the animation where the space inside the robot claws should have transparency instead of black/grey fill.\n\nCan you up-res the robot's head and sternum? It looks out of place next to the crisp robot body. \n\nWhen the robot pulls forward, can he pull forward a shorter distance, so the previous carrot's filled hole is still on the left edge of the screen? And to the right of his current hole, the next hole can be drawn.\n\nIs there anything else we can do to make this more visually appealing?  When the carrot seeds are dropped into the hole, can a couple bounce and scatter back up then land down again?  Can he drop a couple seeds as he swings his hands forward full of seeds?  Can a bit of dust swirl when he re-packs the whole?",
+      "run_id": "r1788991284fa19"
+    }
+  ]
+}

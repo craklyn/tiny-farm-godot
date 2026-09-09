@@ -107,10 +107,11 @@ def _index_key():
                 parts.append((name, os.path.getmtime(os.path.join(full, name))))
         except OSError:
             parts.append((d, 0))
-    try:
-        parts.append(("runs", os.path.getmtime(RUNS)))
-    except OSError:
-        pass
+    for extra in (RUNS, os.path.join(DATA, "anim_asks")):
+        try:
+            parts.append((extra, os.path.getmtime(extra)))
+        except OSError:
+            pass
     return tuple(parts)
 
 
@@ -186,6 +187,7 @@ def loops_index():
             "params": m.get("params", []), "values": m.get("values", {}),
             "script": script if has_script else None,
             "sources": sources, "stale": stale,
+            "asks": asks_for(slug),
             "drawn": time.strftime("%Y-%m-%d %H:%M", time.localtime(drawn_at)),
         })
 
@@ -365,6 +367,54 @@ def runs_index():
     return live + recent
 
 
+# ---------------------------------------------------------------------------
+# what has been asked of a loop
+# ---------------------------------------------------------------------------
+#
+# A loop is not just pixels; it is the sentence that made it and every sentence
+# since. That chain is what a rework needs so it does not undo an earlier
+# request, what Daniel needs so he does not ask twice, and what says later why
+# the art looks the way it does. Runs record execution — cost, state, whether it
+# finished. This records intent, and the two cross-reference by run id.
+
+def _asks_path(slug):
+    d = os.path.join(DATA, "anim_asks")
+    os.makedirs(d, exist_ok=True)
+    return os.path.join(d, f"{slug}.json")
+
+
+def asks_for(slug):
+    try:
+        with open(_asks_path(slug), encoding="utf-8") as fh:
+            return json.load(fh).get("entries", [])
+    except Exception:
+        return []
+
+
+def _append_ask(slug, entry):
+    entries = asks_for(slug)
+    entries.append(entry)
+    tmp = _asks_path(slug) + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        json.dump({"slug": slug, "entries": entries}, fh, indent=2)
+    os.replace(tmp, _asks_path(slug))
+    _INDEX_CACHE["key"] = None
+    return entry
+
+
+def _ask_history(slug):
+    """The chain as a rework has to read it: numbered, oldest first, verbatim."""
+    lines = []
+    n = 0
+    for e in asks_for(slug):
+        if e.get("kind") not in ("draw", "rework"):
+            continue
+        n += 1
+        what = "originally asked for" if e["kind"] == "draw" else f"change {n - 1} asked for"
+        lines.append(f"{n}. {what}:\n\n    " + (e.get("text") or "").strip().replace("\n", "\n    "))
+    return "\n\n".join(lines)
+
+
 def _compose(subject):
     """The standing prompt with this subject in it.
 
@@ -393,6 +443,124 @@ def _compose(subject):
     ), None
 
 
+def _compose_rework(slug, note):
+    """The standing rules, plus this loop's whole history, plus the new ask.
+
+    A rework revises what is there rather than starting again: the loop already
+    passed a verdict on everything except what is being complained about, and
+    redrawing would silently throw that away along with any tuning."""
+    prompt = _read(PROMPT_FILE)
+    if not prompt.strip():
+        return None, "the animation prompt is missing from the repo"
+    body = prompt.split("\n---\n", 1)[-1] if "\n---\n" in prompt else prompt
+    slot = re.search(r"\*\*SUBJECT:\*\*.*?(?=\n\n)", body, re.S)
+    if slot:
+        body = body.replace(slot.group(0), "")
+    return (
+        f"# Revise the {slug} loop\n\n"
+        f"`{SCRIPTS_DIR}/vfx_{slug}.py` already exists and already draws. **Edit it in "
+        f"place.** Keep its slug, its output directory, its parameter contract and every "
+        f"part nobody has complained about — a rework that starts again throws away the "
+        f"parts that were already right, along with any values they were tuned to.\n\n"
+        f"## What has been asked of this loop so far\n\n{_ask_history(slug)}\n\n"
+        f"## What is being asked now\n\n    {note.strip()}\n\n"
+        f"Address every point in it. Where a request cannot be met, say so in your reply "
+        f"and say why, rather than quietly doing something else. Where one is a question "
+        f"rather than an instruction, answer it with the pixels and say what you chose.\n\n"
+        f"Re-render to `{LOOPS_DIR}/{slug}/` when you are done, so the page picks it up.\n\n"
+        f"---\n\n## The standing rules, unchanged\n{body}\n\n"
+        f"## Before you start\n\nRead `{NOTES_FILE}` — what earlier loops learned, "
+        f"including which of their choices were local and should not be copied. Treat it "
+        f"as precedent, not as a style guide.\n\n"
+        f"You are running unattended from the dashboard: nobody is watching to answer a "
+        f"question, so make the judgement, write down what you decided and why, and "
+        f"finish. End your reply with `SLUG: {slug}`."
+    ), None
+
+
+def record_verdict(payload):
+    """Keep it, send it back, or drop it — with the reason, always.
+
+    A verdict without a reason is not recorded, because the reason is the only
+    part of this that helps whoever picks it up next."""
+    slug = str(payload.get("slug") or "")
+    verdict = str(payload.get("verdict") or "")
+    why = str(payload.get("why") or "").strip()
+    if not re.fullmatch(r"[a-z0-9_]{1,64}", slug):
+        return {"error": "bad loop name"}
+    if verdict not in ("keep", "rework", "drop"):
+        return {"error": "unknown verdict"}
+    if not why:
+        return {"error": "say why first — that sentence is what reaches the next person"}
+    if verdict == "rework":
+        return start_rework(slug, why)
+    _append_ask(slug, {"at": time.strftime("%Y-%m-%dT%H:%M:%S"), "kind": verdict,
+                       "text": why, "run_id": ""})
+    _close_review(slug, verdict, why)
+    return {"ok": True, "verdict": verdict,
+            "note": ("Kept, and the reason is on the loop's record."
+                     if verdict == "keep" else
+                     "Dropped, and the reason is on the loop's record. Nothing was deleted.")}
+
+
+def start_rework(slug, note):
+    """Send a loop back with an instruction. Same machinery as drawing one, a
+    different prompt and the same slug."""
+    if len(note) < 12:
+        return {"error": "say what should change"}
+    if len(note) > 4000:
+        return {"error": "that is longer than a rework note should need to be"}
+    if any(r.get("state") == "drawing" for r in runs_index()):
+        return {"error": "one is already being drawn — they run one at a time so "
+                         "they do not fight over the working tree"}
+    if not os.path.isfile(_repo(f"{SCRIPTS_DIR}/vfx_{slug}.py")):
+        return {"error": f"{slug} has no script to revise"}
+    prompt, err = _compose_rework(slug, note)
+    if err:
+        return {"error": err}
+    run_id = f"r{int(time.time())}{os.urandom(2).hex()}"
+    rec = _save_run({
+        "id": run_id, "subject": note, "state": "drawing", "kind": "rework",
+        "slug": slug, "step": "", "turns": 0,
+        "started": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "started_ts": time.time(), "finished": "", "error": "", "cost": None, "note": "",
+    })
+    _append_ask(slug, {"at": rec["started"], "kind": "rework", "text": note,
+                       "run_id": run_id})
+    threading.Thread(target=_draw, args=(run_id, prompt, slug), daemon=True).start()
+    return {"ok": True, "run": rec}
+
+
+def _close_review(slug, verdict, why):
+    """A verdict answers the queued review, so the review stops asking."""
+    wdir = os.path.join(DATA, "work")
+    try:
+        names = os.listdir(wdir)
+    except OSError:
+        return
+    for name in names:
+        path = os.path.join(wdir, name)
+        try:
+            with open(path, encoding="utf-8") as fh:
+                item = json.load(fh)
+        except Exception:
+            continue
+        if item.get("source") != "anim_lab" or slug not in (item.get("title") or "").replace(" ", "_"):
+            continue
+        if item.get("state") in ("accepted", "dropped"):
+            continue
+        item["state"] = "accepted" if verdict == "keep" else "dropped"
+        item["result"] = f"Daniel's verdict from the Animation Lab: {verdict}. {why}"
+        item.setdefault("conversation", []).append(
+            {"role": "daniel", "text": why, "at": time.strftime("%Y-%m-%dT%H:%M"),
+             "with": verdict})
+        try:
+            with open(path, "w", encoding="utf-8") as fh:
+                json.dump(item, fh, indent=2)
+        except OSError:
+            pass
+
+
 def start_run(payload):
     """Begin drawing a loop from a sentence. Returns immediately; the work
     happens on a thread and the page watches it."""
@@ -410,8 +578,8 @@ def start_run(payload):
 
     run_id = f"r{int(time.time())}{os.urandom(2).hex()}"
     rec = _save_run({
-        "id": run_id, "subject": subject, "state": "drawing",
-        "step": "", "turns": 0,
+        "id": run_id, "subject": subject, "state": "drawing", "kind": "draw",
+        "step": "", "turns": 0, "slug": "",
         "started": time.strftime("%Y-%m-%dT%H:%M:%S"),
         "started_ts": time.time(), "finished": "", "slug": "",
         "error": "", "cost": None, "note": "",
@@ -442,8 +610,10 @@ def _step_of(event):
     return None
 
 
-def _draw(run_id, prompt):
-    """One drawing run, on its own thread. Never raises into the server."""
+def _draw(run_id, prompt, known_slug=""):
+    """One drawing or reworking run, on its own thread. Never raises into the
+    server. A rework already knows its slug; a first draw learns it from the
+    reply, or from whichever loop appeared while it worked."""
     started = time.time()
     try:
         with DRAW_LOCK:
@@ -488,9 +658,9 @@ def _draw(run_id, prompt):
         p = types.SimpleNamespace(returncode=p.returncode, stderr=stderr, stdout="")
         reply = str(doc.get("result") or "")
         cost = HOST.usage_from_cli(doc) if hasattr(HOST, "usage_from_cli") else None
-        slug = ""
+        slug = known_slug
         m = re.search(r"SLUG:\s*([a-z0-9_]{1,64})", reply)
-        if m:
+        if m and not known_slug:
             slug = m.group(1)
         if not slug:
             # It did not say, so find the loop that appeared while it worked.
@@ -517,6 +687,12 @@ def _draw(run_id, prompt):
         })
         _save_run(rec)
         if ok:
+            if not known_slug and not any(
+                    e.get('run_id') == run_id for e in asks_for(slug)):
+                # A first draw only learns its slug at the end, so its own ask
+                # can only be filed under the loop now.
+                _append_ask(slug, {'at': rec.get('started', ''), 'kind': 'draw',
+                                   'text': rec.get('subject', ''), 'run_id': run_id})
             _file_for_review(rec)
     except subprocess.TimeoutExpired:
         rec = _load_run(run_id)

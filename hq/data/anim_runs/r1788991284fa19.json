@@ -1,0 +1,15 @@
+{
+  "id": "r1788991284fa19",
+  "subject": "Please fix the carrot bag.  The carrot should taper at the bottom (currently the top). The carrot leaves should be thicker, connected to the carrot base, and resemble real carrot plant's leaves.  It's okay to make the carrot itself smaller to accomodate this, and possibly to increase the side of the bag.\n\nThere are some portions of the animation where the space inside the robot claws should have transparency instead of black/grey fill.\n\nCan you up-res the robot's head and sternum? It looks out of place next to the crisp robot body. \n\nWhen the robot pulls forward, can he pull forward a shorter distance, so the previous carrot's filled hole is still on the left edge of the screen? And to the right of his current hole, the next hole can be drawn.\n\nIs there anything else we can do to make this more visually appealing?  When the carrot seeds are dropped into the hole, can a couple bounce and scatter back up then land down again?  Can he drop a couple seeds as he swings his hands forward full of seeds?  Can a bit of dust swirl when he re-packs the whole?",
+  "state": "drawing",
+  "kind": "rework",
+  "slug": "seeder_bot",
+  "step": "read tools/experiments/vfx_seeder_bot.py",
+  "turns": 1,
+  "started": "2026-09-09T15:01:24",
+  "started_ts": 1788991284.7444985,
+  "finished": "",
+  "error": "",
+  "cost": null,
+  "note": ""
+}

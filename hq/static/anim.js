@@ -461,10 +461,22 @@ async function renderAnimLoop(slug) {
           <button class="ghost" data-v="rework">Send it back</button>
           <button class="ghost" data-v="drop">Drop it</button>
         </div>
-        <textarea id="an-why" rows="2" placeholder="Why — this goes to whoever picks it up next"></textarea>
+        <textarea id="an-why" rows="3" placeholder="Why — this goes to whoever picks it up next"></textarea>
         <div class="small muted" id="an-callnote">A verdict without a reason is not recorded: the reason
           is the only part of this that helps the next person.</div>
       </div>
+    </div>
+
+    <!-- The asks are the loop's provenance: the sentence that made it and every
+         sentence since. Collapsed while browsing, because the loop itself is what
+         you came for — but opened the moment you reach for "send it back", since
+         writing a new instruction without seeing the standing ones is how you
+         repeat or contradict yourself. -->
+    <details class="card an-asks" id="an-asks">
+      <summary>What was asked for <span class="small muted" id="an-asks-count"></span></summary>
+      <ol class="an-ask-list"></ol>
+    </details>
+    <div hidden>
     </div>`);
   $view.replaceChildren(frag);
 
@@ -533,18 +545,89 @@ async function renderAnimLoop(slug) {
   document.getElementById("an-palette").innerHTML = await anPaletteCard(frames);
   anWireInstruments(L, w, hh);
 
-  document.querySelectorAll(".an-verdicts button").forEach(b => {
-    b.onclick = () => {
-      const why = document.getElementById("an-why").value.trim();
-      const note = document.getElementById("an-callnote");
-      if (!why) {
-        note.textContent = "Say why first — that sentence is what reaches the next person.";
+  anAsks(L);
+  anWireVerdict(L);
+}
+
+/* ---------- the loop's provenance ---------- */
+function anAsks(L) {
+  const box = document.getElementById("an-asks");
+  const list = box && box.querySelector(".an-ask-list");
+  if (!list) return;
+  const asks = L.asks || [];
+  const made = asks.filter(a => a.kind === "draw" || a.kind === "rework");
+  const count = document.getElementById("an-asks-count");
+  if (count) {
+    count.textContent = made.length
+      ? `· ${made.length === 1 ? "the one that made it"
+          : `1 original and ${made.length - 1} change${made.length > 2 ? "s" : ""}`}`
+      : "· nothing recorded — this one predates the record";
+  }
+  list.innerHTML = asks.map(a => {
+    const kind = { draw: "Drawn from", rework: "Sent back", keep: "Kept", drop: "Dropped" }[a.kind]
+      || a.kind;
+    return `<li class="an-ask an-ask-${esc(a.kind)}">
+      <div class="small muted"><b>${esc(kind)}</b> · ${esc((a.at || "").replace("T", " "))}</div>
+      <div class="an-ask-text">${esc(a.text || "")}</div>
+    </li>`;
+  }).join("") || `<li class="small muted">This loop was drawn before the Lab kept a record of
+    what was asked. Everything from here on is written down.</li>`;
+}
+
+function anWireVerdict(L) {
+  const why = document.getElementById("an-why");
+  const note = document.getElementById("an-callnote");
+  const asks = document.getElementById("an-asks");
+  const buttons = [...document.querySelectorAll(".an-verdicts button")];
+  if (!why || !buttons.length) return;
+
+  /* Reaching for "send it back" is the moment the history stops being reference
+     and starts being the thing you are writing against, so it opens itself. */
+  const reworkBtn = buttons.find(b => b.dataset.v === "rework");
+  if (reworkBtn) {
+    reworkBtn.addEventListener("mouseenter", () => { if (asks) asks.open = true; });
+    reworkBtn.addEventListener("focus", () => { if (asks) asks.open = true; });
+  }
+  why.addEventListener("focus", () => { if (asks) asks.open = true; });
+
+  buttons.forEach(b => {
+    b.onclick = async () => {
+      const text = why.value.trim();
+      if (!text) {
         note.className = "small an-need";
-        document.getElementById("an-why").focus();
+        note.textContent = b.dataset.v === "rework"
+          ? "Say what should change — it becomes the instruction the rework works from."
+          : "Say why first — that sentence is what reaches the next person.";
+        why.focus();
         return;
       }
-      note.className = "small muted";
-      note.textContent = `Not wired yet — nothing was filed. Built, “${b.dataset.v}” and your reason would go to Ingrid.`;
+      buttons.forEach(x => { x.disabled = true; });
+      note.className = "small an-busy";
+      note.textContent = b.dataset.v === "rework" ? "Sending it back…" : "Recording…";
+      try {
+        const r = await fetch("/api/loop/verdict", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ slug: L.slug, verdict: b.dataset.v, why: text }),
+        }).then(x => x.json());
+        if (r.error) {
+          note.className = "small an-need";
+          note.textContent = r.error;
+        } else if (r.run) {
+          why.value = "";
+          note.className = "small muted";
+          note.textContent = "Sent back. It is being reworked now — the Lab's front page shows it "
+            + "as it goes, and it lands in your queue again when it is done.";
+        } else {
+          why.value = "";
+          note.className = "small muted";
+          note.textContent = r.note || "Recorded.";
+        }
+      } catch (e) {
+        note.className = "small an-need";
+        note.textContent = "Could not reach the server.";
+      } finally {
+        buttons.forEach(x => { x.disabled = false; });
+      }
     };
   });
 }

@@ -1,0 +1,23 @@
+{
+  "id": "r17889769879f89",
+  "subject": "A 18-inch robot that drives on treads. It has a rucksack of seeds, with a carrot drawing on the side indicating it's carrot seeds. \n\nIts upper half is a camera mounted on a stick, and a piston arm that ends in a semicircular shell as two \"fingers' that can grip something.  It is driving left to right across a field. It comes to a hole with a small mount of soil beside it, pulls a clump of seeds from the bag, scatters them in the hole, pushes the soil over to cover the hole, then drives on (repeating the animation to the next hole it comes across).",
+  "state": "done",
+  "started": "2026-09-09T11:03:07",
+  "started_ts": 1788976987.2130296,
+  "finished": "2026-09-09T11:38:59",
+  "slug": "seeder_bot",
+  "error": "",
+  "cost": {
+    "input": 180,
+    "output": 156770,
+    "cache_read": 15406992,
+    "cache_write": 239269,
+    "turns": 94,
+    "seconds": 2151.6,
+    "list_usd": 14.0163,
+    "tokens": 15803211,
+    "fresh": 396219
+  },
+  "note": "simulation chief among them \u2014 pinning the actor is free loop closure for a subject that travels and meets the same thing again, and worth nothing to a subject that stays put.\n\n**Status.** Complete. Per the brief I have deliberately **not** committed, staged, or run the Godot suites \u2014 other sessions are working in this tree, and the chief of staff lands finished loops. The only paths I touched are `tools/experiments/vfx_seeder_bot.py`, `tools/experiments/out/seeder_bot/`, and the notes file the brief asks each run to add to. Nothing else in the working tree was modified by me.\n\nSLUG: seeder_bot",
+  "work_item": "wr17889769879f89"
+}
