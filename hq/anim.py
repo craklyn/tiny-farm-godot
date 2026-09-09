@@ -21,6 +21,7 @@ import os
 import re
 import subprocess
 import sys
+import types
 import threading
 import time
 
@@ -410,12 +411,35 @@ def start_run(payload):
     run_id = f"r{int(time.time())}{os.urandom(2).hex()}"
     rec = _save_run({
         "id": run_id, "subject": subject, "state": "drawing",
+        "step": "", "turns": 0,
         "started": time.strftime("%Y-%m-%dT%H:%M:%S"),
         "started_ts": time.time(), "finished": "", "slug": "",
         "error": "", "cost": None, "note": "",
     })
     threading.Thread(target=_draw, args=(run_id, prompt), daemon=True).start()
     return {"ok": True, "run": rec}
+
+
+def _step_of(event):
+    """One line of a streamed run, as something a person would recognise.
+
+    A run is otherwise a black box for its whole life: alive and stuck look
+    identical from outside, which is exactly the question the page is asked while
+    one is in flight."""
+    if event.get("type") != "assistant":
+        return None
+    for block in (event.get("message") or {}).get("content") or []:
+        if block.get("type") != "tool_use":
+            continue
+        name = block.get("name") or "working"
+        arg = block.get("input") or {}
+        target = arg.get("file_path") or arg.get("path") or arg.get("pattern") or ""
+        if name == "Bash":
+            target = (arg.get("description") or arg.get("command") or "")[:60]
+        if target:
+            target = str(target).replace(REPO + "/", "")
+        return f"{name.lower()} {target}".strip()[:80]
+    return None
 
 
 def _draw(run_id, prompt):
@@ -426,17 +450,43 @@ def _draw(run_id, prompt):
             cmd = ["claude", "-p", prompt,
                    "--allowedTools", DRAW_TOOLS,
                    "--permission-mode", "acceptEdits",
-                   "--output-format", "json",
+                   "--output-format", "stream-json", "--verbose",
                    "--model", DRAW_MODEL]
-            p = subprocess.run(cmd, cwd=REPO, capture_output=True, text=True,
-                               timeout=DRAW_TIMEOUT,
-                               env={**os.environ, "CLAUDE_CODE_DISABLE_AUTOUPDATE": "1"})
-        doc = {}
-        try:
-            doc = json.loads((p.stdout or "").strip())
-        except Exception:
-            pass
-        reply = str(doc.get("result") or p.stdout or "")
+            p = subprocess.Popen(cmd, cwd=REPO, stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE, text=True, bufsize=1,
+                                 env={**os.environ, "CLAUDE_CODE_DISABLE_AUTOUPDATE": "1"})
+            doc, turns, last_write = {}, 0, 0.0
+            for line in p.stdout:
+                if time.time() - started > DRAW_TIMEOUT:
+                    p.kill()
+                    raise subprocess.TimeoutExpired(cmd, DRAW_TIMEOUT)
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    event = json.loads(line)
+                except ValueError:
+                    continue
+                if event.get("type") == "result":
+                    doc = event
+                    continue
+                step = _step_of(event)
+                if not step:
+                    continue
+                turns += 1
+                # Throttled: the page polls every few seconds, and a record
+                # rewritten per tool call would be all disk and no more truth.
+                if time.time() - last_write > 3:
+                    last_write = time.time()
+                    rec = _load_run(run_id)
+                    if rec.get("state") != "drawing":
+                        break
+                    rec.update({"step": step, "turns": turns})
+                    _save_run(rec)
+            p.wait(timeout=60)
+        stderr = (p.stderr.read() or "") if p.stderr else ""
+        p = types.SimpleNamespace(returncode=p.returncode, stderr=stderr, stdout="")
+        reply = str(doc.get("result") or "")
         cost = HOST.usage_from_cli(doc) if hasattr(HOST, "usage_from_cli") else None
         slug = ""
         m = re.search(r"SLUG:\s*([a-z0-9_]{1,64})", reply)

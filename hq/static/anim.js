@@ -182,23 +182,39 @@ function anRuns(runs) {
   const wrap = document.querySelector(".an-runs");
   if (!wrap) return;
   if (!runs || !runs.length) { wrap.innerHTML = ""; return; }
-  wrap.innerHTML = runs.map(r => {
-    const drawing = r.state === "drawing";
-    const mins = r.started_ts ? Math.max(0, Math.round((Date.now() / 1000 - r.started_ts) / 60)) : null;
+  wrap.innerHTML = runs.filter(r => r.state !== "drawing").map(r => {
     const cost = r.cost && typeof r.cost.list_usd === "number"
       ? ` · $${r.cost.list_usd.toFixed(2)}` : "";
-    const head = drawing
-      ? `<b class="an-busy">Drawing…</b> <span class="small muted">${mins} min so far</span>`
-      : r.state === "done"
+    const head = r.state === "done"
         ? `<b>Drew <a class="plain" href="#/design/anim/${encodeURIComponent(r.slug)}">${esc(anTitle(r.slug))}</a></b>
            <span class="small muted">${esc(r.finished || "")}${cost}${
              r.work_item ? ` · <a class="plain" href="#/work">waiting on your verdict</a>` : ""}</span>`
         : `<b class="an-need">Did not finish</b> <span class="small muted">${esc(r.error || "")}${cost}</span>`;
-    return `<div class="card an-run${drawing ? " an-run-live" : ""}">
+    return `<div class="card an-run">
       <div>${head}</div>
       <div class="small muted an-run-subject">“${esc(r.subject || "")}”</div>
     </div>`;
   }).join("");
+}
+
+/* A run that is still drawing gets a real slot in the gallery, not just a line
+   of text: the question standing in front of this page is "where is my
+   animation", and an empty grid is the wrong answer to it while one is being
+   made. It says what it is doing, so alive can be told from stuck without
+   anyone going to look at the process. */
+function anRunTile(r) {
+  const mins = r.started_ts
+    ? Math.max(0, Math.round((Date.now() / 1000 - r.started_ts) / 60)) : 0;
+  const step = r.step ? esc(r.step) : "reading the notes and the sheets";
+  const turns = r.turns ? ` · ${r.turns} step${r.turns === 1 ? "" : "s"}` : "";
+  return h(`<div class="card an-tile an-pending an-run-live" data-tile="run:${esc(r.id)}"
+       data-key="run:${esc(r.state)}:${esc(r.step || "")}:${r.turns || 0}:${mins}">
+    <div class="an-thumb"><span class="an-drawing">being drawn…</span></div>
+    <div class="an-tile-name">Not named yet</div>
+    <div class="small muted">${mins} min${turns} · ${step}</div>
+    <div class="small muted an-run-subject">“${esc((r.subject || "").slice(0, 110))}${
+      (r.subject || "").length > 110 ? "…" : ""}”</div>
+  </div>`).firstElementChild;
 }
 
 /* ---------- keep looking ----------
@@ -243,6 +259,16 @@ function anFill(dx) {
   anRuns(dx.runs);
   const loops = dx.loops || [];
   const seen = new Set();
+
+  (dx.runs || []).filter(r => r.state === "drawing").forEach(r => {
+    const key = `run:${r.state}:${r.step || ""}:${r.turns || 0}:${
+      r.started_ts ? Math.round((Date.now() / 1000 - r.started_ts) / 60) : 0}`;
+    seen.add("run:" + r.id);
+    const had = gal.querySelector(`[data-tile="run:${CSS.escape(r.id)}"]`);
+    if (had && had.dataset.key === key) return;
+    const el = anRunTile(r);
+    if (had) had.replaceWith(el); else gal.prepend(el);
+  });
 
   loops.forEach(L => {
     seen.add(L.slug);
