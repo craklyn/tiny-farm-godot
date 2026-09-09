@@ -189,6 +189,7 @@ def loops_index():
             "script": script if has_script else None,
             "sources": sources, "stale": stale,
             "asks": asks_for(slug),
+            "cost": _cost_of(slug),
             "drawn": time.strftime("%Y-%m-%d %H:%M", time.localtime(drawn_at)),
         })
 
@@ -346,9 +347,8 @@ def _save_run(rec):
     return rec
 
 
-def runs_index():
-    """Every drawing run, newest first. Finished ones age out of the page but
-    stay on disk, because what a run cost is a record."""
+def runs_index_all():
+    """Every run ever recorded, newest first."""
     out = []
     try:
         names = sorted(os.listdir(_runs_dir()))
@@ -363,9 +363,15 @@ def runs_index():
         except Exception:
             continue
     out.sort(key=lambda r: r.get("started") or "", reverse=True)
+    return out
+
+
+def runs_index():
+    """What the page shows: everything live, and the last few that finished.
+    Older ones stay on disk, because what a run cost is a record."""
+    out = runs_index_all()
     live = [r for r in out if r.get("state") == "drawing"]
-    recent = [r for r in out if r.get("state") != "drawing"][:4]
-    return live + recent
+    return live + [r for r in out if r.get("state") != "drawing"][:4]
 
 
 # ---------------------------------------------------------------------------
@@ -590,26 +596,54 @@ def start_run(payload):
 
 
 def _step_of(event):
-    """One line of a streamed run, as something a person would recognise.
+    """One line of a streamed run, phrased the way a person would say it.
 
     A run is otherwise a black box for its whole life: alive and stuck look
-    identical from outside, which is exactly the question the page is asked while
-    one is in flight."""
+    identical from outside. The tool's own name is jargon — "edit" and a full
+    repository path tell you a machine did something, not what is going on — so
+    this says it in words instead."""
     if event.get("type") != "assistant":
         return None
     for block in (event.get("message") or {}).get("content") or []:
         if block.get("type") != "tool_use":
             continue
-        name = block.get("name") or "working"
+        name = block.get("name") or ""
         arg = block.get("input") or {}
-        target = arg.get("file_path") or arg.get("path") or arg.get("pattern") or ""
+        path = arg.get("file_path") or arg.get("path") or ""
+        short = os.path.basename(str(path)) if path else ""
+        if name in ("Edit", "Write", "NotebookEdit"):
+            return f"editing {short}" if short else "editing a file"
+        if name == "Read":
+            return f"reading {short}" if short else "reading a file"
+        if name in ("Glob", "Grep"):
+            pat = " ".join(str(arg.get("pattern") or "").split())[:40]
+            return f"searching for {pat}" if pat else "searching the repo"
         if name == "Bash":
-            # A heredoc'd script is not a description of what is happening, so
-            # prefer the model's own words and fall back to the first clause.
-            target = arg.get("description") or (arg.get("command") or "").split("\n")[0]
-        target = " ".join(str(target).split()).replace(REPO + "/", "")
-        return f"{name.lower()} {target}".strip()[:70]
+            # A heredoc'd script describes nothing; prefer the model's own words.
+            desc = " ".join(str(arg.get("description") or "").split())
+            return f"running {desc[:52]}" if desc else "running the script"
+        return (name or "working").lower()
     return None
+
+
+def _cost_of(slug):
+    """What one loop has cost, across the run that drew it and every rework.
+
+    List price, which is what the CLI reports — not necessarily money that left
+    an account. Sliders are free: re-rendering runs the script, not a model."""
+    runs = [r for r in runs_index_all() if r.get("slug") == slug and r.get("cost")]
+    if not runs:
+        return None
+    usd = sum(float(r["cost"].get("list_usd") or 0) for r in runs)
+    return {
+        "runs": len(runs),
+        "draws": sum(1 for r in runs if r.get("kind") != "rework"),
+        "reworks": sum(1 for r in runs if r.get("kind") == "rework"),
+        "list_usd": round(usd, 2),
+        "tokens": sum(int(r["cost"].get("tokens") or 0) for r in runs),
+        "fresh": sum(int(r["cost"].get("fresh") or 0) for r in runs),
+        "minutes": round(sum(float(r["cost"].get("seconds") or 0) for r in runs) / 60),
+    }
 
 
 def _draw(run_id, prompt, known_slug=""):

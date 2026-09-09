@@ -212,7 +212,8 @@ function anRunTile(r) {
        data-key="run:${esc(r.state)}:${esc(r.step || "")}:${r.turns || 0}:${mins}">
     <div class="an-thumb"><span class="an-drawing">being drawn…</span></div>
     <div class="an-tile-name">Not named yet</div>
-    <div class="small muted">${mins} min${turns} · ${step}</div>
+    <div class="small muted">${mins} min${turns}</div>
+    <div class="small muted">right now: ${step}</div>
     <div class="small muted an-run-subject">“${esc((r.subject || "").slice(0, 110))}${
       (r.subject || "").length > 110 ? "…" : ""}”</div>
   </div>`).firstElementChild;
@@ -309,6 +310,29 @@ function anFill(dx) {
   if (dot) dot.className = "an-watch" + ((dx.pending || live) ? " an-watch-live" : "");
 }
 
+/* What this loop has cost to make: the run that drew it plus every rework.
+   The old card said "$0.00, 0 tokens", which was true of re-rendering and
+   nonsense about the loop — the thing had cost fourteen dollars to draw and the
+   page said nothing had been spent. */
+function anCostCard(L) {
+  const c = L.cost;
+  if (!c || !c.runs) {
+    return `<p class="small">Nothing recorded. This loop was drawn before the Lab kept
+      run records, so what it cost is not known.</p>
+      <p class="small muted">Moving its instruments is free either way — that re-runs the
+      script, not a model.</p>`;
+  }
+  const made = [c.draws ? `${c.draws} drawing` : "", c.reworks ? `${c.reworks} rework${
+    c.reworks === 1 ? "" : "s"}` : ""].filter(Boolean).join(" and ");
+  return `
+    <p class="small"><b>$${c.list_usd.toFixed(2)}</b> across ${made}, over
+      ${c.minutes} minutes of model time.</p>
+    <p class="small muted">${c.tokens.toLocaleString()} tokens went through the model, of which
+      ${c.fresh.toLocaleString()} were new — the rest is the same context read back on each
+      step. That dollar figure is API list price, not necessarily what a subscription charges.</p>
+    <p class="small muted">Moving the instruments is free: that re-runs the script, not a model.</p>`;
+}
+
 /* A tool call, as a phrase rather than the shell it was typed into. */
 function anStep(step) {
   const s = String(step || "").replace(/\s+/g, " ").trim();
@@ -341,7 +365,7 @@ function anTile(L, key, busy) {
     <div class="an-tile-name">${esc(anTitle(L.slug))}</div>
     ${busy ? `<div class="small an-busy">Being reworked · ${mins} min ·
       ${busy.turns || 0} steps</div>
-      <div class="small muted">${esc(anStep(busy.step)) || "working"}</div>`
+      <div class="small muted">right now: ${esc(anStep(busy.step)) || "working"}</div>`
       : `<div class="small muted">${L.frames} frames · ${L.canvas ? L.canvas.join("×") : "?"} ·
       ${L.colours} colours · drawn ${esc(L.drawn || "")}</div>`}
     ${stale && !busy ? `<div class="small an-stale-note">! drawn before ${stale === 1
@@ -473,10 +497,7 @@ async function renderAnimLoop(slug) {
 
     <div class="an-bottom">
       <div class="card"><h2>Palette</h2><div id="an-palette"><div class="small muted">checking…</div></div></div>
-      <div class="card"><h2>What it cost</h2>
-        <p class="small">No model was called and nothing was paid for. The loop is a script.
-          <b>$0.00, 0 tokens.</b></p>
-        <p class="small muted">The tokens went on writing the script, in whichever session drew it.</p></div>
+      <div class="card"><h2>What it cost</h2>${anCostCard(L)}</div>
       <div class="card an-call"><h2>Your call</h2>
         <div class="an-verdicts">
           <button class="ghost" data-v="keep">Keep it</button>
@@ -642,7 +663,7 @@ function anBusyCard(run, slug) {
     <div class="an-busy-facts">
       <span><b>${mins}</b> min of 45</span>
       <span><b>${run.turns || 0}</b> steps</span>
-      <span class="an-busy-step">${esc(anStep(run.step)) || "starting"}</span>
+      <span class="an-busy-step">right now: <b>${esc(anStep(run.step)) || "starting"}</b></span>
     </div>
     <div class="small muted an-busy-ask">Working from: “${esc(ask.slice(0, 260))}${
       ask.length > 260 ? "…" : ""}”</div>
