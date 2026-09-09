@@ -284,16 +284,21 @@ async function renderAnimLoop(slug) {
     <div class="an-grid">
       <div class="card an-stage-card">
         <div class="an-stages">
-          <figure><canvas id="an-1x" data-zoom="1"></canvas>
+          <figure id="an-fig-was" hidden><canvas id="an-was-c"></canvas>
+            <figcaption>as drawn</figcaption></figure>
+          <figure id="an-fig-1x"><canvas id="an-1x" data-zoom="1"></canvas>
             <figcaption>true size — how it will actually be seen</figcaption></figure>
-          <figure><canvas id="an-4x" data-zoom="4"></canvas>
+          <figure id="an-fig-4x"><canvas id="an-4x" data-zoom="4"></canvas>
             <figcaption>4×</figcaption></figure>
         </div>
         <div class="an-transport">
           <button id="an-play" class="ghost">⏸ pause</button>
           <input id="an-scrub" type="range" min="0" max="${L.frames - 1}" value="0">
           <span class="small muted" id="an-frameno">frame 1 / ${L.frames}</span>
+          <label class="an-cmp-toggle"><input type="checkbox" id="an-compare">
+            <span>compare with as-drawn</span></label>
         </div>
+        <div class="small muted an-cmp-hint" id="an-cmp-hint" hidden></div>
       </div>
 
       <div class="an-side">
@@ -356,7 +361,12 @@ async function renderAnimLoop(slug) {
   const img = await anLoadImage(L.sheet);
   const frames = anSlice(img, w, hh, L.frames);
   const stages = [document.getElementById("an-1x"), document.getElementById("an-4x")];
-  anPlayer = { frames, idx: 0, playing: true, stages, timer: null, w, hh };
+  /* baseFrames is the render on disk. Comparison is always against that, never
+     against whatever the last drag happened to produce — a baseline that moves
+     under you answers no question at all. */
+  anPlayer = { frames, baseFrames: frames, idx: 0, playing: true, stages,
+               timer: null, w, hh, compare: false,
+               wasStage: document.getElementById("an-was-c") };
   anFitStages();
   anPaint();
   /* Loops are whatever size their subject needed — 64 wide for a girl, 200 for a
@@ -391,6 +401,16 @@ async function renderAnimLoop(slug) {
     anPlayer.idx = Number(ev.target.value);
     anPaint();
   });
+
+  const cmp = document.getElementById("an-compare");
+  cmp.checked = localStorage.getItem("an-compare") === "1";
+  anPlayer.compare = cmp.checked;
+  cmp.addEventListener("change", () => {
+    anPlayer.compare = cmp.checked;
+    try { localStorage.setItem("an-compare", cmp.checked ? "1" : "0"); } catch (e) { /* private mode */ }
+    anFitStages(); anPaint(); anCompareHint();
+  });
+  anFitStages(); anPaint(); anCompareHint();
 
   document.getElementById("an-palette").innerHTML = await anPaletteCard(frames);
   anWireInstruments(L, w, hh);
@@ -467,11 +487,15 @@ function anWireInstruments(L, w, hh) {
       } else {
         const img = await anLoadImage(r.sheet);
         const frames = anSlice(img, r.canvas[0], r.canvas[1], r.frames);
-        anPlayer.frames = frames;
-        anPlayer.idx = anPlayer.idx % frames.length;
+        if (keep) anPlayer.baseFrames = frames;   // this render IS the drawn one now
+        /* Back at the drawn values, the comparison is against itself again, and
+           saying so beats showing two copies that differ by nothing. */
+        anPlayer.frames = (!keep && !dirty()) ? anPlayer.baseFrames : frames;
+        anPlayer.idx = anPlayer.idx % anPlayer.frames.length;
         anPlayer.w = r.canvas[0]; anPlayer.hh = r.canvas[1];
         anFitStages();
         anPaint();
+        anCompareHint();
         document.getElementById("an-palette").innerHTML = await anPaletteCard(frames);
         if (r.ignored && r.ignored.length) {
           /* The script exited cleanly and drew its defaults. Saying "redrawn"
@@ -529,35 +553,87 @@ function anWireInstruments(L, w, hh) {
    claiming a number it is not. */
 function anFitStages() {
   if (!anPlayer) return;
-  const { w, hh, stages } = anPlayer;
+  const { w, hh, stages, compare, wasStage } = anPlayer;
   const box = document.querySelector(".an-stages");
   if (!box) return;
   const style = getComputedStyle(box);
   const pad = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+  const gap = parseFloat(style.gap) || 22;
   /* Measured against the full row, not the space left beside the true-size copy:
      a wide loop simply wraps onto its own line and zooms there, which beats
      sitting next to its twin at 1x for the sake of staying on one row. */
   const avail = Math.max(120, box.clientWidth - pad);
   const MAX_TALL = 430;
-  const z = Math.max(1, Math.min(6, Math.floor(avail / w), Math.floor(MAX_TALL / hh)));
-  stages[0].width = w; stages[0].height = hh;
-  stages[1].width = w * z; stages[1].height = hh * z;
-  const cap = stages[1].parentElement.querySelector("figcaption");
-  if (cap) cap.textContent = z === 1 ? "true size again — there is no room to zoom" : `${z}×`;
+  const fit = (aw, ah) => Math.max(1, Math.min(6, Math.floor(aw / w), Math.floor(ah / hh)));
+
+  const figWas = document.getElementById("an-fig-was");
+  const fig1x = document.getElementById("an-fig-1x");
+  if (figWas) figWas.hidden = !compare;
+  if (fig1x) fig1x.hidden = !!compare;
+
+  if (!compare) {
+    box.classList.remove("an-stacked");
+    const z = fit(avail, MAX_TALL);
+    stages[0].width = w; stages[0].height = hh;
+    stages[1].width = w * z; stages[1].height = hh * z;
+    anCaption(stages[1], z === 1 ? "true size again — there is no room to zoom" : `${z}×`);
+    return;
+  }
+
+  /* Two copies of the same loop, paired along whichever axis leaves them bigger.
+     A wide loop side by side halves the width each gets and both end up too small
+     to judge, which defeats the point of comparing them. */
+  const side = fit((avail - gap) / 2, MAX_TALL);
+  /* A stacked pair is allowed more total height than a single stage: comparing is
+     a deliberate mode you have asked for, and a taller card beats two copies too
+     small to tell apart. */
+  const stacked = fit(avail, (MAX_TALL * 2 - gap) / 2);
+  const z = Math.max(side, stacked);
+  /* Ties go to side by side: at equal zoom, two copies level with each other are
+     easier to read against one another than two you have to scroll between. */
+  box.classList.toggle("an-stacked", stacked > side);
+  [wasStage, stages[1]].forEach(c => { c.width = w * z; c.height = hh * z; });
+  anCaption(wasStage, `as drawn · ${z}×`);
+  anCaption(stages[1], `with your changes · ${z}×`);
+}
+
+function anCaption(canvas, text) {
+  const cap = canvas.parentElement.querySelector("figcaption");
+  if (cap) cap.textContent = text;
+}
+
+/* Comparing a thing with itself looks like a broken feature, so say which it is:
+   two identical copies mean nothing has been changed yet, not that it is stuck. */
+function anCompareHint() {
+  const el = document.getElementById("an-cmp-hint");
+  if (!el || !anPlayer) return;
+  const same = anPlayer.frames === anPlayer.baseFrames;
+  el.hidden = !(anPlayer.compare && same);
+  el.textContent = "Both copies are the render on disk — move an instrument and the right one changes.";
+}
+
+function anBlit(canvas, frame) {
+  const ctx = canvas.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
+  ctx.fillStyle = AN_SKY;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  if (frame) ctx.drawImage(frame, 0, 0, canvas.width, canvas.height);
 }
 
 function anPaint() {
   if (!anPlayer) return;
-  const src = anPlayer.frames[anPlayer.idx];
-  anPlayer.stages.forEach(st => {
-    const ctx = st.getContext("2d");
-    ctx.imageSmoothingEnabled = false;
-    ctx.fillStyle = AN_SKY;
-    ctx.fillRect(0, 0, st.width, st.height);
-    ctx.drawImage(src, 0, 0, st.width, st.height);
-  });
+  const { frames, baseFrames, idx, compare, wasStage, stages } = anPlayer;
+  anBlit(stages[1], frames[idx]);
+  if (!compare) {
+    anBlit(stages[0], frames[idx]);
+  } else if (wasStage) {
+    /* Both copies show the same frame number, always. Two loops of the same
+       length drifting a frame apart read as a difference in the animation when
+       it is only a difference in when you looked. */
+    anBlit(wasStage, baseFrames[idx % baseFrames.length]);
+  }
   const s = document.getElementById("an-scrub");
-  if (s && document.activeElement !== s) s.value = String(anPlayer.idx);
+  if (s && document.activeElement !== s) s.value = String(idx);
   const lbl = document.getElementById("an-frameno");
-  if (lbl) lbl.textContent = `frame ${anPlayer.idx + 1} / ${anPlayer.frames.length}`;
+  if (lbl) lbl.textContent = `frame ${idx + 1} / ${frames.length}`;
 }

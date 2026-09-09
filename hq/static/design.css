@@ -108,10 +108,19 @@ h2 .tally .chip { font-size: 11px; }
 /* min-width:0 or the figure refuses to shrink below its canvas, the flex row
    never narrows, and the observer that resizes the canvas never hears about it */
 .an-stages figure { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
+/* display:flex above beats the browser's own [hidden] rule, so say it again */
+.an-stages figure[hidden] { display: none; }
 .an-stages canvas { image-rendering: pixelated; border: 1px solid var(--line); border-radius: 3px;
   max-width: 100%; height: auto; }
 .an-stages figcaption { font-size: 11.5px; color: var(--muted); }
-.an-transport { display: flex; align-items: center; gap: 10px; }
+/* stacked when the loop is wider than tall: pairing along the short axis keeps
+   both copies big enough to actually tell apart */
+.an-stages.an-stacked { flex-direction: column; align-items: center; }
+.an-transport { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.an-cmp-toggle { display: flex; align-items: center; gap: 5px; font-size: 12px;
+  color: var(--muted); cursor: pointer; white-space: nowrap; }
+.an-cmp-toggle input { accent-color: var(--accent); cursor: pointer; }
+.an-cmp-hint { margin-top: 6px; }
 .an-transport input[type=range] { flex: 1; }
 .an-side { display: flex; flex-direction: column; gap: 14px; }
 .an-slider { margin-bottom: 9px; }
