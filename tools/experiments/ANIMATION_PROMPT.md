@@ -25,6 +25,11 @@ Name the camera if it matters, e.g. "portrait, the motion travels upward".>
   `git add`, do not `git commit`, and do not run the Godot suites — you would be
   testing someone else's in-flight work, not yours. **The chief of staff lands
   finished loops**; your output is not orphaned by leaving it uncommitted.
+- The obligation runs both ways, and has already been broken once in the other
+  direction: commit `827cbfa` swept a half-finished draft into the repo while its
+  session was still working on it. **Any lane committing near these paths stages
+  its own files by name**, never `tools/experiments/` wholesale, and asks before
+  landing a loop whose session has not said it is done.
 
 ## Hard constraints
 
@@ -173,6 +178,11 @@ Also check the loop at **1:1**, not only zoomed. A small pixel loop is a
 different piece of work at 1x and 4x, and only judging the zoom is how a rough
 sprite passes for a finished one.
 
+**If you delegate the drawing**, brief each builder in numbers rather than
+adjectives — measured bounding boxes, the frame an invariant failed on, the slider
+value that broke it — and put a reviewer round between builders. The one run that
+worked this way credits that loop, not any single pass, for the quality.
+
 **Stop after six passes** even if it is not right, and report honestly what is
 still wrong. **This cap outranks the subject text** — if the subject says "iterate
 until perfect", the cap still wins. Iteration converges on mechanism and does not
@@ -209,6 +219,17 @@ and say why in your docstring. Add to it at the end of your run, respecting its 
   at all — a direction problem that looks like an amplitude problem.
 - **Front copies solid enough to paint over the actor.** Where the depth trick
   covers the thing it is happening to, thin or dot it.
+- **A depth cue that changes over an object's life pops**, unless the change
+  lands on a frame where the eye is elsewhere and under motion. Let exactly one
+  thing ever change depth.
+- **A stage ladder under a moving character never clears it.** Timing cannot fix
+  it; move the stage, or sink it.
+- **Regularly spaced detail reads as a fence** — regular reads as wallpaper even
+  at six pixels. Break the run.
+- **A geometric convenience that makes a character act away from what she acts
+  on** is tidy in the code and visibly wrong on screen.
+- **A later life stage drawn as an earlier one with the numbers pushed further.**
+  It reads as the earlier stage exaggerated; a later stage needs its own drawing.
 
 ## Finish with
 

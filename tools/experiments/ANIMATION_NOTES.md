@@ -64,11 +64,13 @@ The rest:
 - **At 16px-source scale, drawn connective tissue in the body colour erases the
   silhouette.** A neck drawn to join head to body merged all three into a log.
   *(crow_gorge)*
-- **Mirrored x coordinates on a W-wide canvas must sum to W−1, not W.** Every
-  symmetric element inherits a one-pixel error until they are pinned to it.
+- **Mirrored x coordinates on a W-wide canvas must sum to W−1, not W.** The mirror
+  line of a 200-wide canvas is 99.5. Every symmetric element inherits a one-pixel
+  error from a "centre = 100" assumption until they are pinned to it.
   *(crow_hop_gorge)*
-- **The lowest opaque pixel of a sprite is a corner, not a tip.** Water leaving it
-  looked like it came from beside the spout. *(watering_beam)*
+- **Front-ness is only real when the thing in front actually crosses something.**
+  A depth story where the near object overlaps nothing communicates no depth.
+  *(crow_hop_gorge)*
 
 ---
 
@@ -84,37 +86,51 @@ agreement was reached independently.
   have broken a working frame *(crow_gorge)*. Follow one moving front frame to
   frame numerically before showing anyone; the water was climbing back into the
   can and no one saw it *(watering_beam)*.
+- **Settle the staging before refining any pixel.** It moved quality further than
+  any pixel pass: going from "sit and peck" to "hop over and eat from both sides"
+  was the whole difference, and the fault that got there — she always bit
+  rightward — had been rationalised as geometry by the builder and spotted as
+  staging by Daniel. Where the actors are, and what each faces at each beat, is
+  the decision. *(crow_hop_gorge)*
 - **Write each invariant into the script as an assertion, and run them at the
-  slider extremes rather than the defaults.** *(crow_hop_gorge)*
+  extremes a control allows, never the defaults.** `hop_height 28` failed where
+  the default passed; a ring's clipping shows only at maximum spread on its last
+  dotted frame. *(crow_hop_gorge, scarecrow_mind_beams)*
 - **Derive anchor points from the sprite's own pixels** — the rose's centre, the
-  soil line, the eye. Constants go stale the moment the art is edited or swapped,
-  and the Lab now tells you when that has happened. *(watering_beam)*
+  soil line, the eye. Constants go stale the moment the art is edited or swapped.
+  Beware which pixel you take: the lowest opaque pixel of a sprite is a corner,
+  not a tip, and water leaving it looked like it came from beside the spout.
+  *(watering_beam)*
 - **One coordinate map for pixels and landmarks alike.** Deriving a beak root
   separately from the pixel move detached it for two passes. *(crow_gorge)*
+- **Anchor secondary motion to the cell, not to a moving part.** A heart pinned to
+  her eye sank, because on those frames her head dropped faster than the heart
+  climbed. *(crow_hop_gorge)*
 - **Re-pose at 1× first, then enlarge.** Moving pixels inside the small source
   cell preserves the character by construction; cutting an already-enlarged sprite
   destroys the silhouette immediately. *(crow_gorge)*
-- **Any transform that can push pixels past the source cell needs a wider working
-  canvas**, with the margin computed from the extreme pose. A mirrored lunge
-  clipped silently and left a faceless bird for a whole pass while the code looked
-  correct. *(crow_gorge)*
-- **Compute the extreme position a control allows, not the default one**, when
-  checking for clipping — for rings, at the last dotted frame at maximum spread.
-  *(scarecrow_mind_beams)*
+- **A band drawn over a layer is a mask, and a mask gives "rises from beneath"
+  for free.** It is how a rise was got out of a sheet with no mid-height cell.
+  *(crow_hop_gorge)*
+- **Land a mirror flip on the same frame as a pose change**, so the silhouette
+  change hides the discontinuity. And mirror about the part you want to stay
+  still: about the head anchor the body swung 40px; about the body centre the head
+  swung 12px and read as a bird turning her head. *(crow_hop_gorge)*
 - **Derive reaction beats from the parameter they react to.** The strike frame is
   computed from the beam speed, so dragging the speed cannot make her flinch
   before the ring arrives. Otherwise the instruments lie. *(scarecrow_mind_beams)*
-- **Age anything emitted late as `(frame − emit) mod N`** so a slow dial crosses
-  the loop seam without popping. *(scarecrow_mind_beams)*
-- **Rotate the pattern, do not translate it.** A phase that advances one full turn
-  per loop is seamless for any number of turns; a translating thread only closes
-  on whole ones. *(watering_beam)*
-- **Aim particle fans back toward the actor near a canvas edge.** An outward fan
-  gets edge-culled within a frame or two and reads as no splatter at all — it
-  looks like an amplitude problem and is a direction problem. *(crow_gorge)*
+- **Make anything periodic close by construction.** Rotate the pattern rather than
+  translating it — a phase advancing one full turn per loop is seamless for any
+  number of turns, where a translating thread only closes on whole ones. Age
+  anything emitted late as `(frame − emit) mod N` so a slow dial crosses the seam
+  without popping. *(watering_beam, scarecrow_mind_beams)*
 - **Dump the source cell as ASCII art, one character per palette colour, before
   planning any cut.** It is how the crow's head rows, beak pixel and legs were
   found. *(crow_gorge)*
+
+*Displaced when these were added, and now carried as named failures in the
+prompt's checklist instead: giving a transform's working canvas margin, and
+aiming particle fans back toward the actor near an edge.*
 
 ---
 
@@ -210,7 +226,7 @@ carries its own decomposition in its docstring.
 |---|---|
 | `vfx_sunflower_bloom.py` | The simplest case: one anchor, one parametric motion, three life stages. Start here. |
 | `vfx_crow_gorge.py` | A close-up built by enlarging a shipped sprite, and the silhouette discipline that requires. |
-| `vfx_crow_hop_gorge.py` | Assertions as invariants, mirrored geometry, and a subject that moves its whole body. |
+| `vfx_crow_hop_gorge.py` | Assertions as invariants, mirrored geometry, masks used for emergence, and a subject that moves its whole body. Drawn by delegated builders with a reviewer round between them, briefed in measurements. |
 | `vfx_watering_beam.py` | Curves with arc-length tables, seamless rotating patterns, and the `prep_` step that derives editable source art. |
 | `vfx_scarecrow_mind_beams.py` | Two actors, a reaction schedule derived from a parameter, and emission that survives the loop seam. |
 
