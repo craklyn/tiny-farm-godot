@@ -1,0 +1,20 @@
+{
+  "id": "wb62f0a83c14",
+  "title": "A bench for parametric loops, once there are enough to need one",
+  "level": "story",
+  "owner": "rin",
+  "tier": 3,
+  "tier_reason": "Deliberately deferred. One experimental loop exists and it is not good; a page built for it now would be designed against a sample of one.",
+  "ask": "Do not build this yet. This records a settled answer so it is not re-argued.\n\nAnimations like the sunflower showcase loop (tools/experiments/vfx_bloom.py) do NOT belong on the Entities page, and the reason is the editing model rather than the subject. Entities is a per-cell painter: it opens one cell of a named atlas, onion-skins the previous frame, and saves the composited sheet back to assets/sprites/ with an edit ledger. A parametric loop is corrected by changing a number and re-rendering every frame. If one lived in Entities, hand-painting frame 7 would be silently destroyed by the next re-render, and the ledger would not record that it happened.\n\nIt also fails the Entities contract three other ways: the page's heading covers creatures, crops and objects and this is none of them; every entity row carries a sheet path and frame rects into a shipped atlas and this has neither; and Entities' output is loaded by the game while this output is not.\n\nSo it is a third design tool beside Entities and the Map Editor, matching the Design Studio's own stated rule for that shelf \u2014 pages where an artifact of the game is worked on rather than reported on.\n\nDefine the page by how the artifact is made, not by who it is for: parametric loops built from the shipped palette. That makes an in-game effect and a marketing showcase piece the same kind of row, which matters because the marketing pillar is switched off by Daniel's ruling and cannot host the showcase ones today. Audience becomes a tag to filter on when that pillar returns.\n\nWhat the page carries, in the order it should be designed:\n- the loops playing, at true 1:1 scale as well as zoomed. True scale is not optional: a pixel loop reads completely differently at 1x and 7x, and the Reddit animation that prompted this looked premium mostly because it was displayed tiny.\n- the chosen loop's parameters as live controls, re-rendering on change. This is the part that beats asking an agent in chat \u2014 dragging a value and watching it is a taste instrument, and taste is the only thing that should be reaching Daniel.\n- a palette conformance readout: colours used, and any colour not already present in the shipped sheets, flagged the way the sprite editor's new_to_sheet check already does.\n- a verdict control that will not record an opinion without a reason, and routes that reason to whoever acts next.\n\nTrigger: build it when three or more loops exist. Until then the loops are made as scripts and shown in chat, which also lets real use design the parameter and palette-check plumbing instead of guessing at it.",
+  "first_action": "Nothing yet \u2014 this is deferred by design. When a third parametric loop lands, start with the gallery at true scale and the palette conformance readout, and add live parameter controls only after watching which parameters actually get argued about",
+  "state": "waiting_session",
+  "thread": "rin",
+  "source": "chat",
+  "source_message": "Daniel asked on 2026-09-08 whether showcase animations belong under the Design Studio's Entities subpage or on a page of their own, given that the studio may want to make more of them.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-08T21:57",
+  "created_ts": 1788929864.020872,
+  "conversation": []
+}
