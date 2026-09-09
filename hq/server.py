@@ -1970,6 +1970,52 @@ def ripe_look():
     }
 
 
+LOOPS_DIR = "tools/experiments/out"
+
+
+def loops_index():
+    """Every parametric loop rendered into tools/experiments/out/.
+
+    Discovery is the whole point: a loop appears here because it was drawn, not
+    because anybody registered it. Each directory carries a params.json written
+    by the script that made it — frames, canvas, the parameter table and the
+    values it was rendered at — so the page can play and describe a loop it has
+    never heard of."""
+    import time as _t
+    root = os.path.join(REPO, LOOPS_DIR)
+    out = []
+    if not os.path.isdir(root):
+        return {"loops": [], "dir": LOOPS_DIR}
+    for slug in sorted(os.listdir(root)):
+        d = os.path.join(root, slug)
+        meta = os.path.join(d, "params.json")
+        if not os.path.isdir(d) or not os.path.isfile(meta):
+            continue
+        try:
+            with open(meta, encoding="utf-8") as fh:
+                m = json.load(fh)
+        except Exception as e:
+            out.append({"slug": slug, "error": f"params.json unreadable: {e}"})
+            continue
+        files = set(os.listdir(d))
+        pick = lambda suffix: next((f for f in sorted(files) if f.endswith(suffix)), None)
+        sheet = pick("_sheet.png")
+        script = f"tools/experiments/vfx_{slug}.py"
+        out.append({
+            "slug": slug,
+            "sheet": f"/loops/{slug}/{sheet}" if sheet else None,
+            "gif": (lambda g: f"/loops/{slug}/{g}" if g else None)(pick(".gif")),
+            "contact": (lambda c: f"/loops/{slug}/{c}" if c else None)(pick("_contact.png")),
+            "frames": m.get("frames"), "canvas": m.get("canvas"),
+            "colours": m.get("colours"),
+            "params": m.get("params", []), "values": m.get("values", {}),
+            "script": script if os.path.isfile(os.path.join(REPO, script)) else None,
+            "drawn": _t.strftime("%Y-%m-%d %H:%M", _t.localtime(os.path.getmtime(meta))),
+        })
+    out.sort(key=lambda x: x.get("drawn") or "", reverse=True)
+    return {"loops": out, "dir": LOOPS_DIR}
+
+
 def palette_union():
     """Every opaque colour across the shipped sheets, with its pixel count."""
     paths = _sheet_paths()
@@ -4865,6 +4911,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send_file(STATIC, path[len("/static/"):])
             if path.startswith("/assets/"):
                 return self._send_file(os.path.join(REPO, "assets"), path[len("/assets/"):])
+            if path.startswith("/loops/"):
+                return self._send_file(os.path.join(REPO, LOOPS_DIR), path[len("/loops/"):])
             if path.startswith("/ledger/"):
                 # Historical sheet bytes, for the before/after strip in the editor.
                 return self._send_file(os.path.join(DATA, "sprite_edits"), path[len("/ledger/"):])
@@ -4942,6 +4990,8 @@ class Handler(BaseHTTPRequestHandler):
             if path.startswith("/api/manifest"):
                 rid = path[len("/api/manifest/"):] if len(path) > len("/api/manifest") else ""
                 return self._send(200, release_manifest(unquote(rid) or None))
+            if path == "/api/loops":
+                return self._send(200, loops_index())
             if path == "/api/palette":
                 return self._send(200, palette_union())
             if path == "/api/ripe":

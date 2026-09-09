@@ -1,0 +1,75 @@
+{
+ "params": [
+  [
+   "lunge",
+   18.0,
+   8.0,
+   28.0,
+   1.0,
+   "How far her head travels into the strike, in pixels. The violence of each peck."
+  ],
+  [
+   "tear_shake",
+   3.0,
+   0.0,
+   7.0,
+   0.5,
+   "How hard her head shakes side to side while tearing flesh off the fruit."
+  ],
+  [
+   "splat_count",
+   12,
+   4,
+   24,
+   1,
+   "Juice and seed particles thrown per bite. The size of the mess."
+  ],
+  [
+   "splat_speed",
+   4.5,
+   2.0,
+   8.0,
+   0.25,
+   "How fast the juice bursts out of the fruit, in pixels per frame."
+  ],
+  [
+   "gravity",
+   0.9,
+   0.2,
+   2.0,
+   0.1,
+   "The pull on juice, seeds and the falling husk. Low floats, high plummets."
+  ],
+  [
+   "glee",
+   0.7,
+   0.0,
+   1.0,
+   0.05,
+   "The euphoria of the swallow: the happy eye, the popped heart, the tail flick."
+  ],
+  [
+   "regrow_dip",
+   10.0,
+   0.0,
+   16.0,
+   1.0,
+   "How far the replacement tomato swings on its vine as it drops into place."
+  ]
+ ],
+ "values": {
+  "lunge": 18.0,
+  "tear_shake": 3.0,
+  "splat_count": 12,
+  "splat_speed": 4.5,
+  "gravity": 0.9,
+  "glee": 0.7,
+  "regrow_dip": 10.0
+ },
+ "frames": 16,
+ "canvas": [
+  128,
+  96
+ ],
+ "colours": 13
+}

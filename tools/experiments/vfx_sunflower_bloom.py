@@ -16,12 +16,32 @@ work this approach only approximates. Treat the motion code as the reusable part
 and the character performance as the part that still needs an artist or a
 generation call.
 
-Run: python3 tools/experiments/vfx_bloom.py <output-dir>
+Run: python3 tools/experiments/vfx_sunflower_bloom.py [outdir] [overrides.json]
 """
 from PIL import Image
-import math, sys, os
+import math, sys, os, json
 
-S = sys.argv[1]
+S = sys.argv[1] if len(sys.argv) > 1 else "tools/experiments/out/sunflower_bloom"
+SLUG = "sunflower_bloom"
+
+# ---------------------------------------------------------------- parameters
+PARAMS = [
+    # key, default, min, max, step, why it is worth a control
+    ("turns", 2.3, 0.5, 4.0, 0.1,
+     "How many times a seed circles her on the way up. Below about 1.5 the column reads as a ribbon."),
+    ("rad", 16.0, 6.0, 26.0, 0.5,
+     "How far the seeds orbit from her. Wide enough and they pass outside her silhouette."),
+    ("rise", 54.0, 20.0, 80.0, 1.0,
+     "How far a seed travels before it has fully bloomed."),
+    ("count", 28, 6, 48, 1,
+     "More reads as abundance, fewer as a few things you can follow."),
+    ("open", 7, 2, 16, 1,
+     "Frames the sunflower beneath her takes to unfurl."),
+]
+P = {k: d for k, d, *_ in PARAMS}
+if len(sys.argv) > 2:                       # overrides.json, same shape as `values`
+    P.update(json.load(open(sys.argv[2])))
+
 W, H, F = 64, 104, 16
 CX = 32
 GROUND = 84                                # her feet, and the crown of the big flower
@@ -34,7 +54,23 @@ LEAF_D  = (98, 124, 31);   LEAF_L  = (152, 186, 29)
 SKY_D   = (33, 31, 32)
 
 chars = Image.open("assets/sprites/generated/characters.png").convert("RGBA")
-GIRL = Image.open(S + "/girl_defiant.png").convert("RGBA")   # re-posed from her own pixels
+def _defiant(src):
+    """Her own pixels, re-posed: elbows out, hands on the hips, chin up.
+    Nothing is invented — every colour is already on her sheet."""
+    im = src.copy(); px = im.load()
+    C = dict(zip("cfij", [(148, 55, 31), (229, 184, 152), (246, 221, 196), (248, 244, 230)]))
+    def s_(x, y, k):
+        if 0 <= x < 16 and 0 <= y < 25: px[x, y] = C[k] + (255,)
+    for y in range(14, 19):
+        for x in (2, 3, 11, 12):
+            if px[x, y][3] and px[x, y][:3] in (C["j"], C["i"], C["f"]):
+                px[x, y] = (0, 0, 0, 0)
+    s_(3, 14, "j"); s_(2, 15, "j"); s_(1, 16, "j"); s_(2, 16, "i"); s_(2, 17, "f"); s_(3, 18, "f")
+    s_(12, 14, "j"); s_(13, 15, "j"); s_(14, 16, "j"); s_(13, 16, "i"); s_(13, 17, "f"); s_(12, 18, "f")
+    s_(6, 12, "c"); s_(9, 12, "c")
+    return im
+
+GIRL = _defiant(chars.crop((0, 0, 48, 48)).crop((16, 21, 32, 46)))
 
 def blank(): return Image.new("RGBA", (W, H), (0, 0, 0, 0))
 def px(im, x, y, c):
@@ -98,7 +134,7 @@ def particle(im, x, y, t, front):
         px(im, x, top - 1 if r > 2.5 else top, CORE_D if front else CORE_M)
 
 # ------------------------------------------------------------------- the loop
-N, RISE, TURNS, RAD = 28, 54, 2.3, 16.0
+N, RISE, TURNS, RAD = int(P["count"]), P["rise"], P["turns"], P["rad"]
 
 def build():
     frames = []
@@ -115,7 +151,7 @@ def build():
             fr = math.sin(a) > 0
             particle(front if fr else back, x, y, t, fr)
         im = blank()
-        big_flower(im, (f + 1) / 7.0)
+        big_flower(im, (f + 1) / P["open"])
         im.alpha_composite(back)
         im.alpha_composite(GIRL, (CX - GIRL.size[0] // 2, GROUND - GIRL.size[1]))
         im.alpha_composite(front)
@@ -126,14 +162,21 @@ frames = build()
 os.makedirs(S, exist_ok=True)
 sheet = Image.new("RGBA", (W * F, H), (0, 0, 0, 0))
 for i, fr in enumerate(frames): sheet.paste(fr, (i * W, 0), fr)
-sheet.save(S + "/bloom_sheet.png")
+sheet.save(S + f"/{SLUG}_sheet.png")
 bg = Image.new("RGBA", (W, H), SKY_D + (255,))
 big = [Image.alpha_composite(bg, fr).resize((W * 4, H * 4), Image.NEAREST) for fr in frames]
-big[0].save(S + "/bloom.gif", save_all=True, append_images=big[1:], duration=90, loop=0)
+big[0].save(S + f"/{SLUG}.gif", save_all=True, append_images=big[1:], duration=90, loop=0)
 c = Image.new("RGBA", (W * 8 * 2, H * 2 * 2), SKY_D + (255,))
 for i, fr in enumerate(frames):
     t = fr.resize((W * 2, H * 2), Image.NEAREST)
     c.paste(t, ((i % 8) * W * 2, (i // 8) * H * 2), t)
-c.save(S + "/bloom_contact.png")
+c.save(S + f"/{SLUG}_contact.png")
+one = Image.alpha_composite(Image.new("RGBA", (W, H), SKY_D + (255,)), frames[0])
+one.resize((W * 4, H * 4), Image.NEAREST).save(S + f"/{SLUG}_1x.png")
 cols = {x[1][:3] for x in sheet.getcolors(1 << 20) if x[1][3] == 255}
-print(f"{F} frames, {W}x{H}, {len(cols)} colours, alpha {sorted({x[1][3] for x in sheet.getcolors(1<<20)})}")
+alpha = sorted({x[1][3] for x in sheet.getcolors(1 << 20)})
+assert set(alpha) <= {0, 255}, f"partial alpha: {alpha}"
+json.dump({"params": [list(p) for p in PARAMS], "values": P,
+           "frames": F, "canvas": [W, H], "colours": len(cols)},
+          open(S + "/params.json", "w"), indent=2)
+print(f"{F} frames, {W}x{H}, {len(cols)} colours, alpha {alpha}")

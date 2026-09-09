@@ -200,6 +200,7 @@ async function route() {
     // Guarded: on a direct page-load design.js hasn't registered yet; it
     // re-routes itself once loaded (same dance as its /design route).
     else if (hash.startsWith("/design/doc/") && window.renderDesignDoc) await renderDesignDoc(hash.slice("/design/doc/".length));
+    else if (hash.startsWith("/design/anim/") && window.renderAnimLoop) await renderAnimLoop(hash.slice("/design/anim/".length));
     else await renderDashboard();
   } catch (e) {
     $view.innerHTML = `<div class="card"><b>Something broke:</b> ${esc(e.message)}</div>`;

@@ -1,0 +1,57 @@
+{
+  "params": [
+    [
+      "turns",
+      2.3,
+      0.5,
+      4.0,
+      0.1,
+      "How many times a seed circles her on the way up. Below about 1.5 the column reads as a ribbon."
+    ],
+    [
+      "rad",
+      16.0,
+      6.0,
+      26.0,
+      0.5,
+      "How far the seeds orbit from her. Wide enough and they pass outside her silhouette."
+    ],
+    [
+      "rise",
+      54.0,
+      20.0,
+      80.0,
+      1.0,
+      "How far a seed travels before it has fully bloomed."
+    ],
+    [
+      "count",
+      28,
+      6,
+      48,
+      1,
+      "More reads as abundance, fewer as a few things you can follow."
+    ],
+    [
+      "open",
+      7,
+      2,
+      16,
+      1,
+      "Frames the sunflower beneath her takes to unfurl."
+    ]
+  ],
+  "values": {
+    "turns": 2.3,
+    "rad": 16.0,
+    "rise": 54.0,
+    "count": 28,
+    "open": 7
+  },
+  "frames": 16,
+  "canvas": [
+    64,
+    104
+  ],
+  "colours": 19
+}
