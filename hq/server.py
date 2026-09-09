@@ -1973,6 +1973,32 @@ def ripe_look():
 LOOPS_DIR = "tools/experiments/out"
 LOOP_PREVIEWS = os.path.join(DATA, "loop_previews")
 LOOP_RENDER_LOCK = threading.Semaphore(2)   # cheap, but not free
+_LOOP_SRC_CACHE = {}                        # script path -> (mtime, [asset paths])
+
+
+def loop_sources(script_rel):
+    """The sprite sheets a loop's script draws from, read out of the script.
+
+    Taken from the source rather than declared, so it stays true for scripts
+    written before anybody thought to ask — including whatever an agent wrote
+    ten minutes ago."""
+    full = os.path.join(REPO, script_rel)
+    try:
+        m = os.path.getmtime(full)
+    except OSError:
+        return []
+    hit = _LOOP_SRC_CACHE.get(script_rel)
+    if hit and hit[0] == m:
+        return hit[1]
+    try:
+        with open(full, encoding="utf-8") as fh:
+            src = fh.read()
+    except OSError:
+        return []
+    found = sorted({p for p in re.findall(r"assets/[A-Za-z0-9_/.-]+\.png", src)
+                    if os.path.isfile(os.path.join(REPO, p))})
+    _LOOP_SRC_CACHE[script_rel] = (m, found)
+    return found
 
 
 def loop_render(payload):
@@ -2017,11 +2043,22 @@ def loop_render(payload):
     if bad:
         return {"error": "unknown or non-numeric parameters: " + ", ".join(sorted(bad)[:5])}
     if not values:
+        # Redrawing after the base art moved asks no question about the numbers:
+        # keep the ones it was drawn at and let the new sheets through.
+        values = {k: v for k, v in (L.get("values") or {}).items() if k in declared}
+    if not values:
         return {"error": "no parameters given"}
 
-    out = os.path.join(LOOP_PREVIEWS, slug)
+    # "keep" writes over the loop's real render — the deliberate act that a plain
+    # drag must never be. Everything else lands in scratch.
+    keep = bool(payload.get("keep"))
+    out = (os.path.join(REPO, LOOPS_DIR, slug) if keep
+           else os.path.join(LOOP_PREVIEWS, slug))
     os.makedirs(out, exist_ok=True)
-    ov = os.path.join(out, "overrides.json")
+    # The overrides file always lives in scratch, never beside a render: a loop's
+    # directory holds the loop, and only what the script itself puts there.
+    os.makedirs(os.path.join(LOOP_PREVIEWS, slug), exist_ok=True)
+    ov = os.path.join(LOOP_PREVIEWS, slug, "overrides.json")
     with open(ov, "w", encoding="utf-8") as fh:
         json.dump(values, fh)
     t0 = _t.time()
@@ -2043,11 +2080,18 @@ def loop_render(payload):
     sheet = next((f for f in sorted(os.listdir(out)) if f.endswith("_sheet.png")), None)
     if not sheet:
         return {"error": "the script wrote no sprite sheet"}
+    # A script that ignores its overrides argument renders its defaults and exits
+    # cleanly, which would let the page report a redraw that never happened.
+    wrote = m.get("values") or {}
+    ignored = sorted(k for k, v in values.items()
+                     if k in wrote and abs(float(wrote[k]) - float(v)) > 1e-9)
+    base = "/loops" if keep else "/loop-preview"
     return {
-        "slug": slug, "values": m.get("values", values),
+        "slug": slug, "values": wrote or values, "kept": keep,
         "frames": m.get("frames"), "canvas": m.get("canvas"), "colours": m.get("colours"),
-        "sheet": f"/loop-preview/{slug}/{sheet}?t={int(_t.time() * 1000)}",
+        "sheet": f"{base}/{slug}/{sheet}?t={int(_t.time() * 1000)}",
         "seconds": round(_t.time() - t0, 2),
+        "ignored": ignored,
     }
 
 
@@ -2058,7 +2102,13 @@ def loops_index():
     because anybody registered it. Each directory carries a params.json written
     by the script that made it — frames, canvas, the parameter table and the
     values it was rendered at — so the page can play and describe a loop it has
-    never heard of."""
+    never heard of.
+
+    Each loop also reports the sprite sheets its script draws from, and which of
+    them have changed since the render was made. The scripts read the live sheets,
+    so a loop is never wrong for long — but the PNG on disk is a snapshot, and
+    without this a repainted crow would leave every crow animation quietly showing
+    the old bird."""
     import time as _t
     root = os.path.join(REPO, LOOPS_DIR)
     out = []
@@ -2089,6 +2139,11 @@ def loops_index():
         pick = lambda suffix: next((f for f in sorted(files) if f.endswith(suffix)), None)
         sheet = pick("_sheet.png")
         script = f"tools/experiments/vfx_{slug}.py"
+        has_script = os.path.isfile(os.path.join(REPO, script))
+        drawn_at = os.path.getmtime(meta)
+        sources = loop_sources(script) if has_script else []
+        stale = [p for p in sources
+                 if os.path.getmtime(os.path.join(REPO, p)) > drawn_at]
         out.append({
             "slug": slug,
             "sheet": f"/loops/{slug}/{sheet}" if sheet else None,
@@ -2097,8 +2152,9 @@ def loops_index():
             "frames": m.get("frames"), "canvas": m.get("canvas"),
             "colours": m.get("colours"),
             "params": m.get("params", []), "values": m.get("values", {}),
-            "script": script if os.path.isfile(os.path.join(REPO, script)) else None,
-            "drawn": _t.strftime("%Y-%m-%d %H:%M", _t.localtime(os.path.getmtime(meta))),
+            "script": script if has_script else None,
+            "sources": sources, "stale": stale,
+            "drawn": _t.strftime("%Y-%m-%d %H:%M", _t.localtime(drawn_at)),
         })
     # Newest finished first; anything still being drawn sits at the top, because
     # the thing you are waiting for is what you came to the page to see.

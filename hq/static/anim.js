@@ -162,7 +162,11 @@ function anFill(dx) {
 
   loops.forEach(L => {
     seen.add(L.slug);
-    const key = L.error ? "error" : L.pending ? "pending" : String(L.drawn || "");
+    /* Staleness belongs in the key: repainting a sheet makes a tile go amber
+       without redrawing it, so keying on the draw time alone would leave the
+       page showing "fine" for exactly the change this flag exists to catch. */
+    const key = L.error ? "error" : L.pending ? "pending"
+      : `${L.drawn || ""}|${(L.stale || []).join(",")}`;
     const had = gal.querySelector(`[data-tile="${CSS.escape(L.slug)}"]`);
     if (had && had.dataset.key === key) return;          // unchanged, leave it alone
     const el = anTile(L, key);
@@ -200,12 +204,16 @@ function anTile(L, key) {
         It appears the moment its <code class="ref">params.json</code> lands.</div>
     </div>`).firstElementChild;
   }
-  return h(`<a class="card an-tile" data-tile="${esc(L.slug)}" data-key="${esc(key)}"
-       href="#/design/anim/${encodeURIComponent(L.slug)}">
+  const stale = (L.stale || []).length;
+  return h(`<a class="card an-tile${stale ? " an-stale" : ""}" data-tile="${esc(L.slug)}"
+       data-key="${esc(key)}" href="#/design/anim/${encodeURIComponent(L.slug)}">
     <div class="an-thumb"><canvas></canvas></div>
     <div class="an-tile-name">${esc(anTitle(L.slug))}</div>
     <div class="small muted">${L.frames} frames · ${L.canvas ? L.canvas.join("×") : "?"} ·
       ${L.colours} colours · drawn ${esc(L.drawn || "")}</div>
+    ${stale ? `<div class="small an-stale-note">! drawn before ${stale === 1
+      ? esc((L.stale[0] || "").split("/").pop()) + " changed"
+      : stale + " of its sheets changed"}</div>` : ""}
   </a>`).firstElementChild;
 }
 
@@ -261,7 +269,16 @@ async function renderAnimLoop(slug) {
       <span>›</span> <a class="plain" href="#/design/anim">Animation Lab</a>
       <span>›</span> <b>${esc(anTitle(L.slug))}</b></p>
     <h1>${esc(anTitle(L.slug))}</h1>
-    <p class="sub">${L.frames} frames · ${w}×${hh} · drawn ${esc(L.drawn || "")}</p>
+    <p class="sub">${L.frames} frames · ${w}×${hh} · drawn ${esc(L.drawn || "")}${
+      (L.sources || []).length ? ` · from ${L.sources.map(s =>
+        `<code class="ref">${esc(s.split("/").pop())}</code>`).join(" ")}` : ""}</p>
+    ${(L.stale || []).length ? `<div class="card an-stalebar">
+      <div><b>! This was drawn before ${L.stale.map(s =>
+        `<code class="ref">${esc(s.split("/").pop())}</code>`).join(" and ")} changed.</b>
+      <div class="small muted">The script reads the sheets live, so redrawing picks up the new art
+        at the values below. What is on screen is the older bird until you do.</div></div>
+      <button id="an-redraw">Redraw from the current art</button>
+    </div>` : ""}
 
     <div class="an-grid">
       <div class="card an-stage-card">
@@ -419,17 +436,17 @@ function anWireInstruments(L, w, hh) {
     revert.disabled = !dirty();
   }
 
-  async function render() {
+  async function render(keep) {
     if (busy) { queued = true; return; }
     busy = true; queued = false;
     draw.disabled = true;
     params.classList.add("an-working");
-    note.textContent = "Re-running the script…";
+    note.textContent = keep ? "Redrawing from the current art…" : "Re-running the script…";
     note.className = "small an-busy";
     try {
       const r = await fetch("/api/loop/render", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug: L.slug, values: current() }),
+        body: JSON.stringify({ slug: L.slug, values: current(), keep: !!keep }),
       }).then(x => x.json());
       if (r.error) {
         note.className = "small an-need";
@@ -441,9 +458,26 @@ function anWireInstruments(L, w, hh) {
         anPlayer.idx = anPlayer.idx % frames.length;
         anPaint();
         document.getElementById("an-palette").innerHTML = await anPaletteCard(frames);
-        note.className = "small muted";
-        note.textContent = `Redrawn in ${r.seconds}s · ${r.colours} colours · a preview only, ` +
-          `the render on disk is untouched.`;
+        if (r.ignored && r.ignored.length) {
+          /* The script exited cleanly and drew its defaults. Saying "redrawn"
+             here would be the page lying about work it did not do. */
+          note.className = "small an-need";
+          note.textContent = `${esc(L.script || "The script")} ignored ` +
+            `${r.ignored.join(", ")} — it takes an overrides file as its second argument, ` +
+            `and this one is not reading it. The picture is its defaults, not your values.`;
+        } else {
+          note.className = "small muted";
+          note.textContent = keep
+            ? `Redrawn in ${r.seconds}s · ${r.colours} colours · this is now the render on disk.`
+            : `Redrawn in ${r.seconds}s · ${r.colours} colours · a preview only, ` +
+              `the render on disk is untouched.`;
+        }
+        if (keep) {
+          const bar = document.querySelector(".an-stalebar");
+          if (bar) bar.remove();
+          Object.assign(drawnAt, current());
+          reflect();
+        }
       }
     } catch (e) {
       note.className = "small an-need";
@@ -455,6 +489,8 @@ function anWireInstruments(L, w, hh) {
       if (queued) render();
     }
   }
+  const redraw = document.getElementById("an-redraw");
+  if (redraw) redraw.onclick = () => { clearTimeout(timer); render(true); };
 
   params.addEventListener("input", ev => {
     if (!ev.target.dataset.p) return;

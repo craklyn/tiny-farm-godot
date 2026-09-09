@@ -146,6 +146,13 @@ h2 .tally .chip { font-size: 11px; }
 .an-tile.an-pending { border-style: dashed; }
 .an-drawing { color: var(--muted); font-size: 12px; animation: an-pulse 1.4s ease-in-out infinite; }
 .an-tile-bad { border-color: var(--red); }
+/* the base art moved after this was drawn — amber, because somebody else's
+   change made it true and it is not on fire */
+.an-tile.an-stale { border-color: #a8863f; }
+.an-stale-note { color: var(--accent); margin-top: 3px; }
+.an-stalebar { border-color: var(--accent); display: flex; gap: 14px; align-items: center;
+  justify-content: space-between; flex-wrap: wrap; margin-bottom: 14px; }
+.an-stalebar button { flex: none; }
 .an-watch { display: inline-block; width: 6px; height: 6px; border-radius: 50%;
   background: var(--muted); margin-right: 5px; vertical-align: middle; }
 .an-watch-live { background: var(--accent); animation: an-pulse 1.4s ease-in-out infinite; }
