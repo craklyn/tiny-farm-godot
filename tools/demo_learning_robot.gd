@@ -1,14 +1,13 @@
-# demo_learning_robot.gd — A week in the life of a robot that is learning to water
+# demo_learning_robot.gd — A week in the life of a robot learning to farm
 #
 # Run: godot --headless --path . --script res://tools/demo_learning_robot.gd
 #
 # The Robot Mk III is the first machine on the farm that nobody programs. It is
-# set down knowing nothing, it wanders, and the only thing it is ever told is
-# whether a square it watered had actually been thirsty (`systems/rewards.gd`).
-# Every other test in the suite proves it *runs* — that it decides once a second,
-# that its choices survive a save, that a recorded session replays into the same
-# robot. None of them answers the question the machine exists to answer: **does
-# it get any better?**
+# set down knowing nothing, it wanders, and the only thing it is ever told is what
+# a day was worth (`systems/rewards.gd`). Every other test in the suite proves it
+# *runs* — that it decides, that its choices survive a save, that a recorded
+# session replays into the same robot. None of them answers the question the
+# machine exists to answer: **does it get any better?**
 #
 # So this is a measurement of exactly that, and it is built to leave the robot
 # nowhere to hide. Seven days are played on one seed. Each day the robot has the
@@ -18,53 +17,46 @@
 # **A week rising is not, on its own, evidence** — which is the thing this file
 # learned the hard way (v0.2.1 §9). Out on open ground the field improves whether
 # the robot understands it or not, because soil opened yesterday is still open
-# this morning and still wants water, so a machine that learns nothing at all
-# also ends its week ahead of where it started. Every claim here is therefore a
+# this morning and still wants water, so a machine that learns nothing at all also
+# ends its week ahead of where it started. Every claim here is therefore a
 # comparison against a control: the same robot, the same farm, the same draws,
 # with its weights put back every morning.
 #
-# **This week is played on open ground, and that is the whole point of it**
-# (Q-99). It used to be played inside a fence. With watering the only thing worth
-# anything, a robot out of the box walked away from the crop in about a minute,
-# spent its meter on dry earth, was never once told it had done well and had
-# nothing to learn from — so the week was penned into a paddock to keep it where
-# the work was. The CEO's answer to that was not a pen but a denser reward: the
-# robot was given a hoe, and turning bare ground into soil is worth a tenth of
-# turning thirsty soil wet. A wanderer now has something worth doing almost
-# wherever it lands, and the square it hoes is a thirsty one it can water next —
-# it makes its own practice ground. The fence is gone, and this table is the test
-# of that claim.
+# **The farm the robot is measured on is the whole farm now** (Q-100, ruled
+# 2026-09-09). It used to be one job — water a thirsty square — and the staging
+# was one sown block. The CEO widened the table to eight rows: a crop carried to
+# the bin is worth ten, a crow caught eating three, a crop cut, a plant watered
+# and a seed sown one each, opening ground and wetting bare soil a tenth. So the
+# farm this week is played on has all eight on it: bare ground to open, her seed
+# box stocked, a sown block that wants water, a ripe block that wants cutting, the
+# shipping bin across the yard, and the crows on their ordinary schedule. A row
+# the staging left out would be a row the robot could not fail to reach, which is
+# the one way this measurement could lie.
 #
-# **The energy meter is the whole difficulty.** A day holds six hundred units and
-# a watering and a hoeing each cost thirty, so twenty strokes is the day, however
-# the robot spends them (`systems/tools.gd`). Watering ground that is already wet
-# costs exactly as much as watering ground that is thirsty and is worth nothing,
-# so the day's score — twenty at the very best, and only for a robot that spent
-# every stroke on thirsty ground — is a straight measure of how well the robot
-# spent its day.
+# **The table prints a column per row of that table**, because "the machine is
+# learning" is not a claim a single number can carry any more. What a week
+# actually reaches — and what it does not — is the honest report, and it is
+# printed rather than kept in a comment (D-4).
+#
+# **The energy meter is the shape of the difficulty.** A day holds six hundred
+# units; tilling, watering, cutting and clearing cost thirty each and sowing,
+# shipping, shooing and waiting cost nothing. So twenty *strokes* is a day however
+# the robot spends them (`systems/tools.gd`), and the free verbs are free in the
+# meter and dear in the clock — a walk to the bin is a third of a minute the robot
+# is not doing anything else with.
 #
 # **And two dozen more weeks underneath the table.** One week is one robot's luck
 # as much as its learning, so the same week is then played on 24 farms, each of
 # them twice: once with the night doing its work and once with it switched off.
-# The gap between those two columns is what the night is worth, and it is what
-# the learning rate was chosen on — printed under the table on every run rather
-# than kept in a comment, because a machine claimed to have a learning curve
-# should show it (D-4). The two dozen farms take about twenty seconds.
+# The gap between those two columns is what the night is worth, and it is what the
+# learning rate was chosen on. The two dozen farms take about half a minute.
 #
-# `tests/test_runner.gd:test_learning_robot` asserts on the numbers this
-# produces, from this same `compare()`, so the table below and the gate cannot
-# drift apart: the demo is the report and the test is the gate, over one
-# measurement. The suite plays the first eight of these farms rather than all
-# twenty-four, to keep itself under a quarter of a minute; the line under the
-# table prints those eight separately so a reader can see the gate's own numbers.
-#
-# **The price experiment is gone, because the question it asked has been
-# answered.** `--split-sweep` used to play these farms four times over to ask
-# whether a square of hers should be worth more to the robot than a square it
-# opened for itself. Q-100 settled it on 2026-09-09 — nobody owns a tile, and
-# what a watering pays now depends on whether anything was growing in the square
-# — so the sweep, and the writable reward table it needed, are removed rather
-# than left as a switch that measures a design the game no longer has.
+# `tests/test_runner.gd:test_learning_robot` asserts on the numbers this produces,
+# from this same `compare()`, so the table below and the gate cannot drift apart:
+# the demo is the report and the test is the gate, over one measurement. The suite
+# plays the first eight of these farms rather than all twenty-four, to keep itself
+# under a quarter of a minute; the line under the table prints those eight
+# separately so a reader can see the gate's own numbers.
 extends SceneTree
 
 # The day the seven-day week was first played, which is the only thing that makes
@@ -78,39 +70,72 @@ const CROP := "wheat"
 # the generator happened to drop nearby would be measuring the generator.
 const PLOT := Rect2i(3, 5, 24, 12)
 
-# The crop: a block six wide and four deep, sown and thirsty, standing in open
-# field. Twenty-four squares against a day of twenty strokes, so a perfect day is
-# nearly a perfect block and there is always a dry square left to find.
+# The crop she has sown and not yet watered: a block six wide and four deep,
+# standing in open field. Twenty-four squares against a day of twenty strokes, so
+# a perfect day is nearly a perfect block and there is always a dry square left to
+# find.
 const BLOCK := Rect2i(17, 8, 6, 4)
 
-# Where the robot is set down: three squares west of the crop, on bare ground, so
-# that on day one it has to find the field before it can do anything with it.
+# ...and the crop that is finished and waiting to be cut (Q-100): a short row of
+# four, south-west of where the robot is set down, so that cutting and shipping
+# are things it has to go and find rather than things under its feet.
+#
+# **Four and not forty, deliberately.** A crop in the bin is worth ten and
+# everything else on the farm is worth one or a tenth, so a big ripe block would
+# be a pile of treasure lying in the field on Monday morning and the week would
+# measure how fast a robot tripped over it. Four is enough that the row is
+# reachable on day one; the rest of the week's ripe crop is the crop the robot
+# grew, by sowing a square and watering it three times (`CropDefs`, wheat).
+const RIPE := Rect2i(11, 13, 4, 1)
+
+# Where the robot is set down: between the two blocks, on bare ground, so that on
+# day one it can see neither of them and has to find the farm before it can do
+# anything with it.
 const SPOT := Vector2i(14, 9)
 
-# How long a day is. Five minutes of sim time, and the robot thinks once a second
-# of it, so three hundred decisions is a day in which it never runs out of
-# daylight — only ever out of arms. A hoe costs exactly what a watering costs
-# (`systems/tools.gd`), so the two compete for the same twenty strokes.
+# How long a day is, in seconds of sim time. Five minutes: long enough that a
+# robot which spends its whole meter still has time left to carry something to the
+# bin, which is the one errand that costs no meter and a great deal of clock.
 const DAY_SECONDS := 300
 
+# How far the day's *action* clock runs, in her actions. Crows arrive on an
+# appointment measured in the player's actions (`SimWorld.roll_crow_schedule`,
+# T-20), and in this demonstration there is no player to move that clock — so it
+# is run off the day's own length instead, from nothing to twenty-four over the
+# five minutes. Everything else about the visit is the game's: the readiness gate,
+# the arrival draw, which square the bird goes for, and the bird itself. Twenty
+# four rather than twenty because the schedule's own range runs to twenty-three,
+# and a day that stopped at twenty would quietly drop the late arrivals.
+const DAY_ACTIONS := 24
+
 # The tint of the sky, held rather than rolled. Rain waters every sown square on
-# the map overnight, which would hand the robot a field that needed nothing and
-# a week that measured nothing.
+# the map overnight, which would hand the robot a field that needed nothing and a
+# week that measured nothing.
 const WEATHER := "sunny"
 
 # Her purse. A Mark III is 800 gold; the rest is so that the demonstration is
 # never about whether she could afford one.
 const PURSE := 2000
 
-# Where anything already standing in the plot is walked out to, so that the hen
-# is not the reason a square could not be reached.
+# What is in her seed box. Well past `Observation.SEEDS_FULL`, so the box reads
+# "plenty" all week and a robot that fails to sow has failed for its own reasons
+# rather than run out.
+const SEED_STOCK := 40
+
+# The play-day the week starts on. Crows do not visit a farm before its third day
+# (`SimWorld.CROW_MIN_DAY`), and a week that spent its first two days in a world
+# with no birds in it could not measure the two rows that pay for chasing them.
+const START_DAY := 3
+
+# Where anything already standing in the plot is walked out to, so that the hen is
+# not the reason a square could not be reached.
 const PARKING := Vector2i(29, 18)
 
 # How many farms the summary underneath the table averages over. One week is one
-# robot's luck as much as its learning — a wanderer that stumbles onto the block
-# on its first morning has a different week from one that finds it on the third —
-# so the claim "it learns" is made over two dozen of them and not over the one in
-# the table. Two dozen weeks and their controls take about twenty seconds.
+# robot's luck as much as its learning — a wanderer that stumbles onto the ripe
+# block on its first morning has a different week from one that finds it on the
+# third — so the claim "it learns" is made over two dozen of them and not over the
+# one in the table.
 const SEEDS := 24
 
 # The farms `tests/test_runner.gd:test_learning_robot` plays its gate on, written
@@ -129,6 +154,23 @@ const SEEDS := 24
 # prints this gate's own farms as part of its table and the two cannot disagree.
 const GATE_SEEDS := [20260909, 20260910, 20260911, 20260912, 20260913, 20260914,
 	20260915, 20260916]
+
+# Short names for the eight rows of `Rewards.TABLE`, in `Rewards.KEYS` order, and
+# the sentence that explains each of them. The table is wide enough at six
+# characters a column; the legend underneath is what makes it readable, per
+# `docs/WRITING.md` — a reader arrives at this output with no context at all.
+const ROW_HEADS := ["bin", "air", "fed", "cut", "plant", "sow", "till", "soil"]
+const ROW_MEANING := [
+	"bin   a crop carried to the shipping bin and sold",
+	"air   a crow turned back before it landed",
+	"fed   a crow caught on the ground, mid-meal",
+	"cut   a ripe crop harvested into the machine's hands",
+	"plant water onto a thirsty square with something growing in it",
+	"sow   a seed out of her box and into open soil",
+	"till  a square of bare ground opened into soil",
+	"soil  water onto thirsty soil with nothing in it yet",
+]
+
 
 func _init() -> void:
 	# The table first, because it is the week a person can follow day by day; then
@@ -150,22 +192,27 @@ func _init() -> void:
 # entirely in here.
 #
 # `farm_seed` is the farm — the field is staged the same way whatever it is, so
-# what a seed actually changes is the wander (`Policy.draw_u` draws off it).
-# `many()` below plays the same week on two dozen of them.
+# what a seed actually changes is the wander (`Policy.draw_u` draws off it) and
+# which square the day's crow goes for. `many()` below plays the same week on two
+# dozen of them.
 #
 # **`learn` off is the control, and it is the night switched off and nothing
 # else.** The weights are put back to what they were before each night, so the
 # robot still scores its day, still keeps a baseline and still wanders exactly as
 # a fresh robot does — it simply never carries anything into the morning. That is
-# the only honest thing to compare a week of learning against: the same machine
-# on the same farm having learned nothing.
+# the only honest thing to compare a week of learning against: the same machine on
+# the same farm having learned nothing.
 static func run(days := 7, farm_seed := SEED, learn := true) -> Dictionary:
 	var gs = load("res://systems/game_state.gd").new()
 	gs.reset()
 	SimRng.reseed(farm_seed)
 	var world := SimWorld.new()
 	world.generate()
-	_stage(world)
+	# The bin is remembered per world (`Observation.bin_tile`) and this tool builds
+	# a fresh world every call, so the memory is dropped rather than trusted across
+	# them. The running game never needs this; a fixture that stages a farm does.
+	Observation.forget_bin()
+	_stage(world, gs)
 
 	gs.gold = PURSE
 	world.apply_action({ "verb": "buy_machine", "item": "bot_mk3", "actor": "player" }, gs)
@@ -176,55 +223,47 @@ static func run(days := 7, farm_seed := SEED, learn := true) -> Dictionary:
 	var scores: Array = []
 	var decisions: Array = []
 	var energy_left: Array = []
-	var waters: Array = []
-	var hoeings: Array = []
-	var on_block: Array = []
-	var on_own: Array = []
+	var splits: Array = []
+	var crows: Array = []
 	var frozen: Array = (world.actor(robot)["extra"]["weights"] as Array).duplicate()
 	for _day in days:
-		var strokes := 0
-		var hoes := 0
-		var hers := 0
-		var its_own := 0
-		# **A second of the day at a time, not the whole day at once**, so that
-		# what the square under the robot was *before* it acted is still readable
-		# (Q-99: does a robot with a hoe water its own soil or hers?). It decides
-		# once a second and waters the square it stands on, so the tile read at the
-		# top of a second is the tile its stroke lands on. The sim does not care
-		# how the day is cut up — the same events fire on the same ticks — and 300
-		# short advances cost nothing measurable beside 300 thinks.
-		for _second in DAY_SECONDS:
-			var at: Vector2i = world.actor_pos(robot)
-			var before: Dictionary = world.get_tile(at.x, at.y)
-			var was_thirsty: bool = String(before.get("state", "")) in SimWorld.WETTABLE_STATES \
-					and not bool(before.get("watered_today", false))
-			for taken in world.advance_to_tick(world.clock.tick + SimClock.RATE, gs):
-				var a: Dictionary = taken["action"]
-				if String(a.get("actor", "")) != robot:
-					continue
-				var verb := String(a.get("verb", ""))
-				if verb == "till":
-					hoes += 1
-				elif verb == "water":
-					strokes += 1
-					# Only a stroke that earned is a stroke that landed anywhere:
-					# watering wet ground is worth what waiting is worth.
-					if was_thirsty:
-						if BLOCK.has_point(at):
-							hers += 1
-						else:
-							its_own += 1
-		# Read at dusk, before the sleep: the day turn refills the meter, closes
-		# the score into `last_score` and sets the decision count back to zero, so
-		# a day read afterwards is a day read empty.
+		# A fresh action clock and a fresh appointment for the day's bird. The day
+		# turn rolls both for a real session (`GameState.start_new_day`); the first
+		# morning of this week has never had a day turn, so it is rolled here and
+		# then overwritten identically every morning after — one line rather than a
+		# special case for day one.
+		gs.actions_today = 0
+		gs.crow_schedule = SimWorld.roll_crow_schedule(gs.play_day())
+		# **Her seed box is restocked every morning**, which is what a farmer does
+		# and what keeps this a measurement of the robot. Without it the box empties
+		# on about the third day — a Mark III sows seven or eight squares a day and
+		# sowing costs it no meter at all — and every week after that falls for a
+		# reason that has nothing to do with what the machine learned. Measured
+		# 2026-09-10: with a fixed box the sowing row drops from 7.8 points a day to
+		# 2.8 between the first three days and the last three, in *both* arms.
+		gs.seeds[CROP] = SEED_STOCK
+		var birds := 0
+		# **A second of the day at a time, not the whole day at once**, so the day's
+		# action clock can move while it passes and the crow can keep its
+		# appointment. The sim does not care how the day is cut up — the same events
+		# fire on the same ticks — and 300 short advances cost nothing measurable
+		# beside the thinks inside them.
+		for second in DAY_SECONDS:
+			gs.actions_today = (second * DAY_ACTIONS) / DAY_SECONDS
+			var before_bird := world.has_actor(SimWorld.ACTOR_CROW)
+			world._send_due_crows(gs)
+			if world.has_actor(SimWorld.ACTOR_CROW) and not before_bird:
+				birds += 1
+			world.advance_to_tick(world.clock.tick + SimClock.RATE, gs)
+		# Read at dusk, before the sleep: the day turn refills the meter, closes the
+		# score into `last_score`, sweeps the split and sets the decision count back
+		# to zero, so a day read afterwards is a day read empty.
 		var extra: Dictionary = world.actor(robot)["extra"]
 		scores.append(float(extra.get("score", 0.0)))
 		decisions.append(int(extra.get("decisions", 0)))
 		energy_left.append(world.energy_of(robot))
-		waters.append(strokes)
-		hoeings.append(hoes)
-		on_block.append(hers)
-		on_own.append(its_own)
+		splits.append((extra.get("earned", []) as Array).duplicate())
+		crows.append(birds)
 		gs.weather = WEATHER
 		world.apply_action({ "verb": "sleep", "actor": "world", "weather": WEATHER }, gs)
 		if not learn:
@@ -234,21 +273,24 @@ static func run(days := 7, farm_seed := SEED, learn := true) -> Dictionary:
 		"seed": farm_seed,
 		"days": days,
 		"machine": robot,
-		# What each day was worth: thirsty squares the robot turned wet.
+		# What each day was worth, all eight rows together.
 		"scores": scores,
+		# ...and the same days split by which row earned them, in `Rewards.KEYS`
+		# order. This is the answer to "which of the eight does a week of a linear
+		# learner actually reach", and it is the only place it can be read from:
+		# what a stroke was worth is gone by the time the gateway has replied, so
+		# only the brain ever knew (`BotBrain.on_result`).
+		"earned": splits,
 		# How many times it chose, and what was left in its arms at dusk. Together
 		# they say why a day ended: an empty meter parks the robot until morning.
 		"decisions": decisions,
 		"energy_left": energy_left,
-		"waters": waters,
-		# How many strokes went into the hoe, and where the ones that went into
-		# the can actually paid: her sown block, or soil the robot opened for
-		# itself. This is the question Q-99 asked, counted rather than guessed.
-		"tills": hoeings,
-		"on_block": on_block,
-		"on_own": on_own,
-		# The robot itself, at the end of the week. Two runs of this function
-		# agree here or the week was never reproducible.
+		# How many birds actually visited. Printed because two of the eight rows
+		# cannot be reached on a day nothing flew in, and a reader comparing the
+		# columns deserves to know which.
+		"crows": crows,
+		# The robot itself, at the end of the week. Two runs of this function agree
+		# here or the week was never reproducible.
 		"weights": (world.actor(robot)["extra"]["weights"] as Array).duplicate(),
 	}
 	gs.free()
@@ -256,7 +298,7 @@ static func run(days := 7, farm_seed := SEED, learn := true) -> Dictionary:
 
 
 # The mean of a slice of days, one-based and inclusive, the way the table reads
-# them: `_mean(scores, 1, 3)` is the first three days.
+# them: `mean_of_days(scores, 1, 3)` is the first three days.
 static func mean_of_days(scores: Array, first: int, last: int) -> float:
 	var total := 0.0
 	var n := 0
@@ -266,14 +308,30 @@ static func mean_of_days(scores: Array, first: int, last: int) -> float:
 	return total / float(maxi(1, n))
 
 
+# The same, for the eight-column split: the mean day of a slice, row by row.
+static func mean_rows(splits: Array, first: int, last: int) -> Array:
+	var out: Array = []
+	out.resize(Rewards.KEYS.size())
+	out.fill(0.0)
+	var n := 0
+	for i in range(first - 1, mini(last, splits.size())):
+		var row: Array = splits[i]
+		for k in mini(out.size(), row.size()):
+			out[k] = float(out[k]) + float(row[k])
+		n += 1
+	for k in out.size():
+		out[k] = float(out[k]) / float(maxi(1, n))
+	return out
+
+
 # The same week on each of `seeds`, played twice: once with the night doing its
 # work and once with it switched off, on the identical seed.
 #
 # **The control is what makes any of these numbers mean something.** A robot that
-# ends its week watering more than it did on Monday has not necessarily learned
-# anything: the field improves on its own, because soil the robot opened
-# yesterday is still open this morning and still wants water. What a night is
-# worth is the gap between the two arms, on the same farms, with the same draws.
+# ends its week earning more than it did on Monday has not necessarily learned
+# anything: the field improves on its own, because soil the robot opened yesterday
+# is still open this morning and still wants water. What a night is worth is the
+# gap between the two arms, on the same farms, with the same draws.
 #
 # One record per farm per arm, and no averages — `summary()` below does the
 # arithmetic, so that a caller who wants the first eight farms of two dozen can
@@ -285,45 +343,38 @@ static func compare(seeds: Array, days := 7) -> Dictionary:
 		for farm_seed in seeds:
 			var week: Dictionary = run(days, int(farm_seed), arm == "learn")
 			var scores: Array = week["scores"]
-			var squares: Array = []
-			for i in scores.size():
-				squares.append(int(week["on_block"][i]) + int(week["on_own"][i]))
-			var first := 1
-			var last := 3
 			var late_first := maxi(1, days - 2)
 			rows.append({
 				"seed": int(farm_seed),
-				# What the days were worth, which is the reward the robot was
-				# actually paid — the column the table above prints.
-				"early": mean_of_days(scores, first, last),
+				"early": mean_of_days(scores, 1, 3),
 				"late": mean_of_days(scores, late_first, days),
-				# And how many thirsty squares it turned wet, which is the same
-				# thing today and stops being the same thing the moment a square
-				# of hers is priced differently from a square of its own. The
-				# experiment is read in these, so its four columns compare.
-				"early_squares": mean_of_days(squares, first, last),
-				"late_squares": mean_of_days(squares, late_first, days),
-				"late_hers": _sum_of_days(week["on_block"], late_first, days),
-				"late_own": _sum_of_days(week["on_own"], late_first, days),
+				# Which rows the late days were made of. The honest half of the
+				# report: a week can rise on the tenth-of-a-point rows alone.
+				"late_rows": mean_rows(week["earned"], late_first, days),
+				"crows": mean_of_days(week["crows"], late_first, days),
 			})
 		out[arm] = rows
 	return out
 
 
-# The arithmetic over a `compare()`, for one arm and for the first `count` farms
-# of it (all of them at -1). Averages a day, and how many of the farms ended
-# better than they started.
+# The arithmetic over a `compare()`, for one arm and for the first `count` farms of
+# it (all of them at -1). Averages a day, and how many of the farms ended better
+# than they started.
 static func summary(cmp: Dictionary, arm: String, count := -1) -> Dictionary:
 	var rows: Array = cmp.get(arm, [])
 	var n: int = rows.size() if count < 0 else mini(count, rows.size())
-	var out := { "seeds": n, "early": 0.0, "late": 0.0, "early_squares": 0.0,
-		"late_squares": 0.0, "hers": 0.0, "own": 0.0, "rose": 0 }
+	var late_rows: Array = []
+	late_rows.resize(Rewards.KEYS.size())
+	late_rows.fill(0.0)
+	var out := { "seeds": n, "early": 0.0, "late": 0.0, "crows": 0.0, "rose": 0,
+		"late_rows": late_rows }
 	for i in n:
 		var row: Dictionary = rows[i]
-		for key in ["early", "late", "early_squares", "late_squares"]:
+		for key in ["early", "late", "crows"]:
 			out[key] = float(out[key]) + float(row[key]) / float(maxi(1, n))
-		out["hers"] = float(out["hers"]) + float(row["late_hers"]) / float(maxi(1, n))
-		out["own"] = float(out["own"]) + float(row["late_own"]) / float(maxi(1, n))
+		var split: Array = row["late_rows"]
+		for k in mini(late_rows.size(), split.size()):
+			late_rows[k] = float(late_rows[k]) + float(split[k]) / float(maxi(1, n))
 		if float(row["late"]) > float(row["early"]):
 			out["rose"] = int(out["rose"]) + 1
 	return out
@@ -338,25 +389,16 @@ static func many(count := SEEDS, days := 7) -> Dictionary:
 	return compare(seeds, days)
 
 
-# The total over a slice of days, one-based and inclusive — `mean_of_days`'s
-# brother, for the counts the squares are split by whose ground they were on.
-static func _sum_of_days(days_of: Array, first: int, last: int) -> float:
-	var total := 0.0
-	for i in range(first - 1, mini(last, days_of.size())):
-		total += float(days_of[i])
-	return total
-
-
 # --- staging ------------------------------------------------------------------
 
-# The field, built rather than hoped for: the ground cleared and the block sown,
-# and nothing else. Written straight onto the grid rather than played as verbs,
-# because none of this is the measurement — it is the day before it.
+# The farm, built rather than hoped for: the ground cleared, one block sown and
+# thirsty, one block ripe, her seed box full, and the calendar far enough along
+# that a crow may come. Written straight onto the grid rather than played as
+# verbs, because none of this is the measurement — it is the day before it.
 #
 # **No fence** (Q-99). The robot can walk out of the picture in any direction and
-# on its first mornings it does; what brings it back is what it learns, not a
-# wall.
-static func _stage(world: SimWorld) -> void:
+# on its first mornings it does; what brings it back is what it learns, not a wall.
+static func _stage(world: SimWorld, gs) -> void:
 	for y in range(PLOT.position.y, PLOT.end.y):
 		for x in range(PLOT.position.x, PLOT.end.x):
 			world.set_tile_state(x, y, "cleared")
@@ -365,8 +407,19 @@ static func _stage(world: SimWorld) -> void:
 		for x in range(BLOCK.position.x, BLOCK.end.x):
 			world.set_tile_state(x, y, "seeded", CROP)
 			world.get_tile(x, y).watered_today = false
-	# Anything already living here is walked out. Done before the robot arrives,
-	# so a hen is never the reason a square could not be reached.
+	for y in range(RIPE.position.y, RIPE.end.y):
+		for x in range(RIPE.position.x, RIPE.end.x):
+			world.set_tile_state(x, y, "ready", CROP)
+			world.get_tile(x, y).watered_today = false
+	# Her stores and her calendar. The seed box is one of the robot's own inputs,
+	# and the day is what decides whether a bird is allowed to visit at all — a
+	# farm on its first morning never sees one (T-2), so a week staged on day one
+	# could not reach two of the eight rows however well the robot played.
+	gs.seeds[CROP] = SEED_STOCK
+	gs.day = START_DAY
+	gs.harvest_counts[CROP] = maxi(1, int(gs.harvest_counts.get(CROP, 0)))
+	# Anything already living here is walked out. Done before the robot arrives, so
+	# a hen is never the reason a square could not be reached.
 	for raw in world.actors:
 		var id := String(raw)
 		if id == SimWorld.ACTOR_PLAYER:
@@ -380,22 +433,32 @@ static func _stage(world: SimWorld) -> void:
 func _report(week: Dictionary) -> int:
 	var scores: Array = week["scores"]
 	var days: int = scores.size()
-	print("=== A week of a robot learning to water (v0.2.1) ===")
-	print("One farm from seed %d. A robot is bought, set down three squares west of" % week["seed"])
-	print("a sown block six wide and four deep, and left alone for %d days in open" % days)
-	print("field with no fence anywhere. It is told nothing except, each time it")
-	print("waters thirsty ground, that this was worth 1, and each time it hoes bare")
-	print("ground, that this was worth a tenth. A day holds twenty strokes.")
+	print("=== A week of a robot learning to farm (v0.2.1) ===")
+	print("One farm from seed %d. A robot is bought, set down between a sown block" % week["seed"])
+	print("that wants water and a ripe block that wants cutting, and left alone for %d" % days)
+	print("days in open field with no fence anywhere. The shipping bin is across the")
+	print("yard and the crows come on their ordinary schedule. Nobody tells it what to")
+	print("do; it is told only what each day was worth.")
 	print("")
-	print("%5s %10s %8s %7s %10s %9s %9s" % ["day", "score", "waters",
-		"hoes", "decisions", "on hers", "on its own"])
+	var head := "%4s %7s" % ["day", "score"]
+	for name in ROW_HEADS:
+		head += " %6s" % name
+	head += " %8s %6s" % ["thinks", "birds"]
+	print(head)
 	for i in days:
-		print("%5d %10.1f %8d %7d %10d %9d %9d" % [i + 1, float(scores[i]),
-			int(week["waters"][i]), int(week["tills"][i]),
-			int(week["decisions"][i]), int(week["on_block"][i]), int(week["on_own"][i])])
+		var line := "%4d %7.1f" % [i + 1, float(scores[i])]
+		var split: Array = week["earned"][i]
+		for k in split.size():
+			line += " %6.1f" % float(split[k])
+		line += " %8d %6d" % [int(week["decisions"][i]), int(week["crows"][i])]
+		print(line)
 	print("")
-	print("\"On hers\" and \"on its own\" split the waterings that earned: squares of")
-	print("her sown block, against squares the robot had opened with its own hoe.")
+	print("Each column is the points one row of the reward table earned that day:")
+	for line in ROW_MEANING:
+		print("  %s" % line)
+	print("\"thinks\" is how many decisions the day held — a decision is a whole errand")
+	print("now, so a day holds far fewer of them than it did. \"birds\" is how many crows")
+	print("visited, since two of the columns cannot be earned on a day nothing flew in.")
 	print("")
 
 	var early := mean_of_days(scores, 1, 3)
@@ -405,28 +468,26 @@ func _report(week: Dictionary) -> int:
 	print("meter every morning.")
 
 	# The exit code is the contract — a run that measured nothing is a broken run
-	# rather than a finding (`demo_robot_value.gd`'s rule, and CI reads it the
-	# same way). **What it is not is this week rising.** One farm's week rises or
-	# falls with the draw, and a robot that never learned a thing has rising weeks
-	# too, so an exit code hung on that number would go red for reasons nobody
-	# could act on. The claim is made underneath, over two dozen farms against
-	# their own controls, and that is what `_summarise` fails on.
+	# rather than a finding (`demo_robot_value.gd`'s rule, and CI reads it the same
+	# way). **What it is not is this week rising.** One farm's week rises or falls
+	# with the draw, and a robot that never learned a thing has rising weeks too, so
+	# an exit code hung on that number would go red for reasons nobody could act on.
+	# The claim is made underneath, over two dozen farms against their own controls.
 	var failures: Array[String] = []
-	var reached := false
-	for w in week["waters"]:
-		if int(w) > 0:
-			reached = true
-	if not reached:
-		failures.append("the robot never watered anything in %d days" % days)
+	var earned_anything := false
+	for s in scores:
+		if float(s) > 0.0:
+			earned_anything = true
+	if not earned_anything:
+		failures.append("the robot earned nothing at all in %d days" % days)
 	for f in failures:
 		printerr("DEMO FAILED: %s" % f)
 	return 1 if not failures.is_empty() else 0
 
 
 # The two dozen farms under the one in the table, and the control beside them.
-# Nothing here is a gate — `test_learning_robot` guards the week above — but it
-# is the number the learning rate was chosen on, so it is printed rather than
-# kept in a comment.
+# Nothing here is a gate — `test_learning_robot` guards it — but it is the number
+# the learning rate was chosen on, so it is printed rather than kept in a comment.
 func _summarise(cmp: Dictionary) -> int:
 	var days: int = int(cmp["days"])
 	var seeds: int = (cmp["seeds"] as Array).size()
@@ -449,6 +510,24 @@ func _summarise(cmp: Dictionary) -> int:
 		% [float(arms["learn"]["late"]), float(arms["control"]["late"])])
 	print("them, over the same farms and the same draws.")
 
+	# **Which of the eight rows a week of this learner actually reaches.** The
+	# designer's thesis, recorded in `design/06`, is that a row the robot fails to
+	# reach is a learner or exploration problem and never a reason to narrow the
+	# table — so the honest thing to do with a row that reads zero is print it,
+	# every run, next to the rows that do not.
+	print("")
+	print("What those late days were made of, points a day per row, over %d farms:" % seeds)
+	print("")
+	print("%14s %10s %12s %10s" % ["row", "worth", "learning", "night off"])
+	var taught_rows: Array = arms["learn"]["late_rows"]
+	var control_rows: Array = arms["control"]["late_rows"]
+	for k in Rewards.KEYS.size():
+		print("%14s %10.1f %12.2f %10.2f" % [String(Rewards.KEYS[k]),
+			Rewards.of(String(Rewards.KEYS[k])), float(taught_rows[k]), float(control_rows[k])])
+	print("")
+	print("A row at 0.00 in both columns is a row a week of this learner never reached.")
+	print("Crows visited %.1f times a day on average over those days." % float(arms["learn"]["crows"]))
+
 	# The gate the suite runs, printed from the farms already played. It is the
 	# first eight of the two dozen above, so this line costs nothing and cannot
 	# disagree with the table it sits under.
@@ -460,27 +539,4 @@ func _summarise(cmp: Dictionary) -> int:
 		% [n, float(gate["late"]), last])
 	print("nights, %.1f without them, and %d of the %d farms ended better than they began."
 		% [float(gate_control["late"]), int(gate["rose"]), n])
-
-	# **This file stopped failing on that gap on 2026-09-09, and it has to say
-	# why** (v0.2.1 WI-9a). The claim it used to refuse to ship without — a week
-	# of nights beats the same week without them — was made about a robot paid 1
-	# for every thirsty square it wetted. Q-100 repriced the farm: a plant that
-	# needed water is still worth 1, but bare soil is worth a tenth, and the big
-	# rows are a crop cut and carried to the bin. The robot in this demo cannot
-	# cut or carry anything — it has six actions, none of them a harvest — so
-	# almost everything it is able to earn is now a tenth of what it was, which
-	# shrinks a night's step by the same factor and leaves the two columns above
-	# inside each other's noise.
-	#
-	# So the gap is printed and not gated, until the brain that can reach the new
-	# table lands (WI-9b, actions shaped like her taps). **Restoring the gate is
-	# part of that work**, and so is the matching one in
-	# `tests/test_runner.gd:test_learning_robot`; a repriced farm is not a reason
-	# to keep a machine whose learning nobody checks.
-	if float(arms["learn"]["late"]) <= float(arms["control"]["late"]):
-		print("")
-		print("A week of nights is currently worth LESS than a week without them, and that")
-		print("is expected between WI-9a and WI-9b: this robot's six actions can only earn")
-		print("the tenth-of-a-point rows of the CEO's new table, so there is almost nothing")
-		print("for a night to learn from. The gate returns with the actions (WI-9b).")
 	return 0

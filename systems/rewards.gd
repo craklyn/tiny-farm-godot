@@ -60,9 +60,26 @@ const TABLE := {
 }
 
 
+# The same eight, in a fixed order, so a day's score can be split by what earned
+# it and the columns mean the same thing every run (v0.2.1 WI-9b).
+#
+# **A written-out list rather than `TABLE.keys()`**, for the reason the brain's
+# action list is written out: this order is a position in an array that rides in
+# an actor's `extra`, goes through JSON on every save and is compared by
+# `capture_canonical`. A dictionary's key order is an implementation detail of the
+# engine; a robot's day should not be.
+const KEYS := ["shipped", "crow_flying", "crow_eating", "harvested",
+	"watered_plant", "planted", "tilled", "watered_soil"]
+
+
 # What an outcome is worth. **An outcome nobody has priced is worth nothing** —
 # zero rather than an error, because "that did not earn anything" is the ordinary
 # answer for almost everything a robot does in a day, walking and waiting
 # included.
 static func of(outcome: String) -> float:
 	return float(TABLE.get(outcome, 0.0))
+
+
+# Which column of a day's split this outcome is, or -1 for one nobody has priced.
+static func index_of(outcome: String) -> int:
+	return KEYS.find(outcome)

@@ -68,7 +68,7 @@ const SHELF := {
 # own `_init` is the demo's, and preloading never runs it.
 const RobotValue := preload("res://tools/demo_robot_value.gd")
 
-# The week a Mark III spends learning to water, shared with the tool that prints
+# The week a Mark III spends learning to farm, shared with the tool that prints
 # it as a table (`test_learning_robot` at the end of the mark-3 block says why it
 # is shared rather than copied). Static functions only, as above.
 const LearningRobot := preload("res://tools/demo_learning_robot.gd")
@@ -10880,13 +10880,26 @@ func test_policy() -> void:
 	_assert(is_equal_approx(Rewards.of("water"), 0.0)
 			and is_equal_approx(Rewards.of(""), 0.0),
 		"and everything nobody has priced — including the verb itself — is worth nothing")
+	# **The order the day's score is split along** (v0.2.1 WI-9b). It is a position
+	# in an array that rides in a robot's `extra` through JSON, so it is written
+	# down rather than taken from the table's key order — and it has to name every
+	# row exactly once, or a week's report would quietly drop an outcome.
+	var priced := {}
+	for key in Rewards.KEYS:
+		_assert_quiet(Rewards.TABLE.has(key) and not priced.has(key),
+			"'%s' is a priced row, named once" % String(key))
+		priced[key] = true
+	_flush_quiet("the split's eight columns name the eight rows of the table, each exactly once")
+	_assert(Rewards.KEYS.size() == Rewards.TABLE.size()
+			and Rewards.index_of("shipped") == 0 and Rewards.index_of("nothing") == -1,
+		"and an outcome nobody priced has no column either (%d columns)" % Rewards.KEYS.size())
 
 	# --- a brand-new brain is an undecided one ----------------------------------
 	var width := Observation.size(Observation.spec_default())
 	var acts := BotBrain.LEARN_ACTIONS
 	var w0 := Policy.new_weights(width, acts)
-	_assert(width == 207 and acts == 7 and w0.size() == 7 * 208,
-		"a fresh policy is n_out x (n_in + 1) weights — 7 x 208 (%d)" % w0.size())
+	_assert(width == 207 and acts == 8 and w0.size() == 8 * 208,
+		"a fresh policy is n_out x (n_in + 1) weights — 8 x 208 (%d)" % w0.size())
 	var all_zero := true
 	for x in w0:
 		if x != 0.0:
@@ -11471,8 +11484,8 @@ func test_learning_robot_day() -> void:
 
 	var width := Observation.size(Observation.spec_default())
 	for key in ["spec", "weights", "trace", "acc", "base_trace", "baseline", "days",
-			"decisions", "score", "last_score", "salt", "pending_needs_water",
-			"pending_bare", "pending_water_crop", "carrying"]:
+			"decisions", "score", "last_score", "earned", "salt", "pending", "job",
+			"job_x", "job_y", "job_target", "carrying"]:
 		_assert_quiet(extra.has(key), "a placed Mark III carries '%s'" % key)
 	_flush_quiet("a placed Mark III carries every learned key it will ever need")
 	_assert(extra["spec"] == Observation.spec_default(),
@@ -11481,16 +11494,19 @@ func test_learning_robot_day() -> void:
 			and (extra["trace"] as Array).size() == (extra["weights"] as Array).size()
 			and (extra["acc"] as Array).size() == (extra["weights"] as Array).size()
 			and (extra["base_trace"] as Array).size() == (extra["weights"] as Array).size(),
-		"with seven rows of %d weights, and three running sums the same shape" % (width + 1))
+		"with eight rows of %d weights, and three running sums the same shape" % (width + 1))
+	_assert(BotBrain.LEARN_ACTIONS == 8 and (BotBrain.LEARN_VERBS as Dictionary).size() == 6
+			and (extra["earned"] as Array).size() == (Rewards.KEYS as Array).size(),
+		"eight actions, six of them a verb, and a column of the day's score per row of the reward table")
 	var born_uniform := true
 	for x in extra["weights"]:
 		if float(x) != 0.0:
 			born_uniform = false
 	_assert(born_uniform, "all of them zero, so its first day is a wander and not a habit")
 	_assert(int(extra["salt"]) == Policy.salt_of(bot) and int(extra["days"]) == 0
-			and int(extra["decisions"]) == 0 and not bool(extra["pending_needs_water"])
-			and not bool(extra["pending_bare"]) and not bool(extra["pending_water_crop"]),
-		"and it starts with its own salt, no days behind it and nothing owing")
+			and int(extra["decisions"]) == 0 and String(extra["pending"]) == ""
+			and String(extra["job"]) == "" and String(extra["carrying"]) == "",
+		"and it starts with its own salt, no days behind it, nothing owing and empty hands")
 
 	# Ground rule 4, checked rather than assumed.
 	_assert(_json_plain(extra), "every value on the robot is one of the five things JSON has")
@@ -11499,43 +11515,38 @@ func test_learning_robot_day() -> void:
 		"and its weights come back from JSON element for element")
 
 	# --- a day of deciding ----------------------------------------------------
-	# Once a second of sim time, whatever it just did: thirty seconds is thirty
-	# decisions, and never a queue of thinks waiting behind each other.
-	var waters := 0
-	var hoes := 0
+	# **A decision is a whole errand now** (Q-100, v0.2.1 WI-9b), so thirty seconds
+	# of sim time is *at most* thirty decisions and usually fewer: a robot that
+	# chose to water a square three tiles off spends the next second and a half
+	# walking to it and does not think again until it arrives. What has not changed
+	# is that there is never a queue — one pending think per actor, whatever it is
+	# in the middle of.
+	var strokes := 0
 	for t in s.tick(SimClock.RATE * 30):
 		if String(t["action"].get("actor", "")) != bot:
 			continue
-		match String(t["action"].get("verb", "")):
-			"water": waters += 1
-			"till": hoes += 1
-	_assert(int(extra["decisions"]) == 30,
-		"thirty seconds of sim time is thirty decisions (%d)" % int(extra["decisions"]))
+		if Tools.get_energy_cost(String(t["action"].get("verb", ""))) > 0:
+			strokes += 1
+	var thought: int = int(extra["decisions"])
+	_assert(thought > 0 and thought <= 30,
+		"thirty seconds of sim time is at most thirty decisions, and fewer while it walks (%d)"
+			% thought)
 	var on_clock := 0
 	for id in s.world.actors:
 		if Brains.of_actor(s.world, id).on_clock():
 			on_clock += 1
 	_assert(s.world.clock.pending() == on_clock,
-		"with exactly one think pending per actor on the clock, never a queue of them (%d)"
+		"with exactly one think pending per actor, never a queue of them (%d)"
 			% s.world.clock.pending())
-	# **A wander, and the hoe stays on its belt here.** The yard around this patch
-	# is meadow, and meadow is not ground a hoe opens — hers or a robot's, since
-	# both are answered by the same table (`systems/tools.gd`). So the strokes a
-	# robot takes in this fixture are watering strokes, and the hoe's own half of
-	# the rule is tested on bare ground below, where there is something to open.
-	_assert(waters > 0 and waters < 30,
-		"a robot that has learned nothing wanders: %d of its thirty seconds went into the can, %d into the hoe, and the rest into walking, waiting and squares its tools had no answer for"
-			% [waters, hoes])
 
-	# **Only the tools cost it anything.** Walking is the movement engine and
-	# waiting is nothing at all, so a day's meter is exactly the strokes in it —
-	# and a hoeing costs exactly what a watering costs, so the seventh action buys
-	# its practice ground out of the same twenty (Q-99).
+	# **Only the tools cost it anything.** Walking is the movement engine, waiting
+	# is nothing at all, and sowing and shipping are free — so a day's meter is
+	# exactly the costed strokes in it, at the price her own hands pay
+	# (`systems/tools.gd`).
 	var spent: int = SimWorld.ACTOR_MAX_ENERGY - s.world.energy_of(bot)
-	_assert(Tools.get_energy_cost("till") == Tools.get_energy_cost("water")
-			and spent == (waters + hoes) * Tools.get_energy_cost("water"),
+	_assert(strokes > 0 and spent == strokes * Tools.BASE_COST,
 		"and its meter fell by %d — %d strokes at %d, and not one unit for the walking"
-			% [spent, waters + hoes, Tools.get_energy_cost("water")])
+			% [spent, strokes, Tools.BASE_COST])
 
 	# The trace grew with the day, and the weights did not: the day is played on
 	# one policy, and the lesson waits for the night (P-14).
@@ -11567,8 +11578,10 @@ func test_learning_robot_day() -> void:
 			% (100.0 * base_size / maxf(trace_size, 1e-9)))
 
 	# --- what a reward is for -------------------------------------------------
-	# Paid for the outcome and never for the gesture: the same stroke on the same
-	# square is worth 1 the first time and nothing the second.
+	# Paid for the outcome and never for the gesture. The square it reaches for is
+	# the nearest one in view its verb is legal on — the router's own rule — so a
+	# robot that only ever waters walks its way across a sown block a square at a
+	# time, and every stroke of it lands on ground that wanted it.
 	var sure := _mk3_yard(3131)
 	var waterer := _mk3_place(sure, MK3_SPOT)
 	var wex: Dictionary = sure.world.actor(waterer)["extra"]
@@ -11577,16 +11590,41 @@ func test_learning_robot_day() -> void:
 		"the square under it is sown and dry")
 	sure.tick(SimClock.RATE)
 	_assert(int(wex["decisions"]) == 1 and is_equal_approx(float(wex["score"]), 1.0),
-		"turning a thirsty square wet is worth 1 (%s)" % str(wex["score"]))
+		"turning a thirsty plant's square wet is worth 1 (%s)" % str(wex["score"]))
 	_assert(bool(sure.world.get_tile(MK3_SPOT.x, MK3_SPOT.y).get("watered_today", false)),
 		"and the water shows on it, through the same gateway her own can goes through")
-	sure.tick(SimClock.RATE)
-	_assert(int(wex["decisions"]) == 2 and is_equal_approx(float(wex["score"]), 1.0),
-		"watering it again earns nothing — the second stroke changed no square (%s)"
-			% str(wex["score"]))
-	_assert(not bool(wex["pending_needs_water"]) and not bool(wex["pending_bare"])
-			and not bool(wex["pending_water_crop"]),
-		"and nothing is left owing between one decision and the next")
+	var poured := 0
+	for t in sure.tick(SimClock.RATE * 20):
+		if String(t["action"].get("actor", "")) == waterer:
+			poured += 1
+	_assert(poured > 1 and is_equal_approx(float(wex["score"]), 1.0 + float(poured)),
+		"twenty more seconds pour %d more times and earn %s in all — every stroke on a square that wanted it"
+			% [poured, str(wex["score"])])
+
+	# ...and when there is nothing left in view that wants water, the decision is
+	# **spent and nothing is emitted**: the second is gone, the trace carries the
+	# choice, the reward is zero, and the world never hears about it. Exactly what
+	# a tap on the wrong thing gets from the router.
+	# Its arms first: twenty strokes is a whole day's meter (`systems/tools.gd`),
+	# and a robot that has run out stops deciding altogether — which is a different
+	# thing from a robot that decided and found nothing to do, and this half of the
+	# test is about the second one.
+	sure.world.set_actor_energy(waterer, SimWorld.ACTOR_MAX_ENERGY)
+	sure.world.schedule_all_brains()
+	var here := sure.world.actor_pos(waterer)
+	for dy in range(-2, 3):
+		for dx in range(-2, 3):
+			sure.world.water_tile(here.x + dx, here.y + dy)
+	var dry_score: float = float(wex["score"])
+	var dry_meter: int = sure.world.energy_of(waterer)
+	var dry_count: int = int(wex["decisions"])
+	_assert(_mk3_asked(sure, waterer, SimClock.RATE * 3) == 0
+			and is_equal_approx(float(wex["score"]), dry_score)
+			and sure.world.energy_of(waterer) == dry_meter,
+		"a can raised over a patch that is already wet asks for nothing — not a stroke, not a unit of meter")
+	_assert(int(wex["decisions"]) > dry_count and String(wex["pending"]) == "",
+		"and the decisions are spent all the same: a robot that chose badly still chose (%d of them)"
+			% (int(wex["decisions"]) - dry_count))
 
 	# **Water onto a plant and water onto bare soil are two different outcomes**
 	# (Q-100). Nobody owns a tile — a plant she sowed and one the robot sowed pay
@@ -11601,8 +11639,7 @@ func test_learning_robot_day() -> void:
 	# The CEO's answer to a robot that walked off the field before it earned
 	# anything: a second, smaller outcome, so that a coin-flipping walker has more
 	# ways to be useful by accident — and the square it opens is a thirsty one it
-	# can water next. Paid on the outcome exactly as the watering is: bare ground
-	# earns, everything else earns nothing.
+	# can water next. Paid on the outcome exactly as the watering is.
 	var hoer_yard := _mk3_yard(4747)
 	# Held dry: rain wets soil the moment a hoe opens it (`_rain_wets_fresh_soil`),
 	# and the point of this half of the test is what the robot left behind.
@@ -11626,55 +11663,134 @@ func test_learning_robot_day() -> void:
 	# `cleared` ground and nothing else. The gateway is looser — it refuses `till`
 	# only on her yard and the home's floor — so a robot that asked it directly
 	# could undo a crop by a route no tap of hers can take. The brain asks the same
-	# table she is asked, which is what these three cases are: a square the hoe has
-	# no answer for is **a decision spent and nothing emitted**, exactly like a step
-	# into a fence. The second is gone, the trace carries the choice, the reward is
-	# zero, and the world never hears about it.
-	var counted: int = int(hex["decisions"])
-	var meter: int = hoer_yard.world.energy_of(hoer)
-	_assert(_mk3_asked(hoer_yard, hoer, SimClock.RATE) == 0
-			and is_equal_approx(float(hex["score"]), 0.1)
-			and hoer_yard.world.energy_of(hoer) == meter,
-		"hoeing soil it has already opened asks for nothing at all — not a stroke, not a unit of meter")
-	_assert(int(hex["decisions"]) == counted + 1,
-		"and the second is spent all the same: a robot that chose badly still chose (%d)"
-			% int(hex["decisions"]))
-
-	# Her sown wheat, which is the case this rule exists for.
-	var sown := Vector2i(MK3_PATCH.position.x + 1, MK3_PATCH.position.y + 1)
+	# table she is asked, and it asks it of every square in view: with her wheat
+	# filling the patch and no bare ground in sight, a hoe-happy robot has nowhere
+	# legal to swing and the decision is spent.
+	var sown := Vector2i(MK3_PATCH.position.x + 2, MK3_PATCH.position.y + 1)
+	for dy in range(-2, 3):
+		for dx in range(-2, 3):
+			hoer_yard.world.set_tile_state(sown.x + dx, sown.y + dy, "seeded", "wheat")
 	hoer_yard.world.set_actor_pos(hoer, sown)
 	var wheat: Dictionary = hoer_yard.world.get_tile(sown.x, sown.y).duplicate()
 	var before_wheat: float = float(hex["score"])
+	var wheat_meter: int = hoer_yard.world.energy_of(hoer)
 	_assert(String(wheat.get("state", "")) == "seeded",
-		"it is standing on a square she has sown (%s)" % String(wheat.get("state", "")))
+		"it is standing in the middle of a patch she has sown (%s)" % String(wheat.get("state", "")))
 	_assert(_mk3_asked(hoer_yard, hoer, SimClock.RATE) == 0
 			and String(hoer_yard.world.get_tile(sown.x, sown.y).get("state", "")) == "seeded"
 			and String(hoer_yard.world.get_tile(sown.x, sown.y).get("crop_type", "")) == String(wheat.get("crop_type", "")),
 		"a hoe swung at her wheat is never swung: the seed is still in the ground and still wheat")
-	_assert(is_equal_approx(float(hex["score"]), before_wheat),
-		"and it earns exactly what walking into a fence earns (%s)" % str(hex["score"]))
+	_assert(is_equal_approx(float(hex["score"]), before_wheat)
+			and hoer_yard.world.energy_of(hoer) == wheat_meter,
+		"and it earns exactly what walking into a fence earns, for exactly the same meter (%s)"
+			% str(hex["score"]))
 
 	# And her yard, which is the ground a hoe never opens (T-32). The gateway says
 	# so too — `test_world_pages` and the tilling tests hold it to that — but the
 	# robot no longer finds out that way, because she never would either.
-	var yard := Vector2i(bare.x + 2, bare.y)
-	hoer_yard.world.set_tile_state(yard.x, yard.y, WorldLayout.YARD)
-	hoer_yard.world.set_actor_pos(hoer, yard)
-	var before_yard: float = float(hex["score"])
-	_assert(_mk3_asked(hoer_yard, hoer, SimClock.RATE) == 0
-			and is_equal_approx(float(hex["score"]), before_yard)
-			and String(hoer_yard.world.get_tile(yard.x, yard.y).get("state", "")) == WorldLayout.YARD,
-		"and a hoe swung at her yard is not swung either (%s)" % str(hex["score"]))
+	_assert(Tools.get_action(Tools.index_of_key(BotBrain.HOE_KEY), WorldLayout.YARD) == "",
+		"and her yard is not a square the hoe's own table has any answer for")
 	hoer_yard.done()
+
+	# --- what it cuts goes in its hands (Q-100) -------------------------------
+	# **A machine's harvest is not her basket's.** Every actor's harvest used to
+	# land straight in her stores, which for a machine would mean the crop is
+	# banked the instant it is cut — and the walk to the bin, which is the thing a
+	# Mark III is meant to learn, would be worth nothing.
+	var reaper_yard := _mk3_yard(5151)
+	var ripe := MK3_SPOT
+	reaper_yard.world.set_tile_state(ripe.x, ripe.y, "ready", "wheat")
+	var reaper := _mk3_place(reaper_yard, ripe)
+	var rex: Dictionary = reaper_yard.world.actor(reaper)["extra"]
+	var basket_before: int = int(reaper_yard.gs.crops.get("wheat", 0))
+	_mk3_make_certain(rex, BotBrain.LEARN_HARVEST)
+	_assert(_mk3_asked(reaper_yard, reaper, SimClock.RATE) == 1
+			and String(rex["carrying"]) == "wheat"
+			and is_equal_approx(float(rex["score"]), 1.0),
+		"cutting a ripe square is worth 1 and the wheat is in the machine's hands (%s)"
+			% String(rex["carrying"]))
+	_assert(int(reaper_yard.gs.crops.get("wheat", 0)) == basket_before
+			and String(reaper_yard.world.get_tile(ripe.x, ripe.y).get("state", "")) == "cleared",
+		"her basket is untouched, and the square it cut is bare ground again")
+	var full_score: float = float(rex["score"])
+	var full_meter: int = reaper_yard.world.energy_of(reaper)
+	reaper_yard.world.set_tile_state(ripe.x, ripe.y, "ready", "wheat")
+	_assert(_mk3_asked(reaper_yard, reaper, SimClock.RATE) == 0
+			and is_equal_approx(float(rex["score"]), full_score)
+			and reaper_yard.world.energy_of(reaper) == full_meter,
+		"and a machine with its hands full does not reach for a second one — one crop at a time")
+
+	# --- ...and out of them at the bin ----------------------------------------
+	# The day's big row: ten points, the only one where the farm ends up better off
+	# in gold. It is her own `sell`, on the square her own tap on the bin resolves
+	# to, from a tile beside it — the brain walks up to the bin exactly as the
+	# router walks her up to it.
+	var bin: Vector2i = Observation.bin_tile(reaper_yard.world)
+	_assert(bin.x >= 0, "the farm has a shipping bin, and the robot is given its offset (%s)" % bin)
+	reaper_yard.world.set_actor_pos(reaper, bin + Vector2i(0, 1))
+	rex["carrying"] = "wheat"
+	var purse: int = int(reaper_yard.gs.gold)
+	var shipped_before: int = int(reaper_yard.gs.total_shipped)
+	_mk3_make_certain(rex, BotBrain.LEARN_SHIP)
+	_assert(_mk3_asked(reaper_yard, reaper, SimClock.RATE) == 1
+			and is_equal_approx(float(rex["score"]) - full_score, 10.0),
+		"a crop carried to the bin and sold is worth 10 — the biggest row on the farm (%s)"
+			% str(float(rex["score"]) - full_score))
+	_assert(String(rex["carrying"]) == "" and int(reaper_yard.gs.gold) > purse
+			and int(reaper_yard.gs.total_shipped) > shipped_before,
+		"its hands are empty, her purse is %d heavier, and the farm's shipped count moved"
+			% (int(reaper_yard.gs.gold) - purse))
+	var sold_score: float = float(rex["score"])
+	_assert(_mk3_asked(reaper_yard, reaper, SimClock.RATE) == 0
+			and is_equal_approx(float(rex["score"]), sold_score),
+		"and a second trip with empty hands asks the bin for nothing at all")
+	reaper_yard.done()
+
+	# --- and a bird it reaches leaves (Q-100) ---------------------------------
+	# The mark-2's rule, on a machine that chose to do it: the bot walks onto the
+	# bird and the bird files its **own** `crow_scared` report, so the visit ends
+	# exactly as it ends when the player walks over. Three points for one caught on
+	# the ground mid-meal against one for a bird turned back in the air, because
+	# the first is a crop saved and the second is a crop that was never in danger.
+	var chaser_yard := _mk3_yard(6363)
+	var chaser := _mk3_place(chaser_yard, MK3_SPOT)
+	var cex: Dictionary = chaser_yard.world.actor(chaser)["extra"]
+	var perch := MK3_SPOT + Vector2i(1, 0)
+	chaser_yard.world.spawn_actor(SimWorld.ACTOR_CROW, SpeciesDefs.CROW, perch, {
+		"state": "eating", "fx": float(perch.x), "fy": float(perch.y),
+		"tgt_x": perch.x, "tgt_y": perch.y, "kind": "crop", "harmless": false,
+		"ex": -1.0, "ey": -1.0, "eat_at": 1 << 30, "leaving_because": "",
+	})
+	var scared_before: int = int(chaser_yard.gs.crows_scared)
+	_mk3_make_certain(cex, BotBrain.LEARN_SHOO)
+	chaser_yard.tick(SimClock.RATE * 3)
+	# The Action is filed under the **crow**, not the bot — it is the bird's own
+	# report, and `by` is the only place the machine's name appears. That is the
+	# whole of "the bot gains no verb by arriving", asserted rather than described.
+	_assert(is_equal_approx(float(cex["score"]), 3.0),
+		"reaching a crow that had landed to eat is worth 3 (%s)" % str(cex["score"]))
+	_assert(int(chaser_yard.gs.crows_scared) == scared_before + 1
+			and String(chaser_yard.world.actor(SimWorld.ACTOR_CROW)["extra"].get("state", "")) == "leaving",
+		"the bird is leaving and the scare counts for her, whoever caused it (Q-66)")
+	# ...and a bird that is already on its way out cannot be frightened twice,
+	# which is the difference between a reward and a way to farm one.
+	var chased_score: float = float(cex["score"])
+	chaser_yard.world.set_actor_pos(chaser, chaser_yard.world.actor_pos(SimWorld.ACTOR_CROW))
+	chaser_yard.tick(SimClock.RATE * 3)
+	_assert(is_equal_approx(float(cex["score"]), chased_score),
+		"and standing on a bird that is already leaving earns nothing at all (%s)"
+			% str(cex["score"]))
+	chaser_yard.done()
 
 	# --- an empty meter is a robot standing still -----------------------------
 	sure.world.set_actor_energy(waterer, 0)
 	var parked_at: int = int(wex["decisions"])
+	var parked_on: Vector2i = sure.world.actor_pos(waterer)
 	sure.tick(SimClock.RATE * 30)
 	_assert(int(wex["decisions"]) == parked_at,
 		"a robot with nothing left to spend stops deciding (%d)" % int(wex["decisions"]))
-	_assert(sure.world.actor_pos(waterer) == MK3_SPOT,
-		"and stands where it ran out, where she can see it")
+	_assert(sure.world.actor_pos(waterer) == parked_on and String(wex["job"]) == "",
+		"and stands where it ran out, errand abandoned, where she can see it")
 
 	# --- and it waits for her to come outside ---------------------------------
 	# The rule every config obeys: no machine lifts a tool while she is indoors.
@@ -11709,7 +11825,10 @@ func test_learning_robot_day() -> void:
 		if float(extra["trace"][i]) != 0.0 or float(extra["acc"][i]) != 0.0 \
 				or float(extra["base_trace"][i]) != 0.0:
 			swept = false
-	_assert(swept, "and the day's three running sums are swept — a day's work belongs to that day")
+	for x in extra["earned"]:
+		if float(x) != 0.0:
+			swept = false
+	_assert(swept, "and the day's running sums and its score-by-row are swept — a day's work belongs to that day")
 	_assert(day_one > 0.0 and (extra["weights"] as Array) != before_night,
 		"a day worth %s changed the weights it will be played on tomorrow" % str(day_one))
 	var rounded := true
@@ -11834,7 +11953,7 @@ func test_learning_robot_day() -> void:
 # one week and not two (`test_robot_usefulness` is built the same way and says
 # more about why).
 func test_learning_robot() -> void:
-	print("\n--- A week of a robot learning to water (v0.2.1 WI-5) Tests ---")
+	print("\n--- A week of a robot learning to farm (v0.2.1 WI-5/WI-9b) Tests ---")
 
 	var week: Dictionary = LearningRobot.run()
 	var scores: Array = week["scores"]
@@ -11846,9 +11965,9 @@ func test_learning_robot() -> void:
 		"seven days were played (%d)" % scores.size())
 	var worked := true
 	for i in 7:
-		if int(week["decisions"][i]) <= 0 or int(week["waters"][i]) <= 0:
+		if int(week["decisions"][i]) <= 0 or float(scores[i]) <= 0.0:
 			worked = false
-	_assert(worked, "and the robot decided and watered on every one of them")
+	_assert(worked, "and the robot decided and earned on every one of them")
 	_assert(int(week["energy_left"][0]) == 0,
 		"its first day ends with an empty meter, which is a full day's work (%d left)"
 			% int(week["energy_left"][0]))
@@ -11861,44 +11980,36 @@ func test_learning_robot() -> void:
 	var again: Dictionary = LearningRobot.run()
 	_assert(again["scores"] == scores and again["decisions"] == week["decisions"],
 		"a second run of the same week scores the same seven days, day for day")
-	_assert(again["energy_left"] == week["energy_left"] and again["waters"] == week["waters"]
-			and again["tills"] == week["tills"],
-		"spending the same arms on the same waterings and the same hoeings")
+	_assert(again["energy_left"] == week["energy_left"] and again["earned"] == week["earned"]
+			and again["crows"] == week["crows"],
+		"spending the same arms on the same work, row of the reward table for row")
 	_assert((again["weights"] as Array) == (week["weights"] as Array)
 			and (week["weights"] as Array).size() > 0,
 		"and ends holding the same robot, weight for weight (%d weights)"
 			% (week["weights"] as Array).size())
 
-	# --- what a night is worth, over eight farms (measured; the gate is WI-9b's)
+	# --- what a night is worth, over eight farms ------------------------------
 	# **The gate used to be one farm rising, and one farm rising is not evidence**
 	# (v0.2.1 WI-8 found this and WI-9 acted on it). Out on open ground a single
-	# week's rise flips with the learning rate for no reason but the draw — it
-	# failed at four rates and passed across a band of three — and worse, a robot
-	# that never learns anything at all *also* ends its week ahead of where it
-	# started, because the field improves whether the robot understands it or not:
-	# soil opened yesterday is still open this morning and still wants water. A
-	# test that only asked "is Friday better than Monday" was therefore reading
-	# the field and calling it the machine.
+	# week's rise flips with the learning rate for no reason but the draw, and
+	# worse, a robot that never learns anything at all *also* ends its week ahead
+	# of where it started, because the field improves whether the robot understands
+	# it or not: soil opened yesterday is still open this morning, and a square
+	# sown on Monday is ripe by Thursday. A test that only asked "is Friday better
+	# than Monday" was therefore reading the field and calling it the machine.
 	#
 	# So the gate is the comparison the demo prints, taken over eight fixed farms:
 	# each one played twice on the same seed, once with the night doing its work
 	# and once with the weights put back every morning. **What must hold is the
-	# gap** — a week of nights is worth more than the same week without them —
-	# and it is a fair comparison because the control is the identical machine on
-	# the identical farm with one thing removed.
+	# gap** — a week of nights is worth more than the same week without them — and
+	# it is a fair comparison because the control is the identical machine on the
+	# identical farm with one thing removed.
 	#
-	# **The gap is measured and printed here, and not asserted, between WI-9a and
-	# WI-9b** (2026-09-09). Q-100 repriced the farm: watering a plant is still
-	# worth 1, watering bare soil is worth a tenth of that, and the rows worth
-	# most are a crop cut and carried to the bin. The robot this week is played on
-	# has six actions and none of them is a harvest, so nearly everything it can
-	# reach now pays a tenth of what it used to — which shrinks a night's step by
-	# the same factor and puts the two arms inside each other's noise (measured:
-	# 1.2 a day against the control's 2.0, where it was 5.9 against 5.4 before the
-	# repricing). That is a machine that has outlived its reward table, not a
-	# machine that broke: the actions the new table pays for are WI-9b's, and
-	# **turning this assertion back on is part of that work.** It is left in the
-	# file, printed every run, so that nobody has to remember it existed.
+	# **This assertion was off for one work item and it is on again** (WI-9b).
+	# Between WI-9a and WI-9b the robot had six actions and the reward table had
+	# eight rows, so nearly everything it could reach paid a tenth of what it used
+	# to and the two arms sat inside each other's noise. The actions the table pays
+	# for are here now, and so is the assertion.
 	var cmp: Dictionary = LearningRobot.compare(LearningRobot.GATE_SEEDS)
 	var farms: int = (LearningRobot.GATE_SEEDS as Array).size()
 	var taught: Dictionary = LearningRobot.summary(cmp, "learn")
@@ -11907,27 +12018,57 @@ func test_learning_robot() -> void:
 		"the gate is played on %d farms, each of them twice" % farms)
 	_assert(float(taught["late"]) > 0.0 and float(untaught["late"]) > 0.0,
 		"both arms earned something over days 5-7, so there is a comparison to make at all")
-	print("    [WI-9b] a week with its nights scores %.2f a day over days 5-7 against %.2f without them, and %d of %d farms rose — not asserted until the robot has the actions Q-100 pays for"
-		% [float(taught["late"]), float(untaught["late"]), int(taught["rose"]), farms])
+	_assert(float(taught["late"]) > float(untaught["late"]),
+		"a week with its nights is worth %.2f a day over days 5-7 against %.2f without them"
+			% [float(taught["late"]), float(untaught["late"])])
+	# ...and the same claim asked of the individual farms rather than of their
+	# mean, so that one lucky week cannot carry seven flat ones. Two thirds,
+	# because a farm's week is lumpy: one row of the table is worth ten and the
+	# other seven are worth one or a tenth, so a farm that happened to ship twice
+	# early and once late reads as a fall whatever the robot learned.
+	_assert(int(taught["rose"]) * 3 >= farms * 2,
+		"and %d of the %d farms ended better than they began, which is two thirds or more"
+			% [int(taught["rose"]), farms])
+
+	# --- and which of the eight rows a week actually reaches -------------------
+	# **Printed, never narrowed.** The designer's thesis is recorded in
+	# `design/06`: a row the robot fails to reach is a learner or an exploration
+	# problem, to be fixed by a better learner or more exploration, and never by
+	# taking the row off the table. So the honest thing to do with a row that reads
+	# zero is say so on every run.
+	var reached: Array[String] = []
+	var missed: Array[String] = []
+	var rows: Array = taught["late_rows"]
+	for k in Rewards.KEYS.size():
+		if float(rows[k]) > 0.0:
+			reached.append("%s %.2f" % [String(Rewards.KEYS[k]), float(rows[k])])
+		else:
+			missed.append(String(Rewards.KEYS[k]))
+	print("    [WI-9b] a day over days 5-7, by row: %s" % ", ".join(reached))
+	_assert(reached.size() >= 6,
+		"a week of this learner reaches %d of the %d rows; it never reaches %s"
+			% [reached.size(), Rewards.KEYS.size(),
+				"none of them" if missed.is_empty() else ", ".join(missed)])
 
 	# --- and it did it on open ground -----------------------------------------
 	# **The week used to be played inside a fence** (WI-5), because with only
 	# watering worth anything a fresh robot wandered off the block within a minute
-	# and was never once told it had done well. Q-99 replaced the pen with a hoe,
-	# and this is the assertion that the pen is gone: the robot is free to walk out
-	# of the picture in any direction, and what brings it back is what it learned.
-	var hoed := 0
-	var own := 0
-	var hers := 0
+	# and was never once told it had done well. Q-99 replaced the pen with a hoe
+	# and Q-100 replaced the one job with the farm, and this is the assertion that
+	# the pen is gone: the robot is free to walk out of the picture in any
+	# direction, and what brings it back is what it learned.
+	var opened := 0.0
+	var grown := 0.0
 	for i in 7:
-		hoed += int(week["tills"][i])
-		own += int(week["on_own"][i])
-		hers += int(week["on_block"][i])
-	_assert(hoed > 0,
-		"it used the hoe on open ground rather than only the can (%d strokes in the week)" % hoed)
-	_assert(hers + own > 0,
-		"and its waterings landed on ground that wanted it: %d squares of hers, %d it opened itself"
-			% [hers, own])
+		var split: Array = week["earned"][i]
+		opened += float(split[Rewards.index_of("tilled")])
+		grown += float(split[Rewards.index_of("watered_plant")]) \
+				+ float(split[Rewards.index_of("planted")])
+	_assert(opened > 0.0,
+		"it used the hoe on open ground rather than only the can (%.1f points of it in the week)"
+			% opened)
+	_assert(grown > 0.0,
+		"and it sowed and watered a farm rather than only opening ground (%.1f points)" % grown)
 
 
 # --- The door (2026-09-06) ----------------------------------------------------

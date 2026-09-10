@@ -606,3 +606,80 @@ only the work item you are on. The chief of staff's running notes are in
     crop would do it silently, against the studio's rule that an actor's action gets the
     player's own treatment. Nothing emits either verb today, which is why it is named
     here rather than fixed here.
+- 2026-09-10 — **WI-9b landed: the Mark III's action is a tap, and the gate is an
+  assertion again.** Eight actions — `till, plant, water, harvest, ship, shoo, wander,
+  wait` — and each of the first six picks its square the way `ActionRouter` picks hers:
+  the nearest tile in the robot's own 5×5 view where that verb is legal by
+  `systems/tools.gd`, Manhattan distance, fixed scan order, strictly-nearer ties; the bin
+  for `ship` (walked to from a tile beside it, since the bin cannot be stood on); the
+  nearest bird in view for `shoo`. It then plans with `Movement.plan`, walks with the
+  mark-1's `_set_out`/`_paced` plumbing, and emits on arrival — **and it does not decide
+  while it walks**, so a day now holds about a hundred decisions rather than three
+  hundred. No legal square, or no route: the decision is spent, nothing is emitted, and
+  it looks again in a second. Legality is re-asked one beat before the verb goes out,
+  because the walk took seconds and the farm moved.
+  - **The three `pending_*` flags are one `pending` string** — the name of the row of
+    `Rewards.TABLE` this errand is reaching for, written by the brain just before the
+    Action leaves and spent in `on_result` against `result.ok`. Eight outcomes could not
+    have been eight booleans. `Rewards.KEYS` is the same eight in a written-down order,
+    and `extra["earned"]` is the day's score split along it — a report, never an input.
+  - `LEARN_RATE` is **0.03**, swept over 24 farms at {0.015, 0.03, 0.06, 0.12}: late-week
+    score 20.7 / 24.2 / 22.6 / 15.7 against a control of 17.5. 0.12 ends the week *below*
+    a robot that never learned — a night that pushes hard on a day dominated by one
+    ten-point sale teaches the robot to repeat whatever it was doing when the sale
+    happened.
+  - **The gate holds and is asserted.** Over the eight fixed farms: **19.8 a day on days
+    5-7 with the nights against 18.2 without them, and 6 of 8 weeks rose** (two thirds is
+    the bar). Over all 24: 24.2 against 17.5, 20 of 24 rose. The fixed-seed week in the
+    demo runs 9.7 a day over days 1-3 to 18.1 over days 5-7.
+  - **Which rows a week of the linear learner reaches** (points a day, days 5-7, mean of
+    24 farms, learning arm against the night-off control):
+
+    | row | worth | learning | night off |
+    | --- | --- | --- | --- |
+    | shipped | 10 | **5.56** | 0.97 |
+    | crow_flying | 1 | **0.00** | 0.00 |
+    | crow_eating | 3 | **0.00** | 0.00 |
+    | harvested | 1 | 0.58 | 0.10 |
+    | watered_plant | 1 | 7.81 | 6.11 |
+    | planted | 1 | 9.14 | 8.94 |
+    | tilled | 0.1 | 0.83 | 0.96 |
+    | watered_soil | 0.1 | 0.29 | 0.42 |
+
+    Six of the eight. **The two crow rows are the ones it does not reach**, and the
+    reason is arithmetic rather than learning: one bird visits a day, it sits still for
+    five seconds, and the robot has to have it inside a two-tile view *and* draw the shoo
+    action in that window. The row is not unreachable — it read 0.04 to 0.08 a day at
+    other learning rates in the same sweep, so it happens, just not often enough to be a
+    number. Per the designer's thesis (Q-100, recorded in `design/06`) that is an
+    exploration problem and not a reason to touch the table; the levers if it is ever
+    worth pulling are a wider view, a longer perch, or more than one bird a day.
+    `test_learning_robot` prints the reached rows every run and asserts six of eight.
+  - **The harness is the whole farm, and two staging facts are load-bearing.** Crows need
+    the day's action clock to move and there is no player in this demo to move it, so the
+    clock is run off the day's own length (0 to 24 over five minutes) and the standing
+    `roll_crow_schedule` / `_send_due_crows` machinery is otherwise untouched; the week
+    starts on play-day 3 because a farm younger than that never sees a bird (T-2). And
+    **her seed box is restocked every morning** — without that it empties on the third
+    day (a Mark III sows seven or eight squares a day and sowing costs it no meter), and
+    every week after that falls in *both* arms for a reason that has nothing to do with
+    learning. The ripe block is deliberately four squares: a crop in the bin is worth ten
+    and a big ripe block would be treasure lying in the field on Monday, so most of the
+    week's ripe crop is crop the robot grew itself.
+  - `ACTOR_VERB_CUES` gains `plant` and `sell`. **Both are puffs with no sound, and that
+    is the rule rather than a shortcut**: the player's own `plant` and `sell` are silent
+    (`player/player.gd` returns early on `sell` and has no arm for `plant`, and the mixer
+    has no plant foley and no coin), so a machine that made a noise there would be louder
+    than the farmer. `plant` gets her dirt puff, `sell` gets the harvest burst gated on
+    `crop_type`. When her own two verbs get foley, these rows take the same names.
+  - **Two places the plan was wrong.** It says to emit `sell` "with no target" — but
+    `world/farm.gd` only voices an actor's verb when the Action carries a target, so a
+    targetless `sell` would have silenced the cue the same work item asks for. The
+    machine's `sell` carries the bin's own tile, which is exactly what her tap on the bin
+    sends (`ActionRouter.SPECIAL_OBJECTS`). And the demo's old `on hers` / `on its own`
+    columns are gone: they answered "whose square did it water", which Q-100 settled
+    ("nobody owns a tile"), and they could only be measured by reading the tile under the
+    robot at the top of every second — which stopped being possible the moment a decision
+    became a walk.
+  - Unit **2423 passed, 0 failed**; integration **671 passed, 0 failed**; robot session
+    exit 0; gateway check clean; demo exit 0.

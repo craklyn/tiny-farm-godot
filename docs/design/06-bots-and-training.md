@@ -425,6 +425,22 @@ when it is empty (today a non-player plants free and unlimited). People — the 
 keep bringing their own. `sell` for a machine sells the one crop it carries, at the bin's
 price, to her gold.
 
+**Four details settled in the building of it (2026-09-10, WI-9b), each of them the router's
+own answer rather than a new rule for machines:**
+
+- **A square that stopped answering is an errand that ends quietly.** The square is chosen
+  when the decision is taken and the walk takes seconds, so the verb's legality is asked
+  again on arrival: the rain may have wetted the soil, she may have cut the row herself. A
+  square that has changed its mind costs the decision and nothing else.
+- **Shipping is done from beside the bin**, because the bin cannot be walked onto — which
+  is the same reason her own tap on it walks her up to it rather than through it.
+- **A bird that is already leaving cannot be scared again.** It is the one guard the mark-2
+  does not have, and it is the difference between a reward and a way to farm one: a bird on
+  its way out is a bird somebody has already frightened.
+- **Plant is offered only when there is a seed in the box**, which is what her tap does
+  too. The gateway's `no_seeds` refusal is still there underneath; the robot simply never
+  reaches for it, exactly as no tap of hers ever does.
+
 ### What it is rewarded for
 
 Ruled 2026-09-09 (Q-100), replacing the one-job table. Every row is an **outcome** — computed
@@ -477,17 +493,32 @@ skill it learns is *water the thirsty tile under you*, which is the same skill o
 field, and the patches it leaves are land she cleared to farm anyway. The values are for
 initial playtesting and are data.
 
-**Built and measured 2026-09-09.** The fence is gone and the week is played in open field
-again. It works, and it works exactly the way the ruling guessed it would: over 24 farms a
-week of learning ends at 5.4 points a day against 4.6 for the same robot with its nights
-switched off, and 22 of the 24 weeks rose against the control's 18. What it is doing to
-earn that is making its own practice ground — of the waterings that pay, essentially all
-land on soil the robot opened itself and about none on her sown block (0.0 against 5.1 a
-day by the end of a week). So the machine a player buys today is not yet a machine that
-waters her wheat: it is a machine that learns to keep a wet patch of its own, on the way
-to the same skill. Worth naming for whoever picks up the next rung, because the obvious
-next lever is a reason to prefer *her* squares — a crop channel it is already given, and
-nothing yet that pays more for using it.
+**Built and measured 2026-09-09**, on the one-job robot: over 24 farms a week of learning
+ended at 5.4 points a day against 4.6 for the same robot with its nights switched off. What
+it did to earn that was make its own practice ground — of the waterings that paid,
+essentially all landed on soil the robot had opened itself. So the machine was not yet a
+machine that watered her wheat; it was one that learned to keep a wet patch of its own, on
+the way to the same skill.
+
+**Rebuilt and measured 2026-09-10** (WI-9b), on the whole farm and with actions shaped like
+her taps. Over 24 farms a week of learning ends at **24.2 points a day against 17.5** for
+the same robot with its nights off, and 20 of the 24 weeks rose against the control's 14.
+Three things in that are worth carrying forward:
+
+- **It learns to sell.** The ten-point row is where nearly all of the gap lives: 5.56
+  points a day from crops carried to the bin against the control's 0.97. The chain it has
+  worked out — cut a ripe square, walk across the farm, sell — is four or five errands
+  long and pays only at the end, which is exactly what the eligibility trace is for.
+- **The robot that has learned nothing is already competent**, and that is the cost of
+  tap-shaped actions. Picking a *verb* and letting the router find the square means a
+  coin-flipping machine still waters real thirst and sows real soil, so the control scores
+  17.5 rather than nearly nothing. What learning adds is priority, not competence.
+- **It never catches a crow.** Both bird rows read 0.00 a day over a week. Nothing is
+  wrong with them: one bird visits a day, it sits still for about five seconds, and the
+  robot has to have it inside a two-tile view *and* draw the shoo action inside that
+  window. Per the thesis recorded above, that is an exploration problem — the levers are a
+  wider view, a longer perch, or more than one bird a day — and never a reason to take the
+  row off the table.
 
 ### Its night
 
@@ -500,8 +531,8 @@ score — and nothing else in v1.
 
 ### The learning rule (strawman; the D-2 first cut, owned by the ML seat)
 
-A **linear softmax policy**: 207 inputs × 8 actions — about 1,700 weights (Q-100; 128 × 7
-under the one-job table).
+A **linear softmax policy**: 207 inputs × 8 actions, each row carrying a bias, so
+8 × 208 = **1,664 weights** (Q-100; it was 128 × 7 = 896 under the one-job table). Trained
 by REINFORCE with an eligibility trace, so the day's experience costs O(weights), not
 O(steps):
 
@@ -522,9 +553,18 @@ with a third of its day left can water at most a third as many more squares — 
 that in place it scores 5.4 a day by the end of its first week against 4.6 for a robot
 that never learns, over 24 farms, and 5.9 against 5.1 if the same farms are played for
 three weeks. The old rule sank back below the control by the third week, which is what the
-fix removes. The learning rate is 0.12 — it was 0.03 on the fenced six-action robot, and
-that number does not survive the hoe: a day out here is 60 to 90 decisions rather than
-300, and the night divides by them.
+fix removes.
+
+**The learning rate is 0.03 (rebuilt 2026-09-10, v0.2.1 WI-9b).** Every earlier number was
+measured on a different machine and none of them survives the widening: a decision is a
+whole errand now, so a day holds about a hundred of them rather than three hundred, and a
+day's score runs to twenty-odd points rather than five, because a crop in the bin is worth
+ten. Swept over 24 farms at 0.015 / 0.03 / 0.06 / 0.12, the late-week score reads
+20.7 / 24.2 / 22.6 / 15.7 against a control of 17.5. **0.12 ends the week below a robot
+that never learned at all**, and that is the general lesson rather than a quirk of the
+draw: the bigger the biggest row of the reward table, the gentler the night has to be,
+because a hard push on a day dominated by one ten-point sale teaches the robot to repeat
+whatever it happened to be doing when the sale landed.
 
 Exploration is the softmax's own sampling, drawn with `SimRng.stateless(salt, index)` —
 salt from the robot's id and the day, index its decision count — so the same seed and the
