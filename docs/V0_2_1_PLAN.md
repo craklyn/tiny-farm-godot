@@ -285,3 +285,17 @@ only the work item you are on. The chief of staff's running notes are in
   into the text above: one-tile moves via `can_enter` + `place_on_tile`; the spec is
   written by `deploy`, not the row; `configure` cannot reach a Mark III; the learn arm
   precedes `on_new_day`'s early return; the salt is an engine-independent fold.
+- 2026-09-09 — **WI-3 and WI-4 landed** (`CONFIG_LEARN` and `_learn`, the night in
+  `on_new_day`, the `bot_mk3` row, `Policy.salt_of`; `test_learning_robot_day`, 56
+  assertions). Unit 2349 passed, integration 650 passed, robot session green, gateway
+  clean. Three notes for WI-5 and WI-6:
+  - One decision costs **~234 µs** headless (2,000 measured, one actor in the world) —
+    one observation, one policy evaluation, no route search. A 300-decision day is
+    therefore ~70 ms of think, which is what makes WI-5's seven-day loop cheap.
+  - `place_on_tile` already sets facing from the move, so the plan's separate
+    `Movement.facing_from` call is not needed.
+  - **Godot's JSON reader hands every number back as a float**, so a restored robot's
+    `spec` reads `vision: 2.0` where a live one reads `2`. Harmless — every reader
+    casts, and `capture_canonical` puts both sides through JSON before comparing — but
+    a test that compares two spec dictionaries with `==` across a save will fail on the
+    types and not on the meaning.

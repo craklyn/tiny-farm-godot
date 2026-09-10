@@ -55,6 +55,13 @@ extends Brain
 # and what to answer, and are therefore a **mark-2** machine's settings. Keeping
 # them in this file rather than deleting them is the point: the capability ladder
 # is the design, and the mark-2 is the rung above, not a rewrite.
+#
+# And the rung above *that* is the **mark-3**, whose one setting is `learn`: the
+# mark-2's three behaviours were written by hand in this file, and a mark-3's is
+# written by its own days — a policy over what it can see, nudged every night
+# towards whatever earned that day (P-14, `design/06` "The ladder's third rung").
+# So the ladder reads, in one file, as three answers to the same question: she
+# decides (mark-1), we decided for it (mark-2), it works it out (mark-3).
 const CONFIG_ORDERS := "orders"
 
 # **A machine you have just put down is waiting, not already deciding** (from
@@ -73,12 +80,24 @@ const CONFIG_IDLE := "idle"
 const CONFIG_FOLLOW := "follow"
 const CONFIG_CIRCLE := "circle"
 const CONFIG_SHOO := "shoo"
+
+# **The mark-3's only setting, and it is not a dial** (v0.2.1 WI-3, P-14). A
+# mark-2 is *set* to one of three behaviours and can be set to another; a mark-3
+# has one thing it is, the way a mark-1 has one thing it is. So `learn` sits with
+# `orders` in `ALL_CONFIGS` and out of `CONFIGS` — and because its catalogue row
+# offers no configs either, the `configure` verb refuses a Mark III outright
+# (`sim_world.gd`'s dial). That refusal is worth having rather than working
+# around: turning the dial rebuilds `extra` from scratch, so a settable mark-3
+# would be a machine whose weeks of learning she could wipe by tapping the wrong
+# row of a menu.
+const CONFIG_LEARN := "learn"
+
 # The mark-2's three. Named as they always were, because the zoo, the tests and
 # `MachineDefs` all mean *these* by "the configs a bot can be set to".
 const CONFIGS: Array[String] = [CONFIG_FOLLOW, CONFIG_CIRCLE, CONFIG_SHOO]
-# ...and every config the brain answers for, mark-1 included.
+# ...and every config the brain answers for, mark-1 and mark-3 included.
 const ALL_CONFIGS: Array[String] = [CONFIG_ORDERS, CONFIG_IDLE,
-		CONFIG_FOLLOW, CONFIG_CIRCLE, CONFIG_SHOO]
+		CONFIG_FOLLOW, CONFIG_CIRCLE, CONFIG_SHOO, CONFIG_LEARN]
 
 # How many tiles a mark-1 will hold. **A capability limit, and the main one** —
 # the machine is meant to retire a corner of the watering round, not the round.
@@ -140,6 +159,46 @@ const STATE_CHASE := "chasing"
 const STATE_RETURN := "returning"
 
 
+# --- the mark-3's six actions, and its two numbers -----------------------------
+#
+# **The order is the policy's index and is therefore permanent.** Row j of a
+# robot's weights is action j, and those weights are saved, replayed and compared
+# — so reordering this list would not break a build, it would quietly turn every
+# robot anybody has ever trained into a robot that walks north when it means to
+# water. Add to the end or not at all (P-13: v1 is six actions, deliberately).
+const LEARN_UP := 0
+const LEARN_DOWN := 1
+const LEARN_LEFT := 2
+const LEARN_RIGHT := 3
+const LEARN_WATER := 4
+const LEARN_WAIT := 5
+const LEARN_ACTIONS := 6
+
+# Which way 0-3 actually go. `Movement.DIRS` rather than four Vector2is of this
+# file's own, because it already is that list in that order (up, down, left,
+# right) and the engine's own comment forbids reordering it for the same
+# determinism reason this list cannot be reordered. One definition, one order.
+const LEARN_STEPS := Movement.DIRS
+
+# How hard a night pushes the weights. Safe at 0.05 only because the update is
+# divided by the day's decisions before it is applied (`_sleep_on_it`): the trace
+# is cumulative, so an un-normalised night grows with the *square* of how busy
+# the day was, and WI-2's bandit locked onto the wrong arm at this rate with
+# twenty decisions in it. A robot's day has several hundred. [Playtest]
+const LEARN_RATE := 0.05
+
+# How far apart two days' draws are pushed. Any odd stride would do; a prime is
+# the cheap way to keep one robot's second day out of another robot's first.
+const LEARN_DAY_STRIDE := 7919
+
+# How long a robot with an empty meter stands still. An hour of sim time, which
+# is well past dusk — in practice it means "until the day turns", and the day
+# turn re-arms it (`SimWorld.schedule_all_brains`). Long rather than clever,
+# because a machine that has nothing left to spend must cost nothing at all
+# (ground rule 8).
+const LEARN_PARKED_SECONDS := 3600.0
+
+
 # --- deployment ----------------------------------------------------------------
 #
 # **The only way a bot enters a world.** Not a verb: a spawn is not a thing an
@@ -182,6 +241,41 @@ static func deploy(world: SimWorld, actor_id: String, config: String, at: Vector
 			if world.is_stall_tile(at):
 				extra["home_x"] = at.x
 				extra["home_y"] = at.y
+		CONFIG_LEARN:
+			# **The senses are written here, not on the catalogue row** (v0.2.1
+			# WI-3). `MachineDefs` is layer 1 and may not import the sim, so it
+			# could not name an observation spec even if it wanted to — and it
+			# should not want to: P-14's promise is that a robot's inputs are an
+			# *adjustable* spec, which means the adjustable copy belongs on the
+			# robot. A machine bought today keeps the senses it was born with even
+			# after a later build widens the default, so its weights can never be
+			# reinterpreted against a vector it never learned on.
+			var spec := Observation.spec_default()
+			extra["spec"] = spec
+			var width := Observation.size(spec)
+			# Zeros, so a robot out of the box is uniform over its six actions: it
+			# wanders on day one, which is what P-14 says day one should look like.
+			extra["weights"] = Policy.new_weights(width, LEARN_ACTIONS)
+			# The day's two running sums — what it has done (`trace`) and what
+			# that earned (`acc`). Both are zeroed every night.
+			extra["trace"] = Policy.new_weights(width, LEARN_ACTIONS)
+			extra["acc"] = Policy.new_weights(width, LEARN_ACTIONS)
+			# What a day has been worth so far, what the last one was worth, and
+			# the running mean of every day before it. The panel reads `days` and
+			# `last_score`; nothing outside this file reads the weights (Q-97).
+			extra["score"] = 0.0
+			extra["last_score"] = 0.0
+			extra["baseline"] = 0.0
+			extra["days"] = 0
+			extra["decisions"] = 0
+			# Its own number, folded from its id rather than hashed with the
+			# engine's `hash()` — see `Policy.salt_of` for why that distinction is
+			# worth a function.
+			extra["salt"] = Policy.salt_of(actor_id)
+			# Whether the square it just reached for was thirsty, remembered
+			# across the one beat between deciding to water and the gateway
+			# answering. See `on_result`.
+			extra["pending_needs_water"] = false
 		CONFIG_CIRCLE:
 			extra["radius"] = int(params.get("radius", ORBIT_RADIUS))
 		CONFIG_SHOO:
@@ -219,6 +313,8 @@ func step(world: SimWorld, actor_id: String, tick: int, _gs = null) -> Dictionar
 	match String(extra.get("config", CONFIG_IDLE)):
 		CONFIG_ORDERS:
 			return _orders(world, actor_id, extra, tick)
+		CONFIG_LEARN:
+			return _learn(world, actor_id, extra, tick)
 		CONFIG_CIRCLE:
 			_circle(world, actor_id, extra, tick)
 		CONFIG_SHOO:
@@ -821,6 +917,145 @@ func _patrol_tile(world: SimWorld, actor_id: String, extra: Dictionary) -> Vecto
 	return inside[SimRng.randi() % inside.size()]
 
 
+# --- the mark-3: one decision a second, and one lesson a night -----------------
+#
+# **Everything above this line was written by hand. This is the rung where that
+# stops** (P-14; `design/06`, "The ladder's third rung"). A mark-3 has no orders,
+# no station, no patch and no rule about where to be. Once a second it looks at
+# what is around it, picks one of six things with a linear policy, and does it.
+# Six things: north, south, east, west, water the square under its feet, and
+# nothing at all.
+#
+# **It is paid for outcomes, never for gestures** (`systems/rewards.gd`). The one
+# thing worth anything in v1 is turning a square that wanted water into a wet one
+# — so watering ground that is already wet earns exactly what walking into a
+# fence earns, which is nothing, and the machine has to work out the difference
+# for itself.
+#
+# **A day is a wander and a night is the lesson** (P-14's second rule). During the
+# day the only things that change are the two running sums; the weights the day
+# is being played on are not touched until `on_new_day` closes it. That is what
+# makes a day a fair sample of one policy rather than a smear of several, and it
+# is why a player watching a mark-3 sees it behave consistently between mornings.
+#
+# **Nothing here is recorded.** The draw is `Policy.draw_u` off (seed, this
+# robot, today, decision number), so a replay recomputes every choice of the day
+# from the log's one `sleep` entry rather than reading it back (Q-53, ground
+# rule 3). Cost per decision is one observation, one policy evaluation and no
+# route search at all (ground rule 8) — a mark-3 is cheaper to run than a mark-2,
+# which is not the direction a reader expects the ladder to go.
+func _learn(world: SimWorld, actor_id: String, extra: Dictionary, tick: int) -> Dictionary:
+	# **An empty meter is a machine standing in the field, not a machine thinking
+	# about standing in the field** (P-14's "a day's energy like hers"). There is
+	# nothing left for any of the six to cost, so it stops deciding until the
+	# morning refills it. The day turn re-arms every brain, which makes this wake
+	# a backstop rather than an appointment — and a long one, because a robot with
+	# nothing to spend must cost nothing at all.
+	if world.is_exhausted(actor_id):
+		extra["pending_needs_water"] = false
+		extra["wake"] = tick + ticks(LEARN_PARKED_SECONDS)
+		return {}
+
+	var obs := Observation.build(world, actor_id, extra.get("spec", {}))
+	var n_in := obs.size()
+	var chances := Policy.probs(Policy.logits(extra["weights"], n_in, LEARN_ACTIONS, obs))
+	var decisions := int(extra.get("decisions", 0))
+	# The day is part of the salt so that a robot which has learned nothing yet
+	# does not repeat yesterday's exact wander today; the decision number is the
+	# index, so consecutive decisions are consecutive draws. `draw_u` rather than
+	# a bare `SimRng.stateless` — see the long note on that function for what
+	# happens without the scramble.
+	var salt: int = int(extra.get("salt", 0)) ^ (int(extra.get("days", 0)) * LEARN_DAY_STRIDE)
+	var choice := Policy.sample(chances, Policy.draw_u(salt, decisions))
+	extra["decisions"] = decisions + 1
+	# The eligibility trace, one term per decision. Credit for a reward is spread
+	# back over everything the robot did before earning it, which is the only way
+	# *walking towards dry soil* is ever learned when only the watering pays.
+	Policy.add_into(extra["trace"],
+		Policy.grad_log_prob(obs, chances, choice, n_in, LEARN_ACTIONS), 1.0)
+
+	var here := world.actor_pos(actor_id)
+	var action: Dictionary = {}
+	extra["pending_needs_water"] = false
+	match choice:
+		LEARN_WATER:
+			# **What the square wanted is read before the stroke, not after it.**
+			# By the time the gateway has answered, the tile is wet either way,
+			# and a robot scored on that would be a robot scored for the gesture.
+			# Asked through `order_verb` so the mark-1's idea of a square that
+			# wants water and the mark-3's cannot drift apart.
+			extra["pending_needs_water"] = order_verb(world, here) == "water"
+			action = { "verb": "water", "target": here, "actor": actor_id }
+		LEARN_WAIT:
+			pass
+		_:
+			# One tile, taken directly — and deliberately **not** `Movement.plan`
+			# followed by `Movement.step`. A route planned to an adjacent tile it
+			# cannot enter comes back as having *arrived* there, and stepping a
+			# route writes a path and a wake of its own into `extra`; either would
+			# make a refused move indistinguishable from a taken one, which is the
+			# one distinction the policy is trying to learn. A move it cannot make
+			# is simply a move it did not make: nothing happens, nothing is earned,
+			# and the second is spent.
+			var goal: Vector2i = here + LEARN_STEPS[choice]
+			if Movement.can_enter(world, actor_id, goal):
+				Movement.place_on_tile(world, actor_id, goal)
+	# Written last, after anything that moved it, so nothing can outlive it: a
+	# mark-3 thinks once a second of sim time whatever it just did, which is
+	# P-14's "one action at a time at her granularity".
+	extra["wake"] = tick + SimClock.RATE
+	return action
+
+
+# The night: one update, and a clean slate for the morning.
+#
+# `w += rate · (acc − baseline · trace) / decisions`, and **the division is
+# load-bearing**. The trace is cumulative, so the accumulator grows with roughly
+# the square of how many decisions were in the day; without dividing, a busy day
+# would push the weights hundreds of times harder than a quiet one and the robot
+# would lock onto whatever it happened to be doing when it first got lucky. WI-2
+# measured exactly that on a twenty-decision bandit; a robot's day has several
+# hundred.
+#
+# The baseline is the running mean of every day before this one. Subtracting it
+# is what stops a robot that scores the same every day from being shoved harder
+# and harder in whatever direction it took first: once a day is only average, it
+# teaches nothing.
+func _sleep_on_it(extra: Dictionary) -> void:
+	var weights: Array = extra.get("weights", [])
+	var per_decision := 1.0 / float(maxi(1, int(extra.get("decisions", 0))))
+	var days := int(extra.get("days", 0))
+	var baseline := float(extra.get("baseline", 0.0))
+	var score := float(extra.get("score", 0.0))
+	extra["weights"] = Policy.night_update(weights,
+		_scaled(extra.get("acc", []), per_decision),
+		_scaled(extra.get("trace", []), per_decision),
+		baseline, LEARN_RATE)
+	extra["baseline"] = (baseline * float(days) + score) / float(days + 1)
+	# What the panel shows her, and the only two learned numbers anything outside
+	# this file reads (Q-97: the night's surface is panel numbers, no scene).
+	extra["last_score"] = score
+	extra["days"] = days + 1
+	# ...and the slate. A day's sums belong to that day.
+	extra["score"] = 0.0
+	extra["decisions"] = 0
+	extra["trace"] = _scaled(weights, 0.0)
+	extra["acc"] = _scaled(weights, 0.0)
+	extra["pending_needs_water"] = false
+
+
+# `source * k`, as a fresh plain Array of float — the shape the night needs and
+# the shape `extra` keeps. With `k` of 0 it is also how the two running sums are
+# zeroed back to the right length, so there is one place that knows how long they
+# are and it is the weights.
+static func _scaled(source: Array, k: float) -> Array:
+	var out: Array = []
+	out.resize(source.size())
+	out.fill(0.0)
+	Policy.add_into(out, source, k)
+	return out
+
+
 # A new morning gives a mark-1 its turn back (2026-09-03). Also stands down a
 # round that never finished — she went to bed with it halfway along its list —
 # because "once per day" has to mean the day it was sent, not a queue that
@@ -874,6 +1109,13 @@ func on_new_day(world: SimWorld, actor_id: String) -> void:
 	if e.is_empty():
 		return
 	var extra: Dictionary = e["extra"]
+	# The mark-3's night, **before** the mark-1's early return below rather than
+	# after it: this hook is the one moment in the day when a learning robot's
+	# weights change, and a guard written for the config that shipped first would
+	# have quietly meant "and no other config has a night" (v0.2.1 WI-4).
+	if String(extra.get("config", "")) == CONFIG_LEARN:
+		_sleep_on_it(extra)
+		return
 	if String(extra.get("config", "")) != CONFIG_ORDERS:
 		return
 	extra["ran_today"] = false
@@ -884,15 +1126,41 @@ func on_new_day(world: SimWorld, actor_id: String) -> void:
 
 # --- what the gateway made of it ------------------------------------------------
 
-# The one Action a bot in these three configs ever takes is the shoo's report, and
-# the only way it fails is a world without a GameState in it. Either way the chase
-# is over and the machine is already on its way home (`_reached` stood it down
-# before the Action left), so there is nothing to undo — this exists to say that
-# out loud, because every other brain in the game corrects itself here and a
-# reader will look.
-func on_result(_world: SimWorld, _actor_id: String, _action: Dictionary,
-		_result: Dictionary) -> void:
-	pass
+# The one Action a bot in the mark-2's three configs ever takes is the shoo's
+# report, and the only way it fails is a world without a GameState in it. Either
+# way the chase is over and the machine is already on its way home (`_reached`
+# stood it down before the Action left), so there is nothing to undo. A mark-1's
+# waterings are the same: the index has already moved on, and a refused order is
+# still an order it has been through.
+#
+# **The mark-3 is the one bot that cares what the gateway said**, because for a
+# machine that learns, the answer *is* the lesson. It is scored on the outcome and
+# not on the stroke (P-14, `systems/rewards.gd`): the reward lands only when the
+# square it reached for genuinely wanted water — remembered as
+# `pending_needs_water` one beat earlier, because by now the tile is wet either
+# way — and the gateway said yes. Watering wet ground, watering a rock, watering
+# from an empty meter: all worth what waiting is worth, which is nothing.
+#
+# The reward is folded into the accumulator against the **whole trace so far**,
+# not against this one decision. That is what pays the walk that got it there.
+func on_result(world: SimWorld, actor_id: String, action: Dictionary,
+		result: Dictionary) -> void:
+	var e: Dictionary = world.actor(actor_id)
+	if e.is_empty():
+		return
+	var extra: Dictionary = e["extra"]
+	if String(extra.get("config", "")) != CONFIG_LEARN:
+		return
+	if String(action.get("verb", "")) != "water":
+		return
+	var earned := 0.0
+	if bool(extra.get("pending_needs_water", false)) and bool(result.get("ok", false)):
+		earned = Rewards.of("wet_tile")
+	extra["pending_needs_water"] = false
+	if earned == 0.0:
+		return
+	Policy.add_into(extra["acc"], extra["trace"], earned)
+	extra["score"] = float(extra.get("score", 0.0)) + earned
 
 
 # --- shared plumbing ------------------------------------------------------------
