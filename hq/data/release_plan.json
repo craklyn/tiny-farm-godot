@@ -1,5 +1,5 @@
 {
-  "note": "The release plan for the Product & Program page. Milestones hold stories, stories hold an estimate in days of work, and every date on the page is computed from what is still outstanding \u2014 nothing here is a hand-typed date (the CEO's ruling, 2026-09-04). Releases run in the order listed; each one's estimated date is the previous one's plus its own remaining work. A release with unestimated stories has no date, and neither does anything after it, because a chain built on a guess is worse than an honest blank. Seeded 2026-09-05: v0.2.0's stories are the real remaining requirements of its two critical projects; everything after it is a placeholder waiting to be sketched with the CEO.",
+  "note": "The release plan for the Product & Program page. Milestones hold stories, stories hold an estimate in days of work, and every date on the page is computed from what is still outstanding — nothing here is a hand-typed date (the CEO's ruling, 2026-09-04). Releases run in the order listed; each one's estimated date is the previous one's plus its own remaining work. A release with unestimated stories has no date, and neither does anything after it, because a chain built on a guess is worse than an honest blank. Seeded 2026-09-05: v0.2.0's stories are the real remaining requirements of its two critical projects; everything after it is a placeholder waiting to be sketched with the CEO.",
   "capacity_days_per_week": 5.0,
   "releases": [
     {
@@ -7,7 +7,7 @@
       "release_id": "update-1",
       "name": "Player Update 1",
       "codename": "v0.2.0",
-      "contains": "The shop, the first robot you can teach and the stall it lives in, the home you can walk into \u2014 the beginning of the delegation arc, plus everything else a player would notice since v0.1.0.",
+      "contains": "The shop, the first robot you can teach and the stall it lives in, the home you can walk into — the beginning of the delegation arc, plus everything else a player would notice since v0.1.0.",
       "stories": [
         {
           "id": "s4",
@@ -23,7 +23,7 @@
         },
         {
           "id": "s8",
-          "title": "Play the web build end to end before the tag goes out \u2014 only a person in a browser can tell you the sound arrives after the first tap",
+          "title": "Play the web build end to end before the tag goes out — only a person in a browser can tell you the sound arrives after the first tap",
           "estimate_days": 0.5,
           "done": true
         },
@@ -46,7 +46,7 @@
       "release_id": "update-1-1",
       "name": "Player Update 1.1",
       "codename": "v0.2.1",
-      "contains": "The fresh-player evidence v0.2.0 shipped without (designer amendment 2026-09-08) \u2014 one unprompted adult session on the tablet, the sleeping-cot bar and the standing bars scored from its trace \u2014 plus the two player-visible follow-ups that missed the v0.2.0 boat: the ripe-crop glance and the bed outline.",
+      "contains": "The fresh-player evidence v0.2.0 shipped without (designer amendment 2026-09-08) — one unprompted adult session on the tablet, the sleeping-cot bar and the standing bars scored from its trace. The two player-visible follow-ups it was going to carry, the ripe-crop glance and the bed outline, made the v0.2.0 tag after all and are listed here as done.",
       "stories": [
         {
           "id": "s1",
@@ -62,7 +62,7 @@
         },
         {
           "id": "s3",
-          "title": "Confirm no regression on the standing bars \u2014 dead taps at or under 12%, longest stall at or under 16.3 seconds",
+          "title": "Confirm no regression on the standing bars — dead taps at or under 12%, longest stall at or under 16.3 seconds",
           "estimate_days": null,
           "done": false
         },
@@ -70,17 +70,19 @@
           "id": "s9",
           "title": "A ripe crop is obvious at a glance",
           "estimate_days": null,
-          "done": false,
-          "why": "From play, 2026-09-07: nothing on the farm said loudly enough that a plant was ready to pick \u2014 she had to go looking. Measured, the ripe cell repaints most of the plant (38 of 56 pixels) and still cannot be seen, because it changes brightness by 0.3 of 255 and barely moves the outline \u2014 a hue shift inside one family, and hue is the first thing distance throws away. Five candidates were built and judged on the tablet from two staged sheets, one at ground level and one from the height the camera rises to when she is directing a robot. Ruled 2026-09-08 (Q-94): a ready plant sways gently and gives off its own ripe colour \u2014 gold under wheat, red under tomato. Shipped as the only behaviour, wordless (S-7), and it cannot touch the sim (D-8).",
-          "raised": "2026-09-07"
+          "done": true,
+          "why": "From play, 2026-09-07: nothing on the farm said loudly enough that a plant was ready to pick — she had to go looking. Measured, the ripe cell repaints most of the plant (38 of 56 pixels) and still cannot be seen, because it changes brightness by 0.3 of 255 and barely moves the outline — a hue shift inside one family, and hue is the first thing distance throws away. Five candidates were built and judged on the tablet from two staged sheets, one at ground level and one from the height the camera rises to when she is directing a robot. Ruled 2026-09-08 (Q-94): a ready plant sways gently and gives off its own ripe colour — gold under wheat, red under tomato. Shipped as the only behaviour, wordless (S-7), and it cannot touch the sim (D-8).",
+          "raised": "2026-09-07",
+          "shipped_in": "v0.2.0"
         },
         {
           "id": "s10",
           "title": "Fix the bed outline left over from the cot moving indoors",
           "estimate_days": null,
-          "done": false,
-          "why": "Reported from play 2026-09-07 \u2014 \"at nighttime, when all of your energy is spent, look at the house from the outside\". The dusk cue lights the tile the next tap should land on, and it always drew the bed's own 16x32 footprint: on the 16x16 front door that spilled onto the wall above, so the house wore a bed outline every evening. Fixed the same day \u2014 the shape is now a pure function in `CotPresentation` and asserted, rather than inline geometry nobody could test.",
-          "raised": "2026-09-07"
+          "done": true,
+          "why": "Reported from play 2026-09-07 — \"at nighttime, when all of your energy is spent, look at the house from the outside\". The dusk cue lights the tile the next tap should land on, and it always drew the bed's own 16x32 footprint: on the 16x16 front door that spilled onto the wall above, so the house wore a bed outline every evening. Fixed the same day — the shape is now a pure function in `CotPresentation` and asserted, rather than inline geometry nobody could test.",
+          "raised": "2026-09-07",
+          "shipped_in": "v0.2.0"
         }
       ]
     },
@@ -89,7 +91,7 @@
       "release_id": null,
       "name": "Machines that pay for themselves",
       "codename": null,
-      "contains": "Automation you place and maintain: sprinkler coverage and overlap, upkeep, and the resource loop behind buying a machine \u2014 plus the first group-pest skirmishes to spend it on.",
+      "contains": "Automation you place and maintain: sprinkler coverage and overlap, upkeep, and the resource loop behind buying a machine — plus the first group-pest skirmishes to spend it on.",
       "stories": []
     },
     {

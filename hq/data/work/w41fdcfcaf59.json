@@ -1,0 +1,19 @@
+{
+  "id": "w41fdcfcaf59",
+  "title": "Saving the release plan from HQ drops each story's reason",
+  "level": "task",
+  "owner": "claude",
+  "tier": 1,
+  "tier_reason": "Code behind the Product page's plan editor; git reverts it, and the loss it prevents is silent data loss on a surface the CEO edits.",
+  "ask": "Found 2026-09-09 while answering what is on the roadmap for the next release. Stories in hq/data/release_plan.json now carry a 'why' and a 'raised' date (the ripe-crop glance and the bed outline both do). The plan editor's save handler in hq/server.py keeps only id, title, estimate_days and done, so the next time the CEO saves the plan from the page, every story's reason is thrown away.",
+  "first_action": "In hq/server.py, in the release-plan save handler (the function that rebuilds each story dict with id/title/estimate_days/done before writing release_plan.json), carry through any other fields the stored story already has ('why', 'raised', 'shipped_in', and anything else unknown), merging by story id against the kept plan so the page cannot lose what it did not show. Add a test that round-trips a plan with a 'why' through the save handler and asserts it survives.",
+  "state": "waiting_session",
+  "thread": "claude",
+  "source": "session",
+  "source_message": "Chief of staff session 2026-09-09: reading the release plan while answering the CEO's question about the next release.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-09T17:58",
+  "created_ts": 1789001893.548498
+}
