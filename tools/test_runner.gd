@@ -4852,24 +4852,43 @@ func _scenario_ap_the_eyes_show_what_it_sees() -> void:
 	if mk3 == "":
 		return
 	await _wait_until(func(): return menus.active_menu == "machine", 60)
+
+	# **Staging, not gameplay.** Between this panel closing and the bench opening,
+	# the world runs — and a robot that has learned nothing picks one of its eight
+	# actions uniformly at random once a sim-second. Four of those eight are steps,
+	# so it can walk off the squares staged for it before the page is ever drawn.
+	# Written certain of `wait` it stands where it was put. The bias goes straight
+	# into the weights, the way `tools/capture_machines.gd` stages a robot to take
+	# its picture — and it is put back to nothing further down, where what an
+	# untaught robot decides is itself the thing being checked.
+	var stand_still: Dictionary = farm.sim.actor(mk3).get("extra", {})
+	var stand_width: int = Observation.size(stand_still.get("spec", {}))
+	stand_still["weights"][BotBrain.LEARN_WAIT * (stand_width + 1) + stand_width] = 1000.0
+
 	menus.close_menu()
 	await get_tree().process_frame
 
-	# Two squares it can see and has to tell apart: a thirsty seed to the east,
-	# watered ground to the west. Staged through the farm's own test facades, the
-	# way every scenario in this file builds a situation.
-	var at: Vector2i = farm.sim.actor_pos(mk3)
-	_stage_tile(at.x + 1, at.y, "seeded", "wheat")
-	_stage_tile(at.x - 1, at.y, "tilled")
-	farm.water_tile(at.x - 1, at.y)
-	await get_tree().process_frame
-
-	menus.open_workbench(at + Vector2i(0, 1))
+	menus.open_workbench(farm.sim.actor_pos(mk3) + Vector2i(0, 1))
 	var opened := await _wait_until(func(): return menus.active_menu == "workbench", 60)
 	_assert(opened, "the bench opens on the robot (%s)" % menus.active_menu)
 	var bench = menus.workbench
 	if bench == null:
 		return
+
+	# Two squares it can see and has to tell apart: a thirsty seed to the east,
+	# watered ground to the west. Staged through the farm's own test facades, the
+	# way every scenario in this file builds a situation — and staged **here**,
+	# with the bench up and the world held (ground rule 7), from the square the
+	# robot is actually standing on rather than from the one it was put down on.
+	# Those are the same square while it stands still, and a scenario that assumes
+	# so is a scenario that fails on somebody else's machine.
+	var at: Vector2i = farm.sim.actor_pos(mk3)
+	_stage_tile(at.x + 1, at.y, "seeded", "wheat")
+	_stage_tile(at.x - 1, at.y, "tilled")
+	farm.water_tile(at.x - 1, at.y)
+	bench.refresh()
+	await get_tree().process_frame
+
 	bench.select_plate(1)
 	await get_tree().process_frame
 	var eyes = bench.pages[1]
@@ -4906,6 +4925,21 @@ func _scenario_ap_the_eyes_show_what_it_sees() -> void:
 	_assert(float(west[i_crop]) == 0.0, "and no crop mark, because nothing is growing on it")
 
 	# --- what it would decide -------------------------------------------------
+	#
+	# **Staging, not gameplay**, and the mirror of the staging above: the `wait`
+	# bias was there to hold the robot still on its way to the bench, and a page
+	# drawn from it would not be showing what a robot that has learned nothing
+	# decides. So the weights go back to the zeros a robot is born with. The tree is
+	# paused behind the bench, so nothing moves while they are nothing, and the page
+	# is asked again for the answer the assertions below are about.
+	var extra: Dictionary = farm.sim.actor(mk3).get("extra", {})
+	var width: int = Observation.size(spec)
+	var weights: Array = extra["weights"]
+	for i in weights.size():
+		weights[i] = 0.0
+	bench.refresh()
+	await get_tree().process_frame
+
 	var probs: Array = eyes.probs
 	_assert(probs.size() == BotBrain.LEARN_ACTIONS,
 		"it weighed all eight things it can do (%d)" % probs.size())
@@ -4926,8 +4960,6 @@ func _scenario_ap_the_eyes_show_what_it_sees() -> void:
 	# testing the brain rather than the page. So the watering row's bias is written
 	# straight into the weights, the way `tools/capture_machines.gd` writes a staged
 	# history to take a screenshot of.
-	var extra: Dictionary = farm.sim.actor(mk3).get("extra", {})
-	var width: int = Observation.size(spec)
 	extra["weights"][BotBrain.LEARN_WATER * (width + 1) + width] = 1000.0
 	bench.refresh()
 	await get_tree().process_frame
