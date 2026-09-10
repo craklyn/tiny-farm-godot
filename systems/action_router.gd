@@ -61,6 +61,12 @@ const SPECIAL_OBJECTS := {
 	# written out like every other entry so the table reads as a table.
 	"house_door":   "use_door",
 	"home_doorway": "use_door",
+	# The training workbench (Q-101, 2026-09-10). She walks up to it and it opens,
+	# exactly as the seed box does — and like `open_shop` beside it, what comes
+	# back is **not a verb**: opening the bench changes nothing in the world, so
+	# nothing about it belongs in a replay. What she then does at the bench (turn a
+	# dial) is a `tune` Action through the gateway like everything else.
+	"workbench":    "open_workbench",
 }
 
 # T-9 (Q-34): which tool an obstacle needs. A tool she has not acquired yields no

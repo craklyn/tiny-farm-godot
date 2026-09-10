@@ -192,6 +192,39 @@ static var TYPES: Dictionary = {
 		"icon": { "sheet": "res://assets/sprites/generated/bot_mk3.png",
 			"region": Rect2(0, 0, 48, 48) },
 	},
+	# --- the workbench (Q-101, ruled 2026-09-10) -------------------------------
+	#
+	# *"Build the whole workbench, as a bench you buy and set down."* So it is a
+	# row here for the same reason everything else is: until a richer story
+	# exists, anything new that enters the farm is bought (the placeholder
+	# acquisition rule at the top of this file).
+	#
+	# **A structure, like the stall** — no species, no brain, no registry entry,
+	# nothing to decide. Where it differs from the stall is that the stall's two
+	# object types are written into the gateway by name; this row carries its
+	# object instead, in the new `object` field, so the structure after it is a
+	# row here and nothing else.
+	#
+	# **Priced at 300** — above the stall and the mark-1, below the mark-2. The
+	# bench is worth nothing without a learning robot to put on it and a mark-3
+	# costs 800, so it is never the thing she saves for first: it is what she buys
+	# once she owns the machine it is about. A strawman for the CEO.  [Playtest]
+	"workbench": {
+		"name": "Workbench",
+		"price": 300,
+		"species": "",
+		"program": "",
+		"configs": [],
+		"default_config": "",
+		"unlock_requirement": null,
+		# What `place` puts on the grid. Absent on every other row, which is what
+		# tells one kind of bought structure from another at the gateway.
+		"object": WorldLayout.WORKBENCH,
+		# Its own world sprite, 16x32, hung from its bottom edge like the well —
+		# so the shop card and the thing standing in the yard are one picture.
+		"icon": { "sheet": "res://assets/sprites/generated/workbench.png",
+			"region": Rect2(0, 0, 16, 32) },
+	},
 }
 
 # Display order — and, because the shop iterates it, the list of what is actually
@@ -203,7 +236,7 @@ static var TYPES: Dictionary = {
 # Fencing leads: it is the cheapest thing on the shelf and the only one that is
 # not a machine.
 static var ORDER: Array[String] = ["fence", "sprinkler", "stall", "bot_mk1", "bot_mk2",
-		"bot_mk3"]
+		"bot_mk3", "workbench"]
 
 
 static func has(key: String) -> bool:
@@ -253,6 +286,15 @@ static func key_for_species(species: String) -> String:
 		if species_of(key) == species:
 			return key
 	return ""
+
+
+# The object a placed structure leaves on the grid, or "" for a row that puts an
+# actor there instead (v0.2.2, the workbench). This is what `place` reads to know
+# *which* structure it is putting down: the stall's two object types are written
+# into the gateway by name, and a second structure would otherwise have been a
+# second branch there rather than a row in the catalogue.
+static func object_of(key: String) -> String:
+	return String(TYPES.get(key, {}).get("object", ""))
 
 
 # Does placing this row put an **actor** in the world, or an object on the grid?

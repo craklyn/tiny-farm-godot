@@ -113,6 +113,17 @@ const HOME_DOORWAY := "home_doorway"
 const ROBOT_STALL := "robot_stall"
 const ROBOT_STALL_SLOT := "robot_stall_slot"
 
+# The training workbench (Q-101, ruled 2026-09-10) — where she reads a learning
+# robot and turns its dials. An object rather than an actor for the stall's
+# reason: it decides nothing and never moves.
+#
+# **It blocks walking**, unlike the stall's open bays and like the well: it is a
+# solid bench with a rack over it, and a robot standing next to one should read it
+# as unwalkable in its own `walkable` channel, because that is the truth. Two
+# tiles tall in the picture and one on the grid, again like the well
+# (`SimWorld.TALL_OBJECTS`).
+const WORKBENCH := "workbench"
+
 # Who opens a gate, as recorded on the parcel. "start" means no gate at all.
 const OPENED_BY_START := "start"
 const OPENED_BY_COLD_OPEN := "cold_open"

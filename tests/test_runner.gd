@@ -171,6 +171,7 @@ func _init() -> void:
 	test_policy()
 	test_learning_robot_day()
 	test_workbench_sim()
+	test_workbench_place()
 	test_learning_robot()
 	test_world_pages()
 	test_the_door()
@@ -12498,6 +12499,163 @@ func test_workbench_sim() -> void:
 		_assert_quiet(int(seen_extra.get("spent", 0)) <= int(seen_extra.get("decisions", 0)),
 			String(pair[0]))
 	_flush_quiet("no fixture in this test ever spent more decisions than it took")
+
+
+# --- The bench, bought and set down (v0.2.2 WI-2) -----------------------------
+#
+# The workbench is the first thing in the game that is **bought, put on the grid,
+# and then tapped to open a screen**. Every half of that already existed — the
+# stall is bought and put on the grid, the seed box is tapped to open a screen —
+# and this is where the two halves are held together, because the seams between
+# them are where it can go wrong: a structure whose object type nobody wrote down,
+# an object nothing can walk into, a tall picture whose top half answers a tap for
+# a square the bench is not standing on.
+func test_workbench_place() -> void:
+	print("\n--- The workbench, bought and set down (v0.2.2 WI-2) Tests ---")
+
+	# --- the catalogue row ----------------------------------------------------
+	_assert(MachineDefs.has("workbench"), "the shop has a workbench to sell")
+	_assert(MachineDefs.ORDER.find("workbench") > MachineDefs.ORDER.find("bot_mk3"),
+		"...on the shelf below the robot it is about (%d, after %d)"
+			% [MachineDefs.ORDER.find("workbench"), MachineDefs.ORDER.find("bot_mk3")])
+	_assert(not MachineDefs.spawns_actor("workbench"),
+		"and it is a structure, not a machine: setting one down starts nobody thinking")
+	_assert(MachineDefs.price_of("workbench") == 300,
+		"priced at 300 — above the stall, below the machine it is for (%d)"
+			% MachineDefs.price_of("workbench"))
+	_assert(MachineDefs.is_unlocked("workbench", {}),
+		"and nothing gates it, so a player who has saved for it can buy it")
+	_assert(MachineDefs.icon_of("workbench") != null,
+		"with a picture for the shop card, which is the same picture the yard gets")
+
+	# **The row says what it becomes.** The stall's two object types are written
+	# into the gateway by name; without this field the bench would have been a
+	# second `if item ==` beside them, and the one after that a third.
+	_assert(MachineDefs.object_of("workbench") == WorldLayout.WORKBENCH,
+		"the row itself names the object it becomes (%s)" % MachineDefs.object_of("workbench"))
+	_assert(MachineDefs.object_of("stall") == "" and MachineDefs.object_of("bot_mk3") == ""
+			and MachineDefs.object_of("nonsense") == "",
+		"...and it is the only row that carries one, so nothing else changed shape")
+
+	# **A tap on it opens a screen, and opening a screen is not a verb** (P-9).
+	_assert(ActionRouter.SPECIAL_OBJECTS.get(WorldLayout.WORKBENCH, "") == "open_workbench",
+		"a tap on the bench resolves to opening it, the way a tap on the seed box opens the shop")
+
+	# --- bought, and put down on the yard --------------------------------------
+	#
+	# The **yard**, deliberately: it is the ground the house stands on, it can
+	# never be tilled, and `place` is the only verb in the game that puts anything
+	# on it (`buildable_at` demands cleared soil). A bench in the yard is where a
+	# player would actually want one.
+	var s := LiveSession.new(9401)
+	s.gs.gold = 2000
+	var spot := _yard_square(s.world)
+	_assert(spot.x >= 0, "the farm has a yard square with room for a bench (%s)" % str(spot))
+	_assert(String(s.world.get_tile(spot.x, spot.y).get("state", "")) == WorldLayout.YARD,
+		"...and it is yard, not field — nothing else may be built there")
+
+	var bought: Dictionary = s.act({ "verb": "buy_machine", "item": "workbench",
+		"actor": "player" })
+	_assert(bought.get("ok", false) and int(s.gs.machines.get("workbench", 0)) == 1,
+		"buying one puts it in the crate with the machines (%s)" % str(bought))
+
+	var actors_before: int = s.world.actors.size()
+	var down: Dictionary = s.act({ "verb": "place", "target": spot, "item": "workbench",
+		"actor": "player" })
+	_assert(down.get("ok", false) and String(down.get("structure", "")) == "workbench",
+		"and a tap sets it down as a structure (%s)" % str(down))
+	_assert(not down.has("slot"),
+		"one square and no companion — the second bay belongs to the stall alone")
+	_assert(s.world.get_object(spot.x, spot.y) == WorldLayout.WORKBENCH,
+		"the bench is on the grid where she put it (%s)"
+			% s.world.get_object(spot.x, spot.y))
+	_assert(s.world.actors.size() == actors_before,
+		"and nobody was spawned: a bench decides nothing, so it is in no registry (%d)"
+			% s.world.actors.size())
+	_assert(int(s.gs.machines.get("workbench", 0)) == 0, "the crate is empty again")
+
+	# **Solid, unlike the stall.** The stall's bays exist to be stood in; a bench
+	# is a thing you stand *at*. A robot beside one therefore reads it as
+	# unwalkable in its own `walkable` channel, which is the truth.
+	_assert(not s.world.is_walkable(spot.x, spot.y),
+		"the bench blocks the square it stands on, as the well does")
+	_assert(WorldLayout.WORKBENCH in SimWorld.TALL_OBJECTS,
+		"and it is two tiles tall in the picture")
+	_assert(s.world.get_object(spot.x, spot.y - 1) == WorldLayout.WORKBENCH,
+		"so the rack above it answers a tap as the bench (%s)"
+			% s.world.get_object(spot.x, spot.y - 1))
+	_assert(not s.world.is_walkable(spot.x, spot.y - 1),
+		"...and she cannot walk through the rack either")
+
+	# The tap on the rack has to come back to the bench's own square, or a bench
+	# opened from its top half would be looking for robots near a tile it does not
+	# stand on.
+	_assert(s.world.object_tile(Vector2i(spot.x, spot.y - 1)) == spot,
+		"a tap on the top half normalises down to the square the bench really stands on (%s)"
+			% str(s.world.object_tile(Vector2i(spot.x, spot.y - 1))))
+	_assert(s.world.object_tile(spot) == spot,
+		"and a tap on the bench itself is already there")
+	var nothing := Vector2i(spot.x + 3, spot.y)
+	_assert(s.world.object_tile(nothing) == nothing,
+		"a square with nothing on it answers for itself")
+
+	# --- and only one of them ---------------------------------------------------
+	s.act({ "verb": "buy_machine", "item": "workbench", "actor": "player" })
+	var again: Dictionary = s.act({ "verb": "place", "target": spot, "item": "workbench",
+		"actor": "player" })
+	_assert(not again.get("ok", true) and String(again.get("reason", "")) == "occupied",
+		"a second bench on the same square is refused, and the crate keeps it (%s)" % str(again))
+	_assert(int(s.gs.machines.get("workbench", 0)) == 1,
+		"...so nothing was spent on a bench that never landed")
+
+	# --- the stall is untouched by any of it -------------------------------------
+	#
+	# The `place` branch this item generalised is the stall's. It still has to lay
+	# two objects, one tile apart, and hand back the square the second one went on.
+	var stall_spot := _yard_square(s.world, spot)
+	s.act({ "verb": "buy_machine", "item": "stall", "actor": "player" })
+	var shed: Dictionary = s.act({ "verb": "place", "target": stall_spot, "item": "stall",
+		"actor": "player" })
+	_assert(shed.get("ok", false) and String(shed.get("structure", "")) == "stall"
+			and shed.has("slot"),
+		"the stall still goes down as two objects and says where the second one went (%s)"
+			% str(shed))
+	var slot: Vector2i = shed.get("slot", Vector2i(-1, -1))
+	_assert(s.world.get_object(stall_spot.x, stall_spot.y) == WorldLayout.ROBOT_STALL
+			and s.world.get_object(slot.x, slot.y) == WorldLayout.ROBOT_STALL_SLOT,
+		"the shed and its second bay, exactly where they always were")
+	_assert(s.world.is_walkable(stall_spot.x, stall_spot.y),
+		"...and still open-fronted, which the bench is not")
+
+	# --- what the bench will read off the world ---------------------------------
+	#
+	# `learners()` is the strip of portraits at the top of the bench. WI-1 built
+	# it; this is the half of it the bench depends on — that a farm with no
+	# learning robot on it answers honestly rather than offering something else.
+	_assert(s.world.learners().is_empty(),
+		"a farm with no learning robot gives the bench an empty strip (%s)"
+			% str(s.world.learners()))
+	s.done()
+
+
+# A yard square a structure will fit on, or (-1, -1). `avoid` keeps a second call
+# clear of the first one's answer and of the square to its right, which is where a
+# stall's second bay lands.
+func _yard_square(world: SimWorld, avoid: Vector2i = Vector2i(-1000, -1000)) -> Vector2i:
+	for ty in range(1, WorldLayout.PAGE_ROWS - 1):
+		for tx in range(1, SimWorld.MAP_WIDTH - 2):
+			var here := Vector2i(tx, ty)
+			if absi(here.x - avoid.x) <= 2 and here.y == avoid.y:
+				continue
+			if String(world.get_tile(tx, ty).get("state", "")) != WorldLayout.YARD:
+				continue
+			if world.get_object(tx, ty) != "" or world.get_object(tx, ty - 1) != "":
+				continue
+			if not world.placeable_at(here) or not world.placeable_at(here + Vector2i(1, 0)):
+				continue
+			return here
+	return Vector2i(-1, -1)
+
 
 # --- Does it actually get better? (v0.2.1 WI-5) -------------------------------
 #

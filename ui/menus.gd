@@ -35,7 +35,7 @@ const CONFIG_LABELS := {
 	"idle": "Wait here",
 }
 
-var active_menu: String = ""  # "", "pause", "shop", "inventory", "machine"
+var active_menu: String = ""  # "", "pause", "shop", "inventory", "machine", "workbench"
 var selected_option: int = 0
 var shop_items: Array[Dictionary] = []
 
@@ -64,6 +64,19 @@ var shop_title_icon: TextureRect
 var gold_icon: TextureRect
 var options_container: VBoxContainer
 var gold_display: Label
+
+# The training workbench (Q-101, 2026-09-10) — the fifth mode of this file, and
+# the only one that is not a list of rows.
+#
+# **A mode here rather than a screen of its own**, because everything a screen
+# needs is already in this file: the world holds while it is open, the dim behind
+# it, `is_open()` so the world's taps stop landing, and the pause key that closes
+# whatever is up. A second CanvasLayer would have been a second copy of all four.
+# `menu_panel` is hidden in this mode; the bench draws its own card.
+var workbench: Workbench = null
+
+## The square the open bench stands on. Kept so a refresh can find it again.
+var workbench_tile: Vector2i = Vector2i(-1, -1)
 
 
 func _ready() -> void:
@@ -147,6 +160,12 @@ func _ready() -> void:
 	options_container.size = Vector2(280, 300)
 	menu_panel.add_child(options_container)
 
+	# The workbench, added last so it sits above the dim and above the panel it
+	# replaces. Hidden until `open_workbench` puts a robot on it.
+	workbench = Workbench.new()
+	workbench.closed.connect(close_menu)
+	add_child(workbench)
+
 
 func open_menu(menu_name: String) -> void:
 	active_menu = menu_name
@@ -195,10 +214,30 @@ func open_machine_menu_for(id: String) -> void:
 	open_menu("machine")
 
 
+## Open the training workbench standing at `at` (Q-101, 2026-09-10).
+##
+## The machine panel's shape, one level up: `open_menu` does the pausing, the dim
+## and the option rebuild, and then the bench takes the screen while `menu_panel`
+## steps out of the way. `machine_id` is handed on as the preferred robot — she
+## most likely walked to the bench from the machine she was just looking at, and a
+## bench that opened on a different robot than the one she tapped would be wrong
+## about what she came to do.
+func open_workbench(at: Vector2i) -> void:
+	if farm == null or workbench == null:
+		return
+	workbench_tile = at
+	open_menu("workbench")
+	menu_panel.visible = false
+	workbench.show_bench(farm, at, machine_id)
+	workbench.visible = true
+
+
 func close_menu() -> void:
 	active_menu = ""
 	dim_overlay.visible = false
 	menu_panel.visible = false
+	if workbench != null:
+		workbench.visible = false
 	get_tree().paused = false
 
 
@@ -399,6 +438,17 @@ func _rebuild_options() -> void:
 			menu_panel.size = Vector2(
 				SCORECARD_PANEL_W if MachineDefs.program_of(mkey) == "policy" else 320.0,
 				_fit_panel_height())
+
+		"workbench":
+			# **No rows at all.** The bench is its own full-rect Control
+			# (`ui/workbench.gd`) and builds itself; this arm exists so the panel's
+			# chrome — the last screen's title, its gold count, its seed packet —
+			# is cleared rather than left showing behind a hidden panel, and so
+			# that a reader of this `match` finds every mode of this file in it.
+			title_label.text = ""
+			gold_display.visible = false
+			shop_title_icon.visible = false
+			gold_icon.visible = false
 
 		"inventory":
 			title_label.text = "INVENTORY"

@@ -51,6 +51,12 @@ tools/shot_mk2_menu.png
 tools/shot_mk3_menu.png
 tools/shot_teaching.png
 
+# Workbench plate captures (Q-101, 2026-09-10). Regenerate with
+# tools/capture_workbench.tscn; five review screenshots, one per plate. The
+# `.import` sidecars go with them: a sidecar is metadata for a picture, and there
+# is no picture in the repo for these to be metadata for.
+tools/shot_workbench_*
+
 # Held patches the drain keeps so a blocked item can be re-applied without
 # paying for the model call again. Recoverable scratch, not a record.
 hq/data/patches/

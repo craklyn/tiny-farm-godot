@@ -688,7 +688,7 @@ func get_crop_type(tx: int, ty: int) -> String:
 # below: `is_walkable` calls this function for every neighbour of every node of
 # every route the sim plans, and a literal there allocated a three-string array on
 # each of them (Q-67). Same list, same answer, no allocation.
-const TALL_OBJECTS: Array[String] = ["cot", "well", "seed_box"]
+const TALL_OBJECTS: Array[String] = ["cot", "well", "seed_box", WorldLayout.WORKBENCH]
 
 # The objects a foot may land on. An object on a tile normally means "something is
 # standing here, go round" — the well, the cot, the shipping bin — and these are
@@ -727,6 +727,26 @@ func get_object(tx: int, ty: int) -> String:
 func set_object(tx: int, ty: int, obj_type: String) -> void:
 	if ty >= 0 and ty < MAP_HEIGHT and tx >= 0 and tx < MAP_WIDTH:
 		objects[ty][tx] = obj_type
+
+
+# **Which square the object `get_object(t)` reported actually stands on** — `t`
+# itself, or the tile below it when what answered was a tall object's upper half
+# (v0.2.2, the workbench).
+#
+# `get_object` deliberately answers for two tiles, so a tap on the head of a well
+# or the rack over a bench finds the thing that is drawn there. Everything that
+# only wants to *know* is happy with that; anything that wants to talk about the
+# object afterwards needs its real square, and this is the one place that
+# arithmetic lives. A read-only query, layer 2 (`is_walkable`'s rules are not
+# involved: the question is about the grid, not about feet).
+func object_tile(t: Vector2i) -> Vector2i:
+	if t.y < 0 or t.y >= MAP_HEIGHT or t.x < 0 or t.x >= MAP_WIDTH:
+		return t
+	if objects[t.y][t.x] != "":
+		return t
+	if t.y + 1 < MAP_HEIGHT and objects[t.y + 1][t.x] in TALL_OBJECTS:
+		return Vector2i(t.x, t.y + 1)
+	return t
 
 
 # The tile states that hold a crop, published as a constant for the same reason
@@ -2057,6 +2077,19 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			# the same act, which is what keeps a future bot able to build one with
 			# nothing new to learn (S-3, ground rule 1).
 			if not MachineDefs.spawns_actor(item):
+				# **Which object it becomes is the row's answer, not this branch's**
+				# (v0.2.2, the workbench). The stall was the only structure in the
+				# game when this was written, so its two object types were named
+				# here; a second structure would have made that a chain of `if
+				# item ==`. A row that carries an `object` puts that one object
+				# down and nothing else — one tile, no companion, no `slot` in the
+				# result — and the stall keeps its own two-object case below.
+				var obj := MachineDefs.object_of(item)
+				if obj != "":
+					set_object(target.x, target.y, obj)
+					if placer_charged:
+						gs.machines[item] = int(gs.machines.get(item, 0)) - 1
+					return { "ok": true, "structure": item }
 				set_object(target.x, target.y, WorldLayout.ROBOT_STALL)
 				var slot := target + STALL_SLOT_OFFSET
 				set_object(slot.x, slot.y, WorldLayout.ROBOT_STALL_SLOT)
