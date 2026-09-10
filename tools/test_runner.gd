@@ -97,6 +97,7 @@ func _run_scenarios() -> void:
 	await _scenario_al_a_ripe_crop_carries()
 	await _scenario_am_the_mark_three_shows_its_practice()
 	await _scenario_an_the_workbench_opens_from_the_yard()
+	await _scenario_ar_the_plate_and_mosaic_read_the_robot()
 
 func _wait_until(pred: Callable, max_frames: int) -> bool:
 	for i in max_frames:
@@ -4816,3 +4817,222 @@ func _yard_spot_for_bench() -> Vector2i:
 				continue
 			return Vector2i(tx, ty)
 	return Vector2i(-1, -1)
+
+
+# --- Scenario AR: the plate and the mosaic (Q-101, v0.2.2 WI-6) ---------------
+#
+# Two of the bench's five pages, and the two that answer the question a person
+# asks about a machine that decides for itself: *what is it*, and *what has it
+# learned to care about*.
+#
+# Everything asserted below is a **read of the robot**, which is the point. The
+# plate's five lines are computed from the sim's own constants and the robot's
+# own `extra` — the day someone widens the view or renames the learner, the plate
+# says so without anybody editing it, and this scenario is what proves nobody
+# typed the numbers in. The mosaic is the same claim about the weights: fold a
+# known 1.0 into the grid and exactly one square is warm.
+func _scenario_ar_the_plate_and_mosaic_read_the_robot() -> void:
+	print("\n--- Scenario AR: the plate and the mosaic read the robot ---")
+
+	var menus = main_scene.menus
+	menus.close_menu()
+	main_scene.end_teaching()
+	GameState.gold = 3000
+	GameState.machines = {}
+	GameState.selected_seed_type = ""
+	await get_tree().process_frame
+
+	# Any learner an earlier scenario left standing would be a second robot in the
+	# strip, and this one is about the machine it places itself.
+	for raw in farm.sim.learners():
+		farm.apply_action({ "verb": "collect",
+			"target": farm.sim.actor_pos(String(raw)), "actor": "player" }, GameState)
+	await get_tree().process_frame
+
+	var mk3: String = await _buy_and_place("bot_mk3", Vector2i(16, 13))
+	_assert(mk3 != "", "a Mark III to read (%s)" % mk3)
+	if mk3 == "":
+		return
+	await _wait_until(func(): return menus.active_menu == "machine", 60)
+	menus.close_menu()
+	await get_tree().process_frame
+
+	# Scenario AN walks the whole bought-and-tapped path; this one opens the bench
+	# where that path ends, so its assertions are about the two pages.
+	var bench_spot := _yard_spot_for_bench()
+	menus.open_workbench(bench_spot)
+	var opened := await _wait_until(func(): return menus.active_menu == "workbench", 60)
+	_assert(opened, "the bench opens on it (%s)" % menus.active_menu)
+	var bench = menus.workbench
+	_assert(bench != null and bench.robot_id == mk3,
+		"with that robot on it (%s)" % (bench.robot_id if bench != null else "-"))
+	if bench == null or bench.robot_id != mk3:
+		menus.close_menu()
+		return
+
+	# --- the plate ------------------------------------------------------------
+	bench.select_plate(2)
+	for i in 3: await get_tree().process_frame
+	var plate = bench.pages[2]
+
+	_assert(plate.lines.size() == 5,
+		"the plate is engraved with five lines (%d)" % plate.lines.size())
+	if plate.lines.size() < 5:
+		menus.close_menu()
+		return
+
+	var model := String(plate.lines[0][1])
+	_assert(model.contains("207 inputs"),
+		"the model line counts the numbers it looks at (%s)" % model)
+	_assert(model.contains("8 actions"), "and the things it can decide between (%s)" % model)
+	_assert(model.contains("1,664 weights"),
+		"and its weights, written the way a person writes a thousand (%s)" % model)
+
+	var inputs := String(plate.lines[1][1])
+	_assert(inputs.contains("5×5 view") and inputs.contains("8 channels"),
+		"the inputs line reads the spec's own view and channels (%s)" % inputs)
+
+	var training := String(plate.lines[2][1])
+	_assert(training.contains("0.03"),
+		"the training line carries the learning rate from the code (%s)" % training)
+
+	var days_now: int = int(farm.sim.actor(mk3).get("extra", {}).get("days", 0))
+	var updated_before := String(plate.lines[3][1])
+	_assert(updated_before.contains(str(days_now)),
+		"the updated line counts the nights it has had (%s)" % updated_before)
+
+	var exploration := String(plate.lines[4][1])
+	_assert(exploration.contains("3.00"),
+		"and exploration is measured against three bits, which is eight actions (%s)"
+			% exploration)
+
+	# **A night, and the plate has to notice.** The world is held while the bench
+	# is up, so the day is turned straight at the gateway the way scenario D does
+	# it; `refresh()` is the one way anything on the bench changes.
+	farm.apply_action({ "verb": "sleep", "actor": "world", "weather": "sunny" }, GameState)
+	bench.refresh()
+	for i in 3: await get_tree().process_frame
+	var updated_after := String(plate.lines[3][1])
+	_assert(updated_after != updated_before,
+		"a night passes and the plate says so without being retyped (%s -> %s)"
+			% [updated_before, updated_after])
+	_assert(updated_after.contains(str(days_now + 1)),
+		"naming the night it has just had (%s)" % updated_after)
+
+	# --- the sentence ---------------------------------------------------------
+	#
+	# A tool's staging, not the game's: the seven-float row `_sleep_on_it` appends
+	# at the day turn — `[score, expected, entropy, update, spent, decisions,
+	# waits]` (v0.2.2 WI-1) — written straight into `extra` the way
+	# `tools/capture_machines.gd` stages a scorecard. Nothing under `ui/` may
+	# write a robot; a test staging one for a page to read may.
+	var extra: Dictionary = farm.sim.actor(mk3).get("extra", {})
+	var real_ledger: Array = (extra.get("ledger", []) as Array).duplicate(true)
+	extra["ledger"] = [[0.0, 0.0, 3.0, 0.0, 0.0, 40.0, 40.0]]
+	bench.refresh()
+	for i in 2: await get_tree().process_frame
+	_assert(plate.lines.size() == 6,
+		"a day of nothing but waiting adds a sixth line (%d)" % plate.lines.size())
+	_assert(plate.lines.size() == 6
+			and String(plate.lines[5][1]) == "it has learned to do nothing",
+		"and it is the one sentence in words on the whole bench (%s)"
+			% (String(plate.lines[5][1]) if plate.lines.size() == 6 else "-"))
+
+	extra["ledger"] = [[0.0, 0.0, 3.0, 0.0, 0.0, 40.0, 0.0]]
+	bench.refresh()
+	for i in 2: await get_tree().process_frame
+	_assert(plate.lines.size() == 5,
+		"a day it did something takes the sentence away again (%d)" % plate.lines.size())
+
+	# --- the mosaic -----------------------------------------------------------
+	bench.select_plate(4)
+	for i in 3: await get_tree().process_frame
+	var mosaic = bench.pages[4]
+
+	_assert(mosaic.cells.size() == BotBrain.LEARN_ACTIONS,
+		"the mosaic has a column per thing the robot can do (%d)" % mosaic.cells.size())
+	_assert(mosaic.groups.size() == 13,
+		"and a row per group of the things it looks at (%d)" % mosaic.groups.size())
+	_assert(not mosaic.cells.is_empty() and (mosaic.cells[0] as Array).size() == 13,
+		"one folded weight in each square (%d)"
+			% ((mosaic.cells[0] as Array).size() if not mosaic.cells.is_empty() else -1))
+
+	var taps := mosaic.get_node_or_null("MosaicTaps") as Control
+	_assert(taps != null and taps.size.x > 400.0 and taps.size.y > 300.0,
+		"and a surface over it a finger can actually land on (%s)"
+			% (str(taps.size) if taps != null else "-"))
+
+	# A single known weight, staged the same tool-style way: 1.0 joining "water"
+	# to "this ground is thirsty". A grid that reads anything but one warm square
+	# is a grid that is not reading the robot.
+	var spec: Dictionary = extra.get("spec", Observation.spec_default())
+	var width: int = Observation.size(spec)
+	var weights: Array = extra.get("weights", [])
+	for i in weights.size():
+		weights[i] = 0.0
+	var thirsty: int = int(((Observation.input_groups(spec)[0] as Dictionary)
+		.get("indices", []) as Array)[0])
+	weights[BotBrain.LEARN_WATER * (width + 1) + thirsty] = 1.0
+	bench.refresh()
+	for i in 3: await get_tree().process_frame
+
+	_assert(is_equal_approx(mosaic.cell_value(BotBrain.LEARN_WATER, 0), 1.0),
+		"the square where watering meets thirsty ground carries the weight (%f)"
+			% mosaic.cell_value(BotBrain.LEARN_WATER, 0))
+	_assert(mosaic.cell_colour(BotBrain.LEARN_WATER, 0) == Workbench.WEIGHT_WARM,
+		"and is the warmest thing on the grid")
+	var others_neutral := true
+	for a in mosaic.cells.size():
+		for g in mosaic.groups.size():
+			if a == BotBrain.LEARN_WATER and g == 0:
+				continue
+			if mosaic.cell_colour(a, g) != Workbench.WEIGHT_NEUTRAL:
+				others_neutral = false
+	_assert(others_neutral, "with every other square left neutral, because it is")
+
+	# --- holding a cell, and the one before it --------------------------------
+	mosaic.tap_cell(BotBrain.LEARN_WATER, 0)
+	for i in 2: await get_tree().process_frame
+	_assert(mosaic.selected == Vector2i(BotBrain.LEARN_WATER, 0),
+		"a tap holds that square (%s)" % str(mosaic.selected))
+	_assert(mosaic.highlight_text() == "+1.00",
+		"and the card reads the weight, signed (%s)" % mosaic.highlight_text())
+
+	mosaic.tap_cell(BotBrain.LEARN_SHIP, 3)
+	for i in 2: await get_tree().process_frame
+	_assert(mosaic.previous == Vector2i(BotBrain.LEARN_WATER, 0)
+			and mosaic.previous_text() == "+1.00",
+		"a second tap drops the first one to the card below it (%s %s)"
+			% [str(mosaic.previous), mosaic.previous_text()])
+	_assert(mosaic.highlight_text() == "+0.00",
+		"and the lit card holds the new one (%s)" % mosaic.highlight_text())
+
+	# --- a row tap is a message to the eyes -----------------------------------
+	bench.highlight_channel = -1
+	mosaic.tap_row(Observation.CH_CROW)
+	_assert(bench.highlight_channel == Observation.CH_CROW,
+		"tapping a channel row asks the eyes to outline it (%d)" % bench.highlight_channel)
+	mosaic.tap_row(mosaic.groups.size() - 1)
+	_assert(bench.highlight_channel == Observation.CH_CROW,
+		"and the five scalar rows leave it alone — there is nothing in the patch to light")
+
+	# --- a robot that has learned nothing -------------------------------------
+	for i in weights.size():
+		weights[i] = 0.0
+	bench.refresh()
+	for i in 3: await get_tree().process_frame
+	var all_neutral := true
+	for a in mosaic.cells.size():
+		for g in mosaic.groups.size():
+			if mosaic.cell_colour(a, g) != Workbench.WEIGHT_NEUTRAL:
+				all_neutral = false
+	_assert(all_neutral,
+		"a robot with everything still at zero draws a grid that is honestly flat")
+
+	# --- and the farm is left as it was found ---------------------------------
+	extra["ledger"] = real_ledger
+	menus.close_menu()
+	await get_tree().process_frame
+	farm.apply_action({ "verb": "collect", "target": farm.sim.actor_pos(mk3),
+		"actor": "player" }, GameState)
+	await get_tree().process_frame
