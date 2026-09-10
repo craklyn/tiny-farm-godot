@@ -69,6 +69,38 @@ rm -f .claude/.brainstorm-state
 If he says "stop brainstorming", "just write it", or otherwise wants out, remove
 the file and say you have — never work around the block while it is in place.
 
+## Invoked in the middle of a conversation
+
+Often this skill is reached after the idea has already been discussed at length.
+That is the weakest case for the protocol and it needs saying out loud, because
+the context is already anchored — a seed elaborated over many turns cannot be
+quarantined after the fact.
+
+What is lost: your own merging and gap-hunting in Phase 3. You will over-value
+ideas that resemble what was already discussed, and you will fail to notice a
+cell is empty because you have mentally filled it already. Compensate by being
+mechanical about coverage rather than trusting your sense of what is missing.
+
+What survives, and it is most of the value: **the fan-out is immune**. Those
+subagents begin with an empty context holding only the brief you write. Written
+from the experience goal and the constraints, they are genuinely unanchored no
+matter what this conversation has accumulated.
+
+So the discipline shifts onto the brief. **Write the brief from the goal, never
+from the discussion, and show Daniel the exact brief before spawning anything.**
+He can see in five seconds whether the idea under discussion has leaked into it;
+you cannot, because to you it reads as helpful context. Say plainly that you are
+showing it because a mid-conversation brainstorm is the case where leakage
+happens.
+
+The tell that it went wrong: everything that comes back sounds like a neighbour
+of what he already said. If that happens, the brief leaked — rewrite it and fan
+out again rather than working with the batch.
+
+When the question is genuinely open and important, say that a fresh session
+would explore wider, and let him decide whether it is worth the restart. Do not
+insist; a good mid-conversation brainstorm beats a fresh one that never happens.
+
 ## The protocol
 
 Do not skip a phase. The gates are the whole point.
@@ -156,6 +188,9 @@ run concurrently**. Each one gets:
   values it must satisfy, different for every agent,
 - **one persona**, and
 - an explicit instruction to return **8–12 one-line titles, no elaboration**.
+
+Show him the brief before spawning if this session has already discussed the
+idea — see the mid-conversation section above.
 
 None of them receives Daniel's seed, and none receives another agent's output.
 That isolation is the mechanism; a single agent asked for "ten more, but
