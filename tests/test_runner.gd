@@ -12708,6 +12708,51 @@ func test_crate_remembers() -> void:
 			and _numbers_match(disk_extra["ledger"] as Array, book),
 		"getting back the robot that had the week, a session and a save later")
 	gs_back.free()
+
+	# --- the box only opens for the hand that spends the crate ----------------
+	# The other half of the same rule. `place` charges the player and nobody else:
+	# a non-player placer is refused nothing, takes no item out of `gs.machines`
+	# and pays out of its own meter instead. So if the box opened for it too, a
+	# free placement would stand a week of practice up in the field while the
+	# crate still held the robot that practice belongs to — one robot's history,
+	# handed out twice. Nothing places with a non-player actor today; the gateway
+	# is where that stays true on the day something does.
+	_assert(int(s.gs.machines.get("bot_mk3", 0)) == 1
+			and (s.gs.boxed.get("bot_mk3", []) as Array).size() == 1,
+		"one Mark III in the crate, and beside it the box holding the trained one")
+	var free_hand := s.act({ "verb": "place", "target": elsewhere, "item": "bot_mk3",
+		"actor": "neighbour" })
+	var neighbours := String(free_hand.get("machine", ""))
+	_assert(free_hand.get("ok", false) and neighbours != "",
+		"a placer who is not the player may still set a Mark III down, and pays no crate for it")
+	_assert(int(s.gs.machines.get("bot_mk3", 0)) == 1,
+		"so the crate still holds the one she bought (%d)" % int(s.gs.machines.get("bot_mk3", 0)))
+	_assert((s.gs.boxed.get("bot_mk3", []) as Array).size() == 1,
+		"and the box is still shut, because nothing came out of the crate to open it (%d)"
+			% (s.gs.boxed.get("bot_mk3", []) as Array).size())
+	var stranger: Dictionary = s.world.actor(neighbours)["extra"]
+	var stranger_blank := true
+	for w in (stranger["weights"] as Array):
+		if not is_equal_approx(float(w), 0.0):
+			stranger_blank = false
+	_assert(int(stranger["days"]) == 0 and stranger_blank
+			and is_equal_approx(float(stranger["rewards"][0]), 10.0),
+		"what stood up out there is a factory machine: no nights, no weights, factory dials")
+
+	# ...and the robot that was in the box is still in it, for the hand that pays.
+	var hers := String(s.act({ "verb": "place", "target": MK3_SPOT, "item": "bot_mk3",
+		"actor": "player" }).get("machine", ""))
+	_assert(hers != "" and hers != neighbours,
+		"she sets her own down a moment later (%s)" % hers)
+	var hers_extra: Dictionary = s.world.actor(hers)["extra"]
+	_assert(int(hers_extra["days"]) == 1
+			and _numbers_match(hers_extra["weights"] as Array, practice)
+			and is_equal_approx(float(hers_extra["rewards"][0]), 3.0),
+		"and gets back the robot that had the day, weights and dial and all")
+	_assert(int(s.gs.machines.get("bot_mk3", 0)) == 0
+			and (s.gs.boxed.get("bot_mk3", []) as Array).is_empty(),
+		"crate and box emptied together, which is the whole of the rule")
+
 	s.done()
 
 	# --- and the pick-up and the set-down replay ------------------------------

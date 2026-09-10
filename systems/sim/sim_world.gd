@@ -2181,8 +2181,11 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			# that could be rested by picking it up and setting it down again would
 			# be a free day's work — the same reason `configure` carries energy
 			# across rather than resetting it, seen from the other side.
+			# Under the same condition that spends the crate, because the crate and
+			# its memory move together: an uncharged placer that opened the box
+			# would unbox a trained robot without one being taken out of it.
 			var remembered: Array = gs.boxed.get(item, [])
-			if not remembered.is_empty():
+			if placer_charged and not remembered.is_empty():
 				var was: Dictionary = remembered.pop_back()
 				var now: Dictionary = actors[machine_id]["extra"]
 				for key in was:
