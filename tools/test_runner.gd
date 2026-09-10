@@ -5471,6 +5471,22 @@ func _scenario_aq_the_ledger_is_the_scorecard() -> void:
 	if mk3 == "":
 		return
 	await _wait_until(func(): return menus.active_menu == "machine", 60)
+
+	# **Staging, not gameplay**, and the rule §6 and scenario AP set out: pin the
+	# actors before the world runs between a staging and the reading it is for.
+	# This scenario reads the ledger plate's chart, then closes the bench, walks
+	# her to the robot and reads the panel's — and in between the world runs. A
+	# robot that has learned nothing picks one of its eight actions uniformly at
+	# random once a sim-second, so it can earn something between the two readings
+	# and move today's half-finished column: two charts drawing different days
+	# while having the same number of them, which is exactly how this failed.
+	# Written certain of `wait` it stands there earning nothing and the column
+	# holds still. The bias goes straight into the weights, the way
+	# `tools/capture_machines.gd` stages a robot to take its picture.
+	var stand_still: Dictionary = farm.sim.actor(mk3).get("extra", {})
+	var stand_width: int = Observation.size(stand_still.get("spec", {}))
+	stand_still["weights"][BotBrain.LEARN_WAIT * (stand_width + 1) + stand_width] = 1000.0
+
 	menus.close_menu()
 	await get_tree().process_frame
 
@@ -5737,6 +5753,18 @@ func _scenario_as_the_bench_and_panel_agree() -> void:
 	if mk3 == "":
 		return
 	await _wait_until(func(): return menus.active_menu == "machine", 60)
+
+	# **Staging, not gameplay**, the same pin scenarios AP and AQ take: this one
+	# reads the same robot on four screens in a row, and the world runs between
+	# every pair of them. An untaught robot picks one of its eight actions
+	# uniformly at random once a sim-second, so it can earn between two readings
+	# and leave today's half-finished column different on the second — a parity
+	# scenario failing on the robot having worked rather than on the two pages
+	# disagreeing. Certain of `wait`, it earns nothing while she walks.
+	var stand_still: Dictionary = farm.sim.actor(mk3).get("extra", {})
+	var stand_width: int = Observation.size(stand_still.get("spec", {}))
+	stand_still["weights"][BotBrain.LEARN_WAIT * (stand_width + 1) + stand_width] = 1000.0
+
 	menus.close_menu()
 	await get_tree().process_frame
 
