@@ -97,6 +97,7 @@ func _run_scenarios() -> void:
 	await _scenario_al_a_ripe_crop_carries()
 	await _scenario_am_the_mark_three_shows_its_practice()
 	await _scenario_an_the_workbench_opens_from_the_yard()
+	await _scenario_ao_the_dials_turn_through_the_gateway()
 
 func _wait_until(pred: Callable, max_frames: int) -> bool:
 	for i in max_frames:
@@ -4816,3 +4817,203 @@ func _yard_spot_for_bench() -> Vector2i:
 				continue
 			return Vector2i(tx, ty)
 	return Vector2i(-1, -1)
+
+
+# --- Scenario AO: the dials turn, and every turn goes through the gateway ------
+#
+# The bench's first page is the one that changes something (v0.2.2 WI-3). Eight
+# rows, one per outcome a Mark III is paid for, each standing on a ten-rung
+# ladder — and the whole point of the page is that a turn is an **Action**, not a
+# field she edits. That is what puts what she taught a robot into the session's
+# replay, and it is the one rule a UI page is in a position to break quietly:
+# `tools/check_gateway.py` does not scan `ui/`, so this scenario is where the
+# rule is actually held.
+#
+# So it walks the real thing: a real robot bought and put down, the real bench
+# opened through the real menus, the real buttons pressed. Nothing below writes
+# `extra` and nothing below calls the sim to make a change.
+func _scenario_ao_the_dials_turn_through_the_gateway() -> void:
+	print("\n--- Scenario AO: the dials turn a robot's rewards through the gateway ---")
+
+	var menus = main_scene.menus
+	menus.close_menu()
+	main_scene.end_teaching()
+	GameState.gold = 3000
+	GameState.machines = {}
+	GameState.selected_seed_type = ""
+	await get_tree().process_frame
+
+	# A robot left standing by an earlier scenario would be another card in the
+	# bench's strip, and might be the one the bench opens on.
+	for raw in farm.sim.learners():
+		farm.apply_action({ "verb": "collect",
+			"target": farm.sim.actor_pos(String(raw)), "actor": "player" }, GameState)
+	await get_tree().process_frame
+
+	var mk3: String = await _buy_and_place("bot_mk3", Vector2i(16, 13))
+	_assert(mk3 != "", "a Mark III goes down on the farm to be tuned (%s)" % mk3)
+	if mk3 == "":
+		return
+	await _wait_until(func(): return menus.active_menu == "machine", 60)
+	menus.close_menu()
+	await get_tree().process_frame
+
+	# Scenario AN proves a tap on a placed bench gets here; this one is about what
+	# the page does once the screen is up, so it opens the bench directly and
+	# spends its frames on the dials.
+	menus.open_workbench(farm.sim.actor_pos(mk3))
+	var opened := await _wait_until(func(): return menus.active_menu == "workbench", 60)
+	_assert(opened, "the bench opens on the robot she is teaching (%s)" % menus.active_menu)
+	var bench = menus.workbench
+	if bench == null or not opened:
+		_assert(false, "the bench is on screen to turn a dial on")
+		return
+	_assert(bench.robot_id == mk3, "with that robot on it (%s)" % bench.robot_id)
+	_assert(bench.plate == 0,
+		"and open on the dials, which is the page the bench is for (%d)" % bench.plate)
+	var page: Control = bench.pages[0]
+	_assert(page.visible, "so the dials are the page showing")
+
+	# --- eight rows, in the order the robot's own table is written ------------
+	_assert(Rewards.KEYS.size() == 8, "there are eight rows to turn (%d)" % Rewards.KEYS.size())
+	var left: Rect2 = page.card_rect(0)
+	var right: Rect2 = page.card_rect(4)
+	_assert(left.position.x < right.position.x and left.position.y == right.position.y,
+		"laid out column-major: rows 0 and 4 head the two columns (%s / %s)"
+			% [str(left.position), str(right.position)])
+	_assert(page.card_rect(3).position.x == left.position.x
+			and page.card_rect(3).position.y > left.position.y,
+		"and the first four run down the left one (%s)" % str(page.card_rect(3).position))
+
+	var rewards: Array = farm.sim.actor(mk3).get("extra", {}).get("rewards", [])
+	_assert(rewards.size() == 8,
+		"the robot was deployed with eight values of its own (%d)" % rewards.size())
+	_assert(rewards.size() == 8 and is_equal_approx(float(rewards[0]), 10.0),
+		"row 0 — a crop in the bin — starts at the top of the ladder (%s)"
+			% (str(rewards[0]) if rewards.size() == 8 else "-"))
+
+	# --- the top of the ladder is the top -------------------------------------
+	var plus0 := _find_button(page, "DialPlus0")
+	var minus0 := _find_button(page, "DialMinus0")
+	_assert(plus0 != null and minus0 != null, "row 0 has a plus and a minus")
+	if plus0 == null or minus0 == null:
+		return
+	_assert(plus0.disabled, "the plus is closed at the top of the ladder")
+	_assert(not minus0.disabled, "and the minus is not")
+	plus0.pressed.emit()
+	await get_tree().process_frame
+	_assert(is_equal_approx(_dial_value(mk3, 0), 10.0),
+		"pressing it anyway changes nothing (%s)" % str(_dial_value(mk3, 0)))
+
+	# --- one rung down, and the rung is in the session's replay ---------------
+	var before: int = farm.replay.entries.size()
+	minus0.pressed.emit()
+	await get_tree().process_frame
+	_assert(is_equal_approx(_dial_value(mk3, 0), 3.0),
+		"a press on the minus steps the row down one rung (%s)" % str(_dial_value(mk3, 0)))
+	_assert(farm.replay.entries.size() == before + 1,
+		"and exactly one Action reached the gateway (%d)"
+			% (farm.replay.entries.size() - before))
+	var last: Dictionary = farm.replay.entries[farm.replay.entries.size() - 1]
+	_assert(String(last.get("verb", "")) == "tune",
+		"recorded as a `tune` (%s)" % String(last.get("verb", "")))
+	_assert(String(last.get("row", "")) == "shipped",
+		"naming the row she turned (%s)" % String(last.get("row", "")))
+	_assert(is_equal_approx(float(last.get("value", 0.0)), 3.0),
+		"and the rung she turned it to (%s)" % str(last.get("value", "-")))
+	_assert(String(last.get("actor", "")) == "player",
+		"by the player, because a robot has no dial of its own (%s)"
+			% String(last.get("actor", "")))
+	var pos: Vector2i = farm.sim.actor_pos(mk3)
+	var aimed = last.get("target", null)
+	_assert(aimed is Array and aimed.size() == 2
+			and int(aimed[0]) == pos.x and int(aimed[1]) == pos.y,
+		"aimed at the robot's own square (%s)" % str(aimed))
+	_assert(not plus0.disabled, "and the plus opens again, one rung below the top")
+
+	# --- two more, and the numeral reads back where it landed -----------------
+	#
+	# Two, not three: the ladder below 3 is 1 and then 0.3, and the press that
+	# took it off 10 has already happened above. (The plan's WI-3 Accept says
+	# "three more times → 0.3"; three more lands on 0.1. The rung it names is the
+	# one asserted — the count was the slip.)
+	for i in 2:
+		minus0.pressed.emit()
+		await get_tree().process_frame
+	_assert(is_equal_approx(_dial_value(mk3, 0), 0.3),
+		"two more presses walk it down to 0.3 (%s)" % str(_dial_value(mk3, 0)))
+	_assert(page.value_text(0) == "0.3",
+		"the row's numeral reads it back, with no trailing zero (%s)" % page.value_text(0))
+	_assert(page.value_text(6) == "0.1",
+		"as the rows she never touched do (%s)" % page.value_text(6))
+
+	# The day is marked once however many dials she turned: the scorecard draws a
+	# tick per marked day, and a tick per press would be a comb rather than a mark.
+	var extra: Dictionary = farm.sim.actor(mk3).get("extra", {})
+	var marks: Array = extra.get("tuned", [])
+	_assert(marks.size() == 1 and int(marks[0]) == int(extra.get("days", -1)),
+		"the day she turned them is marked once on the robot (%s)" % str(marks))
+
+	# --- the long press puts a row back ---------------------------------------
+	_assert(_find_button(page, "DialPip0") != null,
+		"the row's picture is a control in its own right")
+	page.hold_pip(0)
+	await get_tree().process_frame
+	_assert(is_equal_approx(_dial_value(mk3, 0), 10.0),
+		"holding it puts the row back to what the robot was born with (%s)"
+			% str(_dial_value(mk3, 0)))
+	_assert(page.value_text(0) == "10", "and the numeral follows it up (%s)" % page.value_text(0))
+
+	# --- every row is reachable, by a small thumb -----------------------------
+	var all_rows := true
+	for row in Rewards.KEYS.size():
+		if _find_button(page, "DialMinus%d" % row) == null \
+				or _find_button(page, "DialPlus%d" % row) == null \
+				or _find_button(page, "DialPip%d" % row) == null:
+			all_rows = false
+	_assert(all_rows, "all eight rows have a minus, a plus and a picture of their own")
+
+	var buttons: Array = []
+	_collect_buttons(page, buttons)
+	_assert(buttons.size() >= 24,
+		"which is at least twenty-four targets on the page (%d)" % buttons.size())
+	var small := ""
+	for b in buttons:
+		if b.size.x < Workbench.TOUCH or b.size.y < Workbench.TOUCH:
+			small = "%s %s" % [b.name, str(b.size)]
+	_assert(small == "", "and every one of them is 56 across at least (%s)" % small)
+
+	# --- and it says all of that without a word (T-12's rule, on the bench) ---
+	var labels: Array = []
+	_collect_labels(page, labels)
+	var worded := ""
+	for label in labels:
+		if _has_letters(label.text):
+			worded = label.text
+	for b in buttons:
+		if _has_letters(b.text):
+			worded = b.text
+	_assert(worded == "", "not one word anywhere on the page (%s)" % worded)
+
+	# --- put the farm back the way it was found -------------------------------
+	menus.close_menu()
+	await get_tree().process_frame
+	farm.apply_action({ "verb": "collect", "target": farm.sim.actor_pos(mk3),
+		"actor": "player" }, GameState)
+	await get_tree().process_frame
+
+
+# One row of a robot's reward table, read out of the sim rather than off the page
+# — the page is what is on trial.
+func _dial_value(id: String, row: int) -> float:
+	var rewards: Array = farm.sim.actor(id).get("extra", {}).get("rewards", [])
+	if rewards.size() != Rewards.KEYS.size():
+		return NAN
+	return float(rewards[row])
+
+
+func _collect_buttons(node: Node, out: Array) -> void:
+	if node is Button:
+		out.append(node)
+	for child in node.get_children():
+		_collect_buttons(child, out)
