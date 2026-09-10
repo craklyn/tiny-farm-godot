@@ -1,0 +1,20 @@
+[
+  ["bench", {
+    "prompt": "a single sturdy wooden carpentry workbench seen straight from the front, a thick heavy plank top resting on two stout square legs with one cross brace between them, a chunky pale grey steel bench vice bolted to the front left corner of the top with a round handle sticking out, warm wood browns with dark brown outlines and a pale grey steel vice, no purple, no violet anywhere, cozy pastel 2d farming game sprite, rounded soft silhouette, colored outlines (no black), plain flat cream background",
+    "prompt_style": "rd_plus__default",
+    "width": 64,
+    "height": 64,
+    "num_images": 2,
+    "seed": 91001,
+    "palette_hex": ["#90625d", "#a97959", "#c39a6c", "#6f6862", "#8f8880", "#b8b2ac", "#f8f4e6"]
+  }],
+  ["rack", {
+    "prompt": "a small upright rack holding a row of five thin polished brass plates standing side by side like little metal tags in a slim wooden holder, seen straight from the front, each brass plate a small bright rectangle with a dark amber outline, a narrow warm wood frame under and behind them, no purple, no violet anywhere, cozy pastel 2d farming game sprite, rounded soft silhouette, colored outlines (no black), plain flat cream background",
+    "prompt_style": "rd_plus__default",
+    "width": 64,
+    "height": 64,
+    "num_images": 2,
+    "seed": 91002,
+    "palette_hex": ["#997a2e", "#cba13c", "#f0cf5a", "#90625d", "#a97959", "#c39a6c", "#f8f4e6"]
+  }]
+]

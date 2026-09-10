@@ -334,6 +334,37 @@ before the first public build ships.*
   The unchosen front variant and the profile generation contributed no pixels; both
   are in the archive.
 
+- **The training workbench, 2026-09-10** — **generated, $0.108** (same Retro
+  Diffusion pipeline, rights and post-processing as above; raws with `*_meta.json`,
+  the request bodies, the palette lock and the compositing script archived per the
+  standing policy at `assets/raw/2026-09-10-workbench/`). `workbench.png` — 16x32,
+  one cell hung from its bottom edge like `well.png` and `seed_box.png`: a plank
+  bench top with a steel vice at its left end, and three brass plates on a small
+  rack rising above it. It is the bench the player sets down in the yard to tune a
+  learning robot (`docs/V0_2_2_PLAN.md` WI-7).
+  **The layout was not bought.** Two calls at 64x64 (`rd_plus__default`, two images
+  each, seeds 91001 and 91002) drew one subject apiece — the bench with its vice,
+  and a rack of brass plates — and the arrangement was drawn locally in
+  `build_workbench.py`. A third call for the whole object was written, cost-checked
+  at $0.058 and dropped, which took the run from $0.166 to $0.108.
+  The palette lock is nine colours, all of them already in the shipped sprites:
+  the wood ramp `#c39a6c`/`#a97959`/`#90625d` from the well and the seed box, the
+  steel ramp `#b8b2ac`/`#8f8880`/`#6f6862` from the well and the robot stall, and
+  the brass ramp `#f0cf5a`/`#cba13c`/`#997a2e` from the crops sheet. It was passed
+  to the API as `input_palette` and enforced again locally after compositing, so
+  every pixel in the shipped file is on one of those nine; all alpha is 0 or 255.
+  Two things the generations got wrong and the script corrects, both worth knowing
+  before the next prop: the cream `#f8f4e6` the well and the seed box use is the
+  nearest neighbour of the *brass* highlight in any plain colour metric, so the
+  bench top's cream highlight line snapped to gold and painted a stripe across the
+  sprite — cream is out of this lock and forced to the light wood. And the model
+  shaded the bench's legs in the same greys it used for the vice, which left a
+  wooden bench with cold grey legs and no metal object to look at; outside the
+  vice's box the steel ramp is returned to the wood ramp, which is the style
+  guide's per-material outline rule.
+  The second bench variant and the second rack variant contributed no pixels; both
+  are in the archive.
+
 ## Audio (placeholder)
 - `assets/audio/music/bgm_wholesome.ogg` — **"Wholesome" by Kevin MacLeod
   (incompetech.com), CC BY 4.0** (verified 2026-08-26 from embedded Vorbis tags,
