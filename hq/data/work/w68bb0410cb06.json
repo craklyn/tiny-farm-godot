@@ -6,16 +6,18 @@
   "tier": 1,
   "tier_reason": "Game code behind both suites and the replay round-trip; git reverts it. The design is the CEO's, ruled whole as Q-101.",
   "ask": "WI-6 in docs/V0_2_2_PLAN.md: the brass plate with five computed lines and the fallback line, and the mosaic of summed weights (eight actions by thirteen input groups) with a tap-to-inspect card and a warm/cool legend. Read-only.",
-  "first_action": "Handed to a worker in its own worktree by the chief of staff's session; land on main after both suites pass there.",
-  "state": "in_progress",
+  "first_action": "Landed; see result.",
+  "state": "for_review",
   "thread": "sam",
   "source": "chat",
   "source_message": "CEO, 2026-09-10: build the training workbench as v0.2.2 (Q-101), sim side first.",
-  "result": "",
+  "result": "Landed on main (cf91a4e). The plate with five computed lines, the fallback line and the one sentence in words; the mosaic of summed weights with tap-to-inspect and a warm/cool legend. Scenario AR, 30 assertions. Verified with the rest of the wave on a clean checkout.",
   "started": "2026-09-10",
-  "attempts": 0,
+  "attempts": 1,
   "created": "2026-09-10T08:57",
   "created_ts": 1789055867.9829924,
   "parent": "training-workbench",
-  "plan_item": "WI-6"
+  "plan_item": "WI-6",
+  "follow_ups": [],
+  "recommend": {}
 }

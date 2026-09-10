@@ -6,16 +6,18 @@
   "tier": 1,
   "tier_reason": "Game code behind both suites and the replay round-trip; git reverts it. The design is the CEO's, ruled whole as Q-101.",
   "ask": "WI-3 in docs/V0_2_2_PLAN.md: eight rows in reward order with the row's colour, pip, numeral, ladder strip and 56 px minus/plus buttons that emit tune through farm.apply_action; a held pip returns the factory value.",
-  "first_action": "Handed to a worker in its own worktree by the chief of staff's session; land on main after both suites pass there.",
-  "state": "in_progress",
+  "first_action": "Landed; see result.",
+  "state": "for_review",
   "thread": "jade",
   "source": "chat",
   "source_message": "CEO, 2026-09-10: build the training workbench as v0.2.2 (Q-101), sim side first.",
-  "result": "",
+  "result": "Landed on main (363632b). The dials page: eight rows in reward order with colour, pip, numeral, ladder strip and thumb-sized minus and plus that emit tune through the gateway; a held pip returns the factory value. Scenario AO, 33 assertions. Verified with the rest of the wave on a clean checkout.",
   "started": "2026-09-10",
-  "attempts": 0,
+  "attempts": 1,
   "created": "2026-09-10T08:57",
   "created_ts": 1789055867.9825914,
   "parent": "training-workbench",
-  "plan_item": "WI-3"
+  "plan_item": "WI-3",
+  "follow_ups": [],
+  "recommend": {}
 }

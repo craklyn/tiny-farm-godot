@@ -6,16 +6,18 @@
   "tier": 1,
   "tier_reason": "Game code behind both suites and the replay round-trip; git reverts it. The design is the CEO's, ruled whole as Q-101.",
   "ask": "WI-4 in docs/V0_2_2_PLAN.md: the observation patch drawn from the robot's own vector, the scalar bars, the eight action probabilities with the last decision lit, and the entropy bar \u2014 evaluated once when the bench opens, since the world holds while a menu is open.",
-  "first_action": "Handed to a worker in its own worktree by the chief of staff's session; land on main after both suites pass there.",
-  "state": "in_progress",
+  "first_action": "Landed; see result.",
+  "state": "for_review",
   "thread": "sam",
   "source": "chat",
   "source_message": "CEO, 2026-09-10: build the training workbench as v0.2.2 (Q-101), sim side first.",
-  "result": "",
+  "result": "Landed on main (243754f). The eyes page: the robot's view as a patch of channel marks, the scalar bars, the eight action probabilities with the last decision lit, and the entropy bar, evaluated once when the bench opens. Scenario AP, 18 assertions. Verified with the rest of the wave on a clean checkout.",
   "started": "2026-09-10",
-  "attempts": 0,
+  "attempts": 1,
   "created": "2026-09-10T08:57",
   "created_ts": 1789055867.982729,
   "parent": "training-workbench",
-  "plan_item": "WI-4"
+  "plan_item": "WI-4",
+  "follow_ups": [],
+  "recommend": {}
 }

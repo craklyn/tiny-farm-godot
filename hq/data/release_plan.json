@@ -229,25 +229,25 @@
           "id": "s3",
           "title": "The dials: every job on one screen with minus and plus, your numbers as the starting point, negatives allowed",
           "estimate_days": 1.0,
-          "done": false
+          "done": true
         },
         {
           "id": "s4",
           "title": "What it sees, live, and the bars showing what it is about to do",
           "estimate_days": 1.0,
-          "done": false
+          "done": true
         },
         {
           "id": "s5",
           "title": "The charts: what it earned, whether it beat its own expectations, whether it is still experimenting, how much it changed overnight, how much of its day it wasted",
           "estimate_days": 1.5,
-          "done": false
+          "done": true
         },
         {
           "id": "s6",
           "title": "The nameplate and the likes-and-dislikes grid",
           "estimate_days": 1.0,
-          "done": false
+          "done": true
         },
         {
           "id": "s7",

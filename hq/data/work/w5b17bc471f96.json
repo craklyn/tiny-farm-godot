@@ -17,5 +17,7 @@
   "created": "2026-09-10T08:57",
   "created_ts": 1789055867.9821978,
   "parent": "training-workbench",
-  "plan_item": "WI-1"
+  "plan_item": "WI-1",
+  "follow_ups": [],
+  "recommend": {}
 }

@@ -43,15 +43,15 @@
     },
     {
       "step": "The dials",
-      "done": false
+      "done": true
     },
     {
       "step": "What it sees, and the charts",
-      "done": false
+      "done": true
     },
     {
       "step": "The nameplate and the likes-and-dislikes grid",
-      "done": false
+      "done": true
     },
     {
       "step": "Art, and the proof tests",

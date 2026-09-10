@@ -500,6 +500,15 @@ in the yard if a display is available.
 
 ### WI-8 — Proof · ~0.5 day · Grace (test)
 
+- **The tick seam (found by WI-5).** `tune` records `extra["days"]`, the count of closed days,
+  while the scorecard numbers today as `days + 1`; so a dial turned on the first day records `0`
+  and never drew. Fix in `BotScorecard`: the tick is drawn at `tuned[i] + 1`, and `tick_days`
+  holds the drawn day numbers. Unit: a tune on day one gives `tuned == [0]`; integration: the
+  ledger scenario's staged `tuned == [4]` now expects `tick_days == [5]` (update WI-5's
+  assertion accordingly — this is a correction of the spec, not a loosening).
+- **The update card's numeral** is last night's `last_update`, drawn as a numeral with the
+  delta against the night before (`ledger[-2][3]`), and no today point on the line — the
+  mockup shows last night's number there and the plan's dash was wrong.
 - Unit: extend `test_workbench_sim` with a **two-day tune-and-replay chapter**: place, tune two
   rows on day one, play 45 s, sleep, tune again, 45 s, sleep, 10 s; `apply_to` → `divergence ==
   ""`, `capture_canonical` equal, `rewards`, `ledger` and `tuned` element-equal.
@@ -507,9 +516,6 @@ in the yard if a display is available.
   `_scorecard_in(bench ledger page).days == _scorecard_in(machine panel).days` and both
   scorecards' `tick_days` equal; a `tune` from the bench changes the panel's next scorecard
   nothing (rewards are not drawn there) but the bench's dials page numeral.
-- `tools/capture_machines.gd`: point its save, replay and trace paths at scratch as
-  `tools/capture_workbench.gd` does, so a capture never seeds the next suite run (skip if WI-5
-  already did it).
 - `tools/check_gateway.py`: add `"ui"` to `WATCHED_DIRS`; mark any legitimate read in existing
   `ui/` code with `# gateway-ok: <why>`; `--self-test` still passes. If the checker's rules
   cannot distinguish a read from a write in `ui/` without a flood of annotations, **report the
@@ -634,3 +640,27 @@ is `training-workbench`.*
   integration 717, gateway clean; verified on a clean checkout of main below. Two traps it
   found are now in §6: a worktree created behind main, and a capture tool that autosaves into
   the shared user directory. Its shell additions are in §3.
+- 2026-09-10 — **The four plates landed**: WI-4 the eyes (`243754f`, scenario AP, 18), WI-6 the
+  plate and mosaic (`cf91a4e`, scenario AR, 30), WI-3 the dials (`363632b`, scenario AO, 33),
+  WI-5 the ledger (`a3bd9a2`, scenario AQ, 33; `MetricCard`; the scorecard's `plot_h` and
+  ticks; `capture_machines.gd` now saves to scratch). Each worker's worktree was green; the
+  wave is verified together on a clean checkout of main below. **A merge trap for the record:**
+  git's content merge aligned two new scenarios that begin with the same staging lines and
+  spliced one into the other; "keep both sides" made a file with a one-line scenario and a
+  hybrid. Merges of `tools/test_runner.gd` are now done by a script that rebuilds the file as
+  main's version plus the branch's appended block, and checks for duplicate functions. What
+  the workers decided or found, now the rule or listed for the CEO:
+  - The eyes' entropy bar is drawn in neutral ink, not the mockup's blue — that blue already
+    means "a crow in the air" on the ledger, and one colour means one thing on the bench.
+  - The dials follow `Rewards.KEYS` order, so the two crow rows are swapped against the mockup's
+    left column; the lit rung uses the bench's own brass. WI-3's acceptance said three minus
+    presses from 3 reach 0.3; it is two (3 → 1 → 0.3) and the test says so.
+  - The mosaic's rows follow `Observation.input_groups` (starting at `needs_water`), not the
+    mockup's order; the model line prints `->` because the design's arrow is outside Latin-1.
+    Bold labels use `FontVariation.variation_embolden` since the game has no bold face.
+  - The eyes and the mosaic measured their inner geometry off the mockup PNGs (F-44 had only the
+    outer rects); those numbers are named constants in the page files.
+  - `_pictures_in(page)` counts 6 on the ledger page, not 8: a plain Control has no `_draw`.
+  - **For the CEO**: a dial turn makes no sound today (the shop's purchase does); the
+    entropy-bar colour; and the ledger cards carry no day numerals of their own — the chart
+    above them carries the axis for the same window.
