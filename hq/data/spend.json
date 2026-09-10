@@ -73,7 +73,10 @@
       "kind": "generation",
       "purpose": "The M2.5 art bench: critters.png and bot.png new, plus the pea crop row and the sprinkler cells.",
       "work_item": "WI-11",
-      "models": ["rd_plus__default", "rd_advanced_animation__walking"],
+      "models": [
+        "rd_plus__default",
+        "rd_advanced_animation__walking"
+      ],
       "generations": 24,
       "dollars": 1.39,
       "credits": 139,
@@ -89,7 +92,9 @@
       "kind": "generation",
       "purpose": "objects.png cell 0, the cot, regenerated in place.",
       "work_item": "T-27",
-      "models": ["rd_plus__default"],
+      "models": [
+        "rd_plus__default"
+      ],
       "generations": 1,
       "dollars": 0.058,
       "credits": null,
@@ -169,7 +174,9 @@
       "kind": "generation",
       "purpose": "terrain_field.png, the tall grassland the field draws, replacing terrain_grass.png there.",
       "work_item": "Q-70",
-      "models": ["rd_tile__single_tile"],
+      "models": [
+        "rd_tile__single_tile"
+      ],
       "generations": 1,
       "dollars": 0.06,
       "credits": null,
@@ -193,6 +200,19 @@
       "reconciled": false,
       "source": "CREDITS.md:180-216",
       "note": "CREDITS.md states $0.53 and itemises eight two-image calls at $0.066 each, which does not multiply to the stated total. Four of the eight fed the shipped icon; the rest are recorded misses, including two hoes the model would only draw as spades."
+    },
+    {
+      "id": "2026-09-10-workbench-png-the-training-bench-sprite-",
+      "date": "2026-09-10",
+      "vendor": "Retro Diffusion",
+      "kind": "generation",
+      "purpose": "workbench.png, the training bench sprite: two 64x64 calls, four images, composed locally",
+      "work_item": "v0.2.2 WI-7",
+      "dollars": 0.108,
+      "credits": 4,
+      "balance_after": 0.518,
+      "reconciled": true,
+      "recorded_by": "record_spend"
     }
   ]
 }
