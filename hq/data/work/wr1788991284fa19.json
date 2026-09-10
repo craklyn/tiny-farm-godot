@@ -1,0 +1,22 @@
+{
+  "id": "wr1788991284fa19",
+  "title": "Say whether the seeder bot loop is any good",
+  "level": "story",
+  "owner": "ingrid",
+  "tier": 2,
+  "tier_reason": "A finished loop is waiting on a verdict only Daniel can give.",
+  "ask": "The Animation Lab drew a loop from this subject, unattended:\n\n    Please fix the carrot bag.  The carrot should taper at the bottom (currently the top). The carrot leaves should be thicker, connected to the carrot base, and resemble real carrot plant's leaves.  It's okay to make the carrot itself smaller to accomodate this, and possibly to increase the side of the bag.\n\nThere are some portions of the animation where the space inside the robot claws should have transparency instead of black/grey fill.\n\nCan you up-res the robot's head and sternum? It looks out of place next to the crisp robot body. \n\nWhen the robot pulls forward, can he pull forward a shorter distance, so the previous carrot's filled hole is still on the left edge of the screen? And to the right of his current hole, the next hole can be drawn.\n\nIs there anything else we can do to make this more visually appealing?  When the carrot seeds are dropped into the hole, can a couple bounce and scatter back up then land down again?  Can he drop a couple seeds as he swings his hands forward full of seeds?  Can a bit of dust swirl when he re-packs the whole?\n\nIt is on the Lab's page as `seeder_bot` — play it at true size as well as zoomed, and move its instruments to see what the numbers do. It cost $15.37 and 111 turns.\n\nWhat is wanted is a verdict and a reason: keep it, send it back, or drop it. The reason is the part that helps whoever picks it up, so it matters more than the verdict.\n\nIf it is kept, the loop and its script still have to be landed on main; if it is sent back, say which of its parameters or beats is wrong rather than that it needs work.",
+  "first_action": "Open #/design/anim/seeder_bot and watch it at both sizes",
+  "state": "for_review",
+  "thread": "ingrid",
+  "source": "anim_lab",
+  "source_message": "Drawn unattended by the Animation Lab from: Please fix the carrot bag.  The carrot should taper at the bottom (currently the top). The carrot leaves should be thicker, connected to the carrot base, and resemble real carrot plant's leaves.  It's",
+  "result": "",
+  "started": "2026-09-09T15:01:24",
+  "attempts": 1,
+  "created": "2026-09-09T15:31",
+  "created_ts": 1788993106.9961493,
+  "conversation": [],
+  "follow_ups": [],
+  "recommend": {}
+}

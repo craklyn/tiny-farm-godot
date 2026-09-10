@@ -1,0 +1,21 @@
+{
+  "id": "w6fc5d9cd49b9",
+  "title": "Prove it: the dial turn survives a replay, and the charts say the same thing as the robot's own scorecard",
+  "level": "task",
+  "owner": "grace",
+  "tier": 1,
+  "tier_reason": "Game code behind both suites and the replay round-trip; git reverts it. The design is the CEO's, ruled whole as Q-101.",
+  "ask": "WI-8 in docs/V0_2_2_PLAN.md: the two-day tune-and-replay chapter, the bench/panel parity scenario, and an attempt to put ui/ under the gateway checker; the design chapter and plan status updated.",
+  "first_action": "Handed to a worker in its own worktree by the chief of staff's session; land on main after both suites pass there.",
+  "state": "in_progress",
+  "thread": "grace",
+  "source": "chat",
+  "source_message": "CEO, 2026-09-10: build the training workbench as v0.2.2 (Q-101), sim side first.",
+  "result": "",
+  "started": "2026-09-10",
+  "attempts": 0,
+  "created": "2026-09-10T08:57",
+  "created_ts": 1789055867.9832668,
+  "parent": "training-workbench",
+  "plan_item": "WI-8"
+}

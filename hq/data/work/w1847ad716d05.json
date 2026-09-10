@@ -1,0 +1,21 @@
+{
+  "id": "w1847ad716d05",
+  "title": "The workbench in the shop: buy it, set it down, tap it, and page between its five plates",
+  "level": "task",
+  "owner": "jade",
+  "tier": 1,
+  "tier_reason": "Game code behind both suites and the replay round-trip; git reverts it. The design is the CEO's, ruled whole as Q-101.",
+  "ask": "WI-2 in docs/V0_2_2_PLAN.md: a workbench row in the catalogue and the shop's stock list, set down through place on a yard tile as a tall blocking object, opened by a tap through a special-object row without a verb, and the full-screen five-plate shell as a fifth mode of the menus with five page stubs.",
+  "first_action": "Handed to a worker in its own worktree by the chief of staff's session; land on main after both suites pass there.",
+  "state": "in_progress",
+  "thread": "jade",
+  "source": "chat",
+  "source_message": "CEO, 2026-09-10: build the training workbench as v0.2.2 (Q-101), sim side first.",
+  "result": "",
+  "started": "2026-09-10",
+  "attempts": 0,
+  "created": "2026-09-10T08:57",
+  "created_ts": 1789055867.9824464,
+  "parent": "training-workbench",
+  "plan_item": "WI-2"
+}

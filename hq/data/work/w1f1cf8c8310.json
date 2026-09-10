@@ -16,5 +16,37 @@
   "attempts": 1,
   "created": "2026-09-09T23:39",
   "created_ts": 1789022368.2327178,
-  "parent": "mark-3-learning-bot"
+  "parent": "mark-3-learning-bot",
+  "follow_ups": [
+    {
+      "title": "Find out which farm jobs the learning robot never picks up",
+      "owner": "kenji",
+      "level": "story",
+      "tier": 0,
+      "first_action": "Run tools/demo_learning_robot.gd with per-choice logging of shoo, till and water_soil: record how often each is legal in view, how often it is chosen, and what reward it returns. Report whether the crow row is ever reachable at all versus never selected, and whether tilling and soil-watering are being crowded out by higher-reward verbs.",
+      "why": "Crows are 0/0 on both rows and two rows end below control, so three of eight jobs are unexplained."
+    },
+    {
+      "title": "Give the robot's planting and selling the same sounds the player's actions have",
+      "owner": "dmitri",
+      "level": "task",
+      "tier": 2,
+      "first_action": "Add plant and sell sounds for non-player actors and wire them to the cues in farm.gd, matching the loudness and timing of the player's own plant and sell sounds.",
+      "why": "Her actions currently show a puff and stay silent, which breaks the rule that a watched actor gets the player's treatment."
+    },
+    {
+      "title": "Check how much room the learning-robot test has before an unrelated change turns it red",
+      "owner": "grace",
+      "level": "task",
+      "tier": 0,
+      "first_action": "Re-run the learning assertion across ten different seeds at 8 and 24 farms and report the margin distribution, flagging whether any seed puts the learning average below the control.",
+      "why": "The 8-farm assertion passes at 19.8 against 18.2 with only 6 of 8 farms rising, so an unrelated shift in the random stream could fail it without anything being broken."
+    }
+  ],
+  "recommend": {
+    "question": "Ship v0.2.1 with the Mark III learning six of the eight jobs, or hold it until she learns crows and tilling too?",
+    "answer": "Ship the six and file the crow and tilling work as follow-up.",
+    "why": "The learning result is already far above the control on the rows that matter, and the three missing rows are a diagnosis job, not a design change.",
+    "instead": "Hold v0.2.1 until all eight rows rise, which buys a cleaner story at the cost of a release you can otherwise cut this week."
+  }
 }

@@ -1,0 +1,21 @@
+{
+  "id": "wdfa69cafdc98",
+  "title": "What it sees, live, and the bars showing what it is about to do",
+  "level": "task",
+  "owner": "sam",
+  "tier": 1,
+  "tier_reason": "Game code behind both suites and the replay round-trip; git reverts it. The design is the CEO's, ruled whole as Q-101.",
+  "ask": "WI-4 in docs/V0_2_2_PLAN.md: the observation patch drawn from the robot's own vector, the scalar bars, the eight action probabilities with the last decision lit, and the entropy bar \u2014 evaluated once when the bench opens, since the world holds while a menu is open.",
+  "first_action": "Handed to a worker in its own worktree by the chief of staff's session; land on main after both suites pass there.",
+  "state": "in_progress",
+  "thread": "sam",
+  "source": "chat",
+  "source_message": "CEO, 2026-09-10: build the training workbench as v0.2.2 (Q-101), sim side first.",
+  "result": "",
+  "started": "2026-09-10",
+  "attempts": 0,
+  "created": "2026-09-10T08:57",
+  "created_ts": 1789055867.982729,
+  "parent": "training-workbench",
+  "plan_item": "WI-4"
+}

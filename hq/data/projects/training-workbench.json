@@ -12,14 +12,14 @@
   ],
   "summary": "The place in the game where the player decides what the learning robot is rewarded for, and sees how its learning is going. Five plates on a bench she buys and sets down: the dials, what it sees, the nameplate, the charts, the likes-and-dislikes grid. Approved whole by the CEO on 2026-09-10 (Q-101) after he saw the mockups.",
   "requirements": [
-    "Every number on the bench is read from the robot's own state or computed in front of her — never a story about training",
+    "Every number on the bench is read from the robot's own state or computed in front of her \u2014 never a story about training",
     "Reward values are per robot, and a dial turn goes through the gateway so a replay reproduces it",
     "Negatives are allowed on every row; the bench draws the consequence rather than forbidding it",
     "The bench's charts and the robot's own scorecard are one drawing language",
     "Words on the nameplate only; numerals on axes; pictures everywhere else",
     "Nothing expensive runs when a page opens"
   ],
-  "current_status": "Approved and about to be planned. The design is docs/design/14-training-workbench.md; the build shape is its section 10. A survey of the UI code is running, after which the plan is written and handed to workers item by item. Scheduled as v0.2.2 so v0.2.1 ships the robot first.",
+  "current_status": "Planned and in build. The plan is docs/V0_2_2_PLAN.md (written 2026-09-10 from two read-only surveys and checked against the code before any worker started). Eight work items, one per story, handed out in order: the sim side first, then the bench in the shop and its shell, then the five plates in parallel, then art and proof. Scheduled as v0.2.2 so v0.2.1 ships the robot first.",
   "plan": [
     {
       "step": "Designed and put to the CEO with mockups (Q-101)",
@@ -31,7 +31,7 @@
     },
     {
       "step": "Survey the UI code and write the build plan",
-      "done": false
+      "done": true
     },
     {
       "step": "Per-robot rewards and the dial as a recorded action",

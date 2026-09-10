@@ -1,0 +1,21 @@
+{
+  "id": "we9976e02ae8f",
+  "title": "The charts: what it earned, whether it beat its own expectations, whether it is still experimenting, how much it changed overnight, how much of its day it wasted",
+  "level": "task",
+  "owner": "sam",
+  "tier": 1,
+  "tier_reason": "Game code behind both suites and the replay round-trip; git reverts it. The design is the CEO's, ruled whole as Q-101.",
+  "ask": "WI-5 in docs/V0_2_2_PLAN.md: the ledger page \u2014 the robot's own scorecard as the main chart (same class, with a plot height and dial-turn ticks added) and four metric cards over the per-day ledger, sharing the scorecard's helpers and inks.",
+  "first_action": "Handed to a worker in its own worktree by the chief of staff's session; land on main after both suites pass there.",
+  "state": "in_progress",
+  "thread": "sam",
+  "source": "chat",
+  "source_message": "CEO, 2026-09-10: build the training workbench as v0.2.2 (Q-101), sim side first.",
+  "result": "",
+  "started": "2026-09-10",
+  "attempts": 0,
+  "created": "2026-09-10T08:57",
+  "created_ts": 1789055867.9828618,
+  "parent": "training-workbench",
+  "plan_item": "WI-5"
+}
