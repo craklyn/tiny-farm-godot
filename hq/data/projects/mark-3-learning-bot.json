@@ -20,7 +20,7 @@
     "Two runs on the same seed are identical; the seven-day learning curve rises on a fixed seed",
     "Every watering looks and sounds like hers; it moves at the Mark I's pace; nothing changes without a cue"
   ],
-  "current_status": "Design drafted in docs/design/06 ('The ladder's third rung') against the real brain, gateway, save and replay code, and both cards are ruled (2026-09-09): the reward is +1 for a tile made wet and 0 otherwise, the inputs are as drafted, the Mk III costs 800 gold, and the night shows as numbers on its panel. Nothing waits on the CEO; the build can start.",
+  "current_status": "Building. The observation builder, the reward table and the policy maths are on main with their tests (2026-09-09, both suites green); the robot's day and night — the learn setting in the bot brain, the shop row, the nightly update, the save and replay round-trip — are being built in a worktree. Two findings from the first build are in the plan: a bare per-index draw from the seeded generator is not uniform, so the sampler scrambles the index; and the night update is normalised by the day's decisions. One card open for the CEO: what a Mark III keeps when she picks it up (Q-98).",
   "plan": [
     {
       "step": "Design written against the code, with the six rules and the v1 scope",
@@ -32,7 +32,7 @@
     },
     {
       "step": "Observation builder and reward table in the sim, behind tests",
-      "done": false
+      "done": true
     },
     {
       "step": "Policy maths and the learning rule proven on a seven-day curve (the D-2 first cut)",

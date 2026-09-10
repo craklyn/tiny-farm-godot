@@ -52,13 +52,15 @@
           "id": "s11",
           "title": "Build what the robot is told before each decision — its tile, its energy, a 5×5 view — as an adjustable spec",
           "estimate_days": 0.5,
-          "done": false
+          "done": true,
+          "shipped_in": "main 2026-09-09 (8ed60ec)"
         },
         {
           "id": "s12",
           "title": "Write the reward table and the policy: a linear softmax with a REINFORCE trace, deterministic under the sim's seed",
           "estimate_days": 1.0,
-          "done": false
+          "done": true,
+          "shipped_in": "main 2026-09-09 (8ed60ec)"
         },
         {
           "id": "s13",
