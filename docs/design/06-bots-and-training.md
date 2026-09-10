@@ -473,10 +473,23 @@ A **linear softmax policy**: 103 inputs × 6 actions = 618 weights and 6 biases.
 by REINFORCE with an eligibility trace, so the day's experience costs O(weights), not
 O(steps):
 
-- at each decision, `trace += ∇ log π(action | observation)`;
+- at each decision, `trace += ∇ log π(action | observation)`, and a second trace
+  `base_trace += (what is left in the meter ÷ a full day) × ∇ log π`;
 - at each reward, `accumulator += reward × trace`;
-- at night, `weights += rate × (accumulator − baseline × trace)`, where the baseline is
-  the running mean of past days' scores, then the weights are rounded to 1e-6.
+- at night, `weights += rate × (accumulator − baseline × base_trace) ÷ the day's
+  decisions`, where the baseline is the running mean of past days' scores, then the
+  weights are rounded to 1e-6.
+
+**Why the baseline is charged against the second trace — measured 2026-09-09.** The
+accumulator pays each decision only for the rewards that came after it, so a decision
+taken on the last of the meter is credited with almost nothing; charging it a whole day's
+average score anyway told the robot that most of its afternoon had been a mistake, and
+what it learned from that was to stand still. Weighting each decision's charge by the
+meter it still had is roughly what that decision could have gone on to earn — a robot
+with a third of its day left can water at most a third as many more squares — and with
+that in place it waters 9.1 thirsty squares a day by the end of its first week against
+6.6 for a robot that never learns, over 24 paddocks. The old rule reached 8.3, and then
+sank back below the control by the third week, which is what the fix removes.
 
 Exploration is the softmax's own sampling, drawn with `SimRng.stateless(salt, index)` —
 salt from the robot's id and the day, index its decision count — so the same seed and the
@@ -487,8 +500,8 @@ spare at this size; the sim is not the bound (`M2_SPEC.md`).
 
 ### Determinism, saves, replay
 
-- Weights, biases, trace, accumulator, baseline and decision count live in the robot's
-  `extra` as flat float arrays — JSON-plain, saved with the actor (save v3, additive keys,
+- Weights, biases, both traces, accumulator, baseline and decision count live in the
+  robot's `extra` as flat float arrays — JSON-plain, saved with the actor (save v3, additive keys,
   no bump), compared by `capture_canonical`.
 - The nightly update is **recomputed** on replay, like every brain decision (Q-53).
 - `configure` re-deploys and carries only energy and owner today; the learned keys join

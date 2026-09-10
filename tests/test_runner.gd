@@ -11200,16 +11200,17 @@ func test_learning_robot_day() -> void:
 		"the actor remembers which mark it was bought as — three marks share one species")
 
 	var width := Observation.size(Observation.spec_default())
-	for key in ["spec", "weights", "trace", "acc", "baseline", "days", "decisions",
-			"score", "last_score", "salt", "pending_needs_water"]:
+	for key in ["spec", "weights", "trace", "acc", "base_trace", "baseline", "days",
+			"decisions", "score", "last_score", "salt", "pending_needs_water"]:
 		_assert_quiet(extra.has(key), "a placed Mark III carries '%s'" % key)
 	_flush_quiet("a placed Mark III carries every learned key it will ever need")
 	_assert(extra["spec"] == Observation.spec_default(),
 		"its senses are written on the robot, so a later default cannot reinterpret old weights")
 	_assert((extra["weights"] as Array).size() == BotBrain.LEARN_ACTIONS * (width + 1)
 			and (extra["trace"] as Array).size() == (extra["weights"] as Array).size()
-			and (extra["acc"] as Array).size() == (extra["weights"] as Array).size(),
-		"with six rows of %d weights, and two running sums the same shape" % (width + 1))
+			and (extra["acc"] as Array).size() == (extra["weights"] as Array).size()
+			and (extra["base_trace"] as Array).size() == (extra["weights"] as Array).size(),
+		"with six rows of %d weights, and three running sums the same shape" % (width + 1))
 	var born_uniform := true
 	for x in extra["weights"]:
 		if float(x) != 0.0:
@@ -11264,6 +11265,22 @@ func test_learning_robot_day() -> void:
 			still_uniform = false
 	_assert(trace_moved and still_uniform,
 		"a day moves the trace and leaves the weights alone — one day is one policy")
+
+	# **A second trace moves with it, discounted by the meter** (v0.2.1 WI-6):
+	# the same term as the first, scaled each time by the fraction of the day the
+	# robot still had in its arms. It is what the night charges the baseline
+	# against, so that a decision taken on the last of the meter — with almost
+	# nothing left to earn — is not charged a whole day's average. A robot that
+	# has spent some of its meter is a robot whose two traces have parted.
+	var trace_size := 0.0
+	var base_size := 0.0
+	for i in (extra["trace"] as Array).size():
+		trace_size += absf(float(extra["trace"][i]))
+		base_size += absf(float(extra["base_trace"][i]))
+	_assert(base_size > 0.0 and base_size < trace_size
+			and (extra["base_trace"] as Array) != (extra["trace"] as Array),
+		"and a second trace beside it, discounted by the meter to %.0f%% of the first"
+			% (100.0 * base_size / maxf(trace_size, 1e-9)))
 
 	# --- what a reward is for -------------------------------------------------
 	# Paid for the outcome and never for the gesture: the same stroke on the same
@@ -11325,9 +11342,10 @@ func test_learning_robot_day() -> void:
 			% str(extra["baseline"]))
 	var swept := true
 	for i in (extra["trace"] as Array).size():
-		if float(extra["trace"][i]) != 0.0 or float(extra["acc"][i]) != 0.0:
+		if float(extra["trace"][i]) != 0.0 or float(extra["acc"][i]) != 0.0 \
+				or float(extra["base_trace"][i]) != 0.0:
 			swept = false
-	_assert(swept, "and the day's two running sums are swept — a day's work belongs to that day")
+	_assert(swept, "and the day's three running sums are swept — a day's work belongs to that day")
 	_assert(day_one > 0.0 and (extra["weights"] as Array) != before_night,
 		"a day worth %s changed the weights it will be played on tomorrow" % str(day_one))
 	var rounded := true

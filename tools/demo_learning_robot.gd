@@ -31,9 +31,19 @@
 # much as watering ground that is thirsty and is worth nothing, so the score out
 # of twenty is a straight measure of how well the robot is spending a day.
 #
+# **And two dozen more weeks underneath the table.** One week is one robot's luck
+# as much as its learning, so the same week is then played on 24 farms, each of
+# them twice: once with the night doing its work and once with it switched off.
+# The gap between those two columns is what the night is worth, and it is what
+# the learning rate was chosen on — printed under the table on every run rather
+# than kept in a comment, because a machine claimed to have a learning curve
+# should show it (D-4). The two dozen farms take about ten seconds.
+#
 # `tests/test_runner.gd:test_learning_robot` asserts on the numbers this
 # produces, from this same `run()`, so the table below and the gate cannot drift
 # apart: the demo is the report and the test is the gate, over one measurement.
+# The 24 farms are not a gate — they move with the rate, and a measurement that
+# is also a threshold stops being a measurement.
 extends SceneTree
 
 # The day the seven-day week was first played, which is the only thing that makes
@@ -79,9 +89,22 @@ const PURSE := 2000
 # is not the reason a fence post would not go down.
 const PARKING := Vector2i(29, 18)
 
+# How many farms the summary underneath the table averages over. One week is one
+# robot's luck as much as its learning — a wanderer that stumbles onto the block
+# on its first morning has a different week from one that finds it on the third —
+# so the claim "it learns" is made over two dozen of them and not over the one in
+# the table. Two dozen weeks and their controls take about ten seconds.
+const SEEDS := 24
+
 
 func _init() -> void:
-	quit(_report(run()))
+	# The table first, because it is the week a person can follow day by day; then
+	# the two dozen farms behind it, because one week is one robot's luck as much
+	# as its learning. Both are printed every run: the curve a machine is claimed
+	# to have is shown, never asserted (D-4).
+	var code := _report(run())
+	_summarise(many())
+	quit(code)
 
 
 # --- the measurement ----------------------------------------------------------
@@ -92,10 +115,21 @@ func _init() -> void:
 # nothing is read off a global afterwards: `test_learning_robot` calls this twice
 # and compares the two, which is only a determinism check if the answer is
 # entirely in here.
-static func run(days := 7) -> Dictionary:
+#
+# `farm_seed` is the farm — the paddock is built the same way whatever it is, so
+# what a seed actually changes is the wander (`Policy.draw_u` draws off it).
+# `many()` below plays the same week on two dozen of them.
+#
+# **`learn` off is the control, and it is the night switched off and nothing
+# else.** The weights are put back to what they were before each night, so the
+# robot still scores its day, still keeps a baseline and still wanders exactly as
+# a fresh robot does — it simply never carries anything into the morning. That is
+# the only honest thing to compare a week of learning against: the same machine
+# on the same farm having learned nothing.
+static func run(days := 7, farm_seed := SEED, learn := true) -> Dictionary:
 	var gs = load("res://systems/game_state.gd").new()
 	gs.reset()
-	SimRng.reseed(SEED)
+	SimRng.reseed(farm_seed)
 	var world := SimWorld.new()
 	world.generate()
 	_stage(world)
@@ -110,6 +144,7 @@ static func run(days := 7) -> Dictionary:
 	var decisions: Array = []
 	var energy_left: Array = []
 	var waters: Array = []
+	var frozen: Array = (world.actor(robot)["extra"]["weights"] as Array).duplicate()
 	for _day in days:
 		var strokes := 0
 		for taken in world.advance_to_tick(
@@ -127,9 +162,11 @@ static func run(days := 7) -> Dictionary:
 		waters.append(strokes)
 		gs.weather = WEATHER
 		world.apply_action({ "verb": "sleep", "actor": "world", "weather": WEATHER }, gs)
+		if not learn:
+			extra["weights"] = frozen.duplicate()
 
 	var out := {
-		"seed": SEED,
+		"seed": farm_seed,
 		"days": days,
 		"machine": robot,
 		# What each day was worth: thirsty squares the robot turned wet.
@@ -156,6 +193,33 @@ static func mean_of_days(scores: Array, first: int, last: int) -> float:
 		total += float(scores[i])
 		n += 1
 	return total / float(maxi(1, n))
+
+
+# The same week on `count` farms, played twice each: once with the night doing
+# its work and once with it switched off, on the identical seed.
+#
+# **The control is what makes the number mean anything.** A robot that ends its
+# week watering more than it did on Monday has not necessarily learned: some
+# paddocks are kinder than others, and a wanderer that finds the block late has a
+# rising week for no reason but arithmetic. What the night is worth is the gap
+# between these two columns, on the same farms, with the same draws.
+static func many(count := SEEDS, days := 7) -> Dictionary:
+	var out := {
+		"seeds": count, "days": days,
+		"learn_early": 0.0, "learn_late": 0.0, "learn_improved": 0,
+		"control_early": 0.0, "control_late": 0.0, "control_improved": 0,
+	}
+	for i in count:
+		for arm in ["learn", "control"]:
+			var week: Dictionary = run(days, SEED + i, arm == "learn")
+			var scores: Array = week["scores"]
+			var early := mean_of_days(scores, 1, 3)
+			var late := mean_of_days(scores, maxi(1, days - 2), days)
+			out[arm + "_early"] = float(out[arm + "_early"]) + early / float(count)
+			out[arm + "_late"] = float(out[arm + "_late"]) + late / float(count)
+			if late > early:
+				out[arm + "_improved"] = int(out[arm + "_improved"]) + 1
+	return out
 
 
 # --- staging ------------------------------------------------------------------
@@ -228,3 +292,27 @@ func _report(week: Dictionary) -> int:
 	for f in failures:
 		printerr("DEMO FAILED: %s" % f)
 	return 1 if not failures.is_empty() else 0
+
+
+# The two dozen farms under the one in the table, and the control beside them.
+# Nothing here is a gate — `test_learning_robot` guards the week above — but it
+# is the number the learning rate was chosen on, so it is printed rather than
+# kept in a comment.
+func _summarise(m: Dictionary) -> void:
+	var days: int = int(m["days"])
+	var first := "days 1-%d" % mini(3, days)
+	var last := "days %d-%d" % [maxi(1, days - 2), days]
+	print("")
+	print("The same week on %d farms, each played twice: once with the night doing its"
+		% int(m["seeds"]))
+	print("work, once with it switched off and nothing carried into the morning.")
+	print("")
+	print("%12s %12s %12s %16s" % ["", first, last, "weeks that rose"])
+	for arm in [["learning", "learn"], ["night off", "control"]]:
+		print("%12s %12.1f %12.1f %13d/%d" % [arm[0],
+			float(m[arm[1] + "_early"]), float(m[arm[1] + "_late"]),
+			int(m[arm[1] + "_improved"]), int(m["seeds"])])
+	print("")
+	print("So a week of nights is worth %.1f thirsty squares a day against %.1f without"
+		% [float(m["learn_late"]), float(m["control_late"])])
+	print("them, over the same farms and the same draws.")

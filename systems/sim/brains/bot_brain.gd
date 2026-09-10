@@ -186,16 +186,33 @@ const LEARN_STEPS := Movement.DIRS
 # how busy the day was, and WI-2's bandit locked onto the wrong arm at 0.05 with
 # twenty decisions in it. A robot's day has several hundred.
 #
-# **Lowered from 0.05 to 0.02 by WI-5's seven-day week**, which is the first
-# thing that ever watched this robot for longer than a minute. At 0.05 a single
-# day below the running average pushed the policy away from everything it had
-# done that day, watering included, and by the third or fourth morning the robot
-# had settled on standing still: over twenty days it scored nothing at all. At
-# 0.02 it climbs instead. Measured over 24 seeds of the paddock in
-# `tools/demo_learning_robot.gd`, a week at 0.02 is worth about a fifth more
-# thirsty squares a day than the same week with the night switched off, which is
-# the whole of what "it learns" currently means. [Playtest]
-const LEARN_RATE := 0.02
+# **0.03, chosen on the fixed baseline** (v0.2.1 WI-6). The old rule, which
+# charged every decision the whole day's mean, could only be held at 0.02 and
+# even there the robot slowly gave up: over twenty days it climbed to 9.3 thirsty
+# squares a day by the second week and then sank back to 7 — and at 0.03 it sank
+# to 6, below a robot that never learned at all. Charging the baseline against
+# `base_trace` instead (`_sleep_on_it`) removes that pull, and the rate that was
+# holding it off is no longer doing that job.
+#
+# The sweep, 24 farms of the paddock played twice each — once learning, once with
+# the night switched off — and read as thirsty squares a day on days 5-7, with
+# the same 24 farms carried on to twenty days to see whether it holds. The
+# control is 6.6 whatever the rate:
+#
+#     rate   days 5-7   weeks that rose   day 20, mean of the 24
+#     0.02       8.9           19 / 24    9.5   holds
+#     0.03       9.1           20 / 24    9.2   holds
+#     0.05       9.0           19 / 24    9.2   holds
+#     0.07       8.8           16 / 24    8.4   holds, lower
+#     0.10       7.9           17 / 24    7.5   drifts down
+#     0.20       5.4           14 / 24    4.9   worse than not learning
+#
+# So the top of the range is flat from 0.02 to 0.05 and everything above 0.07
+# costs the robot its day. 0.03 is the middle of the flat part and the best of
+# the three, which is what it was picked for. Reproduce it with
+# `tools/demo_learning_robot.gd`, which prints the 24-farm summary under its
+# table on every run. [Playtest]
+const LEARN_RATE := 0.03
 
 # How far apart two days' draws are pushed. Any odd stride would do; a prime is
 # the cheap way to keep one robot's second day out of another robot's first.
@@ -266,10 +283,14 @@ static func deploy(world: SimWorld, actor_id: String, config: String, at: Vector
 			# Zeros, so a robot out of the box is uniform over its six actions: it
 			# wanders on day one, which is what P-14 says day one should look like.
 			extra["weights"] = Policy.new_weights(width, LEARN_ACTIONS)
-			# The day's two running sums — what it has done (`trace`) and what
-			# that earned (`acc`). Both are zeroed every night.
+			# The day's three running sums: what it has done (`trace`), what that
+			# earned (`acc`), and what the baseline is charged against
+			# (`base_trace`) — the same trace again, each decision weighted by how
+			# much of the meter was still in its arms when it made it. All three
+			# are zeroed every night; `_sleep_on_it` says why the third exists.
 			extra["trace"] = Policy.new_weights(width, LEARN_ACTIONS)
 			extra["acc"] = Policy.new_weights(width, LEARN_ACTIONS)
+			extra["base_trace"] = Policy.new_weights(width, LEARN_ACTIONS)
 			# What a day has been worth so far, what the last one was worth, and
 			# the running mean of every day before it. The panel reads `days` and
 			# `last_score`; nothing outside this file reads the weights (Q-97).
@@ -981,8 +1002,18 @@ func _learn(world: SimWorld, actor_id: String, extra: Dictionary, tick: int) -> 
 	# The eligibility trace, one term per decision. Credit for a reward is spread
 	# back over everything the robot did before earning it, which is the only way
 	# *walking towards dry soil* is ever learned when only the watering pays.
-	Policy.add_into(extra["trace"],
-		Policy.grad_log_prob(obs, chances, choice, n_in, LEARN_ACTIONS), 1.0)
+	var grad := Policy.grad_log_prob(obs, chances, choice, n_in, LEARN_ACTIONS)
+	Policy.add_into(extra["trace"], grad, 1.0)
+	# **And the same term again, scaled by how much of the day is left in its
+	# arms.** This is the trace the night charges the baseline against, and the
+	# whole reason it is a second sum: a decision made on a full meter still has a
+	# day's worth of watering ahead of it, while one made on the last thirty units
+	# has almost nothing ahead of it and should be measured against almost
+	# nothing. Watering costs thirty, so `energy / 600` is very nearly the share
+	# of the day's score still to come — which is what the baseline is trying to
+	# be. Read before the action, because the action is what spends it.
+	Policy.add_into(extra["base_trace"], grad,
+		float(world.energy_of(actor_id)) / float(SimWorld.ACTOR_MAX_ENERGY))
 
 	var here := world.actor_pos(actor_id)
 	var action: Dictionary = {}
@@ -1019,7 +1050,7 @@ func _learn(world: SimWorld, actor_id: String, extra: Dictionary, tick: int) -> 
 
 # The night: one update, and a clean slate for the morning.
 #
-# `w += rate · (acc − baseline · trace) / decisions`, and **the division is
+# `w += rate · (acc − baseline · base_trace) / decisions`, and **the division is
 # load-bearing**. The trace is cumulative, so the accumulator grows with roughly
 # the square of how many decisions were in the day; without dividing, a busy day
 # would push the weights hundreds of times harder than a quiet one and the robot
@@ -1031,6 +1062,19 @@ func _learn(world: SimWorld, actor_id: String, extra: Dictionary, tick: int) -> 
 # is what stops a robot that scores the same every day from being shoved harder
 # and harder in whatever direction it took first: once a day is only average, it
 # teaches nothing.
+#
+# **What it is charged against is `base_trace`, not `trace`, and that fix is the
+# difference between a robot that learns and one that gives up** (v0.2.1 WI-6).
+# `acc` credits each decision with the rewards that came *after* it, so a
+# decision taken on the last of the meter is credited with nearly nothing —
+# correctly, because there was nearly nothing left to earn. Charging every
+# decision the whole day's mean anyway made the late half of every day look like
+# a failure, so the average decision was pushed away from itself by about half
+# the baseline, and the only thing holding off a robot that settled on standing
+# still was a rate small enough to make the whole night barely count. `base_trace`
+# weights each decision's charge by the meter it had left, which is roughly what
+# it could still have earned, so a decision is now measured against its own share
+# of an average day rather than against all of one.
 func _sleep_on_it(extra: Dictionary) -> void:
 	var weights: Array = extra.get("weights", [])
 	var per_decision := 1.0 / float(maxi(1, int(extra.get("decisions", 0))))
@@ -1039,7 +1083,7 @@ func _sleep_on_it(extra: Dictionary) -> void:
 	var score := float(extra.get("score", 0.0))
 	extra["weights"] = Policy.night_update(weights,
 		_scaled(extra.get("acc", []), per_decision),
-		_scaled(extra.get("trace", []), per_decision),
+		_scaled(extra.get("base_trace", []), per_decision),
 		baseline, LEARN_RATE)
 	extra["baseline"] = (baseline * float(days) + score) / float(days + 1)
 	# What the panel shows her, and the only two learned numbers anything outside
@@ -1051,6 +1095,7 @@ func _sleep_on_it(extra: Dictionary) -> void:
 	extra["decisions"] = 0
 	extra["trace"] = _scaled(weights, 0.0)
 	extra["acc"] = _scaled(weights, 0.0)
+	extra["base_trace"] = _scaled(weights, 0.0)
 	extra["pending_needs_water"] = false
 
 

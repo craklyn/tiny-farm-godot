@@ -70,12 +70,18 @@ the release up mid-way starts at §9.*
 - **Policy**: linear softmax, `n_out × (n_in + 1)` weights flat, bias last in each row,
   zero-initialised (uniform at birth).
 - **Learning**: REINFORCE with an eligibility trace and a baseline, one update at the
-  day turn, weights rounded to 1e-6 after the update. Per decision `trace += ∇log π`;
-  per reward `acc += r·trace`; at night `w += rate·(acc − baseline·trace) / max(1,
-  decisions)`; baseline is the running mean of past days' scores. The division is
-  load-bearing: the trace is cumulative, so an un-normalised update grows with the square
-  of the day's decisions — WI-2's bandit overshot and locked onto the wrong arm at rate
-  0.05 with 20 decisions a day. `rate` starts at 0.05 on the normalised rule `[Playtest]`.
+  day turn, weights rounded to 1e-6 after the update. Per decision `trace += ∇log π` and
+  `base_trace += (energy / ACTOR_MAX_ENERGY)·∇log π`; per reward `acc += r·trace`; at
+  night `w += rate·(acc − baseline·base_trace) / max(1, decisions)`; baseline is the
+  running mean of past days' scores. The division is load-bearing: the trace is
+  cumulative, so an un-normalised update grows with the square of the day's decisions —
+  WI-2's bandit overshot and locked onto the wrong arm at rate 0.05 with 20 decisions a
+  day. **The second trace is WI-6's fix and is what the baseline is charged against**
+  (the rule as first written charged every decision the whole day's mean, which taught
+  the robot to stand still — see §9): a decision's charge is weighted by the share of the
+  meter it still had, which is roughly what it could still have earned, and the estimator
+  stays unbiased because that weight depends on nothing the robot chose. `rate` is 0.03
+  on this rule, swept over 24 paddocks `[Playtest]`.
 - **Sampling**: `u = Policy.draw_u(salt, index)` with `salt = Policy.salt_of(actor_id) ^
   (days * 7919)` and `index = decisions` (per-day counter). **Not** a bare
   `SimRng.stateless(salt, index)`: Godot's string hash moves by exactly one when the
@@ -124,13 +130,13 @@ static func probs(logits: Array) -> Array                         # stable softm
 static func sample(p: Array, u: float) -> int                     # u in [0,1)
 static func grad_log_prob(obs: Array, p: Array, action: int, n_in: int, n_out: int) -> Array
 static func add_into(target: Array, source: Array, scale: float) -> void   # target += scale*source
-static func night_update(w: Array, acc: Array, trace: Array, baseline: float, rate: float) -> Array
+static func night_update(w: Array, acc: Array, base_trace: Array, baseline: float, rate: float) -> Array
 static func round6(x: float) -> float
 static func draw_u(salt: int, index: int) -> float   # uniform in [0,1); landed in WI-2
 static func salt_of(actor_id: String) -> int   # FNV-1a over the UTF-8 bytes, engine-independent — add in WI-3
 ```
 
-`night_update` as landed applies `rate·(acc − baseline·trace)` without normalising;
+`night_update` as landed applies `rate·(acc − baseline·base_trace)` without normalising;
 **WI-4 divides by the day's decisions before calling it** (or adds a `scale` argument).
 
 `night_update` returns a new array, every entry rounded with `round6`. Arrays are plain
@@ -332,3 +338,40 @@ only the work item you are on. The chief of staff's running notes are in
     code, and a decision above this work item. The sampler was cleared as a suspect first:
     `Policy.draw_u` over a robot's day is uniform (300 draws, mean 0.48–0.52, every tenth
     of the range between 19 and 40).
+- 2026-09-09 — **WI-6 landed: the night's baseline is charged per decision, and the rate
+  is 0.03.** The flaw the item above found is fixed by a third weights-sized sum in the
+  robot's `extra`, `base_trace`, which is the eligibility trace weighted at each decision
+  by the fraction of the meter still in its arms; the night is now
+  `w += rate·(acc − baseline·base_trace) / decisions`. The reasoning is that `acc` pays a
+  decision only what came after it, and what an average day still had left at that moment
+  is roughly its remaining meter — a robot with a third of its day left can water at most
+  a third as many more squares. It stays unbiased (the weight depends on where in its day
+  the robot was standing, never on what it chose) and JSON-plain, and it is recomputed on
+  replay like everything else.
+  - **The sweep**, 24 paddocks played twice each — once learning, once with the night
+    switched off — as thirsty squares a day over days 5-7, with the same 24 carried on to
+    twenty days. The control is 6.6 at every rate, and it beat its own first three days in
+    15 weeks of 24.
+
+    | rate | days 1-3 | days 5-7 | weeks that rose | day 20 |
+    |------|----------|----------|-----------------|--------|
+    | 0.02 | 6.4 | 8.9 | 19 / 24 | 9.5 |
+    | **0.03** | **6.5** | **9.1** | **20 / 24** | **9.2** |
+    | 0.05 | 6.4 | 9.0 | 19 / 24 | 9.2 |
+    | 0.07 | 6.5 | 8.8 | 16 / 24 | 8.4 |
+    | 0.10 | 6.1 | 7.9 | 17 / 24 | 7.5 |
+    | 0.20 | 5.0 | 5.4 | 14 / 24 | 4.9 |
+
+    The range is flat from 0.02 to 0.05 and falls off above it, so 0.03 is the middle of
+    the flat part and the best of the three.
+  - **It beats the old rule, which is why the fallback was not needed.** On the same 24
+    paddocks the old rule managed 8.3 a day at its own tuned 0.02, and over twenty days it
+    peaked at 9.3 in the second week and sank to 7.3 by the twentieth — at 0.03 it sank to
+    6.1, below a robot that never learned at all. The new rule holds at 9 or better through
+    day twenty at every rate up to 0.05. The plain-REINFORCE fallback held in
+    reserve for this item — whole-episode return against a constant baseline — was
+    therefore never measured.
+  - The demo prints the 24-paddock summary under its table on every run, so the curve is
+    shown rather than asserted (D-4). The fixed-seed gate is unchanged and passes with
+    room: 6.7 thirsty squares a day over days 1-3 against 10.3 over days 5-7.
+  - Unit 2357 passed, integration 671 passed, robot session green, gateway clean.
