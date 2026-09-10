@@ -33,5 +33,11 @@
       "label": "Queue entry (Q-96)",
       "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"
     }
-  ]
+  ],
+  "ruled": {
+    "date": "2026-09-09",
+    "option": "b",
+    "summary": "Reward is +1 for a tile it made wet and 0 for everything else; the draft's penalties were struck because a reward says what to achieve, never how, and the day's energy is already a budget. Inputs approved as drafted. Robot Mk III costs 800 gold.",
+    "written_up": "docs/design/06-bots-and-training.md — 'What it is rewarded for'"
+  }
 }

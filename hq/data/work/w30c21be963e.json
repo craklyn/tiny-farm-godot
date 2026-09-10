@@ -5,7 +5,7 @@
   "owner": "tomas",
   "tier": 1,
   "tier_reason": "Layer-2 code behind the unit suite and the replay round-trip; git reverts it.",
-  "ask": "Per docs/design/06 'The ladder's third rung' and P-14: an observation builder (systems/sim/observation.gd) that reads a data spec (self position on/off, energy on/off, vision radius, channel list) and returns a flat float array, O(radius^2); a reward table (systems/rewards.gd, data layer) applied to before/after world state; policy maths (systems/sim/brains/policy.gd, static, JSON-plain arrays); the nightly update in on_new_day; the learned keys carried across configure; a replay round-trip test with weights in the save.",
+  "ask": "Per docs/design/06 'The ladder's third rung' and P-14: an observation builder (systems/sim/observation.gd) that reads a data spec (self position on/off, energy on/off, vision radius, channel list) and returns a flat float array, O(radius^2); a reward table (systems/rewards.gd, data layer) applied to before/after world state — +1 for a tile made wet, 0 for everything else (Q-96, ruled 2026-09-09); policy maths (systems/sim/brains/policy.gd, static, JSON-plain arrays); the nightly update in on_new_day; the learned keys carried across configure; a replay round-trip test with weights in the save.",
   "first_action": "Start with systems/sim/observation.gd and its test (fixed scan order, strictly-nearer tie-breaks, radius 2 default), then the reward table, then the policy file; wire the day-turn update in BotBrain.on_new_day; add the learned keys to the carry-over list in the configure verb (sim_world.gd) and assert it in test_machines.",
   "state": "waiting_session",
   "thread": "tomas",

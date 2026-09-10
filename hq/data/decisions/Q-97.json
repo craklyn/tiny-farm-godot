@@ -33,5 +33,11 @@
       "label": "Queue entry (Q-97)",
       "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"
     }
-  ]
+  ],
+  "ruled": {
+    "date": "2026-09-09",
+    "option": "a",
+    "summary": "Numbers on the robot's panel only: days practised and yesterday's score. Nothing at dawn in v1; the dream stays a design for the fuller learning release.",
+    "written_up": "docs/design/06-bots-and-training.md — 'Its night'"
+  }
 }

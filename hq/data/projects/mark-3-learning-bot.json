@@ -20,15 +20,15 @@
     "Two runs on the same seed are identical; the seven-day learning curve rises on a fixed seed",
     "Every watering looks and sounds like hers; it moves at the Mark I's pace; nothing changes without a cue"
   ],
-  "current_status": "Design drafted in docs/design/06 ('The ladder's third rung') against the real brain, gateway, save and replay code. Two cards wait on the CEO: the reward values, inputs and price (Q-96) and what the player sees at dawn (Q-97). Engineering can start on the observation builder and the policy maths without either ruling; only the shop price and any dawn surface wait.",
+  "current_status": "Design drafted in docs/design/06 ('The ladder's third rung') against the real brain, gateway, save and replay code, and both cards are ruled (2026-09-09): the reward is +1 for a tile made wet and 0 otherwise, the inputs are as drafted, the Mk III costs 800 gold, and the night shows as numbers on its panel. Nothing waits on the CEO; the build can start.",
   "plan": [
     {
       "step": "Design written against the code, with the six rules and the v1 scope",
       "done": true
     },
     {
-      "step": "Q-96 approved: reward table, inputs, price",
-      "done": false
+      "step": "Q-96 and Q-97 ruled: reward +1 per wet tile and 0 otherwise, inputs as drafted, 800 gold, panel numbers only",
+      "done": true
     },
     {
       "step": "Observation builder and reward table in the sim, behind tests",

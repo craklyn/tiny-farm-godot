@@ -564,6 +564,12 @@ days on the tablet, or its wandering reads as broken rather than clumsy in play.
 fallback order is P-5's — more nights, a scripted curriculum with a learned residual —
 and never a fake that would demote the "The ML is real" pillar.
 
+**Reward values (Q-96, ruled 2026-09-09):** +1 for a tile made wet, 0 for everything
+else. The designer struck the draft's shaping penalties: a reward says *what* to achieve,
+never *how* (Sutton and Barto, 2nd ed.), and the energy budget is a constraint, not a
+penalty. Inputs as drafted; Robot Mk III at 800 gold. Q-97 the same day: v1 shows the
+night as numbers on the robot's panel, nothing more.
+
 ### D-1. Phase 5 genre (X-COM tactics vs. Gradius-like hybrid vs. other)
 **Why deferred:** Phase 5's cast is the player plus *trained bots* — its design depends on
 what trained bots actually feel like, which cannot be known before phase 4 exists.

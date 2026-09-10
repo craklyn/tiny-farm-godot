@@ -366,7 +366,7 @@ wet. No teach, no dial, no other verb. Watering is the job because:
 
 The spec is data on the catalogue row and copied onto the robot at placement, so it can be
 changed per robot later (the "Vision I/II" unlocks in `ARCHITECTURE.md` are a bigger
-radius on this same spec). v1 defaults:
+radius on this same spec). v1 defaults, approved 2026-09-09 (Q-96):
 
 | Input | v1 default | Adjustable |
 | --- | --- | --- |
@@ -395,19 +395,33 @@ is per tile, which is the smallest unit of a player's tap-to-walk.
 
 ### What it is rewarded for
 
-Reward values are data (`[Playtest]`, approval on Q-96), read from one table so they can
-be tuned without touching the brain:
+Ruled 2026-09-09 (Q-96), and simpler than the draft that was put to him: **+1 for a tile
+that went from dry to wet because it watered, and 0 for everything else.** The draft had
+carried small penalties for wasted water and refused steps; the designer struck them —
+*"there's no actual penalty to a human for not watering, so it seems strange to
+penalize the bot"* — and he is right in the formulation this design follows, Sutton and
+Barto's (*Reinforcement Learning*, 2nd ed.): the reward signal says **what** to achieve,
+never **how**. A wasted watering already costs the robot the tile it could have wet
+instead, because the day is a budget; a refused step costs it a second. Penalties would
+have restated those costs as shaping, and shaping is the thing an agent learns to game.
 
 | Outcome | Reward |
 | --- | --- |
 | a tile went from dry to wet because it watered | **+1** |
-| it watered a tile that was already wet, or not soil that takes water — energy spent, nothing changed | −0.2 |
-| a step was refused (a fence, the edge, an occupied tile) | −0.05 |
-| anything else — a step that worked, a wait | 0 |
+| anything else — a step, a wait, water that changed nothing, a refused move | 0 |
 
-The day's total is its **score**, and the score is what the panel reports in numbers. A
-reward is computed from the world before and after the gateway answered, so a clever
-route and a clumsy one that wet the same tiles earn the same.
+The values are data (`systems/rewards.gd`), read from one table. The day's total is its
+**score**, and the score is what the panel reports in numbers. A reward is computed from
+the world before and after the gateway answered, so a clever route and a clumsy one that
+wet the same tiles earn the same.
+
+**The problem, in that book's terms.** An episodic task: one day is one episode, ending
+when the meter is empty or she sleeps. The return is the undiscounted sum of the day's
+rewards. The agent sees an observation, not the state — a 5×5 patch of a 32×20 page — so
+the policy is reactive and the task is partially observed; acceptable at this size, and
+the vision dial is the lever if it is not. The learning rule is a policy-gradient method
+with a baseline (the book's chapter 13), one update per episode. Speed of learning is the
+algorithm's problem and the spike's, never the reward's.
 
 ### Its day
 
@@ -423,7 +437,9 @@ still indoors (the mark-1's rule, kept).
 At the day turn — in `on_new_day`, before the new day's first decision — it applies the
 update from the day's trace, resets the trace, and is refilled. No decision is taken
 during the turn itself, for the same reason nothing else decides there: a roll taken
-in the turn would be taken twice on replay. What she *sees* of the night is Q-97.
+in the turn would be taken twice on replay. What she sees of the night, ruled
+2026-09-09 (Q-97): the robot's own panel, in numbers — days practised and yesterday's
+score — and nothing else in v1.
 
 ### The learning rule (strawman; the D-2 first cut, owned by the ML seat)
 
@@ -480,7 +496,7 @@ numbers (D-4). Each is a later mark or a later tier, on purpose.
 
 | Piece | Home |
 | --- | --- |
-| The catalogue row `bot_mk3` (program `policy`, config `learn`, price on Q-96) | `systems/machine_defs.gd` |
+| The catalogue row `bot_mk3` (program `policy`, config `learn`, 800 gold — Q-96) | `systems/machine_defs.gd` |
 | The `learn` branch of the bot brain's dispatch | `systems/sim/brains/bot_brain.gd` |
 | The policy maths, pure and static | `systems/sim/brains/policy.gd` (new) |
 | The observation builder | `systems/sim/observation.gd` (new) |

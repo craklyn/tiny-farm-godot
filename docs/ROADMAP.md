@@ -1723,8 +1723,9 @@ The designer re-pointed the next release at the third rung of the robot ladder: 
 **mark-3** that learns by reinforcement — reward on outcomes, wander by day, update by
 night, adjustable inputs, one action at a time at her granularity, her energy budget,
 interpretable when watched (P-14). v1 learns one job, watering, deliberately (P-13).
-Full design: `design/06` "The ladder's third rung". Open cards: Q-96 (reward, inputs,
-price), Q-97 (what she sees of the night).
+Full design: `design/06` "The ladder's third rung". Ruled 2026-09-09: Q-96 (reward +1
+per tile made wet and 0 otherwise; inputs as drafted; 800 gold) and Q-97 (the night is
+numbers on the robot's panel, nothing more).
 **Exit gate:** on the tablet, a Mark III bought from the shop learns to water the field
 within a week of in-game days — the learning-curve demo (`tools/demo_learning_robot.gd`)
 rises from day 1 to day 7 on a fixed seed and two runs are identical; its day replays to

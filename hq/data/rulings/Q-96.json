@@ -1,0 +1,9 @@
+{
+  "id": "Q-96",
+  "option": "b",
+  "option_label": "Same shape, simpler numbers: +1 per wet tile, 0 otherwise; inputs and price as drafted",
+  "judgment": "Why not reward a tile being watered, and give no reward at all for other actions? There's no actual penalty to a human for not watering, so it seems strange to penalize the bot. I am thinking in terms of Barto and Sutton's formulation of Reinforcement Learning (2nd ed). Inputs approved as drafted. 800 gold.",
+  "ruled_at": "2026-09-09T12:00",
+  "status": "integrated",
+  "source": "chat with the chief of staff"
+}
