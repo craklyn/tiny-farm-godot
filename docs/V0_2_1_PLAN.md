@@ -57,9 +57,9 @@ the release up mid-way starts at §9.*
 
 ## 3. Decisions this plan is built on
 
-- **Superseded 2026-09-09 by Q-100 — see WI-9.** The observation, actions and reward below
-  were the one-job table; they are kept for the history of WI-1–WI-8 and are replaced by
-  WI-9's spec, which is the shipped design.
+- **Superseded 2026-09-09 by Q-100 — see WI-9.** The observation, actions and reward bullets
+  below were the one-job table; they are kept for the history of WI-1–WI-8 and are replaced
+  by WI-9's spec, which is the shipped design.
 - **Observation spec** (Q-96): `{"self_pos": true, "energy": true, "vision": 2,
   "channels": ["needs_water", "wet", "walkable", "crop", "bare"]}` — `bare` = state
   `cleared` (added by Q-99). Vector = `[x/(W-1),
@@ -72,9 +72,425 @@ the release up mid-way starts at §9.*
 - **Reward** (Q-96, Q-99): +1 when its `water` turned a tile that needed water into a
   wet one; +0.1 when its `till` turned bare (`cleared`) soil into tilled; 0 otherwise.
   Values in `systems/rewards.gd`.
-- 2026-09-09 — Q-100 ruled: the full reward table, no ownership of tiles. Design rewritten
-  (actions are taps; the robot carries one crop; seeds from her box; crows by reaching).
-  WI-9a/b added. Runs after the hoe-parity worker lands.
+- **Cadence**: one decision per `SimClock.RATE` ticks (a second). Parks at an empty meter.
+- **Policy**: linear softmax, `n_out × (n_in + 1)` weights flat, bias last in each row,
+  zero-initialised (uniform at birth).
+- **Learning**: REINFORCE with an eligibility trace and a baseline, one update at the
+  day turn, weights rounded to 1e-6 after the update. Per decision `trace += ∇log π` and
+  `base_trace += (energy / ACTOR_MAX_ENERGY)·∇log π`; per reward `acc += r·trace`; at
+  night `w += rate·(acc − baseline·base_trace) / max(1, decisions)`; baseline is the
+  running mean of past days' scores. The division is load-bearing: the trace is
+  cumulative, so an un-normalised update grows with the square of the day's decisions —
+  WI-2's bandit overshot and locked onto the wrong arm at rate 0.05 with 20 decisions a
+  day. **The second trace is WI-6's fix and is what the baseline is charged against**
+  (the rule as first written charged every decision the whole day's mean, which taught
+  the robot to stand still — see §9): a decision's charge is weighted by the share of the
+  meter it still had, which is roughly what it could still have earned, and the estimator
+  stays unbiased because that weight depends on nothing the robot chose. `rate` is 0.12,
+  swept over 24 open-ground farms on the seven-action robot (WI-8); it was 0.03 on the
+  fenced six-action one `[Playtest]`.
+- **Sampling**: `u = Policy.draw_u(salt, index)` with `salt = Policy.salt_of(actor_id) ^
+  (days * 7919)` and `index = decisions` (per-day counter). **Not** a bare
+  `SimRng.stateless(salt, index)`: Godot's string hash moves by exactly one when the
+  index moves by one, so consecutive decisions drew 0.631838, 0.631839, … (WI-2's
+  finding, measured: 62% of draws in one tenth of the range). `draw_u` scrambles the
+  index before hashing and is uniform (500 ± 25 per tenth over 5,000 draws).
+- **Price** 800 gold (Q-96). **Night surface** = panel numbers only (Q-97).
+- **Storage is per robot in v1.** The learned keys live in the robot's `extra`; a later
+  rung may move `weights`/`baseline`/`days` to a world-level `policies` table keyed by an
+  id for shared learning (`design/06`, "After v1"). Nothing outside the brain reads
+  `extra["weights"]` directly — the panel reads `days` and `last_score` only.
+
+## 4. Work items
+
+### WI-1 — Observation builder · ~0.5 day · new file `systems/sim/observation.gd`
+
+`class_name Observation`, all static, layer 2.
+
+```gdscript
+static func spec_default() -> Dictionary
+static func size(spec: Dictionary) -> int
+static func build(world, actor_id: String, spec: Dictionary) -> Array  # of float
+```
+
+Channel truth per tile `t`: `needs_water` = state in `WETTABLE_STATES` and not
+`watered_today`; `wet` = `watered_today`; `walkable` = `world.is_walkable(t)`;
+`crop` = `has_crop(t) or has_seed(t)`. Position normalised by the world's own width and
+full height constants. Unknown channel names → error (`push_error` + zeros), never silent.
+
+**Accept:** `test_observation()` — size 103 for the default; a staged patch around a
+bot in `_bot_yard` reads the expected 1/0 per channel; a bot on the map edge gets zeros
+for the tiles outside; two builds of the same world are element-equal; `vision: 3`
+gives 3 + 49×4; 10,000 builds of radius 2 take under 500 ms headless (rule 8 bound).
+
+### WI-2 — Reward table and policy maths · ~1 day · `systems/rewards.gd`, `systems/sim/brains/policy.gd`
+
+`systems/rewards.gd` (`class_name Rewards`, data layer): `const TABLE := {"wet_tile": 1.0}`,
+`static func of(outcome: String) -> float` (0.0 for anything not in the table).
+
+`systems/sim/brains/policy.gd` (`class_name Policy`, static, pure):
+
+```gdscript
+static func new_weights(n_in: int, n_out: int) -> Array          # zeros, n_out*(n_in+1)
+static func logits(w: Array, n_in: int, n_out: int, obs: Array) -> Array
+static func probs(logits: Array) -> Array                         # stable softmax
+static func sample(p: Array, u: float) -> int                     # u in [0,1)
+static func grad_log_prob(obs: Array, p: Array, action: int, n_in: int, n_out: int) -> Array
+static func add_into(target: Array, source: Array, scale: float) -> void   # target += scale*source
+static func night_update(w: Array, acc: Array, base_trace: Array, baseline: float, rate: float) -> Array
+static func round6(x: float) -> float
+static func draw_u(salt: int, index: int) -> float   # uniform in [0,1); landed in WI-2
+static func salt_of(actor_id: String) -> int   # FNV-1a over the UTF-8 bytes, engine-independent — add in WI-3
+```
+
+`night_update` as landed applies `rate·(acc − baseline·base_trace)` without normalising;
+**WI-4 divides by the day's decisions before calling it** (or adds a `scale` argument).
+
+`night_update` returns a new array, every entry rounded with `round6`. Arrays are plain
+`Array` of `float` throughout — the same objects go into `extra`.
+
+**Accept:** `test_policy()` — probs sum to 1 and zeros give uniform; `sample` is a
+pure function of `u`; `grad_log_prob` matches a finite-difference check on a 3-input,
+2-action case; a two-armed bandit (reward 1 for action 0) trained by the trace-and-night
+rule for 50 "days" reaches `p[0] > 0.9`; a weight array survives
+`JSON.parse_string(JSON.stringify(x))` element-equal after `round6` (inline; the suite
+has no helper for this); `salt_of("bot_1")` equals a fixed integer written into the test.
+
+### WI-3 — The learn setting and Robot Mk III · ~1 day · `bot_brain.gd`, `machine_defs.gd`
+
+- `CONFIG_LEARN := "learn"`, in `ALL_CONFIGS`, not in `CONFIGS` (it is not a dial).
+- `deploy` for `learn` writes: `spec` = `Observation.spec_default()` (the row carries no
+  spec — `machine_defs.gd` is layer 1 and must not import the sim; per-robot
+  adjustability is this key), `weights` (zeros for `size(spec) × 6`), `trace`, `acc`
+  (zeros), `baseline` 0.0, `days` 0, `decisions` 0, `score` 0.0, `last_score` 0.0,
+  `salt` = `Policy.salt_of(actor_id)` (an FNV-1a fold written in `policy.gd`, so the salt
+  never depends on the engine's `hash()` and old logs cannot diverge silently),
+  `pending_needs_water` false. Note `place` passes deploy only `{owner}` and stamps
+  `extra["model"]` afterwards (`sim_world.gd:1985-1990`); deploy sees no row.
+- `_learn(world, actor_id, tick)` after the page check: if `is_exhausted` → park
+  (`wake = tick + 3600 * RATE`; `on_new_day` re-arms via `schedule_all_brains`).
+  Else build the observation, `probs`, `u = Policy.draw_u(salt ^ (days * 7919),
+  decisions)`, `sample`, `decisions += 1`,
+  `add_into(trace, grad, 1.0)`; then execute — actions 0–3: the neighbour tile `g = pos + dir`; if
+  `Movement.can_enter(world, actor_id, g)` then `Movement.place_on_tile(world,
+  actor_id, g)` with facing from `Movement.facing_from`; otherwise the move is refused
+  (reward 0, nothing else). Do **not** use `plan` + `step`: a blocked adjacent goal
+  reads as `ARRIVED` there (`movement.gd:645-647`), and `step` writes `path`, `step`
+  and `wake` into `extra`. Action 4:
+  set `pending_needs_water` from the tile it stands on and return
+  `{verb: "water", target: pos, actor: actor_id}`; action 5: nothing. Always
+  `wake = tick + SimClock.RATE`, written **last**, after any movement call. While she is
+  indoors the existing page check (`bot_brain.gd:216`) idles the robot for 30 s before
+  the learn branch is reached; that is acceptable.
+- `on_result` for `learn`: if the action was `water`, `r = Rewards.of("wet_tile")` when
+  `pending_needs_water and result.ok`, else 0; if `r != 0`: `add_into(acc, trace, r)`,
+  `score += r`.
+- Catalogue row `bot_mk3`: name "Robot Mk III", price 800, species BOT, program
+  `"policy"`, `configs: []`, `default_config: "learn"`, no spec on the row,
+  icon = the mk2 sheet **until WI-6's sprite lands** (say so in the row comment);
+  append to `ORDER`.
+
+**Accept:** `test_learning_robot_day()` — catalogue assertions on the third row (same
+species, program differs, price order 150 < 400 < 800, `learn ∈ ALL_CONFIGS`,
+`∉ CONFIGS`); `buy_machine` + `place` → every learned key present and JSON-plain
+(`JSON.stringify` round-trips `extra` equal); after 30 s of ticks `decisions == 30`
+and exactly one event pending; energy falls only by `water`'s 30; a `water` on a
+needs-water tile scores +1 and on a wet tile scores 0; at an empty meter decisions stop
+increasing; it does not act while she is indoors; two `LiveSession`s on the same seed
+have element-equal `extra` after 60 s.
+
+### WI-4 — The night, the save, the replay, the dial · ~0.5 day · `bot_brain.gd`, `sim_world.gd`
+
+- `on_new_day` for `learn` — the arm goes **before** the existing early return for
+  non-`orders` configs (`bot_brain.gd:877-878`): `weights = night_update(w, acc/n,
+  trace/n, baseline, rate)` with `n = max(1, decisions)` (scale the two arrays with
+  `add_into` into fresh zero arrays, or give `night_update` a scale argument), `baseline =
+  (baseline*days + score)/(days+1)`, `last_score = score`, `score = 0`, zero `trace`
+  and `acc`, `days += 1`, `decisions = 0`.
+- `configure` on a Mark III is refused as `bad_config` today, because the row has no
+  configs (the guard at `sim_world.gd:2009`), so the dial cannot wipe its weights and
+  there is nothing to carry. Assert that refusal. When a later mark has both a dial and
+  weights, the carry list at `sim_world.gd:2013-2017` must include the learned keys;
+  leave a comment there saying so.
+
+**Accept:** in the same test — a second day turns and `days == 1`, `last_score` equals
+the first day's score, `weights` changed only if the score was non-zero; save →
+restore keeps `weights` element-equal; `configure` is refused with `bad_config`; and the **replay
+chapter** on `test_mark_one_robot`'s pattern: two days with a Mark III recorded through
+a `LiveSession`, `log.apply_to` → `divergence == ""` and `capture_canonical` equal.
+
+### WI-5 — The learning-curve demo and its gate · ~0.5 day · `tools/demo_learning_robot.gd`
+
+On `tools/demo_robot_value.gd`'s pattern: `const SEED`, `static func run(days := 7)
+-> Dictionary` returning per-day scores and the final weights; `_init` prints a table
+(day, score, decisions, energy left). Staging: copy `_stage` in
+`tools/demo_robot_value.gd:191-201`, which writes tiles directly (no verbs); a 6×4
+block of tilled+seeded soil three tiles from the robot; `buy_machine` then `place` (no
+stall needed); weather held `"sunny"` both on `gs.weather` and as the `sleep` action's
+`weather` param (`:148-150`); 3000 ticks per day (`SimClock.RATE * 300`), then
+`sleep`. The multi-day loop is new — the mark-1 demo runs one day. Free `gs` at the
+end as that file does.
+
+**Accept:** `test_learning_robot()` calls `run()` twice and asserts the two results are
+element-equal (determinism), and that the mean score of days 5–7 exceeds the mean of
+days 1–3 on the fixed seed. If the curve does not rise at `rate = 0.05`, tune `rate`
+and the staging distance first; **report a curve that will not rise rather than
+loosening the assertion.** WI-2's bandit says the un-normalised rule overshoots at 20
+decisions a day; a day here has ~300, so the normalised night rule in WI-4 is a
+precondition for this item, not an option.
+
+### WI-6 — The panel and the sprite · ~0.5 day + generation
+
+- The machine panel shows, for a Mark III, `days` and `last_score` as numbers beside
+  a watering-can pip (Q-97's floor); wordless (S-7).
+- A third bot sheet on `bot.png`'s layout via the Retro Diffusion pipeline (raws under
+  `assets/raw/`, provenance in `CREDITS.md`). Spending money: **ask first** (tier 2).
+
+### WI-7 — Tablet check and release chores · with the CEO
+
+Learns within a week of in-game days on the tablet; legible when watched; then the
+release-notes, web-build and tag stories in the plan.
+
+### WI-8 — The hoe (Q-99) · ~0.5 day · `observation.gd`, `rewards.gd`, `bot_brain.gd`, the demo
+
+- `Observation`: a fifth default channel `bare` = tile state `cleared`.
+- `Rewards.TABLE["tilled_tile"] = 0.1`.
+- `BotBrain`: action 5 = `till` here (returns `{verb: "till", target: pos, actor}` with
+  `pending_bare` set from the tile), `wait` becomes 6; `on_result` scores `tilled_tile`
+  when `pending_bare and result.ok`; weights sized `size(spec) × 7`. `till` is refused on
+  `YARD`/`FLOOR` by the gateway (reward 0) — do not special-case it.
+- The demo's staging goes back to **open ground**: the 6×4 block on cleared land, no
+  paddock. That is the test of the ruling's hypothesis.
+
+**Accept:** the existing tests updated for 7 actions and 128 inputs; a `till` on a
+cleared tile scores 0.1 and on the yard scores 0; the gate (`test_learning_robot`)
+holds on open ground — days 5–7 beat days 1–3 on the fixed seed, two runs identical.
+If it does not hold on open ground, report the curves; do not bring the paddock back
+without saying so.
+
+### WI-9 — The whole farm (Q-100) · ~4 days · two workers, sequential
+
+**WI-9a (sim side, ~2 days).** Gateway and observation changes:
+- `harvest` by a `SpeciesDefs.BOT` actor puts the crop type into `extra["carrying"]`
+  (empty string when none) instead of `gs.crops`; refused `reason: "carrying"` if it
+  already carries one. People (`neighbour`) and the player unchanged.
+- `plant` by a BOT actor draws from `gs.seeds[seed_type]` and is refused `no_seeds` when
+  empty — the `charged` guards become `charged or is_machine`. The neighbour still plants free.
+- `sell` by a BOT actor sells the one crop it carries at the shared per-crop price, clears
+  `carrying`, credits gold and `total_shipped`; refused `nothing_carried` when empty. No
+  proximity check in the gateway (the router does not check hers either); the brain
+  enforces adjacency, as it does for the hoe.
+- `Observation.spec_default()` gains scalars `carrying`, `seeds` (min(1, total/20)),
+  `bin_dx`, `bin_dy` (offset to the `shipping_bin` object, normalised by page size), and
+  channels `ripe` (state `ready`), `crow` (a crow-class actor occupies the tile), `bin`
+  (object is `shipping_bin`). Size 207.
+- `Rewards.TABLE`: `shipped 10, crow_flying 1, crow_eating 3, harvested 1, watered_plant 1,
+  planted 1, tilled 0.1, watered_soil 0.1`.
+- Tests for every gateway change and the observation size, in the unit suite.
+
+**WI-9b (brain side, ~2 days).** The tap-shaped action space and the demo:
+- Actions `0 till, 1 plant, 2 water, 3 harvest, 4 ship, 5 shoo, 6 wander, 7 wait`.
+  Executing an action = pick the target (nearest legal tile in view by Manhattan distance,
+  fixed scan order, strictly-nearer ties; the bin for `ship`; the nearest crow's tile for
+  `shoo`), `Movement.plan` there, walk with the mark-1's `_set_out`/`_paced` plumbing,
+  then emit the verb on arrival (or the `crow_scared` report for `shoo`, exactly as
+  `_reached` does). No legal target → spent decision, `wake = tick + RATE`. `wander` = one
+  step in a direction from `draw_u`. While walking, no decisions.
+- Legality is **the router's rule for her**: till on `cleared` only; plant on empty
+  `tilled`; water on `WETTABLE_STATES` that are dry; harvest on `ready` and not carrying;
+  ship only when carrying and only from a tile adjacent to the bin.
+- Reward computed in `on_result` from the pre-state the brain captured before emitting
+  (tile state, crow state); the crow's state is read at the moment of the scare.
+- `world/farm.gd`'s `ACTOR_VERB_CUES` gains `plant` and `sell` rows, so a robot sowing or
+  shipping is seen and heard like her (the standing rule: a verb looks and sounds the
+  same whoever performs it).
+- The 24-farm harness gains crows (the standing crow schedule on), ripe crops and a
+  seeded box; the fixed-seed demo prints per-day score by outcome type (a column per row
+  of the table). **The gate returns to an assertion** (WI-9a left it printed while the
+  old brain could not reach the table): over the seed list, learning beats no learning
+  on days 5–7 and two thirds of seeds improve.
+- Report honestly which rows a week of the linear learner reaches and which it does not;
+  do not narrow the table.
+
+## 5. Deliberately NOT in scope
+
+Other verbs; a stall or home; vision beyond radius 2; cloning from her replays; shared
+weights between robots; any dawn scene; observation logging into the replay corpus.
+
+## 6. Execution notes for workers
+
+- One work item per worktree; branch from `main`; land by fast-forward or merge on
+  `main` only after both suites pass **in the worktree**:
+  `godot --headless --path . --script res://tests/test_runner.gd` and
+  `godot --headless --path . res://tools/test_runner.tscn`, plus
+  `python3 tools/check_gateway.py`.
+- Add the test function's call to `_init` in `tests/test_runner.gd` next to
+  `test_mark_one_robot`.
+- Report back with: files changed, tests added and their assertion count, both suite
+  result lines, and any place the plan was wrong — not the diff.
+
+## 7. Estimates
+
+WI-1 0.5 · WI-2 1.0 · WI-3 1.0 · WI-4 0.5 · WI-5 0.5 · WI-6 0.5 · WI-7 0.5 — matches
+the release plan's 4.5 days of build stories.
+
+## 8. Verification checklist (top to bottom before the tag)
+
+- [ ] Unit and integration suites green; robot session green; gateway check clean.
+- [ ] Two runs of the demo identical; the curve rises on the fixed seed.
+- [ ] A recorded two-day session with a Mark III replays to its autosave (`verify_replay.gd`).
+- [ ] `capture_canonical` equality holds after a tablet session replayed on the desktop.
+- [ ] The design chapter, P-14, and this file updated where the build taught otherwise.
+
+## 9. Execution status and handover
+
+*If you are the session picking this up: read §1–§3, then the status lines below, then
+only the work item you are on. The chief of staff's running notes are in
+`hq/data/staff/claude/memory.md`; the work items are `hq/data/work/` entries whose
+`parent` is `mark-3-learning-bot`.*
+
+- 2026-09-09 — plan written; WI-1 and WI-2 handed to an Opus worker in a worktree.
+- 2026-09-09 — **WI-1 and WI-2 landed on main** (observation builder, reward table, policy
+  maths; `test_observation`, `test_policy`; both suites green). Two findings folded in
+  above: bare `stateless` draws are not uniform, use `Policy.draw_u`; the cumulative
+  trace needs the night update normalised by the day's decisions. The observation timing
+  gate was widened to 1500 ms so slow hardware cannot make it red.
+- 2026-09-09 — WI-3/4/5 reviewed against the code by an Opus reader; corrections folded
+  into the text above: one-tile moves via `can_enter` + `place_on_tile`; the spec is
+  written by `deploy`, not the row; `configure` cannot reach a Mark III; the learn arm
+  precedes `on_new_day`'s early return; the salt is an engine-independent fold.
+- 2026-09-09 — **WI-3 and WI-4 landed** (`CONFIG_LEARN` and `_learn`, the night in
+  `on_new_day`, the `bot_mk3` row, `Policy.salt_of`; `test_learning_robot_day`, 56
+  assertions). Unit 2349 passed, integration 650 passed, robot session green, gateway
+  clean. Three notes for WI-5 and WI-6:
+  - One decision costs **~234 µs** headless (2,000 measured, one actor in the world) —
+    one observation, one policy evaluation, no route search. A 300-decision day is
+    therefore ~70 ms of think, which is what makes WI-5's seven-day loop cheap.
+  - `place_on_tile` already sets facing from the move, so the plan's separate
+    `Movement.facing_from` call is not needed.
+  - **Godot's JSON reader hands every number back as a float**, so a restored robot's
+    `spec` reads `vision: 2.0` where a live one reads `2`. Harmless — every reader
+    casts, and `capture_canonical` puts both sides through JSON before comparing — but
+    a test that compares two spec dictionaries with `==` across a save will fail on the
+    types and not on the meaning.
+- 2026-09-09 — **WI-5 landed** (`tools/demo_learning_robot.gd`, `test_learning_robot`,
+  7 assertions; the printed week rises from 4.3 thirsty squares a day to 9.3, and the
+  seven days measure in 0.26 s). Unit 2356 passed, integration 650 passed, robot session
+  green, gateway clean. Three things this item found, two of which change the text above:
+  - **The staging in WI-5 as written measures nothing, and the fix is a fence.** A robot
+    with zero weights picks one of six actions a second, so on open ground it walks off
+    the block within a minute and never returns: it spends its whole meter watering bare
+    earth, is never once rewarded, and the weights never move (measured: 0–2 a day over
+    twenty days, at every rate and every staging distance tried, including standing it
+    *on* the block). The week is now played in a fenced paddock nine squares by four
+    with the 6×4 block filling its eastern two thirds — the block, the three-tile
+    distance, the 3000-tick day and the sunny sleep are all as the plan asked; the fence
+    is the addition.
+  - **`LEARN_RATE` is now 0.02, not 0.05.** At 0.05 one day below the running average
+    pushes the policy away from everything that day contained, watering included, and by
+    the fourth morning the robot has settled on standing still and scores nothing for the
+    rest of the run. Rates tried: 0.0 (a control, the night switched off), 0.01, 0.02,
+    0.03, 0.05, 0.08, 0.1, 0.12, 0.15, 0.2, 0.3, 0.5, 1, 2, 10, 100. Everything at 0.03
+    and above collapses within a fortnight; 0.02 climbs and holds.
+  - **The learning is real but weak, and the night rule is why.** Over 24 seeds of the
+    paddock, a week at 0.02 is worth about a fifth more a day than the same week with the
+    night switched off (8.6 against 7.1 over days 2–12), and beats its own first three
+    days in 16 runs of 24 against the control's 11. The cause is a mismatch inside Q-96's
+    rule: `acc += r · trace` credits each decision with the rewards that came *after* it
+    (reward-to-go), while `baseline · trace` subtracts a whole day's mean score from every
+    decision alike, so the average decision is pushed away from itself by roughly half the
+    baseline — which is exactly the standing-still collapse, and why a lower rate is the
+    only thing holding it off. Either credit the whole day's score against the final trace
+    (plain REINFORCE, which the baseline then matches), or keep reward-to-go and give the
+    baseline a per-decision form. **Not changed here** — it is Q-96's rule and WI-4's
+    code, and a decision above this work item. The sampler was cleared as a suspect first:
+    `Policy.draw_u` over a robot's day is uniform (300 draws, mean 0.48–0.52, every tenth
+    of the range between 19 and 40).
+- 2026-09-09 — **WI-6 landed: the night's baseline is charged per decision, and the rate
+  is 0.03.** The flaw the item above found is fixed by a third weights-sized sum in the
+  robot's `extra`, `base_trace`, which is the eligibility trace weighted at each decision
+  by the fraction of the meter still in its arms; the night is now
+  `w += rate·(acc − baseline·base_trace) / decisions`. The reasoning is that `acc` pays a
+  decision only what came after it, and what an average day still had left at that moment
+  is roughly its remaining meter — a robot with a third of its day left can water at most
+  a third as many more squares. It stays unbiased (the weight depends on where in its day
+  the robot was standing, never on what it chose) and JSON-plain, and it is recomputed on
+  replay like everything else.
+  - **The sweep**, 24 paddocks played twice each — once learning, once with the night
+    switched off — as thirsty squares a day over days 5-7, with the same 24 carried on to
+    twenty days. The control is 6.6 at every rate, and it beat its own first three days in
+    15 weeks of 24.
+
+    | rate | days 1-3 | days 5-7 | weeks that rose | day 20 |
+    |------|----------|----------|-----------------|--------|
+    | 0.02 | 6.4 | 8.9 | 19 / 24 | 9.5 |
+    | **0.03** | **6.5** | **9.1** | **20 / 24** | **9.2** |
+    | 0.05 | 6.4 | 9.0 | 19 / 24 | 9.2 |
+    | 0.07 | 6.5 | 8.8 | 16 / 24 | 8.4 |
+    | 0.10 | 6.1 | 7.9 | 17 / 24 | 7.5 |
+    | 0.20 | 5.0 | 5.4 | 14 / 24 | 4.9 |
+
+    The range is flat from 0.02 to 0.05 and falls off above it, so 0.03 is the middle of
+    the flat part and the best of the three.
+  - **It beats the old rule, which is why the fallback was not needed.** On the same 24
+    paddocks the old rule managed 8.3 a day at its own tuned 0.02, and over twenty days it
+    peaked at 9.3 in the second week and sank to 7.3 by the twentieth — at 0.03 it sank to
+    6.1, below a robot that never learned at all. The new rule holds at 9 or better through
+    day twenty at every rate up to 0.05. The plain-REINFORCE fallback held in
+    reserve for this item — whole-episode return against a constant baseline — was
+    therefore never measured.
+  - The demo prints the 24-paddock summary under its table on every run, so the curve is
+    shown rather than asserted (D-4). The fixed-seed gate is unchanged and passes with
+    room: 6.7 thirsty squares a day over days 1-3 against 10.3 over days 5-7.
+  - Unit 2357 passed, integration 671 passed, robot session green, gateway clean.
+- 2026-09-09 — Q-99 ruled by the CEO: not a pen, a denser reward. WI-8 added (till action,
+  bare channel, +0.1). Runs after the night-rule fix lands, because both touch the brain.
+- 2026-09-09 — **WI-8 landed: the fence is down and the hoe works.** `bare` is the fifth
+  observation channel (128 inputs), `till here` is action 5 and `wait` is 6 (seven
+  actions), `Rewards.TABLE["tilled_tile"]` is 0.1, and the demo's staging is the 6x4 block
+  on open cleared ground with the robot three squares west of it and no fence anywhere.
+  Unit 2366 passed, integration 671 passed, robot session green, gateway clean.
+  - **The ruling's hypothesis holds, and the robot is doing exactly what the ruling
+    predicted.** The fixed-seed week rises from 3.1 a day over days 1-3 to 6.5 over days
+    5-7. Over 24 farms played twice each — once learning, once with the night switched off
+    — a week ends at **5.4 against the control's 4.6**, and **22 of the 24 weeks rose**
+    against the control's 18. Carried on to twenty days: 5.9 against 5.1.
+  - **It makes its own practice ground, and almost nothing else.** Of the waterings that
+    earned, over the last three days of 24 weeks, **5.1 a day land on soil the robot
+    opened with its own hoe and 0.0 a day on her sown block.** The robot never learns to
+    go to her field; it learns to keep a wet patch under its own feet. The design chapter
+    warned this was possible and accepted it (`design/06`, "not a pen — a denser reward");
+    it is now measured, and it is the whole of the effect rather than a side effect. **For
+    the CEO:** the machine a player buys today is not yet a machine that waters her wheat.
+    The next lever is a reason to prefer *her* squares — it already sees a `crop` channel
+    and nothing yet pays more for using it.
+  - **`LEARN_RATE` is now 0.12, not 0.03.** The gate did not hold on open ground at 0.03,
+    so the rate was swept as the item allows. A day out here is 60-90 decisions rather
+    than the paddock's 300 (the robot spends its meter instead of wandering through it),
+    and the night divides by the day's decisions, so the same rate is a quarter of the
+    step it used to be. Read as the day's score on days 5-7 over 24 farms, control 4.6:
+    0.01 4.8 (16/24), 0.02 4.9 (18), 0.03 4.9 (19), 0.05 4.8 (17), 0.08 5.0 (17), 0.11 5.3
+    (17), **0.12 5.4 (22)**, 0.13 5.5 (21), 0.15 4.8 (15), 0.20 5.2 (18), 0.30 4.4 (17),
+    0.50 3.6 (14). Twenty days, control 5.1: 0.03 5.8, 0.05 5.5, 0.08 6.0, **0.12 5.9**,
+    0.20 5.0. 0.12 is picked for the weeks-that-rose column. The block distance was swept
+    too (3, 1 and 0 squares from the block, and standing inside it); moving the robot
+    closer made every arm worse and the control better, so the staging is unchanged.
+  - **The one-seed gate is noisy on open ground, and that is worth knowing before somebody
+    trusts it.** A single week's rise flips with the rate for no reason but the draw: it
+    fails at 0.03, 0.05, 0.08 and 0.10 and passes in a band from 0.11 to 0.15. The rate
+    was chosen on the 24 farms and then checked against the gate, not the other way round.
+    The control rises too (3.7 to 4.6 over a week) because the *field* improves on its own
+    — soil opened yesterday is still open this morning — so "days 5-7 beat days 1-3" is a
+    weaker claim than it was inside the fence, and the honest gate is the 24-farm gap the
+    demo prints under its table.
+  - **A finding for the gateway, not for this item.** `till` is refused only on the yard
+    and the home's floor, so it succeeds on sown, growing and ripe squares and tills the
+    crop away. A Mark III can therefore hoe her wheat back into mud. It earns nothing for
+    doing so (only `cleared` pays) and the plan said not to special-case it in the brain,
+    so nothing here does — but it is a real thing a player can watch happen, and it wants
+    either a gateway rule or a designer's ruling.
+  - `CLAUDE.md`'s command list still describes the demo as "seven days on one seed in a
+    fenced paddock". Not edited here; it needs a hand.
 - 2026-09-09 — **WI-8b landed (hoe parity, the eight-farm gate, the price experiment): the hoe obeys the player's own rule, the gate is eight farms
   against a control, and the rate is 0.06.** Three pieces of work on the same robot, one
   of which changes what it does and two of which change how we know. Unit 2374 passed,
@@ -147,26 +563,12 @@ the release up mid-way starts at §9.*
     learn from on its first mornings. If the CEO wants the machine on *her* wheat, the
     lever is more likely to be something that makes her field findable — it already sees
     a `crop` channel, and its vision is two tiles — than a smaller number on its own soil.
-
-## 9. Execution status and handover
-
-*If you are the session picking this up: read §1–§3, then the status lines below, then
-only the work item you are on. The chief of staff's running notes are in
-`hq/data/staff/claude/memory.md`; the work items are `hq/data/work/` entries whose
-`parent` is `mark-3-learning-bot`.*
-
-> **This file is missing §§4–8 and the first two thirds of this section, and it is worth
-> fixing before the next item is handed out.** They were deleted by commit `3397e22`
-> ("The Mark III's job is the whole farm"), which set out to add WI-9 and removed 439
-> lines while adding 80 — so the work items, the not-in-scope list, the execution notes,
-> the estimates, the pre-tag verification checklist and every status line from WI-1 to
-> WI-8b went with them, and WI-9's own body never arrived. The last whole copy is one
-> command away: `git show c513be7:docs/V0_2_1_PLAN.md`. The two dated entries at the
-> bottom of §3 (Q-100 ruled; WI-8b landed) are status lines from this section that the
-> same merge left stranded under the wrong heading. Reported by the WI-9a worker rather
-> than repaired, because which of those sections the rewrite meant to keep is the
-> author's call, not a worker's.
-
+- 2026-09-09 — Q-100 ruled: the full reward table, no ownership of tiles. Design rewritten
+  (actions are taps; the robot carries one crop; seeds from her box; crows by reaching).
+  WI-9a/b added.
+- 2026-09-09 — The chief of staff's scripted edit truncated this file after §3; rebuilt from
+  the last full version once the sim-side worker reported it. Lesson for scripted doc
+  edits: check the line count and the heading list after every write.
 - 2026-09-09 — **WI-9a landed: a machine works out of her stores, carries what it cuts,
   and the reward table is the CEO's eight rows.** Three gateway rules that answer a
   machine differently from a person (`SimWorld._is_machine`, asked of the species so all
