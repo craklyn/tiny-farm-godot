@@ -1,5 +1,7 @@
 # 14 — The training workbench
 
+*Mockups of the five plates: `mockups/workbench/` (one PNG each, and the HTML they were drawn from).*
+
 *Status: designed 2026-09-10 at the designer's request, after the Mark III went to the
 tablet. Strawman for approval on Q-101. Depends on `06-bots-and-training.md` ("The
 ladder's third rung") and on D-4 (stylise the rendering, never the facts). Nothing here is

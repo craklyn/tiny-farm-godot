@@ -34,5 +34,31 @@
       "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"
     }
   ],
-  "attachments": []
+  "attachments": [
+    {
+      "type": "image",
+      "src": "docs/design/mockups/workbench/workbench_dials.png",
+      "caption": "The dials: each rewarded outcome on the ten-step ladder, minus and plus, your table as the factory setting"
+    },
+    {
+      "type": "image",
+      "src": "docs/design/mockups/workbench/workbench_eyes.png",
+      "caption": "The eyes: the five-by-five view as the robot sees it, its scalars, and the thinking strip"
+    },
+    {
+      "type": "image",
+      "src": "docs/design/mockups/workbench/workbench_plate.png",
+      "caption": "The plate: model, inputs, training rule, rate and exploration, read from the code"
+    },
+    {
+      "type": "image",
+      "src": "docs/design/mockups/workbench/workbench_ledger.png",
+      "caption": "The ledger: points per outcome over the fixed-seed week, with expected against actual, exploration, last night's update and wasted decisions"
+    },
+    {
+      "type": "image",
+      "src": "docs/design/mockups/workbench/workbench_mosaic.png",
+      "caption": "The mosaic: the weight matrix folded to warm and cool cells"
+    }
+  ]
 }
