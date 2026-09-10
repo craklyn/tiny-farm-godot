@@ -63,6 +63,10 @@ godot --headless --path . --script res://tools/demo_learning_robot.gd
 
 # Verify the last human play session replays to the autosave
 godot --headless --path . --script res://tools/verify_replay.gd
+
+# The training workbench's five plates as PNGs (tools/shot_workbench_0..4.png) on a fresh
+# Mark III — needs a display; saves to scratch so it never seeds the next suite run
+godot --path . res://tools/capture_workbench.tscn
 ```
 
 After a fresh clone or when assets changed, import first: `godot --headless --path . --import`

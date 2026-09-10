@@ -173,6 +173,21 @@ scorecard without waiting for the bench.
 
 ## 10. Build shape (once approved)
 
+*Built 2026-09-10 as v0.2.2 on the plan in `V0_2_2_PLAN.md`, all five plates and the bench in
+the shop. Four things settled in the building, none of which change §§1–9's intent:*
+
+- *The eyes are a snapshot, not a feed (§3 above): the world holds while any menu is open.*
+- *A dial turn is the verb `tune` with flat `row` and `value` keys, and its only legal values
+  are the ten rungs. The tick the ledger draws for it marks the day the dial turned.*
+- *One colour means one thing across the bench: the eyes' entropy bar is drawn in neutral ink
+  rather than the mockup's blue, which is the ledger's "crow in the air"; the dials list the
+  rows in the reward table's own order, so the two crow rows sit the other way round from the
+  mockup's left column; the mosaic's rows follow the observation's own channel order.*
+- *Three small calls are the designer's whenever he wants them: a dial turn makes no sound
+  today (a purchase in the shop does); the bench is priced at 300; and the game has no pixel
+  face, so the plate is set in the game's own font rather than the mockups'.*
+
+
 | Item | Owner | ~days |
 | --- | --- | --- |
 | `tune` verb, per-robot `rewards`, history at value-in-force, `last_update`, entropy per day, spent-decision count | Tomas (sim) | 1.5 |
