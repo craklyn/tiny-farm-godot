@@ -80,7 +80,8 @@
           "id": "s15",
           "title": "Put Robot Mk III in the shop with its own sprite, and let its panel say days practised and yesterday's score",
           "estimate_days": 0.5,
-          "done": false
+          "done": true,
+          "shipped_in": "main 2026-09-09"
         },
         {
           "id": "s16",

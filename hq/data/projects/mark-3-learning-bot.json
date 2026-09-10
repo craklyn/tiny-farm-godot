@@ -20,7 +20,7 @@
     "Two runs on the same seed are identical; the seven-day learning curve rises on a fixed seed",
     "Every watering looks and sounds like hers; it moves at the Mark I's pace; nothing changes without a cue"
   ],
-  "current_status": "Building. On main with tests, both suites green (2026-09-09): the observation builder, the reward table, the policy maths, the learn setting in the bot brain with its day and night, Robot Mk III in the shop (wearing the Mk II's sheet until its own lands), the nightly update, and a two-day replay round-trip with the weights in the save. One decision costs about 234 microseconds headless. Next: the seven-day learning-curve demo and its gate, the panel numbers, and the sprite the CEO approved spending on. One card open for the CEO: what a Mark III keeps when she picks it up (Q-98).",
+  "current_status": "Building. On main with tests, both suites green (2026-09-09): the observation builder, the reward table, the policy maths, the learn setting with its day and night, Robot Mk III in the shop with its own sheet (generated, $0.119), the nightly update, the two-day replay round-trip, and the panel showing nights practised and yesterday's count. Left: the seven-day learning-curve demo and its gate (being built), the tablet check, and the release chores. One card open for the CEO: what a Mark III keeps when she picks it up (Q-98).",
   "plan": [
     {
       "step": "Design written against the code, with the six rules and the v1 scope",
@@ -48,7 +48,7 @@
     },
     {
       "step": "Robot Mk III in the shop with its sprite and panel numbers",
-      "done": false
+      "done": true
     },
     {
       "step": "Watched on the tablet: learns within a week of in-game days, and is legible",

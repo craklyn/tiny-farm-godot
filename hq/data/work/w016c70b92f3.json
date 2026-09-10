@@ -11,10 +11,42 @@
   "thread": "jade",
   "source": "session",
   "source_message": "CEO, 2026-09-09, chief of staff session: v0.2.1 is the Mark III, the robot that learns by reinforcement (P-14).",
-  "result": "Landed on main (merged from an Opus worker's worktree, commit ca455b3): CONFIG_LEARN and the _learn branch in bot_brain.gd, deploy writing the learned keys, on_result scoring a wet tile, the learn arm of on_new_day, Policy.salt_of, the bot_mk3 row and ORDER entry (icon: the Mk II sheet until WI-6). test_learning_robot_day, 56 assertions, including the two-day replay chapter and save/restore weight equality. Unit 2349 passed, integration 650 passed, robot session passed, gateway check passed. The panel numbers (Q-97's floor) are still to do and stay with this seat. Chief of staff verified: ran both suites on main after the merge.",
+  "result": "Landed on main (merged from an Opus worker's worktree, commit ca455b3): CONFIG_LEARN and the _learn branch in bot_brain.gd, deploy writing the learned keys, on_result scoring a wet tile, the learn arm of on_new_day, Policy.salt_of, the bot_mk3 row and ORDER entry (icon: the Mk II sheet until WI-6). test_learning_robot_day, 56 assertions, including the two-day replay chapter and save/restore weight equality. Unit 2349 passed, integration 650 passed, robot session passed, gateway check passed. The panel numbers (Q-97's floor) are still to do and stay with this seat. Chief of staff verified: ran both suites on main after the merge. Panel landed later the same day (commit d6b985f merged): a readout row for a Mark III — a crescent with days, the HUD's own can glyph with yesterday's count — above Pick up; the panel previously could not show a policy-program machine at all. Integration suite 671 passed with 21 new assertions.",
   "started": "2026-09-09",
   "attempts": 1,
   "created": "2026-09-09T20:01",
   "created_ts": 1789009294.6615415,
-  "parent": "mark-3-learning-bot"
+  "parent": "mark-3-learning-bot",
+  "follow_ups": [
+    {
+      "title": "Show days practised and yesterday's score on the machine panel",
+      "owner": "jade",
+      "level": "story",
+      "tier": 2,
+      "first_action": "Add a two-number row to the machine panel for a bot whose config is 'learn': days practised and yesterday's score, read from the learned keys bot_brain.gd writes on_new_day. Numbers only — Q-97 ruled that as the v1 night surface floor.",
+      "why": "It was in the ask and is the ruled floor for the night surface; without it the player who spent 800 gold cannot see the bot learning."
+    },
+    {
+      "title": "Draw the Mark III its own shop and world sprite",
+      "owner": "yuki",
+      "level": "story",
+      "tier": 2,
+      "first_action": "Take assets/sprites/generated/bot_mk3.png (already generated, currently untracked) through palette-lock and post-processing into the atlas, record provenance in CREDITS.md, and point the bot_mk3 catalogue row at it instead of the Mk II sheet.",
+      "why": "The shop currently sells the Mark III wearing the Mark II's art, so the purchase reads as a duplicate of a bot the player owns."
+    },
+    {
+      "title": "Keep the Mark III out of the next release until its panel and sprite land",
+      "owner": "sofia",
+      "level": "task",
+      "tier": 1,
+      "first_action": "Mark bot_mk3 below the cut line for the next player-facing release, with the panel-numbers story and the sprite story as its two blockers; move it above the line when both are done.",
+      "why": "The code is green but the two player-visible pieces are not, and a tag ships whatever is on main."
+    }
+  ],
+  "recommend": {
+    "question": "Does the Mark III go out to players in the next release as it stands, or wait for its panel numbers and its own sprite?",
+    "answer": "Accept the code onto main and hold the Mark III out of the next release until the panel numbers and the sprite land.",
+    "why": "A learning bot whose learning you cannot see, wearing another bot's face, teaches the player the wrong thing about what 800 gold bought.",
+    "instead": "Ship it now and treat the numbers and sprite as a fast follow — reasonable if he wants the Mark III in front of players sooner and is willing to have its first impression be a mystery box."
+  }
 }
