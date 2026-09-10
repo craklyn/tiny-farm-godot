@@ -33,9 +33,9 @@ re-survey.*
 6. **Actions are flat dictionaries.** `verb`, `target`, `actor`, and any verb-specific keys
    at the top level (`config`, `item`, `machine`, `weather`). No `params` sub-dictionary
    exists anywhere in the codebase (F-31), and the replay's encoder only normalises a
-   top-level `target` (F-33). `tune` follows suit.
-7. **The world holds while a menu is open.** `open_menu` pauses the tree and an integration
-   scenario asserts it (F-21). The bench is a menu; it pauses like the others. The eyes
+   top-level `target` (F-23). `tune` follows suit.
+7. **The world holds while a menu is open.** `open_menu` pauses the tree (F-32) and an integration
+   scenario asserts it (`_scenario_l_menu_holds_world`, `tools/test_runner.gd:69`). The bench is a menu; it pauses like the others. The eyes
    plate therefore shows the robot's view and its last decision *at the moment she opened
    the bench*, recomputed on every switch — not a feed. Recorded in `design/14` §3.
 8. **The panel's and the bench's charts are one drawing code.** The ledger's main chart *is*
@@ -62,7 +62,7 @@ re-survey.*
 | F-4 | `_learn(world, actor_id, extra, tick, gs)`: exhausted → park; mid-errand → `_carry_on`; else `obs = Observation.build(...)` (`:1135`), `chances = Policy.probs(Policy.logits(...))` (`:1137`), `choice = Policy.sample(chances, Policy.draw_u(salt, decisions))` (`:1145`), `decisions += 1` **before legality is known** (`:1146`), trace and base_trace folds (`:1150-1159`), `pending = ""`, then `_begin(...)`; `wake = tick + SimClock.RATE` if no job started (`:1161-1168`) | `bot_brain.gd:1113-1168` |
 | F-5 | Spent decisions are counted nowhere: every "nothing to do" path is a bare `return {}` — in `_begin` (`:1185, 1204, 1208, 1218, 1221, 1227`), `_set_job` (`:1239, 1249`), `_do_job` (`:1340, 1345, 1352, 1366, 1370, 1373`), `_abandon` (`:1295-1298`) | `bot_brain.gd` as listed |
 | F-6 | `pending` is a `Rewards` key written in `_do_job` one beat before the Action leaves; bird rows at `:1566` | `bot_brain.gd:1341-1371, 1566` |
-| F-7 | `on_result`: returns unless `learn`; reads+clears `pending`; returns if `pending == ""` or `not result.ok`; `earned := Rewards.of(pending)` (`:1792`); **`if earned == 0.0: return` before any bookkeeping** (`:1793-1794`); then `add_into(acc, trace, earned)`, `score += earned`, `earned[slot] += earned` | `bot_brain.gd:1775-1802` |
+| F-7 | `on_result`: returns unless `learn`; reads+clears `pending`; returns if `pending == ""` or `not result.ok`, and for a `harvest` whose result carries no `crop_type` (`:1790`); `earned := Rewards.of(pending)` (`:1792`); **`if earned == 0.0: return` before any bookkeeping** (`:1793-1794`); then `add_into(acc, trace, earned)`, `score += earned`, `earned[slot] += earned` | `bot_brain.gd:1775-1802` |
 | F-8 | `on_new_day` → `_sleep_on_it(extra)`: `per_decision = 1/max(1,decisions)`; `weights = Policy.night_update(weights, _scaled(acc), _scaled(base_trace), baseline, LEARN_RATE)` — **old and new arrays both in hand here** (`:1631-1634`); `baseline = (baseline*days + score)/(days+1)`; `last_score = score`; `days += 1`; zero `score, decisions, trace, acc, base_trace, earned, pending`; `history.append(earned.duplicate())` capped at `LEARN_HISTORY_DAYS` (`:1651-1655`) | `bot_brain.gd:1625-1657, 1720-1737` |
 | F-9 | Constants: `LEARN_TILL 0 … LEARN_WAIT 7`, `LEARN_ACTIONS 8` (`:184-192`); `LEARN_RATE 0.03` (`:283`); `LEARN_DAY_STRIDE 7919`; `LEARN_HISTORY_DAYS 30` (`:294`); `CONFIG_LEARN "learn"` (`:93`) | `bot_brain.gd` |
 | F-10 | Reward row → action: tilled←TILL, planted←PLANT, watered_plant/watered_soil←WATER (split on crop or seed), harvested←HARVEST, shipped←SHIP, crow_eating/crow_flying←SHOO (split on bird state) | `bot_brain.gd:1341-1371, 1566` |
@@ -121,8 +121,10 @@ re-survey.*
   `BotBrain._reward_of(extra, outcome)`: the row from `extra["rewards"]` when the key is present
   and sized 8, else `Rewards.of(outcome)` — so a robot from a save that predates this release
   reads the factory and never needs a migration. **The zero-reward early return in `on_result`
-  goes** (F-7): a row she has set to 0 still books the outcome (adding 0.0 changes no number, so
-  determinism is untouched; it matters because `earned` is what the ledger draws).
+  goes** (F-7), as tidying only: it is unreachable today (every `pending` is a priced key), and
+  with a per-robot 0 it would skip nothing but additions of 0.0, so removing it changes no
+  number. A row she sets to 0 therefore draws flat on the scorecard, which is the truth; v1
+  keeps no per-row count of outcomes.
 - **The dial turn is the verb `tune`**, flat keys (rule 6):
   `{"verb": "tune", "actor": "player", "target": <robot tile>, "row": <a KEYS name>, "value": <a LADDER entry>}`.
   Modelled on `configure` (F-15) for the lookup and on `teach` (F-16) for the result: the
@@ -141,18 +143,28 @@ re-survey.*
     `Policy.entropy_bits(chances)` right after `chances` is computed.
   - `spent: 0` — today's spent decisions. **Spent** = a decision on one of the six verb
     actions (`LEARN_TILL … LEARN_SHOO`) that ends without an Action reaching the gateway:
-    counted in `_learn` when `_begin` returns `{}` and started no job, and at each site where
-    an errand ends without emitting (`_abandon`, and `_do_job`'s refusal returns, F-5).
-    `wander` and `wait` are never spent.
+    **counted at exactly two sites, one per entry path, and nowhere else**: in `_learn`, when
+    `choice <= LEARN_SHOO`, `_begin` returned `{}` and `extra["job"]` is still `""` (this covers
+    the synchronous case too — `_set_job` calls `_do_job` at once when the robot already stands
+    on the square, `bot_brain.gd:1246-1247`, so a refusal there surfaces as this same
+    condition); and in the mid-errand branch `_learn` takes when `extra["job"] != ""`, when
+    that call returned `{}` and the job became `""` during it (arrival refused, or the route
+    abandoned). `_begin`, `_set_job`, `_do_job` and `_abandon` never touch `spent`, so
+    `spent <= decisions` always holds. `wander` and `wait` are never spent.
+  - `waits: 0` — today's count of `LEARN_WAIT` decisions (so the plate can say, in words, that a
+    robot has learned to do nothing — design §2).
   - `last_action: -1` — the index of the most recent decision (set in `_learn` beside
     `decisions += 1`).
   - `last_update: 0.0` — the L2 norm of last night's weight change, `round6`'d.
   - `ledger: []` — one row per closed day, appended in `_sleep_on_it` right after `history`,
-    capped at `LEARN_HISTORY_DAYS`, six floats in this order:
-    `[score, expected, entropy, update, spent, decisions]` where `expected` is the `baseline`
-    in force **before** that night's update (what the robot expected of the day), `entropy` is
-    `round6(entropy_sum / max(1, decisions))`, `update` is that night's `last_update`. The
-    night zeroes `entropy_sum` and `spent` with the rest.
+    capped at `LEARN_HISTORY_DAYS`, **seven floats** in this order:
+    `[score, expected, entropy, update, spent, decisions, waits]` where `expected` is the
+    `baseline` in force **before** that night's update (what the robot expected of the day),
+    `entropy` is `round6(entropy_sum / max(1, decisions))`, `update` is that night's
+    `last_update`. **`_sleep_on_it` zeroes `score` and `decisions` (`:1642-1643`) before it
+    appends `history` (`:1652`)** — so every value the row needs is captured into locals at the
+    top of the function beside `per_decision` (`:1626-1630`) and never read after the wipe. The
+    night zeroes `entropy_sum`, `spent` and `waits` with the rest.
   - `history` is unchanged in shape; "recorded at the value in force" is already true because
     `earned` accumulates the reward at the moment it was paid. WI-1 asserts it.
 - **Two pure helpers in `Policy`** (F-11): `static func entropy_bits(p: Array) -> float`
@@ -165,21 +177,31 @@ re-survey.*
   Array) -> Array` returning `n_out` rows of `groups.size()` summed weights (biases excluded).
 - **The bench is a structure in the catalogue** (P-12): `MachineDefs.TYPES["workbench"]` =
   `{name: "Workbench", price: 300, species: "", program: "", configs: [], default_config: "",
-  unlock_requirement: <bot_mk3's>, object: "workbench", icon: {sheet:
+  unlock_requirement: null (as `bot_mk3`'s is, `machine_defs.gd:188`), object: "workbench", icon: {sheet:
   "res://assets/sprites/generated/workbench.png", region: Rect2(0, 0, 16, 32)}}`, appended to
   `ORDER` after `bot_mk3`. **Price 300 is the chief of staff's strawman**, listed for the CEO
-  in §9. `object` is a new row field: the `place` structure branch (F-17) sets
-  `set_object(target, row.object)` when the row has one and keeps the stall's two-object
-  special case otherwise. `WorldLayout.WORKBENCH := "workbench"`; the bench joins
+  in §9. `object` is a new row field, read through a new accessor `MachineDefs.object_of(key) -> String`
+  (`""` when the row has none). The `place` structure branch (F-17) becomes: if
+  `object_of(item) != ""` → `set_object(target.x, target.y, object_of(item))`, decrement the
+  crate, return `{ "ok": true, "structure": item }` (no `slot`); else the stall's two-object
+  case exactly as today. `WorldLayout.WORKBENCH := "workbench"`; the bench joins
   `TALL_OBJECTS` (its sprite is 16×32, hung like the well) and **not** `OPEN_OBJECTS` (it
   blocks walking, like the well; a bench beside a robot therefore reads as unwalkable in its
   `walkable` channel, which is the truth). Set down through `place` only (F-19).
 - **A tap on the bench opens it** without a verb: `SPECIAL_OBJECTS["workbench"] =
   "open_workbench"` (she walks to it, F-25); `player.gd` special-cases `open_workbench` the way
-  it does `open_shop` and defers `Main.trigger_workbench(at: Vector2i)` →
-  `menus.open_workbench(at)`.
-- **The bench is a fifth mode of `ui/menus.gd`**, `active_menu == "workbench"`, so open, close,
-  pause, `is_open()` and the pause-key all come for free. Its content is one full-rect Control,
+  it does `open_shop`, **above the fallthrough at `player/player.gd:756-765` that sends any
+  unknown action string to the gateway as a verb**, and defers `Main.trigger_workbench(at:
+  Vector2i)` → `menus.open_workbench(at)`. Because the bench is tall, a tap on the tile above it
+  also reports it (F-18) and `at` may be that tile: `open_workbench` first normalises `at` with a
+  new read-only query `SimWorld.object_tile(t: Vector2i) -> Vector2i` (the tile whose own grid
+  cell holds the object `get_object(t)` reports — `t` itself, or the tile below it for a tall
+  object).
+- **The bench is a fifth mode of `ui/menus.gd`**, `active_menu == "workbench"`, opened with
+  `open_menu("workbench")` and then `menu_panel.visible = false`; `_rebuild_options()` gets a
+  `"workbench"` arm that builds nothing (its `match active_menu` has no such arm today,
+  `ui/menus.gd:151-169`); `close_menu()` hides the bench too. Pause, dim, `is_open()` and the
+  pause-key then come from the existing plumbing. Its content is one full-rect Control,
   `Workbench` (`ui/workbench.gd`, `class_name Workbench extends Control`, built in code like
   everything else), added to the menus layer above `dim_overlay`; `menu_panel` is hidden in this
   mode. Interface:
@@ -192,8 +214,16 @@ re-survey.*
   var robot_id: String        # the one on the bench, "" when there is none
   var plate: int              # the lit plate
   var pages: Array            # the five page Controls, plate order
+  var highlight_channel: int  # -1, or a channel index the mosaic asked the eyes to outline
+  static func draw_action_glyph(canvas: CanvasItem, action: int, at: Vector2, size: float) -> void
   signal closed
   ```
+  `draw_action_glyph` draws the eight action pictures every page shares: hoe, packet, can,
+  wheat, bin and crow from the F-45 cells, a four-arrow cross for `wander` and a clock for
+  `wait` from primitives. The row pips are `static func BotScorecard.draw_pip(canvas:
+  CanvasItem, key: String, at: Vector2, size: float) -> void`, a refactor of `_pip` that scales
+  its chip and sprout offsets (`bot_scorecard.gd:295-296`) by `size / PIP_SIZE`. **Both are
+  WI-2's**, so the parallel items only consume them.
   Which robot: `SimWorld.learners() -> Array` (new read-only query, layer 2: ids of actors whose
   `extra` has `weights`, sorted) is the strip; the bench shows `preferred_id` when it is a
   learner (menus passes `machine_id`, the robot she last tapped), else the learner nearest the
@@ -206,7 +236,8 @@ re-survey.*
   `ui/workbench_dials.gd`, `ui/workbench_eyes.gd`, `ui/workbench_plate.gd`,
   `ui/workbench_ledger.gd`, `ui/workbench_mosaic.gd`, each `extends Control` with
   `func show_robot(farm: Node2D, actor_id: String) -> void` (empty string = empty state) and a
-  `_draw`. They get the body rect (F-44) as their rect. Colours and geometry constants shared
+  `_draw`. Each page is a full-rect 800×600 Control, so **F-44's numbers are used verbatim as absolute
+  coordinates**; the shell draws the chrome above `y = 152` and a page draws only inside the body. Colours and geometry constants shared
   across pages live on `Workbench` (`BRASS_LIT`, `BRASS`, `WOOD`, `BODY`, `CARD`, `INK`,
   `CHANNEL_COLOURS`, the plate rects) and are read from there.
 - **Colours are one language.** Reward rows use `BotScorecard.LINE_COLOURS`. Observation
@@ -293,11 +324,19 @@ outcome with `score` unchanged and no crash; a row tuned to `-1.0` gives a negat
 a negative `acc` fold with no error; `entropy_bits` of a uniform 8-vector is `3.0` within 1e-9
 and of a one-hot is `0.0`; after 30 s with zero weights `entropy_sum / decisions` is within 0.05
 of 3.0; `norm_of_change` of equal arrays is 0 and of `[3,4]` vs `[0,0]` is 5; after a day turn
-`ledger.size() == 1`, the row has six entries, `ledger[0][0] == last_score`, `ledger[0][1]` is
-the baseline before the night (0.0 on day one), `ledger[0][3] == last_update`, and
-`last_update > 0` when the day scored; **spent**: a robot certain of `LEARN_SHIP` carrying
+`ledger.size() == 1`, the row has **seven** entries, `ledger[0][0] == last_score`, `ledger[0][1]`
+is the baseline before the night (0.0 on day one), **`ledger[0][2]` equals the day's
+`entropy_sum / decisions` read at dusk, `ledger[0][3] == last_update`, `ledger[0][4]` and
+`ledger[0][5]` equal the `spent` and `decisions` read at dusk and are non-zero, `ledger[0][6]`
+equals the `waits` read at dusk**, and `last_update > 0` when the day scored; a robot certain
+of `LEARN_WAIT` has `waits == decisions` at dusk; **spent**: a robot certain of `LEARN_SHIP` carrying
 nothing spends every decision (`spent == decisions` after 10 s), certain of `LEARN_WAIT` spends
-none, and after the night `spent == 0`; `input_groups(spec_default())` has 13 groups whose
+none, and after the night `spent == 0`; **once each, never twice**: a robot certain of
+`LEARN_WATER` standing on the only thirsty tile in view emits at once (`spent == 0` after one
+decision), and after that tile is staged wet the next decision is spent exactly once; a robot
+certain of `LEARN_WATER` with the only thirsty tile two squares away starts the errand, the
+tile is staged wet before it arrives, and the errand ends with `spent == 1`; in every case
+`spent <= decisions`; `input_groups(spec_default())` has 13 groups whose
 indices are a permutation of `0..206`; `fold` on a weights array with a single 1.0 at
 `(action 2, input 7)` gives 1.0 in row 2 of the group holding index 7 and 0 elsewhere;
 `learners()` lists a placed Mark III and not a Mark I; **replay**: the existing Mark III
@@ -311,11 +350,14 @@ existing test green; gateway check clean.
 
 Files: `systems/machine_defs.gd`, `systems/world_layout.gd`, `systems/sim/sim_world.gd` (the
 `place` structure branch only), `systems/action_router.gd`, `player/player.gd`, `main.gd`,
-`ui/menus.gd`, `world/farm.gd` (one `object_regions` row), new `ui/workbench.gd` and the five
-page stubs, `tools/test_runner.gd`.
+`ui/menus.gd`, `world/farm.gd` (one `object_regions` row), `ui/bot_scorecard.gd` (`draw_pip`
+only), new `ui/workbench.gd` and the five page stubs, `tools/test_runner.gd`.
 
-- Catalogue row, `ORDER`, `WorldLayout.WORKBENCH`, `TALL_OBJECTS`, the generalised structure
-  branch, the special-object row and the player/main deferral — all as §3.
+- Catalogue row, `ORDER`, `MachineDefs.object_of`, `WorldLayout.WORKBENCH`, `TALL_OBJECTS`, the
+  generalised structure branch, `SimWorld.object_tile`, the special-object row and the
+  player/main deferral — all as §3.
+- The shared drawing: `BotScorecard.draw_pip` (the panel's scorecard must draw exactly as
+  before) and `Workbench.draw_action_glyph`; `highlight_channel` on the shell.
 - `menus.open_workbench(at: Vector2i)`: `active_menu = "workbench"`, pause, dim, hide
   `menu_panel`, `workbench.show_bench(farm, at, machine_id)`. `close_menu()` hides it.
 - `Workbench` shell: the chrome of F-44 (outer card, portrait strip with up to six 56×56
@@ -342,9 +384,7 @@ world holds while a menu is open) still green. Both suites, gateway clean.
 ### WI-3 — The dials · ~1 day · Jade (gameplay) · `ui/workbench_dials.gd`, `tools/test_runner.gd`
 
 Eight rows in `Rewards.KEYS` order, column-major over the mockup's eight cards (left column
-rows 0–3, right 4–7): the row's colour bar (`LINE_COLOURS`), its pip (expose the scorecard's
-pip drawing as `static func BotScorecard.draw_pip(canvas: CanvasItem, key: String, at:
-Vector2, size: float) -> void`, refactoring `_pip` to call it), the value numeral (ladder
+rows 0–3, right 4–7): the row's colour bar (`LINE_COLOURS`), its pip (`BotScorecard.draw_pip`, WI-2's), the value numeral (ladder
 text), the ten-cell ladder strip with the current step lit, and minus/plus `Button`s 56×56
 that emit `tune` with `Rewards.stepped(current, ∓1)` through `farm.apply_action` in the F-34
 pattern, then `refresh()` the bench. A button is disabled at its end of the ladder. A press
@@ -380,8 +420,7 @@ numerals. Empty state when `actor_id == ""`.
 seeded tile one east of a placed Mark III and a wet one one west; open the bench, plate 1; the
 page's `patch` (expose `var patch: Array` = the per-tile channel arrays it drew from) has 25
 entries, entry `(dx=+1, dy=0)` has `needs_water` 1 and `crop` 1, entry `(dx=−1, dy=0)` has
-`wet` 1; `var probs: Array` sums to 1 within 1e-6 and is uniform for zero weights; after
-`_mk3_make_certain(extra, LEARN_WATER)` and `refresh()`, `probs[2] > 0.99`; the page draws
+`wet` 1; `var probs: Array` sums to 1 within 1e-6 and is uniform for zero weights; after making the robot certain of `LEARN_WATER` and `refresh()`, `probs[2] > 0.99`; the page draws
 without error for a robot on the map's corner (out-of-map tiles as dashes). Both suites green.
 
 ### WI-5 — The ledger · ~1.5 days · Sam (UX) · `ui/bot_scorecard.gd`, new `ui/metric_card.gd`, `ui/workbench_ledger.gd`, `tools/test_runner.gd`
@@ -412,11 +451,11 @@ panel's for the same robot (open the machine panel after closing the bench and c
 - The plate: the brass panel of F-44, five label/value lines computed per §3 (labels bold 13,
   values 12, default face), the fallback line below in 11 with `LEARN_FALLBACK` and `· not in
   force` / `· in force` from `LEARN_FALLBACK_IN_FORCE`. Numbers formatted: weights with a
-  thousands separator, rate as `0.03`, entropy `%.2f`.
+  thousands separator, rate as `0.03`, entropy `%.2f`. **One sentence in words** (design §2):
+  when the last closed `ledger` row has `decisions > 0` and `waits == decisions`, a sixth line
+  reads `it has learned to do nothing`; otherwise the line is absent.
 - The mosaic: `groups = Observation.input_groups(spec)`, `cells = Policy.fold(weights, n_in,
-  8, groups)`; eight columns (action glyphs from WI-4's set — put the glyph drawing in
-  `Workbench` as `static func draw_action_glyph(canvas, action, at, size)` so both pages share
-  it), thirteen rows with the group's swatch (`CHANNEL_COLOURS` for the eight channels; a sun,
+  8, groups)`; eight columns (`Workbench.draw_action_glyph`, WI-2's), thirteen rows with the group's swatch (`CHANNEL_COLOURS` for the eight channels; a sun,
   bolt, wheat, packet and bin glyph for the five scalars as the mockup draws them — primitives
   and F-45 cells); cell colour by value ÷ max |value| on the cool–neutral–warm ramp; tap a cell
   → the highlight card shows `%+.2f`, the swatch × the glyph, and the previous selection drops
@@ -427,7 +466,8 @@ panel's for the same robot (open the machine panel after closing the bench and c
 a placed Mark III, plate 2: the page's `lines` (expose `var lines: Array` of `[label, value]`)
 has five entries; the model line contains `207`, `8` and `1,664`; the training line contains
 `0.03`; the updated line contains the robot's `days`; after a day turn and `refresh()` the
-updated line changes. Plate 4: `cells` is 8×13; with `weights` set to a single 1.0 at
+updated line changes; with a staged `ledger` whose last row has `decisions == waits == 40`
+the sixth line is present, and with `waits == 0` it is absent. Plate 4: `cells` is 8×13; with `weights` set to a single 1.0 at
 `(LEARN_WATER, the first needs_water index)` the cell `(2, 0)` is the warmest and every other
 cell is neutral; tapping it puts `+1.00` on the highlight card; with zero weights every cell is
 neutral and nothing crashes. Both suites green.
@@ -481,7 +521,14 @@ any change to the learning rule or its rate; adjacency rules for `tune`.
   `godot --headless --path . res://tools/test_runner.tscn` and `python3 tools/check_gateway.py`
   pass **in the worktree**. Import first if assets changed: `godot --headless --path . --import`.
 - Add a unit test's call to `_init` next to `test_learning_robot_day`; add a scenario's call at
-  the end of `_run_scenarios`.
+  the end of `_run_scenarios` and the scenario function at the end of the file. Other items do
+  the same in parallel; the integrator resolves the adjacent-line conflicts.
+- **The integration suite has none of the unit suite's Mark III helpers** (`LiveSession`,
+  `_mk3_place`, `_mk3_make_certain` live only in `tests/test_runner.gd`). An integration
+  scenario stages a Mark III through the shop-and-place path at `tools/test_runner.gd:4353-4376`,
+  and makes it certain of an action inline — `extra["weights"][action * (width + 1) + width] =
+  1000.0` with `width = Observation.size(extra["spec"])` — commented as a test's staging, the
+  way `tools/capture_machines.gd` stages the scorecard.
 - Read only: this plan (§1–§3 and your item), `CLAUDE.md`, and the two or three files your item
   names. Do not re-survey.
 - Report back with: files changed; tests added and their assertion counts; both suite result
@@ -494,9 +541,13 @@ any change to the learning rule or its rate; adjacency rules for `tune`.
 WI-1 1.5 · WI-2 1.5 · WI-3 1.0 · WI-4 1.0 · WI-5 1.5 · WI-6 1.0 · WI-7 0.5 · WI-8 0.5 = 8.5
 days, matching the release plan's eight stories (s1–s8 in that order).
 
-Order: WI-1 alone; WI-2 alone; then WI-3, WI-4, WI-5, WI-6 and WI-7 in parallel (each owns
-its own page file; WI-5 also owns `bot_scorecard.gd` and `metric_card.gd`; WI-7 owns the
-asset and one `object_regions` row); WI-8 last.
+Order: WI-1 alone; WI-2 alone; then WI-3, WI-4, WI-5, WI-6 and WI-7 in parallel. Ownership in
+that wave: each item owns its own page file; WI-5 also owns `bot_scorecard.gd` (`plot_h`, the
+ticks — `draw_pip` is already WI-2's) and `metric_card.gd`; WI-7 owns the asset and one
+`object_regions` row; **nobody in the wave edits `ui/workbench.gd`** — anything a page needs
+from the shell is in WI-2 or is reported back. `tools/test_runner.gd` is appended to by every
+item and its adjacent-line conflicts are expected: the integrator resolves them by keeping
+every scenario and every call; WI-8 last.
 
 ## 8. Verification checklist (top to bottom before the tag)
 
@@ -524,3 +575,14 @@ is `training-workbench`.*
   stall's `place` path plus a special-object row). **For the CEO, not blocking**: the bench's
   price (300, a strawman); whether the game wants a pixel font (the mockups used one, the game
   has none).
+- 2026-09-10 — Plan reviewed against the code by a read-only Opus reader before any worker
+  started; nine corrections folded in above. The serious one: the night zeroes `score` and
+  `decisions` before it appends `history`, so a ledger row appended "after `history`" as first
+  written would have recorded zeros for entropy, spent and decisions, and the acceptance test
+  as first written would have passed anyway. The others: the spent count could be counted twice
+  on a square underfoot; the integration suite has no Mark III helpers; the zero-reward return
+  is unreachable, so removing it is tidying and no more; page coordinates are absolute; the
+  parallel wave shared three files, so `draw_pip`, `draw_action_glyph` and `highlight_channel`
+  moved into WI-2; `player.gd`'s fallthrough would send `open_workbench` to the gateway; a tap
+  on the tile above a tall bench needs normalising; `open_menu` needs a `workbench` arm. Added
+  from the design chapter on the same pass: a `waits` count and the plate's one sentence.
