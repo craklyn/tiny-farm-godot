@@ -56,6 +56,10 @@ godot --headless --path . --script res://tools/benchmark_sim.gd
 # a stalled mark-1 — prints the comparison table the unit test asserts on
 godot --headless --path . --script res://tools/demo_robot_value.gd
 
+# A week of a Mark III learning to water (v0.2.1): seven days on one seed in a
+# fenced paddock — prints the day-by-day table the unit test asserts on
+godot --headless --path . --script res://tools/demo_learning_robot.gd
+
 # Verify the last human play session replays to the autosave
 godot --headless --path . --script res://tools/verify_replay.gd
 ```

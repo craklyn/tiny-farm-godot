@@ -180,12 +180,22 @@ const LEARN_ACTIONS := 6
 # determinism reason this list cannot be reordered. One definition, one order.
 const LEARN_STEPS := Movement.DIRS
 
-# How hard a night pushes the weights. Safe at 0.05 only because the update is
-# divided by the day's decisions before it is applied (`_sleep_on_it`): the trace
-# is cumulative, so an un-normalised night grows with the *square* of how busy
-# the day was, and WI-2's bandit locked onto the wrong arm at this rate with
-# twenty decisions in it. A robot's day has several hundred. [Playtest]
-const LEARN_RATE := 0.05
+# How hard a night pushes the weights. Any rate at all is only safe because the
+# update is divided by the day's decisions before it is applied (`_sleep_on_it`):
+# the trace is cumulative, so an un-normalised night grows with the *square* of
+# how busy the day was, and WI-2's bandit locked onto the wrong arm at 0.05 with
+# twenty decisions in it. A robot's day has several hundred.
+#
+# **Lowered from 0.05 to 0.02 by WI-5's seven-day week**, which is the first
+# thing that ever watched this robot for longer than a minute. At 0.05 a single
+# day below the running average pushed the policy away from everything it had
+# done that day, watering included, and by the third or fourth morning the robot
+# had settled on standing still: over twenty days it scored nothing at all. At
+# 0.02 it climbs instead. Measured over 24 seeds of the paddock in
+# `tools/demo_learning_robot.gd`, a week at 0.02 is worth about a fifth more
+# thirsty squares a day than the same week with the night switched off, which is
+# the whole of what "it learns" currently means. [Playtest]
+const LEARN_RATE := 0.02
 
 # How far apart two days' draws are pushed. Any odd stride would do; a prime is
 # the cheap way to keep one robot's second day out of another robot's first.

@@ -68,6 +68,11 @@ const SHELF := {
 # own `_init` is the demo's, and preloading never runs it.
 const RobotValue := preload("res://tools/demo_robot_value.gd")
 
+# The week a Mark III spends learning to water, shared with the tool that prints
+# it as a table (`test_learning_robot` at the end of the mark-3 block says why it
+# is shared rather than copied). Static functions only, as above.
+const LearningRobot := preload("res://tools/demo_learning_robot.gd")
+
 
 func _init() -> void:
 	GameState = load("res://systems/game_state.gd").new()
@@ -164,6 +169,7 @@ func _init() -> void:
 	test_observation()
 	test_policy()
 	test_learning_robot_day()
+	test_learning_robot()
 	test_world_pages()
 	test_the_door()
 	test_fencing()
@@ -11431,6 +11437,64 @@ func test_learning_robot_day() -> void:
 			and int(again.actor(learner)["extra"]["days"]) == 2,
 		"which is the whole of Q-53 for a learning bot: nothing recorded, everything reproduced")
 	live.done()
+
+
+# --- Does it actually get better? (v0.2.1 WI-5) -------------------------------
+#
+# Everything above proves the Mark III *runs*: it decides once a second, it is
+# paid for outcomes and not for gestures, it survives a save, and a recorded
+# session replays into the same robot. None of it says the machine is worth
+# owning. This one does, and it is deliberately the only test in the file that
+# asks a question about a whole week rather than about a rule.
+#
+# The measurement lives in `tools/demo_learning_robot.gd`, which prints it as a
+# table for a person to read, so the report a human sees and the gate CI runs are
+# one week and not two (`test_robot_usefulness` is built the same way and says
+# more about why).
+func test_learning_robot() -> void:
+	print("\n--- A week of a robot learning to water (v0.2.1 WI-5) Tests ---")
+
+	var week: Dictionary = LearningRobot.run()
+	var scores: Array = week["scores"]
+
+	# --- the week is a week ---------------------------------------------------
+	# Asserted first, because a rise measured over a robot that never went outside
+	# would be a rise measured over nothing.
+	_assert(scores.size() == 7 and int(week["days"]) == 7,
+		"seven days were played (%d)" % scores.size())
+	var worked := true
+	for i in 7:
+		if int(week["decisions"][i]) <= 0 or int(week["waters"][i]) <= 0:
+			worked = false
+	_assert(worked, "and the robot decided and watered on every one of them")
+	_assert(int(week["energy_left"][0]) == 0,
+		"its first day ends with an empty meter, which is a full day's work (%d left)"
+			% int(week["energy_left"][0]))
+
+	# --- and it is the same week twice ----------------------------------------
+	# Q-53's claim, taken as far as it goes: nothing about a Mark III's day is
+	# recorded, so the same seed has to produce the same week down to the last
+	# weight — otherwise a saved farm and a replayed one would drift apart over a
+	# season and nothing would say when.
+	var again: Dictionary = LearningRobot.run()
+	_assert(again["scores"] == scores and again["decisions"] == week["decisions"],
+		"a second run of the same week scores the same seven days, day for day")
+	_assert(again["energy_left"] == week["energy_left"] and again["waters"] == week["waters"],
+		"spending the same arms on the same number of waterings")
+	_assert((again["weights"] as Array) == (week["weights"] as Array)
+			and (week["weights"] as Array).size() > 0,
+		"and ends holding the same robot, weight for weight (%d weights)"
+			% (week["weights"] as Array).size())
+
+	# --- the curve rises ------------------------------------------------------
+	# The whole point of the machine. The paddock, the seed and the meter are
+	# identical every morning, so the only thing that can move this number is what
+	# the robot learned the night before.
+	var early: float = LearningRobot.mean_of_days(scores, 1, 3)
+	var late: float = LearningRobot.mean_of_days(scores, 5, 7)
+	_assert(late > early,
+		"its last three days are worth more than its first three: %.2f thirsty squares a day against %.2f"
+			% [late, early])
 
 
 # --- The door (2026-09-06) ----------------------------------------------------
