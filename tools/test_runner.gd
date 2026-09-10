@@ -5545,6 +5545,27 @@ func _scenario_aq_the_ledger_is_the_scorecard() -> void:
 	var page: Control = bench.pages[3] as Control
 	_assert(page.visible, "and its page is the one showing")
 
+	# **Both halves of a "today" reading come off the same held instant.** This is
+	# the flake this scenario failed on one run in two: a robot pinned certain of
+	# `wait` still decides once a sim-second on its way to the bench, so by the time
+	# the page draws, `decisions` has ticked past the 180 staged above and
+	# `entropy_sum` has gained a near-zero term — and a card checked against the
+	# staged pair is checked against a day that has already moved on. Any expected
+	# value taken from a counter the robot's own decisions keep moving is exposed
+	# the same way. With the bench up the tree is paused and the record holds still,
+	# so: ask the page to draw itself from the record as it stands, then read that
+	# same record back and expect the arithmetic of what was just drawn. The cards
+	# below are checked against the live state rather than against a planted number,
+	# which is the stronger claim as well as the stable one.
+	bench.refresh()
+	await get_tree().process_frame
+	var drawn_score := float(extra.get("score", 0.0))
+	var drawn_baseline := float(extra.get("baseline", 0.0))
+	var drawn_entropy_sum := float(extra.get("entropy_sum", 0.0))
+	var drawn_decisions: int = maxi(1, int(extra.get("decisions", 0)))
+	var drawn_spent := float(int(extra.get("spent", 0)))
+	var drawn_last_update := float(extra.get("last_update", 0.0))
+
 	# --- the big chart is the panel's chart -----------------------------------
 	var chart = page.get("chart")
 	_assert(chart != null and chart is BotScorecard,
@@ -5597,10 +5618,10 @@ func _scenario_aq_the_ledger_is_the_scorecard() -> void:
 			placed_right = false
 	_assert(placed_right, "each a MetricCard, 180 by 158, in the row the mockup lays out")
 
-	_assert(is_equal_approx(cards[0].today, 24.0 - 13.6),
+	_assert(is_equal_approx(cards[0].today, drawn_score - drawn_baseline),
 		"the first card reads what today has earned against what the robot expected of it (%s)"
 			% str(cards[0].today))
-	_assert(is_equal_approx(cards[1].today, 2.24 * 180.0 / 180.0),
+	_assert(is_equal_approx(cards[1].today, drawn_entropy_sum / float(drawn_decisions)),
 		"the second reads today's entropy — the day's sum over the day's decisions (%s)"
 			% str(cards[1].today))
 	_assert(is_equal_approx(cards[1].reference, log(float(BotBrain.LEARN_ACTIONS)) / log(2.0)),
@@ -5613,7 +5634,7 @@ func _scenario_aq_the_ledger_is_the_scorecard() -> void:
 	# is `extra["last_update"]`; its triangle is that against the night before.
 	_assert(is_nan(cards[2].today),
 		"the third has no today on its line: the update is a thing that happens while she sleeps")
-	_assert(is_equal_approx(cards[2].reading, float(extra["last_update"])),
+	_assert(is_equal_approx(cards[2].reading, drawn_last_update),
 		"but its numeral is last night's move, which is the whole question it asks (%s)"
 			% str(cards[2].reading))
 	_assert(is_equal_approx(cards[2].previous,
@@ -5623,7 +5644,7 @@ func _scenario_aq_the_ledger_is_the_scorecard() -> void:
 	_assert(is_equal_approx(cards[0].reading, cards[0].today)
 			and is_equal_approx(cards[3].reading, cards[3].today),
 		"while the cards that do have a today read today, as they always did")
-	_assert(is_equal_approx(cards[3].today, float(int(extra["spent"]))),
+	_assert(is_equal_approx(cards[3].today, drawn_spent),
 		"the fourth reads the decisions that came to nothing today (%s)" % str(cards[3].today))
 	_assert(cards[3].kind == "bars" and cards[0].kind == "line"
 			and cards[1].kind == "line" and cards[2].kind == "line",
