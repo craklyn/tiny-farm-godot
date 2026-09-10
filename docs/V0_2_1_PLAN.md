@@ -58,14 +58,17 @@ the release up mid-way starts at §9.*
 ## 3. Decisions this plan is built on
 
 - **Observation spec** (Q-96): `{"self_pos": true, "energy": true, "vision": 2,
-  "channels": ["needs_water", "wet", "walkable", "crop"]}`. Vector = `[x/(W-1),
+  "channels": ["needs_water", "wet", "walkable", "crop", "bare"]}` — `bare` = state
+  `cleared` (added by Q-99). Vector = `[x/(W-1),
   y/(H-1)]` + `[energy/600]` + for each tile of the (2r+1)² patch, row-major from
   `(-r,-r)` (dy outer, dx inner), the channels in spec order. Out-of-bounds tiles are
-  all zeros. v1 size 103.
-- **Actions**: `0 up, 1 down, 2 left, 3 right, 4 water here, 5 wait`. A step is one
-  tile through the movement engine; "here" is the tile it stands on.
-- **Reward** (Q-96): +1 when its `water` turned a tile that needed water into a wet
-  one; 0 otherwise. Values in `systems/rewards.gd`.
+  all zeros. v1 size 128 (103 before Q-99's channel).
+- **Actions**: `0 up, 1 down, 2 left, 3 right, 4 water here, 5 till here, 6 wait` (the
+  till added by Q-99, 2026-09-09). A step is one tile through the movement engine;
+  "here" is the tile it stands on.
+- **Reward** (Q-96, Q-99): +1 when its `water` turned a tile that needed water into a
+  wet one; +0.1 when its `till` turned bare (`cleared`) soil into tilled; 0 otherwise.
+  Values in `systems/rewards.gd`.
 - **Cadence**: one decision per `SimClock.RATE` ticks (a second). Parks at an empty meter.
 - **Policy**: linear softmax, `n_out × (n_in + 1)` weights flat, bias last in each row,
   zero-initialised (uniform at birth).
@@ -238,6 +241,23 @@ precondition for this item, not an option.
 Learns within a week of in-game days on the tablet; legible when watched; then the
 release-notes, web-build and tag stories in the plan.
 
+### WI-8 — The hoe (Q-99) · ~0.5 day · `observation.gd`, `rewards.gd`, `bot_brain.gd`, the demo
+
+- `Observation`: a fifth default channel `bare` = tile state `cleared`.
+- `Rewards.TABLE["tilled_tile"] = 0.1`.
+- `BotBrain`: action 5 = `till` here (returns `{verb: "till", target: pos, actor}` with
+  `pending_bare` set from the tile), `wait` becomes 6; `on_result` scores `tilled_tile`
+  when `pending_bare and result.ok`; weights sized `size(spec) × 7`. `till` is refused on
+  `YARD`/`FLOOR` by the gateway (reward 0) — do not special-case it.
+- The demo's staging goes back to **open ground**: the 6×4 block on cleared land, no
+  paddock. That is the test of the ruling's hypothesis.
+
+**Accept:** the existing tests updated for 7 actions and 128 inputs; a `till` on a
+cleared tile scores 0.1 and on the yard scores 0; the gate (`test_learning_robot`)
+holds on open ground — days 5–7 beat days 1–3 on the fixed seed, two runs identical.
+If it does not hold on open ground, report the curves; do not bring the paddock back
+without saying so.
+
 ## 5. Deliberately NOT in scope
 
 Other verbs; a stall or home; vision beyond radius 2; cloning from her replays; shared
@@ -332,3 +352,5 @@ only the work item you are on. The chief of staff's running notes are in
     code, and a decision above this work item. The sampler was cleared as a suspect first:
     `Policy.draw_u` over a robot's day is uniform (300 draws, mean 0.48–0.52, every tenth
     of the range between 19 and 40).
+- 2026-09-09 — Q-99 ruled by the CEO: not a pen, a denser reward. WI-8 added (till action,
+  bare channel, +0.1). Runs after the night-rule fix lands, because both touch the brain.

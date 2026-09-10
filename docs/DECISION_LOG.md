@@ -570,6 +570,12 @@ never *how* (Sutton and Barto, 2nd ed.), and the energy budget is a constraint, 
 penalty. Inputs as drafted; Robot Mk III at 800 gold. Q-97 the same day: v1 shows the
 night as numbers on the robot's panel, nothing more.
 
+**Q-99 (2026-09-09):** when a fresh robot could not find reward on open ground, the
+designer's fix was a denser reward, not a fenced world: a till action and +0.1 for turning
+bare soil into tilled, "for initial playtesting". The order of fixes for a learning
+problem is therefore: more small, genuine outcome rewards first; constraining the world or
+adding senses later.
+
 ### D-1. Phase 5 genre (X-COM tactics vs. Gradius-like hybrid vs. other)
 **Why deferred:** Phase 5's cast is the player plus *trained bots* — its design depends on
 what trained bots actually feel like, which cannot be known before phase 4 exists.

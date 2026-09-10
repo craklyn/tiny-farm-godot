@@ -16,5 +16,24 @@
   "attempts": 1,
   "created": "2026-09-09T20:01",
   "created_ts": 1789009294.6615415,
-  "parent": "mark-3-learning-bot"
+  "parent": "mark-3-learning-bot",
+  "follow_ups": [
+    {
+      "title": "Record the Mark III art spend in the HQ ledger",
+      "owner": "harold",
+      "level": "task",
+      "tier": 1,
+      "first_action": "Once the concurrent session releases hq/data/spend.json, append the 2026-09-09 bot_mk3 generation: $0.119, three Retro Diffusion calls, four 96x96 images, balance $0.745 to $0.626; confirm the running total matches the API balance.",
+      "why": "The result explicitly notes the cost has not reached the ledger, so the shared Claude/API balance is currently understated."
+    },
+    {
+      "title": "Render the three bot marks in the running game and compare them",
+      "owner": "jade",
+      "level": "task",
+      "tier": 0,
+      "first_action": "Launch the real game with a Mk I, Mk II and Mk III active on the farm at once, capture frames at normal play zoom while they walk, and post the captures for the chief of staff to judge tellability in motion.",
+      "why": "Tellability was checked on the sprite sheet in a file viewer, not at the table's viewing distance in motion, which is what the ask actually specified."
+    }
+  ],
+  "recommend": {}
 }

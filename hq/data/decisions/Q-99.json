@@ -18,6 +18,11 @@
       "key": "c",
       "label": "Give it a nose for dry soil",
       "detail": "A new observation channel: which way the nearest thirsty tile lies. It would learn in a day. It is also the sensor ladder's later unlock arriving first, and it makes the lesson so easy that a week of practice stops meaning anything."
+    },
+    {
+      "key": "d",
+      "label": "Give it the hoe (the CEO's own answer)",
+      "detail": "A till action and a 0.1 reward for turning bare soil into tilled, for initial playtesting. More ways to do something useful by accident, and a tilled tile is a thirsty one it can water next."
     }
   ],
   "links": [
@@ -33,5 +38,11 @@
       "label": "Queue entry (Q-99)",
       "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"
     }
-  ]
+  ],
+  "ruled": {
+    "date": "2026-09-09",
+    "option": "d",
+    "summary": "Not a pen. Give it the till action and a 0.1 reward for hoeing bare soil, so a random walk has more chances to do something beneficial by accident and then keep doing it. For initial playtesting; the value is data.",
+    "written_up": "docs/design/06-bots-and-training.md — 'Its day' and the action and reward tables"
+  }
 }

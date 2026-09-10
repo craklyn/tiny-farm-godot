@@ -97,6 +97,14 @@
           "done": false
         },
         {
+          "id": "s21",
+          "title": "Give it the hoe: a till action, a bare-soil channel and a 0.1 reward, so a fresh robot can earn by accident on open ground",
+          "estimate_days": 0.5,
+          "done": false,
+          "why": "Ruled 2026-09-09 (Q-99) after the demo showed a fresh robot walking off the field before it earned anything.",
+          "raised": "2026-09-09"
+        },
+        {
           "id": "s1",
           "title": "One unprompted first session by an adult who has never played, on the tablet",
           "estimate_days": 0.5,

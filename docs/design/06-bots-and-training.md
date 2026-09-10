@@ -393,10 +393,10 @@ radius on this same spec). v1 defaults, approved 2026-09-09 (Q-96):
 | Own position | its global tile, normalised to the page (2 numbers) | on / off |
 | Energy left | fraction of its day (1 number) | on / off |
 | Vision | every tile within radius 2 — a 5×5 patch around it | the radius |
-| Per-tile channels | needs water · is wet · can be walked on · has a crop or seed (4 numbers) | the list |
+| Per-tile channels | needs water · is wet · can be walked on · has a crop or seed · is bare soil (5 numbers; the fifth added by Q-99) | the list |
 | Day and weather | not in v1 | later |
 
-v1 vector: 3 + 25 × 4 = **103 numbers**. Built once per decision, O(radius²), never
+v1 vector: 3 + 25 × 5 = **128 numbers**. Built once per decision, O(radius²), never
 O(map) (ground rule 8). It sees only through this spec — the same egocentric-patch
 shape `ARCHITECTURE.md` has planned since S-3.
 
@@ -406,9 +406,10 @@ shape `ARCHITECTURE.md` has planned since S-3.
 | --- | --- | --- |
 | Step up / down / left / right | walks one tile through the movement engine, refused where she would be refused | none, like her walking |
 | Water here | `water` on the tile it stands on, through the gateway, exactly as a mark-1 works a square on arrival | 30 units |
+| Till here | `till` on the tile it stands on — bare, cleared soil becomes tilled (ruled 2026-09-09, Q-99) | 30 units |
 | Wait | stands for one decision | none |
 
-Six actions, nothing she cannot do (S-3). It decides **once a second** of sim time (ten
+Seven actions, nothing she cannot do (S-3). It decides **once a second** of sim time (ten
 ticks) and the decision is executed by the same deterministic movement and gateway code
 the mark-1 uses — P-8's shape, a learned choice over deterministic execution. Movement
 is per tile, which is the smallest unit of a player's tap-to-walk.
@@ -428,6 +429,7 @@ have restated those costs as shaping, and shaping is the thing an agent learns t
 | Outcome | Reward |
 | --- | --- |
 | a tile went from dry to wet because it watered | **+1** |
+| a bare tile became tilled because it hoed | **+0.1** — Q-99, "for initial playtesting" |
 | anything else — a step, a wait, water that changed nothing, a refused move | 0 |
 
 The values are data (`systems/rewards.gd`), read from one table. The day's total is its
@@ -454,9 +456,18 @@ still indoors (the mark-1's rule, kept).
 
 **Measured 2026-09-09, from the seven-day demo.** A robot that knows nothing random-walks
 off a 6×4 field within a minute and never returns, so it earns nothing and learns nothing.
-Inside a fenced 9×4 paddock it learns. Whether the game pens it, homes it, or gives it a
-nose is Q-99; the recommendation is her own fences, because a pen is how anyone trains an
-animal and it costs no code.
+Inside a fenced 9×4 paddock it learns. **Ruled 2026-09-09 (Q-99): not a pen — a denser
+reward.** The designer's fix: give it the hoe. A till action, a bare-soil channel in its
+view, and +0.1 for turning bare soil into tilled, so a random walk has more ways to do
+something useful by accident — and a tilled tile under its feet is a thirsty one it can
+water next, which is how an accident becomes a habit. His words: *"the bot would have
+more opportunities to do something beneficial by accident and then proceed to do
+something beneficial ongoingly."* One consequence, named so nobody is surprised: a robot
+can make its own practice ground — till bare soil, water it, water it again tomorrow — a
+wet-mud farm that earns points without touching her crops. That is acceptable: the
+skill it learns is *water the thirsty tile under you*, which is the same skill on her
+field, and the patches it leaves are land she cleared to farm anyway. The values are for
+initial playtesting and are data.
 
 ### Its night
 
@@ -469,7 +480,8 @@ score — and nothing else in v1.
 
 ### The learning rule (strawman; the D-2 first cut, owned by the ML seat)
 
-A **linear softmax policy**: 103 inputs × 6 actions = 618 weights and 6 biases. Trained
+A **linear softmax policy**: 128 inputs × 7 actions = 896 weights and 7 biases (as
+re-scoped by Q-99; 103 × 6 before the hoe). Trained
 by REINFORCE with an eligibility trace, so the day's experience costs O(weights), not
 O(steps):
 
@@ -559,7 +571,7 @@ Black & White's creature, taught by reward and punishment, is what people rememb
 that game; Creatures ran real neural nets in 1996 and kept a community for decades;
 Autonauts is teach-by-demonstration farming; Screeps and the Zachtronics games sell
 programming-as-play. Tiny Farm's edge is that the learning is real and on the device
-(D-4's pillar), and a trained Mark III is 624 numbers — a shareable build. The risks are
+(D-4's pillar), and a trained Mark III is 903 numbers — a shareable build. The risks are
 the ones D-4 already lists: training noise reads as bugs, and the nerdy audience is
 narrower than the cosy one — which is why the casual player sees only a clumsy robot
 getting better, and the panel is one tap deeper.

@@ -1,0 +1,9 @@
+{
+  "id": "Q-99",
+  "option": "d",
+  "option_label": "Give it the hoe: a till action and a 0.1 reward for tilling",
+  "judgment": "I'm not aligned. For initial playtesting, if this is a problem we can define an additional reward of 0.1 for hoeing a field and give the bot the option to till the soil. Then the bot would have more opportunities to do something beneficial by accident and then proceed to do something beneficial ongoingly.",
+  "ruled_at": "2026-09-09T16:00",
+  "status": "integrated",
+  "source": "chat with the chief of staff"
+}

@@ -11,15 +11,14 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
 
 ## Now — blocks M0 close or current work
 
-- **Q-99 (Ruling, filed 2026-09-09)** **A fresh Mark III walks off the field. Pen it, home
-  it, or give it a nose?** Measured in the learning-curve demo: a robot that knows nothing
-  picks one of six actions a second, and on open ground it random-walks out of a 6×4
-  field within a minute and never comes back, so it spends its meter on bare earth and
-  never earns a point. In a fenced 9×4 paddock it learns. Recommendation: **pen it** — her
-  fences already exist (Q-92), a pen is how anyone trains an animal, and it costs no code;
-  the release notes say "fence it in with the field". The alternatives are a home it
-  returns to (M3's stall work, days) or a smell channel for dry soil (a later sensor
-  unlock on the ladder, and it makes the lesson trivial). Card: `hq/data/decisions/Q-99.json`.
+- **Q-99** ~~A fresh Mark III walks off the field. Pen it, home it, or give it a nose?~~ —
+  ✅ ruled 2026-09-09: **none of the three — give it the hoe.** *"For initial playtesting,
+  if this is a problem we can define an additional reward of 0.1 for hoeing a field and
+  give the bot the option to till the soil. Then the bot would have more opportunities to
+  do something beneficial by accident and then proceed to do something beneficial
+  ongoingly."* A till action, a bare-soil channel and +0.1 for tilling; the demo's gate
+  moves back to open ground, where the pen was never in the game. Consequence named in
+  `design/06`: a robot can make its own practice ground.
 
 - **Q-98 (Ruling, filed 2026-09-09)** **What does a Mark III keep when she picks it up?**
   The machine menu's "pick it up" boxes a robot back into her pocket. A Mark I keeps

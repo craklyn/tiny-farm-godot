@@ -1,0 +1,20 @@
+{
+  "id": "wa4b6c18f577",
+  "title": "Give the Mark III the hoe: a till action, a bare-soil channel and a 0.1 reward",
+  "level": "task",
+  "owner": "kenji",
+  "tier": 1,
+  "tier_reason": "Sim code behind the unit suite and the demo's gate; git reverts it. The values are the CEO's ruling, so nothing here is a taste call.",
+  "ask": "Q-99, ruled 2026-09-09: a fresh Mark III on open ground random-walks off the field before earning anything. The CEO's fix, in his words: 'define an additional reward of 0.1 for hoeing a field and give the bot the option to till the soil. Then the bot would have more opportunities to do something beneficial by accident and then proceed to do something beneficial ongoingly.' Spec is WI-8 in docs/V0_2_1_PLAN.md.",
+  "first_action": "After the night-rule fix has merged: add the bare channel to Observation.spec_default, tilled_tile 0.1 to Rewards.TABLE, action 5 = till here in BotBrain (wait becomes 6, weights sized for 7 actions), score it in on_result; move the demo's staging back to open ground and keep the gate as it is; update test_observation, test_policy sizes, test_learning_robot_day and the plan's section 9.",
+  "state": "waiting_session",
+  "thread": "kenji",
+  "source": "chat",
+  "source_message": "CEO on Q-99, 2026-09-09, chief of staff session.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-09T21:39",
+  "created_ts": 1789015179.837847,
+  "parent": "mark-3-learning-bot"
+}

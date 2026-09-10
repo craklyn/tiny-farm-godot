@@ -16,5 +16,45 @@
   "attempts": 1,
   "created": "2026-09-09T20:01",
   "created_ts": 1789009294.6615415,
-  "parent": "mark-3-learning-bot"
+  "parent": "mark-3-learning-bot",
+  "follow_ups": [
+    {
+      "title": "Give the learning rule a per-situation baseline so credit and comparison line up",
+      "owner": "kenji",
+      "level": "story",
+      "tier": 1,
+      "first_action": "In the night update in the Mark III policy code, replace the single day-mean baseline with a per-decision state-dependent baseline (learned value estimate over the same 103 inputs), then re-run the 24-seed comparison and report the new tiles-per-day against the 8.6 vs 7.1 figure.",
+      "why": "The demo's own finding: acc credits each decision with what followed it while the baseline subtracts one day-wide number, so the signal is weak and the rate had to be crippled to 0.02."
+    },
+    {
+      "title": "Measure evolutionary strategies against the same weight budget",
+      "owner": "kenji",
+      "level": "story",
+      "tier": 1,
+      "first_action": "Add a tools/demo_es_robot.gd that trains the same 103x6 linear policy by evolutionary strategies (population perturbations scored on a full day, seeded from SimRng.stateless), run it on seed 20260909 for seven days in the same fenced paddock, and print the same day-by-day table so the two rules can be read side by side.",
+      "why": "The D-2 spike asked for REINFORCE or evidence that evolutionary strategies beats it at the same storage cost, and only the first half was answered."
+    },
+    {
+      "title": "Design the fence a player buys to pen a learning robot",
+      "owner": "milo",
+      "level": "story",
+      "tier": 2,
+      "first_action": "Draft the paddock in docs/design/06: a fence bought from the shop and placed on tiles, what it costs, how big a first one is, what the robot does when it reaches an edge, and what the player sees that explains why the robot is confined. Keep v1 deliberately limited per the standing rule and file open questions to DESIGNER_QUEUE.",
+      "why": "The demo's paddock was a measurement fixture; accepting the recommendation turns it into a real thing players build, and that needs a design before any code."
+    },
+    {
+      "title": "Record the paddock ruling against Q-99 and close the item",
+      "owner": "claude",
+      "level": "task",
+      "tier": 1,
+      "first_action": "Annotate Q-99 in docs/DESIGNER_QUEUE.md with the CEO's ruling that learning robots are confined by a player-built fence, add the matching entry to docs/DECISION_LOG.md, and set the ruling record in hq/data/rulings/ to integrated.",
+      "why": "The decision inbox has to reflect what this acceptance settled, or the same question comes back at the next spike."
+    }
+  ],
+  "recommend": {
+    "question": "While a Mark III is learning, does it stay inside a fence you put up, or roam the whole farm?",
+    "answer": "Make the fence real — a paddock bought in the shop that the robot learns inside, and keep the open farm for robots that have already learned.",
+    "why": "A fresh robot wanders off a small plot within a minute, so without a fence its first days teach it nothing and read to the player as a broken machine rather than a learning one.",
+    "instead": "Let it roam from day one and solve the wandering inside the learning rule instead, which keeps the world unchanged and adds nothing for the player to buy or place, but leaves early days looking like a malfunction."
+  }
 }

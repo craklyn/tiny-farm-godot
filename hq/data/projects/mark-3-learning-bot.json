@@ -20,7 +20,7 @@
     "Two runs on the same seed are identical; the seven-day learning curve rises on a fixed seed",
     "Every watering looks and sounds like hers; it moves at the Mark I's pace; nothing changes without a cue"
   ],
-  "current_status": "Every build item is on main with tests, both suites green (2026-09-09). The seven-day demo rises on its seed, but weakly: across 24 seeds a week of learning is worth about a fifth more a day than no learning. Cause found: the night rule credits each decision with the rewards after it but subtracts a whole day's mean from every decision alike, so the average decision is pushed away from itself and only a low rate holds. An Opus worker is fixing the baseline. Also found: on open ground a fresh robot random-walks off the field within a minute and never earns anything; the demo pens it with fences. Whether the game pens it, homes it, or gives it a nose is the CEO's call (Q-99). Q-98 (what it keeps when picked up) is also open.",
+  "current_status": "Every build item is on main with tests, both suites green (2026-09-09). The seven-day demo rises on its seed, but weakly: across 24 seeds a week of learning is worth about a fifth more a day than no learning. Cause found: the night rule credits each decision with the rewards after it but subtracts a whole day's mean from every decision alike, so the average decision is pushed away from itself and only a low rate holds. An Opus worker is fixing the baseline. Also found: on open ground a fresh robot random-walks off the field within a minute and never earns anything; the demo pens it with fences. The CEO ruled (Q-99): not a pen — a till action and a 0.1 reward for hoeing bare soil, so a random walk has more ways to earn by accident; that change runs once the night-rule fix lands, and the demo's gate moves back to open ground. Q-98 (what it keeps when picked up) is also open.",
   "plan": [
     {
       "step": "Design written against the code, with the six rules and the v1 scope",
@@ -40,6 +40,10 @@
     },
     {
       "step": "Fix the night rule's baseline so credit matches reward-to-go, and re-measure across seeds",
+      "done": false
+    },
+    {
+      "step": "Q-99 ruled: the hoe — till action, bare channel, 0.1 reward; the demo back on open ground",
       "done": false
     },
     {

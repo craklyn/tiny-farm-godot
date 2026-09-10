@@ -16,5 +16,7 @@
   "attempts": 1,
   "created": "2026-09-09T20:01",
   "created_ts": 1789009294.6615415,
-  "parent": "mark-3-learning-bot"
+  "parent": "mark-3-learning-bot",
+  "follow_ups": [],
+  "recommend": {}
 }
