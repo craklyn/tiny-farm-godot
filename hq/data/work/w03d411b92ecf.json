@@ -1,0 +1,23 @@
+{
+  "id": "w03d411b92ecf",
+  "title": "The crate remembers: a Mark III picked up and set down again keeps what it learned",
+  "level": "task",
+  "owner": "tomas",
+  "tier": 1,
+  "tier_reason": "Sim code behind the unit suite, the save round-trip and the replay round-trip; git reverts it. The rule is the CEO's Q-98 ruling.",
+  "ask": "WI-9 in docs/V0_2_2_PLAN.md: on collect, a learning robot's whole extra minus its errand keys is pushed onto GameState.boxed[key]; on place, the newest snapshot is popped and overlaid onto the fresh deploy; boxed is saved, restored and part of the canonical capture. The CEO's words: pick up is just repositioning, it shouldn't factory reset the robot.",
+  "first_action": "Handed to a worker in its own worktree by the chief of staff's session; land on main after both suites pass there.",
+  "state": "in_progress",
+  "thread": "tomas",
+  "source": "chat",
+  "source_message": "CEO, 2026-09-10, ruling Q-98 in chat with the chief of staff.",
+  "result": "",
+  "started": "2026-09-10",
+  "attempts": 0,
+  "created": "2026-09-10T11:26",
+  "created_ts": 1789064773.9726133,
+  "parent": "training-workbench",
+  "plan_item": "WI-9",
+  "follow_ups": [],
+  "recommend": {}
+}
