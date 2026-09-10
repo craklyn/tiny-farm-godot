@@ -716,3 +716,14 @@ is `training-workbench`.*
   the same change). **Deployed to the tablet** from main at `7480abd` with the standing script
   (session rescued first, installed and launched). **Q-98 ruled: the crate remembers** — WI-9
   above, handed to a worker.
+- 2026-09-10 — **The dial sound landed** (`430cf7a`), found and wired by the sound seat through
+  the drain in 17 minutes and 1.2 million Sonnet tokens: three CC0 recordings from Freesound
+  kept with their sources and licences (`CANDIDATES.json`, `CREDITS.md`); "dial turn" by
+  freemaster2 (#120844, 0.13 s, all click) plays on every accepted `tune`, for the buttons and
+  the held pip alike, and nothing plays on a refused or disabled press; the other two sit
+  unwired on **Q-102**, a decision card the CEO can listen to, with a fourth option to keep
+  looking. The seat's session was cut off by a usage limit after the work was done; the chief
+  of staff applied the held patch and verified it. **A second timing flake** surfaced on the
+  clean checkout and is fixed (`354557b`): the ledger and parity scenarios read one robot
+  twice across a world run, and now pin it with a certain `wait` first, as the eyes scenario
+  does. Verified on a clean checkout of main: unit **2540**, integration **852**, gateway clean.
