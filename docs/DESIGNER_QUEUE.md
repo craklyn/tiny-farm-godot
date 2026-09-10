@@ -42,7 +42,10 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   `hq/data/decisions/Q-98.json`.
 
 - **Q-97** ~~What does she see when the robot learns overnight?~~ — ✅ ruled 2026-09-09:
-  **numbers on its panel only.** Tap the Mark III and it says how many days it has
+  **numbers on its panel only.** **Revised 2026-09-10 from the tablet:** a bare number beside
+  a can misleads once the score is the eight-row table, so the panel becomes a **scorecard
+  chart** — x-axis the days, y-axis the points earned that day, one coloured line per
+  rewarded action with its pip as the legend. His words: *"When I select the mark 3, I see a menu that shows 3 moons, 12 watering cans. I think we need a scorecard of everything he did. And possibly we need to show it as a chart. With x-axis each day, and y-axis the value done of that action. We can have multiple lines/colors, corresponding to each of our rewarded actions?"* Tap the Mark III and it says how many days it has
   practised and how much it watered yesterday; nothing at dawn in v1. The dream surface
   stays a design for the fuller learning release (D-4).
 

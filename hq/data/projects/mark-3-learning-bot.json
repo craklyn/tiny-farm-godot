@@ -20,7 +20,7 @@
     "Two runs on the same seed are identical; the seven-day learning curve rises on a fixed seed",
     "Every watering looks and sounds like hers; it moves at the Mark I's pace; nothing changes without a cue"
   ],
-  "current_status": "The Mark III learns the whole farm (2026-09-10, on main, both suites, the robot session and the gateway check green). Its actions are taps: walk to the nearest legal tile in view, do the verb. On the fixed seed a week goes from 9.7 points a day to 18.1; over 24 farms, 24.2 a day with learning against 17.5 without, 20 of 24 weeks rose; the gate is asserted again. It reaches six of the CEO's eight rows in a week, including carrying crops to the bin (5.6 a day); the two crow rows are unreachable at a two-tile view with one bird a day, written up as an exploration problem per his thesis. Next: the tablet build for the CEO to watch it, then the release chores. Q-98 (what it keeps when picked up) is still open.",
+  "current_status": "On the tablet since 2026-09-10 as a debug build. The CEO's first note from it: the panel's two numbers do not say what the robot did, so the panel becomes a scorecard chart — one coloured line per rewarded action, points per day, the pip as the legend — with the robot keeping its own per-day history in the sim. Being built now (Jade's seat). Then his tablet check, the release chores, and the fresh-player session. Q-98 (what it keeps when picked up) is still open.",
   "plan": [
     {
       "step": "Design written against the code, with the six rules and the v1 scope",
@@ -69,6 +69,10 @@
     {
       "step": "Q-100 sim side: a machine carries what it cuts, plants from her box, sells at the bin; the 207-number view; the eight-row table",
       "done": true
+    },
+    {
+      "step": "The scorecard chart on the panel: per-day points per rewarded action, kept in the robot's own history",
+      "done": false
     },
     {
       "step": "Q-100: the full reward table — the robot sees the whole farm, plants, harvests, carries to the mailbox, scares crows; measured honestly on the harness",

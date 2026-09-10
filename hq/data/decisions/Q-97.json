@@ -37,7 +37,7 @@
   "ruled": {
     "date": "2026-09-09",
     "option": "a",
-    "summary": "Numbers on the robot's panel only: days practised and yesterday's score. Nothing at dawn in v1; the dream stays a design for the fuller learning release.",
+    "summary": "Numbers on the robot's panel only: days practised and yesterday's score. Nothing at dawn in v1; the dream stays a design for the fuller learning release. Revised 2026-09-10 after the CEO saw the panel on the tablet: the numbers become a scorecard chart, one coloured line per rewarded action, points per day, the action's pip as the legend.",
     "written_up": "docs/design/06-bots-and-training.md — 'Its night'"
   }
 }

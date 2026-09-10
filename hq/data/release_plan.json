@@ -142,6 +142,14 @@
           "shipped_in": "main 2026-09-10"
         },
         {
+          "id": "s26",
+          "title": "A scorecard on the robot's panel: a chart of the points it earned each day, one coloured line per rewarded action, its pip as the legend",
+          "estimate_days": 0.5,
+          "done": false,
+          "why": "The CEO, from the tablet on 2026-09-10: a number beside a can does not say what the robot did.",
+          "raised": "2026-09-10"
+        },
+        {
           "id": "s1",
           "title": "One unprompted first session by an adult who has never played, on the tablet",
           "estimate_days": 0.5,

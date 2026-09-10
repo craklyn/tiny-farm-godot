@@ -569,6 +569,10 @@ else. The designer struck the draft's shaping penalties: a reward says *what* to
 never *how* (Sutton and Barto, 2nd ed.), and the energy budget is a constraint, not a
 penalty. Inputs as drafted; Robot Mk III at 800 gold. Q-97 the same day: v1 shows the
 night as numbers on the robot's panel, nothing more.
+**Q-97 revised 2026-09-10, from the tablet:** the night surface is a scorecard chart — one
+line per rewarded action, points per day — because a single number beside a can misleads
+once the score is the whole table. D-4's rule holds: it is real data, drawn from the
+robot's own per-day history, wordless but for the numerals on the axes.
 
 **Q-99 (2026-09-09):** when a fresh robot could not find reward on open ground, the
 designer's fix was a denser reward, not a fenced world: a till action and +0.1 for turning
