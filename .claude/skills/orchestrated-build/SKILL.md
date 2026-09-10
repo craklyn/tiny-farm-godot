@@ -130,3 +130,21 @@ decision with a recommendation rather than deciding it inside the build.
 - **Byproducts of deploys and imports** (build stamps, regenerated fixtures,
   import sidecars) will appear as modifications. Decide once whether they belong
   in a commit, and say which ones you left alone.
+- **A worker's worktree may be created behind main.** Open every brief with
+  "confirm `HEAD` is main's tip; `git merge --ff-only main` if not". On the
+  workbench build a worker found the files it was told were on its branch missing.
+- **Content merges splice look-alike appends.** Two test scenarios written in
+  parallel that begin with the same staging lines get aligned by git's merge, and
+  "keep both sides" yields a one-line scenario and a hybrid with no duplicate
+  function to catch it. Merge appended scenarios with
+  `tools/merge_appended_scenario.py` (rebuilds the file as main plus the branch's
+  block); resolve anything else by reading both sides. Then verify on main.
+- **Never glob-add in a shared directory.** `git add dir/w*.json` swept another
+  session's files into a commit. Add explicit paths.
+- **Capture and demo tools that autosave** into the shared engine user directory
+  poison the next suite run; they point their save paths at scratch. And an
+  integration scenario that lets the world run between staging and assertion is
+  timing-flaky — pin the actors first.
+- **Send the reviewer's report and the workers' "what was wrong" fields back into
+  the plan before the next brief**, not at the end: on this build the shell worker's
+  additions were what the four page workers programmed against.
