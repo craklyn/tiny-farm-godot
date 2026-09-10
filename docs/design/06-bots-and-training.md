@@ -370,85 +370,93 @@ These are the shape of the design, not options:
 | **An energy budget per day, like hers** | a day is 600 units for it too | verbs charge its own meter; at 0 it stops asking |
 | **Interpretable when watched** | no extraordinary speed, no tile changes without a visual cue | walks at the bot pace; every verb goes through the gateway so it gets her cue |
 
-### v1 — deliberately weak (P-13)
+### v1 — the whole farm, with a small learner (designer, 2026-09-09; Q-100)
 
-The first mark-3 learns **one job: watering**. It keeps the field's dry, wettable soil
-wet. No teach, no dial, no other verb. Watering is the job because:
-
-- the mark-1 already does it from a taught list, so what learning is *worth* can be
-  measured against the taught list with the same two-farm demo that priced the mark-1
-  (T-39, `tools/demo_robot_value.gd`);
-- the reward is unambiguous — a tile went from dry to wet — and needs no judgement;
-- the verb already has an actor cue (`farm.gd`'s verb table), so a mark-3 watering looks
-  and sounds like her watering with no new presentation code.
+The first draft gave the Mark III one job, watering. The designer widened it the same day:
+*"the robot should be rewarded for doing beneficial things"*, and he listed them (Q-100).
+So what is deliberately weak in v1 (P-13) is the **learner** — a linear policy, a 5×5 view,
+one weight update a night — not the breadth of what it may earn. Its job is the farm as
+built: till, plant, water, harvest, carry a crop to the bin, chase crows.
 
 ### What it is told before each decision (the observation)
 
-The spec is data on the catalogue row and copied onto the robot at placement, so it can be
-changed per robot later (the "Vision I/II" unlocks in `ARCHITECTURE.md` are a bigger
-radius on this same spec). v1 defaults, approved 2026-09-09 (Q-96):
+A data spec on the robot, adjustable per robot later. v1:
 
 | Input | v1 default | Adjustable |
 | --- | --- | --- |
 | Own position | its global tile, normalised to the page (2 numbers) | on / off |
 | Energy left | fraction of its day (1 number) | on / off |
+| What it carries | 1 if it holds a harvested crop, else 0 | on / off |
+| Her seed box | seeds in stock, capped and normalised (1 number) | on / off |
+| Where the bin is | the shipping bin's offset from it, normalised (2 numbers) — a fixed landmark, so it is the same kind of fact as its own coordinate | on / off |
 | Vision | every tile within radius 2 — a 5×5 patch around it | the radius |
-| Per-tile channels | needs water · is wet · can be walked on · has a crop or seed · is bare soil (5 numbers; the fifth added by Q-99) | the list |
-| Day and weather | not in v1 | later |
+| Per-tile channels | needs water · is wet · can be walked on · has a crop or seed · is bare soil · is ripe · a crow is on it · the bin is on it (8 numbers) | the list |
 
-v1 vector: 3 + 25 × 5 = **128 numbers**. Built once per decision, O(radius²), never
-O(map) (ground rule 8). It sees only through this spec — the same egocentric-patch
-shape `ARCHITECTURE.md` has planned since S-3.
+v1 vector: 7 + 25 × 8 = **207 numbers**. Built once per decision, O(radius²), never O(map).
 
 ### What it can do (the actions)
 
-| Action | What happens | Cost |
-| --- | --- | --- |
-| Step up / down / left / right | walks one tile through the movement engine, refused where she would be refused | none, like her walking |
-| Water here | `water` on the tile it stands on, through the gateway, exactly as a mark-1 works a square on arrival | 30 units |
-| Till here | `till` on the tile it stands on — bare, cleared soil becomes tilled (ruled 2026-09-09, Q-99) | 30 units |
-| Wait | stands for one decision | none |
+**An action is what a tap is for her.** When she taps a tile the game walks her there and
+does the verb; that is one action at her granularity. The first draft gave the robot single
+steps, which is *finer* than a tap, and it made the long chains long. So a Mark III's
+action is a verb, and the tile is chosen the way the router chooses hers: the nearest
+tile in its view where the verb is legal, walked to by the same movement engine at the
+bot's pace, then applied through the gateway with her cue. If no tile in view qualifies,
+the decision is spent and nothing happens — the same answer the router gives a tap on the
+wrong thing. This is P-8's shape: a learned choice among options, deterministic execution.
 
-Seven actions, nothing she cannot do (S-3). It decides **once a second** of sim time (ten
-ticks) and the decision is executed by the same deterministic movement and gateway code
-the mark-1 uses — P-8's shape, a learned choice over deterministic execution. Movement
-is per tile, which is the smallest unit of a player's tap-to-walk.
+| Action | Executes as | Cost |
+| --- | --- | --- |
+| Till | walk to the nearest bare (`cleared`) tile in view, `till` | 30 |
+| Plant | walk to the nearest empty tilled tile in view, `plant` the seed she has most of, from her box; refused when the box is empty | 0 |
+| Water | walk to the nearest tile in view that needs water, `water` | 30 |
+| Harvest | walk to the nearest ripe tile in view, `harvest`; refused while already carrying | 30 |
+| Ship | walk to the shipping bin (his "mailbox", a fixed landmark at the yard's edge), `sell` the crop it carries; refused when carrying nothing | 0 |
+| Shoo | walk onto the nearest crow's tile in view; reaching it scares the bird, exactly as a Mk II does | 0 |
+| Wander | one step in a direction drawn from the same seeded sampler | 0 |
+| Wait | stand for one second | 0 |
+
+Eight actions, nothing she cannot do (S-3). It decides once per completed action (or once a
+second while idle); while it walks it does not think. Two gateway rules change for
+machines, and only for machines: a machine's harvest goes into its **hands**, one crop at a
+time, not straight into her basket (today every actor's harvest lands in her basket, which
+would let a robot ship her work); and a machine **draws seeds from her box** and is refused
+when it is empty (today a non-player plants free and unlimited). People — the neighbour —
+keep bringing their own. `sell` for a machine sells the one crop it carries, at the bin's
+price, to her gold.
 
 ### What it is rewarded for
 
-Ruled 2026-09-09 (Q-96), and simpler than the draft that was put to him: **+1 for a tile
-that went from dry to wet because it watered, and 0 for everything else.** The draft had
-carried small penalties for wasted water and refused steps; the designer struck them —
-*"there's no actual penalty to a human for not watering, so it seems strange to
-penalize the bot"* — and he is right in the formulation this design follows, Sutton and
-Barto's (*Reinforcement Learning*, 2nd ed.): the reward signal says **what** to achieve,
-never **how**. A wasted watering already costs the robot the tile it could have wet
-instead, because the day is a budget; a refused step costs it a second. Penalties would
-have restated those costs as shaping, and shaping is the thing an agent learns to game.
+Ruled 2026-09-09 (Q-100), replacing the one-job table. Every row is an **outcome** — computed
+from what changed in the world, never from where it walked — and the values are data
+(`systems/rewards.gd`), tunable:
 
-| Outcome | Reward |
-| --- | --- |
-| a tile went from dry to wet because it watered | **+1** |
-| a bare tile became tilled because it hoed | **+0.1** — Q-99, "for initial playtesting" |
-| anything else — a step, a wait, water that changed nothing, a refused move | 0 |
+| Outcome | Reward | How the sim knows |
+| --- | --- | --- |
+| a harvested crop put in the mailbox | **10** | its `sell` at the bin took the crop it carried |
+| a crow scared off while flying in | **1** | its reaching a crow produced `crow_scared` with `by` = this robot, crow state `flying_in` |
+| a crow scared off after landing on food | **3** | same, crow state `eating` |
+| a crop harvested | **1** | its `harvest` took a ripe tile |
+| a plant that needed water, watered | **1** | its `water` turned a dry tile with a crop or seed wet |
+| a seed planted | **1** | its `plant` took, from her box |
+| a grass tile tilled | **0.1** | its `till` turned bare (`cleared`) ground tilled |
+| a soil tile with no seeds watered | **0.1** | its `water` turned dry, empty tilled soil wet |
+| anything else | 0 | |
 
-The values are data (`systems/rewards.gd`), read from one table. The day's total is its
-**score**, and the score is what the panel reports in numbers. A reward is computed from
-the world before and after the gateway answered, so a clever route and a clumsy one that
-wet the same tiles earn the same.
+Nobody owns a tile: a thirsty plant she sowed and one the robot sowed pay the same. The
+day's total is its **score**, and the score is what the panel reports.
 
-**The problem, in that book's terms.** An episodic task: one day is one episode, ending
-when the meter is empty or she sleeps. The return is the undiscounted sum of the day's
-rewards. The agent sees an observation, not the state — a 5×5 patch of a 32×20 page — so
-the policy is reactive and the task is partially observed; acceptable at this size, and
-the vision dial is the lever if it is not. The learning rule is a policy-gradient method
-with a baseline (the book's chapter 13), one update per episode. Speed of learning is the
-algorithm's problem and the spike's, never the reward's.
+**The designer's thesis, recorded:** *"as long as exploration is preserved and we have a
+learning model that can learn efficiently from the exploration moves, then we can get a
+completely robust robot from these parameters, at least as far as the game today is
+built."* The consequence for engineering: if the robot fails to reach a reward, that is a
+learner or exploration problem, fixed by a better learner or more exploration, never by
+narrowing the table.
 
 ### Its day
 
 It wakes at the day turn with a full meter (600 units — `ACTOR_MAX_ENERGY`, the same as
-her day). It thinks once a second and acts. When its meter reaches 0 it parks where it
+her day). It decides once per completed action, once a second while idle, and acts. When its meter reaches 0 it parks where it
 stands until the next day turn: the gateway would still resolve (Q-11's soft floor), the
 brain simply stops asking. A day is therefore at most twenty waterings and as many steps
 as her own day leaves it, and it ends when she sleeps. No bot lifts a tool while she is
@@ -492,8 +500,8 @@ score — and nothing else in v1.
 
 ### The learning rule (strawman; the D-2 first cut, owned by the ML seat)
 
-A **linear softmax policy**: 128 inputs × 7 actions = 896 weights and 7 biases (as
-re-scoped by Q-99; 103 × 6 before the hoe). Trained
+A **linear softmax policy**: 207 inputs × 8 actions — about 1,700 weights (Q-100; 128 × 7
+under the one-job table).
 by REINFORCE with an eligibility trace, so the day's experience costs O(weights), not
 O(steps):
 
@@ -554,10 +562,12 @@ without the cue she would have made herself.
 
 ### Not in v1
 
-Other verbs (till, plant, harvest, shoo); a stall or a home to walk back to; vision beyond
-radius 2; learning from her recorded days (that is "show it", the next rung, P-5 as
-amended); sharing weights between robots (P-7); any night surface beyond the panel's
-numbers (D-4). Each is a later mark or a later tier, on purpose.
+A stall or home; vision beyond radius 2; choosing which seed to plant (it plants what she
+has most of); carrying more than one crop; learning from her recorded days (the next rung,
+P-5 as amended); sharing weights between robots (P-7); any night surface beyond the panel's
+numbers (D-4). Each is a later mark or a later tier, on purpose. Known wart, filed: the
+game's own shipping bin bookkeeping (`gs.shipping_bin`, `process_shipping_bin`) is
+vestigial — `sell` pays at once — so "mailbox" here means the bin object at the yard's edge.
 
 ### After v1: what this design already allows (the designer's questions, 2026-09-09)
 
@@ -599,7 +609,7 @@ Black & White's creature, taught by reward and punishment, is what people rememb
 that game; Creatures ran real neural nets in 1996 and kept a community for decades;
 Autonauts is teach-by-demonstration farming; Screeps and the Zachtronics games sell
 programming-as-play. Tiny Farm's edge is that the learning is real and on the device
-(D-4's pillar), and a trained Mark III is 903 numbers — a shareable build. The risks are
+(D-4's pillar), and a trained Mark III is about 1,700 numbers — a shareable build. The risks are
 the ones D-4 already lists: training noise reads as bugs, and the nerdy audience is
 narrower than the cosy one — which is why the casual player sees only a clumsy robot
 getting better, and the panel is one tap deeper.
