@@ -95,10 +95,31 @@ const GRID_INK := Color(0.62, 0.64, 0.74, 0.18)
 const TODAY_BAND := Color(0.75, 0.78, 0.9, 0.07)
 const NUMERAL_SIZE := 11
 
+# **The mark a day carries when she changed what something is worth** (v0.2.2,
+# the workbench's dials). Brighter than anything else on the card on purpose: it
+# is the one thing on the chart that was *her* doing, and a line that bends the
+# day after she turned a dial is the whole reason she turned it. A tack hanging
+# under the day axis — stem, then a foot — because a full-height rule would read
+# as a ninth line.
+const TICK_INK := Color("ffd933")
+const TICK_W := 4.0
+const TICK_H := 12.0
+const TICK_FOOT := Vector2(12.0, 3.0)
+
 # What the card is drawing, filled by `show_bot`. Days oldest first; each entry is
 # `{ "n": which night of its life, "rows": eight floats, "partial": still being
 # played }`.
 var days: Array = []
+
+## How tall the drawing itself is. `PLOT_H` is the machine panel's height and the
+## default, so the panel is what it always was; the workbench's ledger page sets
+## this to fill the room it has (ground rule 8 — the two charts are one file, at
+## two sizes, and never two drawings that can disagree).
+var plot_h: float = PLOT_H
+
+## The days that carry a tick, as day numbers on this card's own axis — the
+## entries of `extra["tuned"]` that fall inside the fortnight being drawn.
+var tick_days: Array = []
 
 
 func _init() -> void:
@@ -107,14 +128,35 @@ func _init() -> void:
 	# the same rule, for the same reason).
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	custom_minimum_size = Vector2(0, PLOT_H + AXIS_BOTTOM + PAD * 2.0)
+	custom_minimum_size = Vector2(0, plot_h + AXIS_BOTTOM + PAD * 2.0)
 
 
 # Point the card at a robot. It reads `extra` rather than being handed numbers, so
 # there is exactly one place that knows how a robot's record is shaped.
 func show_bot(extra: Dictionary) -> void:
 	days = read_days(extra, DAYS_SHOWN)
+	tick_days = read_ticks(extra, days)
 	queue_redraw()
+
+
+# **Which of the days she tuned are on this card.** `extra["tuned"]` is a plain
+# int array the gateway appends to when a dial is turned; a robot kept for a
+# season has tuned days that fell off the front of the fortnight, and a tick with
+# no column under it would be a mark on a day the chart is not showing. Pure, so
+# a test can ask what is ticked without rendering anything.
+static func read_ticks(extra: Dictionary, on_days: Array) -> Array:
+	var shown := {}
+	for day in on_days:
+		shown[int(day["n"])] = true
+	var out: Array = []
+	var tuned = extra.get("tuned", [])
+	if not (tuned is Array):
+		return out
+	for raw in tuned as Array:
+		var n := int(raw)
+		if shown.has(n) and not (n in out):
+			out.append(n)
+	return out
 
 
 # **The record, as days to plot** — the only place presentation interprets the
@@ -181,7 +223,7 @@ func _draw() -> void:
 		return
 	var keys: Array = Rewards.KEYS
 	var plot := Rect2(AXIS_LEFT, PAD,
-		maxf(24.0, size.x - AXIS_LEFT - PIP_GUTTER), PLOT_H)
+		maxf(24.0, size.x - AXIS_LEFT - PIP_GUTTER), plot_h)
 	var peak := 0.0
 	for day in days:
 		for v in day["rows"]:
@@ -222,6 +264,18 @@ func _draw() -> void:
 	if days.size() > 1:
 		_numeral(str(int(days[last]["n"])),
 			Vector2(float(xs[last]), zero_y + AXIS_BOTTOM - 2.0), true)
+
+	# The days she turned a dial on, tacked under the axis. Drawn before the lines
+	# so nothing of the data is ever hidden behind her own mark.
+	for raw in tick_days:
+		var n := int(raw)
+		for i in days.size():
+			if int(days[i]["n"]) != n:
+				continue
+			var tick_x := float(xs[i])
+			draw_rect(Rect2(tick_x - TICK_W / 2.0, zero_y + 2.0, TICK_W, TICK_H), TICK_INK)
+			draw_rect(Rect2(tick_x - TICK_FOOT.x / 2.0, zero_y + 2.0 + TICK_H,
+				TICK_FOOT.x, TICK_FOOT.y), TICK_INK)
 
 	# One line per row of the reward table, in the table's own order — so the day a
 	# ninth row is priced, a ninth line appears here and nobody has to remember to

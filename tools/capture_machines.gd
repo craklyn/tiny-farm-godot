@@ -31,6 +31,17 @@ func _ready() -> void:
 	var gs = get_tree().root.get_node("GameState")
 	gs.gold = 2000
 
+	# **Do not write over the session on disk.** `main.gd` autosaves every twenty
+	# seconds, so a capture tool that plays a staged farm leaves that farm in
+	# `user://autosave.json` — and the next thing to start `main.tscn` continues
+	# from it. Found the hard way with the workbench captures: a capture run was
+	# followed by the integration suite, which continued from a yard full of
+	# staged machines and reported eight failures that had nothing to do with the
+	# code. Three scratch paths, and the player's own session is left where it was.
+	gs.save_path = "user://capture_machines_scratch.json"
+	gs.replay_path = "user://capture_machines_scratch_replay.json"
+	gs.trace_path = "user://capture_machines_scratch_trace.jsonl"
+
 	# 1. the shop, with both marks and the sprinkler on the shelf
 	main.menus.open_menu("shop")
 	for i in 6:

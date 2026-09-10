@@ -97,6 +97,7 @@ func _run_scenarios() -> void:
 	await _scenario_al_a_ripe_crop_carries()
 	await _scenario_am_the_mark_three_shows_its_practice()
 	await _scenario_an_the_workbench_opens_from_the_yard()
+	await _scenario_aq_the_ledger_is_the_scorecard()
 
 func _wait_until(pred: Callable, max_frames: int) -> bool:
 	for i in max_frames:
@@ -4816,3 +4817,234 @@ func _yard_spot_for_bench() -> Vector2i:
 				continue
 			return Vector2i(tx, ty)
 	return Vector2i(-1, -1)
+
+
+# --- Scenario AQ: the ledger plate (Q-101, v0.2.2 WI-5) -----------------------
+#
+# **The bench's big chart is the machine panel's chart** (ground rule 8). Not a
+# second drawing of the same numbers — the same object, one file, at the size this
+# page has room for. So the assertion that matters most here is the boring one:
+# open the bench, read what the chart is showing, close it, open the robot's own
+# panel, and check the two are showing the same days.
+#
+# Under it, four small cards say how the day went for the machine rather than for
+# the farm: what it expected of the day against what it got, how undecided it is,
+# how far the night moved it, and how many of its decisions came to nothing. Those
+# are columns of `extra["ledger"]`, and this scenario stages a week of them the way
+# scenario AM stages a week of `history` — the brain writing them is the unit
+# suite's business; reading them back is this one's.
+func _scenario_aq_the_ledger_is_the_scorecard() -> void:
+	print("\n--- Scenario AQ: the bench's ledger is the panel's own chart, with four readings under it ---")
+
+	var menus = main_scene.menus
+	menus.close_menu()
+	main_scene.end_teaching()
+	GameState.gold = 3000
+	GameState.machines = {}
+	GameState.selected_seed_type = ""
+	await get_tree().process_frame
+
+	# Anything an earlier scenario left standing would show up in the bench's strip
+	# and could take the spot on the bench from the robot this one places.
+	for raw in farm.sim.learners():
+		farm.apply_action({ "verb": "collect",
+			"target": farm.sim.actor_pos(String(raw)), "actor": "player" }, GameState)
+	await get_tree().process_frame
+
+	var mk3: String = await _buy_and_place("bot_mk3", Vector2i(16, 13))
+	_assert(mk3 != "", "a Mark III goes down on the farm to be read (%s)" % mk3)
+	if mk3 == "":
+		return
+	await _wait_until(func(): return menus.active_menu == "machine", 60)
+	menus.close_menu()
+	await get_tree().process_frame
+
+	# --- a week on the record ------------------------------------------------
+	#
+	# **A test's staging, written straight into `extra`** — the same tool-style
+	# shortcut `tools/capture_machines.gd` takes, and for the same reason: a week
+	# of real sim inside an integration scenario costs the suite far more than the
+	# assertion is worth, and every page on the bench reads `extra` and nothing
+	# else, so a staged week and a played one draw the same picture. The brain
+	# writing these rows at bedtime is `tests/test_runner.gd`'s business.
+	var extra: Dictionary = farm.sim.actor(mk3)["extra"]
+	_assert(extra.has("ledger") and extra.has("tuned") and extra.has("entropy_sum")
+			and extra.has("spent"),
+		"a placed Mark III carries the day's bookkeeping the ledger page draws")
+	extra["days"] = DEMO_WEEK.size()
+	extra["history"] = DEMO_WEEK.duplicate(true)
+	extra["earned"] = DEMO_TODAY.duplicate()
+	extra["ledger"] = _demo_ledger()
+	extra["tuned"] = [4]
+	extra["score"] = 24.0
+	extra["baseline"] = 13.6
+	extra["decisions"] = 180
+	extra["entropy_sum"] = 2.24 * 180.0
+	extra["spent"] = 21
+
+	# --- a bench to read it on ------------------------------------------------
+	# Put down through the gateway and opened directly: the tap that buys it, the
+	# tap that stands it up and the tap that opens it are scenario AN's seam, and
+	# proving them twice only makes the suite slower.
+	var bench_spot := _yard_spot_for_bench()
+	_assert(bench_spot.x >= 0, "the farm has a yard square for a bench (%s)" % str(bench_spot))
+	if bench_spot.x < 0:
+		return
+	GameState.machines["workbench"] = 1
+	farm.apply_action({ "verb": "place", "target": bench_spot,
+		"item": "workbench", "actor": "player" }, GameState)
+	await get_tree().process_frame
+	menus.open_workbench(bench_spot)
+	await get_tree().process_frame
+	_assert(menus.active_menu == "workbench", "the bench opens (%s)" % menus.active_menu)
+	var bench = menus.workbench
+	_assert(bench != null and bench.robot_id == mk3,
+		"with this scenario's robot on it (%s)" % (bench.robot_id if bench != null else "-"))
+	if bench == null or bench.robot_id != mk3:
+		return
+
+	bench.select_plate(3)
+	await get_tree().process_frame
+	_assert(bench.plate == 3, "the fourth plate is the ledger (%d)" % bench.plate)
+	var page: Control = bench.pages[3] as Control
+	_assert(page.visible, "and its page is the one showing")
+
+	# --- the big chart is the panel's chart -----------------------------------
+	var chart = page.get("chart")
+	_assert(chart != null and chart is BotScorecard,
+		"the page's main chart is a BotScorecard, not a second drawing of one")
+	_assert(_scorecard_in(page) == chart, "and it is the only chart on the page")
+	if chart == null:
+		return
+	_assert(chart.days.size() == DEMO_WEEK.size() + 1,
+		"a week behind it and today in front of it is eight columns (%d)" % chart.days.size())
+	_assert(chart.days == BotScorecard.read_days(extra),
+		"showing exactly what the record says, read by the one function that reads it")
+	_assert(is_equal_approx(chart.plot_h,
+			232.0 - BotScorecard.AXIS_BOTTOM - BotScorecard.PAD * 2.0),
+		"drawn at the height this page has room for, not the panel's (%s)" % str(chart.plot_h))
+	_assert(is_equal_approx(chart.position.x, 28.0) and is_equal_approx(chart.position.y, 164.0)
+			and chart.size == Vector2(744, 232),
+		"in the well the mockup puts it in (%s at %s)" % [str(chart.size), str(chart.position)])
+
+	# --- the day she turned a dial is tacked on the axis ----------------------
+	_assert(chart.tick_days == [4],
+		"the day she changed what something is worth carries a tick (%s)" % str(chart.tick_days))
+
+	# --- four cards, and what they read --------------------------------------
+	var cards: Array = page.get("cards")
+	_assert(cards != null and cards.size() == 4,
+		"four cards under the chart (%d)" % (cards.size() if cards != null else -1))
+	if cards == null or cards.size() != 4:
+		return
+	var placed_right := true
+	for i in 4:
+		var card: Control = cards[i]
+		if not (card is MetricCard) or card.size != Vector2(180, 158) \
+				or not is_equal_approx(card.position.y, 414.0) \
+				or not is_equal_approx(card.position.x, 28.0 + 188.0 * float(i)):
+			placed_right = false
+	_assert(placed_right, "each a MetricCard, 180 by 158, in the row the mockup lays out")
+
+	_assert(is_equal_approx(cards[0].today, 24.0 - 13.6),
+		"the first card reads what today has earned against what the robot expected of it (%s)"
+			% str(cards[0].today))
+	_assert(is_equal_approx(cards[1].today, 2.24 * 180.0 / 180.0),
+		"the second reads today's entropy — the day's sum over the day's decisions (%s)"
+			% str(cards[1].today))
+	_assert(is_equal_approx(cards[1].reference, log(float(BotBrain.LEARN_ACTIONS)) / log(2.0)),
+		"against the ceiling of a machine picking evenly between everything it could do (%s)"
+			% str(cards[1].reference))
+	_assert(is_nan(cards[2].today),
+		"the third has no today at all: the update is a thing that happens while she sleeps")
+	_assert(is_equal_approx(cards[3].today, float(int(extra["spent"]))),
+		"the fourth reads the decisions that came to nothing today (%s)" % str(cards[3].today))
+	_assert(cards[3].kind == "bars" and cards[0].kind == "line"
+			and cards[1].kind == "line" and cards[2].kind == "line",
+		"three of them lines and the count a row of bars")
+
+	# Each card draws the closed days off its own column of the ledger, so a card
+	# cannot quietly be showing the column next to the one its picture claims.
+	var week := _demo_ledger()
+	var columns_right := true
+	for i in week.size():
+		var row: Array = week[i]
+		if not is_equal_approx(float(cards[0].closed[i]), float(row[0]) - float(row[1])) \
+				or not is_equal_approx(float(cards[1].closed[i]), float(row[2])) \
+				or not is_equal_approx(float(cards[2].closed[i]), float(row[3])) \
+				or not is_equal_approx(float(cards[3].closed[i]), float(row[4])):
+			columns_right = false
+	_assert(columns_right,
+		"and every closed day on every card is the column of the ledger it belongs to")
+	_assert(cards[0].columns().size() == week.size() + 1
+			and cards[2].columns().size() == week.size(),
+		"a card with a today draws one more column than the record has, and one without does not")
+
+	# --- drawn, not written ---------------------------------------------------
+	var words: Array = []
+	_collect_labels(page, words)
+	_assert(words.is_empty(),
+		"the page carries no words at all — numerals and pictures (S-7) (%d)" % words.size())
+	_assert(_pictures_in(page) >= 6,
+		"and everything on it paints itself: the page, the chart and four cards (%d)"
+			% _pictures_in(page))
+
+	# --- with no robot, dashes and nothing else -------------------------------
+	page.show_robot(farm, "")
+	await get_tree().process_frame
+	_assert(not chart.visible and not (cards[0] as Control).visible,
+		"a bench with no learning robot on it shows no chart and no readings")
+	page.show_robot(farm, mk3)
+	await get_tree().process_frame
+	_assert(chart.visible, "and the robot puts them back")
+
+	# --- and the panel is showing the same days -------------------------------
+	menus.close_menu()
+	await get_tree().process_frame
+	menus.open_machine_menu_for(mk3)
+	var panel_up := await _wait_until(func(): return menus.active_menu == "machine", 60)
+	_assert(panel_up, "the robot's own panel opens (%s)" % menus.active_menu)
+	var panel: BotScorecard = _scorecard_in(menus.options_container)
+	_assert(panel != null, "with its scorecard on it")
+	if panel != null:
+		_assert(panel.days == chart.days,
+			"showing the same days as the bench, because it is the same chart (%d vs %d)"
+				% [panel.days.size(), chart.days.size()])
+		_assert(panel.tick_days == chart.tick_days,
+			"and the same tick on the same day — one language across both screens (%s)"
+				% str(panel.tick_days))
+		_assert(is_equal_approx(panel.plot_h, BotScorecard.PLOT_H),
+			"at the height the panel has always drawn it, which is what keeps it what it was (%s)"
+				% str(panel.plot_h))
+
+	# --- and the yard is left as it was found ---------------------------------
+	menus.close_menu()
+	farm.sim.set_object(bench_spot.x, bench_spot.y, "")
+	farm.apply_action({ "verb": "collect", "target": farm.sim.actor_pos(mk3),
+		"actor": "player" }, GameState)
+	await get_tree().process_frame
+
+
+# A week of closed ledger rows, built off `DEMO_WEEK` so the two records agree:
+# each day's `score` is what that day's eight rows add up to, and its `expected`
+# is the mean of the days before it, which is exactly how the brain keeps its
+# baseline. The other four columns are staged — entropy falling as the machine
+# makes its mind up, one loud night in the middle, wasted decisions thinning out.
+# Seven floats a row, in `_sleep_on_it`'s order:
+# `[score, expected, entropy, update, spent, decisions, waits]`.
+func _demo_ledger() -> Array:
+	var entropies := [2.95, 2.88, 2.74, 2.61, 2.49, 2.36, 2.24]
+	var updates := [0.12, 0.18, 0.21, 0.44, 0.19, 0.15, 0.31]
+	var spents := [34.0, 31.0, 29.0, 29.0, 26.0, 24.0, 21.0]
+	var waits := [5.0, 4.0, 6.0, 3.0, 4.0, 2.0, 3.0]
+	var out: Array = []
+	var running := 0.0
+	for i in DEMO_WEEK.size():
+		var score := 0.0
+		for v in DEMO_WEEK[i]:
+			score += float(v)
+		out.append([score, (running / float(i)) if i > 0 else 0.0,
+			float(entropies[i]), float(updates[i]), float(spents[i]),
+			300.0 - float(i) * 6.0, float(waits[i])])
+		running += score
+	return out
