@@ -4,8 +4,9 @@
 
 *Status: **approved 2026-09-10 (Q-101)**, designed the same day after the Mark III went to
 the tablet. Building as v0.2.2. Depends on `06-bots-and-training.md` ("The
-ladder's third rung") and on D-4 (stylise the rendering, never the facts). Nothing here is
-built; the plan items are in `V0_2_1_PLAN.md` once approved.*
+ladder's third rung") and on D-4 (stylise the rendering, never the facts). The build plan is
+`V0_2_2_PLAN.md`: ground rules, verified findings, the interfaces and acceptance criteria per
+work item, and its §9 status log.*
 
 > *"Allow the player to see the rewards for the robot for each of the things it can do,
 > and the player to adjust the rewards on a normal scale. Allow negative rewards if it
@@ -57,15 +58,16 @@ that standing still is safest — the bench shows that, in the ledger, and the p
 factory-filled at deploy). That is the specialisation mechanic sketched in `06` ("After
 v1"): a waterer, a hauler and a hoe-hand are the same machine with different dials.
 
-**A dial turn is an Action.** `tune {actor: robot, target: robot tile, params: {row,
-value}}` goes through the gateway like `teach` and `configure`, so a replay reproduces her
+**A dial turn is an Action.** `tune {actor: player, target: the robot's tile, row, value}` —
+flat keys, as every verb in the game carries them — goes through the gateway like `teach` and
+`configure`, so a replay reproduces her
 tuning and the corpus records it. It takes effect on the next decision; the day's history
 records points at the value in force when they were earned, and the ledger draws a small
 tick on the day axis where a dial changed, so a jump in a line has a visible cause.
 
 ## 3. The eyes — what the robot sees
 
-The observation template, live, updated at each decision while the bench is open:
+The observation template, as the robot saw it at the moment she opened the bench:
 
 - The **5×5 patch** as tiles, drawn from the robot's own vector, not the map: each tile
   shows its channels as small marks (dry, wet, walkable, crop, bare, ripe, crow, bin) in
@@ -77,6 +79,12 @@ The observation template, live, updated at each decision while the bench is open
   lit. This is `Policy.probs` on the current observation and nothing else; it is also the
   entropy gauge made visible — a flat strip is a robot still guessing, a spike is one that
   has decided.
+
+*Built as a snapshot, not a feed (2026-09-10, the build plan's rule 7).* The world holds while
+any menu is open — an existing rule with its own test — and the bench is a menu. So the eyes
+show what the robot sees and the last decision it took at the instant she opened the bench,
+recomputed whenever she switches plate or robot. If the designer wants the robot to keep
+working while she watches it think, that is a change to the menu rule, not to the bench.
 
 ## 4. The plate — the model card
 
