@@ -1,0 +1,37 @@
+{
+  "id": "Q-97",
+  "title": "What does she see when the robot learns overnight?",
+  "question": "The Mark III changes its mind once a day, at the moment the day turns, from what it earned that day. You ruled earlier that anything the player sees of a robot's training must be a truthful view of real data, dressed up or not, never a story that could drift from what the robot actually does. For the first version the honest floor is the robot's own panel: tap it and it says how many days it has practised and how much it watered yesterday, in numbers. The question is whether the game says anything more than that at dawn.",
+  "why_now": "It decides whether v0.2.1 needs any new screen. The panel numbers are a day of work; anything at dawn is a scene, with art and sound, and would be the release's most expensive piece.",
+  "options": [
+    {
+      "key": "a",
+      "label": "Numbers on its panel, nothing else (Recommended)",
+      "detail": "The panel says days practised and yesterday's score. Wordless enough for the game's bar (a number and a picture of a watering can), truthful by construction, and the cheapest thing that lets a player notice it is getting better. Everything richer waits until a real learning curve exists to dress."
+    },
+    {
+      "key": "b",
+      "label": "A line at dawn",
+      "detail": "When the day turns, a small card over the robot shows yesterday's score beside the day before, so improvement is a comparison rather than a memory. About two days: a card, a number pair, and a sound. It is the first thing the game would say at dawn, and it would need to earn that."
+    },
+    {
+      "key": "c",
+      "label": "A dream at night, later",
+      "detail": "The stylised training surface the bots chapter sketches: the robot dreams the day back as a montage, made from the real trace. Not for v0.2.1; this option records that you want it designed for the fuller learning release rather than dropped."
+    }
+  ],
+  "links": [
+    {
+      "label": "The design (design/06, 'Its night')",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/06-bots-and-training.md"
+    },
+    {
+      "label": "How much real learning the player sees (D-4)",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DECISION_LOG.md"
+    },
+    {
+      "label": "Queue entry (Q-97)",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"
+    }
+  ]
+}

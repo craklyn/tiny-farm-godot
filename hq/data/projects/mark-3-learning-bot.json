@@ -1,0 +1,69 @@
+{
+  "id": "mark-3-learning-bot",
+  "name": "The Mark III: a robot that learns to water",
+  "priority": 1,
+  "status": "in_progress",
+  "owner": "tomas",
+  "contributors": [
+    "kenji",
+    "jade",
+    "yuki",
+    "sam",
+    "grace"
+  ],
+  "summary": "The next release's content, set by the CEO on 2026-09-09: a third robot that learns how to act by reinforcement. A reward says what a correct outcome is (a tile it made wet), it spends each day trying under a day's energy, and each night its weights move toward what earned more. The first version learns one job, watering, on purpose. Every action it takes goes through the same gateway and movement code as the player's, so it is watchable and replays exactly.",
+  "requirements": [
+    "The reward is computed from what changed on the ground, never from the route walked",
+    "It decides once a second, one step or one verb at a time, and spends its own 600-unit day",
+    "What it is told before a decision is a data spec (tile, energy, a view of radius 2) that later robots can widen",
+    "Weights update only at the day turn, live in the actor's saved state, and a day replays to its autosave with them intact",
+    "Two runs on the same seed are identical; the seven-day learning curve rises on a fixed seed",
+    "Every watering looks and sounds like hers; it moves at the Mark I's pace; nothing changes without a cue"
+  ],
+  "current_status": "Design drafted in docs/design/06 ('The ladder's third rung') against the real brain, gateway, save and replay code. Two cards wait on the CEO: the reward values, inputs and price (Q-96) and what the player sees at dawn (Q-97). Engineering can start on the observation builder and the policy maths without either ruling; only the shop price and any dawn surface wait.",
+  "plan": [
+    {
+      "step": "Design written against the code, with the six rules and the v1 scope",
+      "done": true
+    },
+    {
+      "step": "Q-96 approved: reward table, inputs, price",
+      "done": false
+    },
+    {
+      "step": "Observation builder and reward table in the sim, behind tests",
+      "done": false
+    },
+    {
+      "step": "Policy maths and the learning rule proven on a seven-day curve (the D-2 first cut)",
+      "done": false
+    },
+    {
+      "step": "The learn setting in the bot brain: its day, its parking, its night",
+      "done": false
+    },
+    {
+      "step": "Weights in the save; a day replays with them intact",
+      "done": false
+    },
+    {
+      "step": "Robot Mk III in the shop with its sprite and panel numbers",
+      "done": false
+    },
+    {
+      "step": "Watched on the tablet: learns within a week of in-game days, and is legible",
+      "done": false
+    }
+  ],
+  "links": [
+    "docs/design/06-bots-and-training.md",
+    "docs/DECISION_LOG.md",
+    "systems/sim/brains/bot_brain.gd",
+    "tools/demo_robot_value.gd"
+  ],
+  "blocked_on": "",
+  "blocked_since": "",
+  "release": "update-1-1",
+  "release_critical": true,
+  "unblock_action": ""
+}

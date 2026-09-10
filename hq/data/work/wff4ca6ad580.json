@@ -1,0 +1,20 @@
+{
+  "id": "wff4ca6ad580",
+  "title": "Prove the Mark III's learning rule on a seven-day watering curve",
+  "level": "task",
+  "owner": "kenji",
+  "tier": 1,
+  "tier_reason": "New code behind a test and a demo; git reverts it. The choice it settles (REINFORCE trace vs evolutionary strategies) is an engineering call the design leaves to the spike.",
+  "ask": "The design in docs/design/06 ('The ladder's third rung') proposes a linear softmax policy (103 inputs x 6 actions) trained by REINFORCE with an eligibility trace, updated once at the day turn, with exploration drawn from SimRng.stateless so replays recompute it. Prove it learns the v1 watering job, or show that evolutionary strategies does better at the same storage cost. This is the first cut of the D-2 spike.",
+  "first_action": "Write tools/demo_learning_robot.gd on the pattern of tools/demo_robot_value.gd: one seed, a staged field with dry wettable soil, a Mark III (or a test species with the same observation and action set) run for seven in-game days; print per-day score; assert the curve rises and that two runs are byte-identical. Keep every array JSON-plain in the actor's extra. Warrants the stronger model.",
+  "state": "waiting_session",
+  "thread": "kenji",
+  "source": "session",
+  "source_message": "CEO, 2026-09-09, chief of staff session: v0.2.1 is the Mark III, the robot that learns by reinforcement (P-14).",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-09T20:01",
+  "created_ts": 1789009294.6615415,
+  "parent": "mark-3-learning-bot"
+}

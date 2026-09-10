@@ -1,0 +1,20 @@
+{
+  "id": "we6190884f9a",
+  "title": "Draw the Mark III so it reads as the third robot at a glance",
+  "level": "task",
+  "owner": "yuki",
+  "tier": 1,
+  "tier_reason": "A generated sprite landing in assets/, with provenance; git reverts it.",
+  "ask": "A third bot sheet on bot.png's exact layout (192x192, 4x4 of 48px, rows down/up/left/right, frame 0 the standing idle) so entities/bot.gd draws it with no new code. It must be tellable from the Mk I and Mk II at the table's viewing distance, and per the Q-84 ruling it should read as a machine.",
+  "first_action": "Generate through the Retro Diffusion pipeline with the palette lock and post-processing, archive the raws under assets/raw/ as a dated batch, record provenance in CREDITS.md, and add the sheet path to the bot_mk3 row's icon.",
+  "state": "waiting_session",
+  "thread": "yuki",
+  "source": "session",
+  "source_message": "CEO, 2026-09-09, chief of staff session: v0.2.1 is the Mark III, the robot that learns by reinforcement (P-14).",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-09T20:01",
+  "created_ts": 1789009294.6615415,
+  "parent": "mark-3-learning-bot"
+}

@@ -367,6 +367,8 @@ background thread during play; blend a scripted curriculum with a real learned r
 Abandoning *real* learning is the last resort and would demote the "The ML is real" pillar.
 If dev-time pretraining fails to generalize across player farms (tested in D-2), stay
 longer on the ladder's small fully-trainable tiers and grow bases later.
+**Amended 2026-09-09 (P-14):** the first learned rung is reinforcement on a designed
+reward (the mark-3); cloning from demonstrations is the rung after it.
 
 ### P-6. Art & scope: 8/16-bit pixel art
 **Working answer:** Stay in the current pixel-art lane (Sprout Lands-era 16px tiles or a
@@ -531,6 +533,36 @@ being deleted; the designer said "I like these options", not "remove them".
 ---
 
 ## Tier 3 — Deferred (with triggers)
+
+### P-14. The first learned bot learns by reinforcement, by day, and updates by night
+**Ruled 2026-09-09**, re-scoping v0.2.1 around a mark-3 robot: *"The mark-1 did
+pre-programmed actions. The mark-2 could do some simple process-oriented actions
+reactively. The mark-3 is the class that can learn how to act. We need to think about
+its learning abilities in terms of reinforcement learning."*
+
+**The rule.** The bottom rung of learning is reinforcement from a designed reward, not
+cloning from demonstrations. Six constraints bind every learned bot, and they are the
+designer's words restated: the reward is on **outcomes** ("what it means for a bot to
+have done something correctly, regardless of how they got there"); the bot **wanders by
+day** according to its algorithm and its weights **update by night**, before the next
+day; what it is told before each action is an **adjustable interface** (its global
+coordinate, vision within a distance); it takes **one action at a time at the player's
+granularity**; it spends **a day's energy, like a player**; and its actions are
+**interpretable** by a watching player — no extraordinary speed, no tile changed without
+a visual cue.
+
+**What it amends.** P-5's ladder read scripted → cloning → RL fine-tuning. The first
+learned rung is now RL on a designed reward, because it needs no curated corpus and no
+curation UI — both M5's content — and because a reward states what "correct" means in a
+way a demonstration cannot. Cloning ("show it") becomes the rung after, where the
+mark-1's taught lists and her recorded days are what a bot is shown. P-5's adapter and
+budget guidance stands. D-2's spike begins as this bot's v1: the algorithm is chosen on a
+single-job watering day (`design/06`, "The ladder's third rung").
+
+**Adjust if:** the v1 mark-3 cannot learn the watering job within a week of in-game
+days on the tablet, or its wandering reads as broken rather than clumsy in play. Then the
+fallback order is P-5's — more nights, a scripted curriculum with a learned residual —
+and never a fake that would demote the "The ML is real" pillar.
 
 ### D-1. Phase 5 genre (X-COM tactics vs. Gradius-like hybrid vs. other)
 **Why deferred:** Phase 5's cast is the player plus *trained bots* — its design depends on

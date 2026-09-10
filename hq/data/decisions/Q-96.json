@@ -1,0 +1,37 @@
+{
+  "id": "Q-96",
+  "title": "The Mark III's first lesson: what it is rewarded for, what it can see, and what it costs",
+  "question": "You re-pointed the next release at a robot that learns. The design is drafted: a Mark III you buy and put down, which spends each day trying to keep the field's dry soil watered and each night adjusts itself toward whatever earned more. Its first days are clumsy on purpose; that is what learning looks like. Three number-shaped things need your say before the build fixes them.\n\nThe reward, computed from what changed on the ground and never from where it walked: +1 for a tile it made wet; −0.2 for watering a tile that was already wet or is not soil that takes water (energy spent, nothing changed); −0.05 for a step that was refused by a fence, the edge, or something in the way; 0 for anything else.\n\nWhat it is told before each decision: where it is on the map, how much of its day is left, and a five-by-five view around it, where each tile says whether it needs water, whether it is wet, whether it can be walked on, and whether a crop or seed is there. The view's size is a dial that later robots can turn up.\n\nThe price: 800 gold, twice the Mark II. Learning is the thing you save for, and the Mark II has to stay worth owning first.",
+  "why_now": "The reward and the inputs are the two things the learning rule is built around; changing them after the robot has been tuned means tuning again. The price is a shop row and can move any time, but the release notes will name it.",
+  "options": [
+    {
+      "key": "a",
+      "label": "Approve as drafted (Recommended)",
+      "detail": "The build starts with these values. They are data, not code, so a later change is a table edit; the reward and view shape are what the week of tuning is spent on, and that is what approval fixes."
+    },
+    {
+      "key": "b",
+      "label": "Approve the shape, change the numbers",
+      "detail": "Say which value moves and where. Anything that keeps the reward on outcomes and the view egocentric fits the design as written. A reward that pays for walking would not."
+    },
+    {
+      "key": "c",
+      "label": "Send it back for a different first job",
+      "detail": "Watering was chosen because the Mark I already does it from a taught list, so what learning is worth can be measured against that list with the demo that priced the Mark I. Another job costs that comparison and a new reward, roughly two more days."
+    }
+  ],
+  "links": [
+    {
+      "label": "The design (design/06, 'The ladder's third rung')",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/06-bots-and-training.md"
+    },
+    {
+      "label": "The decision (P-14)",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DECISION_LOG.md"
+    },
+    {
+      "label": "Queue entry (Q-96)",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"
+    }
+  ]
+}

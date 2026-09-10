@@ -1,5 +1,5 @@
 {
-  "note": "The release plan for the Product & Program page. Milestones hold stories, stories hold an estimate in days of work, and every date on the page is computed from what is still outstanding — nothing here is a hand-typed date (the CEO's ruling, 2026-09-04). Releases run in the order listed; each one's estimated date is the previous one's plus its own remaining work. A release with unestimated stories has no date, and neither does anything after it, because a chain built on a guess is worse than an honest blank. Seeded 2026-09-05: v0.2.0's stories are the real remaining requirements of its two critical projects; everything after it is a placeholder waiting to be sketched with the CEO.",
+  "note": "The release plan for the Product & Program page. Milestones hold stories, stories hold an estimate in days of work, and every date on the page is computed from what is still outstanding — nothing here is a hand-typed date (the CEO's ruling, 2026-09-04). Releases run in the order listed; each one's estimated date is the previous one's plus its own remaining work. A release with unestimated stories has no date, and neither does anything after it, because a chain built on a guess is worse than an honest blank. Seeded 2026-09-05: v0.2.0's stories are the real remaining requirements of its two critical projects; everything after it is a placeholder waiting to be sketched with the CEO. Re-scoped 2026-09-09: v0.2.1 is the Mark III, the robot that learns; the entry named 'Machines that pay for themselves' is parked off the plan by the CEO (the name was cryptic and unhelpful) and M3's content waits to be re-sketched with him.",
   "capacity_days_per_week": 5.0,
   "releases": [
     {
@@ -46,24 +46,66 @@
       "release_id": "update-1-1",
       "name": "Player Update 1.1",
       "codename": "v0.2.1",
-      "contains": "The fresh-player evidence v0.2.0 shipped without (designer amendment 2026-09-08) — one unprompted adult session on the tablet, the sleeping-cot bar and the standing bars scored from its trace. The two player-visible follow-ups it was going to carry, the ripe-crop glance and the bed outline, made the v0.2.0 tag after all and are listed here as done.",
+      "contains": "The Mark III, the first robot that learns. You buy it, put it down, and it works out how to water your field by trying: clumsy for a few days, better every morning. Plus the fresh-player evidence v0.2.0 shipped without (one unprompted adult session on the tablet, the sleeping-cot and standing bars scored from its trace). The ripe-crop glance and the bed outline made the v0.2.0 tag after all and are listed here as done.",
       "stories": [
+        {
+          "id": "s11",
+          "title": "Build what the robot is told before each decision — its tile, its energy, a 5×5 view — as an adjustable spec",
+          "estimate_days": 0.5,
+          "done": false
+        },
+        {
+          "id": "s12",
+          "title": "Write the reward table and the policy: a linear softmax with a REINFORCE trace, deterministic under the sim's seed",
+          "estimate_days": 1.0,
+          "done": false
+        },
+        {
+          "id": "s13",
+          "title": "Give the Mark III its day: the learn setting in the bot brain, one decision a second, parks on an empty meter",
+          "estimate_days": 1.0,
+          "done": false
+        },
+        {
+          "id": "s14",
+          "title": "Update its weights at the day turn, keep them in the save, and prove a day replays to its autosave with the weights intact",
+          "estimate_days": 0.5,
+          "done": false
+        },
+        {
+          "id": "s15",
+          "title": "Put Robot Mk III in the shop with its own sprite, and let its panel say days practised and yesterday's score",
+          "estimate_days": 0.5,
+          "done": false
+        },
+        {
+          "id": "s16",
+          "title": "The learning-curve demo and its test: the same seed for seven days, the score rises, two runs are identical",
+          "estimate_days": 0.5,
+          "done": false
+        },
+        {
+          "id": "s17",
+          "title": "Watch it on the tablet: it learns within a week of in-game days, and what it is doing can be said out loud",
+          "estimate_days": 0.5,
+          "done": false
+        },
         {
           "id": "s1",
           "title": "One unprompted first session by an adult who has never played, on the tablet",
-          "estimate_days": null,
+          "estimate_days": 0.5,
           "done": false
         },
         {
           "id": "s2",
           "title": "Score the sleeping-cot bar from that session's trace: at least one sleep, unprompted",
-          "estimate_days": null,
+          "estimate_days": 0.25,
           "done": false
         },
         {
           "id": "s3",
           "title": "Confirm no regression on the standing bars — dead taps at or under 12%, longest stall at or under 16.3 seconds",
-          "estimate_days": null,
+          "estimate_days": 0.25,
           "done": false
         },
         {
@@ -83,16 +125,26 @@
           "why": "Reported from play 2026-09-07 — \"at nighttime, when all of your energy is spent, look at the house from the outside\". The dusk cue lights the tile the next tap should land on, and it always drew the bed's own 16x32 footprint: on the 16x16 front door that spilled onto the wall above, so the house wore a bed outline every evening. Fixed the same day — the shape is now a pure function in `CotPresentation` and asserted, rather than inline geometry nobody could test.",
           "raised": "2026-09-07",
           "shipped_in": "v0.2.0"
+        },
+        {
+          "id": "s18",
+          "title": "Write the release notes a player will read",
+          "estimate_days": 0.25,
+          "done": false
+        },
+        {
+          "id": "s19",
+          "title": "Play the web build end to end before the tag goes out",
+          "estimate_days": 0.5,
+          "done": false
+        },
+        {
+          "id": "s20",
+          "title": "Cut the v0.2.1 tag from a green main through the deploy runbook",
+          "estimate_days": 0.5,
+          "done": false
         }
       ]
-    },
-    {
-      "id": "m3",
-      "release_id": null,
-      "name": "Machines that pay for themselves",
-      "codename": null,
-      "contains": "Automation you place and maintain: sprinkler coverage and overlap, upkeep, and the resource loop behind buying a machine — plus the first group-pest skirmishes to spend it on.",
-      "stories": []
     },
     {
       "id": "m4",
@@ -107,7 +159,7 @@
       "release_id": null,
       "name": "A bot that learns from you",
       "codename": null,
-      "contains": "The first bot trained on your own recorded sessions, with the overnight training loop running on the tablet itself.",
+      "contains": "The fuller learning slice: a bot you can show, trained on your own recorded sessions, with the overnight training loop running on the tablet itself at fleet scale. The first learned bot arrives earlier, as v0.2.1's Mark III.",
       "stories": []
     },
     {

@@ -11,6 +11,25 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
 
 ## Now — blocks M0 close or current work
 
+- **Q-97 (Ruling, filed 2026-09-09)** **What does she see when the robot learns
+  overnight?** The Mark III updates its weights at the day turn (P-14). D-4 ruled that
+  anything the player sees of training must be a truthful view of real data, stylised or
+  not. For v1 the honest floor is the robot's own panel: how many days it has practised
+  and how much it watered yesterday, in numbers. The question is whether v1 says anything
+  more than that at dawn. Three ways in `hq/data/decisions/Q-97.json`; the
+  recommendation is the floor — numbers on the panel, nothing else — until a real
+  learning curve exists to stylise.
+
+- **Q-96 (Approval, filed 2026-09-09)** **The Mark III's first lesson: what it is
+  rewarded for, what it can see, and what it costs.** The mark-3 design is drafted in
+  `design/06` ("The ladder's third rung"). Three number-shaped things need your
+  approval before the build fixes them: the **reward table** (+1 for a tile it made
+  wet; −0.2 for water that changed nothing; −0.05 for a refused step; 0 otherwise), the
+  **v1 inputs** (its own tile, its energy left, a 5×5 view with four channels per tile),
+  and a **shop price** — recommendation 800 gold, twice the mark-2, because learning is
+  the thing you save for and the mark-2 has to stay worth owning first. Card:
+  `hq/data/decisions/Q-96.json`.
+
 - **Q-95 (Ruling)** **What does a returning player's old farm get when an update
   lands?** Found by the designer minutes after v0.2.0 went live: the itch page
   offered Continue on his eleven-day-old farm, which has no fences and no

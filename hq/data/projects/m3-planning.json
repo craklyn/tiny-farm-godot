@@ -2,7 +2,7 @@
   "id": "m3-planning",
   "name": "M3 planning (the next milestone)",
   "priority": 3,
-  "status": "in_progress",
+  "status": "planned",
   "owner": "priya",
   "contributors": [
     "sofia",
@@ -16,7 +16,7 @@
     "A written M3 plan on the M2.5 template, with exit gate defined as measured criteria",
     "Work items sized and dependency-ordered"
   ],
-  "current_status": "Unblocked and next in line. Planning has not begun in earnest — it was explicitly queued behind the T-35/T-36 fixes, which have both shipped. The first concrete step is a scope proposal for the CEO to rule on.",
+  "current_status": "Parked by the CEO on 2026-09-09. The release-plan entry that carried M3 was named 'Machines that pay for themselves', which he called cryptic and unhelpful, and the next release is now the Mark III, the robot that learns (see the mark-3-learning-bot project). M3's content — the resource loop behind buying a machine, coverage and upkeep, the first group-pest skirmishes — is unchanged and waits to be re-sketched with him in plain words after v0.2.1. Nothing here is blocked; it is waiting on purpose.",
   "plan": [
     {
       "step": "Draft 2-3 candidate M3 scopes with cost estimates (strawman from Product + Design)",

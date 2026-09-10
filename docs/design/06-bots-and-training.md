@@ -1,8 +1,10 @@
 # 06 — Bots & Training
 
 *Status: outlined (technical path settled further than any other system — see
-`../ARCHITECTURE.md`). Blocking: D-2 spike for algorithms; M5 for content. The scripted
-line is now **in the player's hands** — bought, placed and instructed (2026-09-03, P-12).*
+`../ARCHITECTURE.md`). The scripted line is **in the player's hands** — bought, placed
+and instructed (2026-09-03, P-12). The first learned bot, the **mark-3**, is v0.2.1's
+content (designer, 2026-09-09; P-14) and is the D-2 spike's first cut. M5 remains the
+fuller phase-4 slice.*
 
 ## The player experience: mentorship
 Your bot farms like you because it learned from your replays. The core new verb of
@@ -314,7 +316,180 @@ of it (S-7, T-12/Q-35); the wordless version is filed as **Q-87**, with paired s
 robot is tappable: it is discoverable by poking at it, which is fine for a placeholder and
 is `design/13`'s problem when the debut becomes real content.
 
+## The ladder's third rung: a mark-3 learns (designer, 2026-09-09)
+
+> *"The mark-1 did pre-programmed actions. The mark-2 could do some simple
+> process-oriented actions reactively. The mark-3 is the class that can learn how to
+> act. We need to think about its learning abilities in terms of reinforcement
+> learning."*
+
+The ladder now has three rungs, each named by **what decides**:
+
+| Rung | What decides | Where the decision came from | Shipped |
+| --- | --- | --- | --- |
+| Mark-1 | a list | she wrote it, by pointing at tiles | v0.2.0 |
+| Mark-2 | a rule | we wrote it (follow, circle, shoo) | v0.2.0 |
+| **Mark-3** | **a policy** | **it wrote it, from what earned reward** | **v0.2.1** |
+
+The mark-3 is the first learned bot in the game and the content of v0.2.1. It learns by
+**reinforcement**: a reward says what a correct *outcome* is, the robot spends its days
+finding out how to earn it, and each night its weights move toward whatever earned more.
+This pulls the first learned bot forward from M5, and it changes the order P-5 set
+(cloning first, then RL) for the bottom rung — see P-14 in `DECISION_LOG.md`.
+
+### The six rules (designer, 2026-09-09)
+
+These are the shape of the design, not options:
+
+| Rule | In one line | What it binds |
+| --- | --- | --- |
+| **Reward is on outcomes** | what it means to have done something correctly, *regardless of how it got there* | reward is computed from what changed in the world, never from the path walked |
+| **Day and night** | it wanders each day by its algorithm; each night, before the next day, its weights update from that day | learning happens only at the day turn; no weight changes mid-day |
+| **Inputs are adjustable** | what it is told before each action is a tunable interface, designed generally | the observation is a data spec (position, vision radius, channels), not code |
+| **One action at a time, at her granularity** | the player's verbs at the player's step size | no macros, no batches; a decision is one step or one verb on one tile |
+| **An energy budget per day, like hers** | a day is 600 units for it too | verbs charge its own meter; at 0 it stops asking |
+| **Interpretable when watched** | no extraordinary speed, no tile changes without a visual cue | walks at the bot pace; every verb goes through the gateway so it gets her cue |
+
+### v1 — deliberately weak (P-13)
+
+The first mark-3 learns **one job: watering**. It keeps the field's dry, wettable soil
+wet. No teach, no dial, no other verb. Watering is the job because:
+
+- the mark-1 already does it from a taught list, so what learning is *worth* can be
+  measured against the taught list with the same two-farm demo that priced the mark-1
+  (T-39, `tools/demo_robot_value.gd`);
+- the reward is unambiguous — a tile went from dry to wet — and needs no judgement;
+- the verb already has an actor cue (`farm.gd`'s verb table), so a mark-3 watering looks
+  and sounds like her watering with no new presentation code.
+
+### What it is told before each decision (the observation)
+
+The spec is data on the catalogue row and copied onto the robot at placement, so it can be
+changed per robot later (the "Vision I/II" unlocks in `ARCHITECTURE.md` are a bigger
+radius on this same spec). v1 defaults:
+
+| Input | v1 default | Adjustable |
+| --- | --- | --- |
+| Own position | its global tile, normalised to the page (2 numbers) | on / off |
+| Energy left | fraction of its day (1 number) | on / off |
+| Vision | every tile within radius 2 — a 5×5 patch around it | the radius |
+| Per-tile channels | needs water · is wet · can be walked on · has a crop or seed (4 numbers) | the list |
+| Day and weather | not in v1 | later |
+
+v1 vector: 3 + 25 × 4 = **103 numbers**. Built once per decision, O(radius²), never
+O(map) (ground rule 8). It sees only through this spec — the same egocentric-patch
+shape `ARCHITECTURE.md` has planned since S-3.
+
+### What it can do (the actions)
+
+| Action | What happens | Cost |
+| --- | --- | --- |
+| Step up / down / left / right | walks one tile through the movement engine, refused where she would be refused | none, like her walking |
+| Water here | `water` on the tile it stands on, through the gateway, exactly as a mark-1 works a square on arrival | 30 units |
+| Wait | stands for one decision | none |
+
+Six actions, nothing she cannot do (S-3). It decides **once a second** of sim time (ten
+ticks) and the decision is executed by the same deterministic movement and gateway code
+the mark-1 uses — P-8's shape, a learned choice over deterministic execution. Movement
+is per tile, which is the smallest unit of a player's tap-to-walk.
+
+### What it is rewarded for
+
+Reward values are data (`[Playtest]`, approval on Q-96), read from one table so they can
+be tuned without touching the brain:
+
+| Outcome | Reward |
+| --- | --- |
+| a tile went from dry to wet because it watered | **+1** |
+| it watered a tile that was already wet, or not soil that takes water — energy spent, nothing changed | −0.2 |
+| a step was refused (a fence, the edge, an occupied tile) | −0.05 |
+| anything else — a step that worked, a wait | 0 |
+
+The day's total is its **score**, and the score is what the panel reports in numbers. A
+reward is computed from the world before and after the gateway answered, so a clever
+route and a clumsy one that wet the same tiles earn the same.
+
+### Its day
+
+It wakes at the day turn with a full meter (600 units — `ACTOR_MAX_ENERGY`, the same as
+her day). It thinks once a second and acts. When its meter reaches 0 it parks where it
+stands until the next day turn: the gateway would still resolve (Q-11's soft floor), the
+brain simply stops asking. A day is therefore at most twenty waterings and as many steps
+as her own day leaves it, and it ends when she sleeps. No bot lifts a tool while she is
+still indoors (the mark-1's rule, kept).
+
+### Its night
+
+At the day turn — in `on_new_day`, before the new day's first decision — it applies the
+update from the day's trace, resets the trace, and is refilled. No decision is taken
+during the turn itself, for the same reason nothing else decides there: a roll taken
+in the turn would be taken twice on replay. What she *sees* of the night is Q-97.
+
+### The learning rule (strawman; the D-2 first cut, owned by the ML seat)
+
+A **linear softmax policy**: 103 inputs × 6 actions = 618 weights and 6 biases. Trained
+by REINFORCE with an eligibility trace, so the day's experience costs O(weights), not
+O(steps):
+
+- at each decision, `trace += ∇ log π(action | observation)`;
+- at each reward, `accumulator += reward × trace`;
+- at night, `weights += rate × (accumulator − baseline × trace)`, where the baseline is
+  the running mean of past days' scores, then the weights are rounded to 1e-6.
+
+Exploration is the softmax's own sampling, drawn with `SimRng.stateless(salt, index)` —
+salt from the robot's id and the day, index its decision count — so the same seed and the
+same day reproduce the same wander, and a replay recomputes it. The alternative the spike
+may prefer is evolutionary strategies (perturb, keep the better day): same storage, less
+maths, slower learning. Either fits the overnight budget with three orders of magnitude to
+spare at this size; the sim is not the bound (`M2_SPEC.md`).
+
+### Determinism, saves, replay
+
+- Weights, biases, trace, accumulator, baseline and decision count live in the robot's
+  `extra` as flat float arrays — JSON-plain, saved with the actor (save v3, additive keys,
+  no bump), compared by `capture_canonical`.
+- The nightly update is **recomputed** on replay, like every brain decision (Q-53).
+- `configure` re-deploys and carries only energy and owner today; the learned keys join
+  that list, or a turn of the dial would wipe a week of practice.
+- Risk to retire in the spike: replaying a tablet session on the desktop compares weights
+  as JSON doubles; the 1e-6 rounding at night is the guard, and the round-trip test proves it.
+
+### Cost (ground rule 8)
+
+One think per second per mark-3; an observation of 25 tiles; 618 multiply-adds; no route
+search per think — a step is one tile and one `can_enter`. Cheaper than a mark-2 on
+follow, which searches a route per tile she moves.
+
+### What the player sees
+
+She buys **Robot Mk III** from the shop (P-12) and puts it down. It wanders — the first
+days clumsy, and visibly so, which is the failure design this chapter asks for: bad
+behaviour that is funny and legible, never opaque. Each watering looks and sounds like
+hers. Tap it and the panel says, in numbers, how many days it has practised and how much
+it watered yesterday. It moves at the mark-1's pace. Nothing on the map changes without
+the cue she would have made herself.
+
+### Not in v1
+
+Other verbs (till, plant, harvest, shoo); a stall or a home to walk back to; vision beyond
+radius 2; learning from her recorded days (that is "show it", the next rung, P-5 as
+amended); sharing weights between robots (P-7); any night surface beyond the panel's
+numbers (D-4). Each is a later mark or a later tier, on purpose.
+
+### Where it lives in code
+
+| Piece | Home |
+| --- | --- |
+| The catalogue row `bot_mk3` (program `policy`, config `learn`, price on Q-96) | `systems/machine_defs.gd` |
+| The `learn` branch of the bot brain's dispatch | `systems/sim/brains/bot_brain.gd` |
+| The policy maths, pure and static | `systems/sim/brains/policy.gd` (new) |
+| The observation builder | `systems/sim/observation.gd` (new) |
+| The reward table, data layer | `systems/rewards.gd` (new) |
+| The two-farm learning-curve demo and its gate | `tools/demo_learning_robot.gd` + `test_learning_robot()` |
+
 ## Constraints from decisions
 Bots emit player verbs only (S-3); observations are egocentric grid patches
 (ARCHITECTURE); hierarchical options control (P-8); parameter sharing default with
-per-bot adapters opt-in (P-5/P-7); all training in the deterministic sim (S-5).
+per-bot adapters opt-in (P-5/P-7); all training in the deterministic sim (S-5); the
+first learned rung learns by reinforcement from a designed reward, by day, updated by
+night, energy-budgeted and interpretable (P-14).

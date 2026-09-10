@@ -1718,6 +1718,23 @@ refactor, fixed as a test); benchmark ≥100k× realtime *with travel modeled* (
 measured — met, after Q-67's pathfinder work; ~82k× as WI-12 first measured it**); every
 tier-1 critter's mechanic proven by a deterministic sim test.
 
+## v0.2.1 — the Mark III, a robot that learns (re-scoped 2026-09-09)
+The designer re-pointed the next release at the third rung of the robot ladder: a
+**mark-3** that learns by reinforcement — reward on outcomes, wander by day, update by
+night, adjustable inputs, one action at a time at her granularity, her energy budget,
+interpretable when watched (P-14). v1 learns one job, watering, deliberately (P-13).
+Full design: `design/06` "The ladder's third rung". Open cards: Q-96 (reward, inputs,
+price), Q-97 (what she sees of the night).
+**Exit gate:** on the tablet, a Mark III bought from the shop learns to water the field
+within a week of in-game days — the learning-curve demo (`tools/demo_learning_robot.gd`)
+rises from day 1 to day 7 on a fixed seed and two runs are identical; its day replays to
+its autosave with its weights intact; and a watching player can say what it is doing.
+The fresh-tester evidence M1.5 still owes (one unprompted adult session, the cot bar)
+rides along under the playtesting standing rule below.
+**Parked the same day:** the release-plan entry named "Machines that pay for themselves"
+— the designer called the name cryptic and unhelpful. M3 below keeps its content but is
+off the plan until it is re-sketched with him, and its planning project is parked with it.
+
 ## M3 — Phase 2 vertical slice
 Sprinklers (first automation), group-pest skirmishes, yield-threshold gate per P-4.
 **Exit gate:** a new player reaches the phase 2→3 capability proof in normal play, and the
@@ -1754,9 +1771,10 @@ testable for free).
   first.
 - **D-2 spike** (after D-9; any time after M2, before phase 4 production): on-device
   training benchmark; pick algorithms; then phase 4 production.
-- **M5 — Phase 4 vertical slice:** first bot learns from the player's own replays;
-  overnight training loop live; D-4 (how much real ML the player sees) resolved by
-  playtest.
+- **M5 — Phase 4 vertical slice:** the fuller learning slice — a bot you can *show*,
+  trained on the player's own replays; the overnight training loop at fleet scale; D-4
+  (how much real ML the player sees) resolved by playtest. The *first* learned bot
+  arrives earlier, as v0.2.1's mark-3 learning by reinforcement (P-14).
 - **D-1** (after bots fight): phase 5 pre-production — genre + interface experiments,
   including the P-1 twitch-vs-tactics decision.
 - **M6 — Phase 5 vertical slice**, then content, polish, and D-5 (distribution).

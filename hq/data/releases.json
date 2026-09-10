@@ -1,18 +1,18 @@
 {
-  "note": "Release trains: the macro units players experience. Projects declare release + release_critical + depends_on; everything else derives. Gates decide when a release is DONE \u2014 evidence, not a calendar \u2014 so 'schedule risk' renders here as blocked critical-path chains and their ages. The CEO's target dates are a separate, authored file (hq/data/release_plan.json) and are the plan, never the evidence. 'features' is what the release OFFERS A PLAYER, written in their language and not ours: each one cites the decision or story that carries it, and whether it is in the public build is derived by tracing that id through git either side of the newest tag. Sales sells the features; engineering's commit counts are not this list.",
+  "note": "Release trains: the macro units players experience. Projects declare release + release_critical + depends_on; everything else derives. Gates decide when a release is DONE — evidence, not a calendar — so 'schedule risk' renders here as blocked critical-path chains and their ages. The CEO's target dates are a separate, authored file (hq/data/release_plan.json) and are the plan, never the evidence. 'features' is what the release OFFERS A PLAYER, written in their language and not ours: each one cites the decision or story that carries it, and whether it is in the public build is derived by tracing that id through git either side of the newest tag. Sales sells the features; engineering's commit counts are not this list.",
   "releases": [
     {
       "id": "update-1",
       "name": "Player Update 1",
       "tag_intent": "v0.2.0",
-      "goal": "The first public update since v0.1.0. Twelve things a player would notice, led by the shop and the first robot you can teach \u2014 the beginning of the delegation arc the whole game is about \u2014 on the ship-early-and-often ruling.",
-      "definition_of_done": "Amended by the designer 2026-09-08: v0.2.0 ships on the automated evidence \u2014 both suites, the robot session, the replay round-trip, and the release checklist (web build played through, credits screen, readout off). The fresh-tester pass that closes M1.5's exit gate moves to v0.2.1, once a tester is found. A v0.2.0 tag goes out through the deploy runbook.",
+      "goal": "The first public update since v0.1.0. Twelve things a player would notice, led by the shop and the first robot you can teach — the beginning of the delegation arc the whole game is about — on the ship-early-and-often ruling.",
+      "definition_of_done": "Amended by the designer 2026-09-08: v0.2.0 ships on the automated evidence — both suites, the robot session, the replay round-trip, and the release checklist (web build played through, credits screen, readout off). The fresh-tester pass that closes M1.5's exit gate moves to v0.2.1, once a tester is found. A v0.2.0 tag goes out through the deploy runbook.",
       "features": [
         {
           "id": "shop",
           "evidence": "P-12",
           "headline": "A shop that sells everything",
-          "for_players": "Seeds, tools, animals and machines \u2014 if you can own it, you can buy it. The whole screen is pictures, coins and numerals, so a child who cannot read can shop on their own."
+          "for_players": "Seeds, tools, animals and machines — if you can own it, you can buy it. The whole screen is pictures, coins and numerals, so a child who cannot read can shop on their own."
         },
         {
           "id": "robots",
@@ -24,7 +24,7 @@
           "id": "home",
           "evidence": "T-37, T-39",
           "headline": "A home to go inside",
-          "for_players": "The farmhouse stands in your yard with a front door you can walk through. Inside is a room with your bed \u2014 at dusk the door glows to show you the way, and the bed glows once you are in."
+          "for_players": "The farmhouse stands in your yard with a front door you can walk through. Inside is a room with your bed — at dusk the door glows to show you the way, and the bed glows once you are in."
         },
         {
           "id": "clock",
@@ -48,7 +48,7 @@
           "id": "pips",
           "evidence": "T-28",
           "headline": "Every station says what it is for",
-          "for_players": "A small picture over each station shows what it does before you touch it \u2014 no words, no menu, no guessing."
+          "for_players": "A small picture over each station shows what it does before you touch it — no words, no menu, no guessing."
         },
         {
           "id": "water-sound",
@@ -87,14 +87,29 @@
       "id": "update-1-1",
       "name": "Player Update 1.1",
       "tag_intent": "v0.2.1",
-      "goal": "The evidence release: the fresh-player tablet session v0.2.0 shipped without, its cot-bar and standing-bar scoring, and the two small player-facing follow-ups that missed the v0.2.0 boat.",
-      "definition_of_done": "One genuinely fresh adult session recorded on the tablet and scored; the two follow-up stories done; a v0.2.1 tag out through the runbook."
+      "goal": "The first robot that learns. v0.2.1 adds the Mark III: a robot that learns to water the field by reinforcement — clumsy for a few days, better every morning — plus the fresh-player evidence v0.2.0 shipped without.",
+      "definition_of_done": "A Mark III bought from the shop learns the watering job within a week of in-game days on the tablet, measured by the learning-curve demo on a fixed seed; its day replays to its autosave with its weights intact; both suites and the robot session green; one fresh adult session recorded and scored; a v0.2.1 tag out through the runbook.",
+      "features": [
+        {
+          "id": "mk3",
+          "evidence": "P-14",
+          "headline": "A robot that learns on its own",
+          "for_players": "Put a Mark III down and it works out how to water your field by trying. Its first days are clumsy. Every night it learns from what worked, and the next morning it is a little better."
+        },
+        {
+          "id": "mk3-panel",
+          "evidence": "P-14, Q-97",
+          "headline": "You can see it learning",
+          "for_players": "Tap it and its panel says how many days it has practised and how much it watered yesterday."
+        }
+      ],
+      "subtitle": "the robot that learns"
     },
     {
       "id": "m3",
-      "name": "M3 \u2014 the next content milestone",
+      "name": "M3 — the next content milestone (parked)",
       "tag_intent": null,
-      "goal": "The next slice of the five-phase arc, scoped by your ruling and planned on the M2.5 template. What M3 actually contains is itself the opening decision.",
+      "goal": "Parked by the CEO on 2026-09-09: the plan entry named 'Machines that pay for themselves' was cryptic and unhelpful, so M3 is off the release plan until its content is re-sketched with him in plain words. The next slice of the five-phase arc, scoped by your ruling and planned on the M2.5 template. What M3 actually contains is itself the opening decision.",
       "definition_of_done": "Scope ruled; plan written with a measured exit gate; work items delivered and verified."
     }
   ]
