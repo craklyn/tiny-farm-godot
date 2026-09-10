@@ -354,14 +354,24 @@ func buy_machine(key: String) -> bool:
 	return true
 
 
+# What one crop fetches at the bin. **One price, two sellers** (v0.2.1 WI-9a): she
+# empties a whole basket into the bin, a machine brings one crop in its hands, and
+# a farm where those two paid differently would be a farm where it mattered whose
+# hands the wheat arrived in. A crop nobody has priced is worth nothing rather
+# than an error, which is what an unknown type has always been worth here.
+static func crop_price(crop_type: String) -> int:
+	var def: Dictionary = CropDefs.TYPES.get(crop_type, {})
+	if def.is_empty():
+		return 0
+	return int(def.sell_price)
+
+
 func sell_crops_to_bin() -> bool:
 	var sold_anything := false
 	for crop_type in crops.keys():
 		var count: int = crops[crop_type]
 		if count > 0:
-			var def: Dictionary = CropDefs.TYPES.get(crop_type, {})
-			if not def.is_empty():
-				gold += count * def.sell_price
+			gold += count * crop_price(crop_type)
 			crops[crop_type] = 0
 			total_shipped += count
 			sold_anything = true
@@ -370,6 +380,21 @@ func sell_crops_to_bin() -> bool:
 		if Engine.get_main_loop() and Engine.get_main_loop().root.has_node("AudioManager"):
 			Engine.get_main_loop().root.get_node("AudioManager").play_sfx("click")
 	return sold_anything
+
+
+# One crop, out of a machine's hands and into the bin (v0.2.1 WI-9a, Q-100). The
+# gold and the shipped count move exactly as they do when she sells a basket —
+# the same price, the same running total — because a crop is a crop whoever
+# carried it to the bin. No sound: a machine's cue is presentation's to play off
+# the Action, the way its watering already gets her splash (`world/farm.gd`).
+#
+# Returns what it paid, so the caller can report the gold in the Action's result.
+func sell_one_crop(crop_type: String) -> int:
+	var paid := crop_price(crop_type)
+	gold += paid
+	total_shipped += 1
+	gold_changed.emit(gold)
+	return paid
 
 
 func process_shipping_bin() -> void:

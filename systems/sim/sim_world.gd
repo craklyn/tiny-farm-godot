@@ -1128,6 +1128,31 @@ static func _is_player(actor: String) -> bool:
 	return actor == "" or actor == ACTOR_PLAYER
 
 
+# Is this a machine? (v0.2.1 WI-9a, Q-100.) **Asked of the species, not of a list
+# of ids or of a machine key**, because the three marks are one species with a
+# setting (`SpeciesDefs.BOT`) and a fourth mark would otherwise have to be
+# remembered here. The three gateway rules below that treat a machine differently
+# from a person — its harvest goes into its own hands, its seeds come out of her
+# box, its `sell` is the one crop it carries — all ask this and nothing else.
+#
+# The distinction is a *design* one, not a technical one (`design/06`, Q-100): a
+# person who helps on the farm brings their own seed and puts what they cut into
+# her basket, and a machine she bought does neither. It is not a verb a bot has
+# and she does not (S-3): every one of these is her own verb, answered
+# differently because the hands are different.
+func _is_machine(actor_id: String) -> bool:
+	return species_of(actor_id) == SpeciesDefs.BOT
+
+
+# A machine's own dictionary, the live one — what it is carrying lives in here
+# (v0.2.1 WI-9a), beside its config and everything else a brain remembers between
+# decisions. `{}` for an actor nobody has spawned, so a write against a stranger
+# lands nowhere instead of crashing; every caller has already asked
+# `_is_machine`, which is false for a stranger too.
+func _hands_of(actor_id: String) -> Dictionary:
+	return actors.get(actor_id, {}).get("extra", {})
+
+
 func spawn_actor(actor_id: String, species: String, at: Vector2i, extra: Dictionary = {}) -> Dictionary:
 	var entry := {
 		"species": species,
@@ -1780,6 +1805,25 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 		# with no reason at all — 17 of the session's 27 refusals.
 		"sell":
 			if gs == null: return _fail("no_state")
+			# **A machine sells the one crop in its hands** (v0.2.1 WI-9a, Q-100).
+			# Her `sell` empties the whole basket, because that is what a person
+			# does at the bin; a machine carries one crop at a time and brings it,
+			# so its `sell` is that crop at the same price her basket would have
+			# fetched (`GameState.crop_price` — one price, two sellers).
+			#
+			# **No proximity rule here, for either of them.** Standing close enough
+			# is the router's job for her tap and the brain's job for a machine's
+			# walk; the gateway has never asked her how far away she was, and a
+			# rule that bound only machines would be a rule bots have and she does
+			# not (S-3, ground rule 1).
+			if _is_machine(String(action.get("actor", ""))):
+				var hands := _hands_of(String(action.get("actor", "")))
+				var carried := String(hands.get("carrying", ""))
+				if carried == "":
+					return _fail("nothing_carried")
+				hands["carrying"] = ""
+				return { "ok": true, "crop_type": carried,
+					"gold": gs.sell_one_crop(carried) }
 			if not gs.sell_crops_to_bin():
 				return _fail("nothing_to_sell")
 			return { "ok": true }
@@ -2276,12 +2320,29 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			var cost: int = Tools.get_energy_cost(verb)
 			var actor := String(action.get("actor", ""))
 			var charged: bool = _is_player(actor)
+			# **A machine works out of her stores** (v0.2.1 WI-9a, Q-100). It is a
+			# thing she bought and pointed at her farm, so a seed it sows is one
+			# fewer in her box and a crop it cuts is in its own hands until it
+			# carries it to the bin. A *person* who helps — the neighbour — brings
+			# their own and puts what they cut in her basket, which is the
+			# behaviour every non-player actor had before this line existed.
+			var is_machine: bool = _is_machine(actor)
 			# Q-11 soft floor: in phase 1 an empty tank never blocks the action,
 			# it just stays at 0 (presentation slows the farmer as the nudge)
 			if charged and gs.hard_energy and gs.energy < cost: return _fail("no_energy")
 			var seed_type: String = action.get("seed_type", "")
 			if charged and verb == "water" and gs.watering_can_charges <= 0: return _fail("no_water")
-			if charged and verb == "plant" and gs.seeds.get(seed_type, 0) <= 0: return _fail("no_seeds")
+			if (charged or is_machine) and verb == "plant" and gs.seeds.get(seed_type, 0) <= 0:
+				return _fail("no_seeds")
+			# **One crop at a time, and the refusal comes before the meter.** A
+			# machine with full hands is not tired, it is full: nothing is spent
+			# and no square is cut, so the crop it is already carrying stays the
+			# one it has to deal with. Refused here rather than in the brain
+			# because it is a fact about the machine's hands, and a brain that
+			# forgot to ask must not be able to make a crop vanish.
+			if is_machine and verb == "harvest" \
+					and String(_hands_of(actor).get("carrying", "")) != "":
+				return _fail("carrying")
 
 			# The player's energy is also the clock, so hers goes through the setter,
 			# not the field: set_energy() clamps identically and emits
@@ -2323,7 +2384,9 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 						set_object(target.x, target.y, seed_type)
 					else:
 						set_tile_state(target.x, target.y, "seeded", seed_type)
-					if charged:
+					# Hers and her machines' alike (Q-100). The neighbour brought
+					# their own, so nothing comes out of the box for them.
+					if charged or is_machine:
 						gs.seeds[seed_type] -= 1
 				"water":
 					water_tile(target.x, target.y)
@@ -2343,7 +2406,22 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 				"harvest":
 					var crop_type := get_crop_type(target.x, target.y)
 					if crop_type != "":
-						gs.crops[crop_type] = gs.crops.get(crop_type, 0) + 1
+						# **A machine's harvest goes into its hands, not her
+						# basket** (v0.2.1 WI-9a, Q-100). Straight into `crops`
+						# is what every actor used to do, and for a machine that
+						# would mean the crop is banked the instant it is cut —
+						# so the walk to the bin, which is the thing a Mark III is
+						# meant to learn, would be worth nothing. One crop at a
+						# time, and `sell` at the bin is what turns it into gold.
+						if is_machine:
+							_hands_of(actor)["carrying"] = crop_type
+						else:
+							gs.crops[crop_type] = gs.crops.get(crop_type, 0) + 1
+						# Counted whoever cut it: the question this feeds is "has
+						# this farm ever harvested one of these" (the shop's
+						# unlocks), and a machine she bought and pointed at her
+						# wheat is her farm doing the harvesting — the same
+						# reading Q-66 gave a machine's crow-scaring.
 						gs.harvest_counts[crop_type] = gs.harvest_counts.get(crop_type, 0) + 1
 						set_tile_state(target.x, target.y, "cleared")
 						return { "ok": true, "crop_type": crop_type }

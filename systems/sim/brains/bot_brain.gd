@@ -342,6 +342,14 @@ static func deploy(world: SimWorld, actor_id: String, config: String, at: Vector
 			extra["pending_needs_water"] = false
 			extra["pending_bare"] = false
 			extra["pending_water_crop"] = false
+			# **What is in its hands, as a word** (v0.2.1 WI-9a, Q-100): the crop
+			# type it is carrying, or "" for empty. A machine's harvest goes here
+			# rather than into her basket and comes out again at the bin, both
+			# through the gateway — so a robot that never gets there is a robot
+			# standing in a field holding a wheat, which is exactly what a player
+			# should be able to see it doing. A String, because `extra` is
+			# JSON-plain all the way down (ground rule 4).
+			extra["carrying"] = ""
 		CONFIG_CIRCLE:
 			extra["radius"] = int(params.get("radius", ORBIT_RADIUS))
 		CONFIG_SHOO:
@@ -362,7 +370,7 @@ static func deploy(world: SimWorld, actor_id: String, config: String, at: Vector
 
 # --- one bot's think -----------------------------------------------------------
 
-func step(world: SimWorld, actor_id: String, tick: int, _gs = null) -> Dictionary:
+func step(world: SimWorld, actor_id: String, tick: int, gs = null) -> Dictionary:
 	var e: Dictionary = world.actor(actor_id)
 	if e.is_empty():
 		return {}
@@ -380,7 +388,7 @@ func step(world: SimWorld, actor_id: String, tick: int, _gs = null) -> Dictionar
 		CONFIG_ORDERS:
 			return _orders(world, actor_id, extra, tick)
 		CONFIG_LEARN:
-			return _learn(world, actor_id, extra, tick)
+			return _learn(world, actor_id, extra, tick, gs)
 		CONFIG_CIRCLE:
 			_circle(world, actor_id, extra, tick)
 		CONFIG_SHOO:
@@ -1010,7 +1018,8 @@ func _patrol_tile(world: SimWorld, actor_id: String, extra: Dictionary) -> Vecto
 # rule 3). Cost per decision is one observation, one policy evaluation and no
 # route search at all (ground rule 8) — a mark-3 is cheaper to run than a mark-2,
 # which is not the direction a reader expects the ladder to go.
-func _learn(world: SimWorld, actor_id: String, extra: Dictionary, tick: int) -> Dictionary:
+func _learn(world: SimWorld, actor_id: String, extra: Dictionary, tick: int,
+		gs = null) -> Dictionary:
 	# **An empty meter is a machine standing in the field, not a machine thinking
 	# about standing in the field** (P-14's "a day's energy like hers"). There is
 	# nothing left for any of the six to cost, so it stops deciding until the
@@ -1024,7 +1033,9 @@ func _learn(world: SimWorld, actor_id: String, extra: Dictionary, tick: int) -> 
 		extra["wake"] = tick + ticks(LEARN_PARKED_SECONDS)
 		return {}
 
-	var obs := Observation.build(world, actor_id, extra.get("spec", {}))
+	# Her stores go in with the world (v0.2.1 WI-9a): the seed box is one of the
+	# robot's inputs, and it is the one thing it can see that is not grid truth.
+	var obs := Observation.build(world, actor_id, extra.get("spec", {}), gs)
 	var n_in := obs.size()
 	var chances := Policy.probs(Policy.logits(extra["weights"], n_in, LEARN_ACTIONS, obs))
 	var decisions := int(extra.get("decisions", 0))
@@ -1299,17 +1310,16 @@ func on_result(world: SimWorld, actor_id: String, action: Dictionary,
 	var earned := 0.0
 	if verb == "water":
 		if bool(extra.get("pending_needs_water", false)) and ok:
-			# **Two rows for one stroke, and today they hold the same number.**
-			# A thirsty square of hers and a thirsty square the robot opened for
-			# itself are both worth 1 (`systems/rewards.gd`), so this line is a
-			# lookup with one answer — it exists because the question "should her
-			# squares pay more than its own?" is a reward value, which is data and
-			# the designer's to set, and a table that cannot tell the two apart
-			# could not be given that answer without touching the brain.
-			earned = Rewards.of("wet_tile" if bool(extra.get("pending_water_crop", false))
-					else "wet_tile_empty")
+			# **Two rows for one stroke** (Q-100). Water onto something growing
+			# is worth ten times water onto empty soil, because the first keeps a
+			# crop alive and the second only leaves the ground one step better
+			# placed. Which of the two it was is a fact only the brain holds —
+			# the square is wet either way by the time the gateway has answered —
+			# so it is remembered one beat earlier and spent here.
+			earned = Rewards.of("watered_plant" if bool(extra.get("pending_water_crop", false))
+					else "watered_soil")
 	elif bool(extra.get("pending_bare", false)) and ok:
-		earned = Rewards.of("tilled_tile")
+		earned = Rewards.of("tilled")
 	extra["pending_needs_water"] = false
 	extra["pending_bare"] = false
 	extra["pending_water_crop"] = false

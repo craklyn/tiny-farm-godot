@@ -61,11 +61,6 @@ godot --headless --path . --script res://tools/demo_robot_value.gd
 # off — prints the tables the unit test's gate is taken from
 godot --headless --path . --script res://tools/demo_learning_robot.gd
 
-# The same demo's experiment for the designer, off by default because it plays
-# those 24 farms four times over: what her squares would be worth to the robot if
-# they paid more than the bare soil it opens for itself. Changes nothing.
-godot --headless --path . --script res://tools/demo_learning_robot.gd -- --split-sweep
-
 # Verify the last human play session replays to the autosave
 godot --headless --path . --script res://tools/verify_replay.gd
 ```
