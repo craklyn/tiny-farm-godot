@@ -26,6 +26,8 @@ var sfx_streams = {
     ],
     "squawk": [preload("res://assets/audio/sfx/squawk.wav")],
     "cluck": [preload("res://assets/audio/sfx/cluck.wav")],
+    # A dial turn on the training workbench (Q-102): CC0 recording, see CREDITS.md.
+    "dial": [preload("res://assets/audio/sfx/dial_cc0_120844.wav")],
     "jingle": [preload("res://assets/audio/sfx/jingle.wav")],
     "nope": [preload("res://assets/audio/sfx/nope.wav")],
     # T-13: the offscreen moving truck. Two parps and an engine pulling away —

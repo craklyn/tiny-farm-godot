@@ -261,13 +261,15 @@ func _tune(row: int, value: float) -> void:
 		# long press on an untouched dial is a no-op. Sending it anyway would put
 		# an Action that changes nothing into the session's replay.
 		return
-	farm.apply_action({
+	var result: Dictionary = farm.apply_action({
 		"verb": "tune",
 		"actor": "player",
 		"target": farm.sim.actor_pos(actor_id),
 		"row": String(Rewards.KEYS[row]),
 		"value": value,
 	}, GameState)
+	if result.get("ok", false):
+		AudioManager.play_sfx("dial")
 	var bench := get_parent()
 	if bench != null and bench.has_method("refresh"):
 		bench.refresh()

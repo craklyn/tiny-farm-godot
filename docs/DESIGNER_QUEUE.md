@@ -18,6 +18,13 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   a button on the robot's own menu. Design: `design/14-training-workbench.md`. Scheduled as
   **v0.2.2** so v0.2.1 can ship the robot without waiting six days for the bench.
 
+- **Q-102 (Ruling, filed 2026-09-10)** **What should a dial on the training workbench
+  sound like when she turns it?** The dials plate landed silent. Three CC0 recordings
+  from Freesound clear the bar for a short, dry, mechanical click. Recommendation: "dial
+  turn" by freemaster2 (Freesound #120844) — 0.13s, all click, no tail — wired in now so
+  the gap is closed while you rule on the room's own taste for it. Card:
+  `hq/data/decisions/Q-102.json`.
+
 - **Q-100** ~~Should her squares pay more than the robot's own?~~ — ✅ ruled 2026-09-09, on
   the designer's own initiative, and the question was wrong: *"I don't understand a
   distinction that either the main character or a robot owns a tile. The robot should be

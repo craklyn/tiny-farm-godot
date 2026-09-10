@@ -1,0 +1,59 @@
+{
+  "id": "Q-102",
+  "title": "What should a dial on the training workbench sound like when she turns it?",
+  "question": "The training workbench's dials plate (design/14) landed with no sound on a turn — pressing a dial's minus or plus, or holding its picture to reset it, is silent. Three CC0 recordings from Freesound clear the bar for a short, dry, mechanical click: pick the one that plays, or say none of them do.",
+  "why_now": "The workbench is built for v0.2.2 with this one gap; you asked for it filled today, free-to-use first, the same way the harvest sound was found.",
+  "options": [
+    {
+      "key": "a",
+      "label": "\"dial turn\" — freemaster2 (Recommended)",
+      "detail": "Freesound #120844, CC0 1.0. 0.13s, all click, no tail — the whole file is the hit. The title also says what it is. Wired in now as the game's `dial` sound."
+    },
+    {
+      "key": "b",
+      "label": "\"Switch Klunk 2\" — cookies+policy",
+      "detail": "Freesound #556634, CC0 1.0. A two-part click-then-thunk in its first 0.2s (the file runs to 1.09s but the rest is silence the fetch tool kept rather than trimmed). Heavier than (a) — reads more like a latch settling than a dial clicking."
+    },
+    {
+      "key": "c",
+      "label": "\"Metronome click 2\" — Sadiquecat",
+      "detail": "Freesound #793345, CC0 1.0. An 11ms tick with a fast decay (the file runs to 0.62s, again mostly trailing silence). Cleaner and higher-pitched than (a) — closer to a UI tick than a mechanical turn."
+    },
+    {
+      "key": "d",
+      "label": "None of these — keep looking, or record one",
+      "detail": "Sends the audio designer back to Freesound with different search terms, or — if nothing free lands — onto the foley list for the next recording session, batched with whatever else is waiting on it by then."
+    }
+  ],
+  "links": [
+    {
+      "label": "The design (design/14, the dials plate)",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/14-training-workbench.md"
+    },
+    {
+      "label": "How every file here was found and licensed (CREDITS.md)",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/CREDITS.md"
+    },
+    {
+      "label": "Queue entry (Q-102)",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"
+    }
+  ],
+  "attachments": [
+    {
+      "type": "audio",
+      "src": "assets/audio/sfx/dial_cc0_120844.wav",
+      "caption": "(a) \"dial turn\" by freemaster2 — wired in now (Recommended)"
+    },
+    {
+      "type": "audio",
+      "src": "assets/audio/sfx/dial_cc0_556634.wav",
+      "caption": "(b) \"Switch Klunk 2\" by cookies+policy"
+    },
+    {
+      "type": "audio",
+      "src": "assets/audio/sfx/dial_cc0_793345.wav",
+      "caption": "(c) \"Metronome click 2\" by Sadiquecat"
+    }
+  ]
+}
