@@ -206,6 +206,16 @@ has never played a game, an actual smallholder. Everyday personas reliably
 reach more distant regions of the space than "creative genius" personas do —
 famous-innovator framing sounds impressive and generates less variety.
 
+**Run the fan-out on Sonnet.** Not as thrift — as design. What these agents need
+is an isolated context and a distinct persona, not reasoning depth; a weaker
+model starting clean produces more diverse ideas than a stronger one carrying
+the conversation's baggage. Spend the strong model where judgement actually
+lives: converting the seed into a goal, generating the axes, merging the returns
+and hunting the empty cells, and stress-testing the survivors. An agent standing
+in for an org seat may use that seat's `model` from `org.json` when it is
+cheaper, but never escalate a fan-out agent above Sonnet to make it "more
+creative" — that is the intervention the evidence says does not work.
+
 **Titles only.** Elaborating an idea inside the generating context is what
 creates the anchor. Every agent returns lines like *"the bot leaves the gate
 open"* — not paragraphs.
