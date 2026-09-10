@@ -170,6 +170,7 @@ func _init() -> void:
 	test_observation()
 	test_policy()
 	test_learning_robot_day()
+	test_workbench_sim()
 	test_learning_robot()
 	test_world_pages()
 	test_the_door()
@@ -11990,6 +11991,513 @@ func test_learning_robot_day() -> void:
 		"which is the whole of Q-53 for a learning bot: nothing recorded, everything reproduced")
 	live.done()
 
+
+
+# --- The training workbench, the half of it that lives in the sim (v0.2.2 WI-1) ---
+#
+# The bench she works at is a menu, and a menu may not write a robot (ground rule
+# 1). So everything the five plates show, and everything a dial does, has to
+# exist down here first: a ladder of the only reward values there are, a table on
+# that ladder that belongs to one robot rather than to the game, one verb that
+# turns one dial, and a day's bookkeeping honest enough to draw a chart from.
+#
+# This is that contract, asked of the real brain through the real gateway — the
+# same way `test_learning_robot_day` asks about the learning itself. What it is
+# not about is whether the robot learns: every number below is a *report*, and
+# the eight-farm gate above is what says the reports are about something.
+func test_workbench_sim() -> void:
+	print("\n--- The training workbench, sim side (v0.2.2 WI-1) Tests ---")
+
+	# --- the ladder every dial stands on --------------------------------------
+	var ladder: Array = Rewards.LADDER
+	_assert(ladder.size() == 10, "the reward ladder has ten rungs (%d)" % ladder.size())
+	var rising := true
+	for i in range(ladder.size() - 1):
+		if float(ladder[i]) >= float(ladder[i + 1]):
+			rising = false
+	_assert(rising, "and they climb, so a dial's minus button is always downhill")
+	var factory: Array = Rewards.factory()
+	_assert(factory.size() == (Rewards.KEYS as Array).size()
+			and is_equal_approx(float(factory[0]), 10.0),
+		"the factory table reads out as %d numbers in KEYS order, shipped first" % factory.size())
+	for k in factory.size():
+		_assert_quiet(Rewards.ladder_index(float(factory[k])) >= 0,
+			"'%s' at %s" % [String(Rewards.KEYS[k]), str(factory[k])])
+	_flush_quiet("and every value it ships with is standing on a rung of the ladder")
+	var scratched := Rewards.factory()
+	scratched[0] = -3.0
+	_assert(is_equal_approx(float(Rewards.factory()[0]), 10.0),
+		"a robot handed the factory table gets its own copy, not everybody's")
+	_assert(Rewards.ladder_index(0.3) == 6 and Rewards.ladder_index(0.37) == -1,
+		"0.3 is rung 6 and 0.37 is no rung at all (%d, %d)"
+			% [Rewards.ladder_index(0.3), Rewards.ladder_index(0.37)])
+	_assert(is_equal_approx(Rewards.stepped(10.0, 1), 10.0)
+			and is_equal_approx(Rewards.stepped(-3.0, -1), -3.0),
+		"a dial at either end of the ladder stays there when it is pushed past the end")
+	_assert(is_equal_approx(Rewards.stepped(0.0, 1), 0.1)
+			and is_equal_approx(Rewards.stepped(0.0, -1), -0.1),
+		"and zero steps to a tenth, either way")
+
+	# --- what a Mark III is born with -----------------------------------------
+	var s := _mk3_yard(8801)
+	var bot := _mk3_place(s, MK3_SPOT)
+	var extra: Dictionary = s.world.actor(bot)["extra"]
+	for key in ["rewards", "tuned", "entropy_sum", "spent", "waits", "last_action",
+			"last_update", "ledger"]:
+		_assert_quiet(extra.has(key), "a placed Mark III carries '%s'" % key)
+	_flush_quiet("a placed Mark III carries every key the workbench reads off it")
+	var born_factory := (extra["rewards"] as Array).size() == factory.size()
+	for k in factory.size():
+		if not is_equal_approx(float(extra["rewards"][k]), float(factory[k])):
+			born_factory = false
+	_assert(born_factory, "with the factory table on its dials, row for row")
+	_assert(is_equal_approx(float(extra["entropy_sum"]), 0.0) and int(extra["spent"]) == 0
+			and int(extra["waits"]) == 0 and int(extra["last_action"]) == -1
+			and is_equal_approx(float(extra["last_update"]), 0.0)
+			and (extra["ledger"] as Array).is_empty() and (extra["tuned"] as Array).is_empty(),
+		"and a blank day behind it — nothing spent, nothing waited, no decision yet, no ledger")
+	_assert(_json_plain(extra),
+		"and every new value on it is one of the five things JSON has (ground rule 4)")
+
+	# --- one dial, one verb ---------------------------------------------------
+	# She is not *configuring* the machine — `configure` rebuilds a bot from
+	# scratch and a Mark III's row offers no configs for exactly that reason. She
+	# is changing one number in the table it is paid out of, which is a world
+	# mutation and therefore a verb of its own.
+	var nowhere := s.act({ "verb": "tune", "actor": "player", "target": Vector2i(5, 5),
+		"row": "shipped", "value": 3.0 })
+	_assert(not nowhere.get("ok", true)
+			and String(nowhere.get("reason", "")) == "no_machine_here",
+		"a dial turned on an empty square is refused as no_machine_here (%s)"
+			% String(nowhere.get("reason", "")))
+	s.act({ "verb": "buy_machine", "item": "bot_mk1", "actor": "player" })
+	var mk1_spot := Vector2i(MK3_SPOT.x + 4, MK3_SPOT.y + 5)
+	var mk1 := String(s.act({ "verb": "place", "target": mk1_spot,
+		"item": "bot_mk1", "actor": "player" }).get("machine", ""))
+	_assert(mk1 == "bot_mk1", "she puts a mark-1 down in the same field (%s)" % mk1)
+	var deaf := s.act({ "verb": "tune", "actor": "player",
+		"target": s.world.actor_pos(mk1), "row": "shipped", "value": 3.0 })
+	_assert(not deaf.get("ok", true) and String(deaf.get("reason", "")) == "not_a_learner",
+		"a mark-1 is paid for nothing at all, so its dial is refused as not_a_learner (%s)"
+			% String(deaf.get("reason", "")))
+	_assert(s.world.learners() == [bot],
+		"and the world knows which of the two learns: %s" % str(s.world.learners()))
+
+	var here := s.world.actor_pos(bot)
+	var wrong_row := s.act({ "verb": "tune", "actor": "player", "target": here,
+		"row": "gold", "value": 3.0 })
+	_assert(not wrong_row.get("ok", true)
+			and String(wrong_row.get("reason", "")) == "bad_row",
+		"a row nobody is paid for is refused as bad_row (%s)"
+			% String(wrong_row.get("reason", "")))
+	var wrong_value := s.act({ "verb": "tune", "actor": "player", "target": here,
+		"row": "shipped", "value": 0.37 })
+	_assert(not wrong_value.get("ok", true)
+			and String(wrong_value.get("reason", "")) == "bad_value",
+		"and a number off the ladder is refused as bad_value — there is no 0.37 (%s)"
+			% String(wrong_value.get("reason", "")))
+	var turned := s.act({ "verb": "tune", "actor": "player", "target": here,
+		"row": "shipped", "value": 3.0 })
+	_assert(turned.get("ok", false) and String(turned.get("machine", "")) == bot
+			and is_equal_approx(float(turned.get("previous", 0.0)), 10.0)
+			and is_equal_approx(float(turned.get("value", 0.0)), 3.0),
+		"turning the shipped dial down reports the move it made: %s to %s"
+			% [str(turned.get("previous", 0.0)), str(turned.get("value", 0.0))])
+	_assert(is_equal_approx(float(extra["rewards"][0]), 3.0),
+		"the robot's own table is the thing that changed (%s)" % str(extra["rewards"][0]))
+	_assert((extra["tuned"] as Array) == [int(extra["days"])],
+		"and today is marked on it, once (%s)" % str(extra["tuned"]))
+	s.act({ "verb": "tune", "actor": "player", "target": here,
+		"row": "planted", "value": 0.3 })
+	_assert((extra["tuned"] as Array).size() == 1,
+		"a second dial on the same day adds no second mark — a tick per press would be a comb")
+	_assert(is_equal_approx(float(extra["rewards"][5]), 0.3),
+		"though the second dial moved all the same (%s)" % str(extra["rewards"][5]))
+	s.done()
+
+	# --- the two numbers the bench's plate is drawn from ----------------------
+	var flat: Array = []
+	for _i in BotBrain.LEARN_ACTIONS:
+		flat.append(1.0 / float(BotBrain.LEARN_ACTIONS))
+	_assert(absf(Policy.entropy_bits(flat) - 3.0) < 1e-9,
+		"eight equally likely actions is exactly three bits of not knowing (%s)"
+			% str(Policy.entropy_bits(flat)))
+	_assert(absf(Policy.entropy_bits([0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0])) < 1e-9,
+		"and a robot that has made its mind up is nothing at all")
+	_assert(is_equal_approx(Policy.norm_of_change([1.0, 2.0, 3.0], [1.0, 2.0, 3.0]), 0.0),
+		"a night that changed no weight moved the robot by nothing")
+	_assert(is_equal_approx(Policy.norm_of_change([3.0, 4.0], [0.0, 0.0]), 5.0),
+		"and three across, four up is five — the plain norm (%s)"
+			% str(Policy.norm_of_change([3.0, 4.0], [0.0, 0.0])))
+
+	# --- a day, counted -------------------------------------------------------
+	var fresh := _mk3_yard(4242)
+	var thinker := _mk3_place(fresh, MK3_SPOT)
+	var tex: Dictionary = fresh.world.actor(thinker)["extra"]
+	fresh.tick(SimClock.RATE * 30)
+	var mean_bits := float(tex["entropy_sum"]) / float(maxi(1, int(tex["decisions"])))
+	_assert(int(tex["decisions"]) > 0 and absf(mean_bits - 3.0) < 0.05,
+		"a robot with every weight still at zero spends its day at %.2f bits of 3 — it knows nothing yet"
+			% mean_bits)
+	_assert(int(tex["last_action"]) >= 0
+			and int(tex["last_action"]) < BotBrain.LEARN_ACTIONS,
+		"and the last thing it chose is on the record for the bench to light (%d)"
+			% int(tex["last_action"]))
+
+	# --- ...and written down at dusk ------------------------------------------
+	# Every value the row needs is read before the night wipes the slate, which is
+	# the one thing about this that is easy to get silently wrong: a ledger row
+	# assembled after the wipe is a row of zeros, and a row of zeros still draws.
+	fresh.tick(SimClock.RATE * 60)
+	var dusk_decisions := int(tex["decisions"])
+	var dusk_spent := int(tex["spent"])
+	var dusk_waits := int(tex["waits"])
+	var dusk_bits := float(tex["entropy_sum"]) / float(maxi(1, dusk_decisions))
+	var dusk_score := float(tex["score"])
+	fresh.gs.weather = "sunny"
+	fresh.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
+	var book: Array = tex["ledger"]
+	_assert(book.size() == 1 and (book[0] as Array).size() == 7,
+		"one night puts one row of seven numbers in the ledger (%d row(s))" % book.size())
+	_assert(dusk_score > 0.0 and is_equal_approx(float(book[0][0]), dusk_score)
+			and is_equal_approx(float(book[0][0]), float(tex["last_score"])),
+		"the row opens with what the day was worth (%s)" % str(book[0][0]))
+	_assert(is_equal_approx(float(book[0][1]), 0.0),
+		"beside what the robot expected of it, which on day one is nothing (%s)"
+			% str(book[0][1]))
+	_assert(absf(float(book[0][2]) - dusk_bits) < 1e-6,
+		"then the day's average bits of not knowing, %s against the %s it was carrying at dusk"
+			% [str(book[0][2]), str(dusk_bits)])
+	_assert(is_equal_approx(float(book[0][3]), float(tex["last_update"]))
+			and float(tex["last_update"]) > 0.0,
+		"then how far the night moved it, which is more than nothing on a day that scored (%s)"
+			% str(tex["last_update"]))
+	_assert(dusk_spent > 0 and dusk_decisions > 0
+			and int(book[0][4]) == dusk_spent and int(book[0][5]) == dusk_decisions,
+		"then the decisions it spent and the decisions it took (%d of %d)"
+			% [dusk_spent, dusk_decisions])
+	_assert(int(book[0][6]) == dusk_waits,
+		"and the times it chose to stand still (%d)" % dusk_waits)
+	_assert(is_equal_approx(float(tex["entropy_sum"]), 0.0) and int(tex["spent"]) == 0
+			and int(tex["waits"]) == 0,
+		"the morning starts on a blank day, counts and all")
+	_assert(_json_plain(tex),
+		"and the whole robot is still JSON-plain with a day's record on it")
+
+	# --- and all of it survives the disk --------------------------------------
+	fresh.act({ "verb": "tune", "actor": "player",
+		"target": fresh.world.actor_pos(thinker), "row": "tilled", "value": 1.0 })
+	var snapshot = JSON.parse_string(JSON.stringify(SaveGame.capture(fresh.world, fresh.gs)))
+	var gs_back = load("res://systems/game_state.gd").new()
+	gs_back.reset()
+	var restored := SimWorld.new()
+	_assert(SaveGame.restore(snapshot, restored, gs_back),
+		"a farm with a tuned Mark III on it saves")
+	var back: Dictionary = restored.actor(thinker)["extra"]
+	var dials_kept := (back["rewards"] as Array).size() == (tex["rewards"] as Array).size()
+	for k in (tex["rewards"] as Array).size():
+		if not is_equal_approx(float(back["rewards"][k]), float(tex["rewards"][k])):
+			dials_kept = false
+	_assert(dials_kept and is_equal_approx(float(back["rewards"][6]), 1.0),
+		"and comes back dial for dial, the tilled row still where she left it (%s)"
+			% str(back["rewards"][6]))
+	var book_kept := (back["ledger"] as Array).size() == (tex["ledger"] as Array).size()
+	for d in (tex["ledger"] as Array).size():
+		for c in (tex["ledger"][d] as Array).size():
+			if not is_equal_approx(float(back["ledger"][d][c]), float(tex["ledger"][d][c])):
+				book_kept = false
+	_assert(book_kept and (tex["ledger"] as Array).size() > 0,
+		"with its ledger intact, %d row(s), number for number" % (tex["ledger"] as Array).size())
+	var marks_kept := (back["tuned"] as Array).size() == (tex["tuned"] as Array).size()
+	for d in (tex["tuned"] as Array).size():
+		if int(back["tuned"][d]) != int(tex["tuned"][d]):
+			marks_kept = false
+	_assert(marks_kept and (tex["tuned"] as Array) == [1],
+		"and the day she turned a dial still marked on it (%s)" % str(tex["tuned"]))
+	gs_back.free()
+	fresh.done()
+
+	# --- the robot is paid what its own dial says, not what the table says -----
+	var sold := _mk3_yard(8484)
+	var seller := _mk3_place(sold, MK3_SPOT)
+	var slx: Dictionary = sold.world.actor(seller)["extra"]
+	_assert(sold.act({ "verb": "tune", "actor": "player",
+			"target": sold.world.actor_pos(seller), "row": "shipped", "value": 3.0
+		}).get("ok", false),
+		"she brings the shipped dial down from ten to three")
+	var bin: Vector2i = Observation.bin_tile(sold.world)
+	sold.world.set_actor_pos(seller, bin + Vector2i(0, 1))
+	# A test's staging, as `capture_machines.gd` stages the scorecard: a crop put
+	# into the machine's hands so the errand below is one decision long.
+	slx["carrying"] = "wheat"
+	_mk3_make_certain(slx, BotBrain.LEARN_SHIP)
+	_assert(_mk3_asked(sold, seller, SimClock.RATE) == 1
+			and is_equal_approx(float(slx["score"]), 3.0)
+			and is_equal_approx(float(slx["earned"][0]), 3.0),
+		"and the crop it carries to the bin is worth three, in the score and in the column (%s)"
+			% str(slx["score"]))
+	sold.gs.weather = "sunny"
+	sold.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
+	_assert(is_equal_approx(float((slx["history"] as Array)[0][0]), 3.0),
+		"the record keeps it at the value that was in force when it was paid (%s)"
+			% str(slx["history"][0][0]))
+	sold.done()
+
+	# --- a dial at zero is a row that happens and is worth nothing -------------
+	var muted := _mk3_yard(8585)
+	var quiet := _mk3_place(muted, MK3_SPOT)
+	var qex: Dictionary = muted.world.actor(quiet)["extra"]
+	muted.act({ "verb": "tune", "actor": "player",
+		"target": muted.world.actor_pos(quiet), "row": "watered_plant", "value": 0.0 })
+	_mk3_make_certain(qex, BotBrain.LEARN_WATER)
+	var dry := muted.world.actor_pos(quiet)
+	_assert(_mk3_asked(muted, quiet, SimClock.RATE) == 1
+			and is_equal_approx(float(qex["score"]), 0.0)
+			and int(qex["spent"]) == 0,
+		"a row turned all the way down still gets the work done and still costs the decision nothing (%s)"
+			% str(qex["score"]))
+	_assert(bool(muted.world.get_tile(dry.x, dry.y).get("watered_today", false)),
+		"the square came out wet, which is the point — a dial says what a thing is worth, not whether it happens")
+	muted.done()
+
+	# --- and a dial below zero is how "stop doing that" is said ----------------
+	# Two robots, one seed, one field, one set of draws: the only difference is
+	# that every row on one is +1 and every row on the other is -1. The day they
+	# have is the same day — rewards do not steer a decision, they are only what
+	# the night learns from — so the accumulator the night reads should come out
+	# of the second robot as the first one's, sign for sign.
+	var praised := _mk3_yard(9696)
+	var good := _mk3_place(praised, MK3_SPOT)
+	var gdx: Dictionary = praised.world.actor(good)["extra"]
+	for row_name in Rewards.KEYS:
+		praised.act({ "verb": "tune", "actor": "player",
+			"target": praised.world.actor_pos(good), "row": String(row_name), "value": 1.0 })
+	praised.tick(SimClock.RATE * 60)
+
+	var scolded := _mk3_yard(9696)
+	var bad := _mk3_place(scolded, MK3_SPOT)
+	var bdx: Dictionary = scolded.world.actor(bad)["extra"]
+	for row_again in Rewards.KEYS:
+		scolded.act({ "verb": "tune", "actor": "player",
+			"target": scolded.world.actor_pos(bad), "row": String(row_again), "value": -1.0 })
+	scolded.tick(SimClock.RATE * 60)
+
+	_assert(float(gdx["score"]) > 0.0 and float(bdx["score"]) < 0.0
+			and is_equal_approx(float(bdx["score"]), -float(gdx["score"])),
+		"the same day scored %s on the robot that was praised for it and %s on the one that was not"
+			% [str(gdx["score"]), str(bdx["score"])])
+	var mirrored := (bdx["acc"] as Array).size() == (gdx["acc"] as Array).size()
+	var any_negative := false
+	for i in (gdx["acc"] as Array).size():
+		if not is_equal_approx(float(bdx["acc"][i]), -float(gdx["acc"][i])):
+			mirrored = false
+		if float(bdx["acc"][i]) < 0.0:
+			any_negative = true
+	_assert(mirrored and any_negative,
+		"and what the night will learn from is the same sum with its sign turned over, element for element")
+	var mirror_spec: Dictionary = gdx["spec"]
+	var mirror_groups := Observation.input_groups(mirror_spec)
+	var cold := Policy.fold(bdx["acc"] as Array, Observation.size(mirror_spec),
+		BotBrain.LEARN_ACTIONS, mirror_groups)
+	var warm := Policy.fold(gdx["acc"] as Array, Observation.size(mirror_spec),
+		BotBrain.LEARN_ACTIONS, mirror_groups)
+	var fold_negative := false
+	var fold_mirrored := cold.size() == warm.size()
+	for j in cold.size():
+		for g in (cold[j] as Array).size():
+			if float(cold[j][g]) < -1e-9:
+				fold_negative = true
+			if not is_equal_approx(float(cold[j][g]), -float(warm[j][g])):
+				fold_mirrored = false
+	_assert(fold_negative and fold_mirrored,
+		"which is what the mosaic would draw: the same picture, cool everywhere the other is warm")
+	praised.done()
+	scolded.done()
+
+	# --- what a spent decision is ---------------------------------------------
+	# **Spent** is a decision that chose one of the six verb actions and got no
+	# Action out of the gateway: no legal square when it looked, or a square that
+	# had changed by the time it walked there. It is counted at exactly two beats
+	# in `_learn` and nowhere else, which is what keeps it from ever exceeding the
+	# decisions it is a subset of.
+	var empty_handed := _mk3_yard(5252)
+	var shipper := _mk3_place(empty_handed, MK3_SPOT)
+	var shx: Dictionary = empty_handed.world.actor(shipper)["extra"]
+	_mk3_make_certain(shx, BotBrain.LEARN_SHIP)
+	_assert(_mk3_asked(empty_handed, shipper, SimClock.RATE * 10) == 0,
+		"a robot certain of the bin with empty hands asks the world for nothing at all")
+	_assert(int(shx["decisions"]) > 0 and int(shx["spent"]) == int(shx["decisions"]),
+		"and every one of its %d decisions is spent — it decided, and nothing came of it"
+			% int(shx["decisions"]))
+	empty_handed.gs.weather = "sunny"
+	empty_handed.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
+	_assert(int(shx["spent"]) == 0 and int((shx["ledger"] as Array)[0][4]) > 0,
+		"the night clears the count off the robot and keeps it in the ledger (%s)"
+			% str((shx["ledger"] as Array)[0][4]))
+	empty_handed.done()
+
+	var stiller := _mk3_yard(5353)
+	var waiter := _mk3_place(stiller, MK3_SPOT)
+	var wtx: Dictionary = stiller.world.actor(waiter)["extra"]
+	_mk3_make_certain(wtx, BotBrain.LEARN_WAIT)
+	stiller.tick(SimClock.RATE * 30)
+	_assert(int(wtx["decisions"]) > 0 and int(wtx["waits"]) == int(wtx["decisions"])
+			and int(wtx["spent"]) == 0,
+		"a robot that has learned to do nothing waits all %d of its decisions and spends none of them"
+			% int(wtx["waits"]))
+	stiller.done()
+
+	# --- once each, never twice -----------------------------------------------
+	# The square underfoot is the case worth asking about: `_set_job` does the
+	# verb there and then rather than starting an errand, so a refusal on it comes
+	# back out through the same beat that a "no legal square at all" does — and a
+	# count written at both would book it twice.
+	var solo := _mk3_yard(6262)
+	var pourer := _mk3_place(solo, MK3_SPOT)
+	var pex: Dictionary = solo.world.actor(pourer)["extra"]
+	_mk3_make_certain(pex, BotBrain.LEARN_WATER)
+	var stand := solo.world.actor_pos(pourer)
+	for dy in range(-2, 3):
+		for dx in range(-2, 3):
+			if dx != 0 or dy != 0:
+				solo.world.water_tile(stand.x + dx, stand.y + dy)
+	_assert(_mk3_asked(solo, pourer, SimClock.RATE) == 1 and int(pex["decisions"]) == 1
+			and int(pex["spent"]) == 0,
+		"with the only thirsty square in view underfoot, the decision goes straight out and nothing is spent")
+	solo.world.water_tile(stand.x, stand.y)
+	_assert(_mk3_asked(solo, pourer, SimClock.RATE) == 0 and int(pex["spent"]) == 1
+			and int(pex["decisions"]) == 2,
+		"and with that square wet too, the next decision is spent exactly once (%d of %d)"
+			% [int(pex["spent"]), int(pex["decisions"])])
+	solo.done()
+
+	var away := _mk3_yard(7373)
+	var walker := _mk3_place(away, MK3_SPOT)
+	var awx: Dictionary = away.world.actor(walker)["extra"]
+	_mk3_make_certain(awx, BotBrain.LEARN_WATER)
+	var from := away.world.actor_pos(walker)
+	var errand := from + Vector2i(2, 0)
+	for dy2 in range(-2, 3):
+		for dx2 in range(-2, 3):
+			if from + Vector2i(dx2, dy2) != errand:
+				away.world.water_tile(from.x + dx2, from.y + dy2)
+	away.tick(1)
+	_assert(int(awx["decisions"]) == 1 and String(awx["job"]) == "water"
+			and int(awx["spent"]) == 0,
+		"a thirsty square two along starts an errand instead, and an errand under way is not spent yet")
+	away.world.water_tile(errand.x, errand.y)
+	var ended := false
+	for _t in SimClock.RATE * 8:
+		away.tick(1)
+		if int(awx["spent"]) > 0:
+			ended = true
+			break
+	_assert(ended and int(awx["spent"]) == 1 and String(awx["job"]) == "",
+		"and arriving to find the square already wet ends the errand and books exactly one spent decision (%d)"
+			% int(awx["spent"]))
+	away.done()
+
+	# --- what the vector is made of, for the picture that draws it -------------
+	var spec := Observation.spec_default()
+	var default_groups := Observation.input_groups(spec)
+	_assert(default_groups.size() == 13,
+		"the default spec's 207 inputs bundle into thirteen groups the mosaic has room for (%d)"
+			% default_groups.size())
+	var seen: Dictionary = {}
+	var doubled := false
+	for g in default_groups:
+		for i in (g["indices"] as Array):
+			if seen.has(int(i)):
+				doubled = true
+			seen[int(i)] = true
+	var covered := seen.size() == Observation.size(spec)
+	for i in Observation.size(spec):
+		if not seen.has(i):
+			covered = false
+	_assert(covered and not doubled,
+		"and between them they cover all %d of them exactly once — nothing missed, nothing counted twice"
+			% Observation.size(spec))
+	_assert(String(default_groups[0]["name"]) == "needs_water"
+			and (default_groups[0]["indices"] as Array).size() == 25
+			and String(default_groups[8]["name"]) == "position"
+			and String(default_groups[12]["name"]) == "bin",
+		"the eight channels first, twenty-five tiles each, and the five scalars behind them")
+
+	var n_in := Observation.size(spec)
+	var probe := Policy.new_weights(n_in, BotBrain.LEARN_ACTIONS)
+	probe[2 * (n_in + 1) + 7] = 1.0
+	var holder := -1
+	for g in default_groups.size():
+		if (default_groups[g]["indices"] as Array).has(7):
+			holder = g
+	_assert(holder == 0,
+		"input 7 is the first tile of the patch, on the first channel — group %d" % holder)
+	var cells := Policy.fold(probe, n_in, BotBrain.LEARN_ACTIONS, default_groups)
+	var single := cells.size() == BotBrain.LEARN_ACTIONS
+	for j in cells.size():
+		for g in (cells[j] as Array).size():
+			var want := 1.0 if (j == 2 and g == holder) else 0.0
+			if not is_equal_approx(float(cells[j][g]), want):
+				single = false
+	_assert(single,
+		"and one weight of 1.0 folds into exactly one cell of the mosaic — the water row, the '%s' group"
+			% String(default_groups[holder]["name"]))
+
+	# --- a session with a dial turn in it replays ------------------------------
+	# The claim Q-53 rests on, now that a robot's pay can be changed mid-session:
+	# the turn is one recorded Action, and everything downstream of it — the day's
+	# score, the night's update, the weights — is recomputed rather than stored.
+	var live := _mk3_yard(6161)
+	live.rebase()
+	var learner := _mk3_place(live, MK3_SPOT)
+	live.act({ "verb": "tune", "actor": "player", "target": live.world.actor_pos(learner),
+		"row": "shipped", "value": 3.0 })
+	live.act({ "verb": "tune", "actor": "player", "target": live.world.actor_pos(learner),
+		"row": "watered_plant", "value": 3.0 })
+	for _day in 2:
+		live.tick(SimClock.RATE * 45)
+		live.gs.weather = "sunny"
+		live.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
+	live.tick(SimClock.RATE * 10)
+	var lex: Dictionary = live.world.actor(learner)["extra"]
+	_assert(int(lex["days"]) == 2 and (lex["ledger"] as Array).size() == 2,
+		"the recorded session put two days on the robot and two rows in its ledger (%d)"
+			% (lex["ledger"] as Array).size())
+	var live_canonical := SaveGame.capture_canonical(live.world, live.gs)
+	var again := SimWorld.new()
+	live.log.apply_to(again, live.gs)
+	_assert(live.log.divergence == "",
+		"and a log with two dial turns in it recomputes cleanly (%s)" % live.log.divergence)
+	_assert(SaveGame.capture_canonical(again, live.gs) == live_canonical,
+		"landing on the same farm and, weight for weight, the same robot")
+	var replayed: Dictionary = again.actor(learner)["extra"]
+	var replay_dials := (replayed["rewards"] as Array).size() == (lex["rewards"] as Array).size()
+	for k in (lex["rewards"] as Array).size():
+		if not is_equal_approx(float(replayed["rewards"][k]), float(lex["rewards"][k])):
+			replay_dials = false
+	_assert(replay_dials and is_equal_approx(float(lex["rewards"][0]), 3.0)
+			and is_equal_approx(float(lex["rewards"][4]), 3.0),
+		"with both dials exactly where she left them — the value stored is the ladder's own float, not the one that arrived")
+	_assert((replayed["tuned"] as Array) == (lex["tuned"] as Array),
+		"and the day she turned them marked on the replayed robot too (%s)"
+			% str(replayed["tuned"]))
+	live.done()
+
+	# --- and the fallback the plate reads -------------------------------------
+	_assert(BotBrain.LEARN_FALLBACK != "" and not BotBrain.LEARN_FALLBACK_IN_FORCE,
+		"P-5's fallback is written where the plate reads it, and is not in force")
+
+	# --- and in none of them did it spend more than it took --------------------
+	# The invariant the two counting sites exist to hold: `spent` is a subset of
+	# `decisions`, so a bar chart of one against the other can never be a lie.
+	_assert_quiet(dusk_spent <= dusk_decisions, "a day of wandering")
+	for pair in [["a bin it cannot reach", shx], ["a robot standing still", wtx],
+			["the square underfoot", pex], ["the errand that went dry", awx],
+			["two days replayed", lex]]:
+		var seen_extra: Dictionary = pair[1]
+		_assert_quiet(int(seen_extra.get("spent", 0)) <= int(seen_extra.get("decisions", 0)),
+			String(pair[0]))
+	_flush_quiet("no fixture in this test ever spent more decisions than it took")
 
 # --- Does it actually get better? (v0.2.1 WI-5) -------------------------------
 #
