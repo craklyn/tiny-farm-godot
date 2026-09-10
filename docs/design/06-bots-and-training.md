@@ -503,6 +503,9 @@ numbers (D-4). Each is a later mark or a later tier, on purpose.
 | The reward table, data layer | `systems/rewards.gd` (new) |
 | The two-farm learning-curve demo and its gate | `tools/demo_learning_robot.gd` + `test_learning_robot()` |
 
+The build plan, with interfaces and acceptance criteria per work item, is
+`docs/V0_2_1_PLAN.md`.
+
 ## Constraints from decisions
 Bots emit player verbs only (S-3); observations are egocentric grid patches
 (ARCHITECTURE); hierarchical options control (P-8); parameter sharing default with

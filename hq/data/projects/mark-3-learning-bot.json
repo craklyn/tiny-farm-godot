@@ -56,6 +56,7 @@
     }
   ],
   "links": [
+    "docs/V0_2_1_PLAN.md",
     "docs/design/06-bots-and-training.md",
     "docs/DECISION_LOG.md",
     "systems/sim/brains/bot_brain.gd",
