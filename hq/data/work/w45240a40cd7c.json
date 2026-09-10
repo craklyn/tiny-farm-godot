@@ -1,0 +1,22 @@
+{
+  "id": "w45240a40cd7c",
+  "title": "Give a dial turn on the workbench a sound, sourced free with its rights and provenance written down",
+  "level": "task",
+  "owner": "dmitri",
+  "tier": 1,
+  "tier_reason": "A UI sound behind the integration suite; git reverts it. The pick between candidates is the CEO's, made on a decision card he can listen to, as the standing rule for sourcing sound says.",
+  "ask": "The CEO, 2026-09-10, after the training workbench (docs/design/14-training-workbench.md, built as v0.2.2) landed with no sound on its dials: 'Can you add a dial sound? Maybe ask our SFX agent to find a published sound with permissive sound rights for us to use, like we did before? And follow the normal procedure for attributing the file provenance.' The standing rule for this seat (hq/data/staff/dmitri/memory.md, 2026-09-04): free-to-use sounds first; candidates come back as a decision card he can listen to, each with its source URL and licence; CREDITS.md is written in the same change that adds the file. The precedent is the harvest sound: three CC0 recordings from Freesound fetched by tools/fetch_sfx_candidates.py (which refuses anything not CC0 and writes assets/audio/sfx/CANDIDATES.json), credited in CREDITS.md around lines 417-423. The dial: ui/workbench_dials.gd \u2014 minus and plus buttons and a held pip (hold_pip) emit the verb tune through farm.apply_action (around line 264); a button at its end of the ladder is disabled. Sounds are registered in systems/audio_manager.gd's table (line 29, preloads) and played with AudioManager.play_sfx(name); the shop plays 'jingle' on a purchase at ui/menus.gd:865; AudioManager.last_sfx (line 49) records the last name played, so a test can read it.",
+  "first_action": "1) Search Freesound for CC0 candidates with tools/fetch_sfx_candidates.py under the slot 'dial' \u2014 try a few queries such as 'rotary switch click', 'dial click', 'knob detent', 'ratchet tick' \u2014 and keep two to four short, dry, mechanical takes (a detent or a click of well under a quarter of a second, not a chime or a reward sound) as assets/audio/sfx/dial_cc0_<id>.wav with their .import sidecars (run godot --headless --path . --import). 2) Wire the one you recommend: register 'dial' in systems/audio_manager.gd's table and play it in ui/workbench_dials.gd only after an accepted tune (result ok), for the buttons and for hold_pip alike; nothing plays on a refused or disabled press. 3) Write the decision card hq/data/decisions/Q-102.json in the shape of Q-101.json and Q-98.json (id, title, question, why_now, options, links, attachments; no 'ruled'): the question is which sound a dial turn should make; one option per candidate with its title, author, Freesound number, licence, length and character, the wired one labelled '(Recommended)', and a last option to keep looking or synthesise a tick instead; attach each candidate so he can listen \u2014 check how hq/ renders attachment types (grep hq/static and hq/server.py for 'attachments') and use the audio type if there is one, else a file link. Add the matching open entry to docs/DESIGNER_QUEUE.md in Q-98's shape. 4) CREDITS.md: an entry in the harvest entry's format for every file that enters the repo, in this same change; CANDIDATES.json carries the provenance records the tool writes. 5) In tools/test_runner.gd's _scenario_ao_the_dials_turn_through_the_gateway, assert AudioManager.last_sfx == 'dial' after an accepted press and that a press on the disabled button leaves it unchanged (read how last_sfx is set first). 6) Both suites and python3 tools/check_gateway.py green; report the candidates, the recommendation and why, and anything you had to decide.",
+  "state": "waiting_session",
+  "thread": "dmitri",
+  "source": "chat",
+  "source_message": "CEO, 2026-09-10: add a dial sound; have the SFX seat find a published sound with permissive rights, as before, and follow the provenance procedure.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-10T11:16",
+  "created_ts": 1789064185.2604733,
+  "parent": "training-workbench",
+  "follow_ups": [],
+  "recommend": {}
+}
