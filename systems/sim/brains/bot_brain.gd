@@ -159,44 +159,80 @@ const STATE_CHASE := "chasing"
 const STATE_RETURN := "returning"
 
 
-# --- the mark-3's seven actions, and its two numbers ---------------------------
+# --- the mark-3's eight actions, and its numbers -------------------------------
+#
+# **An action is what a tap is for her** (Q-100, ruled 2026-09-09; v0.2.1 WI-9b).
+# When the player taps a square the game walks her there and does the verb, and
+# that whole thing is one action at her granularity. The first Mark III was given
+# single steps instead — finer than a tap — and the chains that led to a reward
+# were correspondingly long: four separate lucky choices to cross a field and a
+# fifth to water it. So a mark-3's action is now a **verb**, and the square is
+# picked the way `ActionRouter` picks hers: the nearest tile in its own view where
+# that verb is legal, walked to by the movement engine at the bot's pace, then put
+# through the gateway with her cue. Nothing in view that the verb answers is a
+# decision spent and nothing done — the same answer the router gives a tap on the
+# wrong thing.
 #
 # **The order is the policy's index and is therefore permanent.** Row j of a
 # robot's weights is action j, and those weights are saved, replayed and compared
 # — so reordering this list would not break a build, it would quietly turn every
-# robot anybody has ever trained into a robot that walks north when it means to
-# water. Add to the end or not at all.
+# robot anybody has ever trained into a robot that hoes when it means to ship.
+# Add to the end or not at all. The list *was* reordered once, here, and only
+# because Q-100 changed the observation from 128 numbers to 207 in the same
+# breath: no robot's weights could survive that anyway, so there was one free
+# moment to put the list in the order the design reads in and this is it.
+const LEARN_TILL := 0
+const LEARN_PLANT := 1
+const LEARN_WATER := 2
+const LEARN_HARVEST := 3
+const LEARN_SHIP := 4
+const LEARN_SHOO := 5
+const LEARN_WANDER := 6
+const LEARN_WAIT := 7
+const LEARN_ACTIONS := 8
+
+# Which verb each of the first six puts through the gateway. A table rather than
+# six `match` arms so that "the actions" and "the verbs" cannot drift apart, and
+# so the two lists are visibly the same length.
 #
-# **The hoe is the seventh, and it is here because of what a fresh robot does**
-# (Q-99, the CEO). With six actions the only thing on the farm worth anything was
-# watering a square that happened to be thirsty, so a robot that had learned
-# nothing wandered off the crop within a minute, spent its whole meter on dry
-# ground and was never once told it had done well — a week that taught nothing.
-# The hoe gives a coin-flipping walker a second way to be accidentally useful
-# almost anywhere it lands, and the square it leaves behind is *thirsty*, so a
-# lucky hoe puts the next thing worth doing directly under its own feet. It went
-# in at the end of the list rather than beside the watering for the reason above:
-# `LEARN_WAIT` was 5, and every robot already trained knows it as 5.
-const LEARN_UP := 0
-const LEARN_DOWN := 1
-const LEARN_LEFT := 2
-const LEARN_RIGHT := 3
-const LEARN_WATER := 4
-const LEARN_TILL := 5
-const LEARN_WAIT := 6
-const LEARN_ACTIONS := 7
+# `sell` and `crow_scared` are the two that are not named after their action:
+# shipping is `sell`, the verb her own tap on the bin resolves to, and shooing
+# emits the *crow's* own report exactly as a mark-2 does — the bot gains no verb
+# by arriving next to a bird.
+const LEARN_VERBS := {
+	LEARN_TILL: "till",
+	LEARN_PLANT: "plant",
+	LEARN_WATER: "water",
+	LEARN_HARVEST: "harvest",
+	LEARN_SHIP: "sell",
+	LEARN_SHOO: "crow_scared",
+}
 
-# Which tool the fifth action is holding, so the brain can ask the one table the
-# player's tap is answered from whether this square can be hoed at all
-# (`systems/tools.gd`, and `_learn`'s LEARN_TILL arm for why). A key rather than
-# an index, because the index is a position in a list a designer may reorder.
+# Which tool each verb is held in, so the brain can ask the one table the player's
+# tap is answered from whether this square takes that verb at all
+# (`systems/tools.gd`, and `_legal_at` for why). Keys rather than indices, because
+# an index is a position in a list a designer may reorder.
 const HOE_KEY := "hoe"
+const SEEDS_KEY := "seeds"
+const HANDS_KEY := "hands"
 
-# Which way 0-3 actually go. `Movement.DIRS` rather than four Vector2is of this
+# Which way a wander goes. `Movement.DIRS` rather than four Vector2is of this
 # file's own, because it already is that list in that order (up, down, left,
 # right) and the engine's own comment forbids reordering it for the same
 # determinism reason this list cannot be reordered. One definition, one order.
 const LEARN_STEPS := Movement.DIRS
+
+# How far the wander's own draw is pushed away from the action's. The two are
+# taken on the same decision number, so without a second salt they would be the
+# same number and a wandering robot would always walk the same way.
+const WANDER_SALT := 104729
+
+# How far a mark-3 will follow a bird before it decides that one got away, in
+# tiles. The mark-2's patch radius, and the same idea: a chase is a piece of work
+# with an edge to it, not a machine hounding a crow across the farm. A bird in the
+# air is faster than the bot by half again, so in practice this is the number that
+# says "the ones you catch are the ones that landed".
+const SHOO_CHASE_TILES := 6
 
 # How hard a night pushes the weights. Any rate at all is only safe because the
 # update is divided by the day's decisions before it is applied (`_sleep_on_it`):
@@ -204,38 +240,39 @@ const LEARN_STEPS := Movement.DIRS
 # how busy the day was, and WI-2's bandit locked onto the wrong arm at 0.05 with
 # twenty decisions in it. A robot's day has several hundred.
 #
-# **0.06, chosen on open ground with the hoe in its hands** (v0.2.1 WI-9). It was
-# 0.03 the week before the hoe and 0.12 the week after, and neither number
-# survives the change that came with them, because each was measured on a
-# different machine: 0.03 on six actions penned inside a fence, 0.12 on a robot
-# that could swing its hoe at anything and paid thirty units for every stroke
-# that changed nothing. Today the hoe answers to the same table the player's own
-# tap does, so a swing at soil that is already open costs a second and no meter
-# at all — which leaves a day's twenty strokes for the work and moves every
-# number in the sweep. The old tables are gone rather than argued with.
+# **0.03, chosen on the whole farm** (v0.2.1 WI-9b). Every earlier number in this
+# comment was measured on a different machine and none of them survives: 0.03 on
+# six actions penned inside a fence, 0.12 on a robot that spent thirty units on
+# every hoe stroke that changed nothing, 0.06 on a robot whose whole job was
+# watering. Q-100 changed both halves of the arithmetic at once — a decision is a
+# whole errand now, so a day holds about a hundred of them rather than three
+# hundred, and the day's score runs to twenty-odd points rather than five, because
+# a crop in the bin is worth ten. Both of those move the size of a night's step,
+# so the rate was measured again from scratch and the old tables are gone rather
+# than argued with.
 #
-# The sweep, 24 farms carried to twenty days, read as the day's score. The
-# control is the same 24 farms with the night switched off, and it is one row
-# rather than one per rate because a robot that never learns cannot be affected
-# by how hard a night would have pushed it. It rises on its own — the *field*
-# improves whatever the robot understands, since soil opened yesterday is still
-# open this morning — so the rate is chosen on the gap, never on the rise.
+# The sweep, 24 farms over a week, read as the day's score. The control is the
+# same 24 farms with the night switched off, and it is one row rather than one per
+# rate because a robot that never learns cannot be affected by how hard a night
+# would have pushed it. It rises on its own — the *field* improves whatever the
+# robot understands, since soil opened yesterday is still open this morning and a
+# square sown on Monday is ripe by Thursday — so the rate is chosen on the gap,
+# never on the rise.
 #
-#     rate   days 1-3   days 5-7   days 18-20   weeks that rose
-#     0.03       4.4        5.9         7.4          18 / 24
-#     0.06       4.4        6.2         8.1          23 / 24
-#     0.08       4.6        6.2         7.6          18 / 24
-#     0.12       4.5        6.4         7.1          21 / 24
-#     0.20       4.3        5.2         6.0          19 / 24
-#     none       4.1        5.4         6.7          21 / 24   the control
+#     rate    days 1-3   days 5-7   weeks that rose
+#     0.015      15.8       20.7        20 / 24
+#     0.03       16.1       24.2        20 / 24
+#     0.06       16.4       22.6        18 / 24
+#     0.12       14.3       15.7        15 / 24
+#     none       15.4       17.5        14 / 24   the control
 #
-# 0.06 is the rate that is worth most at three weeks: a tenth behind 0.12 over
-# days 5-7, a full square a day ahead of it by day twenty, and more individual
-# farms improved than at any other rate tried. Read the last column downwards and
-# the faster rates are buying their second week with their third — 0.12 leads at
-# seven days and trails at twenty, and 0.20 ends below a robot that never learned
-# at all. Reproduce it with `tools/demo_learning_robot.gd`, which prints
-# the 24-farm week under its table on every run.
+# 0.03 is the widest gap and ties for the most farms improved. 0.12 is the row
+# worth reading twice: it ends the week **below** a robot that never learned at
+# all, because a night that pushes hard on a day whose score is dominated by one
+# ten-point sale teaches the robot to repeat whatever it was doing when that sale
+# happened. The bigger the biggest row of the reward table, the gentler the night
+# has to be. Reproduce it with `tools/demo_learning_robot.gd`, which prints the
+# 24-farm week under its table on every run.
 #
 # **A week on one farm is luck as much as learning, which is why the gate is not
 # one.** On open ground a single week's rise flips with the rate for no reason
@@ -243,7 +280,7 @@ const LEARN_STEPS := Movement.DIRS
 # `test_learning_robot` asks the question the demo asks: over a fixed list of
 # farms, is a week of nights worth more than the same week without them.
 # [Playtest]
-const LEARN_RATE := 0.06
+const LEARN_RATE := 0.03
 
 # How far apart two days' draws are pushed. Any odd stride would do; a prime is
 # the cheap way to keep one robot's second day out of another robot's first.
@@ -311,7 +348,7 @@ static func deploy(world: SimWorld, actor_id: String, config: String, at: Vector
 			var spec := Observation.spec_default()
 			extra["spec"] = spec
 			var width := Observation.size(spec)
-			# Zeros, so a robot out of the box is uniform over its seven actions:
+			# Zeros, so a robot out of the box is uniform over its eight actions:
 			# it wanders on day one, which is what P-14 says day one should look
 			# like.
 			extra["weights"] = Policy.new_weights(width, LEARN_ACTIONS)
@@ -331,17 +368,38 @@ static func deploy(world: SimWorld, actor_id: String, config: String, at: Vector
 			extra["baseline"] = 0.0
 			extra["days"] = 0
 			extra["decisions"] = 0
+			# The same day's score, split by which row of `Rewards.TABLE` earned
+			# it — one number per row, in `Rewards.KEYS` order (v0.2.1 WI-9b).
+			# **It is a report, not an input**: nothing the robot decides with
+			# reads it, and the policy would be exactly the same policy without
+			# it. It is here because "the machine is learning" is a claim, and a
+			# claim about a farm with eight ways to earn on it needs to say
+			# *which* of the eight a week actually reached — which is a question
+			# only the brain can answer, since the outcome of a stroke is gone by
+			# the time the gateway has replied. An array rather than a dictionary
+			# because it rides in `extra` through JSON (ground rule 4) and an
+			# array's order is written down.
+			extra["earned"] = _new_split()
 			# Its own number, folded from its id rather than hashed with the
 			# engine's `hash()` — see `Policy.salt_of` for why that distinction is
 			# worth a function.
 			extra["salt"] = Policy.salt_of(actor_id)
-			# Whether the square it just reached for was thirsty, and whether the
-			# square it just put a hoe into was bare — each remembered across the
-			# one beat between deciding and the gateway answering. See
+			# **What the thing it is doing right now would earn, if the gateway
+			# says yes** — the name of a row of `Rewards.TABLE`, or "" for a
+			# decision with nothing owing. Remembered across the one beat between
+			# reaching for a square and the gateway answering, because by then the
+			# square is wet, or open, or cut, and what it *was* is gone. See
 			# `on_result`.
-			extra["pending_needs_water"] = false
-			extra["pending_bare"] = false
-			extra["pending_water_crop"] = false
+			extra["pending"] = ""
+			# **The job it is walking to**: the verb, the square it is for, and
+			# the bird it is after if it is a chase. An action is a tap now, and a
+			# tap is a walk and then a verb — so between the decision and the deed
+			# there are several seconds in which the robot is committed and does
+			# not think (`_carry_on`). Empty strings and -1s are "nothing on".
+			extra["job"] = ""
+			extra["job_x"] = -1
+			extra["job_y"] = -1
+			extra["job_target"] = ""
 			# **What is in its hands, as a word** (v0.2.1 WI-9a, Q-100): the crop
 			# type it is carrying, or "" for empty. A machine's harvest goes here
 			# rather than into her basket and comes out again at the bin, both
@@ -991,20 +1049,30 @@ func _patrol_tile(world: SimWorld, actor_id: String, extra: Dictionary) -> Vecto
 	return inside[SimRng.randi() % inside.size()]
 
 
-# --- the mark-3: one decision a second, and one lesson a night -----------------
+# --- the mark-3: one decision an errand, and one lesson a night ----------------
 #
 # **Everything above this line was written by hand. This is the rung where that
 # stops** (P-14; `design/06`, "The ladder's third rung"). A mark-3 has no orders,
-# no station, no patch and no rule about where to be. Once a second it looks at
-# what is around it, picks one of seven things with a linear policy, and does it.
-# Seven things: north, south, east, west, water the square under its feet, hoe
-# the square under its feet, and nothing at all.
+# no station, no patch and no rule about where to be. It looks at what is around
+# it, picks one of eight things with a linear policy, and does it: open bare
+# ground, sow a seed out of her box, water something thirsty, cut something ripe,
+# carry what it is holding to the bin, chase a bird off, take a step for no
+# reason, or stand still.
 #
-# **It is paid for outcomes, never for gestures** (`systems/rewards.gd`). Turning
-# a square that wanted water into a wet one is worth 1 and turning bare earth into
-# soil is worth a tenth of that — so watering ground that is already wet earns
-# exactly what walking into a fence earns, which is nothing, and the machine has
-# to work out the difference for itself.
+# **A decision is a whole errand, because that is what her tap is** (Q-100). It
+# does not choose a direction and then choose again a second later; it chooses a
+# *verb*, and the square is then found and walked to exactly the way the router
+# finds and walks hers — the nearest tile in view where that verb is legal, by
+# the same `systems/tools.gd` table her tap is answered from. While it walks it
+# does not think, which is what makes a robot's day legible: it is going
+# somewhere for a reason, and a player can see which.
+#
+# **It is paid for outcomes, never for gestures** (`systems/rewards.gd`). A crop
+# that reaches the bin is worth ten; a bird caught mid-meal three; a crop cut, a
+# plant watered and a seed sown one each; opening ground and wetting empty soil a
+# tenth. Watering ground that is already wet earns exactly what walking into a
+# fence earns, which is nothing, and the machine has to work out the difference
+# for itself.
 #
 # **A day is a wander and a night is the lesson** (P-14's second rule). During the
 # day the only things that change are the two running sums; the weights the day
@@ -1015,23 +1083,28 @@ func _patrol_tile(world: SimWorld, actor_id: String, extra: Dictionary) -> Vecto
 # **Nothing here is recorded.** The draw is `Policy.draw_u` off (seed, this
 # robot, today, decision number), so a replay recomputes every choice of the day
 # from the log's one `sleep` entry rather than reading it back (Q-53, ground
-# rule 3). Cost per decision is one observation, one policy evaluation and no
-# route search at all (ground rule 8) — a mark-3 is cheaper to run than a mark-2,
-# which is not the direction a reader expects the ladder to go.
+# rule 3). Cost per decision is one observation, one policy evaluation, one scan
+# of a 5×5 patch and at most one route search (ground rule 8) — and a decision is
+# now an errand rather than a step, so a busy day holds fewer of them than it did.
 func _learn(world: SimWorld, actor_id: String, extra: Dictionary, tick: int,
 		gs = null) -> Dictionary:
 	# **An empty meter is a machine standing in the field, not a machine thinking
 	# about standing in the field** (P-14's "a day's energy like hers"). There is
-	# nothing left for any of the six to cost, so it stops deciding until the
+	# nothing left for the costed verbs to spend, so it stops deciding until the
 	# morning refills it. The day turn re-arms every brain, which makes this wake
 	# a backstop rather than an appointment — and a long one, because a robot with
 	# nothing to spend must cost nothing at all.
 	if world.is_exhausted(actor_id):
-		extra["pending_needs_water"] = false
-		extra["pending_bare"] = false
-		extra["pending_water_crop"] = false
+		_drop_job(world, actor_id, extra)
+		extra["pending"] = ""
 		extra["wake"] = tick + ticks(LEARN_PARKED_SECONDS)
 		return {}
+
+	# Mid-errand: walking, and therefore not deciding. The wake was set by the
+	# movement engine's own step, so this costs one think per tile crossed and
+	# nothing at all per tick.
+	if String(extra.get("job", "")) != "":
+		return _carry_on(world, actor_id, extra, tick, gs)
 
 	# Her stores go in with the world (v0.2.1 WI-9a): the seed box is one of the
 	# robot's inputs, and it is the one thing it can see that is not grid truth.
@@ -1049,91 +1122,453 @@ func _learn(world: SimWorld, actor_id: String, extra: Dictionary, tick: int,
 	extra["decisions"] = decisions + 1
 	# The eligibility trace, one term per decision. Credit for a reward is spread
 	# back over everything the robot did before earning it, which is the only way
-	# *walking towards dry soil* is ever learned when only the watering pays.
+	# *walking towards the bin* is ever learned when only the sale pays.
 	var grad := Policy.grad_log_prob(obs, chances, choice, n_in, LEARN_ACTIONS)
 	Policy.add_into(extra["trace"], grad, 1.0)
 	# **And the same term again, scaled by how much of the day is left in its
 	# arms.** This is the trace the night charges the baseline against, and the
 	# whole reason it is a second sum: a decision made on a full meter still has a
-	# day's worth of watering ahead of it, while one made on the last thirty units
-	# has almost nothing ahead of it and should be measured against almost
-	# nothing. Watering costs thirty, so `energy / 600` is very nearly the share
-	# of the day's score still to come — which is what the baseline is trying to
-	# be. Read before the action, because the action is what spends it.
+	# day's worth of work ahead of it, while one made on the last thirty units has
+	# almost nothing ahead of it and should be measured against almost nothing.
+	# Read before the action, because the action is what spends it.
 	Policy.add_into(extra["base_trace"], grad,
 		float(world.energy_of(actor_id)) / float(SimWorld.ACTOR_MAX_ENERGY))
 
-	var here := world.actor_pos(actor_id)
-	var action: Dictionary = {}
-	extra["pending_needs_water"] = false
-	extra["pending_bare"] = false
-	extra["pending_water_crop"] = false
+	extra["pending"] = ""
+	var action := _begin(world, actor_id, extra, tick, choice, gs)
+	# Written last, after anything that moved it, so nothing can outlive it —
+	# except an errand, which sets its own pace from the movement engine and is
+	# the one thing that is *meant* to outlive the decision that started it.
+	if String(extra.get("job", "")) == "":
+		extra["wake"] = tick + SimClock.RATE
+	return action
+
+
+# What the chosen action does with the world it finds itself in: pick the square,
+# start walking, or discover there is nothing to do.
+#
+# **A decision with no legal square is spent, and that is deliberate** — not a
+# mask on the policy and not a re-roll. The robot has to learn *when* a verb is
+# worth choosing, which is the whole of what the `bare`, `ripe`, `crow` and
+# `needs_water` channels are for; a policy that could not choose wrongly would
+# have nothing to learn from those channels at all.
+func _begin(world: SimWorld, actor_id: String, extra: Dictionary, tick: int,
+		choice: int, gs) -> Dictionary:
 	match choice:
-		LEARN_WATER:
-			# **What the square wanted is read before the stroke, not after it.**
-			# By the time the gateway has answered, the tile is wet either way,
-			# and a robot scored on that would be a robot scored for the gesture.
-			# Asked through `order_verb` so the mark-1's idea of a square that
-			# wants water and the mark-3's cannot drift apart.
-			extra["pending_needs_water"] = order_verb(world, here) == "water"
-			# Whose square it was, kept for the night's arithmetic and nothing
-			# else: a sown or growing square is hers, and bare tilled soil is the
-			# robot's own practice ground. Both are worth 1 today
-			# (`systems/rewards.gd`), so this changes nothing about the machine
-			# that ships — it is the fact the split experiment reads, and it is
-			# recorded here because only the brain knows what the square was
-			# before the water landed.
-			extra["pending_water_crop"] = world.has_crop(here.x, here.y) \
-					or world.has_seed(here.x, here.y)
-			action = { "verb": "water", "target": here, "actor": actor_id }
-		LEARN_TILL:
-			# **A robot swings the hoe where she could swing it, and nowhere else
-			# — the same answer the router gives her.** Her tap is resolved by
-			# `Tools.get_action(tool, tile_state)`, and that table lets the hoe
-			# act on `cleared` ground and on nothing else, so there is no tap in
-			# the game that hoes sown wheat back into mud. The gateway is looser
-			# than the table — it refuses `till` only on the yard and the home's
-			# floor — so a robot that asked it directly could undo a crop the
-			# player has no practical way to undo, which is a machine behaving
-			# unlike the hands that taught it. Asked of the same table she is
-			# asked of, so the two can never drift apart.
-			#
-			# A square the hoe has no answer for is a **decision spent and nothing
-			# emitted**, exactly like a step into a fence: the second is gone, the
-			# trace carries the choice, and the reward is zero. Deliberately not a
-			# new gateway rule (what a *taught* machine may be ordered onto is a
-			# different question, and the designer's) and deliberately not a mask
-			# on the policy — the robot still has to learn where the hoe is worth
-			# swinging, which is the whole of what the `bare` channel is for.
-			#
-			# What *earns* is read one beat early for the same reason the watering
-			# is: by the time the gateway has answered, the square is soil either
-			# way. Only `cleared` earns, and `cleared` is exactly what the `bare`
-			# channel shows it, so what the robot can see, what it is allowed to
-			# hoe and what it is paid for are one square.
-			var ground := String(world.get_tile(here.x, here.y).get("state", ""))
-			if Tools.get_action(Tools.index_of_key(HOE_KEY), ground) == "till":
-				extra["pending_bare"] = ground == Observation.BARE_STATE
-				action = { "verb": "till", "target": here, "actor": actor_id }
 		LEARN_WAIT:
-			pass
-		_:
+			# A second of standing there. The cheapest thing it can do and the
+			# only one that is never refused.
+			return {}
+		LEARN_WANDER:
 			# One tile, taken directly — and deliberately **not** `Movement.plan`
 			# followed by `Movement.step`. A route planned to an adjacent tile it
 			# cannot enter comes back as having *arrived* there, and stepping a
 			# route writes a path and a wake of its own into `extra`; either would
-			# make a refused move indistinguishable from a taken one, which is the
-			# one distinction the policy is trying to learn. A move it cannot make
-			# is simply a move it did not make: nothing happens, nothing is earned,
-			# and the second is spent.
-			var goal: Vector2i = here + LEARN_STEPS[choice]
-			if Movement.can_enter(world, actor_id, goal):
-				Movement.place_on_tile(world, actor_id, goal)
-	# Written last, after anything that moved it, so nothing can outlive it: a
-	# mark-3 thinks once a second of sim time whatever it just did, which is
-	# P-14's "one action at a time at her granularity".
+			# make a refused move indistinguishable from a taken one. A move it
+			# cannot make is simply a move it did not make: nothing happens,
+			# nothing is earned, and the decision is spent.
+			#
+			# A second draw, on the same decision number under a different salt,
+			# because the first one is spoken for by the action itself.
+			var salt: int = int(extra.get("salt", 0)) ^ (int(extra.get("days", 0)) * LEARN_DAY_STRIDE)
+			var u := Policy.draw_u(salt ^ WANDER_SALT, int(extra.get("decisions", 0)))
+			var step: Vector2i = LEARN_STEPS[mini(LEARN_STEPS.size() - 1,
+					int(u * float(LEARN_STEPS.size())))]
+			var to := world.actor_pos(actor_id) + step
+			if Movement.can_enter(world, actor_id, to):
+				Movement.place_on_tile(world, actor_id, to)
+			return {}
+		LEARN_SHOO:
+			var bird := _bird_in_view(world, actor_id, extra)
+			if bird == "":
+				return {}
+			extra["job"] = String(LEARN_VERBS[LEARN_SHOO])
+			extra["job_target"] = bird
+			return _chase_bird(world, actor_id, extra, tick)
+		LEARN_SHIP:
+			# The bin is a landmark, not something it has to find: the same two
+			# numbers the observation already puts in its head
+			# (`Observation.bin_tile`), so shipping is the one errand that can
+			# take it right across the farm.
+			if String(extra.get("carrying", "")) == "":
+				return {}
+			var bin := Observation.bin_tile(world)
+			if bin.x < 0:
+				return {}
+			return _set_job(world, actor_id, extra, tick, LEARN_SHIP, bin,
+				_beside(world, actor_id, bin), gs)
+		_:
+			var square := _nearest_legal(world, actor_id, extra, choice, gs)
+			if square.x < 0:
+				return {}
+			return _set_job(world, actor_id, extra, tick, choice, square, square, gs)
+
+
+# Take the errand on: stand on the square already, or set out for it.
+#
+# `at` is the square the verb is *for* and `stand` is the square the robot has to
+# be on to do it. They are the same tile for the four that are done underfoot and
+# they differ for shipping, where the bin cannot be walked onto.
+func _set_job(world: SimWorld, actor_id: String, extra: Dictionary, tick: int,
+		choice: int, at: Vector2i, stand: Vector2i, gs) -> Dictionary:
+	if stand.x < 0:
+		return {}
+	var verb := String(LEARN_VERBS[choice])
+	if world.actor_pos(actor_id) == stand:
+		# Already there: no errand is recorded at all, so `extra` never carries a
+		# square the robot is not on its way to.
+		return _do_job(world, actor_id, extra, verb, at, gs)
+	# The mark-1's plumbing, unchanged: plan once, take the first step in the same
+	# think, and let the engine's own pacing decide when this machine next looks
+	# up. A square with no route to it is an errand that never starts.
+	if _set_out(world, actor_id, extra, tick, stand) == "":
+		return {}
+	extra["job"] = verb
+	extra["job_x"] = at.x
+	extra["job_y"] = at.y
+	if world.actor_pos(actor_id) == stand:
+		return _arrive(world, actor_id, extra, tick, gs)
+	return {}
+
+
+# One tile of the walk. Every config above does this the same way — step while the
+# route holds, throw it away when it does not — and the mark-3's only addition is
+# that the errand ends when the walk does, one way or the other.
+func _carry_on(world: SimWorld, actor_id: String, extra: Dictionary, tick: int,
+		gs) -> Dictionary:
+	if String(extra.get("job", "")) == String(LEARN_VERBS[LEARN_SHOO]):
+		return _chase_bird(world, actor_id, extra, tick)
+	var stand := _goal(extra)
+	if world.actor_pos(actor_id) == stand:
+		return _arrive(world, actor_id, extra, tick, gs)
+	if Movement.has_route(world, actor_id):
+		match Movement.step(world, actor_id, tick):
+			Movement.MOVED:
+				if world.actor_pos(actor_id) == stand:
+					return _arrive(world, actor_id, extra, tick, gs)
+				return {}   # the engine set the next wake from the speed row
+			_:
+				Movement.clear_route(world, actor_id)
+	# Blocked or out of route with the square still out of reach — a hen parked in
+	# the gateway, ground that changed while it was walking. The errand is
+	# abandoned rather than retried, which is the mark-1's answer to the same
+	# thing: the decision is gone, and the next one is a fresh look at the farm.
+	return _abandon(world, actor_id, extra, tick)
+
+
+# It is standing where the errand wanted it. Do the verb and go back to thinking.
+func _arrive(world: SimWorld, actor_id: String, extra: Dictionary, tick: int,
+		gs) -> Dictionary:
+	var verb := String(extra.get("job", ""))
+	var at := Vector2i(int(extra.get("job_x", -1)), int(extra.get("job_y", -1)))
+	_drop_job(world, actor_id, extra)
 	extra["wake"] = tick + SimClock.RATE
-	return action
+	return _do_job(world, actor_id, extra, verb, at, gs)
+
+
+# The errand is over without a verb: nothing emitted, nothing earned, and a fresh
+# decision a second from now. The decision itself was spent when it was taken.
+func _abandon(world: SimWorld, actor_id: String, extra: Dictionary, tick: int) -> Dictionary:
+	_drop_job(world, actor_id, extra)
+	extra["wake"] = tick + SimClock.RATE
+	return {}
+
+
+func _drop_job(world: SimWorld, actor_id: String, extra: Dictionary) -> void:
+	extra["job"] = ""
+	extra["job_x"] = -1
+	extra["job_y"] = -1
+	extra["job_target"] = ""
+	Movement.clear_route(world, actor_id)
+	_aim(extra, Vector2i(-1, -1))
+
+
+# --- doing the thing ------------------------------------------------------------
+
+# The Action itself, and the one fact only the brain holds: what this stroke would
+# be worth if the gateway says yes.
+#
+# **Legality is asked again here, one beat before the verb goes out.** The square
+# was chosen when the decision was taken and the walk took seconds; a hen may have
+# eaten the acorn, the rain may have wetted the soil, she may have harvested the
+# row herself. A square that has stopped answering the verb is an errand that ends
+# quietly, exactly as a mark-1's round walks to a tile and finds nothing to do.
+#
+# **What it would earn is read *before* the stroke, never after it.** By the time
+# the gateway has answered, the tile is wet either way, open either way, cut
+# either way — a robot scored on the state afterwards would be a robot scored for
+# the gesture (P-14's first rule).
+func _do_job(world: SimWorld, actor_id: String, extra: Dictionary, verb: String,
+		at: Vector2i, gs) -> Dictionary:
+	var state := String(world.get_tile(at.x, at.y).get("state", ""))
+	match verb:
+		"till":
+			# **A robot swings the hoe where she could swing it, and nowhere else
+			# — the same answer the router gives her.** Her tap is resolved by
+			# `Tools.get_action(tool, tile_state)`, and that table lets the hoe act
+			# on `cleared` ground and on nothing else, so there is no tap in the
+			# game that hoes sown wheat back into mud. The gateway is looser than
+			# the table — it refuses `till` only on the yard and the home's floor
+			# — so a robot that asked it directly could undo a crop the player has
+			# no practical way to undo, which is a machine behaving unlike the
+			# hands that taught it.
+			if Tools.get_action(Tools.index_of_key(HOE_KEY), state) != "till":
+				return {}
+			extra["pending"] = "tilled"
+		"plant":
+			var seed := _best_seed(gs)
+			if seed == "" or Tools.get_action(Tools.index_of_key(SEEDS_KEY), state) != "plant":
+				return {}
+			extra["pending"] = "planted"
+			return { "verb": verb, "target": at, "actor": actor_id, "seed_type": seed }
+		"water":
+			# Asked through `order_verb` so the mark-1's idea of a square that
+			# wants water and the mark-3's cannot drift apart.
+			if order_verb(world, at) != "water":
+				return {}
+			# **Two rows for one stroke** (Q-100). Water onto something growing is
+			# worth ten times water onto empty soil, because the first keeps a crop
+			# alive and the second only leaves the ground one step better placed.
+			# Nobody owns the square: a plant she sowed and one the robot sowed pay
+			# exactly the same.
+			extra["pending"] = "watered_plant" if world.has_crop(at.x, at.y) \
+					or world.has_seed(at.x, at.y) else "watered_soil"
+		"harvest":
+			# Hands, on a ripe square, with nothing in them already — the router's
+			# rule and the gateway's refusal, asked before the walk was worth
+			# anything and again now.
+			if Tools.get_action(Tools.index_of_key(HANDS_KEY), state) != "harvest" \
+					or String(extra.get("carrying", "")) != "":
+				return {}
+			extra["pending"] = "harvested"
+		"sell":
+			if String(extra.get("carrying", "")) == "":
+				return {}
+			extra["pending"] = "shipped"
+		_:
+			return {}
+	# The bin's own square goes out with a `sell` even though the gateway never
+	# reads it, because it is what her tap sends (`ActionRouter.SPECIAL_OBJECTS`)
+	# and because it is where a watching player should see and hear the crop
+	# change hands (`world/farm.gd`'s verb cues).
+	return { "verb": verb, "target": at, "actor": actor_id }
+
+
+# The nearest square in view this verb is legal on, or (-1, -1).
+#
+# **The router's rule, the router's reach and the router's tie-break.** Manhattan
+# distance, a fixed scan order from the top-left of the patch, and a candidate is
+# only taken on a **strictly** smaller distance — so two squares the same distance
+# away resolve the same way on every machine and in every replay. The patch is the
+# robot's own vision radius, which is the same 5×5 it is given as numbers, so
+# there is never a square it acts on that it could not see.
+func _nearest_legal(world: SimWorld, actor_id: String, extra: Dictionary,
+		choice: int, gs) -> Vector2i:
+	var here := world.actor_pos(actor_id)
+	var r := _view_radius(extra)
+	# Her box is asked once for the whole patch, not once per square: it is a fact
+	# about the farm rather than about the tile, and twenty-five walks down a
+	# dictionary inside one think is exactly the per-decision cost ground rule 8
+	# is about.
+	var seed := _best_seed(gs) if choice == LEARN_PLANT else ""
+	var best := Vector2i(-1, -1)
+	var best_d := 1 << 30
+	for dy in range(-r, r + 1):
+		for dx in range(-r, r + 1):
+			var d: int = absi(dx) + absi(dy)
+			if d >= best_d:
+				continue
+			var t := here + Vector2i(dx, dy)
+			if not _legal_at(world, extra, choice, t, seed):
+				continue
+			best_d = d
+			best = t
+	return best
+
+
+# Would her tap on this square resolve to this action's verb?
+#
+# One table, `systems/tools.gd`, asked exactly as `ActionRouter` asks it — plus
+# the two facts the router reads off her instead of off the ground: whether there
+# is a seed in the box (`seed`, already looked up by the caller) and whether the
+# hands are already full.
+func _legal_at(world: SimWorld, extra: Dictionary, choice: int, t: Vector2i,
+		seed: String) -> bool:
+	var state := String(world.get_tile(t.x, t.y).get("state", ""))
+	if state == "":
+		return false   # off the map, or a square nobody generated
+	match choice:
+		LEARN_TILL:
+			return Tools.get_action(Tools.index_of_key(HOE_KEY), state) == "till"
+		LEARN_PLANT:
+			# Her tap offers the seed only when she has one, and so does this: an
+			# empty box is a `plant` with no legal square anywhere, which is the
+			# same spent decision as a hoe with no bare ground in sight.
+			return seed != "" \
+					and Tools.get_action(Tools.index_of_key(SEEDS_KEY), state) == "plant"
+		LEARN_WATER:
+			return order_verb(world, t) == "water"
+		LEARN_HARVEST:
+			return Tools.get_action(Tools.index_of_key(HANDS_KEY), state) == "harvest" \
+					and String(extra.get("carrying", "")) == ""
+	return false
+
+
+# A square the robot can stand on next to the bin, nearest first. The bin has an
+# object on it, so it is the one errand whose destination is not the square the
+# verb is about — she reaches for it from beside it too.
+func _beside(world: SimWorld, actor_id: String, at: Vector2i) -> Vector2i:
+	var here := world.actor_pos(actor_id)
+	var best := Vector2i(-1, -1)
+	var best_d := 1 << 30
+	var mode := Movement.mode_of(world.species_of(actor_id))
+	for d in LEARN_STEPS:
+		var t: Vector2i = at + d
+		if not Movement.can_stop(world, mode, t) or not Movement.can_enter(world, actor_id, t):
+			continue
+		var dist := _manhattan(t, here)
+		if dist < best_d:
+			best_d = dist
+			best = t
+	return best
+
+
+# Which seed comes out of her box: the one she has most of, ties going to the
+# order the box itself is written in. **Not a thing the robot learns** — the
+# design gives it one number for the box ("is there anything to sow"), and which
+# kind is the brain's business, exactly as which square is.
+static func _best_seed(gs) -> String:
+	if gs == null or not ("seeds" in gs):
+		return ""
+	var best := ""
+	var most := 0
+	for key in gs.seeds.keys():
+		var n := int(gs.seeds[key])
+		if n > most:
+			most = n
+			best = String(key)
+	return best
+
+
+# --- the chase ------------------------------------------------------------------
+
+# The nearest bird standing inside the robot's own patch, or "".
+#
+# A pass over the birds in the registry rather than over the patch: there is at
+# most one crow in a day of phase 1, and the registry is a short list whatever the
+# size of the farm (ground rule 8). Ids come back sorted and a bird is only taken
+# on a **strictly** smaller distance, so two equidistant birds resolve the same
+# way every time. The class is the same one the `crow` channel is drawn from, so
+# what the robot can see and what it may chase are one list.
+func _bird_in_view(world: SimWorld, actor_id: String, extra: Dictionary) -> String:
+	var here := world.actor_pos(actor_id)
+	var r := _view_radius(extra)
+	var best := ""
+	var best_d := 1 << 30
+	for id in world.actors_of_class(SpeciesDefs.CLASS_BIRD):
+		if id == actor_id:
+			continue
+		var at: Vector2i = world.actor_pos(id)
+		if absi(at.x - here.x) > r or absi(at.y - here.y) > r:
+			continue
+		var d := _manhattan(at, here)
+		if d < best_d:
+			best_d = d
+			best = id
+	return best
+
+
+# Walking a bird down. The mark-2's `_chase` with its patch radius swapped for a
+# chase length: this machine has no patch, so what bounds the errand is how far it
+# will follow rather than where it is allowed to be.
+func _chase_bird(world: SimWorld, actor_id: String, extra: Dictionary,
+		tick: int) -> Dictionary:
+	var target := String(extra.get("job_target", ""))
+	if target == "" or not world.has_actor(target):
+		return _abandon(world, actor_id, extra, tick)   # it left on its own
+	var tiles := Movement.occupied_tiles(world, target)
+	if tiles.is_empty():
+		return _abandon(world, actor_id, extra, tick)
+	if world.actor_pos(actor_id) in tiles:
+		return _reach_bird(world, actor_id, extra, tick, target)
+	var head: Vector2i = tiles[0]
+	if _manhattan(head, world.actor_pos(actor_id)) > SHOO_CHASE_TILES:
+		# That one got away. A crow in the air is half again as fast as the bot,
+		# so this is the ordinary end of a chase that started while it was still
+		# coming in — and the reason the birds a mark-3 actually catches are the
+		# ones that have landed.
+		return _abandon(world, actor_id, extra, tick)
+	if Movement.has_route(world, actor_id) and _goal(extra) == head:
+		match Movement.step(world, actor_id, tick):
+			Movement.MOVED:
+				if world.actor_pos(actor_id) in Movement.occupied_tiles(world, target):
+					return _reach_bird(world, actor_id, extra, tick, target)
+				return {}
+			_:
+				Movement.clear_route(world, actor_id)
+	# Re-aim at where it is now. Once per step it takes, not once per tick — a
+	# bird in the air moves every tick and a machine walking after it does not get
+	# to think faster than it walks. Re-aiming is not a decision: no draw is taken
+	# and no reward can come of it, so the day's arithmetic never sees it.
+	if _set_out(world, actor_id, extra, tick, head) == "":
+		return _abandon(world, actor_id, extra, tick)
+	if world.actor_pos(actor_id) in Movement.occupied_tiles(world, target):
+		return _reach_bird(world, actor_id, extra, tick, target)
+	return {}
+
+
+# It is standing on the bird. What happens next is the **quarry's** answer, not
+# the bot's — `_reached` above says the whole of why — so this files the crow's
+# own `crow_scared` report and the visit ends exactly as it ends when the player
+# walks over. The bot gains no verb by doing it.
+#
+# Two birds get nothing out of this and both are honest: a songbird has no report
+# to make (it has no verbs at all), and a crow already on its way out cannot be
+# frightened twice. The second is the one worth stating, because it is the
+# difference between a reward and a way to farm one: a bird that is leaving is a
+# bird somebody has already scared.
+func _reach_bird(world: SimWorld, actor_id: String, extra: Dictionary, tick: int,
+		target: String) -> Dictionary:
+	_drop_job(world, actor_id, extra)
+	extra["wake"] = tick + SimClock.RATE
+	if not SpeciesDefs.may(world.species_of(target), "crow_scared"):
+		return {}
+	var state := String(world.actor(target).get("extra", {}).get("state", ""))
+	if state == "leaving":
+		return {}
+	# **Three points for a bird caught eating and one for a bird turned back**
+	# (Q-100), read at the moment of the scare because the report is what ends the
+	# visit — a beat later this bird's state is "leaving" whatever it was doing.
+	extra["pending"] = "crow_eating" if state == "eating" else "crow_flying"
+	return {
+		"verb": "crow_scared",
+		"target": world.actor_pos(target),
+		"actor": target,
+		# Who did the frightening. The gateway reads it for the *kind* of cause
+		# (a person or a machine) rather than for whose proof it is — Q-66 is
+		# ruled and the credit is hers either way — and it is what makes a bot's
+		# work legible in the replay corpus phase 4 trains on.
+		"by": actor_id,
+	}
+
+
+# --- small shared answers --------------------------------------------------------
+
+# How far this robot can see, in tiles. Off its own spec, never off the default:
+# a machine keeps the senses it was born with (see `deploy`), so a later build
+# that widens the patch must not widen the reach of a robot trained on the old one.
+func _view_radius(extra: Dictionary) -> int:
+	var spec: Dictionary = extra.get("spec", {})
+	return maxi(0, int(spec.get("vision", Observation.DEFAULT_VISION)))
+
+
+# A day's score split by row, all zeros. One place that knows how many rows there
+# are, and it is the reward table.
+static func _new_split() -> Array:
+	var out: Array = []
+	out.resize(Rewards.KEYS.size())
+	out.fill(0.0)
+	return out
 
 
 # The night: one update, and a clean slate for the morning.
@@ -1184,9 +1619,8 @@ func _sleep_on_it(extra: Dictionary) -> void:
 	extra["trace"] = _scaled(weights, 0.0)
 	extra["acc"] = _scaled(weights, 0.0)
 	extra["base_trace"] = _scaled(weights, 0.0)
-	extra["pending_needs_water"] = false
-	extra["pending_bare"] = false
-	extra["pending_water_crop"] = false
+	extra["earned"] = _new_split()
+	extra["pending"] = ""
 
 
 # `source * k`, as a fresh plain Array of float — the shape the night needs and
@@ -1260,6 +1694,12 @@ func on_new_day(world: SimWorld, actor_id: String) -> void:
 	# have quietly meant "and no other config has a night" (v0.2.1 WI-4).
 	if String(extra.get("config", "")) == CONFIG_LEARN:
 		_sleep_on_it(extra)
+		# ...and the errand it was halfway through when she went to bed is over
+		# too. A morning is a fresh look at the farm: the square it was walking to
+		# may have been harvested, watered or fenced off overnight, and a machine
+		# that resumed yesterday's walk would be acting on a farm that no longer
+		# exists (the mark-1's round is stood down for the same reason, below).
+		_drop_job(world, actor_id, extra)
 		return
 	if String(extra.get("config", "")) != CONFIG_ORDERS:
 		return
@@ -1280,21 +1720,24 @@ func on_new_day(world: SimWorld, actor_id: String) -> void:
 #
 # **The mark-3 is the one bot that cares what the gateway said**, because for a
 # machine that learns, the answer *is* the lesson. It is scored on the outcome and
-# not on the stroke (P-14, `systems/rewards.gd`): the reward lands only when the
-# square it reached for genuinely wanted water — remembered as
-# `pending_needs_water` one beat earlier, because by now the tile is wet either
-# way — and the gateway said yes. Watering wet ground, watering a rock, watering
-# from an empty meter: all worth what waiting is worth, which is nothing.
+# not on the stroke (P-14, `systems/rewards.gd`), and the outcome is two facts
+# together: what the square (or the bird) was one beat *before* the verb went out,
+# which only the brain still knows, and whether the gateway then said yes.
 #
-# The hoe is the same sentence with a different pair of words in it (Q-99): the
-# square had to have been bare, and the gateway had to have accepted. A hoe into
-# the yard is refused outright, a hoe into soil that was already open changed
-# nothing, and both are worth what waiting is worth. Nothing here special-cases
-# where a robot may hoe — that rule is the gateway's, and it binds a machine
-# exactly as it binds her (ground rule 1).
+# The first is `extra["pending"]` — the name of the row of `Rewards.TABLE` this
+# errand was reaching for, written by `_do_job` just before the Action left. By
+# the time this function runs the tile is wet, or open, or cut, and the bird is
+# leaving, so nothing here could work it out from the world. The second is
+# `result.ok`. Watering wet ground, hoeing the yard, selling with empty hands,
+# reaching a bird that had already been frightened: every one of them is worth
+# what waiting is worth, which is nothing.
+#
+# Nothing here special-cases where a robot may work — that rule is the gateway's
+# and the router's, and it binds a machine exactly as it binds her (ground rule 1).
 #
 # The reward is folded into the accumulator against the **whole trace so far**,
-# not against this one decision. That is what pays the walk that got it there.
+# not against this one decision. That is what pays the walk that got it there —
+# and with a decision now being a whole errand, the walk *is* most of the day.
 func on_result(world: SimWorld, actor_id: String, action: Dictionary,
 		result: Dictionary) -> void:
 	var e: Dictionary = world.actor(actor_id)
@@ -1303,30 +1746,26 @@ func on_result(world: SimWorld, actor_id: String, action: Dictionary,
 	var extra: Dictionary = e["extra"]
 	if String(extra.get("config", "")) != CONFIG_LEARN:
 		return
-	var verb := String(action.get("verb", ""))
-	if verb != "water" and verb != "till":
+	var pending := String(extra.get("pending", ""))
+	extra["pending"] = ""
+	if pending == "" or not bool(result.get("ok", false)):
 		return
-	var ok := bool(result.get("ok", false))
-	var earned := 0.0
-	if verb == "water":
-		if bool(extra.get("pending_needs_water", false)) and ok:
-			# **Two rows for one stroke** (Q-100). Water onto something growing
-			# is worth ten times water onto empty soil, because the first keeps a
-			# crop alive and the second only leaves the ground one step better
-			# placed. Which of the two it was is a fact only the brain holds —
-			# the square is wet either way by the time the gateway has answered —
-			# so it is remembered one beat earlier and spent here.
-			earned = Rewards.of("watered_plant" if bool(extra.get("pending_water_crop", false))
-					else "watered_soil")
-	elif bool(extra.get("pending_bare", false)) and ok:
-		earned = Rewards.of("tilled")
-	extra["pending_needs_water"] = false
-	extra["pending_bare"] = false
-	extra["pending_water_crop"] = false
+	# A harvest of a square with nothing on it is accepted by the gateway and cuts
+	# nothing at all — `crop_type` is what says a crop actually came up, and it is
+	# the same fact `world/farm.gd` uses to decide whether to play the sound.
+	if String(action.get("verb", "")) == "harvest" and not result.has("crop_type"):
+		return
+	var earned := Rewards.of(pending)
 	if earned == 0.0:
 		return
 	Policy.add_into(extra["acc"], extra["trace"], earned)
 	extra["score"] = float(extra.get("score", 0.0)) + earned
+	# ...and the same point again in its own column, so a week can say which of
+	# the eight rows it actually reached. Report only; nothing decides on it.
+	var split: Array = extra.get("earned", [])
+	var slot := Rewards.index_of(pending)
+	if slot >= 0 and slot < split.size():
+		split[slot] = float(split[slot]) + earned
 
 
 # --- shared plumbing ------------------------------------------------------------

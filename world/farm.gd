@@ -712,12 +712,26 @@ func _notify_day_turn() -> void:
 # Presentation only, in the D-8 sense: it runs after the Action has resolved, and
 # deleting the whole table would change frames and nothing else.
 #
-# The rows are `player/player.gd`'s own answers, verb for verb. `plant` is absent
-# because it is silent for the player too — there is no plant foley in the mixer
-# yet (`design/10`'s table wants a pat-pat), and inventing one here would make an
-# actor *louder* than the player rather than equal to her. `open_gate` is absent
-# because the cold open answers it with the moving truck's honk, which is a
-# scene's sound rather than a verb's.
+# The rows are `player/player.gd`'s own answers, verb for verb — **equal to her,
+# never louder**, which is what decides the two quiet rows at the bottom.
+#
+# `plant` and `sell` are what a Mark III does that nothing but the player did
+# before it (v0.2.1 WI-9b): it sows out of her seed box and it carries what it
+# cuts to the bin. Both are **silent for the player** — there is no plant foley in
+# the mixer yet (`design/10`'s table wants a pat-pat) and no coin for the bin — so
+# both are silent here, and each gets the puff her own hands would have thrown:
+# the dirt of a square being worked for the seed going in, and the harvest burst
+# for the crop leaving the machine's hands. Giving either one a sound the player
+# does not get would make a machine louder than the farmer, which is the one thing
+# this table is not allowed to do. When her own plant and sale get their foley,
+# these two rows get the same names and nothing else changes.
+#
+# `sell` is gated on `crop_type` for the reason `harvest` is: a sale that shipped
+# nothing looks like nothing, and the machine's result names the crop that
+# changed hands.
+#
+# `open_gate` is absent because the cold open answers it with the moving truck's
+# honk, which is a scene's sound rather than a verb's.
 const ACTOR_VERB_CUES := {
 	"till":       { "sfx": "till",    "puff": "dirt" },
 	"water":      { "sfx": "water",   "puff": "water", "ack": "already_watered" },
@@ -728,6 +742,8 @@ const ACTOR_VERB_CUES := {
 	"clear_log":  { "sfx": "till",    "puff": "chop", "beats": true },
 	"clear_rock": { "sfx": "till",    "puff": "chop", "beats": true },
 	"clear_tree": { "sfx": "till",    "puff": "chop", "beats": true },
+	"plant":      { "puff": "dirt" },
+	"sell":       { "puff": "harvest", "needs": "crop_type" },
 }
 
 # One beat of a clear, in seconds — `player.gd`'s ACTION_DURATION. Q-50 gives a
