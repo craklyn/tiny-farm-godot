@@ -19,7 +19,7 @@
     "Words on the nameplate only; numerals on axes; pictures everywhere else",
     "Nothing expensive runs when a page opens"
   ],
-  "current_status": "Planned and in build. The plan is docs/V0_2_2_PLAN.md (written 2026-09-10 from two read-only surveys and checked against the code before any worker started). Eight work items, one per story, handed out in order: the sim side first, then the bench in the shop and its shell, then the five plates in parallel, then art and proof. Scheduled as v0.2.2 so v0.2.1 ships the robot first.",
+  "current_status": "Built on main as of 2026-09-10: all five plates, the bench in the shop, the dial turn as a replayed verb, and the proof tests; both suites, the gateway check and the robot session green on a clean checkout, the robot's learning numbers unchanged. What remains for v0.2.2 is the CEO's look on the tablet, the release notes and the tag. Three small calls are his when he wants them: a sound for a dial turn, the bench's price (300 today), and whether the game wants a pixel face.",
   "plan": [
     {
       "step": "Designed and put to the CEO with mockups (Q-101)",
@@ -55,7 +55,7 @@
     },
     {
       "step": "Art, and the proof tests",
-      "done": false
+      "done": true
     }
   ],
   "links": [

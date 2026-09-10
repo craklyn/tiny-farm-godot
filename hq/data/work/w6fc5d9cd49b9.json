@@ -6,16 +6,18 @@
   "tier": 1,
   "tier_reason": "Game code behind both suites and the replay round-trip; git reverts it. The design is the CEO's, ruled whole as Q-101.",
   "ask": "WI-8 in docs/V0_2_2_PLAN.md: the two-day tune-and-replay chapter, the bench/panel parity scenario, and an attempt to put ui/ under the gateway checker; the design chapter and plan status updated.",
-  "first_action": "Handed to a worker in its own worktree by the chief of staff's session; land on main after both suites pass there.",
-  "state": "in_progress",
+  "first_action": "Landed; see result.",
+  "state": "for_review",
   "thread": "grace",
   "source": "chat",
   "source_message": "CEO, 2026-09-10: build the training workbench as v0.2.2 (Q-101), sim side first.",
-  "result": "",
+  "result": "Landed on main (49567bc). The dial-turn tick marks the day the dial turned; the update card shows last night's change; the tune-and-replay chapter spans two days; the bench and the robot's panel agree in a scenario; the robot session now buys a bench and turns a dial so the new verb rides the game's own replay check; the gateway checker watches ui/ with three waivers. Chief of staff verified on a clean checkout: unit 2540, integration 850 twice, gateway and self-test clean, robot session green, learning numbers identical to the pre-build baseline.",
   "started": "2026-09-10",
-  "attempts": 0,
+  "attempts": 1,
   "created": "2026-09-10T08:57",
   "created_ts": 1789055867.9832668,
   "parent": "training-workbench",
-  "plan_item": "WI-8"
+  "plan_item": "WI-8",
+  "follow_ups": [],
+  "recommend": {}
 }

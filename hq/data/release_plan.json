@@ -259,7 +259,7 @@
           "id": "s8",
           "title": "Prove it: the dial turn survives a replay, and the charts say the same thing as the robot's own scorecard",
           "estimate_days": 0.5,
-          "done": false
+          "done": true
         }
       ]
     },

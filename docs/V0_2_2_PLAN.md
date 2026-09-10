@@ -664,3 +664,25 @@ is `training-workbench`.*
   - **For the CEO**: a dial turn makes no sound today (the shop's purchase does); the
     entropy-bar colour; and the ledger cards carry no day numerals of their own — the chart
     above them carries the axis for the same window.
+- 2026-09-10 — **The eyes scenario flaked on the clean checkout and was fixed** (`5a4a060`): the
+  robot stepped while she walked to the bench, so the squares staged east and west of its
+  placement tile were no longer east and west of it. The scenario now makes the robot certain of
+  `wait` while the world runs and stages its squares from where the robot actually stands;
+  three consecutive clean runs at 831. Rule for scenarios, now in §6 and the skill: pin the
+  actors before the world runs between staging and assertion.
+- 2026-09-10 — **WI-8 landed** (`49567bc`): the dial-turn tick is drawn on the day the dial
+  turned (`tuned[i] + 1`); the update card's numeral is last night's `last_update` (a dash
+  before the first night); the tune-and-replay chapter spans two days with a turn on each; the
+  bench-and-panel parity scenario (AS, 15); **the robot session buys a Mark III and a bench,
+  taps the bench and turns a dial, so `tune` rides the real game's own replay verification**
+  (its opening purse is 1500); and `tools/check_gateway.py` now watches `ui/` — three waivers,
+  all world creation in detached worlds (`ui/attract_loop.gd:186`, `ui/home_screen.gd:66,74`).
+  **Final verification on a clean checkout of main**: unit **2540 passed, 0 failed**;
+  integration **850 passed, 0 failed, twice**; gateway PASSED and `--self-test` PASSED; robot
+  session PASSED (replay matches its autosave, 161 entries); the demo runs and the eight-farm
+  gate reads exactly the pre-build line (19.84 against 18.21, 6 of 8). The five plates were
+  captured on the desktop from the merged main and read against the mockups. **Still open,
+  by design**: the tablet check with the CEO (release chores, then the tag), and the three
+  small calls listed for him above (dial sound, bench price, a pixel face). Worker spend for
+  the whole build: about 2.35 million Opus tokens across two surveyors, one reviewer and
+  nine workers, plus $0.108 of art.
