@@ -236,6 +236,26 @@ One row per setting, the current one ticked, then "pick it up":
 | Circle me | `circle` | orbits her at a fixed radius and comes with her |
 | Wait here | `idle` | stands still — what a freshly placed one is, and how she stops a running one without picking it up |
 
+### Mark III — the panel is its practice
+
+There is nothing to set. The machine is working its own job out, and a dial over weeks of
+practice is a control that undoes them — so the catalogue row carries no settings and the
+gateway refuses `configure` on it outright. Where the other marks put controls, the
+Mark III puts two numbers, and then "pick it up":
+
+| It shows | What the number is | Read from |
+| --- | --- | --- |
+| a crescent, then a number | nights it has practised | `extra["days"]`, stepped by the night update |
+| a watering can, then a number | squares it watered yesterday | `extra["last_score"]`, the day's reward total |
+
+That is the whole of it (Q-97, ruled 2026-09-09): numbers on the panel, nothing at dawn,
+and no third row. Both halves are wordless (S-7) and neither picture is new — the can is
+the cell the HUD's can chip already draws, and the crescent is the night token off the
+sun-arc, which is the right one because `days` counts the nights it has slept on what it
+learned. The row is a **readout, not a control**: no panel behind it and nothing in it to
+press, because a row that looks tappable and answers nothing is the failure the mark-1's
+disabled rows were rewritten to avoid.
+
 ### Mark-2 first contact, P0 — the floor (designer, 2026-09-07)
 
 **The technical milestone, not the scene.** P0 says what must be true for the machine to
@@ -481,9 +501,10 @@ follow, which searches a route per tile she moves.
 She buys **Robot Mk III** from the shop (P-12) and puts it down. It wanders — the first
 days clumsy, and visibly so, which is the failure design this chapter asks for: bad
 behaviour that is funny and legible, never opaque. Each watering looks and sounds like
-hers. Tap it and the panel says, in numbers, how many days it has practised and how much
-it watered yesterday. It moves at the mark-1's pace. Nothing on the map changes without
-the cue she would have made herself.
+hers. Tap it and the panel says, in numbers, how many nights it has practised and how many
+squares it watered yesterday — a crescent and a watering can, one numeral each ("Mark III —
+the panel is its practice"). It moves at the mark-1's pace. Nothing on the map changes
+without the cue she would have made herself.
 
 ### Not in v1
 
@@ -550,6 +571,7 @@ that reads as broken.
 | The policy maths, pure and static | `systems/sim/brains/policy.gd` (new) |
 | The observation builder | `systems/sim/observation.gd` (new) |
 | The reward table, data layer | `systems/rewards.gd` (new) |
+| The panel's two numbers, and the pips beside them | `ui/menus.gd`, the `policy` arm of the machine menu |
 | The two-farm learning-curve demo and its gate | `tools/demo_learning_robot.gd` + `test_learning_robot()` |
 
 The build plan, with interfaces and acceptance criteria per work item, is
