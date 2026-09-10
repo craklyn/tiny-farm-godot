@@ -11,6 +11,18 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
 
 ## Now — blocks M0 close or current work
 
+- **Q-101 (Approval, filed 2026-09-10)** **The training workbench.** Designed at your request
+  in `design/14-training-workbench.md`: a bought bench she taps, with five plates — the
+  **dials** (each rewarded outcome on a ten-step ladder from −3 to 10, negatives allowed and
+  their consequence drawn rather than forbidden, a dial turn recorded as an Action), the
+  **eyes** (the observation template live, and the policy's eight probabilities as a
+  thinking strip), the **plate** (model, inputs, training rule, rate, entropy — read from
+  the code's own constants), the **ledger** (score per outcome, expected vs actual, entropy,
+  update size, spent decisions, each with its day-over-day arrow; no loss line, and the
+  chapter says why), and the **mosaic** (the weight matrix folded to warm and cool cells).
+  Approve as a whole or name the plate that is wrong; mockups attached to the card. Build
+  shape and owners in §10.
+
 - **Q-100** ~~Should her squares pay more than the robot's own?~~ — ✅ ruled 2026-09-09, on
   the designer's own initiative, and the question was wrong: *"I don't understand a
   distinction that either the main character or a robot owns a tile. The robot should be

@@ -77,6 +77,10 @@
     {
       "step": "Q-100: the full reward table — the robot sees the whole farm, plants, harvests, carries to the mailbox, scares crows; measured honestly on the harness",
       "done": true
+    },
+    {
+      "step": "The training workbench designed (design/14) and put to the CEO (Q-101); built once approved",
+      "done": false
     }
   ],
   "links": [

@@ -1,0 +1,38 @@
+{
+  "id": "Q-101",
+  "title": "Approve the training workbench",
+  "question": "You asked for a place in the game where a player can see and set what the robot is rewarded for, and see how its training is going the way a senior applied scientist would want to, drawn in the game's own style. The design is a bench you buy and put down in the yard. Tap it and it opens with five brass plates along the top.\n\nThe dials: one row per rewarded outcome, its picture on the left, the number in the middle, big minus and plus buttons stepping along a ten-step ladder from minus three to ten. Your table is the factory setting. Negatives are allowed on every row; the bench shows what they do instead of forbidding them, and it says in words when a robot has learned to do nothing.\n\nThe eyes: the five-by-five view the robot actually sees, its energy, what it carries, where the bin lies, and a strip of eight bars showing what it is about to do.\n\nThe plate: the model, its inputs, the training rule and rate, and today's exploration, engraved in words, read from the code so it can never go stale.\n\nThe ledger: five lines over the last fourteen days, each with today's number and an arrow against yesterday — points per outcome, expected against actual, exploration, how much the weights moved last night, and how many decisions were wasted. There is no loss line, because this learner has no loss that means anything day to day; the two honest stand-ins are on the page.\n\nThe mosaic: the weight matrix folded into warm and cool cells, so a child sees what the robot likes and a scientist reads feature attribution.",
+  "why_now": "The Mark III is on the tablet and its panel already needs the scorecard. The bench decides where every later training surface lives, and the build is about six days across four seats.",
+  "options": [
+    {
+      "key": "a",
+      "label": "Approve as drafted (Recommended)",
+      "detail": "All five plates, the ten-step ladder, negatives on every row, the bench as a bought thing, words on the plate only. Build starts at the sim side (the dial as an Action, the metrics the robot keeps) and the shell."
+    },
+    {
+      "key": "b",
+      "label": "Approve, but change a plate",
+      "detail": "Say which: a different ladder or range, negatives only on some rows, the bench as a button on the robot's panel instead of a thing in the yard, or a different set of ledger lines."
+    },
+    {
+      "key": "c",
+      "label": "Dials and ledger first, the rest later",
+      "detail": "Ship the reward dials and the scorecard-as-ledger in v0.2.1, and hold the eyes, the plate and the mosaic for the next update. About three days instead of six."
+    }
+  ],
+  "links": [
+    {
+      "label": "The design (design/14)",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/14-training-workbench.md"
+    },
+    {
+      "label": "The robot's design (design/06)",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/06-bots-and-training.md"
+    },
+    {
+      "label": "Queue entry (Q-101)",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"
+    }
+  ],
+  "attachments": []
+}
