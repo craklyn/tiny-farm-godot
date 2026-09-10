@@ -12106,8 +12106,15 @@ func test_workbench_sim() -> void:
 			% [str(turned.get("previous", 0.0)), str(turned.get("value", 0.0))])
 	_assert(is_equal_approx(float(extra["rewards"][0]), 3.0),
 		"the robot's own table is the thing that changed (%s)" % str(extra["rewards"][0]))
-	_assert((extra["tuned"] as Array) == [int(extra["days"])],
-		"and today is marked on it, once (%s)" % str(extra["tuned"]))
+	# **Nights finished, not days lived** (v0.2.2 WI-8). The mark is `extra["days"]`
+	# — the count of nights behind the robot — so a dial turned on a robot's very
+	# first day records a 0, and 0 is not the number the scorecard's axis gives that
+	# day. Asserted as the literal `[0]` rather than as `[days]` because that seam
+	# is the whole of WI-8's first fix: the chart converts, and it can only be
+	# trusted to convert if what it is converting *from* is pinned here.
+	_assert((extra["tuned"] as Array) == [0] and int(extra["days"]) == 0,
+		"and her first day is marked on it as the nought nights behind it (%s)"
+			% str(extra["tuned"]))
 	s.act({ "verb": "tune", "actor": "player", "target": here,
 		"row": "planted", "value": 0.3 })
 	_assert((extra["tuned"] as Array).size() == 1,
@@ -12444,10 +12451,21 @@ func test_workbench_sim() -> void:
 		"and one weight of 1.0 folds into exactly one cell of the mosaic — the water row, the '%s' group"
 			% String(default_groups[holder]["name"]))
 
-	# --- a session with a dial turn in it replays ------------------------------
+	# --- two days with dial turns in both of them, replayed --------------------
+	#
 	# The claim Q-53 rests on, now that a robot's pay can be changed mid-session:
 	# the turn is one recorded Action, and everything downstream of it — the day's
 	# score, the night's update, the weights — is recomputed rather than stored.
+	#
+	# **Two days, and a turn in each** (v0.2.2 WI-8). One day would prove the verb
+	# survives the log; it would not prove what a player actually does, which is
+	# come back the next morning and adjust. The night in between is the part with
+	# teeth: `_sleep_on_it` folds the day's takings into the weights and appends a
+	# ledger row, and both of those are computed from a reward table the log never
+	# stores. If the second turn were replayed against the first day's table — or
+	# the night's row were kept rather than recomputed — the ledger would differ
+	# while the weights still matched, so the ledger is compared column for column
+	# below rather than left to `capture_canonical` alone.
 	var live := _mk3_yard(6161)
 	live.rebase()
 	var learner := _mk3_place(live, MK3_SPOT)
@@ -12455,20 +12473,28 @@ func test_workbench_sim() -> void:
 		"row": "shipped", "value": 3.0 })
 	live.act({ "verb": "tune", "actor": "player", "target": live.world.actor_pos(learner),
 		"row": "watered_plant", "value": 3.0 })
-	for _day in 2:
-		live.tick(SimClock.RATE * 45)
-		live.gs.weather = "sunny"
-		live.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
+	live.tick(SimClock.RATE * 45)
+	live.gs.weather = "sunny"
+	live.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
+	# The second morning: she looks at what the first day cost her and turns the
+	# watering row back down again.
+	live.act({ "verb": "tune", "actor": "player", "target": live.world.actor_pos(learner),
+		"row": "watered_plant", "value": 0.3 })
+	live.tick(SimClock.RATE * 45)
+	live.gs.weather = "sunny"
+	live.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
 	live.tick(SimClock.RATE * 10)
 	var lex: Dictionary = live.world.actor(learner)["extra"]
 	_assert(int(lex["days"]) == 2 and (lex["ledger"] as Array).size() == 2,
 		"the recorded session put two days on the robot and two rows in its ledger (%d)"
 			% (lex["ledger"] as Array).size())
+	_assert((lex["tuned"] as Array) == [0, 1],
+		"and a mark on each of the two days she turned something (%s)" % str(lex["tuned"]))
 	var live_canonical := SaveGame.capture_canonical(live.world, live.gs)
 	var again := SimWorld.new()
 	live.log.apply_to(again, live.gs)
 	_assert(live.log.divergence == "",
-		"and a log with two dial turns in it recomputes cleanly (%s)" % live.log.divergence)
+		"and a log with a dial turn on each day recomputes cleanly (%s)" % live.log.divergence)
 	_assert(SaveGame.capture_canonical(again, live.gs) == live_canonical,
 		"landing on the same farm and, weight for weight, the same robot")
 	var replayed: Dictionary = again.actor(learner)["extra"]
@@ -12477,11 +12503,23 @@ func test_workbench_sim() -> void:
 		if not is_equal_approx(float(replayed["rewards"][k]), float(lex["rewards"][k])):
 			replay_dials = false
 	_assert(replay_dials and is_equal_approx(float(lex["rewards"][0]), 3.0)
-			and is_equal_approx(float(lex["rewards"][4]), 3.0),
-		"with both dials exactly where she left them — the value stored is the ladder's own float, not the one that arrived")
+			and is_equal_approx(float(lex["rewards"][4]), 0.3),
+		"with every dial exactly where she left it on the second morning — the value stored is the ladder's own float, not the one that arrived")
 	_assert((replayed["tuned"] as Array) == (lex["tuned"] as Array),
-		"and the day she turned them marked on the replayed robot too (%s)"
+		"and both days she turned them marked on the replayed robot too (%s)"
 			% str(replayed["tuned"]))
+	var replay_ledger := (replayed["ledger"] as Array).size() == (lex["ledger"] as Array).size()
+	for d in (lex["ledger"] as Array).size():
+		var live_row: Array = lex["ledger"][d]
+		var back_row: Array = replayed["ledger"][d]
+		if live_row.size() != back_row.size():
+			replay_ledger = false
+			continue
+		for c in live_row.size():
+			if not is_equal_approx(float(live_row[c]), float(back_row[c])):
+				replay_ledger = false
+	_assert(replay_ledger,
+		"and both nights' ledger rows recomputed to the same seven numbers, column for column")
 	live.done()
 
 	# --- and the fallback the plate reads -------------------------------------

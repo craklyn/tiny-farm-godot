@@ -51,8 +51,16 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # enforced against: everything that draws the world, walks in it, or reacts to
 # it. These are the files that hold a reference to a live `SimWorld` and have no
 # business changing one.
+#
+# `ui` joined them on 2026-09-10 (v0.2.2 WI-8, closing finding F-40). It was left
+# out while the menus only read, and that stopped being safe the day the training
+# workbench arrived: five pages that read a robot's whole record, and a dial that
+# changes what it is paid. A bench writing `extra` directly would have compiled,
+# passed both suites, and corrupted every replay written afterwards — which is the
+# exact failure this file exists to prevent, one layer up.
 SIM_SOURCE = os.path.join("systems", "sim", "sim_world.gd")
-WATCHED_DIRS = [os.path.join("world"), os.path.join("entities"), os.path.join("player")]
+WATCHED_DIRS = [os.path.join("world"), os.path.join("entities"), os.path.join("player"),
+                os.path.join("ui")]
 
 # The gateway itself, and the readers named like writers. `apply_action` is the
 # sanctioned door. `_record`-style names are not in play here; this list exists

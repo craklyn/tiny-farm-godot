@@ -179,6 +179,10 @@ func _pump_sim_clock(delta: float) -> void:
 func _rewind_world() -> void:
 	if _log.base_save.is_empty():
 		SimRng.reseed(_log.gen_seed)
+		# gateway-ok: making a world is not changing one, and this one is the
+		# title screen's own — nothing has been played on it for an Action to
+		# have acted on, and it is rebuilt from the seed on every loop rather
+		# than being a farm anybody's session is recorded against.
 		farm.sim.generate()
 	else:
 		SaveGame.restore(_log.base_save, farm.sim, gs)

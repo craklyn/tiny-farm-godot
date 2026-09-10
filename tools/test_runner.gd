@@ -101,6 +101,7 @@ func _run_scenarios() -> void:
 	await _scenario_ar_the_plate_and_mosaic_read_the_robot()
 	await _scenario_ao_the_dials_turn_through_the_gateway()
 	await _scenario_aq_the_ledger_is_the_scorecard()
+	await _scenario_as_the_bench_and_panel_agree()
 
 func _wait_until(pred: Callable, max_frames: int) -> bool:
 	for i in max_frames:
@@ -5490,6 +5491,11 @@ func _scenario_aq_the_ledger_is_the_scorecard() -> void:
 	extra["decisions"] = 180
 	extra["entropy_sum"] = 2.24 * 180.0
 	extra["spent"] = 21
+	# Last night's move, the number the update card carries. It is the last
+	# ledger row's fourth column by construction — the brain writes the same value
+	# in both places — and staged to agree here so the card and its own line can be
+	# checked against each other below.
+	extra["last_update"] = float((_demo_ledger()[DEMO_WEEK.size() - 1] as Array)[3])
 
 	# --- a bench to read it on ------------------------------------------------
 	# Put down through the gateway and opened directly: the tap that buys it, the
@@ -5537,8 +5543,23 @@ func _scenario_aq_the_ledger_is_the_scorecard() -> void:
 		"in the well the mockup puts it in (%s at %s)" % [str(chart.size), str(chart.position)])
 
 	# --- the day she turned a dial is tacked on the axis ----------------------
-	_assert(chart.tick_days == [4],
-		"the day she changed what something is worth carries a tick (%s)" % str(chart.tick_days))
+	#
+	# **Staged 4, drawn 5** (v0.2.2 WI-8, and a correction of WI-5's assertion).
+	# `extra["tuned"]` counts the nights *behind* the robot when the dial was
+	# turned, and this axis numbers the last closed day `days` and today the one
+	# after it — so the day a robot with four nights behind it was tuned on is day
+	# five of its life. Read straight, the tick landed a column early, and on a
+	# robot that had never slept it landed on a day the chart does not draw and
+	# vanished. `BotScorecard.read_ticks` is where the two numberings meet.
+	_assert(chart.tick_days == [5],
+		"the day she changed what something is worth carries a tick, on the day she turned it (%s)"
+			% str(chart.tick_days))
+	var ticked_column := false
+	for day in chart.days:
+		if int(day["n"]) == 5:
+			ticked_column = true
+	_assert(ticked_column,
+		"and there is a column of the chart under it, which is what makes it a mark rather than a smudge")
 
 	# --- four cards, and what they read --------------------------------------
 	var cards: Array = page.get("cards")
@@ -5564,8 +5585,23 @@ func _scenario_aq_the_ledger_is_the_scorecard() -> void:
 	_assert(is_equal_approx(cards[1].reference, log(float(BotBrain.LEARN_ACTIONS)) / log(2.0)),
 		"against the ceiling of a machine picking evenly between everything it could do (%s)"
 			% str(cards[1].reference))
+	# **The third card carries last night's number** (v0.2.2 WI-8, correcting the
+	# plan's dash). The update is a thing that happens while she sleeps, so there
+	# is no today point on its line — but "how far did last night move it" is the
+	# question the card exists to answer, and a dash answered nothing. Its numeral
+	# is `extra["last_update"]`; its triangle is that against the night before.
 	_assert(is_nan(cards[2].today),
-		"the third has no today at all: the update is a thing that happens while she sleeps")
+		"the third has no today on its line: the update is a thing that happens while she sleeps")
+	_assert(is_equal_approx(cards[2].reading, float(extra["last_update"])),
+		"but its numeral is last night's move, which is the whole question it asks (%s)"
+			% str(cards[2].reading))
+	_assert(is_equal_approx(cards[2].previous,
+			float((_demo_ledger()[DEMO_WEEK.size() - 2] as Array)[3])),
+		"read against the night before it, so the triangle says which way the nights are going (%s)"
+			% str(cards[2].previous))
+	_assert(is_equal_approx(cards[0].reading, cards[0].today)
+			and is_equal_approx(cards[3].reading, cards[3].today),
+		"while the cards that do have a today read today, as they always did")
 	_assert(is_equal_approx(cards[3].today, float(int(extra["spent"]))),
 		"the fourth reads the decisions that came to nothing today (%s)" % str(cards[3].today))
 	_assert(cards[3].kind == "bars" and cards[0].kind == "line"
@@ -5657,3 +5693,152 @@ func _demo_ledger() -> Array:
 			300.0 - float(i) * 6.0, float(waits[i])])
 		running += score
 	return out
+
+
+# --- Scenario AS: the bench and the panel agree (Q-101, v0.2.2 WI-8) ----------
+#
+# **Two screens, one drawing** (ground rule 8). The robot's own panel and the
+# bench's ledger plate both put a fortnight of its earnings on screen, and they do
+# it with the same object — `BotScorecard`, one file, at two sizes. This is the
+# scenario that holds them to it, because "they agree" is not something either
+# page can check about itself: it is a property of opening one, then the other,
+# and finding the same days with the same marks under them.
+#
+# The second half is the other side of the same coin. A dial turned at the bench
+# changes what the robot will be *paid*, which is a number the panel does not draw
+# at all — so the bench's numeral must move and the panel's columns must not. A
+# run where both moved would mean the chart had quietly started drawing the table
+# rather than the takings.
+func _scenario_as_the_bench_and_panel_agree() -> void:
+	print("\n--- Scenario AS: the bench and the machine panel tell one story ---")
+
+	var menus = main_scene.menus
+	menus.close_menu()
+	main_scene.end_teaching()
+	GameState.gold = 3000
+	GameState.machines = {}
+	GameState.selected_seed_type = ""
+	await get_tree().process_frame
+
+	# A robot left standing by an earlier scenario would be another card in the
+	# bench's strip and might be the one it opens on.
+	for raw in farm.sim.learners():
+		farm.apply_action({ "verb": "collect",
+			"target": farm.sim.actor_pos(String(raw)), "actor": "player" }, GameState)
+	await get_tree().process_frame
+
+	var mk3: String = await _buy_and_place("bot_mk3", Vector2i(16, 13))
+	_assert(mk3 != "", "a Mark III goes down on the farm to be read twice (%s)" % mk3)
+	if mk3 == "":
+		return
+	await _wait_until(func(): return menus.active_menu == "machine", 60)
+	menus.close_menu()
+	await get_tree().process_frame
+
+	# --- a record for the two screens to disagree about -----------------------
+	#
+	# **A test's staging, written straight into `extra`** — the tool-style shortcut
+	# `tools/capture_machines.gd` takes and scenarios AM and AQ take, for the same
+	# reason: the brain writing these rows at bedtime is the unit suite's business,
+	# and both screens read `extra` and nothing else.
+	#
+	# Two tuned days rather than one, and one of them the robot's very first. The
+	# day-one mark is the case WI-8 found broken: read straight off the record it
+	# had no column of the chart to land on and vanished without a trace.
+	var extra: Dictionary = farm.sim.actor(mk3)["extra"]
+	extra["days"] = DEMO_WEEK.size()
+	extra["history"] = DEMO_WEEK.duplicate(true)
+	extra["earned"] = DEMO_TODAY.duplicate()
+	extra["ledger"] = _demo_ledger()
+	extra["tuned"] = [0, 4]
+	extra["last_update"] = float((_demo_ledger()[DEMO_WEEK.size() - 1] as Array)[3])
+
+	# --- the bench's ledger plate ---------------------------------------------
+	var bench_spot := _yard_spot_for_bench()
+	_assert(bench_spot.x >= 0, "the farm has a yard square for a bench (%s)" % str(bench_spot))
+	if bench_spot.x < 0:
+		return
+	GameState.machines["workbench"] = 1
+	farm.apply_action({ "verb": "place", "target": bench_spot,
+		"item": "workbench", "actor": "player" }, GameState)
+	await get_tree().process_frame
+	menus.open_workbench(bench_spot)
+	await get_tree().process_frame
+	var bench = menus.workbench
+	_assert(menus.active_menu == "workbench" and bench != null and bench.robot_id == mk3,
+		"the bench opens on this scenario's robot (%s)"
+			% (bench.robot_id if bench != null else "-"))
+	if bench == null or bench.robot_id != mk3:
+		return
+	bench.select_plate(3)
+	await get_tree().process_frame
+	var bench_chart: BotScorecard = _scorecard_in(bench.pages[3] as Control)
+	_assert(bench_chart != null, "and its ledger plate has a scorecard on it")
+	if bench_chart == null:
+		return
+	var bench_days: Array = bench_chart.days.duplicate(true)
+	var bench_ticks: Array = bench_chart.tick_days.duplicate()
+	_assert(bench_ticks == [1, 5],
+		"with a tick on each day she turned a dial, her first day counting as day one (%s)"
+			% str(bench_ticks))
+
+	# --- and the robot's own panel --------------------------------------------
+	menus.close_menu()
+	await get_tree().process_frame
+	menus.open_machine_menu_for(mk3)
+	var panel_up := await _wait_until(func(): return menus.active_menu == "machine", 60)
+	_assert(panel_up, "the robot's own panel opens (%s)" % menus.active_menu)
+	var panel: BotScorecard = _scorecard_in(menus.options_container)
+	_assert(panel != null, "with a scorecard of its own")
+	if panel == null:
+		return
+	_assert(panel.days == bench_days,
+		"showing the days the bench showed, column for column (%d vs %d)"
+			% [panel.days.size(), bench_days.size()])
+	_assert(panel.tick_days == bench_ticks,
+		"and the same days marked underneath them (%s vs %s)"
+			% [str(panel.tick_days), str(bench_ticks)])
+	var panel_days: Array = panel.days.duplicate(true)
+
+	# --- a dial turn moves the bench's numeral, and not the panel's columns ---
+	menus.close_menu()
+	await get_tree().process_frame
+	menus.open_workbench(bench_spot)
+	await get_tree().process_frame
+	bench.select_plate(0)
+	await get_tree().process_frame
+	var dials: Control = bench.pages[0] as Control
+	var before_text: String = dials.value_text(0)
+	var minus := _find_button(dials, "DialMinus0")
+	_assert(minus != null, "the top row of the dials has a minus to press")
+	if minus == null:
+		return
+	minus.pressed.emit()
+	await get_tree().process_frame
+	_assert(dials.value_text(0) == "3" and dials.value_text(0) != before_text,
+		"a press steps the row down a rung and the numeral follows it (%s to %s)"
+			% [before_text, dials.value_text(0)])
+	_assert(is_equal_approx(_dial_value(mk3, 0), 3.0),
+		"because the robot's own table is the thing that moved (%s)" % str(_dial_value(mk3, 0)))
+
+	menus.close_menu()
+	await get_tree().process_frame
+	menus.open_machine_menu_for(mk3)
+	var panel_again := await _wait_until(func(): return menus.active_menu == "machine", 60)
+	_assert(panel_again, "the panel opens again (%s)" % menus.active_menu)
+	var after: BotScorecard = _scorecard_in(menus.options_container)
+	_assert(after != null and after.days == panel_days,
+		"and draws exactly the days it drew before — what a robot is paid is not what it earned")
+	# What *does* change is the axis underneath: today is now a day she turned
+	# something on, and the panel says so, because the tick is one language across
+	# both screens rather than a thing the bench keeps to itself.
+	_assert(after != null and after.tick_days == [1, 5, DEMO_WEEK.size() + 1],
+		"with today newly marked beneath it, on the panel as on the bench (%s)"
+			% (str(after.tick_days) if after != null else "-"))
+
+	# --- and the yard is left as it was found ---------------------------------
+	menus.close_menu()
+	farm.sim.set_object(bench_spot.x, bench_spot.y, "")
+	farm.apply_action({ "verb": "collect", "target": farm.sim.actor_pos(mk3),
+		"actor": "player" }, GameState)
+	await get_tree().process_frame

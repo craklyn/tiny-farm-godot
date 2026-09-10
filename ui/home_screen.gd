@@ -60,11 +60,17 @@ func _build_world() -> void:
 	_world.add_child(farm)
 
 	SimRng.reseed(HOME_SEED)
+	# gateway-ok: making a world is not changing one. This is the home screen's
+	# own detached farm, built here and shown as scenery — no session is recorded
+	# against it, nothing replays it, and it never becomes the player's farm.
 	farm.sim.generate(WorldLayout.HOME)
 	# Nobody lives here but her: the hen and anything else the default cast
 	# brings stays outside (Zoo.furnish's rule, for the same reason).
 	for raw in farm.sim.actors.keys():
 		if String(raw) != SimWorld.ACTOR_PLAYER:
+			# gateway-ok: still making the world above, one line later — trimming
+			# the default cast off a room that is scenery. Same detached farm,
+			# same reason: there is no session here for a verb to belong to.
 			farm.sim.despawn_actor(String(raw))
 
 	# The farmer, as scenery, standing in her room. `Player` is load-bearing:
