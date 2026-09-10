@@ -727,3 +727,14 @@ is `training-workbench`.*
   clean checkout and is fixed (`354557b`): the ledger and parity scenarios read one robot
   twice across a world run, and now pin it with a certain `wait` first, as the eyes scenario
   does. Verified on a clean checkout of main: unit **2540**, integration **852**, gateway clean.
+- 2026-09-10 — **WI-9 landed: the crate remembers** (`87fee69`). `GameState.boxed` holds a
+  picked-up learner's whole `extra` minus the nine errand keys (`SimWorld.BOXED_FORGETS`),
+  saved and restored beside `machines` and inside the canonical capture; `place` overlays the
+  newest snapshot onto the fresh deploy, **gated on the same charged-placer condition that
+  decrements the crate**, so the crate and its memory move together (a seam the first worker
+  reported and a second closed, with a chapter that fails 3 of 8 without the gate).
+  `test_crate_remembers`, 38 assertions; the demo byte-identical. Two facts for the record: a
+  first attempt was cut off by a usage limit before it committed, so briefs now say to commit
+  early; and **a non-player can already place a machine today, uncharged** — nothing in
+  `apply_action` gates verbs by actor, and the arm treats a non-player placer as unpaid rather
+  than refused. Nothing does it, but it is a door the sim seat should know is open.

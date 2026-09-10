@@ -19,7 +19,7 @@
     "Words on the nameplate only; numerals on axes; pictures everywhere else",
     "Nothing expensive runs when a page opens"
   ],
-  "current_status": "Built on main as of 2026-09-10: all five plates, the bench in the shop, the dial turn as a replayed verb, and the proof tests; both suites, the gateway check and the robot session green on a clean checkout, the robot's learning numbers unchanged. What remains for v0.2.2 is the CEO's look on the tablet, the release notes and the tag. Three small calls are his when he wants them: a sound for a dial turn, the bench's price (300 today), and whether the game wants a pixel face.",
+  "current_status": "Built on main as of 2026-09-10 and deployed to the tablet: all five plates, the bench in the shop, the dial turn as a replayed verb with a CC0 click on it, the crate that remembers a robot's practice when she moves it, and the proof tests. Both suites, the gateway check and the robot session green on a clean checkout; the robot's learning numbers unchanged. Open for the CEO: Q-102, which of three dial sounds (one is wired now). Parked by him: whether the game wants a pixel face, until he has seen the plates in action. Left for the release: the release notes and the tag.",
   "plan": [
     {
       "step": "Designed and put to the CEO with mockups (Q-101)",
