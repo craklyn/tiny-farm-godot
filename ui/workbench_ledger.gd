@@ -138,9 +138,16 @@ func _fill_cards(extra: Dictionary) -> void:
 
 	cards[0].show_series(gap, today_gap, "line", "rising")
 	cards[1].show_series(entropy, today_entropy, "line", "spread", even)
-	# The night's update has no today: it is a thing that happens while she sleeps,
-	# and a robot mid-day has not had one yet.
-	cards[2].show_series(update, NAN, "line", "grid")
+	# **The night's update has no today** — it is a thing that happens while she
+	# sleeps, so its line stops at the last finished night. The numeral it carries
+	# is therefore *last night's* move, against the night before it (v0.2.2 WI-8):
+	# the card's whole job is to answer "how far did last night shift it", and a
+	# dash where the mockup shows a number answered nothing. A robot that has never
+	# slept has no answer yet, and that is the dash.
+	var last_update := NAN
+	if not update.is_empty():
+		last_update = float(extra.get("last_update", 0.0))
+	cards[2].show_nightly(update, last_update, "grid")
 	cards[3].show_series(spent, float(int(extra.get("spent", 0))), "bars", "crossed")
 
 

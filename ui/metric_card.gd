@@ -58,6 +58,19 @@ var glyph: String = ""
 ## — or `NAN` for none.
 var reference: float = NAN
 
+## **The numeral the card carries, and what its triangle compares it against.**
+##
+## For three of the four cards that is today's reading against yesterday's, and
+## `show_series` fills both from what it is handed. The night's update is the
+## odd one out: it is a measure that only exists once she has slept, so its
+## numeral is *last night's* against the night before (v0.2.2 WI-8), which is
+## what `show_nightly` fills them with. Keeping the numeral apart from `today`
+## is what lets that card say a number while its line still ends at the last
+## finished day — the mockup's card, and the truth: there is no today point to
+## draw, because no update has happened today.
+var reading: float = NAN
+var previous: float = NAN
+
 
 func _init() -> void:
 	# A readout, like the scorecard: nothing on it to press, so it must not eat a
@@ -78,6 +91,27 @@ func show_series(series: Array, today_value: float, kind_name: String,
 	kind = kind_name
 	glyph = glyph_name
 	reference = reference_value
+	reading = today_value
+	previous = float(series[series.size() - 1]) if not series.is_empty() else NAN
+	queue_redraw()
+
+
+## Point the card at a measure that **only exists at night** (v0.2.2 WI-8).
+##
+## The night's update is the one reading with no today: it happens while she
+## sleeps, so the card carries last night's number, compares it with the night
+## before, and its line stops at the last finished day rather than reaching for
+## a point that does not exist yet. `reading_value` is `NAN` for a robot that has
+## never slept, which draws the dash — "nothing yet" and "zero" being different
+## answers.
+func show_nightly(series: Array, reading_value: float, glyph_name: String) -> void:
+	closed = series
+	today = NAN
+	kind = "line"
+	glyph = glyph_name
+	reference = NAN
+	reading = reading_value
+	previous = float(series[series.size() - 2]) if series.size() >= 2 else NAN
 	queue_redraw()
 
 
@@ -104,33 +138,32 @@ func _draw() -> void:
 
 # --- the reading ---------------------------------------------------------------
 
-# Today's number, and which way it moved since yesterday. A measure with no today
-# — the night's update, which does not exist until she sleeps — gets a dash and no
-# triangle, because "nothing yet" and "zero" are different answers.
+# The card's number, and which way it moved from the one behind it. A card with
+# no reading at all — the night's update on a robot that has never slept — gets a
+# dash and no triangle, because "nothing yet" and "zero" are different answers.
 func _draw_reading() -> void:
 	var f := _font()
 	if f == null:
 		return
 	var right := size.x - PAD
-	if is_nan(today):
+	if is_nan(reading):
 		draw_rect(Rect2(right - 22.0, PAD + HEAD_H / 2.0 - 2.0, 22.0, 4.0),
 			Color(BotScorecard.AXIS_INK, 0.7))
 		return
 
-	var yesterday := INF
-	if not closed.is_empty():
-		yesterday = float(closed[closed.size() - 1])
-	if yesterday != INF and not is_equal_approx(today, yesterday):
-		_draw_delta(right - DELTA_W, PAD + HEAD_H / 2.0, today > yesterday)
+	if not is_nan(previous) and not is_equal_approx(reading, previous):
+		_draw_delta(right - DELTA_W, PAD + HEAD_H / 2.0, reading > previous)
 		right -= DELTA_W + 5.0
 
-	var text := format_reading(today, _signed())
+	var text := format_reading(reading, _signed())
 	var w := f.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, READING_SIZE).x
 	draw_string(f, Vector2(right - w, PAD + HEAD_H / 2.0 + READING_SIZE * 0.36), text,
 		HORIZONTAL_ALIGNMENT_LEFT, -1, READING_SIZE, Workbench.INK)
 
 
-# Up or down since yesterday, and **only that**. Which of the two is good news
+# Up or down since the reading behind this one, and **only that** — yesterday for
+# a card whose numeral is today's, the night before last for the night's update.
+# Which of the two is good news
 # depends on the card — fewer wasted decisions is better, more entropy is usually
 # worse — so the triangle is one ink and never a verdict (D-4).
 func _draw_delta(x: float, mid: float, up: bool) -> void:
@@ -164,7 +197,7 @@ static func format_reading(value: float, signed: bool = false) -> String:
 # A card whose measure can go either side of zero signs its numeral, so "+10" and
 # "10" are never the same picture on two cards that mean different things.
 func _signed() -> bool:
-	if not is_nan(today) and today < 0.0:
+	if not is_nan(reading) and reading < 0.0:
 		return true
 	for v in closed:
 		if float(v) < 0.0:

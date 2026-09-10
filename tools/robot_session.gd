@@ -57,12 +57,13 @@ const STALL_TILE := Vector2i(13, 2)
 # two taps rather than a staged fixture, and they go to bed seeded and dry.
 const BOT_ROW := [Vector2i(14, 5), Vector2i(15, 5)]
 
-# The purse she starts the session with — a stall (80g) and a mark-1 (150g) with
-# change. Staged **before the game boots**, and the replay is anchored to a base
-# save taken at boot (see `_ready`), so the reproduction starts with the same
-# money in the same pocket. Earning 230 gold honestly is sixteen harvests, which
-# is sixteen days this run does not have.
-const OPENING_PURSE := 400
+# The purse she starts the session with — a stall (80g), a mark-1 (150g), a
+# learning mark-3 (800g) and the workbench that reads it (300g), with change.
+# Staged **before the game boots**, and the replay is anchored to a base save
+# taken at boot (see `_ready`), so the reproduction starts with the same money in
+# the same pocket. Earning 1330 gold honestly is ninety harvests, which is ninety
+# days this run does not have.
+const OPENING_PURSE := 1500
 
 # A walk of a dozen tiles at 3 tiles/sec is seconds of game time, and a headless
 # frame is short, so the legs below need a budget in the thousands rather than the
@@ -300,6 +301,7 @@ func _ready() -> void:
 	for _i in MORNING_FRAMES:
 		main_scene._pump_sim_clock(float(main_scene.MAX_TICKS_PER_FRAME) / SimClock.RATE)
 		await get_tree().process_frame
+	await _a_dial_turn_at_the_bench()
 	main_scene.persist_session()
 	_check(main_scene.farm.sim.clock.tick - ticks_before > 400,
 		"the farm lived on after she slept (%d ticks of sim time)"
@@ -445,6 +447,131 @@ func _employ_a_robot() -> String:
 	_check(not bool(main_scene.farm.sim.actor(mk1)["extra"].get("sent", false)),
 		"and she sends it nowhere — there is no send tap in this session")
 	return mk1
+
+
+# --- the afternoon she turns a dial (Q-101, v0.2.2 WI-8) ----------------------
+#
+# The one verb the training workbench adds is `tune`: one number in the table a
+# learning robot is paid out of, changed from a screen. Everything downstream of
+# it is **recomputed** rather than stored — the day's score, the night's update,
+# every weight in the machine — so a `tune` that failed to replay would not show
+# up as a missing entry but as a robot that had quietly learned something else.
+#
+# The unit suite proves that against a hand-built session. This is the same claim
+# asked of the real game: bought from the real shop, set down with a real tap,
+# opened by a tap on the picture standing in the yard, turned by a press on the
+# real button — and then reproduced from the log at the bottom of this run like
+# everything else she did today.
+#
+# Late in the day on purpose. A mark-3 dropped at dawn would spend the morning
+# walking about, and the morning belongs to the mark-1's round, which is what the
+# chapter above is about.
+func _a_dial_turn_at_the_bench() -> void:
+	var menus = main_scene.menus
+
+	# --- a robot with something to learn, and a bench to read it at -----------
+	var mk3_spot := _free_square([])
+	_check(mk3_spot.x >= 0, "the farm has a square to stand a learning robot on (%s)" % mk3_spot)
+	if mk3_spot.x < 0:
+		return
+	_check(await _buy("bot_mk3"),
+		"she buys a mark-3 — the one machine on the farm that learns (%d gold left)"
+			% GameState.gold)
+	var landed := await _tap_until(mk3_spot, func():
+		return main_scene.farm.sim.machine_at(mk3_spot) != "")
+	_check(landed, "and a tap stands it where she pointed (%s)" % mk3_spot)
+	if not landed:
+		return
+	var mk3: String = main_scene.farm.sim.machine_at(mk3_spot)
+	# Its panel opens as it lands, like every machine's. Nothing to do on it here:
+	# the bench is where a mark-3 is worked on.
+	await _wait_until(func(): return menus.active_menu == "machine", 300)
+	menus.close_menu()
+	await get_tree().process_frame
+
+	var bench_spot := _free_square([mk3_spot])
+	_check(bench_spot.x >= 0, "and a square to set the bench down on (%s)" % bench_spot)
+	if bench_spot.x < 0:
+		return
+	_check(await _buy("workbench"),
+		"she buys the workbench that reads it (%d gold left)" % GameState.gold)
+	var stood := await _tap_until(bench_spot, func():
+		return main_scene.farm.get_object(bench_spot.x, bench_spot.y) == WorldLayout.WORKBENCH)
+	_check(stood, "and a tap stands the bench in the yard (%s)" % bench_spot)
+	if not stood:
+		return
+
+	# --- a tap on it opens it, which is the seam no verb covers ---------------
+	await _walk_beside(bench_spot)
+	InputManager.click_tile = bench_spot
+	InputManager.has_click = true
+	var opened := await _wait_until(func(): return menus.active_menu == "workbench", ACT_FRAMES)
+	_check(opened, "a tap on the bench opens it (%s)" % menus.active_menu)
+	if not opened:
+		return
+	var bench = menus.workbench
+	_check(bench != null and bench.robot_id == mk3,
+		"with her one learning robot on it (%s)" % (bench.robot_id if bench != null else "-"))
+	if bench == null or bench.robot_id != mk3:
+		menus.close_menu()
+		return
+
+	# --- one press on one dial ------------------------------------------------
+	var dials: Control = bench.pages[0] as Control
+	var minus: Button = dials.get_node_or_null("DialMinus0") as Button
+	_check(minus != null, "its dials page has a minus button on the top row")
+	if minus == null:
+		menus.close_menu()
+		return
+	var before: float = _reward_row(mk3, 0)
+	var entries_before: int = main_scene.farm.replay.entries.size()
+	minus.pressed.emit()
+	await get_tree().process_frame
+	_check(_reward_row(mk3, 0) < before,
+		"and a press turns it down a rung — %s to %s" % [before, _reward_row(mk3, 0)])
+	var tunes := 0
+	for e in main_scene.farm.replay.entries:
+		if String(e.get("verb", "")) == "tune":
+			tunes += 1
+	_check(tunes == 1 and main_scene.farm.replay.entries.size() == entries_before + 1,
+		"recorded as exactly one `tune` in the session's log (%d)" % tunes)
+
+	menus.close_menu()
+	await get_tree().process_frame
+	_check(menus.active_menu == "" and not get_tree().paused,
+		"closing the bench gives her the farm back (%s)" % menus.active_menu)
+
+
+# One row of a robot's own reward table, read out of the sim.
+func _reward_row(id: String, row: int) -> float:
+	var rewards: Array = main_scene.farm.sim.actor(id).get("extra", {}).get("rewards", [])
+	return float(rewards[row]) if row < rewards.size() else NAN
+
+
+# A square on the home page a thing can be set down on, with a walkable square to
+# its west for her to stand on while she does it, and nothing standing on the row
+# above (the bench is a tall picture, and a tall picture over another object is a
+# tap two things answer).
+#
+# **Scanned rather than written down.** The farm this session plays gets a fresh
+# seed every run, so the constants at the top of this file are all on the
+# neighbour's fixed plot; a square in the yard has to be found. Everything the
+# scan reads is sim truth, and the tile it picks travels in the recorded Action,
+# so the reproduction lands on the same square without repeating the search.
+func _free_square(skip: Array) -> Vector2i:
+	var sim = main_scene.farm.sim
+	for ty in range(2, WorldLayout.PAGE_ROWS - 1):
+		for tx in range(2, SimWorld.MAP_WIDTH - 2):
+			var t := Vector2i(tx, ty)
+			if t in skip:
+				continue
+			if main_scene.farm.get_object(tx, ty) != "" \
+					or main_scene.farm.get_object(tx, ty - 1) != "":
+				continue
+			if not sim.placeable_at(t) or not sim.is_walkable(tx - 1, ty):
+				continue
+			return t
+	return Vector2i(-1, -1)
 
 
 # One card, bought from the real shop menu. The menu pauses the tree while it is

@@ -117,8 +117,9 @@ var days: Array = []
 ## two sizes, and never two drawings that can disagree).
 var plot_h: float = PLOT_H
 
-## The days that carry a tick, as day numbers on this card's own axis — the
-## entries of `extra["tuned"]` that fall inside the fortnight being drawn.
+## The days that carry a tick, **as day numbers on this card's own axis** — the
+## days `extra["tuned"]` names, moved onto this axis by `read_ticks`, and only
+## those that fall inside the fortnight being drawn.
 var tick_days: Array = []
 
 
@@ -144,6 +145,16 @@ func show_bot(extra: Dictionary) -> void:
 # season has tuned days that fell off the front of the fortnight, and a tick with
 # no column under it would be a mark on a day the chart is not showing. Pure, so
 # a test can ask what is ticked without rendering anything.
+#
+# **The seam, and why the `+ 1` is here** (v0.2.2 WI-8). The gateway records
+# `extra["days"]` — the count of nights the robot has *finished* — so a dial
+# turned on the robot's first day records a 0. This card numbers the day being
+# played as `days + 1`, because `read_days` below numbers the last closed day
+# `days` and today the one after it. The two are one day apart by construction,
+# so a tick read straight off `tuned` either lands a column early or, on a robot
+# that has never slept, has no column to land on at all and silently vanishes —
+# which is what WI-5 found. The conversion belongs here, in the one function that
+# knows what a day number on this axis means.
 static func read_ticks(extra: Dictionary, on_days: Array) -> Array:
 	var shown := {}
 	for day in on_days:
@@ -153,7 +164,7 @@ static func read_ticks(extra: Dictionary, on_days: Array) -> Array:
 	if not (tuned is Array):
 		return out
 	for raw in tuned as Array:
-		var n := int(raw)
+		var n := int(raw) + 1
 		if shown.has(n) and not (n in out):
 			out.append(n)
 	return out
