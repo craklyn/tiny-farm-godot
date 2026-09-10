@@ -1,0 +1,37 @@
+{
+  "id": "Q-99",
+  "title": "A fresh Mark III walks off the field. Pen it, home it, or give it a nose?",
+  "question": "The seven-day demo found something the design did not predict. A brand-new Mark III knows nothing, so every second it picks one of its six moves at random. On open ground that random walk carries it out of a six-by-four field within about a minute, and it does not come back: it spends its whole day watering bare earth, earns nothing, and so has nothing to learn from. Put a fence around the field and the robot, and it learns. The demo now measures it in a nine-by-four paddock, which is honest about the mechanism but is not what a player will do unless something tells them to.",
+  "why_now": "It decides what the first Mark III a player buys will do in the first ten minutes. Everything else about the robot is built; this is the last thing standing between the build and the tablet check.",
+  "options": [
+    {
+      "key": "a",
+      "label": "Pen it with her own fences (Recommended)",
+      "detail": "Fences already exist and she can build them. A pen is how anyone trains an animal, it is wordless, and it costs no code. The release notes and the shop description say 'fence it in with the field'. The risk is a player who never reads that and watches it wander; the panel's zero score is at least honest."
+    },
+    {
+      "key": "b",
+      "label": "Give it a home it returns to",
+      "detail": "A stall or a spot it walks back to at the end of each day, so tomorrow starts beside the field again. Keeps it near, but a day of wandering is still a day of nothing, and the stall work belongs to the parked M3 milestone. Days, not hours."
+    },
+    {
+      "key": "c",
+      "label": "Give it a nose for dry soil",
+      "detail": "A new observation channel: which way the nearest thirsty tile lies. It would learn in a day. It is also the sensor ladder's later unlock arriving first, and it makes the lesson so easy that a week of practice stops meaning anything."
+    }
+  ],
+  "links": [
+    {
+      "label": "The demo (tools/demo_learning_robot.gd)",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/tools/demo_learning_robot.gd"
+    },
+    {
+      "label": "The design (design/06, 'Its day')",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/06-bots-and-training.md"
+    },
+    {
+      "label": "Queue entry (Q-99)",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"
+    }
+  ]
+}

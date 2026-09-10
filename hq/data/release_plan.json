@@ -87,7 +87,8 @@
           "id": "s16",
           "title": "The learning-curve demo and its test: the same seed for seven days, the score rises, two runs are identical",
           "estimate_days": 0.5,
-          "done": false
+          "done": true,
+          "shipped_in": "main 2026-09-09"
         },
         {
           "id": "s17",

@@ -452,6 +452,12 @@ brain simply stops asking. A day is therefore at most twenty waterings and as ma
 as her own day leaves it, and it ends when she sleeps. No bot lifts a tool while she is
 still indoors (the mark-1's rule, kept).
 
+**Measured 2026-09-09, from the seven-day demo.** A robot that knows nothing random-walks
+off a 6×4 field within a minute and never returns, so it earns nothing and learns nothing.
+Inside a fenced 9×4 paddock it learns. Whether the game pens it, homes it, or gives it a
+nose is Q-99; the recommendation is her own fences, because a pen is how anyone trains an
+animal and it costs no code.
+
 ### Its night
 
 At the day turn — in `on_new_day`, before the new day's first decision — it applies the

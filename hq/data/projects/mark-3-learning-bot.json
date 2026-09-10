@@ -20,7 +20,7 @@
     "Two runs on the same seed are identical; the seven-day learning curve rises on a fixed seed",
     "Every watering looks and sounds like hers; it moves at the Mark I's pace; nothing changes without a cue"
   ],
-  "current_status": "Building. On main with tests, both suites green (2026-09-09): the observation builder, the reward table, the policy maths, the learn setting with its day and night, Robot Mk III in the shop with its own sheet (generated, $0.119), the nightly update, the two-day replay round-trip, and the panel showing nights practised and yesterday's count. Left: the seven-day learning-curve demo and its gate (being built), the tablet check, and the release chores. One card open for the CEO: what a Mark III keeps when she picks it up (Q-98).",
+  "current_status": "Every build item is on main with tests, both suites green (2026-09-09). The seven-day demo rises on its seed, but weakly: across 24 seeds a week of learning is worth about a fifth more a day than no learning. Cause found: the night rule credits each decision with the rewards after it but subtracts a whole day's mean from every decision alike, so the average decision is pushed away from itself and only a low rate holds. An Opus worker is fixing the baseline. Also found: on open ground a fresh robot random-walks off the field within a minute and never earns anything; the demo pens it with fences. Whether the game pens it, homes it, or gives it a nose is the CEO's call (Q-99). Q-98 (what it keeps when picked up) is also open.",
   "plan": [
     {
       "step": "Design written against the code, with the six rules and the v1 scope",
@@ -35,7 +35,11 @@
       "done": true
     },
     {
-      "step": "Policy maths and the learning rule proven on a seven-day curve (the D-2 first cut)",
+      "step": "Policy maths and the learning rule proven on a seven-day curve (the D-2 first cut) — proven, weakly; the baseline mismatch is being fixed",
+      "done": true
+    },
+    {
+      "step": "Fix the night rule's baseline so credit matches reward-to-go, and re-measure across seeds",
       "done": false
     },
     {
