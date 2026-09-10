@@ -286,6 +286,13 @@ const LEARN_RATE := 0.03
 # the cheap way to keep one robot's second day out of another robot's first.
 const LEARN_DAY_STRIDE := 7919
 
+# How many finished days a robot keeps a record of (2026-09-10, the scorecard).
+# The panel draws a fortnight; twice that is kept, so a chart that later wants a
+# month has one, and a robot's `extra` still has a ceiling on it — the record
+# rides in every save and every replay comparison, and a number that grows for as
+# long as a farm is played is not a number, it is a leak.
+const LEARN_HISTORY_DAYS := 30
+
 # How long a robot with an empty meter stands still. An hour of sim time, which
 # is well past dusk — in practice it means "until the day turns", and the day
 # turn re-arms it (`SimWorld.schedule_all_brains`). Long rather than clever,
@@ -361,8 +368,9 @@ static func deploy(world: SimWorld, actor_id: String, config: String, at: Vector
 			extra["acc"] = Policy.new_weights(width, LEARN_ACTIONS)
 			extra["base_trace"] = Policy.new_weights(width, LEARN_ACTIONS)
 			# What a day has been worth so far, what the last one was worth, and
-			# the running mean of every day before it. The panel reads `days` and
-			# `last_score`; nothing outside this file reads the weights (Q-97).
+			# the running mean of every day before it. The panel reads `days`,
+			# `last_score` and the record below; nothing outside this file reads
+			# the weights.
 			extra["score"] = 0.0
 			extra["last_score"] = 0.0
 			extra["baseline"] = 0.0
@@ -380,6 +388,22 @@ static func deploy(world: SimWorld, actor_id: String, config: String, at: Vector
 			# because it rides in `extra` through JSON (ground rule 4) and an
 			# array's order is written down.
 			extra["earned"] = _new_split()
+			# **The days before today, the same eight columns each** (2026-09-10,
+			# the scorecard). `earned` is today — the day being played, still
+			# being added to — and `history` is every finished day behind it,
+			# newest last, at most `LEARN_HISTORY_DAYS` of them. Two containers
+			# rather than one because the two are different in kind: one is a
+			# running total the gateway's answers keep changing, the others are
+			# closed and will never move again. The alternative — "today is the
+			# last element of `history`" — was passed over for the reason a
+			# half-written row on a chart is a lie: every reader would then have
+			# to remember that the last day is not a day yet.
+			#
+			# A report, like `earned`, and for the same reason: nothing the robot
+			# decides with reads it. It exists because a panel that says only
+			# "12 yesterday" cannot answer the question the designer actually
+			# asked of it — *is this machine getting better, and at what?*
+			extra["history"] = []
 			# Its own number, folded from its id rather than hashed with the
 			# engine's `hash()` — see `Policy.salt_of` for why that distinction is
 			# worth a function.
@@ -1609,8 +1633,8 @@ func _sleep_on_it(extra: Dictionary) -> void:
 		_scaled(extra.get("base_trace", []), per_decision),
 		baseline, LEARN_RATE)
 	extra["baseline"] = (baseline * float(days) + score) / float(days + 1)
-	# What the panel shows her, and the only two learned numbers anything outside
-	# this file reads (Q-97: the night's surface is panel numbers, no scene).
+	# What the panel shows her. Still no dawn scene — what she sees of the night is
+	# the robot's own panel and nothing else (Q-97, unchanged).
 	extra["last_score"] = score
 	extra["days"] = days + 1
 	# ...and the slate. A day's sums belong to that day.
@@ -1619,6 +1643,16 @@ func _sleep_on_it(extra: Dictionary) -> void:
 	extra["trace"] = _scaled(weights, 0.0)
 	extra["acc"] = _scaled(weights, 0.0)
 	extra["base_trace"] = _scaled(weights, 0.0)
+	# **Today closes into the record before the slate is wiped.** A copy, because
+	# the row that goes into the book must not be the same array the morning is
+	# about to start writing in. The oldest day falls off the front once there are
+	# more than `LEARN_HISTORY_DAYS` of them, so a robot played for a season keeps
+	# a month and not a career.
+	var history: Array = extra.get("history", [])
+	history.append((extra.get("earned", []) as Array).duplicate())
+	while history.size() > LEARN_HISTORY_DAYS:
+		history.remove_at(0)
+	extra["history"] = history
 	extra["earned"] = _new_split()
 	extra["pending"] = ""
 
