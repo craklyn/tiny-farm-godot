@@ -299,3 +299,36 @@ only the work item you are on. The chief of staff's running notes are in
     casts, and `capture_canonical` puts both sides through JSON before comparing — but
     a test that compares two spec dictionaries with `==` across a save will fail on the
     types and not on the meaning.
+- 2026-09-09 — **WI-5 landed** (`tools/demo_learning_robot.gd`, `test_learning_robot`,
+  7 assertions; the printed week rises from 4.3 thirsty squares a day to 9.3, and the
+  seven days measure in 0.26 s). Unit 2356 passed, integration 650 passed, robot session
+  green, gateway clean. Three things this item found, two of which change the text above:
+  - **The staging in WI-5 as written measures nothing, and the fix is a fence.** A robot
+    with zero weights picks one of six actions a second, so on open ground it walks off
+    the block within a minute and never returns: it spends its whole meter watering bare
+    earth, is never once rewarded, and the weights never move (measured: 0–2 a day over
+    twenty days, at every rate and every staging distance tried, including standing it
+    *on* the block). The week is now played in a fenced paddock nine squares by four
+    with the 6×4 block filling its eastern two thirds — the block, the three-tile
+    distance, the 3000-tick day and the sunny sleep are all as the plan asked; the fence
+    is the addition.
+  - **`LEARN_RATE` is now 0.02, not 0.05.** At 0.05 one day below the running average
+    pushes the policy away from everything that day contained, watering included, and by
+    the fourth morning the robot has settled on standing still and scores nothing for the
+    rest of the run. Rates tried: 0.0 (a control, the night switched off), 0.01, 0.02,
+    0.03, 0.05, 0.08, 0.1, 0.12, 0.15, 0.2, 0.3, 0.5, 1, 2, 10, 100. Everything at 0.03
+    and above collapses within a fortnight; 0.02 climbs and holds.
+  - **The learning is real but weak, and the night rule is why.** Over 24 seeds of the
+    paddock, a week at 0.02 is worth about a fifth more a day than the same week with the
+    night switched off (8.6 against 7.1 over days 2–12), and beats its own first three
+    days in 16 runs of 24 against the control's 11. The cause is a mismatch inside Q-96's
+    rule: `acc += r · trace` credits each decision with the rewards that came *after* it
+    (reward-to-go), while `baseline · trace` subtracts a whole day's mean score from every
+    decision alike, so the average decision is pushed away from itself by roughly half the
+    baseline — which is exactly the standing-still collapse, and why a lower rate is the
+    only thing holding it off. Either credit the whole day's score against the final trace
+    (plain REINFORCE, which the baseline then matches), or keep reward-to-go and give the
+    baseline a per-decision form. **Not changed here** — it is Q-96's rule and WI-4's
+    code, and a decision above this work item. The sampler was cleared as a suspect first:
+    `Policy.draw_u` over a robot's day is uniform (300 draws, mean 0.48–0.52, every tenth
+    of the range between 19 and 40).
