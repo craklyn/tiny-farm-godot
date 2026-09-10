@@ -9,6 +9,19 @@ set -uo pipefail
 STATE="$CLAUDE_PROJECT_DIR/.claude/.brainstorm-state"
 [ -f "$STATE" ] || exit 0
 
+# The state file belongs to ONE session. The first session to see an unclaimed
+# file stamps its id on it; every other session in this working tree stays
+# dormant, and a file orphaned by a closed session never matches again.
+payload=$(cat 2>/dev/null || true)
+me=$(printf '%s' "$payload" | jq -r '.session_id // empty' 2>/dev/null)
+[ -n "${me:-}" ] || me="${CLAUDE_CODE_SESSION_ID:-}"
+owner=$(grep -m1 '^session=' "$STATE" 2>/dev/null | cut -d= -f2-)
+if [ -z "${owner:-}" ]; then
+  [ -n "${me:-}" ] && printf 'session=%s\n' "$me" >> "$STATE"
+elif [ "$owner" != "${me:-}" ]; then
+  exit 0
+fi
+
 phase=$(grep -m1 '^phase=' "$STATE" 2>/dev/null | cut -d= -f2-)
 topic=$(grep -m1 '^topic=' "$STATE" 2>/dev/null | cut -d= -f2-)
 [ -n "${phase:-}" ] || phase=diverge

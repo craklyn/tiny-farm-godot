@@ -51,8 +51,16 @@ on every prompt, and while the phase is `diverge` a second hook refuses writes
 to `.gd`, `.tscn`, `.tres` and `.godot` files outright — so the session cannot
 quietly commit to one branch of the space before Daniel has picked.
 
-**Delete the file when the brainstorm ends**, or the next unrelated turn in this
-project inherits brainstorm rules. It is gitignored, so it never travels.
+The file belongs to **one session**. The guard stamps the session's id on it the
+first time it sees it, so a sibling session doing engineering in the same working
+tree is untouched, and a file orphaned by a closed session never matches again —
+it goes dormant rather than quietly putting a later session under brainstorm
+rules. Rewriting the file at a phase change drops the stamp and re-claims it,
+which is what you want, since the session rewriting it is the one brainstorming.
+
+**Delete the file when the brainstorm ends** anyway — leaving litter in the
+working tree is untidy even when it is inert. It is gitignored, so it never
+travels.
 
 ```bash
 rm -f .claude/.brainstorm-state
