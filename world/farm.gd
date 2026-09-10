@@ -508,6 +508,33 @@ func glyph(key: String) -> Array:
 	return glyph_regions.get(key, [])
 
 
+## `[sheet, region]` for a tile state that has a picture — obstacles, boundaries
+## and the home's shell — or `[]` for the states drawn some other way (ground,
+## soil, a crop's square) and for anything with no art at all.
+##
+## **This is the whole rule, and it is the tables** (2026-09-10, reported from
+## play: *"I see it vanishing from my inventory... however, the fence isn't
+## appearing on the screen"*). The tile loop used to test the state against a
+## second list, written out by hand inside `_draw`, so a state could be bound to
+## a sheet and a cell in `_load_textures` and still never be drawn by anybody.
+## That is exactly what happened to the fence she puts up herself: `fence_built`
+## was bound to the yard fence's own cell (Q-92 — same picture, different word),
+## the gateway wrote the state, the crate paid for the post and refunded it on a
+## second tap — and the square stayed empty grass the whole time.
+##
+## Asking the tables directly leaves one rule instead of two, the one
+## `_load_textures` already states: a state absent from there has no picture and
+## is not drawn. It is a function rather than two lookups inline so that the
+## headless suite — which has no pixels to look at — can ask the renderer the
+## same question a frame asks it.
+func tile_picture(state: String) -> Array:
+	var sheet: Texture2D = tile_sheets.get(state, null)
+	var region: Rect2 = tile_regions.get(state, Rect2())
+	if sheet == null or region.size.x <= 0:
+		return []
+	return [sheet, region]
+
+
 # --- Facade: forwards the old farm API to SimWorld ---------------------------
 
 func start_replay_log(gen_seed: int) -> void:
@@ -1290,22 +1317,17 @@ func _draw() -> void:
 					draw_texture_rect_region(dirt_texture, soil_rect,
 						Rect2(coord.x * 16, coord.y * 16, 16, 16))
 
-			# Queue obstacles and boundaries
-			if tile.state in ["border", "obstacle_rock", "obstacle_log", "obstacle_weed",
-					"obstacle_tree", WorldLayout.FENCE, WorldLayout.HEDGE,
-					WorldLayout.GATE_CLOSED, WorldLayout.GATE_OPEN,
-					WorldLayout.WALL, WorldLayout.WINDOW]:
-				var region: Rect2 = tile_regions.get(tile.state, Rect2())
-				if region.size.x > 0:
-					var ob_rect := _react_rect(px, py, k, TILE_SIZE, shake)
-					# T-37: interior states draw from their own sheet.
-					var sheet: Texture2D = tile_sheets.get(tile.state, null)
-					if sheet == null:
-						continue
-					render_queue.append({
-						"y": py,
-						"draw": func(): draw_texture_rect_region(sheet, ob_rect, region)
-					})
+			# Queue obstacles and boundaries — whatever picture this square's
+			# state has, and nothing if it has none (`tile_picture`).
+			var picture := tile_picture(String(tile.state))
+			if not picture.is_empty():
+				var tile_sheet: Texture2D = picture[0]
+				var tile_region: Rect2 = picture[1]
+				var ob_rect := _react_rect(px, py, k, TILE_SIZE, shake)
+				render_queue.append({
+					"y": py,
+					"draw": func(): draw_texture_rect_region(tile_sheet, ob_rect, tile_region)
+				})
 			elif _chipping.has(Vector2i(tx, ty)):
 				# The tile is already cleared in the sim, but the clear's beats
 				# are still landing — draw what is left of the obstacle (Q-50).

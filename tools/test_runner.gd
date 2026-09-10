@@ -4175,6 +4175,36 @@ func _scenario_ak_she_puts_up_a_fence() -> void:
 	_assert(GameState.energy < energy_before, "and it cost her a stroke of work")
 	_assert(not farm.sim.is_walkable(spot.x, spot.y), "nothing walks through it now")
 
+	# **And she can see it.** Everything above this line passed on the day fencing
+	# shipped and the post was still invisible: the tile loop tested the state
+	# against a hand-written list of states that draw, and `fence_built` was not on
+	# it, so the square she had paid for stayed empty grass — and tapping the
+	# nothing gave the post back, which is how it was reported from play on
+	# 2026-09-10 ("I see it vanishing from my inventory... however, the fence isn't
+	# appearing on the screen"). The suite is headless and has no pixels to look
+	# at, so it asks the renderer the same question a frame asks it.
+	_assert(not farm.tile_picture(WorldLayout.FENCE_BUILT).is_empty(),
+		"and the post she built has a picture to draw, which is what makes it visible")
+	_assert(farm.tile_picture(WorldLayout.FENCE_BUILT)
+			== farm.tile_picture(WorldLayout.FENCE),
+		"the same picture the yard's own fence is drawn with (Q-92: same cell, different word)")
+	# The rule generalised past the fence, because the next thing the shop sells
+	# that lays ground will be laid by the same verb into the same tile loop: if it
+	# can be bought and put down, it has to be visible once it is down.
+	for sold in MachineDefs.ORDER:
+		var lays := MachineDefs.terrain_of(sold)
+		if lays != "":
+			_assert(not farm.tile_picture(lays).is_empty(),
+				"everything the shop sells by the square can be seen once it is down (%s)" % sold)
+	# ...and it is the tile loop that asks, which is the half that was broken: a
+	# second list of drawable states written out inside `_draw` is how a state
+	# with a picture went undrawn, so the loop is pinned to the one rule rather
+	# than to whichever table it happens to read today.
+	var farm_src := (farm.get_script().source_code as String)
+	var tile_loop := farm_src.substr(farm_src.find("func _draw()"))
+	_assert(tile_loop.find("tile_picture(") > 0,
+		"and the tile loop asks that one question rather than keeping a list of its own")
+
 	# ...and a tap on her own post takes it back up, which is what makes a run
 	# she regrets cost nothing.
 	InputManager.click_tile = spot
