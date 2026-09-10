@@ -186,10 +186,10 @@ static var TYPES: Dictionary = {
 		"configs": [],
 		"default_config": "learn",
 		"unlock_requirement": null,
-		# **The mark-2's sheet, borrowed.** WI-6 of the v0.2.1 plan generates a
-		# third one and replaces this line; until it does, a Mark III is drawn as
-		# a mark-2 — honest about the family, wrong about the machine.
-		"icon": { "sheet": "res://assets/sprites/generated/bot_mk2.png",
+		# Its own sheet: the Mark I's chassis in teal-green with an antenna and a lit
+		# bead — the one outline change that survives at 48px (generated 2026-09-09,
+		# provenance in CREDITS.md). Same layout as bot.png, so entities/bot.gd draws it.
+		"icon": { "sheet": "res://assets/sprites/generated/bot_mk3.png",
 			"region": Rect2(0, 0, 48, 48) },
 	},
 }

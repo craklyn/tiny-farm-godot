@@ -38,6 +38,9 @@ const SPRITES := preload("res://assets/sprites/generated/bot.png")
 # construction and the tone count is unchanged. It reads as the same chassis
 # because it is.
 const SPRITES_MK2 := preload("res://assets/sprites/generated/bot_mk2.png")
+# The mark-3: the same chassis in teal-green, plus the antenna — its own sheet,
+# same layout, so it draws through the same arithmetic below (2026-09-09).
+const SPRITES_MK3 := preload("res://assets/sprites/generated/bot_mk3.png")
 
 # Which sheet this one draws from, decided once when it joins the farm rather
 # than asked per frame: a machine cannot change model.
@@ -72,7 +75,10 @@ func init_actor(farm_ref: Node2D, id: String = SpeciesDefs.BOT) -> void:
 	speed_px = SpeciesDefs.speed_of(farm.sim.species_of(actor_id)) * TILE_SIZE * float(SimClock.RATE)
 	position = sim_position()
 	facing = String(farm.sim.actor(actor_id).get("facing", "down"))
-	_sheet = SPRITES_MK2 if farm.sim.machine_key_of(actor_id) == "bot_mk2" else SPRITES
+	match farm.sim.machine_key_of(actor_id):
+		"bot_mk2": _sheet = SPRITES_MK2
+		"bot_mk3": _sheet = SPRITES_MK3
+		_: _sheet = SPRITES
 	# Cosmetic, and the only die roll in this file: two bots off the same line
 	# should not march in lockstep.
 	_frame_timer = CosmeticRng.randf_range(0.0, FRAME_TIME)
