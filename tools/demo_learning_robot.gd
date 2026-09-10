@@ -13,8 +13,15 @@
 # So this is a measurement of exactly that, and it is built to leave the robot
 # nowhere to hide. Seven days are played on one seed. Each day the robot has the
 # same body, the same field and the same full meter, and the only thing that
-# carries from one day to the next is what it learned overnight. If the last
-# three days are not better than the first three, nothing was learned.
+# carries from one day to the next is what it learned overnight.
+#
+# **A week rising is not, on its own, evidence** — which is the thing this file
+# learned the hard way (v0.2.1 §9). Out on open ground the field improves whether
+# the robot understands it or not, because soil opened yesterday is still open
+# this morning and still wants water, so a machine that learns nothing at all
+# also ends its week ahead of where it started. Every claim here is therefore a
+# comparison against a control: the same robot, the same farm, the same draws,
+# with its weights put back every morning.
 #
 # **This week is played on open ground, and that is the whole point of it**
 # (Q-99). It used to be played inside a fence. With watering the only thing worth
@@ -42,13 +49,22 @@
 # The gap between those two columns is what the night is worth, and it is what
 # the learning rate was chosen on — printed under the table on every run rather
 # than kept in a comment, because a machine claimed to have a learning curve
-# should show it (D-4). The two dozen farms take about ten seconds.
+# should show it (D-4). The two dozen farms take about twenty seconds.
 #
 # `tests/test_runner.gd:test_learning_robot` asserts on the numbers this
-# produces, from this same `run()`, so the table below and the gate cannot drift
-# apart: the demo is the report and the test is the gate, over one measurement.
-# The 24 farms are not a gate — they move with the rate, and a measurement that
-# is also a threshold stops being a measurement.
+# produces, from this same `compare()`, so the table below and the gate cannot
+# drift apart: the demo is the report and the test is the gate, over one
+# measurement. The suite plays the first eight of these farms rather than all
+# twenty-four, to keep itself under a quarter of a minute; the line under the
+# table prints those eight separately so a reader can see the gate's own numbers.
+#
+# **And one experiment, run only when asked.** `--split-sweep` plays the two
+# dozen farms four times over to answer a question the designer holds: should a
+# square of hers be worth more to the robot than a square it opened for itself?
+# It changes no shipped value, it takes about a minute and a half, and it is off
+# by default:
+#
+#     godot --headless --path . --script res://tools/demo_learning_robot.gd -- --split-sweep
 extends SceneTree
 
 # The day the seven-day week was first played, which is the only thing that makes
@@ -94,8 +110,35 @@ const PARKING := Vector2i(29, 18)
 # robot's luck as much as its learning — a wanderer that stumbles onto the block
 # on its first morning has a different week from one that finds it on the third —
 # so the claim "it learns" is made over two dozen of them and not over the one in
-# the table. Two dozen weeks and their controls take about ten seconds.
+# the table. Two dozen weeks and their controls take about twenty seconds.
 const SEEDS := 24
+
+# The farms `tests/test_runner.gd:test_learning_robot` plays its gate on, written
+# out rather than counted off `SEED`, because a gate whose farms moved when
+# somebody edited a constant would be a different gate wearing the same name.
+#
+# **Eight, because one is not enough and two dozen is too slow for a suite.** A
+# single week's rise on open ground flips with almost anything — the rate, the
+# draw, where the robot happened to wander on its first morning — and the control
+# rises nearly as often as the learner does, because the field itself improves:
+# soil opened yesterday is still open this morning. So the gate asks the only
+# question a week can answer honestly, and asks it of eight farms at once: is a
+# week with its nights worth more than the same week without them?
+#
+# They are the first eight of the two dozen the summary below plays, so the demo
+# prints this gate's own farms as part of its table and the two cannot disagree.
+const GATE_SEEDS := [20260909, 20260910, 20260911, 20260912, 20260913, 20260914,
+	20260915, 20260916]
+
+# What the split experiment pays for watering a bare tilled square — the robot's
+# own practice ground — while a square of hers stays worth 1. 1.0 is what ships;
+# the rest are the question, and the sweep is run by hand rather than on every
+# run because it is four times the work of the summary below.
+const SPLIT_VALUES := [1.0, 0.5, 0.3, 0.0]
+
+# What the sweep writes into `Rewards.overrides` — the row for a thirsty square
+# with nothing planted in it.
+const SPLIT_ROW := "wet_tile_empty"
 
 
 func _init() -> void:
@@ -104,7 +147,14 @@ func _init() -> void:
 	# as its learning. Both are printed every run: the curve a machine is claimed
 	# to have is shown, never asserted (D-4).
 	var code := _report(run())
-	_summarise(many())
+	code = maxi(code, _summarise(many()))
+	# The experiment is behind a flag because it plays the two dozen farms four
+	# times over and takes about a minute and a half, where everything above it
+	# takes twenty seconds. Nothing it prints is a gate: it is the table the designer
+	# rules on, and it changes no shipped value (`systems/rewards.gd`).
+	if "--split-sweep" in OS.get_cmdline_user_args() \
+			or "--split-sweep" in OS.get_cmdline_args():
+		_split_report(split_sweep())
 	quit(code)
 
 
@@ -234,31 +284,115 @@ static func mean_of_days(scores: Array, first: int, last: int) -> float:
 	return total / float(maxi(1, n))
 
 
-# The same week on `count` farms, played twice each: once with the night doing
-# its work and once with it switched off, on the identical seed.
+# The same week on each of `seeds`, played twice: once with the night doing its
+# work and once with it switched off, on the identical seed.
 #
-# **The control is what makes the number mean anything.** A robot that ends its
-# week watering more than it did on Monday has not necessarily learned: some
-# farms are kinder than others, and a wanderer that finds the block late has a
-# rising week for no reason but arithmetic. What the night is worth is the gap
-# between these two columns, on the same farms, with the same draws.
-static func many(count := SEEDS, days := 7) -> Dictionary:
-	var out := {
-		"seeds": count, "days": days,
-		"learn_early": 0.0, "learn_late": 0.0, "learn_improved": 0,
-		"control_early": 0.0, "control_late": 0.0, "control_improved": 0,
-	}
-	for i in count:
-		for arm in ["learn", "control"]:
-			var week: Dictionary = run(days, SEED + i, arm == "learn")
+# **The control is what makes any of these numbers mean something.** A robot that
+# ends its week watering more than it did on Monday has not necessarily learned
+# anything: the field improves on its own, because soil the robot opened
+# yesterday is still open this morning and still wants water. What a night is
+# worth is the gap between the two arms, on the same farms, with the same draws.
+#
+# One record per farm per arm, and no averages — `summary()` below does the
+# arithmetic, so that a caller who wants the first eight farms of two dozen can
+# have them without playing them again.
+static func compare(seeds: Array, days := 7) -> Dictionary:
+	var out := { "seeds": seeds.duplicate(), "days": days }
+	for arm in ["learn", "control"]:
+		var rows: Array = []
+		for farm_seed in seeds:
+			var week: Dictionary = run(days, int(farm_seed), arm == "learn")
 			var scores: Array = week["scores"]
-			var early := mean_of_days(scores, 1, 3)
-			var late := mean_of_days(scores, maxi(1, days - 2), days)
-			out[arm + "_early"] = float(out[arm + "_early"]) + early / float(count)
-			out[arm + "_late"] = float(out[arm + "_late"]) + late / float(count)
-			if late > early:
-				out[arm + "_improved"] = int(out[arm + "_improved"]) + 1
+			var squares: Array = []
+			for i in scores.size():
+				squares.append(int(week["on_block"][i]) + int(week["on_own"][i]))
+			var first := 1
+			var last := 3
+			var late_first := maxi(1, days - 2)
+			rows.append({
+				"seed": int(farm_seed),
+				# What the days were worth, which is the reward the robot was
+				# actually paid — the column the table above prints.
+				"early": mean_of_days(scores, first, last),
+				"late": mean_of_days(scores, late_first, days),
+				# And how many thirsty squares it turned wet, which is the same
+				# thing today and stops being the same thing the moment a square
+				# of hers is priced differently from a square of its own. The
+				# experiment is read in these, so its four columns compare.
+				"early_squares": mean_of_days(squares, first, last),
+				"late_squares": mean_of_days(squares, late_first, days),
+				"late_hers": _sum_of_days(week["on_block"], late_first, days),
+				"late_own": _sum_of_days(week["on_own"], late_first, days),
+			})
+		out[arm] = rows
 	return out
+
+
+# The arithmetic over a `compare()`, for one arm and for the first `count` farms
+# of it (all of them at -1). Averages a day, and how many of the farms ended
+# better than they started.
+static func summary(cmp: Dictionary, arm: String, count := -1) -> Dictionary:
+	var rows: Array = cmp.get(arm, [])
+	var n: int = rows.size() if count < 0 else mini(count, rows.size())
+	var out := { "seeds": n, "early": 0.0, "late": 0.0, "early_squares": 0.0,
+		"late_squares": 0.0, "hers": 0.0, "own": 0.0, "rose": 0 }
+	for i in n:
+		var row: Dictionary = rows[i]
+		for key in ["early", "late", "early_squares", "late_squares"]:
+			out[key] = float(out[key]) + float(row[key]) / float(maxi(1, n))
+		out["hers"] = float(out["hers"]) + float(row["late_hers"]) / float(maxi(1, n))
+		out["own"] = float(out["own"]) + float(row["late_own"]) / float(maxi(1, n))
+		if float(row["late"]) > float(row["early"]):
+			out["rose"] = int(out["rose"]) + 1
+	return out
+
+
+# The two dozen farms under the one in the table: `SEED`, and the twenty-three
+# after it.
+static func many(count := SEEDS, days := 7) -> Dictionary:
+	var seeds: Array = []
+	for i in count:
+		seeds.append(SEED + i)
+	return compare(seeds, days)
+
+
+# --- the experiment (v0.2.1 WI-9, for the designer) ---------------------------
+
+# **What if her squares paid more than the robot's own?**
+#
+# The first mark-3 learns to keep a wet patch under its own feet and almost never
+# walks to her field (v0.2.1 §9), which is a machine that has learned the skill
+# and is practising it in the wrong place. One lever on that is the price: a
+# thirsty square of hers and a thirsty square the robot hoed for itself are both
+# worth 1 today, and they need not be.
+#
+# This plays the two dozen farms once for each price in `SPLIT_VALUES` — a sown
+# square is 1 throughout and the hoe is 0.1 throughout — and reports what each
+# price would teach. **It changes nothing that ships**: the price goes into
+# `Rewards.overrides`, which is empty in every game ever played, and it is put
+# back before this function returns. Reward values are the designer's to set, so
+# this is a table to rule on and not a recommendation.
+static func split_sweep(values := SPLIT_VALUES, count := SEEDS, days := 7) -> Array:
+	var rows: Array = []
+	for value in values:
+		Rewards.overrides[SPLIT_ROW] = float(value)
+		var cmp := many(count, days)
+		rows.append({
+			"value": float(value),
+			"learn": summary(cmp, "learn"),
+			"control": summary(cmp, "control"),
+		})
+	Rewards.overrides.erase(SPLIT_ROW)
+	return rows
+
+
+# The total over a slice of days, one-based and inclusive — `mean_of_days`'s
+# brother, for the counts the split is read in.
+static func _sum_of_days(days_of: Array, first: int, last: int) -> float:
+	var total := 0.0
+	for i in range(first - 1, mini(last, days_of.size())):
+		total += float(days_of[i])
+	return total
 
 
 # --- staging ------------------------------------------------------------------
@@ -320,11 +454,12 @@ func _report(week: Dictionary) -> int:
 
 	# The exit code is the contract — a run that measured nothing is a broken run
 	# rather than a finding (`demo_robot_value.gd`'s rule, and CI reads it the
-	# same way).
+	# same way). **What it is not is this week rising.** One farm's week rises or
+	# falls with the draw, and a robot that never learned a thing has rising weeks
+	# too, so an exit code hung on that number would go red for reasons nobody
+	# could act on. The claim is made underneath, over two dozen farms against
+	# their own controls, and that is what `_summarise` fails on.
 	var failures: Array[String] = []
-	if late <= early:
-		failures.append("the last three days averaged %.2f against the first three's %.2f"
-			% [late, early])
 	var reached := false
 	for w in week["waters"]:
 		if int(w) > 0:
@@ -340,21 +475,87 @@ func _report(week: Dictionary) -> int:
 # Nothing here is a gate — `test_learning_robot` guards the week above — but it
 # is the number the learning rate was chosen on, so it is printed rather than
 # kept in a comment.
-func _summarise(m: Dictionary) -> void:
-	var days: int = int(m["days"])
+func _summarise(cmp: Dictionary) -> int:
+	var days: int = int(cmp["days"])
+	var seeds: int = (cmp["seeds"] as Array).size()
 	var first := "days 1-%d" % mini(3, days)
 	var last := "days %d-%d" % [maxi(1, days - 2), days]
 	print("")
 	print("The same week on %d farms, each played twice: once with the night doing its"
-		% int(m["seeds"]))
+		% seeds)
 	print("work, once with it switched off and nothing carried into the morning.")
 	print("")
 	print("%12s %12s %12s %16s" % ["", first, last, "weeks that rose"])
+	var arms := {}
 	for arm in [["learning", "learn"], ["night off", "control"]]:
-		print("%12s %12.1f %12.1f %13d/%d" % [arm[0],
-			float(m[arm[1] + "_early"]), float(m[arm[1] + "_late"]),
-			int(m[arm[1] + "_improved"]), int(m["seeds"])])
+		var stat := summary(cmp, arm[1])
+		arms[arm[1]] = stat
+		print("%12s %12.1f %12.1f %13d/%d" % [arm[0], float(stat["early"]),
+			float(stat["late"]), int(stat["rose"]), seeds])
 	print("")
 	print("So a week of nights is worth %.1f a day against %.1f without"
-		% [float(m["learn_late"]), float(m["control_late"])])
+		% [float(arms["learn"]["late"]), float(arms["control"]["late"])])
 	print("them, over the same farms and the same draws.")
+
+	# The gate the suite runs, printed from the farms already played. It is the
+	# first eight of the two dozen above, so this line costs nothing and cannot
+	# disagree with the table it sits under.
+	var n: int = GATE_SEEDS.size()
+	var gate := summary(cmp, "learn", n)
+	var gate_control := summary(cmp, "control", n)
+	print("")
+	print("The suite's gate is the first %d of those farms: %.1f a day over %s with the"
+		% [n, float(gate["late"]), last])
+	print("nights, %.1f without them, and %d of the %d farms ended better than they began."
+		% [float(gate_control["late"]), int(gate["rose"]), n])
+
+	# The one claim this file is willing to fail on: over two dozen farms, a week
+	# of nights is worth more than the same week without them. It is the same
+	# claim `test_learning_robot` gates, made over three times the farms.
+	if float(arms["learn"]["late"]) <= float(arms["control"]["late"]):
+		printerr("DEMO FAILED: %d farms of learning averaged %.2f a day over %s against %.2f with the nights switched off"
+			% [seeds, float(arms["learn"]["late"]), last, float(arms["control"]["late"])])
+		return 1
+	return 0
+
+
+# --- the experiment, printed --------------------------------------------------
+
+# One table for the designer, and the only question in it is a price.
+func _split_report(rows: Array) -> void:
+	print("")
+	print("=== What if her squares paid more than the robot's own? ===")
+	print("")
+	print("The robot is paid 1 for turning a thirsty square wet, whether the square is")
+	print("her sown wheat or bare soil it opened with its own hoe — and what it does")
+	print("with that is keep a wet patch under its own feet. So: the same two dozen")
+	print("farms, played once for every price below. A sown square is worth 1 in all")
+	print("four, the hoe is worth 0.1 in all four, and the only thing that moves is what")
+	print("a bare square pays. Nothing here is a change to the game: the prices are put")
+	print("back before the run ends, and 1.0 is the row that ships.")
+	print("")
+	print("Squares a day is thirsty squares turned wet over the last three days of the")
+	print("week, counted rather than scored, so that the four rows can be compared at")
+	print("all — the score itself means something different in each of them.")
+	print("")
+	print("%14s %13s %13s %14s %11s %11s" % ["a bare square", "squares/day",
+		"night off", "weeks that rose", "hers/day", "its own/day"])
+	for row in rows:
+		var learn: Dictionary = row["learn"]
+		var control: Dictionary = row["control"]
+		var note := "  (ships)" if is_equal_approx(float(row["value"]), 1.0) else ""
+		print("%14s %13.1f %13.1f %11d/%-2d %11.1f %11.1f%s" % [
+			"%.1f" % float(row["value"]), float(learn["late_squares"]),
+			float(control["late_squares"]), int(learn["rose"]), int(learn["seeds"]),
+			float(learn["hers"]) / 3.0, float(learn["own"]) / 3.0, note])
+	print("")
+	print("\"Hers\" and \"its own\" split those same squares by whose ground they were,")
+	print("and they are the answer the price was meant to move. \"Weeks that rose\" counts")
+	print("farms that ended the week earning more than they began it, each row judged")
+	print("against its own prices: it says whether the robot learned what that row was")
+	print("paying for, not whether that row is worth more than the one above it.")
+	print("")
+	print("The night-off column is the same robot with nothing carried into the morning.")
+	print("It is identical in all four rows on purpose: a machine that never learns")
+	print("cannot be moved by what learning would have been paid, and a column that")
+	print("wandered anyway would mean this measurement was reading something else.")

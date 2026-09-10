@@ -406,7 +406,7 @@ shape `ARCHITECTURE.md` has planned since S-3.
 | --- | --- | --- |
 | Step up / down / left / right | walks one tile through the movement engine, refused where she would be refused | none, like her walking |
 | Water here | `water` on the tile it stands on, through the gateway, exactly as a mark-1 works a square on arrival | 30 units |
-| Till here | `till` on the tile it stands on — bare, cleared soil becomes tilled (ruled 2026-09-09, Q-99) | 30 units |
+| Till here | `till` on the tile it stands on — bare, cleared soil becomes tilled (ruled 2026-09-09, Q-99), and nothing else: the robot asks the same tool table her own tap is resolved through, so it can no more hoe a sown square back into mud than she can | 30 units |
 | Wait | stands for one decision | none |
 
 Seven actions, nothing she cannot do (S-3). It decides **once a second** of sim time (ten
