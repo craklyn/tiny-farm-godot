@@ -738,3 +738,13 @@ is `training-workbench`.*
   early; and **a non-player can already place a machine today, uncharged** — nothing in
   `apply_action` gates verbs by actor, and the arm treats a non-player placer as unpaid rather
   than refused. Nothing does it, but it is a door the sim seat should know is open.
+- 2026-09-10 — **The last timing flake, and the second deploy.** The ledger scenario's entropy
+  card compared a planted sum over the day's decisions with a value the page computed after
+  the world had run; even a robot pinned to `wait` decides once a second, so the ratio drifted
+  and the scenario failed one run in two on the clean checkout. It now reads every card's
+  expected number from the robot's own record at the same held instant (`e7d7c94`; three
+  consecutive clean runs). The rule, stated once for the next scenario: **a "today" number is
+  never planted before the world runs; it is read from the record with the tree held, in the
+  same breath as the card.** The tablet was deployed a second time from main with the dial
+  sound and the crate that remembers; the rescue found only the untouched session the first
+  deploy had launched and shelved nothing.
