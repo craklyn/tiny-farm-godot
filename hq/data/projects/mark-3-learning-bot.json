@@ -20,7 +20,7 @@
     "Two runs on the same seed are identical; the seven-day learning curve rises on a fixed seed",
     "Every watering looks and sounds like hers; it moves at the Mark I's pace; nothing changes without a cue"
   ],
-  "current_status": "Every build item and the Q-99 hoe are on main, both suites green (2026-09-09). Measured on open ground over 24 farms: with the hoe a week of learning goes from 3.8 to 5.4 squares a day (22 of 24 weeks rose) against 3.7 to 4.6 with the night switched off. But of the waterings that earn, 5.1 a day land on soil the robot opened itself and none on her sown block: the ruling's mechanism works and is the whole of the effect. Two engineering issues found: the one-seed gate is luck on open ground and flips with the learning rate, and a Mark III can hoe her wheat back into mud because the gateway allows till anywhere but the yard. Both being fixed. Open for the CEO: whether her squares should pay more than the robot's own (a reward value), and Q-98.",
+  "current_status": "The CEO ruled the full reward table (Q-100, 2026-09-09): the Mark III is rewarded for every beneficial thing the game has — mailbox 10, crow off food 3, crow flying in 1, harvest, thirsty plant and planting 1, grass and empty soil 0.1 — and nobody owns a tile. The design is being rewritten around it; the build adds ripe crops, crows, the mailbox, carrying and her seed count to its view, and plant, harvest and ship to its actions. In flight: a worker fixing the hoe's parity with her tool rules and replacing the one-seed gate with a multi-seed one. The release plan's date moved by the four new stories. Q-98 (what it keeps when picked up) is still open.",
   "plan": [
     {
       "step": "Design written against the code, with the six rules and the v1 scope",
@@ -60,6 +60,10 @@
     },
     {
       "step": "Watched on the tablet: learns within a week of in-game days, and is legible",
+      "done": false
+    },
+    {
+      "step": "Q-100: the full reward table — the robot sees the whole farm, plants, harvests, carries to the mailbox, scares crows; measured honestly on the harness",
       "done": false
     }
   ],

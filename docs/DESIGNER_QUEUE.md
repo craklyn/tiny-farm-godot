@@ -11,6 +11,20 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
 
 ## Now — blocks M0 close or current work
 
+- **Q-100** ~~Should her squares pay more than the robot's own?~~ — ✅ ruled 2026-09-09, on
+  the designer's own initiative, and the question was wrong: *"I don't understand a
+  distinction that either the main character or a robot owns a tile. The robot should be
+  rewarded for doing beneficial things."* **The full table:** a harvested crop put in
+  the mailbox 10 · scaring off a crow flying in 1 · scaring off a crow landed on food 3 ·
+  harvesting 1 · watering a plant that needs it 1 · planting a seed 1 · tilling a grass
+  tile 0.1 · watering a soil tile with no seeds 0.1. His thesis: *"as long as exploration
+  is preserved and we have a learning model that can learn efficiently from the
+  exploration moves, then we can get a completely robust robot from these parameters, at
+  least as far as the game today is built."* Supersedes Q-96's one-job table and, for the
+  mark-3, Q-93's no-harvesting rule (the first machine that earns was always meant to be
+  further up the ladder — this is it). Design rewrite in `design/06`; build in
+  `V0_2_1_PLAN.md` WI-9.
+
 - **Q-99** ~~A fresh Mark III walks off the field. Pen it, home it, or give it a nose?~~ —
   ✅ ruled 2026-09-09: **none of the three — give it the hoe.** *"For initial playtesting,
   if this is a problem we can define an additional reward of 0.1 for hoeing a field and

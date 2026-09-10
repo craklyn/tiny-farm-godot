@@ -576,6 +576,20 @@ bare soil into tilled, "for initial playtesting". The order of fixes for a learn
 problem is therefore: more small, genuine outcome rewards first; constraining the world or
 adding senses later.
 
+**Q-100 (2026-09-09), the standing reward table.** Asked whether her squares should pay
+more than the robot's own, the designer struck the premise — nobody owns a tile; the robot
+is rewarded for beneficial things — and ruled the full table: a harvested crop put in the
+mailbox **10**; scaring off a crow flying in **1**; scaring off a crow landed on food
+**3**; harvesting **1**; watering a plant that needs it **1**; planting a seed **1**;
+tilling a grass tile **0.1**; watering a soil tile with no seeds **0.1**. His thesis: with
+exploration preserved and a learner that learns efficiently from exploration, these
+parameters alone yield a robust robot for the game as built. Consequences: P-13's
+"deliberately weak" binds the mark-3's learner and senses, not the breadth of outcomes it
+may earn; Q-93's no-harvesting rule applied to the mark-1 and is superseded for the mark-3,
+which was always the machine that earns; and a learner that cannot reach the long chains
+(harvest, carry, ship) is a learner problem, to be fixed by a better learner or more
+exploration, never by narrowing the table.
+
 ### D-1. Phase 5 genre (X-COM tactics vs. Gradius-like hybrid vs. other)
 **Why deferred:** Phase 5's cast is the player plus *trained bots* — its design depends on
 what trained bots actually feel like, which cannot be known before phase 4 exists.

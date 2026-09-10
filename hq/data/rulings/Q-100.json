@@ -1,0 +1,9 @@
+{
+  "id": "Q-100",
+  "option": "d",
+  "option_label": "The full table of beneficial outcomes; no ownership distinction",
+  "judgment": "I don't understand a distinction that either the main character or a robot owns a tile. The robot should be rewarded for doing beneficial things. Allow rewards to be earned for the following: 1. Putting a harvested crop into the mailbox: 10 points. 2. Scaring off a crow that's flying in: 1 point. 3. Scaring off a crow that's landed on food: 3 points. 4. Harvesting: 1 point. 5. Watering a tile of a plant that needs to be watered: 1 point. 6. Planting a seed: 1 point. 7. Tilling a grass tile: 0.1 points. 8. Watering a soil tile with no seeds: 0.1 points. I believe over time a robot as long as exploration is preserved and we have a learning model that can learn efficiently from the exploration moves, then we can get a completely robust robot from these parameters, as least as far as the game today is built.",
+  "ruled_at": "2026-09-09T18:00",
+  "status": "integrated",
+  "source": "chat with the chief of staff"
+}

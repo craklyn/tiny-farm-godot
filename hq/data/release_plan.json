@@ -46,7 +46,7 @@
       "release_id": "update-1-1",
       "name": "Player Update 1.1",
       "codename": "v0.2.1",
-      "contains": "The Mark III, the first robot that learns. You buy it, put it down, and it works out how to water your field by trying: clumsy for a few days, better every morning. Plus the fresh-player evidence v0.2.0 shipped without (one unprompted adult session on the tablet, the sleeping-cot and standing bars scored from its trace). The ripe-crop glance and the bed outline made the v0.2.0 tag after all and are listed here as done.",
+      "contains": "The Mark III, the first robot that learns. You buy it, put it down, and it works out how to farm by trying — tilling, planting, watering, harvesting, carrying crops to the mailbox and chasing crows — clumsy for a few days, better every morning, on the CEO's reward table (Q-100). Plus the fresh-player evidence v0.2.0 shipped without. The ripe-crop glance and the bed outline made the v0.2.0 tag after all and are listed here as done.",
       "stories": [
         {
           "id": "s11",
@@ -104,6 +104,38 @@
           "why": "Ruled 2026-09-09 (Q-99) after the demo showed a fresh robot walking off the field before it earned anything.",
           "raised": "2026-09-09",
           "shipped_in": "main 2026-09-09"
+        },
+        {
+          "id": "s22",
+          "title": "Give it the whole farm to see: ripe crops, crows, the mailbox, what it carries and her seed count join its view; its actions grow to plant, harvest and ship",
+          "estimate_days": 1.0,
+          "done": false,
+          "why": "Q-100, ruled 2026-09-09: the full reward table.",
+          "raised": "2026-09-09"
+        },
+        {
+          "id": "s23",
+          "title": "Score the full table: mailbox 10, crow off food 3, crow flying in 1, harvest, thirsty plant and planting 1, grass and empty soil 0.1 — each from what changed in the world",
+          "estimate_days": 1.0,
+          "done": false,
+          "why": "Q-100, ruled 2026-09-09: the full reward table.",
+          "raised": "2026-09-09"
+        },
+        {
+          "id": "s24",
+          "title": "Let it carry: a harvested crop rides with the robot to the mailbox, seeds come from her box and are refused when empty, a crow it reaches is scared the way the Mk II scares one",
+          "estimate_days": 1.0,
+          "done": false,
+          "why": "Q-100, ruled 2026-09-09: the full reward table.",
+          "raised": "2026-09-09"
+        },
+        {
+          "id": "s25",
+          "title": "Measure the full table on the 24-farm harness, and say honestly which rewards a linear learner reaches in a week and which need a better learner",
+          "estimate_days": 1.0,
+          "done": false,
+          "why": "Q-100, ruled 2026-09-09: the full reward table.",
+          "raised": "2026-09-09"
         },
         {
           "id": "s1",

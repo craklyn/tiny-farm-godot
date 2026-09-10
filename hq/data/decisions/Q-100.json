@@ -1,0 +1,34 @@
+{
+  "id": "Q-100",
+  "title": "Should her squares pay more than the robot's own?",
+  "question": "After the hoe landed, the robot earned every point on soil it had opened itself and never watered her sown field. The chief of staff asked whether a tile she planted should pay more than one the robot tilled.",
+  "why_now": "It was the next reward value to set. The CEO answered by replacing the question.",
+  "options": [
+    {
+      "key": "a",
+      "label": "Her sown tile pays more",
+      "detail": "A sown tile 1.0, an empty tilled tile less. Rejected: it invents ownership of tiles."
+    },
+    {
+      "key": "d",
+      "label": "Reward every beneficial thing, and nobody owns a tile (the CEO's answer)",
+      "detail": "Mailbox 10, crow off food 3, crow flying in 1, harvest 1, water a thirsty plant 1, plant 1, till grass 0.1, water empty soil 0.1."
+    }
+  ],
+  "links": [
+    {
+      "label": "The design (design/06)",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/06-bots-and-training.md"
+    },
+    {
+      "label": "Decision P-14",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DECISION_LOG.md"
+    }
+  ],
+  "ruled": {
+    "date": "2026-09-09",
+    "option": "d",
+    "summary": "There is no distinction of who owns a tile. The robot is rewarded for beneficial things, on the full table: mailbox 10, crow off food 3, crow flying in 1, harvest 1, water a thirsty plant 1, plant 1, till grass 0.1, water empty soil 0.1. With exploration preserved and an efficient learner, these parameters alone should yield a robust robot for the game as built.",
+    "written_up": "docs/DECISION_LOG.md — P-14, Q-100"
+  }
+}

@@ -87,14 +87,14 @@
       "id": "update-1-1",
       "name": "Player Update 1.1",
       "tag_intent": "v0.2.1",
-      "goal": "The first robot that learns. v0.2.1 adds the Mark III: a robot that learns to water the field by reinforcement — clumsy for a few days, better every morning — plus the fresh-player evidence v0.2.0 shipped without.",
+      "goal": "The first robot that learns. v0.2.1 adds the Mark III: a robot that learns to farm by reinforcement — tilling, planting, watering, harvesting, carrying crops to the mailbox, chasing crows — clumsy for a few days, better every morning — plus the fresh-player evidence v0.2.0 shipped without.",
       "definition_of_done": "A Mark III bought from the shop learns the watering job within a week of in-game days on the tablet, measured by the learning-curve demo on a fixed seed; its day replays to its autosave with its weights intact; both suites and the robot session green; one fresh adult session recorded and scored; a v0.2.1 tag out through the runbook.",
       "features": [
         {
           "id": "mk3",
-          "evidence": "P-14",
+          "evidence": "P-14, Q-100",
           "headline": "A robot that learns on its own",
-          "for_players": "Put a Mark III down and it works out how to water your field by trying. Its first days are clumsy. Every night it learns from what worked, and the next morning it is a little better."
+          "for_players": "Put a Mark III down and it works out how to farm by trying. Its first days are clumsy. Every night it learns from what worked, and the next morning it is a little better at tilling, planting, watering, picking, carrying crops to the mailbox and chasing crows."
         },
         {
           "id": "mk3-panel",
