@@ -586,3 +586,22 @@ is `training-workbench`.*
   moved into WI-2; `player.gd`'s fallthrough would send `open_workbench` to the gateway; a tap
   on the tile above a tall bench needs normalising; `open_menu` needs a `workbench` arm. Added
   from the design chapter on the same pass: a `waits` count and the plate's one sentence.
+- 2026-09-10 — **WI-1 landed** (`4607ec7`): `Rewards.LADDER`/`factory`/`ladder_index`/`stepped`,
+  `Policy.entropy_bits`/`norm_of_change`/`fold`, `Observation.input_groups`, `SimWorld.learners`
+  and the `tune` verb, the seven new keys on a Mark III, the seven-float `ledger` row;
+  `test_workbench_sim`, 70 assertions. Verified on a clean checkout of main: unit **2505 passed,
+  0 failed**; integration **689 passed, 0 failed**; gateway clean; the demo's output
+  byte-identical before and after and the eight-farm gate unchanged (19.84 against 18.21, 6 of
+  8). Three things the worker decided, now the rule: `Rewards.stepped` on a value off the ladder
+  snaps to the nearest rung first; `last_action` is **not** cleared at night (the eyes need the
+  last decision after a night); `waits` is in `deploy`'s key list (the item's list had omitted
+  it). The integration count is 689 at this branch point, not the 685 of the first baseline
+  line, and varies by one between runs because a scenario reads shared engine user data — a
+  queued item already names it.
+- 2026-09-10 — **WI-7 landed** (`8eb7fb4`): `assets/sprites/generated/workbench.png`, 16×32,
+  one batch of two calls, **$0.108** (balance after $0.518), raws and the build script under
+  `assets/raw/2026-09-10-workbench/`, CREDITS entry and spend record. The wiring into
+  `object_regions` and the catalogue icon is WI-2's, which finds the PNG on main. The batch was
+  two subjects (bench, rack) composed locally rather than one whole-object call, per the skill's
+  rule never to pay for layout. Landed with another session's uncommitted CREDITS and spend
+  edits set aside for the seconds of the merge and restored on top, both spend records kept.

@@ -217,7 +217,7 @@
           "id": "s1",
           "title": "Let a robot carry its own reward numbers, and record a dial turn as something the game can replay",
           "estimate_days": 1.5,
-          "done": false
+          "done": true
         },
         {
           "id": "s2",
@@ -253,7 +253,7 @@
           "id": "s7",
           "title": "Draw the workbench and its brass plates",
           "estimate_days": 0.5,
-          "done": false
+          "done": true
         },
         {
           "id": "s8",
