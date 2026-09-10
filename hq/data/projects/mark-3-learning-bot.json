@@ -20,7 +20,7 @@
     "Two runs on the same seed are identical; the seven-day learning curve rises on a fixed seed",
     "Every watering looks and sounds like hers; it moves at the Mark I's pace; nothing changes without a cue"
   ],
-  "current_status": "On the tablet since 2026-09-10 as a debug build. The CEO's first note from it: the panel's two numbers do not say what the robot did, so the panel becomes a scorecard chart — one coloured line per rewarded action, points per day, the pip as the legend — with the robot keeping its own per-day history in the sim. Being built now (Jade's seat). Then his tablet check, the release chores, and the fresh-player session. Q-98 (what it keeps when picked up) is still open.",
+  "current_status": "On the tablet (2026-09-10): the Mark III learns the whole farm on the CEO's table, and its panel is now a scorecard — one coloured line per rewarded action, a day per column, the action's pip as the legend, from the robot's own thirty-day history. Both suites, the robot session and the gateway check green. Open for the CEO: the training workbench (Q-101, mockups on the card) and what a Mark III keeps when picked up (Q-98). Then the release chores and the fresh-player session.",
   "plan": [
     {
       "step": "Design written against the code, with the six rules and the v1 scope",
@@ -72,7 +72,7 @@
     },
     {
       "step": "The scorecard chart on the panel: per-day points per rewarded action, kept in the robot's own history",
-      "done": false
+      "done": true
     },
     {
       "step": "Q-100: the full reward table — the robot sees the whole farm, plants, harvests, carries to the mailbox, scares crows; measured honestly on the harness",
