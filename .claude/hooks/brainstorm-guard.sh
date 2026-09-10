@@ -2,12 +2,19 @@
 # Re-injects the divergence rules on every prompt while a brainstorm is running.
 # Silent and free when no brainstorm is active.
 #
+# SAFETY: this runs on every prompt in this project, so it fails OPEN in every
+# error path — a broken guard must do nothing, never break a session. No `set -e`,
+# no unbound-variable trap, no dependency assumed to exist.
+#
 # State lives in .claude/.brainstorm-state (gitignored), one "key=value" per line:
-#   phase=map|diverge|converge     topic=<one line>
-# The design-brainstorm skill writes it; /design-brainstorm --stop or Phase 6 clears it.
-set -uo pipefail
-STATE="$CLAUDE_PROJECT_DIR/.claude/.brainstorm-state"
-[ -f "$STATE" ] || exit 0
+#   phase=map|diverge|converge   topic=<one line>   session=<claimed by the guard>
+# The design-brainstorm skill writes it; deleting the file ends the brainstorm.
+set -o pipefail
+PROJ="${CLAUDE_PROJECT_DIR:-}"
+[ -n "$PROJ" ] || PROJ="$(pwd 2>/dev/null)" || exit 0
+command -v jq >/dev/null 2>&1 || exit 0
+STATE="$PROJ/.claude/.brainstorm-state"
+[ -r "$STATE" ] || exit 0
 
 # The state file belongs to ONE session. The first session to see an unclaimed
 # file stamps its id on it; every other session in this working tree stays

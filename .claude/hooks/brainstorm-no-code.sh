@@ -1,9 +1,15 @@
 #!/usr/bin/env bash
 # Blocks writing game code while a brainstorm is diverging. Writing code is how a
 # session quietly commits to one branch of the space before the designer has picked.
-set -uo pipefail
-STATE="$CLAUDE_PROJECT_DIR/.claude/.brainstorm-state"
-[ -f "$STATE" ] || exit 0
+#
+# SAFETY: fails OPEN in every error path. Anything unexpected means the write is
+# allowed, never that the session is stuck.
+set -o pipefail
+PROJ="${CLAUDE_PROJECT_DIR:-}"
+[ -n "$PROJ" ] || PROJ="$(pwd 2>/dev/null)" || exit 0
+command -v jq >/dev/null 2>&1 || exit 0
+STATE="$PROJ/.claude/.brainstorm-state"
+[ -r "$STATE" ] || exit 0
 grep -q '^phase=diverge' "$STATE" 2>/dev/null || exit 0
 
 payload=$(cat 2>/dev/null || true)
