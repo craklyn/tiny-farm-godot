@@ -97,6 +97,7 @@ func _run_scenarios() -> void:
 	await _scenario_al_a_ripe_crop_carries()
 	await _scenario_am_the_mark_three_shows_its_practice()
 	await _scenario_an_the_workbench_opens_from_the_yard()
+	await _scenario_ap_the_eyes_show_what_it_sees()
 
 func _wait_until(pred: Callable, max_frames: int) -> bool:
 	for i in max_frames:
@@ -4816,3 +4817,158 @@ func _yard_spot_for_bench() -> Vector2i:
 				continue
 			return Vector2i(tx, ty)
 	return Vector2i(-1, -1)
+
+
+# --- Scenario AP: the eyes plate (v0.2.2 WI-4) --------------------------------
+#
+# The page claims, in pictures, to show what a Mark III can see and what it would
+# do about it. Pictures are the one thing a headless run cannot look at, so what
+# is checked here is everything the pictures are drawn from: the patch it read,
+# the chances it computed, and that both survive a robot standing in the corner of
+# the map with half its view off the edge of the world.
+func _scenario_ap_the_eyes_show_what_it_sees() -> void:
+	print("\n--- Scenario AP: the eyes show what the robot sees ---")
+
+	var menus = main_scene.menus
+	menus.close_menu()
+	main_scene.end_teaching()
+	GameState.gold = 3000
+	GameState.machines = {}
+	GameState.selected_seed_type = ""
+	await get_tree().process_frame
+
+	# A learner an earlier scenario left standing would be another card in the
+	# bench's strip, and this one is about the robot placed below.
+	for raw in farm.sim.learners():
+		farm.apply_action({ "verb": "collect",
+			"target": farm.sim.actor_pos(String(raw)), "actor": "player" }, GameState)
+	await get_tree().process_frame
+
+	var mk3: String = await _buy_and_place("bot_mk3", Vector2i(16, 13))
+	_assert(mk3 != "", "a Mark III goes down for the bench to read (%s)" % mk3)
+	if mk3 == "":
+		return
+	await _wait_until(func(): return menus.active_menu == "machine", 60)
+	menus.close_menu()
+	await get_tree().process_frame
+
+	# Two squares it can see and has to tell apart: a thirsty seed to the east,
+	# watered ground to the west. Staged through the farm's own test facades, the
+	# way every scenario in this file builds a situation.
+	var at: Vector2i = farm.sim.actor_pos(mk3)
+	_stage_tile(at.x + 1, at.y, "seeded", "wheat")
+	_stage_tile(at.x - 1, at.y, "tilled")
+	farm.water_tile(at.x - 1, at.y)
+	await get_tree().process_frame
+
+	menus.open_workbench(at + Vector2i(0, 1))
+	var opened := await _wait_until(func(): return menus.active_menu == "workbench", 60)
+	_assert(opened, "the bench opens on the robot (%s)" % menus.active_menu)
+	var bench = menus.workbench
+	if bench == null:
+		return
+	bench.select_plate(1)
+	await get_tree().process_frame
+	var eyes = bench.pages[1]
+	_assert(String(eyes.get("actor_id")) == mk3,
+		"the eyes plate is about the robot on the bench (%s)" % String(eyes.get("actor_id")))
+
+	# --- the ground it can see ------------------------------------------------
+	var spec: Dictionary = farm.sim.actor(mk3).get("extra", {}).get("spec", {})
+	var channels: Array = spec.get("channels", [])
+	var radius: int = int(spec.get("vision", 2))
+	var side: int = 2 * radius + 1
+	var patch: Array = eyes.patch
+	_assert(patch.size() == side * side,
+		"it read one entry per square it can see (%d of %d)" % [patch.size(), side * side])
+	if patch.size() != side * side:
+		return
+	var all_channels := true
+	for row in patch:
+		if (row as Array).size() != channels.size():
+			all_channels = false
+	_assert(all_channels,
+		"each of them carrying the robot's whole list of channels (%d)" % channels.size())
+
+	var i_water: int = channels.find("needs_water")
+	var i_crop: int = channels.find("crop")
+	var i_wet: int = channels.find("wet")
+	var east: Array = patch[radius * side + radius + 1]
+	var west: Array = patch[radius * side + radius - 1]
+	_assert(float(east[i_water]) == 1.0 and float(east[i_crop]) == 1.0,
+		"the thirsty seed one square east lights the water mark and the crop mark")
+	_assert(float(east[i_wet]) == 0.0,
+		"and not the wet one, which is the difference the page exists to show")
+	_assert(float(west[i_wet]) == 1.0, "the watered square one west lights the wet mark")
+	_assert(float(west[i_crop]) == 0.0, "and no crop mark, because nothing is growing on it")
+
+	# --- what it would decide -------------------------------------------------
+	var probs: Array = eyes.probs
+	_assert(probs.size() == BotBrain.LEARN_ACTIONS,
+		"it weighed all eight things it can do (%d)" % probs.size())
+	var total := 0.0
+	for p in probs:
+		total += float(p)
+	_assert(absf(total - 1.0) < 1e-6, "the eight chances add up to one (%.9f)" % total)
+	var flat := true
+	for p in probs:
+		if absf(float(p) - 1.0 / float(BotBrain.LEARN_ACTIONS)) > 1e-6:
+			flat = false
+	_assert(flat, "and a robot that has learned nothing gives every one of them the same")
+
+	# --- a robot that is sure of itself ---------------------------------------
+	#
+	# **Staging, not gameplay.** A robot only becomes certain of an action by being
+	# paid for it night after night, and a test that played those nights would be
+	# testing the brain rather than the page. So the watering row's bias is written
+	# straight into the weights, the way `tools/capture_machines.gd` writes a staged
+	# history to take a screenshot of.
+	var extra: Dictionary = farm.sim.actor(mk3).get("extra", {})
+	var width: int = Observation.size(spec)
+	extra["weights"][BotBrain.LEARN_WATER * (width + 1) + width] = 1000.0
+	bench.refresh()
+	await get_tree().process_frame
+	probs = eyes.probs
+	_assert(float(probs[BotBrain.LEARN_WATER]) > 0.99,
+		"a robot certain of the can draws one full bar and seven stubs (%.4f)"
+			% float(probs[BotBrain.LEARN_WATER]))
+
+	# --- the numbers it carries besides the ground ----------------------------
+	var scalars: Dictionary = eyes.scalars
+	_assert(int(scalars.get("x", -1)) == at.x and int(scalars.get("y", -1)) == at.y,
+		"the cards beside the patch say where it is standing (%s, %s)"
+			% [str(scalars.get("x", "-")), str(scalars.get("y", "-"))])
+	_assert(scalars.has("energy") and scalars.has("carrying") and scalars.has("seeds")
+			and scalars.has("bin_distance"),
+		"and what is left in it, what is in its hands, her seed box, and how far the bin is")
+
+	# --- the corner of the map ------------------------------------------------
+	#
+	# Sixteen of its twenty-five squares are off the edge of the world there, which
+	# is the case that would take down a page trusting every square to exist.
+	farm.sim.set_actor_pos(mk3, Vector2i(0, 0))   # staging: a corner to stand in
+	bench.refresh()
+	for i in 3: await get_tree().process_frame
+	patch = eyes.patch
+	_assert(patch.size() == side * side,
+		"in the map's corner it still reads a full square of ground (%d)" % patch.size())
+	var off_map_blank := true
+	for dy in side:
+		for dx in side:
+			if dy >= radius and dx >= radius:
+				continue   # the quarter of the patch that is still on the farm
+			for v in patch[dy * side + dx] as Array:
+				if float(v) != 0.0:
+					off_map_blank = false
+	_assert(off_map_blank,
+		"with every square off the edge reading empty — the dashes the page draws there")
+	_assert(menus.active_menu == "workbench" and bench.visible,
+		"and the bench is still standing after drawing it")
+
+	# --- put the yard back the way it was found -------------------------------
+	farm.sim.set_actor_pos(mk3, at)
+	menus.close_menu()
+	await get_tree().process_frame
+	farm.apply_action({ "verb": "collect", "target": farm.sim.actor_pos(mk3),
+		"actor": "player" }, GameState)
+	await get_tree().process_frame
