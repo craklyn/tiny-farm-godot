@@ -294,6 +294,9 @@ func _rebuild_options() -> void:
 			#           that true.
 			#   mark-2  you set it to one of three standing behaviours and it gets
 			#           on with them.
+			#   mark-3  there is nothing to set: it is working out its own job. The
+			#           panel is what it has to show for that so far — the nights
+			#           it has practised and the squares it watered yesterday.
 			#   a sprinkler, or anything else with neither, gets the one row every
 			#           machine has: pick it up.
 			#
@@ -361,6 +364,29 @@ func _rebuild_options() -> void:
 						var mark: String = "\u00bb " if config == current else "   "
 						machine_options.append({ "kind": "config", "config": config })
 						_add_option(mark + CONFIG_LABELS.get(config, config), true)
+				"policy":
+					# **The Mark III has no dial and no list**, so where the other
+					# marks put rows this one puts its practice (Q-97, ruled
+					# 2026-09-09: numbers on the panel, and nothing else at all in
+					# v1). Its settings would be a dial that wiped weeks of
+					# learning, which is why the catalogue row has no configs and
+					# the gateway refuses `configure` on it outright.
+					#
+					# Two pictures and two numerals, no sentence — the one part of
+					# this panel that keeps S-7's no-required-reading rule, and the
+					# vocabulary is borrowed rather than invented: the can is the
+					# same cell the HUD's can chip draws, and the crescent is the
+					# sun-arc's own night token, because `days` counts the nights
+					# it has slept on what it learned.
+					#
+					# A readout, not a control: no button in it, so nothing here
+					# looks like a row she can press. It still takes a slot in
+					# `machine_options`, because the rows below it are tapped by
+					# their position in that list.
+					machine_options.append({ "kind": "practice" })
+					_add_practice_readout(
+						int(mextra.get("days", 0)),
+						int(round(float(mextra.get("last_score", 0.0)))))
 			machine_options.append({ "kind": "collect" })
 			_add_option("Pick up", true)
 			machine_options.append({ "kind": "close" })
@@ -464,6 +490,10 @@ func _labels_in(node: Node) -> Array[Label]:
 const ICON_SHEET := preload("res://assets/sprites/generated/shop_icons.png")
 const COIN_COL := 3
 
+# tool_icons.png is the other half of the game's pictogram vocabulary — the sheet
+# the HUD's chips and the refusal table already read.
+const TOOL_SHEET := preload("res://assets/sprites/tool_icons.png")
+
 
 static func crop_icon(icon_col: int) -> AtlasTexture:
 	var atlas := AtlasTexture.new()
@@ -479,8 +509,20 @@ static func coin_icon() -> AtlasTexture:
 	return atlas
 
 
+# The watering can, taken from the same table the HUD's can chip and the world's
+# station pictograms read (`StationPresentation.GLYPH_ATLAS`), so the three
+# cannot end up on different cells of the sheet.
+static func can_icon() -> AtlasTexture:
+	var entry: Dictionary = StationPresentation.GLYPH_ATLAS[StationPresentation.GLYPH_CAN]
+	var r: Array = entry["rect"]
+	var atlas := AtlasTexture.new()
+	atlas.atlas = TOOL_SHEET
+	atlas.region = Rect2(r[0], r[1], r[2], r[3])
+	return atlas
+
+
 func _add_icon_number(row: HBoxContainer, tex: Texture2D, text: String, size: float,
-		colour: Color) -> void:
+		colour: Color, font_size: int = 0) -> void:
 	var pic := TextureRect.new()
 	pic.custom_minimum_size = Vector2(size, size)
 	pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -490,7 +532,67 @@ func _add_icon_number(row: HBoxContainer, tex: Texture2D, text: String, size: fl
 	var lbl := Label.new()
 	lbl.text = text
 	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	if font_size > 0:
+		lbl.add_theme_font_size_override("font_size", font_size)
 	lbl.add_theme_color_override("font_color", colour)
+	row.add_child(lbl)
+
+
+# --- What a Mark III has to show for itself (Q-97) ---------------------------
+#
+# Both numbers sit on one line, in the slot the other marks fill with rows, above
+# "pick it up". A pair rather than two lines because they are read together: the
+# crescent is how long it has been at it, the can is what that was worth
+# yesterday, and the pair is the whole answer to "is this thing getting better".
+const PRACTICE_PIP := 26.0
+const PRACTICE_DIGITS := 22
+const MOON_LIT := Color(0.87, 0.90, 1.0)
+const WATER_BLUE := Color(0.45, 0.78, 0.96)
+
+
+func _add_practice_readout(days: int, watered: int) -> void:
+	var container := PanelContainer.new()
+	container.custom_minimum_size = Vector2(0, OPTION_H)
+	# Nothing behind it and nothing to press: a readout wearing a row's dark
+	# panel would be a control that does nothing when tapped.
+	container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 18)
+	container.add_child(row)
+
+	_add_moon_number(row, str(days))
+	_add_icon_number(row, can_icon(), str(watered), PRACTICE_PIP, WATER_BLUE,
+		PRACTICE_DIGITS)
+
+	options_container.add_child(container)
+
+
+# The sun-arc's night token, at the size of a pip: a lit disc with a bite taken
+# out of it in the panel's own colour, so the crescent reads as sky rather than
+# as a hole (`ui/hud.gd`, `_draw_sun_arc`, has the same two circles and the
+# reason the cut has to sit inside the disc).
+func _add_moon_number(row: HBoxContainer, text: String) -> void:
+	var moon := Control.new()
+	moon.custom_minimum_size = Vector2(PRACTICE_PIP, PRACTICE_PIP)
+	moon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	moon.draw.connect(func() -> void:
+		# Sized to carry the same weight as the can beside it, and bitten on the
+		# HUD's own proportions (offset 0.325/-0.2375 of the radius, cut 0.6 of
+		# it) so both crescents in the game are the same crescent.
+		var r: float = PRACTICE_PIP * 0.42
+		var at := Vector2(PRACTICE_PIP, PRACTICE_PIP) / 2.0
+		moon.draw_circle(at, r, MOON_LIT)
+		moon.draw_circle(at + Vector2(r * 0.325, -r * 0.2375), r * 0.6,
+			Color(0.12, 0.12, 0.18)))
+	row.add_child(moon)
+
+	var lbl := Label.new()
+	lbl.text = text
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl.add_theme_font_size_override("font_size", PRACTICE_DIGITS)
+	lbl.add_theme_color_override("font_color", MOON_LIT)
 	row.add_child(lbl)
 
 

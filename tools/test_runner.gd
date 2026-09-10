@@ -95,6 +95,7 @@ func _run_scenarios() -> void:
 	await _scenario_aj_the_robot_lives_in_a_stall()
 	await _scenario_ak_she_puts_up_a_fence()
 	await _scenario_al_a_ripe_crop_carries()
+	await _scenario_am_the_mark_three_shows_its_practice()
 
 func _wait_until(pred: Callable, max_frames: int) -> bool:
 	for i in max_frames:
@@ -4295,3 +4296,152 @@ func _scenario_al_a_ripe_crop_carries() -> void:
 		"and the square stops being ripe, so the sim moved and not just the picture")
 	_assert(farm._ripe_glow.size() == _ready_tiles(),
 		"and its light goes out with it — the pool follows the state, not a timer")
+
+
+func _scenario_am_the_mark_three_shows_its_practice() -> void:
+	# Q-97, ruled 2026-09-09: **what she sees of a robot's learning is two
+	# numbers on its panel, and nothing else in v1.** Tap the Mark III and it
+	# says how many nights it has practised and how many squares it watered
+	# yesterday. No dawn scene, and no dial — a dial would be a control that
+	# wiped weeks of practice, which is why the catalogue row has no settings.
+	print("\n--- Scenario AM: the learning robot's panel says what it has to show for itself ---")
+
+	var menus = main_scene.menus
+	GameState.gold = 2000
+	GameState.machines = {}
+	main_scene.end_teaching()
+
+	# --- buy one and put it down, through the real shop and the real tap -----
+	menus.open_menu("shop")
+	await get_tree().process_frame
+	var mk3_card := -1
+	for i in menus.shop_items.size():
+		if String(menus.shop_items[i].get("seed_type", "")) == "bot_mk3":
+			mk3_card = i
+	_assert(mk3_card >= 0, "the Mark III has its own card in the shop")
+	menus.selected_option = mk3_card
+	menus._select_current_option()
+	await get_tree().process_frame
+	menus.close_menu()
+	await get_tree().process_frame
+	_assert(GameState.machines.get("bot_mk3", 0) == 1, "and buying it puts one in the crate")
+
+	var spot := Vector2i(16, 13)
+	_stage_tile(spot.x, spot.y, "cleared")
+	_stage_tile(spot.x - 1, spot.y, "cleared")
+	player.pos = Vector2((spot.x - 1) * 16.0 + 8.0, spot.y * 16.0 + 8.0)
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+	InputManager.click_tile = spot
+	InputManager.has_click = true
+	var placed := await _wait_until(func(): return farm.sim.machine_at(spot) != "", 200)
+	_assert(placed, "a tap puts the Mark III down")
+	var mk3: String = farm.sim.machine_at(spot)
+	_assert(farm.sim.machine_key_of(mk3) == "bot_mk3",
+		"and it knows which mark it is — all three robots are one species, so nothing else could say")
+
+	var opened := await _wait_until(func(): return menus.active_menu == "machine", 60)
+	_assert(opened, "its panel opens as it lands, like every other machine's")
+
+	# --- the panel is the readout, pick-up and close, and nothing else -------
+	var kinds: Array = []
+	for opt in menus.machine_options:
+		kinds.append(String(opt.get("kind", "")))
+	_assert(kinds == ["practice", "collect", "close"],
+		"the panel is what it has learned, pick it up, and close (%s)" % str(kinds))
+	_assert(MachineDefs.configs_of("bot_mk3").is_empty(),
+		"...because it has no settings to offer — its practice is not hers to overwrite")
+
+	# The readout takes the slot the other marks fill with controls: the first row.
+	var readout: Node = menus.options_container.get_child(0)
+	var fresh: Array = []
+	_collect_labels(readout, fresh)
+	_assert(fresh.size() == 2, "two numbers on that row, no more (%d)" % fresh.size())
+	if fresh.size() == 2:
+		_assert(String(fresh[0].text) == "0" and String(fresh[1].text) == "0",
+			"a robot out of the crate has practised no nights and watered nothing (%s, %s)"
+				% [fresh[0].text, fresh[1].text])
+		var worded: Array = []
+		for lbl in fresh:
+			if _has_letters(String(lbl.text)):
+				worded.append(String(lbl.text))
+		_assert(worded.is_empty(),
+			"and they are numerals beside pictures rather than a sentence (S-7)%s"
+				% ("" if worded.is_empty() else " — found %s" % str(worded)))
+	_assert(_pictures_in(readout) == 2,
+		"each number has a picture of its own — a crescent for the nights, a can for the water (%d)"
+			% _pictures_in(readout))
+
+	# --- a week of practice shows on the same two numbers --------------------
+	#
+	# The night that fills these two keys is `BotBrain.on_new_day`, and the unit
+	# suite is where that is tested. Staged here the way a tile is staged,
+	# because what this scenario is about is the panel reading them back.
+	var mextra: Dictionary = farm.sim.actor(mk3)["extra"]
+	_assert(mextra.has("days") and mextra.has("last_score"),
+		"a placed Mark III carries the two keys the panel reads")
+	mextra["days"] = 7
+	mextra["last_score"] = 12.0
+	menus._rebuild_options()
+	await get_tree().process_frame
+	var after: Array = []
+	_collect_labels(menus.options_container.get_child(0), after)
+	_assert(after.size() == 2 and String(after[0].text) == "7",
+		"seven nights of practice reads as 7 (%s)" % (after[0].text if after.size() > 0 else ""))
+	_assert(after.size() == 2 and String(after[1].text) == "12",
+		"and twelve squares watered yesterday as 12, whole rather than 12.0 (%s)"
+			% (after[1].text if after.size() > 1 else ""))
+
+	# --- picking it up is the same verb every other machine answers to -------
+	menus.selected_option = kinds.find("collect")
+	menus._select_current_option()
+	await get_tree().process_frame
+	_assert(not farm.sim.has_actor(mk3), "'pick up' takes the Mark III off the farm")
+	_assert(GameState.machines.get("bot_mk3", 0) == 1, "and puts it back in the crate")
+
+	# --- and the mark-2's panel is exactly what it was ------------------------
+	GameState.machines = { "bot_mk2": 1 }
+	GameState.selected_seed_type = "bot_mk2"
+	_stage_tile(spot.x, spot.y, "cleared")
+	player.pos = Vector2((spot.x - 1) * 16.0 + 8.0, spot.y * 16.0 + 8.0)
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+	InputManager.click_tile = spot
+	InputManager.has_click = true
+	var placed2 := await _wait_until(func(): return farm.sim.machine_at(spot) != "", 200)
+	_assert(placed2, "a mark-2 goes down on the same square")
+	var mk2: String = farm.sim.machine_at(spot)
+	await _wait_until(func(): return menus.active_menu == "machine", 60)
+	_assert(menus.machine_options.size() == MachineDefs.configs_of("bot_mk2").size() + 2,
+		"and its panel is still one row per setting, plus pick-up and close (%d)"
+			% menus.machine_options.size())
+	var kinds2: Array = []
+	for opt in menus.machine_options:
+		kinds2.append(String(opt.get("kind", "")))
+	_assert(not ("practice" in kinds2),
+		"with no readout on it — a mark-2 has nothing to practise, it does what it is told")
+	_assert(_pictures_in(menus.options_container) == 0,
+		"and no pictures either: its rows are the words they have always been (Q-87)")
+
+	menus.selected_option = kinds2.find("collect")
+	menus._select_current_option()
+	await get_tree().process_frame
+	_assert(not farm.sim.has_actor(mk2), "and the yard is left as it was found")
+
+
+# How many pictures a panel is drawing: a TextureRect with something in it, or a
+# plain Control that paints itself (the crescent, which is drawn rather than
+# atlassed because the game owns no moon sprite).
+func _pictures_in(node: Node) -> int:
+	var n := 0
+	if node is TextureRect:
+		if (node as TextureRect).texture != null:
+			n += 1
+	elif node is Control and not (node is Label) and not (node is Container) \
+			and (node as Control).draw.get_connections().size() > 0:
+		n += 1
+	for child in node.get_children():
+		n += _pictures_in(child)
+	return n
