@@ -63,6 +63,26 @@ var machines: Dictionary
 # gateway so a replay earns it identically, saved additively, default 0.
 var machines_bought: int
 
+# **What the crate remembers** (Q-98, ruled 2026-09-10: "pick up is just
+# repositioning, it shouldn't factory reset the robot"). Machine key → the `extra`
+# of each boxed machine that had something worth keeping, newest last; `place`
+# takes the newest one back out.
+#
+# A second dictionary rather than a richer `machines`, because the two answer
+# different questions and only one of them is asked often: `machines` is "how many
+# have I got", which the HUD pill, the held-item ring and the router all read every
+# frame, and it is an int per key in every save on disk. Turning that into a list of
+# objects to carry a robot's brain would change a count every caller already trusts.
+# This sits beside it, empty for every machine that has no memories — a sprinkler
+# boxed and set down again is the same sprinkler either way — and holds exactly the
+# machines whose past would otherwise be thrown away.
+#
+# Keyed by the catalogue row rather than by the actor id the robot used to have,
+# because the id is gone the moment it is despawned and the row is what she is
+# holding: she picks up two Mark IIIs, she puts two down, and the one she boxed last
+# is the one that comes out first.
+var boxed: Dictionary
+
 # T-9 (Q-34): tools are acquired, not owned. She starts with hands, hoe, can and
 # seeds; the axe and pickaxe are earned, and each opens the parcel that needs it.
 var tools_owned: Dictionary
@@ -149,6 +169,7 @@ func reset() -> void:
 	acorns = 0
 	machines = {}
 	machines_bought = 0
+	boxed = {}
 	tools_owned = {
 		"hands": true, "hoe": true, "watering_can": true, "seeds": true,
 		"axe": false, "pickaxe": false,

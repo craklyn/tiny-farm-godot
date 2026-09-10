@@ -710,6 +710,27 @@ const OPEN_OBJECTS := {
 const STALL_ITEM := "stall"
 const STALL_SLOT_OFFSET := Vector2i(1, 0)
 
+# **What a machine forgets when it goes in the crate** (Q-98, ruled 2026-09-10:
+# "pick up is just repositioning, it shouldn't factory reset the robot").
+#
+# Everything else it keeps, which is why this is a list of what is dropped rather
+# than a list of what is carried: the things worth keeping are the things the
+# release keeps adding — weights, dials, a ledger, a scorecard — and a list of
+# keepers would have to be edited every time one arrives, silently throwing away
+# whatever nobody remembered to add to it. Subtraction fails the safe way round.
+#
+# What is on the list is the errand it was halfway through: where it was walking,
+# what it was about to do there, what the gateway still owed it an answer for, and
+# the tick it expected to think again on. None of that survives being picked up off
+# the ground — the bird it was chasing is gone, the square it was walking to may be
+# somebody else's by the time it is set down, and a `wake` from yesterday's clock
+# would have it stand still or think twice. A fresh `deploy` has already written
+# each of these to its resting value, so dropping the key is all that is needed.
+const BOXED_FORGETS := [
+	"job", "job_x", "job_y", "job_target", "pending",
+	"state", "goal_x", "goal_y", "wake",
+]
+
 
 func get_object(tx: int, ty: int) -> String:
 	if ty >= 0 and ty < MAP_HEIGHT and tx >= 0 and tx < MAP_WIDTH:
@@ -1929,6 +1950,34 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			var machine_id := machine_at(target)
 			if machine_id != "":
 				var machine_key := machine_key_of(machine_id)
+				# **And it goes into the crate with everything it had learned**
+				# (Q-98, ruled 2026-09-10). Picking a robot up used to be the most
+				# expensive thing in the game she could do by accident: the actor
+				# was despawned, the crate gained an anonymous +1, and the next
+				# `place` deployed a factory machine — so a week of practice, the
+				# dials she had set on the workbench and every row of its ledger
+				# were gone, with no warning and no way back. The CEO's words:
+				# "pick up is just repositioning, it shouldn't factory reset the
+				# robot."
+				#
+				# So the box carries the machine rather than a tally of machines.
+				# Only the ones with something to carry — `weights` is the test,
+				# because a learner is the only machine whose past cannot be built
+				# again from its catalogue row, and it is the same test `learners()`
+				# asks.
+				#
+				# Here rather than inside `despawn_actor`, because this is the
+				# *verb's* meaning rather than the registry's: a despawn is also
+				# what happens when a bird leaves the sky, and nothing is owed to
+				# the crate for that.
+				var picked: Dictionary = actor(machine_id).get("extra", {})
+				if picked.has("weights"):
+					var kept: Dictionary = picked.duplicate(true)
+					for forgotten in BOXED_FORGETS:
+						kept.erase(forgotten)
+					var crate: Array = gs.boxed.get(machine_key, [])
+					crate.append(kept)
+					gs.boxed[machine_key] = crate
 				despawn_actor(machine_id)
 				gs.machines[machine_key] = int(gs.machines.get(machine_key, 0)) + 1
 				return { "ok": true, "collected": machine_key, "machine": machine_id }
@@ -2113,6 +2162,35 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			# marks share a species, so without this a picked-up mark-1 could go
 			# back into the crate as a mark-2 (see `machine_key_of`).
 			actors[machine_id]["extra"]["model"] = item
+			# **And if the crate remembers one, this is that one** (Q-98, ruled
+			# 2026-09-10). Setting a machine down is the other half of picking it up,
+			# so the newest box comes out first: pick two robots up and put two down
+			# and each gets its own history back, last in first out, which is both
+			# what a crate does and the only order that needs no labels on the boxes.
+			#
+			# Overlaid onto a fresh `deploy` rather than written instead of one, so
+			# that a robot boxed by an older build — or by a build whose `extra` had
+			# fewer keys in it — still comes out with every key this build's brain
+			# expects. `deploy` writes the whole shape; the box overwrites the parts
+			# that are the machine's own past. That also means no migration: a key
+			# added next release is simply absent from an old box and keeps the
+			# value `deploy` just gave it.
+			#
+			# **Energy is the fresh deploy's**, deliberately. A meter is a thing a
+			# machine has today, not something it learned (Q-11), and a tired robot
+			# that could be rested by picking it up and setting it down again would
+			# be a free day's work — the same reason `configure` carries energy
+			# across rather than resetting it, seen from the other side.
+			# Under the same condition that spends the crate, because the crate and
+			# its memory move together: an uncharged placer that opened the box
+			# would unbox a trained robot without one being taken out of it.
+			var remembered: Array = gs.boxed.get(item, [])
+			if placer_charged and not remembered.is_empty():
+				var was: Dictionary = remembered.pop_back()
+				var now: Dictionary = actors[machine_id]["extra"]
+				for key in was:
+					now[key] = was[key]
+				gs.boxed[item] = remembered
 			if placer_charged:
 				gs.machines[item] = int(gs.machines.get(item, 0)) - 1
 			return { "ok": true, "machine": machine_id, "config": config }

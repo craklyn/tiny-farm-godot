@@ -171,6 +171,7 @@ func _init() -> void:
 	test_policy()
 	test_learning_robot_day()
 	test_workbench_sim()
+	test_crate_remembers()
 	test_workbench_place()
 	test_learning_robot()
 	test_world_pages()
@@ -12537,6 +12538,267 @@ func test_workbench_sim() -> void:
 		_assert_quiet(int(seen_extra.get("spent", 0)) <= int(seen_extra.get("decisions", 0)),
 			String(pair[0]))
 	_flush_quiet("no fixture in this test ever spent more decisions than it took")
+
+
+# Two nested arrays of numbers, element for element. Recursive, because everything
+# the crate has to hand back is one of those — a flat array of weights, an array of
+# rows of numbers (`ledger`, `history`), an array of day indices — and a comparison
+# written once cannot be subtly different in four places.
+func _numbers_match(a: Array, b: Array) -> bool:
+	if a.size() != b.size():
+		return false
+	for i in a.size():
+		if a[i] is Array:
+			if not (b[i] is Array) or not _numbers_match(a[i] as Array, b[i] as Array):
+				return false
+		elif not is_equal_approx(float(a[i]), float(b[i])):
+			return false
+	return true
+
+
+# --- The crate remembers (v0.2.2 WI-9, Q-98) ----------------------------------
+#
+# Ruled 2026-09-10: "pick up is just repositioning, it shouldn't factory reset the
+# robot." Before this, tapping a Mark III and choosing "pick it up" was the most
+# expensive accident available in the game: `collect` despawned the actor and added
+# one to an anonymous crate, and the next `place` deployed a factory machine — so a
+# week of practice, the dials she had set on the workbench and every row of the
+# ledger went with it, silently.
+#
+# What is asserted here is the round trip rather than the storage: the same robot
+# back out as went in, a blank one when the crate has no memories, nothing at all
+# kept for a machine that has nothing to keep — and all of that still true after a
+# save and after a replay, because what the crate remembers is now part of the farm
+# a session is checked against.
+func test_crate_remembers() -> void:
+	print("\n--- The crate remembers what it was handed (v0.2.2 WI-9, Q-98) Tests ---")
+
+	# --- a day's practice, and then she picks it up ----------------------------
+	var s := _mk3_yard(9811)
+	s.gs.gold = 5000  # two Mark IIIs and a mark-1 are bought below
+	var bot := _mk3_place(s, MK3_SPOT)
+	s.act({ "verb": "tune", "actor": "player", "target": s.world.actor_pos(bot),
+		"row": "shipped", "value": 3.0 })
+	s.tick(SimClock.RATE * 45)
+	s.gs.weather = "sunny"
+	s.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
+	var worked: Dictionary = s.world.actor(bot)["extra"]
+	_assert(int(worked["days"]) == 1 and (worked["ledger"] as Array).size() == 1
+			and (worked["history"] as Array).size() == 1,
+		"a Mark III with a day on the farm and a night behind it: %d night, %d ledger row"
+			% [int(worked["days"]), (worked["ledger"] as Array).size()])
+	var practice: Array = (worked["weights"] as Array).duplicate()
+	var practised := false
+	for w in practice:
+		if not is_equal_approx(float(w), 0.0):
+			practised = true
+	_assert(practised,
+		"whose night moved its weights off the zeros it was born with — there is something to lose")
+	var dials: Array = (worked["rewards"] as Array).duplicate()
+	var book: Array = (worked["ledger"] as Array).duplicate(true)
+	var record: Array = (worked["history"] as Array).duplicate(true)
+	var marks: Array = (worked["tuned"] as Array).duplicate()
+
+	var standing := s.world.actor_pos(bot)
+	var lifted := s.act({ "verb": "collect", "target": standing, "actor": "player" })
+	_assert(lifted.get("ok", false) and String(lifted.get("collected", "")) == "bot_mk3"
+			and not s.world.has_actor(bot),
+		"she picks it up, and it is off the farm exactly as it always was")
+	_assert(int(s.gs.machines.get("bot_mk3", 0)) == 1,
+		"with one Mark III back in the crate (%d)" % int(s.gs.machines.get("bot_mk3", 0)))
+	var crate: Array = s.gs.boxed.get("bot_mk3", [])
+	_assert(crate.size() == 1,
+		"...and one robot's worth of memories in the box beside it (%d)" % crate.size())
+	var remembered: Dictionary = crate[0]
+	var errands_dropped := true
+	for forgotten in SimWorld.BOXED_FORGETS:
+		if remembered.has(forgotten):
+			errands_dropped = false
+	_assert(errands_dropped,
+		"the errand it was halfway through is not among them — no job, no goal, no wake")
+	_assert(_json_plain(remembered) and remembered.has("weights") and remembered.has("rewards"),
+		"and what is in the box is JSON-plain, so it rides the save like everything else")
+
+	# --- and sets it down again ------------------------------------------------
+	var elsewhere := MK3_SPOT + Vector2i(2, 1)
+	var again := String(s.act({ "verb": "place", "target": elsewhere, "item": "bot_mk3",
+		"actor": "player" }).get("machine", ""))
+	_assert(again != "", "she sets it down two rows over (%s)" % again)
+	var back: Dictionary = s.world.actor(again)["extra"]
+	_assert(int(back["days"]) == 1,
+		"and what stands up is the robot that had the day, not a new one out of the box (%d)"
+			% int(back["days"]))
+	_assert(_numbers_match(back["weights"] as Array, practice),
+		"weight for weight, all %d of them" % practice.size())
+	_assert(_numbers_match(back["rewards"] as Array, dials)
+			and is_equal_approx(float(back["rewards"][0]), 3.0),
+		"with the shipped dial still where she left it on the workbench (%s)"
+			% str(back["rewards"][0]))
+	_assert(_numbers_match(back["ledger"] as Array, book)
+			and _numbers_match(back["history"] as Array, record)
+			and _numbers_match(back["tuned"] as Array, marks),
+		"its ledger, its scorecard and the day she turned a dial, all as they were")
+	_assert(String(back["job"]) == "" and int(back["goal_x"]) == -1
+			and String(back["pending"]) == "",
+		"and nothing of the errand it was on when she lifted it (job '%s')" % String(back["job"]))
+	_assert((s.gs.boxed.get("bot_mk3", []) as Array).is_empty(),
+		"the box is empty again, because the robot that was in it is standing in the field")
+
+	# --- a robot she pays for is a robot out of the box ------------------------
+	s.act({ "verb": "buy_machine", "item": "bot_mk3", "actor": "player" })
+	var twin := String(s.act({ "verb": "place", "target": MK3_SPOT + Vector2i(-2, 1),
+		"item": "bot_mk3", "actor": "player" }).get("machine", ""))
+	var twx: Dictionary = s.world.actor(twin)["extra"]
+	var blank := true
+	for w in (twx["weights"] as Array):
+		if not is_equal_approx(float(w), 0.0):
+			blank = false
+	_assert(twin != "" and twin != again and int(twx["days"]) == 0 and blank
+			and is_equal_approx(float(twx["rewards"][0]), 10.0),
+		"the second Mark III she buys knows nothing at all: no nights, no weights, factory dials")
+
+	# --- nothing is kept for a machine with nothing to keep -------------------
+	# `weights` is the test, so a mark-1 — whose whole behaviour is its catalogue row
+	# and the squares she taught it — goes into the crate as a plain count, exactly
+	# as it did before this release. A box full of empty lists would be a box
+	# somebody has to migrate one day for no reason.
+	s.act({ "verb": "buy_machine", "item": "bot_mk1", "actor": "player" })
+	var mk1_spot := Vector2i(MK3_SPOT.x + 4, MK3_SPOT.y + 5)
+	var mk1 := String(s.act({ "verb": "place", "target": mk1_spot, "item": "bot_mk1",
+		"actor": "player" }).get("machine", ""))
+	_assert(mk1 != "", "a mark-1 goes down on the yard below the patch (%s)" % mk1)
+	_assert(s.act({ "verb": "collect", "target": s.world.actor_pos(mk1),
+			"actor": "player" }).get("ok", false)
+			and int(s.gs.machines.get("bot_mk1", 0)) == 1 and not s.gs.boxed.has("bot_mk1"),
+		"picked up, it is one more in the crate and not a line in the box")
+	var mk1_again := String(s.act({ "verb": "place", "target": mk1_spot, "item": "bot_mk1",
+		"actor": "player" }).get("machine", ""))
+	_assert(mk1_again != "" and not s.gs.boxed.has("bot_mk1"),
+		"and set down again it is the machine it always was, with nothing remembered about it")
+
+	# --- the box rides the disk -----------------------------------------------
+	s.act({ "verb": "collect", "target": s.world.actor_pos(again), "actor": "player" })
+	_assert((s.gs.boxed.get("bot_mk3", []) as Array).size() == 1,
+		"she boxes the trained one again before she puts the farm down")
+	var with_memory := SaveGame.capture_canonical(s.world, s.gs)
+	var memories: Dictionary = s.gs.boxed
+	s.gs.boxed = {}
+	_assert(SaveGame.capture_canonical(s.world, s.gs) != with_memory,
+		"what the crate remembers is part of the farm a session is compared against")
+	s.gs.boxed = memories
+	var snapshot = JSON.parse_string(JSON.stringify(SaveGame.capture(s.world, s.gs)))
+	var gs_back = load("res://systems/game_state.gd").new()
+	gs_back.reset()
+	var reloaded := SimWorld.new()
+	_assert(SaveGame.restore(snapshot, reloaded, gs_back),
+		"a farm with a trained robot in the crate saves and loads")
+	_assert(SaveGame.capture_canonical(reloaded, gs_back) == with_memory,
+		"coming back the same farm down to what is in the box")
+	var off_disk: Array = gs_back.boxed.get("bot_mk3", [])
+	_assert(off_disk.size() == 1
+			and _numbers_match((off_disk[0] as Dictionary)["weights"] as Array, practice)
+			and is_equal_approx(float((off_disk[0] as Dictionary)["rewards"][0]), 3.0),
+		"with the boxed robot's practice and its dials still in it")
+	var out_again := String(reloaded.apply_action({ "verb": "place", "target": elsewhere,
+		"item": "bot_mk3", "actor": "player" }, gs_back).get("machine", ""))
+	_assert(out_again != "", "and she can set it down on the reloaded farm (%s)" % out_again)
+	var disk_extra: Dictionary = reloaded.actor(out_again)["extra"]
+	_assert(int(disk_extra["days"]) == 1
+			and _numbers_match(disk_extra["weights"] as Array, practice)
+			and _numbers_match(disk_extra["ledger"] as Array, book),
+		"getting back the robot that had the week, a session and a save later")
+	gs_back.free()
+
+	# --- the box only opens for the hand that spends the crate ----------------
+	# The other half of the same rule. `place` charges the player and nobody else:
+	# a non-player placer is refused nothing, takes no item out of `gs.machines`
+	# and pays out of its own meter instead. So if the box opened for it too, a
+	# free placement would stand a week of practice up in the field while the
+	# crate still held the robot that practice belongs to — one robot's history,
+	# handed out twice. Nothing places with a non-player actor today; the gateway
+	# is where that stays true on the day something does.
+	_assert(int(s.gs.machines.get("bot_mk3", 0)) == 1
+			and (s.gs.boxed.get("bot_mk3", []) as Array).size() == 1,
+		"one Mark III in the crate, and beside it the box holding the trained one")
+	var free_hand := s.act({ "verb": "place", "target": elsewhere, "item": "bot_mk3",
+		"actor": "neighbour" })
+	var neighbours := String(free_hand.get("machine", ""))
+	_assert(free_hand.get("ok", false) and neighbours != "",
+		"a placer who is not the player may still set a Mark III down, and pays no crate for it")
+	_assert(int(s.gs.machines.get("bot_mk3", 0)) == 1,
+		"so the crate still holds the one she bought (%d)" % int(s.gs.machines.get("bot_mk3", 0)))
+	_assert((s.gs.boxed.get("bot_mk3", []) as Array).size() == 1,
+		"and the box is still shut, because nothing came out of the crate to open it (%d)"
+			% (s.gs.boxed.get("bot_mk3", []) as Array).size())
+	var stranger: Dictionary = s.world.actor(neighbours)["extra"]
+	var stranger_blank := true
+	for w in (stranger["weights"] as Array):
+		if not is_equal_approx(float(w), 0.0):
+			stranger_blank = false
+	_assert(int(stranger["days"]) == 0 and stranger_blank
+			and is_equal_approx(float(stranger["rewards"][0]), 10.0),
+		"what stood up out there is a factory machine: no nights, no weights, factory dials")
+
+	# ...and the robot that was in the box is still in it, for the hand that pays.
+	var hers := String(s.act({ "verb": "place", "target": MK3_SPOT, "item": "bot_mk3",
+		"actor": "player" }).get("machine", ""))
+	_assert(hers != "" and hers != neighbours,
+		"she sets her own down a moment later (%s)" % hers)
+	var hers_extra: Dictionary = s.world.actor(hers)["extra"]
+	_assert(int(hers_extra["days"]) == 1
+			and _numbers_match(hers_extra["weights"] as Array, practice)
+			and is_equal_approx(float(hers_extra["rewards"][0]), 3.0),
+		"and gets back the robot that had the day, weights and dial and all")
+	_assert(int(s.gs.machines.get("bot_mk3", 0)) == 0
+			and (s.gs.boxed.get("bot_mk3", []) as Array).is_empty(),
+		"crate and box emptied together, which is the whole of the rule")
+
+	s.done()
+
+	# --- and the pick-up and the set-down replay ------------------------------
+	# Q-53's claim, with a robot's whole history now passing through the crate. The
+	# log holds two Actions for the move — `collect` and `place` — and everything the
+	# second one hands back is recomputed from the first rather than stored anywhere.
+	# If the box were rebuilt even slightly differently on the way through, the robot
+	# would stand up a factory machine and its second day would score a different
+	# day, so the divergence check has teeth here that a one-day chapter cannot give
+	# it.
+	var live := _mk3_yard(6464)
+	live.rebase()
+	var learner := _mk3_place(live, MK3_SPOT)
+	live.act({ "verb": "tune", "actor": "player", "target": live.world.actor_pos(learner),
+		"row": "shipped", "value": 3.0 })
+	live.tick(SimClock.RATE * 45)
+	live.gs.weather = "sunny"
+	live.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
+	live.act({ "verb": "collect", "target": live.world.actor_pos(learner), "actor": "player" })
+	var carried := String(live.act({ "verb": "place", "target": MK3_SPOT + Vector2i(2, 1),
+		"item": "bot_mk3", "actor": "player" }).get("machine", ""))
+	live.tick(SimClock.RATE * 45)
+	live.gs.weather = "sunny"
+	live.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
+	live.tick(SimClock.RATE * 10)
+	var lex: Dictionary = live.world.actor(carried)["extra"]
+	_assert(int(lex["days"]) == 2 and (lex["ledger"] as Array).size() == 2,
+		"a robot moved across the farm between its two days goes on counting them (%d)"
+			% int(lex["days"]))
+	var live_canonical := SaveGame.capture_canonical(live.world, live.gs)
+	var replayed_world := SimWorld.new()
+	live.log.apply_to(replayed_world, live.gs)
+	_assert(live.log.divergence == "",
+		"and the log of that session recomputes cleanly, pick-up and all (%s)"
+			% live.log.divergence)
+	_assert(SaveGame.capture_canonical(replayed_world, live.gs) == live_canonical,
+		"landing on the same farm and, weight for weight, the same robot")
+	var replayed: Dictionary = replayed_world.actor(carried)["extra"]
+	_assert(_numbers_match(replayed["weights"] as Array, lex["weights"] as Array)
+			and _numbers_match(replayed["ledger"] as Array, lex["ledger"] as Array)
+			and _numbers_match(replayed["history"] as Array, lex["history"] as Array),
+		"both its nights' learning reproduced out of two Actions and nothing stored")
+	_assert(is_equal_approx(float(replayed["rewards"][0]), 3.0)
+			and _numbers_match(replayed["tuned"] as Array, lex["tuned"] as Array),
+		"with the dial she turned before she ever moved it still on the replayed robot")
+	live.done()
 
 
 # --- The bench, bought and set down (v0.2.2 WI-2) -----------------------------

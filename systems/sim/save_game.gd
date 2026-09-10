@@ -97,6 +97,13 @@ static func capture(world: SimWorld, gs) -> Dictionary:
 			# machine already *placed* needs nothing here — it is a registry actor
 			# and the actor block saves it with everybody else.
 			"machines": gs.machines.duplicate(),
+			# ...and what the crate remembers about the machines in it (Q-98). A
+			# boxed Mark III carries its practice, its dials and its ledger in here
+			# until she sets it down again, so a save taken while a trained robot is
+			# in her arms is not a save that loses the week it had. Additive like the
+			# crate itself: absent ⇒ the crate remembers nothing, which is what every
+			# save written before this release means, and no VERSION bump.
+			"boxed": _copy_boxed(gs.boxed),
 			"machines_bought": gs.machines_bought,
 			"tools_owned": gs.tools_owned.duplicate(),
 			"takeover_day": gs.takeover_day,
@@ -120,6 +127,36 @@ static func capture(world: SimWorld, gs) -> Dictionary:
 			"milestones": gs._milestones_earned.duplicate(),
 		},
 	}
+
+
+# The crate's memories, out and back (Q-98). Deep copies in both directions, for
+# the reason every other collection here is: a save must never hand out a reference
+# into the live GameState, and a restored one must never hand the world a reference
+# into the parsed file. A snapshot is an actor's `extra`, which is JSON-plain all
+# the way down (ground rule 4) but nested — hence `duplicate(true)` rather than the
+# shallow copy the flat dictionaries above get.
+static func _copy_boxed(crate: Dictionary) -> Dictionary:
+	var out := {}
+	for key in crate.keys():
+		var stacked: Array = crate[key]
+		out[String(key)] = stacked.duplicate(true)
+	return out
+
+
+static func _restore_boxed(raw) -> Dictionary:
+	var out := {}
+	if typeof(raw) != TYPE_DICTIONARY:
+		return out
+	for key in raw.keys():
+		var listed = raw[key]
+		if typeof(listed) != TYPE_ARRAY:
+			continue
+		var stacked: Array = []
+		for snapshot in listed:
+			if typeof(snapshot) == TYPE_DICTIONARY:
+				stacked.append((snapshot as Dictionary).duplicate(true))
+		out[String(key)] = stacked
+	return out
 
 
 # The visitors' book, out and back (M2.5 WI-8c/8f/8g). Both directions are a
@@ -259,6 +296,7 @@ static func restore(data: Dictionary, world: SimWorld, gs) -> bool:
 	gs.crop_crows_seen = int(s.get("crop_crows_seen", 0))
 	gs.acorns = int(s.get("acorns", 0))  # T-30 (Q-48); absent ⇒ she has none
 	gs.machines = _int_values(s.get("machines", {}))  # absent ⇒ crate empty
+	gs.boxed = _restore_boxed(s.get("boxed", {}))  # Q-98; absent ⇒ it remembers nothing
 	gs.machines_bought = int(s.get("machines_bought", 0))
 	var owned: Dictionary = {}
 	for t in Tools.LIST:
