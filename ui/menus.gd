@@ -367,31 +367,38 @@ func _rebuild_options() -> void:
 				"policy":
 					# **The Mark III has no dial and no list**, so where the other
 					# marks put rows this one puts its practice (Q-97, ruled
-					# 2026-09-09: numbers on the panel, and nothing else at all in
-					# v1). Its settings would be a dial that wiped weeks of
-					# learning, which is why the catalogue row has no configs and
-					# the gateway refuses `configure` on it outright.
+					# 2026-09-09). Its settings would be a dial that wiped weeks of
+					# learning, which is why the catalogue row has no configs and the
+					# gateway refuses `configure` on it outright.
 					#
-					# Two pictures and two numerals, no sentence — the one part of
-					# this panel that keeps S-7's no-required-reading rule, and the
-					# vocabulary is borrowed rather than invented: the can is the
-					# same cell the HUD's can chip draws, and the crescent is the
-					# sun-arc's own night token, because `days` counts the nights
-					# it has slept on what it learned.
+					# **A scorecard, replacing the two numerals (2026-09-10).** Q-97's
+					# surface was a crescent and a can, one numeral each. The designer
+					# met it on the tablet and asked for the whole day: a line per
+					# thing the robot is paid for, one point per day. Two numbers could
+					# say a robot earned twelve points; they could not say whether it
+					# had learned to *sell* or had spent the week watering mud, and
+					# that is the difference between a machine worth owning and one
+					# that is not. `ui/bot_scorecard.gd` draws it, off the robot's own
+					# record and nothing else (D-4).
 					#
-					# A readout, not a control: no button in it, so nothing here
-					# looks like a row she can press. It still takes a slot in
-					# `machine_options`, because the rows below it are tapped by
-					# their position in that list.
+					# Still wordless but for numerals on the axes, and still a readout
+					# rather than a control: nothing on it to press, so no tap of hers
+					# can land on it and come back with nothing. It keeps its slot in
+					# `machine_options`, because the rows below are tapped by their
+					# position in that list.
 					machine_options.append({ "kind": "practice" })
-					_add_practice_readout(
-						int(mextra.get("days", 0)),
-						int(round(float(mextra.get("last_score", 0.0)))))
+					_add_scorecard(mextra)
 			machine_options.append({ "kind": "collect" })
 			_add_option("Pick up", true)
 			machine_options.append({ "kind": "close" })
 			_add_option("\u00d7", true, 28)
-			menu_panel.size = Vector2(320, _fit_panel_height())
+			# **A wider card for the mark-3 only.** A fortnight of chart needs more
+			# room than a column of buttons does, and the rows underneath it grow
+			# with the panel rather than shrink: "pick it up" and the close button
+			# keep every pixel of the target they had.
+			menu_panel.size = Vector2(
+				SCORECARD_PANEL_W if MachineDefs.program_of(mkey) == "policy" else 320.0,
+				_fit_panel_height())
 
 		"inventory":
 			title_label.text = "INVENTORY"
@@ -443,11 +450,24 @@ func _rebuild_options() -> void:
 
 
 # Height that exactly contains the options currently in the container.
+#
+# **Each row's own height, summed** rather than `rows x OPTION_H` (2026-09-10).
+# Every row was a button of the same height until the Mark III's scorecard, which
+# is a chart several buttons tall; multiplying would have hung it out of the
+# bottom of the panel — the same bug the pause menu shipped with once and the
+# reason this function exists. A panel of ordinary rows gets exactly the height it
+# always got, because a button's minimum height *is* `OPTION_H`.
 func _fit_panel_height() -> float:
 	var n := options_container.get_child_count()
 	if n <= 0:
 		return OPTIONS_TOP + PANEL_PAD
-	return OPTIONS_TOP + n * OPTION_H + (n - 1) * OPTION_SEP + PANEL_PAD
+	var stack := 0.0
+	for child in options_container.get_children():
+		var h := OPTION_H
+		if child is Control:
+			h = maxf(h, (child as Control).get_combined_minimum_size().y)
+		stack += h
+	return OPTIONS_TOP + stack + (n - 1) * OPTION_SEP + PANEL_PAD
 
 
 # **Wide enough to read the longest line on it**, measured rather than guessed.
@@ -490,10 +510,6 @@ func _labels_in(node: Node) -> Array[Label]:
 const ICON_SHEET := preload("res://assets/sprites/generated/shop_icons.png")
 const COIN_COL := 3
 
-# tool_icons.png is the other half of the game's pictogram vocabulary — the sheet
-# the HUD's chips and the refusal table already read.
-const TOOL_SHEET := preload("res://assets/sprites/tool_icons.png")
-
 
 static func crop_icon(icon_col: int) -> AtlasTexture:
 	var atlas := AtlasTexture.new()
@@ -506,18 +522,6 @@ static func coin_icon() -> AtlasTexture:
 	var atlas := AtlasTexture.new()
 	atlas.atlas = ICON_SHEET
 	atlas.region = Rect2(COIN_COL * 16, 0, 16, 16)
-	return atlas
-
-
-# The watering can, taken from the same table the HUD's can chip and the world's
-# station pictograms read (`StationPresentation.GLYPH_ATLAS`), so the three
-# cannot end up on different cells of the sheet.
-static func can_icon() -> AtlasTexture:
-	var entry: Dictionary = StationPresentation.GLYPH_ATLAS[StationPresentation.GLYPH_CAN]
-	var r: Array = entry["rect"]
-	var atlas := AtlasTexture.new()
-	atlas.atlas = TOOL_SHEET
-	atlas.region = Rect2(r[0], r[1], r[2], r[3])
 	return atlas
 
 
@@ -538,62 +542,35 @@ func _add_icon_number(row: HBoxContainer, tex: Texture2D, text: String, size: fl
 	row.add_child(lbl)
 
 
-# --- What a Mark III has to show for itself (Q-97) ---------------------------
+# --- What a Mark III has to show for itself ----------------------------------
 #
-# Both numbers sit on one line, in the slot the other marks fill with rows, above
-# "pick it up". A pair rather than two lines because they are read together: the
-# crescent is how long it has been at it, the can is what that was worth
-# yesterday, and the pair is the whole answer to "is this thing getting better".
-const PRACTICE_PIP := 26.0
-const PRACTICE_DIGITS := 22
-const MOON_LIT := Color(0.87, 0.90, 1.0)
-const WATER_BLUE := Color(0.45, 0.78, 0.96)
+# It sits in the slot the other marks fill with rows, above "pick it up", and it
+# is a chart: `ui/bot_scorecard.gd`, one line per row of the reward table, a point
+# per day. It replaces the crescent-and-can pair Q-97 ruled on 2026-09-09, at the
+# designer's request the day after he read that pair on the tablet — see the
+# "policy" arm above for why one number a day was not enough.
+#
+# **The wide panel is for this**: 320 has no room for both a fortnight of days and
+# the column of pictures that says which line is which.
+const SCORECARD_PANEL_W := 380.0
+const SCORECARD_INSET := 8.0
 
 
-func _add_practice_readout(days: int, watered: int) -> void:
-	var container := PanelContainer.new()
-	container.custom_minimum_size = Vector2(0, OPTION_H)
-	# Nothing behind it and nothing to press: a readout wearing a row's dark
-	# panel would be a control that does nothing when tapped.
-	container.mouse_filter = Control.MOUSE_FILTER_IGNORE
-
-	var row := HBoxContainer.new()
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 18)
-	container.add_child(row)
-
-	_add_moon_number(row, str(days))
-	_add_icon_number(row, can_icon(), str(watered), PRACTICE_PIP, WATER_BLUE,
-		PRACTICE_DIGITS)
-
-	options_container.add_child(container)
-
-
-# The sun-arc's night token, at the size of a pip: a lit disc with a bite taken
-# out of it in the panel's own colour, so the crescent reads as sky rather than
-# as a hole (`ui/hud.gd`, `_draw_sun_arc`, has the same two circles and the
-# reason the cut has to sit inside the disc).
-func _add_moon_number(row: HBoxContainer, text: String) -> void:
-	var moon := Control.new()
-	moon.custom_minimum_size = Vector2(PRACTICE_PIP, PRACTICE_PIP)
-	moon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	moon.draw.connect(func() -> void:
-		# Sized to carry the same weight as the can beside it, and bitten on the
-		# HUD's own proportions (offset 0.325/-0.2375 of the radius, cut 0.6 of
-		# it) so both crescents in the game are the same crescent.
-		var r: float = PRACTICE_PIP * 0.42
-		var at := Vector2(PRACTICE_PIP, PRACTICE_PIP) / 2.0
-		moon.draw_circle(at, r, MOON_LIT)
-		moon.draw_circle(at + Vector2(r * 0.325, -r * 0.2375), r * 0.6,
-			Color(0.12, 0.12, 0.18)))
-	row.add_child(moon)
-
-	var lbl := Label.new()
-	lbl.text = text
-	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	lbl.add_theme_font_size_override("font_size", PRACTICE_DIGITS)
-	lbl.add_theme_color_override("font_color", MOON_LIT)
-	row.add_child(lbl)
+func _add_scorecard(extra: Dictionary) -> void:
+	var card := BotScorecard.new()
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# Nothing behind it and nothing to press: a readout wearing a row's dark panel
+	# would look like a control that does nothing when tapped.
+	var holder := MarginContainer.new()
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_theme_constant_override("margin_left", int(SCORECARD_INSET))
+	holder.add_theme_constant_override("margin_right", int(SCORECARD_INSET))
+	holder.add_child(card)
+	options_container.add_child(holder)
+	# The robot's own record, read once per rebuild rather than per frame: the
+	# panel is rebuilt whenever anything on it could have changed, and a chart of
+	# closed days has nothing to say in between.
+	card.show_bot(extra)
 
 
 func _add_option(text: String, enabled: bool, font_size: int = 0) -> void:

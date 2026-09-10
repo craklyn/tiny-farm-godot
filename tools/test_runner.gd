@@ -4299,11 +4299,16 @@ func _scenario_al_a_ripe_crop_carries() -> void:
 
 
 func _scenario_am_the_mark_three_shows_its_practice() -> void:
-	# Q-97, ruled 2026-09-09: **what she sees of a robot's learning is two
-	# numbers on its panel, and nothing else in v1.** Tap the Mark III and it
-	# says how many nights it has practised and how many squares it watered
-	# yesterday. No dawn scene, and no dial — a dial would be a control that
-	# wiped weeks of practice, which is why the catalogue row has no settings.
+	# Q-97, ruled 2026-09-09: **what she sees of a robot's learning is its own
+	# panel and nothing else in v1** — no dawn scene, and no dial, because a dial
+	# would be a control that wiped weeks of learning, which is why the catalogue
+	# row has no settings.
+	#
+	# **What that panel holds changed on 2026-09-10.** It was two numerals, nights
+	# practised and yesterday's total; the designer read them on the tablet and
+	# asked for the scorecard — a line per thing the robot is paid for, a point per
+	# day. This scenario is where the panel is checked end to end: bought from the
+	# real shop, put down with a real tap, and read back off the real menu.
 	print("\n--- Scenario AM: the learning robot's panel says what it has to show for itself ---")
 
 	var menus = main_scene.menus
@@ -4353,45 +4358,103 @@ func _scenario_am_the_mark_three_shows_its_practice() -> void:
 	_assert(MachineDefs.configs_of("bot_mk3").is_empty(),
 		"...because it has no settings to offer — its practice is not hers to overwrite")
 
-	# The readout takes the slot the other marks fill with controls: the first row.
+	# The scorecard takes the slot the other marks fill with controls: the first row.
 	var readout: Node = menus.options_container.get_child(0)
+	var card: BotScorecard = _scorecard_in(readout)
+	_assert(card != null, "the first row is the scorecard, where a mark-2 has its settings")
 	var fresh: Array = []
 	_collect_labels(readout, fresh)
-	_assert(fresh.size() == 2, "two numbers on that row, no more (%d)" % fresh.size())
-	if fresh.size() == 2:
-		_assert(String(fresh[0].text) == "0" and String(fresh[1].text) == "0",
-			"a robot out of the crate has practised no nights and watered nothing (%s, %s)"
-				% [fresh[0].text, fresh[1].text])
-		var worded: Array = []
-		for lbl in fresh:
-			if _has_letters(String(lbl.text)):
-				worded.append(String(lbl.text))
-		_assert(worded.is_empty(),
-			"and they are numerals beside pictures rather than a sentence (S-7)%s"
-				% ("" if worded.is_empty() else " — found %s" % str(worded)))
-	_assert(_pictures_in(readout) == 2,
-		"each number has a picture of its own — a crescent for the nights, a can for the water (%d)"
+	_assert(fresh.is_empty(),
+		"which carries no words at all — its axes are drawn, numerals and nothing else (S-7) (%d)"
+			% fresh.size())
+	_assert(_pictures_in(readout) == 1,
+		"one thing on that row that paints itself, and it is the chart (%d)"
 			% _pictures_in(readout))
+	_assert(card != null and card.custom_minimum_size.y > OPTION_ROW_H * 2.0,
+		"given real room — a chart the height of a button is a smudge (%s)"
+			% (str(card.custom_minimum_size.y) if card != null else "-"))
+	_assert(card != null and card.days.size() == 1
+			and bool(card.days[0].get("partial", false)),
+		"a robot out of the crate has one column on it, today, and today is not finished")
 
-	# --- a week of practice shows on the same two numbers --------------------
+	# --- a week of practice shows as a week of columns -----------------------
 	#
-	# The night that fills these two keys is `BotBrain.on_new_day`, and the unit
-	# suite is where that is tested. Staged here the way a tile is staged,
-	# because what this scenario is about is the panel reading them back.
+	# The night that writes the record is `BotBrain.on_new_day`, and the unit suite
+	# is where that is tested. Staged here the way a tile is staged, because what
+	# this scenario is about is the panel reading it back.
 	var mextra: Dictionary = farm.sim.actor(mk3)["extra"]
-	_assert(mextra.has("days") and mextra.has("last_score"),
-		"a placed Mark III carries the two keys the panel reads")
-	mextra["days"] = 7
-	mextra["last_score"] = 12.0
+	_assert(mextra.has("days") and mextra.has("history") and mextra.has("earned"),
+		"a placed Mark III carries the record the panel draws")
+	mextra["days"] = DEMO_WEEK.size()
+	mextra["history"] = DEMO_WEEK.duplicate(true)
+	mextra["earned"] = DEMO_TODAY.duplicate()
+	mextra["last_score"] = 24.2
 	menus._rebuild_options()
 	await get_tree().process_frame
-	var after: Array = []
-	_collect_labels(menus.options_container.get_child(0), after)
-	_assert(after.size() == 2 and String(after[0].text) == "7",
-		"seven nights of practice reads as 7 (%s)" % (after[0].text if after.size() > 0 else ""))
-	_assert(after.size() == 2 and String(after[1].text) == "12",
-		"and twelve squares watered yesterday as 12, whole rather than 12.0 (%s)"
-			% (after[1].text if after.size() > 1 else ""))
+	var drawn: BotScorecard = _scorecard_in(menus.options_container.get_child(0))
+	_assert(drawn != null and drawn.days.size() == DEMO_WEEK.size() + 1,
+		"a week behind it and today in front of it is eight columns (%d)"
+			% (drawn.days.size() if drawn != null else -1))
+	_assert(drawn != null and int(drawn.days[0]["n"]) == 1
+			and int(drawn.days[drawn.days.size() - 1]["n"]) == DEMO_WEEK.size() + 1,
+		"numbered from its first night through to the day it is having now")
+	_assert(drawn != null and drawn.days[0]["rows"] == DEMO_WEEK[0]
+			and drawn.days[DEMO_WEEK.size() - 1]["rows"] == DEMO_WEEK[DEMO_WEEK.size() - 1],
+		"and every column is a day the robot really had, row for row (D-4)")
+	_assert(drawn != null and not bool(drawn.days[DEMO_WEEK.size() - 1].get("partial", true))
+			and bool(drawn.days[drawn.days.size() - 1].get("partial", false)),
+		"with the finished days drawn as finished and today marked as still running")
+	_assert(drawn != null and (drawn.days[drawn.days.size() - 1]["rows"] as Array) == DEMO_TODAY,
+		"today being what it has earned so far, not last night's total again")
+	# The line the designer bought the machine for is the ten-point row — "it
+	# learned to sell" — so every row has to be tellable from every other.
+	var dressed := true
+	var hues := {}
+	for key in Rewards.KEYS:
+		if not BotScorecard.LINE_COLOURS.has(key) or not BotScorecard.PIPS.has(key):
+			dressed = false
+			continue
+		hues[BotScorecard.LINE_COLOURS[key].to_html(false)] = true
+	_assert(dressed, "every row of the reward table has a line colour and a picture of its own")
+	_assert(hues.size() == (Rewards.KEYS as Array).size(),
+		"and no two rows share a colour (%d of %d)" % [hues.size(), (Rewards.KEYS as Array).size()])
+	_assert(BotScorecard.PIPS["watered_plant"]["cell"] == BotScorecard.PIPS["watered_soil"]["cell"]
+			and bool(BotScorecard.PIPS["watered_plant"].get("sprout", false))
+			and not bool(BotScorecard.PIPS["watered_soil"].get("sprout", false)),
+		"the two watering rows share the can and are told apart by the seedling on it")
+	_assert(BotScorecard.PIPS["crow_flying"]["sheet"] == BotScorecard.PIPS["crow_eating"]["sheet"]
+			and BotScorecard.PIPS["crow_flying"]["cell"] != BotScorecard.PIPS["crow_eating"]["cell"],
+		"and the two crow rows share the bird, one of them in the air and one on the ground")
+
+	# --- a fortnight is the most it draws ------------------------------------
+	# A robot kept for a season has thirty days on the record; the card draws the
+	# last fourteen and numbers them from where they really fall, so the axis does
+	# not quietly restart at 1 the day the cap starts dropping days off the front.
+	var long_run: Array = []
+	for i in BotBrain.LEARN_HISTORY_DAYS:
+		long_run.append((DEMO_WEEK[i % DEMO_WEEK.size()] as Array).duplicate())
+	mextra["history"] = long_run
+	mextra["days"] = 44
+	menus._rebuild_options()
+	await get_tree().process_frame
+	var season: BotScorecard = _scorecard_in(menus.options_container.get_child(0))
+	_assert(season != null and season.days.size() == BotScorecard.DAYS_SHOWN,
+		"thirty days on the record draws as %d columns (%d)"
+			% [BotScorecard.DAYS_SHOWN, (season.days.size() if season != null else -1)])
+	_assert(season != null and int(season.days[season.days.size() - 1]["n"]) == 45
+			and int(season.days[0]["n"]) == 45 - BotScorecard.DAYS_SHOWN + 1,
+		"ending on its 45th day and starting where that fortnight really starts (%d)"
+			% (int(season.days[0]["n"]) if season != null else -1))
+
+	# --- and the two rows underneath it are untouched -------------------------
+	# The panel grew; "pick it up" and the close button did not shrink to make room.
+	var pickup: Control = menus.options_container.get_child(1) as Control
+	_assert(pickup != null and pickup.size.y >= OPTION_ROW_H,
+		"'pick up' keeps its full-height target under the chart (%s)"
+			% (str(pickup.size.y) if pickup != null else "-"))
+	_assert(pickup != null and pickup.size.x >= 300.0,
+		"and grows wider with the panel rather than narrower (%s)"
+			% (str(pickup.size.x) if pickup != null else "-"))
 
 	# --- picking it up is the same verb every other machine answers to -------
 	menus.selected_option = kinds.find("collect")
@@ -4422,8 +4485,13 @@ func _scenario_am_the_mark_three_shows_its_practice() -> void:
 		kinds2.append(String(opt.get("kind", "")))
 	_assert(not ("practice" in kinds2),
 		"with no readout on it — a mark-2 has nothing to practise, it does what it is told")
+	_assert(_scorecard_in(menus.options_container) == null,
+		"and no scorecard: a machine that is told what to do has no practice to chart")
 	_assert(_pictures_in(menus.options_container) == 0,
 		"and no pictures either: its rows are the words they have always been (Q-87)")
+	_assert(is_equal_approx(menus.menu_panel.size.x, 320.0),
+		"on the panel it has always had, at the width it has always been (%s)"
+			% str(menus.menu_panel.size.x))
 
 	menus.selected_option = kinds2.find("collect")
 	menus._select_current_option()
@@ -4431,16 +4499,66 @@ func _scenario_am_the_mark_three_shows_its_practice() -> void:
 	_assert(not farm.sim.has_actor(mk2), "and the yard is left as it was found")
 
 
+# **A real week, off the fixed-seed demo** — the per-row per-day table printed by
+# `godot --headless --path . --script res://tools/demo_learning_robot.gd`, run
+# 2026-09-10, for its one-farm week. Copied rather than recomputed: a week of sim
+# inside an integration scenario would cost the suite more than the assertion is
+# worth, and what matters here is that the shape on the chart is the shape a robot
+# really produces — a selling day that arrives on day four, sowing and watering
+# carrying the rest, tenths on the two cheap rows, and both bird rows flat at
+# nothing all week (`design/06`: "it never catches a crow").
+#
+# Columns are `Rewards.KEYS` order: shipped, crow_flying, crow_eating, harvested,
+# watered_plant, planted, tilled, watered_soil. Each row adds up to the day's
+# score the demo printed beside it: 6.7, 13.5, 8.8, 20.8, 10.9, 19.2, 24.2.
+const DEMO_WEEK := [
+	[0.0,  0.0, 0.0, 0.0, 3.0, 2.0, 1.0, 0.7],
+	[0.0,  0.0, 0.0, 0.0, 5.0, 7.0, 0.8, 0.7],
+	[0.0,  0.0, 0.0, 0.0, 2.0, 5.0, 0.9, 0.9],
+	[10.0, 0.0, 0.0, 1.0, 1.0, 7.0, 1.3, 0.5],
+	[0.0,  0.0, 0.0, 0.0, 1.0, 8.0, 1.1, 0.8],
+	[0.0,  0.0, 0.0, 0.0, 8.0, 10.0, 0.8, 0.4],
+	[0.0,  0.0, 0.0, 0.0, 8.0, 15.0, 1.2, 0.0],
+]
+
+# The eighth day, half done — **staged, not measured**: the demo's week ends at
+# bedtime on day seven, so there is no real part-day to copy. It is here because
+# the one thing the chart says that the record does not is "today is not finished
+# yet", and that needs a today with something in it.
+const DEMO_TODAY := [0.0, 0.0, 0.0, 0.0, 3.0, 6.0, 0.4, 0.0]
+
+# The height of an ordinary row on a machine panel (`Menus.OPTION_H`), so the two
+# assertions about the chart having room and the buttons keeping theirs can say so
+# in a number.
+const OPTION_ROW_H := 52.0
+
+
+# The scorecard somewhere under a node, or null. It is wrapped in a margin, so a
+# scenario cannot simply take the first child and call it the chart.
+func _scorecard_in(node: Node) -> BotScorecard:
+	if node is BotScorecard:
+		return node as BotScorecard
+	for child in node.get_children():
+		var found := _scorecard_in(child)
+		if found != null:
+			return found
+	return null
+
+
 # How many pictures a panel is drawing: a TextureRect with something in it, or a
-# plain Control that paints itself (the crescent, which is drawn rather than
-# atlassed because the game owns no moon sprite).
+# plain Control that paints itself (the scorecard, which draws its own lines and
+# borrows the game's pictures cell by cell).
 func _pictures_in(node: Node) -> int:
 	var n := 0
 	if node is TextureRect:
 		if (node as TextureRect).texture != null:
 			n += 1
 	elif node is Control and not (node is Label) and not (node is Container) \
-			and (node as Control).draw.get_connections().size() > 0:
+			and ((node as Control).draw.get_connections().size() > 0
+				or node.has_method("_draw")):
+		# Two ways a Control paints: a lambda hung on its `draw` signal (how the
+		# little pips on this panel have always been done) or a script with a
+		# `_draw` of its own, which is what the scorecard is.
 		n += 1
 	for child in node.get_children():
 		n += _pictures_in(child)

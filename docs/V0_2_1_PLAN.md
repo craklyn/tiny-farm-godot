@@ -683,3 +683,14 @@ only the work item you are on. The chief of staff's running notes are in
     became a walk.
   - Unit **2423 passed, 0 failed**; integration **671 passed, 0 failed**; robot session
     exit 0; gateway check clean; demo exit 0.
+- 2026-09-10 — **the Mark III's panel is a scorecard** (the designer, after reading Q-97's
+  two numerals on the tablet: "a scorecard of everything he did... multiple lines/colors,
+  corresponding to each of our rewarded actions"). Sim side: each Mark III keeps
+  `extra["history"]`, the closed days as eight floats each in `Rewards.KEYS` order, written
+  at the day turn from `extra["earned"]` and capped at 30 days — saved, replayed and
+  compared like everything else on the robot. Presentation side: `ui/bot_scorecard.gd`, a
+  `_draw` on a Control, replaces the crescent-and-can row with a fortnight of days, one
+  coloured line per reward row, the verb's own picture at each line's right-hand end, and
+  today drawn as an unfinished column. `design/06`'s panel section rewritten to match, and
+  `tools/capture_machines.gd` gained the shot of it. Unit **2435 passed, 0 failed**;
+  integration **685 passed, 0 failed**; robot session exit 0; gateway check clean.

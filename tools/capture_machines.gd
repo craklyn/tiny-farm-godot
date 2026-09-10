@@ -1,8 +1,27 @@
-# capture_machines.gd — one-off frame captures of the machine shop and the two
-# robot marks' menus (2026-09-03, P-12/P-13). The capture_home.gd pattern.
-# Needs a display:
+# capture_machines.gd — one-off frame captures of the machine shop and the three
+# robot marks' menus (2026-09-03, P-12/P-13; the Mark III added 2026-09-10).
+# The capture_home.gd pattern. Needs a display:
 #   godot --path . res://tools/capture_machines.tscn
 extends Node2D
+
+# **A real week, off the fixed-seed demo** — the per-row per-day table printed by
+# `godot --headless --path . --script res://tools/demo_learning_robot.gd`, run
+# 2026-09-10, for its one-farm week. Columns are `Rewards.KEYS` order, and each
+# row adds up to the score the demo printed beside it: 6.7, 13.5, 8.8, 20.8,
+# 10.9, 19.2, 24.2. Staged rather than played, because a shot of the scorecard
+# should show what a robot's week really looks like without costing seven days of
+# sim to take (`tools/test_runner.gd` stages the same week for the same reason).
+const DEMO_WEEK := [
+	[0.0,  0.0, 0.0, 0.0, 3.0, 2.0, 1.0, 0.7],
+	[0.0,  0.0, 0.0, 0.0, 5.0, 7.0, 0.8, 0.7],
+	[0.0,  0.0, 0.0, 0.0, 2.0, 5.0, 0.9, 0.9],
+	[10.0, 0.0, 0.0, 1.0, 1.0, 7.0, 1.3, 0.5],
+	[0.0,  0.0, 0.0, 0.0, 1.0, 8.0, 1.1, 0.8],
+	[0.0,  0.0, 0.0, 0.0, 8.0, 10.0, 0.8, 0.4],
+	[0.0,  0.0, 0.0, 0.0, 8.0, 15.0, 1.2, 0.0],
+]
+# The eighth morning, part done — staged, since the demo's week ends at bedtime.
+const DEMO_TODAY := [0.0, 0.0, 0.0, 0.0, 3.0, 6.0, 0.4, 0.0]
 
 func _ready() -> void:
 	var main = load("res://main.tscn").instantiate()
@@ -69,7 +88,33 @@ func _ready() -> void:
 	for i in 8:
 		await get_tree().process_frame
 	get_viewport().get_texture().get_image().save_png("res://tools/shot_mk2_menu.png")
-	print("captured -> tools/shot_shop.png, shot_mk1_menu.png, shot_teaching.png, shot_mk2_menu.png")
+
+	# 5. the Mark III's panel: its scorecard, on a week it really had
+	# (2026-09-10). The record is written into the actor the way a tile is staged
+	# — the panel reads `extra` and nothing else, so a staged week and a played
+	# one draw the same chart.
+	main.menus.close_menu()
+	for i in 4:
+		await get_tree().process_frame
+	var spot3 := _free_tile(main, here)
+	gs.machines["bot_mk3"] = 1
+	var placed3: Dictionary = main.farm.apply_action({
+		"verb": "place", "target": spot3, "item": "bot_mk3", "actor": "player" }, gs)
+	var mk3 := String(placed3.get("machine", ""))
+	var extra: Dictionary = main.farm.sim.actor(mk3)["extra"]
+	extra["history"] = DEMO_WEEK.duplicate(true)
+	extra["earned"] = DEMO_TODAY.duplicate()
+	extra["days"] = DEMO_WEEK.size()
+	extra["last_score"] = 24.2
+	for i in 6:
+		await get_tree().process_frame
+	main.menus.open_machine_menu_for(mk3)
+	for i in 8:
+		await get_tree().process_frame
+	get_viewport().get_texture().get_image().save_png("res://tools/shot_mk3_menu.png")
+
+	print("captured -> tools/shot_shop.png, shot_mk1_menu.png, shot_teaching.png, "
+		+ "shot_mk2_menu.png, shot_mk3_menu.png")
 	get_tree().quit(0)
 
 

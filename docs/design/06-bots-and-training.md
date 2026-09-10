@@ -241,20 +241,43 @@ One row per setting, the current one ticked, then "pick it up":
 There is nothing to set. The machine is working its own job out, and a dial over weeks of
 practice is a control that undoes them — so the catalogue row carries no settings and the
 gateway refuses `configure` on it outright. Where the other marks put controls, the
-Mark III puts two numbers, and then "pick it up":
+Mark III puts a **scorecard**, and then "pick it up".
 
-| It shows | What the number is | Read from |
-| --- | --- | --- |
-| a crescent, then a number | nights it has practised | `extra["days"]`, stepped by the night update |
-| a watering can, then a number | squares it watered yesterday | `extra["last_score"]`, the day's reward total |
+**The scorecard (2026-09-10), at the designer's request, replacing Q-97's two numerals.**
+He read those numerals on the tablet — "3 moons, 12 watering cans" — and asked for the day
+itself: *"a scorecard of everything he did... a chart with x-axis each day, and y-axis the
+value done of that action... multiple lines/colors, corresponding to each of our rewarded
+actions."* One total a day cannot say whether the machine learned to **sell** or merely
+watered more mud, and that is the whole of whether it is worth owning. So the panel draws
+the last fourteen days, one coloured line per row of the reward table, with today at the
+right as an unfinished column — banded, dashed and ringed, because a part-day drawn like a
+whole one makes every morning look like a collapse. Each line ends in the picture of the
+job it stands for: the shop's coin for a crop sold, the basket for one cut, the hoe, the
+seed packet, and the watering can twice — with a seedling on it for a thirsty plant, plain
+for wet mud — and the crow twice, wings up for a bird turned back and perched for one caught
+on the food, each bird on a chip of its line's colour because the crow sprite is too dark to
+read off this card on its own.
 
-That is the whole of it (Q-97, ruled 2026-09-09): numbers on the panel, nothing at dawn,
-and no third row. Both halves are wordless (S-7) and neither picture is new — the can is
-the cell the HUD's can chip already draws, and the crescent is the night token off the
-sun-arc, which is the right one because `days` counts the nights it has slept on what it
-learned. The row is a **readout, not a control**: no panel behind it and nothing in it to
-press, because a row that looks tappable and answers nothing is the failure the mark-1's
-disabled rows were rewritten to avoid.
+| It shows | Read from |
+| --- | --- |
+| one line per rewarded outcome, a point per day | `extra["history"]`, the closed days, oldest first |
+| the rightmost column, marked unfinished | `extra["earned"]`, the day being played |
+| the numerals along the day axis | `extra["days"]`, the nights it has practised |
+
+The record is written at the day turn, capped at thirty days so a robot played for a season
+cannot grow a save without a ceiling, and it is recomputed on replay like everything else on
+the machine. Wordless but for the numerals on the two axes (S-7), and a **truthful view of
+real data rather than a picture of one** (D-4): every point is a float the brain wrote when
+the gateway said yes, and nothing on the way to the screen smooths or flatters it.
+
+**Superseded, kept for the record — Q-97's surface (ruled 2026-09-09).** Where the chart
+now sits there were two numerals, and they were what Q-97 asked for: a crescent and
+`extra["days"]`, the nights it had practised; a watering can and `extra["last_score"]`,
+what yesterday was worth. What that ruling settled and the scorecard did not disturb is the
+rest of it — nothing at dawn, no scene, no third surface — and that the row is a **readout,
+not a control**: no panel behind it and nothing in it to press, because a row that looks
+tappable and answers nothing is the failure the mark-1's disabled rows were rewritten to
+avoid.
 
 ### Mark-2 first contact, P0 — the floor (designer, 2026-09-07)
 
@@ -525,9 +548,10 @@ Three things in that are worth carrying forward:
 At the day turn — in `on_new_day`, before the new day's first decision — it applies the
 update from the day's trace, resets the trace, and is refilled. No decision is taken
 during the turn itself, for the same reason nothing else decides there: a roll taken
-in the turn would be taken twice on replay. What she sees of the night, ruled
-2026-09-09 (Q-97): the robot's own panel, in numbers — days practised and yesterday's
-score — and nothing else in v1.
+in the turn would be taken twice on replay. The turn is also where the day just finished is
+closed into the robot's record — its eight columns, kept for thirty days — which is what the
+panel's scorecard is drawn from. What she sees of the night, ruled 2026-09-09 (Q-97) and
+unchanged by the scorecard: the robot's own panel, and nothing else in v1.
 
 ### The learning rule (strawman; the D-2 first cut, owned by the ML seat)
 
@@ -595,17 +619,17 @@ follow, which searches a route per tile she moves.
 She buys **Robot Mk III** from the shop (P-12) and puts it down. It wanders — the first
 days clumsy, and visibly so, which is the failure design this chapter asks for: bad
 behaviour that is funny and legible, never opaque. Each watering looks and sounds like
-hers. Tap it and the panel says, in numbers, how many nights it has practised and how many
-squares it watered yesterday — a crescent and a watering can, one numeral each ("Mark III —
-the panel is its practice"). It moves at the mark-1's pace. Nothing on the map changes
-without the cue she would have made herself.
+hers. Tap it and the panel draws its scorecard — a fortnight of days, a line per thing it is
+paid for, each line ending in the picture of the job it stands for ("Mark III — the panel is
+its practice"). It moves at the mark-1's pace. Nothing on the map changes without the cue
+she would have made herself.
 
 ### Not in v1
 
 A stall or home; vision beyond radius 2; choosing which seed to plant (it plants what she
 has most of); carrying more than one crop; learning from her recorded days (the next rung,
-P-5 as amended); sharing weights between robots (P-7); any night surface beyond the panel's
-numbers (D-4). Each is a later mark or a later tier, on purpose. Known wart, filed: the
+P-5 as amended); sharing weights between robots (P-7); any night surface beyond the panel
+itself (D-4). Each is a later mark or a later tier, on purpose. Known wart, filed: the
 game's own shipping bin bookkeeping (`gs.shipping_bin`, `process_shipping_bin`) is
 vestigial — `sell` pays at once — so "mailbox" here means the bin object at the yard's edge.
 

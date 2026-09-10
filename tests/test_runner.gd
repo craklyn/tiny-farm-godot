@@ -11484,8 +11484,8 @@ func test_learning_robot_day() -> void:
 
 	var width := Observation.size(Observation.spec_default())
 	for key in ["spec", "weights", "trace", "acc", "base_trace", "baseline", "days",
-			"decisions", "score", "last_score", "earned", "salt", "pending", "job",
-			"job_x", "job_y", "job_target", "carrying"]:
+			"decisions", "score", "last_score", "earned", "history", "salt", "pending",
+			"job", "job_x", "job_y", "job_target", "carrying"]:
 		_assert_quiet(extra.has(key), "a placed Mark III carries '%s'" % key)
 	_flush_quiet("a placed Mark III carries every learned key it will ever need")
 	_assert(extra["spec"] == Observation.spec_default(),
@@ -11498,6 +11498,8 @@ func test_learning_robot_day() -> void:
 	_assert(BotBrain.LEARN_ACTIONS == 8 and (BotBrain.LEARN_VERBS as Dictionary).size() == 6
 			and (extra["earned"] as Array).size() == (Rewards.KEYS as Array).size(),
 		"eight actions, six of them a verb, and a column of the day's score per row of the reward table")
+	_assert((extra["history"] as Array).is_empty(),
+		"and no days behind it yet — the record starts empty and is written at the day turn")
 	var born_uniform := true
 	for x in extra["weights"]:
 		if float(x) != 0.0:
@@ -11809,6 +11811,7 @@ func test_learning_robot_day() -> void:
 	# --- the night ------------------------------------------------------------
 	# The one moment in the day when a learning robot changes.
 	var day_one: float = float(extra["score"])
+	var earned_one: Array = (extra["earned"] as Array).duplicate()
 	var before_night: Array = (extra["weights"] as Array).duplicate()
 	s.gs.weather = "sunny"
 	s.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
@@ -11829,6 +11832,26 @@ func test_learning_robot_day() -> void:
 		if float(x) != 0.0:
 			swept = false
 	_assert(swept, "and the day's running sums and its score-by-row are swept — a day's work belongs to that day")
+
+	# --- ...and the day it just closed is on the record -----------------------
+	# The scorecard on its panel is drawn from this and from nothing else
+	# (2026-09-10, D-4: a training surface a player sees must be a view of real
+	# data). So what the day earned, row by row, has to be exactly what the record
+	# says the day earned — the two are the same eight numbers or the chart is a
+	# decoration.
+	var book: Array = extra["history"] as Array
+	_assert(book.size() == 1 and (book[0] as Array).size() == (Rewards.KEYS as Array).size(),
+		"one night behind it puts one day on the record, eight columns wide (%d)" % book.size())
+	_assert(book.size() == 1 and (book[0] as Array) == earned_one,
+		"and that day is the day it played, row for row")
+	var booked := 0.0
+	for x in book[0]:
+		booked += float(x)
+	_assert(is_equal_approx(booked, day_one),
+		"whose columns add up to what the panel calls yesterday's score (%s vs %s)"
+			% [str(booked), str(day_one)])
+	_assert((extra["history"] as Array)[0] != (extra["earned"] as Array),
+		"and today is its own row, not a second name for the one just closed")
 	_assert(day_one > 0.0 and (extra["weights"] as Array) != before_night,
 		"a day worth %s changed the weights it will be played on tomorrow" % str(day_one))
 	var rounded := true
@@ -11850,6 +11873,22 @@ func test_learning_robot_day() -> void:
 	_assert(int(sex["days"]) == 1 and is_equal_approx(float(sex["last_score"]), 0.0)
 			and (sex["weights"] as Array) == untouched,
 		"a day that earned nothing turns the page and changes not one weight")
+	_assert((sex["history"] as Array).size() == 1,
+		"and still writes the day down — a day of nothing is a flat zero on the chart, not a gap")
+
+	# **The record has a ceiling.** It rides in every save and in every
+	# `capture_canonical` comparison, so a number that grew for as long as a farm
+	# was played would be a leak with a robot's name on it.
+	for _night in BotBrain.LEARN_HISTORY_DAYS + 4:
+		idle.gs.weather = "sunny"
+		idle.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
+	_assert((sex["history"] as Array).size() == BotBrain.LEARN_HISTORY_DAYS,
+		"a robot played past the cap keeps %d days and no more (%d)"
+			% [BotBrain.LEARN_HISTORY_DAYS, (sex["history"] as Array).size()])
+	_assert(int(sex["days"]) == BotBrain.LEARN_HISTORY_DAYS + 5,
+		"while the nights it has practised keep counting past it (%d)" % int(sex["days"]))
+	_assert(_json_plain(sex["history"]),
+		"and the record is still nothing but arrays of numbers, all the way down")
 	idle.done()
 
 	# --- the dial cannot reach it ---------------------------------------------
@@ -11877,6 +11916,18 @@ func test_learning_robot_day() -> void:
 			and is_equal_approx(float(back["baseline"]), float(extra["baseline"]))
 			and int(back["salt"]) == int(extra["salt"]),
 		"with the same days behind it, the same baseline and the same salt")
+	# The record through the disk, day for day and column for column. JSON hands
+	# every number back as a float, which is why this compares values rather than
+	# the arrays: `1` written is `1.0` read, and both mean one crop sold.
+	var kept := (back["history"] as Array).size() == (extra["history"] as Array).size()
+	for d in (extra["history"] as Array).size():
+		for c in (extra["history"][d] as Array).size():
+			if not is_equal_approx(float(back["history"][d][c]),
+					float(extra["history"][d][c])):
+				kept = false
+	_assert(kept and (extra["history"] as Array).size() > 0,
+		"and with its scorecard intact: %d day(s) on the record, column for column"
+			% (extra["history"] as Array).size())
 	# **The senses come back meaning the same thing, not typed the same way.**
 	# Godot's JSON reader hands every number back as a float, so `vision: 2` is
 	# `2.0` on the far side of a save — which every reader of a spec already
