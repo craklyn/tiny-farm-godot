@@ -20,7 +20,7 @@
     "Two runs on the same seed are identical; the seven-day learning curve rises on a fixed seed",
     "Every watering looks and sounds like hers; it moves at the Mark I's pace; nothing changes without a cue"
   ],
-  "current_status": "Every build item is on main, both suites green (2026-09-09). The night rule's baseline is fixed: a state-dependent baseline scaled by the meter left, rate 0.03, and a week of learning is now worth about a third more a day than no learning across 24 seeds, holding through day 20. In progress: the CEO's Q-99 ruling — a till action, a bare-soil channel and a 0.1 reward — with the demo's gate back on open ground, which is the test of his hypothesis. Then the tablet check. Q-98 (what it keeps when picked up) is still open.",
+  "current_status": "Every build item and the Q-99 hoe are on main, both suites green (2026-09-09). Measured on open ground over 24 farms: with the hoe a week of learning goes from 3.8 to 5.4 squares a day (22 of 24 weeks rose) against 3.7 to 4.6 with the night switched off. But of the waterings that earn, 5.1 a day land on soil the robot opened itself and none on her sown block: the ruling's mechanism works and is the whole of the effect. Two engineering issues found: the one-seed gate is luck on open ground and flips with the learning rate, and a Mark III can hoe her wheat back into mud because the gateway allows till anywhere but the yard. Both being fixed. Open for the CEO: whether her squares should pay more than the robot's own (a reward value), and Q-98.",
   "plan": [
     {
       "step": "Design written against the code, with the six rules and the v1 scope",
@@ -44,7 +44,7 @@
     },
     {
       "step": "Q-99 ruled: the hoe — till action, bare channel, 0.1 reward; the demo back on open ground",
-      "done": false
+      "done": true
     },
     {
       "step": "The learn setting in the bot brain: its day, its parking, its night",
