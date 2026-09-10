@@ -20,7 +20,7 @@
     "Two runs on the same seed are identical; the seven-day learning curve rises on a fixed seed",
     "Every watering looks and sounds like hers; it moves at the Mark I's pace; nothing changes without a cue"
   ],
-  "current_status": "Building. The observation builder, the reward table and the policy maths are on main with their tests (2026-09-09, both suites green); the robot's day and night — the learn setting in the bot brain, the shop row, the nightly update, the save and replay round-trip — are being built in a worktree. Two findings from the first build are in the plan: a bare per-index draw from the seeded generator is not uniform, so the sampler scrambles the index; and the night update is normalised by the day's decisions. One card open for the CEO: what a Mark III keeps when she picks it up (Q-98).",
+  "current_status": "Building. On main with tests, both suites green (2026-09-09): the observation builder, the reward table, the policy maths, the learn setting in the bot brain with its day and night, Robot Mk III in the shop (wearing the Mk II's sheet until its own lands), the nightly update, and a two-day replay round-trip with the weights in the save. One decision costs about 234 microseconds headless. Next: the seven-day learning-curve demo and its gate, the panel numbers, and the sprite the CEO approved spending on. One card open for the CEO: what a Mark III keeps when she picks it up (Q-98).",
   "plan": [
     {
       "step": "Design written against the code, with the six rules and the v1 scope",
@@ -40,11 +40,11 @@
     },
     {
       "step": "The learn setting in the bot brain: its day, its parking, its night",
-      "done": false
+      "done": true
     },
     {
       "step": "Weights in the save; a day replays with them intact",
-      "done": false
+      "done": true
     },
     {
       "step": "Robot Mk III in the shop with its sprite and panel numbers",

@@ -66,13 +66,15 @@
           "id": "s13",
           "title": "Give the Mark III its day: the learn setting in the bot brain, one decision a second, parks on an empty meter",
           "estimate_days": 1.0,
-          "done": false
+          "done": true,
+          "shipped_in": "main 2026-09-09"
         },
         {
           "id": "s14",
           "title": "Update its weights at the day turn, keep them in the save, and prove a day replays to its autosave with the weights intact",
           "estimate_days": 0.5,
-          "done": false
+          "done": true,
+          "shipped_in": "main 2026-09-09"
         },
         {
           "id": "s15",
