@@ -20,7 +20,7 @@
     "Two runs on the same seed are identical; the seven-day learning curve rises on a fixed seed",
     "Every watering looks and sounds like hers; it moves at the Mark I's pace; nothing changes without a cue"
   ],
-  "current_status": "Every build item is on main with tests, both suites green (2026-09-09). The seven-day demo rises on its seed, but weakly: across 24 seeds a week of learning is worth about a fifth more a day than no learning. Cause found: the night rule credits each decision with the rewards after it but subtracts a whole day's mean from every decision alike, so the average decision is pushed away from itself and only a low rate holds. An Opus worker is fixing the baseline. Also found: on open ground a fresh robot random-walks off the field within a minute and never earns anything; the demo pens it with fences. The CEO ruled (Q-99): not a pen — a till action and a 0.1 reward for hoeing bare soil, so a random walk has more ways to earn by accident; that change runs once the night-rule fix lands, and the demo's gate moves back to open ground. Q-98 (what it keeps when picked up) is also open.",
+  "current_status": "Every build item is on main, both suites green (2026-09-09). The night rule's baseline is fixed: a state-dependent baseline scaled by the meter left, rate 0.03, and a week of learning is now worth about a third more a day than no learning across 24 seeds, holding through day 20. In progress: the CEO's Q-99 ruling — a till action, a bare-soil channel and a 0.1 reward — with the demo's gate back on open ground, which is the test of his hypothesis. Then the tablet check. Q-98 (what it keeps when picked up) is still open.",
   "plan": [
     {
       "step": "Design written against the code, with the six rules and the v1 scope",
@@ -39,8 +39,8 @@
       "done": true
     },
     {
-      "step": "Fix the night rule's baseline so credit matches reward-to-go, and re-measure across seeds",
-      "done": false
+      "step": "Fix the night rule's baseline so credit matches reward-to-go, and re-measure across seeds — done: state-dependent baseline, rate 0.03; 9.1 vs 6.6 squares a day against no learning over 24 seeds, holds through day 20",
+      "done": true
     },
     {
       "step": "Q-99 ruled: the hoe — till action, bare channel, 0.1 reward; the demo back on open ground",
