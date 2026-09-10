@@ -207,6 +207,63 @@
       ]
     },
     {
+      "id": "update-1-2",
+      "release_id": "update-1-2",
+      "name": "Player Update 1.2",
+      "codename": "v0.2.2",
+      "contains": "The training workbench. Buy it, set it in the yard, and tap it to see what your robot is being paid for each job it does — and change it. You can also see the patch of farm it can perceive, what kind of brain it has, charts of how its learning is going day by day, and a grid of what it has come to like and avoid.",
+      "stories": [
+        {
+          "id": "s1",
+          "title": "Let a robot carry its own reward numbers, and record a dial turn as something the game can replay",
+          "estimate_days": 1.5,
+          "done": false
+        },
+        {
+          "id": "s2",
+          "title": "The workbench in the shop: buy it, set it down, tap it, and page between its five plates",
+          "estimate_days": 1.5,
+          "done": false
+        },
+        {
+          "id": "s3",
+          "title": "The dials: every job on one screen with minus and plus, your numbers as the starting point, negatives allowed",
+          "estimate_days": 1.0,
+          "done": false
+        },
+        {
+          "id": "s4",
+          "title": "What it sees, live, and the bars showing what it is about to do",
+          "estimate_days": 1.0,
+          "done": false
+        },
+        {
+          "id": "s5",
+          "title": "The charts: what it earned, whether it beat its own expectations, whether it is still experimenting, how much it changed overnight, how much of its day it wasted",
+          "estimate_days": 1.5,
+          "done": false
+        },
+        {
+          "id": "s6",
+          "title": "The nameplate and the likes-and-dislikes grid",
+          "estimate_days": 1.0,
+          "done": false
+        },
+        {
+          "id": "s7",
+          "title": "Draw the workbench and its brass plates",
+          "estimate_days": 0.5,
+          "done": false
+        },
+        {
+          "id": "s8",
+          "title": "Prove it: the dial turn survives a replay, and the charts say the same thing as the robot's own scorecard",
+          "estimate_days": 0.5,
+          "done": false
+        }
+      ]
+    },
+    {
       "id": "m4",
       "release_id": null,
       "name": "Towers and waves",

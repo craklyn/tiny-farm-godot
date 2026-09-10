@@ -60,5 +60,11 @@
       "src": "docs/design/mockups/workbench/workbench_mosaic.png",
       "caption": "The mosaic: the weight matrix folded to warm and cool cells"
     }
-  ]
+  ],
+  "ruled": {
+    "date": "2026-09-10",
+    "option": "a",
+    "summary": "Build all five pages — the dials, what it sees, the nameplate, the charts and the likes-and-dislikes grid — and make the workbench a thing you buy in the shop and set down in the yard, tapped like anything else, rather than a button hidden on the robot.",
+    "written_up": "docs/design/14-training-workbench.md"
+  }
 }

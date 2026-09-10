@@ -2,8 +2,8 @@
 
 *Mockups of the five plates: `mockups/workbench/` (one PNG each, and the HTML they were drawn from).*
 
-*Status: designed 2026-09-10 at the designer's request, after the Mark III went to the
-tablet. Strawman for approval on Q-101. Depends on `06-bots-and-training.md` ("The
+*Status: **approved 2026-09-10 (Q-101)**, designed the same day after the Mark III went to
+the tablet. Building as v0.2.2. Depends on `06-bots-and-training.md` ("The
 ladder's third rung") and on D-4 (stylise the rendering, never the facts). Nothing here is
 built; the plan items are in `V0_2_1_PLAN.md` once approved.*
 
@@ -154,12 +154,14 @@ The trial ground; painting the mosaic; sharing or copying a brain between robots
 per-day replay of a robot's route (the replay log has it; a later page); any curriculum
 from her own sessions (the next rung). Each has a home above and waits.
 
-## 9. Open for the designer (Q-101)
+## 9. Ruled (Q-101, 2026-09-10)
 
-Approve the strawman as a whole, or name the plate that is wrong. The specific taste
-calls folded into it: the ten-step ladder and its range; negatives allowed on every row
-with the bench drawing the consequence rather than forbidding; the bench as a bought
-structure rather than a button on the robot's panel; words on the plate only.
+**All five plates, and a bench she buys and sets down.** The designer took the strawman
+whole: the ten-step ladder with negatives allowed on every row and their consequence drawn
+rather than forbidden; the bench as a bought structure in the yard rather than a button on
+the robot's menu ("like everything else in the game"); words on the plate only. Nothing in
+§§1–8 is amended by the ruling. Scheduled as **v0.2.2**, so v0.2.1 ships the robot and its
+scorecard without waiting for the bench.
 
 ## 10. Build shape (once approved)
 

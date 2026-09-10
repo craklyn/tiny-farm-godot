@@ -1,0 +1,71 @@
+{
+  "id": "training-workbench",
+  "name": "The training workbench",
+  "priority": 1,
+  "status": "in_progress",
+  "owner": "sam",
+  "contributors": [
+    "tomas",
+    "jade",
+    "yuki",
+    "grace"
+  ],
+  "summary": "The place in the game where the player decides what the learning robot is rewarded for, and sees how its learning is going. Five plates on a bench she buys and sets down: the dials, what it sees, the nameplate, the charts, the likes-and-dislikes grid. Approved whole by the CEO on 2026-09-10 (Q-101) after he saw the mockups.",
+  "requirements": [
+    "Every number on the bench is read from the robot's own state or computed in front of her — never a story about training",
+    "Reward values are per robot, and a dial turn goes through the gateway so a replay reproduces it",
+    "Negatives are allowed on every row; the bench draws the consequence rather than forbidding it",
+    "The bench's charts and the robot's own scorecard are one drawing language",
+    "Words on the nameplate only; numerals on axes; pictures everywhere else",
+    "Nothing expensive runs when a page opens"
+  ],
+  "current_status": "Approved and about to be planned. The design is docs/design/14-training-workbench.md; the build shape is its section 10. A survey of the UI code is running, after which the plan is written and handed to workers item by item. Scheduled as v0.2.2 so v0.2.1 ships the robot first.",
+  "plan": [
+    {
+      "step": "Designed and put to the CEO with mockups (Q-101)",
+      "done": true
+    },
+    {
+      "step": "Approved whole: five plates, a bought bench",
+      "done": true
+    },
+    {
+      "step": "Survey the UI code and write the build plan",
+      "done": false
+    },
+    {
+      "step": "Per-robot rewards and the dial as a recorded action",
+      "done": false
+    },
+    {
+      "step": "The bench in the shop and the five-plate shell",
+      "done": false
+    },
+    {
+      "step": "The dials",
+      "done": false
+    },
+    {
+      "step": "What it sees, and the charts",
+      "done": false
+    },
+    {
+      "step": "The nameplate and the likes-and-dislikes grid",
+      "done": false
+    },
+    {
+      "step": "Art, and the proof tests",
+      "done": false
+    }
+  ],
+  "links": [
+    "docs/design/14-training-workbench.md",
+    "docs/design/mockups/workbench/",
+    "docs/design/06-bots-and-training.md"
+  ],
+  "blocked_on": "",
+  "blocked_since": "",
+  "release": "update-1-2",
+  "release_critical": true,
+  "unblock_action": ""
+}

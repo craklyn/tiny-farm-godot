@@ -79,8 +79,8 @@
       "done": true
     },
     {
-      "step": "The training workbench designed (design/14) and put to the CEO (Q-101); built once approved",
-      "done": false
+      "step": "The training workbench designed (design/14) and approved whole by the CEO (Q-101); built as v0.2.2 under its own project",
+      "done": true
     }
   ],
   "links": [

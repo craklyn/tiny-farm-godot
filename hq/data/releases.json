@@ -106,6 +106,34 @@
       "subtitle": "the robot that learns"
     },
     {
+      "id": "update-1-2",
+      "name": "Player Update 1.2",
+      "tag_intent": "v0.2.2",
+      "goal": "The training workbench: the place where you decide what your robot is rewarded for, and watch how its learning is going.",
+      "definition_of_done": "All five plates built and reachable from a workbench bought in the shop; a dial turn replays; the charts agree with the robot's own scorecard; both suites and the robot session green; a v0.2.2 tag out through the runbook.",
+      "features": [
+        {
+          "id": "dials",
+          "evidence": "Q-101",
+          "headline": "Decide what your robot cares about",
+          "for_players": "Every job it can do, on one screen, with a number you can turn up or down. Pay it more for chasing crows, less for hoeing, or nothing at all — and it will learn to spend its days differently."
+        },
+        {
+          "id": "ledger",
+          "evidence": "Q-101, D-4",
+          "headline": "Watch it learn",
+          "for_players": "Charts of what it earned each day, whether it beat its own expectations, whether it is still trying new things, and how much of its day it wasted. Real numbers from the real robot, not a story about one."
+        },
+        {
+          "id": "eyes",
+          "evidence": "Q-101",
+          "headline": "See what it sees",
+          "for_players": "The patch of farm your robot can actually perceive, and the bars showing what it is about to do next."
+        }
+      ],
+      "subtitle": "the workbench where you teach it what matters"
+    },
+    {
       "id": "m3",
       "name": "M3 — the next content milestone (parked)",
       "tag_intent": null,
