@@ -469,6 +469,18 @@ skill it learns is *water the thirsty tile under you*, which is the same skill o
 field, and the patches it leaves are land she cleared to farm anyway. The values are for
 initial playtesting and are data.
 
+**Built and measured 2026-09-09.** The fence is gone and the week is played in open field
+again. It works, and it works exactly the way the ruling guessed it would: over 24 farms a
+week of learning ends at 5.4 points a day against 4.6 for the same robot with its nights
+switched off, and 22 of the 24 weeks rose against the control's 18. What it is doing to
+earn that is making its own practice ground — of the waterings that pay, essentially all
+land on soil the robot opened itself and about none on her sown block (0.0 against 5.1 a
+day by the end of a week). So the machine a player buys today is not yet a machine that
+waters her wheat: it is a machine that learns to keep a wet patch of its own, on the way
+to the same skill. Worth naming for whoever picks up the next rung, because the obvious
+next lever is a reason to prefer *her* squares — a crop channel it is already given, and
+nothing yet that pays more for using it.
+
 ### Its night
 
 At the day turn — in `on_new_day`, before the new day's first decision — it applies the
@@ -499,9 +511,12 @@ average score anyway told the robot that most of its afternoon had been a mistak
 what it learned from that was to stand still. Weighting each decision's charge by the
 meter it still had is roughly what that decision could have gone on to earn — a robot
 with a third of its day left can water at most a third as many more squares — and with
-that in place it waters 9.1 thirsty squares a day by the end of its first week against
-6.6 for a robot that never learns, over 24 paddocks. The old rule reached 8.3, and then
-sank back below the control by the third week, which is what the fix removes.
+that in place it scores 5.4 a day by the end of its first week against 4.6 for a robot
+that never learns, over 24 farms, and 5.9 against 5.1 if the same farms are played for
+three weeks. The old rule sank back below the control by the third week, which is what the
+fix removes. The learning rate is 0.12 — it was 0.03 on the fenced six-action robot, and
+that number does not survive the hoe: a day out here is 60 to 90 decisions rather than
+300, and the night divides by them.
 
 Exploration is the softmax's own sampling, drawn with `SimRng.stateless(salt, index)` —
 salt from the robot's id and the day, index its decision count — so the same seed and the

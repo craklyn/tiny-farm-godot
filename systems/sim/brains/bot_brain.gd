@@ -159,20 +159,32 @@ const STATE_CHASE := "chasing"
 const STATE_RETURN := "returning"
 
 
-# --- the mark-3's six actions, and its two numbers -----------------------------
+# --- the mark-3's seven actions, and its two numbers ---------------------------
 #
 # **The order is the policy's index and is therefore permanent.** Row j of a
 # robot's weights is action j, and those weights are saved, replayed and compared
 # — so reordering this list would not break a build, it would quietly turn every
 # robot anybody has ever trained into a robot that walks north when it means to
-# water. Add to the end or not at all (P-13: v1 is six actions, deliberately).
+# water. Add to the end or not at all.
+#
+# **The hoe is the seventh, and it is here because of what a fresh robot does**
+# (Q-99, the CEO). With six actions the only thing on the farm worth anything was
+# watering a square that happened to be thirsty, so a robot that had learned
+# nothing wandered off the crop within a minute, spent its whole meter on dry
+# ground and was never once told it had done well — a week that taught nothing.
+# The hoe gives a coin-flipping walker a second way to be accidentally useful
+# almost anywhere it lands, and the square it leaves behind is *thirsty*, so a
+# lucky hoe puts the next thing worth doing directly under its own feet. It went
+# in at the end of the list rather than beside the watering for the reason above:
+# `LEARN_WAIT` was 5, and every robot already trained knows it as 5.
 const LEARN_UP := 0
 const LEARN_DOWN := 1
 const LEARN_LEFT := 2
 const LEARN_RIGHT := 3
 const LEARN_WATER := 4
-const LEARN_WAIT := 5
-const LEARN_ACTIONS := 6
+const LEARN_TILL := 5
+const LEARN_WAIT := 6
+const LEARN_ACTIONS := 7
 
 # Which way 0-3 actually go. `Movement.DIRS` rather than four Vector2is of this
 # file's own, because it already is that list in that order (up, down, left,
@@ -186,33 +198,51 @@ const LEARN_STEPS := Movement.DIRS
 # how busy the day was, and WI-2's bandit locked onto the wrong arm at 0.05 with
 # twenty decisions in it. A robot's day has several hundred.
 #
-# **0.03, chosen on the fixed baseline** (v0.2.1 WI-6). The old rule, which
-# charged every decision the whole day's mean, could only be held at 0.02 and
-# even there the robot slowly gave up: over twenty days it climbed to 9.3 thirsty
-# squares a day by the second week and then sank back to 7 — and at 0.03 it sank
-# to 6, below a robot that never learned at all. Charging the baseline against
-# `base_trace` instead (`_sleep_on_it`) removes that pull, and the rate that was
-# holding it off is no longer doing that job.
+# **0.12, chosen on open ground with the hoe in its hands** (v0.2.1 WI-8). It was
+# 0.03 the week before, and that number was measured on a robot with six actions
+# penned inside a fence — a different animal in a different field, so the old
+# sweep says nothing about this one and has been replaced rather than argued
+# with. What changed: Q-99 gave the robot a seventh action worth a tenth of a
+# watering, which pays it something almost wherever it stands, and the fence came
+# down. A day out here is 60 to 90 decisions rather than 300, because the robot
+# now spends its meter instead of wandering through it — and the night divides by
+# the day's decisions, so the same rate is a quarter of the step it used to be.
 #
-# The sweep, 24 farms of the paddock played twice each — once learning, once with
-# the night switched off — and read as thirsty squares a day on days 5-7, with
-# the same 24 farms carried on to twenty days to see whether it holds. The
-# control is 6.6 whatever the rate:
+# The sweep, 24 farms played twice each — once learning, once with the night
+# switched off — read as the day's score over days 5-7 of a week, and the same 24
+# farms carried on to twenty days to see whether it holds. A robot that never
+# learns scores 4.6 on days 5-7 and 5.1 on days 18-20, whatever the rate, because
+# the *field* improves on its own: soil the robot opened yesterday is still open
+# this morning.
 #
-#     rate   days 5-7   weeks that rose   day 20, mean of the 24
-#     0.02       8.9           19 / 24    9.5   holds
-#     0.03       9.1           20 / 24    9.2   holds
-#     0.05       9.0           19 / 24    9.2   holds
-#     0.07       8.8           16 / 24    8.4   holds, lower
-#     0.10       7.9           17 / 24    7.5   drifts down
-#     0.20       5.4           14 / 24    4.9   worse than not learning
+#     rate   days 5-7   weeks that rose   days 18-20
+#     0.01       4.8           16 / 24    -
+#     0.02       4.9           18 / 24    -
+#     0.03       4.9           19 / 24    5.8
+#     0.05       4.8           17 / 24    5.5
+#     0.08       5.0           17 / 24    6.0
+#     0.11       5.3           17 / 24    -
+#     0.12       5.4           22 / 24    5.9
+#     0.13       5.5           21 / 24    -
+#     0.15       4.8           15 / 24    -
+#     0.20       5.2           18 / 24    5.0   no better than not learning
+#     0.30       4.4           17 / 24    -     worse
+#     none       4.6           18 / 24    5.1   the control
 #
-# So the top of the range is flat from 0.02 to 0.05 and everything above 0.07
-# costs the robot its day. 0.03 is the middle of the flat part and the best of
-# the three, which is what it was picked for. Reproduce it with
-# `tools/demo_learning_robot.gd`, which prints the 24-farm summary under its
-# table on every run. [Playtest]
-const LEARN_RATE := 0.03
+# So the useful range is broad and shallow — everything from 0.03 up beats the
+# control a little, 0.12 and 0.13 beat it most, and above 0.15 the robot starts
+# losing days. 0.12 is picked for the "weeks that rose" column: it is the rate at
+# which the most individual farms improved, at both a week and three. Reproduce
+# it with `tools/demo_learning_robot.gd`, which prints the 24-farm summary under
+# its table on every run.
+#
+# **A week on one farm is luck as much as learning, and that is why the demo
+# prints two dozen.** `test_learning_robot`'s gate is one seed, and on open ground
+# a single week's rise flips with the rate for no reason but the draw: it fails at
+# 0.03, 0.05, 0.08 and 0.10 and passes across a band from 0.11 to 0.15. The rate
+# was chosen on the 24 farms and then checked against the gate, never the other
+# way round. [Playtest]
+const LEARN_RATE := 0.12
 
 # How far apart two days' draws are pushed. Any odd stride would do; a prime is
 # the cheap way to keep one robot's second day out of another robot's first.
@@ -280,8 +310,9 @@ static func deploy(world: SimWorld, actor_id: String, config: String, at: Vector
 			var spec := Observation.spec_default()
 			extra["spec"] = spec
 			var width := Observation.size(spec)
-			# Zeros, so a robot out of the box is uniform over its six actions: it
-			# wanders on day one, which is what P-14 says day one should look like.
+			# Zeros, so a robot out of the box is uniform over its seven actions:
+			# it wanders on day one, which is what P-14 says day one should look
+			# like.
 			extra["weights"] = Policy.new_weights(width, LEARN_ACTIONS)
 			# The day's three running sums: what it has done (`trace`), what that
 			# earned (`acc`), and what the baseline is charged against
@@ -303,10 +334,12 @@ static func deploy(world: SimWorld, actor_id: String, config: String, at: Vector
 			# engine's `hash()` — see `Policy.salt_of` for why that distinction is
 			# worth a function.
 			extra["salt"] = Policy.salt_of(actor_id)
-			# Whether the square it just reached for was thirsty, remembered
-			# across the one beat between deciding to water and the gateway
-			# answering. See `on_result`.
+			# Whether the square it just reached for was thirsty, and whether the
+			# square it just put a hoe into was bare — each remembered across the
+			# one beat between deciding and the gateway answering. See
+			# `on_result`.
 			extra["pending_needs_water"] = false
+			extra["pending_bare"] = false
 		CONFIG_CIRCLE:
 			extra["radius"] = int(params.get("radius", ORBIT_RADIUS))
 		CONFIG_SHOO:
@@ -953,15 +986,15 @@ func _patrol_tile(world: SimWorld, actor_id: String, extra: Dictionary) -> Vecto
 # **Everything above this line was written by hand. This is the rung where that
 # stops** (P-14; `design/06`, "The ladder's third rung"). A mark-3 has no orders,
 # no station, no patch and no rule about where to be. Once a second it looks at
-# what is around it, picks one of six things with a linear policy, and does it.
-# Six things: north, south, east, west, water the square under its feet, and
-# nothing at all.
+# what is around it, picks one of seven things with a linear policy, and does it.
+# Seven things: north, south, east, west, water the square under its feet, hoe
+# the square under its feet, and nothing at all.
 #
-# **It is paid for outcomes, never for gestures** (`systems/rewards.gd`). The one
-# thing worth anything in v1 is turning a square that wanted water into a wet one
-# — so watering ground that is already wet earns exactly what walking into a
-# fence earns, which is nothing, and the machine has to work out the difference
-# for itself.
+# **It is paid for outcomes, never for gestures** (`systems/rewards.gd`). Turning
+# a square that wanted water into a wet one is worth 1 and turning bare earth into
+# soil is worth a tenth of that — so watering ground that is already wet earns
+# exactly what walking into a fence earns, which is nothing, and the machine has
+# to work out the difference for itself.
 #
 # **A day is a wander and a night is the lesson** (P-14's second rule). During the
 # day the only things that change are the two running sums; the weights the day
@@ -984,6 +1017,7 @@ func _learn(world: SimWorld, actor_id: String, extra: Dictionary, tick: int) -> 
 	# nothing to spend must cost nothing at all.
 	if world.is_exhausted(actor_id):
 		extra["pending_needs_water"] = false
+		extra["pending_bare"] = false
 		extra["wake"] = tick + ticks(LEARN_PARKED_SECONDS)
 		return {}
 
@@ -1018,6 +1052,7 @@ func _learn(world: SimWorld, actor_id: String, extra: Dictionary, tick: int) -> 
 	var here := world.actor_pos(actor_id)
 	var action: Dictionary = {}
 	extra["pending_needs_water"] = false
+	extra["pending_bare"] = false
 	match choice:
 		LEARN_WATER:
 			# **What the square wanted is read before the stroke, not after it.**
@@ -1027,6 +1062,21 @@ func _learn(world: SimWorld, actor_id: String, extra: Dictionary, tick: int) -> 
 			# wants water and the mark-3's cannot drift apart.
 			extra["pending_needs_water"] = order_verb(world, here) == "water"
 			action = { "verb": "water", "target": here, "actor": actor_id }
+		LEARN_TILL:
+			# The same shape as the watering, read one beat early for the same
+			# reason: by the time the gateway has answered, the square is soil
+			# either way.
+			#
+			# **What earns is the tile state, not the gateway's yes** (Q-99). A
+			# hoe is accepted on far more than bare ground — the gateway refuses
+			# it only on the yard and the home's floor — so a robot paid for every
+			# accepted stroke would be paid for hoeing her sown wheat back into
+			# mud. Only `cleared` earns, and `cleared` is exactly what the `bare`
+			# channel shows it, so what the robot can see and what it is paid for
+			# are the same square.
+			extra["pending_bare"] = String(world.get_tile(here.x, here.y)
+					.get("state", "")) == Observation.BARE_STATE
+			action = { "verb": "till", "target": here, "actor": actor_id }
 		LEARN_WAIT:
 			pass
 		_:
@@ -1097,6 +1147,7 @@ func _sleep_on_it(extra: Dictionary) -> void:
 	extra["acc"] = _scaled(weights, 0.0)
 	extra["base_trace"] = _scaled(weights, 0.0)
 	extra["pending_needs_water"] = false
+	extra["pending_bare"] = false
 
 
 # `source * k`, as a fresh plain Array of float — the shape the night needs and
@@ -1196,6 +1247,13 @@ func on_new_day(world: SimWorld, actor_id: String) -> void:
 # way — and the gateway said yes. Watering wet ground, watering a rock, watering
 # from an empty meter: all worth what waiting is worth, which is nothing.
 #
+# The hoe is the same sentence with a different pair of words in it (Q-99): the
+# square had to have been bare, and the gateway had to have accepted. A hoe into
+# the yard is refused outright, a hoe into soil that was already open changed
+# nothing, and both are worth what waiting is worth. Nothing here special-cases
+# where a robot may hoe — that rule is the gateway's, and it binds a machine
+# exactly as it binds her (ground rule 1).
+#
 # The reward is folded into the accumulator against the **whole trace so far**,
 # not against this one decision. That is what pays the walk that got it there.
 func on_result(world: SimWorld, actor_id: String, action: Dictionary,
@@ -1206,12 +1264,18 @@ func on_result(world: SimWorld, actor_id: String, action: Dictionary,
 	var extra: Dictionary = e["extra"]
 	if String(extra.get("config", "")) != CONFIG_LEARN:
 		return
-	if String(action.get("verb", "")) != "water":
+	var verb := String(action.get("verb", ""))
+	if verb != "water" and verb != "till":
 		return
+	var ok := bool(result.get("ok", false))
 	var earned := 0.0
-	if bool(extra.get("pending_needs_water", false)) and bool(result.get("ok", false)):
-		earned = Rewards.of("wet_tile")
+	if verb == "water":
+		if bool(extra.get("pending_needs_water", false)) and ok:
+			earned = Rewards.of("wet_tile")
+	elif bool(extra.get("pending_bare", false)) and ok:
+		earned = Rewards.of("tilled_tile")
 	extra["pending_needs_water"] = false
+	extra["pending_bare"] = false
 	if earned == 0.0:
 		return
 	Policy.add_into(extra["acc"], extra["trace"], earned)

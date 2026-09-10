@@ -13,7 +13,7 @@
 #     w[j * (n_in + 1) + i]      weight of input i on action j
 #     w[j * (n_in + 1) + n_in]   action j's bias
 #
-# Zero-initialised, so a robot out of the box is uniform over its six actions —
+# Zero-initialised, so a robot out of the box is uniform over its seven actions —
 # it wanders, which is exactly what P-14 says day one should look like.
 #
 # **The learning rule** (Q-96), spread across a day and closed at night:

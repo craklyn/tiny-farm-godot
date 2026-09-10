@@ -12,24 +12,37 @@
 # `"wet_tile"` — rather than by a verb. A robot that learned to spray wet ground
 # would be a robot that had been paid for the gesture.
 #
-# **One row, on purpose** (P-13: v1 is deliberately weak). The Mark III has one
-# job. Every later outcome the ladder adds — a crop harvested, a bird chased off,
-# a round finished before dusk — is one more row here and no change at all to the
+# **Two rows, and the second one is a tenth of the first** (Q-99). The Mark III
+# still has one job; the hoe is not a second job but a way of making the first one
+# findable. A robot out of the box picks a direction at random, so on open ground
+# it will wander off the crop long before it stumbles into watering something
+# thirsty — and a week in which nothing is ever earned teaches nothing at all.
+# Turning bare earth into tilled soil is worth a little because it is worth a
+# little: it leaves behind a square that *wants water*, so a lucky hoe makes the
+# ground under the robot's own feet into the next thing worth doing. The tenth is
+# what keeps it a stepping stone rather than the job — twenty hoeings are worth
+# two waterings, so a robot that only ever hoed would score badly.
+#
+# Every later outcome the ladder adds — a crop harvested, a bird chased off, a
+# round finished before dusk — is one more row here and no change at all to the
 # policy maths or to the brain that spends it.
 class_name Rewards
 extends RefCounted
 
 
-# The v1 table (Q-96): +1 when a robot's `water` turned a tile that needed water
-# into a wet one. [Playtest]
+# The v1 table: +1 when a robot's `water` turned a tile that needed water into a
+# wet one (Q-96), and +0.1 when its `till` turned bare ground into soil (Q-99).
 const TABLE := {
 	"wet_tile": 1.0,
+	# Q-99, the CEO on a robot that walked off the field before it earned
+	# anything: "not a pen, a denser reward". [Playtest]
+	"tilled_tile": 0.1,
 }
 
 
 # What an outcome is worth. **An outcome nobody has priced is worth nothing** —
 # zero rather than an error, because "that did not earn anything" is the ordinary
-# answer for almost everything a robot does in a day, and the six actions of v1
+# answer for almost everything a robot does in a day, and the seven actions of v1
 # include waiting and walking into a fence.
 static func of(outcome: String) -> float:
 	return float(TABLE.get(outcome, 0.0))

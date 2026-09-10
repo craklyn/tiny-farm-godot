@@ -12,24 +12,29 @@
 #
 # So this is a measurement of exactly that, and it is built to leave the robot
 # nowhere to hide. Seven days are played on one seed. Each day the robot has the
-# same body, the same paddock and the same full meter, and the only thing that
+# same body, the same field and the same full meter, and the only thing that
 # carries from one day to the next is what it learned overnight. If the last
 # three days are not better than the first three, nothing was learned.
 #
-# **What the paddock is for.** A robot out of the box picks one of six actions at
-# random every second, so left on open ground it walks away from the crop in
-# about a minute and never comes back — it spends its whole day's meter watering
-# bare earth, is never once told it did well, and there is nothing to learn from.
-# That is not a fact about learning; it is a fact about how far a coin-flipping
-# walker gets in a meadow. So the week is played in a fenced paddock the size of
-# a kitchen garden, which is what a person teaching a machine would do: keep it
-# where the work is until it knows where the work is.
+# **This week is played on open ground, and that is the whole point of it**
+# (Q-99). It used to be played inside a fence. With watering the only thing worth
+# anything, a robot out of the box walked away from the crop in about a minute,
+# spent its meter on dry earth, was never once told it had done well and had
+# nothing to learn from — so the week was penned into a paddock to keep it where
+# the work was. The CEO's answer to that was not a pen but a denser reward: the
+# robot was given a hoe, and turning bare ground into soil is worth a tenth of
+# turning thirsty soil wet. A wanderer now has something worth doing almost
+# wherever it lands, and the square it hoes is a thirsty one it can water next —
+# it makes its own practice ground. The fence is gone, and this table is the test
+# of that claim.
 #
 # **The energy meter is the whole difficulty.** A day holds six hundred units and
-# a watering costs thirty, so twenty strokes is the day, however the robot spends
-# them (`systems/tools.gd`). Watering ground that is already wet costs exactly as
-# much as watering ground that is thirsty and is worth nothing, so the score out
-# of twenty is a straight measure of how well the robot is spending a day.
+# a watering and a hoeing each cost thirty, so twenty strokes is the day, however
+# the robot spends them (`systems/tools.gd`). Watering ground that is already wet
+# costs exactly as much as watering ground that is thirsty and is worth nothing,
+# so the day's score — twenty at the very best, and only for a robot that spent
+# every stroke on thirsty ground — is a straight measure of how well the robot
+# spent its day.
 #
 # **And two dozen more weeks underneath the table.** One week is one robot's luck
 # as much as its learning, so the same week is then played on 24 farms, each of
@@ -52,19 +57,14 @@ extends SceneTree
 const SEED := 20260909
 const CROP := "wheat"
 
-# The ground the paddock stands on, cleared first — the meadow is generated with
+# The ground the field is staged on, cleared first — the meadow is generated with
 # trees and weeds scattered through it, and a week whose numbers moved with what
 # the generator happened to drop nearby would be measuring the generator.
 const PLOT := Rect2i(3, 5, 24, 12)
 
-# The paddock: nine squares by four, fenced all the way round with the same fence
-# the player builds. The robot cannot leave it, and nothing can wander in.
-const PADDOCK := Rect2i(14, 8, 9, 4)
-
-# The crop: a block six wide and four deep, sown and thirsty, filling the eastern
-# two thirds of the paddock. Twenty-four squares against a day of twenty
-# waterings, so a perfect day is nearly a perfect block and there is always a dry
-# square left to find.
+# The crop: a block six wide and four deep, sown and thirsty, standing in open
+# field. Twenty-four squares against a day of twenty strokes, so a perfect day is
+# nearly a perfect block and there is always a dry square left to find.
 const BLOCK := Rect2i(17, 8, 6, 4)
 
 # Where the robot is set down: three squares west of the crop, on bare ground, so
@@ -73,11 +73,12 @@ const SPOT := Vector2i(14, 9)
 
 # How long a day is. Five minutes of sim time, and the robot thinks once a second
 # of it, so three hundred decisions is a day in which it never runs out of
-# daylight — only ever out of arms.
+# daylight — only ever out of arms. A hoe costs exactly what a watering costs
+# (`systems/tools.gd`), so the two compete for the same twenty strokes.
 const DAY_SECONDS := 300
 
 # The tint of the sky, held rather than rolled. Rain waters every sown square on
-# the map overnight, which would hand the robot a paddock that needed nothing and
+# the map overnight, which would hand the robot a field that needed nothing and
 # a week that measured nothing.
 const WEATHER := "sunny"
 
@@ -86,7 +87,7 @@ const WEATHER := "sunny"
 const PURSE := 2000
 
 # Where anything already standing in the plot is walked out to, so that the hen
-# is not the reason a fence post would not go down.
+# is not the reason a square could not be reached.
 const PARKING := Vector2i(29, 18)
 
 # How many farms the summary underneath the table averages over. One week is one
@@ -116,7 +117,7 @@ func _init() -> void:
 # and compares the two, which is only a determinism check if the answer is
 # entirely in here.
 #
-# `farm_seed` is the farm — the paddock is built the same way whatever it is, so
+# `farm_seed` is the farm — the field is staged the same way whatever it is, so
 # what a seed actually changes is the wander (`Policy.draw_u` draws off it).
 # `many()` below plays the same week on two dozen of them.
 #
@@ -144,14 +145,43 @@ static func run(days := 7, farm_seed := SEED, learn := true) -> Dictionary:
 	var decisions: Array = []
 	var energy_left: Array = []
 	var waters: Array = []
+	var hoeings: Array = []
+	var on_block: Array = []
+	var on_own: Array = []
 	var frozen: Array = (world.actor(robot)["extra"]["weights"] as Array).duplicate()
 	for _day in days:
 		var strokes := 0
-		for taken in world.advance_to_tick(
-				world.clock.tick + SimClock.RATE * DAY_SECONDS, gs):
-			var a: Dictionary = taken["action"]
-			if String(a.get("actor", "")) == robot and String(a.get("verb", "")) == "water":
-				strokes += 1
+		var hoes := 0
+		var hers := 0
+		var its_own := 0
+		# **A second of the day at a time, not the whole day at once**, so that
+		# what the square under the robot was *before* it acted is still readable
+		# (Q-99: does a robot with a hoe water its own soil or hers?). It decides
+		# once a second and waters the square it stands on, so the tile read at the
+		# top of a second is the tile its stroke lands on. The sim does not care
+		# how the day is cut up — the same events fire on the same ticks — and 300
+		# short advances cost nothing measurable beside 300 thinks.
+		for _second in DAY_SECONDS:
+			var at: Vector2i = world.actor_pos(robot)
+			var before: Dictionary = world.get_tile(at.x, at.y)
+			var was_thirsty: bool = String(before.get("state", "")) in SimWorld.WETTABLE_STATES \
+					and not bool(before.get("watered_today", false))
+			for taken in world.advance_to_tick(world.clock.tick + SimClock.RATE, gs):
+				var a: Dictionary = taken["action"]
+				if String(a.get("actor", "")) != robot:
+					continue
+				var verb := String(a.get("verb", ""))
+				if verb == "till":
+					hoes += 1
+				elif verb == "water":
+					strokes += 1
+					# Only a stroke that earned is a stroke that landed anywhere:
+					# watering wet ground is worth what waiting is worth.
+					if was_thirsty:
+						if BLOCK.has_point(at):
+							hers += 1
+						else:
+							its_own += 1
 		# Read at dusk, before the sleep: the day turn refills the meter, closes
 		# the score into `last_score` and sets the decision count back to zero, so
 		# a day read afterwards is a day read empty.
@@ -160,6 +190,9 @@ static func run(days := 7, farm_seed := SEED, learn := true) -> Dictionary:
 		decisions.append(int(extra.get("decisions", 0)))
 		energy_left.append(world.energy_of(robot))
 		waters.append(strokes)
+		hoeings.append(hoes)
+		on_block.append(hers)
+		on_own.append(its_own)
 		gs.weather = WEATHER
 		world.apply_action({ "verb": "sleep", "actor": "world", "weather": WEATHER }, gs)
 		if not learn:
@@ -176,6 +209,12 @@ static func run(days := 7, farm_seed := SEED, learn := true) -> Dictionary:
 		"decisions": decisions,
 		"energy_left": energy_left,
 		"waters": waters,
+		# How many strokes went into the hoe, and where the ones that went into
+		# the can actually paid: her sown block, or soil the robot opened for
+		# itself. This is the question Q-99 asked, counted rather than guessed.
+		"tills": hoeings,
+		"on_block": on_block,
+		"on_own": on_own,
 		# The robot itself, at the end of the week. Two runs of this function
 		# agree here or the week was never reproducible.
 		"weights": (world.actor(robot)["extra"]["weights"] as Array).duplicate(),
@@ -200,7 +239,7 @@ static func mean_of_days(scores: Array, first: int, last: int) -> float:
 #
 # **The control is what makes the number mean anything.** A robot that ends its
 # week watering more than it did on Monday has not necessarily learned: some
-# paddocks are kinder than others, and a wanderer that finds the block late has a
+# farms are kinder than others, and a wanderer that finds the block late has a
 # rising week for no reason but arithmetic. What the night is worth is the gap
 # between these two columns, on the same farms, with the same draws.
 static func many(count := SEEDS, days := 7) -> Dictionary:
@@ -224,21 +263,18 @@ static func many(count := SEEDS, days := 7) -> Dictionary:
 
 # --- staging ------------------------------------------------------------------
 
-# The paddock, built rather than hoped for: the ground cleared, the fence laid,
-# the block sown. Written straight onto the grid rather than played as verbs,
+# The field, built rather than hoped for: the ground cleared and the block sown,
+# and nothing else. Written straight onto the grid rather than played as verbs,
 # because none of this is the measurement — it is the day before it.
+#
+# **No fence** (Q-99). The robot can walk out of the picture in any direction and
+# on its first mornings it does; what brings it back is what it learns, not a
+# wall.
 static func _stage(world: SimWorld) -> void:
 	for y in range(PLOT.position.y, PLOT.end.y):
 		for x in range(PLOT.position.x, PLOT.end.x):
 			world.set_tile_state(x, y, "cleared")
 			world.set_object(x, y, "")
-	# The fence, one square thick, all the way round the paddock. `FENCE_BUILT` is
-	# the state the player's own `build` produces, so the robot is looking at the
-	# same wall a person would have put there.
-	for y in range(PADDOCK.position.y - 1, PADDOCK.end.y + 1):
-		for x in range(PADDOCK.position.x - 1, PADDOCK.end.x + 1):
-			if not PADDOCK.has_point(Vector2i(x, y)):
-				world.set_tile_state(x, y, WorldLayout.FENCE_BUILT)
 	for y in range(BLOCK.position.y, BLOCK.end.y):
 		for x in range(BLOCK.position.x, BLOCK.end.x):
 			world.set_tile_state(x, y, "seeded", CROP)
@@ -260,21 +296,27 @@ func _report(week: Dictionary) -> int:
 	var days: int = scores.size()
 	print("=== A week of a robot learning to water (v0.2.1) ===")
 	print("One farm from seed %d. A robot is bought, set down three squares west of" % week["seed"])
-	print("a sown block six wide and four deep, and left alone for %d days in a fenced" % days)
-	print("paddock. It is told nothing except, each time it waters, whether that")
-	print("square had been thirsty. A day holds twenty waterings' worth of arms.")
+	print("a sown block six wide and four deep, and left alone for %d days in open" % days)
+	print("field with no fence anywhere. It is told nothing except, each time it")
+	print("waters thirsty ground, that this was worth 1, and each time it hoes bare")
+	print("ground, that this was worth a tenth. A day holds twenty strokes.")
 	print("")
-	print("%5s %18s %12s %14s" % ["day", "thirsty squares", "decisions", "energy left"])
+	print("%5s %10s %8s %7s %10s %9s %9s" % ["day", "score", "waters",
+		"hoes", "decisions", "on hers", "on its own"])
 	for i in days:
-		print("%5d %18d %12d %14d" % [i + 1, int(scores[i]),
-			int(week["decisions"][i]), int(week["energy_left"][i])])
+		print("%5d %10.1f %8d %7d %10d %9d %9d" % [i + 1, float(scores[i]),
+			int(week["waters"][i]), int(week["tills"][i]),
+			int(week["decisions"][i]), int(week["on_block"][i]), int(week["on_own"][i])])
+	print("")
+	print("\"On hers\" and \"on its own\" split the waterings that earned: squares of")
+	print("her sown block, against squares the robot had opened with its own hoe.")
 	print("")
 
 	var early := mean_of_days(scores, 1, 3)
 	var late := mean_of_days(scores, maxi(1, days - 2), days)
-	print("Its first three days were worth %.1f thirsty squares each; its last three" % early)
-	print("were worth %.1f. The robot is the only thing that changed: same paddock," % late)
-	print("same seed, same full meter every morning.")
+	print("Its first three days were worth %.1f each; its last three were worth %.1f." % [early, late])
+	print("The robot is the only thing that changed: same field, same seed, same full")
+	print("meter every morning.")
 
 	# The exit code is the contract — a run that measured nothing is a broken run
 	# rather than a finding (`demo_robot_value.gd`'s rule, and CI reads it the
@@ -313,6 +355,6 @@ func _summarise(m: Dictionary) -> void:
 			float(m[arm[1] + "_early"]), float(m[arm[1] + "_late"]),
 			int(m[arm[1] + "_improved"]), int(m["seeds"])])
 	print("")
-	print("So a week of nights is worth %.1f thirsty squares a day against %.1f without"
+	print("So a week of nights is worth %.1f a day against %.1f without"
 		% [float(m["learn_late"]), float(m["control_late"])])
 	print("them, over the same farms and the same draws.")
