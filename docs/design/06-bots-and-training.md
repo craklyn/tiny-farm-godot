@@ -609,6 +609,8 @@ numbers (D-4). Each is a later mark or a later tier, on purpose. Known wart, fil
 game's own shipping bin bookkeeping (`gs.shipping_bin`, `process_shipping_bin`) is
 vestigial — `sell` pays at once — so "mailbox" here means the bin object at the yard's edge.
 
+**The training workbench** — reward dials, what it sees, the model plate, the ledger and the weight mosaic — is its own chapter, `14-training-workbench.md` (designed 2026-09-10, Q-101).
+
 ### After v1: what this design already allows (the designer's questions, 2026-09-09)
 
 **One policy per robot, from its own days.** In v1 each Mark III owns its weights, kept in

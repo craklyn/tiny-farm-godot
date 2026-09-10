@@ -47,3 +47,4 @@ is the single to-do list for designer input; nothing blocks silently outside it.
 
 Technical design lives in `docs/ARCHITECTURE.md`; production plan in `docs/ROADMAP.md`;
 vision in `docs/GAME_VISION.md`.
+- `14-training-workbench.md` — the workbench: reward dials, what the robot sees, the model plate, the training ledger, the weight mosaic (designed 2026-09-10, Q-101).
