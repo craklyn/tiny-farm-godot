@@ -218,9 +218,17 @@ re-survey.*
   static func draw_action_glyph(canvas: CanvasItem, action: int, at: Vector2, size: float) -> void
   signal closed
   ```
-  `draw_action_glyph` draws the eight action pictures every page shares: hoe, packet, can,
-  wheat, bin and crow from the F-45 cells, a four-arrow cross for `wander` and a clock for
-  `wait` from primitives. The row pips are `static func BotScorecard.draw_pip(canvas:
+  `draw_action_glyph` draws the eight action pictures every page shares: hoe, packet and can
+  from `tool_icons.png`, **harvest = `wheat.png` cell 3 (the ripe head), ship =
+  `shipping_bin.png`** (not the basket or the coin — those are the *outcome* pips `harvested`
+  and `shipped` on the scorecard and the dials, and one picture must not mean two things on one
+  screen), the crow from `crow.png`, a four-arrow cross for `wander` and a clock for `wait` from
+  primitives. **Landed with WI-2, the shell also carries** (use these, do not re-invent):
+  `var portraits: Array` (the strip's cards), `func robot_extra() -> Dictionary` (the one way a
+  page reaches the robot's `extra`), `static func draw_empty_dash(canvas: CanvasItem) -> void`,
+  `static func plate_rect(i: int) -> Rect2`, `const TOUCH := 56.0`, `PLATE_SIZE`, and the mosaic
+  ramp `WEIGHT_COOL`, `WEIGHT_NEUTRAL`, `WEIGHT_WARM`. Pages are `MOUSE_FILTER_IGNORE`; a page
+  that wants a control adds its own child `Button`. `show_bench` always opens on plate 0. The row pips are `static func BotScorecard.draw_pip(canvas:
   CanvasItem, key: String, at: Vector2, size: float) -> void`, a refactor of `_pip` that scales
   its chip and sprout offsets (`bot_scorecard.gd:295-296`) by `size / PIP_SIZE`. **Both are
   WI-2's**, so the parallel items only consume them.
@@ -427,7 +435,9 @@ without error for a robot on the map's corner (out-of-map tiles as dashes). Both
 
 - `BotScorecard`: `plot_h` and the `tuned` ticks (§3). The panel must be unchanged: run
   `tools/capture_machines.gd` before and after if a display is available, else state that it
-  was not run.
+  was not run — and if you run it, first point its `save_path`/`replay_path`/`trace_path` at
+  scratch the way `tools/capture_workbench.gd` does (that fix is yours if you touch the file;
+  otherwise WI-8's).
 - `MetricCard` as §3.
 - The page: a `BotScorecard` at the F-44 chart rect with `plot_h` set to fit, `show_bot(extra)`;
   four `MetricCard`s: **expected vs actual** (kind line: the closed days' `score − expected`
@@ -497,6 +507,9 @@ in the yard if a display is available.
   `_scorecard_in(bench ledger page).days == _scorecard_in(machine panel).days` and both
   scorecards' `tick_days` equal; a `tune` from the bench changes the panel's next scorecard
   nothing (rewards are not drawn there) but the bench's dials page numeral.
+- `tools/capture_machines.gd`: point its save, replay and trace paths at scratch as
+  `tools/capture_workbench.gd` does, so a capture never seeds the next suite run (skip if WI-5
+  already did it).
 - `tools/check_gateway.py`: add `"ui"` to `WATCHED_DIRS`; mark any legitimate read in existing
   `ui/` code with `# gateway-ok: <why>`; `--self-test` still passes. If the checker's rules
   cannot distinguish a read from a write in `ui/` without a flood of annotations, **report the
@@ -531,6 +544,14 @@ any change to the learning rule or its rate; adjacency rules for `tune`.
   way `tools/capture_machines.gd` stages the scorecard.
 - Read only: this plan (§1–§3 and your item), `CLAUDE.md`, and the two or three files your item
   names. Do not re-survey.
+- **First, check your worktree is at main's tip** (`git log --oneline -1 main` against `HEAD`;
+  `git merge --ff-only main` if not). WI-2's worktree was created three commits behind main and
+  the worker only noticed because the files it was told were there were missing.
+- **Never run a capture or demo tool that autosaves into the shared `user://` before a suite
+  run** unless it points `save_path`/`replay_path`/`trace_path` at scratch, as
+  `tools/capture_workbench.gd` does. `tools/capture_machines.gd` does not yet (WI-8 fixes it);
+  a staged farm left in the autosave made the next integration run fail eight scenarios with
+  nothing wrong in the code.
 - Report back with: files changed; tests added and their assertion counts; both suite result
   lines; **anything in this plan that was wrong or that you had to decide**; the worktree path
   and branch. No diffs. Commit on the branch; do not push.
@@ -605,3 +626,11 @@ is `training-workbench`.*
   two subjects (bench, rack) composed locally rather than one whole-object call, per the skill's
   rule never to pay for layout. Landed with another session's uncommitted CREDITS and spend
   edits set aside for the seconds of the merge and restored on top, both spend records kept.
+- 2026-09-10 — **WI-2 landed** (`ccd123a`): the catalogue row and shop entry, the generalised
+  structure branch, `object_tile`, the special-object row and the player/main deferral, the
+  `workbench` mode of the menus, `ui/workbench.gd` with the chrome and the five stubs,
+  `draw_pip` and `draw_action_glyph`, `tools/capture_workbench.gd`; `test_workbench_place` (30)
+  and `_scenario_an_the_workbench_opens_from_the_yard` (28). Worker's worktree: unit 2538,
+  integration 717, gateway clean; verified on a clean checkout of main below. Two traps it
+  found are now in §6: a worktree created behind main, and a capture tool that autosaves into
+  the shared user directory. Its shell additions are in §3.
