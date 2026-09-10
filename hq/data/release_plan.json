@@ -223,7 +223,7 @@
           "id": "s2",
           "title": "The workbench in the shop: buy it, set it down, tap it, and page between its five plates",
           "estimate_days": 1.5,
-          "done": false
+          "done": true
         },
         {
           "id": "s3",
