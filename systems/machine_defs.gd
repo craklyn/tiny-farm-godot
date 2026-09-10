@@ -165,6 +165,33 @@ static var TYPES: Dictionary = {
 		"icon": { "sheet": "res://assets/sprites/generated/bot_mk2.png",
 			"region": Rect2(0, 0, 48, 48) },
 	},
+	# The learning line (v0.2.1, `design/06` "The ladder's third rung"; P-14). The
+	# mark-2's three behaviours were written by hand; this one's is written by its
+	# own days — it wanders, waters, and is nudged every night towards whatever
+	# earned. Priced at twice the mark-2 because that is the whole arc of the
+	# game in one shelf: the more of the farm a machine takes off her hands, the
+	# longer she saves for it. [Playtest]
+	"bot_mk3": {
+		"name": "Robot Mk III",
+		"price": 800,
+		"species": SpeciesDefs.BOT,
+		# Neither a taught list nor a dial: what this machine does is a policy it
+		# is still working out. The menu shows what it has learned, not what to
+		# set it to (Q-97).
+		"program": "policy",
+		# **No configs, on purpose.** `configure` rebuilds a bot's `extra` from
+		# scratch, so a settable mark-3 would be a machine whose weeks of learning
+		# she could wipe by tapping a menu row. An empty list is what makes the
+		# gateway refuse the dial outright (`SimWorld`'s `configure`).
+		"configs": [],
+		"default_config": "learn",
+		"unlock_requirement": null,
+		# **The mark-2's sheet, borrowed.** WI-6 of the v0.2.1 plan generates a
+		# third one and replaces this line; until it does, a Mark III is drawn as
+		# a mark-2 — honest about the family, wrong about the machine.
+		"icon": { "sheet": "res://assets/sprites/generated/bot_mk2.png",
+			"region": Rect2(0, 0, 48, 48) },
+	},
 }
 
 # Display order — and, because the shop iterates it, the list of what is actually
@@ -175,7 +202,8 @@ static var TYPES: Dictionary = {
 # with a verb, a state, a refund and 23 passing assertions, and no way to get any.
 # Fencing leads: it is the cheapest thing on the shelf and the only one that is
 # not a machine.
-static var ORDER: Array[String] = ["fence", "sprinkler", "stall", "bot_mk1", "bot_mk2"]
+static var ORDER: Array[String] = ["fence", "sprinkler", "stall", "bot_mk1", "bot_mk2",
+		"bot_mk3"]
 
 
 static func has(key: String) -> bool:

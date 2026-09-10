@@ -2030,6 +2030,14 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			var before: Dictionary = actor(target_id)
 			var kept_energy: int = int(before.get("energy", ACTOR_MAX_ENERGY))
 			var kept_owner := String(before.get("extra", {}).get("owner", ACTOR_PLAYER))
+			# **What survives a dial is this list and nothing else**, which is
+			# safe today because no machine has both a dial and something worth
+			# keeping: a Mark III's weights are the only such thing in the game,
+			# and its row offers no configs at all, so the refusal above is what
+			# protects them (v0.2.1 WI-4). The moment a mark has both, the learned
+			# keys — `weights`, `baseline`, `days`, `last_score`, `spec`, `salt` —
+			# have to be carried here too, or turning the dial will wipe weeks of
+			# a robot's learning without a word.
 			BotBrain.deploy(self, target_id, wanted, actor_pos(target_id), { "owner": kept_owner })
 			actors[target_id]["energy"] = kept_energy
 			actors[target_id]["extra"]["model"] = target_key

@@ -163,6 +163,7 @@ func _init() -> void:
 	test_mark_one_robot()
 	test_observation()
 	test_policy()
+	test_learning_robot_day()
 	test_world_pages()
 	test_the_door()
 	test_fencing()
@@ -11080,6 +11081,356 @@ func test_mark_one_robot() -> void:
 		"and a replay of a session in which she taught a robot lands on the same farm and the same robot")
 	_assert(str(BotBrain.orders_of(replayed.actor("bot_mk1")["extra"])) == str(lesson),
 		"knowing the same tiles, in the same order — a lesson is training data (S-3/S-5)")
+
+
+# --- The mark-3: a day of wandering, and a night that changes it (v0.2.1) -----
+#
+# WI-3 and WI-4 of `docs/V0_2_1_PLAN.md`. The two halves the earlier tests
+# exercise separately — what a robot can see, and the maths it chooses with —
+# are now a machine in a farm: it is bought, put down, and left to spend a day
+# deciding once a second, and the day turn is where what it did becomes what it
+# is. Everything below runs through the gateway and the clock, because the claim
+# is not that the arithmetic is right (`test_policy` says that) but that a
+# **robot** made of it stays deterministic, savable and replayable.
+
+# A block of soil that wants water, and where the robot is put down in it. Six by
+# four so that the patch is bigger than what a radius-2 robot can see at once,
+# which is what makes "walk somewhere and then water" a thing there is to learn.
+const MK3_PATCH := Rect2i(9, 8, 6, 4)
+const MK3_SPOT := Vector2i(11, 9)
+
+
+func _mk3_yard(seed_value: int) -> LiveSession:
+	var s := _bot_yard(seed_value)
+	for ty in range(MK3_PATCH.position.y, MK3_PATCH.end.y):
+		for tx in range(MK3_PATCH.position.x, MK3_PATCH.end.x):
+			s.world.set_tile_state(tx, ty, "seeded", "wheat")
+	s.gs.gold = 2000
+	return s
+
+
+func _mk3_place(s: LiveSession, at: Vector2i) -> String:
+	s.act({ "verb": "buy_machine", "item": "bot_mk3", "actor": "player" })
+	return String(s.act({ "verb": "place", "target": at,
+		"item": "bot_mk3", "actor": "player" }).get("machine", ""))
+
+
+# Is every value in here one of the five things JSON has? Recursive, because a
+# robot's `extra` is a dictionary holding arrays holding numbers, and ground rule
+# 4 binds all the way down: `extra` is deep-copied into the save and compared by
+# `capture_canonical`, so one Vector2i anywhere in it is a robot that comes back
+# from disk as a different robot.
+func _json_plain(value) -> bool:
+	match typeof(value):
+		TYPE_BOOL, TYPE_INT, TYPE_FLOAT, TYPE_STRING:
+			return true
+		TYPE_ARRAY:
+			for x in value:
+				if not _json_plain(x):
+					return false
+			return true
+		TYPE_DICTIONARY:
+			for k in value:
+				if typeof(k) != TYPE_STRING or not _json_plain(value[k]):
+					return false
+			return true
+	return false
+
+
+# A robot that will certainly water, whatever it draws. Its whole policy is one
+# enormous bias on the water row, which `probs` turns into a flat 1 — so the six
+# actions become one action and the *outcome* is the only thing left varying.
+# The scoring rule is what these tests are after, and this is how it is asked
+# through the real brain rather than by calling `on_result` by hand.
+func _mk3_make_certain(extra: Dictionary, action: int) -> void:
+	var width: int = Observation.size(extra.get("spec", Observation.spec_default()))
+	var w := Policy.new_weights(width, BotBrain.LEARN_ACTIONS)
+	w[action * (width + 1) + width] = 1000.0
+	extra["weights"] = w
+
+
+func test_learning_robot_day() -> void:
+	print("\n--- The mark-3 robot: it wanders, it waters, it learns (v0.2.1 WI-3/WI-4) Tests ---")
+
+	# --- the third row of the catalogue ---------------------------------------
+	_assert(MachineDefs.species_of("bot_mk3") == MachineDefs.species_of("bot_mk2"),
+		"all three marks are the same species — the ladder is one machine with a setting")
+	_assert(MachineDefs.program_of("bot_mk3") == "policy"
+			and MachineDefs.program_of("bot_mk3") != MachineDefs.program_of("bot_mk2"),
+		"and the mark-3's menu is about a policy, where the mark-2's is about a dial")
+	_assert(MachineDefs.price_of("bot_mk1") == 150 and MachineDefs.price_of("bot_mk2") == 400
+			and MachineDefs.price_of("bot_mk3") == 800,
+		"the shelf climbs 150, 400, 800 — the more of the round it takes off her, the longer she saves")
+	_assert("bot_mk3" in MachineDefs.ORDER,
+		"and it is on the shelf, not merely in the table — the shop walks ORDER")
+	_assert(BotBrain.CONFIG_LEARN in BotBrain.ALL_CONFIGS
+			and not (BotBrain.CONFIG_LEARN in BotBrain.CONFIGS),
+		"'learn' is a config the brain answers for and deliberately not one of the mark-2's three")
+	_assert(MachineDefs.configs_of("bot_mk3").is_empty()
+			and MachineDefs.default_config("bot_mk3") == BotBrain.CONFIG_LEARN,
+		"it has one thing it is, and no dial to turn it off")
+	_assert(not MachineDefs.TYPES["bot_mk3"].has("spec"),
+		"the row names no senses: the catalogue is layer 1 and may not import the sim")
+
+	# --- the salt is a written-down fold, not the engine's hash ---------------
+	# A salt that moved between engine versions would not crash anything. It would
+	# quietly make every recorded session replay into a *different* robot, months
+	# later, pointing at a brain nobody had touched.
+	_assert(Policy.salt_of("bot_1") == 1034264166,
+		"salt_of('bot_1') is 1034264166, and stays that number on every engine (%d)"
+			% Policy.salt_of("bot_1"))
+	_assert(Policy.salt_of("bot_1") != Policy.salt_of("bot_2")
+			and Policy.salt_of("") == 2166136261,
+		"two robots draw under different salts, and the empty id folds to FNV's own offset")
+
+	# --- she buys one and puts it down ----------------------------------------
+	var s := _mk3_yard(9091)
+	var bot := _mk3_place(s, MK3_SPOT)
+	_assert(bot == "bot_mk3", "she buys and places a Mark III (%s)" % bot)
+	var extra: Dictionary = s.world.actor(bot)["extra"]
+	_assert(String(extra.get("config", "")) == BotBrain.CONFIG_LEARN,
+		"and it lands on the learn config, which is the only one it has")
+	_assert(s.world.machine_key_of(bot) == "bot_mk3",
+		"the actor remembers which mark it was bought as — three marks share one species")
+
+	var width := Observation.size(Observation.spec_default())
+	for key in ["spec", "weights", "trace", "acc", "baseline", "days", "decisions",
+			"score", "last_score", "salt", "pending_needs_water"]:
+		_assert_quiet(extra.has(key), "a placed Mark III carries '%s'" % key)
+	_flush_quiet("a placed Mark III carries every learned key it will ever need")
+	_assert(extra["spec"] == Observation.spec_default(),
+		"its senses are written on the robot, so a later default cannot reinterpret old weights")
+	_assert((extra["weights"] as Array).size() == BotBrain.LEARN_ACTIONS * (width + 1)
+			and (extra["trace"] as Array).size() == (extra["weights"] as Array).size()
+			and (extra["acc"] as Array).size() == (extra["weights"] as Array).size(),
+		"with six rows of %d weights, and two running sums the same shape" % (width + 1))
+	var born_uniform := true
+	for x in extra["weights"]:
+		if float(x) != 0.0:
+			born_uniform = false
+	_assert(born_uniform, "all of them zero, so its first day is a wander and not a habit")
+	_assert(int(extra["salt"]) == Policy.salt_of(bot) and int(extra["days"]) == 0
+			and int(extra["decisions"]) == 0 and not bool(extra["pending_needs_water"]),
+		"and it starts with its own salt, no days behind it and nothing owing")
+
+	# Ground rule 4, checked rather than assumed.
+	_assert(_json_plain(extra), "every value on the robot is one of the five things JSON has")
+	var parsed = JSON.parse_string(JSON.stringify(extra))
+	_assert(parsed != null and parsed["weights"] == extra["weights"],
+		"and its weights come back from JSON element for element")
+
+	# --- a day of deciding ----------------------------------------------------
+	# Once a second of sim time, whatever it just did: thirty seconds is thirty
+	# decisions, and never a queue of thinks waiting behind each other.
+	var waters := 0
+	for t in s.tick(SimClock.RATE * 30):
+		if String(t["action"].get("actor", "")) == bot \
+				and String(t["action"].get("verb", "")) == "water":
+			waters += 1
+	_assert(int(extra["decisions"]) == 30,
+		"thirty seconds of sim time is thirty decisions (%d)" % int(extra["decisions"]))
+	var on_clock := 0
+	for id in s.world.actors:
+		if Brains.of_actor(s.world, id).on_clock():
+			on_clock += 1
+	_assert(s.world.clock.pending() == on_clock,
+		"with exactly one think pending per actor on the clock, never a queue of them (%d)"
+			% s.world.clock.pending())
+	_assert(waters > 0 and waters < 30,
+		"a robot that has learned nothing wanders: it watered %d of its thirty seconds" % waters)
+
+	# **Only the watering costs it anything.** Walking is the movement engine and
+	# waiting is nothing at all, so a day's meter is exactly the strokes in it.
+	var spent: int = SimWorld.ACTOR_MAX_ENERGY - s.world.energy_of(bot)
+	_assert(spent == waters * Tools.get_energy_cost("water"),
+		"and its meter fell by %d — %d waterings at %d, and not one unit for the walking"
+			% [spent, waters, Tools.get_energy_cost("water")])
+
+	# The trace grew with the day, and the weights did not: the day is played on
+	# one policy, and the lesson waits for the night (P-14).
+	var trace_moved := false
+	for x in extra["trace"]:
+		if float(x) != 0.0:
+			trace_moved = true
+	var still_uniform := true
+	for x in extra["weights"]:
+		if float(x) != 0.0:
+			still_uniform = false
+	_assert(trace_moved and still_uniform,
+		"a day moves the trace and leaves the weights alone — one day is one policy")
+
+	# --- what a reward is for -------------------------------------------------
+	# Paid for the outcome and never for the gesture: the same stroke on the same
+	# square is worth 1 the first time and nothing the second.
+	var sure := _mk3_yard(3131)
+	var waterer := _mk3_place(sure, MK3_SPOT)
+	var wex: Dictionary = sure.world.actor(waterer)["extra"]
+	_mk3_make_certain(wex, BotBrain.LEARN_WATER)
+	_assert(not bool(sure.world.get_tile(MK3_SPOT.x, MK3_SPOT.y).get("watered_today", false)),
+		"the square under it is sown and dry")
+	sure.tick(SimClock.RATE)
+	_assert(int(wex["decisions"]) == 1 and is_equal_approx(float(wex["score"]), 1.0),
+		"turning a thirsty square wet is worth 1 (%s)" % str(wex["score"]))
+	_assert(bool(sure.world.get_tile(MK3_SPOT.x, MK3_SPOT.y).get("watered_today", false)),
+		"and the water shows on it, through the same gateway her own can goes through")
+	sure.tick(SimClock.RATE)
+	_assert(int(wex["decisions"]) == 2 and is_equal_approx(float(wex["score"]), 1.0),
+		"watering it again earns nothing — the second stroke changed no square (%s)"
+			% str(wex["score"]))
+	_assert(not bool(wex["pending_needs_water"]),
+		"and nothing is left owing between one decision and the next")
+
+	# --- an empty meter is a robot standing still -----------------------------
+	sure.world.set_actor_energy(waterer, 0)
+	var parked_at: int = int(wex["decisions"])
+	sure.tick(SimClock.RATE * 30)
+	_assert(int(wex["decisions"]) == parked_at,
+		"a robot with nothing left to spend stops deciding (%d)" % int(wex["decisions"]))
+	_assert(sure.world.actor_pos(waterer) == MK3_SPOT,
+		"and stands where it ran out, where she can see it")
+
+	# --- and it waits for her to come outside ---------------------------------
+	# The rule every config obeys: no machine lifts a tool while she is indoors.
+	sure.world.set_actor_energy(waterer, SimWorld.ACTOR_MAX_ENERGY)
+	sure.world.set_actor_pos(SimWorld.ACTOR_PLAYER, Vector2i(15, 27))
+	_assert(sure.world.page_of(sure.world.actor_pos(SimWorld.ACTOR_PLAYER)) == 1,
+		"she has gone in through her own front door")
+	sure.world.schedule_all_brains()
+	var indoors_at: int = int(wex["decisions"])
+	sure.tick(SimClock.RATE * 30)
+	_assert(int(wex["decisions"]) == indoors_at,
+		"and a Mark III waits for her morning like every other machine (%d)"
+			% int(wex["decisions"]))
+	sure.done()
+
+	# --- the night ------------------------------------------------------------
+	# The one moment in the day when a learning robot changes.
+	var day_one: float = float(extra["score"])
+	var before_night: Array = (extra["weights"] as Array).duplicate()
+	s.gs.weather = "sunny"
+	s.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
+	_assert(int(extra["days"]) == 1 and int(extra["decisions"]) == 0,
+		"a night closes the day: one day behind it, and the decision count back to zero")
+	_assert(is_equal_approx(float(extra["last_score"]), day_one)
+			and is_equal_approx(float(extra["score"]), 0.0),
+		"what the day was worth is kept as last_score, and the running score starts again")
+	_assert(is_equal_approx(float(extra["baseline"]), day_one),
+		"the baseline is the mean of every day so far, which after one day is that day (%s)"
+			% str(extra["baseline"]))
+	var swept := true
+	for i in (extra["trace"] as Array).size():
+		if float(extra["trace"][i]) != 0.0 or float(extra["acc"][i]) != 0.0:
+			swept = false
+	_assert(swept, "and the day's two running sums are swept — a day's work belongs to that day")
+	_assert(day_one > 0.0 and (extra["weights"] as Array) != before_night,
+		"a day worth %s changed the weights it will be played on tomorrow" % str(day_one))
+	var rounded := true
+	for x in extra["weights"]:
+		if not is_equal_approx(float(x), Policy.round6(float(x))):
+			rounded = false
+	_assert(rounded, "every one of them rounded to six places, which is the determinism guard")
+	_assert(s.world.energy_of(bot) == SimWorld.ACTOR_MAX_ENERGY,
+		"and the machine wakes rested, like everything else with a meter")
+
+	# A day nobody earned anything in teaches nothing, and says so by leaving the
+	# weights exactly where they were.
+	var idle := _mk3_yard(7373)
+	var sleeper := _mk3_place(idle, MK3_SPOT)
+	var sex: Dictionary = idle.world.actor(sleeper)["extra"]
+	var untouched: Array = (sex["weights"] as Array).duplicate()
+	idle.gs.weather = "sunny"
+	idle.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
+	_assert(int(sex["days"]) == 1 and is_equal_approx(float(sex["last_score"]), 0.0)
+			and (sex["weights"] as Array) == untouched,
+		"a day that earned nothing turns the page and changes not one weight")
+	idle.done()
+
+	# --- the dial cannot reach it ---------------------------------------------
+	# Which is the whole reason its row offers no configs: `configure` rebuilds a
+	# bot's `extra` from scratch, so a settable Mark III would be weeks of
+	# learning she could wipe by tapping the wrong row of a menu.
+	var refused := s.act({ "verb": "configure", "target": s.world.actor_pos(bot),
+		"config": BotBrain.CONFIG_SHOO, "actor": "player" })
+	_assert(not refused.get("ok", true) and String(refused.get("reason", "")) == "bad_config",
+		"turning a Mark III into a mark-2 is refused as bad_config (%s)"
+			% String(refused.get("reason", "")))
+	_assert((s.world.actor(bot)["extra"]["weights"] as Array) != before_night,
+		"and its weights are still the ones it learned")
+
+	# --- and what it learned survives the disk --------------------------------
+	var snapshot = JSON.parse_string(JSON.stringify(SaveGame.capture(s.world, s.gs)))
+	var gs_back = load("res://systems/game_state.gd").new()
+	gs_back.reset()
+	var restored := SimWorld.new()
+	_assert(SaveGame.restore(snapshot, restored, gs_back), "a farm with a Mark III on it saves")
+	var back: Dictionary = restored.actor(bot)["extra"]
+	_assert((back["weights"] as Array) == (extra["weights"] as Array),
+		"and comes back weight for weight — a restored robot is the robot that was saved")
+	_assert(int(back["days"]) == int(extra["days"])
+			and is_equal_approx(float(back["baseline"]), float(extra["baseline"]))
+			and int(back["salt"]) == int(extra["salt"]),
+		"with the same days behind it, the same baseline and the same salt")
+	# **The senses come back meaning the same thing, not typed the same way.**
+	# Godot's JSON reader hands every number back as a float, so `vision: 2` is
+	# `2.0` on the far side of a save — which every reader of a spec already
+	# copes with (`Observation` casts) and which `capture_canonical` cannot see,
+	# because it puts both sides through JSON before comparing. What must not
+	# change is the width the weights were learned against.
+	_assert(Observation.size(back["spec"]) == Observation.size(extra["spec"])
+			and back["spec"]["channels"] == extra["spec"]["channels"],
+		"and the same senses: %d numbers, in the same channels" % Observation.size(back["spec"]))
+	gs_back.free()
+
+	# --- two farms on one seed are one farm -----------------------------------
+	# Nothing about a robot's day comes from anywhere but the seed, its own id and
+	# what it can see, which is what the replay below rests on.
+	var twin_a := _mk3_yard(5555)
+	var id_a := _mk3_place(twin_a, MK3_SPOT)
+	twin_a.tick(SimClock.RATE * 60)
+	var twin_b := _mk3_yard(5555)
+	var id_b := _mk3_place(twin_b, MK3_SPOT)
+	twin_b.tick(SimClock.RATE * 60)
+	var ex_a: Dictionary = twin_a.world.actor(id_a)["extra"]
+	var ex_b: Dictionary = twin_b.world.actor(id_b)["extra"]
+	for key in ex_a.keys():
+		_assert_quiet(str(ex_a[key]) == str(ex_b[key]), "'%s' agrees" % key)
+	_flush_quiet("a minute of two robots on the same seed leaves them identical, key for key")
+	_assert((ex_a["trace"] as Array) == (ex_b["trace"] as Array)
+			and twin_a.world.actor_pos(id_a) == twin_b.world.actor_pos(id_b),
+		"down to the trace element for element, and the tile they are standing on")
+	twin_a.done()
+	twin_b.done()
+	s.done()
+
+	# --- two days of it, replayed ---------------------------------------------
+	# The claim Q-53 rests on: a mark-3's whole day is **recomputed** from the
+	# seed, so a log of a session in which one wandered for two days carries not a
+	# word about what it chose — and still reproduces the same robot, weights and
+	# all. The waterings it did are in the log marked as a brain's, and the two
+	# nights ride in on the two `sleep` entries.
+	var live := _mk3_yard(6161)
+	live.rebase()
+	var learner := _mk3_place(live, MK3_SPOT)
+	for _day in 2:
+		live.tick(SimClock.RATE * 45)
+		live.gs.weather = "sunny"
+		live.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
+	live.tick(SimClock.RATE * 10)
+	var lex: Dictionary = live.world.actor(learner)["extra"]
+	_assert(int(lex["days"]) == 2,
+		"the recorded session put two days on the robot (%d)" % int(lex["days"]))
+	var live_canonical := SaveGame.capture_canonical(live.world, live.gs)
+
+	var again := SimWorld.new()
+	live.log.apply_to(again, live.gs)
+	_assert(live.log.divergence == "",
+		"and it recomputes cleanly, decision for decision (%s)" % live.log.divergence)
+	_assert(SaveGame.capture_canonical(again, live.gs) == live_canonical,
+		"landing on the same farm and, weight for weight, the same robot")
+	_assert((again.actor(learner)["extra"]["weights"] as Array) == (lex["weights"] as Array)
+			and int(again.actor(learner)["extra"]["days"]) == 2,
+		"which is the whole of Q-53 for a learning bot: nothing recorded, everything reproduced")
+	live.done()
 
 
 # --- The door (2026-09-06) ----------------------------------------------------

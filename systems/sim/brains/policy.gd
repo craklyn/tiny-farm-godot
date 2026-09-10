@@ -204,3 +204,34 @@ const INDEX_MIX := 2654435761
 # open-coding the plan's line.
 static func draw_u(salt: int, index: int) -> float:
 	return float(SimRng.stateless(salt ^ (index * INDEX_MIX), index) % 1000000) / 1000000.0
+
+
+# --- the salt a robot draws under ----------------------------------------------
+
+# FNV-1a's two magic numbers, and the mask that keeps the fold inside 32 bits.
+# Standard constants, written out rather than derived so the fold is checkable
+# against any other implementation of it.
+const FNV_OFFSET := 2166136261
+const FNV_PRIME := 16777619
+const FNV_MASK := 4294967295
+
+
+# A robot's own number, folded from its id — the salt every draw of its life is
+# taken under (`draw_u`), so two robots standing on the same tile on the same day
+# do not make the same six choices.
+#
+# **Deliberately not `hash()`.** Godot's string hash is an engine implementation
+# detail: it has changed between major versions and nothing promises it will not
+# again. A salt that moved would not crash anything — it would quietly make every
+# recorded session replay into a *different* robot, months later, with the
+# divergence pointing at a brain that had not been touched. FNV-1a over the UTF-8
+# bytes is a written-down algorithm with written-down constants, so this file is
+# the whole definition and the engine is not part of it.
+#
+# Masked to 32 bits, which keeps the result positive and keeps the multiply well
+# inside a 64-bit int on the way there.
+static func salt_of(actor_id: String) -> int:
+	var h := FNV_OFFSET
+	for b in actor_id.to_utf8_buffer():
+		h = ((h ^ int(b)) * FNV_PRIME) & FNV_MASK
+	return h
