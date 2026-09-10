@@ -282,6 +282,14 @@ const SHOO_CHASE_TILES := 6
 # [Playtest]
 const LEARN_RATE := 0.03
 
+# **What we would do instead if this rung of the ladder does not learn** (P-5),
+# written here rather than in a doc so that the workbench's plate says what the
+# code says: the plate reads both of these, and the day a fallback is actually
+# adopted the sentence on the bench changes with the switch below and not with
+# somebody remembering to edit a label.
+const LEARN_FALLBACK := "more nights, then a scripted curriculum with a learned residual"
+const LEARN_FALLBACK_IN_FORCE := false
+
 # How far apart two days' draws are pushed. Any odd stride would do; a prime is
 # the cheap way to keep one robot's second day out of another robot's first.
 const LEARN_DAY_STRIDE := 7919
@@ -432,6 +440,45 @@ static func deploy(world: SimWorld, actor_id: String, config: String, at: Vector
 			# should be able to see it doing. A String, because `extra` is
 			# JSON-plain all the way down (ground rule 4).
 			extra["carrying"] = ""
+			# **What each outcome is worth to *this* robot** (v0.2.2, Q-101).
+			# The factory table to begin with, and the workbench's `tune` verb
+			# moves one rung of `Rewards.LADDER` at a time. Per robot rather than
+			# global because two machines on one farm should be able to be paid
+			# for different things — and because a designer turning a dial must
+			# not be able to retrain every robot she owns with one press. An
+			# array in `KEYS` order, like `earned`, for the same JSON reason.
+			extra["rewards"] = Rewards.factory()
+			# The days a dial was turned on, newest last — one entry per day at
+			# most, capped like `history`. The scorecard draws a tick at each, so
+			# a chart that changed shape has the reason on it (design 14 §5).
+			extra["tuned"] = []
+			# --- the day's bookkeeping, all of it a report ------------------
+			# Nothing below is read by a decision: the policy would be exactly
+			# the same policy without any of it. It exists so the workbench can
+			# say what the day was made of rather than only what it scored.
+			#
+			# Today's summed decision entropy in bits, divided by `decisions`
+			# when it is shown — how undecided the robot was, averaged over the
+			# day, against a ceiling of log2(LEARN_ACTIONS).
+			extra["entropy_sum"] = 0.0
+			# Today's **spent** decisions: ones that chose a verb and got no
+			# Action out of the gateway, because there was no legal square, or
+			# the square had changed by the time it arrived. Counted in `_learn`
+			# and nowhere else, so `spent` can never exceed `decisions`.
+			extra["spent"] = 0
+			# ...and today's decisions to stand still, so the plate can say in
+			# words that a robot has learned to do nothing (design 14 §2).
+			extra["waits"] = 0
+			# The last action index it chose, -1 before it has chosen anything.
+			# The workbench's eyes light this bar, which is the difference
+			# between showing a distribution and showing a decision.
+			extra["last_action"] = -1
+			# How far last night moved it: the L2 norm of the weight change.
+			extra["last_update"] = 0.0
+			# One row per closed day, appended by `_sleep_on_it`, capped like
+			# `history`: seven numbers saying what the day was made of. See the
+			# append itself for the order.
+			extra["ledger"] = []
 		CONFIG_CIRCLE:
 			extra["radius"] = int(params.get("radius", ORBIT_RADIUS))
 		CONFIG_SHOO:
@@ -1128,13 +1175,25 @@ func _learn(world: SimWorld, actor_id: String, extra: Dictionary, tick: int,
 	# movement engine's own step, so this costs one think per tile crossed and
 	# nothing at all per tick.
 	if String(extra.get("job", "")) != "":
-		return _carry_on(world, actor_id, extra, tick, gs)
+		var carried := _carry_on(world, actor_id, extra, tick, gs)
+		# **The second of the two places a decision is booked as spent.** An
+		# errand that ends without a verb — the route abandoned, or the square
+		# refused on arrival — spends the decision that started it, and this is
+		# the only beat at which that is knowable: the job was on when this call
+		# began and is off now, with nothing emitted.
+		if carried.is_empty() and String(extra.get("job", "")) == "":
+			extra["spent"] = int(extra.get("spent", 0)) + 1
+		return carried
 
 	# Her stores go in with the world (v0.2.1 WI-9a): the seed box is one of the
 	# robot's inputs, and it is the one thing it can see that is not grid truth.
 	var obs := Observation.build(world, actor_id, extra.get("spec", {}), gs)
 	var n_in := obs.size()
 	var chances := Policy.probs(Policy.logits(extra["weights"], n_in, LEARN_ACTIONS, obs))
+	# How undecided it was, in bits, added to the day's running sum — once per
+	# decision, off the probabilities already in hand, so a day of it costs eight
+	# multiplies per errand and nothing per tick (v0.2.2 ground rule 5).
+	extra["entropy_sum"] = float(extra.get("entropy_sum", 0.0)) + Policy.entropy_bits(chances)
 	var decisions := int(extra.get("decisions", 0))
 	# The day is part of the salt so that a robot which has learned nothing yet
 	# does not repeat yesterday's exact wander today; the decision number is the
@@ -1144,6 +1203,11 @@ func _learn(world: SimWorld, actor_id: String, extra: Dictionary, tick: int,
 	var salt: int = int(extra.get("salt", 0)) ^ (int(extra.get("days", 0)) * LEARN_DAY_STRIDE)
 	var choice := Policy.sample(chances, Policy.draw_u(salt, decisions))
 	extra["decisions"] = decisions + 1
+	# What it just chose, for the workbench's eyes — the one bar that is lit is
+	# the decision rather than the distribution it came from.
+	extra["last_action"] = choice
+	if choice == LEARN_WAIT:
+		extra["waits"] = int(extra.get("waits", 0)) + 1
 	# The eligibility trace, one term per decision. Credit for a reward is spread
 	# back over everything the robot did before earning it, which is the only way
 	# *walking towards the bin* is ever learned when only the sale pays.
@@ -1160,6 +1224,14 @@ func _learn(world: SimWorld, actor_id: String, extra: Dictionary, tick: int,
 
 	extra["pending"] = ""
 	var action := _begin(world, actor_id, extra, tick, choice, gs)
+	# **The first of the two places a decision is booked as spent** (v0.2.2): one
+	# of the six verb actions that got neither an Action nor an errand out of
+	# `_begin`. That covers the square underfoot too — `_set_job` does the verb
+	# there and then, so a refusal on it arrives here as this same pair of facts —
+	# and it is the only site on this path, so a decision cannot be counted twice.
+	# Wandering and waiting are never spent: neither of them can fail.
+	if choice <= LEARN_SHOO and action.is_empty() and String(extra.get("job", "")) == "":
+		extra["spent"] = int(extra.get("spent", 0)) + 1
 	# Written last, after anything that moved it, so nothing can outlive it —
 	# except an errand, which sets its own pace from the movement engine and is
 	# the one thing that is *meant* to outlive the decision that started it.
@@ -1628,10 +1700,24 @@ func _sleep_on_it(extra: Dictionary) -> void:
 	var days := int(extra.get("days", 0))
 	var baseline := float(extra.get("baseline", 0.0))
 	var score := float(extra.get("score", 0.0))
-	extra["weights"] = Policy.night_update(weights,
+	# **Everything the ledger row needs, read before the slate below wipes it.**
+	# The day's counts are zeroed a dozen lines from here, so a row assembled at
+	# the end of this function would record a day of zeros — and would still look
+	# right, because a row of zeros is a shape and not an error.
+	var decisions := int(extra.get("decisions", 0))
+	var spent := int(extra.get("spent", 0))
+	var waits := int(extra.get("waits", 0))
+	var entropy := Policy.round6(
+		float(extra.get("entropy_sum", 0.0)) / float(maxi(1, decisions)))
+	var updated := Policy.night_update(weights,
 		_scaled(extra.get("acc", []), per_decision),
 		_scaled(extra.get("base_trace", []), per_decision),
 		baseline, LEARN_RATE)
+	# How far the night moved it, in one number — both arrays are in hand right
+	# here and nowhere else, so this is the only beat at which it can be had
+	# without keeping a copy of the weights overnight.
+	extra["last_update"] = Policy.round6(Policy.norm_of_change(weights, updated))
+	extra["weights"] = updated
 	extra["baseline"] = (baseline * float(days) + score) / float(days + 1)
 	# What the panel shows her. Still no dawn scene — what she sees of the night is
 	# the robot's own panel and nothing else (Q-97, unchanged).
@@ -1653,8 +1739,25 @@ func _sleep_on_it(extra: Dictionary) -> void:
 	while history.size() > LEARN_HISTORY_DAYS:
 		history.remove_at(0)
 	extra["history"] = history
+	# **What the day was made of, one row per closed day** (v0.2.2, Q-101), in
+	# the order the workbench's four cards read it:
+	# `[score, expected, entropy, update, spent, decisions, waits]`.
+	# `expected` is the baseline the day was *played* under — what the robot
+	# expected of it — which is why it is the local read at the top of this
+	# function and not the one written a few lines above. Capped like `history`,
+	# for the same reason: this rides in every save and every replay comparison.
+	var ledger: Array = extra.get("ledger", [])
+	ledger.append([score, baseline, entropy, float(extra.get("last_update", 0.0)),
+		float(spent), float(decisions), float(waits)])
+	while ledger.size() > LEARN_HISTORY_DAYS:
+		ledger.remove_at(0)
+	extra["ledger"] = ledger
 	extra["earned"] = _new_split()
 	extra["pending"] = ""
+	# ...and the day's counts with the rest of the slate.
+	extra["entropy_sum"] = 0.0
+	extra["spent"] = 0
+	extra["waits"] = 0
 
 
 # `source * k`, as a fresh plain Array of float — the shape the night needs and
@@ -1789,9 +1892,15 @@ func on_result(world: SimWorld, actor_id: String, action: Dictionary,
 	# the same fact `world/farm.gd` uses to decide whether to play the sound.
 	if String(action.get("verb", "")) == "harvest" and not result.has("crop_type"):
 		return
-	var earned := Rewards.of(pending)
-	if earned == 0.0:
-		return
+	# **This robot's price for the outcome, not the table's** (v0.2.2, Q-101).
+	# A row she has turned down to zero books an addition of nothing, which is
+	# the truth and draws as a flat line; a row she has turned negative books a
+	# negative, which is how "stop doing that" is said. The early return that
+	# used to sit here — skip everything when the reward is zero — is gone with
+	# the fixed table it belonged to: it could only ever have skipped additions
+	# of 0.0, and a robot whose dial is at zero should still show the outcome
+	# happening.
+	var earned := _reward_of(extra, pending)
 	Policy.add_into(extra["acc"], extra["trace"], earned)
 	extra["score"] = float(extra.get("score", 0.0)) + earned
 	# ...and the same point again in its own column, so a week can say which of
@@ -1800,6 +1909,24 @@ func on_result(world: SimWorld, actor_id: String, action: Dictionary,
 	var slot := Rewards.index_of(pending)
 	if slot >= 0 and slot < split.size():
 		split[slot] = float(split[slot]) + earned
+
+
+# **What this robot is paid for an outcome** (v0.2.2, Q-101). Its own row when it
+# has one, the factory table when it does not.
+#
+# The fallback is not defensive coding, it is the migration: a Mark III in a save
+# written before the workbench existed has no `rewards` array, and reading the
+# factory for it means such a robot keeps behaving exactly as it did rather than
+# needing a save version bumped and a rewrite pass over every actor. A row of the
+# wrong length is read the same way, because an array that does not line up with
+# `KEYS` is an array whose fifth entry does not mean what the fifth key says.
+static func _reward_of(extra: Dictionary, outcome: String) -> float:
+	var rows: Array = extra.get("rewards", [])
+	if rows.size() == (Rewards.KEYS as Array).size():
+		var slot := Rewards.index_of(outcome)
+		if slot >= 0:
+			return float(rows[slot])
+	return Rewards.of(outcome)
 
 
 # --- shared plumbing ------------------------------------------------------------

@@ -1023,6 +1023,12 @@ const NON_WORK_VERBS := { "sleep": true, "sell": true, "buy_seed": true, "refill
 		# against. **Placing** one is absent on purpose: carrying a sprinkler out
 		# to the far corner and setting it down is work, and it is charged as such.
 		"buy_machine": true, "configure": true,
+		# Turning a reward dial on the workbench is the same kind of thing as
+		# turning a config dial (v0.2.2, Q-101): she is telling a machine what to
+		# care about, not doing a stroke of farm work. It costs no energy, and a
+		# player who spent a minute at the bench must not come back to a field
+		# full of crows she paid for by thinking.
+		"tune": true,
 		# Teaching a mark-1 and sending it out are instructions, not strokes of
 		# work (2026-09-03). Charging the day's clock for pointing at eight tiles
 		# would make delegating the round cost more than doing it.
@@ -1410,6 +1416,28 @@ func is_stall_tile(t: Vector2i) -> bool:
 # The machine standing on this tile, or "". Sorted so that two machines sharing a
 # tile — which `placeable_at` prevents, but a save from a future layout might not
 # — always answer the same one, the registry block's iteration-order rule.
+# **Every machine on the farm that learns**, by id, sorted (v0.2.2, Q-101). A
+# read-only query, which is why it lives here rather than in the workbench that
+# asks it: the bench's robot strip is a fact about the world, and a UI walking
+# the registry itself would be a second definition of "learner" that drifts.
+#
+# A learner is an actor whose `extra` carries weights. Asked of the robot rather
+# than of the catalogue, for the reason `tune` above gives: the day a fourth mark
+# learns, it appears here with no edit.
+#
+# Sorted so the strip is in the same order on every machine, in every replay and
+# after every load — `actors` is a Dictionary, and its order is the engine's
+# business rather than the farm's.
+func learners() -> Array:
+	var out: Array = []
+	for raw in actors:
+		var id := String(raw)
+		if (actors[id].get("extra", {}) as Dictionary).has("weights"):
+			out.append(id)
+	out.sort()
+	return out
+
+
 func machine_at(t: Vector2i) -> String:
 	var found: Array[String] = []
 	for raw in actors:
@@ -2081,11 +2109,70 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			# protects them (v0.2.1 WI-4). The moment a mark has both, the learned
 			# keys — `weights`, `baseline`, `days`, `last_score`, `spec`, `salt` —
 			# have to be carried here too, or turning the dial will wipe weeks of
-			# a robot's learning without a word.
+			# a robot's learning without a word — and since v0.2.2 that list is
+			# longer: `rewards` (what she has taught it to care about), `tuned`
+			# and `ledger` (the record the workbench draws) would go the same way.
 			BotBrain.deploy(self, target_id, wanted, actor_pos(target_id), { "owner": kept_owner })
 			actors[target_id]["energy"] = kept_energy
 			actors[target_id]["extra"]["model"] = target_key
 			return { "ok": true, "machine": target_id, "config": wanted }
+
+		# **Turning one reward dial on a learning robot** (v0.2.2, Q-101; design
+		# `14-training-workbench`). She is not configuring the machine — a Mark
+		# III has no configs, and `configure` above would rebuild it from scratch
+		# and throw away everything it had learned. She is changing one number in
+		# the table it is paid out of, which is a world mutation like any other
+		# and therefore a verb (ground rule 1): the workbench never writes a
+		# robot's `extra` itself.
+		#
+		# Flat keys, `row` and `value`, because every Action in this game is flat.
+		# The robot is found under the target tile the way `configure` finds one,
+		# and the result is shaped like `teach`'s — what changed, and what it was
+		# before, so a UI can show the move without re-reading the actor.
+		#
+		# **The stored value is the ladder's own float, not the one that arrived.**
+		# A replayed Action carries its value through JSON as text, and a value
+		# that came back a bit-width off would leave a replayed robot being paid a
+		# hair more than the live one was — a divergence that would surface days
+		# later as weights that no longer match. Snapping to the rung it matched
+		# makes the two identical by construction.
+		#
+		# No energy, no adjacency: neither has `configure`, and a bench she walked
+		# to is already the adjacency.
+		"tune":
+			var dialled := machine_at(target)
+			if dialled == "": return _fail("no_machine_here")
+			var dialled_extra: Dictionary = actors[dialled]["extra"]
+			# A learner is a machine with weights. Asked of the robot rather than
+			# of its catalogue row, so a mark that learns later needs no edit here.
+			if not dialled_extra.has("weights"): return _fail("not_a_learner")
+			var row := String(action.get("row", ""))
+			var slot := Rewards.index_of(row)
+			if slot < 0: return _fail("bad_row")
+			var rung := Rewards.ladder_index(float(action.get("value", 0.5)))
+			if rung < 0: return _fail("bad_value")
+			var value := float(Rewards.LADDER[rung])
+			# A robot from a save that predates the dials has no table of its own
+			# yet; it gets the factory one and then the turn she just made.
+			var rewards: Array = dialled_extra.get("rewards", [])
+			if rewards.size() != (Rewards.KEYS as Array).size():
+				rewards = Rewards.factory()
+				dialled_extra["rewards"] = rewards
+			var previous := float(rewards[slot])
+			rewards[slot] = value
+			# **The day is marked once, however many dials she turns.** The
+			# scorecard draws a tick per marked day, and a tick per press would
+			# be a comb rather than a mark. Capped like every other per-day
+			# series on a robot (ground rule 4).
+			var today := int(dialled_extra.get("days", 0))
+			var marks: Array = dialled_extra.get("tuned", [])
+			if marks.is_empty() or int(marks[marks.size() - 1]) != today:
+				marks.append(today)
+				while marks.size() > BotBrain.LEARN_HISTORY_DAYS:
+					marks.remove_at(0)
+				dialled_extra["tuned"] = marks
+			return { "ok": true, "machine": dialled, "row": row, "value": value,
+				"previous": previous }
 
 		# **Teaching a mark-1 a tile** (designer, 2026-09-03). One tap, one entry in
 		# the machine's list, one recorded Action — so a session in which she

@@ -445,3 +445,51 @@ static func _channel_ids(channels: Array) -> Array:
 					% [String(channel_name), ", ".join(CHANNELS)])
 		ids.append(idx)
 	return ids
+
+
+# --- what the vector is made of, for anything that draws it (v0.2.2, Q-101) -----
+
+# The input vector as thirteen named bundles: one per channel — that channel's
+# slot in every tile of the patch — and then one per scalar the spec asked for.
+#
+# **The mosaic must not hand-roll the index layout.** `build` above writes the
+# head and then the patch row-major, and a second copy of that arithmetic in a UI
+# file is a picture that goes silently wrong the day a spec grows a channel. So
+# the layout is answered once, here, beside the builder it describes, and every
+# reader asks. Layer 2 and pure: it reads a spec and nothing else.
+#
+# Channels first because that is the order the workbench draws them in and
+# because they are the bulk of the vector; the scalars follow in the head's own
+# order. A group's `indices` are absolute positions in the vector `build`
+# returns, so together the thirteen are exactly `0..size(spec) - 1` with nothing
+# repeated and nothing missed.
+static func input_groups(spec: Dictionary) -> Array:
+	var r: int = maxi(0, int(spec.get("vision", DEFAULT_VISION)))
+	var side := 2 * r + 1
+	var channels: Array = spec.get("channels", CHANNELS)
+	var nch := channels.size()
+	var head := 0
+	var scalars: Array = []
+	if bool(spec.get("self_pos", true)):
+		scalars.append({ "name": "position", "indices": [head, head + 1] })
+		head += 2
+	if bool(spec.get("energy", true)):
+		scalars.append({ "name": "energy", "indices": [head] })
+		head += 1
+	if bool(spec.get("carrying", true)):
+		scalars.append({ "name": "carrying", "indices": [head] })
+		head += 1
+	if bool(spec.get("seeds", true)):
+		scalars.append({ "name": "seeds", "indices": [head] })
+		head += 1
+	if bool(spec.get("bin", true)):
+		scalars.append({ "name": "bin", "indices": [head, head + 1] })
+		head += 2
+	var out: Array = []
+	for k in nch:
+		var indices: Array = []
+		for t in side * side:
+			indices.append(head + t * nch + k)
+		out.append({ "name": String(channels[k]), "indices": indices })
+	out.append_array(scalars)
+	return out

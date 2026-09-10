@@ -253,3 +253,77 @@ static func salt_of(actor_id: String) -> int:
 	for b in actor_id.to_utf8_buffer():
 		h = ((h ^ int(b)) * FNV_PRIME) & FNV_MASK
 	return h
+
+
+# --- what the workbench reads off a policy (v0.2.2, Q-101) ----------------------
+
+# How undecided the policy was, in **bits**: −Σ p·log₂p over the entries that are
+# not zero.
+#
+# Bits rather than nats because the number has to be readable beside a ceiling
+# that is itself a count of choices — eight actions is exactly 3 bits of
+# uncertainty, and "3.00 of 3" is a sentence a player can finish. In nats the
+# same fact reads "2.08 of 2.08", which is a number about logarithms rather than
+# about a robot.
+#
+# **Computed from probabilities the caller already has** (plan ground rule 5).
+# The brain calls this once per decision, on the `chances` array it just built
+# for the draw, so a day of it costs eight multiplies per errand and nothing per
+# tick. A zero entry contributes nothing — `0·log 0` is 0 in the limit — and is
+# skipped rather than guarded against, because `log(0.0)` is an infinity that
+# would come back out as NaN.
+static func entropy_bits(p: Array) -> float:
+	var total := 0.0
+	for v in p:
+		var q := float(v)
+		if q > 0.0:
+			total += q * log(q)
+	return -total / log(2.0)
+
+
+# How far the night moved the robot: the L2 norm of `a − b`, over arrays of the
+# same length.
+#
+# One number for "how much did it change its mind", which is the only honest
+# summary of a 1,664-weight update that fits on a card. A shorter array is read
+# as zeros past its end rather than crashing, for the reason `add_into` gives:
+# two arrays of different lengths mean a spec that changed under a robot, and
+# that is a bug to find in the daylight rather than a crash at bedtime.
+static func norm_of_change(a: Array, b: Array) -> float:
+	var n: int = maxi(a.size(), b.size())
+	var total := 0.0
+	for i in n:
+		var x: float = float(a[i]) if i < a.size() else 0.0
+		var y: float = float(b[i]) if i < b.size() else 0.0
+		var d := x - y
+		total += d * d
+	return sqrt(total)
+
+
+# The weights, summed down into one number per (action, group of inputs) — the
+# mosaic's grid.
+#
+# `groups` is `Observation.input_groups(spec)`: thirteen named bundles of input
+# indices for the spec that ships, so the picture has one row per *thing the
+# robot can see* rather than 207 rows of one number each. The biases are
+# deliberately left out: a bias is what the robot thinks before it looks at
+# anything, and putting it in a column about what it makes of the tiles around it
+# would be one number's worth of a completely different claim.
+#
+# Returns `n_out` rows, each `groups.size()` long — read row-major by the page
+# that draws it, which is the same shape the weights themselves are in.
+static func fold(w: Array, n_in: int, n_out: int, groups: Array) -> Array:
+	var out: Array = []
+	var stride := n_in + 1
+	for j in n_out:
+		var base := j * stride
+		var row: Array = []
+		for g in groups:
+			var total := 0.0
+			for i in (g.get("indices", []) as Array):
+				var at: int = base + int(i)
+				if int(i) < n_in and at < w.size():
+					total += float(w[at])
+			row.append(total)
+		out.append(row)
+	return out

@@ -83,3 +83,64 @@ static func of(outcome: String) -> float:
 # Which column of a day's split this outcome is, or -1 for one nobody has priced.
 static func index_of(outcome: String) -> int:
 	return KEYS.find(outcome)
+
+
+# --- the dials (v0.2.2, the training workbench; Q-101) --------------------------
+
+# **The only reward values that exist.** Ten steps, ascending, and a row of the
+# table above is always sitting on one of them — which is what makes a dial a
+# dial rather than a number field: there is no `2.7`, so there is no way to type
+# one, and every robot in every save can be drawn on the same ten-cell strip.
+#
+# It is a ladder rather than a slider because the interesting differences between
+# rewards are ratios, not increments: the gap that matters between "worth a
+# little" and "worth the day" is 0.1 against 10, and a linear control would spend
+# nine tenths of its travel in a range nobody wants. Negative entries because a
+# designer must be able to say *stop doing that*, and zero because she must be
+# able to say *this is not worth anything* without deleting the row.
+const LADDER := [-3.0, -1.0, -0.3, -0.1, 0.0, 0.1, 0.3, 1.0, 3.0, 10.0]
+
+
+# The table above as a plain array in `KEYS` order — the eight numbers a robot is
+# born with, and the ones a long press on a dial puts back.
+#
+# **A fresh array every call**, for the reason `Observation.spec_default` returns
+# one: the caller puts this straight into an actor's `extra`, and a shared array
+# there would be one robot's dials wired to every other robot's.
+static func factory() -> Array:
+	var out: Array = []
+	for key in KEYS:
+		out.append(float(TABLE.get(key, 0.0)))
+	return out
+
+
+# Which rung a value is standing on, or -1 for a value that is not on the ladder.
+#
+# **Within 1e-9 rather than exactly**, because the number arriving here has been
+# through JSON at least once — a replayed `tune` carries its value as text — and
+# a float that survived that round trip is equal to the rung it came from for
+# every practical purpose and occasionally not for `==`.
+static func ladder_index(value: float) -> int:
+	for i in LADDER.size():
+		if absf(float(LADDER[i]) - value) < 1e-9:
+			return i
+	return -1
+
+
+# One rung up (`direction` 1) or down (-1), clamping at the ends: a dial at the
+# top of the ladder that is pushed up stays where it is, which is what the
+# workbench's disabled buttons show. A value that is not on the ladder at all —
+# a robot from a save written by a build that priced a row differently — is read
+# as the nearest rung and stepped from there, so a dial is never stuck.
+static func stepped(value: float, direction: int) -> float:
+	var at := ladder_index(value)
+	if at < 0:
+		var best := 0
+		var best_gap := INF
+		for i in LADDER.size():
+			var gap := absf(float(LADDER[i]) - value)
+			if gap < best_gap:
+				best_gap = gap
+				best = i
+		at = best
+	return float(LADDER[clampi(at + direction, 0, LADDER.size() - 1)])
