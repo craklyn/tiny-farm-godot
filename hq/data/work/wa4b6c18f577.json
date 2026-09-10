@@ -11,10 +11,50 @@
   "thread": "kenji",
   "source": "chat",
   "source_message": "CEO on Q-99, 2026-09-09, chief of staff session.",
-  "result": "Landed on main (commit 29bd672 merged): the bare-soil channel (128 inputs), tilled_tile 0.1, action 5 = till here (seven actions), scored in on_result; the demo back on open ground with the 24-farm harness. Fixed seed: days 1-3 average 3.1, days 5-7 6.5. 24 farms: learning 3.8 to 5.4, 22 of 24 weeks rose; control 3.7 to 4.6 (the field itself improves as the robot opens soil). Of earning waterings, 5.1 a day on its own opened soil, 0.0 on her sown block. LEARN_RATE moved 0.03 to 0.12 to pass the one-seed gate, which the worker flagged as luck. Unit 2366, integration 671, robot session and gateway green. Follow-ups queued: a multi-seed gate that asserts learning beats no learning; till limited to bare soil in the brain, the same rule the router applies to her, so it cannot hoe her wheat.",
+  "result": "Landed on main (commit 29bd672 merged): the bare-soil channel (128 inputs), tilled_tile 0.1, action 5 = till here (seven actions), scored in on_result; the demo back on open ground with the 24-farm harness. Fixed seed: days 1-3 average 3.1, days 5-7 6.5. 24 farms: learning 3.8 to 5.4, 22 of 24 weeks rose; control 3.7 to 4.6 (the field itself improves as the robot opens soil). Of earning waterings, 5.1 a day on its own opened soil, 0.0 on her sown block. LEARN_RATE moved 0.03 to 0.12 to pass the one-seed gate, which the worker flagged as luck. Unit 2366, integration 671, robot session and gateway green. Follow-ups queued: a multi-seed gate that asserts learning beats no learning; till limited to bare soil in the brain, the same rule the router applies to her, so it cannot hoe her wheat. Follow-up landed (commit c513be7 merged as 3fb65c4): the hoe now asks the same tool table her tap is resolved through, so a till on sown or growing soil is a spent decision — measured before the fix at 0.8 crop squares hoed per robot-week, plus 891 wasted strokes on already-open soil and 127 on the yard per 24 farm-weeks, now free. The one-seed gate is replaced by eight fixed farms, learning 5.91 against 5.40 squares a day on days 5-7, all eight above their own first three days, 8 seconds headless; LEARN_RATE settled at 0.06 from a 24-farm sweep. The price experiment the CEO made moot showed that paying less for the robot's own soil never sends it to a sown field. Unit 2374, integration 671, robot session and gateway green.",
   "started": "2026-09-09",
   "attempts": 1,
   "created": "2026-09-09T21:39",
   "created_ts": 1789015179.837847,
-  "parent": "mark-3-learning-bot"
+  "parent": "mark-3-learning-bot",
+  "follow_ups": [
+    {
+      "title": "Choose the robot's learning speed from many farms, not one",
+      "owner": "kenji",
+      "level": "task",
+      "tier": 1,
+      "first_action": "Sweep LEARN_RATE across the 24-farm demo (candidates 0.03/0.06/0.12/0.24), report mean day-7 earnings and spread per value, and set the value that wins on the median farm rather than the one that passed the single fixed seed.",
+      "why": "0.12 was chosen to clear a one-seed check and the worker who chose it called it luck."
+    },
+    {
+      "title": "Stop the robot from hoeing the player's planted tiles",
+      "owner": "tomas",
+      "level": "task",
+      "tier": 1,
+      "first_action": "In the Mark III brain, mask action 5 (till) to bare-soil tiles only, matching the rule action_router already enforces for the player, and add a sim test that a tilled action on a sown tile is never emitted.",
+      "why": "The brain can currently till a planted tile and destroy her wheat; only the router knows the rule."
+    },
+    {
+      "title": "Add a test that a learning robot out-earns one that never learns",
+      "owner": "grace",
+      "level": "task",
+      "tier": 1,
+      "first_action": "Add a unit test running the 24-farm comparison over several seeds and asserting the learning cohort's week-7 mean exceeds the no-learning control by a stated margin, so a tuning change that only helps one seed fails.",
+      "why": "The current check passes on a single seed, and the control farm improves on its own, so the margin is easy to fake."
+    },
+    {
+      "title": "Decide whether the robot should tend her crops or only its own soil",
+      "owner": "claude",
+      "level": "task",
+      "tier": 1,
+      "first_action": "Draft a decision card in hq/data/decisions/ with the 5.1-vs-0.0 watering split, two options (leave the reward as is and let the robot farm its own plot, or add reward for watering player-sown tiles), and a recommendation, then open the matching Q-item in docs/DESIGNER_QUEUE.md.",
+      "why": "The robot learned to farm beside her and never for her, which is a design direction only the CEO settles."
+    }
+  ],
+  "recommend": {
+    "question": "Ship v0.2.1 with a learning speed picked from one farm, or re-pick it from all 24 first?",
+    "answer": "Accept the hoe now and have Kenji re-pick the number before the v0.2.1 tag.",
+    "why": "A learning speed chosen because one seed happened to pass is not evidence the robot learns, and re-deriving it costs a demo run.",
+    "instead": "Hold acceptance until the sweep is done — safer on paper, but the behaviour is already on main and green, so it delays the card without changing the code."
+  }
 }

@@ -20,7 +20,7 @@
     "Two runs on the same seed are identical; the seven-day learning curve rises on a fixed seed",
     "Every watering looks and sounds like hers; it moves at the Mark I's pace; nothing changes without a cue"
   ],
-  "current_status": "The CEO ruled the full reward table (Q-100, 2026-09-09): the Mark III is rewarded for every beneficial thing the game has — mailbox 10, crow off food 3, crow flying in 1, harvest, thirsty plant and planting 1, grass and empty soil 0.1 — and nobody owns a tile. The design is being rewritten around it; the build adds ripe crops, crows, the mailbox, carrying and her seed count to its view, and plant, harvest and ship to its actions. In flight: a worker fixing the hoe's parity with her tool rules and replacing the one-seed gate with a multi-seed one. The release plan's date moved by the four new stories. Q-98 (what it keeps when picked up) is still open.",
+  "current_status": "The CEO ruled the full reward table (Q-100, 2026-09-09) and the design is rewritten around it: an action is a tap (walk to the nearest legal tile in view, do the verb), eight actions, a 207-number view, one crop carried at a time to the bin, seeds from her box, crows scared by reaching them. Building now, sim side first (Tomas's seat): the gateway rules for machines, the observation, the eight-row table. The brain's tap-shaped actions and the demo follow (Kenji's seat). Also landed today: the hoe obeys her tool rules; the gate is eight deterministic farms. Q-98 (what it keeps when picked up) is still open for the CEO.",
   "plan": [
     {
       "step": "Design written against the code, with the six rules and the v1 scope",
@@ -61,6 +61,10 @@
     {
       "step": "Watched on the tablet: learns within a week of in-game days, and is legible",
       "done": false
+    },
+    {
+      "step": "The hoe obeys her tool rules; the gate is eight deterministic farms; rate 0.06",
+      "done": true
     },
     {
       "step": "Q-100: the full reward table — the robot sees the whole farm, plants, harvests, carries to the mailbox, scares crows; measured honestly on the harness",
