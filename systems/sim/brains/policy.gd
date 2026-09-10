@@ -18,9 +18,10 @@
 #
 # **The learning rule** (Q-96), spread across a day and closed at night:
 #
-#     per decision   trace += ∇log π(a | s)
-#     per reward     acc   += r · trace
-#     at the day turn   w += rate · (acc − baseline · trace)
+#     per decision   trace      += ∇log π(a | s)
+#                    base_trace += (energy / max energy) · ∇log π(a | s)
+#     per reward     acc        += r · trace
+#     at the day turn   w += rate · (acc − baseline · base_trace)
 #
 # `baseline` is the running mean of past days' scores; subtracting it is what
 # stops a robot that scores well every day from being pushed harder and harder in
@@ -28,6 +29,16 @@
 # for a reward is spread back over everything the robot did before earning it,
 # which is how walking towards dry soil gets learned at all when only the
 # watering pays.
+#
+# **The baseline is charged against `base_trace` and not against `trace`**
+# (v0.2.1 WI-6). `acc` pays each decision only what came after it, so what it
+# should be charged is only what an average day still had left at that moment —
+# and a robot with a third of its meter left can water at most a third as many
+# more squares. Weighting each decision's charge by the meter it had is that
+# estimate, it costs one more sum a day, and it leaves the rule unbiased: the
+# charge still depends on nothing the robot chose, only on where in its day it
+# was standing. Charging the whole day's mean to every decision alike is what
+# made the old rule push the average decision away from itself.
 #
 # **Everything is a plain `Array` of `float`** — not `PackedFloat64Array`, not a
 # typed array. These are the same objects that live in an actor's `extra`, get
@@ -151,17 +162,24 @@ static func add_into(target: Array, source: Array, scale: float) -> void:
 		target[i] = float(target[i]) + scale * float(source[i])
 
 
-# The night's one update: `w + rate · (acc − baseline · trace)`, rounded.
+# The night's one update: `w + rate · (acc − baseline · base_trace)`, rounded.
+#
+# `base_trace` is the trace the caller has been weighting by how much of the day
+# was left at each decision — see the rule at the top of this file for why the
+# baseline is charged against that and not against the plain trace. Passing the
+# plain trace here is the rule the robot had before v0.2.1 WI-6, and it is a
+# robot that learns to stand still.
 #
 # Returns a **new** array rather than editing `w` in place, so the caller decides
 # when the robot changes — which matters because this is called from the day turn
 # and the old weights are what the day just past was played on.
-static func night_update(w: Array, acc: Array, trace: Array, baseline: float, rate: float) -> Array:
+static func night_update(w: Array, acc: Array, base_trace: Array, baseline: float,
+		rate: float) -> Array:
 	var out: Array = []
 	out.resize(w.size())
 	for i in w.size():
 		var a: float = float(acc[i]) if i < acc.size() else 0.0
-		var t: float = float(trace[i]) if i < trace.size() else 0.0
+		var t: float = float(base_trace[i]) if i < base_trace.size() else 0.0
 		out[i] = round6(float(w[i]) + rate * (a - baseline * t))
 	return out
 
