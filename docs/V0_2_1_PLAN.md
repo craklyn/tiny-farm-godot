@@ -115,6 +115,7 @@ static func grad_log_prob(obs: Array, p: Array, action: int, n_in: int, n_out: i
 static func add_into(target: Array, source: Array, scale: float) -> void   # target += scale*source
 static func night_update(w: Array, acc: Array, trace: Array, baseline: float, rate: float) -> Array
 static func round6(x: float) -> float
+static func salt_of(actor_id: String) -> int   # FNV-1a over the UTF-8 bytes, engine-independent
 ```
 
 `night_update` returns a new array, every entry rounded with `round6`. Arrays are plain
@@ -124,28 +125,39 @@ static func round6(x: float) -> float
 pure function of `u`; `grad_log_prob` matches a finite-difference check on a 3-input,
 2-action case; a two-armed bandit (reward 1 for action 0) trained by the trace-and-night
 rule for 50 "days" reaches `p[0] > 0.9`; a weight array survives
-`JSON.parse_string(JSON.stringify(x))` element-equal after `round6`.
+`JSON.parse_string(JSON.stringify(x))` element-equal after `round6` (inline; the suite
+has no helper for this); `salt_of("bot_1")` equals a fixed integer written into the test.
 
 ### WI-3 — The learn setting and Robot Mk III · ~1 day · `bot_brain.gd`, `machine_defs.gd`
 
 - `CONFIG_LEARN := "learn"`, in `ALL_CONFIGS`, not in `CONFIGS` (it is not a dial).
-- `deploy` for `learn` writes: `spec` (from the row, default `Observation.spec_default()`),
-  `weights` (zeros for `size(spec) × 6`), `trace`, `acc` (zeros), `baseline` 0.0,
-  `days` 0, `decisions` 0, `score` 0.0, `last_score` 0.0, `salt` = `hash(actor_id)`,
-  `pending_needs_water` false.
+- `deploy` for `learn` writes: `spec` = `Observation.spec_default()` (the row carries no
+  spec — `machine_defs.gd` is layer 1 and must not import the sim; per-robot
+  adjustability is this key), `weights` (zeros for `size(spec) × 6`), `trace`, `acc`
+  (zeros), `baseline` 0.0, `days` 0, `decisions` 0, `score` 0.0, `last_score` 0.0,
+  `salt` = `Policy.salt_of(actor_id)` (an FNV-1a fold written in `policy.gd`, so the salt
+  never depends on the engine's `hash()` and old logs cannot diverge silently),
+  `pending_needs_water` false. Note `place` passes deploy only `{owner}` and stamps
+  `extra["model"]` afterwards (`sim_world.gd:1985-1990`); deploy sees no row.
 - `_learn(world, actor_id, tick)` after the page check: if `is_exhausted` → park
   (`wake = tick + 3600 * RATE`; `on_new_day` re-arms via `schedule_all_brains`).
   Else build the observation, `probs`, draw `u`, `sample`, `decisions += 1`,
-  `add_into(trace, grad, 1.0)`; then execute — actions 0–3: `Movement.plan` to the
-  neighbour and one `Movement.step`; `BLOCKED` is a refused move (reward 0); action 4:
+  `add_into(trace, grad, 1.0)`; then execute — actions 0–3: the neighbour tile `g = pos + dir`; if
+  `Movement.can_enter(world, actor_id, g)` then `Movement.place_on_tile(world,
+  actor_id, g)` with facing from `Movement.facing_from`; otherwise the move is refused
+  (reward 0, nothing else). Do **not** use `plan` + `step`: a blocked adjacent goal
+  reads as `ARRIVED` there (`movement.gd:645-647`), and `step` writes `path`, `step`
+  and `wake` into `extra`. Action 4:
   set `pending_needs_water` from the tile it stands on and return
   `{verb: "water", target: pos, actor: actor_id}`; action 5: nothing. Always
-  `wake = tick + SimClock.RATE`.
+  `wake = tick + SimClock.RATE`, written **last**, after any movement call. While she is
+  indoors the existing page check (`bot_brain.gd:216`) idles the robot for 30 s before
+  the learn branch is reached; that is acceptable.
 - `on_result` for `learn`: if the action was `water`, `r = Rewards.of("wet_tile")` when
   `pending_needs_water and result.ok`, else 0; if `r != 0`: `add_into(acc, trace, r)`,
   `score += r`.
 - Catalogue row `bot_mk3`: name "Robot Mk III", price 800, species BOT, program
-  `"policy"`, `configs: []`, `default_config: "learn"`, `spec: Observation.spec_default()`,
+  `"policy"`, `configs: []`, `default_config: "learn"`, no spec on the row,
   icon = the mk2 sheet **until WI-6's sprite lands** (say so in the row comment);
   append to `ORDER`.
 
@@ -160,15 +172,19 @@ have element-equal `extra` after 60 s.
 
 ### WI-4 — The night, the save, the replay, the dial · ~0.5 day · `bot_brain.gd`, `sim_world.gd`
 
-- `on_new_day` for `learn`: `weights = night_update(...)`, `baseline =
+- `on_new_day` for `learn` — the arm goes **before** the existing early return for
+  non-`orders` configs (`bot_brain.gd:877-878`): `weights = night_update(...)`, `baseline =
   (baseline*days + score)/(days+1)`, `last_score = score`, `score = 0`, zero `trace`
   and `acc`, `days += 1`, `decisions = 0`.
-- `configure` carries the learned keys across the re-deploy (add to the carry list at
-  `sim_world.gd:2006-2018`).
+- `configure` on a Mark III is refused as `bad_config` today, because the row has no
+  configs (the guard at `sim_world.gd:2009`), so the dial cannot wipe its weights and
+  there is nothing to carry. Assert that refusal. When a later mark has both a dial and
+  weights, the carry list at `sim_world.gd:2013-2017` must include the learned keys;
+  leave a comment there saying so.
 
 **Accept:** in the same test — a second day turns and `days == 1`, `last_score` equals
 the first day's score, `weights` changed only if the score was non-zero; save →
-restore keeps `weights` element-equal; `configure` keeps them; and the **replay
+restore keeps `weights` element-equal; `configure` is refused with `bad_config`; and the **replay
 chapter** on `test_mark_one_robot`'s pattern: two days with a Mark III recorded through
 a `LiveSession`, `log.apply_to` → `divergence == ""` and `capture_canonical` equal.
 
@@ -176,9 +192,13 @@ a `LiveSession`, `log.apply_to` → `divergence == ""` and `capture_canonical` e
 
 On `tools/demo_robot_value.gd`'s pattern: `const SEED`, `static func run(days := 7)
 -> Dictionary` returning per-day scores and the final weights; `_init` prints a table
-(day, score, decisions, energy left). Staging: a 6×4 block of tilled+seeded soil three
-tiles from the placed robot, weather held `"sunny"` so rain never waters, 300 s of
-ticks per day, then `sleep`.
+(day, score, decisions, energy left). Staging: copy `_stage` in
+`tools/demo_robot_value.gd:191-201`, which writes tiles directly (no verbs); a 6×4
+block of tilled+seeded soil three tiles from the robot; `buy_machine` then `place` (no
+stall needed); weather held `"sunny"` both on `gs.weather` and as the `sleep` action's
+`weather` param (`:148-150`); 3000 ticks per day (`SimClock.RATE * 300`), then
+`sleep`. The multi-day loop is new — the mark-1 demo runs one day. Free `gs` at the
+end as that file does.
 
 **Accept:** `test_learning_robot()` calls `run()` twice and asserts the two results are
 element-equal (determinism), and that the mean score of days 5–7 exceeds the mean of
@@ -236,3 +256,7 @@ only the work item you are on. The chief of staff's running notes are in
 `parent` is `mark-3-learning-bot`.*
 
 - 2026-09-09 — plan written; WI-1 and WI-2 handed to an Opus worker in a worktree.
+- 2026-09-09 — WI-3/4/5 reviewed against the code by an Opus reader; corrections folded
+  into the text above: one-tile moves via `can_enter` + `place_on_tile`; the spec is
+  written by `deploy`, not the row; `configure` cannot reach a Mark III; the learn arm
+  precedes `on_new_day`'s early return; the salt is an engine-independent fold.
