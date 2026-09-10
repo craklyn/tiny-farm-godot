@@ -32,12 +32,38 @@ extends RefCounted
 
 # The v1 table: +1 when a robot's `water` turned a tile that needed water into a
 # wet one (Q-96), and +0.1 when its `till` turned bare ground into soil (Q-99).
+#
+# **The two watering rows hold the same number, and that is the shipped design.**
+# A thirsty square is a thirsty square: the machine is paid the same for her sown
+# wheat and for the bare soil it opened for itself, exactly as Q-96 wrote it.
+# They are two rows because the measured behaviour of the first mark-3 is that it
+# waters almost nothing but its own practice ground (v0.2.1 §9), and the question
+# that follows — *should her squares be worth more than its own?* — is answered
+# by a number in this file and by nothing else. Splitting the row is what makes
+# that answer sayable; `tools/demo_learning_robot.gd --split-sweep` measures what
+# each answer would do. Until the designer rules, both are 1.0 and the robot
+# cannot tell the difference.
 const TABLE := {
+	# A square that was carrying a crop or a seed — hers.
 	"wet_tile": 1.0,
+	# Bare tilled soil with nothing in it — the robot's own, in practice, since
+	# the only bare soil on an open farm is soil it hoed itself.
+	"wet_tile_empty": 1.0,
 	# Q-99, the CEO on a robot that walked off the field before it earned
 	# anything: "not a pen, a denser reward". [Playtest]
 	"tilled_tile": 0.1,
 }
+
+
+# **An experiment's table, empty in every game ever played.** A sweep that wants
+# to know what a different price would teach has to change the price before the
+# week starts and put it back afterwards, and `TABLE` is a constant — read-only
+# down to its values, which is what keeps a shipped reward from being edited by
+# something that ran earlier. So an experiment writes here instead, and the
+# emptiness of this dictionary is the guarantee that a measurement cannot leak
+# into a save, a replay or a suite: `tools/demo_learning_robot.gd` is the only
+# caller, it sets one key, and it clears it in the same function.
+static var overrides: Dictionary = {}
 
 
 # What an outcome is worth. **An outcome nobody has priced is worth nothing** —
@@ -45,4 +71,6 @@ const TABLE := {
 # answer for almost everything a robot does in a day, and the seven actions of v1
 # include waiting and walking into a fence.
 static func of(outcome: String) -> float:
+	if overrides.has(outcome):
+		return float(overrides[outcome])
 	return float(TABLE.get(outcome, 0.0))

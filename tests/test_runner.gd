@@ -11170,6 +11170,18 @@ func _mk3_make_certain(extra: Dictionary, action: int) -> void:
 	extra["weights"] = w
 
 
+# How many Actions a robot actually put through the gateway over this many ticks.
+# The difference between "it decided" and "it asked for anything" is the whole of
+# what a spent decision looks like from outside the brain: the second is gone,
+# and the world never heard from it.
+func _mk3_asked(s: LiveSession, actor_id: String, span: int) -> int:
+	var n := 0
+	for t in s.tick(span):
+		if String(t["action"].get("actor", "")) == actor_id:
+			n += 1
+	return n
+
+
 func test_learning_robot_day() -> void:
 	print("\n--- The mark-3 robot: it wanders, it waters, it learns (v0.2.1 WI-3/WI-4) Tests ---")
 
@@ -11217,7 +11229,7 @@ func test_learning_robot_day() -> void:
 	var width := Observation.size(Observation.spec_default())
 	for key in ["spec", "weights", "trace", "acc", "base_trace", "baseline", "days",
 			"decisions", "score", "last_score", "salt", "pending_needs_water",
-			"pending_bare"]:
+			"pending_bare", "pending_water_crop"]:
 		_assert_quiet(extra.has(key), "a placed Mark III carries '%s'" % key)
 	_flush_quiet("a placed Mark III carries every learned key it will ever need")
 	_assert(extra["spec"] == Observation.spec_default(),
@@ -11234,7 +11246,7 @@ func test_learning_robot_day() -> void:
 	_assert(born_uniform, "all of them zero, so its first day is a wander and not a habit")
 	_assert(int(extra["salt"]) == Policy.salt_of(bot) and int(extra["days"]) == 0
 			and int(extra["decisions"]) == 0 and not bool(extra["pending_needs_water"])
-			and not bool(extra["pending_bare"]),
+			and not bool(extra["pending_bare"]) and not bool(extra["pending_water_crop"]),
 		"and it starts with its own salt, no days behind it and nothing owing")
 
 	# Ground rule 4, checked rather than assumed.
@@ -11263,8 +11275,13 @@ func test_learning_robot_day() -> void:
 	_assert(s.world.clock.pending() == on_clock,
 		"with exactly one think pending per actor on the clock, never a queue of them (%d)"
 			% s.world.clock.pending())
-	_assert(waters > 0 and waters < 30 and hoes > 0,
-		"a robot that has learned nothing wanders: %d of its thirty seconds went into the can and %d into the hoe"
+	# **A wander, and the hoe stays on its belt here.** The yard around this patch
+	# is meadow, and meadow is not ground a hoe opens — hers or a robot's, since
+	# both are answered by the same table (`systems/tools.gd`). So the strokes a
+	# robot takes in this fixture are watering strokes, and the hoe's own half of
+	# the rule is tested on bare ground below, where there is something to open.
+	_assert(waters > 0 and waters < 30,
+		"a robot that has learned nothing wanders: %d of its thirty seconds went into the can, %d into the hoe, and the rest into walking, waiting and squares its tools had no answer for"
 			% [waters, hoes])
 
 	# **Only the tools cost it anything.** Walking is the movement engine and
@@ -11324,8 +11341,21 @@ func test_learning_robot_day() -> void:
 	_assert(int(wex["decisions"]) == 2 and is_equal_approx(float(wex["score"]), 1.0),
 		"watering it again earns nothing — the second stroke changed no square (%s)"
 			% str(wex["score"]))
-	_assert(not bool(wex["pending_needs_water"]) and not bool(wex["pending_bare"]),
+	_assert(not bool(wex["pending_needs_water"]) and not bool(wex["pending_bare"])
+			and not bool(wex["pending_water_crop"]),
 		"and nothing is left owing between one decision and the next")
+
+	# **Her square and its own are worth the same today, and the table can now say
+	# otherwise.** The first mark-3 waters almost nothing but the soil it opened
+	# for itself, so "should her squares pay more?" is a live question — and it is
+	# a question about a number in `systems/rewards.gd`, which is the designer's to
+	# answer. What must be true until then is that the robot cannot tell the two
+	# apart, and that nothing outside an experiment ever writes that table.
+	_assert(is_equal_approx(Rewards.of("wet_tile"), 1.0)
+			and is_equal_approx(Rewards.of("wet_tile_empty"), 1.0),
+		"a thirsty square of hers and a thirsty square of its own are both worth 1")
+	_assert(Rewards.overrides.is_empty(),
+		"and the experiment's table is empty, as it is in every game ever played")
 
 	# --- and the same rule for the hoe (Q-99) ---------------------------------
 	# The CEO's answer to a robot that walked off the field before it earned
@@ -11342,30 +11372,59 @@ func test_learning_robot_day() -> void:
 	var hoer := _mk3_place(hoer_yard, bare)
 	var hex: Dictionary = hoer_yard.world.actor(hoer)["extra"]
 	_mk3_make_certain(hex, BotBrain.LEARN_TILL)
-	hoer_yard.tick(SimClock.RATE)
-	_assert(is_equal_approx(float(hex["score"]), 0.1)
+	_assert(_mk3_asked(hoer_yard, hoer, SimClock.RATE) == 1
+			and is_equal_approx(float(hex["score"]), 0.1)
 			and String(hoer_yard.world.get_tile(bare.x, bare.y).get("state", "")) == "tilled",
 		"opening bare ground is worth a tenth of a watering, and the soil shows it (%s)"
 			% str(hex["score"]))
 	_assert(hoer_yard.world.get_tile(bare.x, bare.y).get("watered_today", true) == false,
 		"and what it leaves behind is soil that wants water — the next thing worth doing")
-	hoer_yard.tick(SimClock.RATE)
-	_assert(is_equal_approx(float(hex["score"]), 0.1),
-		"hoeing the same square again earns nothing — it was not bare any more (%s)"
-			% str(hex["score"]))
 
-	# The yard is the ground a hoe never opens (T-32), and the gateway is what says
-	# so — for her and for a machine alike (ground rule 1). The brain does not know
-	# the rule and must not: it asks, is refused, and is paid nothing.
+	# --- and it swings the hoe only where she could swing it ------------------
+	# **The player cannot hoe her own wheat back into mud**, because her tap is
+	# resolved through `Tools.get_action`, and the hoe's row in that table names
+	# `cleared` ground and nothing else. The gateway is looser — it refuses `till`
+	# only on her yard and the home's floor — so a robot that asked it directly
+	# could undo a crop by a route no tap of hers can take. The brain asks the same
+	# table she is asked, which is what these three cases are: a square the hoe has
+	# no answer for is **a decision spent and nothing emitted**, exactly like a step
+	# into a fence. The second is gone, the trace carries the choice, the reward is
+	# zero, and the world never hears about it.
+	var counted: int = int(hex["decisions"])
+	var meter: int = hoer_yard.world.energy_of(hoer)
+	_assert(_mk3_asked(hoer_yard, hoer, SimClock.RATE) == 0
+			and is_equal_approx(float(hex["score"]), 0.1)
+			and hoer_yard.world.energy_of(hoer) == meter,
+		"hoeing soil it has already opened asks for nothing at all — not a stroke, not a unit of meter")
+	_assert(int(hex["decisions"]) == counted + 1,
+		"and the second is spent all the same: a robot that chose badly still chose (%d)"
+			% int(hex["decisions"]))
+
+	# Her sown wheat, which is the case this rule exists for.
+	var sown := Vector2i(MK3_PATCH.position.x + 1, MK3_PATCH.position.y + 1)
+	hoer_yard.world.set_actor_pos(hoer, sown)
+	var wheat: Dictionary = hoer_yard.world.get_tile(sown.x, sown.y).duplicate()
+	var before_wheat: float = float(hex["score"])
+	_assert(String(wheat.get("state", "")) == "seeded",
+		"it is standing on a square she has sown (%s)" % String(wheat.get("state", "")))
+	_assert(_mk3_asked(hoer_yard, hoer, SimClock.RATE) == 0
+			and String(hoer_yard.world.get_tile(sown.x, sown.y).get("state", "")) == "seeded"
+			and String(hoer_yard.world.get_tile(sown.x, sown.y).get("crop_type", "")) == String(wheat.get("crop_type", "")),
+		"a hoe swung at her wheat is never swung: the seed is still in the ground and still wheat")
+	_assert(is_equal_approx(float(hex["score"]), before_wheat),
+		"and it earns exactly what walking into a fence earns (%s)" % str(hex["score"]))
+
+	# And her yard, which is the ground a hoe never opens (T-32). The gateway says
+	# so too — `test_world_pages` and the tilling tests hold it to that — but the
+	# robot no longer finds out that way, because she never would either.
 	var yard := Vector2i(bare.x + 2, bare.y)
 	hoer_yard.world.set_tile_state(yard.x, yard.y, WorldLayout.YARD)
 	hoer_yard.world.set_actor_pos(hoer, yard)
 	var before_yard: float = float(hex["score"])
-	hoer_yard.tick(SimClock.RATE)
-	_assert(is_equal_approx(float(hex["score"]), before_yard)
+	_assert(_mk3_asked(hoer_yard, hoer, SimClock.RATE) == 0
+			and is_equal_approx(float(hex["score"]), before_yard)
 			and String(hoer_yard.world.get_tile(yard.x, yard.y).get("state", "")) == WorldLayout.YARD,
-		"a hoe swung at her yard is refused by the gateway and earns nothing (%s)"
-			% str(hex["score"]))
+		"and a hoe swung at her yard is not swung either (%s)" % str(hex["score"]))
 	hoer_yard.done()
 
 	# --- an empty meter is a robot standing still -----------------------------
@@ -11570,15 +11629,39 @@ func test_learning_robot() -> void:
 		"and ends holding the same robot, weight for weight (%d weights)"
 			% (week["weights"] as Array).size())
 
-	# --- the curve rises ------------------------------------------------------
-	# The whole point of the machine. The field, the seed and the meter are
-	# identical every morning, so the only thing that can move this number is what
-	# the robot learned the night before.
-	var early: float = LearningRobot.mean_of_days(scores, 1, 3)
-	var late: float = LearningRobot.mean_of_days(scores, 5, 7)
-	_assert(late > early,
-		"its last three days are worth more than its first three: %.2f a day against %.2f"
-			% [late, early])
+	# --- the nights are worth something, over eight farms ---------------------
+	# **The gate used to be one farm rising, and one farm rising is not evidence**
+	# (v0.2.1 WI-8 found this and WI-9 acted on it). Out on open ground a single
+	# week's rise flips with the learning rate for no reason but the draw — it
+	# failed at four rates and passed across a band of three — and worse, a robot
+	# that never learns anything at all *also* ends its week ahead of where it
+	# started, because the field improves whether the robot understands it or not:
+	# soil opened yesterday is still open this morning and still wants water. A
+	# test that only asked "is Friday better than Monday" was therefore reading
+	# the field and calling it the machine.
+	#
+	# So the gate is the comparison the demo prints, taken over eight fixed farms:
+	# each one played twice on the same seed, once with the night doing its work
+	# and once with the weights put back every morning. **What must hold is the
+	# gap** — a week of nights is worth more than the same week without them —
+	# and it is a fair comparison because the control is the identical machine on
+	# the identical farm with one thing removed.
+	var cmp: Dictionary = LearningRobot.compare(LearningRobot.GATE_SEEDS)
+	var farms: int = (LearningRobot.GATE_SEEDS as Array).size()
+	var taught: Dictionary = LearningRobot.summary(cmp, "learn")
+	var untaught: Dictionary = LearningRobot.summary(cmp, "control")
+	_assert(farms >= 6 and int(taught["seeds"]) == farms and int(untaught["seeds"]) == farms,
+		"the gate is played on %d farms, each of them twice" % farms)
+	_assert(float(taught["late"]) > float(untaught["late"]),
+		"a week with its nights is worth more than the same week without them: %.2f a day over days 5-7 against %.2f"
+			% [float(taught["late"]), float(untaught["late"])])
+
+	# And the second half of the claim, which the mean above could hide: it is not
+	# one lucky farm carrying seven flat ones. Two thirds of them have to end
+	# better than they began on their own days 1-3.
+	_assert(int(taught["rose"]) * 3 >= farms * 2,
+		"and %d of the %d farms ended better than they began, which is two thirds or more of them"
+			% [int(taught["rose"]), farms])
 
 	# --- and it did it on open ground -----------------------------------------
 	# **The week used to be played inside a fence** (WI-5), because with only

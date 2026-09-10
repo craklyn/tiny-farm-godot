@@ -1,0 +1,19 @@
+{
+  "id": "wd3ce6b6f4db",
+  "title": "Integration tests read another session's autosave through the shared user:// folder",
+  "level": "task",
+  "owner": "grace",
+  "tier": 1,
+  "tier_reason": "Test harness code; git reverts it. The failure it prevents is a red suite that means nothing is broken, which the CEO has ruled must never happen.",
+  "ask": "Seen 2026-09-09 while landing the Mark III: one integration run failed six panel assertions because a placed robot read as five days old, and three later runs passed. The likely cause is that several Claude sessions run the suites on this machine at once and Godot's user:// folder (the autosave, the replay log) is shared between them, so one session's game state leaks into another's test. Make each headless test run use its own user data directory (Godot's --user-data-dir, or a per-run subfolder chosen from the process id) so suites cannot see each other's saves, and make the integration runner assert it started from a clean slate.",
+  "first_action": "Reproduce by running the integration suite in two shells at once; then pass a per-process user data dir in the suite's launch commands in CLAUDE.md and the CI workflow, and add a startup assertion that no autosave exists before the first scenario.",
+  "state": "waiting_session",
+  "thread": "grace",
+  "source": "session",
+  "source_message": "Chief of staff session 2026-09-09: an Opus worker's report on a non-reproducing integration failure.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-09T23:08",
+  "created_ts": 1789020499.035034
+}
