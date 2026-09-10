@@ -71,11 +71,22 @@ the release up mid-way starts at §9.*
   zero-initialised (uniform at birth).
 - **Learning**: REINFORCE with an eligibility trace and a baseline, one update at the
   day turn, weights rounded to 1e-6 after the update. Per decision `trace += ∇log π`;
-  per reward `acc += r·trace`; at night `w += rate·(acc − baseline·trace)`; baseline is
-  the running mean of past days' scores. `rate` starts at 0.05 `[Playtest]`.
-- **Sampling**: `u = (SimRng.stateless(salt, index) % 1000000) / 1000000.0`, `salt =
-  hash(actor_id) ^ (days * 7919)`, `index = decisions` (per-day counter).
+  per reward `acc += r·trace`; at night `w += rate·(acc − baseline·trace) / max(1,
+  decisions)`; baseline is the running mean of past days' scores. The division is
+  load-bearing: the trace is cumulative, so an un-normalised update grows with the square
+  of the day's decisions — WI-2's bandit overshot and locked onto the wrong arm at rate
+  0.05 with 20 decisions a day. `rate` starts at 0.05 on the normalised rule `[Playtest]`.
+- **Sampling**: `u = Policy.draw_u(salt, index)` with `salt = Policy.salt_of(actor_id) ^
+  (days * 7919)` and `index = decisions` (per-day counter). **Not** a bare
+  `SimRng.stateless(salt, index)`: Godot's string hash moves by exactly one when the
+  index moves by one, so consecutive decisions drew 0.631838, 0.631839, … (WI-2's
+  finding, measured: 62% of draws in one tenth of the range). `draw_u` scrambles the
+  index before hashing and is uniform (500 ± 25 per tenth over 5,000 draws).
 - **Price** 800 gold (Q-96). **Night surface** = panel numbers only (Q-97).
+- **Storage is per robot in v1.** The learned keys live in the robot's `extra`; a later
+  rung may move `weights`/`baseline`/`days` to a world-level `policies` table keyed by an
+  id for shared learning (`design/06`, "After v1"). Nothing outside the brain reads
+  `extra["weights"]` directly — the panel reads `days` and `last_score` only.
 
 ## 4. Work items
 
@@ -115,8 +126,12 @@ static func grad_log_prob(obs: Array, p: Array, action: int, n_in: int, n_out: i
 static func add_into(target: Array, source: Array, scale: float) -> void   # target += scale*source
 static func night_update(w: Array, acc: Array, trace: Array, baseline: float, rate: float) -> Array
 static func round6(x: float) -> float
-static func salt_of(actor_id: String) -> int   # FNV-1a over the UTF-8 bytes, engine-independent
+static func draw_u(salt: int, index: int) -> float   # uniform in [0,1); landed in WI-2
+static func salt_of(actor_id: String) -> int   # FNV-1a over the UTF-8 bytes, engine-independent — add in WI-3
 ```
+
+`night_update` as landed applies `rate·(acc − baseline·trace)` without normalising;
+**WI-4 divides by the day's decisions before calling it** (or adds a `scale` argument).
 
 `night_update` returns a new array, every entry rounded with `round6`. Arrays are plain
 `Array` of `float` throughout — the same objects go into `extra`.
@@ -141,7 +156,8 @@ has no helper for this); `salt_of("bot_1")` equals a fixed integer written into 
   `extra["model"]` afterwards (`sim_world.gd:1985-1990`); deploy sees no row.
 - `_learn(world, actor_id, tick)` after the page check: if `is_exhausted` → park
   (`wake = tick + 3600 * RATE`; `on_new_day` re-arms via `schedule_all_brains`).
-  Else build the observation, `probs`, draw `u`, `sample`, `decisions += 1`,
+  Else build the observation, `probs`, `u = Policy.draw_u(salt ^ (days * 7919),
+  decisions)`, `sample`, `decisions += 1`,
   `add_into(trace, grad, 1.0)`; then execute — actions 0–3: the neighbour tile `g = pos + dir`; if
   `Movement.can_enter(world, actor_id, g)` then `Movement.place_on_tile(world,
   actor_id, g)` with facing from `Movement.facing_from`; otherwise the move is refused
@@ -173,7 +189,9 @@ have element-equal `extra` after 60 s.
 ### WI-4 — The night, the save, the replay, the dial · ~0.5 day · `bot_brain.gd`, `sim_world.gd`
 
 - `on_new_day` for `learn` — the arm goes **before** the existing early return for
-  non-`orders` configs (`bot_brain.gd:877-878`): `weights = night_update(...)`, `baseline =
+  non-`orders` configs (`bot_brain.gd:877-878`): `weights = night_update(w, acc/n,
+  trace/n, baseline, rate)` with `n = max(1, decisions)` (scale the two arrays with
+  `add_into` into fresh zero arrays, or give `night_update` a scale argument), `baseline =
   (baseline*days + score)/(days+1)`, `last_score = score`, `score = 0`, zero `trace`
   and `acc`, `days += 1`, `decisions = 0`.
 - `configure` on a Mark III is refused as `bad_config` today, because the row has no
@@ -204,7 +222,9 @@ end as that file does.
 element-equal (determinism), and that the mean score of days 5–7 exceeds the mean of
 days 1–3 on the fixed seed. If the curve does not rise at `rate = 0.05`, tune `rate`
 and the staging distance first; **report a curve that will not rise rather than
-loosening the assertion.**
+loosening the assertion.** WI-2's bandit says the un-normalised rule overshoots at 20
+decisions a day; a day here has ~300, so the normalised night rule in WI-4 is a
+precondition for this item, not an option.
 
 ### WI-6 — The panel and the sprite · ~0.5 day + generation
 
@@ -256,6 +276,11 @@ only the work item you are on. The chief of staff's running notes are in
 `parent` is `mark-3-learning-bot`.*
 
 - 2026-09-09 — plan written; WI-1 and WI-2 handed to an Opus worker in a worktree.
+- 2026-09-09 — **WI-1 and WI-2 landed on main** (observation builder, reward table, policy
+  maths; `test_observation`, `test_policy`; both suites green). Two findings folded in
+  above: bare `stateless` draws are not uniform, use `Policy.draw_u`; the cumulative
+  trace needs the night update normalised by the day's decisions. The observation timing
+  gate was widened to 1500 ms so slow hardware cannot make it red.
 - 2026-09-09 — WI-3/4/5 reviewed against the code by an Opus reader; corrections folded
   into the text above: one-tile moves via `can_enter` + `place_on_tile`; the spec is
   written by `deploy`, not the row; `configure` cannot reach a Mark III; the learn arm

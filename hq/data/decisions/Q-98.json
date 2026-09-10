@@ -1,0 +1,33 @@
+{
+  "id": "Q-98",
+  "title": "What does a Mark III keep when she picks it up?",
+  "question": "Tapping a robot and choosing 'pick it up' boxes it back into her pocket, and putting it down again starts it fresh. That is fine for a Mark I, which keeps nothing worth keeping. A Mark III carries a week of practice in it. If picking it up wipes that, the first time she moves it to a better spot she loses everything it learned, and nothing on screen will explain why it is clumsy again.",
+  "why_now": "Picking up already exists in the menu, so the v0.2.1 build hits this the first time anyone moves a Mark III. It is a one-line rule either way, but it is your rule.",
+  "options": [
+    {
+      "key": "a",
+      "label": "The crate remembers (Recommended)",
+      "detail": "Its weights and its days travel with the boxed item and come back when it is put down. Moving a robot costs nothing. About half a day: the item carries the learned state, and the round trip is tested."
+    },
+    {
+      "key": "b",
+      "label": "Picking it up resets it",
+      "detail": "Simplest, and it is what the code does today. Honest, but it makes 'move it' and 'forget everything' the same tap, which will read as broken."
+    },
+    {
+      "key": "c",
+      "label": "It keeps its practice but forgets the map",
+      "detail": "Weights survive, the running score and baseline reset, so a moved robot starts a fresh week from what it knows. A middle path that needs a sentence of design; not worth it unless option a proves confusing in play."
+    }
+  ],
+  "links": [
+    {
+      "label": "The design (design/06, 'After v1')",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/06-bots-and-training.md"
+    },
+    {
+      "label": "Queue entry (Q-98)",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"
+    }
+  ]
+}

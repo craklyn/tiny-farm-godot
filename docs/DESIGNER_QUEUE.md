@@ -11,6 +11,13 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
 
 ## Now — blocks M0 close or current work
 
+- **Q-98 (Ruling, filed 2026-09-09)** **What does a Mark III keep when she picks it up?**
+  The machine menu's "pick it up" boxes a robot back into her pocket. A Mark I keeps
+  nothing worth keeping; a Mark III has a week of practice in it. Recommendation: the
+  crate remembers — its weights and its days travel with the item and come back when it
+  is put down — because practice lost to a tap is the failure that reads as broken. Card:
+  `hq/data/decisions/Q-98.json`.
+
 - **Q-97** ~~What does she see when the robot learns overnight?~~ — ✅ ruled 2026-09-09:
   **numbers on its panel only.** Tap the Mark III and it says how many days it has
   practised and how much it watered yesterday; nothing at dawn in v1. The dream surface

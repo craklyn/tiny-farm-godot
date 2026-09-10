@@ -1,0 +1,19 @@
+{
+  "id": "w32528871daa",
+  "title": "Per-day rolls from SimRng.stateless may be more regular than intended",
+  "level": "task",
+  "owner": "tomas",
+  "tier": 1,
+  "tier_reason": "Sim-layer code behind tests and the replay round-trip; git reverts it. Changing the derivation changes existing seeds' days, so it must be versioned or replays of old sessions diverge.",
+  "ask": "Found 2026-09-09 while building the Mark III's policy sampler: SimRng.stateless(salt, index) hashes the string 'seed:salt:index', and Godot's string hash moves by exactly one when the index moves by one, so consecutive indices give consecutive hash values (measured: 62% of 5,000 draws in one tenth of the range). Every per-day roll that takes stateless(...) % n over a running index — crow schedules, ant schedules, visitor schedules, crow targets — may therefore cycle rather than vary. Check whether the schedules a player sees are regular enough to predict (the CEO rejects anything that reads as a pattern), and if so, scramble the index before hashing the way Policy.draw_u does — behind a replay-format or save-version guard so old logs still replay.",
+  "first_action": "Print 30 days of roll_crow_schedule and roll_visitor_schedules for three seeds and look for cycles; then decide whether stateless itself changes (with a versioned guard) or only new callers use Policy.draw_u.",
+  "state": "waiting_session",
+  "thread": "tomas",
+  "source": "session",
+  "source_message": "Chief of staff session 2026-09-09: WI-2 worker's finding while building the Mark III sampler.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-09T20:47",
+  "created_ts": 1789012023.9639666
+}
