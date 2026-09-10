@@ -729,6 +729,26 @@ func set_object(tx: int, ty: int, obj_type: String) -> void:
 		objects[ty][tx] = obj_type
 
 
+# The tile states that hold a crop, published as a constant for the same reason
+# `WETTABLE_STATES` is (v0.2.1 WI-1): the list used to be three `==` comparisons
+# inside `has_crop`, which meant a reader that wants the answer for a hundred
+# tiles at a time — a learning robot's observation, `count_planted` — had to
+# either pay a call per tile or keep a second copy of the list. Now there is one
+# list and everybody reads it.
+const CROP_STATES := ["seeded", "growing", "ready"]
+
+# The same list as a set, so the membership test is one hash. `OPEN_OBJECTS` is
+# this move for the same reason (Q-67).
+static var _crop_state_set: Dictionary = _states_as_set(CROP_STATES)
+
+
+static func _states_as_set(states: Array) -> Dictionary:
+	var d := {}
+	for s in states:
+		d[s] = true
+	return d
+
+
 # Is there something growing on this tile? **The one definition**, used by the
 # `eat_crop` verb's guard and by every mouth that goes looking for one (M2.5
 # WI-8): a crop is a crop whether it is a seed in the ground or a ripe head, and
@@ -738,8 +758,7 @@ func has_crop(tx: int, ty: int) -> bool:
 	var tile := get_tile(tx, ty)
 	if tile.is_empty():
 		return false
-	var st: String = tile.get("state", "")
-	return st == "seeded" or st == "growing" or st == "ready"
+	return _crop_state_set.has(tile.get("state", ""))
 
 
 # Is there a *seed* in this ground — sown, and not yet come up? The narrower half
@@ -762,8 +781,7 @@ func count_planted() -> int:
 	var n := 0
 	for ty in MAP_HEIGHT:
 		for tx in MAP_WIDTH:
-			var st: String = tiles[ty][tx].get("state", "")
-			if st == "seeded" or st == "growing" or st == "ready":
+			if _crop_state_set.has(tiles[ty][tx].get("state", "")):
 				n += 1
 	return n
 

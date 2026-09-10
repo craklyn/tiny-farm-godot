@@ -161,6 +161,8 @@ func _init() -> void:
 	test_parcel_scatter()
 	test_machines()
 	test_mark_one_robot()
+	test_observation()
+	test_policy()
 	test_world_pages()
 	test_the_door()
 	test_fencing()
@@ -10410,6 +10412,370 @@ func test_parcel_scatter() -> void:
 			if String(a.get_tile(tx, ty).state) != String(b.get_tile(tx, ty).state):
 				same = false
 	_assert(same, "and the same seed lays the same scatter, tile for tile (replays depend on it)")
+
+
+# --- The Mark III's two halves: what it sees, and how it chooses (v0.2.1) ------
+#
+# WI-1 and WI-2 of `docs/V0_2_1_PLAN.md`. Nothing here knows about the robot yet
+# — the brain that spends these is WI-3 — so both tests exercise pure functions:
+# an observation built from a staged farm, and the policy maths run on made-up
+# numbers until it learns a bandit.
+
+
+# The four channels of one tile of an observation patch, pulled back out of the
+# flat vector. `head` is how many numbers come before the patch (3 for the v1
+# spec: two for position, one for energy) and the layout is Q-96's — row-major
+# from (-r, -r), dy outer, dx inner.
+func _obs_tile(v: Array, dx: int, dy: int, r: int, head: int, nch: int) -> Array:
+	var side := 2 * r + 1
+	var idx := (dy + r) * side + (dx + r)
+	return v.slice(head + idx * nch, head + (idx + 1) * nch)
+
+
+func test_observation() -> void:
+	print("\n--- What a learning robot can see (v0.2.1 WI-1, Q-96) Tests ---")
+
+	# --- the spec, and the width it promises ----------------------------------
+	var spec := Observation.spec_default()
+	_assert(spec["vision"] == 2 and spec["channels"] == Observation.CHANNELS
+			and bool(spec["self_pos"]) and bool(spec["energy"]),
+		"the v1 spec is Q-96's: two positions, one meter, radius 2, four channels")
+	_assert(Observation.size(spec) == 103,
+		"which is 2 + 1 + 25 x 4 = 103 numbers (%d)" % Observation.size(spec))
+	var wide := Observation.spec_default()
+	wide["vision"] = 3
+	_assert(Observation.size(wide) == 3 + 49 * 4,
+		"and a wider robot is the same arithmetic on a bigger patch (%d)" % Observation.size(wide))
+	spec["channels"] = ["needs_water"]
+	_assert(Observation.size(spec) == 3 + 25, "dropping channels narrows it row for row")
+	_assert(Observation.spec_default()["channels"] != spec["channels"],
+		"and each caller gets its own spec — one robot's senses are not aliased onto another's")
+
+	# --- a staged patch, read back channel by channel --------------------------
+	# A flat yard, a bot standing in the middle of it, and five tiles set to say
+	# something different. Everything else in the patch is bare cleared ground,
+	# which is the "walkable, nothing on it, nothing to do" reading.
+	var s := _bot_yard(4242)
+	var mid := Vector2i(10, 10)
+	BotBrain.deploy(s.world, "obs_bot", BotBrain.CONFIG_IDLE, mid)
+	s.world.set_tile_state(9, 10, "tilled")                 # thirsty bare soil
+	s.world.set_tile_state(11, 10, "seeded", "wheat")       # thirsty, and planted
+	s.world.set_tile_state(10, 9, "growing", "wheat")
+	s.world.get_tile(10, 9)["watered_today"] = true          # planted and already wet
+	s.world.set_tile_state(10, 11, "obstacle_rock")          # not ground at all
+	s.world.set_tile_state(12, 12, "ready", "wheat")         # ripe, and thirsty
+
+	var full := Observation.spec_default()
+	var v := Observation.build(s.world, "obs_bot", full)
+	_assert(v.size() == Observation.size(full),
+		"a built vector is exactly as long as the spec said (%d)" % v.size())
+	_assert(typeof(v) == TYPE_ARRAY,
+		"and it is a plain Array, the only kind of list that survives the save's JSON")
+	var plain := true
+	for x in v:
+		if typeof(x) != TYPE_FLOAT:
+			plain = false
+	_assert(plain, "of floats and nothing else")
+
+	# The head: where it is, and how much of its day is left.
+	_assert(is_equal_approx(float(v[0]), 10.0 / 31.0)
+			and is_equal_approx(float(v[1]), 10.0 / 39.0),
+		"its position is normalised by the map's own width and full height")
+	_assert(is_equal_approx(float(v[2]), 1.0), "a bot fresh out of the box reads a full meter")
+	s.world.set_actor_energy("obs_bot", 300)
+	_assert(is_equal_approx(float(Observation.build(s.world, "obs_bot", full)[2]), 0.5),
+		"and a half-spent one reads half (600 units is the day, as it is for her)")
+	s.world.set_actor_energy("obs_bot", SimWorld.ACTOR_MAX_ENERGY)
+
+	# The patch. Channels are [needs_water, wet, walkable, crop].
+	v = Observation.build(s.world, "obs_bot", full)
+	_assert(_obs_tile(v, 0, 0, 2, 3, 4) == [0.0, 0.0, 1.0, 0.0],
+		"the cleared tile it stands on wants nothing and grows nothing")
+	_assert(_obs_tile(v, -1, 0, 2, 3, 4) == [1.0, 0.0, 1.0, 0.0],
+		"tilled soil to its left reads thirsty, dry, walkable, empty")
+	_assert(_obs_tile(v, 1, 0, 2, 3, 4) == [1.0, 0.0, 1.0, 1.0],
+		"a seed to its right reads thirsty and planted")
+	_assert(_obs_tile(v, 0, -1, 2, 3, 4) == [0.0, 1.0, 1.0, 1.0],
+		"the watered crop above it reads wet, and no longer thirsty")
+	_assert(_obs_tile(v, 0, 1, 2, 3, 4) == [0.0, 0.0, 0.0, 0.0],
+		"the rock below it is not walkable and is not soil")
+	_assert(_obs_tile(v, 2, 2, 2, 3, 4) == [1.0, 0.0, 1.0, 1.0],
+		"and the ripe corner of the patch is still a tile that wants water")
+	for dy in range(-2, 3):
+		for dx in range(-2, 3):
+			_assert_quiet(_obs_tile(v, dx, dy, 2, 3, 4).size() == 4,
+				"tile (%d,%d) contributed four numbers" % [dx, dy])
+	_flush_quiet("every tile of the patch contributes its channels in spec order")
+
+	# --- the same world twice is the same vector -------------------------------
+	_assert(Observation.build(s.world, "obs_bot", full) == v,
+		"building twice off an unchanged world gives the identical list (a replay depends on it)")
+
+	# --- against the edge of the map -------------------------------------------
+	# Out of bounds is honestly nothing: zeros, not a wrapped-around farm. The
+	# border tile itself is in bounds and reads as the wall it is.
+	s.world.set_actor_pos("obs_bot", Vector2i(0, 0))
+	var corner := Observation.build(s.world, "obs_bot", full)
+	_assert(is_equal_approx(float(corner[0]), 0.0) and is_equal_approx(float(corner[1]), 0.0),
+		"the top-left tile normalises to (0, 0)")
+	for dy in range(-2, 3):
+		for dx in range(-2, 3):
+			if dx < 0 or dy < 0:
+				_assert_quiet(_obs_tile(corner, dx, dy, 2, 3, 4) == [0.0, 0.0, 0.0, 0.0],
+					"tile (%d,%d) is off the map and reads as zeros" % [dx, dy])
+	_flush_quiet("every tile outside the map reads as four zeros")
+	_assert(_obs_tile(corner, 0, 0, 2, 3, 4) == [0.0, 0.0, 0.0, 0.0],
+		"and the border it is standing on is in bounds, but is not ground you can walk")
+	s.world.set_actor_pos("obs_bot", Vector2i(SimWorld.MAP_WIDTH - 1, SimWorld.MAP_HEIGHT - 1))
+	var far := Observation.build(s.world, "obs_bot", full)
+	_assert(is_equal_approx(float(far[0]), 1.0) and is_equal_approx(float(far[1]), 1.0),
+		"and the far corner normalises to (1, 1) — the full height, not one page of it")
+	s.world.set_actor_pos("obs_bot", mid)
+
+	# --- a spec that names a channel nobody implements --------------------------
+	# Loud, not silent: a robot trained on a column of zeros looks like a robot
+	# that is learning slowly. The ERROR printed above this line is the test.
+	var bogus := Observation.spec_default()
+	bogus["channels"] = ["needs_water", "smells_nice"]
+	print("  (the next ERROR line is expected — an unknown channel is meant to be loud)")
+	var mixed := Observation.build(s.world, "obs_bot", bogus)
+	_assert(mixed.size() == Observation.size(bogus),
+		"an unknown channel keeps its place in the vector rather than shifting the rest")
+	_assert(_obs_tile(mixed, -1, 0, 2, 3, 2) == [1.0, 0.0],
+		"the channel that is real still answers, and the invented one reads zero")
+
+	# --- rule 8: an observation is O(radius squared), and cheap ------------------
+	var t0 := Time.get_ticks_msec()
+	for _i in 10000:
+		Observation.build(s.world, "obs_bot", full)
+	var elapsed := Time.get_ticks_msec() - t0
+	_assert(elapsed < 500,
+		"10,000 radius-2 observations cost %d ms — a robot thinks once a second" % elapsed)
+	s.done()
+
+
+# The two-armed bandit WI-2's acceptance asks for: action 0 pays, nothing else
+# does, and the only thing that ever changes is the weights. `state` carries the
+# weights and the night's bookkeeping between days exactly as a Mark III's
+# `extra` will, and the day loop is the plan's rule verbatim — trace per
+# decision, accumulate on reward, one update at the day turn.
+const BANDIT_DECISIONS := 10
+# Deliberately below the robot's own 0.05 [Playtest]. See `test_policy`.
+const BANDIT_RATE := 0.02
+
+
+func _bandit_day(state: Dictionary, decisions: int, rate: float) -> Dictionary:
+	var obs: Array = [1.0]
+	var w: Array = state["weights"]
+	var trace := Policy.new_weights(1, 2)
+	var acc := Policy.new_weights(1, 2)
+	var score := 0.0
+	var salt: int = hash("bandit") ^ (int(state["days"]) * 7919)
+	for d in decisions:
+		var p := Policy.probs(Policy.logits(w, 1, 2, obs))
+		var action := Policy.sample(p, Policy.draw_u(salt, d))
+		Policy.add_into(trace, Policy.grad_log_prob(obs, p, action, 1, 2), 1.0)
+		var r := 1.0 if action == 0 else 0.0
+		if r != 0.0:
+			Policy.add_into(acc, trace, r)
+			score += r
+	state["weights"] = Policy.night_update(w, acc, trace, float(state["baseline"]), rate)
+	state["baseline"] = (float(state["baseline"]) * int(state["days"]) + score) / float(int(state["days"]) + 1)
+	state["last_score"] = score
+	state["days"] = int(state["days"]) + 1
+	return state
+
+
+func _bandit_run(seed_value: int, days: int) -> Dictionary:
+	SimRng.reseed(seed_value)
+	var state := {
+		"weights": Policy.new_weights(1, 2),
+		"baseline": 0.0,
+		"days": 0,
+		"last_score": 0.0,
+	}
+	for _d in days:
+		_bandit_day(state, BANDIT_DECISIONS, BANDIT_RATE)
+	return state
+
+
+# What the trained bandit thinks of the arm that pays.
+func _bandit_p0(state: Dictionary) -> float:
+	return float(Policy.probs(Policy.logits(state["weights"], 1, 2, [1.0]))[0])
+
+
+func test_policy() -> void:
+	print("\n--- How a learning robot chooses, and what a night changes (v0.2.1 WI-2) Tests ---")
+
+	# --- the reward table (layer 1) --------------------------------------------
+	# **Paid for outcomes, never for gestures** (P-14): the key is what happened
+	# to the tile, not the verb that happened to it.
+	_assert(is_equal_approx(Rewards.of("wet_tile"), 1.0),
+		"turning a thirsty tile wet is worth 1 (Q-96)")
+	_assert(is_equal_approx(Rewards.of("water"), 0.0)
+			and is_equal_approx(Rewards.of(""), 0.0),
+		"and everything nobody has priced — including the verb itself — is worth nothing")
+
+	# --- a brand-new brain is an undecided one ----------------------------------
+	var w0 := Policy.new_weights(103, 6)
+	_assert(w0.size() == 6 * 104, "a fresh policy is n_out x (n_in + 1) weights (%d)" % w0.size())
+	var all_zero := true
+	for x in w0:
+		if x != 0.0:
+			all_zero = false
+	_assert(all_zero, "all of them zero, so day one is a wander and not a habit")
+	var blank: Array = []
+	blank.resize(103)
+	blank.fill(0.0)
+	var p0 := Policy.probs(Policy.logits(w0, 103, 6, blank))
+	var uniform := true
+	for x in p0:
+		if not is_equal_approx(float(x), 1.0 / 6.0):
+			uniform = false
+	_assert(uniform, "so all six actions are exactly as likely as each other")
+
+	# --- the layout: one row per action, bias last ------------------------------
+	var w := [2.0, -1.0, 0.5, 0.0, 3.0, -0.25]  # 2 actions x (2 inputs + bias)
+	var lg := Policy.logits(w, 2, 2, [1.0, 4.0])
+	_assert(is_equal_approx(float(lg[0]), 2.0 - 4.0 + 0.5)
+			and is_equal_approx(float(lg[1]), 0.0 + 12.0 - 0.25),
+		"a logit is the row's dot product plus the bias sitting at the end of it")
+
+	# --- softmax: sums to one, and does not blow up -----------------------------
+	var p := Policy.probs(lg)
+	var total := 0.0
+	for x in p:
+		total += float(x)
+	_assert(is_equal_approx(total, 1.0), "probabilities sum to 1 (%f)" % total)
+	var huge := Policy.probs([900.0, 899.0, -900.0])
+	_assert(is_finite(float(huge[0])) and is_finite(float(huge[2]))
+			and is_equal_approx(float(huge[0]) + float(huge[1]) + float(huge[2]), 1.0),
+		"and a policy that has trained itself into enormous logits still answers numbers")
+
+	# --- sampling is a pure function of the draw --------------------------------
+	# This is what lets a replay recompute a robot's whole day instead of
+	# recording it (Q-53): the draw comes from SimRng.stateless, and everything
+	# after it is arithmetic.
+	var flat: Array = [0.25, 0.25, 0.5]
+	_assert(Policy.sample(flat, 0.0) == 0 and Policy.sample(flat, 0.24) == 0,
+		"the first slice of the range picks the first action")
+	_assert(Policy.sample(flat, 0.25) == 1 and Policy.sample(flat, 0.49) == 1,
+		"the second slice picks the second")
+	_assert(Policy.sample(flat, 0.5) == 2 and Policy.sample(flat, 0.999999) == 2,
+		"and the rest picks the third")
+	var repeatable := true
+	for i in 1000:
+		var u := float(i) / 1000.0
+		if Policy.sample(flat, u) != Policy.sample(flat, u):
+			repeatable = false
+	_assert(repeatable, "the same u always gives the same action, a thousand draws over")
+
+	# --- the gradient, against finite differences -------------------------------
+	# The claim `grad_log_prob` makes is that it is the derivative of log pi with
+	# respect to every weight. Nudging each weight and watching log pi move is the
+	# only check that cannot be fooled by the algebra being wrong in the same way
+	# twice.
+	var gw: Array = [0.4, -1.1, 0.9, 0.2, -0.3, 0.7, 1.5, -0.6]  # 2 actions x (3 + bias)
+	var gobs: Array = [0.3, -0.7, 1.4]
+	var act := 1
+	var gp := Policy.probs(Policy.logits(gw, 3, 2, gobs))
+	var g := Policy.grad_log_prob(gobs, gp, act, 3, 2)
+	_assert(g.size() == gw.size(), "the gradient has one entry per weight (%d)" % g.size())
+	var h := 0.00001
+	var worst := 0.0
+	for i in gw.size():
+		var up: Array = gw.duplicate()
+		var down: Array = gw.duplicate()
+		up[i] = float(up[i]) + h
+		down[i] = float(down[i]) - h
+		var f_up: float = log(float(Policy.probs(Policy.logits(up, 3, 2, gobs))[act]))
+		var f_down: float = log(float(Policy.probs(Policy.logits(down, 3, 2, gobs))[act]))
+		worst = maxf(worst, absf((f_up - f_down) / (2.0 * h) - float(g[i])))
+	_assert(worst < 0.000001,
+		"and every entry matches a finite-difference nudge (worst gap %.10f)" % worst)
+
+	# --- add_into edits in place, which is what a day's trace needs --------------
+	var target: Array = [1.0, 2.0, 3.0]
+	Policy.add_into(target, [10.0, 10.0, 10.0], 0.5)
+	_assert(target == [6.0, 7.0, 8.0], "add_into folds a scaled source into the array it was given")
+
+	# --- night_update leaves the day's weights alone ----------------------------
+	var before: Array = [0.0, 0.0]
+	var after := Policy.night_update(before, [1.0, 1.0], [1.0, 1.0], 0.5, 0.1)
+	_assert(before == [0.0, 0.0], "a night returns new weights rather than editing the old ones")
+	_assert(after == [0.05, 0.05],
+		"and applies rate x (acc - baseline x trace), rounded (%s)" % str(after))
+	_assert(is_equal_approx(Policy.round6(0.12345649), 0.123456)
+			and is_equal_approx(Policy.round6(-1.0 / 3.0), -0.333333),
+		"round6 keeps six places, which is the determinism guard and not tidiness")
+
+	# --- the draw a decision is made on -----------------------------------------
+	# **The plan's own formula does not produce draws.** `SimRng.stateless` hashes
+	# "seed:salt:index" and Godot's string hash is h = h * 33 + c, so bumping the
+	# decision number by one moves the hash by exactly one: ten decisions in a day
+	# drew ten numbers that agreed to five decimal places. `Policy.draw_u`
+	# scrambles the index first, and this is the check that it stayed scrambled.
+	SimRng.reseed(4242)
+	var tenths: Array = []
+	tenths.resize(10)
+	tenths.fill(0)
+	var draw_mean := 0.0
+	var salt := hash("draws")
+	for i in 5000:
+		var u := Policy.draw_u(salt, i)
+		_assert_quiet(u >= 0.0 and u < 1.0, "draw %d landed inside [0, 1)" % i)
+		tenths[mini(9, int(u * 10.0))] += 1
+		draw_mean += u
+	draw_mean /= 5000.0
+	_flush_quiet("five thousand consecutive decisions all draw inside [0, 1)")
+	var thin := 5000
+	for n in tenths:
+		thin = mini(thin, int(n))
+	_assert(thin > 350,
+		"and they fill every tenth of the range — thinnest %d of an even 500 (%s)" % [thin, str(tenths)])
+	_assert(absf(draw_mean - 0.5) < 0.02, "with a mean of %.4f" % draw_mean)
+	_assert(Policy.draw_u(salt, 7) == Policy.draw_u(salt, 7)
+			and Policy.draw_u(salt, 7) != Policy.draw_u(salt, 8),
+		"a draw is fixed by (seed, salt, index) and neighbouring decisions do not share one")
+
+	# --- it learns: two arms, one of them pays ----------------------------------
+	# `rate` is 0.02 here rather than the robot's own 0.05 [Playtest]. The rule
+	# accumulates a *cumulative* trace, so a day's update grows with the square of
+	# how many decisions are in it, and at 0.05 a twenty-decision bandit
+	# overshoots hard enough to lock onto the arm that pays nothing. Worth knowing
+	# before WI-5 gives a robot three hundred decisions a day.
+	var bandit := _bandit_run(42, 50)
+	_assert(_bandit_p0(bandit) > 0.9,
+		"fifty nights of the trace-and-night rule and it takes the arm that pays %.1f%% of the time"
+			% (_bandit_p0(bandit) * 100.0))
+	_assert(int(bandit["days"]) == 50 and float(bandit["baseline"]) > 5.0,
+		"with a baseline that has caught up to what a good day is worth (%.2f)" % float(bandit["baseline"]))
+	for other in [555, 4242]:
+		var run := _bandit_run(other, 50)
+		_assert_quiet(_bandit_p0(run) > 0.9,
+			"seed %d reached %.3f" % [other, _bandit_p0(run)])
+	_flush_quiet("and it is the rule that learns, not the seed — other seeds get there too")
+	_assert(_bandit_run(42, 50)["weights"] == bandit["weights"],
+		"the same seed trains the identical robot, weight for weight")
+	_assert(_bandit_run(99, 50)["weights"] != bandit["weights"],
+		"while a different seed does not")
+
+	# --- and the weights survive being saved ------------------------------------
+	# They live in an actor's `extra`, which is deep-copied into the save and
+	# compared by `capture_canonical`. A weight that came back from JSON a hair
+	# different would be a restored robot that is not the robot that was saved.
+	var awkward: Array = [0.0, -0.0000004, 1.0 / 3.0, -12345.6789012, 2.0, 1e-9]
+	var rounded: Array = []
+	for x in awkward:
+		rounded.append(Policy.round6(float(x)))
+	for arr in [rounded, bandit["weights"]]:
+		var back = JSON.parse_string(JSON.stringify(arr))
+		_assert_quiet(back != null and back.size() == arr.size(), "the array came back the same length")
+		if back != null:
+			for i in mini(back.size(), arr.size()):
+				_assert_quiet(float(back[i]) == float(arr[i]),
+					"weight %d came back as the same number (%s vs %s)" % [i, str(arr[i]), str(back[i])])
+	_flush_quiet("a rounded weight array round-trips through JSON element for element")
 
 
 func test_mark_one_robot() -> void:
