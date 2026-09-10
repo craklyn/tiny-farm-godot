@@ -20,7 +20,7 @@
     "Two runs on the same seed are identical; the seven-day learning curve rises on a fixed seed",
     "Every watering looks and sounds like hers; it moves at the Mark I's pace; nothing changes without a cue"
   ],
-  "current_status": "The CEO ruled the full reward table (Q-100, 2026-09-09) and the design is rewritten around it: an action is a tap (walk to the nearest legal tile in view, do the verb), eight actions, a 207-number view, one crop carried at a time to the bin, seeds from her box, crows scared by reaching them. Building now, sim side first (Tomas's seat): the gateway rules for machines, the observation, the eight-row table. The brain's tap-shaped actions and the demo follow (Kenji's seat). Also landed today: the hoe obeys her tool rules; the gate is eight deterministic farms. Q-98 (what it keeps when picked up) is still open for the CEO.",
+  "current_status": "The Mark III learns the whole farm (2026-09-10, on main, both suites, the robot session and the gateway check green). Its actions are taps: walk to the nearest legal tile in view, do the verb. On the fixed seed a week goes from 9.7 points a day to 18.1; over 24 farms, 24.2 a day with learning against 17.5 without, 20 of 24 weeks rose; the gate is asserted again. It reaches six of the CEO's eight rows in a week, including carrying crops to the bin (5.6 a day); the two crow rows are unreachable at a two-tile view with one bird a day, written up as an exploration problem per his thesis. Next: the tablet build for the CEO to watch it, then the release chores. Q-98 (what it keeps when picked up) is still open.",
   "plan": [
     {
       "step": "Design written against the code, with the six rules and the v1 scope",
@@ -72,7 +72,7 @@
     },
     {
       "step": "Q-100: the full reward table — the robot sees the whole farm, plants, harvests, carries to the mailbox, scares crows; measured honestly on the harness",
-      "done": false
+      "done": true
     }
   ],
   "links": [

@@ -118,9 +118,10 @@
           "id": "s23",
           "title": "Score the full table: mailbox 10, crow off food 3, crow flying in 1, harvest, thirsty plant and planting 1, grass and empty soil 0.1 — each from what changed in the world",
           "estimate_days": 1.0,
-          "done": false,
+          "done": true,
           "why": "Q-100, ruled 2026-09-09: the full reward table.",
-          "raised": "2026-09-09"
+          "raised": "2026-09-09",
+          "shipped_in": "main 2026-09-10"
         },
         {
           "id": "s24",
@@ -135,9 +136,10 @@
           "id": "s25",
           "title": "Measure the full table on the 24-farm harness, and say honestly which rewards a linear learner reaches in a week and which need a better learner",
           "estimate_days": 1.0,
-          "done": false,
+          "done": true,
           "why": "Q-100, ruled 2026-09-09: the full reward table.",
-          "raised": "2026-09-09"
+          "raised": "2026-09-09",
+          "shipped_in": "main 2026-09-10"
         },
         {
           "id": "s1",

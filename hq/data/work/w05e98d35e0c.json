@@ -16,5 +16,37 @@
   "attempts": 1,
   "created": "2026-09-09T23:39",
   "created_ts": 1789022368.2327178,
-  "parent": "mark-3-learning-bot"
+  "parent": "mark-3-learning-bot",
+  "follow_ups": [
+    {
+      "title": "Give a machine's planting and selling the same sound and visuals the player gets",
+      "owner": "jade",
+      "level": "story",
+      "tier": 1,
+      "first_action": "In world/farm.gd, add plant and sell rows to the verb cue table so a non-player actor's PLANT and SELL actions play the same effect and sound the player's do; extend the integration test that watches actor cues to cover both.",
+      "why": "A machine can now plant from the seed box and sell at the bin, and both currently happen with no cue at all."
+    },
+    {
+      "title": "Make the learning check fail the tests when a robot stops learning",
+      "owner": "kenji",
+      "level": "task",
+      "tier": 1,
+      "first_action": "Once the tap-shaped brain lands, replace the printed learning comparison in the v0.2.1 learning test with an assertion on the same numbers demo_learning_robot.gd prints, and record the chosen threshold in docs/V0_2_1_PLAN.md.",
+      "why": "The learning result is currently only printed, so a regression in the robot's learning would pass silently."
+    },
+    {
+      "title": "Fix the script that truncated the v0.2.1 plan file",
+      "owner": "claude",
+      "level": "task",
+      "tier": 1,
+      "first_action": "Find the scripted edit that rewrote docs/V0_2_1_PLAN.md and cut sections four to nine, make it fail loudly instead of writing a shorter file, and check no other plan or design doc lost content the same way.",
+      "why": "The same script will be used on the next plan edit and will truncate it again."
+    }
+  ],
+  "recommend": {
+    "question": "Do the missing plant and sell cues block a machine doing either in front of the player, or are they a follow-up?",
+    "answer": "Treat them as blocking — no machine plants or sells where the player can see it until the cues land.",
+    "why": "Our standing rule is that any actor's action the player watches gets the player's own sound and visual treatment, and a silent sale is the clearest way to break that.",
+    "instead": "Ship the behaviour now and add cues in the next pass, which gets the economy in front of playtesters sooner but with a machine that acts invisibly."
+  }
 }

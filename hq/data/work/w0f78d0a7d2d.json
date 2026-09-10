@@ -1,0 +1,19 @@
+{
+  "id": "w0f78d0a7d2d",
+  "title": "Scenario W's 'washed it dry at the tap' assertion fails about one run in five",
+  "level": "task",
+  "owner": "grace",
+  "tier": 1,
+  "tier_reason": "Test harness code; git reverts it. A red suite that means nothing is broken is the thing the CEO ruled must never happen.",
+  "ask": "Reported 2026-09-10 by the worker who landed the Mark III's brain: tools/test_runner.gd Scenario W's assertion that the cot tap washed the tile dry depends on the cot tap's weather roll off the shared seeded stream, whose position varies with frame timing, so it fails roughly one run in five on any branch. Seen once in eleven runs with the brain change and zero in five on pristine main, and the change cannot reach it.",
+  "first_action": "Reproduce by running the integration suite ten times and counting; then either hold the weather for that scenario (as the demos do, on both gs.weather and the sleep action) or move the roll to SimRng.stateless keyed by the day so frame timing cannot move it.",
+  "state": "waiting_session",
+  "thread": "grace",
+  "source": "session",
+  "source_message": "Chief of staff session 2026-09-10: an Opus worker's report.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-10T00:41",
+  "created_ts": 1789026119.9307487
+}
