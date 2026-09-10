@@ -1,0 +1,20 @@
+{
+  "id": "w05e98d35e0c",
+  "title": "Let a machine work out of her stores: it carries what it cuts, plants from her seed box, and sells at the bin",
+  "level": "task",
+  "owner": "tomas",
+  "tier": 1,
+  "tier_reason": "Sim code behind the unit suite and the replay round-trip; git reverts it. The rules are the design's, set by the CEO's Q-100 table.",
+  "ask": "WI-9a in docs/V0_2_1_PLAN.md: a robot's harvest goes into its hands (one crop at a time) rather than her basket, so it cannot ship her work; it plants from her seed box and is refused when empty, where a non-player used to plant free; its sell pays the shared per-crop price for the one crop it carries. The observation gains ripe, crow and bin channels and carrying, seeds and bin-offset scalars (207 numbers); the reward table becomes the CEO's eight rows.",
+  "first_action": "Landed; see result.",
+  "state": "for_review",
+  "thread": "tomas",
+  "source": "chat",
+  "source_message": "CEO on Q-100, 2026-09-09, chief of staff session: the full reward table.",
+  "result": "Landed on main (commit 06bd86e merged as part of bf533ac): sim_world.gd's three machine rules with _is_machine/_hands_of, game_state.gd's shared crop_price and sell_one_crop, the 207-number observation with a cached bin lookup, the eight-row Rewards.TABLE; test_machine_economy (23 assertions), test_observation at 41. Unit 2411, integration 671, robot session and gateway green. Left for the brain worker: the learning gate is printed rather than asserted until the tap-shaped brain lands, and farm.gd's verb cues have no plant or sell row yet. The worker also caught that the chief of staff's scripted edit had truncated the plan file; it is rebuilt. Chief of staff verified: ran both suites on main after the merge.",
+  "started": "2026-09-09",
+  "attempts": 1,
+  "created": "2026-09-09T23:39",
+  "created_ts": 1789022368.2327178,
+  "parent": "mark-3-learning-bot"
+}

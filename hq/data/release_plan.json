@@ -109,9 +109,10 @@
           "id": "s22",
           "title": "Give it the whole farm to see: ripe crops, crows, the mailbox, what it carries and her seed count join its view; its actions grow to plant, harvest and ship",
           "estimate_days": 1.0,
-          "done": false,
+          "done": true,
           "why": "Q-100, ruled 2026-09-09: the full reward table.",
-          "raised": "2026-09-09"
+          "raised": "2026-09-09",
+          "shipped_in": "main 2026-09-09"
         },
         {
           "id": "s23",
@@ -125,9 +126,10 @@
           "id": "s24",
           "title": "Let it carry: a harvested crop rides with the robot to the mailbox, seeds come from her box and are refused when empty, a crow it reaches is scared the way the Mk II scares one",
           "estimate_days": 1.0,
-          "done": false,
+          "done": true,
           "why": "Q-100, ruled 2026-09-09: the full reward table.",
-          "raised": "2026-09-09"
+          "raised": "2026-09-09",
+          "shipped_in": "main 2026-09-09"
         },
         {
           "id": "s25",
