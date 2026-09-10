@@ -120,7 +120,7 @@ mark buys is which settings the machine will answer to.
 | --- | --- | --- |
 | Show it where to work (n/8) | `teach` | enters teaching mode: the view rises to frame the whole farm (chapter 11, *Altitude*), every tap toggles that square in the machine's list at any distance and for free, and the squares it cannot be sent to dim |
 | Send it out (n tiles) | `activate` | it walks the list once, doing each square in the order she taught it, and stops |
-| Pick up | `collect` | back in the crate |
+| Pick up | `collect` | back in the crate — and a Mark III's crate remembers what it learned (Q-98, 2026-09-10) |
 
 **What it does to a square is the square's answer, not the machine's** (designer,
 2026-09-07: *"make the robot till if it's grass, and water if it's soil — basically,

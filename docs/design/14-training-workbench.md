@@ -183,9 +183,10 @@ the shop. Four things settled in the building, none of which change §§1–9's 
   rather than the mockup's blue, which is the ledger's "crow in the air"; the dials list the
   rows in the reward table's own order, so the two crow rows sit the other way round from the
   mockup's left column; the mosaic's rows follow the observation's own channel order.*
-- *Three small calls are the designer's whenever he wants them: a dial turn makes no sound
-  today (a purchase in the shop does); the bench is priced at 300; and the game has no pixel
-  face, so the plate is set in the game's own font rather than the mockups'.*
+- *Settled by the designer on 2026-09-10: the bench costs 300. Parked by him the same day until
+  he has seen the plates in action: whether the game wants a pixel face (the plate is set in the
+  game's own font meanwhile). Asked by him the same day and in hand with the sound seat: a
+  sound for a dial turn, sourced free with its rights written down.*
 
 
 | Item | Owner | ~days |

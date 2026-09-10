@@ -574,6 +574,12 @@ line per rewarded action, points per day — because a single number beside a ca
 once the score is the whole table. D-4's rule holds: it is real data, drawn from the
 robot's own per-day history, wordless but for the numerals on the axes.
 
+**Q-98 ruled 2026-09-10 (the crate remembers):** picking a Mark III up is repositioning, not a
+reset — "it shouldn't factory reset the robot." The boxed item carries the robot's learned and
+configured state (weights, days, tuned rewards, ledger, history) and setting it down restores it;
+only the errand of the moment is dropped. The standing reading: moving an owned thing never
+discards what it has accumulated.
+
 **Q-99 (2026-09-09):** when a fresh robot could not find reward on open ground, the
 designer's fix was a denser reward, not a fenced world: a till action and +0.1 for turning
 bare soil into tilled, "for initial playtesting". The order of fixes for a learning

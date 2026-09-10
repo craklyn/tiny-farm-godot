@@ -29,5 +29,11 @@
       "label": "Queue entry (Q-98)",
       "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"
     }
-  ]
+  ],
+  "ruled": {
+    "date": "2026-09-10",
+    "option": "a",
+    "summary": "The crate remembers. Picking a robot up is repositioning, not a reset: its weights, its days, its tuned dials and its ledger travel with the boxed item and come back when it is put down.",
+    "written_up": "docs/design/06-bots-and-training.md"
+  }
 }

@@ -527,6 +527,30 @@ in the yard if a display is available.
 gateway clean; `verify_replay.gd` passes on a fresh recorded session with a tune in it (run it
 after playing one; if no display, state so).
 
+### WI-9 — The crate remembers (Q-98) · ~0.5 day · Tomas (sim)
+
+Ruled 2026-09-10: "Pick up is just repositioning, it shouldn't factory reset the robot."
+Files: `systems/sim/sim_world.gd` (the `collect` machine branch and `place`'s actor branch),
+`systems/game_state.gd`, `systems/sim/save_game.gd`, `tests/test_runner.gd`.
+
+- `GameState.boxed: Dictionary` — machine key → `Array` of `extra` snapshots, newest last;
+  cleared in `reset()`; saved and restored beside `machines` (additive, no `VERSION` bump);
+  included wherever `machines` is in `capture`/`capture_canonical`.
+- `collect` of a machine whose `extra` has `weights` pushes `extra.duplicate(true)` minus the
+  errand keys `job, job_x, job_y, job_target, pending, state, goal_x, goal_y, wake`. The kept
+  set is "everything else", by subtraction, so keys added later ride by default.
+- `place` (actor branch), after `deploy` and the `model` stamp, pops the newest snapshot for
+  that key if any and overlays its keys onto the fresh `extra`. Energy is the fresh deploy's.
+  The most recently boxed robot comes out first; a new one only when none is boxed.
+- Nothing else changes; with no pick-up in a session the learning numbers are identical.
+
+**Accept:** `test_crate_remembers()` — place, tune `shipped` to 3.0, 45 s, sleep; `collect`
+→ ok, actor gone, `machines["bot_mk3"] == 1`, one JSON-plain snapshot with no `job`; `place`
+→ `days == 1`, `weights`/`rewards`/`ledger`/`history`/`tuned` equal, `job == ""`, `boxed`
+empty; a second bought robot is fresh; a Mark I is unaffected; save → restore keeps `boxed`
+and a later `place` restores; the replay chapter with a collect and a place in it →
+`divergence == ""`, canonical equal; the demo byte-identical before and after.
+
 ## 5. Deliberately NOT in scope (P-13; design §8)
 
 The trial ground; painting the mosaic; copying a brain between robots; per-day route replay;
@@ -686,3 +710,9 @@ is `training-workbench`.*
   small calls listed for him above (dial sound, bench price, a pixel face). Worker spend for
   the whole build: about 2.35 million Opus tokens across two surveyors, one reviewer and
   nine workers, plus $0.108 of art.
+- 2026-09-10 — **The CEO's three answers**: the bench price of 300 is settled; the pixel face is
+  parked until he has seen the plates in action; a dial sound is asked for and is with the
+  sound seat through the drain (a CC0 recording, a decision card he can listen to, CREDITS in
+  the same change). **Deployed to the tablet** from main at `7480abd` with the standing script
+  (session rescued first, installed and launched). **Q-98 ruled: the crate remembers** — WI-9
+  above, handed to a worker.
