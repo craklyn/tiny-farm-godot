@@ -28,5 +28,35 @@
     "license": "CC0 1.0 Universal (public domain dedication)",
     "source": "https://freesound.org/people/Valenspire/sounds/699492/",
     "query": "harvest"
+  },
+  {
+    "slot": "dial",
+    "file": "dial_cc0_556634.wav",
+    "freesound_id": 556634,
+    "title": "Switch Klunk 2",
+    "author": "cookies+policy",
+    "license": "CC0 1.0 Universal (public domain dedication)",
+    "source": "https://freesound.org/people/cookies+policy/sounds/556634/",
+    "query": "rotary switch click"
+  },
+  {
+    "slot": "dial",
+    "file": "dial_cc0_120844.wav",
+    "freesound_id": 120844,
+    "title": "dial turn.wav",
+    "author": "freemaster2",
+    "license": "CC0 1.0 Universal (public domain dedication)",
+    "source": "https://freesound.org/people/freemaster2/sounds/120844/",
+    "query": "dial click"
+  },
+  {
+    "slot": "dial",
+    "file": "dial_cc0_793345.wav",
+    "freesound_id": 793345,
+    "title": "Metronome click 2",
+    "author": "Sadiquecat",
+    "license": "CC0 1.0 Universal (public domain dedication)",
+    "source": "https://freesound.org/people/Sadiquecat/sounds/793345/",
+    "query": "dial click"
   }
 ]

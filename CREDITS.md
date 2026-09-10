@@ -409,6 +409,25 @@ before the first public build ships.*
     and redistribution are permitted with no attribution required. Credit is given
     here by choice. Fetched via `tools/fetch_sfx_candidates.py`, which re-checks
     each result's licence field rather than trusting the search filter.
+- **Dial (Q-102, awaiting the designer's ruling)** — a turn on a training-workbench
+  dial. One CC0 recording is wired into `AudioManager`'s `dial` sound now; two more
+  are kept alongside it, unwired, as the other options on the decision card
+  (`hq/data/decisions/Q-102.json`) so the designer can hear all three before ruling:
+    - `dial_cc0_120844.wav` — Freesound #120844 "dial turn.wav" by freemaster2 — **wired**
+    - `dial_cc0_556634.wav` — Freesound #556634 "Switch Klunk 2" by cookies+policy
+    - `dial_cc0_793345.wav` — Freesound #793345 "Metronome click 2" by Sadiquecat
+
+    CC0 1.0 Universal is a public domain dedication: commercial use, modification
+    and redistribution are permitted with no attribution required. Credit is given
+    here by choice. Fetched via `tools/fetch_sfx_candidates.py` under the `dial`
+    slot (queries: "rotary switch click", "dial click", "knob detent", "ratchet
+    tick"), which re-checks each result's licence field rather than trusting the
+    search filter. Six other results from the same searches were auditioned and
+    discarded, then deleted — two more switch takes ran past a second with a
+    sustained clack past the transient, one metronome hit was a full bar of a
+    loop rather than a single strike, and a phone-hang-up take had several
+    onsets across its length; none fit "a detent or a click of well under a
+    quarter of a second." Nothing from that discarded set ships.
 - `assets/audio/sfx/water_cc0_*.wav` — CC0 candidates fetched from Freesound for
   the watering-can search; none was selected (the designer recorded his own
   pours instead, above) and all were deleted 2026-09-02. Recorded because the

@@ -5310,10 +5310,13 @@ func _scenario_ao_the_dials_turn_through_the_gateway() -> void:
 		return
 	_assert(plus0.disabled, "the plus is closed at the top of the ladder")
 	_assert(not minus0.disabled, "and the minus is not")
+	AudioManager.last_sfx = ""
 	plus0.pressed.emit()
 	await get_tree().process_frame
 	_assert(is_equal_approx(_dial_value(mk3, 0), 10.0),
 		"pressing it anyway changes nothing (%s)" % str(_dial_value(mk3, 0)))
+	_assert(AudioManager.last_sfx == "",
+		"a press on the closed end of the ladder makes no sound (%s)" % AudioManager.last_sfx)
 
 	# --- one rung down, and the rung is in the session's replay ---------------
 	var before: int = farm.replay.entries.size()
@@ -5321,6 +5324,8 @@ func _scenario_ao_the_dials_turn_through_the_gateway() -> void:
 	await get_tree().process_frame
 	_assert(is_equal_approx(_dial_value(mk3, 0), 3.0),
 		"a press on the minus steps the row down one rung (%s)" % str(_dial_value(mk3, 0)))
+	_assert(AudioManager.last_sfx == "dial",
+		"and an accepted turn plays the dial's own sound (%s)" % AudioManager.last_sfx)
 	_assert(farm.replay.entries.size() == before + 1,
 		"and exactly one Action reached the gateway (%d)"
 			% (farm.replay.entries.size() - before))
