@@ -287,23 +287,42 @@ static func _relax(wanted: Array, low: float, high: float) -> Array:
 
 
 func _pip(key: String, at: Vector2, colour: Color) -> void:
+	draw_pip(self, key, at, PIP_SIZE, colour)
+
+
+# **The row's picture, drawn anywhere and at any size** (v0.2.2, the workbench).
+#
+# It was this card's private method until the bench asked for the same eight
+# pictures on its dials page — and a second copy of "which cell is the hoe, and
+# which of them needs a chip behind it" is the exact thing that lets two surfaces
+# drift apart until the crow on one panel is not the crow on the other. So the
+# drawing moved here, static, taking the canvas it draws on; the card's own `_pip`
+# above is this function at `PIP_SIZE`, which is what keeps the machine panel
+# pixel-identical to before.
+#
+# The chip and the seedling are placed in **fractions of the pip**, so a bigger
+# pip is the same picture bigger rather than the same picture with a chip sliding
+# off it. At `size == PIP_SIZE` the arithmetic is the constants it replaced.
+static func draw_pip(canvas: CanvasItem, key: String, at: Vector2, size: float,
+		colour: Color = Color(1, 1, 1)) -> void:
 	var entry: Dictionary = PIPS.get(key, {})
 	if entry.is_empty():
 		return
+	var scale := size / PIP_SIZE
 	var sheet := _sheet_of(String(entry.get("sheet", "tools")))
 	var cell := int(entry.get("cell", 0))
 	if bool(entry.get("chip", false)):
-		draw_rect(Rect2(at + Vector2(1.0, 2.0), Vector2(PIP_SIZE - 2.0, PIP_SIZE - 4.0)),
+		canvas.draw_rect(
+			Rect2(at + Vector2(1.0, 2.0) * scale, Vector2(size - 2.0 * scale, size - 4.0 * scale)),
 			Color(colour, 0.9))
-	draw_texture_rect_region(sheet, Rect2(at, Vector2(PIP_SIZE, PIP_SIZE)),
+	canvas.draw_texture_rect_region(sheet, Rect2(at, Vector2(size, size)),
 		Rect2(cell * 16, 0, 16, 16))
 	if bool(entry.get("sprout", false)):
 		# The seedling that says "this can went on something growing": wheat's
 		# first growth stage, small, in the corner — the same picture the farm
 		# draws on a bed that has just come up.
-		draw_texture_rect_region(SHEET_WHEAT,
-			Rect2(at + Vector2(PIP_SIZE * 0.48, -PIP_SIZE * 0.18),
-				Vector2(PIP_SIZE, PIP_SIZE) * 0.66),
+		canvas.draw_texture_rect_region(SHEET_WHEAT,
+			Rect2(at + Vector2(size * 0.48, -size * 0.18), Vector2(size, size) * 0.66),
 			Rect2(0, 0, 16, 16))
 
 

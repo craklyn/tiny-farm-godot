@@ -96,6 +96,7 @@ func _run_scenarios() -> void:
 	await _scenario_ak_she_puts_up_a_fence()
 	await _scenario_al_a_ripe_crop_carries()
 	await _scenario_am_the_mark_three_shows_its_practice()
+	await _scenario_an_the_workbench_opens_from_the_yard()
 
 func _wait_until(pred: Callable, max_frames: int) -> bool:
 	for i in max_frames:
@@ -4593,3 +4594,225 @@ func _pictures_in(node: Node) -> int:
 	for child in node.get_children():
 		n += _pictures_in(child)
 	return n
+
+
+# --- Scenario AN: the workbench (Q-101, v0.2.2 WI-2) --------------------------
+#
+# The bench is the first thing in the game that is bought, set down on the grid,
+# and then **tapped to open a screen**. Both halves of that already existed — the
+# stall is bought and set down, the seed box is tapped and opens the shop — and
+# every assertion below is about a seam between them.
+#
+# End to end through the real thing, like every scenario in this file: bought from
+# the real shop by pressing its row, put down with a real tap on the yard, and
+# opened by a real tap on the picture standing there.
+func _scenario_an_the_workbench_opens_from_the_yard() -> void:
+	print("\n--- Scenario AN: the workbench is bought, set down in the yard, and opens on a tap ---")
+
+	var menus = main_scene.menus
+	menus.close_menu()
+	main_scene.end_teaching()
+	GameState.gold = 3000
+	GameState.machines = {}
+	GameState.selected_seed_type = ""
+	await get_tree().process_frame
+
+	# Anything an earlier scenario left standing would show up in the bench's strip
+	# of robots, and the bench is about the one this scenario places.
+	for raw in farm.sim.learners():
+		farm.apply_action({ "verb": "collect",
+			"target": farm.sim.actor_pos(String(raw)), "actor": "player" }, GameState)
+	await get_tree().process_frame
+
+	# --- a learning robot to have a bench for ---------------------------------
+	var mk3: String = await _buy_and_place("bot_mk3", Vector2i(16, 13))
+	_assert(mk3 != "", "a Mark III goes down on the farm to be read (%s)" % mk3)
+	await _wait_until(func(): return menus.active_menu == "machine", 60)
+	menus.close_menu()
+	await get_tree().process_frame
+
+	# --- the bench is on the shelf, and buying it puts it in the crate --------
+	menus.open_menu("shop")
+	await get_tree().process_frame
+	var bench_card := -1
+	for i in menus.shop_items.size():
+		if String(menus.shop_items[i].get("seed_type", "")) == "workbench":
+			bench_card = i
+	_assert(bench_card >= 0, "the workbench has its own card in the shop")
+	menus.selected_option = bench_card
+	menus._select_current_option()
+	await get_tree().process_frame
+	menus.close_menu()
+	await get_tree().process_frame
+	_assert(GameState.machines.get("workbench", 0) == 1,
+		"and buying it puts one in the crate, beside the machines")
+
+	# --- set down on the yard, which is the one ground `place` can reach ------
+	var bench_spot := _yard_spot_for_bench()
+	_assert(bench_spot.x >= 0,
+		"the farm has a yard square with room for a bench (%s)" % str(bench_spot))
+	if bench_spot.x < 0:
+		return
+	player.pos = Vector2((bench_spot.x - 1) * 16.0 + 8.0, bench_spot.y * 16.0 + 8.0)
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+	InputManager.click_tile = bench_spot
+	InputManager.has_click = true
+	var stood := await _wait_until(
+		func(): return farm.get_object(bench_spot.x, bench_spot.y) == WorldLayout.WORKBENCH, 200)
+	_assert(stood, "a tap puts the bench down in the yard")
+	_assert(farm.sim.machine_at(bench_spot) == "",
+		"and spawns nobody — a bench decides nothing, so it is in no registry")
+	_assert(farm.object_regions.has(WorldLayout.WORKBENCH),
+		"the renderer has a picture for it, so it is a thing she can see and aim at")
+
+	# **Nothing opens when it lands.** A machine's panel opens as it is placed,
+	# because that is the moment she is deciding what it should do; a bench has
+	# nothing to decide, so putting one down is only putting it down.
+	for i in 20: await get_tree().process_frame
+	_assert(menus.active_menu == "",
+		"and no screen opens on top of it (%s)" % menus.active_menu)
+
+	# --- a tap on it opens the bench -----------------------------------------
+	InputManager.click_tile = bench_spot
+	InputManager.has_click = true
+	var opened := await _wait_until(func(): return menus.active_menu == "workbench", 60)
+	_assert(opened, "a tap on the bench opens it (%s)" % menus.active_menu)
+	_assert(get_tree().paused,
+		"and the world holds while it is up, as it does behind every other screen")
+	_assert(menus.is_open() and not menus.menu_panel.visible,
+		"the bench takes the screen and the option panel steps out of the way")
+
+	# Scenario L's rule, asked of the bench: a paused tree runs no `_process`, so
+	# `main.gd`'s clock pump never turns a frame into a tick and nothing in the
+	# world moves behind the screen. The bench *needs* this to be true — its eyes
+	# page shows what the robot saw at the moment she opened it, and a world that
+	# carried on would make that a lie the moment it was drawn (ground rule 7).
+	var held_at: int = farm.sim.clock.tick
+	for i in 30: await get_tree().process_frame
+	_assert(farm.sim.clock.tick == held_at,
+		"and the sim clock does not advance a single tick behind it (%d)"
+			% (farm.sim.clock.tick - held_at))
+
+	var bench = menus.workbench
+	_assert(bench != null and bench.visible, "the bench itself is on screen")
+	if bench == null:
+		return
+
+	# --- and it is about the robot she owns ----------------------------------
+	_assert(bench.robots.size() == 1 and String(bench.robots[0]) == mk3,
+		"its strip lists the one learning robot on the farm (%s)" % str(bench.robots))
+	_assert(bench.robot_id == mk3,
+		"and that is the robot on the bench (%s)" % bench.robot_id)
+	_assert(bench.portraits.size() == 1,
+		"one robot, one portrait in the strip (%d)" % bench.portraits.size())
+	var face := bench.portraits[0].get_node_or_null("Face") as TextureRect
+	_assert(face != null and face.texture != null,
+		"with its own picture on it, so she picks a robot by looking rather than by reading")
+	_assert(bench.portraits[0].size.x >= Workbench.TOUCH
+			and bench.portraits[0].size.y >= Workbench.TOUCH,
+		"at a size a small thumb can hit (%s)" % str(bench.portraits[0].size))
+
+	# --- five plates, five pages, one of them showing -------------------------
+	_assert(bench.pages.size() == 5, "the bench has five pages (%d)" % bench.pages.size())
+	var every_plate := true
+	var one_page := true
+	for i in bench.PLATES:
+		bench.select_plate(i)
+		await get_tree().process_frame
+		if bench.plate != i:
+			every_plate = false
+		var showing := 0
+		for p in bench.pages:
+			if (p as Control).visible:
+				showing += 1
+		if showing != 1 or not (bench.pages[i] as Control).visible:
+			one_page = false
+	_assert(every_plate, "each of the five plates lights when it is pressed")
+	_assert(one_page, "and exactly one page is showing at a time, its own")
+	var told_pages := true
+	for p in bench.pages:
+		if not p.has_method("show_robot") or String(p.get("actor_id")) != mk3:
+			told_pages = false
+	_assert(told_pages, "every page has been handed the robot, whether it is showing or not")
+
+	var plate_button := _find_button(bench, "Plate0")
+	_assert(plate_button != null and plate_button.size == Workbench.PLATE_SIZE,
+		"a plate is a target 148 by 60 (%s)"
+			% (str(plate_button.size) if plate_button != null else "-"))
+
+	bench.select_plate(0)
+	await get_tree().process_frame
+
+	# --- closing it gives the world back --------------------------------------
+	var close_card := _find_button(bench, "WorkbenchClose")
+	_assert(close_card != null, "the bench has a close card")
+	_assert(close_card != null and close_card.size.x >= Workbench.TOUCH
+			and close_card.size.y >= Workbench.TOUCH,
+		"at the corner-card size the HUD uses everywhere else (%s)"
+			% (str(close_card.size) if close_card != null else "-"))
+	if close_card != null:
+		close_card.pressed.emit()
+	await get_tree().process_frame
+	_assert(menus.active_menu == "", "pressing it closes the bench (%s)" % menus.active_menu)
+	_assert(not get_tree().paused, "and the world starts again")
+	_assert(not bench.visible,
+		"with the bench off the screen rather than merely behind something")
+
+	# --- and the yard is left as it was found ---------------------------------
+	farm.sim.set_object(bench_spot.x, bench_spot.y, "")
+	farm.apply_action({ "verb": "collect", "target": farm.sim.actor_pos(mk3),
+		"actor": "player" }, GameState)
+	await get_tree().process_frame
+
+
+# The shop-and-place path, as scenario AM walks it: buy the row from the real
+# shop, stand her beside the square, tap it. Returns the actor id that landed, or
+# "" — a structure lands as an object, so it answers "".
+func _buy_and_place(item: String, at: Vector2i) -> String:
+	var menus = main_scene.menus
+	menus.open_menu("shop")
+	await get_tree().process_frame
+	var card := -1
+	for i in menus.shop_items.size():
+		if String(menus.shop_items[i].get("seed_type", "")) == item:
+			card = i
+	if card < 0:
+		menus.close_menu()
+		return ""
+	menus.selected_option = card
+	menus._select_current_option()
+	await get_tree().process_frame
+	menus.close_menu()
+	await get_tree().process_frame
+
+	_stage_tile(at.x, at.y, "cleared")
+	_stage_tile(at.x - 1, at.y, "cleared")
+	player.pos = Vector2((at.x - 1) * 16.0 + 8.0, at.y * 16.0 + 8.0)
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+	InputManager.click_tile = at
+	InputManager.has_click = true
+	await _wait_until(func(): return farm.sim.machine_at(at) != "", 200)
+	return farm.sim.machine_at(at)
+
+
+# A yard square a bench will stand on, with a free square to its left for her to
+# stand on while she puts it there. The **yard** deliberately: it is the ground the
+# house stands on, it can never be tilled, and `place` is the only verb in the
+# game that can put anything on it.
+func _yard_spot_for_bench() -> Vector2i:
+	for ty in range(2, WorldLayout.PAGE_ROWS - 1):
+		for tx in range(2, SimWorld.MAP_WIDTH - 2):
+			if String(farm.get_tile(tx, ty).get("state", "")) != WorldLayout.YARD:
+				continue
+			if farm.get_object(tx, ty) != "" or farm.get_object(tx, ty - 1) != "":
+				continue
+			if not farm.sim.placeable_at(Vector2i(tx, ty)):
+				continue
+			if not farm.sim.is_walkable(tx - 1, ty):
+				continue
+			return Vector2i(tx, ty)
+	return Vector2i(-1, -1)

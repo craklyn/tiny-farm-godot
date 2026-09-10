@@ -751,6 +751,21 @@ func _execute_resolved_action(pa: Dictionary) -> void:
 		if farm != null:
 			farm.queue_redraw()
 		return
+	# **A tap on the workbench opens it** (Q-101, 2026-09-10). The seed box's beat,
+	# on the bench: she has walked up to it by the time this runs, and what happens
+	# next is a screen, not a change to the farm. It has to be caught *here*,
+	# above the fallthrough below, or "open_workbench" would be handed to the
+	# gateway as a verb and come back `unknown_verb`.
+	#
+	# The tile is normalised on the way through. The bench is two tiles tall in the
+	# picture, so a tap on the rack above it reports the bench (`get_object`) and
+	# `target_t` is then the square above the one the object stands on — and the
+	# panel wants the object's own square, because that is what it looks the robots
+	# up from.
+	if action == "open_workbench":
+		get_tree().get_first_node_in_group("Main").call_deferred(
+			"trigger_workbench", farm.sim.object_tile(target_t))
+		return
 	# Every remaining verb is a sim Action (S-3): the sim validates and mutates;
 	# this side keeps only presentation (tool swap, animation, sfx, particles).
 	var act := {

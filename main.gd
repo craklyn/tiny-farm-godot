@@ -941,6 +941,16 @@ func trigger_machine_menu_for(id: String) -> void:
 	menus.open_machine_menu_for(id)
 
 
+## Open the training workbench standing at `at` (Q-101, 2026-09-10).
+##
+## The same shape as the machine panel above it and as `open_shop`: the player
+## resolves the tap, this hands it to the menus layer, and the bench is a mode of
+## that layer like every other screen in the game. `at` is the bench's own square,
+## already normalised by the caller.
+func trigger_workbench(at: Vector2i) -> void:
+	menus.open_workbench(at)
+
+
 # --- teaching a mark-1 (2026-09-03) -------------------------------------------
 #
 # **The mode lives here**, between the router (which reads a tap as a `teach`)

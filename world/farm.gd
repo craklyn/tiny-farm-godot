@@ -488,6 +488,14 @@ func _load_textures() -> void:
 	object_regions[WorldLayout.ROBOT_STALL] = [
 		load("res://assets/sprites/generated/robot_stall.png"), Rect2(0, 0, 32, 32)]
 
+	# The training workbench (Q-101, 2026-09-10): 16x32, one cell, and the
+	# ordinary tall-object draw — its bottom half is the bench standing on the
+	# tile, the 16 pixels above it are the rack of brass plates rising behind.
+	# The same picture the shop card shows, which is the rule every placed thing
+	# in the game follows.
+	object_regions[WorldLayout.WORKBENCH] = [
+		load("res://assets/sprites/generated/workbench.png"), Rect2(0, 0, 16, 32)]
+
 	# T-28's pictograms, resolved from `StationPresentation.GLYPH_ATLAS` — which
 	# is pure data, so the table can be asserted headlessly and the two renderers
 	# that need these (the world overlay and the HUD) cannot disagree about which
