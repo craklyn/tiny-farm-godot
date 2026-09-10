@@ -58,13 +58,13 @@
 # twenty-four, to keep itself under a quarter of a minute; the line under the
 # table prints those eight separately so a reader can see the gate's own numbers.
 #
-# **And one experiment, run only when asked.** `--split-sweep` plays the two
-# dozen farms four times over to answer a question the designer holds: should a
-# square of hers be worth more to the robot than a square it opened for itself?
-# It changes no shipped value, it takes about a minute and a half, and it is off
-# by default:
-#
-#     godot --headless --path . --script res://tools/demo_learning_robot.gd -- --split-sweep
+# **The price experiment is gone, because the question it asked has been
+# answered.** `--split-sweep` used to play these farms four times over to ask
+# whether a square of hers should be worth more to the robot than a square it
+# opened for itself. Q-100 settled it on 2026-09-09 — nobody owns a tile, and
+# what a watering pays now depends on whether anything was growing in the square
+# — so the sweep, and the writable reward table it needed, are removed rather
+# than left as a switch that measures a design the game no longer has.
 extends SceneTree
 
 # The day the seven-day week was first played, which is the only thing that makes
@@ -130,17 +130,6 @@ const SEEDS := 24
 const GATE_SEEDS := [20260909, 20260910, 20260911, 20260912, 20260913, 20260914,
 	20260915, 20260916]
 
-# What the split experiment pays for watering a bare tilled square — the robot's
-# own practice ground — while a square of hers stays worth 1. 1.0 is what ships;
-# the rest are the question, and the sweep is run by hand rather than on every
-# run because it is four times the work of the summary below.
-const SPLIT_VALUES := [1.0, 0.5, 0.3, 0.0]
-
-# What the sweep writes into `Rewards.overrides` — the row for a thirsty square
-# with nothing planted in it.
-const SPLIT_ROW := "wet_tile_empty"
-
-
 func _init() -> void:
 	# The table first, because it is the week a person can follow day by day; then
 	# the two dozen farms behind it, because one week is one robot's luck as much
@@ -148,13 +137,6 @@ func _init() -> void:
 	# to have is shown, never asserted (D-4).
 	var code := _report(run())
 	code = maxi(code, _summarise(many()))
-	# The experiment is behind a flag because it plays the two dozen farms four
-	# times over and takes about a minute and a half, where everything above it
-	# takes twenty seconds. Nothing it prints is a gate: it is the table the designer
-	# rules on, and it changes no shipped value (`systems/rewards.gd`).
-	if "--split-sweep" in OS.get_cmdline_user_args() \
-			or "--split-sweep" in OS.get_cmdline_args():
-		_split_report(split_sweep())
 	quit(code)
 
 
@@ -356,38 +338,8 @@ static func many(count := SEEDS, days := 7) -> Dictionary:
 	return compare(seeds, days)
 
 
-# --- the experiment (v0.2.1 WI-9, for the designer) ---------------------------
-
-# **What if her squares paid more than the robot's own?**
-#
-# The first mark-3 learns to keep a wet patch under its own feet and almost never
-# walks to her field (v0.2.1 §9), which is a machine that has learned the skill
-# and is practising it in the wrong place. One lever on that is the price: a
-# thirsty square of hers and a thirsty square the robot hoed for itself are both
-# worth 1 today, and they need not be.
-#
-# This plays the two dozen farms once for each price in `SPLIT_VALUES` — a sown
-# square is 1 throughout and the hoe is 0.1 throughout — and reports what each
-# price would teach. **It changes nothing that ships**: the price goes into
-# `Rewards.overrides`, which is empty in every game ever played, and it is put
-# back before this function returns. Reward values are the designer's to set, so
-# this is a table to rule on and not a recommendation.
-static func split_sweep(values := SPLIT_VALUES, count := SEEDS, days := 7) -> Array:
-	var rows: Array = []
-	for value in values:
-		Rewards.overrides[SPLIT_ROW] = float(value)
-		var cmp := many(count, days)
-		rows.append({
-			"value": float(value),
-			"learn": summary(cmp, "learn"),
-			"control": summary(cmp, "control"),
-		})
-	Rewards.overrides.erase(SPLIT_ROW)
-	return rows
-
-
 # The total over a slice of days, one-based and inclusive — `mean_of_days`'s
-# brother, for the counts the split is read in.
+# brother, for the counts the squares are split by whose ground they were on.
 static func _sum_of_days(days_of: Array, first: int, last: int) -> float:
 	var total := 0.0
 	for i in range(first - 1, mini(last, days_of.size())):
@@ -509,53 +461,26 @@ func _summarise(cmp: Dictionary) -> int:
 	print("nights, %.1f without them, and %d of the %d farms ended better than they began."
 		% [float(gate_control["late"]), int(gate["rose"]), n])
 
-	# The one claim this file is willing to fail on: over two dozen farms, a week
-	# of nights is worth more than the same week without them. It is the same
-	# claim `test_learning_robot` gates, made over three times the farms.
+	# **This file stopped failing on that gap on 2026-09-09, and it has to say
+	# why** (v0.2.1 WI-9a). The claim it used to refuse to ship without — a week
+	# of nights beats the same week without them — was made about a robot paid 1
+	# for every thirsty square it wetted. Q-100 repriced the farm: a plant that
+	# needed water is still worth 1, but bare soil is worth a tenth, and the big
+	# rows are a crop cut and carried to the bin. The robot in this demo cannot
+	# cut or carry anything — it has six actions, none of them a harvest — so
+	# almost everything it is able to earn is now a tenth of what it was, which
+	# shrinks a night's step by the same factor and leaves the two columns above
+	# inside each other's noise.
+	#
+	# So the gap is printed and not gated, until the brain that can reach the new
+	# table lands (WI-9b, actions shaped like her taps). **Restoring the gate is
+	# part of that work**, and so is the matching one in
+	# `tests/test_runner.gd:test_learning_robot`; a repriced farm is not a reason
+	# to keep a machine whose learning nobody checks.
 	if float(arms["learn"]["late"]) <= float(arms["control"]["late"]):
-		printerr("DEMO FAILED: %d farms of learning averaged %.2f a day over %s against %.2f with the nights switched off"
-			% [seeds, float(arms["learn"]["late"]), last, float(arms["control"]["late"])])
-		return 1
+		print("")
+		print("A week of nights is currently worth LESS than a week without them, and that")
+		print("is expected between WI-9a and WI-9b: this robot's six actions can only earn")
+		print("the tenth-of-a-point rows of the CEO's new table, so there is almost nothing")
+		print("for a night to learn from. The gate returns with the actions (WI-9b).")
 	return 0
-
-
-# --- the experiment, printed --------------------------------------------------
-
-# One table for the designer, and the only question in it is a price.
-func _split_report(rows: Array) -> void:
-	print("")
-	print("=== What if her squares paid more than the robot's own? ===")
-	print("")
-	print("The robot is paid 1 for turning a thirsty square wet, whether the square is")
-	print("her sown wheat or bare soil it opened with its own hoe — and what it does")
-	print("with that is keep a wet patch under its own feet. So: the same two dozen")
-	print("farms, played once for every price below. A sown square is worth 1 in all")
-	print("four, the hoe is worth 0.1 in all four, and the only thing that moves is what")
-	print("a bare square pays. Nothing here is a change to the game: the prices are put")
-	print("back before the run ends, and 1.0 is the row that ships.")
-	print("")
-	print("Squares a day is thirsty squares turned wet over the last three days of the")
-	print("week, counted rather than scored, so that the four rows can be compared at")
-	print("all — the score itself means something different in each of them.")
-	print("")
-	print("%14s %13s %13s %14s %11s %11s" % ["a bare square", "squares/day",
-		"night off", "weeks that rose", "hers/day", "its own/day"])
-	for row in rows:
-		var learn: Dictionary = row["learn"]
-		var control: Dictionary = row["control"]
-		var note := "  (ships)" if is_equal_approx(float(row["value"]), 1.0) else ""
-		print("%14s %13.1f %13.1f %11d/%-2d %11.1f %11.1f%s" % [
-			"%.1f" % float(row["value"]), float(learn["late_squares"]),
-			float(control["late_squares"]), int(learn["rose"]), int(learn["seeds"]),
-			float(learn["hers"]) / 3.0, float(learn["own"]) / 3.0, note])
-	print("")
-	print("\"Hers\" and \"its own\" split those same squares by whose ground they were,")
-	print("and they are the answer the price was meant to move. \"Weeks that rose\" counts")
-	print("farms that ended the week earning more than they began it, each row judged")
-	print("against its own prices: it says whether the robot learned what that row was")
-	print("paying for, not whether that row is worth more than the one above it.")
-	print("")
-	print("The night-off column is the same robot with nothing carried into the morning.")
-	print("It is identical in all four rows on purpose: a machine that never learns")
-	print("cannot be moved by what learning would have been paid, and a column that")
-	print("wandered anyway would mean this measurement was reading something else.")

@@ -147,3 +147,60 @@ the release up mid-way starts at §9.*
     learn from on its first mornings. If the CEO wants the machine on *her* wheat, the
     lever is more likely to be something that makes her field findable — it already sees
     a `crop` channel, and its vision is two tiles — than a smaller number on its own soil.
+
+## 9. Execution status and handover
+
+*If you are the session picking this up: read §1–§3, then the status lines below, then
+only the work item you are on. The chief of staff's running notes are in
+`hq/data/staff/claude/memory.md`; the work items are `hq/data/work/` entries whose
+`parent` is `mark-3-learning-bot`.*
+
+> **This file is missing §§4–8 and the first two thirds of this section, and it is worth
+> fixing before the next item is handed out.** They were deleted by commit `3397e22`
+> ("The Mark III's job is the whole farm"), which set out to add WI-9 and removed 439
+> lines while adding 80 — so the work items, the not-in-scope list, the execution notes,
+> the estimates, the pre-tag verification checklist and every status line from WI-1 to
+> WI-8b went with them, and WI-9's own body never arrived. The last whole copy is one
+> command away: `git show c513be7:docs/V0_2_1_PLAN.md`. The two dated entries at the
+> bottom of §3 (Q-100 ruled; WI-8b landed) are status lines from this section that the
+> same merge left stranded under the wrong heading. Reported by the WI-9a worker rather
+> than repaired, because which of those sections the rewrite meant to keep is the
+> author's call, not a worker's.
+
+- 2026-09-09 — **WI-9a landed: a machine works out of her stores, carries what it cuts,
+  and the reward table is the CEO's eight rows.** Three gateway rules that answer a
+  machine differently from a person (`SimWorld._is_machine`, asked of the species so all
+  three marks are covered at once): a bot's `harvest` goes into its own `extra["carrying"]`
+  rather than her basket and is refused `carrying` when its hands are full; a bot's
+  `plant` comes out of `gs.seeds` and is refused `no_seeds` when the box is empty; a
+  bot's `sell` ships the one crop it carries at the price her own basket fetches
+  (`GameState.crop_price`, now shared by both paths). The player and the neighbour are
+  untouched. The observation is 207 numbers — its hands, her seed box and the way to the
+  bin in the head, and `ripe`, `crow` and `bin` added to the patch — and the bin is found
+  once per world and remembered (`Observation.bin_tile`), never searched per decision.
+  `Rewards.TABLE` is the eight rows and the experiment's writable overrides are gone, with
+  `--split-sweep` removed from the demo and from `CLAUDE.md`. New `test_machine_economy`
+  (23 assertions); unit **2411 passed**, integration **671 passed**, robot session green,
+  demo exit 0, gateway clean.
+  - **The old brain's learning is now inside the control's noise, and that was the
+    expected cost of the repricing.** The Mark III as it stands has six actions and none
+    of them is a harvest, so the only rows it can reach are the tenth-of-a-point ones —
+    watering bare soil fell from 1.0 to 0.1 with Q-100 — which shrinks a night's step by
+    the same factor. Eight fixed farms: **1.20 a day over days 5-7 with the nights against
+    the control's 2.03, 4 of 8 farms rose**, where the same gate read 5.91 against 5.40
+    and 8 of 8 before the change. Over 24 farms: 1.4 against 1.9. The brain was left
+    alone, as WI-9a asked; **the gap is printed rather than asserted in
+    `test_learning_robot` and in the demo, and turning both back on is part of WI-9b** —
+    a repriced farm is not a reason to keep a machine whose learning nobody checks.
+  - The seed box is the one input that is not grid truth, so `Observation.build` takes
+    `gs` as an optional fourth argument and `BotBrain.step` passes it down. Without it the
+    box reads empty, which is what an actor with nothing to sow from would see.
+  - `carrying` is a String and JSON-plain, so it rides the save and `capture_canonical`
+    with everything else in `extra`; the mark-3 replay chapter passes with it.
+  - **Two verbs a machine will emit have no cue, and that is WI-9b's to close.**
+    `world/farm.gd`'s `ACTOR_VERB_CUES` already voices a bot's `harvest` (the machine's
+    result still names the crop, so it gets her sound and her puff for nothing), but
+    `plant` and `sell` are not in that table — so the first robot to sow a seed or ship a
+    crop would do it silently, against the studio's rule that an actor's action gets the
+    player's own treatment. Nothing emits either verb today, which is why it is named
+    here rather than fixed here.
