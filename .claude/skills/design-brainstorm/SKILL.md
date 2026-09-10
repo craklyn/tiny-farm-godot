@@ -32,6 +32,35 @@ space before any idea**, generate candidates **in parallel contexts that
 cannot see each other**, seed those contexts with **different everyday
 personas**, and keep every candidate to **a title until the human has picked**.
 
+## Turning the session on
+
+A skill is read once and drifts; the protocol below only holds if it is restated
+every turn — which is the very failure it exists to prevent. Two hooks in
+`.claude/settings.json` do the restating, driven by a state file you maintain.
+
+**Write the state file the moment a brainstorm starts**, and rewrite it at every
+phase change:
+
+```bash
+printf 'phase=map\ntopic=what a mark-2 robot notices\n' > .claude/.brainstorm-state
+```
+
+`phase` is `map` during Phase 1, `diverge` through Phases 2 and 3, and
+`converge` from Phase 5. The guard hook injects the rules for the current phase
+on every prompt, and while the phase is `diverge` a second hook refuses writes
+to `.gd`, `.tscn`, `.tres` and `.godot` files outright — so the session cannot
+quietly commit to one branch of the space before Daniel has picked.
+
+**Delete the file when the brainstorm ends**, or the next unrelated turn in this
+project inherits brainstorm rules. It is gitignored, so it never travels.
+
+```bash
+rm -f .claude/.brainstorm-state
+```
+
+If he says "stop brainstorming", "just write it", or otherwise wants out, remove
+the file and say you have — never work around the block while it is in place.
+
 ## The protocol
 
 Do not skip a phase. The gates are the whole point.
@@ -80,6 +109,8 @@ afterwards. Never let it ride along through divergence.
 
 ### Phase 1 — Map the space before naming a single idea
 
+Set `phase=map` in the state file before you start this phase.
+
 Produce **6–8 dimensions** of the design space with **4–6 values each**, and
 nothing else. No ideas yet. A dimension is an axis on which two valid designs
 could differ, e.g. for a new automation:
@@ -106,6 +137,8 @@ options gets a real one. This is the one place in the protocol where narrowing
 is correct — the axes are the frame, and he owns the frame.
 
 ### Phase 2 — Fan out in parallel, never in sequence
+
+Set `phase=diverge` once he has signed off on the axes.
 
 Once the axes are agreed, spawn **6–10 subagents in a single message so they
 run concurrently**. Each one gets:
@@ -158,6 +191,8 @@ worth writing down, and it belongs in the owning seat's notes in
 
 ### Phase 5 — Deepen at most three
 
+Set `phase=converge` — judgement is now allowed, and code is unblocked.
+
 Only what he kept, and no more than three. For each: how it plays in one
 paragraph, what it costs to build, what it breaks, what it forecloses, the
 weakest version that still ships (first versions are deliberately limited),
@@ -165,6 +200,8 @@ and the one assumption that would sink it. Stress-test honestly — the point of
 deepening is to find the flaw, not to sell the idea back to him.
 
 ### Phase 6 — Land it
+
+Delete `.claude/.brainstorm-state` as the last act of the session.
 
 A brainstorm that ends in chat evaporates. Divergence is only half a design
 process, and the half this skill does *not* do is scoping — turning the picked

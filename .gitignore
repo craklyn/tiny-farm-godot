@@ -58,3 +58,6 @@ hq/data/patches/
 # to an opinion, reproducible from its script in about a second, and it is
 # deliberately not the render on disk — that only changes when somebody says so.
 hq/data/loop_previews/
+
+# transient brainstorm session state (see .claude/hooks/brainstorm-guard.sh)
+.claude/.brainstorm-state
