@@ -83,8 +83,9 @@ the release up mid-way starts at §9.*
   (the rule as first written charged every decision the whole day's mean, which taught
   the robot to stand still — see §9): a decision's charge is weighted by the share of the
   meter it still had, which is roughly what it could still have earned, and the estimator
-  stays unbiased because that weight depends on nothing the robot chose. `rate` is 0.03
-  on this rule, swept over 24 paddocks `[Playtest]`.
+  stays unbiased because that weight depends on nothing the robot chose. `rate` is 0.12,
+  swept over 24 open-ground farms on the seven-action robot (WI-8); it was 0.03 on the
+  fenced six-action one `[Playtest]`.
 - **Sampling**: `u = Policy.draw_u(salt, index)` with `salt = Policy.salt_of(actor_id) ^
   (days * 7919)` and `index = decisions` (per-day counter). **Not** a bare
   `SimRng.stateless(salt, index)`: Godot's string hash moves by exactly one when the
@@ -397,3 +398,49 @@ only the work item you are on. The chief of staff's running notes are in
   - Unit 2357 passed, integration 671 passed, robot session green, gateway clean.
 - 2026-09-09 — Q-99 ruled by the CEO: not a pen, a denser reward. WI-8 added (till action,
   bare channel, +0.1). Runs after the night-rule fix lands, because both touch the brain.
+- 2026-09-09 — **WI-8 landed: the fence is down and the hoe works.** `bare` is the fifth
+  observation channel (128 inputs), `till here` is action 5 and `wait` is 6 (seven
+  actions), `Rewards.TABLE["tilled_tile"]` is 0.1, and the demo's staging is the 6x4 block
+  on open cleared ground with the robot three squares west of it and no fence anywhere.
+  Unit 2366 passed, integration 671 passed, robot session green, gateway clean.
+  - **The ruling's hypothesis holds, and the robot is doing exactly what the ruling
+    predicted.** The fixed-seed week rises from 3.1 a day over days 1-3 to 6.5 over days
+    5-7. Over 24 farms played twice each — once learning, once with the night switched off
+    — a week ends at **5.4 against the control's 4.6**, and **22 of the 24 weeks rose**
+    against the control's 18. Carried on to twenty days: 5.9 against 5.1.
+  - **It makes its own practice ground, and almost nothing else.** Of the waterings that
+    earned, over the last three days of 24 weeks, **5.1 a day land on soil the robot
+    opened with its own hoe and 0.0 a day on her sown block.** The robot never learns to
+    go to her field; it learns to keep a wet patch under its own feet. The design chapter
+    warned this was possible and accepted it (`design/06`, "not a pen — a denser reward");
+    it is now measured, and it is the whole of the effect rather than a side effect. **For
+    the CEO:** the machine a player buys today is not yet a machine that waters her wheat.
+    The next lever is a reason to prefer *her* squares — it already sees a `crop` channel
+    and nothing yet pays more for using it.
+  - **`LEARN_RATE` is now 0.12, not 0.03.** The gate did not hold on open ground at 0.03,
+    so the rate was swept as the item allows. A day out here is 60-90 decisions rather
+    than the paddock's 300 (the robot spends its meter instead of wandering through it),
+    and the night divides by the day's decisions, so the same rate is a quarter of the
+    step it used to be. Read as the day's score on days 5-7 over 24 farms, control 4.6:
+    0.01 4.8 (16/24), 0.02 4.9 (18), 0.03 4.9 (19), 0.05 4.8 (17), 0.08 5.0 (17), 0.11 5.3
+    (17), **0.12 5.4 (22)**, 0.13 5.5 (21), 0.15 4.8 (15), 0.20 5.2 (18), 0.30 4.4 (17),
+    0.50 3.6 (14). Twenty days, control 5.1: 0.03 5.8, 0.05 5.5, 0.08 6.0, **0.12 5.9**,
+    0.20 5.0. 0.12 is picked for the weeks-that-rose column. The block distance was swept
+    too (3, 1 and 0 squares from the block, and standing inside it); moving the robot
+    closer made every arm worse and the control better, so the staging is unchanged.
+  - **The one-seed gate is noisy on open ground, and that is worth knowing before somebody
+    trusts it.** A single week's rise flips with the rate for no reason but the draw: it
+    fails at 0.03, 0.05, 0.08 and 0.10 and passes in a band from 0.11 to 0.15. The rate
+    was chosen on the 24 farms and then checked against the gate, not the other way round.
+    The control rises too (3.7 to 4.6 over a week) because the *field* improves on its own
+    — soil opened yesterday is still open this morning — so "days 5-7 beat days 1-3" is a
+    weaker claim than it was inside the fence, and the honest gate is the 24-farm gap the
+    demo prints under its table.
+  - **A finding for the gateway, not for this item.** `till` is refused only on the yard
+    and the home's floor, so it succeeds on sown, growing and ripe squares and tills the
+    crop away. A Mark III can therefore hoe her wheat back into mud. It earns nothing for
+    doing so (only `cleared` pays) and the plan said not to special-case it in the brain,
+    so nothing here does — but it is a real thing a player can watch happen, and it wants
+    either a gateway rule or a designer's ruling.
+  - `CLAUDE.md`'s command list still describes the demo as "seven days on one seed in a
+    fenced paddock". Not edited here; it needs a hand.

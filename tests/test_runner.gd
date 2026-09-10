@@ -10446,12 +10446,14 @@ func test_observation() -> void:
 	var spec := Observation.spec_default()
 	_assert(spec["vision"] == 2 and spec["channels"] == Observation.CHANNELS
 			and bool(spec["self_pos"]) and bool(spec["energy"]),
-		"the v1 spec is Q-96's: two positions, one meter, radius 2, four channels")
-	_assert(Observation.size(spec) == 103,
-		"which is 2 + 1 + 25 x 4 = 103 numbers (%d)" % Observation.size(spec))
+		"the v1 spec is Q-96's: two positions, one meter, radius 2, five channels")
+	_assert(Observation.size(spec) == 128,
+		"which is 2 + 1 + 25 x 5 = 128 numbers (%d)" % Observation.size(spec))
+	_assert(spec["channels"][4] == "bare" and Observation.BARE_STATE == "cleared",
+		"the fifth of them is 'bare' — ground a hoe can open (Q-99)")
 	var wide := Observation.spec_default()
 	wide["vision"] = 3
-	_assert(Observation.size(wide) == 3 + 49 * 4,
+	_assert(Observation.size(wide) == 3 + 49 * 5,
 		"and a wider robot is the same arithmetic on a bigger patch (%d)" % Observation.size(wide))
 	spec["channels"] = ["needs_water"]
 	_assert(Observation.size(spec) == 3 + 25, "dropping channels narrows it row for row")
@@ -10471,6 +10473,8 @@ func test_observation() -> void:
 	s.world.get_tile(10, 9)["watered_today"] = true          # planted and already wet
 	s.world.set_tile_state(10, 11, "obstacle_rock")          # not ground at all
 	s.world.set_tile_state(12, 12, "ready", "wheat")         # ripe, and thirsty
+
+	s.world.set_tile_state(8, 8, WorldLayout.YARD)            # home ground, not field
 
 	var full := Observation.spec_default()
 	var v := Observation.build(s.world, "obs_bot", full)
@@ -10496,22 +10500,28 @@ func test_observation() -> void:
 
 	# The patch. Channels are [needs_water, wet, walkable, crop].
 	v = Observation.build(s.world, "obs_bot", full)
-	_assert(_obs_tile(v, 0, 0, 2, 3, 4) == [0.0, 0.0, 1.0, 0.0],
-		"the cleared tile it stands on wants nothing and grows nothing")
-	_assert(_obs_tile(v, -1, 0, 2, 3, 4) == [1.0, 0.0, 1.0, 0.0],
-		"tilled soil to its left reads thirsty, dry, walkable, empty")
-	_assert(_obs_tile(v, 1, 0, 2, 3, 4) == [1.0, 0.0, 1.0, 1.0],
+	_assert(_obs_tile(v, 0, 0, 2, 3, 5) == [0.0, 0.0, 1.0, 0.0, 1.0],
+		"the cleared tile it stands on wants nothing, grows nothing, and is bare")
+	_assert(_obs_tile(v, -1, 0, 2, 3, 5) == [1.0, 0.0, 1.0, 0.0, 0.0],
+		"tilled soil to its left reads thirsty, dry, walkable, empty — and no longer bare")
+	_assert(_obs_tile(v, 1, 0, 2, 3, 5) == [1.0, 0.0, 1.0, 1.0, 0.0],
 		"a seed to its right reads thirsty and planted")
-	_assert(_obs_tile(v, 0, -1, 2, 3, 4) == [0.0, 1.0, 1.0, 1.0],
+	_assert(_obs_tile(v, 0, -1, 2, 3, 5) == [0.0, 1.0, 1.0, 1.0, 0.0],
 		"the watered crop above it reads wet, and no longer thirsty")
-	_assert(_obs_tile(v, 0, 1, 2, 3, 4) == [0.0, 0.0, 0.0, 0.0],
-		"the rock below it is not walkable and is not soil")
-	_assert(_obs_tile(v, 2, 2, 2, 3, 4) == [1.0, 0.0, 1.0, 1.0],
+	_assert(_obs_tile(v, 0, 1, 2, 3, 5) == [0.0, 0.0, 0.0, 0.0, 0.0],
+		"the rock below it is not walkable, is not soil, and is not bare ground either")
+	_assert(_obs_tile(v, 2, 2, 2, 3, 5) == [1.0, 0.0, 1.0, 1.0, 0.0],
 		"and the ripe corner of the patch is still a tile that wants water")
+	# **Bare is `cleared` and nothing else.** The yard is walkable ground with
+	# nothing on it, and a hoe is the one thing it will not take (T-32) — so a
+	# channel that meant "ground with nothing on it" would be pointing the robot at
+	# the one square in the farm where the hoe is always refused.
+	_assert(_obs_tile(v, -2, -2, 2, 3, 5) == [0.0, 0.0, 1.0, 0.0, 0.0],
+		"the corner of her yard is walkable and empty, and reads as not bare (Q-99)")
 	for dy in range(-2, 3):
 		for dx in range(-2, 3):
-			_assert_quiet(_obs_tile(v, dx, dy, 2, 3, 4).size() == 4,
-				"tile (%d,%d) contributed four numbers" % [dx, dy])
+			_assert_quiet(_obs_tile(v, dx, dy, 2, 3, 5).size() == 5,
+				"tile (%d,%d) contributed five numbers" % [dx, dy])
 	_flush_quiet("every tile of the patch contributes its channels in spec order")
 
 	# --- the same world twice is the same vector -------------------------------
@@ -10528,10 +10538,10 @@ func test_observation() -> void:
 	for dy in range(-2, 3):
 		for dx in range(-2, 3):
 			if dx < 0 or dy < 0:
-				_assert_quiet(_obs_tile(corner, dx, dy, 2, 3, 4) == [0.0, 0.0, 0.0, 0.0],
+				_assert_quiet(_obs_tile(corner, dx, dy, 2, 3, 5) == [0.0, 0.0, 0.0, 0.0, 0.0],
 					"tile (%d,%d) is off the map and reads as zeros" % [dx, dy])
-	_flush_quiet("every tile outside the map reads as four zeros")
-	_assert(_obs_tile(corner, 0, 0, 2, 3, 4) == [0.0, 0.0, 0.0, 0.0],
+	_flush_quiet("every tile outside the map reads as five zeros")
+	_assert(_obs_tile(corner, 0, 0, 2, 3, 5) == [0.0, 0.0, 0.0, 0.0, 0.0],
 		"and the border it is standing on is in bounds, but is not ground you can walk")
 	s.world.set_actor_pos("obs_bot", Vector2i(SimWorld.MAP_WIDTH - 1, SimWorld.MAP_HEIGHT - 1))
 	var far := Observation.build(s.world, "obs_bot", full)
@@ -10622,27 +10632,32 @@ func test_policy() -> void:
 	# to the tile, not the verb that happened to it.
 	_assert(is_equal_approx(Rewards.of("wet_tile"), 1.0),
 		"turning a thirsty tile wet is worth 1 (Q-96)")
+	_assert(is_equal_approx(Rewards.of("tilled_tile"), 0.1),
+		"and turning bare ground into soil is worth a tenth of it (Q-99)")
 	_assert(is_equal_approx(Rewards.of("water"), 0.0)
 			and is_equal_approx(Rewards.of(""), 0.0),
 		"and everything nobody has priced — including the verb itself — is worth nothing")
 
 	# --- a brand-new brain is an undecided one ----------------------------------
-	var w0 := Policy.new_weights(103, 6)
-	_assert(w0.size() == 6 * 104, "a fresh policy is n_out x (n_in + 1) weights (%d)" % w0.size())
+	var width := Observation.size(Observation.spec_default())
+	var acts := BotBrain.LEARN_ACTIONS
+	var w0 := Policy.new_weights(width, acts)
+	_assert(width == 128 and acts == 7 and w0.size() == 7 * 129,
+		"a fresh policy is n_out x (n_in + 1) weights — 7 x 129 (%d)" % w0.size())
 	var all_zero := true
 	for x in w0:
 		if x != 0.0:
 			all_zero = false
 	_assert(all_zero, "all of them zero, so day one is a wander and not a habit")
 	var blank: Array = []
-	blank.resize(103)
+	blank.resize(width)
 	blank.fill(0.0)
-	var p0 := Policy.probs(Policy.logits(w0, 103, 6, blank))
+	var p0 := Policy.probs(Policy.logits(w0, width, acts, blank))
 	var uniform := true
 	for x in p0:
-		if not is_equal_approx(float(x), 1.0 / 6.0):
+		if not is_equal_approx(float(x), 1.0 / float(acts)):
 			uniform = false
-	_assert(uniform, "so all six actions are exactly as likely as each other")
+	_assert(uniform, "so all seven actions are exactly as likely as each other")
 
 	# --- the layout: one row per action, bias last ------------------------------
 	var w := [2.0, -1.0, 0.5, 0.0, 3.0, -0.25]  # 2 actions x (2 inputs + bias)
@@ -11201,7 +11216,8 @@ func test_learning_robot_day() -> void:
 
 	var width := Observation.size(Observation.spec_default())
 	for key in ["spec", "weights", "trace", "acc", "base_trace", "baseline", "days",
-			"decisions", "score", "last_score", "salt", "pending_needs_water"]:
+			"decisions", "score", "last_score", "salt", "pending_needs_water",
+			"pending_bare"]:
 		_assert_quiet(extra.has(key), "a placed Mark III carries '%s'" % key)
 	_flush_quiet("a placed Mark III carries every learned key it will ever need")
 	_assert(extra["spec"] == Observation.spec_default(),
@@ -11210,14 +11226,15 @@ func test_learning_robot_day() -> void:
 			and (extra["trace"] as Array).size() == (extra["weights"] as Array).size()
 			and (extra["acc"] as Array).size() == (extra["weights"] as Array).size()
 			and (extra["base_trace"] as Array).size() == (extra["weights"] as Array).size(),
-		"with six rows of %d weights, and three running sums the same shape" % (width + 1))
+		"with seven rows of %d weights, and three running sums the same shape" % (width + 1))
 	var born_uniform := true
 	for x in extra["weights"]:
 		if float(x) != 0.0:
 			born_uniform = false
 	_assert(born_uniform, "all of them zero, so its first day is a wander and not a habit")
 	_assert(int(extra["salt"]) == Policy.salt_of(bot) and int(extra["days"]) == 0
-			and int(extra["decisions"]) == 0 and not bool(extra["pending_needs_water"]),
+			and int(extra["decisions"]) == 0 and not bool(extra["pending_needs_water"])
+			and not bool(extra["pending_bare"]),
 		"and it starts with its own salt, no days behind it and nothing owing")
 
 	# Ground rule 4, checked rather than assumed.
@@ -11230,10 +11247,13 @@ func test_learning_robot_day() -> void:
 	# Once a second of sim time, whatever it just did: thirty seconds is thirty
 	# decisions, and never a queue of thinks waiting behind each other.
 	var waters := 0
+	var hoes := 0
 	for t in s.tick(SimClock.RATE * 30):
-		if String(t["action"].get("actor", "")) == bot \
-				and String(t["action"].get("verb", "")) == "water":
-			waters += 1
+		if String(t["action"].get("actor", "")) != bot:
+			continue
+		match String(t["action"].get("verb", "")):
+			"water": waters += 1
+			"till": hoes += 1
 	_assert(int(extra["decisions"]) == 30,
 		"thirty seconds of sim time is thirty decisions (%d)" % int(extra["decisions"]))
 	var on_clock := 0
@@ -11243,15 +11263,19 @@ func test_learning_robot_day() -> void:
 	_assert(s.world.clock.pending() == on_clock,
 		"with exactly one think pending per actor on the clock, never a queue of them (%d)"
 			% s.world.clock.pending())
-	_assert(waters > 0 and waters < 30,
-		"a robot that has learned nothing wanders: it watered %d of its thirty seconds" % waters)
+	_assert(waters > 0 and waters < 30 and hoes > 0,
+		"a robot that has learned nothing wanders: %d of its thirty seconds went into the can and %d into the hoe"
+			% [waters, hoes])
 
-	# **Only the watering costs it anything.** Walking is the movement engine and
-	# waiting is nothing at all, so a day's meter is exactly the strokes in it.
+	# **Only the tools cost it anything.** Walking is the movement engine and
+	# waiting is nothing at all, so a day's meter is exactly the strokes in it —
+	# and a hoeing costs exactly what a watering costs, so the seventh action buys
+	# its practice ground out of the same twenty (Q-99).
 	var spent: int = SimWorld.ACTOR_MAX_ENERGY - s.world.energy_of(bot)
-	_assert(spent == waters * Tools.get_energy_cost("water"),
-		"and its meter fell by %d — %d waterings at %d, and not one unit for the walking"
-			% [spent, waters, Tools.get_energy_cost("water")])
+	_assert(Tools.get_energy_cost("till") == Tools.get_energy_cost("water")
+			and spent == (waters + hoes) * Tools.get_energy_cost("water"),
+		"and its meter fell by %d — %d strokes at %d, and not one unit for the walking"
+			% [spent, waters + hoes, Tools.get_energy_cost("water")])
 
 	# The trace grew with the day, and the weights did not: the day is played on
 	# one policy, and the lesson waits for the night (P-14).
@@ -11300,8 +11324,49 @@ func test_learning_robot_day() -> void:
 	_assert(int(wex["decisions"]) == 2 and is_equal_approx(float(wex["score"]), 1.0),
 		"watering it again earns nothing — the second stroke changed no square (%s)"
 			% str(wex["score"]))
-	_assert(not bool(wex["pending_needs_water"]),
+	_assert(not bool(wex["pending_needs_water"]) and not bool(wex["pending_bare"]),
 		"and nothing is left owing between one decision and the next")
+
+	# --- and the same rule for the hoe (Q-99) ---------------------------------
+	# The CEO's answer to a robot that walked off the field before it earned
+	# anything: a second, smaller outcome, so that a coin-flipping walker has more
+	# ways to be useful by accident — and the square it opens is a thirsty one it
+	# can water next. Paid on the outcome exactly as the watering is: bare ground
+	# earns, everything else earns nothing.
+	var hoer_yard := _mk3_yard(4747)
+	# Held dry: rain wets soil the moment a hoe opens it (`_rain_wets_fresh_soil`),
+	# and the point of this half of the test is what the robot left behind.
+	hoer_yard.gs.weather = "sunny"
+	var bare := Vector2i(MK3_SPOT.x, MK3_PATCH.end.y + 1)
+	hoer_yard.world.set_tile_state(bare.x, bare.y, "cleared")
+	var hoer := _mk3_place(hoer_yard, bare)
+	var hex: Dictionary = hoer_yard.world.actor(hoer)["extra"]
+	_mk3_make_certain(hex, BotBrain.LEARN_TILL)
+	hoer_yard.tick(SimClock.RATE)
+	_assert(is_equal_approx(float(hex["score"]), 0.1)
+			and String(hoer_yard.world.get_tile(bare.x, bare.y).get("state", "")) == "tilled",
+		"opening bare ground is worth a tenth of a watering, and the soil shows it (%s)"
+			% str(hex["score"]))
+	_assert(hoer_yard.world.get_tile(bare.x, bare.y).get("watered_today", true) == false,
+		"and what it leaves behind is soil that wants water — the next thing worth doing")
+	hoer_yard.tick(SimClock.RATE)
+	_assert(is_equal_approx(float(hex["score"]), 0.1),
+		"hoeing the same square again earns nothing — it was not bare any more (%s)"
+			% str(hex["score"]))
+
+	# The yard is the ground a hoe never opens (T-32), and the gateway is what says
+	# so — for her and for a machine alike (ground rule 1). The brain does not know
+	# the rule and must not: it asks, is refused, and is paid nothing.
+	var yard := Vector2i(bare.x + 2, bare.y)
+	hoer_yard.world.set_tile_state(yard.x, yard.y, WorldLayout.YARD)
+	hoer_yard.world.set_actor_pos(hoer, yard)
+	var before_yard: float = float(hex["score"])
+	hoer_yard.tick(SimClock.RATE)
+	_assert(is_equal_approx(float(hex["score"]), before_yard)
+			and String(hoer_yard.world.get_tile(yard.x, yard.y).get("state", "")) == WorldLayout.YARD,
+		"a hoe swung at her yard is refused by the gateway and earns nothing (%s)"
+			% str(hex["score"]))
+	hoer_yard.done()
 
 	# --- an empty meter is a robot standing still -----------------------------
 	sure.world.set_actor_energy(waterer, 0)
@@ -11497,22 +11562,42 @@ func test_learning_robot() -> void:
 	var again: Dictionary = LearningRobot.run()
 	_assert(again["scores"] == scores and again["decisions"] == week["decisions"],
 		"a second run of the same week scores the same seven days, day for day")
-	_assert(again["energy_left"] == week["energy_left"] and again["waters"] == week["waters"],
-		"spending the same arms on the same number of waterings")
+	_assert(again["energy_left"] == week["energy_left"] and again["waters"] == week["waters"]
+			and again["tills"] == week["tills"],
+		"spending the same arms on the same waterings and the same hoeings")
 	_assert((again["weights"] as Array) == (week["weights"] as Array)
 			and (week["weights"] as Array).size() > 0,
 		"and ends holding the same robot, weight for weight (%d weights)"
 			% (week["weights"] as Array).size())
 
 	# --- the curve rises ------------------------------------------------------
-	# The whole point of the machine. The paddock, the seed and the meter are
+	# The whole point of the machine. The field, the seed and the meter are
 	# identical every morning, so the only thing that can move this number is what
 	# the robot learned the night before.
 	var early: float = LearningRobot.mean_of_days(scores, 1, 3)
 	var late: float = LearningRobot.mean_of_days(scores, 5, 7)
 	_assert(late > early,
-		"its last three days are worth more than its first three: %.2f thirsty squares a day against %.2f"
+		"its last three days are worth more than its first three: %.2f a day against %.2f"
 			% [late, early])
+
+	# --- and it did it on open ground -----------------------------------------
+	# **The week used to be played inside a fence** (WI-5), because with only
+	# watering worth anything a fresh robot wandered off the block within a minute
+	# and was never once told it had done well. Q-99 replaced the pen with a hoe,
+	# and this is the assertion that the pen is gone: the robot is free to walk out
+	# of the picture in any direction, and what brings it back is what it learned.
+	var hoed := 0
+	var own := 0
+	var hers := 0
+	for i in 7:
+		hoed += int(week["tills"][i])
+		own += int(week["on_own"][i])
+		hers += int(week["on_block"][i])
+	_assert(hoed > 0,
+		"it used the hoe on open ground rather than only the can (%d strokes in the week)" % hoed)
+	_assert(hers + own > 0,
+		"and its waterings landed on ground that wanted it: %d squares of hers, %d it opened itself"
+			% [hers, own])
 
 
 # --- The door (2026-09-06) ----------------------------------------------------

@@ -11,7 +11,7 @@
 # a Mark III's `extra["spec"]` is a dictionary like this one:
 #
 #     { "self_pos": true, "energy": true, "vision": 2,
-#       "channels": ["needs_water", "wet", "walkable", "crop"] }
+#       "channels": ["needs_water", "wet", "walkable", "crop", "bare"] }
 #
 # and `size()`/`build()` answer for whatever it says. Widening a robot's senses
 # is then a row in the catalogue, not a rewrite of its brain — and a saved robot
@@ -27,7 +27,11 @@
 #   dy outer and dx inner, and within each tile the channels in the spec's own
 #   order.
 #
-# The v1 spec is therefore 2 + 1 + 25 × 4 = **103** numbers.
+# The v1 spec is therefore 2 + 1 + 25 × 5 = **128** numbers. It was 103 until
+# Q-99 added `bare`: the CEO's answer to a fresh robot that random-walked off the
+# field before it earned anything was to give it a second thing worth doing —
+# turning bare earth into tilled soil — and a channel that lets it see where that
+# earth is. A robot that cannot see bare ground cannot learn to hoe it.
 #
 # **Everything is a plain `Array` of `float`.** Not `PackedFloat64Array`, not a
 # typed array: this goes into the actor's `extra`, which is deep-copied into the
@@ -49,18 +53,25 @@ static func spec_default() -> Dictionary:
 		"self_pos": true,
 		"energy": true,
 		"vision": 2,
-		"channels": ["needs_water", "wet", "walkable", "crop"],
+		"channels": ["needs_water", "wet", "walkable", "crop", "bare"],
 	}
 
 
 # Every channel this builder knows how to answer. A name outside this set is an
 # error rather than a zero nobody notices — see `_channel_ids` below.
-const CHANNELS := ["needs_water", "wet", "walkable", "crop"]
+const CHANNELS := ["needs_water", "wet", "walkable", "crop", "bare"]
 
 const CH_NEEDS_WATER := 0
 const CH_WET := 1
 const CH_WALKABLE := 2
 const CH_CROP := 3
+const CH_BARE := 4
+
+# What "bare" means, in one place. Ground that has been cleared and not yet
+# opened: the one state a hoe turns into soil that can want water (Q-99). The
+# brain reads this constant too, so the square the robot sees as worth hoeing and
+# the square it is paid for hoeing cannot drift apart.
+const BARE_STATE := "cleared"
 
 # What a spec means when it does not say.
 const DEFAULT_VISION := 2
@@ -119,7 +130,7 @@ static func _resolve(channels: Array) -> Array:
 # border sees "nothing there" rather than a wrapped-around farm.
 #
 # **Written out rather than composed**, for the reason `SimWorld.is_walkable`
-# gives above its own body (Q-67): the vector is 100 channel reads and the robot
+# gives above its own body (Q-67): the vector is 125 channel reads and the robot
 # builds one every sim-second, so the bounds test is done once per tile here and
 # the tile row is read directly instead of through `get_tile`, which would repeat
 # it. Same questions, same answers, one call fewer per read.
@@ -164,16 +175,17 @@ static func build(world: SimWorld, actor_id: String, spec: Dictionary) -> Array:
 	if tiles.size() < SimWorld.MAP_HEIGHT:
 		return out  # a world nobody has generated: every tile is "nothing there"
 
-	# Which of the four the spec asked for, so a narrow spec does not pay for a
+	# Which of the five the spec asked for, so a narrow spec does not pay for a
 	# query it will not use, and — for the spec everything actually ships with —
-	# whether the four channels are in their natural order, which lets the tile
-	# loop write four slots straight out instead of walking a mapping per tile.
+	# whether the five channels are in their natural order, which lets the tile
+	# loop write five slots straight out instead of walking a mapping per tile.
 	var want_needs_water := ids.has(CH_NEEDS_WATER)
 	var want_wet := ids.has(CH_WET)
 	var want_walkable := ids.has(CH_WALKABLE)
 	var want_crop := ids.has(CH_CROP)
-	var in_order: bool = nch == 4 and ids[0] == CH_NEEDS_WATER and ids[1] == CH_WET \
-			and ids[2] == CH_WALKABLE and ids[3] == CH_CROP
+	var want_bare := ids.has(CH_BARE)
+	var in_order: bool = nch == 5 and ids[0] == CH_NEEDS_WATER and ids[1] == CH_WET \
+			and ids[2] == CH_WALKABLE and ids[3] == CH_CROP and ids[4] == CH_BARE
 
 	var base := head
 	for dyi in side:
@@ -201,11 +213,17 @@ static func build(world: SimWorld, actor_id: String, spec: Dictionary) -> Array:
 				# crop whether it is a seed in the ground or a ripe head" — so
 				# the second test could only ever repeat the first one's answer.
 				var v_crop := 1.0 if (want_crop and _crops.has(state)) else 0.0
+				# Cleared ground and nothing else (Q-99). Not "anything a hoe
+				# would accept": the gateway will till a sown square too, and a
+				# channel that said so would be teaching the robot to see its own
+				# owner's wheat as work waiting to be done.
+				var v_bare := 1.0 if (want_bare and state == BARE_STATE) else 0.0
 				if in_order:
 					out[base] = v_needs_water
 					out[base + 1] = v_wet
 					out[base + 2] = v_walkable
 					out[base + 3] = v_crop
+					out[base + 4] = v_bare
 				else:
 					for k in nch:
 						match int(ids[k]):
@@ -213,6 +231,7 @@ static func build(world: SimWorld, actor_id: String, spec: Dictionary) -> Array:
 							CH_WET: out[base + k] = v_wet
 							CH_WALKABLE: out[base + k] = v_walkable
 							CH_CROP: out[base + k] = v_crop
+							CH_BARE: out[base + k] = v_bare
 							# An unknown channel keeps its slot at the zero the
 							# array was filled with, so nothing after it shifts.
 			base += nch
