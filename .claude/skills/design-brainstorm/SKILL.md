@@ -36,6 +36,29 @@ personas**, and keep every candidate to **a title until the human has picked**.
 
 Do not skip a phase. The gates are the whole point.
 
+### Phase 0a — Classify the ask before spending anything
+
+Not every design question deserves ten agents. Decide which of three shapes
+this is, say which one you picked, and let him overrule you:
+
+- **Taste call.** One question, one answer, decided now. He already knows the
+  space; he wants a ruling or a nudge. Ask the one question — with options and
+  a recommendation — and stop. Running a fan-out here wastes his time and the
+  token budget both.
+- **Bounded design.** The space is genuinely small because existing decisions
+  have already fenced it. Skip the fan-out; hand him three to five rival
+  one-liners drawn from the fenced region, then go to Phase 4.
+- **Space exploration.** The question is open, the answer will be lived with
+  for a long time, and he has arrived with a seed he is already attached to.
+  This is the one that earns the full protocol below.
+
+Classify **up**, never down: if it turns out mid-session to be wider than you
+thought, escalate to the full protocol rather than pressing on with a shape
+that no longer fits. And if he opens with something that is really several
+independent systems bolted together, say so immediately and split it — mapping
+the space of a question that has not been decomposed yet produces axes that
+are quietly about three different things.
+
 ### Phase 0 — Quarantine the seed
 
 Daniel almost always opens with a concrete idea. That idea is not the topic;
@@ -75,6 +98,12 @@ that are missing, and mark any cell that is already ruled out by a decision in
 `docs/DECISION_LOG.md`. This is the highest-leverage minute in the session:
 editing axes is how he steers the *whole* space in one move, instead of
 steering one idea at a time.
+
+If anything about the grid needs resolving before the fan-out, **ask one
+question per message**, with options rather than an open prompt. A stack of
+five questions gets five shallow answers; one question with three named
+options gets a real one. This is the one place in the protocol where narrowing
+is correct — the axes are the frame, and he owns the frame.
 
 ### Phase 2 — Fan out in parallel, never in sequence
 
@@ -137,7 +166,15 @@ deepening is to find the flaw, not to sell the idea back to him.
 
 ### Phase 6 — Land it
 
-A brainstorm that ends in chat evaporates. Before the session closes: new
+A brainstorm that ends in chat evaporates. Divergence is only half a design
+process, and the half this skill does *not* do is scoping — turning the picked
+idea into something specific enough to build, with the unnecessary parts cut
+out. That work is convergent by nature and Tiny Farm already has the machinery
+for it: a Q-item carries the taste question, the decision log carries the
+ruling, a work item carries the build. Hand off deliberately rather than
+letting the brainstorm trail off into implementation talk.
+
+ Before the session closes: new
 decisions into `docs/DECISION_LOG.md` (S-/P-/D-), anything needing his taste
 into `docs/DESIGNER_QUEUE.md` as a Q-item with options and a recommendation,
 and buildable work into `hq/data/work/`. Say plainly which ideas were dropped
