@@ -290,21 +290,6 @@ before the first public build ships.*
     regeneration was run and its cleaner candidate shipped, with the roof band
     extended locally to fill the 32px height.
   Both palette-locked against colours sampled from the shipped sheets.
-- **Animation Lab showcase, the watering beam, 2026-09-09** — **generated, $0.12**
-  (same Retro Diffusion pipeline, rights and post-processing as above; raws with
-  `*_meta.json` and the request params archived at `assets/raw/2026-09-09-wheat-tall/`).
-  Two subjects, one two-image call each, one candidate of each used:
-  - `wheat_tall_0.png` — a full-height wheat plant, three heads on a leafy base
-    with its own soil mound, palette-locked to the shipped `wheat.png`'s eight
-    colours ($0.062).
-  - `can_side_1.png` — a side-on watering can, palette-locked to the shipped
-    `tool_icons.png` can's four colours ($0.059).
-  Neither is a game sheet. `tools/experiments/prep_watering_beam.py` derives the
-  two sprites the loop draws, `assets/showcase/watering_beam/plant.png` and
-  `can.png` (background keyed, pixels snapped to those shipped colours, the can
-  halved and quarter-turned); the raws stay exactly as returned and the derived
-  files are the hand-editable ones. **Not shipped in-game** — the loop is a
-  parametric showcase for HQ's Animation Lab.
 - **Sprout Lands asset pack** by Cup Nooble — *removed 2026-08-26* (Q-7c ruling:
   drop restrictively-licensed assets; its free license forbids redistribution and
   this repo is public). Q-7b license findings recorded in the git history of this
