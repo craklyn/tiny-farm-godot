@@ -33,5 +33,12 @@
    "label": "Queue entry (Q-105)",
    "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"
   }
- ]
+ ],
+ "ruled": {
+  "date": "2026-09-11",
+  "option": "b",
+  "summary": "The meal lasts as long as her walk: the birds finish the moment she reaches the second one, so the raid costs one tomato wherever she planted; the ransacked plot gets a small animation.",
+  "written_up": "docs/design/04-pests-and-ecology.md — the morning after",
+  "judgment": "We should add a small animation indicator that the plot was ransacked by the bird."
+ }
 }

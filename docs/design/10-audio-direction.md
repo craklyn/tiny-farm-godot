@@ -160,4 +160,7 @@ a single decaying ding. One candidate per sound is wired into `AudioManager`
 today; every other candidate ships alongside it, unwired, and is reachable from
 the title screen's Sound Test under "candidates" for an A/B listen before any
 pick is called final — provenance and the full candidate list are in
-`CREDITS.md`, the open pick in `docs/DESIGNER_QUEUE.md` Q-107.
+`CREDITS.md`. **Ruled 2026-09-11 (Q-107):** the peck stays; the treads become "mehackit robot 5"
+and play only while the robot drives, keyed to its frames like the other cues, rather than under
+the whole loop; the servo alternates "Servo 7" and "Servo 9"; the scatter is any of the three;
+the chime stays, with a longer pause after it ends before the music ramps up.

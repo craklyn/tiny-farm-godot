@@ -1,0 +1,20 @@
+{
+  "id": "w8c730d09a3b",
+  "title": "The story-night sounds as ruled: treads timed to the drive, two servos alternating, a pause after the chime",
+  "level": "story",
+  "owner": "dmitri",
+  "tier": 2,
+  "tier_reason": "Q-107 ruled 2026-09-11 with three changes to what is wired; the treads change needs the robot's frames read for when it moves.",
+  "ask": "Q-107 (b), designer 2026-09-11, verbatim: 'Crow's peck: I agree with recommendation, and everything is perfect. For robot's treads: I like mehackit robot 5, but we have to time the audio to match the visuals. For robot's servo, I think we should alternate between servo 7 and servo 9. For seed scatter, they all sound about the same to me so any are good. For chime under the bloom, I'm good with the recommendation. Please add a bit more pause after that synthesized chime finishes before we ramp into the main game's music?' Do exactly that: (1) treads = seeder_tread_cc0_415564 (mehackit robot 5), and instead of one bed under the whole loop, start and stop it on the frames where the robot actually drives — read the frame ranges off the sheet and key them in LOOP_FRAME_SFX-style tables (a bed that starts on frame A and stops on frame B, per pass), so a re-exported loop keeps the cue by frame index; (2) servo = the two takes seeder_servo_cc0_740245 and seeder_servo_cc0_740247 as variants in AudioManager's table so successive swings alternate (the table already supports variant lists; check how play_sfx picks and make it alternate rather than repeat); (3) scatter stays as wired; (4) boot: the music's fade-up begins only after the chime has finished plus a short pause (about 0.4 s), then ramps over about a second; the bloom's own timing does not change. Move the now-unused candidates to the Sound Test's alternates list, update CREDITS.md's wired/alternate markings, design/10's ruling paragraph, and re-record with python3 tools/record_sound_candidates.py seeder_tread seeder_servo bloom_chime and tools/record_story_sounds.sh so the card's clips show what ships (needs a display). Keep the integration scenario for the robot night green.",
+  "first_action": "Read systems/day_cycle.gd's LOOP_FRAME_SFX/LOOP_BED_SFX and play_bed, then find on the seeder_bot sheet (assets/anim/seeder_bot/) the frame ranges where the robot is driving versus stopped.",
+  "state": "waiting_session",
+  "thread": "",
+  "source": "chief-of-staff",
+  "source_message": "Q-107 ruling, 2026-09-11",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-11T09:36",
+  "created_ts": 1789144606.500348,
+  "conversation": []
+}

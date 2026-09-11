@@ -1,0 +1,9 @@
+{
+  "id": "Q-95",
+  "option": null,
+  "option_label": null,
+  "judgment": "Let's add to our deployment runbook to decide how we'll handle this for each deploy. e.g. If there are no breaking changes, then we continue with a note that the game updated; otherwise, we renovate or retire old saves.",
+  "ruled_at": "2026-09-11T09:31:59",
+  "status": "integrated",
+  "integrated_at": "2026-09-11T09:36"
+}

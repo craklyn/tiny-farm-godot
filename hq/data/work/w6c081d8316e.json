@@ -1,0 +1,20 @@
+{
+  "id": "w6c081d8316e",
+  "title": "The raid's meal lasts as long as her walk, and a ransacked plot says so",
+  "level": "story",
+  "owner": "tomas",
+  "tier": 2,
+  "tier_reason": "Q-105 ruled 2026-09-11: the raid costs exactly one tomato wherever she planted, and the loss must be visible on the plot.",
+  "ask": "Q-105 (b), designer 2026-09-11: 'the meal lasts as long as her walk' — the birds finish the moment she reaches the second one, so the raid costs exactly one tomato wherever she planted (near the house or ten tiles out). Sim-side and deterministic: replace RAID_EAT_SECONDS as the raid's clock with a rule read off recorded state — when the second raid bird is shooed (or comes inside her spook radius, whichever the ordinary shoo already uses), the remaining raid bird eats its tomato at once; before that, none of the three eats on a timer (a very long fallback is acceptable so a player who never goes out still loses, e.g. the ordinary EAT_SECONDS from the door if she never approaches). Keep the door as the start of the race. Update tools/measure_raid_race.gd to report the new rule (it should now print 'saves 2 of 3' on both beds), design/04 'The race, measured' and DECISION_LOG P-15's raid paragraph. Tests: both beds in the measure tool's two placements save two; replay and save/load unchanged. ALSO the designer's judgment: 'add a small animation indicator that the plot was ransacked by the bird.' Sim: mark the eaten tile with a fact (e.g. tile 'ransacked': true, cleared when she tills or plants it again; saved with the world). Presentation, first version: a small looping indicator on that tile drawn from existing effects or pixels (scattered soil, a few tumbled leaves, or the crow's feather puff repeating slowly) until the tile is worked again; wire it in world/farm.gd's draw and add an integration assertion that a ransacked tile draws it and a re-tilled tile does not. If it needs a new sprite, file that to Yuki and ship the version made from existing pixels. Keep the gateway rule and both suites green.",
+  "first_action": "Read CrowBrain.raid/start_raid_meals and the eating branch in systems/sim/brains/crow_brain.gd, then write the test first: on any bed, a direct walk from the door saves two of three.",
+  "state": "waiting_session",
+  "thread": "",
+  "source": "chief-of-staff",
+  "source_message": "Q-105 ruling, 2026-09-11",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-11T09:36",
+  "created_ts": 1789144606.500186,
+  "conversation": []
+}

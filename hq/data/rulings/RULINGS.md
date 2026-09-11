@@ -71,3 +71,42 @@ The feedback should be provided to me in an effective way.  At first, we're just
 ## Q-90 — ruled 2026-09-04T12:27:03
 - Picked: **(a) A third status: waiting, with the event that wakes it**
 - Status: pending integration into docs/DESIGNER_QUEUE.md
+
+## Q-102 — ruled 2026-09-10T17:41:37
+- Picked: **(a) "dial turn" — freemaster2 (Recommended)**
+- Status: pending integration into docs/DESIGNER_QUEUE.md
+
+## Q-91 — ruled 2026-09-10T17:42:03
+- Picked: **(a) Step back to point — the view pulls out to the whole farm**
+- Status: pending integration into docs/DESIGNER_QUEUE.md
+
+## Q-92 — ruled 2026-09-10T17:43:00
+- In his words: Starting fence should become removable and replaceable after fencing is unlocked.  We should eventually let players change home turf to farming land and vice versa, but that'll be a future update.
+- Status: pending integration into docs/DESIGNER_QUEUE.md
+
+## Q-93 — ruled 2026-09-10T17:43:18
+- Picked: **(b) Let it say it has nothing to do (Recommended)**
+- Status: pending integration into docs/DESIGNER_QUEUE.md
+
+## Q-105 — ruled 2026-09-11T08:22:26
+- Picked: **(b) The meal lasts as long as her walk**
+- In his words: We should add a small animation indicator that the plot was ransacked by the bird.
+- Status: pending integration into docs/DESIGNER_QUEUE.md
+
+## Q-107 — ruled 2026-09-11T08:56:37
+- Picked: **(b) Swap one or more sounds for an alternate**
+- In his words: Crow's peck: I agree with recommendation, and everything is perfect.
+For robot's treads: I like mehackit robot 5, but we have to time the audio to match the visuals
+For robot's servo, I think we should alternate between servo 7 and servo 9.
+For seed scatter, they all sound about the same to me so any are good.
+For chime under the bloom, I'm good with the recommendation. Please add a bit more pause after that synthesized chime finishes before we ramp into the main game's music?
+- Status: pending integration into docs/DESIGNER_QUEUE.md
+
+## Q-95 — ruled 2026-09-11T09:31:59
+- In his words: Let's add to our deployment runbook to decide how we'll handle this for each deploy. e.g. If there are no breaking changes, then we continue with a note that the game updated; otherwise, we renovate or retire old saves.
+- Status: pending integration into docs/DESIGNER_QUEUE.md
+
+## Q-106 — ruled 2026-09-11T09:33:56
+- Picked: **(a) No frame — what ships today**
+- In his words: The blur effect at the left and right edges... please reduce the width of that effect by 50%.
+- Status: pending integration into docs/DESIGNER_QUEUE.md

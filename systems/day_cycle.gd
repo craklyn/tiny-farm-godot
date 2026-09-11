@@ -407,7 +407,9 @@ func _frames_for_slug(slug: String, manifest: Dictionary) -> Array[Texture2D]:
 		if img != null:
 			img = img.duplicate()
 			img.convert(Image.FORMAT_RGBA8)
-			var band := maxi(4, int(cw * 0.12))
+			# Ruled 2026-09-11 (Q-106): half the width it was first drawn at — the
+			# designer read the wider band as a blur.
+			var band := maxi(2, int(cw * 0.06))
 			for i in count:
 				_dither_edge_band(img, i * cw, cw, ch, band, sky)
 			atlas_source = ImageTexture.create_from_image(img)

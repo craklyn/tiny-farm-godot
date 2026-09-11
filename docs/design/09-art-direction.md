@@ -154,8 +154,9 @@ sky into the farm rather than cutting. **The inset** (Q-104): the watering beam 
 corner the HUD map leaves free, fading up when the neighbour first waters, one pass, fading
 down; it takes no input and never covers her or the neighbour.
 
-**What p1 adds, each filed as work.** A **frame**, now asked at Q-106 and waiting on the
-designer. The three candidates — a postcard (rounded card, thin light border, the day card's
+**What p1 adds, each filed as work.** A **frame** — **ruled 2026-09-11 (Q-106): none.** The
+overnight ships as first drawn, with the edge band halved (he read the wider one as a blur). The
+candidates, kept for the record: The three candidates — a postcard (rounded card, thin light border, the day card's
 type beneath), a viewfinder (corner brackets, the near-future edge) and a dream (a soft
 cloud-edged vignette, since it is a sleep) — are drawn over captures of the real overnight on
 both story nights, with no frame as the fourth, in `docs/design/mockups/overnight_frames/`

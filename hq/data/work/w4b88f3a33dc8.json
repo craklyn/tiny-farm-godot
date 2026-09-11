@@ -11,5 +11,12 @@
   "state": "waiting_session",
   "source": "chat",
   "created": "2026-09-07T16:04",
-  "created_ts": 1788822248.7192595
+  "created_ts": 1788822248.7192595,
+  "conversation": [
+    {
+      "role": "claude",
+      "at": "2026-09-11T09:42",
+      "text": "Another of the same shape, 2026-09-11: Scenario AG (she buys a robot, puts it down, and tells it what to do) failed once on the desktop — the tap never placed the robot inside its wait window and the scenario then read 'extra' off an empty dictionary (tools/test_runner.gd:3308) — and passed on an immediate rerun with no change. Same fix family as the chicken walk: pin the actors and wait on the placement rather than on frames."
+    }
+  ]
 }

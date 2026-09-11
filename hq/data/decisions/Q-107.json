@@ -161,5 +161,12 @@
    "tag": "alternate 3 of 3",
    "caption": "“Thin bell ding 1” by Khrinx, a free recording"
   }
- ]
+ ],
+ "ruled": {
+  "date": "2026-09-11",
+  "option": "b",
+  "summary": "The peck and the chime stay (the chime with a longer pause before the music ramps); the treads become mehackit robot 5 timed to the drive; the servo alternates Servo 7 and Servo 9; the scatter is any.",
+  "written_up": "docs/design/10-audio-direction.md — the story-night sound beds",
+  "judgment": "Crow's peck: I agree with recommendation, and everything is perfect.\nFor robot's treads: I like mehackit robot 5, but we have to time the audio to match the visuals\nFor robot's servo, I think we should alternate between servo 7 and servo 9.\nFor seed scatter, they all sound about the same to me so any are good.\nFor chime under the bloom, I'm good with the recommendation. Please add a bit more pause after that synthesized chime finishes before we ramp into the main game's music?"
+ }
 }

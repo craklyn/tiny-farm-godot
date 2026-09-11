@@ -11,6 +11,9 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
 
 ## Now — blocks M0 close or current work
 
+- **Q-106** ~~A frame around the picture the sleep plays~~ — ✅ **ruled 2026-09-11: (a) no frame.** The overnight ships as it is. One change to how it is drawn: the dithered band at a loop's left and right edges is halved in width; he read the wider band as a blur. Built the same day (`systems/day_cycle.gd`).**
+<details><summary>the question as asked</summary>
+
 - **Q-106** A frame around the picture the sleep plays — **Ruling**. On the night the farm
   changes, the sleep goes dark and plays a short animation before the Day-N card: the crows
   gorging on the night the acorns run out, the seeder robot on the night the training bench
@@ -27,6 +30,12 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   **Recommendation: (d)** — it costs no size, adds no colour, and is the only one that makes
   the robot's hard ground edge go away rather than point at it. Card:
   `hq/data/decisions/Q-106.json`. Building the winner is Jade's.
+
+</details>
+
+- **Q-105** ~~How long the crows eat on the raid morning~~ — ✅ **ruled 2026-09-11: (b) the meal lasts as long as her walk.** The birds finish the moment she reaches the second one, so the raid costs exactly one tomato wherever she planted. And the plot a bird ransacked gets a small animation saying so. Filed to Tomas.**
+<details><summary>the question as asked</summary>
+
 - **Q-105** How long the crows eat on the raid morning — **Ruling**. The morning after the
   crow night, three crows are already eating three of her tomatoes when she opens her front
   door, and how long their meal lasts is how many she can save. Measured on the farm the
@@ -43,6 +52,12 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   **Recommendation: (a)** — it is the version a watching four-year-old can predict, and a
   crow that eats slower because the farm is bigger is the game doing arithmetic about the
   player where she can see it. Revisit after a tablet playtest of a far bed.
+
+</details>
+
+- **Q-107** ~~Which take of each new story-night sound to keep~~ — ✅ **ruled 2026-09-11: (b) swap some.** The peck stays. The treads become "mehackit robot 5", timed to the robot's drive rather than running under the whole loop. The servo alternates between "Servo 7" and "Servo 9". The scatter may be any of the three. The chime stays, with a longer pause after it finishes before the music ramps up. Filed to Dmitri.**
+<details><summary>the question as asked</summary>
+
 - **Q-107** Which take of each new story-night sound to keep — **Approval**. P-15 p1 (the
   sound bed under each Animation Lab loop) is built and wired: a crow peck, the seeder
   robot's treads/servo/scatter, and the boot bloom's chime. Each has 2-3 free (CC0)
@@ -56,6 +71,9 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   which none of the CC0 bell recordings do — they decay rather than rise). Full candidate list and sources:
   `CREDITS.md` ("The story-night sound beds"). Swap in an alternate from the Sound Test
   by naming it here; nothing else needs to change.
+
+</details>
+
 - **Q-103** ~~How the sunflower bloom opens the game~~ — ✅ **ruled 2026-09-10: (a) the flower
   is the splash.** The engine's splash is the closed bud on its own sky; the bud opens and the
   seeds rise once while the music fades up; the title and menu settle in as the last seed
@@ -146,6 +164,9 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   (2nd ed.) — a reward says what to achieve, never how — and the design chapter now
   states the problem in those terms (`design/06`, "What it is rewarded for").
 
+- **Q-95** ~~What does a returning player's old farm get when an update lands?~~ — ✅ **ruled 2026-09-11: decided per deploy, in the runbook.** No option taken; the rule is a step in `docs/DEPLOY.md` before any release: if the release has no breaking change for an existing farm, its save continues and the release text says the game updated; if it does, the release either renovates old farms on load or retires them, and says which. Recorded as S-13.
+<details><summary>the question as asked</summary>
+
 - **Q-95 (Ruling)** **What does a returning player's old farm get when an update
   lands?** Found by the designer minutes after v0.2.0 went live: the itch page
   offered Continue on his eleven-day-old farm, which has no fences and no
@@ -159,6 +180,7 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   recommendation is the cheap honest one — say it at Continue, and build farm
   renovation only when farms hold real investment.
 
+</details>
 - **Q-94** ~~How should a ripe crop announce itself?~~ — ✅ ruled 2026-09-08: **the two
   together, with the movement turned down.** A ready plant **sways gently and gives off its
   own ripe colour** — gold under wheat, red under tomato. Raised from play the day before.

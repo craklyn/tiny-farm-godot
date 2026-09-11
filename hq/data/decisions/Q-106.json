@@ -80,5 +80,12 @@
    "src": "docs/design/mockups/overnight_frames/d_dream_seeder_bot.png",
    "caption": "(d) The dream, the robot night — the ground fades out instead of ending"
   }
- ]
+ ],
+ "ruled": {
+  "date": "2026-09-11",
+  "option": "a",
+  "summary": "No frame; the dithered band at a loop's left and right edges halved in width.",
+  "written_up": "docs/design/09-art-direction.md — what p1 adds",
+  "judgment": "The blur effect at the left and right edges... please reduce the width of that effect by 50%."
+ }
 }

@@ -300,6 +300,14 @@ and hoes on exact orders; the mark-2 reacts (chase, follow, patrol); the Mark II
 every farming action — till, plant, water, harvest, ship, shoo — and learns which to use
 (P-14). A demo that rewards watering is one reward setting, not the robot's ceiling.
 
+### S-13. What a returning player's old farm gets is decided per release, in the runbook
+**Ruled 2026-09-11 (Q-95).** No blanket policy: before any release the runbook (`docs/DEPLOY.md`)
+asks whether the release breaks an existing farm. If not, the save continues and the release
+text says the game updated. If it does, the release either renovates old farms on load, with the
+migration built and tested before the tag, or retires old saves at that release and says so
+plainly at Continue. The decision is written in the release notes each time. The save naming the
+build that wrote it (filed as work) is what makes the question answerable mechanically.
+
 ## Tier 2 — Provisional (working answer + adjustment conditions)
 
 ### P-1. Touch-first, desktop always supported
@@ -676,6 +684,11 @@ should be skippable, or repeat for a returning player, is untested until a table
 The watering beam's place in the cold open was the one placement that cut against chapter
 13's rule that the cold open never takes control away; **ruled 2026-09-10 (Q-104): an inset
 card in a corner while she keeps control**, the shot over the fence while the neighbour waters.
+**Ruled 2026-09-11 (Q-106): no frame.** The overnight ships as first drawn, and the dithered
+band at a loop's left and right edges is half the width it was first cut at. **Ruled 2026-09-11
+(Q-107):** the peck and the chime stay; the treads are "mehackit robot 5", timed to the robot's
+drive; the servo alternates two takes; the scatter is any; the chime gets a longer pause before
+the music ramps.
 
 **The morning after the crow night (designer, 2026-09-10).** *"That morning we also should
 have a special vignette. It has to be triggered on a day that the player has 4 or more
@@ -692,6 +705,9 @@ guessed — `tools/measure_raid_race.gd` walks her out of the door on the genera
 prints when each bird falls inside her shoo range, which puts the meal at 3.7 seconds on
 the nearest bed she can plant. One meal length meets a distance she chooses, so a bed
 planted far from the house loses all three; whether that stays one fixed number is Q-105.
+**Ruled 2026-09-11 (Q-105): the meal lasts as long as her walk.** The birds finish the moment she
+reaches the second one, so the raid costs exactly one tomato wherever she planted, and the plot a
+bird ransacked gets a small animation saying so.
 
 ### D-1. Phase 5 genre (X-COM tactics vs. Gradius-like hybrid vs. other)
 **Why deferred:** Phase 5's cast is the player plus *trained bots* — its design depends on

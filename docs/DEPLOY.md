@@ -163,6 +163,15 @@ trace mislabelled its own categories and where the crow schedule desynced replay
 
 ### Before any release
 
+- [ ] **Decide what a returning player's old farm gets (S-13, ruled 2026-09-11).** Does this
+      release break an existing farm — new land generated at creation, a save field read
+      differently, a machine that no longer exists? If not: their save continues, and the
+      release text says the game updated. If it does: either renovate old farms on load, with
+      the migration built and covered by a save/load test before the tag, or retire old saves
+      at this release and have Continue say so plainly. Write which in the release notes.
+      (A save naming the build that wrote it is filed as work; until it lands, the answer
+      comes from reading the diff since the last tag.)
+
 - [ ] Play the web build through in a real browser. Sound must arrive after the first tap
       (browsers suspend audio until a user gesture), and a farm must survive a reload.
       The tag is what builds and publishes the web export, so at this point there is

@@ -21,24 +21,15 @@
       "text": "Chief of staff: applied by hand. Your patch collided with Dmitri's on the queue and design/09 because both seats opened a Q-106 in the same hour; the frame keeps Q-106 and the sound pick is Q-107. Two corrections from the check, made in the card, the queue and design/09: the dither band runs down a loop's left and right edges only, so the robot's ground already ends in a hard line at the bottom and a border repeats that line rather than crossing a dissolve (the recommendation stands, on that truer ground); and the p0 paragraph now says the crow plays at ×6, matching the code. The off-centre Day-N card you found is fixed in the same commit (the label is now full-rect with centred text), so no item goes to Jade for it.",
       "role": "claude",
       "at": "2026-09-11T01:19"
-    }
-  ],
-  "follow_ups": [
+    },
     {
-      "title": "Draw the picked frame around the animation the sleep plays",
-      "owner": "jade",
-      "level": "story",
-      "tier": 2,
-      "first_action": "Read the ruling on hq/data/decisions/Q-106.json, then implement that frame in systems/day_cycle.gd around the overnight loop sprite; tools/compose_overnight_frames.py holds the exact geometry and colours each candidate was drawn with (padding, border and corner radius in loop-pixel cells, the dither matrix, the two palette entries). Keep the loop's whole-number scale rule, and if the postcard was picked, step the crow gorge down to x5 as the sheets do. Add a case to tools/test_runner.gd asserting the frame is present during loop_playing and absent on a plain night.",
-      "why": "The card is a pick between four built candidates, so accepting it is choosing which one goes into the sleep."
+      "role": "claude",
+      "at": "2026-09-11T09:36",
+      "text": "Ruled 2026-09-11 (Q-106): no frame. The follow-up to draw the winner is withdrawn; the edge band is halved on his note."
     }
   ],
-  "recommend": {
-    "question": "Which of the four frames goes around the picture the sleep plays?",
-    "answer": "The dream — the picture keeps its middle and dissolves into the night along a wandering cloud edge.",
-    "why": "It is the only one that makes the seeder robot's hard ground edge disappear instead of drawing attention to it, and it costs no size and adds no colour.",
-    "instead": "No frame, which is what ships today — the crow night already looks right without one, and the robot's ground edge could be fixed in the animation instead."
-  },
+  "follow_ups": [],
+  "recommend": {},
   "finished": "2026-09-11T01:16",
   "done_by": {
     "seat": "ingrid",

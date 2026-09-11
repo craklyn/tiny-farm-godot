@@ -137,7 +137,10 @@ through the gate — the three birds come inside that range 2.6, 3.4 and 4.0 sec
 the door, so a meal of **3.7 seconds** saves two and loses one. That is what the raid
 ships with. Its honest limit is that one meal length meets a distance the player chooses:
 on a bed ten tiles further out the same meal saves none, because she is still six seconds
-away when the birds finish. Whether the raid should stay one fixed meal is **Q-105**.
+away when the birds finish. **Ruled 2026-09-11 (Q-105): the meal lasts as long as her walk.**
+The birds finish the moment she reaches the second one, so the raid costs exactly one tomato
+wherever she planted; and the plot a bird ransacked gets a small animation saying so, since a
+tilled square with nothing on it does not read as a loss.
 
 **What "planted" means** is settled by the crow's own appetite: the four are counted with
 the same rule a bird picks its target by, so a tile the crow could not eat does not count,

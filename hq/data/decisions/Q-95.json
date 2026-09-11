@@ -1,34 +1,40 @@
 {
-  "id": "Q-95",
-  "title": "What does a returning player's old farm get when an update lands?",
-  "question": "You found this yourself minutes after v0.2.0 went live: the itch page offered Continue on the farm you started eleven days ago, and that farm has no fences and no farmhouse — because land is generated when a farm is created, and yours predates both. The save carries forward on purpose (nobody loses a farm to an update), but the cost is that a returning player can press Continue and see none of what the update page just promised them. Today the only way to the new land is New Farm, which throws their progress away, and nothing tells them that trade exists.",
-  "why_now": "v0.2.0 is the first update with returning players to disappoint, and every future update makes this worse: each one adds things an old farm's land will never show. The answer also sets how save migrations are written from here on — whether they only keep old worlds loadable, or are allowed to renovate them.",
-  "options": [
-    {
-      "key": "a",
-      "label": "Say it plainly at Continue (Recommended)",
-      "detail": "Keep both choices, but when the save predates the running build's world, the title screen says — in the game's own wordless-leaning way, a small new-things picture strip on the New Farm button — that the new things live on a new farm. Cheap, honest, no migration risk. The cost is that long-running farms still never see new land, which will need a better answer eventually, but not before there are players with farms worth keeping."
-    },
-    {
-      "key": "b",
-      "label": "Renovate old farms on load",
-      "detail": "A world migration that adds the new land to an old save: place the farmhouse, raise the fences, move the cot indoors. The dream answer, and the expensive one — every update must then ship a land-migration that cannot break anybody's farm, and the migration must decide what to do when a player built where the new thing wants to stand. That machinery is worth building when farms hold real investment; a Day-6 farm with nothing shipped is not that yet."
-    },
-    {
-      "key": "c",
-      "label": "Retire old saves at major updates",
-      "detail": "Continue disappears when the world format moves on; everyone starts fresh on update day. Simplest of all and defensible this early, but it spends the one promise a farm game makes — the farm is yours — and it gets harsher with every week a player has invested."
-    }
-  ],
-  "links": [
-    {
-      "label": "systems/sim/save_game.gd",
-      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/systems/sim/save_game.gd"
-    },
-    {
-      "label": "docs/RELEASE_NOTES.md",
-      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/RELEASE_NOTES.md"
-    }
-  ],
-  "ruled": false
+ "id": "Q-95",
+ "title": "What does a returning player's old farm get when an update lands?",
+ "question": "You found this yourself minutes after v0.2.0 went live: the itch page offered Continue on the farm you started eleven days ago, and that farm has no fences and no farmhouse — because land is generated when a farm is created, and yours predates both. The save carries forward on purpose (nobody loses a farm to an update), but the cost is that a returning player can press Continue and see none of what the update page just promised them. Today the only way to the new land is New Farm, which throws their progress away, and nothing tells them that trade exists.",
+ "why_now": "v0.2.0 is the first update with returning players to disappoint, and every future update makes this worse: each one adds things an old farm's land will never show. The answer also sets how save migrations are written from here on — whether they only keep old worlds loadable, or are allowed to renovate them.",
+ "options": [
+  {
+   "key": "a",
+   "label": "Say it plainly at Continue (Recommended)",
+   "detail": "Keep both choices, but when the save predates the running build's world, the title screen says — in the game's own wordless-leaning way, a small new-things picture strip on the New Farm button — that the new things live on a new farm. Cheap, honest, no migration risk. The cost is that long-running farms still never see new land, which will need a better answer eventually, but not before there are players with farms worth keeping."
+  },
+  {
+   "key": "b",
+   "label": "Renovate old farms on load",
+   "detail": "A world migration that adds the new land to an old save: place the farmhouse, raise the fences, move the cot indoors. The dream answer, and the expensive one — every update must then ship a land-migration that cannot break anybody's farm, and the migration must decide what to do when a player built where the new thing wants to stand. That machinery is worth building when farms hold real investment; a Day-6 farm with nothing shipped is not that yet."
+  },
+  {
+   "key": "c",
+   "label": "Retire old saves at major updates",
+   "detail": "Continue disappears when the world format moves on; everyone starts fresh on update day. Simplest of all and defensible this early, but it spends the one promise a farm game makes — the farm is yours — and it gets harsher with every week a player has invested."
+  }
+ ],
+ "links": [
+  {
+   "label": "systems/sim/save_game.gd",
+   "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/systems/sim/save_game.gd"
+  },
+  {
+   "label": "docs/RELEASE_NOTES.md",
+   "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/RELEASE_NOTES.md"
+  }
+ ],
+ "ruled": {
+  "date": "2026-09-11",
+  "option": null,
+  "summary": "Decided per release in the runbook: no breaking change means the save continues and the release text says the game updated; a breaking change means renovate on load or retire, stated plainly.",
+  "written_up": "docs/DEPLOY.md — before any release; DECISION_LOG S-13",
+  "judgment": "Let's add to our deployment runbook to decide how we'll handle this for each deploy. e.g. If there are no breaking changes, then we continue with a note that the game updated; otherwise, we renovate or retire old saves."
+ }
 }
