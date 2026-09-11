@@ -603,7 +603,9 @@ async function renderWork(focusId) {
   // What a work item needs to show the decision it came from, in place before
   // the first card is built.
   decisionCtx = { curated, rulings, entData, looks };
-  const decisions = curated.filter(c => !rulings[c.id]);
+  // Ruled either way: by a ruling recorded through this page (hq/data/rulings),
+  // or by a ruling written onto the card itself when it was settled in chat.
+  const decisions = curated.filter(c => !rulings[c.id] && !c.ruled);
   const ruled = curated.filter(c => rulings[c.id]);
   const rawOpen = (queue.items || []).filter(q => !q.answered && !curatedIds.has(q.id) && !rulings[q.id]);
   const answered = (queue.items || []).filter(q => q.answered);

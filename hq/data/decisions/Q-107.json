@@ -1,0 +1,37 @@
+{
+ "id": "Q-107",
+ "title": "Which take of each story-night sound to keep",
+ "question": "Each animation the sleep plays now has sound under it, and the boot bloom has a chime. Five sounds are wired: a peck for the crow's strikes, treads, a servo and a seed scatter for the robot, and a soft rising chime under the bloom. Four of the five are free recordings (CC0); the chime is synthesized, because no free bell recording rises in pitch, and the moment needs a rise. Two or three alternates for each sit unwired in the title screen's Sound Test, next to the picks, so this is a listen rather than a design question.",
+ "why_now": "The sounds ship with the story nights. Whatever you pick here is what players hear on the first crow night.",
+ "options": [
+  {
+   "key": "a",
+   "label": "Keep the five wired picks (Recommended)",
+   "detail": "The cleanest single take of each request. Nothing changes."
+  },
+  {
+   "key": "b",
+   "label": "Keep the picks, but a plain decaying bell at boot",
+   "detail": "Swap the rising chime for one of the three free bell recordings. A single ding under the bloom instead of a climb."
+  },
+  {
+   "key": "c",
+   "label": "Swap one or more for an alternate from the Sound Test",
+   "detail": "Name which. Each alternate is already in the game and in the credits, so a swap is one line."
+  }
+ ],
+ "links": [
+  {
+   "label": "The sound beds as built (design/10)",
+   "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/10-audio-direction.md"
+  },
+  {
+   "label": "Where each sound came from (CREDITS.md)",
+   "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/CREDITS.md"
+  },
+  {
+   "label": "Queue entry (Q-107)",
+   "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"
+  }
+ ]
+}
