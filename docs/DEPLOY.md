@@ -57,6 +57,12 @@ laptop's.
 
 **Traps:**
 
+- **Deploying from a clean checkout needs three gitignored things from the repo root**
+  (2026-09-11, found deploying main from a worktree so nobody's uncommitted edits rode
+  along): `android/build/` (the Android build template, 1.2 GB, installed from the
+  editor), `debug.keystore` (the preset signs with `res://debug.keystore`), and an empty
+  `build/` folder (the export refuses a missing target folder). Copy the first two in and
+  `mkdir build`; the script does the rest.
 - **Wireless debugging switches off when the tablet reboots**, and the port changes every
   time it is toggled. Re-pair with the code from the tablet's screen.
 - **The script pulls the device's session before installing, and that is not optional
