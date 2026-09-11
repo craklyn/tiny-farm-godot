@@ -5,6 +5,7 @@
   "owner": "jade",
   "tier": 1,
   "tier_reason": "Game code behind both suites and the replay round-trip; git reverts it. The design is the CEO's, ruled whole as Q-101.",
+  "decision": "Q-101",
   "ask": "WI-3 in docs/V0_2_2_PLAN.md: eight rows in reward order with the row's colour, pip, numeral, ladder strip and 56 px minus/plus buttons that emit tune through farm.apply_action; a held pip returns the factory value.",
   "first_action": "Landed; see result.",
   "state": "for_review",

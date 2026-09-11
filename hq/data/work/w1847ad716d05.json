@@ -5,6 +5,7 @@
   "owner": "jade",
   "tier": 1,
   "tier_reason": "Game code behind both suites and the replay round-trip; git reverts it. The design is the CEO's, ruled whole as Q-101.",
+  "decision": "Q-101",
   "ask": "WI-2 in docs/V0_2_2_PLAN.md: a workbench row in the catalogue and the shop's stock list, set down through place on a yard tile as a tall blocking object, opened by a tap through a special-object row without a verb, and the full-screen five-plate shell as a fifth mode of the menus with five page stubs.",
   "first_action": "Landed; see result.",
   "state": "for_review",

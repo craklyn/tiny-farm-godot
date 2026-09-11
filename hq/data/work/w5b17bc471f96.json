@@ -5,6 +5,7 @@
   "owner": "tomas",
   "tier": 1,
   "tier_reason": "Game code behind both suites and the replay round-trip; git reverts it. The design is the CEO's, ruled whole as Q-101.",
+  "decision": "Q-101",
   "ask": "WI-1 in docs/V0_2_2_PLAN.md: per-robot rewards in extra['rewards'] on the ten-step ladder, the tune verb through the gateway with flat row/value keys, and the day's bookkeeping every plate reads (entropy per decision, spent decisions, last action, last night's update size, a capped per-day ledger). The eight-farm learning gate and the demo's fixed-seed week must be unchanged.",
   "first_action": "Landed; see result.",
   "state": "for_review",
