@@ -534,8 +534,48 @@
               "fps": 6
             },
             {
+              "id": "eating",
+              "label": "eating a crop",
+              "frames": [
+                0,
+                1,
+                0,
+                {
+                  "parts": [
+                    {
+                      "f": 1,
+                      "dx": 0,
+                      "dy": 0,
+                      "flip": true
+                    }
+                  ]
+                },
+                {
+                  "parts": [
+                    {
+                      "f": 0,
+                      "dx": 0,
+                      "dy": 0,
+                      "flip": true
+                    }
+                  ]
+                },
+                {
+                  "parts": [
+                    {
+                      "f": 1,
+                      "dx": 0,
+                      "dy": 0,
+                      "flip": true
+                    }
+                  ]
+                }
+              ],
+              "fps": 3.33
+            },
+            {
               "id": "perched",
-              "label": "perched / eating",
+              "label": "perched",
               "frames": [
                 0
               ],
@@ -543,7 +583,7 @@
             }
           ],
           "fps": 6,
-          "layout": "Perched (while eating), wings up, wings down — a 2-frame flap in flight.",
+          "layout": "Perched, wings up, wings down — a 2-frame flap in flight, and perched against wings-up for the meal, mirrored every third beat as the bird turns.",
           "sounds": [
             "assets/audio/sfx/squawk.wav",
             "assets/audio/sfx/till.wav"

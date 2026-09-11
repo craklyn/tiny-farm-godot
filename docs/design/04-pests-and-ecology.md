@@ -100,6 +100,15 @@ a pest at all in a cozy farming game, and whether its length should ever mean an
 zero-dial proof that the movement engine carries a body, and its meaning is left for a phase
 that wants it.
 
+**A crow on a crop flaps and turns left and right while it eats** (2026-09-10, the
+designer's call): the bird taking a crop is the farm's alarm, so it must not sit still —
+the meal used to hold a single frame for its whole five seconds, which made the most
+expensive thing on screen the only thing on it not moving. Wings on a quick beat, a turn
+every third one, and a pixel of bob on the open wing, all in `entities/crow.gd`: the
+animation is presentation and the meal itself is untouched. The richer **crow gorge** loop
+drafted in the Animation Lab (`tools/experiments/out/crow_gorge/`) is the candidate for a
+later, drawn version of the same moment.
+
 ## Sections to fill
 2. **Nests** — where they spawn relative to the farm, growth over time, visibility
    `[Designer]` Q-18 (early visibility foreshadows phase 5's trail-tracking).
