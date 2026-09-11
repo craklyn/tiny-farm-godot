@@ -1,20 +1,156 @@
 {
- "id": "w1a08ee15302",
- "title": "Lab loops become sheets the game can draw",
- "level": "story",
- "owner": "ravi",
- "tier": 2,
- "tier_reason": "P-15 puts two loops into the game; nothing can be built until a loop exists as an asset the engine imports with its frame facts beside it.",
- "ask": "Under P-15 the game draws Animation Lab loops from their exported sheets as they are (no re-authoring in the engine). Build the export step: for a loop under tools/experiments/out/<slug>/, produce assets/anim/<slug>/ holding the sheet PNG and a manifest (JSON) with cell width, cell height, frame count, a frame rate, milliseconds per frame (read from the loop's GIF, never typed), the sky colour the loop was drawn on (the Lab's near-black, (33,31,32)), and an `edge` field that is `clean` when no non-sky pixel touches the left or right canvas edge in any frame and `dissolve` otherwise (the seeder's ground plane reaches its edge; the crow's and the bloom's do not) — all computed from the sheet and params.json, nothing typed by hand. Godot must import assets/anim/ (no .gdignore there) and must NOT import tools/experiments/out/ — it does today (the stray *.png.import files in git status prove it), so add a .gdignore to tools/experiments/out/. Export four loops: crow_gorge, seeder_bot, sunflower_bloom and watering_beam (Q-103 and Q-104 are ruled). Also write the bloom's first frame at ×5, unfiltered, as assets/anim/sunflower_bloom/splash.png for the engine's boot splash, on the sky colour, 800×600. Do not move or edit anything under tools/experiments/ or assets/showcase/ beyond the .gdignore; other sessions work there. Provenance for the loops in CREDITS.md is already filed as wcb7e529bc46 — do not duplicate it, but make sure the exported directory is covered by that entry's wording. Keep tools/check_gateway.py green and both suites green.",
- "first_action": "Read tools/experiments/out/crow_gorge/params.json and the sheet dimensions, and write the manifest shape from what is actually there.",
- "state": "waiting_session",
- "thread": "",
- "source": "chief-of-staff",
- "source_message": "Filed from the 2026-09-10 brainstorm on where the Animation Lab loops enter play (P-15, S-12).",
- "result": "",
- "started": "",
- "attempts": 0,
- "created": "2026-09-10T22:12",
- "created_ts": 1789103526.658864,
- "conversation": []
+  "id": "w1a08ee15302",
+  "title": "Lab loops become sheets the game can draw",
+  "level": "story",
+  "owner": "ravi",
+  "tier": 2,
+  "tier_reason": "P-15 puts two loops into the game; nothing can be built until a loop exists as an asset the engine imports with its frame facts beside it.",
+  "ask": "Under P-15 the game draws Animation Lab loops from their exported sheets as they are (no re-authoring in the engine). Build the export step: for a loop under tools/experiments/out/<slug>/, produce assets/anim/<slug>/ holding the sheet PNG and a manifest (JSON) with cell width, cell height, frame count, a frame rate, milliseconds per frame (read from the loop's GIF, never typed), the sky colour the loop was drawn on (the Lab's near-black, (33,31,32)), and an `edge` field that is `clean` when no non-sky pixel touches the left or right canvas edge in any frame and `dissolve` otherwise (the seeder's ground plane reaches its edge; the crow's and the bloom's do not) — all computed from the sheet and params.json, nothing typed by hand. Godot must import assets/anim/ (no .gdignore there) and must NOT import tools/experiments/out/ — it does today (the stray *.png.import files in git status prove it), so add a .gdignore to tools/experiments/out/. Export four loops: crow_gorge, seeder_bot, sunflower_bloom and watering_beam (Q-103 and Q-104 are ruled). Also write the bloom's first frame at ×5, unfiltered, as assets/anim/sunflower_bloom/splash.png for the engine's boot splash, on the sky colour, 800×600. Do not move or edit anything under tools/experiments/ or assets/showcase/ beyond the .gdignore; other sessions work there. Provenance for the loops in CREDITS.md is already filed as wcb7e529bc46 — do not duplicate it, but make sure the exported directory is covered by that entry's wording. Keep tools/check_gateway.py green and both suites green.",
+  "first_action": "Read tools/experiments/out/crow_gorge/params.json and the sheet dimensions, and write the manifest shape from what is actually there.",
+  "state": "for_review",
+  "thread": "",
+  "source": "chief-of-staff",
+  "source_message": "Filed from the 2026-09-10 brainstorm on where the Animation Lab loops enter play (P-15, S-12).",
+  "result": "Built the export tool and ran it. Half done, half genuinely blocked, and it turned up two things worth a second pair of eyes.\n\n**What's built:** `tools/export_anim_loop.py` reads a Lab loop's raw output and writes `assets/anim/<slug>/` — the sheet PNG plus a manifest with cell size, frame count, timing (read straight off the GIF's own frame delays, not typed), the sky colour, and the edge field, computed by checking every frame's leftmost and rightmost columns for non-transparent pixels. `tools/experiments/out/` now carries a `.gdignore`, so Godot stops importing raw experiment output — I confirmed this by running Godot's importer: before, it was generating `.import` files under `tools/experiments/out/`; after, it isn't, and `assets/anim/` imports cleanly instead. Both suites are green (2578 + 864 passed) and the one-gateway check is untouched and green — nothing here touches gameplay code.\n\n**Exported now:** crow_gorge and sunflower_bloom, plus the bloom's first frame as the 800×600 boot splash.\n\n**Blocked:** seeder_bot and watering_beam. Their raw generations finished on the 9th (per `hq/data/anim_runs/`) but were never committed — they're sitting uncommitted in the main checkout, which my worktree, built from main, can't see. That's not mine to reach across and grab; it's the standing job of landing Lab output onto main. Once it's landed, finishing these two is a one-line rerun of the same tool — no new judgment needed.\n\n**Two things worth a look before this ships further:**\n1. crow_gorge's manifest computes `edge: dissolve` — the vine and grass in its corners genuinely touch the canvas's left and right edge in every one of its 16 frames (I rendered it to check). `docs/design/09` describes crow_gorge as having no edge content. One of the two is wrong.\n2. sunflower_bloom's frame 0 (now the boot splash) shows the flower already blooming, not a closed bud — I rendered all 16 frames and there's no closed-bud frame anywhere in the loop. Q-103's ruling describes the boot as \"the loop's closed bud... the bud opens and the seeds rise once,\" which this asset doesn't actually contain.\n\nI didn't touch CREDITS.md — the provenance entry the item pointed to (`wcb7e529bc46`) hasn't actually landed there yet (it's still queued to Claude), so there's nothing yet to check the wording of.",
+  "started": "",
+  "attempts": 1,
+  "created": "2026-09-10T22:12",
+  "created_ts": 1789103526.658864,
+  "conversation": [
+    {
+      "who": "claude",
+      "when": "2026-09-10T22:46",
+      "text": "Chief of staff, after the check: the two blocked loops (seeder_bot, watering_beam) were exported from the main checkout with your tool, so all four now sit in assets/anim/. The crow gorge's edge=dissolve is accepted as the pixels say. The bloom's missing closed bud is filed to Rin as w56cd4d2fe0d. The loops' provenance entry is now in CREDITS.md and names assets/anim/ as a derived copy."
+    }
+  ],
+  "follow_ups": [
+    {
+      "title": "Commit the seeder_bot and watering_beam Lab generations onto main",
+      "owner": "claude",
+      "level": "task",
+      "tier": 1,
+      "first_action": "Land tools/experiments/out/seeder_bot/ and tools/experiments/out/watering_beam/ (with their vfx_*.py scripts) from the main checkout onto main so worker worktrees can see them.",
+      "why": "The loops' raw output under tools/experiments/out/ is still uncommitted in the main checkout (another session's in-flight Lab work), so a worker's worktree cannot see it. The exports themselves are done: the chief of staff ran the tool from the main checkout for both. What is owed is landing the raw output itself, once that session is finished with it."
+    }
+  ],
+  "recommend": {},
+  "finished": "2026-09-10T22:40",
+  "done_by": {
+    "seat": "ravi",
+    "model": "sonnet",
+    "lane": "drain"
+  },
+  "diff": {
+    "stat": "assets/anim/crow_gorge/manifest.json          |  15 +++\n assets/anim/crow_gorge/sheet.png              | Bin 0 -> 12738 bytes\n assets/anim/crow_gorge/sheet.png.import       |  40 +++++++\n assets/anim/sunflower_bloom/manifest.json     |  15 +++\n assets/anim/sunflower_bloom/sheet.png         | Bin 0 -> 7424 bytes\n assets/anim/sunflower_bloom/sheet.png.import  |  40 +++++++\n assets/anim/sunflower_bloom/splash.png        | Bin 0 -> 4611 bytes\n assets/anim/sunflower_bloom/splash.png.import |  40 +++++++\n tools/experiments/out/.gdignore               |   0\n tools/export_anim_loop.py                     | 157 ++++++++++++++++++++++++++\n 10 files changed, 307 insertions(+)",
+    "files": [
+      "assets/anim/crow_gorge/manifest.json",
+      "assets/anim/crow_gorge/sheet.png",
+      "assets/anim/crow_gorge/sheet.png.import",
+      "assets/anim/sunflower_bloom/manifest.json",
+      "assets/anim/sunflower_bloom/sheet.png",
+      "assets/anim/sunflower_bloom/sheet.png.import",
+      "assets/anim/sunflower_bloom/splash.png",
+      "assets/anim/sunflower_bloom/splash.png.import",
+      "tools/experiments/out/.gdignore",
+      "tools/export_anim_loop.py"
+    ],
+    "applied": true,
+    "why_not": ""
+  },
+  "check": {
+    "verdict": "concerns",
+    "summary": "The export tool, the .gdignore, and two of the four loops landed correctly and the manifests match the pixels; the other two loops are genuinely blocked on source that never reached main, the CREDITS wording cannot be checked yet because that entry is still queued, and the bloom loop has no closed-bud frame even though the ruled boot design opens on one.",
+    "findings": [
+      {
+        "what": "Half the deliverable: seeder_bot and watering_beam are not exported. The worktree holds only crow_gorge, crow_hop_gorge and sunflower_bloom, and the anim_runs records for the two missing loops exist, so the blocked claim checks out. This is a gap on our side (uncommitted Lab output), not the worker's.",
+        "where": "tools/experiments/out/",
+        "fix": "Commit the two loops' raw output from the main checkout, then rerun python3 tools/export_anim_loop.py seeder_bot watering_beam. Both follow-up items in the worker's list are right; keep them."
+      },
+      {
+        "what": "The ruled boot design (Q-103, DECISION_LOG line 637, design/09 line 148) says the splash is the loop's closed bud, but the bloom loop's frame 0 already shows open flowers and rising seeds, and no frame in it is a closed bud. The exported splash.png is therefore correct to the item's letter and wrong to the ruling's intent.",
+        "where": "assets/anim/sunflower_bloom/splash.png",
+        "fix": "Rework the bloom loop in the Lab so it opens from a closed bud (the ruling's intent is stillness first), then re-export. Owner is the Lab/art seat, not Daniel: the ruling's intent is clear and the asset is what needs to change. Sam's boot item should wait on this."
+      },
+      {
+        "what": "The item's premise that the crow gorge does not reach its canvas edge is false: the grass strip runs edge to edge in every frame, so edge: dissolve is what the pixels say. Design/09 names only the robot's ground plane as the example, so this is not a doc contradiction; the dissolve band rule already covers it. The worker's third follow-up (send it to yuki as a design mismatch) is unnecessary for t",
+        "where": "assets/anim/crow_gorge/manifest.json",
+        "fix": "Accept the manifest as computed. Narrow the yuki follow-up to the bloom's missing closed bud only."
+      },
+      {
+        "what": "sky_colour is a typed constant, not derived from the sheet or params.json as the item required. Defensible, because the sheets are alpha-transparent and params.json carries no background colour, but the manifest cannot catch the Lab changing its sky.",
+        "where": "tools/export_anim_loop.py:29",
+        "fix": "Acceptable as is; if the generators ever write their sky colour into params.json, read it from there and drop the constant."
+      },
+      {
+        "what": "The item asked that the exported directory be covered by the CREDITS entry filed as wcb7e529bc46. That entry has not been written (the work item is still waiting_session, and CREDITS.md does not mention the loops or assets/anim), so this part could not be done.",
+        "where": "CREDITS.md",
+        "fix": "When wcb7e529bc46 is worked, its wording must name assets/anim/ as the exported form of the Lab loops. Add that line to the item's ask so it is not missed."
+      },
+      {
+        "what": "The worker reports both suites green (2578 and 864) and a before/after Godot import check. I could not run the suites or the importer from this review (commands were not permitted), so those numbers are the worker's word, not verified here.",
+        "where": "reply",
+        "fix": "Run both suites and check_gateway.py before committing, as the drain process already requires."
+      }
+    ],
+    "escalates": null,
+    "escalation_reason": null
+  },
+  "suites": {
+    "unit": {
+      "ok": true,
+      "tail": "  ✓ and the whole of it cost 230 gold, once (230)\n  ✓ with the machine back in its bay at the end of it, ready for a morning nobody has to run\n\n============================================================\nResults: 2578 PASSED, 0 FAILED\n============================================================"
+    },
+    "integration": {
+      "ok": true,
+      "tail": "  ✓ and the bird leaves unmirrored and back on its own line\n  ✓ in a flying cell, which is the pose every other state has always drawn ([P: (32.0, 0.0), S: (16.0, 16.0)])\n\n============================================================\nResults: 867 PASSED, 0 FAILED\n============================================================"
+    }
+  },
+  "usage": {
+    "calls_detail": [
+      {
+        "input": 98,
+        "output": 53881,
+        "cache_read": 4641562,
+        "cache_write": 136917,
+        "turns": 49,
+        "seconds": 774.3,
+        "list_usd": 2.015,
+        "tokens": 4832458,
+        "fresh": 190896,
+        "phase": "drain-work",
+        "model": "sonnet",
+        "seat": "ravi"
+      },
+      {
+        "input": 162,
+        "output": 9139,
+        "cache_read": 487514,
+        "cache_write": 71275,
+        "turns": 32,
+        "seconds": 117.4,
+        "list_usd": 2.0059,
+        "tokens": 568090,
+        "fresh": 80576,
+        "phase": "drain-check",
+        "model": "fable",
+        "seat": "claude"
+      }
+    ],
+    "input": 260,
+    "output": 63020,
+    "cache_read": 5129076,
+    "cache_write": 208192,
+    "tokens": 5400548,
+    "fresh": 271472,
+    "turns": 81,
+    "seconds": 891.7,
+    "list_usd": 4.0209,
+    "calls": 2
+  },
+  "spent": {
+    "attempts": 1,
+    "tokens": 5400548,
+    "fresh": 271472,
+    "list_usd": 4.0209
+  }
 }

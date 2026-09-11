@@ -55,7 +55,11 @@ import work                        # noqa: E402
 
 WORKTREES = os.path.expanduser("~/.cache/tiny-farm-drain")
 PATCHES = os.path.join(REPO, "hq", "data", "patches")
-WORKER_TURNS = 60
+# A worker's turn budget. 60 is enough for most items; a sim item that has to
+# write four tests on top of the code is not, and a worker cut off mid-edit
+# costs a whole second attempt. DRAIN_TURNS=120 in the environment raises it for
+# one run without editing this file.
+WORKER_TURNS = int(os.environ.get("DRAIN_TURNS") or 60)
 WORKER_TIMEOUT = 3600
 CHECK_TIMEOUT = 900
 # Anything under these paths is the game rather than the office, so a patch that
@@ -155,7 +159,11 @@ def prior_checks(item):
                          + (f" — fix: {f.get('fix')}" if f.get("fix") else ""))
         out.append("\n".join(lines))
     return ("\n\nWHY YOUR EARLIER ATTEMPT WAS SENT BACK — this is the brief now, as much "
-            "as the item is. Do not hand back the same work:\n\n" + "\n\n".join(out) + "\n")
+            "as the item is. Do not hand back the same work:\n\n" + "\n\n".join(out) + "\n"
+            "\nIf `git status` in your worktree shows uncommitted changes when you start, "
+            "they are your earlier attempt's edits, applied for you so you continue from "
+            "them rather than from main. Read them first; fix what was sent back; commit "
+            "early and often.\n")
 
 
 def task_prompt(item, org):
@@ -327,6 +335,32 @@ def save_patch(item_id, patch):
     return path
 
 
+def resume_held_patch(item, tree, thinking):
+    """A second attempt starts from what the first one wrote, not from main.
+
+    A worker that runs out of turns mid-edit leaves its diff in PATCHES (the
+    check read it, and said what was missing). Throwing that away and paying
+    for the same edits again is the one cost the retry brief cannot recover on
+    its own, so the held patch is applied into the fresh worktree, uncommitted,
+    and the brief tells the worker it is there. Only for held work: an applied
+    patch is already on main. Returns the patch's stat line, or "" if nothing
+    was resumed."""
+    if thinking or (item.get("diff") or {}).get("applied"):
+        return ""
+    patch = load_patch(item["id"])
+    if not patch.strip():
+        return ""
+    r = subprocess.run(["git", "apply", "--3way"], cwd=tree, input=patch,
+                       capture_output=True, text=True, timeout=180)
+    if r.returncode != 0:
+        subprocess.run(["git", "checkout", "--", "."], cwd=tree, capture_output=True, timeout=120)
+        subprocess.run(["git", "clean", "-fd"], cwd=tree, capture_output=True, timeout=120)
+        return ""
+    stat = subprocess.run(["git", "diff", "--stat"], cwd=tree, capture_output=True,
+                          text=True, timeout=120).stdout.strip().splitlines()
+    return stat[-1].strip() if stat else "applied"
+
+
 def load_patch(item_id):
     try:
         with open(os.path.join(PATCHES, item_id + ".patch"), encoding="utf-8") as f:
@@ -359,6 +393,9 @@ def do_item(item, org, run_id, log):
             work.save_item(item)
         tree = make_worktree(run_id, item["id"])
         log(f"{item['id']} · {seat} on {model or 'the default model'} · {item['title'][:60]}")
+        resumed = resume_held_patch(item, tree, thinking)
+        if resumed:
+            log(f"{item['id']} · starts from its held patch ({resumed})")
         text, usage, err = run_cli(task_prompt(item, org), seat_prompt(org, seat, thinking),
                                    READ_TOOLS if thinking else WRITE_TOOLS,
                                    model, tree, WORKER_TIMEOUT,

@@ -1,0 +1,15 @@
+{
+  "slug": "watering_beam",
+  "sheet": "sheet.png",
+  "cell_width": 176,
+  "cell_height": 152,
+  "frame_count": 16,
+  "ms_per_frame": 100,
+  "frame_rate": 10.0,
+  "sky_colour": [
+    33,
+    31,
+    32
+  ],
+  "edge": "clean"
+}

@@ -1,0 +1,15 @@
+{
+  "slug": "sunflower_bloom",
+  "sheet": "sheet.png",
+  "cell_width": 64,
+  "cell_height": 104,
+  "frame_count": 16,
+  "ms_per_frame": 90,
+  "frame_rate": 11.1111,
+  "sky_colour": [
+    33,
+    31,
+    32
+  ],
+  "edge": "clean"
+}

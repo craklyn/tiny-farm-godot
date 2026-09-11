@@ -275,6 +275,17 @@ before the first public build ships.*
   dated batch (with their `*_meta.json`) before compositing. The surviving raws from
   the 2026-08-29 through 2026-09-02 batches were recovered from session scratchpads
   into that archive; the 2026-08-26 style-lock run's raws were already gone.
+- **Animation Lab loops shipped in the game, 2026-09-10** — **not generated, $0.00.**
+  The crow gorge, the seeder robot, the sunflower bloom and the watering beam are
+  authored animations: scripts under `tools/experiments/` (`vfx_*.py`) draw each
+  frame from pixels already in the shipped sheets, so every colour in them is
+  covered by the Retro Diffusion entry above and by the credits for the sheets they
+  sample. No model was called to make them and no third-party output rights attach.
+  The game draws them from `assets/anim/<loop>/` — the frame sheet, a manifest of
+  its timing and size, and for the bloom the boot splash — written from that raw
+  output by `tools/export_anim_loop.py` (P-15). A loop's editable sources stay
+  under `tools/experiments/` and `assets/showcase/`; the exported directory is a
+  derived copy and is regenerated, never hand-edited.
 - **T-39, the farmhouse and the robot stall, 2026-09-06** — **generated, $0.21**
   (same Retro Diffusion pipeline, rights and post-processing as above; raws with
   `*_meta.json` archived per the standing policy at

@@ -1,0 +1,20 @@
+{
+  "id": "w56cd4d2fe0d",
+  "title": "The sunflower bloom loop has no closed bud, and the boot is ruled to open on one",
+  "level": "story",
+  "owner": "rin",
+  "tier": 2,
+  "tier_reason": "Q-103 rules that the engine's splash is the loop's closed bud and the bud opens as the seeds rise; the exported loop's first frame is already mid-bloom, so the boot as built shows a flower opening from a flower.",
+  "first_action": "Open tools/experiments/vfx_sunflower_bloom.py (or whichever script draws the bloom) and render its sixteen frames; confirm there is no closed-bud frame, then add the bud as the loop's opening beats.",
+  "ask": "The sunflower_bloom loop (tools/experiments/out/sunflower_bloom/, exported to assets/anim/sunflower_bloom/ by tools/export_anim_loop.py) opens on frame 0 with the flower already open and seeds already rising; no frame in the loop is a closed bud. Q-103 (DECISION_LOG P-15, design/09 'The boot') rules that the engine's boot splash is the loop's closed bud on its own sky, and that the bud opens and the seeds rise once while the music fades up. Rework the loop so it opens from a closed bud: the first frames hold the bud still (that first frame becomes the 800x600 splash), then the bud opens, then the seeds rise, and the loop still closes seamlessly for the idle behind the menu. Keep the canvas 64x104, the palette from the shipped sheets, the sky (33,31,32), and the loop's sources as editable files on disk. Then re-export with python3 tools/export_anim_loop.py sunflower_bloom, which rewrites the sheet, the manifest and splash.png; the boot code (Sam's item w1a08ee9c4d2) reads the manifest, so nothing else changes. Report the frame count and ms-per-frame the manifest now carries.",
+  "state": "waiting_session",
+  "thread": "",
+  "source": "chief-of-staff",
+  "source_message": "Found by Ravi's export (w1a08ee15302) and confirmed by the chief of staff on the exported sheet, 2026-09-10.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-10T22:45",
+  "created_ts": 1789105536.4151738,
+  "conversation": []
+}

@@ -1,0 +1,15 @@
+{
+  "slug": "seeder_bot",
+  "sheet": "sheet.png",
+  "cell_width": 240,
+  "cell_height": 140,
+  "frame_count": 32,
+  "ms_per_frame": 90,
+  "frame_rate": 11.1111,
+  "sky_colour": [
+    33,
+    31,
+    32
+  ],
+  "edge": "dissolve"
+}
