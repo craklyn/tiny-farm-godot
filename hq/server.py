@@ -4867,6 +4867,10 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send_file(STATIC, path[len("/static/"):])
             if path.startswith("/assets/"):
                 return self._send_file(os.path.join(REPO, "assets"), path[len("/assets/"):])
+            if path.startswith("/docs/") and ".." not in path:
+                # Decision cards attach mockups and design pages under docs/; served
+                # read-only like assets/ so a card's pictures show in the queue.
+                return self._send_file(os.path.join(REPO, "docs"), path[len("/docs/"):])
             if path.startswith("/loops/"):
                 return self._send_file(os.path.join(REPO, anim.LOOPS_DIR), path[len("/loops/"):])
             if path.startswith("/loop-preview/"):
