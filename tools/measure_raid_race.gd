@@ -1,4 +1,5 @@
-# measure_raid_race.gd — How long the crow raid's meal should be (design/04, P-15)
+# measure_raid_race.gd — What the crow raid costs her, on a near bed and a far one
+# (design/04, P-15, Q-105)
 #
 # Run: godot --headless --path . --script res://tools/measure_raid_race.gd
 #
@@ -6,17 +7,23 @@
 # tomatoes when she opens her front door, and their meals start on that door. The
 # designer's target for the race is that **a direct walk out to the bed saves two
 # of the three**: losing none teaches nothing, losing all three is a punishment
-# for a morning she had no part in. That target is a number of seconds, and this
-# is where the number comes from rather than from somebody's intuition.
+# for a morning she had no part in.
 #
-# What it measures, and how faithfully:
+# This used to be where a meal length in seconds came from, and the meal length
+# was the thing that decided the answer. Since Q-105 was ruled on 2026-09-11 the
+# meal lasts as long as her walk — the last bird finishes when she has seen off
+# the second one — so what this measures now is whether that rule holds its
+# promise: **two saved wherever she planted.** It runs the morning rather than
+# reasoning about it, so the number it prints is the number the game produces.
+#
+# What it does, and how faithfully:
 #
 #   * The farm is the one the game generates and the cold open has run on, so the
 #     gate is open and the neighbour's plot is hers.
 #   * The bed is **arranged rather than farmed** — four tomatoes written straight
-#     into the grid on the nearest ground she could plant. What is being measured
-#     is the walk, and tilling the row through the gateway would measure her
-#     energy meter instead.
+#     into the grid on the nearest ground she could plant, and then the same row
+#     ten tiles further out. What is being measured is the walk, and tilling the
+#     row through the gateway would measure her energy meter instead.
 #   * The raid itself is the real one: the acorns are taken off the ground, she
 #     sleeps, and `SimWorld.advance_day` places the three birds through the same
 #     trigger the game uses. Their tiles are whatever the rule picks.
@@ -24,12 +31,14 @@
 #     MOVE_SPEED), four-directional, along the shortest walkable route, starting
 #     at the tile the door puts her on at the instant the meals begin.
 #   * A bird is shooed when she comes within her own spook radius of it
-#     (`SpeciesDefs`'s player row, 3 tiles) — not when she reaches its tile.
+#     (`SpeciesDefs`'s player row, 3 tiles) — not when she reaches its tile. Each
+#     one is then shooed **through the gateway**, at the tick the walk reaches it,
+#     exactly as `entities/crow.gd` reports it in a played session.
 #
-# The output is one row per bird (when it would be saved) and then the meal
-# lengths that save none, one, two and three. Two is the answer wanted; the
-# window it sits in is printed, because how wide that window is matters more than
-# its midpoint — see the closing note the run prints.
+# The output is one row per bird — when she gets to it, and what that costs her —
+# and then the tomatoes standing at the end of the morning on each of the two
+# beds. `tests/test_runner.gd` asserts on the same two runs through `measure`,
+# which is why the measuring here is a static function and the printing is not.
 extends SceneTree
 
 # The seed is only the farm's: the raid draws nothing (`CrowBrain.raid` picks its
@@ -47,49 +56,47 @@ const WALK_TILES_PER_SECOND := 3.0
 # that a route of forty tiles is a few thousand steps.
 const STEP_TILES := 0.01
 
-# The meal lengths tried, in tenths of a second from a bird that barely starts to
-# one that outlasts an ordinary crow's five.
-const SWEEP_FROM := 1.0
-const SWEEP_TO := 8.0
-const SWEEP_STEP := 0.1
+# The two beds. Zero is the nearest ground she can plant; ten is the same row ten
+# tiles of walking further from her door, which under the old fixed meal was the
+# distance at which the raid took everything.
+const NEAR_BED := 0
+const FAR_BED := 10
 
 
 func _init() -> void:
 	print(String("=").repeat(64))
-	print("The crow raid's race — how long a raid meal should last")
+	print("The crow raid's race — what the morning costs her, near bed and far")
 	print(String("=").repeat(64))
 
-	var nearest := _measure("the nearest ground she can plant", 0)
-	var further := _measure("a bed ten tiles further out", 10)
+	var nearest := measure(NEAR_BED)
+	_report("the nearest ground she can plant", nearest)
+	var further := measure(FAR_BED)
+	_report("a bed ten tiles further out", further)
 
 	print("")
-	print("What this says. The raid's meal length is one number and the race is a")
-	print("distance the player chooses, so the value is tuned against the nearest")
-	print("bed — the conservative end, where the raid takes the fewest tomatoes.")
-	if not nearest.is_empty():
-		print("  nearest bed:  two are saved by a meal in %s, so ship %.1f s"
-			% [_window_text(nearest), _recommended(nearest)])
-	if not further.is_empty():
-		print("  further bed:  that same meal saves %d of 3, which is the honest limit"
-			% _saved_count(further, _recommended(nearest)))
+	print("What this says. The meal lasts as long as her walk (Q-105), so the raid")
+	print("costs the same wherever she planted — the walk is longer, the bill is not.")
+	_verdict("nearest bed", nearest)
+	_verdict("further bed", further)
 	quit(0)
 
 
-# One scenario end to end: build the farm, put a bed on it, run the real night,
-# and walk her out of the door. Returns the three shoo times in seconds, sorted,
-# or [] if the farm could not be set up (which is a bug, and says so).
-func _measure(title: String, push_out: int) -> Array[float]:
-	print("")
-	print("--- %s ---" % title)
+# One morning end to end: build the farm, put a bed on it, run the real night,
+# walk her out of the door and shoo the birds as she reaches them. Returns what
+# happened, or a dictionary whose `problem` says why nothing could be measured.
+#
+# Static, and it prints nothing: the unit suite runs exactly this and asserts on
+# what comes back (`test_crow_raid_costs_one_tomato`).
+static func measure(push_out: int) -> Dictionary:
 	# GameState is a Node, so it is freed by hand rather than left to a reference
 	# count that a headless run has no scene tree to collect.
 	var gs = load("res://systems/game_state.gd").new()
-	var times := _measure_on(gs, push_out)
+	var out := _measure_on(gs, push_out)
 	gs.free()
-	return times
+	return out
 
 
-func _measure_on(gs, push_out: int) -> Array[float]:
+static func _measure_on(gs, push_out: int) -> Dictionary:
 	SimRng.reseed(SEED)
 	gs.reset()
 	var world := SimWorld.new()
@@ -105,14 +112,11 @@ func _measure_on(gs, push_out: int) -> Array[float]:
 	var outside: Vector2i = WorldLayout.door_at(
 		world.find_object(WorldLayout.HOME_DOORWAY), world.layout).get("to", Vector2i(-1, -1))
 	if outside.x < 0 or indoors.x < 0:
-		print("  no front door on this farm — nothing to measure")
-		return []
+		return { "problem": "no front door on this farm — nothing to measure" }
 
 	var bed := _plant_bed(world, outside, push_out)
 	if bed.size() < SimWorld.RAID_MIN_TOMATOES:
-		print("  could not find %d tiles to plant" % SimWorld.RAID_MIN_TOMATOES)
-		return []
-	print("  bed:       %s" % _tiles_text(bed))
+		return { "problem": "could not find %d tiles to plant" % SimWorld.RAID_MIN_TOMATOES }
 
 	# The night, for real: the acorns leave the ground (which is what she does by
 	# picking them up, T-30) and she goes to bed indoors, so the birds are placed
@@ -121,22 +125,78 @@ func _measure_on(gs, push_out: int) -> Array[float]:
 	world.set_actor_pos(SimWorld.ACTOR_PLAYER, indoors)
 	world.advance_day("sunny", gs)
 	if world.story_night != SimWorld.STORY_NIGHT_CROW:
-		print("  the crow night did not fire — the trigger moved, and this is stale")
-		return []
+		return { "problem": "the crow night did not fire — the trigger moved, and this is stale" }
 
-	var birds := _raid_birds(world)
-	print("  crows:     %s" % _tiles_text(birds))
-	print("  door:      she comes out at (%d,%d)" % [outside.x, outside.y])
+	var ids := _raid_bird_ids(world)
+	var birds: Array[Vector2i] = []
+	for id in ids:
+		birds.append(world.actor_pos(id))
 
 	var times := _shoo_times(world, outside, birds)
 	if times.is_empty():
-		print("  no walkable route from the door to the bed")
-		return []
-	times.sort()
-	for i in times.size():
-		print("  crow %d:    within her three tiles %.2f s after the door" % [i + 1, times[i]])
-	_print_sweep(times)
-	return times
+		return { "problem": "no walkable route from the door to the bed" }
+
+	var morning := _run_morning(world, gs, ids, times)
+	var sorted := times.duplicate()
+	sorted.sort()
+	return {
+		"problem": "",
+		"bed": bed,
+		"birds": birds,
+		"times": times,
+		"reached": sorted,
+		"saved": int(morning["saved"]),
+		"lost": int(morning["lost"]),
+		"standing": int(morning["standing"]),
+		"door": outside,
+	}
+
+
+# The morning played out: she comes through the door, and every bird she walks
+# into range of is shooed at the tick the walk says she gets there — the same
+# `crow_scared` report `entities/crow.gd` files, through the same gateway, so
+# what happens next is whatever the brains decide and nothing here decides it.
+# Then the clock runs past the raid's patience, so a bird she never reached has
+# had every chance to eat.
+#
+# Returns how many of the three birds' plants are still standing (`saved`), how
+# many went (`lost`), and how many tomatoes are left on the bed at all.
+static func _run_morning(world: SimWorld, gs, ids: Array[String],
+		times: Array[float]) -> Dictionary:
+	var tiles: Array[Vector2i] = []
+	for id in ids:
+		tiles.append(world.actor_pos(id))
+	world.apply_action({
+		"verb": "use_door", "actor": SimWorld.ACTOR_PLAYER,
+		"target": world.find_object(WorldLayout.HOME_DOORWAY),
+	}, gs)
+	var door_tick := world.clock.tick
+
+	# In the order she reaches them, which is the order her walk was routed in.
+	var order: Array[int] = []
+	for i in ids.size():
+		order.append(i)
+	order.sort_custom(func(a, b): return times[a] < times[b])
+	for i in order:
+		world.advance_to_tick(door_tick + int(ceil(times[i] * float(SimClock.RATE))), gs)
+		# A bird that has already left the plant is not there to be frightened —
+		# in a played session its sprite is gone and nothing reports anything.
+		if not world.has_actor(ids[i]):
+			continue
+		if String(world.actor(ids[i])["extra"].get("state", "")) != "eating":
+			continue
+		world.apply_action({ "verb": "crow_scared", "actor": ids[i] }, gs)
+	world.advance_to_tick(door_tick + Brain.ticks(CrowBrain.RAID_PATIENCE_SECONDS) + 20, gs)
+
+	var saved := 0
+	for t in tiles:
+		if world.has_crop(t.x, t.y):
+			saved += 1
+	return {
+		"saved": saved,
+		"lost": tiles.size() - saved,
+		"standing": world.crow_targets_of_crop(SimWorld.RAID_CROP).size(),
+	}
 
 
 # --- the farm ------------------------------------------------------------------
@@ -146,7 +206,7 @@ func _measure_on(gs, push_out: int) -> Array[float]:
 # than farmed: see the header. `growing` rather than `seeded` so the bed reads as
 # a bed — a crow eats either (`SimWorld.CROP_STATES`), so the trigger counts
 # either, and nothing here depends on which.
-func _plant_bed(world: SimWorld, from: Vector2i, push_out: int) -> Array[Vector2i]:
+static func _plant_bed(world: SimWorld, from: Vector2i, push_out: int) -> Array[Vector2i]:
 	var reach := _walk_distances(world, from)
 	var rows: Array[Dictionary] = []
 	for ty in SimWorld.PAGE_ROWS:
@@ -174,14 +234,14 @@ func _plant_bed(world: SimWorld, from: Vector2i, push_out: int) -> Array[Vector2
 	return bed
 
 
-func _tiles_text(tiles: Array[Vector2i]) -> String:
+static func _tiles_text(tiles: Array) -> String:
 	var parts: PackedStringArray = []
 	for t in tiles:
 		parts.append("(%d,%d)" % [t.x, t.y])
 	return " ".join(parts)
 
 
-func _plantable(world: SimWorld, t: Vector2i) -> bool:
+static func _plantable(world: SimWorld, t: Vector2i) -> bool:
 	var tile := world.get_tile(t.x, t.y)
 	if tile.is_empty():
 		return false
@@ -193,20 +253,20 @@ func _plantable(world: SimWorld, t: Vector2i) -> bool:
 	return String(WorldLayout.parcel_at(t, world.layout).get("ground", "")) != WorldLayout.YARD
 
 
-func _clear_acorns(world: SimWorld) -> void:
+static func _clear_acorns(world: SimWorld) -> void:
 	for ty in SimWorld.MAP_HEIGHT:
 		for tx in SimWorld.MAP_WIDTH:
 			if world.get_object(tx, ty) == "acorn":
 				world.set_object(tx, ty, "")
 
 
-func _raid_birds(world: SimWorld) -> Array[Vector2i]:
-	var out: Array[Vector2i] = []
+static func _raid_bird_ids(world: SimWorld) -> Array[String]:
+	var out: Array[String] = []
 	var ids: Array = world.actors.keys()
 	ids.sort()
 	for id in ids:
 		if String(id).begins_with(SimWorld.ACTOR_RAID_CROW):
-			out.append(world.actor_pos(String(id)))
+			out.append(String(id))
 	return out
 
 
@@ -215,7 +275,7 @@ func _raid_birds(world: SimWorld) -> Array[Vector2i]:
 # When each bird first falls inside her spook radius, in seconds from the door.
 # She walks to the birds in the order she can reach them, which is what "a direct
 # walk" means for a player who can see three of them: the nearest first.
-func _shoo_times(world: SimWorld, from: Vector2i, birds: Array[Vector2i]) -> Array[float]:
+static func _shoo_times(world: SimWorld, from: Vector2i, birds: Array[Vector2i]) -> Array[float]:
 	var radius := float(SpeciesDefs.senses_of(SpeciesDefs.PLAYER).get("spook_radius", 3.0))
 	var route: Array[Vector2i] = []
 	var at := from
@@ -257,7 +317,7 @@ func _shoo_times(world: SimWorld, from: Vector2i, birds: Array[Vector2i]) -> Arr
 	return times
 
 
-func _note_shoos(times: Array[float], birds: Array[Vector2i], at: Vector2,
+static func _note_shoos(times: Array[float], birds: Array[Vector2i], at: Vector2,
 		t: float, radius: float) -> void:
 	for i in birds.size():
 		if times[i] >= 0.0:
@@ -270,7 +330,7 @@ func _note_shoos(times: Array[float], birds: Array[Vector2i], at: Vector2,
 # first over the walkable grid — the same four directions and the same uniform
 # cost as `Pathfinding`'s A*, which cannot be called here because it takes the
 # farm node and this is layer 2 on its own.
-func _walk_distances(world: SimWorld, from: Vector2i) -> Dictionary:
+static func _walk_distances(world: SimWorld, from: Vector2i) -> Dictionary:
 	var d := { from: 0 }
 	var queue: Array[Vector2i] = [from]
 	var head := 0
@@ -289,7 +349,7 @@ func _walk_distances(world: SimWorld, from: Vector2i) -> Dictionary:
 # The route to a tile, as the tiles she steps on. A crop tile is walkable, so the
 # goal is normally itself; a goal she cannot stand on is approached to the nearest
 # tile she can, which is what the player's own tap does.
-func _path(world: SimWorld, from: Vector2i, to: Vector2i) -> Array[Vector2i]:
+static func _path(world: SimWorld, from: Vector2i, to: Vector2i) -> Array[Vector2i]:
 	var d := _walk_distances(world, from)
 	var goal := to
 	if not d.has(goal):
@@ -314,7 +374,7 @@ func _path(world: SimWorld, from: Vector2i, to: Vector2i) -> Array[Vector2i]:
 	return back
 
 
-func _tile_distance(reach: Dictionary, t: Vector2i) -> float:
+static func _tile_distance(reach: Dictionary, t: Vector2i) -> float:
 	if reach.has(t):
 		return float(reach[t])
 	var best := INF
@@ -325,11 +385,11 @@ func _tile_distance(reach: Dictionary, t: Vector2i) -> float:
 	return best
 
 
-func _near_a_reachable_tile(reach: Dictionary, t: Vector2i) -> bool:
+static func _near_a_reachable_tile(reach: Dictionary, t: Vector2i) -> bool:
 	return _tile_distance(reach, t) < INF
 
 
-func _row_distance(reach: Dictionary, run: Array[Vector2i]) -> float:
+static func _row_distance(reach: Dictionary, run: Array[Vector2i]) -> float:
 	var best := INF
 	for t in run:
 		best = minf(best, _tile_distance(reach, t))
@@ -338,48 +398,29 @@ func _row_distance(reach: Dictionary, run: Array[Vector2i]) -> float:
 
 # --- the answer ----------------------------------------------------------------
 
-func _saved_count(times: Array[float], meal: float) -> int:
-	var n := 0
-	for t in times:
-		if t < meal:
-			n += 1
-	return n
+# One bed's morning, as prose. Everything here is read off `measure` — nothing is
+# recomputed, so what is printed is what the unit suite asserts on.
+static func _report(title: String, run: Dictionary) -> void:
+	print("")
+	print("--- %s ---" % title)
+	if String(run.get("problem", "")) != "":
+		print("  %s" % run["problem"])
+		return
+	print("  bed:       %s" % _tiles_text(run["bed"]))
+	print("  crows:     %s" % _tiles_text(run["birds"]))
+	print("  door:      she comes out at (%d,%d)" % [run["door"].x, run["door"].y])
+	var reached: Array = run["reached"]
+	for i in reached.size():
+		print("  crow %d:    within her three tiles %.2f s after the door" % [i + 1, reached[i]])
+	if reached.size() >= 2:
+		print("  the last bird finishes when she reaches the second, at %.2f s" % reached[1])
+	print("  the morning ends with %d of the 3 plants saved and %d eaten"
+		% [int(run["saved"]), int(run["lost"])])
 
 
-# The meal lengths that save exactly two, as a half-open window: she saves a bird
-# she reaches before its meal ends, so the window runs from just past the second
-# bird's time to the third's.
-func _window(times: Array[float]) -> Array[float]:
-	if times.size() < 3:
-		return []
-	return [times[1], times[2]]
-
-
-func _window_text(times: Array[float]) -> String:
-	var w := _window(times)
-	if w.is_empty():
-		return "(no window)"
-	return "(%.2f s, %.2f s]" % [w[0], w[1]]
-
-
-func _recommended(times: Array[float]) -> float:
-	var w := _window(times)
-	if w.is_empty():
-		return CrowBrain.RAID_EAT_SECONDS
-	return snappedf((w[0] + w[1]) / 2.0, 0.1)
-
-
-func _print_sweep(times: Array[float]) -> void:
-	var edges := {}
-	var meal := SWEEP_FROM
-	while meal <= SWEEP_TO + 0.001:
-		var n := _saved_count(times, meal)
-		if not edges.has(n):
-			edges[n] = meal
-		meal += SWEEP_STEP
-	for n in [0, 1, 2, 3]:
-		if edges.has(n):
-			print("  a meal of %.1f s saves %d of the 3" % [float(edges[n]), n])
-	print("  saves two for a meal in %s; shipped value is %.1f s, which saves %d"
-		% [_window_text(times), CrowBrain.RAID_EAT_SECONDS,
-			_saved_count(times, CrowBrain.RAID_EAT_SECONDS)])
+static func _verdict(label: String, run: Dictionary) -> void:
+	if String(run.get("problem", "")) != "":
+		print("  %s:  %s" % [label, run["problem"]])
+		return
+	print("  %s:  saves %d of 3, %d tomatoes still standing on the bed"
+		% [label, int(run["saved"]), int(run["standing"])])

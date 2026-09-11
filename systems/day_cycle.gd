@@ -76,14 +76,25 @@ const LOOP_START_SFX := {
 	"crow_gorge": "squawk",
 }
 
-# A continuous bed (`AudioManager.play_bed`), started the instant the loop's
-# frame clock starts stepping and stopped the instant the loop finishes
-# fading down: the seeder robot's treads run for as long as it is driving,
-# not once per frame — design/09 warned that "an isolated squawk with no bed
-# under it would sound thinner than silence," and the same is true of a
-# machine that is visibly moving the whole time.
-const LOOP_BED_SFX := {
-	"seeder_bot": "seeder_tread",
+# A continuous bed (`AudioManager.play_bed`), started and stopped on the
+# frames where the sheet actually shows the robot driving — not for the whole
+# loop (Q-107: "we have to time the audio to match the visuals"). The seeder
+# sprite is folded flat against its own body for frames 29-31 and 0-8 (a held
+# driving pose the artist reused rather than re-animating; only the head's
+# idle detail and the background grass change frame to frame there) and is
+# working the arm — lifting seed clear of the bag, swinging it to the hole,
+# easing back down — for frames 9-28. `LOOP_BED_START_SFX` names the frame a
+# bed starts on, `LOOP_BED_STOP_SFX` the frame it stops on, both keyed the
+# same way as `LOOP_FRAME_SFX` below: by frame index within one pass, so a
+# re-exported loop keeps the cue by index rather than by wall-clock time. The
+# wrap from 31 back to 0 is one continuous drive stretch (0 is listed as a
+# start too, only so the very first pass — which begins mid-stretch at frame
+# 0, never having passed through 31 — starts the bed as well).
+const LOOP_BED_START_SFX := {
+	"seeder_bot": {0: "seeder_tread", 29: "seeder_tread"},
+}
+const LOOP_BED_STOP_SFX := {
+	"seeder_bot": {9: "seeder_tread"},
 }
 
 # A 4×4 ordered-dither (Bayer) matrix, used to stipple a loop's canvas edge into
@@ -220,8 +231,14 @@ func _process(delta: float) -> void:
 				timer = 0.0
 				_loop_elapsed = 0.0
 				_loop_last_frame_i = -1
-				if LOOP_BED_SFX.has(last_story_loop):
-					AudioManager.play_bed(LOOP_BED_SFX[last_story_loop])
+				# The frame-cue check in `_step_loop_frame` only runs once state
+				# is "loop_playing" (next tick) — start here too, so a loop that
+				# opens on a driving frame (seeder_bot's frame 0) is never heard
+				# starting a beat late. `play_bed` no-ops if this duplicates the
+				# frame-0 cue a moment later.
+				var bed_starts: Dictionary = LOOP_BED_START_SFX.get(last_story_loop, {})
+				if bed_starts.has(0):
+					AudioManager.play_bed(String(bed_starts[0]))
 		"loop_playing":
 			alpha = 1.0
 			_loop_sprite.modulate.a = 1.0
@@ -239,7 +256,12 @@ func _process(delta: float) -> void:
 			_step_loop_frame(delta)
 			if timer >= LOOP_FADE_SEC:
 				_loop_sprite.visible = false
-				if LOOP_BED_SFX.has(last_story_loop):
+				# Safety net: a loop's own play total is always a whole number
+				# of passes (`_prepare_loop`), so the fade-down starts on a
+				# driving frame the bed is already running through — cut it
+				# here unconditionally rather than waiting for a stop frame
+				# that this phase's fade-out never reaches.
+				if LOOP_BED_START_SFX.has(last_story_loop):
 					AudioManager.stop_bed()
 				state = "hold"
 				timer = 0.0
@@ -364,6 +386,15 @@ func _step_loop_frame(delta: float) -> void:
 		var cues: Dictionary = LOOP_FRAME_SFX.get(last_story_loop, {})
 		if cues.has(i):
 			AudioManager.play_sfx(String(cues[i]))
+		# Frame-keyed bed start/stop (LOOP_BED_START_SFX / LOOP_BED_STOP_SFX):
+		# same "fires once per pass, on the frame index" rule as the one-shots
+		# above, so the tread only runs while the sheet shows the robot driving.
+		var bed_starts: Dictionary = LOOP_BED_START_SFX.get(last_story_loop, {})
+		if bed_starts.has(i):
+			AudioManager.play_bed(String(bed_starts[i]))
+		var bed_stops: Dictionary = LOOP_BED_STOP_SFX.get(last_story_loop, {})
+		if bed_stops.has(i):
+			AudioManager.stop_bed()
 
 
 func _load_anim_manifest(slug: String) -> Dictionary:

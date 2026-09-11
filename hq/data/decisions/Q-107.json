@@ -44,7 +44,7 @@
    "type": "video",
    "src": "docs/design/mockups/story_night_sounds.mp4",
    "tag": "the pick",
-   "caption": "The boot (the chime under the music fading up), the crow night (squawk, two pecks, the music ducked), the robot night (treads, servo, seed scatter)."
+   "caption": "The boot (the chime, then a pause, then the music rising), the crow night (squawk, two pecks, the music ducked), the robot night (treads while it drives, servo, seed scatter)."
   },
   {
    "type": "heading",
@@ -66,19 +66,19 @@
   {
    "type": "heading",
    "caption": "The robot's treads",
-   "detail": "for as long as it drives — the same moment once per candidate, only this sound changed"
-  },
-  {
-   "type": "video",
-   "src": "docs/design/mockups/story_night_sounds/seeder_tread__seeder_tread_cc0_425271.mp4",
-   "tag": "the pick",
-   "caption": "“Tank Tread” by 77Pacer, a free recording"
+   "detail": "only while it is shown driving — the same moment once per candidate, only this sound changed"
   },
   {
    "type": "video",
    "src": "docs/design/mockups/story_night_sounds/seeder_tread__seeder_tread_cc0_415564.mp4",
-   "tag": "alternate 1 of 2",
+   "tag": "the pick",
    "caption": "“mehackit robot 5” by hullum, a free recording"
+  },
+  {
+   "type": "video",
+   "src": "docs/design/mockups/story_night_sounds/seeder_tread__seeder_tread_cc0_425271.mp4",
+   "tag": "alternate 1 of 2",
+   "caption": "“Tank Tread” by 77Pacer, a free recording"
   },
   {
    "type": "video",
@@ -89,25 +89,25 @@
   {
    "type": "heading",
    "caption": "The robot's servo",
-   "detail": "as the arm swings — the same moment once per candidate, only this sound changed"
-  },
-  {
-   "type": "video",
-   "src": "docs/design/mockups/story_night_sounds/seeder_servo__seeder_servo_cc0_740244.mp4",
-   "tag": "the pick",
-   "caption": "“Servo 6” by JoontheFloof, a free recording"
+   "detail": "as the arm swings, alternating each time — the same moment once per candidate, only this sound changed"
   },
   {
    "type": "video",
    "src": "docs/design/mockups/story_night_sounds/seeder_servo__seeder_servo_cc0_740245.mp4",
-   "tag": "alternate 1 of 2",
+   "tag": "the pick (take 1 of 2)",
    "caption": "“Servo 7” by JoontheFloof, a free recording"
   },
   {
    "type": "video",
    "src": "docs/design/mockups/story_night_sounds/seeder_servo__seeder_servo_cc0_740247.mp4",
-   "tag": "alternate 2 of 2",
+   "tag": "the pick (take 2 of 2)",
    "caption": "“Servo 9” by JoontheFloof, a free recording"
+  },
+  {
+   "type": "video",
+   "src": "docs/design/mockups/story_night_sounds/seeder_servo__seeder_servo_cc0_740244.mp4",
+   "tag": "alternate 1 of 1",
+   "caption": "“Servo 6” by JoontheFloof, a free recording"
   },
   {
    "type": "heading",

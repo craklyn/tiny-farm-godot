@@ -1151,6 +1151,13 @@ func set_tile_state(tx: int, ty: int, new_state: String, crop_type: String = "")
 	var tile := get_tile(tx, ty)
 	if tile.is_empty():
 		return
+	# A square she has worked is no longer a square a bird emptied (Q-105), so
+	# the mark comes off here — the one place a square's state changes, which
+	# makes tilling it, sowing it and clearing it all the same rule and none of
+	# them a special case. Cleared *before* the state is written rather than
+	# after, so `eat_crop`, which turns the square to soil and then marks it,
+	# does not have its own mark taken off by its own call.
+	tile.erase("ransacked")
 	tile.state = new_state
 	if crop_type != "":
 		tile.crop_type = crop_type
@@ -2612,6 +2619,18 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			# gateway would then refuse it.
 			if has_crop(target.x, target.y):
 				set_tile_state(target.x, target.y, "tilled")
+				# **The square says what happened to it** (Q-105, design/04).
+				# Turned soil with nothing standing on it is also what a row she
+				# has hoed and not yet sown looks like, so without this a raid
+				# reads as ground she forgot about rather than as a plant she
+				# lost. The fact is the sim's and is saved with the world; the
+				# picture drawn on it is `world/farm.gd`'s.
+				#
+				# Written for the verb rather than for the raid: whatever ate the
+				# plant, the square is a square something ate a plant off. It is
+				# cleared the moment she works it again, which every verb that
+				# touches a square does through `set_tile_state`.
+				tile["ransacked"] = true
 				_rain_wets_fresh_soil(target, gs)
 				return { "ok": true }
 			return _fail("no_crop")

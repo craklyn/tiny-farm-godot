@@ -717,12 +717,19 @@ static func _restore_actors(raw: Dictionary) -> Dictionary:
 # JSON turns ints into floats and has no bool guarantees across tools;
 # normalize so a loaded save is value-identical to a live one.
 static func _normalize_tile(tile) -> Dictionary:
-	return {
+	var out := {
 		"state": String(tile.get("state", "cleared")),
 		"crop_type": String(tile.get("crop_type", "")),
 		"growth_stage": int(tile.get("growth_stage", 0)),
 		"watered_today": bool(tile.get("watered_today", false)),
 	}
+	# The mark a crow leaves on the square it emptied (Q-105). Carried only on the
+	# squares that have it, so a farm with no raid in it saves exactly the file it
+	# saved before this existed, and a save written before this existed loads as a
+	# farm nothing has eaten off — which is what it is.
+	if bool(tile.get("ransacked", false)):
+		out["ransacked"] = true
+	return out
 
 
 static func _int_values(d: Dictionary) -> Dictionary:

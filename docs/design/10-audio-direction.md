@@ -136,14 +136,16 @@ keeps its cues without a code change:
 - **The crow gorge** — the existing `squawk` once as the loop's fade-up begins,
   then a new `peck` on each of her two strikes' contact frames (read straight off
   the loop's own generator, `tools/experiments/vfx_crow_gorge.py`).
-- **The seeder robot** — a new `seeder_tread` bed, looping for as long as the
-  loop is on screen (a short recording repeated, not a single long file); a
-  `seeder_servo` one-shot as the arm lifts seed clear of the bag; a
-  `seeder_scatter` one-shot as the seeds and covering soil land at the hole.
+- **The seeder robot** — a `seeder_tread` bed (a short recording repeated,
+  not a single long file), started and stopped on the frames its own sheet
+  shows it driving rather than run under the whole loop; a `seeder_servo`
+  one-shot as the arm lifts seed clear of the bag; a `seeder_scatter`
+  one-shot as the seeds and covering soil land at the hole.
 - **The boot bloom** — a new `bloom_chime`, a soft five-note rise sized to the
   bloom's seed climb as its manifest gives it (frame count × ms per frame; a
-  re-exported bloom means rerunning `tools/gen_sfx.py`), sitting under the music's existing fade-up
-  from silence rather than replacing any part of it.
+  re-exported bloom means rerunning `tools/gen_sfx.py`). The music's own
+  fade-up from silence waits for the chime to finish and a short pause after
+  it, rather than rising underneath it (Q-107, below).
 - **The watering inset** — nothing of its own: the neighbour's water Action
   already sounds the pour (the same one the player hears) on the path that
   reports the shot, so the card is heard once through that cue.
@@ -156,11 +158,15 @@ keeps its cues without a code change:
 CC0-first (`tools/fetch_sfx_candidates.py`); the boot chime was synthesized
 instead (`tools/gen_sfx.py`) because a *rising* chime is a pitched, non-organic
 tone — synthesis's proven territory — and no CC0 pull read as a rise rather than
-a single decaying ding. One candidate per sound is wired into `AudioManager`
-today; every other candidate ships alongside it, unwired, and is reachable from
-the title screen's Sound Test under "candidates" for an A/B listen before any
-pick is called final — provenance and the full candidate list are in
-`CREDITS.md`. **Ruled 2026-09-11 (Q-107):** the peck stays; the treads become "mehackit robot 5"
-and play only while the robot drives, keyed to its frames like the other cues, rather than under
-the whole loop; the servo alternates "Servo 7" and "Servo 9"; the scatter is any of the three;
-the chime stays, with a longer pause after it ends before the music ramps up.
+a single decaying ding. One candidate per sound (two for the servo, shipped as
+alternating takes) is wired into `AudioManager`; every other candidate ships
+alongside it, unwired, and is reachable from the title screen's Sound Test
+under "candidates" for an A/B listen — provenance and the full candidate list
+are in `CREDITS.md`. **Ruled 2026-09-11 (Q-107):** the peck stays; the treads
+become "mehackit robot 5" and play only while the robot drives — started and
+stopped on the frames its own sheet shows it driving, keyed by frame index
+like the other loop cues, rather than run under the whole loop; the servo
+alternates "Servo 7" and "Servo 9" instead of repeating one take; the scatter
+is any of the three; the chime stays, and the music's fade-up now waits for
+the chime to finish playing plus a further ~0.4s pause before it starts
+ramping up, rather than rising underneath the chime.

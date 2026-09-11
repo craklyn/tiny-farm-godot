@@ -61,8 +61,9 @@ godot --headless --path . --script res://tools/demo_robot_value.gd
 # off — prints the tables the unit test's gate is taken from
 godot --headless --path . --script res://tools/demo_learning_robot.gd
 
-# How long the raid's crows should eat (design/04): walks her out of the front door on
-# the generated farm and prints when each of the three birds falls inside her shoo range
+# What the raid's morning costs her (design/04, Q-105): walks her out of the front door on
+# the generated farm, on a near bed and one ten tiles further out, shoos each bird as she
+# reaches it and prints how many of the three tomatoes survive
 godot --headless --path . --script res://tools/measure_raid_race.gd
 
 # Verify the last human play session replays to the autosave

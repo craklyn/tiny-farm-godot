@@ -127,20 +127,32 @@ thing the sim can only know by the door; and the shoo is the ordinary one. **Del
 small first:** no special camera, the crows are the 1× birds with their eating animation, and
 a scarecrow already on the field does what it always does.
 
-**The race, measured** (2026-09-10, built). An ordinary crow's meal is five seconds and she
-walks three tiles a second; the raid's meal is the value that decides how many tomatoes a
-direct walk out of the door saves, and losing none teaches nothing while losing all three
-punishes a morning she had no part in. `tools/measure_raid_race.gd` walks her out of the
-door on the farm the game generates and prints when each bird falls inside her shoo range.
-With the bed on the nearest ground she can plant — the second row of the neighbour's plot,
-through the gate — the three birds come inside that range 2.6, 3.4 and 4.0 seconds after
-the door, so a meal of **3.7 seconds** saves two and loses one. That is what the raid
-ships with. Its honest limit is that one meal length meets a distance the player chooses:
-on a bed ten tiles further out the same meal saves none, because she is still six seconds
-away when the birds finish. **Ruled 2026-09-11 (Q-105): the meal lasts as long as her walk.**
-The birds finish the moment she reaches the second one, so the raid costs exactly one tomato
-wherever she planted; and the plot a bird ransacked gets a small animation saying so, since a
-tilled square with nothing on it does not read as a loss.
+**The race, measured** (2026-09-10, rebuilt 2026-09-11). An ordinary crow's meal is five
+seconds and she walks three tiles a second, and how many tomatoes a direct walk out of the
+door saves is the whole of what the raid teaches: losing none teaches nothing, losing all
+three punishes a morning she had no part in. The raid first shipped with a meal of its own
+— **3.7 seconds**, measured rather than guessed on the farm the game generates, which saved
+two of the three on the nearest ground she can plant. Its limit was that one meal length
+meets a distance the player chooses: on a bed ten tiles further out the same meal saved
+none, because she was still six seconds away when the birds finished. **Ruled 2026-09-11
+(Q-105): the meal lasts as long as her walk.** The last bird takes its tomato the moment
+she has seen off the second one, so the raid costs exactly one tomato wherever the bed is —
+over in three and a half seconds beside the house, in six ten tiles out, and the same
+lesson at both. The only clock left in it is the birds' patience, a minute from the door:
+what a player who comes out, sees three crows on her tomatoes and does nothing loses the
+bed to. `tools/measure_raid_race.gd` now walks her out onto both beds and plays the morning
+through the gateway rather than reasoning about it, so what it prints — two saved of three
+on each — is what the game does, and the unit suite asserts on the same two runs.
+
+**A ransacked plot says so** (designer, 2026-09-11, built). A square a bird emptied is
+turned soil with nothing on it, which is also what a row she hoed and has not sown looks
+like, so a loss read as a chore she forgot. The square now carries the fact that something
+ate a plant off it — saved with the world, cleared the moment she works it again — and
+wears a small looping mark while it does: three clods of earth scattered across it, lifting
+one after another as if the soil were still settling. **Deliberately made of pixels the
+game already ships** (they are lifted out of the tilled-soil sheet), so the first version
+costs no art; a drawn version, with tumbled leaves or a feather left behind, is the one
+piece of this still open.
 
 **What "planted" means** is settled by the crow's own appetite: the four are counted with
 the same rule a bird picks its target by, so a tile the crow could not eat does not count,

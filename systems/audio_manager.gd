@@ -50,11 +50,21 @@ var sfx_streams = {
     # P-15 p1 ("a sound bed under each story night"): the crow gorge's own two
     # strikes, one per side of the loop. CC0 recording; see CREDITS.md.
     "peck": [preload("res://assets/audio/sfx/peck_cc0_248254.wav")],
-    # The seeder robot's three beats — a continuous bed (treads, played through
-    # `play_bed`, not `play_sfx`) and two one-shots on the arm's own swing.
+    # The seeder robot's three beats — a bed (treads, played through
+    # `play_bed`, not `play_sfx`, and only while `day_cycle.gd`'s frame table
+    # says the robot is driving) and two one-shots on the arm's own swing.
     # All three CC0; see CREDITS.md.
-    "seeder_tread": [preload("res://assets/audio/sfx/seeder_tread_cc0_425271.wav")],
-    "seeder_servo": [preload("res://assets/audio/sfx/seeder_servo_cc0_740244.wav")],
+    #
+    # Q-107 (2026-09-11): the treads are "mehackit robot 5". The servo ships
+    # both of the designer's picked takes as variants — "Servo 7" and "Servo
+    # 9" — so successive swings alternate rather than repeat one recording;
+    # `play_sfx`'s existing "never the same variant twice running" rule is
+    # exactly alternation once a sound has only two takes.
+    "seeder_tread": [preload("res://assets/audio/sfx/seeder_tread_cc0_415564.wav")],
+    "seeder_servo": [
+        preload("res://assets/audio/sfx/seeder_servo_cc0_740245.wav"),
+        preload("res://assets/audio/sfx/seeder_servo_cc0_740247.wav"),
+    ],
     "seeder_scatter": [preload("res://assets/audio/sfx/seeder_scatter_cc0_348953.wav")],
     # The boot bloom's rising chime (Q-103), synthesized (tools/gen_sfx.py) —
     # see CREDITS.md.

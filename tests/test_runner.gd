@@ -92,6 +92,11 @@ const RobotValue := preload("res://tools/demo_robot_value.gd")
 # is shared rather than copied). Static functions only, as above.
 const LearningRobot := preload("res://tools/demo_learning_robot.gd")
 
+# The crow raid's morning walked out on the farm the game generates, shared with
+# the tool that prints it for a human (`test_crow_raid_costs_one_tomato` says why
+# it is shared rather than copied). Static functions only, as above.
+const RaidRace := preload("res://tools/measure_raid_race.gd")
+
 
 func _init() -> void:
 	GameState = load("res://systems/game_state.gd").new()
@@ -134,6 +139,8 @@ func _init() -> void:
 	test_crow_schedule()
 	test_crow_raid_trigger()
 	test_crow_raid_waits_for_the_door()
+	test_crow_raid_costs_one_tomato()
+	test_crow_raid_marks_the_plot()
 	test_crow_raid_survives_a_save()
 	test_story_loop_shown_survives_a_save()
 	test_crow_raid_replays()
@@ -2262,18 +2269,139 @@ func test_crow_raid_waits_for_the_door() -> void:
 			and int(extra.get("eat_at", 0)) > s.world.clock.tick
 	_assert(started, "and all three meal clocks start on that one moment")
 
-	# Short of the meal, nothing is lost; past it, three of the four are.
-	s.tick(int(CrowBrain.RAID_EAT_SECONDS * SimClock.RATE) - 2)
+	# ...and she does nothing at all. Since Q-105 the clock that ends a raid meal
+	# is her walk, so what is left here is the patience under it: a player who
+	# opens the door on three crows and never walks over still loses the bed, and
+	# the wait before that is long enough that it can never be what decides a race
+	# she is actually running.
+	s.tick(int(CrowBrain.RAID_PATIENCE_SECONDS * SimClock.RATE) - 2)
 	_assert(_standing_tomatoes(s.world) == SimWorld.RAID_MIN_TOMATOES,
-		"a fifth of a second before the meal ends, the bed is untouched")
+		"a fifth of a second before their patience runs out, the bed is untouched")
 	s.tick(4)
 	_assert(_standing_tomatoes(s.world) == SimWorld.RAID_MIN_TOMATOES - SimWorld.RAID_CROWS,
-		"and when it ends, the three tomatoes they were standing on are gone")
+		"and when it does, the three tomatoes they were standing on are gone")
 	var eaten := 0
 	for t in bed:
 		if not s.world.has_crop(t.x, t.y):
 			eaten += 1
 	_assert(eaten == SimWorld.RAID_CROWS, "each bird took the plant it was standing on")
+	s.done()
+
+
+func test_crow_raid_costs_one_tomato() -> void:
+	print("\n--- The raid's meal lasts as long as her walk (Q-105) Tests ---")
+
+	# The rule itself, with no walk in it: the birds are shooed through the
+	# gateway, which is what her walking into range amounts to.
+	var s := LiveSession.new(3102)
+	var bed := _raid_eve(s)
+	s.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
+	var birds := _raid_birds(s.world)
+	s.act({ "verb": "use_door", "actor": "player", "target": _doorway_tile(s.world) })
+	var plants: Array[Vector2i] = []
+	for id in birds:
+		plants.append(s.world.actor_pos(id))
+
+	s.tick(30)
+	_assert(_standing_tomatoes(s.world) == SimWorld.RAID_MIN_TOMATOES,
+		"three seconds out of the door, with nobody frightened, the bed is whole")
+
+	s.act({ "verb": "crow_scared", "actor": birds[0] })
+	s.tick(5)
+	_assert(_standing_tomatoes(s.world) == SimWorld.RAID_MIN_TOMATOES,
+		"she reaches the first bird and it leaves with nothing")
+	_assert(CrowBrain.raid_birds_eating(s.world).size() == SimWorld.RAID_CROWS - 1,
+		"two of the raid are still on their plants")
+
+	# The second one is the bell. The bird she has not reached takes the plant it
+	# is standing on and goes, so the morning costs one tomato however long the
+	# walk was — which is the whole of the ruling.
+	s.act({ "verb": "crow_scared", "actor": birds[1] })
+	s.tick(2)
+	_assert(_standing_tomatoes(s.world) == SimWorld.RAID_MIN_TOMATOES - 1,
+		"and when she reaches the second, the last bird eats at once — one tomato")
+	_assert(s.world.has_crop(plants[0].x, plants[0].y)
+			and s.world.has_crop(plants[1].x, plants[1].y),
+		"the two she got to still have their plants")
+	_assert(not s.world.has_crop(plants[2].x, plants[2].y),
+		"and the one she did not is the plant that went")
+	_assert(CrowBrain.raid_birds_eating(s.world).is_empty(), "the bed is empty of birds")
+
+	# Nothing else changes in the minute after: the raid is over, and the patience
+	# clock cannot come back and take a second tomato off a bird that has gone.
+	s.tick(int(CrowBrain.RAID_PATIENCE_SECONDS * SimClock.RATE) + 20)
+	_assert(_standing_tomatoes(s.world) == SimWorld.RAID_MIN_TOMATOES - 1,
+		"a minute later the bed is still three plants")
+	_assert(bed.size() == SimWorld.RAID_MIN_TOMATOES, "out of the four she went to bed with")
+	s.done()
+
+	# And the same morning walked for real, on the farm the game generates. This
+	# is `tools/measure_raid_race.gd` — the tool a human runs to watch the race —
+	# called rather than copied, so the rule is asserted against the same walk the
+	# tool prints and the two can never drift. Two beds: the nearest ground she
+	# can plant, and the same row ten tiles further from her door, which is the
+	# distance that used to take every tomato.
+	for push_out in [RaidRace.NEAR_BED, RaidRace.FAR_BED]:
+		var run: Dictionary = RaidRace.measure(push_out)
+		_assert(String(run.get("problem", "?")) == "",
+			"the raid's morning can be walked on a bed %d tiles out (%s)"
+				% [push_out, run.get("problem", "?")])
+		if String(run.get("problem", "?")) != "":
+			continue
+		_assert(int(run["saved"]) == SimWorld.RAID_CROWS - 1,
+			"a direct walk from the door saves two of the three, %d tiles out" % push_out)
+		_assert(int(run["lost"]) == 1,
+			"and costs exactly one tomato, %d tiles out" % push_out)
+
+
+func test_crow_raid_marks_the_plot() -> void:
+	print("\n--- A plot a crow emptied says so, until she works it again (Q-105) Tests ---")
+
+	var s := LiveSession.new(3103)
+	_raid_eve(s)
+	s.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
+	var birds := _raid_birds(s.world)
+	s.act({ "verb": "use_door", "actor": "player", "target": _doorway_tile(s.world) })
+	var plant: Vector2i = s.world.actor_pos(birds[2])
+	_assert(not bool(s.world.get_tile(plant.x, plant.y).get("ransacked", false)),
+		"a plant still standing carries no mark")
+
+	s.act({ "verb": "crow_scared", "actor": birds[0] })
+	s.act({ "verb": "crow_scared", "actor": birds[1] })
+	s.tick(2)
+	_assert(not s.world.has_crop(plant.x, plant.y), "the last bird takes its tomato")
+	_assert(bool(s.world.get_tile(plant.x, plant.y).get("ransacked", false)),
+		"and leaves the square marked as a square something ate a plant off")
+
+	# The mark rides in the save, because a farm reloaded the next minute is the
+	# same farm and the loss did not stop being true while the file was shut.
+	var snapshot = JSON.parse_string(JSON.stringify(SaveGame.capture(s.world, s.gs)))
+	var loaded := SimWorld.new()
+	var gs_loaded = load("res://systems/game_state.gd").new()
+	_assert(SaveGame.restore(snapshot, loaded, gs_loaded), "the morning save restores")
+	_assert(bool(loaded.get_tile(plant.x, plant.y).get("ransacked", false)),
+		"with the ransacked square still ransacked")
+	_assert(SaveGame.capture_canonical(loaded, gs_loaded)
+			== SaveGame.capture_canonical(s.world, s.gs),
+		"and the two farms are the same farm in every other respect too")
+
+	# A save from before any of this loads as a farm nothing has eaten off, which
+	# is the only thing it could honestly be.
+	var legacy = JSON.parse_string(JSON.stringify(snapshot))
+	legacy["world"]["tiles"][plant.y][plant.x].erase("ransacked")
+	var old := SimWorld.new()
+	var gs_old = load("res://systems/game_state.gd").new()
+	_assert(SaveGame.restore(legacy, old, gs_old), "a save from before the mark loads")
+	_assert(not bool(old.get_tile(plant.x, plant.y).get("ransacked", false)),
+		"as a farm with nothing marked on it")
+
+	# She puts the hoe through it, and the square is hers again.
+	var tilled := s.act({ "verb": "till", "actor": "player", "target": plant })
+	_assert(tilled.get("ok", false), "she turns the square over")
+	_assert(not bool(s.world.get_tile(plant.x, plant.y).get("ransacked", false)),
+		"and the mark comes off with the first work she does on it")
+	gs_loaded.free()
+	gs_old.free()
 	s.done()
 
 
@@ -2383,19 +2511,26 @@ func test_crow_raid_replays() -> void:
 	var s := LiveSession.new(3301)
 	var bed := _raid_eve(s)
 	s.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
+	var birds := _raid_birds(s.world)
 	s.tick(150)
 	s.act({ "verb": "use_door", "actor": "player", "target": _doorway_tile(s.world) })
-	s.tick(int(CrowBrain.RAID_EAT_SECONDS * SimClock.RATE) + 20)
-	_assert(_standing_tomatoes(s.world) == SimWorld.RAID_MIN_TOMATOES - SimWorld.RAID_CROWS,
-		"the session ends with three tomatoes eaten and one left")
+	# The morning as it is actually played (Q-105): she gets to two of the three,
+	# the last one eats on the second shoo, and the log has to carry a meal whose
+	# moment was decided by a report she filed rather than by a count of seconds.
+	s.tick(20)
+	s.act({ "verb": "crow_scared", "actor": birds[0] })
+	s.tick(8)
+	s.act({ "verb": "crow_scared", "actor": birds[1] })
+	s.tick(int(CrowBrain.RAID_PATIENCE_SECONDS * SimClock.RATE) + 20)
+	_assert(_standing_tomatoes(s.world) == SimWorld.RAID_MIN_TOMATOES - 1,
+		"the session ends with one tomato eaten and three left")
 
 	var eats := 0
 	for e in s.log.entries:
 		if String(e.get("actor", "")).begins_with(SimWorld.ACTOR_RAID_CROW) \
 				and String(e.get("verb", "")) == "eat_crop":
 			eats += 1
-	_assert(eats == SimWorld.RAID_CROWS,
-		"and the log carries all three meals as Actions a brain decided")
+	_assert(eats == 1, "and the log carries that meal as an Action a brain decided")
 
 	var snapshot = JSON.parse_string(JSON.stringify(SaveGame.capture(s.world, s.gs)))
 	var report := SaveGame.replay_report(ReplayLog.from_json(s.log.to_json()), snapshot)

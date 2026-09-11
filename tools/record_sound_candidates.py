@@ -19,29 +19,33 @@ OUT = "docs/design/mockups/story_night_sounds"
 CARD = "hq/data/decisions/Q-107.json"
 FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 
-# slot -> (segment, plain name, when it plays, [(candidate file stem, description)]);
-# the first candidate is the wired pick (systems/audio_manager.gd).
+# slot -> (segment, plain name, when it plays, how many of the leading
+# candidates are wired (systems/audio_manager.gd), [(candidate file stem,
+# description)]). The wired count is 1 for every slot except the servo, which
+# ships two takes as alternating variants (Q-107, 2026-09-11) — both lead the
+# list and both are tagged "the pick" rather than one reading as an alternate
+# to the other.
 SLOTS = {
-    "peck": ("crow_night", "The crow's peck", "on each of her two strikes", [
+    "peck": ("crow_night", "The crow's peck", "on each of her two strikes", 1, [
         ("peck_cc0_248254", "“Pecked eyeball” by jameswrowles, a free recording"),
         ("peck_synth", "synthesized: two sharp tocs"),
     ]),
-    "seeder_tread": ("robot_night", "The robot's treads", "for as long as it drives", [
-        ("seeder_tread_cc0_425271", "“Tank Tread” by 77Pacer, a free recording"),
+    "seeder_tread": ("robot_night", "The robot's treads", "only while it is shown driving", 1, [
         ("seeder_tread_cc0_415564", "“mehackit robot 5” by hullum, a free recording"),
+        ("seeder_tread_cc0_425271", "“Tank Tread” by 77Pacer, a free recording"),
         ("seeder_tread_cc0_415565", "“mehackit robot 6” by hullum, a free recording"),
     ]),
-    "seeder_servo": ("robot_night", "The robot's servo", "as the arm swings", [
-        ("seeder_servo_cc0_740244", "“Servo 6” by JoontheFloof, a free recording"),
+    "seeder_servo": ("robot_night", "The robot's servo", "as the arm swings, alternating each time", 2, [
         ("seeder_servo_cc0_740245", "“Servo 7” by JoontheFloof, a free recording"),
         ("seeder_servo_cc0_740247", "“Servo 9” by JoontheFloof, a free recording"),
+        ("seeder_servo_cc0_740244", "“Servo 6” by JoontheFloof, a free recording"),
     ]),
-    "seeder_scatter": ("robot_night", "The seed scatter", "as the seed lands", [
+    "seeder_scatter": ("robot_night", "The seed scatter", "as the seed lands", 1, [
         ("seeder_scatter_cc0_348953", "“Crumble 6” by abstraktgeneriert, a free recording"),
         ("seeder_scatter_cc0_348954", "“Crumble 9” by abstraktgeneriert, a free recording"),
         ("seeder_scatter_cc0_348955", "“Crumble 8” by abstraktgeneriert, a free recording"),
     ]),
-    "bloom_chime": ("boot", "The chime under the bloom", "as the seeds rise at boot", [
+    "bloom_chime": ("boot", "The chime under the bloom", "as the seeds rise at boot", 1, [
         ("bloom_chime", "synthesized: a five-note rise sized to the bloom"),
         ("bloom_chime_cc0_333694", "“Thin bell ding 3” by Khrinx, a free recording"),
         ("bloom_chime_cc0_333695", "“Thin bell ding 2” by Khrinx, a free recording"),
@@ -75,13 +79,16 @@ def main():
         {"type": "heading", "caption": "All five picks in one pass",
          "detail": "the boot, the crow night, the robot night — what ships today"},
         {"type": "video", "src": "docs/design/mockups/story_night_sounds.mp4", "tag": "the pick",
-         "caption": "The boot (the chime under the music fading up), the crow night (squawk, two pecks, the music ducked), the robot night (treads, servo, seed scatter)."},
+         "caption": "The boot (the chime, then a pause, then the music rising), the crow night (squawk, two pecks, the music ducked), the robot night (treads while it drives, servo, seed scatter)."},
     ]
-    for slot, (segment, name, when, cands) in SLOTS.items():
+    for slot, (segment, name, when, wired_count, cands) in SLOTS.items():
         attachments.append({"type": "heading", "caption": name,
                             "detail": f"{when} — the same moment once per candidate, only this sound changed"})
         for i, (cand, desc) in enumerate(cands):
-            tag = "the pick" if i == 0 else f"alternate {i} of {len(cands) - 1}"
+            if i < wired_count:
+                tag = "the pick" if wired_count == 1 else f"the pick (take {i + 1} of {wired_count})"
+            else:
+                tag = f"alternate {i - wired_count + 1} of {len(cands) - wired_count}"
             out_rel = f"{OUT}/{slot}__{cand}.mp4"
             if slot in want:
                 label = f"{name} · {tag} · {desc}"

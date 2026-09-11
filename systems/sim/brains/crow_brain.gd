@@ -43,31 +43,26 @@ extends Brain
 const EAT_SECONDS := 5.0
 const HARMLESS_PERCH_SECONDS := 12.0
 
-# [Playtest] — the raid's meal, and it is shorter than an ordinary one on
-# purpose (design/04, "The morning after"). Three birds are already eating when
-# she opens her front door, and the designer's target for the race is that a
-# direct walk out to the bed **saves two of the three**: losing none teaches
-# nothing, losing all three is a punishment for a morning she had no part in.
+# How long the raid's three birds will wait if she never walks over to them, and
+# the only clock left in the raid that counts seconds at all.
 #
-# Measured rather than guessed, on the farm the game actually generates:
-# `tools/measure_raid_race.gd` prints the run this number comes from. She comes
-# out of her front door at (2,3), crosses the yard, goes through the gate at
-# (11,4) and reaches the neighbour's plot — the nearest ground she can plant — at
-# 3 tiles a second, and a crow is shooed when she comes within her three-tile
-# spook radius rather than when she reaches its tile. On a four-tomato row there
-# the three birds fall inside that radius 2.57 s, 3.36 s and 3.96 s after the
-# door, so a meal anywhere in (3.36 s, 3.96 s] saves two and loses one. 3.7 is
-# the middle of that window.
+# The raid used to end on a measured number of seconds — 3.7, the value that
+# saved two of the three birds' tomatoes on the nearest bed the game lets her
+# plant. The trouble with that is the race is really against a distance the
+# *player* chooses: the same meal saved two tomatoes beside the house and none
+# on a row ten tiles further out, so the morning taught a different lesson
+# depending on where she had happened to sow. **Ruled 2026-09-11 (Q-105): the
+# meal lasts as long as her walk.** The birds finish when she reaches the second
+# of them — see `_last_bird_finishes` — so the raid costs exactly one tomato
+# wherever the bed is.
 #
-# **It is one number for a race whose length the player chooses**, which is the
-# honest limitation and the reason the tool prints a second bed beside the first:
-# on a row ten tiles further out the same meal saves none, because she is still
-# six seconds from the first bird when they finish. Tuning against the nearest
-# plantable ground is the conservative end — the raid takes one tomato on the
-# farm the game hands her, and more only on a bed she chose to plant far away.
-# Whether that is the right end of the dial is the designer's, and the tool is
-# how the question gets re-asked rather than re-guessed.
-const RAID_EAT_SECONDS := 3.7
+# This number is what is left under that rule: a player who opens the door, sees
+# three crows on her tomatoes and does nothing at all still loses them. It is
+# deliberately far longer than any walk across the farm — on the furthest bed
+# `tools/measure_raid_race.gd` plays, the last bird is about seven seconds from
+# the door, well under an eighth of it — so it can never be the thing that
+# decides the race.
+const RAID_PATIENCE_SECONDS := 60.0
 
 # How far off the edge a crow appears, and how far past it before it is gone.
 # The node worked in pixels (32 and 100); in tiles, because a sim that reasons in
@@ -195,7 +190,7 @@ static func raid(world: SimWorld, gs) -> Array[String]:
 			"leaving_because": "",
 		})
 		if outdoors:
-			world.actor(id)["extra"]["eat_at"] = world.clock.tick + ticks(RAID_EAT_SECONDS)
+			world.actor(id)["extra"]["eat_at"] = world.clock.tick + ticks(RAID_PATIENCE_SECONDS)
 		placed.append(id)
 	# Three crows she saw, and three of them after her crops — counted like any
 	# other, so the tallies stay a record of what happened on this farm. It spends
@@ -218,7 +213,45 @@ static func start_raid_meals(world: SimWorld) -> void:
 		if not bool(extra.get("waiting_for_door", false)):
 			continue
 		extra["waiting_for_door"] = false
-		extra["eat_at"] = world.clock.tick + ticks(RAID_EAT_SECONDS)
+		extra["eat_at"] = world.clock.tick + ticks(RAID_PATIENCE_SECONDS)
+
+
+# The raid still at the bed: a bird the morning placed, standing on its plant
+# with its meal unfinished. Shooing one ends its meal and so does eating, and
+# both leave through `_leave` — so this list is only ever the birds she can still
+# do something about.
+static func raid_birds_eating(world: SimWorld) -> Array[String]:
+	var out: Array[String] = []
+	for id in world.actors.keys():
+		var extra: Dictionary = world.actors[id].get("extra", {})
+		if bool(extra.get("raid", false)) and String(extra.get("state", "")) == "eating":
+			out.append(String(id))
+	return out
+
+
+# **The meal lasts as long as her walk** (Q-105, ruled 2026-09-11): the moment
+# only one of the raid is still on a plant, that bird takes it and goes. She has
+# reached the second bird, so the morning has cost her one tomato and it has cost
+# her that on every farm — the row beside the house and the row ten tiles out are
+# now the same lesson, told at whatever pace she walks.
+#
+# Read off recorded state and nothing else. The trigger is a bird leaving the
+# bed, which happens in `flee` for both the ways a raid bird can be frightened —
+# her walking up to it, which arrives as the ordinary `crow_scared` report
+# through the gateway, and a scarecrow, which this brain notices itself — so a
+# replay rebuilds the same moment from the same log. Nothing here asks a wall
+# clock or a distance.
+static func _last_bird_finishes(world: SimWorld) -> void:
+	var left := raid_birds_eating(world)
+	if left.size() != 1:
+		return
+	var extra: Dictionary = world.actor(left[0])["extra"]
+	# Its meal has not begun, so nothing can end it: she is still indoors and
+	# something else — a scarecrow standing over the bed — emptied it around this
+	# bird. The door stays the start of the race.
+	if bool(extra.get("waiting_for_door", false)):
+		return
+	extra["eat_at"] = world.clock.tick
 
 
 # Where a crow enters, given which edge it picked and how far along that edge, in
@@ -335,6 +368,9 @@ func flee(world: SimWorld, actor_id: String, reason: String) -> void:
 		return
 	if String(e["extra"].get("state", "")) != "leaving":
 		_leave(e["extra"], reason)
+		# One fewer bird at the bed, which for the raid is the whole clock (Q-105).
+		if bool(e["extra"].get("raid", false)):
+			_last_bird_finishes(world)
 
 
 # --- flight -------------------------------------------------------------------

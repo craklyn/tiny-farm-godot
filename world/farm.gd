@@ -296,6 +296,7 @@ func sync_actors() -> void:
 			continue
 		node.queue_free()
 		actor_nodes.erase(id)
+	_sync_ransack_marks()
 
 
 # Every sprite, gone now — for a renderer that is starting the world over (the
@@ -320,6 +321,111 @@ func player_node() -> Node2D:
 
 
 var dirt_texture: Texture2D
+
+
+# --- the plot a crow emptied (Q-105, design/04) --------------------------------
+#
+# A square a bird ate the plant off is turned soil with nothing on it, which is
+# also exactly what a row she hoed and has not sown yet looks like — so without
+# something on it a loss reads as a chore she forgot. The sim marks the square
+# (`SimWorld`'s `eat_crop`) and clears the mark the moment she works it again;
+# this is what is drawn on it in the meantime.
+#
+# **Made of pixels the game already ships**, which is what a first version is
+# allowed to be: three clods lifted out of the middle of the dirt sheet, scattered
+# across the square and lifting one after another on a slow loop, like earth still
+# settling where something scratched through it. A drawn version — tumbled leaves,
+# a feather left behind — is the artist's, and when it arrives the only thing here
+# that changes is which sheet and cell these read from.
+const RANSACK_CLODS := 3
+const RANSACK_CLOD_PX := 3.0
+const RANSACK_LOOP_SECONDS := 2.6
+const RANSACK_LIFT_PX := 1.0
+# Dug earth rather than the soil it sits on: the clods have to be a shade darker
+# than the square or they are three invisible pixels.
+const RANSACK_TINT := Color(0.68, 0.58, 0.48, 0.95)
+# The dirt sheet's fully-surrounded cell — soil with no edge in it, so any patch
+# of it is a patch of plain earth (`Autotile.atlas_coord`, mask 255).
+const RANSACK_SOIL_MASK := 255
+
+# Where the three clods sit inside a square, in pixels from its corner. Three
+# spots rather than a spray: the square has sixteen pixels a side and the mark has
+# to read at a glance on a tablet held at arm's length.
+const RANSACK_SPOTS: Array[Vector2] = [
+	Vector2(3.0, 9.0), Vector2(8.0, 4.0), Vector2(10.0, 10.0),
+]
+
+
+## The clods drawn on a square something ate a plant off, as `{rect, region}`
+## pairs in the sheet's own coordinates — and nothing at all for a square with no
+## mark on it. A `RansackMark` node (`world/ransack_mark.gd`) draws exactly this
+## list every frame for as long as the square is marked, and the integration
+## suite asserts on exactly this list, so what is tested is what is on screen.
+## The nodes are kept in step with the sim by `_sync_ransack_marks`.
+var _ransack_nodes: Dictionary = {}  # Vector2i -> the node drawing that square
+
+
+func ransack_marks(tx: int, ty: int) -> Array[Dictionary]:
+	if not bool(tile_look(tx, ty).get("ransacked", false)):
+		return []
+	return ransack_clods(Vector2i(tx, ty), Time.get_ticks_msec() / 1000.0)
+
+
+# Pure, so the headless suite can hold it to account, and keyed off the square's
+# own coordinates rather than a die roll — the ground variant's rule (`tx % 3`),
+# for the same reason: a screenshot, a save and a replay all draw the same square
+# the same way, and nothing here has to reach for SimRng.
+static func ransack_clods(at: Vector2i, t_sec: float) -> Array[Dictionary]:
+	var cell := Autotile.atlas_coord(RANSACK_SOIL_MASK, false)
+	var out: Array[Dictionary] = []
+	for i in RANSACK_CLODS:
+		var spot: Vector2 = RANSACK_SPOTS[(i + at.x + at.y) % RANSACK_SPOTS.size()]
+		# One clod up while the other two rest, so the square stirs rather than
+		# pulsing — the same reason a crow on a crop is not allowed to hold still.
+		var phase := t_sec / RANSACK_LOOP_SECONDS + float(i) / float(RANSACK_CLODS)
+		var lift := -RANSACK_LIFT_PX * maxf(0.0, sin(phase * TAU))
+		out.append({
+			"rect": Rect2(
+				at.x * TILE_SIZE + spot.x, at.y * TILE_SIZE + spot.y + lift,
+				RANSACK_CLOD_PX, RANSACK_CLOD_PX),
+			# A different patch of the cell per clod, so three clods are three
+			# shapes rather than one pixel printed three times.
+			"region": Rect2(
+				cell.x * 16 + 3 + i * 4, cell.y * 16 + 4 + i * 3,
+				RANSACK_CLOD_PX, RANSACK_CLOD_PX),
+		})
+	return out
+
+
+# One node per marked square, created when the sim marks it and freed when she
+# works it again. A whole-map scan, so it is for the moments that can change the
+# set — a load or a replay (`sync_actors`), and an action that eats a plant —
+# never a frame; the nodes themselves pay for their own frames.
+func _sync_ransack_marks() -> void:
+	# A farm whose world has not been generated yet (a bare renderer in a test,
+	# a scene built before its sim is handed over) has no squares to read.
+	if sim == null or sim.tiles.size() < SimWorld.MAP_HEIGHT:
+		return
+	for ty in SimWorld.MAP_HEIGHT:
+		for tx in SimWorld.MAP_WIDTH:
+			var at := Vector2i(tx, ty)
+			var marked := bool(tile_look(tx, ty).get("ransacked", false))
+			var node = _ransack_nodes.get(at, null)
+			if marked and not is_instance_valid(node):
+				node = load("res://world/ransack_mark.gd").new()
+				node.name = "ransack_%d_%d" % [tx, ty]
+				node.at = at
+				node.farm = self
+				add_child(node)
+				move_child(node, 0)  # just above the ground, under everything that stands on it
+				_ransack_nodes[at] = node
+			elif not marked and is_instance_valid(node):
+				node.queue_free()
+				_ransack_nodes.erase(at)
+			elif not marked:
+				_ransack_nodes.erase(at)
+
+
 # T-32: the yard's ground. Derived from terrain_grass.png's noise pattern in the
 # yard's own colours (tools/gen_yard_ground.py) — the tended lawn. Since Q-70
 # (ruled 2026-09-02) the other side of the fence is terrain_field.png, a
@@ -719,6 +825,10 @@ func _record(action: Dictionary, result: Dictionary, at_tick: int,
 						_report_watering_shot()
 		if String(action.get("verb", "")) == "sleep":
 			_notify_day_turn()
+		# A plant eaten off a square marks it, and any work on a marked square
+		# clears it (Q-105) — the only two moments the set of marks can change.
+		if String(action.get("verb", "")) == "eat_crop" or not _ransack_nodes.is_empty():
+			_sync_ransack_marks()
 		queue_redraw()
 
 

@@ -123,6 +123,7 @@ func _run_scenarios() -> void:
 	await _scenario_as_the_bench_and_panel_agree()
 	await _scenario_at_a_crow_eating_flaps_and_turns()
 	await _scenario_au_the_overnight_tells_a_story()
+	await _scenario_av_a_ransacked_plot_shows_it()
 
 func _wait_until(pred: Callable, max_frames: int) -> bool:
 	for i in max_frames:
@@ -6173,11 +6174,24 @@ func _scenario_au_the_overnight_tells_a_story() -> void:
 	_assert(main_scene.day_cycle.last_story_loop == "seeder_bot",
 		"playing the seeder-bot loop, exactly as the robot's own night names (%s)"
 			% main_scene.day_cycle.last_story_loop)
-	# P-15 p1: the loop's own sound bed. The seeder robot's treads should be
-	# running for as long as it is on screen, and the music should be well
-	# under its usual −10 dB while the loop plays.
+	# P-15 p1: the loop's own sound bed, keyed to the frames where the sheet
+	# shows the robot driving (Q-107): frames 29-31 and 0-8 drive, 9-28 work the
+	# arm. The loop opens on a driving frame, so the bed is running here; it
+	# must stop while the arm works and start again when the robot rolls on.
 	_assert(AudioManager._bed_active == "seeder_tread",
 		"and its treads are the bed running while it drives (%s)" % AudioManager._bed_active)
+	var working := await _wait_until(
+		func(): return main_scene.day_cycle._loop_last_frame_i >= 12 \
+			and main_scene.day_cycle._loop_last_frame_i <= 26, 2000)
+	_assert(working and AudioManager._bed_active == "",
+		"the treads fall silent while the arm works (frame %d, bed '%s')"
+			% [main_scene.day_cycle._loop_last_frame_i, AudioManager._bed_active])
+	var rolling := await _wait_until(
+		func(): return main_scene.day_cycle._loop_last_frame_i >= 29, 2000)
+	_assert(rolling and AudioManager._bed_active == "seeder_tread",
+		"and start again as it rolls on (frame %d, bed '%s')"
+			% [main_scene.day_cycle._loop_last_frame_i, AudioManager._bed_active])
+	# ...and the music should be well under its usual −10 dB while the loop plays.
 	_assert(AudioManager.bgm_player.volume_db < AudioManager.BGM_BASE_DB - 3.0,
 		"with the music ducked well under its usual volume for the story night (%.1f dB)"
 			% AudioManager.bgm_player.volume_db)
@@ -6211,3 +6225,70 @@ func _scenario_au_the_overnight_tells_a_story() -> void:
 	GameState.save_path = real_paths[0]
 	GameState.replay_path = real_paths[1]
 	GameState.trace_path = real_paths[2]
+
+
+func _scenario_av_a_ransacked_plot_shows_it() -> void:
+	# The designer, 2026-09-11, on the raid's morning: "add a small animation
+	# indicator that the plot was ransacked by the bird." The sim marks the square
+	# a bird emptied and clears the mark when she works it again (Q-105, unit
+	# suite); this is the other half — that the mark reaches the screen, and that
+	# a square she has taken back does not keep wearing it.
+	#
+	# Scenario S's treatment: a **detached** farm, so nothing here depends on where
+	# the played session left the farmer or which crows are in the air. What is
+	# checked is the renderer's own answer for a square — `ransack_marks` is what
+	# `_draw` draws, so asserting on it is asserting on the picture.
+	print("\n--- Scenario AV: a plot a crow emptied wears the mark until she works it ---")
+
+	var FarmScript = load("res://world/farm.gd")
+	var yard = FarmScript.new()
+	yard.name = "RaidedField"
+	yard.mute_feedback = true
+	add_child(yard)
+	await get_tree().process_frame
+
+	# Two squares of turned soil side by side, and a bird takes the plant off one
+	# of them — through the gateway, because that is the only thing that marks a
+	# square and this scenario must not be able to mark one by hand.
+	var eaten := Vector2i(7, 9)
+	var spare := Vector2i(8, 9)
+	yard.set_tile_state(eaten.x, eaten.y, "growing", SimWorld.RAID_CROP)
+	yard.set_tile_state(spare.x, spare.y, "tilled")
+	yard.sim.apply_action({ "verb": "eat_crop", "actor": SimWorld.ACTOR_CROW, "target": eaten },
+		GameState)
+
+	_assert(yard.ransack_marks(eaten.x, eaten.y).size() == yard.RANSACK_CLODS,
+		"the emptied square draws its scattered earth (%d clods)"
+			% yard.ransack_marks(eaten.x, eaten.y).size())
+	_assert(yard.ransack_marks(spare.x, spare.y).is_empty(),
+		"and the turned square beside it, which nothing ate off, draws none")
+
+	# Every clod is inside its own square and reads out of the dirt sheet, so the
+	# mark cannot creep onto a neighbour or point at a cell that is not soil.
+	var inside := true
+	for mark in yard.ransack_marks(eaten.x, eaten.y):
+		var clod: Rect2 = mark["rect"]
+		inside = inside and clod.position.x >= eaten.x * yard.TILE_SIZE \
+			and clod.position.y >= eaten.y * yard.TILE_SIZE - yard.RANSACK_LIFT_PX \
+			and clod.end.x <= (eaten.x + 1) * yard.TILE_SIZE \
+			and clod.end.y <= (eaten.y + 1) * yard.TILE_SIZE
+	_assert(inside, "each clod sits inside the square it belongs to")
+
+	# It loops rather than holding a pose: two moments a second apart are two
+	# different pictures.
+	var now: Array = FarmScript.ransack_clods(eaten, 0.0)
+	var later: Array = FarmScript.ransack_clods(eaten, 1.0)
+	var moved := false
+	for i in now.size():
+		moved = moved or now[i]["rect"].position.y != later[i]["rect"].position.y
+	_assert(moved, "and the earth is still settling a second later, rather than holding a pose")
+
+	# She puts the hoe through it. The square is hers again and stops saying
+	# anything happened to it.
+	yard.sim.apply_action({ "verb": "till", "actor": SimWorld.ACTOR_PLAYER, "target": eaten },
+		GameState)
+	_assert(yard.ransack_marks(eaten.x, eaten.y).is_empty(),
+		"a re-tilled square draws nothing, because it is not a loss any more")
+
+	yard.queue_free()
+	await get_tree().process_frame

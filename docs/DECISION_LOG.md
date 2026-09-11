@@ -700,14 +700,21 @@ night and the morning (the first sleep where the acorns are gone *and* four or m
 tomatoes stand), three crows set on three tomatoes by the day turn, their meals starting on
 her `use_door` rather than at dawn so the race begins when the plants come into view, and
 the ordinary shoo. The race is the [Playtest] value: a direct walk from the door should
-save two of the three, not none. **Built 2026-09-10**, with that value measured rather than
-guessed — `tools/measure_raid_race.gd` walks her out of the door on the generated farm and
-prints when each bird falls inside her shoo range, which puts the meal at 3.7 seconds on
-the nearest bed she can plant. One meal length meets a distance she chooses, so a bed
-planted far from the house loses all three; whether that stays one fixed number is Q-105.
-**Ruled 2026-09-11 (Q-105): the meal lasts as long as her walk.** The birds finish the moment she
-reaches the second one, so the raid costs exactly one tomato wherever she planted, and the plot a
-bird ransacked gets a small animation saying so.
+save two of the three, not none. **Built 2026-09-10** on a meal of a fixed 3.7 seconds,
+measured rather than guessed; one meal length met a distance she chooses, so a bed planted
+far from the house lost all three, which is what Q-105 asked about. **Ruled and rebuilt
+2026-09-11 (Q-105): the meal lasts as long as her walk.** The last bird takes its tomato
+the moment she has seen off the second one, so the raid costs exactly one tomato wherever
+she planted. No raid bird eats on a count of seconds any more: the clock is read off
+recorded state — a bird leaving the bed, which is the same `crow_scared` report a shoo has
+always been — so a replay reaches the same moment from the same log. Under it sits a
+patience of a minute from the door, long enough that it can never decide a race she is
+actually running, so that a player who comes out and does nothing still loses the bed.
+`tools/measure_raid_race.gd` plays the morning out on two beds, near and far, and both
+save two of three. **And the plot a bird ransacked says so**: the square carries the fact
+that something ate a plant off it, saved with the world and cleared the moment she works it
+again, and wears a small looping mark — three clods of scattered earth — made from pixels
+the game already ships. A drawn version of that mark is open and belongs to the artist.
 
 ### D-1. Phase 5 genre (X-COM tactics vs. Gradius-like hybrid vs. other)
 **Why deferred:** Phase 5's cast is the player plus *trained bots* — its design depends on
