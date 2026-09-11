@@ -528,8 +528,6 @@ async function renderPillar(pid) {
    difference between them is the whole question this wall answers. */
 async function instEngineering(root, below, sig, g) {
   const byId = Object.fromEntries((g.goals || []).map(x => [x.id, x]));
-  const fresh = byId["proofs-are-fresh"] || {};
-  const members = ((fresh.reading || {}).members) || [];
   const JOBS = [
     ["unit", "Unit tests", "the sim, actions, replays, saves and the seeded dice"],
     ["integration", "Integration tests", "the real scene, driven by simulated taps"],
@@ -537,7 +535,7 @@ async function instEngineering(root, below, sig, g) {
     ["benchmark", "Sim benchmark", "how fast a farm can be fast-forwarded — phase 4 needs the speed"],
   ];
   const runs = await api("/api/runs").catch(() => ({}));
-  const ci = byId["main-stays-green"] || {};
+  const ci = byId["build-branch-builds-green"] || {};
   const ciOk = ci.state === "green";
 
   const strip = [`<div class="ev-row ev-head"><span></span><span>what it checks</span><span>verdict</span><span>how far behind main</span></div>`];
@@ -546,13 +544,15 @@ async function instEngineering(root, below, sig, g) {
     <span><b>GitHub CI</b><br><span class="small muted">the only result someone outside the studio can check for themselves</span></span>
     <span>${ciOk ? "passed" : esc(ci.measured_human || "unknown")}</span>
     <span class="ev-age">on the commit itself</span></div>`);
-  JOBS.forEach(([id, label, what], i) => {
+  JOBS.forEach(([id, label, what]) => {
     const r = runs[id];
     const state = r ? r.state : "never_run";
     const dot = state === "green" ? "d-ok" : state === "failed" ? "d-fire" : state === "running" ? "d-attn" : "d-unchecked";
-    const m = members[i] || {};
-    const age = m.error ? `<span class="ev-unknown">unknown — this run did not record which commit it tested</span>`
-      : m.value != null ? `${m.value} commit${m.value === 1 ? "" : "s"}` : "—";
+    const behind = r ? r.behind_commits : null;
+    const age = !r ? "never run"
+      : behind == null ? `<span class="ev-unknown">unknown — this run did not record which commit it tested</span>`
+      : behind === 0 ? "on the commit itself"
+      : `${behind} commit${behind === 1 ? "" : "s"}`;
     strip.push(`<div class="ev-row">
       <i class="dot ${dot}"></i>
       <span><b>${esc(label)}</b><br><span class="small muted">${esc(what)}</span></span>
@@ -560,7 +560,7 @@ async function instEngineering(root, below, sig, g) {
       <span class="ev-age">${age}</span></div>`);
   });
 
-  const inv = byId["determinism-invariants"] || {};
+  const inv = byId["games-deterministically-replayable"] || {};
   const invMembers = ((inv.reading || {}).members) || [];
   const invRows = invMembers.map(m => {
     const state = m.unchecked ? "unchecked" : m.error ? "broken" : (m.value === true ? "green" : "red");
@@ -622,11 +622,14 @@ async function mountVerify(root, sig) {
         <div id="jobs"></div></div>`));
     const jobsDiv = root.querySelector("#jobs");
     for (const [job, r] of Object.entries(runs)) {
-      const state = r ? r.state : "never run";
+      const state = r ? r.state : "never_run";
       const dot = state === "green" ? "d-ok" : state === "failed" ? "d-fire" : state === "running" ? "d-attn" : "d-unchecked";
+      // A verdict says nothing without the distance from the code it proved.
+      const behind = r ? r.behind_commits : null;
+      const age = behind ? ` <span class="ev-unknown">— ${behind} commit${behind === 1 ? "" : "s"} ago</span>` : "";
       const row = h(`<div class="jobrow">
-        <span><i class="dot ${dot}"></i><b>${esc(r ? r.label : job)}</b></span>
-        <span class="small muted">${r && r.summary ? esc(r.summary) : esc(state)}</span>
+        <span><i class="dot ${dot}"></i><b>${esc((r && r.label) || job)}</b></span>
+        <span class="small muted">${r && r.summary ? esc(r.summary) + age : esc(state.replace("_", " "))}</span>
         <button class="ghost small-btn" data-derived data-job="${job}" ${running ? "disabled" : ""}>${state === "running" ? "running…" : "▶ Run"}</button>
       </div>`).firstElementChild;
       row.querySelector("button").addEventListener("click", async ev => {

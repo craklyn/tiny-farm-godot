@@ -1,0 +1,18 @@
+{
+  "id": "w955474e2599b",
+  "title": "The sim benchmark has fallen under its gate",
+  "level": "task",
+  "owner": "tomas",
+  "tier": 1,
+  "tier_reason": "filed by hand",
+  "ask": "The fast-forward benchmark now measures 82,421x realtime against a gate of 100,000x, and it fails reproducibly, not under load — two standalone runs on 104c3ee gave 82,202x and 82,421x. The last recorded pass, 302 commits ago at 4b20852, was 103,810x. So something in those 302 commits cost the simulation a fifth of its speed. Find where it went and either win it back or, with a written reason, move the gate. This is not a test-hygiene chore: the gate exists because phase 4 trains bots by fast-forwarding farms, and training time is measured in multiples of this number. The benchmark is also one of the five jobs CI runs on every push, so while it fails, main cannot go green — which is most likely part of why the build has been red for five days.\n\nBisect tools/benchmark_sim.gd's headline figure across 4b20852..HEAD. The travel model and the actor-cost ratios it prints alongside (6.00x total for 8x the actors, 7.57x on actor work) are the shape to compare, not just the headline.",
+  "first_action": "Run godot --headless --path . --script res://tools/benchmark_sim.gd on 4b20852 and on HEAD, confirm the gap, then bisect it.",
+  "state": "queued",
+  "thread": "tomas",
+  "source": "chief-of-staff",
+  "source_message": "Found while bringing the Engineering page back on: every verdict on it was 302 commits old, and running them fresh turned the benchmark red.",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-10T22:30",
+  "created_ts": 1789104626.3543766
+}

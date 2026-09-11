@@ -584,6 +584,23 @@ def latest_job_result(job):
         return None
 
 
+def _run_with_age(job):
+    """A stored verdict plus how far behind main it is. Without the distance a
+    pass from eighty commits ago and a pass from this commit look identical on
+    the page, and that difference is the whole question the wall answers. A job
+    that has never run still answers with its name, so the page can say so."""
+    r = latest_job_result(job)
+    if not r:
+        return {"job": job, "label": JOBS[job]["label"], "state": "never_run"}
+    head = r.get("head")
+    behind = None
+    if head:
+        n = run_cmd(["git", "rev-list", "--count", f"{head}..HEAD"])
+        if n:
+            behind = int(n)
+    return {**r, "behind_commits": behind}
+
+
 def _run_job(job):
     import datetime
     spec = JOBS[job]
@@ -4970,7 +4987,7 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/surface":
                 return self._send(200, load_json(os.path.join(DATA, "surface.json")))
             if path == "/api/runs":
-                return self._send(200, {j: latest_job_result(j) for j in JOBS})
+                return self._send(200, {j: _run_with_age(j) for j in JOBS})
             if path == "/api/deploy":
                 return self._send(200, deploy_status())
             if path.startswith("/api/rootdoc/"):
