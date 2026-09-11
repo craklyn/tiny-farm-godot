@@ -990,8 +990,13 @@ function decisionCard(c, ruling, entData, onRuled, looks) {
     </label>`).join("");
   const atts = (c.attachments || []).length
     ? `<div class="att-row"></div>` : "";
-  const links = (c.links || []).map(l =>
-    `<a class="plain small" href="${esc(l.href)}" ${l.href.startsWith("http") ? 'target="_blank" rel="noopener"' : ""}>🔗 ${esc(l.label)}</a>`).join(" · ");
+  // A link is {label, href}; an older card may carry a bare path string, and a
+  // card that cannot render must never take the whole inbox down with it.
+  const links = (c.links || []).map(raw => {
+    const l = typeof raw === "string" ? { label: raw, href: raw } : (raw || {});
+    const href = String(l.href || "");
+    return `<a class="plain small" href="${esc(href)}" ${href.startsWith("http") ? 'target="_blank" rel="noopener"' : ""}>🔗 ${esc(l.label || href)}</a>`;
+  }).join(" · ");
   const card = h(`<div class="card d-card">
     <div class="d-head" id="card-${c.id}"><span class="qid">${c.id}</span> <b>${esc(c.title)}</b></div>
     <p>${esc(c.question)}</p>
