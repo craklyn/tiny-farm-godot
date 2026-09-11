@@ -633,7 +633,11 @@ night is when a Mark III updates its weights (P-14), so the robot loop is that f
 made visible, and a robot planting is the player's own machine at work, not a later one.
 
 **The boot bloom** is the same idea at the front door: the sunflower bloom plays between
-the engine's splash and the player having control. Its composition is Q-103.
+the engine's splash and the player having control. **Composition ruled 2026-09-10
+(Q-103): the flower is the splash** — the engine's splash is the loop's closed bud on its own
+sky, the scene picks up that frame, the bud opens and the seeds rise once while the music
+fades up, the title and menu settle in as the last seed blooms, and a tap brightens the sky
+into the farm.
 
 **First version, deliberately small.** One loop per night, once per farm, no skip; the
 fade's colour becomes the Lab's sky so the loop's canvas never shows as a box; the loop is
@@ -643,8 +647,9 @@ hold begins, the loop only lengthens presentation, and headless runs skip it.
 
 **Why provisional.** The trigger list will grow with the loops, and whether a story night
 should be skippable, or repeat for a returning player, is untested until a tablet check.
-Open beside it: the watering beam's place in the cold open (Q-104), the one placement that
-cuts against chapter 13's rule that the cold open never takes control away.
+The watering beam's place in the cold open was the one placement that cut against chapter
+13's rule that the cold open never takes control away; **ruled 2026-09-10 (Q-104): an inset
+card in a corner while she keeps control**, the shot over the fence while the neighbour waters.
 
 **The morning after the crow night (designer, 2026-09-10).** *"That morning we also should
 have a special vignette. It has to be triggered on a day that the player has 4 or more

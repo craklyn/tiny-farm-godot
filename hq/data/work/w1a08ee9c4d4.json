@@ -1,0 +1,20 @@
+{
+ "id": "w1a08ee9c4d4",
+ "title": "A frame for the story nights, chosen from captures of the real thing",
+ "level": "story",
+ "owner": "ingrid",
+ "tier": 1,
+ "tier_reason": "p1 of P-15; the first version ships without a frame on purpose, and the frame is a taste call that needs the real overnight on screen to judge.",
+ "ask": "Once the overnight player (the Jade item) is on main: render three frame treatments over real captures of the crow night and the robot night — a postcard (rounded card, thin light border, the Day-N type beneath), a viewfinder (corner brackets, a faint scan line; the near-future edge the studio allows), and a dream (a soft cloud-edged vignette, since it is a sleep) — every colour from the shipped palette, nothing smoothed. Also render 'no frame' as the fourth, since that is what ships. Put them to Daniel as one lettered decision card in hq/data/decisions/ with the captures attached and a recommendation, per the studio's rule that visual picks are shown as captures of the real game before he is asked. Do not build the winner; that is a follow-up for Jade.",
+ "first_action": "Wait for the overnight player to land, then capture a crow night with a display.",
+ "state": "waiting_session",
+ "thread": "",
+ "source": "chief-of-staff",
+ "source_message": "Filed from the 2026-09-10 brainstorm on where the Animation Lab loops enter play (P-15, Q-103, Q-104).",
+ "result": "",
+ "started": "",
+ "attempts": 0,
+ "created": "2026-09-10T22:21",
+ "created_ts": 1789104080.0824466,
+ "conversation": []
+}

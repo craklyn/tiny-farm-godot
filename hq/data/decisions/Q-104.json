@@ -33,5 +33,11 @@
    "label": "Queue entry (Q-104)",
    "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"
   }
- ]
+ ],
+ "ruled": {
+  "date": "2026-09-10",
+  "option": "a",
+  "summary": "An inset card while she keeps control: the watering beam plays in a corner over the fence while the neighbour waters, and the player stays free in her own yard.",
+  "written_up": "docs/design/13-teaching-and-onboarding.md — the fence section"
+ }
 }

@@ -205,10 +205,13 @@ neighbour's sequence runs its course and the offscreen honk is the callback that
 attention wherever the player happens to be; the gate then opens and becomes the
 vignette's first highlighted target — beat 0, ahead of the harvest at beat 1.
 
-**Open beside it (Q-104, 2026-09-10):** the designer asked for the Animation Lab's watering
-beam loop as a shot while the neighbour waters. A full-screen shot here would be the first
-cut-in during play, against this section's own rule; the queue item offers an inset card
-over the fence, the overnight after her own first watering, or the overrule.
+**The watering shot (Q-104, ruled 2026-09-10): an inset card, never a cut.** The Animation
+Lab's watering beam loop — water leaving the can as thin streams onto the soil at a plant's
+base, at close-up scale — plays in a corner of the screen while the neighbour waters and the
+player keeps full control of her own yard. It is the same method as the fence: attention is
+held with something to look at, not by taking the controls. First version: the card appears
+the first time the neighbour waters, plays the loop through once, and fades; it takes no
+input and never covers the neighbour or the player.
 
 ### As built, 2026-08-29 (T-13)
 

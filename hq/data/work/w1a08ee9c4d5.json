@@ -1,0 +1,20 @@
+{
+ "id": "w1a08ee9c4d5",
+ "title": "A sound bed under each story night, and the music ducked beneath it",
+ "level": "story",
+ "owner": "dmitri",
+ "tier": 1,
+ "tier_reason": "p1 of P-15; the first version is deliberately silent beyond the music, and the beds need the loops' beat timings, which the manifests now carry.",
+ "ask": "Once the overnight player and the boot are on main: give each Lab loop a sound bed keyed to its frames — the crow gorge: squawk (exists) and pecks on its bite frames; the seeder robot: treads while it drives, a servo on the arm's swing, a scatter as the seed drops; the bloom at boot: a soft rising chime over the seeds' climb, sitting under the music's fade-up; the watering inset: the existing water pour, once. Duck the music (AudioManager.bgm_player, -10 dB today, never ducked anywhere) by about 6 dB for the length of a story night and bring it back on the morning fade. Source sounds the way the studio does (free assets first, CC0, recorded in CREDITS.md with provenance; synthesized via tools/gen_sfx.py otherwise), add them to AudioManager's table so the Sound Test lists them, and offer alternates as candidates where the pick is taste. Drive timing from the manifests' ms-per-frame, never from wall-clock constants, so a re-exported loop stays in sync.",
+ "first_action": "Read systems/audio_manager.gd's sfx table and the overnight player's frame clock once it lands.",
+ "state": "waiting_session",
+ "thread": "",
+ "source": "chief-of-staff",
+ "source_message": "Filed from the 2026-09-10 brainstorm on where the Animation Lab loops enter play (P-15, Q-103, Q-104).",
+ "result": "",
+ "started": "",
+ "attempts": 0,
+ "created": "2026-09-10T22:21",
+ "created_ts": 1789104080.0825548,
+ "conversation": []
+}

@@ -133,6 +133,37 @@ when the Mark III arrives), and **the boot**, where the sunflower bloom carries 
 from the engine's splash to the menu (Q-103). The fade takes the Lab's sky colour so a loop
 sits in it without an edge. The in-world animation budget below is untouched by this.
 
+**How a loop is shown — first version (p0), 2026-09-10.** The whole screen goes to the
+Lab's sky, (33,31,32), and the loop sits centred in it at the largest whole-number scale
+that fits inside the screen, drawn with nearest-neighbour filtering so every pixel stays
+square: the crow gorge (128×96) at ×5, the seeder robot (240×140) at ×3, the bloom (64×104)
+at ×5. No frame, no border — a loop whose canvas is night at its edges simply has no edge on
+screen, and a loop whose content reaches its canvas edge (the robot's ground plane) gets a
+short dithered band at that edge in the sky colour, so the ground dissolves into the night
+instead of stopping at a line. Timing, so nothing cuts: the sleep's fade goes to the sky as
+today, the loop fades up over about 0.4 s, plays whole loops until at least three seconds
+have passed at the rate the Lab drew it (the crow twice, the robot once or twice), fades
+down, and the Day-N card follows as it always has. Sound: nothing new — the music keeps
+playing at its usual level — because an isolated squawk with no bed under it would sound
+thinner than silence. **The boot** (Q-103): the engine's splash is the bloom's first frame
+at ×5 on the sky, unfiltered; the title scene opens on that same frame, holds a breath, and
+the bud opens and the seeds rise once while the music fades up from silence over the rise
+(today it starts at full level on the first frame). As the last seed blooms the title and
+menu settle in; if a farm is there to be shown under the menu it fades up beneath as the
+bloom fades out, otherwise the bloom keeps idling behind the menu. A tap fades through the
+sky into the farm rather than cutting. **The inset** (Q-104): the watering beam at ×1 in a
+corner the HUD map leaves free, fading up when the neighbour first waters, one pass, fading
+down; it takes no input and never covers her or the neighbour.
+
+**What p1 adds, each filed as work.** A **frame** — Ingrid's taste call, made from captures of
+the real overnight rather than mockups: a postcard (rounded card, thin light border, the
+day card's type beneath), a viewfinder (corner brackets, the near-future edge), or a dream
+(a soft cloud-edged vignette, since it is a sleep). A **sound bed** per loop, keyed to its
+frames — the crow's squawk and pecks, the robot's treads and servo and the seed scatter, a
+soft rising chime for the bloom — with the music ducked under it for the length of the
+story night. Later loops (the scarecrow beams, the crow hop) join the same machinery with a
+trigger each.
+
 ## The ripe crop, and what colour is left (2026-09-07, ruled 2026-09-08)
 
 *Ruled at Q-94: **a ready plant sways gently and gives off its own ripe colour.**

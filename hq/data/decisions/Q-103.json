@@ -47,5 +47,11 @@
    "label": "Queue entry (Q-103)",
    "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"
   }
- ]
+ ],
+ "ruled": {
+  "date": "2026-09-10",
+  "option": "a",
+  "summary": "The flower is the splash. The engine's splash is the loop's closed bud on its own dark sky; the scene picks up the same frame, the bud opens and the seeds rise once while the music fades up; the title settles in above her and the menu below as the last seed blooms; a tap brightens the sky into the farm.",
+  "written_up": "docs/design/09-art-direction.md — 'Where the Lab's loops play', the boot"
+ }
 }

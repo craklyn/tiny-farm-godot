@@ -11,7 +11,11 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
 
 ## Now — blocks M0 close or current work
 
-- **Q-103** (Ruling) **How the sunflower bloom opens the game.** Ruled 2026-09-10 that the
+- **Q-103** ~~How the sunflower bloom opens the game~~ — ✅ **ruled 2026-09-10: (a) the flower
+  is the splash.** The engine's splash is the closed bud on its own sky; the bud opens and the
+  seeds rise once while the music fades up; the title and menu settle in as the last seed
+  blooms; a tap brightens the sky into the farm. Written into `design/09` (the boot) and
+  filed as work. Original entry: Ruled 2026-09-10 that the
   bloom loop is the boot moment (P-15); what is open is the composition, from the engine's
   first painted frame to the player having control, with no cut anywhere in it. Five
   shapes, all starting from the engine's splash being the loop's own closed bud on its own
@@ -29,7 +33,10 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   that already has no cut in it, with (e) the one to try second because it teaches "you
   cause things" before any verb. Dial on any of them: every boot, or the first boot only
   with a short version after. Card: `hq/data/decisions/Q-103.json`.
-- **Q-104** (Ruling) **Where the watering beam plays in the cold open.** The designer asked
+- **Q-104** ~~Where the watering beam plays in the cold open~~ — ✅ **ruled 2026-09-10: (a) an
+  inset card while she keeps control.** The shot plays in a corner over the fence while the
+  neighbour waters; the fence's promise holds. Written into `design/13` and filed as work.
+  Original entry: The designer asked
   for the watering beam loop as a shot when the player first watches the neighbour water
   through the fence. Chapter 13's own 2026-08-28 revision made the cold open never take
   control away — the fence made the restriction spatial instead of a camera cut — so a
