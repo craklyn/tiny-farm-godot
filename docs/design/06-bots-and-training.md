@@ -251,10 +251,14 @@ actions."* One total a day cannot say whether the machine learned to **sell** or
 watered more mud, and that is the whole of whether it is worth owning. So the panel draws
 the last fourteen days, one coloured line per row of the reward table, with today at the
 right as an unfinished column — banded, dashed and ringed, because a part-day drawn like a
-whole one makes every morning look like a collapse. Each line's picture sits in a legend to the right of the plot beside a circle in the line's
-colour (since 2026-09-10; before that each line ran out to its picture, which read as spikes in
-the unfinished day); today has its own column with its point in the middle, and the day axis
-counts back from today at 0. **The day axis counts back from today, and today has a
+whole one makes every morning look like a collapse. Each line is keyed to the picture of the
+job it stands for: the shop's coin for a crop sold, the basket for one cut, the hoe, the
+seed packet, and the watering can twice — with a seedling on it for a thirsty plant, plain
+for wet mud — and the crow twice, wings up for a bird turned back and perched for one caught
+on the food, each bird on a chip of its line's colour because the crow sprite is too dark to
+read off this card on its own. Since 2026-09-10 those pictures sit in a legend to the right of
+the plot, each beside a circle in its line's colour, with no line drawn to the data — the
+lines used to run out to their pictures, which read as spikes in the unfinished day. **The day axis counts back from today, and today has a
 column of its own** (2026-09-10, the designer's request later the same day): `0` sits under
 today, `-1` under yesterday, down to `-13` at the left of a full fortnight, and the chart is
 as many equal columns as it has days with each day's point centred in its own — so today's
