@@ -52,14 +52,6 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   crate remembers.** "Pick up is just repositioning, it shouldn't factory reset the robot."
   Its weights, days, tuned dials and ledger travel with the boxed item and come back when it
   is put down; only the errand of the moment is dropped. Built as WI-9 of `V0_2_2_PLAN.md`.
-  The original entry, for the record:
-- **Q-98 (Ruling, filed 2026-09-09, ruled above)** **What does a Mark III keep when she picks it up?**
-  The machine menu's "pick it up" boxes a robot back into her pocket. A Mark I keeps
-  nothing worth keeping; a Mark III has a week of practice in it. Recommendation: the
-  crate remembers — its weights and its days travel with the item and come back when it
-  is put down — because practice lost to a tap is the failure that reads as broken. Card:
-  `hq/data/decisions/Q-98.json`.
-
 - **Q-97** ~~What does she see when the robot learns overnight?~~ — ✅ ruled 2026-09-09:
   **numbers on its panel only.** **Revised 2026-09-10 from the tablet:** a bare number beside
   a can misleads once the score is the eight-row table, so the panel becomes a **scorecard

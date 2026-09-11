@@ -504,7 +504,7 @@ function workCard(it, org, pol) {
           + replyBox(it, org) + `<div class="w-acts">${acts}${talkBtn}</div>` : ""}
       <div class="w-outcome" hidden></div>
       <div class="w-foot">
-        <span class="small muted">from your chat with ${esc(ownerOf(org, it.thread).name.split(" ")[0])} · ${esc(it.created)}</span>
+        <span class="small muted">${it.thread ? `from your chat with ${esc(ownerOf(org, it.thread).name.split(" ")[0])} · ` : ""}${esc(it.created || "")}</span>
       </div>
     </div>
   </div>`).firstElementChild;
