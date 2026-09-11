@@ -984,6 +984,20 @@ func _collect_labels(node: Node, out: Array) -> void:
 		_collect_labels(child, out)
 
 
+## Press the button of the `n`th row on a panel, as a finger does.
+##
+## Rows are numbered by `menus.next_option` as the panel is built, which is the
+## number `_select_current_option` reads a tap back as — so this walks the
+## buttons in the order they were created rather than guessing at the tree shape,
+## and works whether the rows sit directly in the container or inside a shelf.
+func _press_row(container: Node, n: int) -> void:
+	var buttons: Array = container.find_children("*", "Button", true, false)
+	if n < 0 or n >= buttons.size():
+		_assert(false, "row %d exists to press (panel has %d)" % [n, buttons.size()])
+		return
+	(buttons[n] as Button).pressed.emit()
+
+
 func _scenario_j_wordless_shop() -> void:
 	# T-12 (Q-35). The shop was the one screen in phase 1 that **required
 	# reading** — "SEED SHOP", "5g", "Owned: N", "??? (Locked)", "Close" — and
@@ -1045,18 +1059,31 @@ func _scenario_j_wordless_shop() -> void:
 	_assert(darkened >= 1, "the locked item is drawn darkened rather than blank")
 
 	# Buying still goes through the sim gateway, unchanged (P-9).
+	#
+	# **Pressed, not selected.** These two checks used to set `selected_option` by
+	# hand and call the handler, which tested the handler and not the shop: when
+	# the shelf became a grid, every row's number came out wrong and both of these
+	# still passed while nothing on the real panel worked. A row is only wired up
+	# if pressing *its own button* does what the row says it does.
 	var before: int = GameState.seeds.get("wheat", 0)
 	var bought_gold: int = GameState.gold
-	menus.selected_option = 0
-	menus._select_current_option()
-	await get_tree().process_frame
-	_assert(GameState.seeds.get("wheat", 0) == before + 1, "tapping a card still buys the seed")
+	_press_row(menus.options_container, 0)
+	await get_tree().create_timer(0.3).timeout
+	_assert(GameState.seeds.get("wheat", 0) == before + 1, "pressing a card buys that seed")
 	_assert(GameState.gold < bought_gold, "and still costs gold")
 	_assert(GameState.seeds_bought >= 1, "and accrues T-11's counter")
 
-	# The ✕ closes it, and it is the last option rather than an index guess.
-	menus.selected_option = menus.shop_items.size()
-	menus._select_current_option()
+	# And the card she presses is the thing she gets — the second row of a
+	# two-column shelf is the third thing on it, not the second.
+	var third: Dictionary = menus.shop_items[2]
+	var had: int = GameState.seeds.get(String(third.seed_type), 0)
+	_press_row(menus.options_container, 2)
+	await get_tree().create_timer(0.3).timeout
+	_assert(GameState.seeds.get(String(third.seed_type), 0) == had + 1,
+		"and pressing the third card buys the third thing on the shelf (%s)" % third.seed_type)
+
+	# The ✕ closes it — the row under the shelf, pressed like she presses it.
+	_press_row(menus.options_container, menus.shop_items.size())
 	await get_tree().process_frame
 	_assert(not menus.is_open(), "the ✕ closes the shop")
 	_assert(not get_tree().paused, "and the world starts again")

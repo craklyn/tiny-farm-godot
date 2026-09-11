@@ -23,6 +23,9 @@ const PANEL_PAD := 12.0
 const SHOP_COLUMNS := 2
 const SHOP_PANEL_W := 480.0
 const SHOP_CARD_H := 52.0
+# Wider than the gap between rows, because the columns are what a reader could
+# confuse: side by side, two cards 4px apart read as one long row.
+const SHOP_GUTTER := 16
 
 # Where the look lab's lines start in the pause menu: after Resume and Return to
 # Title, and one line per open axis (`LookLab.AXES`). Named rather than spelled
@@ -48,6 +51,18 @@ const CONFIG_LABELS := {
 
 var active_menu: String = ""  # "", "pause", "shop", "inventory", "machine", "workbench"
 var selected_option: int = 0
+
+# **What number the next row on a panel gets.** `_select_current_option` reads a
+# tap back as a position in a list — `shop_items[n]`, `machine_options[n]` — so
+# every row has to know its own place in that list as it is built.
+#
+# It used to be `options_container.get_child_count()`, which held only while one
+# row meant one child. The shop's shelf broke that the moment it became a grid:
+# ten cards inside one child left the ✕ underneath them numbered 1, so tapping
+# it "bought" the second thing on the shelf — a locked packet, which fails
+# silently, so the close button simply stopped working (found on the tablet,
+# 2026-09-10). Counting rows instead of children is true however they are nested.
+var next_option: int = 0
 var shop_items: Array[Dictionary] = []
 
 # The machine menu (2026-09-03) — what a tap on a placed machine opens, and what
@@ -261,6 +276,7 @@ func _rebuild_options() -> void:
 	for child in options_container.get_children():
 		options_container.remove_child(child)
 		child.queue_free()
+	next_option = 0
 
 	var viewport_size := get_viewport().get_visible_rect().size
 
@@ -325,11 +341,11 @@ func _rebuild_options() -> void:
 			var shelf := GridContainer.new()
 			shelf.name = "shop_shelf"
 			shelf.columns = SHOP_COLUMNS
-			shelf.add_theme_constant_override("h_separation", int(OPTION_SEP))
+			shelf.add_theme_constant_override("h_separation", SHOP_GUTTER)
 			shelf.add_theme_constant_override("v_separation", int(OPTION_SEP))
 			options_container.add_child(shelf)
-			for i in shop_items.size():
-				_add_shop_card(shelf, shop_items[i], i)
+			for item in shop_items:
+				_add_shop_card(shelf, item)
 			# × — a symbol, not a word. The row is already full-width and 52px
 			# tall, so the *target* was never the problem; the glyph was — twice:
 			# U+2715 ✕ lives outside the bundled font, and the web export has no
@@ -639,6 +655,9 @@ const SCORECARD_INSET := 8.0
 
 
 func _add_scorecard(extra: Dictionary) -> void:
+	# A row with nothing to press is still a row: it holds the "practice" slot in
+	# `machine_options`, and the rows under it are numbered past it.
+	next_option += 1
 	var card := BotScorecard.new()
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	# Nothing behind it and nothing to press: a readout wearing a row's dark panel
@@ -688,7 +707,8 @@ func _add_option(text: String, enabled: bool, font_size: int = 0) -> void:
 	if not enabled:
 		btn.disabled = true
 
-	var idx := options_container.get_child_count()
+	var idx := next_option
+	next_option += 1
 	btn.pressed.connect(_on_option_pressed.bind(idx))
 	btn.focus_entered.connect(func(): selected_option = idx)
 	options_container.add_child(container)
@@ -696,11 +716,12 @@ func _add_option(text: String, enabled: bool, font_size: int = 0) -> void:
 
 ## One thing on the shelf: its picture, its price, and how many she already has.
 ##
-## `into` is the shelf it is added to and `idx` its place in `shop_items`, passed
-## in rather than read back off the container — the cards no longer sit directly
-## in `options_container`, so counting its children would have numbered every
-## card 0 and sold wheat whatever she tapped.
-func _add_shop_card(into: Control, item: Dictionary, idx: int) -> void:
+## `into` is the shelf it is added to: the cards no longer sit directly in
+## `options_container`, and the number a card comes back with is its place in
+## `shop_items`, taken from `next_option` like every other row on every panel.
+func _add_shop_card(into: Control, item: Dictionary) -> void:
+	var idx := next_option
+	next_option += 1
 	var container = PanelContainer.new()
 	container.custom_minimum_size = Vector2(0, SHOP_CARD_H)
 	container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -715,8 +736,17 @@ func _add_shop_card(into: Control, item: Dictionary, idx: int) -> void:
 	style.corner_radius_bottom_right = 6
 	container.add_theme_stylebox_override("panel", style)
 	
+	# Inset from the card's own edges, so the picture and the price sit inside a
+	# boundary rather than running to it. With two cards side by side, what tells
+	# her a price belongs to the packet on its left is the gap on its right.
+	var pad := MarginContainer.new()
+	pad.add_theme_constant_override("margin_left", 8)
+	pad.add_theme_constant_override("margin_right", 8)
+	container.add_child(pad)
+
 	var hbox = HBoxContainer.new()
-	container.add_child(hbox)
+	hbox.add_theme_constant_override("separation", 8)
+	pad.add_child(hbox)
 	
 	# The crop's own packet, always drawn. A locked item is the **same picture,
 	# darkened** — never an empty box and never "???", which tells a pre-reader
@@ -725,6 +755,10 @@ func _add_shop_card(into: Control, item: Dictionary, idx: int) -> void:
 	# looks the same everywhere in the game.
 	var icon = TextureRect.new()
 	icon.custom_minimum_size = Vector2(34, 34)
+	# Exactly 34 wide whatever the picture is: a robot's sprite is wider than a
+	# seed packet, and left to its own size it pushed that card's price out of
+	# line with the prices above and below it.
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	icon.texture = item.icon
@@ -732,24 +766,31 @@ func _add_shop_card(into: Control, item: Dictionary, idx: int) -> void:
 		icon.modulate = Color(0.12, 0.11, 0.18, 0.85)
 	hbox.add_child(icon)
 
-	var spacer := Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	hbox.add_child(spacer)
-
 	if item.unlocked:
 		# What it costs, and what she already has: coin + numeral, packet + numeral.
+		# **Both pinned to the left, beside the picture they are about**, and the
+		# slack left at the right end of the card (2026-09-10). Pushed to the far
+		# edge — which is what one card per row made look natural — a price in a
+		# two-column shelf ends up nearer the *next* thing's picture than its own.
+		# The price columns line up card to card, so the shelf can be read down as
+		# well as across.
 		var price_row := HBoxContainer.new()
-		price_row.alignment = BoxContainer.ALIGNMENT_END
+		price_row.alignment = BoxContainer.ALIGNMENT_BEGIN
+		price_row.custom_minimum_size = Vector2(66, 0)
 		hbox.add_child(price_row)
 		_add_icon_number(price_row, coin_icon(), str(item.price), 20.0,
 			Color(1, 0.85, 0.2) if item.affordable else Color(0.9, 0.3, 0.3))
 
 		var owned_row := HBoxContainer.new()
-		owned_row.alignment = BoxContainer.ALIGNMENT_END
-		owned_row.custom_minimum_size = Vector2(58, 0)
+		owned_row.alignment = BoxContainer.ALIGNMENT_BEGIN
+		owned_row.custom_minimum_size = Vector2(52, 0)
 		hbox.add_child(owned_row)
 		_add_icon_number(owned_row, item.icon,
 			"\u00d7%d" % int(item.owned), 18.0, Color(0.72, 0.82, 0.7))
+
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hbox.add_child(spacer)
 	
 	# Transparent button overlay for clicks
 	var btn = Button.new()
