@@ -151,7 +151,11 @@ later tier may let her *paint* a cell, which is the "show it" rung arriving as a
   are the HUD's corner-card size; the dials' buttons are thumb-sized.
 - **The chart language is one language.** The scorecard on the robot's panel and the
   ledger's first page are the same drawing code and the same colours, so a line she learns
-  on the panel means the same on the bench.
+  on the panel means the same on the bench. Since 2026-09-10 that colour key is a legend
+  in a strip to the right of the plot — a coloured dot beside each row's picture, with no
+  line drawn back to the data, because the leaders it replaces read as eight lines spiking
+  in the day still being played; the key leans on colour alone for now, and the designer
+  expects this display to be rebuilt.
 - **Words on the plate, pictures everywhere else** (S-7; `WRITING.md`). Numerals on axes.
 - **Nothing runs a model on open.** The bench reads state; the trial ground, when it
   exists, runs only when she presses it (the standing rule for anything that costs).

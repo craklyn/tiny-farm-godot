@@ -17,10 +17,27 @@
 # presentation reads the sim and never writes it.
 #
 # **Wordless** (S-7). The only text is numerals: the top of the scale, the zero,
-# the first day's number and today's. Which line is which is answered by the
-# picture at its right-hand end, and every one of those pictures is one the game
-# already uses somewhere else — the shop's coin, the HUD's can, the seed packet
-# from "no seeds", the hoe off the tool row, the basket, and the crow itself.
+# the first day's number and today's. Which line is which is answered by a
+# picture, and every one of those pictures is one the game already uses somewhere
+# else — the shop's coin, the HUD's can, the seed packet from "no seeds", the hoe
+# off the tool row, the basket, and the crow itself.
+#
+# **The strip on the right is a legend, not eight labels** (2026-09-10). Until
+# today each picture sat at the end of its own line, nudged into a free slot by a
+# relaxation pass, with a thin leader drawn back to the line it belonged to. The
+# designer met that on the tablet: *"the line connecting the symbol to a color is
+# hard to read .. it looks like some values are spiking in the currently underway
+# generation. Can we end the right edge of the graph a little farther to the left,
+# and use the space to show a legend with the yellow circle next to the money, the
+# blue circle next to the watering can, etc."* He is right, and the cost was worse
+# than untidiness: eight leaders climbing out of the chart's last column read as
+# eight lines doing something on the day being played, which is the one column a
+# part day already makes easy to misread. So the plot now stops short of the card's
+# edge and the strip holds a fixed key instead — one row per reward, in the table's
+# order, a filled dot in the row's colour beside the row's picture, and nothing
+# joining a row to its line. Colour alone carries the match, which he took on
+# knowingly: *"we'll assume the player has good color vision at this instant in
+# time, but we'll probably rebuild this display later anyway."*
 class_name BotScorecard
 extends Control
 
@@ -33,9 +50,16 @@ const DAYS_SHOWN := 14
 const PLOT_H := 150.0        # the drawing itself
 const AXIS_LEFT := 24.0      # room for the scale's numerals
 const AXIS_BOTTOM := 16.0    # room for the day numerals
-const PIP_SIZE := 18.0       # the picture at the end of a line
-const PIP_GUTTER := 32.0     # the column those pictures live in
-const PIP_SPACING := 19.0    # closest two of them may sit before they are pushed apart
+const PIP_SIZE := 18.0       # the picture that names a row in the legend
+# The strip the legend lives in, right of the plot: the picture, the dot beside it,
+# the gaps around both, and the clear air that keeps the key from reading as part
+# of the chart's last column. The plot takes what is left, so widening this moves
+# the chart's right edge left and scales nothing else.
+const PIP_GUTTER := 56.0
+const PIP_SPACING := 19.0    # between two legend rows, where the height allows it
+const LEGEND_DOT := PIP_SIZE * 0.55  # the coloured dot that answers "which line?"
+const LEGEND_GAP := 5.0      # between that dot and the picture it belongs to
+const LEGEND_INSET := 2.0    # between the picture and the card's right edge
 const PAD := 6.0
 
 # **A line per row, and the pictures are borrowed, never invented** — the same
@@ -291,14 +315,12 @@ func _draw() -> void:
 	# One line per row of the reward table, in the table's own order — so the day a
 	# ninth row is priced, a ninth line appears here and nobody has to remember to
 	# add it. O(days x rows), and only while the panel is open.
-	var ends: Array = []
 	for r in keys.size():
 		var colour: Color = LINE_COLOURS.get(keys[r], Color.WHITE)
 		var points := PackedVector2Array()
 		for i in days.size():
 			var v := float(days[i]["rows"][r])
 			points.append(Vector2(float(xs[i]), zero_y - plot.size.y * (v / top)))
-		ends.append(points[last].y)
 		if points.size() >= 3:
 			# The finished days, solid; today's segment is the dashed one below.
 			draw_polyline(points.slice(0, last), colour, 2.0, true)
@@ -310,45 +332,28 @@ func _draw() -> void:
 			else:
 				draw_circle(points[i], 2.0, colour)
 
-	# ...and its picture at the right-hand end, which is the whole legend. Several
-	# rows finish a day at zero and would stack their pictures on top of one
-	# another, so the column is relaxed apart — the leader, drawn in the row's own
-	# colour, is what keeps a picture attached to the line it belongs to.
-	var slots := _relax(ends, plot.position.y + PIP_SIZE / 2.0, zero_y - PIP_SIZE / 2.0)
-	var pip_x := plot.position.x + plot.size.x + PIP_GUTTER - PIP_SIZE - 2.0
+	# **The key** (2026-09-10, and the header says why): the reward table straight
+	# down the strip, in the table's own order top to bottom, each row a dot in the
+	# row's colour against the row's picture. It stands still while the lines move,
+	# so it claims nothing about any one day — which is the whole of what taking the
+	# leaders out buys.
+	#
+	# `PIP_SPACING` apart where there is room for eight of them, tighter where there
+	# is not, and centred in the plot's height either way. The machine panel's 150 px
+	# is a pixel short of the full spacing and the bench's ledger page has 50-odd to
+	# spare, so one rule gives both the same block of key rather than one stretched
+	# and one cramped (ground rule 8 — two sizes, never two drawings).
+	var gaps := maxf(1.0, float(keys.size() - 1))
+	var step := minf(PIP_SPACING, maxf(0.0, (plot.size.y - PIP_SIZE) / gaps))
+	var first_y := plot.position.y + (plot.size.y - (step * gaps + PIP_SIZE)) / 2.0 \
+		+ PIP_SIZE / 2.0
+	var pip_x := plot.position.x + plot.size.x + PIP_GUTTER - PIP_SIZE - LEGEND_INSET
+	var dot_x := pip_x - LEGEND_GAP - LEGEND_DOT / 2.0
 	for r in keys.size():
 		var colour: Color = LINE_COLOURS.get(keys[r], Color.WHITE)
-		# Thin and half-lit: eight leaders in one narrow gutter make a bundle, and a
-		# bundle drawn at the weight of the data competes with the data.
-		draw_line(Vector2(plot.position.x + plot.size.x, float(ends[r])),
-			Vector2(pip_x - 2.0, float(slots[r])),
-			Color(colour, colour.a * 0.5), 1.0, true)
-		_pip(String(keys[r]), Vector2(pip_x, float(slots[r]) - PIP_SIZE / 2.0), colour)
-
-
-# Push a column of pictures apart until none sits closer to its neighbour than
-# `PIP_SPACING`, keeping them in the order their lines finished and inside the
-# card. Down and then back up, which is the shortest honest fix: a picture may end
-# a few pixels off its line's height, and its leader says where it came from.
-static func _relax(wanted: Array, low: float, high: float) -> Array:
-	var order: Array = []
-	for i in wanted.size():
-		order.append(i)
-	order.sort_custom(func(a, b): return float(wanted[a]) < float(wanted[b]))
-	var placed: Array = []
-	placed.resize(wanted.size())
-	var y := low
-	for i in order:
-		y = maxf(float(wanted[i]), y)
-		placed[i] = y
-		y += PIP_SPACING
-	# That sweep can run off the bottom of the card; walk back up from the last.
-	var limit := high
-	for j in range(order.size() - 1, -1, -1):
-		var i: int = order[j]
-		placed[i] = minf(float(placed[i]), limit)
-		limit = float(placed[i]) - PIP_SPACING
-	return placed
+		var row_y := first_y + step * float(r)
+		draw_circle(Vector2(dot_x, row_y), LEGEND_DOT / 2.0, colour)
+		_pip(String(keys[r]), Vector2(pip_x, row_y - PIP_SIZE / 2.0), colour)
 
 
 func _pip(key: String, at: Vector2, colour: Color) -> void:
