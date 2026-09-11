@@ -19,7 +19,10 @@ routes["/work"] = renderWork;
 // HQ (and the server's own signals) point at it, but it lands on the same page
 // rather than a second one that asks him the same question.
 routes["/inbox"] = renderWork;
-if ((location.hash.slice(1) || "/").startsWith("/work")) route();
+// app.js routes once at load, before this file has defined renderWork; re-route
+// here for the work view and its #/inbox alias, or a first load of either
+// address reads "renderWork is not defined".
+if (/^\/(work|inbox)(\/|$)/.test(location.hash.slice(1) || "/")) route();
 
 const TIER_CHIP = { 0: "t-go", 1: "t-diff", 2: "t-ask" };
 const TIER_NAME = { 0: "Just do it", 1: "Do it, show the diff", 2: "Ask first" };
