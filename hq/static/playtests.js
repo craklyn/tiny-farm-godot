@@ -27,10 +27,11 @@ async function renderPlaytests() {
       <b>⚠️ ${unclassified.length} session(s) not yet classified</b>
       <p class="small muted">${unclassified.map(s => esc(s.name)).join(", ")} — shelved in <code>playtests/</code> but not pinned in <code>SHELF</code> (tests/test_runner.gd). The tests skip them and stay green on purpose: an unclassified session is paperwork, not a broken build. Pinning one records the log format it is and whether it still replays to its own autosave.</p>
     </div>` : ""}
-    <p class="sub">Every recorded session, scored from measurements the game takes while it is played. The targets are the ones ruled for the release checklist: wasted taps ≤ ${BAR_WASTED}%, longest stall ≤ ${BAR_STALL_MS / 1000}s. "Satisfied" taps (tapping something already done) never count against a player.</p>
+    <p class="sub">Every recorded session, scored from measurements the game takes while it is played. <b>Open one to watch it back</b> — every row replays, tap by tap. The targets are the ones ruled for the release checklist: wasted taps ≤ ${BAR_WASTED}%, longest stall ≤ ${BAR_STALL_MS / 1000}s. "Satisfied" taps (tapping something already done) never count against a player.</p>
     <div class="card" style="overflow-x:auto"><table class="pt-table">
-      <tr><th>Session</th><th>Build</th><th>Taps</th><th>Wasted</th><th>Satisfied</th><th>Longest stall</th><th>Days</th><th>Active</th></tr>
-      ${real.map(s => `<tr class="pt-row" data-name="${esc(s.name)}">
+      <tr><th></th><th>Session</th><th>Build</th><th>Taps</th><th>Wasted</th><th>Satisfied</th><th>Longest stall</th><th>Days</th><th>Active</th></tr>
+      ${real.map(s => `<tr class="pt-row" data-name="${esc(s.name)}" title="Watch this session played back">
+        <td class="pt-play">▶</td>
         <td><b>${esc(s.name)}</b>${s.continued ? ' <span class="small muted">(resumed)</span>' : ""}${s.classified === false ? ' <span class="small muted">(unclassified)</span>' : ""}${(s.dropped_lines || s.unknown_outcomes || s.mislabelled) ? " ⚠️" : ""}</td>
         <td class="small muted">${esc(s.build_id || "not recorded")}</td>
         <td>${s.taps}</td>

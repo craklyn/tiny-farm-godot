@@ -389,6 +389,10 @@ code.ref { background: #1b1710; border: 1px solid var(--line); border-radius: 6p
 .pt-table td { padding: 8px 12px 8px 0; font-size: 13.5px; border-bottom: 1px solid var(--line); }
 .pt-row { cursor: pointer; }
 .pt-row:hover td { background: var(--panel2); }
+/* A row is a replay you can watch, and a table of numbers says so nowhere.
+   The play mark is the only thing on the page that offers it. */
+.pt-play { color: var(--muted); width: 1px; padding-right: 10px !important; }
+.pt-row:hover .pt-play { color: var(--accent); }
 .good { color: var(--green); }
 .warn { color: var(--accent); }
 .bad { color: #ff8a70; }
