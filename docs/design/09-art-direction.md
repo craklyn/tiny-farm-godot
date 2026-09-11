@@ -136,7 +136,7 @@ sits in it without an edge. The in-world animation budget below is untouched by 
 **How a loop is shown — first version (p0), 2026-09-10.** The whole screen goes to the
 Lab's sky, (33,31,32), and the loop sits centred in it at the largest whole-number scale
 that fits inside the screen, drawn with nearest-neighbour filtering so every pixel stays
-square: the crow gorge (128×96) at ×5, the seeder robot (240×140) at ×3, the bloom (64×104)
+square: the crow gorge (128×96) at ×6, the seeder robot (240×140) at ×3, the bloom (64×104)
 at ×5. No frame, no border — a loop whose canvas is night at its edges simply has no edge on
 screen, and a loop whose content reaches its canvas edge (the robot's ground plane) gets a
 short dithered band at that edge in the sky colour, so the ground dissolves into the night
@@ -154,14 +154,30 @@ sky into the farm rather than cutting. **The inset** (Q-104): the watering beam 
 corner the HUD map leaves free, fading up when the neighbour first waters, one pass, fading
 down; it takes no input and never covers her or the neighbour.
 
-**What p1 adds, each filed as work.** A **frame** — Ingrid's taste call, made from captures of
-the real overnight rather than mockups: a postcard (rounded card, thin light border, the
-day card's type beneath), a viewfinder (corner brackets, the near-future edge), or a dream
-(a soft cloud-edged vignette, since it is a sleep). A **sound bed** per loop, keyed to its
+**What p1 adds, each filed as work.** A **frame**, now asked at Q-106 and waiting on the
+designer. The three candidates — a postcard (rounded card, thin light border, the day card's
+type beneath), a viewfinder (corner brackets, the near-future edge) and a dream (a soft
+cloud-edged vignette, since it is a sleep) — are drawn over captures of the real overnight on
+both story nights, with no frame as the fourth, in `docs/design/mockups/overnight_frames/`
+(`tools/capture_overnight_plates.tscn` takes the captures,
+`tools/compose_overnight_frames.py` draws the frames). Two constraints came out of doing it
+rather than describing it: **the crow gorge has no room for a card.** It is 128×96 on an
+800×600 screen, so its largest whole scale is ×6 — 768×576, sixteen pixels short of the screen
+on each side — and a border with the Day-N type beneath it costs that night a whole step, down
+to ×5. **A border points at the line the ground already ends in.** The dither band runs down
+a loop's left and right edges only, so the seeder robot's ground stops in a hard line at the
+bottom of its canvas today, and a postcard border draws that line again one pixel further
+out. The dream is the only candidate that takes the bottom line away, which is the
+recommendation on the card. Every candidate adds at most two colours, both off the ramps
+above, and every soft edge is the same ordered dither `day_cycle.gd` already uses; the
+reserved overlay hues stay reserved — the viewfinder's brackets are the accent teal, not the
+repellent cyan, and they are only allowable at all because the overnight is the one screen
+with no world on it. A **sound bed** per loop, keyed to its
 frames — the crow's squawk and pecks, the robot's treads and servo and the seed scatter, a
 soft rising chime for the bloom — with the music ducked under it for the length of the
-story night. Later loops (the scarecrow beams, the crow hop) join the same machinery with a
-trigger each.
+story night. **Shipped 2026-09-11 (docs/design/10 §"The story-night sound beds")**; the
+frame is still open. Later loops (the scarecrow beams, the crow hop) join the same
+machinery with a trigger each.
 
 ## The ripe crop, and what colour is left (2026-09-07, ruled 2026-09-08)
 

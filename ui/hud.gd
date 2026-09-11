@@ -673,6 +673,9 @@ func play_watering_inset() -> void:
 	_watering_frame_elapsed = 0.0
 	_watering_inset_rect.texture = _watering_frames[0]
 	watering_inset.visible = true
+	# P-15 p1: no cue of its own. The neighbour's water Action already sounds
+	# the pour on the path that reports this shot (`world/farm.gd`'s actor
+	# cues), so the inset adds nothing — a second pour would play twice.
 	if _watering_fade_tween != null and _watering_fade_tween.is_valid():
 		_watering_fade_tween.kill()
 	_watering_fade_tween = create_tween()

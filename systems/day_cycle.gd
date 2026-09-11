@@ -48,6 +48,44 @@ const STORY_NIGHT_LOOPS := {
 	SimWorld.STORY_NIGHT_ROBOT: "seeder_bot",
 }
 
+# P-15 p1 ("a sound bed under each story night"): which one-shot to play the
+# instant the loop's own frame clock first shows a given frame, keyed by the
+# frame index within one pass of the loop — never a wall-clock time, so a
+# re-exported loop (a different frame count or ms_per_frame) keeps its cues
+# without a code change here. A repeat of the loop re-triggers every frame in
+# its table, which is right for a beat that happens every pass (a peck, a
+# scatter) — a cue that should only ever happen once belongs in
+# `LOOP_START_SFX` below instead.
+#
+# Frame indices: crow_gorge's are read straight off its own generator
+# (`tools/experiments/vfx_crow_gorge.py`'s `bite_state` — the frame each
+# strike's contact state turns on, once per side of the 16-frame loop).
+# seeder_bot has no procedural source (it was drawn in the Animation Lab, not
+# scripted) — its two frames are read off the exported sheet's own pixels:
+# frame 9 is where the arm has lifted a clump of seeds clear of the bag and
+# begins its swing toward the hole; frame 20 is where the seeds and the dust
+# of the covering soil are visible at the hole.
+const LOOP_FRAME_SFX := {
+	"crow_gorge": {2: "peck", 10: "peck"},
+	"seeder_bot": {9: "seeder_servo", 20: "seeder_scatter"},
+}
+
+# One-shot played once, the moment a loop's fade-up begins — before its frame
+# clock starts stepping, and never repeated on a later pass.
+const LOOP_START_SFX := {
+	"crow_gorge": "squawk",
+}
+
+# A continuous bed (`AudioManager.play_bed`), started the instant the loop's
+# frame clock starts stepping and stopped the instant the loop finishes
+# fading down: the seeder robot's treads run for as long as it is driving,
+# not once per frame — design/09 warned that "an isolated squawk with no bed
+# under it would sound thinner than silence," and the same is true of a
+# machine that is visibly moving the whole time.
+const LOOP_BED_SFX := {
+	"seeder_bot": "seeder_tread",
+}
+
 # A 4×4 ordered-dither (Bayer) matrix, used to stipple a loop's canvas edge into
 # the sky colour rather than cut it off with a hard line — see `_dither_edge_band`.
 const BAYER4 := [
@@ -77,6 +115,12 @@ var _loop_ms_per_frame: float = 90.0
 var _loop_elapsed: float = 0.0
 var _loop_play_total: float = 0.0
 var _frame_cache: Dictionary = {}  # slug -> Array[Texture2D], dither already baked in
+var _loop_last_frame_i: int = -1
+
+# True for the length of a story night that actually played a loop — the
+# window `set_bgm_duck` is called across. A plain night never sets this, so a
+# plain night's music is never touched at all.
+var _ducking: bool = false
 
 # What played on the last hold, "" for a plain night — read by tools and tests,
 # not by any game logic.
@@ -102,7 +146,9 @@ func _ready() -> void:
 	day_label = Label.new()
 	day_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	day_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	day_label.set_anchors_preset(Control.PRESET_CENTER)
+	# Full rect with centred alignment: the text straddles the screen's middle.
+	# (PRESET_CENTER pinned the label's top-left corner there instead.)
+	day_label.set_anchors_preset(Control.PRESET_FULL_RECT)
 	day_label.add_theme_font_size_override("font_size", 24)
 	day_label.add_theme_color_override("font_color", Color.WHITE)
 	day_label.visible = false
@@ -123,6 +169,12 @@ func start_sleep(on_new_day: Callable, tuck: bool = false) -> void:
 	_on_new_day = on_new_day
 	_new_day_fired = false
 	last_story_loop = ""
+	# Defensive: a night always starts from the music at full volume with no
+	# bed running, even if the last one somehow ended mid-duck (a test
+	# teardown, a scene reload).
+	_ducking = false
+	AudioManager.set_bgm_duck(0.0)
+	AudioManager.stop_bed()
 	if _loop_sprite != null:
 		_loop_sprite.visible = false
 		_loop_sprite.modulate = Color(1, 1, 1, 0)
@@ -156,16 +208,25 @@ func _process(delta: float) -> void:
 		"loop_in":
 			# Frame 0 holds still through the fade-up, so the loop's clock starts
 			# on its first frame and the fade-down lands on a loop boundary —
-			# design/09's "plays whole loops" is measured from here.
+			# design/09's "plays whole loops" is measured from here. The duck
+			# ramps up over the same fade, so the music is already quiet by the
+			# time the loop is heard driving or gorging.
 			alpha = 1.0
 			_loop_sprite.modulate.a = minf(1.0, timer / LOOP_FADE_SEC)
+			if _ducking:
+				AudioManager.set_bgm_duck(timer / LOOP_FADE_SEC)
 			if timer >= LOOP_FADE_SEC:
 				state = "loop_playing"
 				timer = 0.0
 				_loop_elapsed = 0.0
+				_loop_last_frame_i = -1
+				if LOOP_BED_SFX.has(last_story_loop):
+					AudioManager.play_bed(LOOP_BED_SFX[last_story_loop])
 		"loop_playing":
 			alpha = 1.0
 			_loop_sprite.modulate.a = 1.0
+			if _ducking:
+				AudioManager.set_bgm_duck(1.0)
 			_step_loop_frame(delta)
 			if timer >= _loop_play_total:
 				state = "loop_out"
@@ -173,21 +234,33 @@ func _process(delta: float) -> void:
 		"loop_out":
 			alpha = 1.0
 			_loop_sprite.modulate.a = 1.0 - minf(1.0, timer / LOOP_FADE_SEC)
+			if _ducking:
+				AudioManager.set_bgm_duck(1.0)
 			_step_loop_frame(delta)
 			if timer >= LOOP_FADE_SEC:
 				_loop_sprite.visible = false
+				if LOOP_BED_SFX.has(last_story_loop):
+					AudioManager.stop_bed()
 				state = "hold"
 				timer = 0.0
 		"hold":
 			alpha = 1.0
+			if _ducking:
+				AudioManager.set_bgm_duck(1.0)
 			if timer >= HOLD_TIME:
 				state = "fading_in"
 				timer = 0.0
 		"fading_in":
+			# The morning fade brings the music back up with it.
 			alpha = 1.0 - minf(1.0, timer / FADE_IN_TIME)
+			if _ducking:
+				AudioManager.set_bgm_duck(1.0 - minf(1.0, timer / FADE_IN_TIME))
 			if timer >= FADE_IN_TIME:
 				state = "idle"
 				alpha = 0.0
+				if _ducking:
+					AudioManager.set_bgm_duck(0.0)
+					_ducking = false
 
 	overlay.color = Color(SKY_COLOUR.r, SKY_COLOUR.g, SKY_COLOUR.b, alpha)
 
@@ -225,6 +298,9 @@ func _enter_hold_phase() -> void:
 		# showing on reload (the flag rides the save, `save_game.gd`).
 		GameState.story_loops_shown[night] = true
 		last_story_loop = slug
+		_ducking = true
+		if LOOP_START_SFX.has(slug):
+			AudioManager.play_sfx(LOOP_START_SFX[slug])
 		state = "loop_in"
 		timer = 0.0
 		return
@@ -278,6 +354,16 @@ func _step_loop_frame(delta: float) -> void:
 	_loop_elapsed += delta
 	var i: int = int(_loop_elapsed / frame_dur) % _loop_frames.size()
 	_loop_sprite.texture = _loop_frames[i]
+
+	# Frame-keyed one-shots (LOOP_FRAME_SFX): fired the instant playback crosses
+	# into a frame that owns a cue, so a beat lands once per pass of the loop —
+	# never once per engine frame — however many repeats design/09's "at least
+	# three seconds" ends up meaning for a given loop.
+	if i != _loop_last_frame_i:
+		_loop_last_frame_i = i
+		var cues: Dictionary = LOOP_FRAME_SFX.get(last_story_loop, {})
+		if cues.has(i):
+			AudioManager.play_sfx(String(cues[i]))
 
 
 func _load_anim_manifest(slug: String) -> Dictionary:

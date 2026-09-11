@@ -62,8 +62,18 @@ tools/shot_workbench_*
 # boot sequence, not assets.
 tools/boot_bloom_shots/
 tools/shot_watering_inset.png
-tools/shot_overnight_crow.png
-tools/shot_overnight_card.png
+# Both of these end `.png`, and their `.import` sidecars go with them for the reason
+# given above the workbench captures — taking the shot otherwise leaves two untracked
+# files behind every time.
+tools/shot_overnight_crow.png*
+tools/shot_overnight_card.png*
+
+# The raw screens the overnight frame candidates are drawn over (Q-106, 2026-09-11).
+# Regenerate with tools/capture_overnight_plates.tscn. The candidate sheets beside
+# them are committed, because those are what the decision was taken on; these are the
+# captures they were drawn from, the same way every other review screenshot is kept
+# out of the repo.
+docs/design/mockups/overnight_frames/plate_*
 
 # Held patches the drain keeps so a blocked item can be re-applied without
 # paying for the model call again. Recoverable scratch, not a record.

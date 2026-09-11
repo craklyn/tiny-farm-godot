@@ -14,6 +14,7 @@ Output matches the existing in-repo originals: 22050 Hz, mono, 16-bit.
     python3 tools/gen_sfx.py            # write assets/audio/sfx/*.wav
     python3 tools/gen_sfx.py --preview  # also render tools/sfx_preview.png
 """
+import json
 import os
 import struct
 import sys
@@ -253,6 +254,45 @@ def honk():
     return normalise(out, 0.55)
 
 
+def _bloom_rise_seconds(default=1.44):
+    """The boot bloom's rise, from assets/anim/sunflower_bloom/manifest.json."""
+    try:
+        with open("assets/anim/sunflower_bloom/manifest.json") as f:
+            m = json.load(f)
+        return int(m["frame_count"]) * int(m["ms_per_frame"]) / 1000.0
+    except (OSError, KeyError, ValueError):
+        return default
+
+
+def bloom_chime():
+    """P-15 p1: the soft rising chime under the boot bloom's seed climb
+    (design/09 "What p1 adds"). Five bell-like tones climbing in pitch —
+    C5 D5 E5 G5 B5, a bright, unresolved rise rather than a resolved triad, so
+    it never reads as a reward sting. Gentle attacks throughout, so it can sit
+    quietly under the music's own fade-up instead of competing with it.
+
+    Pitched, non-organic tones are exactly what synthesis has handled well
+    here (till, water and ui_click all passed the 2026-08-27 listen; only
+    voiced/organic foley — harvest — needed a real recording). Three CC0 bell
+    recordings were also pulled for CREDITS.md as a single decaying ding, kept
+    as an alternate (`bloom_chime_cc0_*`) for whoever prefers that reading of
+    "chime" over a rise."""
+    notes = [523.25, 587.33, 659.25, 783.99, 987.77]  # C5 D5 E5 G5 B5
+    # Sized to the bloom's own rise as its manifest gives it — frame count times
+    # ms per frame — so a re-exported bloom only needs this generator rerun.
+    rise = _bloom_rise_seconds()
+    starts = [rise * f for f in (0.0, 0.15, 0.32, 0.51, 0.75)]
+    n = int((rise + 0.26) * SR)  # the last note's tail runs a little past the last seed
+    out = np.zeros(n)
+    for start, freq in zip(starts, notes):
+        s0 = int(start * SR)
+        ln = min(int(0.55 * SR), n - s0)
+        tone = sine(freq, ln) * 0.55 + sine(freq * 2, ln) * 0.22 + sine(freq * 3, ln) * 0.06
+        tone *= env(ln, int(0.025 * SR), ln, 2.2)
+        out[s0:s0 + ln] += tone * 0.5
+    return normalise(out, 0.5)
+
+
 SOUNDS = {
     "till": till,
     "water": water,
@@ -261,9 +301,28 @@ SOUNDS = {
     "squawk": squawk,
     "nope": nope,
     "honk": honk,
+    "bloom_chime": bloom_chime,  # appended last: keeps every earlier sound's RNG draw, and so its bytes, unchanged
 }
 
-ALTERNATES = {}  # none outstanding
+
+def peck_synth():
+    """Alternate take on the crow gorge's bite (P-15 p1): two sharp toc's in
+    the same percussive territory till/ui_click already cleared, offered
+    beside the CC0 pull ('Pecked eyeball.wav', CREDITS.md) as the other
+    reasonable reading of a beak strike — a quick tick rather than that
+    clip's more visceral texture."""
+    n = int(0.10 * SR)
+    out = np.zeros(n)
+    for start, amp in ((0.0, 1.0), (0.045, 0.55)):
+        s0 = int(start * SR)
+        ln = min(int(0.045 * SR), n - s0)
+        body = highpass(lowpass(noise(ln), 3200), 900) * env(ln, int(0.001 * SR), ln, 6.0)
+        click = sine(2100, ln) * env(ln, int(0.0006 * SR), ln, 9.0) * 0.35
+        out[s0:s0 + ln] += (body * 0.8 + click) * amp
+    return normalise(out, 0.55)
+
+
+ALTERNATES = {"peck_synth": peck_synth}  # A/B against peck_cc0_248254 in the Sound Test
 
 
 if __name__ == "__main__":

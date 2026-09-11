@@ -124,3 +124,40 @@ file); commission 2–3 bespoke loops once the motif is chosen. Bus layout from 
 confirm the premise; (b) melodic motif: do you want to pick/hum one, or should I
 propose three candidates at implementation time; (c) how musical should raids get
 (full track switch vs. layers over the farm theme)?
+
+## The story-night sound beds (P-15 p1, shipped 2026-09-11)
+
+design/09's "What p1 adds" asked for a sound bed under each Animation Lab loop,
+keyed to its frames, with the music ducked beneath it for the length of the story
+night. Built as follows, all driven off each loop's own `manifest.json` (frame
+count and `ms_per_frame`) rather than any wall-clock number, so a re-exported loop
+keeps its cues without a code change:
+
+- **The crow gorge** — the existing `squawk` once as the loop's fade-up begins,
+  then a new `peck` on each of her two strikes' contact frames (read straight off
+  the loop's own generator, `tools/experiments/vfx_crow_gorge.py`).
+- **The seeder robot** — a new `seeder_tread` bed, looping for as long as the
+  loop is on screen (a short recording repeated, not a single long file); a
+  `seeder_servo` one-shot as the arm lifts seed clear of the bag; a
+  `seeder_scatter` one-shot as the seeds and covering soil land at the hole.
+- **The boot bloom** — a new `bloom_chime`, a soft five-note rise sized to the
+  bloom's seed climb as its manifest gives it (frame count × ms per frame; a
+  re-exported bloom means rerunning `tools/gen_sfx.py`), sitting under the music's existing fade-up
+  from silence rather than replacing any part of it.
+- **The watering inset** — nothing of its own: the neighbour's water Action
+  already sounds the pour (the same one the player hears) on the path that
+  reports the shot, so the card is heard once through that cue.
+- **The duck** — `AudioManager.set_bgm_duck`, new: the music (`bgm_player`, a
+  constant −10 dB before this) ramps to −16 dB across the loop's own fade-up,
+  holds there for the whole story night, and ramps back to −10 dB across the
+  morning fade-in. A plain night never calls it at all.
+
+**Sourcing (2026-09-04 ruling, followed in order):** every new sound was searched
+CC0-first (`tools/fetch_sfx_candidates.py`); the boot chime was synthesized
+instead (`tools/gen_sfx.py`) because a *rising* chime is a pitched, non-organic
+tone — synthesis's proven territory — and no CC0 pull read as a rise rather than
+a single decaying ding. One candidate per sound is wired into `AudioManager`
+today; every other candidate ships alongside it, unwired, and is reachable from
+the title screen's Sound Test under "candidates" for an A/B listen before any
+pick is called final — provenance and the full candidate list are in
+`CREDITS.md`, the open pick in `docs/DESIGNER_QUEUE.md` Q-107.

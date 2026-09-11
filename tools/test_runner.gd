@@ -6173,9 +6173,22 @@ func _scenario_au_the_overnight_tells_a_story() -> void:
 	_assert(main_scene.day_cycle.last_story_loop == "seeder_bot",
 		"playing the seeder-bot loop, exactly as the robot's own night names (%s)"
 			% main_scene.day_cycle.last_story_loop)
+	# P-15 p1: the loop's own sound bed. The seeder robot's treads should be
+	# running for as long as it is on screen, and the music should be well
+	# under its usual −10 dB while the loop plays.
+	_assert(AudioManager._bed_active == "seeder_tread",
+		"and its treads are the bed running while it drives (%s)" % AudioManager._bed_active)
+	_assert(AudioManager.bgm_player.volume_db < AudioManager.BGM_BASE_DB - 3.0,
+		"with the music ducked well under its usual volume for the story night (%.1f dB)"
+			% AudioManager.bgm_player.volume_db)
 	var robot_ended := await _wait_until(func(): return not main_scene.day_cycle.is_active(), 20000)
 	_assert(robot_ended and GameState.day == day_before + 1,
 		"and the whole transition still ends in one day, however long the loop ran")
+	_assert(AudioManager._bed_active == "",
+		"the treads stop with the loop rather than running into the next day (%s)" % AudioManager._bed_active)
+	_assert(is_equal_approx(AudioManager.bgm_player.volume_db, AudioManager.BGM_BASE_DB),
+		"and the morning fade brings the music back to its usual volume (%.1f dB)"
+			% AudioManager.bgm_player.volume_db)
 	_assert(GameState.story_loops_shown.get(SimWorld.STORY_NIGHT_ROBOT, false),
 		"the shown flag is set the moment the loop played — this farm's robot night is told")
 

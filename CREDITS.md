@@ -439,6 +439,50 @@ before the first public build ships.*
     loop rather than a single strike, and a phone-hang-up take had several
     onsets across its length; none fit "a detent or a click of well under a
     quarter of a second." Nothing from that discarded set ships.
+- **P-15 p1, the story-night sound beds (Q-107, awaiting the designer's ear)** —
+  five sounds for the Animation Lab loops' frame-keyed cues: the crow gorge's
+  bite, the seeder robot's three beats, and the boot bloom's chime. One pick is
+  wired into `AudioManager` per sound; every other candidate ships unwired,
+  reachable from the title screen's Sound Test under "candidates (A/B against
+  the above)" (`ui/title_screen.gd`'s `SFX_CANDIDATES`), for a listen before
+  any of these is called final:
+    - `peck_cc0_248254.wav` — Freesound #248254 "Pecked eyeball.wav" by
+      jameswrowles — **wired** (`peck`). `peck_synth.wav` — original,
+      synthesized by `tools/gen_sfx.py --alt` — a plainer beak-tick, the other
+      reasonable reading of the same strike, unwired.
+    - **Seeder robot treads (bed, loops for as long as it drives)** —
+      `seeder_tread_cc0_425271.wav` — Freesound #425271 "Tank Tread" by
+      77Pacer — **wired** (`seeder_tread`). `seeder_tread_cc0_415564.wav` and
+      `seeder_tread_cc0_415565.wav` — Freesound #415564/#415565
+      "mehackit_robot_5/6.flac" by hullum — unwired.
+    - **Seeder robot servo (the arm's swing)** —
+      `seeder_servo_cc0_740244.wav` — Freesound #740244 "Servo 6" by
+      JoontheFloof — **wired** (`seeder_servo`). `seeder_servo_cc0_740245.wav`
+      and `seeder_servo_cc0_740247.wav` — Freesound #740245/#740247 "Servo
+      7/9" by JoontheFloof — unwired.
+    - **Seeder robot scatter (the seed drop)** —
+      `seeder_scatter_cc0_348953.wav` — Freesound #348953 "Crumble #6" by
+      abstraktgeneriert — **wired** (`seeder_scatter`).
+      `seeder_scatter_cc0_348954.wav` and `seeder_scatter_cc0_348955.wav` —
+      Freesound #348954/#348955 "Crumble #9/8" by abstraktgeneriert — unwired.
+    - **Boot bloom chime** — `bloom_chime.wav` — original, synthesized by
+      `tools/gen_sfx.py` (five bell tones climbing in pitch, sized to the
+      bloom's rise as its manifest gives it) — **wired** (`bloom_chime`); rerunning
+      the generator reproduces it byte-for-byte. `bloom_chime_cc0_333694.wav`,
+      `_333695.wav` and `_333696.wav` — Freesound #333694/#333695/#333696
+      "Thin bell ding 1/2/3" by Khrinx — a single decaying ding rather than a
+      rise, unwired.
+
+    CC0 1.0 Universal is a public domain dedication: commercial use,
+    modification and redistribution are permitted with no attribution
+    required. Credit is given here by choice. Fetched via
+    `tools/fetch_sfx_candidates.py`, which re-checks each result's licence
+    field rather than trusting the search filter. Sourced free-first per the
+    2026-09-04 ruling (docs/design/10); synthesis was used only for the boot
+    chime (a rising pitched tone, not organic foley — the territory synthesis
+    has handled well since till/water/ui_click) and the peck alternate.
+    Q-107 (`docs/DESIGNER_QUEUE.md`) asks the designer to confirm each wired
+    pick or swap in an alternate.
 - `assets/audio/sfx/water_cc0_*.wav` — CC0 candidates fetched from Freesound for
   the watering-can search; none was selected (the designer recorded his own
   pours instead, above) and all were deleted 2026-09-02. Recorded because the

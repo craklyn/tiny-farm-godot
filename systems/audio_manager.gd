@@ -4,6 +4,20 @@ var bgm_player: AudioStreamPlayer
 var sfx_players: Array[AudioStreamPlayer] = []
 var num_sfx_players = 8
 
+const BGM_BASE_DB := -10.0
+# P-15 p1 ("Duck the music... by about 6 dB for the length of a story night"):
+# the amount `set_bgm_duck` pulls the music down by at full duck. The music
+# has never been ducked anywhere before this — a plain night leaves it alone.
+const BGM_DUCK_DB := 6.0
+
+# A continuous bed — a sound that keeps looping rather than firing once — for
+# a machine that acts the whole length of a story-night loop rather than on
+# one frame of it: the seeder robot's treads while it drives. A dedicated
+# player rather than one of `sfx_players`, so a one-shot triggered mid-drive
+# (the servo, the scatter) never steals the bed's slot or cuts it off.
+var bed_player: AudioStreamPlayer
+var _bed_active: String = ""
+
 # name -> variants. Multiple entries are cycled at play time so a verb repeated
 # fifteen times in a row (tilling a row, harvesting a plot) does not replay one
 # byte-identical buffer. Harvest ships three CC0 recordings; see CREDITS.md for
@@ -32,7 +46,19 @@ var sfx_streams = {
     "nope": [preload("res://assets/audio/sfx/nope.wav")],
     # T-13: the offscreen moving truck. Two parps and an engine pulling away —
     # the callback that ends the cold open, in place of a truck sprite.
-    "honk": [preload("res://assets/audio/sfx/honk.wav")]
+    "honk": [preload("res://assets/audio/sfx/honk.wav")],
+    # P-15 p1 ("a sound bed under each story night"): the crow gorge's own two
+    # strikes, one per side of the loop. CC0 recording; see CREDITS.md.
+    "peck": [preload("res://assets/audio/sfx/peck_cc0_248254.wav")],
+    # The seeder robot's three beats — a continuous bed (treads, played through
+    # `play_bed`, not `play_sfx`) and two one-shots on the arm's own swing.
+    # All three CC0; see CREDITS.md.
+    "seeder_tread": [preload("res://assets/audio/sfx/seeder_tread_cc0_425271.wav")],
+    "seeder_servo": [preload("res://assets/audio/sfx/seeder_servo_cc0_740244.wav")],
+    "seeder_scatter": [preload("res://assets/audio/sfx/seeder_scatter_cc0_348953.wav")],
+    # The boot bloom's rising chime (Q-103), synthesized (tools/gen_sfx.py) —
+    # see CREDITS.md.
+    "bloom_chime": [preload("res://assets/audio/sfx/bloom_chime.wav")],
 }
 
 # Presentation-only randomness, deliberately NOT SimRng: drawing from the seeded
@@ -57,17 +83,23 @@ func _ready():
     # Setup BGM player
     bgm_player = AudioStreamPlayer.new()
     bgm_player.stream = preload("res://assets/audio/music/bgm_wholesome.ogg")
-    bgm_player.volume_db = -10.0
+    bgm_player.volume_db = BGM_BASE_DB
     bgm_player.bus = "Master"
     add_child(bgm_player)
     bgm_player.play()
-    
+
     # Setup SFX players
     for i in range(num_sfx_players):
         var p = AudioStreamPlayer.new()
         p.bus = "Master"
         add_child(p)
         sfx_players.append(p)
+
+    bed_player = AudioStreamPlayer.new()
+    bed_player.bus = "Master"
+    add_child(bed_player)
+    bed_player.finished.connect(_on_bed_finished)
+
 
 func play_sfx(sound_name: String):
     var variants = sfx_streams.get(sound_name)
@@ -100,3 +132,41 @@ func play_sfx(sound_name: String):
         sfx_players[0].stream = variants[idx]
         sfx_players[0].pitch_scale = pitch
         sfx_players[0].play()
+
+
+func _on_bed_finished() -> void:
+    # A bed keeps going for as long as it is wanted, not for one play-through —
+    # this is what makes a short recording (`seeder_tread` is 1.5s) cover a
+    # loop that plays several seconds longer.
+    if _bed_active != "" and bed_player.stream != null:
+        bed_player.play()
+
+
+## Starts a continuous background sound (see `_bed_active` above). A repeat
+## call for the sound already playing is a no-op, so a caller can call this
+## every frame without restarting the loop each time.
+func play_bed(sound_name: String) -> void:
+    var variants = sfx_streams.get(sound_name)
+    if variants == null or variants.is_empty():
+        return
+    if _bed_active == sound_name and bed_player.playing:
+        return
+    _bed_active = sound_name
+    bed_player.stream = variants[0]
+    bed_player.play()
+
+
+func stop_bed() -> void:
+    _bed_active = ""
+    bed_player.stop()
+
+
+## Ducks `bgm_player` toward `BGM_DUCK_DB` below its base volume, `amount`
+## ranging 0 (full volume) .. 1 (fully ducked). Presentation-only, driven by
+## whatever currently wants the music quiet (today: the overnight's
+## story-night loop, `systems/day_cycle.gd`) — nothing here remembers who
+## asked, so the last call simply wins, same as any other volume knob.
+func set_bgm_duck(amount: float) -> void:
+    if bgm_player == null:
+        return
+    bgm_player.volume_db = BGM_BASE_DB - BGM_DUCK_DB * clampf(amount, 0.0, 1.0)

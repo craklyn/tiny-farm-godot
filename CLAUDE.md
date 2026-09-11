@@ -80,6 +80,13 @@ godot --path . res://tools/capture_watering_inset.tscn
 # The overnight's crow-gorge loop (P-15) mid-play as tools/shot_overnight_crow.png, and the
 # Day-N card on the same sky as tools/shot_overnight_card.png — needs a display
 godot --path . res://tools/capture_overnight_crow.tscn
+
+# The screens the overnight's frame question is judged on (Q-106): both story nights
+# mid-play plus the Day-N type, then the four candidate frames drawn over them, all
+# under docs/design/mockups/overnight_frames/. The capture needs a display; the
+# second step reads the captures and does not.
+godot --path . res://tools/capture_overnight_plates.tscn
+python3 tools/compose_overnight_frames.py
 ```
 
 After a fresh clone or when assets changed, import first: `godot --headless --path . --import`

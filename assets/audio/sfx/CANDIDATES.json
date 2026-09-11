@@ -58,5 +58,135 @@
     "license": "CC0 1.0 Universal (public domain dedication)",
     "source": "https://freesound.org/people/Sadiquecat/sounds/793345/",
     "query": "dial click"
+  },
+  {
+    "slot": "peck",
+    "file": "peck_cc0_248254.wav",
+    "freesound_id": 248254,
+    "title": "Pecked eyeball.wav",
+    "author": "jameswrowles",
+    "license": "CC0 1.0 Universal (public domain dedication)",
+    "source": "https://freesound.org/people/jameswrowles/sounds/248254/",
+    "query": "pecking wood"
+  },
+  {
+    "slot": "seeder_scatter",
+    "file": "seeder_scatter_cc0_348955.wav",
+    "freesound_id": 348955,
+    "title": "Crumble #8.wav",
+    "author": "abstraktgeneriert",
+    "license": "CC0 1.0 Universal (public domain dedication)",
+    "source": "https://freesound.org/people/abstraktgeneriert/sounds/348955/",
+    "query": "gravel scatter"
+  },
+  {
+    "slot": "seeder_scatter",
+    "file": "seeder_scatter_cc0_348954.wav",
+    "freesound_id": 348954,
+    "title": "Crumble #9.wav",
+    "author": "abstraktgeneriert",
+    "license": "CC0 1.0 Universal (public domain dedication)",
+    "source": "https://freesound.org/people/abstraktgeneriert/sounds/348954/",
+    "query": "gravel scatter"
+  },
+  {
+    "slot": "seeder_scatter",
+    "file": "seeder_scatter_cc0_348953.wav",
+    "freesound_id": 348953,
+    "title": "Crumble #6.wav",
+    "author": "abstraktgeneriert",
+    "license": "CC0 1.0 Universal (public domain dedication)",
+    "source": "https://freesound.org/people/abstraktgeneriert/sounds/348953/",
+    "query": "gravel scatter"
+  },
+  {
+    "slot": "seeder_tread",
+    "file": "seeder_tread_cc0_425271.wav",
+    "freesound_id": 425271,
+    "title": "Tank Tread",
+    "author": "77Pacer",
+    "license": "CC0 1.0 Universal (public domain dedication)",
+    "source": "https://freesound.org/people/77Pacer/sounds/425271/",
+    "query": "tank tread"
+  },
+  {
+    "slot": "seeder_tread",
+    "file": "seeder_tread_cc0_415565.wav",
+    "freesound_id": 415565,
+    "title": "mehackit_robot_6.flac",
+    "author": "hullum",
+    "license": "CC0 1.0 Universal (public domain dedication)",
+    "source": "https://freesound.org/people/hullum/sounds/415565/",
+    "query": "toy robot motor"
+  },
+  {
+    "slot": "seeder_tread",
+    "file": "seeder_tread_cc0_415564.wav",
+    "freesound_id": 415564,
+    "title": "mehackit_robot_5.flac",
+    "author": "hullum",
+    "license": "CC0 1.0 Universal (public domain dedication)",
+    "source": "https://freesound.org/people/hullum/sounds/415564/",
+    "query": "toy robot motor"
+  },
+  {
+    "slot": "seeder_servo",
+    "file": "seeder_servo_cc0_740247.wav",
+    "freesound_id": 740247,
+    "title": "Servo 9",
+    "author": "JoontheFloof",
+    "license": "CC0 1.0 Universal (public domain dedication)",
+    "source": "https://freesound.org/people/JoontheFloof/sounds/740247/",
+    "query": "servo motor"
+  },
+  {
+    "slot": "seeder_servo",
+    "file": "seeder_servo_cc0_740245.wav",
+    "freesound_id": 740245,
+    "title": "Servo 7",
+    "author": "JoontheFloof",
+    "license": "CC0 1.0 Universal (public domain dedication)",
+    "source": "https://freesound.org/people/JoontheFloof/sounds/740245/",
+    "query": "servo motor"
+  },
+  {
+    "slot": "seeder_servo",
+    "file": "seeder_servo_cc0_740244.wav",
+    "freesound_id": 740244,
+    "title": "Servo 6",
+    "author": "JoontheFloof",
+    "license": "CC0 1.0 Universal (public domain dedication)",
+    "source": "https://freesound.org/people/JoontheFloof/sounds/740244/",
+    "query": "servo motor"
+  },
+  {
+    "slot": "bloom_chime",
+    "file": "bloom_chime_cc0_333696.wav",
+    "freesound_id": 333696,
+    "title": "Thin bell ding 1",
+    "author": "Khrinx",
+    "license": "CC0 1.0 Universal (public domain dedication)",
+    "source": "https://freesound.org/people/Khrinx/sounds/333696/",
+    "query": "bell chime"
+  },
+  {
+    "slot": "bloom_chime",
+    "file": "bloom_chime_cc0_333695.wav",
+    "freesound_id": 333695,
+    "title": "Thin bell ding 2",
+    "author": "Khrinx",
+    "license": "CC0 1.0 Universal (public domain dedication)",
+    "source": "https://freesound.org/people/Khrinx/sounds/333695/",
+    "query": "bell chime"
+  },
+  {
+    "slot": "bloom_chime",
+    "file": "bloom_chime_cc0_333694.wav",
+    "freesound_id": 333694,
+    "title": "Thin bell ding 3",
+    "author": "Khrinx",
+    "license": "CC0 1.0 Universal (public domain dedication)",
+    "source": "https://freesound.org/people/Khrinx/sounds/333694/",
+    "query": "bell chime"
   }
 ]

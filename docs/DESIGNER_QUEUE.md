@@ -11,6 +11,22 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
 
 ## Now — blocks M0 close or current work
 
+- **Q-106** A frame around the picture the sleep plays — **Ruling**. On the night the farm
+  changes, the sleep goes dark and plays a short animation before the Day-N card: the crows
+  gorging on the night the acorns run out, the seeder robot on the night the training bench
+  goes up. Today it sits on the night with nothing around it. Four treatments were drawn over
+  photographs of the real game, taken mid-play on both nights, none of them adding a colour
+  the game does not already use and none of them blurred: **(a) no frame**, what ships;
+  **(b) a postcard**, a thin warm border with rounded corners and the Day-N type beneath;
+  **(c) a viewfinder**, teal corner brackets and a faint line pattern; **(d) a dream**, the
+  picture keeping its middle and dissolving into the night along a wandering cloud edge.
+  Two costs the pictures made visible: the crow animation already fills the screen to within
+  sixteen pixels, so the postcard costs that night a whole step of size (six times down to
+  five), and the robot animation's ground already ends in a hard line at the bottom of its
+  canvas (only its sides dissolve), so a border draws that line again one pixel further out.
+  **Recommendation: (d)** — it costs no size, adds no colour, and is the only one that makes
+  the robot's hard ground edge go away rather than point at it. Card:
+  `hq/data/decisions/Q-106.json`. Building the winner is Jade's.
 - **Q-105** How long the crows eat on the raid morning — **Ruling**. The morning after the
   crow night, three crows are already eating three of her tomatoes when she opens her front
   door, and how long their meal lasts is how many she can save. Measured on the farm the
@@ -27,6 +43,18 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   **Recommendation: (a)** — it is the version a watching four-year-old can predict, and a
   crow that eats slower because the farm is bigger is the game doing arithmetic about the
   player where she can see it. Revisit after a tablet playtest of a far bed.
+- **Q-107** Which take of each new story-night sound to keep — **Approval**. P-15 p1 (the
+  sound bed under each Animation Lab loop) is built and wired: a crow peck, the seeder
+  robot's treads/servo/scatter, and the boot bloom's chime. Each has 2-3 free (CC0)
+  alternates sitting unwired beside the picked one — a synthesized alternate for the peck,
+  and three CC0 dings as alternates to the synthesized chime — all reachable from the title screen's Sound Test under "candidates
+  (A/B against the above)," so this is a listen, not a design question. **Recommendation:
+  keep the five wired picks** — `peck_cc0_248254`, `seeder_tread_cc0_425271`,
+  `seeder_servo_cc0_740244`, `seeder_scatter_cc0_348953`, and the synthesized
+  `bloom_chime` (a five-note rise sized to the bloom's own climb, read from its manifest,
+  which none of the CC0 bell recordings do — they decay rather than rise). Full candidate list and sources:
+  `CREDITS.md` ("The story-night sound beds"). Swap in an alternate from the Sound Test
+  by naming it here; nothing else needs to change.
 - **Q-103** ~~How the sunflower bloom opens the game~~ — ✅ **ruled 2026-09-10: (a) the flower
   is the splash.** The engine's splash is the closed bud on its own sky; the bud opens and the
   seeds rise once while the music fades up; the title and menu settle in as the last seed

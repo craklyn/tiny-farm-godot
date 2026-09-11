@@ -1,0 +1,84 @@
+{
+ "id": "Q-106",
+ "title": "A frame around the picture the sleep plays",
+ "question": "On the night the farm changes, the sleep goes dark and plays a short animation before the Day-N card: the crows gorging on the night the acorns run out, the seeder robot on the night the training bench goes up. Today the animation sits on the night with nothing around it. You asked to see three frames tried against that.\n\nEvery picture below is a photograph of the real game, taken mid-play on both nights. No frame adds a colour the game does not already use, and nothing in them is blurred: the rounded corners step on the picture's own pixels, and every soft edge is a dot pattern, which is the same trick the sleep already uses to dissolve an animation's left and right edges into the night.\n\nTwo things the pictures show that the descriptions did not. The crow animation already fills the screen to within sixteen pixels, so a card drawn around it has nowhere to go — the postcard below costs that night one whole step of size, from six times to five. And the robot animation's ground already ends in a hard line at the bottom of its picture, because only the sides are drawn to dissolve, so a border draws that same line again just outside it.\n\nOne note on colour: the brackets are the teal accent from the style guide, not the cyan reserved for the repellent scent overlay. They are close enough to be worth saying, and they can only appear here because the sleep is the one screen with no farm on it.",
+ "why_now": "The sleep already plays both animations on the tablet. A frame is the last open thing about how they are shown, and building the winner is a day of work for one engineer.",
+ "options": [
+  {
+   "key": "a",
+   "label": "No frame — what ships today",
+   "detail": "The animation sits on the night at its full size, edge to edge. Costs nothing, changes nothing. The robot's ground stops at a line where the bottom of its canvas is, which is the thing the other three are trying to answer."
+  },
+  {
+   "key": "b",
+   "label": "A postcard",
+   "detail": "A thin warm border with rounded corners around the picture, and the Day-N type beneath it. The most like a keepsake, and the most expensive: the crow night drops a whole step of size to make room, and on the robot night the border repeats the hard line the ground already ends in."
+  },
+  {
+   "key": "c",
+   "label": "A viewfinder",
+   "detail": "Four teal corner brackets inside the picture and a faint line pattern across it, so the sleep reads as something watched through a lens. The near-future edge the studio allows itself. Costs no size, and it is the only one of the four that puts a machine between the player and the farm."
+  },
+  {
+   "key": "d",
+   "label": "A dream (Recommended)",
+   "detail": "The picture keeps its middle and dissolves into the night towards its edges, along a wandering cloud edge rather than a circle. Costs no size, adds no colour, and it is the only one that makes the robot's hard ground edge disappear instead of drawing attention to it. The price is the outermost content: the crow's floor and the robot's furthest grass go into the dark."
+  }
+ ],
+ "links": [
+  {
+   "label": "How a loop is shown today (design/09, 'Where the Lab's loops play')",
+   "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/09-art-direction.md"
+  },
+  {
+   "label": "The decision the sleep sits under (P-15)",
+   "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DECISION_LOG.md"
+  },
+  {
+   "label": "Queue entry (Q-106)",
+   "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"
+  }
+ ],
+ "attachments": [
+  {
+   "type": "image",
+   "src": "docs/design/mockups/overnight_frames/a_none_crow_gorge.png",
+   "caption": "(a) No frame, the crow night — what the game does today"
+  },
+  {
+   "type": "image",
+   "src": "docs/design/mockups/overnight_frames/a_none_seeder_bot.png",
+   "caption": "(a) No frame, the robot night — the ground stops at the bottom of the canvas"
+  },
+  {
+   "type": "image",
+   "src": "docs/design/mockups/overnight_frames/b_postcard_crow_gorge.png",
+   "caption": "(b) The postcard, the crow night — the picture is a step smaller so the card fits"
+  },
+  {
+   "type": "image",
+   "src": "docs/design/mockups/overnight_frames/b_postcard_seeder_bot.png",
+   "caption": "(b) The postcard, the robot night — the border runs across the dissolving ground"
+  },
+  {
+   "type": "image",
+   "src": "docs/design/mockups/overnight_frames/c_viewfinder_crow_gorge.png",
+   "caption": "(c) The viewfinder, the crow night"
+  },
+  {
+   "type": "image",
+   "src": "docs/design/mockups/overnight_frames/c_viewfinder_seeder_bot.png",
+   "caption": "(c) The viewfinder, the robot night"
+  },
+  {
+   "type": "image",
+   "src": "docs/design/mockups/overnight_frames/d_dream_crow_gorge.png",
+   "caption": "(d) The dream, the crow night — the bird keeps its middle, the floor goes dark"
+  },
+  {
+   "type": "image",
+   "src": "docs/design/mockups/overnight_frames/d_dream_seeder_bot.png",
+   "caption": "(d) The dream, the robot night — the ground fades out instead of ending"
+  }
+ ]
+}
