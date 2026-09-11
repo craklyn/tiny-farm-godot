@@ -1,0 +1,20 @@
+{
+  "id": "w77a563cd908",
+  "title": "The crow's peck and the robot's seed scatter hit full scale in the mix",
+  "level": "task",
+  "owner": "dmitri",
+  "tier": 1,
+  "tier_reason": "Measured on the recording made for the Q-107 card: the story-night music sits near -30 dB RMS while the peck and the scatter peak at 0 dBFS, so they will clip on a tablet speaker and land far louder than the bed they sit in.",
+  "first_action": "Play tools/record_story_sounds.sh's crow and robot segments and compare the cue peaks against the music; then trim peck_cc0_248254 and seeder_scatter_cc0_348953 (or their play_sfx gain) by about 6 dB.",
+  "ask": "tools/record_story_sounds.sh records the three story-night moments with the game's own audio. On the crow night the music measures about -30 dB RMS and the two pecks peak at 0 dBFS (max_volume 0.0 dB); on the robot night the scatter does the same. Bring the one-shots down so they sit in the bed rather than over it — a trim on the files (keep the raws and note it in CREDITS.md) or a per-sound gain in AudioManager's table, whichever the table already supports — and re-record with the script to check. Do not change the picks; Q-107 is Daniel's.",
+  "state": "waiting_session",
+  "thread": "",
+  "source": "chief-of-staff",
+  "source_message": "Found by the chief of staff measuring the Q-107 recording, 2026-09-11.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-11T08:26",
+  "created_ts": 1789140399.5516443,
+  "conversation": []
+}

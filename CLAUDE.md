@@ -87,6 +87,10 @@ godot --path . res://tools/capture_overnight_crow.tscn
 # second step reads the captures and does not.
 godot --path . res://tools/capture_overnight_plates.tscn
 python3 tools/compose_overnight_frames.py
+
+# The three story-night sound moments recorded from the game with its own audio, joined
+# into docs/design/mockups/story_night_sounds.mp4 for the Q-107 card — needs a display and ffmpeg
+tools/record_story_sounds.sh
 ```
 
 After a fresh clone or when assets changed, import first: `godot --headless --path . --import`

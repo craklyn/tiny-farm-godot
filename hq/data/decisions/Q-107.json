@@ -1,7 +1,7 @@
 {
  "id": "Q-107",
  "title": "Which take of each story-night sound to keep",
- "question": "Each animation the sleep plays now has sound under it, and the boot bloom has a chime. Five sounds are wired: a peck for the crow's strikes, treads, a servo and a seed scatter for the robot, and a soft rising chime under the bloom. Four of the five are free recordings (CC0); the chime is synthesized, because no free bell recording rises in pitch, and the moment needs a rise. Two or three alternates for each sit unwired in the title screen's Sound Test, next to the picks, so this is a listen rather than a design question.",
+ "question": "Each animation the sleep plays now has sound under it, and the boot bloom has a chime. Five sounds are wired: a peck for the crow's strikes, treads, a servo and a seed scatter for the robot, and a soft rising chime under the bloom. Four of the five are free recordings (CC0); the chime is synthesized, because no free bell recording rises in pitch, and the moment needs a rise. Two or three alternates for each sit unwired in the title screen's Sound Test, next to the picks, so this is a listen rather than a design question. The video below is the game itself, recorded with its sound, so you can hear the five picks where they play.",
  "why_now": "The sounds ship with the story nights. Whatever you pick here is what players hear on the first crow night.",
  "options": [
   {
@@ -32,6 +32,13 @@
   {
    "label": "Queue entry (Q-107)",
    "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"
+  }
+ ],
+ "attachments": [
+  {
+   "type": "video",
+   "src": "docs/design/mockups/story_night_sounds.mp4",
+   "caption": "The three moments recorded from the running game with its own audio: the boot (the chime under the music fading up), the crow night (squawk, two pecks, the music ducked), the robot night (treads, servo, seed scatter). Turn the sound on."
   }
  ]
 }
