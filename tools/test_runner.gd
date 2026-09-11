@@ -102,6 +102,7 @@ func _run_scenarios() -> void:
 	await _scenario_ao_the_dials_turn_through_the_gateway()
 	await _scenario_aq_the_ledger_is_the_scorecard()
 	await _scenario_as_the_bench_and_panel_agree()
+	await _scenario_at_a_crow_eating_flaps_and_turns()
 
 func _wait_until(pred: Callable, max_frames: int) -> bool:
 	for i in max_frames:
@@ -5914,4 +5915,135 @@ func _scenario_as_the_bench_and_panel_agree() -> void:
 	farm.sim.set_object(bench_spot.x, bench_spot.y, "")
 	farm.apply_action({ "verb": "collect", "target": farm.sim.actor_pos(mk3),
 		"actor": "player" }, GameState)
+	await get_tree().process_frame
+
+
+func _scenario_at_a_crow_eating_flaps_and_turns() -> void:
+	# The designer, 2026-09-10: "When a crow has landed on a crop and is eating it,
+	# we need to add an animation that draws attention to it and indicates things
+	# are not going well. At a minimum, bird turning left and right, and waving its
+	# wings."
+	#
+	# Scenario S's treatment — a **detached** farm, the bird put into the registry
+	# by hand, and the node's `_process` driven by hand — for two reasons that are
+	# really one reason. A meal is five seconds of *sim* time
+	# (`CrowBrain.EAT_SECONDS`) and a headless frame is microseconds long, so a
+	# visit in the played farm would be over long before a 0.9 s turn came round;
+	# and the farmer is standing wherever the scenario before this one left her, so
+	# a crow within her spook radius is a crow that flees rather than one that eats.
+	# Driven by hand, the frames are real seconds and nothing frightens the bird.
+	#
+	# The states themselves are **not** staged: the brain flies it in and the brain
+	# ends the meal, both through the tick clock, because what is being checked is
+	# that the sprite answers the state the sim is in.
+	print("\n--- Scenario AT: a crow on a crop flaps and turns while it eats ---")
+
+	var FarmScript = load("res://world/farm.gd")
+	var yard = FarmScript.new()
+	yard.name = "CrowField"
+	yard.mute_feedback = true
+	add_child(yard)
+	await get_tree().process_frame
+
+	# A crop, and a bird a tile short of it, in the air — the arrival `CrowBrain`
+	# writes, field for field.
+	var crop := Vector2i(8, 9)
+	yard.set_tile_state(crop.x, crop.y, "seeded", "wheat")
+	yard.sim.spawn_actor(SimWorld.ACTOR_CROW, SpeciesDefs.CROW, Vector2i(crop.x, crop.y - 1), {
+		"state": "flying_in",
+		"fx": crop.x + 0.5, "fy": crop.y - 0.5,
+		"tgt_x": crop.x, "tgt_y": crop.y,
+		"kind": "crop",
+		"harmless": false,
+		"ex": 0.0, "ey": -1.0,
+		"eat_at": 0,
+		"leaving_because": "",
+	})
+	yard.sync_actors()
+
+	var crow = yard.actor_nodes.get(SimWorld.ACTOR_CROW, null)
+	_assert(crow != null and is_instance_valid(crow),
+		"the registry's crow has a sprite, as every actor does")
+	if crow == null:
+		yard.queue_free()
+		await get_tree().process_frame
+		return
+
+	# --- in the air: the flap it has always had, and no turn -------------------
+	var air_cells := 0
+	var air_turns := 0
+	var cell: Rect2 = crow.cell_region()
+	var turned: bool = crow.facing_left
+	for i in 120:  # two seconds, a sixtieth at a time
+		crow._process(1.0 / 60.0)
+		if crow.cell_region() != cell:
+			air_cells += 1
+			cell = crow.cell_region()
+		if crow.facing_left != turned:
+			air_turns += 1
+			turned = crow.facing_left
+	_assert(air_cells >= 2, "a crow in the air flaps, as it always did (%d changes)" % air_cells)
+	_assert(air_turns == 0 and not crow.facing_left,
+		"and never turns — the flight is untouched (%d turns)" % air_turns)
+
+	# --- the brain lands it on the crop ---------------------------------------
+	var ticks := 0
+	while String(yard.sim.actor(SimWorld.ACTOR_CROW)["extra"].get("state", "")) != "eating" \
+			and ticks < 40:
+		yard.advance_sim(1, GameState)
+		ticks += 1
+	_assert(String(yard.sim.actor(SimWorld.ACTOR_CROW)["extra"].get("state", "")) == "eating",
+		"the sim flies it the last tile and puts it on the food (%d ticks)" % ticks)
+
+	# --- on the crop: wings and a head turn, and a pixel of bob ---------------
+	var meal_cells := 0
+	var meal_turns := 0
+	var cells_seen := {}
+	var bobs_seen := {}
+	cell = crow.cell_region()
+	turned = crow.facing_left
+	for i in 120:
+		crow._process(1.0 / 60.0)
+		cells_seen[crow.cell_region().position.x] = true
+		bobs_seen[crow.bob_px()] = true
+		if crow.cell_region() != cell:
+			meal_cells += 1
+			cell = crow.cell_region()
+		if crow.facing_left != turned:
+			meal_turns += 1
+			turned = crow.facing_left
+	_assert(meal_cells >= 2,
+		"a crow eating waves its wings (%d frame changes in two seconds)" % meal_cells)
+	_assert(meal_turns >= 1,
+		"and turns left and right while it does it (%d turns)" % meal_turns)
+	_assert(cells_seen.size() == 2 and cells_seen.has(0.0) and cells_seen.has(16.0),
+		"between the perched cell and the wings-up cell — the two that stand still (%s)"
+			% str(cells_seen.keys()))
+	_assert(bobs_seen.size() == 2 and bobs_seen.has(0.0),
+		"riding a pixel high on the open wing, so it reads as pecking (%s)"
+			% str(bobs_seen.keys()))
+
+	# --- the meal ends in the sim, and the pose goes back with it -------------
+	ticks = 0
+	while String(yard.sim.actor(SimWorld.ACTOR_CROW)["extra"].get("state", "")) == "eating" \
+			and ticks < 120:
+		yard.advance_sim(1, GameState)
+		ticks += 1
+	_assert(not yard.sim.has_actor(SimWorld.ACTOR_CROW) \
+			or String(yard.sim.actor(SimWorld.ACTOR_CROW)["extra"].get("state", "")) != "eating",
+		"the brain ends the meal on its own clock (%d ticks)" % ticks)
+	if not yard.sim.has_actor(SimWorld.ACTOR_CROW):
+		yard.queue_free()
+		await get_tree().process_frame
+		return
+	crow._process(1.0 / 60.0)
+	_assert(not crow.facing_left and is_equal_approx(crow.bob_px(), 0.0),
+		"and the bird leaves unmirrored and back on its own line")
+	_assert(crow.cell_region() != Rect2(0, 0, 16, 16),
+		"in a flying cell, which is the pose every other state has always drawn (%s)"
+			% str(crow.cell_region()))
+
+	yard.sim.despawn_actor(SimWorld.ACTOR_CROW)
+	yard.sync_actors()
+	yard.queue_free()
 	await get_tree().process_frame
