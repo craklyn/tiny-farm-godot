@@ -60,6 +60,16 @@ const SHELF := {
 	"2026-08-31_220426": { "format": 2, "verdict": "cross" },
 	"2026-08-31_230643": { "format": 2, "verdict": "cross" },
 	"2026-08-31_233943": { "format": 2, "verdict": "cross" },
+	# 2026-09-10: the four tablet rescues of the workbench day. 191345 is the designer's
+	# finished playthrough (day 53, nothing left to unlock) and replays exactly under the
+	# build that added the bench; 004251 still replays exactly too. 013629 and 112331 do
+	# not: 112331 diverges at a Mark III's decision (entry 814) because Q-98 landed that
+	# day — a robot picked up and set down again now keeps its weights where it used to
+	# start fresh — so the world moved under the recording, by the CEO's ruling.
+	"2026-09-10_004251": { "format": 2, "verdict": "match" },
+	"2026-09-10_013629": { "format": 2, "verdict": "cross" },
+	"2026-09-10_112331": { "format": 2, "verdict": "cross" },
+	"2026-09-10_191345": { "format": 2, "verdict": "match" },
 }
 
 # The robot-value measurement, shared with the tool that prints it as a table for
