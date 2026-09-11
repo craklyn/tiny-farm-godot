@@ -127,6 +127,15 @@ var seeds_bought: int
 var cans_refilled: int
 var phase1_complete: bool  # Q-12/P-4: set silently by the sim at sleep when the proof is met
 
+# P-15: which story-night loops the overnight has already shown this farm, keyed
+# by the sim's own night name ("crow_night", "robot_night"). The sim's own
+# `story_nights_told` already stops a night's *trigger* from firing twice; this
+# is presentation's own companion, needed because the autosave lands (main.gd,
+# `persist_session()`) before the hold plays its loop — so a session cut short
+# between the two must not offer the loop a second time on reload. Set the
+# moment a loop is chosen (`systems/day_cycle.gd`), not once it finishes.
+var story_loops_shown: Dictionary = {}
+
 # Milestones tracking
 var _milestones_earned: Dictionary = {}
 
@@ -189,6 +198,7 @@ func reset() -> void:
 	seeds_bought = 0
 	cans_refilled = 0
 	phase1_complete = false
+	story_loops_shown = {}
 	_milestones_earned = {}
 	game_paused = false
 	day_changed.emit(day)

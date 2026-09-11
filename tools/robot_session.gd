@@ -132,6 +132,11 @@ func _ready() -> void:
 	# the bottom of this run stands on exactly the same farm the recording did.
 	main_scene.farm.sim.earn(SimWorld.RUNG_MK2_WORKED)
 	main_scene.farm.sim.earn(SimWorld.RUNG_DESK_PLACED)
+	# ...and a bench standing is the robot night's own condition (P-15), so both
+	# story nights are told here too, the way a farm that already had them reads:
+	# this session measures a day's play and its replay, not the overnight loop.
+	main_scene.farm.sim.story_nights_told[SimWorld.STORY_NIGHT_CROW] = true
+	main_scene.farm.sim.story_nights_told[SimWorld.STORY_NIGHT_ROBOT] = true
 
 	SimRng.reseed(main_scene.farm.sim.gen_seed)
 	main_scene.farm.start_replay_log_from_save(

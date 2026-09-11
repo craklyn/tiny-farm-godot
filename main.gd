@@ -305,6 +305,10 @@ func _ready() -> void:
 	# Create day cycle overlay
 	var DayCycleScript = load("res://systems/day_cycle.gd")
 	day_cycle = DayCycleScript.new()
+	# P-15: so the hold can read `farm.sim.story_night` for itself once the
+	# sleep has resolved, rather than being told — the cold open's world sleep
+	# applies its Action from inside the hold's own callback, after this point.
+	day_cycle.farm = farm
 	add_child(day_cycle)
 
 	# Q-103 item 5: the title screen faded itself out to the sky colour before

@@ -130,6 +130,7 @@ func _init() -> void:
 	test_crow_raid_trigger()
 	test_crow_raid_waits_for_the_door()
 	test_crow_raid_survives_a_save()
+	test_story_loop_shown_survives_a_save()
 	test_crow_raid_replays()
 	test_daylight()
 	test_energy_repartition()
@@ -2341,6 +2342,32 @@ func test_crow_raid_survives_a_save() -> void:
 	_assert(bed.size() == SimWorld.RAID_MIN_TOMATOES, "the bed under all of this is four tomatoes")
 	gs_loaded.free()
 	gs_again.free()
+	gs_old.free()
+	live.done()
+
+
+func test_story_loop_shown_survives_a_save() -> void:
+	print("\n--- The overnight's shown-loop flag survives a save (P-15) Tests ---")
+	# Presentation's own record of which story-night loops this farm has seen. The
+	# autosave lands at the sleep tap, before the hold plays, so a session cut short
+	# between the two must reload knowing the loop was already chosen.
+	var live := LiveSession.new(3202)
+	live.gs.story_loops_shown[SimWorld.STORY_NIGHT_CROW] = true
+	var saved = JSON.parse_string(JSON.stringify(SaveGame.capture(live.world, live.gs)))
+	var loaded := SimWorld.new()
+	var gs_loaded = load("res://systems/game_state.gd").new()
+	_assert(SaveGame.restore(saved, loaded, gs_loaded), "the save restores")
+	_assert(bool(gs_loaded.story_loops_shown.get(SimWorld.STORY_NIGHT_CROW, false)),
+		"and the farm still knows the crow night's loop has been shown")
+	_assert(not gs_loaded.story_loops_shown.has(SimWorld.STORY_NIGHT_ROBOT),
+		"while a night it has not seen is still unset")
+	# A save from before the overnight loop existed reads as a farm shown nothing.
+	saved["state"].erase("story_loops_shown")
+	var old := SimWorld.new()
+	var gs_old = load("res://systems/game_state.gd").new()
+	_assert(SaveGame.restore(saved, old, gs_old), "a save from before the overnight loop loads")
+	_assert(gs_old.story_loops_shown.is_empty(), "as a farm that has been shown no loop yet")
+	gs_loaded.free()
 	gs_old.free()
 	live.done()
 

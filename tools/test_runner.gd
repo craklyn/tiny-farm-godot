@@ -66,6 +66,16 @@ func _run_scenarios() -> void:
 	# through actions and checks the shelf at every rung.
 	farm.sim.earn(SimWorld.RUNG_MK2_WORKED)
 	farm.sim.earn(SimWorld.RUNG_DESK_PLACED)
+	# The bench above is standing from the very first scenario, which is exactly
+	# `robot_night_due()`'s condition (P-15) — every sleep from here on would
+	# otherwise claim tonight is the robot's story night and lengthen the hold
+	# under scenarios that are testing something else entirely (`_scenario_w`'s
+	# tight D-8 timing windows among them). Telling both story nights up front,
+	# the same way a farm that already had them would read, keeps every other
+	# scenario's sleep a plain one; `_scenario_au_the_overnight_tells_a_story`
+	# below un-tells the robot night for exactly as long as it needs to.
+	farm.sim.story_nights_told[SimWorld.STORY_NIGHT_CROW] = true
+	farm.sim.story_nights_told[SimWorld.STORY_NIGHT_ROBOT] = true
 	await _scenario_a()
 	await _scenario_b()
 	await _scenario_c()
@@ -112,6 +122,7 @@ func _run_scenarios() -> void:
 	await _scenario_aq_the_ledger_is_the_scorecard()
 	await _scenario_as_the_bench_and_panel_agree()
 	await _scenario_at_a_crow_eating_flaps_and_turns()
+	await _scenario_au_the_overnight_tells_a_story()
 
 func _wait_until(pred: Callable, max_frames: int) -> bool:
 	for i in max_frames:
@@ -6099,3 +6110,91 @@ func _scenario_at_a_crow_eating_flaps_and_turns() -> void:
 	yard.sync_actors()
 	yard.queue_free()
 	await get_tree().process_frame
+
+
+func _scenario_au_the_overnight_tells_a_story() -> void:
+	# P-15: the overnight plays a Lab loop, once, on the night the farm crosses a
+	# named threshold — read straight off `farm.sim.story_night`, never guessed
+	# at here (`systems/day_cycle.gd`). Three claims, in order: a plain night
+	# does not lengthen the hold; the robot night does, playing the seeder-bot
+	# loop; and a farm that has already shown a night's loop never offers it a
+	# second time — the one guard between a session cut short after the
+	# autosave (main.gd persists before the hold plays) and a replayed loop on
+	# the next launch.
+	print("\n--- Scenario AU: the overnight tells a story on the night the farm changed ---")
+
+	var real_paths := [GameState.save_path, GameState.replay_path, GameState.trace_path]
+	GameState.save_path = "user://au_autosave.json"
+	GameState.replay_path = "user://au_replay.json"
+	GameState.trace_path = "user://au_trace.jsonl"
+
+	var cot: Vector2i = main_scene._cot_tile
+	_assert(cot.x >= 0, "the farm has a cot, and main.gd knows where it is")
+	if cot.x < 0:
+		return
+	var beside := Vector2(cot.x * 16 + 8.0, (cot.y + 1) * 16 + 8.0)
+
+	# (a) A plain night — both story nights are already told, staged at the top
+	# of the suite so every other scenario's sleep is an ordinary one — does not
+	# lengthen the hold at all.
+	GameState.set_energy(GameState.max_energy)
+	player.pos = beside
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+	var day_before: int = GameState.day
+	InputManager.click_tile = cot
+	InputManager.has_click = true
+	var started := await _wait_until(func(): return main_scene.day_cycle.is_active(), 200)
+	_assert(started, "tapping the cot starts the day transition")
+	var plain_ended := await _wait_until(func(): return not main_scene.day_cycle.is_active(), 12000)
+	_assert(plain_ended and GameState.day == day_before + 1,
+		"a plain night's hold ends and the sim sees exactly one more day")
+	_assert(main_scene.day_cycle.last_story_loop == "",
+		"and the day cycle agrees nothing played (%s)" % main_scene.day_cycle.last_story_loop)
+
+	# (b) The robot night: un-tell it for exactly this one sleep (S-12's bench
+	# is already standing, staged at the top of the suite), then tap the cot
+	# again and watch the hold actually reach the loop.
+	farm.sim.story_nights_told.erase(SimWorld.STORY_NIGHT_ROBOT)
+	GameState.set_energy(GameState.max_energy)
+	player.pos = beside
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+	day_before = GameState.day
+	InputManager.click_tile = cot
+	InputManager.has_click = true
+	started = await _wait_until(func(): return main_scene.day_cycle.is_active(), 200)
+	_assert(started, "tapping the cot on the robot's night starts the day transition too")
+	var reached_loop := await _wait_until(
+		func(): return main_scene.day_cycle.state == "loop_playing", 12000)
+	_assert(reached_loop, "and this time the hold actually reaches the loop")
+	_assert(main_scene.day_cycle.last_story_loop == "seeder_bot",
+		"playing the seeder-bot loop, exactly as the robot's own night names (%s)"
+			% main_scene.day_cycle.last_story_loop)
+	var robot_ended := await _wait_until(func(): return not main_scene.day_cycle.is_active(), 20000)
+	_assert(robot_ended and GameState.day == day_before + 1,
+		"and the whole transition still ends in one day, however long the loop ran")
+	_assert(GameState.story_loops_shown.get(SimWorld.STORY_NIGHT_ROBOT, false),
+		"the shown flag is set the moment the loop played — this farm's robot night is told")
+
+	# (c) Once per farm: a hold that reads the same night's fact a second time
+	# does not play the loop again, because the shown flag from (b) says this
+	# farm has had it. The flag itself surviving a save and a load is proved in
+	# the unit suite (`test_story_loop_shown_survives_a_save`); this is the hold
+	# honouring it. `farm.sim.story_night` is stamped by hand here because the
+	# sleep the game applies at the tap resets it before the hold reads it.
+	farm.sim.story_night = SimWorld.STORY_NIGHT_ROBOT
+	main_scene.day_cycle.set_day_display(GameState.day)
+	main_scene.day_cycle.start_sleep(Callable())
+	await _wait_until(func(): return main_scene.day_cycle.state == "hold", 12000)
+	_assert(main_scene.day_cycle.state == "hold" and main_scene.day_cycle.last_story_loop == "",
+		"a farm that already showed the robot's night does not show it again (state=%s)"
+			% main_scene.day_cycle.state)
+	await _wait_until(func(): return not main_scene.day_cycle.is_active(), 12000)
+	farm.sim.story_night = SimWorld.STORY_NIGHT_NONE  # leave the world as any other sleep would
+
+	GameState.save_path = real_paths[0]
+	GameState.replay_path = real_paths[1]
+	GameState.trace_path = real_paths[2]

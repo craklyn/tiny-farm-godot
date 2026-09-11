@@ -62,6 +62,8 @@ tools/shot_workbench_*
 # boot sequence, not assets.
 tools/boot_bloom_shots/
 tools/shot_watering_inset.png
+tools/shot_overnight_crow.png
+tools/shot_overnight_card.png
 
 # Held patches the drain keeps so a blocked item can be re-applied without
 # paying for the model call again. Recoverable scratch, not a record.

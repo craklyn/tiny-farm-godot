@@ -144,6 +144,13 @@ static func capture(world: SimWorld, gs) -> Dictionary:
 			"seeds_bought": gs.seeds_bought,
 			"cans_refilled": gs.cans_refilled,
 			"phase1_complete": gs.phase1_complete,
+			# Which story-night loops the overnight has already shown this farm
+			# (P-15). Additive like everything above: absent ⇒ none shown yet,
+			# which is what every save written before the overnight loop existed
+			# means — and it means the sim's own `story_nights_told` is what
+			# still stops the night itself from coming round twice on a save
+			# that predates this field.
+			"story_loops_shown": gs.story_loops_shown.duplicate(),
 			"milestones": gs._milestones_earned.duplicate(),
 		},
 	}
@@ -379,6 +386,7 @@ static func restore(data: Dictionary, world: SimWorld, gs) -> bool:
 	gs.seeds_bought = int(s.get("seeds_bought", 0))
 	gs.cans_refilled = int(s.get("cans_refilled", 0))
 	gs.phase1_complete = bool(s.get("phase1_complete", false))
+	gs.story_loops_shown = s.get("story_loops_shown", {}).duplicate()  # absent ⇒ none shown yet
 	gs._milestones_earned = s.get("milestones", {}).duplicate()
 
 	gs.day_changed.emit(gs.day)

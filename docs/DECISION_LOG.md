@@ -665,7 +665,11 @@ into the farm.
 fade's colour becomes the Lab's sky so the loop's canvas never shows as a box; the loop is
 drawn from the Lab's exported sheet as it is, not re-authored in the engine. The D-8
 constraint is unchanged: the sleep has already resolved through `apply_action` before the
-hold begins, the loop only lengthens presentation, and headless runs skip it.
+hold begins, and the loop only lengthens presentation. **As built 2026-09-11:** the loop
+plays wherever the hold plays, the headless integration suite included, so a suite or a
+tool that must not wait on it tells both story nights up front, as a farm that had them
+would read (`tools/test_runner.gd`, `tools/robot_session.gd`); the unit suite never
+instantiates the hold.
 
 **Why provisional.** The trigger list will grow with the loops, and whether a story night
 should be skippable, or repeat for a returning player, is untested until a tablet check.

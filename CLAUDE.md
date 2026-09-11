@@ -76,6 +76,10 @@ godot --path . res://tools/capture_workbench.tscn
 # and the watering inset (Q-104) as tools/shot_watering_inset.png — both need a display
 godot --path . res://tools/capture_boot_bloom.tscn
 godot --path . res://tools/capture_watering_inset.tscn
+
+# The overnight's crow-gorge loop (P-15) mid-play as tools/shot_overnight_crow.png, and the
+# Day-N card on the same sky as tools/shot_overnight_card.png — needs a display
+godot --path . res://tools/capture_overnight_crow.tscn
 ```
 
 After a fresh clone or when assets changed, import first: `godot --headless --path . --import`
