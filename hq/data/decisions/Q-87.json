@@ -42,5 +42,12 @@
       "label": "Original queue entry",
       "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"
     }
-  ]
+  ],
+  "ruled": {
+    "date": "2026-09-04",
+    "option": null,
+    "summary": "(a) paired sprites — the robot beside the thing it deals with. It reuses art that already exists, and it gives every machine after this one the same vocabulary, so the panel stops being the only required reading in a loop that was deliberately stripped of it (S-7). Filed: three paired cells to Yuki, and the menu swap to Sam. Bears on `design/06` §2 and `design/11`.",
+    "written_up": "docs/DESIGNER_QUEUE.md",
+    "note": "Written onto the card 2026-09-10 from the queue's struck entry; the card had been ruled but still showed as waiting."
+  }
 }

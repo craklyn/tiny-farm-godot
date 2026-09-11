@@ -1,0 +1,22 @@
+{
+  "id": "w0669dbb64704",
+  "title": "Once fencing is unlocked, the starting fence can be picked up and laid again like one she built",
+  "level": "task",
+  "owner": "tomas",
+  "tier": 1,
+  "tier_reason": "Sim and router code behind both suites and the replay round-trip; git reverts it. The rule is the CEO's Q-92 addition of 2026-09-10.",
+  "ask": "CEO on the dashboard, 2026-09-10 (Q-92): 'Starting fence should become removable and replaceable after fencing is unlocked.' Today only her own fences (tile state WorldLayout.FENCE_BUILT) answer a tap — systems/action_router.gd around line 209, branch 1c-ii — and the world's fences (WorldLayout.FENCE) and hedges fall through, because the cold open's fence is the first lock. After the fence unlock (MachineDefs' fence row and its unlock_requirement; GameState.is_unlocked), a tap on a WorldLayout.FENCE tile should take it into her crate exactly as a built fence is taken (same verb, same refund into gs.machines['fence']), and the square it leaves should be the ground a taken built fence leaves; laying it again is the existing build verb. Hedges (WorldLayout.HEDGE) stay refused. Before the unlock nothing changes. Design: docs/design/04-pests-and-ecology.md, the fence paragraphs; D-15 in docs/DECISION_LOG.md is the deferred turf conversion and is not this item.",
+  "first_action": "Read the router's fence branch and the sim's take-back path for FENCE_BUILT, then extend both to WorldLayout.FENCE gated on the fence unlock; unit tests: before the unlock a tap on the starting fence is refused as today; after it, take-back credits the crate and leaves the same ground a built fence leaves, a hedge is still refused, the replay of a take-and-relay round-trips, and the cold open's first lock still holds while fencing is locked. Both suites and the gateway check green.",
+  "state": "waiting_session",
+  "thread": "tomas",
+  "source": "chat",
+  "source_message": "CEO, 2026-09-10, ruling Q-92 on the dashboard.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-10T17:48",
+  "created_ts": 1789087683.8471673,
+  "parent": "",
+  "follow_ups": [],
+  "recommend": {}
+}

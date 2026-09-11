@@ -4,14 +4,41 @@
   "question": "You committed to personally recording the bespoke sound effects — chiefly the watering sound, because after six rejected takes it's established that no usable free recording exists anywhere of a watering can's rose head sprinkling onto soil. It has to be made. Recording it yourself also gives the cleanest possible ownership: no third-party license to ever track. The shipped sounds are complete and legal, so nothing blocks on this — it's purely waiting on the audio direction sign-off and your calendar.",
   "why_now": "It's the only item in the queue assigned to *you* as the doer, and unowned calendar items rot. One decision closes it: when, or whether to hand it off.",
   "options": [
-    {"key": "a", "label": "Schedule it after the audio direction is approved", "detail": "Pick a weekend; the session targets the approved aesthetic. Pairs naturally with ruling the audio direction card above.", "recommended": true},
-    {"key": "b", "label": "Delegate to the audio role", "detail": "Give up the self-recorded provenance; someone else sources or records the takes."},
-    {"key": "c", "label": "Park it explicitly", "detail": "Acknowledge it's post-release polish and take it off the active queue."}
+    {
+      "key": "a",
+      "label": "Schedule it after the audio direction is approved",
+      "detail": "Pick a weekend; the session targets the approved aesthetic. Pairs naturally with ruling the audio direction card above.",
+      "recommended": true
+    },
+    {
+      "key": "b",
+      "label": "Delegate to the audio role",
+      "detail": "Give up the self-recorded provenance; someone else sources or records the takes."
+    },
+    {
+      "key": "c",
+      "label": "Park it explicitly",
+      "detail": "Acknowledge it's post-release polish and take it off the active queue."
+    }
   ],
   "attachments": [
-    {"type": "audio", "src": "assets/audio/sfx/water.wav", "caption": "The synthesized watering sound to beat"}
+    {
+      "type": "audio",
+      "src": "assets/audio/sfx/water.wav",
+      "caption": "The synthesized watering sound to beat"
+    }
   ],
   "links": [
-    {"label": "Audio direction draft (the prerequisite)", "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/10-audio-direction.md"}
-  ]
+    {
+      "label": "Audio direction draft (the prerequisite)",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/10-audio-direction.md"
+    }
+  ],
+  "ruled": {
+    "date": "2026-08-29",
+    "option": null,
+    "summary": "saturation → mastery → relief → new obligation, repeating once per phase. Each phase opens with more work than hands can manage; the player masters it manually; an ability makes exactly that work effortless; a new obligation arrives. Recorded verbatim in `design/01-game-loops.md`, which supersedes the weaker 2026-08-28 draft that treated phase-1 repetition as a one-time setup for phase 2. Four con",
+    "written_up": "docs/DESIGNER_QUEUE.md",
+    "note": "Written onto the card 2026-09-10 from the queue's struck entry; the card had been ruled but still showed as waiting."
+  }
 }

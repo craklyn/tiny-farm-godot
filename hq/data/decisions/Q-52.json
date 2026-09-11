@@ -4,15 +4,45 @@
   "question": "When rain falls on bare tilled soil (nothing planted), the soil really is watered — plant there and the seed starts life already wet, which is true and useful. But showing that wetness once confused a playtester ('I can water tiles without a plant?'), so it's currently hidden: wet ground only draws where something is growing. Hiding it fixed the confusion and lost a true signal. This is the last open sliver of a bigger fix that already shipped.",
   "why_now": "Small, but it's been open for days and it gates nothing — a thirty-second call. Also worth knowing: the watering can's own 'state shows before the tap' treatment (a droplet on watered crops) shipped, so the vocabulary for showing wetness now exists.",
   "options": [
-    {"key": "a", "label": "Keep it hidden", "detail": "Status quo. Bare soil never draws wet; the plant-here-now signal stays invisible.", "recommended": true},
-    {"key": "b", "label": "Show it", "detail": "Wet bare soil draws wet. True, useful, and possibly confusing again — could be revisited after the next fresh-adult session."},
-    {"key": "c", "label": "Show it differently", "detail": "E.g. only a subtle droplet mark rather than the full wet-soil tint. Write the idea in the judgment box."}
+    {
+      "key": "a",
+      "label": "Keep it hidden",
+      "detail": "Status quo. Bare soil never draws wet; the plant-here-now signal stays invisible.",
+      "recommended": true
+    },
+    {
+      "key": "b",
+      "label": "Show it",
+      "detail": "Wet bare soil draws wet. True, useful, and possibly confusing again — could be revisited after the next fresh-adult session."
+    },
+    {
+      "key": "c",
+      "label": "Show it differently",
+      "detail": "E.g. only a subtle droplet mark rather than the full wet-soil tint. Write the idea in the judgment box."
+    }
   ],
   "attachments": [
-    {"type": "image", "src": "assets/sprites/generated/terrain_dirt.png", "caption": "The soil autotile — dry block left, watered block right"}
+    {
+      "type": "image",
+      "src": "assets/sprites/generated/terrain_dirt.png",
+      "caption": "The soil autotile — dry block left, watered block right"
+    }
   ],
   "links": [
-    {"label": "Tilled soil in the entity gallery", "href": "#/entity/world/terrain_dirt"},
-    {"label": "Original queue entry", "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"}
-  ]
+    {
+      "label": "Tilled soil in the entity gallery",
+      "href": "#/entity/world/terrain_dirt"
+    },
+    {
+      "label": "Original queue entry",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"
+    }
+  ],
+  "ruled": {
+    "date": "2026-08-31",
+    "option": null,
+    "summary": "hold until at least M3 so the sprinkler is the first automation the player meets; then revisit with the shoo-bot as the debut candidate. Superseded 2026-09-03 by the designer's placeholder acquisition rule — *\"for now make everything we introduce to the farm a purchasable item from the shop\"* — which debuts both machines at once, on the shop shelf, priced so the sprinkler is still the cheaper and ",
+    "written_up": "docs/DESIGNER_QUEUE.md",
+    "note": "Written onto the card 2026-09-10 from the queue's struck entry; the card had been ruled but still showed as waiting."
+  }
 }

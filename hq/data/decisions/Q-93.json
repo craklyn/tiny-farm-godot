@@ -31,9 +31,9 @@
     }
   ],
   "ruled": {
-    "date": "2026-09-07",
+    "date": "2026-09-10",
     "option": "b",
-    "summary": "No harvesting. Machines stay in the labour-saving column; a machine that fills her stores without her hand on it is an economy change, and the first machine that earns rather than saves belongs further up the ladder. An empty round is declined and said aloud in the panel rather than walked.",
-    "written_up": "docs/design/06-bots-and-training.md"
+    "summary": "The mark-1 does not harvest, and when a round would achieve nothing its panel says so instead of sending it on an empty walk. Ruled 2026-09-07 and confirmed on the dashboard 2026-09-10; the panel already says it (the greyed 'Send it out — nothing to do yet').",
+    "written_up": "docs/DESIGNER_QUEUE.md"
   }
 }

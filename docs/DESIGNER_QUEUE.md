@@ -18,12 +18,9 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   a button on the robot's own menu. Design: `design/14-training-workbench.md`. Scheduled as
   **v0.2.2** so v0.2.1 can ship the robot without waiting six days for the bench.
 
-- **Q-102 (Ruling, filed 2026-09-10)** **What should a dial on the training workbench
-  sound like when she turns it?** The dials plate landed silent. Three CC0 recordings
-  from Freesound clear the bar for a short, dry, mechanical click. Recommendation: "dial
-  turn" by freemaster2 (Freesound #120844) — 0.13s, all click, no tail — wired in now so
-  the gap is closed while you rule on the room's own taste for it. Card:
-  `hq/data/decisions/Q-102.json`.
+- **Q-102** ~~What should a dial on the training workbench sound like when she turns it?~~ —
+  ✅ ruled 2026-09-10: **(a) "dial turn" by freemaster2**, the recording wired in when the card was
+  raised; it stays. The two other candidates stay in `CREDITS.md`, unwired, with their sources.
 
 - **Q-100** ~~Should her squares pay more than the robot's own?~~ — ✅ ruled 2026-09-09, on
   the designer's own initiative, and the question was wrong: *"I don't understand a
@@ -107,7 +104,10 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   different amount**, the designer's own idea, now unblocked by this ruling.
 
 - **Q-92** ~~How does a player put up a fence?~~ — ✅ ruled 2026-09-07: **use the fence art
-  the game already has, and make it interactive.** *"We already have fences that look
+  the game already has, and make it interactive.** **Added 2026-09-10 on the dashboard:** *"Starting fence should
+  become removable and replaceable after fencing is unlocked. We should eventually let players
+  change home turf to farming land and vice versa, but that'll be a future update."* The first
+  half is filed as work on the sim seat; the second is D-15 in the decision log. *"We already have fences that look
   different than game boundary... we should continue to use that fence, and make it
   interactive."* He is right, and more precisely right than the question assumed: the
   **hedge** is the lock vocabulary (it bounds the parcels she has not unlocked) and the
@@ -145,7 +145,8 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   Bears on `design/04`, `design/11` row 19.
 
 - **Q-93** ~~Should a mark-1 harvest a ripe square on its round?~~ — ✅ ruled 2026-09-07:
-  **no.** *"Mark-1 should not harvest."* Machines stay in the labour-saving column; nothing
+  **no.** Confirmed on the dashboard 2026-09-10 as **(b)**: it says it has nothing to do
+  rather than walking an empty round — which the panel already does. *"Mark-1 should not harvest."* Machines stay in the labour-saving column; nothing
   a machine does puts a crop in her stores without her hand on it, which keeps the mark-1's
   value legible against its cost and leaves the first machine that *earns* rather than
   *saves* as a later rung of the ladder. The remainder of the card — whether an empty round
@@ -165,7 +166,8 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   in her pocket. Deliberately left un-built pending this ruling. Bears on `design/06`.
 
 - **Q-91** ~~On a tablet, a mark-1 can only be shown tiles that happen to be on screen.~~ —
-  ✅ ruled 2026-09-07: **(a) step back to point**, as an *automatic* camera move. Entering a
+  ✅ ruled 2026-09-07: **(a) step back to point**, as an *automatic* camera move. Confirmed on
+  the dashboard 2026-09-10; the camera move has been in the game since that week. Entering a
   pointing mode frames the whole page and leaving it returns to her, so there is no
   off-screen left to reach and no gesture to discover; pinch and two-finger pan stay
   reserved for row 26 as budgeted. Daniel ruled past the question asked, and the wider

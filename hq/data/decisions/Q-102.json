@@ -55,5 +55,11 @@
       "src": "assets/audio/sfx/dial_cc0_793345.wav",
       "caption": "(c) \"Metronome click 2\" by Sadiquecat"
     }
-  ]
+  ],
+  "ruled": {
+    "date": "2026-09-10",
+    "option": "a",
+    "summary": "\"dial turn\" by freemaster2 stays as the dial's sound; the other two candidates stay in the credits, unwired.",
+    "written_up": "CREDITS.md"
+  }
 }

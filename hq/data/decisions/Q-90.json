@@ -22,9 +22,28 @@
     }
   ],
   "links": [
-    {"label": "The replay-verification project", "href": "#/project/replay-phase-b"},
-    {"label": "The onboarding-gate project", "href": "#/project/close-m15-gate"},
-    {"label": "The program report", "href": "#/program"},
-    {"label": "Original queue entry", "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"}
-  ]
+    {
+      "label": "The replay-verification project",
+      "href": "#/project/replay-phase-b"
+    },
+    {
+      "label": "The onboarding-gate project",
+      "href": "#/project/close-m15-gate"
+    },
+    {
+      "label": "The program report",
+      "href": "#/program"
+    },
+    {
+      "label": "Original queue entry",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"
+    }
+  ],
+  "ruled": {
+    "date": "2026-08-26",
+    "option": null,
+    "summary": "drop assets with restrictive licenses rather than work around them. Executed same day: pack deleted, replaced by AI-generated art (Retro Diffusion, `CREDITS.md`). Residual actions both closed 2026-08-27: Retro Diffusion output rights ✅ verified (terms §7), and the pack ✅ purged from git history (all 82 commits rewritten, working tree provably unchanged). Designer ruled to accept the one residue a ",
+    "written_up": "docs/DESIGNER_QUEUE.md",
+    "note": "Written onto the card 2026-09-10 from the queue's struck entry; the card had been ruled but still showed as waiting."
+  }
 }

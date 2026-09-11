@@ -4,17 +4,55 @@
   "question": "You asked for a way to see all the new creatures in action, and the Zoo delivered: a debug door on the title screen opening onto a flat field with a button per species, each spawning the way its real lifecycle does. What it accidentally became is close to a field guide — picture, name, and the animal doing its thing. Phase 1's players will meet each critter exactly once, at speed, in the middle of something else.",
   "why_now": "Cheap to decide now, before anyone builds on the wrong assumption. Nothing is foreclosed either way — the roster builds itself from the species table, so a player-facing version is just a different door onto the same list.",
   "options": [
-    {"key": "a", "label": "Keep it a dev tool for now", "detail": "Nothing to build, nothing to teach. Revisit as a player feature when the critters have actually debuted in real games.", "recommended": true},
-    {"key": "b", "label": "A bestiary that fills in", "detail": "A collection page where a species appears only after the player has met it in a real game. Strong pull for a kid; costs one set of saved flags. Best considered at the next milestone."},
-    {"key": "c", "label": "Ship the sandbox to players", "detail": "Cheapest to ship, but it hands players the answer to every pest before the pest is a question — against the meet-things-in-order pacing."}
+    {
+      "key": "a",
+      "label": "Keep it a dev tool for now",
+      "detail": "Nothing to build, nothing to teach. Revisit as a player feature when the critters have actually debuted in real games.",
+      "recommended": true
+    },
+    {
+      "key": "b",
+      "label": "A bestiary that fills in",
+      "detail": "A collection page where a species appears only after the player has met it in a real game. Strong pull for a kid; costs one set of saved flags. Best considered at the next milestone."
+    },
+    {
+      "key": "c",
+      "label": "Ship the sandbox to players",
+      "detail": "Cheapest to ship, but it hands players the answer to every pest before the pest is a question — against the meet-things-in-order pacing."
+    }
   ],
   "attachments": [
-    {"type": "sprite", "entity": "actors/rabbit", "caption": "The rabbit — currently only visible via the Zoo"},
-    {"type": "sprite", "entity": "actors/mole", "caption": "The mole"},
-    {"type": "sprite", "entity": "actors/worm", "caption": "The worm"}
+    {
+      "type": "sprite",
+      "entity": "actors/rabbit",
+      "caption": "The rabbit — currently only visible via the Zoo"
+    },
+    {
+      "type": "sprite",
+      "entity": "actors/mole",
+      "caption": "The mole"
+    },
+    {
+      "type": "sprite",
+      "entity": "actors/worm",
+      "caption": "The worm"
+    }
   ],
   "links": [
-    {"label": "All actors in the entity gallery", "href": "#/entities"},
-    {"label": "Original queue entry", "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"}
-  ]
+    {
+      "label": "All actors in the entity gallery",
+      "href": "#/entities"
+    },
+    {
+      "label": "Original queue entry",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"
+    }
+  ],
+  "ruled": {
+    "date": "2026-08-31",
+    "option": null,
+    "summary": "hold until at least M3 so the sprinkler is the first automation the player meets; then revisit with the shoo-bot as the debut candidate. Superseded 2026-09-03 by the designer's placeholder acquisition rule — *\"for now make everything we introduce to the farm a purchasable item from the shop\"* — which debuts both machines at once, on the shop shelf, priced so the sprinkler is still the cheaper and ",
+    "written_up": "docs/DESIGNER_QUEUE.md",
+    "note": "Written onto the card 2026-09-10 from the queue's struck entry; the card had been ruled but still showed as waiting."
+  }
 }

@@ -63,6 +63,13 @@ try. Drawn with the game's own fence cell, because the **hedge** is the word for
 yet" and the fence already means "yours"; hers is a separate tile state only so the world's
 own boundaries stay hers to look at rather than to dismantle.
 
+**Ruled 2026-09-10 (Q-92, on the dashboard): the starting fence is hers too, once fencing is
+unlocked.** Until then it stays what it is today — the boundary of the cold open, which she
+cannot dismantle. After the unlock, tapping a fence the world laid picks it up into her crate
+like one she built, and she can lay it again wherever a fence may go. Hedges are untouched:
+they remain the lock on land she has not earned. Converting home turf to farmland and back is
+a later update (D-15).
+
 It changes exactly one row of the table above, and that is the design rather than a
 shortfall: **a fence answers the rabbit and nothing else.** The crow flies over it, the
 kangaroo clears it by the ruling that made it a kangaroo (Q-57), and the mole tunnels in
