@@ -61,15 +61,19 @@ const SHELF := {
 	"2026-08-31_230643": { "format": 2, "verdict": "cross" },
 	"2026-08-31_233943": { "format": 2, "verdict": "cross" },
 	# 2026-09-10: the four tablet rescues of the workbench day. 191345 is the designer's
-	# finished playthrough (day 53, nothing left to unlock) and replays exactly under the
-	# build that added the bench; 004251 still replays exactly too. 013629 and 112331 do
-	# not: 112331 diverges at a Mark III's decision (entry 814) because Q-98 landed that
-	# day — a robot picked up and set down again now keeps its weights where it used to
-	# start fresh — so the world moved under the recording, by the CEO's ruling.
-	"2026-09-10_004251": { "format": 2, "verdict": "match" },
+	# finished playthrough (day 53, nothing left to unlock); 004251 is a shorter day on
+	# the same build. Both replayed exactly under the build that added the bench, and
+	# **neither does any more.** The crow night landed (P-15, design/04): on a farm with
+	# no acorns left on the ground and four tomatoes standing, the sleep now places three
+	# birds on three of them, and both of these farms meet that description. 004251
+	# diverges at entry 2226 and 191345 at entry 329, each of them a raid crow eating a
+	# tomato the recording never lost. That is the world moving under a recording, which
+	# is what "cross" means here — the same thing Q-98 did to 112331 (a robot picked up
+	# and set down again now keeps its weights) the day before. 013629 was already cross.
+	"2026-09-10_004251": { "format": 2, "verdict": "cross" },
 	"2026-09-10_013629": { "format": 2, "verdict": "cross" },
 	"2026-09-10_112331": { "format": 2, "verdict": "cross" },
-	"2026-09-10_191345": { "format": 2, "verdict": "match" },
+	"2026-09-10_191345": { "format": 2, "verdict": "cross" },
 }
 
 # The robot-value measurement, shared with the tool that prints it as a table for
@@ -123,6 +127,10 @@ func _init() -> void:
 	test_session_trace()
 	test_crow_readiness()
 	test_crow_schedule()
+	test_crow_raid_trigger()
+	test_crow_raid_waits_for_the_door()
+	test_crow_raid_survives_a_save()
+	test_crow_raid_replays()
 	test_daylight()
 	test_energy_repartition()
 	test_q50_clearing_costs()
@@ -2070,6 +2078,309 @@ func test_crow_schedule() -> void:
 	_assert(GameState.crow_schedule.size() == 1 and int(GameState.crow_schedule[0]) == 7,
 		"the remaining schedule survives")
 	_assert(GameState.actions_today == 5, "and so does the day's progress")
+
+
+# --- The morning the crows come for the tomatoes (design/04, P-15) ------------
+#
+# The bed these tests plant: a four-tomato row in the neighbour's plot, which is
+# the nearest ground she can actually plant on (`tools/measure_raid_race.gd`
+# finds the same row when it measures the race). Written into the grid rather
+# than farmed, because what is under test is the night and the morning, not the
+# hoe.
+const RAID_BED_Y := 5
+const RAID_BED_X0 := 12
+
+
+# The farm as she leaves it on the eve of the crow night: the acorns gone off the
+# ground (which is what picking them up does, T-30), a tomato bed standing, and
+# her indoors beside her own front door. The log is re-based on the result, so a
+# session recorded from here reproduces a farm no sequence of taps would have
+# produced. Returns the bed.
+func _raid_eve(s: LiveSession) -> Array[Vector2i]:
+	for ty in SimWorld.MAP_HEIGHT:
+		for tx in SimWorld.MAP_WIDTH:
+			if s.world.get_object(tx, ty) == "acorn":
+				s.world.set_object(tx, ty, "")
+	var bed: Array[Vector2i] = []
+	for i in SimWorld.RAID_MIN_TOMATOES:
+		var t := Vector2i(RAID_BED_X0 + i, RAID_BED_Y)
+		s.world.set_tile_state(t.x, t.y, "growing", SimWorld.RAID_CROP)
+		bed.append(t)
+	s.world.set_actor_pos(SimWorld.ACTOR_PLAYER, _indoor_door_tile(s.world))
+	s.rebase()
+	return bed
+
+
+# The tile her front door puts her on inside the house, and the doorway she taps
+# to come back out — read off the layout's door table rather than typed in.
+func _indoor_door_tile(world: SimWorld) -> Vector2i:
+	return WorldLayout.door_at(world.find_object(WorldLayout.HOUSE_DOOR),
+		world.layout).get("to", Vector2i(-1, -1))
+
+
+func _doorway_tile(world: SimWorld) -> Vector2i:
+	return world.find_object(WorldLayout.HOME_DOORWAY)
+
+
+# The raid's birds, by id, in a fixed order.
+func _raid_birds(world: SimWorld) -> Array[String]:
+	var out: Array[String] = []
+	var ids: Array = world.actors.keys()
+	ids.sort()
+	for id in ids:
+		if String(id).begins_with(SimWorld.ACTOR_RAID_CROW):
+			out.append(String(id))
+	return out
+
+
+func _standing_tomatoes(world: SimWorld) -> int:
+	return world.crow_targets_of_crop(SimWorld.RAID_CROP).size()
+
+
+func test_crow_raid_trigger() -> void:
+	print("\n--- The crow night fires once, and only when both halves hold (P-15) Tests ---")
+
+	# Half one, on its own: a bed worth raiding while there are still acorns on
+	# the ground. The crows have no reason to turn to crops yet (T-15/Q-39), so
+	# there is no story to tell.
+	var acorns := LiveSession.new(3001)
+	for i in SimWorld.RAID_MIN_TOMATOES:
+		acorns.world.set_tile_state(RAID_BED_X0 + i, RAID_BED_Y, "growing", SimWorld.RAID_CROP)
+	_assert(acorns.world.count_acorns() > 0, "the farm still has acorns on the ground")
+	var with_acorns := acorns.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
+	_assert(String(with_acorns.get("story_night", "?")) == SimWorld.STORY_NIGHT_NONE,
+		"a night with acorns still on the ground is an ordinary night")
+	_assert(_raid_birds(acorns.world).is_empty(), "and no crows are waiting in the morning")
+	acorns.done()
+
+	# Half two, on its own: the acorns are gone but the bed is one short.
+	var thin := LiveSession.new(3002)
+	var thin_bed := _raid_eve(thin)
+	thin.world.set_tile_state(thin_bed[0].x, thin_bed[0].y, "cleared")
+	_assert(_standing_tomatoes(thin.world) == SimWorld.RAID_MIN_TOMATOES - 1,
+		"three tomatoes stand, one short of the four the designer asked for")
+	var three_only := thin.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
+	_assert(String(three_only.get("story_night", "?")) == SimWorld.STORY_NIGHT_NONE,
+		"three tomatoes and no acorns is still an ordinary night")
+
+	# ...and a fourth tile that remembers a tomato but has nothing standing on it
+	# does not make it four. The count is the crow's own target rule — the states
+	# in `SimWorld.CROP_STATES`, which `has_crop`, `eat_crop` and
+	# `choose_crow_target` all read — so a bed can never pass this test and then
+	# leave a bird with nothing to eat when it lands.
+	#
+	# Written onto the tile by hand because the game cannot produce it: turning
+	# soil over clears its crop type (`set_tile_state`). What is being pinned is
+	# the rule, not a state the player can reach.
+	thin.world.tiles[thin_bed[0].y][thin_bed[0].x]["crop_type"] = SimWorld.RAID_CROP
+	_assert(not thin.world.has_crop(thin_bed[0].x, thin_bed[0].y),
+		"a tilled tile with a tomato's name on it has nothing a crow could eat")
+	_assert(_standing_tomatoes(thin.world) == SimWorld.RAID_MIN_TOMATOES - 1,
+		"so it does not count towards the four")
+	_assert(String(thin.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
+			.get("story_night", "?")) == SimWorld.STORY_NIGHT_NONE,
+		"and the night stays ordinary")
+
+	# Every state a crow *will* eat counts, which is the other half of the same
+	# rule: a sown tomato is a tomato, because a bird that lands on one takes it.
+	for state in SimWorld.CROP_STATES:
+		thin.world.set_tile_state(thin_bed[0].x, thin_bed[0].y, state, SimWorld.RAID_CROP)
+		_assert_quiet(thin.world.has_crop(thin_bed[0].x, thin_bed[0].y)
+				and _standing_tomatoes(thin.world) == SimWorld.RAID_MIN_TOMATOES,
+			"a %s tomato counts towards the four" % state)
+	_flush_quiet("the four are counted by the same rule the crow picks its target with")
+	thin.done()
+
+	# Both halves: the night is named, and the morning it promises is on the farm.
+	var raid := LiveSession.new(3003)
+	var bed := _raid_eve(raid)
+	var night := raid.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
+	_assert(String(night.get("story_night", "")) == SimWorld.STORY_NIGHT_CROW,
+		"the first sleep with no acorns and four tomatoes is the crow night")
+	_assert(raid.world.story_night == SimWorld.STORY_NIGHT_CROW,
+		"and the world carries the same one fact, for the save to pick up")
+	var birds := _raid_birds(raid.world)
+	_assert(birds.size() == SimWorld.RAID_CROWS, "three crows are on the farm")
+	var on_tomatoes := 0
+	for id in birds:
+		if bed.has(raid.world.actor_pos(id)):
+			on_tomatoes += 1
+	_assert(on_tomatoes == SimWorld.RAID_CROWS, "each one standing on one of her tomatoes")
+	var tiles := {}
+	for id in birds:
+		tiles[raid.world.actor_pos(id)] = true
+	_assert(tiles.size() == SimWorld.RAID_CROWS, "and no two of them on the same plant")
+	_assert(_standing_tomatoes(raid.world) == SimWorld.RAID_MIN_TOMATOES,
+		"nothing has been eaten yet — the tomatoes are all still standing")
+
+	# Once per farm. The conditions still hold the next night (nobody has opened
+	# the door, so nothing has been eaten), and the night is over all the same.
+	var second := raid.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
+	_assert(String(second.get("story_night", "?")) == SimWorld.STORY_NIGHT_NONE,
+		"the second night is ordinary, though the farm still meets every condition")
+	_assert(_raid_birds(raid.world).size() == SimWorld.RAID_CROWS,
+		"and no second flock arrives on top of the first")
+	raid.done()
+
+
+func test_crow_raid_waits_for_the_door() -> void:
+	print("\n--- The raid's meals start at the door, not at dawn (design/04) Tests ---")
+
+	var s := LiveSession.new(3101)
+	var bed := _raid_eve(s)
+	s.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
+	var birds := _raid_birds(s.world)
+	_assert(birds.size() == SimWorld.RAID_CROWS, "the morning starts with three crows on the bed")
+	var waiting := true
+	for id in birds:
+		waiting = waiting and bool(s.world.actor(id)["extra"].get("waiting_for_door", false))
+	_assert(waiting, "and not one of them has started counting")
+
+	# A minute of sim time with her still indoors. A raid bird placed with no meal
+	# clock used to eat on its first thought at dawn, which is the failure this
+	# asserts against: the plants come into view when she opens the door.
+	s.tick(600)
+	_assert(_standing_tomatoes(s.world) == SimWorld.RAID_MIN_TOMATOES,
+		"a minute later, with her still inside, every tomato is standing")
+	_assert(_raid_birds(s.world).size() == SimWorld.RAID_CROWS, "and all three birds are still on them")
+
+	# She comes out. The same Action that moves her rings the bell.
+	var out := s.act({ "verb": "use_door", "actor": "player", "target": _doorway_tile(s.world) })
+	_assert(out.get("ok", false), "she opens her front door")
+	var started := true
+	for id in birds:
+		var extra: Dictionary = s.world.actor(id)["extra"]
+		started = started and not bool(extra.get("waiting_for_door", true)) \
+			and int(extra.get("eat_at", 0)) > s.world.clock.tick
+	_assert(started, "and all three meal clocks start on that one moment")
+
+	# Short of the meal, nothing is lost; past it, three of the four are.
+	s.tick(int(CrowBrain.RAID_EAT_SECONDS * SimClock.RATE) - 2)
+	_assert(_standing_tomatoes(s.world) == SimWorld.RAID_MIN_TOMATOES,
+		"a fifth of a second before the meal ends, the bed is untouched")
+	s.tick(4)
+	_assert(_standing_tomatoes(s.world) == SimWorld.RAID_MIN_TOMATOES - SimWorld.RAID_CROWS,
+		"and when it ends, the three tomatoes they were standing on are gone")
+	var eaten := 0
+	for t in bed:
+		if not s.world.has_crop(t.x, t.y):
+			eaten += 1
+	_assert(eaten == SimWorld.RAID_CROWS, "each bird took the plant it was standing on")
+	s.done()
+
+
+func test_crow_raid_survives_a_save() -> void:
+	print("\n--- The crow night and its three birds survive a save (P-15) Tests ---")
+
+	# The save the game writes at bedtime, and the same farm played on without
+	# one: the night must land identically on both.
+	var live := LiveSession.new(3201)
+	var bed := _raid_eve(live)
+	var eve = JSON.parse_string(JSON.stringify(SaveGame.capture(live.world, live.gs)))
+	live.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
+
+	var loaded := SimWorld.new()
+	var gs_loaded = load("res://systems/game_state.gd").new()
+	_assert(SaveGame.restore(eve, loaded, gs_loaded), "the bedtime save restores")
+	loaded.apply_action({ "verb": "sleep", "actor": "world", "weather": "sunny" }, gs_loaded)
+	_assert(_raid_birds(loaded) == _raid_birds(live.world),
+		"a farm saved the night before wakes to the same three crows, by name")
+	var same_tiles := true
+	for id in _raid_birds(loaded):
+		same_tiles = same_tiles and loaded.actor_pos(id) == live.world.actor_pos(id)
+	_assert(same_tiles, "on the same three tomatoes")
+	_assert(SaveGame.capture_canonical(loaded, gs_loaded)
+			== SaveGame.capture_canonical(live.world, live.gs),
+		"and the two farms are the same farm in every other respect too")
+
+	# ...and the morning itself, saved and picked up again. Three birds standing
+	# on three plants are not a visit passing through: they are what the morning
+	# is, so they are in the file.
+	var morning = JSON.parse_string(JSON.stringify(SaveGame.capture(live.world, live.gs)))
+	var again := SimWorld.new()
+	var gs_again = load("res://systems/game_state.gd").new()
+	_assert(SaveGame.restore(morning, again, gs_again), "the morning save restores")
+	_assert(_raid_birds(again) == _raid_birds(live.world), "with the same three crows")
+	var intact := true
+	for id in _raid_birds(again):
+		intact = intact and again.actor_pos(id) == live.world.actor_pos(id) \
+			and String(again.actor(id)["extra"].get("state", "")) == "eating" \
+			and bool(again.actor(id)["extra"].get("waiting_for_door", false))
+	_assert(intact, "still on their plants, and still waiting for the door")
+	_assert(again.story_night == SimWorld.STORY_NIGHT_CROW,
+		"the world remembers which night it just had, so the loop can still play")
+	_assert(again.story_nights_told.has(SimWorld.STORY_NIGHT_CROW),
+		"and that it has had it")
+	again.advance_day("sunny", gs_again)
+	_assert(again.story_night == SimWorld.STORY_NIGHT_NONE
+			and _raid_birds(again).size() == SimWorld.RAID_CROWS,
+		"so a reloaded farm cannot have a second crow night")
+
+	# A bird that has been shooed, or has eaten, is a visit again — and a visit is
+	# not saved (M2.5 WI-3). Nothing is left standing in the file that the game
+	# would have to explain on the next load.
+	CrowBrain.new().flee(live.world, _raid_birds(live.world)[0], "player")
+	var after := SaveGame.capture(live.world, live.gs)
+	_assert(after["world"]["actors"].keys().size()
+			== morning["world"]["actors"].keys().size() - 1,
+		"a shooed raid bird leaves the save as it leaves the plant")
+
+	# A save written before any of this existed loads into a farm whose crow night
+	# is still ahead of it.
+	var legacy := SaveGame.capture(live.world, live.gs)
+	legacy["world"].erase("story_night")
+	legacy["world"].erase("story_nights_told")
+	var old := SimWorld.new()
+	var gs_old = load("res://systems/game_state.gd").new()
+	_assert(SaveGame.restore(legacy, old, gs_old), "a save from before the crow night loads")
+	_assert(old.story_night == SimWorld.STORY_NIGHT_NONE
+			and old.story_nights_told.is_empty(),
+		"as a farm that has had no story nights at all")
+	_assert(bed.size() == SimWorld.RAID_MIN_TOMATOES, "the bed under all of this is four tomatoes")
+	gs_loaded.free()
+	gs_again.free()
+	gs_old.free()
+	live.done()
+
+
+func test_crow_raid_replays() -> void:
+	print("\n--- The raid replays: the same three birds, the same three tomatoes Tests ---")
+
+	var s := LiveSession.new(3301)
+	var bed := _raid_eve(s)
+	s.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
+	s.tick(150)
+	s.act({ "verb": "use_door", "actor": "player", "target": _doorway_tile(s.world) })
+	s.tick(int(CrowBrain.RAID_EAT_SECONDS * SimClock.RATE) + 20)
+	_assert(_standing_tomatoes(s.world) == SimWorld.RAID_MIN_TOMATOES - SimWorld.RAID_CROWS,
+		"the session ends with three tomatoes eaten and one left")
+
+	var eats := 0
+	for e in s.log.entries:
+		if String(e.get("actor", "")).begins_with(SimWorld.ACTOR_RAID_CROW) \
+				and String(e.get("verb", "")) == "eat_crop":
+			eats += 1
+	_assert(eats == SimWorld.RAID_CROWS,
+		"and the log carries all three meals as Actions a brain decided")
+
+	var snapshot = JSON.parse_string(JSON.stringify(SaveGame.capture(s.world, s.gs)))
+	var report := SaveGame.replay_report(ReplayLog.from_json(s.log.to_json()), snapshot)
+	_assert(String(report["divergence"]) == "",
+		"the replay's birds decide exactly what the session's birds decided %s"
+			% report["divergence"])
+	_assert(report["matched"], "and the replay reproduces the morning it was recorded from")
+
+	# ...and the grid says the same thing in the plainest possible terms: the same
+	# three plants gone, the same one standing.
+	var replayed := SimWorld.new()
+	var gs_replayed = load("res://systems/game_state.gd").new()
+	ReplayLog.from_json(s.log.to_json()).apply_to(replayed, gs_replayed)
+	var same := true
+	for t in bed:
+		same = same and replayed.has_crop(t.x, t.y) == s.world.has_crop(t.x, t.y)
+	_assert(same, "the replayed bed lost the same tomatoes the recorded one did")
+	gs_replayed.free()
+	s.done()
 
 
 func test_daylight() -> void:

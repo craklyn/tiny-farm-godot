@@ -11,6 +11,22 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
 
 ## Now — blocks M0 close or current work
 
+- **Q-105** How long the crows eat on the raid morning — **Ruling**. The morning after the
+  crow night, three crows are already eating three of her tomatoes when she opens her front
+  door, and how long their meal lasts is how many she can save. Measured on the farm the
+  game generates: with the bed on the nearest ground she can plant, the three birds come
+  inside her shoo range 2.6, 3.4 and 4.0 seconds after the door, so a meal of **3.7 seconds**
+  saves two and loses one — which is the target chapter 4 sets. The catch is that the meal
+  is one number and the distance is hers to choose: on a bed ten tiles further from the
+  house the same meal saves none, because she is still six seconds away when the birds
+  finish. **(a) one fixed meal, 3.7 seconds** (what is built today) — the raid costs one
+  tomato near the house and all three on a far bed; **(b) the meal lasts as long as her
+  walk** — the birds finish the moment she reaches the second one, so the raid costs
+  exactly one tomato wherever she planted; **(c) three different meals**, the nearest bird
+  eating longest, so the bird closest to the door is always the one she can save.
+  **Recommendation: (a)** — it is the version a watching four-year-old can predict, and a
+  crow that eats slower because the farm is bigger is the game doing arithmetic about the
+  player where she can see it. Revisit after a tablet playtest of a far bed.
 - **Q-103** ~~How the sunflower bloom opens the game~~ — ✅ **ruled 2026-09-10: (a) the flower
   is the splash.** The engine's splash is the closed bud on its own sky; the bud opens and the
   seeds rise once while the music fades up; the title and menu settle in as the last seed

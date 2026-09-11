@@ -68,6 +68,20 @@ static func capture(world: SimWorld, gs) -> Dictionary:
 			# from cannot be continued *or* replayed faithfully — the hole WI-3's
 			# closing note filed and this closes.
 			"gen_seed": world.gen_seed,
+			# What kind of night the farm last had, and which of those nights it
+			# has already had (P-15, design/04). Additive in the same way as
+			# everything above: absent ⇒ an ordinary night and no story told yet,
+			# which is what every save written before this field means.
+			#
+			# Both halves are needed and they are not the same fact. `story_night`
+			# is what presentation plays when a save is picked up the morning
+			# after — the loop belongs to the night just passed, not to the load.
+			# `story_nights_told` is what stops a farm saved on its crow night
+			# from having a second one: the trigger is read off the world, so a
+			# world that forgot would answer "yes" again the next time the
+			# conditions still held.
+			"story_night": world.story_night,
+			"story_nights_told": world.story_nights_told.duplicate(),
 		},
 		"state": {
 			"day": gs.day,
@@ -238,6 +252,13 @@ static func restore(data: Dictionary, world: SimWorld, gs) -> bool:
 	# boundary where the one raw `randi()` already lives (`main.gd`, and
 	# `ReplayLog.apply_to` for a replay of one).
 	world.gen_seed = int(w.get("gen_seed", 0))
+	# ...and the night the farm last had, with the record of which nights it has
+	# had at all (P-15). Absent ⇒ an ordinary night and nothing told yet, so a
+	# save written before this field loads into a farm whose crow night is still
+	# ahead of it — which is the truthful reading of a save from a build where
+	# that night did not exist.
+	world.story_night = String(w.get("story_night", SimWorld.STORY_NIGHT_NONE))
+	world.story_nights_told = _flags(w.get("story_nights_told", {}))
 	# ...and the scent layer with it (M2.5 WI-7), before the cast: a restored trail
 	# is part of the world its actors wake up into. Absent ⇒ a clean field.
 	world.scent.from_save(w.get("scent", {}))
@@ -601,11 +622,32 @@ static func replay_report(rlog: ReplayLog, save: Dictionary) -> Dictionary:
 # The alternative is worse in both directions: persisting it would resurrect a
 # bird mid-flight with a stale target, and comparing it would fail a replay for a
 # bird the replay was never asked to fly.
+#
+# **A raid bird standing on a tomato is the exception** (design/04, P-15). The
+# crow night's morning puts three birds on three tomatoes as the day turns and
+# leaves them there, beaks down, until the player opens her front door — so on a
+# farm saved at that moment the birds are not a visit passing through, they are
+# what the morning *is*. A save that dropped them would reload a farm whose night
+# had promised a raid and whose morning had none.
+#
+# The exception is exactly as wide as that reason. A bird still on its plant is
+# kept; the moment it is shooed or has eaten it goes into `leaving` and is a visit
+# again, saved by nobody — which is also what keeps it out of the frame-by-frame
+# comparison a replay makes, since a drifting bird is the one thing here whose
+# position depends on when you look at it.
+static func _raid_bird_on_its_plant(a: Dictionary) -> bool:
+	var extra = a.get("extra", {})
+	if typeof(extra) != TYPE_DICTIONARY or not bool(extra.get("raid", false)):
+		return false
+	return String(extra.get("state", "")) == "eating"
+
+
 static func _capture_actors(world: SimWorld) -> Dictionary:
 	var out := {}
 	for id in world.actors:
 		var a: Dictionary = world.actors[id]
-		if not SpeciesDefs.is_persistent(String(a.get("species", ""))):
+		if not SpeciesDefs.is_persistent(String(a.get("species", ""))) \
+				and not _raid_bird_on_its_plant(a):
 			continue
 		var pos: Vector2i = a.get("pos", Vector2i(-1, -1))
 		out[id] = {
@@ -653,4 +695,18 @@ static func _int_values(d: Dictionary) -> Dictionary:
 	var out := {}
 	for k in d.keys():
 		out[k] = int(d[k])
+	return out
+
+
+# The same normalization for a set of names (P-15's told nights): JSON hands back
+# whatever it was given, and a live world holds string keys and plain bools. Only
+# the names actually set survive, so a hand-written save cannot leave a `false`
+# behind that reads as a night both told and untold.
+static func _flags(d) -> Dictionary:
+	var out := {}
+	if typeof(d) != TYPE_DICTIONARY:
+		return out
+	for k in d.keys():
+		if bool(d[k]):
+			out[String(k)] = true
 	return out

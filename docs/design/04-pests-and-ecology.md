@@ -125,12 +125,24 @@ one event and never days apart; the day turn places the three crows on three tom
 meal clocks start on her `use_door`, not at dawn, because "as the plants come into view" is a
 thing the sim can only know by the door; and the shoo is the ordinary one. **Deliberately
 small first:** no special camera, the crows are the 1× birds with their eating animation, and
-a scarecrow already on the field does what it always does. **[Playtest]:** the race. A meal is
-five seconds and she walks three tiles a second, so the meal length for the raid's three is
-the value to tune until a direct walk from the door saves two of the three — none is a
-punishment, all three is no lesson. The robot session can measure the walk. **What "planted"
-means** is the other open value: a crow eats standing crops, so a seedling that cannot be
-eaten should not count toward the four.
+a scarecrow already on the field does what it always does.
+
+**The race, measured** (2026-09-10, built). An ordinary crow's meal is five seconds and she
+walks three tiles a second; the raid's meal is the value that decides how many tomatoes a
+direct walk out of the door saves, and losing none teaches nothing while losing all three
+punishes a morning she had no part in. `tools/measure_raid_race.gd` walks her out of the
+door on the farm the game generates and prints when each bird falls inside her shoo range.
+With the bed on the nearest ground she can plant — the second row of the neighbour's plot,
+through the gate — the three birds come inside that range 2.6, 3.4 and 4.0 seconds after
+the door, so a meal of **3.7 seconds** saves two and loses one. That is what the raid
+ships with. Its honest limit is that one meal length meets a distance the player chooses:
+on a bed ten tiles further out the same meal saves none, because she is still six seconds
+away when the birds finish. Whether the raid should stay one fixed meal is **Q-105**.
+
+**What "planted" means** is settled by the crow's own appetite: the four are counted with
+the same rule a bird picks its target by, so a tile the crow could not eat does not count,
+and a bed can never pass the test and then leave a bird with nothing on the tile. A sown
+tomato does count — a crow that lands on one takes it, and the soil is left turned.
 
 ## Sections to fill
 2. **Nests** — where they spawn relative to the farm, growth over time, visibility

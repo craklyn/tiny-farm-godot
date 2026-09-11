@@ -43,6 +43,32 @@ extends Brain
 const EAT_SECONDS := 5.0
 const HARMLESS_PERCH_SECONDS := 12.0
 
+# [Playtest] — the raid's meal, and it is shorter than an ordinary one on
+# purpose (design/04, "The morning after"). Three birds are already eating when
+# she opens her front door, and the designer's target for the race is that a
+# direct walk out to the bed **saves two of the three**: losing none teaches
+# nothing, losing all three is a punishment for a morning she had no part in.
+#
+# Measured rather than guessed, on the farm the game actually generates:
+# `tools/measure_raid_race.gd` prints the run this number comes from. She comes
+# out of her front door at (2,3), crosses the yard, goes through the gate at
+# (11,4) and reaches the neighbour's plot — the nearest ground she can plant — at
+# 3 tiles a second, and a crow is shooed when she comes within her three-tile
+# spook radius rather than when she reaches its tile. On a four-tomato row there
+# the three birds fall inside that radius 2.57 s, 3.36 s and 3.96 s after the
+# door, so a meal anywhere in (3.36 s, 3.96 s] saves two and loses one. 3.7 is
+# the middle of that window.
+#
+# **It is one number for a race whose length the player chooses**, which is the
+# honest limitation and the reason the tool prints a second bed beside the first:
+# on a row ten tiles further out the same meal saves none, because she is still
+# six seconds from the first bird when they finish. Tuning against the nearest
+# plantable ground is the conservative end — the raid takes one tomato on the
+# farm the game hands her, and more only on a bed she chose to plant far away.
+# Whether that is the right end of the dial is the designer's, and the tool is
+# how the question gets re-asked rather than re-guessed.
+const RAID_EAT_SECONDS := 3.7
+
 # How far off the edge a crow appears, and how far past it before it is gone.
 # The node worked in pixels (32 and 100); in tiles, because a sim that reasons in
 # pixels is a sim that has lost the plot.
@@ -114,6 +140,87 @@ static func send(world: SimWorld, gs, arrival: int) -> String:
 	return SimWorld.ACTOR_CROW
 
 
+# --- the raid (design/04, "The morning after: the crows come for the tomatoes")
+#
+# The crow night's morning. Three birds are **placed**, already eating, on three
+# of her tomatoes as the day turns — no flight, no arrival draw, no schedule
+# entry: this is not the day's visit and it does not spend one. The bird she can
+# still chase off is an ordinary crow in every other respect, which is the design
+# ("the shoo is the ordinary one, and a scarecrow does what it always does").
+#
+# **Nothing is drawn.** Which three tomatoes is a rule, not a die roll: the first,
+# the middle and the last of the eligible tiles in scan order, so the birds are
+# spread across the bed rather than shoulder to shoulder — three crows on three
+# adjacent plants is one shoo, and the race the designer asked for needs them
+# apart. A rule also means the same three tiles on a replay and after a reload
+# without the stateless-draw bookkeeping `send` needs, because there is no draw
+# to keep in step.
+#
+# Returns the ids placed, in order.
+static func raid(world: SimWorld, gs) -> Array[String]:
+	var beds := world.crow_targets_of_crop(SimWorld.RAID_CROP)
+	var placed: Array[String] = []
+	if beds.size() < SimWorld.RAID_CROWS:
+		return placed
+	var picks: Array[Vector2i] = [beds[0], beds[beds.size() / 2], beds[beds.size() - 1]]
+	# She is already outside if she never had a door to come through — an old
+	# farm whose bed is on the farm page. The meal has to start on something, and
+	# for her the plants are already in view.
+	var outdoors := world.page_of(world.actor_pos(SimWorld.ACTOR_PLAYER)) == 0
+	for i in picks.size():
+		var tile: Vector2i = picks[i]
+		var centre := Movement.tile_centre(tile)
+		var exit_dir := exit_direction(centre)
+		var id := "%s_%d" % [SimWorld.ACTOR_RAID_CROW, i]
+		world.spawn_actor(id, SpeciesDefs.CROW, tile, {
+			"state": "eating",
+			"fx": centre.x, "fy": centre.y,
+			"tgt_x": tile.x, "tgt_y": tile.y,
+			"kind": "crop",
+			# Never the mercy bird. T-2's scripted reprieve belongs to the first
+			# crow that ever went for a crop, and a raid that let one of its three
+			# perch for twelve seconds and leave empty-beaked would be the night's
+			# warning taking itself back.
+			"harmless": false,
+			"ex": exit_dir.x, "ey": exit_dir.y,
+			"eat_at": 0,
+			# Two marks, and they say different things. `raid` says this bird was
+			# put here by the morning rather than sent by the day's schedule, which
+			# is what `SaveGame._capture_actors` reads to keep it in a save — an
+			# ordinary crow is a visit and is not saved, but three birds standing
+			# on the tomatoes are part of the farm she put down last night.
+			# `waiting_for_door` says its meal clock has not started.
+			"raid": true,
+			"waiting_for_door": not outdoors,
+			"leaving_because": "",
+		})
+		if outdoors:
+			world.actor(id)["extra"]["eat_at"] = world.clock.tick + ticks(RAID_EAT_SECONDS)
+		placed.append(id)
+	# Three crows she saw, and three of them after her crops — counted like any
+	# other, so the tallies stay a record of what happened on this farm. It spends
+	# T-2's mercy if she had somehow never met a crop crow before, which is the
+	# right answer: after this morning there is no peace left to be gentle about.
+	if gs != null:
+		gs.crows_seen += placed.size()
+		gs.crop_crows_seen += placed.size()
+	return placed
+
+
+# The bell that starts the raid's meals: she has come out of her front door onto
+# the farm page, so the plants are in view and the race is on. Called from the
+# gateway's `use_door`, which is a recorded Action — so a replay starts the same
+# three clocks at the same tick, and a reload the next morning starts them when
+# she comes out rather than while she was away.
+static func start_raid_meals(world: SimWorld) -> void:
+	for id in world.actors.keys():
+		var extra: Dictionary = world.actors[id].get("extra", {})
+		if not bool(extra.get("waiting_for_door", false)):
+			continue
+		extra["waiting_for_door"] = false
+		extra["eat_at"] = world.clock.tick + ticks(RAID_EAT_SECONDS)
+
+
 # Where a crow enters, given which edge it picked and how far along that edge, in
 # **tile space** (integer + 0.5 is a tile's centre, so `pixel = tile * 16`).
 #
@@ -175,6 +282,16 @@ func step(world: SimWorld, actor_id: String, tick: int, _gs = null) -> Dictionar
 		"eating":
 			if _spooked(world, actor_id):
 				flee(world, actor_id, "scarecrow")
+				return {}
+			# A raid bird placed at dawn has no meal clock yet: it is standing on
+			# the tomato with its beak in it and the sim has not started counting,
+			# because "as the plants come into view" is the door and the door has
+			# not been opened (design/04). Asked before `eat_at` rather than by
+			# giving `eat_at` a large value, so there is no sentinel number that a
+			# later reader could mistake for a timestamp. A scarecrow still works
+			# on it, which is the block above — the wait is the clock's, not the
+			# bird's.
+			if bool(extra.get("waiting_for_door", false)):
 				return {}
 			if tick < int(extra.get("eat_at", 0)):
 				return {}

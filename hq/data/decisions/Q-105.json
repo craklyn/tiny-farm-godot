@@ -1,0 +1,37 @@
+{
+ "id": "Q-105",
+ "title": "How long the crows eat on the raid morning",
+ "question": "The morning after the crow night, three crows are already eating three of the player's tomatoes when she opens her front door. How long their meal lasts decides how many she can save. Measured on the farm the game generates, with the bed on the nearest ground she can plant, the three birds come inside her shoo range 2.6, 3.4 and 4.0 seconds after the door, so a meal of 3.7 seconds saves two and loses one, which is the target you set. The catch: the meal is one number and the distance is hers to choose. On a bed ten tiles further from the house the same meal saves none, because she is still six seconds away when the birds finish.",
+ "why_now": "The raid is built and ships with the fixed 3.7-second meal. This decides whether that stays one number or bends to where she planted.",
+ "options": [
+  {
+   "key": "a",
+   "label": "One fixed meal, 3.7 seconds (Recommended)",
+   "detail": "What is built today. The raid costs one tomato near the house and all three on a far bed. A watching four-year-old can predict it, and a crow that eats slower because the farm is bigger would be the game doing arithmetic about the player where she can see it."
+  },
+  {
+   "key": "b",
+   "label": "The meal lasts as long as her walk",
+   "detail": "The birds finish the moment she reaches the second one, so the raid costs exactly one tomato wherever she planted. Fair everywhere, but the crows visibly wait for her."
+  },
+  {
+   "key": "c",
+   "label": "Three different meals",
+   "detail": "The nearest bird eats longest, so the bird closest to the door is always the one she can save. Keeps a fixed rule but hides the reason for it."
+  }
+ ],
+ "links": [
+  {
+   "label": "The race, measured (design/04, the morning after)",
+   "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/04-pests-and-ecology.md"
+  },
+  {
+   "label": "The ruling that made the raid (P-15 in the decision log)",
+   "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DECISION_LOG.md"
+  },
+  {
+   "label": "Queue entry (Q-105)",
+   "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"
+  }
+ ]
+}

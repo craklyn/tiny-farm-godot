@@ -92,6 +92,65 @@ static func may_spawn_crow(day: int, total_harvests: int, planted: int) -> bool:
 		and planted >= CROW_MIN_PLANTED
 
 
+# --- Story nights (P-15; design/04 "The morning after") -----------------------
+#
+# **One fact, named once.** A night on which the farm crossed a threshold worth
+# telling is a *story night*, and the sim says which one — nothing else works it
+# out. The sleep's result carries the name, the world carries it until the next
+# sleep replaces it, and the save carries it with the world, so a farm put down
+# at bedtime and picked up the next morning still knows what night it just had.
+# Presentation (the overnight loop, P-15) reads this string and never recomputes
+# the trigger behind it; a second reader deciding for itself is exactly how the
+# night's warning and the morning it promises would come to disagree.
+const STORY_NIGHT_NONE := ""
+const STORY_NIGHT_CROW := "crow_night"
+
+# The crow night's two conditions, and they are read off the world rather than
+# remembered: **the acorns are gone** (Q-39's stock does not regenerate, so this
+# happens once and stays true) **and she has a tomato bed worth raiding**. Four
+# is the designer's number — enough that losing one is a lesson rather than the
+# end of her crop.
+const RAID_CROP := "tomato"
+const RAID_MIN_TOMATOES := 4
+
+# How many birds come. Three, so she can win most of the race and still lose
+# something (design/04); the fourth tomato is the one nobody is standing on.
+const RAID_CROWS := 3
+
+
+# Whether tonight is the crow night: the first sleep at which the acorns are gone
+# and four or more tomatoes stand that a crow could eat. Once per farm — the
+# telling is recorded in `story_nights_told`, so a farm that has had this night
+# never has it again however the conditions wobble afterwards.
+func crow_night_due() -> bool:
+	if story_nights_told.has(STORY_NIGHT_CROW):
+		return false
+	if count_acorns() > 0:
+		return false
+	return crow_targets_of_crop(RAID_CROP).size() >= RAID_MIN_TOMATOES
+
+
+# The tiles of one crop a crow could eat, in scan order.
+#
+# **The crow's own target rule, not a second opinion of it.** `choose_crow_target`
+# offers a bird any tile in `CROP_STATES`, and `eat_crop` accepts the same set —
+# so a sown tomato counts here, because a crow that lands on one really does take
+# it (the verb leaves the soil tilled, which is what a stolen seed looks like from
+# the ground's side). Counting standing plants only would mean a farm that passes
+# the raid's test and a bird that then has nothing to eat, which is the kind of
+# disagreement `has_crop` exists to prevent.
+func crow_targets_of_crop(crop: String) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	for ty in MAP_HEIGHT:
+		for tx in MAP_WIDTH:
+			var tile: Dictionary = tiles[ty][tx]
+			if String(tile.get("crop_type", "")) != crop:
+				continue
+			if _crop_state_set.has(tile.get("state", "")):
+				out.append(Vector2i(tx, ty))
+	return out
+
+
 # --- Ant raids (design/04 §1 and §3, P-10; M2.5 WI-8a/8b) ---------------------
 #
 # The crow's schedule, worn by a second kind of pest, and for the same reasons:
@@ -312,6 +371,18 @@ var scent := Scent.new()
 # this field existed says, and those keep their old behaviour.
 var gen_seed: int = 0
 
+# The story night the last day turn began (P-15), or "" for an ordinary one.
+# Sim truth like the grids: set by `advance_day`, saved with the world, and read
+# by presentation as the one answer to "what happened last night". It is rewritten
+# by every sleep, so it describes the night just passed and nothing older.
+var story_night: String = STORY_NIGHT_NONE
+
+# Which story nights this farm has already had, as a set of names. A threshold is
+# crossed once — that is what makes the crow night a consequence of her own
+# acorn-picking rather than a weather event — so the telling is recorded here and
+# the trigger never fires twice. Saved with the world for the same reason.
+var story_nights_told: Dictionary = {}
+
 
 func generate(with_layout: Dictionary = WorldLayout.WORLD) -> void:
 	layout = with_layout
@@ -324,6 +395,9 @@ func generate(with_layout: Dictionary = WorldLayout.WORLD) -> void:
 	# it: a new world has been marked by nobody (M2.5 WI-7).
 	clock.reset()
 	scent.clear()
+	# ...and so has nobody's story been told on it yet (P-15).
+	story_night = STORY_NIGHT_NONE
+	story_nights_told.clear()
 
 	# 1. Bare ground inside the map border. Every later step overwrites; nothing
 	#    below reads a tile it has not written, so the fill order is the only
@@ -1167,6 +1241,10 @@ const ACTOR_CROW := "crow"
 # is the first time the game has had more than one of anything.
 const ACTOR_ANT_SCOUT := "ant_scout"
 const ACTOR_ANT_FORAGER := "ant_forager"
+# The crow night's morning (design/04). Three birds, numbered from this prefix
+# like the ants' column, and kept apart from `ACTOR_CROW` on purpose: the raid is
+# not the day's scheduled visit, so it neither blocks one nor spends it.
+const ACTOR_RAID_CROW := "raid_crow"
 
 
 static func _is_player(actor: String) -> bool:
@@ -2055,6 +2133,13 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 				for wake_id in actors.keys():
 					if String(actors[wake_id].get("species", "")) == SpeciesDefs.BOT:
 						_schedule_brain(wake_id, clock.tick + 1)
+				# ...and the raid's three birds start their meal on the same bell
+				# (design/04). The design says "as the plants come into view", and
+				# the door is the only moment the sim can honestly call that: at
+				# dawn she is in a room with the curtains shut, and a clock that
+				# started there would have eaten her tomatoes before she could
+				# possibly have seen one.
+				CrowBrain.start_raid_meals(self)
 			return { "ok": true, "dest": dest, "face": face }
 
 		# -- machines (2026-09-03) --------------------------------------------
@@ -2363,7 +2448,11 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			if not gs.phase1_complete and _phase1_proof_met(gs):
 				gs.phase1_complete = true
 				newly_complete = true
-			return { "ok": true, "day": gs.day, "weather": gs.weather, "phase1_complete_now": newly_complete }
+			# `story_night` is the night just turned (P-15): "crow_night", or ""
+			# for an ordinary one. It is the *only* thing presentation is told
+			# about the night, and the one thing it must not work out for itself.
+			return { "ok": true, "day": gs.day, "weather": gs.weather,
+				"phase1_complete_now": newly_complete, "story_night": story_night }
 
 		# -- land and tools (T-8/T-9, Q-34) --
 		# Closed becomes open. Applied by the neighbour at the end of the cold
@@ -2763,6 +2852,15 @@ func _parcel_with_gate(gate: Vector2i) -> Dictionary:
 # turn without a GameState is a test fixture arranging a grid, not a farm waking
 # up, and the sleep verb — the only caller in the running game — always has one.
 func advance_day(weather: String, gs = null) -> void:
+	# **What kind of night this was, asked first and answered last** (P-15). The
+	# conditions are read off the farm she went to bed on, before the growth pass
+	# touches a tile, so the night the game tells a story about is the night the
+	# threshold was actually crossed. The *telling* waits until the bottom of this
+	# function, where the morning it promises is either placed or not: a night
+	# named "crow_night" over a morning with no crows in it would be the one fact
+	# presentation reads lying to it, and the night is better spent tomorrow.
+	story_night = STORY_NIGHT_NONE
+	var crow_night := crow_night_due()
 	# Everyone wakes rested, the player included (GameState.start_new_day does
 	# hers). An NPC's tiredness is a within-day thing, same as the farmer's.
 	# Every *registered* actor, which since M2.5 WI-2 is the same set that used to
@@ -2837,3 +2935,19 @@ func advance_day(weather: String, gs = null) -> void:
 	if gs != null:
 		for action in Brains.day_actions(self, gs):
 			apply_action(action, gs)
+
+	# ...and the morning the crow night promised (design/04). **Last**, so the
+	# birds are placed on the tomatoes as the day turn leaves them rather than as
+	# it found them, and so a sprinkler cannot water a tile out from under one.
+	# Placement only: the meals do not start here (see `CrowBrain.raid`).
+	#
+	# The night is told only if all three birds actually landed. Nothing in a day
+	# turn can take a tomato away — the growth pass only moves a crop along
+	# (`CROP_STATES` in, `CROP_STATES` out) and a machine waters — so four at
+	# bedtime is four at dawn and this is a belt on top of a brace. It is here
+	# because the alternative is silent: a farm that somehow lost its bed
+	# overnight would otherwise spend its one crow night on a morning with
+	# nothing in it, and never get another.
+	if crow_night and CrowBrain.raid(self, gs).size() == RAID_CROWS:
+		story_night = STORY_NIGHT_CROW
+		story_nights_told[STORY_NIGHT_CROW] = true

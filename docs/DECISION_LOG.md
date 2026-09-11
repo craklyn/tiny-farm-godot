@@ -661,7 +661,11 @@ night and the morning (the first sleep where the acorns are gone *and* four or m
 tomatoes stand), three crows set on three tomatoes by the day turn, their meals starting on
 her `use_door` rather than at dawn so the race begins when the plants come into view, and
 the ordinary shoo. The race is the [Playtest] value: a direct walk from the door should
-save two of the three, not none.
+save two of the three, not none. **Built 2026-09-10**, with that value measured rather than
+guessed — `tools/measure_raid_race.gd` walks her out of the door on the generated farm and
+prints when each bird falls inside her shoo range, which puts the meal at 3.7 seconds on
+the nearest bed she can plant. One meal length meets a distance she chooses, so a bed
+planted far from the house loses all three; whether that stays one fixed number is Q-105.
 
 ### D-1. Phase 5 genre (X-COM tactics vs. Gradius-like hybrid vs. other)
 **Why deferred:** Phase 5's cast is the player plus *trained bots* — its design depends on

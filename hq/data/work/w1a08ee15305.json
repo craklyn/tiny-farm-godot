@@ -1,20 +1,180 @@
 {
- "id": "w1a08ee15305",
- "title": "The morning the crows come for the tomatoes",
- "level": "story",
- "owner": "tomas",
- "tier": 2,
- "tier_reason": "It is the designer's set piece for the first loss on the farm, it must be deterministic, and its trigger is shared with the crow night.",
- "ask": "Build the raid morning in design/04 'The morning after: the crows come for the tomatoes' (designer, 2026-09-10). Everything is sim-side and derived from world state, no flags in presentation: (1) the trigger — the first sleep where no acorn remains on the ground AND four or more tomatoes stand that a crow could eat (a seedling a crow cannot eat does not count; check crow_brain's target rule and use the same test) — fires once per farm and is the same trigger the overnight loop uses (item w1a08ee15303), so the night's warning and the morning's raid are one event; (2) at that day turn, place three crows on three of her tomatoes in the eating state; (3) their meal clocks start on her use_door action that morning, not at dawn, so the race begins as the plants come into view; (4) the shoo is the ordinary one, and a scarecrow does what it always does. [Playtest] value to tune: the raid's meal length. A normal meal is EAT_SECONDS = 5.0 and she walks 3 tiles/s; measure the walk from the front door to the tomato beds in the robot session and set the raid's meal length so a direct walk saves two of the three, not none and not all. Tests: the trigger fires exactly once and only when both conditions hold; a replay reproduces the raid; a save the night before and a load the morning after produce the same three crows; the crows' meals do not begin before the door. Do not build the night loop itself (item w1a08ee15303). ALSO: this item owns the sim's story-night fact. When a sleep resolves, the day-turn result (and the world's summary, so a save made that night carries it) names the story night it began — 'crow_night' here — or nothing. Presentation reads that one fact; it never recomputes the trigger. The ladder item adds 'robot_night' to the same fact after this lands.",
- "first_action": "Read systems/sim/brains/crow_brain.gd's target rule and EAT_SECONDS, and the day-turn spawn path in sim_world.gd, then write the trigger test first.",
- "state": "waiting_session",
- "thread": "",
- "source": "chief-of-staff",
- "source_message": "Filed from the 2026-09-10 brainstorm on where the Animation Lab loops enter play (P-15, S-12).",
- "result": "",
- "started": "",
- "attempts": 0,
- "created": "2026-09-10T22:12",
- "created_ts": 1789103525.6591854,
- "conversation": []
+  "id": "w1a08ee15305",
+  "title": "The morning the crows come for the tomatoes",
+  "level": "story",
+  "owner": "tomas",
+  "tier": 2,
+  "tier_reason": "It is the designer's set piece for the first loss on the farm, it must be deterministic, and its trigger is shared with the crow night.",
+  "ask": "Build the raid morning in design/04 'The morning after: the crows come for the tomatoes' (designer, 2026-09-10). Everything is sim-side and derived from world state, no flags in presentation: (1) the trigger — the first sleep where no acorn remains on the ground AND four or more tomatoes stand that a crow could eat (a seedling a crow cannot eat does not count; check crow_brain's target rule and use the same test) — fires once per farm and is the same trigger the overnight loop uses (item w1a08ee15303), so the night's warning and the morning's raid are one event; (2) at that day turn, place three crows on three of her tomatoes in the eating state; (3) their meal clocks start on her use_door action that morning, not at dawn, so the race begins as the plants come into view; (4) the shoo is the ordinary one, and a scarecrow does what it always does. [Playtest] value to tune: the raid's meal length. A normal meal is EAT_SECONDS = 5.0 and she walks 3 tiles/s; measure the walk from the front door to the tomato beds in the robot session and set the raid's meal length so a direct walk saves two of the three, not none and not all. Tests: the trigger fires exactly once and only when both conditions hold; a replay reproduces the raid; a save the night before and a load the morning after produce the same three crows; the crows' meals do not begin before the door. Do not build the night loop itself (item w1a08ee15303). ALSO: this item owns the sim's story-night fact. When a sleep resolves, the day-turn result (and the world's summary, so a save made that night carries it) names the story night it began — 'crow_night' here — or nothing. Presentation reads that one fact; it never recomputes the trigger. The ladder item adds 'robot_night' to the same fact after this lands.",
+  "first_action": "Read systems/sim/brains/crow_brain.gd's target rule and EAT_SECONDS, and the day-turn spawn path in sim_world.gd, then write the trigger test first.",
+  "state": "for_review",
+  "thread": "",
+  "source": "chief-of-staff",
+  "source_message": "Filed from the 2026-09-10 brainstorm on where the Animation Lab loops enter play (P-15, S-12).",
+  "result": "Built and verified in the worktree. Here is what the morning does now.\n\n**The raid.** One trigger decides the night and the morning: the first sleep where no acorn is left on the ground and four or more tomatoes stand that a crow could actually eat — counted with the crow's own target rule, so the bed can never pass the test and then leave a bird with nothing on the tile. That day turn places three crows on three of her tomatoes, spread across the bed rather than shoulder to shoulder. Their meals do not start at dawn: they start the moment she opens her front door, on the same recorded action that moves her outside, so the race begins as the plants come into view. The shoo is the ordinary one and a scarecrow still works on them.\n\n**The sleep now names the night.** A day turn hands back `crow_night` or nothing, the world carries that one fact, and the save carries it with the world — so a farm put down at bedtime wakes up knowing what night it had, and a reload cannot spend that night twice. The night is only told if all three birds actually landed. The three birds ride in the save too, for as long as they are standing on a plant; once one is shooed or has eaten, it is an ordinary visit again and the save drops it.\n\n**The meal length is measured, not guessed.** A new tool walks her out of the front door on the farm the game generates and prints when each bird comes inside her shoo range. On the nearest ground she can plant, the three fall inside it 2.6, 3.4 and 4.0 seconds after the door — so the meal is **3.7 seconds**, which saves two and loses one, the target in chapter 4. Run it with `godot --headless --path . --script res://tools/measure_raid_race.gd`.\n\n**Two things you should know.**\n\nThe honest limit of that number: one meal length meets a distance the player picks. On a tomato bed ten tiles further from the house the same meal saves none, because she is still six seconds away when the birds finish. I shipped the conservative end and filed the choice as Q-105 with a recommendation.\n\nYour two tablet sessions from yesterday that replayed exactly — the short one and your finished day-53 playthrough — no longer do. The crow night fires inside both of them (no acorns left, four tomatoes standing), so the replay loses tomatoes the recording never lost. That is the world moving under a recording, the same thing the robot's memory change did the day before; both are marked as such with the reason. It is also the best evidence I have that the trigger fires in real play rather than only in a fixture.\n\nFour new tests cover the trigger firing exactly once and only when both halves hold, the meals waiting for the door, a bedtime save and a morning load producing the same three crows, and the whole raid replaying. Unit suite 2623 passed, integration 868 passed, robot session passed, the one-gateway check and the benchmark pass. The night loop itself is untouched — that is the other item.\n\nOne thing I could not close: the robot session failed once in eleven runs, early enough in its output that I lost the line, and the ten runs after it all passed. I could not reproduce it and I do not think it is this change, but I am not willing to call it nothing.",
+  "started": "",
+  "attempts": 2,
+  "created": "2026-09-10T22:12",
+  "created_ts": 1789103525.6591854,
+  "conversation": [],
+  "finished": "2026-09-10T23:19",
+  "done_by": {
+    "seat": "tomas",
+    "model": "opus",
+    "lane": "drain"
+  },
+  "usage": {
+    "calls_detail": [
+      {
+        "input": 224,
+        "output": 75033,
+        "cache_read": 17887225,
+        "cache_write": 196752,
+        "turns": 126,
+        "seconds": 1895.4,
+        "list_usd": 12.7881,
+        "tokens": 18159234,
+        "fresh": 272009,
+        "phase": "drain-work",
+        "model": "opus",
+        "seat": "tomas"
+      },
+      {
+        "input": 226,
+        "output": 9779,
+        "cache_read": 655127,
+        "cache_write": 66178,
+        "turns": 9,
+        "seconds": 137.1,
+        "list_usd": 1.9786,
+        "tokens": 731310,
+        "fresh": 76183,
+        "phase": "drain-check",
+        "model": "fable",
+        "seat": "claude"
+      }
+    ],
+    "input": 450,
+    "output": 84812,
+    "cache_read": 18542352,
+    "cache_write": 262930,
+    "tokens": 18890544,
+    "fresh": 348192,
+    "turns": 135,
+    "seconds": 2032.5,
+    "list_usd": 14.7667,
+    "calls": 2
+  },
+  "spent": {
+    "attempts": 2,
+    "tokens": 26991659,
+    "fresh": 589974,
+    "list_usd": 22.2963
+  },
+  "follow_ups": [
+    {
+      "title": "Put the raid's meal length in front of the designer as a decision card",
+      "owner": "claude",
+      "level": "task",
+      "tier": 1,
+      "first_action": "Write hq/data/decisions/Q-105.json from the Q-105 entry now at the top of docs/DESIGNER_QUEUE.md: three options (one fixed 3.7s meal, a meal that lasts as long as her walk, three different meals), recommendation (a), and the measured 2.6/3.4/4.0s figures as the attachment.",
+      "why": "The raid ships with a value chosen by measurement, but which end of the dial is right on a far-planted bed is his taste and nobody else's."
+    },
+    {
+      "title": "Find why the robot session failed once in eleven runs",
+      "owner": "grace",
+      "level": "task",
+      "tier": 0,
+      "first_action": "Run `godot --headless --path . res://tools/robot_session.tscn` twenty times redirecting each run to its own log file, then grep the logs for '✗' to catch which check fails and how often.",
+      "why": "A single unexplained failure in a suite that gates every push is either a real fault or a flake, and both need naming before red stops meaning broken."
+    },
+    {
+      "title": "Get a fresh recorded play session that replays exactly under today's build",
+      "owner": "kenji",
+      "level": "task",
+      "tier": 1,
+      "first_action": "After the next tablet play, run tools/pull_session.sh, then check the new session with `godot --headless --path . --script res://tools/verify_replay.gd` and add it to the shelf in tests/test_runner.gd with its verdict.",
+      "why": "The crow night moved both of yesterday's exactly-replaying sessions to 'cross', leaving one session in the corpus that still reproduces itself."
+    }
+  ],
+  "recommend": {
+    "question": "Should the raid's crows always eat for 3.7 seconds, or eat for as long as her walk takes so the raid always costs exactly one tomato?",
+    "answer": "Keep the fixed 3.7 seconds and revisit after you have played a farm with a far-off tomato bed on the tablet.",
+    "why": "A crow that eats slower because the farm got bigger is the game doing arithmetic about the player where a four-year-old can see it and not predict it.",
+    "instead": "Scale the meal to her walk, which guarantees she saves two wherever she planted — at the cost of three birds whose behaviour changes with the map."
+  },
+  "prior_checks": [
+    {
+      "verdict": "fail",
+      "summary": "The raid's trigger, story-night fact and crow placement are written, but the waiting crows eat the tomatoes the instant the day turns, nothing about the raid survives a save, none of the four required tests exist, the measurement tool the tuning comment cites was never written, and no reply came back to say any of that.",
+      "findings": [
+        {
+          "what": "A raid crow placed 'waiting_for_door' has eat_at 0, and the eating branch only checks tick < eat_at, so it eats its tomato on its first brain tick at dawn — the opposite of requirement (3)",
+          "where": "systems/sim/brains/crow_brain.gd:278 (eating branch) vs raid() extra at :182-186",
+          "fix": "In the eating branch, return early while extra.waiting_for_door is true, or seed eat_at to a sentinel the branch treats as 'not started'; then write the 'meals do not begin before the door' test, which would have caught this"
+        },
+        {
+          "what": "Raid crows are never saved: SaveGame._capture_actors skips non-persistent species and the crow row is persistent: false; the comment claiming a 'raid' mark keeps them in the save describes code that does not exist",
+          "where": "systems/sim/save_game.gd:608, systems/species_defs.gd:202, comment at crow_brain.gd:183",
+          "fix": "Teach _capture_actors and its restore to keep actors with extra.raid == true (or make the raid a separate species row with persistent: true), and write the save-night / load-morning test the item requires"
+        },
+        {
+          "what": "story_night and story_nights_told are new world fields but save_game.gd is untouched, so a save made on the crow night loses the fact and a reload can fire the trigger a second time",
+          "where": "systems/sim/sim_world.gd:378-386, systems/sim/save_game.gd (gen_seed at :70/:240 is the pattern)",
+          "fix": "Serialize both beside gen_seed with absent-means-none defaults, and cover it in the save/load test"
+        },
+        {
+          "what": "None of the four tests the item names were written (trigger fires exactly once and only when both conditions hold; replay reproduces the raid; save-then-load yields the same three crows; meals wait for the door), and the assigned first step was 'write the trigger test first'",
+          "where": "tests/test_runner.gd — no raid, story_night or crow_night reference",
+          "fix": "Add the four tests and their calls in _init before this lands; the first and fourth are cheap and the fourth fails today"
+        },
+        {
+          "what": "RAID_EAT_SECONDS = 4.0 is presented as measured by tools/measure_raid_race.gd, but that file is not in the diff or the tree, so the 3.7/4.0/4.3 s figures are unverifiable and the item's [Playtest] instruction to measure in the robot session was not followed",
+          "where": "systems/sim/brains/crow_brain.gd:46-66",
+          "fix": "Either commit the measurement script and its output, or reword the comment to say the value is an estimate pending measurement; do not ship a comment that cites a tool nobody can run"
+        },
+        {
+          "what": "raid() picks the first, middle and last eligible tomato and reads the player's page, but spawns the crows even if the player is on another page with no door path checked; and if fewer than three tomatoes stand at dawn (a sprinkler or harvest cannot remove them, but growth-pass changes in state could) the night is told and no raid happens — story_night says crow_night, morning shows nothing",
+          "where": "systems/sim/sim_world.gd:2940-2945 and crow_brain.gd:156-160",
+          "fix": "Either assert the invariant (four targets at bedtime implies at least three at dawn, since advance_day only advances state within CROP_STATES) in the trigger test, or only record story_nights_told after raid() actually placed three birds"
+        },
+        {
+          "what": "Design doc not updated: design/04 describes the morning, but nothing in docs/ records the sim-side facts this diff introduces (story_night as the one fact, RAID_EAT_SECONDS shorter than EAT_SECONDS, the first/middle/last placement rule, the door as the clock's start)",
+          "where": "docs/design/04_*.md:117, docs/DECISION_LOG.md P-15",
+          "fix": "Add the implementation notes under the design/04 entry and to P-15 in the same change, per the working agreement that docs update with the code"
+        },
+        {
+          "what": "No reply came back, so the worker made no claims at all — the diff's own comments are the only account, and two of them (the save mark, the measurement tool) describe work that was not done",
+          "where": "reply",
+          "fix": "The rerun's reply must list what was tested and what was measured, or say plainly what was skipped"
+        }
+      ],
+      "escalates": null,
+      "escalation_reason": null
+    }
+  ],
+  "diff": {
+    "stat": "CLAUDE.md                           |   4 +\n docs/DECISION_LOG.md                |   6 +-\n docs/DESIGNER_QUEUE.md              |  16 ++\n docs/design/04-pests-and-ecology.md |  24 ++-\n systems/sim/brains/crow_brain.gd    | 117 +++++++++++\n systems/sim/save_game.gd            |  58 +++++-\n systems/sim/sim_world.gd            | 116 ++++++++++-\n tests/test_runner.gd                | 325 +++++++++++++++++++++++++++++-\n tools/measure_raid_race.gd          | 385 ++++++++++++++++++++++++++++++++++++\n tools/measure_raid_race.gd.uid      |   1 +\n 10 files changed, 1036 insertions(+), 16 deletions(-)",
+    "files": [
+      "CLAUDE.md",
+      "docs/DECISION_LOG.md",
+      "docs/DESIGNER_QUEUE.md",
+      "docs/design/04-pests-and-ecology.md",
+      "systems/sim/brains/crow_brain.gd",
+      "systems/sim/save_game.gd",
+      "systems/sim/sim_world.gd",
+      "tests/test_runner.gd",
+      "tools/measure_raid_race.gd",
+      "tools/measure_raid_race.gd.uid"
+    ],
+    "applied": true,
+    "why_not": ""
+  },
+  "check": {
+    "verdict": "concerns",
+    "summary": "nobody checked this — the check call did not come back",
+    "findings": [],
+    "escalates": null,
+    "escalation_reason": null
+  }
 }
