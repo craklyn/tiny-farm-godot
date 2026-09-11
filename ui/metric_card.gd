@@ -10,9 +10,13 @@
 # the inks and the numeral size are `BotScorecard`'s, so a card cannot round a
 # number one way while the chart above it rounds it another.
 #
-# **Wordless** (S-7). Numerals only: today's reading, and the reference where a
-# measure has one. What the card is *about* is the picture in its corner, which is
-# the same rule the scorecard's eight row pictures are drawn under.
+# **A short label, then numerals** (2026-09-10). The card's picture was meant to
+# say what it is about, the way the scorecard's eight row pictures do. It did not:
+# the designer, looking at the finished page, said *"I don't know what the four
+# charts at bottom of screen are. I can't tell by the illustration."* So a card
+# carries a few plain words above its picture — the licence §7 of `design/14`
+# already gives the bench's scientist pages — and nothing else on it is written.
+# There is no drawing of "how undecided a machine is" that a person reads cold.
 #
 # **Today is never drawn as a finished day.** The last column is dashed and ringed
 # on a line, and outlined rather than filled on bars — the same language the
@@ -28,6 +32,10 @@ const READING_SIZE := 18     # today's numeral
 const DELTA_W := 11.0        # the triangle that says which way it moved
 const HEAD_H := 30.0         # the band the picture and the numeral live in
 
+# The label is written at the axis numerals' size, because it is the same kind of
+# thing: a small mark that tells you how to read the drawing, not part of it.
+const LABEL_SIZE := BotScorecard.NUMERAL_SIZE
+
 # The face is a shade up from the bench's body, so four cards read as four things
 # rather than as one dark field. The mockup's `#262636`; it lives here rather than
 # on `Workbench` because the card is its own widget and nothing else uses it.
@@ -40,6 +48,14 @@ const INK_LINE := Color("8a8fa8")
 const INK_TODAY := Color("c2c9e0")
 
 # --- what the card is showing, filled by `show_series` -------------------------
+
+## **What this card is about, in a few plain words** (2026-09-10), drawn along the
+## card's top edge above the picture. It belongs to the slot rather than to the
+## robot — the ledger sets it once, when it builds its four cards — so it is a
+## member here and not a parameter of `show_series`, which says what the numbers
+## are. Empty draws nothing and costs the series no height, which is what a card
+## used anywhere else would get.
+var label: String = ""
 
 ## The closed days, oldest first. The card draws the last `BotScorecard.DAYS_SHOWN`
 ## of them, which is the window the chart above it draws.
@@ -131,9 +147,42 @@ func columns() -> Array:
 func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), FACE)
 	draw_rect(Rect2(Vector2.ZERO, size), Workbench.EDGE, false, 1.0)
-	_draw_glyph(Rect2(PAD, PAD, GLYPH, GLYPH))
+	_draw_label()
+	_draw_glyph(Rect2(PAD, _head_top(), GLYPH, GLYPH))
 	_draw_reading()
 	_draw_series()
+
+
+# --- the label -----------------------------------------------------------------
+
+# The words go along the top, and the rest of the card moves down under them as a
+# block: the picture keeps the numeral's company on one band and the numeral keeps
+# its corner, so only the chart is any smaller than it was. Clipped to the card's
+# width rather than allowed to run off the edge — four cards at 180 across have
+# room for these four labels, and a longer one should look cramped rather than
+# spill onto its neighbour.
+func _draw_label() -> void:
+	if label == "":
+		return
+	var f := _font()
+	if f == null:
+		return
+	draw_string(f, Vector2(PAD, PAD + f.get_ascent(LABEL_SIZE)), label,
+		HORIZONTAL_ALIGNMENT_LEFT, size.x - PAD * 2.0, LABEL_SIZE,
+		BotScorecard.AXIS_INK)
+
+
+# The top of the band the picture and the numeral live in: the padding, plus the
+# label's line where there is a label.
+func _head_top() -> float:
+	return PAD + _label_h()
+
+
+func _label_h() -> float:
+	if label == "":
+		return 0.0
+	var f := _font()
+	return 0.0 if f == null else f.get_height(LABEL_SIZE)
 
 
 # --- the reading ---------------------------------------------------------------
@@ -146,18 +195,19 @@ func _draw_reading() -> void:
 	if f == null:
 		return
 	var right := size.x - PAD
+	var mid := _head_top() + HEAD_H / 2.0
 	if is_nan(reading):
-		draw_rect(Rect2(right - 22.0, PAD + HEAD_H / 2.0 - 2.0, 22.0, 4.0),
+		draw_rect(Rect2(right - 22.0, mid - 2.0, 22.0, 4.0),
 			Color(BotScorecard.AXIS_INK, 0.7))
 		return
 
 	if not is_nan(previous) and not is_equal_approx(reading, previous):
-		_draw_delta(right - DELTA_W, PAD + HEAD_H / 2.0, reading > previous)
+		_draw_delta(right - DELTA_W, mid, reading > previous)
 		right -= DELTA_W + 5.0
 
 	var text := format_reading(reading, _signed())
 	var w := f.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, READING_SIZE).x
-	draw_string(f, Vector2(right - w, PAD + HEAD_H / 2.0 + READING_SIZE * 0.36), text,
+	draw_string(f, Vector2(right - w, mid + READING_SIZE * 0.36), text,
 		HORIZONTAL_ALIGNMENT_LEFT, -1, READING_SIZE, Workbench.INK)
 
 
@@ -211,9 +261,11 @@ func _draw_series() -> void:
 	var vals := columns()
 	if vals.is_empty():
 		return
-	var plot := Rect2(PAD + 4.0, PAD + HEAD_H,
+	# The chart is what the label is paid for: it starts one line lower and ends
+	# where it always did.
+	var plot := Rect2(PAD + 4.0, _head_top() + HEAD_H,
 		maxf(16.0, size.x - (PAD + 4.0) * 2.0),
-		maxf(16.0, size.y - PAD - HEAD_H - PAD))
+		maxf(16.0, size.y - _head_top() - HEAD_H - PAD))
 
 	var hi := 0.0
 	var lo := 0.0

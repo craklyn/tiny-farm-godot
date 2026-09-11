@@ -27,6 +27,20 @@ const CARD_SIZE := Vector2(180, 158)
 const CARD_Y := 414.0
 const CARD_X: Array[float] = [28.0, 216.0, 404.0, 592.0]
 
+# **What each card is about, in words** (2026-09-10). The four pictures were meant
+# to carry it and did not: shown the finished page, the designer said *"I don't
+# know what the four charts at bottom of screen are. I can't tell by the
+# illustration."* These are the bench's scientist pages, where "how undecided it
+# is" has no drawing a person reads cold, and §7 of `design/14` allows words here.
+# Lowercase and as plain as the measures let them be — what a person would say
+# about the robot, not the name a metrics review uses.
+const CARD_LABELS: Array[String] = [
+	"against its usual day",
+	"still guessing",
+	"changed overnight",
+	"wasted tries",
+]
+
 # The well the chart is sunk into: a shade darker than the body, which is what
 # says "this is the data" rather than "this is more bench".
 const WELL := Color("1b1b28")
@@ -82,6 +96,10 @@ func _build() -> void:
 	for i in CARD_X.size():
 		var card := MetricCard.new()
 		card.name = "Metric%d" % i
+		# The label belongs to the slot, not to the robot on the bench: card two is
+		# the entropy card whichever machine is being read, so it is set here once
+		# and `_fill_cards` is left to the numbers.
+		card.label = CARD_LABELS[i]
 		card.position = Vector2(CARD_X[i], CARD_Y)
 		card.size = CARD_SIZE
 		card.visible = false
