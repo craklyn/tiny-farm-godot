@@ -17,8 +17,8 @@
 # presentation reads the sim and never writes it.
 #
 # **Wordless** (S-7). The only text is numerals: the top of the scale, the zero,
-# the first day's number and today's. Which line is which is answered by a
-# picture, and every one of those pictures is one the game already uses somewhere
+# how far back the chart reaches, and today's nought. Which line is which is
+# answered by a picture, and every one of those pictures is one the game already uses somewhere
 # else — the shop's coin, the HUD's can, the seed packet from "no seeds", the hoe
 # off the tool row, the basket, and the crow itself.
 #
@@ -38,6 +38,22 @@
 # joining a row to its line. Colour alone carries the match, which he took on
 # knowingly: *"we'll assume the player has good color vision at this instant in
 # time, but we'll probably rebuild this display later anyway."*
+#
+# **Today owns a column, and the axis counts back to it** (2026-09-10). The days
+# used to be spread evenly between the plot's two edges, which put today's point on
+# the right edge itself with its grey band hanging to the left of it — so the band
+# read as a region beside the chart rather than as today's column, and the designer
+# said so: *"On the right edge of the chart, there's a region with a column of grey
+# background. The current day's data is on the very right edge of it. This is likely
+# not how it's supposed to be drawn."* So the plot is `n` equal slots now, one per
+# day, each point at the centre of its own slot, and the band covers today's slot
+# edge to edge with today's point in the middle of it. He asked for the numerals to
+# follow: *"Can we record as day 0 on right-most, and then negative days to the
+# left?"* — so the axis reads `0` under today and `-13` at the far left of a full
+# fortnight, which is the number a person actually wants off a day axis (how long
+# ago, not which night of the machine's life). The numbering underneath is
+# untouched: `days`, `tick_days` and `tuned` still count nights up from the robot's
+# first, and only the printed numerals changed.
 class_name BotScorecard
 extends Control
 
@@ -141,7 +157,8 @@ var days: Array = []
 ## two sizes, and never two drawings that can disagree).
 var plot_h: float = PLOT_H
 
-## The days that carry a tick, **as day numbers on this card's own axis** — the
+## The days that carry a tick, **in this card's own day numbering** (nights lived,
+## not the negative numerals printed on the axis) — the
 ## days `extra["tuned"]` names, moved onto this axis by `read_ticks`, and only
 ## those that fall inside the fortnight being drawn.
 var tick_days: Array = []
@@ -178,7 +195,7 @@ func show_bot(extra: Dictionary) -> void:
 # so a tick read straight off `tuned` either lands a column early or, on a robot
 # that has never slept, has no column to land on at all and silently vanishes —
 # which is what WI-5 found. The conversion belongs here, in the one function that
-# knows what a day number on this axis means.
+# knows what a day number on this card means.
 static func read_ticks(extra: Dictionary, on_days: Array) -> Array:
 	var shown := {}
 	for day in on_days:
@@ -274,31 +291,38 @@ func _draw() -> void:
 		Vector2(plot.position.x + plot.size.x, zero_y), AXIS_INK, 1.0)
 	draw_line(plot.position, Vector2(plot.position.x + plot.size.x, plot.position.y),
 		GRID_INK, 1.0)
-	_numeral(_scale_text(top), Vector2(plot.position.x - 3.0, plot.position.y + 8.0), true)
-	_numeral("0", Vector2(plot.position.x - 3.0, zero_y + 3.0), true)
+	_numeral(_scale_text(top), Vector2(plot.position.x - 3.0, plot.position.y + 8.0),
+		HORIZONTAL_ALIGNMENT_RIGHT)
+	_numeral("0", Vector2(plot.position.x - 3.0, zero_y + 3.0), HORIZONTAL_ALIGNMENT_RIGHT)
 
+	# **A slot per day, and the point in the middle of it** (2026-09-10; the header
+	# says why). The plot is as many equal columns as there are days, and a day's
+	# point sits at the centre of its own — so the oldest day and today are each half
+	# a slot in from the plot's edges, and today's column has the room to read as a
+	# column.
 	var last := days.size() - 1
+	var slot := plot.size.x / float(days.size())
 	var xs: Array = []
 	for i in days.size():
-		xs.append(plot.position.x + (plot.size.x if days.size() <= 1
-			else plot.size.x * float(i) / float(last)))
+		xs.append(plot.position.x + slot * (float(i) + 0.5))
 
 	# Today is the rightmost column and is **not a finished day**: it is banded, the
 	# segment into it is dashed, and its point is a ring rather than a dot. A part
 	# day drawn like a whole one is the one way a truthful chart still misleads —
-	# every morning would look like a collapse.
-	if days.size() > 1:
-		var band_left: float = (float(xs[last - 1]) + float(xs[last])) / 2.0
-		draw_rect(Rect2(band_left, plot.position.y,
-			float(xs[last]) - band_left, plot.size.y), TODAY_BAND)
+	# every morning would look like a collapse. The band is today's slot exactly,
+	# edge to edge, so a robot with one day to its name has the whole plot banded with
+	# its single point centred in it — which is the truth about that robot.
+	draw_rect(Rect2(plot.position.x + slot * float(last), plot.position.y,
+		slot, plot.size.y), TODAY_BAND)
 
-	# The day numerals: the oldest day on the chart, and today. Two rather than
-	# fourteen, because fourteen at this width is a grey smear.
-	_numeral(str(int(days[0]["n"])), Vector2(float(xs[0]), zero_y + AXIS_BOTTOM - 2.0),
-		days.size() <= 1)
+	# The day numerals, counted back from today: `0` under today's column, and the
+	# oldest day on the chart as how many days ago it was. Two rather than fourteen,
+	# because fourteen at this width is a grey smear. Each is centred on its own
+	# column, which is what a point in the middle of a slot asks for.
+	var numeral_y := zero_y + AXIS_BOTTOM - 2.0
+	_numeral(str(-last), Vector2(float(xs[0]), numeral_y), HORIZONTAL_ALIGNMENT_CENTER)
 	if days.size() > 1:
-		_numeral(str(int(days[last]["n"])),
-			Vector2(float(xs[last]), zero_y + AXIS_BOTTOM - 2.0), true)
+		_numeral("0", Vector2(float(xs[last]), numeral_y), HORIZONTAL_ALIGNMENT_CENTER)
 
 	# The days she turned a dial on, tacked under the axis. Drawn before the lines
 	# so nothing of the data is ever hidden behind her own mark.
@@ -408,16 +432,22 @@ static func _sheet_of(sheet_name: String) -> Texture2D:
 			return SHEET_TOOLS
 
 
-# A number on an axis. `right` ends it at `at` instead of starting it there, which
-# is what both the scale and today's day number need.
-func _numeral(text: String, at: Vector2, right: bool) -> void:
+# A number on an axis, placed against `at`: the scale's numerals *end* there, since
+# the axis itself is a few pixels to their right, and a day's numeral is *centred*
+# there, on the middle of the column it belongs to.
+func _numeral(text: String, at: Vector2, align: int) -> void:
 	var f := get_theme_font("font", "Label")
 	if f == null:
 		f = ThemeDB.fallback_font
 	if f == null:
 		return
 	var w := f.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, NUMERAL_SIZE).x
-	draw_string(f, Vector2(at.x - (w if right else 0.0), at.y), text,
+	var dx := 0.0
+	if align == HORIZONTAL_ALIGNMENT_RIGHT:
+		dx = -w
+	elif align == HORIZONTAL_ALIGNMENT_CENTER:
+		dx = -w / 2.0
+	draw_string(f, Vector2(at.x + dx, at.y), text,
 		HORIZONTAL_ALIGNMENT_LEFT, -1, NUMERAL_SIZE, AXIS_INK)
 
 

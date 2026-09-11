@@ -120,6 +120,12 @@ from what the robot already keeps:
 | **Update size** | is it still learning? | ‖Δw‖ from last night, kept in `extra["last_update"]` | a plateau reads as a line at zero; a spike after a dial turn reads as the retune it is |
 | **Spent decisions** | how much of its day was wasted? | decisions with no legal target, per day | the tap-shaped action's cost of a poor view; the number that says "give it eyes", which is the Vision unlock's selling point |
 
+**The day axis counts back from today** (2026-09-10, the designer's request): today is `0` at
+the right, yesterday `-1`, down to `-13` at the left of a full fortnight — how long ago, which
+is the question anyone reading this page is actually asking — and today has a whole column of
+its own with its point centred in it, rather than a point on the plot's right edge with a grey
+band hanging beside it.
+
 **Each of the four cards carries a short label** (2026-09-10): shown the finished page the
 designer could not tell the cards apart by their pictures, so the words sit above each
 picture — *against its usual day*, *still guessing*, *changed overnight*, *wasted tries* —

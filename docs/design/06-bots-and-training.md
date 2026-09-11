@@ -256,13 +256,18 @@ job it stands for: the shop's coin for a crop sold, the basket for one cut, the 
 seed packet, and the watering can twice — with a seedling on it for a thirsty plant, plain
 for wet mud — and the crow twice, wings up for a bird turned back and perched for one caught
 on the food, each bird on a chip of its line's colour because the crow sprite is too dark to
-read off this card on its own.
+read off this card on its own. **The day axis counts back from today, and today has a
+column of its own** (2026-09-10, the designer's request later the same day): `0` sits under
+today, `-1` under yesterday, down to `-13` at the left of a full fortnight, and the chart is
+as many equal columns as it has days with each day's point centred in its own — so today's
+grey band is today's column edge to edge, rather than a band hanging beside a point pinned to
+the plot's right edge.
 
 | It shows | Read from |
 | --- | --- |
 | one line per rewarded outcome, a point per day | `extra["history"]`, the closed days, oldest first |
 | the rightmost column, marked unfinished | `extra["earned"]`, the day being played |
-| the numerals along the day axis | `extra["days"]`, the nights it has practised |
+| the numerals along the day axis | how long ago each end of the chart is, counted back from today at `0`; the day numbering behind them is `extra["days"]`, the nights it has practised |
 
 The record is written at the day turn, capped at thirty days so a robot played for a season
 cannot grow a save without a ceiling, and it is recomputed on replay like everything else on
