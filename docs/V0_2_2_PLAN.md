@@ -760,3 +760,8 @@ is `training-workbench`.*
   written for the seat folded behind a closed toggle; work items carry a `decision` field;
   HQ also serves `docs/` now, so a card's mockups display. The CEO expects the chart display
   to be rebuilt later and said colour alone is acceptable for now.
+- 2026-09-10, later — **today is a whole column.** The CEO saw today's point sitting on the
+  right edge of its grey band; the plot is now `n` equal slots with each point centred in its
+  slot and the band over exactly the last slot, and the day axis counts back from today at 0
+  (`-13 … 0` on a fortnight, a lone `0` on a fresh robot); internal day numbering and
+  `tick_days` are unchanged (`fc69ed2`).
