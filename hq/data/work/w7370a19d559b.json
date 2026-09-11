@@ -1,0 +1,22 @@
+{
+  "id": "w7370a19d559b",
+  "title": "A save says which build wrote it, and keeps the list of builds the farm has lived under",
+  "level": "task",
+  "owner": "tomas",
+  "tier": 1,
+  "tier_reason": "Save and replay metadata behind the unit suite; git reverts it. Nothing in the sim changes; the risk is a stray field leaking into the canonical comparison, which the tests pin.",
+  "ask": "The CEO, 2026-09-10, after the shelf showed a tablet session that no longer replays because Q-98 landed the same day: 'Do we generally have a way to annotate the game version at start and any time we resume from save?' Today: the replay log stamps build_id at start() and start_from_save() (systems/sim/replay_log.gd:99-116, from application/config/build_id which the deploy stamps from git describe), and HQ's Playtests page shows it; the autosave carries only its schema 'version' (systems/sim/save_game.gd) and no build, and nothing accumulates the builds a farm has lived under across resumes. Wanted: (1) the save's state carries build_id of the build that wrote it; (2) a JSON-plain 'lineage' list on the save — entries {build, day, tick, event: 'start'|'resume'} — appended at a new game and whenever a save is loaded under a build different from its last entry (a build cannot change mid-session, so start and resume cover it); (3) lineage and build_id are EXCLUDED from SaveGame.capture_canonical the way selected_tool is, so a replay compared against its autosave is unaffected; (4) tools/verify_replay.gd and the unit suite's shelf check print 'recorded under X, checked under Y' from these fields instead of relying on a hand-written comment; (5) HQ's Playtests page (hq/static/playtests.js, hq/server.py's playtests reader) shows the chain per session, e.g. 'started under 157, resumed under 163 on day 12'. Additive keys; no save VERSION bump; a save without them reads as unknown provenance.",
+  "first_action": "Read SaveGame.capture/restore/capture_canonical and ReplayLog.start/start_from_save; add build_id and lineage to the save's state at write, the resume-append in the load path main.gd uses for Continue, and the canonical exclusion; unit tests: a new farm's lineage is one 'start' entry with the running build; a save restored under a different stamped build gains a 'resume' entry and under the same build gains none; capture_canonical is byte-identical with and without lineage; the shelf check's message names both builds. Then the Playtests page reads the chain. Both suites and the gateway check green.",
+  "state": "waiting_session",
+  "thread": "tomas",
+  "source": "chat",
+  "source_message": "CEO, 2026-09-10, asking whether the game version should be annotated at start and on every resume.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-10T21:27",
+  "created_ts": 1789100834.636341,
+  "parent": "",
+  "follow_ups": [],
+  "recommend": {}
+}
