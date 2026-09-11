@@ -748,3 +748,15 @@ is `training-workbench`.*
   same breath as the card.** The tablet was deployed a second time from main with the dial
   sound and the crate that remembers; the rescue found only the untouched session the first
   deploy had launched and shelved nothing.
+- 2026-09-10, evening — **three legibility fixes from the CEO's first look on the tablet.**
+  (1) The scorecard's leader lines from each line's end to its picture read as spikes in
+  today's unfinished column; the right-hand strip is now a legend — a coloured circle beside
+  each picture in `Rewards.KEYS` order, no line to the data — on the panel and the bench
+  alike (`a0dc66d`). (2) The ledger's four cards could not be told apart by their pictures;
+  each now carries a short label in the game's font: *against its usual day*, *still guessing*,
+  *changed overnight*, *wasted tries*; scenario AQ asserts the four labels and still asserts no
+  other words on the page. (3) In HQ, a work item that came from a decision now wears that
+  decision card as its face — the card he ruled on, sound files and all — with the brief
+  written for the seat folded behind a closed toggle; work items carry a `decision` field;
+  HQ also serves `docs/` now, so a card's mockups display. The CEO expects the chart display
+  to be rebuilt later and said colour alone is acceptable for now.
