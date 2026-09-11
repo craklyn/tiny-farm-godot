@@ -22,6 +22,24 @@
 # on a line, and outlined rather than filled on bars — the same language the
 # machine panel already uses, for the same reason: a part day drawn like a whole
 # one makes every morning look like a collapse.
+#
+# **A column per day, and today is one of them** (2026-09-10). The cards used to
+# spread their days between the plot's two edges, which put today on the right edge
+# itself. The chart above them was fixed the same morning and they now follow it: as
+# many equal columns as there are days, each day's point or bar centred in its own,
+# and `BotScorecard.TODAY_BAND` over the last column edge to edge. A measure that
+# only exists at night keeps that column too — banded and empty, because the day is
+# real even where the reading is not.
+#
+# **Two heights carry a numeral, and nothing else does** (2026-09-10). Asked whether
+# these four plots need their axes labelled, the answer is almost none of it: the
+# words along the top are already the metric's name, the day axis belongs to the
+# chart above (which counts `-13` to `0` over the same fortnight), and a card's
+# heights are read against the other days on the card rather than against a scale.
+# The exceptions are the two heights that mean something on their own — zero, where
+# a measure can cross it, and the 3.00 a machine picking evenly between its eight
+# actions would sit at — so those two get a small numeral and the rest of the card
+# stays a picture.
 class_name MetricCard
 extends Control
 
@@ -57,8 +75,9 @@ const INK_TODAY := Color("c2c9e0")
 ## used anywhere else would get.
 var label: String = ""
 
-## The closed days, oldest first. The card draws the last `BotScorecard.DAYS_SHOWN`
-## of them, which is the window the chart above it draws.
+## The closed days, oldest first. The card draws the last
+## `BotScorecard.DAYS_SHOWN - 1` of them, so that those days plus today's own column
+## come to the same fortnight the chart above the cards draws.
 var closed: Array = []
 
 ## Today's reading, or `NAN` for a measure that only exists at night.
@@ -131,12 +150,14 @@ func show_nightly(series: Array, reading_value: float, glyph_name: String) -> vo
 	queue_redraw()
 
 
-# **The columns the card draws**, oldest first: the tail of the closed days, and
-# today when there is a today. Pure, so a test can ask what a card is showing
-# without rendering it.
+# **The points the card draws**, oldest first: the tail of the closed days, and
+# today when today has a reading. The card can lay out one column more than this —
+# a measure that only exists at night still gets today's column, empty (2026-09-10)
+# — which `_draw_series` works out from `today`. Pure, so a test can ask what a card
+# is showing without rendering it.
 func columns() -> Array:
 	var out: Array = []
-	var first := maxi(0, closed.size() - BotScorecard.DAYS_SHOWN)
+	var first := maxi(0, closed.size() - (BotScorecard.DAYS_SHOWN - 1))
 	for i in range(first, closed.size()):
 		out.append(float(closed[i]))
 	if not is_nan(today):
@@ -279,41 +300,56 @@ func _draw_series() -> void:
 	var span := maxf(0.001, top - bottom)
 	var zero_y: float = plot.end.y - plot.size.y * (0.0 - bottom) / span
 
-	# The rule the data stands on. When the measure goes negative that rule is the
-	# zero and the card's own floor is only an edge, so a bar below the line reads
-	# as below it rather than as a short bar.
+	# **A column per day, the point in the middle of it** — the chart's own layout
+	# above these cards. `vals` already ends with today where today has a reading;
+	# where it does not, the column is laid out anyway and left empty, so the band
+	# sits in the same place on all four cards.
+	var slots := vals.size() + (1 if is_nan(today) else 0)
+	var slot := plot.size.x / float(slots)
+
+	# Today, banded edge to edge of its own column: a part day, marked as one. A
+	# robot on its first day has the whole plot banded, which is the truth about
+	# that robot.
+	draw_rect(Rect2(plot.position.x + slot * float(slots - 1), plot.position.y,
+		slot, plot.size.y), BotScorecard.TODAY_BAND)
+
+	# The rule the data stands on, and the one height every card has in common: the
+	# scale is built around zero — `hi` and `lo` both start there — so the line is
+	# always on the card, and a bar's length means nothing except against it. Faint,
+	# because it is a rule and not a reading.
 	draw_line(Vector2(plot.position.x, zero_y), Vector2(plot.end.x, zero_y),
-		BotScorecard.AXIS_INK, 1.0)
+		BotScorecard.GRID_INK, 1.0)
 	if bottom < 0.0:
+		# Below zero is a real place on this card, so the card's own floor becomes
+		# only an edge and the zero rule gets the numeral that says which line it is.
 		draw_line(plot.end, Vector2(plot.position.x, plot.end.y),
 			BotScorecard.GRID_INK, 1.0)
+		_numeral("0", Vector2(plot.position.x - 2.0, zero_y + 3.0),
+			HORIZONTAL_ALIGNMENT_RIGHT)
 
 	if not is_nan(reference):
 		var ry: float = plot.end.y - plot.size.y * (reference - bottom) / span
 		draw_dashed_line(Vector2(plot.position.x, ry), Vector2(plot.end.x, ry),
 			BotScorecard.GRID_INK, 1.0, 3.0)
-		var f := _font()
-		if f != null:
-			var text := format_reading(reference)
-			var w := f.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1,
-				BotScorecard.NUMERAL_SIZE).x
-			draw_string(f, Vector2(plot.end.x - w, ry - 3.0), text,
-				HORIZONTAL_ALIGNMENT_LEFT, -1, BotScorecard.NUMERAL_SIZE,
-				BotScorecard.AXIS_INK)
+		# What height that dashed line is, at its right end and to two places —
+		# "2.24 against 3.00" is the whole reading of the entropy card. The reference
+		# is usually the top of the scale, where a numeral hung above the line would
+		# climb into the big reading's row, so it drops just inside the plot instead.
+		_numeral("%.2f" % reference, Vector2(plot.end.x, maxf(
+			plot.position.y + float(BotScorecard.NUMERAL_SIZE), ry - 3.0)),
+			HORIZONTAL_ALIGNMENT_RIGHT)
 
 	if kind == "bars":
-		_draw_bars(vals, plot, zero_y, top, bottom, span)
+		_draw_bars(vals, plot, zero_y, slot, bottom, span)
 	else:
-		_draw_line(vals, plot, top, bottom, span)
+		_draw_line(vals, plot, slot, bottom, span)
 
 
-func _draw_line(vals: Array, plot: Rect2, _top: float, bottom: float, span: float) -> void:
+func _draw_line(vals: Array, plot: Rect2, slot: float, bottom: float, span: float) -> void:
 	var last := vals.size() - 1
 	var points := PackedVector2Array()
 	for i in vals.size():
-		var x: float = plot.position.x + (plot.size.x if vals.size() <= 1
-			else plot.size.x * float(i) / float(last))
-		points.append(Vector2(x,
+		points.append(Vector2(plot.position.x + slot * (float(i) + 0.5),
 			plot.end.y - plot.size.y * (float(vals[i]) - bottom) / span))
 	var open_end := not is_nan(today)
 	var solid: int = (last if open_end else last + 1)
@@ -328,10 +364,9 @@ func _draw_line(vals: Array, plot: Rect2, _top: float, bottom: float, span: floa
 			draw_circle(points[i], 2.0, INK_LINE)
 
 
-func _draw_bars(vals: Array, plot: Rect2, zero_y: float, _top: float, bottom: float,
+func _draw_bars(vals: Array, plot: Rect2, zero_y: float, slot: float, bottom: float,
 		span: float) -> void:
 	var last := vals.size() - 1
-	var slot := plot.size.x / float(maxi(1, vals.size()))
 	# Capped as well as shared out: a robot on its first day has one column, and a
 	# bar seventy per cent of the card wide reads as a filled panel rather than as
 	# one day's count.
@@ -386,6 +421,28 @@ func _draw_glyph(box: Rect2) -> void:
 			draw_rect(box, ink, false, 2.0)
 			draw_line(box.position + Vector2(2.0, box.size.y - 2.0),
 				box.position + Vector2(box.size.x - 2.0, 2.0), ink, 2.0)
+
+
+# --- the two numerals on the plot ----------------------------------------------
+
+# A small numeral, the scorecard's way (2026-09-10): its size, its ink, and placed
+# by the end that matters rather than by its left edge, so the `0` hangs off the
+# zero line's left and the reference off its line's right. Never allowed off the
+# left of the card, which is the one direction the card has no room in.
+func _numeral(text: String, at: Vector2, align: int) -> void:
+	var f := _font()
+	if f == null:
+		return
+	var w := f.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1,
+		BotScorecard.NUMERAL_SIZE).x
+	var dx := 0.0
+	if align == HORIZONTAL_ALIGNMENT_RIGHT:
+		dx = -w
+	elif align == HORIZONTAL_ALIGNMENT_CENTER:
+		dx = -w / 2.0
+	draw_string(f, Vector2(maxf(1.0, at.x + dx), at.y), text,
+		HORIZONTAL_ALIGNMENT_LEFT, -1, BotScorecard.NUMERAL_SIZE,
+		BotScorecard.AXIS_INK)
 
 
 # The face the whole game writes numerals in, found the way the scorecard's own

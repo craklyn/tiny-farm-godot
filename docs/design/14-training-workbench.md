@@ -126,6 +126,13 @@ is the question anyone reading this page is actually asking — and today has a 
 its own with its point centred in it, rather than a point on the plot's right edge with a grey
 band hanging beside it.
 
+**The four cards are drawn to the same convention** (2026-09-10): each one is as many
+equal columns as it has days, with today's column its own at the right and every point
+or bar centred in its column, it carries no day numerals of its own because the chart
+above it already counts the same fortnight's days, and the only two heights it writes
+a numeral for are the zero line — numbered where the measure actually drops below it —
+and the 3.00 ceiling on *still guessing*.
+
 **Each of the four cards carries a short label** (2026-09-10): shown the finished page the
 designer could not tell the cards apart by their pictures, so the words sit above each
 picture — *against its usual day*, *still guessing*, *changed overnight*, *wasted tries* —
