@@ -771,3 +771,10 @@ is `training-workbench`.*
   line, with a `0` only where the series goes below it, and the `3.00` ceiling on the guessing
   card. The CEO asked whether any axes needed labelling; this is the chief of staff's answer,
   built as the default for him to veto on the tablet.
+- 2026-09-10, later — **a crow eating a crop flaps and turns** (the CEO: "an animation that
+  draws attention to it and indicates things are not going well"). Presentation only, in
+  `entities/crow.gd`: perched and wings-up cells alternate every 0.3 s, the bird mirrors every
+  third flap, the wings-up frame rides a pixel high; cell 2 (wings down, a bird in flight) is
+  deliberately not used. The bestiary gained an "eating a crop" clip. Scenario AT, 11
+  assertions. The Animation Lab's drawn "crow gorge" loop is named in `design/04` as the
+  candidate for a richer version once judged.
