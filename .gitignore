@@ -68,3 +68,4 @@ hq/data/loop_previews/
 
 # transient brainstorm session state (see .claude/hooks/brainstorm-guard.sh)
 .claude/.brainstorm-state
+hq/data/server.nohup.log
