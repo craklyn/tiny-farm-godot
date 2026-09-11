@@ -91,6 +91,11 @@ python3 tools/compose_overnight_frames.py
 # The three story-night sound moments recorded from the game with its own audio, joined
 # into docs/design/mockups/story_night_sounds.mp4 for the Q-107 card — needs a display and ffmpeg
 tools/record_story_sounds.sh
+
+# The Q-107 comparison: each moment recorded once per candidate sound, one sound swapped at
+# a time, into docs/design/mockups/story_night_sounds/, and the card's attachments rewritten
+# to match — needs a display and ffmpeg; give a slot name to redo one
+python3 tools/record_sound_candidates.py
 ```
 
 After a fresh clone or when assets changed, import first: `godot --headless --path . --import`

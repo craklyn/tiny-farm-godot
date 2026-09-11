@@ -20,6 +20,17 @@ const TAIL_SEC := 0.6
 func _ready() -> void:
 	var args := OS.get_cmdline_user_args()
 	var segment := String(args[0]) if args.size() > 0 else "boot"
+	# A second argument `sound=candidate` records the same moment with one sound
+	# swapped for a candidate from assets/audio/sfx/ — how the Q-107 card gets the
+	# pick and its alternates as like-for-like clips, one sound changed at a time.
+	if args.size() > 1 and "=" in String(args[1]):
+		var pair := String(args[1]).split("=")
+		var stream = load("res://assets/audio/sfx/%s.wav" % pair[1])
+		if stream == null:
+			push_error("no such candidate: %s" % pair[1])
+			get_tree().quit(1)
+			return
+		AudioManager.sfx_streams[pair[0]] = [stream]
 	match segment:
 		"boot":
 			await _record_boot()

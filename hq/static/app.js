@@ -961,6 +961,10 @@ function lookEl(att, looks) {
 
 function attachmentEl(att, entData, looks) {
   if (att.type === "look") return lookEl(att, looks);
+  // A heading spans the row: the attachments after it, up to the next heading,
+  // are one group (a sound and its candidates; a treatment over each capture).
+  if (att.type === "heading")
+    return h(`<div class="att att-heading"><b>${esc(att.caption || "")}</b>${att.detail ? `<span class="small muted"> ${esc(att.detail)}</span>` : ""}</div>`).firstElementChild;
   const wrap = h(`<figure class="att"><figcaption>${esc(att.caption || "")}</figcaption></figure>`).firstElementChild;
   if (att.type === "image") {
     const img = h(`<img src="/${esc(att.src)}" alt="${esc(att.caption || "")}">`).firstElementChild;
@@ -971,7 +975,8 @@ function attachmentEl(att, entData, looks) {
     b.addEventListener("click", () => new Audio("/" + att.src).play());
     wrap.prepend(b);
   } else if (att.type === "video") {
-    wrap.prepend(h(`<video src="/${esc(att.src)}" controls></video>`).firstElementChild);
+    wrap.prepend(h(`<video src="/${esc(att.src)}" controls preload="metadata"></video>`).firstElementChild);
+    if (att.tag) wrap.prepend(h(`<span class="att-tag ${att.tag === "the pick" ? "pick" : "alt"}">${esc(att.tag)}</span>`).firstElementChild);
   } else if (att.type === "sprite") {
     const c = h(`<canvas width="96" height="96"></canvas>`).firstElementChild;
     const ent = entData && findEntity(entData, att.entity);

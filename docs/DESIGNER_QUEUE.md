@@ -48,7 +48,8 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   robot's treads/servo/scatter, and the boot bloom's chime. Each has 2-3 free (CC0)
   alternates sitting unwired beside the picked one — a synthesized alternate for the peck,
   and three CC0 dings as alternates to the synthesized chime — all reachable from the title screen's Sound Test under "candidates
-  (A/B against the above)," so this is a listen, not a design question. **Recommendation:
+  (A/B against the above)," so this is a listen, not a design question. The card carries the listen: each moment
+  recorded from the game once per candidate, the pick beside its alternates. **Recommendation:
   keep the five wired picks** — `peck_cc0_248254`, `seeder_tread_cc0_425271`,
   `seeder_servo_cc0_740244`, `seeder_scatter_cc0_348953`, and the synthesized
   `bloom_chime` (a five-note rise sized to the bloom's own climb, read from its manifest,

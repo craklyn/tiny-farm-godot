@@ -1,23 +1,23 @@
 {
  "id": "Q-107",
  "title": "Which take of each story-night sound to keep",
- "question": "Each animation the sleep plays now has sound under it, and the boot bloom has a chime. Five sounds are wired: a peck for the crow's strikes, treads, a servo and a seed scatter for the robot, and a soft rising chime under the bloom. Four of the five are free recordings (CC0); the chime is synthesized, because no free bell recording rises in pitch, and the moment needs a rise. Two or three alternates for each sit unwired in the title screen's Sound Test, next to the picks, so this is a listen rather than a design question. The video below is the game itself, recorded with its sound, so you can hear the five picks where they play.",
+ "question": "Each animation the sleep plays now has sound under it, and the boot bloom has a chime. Five sounds are wired: a peck for the crow's strikes; treads, a servo and a seed scatter for the robot; and a soft rising chime under the bloom. Four of the five are free recordings (CC0); the chime is synthesized, because no free bell recording rises in pitch and the moment needs a rise. Every sound has alternates already in the game. Below, each sound is shown as the same moment recorded from the running game once per candidate, with only that one sound changed and everything else at the picks, so the pick sits beside what it beat. Turn the sound on. The first video is all five picks in one pass.",
  "why_now": "The sounds ship with the story nights. Whatever you pick here is what players hear on the first crow night.",
  "options": [
   {
    "key": "a",
-   "label": "Keep the five wired picks (Recommended)",
-   "detail": "The cleanest single take of each request. Nothing changes."
+   "label": "Keep the five picks as wired (Recommended)",
+   "detail": "The first clip under each sound. Nothing changes."
   },
   {
    "key": "b",
-   "label": "Keep the picks, but a plain decaying bell at boot",
-   "detail": "Swap the rising chime for one of the three free bell recordings. A single ding under the bloom instead of a climb."
+   "label": "Swap one or more sounds for an alternate",
+   "detail": "Say which sound and which alternate in your comment (for example: chime, alternate 2). Each alternate is already in the game and in the credits, so a swap is one line."
   },
   {
    "key": "c",
-   "label": "Swap one or more for an alternate from the Sound Test",
-   "detail": "Name which. Each alternate is already in the game and in the credits, so a swap is one line."
+   "label": "None of these for one of the sounds",
+   "detail": "Say which sound in your comment and what it should feel like instead. Dmitri sources or synthesizes another round for that one."
   }
  ],
  "links": [
@@ -36,9 +36,130 @@
  ],
  "attachments": [
   {
+   "type": "heading",
+   "caption": "All five picks in one pass",
+   "detail": "the boot, the crow night, the robot night — what ships today"
+  },
+  {
    "type": "video",
    "src": "docs/design/mockups/story_night_sounds.mp4",
-   "caption": "The three moments recorded from the running game with its own audio: the boot (the chime under the music fading up), the crow night (squawk, two pecks, the music ducked), the robot night (treads, servo, seed scatter). Turn the sound on."
+   "tag": "the pick",
+   "caption": "The boot (the chime under the music fading up), the crow night (squawk, two pecks, the music ducked), the robot night (treads, servo, seed scatter)."
+  },
+  {
+   "type": "heading",
+   "caption": "The crow's peck",
+   "detail": "on each of her two strikes — the same moment once per candidate, only this sound changed"
+  },
+  {
+   "type": "video",
+   "src": "docs/design/mockups/story_night_sounds/peck__peck_cc0_248254.mp4",
+   "tag": "the pick",
+   "caption": "“Pecked eyeball” by jameswrowles, a free recording"
+  },
+  {
+   "type": "video",
+   "src": "docs/design/mockups/story_night_sounds/peck__peck_synth.mp4",
+   "tag": "alternate 1 of 1",
+   "caption": "synthesized: two sharp tocs"
+  },
+  {
+   "type": "heading",
+   "caption": "The robot's treads",
+   "detail": "for as long as it drives — the same moment once per candidate, only this sound changed"
+  },
+  {
+   "type": "video",
+   "src": "docs/design/mockups/story_night_sounds/seeder_tread__seeder_tread_cc0_425271.mp4",
+   "tag": "the pick",
+   "caption": "“Tank Tread” by 77Pacer, a free recording"
+  },
+  {
+   "type": "video",
+   "src": "docs/design/mockups/story_night_sounds/seeder_tread__seeder_tread_cc0_415564.mp4",
+   "tag": "alternate 1 of 2",
+   "caption": "“mehackit robot 5” by hullum, a free recording"
+  },
+  {
+   "type": "video",
+   "src": "docs/design/mockups/story_night_sounds/seeder_tread__seeder_tread_cc0_415565.mp4",
+   "tag": "alternate 2 of 2",
+   "caption": "“mehackit robot 6” by hullum, a free recording"
+  },
+  {
+   "type": "heading",
+   "caption": "The robot's servo",
+   "detail": "as the arm swings — the same moment once per candidate, only this sound changed"
+  },
+  {
+   "type": "video",
+   "src": "docs/design/mockups/story_night_sounds/seeder_servo__seeder_servo_cc0_740244.mp4",
+   "tag": "the pick",
+   "caption": "“Servo 6” by JoontheFloof, a free recording"
+  },
+  {
+   "type": "video",
+   "src": "docs/design/mockups/story_night_sounds/seeder_servo__seeder_servo_cc0_740245.mp4",
+   "tag": "alternate 1 of 2",
+   "caption": "“Servo 7” by JoontheFloof, a free recording"
+  },
+  {
+   "type": "video",
+   "src": "docs/design/mockups/story_night_sounds/seeder_servo__seeder_servo_cc0_740247.mp4",
+   "tag": "alternate 2 of 2",
+   "caption": "“Servo 9” by JoontheFloof, a free recording"
+  },
+  {
+   "type": "heading",
+   "caption": "The seed scatter",
+   "detail": "as the seed lands — the same moment once per candidate, only this sound changed"
+  },
+  {
+   "type": "video",
+   "src": "docs/design/mockups/story_night_sounds/seeder_scatter__seeder_scatter_cc0_348953.mp4",
+   "tag": "the pick",
+   "caption": "“Crumble 6” by abstraktgeneriert, a free recording"
+  },
+  {
+   "type": "video",
+   "src": "docs/design/mockups/story_night_sounds/seeder_scatter__seeder_scatter_cc0_348954.mp4",
+   "tag": "alternate 1 of 2",
+   "caption": "“Crumble 9” by abstraktgeneriert, a free recording"
+  },
+  {
+   "type": "video",
+   "src": "docs/design/mockups/story_night_sounds/seeder_scatter__seeder_scatter_cc0_348955.mp4",
+   "tag": "alternate 2 of 2",
+   "caption": "“Crumble 8” by abstraktgeneriert, a free recording"
+  },
+  {
+   "type": "heading",
+   "caption": "The chime under the bloom",
+   "detail": "as the seeds rise at boot — the same moment once per candidate, only this sound changed"
+  },
+  {
+   "type": "video",
+   "src": "docs/design/mockups/story_night_sounds/bloom_chime__bloom_chime.mp4",
+   "tag": "the pick",
+   "caption": "synthesized: a five-note rise sized to the bloom"
+  },
+  {
+   "type": "video",
+   "src": "docs/design/mockups/story_night_sounds/bloom_chime__bloom_chime_cc0_333694.mp4",
+   "tag": "alternate 1 of 3",
+   "caption": "“Thin bell ding 3” by Khrinx, a free recording"
+  },
+  {
+   "type": "video",
+   "src": "docs/design/mockups/story_night_sounds/bloom_chime__bloom_chime_cc0_333695.mp4",
+   "tag": "alternate 2 of 3",
+   "caption": "“Thin bell ding 2” by Khrinx, a free recording"
+  },
+  {
+   "type": "video",
+   "src": "docs/design/mockups/story_night_sounds/bloom_chime__bloom_chime_cc0_333696.mp4",
+   "tag": "alternate 3 of 3",
+   "caption": "“Thin bell ding 1” by Khrinx, a free recording"
   }
  ]
 }

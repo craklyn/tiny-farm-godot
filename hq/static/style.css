@@ -594,6 +594,10 @@ code.ref { background: #1b1710; border: 1px solid var(--line); border-radius: 6p
 .att img { max-width: 180px; max-height: 120px; image-rendering: pixelated; background: #1b1710; border: 1px solid var(--line); border-radius: 8px; padding: 6px; }
 .att canvas { image-rendering: pixelated; background: #1b1710; border: 1px solid var(--line); border-radius: 8px; }
 .att video { max-width: 260px; border-radius: 8px; }
+.att-heading { flex: 1 0 100%; max-width: 100%; text-align: left; margin-top: 10px; }
+.att .att-tag { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 6px; margin-bottom: 4px; }
+.att .att-tag.pick { background: #2f5d3a; color: #fff; }
+.att .att-tag.alt { background: var(--line); color: var(--muted); }
 .att figcaption { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
 .att img { cursor: zoom-in; }
 /* a look sheet is the width of the card, not a thumbnail: it is three panels of
