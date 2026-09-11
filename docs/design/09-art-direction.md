@@ -122,6 +122,17 @@ filed.
 
 ---
 
+## Where the Lab's loops play (2026-09-10, P-15)
+
+The Animation Lab's loops are showcase art: drawn at three or four times the world's scale
+on a near-black sky, seamless, parametric. They do not go into the world at 1× — that stays
+the crow's way, motion re-made on the shipped sprite. They play in the moments the game
+already owns and already darkens: **the overnight**, where the sleep's black hold plays the
+loop for a night the farm changed (the crow gorge when the acorns run out, the seeder robot
+when the Mark III arrives), and **the boot**, where the sunflower bloom carries the player
+from the engine's splash to the menu (Q-103). The fade takes the Lab's sky colour so a loop
+sits in it without an edge. The in-world animation budget below is untouched by this.
+
 ## The ripe crop, and what colour is left (2026-09-07, ruled 2026-09-08)
 
 *Ruled at Q-94: **a ready plant sways gently and gives off its own ripe colour.**

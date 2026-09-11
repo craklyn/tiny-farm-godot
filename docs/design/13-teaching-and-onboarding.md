@@ -205,6 +205,11 @@ neighbour's sequence runs its course and the offscreen honk is the callback that
 attention wherever the player happens to be; the gate then opens and becomes the
 vignette's first highlighted target — beat 0, ahead of the harvest at beat 1.
 
+**Open beside it (Q-104, 2026-09-10):** the designer asked for the Animation Lab's watering
+beam loop as a shot while the neighbour waters. A full-screen shot here would be the first
+cut-in during play, against this section's own rule; the queue item offers an inset card
+over the fence, the overnight after her own first watering, or the overrule.
+
 ### As built, 2026-08-29 (T-13)
 
 `systems/sim/cold_open.gd` is pure and static and derives her next action from world

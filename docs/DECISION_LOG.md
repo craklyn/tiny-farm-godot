@@ -259,6 +259,25 @@ owner rather than a mystery.
 
 ---
 
+### S-12. The Mark III is earned up a ladder: mark-1, then mark-2, then the desk, then the robot
+Ruled by the designer 2026-09-10, extending Q-88's principle that the robot ladder is a
+proof rather than a purchase. The **desk** (the training workbench of `design/14`) appears
+in the shop only once a mark-2 has *done its job once* — chased its first bird — and the
+**Mark III** appears in the shop only once the desk is placed. The designer's first draft
+gated the desk on *placing* a mark-2; the chief of staff's challenge that Q-88 gates on use
+rather than placement was accepted the same hour ("Good challenge, and I agree"). Each rung
+is still bought from the shop once earned, so P-12 holds for the transaction and the
+ladder holds for the timing.
+
+**What it costs.** Two milestone flags in the sim — a mark-2's first completed job, a
+placed desk — read by the shop's catalogue, and a sim-level test that the catalogue never
+offers a rung early. Nothing in the drive or the learning changes.
+
+**Capabilities, restated so nobody reads them off the v0.2.1 demo.** The mark-1 waters
+and hoes on exact orders; the mark-2 reacts (chase, follow, patrol); the Mark III can do
+every farming action — till, plant, water, harvest, ship, shoo — and learns which to use
+(P-14). A demo that rewards watering is one reward setting, not the robot's ceiling.
+
 ## Tier 2 — Provisional (working answer + adjustment conditions)
 
 ### P-1. Touch-first, desktop always supported
@@ -599,6 +618,45 @@ may earn; Q-93's no-harvesting rule applied to the mark-1 and is superseded for 
 which was always the machine that earns; and a learner that cannot reach the long chains
 (harvest, carry, ship) is a learner problem, to be fixed by a better learner or more
 exploration, never by narrowing the table.
+
+### P-15. The overnight is where the farm tells its stories: a Lab loop plays inside the sleep, once, on the night the world changed
+**Ruled 2026-09-10** in the brainstorm on where the Animation Lab's loops enter play. The
+sleep already takes the input away and goes to black for about two seconds — tuck-in,
+fade, Day-N card, morning — and every Lab loop is drawn on a near-black sky, so a loop
+plays inside that hold with no cut on either side.
+
+**The rule.** On the night the farm crosses a named threshold, the hold plays that
+threshold's loop once, then the day card. The first two: the **crow gorge** on the night
+the last acorn leaves the ground — the wordless warning of what the crows turn to next
+(Q-39) — and the **seeder robot** on the night the Mark III becomes available (S-12). The
+night is when a Mark III updates its weights (P-14), so the robot loop is that fiction
+made visible, and a robot planting is the player's own machine at work, not a later one.
+
+**The boot bloom** is the same idea at the front door: the sunflower bloom plays between
+the engine's splash and the player having control. Its composition is Q-103.
+
+**First version, deliberately small.** One loop per night, once per farm, no skip; the
+fade's colour becomes the Lab's sky so the loop's canvas never shows as a box; the loop is
+drawn from the Lab's exported sheet as it is, not re-authored in the engine. The D-8
+constraint is unchanged: the sleep has already resolved through `apply_action` before the
+hold begins, the loop only lengthens presentation, and headless runs skip it.
+
+**Why provisional.** The trigger list will grow with the loops, and whether a story night
+should be skippable, or repeat for a returning player, is untested until a tablet check.
+Open beside it: the watering beam's place in the cold open (Q-104), the one placement that
+cuts against chapter 13's rule that the cold open never takes control away.
+
+**The morning after the crow night (designer, 2026-09-10).** *"That morning we also should
+have a special vignette. It has to be triggered on a day that the player has 4 or more
+tomato plants planted. The player will leave their house and as the plants come into view,
+crows will be present on three of their tomatoes, in the process of eating them. If the
+player gets to the crows quickly, they're chased off as normal, but if not the tomatoes are
+eaten."* Recorded in `design/04` with the shape it takes in the sim: one trigger for the
+night and the morning (the first sleep where the acorns are gone *and* four or more
+tomatoes stand), three crows set on three tomatoes by the day turn, their meals starting on
+her `use_door` rather than at dawn so the race begins when the plants come into view, and
+the ordinary shoo. The race is the [Playtest] value: a direct walk from the door should
+save two of the three, not none.
 
 ### D-1. Phase 5 genre (X-COM tactics vs. Gradius-like hybrid vs. other)
 **Why deferred:** Phase 5's cast is the player plus *trained bots* — its design depends on

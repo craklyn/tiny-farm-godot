@@ -1,0 +1,20 @@
+{
+ "id": "w1a08ee15304",
+ "title": "The Mark III's desk is earned by the mark-2's first job",
+ "level": "story",
+ "owner": "tomas",
+ "tier": 2,
+ "tier_reason": "It changes when the player can buy the desk and the Mark III, which is on the v0.2.2 path, and a rung offered early breaks the ladder Q-88 established.",
+ "ask": "Implement S-12 in the sim. The ladder: the training desk (the workbench of design/14) appears in the shop only once one of her mark-2s has completed its job once (its first chased bird, i.e. its first crow_scared report); the Mark III appears in the shop only once a desk has been placed. Both are milestone facts derived from the world and recorded where the existing Q-88 gates live (a mark-2's unlock after using a mark-1), read by the shop's catalogue, and they must survive save/load and replay (a replay of the same actions must offer the same catalogue on the same day). Sim-level tests: the catalogue never offers the desk before a mark-2 has worked, never offers a Mark III before a desk stands, and does offer each the moment its condition holds. Update the shop's [Playtest] text for both so a player who reads nothing still sees the rung appear. Design references: DECISION_LOG S-12, design/06 'The rungs themselves', design/14 §1. Do not touch the learner or its rewards.",
+ "first_action": "Find where the shop's catalogue reads the mark-2's Q-88 gate today, and add the two new facts beside it.",
+ "state": "waiting_session",
+ "thread": "",
+ "source": "chief-of-staff",
+ "source_message": "Filed from the 2026-09-10 brainstorm on where the Animation Lab loops enter play (P-15, S-12).",
+ "result": "",
+ "started": "",
+ "attempts": 0,
+ "created": "2026-09-10T22:12",
+ "created_ts": 1789103526.6591854,
+ "conversation": []
+}

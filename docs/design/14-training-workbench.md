@@ -16,7 +16,8 @@ work item, and its §9 status log.*
 
 ## 1. What it is
 
-A **workbench** is a thing on the farm. She buys it from the shop (P-12), sets it down in
+A **workbench** is a thing on the farm. She buys it from the shop (P-12) — it appears there
+once a mark-2 of hers has done its job once (S-12, 2026-09-10) — sets it down in
 the yard, and taps it. It opens as one full-screen bench with five plates along the top,
 each a physical part of a bench rather than a tab bar: the **dials**, the **eyes**, the
 **plate**, the **ledger**, the **mosaic**. It shows the robot she last tapped, or the

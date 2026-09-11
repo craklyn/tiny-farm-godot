@@ -20,6 +20,14 @@ Sensors: vision radius / audio (receive) / speaker (transmit) / smell (scent lay
 Minds: model size tiers → frozen base tiers + adapter rank tiers (P-5).
 Bodies: gardening tools → weapons (enabling tower retirement, D-7/P-4 gate).
 
+**The rungs themselves (S-12, 2026-09-10).** The mark-1 is earned by effort (Q-88), the
+mark-2 by having used a mark-1 (Q-88), the training desk by a mark-2 having done its job
+once, and the Mark III by the desk being placed. Each is then bought in the shop. What each
+can do: the mark-1 waters and hoes on exact orders, the mark-2 reacts, the Mark III can do
+every farming action and learns which to use. The night the Mark III becomes available
+plays the seeder-robot loop inside the sleep (P-15): its weights update by night (P-14),
+so the story night shows the machine at work.
+
 ## Sections to fill
 1. **Fleet UX** — assigning work: per-bot orders, painted zones, or schedules `[Joint]`;
    must stay tap-command (P-1) and phone-legible.

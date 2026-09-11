@@ -1,0 +1,20 @@
+{
+ "id": "w1a08ee15302",
+ "title": "Lab loops become sheets the game can draw",
+ "level": "story",
+ "owner": "ravi",
+ "tier": 2,
+ "tier_reason": "P-15 puts two loops into the game; nothing can be built until a loop exists as an asset the engine imports with its frame facts beside it.",
+ "ask": "Under P-15 the game draws Animation Lab loops from their exported sheets as they are (no re-authoring in the engine). Build the export step: for a loop under tools/experiments/out/<slug>/, produce assets/anim/<slug>/ holding the sheet PNG and a manifest (JSON) with cell width, cell height, frame count, a frame rate, and the sky colour the loop was drawn on (the Lab's near-black, (33,31,32)), sourced from the loop's params.json and the sheet's dimensions rather than typed by hand. Godot must import assets/anim/ (no .gdignore there) and must NOT import tools/experiments/out/ — it does today (the stray *.png.import files in git status prove it), so add a .gdignore to tools/experiments/out/. First two loops to export: crow_gorge and seeder_bot; sunflower_bloom follows once Q-103 is ruled. Do not move or edit anything under tools/experiments/ or assets/showcase/ beyond the .gdignore; other sessions work there. Provenance for the loops in CREDITS.md is already filed as wcb7e529bc46 — do not duplicate it, but make sure the exported directory is covered by that entry's wording. Keep tools/check_gateway.py green and both suites green.",
+ "first_action": "Read tools/experiments/out/crow_gorge/params.json and the sheet dimensions, and write the manifest shape from what is actually there.",
+ "state": "waiting_session",
+ "thread": "",
+ "source": "chief-of-staff",
+ "source_message": "Filed from the 2026-09-10 brainstorm on where the Animation Lab loops enter play (P-15, S-12).",
+ "result": "",
+ "started": "",
+ "attempts": 0,
+ "created": "2026-09-10T22:12",
+ "created_ts": 1789103526.658864,
+ "conversation": []
+}

@@ -109,6 +109,29 @@ animation is presentation and the meal itself is untouched. The richer **crow go
 drafted in the Animation Lab (`tools/experiments/out/crow_gorge/`) is the candidate for a
 later, drawn version of the same moment.
 
+**The night the acorns run out** (2026-09-10, P-15): the sleep after the last acorn leaves
+the ground plays the crow gorge loop once, inside the fade — a wordless warning that the
+crows turn to crops next. She can bring that night on herself by picking the acorns up
+(Q-48), which is what makes it a consequence rather than a cutscene.
+
+**The morning after: the crows come for the tomatoes** (designer, 2026-09-10). The night
+loop is a warning, and the next morning keeps its word. On a day the player has four or
+more tomato plants, she leaves the house and, as the plants come into view, three crows are
+already on three of her tomatoes, eating. Reach them quickly and they are shooed as normal;
+dawdle and those tomatoes are eaten. The shape in the sim, so it stays deterministic and
+replayable: **one trigger** decides both the night and the morning — the first sleep where
+the last acorn is gone *and* four or more tomatoes stand — so the warning and the raid are
+one event and never days apart; the day turn places the three crows on three tomatoes; their
+meal clocks start on her `use_door`, not at dawn, because "as the plants come into view" is a
+thing the sim can only know by the door; and the shoo is the ordinary one. **Deliberately
+small first:** no special camera, the crows are the 1× birds with their eating animation, and
+a scarecrow already on the field does what it always does. **[Playtest]:** the race. A meal is
+five seconds and she walks three tiles a second, so the meal length for the raid's three is
+the value to tune until a direct walk from the door saves two of the three — none is a
+punishment, all three is no lesson. The robot session can measure the walk. **What "planted"
+means** is the other open value: a crow eats standing crops, so a seedling that cannot be
+eaten should not count toward the four.
+
 ## Sections to fill
 2. **Nests** — where they spawn relative to the farm, growth over time, visibility
    `[Designer]` Q-18 (early visibility foreshadows phase 5's trail-tracking).

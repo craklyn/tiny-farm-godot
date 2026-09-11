@@ -1,0 +1,37 @@
+{
+ "id": "Q-104",
+ "title": "Where the watering beam plays in the cold open",
+ "question": "You asked for the watering beam loop as a shot when the player first watches the neighbour water through the fence. Your own revision of the cold open made it never take control away: the fence made the restriction spatial instead of a camera cut. A full-screen shot in the middle of it would be the game's first cut-in during play. The loop itself is a good pick, water hitting the soil at close range; the question is where it plays.",
+ "why_now": "The cold open is the first thing a new player meets, and this decides whether the game ever cuts away during play.",
+ "options": [
+  {
+   "key": "a",
+   "label": "An inset card while she keeps control (Recommended)",
+   "detail": "The shot plays in a corner over the fence while the neighbour waters and the player stays free in her own yard. Keeps the fence's promise and still shows the water at close range."
+  },
+  {
+   "key": "b",
+   "label": "The overnight after her own first watering",
+   "detail": "The shot moves to the sleep after the first day she waters a tile herself, under the overnight rule (P-15). It becomes a reward for doing it rather than a demonstration of watching it."
+  },
+  {
+   "key": "c",
+   "label": "A full-screen shot during the neighbour's watering",
+   "detail": "The game cuts away for the loop, overruling the cold open's rule for this one moment, knowingly. The most legible close-up, at the cost of the first cut-in during play."
+  }
+ ],
+ "links": [
+  {
+   "label": "The loop in the Animation Lab",
+   "href": "#/design/anim/watering_beam"
+  },
+  {
+   "label": "The cold open's rule (design/13, the fence)",
+   "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/13-teaching-and-onboarding.md"
+  },
+  {
+   "label": "Queue entry (Q-104)",
+   "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"
+  }
+ ]
+}

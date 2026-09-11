@@ -1,0 +1,20 @@
+{
+ "id": "w1a08ee15305",
+ "title": "The morning the crows come for the tomatoes",
+ "level": "story",
+ "owner": "tomas",
+ "tier": 2,
+ "tier_reason": "It is the designer's set piece for the first loss on the farm, it must be deterministic, and its trigger is shared with the crow night.",
+ "ask": "Build the raid morning in design/04 'The morning after: the crows come for the tomatoes' (designer, 2026-09-10). Everything is sim-side and derived from world state, no flags in presentation: (1) the trigger — the first sleep where no acorn remains on the ground AND four or more tomatoes stand that a crow could eat (a seedling a crow cannot eat does not count; check crow_brain's target rule and use the same test) — fires once per farm and is the same trigger the overnight loop uses (item w1a08ee15303), so the night's warning and the morning's raid are one event; (2) at that day turn, place three crows on three of her tomatoes in the eating state; (3) their meal clocks start on her use_door action that morning, not at dawn, so the race begins as the plants come into view; (4) the shoo is the ordinary one, and a scarecrow does what it always does. [Playtest] value to tune: the raid's meal length. A normal meal is EAT_SECONDS = 5.0 and she walks 3 tiles/s; measure the walk from the front door to the tomato beds in the robot session and set the raid's meal length so a direct walk saves two of the three, not none and not all. Tests: the trigger fires exactly once and only when both conditions hold; a replay reproduces the raid; a save the night before and a load the morning after produce the same three crows; the crows' meals do not begin before the door. Do not build the night loop itself (item w1a08ee15303).",
+ "first_action": "Read systems/sim/brains/crow_brain.gd's target rule and EAT_SECONDS, and the day-turn spawn path in sim_world.gd, then write the trigger test first.",
+ "state": "waiting_session",
+ "thread": "",
+ "source": "chief-of-staff",
+ "source_message": "Filed from the 2026-09-10 brainstorm on where the Animation Lab loops enter play (P-15, S-12).",
+ "result": "",
+ "started": "",
+ "attempts": 0,
+ "created": "2026-09-10T22:12",
+ "created_ts": 1789103526.659298,
+ "conversation": []
+}

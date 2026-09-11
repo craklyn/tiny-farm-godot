@@ -11,6 +11,35 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
 
 ## Now — blocks M0 close or current work
 
+- **Q-103** (Ruling) **How the sunflower bloom opens the game.** Ruled 2026-09-10 that the
+  bloom loop is the boot moment (P-15); what is open is the composition, from the engine's
+  first painted frame to the player having control, with no cut anywhere in it. Five
+  shapes, all starting from the engine's splash being the loop's own closed bud on its own
+  sky: **(a) the flower is the splash** — the bud opens and the seeds rise once while the
+  music fades up, the title and menu settle in as the last seed blooms, a tap brightens the
+  sky into the farm; **(b) she walks out of the bloom** — the sky warms into the farm's own
+  ground and she is standing on the real farm, no title screen, the corner cards are the
+  menu, the first tap is her stepping off; **(c) the menu is the harvest** — the last blooms
+  are the choices and the player picks a flower, which sheds its seeds into the ground and
+  the ground becomes the farm; **(d) the bloom is the loading** — the bud opens as fast as
+  the save is read, the seeds rise while the farm is built underneath, never a spinner;
+  **(e) the player's touch is the sunrise** — she stands over a closed bud, still, until the
+  screen is touched; the sky warms from under the finger, the bud opens, and holding until
+  the last seed blooms starts the game. **Recommendation: (a)**, as the smallest version
+  that already has no cut in it, with (e) the one to try second because it teaches "you
+  cause things" before any verb. Dial on any of them: every boot, or the first boot only
+  with a short version after. Card: `hq/data/decisions/Q-103.json`.
+- **Q-104** (Ruling) **Where the watering beam plays in the cold open.** The designer asked
+  for the watering beam loop as a shot when the player first watches the neighbour water
+  through the fence. Chapter 13's own 2026-08-28 revision made the cold open never take
+  control away — the fence made the restriction spatial instead of a camera cut — so a
+  full-screen shot there would be the game's first cut-in during play. **(a) an inset card**
+  in a corner while she keeps control, the shot over the fence; **(b) the overnight** after
+  the first day she waters a tile herself, under P-15's rule; **(c) a full-screen shot**
+  during the neighbour's watering, overruling chapter 13 for this one moment, knowingly.
+  **Recommendation: (a)** — it keeps the fence's promise and still puts water on the soil
+  at close range, which is the loop's point. Card: `hq/data/decisions/Q-104.json`.
+
 - **Q-101** ~~The training workbench~~ — ✅ ruled 2026-09-10: **all five pages, and a
   workbench you buy and place.** The dials (set what each job is worth, negatives allowed),
   what it sees, the nameplate, the charts, and the likes-and-dislikes grid — built as a
@@ -1603,7 +1632,9 @@ never touched. Session: `playtests/2026-08-31_230643`.*
   should be triggered too**, and his strawman is *after a player spends more than half a
   day's energy watering* — so the first machine arrives when the work has been felt rather
   than when the coins add up. That turns the placeholder shop rule (P-12) off for machines,
-  which is what P-12 always said would happen once a better acquisition design existed.
+  which is what P-12 always said would happen once a better acquisition design existed. **Extended
+  2026-09-10 (S-12):** the ladder continues past the mark-2 — the training desk appears once
+  a mark-2 has done its job once, and the Mark III once the desk is placed.
   Filed to Milo: the design note for both triggers — what the sim already counts that could
   prove them, what the player sees when one fires, and what becomes of the shop entries the
   machines carry today. Bears on `design/06`, `design/12`.

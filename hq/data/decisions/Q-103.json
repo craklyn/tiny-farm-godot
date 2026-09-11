@@ -1,0 +1,51 @@
+{
+ "id": "Q-103",
+ "title": "How the sunflower bloom opens the game",
+ "question": "You ruled that the sunflower bloom loop is the game's opening: it plays between the engine's first painted frame and the player having control. What is open is the composition, with no cut anywhere in it. Every shape below starts the same way: the engine's splash is the loop's own closed bud on its own dark sky, so the scene begins from stillness rather than from a logo.",
+ "why_now": "The bloom is the first of the Lab's loops to reach players, and the boot is seen on every launch. The build of the opening waits on this pick.",
+ "options": [
+  {
+   "key": "a",
+   "label": "The flower is the splash (Recommended)",
+   "detail": "The bud opens and the seeds rise once while the music fades up. As the last seed blooms the title settles in above her and the menu below. A tap brightens the dark sky into the farm and the menu goes with it. The smallest version that already has no cut in it."
+  },
+  {
+   "key": "b",
+   "label": "She walks out of the bloom",
+   "detail": "When the seeds have bloomed, the sky warms into the farm's own ground and she is standing on the real farm at the same spot, hands still on hips. No title screen; the corner cards are the menu. The first tap is her dropping her hands and stepping off."
+  },
+  {
+   "key": "c",
+   "label": "The menu is the harvest",
+   "detail": "The seeds rise and each blooms. The last blooms are the choices, one Continue and one New Farm, and the title is the big flower at her feet. The player picks a flower; it sheds its seeds into the ground and the ground becomes the farm."
+  },
+  {
+   "key": "d",
+   "label": "The bloom is the loading",
+   "detail": "The bud opens exactly as fast as the save is read, and the seeds rise while the farm is built underneath. Nothing appears before the thing it stands for is ready. A two-second moment on a fast tablet, an honest one on a slow one, never a spinner."
+  },
+  {
+   "key": "e",
+   "label": "The player's touch is the sunrise",
+   "detail": "She stands over a closed bud, still, until the screen is touched. The sky warms from under the finger, the bud opens, the seeds rise, and the title and menu fade in while they climb. Holding until the last seed blooms starts the game. The first thing the player learns is that they cause things. Worth trying second."
+  }
+ ],
+ "links": [
+  {
+   "label": "The loop in the Animation Lab",
+   "href": "#/design/anim/sunflower_bloom"
+  },
+  {
+   "label": "The loop's script (tools/experiments/vfx_sunflower_bloom.py)",
+   "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/tools/experiments/vfx_sunflower_bloom.py"
+  },
+  {
+   "label": "The decision it sits under (P-15)",
+   "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DECISION_LOG.md"
+  },
+  {
+   "label": "Queue entry (Q-103)",
+   "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"
+  }
+ ]
+}
