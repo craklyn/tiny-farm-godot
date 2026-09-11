@@ -5667,11 +5667,30 @@ func _scenario_aq_the_ledger_is_the_scorecard() -> void:
 			and cards[2].columns().size() == week.size(),
 		"a card with a today draws one more column than the record has, and one without does not")
 
-	# --- drawn, not written ---------------------------------------------------
+	# --- a label on each card, and no other words -----------------------------
+	#
+	# **This assertion used to say the page carries no words at all**, and the
+	# designer overturned it on 2026-09-10: shown the finished page he said *"I
+	# don't know what the four charts at bottom of screen are. I can't tell by the
+	# illustration."* The four pictures cannot carry what these four measures are —
+	# there is no drawing of "how undecided a machine is" a person reads cold — and
+	# §7 of `design/14` allows words on the bench's scientist pages. So the claim
+	# checked here is the new one: each card says what it is about, in these words,
+	# and the rest of the page is still numerals and pictures. The words are written
+	# out here rather than read off the page's own constant, so that changing them
+	# in the game is a change this scenario notices.
+	var want_labels := ["against its usual day", "still guessing",
+		"changed overnight", "wasted tries"]
+	var read_labels: Array = []
+	for i in 4:
+		read_labels.append(String(cards[i].label))
+	_assert(read_labels == want_labels,
+		"each card says in words what it is about (%s)" % str(read_labels))
 	var words: Array = []
 	_collect_labels(page, words)
 	_assert(words.is_empty(),
-		"the page carries no words at all — numerals and pictures (S-7) (%d)" % words.size())
+		"and those four are the only words: nothing else on the page is written (%d)"
+			% words.size())
 	_assert(_pictures_in(page) >= 6,
 		"and everything on it paints itself: the page, the chart and four cards (%d)"
 			% _pictures_in(page))

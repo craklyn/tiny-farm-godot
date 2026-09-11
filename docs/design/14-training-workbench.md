@@ -120,6 +120,12 @@ from what the robot already keeps:
 | **Update size** | is it still learning? | ‖Δw‖ from last night, kept in `extra["last_update"]` | a plateau reads as a line at zero; a spike after a dial turn reads as the retune it is |
 | **Spent decisions** | how much of its day was wasted? | decisions with no legal target, per day | the tap-shaped action's cost of a poor view; the number that says "give it eyes", which is the Vision unlock's selling point |
 
+**Each of the four cards carries a short label** (2026-09-10): shown the finished page the
+designer could not tell the cards apart by their pictures, so the words sit above each
+picture — *against its usual day*, *still guessing*, *changed overnight*, *wasted tries* —
+because no drawing of "how undecided a machine is" reads cold (§7's licence for words on
+this bench's pages).
+
 **Why there is no loss line.** REINFORCE has no loss that means anything day to day — its
 surrogate objective is a bookkeeping quantity, not a fit. The honest stand-ins are the
 advantage (expected vs actual) and the update size, which is why they are on the page. If
@@ -156,7 +162,8 @@ later tier may let her *paint* a cell, which is the "show it" rung arriving as a
   line drawn back to the data, because the leaders it replaces read as eight lines spiking
   in the day still being played; the key leans on colour alone for now, and the designer
   expects this display to be rebuilt.
-- **Words on the plate, pictures everywhere else** (S-7; `WRITING.md`). Numerals on axes.
+- **Words on the plate, pictures everywhere else** (S-7; `WRITING.md`). Numerals on axes,
+  and a label on each of the ledger's four cards.
 - **Nothing runs a model on open.** The bench reads state; the trial ground, when it
   exists, runs only when she presses it (the standing rule for anything that costs).
 
