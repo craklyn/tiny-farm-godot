@@ -147,9 +147,8 @@ down, and the Day-N card follows as it always has. Sound: nothing new — the mu
 playing at its usual level — because an isolated squawk with no bed under it would sound
 thinner than silence. **The boot** (Q-103): the engine's splash is the bloom's first frame
 at ×5 on the sky, unfiltered; the title scene opens on that same frame, holds a breath, and
-the bud opens and the seeds rise once while the music fades up from silence over the rise
-(today it starts at full level on the first frame). As the last seed blooms the title and
-menu settle in; if a farm is there to be shown under the menu it fades up beneath as the
+the bud opens and the seeds rise once while the music fades up from silence over the rise.
+As the last seed blooms the title and menu settle in; if a farm is there to be shown under the menu it fades up beneath as the
 bloom fades out, otherwise the bloom keeps idling behind the menu. A tap fades through the
 sky into the farm rather than cutting. **The inset** (Q-104): the watering beam at ×1 in a
 corner the HUD map leaves free, fading up when the neighbour first waters, one pass, fading

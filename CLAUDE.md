@@ -71,6 +71,11 @@ godot --headless --path . --script res://tools/verify_replay.gd
 # The training workbench's five plates as PNGs (tools/shot_workbench_0..4.png) on a fresh
 # Mark III — needs a display; saves to scratch so it never seeds the next suite run
 godot --path . res://tools/capture_workbench.tscn
+
+# The boot bloom's three moments (Q-103) as PNGs under tools/boot_bloom_shots/ (gitignored),
+# and the watering inset (Q-104) as tools/shot_watering_inset.png — both need a display
+godot --path . res://tools/capture_boot_bloom.tscn
+godot --path . res://tools/capture_watering_inset.tscn
 ```
 
 After a fresh clone or when assets changed, import first: `godot --headless --path . --import`

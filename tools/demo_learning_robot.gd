@@ -215,6 +215,12 @@ static func run(days := 7, farm_seed := SEED, learn := true) -> Dictionary:
 	_stage(world, gs)
 
 	gs.gold = PURSE
+	# A farm that has already climbed the robot ladder (S-12): its mark-2 has chased
+	# a bird and a bench is standing, which is what puts a Mark III on the shelf.
+	# Staged like the purse above — this tool measures what a week of learning is
+	# worth, and getting to the machine is not its subject.
+	world.earn(SimWorld.RUNG_MK2_WORKED)
+	world.earn(SimWorld.RUNG_DESK_PLACED)
 	world.apply_action({ "verb": "buy_machine", "item": "bot_mk3", "actor": "player" }, gs)
 	var placed: Dictionary = world.apply_action({ "verb": "place", "target": SPOT,
 		"item": "bot_mk3", "actor": "player" }, gs)

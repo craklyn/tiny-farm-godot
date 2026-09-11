@@ -1,20 +1,127 @@
 {
- "id": "w1a08ee15304",
- "title": "The Mark III's desk is earned by the mark-2's first job",
- "level": "story",
- "owner": "tomas",
- "tier": 2,
- "tier_reason": "It changes when the player can buy the desk and the Mark III, which is on the v0.2.2 path, and a rung offered early breaks the ladder Q-88 established.",
- "ask": "Implement S-12 in the sim. The ladder: the training desk (the workbench of design/14) appears in the shop only once one of her mark-2s has completed its job once (its first chased bird, i.e. its first crow_scared report); the Mark III appears in the shop only once a desk has been placed. Both are milestone facts derived from the world and recorded where the existing Q-88 gates live (a mark-2's unlock after using a mark-1), read by the shop's catalogue, and they must survive save/load and replay (a replay of the same actions must offer the same catalogue on the same day). Sim-level tests: the catalogue never offers the desk before a mark-2 has worked, never offers a Mark III before a desk stands, and does offer each the moment its condition holds. Update the shop's [Playtest] text for both so a player who reads nothing still sees the rung appear. Design references: DECISION_LOG S-12, design/06 'The rungs themselves', design/14 §1. Do not touch the learner or its rewards. ALSO: add 'robot_night' to the sim's story-night fact introduced by the raid item (the first sleep after the desk is placed, once per farm), so the overnight player can show the seeder-robot loop that night (P-15).",
- "first_action": "Find where the shop's catalogue reads the mark-2's Q-88 gate today, and add the two new facts beside it.",
- "state": "waiting_session",
- "thread": "",
- "source": "chief-of-staff",
- "source_message": "Filed from the 2026-09-10 brainstorm on where the Animation Lab loops enter play (P-15, S-12).",
- "result": "",
- "started": "",
- "attempts": 0,
- "created": "2026-09-10T22:12",
- "created_ts": 1789103526.6591854,
- "conversation": []
+  "id": "w1a08ee15304",
+  "title": "The Mark III's desk is earned by the mark-2's first job",
+  "level": "story",
+  "owner": "tomas",
+  "tier": 2,
+  "tier_reason": "It changes when the player can buy the desk and the Mark III, which is on the v0.2.2 path, and a rung offered early breaks the ladder Q-88 established.",
+  "ask": "Implement S-12 in the sim. The ladder: the training desk (the workbench of design/14) appears in the shop only once one of her mark-2s has completed its job once (its first chased bird, i.e. its first crow_scared report); the Mark III appears in the shop only once a desk has been placed. Both are milestone facts derived from the world and recorded where the existing Q-88 gates live (a mark-2's unlock after using a mark-1), read by the shop's catalogue, and they must survive save/load and replay (a replay of the same actions must offer the same catalogue on the same day). Sim-level tests: the catalogue never offers the desk before a mark-2 has worked, never offers a Mark III before a desk stands, and does offer each the moment its condition holds. Update the shop's [Playtest] text for both so a player who reads nothing still sees the rung appear. Design references: DECISION_LOG S-12, design/06 'The rungs themselves', design/14 §1. Do not touch the learner or its rewards. ALSO: add 'robot_night' to the sim's story-night fact introduced by the raid item (the first sleep after the desk is placed, once per farm), so the overnight player can show the seeder-robot loop that night (P-15).",
+  "first_action": "Find where the shop's catalogue reads the mark-2's Q-88 gate today, and add the two new facts beside it.",
+  "state": "for_review",
+  "thread": "",
+  "source": "chief-of-staff",
+  "source_message": "Filed from the 2026-09-10 brainstorm on where the Animation Lab loops enter play (P-15, S-12).",
+  "result": "Done, both suites and the robot session green.\n\n**What changed.** The sim now records two facts about a farm: that one of her mark-2s has chased its first crow, and that a training bench is standing. Both are written by the one action gateway at the moment they happen, ride in the save, and come back the same on a replay — a reproduction of a session offers the same shop on the same day, which is what makes recorded sessions usable later as training data. The shop's shelf and the till read the same single question, so the card and the transaction can't disagree, and a bot gets refused a Mark III exactly where the player would be.\n\n**What it does now.** The training bench is not for sale until a mark-2 has run a bird off; the Mark III is not for sale until a bench is standing. A rung she hasn't reached shows as its own picture, darkened, the way a locked seed packet does — so the bench sits in the shop from the first morning as a promise, and a player who reads nothing sees it come bright the moment her machine does its job. The first sleep after the bench goes up is now a named story night, `robot_night`, ready for the overnight loop.\n\nThree things the ruling left open that I settled the smallest way, all written into the decision log: a rung once climbed stays climbed (putting her mark-2 back in the crate doesn't take the bench off the shelf); the crows take a night they'd share with the bench, and the bench gets the next one; and a save written before today that already has a bench standing keeps the shelf that bench earned.\n\n**Two things you should know.**\n\nThe brief said the mark-2's own unlock already lived in the sim. It doesn't — it was never built. You ruled on 2026-09-04 that the mark-1 arrives when the work has been felt and the mark-2 when she's actually used a mark-1, and today both are still plain purchases with nothing but price between them. So the ladder now has its top two rungs and not its bottom two.\n\nNothing plays the story night yet. The sim names the night; the code that shows an animation inside the sleep doesn't exist for either the crow night or this one.",
+  "started": "",
+  "attempts": 1,
+  "created": "2026-09-10T22:12",
+  "created_ts": 1789103526.6591854,
+  "conversation": [
+    {
+      "who": "claude",
+      "when": "2026-09-10T23:54",
+      "text": "Chief of staff, after reading the diff: landed as built, including the three points settled the smallest way (dark card, a rung stays climbed, the crows take a shared night), which are now written under S-12 and go to Daniel with this wave. The gap you found — Q-88's bottom two rungs were never built — is filed to you as w9f46b7286df."
+    }
+  ],
+  "follow_ups": [
+    {
+      "title": "Put the mark-1 and mark-2 on the same earned ladder as the bench",
+      "owner": "tomas",
+      "level": "story",
+      "tier": 1,
+      "first_action": "Add a rung for 'she has used a mark-1' (a mark-1 completing a taught round) and make bot_mk2's row require it, using the earns/earned_by fields and SimWorld.offers that S-12 just added; leave bot_mk1's own trigger until Milo's watering threshold lands.",
+      "why": "The ladder Daniel ruled now works from the bench upward while the two rungs beneath it are still plain purchases."
+    },
+    {
+      "title": "Play the seeder-robot animation on the night the bench goes up",
+      "owner": "jade",
+      "level": "story",
+      "tier": 2,
+      "first_action": "Read SimWorld.story_night after the sleep resolves and play the matching Animation Lab loop inside the sleep's black hold — crow_night and robot_night are both named and neither is drawn today.",
+      "why": "The sim names the night the Mark III arrives, and nothing shows it to the player."
+    }
+  ],
+  "recommend": {
+    "question": "The bench and the Mark III are earned now. Build the two robots below them the same way next?",
+    "answer": "Yes — build the mark-2's trigger now, since 'she has used a mark-1' is fully specified, and let the mark-1's own trigger wait on a number from Milo.",
+    "why": "A ladder whose bottom two rungs are missing teaches the player the opposite of what it is for: the cheap machines arrive by saving up and only the expensive ones are earned.",
+    "instead": "Leave both robots purchasable and let the ladder start at the bench — fewer moving parts before the tablet check, at the cost of the arc you ruled."
+  },
+  "finished": "2026-09-10T23:52",
+  "done_by": {
+    "seat": "tomas",
+    "model": "opus",
+    "lane": "drain"
+  },
+  "diff": {
+    "stat": "docs/DECISION_LOG.md         |  22 ++++\n systems/machine_defs.gd      |  56 +++++++++-\n systems/sim/save_game.gd     |  26 +++++\n systems/sim/sim_world.gd     | 125 +++++++++++++++++++++-\n tests/test_runner.gd         | 241 ++++++++++++++++++++++++++++++++++++++++++-\n tools/demo_learning_robot.gd |   6 ++\n tools/robot_session.gd       |  10 ++\n tools/test_runner.gd         |   9 ++\n ui/menus.gd                  |  13 ++-\n 9 files changed, 499 insertions(+), 9 deletions(-)",
+    "files": [
+      "docs/DECISION_LOG.md",
+      "systems/machine_defs.gd",
+      "systems/sim/save_game.gd",
+      "systems/sim/sim_world.gd",
+      "tests/test_runner.gd",
+      "tools/demo_learning_robot.gd",
+      "tools/robot_session.gd",
+      "tools/test_runner.gd",
+      "ui/menus.gd"
+    ],
+    "applied": true,
+    "why_not": ""
+  },
+  "check": {
+    "verdict": "concerns",
+    "summary": "nobody checked this — the check call did not come back",
+    "findings": [],
+    "escalates": null,
+    "escalation_reason": null
+  },
+  "usage": {
+    "calls_detail": [
+      {
+        "input": 232,
+        "output": 68126,
+        "cache_read": 17768952,
+        "cache_write": 191989,
+        "turns": 129,
+        "seconds": 1551.5,
+        "list_usd": 12.5087,
+        "tokens": 18029299,
+        "fresh": 260347,
+        "phase": "drain-work",
+        "model": "opus",
+        "seat": "tomas"
+      },
+      {
+        "input": 226,
+        "output": 5555,
+        "cache_read": 540615,
+        "cache_write": 44881,
+        "turns": 9,
+        "seconds": 76.5,
+        "list_usd": 1.3128,
+        "tokens": 591277,
+        "fresh": 50662,
+        "phase": "drain-check",
+        "model": "fable",
+        "seat": "claude"
+      }
+    ],
+    "input": 458,
+    "output": 73681,
+    "cache_read": 18309567,
+    "cache_write": 236870,
+    "tokens": 18620576,
+    "fresh": 311009,
+    "turns": 138,
+    "seconds": 1628.0,
+    "list_usd": 13.8215,
+    "calls": 2
+  },
+  "spent": {
+    "attempts": 1,
+    "tokens": 18620576,
+    "fresh": 311009,
+    "list_usd": 13.8215
+  }
 }

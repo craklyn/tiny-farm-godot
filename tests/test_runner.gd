@@ -191,6 +191,8 @@ func _init() -> void:
 	test_workbench_sim()
 	test_crate_remembers()
 	test_workbench_place()
+	test_robot_ladder()
+	test_robot_story_night()
 	test_learning_robot()
 	test_world_pages()
 	test_the_door()
@@ -11707,6 +11709,12 @@ func _mk3_yard(seed_value: int) -> LiveSession:
 		for tx in range(MK3_PATCH.position.x, MK3_PATCH.end.x):
 			s.world.set_tile_state(tx, ty, "seeded", "wheat")
 	s.gs.gold = 2000
+	# A farm far enough along to be sold a Mark III (S-12): its mark-2 has chased a
+	# bird and a bench is standing. Arranged rather than played, the way the gold
+	# above is — every test below this line is about what a learning robot does, and
+	# the ladder that put it on the shelf is `test_robot_ladder`'s subject.
+	s.world.earn(SimWorld.RUNG_MK2_WORKED)
+	s.world.earn(SimWorld.RUNG_DESK_PLACED)
 	return s
 
 
@@ -13144,8 +13152,8 @@ func test_workbench_place() -> void:
 	_assert(MachineDefs.price_of("workbench") == 300,
 		"priced at 300 — above the stall, below the machine it is for (%d)"
 			% MachineDefs.price_of("workbench"))
-	_assert(MachineDefs.is_unlocked("workbench", {}),
-		"and nothing gates it, so a player who has saved for it can buy it")
+	_assert(MachineDefs.earned_by("workbench") == SimWorld.RUNG_MK2_WORKED,
+		"and it is a rung of the ladder: a mark-2 has to have chased a bird first (S-12)")
 	_assert(MachineDefs.icon_of("workbench") != null,
 		"with a picture for the shop card, which is the same picture the yard gets")
 
@@ -13170,6 +13178,10 @@ func test_workbench_place() -> void:
 	# player would actually want one.
 	var s := LiveSession.new(9401)
 	s.gs.gold = 2000
+	# ...and a farm whose mark-2 has already worked, so the bench is on the shelf
+	# (S-12). Arranged, like the gold: this test is about what a bench *is* once it
+	# is down, and how it gets onto the shelf is `test_robot_ladder`'s subject.
+	s.world.earn(SimWorld.RUNG_MK2_WORKED)
 	var spot := _yard_square(s.world)
 	_assert(spot.x >= 0, "the farm has a yard square with room for a bench (%s)" % str(spot))
 	_assert(String(s.world.get_tile(spot.x, spot.y).get("state", "")) == WorldLayout.YARD,
@@ -13257,6 +13269,231 @@ func test_workbench_place() -> void:
 		"a farm with no learning robot gives the bench an empty strip (%s)"
 			% str(s.world.learners()))
 	s.done()
+
+
+# The ladder past the mark-2 (S-12; `design/06` "The rungs themselves"). The
+# training bench reaches the shop only once one of her mark-2s has done its job
+# once — chased its first bird — and the Mark III only once a bench is standing.
+#
+# **The shelf is the subject, not the flags.** The design is a thing the player
+# meets in the shop, so what is checked here is what the shop offers at each rung,
+# on a farm that climbs the ladder by being played: a machine bought, set to watch
+# a row of wheat, and a crow that turns round. The flags underneath it are checked
+# only where nothing else can see them — across a save, and across a replay.
+func test_robot_ladder() -> void:
+	print("\n--- The Mark III's bench is earned by a mark-2's first bird (S-12) Tests ---")
+
+	# --- the two rungs, named in both layers ----------------------------------
+	# `MachineDefs` is layer 1 and may not import the sim, so the rung names on its
+	# rows are written out as text. This is the pin that keeps the two spellings one
+	# spelling — the same pin `test_machine_defs` puts on the config names.
+	_assert(MachineDefs.earns_of("bot_mk2") == SimWorld.RUNG_MK2_WORKED
+			and MachineDefs.earned_by("workbench") == SimWorld.RUNG_MK2_WORKED
+			and MachineDefs.earns_of("workbench") == SimWorld.RUNG_DESK_PLACED
+			and MachineDefs.earned_by("bot_mk3") == SimWorld.RUNG_DESK_PLACED,
+		"the catalogue spells the two rungs exactly as the sim does")
+	_assert(MachineDefs.earned_by("bot_mk1") == "" and MachineDefs.earned_by("stall") == ""
+			and MachineDefs.earns_of("sprinkler") == "" and MachineDefs.earns_of("fence") == "",
+		"and no other row names a rung, so the rest of the shelf is untouched")
+
+	# --- the bottom of the ladder ---------------------------------------------
+	var s := _bot_yard(6120, true)
+	s.gs.gold = 4000
+	for key in ["fence", "sprinkler", "stall", "bot_mk1", "bot_mk2"]:
+		_assert_quiet(s.world.offers(key, s.gs), "%s is for sale on day one" % key)
+	_flush_quiet("everything below the ladder is on the shelf from the first morning")
+	_assert(not s.world.offers("workbench", s.gs),
+		"the training bench is not: no machine of hers has done a job yet")
+	_assert(not s.world.offers("bot_mk3", s.gs),
+		"and neither is the Mark III, with no bench for it to be worked on at")
+
+	var refused: Dictionary = s.act({ "verb": "buy_machine", "item": "workbench",
+		"actor": "player" })
+	_assert(not refused.get("ok", true) and String(refused.get("reason", "")) == "not_offered",
+		"the till refuses the bench as flatly as the shelf does (%s)" % str(refused))
+	_assert(int(s.gs.machines.get("workbench", 0)) == 0 and s.gs.gold == 4000,
+		"and nothing left her purse for it")
+	_assert(not s.act({ "verb": "buy_machine", "item": "bot_mk3", "actor": "player" })
+			.get("ok", true) and int(s.gs.machines.get("bot_mk3", 0)) == 0,
+		"...and the Mark III the same, which is the refusal a bot would meet too")
+
+	# --- her mark-2 chases its first bird --------------------------------------
+	#
+	# Played rather than staged: one appointment in the day's book, a machine set to
+	# watch the row the bird is coming for, and her own stroke of work to move the
+	# clock that brings it (T-20). The second appointment, so that setting the
+	# machine down — which is work, and ticks that clock — does not spend it.
+	_bot_crow_ready(s, 2)
+	var target := _crow_target_for(s, 2)
+	# Everything above this line arranged the farm; everything below it is recorded,
+	# so the replay at the bottom reproduces a session rather than a fixture.
+	s.rebase()
+	var post := target + Vector2i(0, 2)
+	_assert(s.act({ "verb": "buy_machine", "item": "bot_mk2", "actor": "player" })
+			.get("ok", false),
+		"she buys a mark-2 — the machine that reacts, and the rung under the bench")
+	var guard := String(s.act({ "verb": "place", "target": post, "item": "bot_mk2",
+		"config": BotBrain.CONFIG_SHOO, "actor": "player" }).get("machine", ""))
+	_assert(guard != "", "and sets it down to watch her wheat (%s)" % str(post))
+	_assert(not s.world.offers("workbench", s.gs),
+		"owning one still proves nothing: the rung is a job done, not a machine bought")
+
+	s.act({ "verb": "till", "target": Vector2i(5, 12), "actor": "player" })
+	_assert(s.world.has_actor(SimWorld.ACTOR_CROW), "her next stroke of work brings a crow in")
+	var spent := 0
+	while spent < 900 and s.world.has_actor(SimWorld.ACTOR_CROW):
+		s.tick(5)
+		spent += 5
+	_assert(not s.world.has_actor(SimWorld.ACTOR_CROW),
+		"and the machine walks it off the farm without being asked (%d ticks)" % spent)
+	_assert(s.world.rungs.has(SimWorld.RUNG_MK2_WORKED),
+		"that bird is the mark-2's first completed job, and the farm records it")
+	_assert(s.world.offers("workbench", s.gs),
+		"so the bench is on the shelf from the moment the bird turned round")
+	_assert(not s.world.offers("bot_mk3", s.gs),
+		"the Mark III is still not: a bench she can buy is not a bench that stands")
+
+	# --- the bench goes up, and the machine it is for joins the shelf ----------
+	var bench_spot := Vector2i(-1, -1)
+	for ty in range(4, 15):
+		for tx in range(20, 27):
+			var here := Vector2i(tx, ty)
+			if s.world.placeable_at(here, "workbench") and s.world.get_object(tx, ty) == "":
+				bench_spot = here
+				break
+		if bench_spot.x >= 0:
+			break
+	_assert(bench_spot.x >= 0, "the farm has a square clear enough for a bench (%s)" % str(bench_spot))
+	_assert(s.act({ "verb": "buy_machine", "item": "workbench", "actor": "player" })
+			.get("ok", false),
+		"she buys the bench her machine's first bird earned her")
+	_assert(String(s.act({ "verb": "place", "target": bench_spot, "item": "workbench",
+			"actor": "player" }).get("structure", "")) == "workbench",
+		"and stands it where she can reach it")
+	_assert(s.world.offers("bot_mk3", s.gs),
+		"the Mark III is on the shelf from the moment the bench is standing")
+	_assert(s.act({ "verb": "buy_machine", "item": "bot_mk3", "actor": "player" })
+			.get("ok", false) and int(s.gs.machines.get("bot_mk3", 0)) == 1,
+		"...and the till takes her money for one, which is the whole of the ladder")
+
+	# --- a rung, once climbed, stays climbed -----------------------------------
+	#
+	# Picking a machine up is repositioning, never a factory reset (Q-98), and the
+	# shelf reads it the same way: what the farm has done, it has done. Without this
+	# a player who tidied her mark-2 into the crate would watch the bench vanish
+	# from the shop with no way to understand why.
+	s.act({ "verb": "collect", "target": s.world.actor_pos(guard), "actor": "player" })
+	_assert(not s.world.has_actor(guard) and s.world.offers("workbench", s.gs),
+		"her mark-2 goes back in the crate and the bench stays on the shelf")
+
+	# --- across a save ---------------------------------------------------------
+	var saved = JSON.parse_string(JSON.stringify(SaveGame.capture(s.world, s.gs)))
+	var back := SimWorld.new()
+	var back_gs = load("res://systems/game_state.gd").new()
+	_assert(SaveGame.restore(saved, back, back_gs), "the farm goes to disk and comes back")
+	_assert(back.offers("workbench", back_gs) and back.offers("bot_mk3", back_gs),
+		"still offering both rungs she climbed")
+
+	# ...and a save written before the ladder existed is read off its own grid: the
+	# bench is standing in it, so the farm that comes back is past both rungs rather
+	# than at the bottom of the ladder with a bench it cannot explain.
+	var legacy = JSON.parse_string(JSON.stringify(saved))
+	legacy["world"].erase("rungs")
+	var old := SimWorld.new()
+	var old_gs = load("res://systems/game_state.gd").new()
+	_assert(SaveGame.restore(legacy, old, old_gs)
+			and old.offers("workbench", old_gs) and old.offers("bot_mk3", old_gs),
+		"an older save with a bench in its yard keeps the shelf that bench earned")
+
+	var fresh := LiveSession.new(6123)
+	var blank = JSON.parse_string(JSON.stringify(SaveGame.capture(fresh.world, fresh.gs)))
+	blank["world"].erase("rungs")
+	var bare := SimWorld.new()
+	var bare_gs = load("res://systems/game_state.gd").new()
+	_assert(SaveGame.restore(blank, bare, bare_gs)
+			and not bare.offers("workbench", bare_gs) and not bare.offers("bot_mk3", bare_gs),
+		"...while an older save with no bench in it starts at the bottom, as it should")
+	fresh.done()
+	bare_gs.free()
+	old_gs.free()
+	back_gs.free()
+
+	# --- and across a replay ---------------------------------------------------
+	#
+	# The point of the ladder for phase 4: a recorded session is training data, and
+	# a reproduction of it that offered a different shop would be a reproduction of a
+	# different day. Both halves are asked — that the farm comes out identical, and
+	# that the shelf itself answers the same on the same day.
+	var end_save = JSON.parse_string(JSON.stringify(SaveGame.capture(s.world, s.gs)))
+	var report := SaveGame.replay_report(s.log, end_save)
+	_assert(report["matched"], "the day replays to the same farm %s" % report["divergence"])
+	var again := SimWorld.new()
+	var again_gs = load("res://systems/game_state.gd").new()
+	_assert(s.log.apply_to(again, again_gs), "the log reproduces the session")
+	var shelf_agrees := true
+	for key in MachineDefs.ORDER:
+		if again.offers(String(key), again_gs) != s.world.offers(String(key), s.gs):
+			shelf_agrees = false
+	_assert(shelf_agrees and int(again_gs.day) == int(s.gs.day),
+		"and its shop offers exactly what the session's did, on the same day (%d)"
+			% int(again_gs.day))
+	again_gs.free()
+	s.done()
+
+
+# The night the bench goes up (S-12, P-15). The first sleep after a desk is
+# standing is a story night like the crow raid's, told once per farm, and it is
+# the night the Mark III first appears on the shelf — which is what presentation
+# plays the seeder-robot loop over.
+func test_robot_story_night() -> void:
+	print("\n--- The night the training bench went up (S-12, P-15) Tests ---")
+
+	var s := LiveSession.new(6121)
+	s.gs.gold = 2000
+	# A farm whose mark-2 has already worked, so the bench is on the shelf. How it
+	# got there is `test_robot_ladder`'s subject; this one is about the night.
+	s.world.earn(SimWorld.RUNG_MK2_WORKED)
+	_assert(String(s.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
+			.get("story_night", "?")) == SimWorld.STORY_NIGHT_NONE,
+		"a night on a farm with no bench on it is an ordinary night")
+
+	var spot := _yard_square(s.world)
+	_assert(spot.x >= 0, "the farm has a yard square for a bench (%s)" % str(spot))
+	s.act({ "verb": "buy_machine", "item": "workbench", "actor": "player" })
+	s.act({ "verb": "place", "target": spot, "item": "workbench", "actor": "player" })
+	_assert(s.world.robot_night_due(), "with the bench standing, tonight is the bench's night")
+	var night: Dictionary = s.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
+	_assert(String(night.get("story_night", "")) == SimWorld.STORY_NIGHT_ROBOT,
+		"and the sleep says so (%s)" % String(night.get("story_night", "")))
+	_assert(s.world.story_night == SimWorld.STORY_NIGHT_ROBOT,
+		"the world carries the same one fact, for a save picked up in the morning")
+	_assert(String(s.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
+			.get("story_night", "?")) == SimWorld.STORY_NIGHT_NONE,
+		"once per farm: the next night is ordinary, though the bench still stands")
+	s.done()
+
+	# --- two stories, one night ------------------------------------------------
+	#
+	# The crows take the night they land on. A farm told about a workshop while
+	# three birds stand in its tomatoes would be the one fact presentation reads
+	# lying about the morning it opens on — and the bench's night is not lost by
+	# waiting, because it stays due until it is told.
+	var both := LiveSession.new(6122)
+	both.gs.gold = 2000
+	both.world.earn(SimWorld.RUNG_MK2_WORKED)
+	_raid_eve(both)
+	var yard := _yard_square(both.world)
+	both.act({ "verb": "buy_machine", "item": "workbench", "actor": "player" })
+	both.act({ "verb": "place", "target": yard, "item": "workbench", "actor": "player" })
+	_assert(both.world.crow_night_due() and both.world.robot_night_due(),
+		"both nights come due on the same evening")
+	_assert(String(both.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
+			.get("story_night", "")) == SimWorld.STORY_NIGHT_CROW,
+		"the crows take it, because their morning is already on the farm")
+	_assert(String(both.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
+			.get("story_night", "")) == SimWorld.STORY_NIGHT_ROBOT,
+		"and the bench gets the next one instead of losing its turn")
+	both.done()
 
 
 # A yard square a structure will fit on, or (-1, -1). `avoid` keeps a second call

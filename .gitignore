@@ -57,6 +57,12 @@ tools/shot_teaching.png
 # is no picture in the repo for these to be metadata for.
 tools/shot_workbench_*
 
+# Boot bloom captures (Q-103, 2026-09-10). Regenerate with
+# tools/capture_boot_bloom.tscn; review screenshots of the title screen's own
+# boot sequence, not assets.
+tools/boot_bloom_shots/
+tools/shot_watering_inset.png
+
 # Held patches the drain keeps so a blocked item can be re-applied without
 # paying for the model call again. Recoverable scratch, not a record.
 hq/data/patches/

@@ -1003,7 +1003,18 @@ func _build_shop_items() -> void:
 		})
 	for machine_key in MachineDefs.ORDER:
 		var mdef: Dictionary = MachineDefs.TYPES[machine_key]
-		var munlocked := MachineDefs.is_unlocked(machine_key, GameState.harvest_counts)
+		# **The sim answers what is for sale** (S-12). Two of these rows are rungs
+		# of the robot ladder — the bench and the Mark III — and what has been
+		# earned is a fact about the farm rather than about the row, so the card
+		# asks the world the same question the till asks it (`SimWorld.offers`).
+		# A locked row still draws: same picture, darkened, like a seed packet she
+		# has not earned, so the shelf is what teaches the ladder.
+		#
+		# With no farm behind it nothing on this shelf is offered. The shop cannot
+		# open before `main` hands the menus a farm, so this is a guard rather than
+		# a case — and locking is the answer that cannot sell her something the
+		# world would then refuse.
+		var munlocked: bool = farm != null and farm.sim.offers(machine_key, GameState)
 		shop_items.append({
 			"kind": "machine",
 			"seed_type": machine_key,

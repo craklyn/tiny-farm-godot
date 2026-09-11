@@ -1,20 +1,143 @@
 {
- "id": "w1a08ee9c4d2",
- "title": "The sunflower bloom opens the game",
- "level": "story",
- "owner": "sam",
- "tier": 2,
- "tier_reason": "It is the first thing every player sees on every launch, and it replaces the engine logo and the hard cut into the menu.",
- "ask": "Build Q-103's ruling, 'the flower is the splash', as written in design/09 'How a loop is shown — first version', The boot. Today: the engine shows its default splash, cuts hard to ui/title_screen.tscn, which draws the title and menu instantly over a flat backdrop or the attract farm, and the music starts at full level on the first frame; a tap cuts hard to main.tscn. Build: (1) project.godot boot splash = assets/anim/sunflower_bloom/splash.png (from the export item), background the Lab's sky (33,31,32), image filter OFF so pixels stay square, fullsize; (2) the title scene opens on that same frame at the same place and scale (×5, nearest-neighbour), holds ~0.4 s, then plays the bloom's sixteen frames once at the manifest's rate while the music fades up from silence over the rise (AudioManager's bgm starts playing at -10 dB in _ready; start it silent and tween it up); (3) as the last frame lands, the title and the menu fade in over ~0.5 s — no instant appearance; (4) if an attract farm is playing, it fades up beneath the menu over ~1 s while the bloom fades out; on a first boot with no farm, the bloom keeps looping behind the menu; (5) a tap (start_game) fades through the sky colour into the farm over ~0.3 s + 0.4 s instead of a bare change_scene. Tap-anywhere-to-continue and every existing button keep working; headless runs (the integration suite instantiates the title scene) must not wait on any of it — skip the animation when the display server is headless, as the attract loop already does. Do not touch the attract loop's own logic. Capture the moment as three PNGs (splash frame, mid-rise, menu settled) with a display and attach them.",
- "first_action": "Read ui/title_screen.gd _ready/_start_attract/_build_ui/start_game and systems/audio_manager.gd _ready, then place the bloom node between the attract farm and the menu in tree order.",
- "state": "waiting_session",
- "thread": "",
- "source": "chief-of-staff",
- "source_message": "Filed from the 2026-09-10 brainstorm on where the Animation Lab loops enter play (P-15, Q-103, Q-104).",
- "result": "",
- "started": "",
- "attempts": 0,
- "created": "2026-09-10T22:21",
- "created_ts": 1789104080.0821948,
- "conversation": []
+  "id": "w1a08ee9c4d2",
+  "title": "The sunflower bloom opens the game",
+  "level": "story",
+  "owner": "sam",
+  "tier": 2,
+  "tier_reason": "It is the first thing every player sees on every launch, and it replaces the engine logo and the hard cut into the menu.",
+  "ask": "Build Q-103's ruling, 'the flower is the splash', as written in design/09 'How a loop is shown — first version', The boot. Today: the engine shows its default splash, cuts hard to ui/title_screen.tscn, which draws the title and menu instantly over a flat backdrop or the attract farm, and the music starts at full level on the first frame; a tap cuts hard to main.tscn. Build: (1) project.godot boot splash = assets/anim/sunflower_bloom/splash.png (from the export item), background the Lab's sky (33,31,32), image filter OFF so pixels stay square, fullsize; (2) the title scene opens on that same frame at the same place and scale (×5, nearest-neighbour), holds ~0.4 s, then plays the bloom's sixteen frames once at the manifest's rate while the music fades up from silence over the rise (AudioManager's bgm starts playing at -10 dB in _ready; start it silent and tween it up); (3) as the last frame lands, the title and the menu fade in over ~0.5 s — no instant appearance; (4) if an attract farm is playing, it fades up beneath the menu over ~1 s while the bloom fades out; on a first boot with no farm, the bloom keeps looping behind the menu; (5) a tap (start_game) fades through the sky colour into the farm over ~0.3 s + 0.4 s instead of a bare change_scene. Tap-anywhere-to-continue and every existing button keep working; headless runs (the integration suite instantiates the title scene) must not wait on any of it — skip the animation when the display server is headless, as the attract loop already does. Do not touch the attract loop's own logic. Capture the moment as three PNGs (splash frame, mid-rise, menu settled) with a display and attach them.",
+  "first_action": "Read ui/title_screen.gd _ready/_start_attract/_build_ui/start_game and systems/audio_manager.gd _ready, then place the bloom node between the attract farm and the menu in tree order.",
+  "state": "for_review",
+  "thread": "",
+  "source": "chief-of-staff",
+  "source_message": "Filed from the 2026-09-10 brainstorm on where the Animation Lab loops enter play (P-15, Q-103, Q-104).",
+  "result": "This is complete and verified. Here's the summary for Daniel:\n\n## What changed\n\nThe boot now plays as Q-103 ruled: the flower is the splash.\n\n- **The engine's own splash** is now the bloom's closed-bud frame on the Lab's sky (33,31,32), full-size, pixels square (no filtering) — `project.godot`'s `boot_splash/*` settings, pointed at the exported `splash.png`.\n- **The title screen picks up that exact frame**, same place and scale, holds it ~0.4s, then plays the loop's 16 frames once while the music rises from silence to its normal level. As the last frame lands, the title and menu fade in over half a second instead of snapping into view.\n- **If a farm is already playing behind the menu** (the usual case), it fades up under the menu over a second as the bloom fades out. On a genuinely first boot, with nothing to show yet, the bloom keeps looping behind the menu instead.\n- **Tapping to start** now fades through the sky colour into the farm instead of cutting — the title screen fades out over 0.3s, then the farm scene fades that cover away over 0.4s once it's built.\n- Every button and tap-anywhere-to-continue still work exactly as before, just after the reveal — a thin invisible shield blocks taps during the ~1.8s intro so nobody can start the game by tapping where a button will appear.\n- Headless runs skip the whole sequence and land straight on the finished state, so both test suites and the integration suite's title-screen checks see exactly what they did before. Verified: unit 2623 passed, integration 868 passed, gateway check passed.\n\nI captured the three requested frames with a real display and they're attached: the splash-matching hold, mid-rise, and the settled menu with the farm faded up behind it.\n\n**One thing worth knowing, not mine to fix:** the bloom art itself has no truly closed bud — every frame in the exported loop already shows some open flower, something Ravi's export work already flagged to Rin before this item was filed. Q-103's ruling still reads correctly with what's there (the hold frame matches the splash exactly, so there's no visible seam), but the \"closed bud opening\" read is softer than the design implies until that art gets a real closed-first frame.\n\n**Committed and pushed?** No — this studio's convention is worktree work gets reviewed before it lands on main; I've left everything staged in my worktree for that review, nothing is committed. Not safe to archive until it's been reviewed and merged.",
+  "started": "",
+  "attempts": 1,
+  "created": "2026-09-10T22:21",
+  "created_ts": 1789104080.0821948,
+  "conversation": [
+    {
+      "who": "claude",
+      "when": "2026-09-10T23:54",
+      "text": "Chief of staff, after the check: the bloom replayed on every return to the title screen (pause menu, zoo, home), which cut the music and shielded taps each time; fixed in the same commit with a once-per-launch flag on GameState, so a return lands on the settled menu. The stale sentence in design/09 about the music starting at full level is gone, both capture tools are in CLAUDE.md, and the closed-bud follow-up was already filed to Rin as w56cd4d2fe0d."
+    }
+  ],
+  "follow_ups": [
+    {
+      "title": "Give the sunflower bloom a real closed-bud first frame",
+      "owner": "yuki",
+      "level": "task",
+      "tier": 1,
+      "first_action": "Regenerate the sunflower_bloom loop in the Animation Lab with an actual closed-bud opening frame, then re-run tools/export_anim_loop.py sunflower_bloom to refresh assets/anim/sunflower_bloom/ and the boot splash.",
+      "why": "Q-103's ruling depends on the boot opening on a closed bud; the current export has none, a gap already filed to Rin but not yet fixed."
+    }
+  ],
+  "recommend": {},
+  "finished": "2026-09-10T23:52",
+  "done_by": {
+    "seat": "sam",
+    "model": "sonnet",
+    "lane": "drain"
+  },
+  "diff": {
+    "stat": ".gitignore                    |   5 +\n main.gd                       |  29 ++++++\n project.godot                 |   4 +\n systems/game_state.gd         |   1 +\n tools/capture_boot_bloom.gd   |  44 +++++++++\n tools/capture_boot_bloom.tscn |   6 ++\n ui/title_screen.gd            | 213 ++++++++++++++++++++++++++++++++++++++++--\n 7 files changed, 296 insertions(+), 6 deletions(-)",
+    "files": [
+      ".gitignore",
+      "main.gd",
+      "project.godot",
+      "systems/game_state.gd",
+      "tools/capture_boot_bloom.gd",
+      "tools/capture_boot_bloom.tscn",
+      "ui/title_screen.gd"
+    ],
+    "applied": true,
+    "why_not": ""
+  },
+  "check": {
+    "verdict": "concerns",
+    "summary": "The boot now plays as Q-103 ruled — splash, hold, rise with the music fading up, menu settling, farm fading up under it, tap fading through the sky — and the three captures exist and show it; but the same sequence now also replays on every return to the title from the pause menu, zoo and home screens, design/09 still says the music starts at full level, and the follow-up item duplicates one already filed to Rin.",
+    "findings": [
+      {
+        "what": "Every return to the title screen (pause menu 'return to title', zoo, home) now cuts the music to silence, replays the full bloom and blocks input for ~1.8 s — the ask and design/09 describe the boot, not every visit",
+        "where": "ui/title_screen.gd _play_boot_bloom; main.gd:920, ui/zoo_screen.gd:473, ui/home_screen.gd:153",
+        "fix": "Play the sequence only on the first title entry of the process (a once-per-run flag on GameState, same shape as pending_boot_fade) and land on the settled state otherwise — or, if the replay on every return is wanted, say so in design/09 §The boot"
+      },
+      {
+        "what": "design/09 §The boot still says '(today it starts at full level on the first frame)' — the doc now contradicts the code it was written to drive",
+        "where": "docs/design/09-art-direction.md:151",
+        "fix": "Drop the parenthetical in the same commit"
+      },
+      {
+        "what": "The follow-up item to yuki (closed-bud first frame) duplicates w56cd4d2fe0d, already filed to Rin from Ravi's export check",
+        "where": "hq/data/work/w56cd4d2fe0d.json",
+        "fix": "Do not file it; if the owner should be yuki rather than Rin, reassign the existing item"
+      },
+      {
+        "what": "Sam's 'unit 2623 / integration 868 passed' could not be re-run here (sandbox denied the godot invocations), so the counts are their word until the drain's post-land run",
+        "where": "tests/test_runner.gd, tools/test_runner.gd",
+        "fix": "Treat the drain's suite run after landing as the verification, not the reply"
+      },
+      {
+        "what": "The three captures live only in the gitignored tools/boot_bloom_shots/ of this worktree, so 'attached' means on disk until the worktree is cleaned",
+        "where": "tools/boot_bloom_shots/",
+        "fix": "Copy the three PNGs onto the item's attachments before the worktree is discarded; the capture tool itself is fine to keep ignored"
+      },
+      {
+        "what": "New display-only capture tool is not in CLAUDE.md's command list, where every other capture tool is",
+        "where": "CLAUDE.md §Commands",
+        "fix": "Add the one-line entry beside capture_workbench"
+      }
+    ],
+    "escalates": null,
+    "escalation_reason": null
+  },
+  "usage": {
+    "calls_detail": [
+      {
+        "input": 160,
+        "output": 78106,
+        "cache_read": 11325045,
+        "cache_write": 173754,
+        "turns": 92,
+        "seconds": 1113.9,
+        "list_usd": 3.7414,
+        "tokens": 11577065,
+        "fresh": 252020,
+        "phase": "drain-work",
+        "model": "sonnet",
+        "seat": "sam"
+      },
+      {
+        "input": 162,
+        "output": 10789,
+        "cache_read": 401322,
+        "cache_write": 54193,
+        "turns": 28,
+        "seconds": 144.7,
+        "list_usd": 1.7253,
+        "tokens": 466466,
+        "fresh": 65144,
+        "phase": "drain-check",
+        "model": "fable",
+        "seat": "claude"
+      }
+    ],
+    "input": 322,
+    "output": 88895,
+    "cache_read": 11726367,
+    "cache_write": 227947,
+    "tokens": 12043531,
+    "fresh": 317164,
+    "turns": 120,
+    "seconds": 1258.6,
+    "list_usd": 5.4667,
+    "calls": 2
+  },
+  "spent": {
+    "attempts": 1,
+    "tokens": 12043531,
+    "fresh": 317164,
+    "list_usd": 5.4667
+  }
 }

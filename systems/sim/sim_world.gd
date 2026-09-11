@@ -104,6 +104,10 @@ static func may_spawn_crow(day: int, total_harvests: int, planted: int) -> bool:
 # night's warning and the morning it promises would come to disagree.
 const STORY_NIGHT_NONE := ""
 const STORY_NIGHT_CROW := "crow_night"
+# The night the training bench goes up (S-12, P-15): the first sleep after a desk
+# is standing on the farm, which is also the night a Mark III first appears on the
+# shelf. Presentation plays the seeder-robot loop over it.
+const STORY_NIGHT_ROBOT := "robot_night"
 
 # The crow night's two conditions, and they are read off the world rather than
 # remembered: **the acorns are gone** (Q-39's stock does not regenerate, so this
@@ -149,6 +153,61 @@ func crow_targets_of_crop(crop: String) -> Array[Vector2i]:
 			if _crop_state_set.has(tile.get("state", "")):
 				out.append(Vector2i(tx, ty))
 	return out
+
+
+# --- The robot ladder (S-12; design/06 "The rungs themselves") ----------------
+#
+# **A rung of the ladder is earned, not bought** (S-12, extending Q-88). The
+# training bench appears on the shop's shelf only once one of her mark-2s has done
+# its job once — chased its first bird — and the Mark III appears only once a bench
+# is standing on the farm. Each is still paid for at the seed box once it is there
+# (P-12 holds for the transaction); what the ladder settles is the *timing*.
+#
+# The two facts are named here and kept in `rungs` below. They are **latched**:
+# what a farm has done it has done, so putting the bench back in the crate never
+# takes the machine above it off the shelf, and a mark-2 she boxes on a whim does
+# not close the rung it opened. That is the same
+# reading the designer gave picking a robot up — repositioning, never a factory
+# reset (Q-98) — applied to the shelf.
+const RUNG_MK2_WORKED := "mk2_worked"
+const RUNG_DESK_PLACED := "desk_placed"
+
+
+# Is this row on the shelf today? **One question, asked by both readers.** The
+# shop card draws itself from this and the gateway refuses a purchase by it, so
+# the picture on the shelf and what the till will accept cannot disagree — the
+# failure a second opinion always ends in.
+#
+# Two conditions, and they are different kinds of thing. `unlock_requirement` is a
+# tally of what the farm has grown (`MachineDefs.is_unlocked`, the seeds' own
+# mechanism); `earns`/`earned_by` is the ladder. A row carrying neither is for sale
+# from day one, which is every row but the bench and the Mark III.
+func offers(key: String, gs) -> bool:
+	if not MachineDefs.has(key):
+		return false
+	var counts: Dictionary = gs.harvest_counts if gs != null else {}
+	if not MachineDefs.is_unlocked(key, counts):
+		return false
+	var needs := MachineDefs.earned_by(key)
+	return needs == "" or rungs.has(needs)
+
+
+# Record a rung as climbed. Called from the gateway at the two moments that count
+# — a mark-2's first `crow_scared` report and a bench being set down — and by a
+# fixture arranging a farm that has already climbed it. Latching, so calling it
+# twice is calling it once.
+func earn(rung: String) -> void:
+	if rung != "":
+		rungs[rung] = true
+
+
+# Is tonight the night the bench went up (P-15)? True from the first sleep after a
+# desk is standing until that night is told, and never again after — the telling is
+# recorded in `story_nights_told` exactly as the crow night's is.
+func robot_night_due() -> bool:
+	if story_nights_told.has(STORY_NIGHT_ROBOT):
+		return false
+	return rungs.has(RUNG_DESK_PLACED)
 
 
 # --- Ant raids (design/04 §1 and §3, P-10; M2.5 WI-8a/8b) ---------------------
@@ -383,6 +442,13 @@ var story_night: String = STORY_NIGHT_NONE
 # the trigger never fires twice. Saved with the world for the same reason.
 var story_nights_told: Dictionary = {}
 
+# Which rungs of the robot ladder this farm has climbed, as a set of names (S-12).
+# Sim truth like the grids: written by the gateway at the moment the proof happens,
+# read by the shop's shelf through `offers`, saved with the world, and never
+# unwritten. It sits beside the story nights because it is the same kind of fact —
+# something this farm has done, once, that the game is allowed to notice.
+var rungs: Dictionary = {}
+
 
 func generate(with_layout: Dictionary = WorldLayout.WORLD) -> void:
 	layout = with_layout
@@ -395,9 +461,11 @@ func generate(with_layout: Dictionary = WorldLayout.WORLD) -> void:
 	# it: a new world has been marked by nobody (M2.5 WI-7).
 	clock.reset()
 	scent.clear()
-	# ...and so has nobody's story been told on it yet (P-15).
+	# ...and so has nobody's story been told on it yet (P-15), and a new farm has
+	# climbed no rung of the robot ladder (S-12).
 	story_night = STORY_NIGHT_NONE
 	story_nights_told.clear()
+	rungs.clear()
 
 	# 1. Bare ground inside the map border. Every later step overwrites; nothing
 	#    below reads a tile it has not written, so the fill order is the only
@@ -1064,10 +1132,17 @@ func way_to_bed(player_tile: Vector2i) -> Vector2i:
 
 
 func count_acorns() -> int:
+	return count_objects("acorn")
+
+
+# How many of one kind of object stand on the grid. A whole-map scan, so it is for
+# the questions asked once — a threshold read at bedtime, a save being read off an
+# older build — and never for a per-tick one (P-10's guardrail).
+func count_objects(kind: String) -> int:
 	var n := 0
 	for ty in MAP_HEIGHT:
 		for tx in MAP_WIDTH:
-			if objects[ty][tx] == "acorn":
+			if objects[ty][tx] == kind:
 				n += 1
 	return n
 
@@ -1990,7 +2065,15 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 		# one match arm; reinterpreting an old one costs the archive.
 		"buy_machine":
 			if gs == null: return _fail("no_state")
-			return { "ok": gs.buy_machine(String(action.get("item", ""))) }
+			var bought_key := String(action.get("item", ""))
+			# **The shelf and the till ask the same question** (S-12). The card is
+			# already dark and its button already disabled when a rung is not
+			# earned, so this refusal is for everything that does not go through a
+			# card: a replayed Action, a test, and — the one that matters — a bot.
+			# A machine that could buy itself a Mark III the player cannot see on
+			# the shelf would have a capability she lacks (ground rule 1).
+			if not offers(bought_key, gs): return _fail("not_offered")
+			return { "ok": gs.buy_machine(bought_key) }
 		"collect":
 			if gs == null: return _fail("no_state")
 			var obj := get_object(target.x, target.y)
@@ -2223,6 +2306,12 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 					set_object(target.x, target.y, obj)
 					if placer_charged:
 						gs.machines[item] = int(gs.machines.get(item, 0)) - 1
+					# **A structure's first use is being set down** (S-12). A bench
+					# has no job of its own to complete — it is a thing robots are
+					# worked on at — so the moment it stands on the farm is the
+					# moment it has proved what it proves, and the Mark III joins
+					# the shelf.
+					earn(MachineDefs.earns_of(item))
 					return { "ok": true, "structure": item }
 				set_object(target.x, target.y, WorldLayout.ROBOT_STALL)
 				var slot := target + STALL_SLOT_OFFSET
@@ -2559,6 +2648,18 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			var by := String(action.get("by", ACTOR_PLAYER))
 			var by_player := _is_player(by)
 			gs.crows_scared += 1
+			# **And a machine's first bird is a rung of the ladder** (S-12). What
+			# the bench is earned by is a mark-2 having *done its job once*, and
+			# for a machine whose job is chasing birds this report is that moment:
+			# it is the only thing a shoo-bot's whole errand ends in.
+			#
+			# Asked of the machine's catalogue row rather than of its key, so the
+			# next reactive mark that should open the same rung is one field in
+			# `MachineDefs` and no edit here. A Mark III scaring a bird proves
+			# nothing new: its row names no rung, because by then the bench that
+			# taught it is already standing.
+			if not by_player:
+				earn(MachineDefs.earns_of(machine_key_of(by)))
 			# The *kind* of cause, not the id: the reason string is what a renderer
 			# matches on to pick a noise (`entities/crow.gd:_announce_departure`),
 			# and it wants "a person did this" / "a machine did this", not a
@@ -2861,6 +2962,10 @@ func advance_day(weather: String, gs = null) -> void:
 	# presentation reads lying to it, and the night is better spent tomorrow.
 	story_night = STORY_NIGHT_NONE
 	var crow_night := crow_night_due()
+	# ...and whether tonight is the one the bench went up (S-12, P-15). Read here
+	# with the crow night's conditions for the same reason: what the night is about
+	# is what the farm was when she went to bed.
+	var robot_night := robot_night_due()
 	# Everyone wakes rested, the player included (GameState.start_new_day does
 	# hers). An NPC's tiredness is a within-day thing, same as the farmer's.
 	# Every *registered* actor, which since M2.5 WI-2 is the same set that used to
@@ -2951,3 +3056,17 @@ func advance_day(weather: String, gs = null) -> void:
 	if crow_night and CrowBrain.raid(self, gs).size() == RAID_CROWS:
 		story_night = STORY_NIGHT_CROW
 		story_nights_told[STORY_NIGHT_CROW] = true
+	elif robot_night:
+		# One story per night, and the crows take the night they land on. A farm
+		# that put its bench up on the same evening the birds came would otherwise
+		# be told about a workshop while three crows stood in its tomatoes — the
+		# one fact presentation reads, lying about the morning it opens on. The
+		# bench's night is not lost by waiting: `robot_night_due` stays true until
+		# it is told, so it is the next sleep instead.
+		#
+		# Told unconditionally, where the crow night is told only if its birds
+		# actually landed. There is no morning to check: the desk is already
+		# standing, put there by a recorded Action, and nothing in a day turn can
+		# take it away.
+		story_night = STORY_NIGHT_ROBOT
+		story_nights_told[STORY_NIGHT_ROBOT] = true

@@ -57,6 +57,15 @@ func _assert(condition: bool, test_name: String) -> void:
 # --- Test Scenarios ---
 
 func _run_scenarios() -> void:
+	# **A farm that has already climbed the robot ladder** (S-12). The bench and the
+	# Mark III are on the shop's shelf only once a mark-2 has chased a bird and a
+	# bench is standing, and half the scenarios below buy one of the two to get at
+	# the screen they are really about. Staged once here, beside the purse each of
+	# them stages for itself, rather than played out six times — the ladder's own
+	# behaviour is proved in the unit suite (`test_robot_ladder`), which climbs it
+	# through actions and checks the shelf at every rung.
+	farm.sim.earn(SimWorld.RUNG_MK2_WORKED)
+	farm.sim.earn(SimWorld.RUNG_DESK_PLACED)
 	await _scenario_a()
 	await _scenario_b()
 	await _scenario_c()

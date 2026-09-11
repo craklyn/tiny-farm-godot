@@ -133,6 +133,11 @@ var _milestones_earned: Dictionary = {}
 # Game state
 var game_paused: bool = false
 var pending_load: bool = false  # title screen asks main to load the autosave
+var pending_boot_fade: bool = false  # title screen asks main to fade in from its cover (Q-103)
+# Q-103: the bloom plays once per launch. The title screen sets this after its
+# first entry; a return from the pause menu, the zoo or the home screen lands on
+# the settled menu instead of replaying the boot.
+var boot_bloom_played: bool = false
 
 # Save file locations — overridable so automated sessions (robot tests) never
 # touch a real player's files

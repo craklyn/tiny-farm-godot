@@ -50,6 +50,12 @@ var gs: Node = null
 # nope sound into a title screen the player is not playing.
 var mute_feedback := false
 
+# Q-104: whether the watering-shot inset has already played for this farm. Her
+# cold-open row is watered three times over (twice, then once more inside the
+# till → plant → water demo); this latches on the first so the other two stay
+# silent, the way `_scared_reported` latches a crow's one report per visit.
+var _watering_shot_shown := false
+
 # Facade views over sim truth (same Array references — in-place mutation works)
 var tiles: Array[Array]:
 	get:
@@ -700,6 +706,17 @@ func _record(action: Dictionary, result: Dictionary, at_tick: int,
 				# pair of hands that are not the player's (`_voice_actor_verb`).
 				if String(action.get("actor", "")) != SimWorld.ACTOR_PLAYER:
 					_voice_actor_verb(wt, verb, result)
+					# Q-104: the watering shot. Reported from here because this is
+					# the one path every recorded action already passes through —
+					# the same path `_voice_actor_verb` above answers from — so the
+					# inset is driven by watching the neighbour's actual `water`
+					# Action, never by anything the cold open scene decides on its
+					# own.
+					if not mute_feedback and not _watering_shot_shown \
+							and verb == "water" \
+							and String(action.get("actor", "")) == SimWorld.ACTOR_NEIGHBOUR:
+						_watering_shot_shown = true
+						_report_watering_shot()
 		if String(action.get("verb", "")) == "sleep":
 			_notify_day_turn()
 		queue_redraw()
@@ -828,6 +845,21 @@ func _beat_cue(t: Vector2i, cue: Dictionary) -> void:
 func _play_sfx(sound: String) -> void:
 	if Engine.get_main_loop() and Engine.get_main_loop().root.has_node("AudioManager"):
 		Engine.get_main_loop().root.get_node("AudioManager").play_sfx(sound)
+
+
+# Q-104: tell whoever is drawing this farm to show the watering-beam inset. This
+# farm holds no reference to a HUD and must not grow one — the attract loop and
+# the test suites build a farm with neither — so it reaches out the way
+# `entities/crow.gd`'s `_puff` does, through the "Main" group the real game
+# scene adds itself to (`main.gd`'s `_ready`). A farm with no such scene above it
+# (a headless test's bare `SimWorld`-plus-`farm.gd`, the attract loop) finds
+# nothing and stays silent, which is correct: there is nothing to show it on.
+func _report_watering_shot() -> void:
+	if not is_inside_tree():
+		return
+	var main = get_tree().get_first_node_in_group("Main")
+	if main != null and main.has_method("play_watering_inset"):
+		main.play_watering_inset()
 
 
 # The particle manager belongs to `main.gd`, which is where the player's own

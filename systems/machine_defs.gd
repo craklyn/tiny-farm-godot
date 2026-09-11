@@ -157,6 +157,11 @@ static var TYPES: Dictionary = {
 		# candidate for exactly that reason.
 		# "idle" is last because the three jobs are the point of the machine, and it
 		# sits beside "Pick up" where the two ways to stop it belong together.
+		# **And its first bird earns the bench** (S-12). See `earns_of` below: the
+		# first time one of these completes its job, the training bench joins the
+		# shelf. Named here rather than in the sim so the next reactive mark that
+		# should open the same rung is one line in this table.
+		"earns": "mk2_worked",
 		"configs": ["shoo", "follow", "circle", "idle"],
 		# ...but it is what a freshly placed one *is*, so putting a machine down
 		# is never the same thing as starting it (from play, 2026-09-07).
@@ -171,9 +176,21 @@ static var TYPES: Dictionary = {
 	# earned. Priced at twice the mark-2 because that is the whole arc of the
 	# game in one shelf: the more of the farm a machine takes off her hands, the
 	# longer she saves for it. [Playtest]
+	#
+	# **The top rung, and it is earned rather than saved for** (S-12): it joins the
+	# shelf the moment a training bench is standing on the farm, and not before.
+	# Until then its card is on the shelf **darkened**, the way a locked seed packet
+	# is — the game's one word for "you can see it, not yet yours" (Q-46a) — so the
+	# machine the whole game is about is a promise she can see from day one and the
+	# bench is visibly what buys it. What a player who reads nothing sees is the
+	# picture going bright the first evening a bench stands in her yard, which is
+	# also the night the game plays her the robot's story (P-15).  [Playtest]
 	"bot_mk3": {
 		"name": "Robot Mk III",
 		"price": 800,
+		# The rung below it. `SimWorld.RUNG_DESK_PLACED`, written out for the
+		# layer-1 reason at the top of this file and pinned by a unit test.
+		"earned_by": "desk_placed",
 		"species": SpeciesDefs.BOT,
 		# Neither a taught list nor a dial: what this machine does is a policy it
 		# is still working out. The menu shows what it has learned, not what to
@@ -209,9 +226,22 @@ static var TYPES: Dictionary = {
 	# bench is worth nothing without a learning robot to put on it and a mark-3
 	# costs 800, so it is never the thing she saves for first: it is what she buys
 	# once she owns the machine it is about. A strawman for the CEO.  [Playtest]
+	#
+	# **Earned by a mark-2's first bird** (S-12). The bench is the rung between the
+	# machine that reacts and the machine that learns, so it is not on the shelf
+	# until a reactive machine has actually worked — chased one crow. Before that
+	# its card is darkened like a locked seed packet, so what a player who reads
+	# nothing sees is: she sets a mark-2 to shoo, it runs a bird off her tomatoes,
+	# and the next time she opens the seed box the bench has come up bright. The
+	# lesson is taught by the shelf rather than by a sentence.  [Playtest]
 	"workbench": {
 		"name": "Workbench",
 		"price": 300,
+		# The rung it needs, and the rung it opens. Both are
+		# `SimWorld.RUNG_*`, written out for the layer-1 reason at the top of
+		# this file and pinned by a unit test.
+		"earned_by": "mk2_worked",
+		"earns": "desk_placed",
 		"species": "",
 		"program": "",
 		"configs": [],
@@ -312,9 +342,29 @@ static func program_of(key: String) -> String:
 	return String(TYPES.get(key, {}).get("program", ""))
 
 
-# Nothing is gated today; the hook is here because the seeds have one
-# (`CropDefs.is_seed_unlocked`) and a tower that wants a proof behind it should
-# not have to invent the mechanism.
+# --- the robot ladder, as two fields (S-12) -----------------------------------
+#
+# The rung a row needs climbed before it is for sale, or "" for a row that is on
+# the shelf from day one. The names are `SimWorld`'s `RUNG_*` constants, and the
+# question "is this for sale on *this* farm" is `SimWorld.offers` — a row cannot
+# answer it alone, because what has been earned is a fact about a farm.
+static func earned_by(key: String) -> String:
+	return String(TYPES.get(key, {}).get("earned_by", ""))
+
+
+# ...and the rung a row climbs the first time it is put to use: for a machine,
+# the first job it completes; for a structure, being set down, because a bench has
+# no job of its own. "" for everything that proves nothing, which is most of the
+# shelf. The gateway reads this at those two moments (`SimWorld`'s `crow_scared`
+# and `place`).
+static func earns_of(key: String) -> String:
+	return String(TYPES.get(key, {}).get("earns", ""))
+
+
+# Has the farm grown enough of something to be sold this? The seeds' own mechanism
+# (`CropDefs.is_seed_unlocked`), for machines — nothing uses it today, and it is
+# **not** the ladder above: a tally of harvests is a different kind of proof from a
+# rung. `SimWorld.offers` asks both.
 static func is_unlocked(key: String, harvest_counts: Dictionary) -> bool:
 	var def: Dictionary = TYPES.get(key, {})
 	if def.is_empty():

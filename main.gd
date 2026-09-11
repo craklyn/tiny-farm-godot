@@ -4,6 +4,8 @@ extends Node2D
 
 const TILE_SIZE := 16
 const CAMERA_SCALE := 3
+const BOOT_FADE_IN_SEC := 0.4  # Q-103: the second half of the title screen's tap fade
+const BOOT_SKY_COLOUR := Color8(33, 31, 32)  # the Lab's sky — same colour the splash uses
 const MAP_WIDTH := SimWorld.MAP_WIDTH
 const MAP_HEIGHT := SimWorld.MAP_HEIGHT
 
@@ -56,6 +58,17 @@ func neighbour_node() -> Node2D:
 		return null
 	var n = farm.actor_nodes.get(SimWorld.ACTOR_NEIGHBOUR, null)
 	return n if is_instance_valid(n) else null
+
+
+# Q-104: `world/farm.gd` calls this, through the "Main" group, the moment it
+# records the neighbour's first `water` Action of the cold open. Forwarded
+# straight to the HUD — the same `has_method` guard `show_toast` already uses
+# below — because the HUD is what knows how to show a loop, and this file's
+# job is only to be the one thing both a farm and a HUD can always find.
+func play_watering_inset() -> void:
+	if hud != null and hud.has_method("play_watering_inset"):
+		hud.play_watering_inset()
+
 
 # The scene does not begin until the player can see it.
 #
@@ -294,6 +307,15 @@ func _ready() -> void:
 	day_cycle = DayCycleScript.new()
 	add_child(day_cycle)
 
+	# Q-103 item 5: the title screen faded itself out to the sky colour before
+	# handing off here (`ui/title_screen.gd`'s `start_game`); this fades that
+	# cover away so the farm is revealed rather than cut to. The flag is only
+	# ever set from that non-headless fade, so a headless launch — which never
+	# sets it — never pays for a tween it cannot see.
+	if GameState.pending_boot_fade:
+		GameState.pending_boot_fade = false
+		_fade_in_from_boot()
+
 	# T-14: the sky. Signal-driven rather than per-frame — energy only moves when
 	# an action resolves or a day turns, so there is nothing to poll.
 	world_tint = CanvasModulate.new()
@@ -312,6 +334,24 @@ func _ready() -> void:
 	# the pause menu at dusk rather than from the title screen).
 	_apply_cot_treatment()
 	_apply_station_treatment()
+
+
+# Q-103: covers the screen in the sky colour the title screen just faded to,
+# then fades that cover away — so the hand-off reads as one continuous fade
+# through the sky rather than a cut from the title screen's cover to a fully
+# lit farm.
+func _fade_in_from_boot() -> void:
+	var layer := CanvasLayer.new()
+	layer.name = "BootFadeIn"
+	add_child(layer)  # after day_cycle, so this covers everything else
+	var cover := ColorRect.new()
+	cover.color = BOOT_SKY_COLOUR
+	cover.set_anchors_preset(Control.PRESET_FULL_RECT)
+	cover.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(cover)
+	var tw := create_tween()
+	tw.tween_property(cover, "color:a", 0.0, BOOT_FADE_IN_SEC)
+	tw.finished.connect(layer.queue_free)
 
 
 # Can she see the whole of what is about to happen? Uses the settled camera

@@ -82,6 +82,12 @@ static func capture(world: SimWorld, gs) -> Dictionary:
 			# conditions still held.
 			"story_night": world.story_night,
 			"story_nights_told": world.story_nights_told.duplicate(),
+			# Which rungs of the robot ladder this farm has climbed (S-12).
+			# Additive like everything above it, with one wrinkle worth its line:
+			# the *shop's shelf* is what reads this, so a farm that forgot would
+			# take a bench she has already earned back off the shelf. See the
+			# recovery in `load_into` for what an older save is read as.
+			"rungs": world.rungs.duplicate(),
 		},
 		"state": {
 			"day": gs.day,
@@ -259,6 +265,26 @@ static func restore(data: Dictionary, world: SimWorld, gs) -> bool:
 	# that night did not exist.
 	world.story_night = String(w.get("story_night", SimWorld.STORY_NIGHT_NONE))
 	world.story_nights_told = _flags(w.get("story_nights_told", {}))
+	# ...and which rungs of the robot ladder it has climbed (S-12).
+	#
+	# **An older save is read off its own grid**, which is the one thing that
+	# separates this field from every other additive one above. A farm saved before
+	# the ladder existed may well have a bench standing in its yard, and "absent ⇒
+	# nothing earned" would take the Mark III she can already see back off the
+	# shelf — the game confiscating a rung she climbed under an older build. The
+	# bench is still there to be counted, so it is counted — **both rungs**, because
+	# under the ladder a bench cannot exist without the bird that earned it, and
+	# restoring only the upper one would leave a farm in a state no sequence of
+	# actions could reach. A mark-2's first bird leaves no other mark on the world,
+	# so a save with no bench in it starts the ladder at the bottom: its owner
+	# chases one more crow, which is a minute of a day she was going to spend.
+	#
+	# Only for a save with no field at all, so a farm that has genuinely put its
+	# bench back in the crate is never re-earned from a grid it is no longer on.
+	world.rungs = _flags(w.get("rungs", {}))
+	if not w.has("rungs") and world.count_objects(WorldLayout.WORKBENCH) > 0:
+		world.earn(SimWorld.RUNG_MK2_WORKED)
+		world.earn(SimWorld.RUNG_DESK_PLACED)
 	# ...and the scent layer with it (M2.5 WI-7), before the cast: a restored trail
 	# is part of the world its actors wake up into. Absent ⇒ a clean field.
 	world.scent.from_save(w.get("scent", {}))

@@ -123,6 +123,16 @@ func _ready() -> void:
 	# The reseed is the other half of the pairing: `ReplayLog.apply_to` restores the
 	# base save and then reseeds to the world's own `gen_seed`, so the live session
 	# has to stand on that same seed for the two RNG streams to agree.
+	# **And the rungs of the robot ladder, for the purse's own reason** (S-12). The
+	# bench is on the shelf only once a mark-2 has chased a bird, and the Mark III
+	# only once a bench is standing — and a bird is not something this session can
+	# arrange: crows arrive on the day's action clock, so a run that had to wait for
+	# one to be chased would be a run whose last chapter came and went with the
+	# weather. Staged here, before the base save is taken, so the reproduction at
+	# the bottom of this run stands on exactly the same farm the recording did.
+	main_scene.farm.sim.earn(SimWorld.RUNG_MK2_WORKED)
+	main_scene.farm.sim.earn(SimWorld.RUNG_DESK_PLACED)
+
 	SimRng.reseed(main_scene.farm.sim.gen_seed)
 	main_scene.farm.start_replay_log_from_save(
 		SaveGame.capture(main_scene.farm.sim, GameState), main_scene.farm.sim.gen_seed)

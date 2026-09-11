@@ -11,6 +11,35 @@ var toast_message: String = ""
 var toast_timer: float = 0.0
 const TOAST_DURATION := 3.0
 
+# --- The watering shot inset (Q-104) -------------------------------------------
+#
+# The first time the neighbour waters during the cold open, the Animation Lab's
+# watering-beam loop fades up in a corner, plays through once at the rate the
+# Lab drew it, and fades down — Daniel's ruling on where that shot plays
+# (`docs/design/13-teaching-and-onboarding.md`, "The watering shot"), so the
+# scene never cuts away from her own yard. `world/farm.gd` calls
+# `play_watering_inset()` through `main.gd` the moment it records that Action;
+# this file only knows how to show a loop, never why or when.
+#
+# **Top-left is the one corner none of the HUD's own controls claims.** The bed
+# button sits bottom-left, the held-item card bottom-right (both T-31, corners
+# kept apart so two tappable targets are never neighbours), the menu button
+# top-right — top-left holds only the day and weather readouts, inside the top
+# bar's own 30px, so the space below it is free. The card takes no input, so it
+# never has to fight any of them for a tap.
+const WATERING_INSET_SLUG := "watering_beam"
+const WATERING_INSET_FADE_S := 0.4
+const WATERING_INSET_MARGIN := 8.0
+
+var watering_inset: Control
+var _watering_inset_rect: TextureRect
+var _watering_frames: Array[Texture2D] = []
+var _watering_ms_per_frame: float = 100.0
+var _watering_playing := false
+var _watering_frame_i := 0
+var _watering_frame_elapsed := 0.0
+var _watering_fade_tween: Tween
+
 # --- The sun-arc (T-29 / Q-38's rider) ----------------------------------------
 #
 # An eighth of the top bar's width and all of its height: big enough that the
@@ -546,6 +575,132 @@ func _build_ui() -> void:
 	toast_label.add_theme_color_override("font_color", Color(1, 0.95, 0.5))
 	toast_panel.add_child(toast_label)
 
+	_build_watering_inset()
+
+
+# Built once at start-up, whether or not the neighbour is ever watched doing it:
+# the loop is one small texture, and building it here means `play_watering_inset`
+# never has to handle "not built yet". Reads the export `tools/experiments/`
+# produced (`assets/anim/watering_beam/`, `19d18a2`) rather than anything typed
+# by hand, so a re-export changes the shot without a code change.
+func _build_watering_inset() -> void:
+	var manifest := _load_anim_manifest(WATERING_INSET_SLUG)
+	if manifest.is_empty():
+		return
+	_watering_frames = _load_anim_frames(WATERING_INSET_SLUG, manifest)
+	if _watering_frames.is_empty():
+		return
+	_watering_ms_per_frame = float(manifest.get("ms_per_frame", 100.0))
+	var sky: Array = manifest.get("sky_colour", [33, 31, 32])
+	var cell_w := float(manifest.get("cell_width", 0))
+	var cell_h := float(manifest.get("cell_height", 0))
+	if cell_w <= 0 or cell_h <= 0:
+		return
+
+	watering_inset = Control.new()
+	watering_inset.name = "WateringInset"
+	watering_inset.position = Vector2(WATERING_INSET_MARGIN, top_bar.size.y + WATERING_INSET_MARGIN)
+	watering_inset.size = Vector2(cell_w, cell_h)
+	watering_inset.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	watering_inset.visible = false
+	watering_inset.modulate = Color(1, 1, 1, 0)
+	add_child(watering_inset)
+
+	# The loop's own canvas colour, so its edge never reads as a box (design/09,
+	# "how a loop is shown") — no frame, no border, the same rule the overnight's
+	# full-screen loops follow.
+	var bg := ColorRect.new()
+	bg.color = Color8(int(sky[0]), int(sky[1]), int(sky[2]))
+	bg.size = Vector2(cell_w, cell_h)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	watering_inset.add_child(bg)
+
+	_watering_inset_rect = TextureRect.new()
+	_watering_inset_rect.texture = _watering_frames[0]
+	_watering_inset_rect.size = Vector2(cell_w, cell_h)
+	_watering_inset_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_watering_inset_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	watering_inset.add_child(_watering_inset_rect)
+
+
+func _load_anim_manifest(slug: String) -> Dictionary:
+	var path := "res://assets/anim/%s/manifest.json" % slug
+	if not FileAccess.file_exists(path):
+		return {}
+	var f := FileAccess.open(path, FileAccess.READ)
+	if f == null:
+		return {}
+	var parsed = JSON.parse_string(f.get_as_text())
+	return parsed if parsed is Dictionary else {}
+
+
+# The sheet is one horizontal strip, `frame_count` cells of `cell_width` ×
+# `cell_height` each (the export step's own layout, `19d18a2`) — the same
+# atlas-region pattern `MachineDefs.icon_of` already cuts shop icons with.
+func _load_anim_frames(slug: String, manifest: Dictionary) -> Array[Texture2D]:
+	var out: Array[Texture2D] = []
+	var sheet_path := "res://assets/anim/%s/%s" % [slug, String(manifest.get("sheet", "sheet.png"))]
+	var sheet: Texture2D = load(sheet_path)
+	if sheet == null:
+		return out
+	var cw := int(manifest.get("cell_width", 0))
+	var ch := int(manifest.get("cell_height", 0))
+	var count := int(manifest.get("frame_count", 0))
+	if cw <= 0 or ch <= 0 or count <= 0:
+		return out
+	for i in count:
+		var atlas := AtlasTexture.new()
+		atlas.atlas = sheet
+		atlas.region = Rect2(i * cw, 0, cw, ch)
+		out.append(atlas)
+	return out
+
+
+## The watering shot (Q-104). Called through `main.gd` the moment
+## `world/farm.gd` records the neighbour's first `water` Action of the cold
+## open — plays the loop through exactly once at the manifest's own rate and
+## fades back out; takes no input the whole time. Headless runs have nothing to
+## draw this on and never call it, but the guard stays here too, since this is
+## the one place that would actually try to animate a texture with no screen
+## behind it.
+func play_watering_inset() -> void:
+	if watering_inset == null or _watering_playing or _watering_frames.is_empty():
+		return
+	if DisplayServer.get_name() == "headless":
+		return
+	_watering_playing = true
+	_watering_frame_i = 0
+	_watering_frame_elapsed = 0.0
+	_watering_inset_rect.texture = _watering_frames[0]
+	watering_inset.visible = true
+	if _watering_fade_tween != null and _watering_fade_tween.is_valid():
+		_watering_fade_tween.kill()
+	_watering_fade_tween = create_tween()
+	_watering_fade_tween.tween_property(watering_inset, "modulate:a", 1.0, WATERING_INSET_FADE_S)
+
+
+func _update_watering_inset(delta: float) -> void:
+	if not _watering_playing:
+		return
+	_watering_frame_elapsed += delta
+	var frame_s: float = _watering_ms_per_frame / 1000.0
+	while _watering_playing and _watering_frame_elapsed >= frame_s:
+		_watering_frame_elapsed -= frame_s
+		_watering_frame_i += 1
+		if _watering_frame_i >= _watering_frames.size():
+			_end_watering_inset()
+			break
+		_watering_inset_rect.texture = _watering_frames[_watering_frame_i]
+
+
+func _end_watering_inset() -> void:
+	_watering_playing = false
+	if _watering_fade_tween != null and _watering_fade_tween.is_valid():
+		_watering_fade_tween.kill()
+	_watering_fade_tween = create_tween()
+	_watering_fade_tween.tween_property(watering_inset, "modulate:a", 0.0, WATERING_INSET_FADE_S)
+	_watering_fade_tween.tween_callback(func(): watering_inset.visible = false)
+
 
 # --- T-28, satisfied treatment B: the state, before the question --------------
 #
@@ -683,6 +838,7 @@ func _update_state_chips() -> void:
 func _process(delta: float) -> void:
 	_update_hud()
 	_update_toast(delta)
+	_update_watering_inset(delta)
 	# Collapsed means collapsed: the readout's obstacle count is an O(map) scan, and
 	# a hidden label has no business paying for one.
 	if notes_label != null and not notes_collapsed:

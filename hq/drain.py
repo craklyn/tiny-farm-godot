@@ -62,6 +62,10 @@ PATCHES = os.path.join(REPO, "hq", "data", "patches")
 WORKER_TURNS = int(os.environ.get("DRAIN_TURNS") or 60)
 WORKER_TIMEOUT = 3600
 CHECK_TIMEOUT = 900
+# The checker's turns. Eight read a small diff; a 650-line sim change with four
+# new tests ran the checker out of turns before it answered, and a check that
+# does not come back is a diff nobody read.
+CHECK_TURNS = 20
 # Anything under these paths is the game rather than the office, so a patch that
 # touches one has to face the suites before it is worth anybody reading.
 GAME_PATHS = ("world/", "player/", "entities/", "systems/", "ui/", "effects/",
@@ -413,7 +417,7 @@ def do_item(item, org, run_id, log):
         cmodel = server.seat_model(org, "claude")
         ctext, cusage, cerr = run_cli(check_prompt(item, text, rec["patch"]), CHECK_SYSTEM,
                                       "Read,Glob,Grep", cmodel, tree, CHECK_TIMEOUT,
-                                      8, "drain-check", "claude", item["id"])
+                                      CHECK_TURNS, "drain-check", "claude", item["id"])
         if cusage:
             rec["usage"].append(dict(cusage, phase="drain-check", model=cmodel, seat="claude"))
         if cerr == "LIMITED":

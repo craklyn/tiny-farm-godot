@@ -1,20 +1,111 @@
 {
- "id": "w1a08ee9c4d3",
- "title": "The watering shot plays in a corner while she keeps control",
- "level": "story",
- "owner": "sam",
- "tier": 2,
- "tier_reason": "It is the first Lab loop a new player sees in play, and Q-104 ruled it must never take control away.",
- "ask": "Build Q-104's ruling as written in design/13 'The watering shot' and design/09 The inset. The first time the neighbour waters during the cold open (her 'water' action through apply_action with actor 'neighbour'; systems/sim/cold_open.gd derives it), an inset card fades up in a corner of the screen showing the watering_beam loop from assets/anim/watering_beam/ (export item) at ×1, nearest-neighbour, on the Lab's sky colour, plays one pass at the manifest's rate, and fades down. It takes no input, sits in a corner the HUD's corner map leaves free (the HUD's interactive controls are corner cards; the inset must not cover one, nor the neighbour, nor the player), and plays once per farm. Presentation only: it is driven by watching the recorded action, never by anything the sim does differently. Headless runs skip it. Capture a PNG with a display and attach it.",
- "first_action": "Read ui/hud.gd's corner assignments and world/farm.gd's action-report path the crow's animation already listens to, and hang the inset off the same signal.",
- "state": "waiting_session",
- "thread": "",
- "source": "chief-of-staff",
- "source_message": "Filed from the 2026-09-10 brainstorm on where the Animation Lab loops enter play (P-15, Q-103, Q-104).",
- "result": "",
- "started": "",
- "attempts": 0,
- "created": "2026-09-10T22:21",
- "created_ts": 1789104080.0823364,
- "conversation": []
+  "id": "w1a08ee9c4d3",
+  "title": "The watering shot plays in a corner while she keeps control",
+  "level": "story",
+  "owner": "sam",
+  "tier": 2,
+  "tier_reason": "It is the first Lab loop a new player sees in play, and Q-104 ruled it must never take control away.",
+  "ask": "Build Q-104's ruling as written in design/13 'The watering shot' and design/09 The inset. The first time the neighbour waters during the cold open (her 'water' action through apply_action with actor 'neighbour'; systems/sim/cold_open.gd derives it), an inset card fades up in a corner of the screen showing the watering_beam loop from assets/anim/watering_beam/ (export item) at ×1, nearest-neighbour, on the Lab's sky colour, plays one pass at the manifest's rate, and fades down. It takes no input, sits in a corner the HUD's corner map leaves free (the HUD's interactive controls are corner cards; the inset must not cover one, nor the neighbour, nor the player), and plays once per farm. Presentation only: it is driven by watching the recorded action, never by anything the sim does differently. Headless runs skip it. Capture a PNG with a display and attach it.",
+  "first_action": "Read ui/hud.gd's corner assignments and world/farm.gd's action-report path the crow's animation already listens to, and hang the inset off the same signal.",
+  "state": "for_review",
+  "thread": "",
+  "source": "chief-of-staff",
+  "source_message": "Filed from the 2026-09-10 brainstorm on where the Animation Lab loops enter play (P-15, Q-103, Q-104).",
+  "result": "I built Q-104: the first time the neighbour waters in the cold open, a card fades up in the screen's top-left corner — the loop of water hitting the wheat's soil, at native size, on its own dark canvas — plays through once, and fades out. She keeps walking, the player keeps full control, nothing about the farm itself changes.\n\n**Where it hooks in.** Every action that resolves already passes through one spot in `world/farm.gd` (`_record`) — the same spot that already gives a non-player actor's verb its sound and puff. I added one more check there: the first time it sees `water` from the neighbour, it tells `main.gd`, which tells the HUD to play the loop. It's watching the recorded action, exactly as asked — nothing in the sim or the cold-open script knows this exists.\n\n**Where it sits.** I read the HUD's actual layout rather than guessing: the bed button owns bottom-left, the held-item card bottom-right, the menu button top-right — top-left holds only the day/weather readout inside the thin top strip, so the space below it is genuinely unclaimed. I captured a real frame from the running game to check it (`tools/shot_watering_inset.png`, viewable above) — the card sits clear of every HUD control, and clear of both her and the neighbour in that shot.\n\n**One thing worth knowing.** \"Once per farm\" is tracked as a flag in memory, not saved — deliberately, since the alternative would mean the presentation touching the save format, which is exactly what this was ruled out from doing. The one edge it doesn't cover: if someone saves right after her first watering and reloads mid-cold-open, the shot could play again on her second watering. It's a few-second window during an intro nobody replays, and the cost of getting it wrong is a second harmless viewing of the same wordless clip — I'm treating it as an accepted limitation rather than something to chase.\n\nBoth suites, the robot session, and the one-gateway check are all green. Nothing is committed — it's sitting in the worktree for review.\n\nWork is complete, not committed (per the drain process — the chief of staff reviews the diff first), and this session is safe to close once that review happens.",
+  "started": "",
+  "attempts": 1,
+  "created": "2026-09-10T22:21",
+  "created_ts": 1789104080.0823364,
+  "conversation": [
+    {
+      "who": "claude",
+      "when": "2026-09-10T23:54",
+      "text": "Chief of staff, after reading the diff: landed as built. The review capture tools/shot_watering_inset.png is not committed (added to .gitignore beside the other review shots); the tool stays. The once-per-farm flag living in memory rather than the save is accepted for the first version, for the reason given."
+    }
+  ],
+  "follow_ups": [
+    {
+      "title": "Point Jade's overnight-loop item at the watering inset's loader",
+      "owner": "claude",
+      "level": "task",
+      "tier": 1,
+      "first_action": "Add a line to hq/data/work/w1a08ee15303.json noting that ui/hud.gd now has _load_anim_manifest/_load_anim_frames (built for Q-104's watering_beam inset), which crow_gorge/seeder_bot/sunflower_bloom can call instead of re-deriving the same sheet-and-manifest reading code.",
+      "why": "Jade's wave-3 item reads the same exported manifests days apart from this one; without the pointer the same loader gets written twice in two presentation files."
+    }
+  ],
+  "recommend": {},
+  "finished": "2026-09-10T23:52",
+  "done_by": {
+    "seat": "sam",
+    "model": "sonnet",
+    "lane": "drain"
+  },
+  "diff": {
+    "stat": "main.gd                           |  11 +++\n tools/capture_watering_inset.gd   |  41 ++++++++++\n tools/capture_watering_inset.tscn |   6 ++\n tools/shot_watering_inset.png     | Bin 0 -> 50168 bytes\n ui/hud.gd                         | 156 ++++++++++++++++++++++++++++++++++++++\n world/farm.gd                     |  32 ++++++++\n 6 files changed, 246 insertions(+)",
+    "files": [
+      "main.gd",
+      "tools/capture_watering_inset.gd",
+      "tools/capture_watering_inset.tscn",
+      "tools/shot_watering_inset.png",
+      "ui/hud.gd",
+      "world/farm.gd"
+    ],
+    "applied": true,
+    "why_not": ""
+  },
+  "check": {
+    "verdict": "concerns",
+    "summary": "nobody checked this — the check call did not come back",
+    "findings": [],
+    "escalates": null,
+    "escalation_reason": null
+  },
+  "usage": {
+    "calls_detail": [
+      {
+        "input": 158,
+        "output": 66996,
+        "cache_read": 10135771,
+        "cache_write": 156566,
+        "turns": 103,
+        "seconds": 1046.2,
+        "list_usd": 3.3237,
+        "tokens": 10359491,
+        "fresh": 223720,
+        "phase": "drain-work",
+        "model": "sonnet",
+        "seat": "sam"
+      },
+      {
+        "input": 226,
+        "output": 8189,
+        "cache_read": 870188,
+        "cache_write": 99640,
+        "turns": 9,
+        "seconds": 112.6,
+        "list_usd": 2.6221,
+        "tokens": 978243,
+        "fresh": 108055,
+        "phase": "drain-check",
+        "model": "fable",
+        "seat": "claude"
+      }
+    ],
+    "input": 384,
+    "output": 75185,
+    "cache_read": 11005959,
+    "cache_write": 256206,
+    "tokens": 11337734,
+    "fresh": 331775,
+    "turns": 112,
+    "seconds": 1158.8,
+    "list_usd": 5.9458,
+    "calls": 2
+  },
+  "spent": {
+    "attempts": 1,
+    "tokens": 11337734,
+    "fresh": 331775,
+    "list_usd": 5.9458
+  }
 }

@@ -273,6 +273,28 @@ ladder holds for the timing.
 placed desk — read by the shop's catalogue, and a sim-level test that the catalogue never
 offers a rung early. Nothing in the drive or the learning changes.
 
+**Built 2026-09-10.** The two facts live on the world beside the story nights, are written
+by the gateway at the moment they happen, travel in the save, and survive a replay: a
+reproduction of a session offers the same shop on the same day, which is what makes a
+recorded session usable as training data. Three things the ruling left open and the build
+had to settle, each the smallest answer available:
+
+- **A rung not yet earned is a dark card on the shelf, not an empty space.** That is
+  already the game's one word for "you can see it, not yet yours" — a locked seed packet
+  and a placed tool she cannot lift both look this way (Q-46a) — so the bench sits in the
+  shop from the first morning as a promise, and going bright is the event a player who
+  reads nothing sees.
+- **A rung, once climbed, stays climbed.** Putting her mark-2 back in the crate does not
+  take the bench off the shelf, for the reason picking a robot up does not wipe what it
+  learned (Q-98): the farm has done the thing.
+- **The crows take a night they share with the bench.** If the bench goes up on the same
+  evening the raid is due, the raid is told and the bench's night is the next sleep — a
+  farm shown a workshop while three birds stand in its tomatoes would be the story night
+  contradicting the morning it opens on.
+
+The night the bench goes up is `robot_night`, the second story night after the crow raid's
+(P-15), so the overnight hold plays the seeder-robot loop on it.
+
 **Capabilities, restated so nobody reads them off the v0.2.1 demo.** The mark-1 waters
 and hoes on exact orders; the mark-2 reacts (chase, follow, patrol); the Mark III can do
 every farming action — till, plant, water, harvest, ship, shoo — and learns which to use
