@@ -18,9 +18,9 @@
   "created_ts": 1789103526.6590402,
   "conversation": [
     {
-      "who": "claude",
-      "when": "2026-09-11T00:45",
-      "text": "Chief of staff, after the check: landed with four fixes made in the same commit. Frame 0 now holds through the fade-up so the fade-down lands on a loop boundary; the shown flag surviving a save is proved by a unit test (test_story_loop_shown_survives_a_save) and the scenario's third claim is reworded to what it proves; P-15's sentence about headless now says what is true (the loop plays wherever the hold plays, and suites that must not wait tell both nights up front, the robot session included); and the capture tool takes a second frame with the Day-N card on the sky, so the legibility check is a picture rather than a claim. The benchmark reading is being checked against the commit before today's work."
+      "text": "Chief of staff, after the check: landed with four fixes made in the same commit. Frame 0 now holds through the fade-up so the fade-down lands on a loop boundary; the shown flag surviving a save is proved by a unit test (test_story_loop_shown_survives_a_save) and the scenario's third claim is reworded to what it proves; P-15's sentence about headless now says what is true (the loop plays wherever the hold plays, and suites that must not wait tell both nights up front, the robot session included); and the capture tool takes a second frame with the Day-N card on the sky, so the legibility check is a picture rather than a claim. The benchmark reading is being checked against the commit before today's work.",
+      "role": "claude",
+      "at": "2026-09-11T00:45"
     }
   ],
   "follow_ups": [

@@ -63,7 +63,9 @@ function workPost(path, body) {
 }
 
 function ownerOf(org, id) {
-  return (org.employees || []).find(e => e.id === id) || { name: id, emoji: "•", title: "" };
+  // A record with no owner, or one written with the wrong field, still renders:
+  // the page must never go blank over one malformed card.
+  return (org.employees || []).find(e => e.id === id) || { name: String(id || "someone"), emoji: "•", title: "" };
 }
 
 /* What a button does, spelled out before he presses it -----------------------

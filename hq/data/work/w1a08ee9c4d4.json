@@ -18,9 +18,9 @@
   "created_ts": 1789104080.0824466,
   "conversation": [
     {
-      "who": "claude",
-      "when": "2026-09-11T01:19",
-      "text": "Chief of staff: applied by hand. Your patch collided with Dmitri's on the queue and design/09 because both seats opened a Q-106 in the same hour; the frame keeps Q-106 and the sound pick is Q-107. Two corrections from the check, made in the card, the queue and design/09: the dither band runs down a loop's left and right edges only, so the robot's ground already ends in a hard line at the bottom and a border repeats that line rather than crossing a dissolve (the recommendation stands, on that truer ground); and the p0 paragraph now says the crow plays at ×6, matching the code. The off-centre Day-N card you found is fixed in the same commit (the label is now full-rect with centred text), so no item goes to Jade for it."
+      "text": "Chief of staff: applied by hand. Your patch collided with Dmitri's on the queue and design/09 because both seats opened a Q-106 in the same hour; the frame keeps Q-106 and the sound pick is Q-107. Two corrections from the check, made in the card, the queue and design/09: the dither band runs down a loop's left and right edges only, so the robot's ground already ends in a hard line at the bottom and a border repeats that line rather than crossing a dissolve (the recommendation stands, on that truer ground); and the p0 paragraph now says the crow plays at ×6, matching the code. The off-centre Day-N card you found is fixed in the same commit (the label is now full-rect with centred text), so no item goes to Jade for it.",
+      "role": "claude",
+      "at": "2026-09-11T01:19"
     }
   ],
   "follow_ups": [

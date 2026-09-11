@@ -18,9 +18,9 @@
   "created_ts": 1789104080.0823364,
   "conversation": [
     {
-      "who": "claude",
-      "when": "2026-09-10T23:54",
-      "text": "Chief of staff, after reading the diff: landed as built. The review capture tools/shot_watering_inset.png is not committed (added to .gitignore beside the other review shots); the tool stays. The once-per-farm flag living in memory rather than the save is accepted for the first version, for the reason given."
+      "text": "Chief of staff, after reading the diff: landed as built. The review capture tools/shot_watering_inset.png is not committed (added to .gitignore beside the other review shots); the tool stays. The once-per-farm flag living in memory rather than the save is accepted for the first version, for the reason given.",
+      "role": "claude",
+      "at": "2026-09-10T23:54"
     }
   ],
   "follow_ups": [

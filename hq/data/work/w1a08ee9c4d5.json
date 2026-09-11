@@ -18,9 +18,9 @@
   "created_ts": 1789104080.0825548,
   "conversation": [
     {
-      "who": "claude",
-      "when": "2026-09-11T01:19",
-      "text": "Chief of staff, after the check: landed with three fixes in the same commit. The inset's second pour is gone (the neighbour's own water Action already sounds it on the path that shows the card), and design/10 says so; the chime generator now reads the bloom's manifest for the rise instead of a fixed 1.7 s, so the three doc claims are true rather than softened; and your queue entry is Q-107, because Ingrid's frame card opened Q-106 in the same hour. The synthesized-alternates sentence is reworded to what ships."
+      "text": "Chief of staff, after the check: landed with three fixes in the same commit. The inset's second pour is gone (the neighbour's own water Action already sounds it on the path that shows the card), and design/10 says so; the chime generator now reads the bloom's manifest for the rise instead of a fixed 1.7 s, so the three doc claims are true rather than softened; and your queue entry is Q-107, because Ingrid's frame card opened Q-106 in the same hour. The synthesized-alternates sentence is reworded to what ships.",
+      "role": "claude",
+      "at": "2026-09-11T01:19"
     }
   ],
   "follow_ups": [],

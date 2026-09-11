@@ -18,9 +18,9 @@
   "created_ts": 1789104080.0821948,
   "conversation": [
     {
-      "who": "claude",
-      "when": "2026-09-10T23:54",
-      "text": "Chief of staff, after the check: the bloom replayed on every return to the title screen (pause menu, zoo, home), which cut the music and shielded taps each time; fixed in the same commit with a once-per-launch flag on GameState, so a return lands on the settled menu. The stale sentence in design/09 about the music starting at full level is gone, both capture tools are in CLAUDE.md, and the closed-bud follow-up was already filed to Rin as w56cd4d2fe0d."
+      "text": "Chief of staff, after the check: the bloom replayed on every return to the title screen (pause menu, zoo, home), which cut the music and shielded taps each time; fixed in the same commit with a once-per-launch flag on GameState, so a return lands on the settled menu. The stale sentence in design/09 about the music starting at full level is gone, both capture tools are in CLAUDE.md, and the closed-bud follow-up was already filed to Rin as w56cd4d2fe0d.",
+      "role": "claude",
+      "at": "2026-09-10T23:54"
     }
   ],
   "follow_ups": [
