@@ -74,6 +74,11 @@ const SHELF := {
 	"2026-09-10_013629": { "format": 2, "verdict": "cross" },
 	"2026-09-10_112331": { "format": 2, "verdict": "cross" },
 	"2026-09-10_191345": { "format": 2, "verdict": "cross" },
+	# A complete playthrough by the designer's wife on the tablet, 2026-09-10 evening: day 41,
+	# from a new farm to the Mark III, 13,419 entries. Crosses at entry 3394, where the crow
+	# night (P-15, landed 2026-09-10) now raids a tomato her recording never lost — the
+	# world moving under a recording by the designer's own ruling, as with his two above.
+	"2026-09-11_095433": { "format": 2, "verdict": "cross" },
 }
 
 # The robot-value measurement, shared with the tool that prints it as a table for
