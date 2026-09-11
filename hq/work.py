@@ -64,6 +64,17 @@ DEFAULT_POLICY = {
             "auto": False,
         },
     },
+    # His rule, 2026-09-11, after a question he attached to a card came back as
+    # a tier-2 title waiting for his yes: a request to *think* is its own piece
+    # of work, at the tier of thinking, and the thing being thought about is
+    # filed only once the thinking has been accepted.
+    "consider": ("A question from Daniel, or anything he asks the studio to consider, "
+                 "look into, weigh, or think about, is tier-0 work: reading, analysing "
+                 "and recommending, which nobody needs permission for. File the "
+                 "consideration, owned by whoever holds the answer, with a first step "
+                 "that produces a recommendation. Never file the action he is asking "
+                 "about as if he had asked for it — that is filed later, at its own "
+                 "tier, when he accepts the recommendation."),
 }
 
 LEVELS = ("task", "story", "epic", "project", "goal")
@@ -211,6 +222,12 @@ Tier each item by how bad it is to get wrong with nobody reviewing it first:
 1 — {pol['tiers']['1']['means']}
 2 — {pol['tiers']['2']['means']}
 
+A QUESTION IS ITS OWN WORK: {pol.get('consider') or DEFAULT_POLICY['consider']}
+So "will the bloom animate, and could the player rise out of it?" files as
+"Work out whether the player can rise out of the bloom, and recommend" at tier
+0 — never as "Raise the player out of the bloom" at tier 2. If the exchange
+already contains the answer and he has not taken it up, it files nothing.
+
 Pick the owner from this roster by id — the person whose job it actually is:
 {_roster_line(org)}
 
@@ -286,6 +303,43 @@ AMEND_NOTE = (
     "reword it.\n"
 )
 
+# His rule, 2026-09-11: a comment on a card is not a verdict, and he should not
+# have to pick the path it takes. The owner reads it and makes one of three
+# moves, named in the same call that writes the reply, so the card can say
+# which happened:
+#   answer     the comment was a question or a decision; the reply settles it
+#   revise     the comment changes what the result should be; the owner extends
+#              the existing result (never starts over) and it comes back for
+#              his verdict again
+#   follow-up  the comment is really new work, for this owner or another seat;
+#              it is filed now, linked to this card, and this card stands
+MOVES = ("answer", "revise", "follow-up")
+MOVE_NOTE_OPEN = """
+WHICH MOVE YOU ARE MAKING: add "move" to the block — one of
+  "answer"     — what he wrote is a question or a call to make, and your reply
+                 settles it. Nothing else changes.
+  "revise"     — what he wrote changes what this result should be. Say in your
+                 reply what you will change, and the studio has you extend the
+                 result you already produced — not redo it — and brings it back
+                 to him. A comment that finds fault with the result is a revise
+                 unless you can show the result already does what he asked.
+  "follow-up"  — what he wrote is really a new piece of work, for you or for
+                 someone else on the roster. Name it in "items" with its owner;
+                 it is filed the moment you reply, linked to this card, and this
+                 card stays as it is. Use it for anything that is not this
+                 card's job.
+One move per reply. If he asked a question AND wants a change, the change is the
+move ("revise") and the answer goes in your reply.
+"""
+MOVE_NOTE_CLOSED = """
+WHICH MOVE YOU ARE MAKING: this card is closed, so add "move" to the block as
+one of
+  "answer"     — what he wrote is a question or a remark, and your reply settles it.
+  "follow-up"  — what he wrote is really a new piece of work. Name it in "items"
+                 with its owner; it is filed the moment you reply, linked to
+                 this card.
+"""
+
 
 def _clean_follow(raw, org, fallback_owner):
     if not isinstance(raw, dict):
@@ -352,20 +406,23 @@ def _parse_follows(tail, org, fallback_owner):
                for k in ("question", "answer", "why", "instead")}
     else:
         rec = None
-    return [g for g in got if g], (amend or None), rec
+    move = str(doc.get("move") or "").strip().lower().replace("_", "-")
+    if move == "followup":
+        move = "follow-up"
+    return [g for g in got if g], (amend or None), rec, (move if move in MOVES else None)
 
 
 def _split_result(text, org, fallback_owner):
     """(the deliverable he reads, what accepting it would file or None if the
     reply never said, any amendment to the item itself, the recommendation his
-    yes takes). The block is stripped from the result — it is machinery for the
-    card, not part of the work."""
+    yes takes, the move a reply makes or None). The block is stripped from the
+    result — it is machinery for the card, not part of the work."""
     raw = text or ""
     if FOLLOW_MARK not in raw:
-        return raw.strip(), None, None, None
+        return raw.strip(), None, None, None, None
     body, _, tail = raw.partition(FOLLOW_MARK)
-    got, amend, rec = _parse_follows(tail, org, fallback_owner)
-    return body.strip(), got, amend, rec
+    got, amend, rec, move = _parse_follows(tail, org, fallback_owner)
+    return body.strip(), got, amend, rec, move
 
 
 def follow_ups(item):
@@ -409,24 +466,31 @@ def _file_item(fields, cap, org):
     })
 
 
-def _follows_spec(org, amendable=False):
+def _follows_spec(org, amendable=False, moves=None):
+    """`moves` is None for a result, "open" for a reply on a card that can still
+    change, "closed" for a reply on a card that has been accepted or dropped."""
     pol = policy()
     t0, t1, t2 = (pol["tiers"][k]["means"] for k in ("0", "1", "2"))
     amend = AMEND_NOTE if amendable else ""
     amend_field = (',\n "amend": {"title": ..., "ask": ..., "first_action": ...}'
                    if amendable else "")
+    move_note = {"open": MOVE_NOTE_OPEN, "closed": MOVE_NOTE_CLOSED}.get(moves or "", "")
+    move_field = ',\n "move": "answer|revise|follow-up"' if moves else ""
+    none_line = ("the single word NONE — if nothing more should\nhappen — or "
+                 if not moves else
+                 "NONE — only when nothing more should happen AND your move is "
+                 "\"answer\" — or\n")
     return f"""End your reply with this line exactly:
 
 {FOLLOW_MARK}
 
-and on the next line either the single word NONE — if nothing more should
-happen — or raw JSON, no fence and no prose, naming every piece of work his
+and on the next line either {none_line}raw JSON, no fence and no prose, naming every piece of work his
 acceptance should start. One result often implies several: a fix to a tool, a
 sweep for the artist and a check in the pipeline are three items with three
 owners, and naming only the first quietly drops the other two. Four at most —
 past that it is a plan, and a plan is its own item.
-{amend}
-{{"items": [{{"title": "short and plain", "owner": "<roster id>", "level": "task|story|epic|project|goal", "tier": 0|1|2, "first_action": "the single next concrete step, specific enough to just do", "why": "one sentence: why this follows"}}]{amend_field}}}
+{amend}{move_note}
+{{"items": [{{"title": "short and plain", "owner": "<roster id>", "level": "task|story|epic|project|goal", "tier": 0|1|2, "first_action": "the single next concrete step, specific enough to just do", "why": "one sentence: why this follows"}}]{amend_field}{move_field}}}
 
 TITLES: Daniel reads the queue title-first, so a title is read with nothing around it to settle what it means: no ticket IDs, and no verb that could mean its own opposite. "Hold the foley session" was read as both delay it and run it. Prefer the longer unambiguous verb — "Take the foley session off the schedule". The ask and first_action below are read by the agent that does the work, so write those for efficiency. Never put these words in a title — each is exact inside this studio and empty three feet away: suite (say "test suite"), stamp (say "record"), prove or proof (say "test" or "evidence"), attestation, invariant, provenance, cadence, parity, plumbing, orphan, manifest, harness, hygiene, tier, trace, gate, instrument, surface. Say the literal thing. docs/glossary.json is the full list and the build fails on it.
 
@@ -478,13 +542,68 @@ as short as the work allows.
 If the step genuinely cannot be finished read-only, say in one line what is
 blocking it and exactly what you would need — that is a useful result too, and
 {name} saying so beats a plausible guess.
-{said}
+{said}{revision_brief(item)}
 
 
 Then say what your result implies, because Daniel decides whether to accept
 it and he is entitled to know what his yes starts before he gives it.
 
 {spec}"""
+
+
+def revision_brief(item):
+    """What a worker is told when it is extending its own earlier result rather
+    than producing one. Shared with the drain, so the two lanes revise the same
+    way. Empty unless the card is mid-revision."""
+    if not item.get("revising"):
+        return ""
+    prior = (item.get("prior_results") or [{}])[-1].get("result") or item.get("result") or ""
+    return f"""
+
+YOU ARE REVISING YOUR OWN EARLIER RESULT, NOT STARTING OVER. Daniel read what
+you produced and wrote back (his words are above, and they are the brief for
+this revision). Keep everything that still stands, change what he asked to have
+changed, and reply with the whole result as it now stands — he reads the card
+top to bottom, not a list of edits. Say near the top, in one line, what changed.
+
+THE RESULT YOU GAVE HIM LAST TIME:
+{prior[:6000]}
+"""
+
+
+def requeue_for_revision(item):
+    """The owner said "revise": the card goes back to the lane that can carry
+    it out, carrying its earlier result, its diff and the conversation, so the
+    second pass extends the first rather than repeating it.
+
+    Tier 0 goes to the read-only worker; anything that changes files goes to
+    the build queue, because the read-only worker would hand back a description
+    of the change a second time. The earlier check is kept for the worker to
+    read; the suites are not, because they described a tree that is about to
+    change. The applied diff stays as it is: it is on the tree, and the
+    revision builds on it."""
+    item["revising"] = True
+    item["state"] = "doing" if int(item.get("tier") or 0) == 0 else "waiting_session"
+    item["started"] = ""
+    item.setdefault("prior_results", []).append({
+        "at": item.get("finished", ""), "attempt": item.get("attempts", 0),
+        "result": item.get("result", "")})
+    # The card keeps showing the earlier result while the revision runs — a
+    # blank card mid-revision reads as the work having been thrown away.
+    prior = item.pop("check", None)
+    if prior:
+        item.setdefault("prior_checks", []).append(prior)
+    item.pop("suites", None)
+    item.pop("error", None)
+    return item
+
+
+def finish_revision(item):
+    """Called when a revised result lands: the card counts it and stops saying
+    it is mid-revision."""
+    if item.pop("revising", None):
+        item["revisions"] = int(item.get("revisions") or 0) + 1
+    return item
 
 
 def _run_cli(prompt, sys_prompt, tools, turns, timeout, model="", phase="", seat="", item=""):
@@ -567,7 +686,7 @@ def _process_item(item, org):
         item["started"] = ""
         save_item(item)
         return False
-    body, got, _amend, rec = _split_result(text, org, item["owner"])
+    body, got, _amend, rec, _move = _split_result(text, org, item["owner"])
     item["result"] = body or "(no result came back)"
     if got is not None:
         item.pop("follow_up", None)
@@ -575,6 +694,7 @@ def _process_item(item, org):
         item["recommend"] = rec or {}
     item["state"] = "for_review"
     item["finished"] = _now_iso()
+    finish_revision(item)
     save_item(item)
     return True
 
@@ -591,9 +711,32 @@ def _convo_lines(item, org):
     return "\n\n".join(out)
 
 
+CLOSED_STATES = ("accepted", "dropped")
+
+
+def _can_revise(item):
+    """A revision extends a finished result. A card that is closed has nothing
+    to reopen; one not yet done, or still in flight, is changed by amending its
+    brief rather than by revising a result it does not have."""
+    return item.get("state") == "for_review"
+
+
 def _response_prompt(item, org):
     result = (item.get("result") or "").strip()
-    spec = _follows_spec(org, amendable=True)
+    closed = item.get("state") in CLOSED_STATES
+    spec = _follows_spec(org, amendable=not closed,
+                         moves="open" if _can_revise(item) else "closed")
+    last = next((m for m in reversed(item.get("conversation", []))
+                 if m.get("role") == "daniel"), {})
+    how = {"accept": "He wrote it while ACCEPTING the card, which is now closed.",
+           "drop": "He wrote it while DROPPING the card, which is now closed.",
+           "approve": "He wrote it while APPROVING the card, so the work is allowed "
+                      "and queued; what he wrote is already part of its brief."
+           }.get(last.get("with") or "", "")
+    standing = ("This card is closed; nothing on it can be revised. "
+                if closed else
+                "This card has not been done yet; if what he wrote changes what it should "
+                "be, amend it. " if not _can_revise(item) else "")
     return f"""Daniel is looking at this piece of work on HQ's Work page and has
 written back to you about it. Answer him on the card, in your own voice.
 
@@ -604,20 +747,23 @@ THE STEP THAT WAS YOURS TO TAKE: {item.get('first_action', '')}
 
 THE CONVERSATION ON THIS CARD SO FAR:
 {_convo_lines(item, org)}
+{how}
 
 Reply to his last message and nothing else. Plain language, short as the answer
 allows, no preamble and no ticket IDs. The repository is read-only to you and is
 the source of truth — check it rather than guessing.
 
-If he is asking for something that can be settled by reading, drafting or
+{standing}If he is asking for something that can be settled by reading, drafting or
 analysing, do it here and give him the answer: the studio norm is that you do
-reversible work now rather than promising it. If what he wants changes files,
-say plainly what you would change and leave it — a build session carries that
-out. If he has told you the result was wrong, say what you now think is right,
-briefly, without apologising at length.
+reversible work now rather than promising it. If what he wants changes the
+result, say plainly what you will change and make your move "revise" — the
+studio has you extend the result and bring it back to him; do not promise it in
+prose and leave it there. If he has told you the result was wrong, say what you
+now think is right, briefly, without apologising at length. If what he wants is
+really someone else's job, say whose and file it as a follow-up.
 
 A gap you name in prose is a gap he has to remember for you — so anything your
-answer commits to belongs in the block below, where his acceptance files it.
+answer commits to belongs in the block below.
 
 {spec}"""
 
@@ -632,13 +778,23 @@ def _process_response(item, org):
                             phase="reply", seat=item["owner"], item=item["id"])
     if limited:
         return False
-    text, got, amend, rec = _split_result(raw, org, item["owner"])
+    text, got, amend, rec, move = _split_result(raw, org, item["owner"])
     # Re-read: he may have typed again while the owner was thinking, and his
     # message must not be lost to a stale copy of the item.
     fresh = HOST.load_json(_item_path(item["id"]))
+    # A move the card cannot make is read as the nearest one it can: a closed
+    # card has nothing to revise, and a card with no result yet is changed by
+    # amending it, which the block already carries.
+    if move == "revise" and not _can_revise(fresh):
+        move = "answer"
+    if move is None and got is not None:
+        move = "answer"
+    msg = {"role": item["owner"], "text": text or "(no reply came back)",
+           "at": _now_iso()}
+    if move:
+        msg["move"] = move
     convo = fresh.get("conversation", [])
-    convo.append({"role": item["owner"], "text": text or "(no reply came back)",
-                  "at": _now_iso()})
+    convo.append(msg)
     fresh["conversation"] = convo
     fresh["awaiting_reply"] = False
     # A conversation can change what the card is, not just what follows it. An
@@ -654,17 +810,64 @@ def _process_response(item, org):
             })
             for k, v in changed.items():
                 fresh[k] = v[1]
-    # What he was told may have changed what should follow, so the card never
-    # keeps showing a consequence worked out before the conversation.
     fresh.pop("follow_up", None)
-    fresh["follow_ups"] = got or []
-    fresh["recommend"] = rec or {}
+    if move == "follow-up" and got:
+        # New work, filed now rather than on his acceptance: the owner has said
+        # it is not this card's job, and a card that stands open holding
+        # somebody else's work is how a follow-up waits on the wrong yes.
+        filed = _file_follow_ups(fresh, got, org, cap_id="reply", message=text or "",
+                                 lead=f"Filed from the conversation on “{fresh['title']}”.")
+        msg["filed"] = [{"id": f["id"], "title": f["title"], "owner": f["owner"]}
+                        for f in filed]
+        fresh["follow_ups"] = []
+        fresh["recommend"] = {}
+    else:
+        # What he was told may have changed what should follow, so the card
+        # never keeps showing a consequence worked out before the conversation.
+        fresh["follow_ups"] = got or []
+        fresh["recommend"] = rec or {}
+    if move == "revise":
+        requeue_for_revision(fresh)
     save_item(fresh)
+    if move in ("revise", "follow-up"):
+        # The reply IS the work, or has filed it; reading it again for work
+        # would file the same thing twice.
+        return True
     last_from_him = next((m["text"] for m in reversed(convo)
                           if m.get("role") == "daniel"), "")
     capture_exchange(fresh.get("thread") or fresh["owner"], last_from_him, text or "",
                      origin=fresh["id"])
     return True
+
+
+def _file_follow_ups(item, fus, org, cap_id, message, said="", lead=""):
+    """File the follow-ups a card names, each at its own tier and linked back
+    to the card. Returns the children. `said` is anything he attached, which
+    becomes part of every child's brief; `lead` opens each child's ask when
+    the message itself (a whole reply, say) is not the right opening."""
+    started = []
+    for fu in fus:
+        cap = {"to": item.get("thread") or item["owner"], "id": cap_id,
+               "message": message[:2000]}
+        ask = (f"{lead or message} {fu.get('why', '')}".strip())[:600]
+        if said:
+            ask += ("\n\nDaniel attached this, and it is part of the brief:\n" + said)
+        child = _file_item({
+            "title": fu["title"],
+            "level": fu.get("level", "task"),
+            "owner": fu.get("owner") or item["owner"],
+            "tier": fu.get("tier", 2),
+            "tier_reason": fu.get("why", "follows from this card"),
+            "ask": ask,
+            "first_action": fu.get("first_action", ""),
+        }, cap, org)
+        child["parent"] = item["id"]
+        save_item(child)
+        started.append({"id": child["id"], "title": child["title"],
+                        "state": child["state"], "owner": child["owner"]})
+    if started:
+        item["spawned"] = (item.get("spawned") or []) + started
+    return started
 
 
 def _propose_follow_up(item, org):
@@ -687,10 +890,10 @@ THE RESULT HE IS LOOKING AT:
                              item=item["id"])
     if limited:
         return False
-    body, got, _amend, rec = _split_result(text, org, item["owner"])
+    body, got, _amend, rec, _move = _split_result(text, org, item["owner"])
     if got is None:
         # No marker came back; the whole reply is the block.
-        got, _amend, rec = _parse_follows(text, org, item["owner"])
+        got, _amend, rec, _move = _parse_follows(text, org, item["owner"])
     item.pop("follow_up", None)
     item["follow_ups"] = got or []
     item["recommend"] = rec or {}
@@ -804,19 +1007,27 @@ def api_post(path, payload):
     # second attempt, and an acceptance teaches a standard rather than leaving
     # one to be guessed. His rule, 2026-09-04: a control that disposes of work
     # without asking why is a control he cannot use.
+    # The comment is the primitive and the verdict rides on it. Whatever he
+    # writes is answered on the card by its owner — whichever button it came in
+    # with, or none — and the owner's reply names the move it makes: an answer,
+    # a revision of the result, or a follow-up filed to the right person. His
+    # rule, 2026-09-11, after a question attached to an acceptance came back as
+    # a title waiting for his yes: he should not have to know which button
+    # gets a note read and which gets it answered.
     said = (payload.get("comment") or "").strip()[:4000]
-    if said and path in ("/api/work/accept", "/api/work/drop",
-                         "/api/work/redo", "/api/work/approve"):
+    verdicts = ("/api/work/accept", "/api/work/drop", "/api/work/approve")
+    if said and path in verdicts:
         item.setdefault("conversation", []).append(
             {"role": "daniel", "text": said, "at": _now_iso(),
              "with": path.rsplit("/", 1)[-1]})
+        item["awaiting_reply"] = True
+        item["asked_ts"] = time.time()
 
     if path == "/api/work/respond":
         # Writing back to a card is a conversation, not a verdict: it changes
-        # no state and closes nothing. The owner answers on the card, and the
-        # exchange is read for work exactly like a conversation on the chat
-        # page — so what it commits to gets filed, and he never has to leave
-        # the thing he was reading in order to say something about it.
+        # no state and closes nothing by itself. The owner answers on the card,
+        # and what the answer commits to is filed from there — so he never has
+        # to leave the thing he was reading in order to say something about it.
         msg = (payload.get("message") or "").strip()[:4000]
         if not msg:
             return {"error": "empty message"}
@@ -839,52 +1050,17 @@ def api_post(path, payload):
         if rec.get("answer"):
             item["decided"] = {"question": rec.get("question", ""),
                                "answer": rec["answer"], "at": _now_iso()}
-        started = []
-        for fu in follow_ups(item):
-            org = HOST.load_org()
-            cap = {"to": item.get("thread") or item["owner"], "id": "follow",
-                   "message": f"Accepted “{item['title']}”. {fu.get('why', '')}".strip()}
-            # A condition he attached to the yes travels into everything the yes
-            # starts. Without this the note sits on a card that is now closed
-            # while the work it was meant to steer runs on the old brief — which
-            # is how "accept, but do it this way" becomes "accept".
-            ask = cap["message"][:600]
-            if said:
-                ask += ("\n\nDaniel attached this when he accepted, and it is part of "
-                        "the brief:\n" + said)
-            child = _file_item({
-                "title": fu["title"],
-                "level": fu.get("level", "task"),
-                "owner": fu.get("owner") or item["owner"],
-                "tier": fu.get("tier", 2),
-                "tier_reason": fu.get("why", "follows from an accepted result"),
-                "ask": ask,
-                "first_action": fu.get("first_action", ""),
-            }, cap, org)
-            child["parent"] = item["id"]
-            save_item(child)
-            started.append({"id": child["id"], "title": child["title"],
-                            "state": child["state"], "owner": child["owner"]})
-        if started:
-            item["spawned"] = started
-        if said:
-            # And it is read for the work it creates, exactly like anything else
-            # he says: a note may commit the studio to something no follow-up on
-            # this card covers, and a commitment nobody filed is one he has to
-            # remember for us.
-            capture_exchange(item.get("thread") or item["owner"], said,
-                             f"Accepted “{item['title']}”."
-                             + (f" It started: {', '.join(s['title'] for s in started)}."
-                                if started else " Nothing else followed from it."),
-                             origin=item["id"])
+        # A condition he attached to the yes travels into everything the yes
+        # starts. Without this the note sits on a card that is now closed
+        # while the work it was meant to steer runs on the old brief — which
+        # is how "accept, but do it this way" becomes "accept".
+        fus = follow_ups(item)
+        if fus:
+            _file_follow_ups(item, fus, HOST.load_org(), cap_id="follow",
+                             message=f"Accepted “{item['title']}”.", said=said)
     elif path == "/api/work/drop":
         item["state"] = "dropped"
         item["closed"] = _now_iso()
-        if said:
-            # Why he said no is the most useful sentence on a dropped card, and
-            # it is worth reading for what it implies instead of filing it away.
-            capture_exchange(item.get("thread") or item["owner"], said,
-                             f"Dropped “{item['title']}”.", origin=item["id"])
     elif path == "/api/work/approve":
         # His yes on a tier-2 item does not make it reversible; it makes it
         # allowed. A build session still carries it out — with whatever he
@@ -895,24 +1071,6 @@ def api_post(path, payload):
         if said:
             item["ask"] = (item.get("ask", "").rstrip()
                            + "\n\nDaniel attached this when he approved it:\n" + said)
-    elif path == "/api/work/redo":
-        # Back to whichever lane can actually carry it out. Tier 0 goes to the
-        # read-only worker; anything that changes the repo goes back to the
-        # build-session queue, because the tier-0 worker cannot write and would
-        # simply hand back a description of the work a second time.
-        item["state"] = "doing" if item.get("tier") == 0 else "waiting_session"
-        item["started"] = ""
-        item["result"] = ""
-        # A second attempt is only a second attempt if it knows why the first
-        # was sent back. The check that held it is kept and given to the worker
-        # as part of the brief; the diff and the suite results are not, because
-        # they described a change that no longer exists.
-        prior = item.pop("check", None)
-        if prior:
-            item.setdefault("prior_checks", []).append(prior)
-        item.pop("diff", None)
-        item.pop("suites", None)
-        item.pop("error", None)
     else:
         return {"error": "not found"}
     return save_item(item)

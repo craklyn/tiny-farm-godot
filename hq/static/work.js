@@ -128,7 +128,7 @@ function recommendBlock(it) {
     ${r.question ? `<p class="w-rec-q">${esc(r.question)}</p>` : ""}
     <p class="w-rec-a"><span class="w-rec-tag">Recommended</span> ${esc(r.answer)}</p>
     ${r.why ? `<p class="w-rec-p muted">${esc(r.why)}</p>` : ""}
-    ${r.instead ? `<p class="w-rec-p"><b>If you'd rather:</b> ${esc(r.instead)} — say so with Respond, or send it back for another go.</p>` : ""}
+    ${r.instead ? `<p class="w-rec-p"><b>If you'd rather:</b> ${esc(r.instead)} — say so in a comment below.</p>` : ""}
   </div>`;
 }
 
@@ -153,17 +153,27 @@ function heldReason(it) {
   return d.why_not || "nothing landed";
 }
 
+/* His rule, 2026-09-11: a comment is not a verdict, and he should not have to
+   pick the path it takes. Whatever he writes, with a button or without one,
+   the owner reads it and makes one of three moves — and the card says which. */
+function commentRow(first, closed) {
+  return ["Comment", closed
+    ? `${esc(first)} reads it against this card and answers here, or files it as new work to the right person. The card stays closed.`
+    : `${esc(first)} reads it against this card and does one of three things: answers it here, revises the result and brings it back to you, or files it as new work to the right person. The card says which.`];
+}
+
 function consequence(it, org) {
   const first = ownerOf(org, it.owner).name.split(" ")[0];
   const rows = [];
   let extra = "";
   if (it.state === "needs_approval") {
-    rows.push(["Yes, go ahead", `Nothing runs on its own. It joins the build-session queue, and the next session carries out the step above and shows you the diff.`]);
+    rows.push(["Yes, go ahead", `Nothing runs on its own. It joins the build queue, and the next run — a session, or the studio's own scheduled one — carries out the step above and shows you the diff.`]);
     rows.push(["Not this", `Filed as dropped. Nothing is created and nothing changes.`]);
+    rows.push(commentRow(first));
   } else if (it.state === "for_review" && heldReason(it)) {
-    // Nothing to accept: the work is not in the repo. The only two honest
-    // answers are "go again" and "we are not doing this".
-    rows.push(["Send it back", `${esc(first)} does it again, and what the check found goes with it — along with anything you write above, which becomes part of the brief. That is what makes it a second attempt rather than a repeat.`]);
+    // Nothing to accept: the work is not in the repo. The honest answers are
+    // "say what you want changed" and "we are not doing this".
+    rows.push(["Comment", `${esc(first)} reads what you write, and what the check found goes with it, and either revises the attempt — a second attempt rather than a repeat — or answers you here.`]);
     rows.push(["Drop it", `Filed as dropped. The work stays undone and nothing is created.`]);
     return `<div class="w-conseq">
       <div class="w-conseq-h">Nothing landed, so there is nothing to accept</div>
@@ -183,18 +193,22 @@ function consequence(it, org) {
     } else {
       rows.push(["Good — accept", `Files this as approved and closes it. Nothing follows from it — no task, story, project or goal is created.`]);
     }
-    rows.push(["Have another go", `Throws this result away and ${esc(first)} does the work again, carrying anything you write above and everything already said on this card.`]);
     rows.push(["Drop it", rec
       ? `Filed as dropped. The question above stays open and nothing is filed.`
       : `Filed as dropped. Nothing is created and nothing changes.`]);
+    rows.push(commentRow(first));
   } else if (it.state === "waiting_session") {
     return `<div class="w-conseq">
       <div class="w-conseq-h">Nothing needed from you</div>
-      <div class="w-conseq-row"><b>What happens</b><span>The next work session with repo access
-        picks this up, does it, and shows you the diff. It never runs unattended.</span></div>
+      <div class="w-conseq-row"><b>What happens</b><span>${it.revising
+        ? `${esc(first)} is revising the result you commented on. The next run of the build queue — a session, or the studio's own scheduled one — does it and brings the revised result back here.`
+        : `The next run of the build queue — a session with repo access, or the studio's own scheduled one — picks this up, does it, and shows you the diff.`}</span></div>
       <div class="w-conseq-row"><b>Drop it</b><span>Only if you want it not done — filed as dropped,
         nothing changes.</span></div>
+      <div class="w-conseq-row"><b>Comment</b><span>Goes into ${esc(first)}'s brief before the work starts, and ${esc(first)} answers here.</span></div>
     </div>`;
+  } else if (["accepted", "dropped"].includes(it.state)) {
+    rows.push(commentRow(first, true));
   } else {
     return "";
   }
@@ -265,8 +279,15 @@ function convoBlock(it, org) {
   const row = m => {
     const you = m.role === "daniel";
     const name = you ? "You" : ownerOf(org, m.role).name.split(" ")[0];
+    // What his message rode in with, and what the owner's reply did about it,
+    // sit on the name line — the card says what happened, not only what was said.
+    const withWord = { accept: "with your accept", drop: "with your drop", approve: "with your yes" }[m.with] || "";
+    const filed = (m.filed || []).map(f => `<b>${esc(f.title)}</b> → ${esc(ownerOf(org, f.owner).name.split(" ")[0])}`).join(", ");
+    const move = m.move === "revise" ? `<span class="w-move w-move-revise">revising the result</span>`
+      : m.move === "follow-up" ? `<span class="w-move w-move-follow">filed${filed ? ": " + filed : " as new work"}</span>`
+      : m.move === "answer" ? `<span class="w-move">answered</span>` : "";
     return `<div class="w-msg${you ? " w-msg-you" : ""}">
-      <div class="w-msg-w">${esc(name)}</div>
+      <div class="w-msg-w">${esc(name)}${withWord ? ` <span class="w-move">${esc(withWord)}</span>` : ""}${move}</div>
       <div class="w-msg-b">${you ? `<p>${esc(m.text)}</p>` : md(m.text)}</div>
     </div>`;
   };
@@ -288,19 +309,21 @@ function convoBlock(it, org) {
    was sending it back and what I wanted changed… maybe comments should be
    allowed for all options?"
 
-   So the comment is the primitive and the verdict rides on it. One box, always
-   there, and every button below carries whatever is in it: a note on an
-   acceptance is how a standard gets learned, and a send-back with no note buys
-   the same mistake twice. Comment on its own is a legitimate answer — the owner
-   reads it and decides what to do. */
+   And his rule, 2026-09-11, after a question attached to an acceptance came
+   back as a title waiting for his yes instead of an answer: "Maybe 'Send back'
+   should just be 'comment'. And generally the right org member for the question
+   will respond back." So there is no send-back button any more. The comment is
+   the primitive; a verdict may ride on it, or not. Either way the owner reads
+   it and makes one of three moves — answers, revises the result, or files it
+   as new work to the right person — and the card says which. */
 function replyBox(it, org) {
   const first = ownerOf(org, it.owner).name.split(" ")[0];
   const draft = replyDrafts[it.id] || "";
+  const closed = ["accepted", "dropped"].includes(it.state);
   return `<div class="w-reply">
     <textarea class="w-reply-t" data-draft="${esc(it.id)}" rows="2"
-      placeholder="Anything ${esc(first)} should know — optional, and it goes with whichever button you press">${esc(draft)}</textarea>
-    <p class="w-needreason" hidden>Say what you want changed before sending it back — it becomes ${esc(first)}'s brief for the second attempt, and without it you get the same work again.</p>
-    <p class="small muted">A note is acted on, not just filed: it goes into the brief of whatever your answer starts, and it is read for any further work it implies. “Just comment” decides nothing — ${esc(first)} reads it against this card and answers here.</p>
+      placeholder="Anything ${esc(first)} should know — a question, a change you want, or new work${closed ? "" : ". Goes with whichever button you press, or on its own"}">${esc(draft)}</textarea>
+    <p class="small muted">Whatever you write is answered here by ${esc(first)}, who reads it against this card and ${closed ? "either answers it or files it as new work to the right person" : "either answers it, revises the result and brings it back to you, or files it as new work to the right person"}. You never have to choose which.</p>
   </div>`;
 }
 
@@ -312,17 +335,16 @@ function itemById(snap, id) {
    leaves the list reads as data loss; this names the section it moved to. */
 function outcomeLine(act, it, org, comment) {
   const first = ownerOf(org, it.owner || "").name.split(" ")[0];
-  const noted = comment ? ` Your note went with it.` : "";
+  const noted = comment ? ` Your note went with it, and ${esc(first)} will answer it on the card.` : "";
   // Where it goes depends on the tier, because the two lanes are different: work
   // with nothing to walk back starts immediately, work that changes the repo
-  // waits for a session. Naming the wrong section is as bad as naming none.
+  // waits for the build queue. Naming the wrong section is as bad as naming none.
   const lane = Number(it.tier) === 0
     ? `<b>Happening now</b> above, and ${esc(first)} starts on it straight away`
-    : `<b>Queued for a build session</b> below, and the next session carries it out`;
+    : `<b>Queued for a build session</b> below, and the next run carries it out`;
   const where = {
     accept: `Accepted and closed. It is under <b>Closed</b> at the foot of this page.${noted}`,
     approve: `Approved. It has moved to ${lane}.${noted}`,
-    redo: `Sent back to ${esc(first)}. It has moved to ${lane}, doing it again${comment ? " with your note as part of the brief" : ""}.`,
     drop: `Dropped. It is under <b>Closed</b> at the foot of this page, and nothing was created.${noted}`,
   }[act] || `Filed.${noted}`;
   return `<div class="w-done">${where}</div>`;
@@ -343,8 +365,8 @@ function saveOpen(set) {
 function wantsLine(it, org) {
   const first = ownerOf(org, it.owner).name.split(" ")[0];
   if (it.awaiting_reply) return `${first} is writing back`;
-  if (it.state === "doing") return `${first} is working on it`;
-  if (it.state === "waiting_session") return "queued for a build session";
+  if (it.state === "doing") return it.revising ? `${first} is revising it` : `${first} is working on it`;
+  if (it.state === "waiting_session") return it.revising ? "queued for a build session — revising the result" : "queued for a build session";
   if (it.state === "needs_approval") return "not started — wants your yes";
   if (it.state === "accepted") return "accepted";
   if (it.state === "dropped") return "dropped";
@@ -470,27 +492,30 @@ function workCard(it, org, pol) {
     needs_approval: `<button data-act="approve" data-id="${it.id}">Yes, go ahead</button>
                      <button class="ghost" data-act="drop" data-id="${it.id}">Not this</button>`,
     for_review: heldReason(it)
-      ? `<button data-act="redo" data-id="${it.id}">Send it back</button>
-         <button class="ghost" data-act="drop" data-id="${it.id}">Drop it</button>`
+      ? `<button class="ghost" data-act="drop" data-id="${it.id}">Drop it</button>`
       : `<button data-act="accept" data-id="${it.id}">Good — accept</button>
-         <button class="ghost" data-act="redo" data-id="${it.id}">Have another go</button>
          <button class="ghost" data-act="drop" data-id="${it.id}">Drop it</button>`,
     waiting_session: `<button class="ghost" data-act="drop" data-id="${it.id}">Drop it</button>`,
     doing: "", accepted: "", dropped: "",
   }[it.state] || "";
-  // Comment with no verdict: the note is filed and the owner answers on the
-  // card. Available wherever a verdict is, and on work still in flight.
-  const canTalk = !["accepted", "dropped"].includes(it.state);
-  const talkBtn = canTalk
-    ? `<button class="ghost" data-send="${esc(it.id)}">Just comment</button>` : "";
+  // Comment with no verdict: the owner answers on the card and makes a move.
+  // Available on every card, closed ones included — a question about work
+  // already accepted is still a question its owner should answer.
+  const talkBtn = `<button class="${acts ? "ghost" : ""}" data-send="${esc(it.id)}">Comment</button>`;
   // The result is the tall part of a card. It folds to a readable window with
   // the rest one click away, rather than pushing the next decision off screen.
   const long = (it.result || "").length > 900;
   const held = heldReason(it);
+  const priors = (it.prior_results || []).filter(p => p && p.result);
+  const revised = it.revisions
+    ? `<span class="w-revised">revised${it.revisions > 1 ? ` ${it.revisions} times` : ""} after you wrote back</span>` : "";
+  const earlier = priors.length
+    ? `<details class="w-earlier"><summary>${priors.length === 1 ? "The earlier result" : `${priors.length} earlier results`}, before you wrote back</summary>
+        ${priors.map(p => `<div class="w-msg-b muted">${md(p.result)}</div>`).join("<hr>")}</details>` : "";
   const result = it.result
     ? `<div class="w-result${long ? " w-clip" : ""}"><div class="w-result-h">${esc(who.name.split(" ")[0])}${
-        held ? "'s attempt — what came back" : " did it — here's the result"}</div>${md(it.result)}
-       ${long ? `<button class="w-more" data-more="${esc(it.id)}">Read all of it</button>` : ""}</div>`
+        held ? "'s attempt — what came back" : it.revising ? "'s result so far — being revised" : " did it — here's the result"}${revised}</div>${md(it.result)}
+       ${long ? `<button class="w-more" data-more="${esc(it.id)}">Read all of it</button>` : ""}</div>${earlier}`
     : "";
   const why = it.tier_reason ? `<span class="w-why">${esc(it.tier_reason)}</span>` : "";
   const first = who.name.split(" ")[0];
@@ -532,8 +557,8 @@ function workCard(it, org, pol) {
       ${childrenNote(it, org)}
       ${spawnedNote(it)}
       ${decidedNote(it)}
-      ${acts || talkBtn ? (heldReason(it) ? "" : recommendBlock(it)) + consequence(it, org)
-          + replyBox(it, org) + `<div class="w-acts">${acts}${talkBtn}</div>` : ""}
+      ${(heldReason(it) || ["accepted", "dropped"].includes(it.state) ? "" : recommendBlock(it)) + consequence(it, org)
+          + replyBox(it, org) + `<div class="w-acts">${acts}${talkBtn}</div>`}
       <div class="w-outcome" hidden></div>
       <div class="w-foot">
         <span class="small muted">${it.thread ? `from your chat with ${esc(ownerOf(org, it.thread).name.split(" ")[0])} · ` : ""}${esc(it.created || "")}</span>
@@ -653,7 +678,7 @@ async function renderWork(focusId) {
   const secs = [
     workSection("Waiting on you", "Two kinds: work that has not happened because it is hard to undo, and work that is finished and wants your verdict on the result.", waiting, org, pol, { always: true }),
     workSection("Happening now", "Reversible, so nobody waited to be told twice.", by("doing"), org, pol),
-    workSection("Queued for a build session", "Touches the repo, so a session with write access does it and shows you the diff.", by("waiting_session"), org, pol),
+    workSection("Queued for a build session", "Touches the repo, so a session with write access — or the studio's own scheduled run — does it and shows you the diff.", by("waiting_session"), org, pol),
   ].filter(Boolean);
   secs.forEach(s => body.appendChild(s));
 
@@ -760,16 +785,6 @@ async function renderWork(focusId) {
     const el = card(id);
     const box = el.querySelector(".w-reply textarea");
     const comment = box ? box.value.trim() : "";
-    // Sending work back with no reason produces a second attempt that is a
-    // repeat, and the studio pays for the same mistake twice. So this one asks.
-    // Accepting and dropping do not: a note there is welcome, never required.
-    if (act === "redo" && !comment && box) {
-      const note = el.querySelector(".w-needreason");
-      if (note) note.hidden = false;
-      box.focus();
-      box.scrollIntoView({ block: "center", behavior: "smooth" });
-      return;
-    }
     delete replyDrafts[id];
     lock(el, "filing your answer");
     await workPost("/api/work/" + act, { id, comment });

@@ -84,6 +84,14 @@
 .w-msg-b > *:first-child { margin-top: 0; }
 .w-msg-you { border-left: 2px solid var(--accent); padding-left: 10px; }
 .w-msg-you .w-msg-w { color: var(--accent); }
+/* The move a reply made — answered, revising, filed — sits on the reply's own
+   name line, so the card says what happened without a second read. */
+.w-move { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 20px;
+  font-size: 10px; letter-spacing: 0.6px; font-weight: 700; text-transform: uppercase;
+  border: 1px solid var(--line); color: var(--muted); vertical-align: middle; }
+.w-move-revise { color: var(--blue); border-color: var(--blue); }
+.w-move-follow { color: var(--accent); border-color: var(--accent); }
+.w-msg-w .w-move { text-transform: none; letter-spacing: 0; }
 
 .w-reply { margin-top: 10px; }
 .w-reply[hidden] { display: none; }
@@ -238,9 +246,10 @@
   background: rgba(60, 160, 90, .10); border: 1px solid var(--line);
 }
 .w-done b { color: var(--text); }
-.w-needreason {
-  margin: 6px 2px 0; font-size: 12.5px; font-weight: 600; color: var(--red);
-}
+/* A revised result keeps its earlier version one click away, for the same
+   reason an amendment does: he is judging the new one against what he asked
+   to have changed. */
+.w-revised { font-size: 11.5px; color: var(--blue); font-weight: 600; margin-left: 8px; }
 .w-nodiff {
   margin-top: 7px; font-size: 12.5px; padding: 7px 10px; border-radius: 6px;
   background: rgba(224, 145, 46, .12);

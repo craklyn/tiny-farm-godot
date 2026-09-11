@@ -212,6 +212,19 @@ the cautious tier. The reasoning: a studio where every follow-up needs the CEO's
 him the bottleneck for his own company, and "do it, then show the result" is both faster and
 safely walked back. Full statement and the tier table: `HOW_WORK_ORIGINATES.md`.
 
+**Amended 2026-09-11**, after a question the CEO attached to an acceptance came back as a
+tier-2 title waiting for his yes. Three additions, none of which change the tiers. (1) A
+question, or anything he asks the studio to consider, is tier-0 work of its own — the
+consideration is filed and its recommendation comes back to him; the action asked about is
+filed only when he accepts that. (2) There is no send-back: a comment on a card, with a
+verdict or without one, is answered by the card's owner, who makes one of three moves —
+answer, revise the existing result, or file a follow-up to the right person — and the card
+says which. In his words: *"Maybe 'Send back' should just be 'comment'. And generally the
+right org member for the question will respond back."* (3) The tier-1 drain runs on a
+timer, unattended, within a token guard, because a reversible queue a human has to remember
+to run is the bottleneck this decision exists to remove. Detail and the move table:
+`HOW_WORK_ORIGINATES.md`.
+
 ### S-10. A machine that cannot obey stops, shows it, and waits
 Settled by the designer 2026-09-02, ruling Q-85: *"Better bots will improvise around it,
 but this is the first programmable bot, so it has intentionally simple behavior."* When a

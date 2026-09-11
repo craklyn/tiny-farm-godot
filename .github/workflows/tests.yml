@@ -61,6 +61,12 @@ jobs:
       - name: No name declared twice across HQ's front-end
         run: python3 tools/check_frontend.py
 
+      # A comment on a Work card is answered by its owner, who makes one of
+      # three moves (answer, revise, follow-up). The contract is checked with
+      # the model stubbed out, at the card's JSON.
+      - name: A comment on a work card is answered, revised, or filed
+        run: python3 hq/tests/test_work.py
+
   tests:
     runs-on: ubuntu-latest
     timeout-minutes: 15

@@ -32,6 +32,12 @@ section 2).
   - status: `systemctl --user status tiny-farm-hq`
   - logs: `journalctl --user -u tiny-farm-hq`
   - restart after editing server/data: `systemctl --user restart tiny-farm-hq`
+- **Drains the build queue on a timer:** `hq/systemd/tiny-farm-drain.timer` runs
+  `python3 hq/drain.py --unattended` every two hours (install steps are in the unit
+  file's header; it links, it does not copy, so the repo's copy is the live one).
+  - what is due: `systemctl --user list-timers tiny-farm-drain.timer`
+  - what the last run did: `journalctl --user -u tiny-farm-drain`
+  - stop draining unattended: `systemctl --user disable --now tiny-farm-drain.timer`
 
 ## Goals — the one status pipeline
 
@@ -373,7 +379,11 @@ tie to a build.
   permission to *exist*. `docs/HOW_WORK_ORIGINATES.md` is the norm in prose, S-9 in the
   decision log settles it, and `data/work_policy.json` is the copy the server reads — edit
   that to change the norms without touching code. Items live in `data/work/`, the Work page
-  in `static/work.js`.
+  in `static/work.js`. Since 2026-09-11 there is no send-back: a comment on a card, with a
+  verdict or on its own, is answered by the card's owner, who makes one of three moves
+  (answer, revise the existing result, file a follow-up to the right person) and the card
+  says which; and a question from the CEO files as tier-0 thinking, never as the action it
+  asks about. `tests/test_work.py` pins that with the model stubbed out.
 - `drain.py` — **the studio working its own queue.** Tier 1 is "do it, show the
   diff", and the second half of that had no machinery: items were filed, marked
   `waiting_session`, and waited for a human. Twenty-two accumulated. The drain
@@ -387,7 +397,11 @@ tie to a build.
   bill, and Daniel approves the result. A worker that finds the item needs *him*
   stops and says what it needs, which is how the queue produces escalations
   rather than swallowing them. `python3 hq/drain.py --list` to see the queue,
-  `--all` to drain it. `docs/HOW_WORK_ORIGINATES.md` is the norm in prose.
+  `--all` to drain it, `--unattended` for the shape the timer runs (a few items, a
+  token guard, one drain at a time). A card the owner is revising starts from its
+  earlier attempt, so what lands is only what changed. `docs/HOW_WORK_ORIGINATES.md`
+  is the norm in prose.
+- `systemd/` — the user units that run the drain unattended on the HQ machine.
 - `data/org.json` — org chart + personas (Amazon titles/levels).
 - `data/entities.json` — entity gallery: sprite-sheet frame rects, fps, sounds,
   code refs. Update when a new species/crop/object ships (the Zoo's roster and

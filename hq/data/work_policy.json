@@ -19,5 +19,7 @@
       "gate": "his yes, before anything happens",
       "auto": false
     }
-  }
+  },
+  "consider": "A question from Daniel, or anything he asks the studio to consider, look into, weigh, or think about, is tier-0 work: reading, analysing and recommending, which nobody needs permission for. File the consideration, owned by whoever holds the answer, with a first step that produces a recommendation. Never file the action he is asking about as if he had asked for it — that is filed later, at its own tier, when he accepts the recommendation.",
+  "comment": "A comment on a card is not a verdict and needs no button. Its owner answers it on the card and makes one of three moves, named on the card: answer (the reply settles it), revise (the owner extends the existing result and it comes back for review), or follow-up (new work filed to the right person, linked to the card)."
 }

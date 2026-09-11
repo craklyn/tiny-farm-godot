@@ -1,0 +1,15 @@
+# Every two hours while the machine is up, starting a quarter of an hour after
+# boot. Frequent enough that a revision Daniel asked for comes back the same
+# afternoon; rare enough that a dry token window costs at most a few skipped
+# runs. Change OnUnitActiveSec to change the rhythm.
+[Unit]
+Description=Tiny Farm HQ — drain the build queue every two hours
+
+[Timer]
+OnBootSec=15min
+OnUnitActiveSec=2h
+Persistent=true
+Unit=tiny-farm-drain.service
+
+[Install]
+WantedBy=timers.target

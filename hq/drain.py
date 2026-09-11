@@ -30,10 +30,20 @@ studio's rule, not a limitation of this file.
     python3 hq/drain.py --dry-run
     python3 hq/drain.py --all --jobs 3
     python3 hq/drain.py w5a4005536e1 wc1886486f14
+    python3 hq/drain.py --unattended      # what the timer runs; see hq/systemd/
 
 Every model call is priced into hq/data/history/tokens.jsonl and totalled onto
 the item, because unattended work spends the allotment Daniel spends and he is
 entitled to see what a result cost before he accepts it.
+
+Since 2026-09-11 the drain also runs on a timer (hq/systemd/tiny-farm-drain.*),
+because a queue a human has to remember to run is the bottleneck this whole
+file exists to remove: a revision Daniel asked for on a card sat behind
+forty-three items until somebody typed the command. `--unattended` is the shape
+the timer runs — a handful of items, two seats, and it does nothing at all when
+the token window is dry or when the studio's own work has already spent most of
+the last measured ceiling. Only one drain runs at a time; a manual run and the
+timer take the same lock.
 """
 import argparse
 import concurrent.futures
@@ -170,16 +180,23 @@ def prior_checks(item):
             "early and often.\n")
 
 
-def task_prompt(item, org):
+def task_prompt(item, org, resumed=""):
     convo = work._convo_lines(item, org)
     said = (f"\n\nWHAT DANIEL HAS SAID ABOUT THIS ON THE CARD — the most recent word on it, "
             f"and it overrides the brief wherever they disagree:\n\n{convo}\n") if convo else ""
+    revising = work.revision_brief(item)
+    if revising:
+        revising += ("\nYour earlier changes are already in your worktree"
+                     + (" — applied and committed as \"earlier attempt\", so `git diff` "
+                        "shows only what you change now." if resumed else
+                        ", because they are on main.")
+                     + " Read them first and build on them. Do not undo what still stands.\n")
     return f"""WORK ITEM: {item['title']}
 
 What Daniel asked for: {item.get('ask', '')}
 
 The next step, which is yours to take now: {item.get('first_action', '')}
-{said}{prior_checks(item)}
+{said}{prior_checks(item)}{revising}
 Do the work in your worktree. Then reply with the deliverable Daniel reads: what
 you changed, what it now does, and anything you found that he should know.
 Plain language, no preamble, no ticket IDs, as short as the work allows. Do not
@@ -209,12 +226,28 @@ Be specific and be brief. Findings are for the person who has to act on them.
 You answer with raw JSON and nothing else."""
 
 
-def check_prompt(item, result, diff):
+def check_prompt(item, result, diff, org=None):
+    revising = ""
+    if item.get("revising"):
+        prior = (item.get("prior_results") or [{}])[-1].get("result") or ""
+        convo = work._convo_lines(item, org) if org else ""
+        revising = f"""
+THIS IS A REVISION. Daniel read an earlier result and wrote back; the owner is
+extending that result, and the diff below is only what changed this time — the
+earlier changes are already in the tree. Check it against what he asked for in
+the conversation, not only against the original brief.
+
+WHAT HE SAID ON THE CARD:
+{convo[:6000]}
+
+THE EARLIER RESULT HE WAS READING:
+{prior[:4000]}
+"""
     return f"""THE ITEM: {item['title']}
 What Daniel asked for: {item.get('ask', '')}
 The step that was theirs to take: {item.get('first_action', '')}
 Who did it: {item['owner']}
-
+{revising}
 WHAT THEY SAID THEY DID:
 {(result or '(no reply came back)')[:8000]}
 
@@ -373,6 +406,61 @@ def load_patch(item_id):
         return ""
 
 
+def _tree_dirty(tree):
+    return bool(sh(["git", "status", "--porcelain"], cwd=tree, timeout=120).stdout.strip())
+
+
+def resume_for_revision(item, tree, thinking):
+    """A revision extends the earlier result, so the worktree has to start
+    from it. Three cases, and the caller must know which it got:
+
+      * the earlier patch landed and was then committed — it is in HEAD already;
+      * the earlier patch landed but is uncommitted in the real tree — it is
+        not in HEAD, so it is applied here (a patch that applies cleanly is
+        proof it is not there yet; one that only applies in reverse is proof
+        it is);
+      * the earlier patch was held (never landed) — resume_held_patch has
+        already put it in the tree.
+
+    Whatever is in the tree after that is committed as "earlier attempt", so
+    that the worker's own diff, and the patch the drain lands, cover only what
+    changed this time. Returns (True if something was committed here, a stat
+    line for the log)."""
+    if thinking or not item.get("revising"):
+        return False, ""
+    patch = load_patch(item["id"])
+    applied_before = bool((item.get("diff") or {}).get("applied"))
+    if patch.strip() and applied_before:
+        check = subprocess.run(["git", "apply", "--check"], cwd=tree, input=patch,
+                               capture_output=True, text=True, timeout=180)
+        if check.returncode == 0:
+            subprocess.run(["git", "apply"], cwd=tree, input=patch,
+                           capture_output=True, text=True, timeout=180)
+        # else: it no longer applies, which for a landed patch means it is in
+        # HEAD (or has since been changed on main — either way main is the
+        # honest starting point, and the brief says the changes are on main).
+    if not _tree_dirty(tree):
+        return False, ""
+    sh(["git", "add", "-A"], cwd=tree, timeout=120)
+    stat = sh(["git", "diff", "--cached", "--stat"], cwd=tree, timeout=120).stdout.strip().splitlines()
+    sh(["git", "-c", "user.name=Tiny Farm HQ", "-c", "user.email=hq@tiny-farm.local",
+        "commit", "-q", "-m", "earlier attempt"], cwd=tree, timeout=120)
+    return True, (stat[-1].strip() if stat else "applied")
+
+
+def cumulative_patch(tree, base):
+    """Everything in the worktree that is not on `base` — the earlier attempt
+    (committed here) plus this one — for the case where the earlier attempt
+    never landed on the real tree and both have to."""
+    sh(["git", "add", "-A"], cwd=tree, timeout=120)
+    p = sh(["git", "diff", "--cached", "--binary", base], cwd=tree, timeout=120)
+    stat = sh(["git", "diff", "--cached", "--stat", base], cwd=tree, timeout=120).stdout.strip()
+    files = [ln.split("\t")[-1] for ln in
+             sh(["git", "diff", "--cached", "--name-only", base], cwd=tree,
+                timeout=120).stdout.splitlines() if ln.strip()]
+    return p.stdout, stat, files
+
+
 def touches_game(files):
     return any(f.startswith(g) or f == g for f in files for g in GAME_PATHS)
 
@@ -396,11 +484,20 @@ def do_item(item, org, run_id, log):
             item["started"] = work._now_iso()
             work.save_item(item)
         tree = make_worktree(run_id, item["id"])
+        base = sh(["git", "rev-parse", "HEAD"], cwd=tree, timeout=60).stdout.strip()
         log(f"{item['id']} · {seat} on {model or 'the default model'} · {item['title'][:60]}")
         resumed = resume_held_patch(item, tree, thinking)
         if resumed:
             log(f"{item['id']} · starts from its held patch ({resumed})")
-        text, usage, err = run_cli(task_prompt(item, org), seat_prompt(org, seat, thinking),
+        # A revision starts from the earlier attempt, committed in the worktree
+        # so that what comes out is only what changed this time.
+        committed_prior, prior_stat = resume_for_revision(item, tree, thinking)
+        if committed_prior:
+            log(f"{item['id']} · revises its earlier attempt ({prior_stat})")
+        elif item.get("revising") and not thinking:
+            log(f"{item['id']} · revises its earlier attempt (already on main)")
+        text, usage, err = run_cli(task_prompt(item, org, resumed=committed_prior),
+                                   seat_prompt(org, seat, thinking),
                                    READ_TOOLS if thinking else WRITE_TOOLS,
                                    model, tree, WORKER_TIMEOUT,
                                    WORKER_TURNS, "drain-work", seat, item["id"])
@@ -411,11 +508,18 @@ def do_item(item, org, run_id, log):
             return rec
         rec["result"] = text
         rec["error"] = err
-        rec["patch"], rec["stat"], rec["files"] = worktree_patch(tree)
+        # What the drain lands is what the real tree does not have yet. After a
+        # revision of an attempt that already landed, that is this pass alone;
+        # after a revision of a held attempt, it is both passes together.
+        prior_landed = bool((item.get("diff") or {}).get("applied"))
+        if committed_prior and not prior_landed:
+            rec["patch"], rec["stat"], rec["files"] = cumulative_patch(tree, base)
+        else:
+            rec["patch"], rec["stat"], rec["files"] = worktree_patch(tree)
         save_patch(item["id"], rec["patch"])
         # The chief of staff reads the diff, on his own seat's model.
         cmodel = server.seat_model(org, "claude")
-        ctext, cusage, cerr = run_cli(check_prompt(item, text, rec["patch"]), CHECK_SYSTEM,
+        ctext, cusage, cerr = run_cli(check_prompt(item, text, rec["patch"], org), CHECK_SYSTEM,
                                       "Read,Glob,Grep", cmodel, tree, CHECK_TIMEOUT,
                                       CHECK_TURNS, "drain-check", "claude", item["id"])
         if cusage:
@@ -623,7 +727,7 @@ def plain_failure(text, applied=None):
 
 
 def write_back(item, rec, applied, why_not, suites, org):
-    body, follows, _amend, recommend = work._split_result(rec["result"], org, item["owner"])
+    body, follows, _amend, recommend, _move = work._split_result(rec["result"], org, item["owner"])
     item["result"] = (plain_failure(body, applied)
                       or (f"This attempt did not finish — {rec['error']}." if rec["error"]
                           else "(no result came back)"))
@@ -633,6 +737,7 @@ def write_back(item, rec, applied, why_not, suites, org):
         item["recommend"] = recommend or {}
     item["state"] = "for_review"
     item["finished"] = work._now_iso()
+    work.finish_revision(item)
     item["attempts"] = item.get("attempts", 0) + 1
     item["done_by"] = {"seat": rec["seat"], "model": rec["model"], "lane": "drain"}
     item["diff"] = {"stat": rec["stat"], "files": rec["files"][:40],
@@ -661,6 +766,47 @@ def write_back(item, rec, applied, why_not, suites, org):
 # main
 # ---------------------------------------------------------------------------
 
+# The unattended run's own limits. Three items every two hours is a day's
+# worth of results without ever being the reason a window ran dry; the window
+# guard is what actually protects Daniel's own use of the allotment.
+UNATTENDED_LIMIT = 3
+UNATTENDED_JOBS = 2
+# Skip a run when the studio's unattended work has already spent this share of
+# what had been spent the last time a window ran dry.
+UNATTENDED_WINDOW_SHARE = 0.6
+
+
+def take_lock():
+    """One drain at a time. The timer and a person at the keyboard must never
+    apply patches to the same tree at once. Returns the open file (keep it
+    alive) or None if another drain holds it."""
+    import fcntl
+    os.makedirs(WORKTREES, exist_ok=True)
+    fh = open(os.path.join(WORKTREES, "drain.lock"), "w")
+    try:
+        fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        fh.close()
+        return None
+    fh.write(str(os.getpid()))
+    fh.flush()
+    return fh
+
+
+def unattended_hold():
+    """Why an unattended run should do nothing right now, or "" to go ahead.
+    A dry window is the intake queue's own reading; the spend guard is the
+    Work page's own number, so what the timer respects is what he can see."""
+    if server.limited_until():
+        return "the token window is dry"
+    win = server.token_window()
+    ceiling = win.get("dry_spend") or 0
+    if ceiling and win.get("tokens", 0) >= UNATTENDED_WINDOW_SHARE * ceiling:
+        return (f"the studio has spent {win['tokens']:,} tokens in the last {win['hours']} "
+                f"hours, against a measured ceiling of {ceiling:,}")
+    return ""
+
+
 def queued(include_thinking=False):
     """What the drain may pick up. Tier 1 always; tier 0 on request, and then it
     is claimed by stamping `started` — the HQ server runs its own tier-0 worker
@@ -688,10 +834,30 @@ def main():
                     help="rewrite any card whose result is a raw CLI envelope, and nothing else")
     ap.add_argument("--no-suites", action="store_true", help="skip the suites (they run by default "
                                                             "when a patch touches the game)")
+    ap.add_argument("--unattended", action="store_true",
+                    help=f"the timer's shape: --all, at most {UNATTENDED_LIMIT} items, "
+                         f"{UNATTENDED_JOBS} seats, and nothing at all when the token window "
+                         "is dry or mostly spent")
     args = ap.parse_args()
 
     work.bind(server)
     org = server.load_org()
+
+    if args.unattended:
+        args.all = True
+        args.limit = args.limit or UNATTENDED_LIMIT
+        args.jobs = min(args.jobs, UNATTENDED_JOBS)
+        hold = unattended_hold()
+        if hold:
+            print(f"Not draining: {hold}.")
+            return 0
+
+    lock = None
+    if not (args.list or args.dry_run):
+        lock = take_lock()
+        if lock is None:
+            print("Another drain is running; not starting a second one.")
+            return 0
 
     if args.apply:
         want = set(args.ids)

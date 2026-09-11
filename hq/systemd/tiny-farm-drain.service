@@ -1,0 +1,35 @@
+# Tiny Farm HQ — the studio working its own queue, unattended.
+#
+# Runs hq/drain.py in its unattended shape: a few items per run, two seats at a
+# time, and it does nothing at all when the token window is dry or when the
+# studio's own work has already spent most of the last measured ceiling. A
+# manual `python3 hq/drain.py` and this unit never run at once — the drain
+# takes a lock. Results land on the Work page for Daniel's verdict; nothing is
+# committed or pushed.
+#
+# Install (once, on the machine that runs HQ):
+#   systemctl --user link  $PWD/hq/systemd/tiny-farm-drain.service
+#   systemctl --user link  $PWD/hq/systemd/tiny-farm-drain.timer
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now tiny-farm-drain.timer
+# Watch:
+#   systemctl --user list-timers tiny-farm-drain.timer
+#   journalctl --user -u tiny-farm-drain
+# Stop draining unattended:
+#   systemctl --user disable --now tiny-farm-drain.timer
+#
+# The repo path below is the default checkout; edit it if HQ lives elsewhere.
+[Unit]
+Description=Tiny Farm HQ — drain the build queue unattended
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/dev/tiny-farm-godot
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+Environment=CLAUDE_CODE_DISABLE_AUTOUPDATE=1
+ExecStart=/usr/bin/env python3 hq/drain.py --unattended
+# A worker gets an hour; three items in sequence plus the suites should never
+# need more than this, and a run that does is stuck, not slow.
+TimeoutStartSec=4h
+Nice=10

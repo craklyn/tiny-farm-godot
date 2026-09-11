@@ -44,26 +44,70 @@ Nobody files anything by hand. The CEO talks to a team member on HQ's chat page,
 3. Tier 0 work is carried out immediately by its owner and lands on the **Work** page as a
    finished result awaiting his verdict. Tier 1 waits for a build session. Tier 2 waits for
    his yes.
-4. He accepts, sends back for another go, or drops — from the Work page, in one click.
-5. Or he **responds on the card**. Writing back is a conversation, not a verdict: it accepts
-   nothing, drops nothing and closes nothing. The owner answers on the card itself with the
-   item as context — what was asked, what they produced, and anything already said — so he
-   never has to leave the result he is reading in order to argue with it. The exchange is
-   read for the work it creates exactly like a conversation on the chat page, so what the
-   reply commits to still gets filed. Anything he says there also overrides the original
-   brief on a "have another go", which is what makes a second attempt a second attempt
-   rather than a repeat. Because the conversation can change what should happen next, the
-   card's follow-ups are recomputed after every reply rather than left stale. A reply may
-   also **amend the card itself** — its title, what it is asking for, or the next step —
-   when the conversation has genuinely moved it on; the previous wording is recorded and
-   shown on the card rather than overwritten silently, because he is judging that card and
-   has to be able to see it move. Work filed by a conversation is stamped with the card it
-   happened on, so the card shows what it has already set in motion instead of the stories
-   appearing elsewhere on the page with no visible connection to the request.
+4. He accepts or drops — from the Work page, in one click.
+5. Or he **comments on the card**, with a button or without one. A comment is a
+   conversation, not a verdict: on its own it accepts nothing, drops nothing and closes
+   nothing. The owner answers on the card itself with the item as context — what was asked,
+   what they produced, and anything already said — so he never has to leave the result he
+   is reading in order to argue with it. What the owner does about the comment is one of
+   three moves, below, and the card says which. A reply may also **amend the card itself**
+   — its title, what it is asking for, or the next step — when the conversation has
+   genuinely moved it on; the previous wording is recorded and shown on the card rather
+   than overwritten silently, because he is judging that card and has to be able to see it
+   move. Work filed by a conversation is stamped with the card it happened on, so the card
+   shows what it has already set in motion instead of the stories appearing elsewhere on
+   the page with no visible connection to the request.
 
 Team members are told this in their instructions, so they answer briefly and name the next
 step and its owner rather than pretending to carry work out inside a chat reply. That is
 what makes a persona's "I'll get that started" true rather than a pleasantry.
+
+### A question is its own piece of work
+
+Settled by the CEO on 2026-09-11, after a question he attached to an acceptance — *"Will
+the sunflower bloom animate from closed to open? … Maybe we can draw the player 'behind'
+the flower and rising up out of it … Please consider this, and if so modify the proposed
+next step."* — came back as a tier-2 title, "Open the sunflower bud and raise the player
+out of its top", waiting for his yes. A request to *think* had been filed as a request for
+permission to *build*, and stalled on the permission.
+
+So: a question from him, or anything he asks the studio to consider, look into, weigh or
+think about, is **tier-0 work** — reading, analysing and recommending, which nobody needs
+permission for. It is filed as the consideration, owned by whoever holds the answer, with
+a first step that produces a recommendation; the result comes back to him with the
+recommendation on the card, and accepting *that* is what files the action, at the action's
+own tier. The action he asked about is never filed as if he had asked for it. The rule is
+in `hq/data/work_policy.json` under `consider`, and the intake prompt quotes it.
+
+### What a comment does — three moves
+
+Settled by the CEO on 2026-09-11, on the same card: *"Maybe 'Send back' should just be
+'comment'. And generally the right org member for the question will respond back."* And,
+spelled out: a decision from an org member is answered as a comment; rework is appended to
+the ticket's solution; a follow-up task is cut with the right assignee.
+
+There is no send-back button any more. The comment is the primitive; a verdict may ride on
+it or not. Either way the card's owner reads it and, in the same model call that writes the
+reply, names the move it makes:
+
+| Move | What it means | What happens |
+|---|---|---|
+| **answer** | The comment was a question or a call to make, and the reply settles it. | Nothing else changes. The reply is still read for any work it commits to, and anything it names is shown on the card and filed on his yes. |
+| **revise** | The comment changes what the result should be. | The owner **extends the result they already produced** — never starts over. The card goes back to the lane that can carry it out (the read-only worker for tier 0, the build queue otherwise), carrying the earlier result, its diff and the conversation. It comes back for his verdict again, marked as revised, with the earlier result one click away. A comment that finds fault with the result is a revise unless the owner can show the result already does what he asked. |
+| **follow-up** | The comment is really new work — for this owner or for someone else. | It is filed the moment the owner replies, at its own tier, to the person the owner names, linked to this card. This card stands as it was. |
+
+The moves an owner can make depend on the card. A finished result offers all three. A card
+that is closed — accepted or dropped — cannot be revised, so a comment there is answered or
+filed. A card not yet done, or still in flight, is changed by amending its brief, which the
+reply already carries. Routing to the right person happens *inside* the answer, not before
+it: the owner who holds the context reads the comment first and says whose job it is. A
+router that guessed the right member before anyone had read the comment would guess wrong
+on exactly the cross-cutting questions where it matters.
+
+A comment that rides on Accept, Drop or Yes is recorded with the verdict, goes into the
+brief of whatever the verdict starts, **and** is answered on the card by the owner — the
+card is closed or queued, and the answer lands on it anyway. He should not have to know
+which button gets a note read and which gets it answered.
 
 ## What his answer does, shown before he answers
 
@@ -84,7 +128,7 @@ owner, level, tier, and the single first step.
 | **Ask first** (tier 2, not yet done) | Makes it allowed, nothing more. It joins the build-session queue and a session carries it out and shows the diff. | Filed as dropped. Nothing is created. |
 | **Finished result, nothing follows** | Files it as approved and closes it. No task, story, epic, project or goal is created. | Filed as dropped. Nothing is created. |
 | **Finished result with follow-ups** | Files it as approved and files **exactly the items shown on the card** — up to four, each at its own tier. | Filed as dropped. None of them are created. |
-| **Have another go** | — | Throws the result away; the same owner does the same work again. |
+| **A comment, with any of the above or on its own** | — | The owner answers it on the card and makes one of the three moves below: answers, revises the result, or files it as new work. |
 
 The follow-ups are worked out by the owner in the *same* model call that produced the
 result — the reply ends with a `---WHAT FOLLOWS---` block naming the work or the word
@@ -159,6 +203,29 @@ A worker that finds the item needs Daniel — his taste, a direction, a date, mo
 credential — stops and says so rather than guessing. That is a real result, and it is how
 the queue produces escalations instead of swallowing them.
 
+**A revision starts from the earlier attempt.** When a card comes back to the drain marked
+as revising, the worktree is put where the earlier attempt left it — its patch applied if
+it is not yet on main, and committed inside the worktree as "earlier attempt" — so the
+worker's own diff, and the patch the drain lands, cover only what changed this time. The
+chief of staff checks that diff against the conversation, not only the original brief. If
+the earlier attempt never landed, both land together.
+
+### The drain runs on a timer
+
+Settled by the CEO on 2026-09-11, looking at a revision he had asked for sitting behind
+forty-three queued items nobody was draining. A queue a human has to remember to run is the
+bottleneck this whole design exists to remove, and tier 1 is reversible by definition with
+its results already coming back for review — so the same rule that lets a build session
+drain it lets a timer.
+
+`hq/systemd/tiny-farm-drain.timer` runs `python3 hq/drain.py --unattended` every two hours
+on the machine that runs HQ. Unattended means: at most three items a run, two seats at a
+time, and nothing at all when the token window is dry or when the studio's own work has
+already spent most of what it had spent the last time a window ran dry — the Work page's
+own number, so what the timer respects is what he can see. Only one drain runs at a time;
+the timer and a person at the keyboard take the same lock. Installing it is four commands
+in the unit file's header.
+
 ## What a result cost
 
 Work the studio does on its own draws on the same Claude allotment Daniel draws on when he
@@ -178,18 +245,19 @@ same tokens — an order of magnitude, never a bill. What runs out here is a win
 
 ## What is not automated yet
 
-- **Learning the thresholds.** Every accept, drop, and "have another go" is a labelled
-  judgement about whether the tier was right. Once there is a run of them, the tiering
-  should be calibrated against his actual decisions instead of the model's guess.
-- **Deciding when to drain.** The drain is a command a session runs, not a thing that
-  happens on its own. Making it a schedule is the obvious next step and it wants a token
-  policy first — which is what the ledger above exists to inform.
+- **Learning the thresholds.** Every accept, drop, and revise is a labelled judgement
+  about whether the tier was right. Once there is a run of them, the tiering should be
+  calibrated against his actual decisions instead of the model's guess.
+- **A token policy for the timer.** The unattended drain holds off at a fixed share of the
+  last measured ceiling. That share is a guess; the ledger above is what will replace it.
 
 ## Where this lives
 
 - `hq/work.py` — capture, tiering, filing, and the tier-0 worker.
 - `hq/drain.py` — the tier-1 drain: seat-scoped workers, the chief of staff's check, the
-  patch, the suites and the bill.
+  patch, the suites and the bill. `hq/systemd/` holds the timer that runs it unattended.
+- `hq/tests/test_work.py` — the three moves, checked at the card's JSON with the model
+  stubbed out; CI runs it.
 - `hq/data/history/tokens.jsonl` — one line per model call the studio makes unattended.
 - `hq/data/work_policy.json` — the tiers as data; the source HQ actually reads.
 - `hq/data/work/*.json` — one file per work item, the company's record of what it did.
