@@ -441,6 +441,25 @@ function tokenStrip(t) {
     of them new — over ${t.calls} model calls. ${against}</div>`;
 }
 
+/* The decision this work came out of ---------------------------------------
+   His words, 2026-09-10, on meeting the work item instead of the card he had
+   ruled on: "it doesn't look like exactly the decision I reacted to (with the
+   sound-files included in-page). Is that page still stored, and can we use
+   that as the display record (and maybe put the very dense, jargon-filled
+   version behind a hide/show?)". It is still stored — the curated card in
+   hq/data/decisions — so an item naming its decision leads with that card,
+   options and sound buttons and all, and the brief written for the owner folds
+   away behind a toggle.
+
+   The queue data is held here rather than threaded through workCard, the same
+   way childIndex is: it belongs to the render, not to one card. */
+let decisionCtx = { curated: [], rulings: {}, entData: null, looks: null };
+
+function decisionFor(it) {
+  if (!it.decision) return null;
+  return (decisionCtx.curated || []).find(c => c.id === it.decision) || null;
+}
+
 function workCard(it, org, pol) {
   const who = ownerOf(org, it.owner);
   const busy = !!it.awaiting_reply || it.state === "doing";
@@ -472,9 +491,18 @@ function workCard(it, org, pol) {
        ${long ? `<button class="w-more" data-more="${esc(it.id)}">Read all of it</button>` : ""}</div>`
     : "";
   const why = it.tier_reason ? `<span class="w-why">${esc(it.tier_reason)}</span>` : "";
-  const next = it.first_action && it.state !== "for_review"
-    ? `<p class="w-next"><b>Next step:</b> ${esc(it.first_action)}</p>` : "";
-  return h(`<div class="w-card w-${it.state}${busy ? " w-busy" : ""}${open ? " w-open" : ""}" data-id="${esc(it.id)}">
+  const first = who.name.split(" ")[0];
+  // The ask and the next step are written for the person doing the work, in
+  // their vocabulary — useful to open, wrong as the first thing on the card.
+  const nextStep = it.first_action && it.state !== "for_review" ? it.first_action : "";
+  const brief = it.ask || nextStep
+    ? `<details class="w-brief"><summary>Show the brief written for ${esc(first)}</summary>
+        ${it.ask ? `<p class="w-ask">“${esc(it.ask)}”</p>` : ""}
+        ${nextStep ? `<p class="w-next"><b>Next step:</b> ${esc(nextStep)}</p>` : ""}
+      </details>`
+    : "";
+  const dec = decisionFor(it);
+  const card = h(`<div class="w-card w-${it.state}${busy ? " w-busy" : ""}${open ? " w-open" : ""}" data-id="${esc(it.id)}">
     <div class="w-head" data-toggle="${esc(it.id)}">
       <span class="w-caret">${open ? "▾" : "▸"}</span>
       <div class="w-head-b">
@@ -490,9 +518,11 @@ function workCard(it, org, pol) {
       </div>
     </div>
     <div class="w-body">
-      ${it.ask ? `<p class="w-ask">“${esc(it.ask)}”</p>` : ""}
+      ${dec ? `<div class="w-decision">
+        <div class="w-decision-h">The decision this work came from — the card you ruled on</div>
+      </div>` : ""}
+      ${brief}
       ${amendNote(it, org)}
-      ${next}
       ${result}
       ${drainBlock(it, org)}
       ${costLine(it)}
@@ -508,6 +538,21 @@ function workCard(it, org, pol) {
       </div>
     </div>
   </div>`).firstElementChild;
+  // decisionCard builds an element, not a string, so it is mounted rather than
+  // interpolated. Same renderer as the queue above: his ruling shown against
+  // the option he picked, and the attachments playable in place.
+  if (dec) {
+    const copy = decisionCard(
+      dec, decisionCtx.rulings[dec.id], decisionCtx.entData, () => renderWork(), decisionCtx.looks);
+    // A decision card carries the anchor a link to it lands on. This copy lives
+    // inside a body that starts folded shut, so it must not claim that anchor
+    // from the card in the queue below — landing on a hidden element is the
+    // dead end the anchor exists to prevent.
+    const head = copy.querySelector(".d-head");
+    if (head) head.removeAttribute("id");
+    card.querySelector(".w-decision").appendChild(copy);
+  }
+  return card;
 }
 
 function workSection(title, sub, list, org, pol, opts = {}) {
@@ -553,6 +598,9 @@ async function renderWork(focusId) {
   const rulings = queue.rulings || {};
   const curated = queue.curated || [];
   const curatedIds = new Set(curated.map(c => c.id));
+  // What a work item needs to show the decision it came from, in place before
+  // the first card is built.
+  decisionCtx = { curated, rulings, entData, looks };
   const decisions = curated.filter(c => !rulings[c.id]);
   const ruled = curated.filter(c => rulings[c.id]);
   const rawOpen = (queue.items || []).filter(q => !q.answered && !curatedIds.has(q.id) && !rulings[q.id]);

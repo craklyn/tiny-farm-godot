@@ -5,6 +5,7 @@
   "owner": "tomas",
   "tier": 1,
   "tier_reason": "Sim code behind the unit suite, the save round-trip and the replay round-trip; git reverts it. The rule is the CEO's Q-98 ruling.",
+  "decision": "Q-98",
   "ask": "WI-9 in docs/V0_2_2_PLAN.md: on collect, a learning robot's whole extra minus its errand keys is pushed onto GameState.boxed[key]; on place, the newest snapshot is popped and overlaid onto the fresh deploy; boxed is saved, restored and part of the canonical capture. The CEO's words: pick up is just repositioning, it shouldn't factory reset the robot.",
   "first_action": "Landed; see result.",
   "state": "for_review",

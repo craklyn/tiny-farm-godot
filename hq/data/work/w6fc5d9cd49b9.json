@@ -5,6 +5,7 @@
   "owner": "grace",
   "tier": 1,
   "tier_reason": "Game code behind both suites and the replay round-trip; git reverts it. The design is the CEO's, ruled whole as Q-101.",
+  "decision": "Q-101",
   "ask": "WI-8 in docs/V0_2_2_PLAN.md: the two-day tune-and-replay chapter, the bench/panel parity scenario, and an attempt to put ui/ under the gateway checker; the design chapter and plan status updated.",
   "first_action": "Landed; see result.",
   "state": "for_review",
