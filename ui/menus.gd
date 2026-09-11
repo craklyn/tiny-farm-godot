@@ -13,6 +13,17 @@ const OPTION_SEP := 4.0
 const OPTIONS_TOP := 45.0
 const PANEL_PAD := 12.0
 
+# The shop's shelf, in columns (2026-09-10). One card per row sized the panel
+# past the bottom of the screen and, because every panel here is centred, off the
+# **top** as well — the header and the first two rows of stock were simply gone
+# (found by the designer's wife mid-playthrough, with ten things on the shelf).
+# A column of ten is also the wrong shape for a shelf: she is picking a picture
+# out of a set, not reading down a list. Cards keep their full 52px height, so
+# nothing about the target a thumb aims at gets smaller.
+const SHOP_COLUMNS := 2
+const SHOP_PANEL_W := 480.0
+const SHOP_CARD_H := 52.0
+
 # Where the look lab's lines start in the pause menu: after Resume and Return to
 # Title, and one line per open axis (`LookLab.AXES`). Named rather than spelled
 # `== 2`, because T-28 turned one debug line into three and the next axis will
@@ -311,8 +322,14 @@ func _rebuild_options() -> void:
 			gold_display.text = "%d" % GameState.gold
 			gold_display.add_theme_color_override("font_color", Color(1, 0.85, 0.2))
 			_build_shop_items()
-			for item in shop_items:
-				_add_shop_card(item)
+			var shelf := GridContainer.new()
+			shelf.name = "shop_shelf"
+			shelf.columns = SHOP_COLUMNS
+			shelf.add_theme_constant_override("h_separation", int(OPTION_SEP))
+			shelf.add_theme_constant_override("v_separation", int(OPTION_SEP))
+			options_container.add_child(shelf)
+			for i in shop_items.size():
+				_add_shop_card(shelf, shop_items[i], i)
 			# × — a symbol, not a word. The row is already full-width and 52px
 			# tall, so the *target* was never the problem; the glyph was — twice:
 			# U+2715 ✕ lives outside the bundled font, and the web export has no
@@ -321,7 +338,17 @@ func _rebuild_options() -> void:
 			# U+00D7 is Latin-1, which the bundled font carries on every platform.
 			# Any symbol on a surface a player sees must be Latin-1 or drawn art.
 			_add_option("\u00d7", true, 28)
-			menu_panel.size = Vector2(300, 60 + shop_items.size() * 56 + 40)
+			# Measured from what is actually in the container, like every other
+			# panel in this file — the arithmetic this replaced counted a row per
+			# item and knew nothing about the close button underneath them.
+			menu_panel.size = Vector2(
+				minf(SHOP_PANEL_W, viewport_size.x - PANEL_PAD * 2.0),
+				_fit_panel_height())
+			# The coin and its numeral ride the right edge, which is no longer at
+			# x=290: a header pinned to a width is a header that moves when the
+			# panel does not.
+			gold_display.position.x = menu_panel.size.x - 10.0 - gold_display.size.x
+			gold_icon.position.x = gold_display.position.x - 24.0
 
 		"machine":
 			# **The interface a machine gets when you select it**, and it is a
@@ -493,9 +520,14 @@ func _rebuild_options() -> void:
 		max(0.0, menu_panel.size.y - OPTIONS_TOP - PANEL_PAD)
 	)
 
+	# Centred, but **never above the top edge**: a panel taller than the screen
+	# used to lose its header and first rows off the top, where there is nothing
+	# to tell her they exist. Clipped at the bottom is a panel she can see the top
+	# of; clipped at the top is a panel that looks like it starts halfway down.
+	# The arms above are meant to fit the viewport — this is the floor under them.
 	menu_panel.position = Vector2(
-		viewport_size.x / 2 - menu_panel.size.x / 2,
-		viewport_size.y / 2 - menu_panel.size.y / 2
+		maxf(0.0, viewport_size.x / 2 - menu_panel.size.x / 2),
+		maxf(0.0, viewport_size.y / 2 - menu_panel.size.y / 2)
 	)
 
 
@@ -662,8 +694,16 @@ func _add_option(text: String, enabled: bool, font_size: int = 0) -> void:
 	options_container.add_child(container)
 
 
-func _add_shop_card(item: Dictionary) -> void:
+## One thing on the shelf: its picture, its price, and how many she already has.
+##
+## `into` is the shelf it is added to and `idx` its place in `shop_items`, passed
+## in rather than read back off the container — the cards no longer sit directly
+## in `options_container`, so counting its children would have numbered every
+## card 0 and sold wheat whatever she tapped.
+func _add_shop_card(into: Control, item: Dictionary, idx: int) -> void:
 	var container = PanelContainer.new()
+	container.custom_minimum_size = Vector2(0, SHOP_CARD_H)
+	container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var style = StyleBoxFlat.new()
 	if item.affordable:
 		style.bg_color = Color(0.18, 0.18, 0.25, 0.6)
@@ -720,10 +760,9 @@ func _add_shop_card(item: Dictionary) -> void:
 	if not item.unlocked or not item.affordable:
 		btn.disabled = true
 	
-	var idx = options_container.get_child_count()
 	btn.pressed.connect(_on_shop_card_pressed.bind(idx, container))
 	btn.focus_entered.connect(func(): selected_option = idx)
-	options_container.add_child(container)
+	into.add_child(container)
 
 func _on_shop_card_pressed(index: int, container: Control) -> void:
 	selected_option = index

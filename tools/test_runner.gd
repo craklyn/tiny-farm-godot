@@ -999,6 +999,22 @@ func _scenario_j_wordless_shop() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 
+	# **The whole shelf is on the screen** (2026-09-10). One card per row made the
+	# panel grow past 600px with ten things for sale, and because menus are centred
+	# the seed-packet header and the first rows of stock went off the *top* — found
+	# mid-playthrough, which is the worst way to find it. The assertion is the
+	# panel's rectangle against the viewport's, so it fails the moment the shelf
+	# outgrows the screen again rather than when somebody notices.
+	var vp: Vector2 = menus.get_viewport().get_visible_rect().size
+	var panel: Control = menus.menu_panel
+	_assert(panel.position.y >= 0.0,
+		"the shop's header is on the screen (panel top at %.0f)" % panel.position.y)
+	_assert(panel.position.y + panel.size.y <= vp.y,
+		"and so is the last thing on the shelf (panel bottom at %.0f, screen is %.0f)"
+			% [panel.position.y + panel.size.y, vp.y])
+	_assert(panel.position.x >= 0.0 and panel.position.x + panel.size.x <= vp.x,
+		"and the shelf is no wider than the screen")
+
 	var labels: Array = []
 	_collect_labels(menus.options_container, labels)
 	_assert(labels.size() > 0, "the shop draws some text at all (numbers)")
