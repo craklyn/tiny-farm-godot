@@ -765,3 +765,9 @@ is `training-workbench`.*
   slot and the band over exactly the last slot, and the day axis counts back from today at 0
   (`-13 … 0` on a fortnight, a lone `0` on a fresh robot); internal day numbering and
   `tick_days` are unchanged (`fc69ed2`).
+- 2026-09-10, later — **the four ledger cards follow the chart** (`ea715dc`): today its own
+  column with the point or bar centred; no day numerals (the chart above carries the axis for
+  the same fortnight); values unscaled but for the two references that carry meaning — a zero
+  line, with a `0` only where the series goes below it, and the `3.00` ceiling on the guessing
+  card. The CEO asked whether any axes needed labelling; this is the chief of staff's answer,
+  built as the default for him to veto on the tablet.
