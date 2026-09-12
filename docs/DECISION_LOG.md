@@ -729,6 +729,29 @@ that something ate a plant off it, saved with the world and cleared the moment s
 again, and wears a small looping mark — three clods of scattered earth — made from pixels
 the game already ships. A drawn version of that mark is open and belongs to the artist.
 
+
+### P-16. The window looks out on a stock hillside, and looking is not an Action
+**Provisional 2026-09-11.** The CEO: *"a player that selects their house window can look
+out and see a landscape. TBD long-term art vision, but maybe for now we see a beautiful
+grassland hillside."* Built as said: a tap on either of the home's two windows walks her
+to the sill and opens a full-screen view — the wall she stands at, the frame, and one
+generated 320×240 hillside behind the glass, drawn at 2× and lit by the hour she opened it
+(`ui/window_view.gd`). Looking is UI navigation, never a verb: nothing is recorded, the
+world holds as it does behind every screen, and any tap closes it. The router reads the
+tap off the tile's state (`WorldLayout.WINDOW`) because a window is a hole in the wall,
+not an object on the floor.
+
+**Why provisional.** What lies beyond the window is a question about the world's identity —
+the wilds (D-1), the story (D-3), the visual identity and its near-future lean (Q-14) — and
+none of those is settled; a picture chosen now would settle them by accident. So the
+picture is one file, the same for both windows, and nothing in the game depends on what
+it shows. It was the cheapest honest answer: a generated landscape costs cents, and the
+design's own rule is that "that needs new art" is no longer a reason to say no.
+
+**Trigger.** Revisit when Q-14 rules the visual identity or D-1 gives the wilds a look:
+the view could then show the farm's own edge, the season, the weather, the night, or
+what is coming. Until then, a redrawn hillside is a redrawn file.
+
 ### D-1. Phase 5 genre (X-COM tactics vs. Gradius-like hybrid vs. other)
 **Why deferred:** Phase 5's cast is the player plus *trained bots* — its design depends on
 what trained bots actually feel like, which cannot be known before phase 4 exists.

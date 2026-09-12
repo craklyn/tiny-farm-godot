@@ -72,6 +72,7 @@ tap bot → tap squad. The interface narrates the delegation arc (P-1 premise 3)
 | 11 | Title screen (continue, new farm, credits) | UI | Tap cards | Click / Enter | Enter | A |
 | 12 | Camera | Cam | — none: auto-follow at fixed close-up altitude | — | — | — |
 | 13 | Site the scarecrow (beat E) 📐 | World (place) | Tap a tile, coverage ghost previews the radius | Click; hover-preview redundant with the ghost | open — Finding 1 | open — Finding 1 |
+| 14 | Look out of the window (P-16) | UI (a screen, never an Action) | Tap the glass from anywhere — auto walk-to the sill; any tap closes the view | Click, same | Walk up, Space; Space closes | Walk up, A; A closes |
 
 Row 13 is phase 1's only unbuilt interaction and its most important one: it is the
 game's **first placement**, and machines (2), towers (3), bots (4) all inherit

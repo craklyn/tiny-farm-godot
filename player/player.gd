@@ -766,6 +766,15 @@ func _execute_resolved_action(pa: Dictionary) -> void:
 		get_tree().get_first_node_in_group("Main").call_deferred(
 			"trigger_workbench", farm.sim.object_tile(target_t))
 		return
+	# **A tap on a window is a look out of it** (2026-09-11). The bench's beat,
+	# at the wall: she has walked up to the sill by the time this runs, and what
+	# happens next is a screen (`ui/window_view.gd`), not a change to the farm.
+	# Caught here, above the fallthrough, for the bench's reason — handed to the
+	# gateway it would come back `unknown_verb`, and the unit suite checks it does.
+	if action == "look_out_window":
+		get_tree().get_first_node_in_group("Main").call_deferred(
+			"trigger_window_view", target_t)
+		return
 	# Every remaining verb is a sim Action (S-3): the sim validates and mutates;
 	# this side keeps only presentation (tool swap, animation, sfx, particles).
 	var act := {

@@ -274,6 +274,20 @@ func resolve(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, is_drag: 
 		return {}  # Out of bounds
 	var state: String = tile.get("state", "")
 
+	# 2a. A window is for looking out of (2026-09-11). The home's north wall has
+	# two cut in it (`WorldLayout.HOME`), and a tap on the glass is a look: she
+	# walks up to the sill — from anywhere, as she walks to the well — and the
+	# view opens (`ui/window_view.gd`). Read off the tile's state rather than the
+	# object table because a window is a hole in the wall, not a thing standing on
+	# the floor. `look_out_window` is **not a verb**: like `open_shop` beside it, a
+	# look changes nothing in the world, so nothing about it belongs in a replay
+	# (CLAUDE.md); `player/player.gd` catches it above the gateway fallthrough.
+	if state == WorldLayout.WINDOW:
+		return check_result.call({
+			"action": "look_out_window", "tool_idx": 0, "target_t": tap_t,
+			"walk_to": true, "seed_type": "",
+		})
+
 	# Intent Filter: For non-obstacles, if it's a far tap (not a drag), treat as pure movement
 	var is_tool_action := (state == "cleared" or state == "tilled" or state == "seeded" or state == "growing")
 	if is_tool_action and not is_drag and player_t != null:

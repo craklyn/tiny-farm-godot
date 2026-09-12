@@ -727,7 +727,8 @@ func _process(delta: float) -> void:
 	# Action. Dispatch happens inside the player (sleep/open_shop arrive back
 	# here via call_deferred -> trigger_action); routing the return value too
 	# would double-fire those verbs.
-	if Input.is_action_just_pressed("action") and not player.is_acting:
+	if Input.is_action_just_pressed("action") and not player.is_acting \
+			and not menus.action_spent():
 		player.handle_action()
 
 	# Swipe-chaining
@@ -993,6 +994,14 @@ func trigger_machine_menu_for(id: String) -> void:
 ## already normalised by the caller.
 func trigger_workbench(at: Vector2i) -> void:
 	menus.open_workbench(at)
+
+
+## Look out of the window standing at `at` (2026-09-11).
+##
+## The bench's shape again: the player resolves the tap, this hands it to the
+## menus layer, and the view is a mode of that layer like every other screen.
+func trigger_window_view(at: Vector2i) -> void:
+	menus.open_window_view(at)
 
 
 # --- teaching a mark-1 (2026-09-03) -------------------------------------------

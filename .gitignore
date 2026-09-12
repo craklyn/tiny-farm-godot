@@ -56,6 +56,7 @@ tools/shot_teaching.png
 # `.import` sidecars go with them: a sidecar is metadata for a picture, and there
 # is no picture in the repo for these to be metadata for.
 tools/shot_workbench_*
+tools/shot_window_view_*
 
 # Boot bloom captures (Q-103, 2026-09-10). Regenerate with
 # tools/capture_boot_bloom.tscn; review screenshots of the title screen's own

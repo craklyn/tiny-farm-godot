@@ -49,7 +49,7 @@ const CONFIG_LABELS := {
 	"idle": "Wait here",
 }
 
-var active_menu: String = ""  # "", "pause", "shop", "inventory", "machine", "workbench"
+var active_menu: String = ""  # "", "pause", "shop", "inventory", "machine", "workbench", "window"
 var selected_option: int = 0
 
 # **What number the next row on a panel gets.** `_select_current_option` reads a
@@ -103,6 +103,11 @@ var workbench: Workbench = null
 
 ## The square the open bench stands on. Kept so a refresh can find it again.
 var workbench_tile: Vector2i = Vector2i(-1, -1)
+
+# The view out of a window (2026-09-11) — the sixth mode, and the simplest: a
+# picture she looks at and taps away. Its own file (`ui/window_view.gd`) for the
+# bench's reason, and hidden until `open_window_view` stands her at a sill.
+var window_view: WindowView = null
 
 
 func _ready() -> void:
@@ -192,6 +197,11 @@ func _ready() -> void:
 	workbench.closed.connect(close_menu)
 	add_child(workbench)
 
+	# The window's view, above everything for the bench's reason.
+	window_view = WindowView.new()
+	window_view.closed.connect(close_menu)
+	add_child(window_view)
+
 
 func open_menu(menu_name: String) -> void:
 	active_menu = menu_name
@@ -258,17 +268,42 @@ func open_workbench(at: Vector2i) -> void:
 	workbench.visible = true
 
 
+## Look out of the window standing at `at` (2026-09-11).
+##
+## The bench's shape: `open_menu` does the pausing, the dim and the option
+## rebuild, and then the view takes the screen while `menu_panel` steps out of
+## the way. The hour goes with it, so the hillside is lit as the room is.
+func open_window_view(at: Vector2i) -> void:
+	if window_view == null:
+		return
+	open_menu("window")
+	menu_panel.visible = false
+	window_view.show_view(at, GameState.energy, GameState.max_energy)
+	window_view.visible = true
+
+
 func close_menu() -> void:
 	active_menu = ""
 	dim_overlay.visible = false
 	menu_panel.visible = false
 	if workbench != null:
 		workbench.visible = false
+	if window_view != null:
+		window_view.visible = false
 	get_tree().paused = false
 
 
 func is_open() -> bool:
 	return active_menu != ""
+
+
+## Did the action button just close a screen? True on the frame it did and the
+## one after, whichever side of the input flush `main.gd`'s poll lands on, and
+## never longer — so a genuine press a moment later is still hers.
+var _action_spent_frame: int = -1000
+
+func action_spent() -> bool:
+	return Engine.get_process_frames() - _action_spent_frame <= 1
 
 
 func _rebuild_options() -> void:
@@ -482,12 +517,13 @@ func _rebuild_options() -> void:
 				SCORECARD_PANEL_W if MachineDefs.program_of(mkey) == "policy" else 320.0,
 				_fit_panel_height())
 
-		"workbench":
-			# **No rows at all.** The bench is its own full-rect Control
-			# (`ui/workbench.gd`) and builds itself; this arm exists so the panel's
-			# chrome — the last screen's title, its gold count, its seed packet —
-			# is cleared rather than left showing behind a hidden panel, and so
-			# that a reader of this `match` finds every mode of this file in it.
+		"workbench", "window":
+			# **No rows at all.** The bench (`ui/workbench.gd`) and the window's
+			# view (`ui/window_view.gd`) are their own full-rect Controls and build
+			# themselves; this arm exists so the panel's chrome — the last screen's
+			# title, its gold count, its seed packet — is cleared rather than left
+			# showing behind a hidden panel, and so that a reader of this `match`
+			# finds every mode of this file in it.
 			title_label.text = ""
 			gold_display.visible = false
 			shop_title_icon.visible = false
@@ -834,6 +870,14 @@ func _input(event: InputEvent) -> void:
 
 	if event.is_action_pressed("action"):
 		_select_current_option()
+		if not is_open():
+			# The press closed a screen, so it is spent (2026-09-11). `main.gd`
+			# polls the same button as a state on the same frame, and she is
+			# usually still facing the thing she opened — the window she was
+			# looking out of, the seed box — so without this the press that
+			# closed the screen opened it straight back up. Found by the window's
+			# scenario; it was true of the shop before it.
+			_action_spent_frame = Engine.get_process_frames()
 		get_viewport().set_input_as_handled()
 
 	if event.is_action_pressed("move_up"):
@@ -873,6 +917,11 @@ func _focus_current() -> void:
 
 func _select_current_option() -> void:
 	match active_menu:
+		"window":
+			# The action button while she is looking out is "done looking" — the
+			# view has nothing to select, and a keyboard or a gamepad needs a way
+			# back that a finger has by tapping the glass.
+			close_menu()
 		"pause":
 			if selected_option == 0:
 				close_menu()

@@ -116,6 +116,7 @@ func _run_scenarios() -> void:
 	await _scenario_al_a_ripe_crop_carries()
 	await _scenario_am_the_mark_three_shows_its_practice()
 	await _scenario_an_the_workbench_opens_from_the_yard()
+	await _scenario_ao_the_window_looks_out()
 	await _scenario_ap_the_eyes_show_what_it_sees()
 	await _scenario_ar_the_plate_and_mosaic_read_the_robot()
 	await _scenario_ao_the_dials_turn_through_the_gateway()
@@ -4840,6 +4841,146 @@ func _scenario_an_the_workbench_opens_from_the_yard() -> void:
 # The shop-and-place path, as scenario AM walks it: buy the row from the real
 # shop, stand her beside the square, tap it. Returns the actor id that landed, or
 # "" — a structure lands as an object, so it answers "".
+
+func _scenario_ao_the_window_looks_out() -> void:
+	# The CEO, 2026-09-11: *"a player that selects their house window can look
+	# out and see a landscape."* The unit suite proves the router's reading and
+	# that the sim refuses the word. This is the chain in the real scene: a tap on
+	# the glass from across the room, the walk to the sill, the screen, the world
+	# holding behind it, and every way out of it — a tap on the glass, the action
+	# button — leaving nothing behind in the world or in the tap buffer.
+	print("\n--- Scenario AO: a tap on the window looks out of it, and looking is not an Action (P-16) ---")
+
+	var menus = main_scene.menus
+	menus.close_menu()
+	main_scene.end_teaching()
+	GameState.set_energy(GameState.max_energy)
+	GameState.selected_tool = 3            # the hoe, so a miss would till rather than nothing
+	await get_tree().process_frame
+
+	var glass := Vector2i(13, 25)
+	var doorway: Vector2i = farm.sim.find_object(WorldLayout.HOME_DOORWAY)
+	_assert(String(farm.get_tile(glass.x, glass.y).get("state", "")) == WorldLayout.WINDOW,
+		"the room's north wall has a window at %s" % glass)
+	_assert(not farm.is_walkable(glass.x, glass.y), "and the glass is solid — she stands under it")
+
+	# Stand her in the room, well away from the window, with nothing left over
+	# from whatever the last scenario had her doing.
+	player.init_position(16, 30)
+	player.path.clear()
+	player.pending_action = {}
+	player.approach_target = Vector2i(-1, -1)
+	player.tap_indicator = {}
+	InputManager.has_click = false
+	await get_tree().process_frame
+	_assert(farm.sim.page_of(player.get_tile_pos()) == 1,
+		"she is indoors, on the home's page (%s)" % player.get_tile_pos())
+	_assert(menus.active_menu == "", "and no screen is up")
+
+	# --- 1. a tap on the glass from across the room --------------------------
+	var acted_before: int = farm.replay.entries.size()
+	InputManager.click_tile = glass
+	InputManager.has_click = true
+	var opened := await _wait_until(func(): return menus.active_menu == "window", 900)
+	_assert(opened, "a tap on the window walks her to it and the view opens (%s)" % menus.active_menu)
+	var here: Vector2i = player.get_tile_pos()
+	_assert(absi(here.x - glass.x) + absi(here.y - glass.y) == 1,
+		"she is standing at the sill when it does (%s)" % here)
+	_assert(player.facing == "up", "looking at the window (%s)" % player.facing)
+	_assert(get_tree().paused,
+		"and the world holds while she looks, as it does behind every other screen")
+	_assert(menus.is_open() and not menus.menu_panel.visible,
+		"the view takes the screen and the option panel steps out of the way")
+
+	var view = menus.window_view
+	_assert(view != null and view.visible, "the view itself is on screen")
+	if view == null:
+		return
+	_assert(view.has_picture(), "with a hillside on disk to look at (assets/sprites/generated/window_hillside.png)")
+	_assert(view.window_tile == glass, "and it is this window she is looking out of (%s)" % view.window_tile)
+
+	# Nothing about looking is an Action. The walk over recorded her tile
+	# crossings, as every walk does (M2.5 WI-6); no *verb* was recorded at all.
+	var verbs_since := 0
+	for i in range(acted_before, farm.replay.entries.size()):
+		var e: Dictionary = farm.replay.entries[i]
+		if String(e.get("verb", "")) != "" and String(e.get("verb", "")) != "walk":
+			verbs_since += 1
+	_assert(verbs_since == 0,
+		"and nothing but the walk reached the replay — looking is not an Action (%d verbs)" % verbs_since)
+
+	# Scenario L's rule, asked of the window: the sim clock does not move behind it.
+	var held_at: int = farm.sim.clock.tick
+	for i in 30: await get_tree().process_frame
+	_assert(farm.sim.clock.tick == held_at,
+		"the sim clock does not advance a tick behind the view (%d)" % (farm.sim.clock.tick - held_at))
+
+	# --- 2. a tap on the glass is "done looking" -----------------------------
+	# Handed to the view's own input hook, the suite's convention for a control
+	# (`_press_row` emits a button's `pressed`): headless, the engine does no
+	# mouse picking, so what is tested is what the view does with a press, not
+	# how the engine finds it. The press arrives while the tree is paused, which
+	# is what keeps it out of the farm — `InputManager` is pausable and never
+	# sees it — and the release lands unpaused, on nothing.
+	_assert(view.get_global_rect().has_point(Vector2(400, 300)),
+		"the view covers the glass, so a press there is its to take (%s)" % view.get_global_rect())
+	var press := InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	press.position = Vector2(400, 300)
+	press.global_position = press.position
+	view._gui_input(press)
+	await get_tree().process_frame
+	_assert(menus.active_menu == "" and not view.visible,
+		"a tap anywhere on it closes the view (%s)" % menus.active_menu)
+	_assert(not get_tree().paused, "and the world runs again")
+	var release := InputEventMouseButton.new()
+	release.button_index = MOUSE_BUTTON_LEFT
+	release.pressed = false
+	release.position = press.position
+	release.global_position = press.position
+	Input.parse_input_event(release)
+	await get_tree().process_frame
+	_assert(not InputManager.has_click,
+		"and the press that closed it did not become a tap on the farm")
+
+	# --- 3. and from the keyboard: the action button facing it, then again ----
+	InputManager.has_click = false
+	player.path.clear()
+	player.pending_action = {}
+	player.facing = "up"
+	Input.action_press("action")
+	await get_tree().process_frame
+	Input.action_release("action")
+	var reopened := await _wait_until(func(): return menus.active_menu == "window", 60)
+	_assert(reopened, "the action button facing the glass looks out of it too (%s)" % menus.active_menu)
+	# As an event this time, not a state: `Input.action_press` sets what
+	# `is_action_just_pressed` polls (the player's path in), but the menu layer
+	# hears the button in `_input`, and only a real event reaches that.
+	var act := InputEventAction.new()
+	act.action = "action"
+	act.pressed = true
+	Input.parse_input_event(act)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var act_up := InputEventAction.new()
+	act_up.action = "action"
+	act_up.pressed = false
+	Input.parse_input_event(act_up)
+	await get_tree().process_frame
+	_assert(menus.active_menu == "" and not get_tree().paused,
+		"and pressed again, it is done looking (%s)" % menus.active_menu)
+	_assert(farm.sim.page_of(player.get_tile_pos()) == 1 and player.get_tile_pos() == here,
+		"she has not moved through any of it (%s)" % player.get_tile_pos())
+
+	# --- back out to the yard, so what follows finds her where it expects -----
+	InputManager.click_tile = doorway
+	InputManager.has_click = true
+	var outside := await _wait_until(
+		func(): return farm.sim.page_of(player.get_tile_pos()) == 0, 12000)
+	_assert(outside, "and the doorway still takes her back out to the yard")
+	InputManager.has_click = false
+
 func _buy_and_place(item: String, at: Vector2i) -> String:
 	var menus = main_scene.menus
 	menus.open_menu("shop")

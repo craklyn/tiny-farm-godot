@@ -82,6 +82,10 @@ godot --path . res://tools/capture_watering_inset.tscn
 # Day-N card on the same sky as tools/shot_overnight_card.png — needs a display
 godot --path . res://tools/capture_overnight_crow.tscn
 
+# Looking out of the window (P-16): the room at the sill, then the view in the morning and
+# at dusk, as tools/shot_window_view_{room,morning,dusk}.png — needs a display
+godot --path . res://tools/capture_window_view.tscn
+
 # The screens the overnight's frame question is judged on (Q-106): both story nights
 # mid-play plus the Day-N type, then the four candidate frames drawn over them, all
 # under docs/design/mockups/overnight_frames/. The capture needs a display; the

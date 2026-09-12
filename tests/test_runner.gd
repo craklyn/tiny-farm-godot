@@ -209,6 +209,7 @@ func _init() -> void:
 	test_learning_robot()
 	test_world_pages()
 	test_the_door()
+	test_the_window()
 	test_fencing()
 	test_bed_cue_shape()
 	test_save_v3_migration()
@@ -14245,6 +14246,64 @@ func test_the_door() -> void:
 	gs_replay.free()
 	s.done()
 
+
+
+func test_the_window() -> void:
+	print("\n--- A window is for looking out of, and looking is not a verb (P-16) ---")
+
+	# --- 1. the composed world has the two windows where HOME cut them ---------
+	SimRng.reseed(707)
+	var w := SimWorld.new()
+	w.generate()
+	var glass := [Vector2i(13, 25), Vector2i(14, 25), Vector2i(17, 25), Vector2i(18, 25)]
+	var cut := 0
+	var solid := 0
+	for g in glass:
+		if String(w.get_tile(g.x, g.y).get("state", "")) == WorldLayout.WINDOW:
+			cut += 1
+		if not w.is_walkable(g.x, g.y):
+			solid += 1
+	_assert(cut == 4, "the home's north wall has two two-tile windows, one page down (%d of 4)" % cut)
+	_assert(solid == 4, "and glass is as solid as the wall around it — she stands at the sill (%d of 4)" % solid)
+	_assert(String(w.get_tile(13, 26).get("state", "")) == WorldLayout.FLOOR,
+		"with floor under each window to stand on")
+
+	# --- 2. the router reads a tap on the glass as a look --------------------
+	var FarmScript = load("res://world/farm.gd")
+	var t = FarmScript.new()
+	t.tiles.clear()
+	t.objects.clear()
+	for ty in t.MAP_HEIGHT:
+		t.tiles.append([])
+		t.objects.append([])
+		for tx in t.MAP_WIDTH:
+			t.objects[ty].append("")
+			t.tiles[ty].append({ "state": "cleared", "crop_type": "", "growth_stage": 0, "watered_today": false })
+	t.tiles[5][5]["state"] = WorldLayout.WINDOW
+	GameState.energy = Tools.DAY_UNITS
+
+	var far = ActionRouter.resolve(t, GameState, Vector2i(5, 5), Vector2i(20, 15))
+	_assert(far.get("action", "") == "look_out_window",
+		"a tap on the glass is a look out of it (%s)" % str(far))
+	_assert(far.get("walk_to", false), "from across the room — she walks up to the sill first")
+	_assert(far.get("tool_idx", -1) == 0, "with her hands, not a tool")
+	var near = ActionRouter.resolve(t, GameState, Vector2i(5, 5), Vector2i(5, 6))
+	_assert(near.get("action", "") == "look_out_window", "and standing under it, the same look")
+	var swiped = ActionRouter.resolve(t, GameState, Vector2i(5, 5), Vector2i(5, 6), true, -1)
+	_assert(swiped.is_empty(), "a swipe over the glass is not a look — a row-chain never opens a screen")
+	t.tiles[5][6]["state"] = WorldLayout.WALL
+	var wall_tap = ActionRouter.resolve(t, GameState, Vector2i(6, 5), Vector2i(6, 6))
+	_assert(wall_tap.is_empty(), "the wall beside it is still just a wall")
+
+	# --- 3. the sim does not know the word -------------------------------------
+	var gs = load("res://systems/game_state.gd").new()
+	gs.reset()
+	w.set_actor_pos(SimWorld.ACTOR_PLAYER, Vector2i(13, 26), "up")
+	var looked := w.apply_action({ "verb": "look_out_window", "target": Vector2i(13, 25), "actor": "player" }, gs)
+	_assert(not looked.get("ok", false) and String(looked.get("reason", "")) == "unknown_verb",
+		"handed to the gateway, a look is refused as no verb at all — so it can never enter a replay (%s)" % str(looked))
+	_assert(not SimWorld.NON_WORK_VERBS.has("look_out_window"),
+		"and it is not in the verb tables either — it is a screen, not a free verb")
 
 func test_save_v3_migration() -> void:
 	# The recon's first finding: `restore` checks a save's grid against the world's

@@ -213,6 +213,45 @@
       "balance_after": 0.518,
       "reconciled": true,
       "recorded_by": "record_spend"
+    },
+    {
+      "id": "2026-09-11-p-16-window-hillside-call-1",
+      "date": "2026-09-11",
+      "vendor": "Retro Diffusion",
+      "kind": "generation",
+      "purpose": "P-16 window hillside, 320x240 x2, rd_plus (first call: the read timed out at 180 s and the images were never received)",
+      "work_item": "P-16",
+      "dollars": 0.127,
+      "credits": 8,
+      "balance_after": 0.391,
+      "reconciled": true,
+      "recorded_by": "record_spend"
+    },
+    {
+      "id": "2026-09-11-p-16-window-hillside-call-2",
+      "date": "2026-09-11",
+      "vendor": "Retro Diffusion",
+      "kind": "generation",
+      "purpose": "P-16 window hillside, 320x240 x2, rd_plus (second call: images arrived but the script read only output_images, not base64_images, and dropped them)",
+      "work_item": "P-16",
+      "dollars": 0.127,
+      "credits": 8,
+      "balance_after": 0.264,
+      "reconciled": true,
+      "recorded_by": "record_spend"
+    },
+    {
+      "id": "2026-09-11-p-16-window-hillside-call-3",
+      "date": "2026-09-11",
+      "vendor": "Retro Diffusion",
+      "kind": "generation",
+      "purpose": "P-16 window hillside, 320x240 x2, rd_plus (third call: the two candidates archived at assets/raw/2026-09-11-window-hillside)",
+      "work_item": "P-16",
+      "dollars": 0.127,
+      "credits": 8,
+      "balance_after": 0.137,
+      "reconciled": true,
+      "recorded_by": "record_spend"
     }
   ]
 }

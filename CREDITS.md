@@ -315,6 +315,16 @@ before the first public build ships.*
   starred the repo when this was done.* Pre-rewrite backup bundle kept outside the
   repo at `~/dev/tiny-farm-pre-purge-2026-08-27.bundle`.
 
+- **P-16, the view out of the window, 2026-09-11** — **generated, $0.381 for one usable
+  call** (same Retro Diffusion pipeline and rights as above; raws with `*_meta.json`, the
+  prompt and the palette archived per the standing policy at
+  `assets/raw/2026-09-11-window-hillside/`, whose README says why two of the three
+  calls bought nothing). `window_hillside.png` — 320x240, nine colours, every one on the
+  style guide's grass ramp, the interior window's pane blue or the cloud cream — is the
+  hillside she sees when she taps a window in her home (`ui/window_view.gd`), drawn at
+  2x behind a frame the game draws itself. It is the generation as returned, untouched:
+  the palette lock held, so there was nothing to snap. The second candidate from the
+  same call is archived beside it and contributed no pixels.
 - **The Robot Mark III sheet, 2026-09-09** — **generated, $0.119** (same Retro
   Diffusion pipeline, rights and post-processing as above; raws with `*_meta.json`,
   the prompts, the palette lock and the compositing script archived per the standing
