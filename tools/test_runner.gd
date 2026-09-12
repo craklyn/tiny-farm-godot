@@ -791,8 +791,13 @@ func _scenario_l_menu_holds_world() -> void:
 	farm.sim.set_actor_pos(chicken.actor_id, Vector2i(7, 5))
 
 	var moving_start: Vector2 = chicken.position
-	for i in 20: await get_tree().process_frame
-	_assert(chicken.position != moving_start, "she walks while the game is running")
+	# Waited by condition, not by a fixed twenty frames: on a loaded machine (CI, or
+	# a desktop mid-build) twenty frames can pass before her sprite has taken one
+	# step, and that was this assertion's random red (w4b88f3a33dc8, 2026-09-07 and
+	# 2026-09-12). The bound is generous because the question is only "does she
+	# move at all", never "how fast".
+	var walked: bool = await _wait_until(func(): return chicken.position != moving_start, 600)
+	_assert(walked, "she walks while the game is running")
 
 	menus.open_menu("shop")
 	await get_tree().process_frame
@@ -1186,6 +1191,14 @@ func _scenario_k_attract() -> void:
 	_assert(worked >= 3, "the synthetic session has actions to play (%d)" % worked)
 
 	var before := _live_fingerprint()
+	# Hold the live scene's autosave while this window is open. main.gd persists the
+	# played farm every PERSIST_INTERVAL seconds of _process, and that timer — not the
+	# thing under test — is what created these files mid-test on CI's fresh runner
+	# (2026-09-12: three red runs out of six, depending on where the 20-second tick
+	# fell). The check below is "wrote nothing", so the only writer that may run is
+	# the one being tested.
+	var held_persist: float = main_scene.persist_timer
+	main_scene.persist_timer = -1.0e9
 	var files_before: Array = []
 	for path in [GameState.save_path, GameState.replay_path, GameState.trace_path]:
 		files_before.append(FileAccess.file_exists(path))
@@ -1217,6 +1230,7 @@ func _scenario_k_attract() -> void:
 		_assert(FileAccess.file_exists(path) == files_before[idx],
 			"the attract loop created no file at %s" % path)
 		idx += 1
+	main_scene.persist_timer = held_persist
 	_assert(loop.farm.replay == null, "it records no replay of its own")
 	_assert(loop.farm.trace == null, "and no session trace")
 
@@ -2895,6 +2909,14 @@ func _scenario_ac_the_zoo() -> void:
 	await get_tree().process_frame
 
 	var live_before := _live_fingerprint()
+	# Hold the live scene's autosave while this window is open. main.gd persists the
+	# played farm every PERSIST_INTERVAL seconds of _process, and that timer — not the
+	# thing under test — is what created these files mid-test on CI's fresh runner
+	# (2026-09-12: three red runs out of six, depending on where the 20-second tick
+	# fell). The check below is "wrote nothing", so the only writer that may run is
+	# the one being tested.
+	var held_persist: float = main_scene.persist_timer
+	main_scene.persist_timer = -1.0e9
 	var files_before: Array = []
 	for path in [GameState.save_path, GameState.replay_path, GameState.trace_path]:
 		files_before.append(FileAccess.file_exists(path))
@@ -3024,6 +3046,7 @@ func _scenario_ac_the_zoo() -> void:
 		_assert(FileAccess.file_exists(path) == files_before[idx],
 			"the zoo created no file at %s" % path)
 		idx += 1
+	main_scene.persist_timer = held_persist
 	_assert(main_scene.farm.sim.has_actor(SimWorld.ACTOR_PLAYER),
 		"and the played farm is still the played farm")
 

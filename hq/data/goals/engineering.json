@@ -106,7 +106,7 @@
     {
       "id": "build-branch-builds-green",
       "statement": "Build branch builds green",
-      "statement_short": "The build fails either because the code does not compile or because a test in the suite failed.",
+      "statement_short": "The build fails either because the code does not compile or because one of its tests failed.",
       "owner": "vp-engineering",
       "severity": "blocking",
       "unit": "state",

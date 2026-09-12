@@ -1,0 +1,9 @@
+{"continued":true,"gen_seed":0,"version":1}
+{"at":[8,2],"in":"tap","kind":"tap","out":"walk","t":2902,"tile":[5,2],"tool":0,"verb":""}
+{"at":[5,2],"in":"tap","kind":"tap","out":"acted","t":4190,"tile":[6,2],"tool":0,"verb":"collect"}
+{"actor":"player","kind":"act","ok":true,"t":4190,"tile":[6,2],"verb":"collect"}
+{"at":[5,2],"in":"tap","kind":"tap","out":"walk","t":6648,"tile":[7,3],"tool":0,"verb":""}
+{"at":[5,2],"in":"drag","kind":"tap","out":"walk","t":6703,"tile":[7,3],"tool":0,"verb":""}
+{"at":[7,3],"in":"tap","kind":"tap","out":"walk","t":12008,"tile":[9,4],"tool":0,"verb":""}
+{"at":[9,4],"in":"tap","kind":"tap","out":"walk","t":18904,"tile":[17,4],"tool":0,"verb":""}
+{"at":[10,4],"in":"tap","kind":"tap","out":"unreachable","t":19278,"tile":[17,4],"tool":0,"verb":""}
