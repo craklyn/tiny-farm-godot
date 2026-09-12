@@ -1,0 +1,11 @@
+[
+  ["coop", {
+    "prompt": "a single small wooden chicken coop hen house seen straight from the front, a square warm-wood hutch with a pitched shingle roof on top, a round dark doorway hole in the middle of the front wall with a short wooden ramp sloping down from it to the ground, a tiny round window beside the door, the hutch standing on four short stubby legs, a low wooden rail fence enclosing a small run across the front, warm wood browns with dark brown outlines and a dusty rose roof, no purple, no violet anywhere, cozy pastel 2d farming game sprite, rounded soft silhouette, colored outlines (no black), plain flat cream background",
+    "prompt_style": "rd_plus__default",
+    "width": 128,
+    "height": 192,
+    "num_images": 2,
+    "seed": 91101,
+    "palette_hex": ["#90625d", "#a97959", "#c39a6c", "#d99a9a", "#6f6862", "#8f8880", "#b8b2ac", "#f8f4e6"]
+  }]
+]

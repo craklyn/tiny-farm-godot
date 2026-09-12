@@ -752,6 +752,39 @@ design's own rule is that "that needs new art" is no longer a reason to say no.
 the view could then show the farm's own edge, the season, the weather, the night, or
 what is coming. Until then, a redrawn hillside is a redrawn file.
 
+### P-17. The shelf sells ornaments, and an animal reacts to the weather
+**Provisional 2026-09-11.** The CEO: *"Let's add a 2x2 chicken coop object. 25 gold
+(cheap), just cosmetic behavior. In inclement weather, the chicken will huddle in the coop
+instead of wander the yard."* Built as said: a four-cell hut on the shop shelf for 25 gold,
+and a hen who walks into it when it rains and potters as before when it does not.
+
+Two things are decided here that had never come up, and they are worth separating from the
+coop that occasioned them.
+
+**A thing on the shelf may buy nothing.** Every other row in `systems/machine_defs.gd` buys
+labour — a sprinkler retires the watering can, a stall retires the sending-out, a robot
+retires the round. This one buys a place for the hen to be. That matters to the shape of the
+shelf rather than to the hut: at 25 gold it is the cheapest thing in the game and the first
+purchase a new player can afford, which makes the prices above it read as a ladder instead
+of as a wall, and it means the first thing she ever buys can be something she bought because
+she liked it. The economy has no opinion about it: it yields nothing, costs nothing to keep,
+and a farm without one plays exactly as it did before it existed.
+
+**An animal may answer the weather.** Until now the day's weather changed the ground (rain
+waters the soil and washes every scent trail, P-10) and nothing else. The hen is the first
+actor whose behaviour it reaches, and it reaches her the safe way round: the weather is sim
+state rolled from the seed and re-applied by a replay, so a wet day puts the same hen in the
+same doorway in a replay as it did in the session, and her shelter needs no roll, no verb and
+no new gateway code — it replaces the wander her brain was already choosing.
+
+**Provisional for two reasons.** The first is scope: this is P-13's deliberately weak first
+version — one hen, one hut, no feeding, no roosting, no eggs laid indoors, nothing picked
+back up — and every one of those is something a tier above it can be. The second is that
+"inclement" is one word for one kind of sky today, because rain is the only weather the game
+has. **Trigger:** revisit when the weather grows a second bad state (wind, storm, heat, a
+season under P-11), or when a second animal wants shelter — at which point "which animals
+shelter, where, and from what" is a table rather than a branch in the hen's brain.
+
 ### D-1. Phase 5 genre (X-COM tactics vs. Gradius-like hybrid vs. other)
 **Why deferred:** Phase 5's cast is the player plus *trained bots* — its design depends on
 what trained bots actually feel like, which cannot be known before phase 4 exists.

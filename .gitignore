@@ -63,6 +63,12 @@ tools/shot_window_view_*
 # boot sequence, not assets.
 tools/boot_bloom_shots/
 tools/shot_watering_inset.png
+
+# The chicken coop on the farm, dry and wet (P-17, 2026-09-11). Regenerate with
+# tools/capture_coop.tscn; two review screenshots of the hut in the yard and the
+# hen sheltering in its doorway. Sidecars for the same reason as the workbench's.
+tools/shot_coop_*.png*
+
 # Both of these end `.png`, and their `.import` sidecars go with them for the reason
 # given above the workbench captures — taking the shot otherwise leaves two untracked
 # files behind every time.

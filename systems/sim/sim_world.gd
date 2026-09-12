@@ -844,13 +844,37 @@ const TALL_OBJECTS: Array[String] = ["cot", "well", "seed_box", WorldLayout.WORK
 const OPEN_OBJECTS := {
 	"egg": true, "acorn": true,
 	WorldLayout.ROBOT_STALL: true, WorldLayout.ROBOT_STALL_SLOT: true,
+	# ...and, since 2026-09-11, the four cells of a chicken coop, for the same
+	# reason: a coop the hen cannot step into is a shed with a chicken standing
+	# outside it in the rain.
+	WorldLayout.CHICKEN_COOP: true, WorldLayout.CHICKEN_COOP_PART: true,
 }
 
-# The catalogue row a stall is bought from, and where its second bay lands
-# relative to the tile she tapped: one tile to the **right**, always, because two
-# bays side by side is the shape of the shed and v1 does not rotate (P-13).
+# The objects that are a **building you stand in** rather than a thing in your
+# way: walkable ground with a structure on it, which is the one kind of square
+# where "there is soil under my feet" and "there is a shed here" are both true.
+# Every rule that has to say which of those wins reads this — no tilling the floor
+# of the coop, no planting in a stall bay, no fence post through the wall, no
+# order taught on a square whose every verb the gateway will refuse.
+#
+# Separate from the stall's own question (`is_stall_tile`), which asks something
+# narrower and must stay narrow: a robot's home is a bay, and a robot that decided
+# to go and live in the hen's coop would be a bug rather than a feature.
+const OPEN_STRUCTURE_OBJECTS := {
+	WorldLayout.ROBOT_STALL: true, WorldLayout.ROBOT_STALL_SLOT: true,
+	WorldLayout.CHICKEN_COOP: true, WorldLayout.CHICKEN_COOP_PART: true,
+}
+
+# The two catalogue rows the sim refers to by name. A constant rather than a bare
+# string because a typo in one of those would be silent — a rule that quietly
+# stopped applying to anything.
+#
+# **Where a stall's second bay lands used to live here too**, as a `+1, 0` offset,
+# and it does not any more (2026-09-11): a structure's shape is a `footprint` on
+# its catalogue row now, so the stall's second bay and the coop's other three
+# cells are the same fact asked the same way (`MachineDefs.footprint_cells`).
 const STALL_ITEM := "stall"
-const STALL_SLOT_OFFSET := Vector2i(1, 0)
+const COOP_ITEM := "coop"
 
 # **What a machine forgets when it goes in the crate** (Q-98, ruled 2026-09-10:
 # "pick up is just repositioning, it shouldn't factory reset the robot").
@@ -1567,7 +1591,7 @@ func stompable_at(t: Vector2i) -> bool:
 func buildable_at(t: Vector2i) -> bool:
 	if not is_walkable(t.x, t.y):
 		return false
-	if is_stall_tile(t):
+	if is_structure_floor(t):
 		return false
 	if get_object(t.x, t.y) != "":
 		return false
@@ -1590,11 +1614,19 @@ func placeable_at(t: Vector2i, item: String = "") -> bool:
 	if is_stall_tile(t):
 		if MachineDefs.species_of(item) != SpeciesDefs.BOT:
 			return false
-	# ...and a stall itself is two tiles wide, so both of them have to be free
-	# ground. The companion is on the same row and therefore on the same page by
-	# construction; off the right-hand edge of the map is `is_walkable`'s answer.
-	elif item == STALL_ITEM and not placeable_at(t + STALL_SLOT_OFFSET):
+	# The coop's floor is walkable and takes nothing at all: it is somewhere the
+	# hen sits, not a bay with a slot in it.
+	elif is_coop_tile(t):
 		return false
+	# ...and a structure wider or deeper than one square needs every cell of its
+	# block to be free ground (2026-09-11). This was the stall's second bay by
+	# name until the coop arrived with four cells; now the row says its own shape
+	# and the rule is the same rule for both. Off the edge of the map is
+	# `is_walkable`'s answer, reached through the recursion below.
+	else:
+		for cell in MachineDefs.footprint_cells(item, t):
+			if cell != t and not placeable_at(cell):
+				return false
 	for raw in actors:
 		var id := String(raw)
 		if id == ACTOR_PLAYER:
@@ -1612,6 +1644,66 @@ func is_stall_tile(t: Vector2i) -> bool:
 	if t.y < 0 or t.y >= MAP_HEIGHT or t.x < 0 or t.x >= MAP_WIDTH:
 		return false
 	return WorldLayout.is_stall_object(objects[t.y][t.x])
+
+
+# Is this tile one of a coop's four cells? The stall's question, for the hen's
+# shed — read off the grid for the same reason, and asked by her brain when it
+# wants to know whether she is already in out of the rain.
+func is_coop_tile(t: Vector2i) -> bool:
+	if t.y < 0 or t.y >= MAP_HEIGHT or t.x < 0 or t.x >= MAP_WIDTH:
+		return false
+	return WorldLayout.is_coop_object(objects[t.y][t.x])
+
+
+# Is a **building** standing on this walkable tile? See `OPEN_STRUCTURE_OBJECTS`:
+# this is what every "the structure wins over the soil" rule asks, so a structure
+# added to that table is bound by all of them at once rather than by however many
+# of them somebody remembered to edit.
+func is_structure_floor(t: Vector2i) -> bool:
+	if t.y < 0 or t.y >= MAP_HEIGHT or t.x < 0 or t.x >= MAP_WIDTH:
+		return false
+	return OPEN_STRUCTURE_OBJECTS.has(objects[t.y][t.x])
+
+
+# Every cell of every coop on the farm, sorted, so that two hens, a save and a
+# replay all read the same farm in the same order. A read-only query over the grid
+# rather than a list kept somewhere, which is what makes it survive a load with no
+# field of its own.
+func coop_tiles() -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	for y in MAP_HEIGHT:
+		for x in MAP_WIDTH:
+			if WorldLayout.is_coop_object(objects[y][x]):
+				out.append(Vector2i(x, y))
+	return out
+
+
+# **Where the hen goes when it rains** (2026-09-11): the front row of every coop,
+# and only the front row.
+#
+# This is a sim rule with a presentation reason, which is rare enough to be worth
+# saying out loud. The coop's picture is hung from the front-left cell and stands
+# 48 pixels tall, so it covers the two cells behind that row as well — a hen
+# sheltering on the back row is drawn *over the hut's own wall*, halfway up the
+# roof, which reads as a chicken stuck to a building rather than as a chicken out
+# of the rain. On the front row she stands in the open doorway, which is exactly
+# what the player bought.
+#
+# Derived from the anchors rather than recorded, like every other coop question:
+# the anchor is the front-left cell by construction (`MachineDefs.footprint_cells`),
+# so the front row is that cell and the width of the row beside it.
+func coop_perches() -> Array[Vector2i]:
+	var width: int = maxi(1, MachineDefs.footprint_of(COOP_ITEM).x)
+	var out: Array[Vector2i] = []
+	for y in MAP_HEIGHT:
+		for x in MAP_WIDTH:
+			if objects[y][x] != WorldLayout.CHICKEN_COOP:
+				continue
+			for dx in width:
+				var cell := Vector2i(x + dx, y)
+				if is_coop_tile(cell):
+					out.append(cell)
+	return out
 
 
 # The machine standing on this tile, or "". Sorted so that two machines sharing a
@@ -1692,7 +1784,7 @@ func teachable_at(t: Vector2i) -> bool:
 	# walkable and may well be standing on soil, but the gateway refuses every
 	# energy-costed verb there, so teaching one would be exactly the silent trap
 	# the paragraph above is about: an order it walks to and can do nothing with.
-	if is_stall_tile(t):
+	if is_structure_floor(t):
 		return false
 	return TEACHABLE_STATES.has(String(get_tile(t.x, t.y).get("state", "")))
 
@@ -2303,29 +2395,40 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			if not MachineDefs.spawns_actor(item):
 				# **Which object it becomes is the row's answer, not this branch's**
 				# (v0.2.2, the workbench). The stall was the only structure in the
-				# game when this was written, so its two object types were named
-				# here; a second structure would have made that a chain of `if
-				# item ==`. A row that carries an `object` puts that one object
-				# down and nothing else — one tile, no companion, no `slot` in the
-				# result — and the stall keeps its own two-object case below.
+				# game when that was written, so its two object types were named
+				# here; the bench made that a row instead, and the coop
+				# (2026-09-11) finished the job — every structure on the shelf,
+				# the stall included, now says what it becomes and how much ground
+				# it stands on, and this branch names none of them.
 				var obj := MachineDefs.object_of(item)
-				if obj != "":
-					set_object(target.x, target.y, obj)
-					if placer_charged:
-						gs.machines[item] = int(gs.machines.get(item, 0)) - 1
-					# **A structure's first use is being set down** (S-12). A bench
-					# has no job of its own to complete — it is a thing robots are
-					# worked on at — so the moment it stands on the farm is the
-					# moment it has proved what it proves, and the Mark III joins
-					# the shelf.
-					earn(MachineDefs.earns_of(item))
-					return { "ok": true, "structure": item }
-				set_object(target.x, target.y, WorldLayout.ROBOT_STALL)
-				var slot := target + STALL_SLOT_OFFSET
-				set_object(slot.x, slot.y, WorldLayout.ROBOT_STALL_SLOT)
+				if obj == "": return _fail("unknown_machine")
+				# **And how many cells it stands on is the row's answer too**
+				# (2026-09-11, the coop). The stall's two bays were written out
+				# here, which was fine while the stall was the only structure wider
+				# than a square; a four-cell coop would have made it a chain of
+				# `if item ==`. So the block is walked instead: the anchor takes the
+				# object the renderer draws, every other cell takes the row's
+				# `part`, which is real to the sim and draws nothing.
+				var part := MachineDefs.part_of(item)
+				var cells := MachineDefs.footprint_cells(item, target)
+				set_object(target.x, target.y, obj)
+				for cell in cells:
+					if cell != target:
+						set_object(cell.x, cell.y, part)
 				if placer_charged:
 					gs.machines[item] = int(gs.machines.get(item, 0)) - 1
-				return { "ok": true, "structure": item, "slot": slot }
+				# **A structure's first use is being set down** (S-12). A bench
+				# has no job of its own to complete — it is a thing robots are
+				# worked on at — so the moment it stands on the farm is the
+				# moment it has proved what it proves, and the Mark III joins
+				# the shelf.
+				earn(MachineDefs.earns_of(item))
+				var laid := { "ok": true, "structure": item, "cells": cells }
+				# The stall's second bay, still under the name whatever draws it
+				# has always called it.
+				if cells.size() > 1:
+					laid["slot"] = cells[1]
+				return laid
 			var machine_id := next_machine_id(item)
 			var config := String(action.get("config", MachineDefs.default_config(item)))
 			if not config in MachineDefs.configs_of(item):
@@ -2720,7 +2823,7 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			# The structure does: no tilling the floor of the shed, no planting in
 			# it, no watering it. Stated for every actor at once, like the yard's
 			# rule below, so a bot is bound by it exactly as she is.
-			if is_stall_tile(target):
+			if is_structure_floor(target):
 				return _fail("occupied")
 			if verb == "till" and String(tile.get("state", "")) in [WorldLayout.YARD, WorldLayout.FLOOR]:
 				return _fail("not_tillable")

@@ -386,6 +386,32 @@ before the first public build ships.*
   The second bench variant and the second rack variant contributed no pixels; both
   are in the archive.
 
+- **The chicken coop, 2026-09-11** — **generated, $0.075** (same Retro Diffusion
+  pipeline, rights and post-processing as above; raws with `*_meta.json`, the
+  request body, the palette lock and the compositing script archived per the
+  standing policy at `assets/raw/2026-09-11-chicken-coop/`). `chicken_coop.png` —
+  32x48, hung from its bottom edge like the robot stall: the bottom 32 pixels are
+  the hut standing on its two-by-two block of ground, the 16 above them are the
+  roof leaning over the row behind. It is the coop the player buys for 25 gold and
+  the hen shelters in when it rains (P-17).
+  **One call, one subject** (`rd_plus__default`, 128x192, two images, seed 91101).
+  The hut is the whole object, so there was nothing to compose and nothing to buy
+  twice; `build_coop.py` keys the cream, clears the pockets the flood cannot reach,
+  keeps only the mass the hut is joined to, downscales 3:1 and locks the palette.
+  The lock is six colours: the wood ramp `#c39a6c`/`#a97959`/`#90625d` the well,
+  the seed box and the bench already use, a darker `#6f4a45` for the open doorway,
+  and the style guide's rose accent `#d99a9a` with a shade `#b87a7a` for the roof
+  ridge — which is the one note that tells the coop from the stall across a yard.
+  Two things the downscale got wrong and the script corrects, both the same lesson
+  as the bench's: the generation stands the hutch inside a low rail run whose posts
+  survive 3:1 as two pixels of rose on the left and none on the right, so below the
+  eaves the sprite is cropped to the hut's own width; and the doorway muddied
+  towards the mid wood, which at 32 pixels is a smudge rather than a hole a hen can
+  sit in, so the arch is forced to its own dark.
+  The second variant — a closed shed with a coin-sized round hole — contributed no
+  pixels and is in the archive. It was rejected on the design rather than the
+  drawing: a hen who goes inside has to be visible inside.
+
 ## Audio (placeholder)
 - `assets/audio/music/bgm_wholesome.ogg` — **"Wholesome" by Kevin MacLeod
   (incompetech.com), CC BY 4.0** (verified 2026-08-26 from embedded Vorbis tags,

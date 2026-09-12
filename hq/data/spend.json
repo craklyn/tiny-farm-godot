@@ -252,6 +252,19 @@
       "balance_after": 0.137,
       "reconciled": true,
       "recorded_by": "record_spend"
+    },
+    {
+      "id": "2026-09-11-p-17-chicken-coop-128x192-x2-rd-plus-the",
+      "date": "2026-09-11",
+      "vendor": "Retro Diffusion",
+      "kind": "generation",
+      "purpose": "P-17 chicken coop, 128x192 x2, rd_plus (the two candidates archived at assets/raw/2026-09-11-chicken-coop)",
+      "work_item": "P-17",
+      "dollars": 0.075,
+      "credits": 7.5,
+      "balance_after": 0.062,
+      "reconciled": true,
+      "recorded_by": "record_spend"
     }
   ]
 }

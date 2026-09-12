@@ -36,6 +36,53 @@ extends RefCounted
 # `place` reads it, so a structure costs the gateway one branch rather than a
 # second catalogue.
 static var TYPES: Dictionary = {
+	# --- the chicken coop (2026-09-11) -----------------------------------------
+	#
+	# **The first thing on the shelf that does nothing.** Every other row here buys
+	# labour: a sprinkler retires the watering can, a stall retires the sending-out,
+	# a robot retires the round. This buys a place for the hen to be, and that is
+	# the whole of it — no species, no brain, no verb, no yield. On a wet morning
+	# she walks into it and sits the rain out; on a dry one it is a hut with a
+	# chicken near it.
+	#
+	# **Priced at 25** — under the fencing, which makes it the cheapest thing in
+	# the game and the first purchase a player can afford on day one. That is
+	# deliberate: the shelf's other lesson is "save up for the machine that works
+	# for you", and a cheap ornament at the bottom of it is what makes the prices
+	# above read as a ladder rather than as a wall. It also means the first thing a
+	# new player buys can be one they bought because they liked it.  [Playtest]
+	#
+	# **Two by two**, which is new — the stall is two tiles side by side and the
+	# bench is one. The `footprint` field below is what says so, and it is why the
+	# gateway now puts any structure down by walking a block of cells rather than
+	# by naming the stall's second bay (see `SimWorld`'s `place`).
+	#
+	# **Deliberately weak first version** (P-13): it cannot be picked up, moved or
+	# upgraded, it holds no hen of its own, and nothing is laid in it. A coop that
+	# fed the flock, sheltered more than one bird or turned eggs into something is
+	# what a tier above this one can be.
+	"coop": {
+		"name": "Chicken Coop",
+		"price": 25,
+		"species": "",
+		"program": "",
+		"configs": [],
+		"default_config": "",
+		"unlock_requirement": null,
+		# What `place` puts on the grid, and what the other three cells of the
+		# block become.
+		"object": WorldLayout.CHICKEN_COOP,
+		"part": WorldLayout.CHICKEN_COOP_PART,
+		# Two wide and two deep, anchored at the cell she taps, which is the
+		# **front-left** corner: the block runs one square right and one square
+		# back. v1 does not rotate, for the stall's reason (P-13).
+		"footprint": Vector2i(2, 2),
+		# 32x48: the bottom 32 pixels stand on the four cells, the 16 above them
+		# are the roof rising behind. The same picture in the shop card, the HUD
+		# pill and the yard, which is the rule every placed thing follows.
+		"icon": { "sheet": "res://assets/sprites/generated/chicken_coop.png",
+			"region": Rect2(0, 0, 32, 48) },
+	},
 	# The first automation the player meets — `design/03`'s "watch your old job
 	# happen without you". Priced above every seed and below the robot: a day of
 	# good tomatoes buys one, which makes it the natural first purchase after the
@@ -110,6 +157,14 @@ static var TYPES: Dictionary = {
 		"configs": [],
 		"default_config": "",
 		"unlock_requirement": null,
+		# Its two bays, as catalogue data (2026-09-11). The gateway used to name
+		# both of these itself, because the stall was the only multi-cell structure
+		# in the game; the coop made that a chain of `if item ==` waiting to happen,
+		# so the shape of a structure is a fact about its row now. Same two objects,
+		# same two tiles, one fewer branch in the sim.
+		"object": WorldLayout.ROBOT_STALL,
+		"part": WorldLayout.ROBOT_STALL_SLOT,
+		"footprint": Vector2i(2, 1),
 		# The whole 32x32 sheet, which is also exactly what is drawn on the farm:
 		# its bottom half is the two open bays standing on the two tiles, its top
 		# half the shed rising behind them. One picture in the shop card, the HUD
@@ -265,8 +320,8 @@ static var TYPES: Dictionary = {
 # with a verb, a state, a refund and 23 passing assertions, and no way to get any.
 # Fencing leads: it is the cheapest thing on the shelf and the only one that is
 # not a machine.
-static var ORDER: Array[String] = ["fence", "sprinkler", "stall", "bot_mk1", "bot_mk2",
-		"bot_mk3", "workbench"]
+static var ORDER: Array[String] = ["coop", "fence", "sprinkler", "stall", "bot_mk1",
+		"bot_mk2", "bot_mk3", "workbench"]
 
 
 static func has(key: String) -> bool:
@@ -325,6 +380,39 @@ static func key_for_species(species: String) -> String:
 # second branch there rather than a row in the catalogue.
 static func object_of(key: String) -> String:
 	return String(TYPES.get(key, {}).get("object", ""))
+
+
+# The object the **other** cells of a multi-cell structure become — the stall's
+# second bay, the coop's other three squares — or "" for a structure that stands
+# on one tile. Never drawn: the renderer hangs the whole picture off the anchor
+# and skips these, so they exist to be real to the sim and invisible to the eye.
+static func part_of(key: String) -> String:
+	return String(TYPES.get(key, {}).get("part", ""))
+
+
+# How many cells of ground a structure stands on, as width by depth. `Vector2i(1, 1)`
+# for everything that stands on the square she tapped and nothing more, which is
+# every row that does not say otherwise.
+static func footprint_of(key: String) -> Vector2i:
+	return TYPES.get(key, {}).get("footprint", Vector2i(1, 1))
+
+
+# The cells a structure of this row would stand on if it were set down at `anchor`
+# — the anchor first, then the rest in a fixed order so that two callers, a save
+# and a replay can never disagree about which cell is which.
+#
+# **The anchor is the front-left corner**: the block runs to the **right** and
+# **back** (up the screen, which is -y). That is where the stall's `+1, 0` second
+# bay already was, and it is the direction the renderer already draws in — a
+# picture is hung from its bottom edge, so the tile she taps is the one the
+# structure's feet are on.
+static func footprint_cells(key: String, anchor: Vector2i) -> Array[Vector2i]:
+	var size := footprint_of(key)
+	var out: Array[Vector2i] = []
+	for dy in maxi(1, size.y):
+		for dx in maxi(1, size.x):
+			out.append(anchor + Vector2i(dx, -dy))
+	return out
 
 
 # Does placing this row put an **actor** in the world, or an object on the grid?

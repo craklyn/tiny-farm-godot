@@ -33,8 +33,16 @@ const BALKED_IDLE := [1.0, 3.0]    # when there was nowhere to go
 # deliberately not evidence of working the loop (see GameState.total_harvests).
 const EGG_CHANCE := 0.5
 
+# **A wet morning is spent indoors** (2026-09-11, the chicken coop). How long she
+# settles for before thinking again — longer than any of her wandering idles,
+# because sitting the rain out is the behaviour and a hen who re-decided every two
+# seconds would fidget. She is woken at the day turn regardless
+# (`SimWorld.schedule_all_brains`), so a clearing sky reaches her whatever she is
+# in the middle of.  [Playtest]
+const SHELTER_IDLE := [4.0, 8.0]
 
-func step(world: SimWorld, actor_id: String, tick: int, _gs = null) -> Dictionary:
+
+func step(world: SimWorld, actor_id: String, tick: int, gs = null) -> Dictionary:
 	var e: Dictionary = world.actor(actor_id)
 	if e.is_empty():
 		return {}
@@ -59,7 +67,7 @@ func step(world: SimWorld, actor_id: String, tick: int, _gs = null) -> Dictionar
 		"moving":
 			_walk(world, actor_id, e, extra, tick)
 		_:
-			_think(world, actor_id, e, extra, tick)
+			_think(world, actor_id, e, extra, tick, gs)
 	return {}
 
 
@@ -73,7 +81,8 @@ func on_new_day(world: SimWorld, actor_id: String) -> void:
 
 # --- the wander ---------------------------------------------------------------
 
-func _think(world: SimWorld, actor_id: String, _e: Dictionary, extra: Dictionary, tick: int) -> void:
+func _think(world: SimWorld, actor_id: String, _e: Dictionary, extra: Dictionary,
+		tick: int, gs = null) -> void:
 	# `wake` is when she next thinks; the sim reschedules her on it. So "idle for
 	# three seconds" is one integer, not a timer that has to be counted down every
 	# tick — which is also ground rule 8 from her side: a dozing hen costs the sim
@@ -82,6 +91,27 @@ func _think(world: SimWorld, actor_id: String, _e: Dictionary, extra: Dictionary
 		# First thought of her life, staggered so she is not standing to attention.
 		_idle_for(extra, tick, FIRST_IDLE)
 		return
+	# **When it rains she goes in** (2026-09-11, the chicken coop). The only
+	# behaviour in the game that exists for no reason but the look of it: a hen
+	# pottering about in the wet is a hen that has nowhere to be, and a hen sitting
+	# in a shed while the rain comes down is a farm that has somebody living on it.
+	#
+	# It is her *wander* that the coop replaces, and nothing else — she still lays,
+	# still answers the day turn, still costs the clock one thought per decision.
+	# No coop on the farm, or no way through to one, and this whole branch falls
+	# away and she potters exactly as she always has, which is what keeps the coop
+	# an ornament rather than a dependency.
+	#
+	# The weather is sim state rolled from the seed and re-applied by a replay, so
+	# a wet day puts the same hen in the same shed in a replay as it did in the
+	# session — no roll of her own, nothing to desync.
+	if _wants_shelter(gs):
+		var here := world.actor_pos(actor_id)
+		if world.is_coop_tile(here):
+			_idle_for(extra, tick, SHELTER_IDLE)
+			return
+		if _head_for_shelter(world, actor_id, extra, tick, here):
+			return
 	var goal := _random_reachable(world, world.actor_pos(actor_id))
 	# Her route comes from the movement engine now (M2.5 WI-4), which reads the
 	# `ground` mode off her species row. Nothing about her walk changed: what she
@@ -114,6 +144,49 @@ func _walk(world: SimWorld, actor_id: String, _e: Dictionary, extra: Dictionary,
 func _idle_for(extra: Dictionary, tick: int, span: Array) -> void:
 	extra["state"] = "idle"
 	extra["wake"] = tick + ticks(SimRng.randf_range(float(span[0]), float(span[1])))
+
+
+# Is the weather something to get out of? One kind of weather is, today
+# ("rainy"), and the question is asked rather than the string compared so that the
+# day the game grows a second sort of bad sky, the hen learns about it here and
+# nowhere else.
+#
+# `gs` is absent in plenty of sim-only tests and fast-forwards, and absent means
+# fair: a hen in a world with no weather in it potters.
+func _wants_shelter(gs) -> bool:
+	if gs == null:
+		return false
+	return String(gs.get("weather")) == "rainy"
+
+
+# Set her walking to the nearest cell of the nearest coop, or report that there is
+# nowhere to go. Nearest by walking distance would be the honest measure and is not
+# worth a second search: she picks the closest cell as the crow flies and lets the
+# route finder say whether it can be reached, trying the next one when it cannot.
+# Ties break on the grid scan's own order (`SimWorld.coop_perches` is sorted), so
+# two hens, a save and a replay all choose the same shed — and it is the *perches*
+# she is offered rather than the whole block, because the back row of a coop is
+# behind its own wall (see that function).
+func _head_for_shelter(world: SimWorld, actor_id: String, extra: Dictionary,
+		tick: int, here: Vector2i) -> bool:
+	var cells := world.coop_perches()
+	if cells.is_empty():
+		return false
+	cells.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+		var da := absi(a.x - here.x) + absi(a.y - here.y)
+		var db := absi(b.x - here.x) + absi(b.y - here.y)
+		if da != db:
+			return da < db
+		if a.y != b.y:
+			return a.y < b.y
+		return a.x < b.x)
+	for cell in cells:
+		if not Movement.plan(world, actor_id, cell):
+			continue
+		extra["state"] = "moving"
+		extra["wake"] = tick + Movement.ticks_per_tile(world.species_of(actor_id))
+		return true
+	return false
 
 
 # Anywhere she could walk to, including where she is standing — the same draw

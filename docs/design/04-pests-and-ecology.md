@@ -195,6 +195,21 @@ tomato does count — a crow that lands on one takes it, and the soil is left tu
    roster may contain animals whose entire contribution is that the farm is inhabited, and
    it gives a phase-4 bot a second thing that must not be chased. It is currently silent;
    whether ambient fauna make noise is `design/10`'s question, not this chapter's.
+
+   **The hen answers the weather** (P-17, CEO 2026-09-11). She is the first animal in the
+   game whose behaviour the sky reaches: buy a chicken coop from the shop and on a rainy
+   day she walks into it and sits there instead of pottering about the yard. Nothing else
+   changes — she lays as she always did, her brain costs the clock the same one thought per
+   decision, and on a farm with no coop on it a wet day is an ordinary day. The point is
+   that the farm is *inhabited*: an animal that answers the weather is doing something for
+   its own sake, which is the same claim the songbird makes and a stronger one, because a
+   player can watch the cause.
+
+   What this leaves open for this chapter is the table behind it. Today the rule is one
+   animal, one shelter and one bad sky, written in `ChickenBrain`. A second sheltering
+   animal, or a second kind of weather to shelter from, turns that into a fact about a
+   species row — which animals shelter, in what, from what — and is the moment to write it.
+   The trigger is recorded on P-17.
 6. **Ecology depth** — do pests exist when unobserved (persistent nests with populations)
    or spawn per-raid? Leans on decision LOD (`ARCHITECTURE.md`); `[Joint]` at M3.
 

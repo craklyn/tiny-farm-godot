@@ -608,6 +608,15 @@ func _load_textures() -> void:
 	object_regions[WorldLayout.WORKBENCH] = [
 		load("res://assets/sprites/generated/workbench.png"), Rect2(0, 0, 16, 32)]
 
+	# The chicken coop (2026-09-11): 32x48, and **two cells deep** on the grid,
+	# which is the first structure in the game that is. The ordinary tall-object
+	# draw still handles it with no special case — the picture is hung from its
+	# bottom edge, so its bottom 32 pixels stand on the four cells of the block and
+	# the 16 above them are the roof leaning over the row behind, exactly as the
+	# stall's shed does. Its three other cells draw nothing (see the object pass).
+	object_regions[WorldLayout.CHICKEN_COOP] = [
+		load("res://assets/sprites/generated/chicken_coop.png"), Rect2(0, 0, 32, 48)]
+
 	# T-28's pictograms, resolved from `StationPresentation.GLYPH_ATLAS` — which
 	# is pure data, so the table can be asserted headlessly and the two renderers
 	# that need these (the world overlay and the HUD) cannot disagree about which
@@ -1543,6 +1552,12 @@ func _draw() -> void:
 
 			# Queue objects
 			var obj: String = objects[ty][tx]
+			if obj == WorldLayout.CHICKEN_COOP_PART:
+				# The coop's other three cells. Real to the sim — the hen shelters
+				# in them and nothing may be farmed there — and drawn by the
+				# front-left cell, whose picture covers the whole block. A cell of
+				# its own would be the coop drawn four times, staggered.
+				continue
 			if obj == WorldLayout.ROBOT_STALL_SLOT:
 				# The stall's second bay. Real to the sim — a robot parks in it and
 				# nothing may be farmed there — and drawn by its left-hand neighbour,

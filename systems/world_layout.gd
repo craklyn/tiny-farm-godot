@@ -124,6 +124,24 @@ const ROBOT_STALL_SLOT := "robot_stall_slot"
 # (`SimWorld.TALL_OBJECTS`).
 const WORKBENCH := "workbench"
 
+# The chicken coop (2026-09-11), the first thing on the farm that is bought for no
+# reason but the look of it: 25 gold, four tiles of hutch and run, and it grows
+# nothing, waters nothing and decides nothing. What it buys is a place for the hen
+# to be — on a wet morning she walks into it and sits the rain out instead of
+# pottering about the yard, which is the only behaviour in the game that exists
+# purely because it is nice to watch.
+#
+# Two object types for the stall's reason: the anchor is the cell the 32x48
+# picture is hung from — the **front-left** of the block — and the other three
+# cells are parts that draw nothing at all, so a coop that lost a cell to a save
+# or a bug is a visible gap rather than four coops standing in each other.
+#
+# **None of them block walking.** It is open-fronted like the stall, and it has to
+# be: a coop the hen cannot step into is a shed with a chicken standing outside it
+# in the rain. She walks in, and so may the farmer.
+const CHICKEN_COOP := "chicken_coop"
+const CHICKEN_COOP_PART := "chicken_coop_part"
+
 # Who opens a gate, as recorded on the parcel. "start" means no gate at all.
 const OPENED_BY_START := "start"
 const OPENED_BY_COLD_OPEN := "cold_open"
@@ -562,6 +580,13 @@ static func is_door_object(obj: String) -> bool:
 # is the one that reads it off the grid.
 static func is_stall_object(obj: String) -> bool:
 	return obj == ROBOT_STALL or obj == ROBOT_STALL_SLOT
+
+
+# Is this object one of a coop's four cells? The coop's counterpart to the stall's
+# question above, asked wherever "the hen may shelter here, and nothing may be
+# farmed here" is what is meant.
+static func is_coop_object(obj: String) -> bool:
+	return obj == CHICKEN_COOP or obj == CHICKEN_COOP_PART
 
 
 # **The fence she puts up herself** (Q-92, ruled 2026-09-07: *"we already have

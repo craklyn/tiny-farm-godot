@@ -214,6 +214,7 @@ func _init() -> void:
 	test_bed_cue_shape()
 	test_save_v3_migration()
 	test_robot_stall()
+	test_chicken_coop()
 	test_robot_usefulness()
 
 	print("")
@@ -13325,14 +13326,20 @@ func test_workbench_place() -> void:
 	_assert(MachineDefs.icon_of("workbench") != null,
 		"with a picture for the shop card, which is the same picture the yard gets")
 
-	# **The row says what it becomes.** The stall's two object types are written
-	# into the gateway by name; without this field the bench would have been a
-	# second `if item ==` beside them, and the one after that a third.
+	# **The row says what it becomes.** The stall's two object types used to be
+	# written into the gateway by name; without this field the bench would have
+	# been a second `if item ==` beside them, and the one after that a third — so
+	# when the coop arrived as the third (2026-09-11), the stall moved onto this
+	# field too and the gateway lost its last structure by name.
 	_assert(MachineDefs.object_of("workbench") == WorldLayout.WORKBENCH,
 		"the row itself names the object it becomes (%s)" % MachineDefs.object_of("workbench"))
-	_assert(MachineDefs.object_of("stall") == "" and MachineDefs.object_of("bot_mk3") == ""
-			and MachineDefs.object_of("nonsense") == "",
-		"...and it is the only row that carries one, so nothing else changed shape")
+	_assert(MachineDefs.object_of("stall") == WorldLayout.ROBOT_STALL
+			and MachineDefs.object_of("coop") == WorldLayout.CHICKEN_COOP,
+		"every structure on the shelf answers the same way, the stall included")
+	_assert(MachineDefs.object_of("bot_mk3") == "" and MachineDefs.object_of("nonsense") == "",
+		"...and nothing that is not a structure carries one")
+	_assert(MachineDefs.part_of("workbench") == "" and MachineDefs.footprint_of("workbench") == Vector2i(1, 1),
+		"the bench stands on the one square she tapped, so it needs no second object")
 
 	# **A tap on it opens a screen, and opening a screen is not a verb** (P-9).
 	_assert(ActionRouter.SPECIAL_OBJECTS.get(WorldLayout.WORKBENCH, "") == "open_workbench",
@@ -14760,3 +14767,196 @@ func test_robot_usefulness() -> void:
 		"and the whole of it cost 230 gold, once (%d)" % employed["gold_spent"])
 	_assert(bool(employed["parked_home"]),
 		"with the machine back in its bay at the end of it, ready for a morning nobody has to run")
+
+
+# --- The chicken coop: the first thing she buys because she likes it ----------
+#
+# Daniel, 2026-09-11: *"Let's add a 2x2 chicken coop object. 25 gold (cheap), just
+# cosmetic behavior. In inclement weather, the chicken will huddle in the coop
+# instead of wander the yard."*
+#
+# Three claims, and they are separable, so they are asserted separately: the shelf
+# sells a four-cell hut for 25 gold, the hut is a building rather than a machine
+# (walk into it, farm nothing in it, it decides nothing and never thinks), and a
+# wet morning finds the hen inside it instead of out in the yard.
+#
+# The last one is the only behaviour in the game that pays for nothing. That is
+# what makes it worth a test: a cosmetic feature has no yield to notice when it
+# silently stops working, so the only thing standing between "the hen shelters"
+# and "the hen used to shelter" is this.
+func test_chicken_coop() -> void:
+	print("\n--- The chicken coop: the hen comes in out of the rain (2026-09-11) Tests ---")
+
+	# --- the catalogue row -----------------------------------------------------
+	_assert(MachineDefs.has(SimWorld.COOP_ITEM), "the shop sells a coop")
+	_assert(MachineDefs.price_of("coop") == 25,
+		"at 25 gold (%d)" % MachineDefs.price_of("coop"))
+	var cheapest := true
+	for key in MachineDefs.ORDER:
+		if key != "coop" and MachineDefs.price_of(key) <= 25:
+			cheapest = false
+	_assert(cheapest and MachineDefs.ORDER[0] == "coop",
+		"and it is the cheapest thing on the shelf, listed first — the ladder needs a bottom rung")
+	_assert(not MachineDefs.spawns_actor("coop") and MachineDefs.species_of("coop") == "",
+		"it names no species: a hut is an object on the grid, never an actor")
+	_assert(MachineDefs.configs_of("coop").is_empty() and MachineDefs.program_of("coop") == ""
+			and MachineDefs.earns_of("coop") == "" and MachineDefs.earned_by("coop") == "",
+		"...with nothing to set, nothing to prove and no rung of the ladder to climb")
+	_assert(MachineDefs.footprint_of("coop") == Vector2i(2, 2),
+		"two squares wide and two deep (%s)" % MachineDefs.footprint_of("coop"))
+	_assert(MachineDefs.icon_of("coop") != null,
+		"with a picture for the shop card, which is the same picture the yard gets")
+
+	# The block it would stand on: the anchor is the square she taps, and it runs
+	# right and back. Pinned because the renderer hangs a 32x48 picture off that
+	# corner and a block that ran the other way would be drawn somewhere else.
+	var cells := MachineDefs.footprint_cells("coop", Vector2i(10, 10))
+	_assert(cells.size() == 4 and cells[0] == Vector2i(10, 10),
+		"four cells, the tapped one first (%s)" % [cells])
+	_assert(cells.has(Vector2i(11, 10)) and cells.has(Vector2i(10, 9))
+			and cells.has(Vector2i(11, 9)),
+		"running one square right and one square back, never rotated (P-13)")
+	_assert(MachineDefs.footprint_cells("sprinkler", Vector2i(10, 10)).size() == 1,
+		"...and a thing that stands on one square still stands on one square")
+
+	GameState.reset()
+	SimRng.reseed(9111)
+	var world := SimWorld.new()
+	world.generate()
+	GameState.gold = 1000
+
+	# Room for a two-by-two hut with clear ground around it.
+	var spot := Vector2i(-1, -1)
+	for y in range(10, 17):
+		for x in range(5, 23):
+			if world.placeable_at(Vector2i(x, y), "coop"):
+				spot = Vector2i(x, y)
+				break
+		if spot.x >= 0:
+			break
+	_assert(spot.x >= 0, "the generated farm has a four-square block free")
+	for dy in range(-3, 3):
+		for dx in range(-2, 4):
+			var t: Vector2i = spot + Vector2i(dx, dy)
+			world.set_tile_state(t.x, t.y, "cleared")
+
+	# --- bought, and put down --------------------------------------------------
+	var purse: int = GameState.gold
+	_assert(world.apply_action({ "verb": "buy_machine", "item": "coop",
+			"actor": "player" }, GameState).get("ok", false),
+		"she buys one from the shop, the way she buys everything (P-12)")
+	_assert(GameState.gold == purse - 25 and GameState.machines.get("coop", 0) == 1,
+		"it costs 25 and goes into the crate")
+
+	var energy_before: int = GameState.energy
+	var laid: Dictionary = world.apply_action({ "verb": "place", "target": spot,
+		"item": "coop", "actor": "player" }, GameState)
+	_assert(laid.get("ok", false), "she puts it down")
+	_assert(world.get_object(spot.x, spot.y) == WorldLayout.CHICKEN_COOP,
+		"the front-left cell carries the object the renderer draws (%s)" % spot)
+	var parts := 0
+	for cell in MachineDefs.footprint_cells("coop", spot):
+		if cell != spot and world.get_object(cell.x, cell.y) == WorldLayout.CHICKEN_COOP_PART:
+			parts += 1
+	_assert(parts == 3, "and the other three cells are parts, drawn by it (%d)" % parts)
+	_assert(GameState.energy == energy_before - Tools.get_energy_cost("place"),
+		"carrying it out cost her exactly what setting a machine down costs")
+	_assert(GameState.machines.get("coop", 0) == 0, "the crate is empty again")
+	_assert(world.machine_at(spot) == "",
+		"and nothing was spawned: a coop is not an actor and never thinks")
+
+	# --- what a coop is, and is not --------------------------------------------
+	for cell in MachineDefs.footprint_cells("coop", spot):
+		_assert(world.is_coop_tile(cell) and world.is_structure_floor(cell),
+			"every cell answers as coop, and as a building you stand in (%s)" % cell)
+		_assert(world.is_walkable(cell.x, cell.y),
+			"and every cell is walkable — a coop the hen cannot step into is a shed with a hen outside it (%s)" % cell)
+		for verb in ["till", "plant", "water", "harvest", "clear_weed"]:
+			_assert(not world.apply_action({ "verb": verb, "target": cell,
+				"seed_type": "wheat", "actor": "player" }, GameState).get("ok", false),
+				"...and nothing may be farmed on it (%s on %s)" % [verb, cell])
+		_assert(not world.buildable_at(cell), "nor fenced through (%s)" % cell)
+		_assert(not world.teachable_at(cell),
+			"nor taught to a robot, which could only walk there and fail (%s)" % cell)
+	_assert(not world.placeable_at(spot, "coop") and not world.placeable_at(spot, "sprinkler"),
+		"and nothing may be set down inside one, coop or machine")
+	_assert(not world.is_stall_tile(spot),
+		"a coop is not a stall: a robot that went to live in the hen house would be a bug")
+	_assert(world.coop_tiles().size() == 4,
+		"the farm reports its four coop cells, sorted (%d)" % world.coop_tiles().size())
+	_assert(world.coop_perches() == [spot, spot + Vector2i(1, 0)],
+		"and its two perches are the front row — the back row is behind the hut's own wall (%s)"
+			% [world.coop_perches()])
+
+	# --- and the hut survives being put down -----------------------------------
+	#
+	# Four cells, three of which draw nothing. If a part failed to save, a reloaded
+	# farm would look identical — the anchor draws the whole picture — and would
+	# quietly let her till the square the hut is standing on.
+	var snapshot: Dictionary = SaveGame.capture(world, GameState)
+	var reloaded := SimWorld.new()
+	_assert(SaveGame.restore(snapshot, reloaded, GameState), "the farm saves and loads")
+	var back := 0
+	for cell in MachineDefs.footprint_cells("coop", spot):
+		if reloaded.is_coop_tile(cell):
+			back += 1
+	_assert(back == 4 and reloaded.get_object(spot.x, spot.y) == WorldLayout.CHICKEN_COOP,
+		"the hut comes back with all four of its cells (%d)" % back)
+
+	# --- and the hen comes in out of the rain ----------------------------------
+	#
+	# Two identical farms, one clock, one difference: the weather. The hen is put
+	# down well away from the hut on both, given the same seed and the same number
+	# of ticks to think in, and where she ends up is the whole claim.
+	var start := spot + Vector2i(-2, 2)
+	world.spawn_actor("chicken", SpeciesDefs.CHICKEN, start)
+
+	GameState.weather = "sunny"
+	SimRng.reseed(515)
+	world.advance_ticks(600, GameState)
+	var dry_spot := world.actor_pos("chicken")
+	_assert(not world.is_coop_tile(dry_spot),
+		"on a dry day she potters about the yard and not into the hut (%s)" % dry_spot)
+
+	GameState.weather = "rainy"
+	SimRng.reseed(515)
+	world.advance_ticks(900, GameState)
+	var wet_spot := world.actor_pos("chicken")
+	_assert(world.is_coop_tile(wet_spot) and world.coop_perches().has(wet_spot),
+		"and when it rains she walks in and sits in the doorway (%s)" % wet_spot)
+
+	# She stays put while it is wet, rather than wandering back out and in again.
+	var settled := true
+	for i in 6:
+		world.advance_ticks(150, GameState)
+		if not world.is_coop_tile(world.actor_pos("chicken")):
+			settled = false
+	_assert(settled, "and stays there as long as the rain does")
+
+	# ...and the sky clearing is what lets her out. Nothing else changes.
+	GameState.weather = "sunny"
+	world.schedule_all_brains()
+	var left := false
+	for i in 12:
+		world.advance_ticks(150, GameState)
+		if not world.is_coop_tile(world.actor_pos("chicken")):
+			left = true
+	_assert(left, "a dry morning is what lets her out again")
+
+	# --- and it is an ornament, not a dependency -------------------------------
+	#
+	# The failure this rules out: a hen who stands still on a wet day on a farm
+	# with no coop on it, because the shelter branch swallowed her wander. A coop
+	# is bought for 25 gold by a player who wants one, and every farm without one
+	# has to behave exactly as it did before this existed.
+	GameState.reset()
+	SimRng.reseed(9111)
+	var bare := SimWorld.new()
+	bare.generate()
+	GameState.weather = "rainy"
+	bare.spawn_actor("chicken", SpeciesDefs.CHICKEN, start)
+	var before := bare.actor_pos("chicken")
+	SimRng.reseed(515)
+	bare.advance_ticks(900, GameState)
+	_assert(bare.coop_tiles().is_empty() and bare.actor_pos("chicken") != before,
+		"with no coop on the farm a wet day is an ordinary day and she potters (%s)" % bare.actor_pos("chicken"))
