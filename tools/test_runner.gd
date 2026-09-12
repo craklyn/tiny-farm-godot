@@ -1006,6 +1006,21 @@ func _collect_labels(node: Node, out: Array) -> void:
 		_collect_labels(child, out)
 
 
+## Are these two textures the same picture on screen?
+##
+## Icons here are `AtlasTexture`s cut from shared sheets, so two different icons
+## are usually the same resource with different regions, and two references to
+## one icon are usually different objects. Sheet plus region is what the eye is
+## actually comparing.
+func _same_picture(a, b) -> bool:
+	if a == null or b == null:
+		return false
+	if a is AtlasTexture and b is AtlasTexture:
+		return (a as AtlasTexture).atlas == (b as AtlasTexture).atlas \
+			and (a as AtlasTexture).region == (b as AtlasTexture).region
+	return a == b
+
+
 ## Press the button of the `n`th row on a panel, as a finger does.
 ##
 ## Rows are numbered by `menus.next_option` as the panel is built, which is the
@@ -1065,7 +1080,21 @@ func _scenario_j_wordless_shop() -> void:
 	_assert(not _has_letters(String(menus.gold_display.text)),
 		"and the gold count is a numeral beside a coin, not '100g'")
 	_assert(menus.shop_title_icon.visible and menus.gold_icon.visible,
-		"the seed-packet header and the coin are actually shown")
+		"the header picture and the coin are actually shown")
+
+	# **And the header is not one of the things for sale** (2026-09-11). It was
+	# the wheat packet, which is also the first card on the shelf — the designer
+	# spotted the same picture twice, once as a heading and once as a row, which
+	# is precisely what a wordless heading cannot afford to be. Compared as
+	# pictures rather than by name, since what a reader sees is the picture.
+	var head_tex: Texture2D = menus.shop_title_icon.texture
+	var clashes: int = 0
+	for item in menus.shop_items:
+		if _same_picture(head_tex, item.get("icon")):
+			clashes += 1
+	_assert(clashes == 0,
+		"the heading is its own picture, not a copy of something on the shelf (%d clashes)"
+			% clashes)
 
 	# A locked item is the same picture, darkened — never an empty box, never
 	# "???", which tells a pre-reader nothing except that something is missing.

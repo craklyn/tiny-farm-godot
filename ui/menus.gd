@@ -160,15 +160,24 @@ func _ready() -> void:
 	gold_display.add_theme_color_override("font_color", Color(1, 0.85, 0.2))
 	gold_display.visible = false
 
-	# T-12 (Q-35): the shop's own header, as a picture. The seed packet says
-	# "seeds are sold here" to someone who cannot read "SEED SHOP".
+	# T-12 (Q-35): the shop's own header, as a picture, because "SEED SHOP" says
+	# nothing to someone who cannot read it.
+	#
+	# **The picture is the seed box she tapped** (2026-09-11). It was the wheat
+	# packet, which was the first card on the shelf as well — the same picture
+	# twice, once as a heading and once as a thing for sale, which is the kind of
+	# repetition that makes a heading look like a row. The box is also the only
+	# picture that still covers the whole shelf: it sells fences, a sprinkler and
+	# three robots now, and none of those is a seed. And it is the object standing
+	# on her farm that opens this panel, so the heading answers "where am I" with
+	# the thing she just touched rather than with a category.
 	shop_title_icon = TextureRect.new()
 	shop_title_icon.name = "shop_title_icon"
-	shop_title_icon.position = Vector2(10, 8)
-	shop_title_icon.size = Vector2(26, 26)
+	shop_title_icon.position = Vector2(10, 6)
+	shop_title_icon.size = Vector2(30, 30)
 	shop_title_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	shop_title_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	shop_title_icon.texture = crop_icon(0)
+	shop_title_icon.texture = seed_box_icon()
 	shop_title_icon.visible = false
 	menu_panel.add_child(shop_title_icon)
 
@@ -644,11 +653,26 @@ func _labels_in(node: Node) -> Array[Label]:
 const ICON_SHEET := preload("res://assets/sprites/generated/shop_icons.png")
 const COIN_COL := 3
 
+# The object on the farm that opens this panel, drawn in the world by
+# `world/farm.gd` from the same file — one picture, so a redrawn seed box is
+# redrawn in both places at once.
+const SEED_BOX_SHEET := preload("res://assets/sprites/generated/seed_box.png")
+
 
 static func crop_icon(icon_col: int) -> AtlasTexture:
 	var atlas := AtlasTexture.new()
 	atlas.atlas = ICON_SHEET
 	atlas.region = Rect2(icon_col * 16, 0, 16, 16)
+	return atlas
+
+
+## The seed box as an icon: the world's own object, cropped to the half of its
+## 16x32 that is actually drawn (the top half is the empty air above it, and left
+## in it would shrink the box to nothing inside a header's box).
+static func seed_box_icon() -> AtlasTexture:
+	var atlas := AtlasTexture.new()
+	atlas.atlas = SEED_BOX_SHEET
+	atlas.region = Rect2(0, 16, 16, 16)
 	return atlas
 
 
