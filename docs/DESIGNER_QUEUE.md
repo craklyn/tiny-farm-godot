@@ -11,6 +11,32 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
 
 ## Now — blocks M0 close or current work
 
+- **Q-108** How the farm looks from inside a building — **Ruling**. The interiors
+  directive (2026-09-14, `design/15`) says a building dilates in place rather than cutting
+  to a room, and that the farm stays visible through the walls. There are two ways to draw
+  that outside world and they feel different. **(a) Registered dilation** keeps the outside
+  geometrically true relative to the doorway, which means magnifying it by the same whole
+  number the room grew by — three times, typically — behind fog. It is honest, the doorway
+  stays exactly where she tapped it, and the way in is a real continuous zoom that can be
+  animated. Its risk is that magnifying the yard reads as the world coming *closer*, which
+  is the opposite of being indoors. **(b) Unregistered backdrop** draws the yard at its
+  ordinary size behind fog, as scenery that lines up with nothing. It reads the way looking
+  out of a window reads, and it costs the transition its animation — the cut comes back in
+  spirit even though the screen never swaps. **Recommendation: (a)**, because the animated
+  dilation is the whole reason not to cut, and fog is a better answer to "it looks odd" than
+  giving up the move. Worth deciding on captures rather than on this paragraph, and those
+  cost a day's work to produce.
+
+- **Q-109** How much room a room gets — **Ruling**. Under the same directive a building's
+  inside is its outside multiplied by a whole number: the 2×2 coop at ×3 is a 6×6 room, the
+  3×2 farmhouse at ×4 is 12×8. The number sets two things at once — how furnishable the
+  inside is, and how hard the farm is magnified behind it, since they are the same number.
+  **Recommendation: ×3 for both**, on the grounds that the farmhouse's present room is 10×7
+  and nobody has complained it is small, ×3 gets the coop to 6×6 which is more than a single
+  hen can fill, and a lower number keeps the outside gentler. **Do not answer this from the
+  paragraph** — it is a question about a picture, and the honest version is to build one
+  room at ×2, ×3 and ×4 and look.
+
 - **Q-106** ~~A frame around the picture the sleep plays~~ — ✅ **ruled 2026-09-11: (a) no frame.** The overnight ships as it is. One change to how it is drawn: the dithered band at a loop's left and right edges is halved in width; he read the wider band as a blur. Built the same day (`systems/day_cycle.gd`).**
 <details><summary>the question as asked</summary>
 

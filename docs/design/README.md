@@ -47,4 +47,5 @@ is the single to-do list for designer input; nothing blocks silently outside it.
 
 Technical design lives in `docs/ARCHITECTURE.md`; production plan in `docs/ROADMAP.md`;
 vision in `docs/GAME_VISION.md`.
+- `15-interiors.md` — buildings you walk into without leaving the farm: the dilation principle, why distance between spaces is undefined, what a cycle of rooms does to a metric, and where staircases fit (analysed 2026-09-14, P-18).
 - `14-training-workbench.md` — the workbench: reward dials, what the robot sees, the model plate, the training ledger, the weight mosaic (designed 2026-09-10, Q-101).

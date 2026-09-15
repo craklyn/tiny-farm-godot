@@ -777,6 +777,23 @@ state rolled from the seed and re-applied by a replay, so a wet day puts the sam
 same doorway in a replay as it did in the session, and her shelter needs no roll, no verb and
 no new gateway code — it replaces the wander her brain was already choosing.
 
+**Three follow-on rulings, 2026-09-14.** Asked four questions about the coop, the CEO
+settled three of them and replaced the fourth with a larger directive (P-18).
+
+- **Repositioning is the robot's tap.** A tap on the hut picks it up into the crate exactly
+  as a tap on a machine does — no new verb, no new gesture, and Q-98's rule that pick-up is
+  repositioning rather than a factory reset applies unchanged.
+- **Nothing living is ever pocketed.** *"The chicken could fall out of the building when the
+  building is deconstructed, and return to the main outdoors world."* A hut goes in the
+  crate; whoever was inside it is standing on the grass. Note the scope the CEO put on this
+  one in the same breath: it is a ruling about *the* chicken, "currently a unique companion
+  chicken that fills a special place in the game", and it is not promised to survive a game
+  in which a player manages a flock.
+- **What she does in there, for now: look, and collect.** The inside is not a chore.
+- **What moves her across the threshold stays open**, with a preliminary answer: the weather,
+  or her own whim, which is what ships today. *"All options are on the table, we'll need to
+  think about what gameplay experience is most interesting."*
+
 **Provisional for two reasons.** The first is scope: this is P-13's deliberately weak first
 version — one hen, one hut, no feeding, no roosting, no eggs laid indoors, nothing picked
 back up — and every one of those is something a tier above it can be. The second is that
@@ -784,6 +801,63 @@ back up — and every one of those is something a tier above it can be. The seco
 has. **Trigger:** revisit when the weather grows a second bad state (wind, storm, heat, a
 season under P-11), or when a second animal wants shelter — at which point "which animals
 shelter, where, and from what" is a table rather than a branch in the hen's brain.
+
+### P-18. A building dilates in place; you go inside without leaving the farm
+**Provisional 2026-09-14.** The CEO, replacing a question about the coop's interior with a
+principle for every interior: *"When a player enters an enclosed space like this, we will
+zoom in the character a certain amount so that the grid size in the new space is drawn at
+the same size as the grid space was drawn in the overworld. However, each inside space can
+be an arbitrary dimension that we set… And while inside the house, we can still see outside
+the house."*
+
+The complaint it answers is that a building is too big outside and too small inside at the
+same size. The conventional fix is a hard cut to a room drawn at its own scale; this refuses
+the cut, so the player watches the small thing become the big thing and never loses sight of
+the farm. **The principle in one line: a tile is always the same size on screen; entering a
+building changes which space the camera measures in, and the rest of the world is drawn at
+whatever scale keeps the doorway where it was.** Full analysis in `docs/design/15-interiors.md`.
+
+**Four consequences settled by analysis rather than by taste**, because each of them is
+forced rather than chosen:
+
+1. **Distance between two spaces is undefined, not large.** A 3×3 hut with a 9×9 room means
+   nine tiles indoors is three tiles outdoors, so no single number can be right in both. Every
+   sense — a scarecrow's radius, a spook radius, a scent blob, a sprinkler's reach — is a
+   question about one space. Seven such measurements in the current build are unguarded and
+   correct only by coincidence of layout; the eighth (`crow_brain._off_the_map`) was taught
+   about pages by hand on 2026-09-06, which is this bug found once already.
+2. **Transparency is one level deep.** From inside a space you see your own space and its
+   parent, and nothing deeper. Drawing two spaces in one picture is a claim that they embed
+   in one flat frame, and around a cycle of rooms that claim cannot be made to hold — the
+   scale factors multiply and need not come back to one. Keeping the drawn scene a tree of
+   depth two is what makes the feature coherent rather than a limitation grudgingly accepted.
+3. **Portals are discrete, and a staircase is an ordinary portal.** A door is already a named
+   pair of tiles (`WorldLayout.door_at`), not an edge you walk off, so lifts and stairs need
+   nothing new. A *continuous* crossing — a ramp walked up, the creature in two scales at
+   once — is consequence 2's forbidden picture and would be a different design.
+4. **The dilation factor is a whole number.** Integer scaling of 16-pixel art is exact; a
+   fractional factor shimmers and seams, and different factors per axis squash the farm.
+
+**Why provisional.** Nothing is built, and two questions that change how it feels are open
+(Q-108, whether the outside is registered to the doorway or drawn as a backdrop; Q-109, how
+much bigger a room is than its building). **Trigger:** revisit when the first interior is
+playable and can be looked at — the whole of this entry is about how something looks and
+none of it has been seen.
+
+### D-16. When interiors move from one grid to a grid per space
+**Deferred 2026-09-14.** P-18 needs the sim to stop believing in one global metric. There are
+two ways to get there. **Model C** keeps today's single grid and adds one derived predicate —
+which space is this tile in — plus a guard at each place that measures; small, and it leaves
+saves, replays, routing and the renderer untouched. **Model B** gives every room its own
+coordinate system and makes every tile reference a `(space, tile)` pair; correct by
+construction, and a wide change that reaches the replay format.
+
+Model C is the answer while interiors belong to buildings that are part of the world — the
+farmhouse, and the coop if its inside lives on a fixed page. **Trigger:** the first interior
+belonging to a building the player can place *and pick up*. That is the day rooms start being
+created and destroyed mid-session, and a region allocator over a fixed grid — whose state
+would have to be saved, replayed and agree with itself on reload — is a worse version of
+Model B rather than a cheaper one.
 
 ### D-1. Phase 5 genre (X-COM tactics vs. Gradius-like hybrid vs. other)
 **Why deferred:** Phase 5's cast is the player plus *trained bots* — its design depends on
