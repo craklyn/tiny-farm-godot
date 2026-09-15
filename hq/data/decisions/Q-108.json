@@ -1,0 +1,50 @@
+{
+ "id": "Q-108",
+ "title": "How the farm looks from inside a building",
+ "question": "P-18 says a building opens outward rather than cutting to a room: tap the door and the hut dilates in place, so you watch the small thing become the big thing and never lose sight of the farm. That last part is the open question. The farm is still there behind the walls — but drawn how?\n\nThe picture below is a photograph of your real room. tools/capture_interior_plate.tscn walks the farmer in through her own front door and photographs what the game draws; everything outside the walls is black there today, and that black is exactly the area this question is about. The farm that goes into it is a second photograph from the same run, the same build and the same hour, so the two panels are the game beside itself.\n\nOne thing the pictures show that the description did not, and it is the whole decision. Registering the outside to the doorway means magnifying it by the same number the room grew by. At three times, a tile of grass is 144 pixels across, and what fits beside her room is roughly one tile of yard per side — panel (a) is a field of green and one enormous soft shape, which happens to be the very house she is standing in. You cannot read the weather off it, or see the hen, or notice a crow. Panel (b) gives up the geometry and you get the farm back: the house, the fence, the bushes, the neighbour.\n\nWhat (a) buys for that is the way in. Because the outside is true to the doorway, entering can be one continuous zoom anchored on the tile she tapped — which is the entire reason for not cutting. (b) has nothing to animate, so the cut comes back in spirit even though the screen never swaps.\n\nThe haze is drawn as an ordered dither of one added colour on the art's own pixel grid, not a blur, because that is the studio's rule for anything that reaches the screen and nobody has ruled on a blur.",
+ "why_now": "Nothing is built yet, and this decides what gets built: (a) needs the parent space drawn under a transform and a tween on the way in, (b) needs a backdrop and no transition. It also sets whether Q-109's multiplier is a free choice or a cost.",
+ "options": [
+  {
+   "key": "a",
+   "label": "Registered dilation",
+   "detail": "The outside stays geometrically true to the doorway, magnified by the same whole number the room grew by, behind haze. The way in is a real continuous zoom anchored on the tile she tapped. The price is in the picture: at three times you see about one tile of yard per side, magnified past recognition, and the bigger the room the less you see — the multiplier eats the view twice over."
+  },
+  {
+   "key": "b",
+   "label": "Backdrop at ordinary size",
+   "detail": "The farm is drawn at the size it is drawn outdoors, behind the same haze, lining up with nothing. You can read the yard — the weather, the hen, a crow. The price is that the doorway no longer means anything geometrically, so there is no honest zoom to animate and entering becomes a dissolve."
+  },
+  {
+   "key": "c",
+   "label": "Registered, but the room is small enough to see past",
+   "detail": "Keep (a)'s geometry and spend Q-109 on it: at two times, an outside tile is 96 pixels and about two of them fit each side, which is enough to read grass from tilled soil and to see something move. Buys the animated entry back at the cost of the room being half the size — which is the thing P-18 exists to fix."
+  },
+  {
+   "key": "d",
+   "label": "Registered going in, backdrop once you are there",
+   "detail": "Animate the true dilation on the way through the door, then settle to the ordinary-size backdrop once she is standing still. Gets the entry and the readable yard both; the price is that the world quietly changes scale after the transition ends, which is a lie the player may or may not catch."
+  }
+ ],
+ "links": [
+  {
+   "label": "The chapter this comes from (design/15, Interiors)",
+   "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/15-interiors.md"
+  },
+  {
+   "label": "The decision it sits under (P-18)",
+   "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DECISION_LOG.md"
+  },
+  {
+   "label": "Queue entry (Q-108)",
+   "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"
+  }
+ ],
+ "attachments": [
+  {
+   "type": "image",
+   "src": "docs/design/mockups/interiors/q108_outside_treatment.png",
+   "caption": "Her real room, photographed. Left: the farm magnified three times, true to the doorway. Right: the farm at the size it is drawn outdoors."
+  }
+ ],
+ "ruled": null
+}

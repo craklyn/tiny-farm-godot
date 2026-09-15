@@ -64,6 +64,14 @@ tools/shot_window_view_*
 tools/boot_bloom_shots/
 tools/shot_watering_inset.png
 
+# The two photographs the interior mockups are drawn over (Q-108/Q-109, 2026-09-14).
+# Regenerate with tools/capture_interior_plate.tscn. The composed sheets under
+# docs/design/mockups/interiors/ are committed, because those are what the decision is
+# taken on; these are the raw screens they are drawn from, and the same rule the
+# overnight's plates follow.
+tools/shot_interior_plate.png*
+tools/shot_outdoor_plate.png*
+
 # The chicken coop on the farm, dry and wet (P-17, 2026-09-11). Regenerate with
 # tools/capture_coop.tscn; two review screenshots of the hut in the yard and the
 # hen sheltering in its doorway. Sidecars for the same reason as the workbench's.

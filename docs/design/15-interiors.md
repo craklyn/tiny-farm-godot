@@ -348,9 +348,15 @@ staircase is an ordinary portal (§7); `k` is a whole number (§2).
 **Open, and filed:**
 
 - **Q-108** — registered dilation or unregistered backdrop (§3). A taste call that decides
-  whether the transition animates.
+  whether the transition animates. Drawn as pictures over a photograph of the real room, in
+  `mockups/interiors/q108_outside_treatment.png`, and they carry a finding the prose above
+  did not: at `k = 3` the registered option leaves about **one tile of yard a side**,
+  magnified past recognition. The view out is not a detail of that option, it is most of
+  what is being traded.
 - **Q-109** — what `k` is for the farmhouse and for the coop, which is really the question
-  of how much room a room should have.
+  of how much room a room should have, in `mockups/interiors/q109_*_multipliers.png`. It is
+  **coupled to Q-108**: the same number sets the room's size and the yard's magnification, so
+  under the registered option every step up is paid for out of the window.
 - **D-16** — when the sim moves from Model C to Model B (§4). The trigger is the first
   interior belonging to a building the player can place and pick up.
 
