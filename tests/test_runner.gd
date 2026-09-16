@@ -79,6 +79,11 @@ const SHELF := {
 	# night (P-15, landed 2026-09-10) now raids a tomato her recording never lost — the
 	# world moving under a recording by the designer's own ruling, as with his two above.
 	"2026-09-11_095433": { "format": 2, "verdict": "cross" },
+	# Pulled off the tablet 2026-09-15, the evening the save slots landed: the CEO's
+	# daughter's farm at day 31, continued from a save after the tablet was restarted,
+	# so the log is the 66 entries since that restart rather than the whole play. It
+	# replays to its autosave exactly under this build.
+	"2026-09-15_234314": { "format": 2, "verdict": "match" },
 }
 
 # The robot-value measurement, shared with the tool that prints it as a table for

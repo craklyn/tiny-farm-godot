@@ -11,6 +11,45 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
 
 ## Now — blocks M0 close or current work
 
+- **Q-110** The mark a crow leaves does not read — **Ruling**, and it is Q-105's own outcome
+  coming back for a second look. On 2026-09-15 the CEO looked at his daughter's farm, saw
+  three small shapes stirring on a square three tiles east of the gate by her house, and could
+  not tell what they were or whether they were a fault. **They are the ransack mark**: the sim
+  sets `ransacked` on a square a bird ate the plant off (`SimWorld.eat_crop`), and
+  `world/farm.gd` draws three clods lifted out of the dirt sheet, scattered across the square
+  and rising one after another on a 2.6-second loop. Her farm has two such squares — (14,4),
+  the one he was standing beside, and (26,8).
+
+  **The mark exists because of a real problem and has not solved it.** A square a bird emptied
+  is turned soil with nothing on it, which is exactly what a row she hoed and never sowed looks
+  like — so without a mark a loss reads as a chore she forgot. That reasoning still holds. But
+  the mark's whole job is to be read as *a bird was here*, and its first encounter with a real
+  reader produced "I can't tell what this is, or if it's a bug." Three earth-coloured clods on
+  earth say "something stirred this soil"; they do not say a crow, they do not say loss, and
+  the slow lift reads as floating rather than settling.
+
+  This was always flagged as a placeholder — the code says so: *made of pixels the game already
+  ships, which is what a first version is allowed to be*, with a drawn version named as the
+  artist's to do. **This item is that trigger firing.** Options: **(a) a feather** left on the
+  square, the one object that says "bird" with no words; **(b) the stripped plant** — a bitten
+  stalk where the crop was, so the loss is legible as a loss rather than as ground; **(c) keep
+  the clods but stop them floating and darken them**, the cheapest fix and the least likely to
+  work; **(d) say it once at the sleep instead** — name the raid on the Day-N card and leave
+  the square alone. **Strawman: (a)** — a feather is one small sprite, it is unmistakably a
+  bird, it needs no reading, and it sits inside the vocabulary the crow night already built.
+
+  **The same defect, smaller, on things lying loose:** eggs and acorns are drawn at half a tile
+  and **centred**, so they sit in the middle of their square while every crop, rock, log and
+  fence post stands on the ground — and nothing in the game casts a shadow to correct it. They
+  float too, and at 8 pixels an acorn reads as a seed. That matters beyond tidiness because
+  `choose_crow_target` is *any acorn beats any crop*: while acorns lie about, crows eat those
+  instead of her tomatoes, and `crow_night_due()` fires at the first sleep after the last one
+  is gone. Sitting them on their tile's base line is a one-line fix and should ride with
+  whichever option wins above.
+
+  **Panels are owed before this is ruled** — the same square of her farm under each option, so
+  the pick is made beside its rivals. Bears on `design/03` and `design/04`; follows Q-105.
+
 - **Q-108** How the farm reads through the walls — **Ruling**, and much smaller than it was.
   P-18 was corrected on 2026-09-15: one world, one metric, two grids — a building's interior
   is a finer grid nested inside its own footprint, and going inside is a uniform camera zoom
@@ -124,6 +163,15 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   that already has no cut in it, with (e) the one to try second because it teaches "you
   cause things" before any verb. Dial on any of them: every boot, or the first boot only
   with a short version after. Card: `hq/data/decisions/Q-103.json`.
+  - **Amended 2026-09-15, on the designer seeing it run.** In their words: "When the game
+    opens, I see a frozen frame of the start of the sunflower animation for a bit, and then
+    it animates and plays the music. Can we show the farmer icon with the drone over the
+    shoulder until the game is ready to unfreeze, and then show the animation?" So the boot
+    now has **two** pictures rather than one: the **app icon**, held by the engine and then
+    by the title scene for as long as the load takes, and the **bloom**, which plays only
+    once the game is live under it. The rest of (a) is untouched. The reason the original
+    failed is worth keeping: a still of an animation reads as a hang, because the eye is
+    waiting for it to move, where the same wait under a logo reads as nothing at all.
 - **Q-104** ~~Where the watering beam plays in the cold open~~ — ✅ **ruled 2026-09-10: (a) an
   inset card while she keeps control.** The shot plays in a corner over the fence while the
   neighbour waters; the fence's promise holds. Written into `design/13` and filed as work.
@@ -163,15 +211,6 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   further up the ladder — this is it). Design rewrite in `design/06`; build in
   `V0_2_1_PLAN.md` WI-9.
 
-  - **Amended 2026-09-15, on the designer seeing it run.** In their words: "When the game
-    opens, I see a frozen frame of the start of the sunflower animation for a bit, and then
-    it animates and plays the music. Can we show the farmer icon with the drone over the
-    shoulder until the game is ready to unfreeze, and then show the animation?" So the boot
-    now has **two** pictures rather than one: the **app icon**, held by the engine and then
-    by the title scene for as long as the load takes, and the **bloom**, which plays only
-    once the game is live under it. The rest of (a) is untouched. The reason the original
-    failed is worth keeping: a still of an animation reads as a hang, because the eye is
-    waiting for it to move, where the same wait under a logo reads as nothing at all.
 - **Q-99** ~~A fresh Mark III walks off the field. Pen it, home it, or give it a nose?~~ —
   ✅ ruled 2026-09-09: **none of the three — give it the hoe.** *"For initial playtesting,
   if this is a problem we can define an additional reward of 0.1 for hoeing a field and

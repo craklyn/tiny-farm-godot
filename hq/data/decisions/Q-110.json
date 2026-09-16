@@ -1,0 +1,50 @@
+{
+  "id": "Q-110",
+  "title": "The mark a crow leaves behind",
+  "question": "When a crow eats a plant, the square it leaves looks exactly like a row that was hoed and never sown \u2014 so the game marks it. The mark it draws today is three small clods of earth, scattered across the square and rising one after another on a slow loop. On 15 September you looked at your daughter's farm, saw them, and asked what they were and whether they were a bug. That is the mark failing at the only job it has. What should a raided square look like instead? Recommendation: a feather.",
+  "why_now": "The mark was always a placeholder. It is made of pixels the game already ships \u2014 three patches lifted out of the dirt sheet \u2014 because a first version is allowed to be, and the code itself says a drawn version is the artist's to do. This is that moment arriving, and it arrived the way these things should: somebody looked at the game and could not read it. Her farm has two raided squares on it right now, so whatever wins can be judged on a real farm rather than a mock-up.",
+  "options": [
+    {
+      "key": "a",
+      "label": "A feather",
+      "detail": "One small feather left lying on the square. It is the only object that says 'a bird was here' without a word, it needs no explaining to a four-year-old, and it belongs to the vocabulary the crow night already built. One sprite to draw. The risk is that a feather on bare soil is quiet, and quiet is what went wrong last time."
+    },
+    {
+      "key": "b",
+      "label": "The stripped plant",
+      "detail": "Leave a bitten stalk where the crop was, instead of clearing the square to bare earth. The loss reads as a loss rather than as ground, and it says which plant was taken. More art \u2014 a stripped stage per crop \u2014 and it changes what the square looks like she has to clear before replanting."
+    },
+    {
+      "key": "c",
+      "label": "Keep the clods, but sit them down and darken them",
+      "detail": "The cheapest fix: stop them floating, make them a clear step darker than the soil. Costs almost nothing and keeps everything else. It is also the least likely to work \u2014 the problem is not that the clods are hard to see, it is that earth on earth does not say 'crow'."
+    },
+    {
+      "key": "d",
+      "label": "Say it once at the sleep instead",
+      "detail": "Leave the square alone and name the raid on the Day-N card the next morning: a bird took one. The news arrives once, in words or a picture, and the field stays clean. The cost is that by the time she is standing on the square there is nothing to connect it to what she was told."
+    }
+  ],
+  "links": [
+    {
+      "label": "The raid and what its morning costs her (design/04)",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/04-enemies-defense.md"
+    },
+    {
+      "label": "Q-105, which put the mark there in the first place",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"
+    }
+  ],
+  "attachments": [
+    {
+      "type": "image",
+      "src": "docs/design/mockups/ransack_mark/clods_close.png",
+      "caption": "The mark as it ships, close up: three clods on a raided square, mid-lift."
+    },
+    {
+      "type": "image",
+      "src": "docs/design/mockups/ransack_mark/clods_in_place.png",
+      "caption": "The same square on your daughter's farm, at the size it is actually played at."
+    }
+  ]
+}
