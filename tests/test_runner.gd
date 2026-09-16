@@ -15297,6 +15297,46 @@ func test_coop_interior() -> void:
 			"actor": "player" }, GameState).get("ok", false),
 		"any square of the hut is its door, because the arch is drawn across its front")
 
+	# --- a room you can enter is a room you can leave --------------------------
+	#
+	# **Found in play, 2026-09-16.** The way out was the tile below the hut and
+	# nothing else, so a coop put down with its doorstep against a fence was a room
+	# that could be entered and not left — the worst bug this feature can have. The
+	# exit is worked out when it is asked for now, and the arch's own square is only
+	# the first candidate rather than the only one.
+	var doorstep: Vector2i = spot + Vector2i(0, 1)
+	world.set_tile_state(doorstep.x, doorstep.y, WorldLayout.FENCE_BUILT)
+	var side := world.room_exit_for(world.rooms[room_id])
+	_assert(side.x >= 0 and world.is_walkable(side.x, side.y) and side != doorstep,
+		"fence the doorstep off and the room lets out of a square beside it instead (%s)" % side)
+	world.set_actor_pos(SimWorld.ACTOR_PLAYER, Vector2i(room["door"]))
+	var squeezed: Dictionary = world.apply_action({ "verb": "use_door",
+		"target": Vector2i(room["door"]), "actor": "player" }, GameState)
+	_assert(squeezed.get("ok", false)
+			and world.actor_pos(SimWorld.ACTOR_PLAYER) == side,
+		"and she gets out of it (%s)" % squeezed)
+
+	# ...and if there is nowhere at all to come out, she is not let in. Refusing at
+	# the threshold is the only honest place: once she is inside, every answer is bad.
+	for cell in MachineDefs.footprint_cells("coop", spot):
+		for step in [Vector2i(0, 1), Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, -1)]:
+			var n: Vector2i = cell + step
+			if not (n in MachineDefs.footprint_cells("coop", spot)):
+				world.set_tile_state(n.x, n.y, WorldLayout.FENCE_BUILT)
+	_assert(world.room_exit_for(world.rooms[room_id]).x < 0,
+		"wall a hut in on every side and it has no way out")
+	world.set_actor_pos(SimWorld.ACTOR_PLAYER, spot + Vector2i(0, 2))
+	var barred: Dictionary = world.apply_action({ "verb": "use_door", "target": spot,
+		"actor": "player" }, GameState)
+	_assert(not barred.get("ok", false),
+		"so she is not let in either, rather than let in and trapped (%s)" % barred)
+	# Put the ground back for the checks below.
+	for cell2 in MachineDefs.footprint_cells("coop", spot):
+		for step2 in [Vector2i(0, 1), Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, -1)]:
+			var n2: Vector2i = cell2 + step2
+			if not (n2 in MachineDefs.footprint_cells("coop", spot)):
+				world.set_tile_state(n2.x, n2.y, "cleared")
+
 	# --- it survives being saved ----------------------------------------------
 	var snap: Dictionary = SaveGame.capture(world, GameState)
 	var reloaded := SimWorld.new()

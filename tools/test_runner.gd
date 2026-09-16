@@ -6743,6 +6743,23 @@ func _scenario_ax_she_can_get_back_out_of_the_coop() -> void:
 	_assert(player.get_tile_pos() == hut + Vector2i(0, 1),
 		"onto her own doorstep, below the hut (%s)" % player.get_tile_pos())
 
+	# --- tap three: the other row of the panel ----------------------------------
+	#
+	# "Pick up" is the only way the repositioning ruling of 2026-09-14 is reachable,
+	# and it had been proved at the verb and never at the tap — which is exactly the
+	# gap that hid the doorway bug. Proved here the way a player reaches it.
+	InputManager.click_tile = hut
+	InputManager.has_click = true
+	var asked_again := await _wait_until(func(): return menus.active_menu == "structure", 200)
+	_assert(asked_again, "a tap on the hut asks again")
+	menus.selected_option = 1      # "Pick up"
+	menus._select_current_option()
+	var gone := await _wait_until(
+		func(): return farm.get_object(hut.x, hut.y) == "", 200)
+	_assert(gone, "and picking it up takes the hut off the farm")
+	_assert(farm.sim.rooms.is_empty(), "its inside goes with it")
+	_assert(GameState.machines.get("coop", 0) == 1, "and it is back in the crate")
+
 	GameState.save_path = real_paths[0]
 	GameState.replay_path = real_paths[1]
 	GameState.trace_path = real_paths[2]

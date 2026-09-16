@@ -230,7 +230,7 @@ func _nearest_doorstep(world: SimWorld, here: Vector2i) -> Vector2i:
 	var best_d := 1 << 30
 	for id in world.room_ids():
 		var r: Dictionary = world.rooms[id]
-		var step: Vector2i = r.get("exit", Vector2i(-1, -1))
+		var step: Vector2i = world.room_exit_for(r)
 		if step.x < 0 or not world.is_walkable(step.x, step.y):
 			continue
 		var d: int = absi(step.x - here.x) + absi(step.y - here.y)

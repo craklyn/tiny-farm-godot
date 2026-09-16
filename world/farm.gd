@@ -1891,6 +1891,24 @@ func _draw_room_backdrop() -> void:
 			var vy: int = (ty % GROUND_VARIANTS) * TILE_SIZE
 			draw_texture_rect_region(ground, Rect2(px, py, TILE_SIZE, TILE_SIZE),
 				Rect2(vx, vy, TILE_SIZE, TILE_SIZE))
+
+			# **The boundaries, which are states and not objects** (fixed 2026-09-16,
+			# reported from play: "my coop is next to fencing and hedges and I cannot
+			# see them from inside"). A fence, a hedge, a gate, a rock, a log, the
+			# map's own border — every one of them is a *tile state* with a sheet in
+			# `tile_sheets`, and this pass was only ever picking a ground texture and
+			# then asking for objects. So the farm through the walls was a field of
+			# grass with the furniture missing, which is the one thing it exists not
+			# to be: what she looks out at has to be her farm, recognisably.
+			#
+			# `tile_picture` is the renderer's own one answer to "what does this state
+			# look like", so this cannot drift from the pass that draws the farm when
+			# she is standing on it.
+			var picture: Array = tile_picture(state)
+			if not picture.is_empty():
+				draw_texture_rect_region(picture[0],
+					Rect2(px, py, TILE_SIZE, TILE_SIZE), picture[1])
+
 			var obj: String = objects[ty][tx]
 			if obj == "" or obj == WorldLayout.HOUSE_WALL or obj == WorldLayout.HOME_DOORWAY \
 					or obj == WorldLayout.ROBOT_STALL_SLOT or obj == WorldLayout.CHICKEN_COOP_PART:

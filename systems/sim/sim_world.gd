@@ -955,9 +955,48 @@ func world_pos_of_cell(t: Vector2i) -> Vector2:
 # The door pair for a tile, or {}, for rooms that were put down rather than laid
 # out (`WorldLayout.door_at` answers for the ones that were). Both ends: a tap on
 # the building goes in, a tap on the room's doorway comes out.
+# **Where a room actually lets out**, which is not always where it was recorded
+# (found in play, 2026-09-16: a coop can be put down with its doorstep against a
+# fence, and a room you can enter and not leave is the worst bug this feature has).
+#
+# The tile below the hut is the front door and is tried first, because that is where
+# the picture's arch is. If something is standing on it — a fence she built, a hedge,
+# a crop, another hut — the room lets out of whatever square beside it *is* walkable
+# instead. Scanned in a fixed order so a save, a replay and two machines all agree,
+# and derived at the moment it is asked rather than stored, so a coop that was fenced
+# in after it was built is rescued without a migration.
+func room_exit_for(r: Dictionary) -> Vector2i:
+	var stored: Vector2i = r.get("exit", Vector2i(-1, -1))
+	if stored.x >= 0 and is_walkable(stored.x, stored.y):
+		return stored
+	var anchor: Vector2i = r.get("anchor", Vector2i(-1, -1))
+	if anchor.x < 0:
+		return Vector2i(-1, -1)
+	var block := MachineDefs.footprint_cells(String(r.get("item", "")), anchor)
+	var out: Array[Vector2i] = []
+	# South first, then east, west and north — the arch is on the front, so leaving
+	# by the side is a fallback and looks like one.
+	for step in [Vector2i(0, 1), Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, -1)]:
+		for cell in block:
+			var c: Vector2i = cell + step
+			if c in block or c in out:
+				continue
+			out.append(c)
+	for c in out:
+		if is_walkable(c.x, c.y):
+			return c
+	return Vector2i(-1, -1)
+
+
 func room_door_at(t: Vector2i) -> Dictionary:
 	for id in room_ids():
 		var r: Dictionary = rooms[id]
+		# **A room with no way out is a room with no way in.** Refusing at the
+		# threshold is the only honest place to refuse: once she is inside, every
+		# answer is a bad one.
+		var leads_to := room_exit_for(r)
+		if leads_to.x < 0:
+			continue
 		# **Any square of the building is its door**, not just the one it was put
 		# down on. The hut is two tiles by two and the arch is drawn across the
 		# middle of its front: a player aiming at the doorway is aiming at the
@@ -967,7 +1006,7 @@ func room_door_at(t: Vector2i) -> Dictionary:
 		if anchor.x >= 0 and t in MachineDefs.footprint_cells(String(r.get("item", "")), anchor):
 			return { "at": t, "to": r.get("door", Vector2i(-1, -1)), "face": "up" }
 		if Vector2i(r.get("door", Vector2i(-1, -1))) == t:
-			return { "at": t, "to": r.get("exit", Vector2i(-1, -1)), "face": "down" }
+			return { "at": t, "to": leads_to, "face": "down" }
 	return {}
 
 
