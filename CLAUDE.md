@@ -73,9 +73,13 @@ godot --headless --path . --script res://tools/verify_replay.gd
 # Mark III — needs a display; saves to scratch so it never seeds the next suite run
 godot --path . res://tools/capture_workbench.tscn
 
-# The boot bloom's three moments (Q-103) as PNGs under tools/boot_bloom_shots/ (gitignored),
+# The boot's four moments (Q-103) as PNGs under tools/boot_bloom_shots/ (gitignored),
 # and the watering inset (Q-104) as tools/shot_watering_inset.png — both need a display
 godot --path . res://tools/capture_boot_bloom.tscn
+
+# A strip through the hand-off from the flower to the menu, every 0.2s, under
+# tools/boot_bloom_shots/fade/ — for judging how the transition reads; needs a display
+godot --path . res://tools/capture_boot_fade.tscn
 godot --path . res://tools/capture_watering_inset.tscn
 
 # The overnight's crow-gorge loop (P-15) mid-play as tools/shot_overnight_crow.png, and the

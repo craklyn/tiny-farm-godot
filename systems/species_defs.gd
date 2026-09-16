@@ -127,7 +127,13 @@ const PLAYER_VERBS: Array[String] = [
 #     did rather than as a thing she does.
 # WI-8's critters reuse these (`eat_crop` for every mouth, `water` for washing a
 # trail away); adding to this set is a design decision, not a convenience.
-const ENTITY_VERBS: Array[String] = ["eat_crop", "eat_acorn", "lay_egg", "crow_scared", "open_gate"]
+# ...and `use_door` joined them on 2026-09-15, which is a smaller change than it
+# looks: it is a verb the player already had, so nothing here is a capability an
+# animal has and she does not. What it answers is P-18's coop — a hen who could not
+# open the door of her own hut would be an animal locked out of the one building in
+# the game that is for her.
+const ENTITY_VERBS: Array[String] = ["eat_crop", "eat_acorn", "lay_egg", "crow_scared",
+		"open_gate", "use_door"]
 
 static var ROWS: Dictionary = {
 	# The farmer. Her brain is the ActionRouter — a person, not a policy — and it
@@ -169,7 +175,10 @@ static var ROWS: Dictionary = {
 	CHICKEN: {
 		"name": "Chicken",
 		"brain": "chicken_wander",
-		"verbs": ["lay_egg"],
+		# ...and the door of her own coop (P-18, 2026-09-15). The same verb the
+		# farmer uses, which is what S-3 means read from the other side: nothing
+		# gets a private one.
+		"verbs": ["lay_egg", "use_door"],
 		# 20 px/s (chicken.gd SPEED).
 		"speed": 0.125,
 		"movement": { "mode": GROUND, "body_len": 1, "tile_exclusive": false },

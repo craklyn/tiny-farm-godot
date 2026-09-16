@@ -107,28 +107,6 @@ def export_loop(slug):
     return manifest
 
 
-def export_splash(slug, scale=5, size=(800, 600)):
-    """Write assets/anim/<slug>/splash.png: frame 0, scaled ×n with nearest-
-    neighbour (no filtering), centred on a sky-coloured canvas of the given
-    size — the engine's boot splash."""
-    src = SOURCE_ROOT / slug
-    params = json.loads((src / "params.json").read_text())
-    cell_width, cell_height = params["canvas"]
-    sheet = Image.open(src / f"{slug}_sheet.png").convert("RGBA")
-
-    frame0 = sheet.crop((0, 0, cell_width, cell_height))
-    frame0 = frame0.resize((cell_width * scale, cell_height * scale), Image.NEAREST)
-
-    canvas = Image.new("RGBA", size, SKY_COLOUR + (255,))
-    x = (size[0] - frame0.width) // 2
-    y = (size[1] - frame0.height) // 2
-    canvas.alpha_composite(frame0, (x, y))
-
-    dest = DEST_ROOT / slug
-    dest.mkdir(parents=True, exist_ok=True)
-    canvas.convert("RGB").save(dest / "splash.png")
-
-
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("slugs", nargs="*", default=DEFAULT_SLUGS, help="loop slugs to export (default: the P-15 four)")
@@ -142,9 +120,6 @@ def main():
         manifest = export_loop(slug)
         print(f"{slug}: {json.dumps(manifest)}")
         exported.append(slug)
-        if slug == "sunflower_bloom":
-            export_splash(slug)
-            print(f"{slug}: splash.png written (boot splash)")
 
     missing = [s for s in args.slugs if s not in exported]
     if missing:

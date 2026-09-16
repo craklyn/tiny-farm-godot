@@ -264,6 +264,24 @@ def _bloom_rise_seconds(default=1.44):
         return default
 
 
+def _bloom_linger_seconds(default=0.9):
+    """How long the boot holds on the bloomed flower after the rise, read out of
+    `ui/title_screen.gd`'s own constant rather than typed again here.
+
+    The chime has to end when the flower does or the last beat of the boot is
+    silent, and the two numbers living apart is exactly how that drifts. Falls
+    back to the default if the constant is renamed, which keeps a sound
+    regeneration from failing over a screen's edit."""
+    try:
+        with open("ui/title_screen.gd") as f:
+            for line in f:
+                if line.startswith("const BLOOM_LINGER_SEC"):
+                    return float(line.split(":=")[1].split("#")[0].strip())
+    except (OSError, IndexError, ValueError):
+        pass
+    return default
+
+
 def bloom_chime():
     """P-15 p1: the soft rising chime under the boot bloom's seed climb
     (design/09 "What p1 adds"). Five bell-like tones climbing in pitch —
@@ -277,16 +295,25 @@ def bloom_chime():
     recordings were also pulled for CREDITS.md as a single decaying ding, kept
     as an alternate (`bloom_chime_cc0_*`) for whoever prefers that reading of
     "chime" over a rise."""
-    notes = [523.25, 587.33, 659.25, 783.99, 987.77]  # C5 D5 E5 G5 B5
-    # Sized to the bloom's own rise as its manifest gives it — frame count times
-    # ms per frame — so a re-exported bloom only needs this generator rerun.
+    # C5 D5 E5 G5 B5 climb with the seeds; D6 lands on the last one and is the
+    # note the linger belongs to. Six steps of the same unresolved shape, not a
+    # cadence — the sixth continues the rise rather than answering it.
+    notes = [523.25, 587.33, 659.25, 783.99, 987.77, 1174.66]
+    # Sized to the bloom's own moment as the game gives it: the rise from the
+    # manifest (frame count times ms per frame), plus the hold the title screen
+    # keeps on the bloomed flower. A re-exported bloom or a retimed linger only
+    # needs this generator rerun — neither number is typed here.
     rise = _bloom_rise_seconds()
-    starts = [rise * f for f in (0.0, 0.15, 0.32, 0.51, 0.75)]
-    n = int((rise + 0.26) * SR)  # the last note's tail runs a little past the last seed
+    linger = _bloom_linger_seconds()
+    starts = [rise * f for f in (0.0, 0.15, 0.32, 0.51, 0.75)] + [rise]
+    n = int((rise + linger + 0.26) * SR)
     out = np.zeros(n)
-    for start, freq in zip(starts, notes):
+    for i, (start, freq) in enumerate(zip(starts, notes)):
         s0 = int(start * SR)
-        ln = min(int(0.55 * SR), n - s0)
+        # The five climbing notes ring for their usual half-second. The last one
+        # rings for the whole linger, so the flower is never held in silence.
+        want = (linger + 0.26) if i == len(notes) - 1 else 0.55
+        ln = min(int(want * SR), n - s0)
         tone = sine(freq, ln) * 0.55 + sine(freq * 2, ln) * 0.22 + sine(freq * 3, ln) * 0.06
         tone *= env(ln, int(0.025 * SR), ln, 2.2)
         out[s0:s0 + ln] += tone * 0.5

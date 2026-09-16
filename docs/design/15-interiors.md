@@ -1,9 +1,9 @@
 # 15 — Interiors: buildings you walk into without leaving the farm
 
-*Status: directive received 2026-09-14, corrected 2026-09-15, **nothing built** — no game
-code exists for any of this. This chapter
-is the analysis the directive asked for, not a specification. What it settles is recorded
-as P-18; what it cannot settle is filed as Q-items and named here.*
+*Status: directive received 2026-09-14, corrected 2026-09-15, **first version built the same
+day** — the chicken coop has an inside, and you walk into it. What is in the game and what is
+not is §9. What this chapter settles is recorded as P-18; what it cannot settle is filed as
+Q-items and named here.*
 
 ---
 
@@ -336,6 +336,52 @@ the roofline. Recommended over matching the shapes.
 
 **Settled by analysis:** one grid and one metric (§4); D-16 closed; transparency one level
 deep, on grounds of legibility (§6); portals survive only for exits that are not nested (§7).
+
+**Built 2026-09-15, the coop's inside:**
+
+- The world gained a third page, the **rooms page**, dark until something has an inside
+  (`WorldLayout.ROOMS_PAGE`, fifteen 6×6 slots).
+- A coop put down opens a room in a slot and records its **anchor** and **pitch**
+  (`SimWorld.open_room`); picking it back up closes the room and returns the slot to
+  darkness. Both are ordinary consequences of `place` and `collect`.
+- The room is a one-cell ring of `WALL` around a **4×4 floor**, with one cell of the south
+  wall cut out as `GATE_OPEN` — the home's own vocabulary, so `is_walkable` refuses the walls
+  and `Movement` walks the floor with nothing new to learn.
+- A tap on any square of the hut is `use_door`; a tap on the doorway brings her out.
+- `world_pos_of_cell` turns any interior cell into a true position on the farm, which is the
+  whole of what the anchor and the pitch are for.
+- Saves carry the room registry (v3 → v4; an old farm is padded with a dark page and keeps
+  playing). The observation vector's vertical scale was **frozen** at the height it had, so
+  growing the world cannot silently re-scale every weight a robot has learned.
+- Going through the door zooms: the camera arrives at the other side's scale and tweens to
+  this one, so walking in is one continuous zoom in and walking out is one zoom out
+  (`main.gd`'s `_zoom_through_door`).
+
+**Built the same day, the second pass:**
+
+- **The farm is drawn through the walls.** `farm.gd`'s `_draw_room_backdrop` takes the two
+  numbers on the room record and uses them as a transform: scale the farm by the pitch, put
+  the anchor where the room's origin is, and the yard lands around the room in the place it
+  really occupies. Registration by construction rather than by hand — whatever separates the
+  hut from the shipping bin outdoors separates the room from the bin in here, multiplied by
+  the pitch and not otherwise touched. Ground and objects only; her own building is skipped,
+  because she is standing in it. The camera stops clamping to the page while she is inside
+  and clamps to the room plus that ring of farm instead.
+- **The hen lets herself in.** `use_door` stopped being the player's alone — it is a verb she
+  already had, so nothing has a private one (S-3 read from the other side). On a wet day the
+  hen walks to the coop's doorstep and through it; on a dry one she walks to the doorway and
+  back out. A coop with no room under it still gets the front-row shelter P-17 shipped, so
+  the fallback is a fallback rather than a failure.
+- **A tap on the coop opens its panel** — *go inside* or *pick it up* — which is the machine
+  panel's shape keyed on a tile rather than an actor, since a building cannot walk off while
+  the panel is coming up. Both rows are ordinary Actions through the one gateway.
+
+**Still not built:**
+
+- **Actors are not in the backdrop.** The yard out there shows ground and objects; the hen,
+  a crow, the neighbour are scene nodes rather than part of this canvas, and drawing them
+  through the wall is a second pass nobody has written.
+- **The treatment of the yard is a placeholder.** A flat dim, pending **Q-108**.
 
 **Open, and filed:**
 

@@ -1396,6 +1396,8 @@ func _draw() -> void:
 	# alongside the ground it is wetting.
 	var raining := raining_look()
 
+	_draw_room_backdrop()
+
 	for ty in MAP_HEIGHT:
 		for tx in MAP_WIDTH:
 			# Held while a day transition fades out, live every other frame — see
@@ -1413,6 +1415,13 @@ func _draw() -> void:
 			# draws the same 16x16 cell from its own sheet — no autotiling, no
 			# edge cases: two seamless tiles that happen to meet at the fence.
 			var ground_tex: Texture2D = tileset_texture
+			if tile.state == WorldLayout.VOID and _backdrop_active:
+				# **Standing in a room, the dark is not dark** (P-18). The backdrop
+				# below has already drawn her farm out there, and painting the void
+				# over it would be the renderer covering up the one thing the walls
+				# exist to frame. Skipped rather than dimmed: a void tile carries
+				# nothing else to draw, which is what the branch below says.
+				continue
 			if tile.state == WorldLayout.VOID:
 				# The dark a room is cut out of (2026-09-06). Flat, textureless and
 				# near-black: it is not ground, and it must never read as ground she
@@ -1815,6 +1824,99 @@ func _draw() -> void:
 # compensation exists to stop a painted hint going muddy under the day's tint,
 # and this is emitted light. A ripe crop catching a low afternoon sun should warm
 # with the sky rather than fight it.
+# **The farm, seen through the walls** (P-18). A room is stored on its own page, far
+# from the farm, and drawn there — but it *is* somewhere: the room record carries the
+# anchor its building stands on and the pitch of its cells, and those two numbers are
+# exactly a transform. Scale the farm by the pitch and put the anchor where the room's
+# origin is, and the yard lands around the room in the place it really occupies.
+#
+# So this is registration by construction rather than by hand. Whatever distance
+# separates the hut from the shipping bin outdoors separates the room from the bin in
+# here, multiplied by the pitch and not otherwise touched.
+#
+# **Ground and objects only.** Crops, effects and the actors' own nodes are not drawn:
+# the actors are separate scene nodes rather than part of this canvas, and a second
+# pass over the crop rules would be a second place those rules live. What she sees out
+# there is the shape of her farm, not its state — enough to know where she is, which
+# is what the walls are for.
+#
+# The dim is `[Playtest]` and provisional: **Q-108** is open on what the yard should
+# look like through a wall — nothing at all, haze, desaturation, or a hard-cut frame —
+# and this is the cheapest honest stand-in until that is ruled.
+const BACKDROP_DIM := Color(0.035, 0.035, 0.055, 0.30)
+const BACKDROP_REACH := 9      # farm tiles drawn around the anchor, each way
+
+
+# True for the frame a room's backdrop was drawn on, read by the tile loop so it
+# leaves the dark alone instead of painting over the farm.
+var _backdrop_active := false
+
+
+func _draw_room_backdrop() -> void:
+	_backdrop_active = false
+	if sim == null or sim.rooms.is_empty() or player_node() == null:
+		return
+	var id: String = sim.room_of_cell(player_node().get_tile_pos())
+	if id == "":
+		return
+	_backdrop_active = true
+	var r: Dictionary = sim.rooms[id]
+	var pitch := float(r.get("pitch", 1))
+	var anchor: Vector2i = r.get("anchor", Vector2i.ZERO)
+	var origin: Vector2i = r.get("origin", Vector2i.ZERO)
+	var offset := Vector2(origin) * TILE_SIZE - Vector2(anchor) * TILE_SIZE * pitch
+
+	var own := {}
+	for cell in MachineDefs.footprint_cells(String(r.get("item", "")), anchor):
+		own[cell] = true
+
+	draw_set_transform(offset, 0.0, Vector2(pitch, pitch))
+	for ty in range(anchor.y - BACKDROP_REACH, anchor.y + BACKDROP_REACH + 1):
+		for tx in range(anchor.x - BACKDROP_REACH, anchor.x + BACKDROP_REACH + 1):
+			if tx < 0 or ty < 0 or tx >= MAP_WIDTH or ty >= MAP_HEIGHT:
+				continue
+			var tile: Dictionary = tile_look(tx, ty)
+			var state := String(tile.get("state", ""))
+			if state == "" or state == WorldLayout.VOID:
+				continue      # the dark under the farm is not scenery
+			var px := tx * TILE_SIZE
+			var py := ty * TILE_SIZE
+			var ground: Texture2D = tileset_texture
+			if state == WorldLayout.YARD:
+				ground = yard_texture
+			elif state == WorldLayout.FLOOR:
+				ground = floor_texture
+			var vx: int = (tx % GROUND_VARIANTS) * TILE_SIZE
+			var vy: int = (ty % GROUND_VARIANTS) * TILE_SIZE
+			draw_texture_rect_region(ground, Rect2(px, py, TILE_SIZE, TILE_SIZE),
+				Rect2(vx, vy, TILE_SIZE, TILE_SIZE))
+			var obj: String = objects[ty][tx]
+			if obj == "" or obj == WorldLayout.HOUSE_WALL or obj == WorldLayout.HOME_DOORWAY \
+					or obj == WorldLayout.ROBOT_STALL_SLOT or obj == WorldLayout.CHICKEN_COOP_PART:
+				continue
+			# **Not the building she is standing in.** Its walls are the room around
+			# her; drawing its outside as well would put its roof through her own
+			# ceiling. Every *other* hut on the farm is drawn, because those are out
+			# there and she can see them.
+			if own.has(Vector2i(tx, ty)):
+				continue
+			var data = object_regions.get(obj)
+			if data == null:
+				continue
+			var tex: Texture2D = data[0]
+			var region: Rect2 = data[1]
+			draw_texture_rect_region(tex,
+				Rect2(px, py - (region.size.y - TILE_SIZE), region.size.x, region.size.y),
+				region)
+	# Over the yard and under the room, so the room she is standing in is the lit
+	# thing and the wall is a real edge rather than a change of subject.
+	draw_rect(Rect2(
+		(anchor.x - BACKDROP_REACH) * TILE_SIZE, (anchor.y - BACKDROP_REACH) * TILE_SIZE,
+		(BACKDROP_REACH * 2 + 1) * TILE_SIZE, (BACKDROP_REACH * 2 + 1) * TILE_SIZE),
+		BACKDROP_DIM, true)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
 func _draw_ripe_glow() -> void:
 	for pool in _ripe_glow:
 		var light: Color = pool["light"]

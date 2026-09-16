@@ -714,6 +714,37 @@ sky, the scene picks up that frame, the bud opens and the seeds rise once while 
 fades up, the title and menu settle in as the last seed blooms, and a tap brightens the sky
 into the farm.
 
+**Amended 2026-09-15 (Q-103): the icon is the held picture, the bloom is the played one.**
+Seeing it run, the designer asked for "the farmer icon with the drone over the shoulder
+until the game is ready to unfreeze, and then show the animation." So the boot has two
+pictures. The **app icon** — the same farmer and drone the player tapped to start the game,
+composed large on its own field by `tools/gen_icon.py` so the two can never drift apart —
+is what the engine holds through the load, and the title scene redraws the identical plate
+over its own first frame so the hand-off between them has nothing in it. The **bloom** then
+plays exactly as ruled above, once the game is actually running underneath. The failure
+being fixed is a general one and is worth remembering the next time something is held on
+screen while a machine works: *a still frame of an animation reads as a hang, because the
+eye is waiting for it to move, where the same wait under a logo reads as nothing at all.*
+"When the game is ready" is measured rather than timed — the scene waits for several
+consecutive cheap frames, which is the load being over — with a floor so the icon is seen
+rather than flashed and a ceiling so a slow device still gets its flower
+(`ui/title_screen.gd`).
+
+**Retimed 2026-09-15 (Q-103), on the same viewing: the flower lingers, and the hand-off is
+one thing at a time.** Three changes, all presentation. The flower now holds on its last
+bloomed frame for 0.9 s after the rise, taking its whole moment from 1.84 s to about 2.76 s
+— the rise itself is untouched, because design/09 has every Lab loop playing at the rate it
+was drawn. The chime was lengthened to match (1.70 s to 2.60 s): a sixth note lands on the
+last seed and rings through the linger, so the flower is never held in silence, and because
+the music's own fade-up already waits on the chime's measured length, it moved with it and
+nothing needed retiming by hand. And the reveal was **sequenced rather than crossfaded**:
+it used to run the flower out, the farm up and the menu in on one clock, which put the
+Continue card on screen over a half-dissolved sunflower for about half a second — two
+subjects in the middle of the screen at once, which is what made the hand-off read as muddy
+rather than as a fade. The flower now dissolves into the farm on its own, and the menu
+starts settling only once it has gone. There was always a fade here; what it lacked was an
+order.
+
 **First version, deliberately small.** One loop per night, once per farm, no skip; the
 fade's colour becomes the Lab's sky so the loop's canvas never shows as a box; the loop is
 drawn from the Lab's exported sheet as it is, not re-authored in the engine. The D-8

@@ -21,13 +21,15 @@ extends RefCounted
 # excused past it. Same reasoning as v2: the schema did not gain a key, an
 # existing one changed shape, and no value heuristic can tell "a 20-row save" from
 # "a corrupt 40-row one".
-const VERSION := 3
+const VERSION := 4
 
 # 600 / 20. The one place the old scale is written down.
 const LEGACY_ENERGY_SCALE := 30
 
 # The world every save before v3 was written from: one page, 20 rows.
 const LEGACY_MAP_HEIGHT := 20
+# The height v3 wrote: the farm and the home, before the rooms page (P-18).
+const V3_MAP_HEIGHT := 40
 
 
 static func capture(world: SimWorld, gs) -> Dictionary:
@@ -46,6 +48,13 @@ static func capture(world: SimWorld, gs) -> Dictionary:
 			# belongs to. The old key is still *read* below, for saves that have
 			# one; it is no longer written.
 			"actors": _capture_actors(world),
+			# **The two numbers that make a room a room** (P-18, 2026-09-15). Its
+			# walls and floor are already in `tiles` above, because they are tiles;
+			# what has to be written beside them is the anchor and the pitch, which
+			# say which building the room is inside and how far the camera zooms to
+			# reach it. Additive — a save without this key restores a farm with no
+			# interiors, which is every farm before this release.
+			"rooms": _capture_rooms(world),
 			# Sim time (M2.5 WI-1). Additive, same pattern as actor_energy above:
 			# a save written before the clock existed simply has no tick, which
 			# reads as 0 — true of every build that wrote one.
@@ -250,6 +259,7 @@ static func restore(data: Dictionary, world: SimWorld, gs) -> bool:
 		for obj in row:
 			r2.append(String(obj))
 		world.objects.append(r2)
+	_restore_rooms(world, w.get("rooms", {}))
 	# The actor registry (M2.5 WI-2). Grids first, deliberately: the default spawn
 	# below reads the restored world — the gate tells it whether the neighbour is
 	# still here, the walkable tiles tell it where the hen can stand.
@@ -413,6 +423,9 @@ static func migrate(data: Dictionary) -> Dictionary:
 	if v == 2:
 		out = _migrate_2_to_3(out)
 		v = 3
+	if v == 3:
+		out = _migrate_3_to_4(out)
+		v = 4
 	if v != VERSION:
 		return {}
 	return out
@@ -476,26 +489,106 @@ static func _migrate_1_to_2(data: Dictionary) -> Dictionary:
 # Padding rather than regenerating is also what makes this cheap to be right
 # about: there is no seed to re-run, no draw to re-take, and the result cannot
 # depend on which build wrote the file.
+# Rooms, flattened for JSON. Vector2i does not survive a round trip through a file,
+# so each is written as a pair of ints and read back the same way — the pattern the
+# actor registry already uses for positions.
+static func _capture_rooms(world: SimWorld) -> Dictionary:
+	var out: Dictionary = {}
+	for id in world.room_ids():
+		var r: Dictionary = world.rooms[id]
+		out[id] = {
+			"item": String(r.get("item", "")),
+			"pitch": int(r.get("pitch", 2)),
+			"slot": int(r.get("slot", 0)),
+			"anchor": _pair(r.get("anchor", Vector2i.ZERO)),
+			"size": _pair(r.get("size", Vector2i.ZERO)),
+			"origin": _pair(r.get("origin", Vector2i.ZERO)),
+			"door": _pair(r.get("door", Vector2i.ZERO)),
+			"exit": _pair(r.get("exit", Vector2i.ZERO)),
+		}
+	return out
+
+
+static func _pair(v) -> Array:
+	var t: Vector2i = v
+	return [t.x, t.y]
+
+
+static func _unpair(v) -> Vector2i:
+	if v is Array and v.size() >= 2:
+		return Vector2i(int(v[0]), int(v[1]))
+	return Vector2i.ZERO
+
+
+static func _restore_rooms(world: SimWorld, saved) -> void:
+	world.rooms.clear()
+	if typeof(saved) != TYPE_DICTIONARY:
+		return
+	for id in saved:
+		var r = saved[id]
+		if typeof(r) != TYPE_DICTIONARY:
+			continue
+		world.rooms[String(id)] = {
+			"item": String(r.get("item", "")),
+			"pitch": int(r.get("pitch", 2)),
+			"slot": int(r.get("slot", 0)),
+			"anchor": _unpair(r.get("anchor", [])),
+			"size": _unpair(r.get("size", [])),
+			"origin": _unpair(r.get("origin", [])),
+			"door": _unpair(r.get("door", [])),
+			"exit": _unpair(r.get("exit", [])),
+		}
+
+
+# v3 -> v4 (P-18, 2026-09-15): the grid grew a **rooms page**, so an old farm is
+# padded with one more twenty rows of VOID — and that is the whole migration, for
+# the reason the last one gives. A save from before buildings had insides has no
+# rooms, so it loads with an empty `rooms` registry and a dark third page that
+# nothing can walk to, tap or work. Her farm is not touched, her coop keeps
+# standing where she put it, and the first coop she puts down *after* the update
+# is the first one with an inside. No re-generation, and no attempt to retrofit a
+# room under a hut she already owns.
+static func _migrate_3_to_4(data: Dictionary) -> Dictionary:
+	var out: Dictionary = data.duplicate(true)
+	out["version"] = 4
+	var w = out.get("world", {})
+	if typeof(w) != TYPE_DICTIONARY:
+		return out
+	_pad_void_rows(w.get("tiles", []), _void_tile(), V3_MAP_HEIGHT, SimWorld.MAP_HEIGHT)
+	_pad_void_rows(w.get("objects", []), "", V3_MAP_HEIGHT, SimWorld.MAP_HEIGHT)
+	return out
+
+
+# Grow a saved grid by one page of nothing. Shared by both page migrations, because
+# both are the same act: the world got somewhere new to be, and an old file simply
+# has darkness there.
+#
+# **`from_height` is a guard, not a convenience.** A grid is padded only when it is
+# exactly the height the previous version wrote. A file that is short for any other
+# reason is a *truncated* file, and padding one of those would turn a corrupt save
+# into a plausible farm with rows of the wrong thing in it — which `restore`'s
+# structural check exists to refuse.
+static func _pad_void_rows(grid, filler, from_height: int, to_height: int) -> void:
+	if not (grid is Array) or grid.size() != from_height:
+		return
+	while grid.size() < to_height:
+		var row: Array = []
+		for tx in SimWorld.MAP_WIDTH:
+			row.append(filler.duplicate(true) if filler is Dictionary else filler)
+		grid.append(row)
+
+
 static func _migrate_2_to_3(data: Dictionary) -> Dictionary:
 	var out: Dictionary = data.duplicate(true)
 	out["version"] = 3
 	var w = out.get("world", {})
 	if typeof(w) != TYPE_DICTIONARY:
 		return out
-	var in_tiles = w.get("tiles", [])
-	if in_tiles is Array and in_tiles.size() == LEGACY_MAP_HEIGHT:
-		while in_tiles.size() < SimWorld.MAP_HEIGHT:
-			var row: Array = []
-			for tx in SimWorld.MAP_WIDTH:
-				row.append(_void_tile())
-			in_tiles.append(row)
-	var in_objects = w.get("objects", [])
-	if in_objects is Array and in_objects.size() == LEGACY_MAP_HEIGHT:
-		while in_objects.size() < SimWorld.MAP_HEIGHT:
-			var row: Array = []
-			for tx in SimWorld.MAP_WIDTH:
-				row.append("")
-			in_objects.append(row)
+	# To the height v3 wrote, and no further: the rooms page is the *next* step's
+	# business, so a v2 file walks the chain one link at a time and each link means
+	# exactly what its name says.
+	_pad_void_rows(w.get("tiles", []), _void_tile(), LEGACY_MAP_HEIGHT, V3_MAP_HEIGHT)
+	_pad_void_rows(w.get("objects", []), "", LEGACY_MAP_HEIGHT, V3_MAP_HEIGHT)
 	return out
 
 

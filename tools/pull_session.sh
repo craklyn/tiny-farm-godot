@@ -64,20 +64,78 @@ SLOT_DIRS=("$USER_DIR/slot1" "$USER_DIR/slot2" "$USER_DIR/slot3" "$USER_DIR")
 STAMP="$(date +%Y-%m-%d_%H%M%S)"
 OUT="playtests/$STAMP"
 
+# Finding the tablet. Three lessons, all of them learned the hard way on
+# 2026-09-15 with the tablet sitting two feet away and every attempt refused:
+#
+# 1. **The port rotates.** Android picks a fresh wireless-debugging port every
+#    time the setting is switched off and on, and locking the screen is enough to
+#    do it. A remembered IP:PORT is therefore a hint, never an address, so this
+#    no longer *depends* on `.adb_target` — it reads what the tablet is
+#    advertising right now over mDNS and connects to that.
+# 2. **The serial contains a space.** An mDNS serial looks like
+#    `adb-HA2KX7TG-Az5g1o (2)._adb-tls-connect._tcp`, so the old
+#    `awk '{print $1}'` handed back a truncated name that no later adb command
+#    could address. Split on the tab that `adb devices` actually uses.
+# 3. **Discovery is not connection, and pairing expires.** mDNS will happily keep
+#    advertising an address whose TCP port refuses every connection; that is what
+#    an expired pairing looks like from this end, and no amount of retrying fixes
+#    it. So when every advertised address refuses, say *re-pair* rather than
+#    "no device" — that is the actual next action.
 TARGET="${1:-}"
 LAST_TARGET_FILE=".adb_target"
-if [[ -n "$TARGET" ]]; then
-	adb connect "$TARGET" >/dev/null
-elif [[ -f "$LAST_TARGET_FILE" ]]; then
-	adb connect "$(cat "$LAST_TARGET_FILE")" >/dev/null 2>&1 || true
-fi
 
-SERIAL=$(adb devices | awk '/\tdevice$/ {print $1; exit}')
+adb start-server >/dev/null 2>&1 || true
+
+try_connect() {  # every address worth trying, in order of confidence
+	local addr
+	[[ -n "$TARGET" ]] && adb connect "$TARGET" >/dev/null 2>&1 || true
+	while IFS= read -r addr; do
+		[[ -n "$addr" ]] && adb connect "$addr" >/dev/null 2>&1 || true
+	done < <(adb mdns services 2>/dev/null | awk -F'\t' '/_adb-tls-connect/ {print $3}')
+	[[ -f "$LAST_TARGET_FILE" ]] && adb connect "$(cat "$LAST_TARGET_FILE")" >/dev/null 2>&1 || true
+	return 0
+}
+
+SERIAL=""
+SAW_ADVERT=0
+for _ in $(seq 1 20); do
+	SERIAL=$(adb devices | awk -F'\t' '$2 == "device" { print $1; exit }')
+	[[ -n "$SERIAL" ]] && break
+	if adb devices | awk -F'\t' '$2 == "unauthorized" {found=1} END {exit !found}'; then
+		echo "The tablet is asking permission — tap 'Allow' on its screen." >&2
+	fi
+	adb mdns services 2>/dev/null | grep -q "_adb-tls-connect" && SAW_ADVERT=1
+	try_connect
+	sleep 2
+done
+
 if [[ -z "$SERIAL" ]]; then
-	echo "No device. On the tablet: Developer options → Wireless debugging → ON," >&2
-	echo "then re-run with the IP:PORT it shows." >&2
+	if [[ "$SAW_ADVERT" -eq 1 ]]; then
+		echo "" >&2
+		echo "The tablet is on the network and advertising itself, but every port it" >&2
+		echo "advertises refuses the connection. That is an expired pairing, and the" >&2
+		echo "only fix is to pair again:" >&2
+		echo "" >&2
+		echo "  On the tablet: Developer options → Wireless debugging →" >&2
+		echo "                 Pair device with pairing code" >&2
+		echo "  Then here:     adb pair <IP:PORT shown on that screen> <6-digit code>" >&2
+		echo "" >&2
+		echo "The pairing port is NOT the connection port; the pairing screen shows" >&2
+		echo "its own. Re-run this script once pairing succeeds." >&2
+	else
+		echo "" >&2
+		echo "No tablet. On the tablet: Developer options → Wireless debugging → ON," >&2
+		echo "and check it is on the same network as this machine." >&2
+	fi
 	exit 1
 fi
+
+# Remember whatever actually worked, so the next run starts from a live address
+# rather than the one that happened to work in September.
+if [[ "$SERIAL" == *:* && "$SERIAL" != *_adb-tls-connect* ]]; then
+	echo "$SERIAL" > "$LAST_TARGET_FILE"
+fi
+echo "Device: $SERIAL"
 
 mkdir -p "$OUT"
 

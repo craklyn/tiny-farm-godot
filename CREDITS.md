@@ -222,6 +222,13 @@ before the first public build ships.*
     outlines on plants read as mould; on a machine it reads as a machine, and the drone
     needs to separate from both the green field and her rust jumpsuit. Deliberate, and
     recorded here so it is not later mistaken for drift.
+  - **The boot splash, added 2026-09-15** (`assets/icon/boot_splash.png`) — **not
+    generated, $0.00.** The same `parts/` art at ×3, sat on the bottom edge of an
+    800×600 canvas with the same green field run to all four corners, written by the
+    same `tools/gen_icon.py` run that writes every icon size. It is what the engine
+    holds on screen while the game loads (Q-103 as amended), and it is one script's
+    output precisely so the picture the player waits on cannot drift from the icon they
+    tapped. Rights are the icon's, unchanged; no call was made.
 - **One sheet per entity, 2026-09-06** — **not generated, $0.00.** The four shared
   atlases (`animals.png`, `critters.png`, `crops.png`, `objects.png`) were cut into
   per-entity sheets — `chicken.png`, `crow.png`, `egg.png`, `ant_scout.png`,
@@ -513,10 +520,16 @@ before the first public build ships.*
       pause after it finishes before the music ramps up (now
       `ui/title_screen.gd`'s `POST_CHIME_PAUSE_SEC`, 0.4s, read against the
       chime's own stream length before the music's fade-up starts).
-      `bloom_chime.wav` — original, synthesized by `tools/gen_sfx.py` (five
-      bell tones climbing in pitch, sized to the bloom's rise as its manifest
-      gives it) — **wired** (`bloom_chime`); rerunning the generator
-      reproduces it byte-for-byte. `bloom_chime_cc0_333694.wav`, `_333695.wav`
+      `bloom_chime.wav` — original, synthesized by `tools/gen_sfx.py` (bell
+      tones climbing in pitch, sized to the bloom's own moment: the rise as its
+      manifest gives it, plus the hold the title screen keeps on the bloomed
+      flower, both read rather than typed) — **wired** (`bloom_chime`);
+      rerunning the generator reproduces it byte-for-byte. **Lengthened
+      2026-09-15** from 1.70s to 2.60s, on the designer asking for a longer
+      linger on the flower and for "the chimes that play could be extended as
+      well": a sixth note, D6, lands on the last seed and rings through the
+      linger, so the flower is never held in silence. No other sound's bytes
+      moved — the chime draws no randomness and is generated last. `bloom_chime_cc0_333694.wav`, `_333695.wav`
       and `_333696.wav` — Freesound #333694/#333695/#333696 "Thin bell ding
       1/2/3" by Khrinx — a single decaying ding rather than a rise, unwired.
 

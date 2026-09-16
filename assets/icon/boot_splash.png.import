@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://pycpug5wahog"
-path="res://.godot/imported/splash.png-e9281184b2612961db784dc8c7b42430.ctex"
+uid="uid://nrhdckcqbf3p"
+path="res://.godot/imported/boot_splash.png-4193c741ab9e7d98b6735a76d892af49.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/anim/sunflower_bloom/splash.png"
-dest_files=["res://.godot/imported/splash.png-e9281184b2612961db784dc8c7b42430.ctex"]
+source_file="res://assets/icon/boot_splash.png"
+dest_files=["res://.godot/imported/boot_splash.png-4193c741ab9e7d98b6735a76d892af49.ctex"]
 
 [params]
 

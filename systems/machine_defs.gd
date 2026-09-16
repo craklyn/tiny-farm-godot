@@ -77,6 +77,16 @@ static var TYPES: Dictionary = {
 		# **front-left** corner: the block runs one square right and one square
 		# back. v1 does not rotate, for the stall's reason (P-13).
 		"footprint": Vector2i(2, 2),
+		# **And it has an inside** (P-18, ruled 2026-09-15). Six cells by six at
+		# three to a farm tile, which is the coop's own two-by-two footprint at
+		# that pitch — so the room stands exactly where the hut stands. A one-cell
+		# ring of it is wall, which leaves a **4x4 floor**: the CEO asked for "a
+		# bit bigger, maybe 3x3", and this is that with the walls paid for.
+		#
+		# The pitch is three rather than two for the ring's sake. At two the coop
+		# is four cells by four and a wall ring leaves two by two, which is not a
+		# room.
+		"room": { "cells": Vector2i(6, 6), "pitch": 3 },
 		# 32x48: the bottom 32 pixels stand on the four cells, the 16 above them
 		# are the roof rising behind. The same picture in the shop card, the HUD
 		# pill and the yard, which is the rule every placed thing follows.
@@ -386,6 +396,14 @@ static func object_of(key: String) -> String:
 # second bay, the coop's other three squares — or "" for a structure that stands
 # on one tile. Never drawn: the renderer hangs the whole picture off the anchor
 # and skips these, so they exist to be real to the sim and invisible to the eye.
+# The inside a placed structure opens into, or {} for one that is solid all the
+# way through (P-18). `cells` is how many squares of room, `pitch` how many of
+# them fit in a farm tile — which together say both how big the inside is and how
+# far the camera zooms to get there.
+static func room_of(key: String) -> Dictionary:
+	return TYPES.get(key, {}).get("room", {})
+
+
 static func part_of(key: String) -> String:
 	return String(TYPES.get(key, {}).get("part", ""))
 

@@ -163,6 +163,15 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   further up the ladder — this is it). Design rewrite in `design/06`; build in
   `V0_2_1_PLAN.md` WI-9.
 
+  - **Amended 2026-09-15, on the designer seeing it run.** In their words: "When the game
+    opens, I see a frozen frame of the start of the sunflower animation for a bit, and then
+    it animates and plays the music. Can we show the farmer icon with the drone over the
+    shoulder until the game is ready to unfreeze, and then show the animation?" So the boot
+    now has **two** pictures rather than one: the **app icon**, held by the engine and then
+    by the title scene for as long as the load takes, and the **bloom**, which plays only
+    once the game is live under it. The rest of (a) is untouched. The reason the original
+    failed is worth keeping: a still of an animation reads as a hang, because the eye is
+    waiting for it to move, where the same wait under a logo reads as nothing at all.
 - **Q-99** ~~A fresh Mark III walks off the field. Pen it, home it, or give it a nose?~~ —
   ✅ ruled 2026-09-09: **none of the three — give it the hoe.** *"For initial playtesting,
   if this is a problem we can define an additional reward of 0.1 for hoeing a field and

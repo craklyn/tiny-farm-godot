@@ -42,10 +42,28 @@ const SLOT_LOOKS := [
 	},
 ]
 
-# Q-103 ("the flower is the splash"): the engine's boot splash is the bloom
-# loop's closed bud, painted on the Lab's own sky. This scene picks up that
-# same frame at the same place and scale, so the hand-off has no cut in it —
-# design/09 §"The boot".
+# Q-103 ("the flower is the splash"), amended by the designer on 2026-09-15:
+# the picture the engine holds while the game loads is the **app icon** — the
+# farmer with the drone off her hat — and the bloom plays only once the game is
+# live under it. It used to be the bloom's own first frame, so the first thing
+# anyone saw was a still of an animation that had not started: a frozen
+# animation reads as a hang, because the eye is waiting for it to move, where a
+# still icon is just a logo and the same wait looks like nothing at all. This
+# scene opens on that same plate — `tools/gen_icon.py` writes it, so it cannot
+# drift from the icon the player tapped — holds it until the frames are cheap
+# again, and dissolves it off the bloom. design/09 §"The boot".
+const BOOT_PLATE := "res://assets/icon/boot_splash.png"
+const PLATE_DISSOLVE_SEC := 0.45
+# Both bounds are read off the process clock rather than this scene's, so the
+# time the engine already spent holding this same picture counts toward them:
+# on a slow tablet there is usually nothing left to wait for, and on a fast
+# desktop this is what keeps the plate from flashing past unseen.
+const PLATE_MIN_MSEC := 900
+const PLATE_MAX_MSEC := 8000           # a device that never settles still gets its bloom
+const PLATE_FRAME_BUDGET_MSEC := 40.0  # a frame this cheap is a frame nobody is waiting on
+const PLATE_SMOOTH_FRAMES := 3         # ...and three of them in a row is the load being over
+
+# The Lab's sky, which the bloom is drawn on and the plate dissolves to reveal.
 const BOOT_SKY_COLOUR := Color8(33, 31, 32)
 # The farm's own edge-blend colour (unchanged from before this work): a bright
 # green rectangle beside a real farm reads as a hole, so the backdrop darkens
@@ -57,9 +75,25 @@ const ATTRACT_EDGE_COLOUR := Color(0.13, 0.28, 0.17)
 const BLOOM_MANIFEST := "res://assets/anim/sunflower_bloom/manifest.json"
 const BLOOM_SHEET := "res://assets/anim/sunflower_bloom/sheet.png"
 const BLOOM_SCALE := 5
-const BLOOM_HOLD_SEC := 0.4       # holds the splash's own frame before it rises
+const BLOOM_HOLD_SEC := 0.4       # a beat of stillness on the bud, after the icon, before it rises
+# The designer, 2026-09-15: "make the flower animation linger about 50% longer
+# before transitioning to main landing page." The rise itself is left at the rate
+# the Lab drew it — design/09 is explicit that a loop plays at its own rate — so
+# the extra time is a hold on the last bloomed frame instead. Hold plus rise was
+# 1.84 s; this takes the flower's whole moment to about 2.76 s. The chime is cut
+# to the same length (`tools/gen_sfx.py` reads this number out of this file), so
+# it rings out over the linger rather than finishing early and leaving silence.
+const BLOOM_LINGER_SEC := 0.9
 const BLOOM_TITLE_FADE_SEC := 0.5 # the title and menu settling in, not appearing
 const BLOOM_FARM_FADE_SEC := 1.0  # the attract farm fading up beneath the menu
+# The flower leaves faster than the farm arrives, and the menu waits for it to
+# be gone. Everything used to cross-fade on one clock, which put the Continue
+# card on screen over a half-dissolved sunflower for about half a second — two
+# subjects sharing the middle of the screen, which is what made the hand-off
+# read as muddy rather than as a fade. Now it is one thing at a time: the flower
+# dissolves into the farm, and only then does the menu settle onto it.
+const BLOOM_FADE_OUT_SEC := 0.7   # the flower going, on its own
+const BLOOM_MENU_DELAY_SEC := 0.55
 # Q-107 (2026-09-11): "add a bit more pause after that synthesized chime
 # finishes before we ramp into the main game's music" — the music used to
 # start its own fade-up the instant the chime did, finishing within a beat of
@@ -112,13 +146,14 @@ var _bloom_ms_per_frame: int = 90
 var _bloom_cell := Vector2i(64, 104)
 var _menu_root: Control = null
 var _intro_shield: Control = null  # swallows taps until the menu has settled in
+var _plate: TextureRect = null     # the icon, held over everything until the game is live
 
 
 func _ready() -> void:
-	# The splash hands off on the bloom's closed-bud frame, on its own sky —
-	# so the backdrop behind it has to be that same sky, not the flat green,
-	# or the loop's canvas would show as a box the moment this scene takes
-	# over. Headless never paints it, so it is left alone there.
+	# The backdrop under everything is the bloom's own sky, not the flat green:
+	# the plate covers it until the game is live, and what the plate dissolves
+	# into has to be the sky the bloom is drawn on, or the loop's canvas would
+	# show as a box. Headless never paints it, so it is left alone there.
 	if _boot_bloom_due():
 		var back := get_node_or_null("ColorRect")
 		if back != null:
@@ -142,11 +177,13 @@ func _ready() -> void:
 	# redirect the played session's autosave.
 	_read_slots()
 	_start_attract()
-	# Tree order end to end: backdrop, attract farm, the bloom, the menu — the
-	# bloom sits between the farm it will reveal and the menu that settles in
-	# over both of them.
+	# Tree order end to end: backdrop, attract farm, the bloom, the icon plate,
+	# the menu — the bloom sits between the farm it will reveal and the menu
+	# that settles in over both of them, and the plate covers all three until
+	# the game behind it is running.
 	if _boot_bloom_due():
 		_build_boot_bloom()
+		_build_boot_plate()
 		_build_ui()
 		_arm_intro_shield()
 		GameState.boot_bloom_played = true
@@ -226,14 +263,14 @@ func _set_attract_paused(value: bool) -> void:
 		_attract.paused = value
 
 
-# --- The boot bloom (Q-103: "the flower is the splash") -----------------------
+# --- The boot: the icon, then the bloom (Q-103, amended 2026-09-15) -----------
 #
-# The engine's own boot splash is the loop's closed bud, painted on its own sky
-# (project.godot's `boot_splash/*`, from the same `splash.png` this reads its
-# first frame from). This scene has to pick up on that exact frame, at the
-# exact place and scale, or the hand-off shows as a cut — so the sprite below
-# is built and placed before anything is animated, and only the *playing* of it
-# is skipped headless.
+# Two pictures, in this order. The **icon plate** is what the engine holds
+# through the load (project.godot's `boot_splash/*`) and what this scene redraws
+# over its own first frame, so the swap from the held picture to the live one
+# has nothing in it. The **bloom** is underneath it from the start, built and
+# placed before anything is animated, and is revealed by the plate dissolving
+# once the game is running. Only the *playing* of it is skipped headless.
 #
 # design/09 §"The boot" is explicit that the loop is drawn from the Lab's
 # exported sheet as it is, never re-authored here — this steps through
@@ -273,12 +310,70 @@ func _build_boot_bloom() -> void:
 	_bloom.texture = load(BLOOM_SHEET)
 	_bloom.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST  # pixels stay square
 	_bloom.region_enabled = true
-	_bloom.region_rect = Rect2(0, 0, _bloom_cell.x, _bloom_cell.y)  # the splash's own frame
+	_bloom.region_rect = Rect2(0, 0, _bloom_cell.x, _bloom_cell.y)  # the closed bud it opens from
 	_bloom.scale = Vector2(BLOOM_SCALE, BLOOM_SCALE)
-	# Centred, exactly as `export_anim_loop.py`'s `export_splash` centres the
-	# same frame on the same 800×600 canvas — so nothing moves on the hand-off.
+	# Centred on the sky at ×5, which is where design/09 §"How a loop is shown"
+	# puts every one of the Lab's loops — the boot is not a special case.
 	_bloom.position = get_viewport_rect().size / 2.0
 	add_child(_bloom)  # after the attract farm, before the menu (`_build_ui` next)
+
+
+# The plate the engine's own splash was already showing, drawn again by the
+# scene so the hand-off between the two has nothing in it: same picture, same
+# size, same place, so the swap from a held image to a live one is invisible.
+# Null when the file is missing, which only means the boot opens the way it did
+# before this existed.
+func _build_boot_plate() -> void:
+	if not _boot_bloom_due():
+		return
+	var tex: Texture2D = load(BOOT_PLATE)
+	if tex == null:
+		return
+	_plate = TextureRect.new()
+	_plate.name = "BootPlate"
+	_plate.texture = tex
+	_plate.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST  # pixels stay square
+	_plate.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_plate.stretch_mode = TextureRect.STRETCH_SCALE
+	_plate.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_plate.mouse_filter = Control.MOUSE_FILTER_IGNORE  # the intro shield does the swallowing
+	add_child(_plate)
+
+
+# Holds the icon until the game is actually running under it, then dissolves it
+# off the bloom. "Running" is measured rather than guessed at with a fixed
+# sleep: three consecutive frames inside a cheap budget means the replay has
+# been decoded, the farm behind has been built and is drawing, and nothing is
+# about to hitch — which is exactly the moment the bloom can start without
+# stuttering on its first frames. The ceiling is there because a device that
+# never gets there should still see its flower.
+func _hold_plate_until_live() -> void:
+	var smooth := 0
+	var last := Time.get_ticks_msec()
+	while true:
+		await get_tree().process_frame
+		if not is_instance_valid(self) or _plate == null:
+			return
+		var now := Time.get_ticks_msec()
+		smooth = smooth + 1 if float(now - last) <= PLATE_FRAME_BUDGET_MSEC else 0
+		last = now
+		if now >= PLATE_MAX_MSEC:
+			break
+		if now >= PLATE_MIN_MSEC and smooth >= PLATE_SMOOTH_FRAMES:
+			break
+
+	var dissolve := create_tween()
+	dissolve.tween_property(_plate, "modulate:a", 0.0, PLATE_DISSOLVE_SEC)
+	await dissolve.finished
+	if not is_instance_valid(self):
+		return
+	_drop_boot_plate()
+
+
+func _drop_boot_plate() -> void:
+	if _plate != null:
+		_plate.queue_free()
+		_plate = null
 
 
 func _load_bloom_manifest() -> Dictionary:
@@ -308,14 +403,16 @@ func _drop_intro_shield() -> void:
 		_intro_shield = null
 
 
-# Hold on the splash's own frame, rise through the loop once with the chime
-# under it, then settle the title and menu in and reveal whatever is behind
-# the bloom. The music's own fade-up runs on its own clock, starting only once
+# Hold the icon until the game is live, dissolve it onto the bloom's first
+# frame, hold a beat there, rise through the loop once with the chime under it,
+# then settle the title and menu in and reveal whatever is behind the bloom.
+# The music's own fade-up runs on its own clock, starting only once
 # the chime has finished (`_fade_bgm_in_after_chime`), so it does not race the
 # visual reveal below. Headless (and any run that could not build the sprite)
 # skips straight to the settled state, same as the attract loop already does.
 func _play_boot_bloom() -> void:
 	if _bloom == null:
+		_drop_boot_plate()
 		_drop_intro_shield()
 		if _menu_root != null:
 			_menu_root.modulate.a = 1.0
@@ -326,6 +423,14 @@ func _play_boot_bloom() -> void:
 	# runs before this scene's), and cutting it to silence only once the rise
 	# starts would be an audible stutter rather than a fade up from nothing.
 	AudioManager.bgm_player.volume_db = -80.0
+
+	# The icon holds the screen until the game is live under it. The bloom's
+	# own hold below is a beat of stillness before the chime, not a loading
+	# screen, and this is what keeps it from having to be one.
+	if _plate != null:
+		await _hold_plate_until_live()
+		if not is_instance_valid(self):
+			return
 
 	await get_tree().create_timer(BLOOM_HOLD_SEC).timeout
 	if not is_instance_valid(self):
@@ -345,11 +450,23 @@ func _play_boot_bloom() -> void:
 		if not is_instance_valid(self):
 			return
 
-	# The last seed has landed: the title and menu settle in rather than
-	# appear, and whatever is behind the bloom takes its place.
+	# The last seed has landed. The flower holds there, bloomed, while the chime
+	# rings out — the moment the boot is actually for — and only then does the
+	# screen start becoming the menu. The shield stays up through it, because
+	# the menu underneath is still invisible and a tap on a button nobody can
+	# see would start the game.
+	await get_tree().create_timer(BLOOM_LINGER_SEC).timeout
+	if not is_instance_valid(self):
+		return
+
+	# The title and menu settle in rather than appear, and whatever is behind
+	# the bloom takes its place — in that order, not at once. The menu's own
+	# tween opens with the wait, so the card lands on a farm rather than on a
+	# flower that has not finished leaving.
 	_drop_intro_shield()
 	if _menu_root != null:
 		var menu_tween := create_tween()
+		menu_tween.tween_interval(BLOOM_MENU_DELAY_SEC)
 		menu_tween.tween_property(_menu_root, "modulate:a", 1.0, BLOOM_TITLE_FADE_SEC)
 
 	if _attract != null and is_instance_valid(_attract):
@@ -357,7 +474,7 @@ func _play_boot_bloom() -> void:
 		var reveal := create_tween()
 		reveal.set_parallel(true)
 		reveal.tween_property(_attract, "modulate:a", 1.0, BLOOM_FARM_FADE_SEC)
-		reveal.tween_property(_bloom, "modulate:a", 0.0, BLOOM_FARM_FADE_SEC)
+		reveal.tween_property(_bloom, "modulate:a", 0.0, BLOOM_FADE_OUT_SEC)
 		if back != null:
 			reveal.tween_property(back, "color", ATTRACT_EDGE_COLOUR, BLOOM_FARM_FADE_SEC)
 	else:
@@ -529,7 +646,12 @@ func _build_ui() -> void:
 		# farm is what you are looking at when one flips (`ui/menus.gd`), and the
 		# registry behind them is still `systems/look_lab.gd`. What replaces the
 		# door is a staged scenario, not a menu — Q-86 in `docs/DESIGNER_QUEUE.md`.
-		for b in [_make_sound_test_button(), _make_zoo_button(), _make_home_button()]:
+		# The Home door came out on the designer's word, 2026-09-15: "remove the
+		# 'home' button from the main landing page menu." `ui/home_screen.tscn`
+		# itself stays — it is a detached preview of the indoor room (T-37) and
+		# the integration suite still instantiates and renders it — but nothing
+		# on this menu opens it any more, and its button is gone with it.
+		for b in [_make_sound_test_button(), _make_zoo_button()]:
 			b.custom_minimum_size = Vector2(104, 34)
 			debug_row.add_child(b)
 
@@ -1004,26 +1126,6 @@ func _open_zoo() -> void:
 
 
 # T-37: the home, a scene-changing door on the Zoo's pattern.
-func _make_home_button() -> Button:
-	var btn := Button.new()
-	btn.name = "HomeButton"
-	btn.text = "Home"
-	btn.custom_minimum_size = Vector2(130, 34)
-	btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	btn.add_theme_font_size_override("font_size", 13)
-	_style_button(btn, Color(0.24, 0.18, 0.13), Color(0.70, 0.55, 0.40), Color(0.32, 0.24, 0.18))
-	btn.pressed.connect(_open_home)
-	return btn
-
-
-func _open_home() -> void:
-	if _confirm_open:
-		return
-	InputManager.has_click = false
-	AudioManager.play_sfx("click")
-	get_tree().change_scene_to_file("res://ui/home_screen.tscn")
-
-
 # --- New Farm confirmation ----------------------------------------------------
 #
 # One dialog, asked about one farm: the slot it was opened from is the slot it

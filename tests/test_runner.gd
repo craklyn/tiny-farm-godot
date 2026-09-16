@@ -217,6 +217,7 @@ func _init() -> void:
 	test_save_v3_migration()
 	test_robot_stall()
 	test_chicken_coop()
+	test_coop_interior()
 	test_robot_usefulness()
 
 	print("")
@@ -11455,10 +11456,19 @@ func test_observation() -> void:
 	_flush_quiet("every tile outside the map reads as eight zeros")
 	_assert(_obs_tile(corner, 0, 0, 2, 7, 8) == [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
 		"and the border it is standing on is in bounds, but is not ground you can walk")
-	s.world.set_actor_pos("obs_bot", Vector2i(SimWorld.MAP_WIDTH - 1, SimWorld.MAP_HEIGHT - 1))
+	s.world.set_actor_pos("obs_bot", Vector2i(SimWorld.MAP_WIDTH - 1, Observation.OBS_HEIGHT - 1))
 	var far := Observation.build(s.world, "obs_bot", full)
 	_assert(is_equal_approx(float(far[0]), 1.0) and is_equal_approx(float(far[1]), 1.0),
-		"and the far corner normalises to (1, 1) — the full height, not one page of it")
+		"and the bottom of the observation's own scale normalises to (1, 1)")
+	# **The scale is frozen and the map is not** (P-18, 2026-09-15). The world grew a
+	# rooms page; re-scaling this number under a robot would re-interpret every weight
+	# it had learned, so `OBS_HEIGHT` stayed where it was and a position below it
+	# honestly reports above 1. A robot indoors is somewhere it has never been.
+	s.world.set_actor_pos("obs_bot", Vector2i(SimWorld.MAP_WIDTH - 1, SimWorld.MAP_HEIGHT - 1))
+	var below := Observation.build(s.world, "obs_bot", full)
+	_assert(float(below[1]) > 1.0,
+		"...and a tile past it reports past it, rather than being squeezed back in (%.2f)"
+			% below[1])
 	s.world.set_actor_pos("obs_bot", mid)
 
 	# --- a spec that names a channel nobody implements --------------------------
@@ -14378,10 +14388,19 @@ func test_the_door() -> void:
 		"actor": "player" }, gs)
 	_assert(not nothing.get("ok", false) and String(nothing.get("reason", "")) == "no_door_here",
 		"a tap on ordinary ground is not a door (%s)" % nothing)
+	# **A hen goes through a door too** (P-18, 2026-09-15). This used to refuse
+	# everybody but the player, which was right while the only door in the game was
+	# her own front door; a coop has one now and the animal it is for has to be able
+	# to use it. S-3 read from the other side: `use_door` is a verb the player
+	# already had, so nothing here is a capability an animal has and she does not.
 	w.set_actor_pos(SimWorld.ACTOR_CHICKEN, Vector2i(2, 3))
 	var hen := w.apply_action({ "verb": "use_door", "target": door, "actor": "chicken" }, gs)
-	_assert(not hen.get("ok", false) and String(hen.get("reason", "")) == "not_the_player",
-		"and nobody but the player goes indoors in phase 1 (%s)" % hen)
+	_assert(hen.get("ok", false)
+			and w.actor_pos(SimWorld.ACTOR_CHICKEN) == Vector2i(hen.get("dest", Vector2i(-1, -1))),
+		"a hen walks through a door as the farmer does, and ends up on the far side (%s)" % hen)
+	var nobody := w.apply_action({ "verb": "use_door", "target": door, "actor": "ghost" }, gs)
+	_assert(not nobody.get("ok", false) and String(nobody.get("reason", "")) == "no_such_actor",
+		"...but somebody who is not in the world does not (%s)" % nobody)
 
 	# **The migration's safety net, from the other side.** A world with no door
 	# table is every farm ever saved before today: even with a door object sitting
@@ -14527,7 +14546,9 @@ func test_save_v3_migration() -> void:
 	v2["world"]["objects"] = (v2["world"]["objects"] as Array).slice(0, SaveGame.LEGACY_MAP_HEIGHT)
 
 	var migrated := SaveGame.migrate(v2)
-	_assert(int(migrated.get("version", 0)) == 3, "a v2 save migrates to v3")
+	_assert(int(migrated.get("version", 0)) == SaveGame.VERSION,
+		"a v2 save walks the whole chain to the current version (%d)"
+			% int(migrated.get("version", 0)))
 	_assert((v2["world"]["tiles"] as Array).size() == SaveGame.LEGACY_MAP_HEIGHT,
 		"and the caller's own dictionary is left alone — migrate copies, it does not rewrite")
 	var rows: Array = migrated["world"]["tiles"]
@@ -15111,28 +15132,34 @@ func test_chicken_coop() -> void:
 
 	GameState.weather = "rainy"
 	SimRng.reseed(515)
-	world.advance_ticks(900, GameState)
+	world.advance_ticks(1800, GameState)
 	var wet_spot := world.actor_pos("chicken")
-	_assert(world.is_coop_tile(wet_spot) and world.coop_perches().has(wet_spot),
-		"and when it rains she walks in and sits in the doorway (%s)" % wet_spot)
+	# **Inside now, not on the doorstep** (P-18, 2026-09-15). Before the hut had an
+	# inside she sheltered on its front row, which was the best the design could
+	# offer; now she walks to the doorstep, lets herself in, and is standing on the
+	# room's own floor.
+	_assert(world.room_of_cell(wet_spot) != "",
+		"and when it rains she lets herself in and stands on the floor of it (%s)" % wet_spot)
 
 	# She stays put while it is wet, rather than wandering back out and in again.
 	var settled := true
 	for i in 6:
 		world.advance_ticks(150, GameState)
-		if not world.is_coop_tile(world.actor_pos("chicken")):
+		if world.room_of_cell(world.actor_pos("chicken")) == "":
 			settled = false
-	_assert(settled, "and stays there as long as the rain does")
+	_assert(settled, "and stays inside as long as the rain does")
 
 	# ...and the sky clearing is what lets her out. Nothing else changes.
 	GameState.weather = "sunny"
 	world.schedule_all_brains()
 	var left := false
-	for i in 12:
+	for i in 20:
 		world.advance_ticks(150, GameState)
-		if not world.is_coop_tile(world.actor_pos("chicken")):
+		if world.room_of_cell(world.actor_pos("chicken")) == "" \
+				and not world.is_coop_tile(world.actor_pos("chicken")):
 			left = true
-	_assert(left, "a dry morning is what lets her out again")
+	_assert(left, "a dry morning is what lets her back out into the yard (%s)"
+		% world.actor_pos("chicken"))
 
 	# --- and it is an ornament, not a dependency -------------------------------
 	#
@@ -15151,3 +15178,147 @@ func test_chicken_coop() -> void:
 	bare.advance_ticks(900, GameState)
 	_assert(bare.coop_tiles().is_empty() and bare.actor_pos("chicken") != before,
 		"with no coop on the farm a wet day is an ordinary day and she potters (%s)" % bare.actor_pos("chicken"))
+
+
+# --- Inside the coop: a building you walk into without leaving the farm -------
+#
+# P-18, ruled 2026-09-15 after the CEO corrected the reading of his own directive:
+# *"one world, one metric, two grids"*. A building's inside is a finer grid nested
+# in its own footprint, and going in is a camera zoom.
+#
+# What the sim owes that design is small and exact, which is the point: the room is
+# **ordinary tiles** in a slot on page 2, so `is_walkable` refuses its walls and
+# `Movement` walks its floor with nothing new to learn. What makes those tiles an
+# *interior* is two numbers recorded beside them — the anchor and the pitch — and
+# those are what this test pins, because they are the whole of the idea and the
+# only part a renderer or a later flattening depends on.
+func test_coop_interior() -> void:
+	print("\n--- Inside the coop: a nested room and a door to it (P-18, 2026-09-15) Tests ---")
+
+	_assert(MachineDefs.room_of("coop") == { "cells": Vector2i(6, 6), "pitch": 3 },
+		"the coop's row says it has an inside, and how big and how fine (%s)"
+			% [MachineDefs.room_of("coop")])
+	_assert(MachineDefs.room_of("stall").is_empty() and MachineDefs.room_of("sprinkler").is_empty(),
+		"...and nothing else does: a shed is solid all the way through")
+	_assert(SimWorld.MAP_HEIGHT == WorldLayout.PAGE_ROWS * 3,
+		"the world has a third page for rooms to live on (%d)" % SimWorld.MAP_HEIGHT)
+
+	GameState.reset()
+	SimRng.reseed(9151)
+	var world := SimWorld.new()
+	world.generate()
+	GameState.gold = 1000
+
+	var spot := Vector2i(-1, -1)
+	for y in range(10, 17):
+		for x in range(5, 23):
+			if world.placeable_at(Vector2i(x, y), "coop"):
+				spot = Vector2i(x, y)
+				break
+		if spot.x >= 0:
+			break
+	_assert(spot.x >= 0, "the generated farm has a four-square block free")
+	for dy in range(-3, 4):
+		for dx in range(-2, 4):
+			world.set_tile_state(spot.x + dx, spot.y + dy, "cleared")
+
+	# --- putting the hut down puts a room down ---------------------------------
+	world.apply_action({ "verb": "buy_machine", "item": "coop", "actor": "player" }, GameState)
+	var laid: Dictionary = world.apply_action({ "verb": "place", "target": spot,
+		"item": "coop", "actor": "player" }, GameState)
+	var room_id := String(laid.get("room", ""))
+	_assert(laid.get("ok", false) and room_id != "",
+		"she puts the hut down and its inside goes down with it (%s)" % room_id)
+	var room: Dictionary = world.rooms[room_id]
+	_assert(Vector2i(room["anchor"]) == spot and int(room["pitch"]) == 3,
+		"and it records the two numbers that make it an interior: anchor %s, pitch %d"
+			% [room["anchor"], room["pitch"]])
+	_assert(world.page_of(Vector2i(room["origin"])) == WorldLayout.ROOMS_PAGE,
+		"its tiles are stored on the rooms page, out of the farm's way")
+
+	# --- and the room is a room ------------------------------------------------
+	var origin: Vector2i = room["origin"]
+	var size: Vector2i = room["size"]
+	var floor_cells := 0
+	var wall_cells := 0
+	for y in size.y:
+		for x in size.x:
+			var c := origin + Vector2i(x, y)
+			var edge: bool = x == 0 or y == 0 or x == size.x - 1 or y == size.y - 1
+			if edge and c != Vector2i(room["door"]):
+				wall_cells += 1
+				_assert_quiet(not world.is_walkable(c.x, c.y), "a wall cell at %s is walkable" % c)
+			elif not edge:
+				floor_cells += 1
+				_assert_quiet(world.is_walkable(c.x, c.y), "a floor cell at %s is not walkable" % c)
+	_assert(floor_cells == 16,
+		"a four-by-four floor, which is the CEO's 'a bit bigger' with the walls paid for (%d)"
+			% floor_cells)
+	_assert(wall_cells == 19,
+		"inside a ring of wall with one square cut out of it (%d)" % wall_cells)
+	_assert(world.is_walkable(Vector2i(room["door"]).x, Vector2i(room["door"]).y),
+		"and the square cut out is the doorway, which is the one way through")
+
+	# --- the two numbers do what they exist to do ------------------------------
+	#
+	# This is the claim the whole architecture rests on: an actor standing indoors
+	# has a true position on the farm, so a distance to it is an ordinary distance
+	# and nothing has to be undefined.
+	var inside_centre := origin + size / 2
+	var where := world.world_pos_of_cell(inside_centre)
+	_assert(where.distance_to(Vector2(spot) + Vector2(1, 1)) < 1.5,
+		"a cell in the middle of the room really is in the middle of the hut (%s vs %s)"
+			% [where, Vector2(spot)])
+	_assert(world.world_pos_of_cell(spot) == Vector2(spot),
+		"...and a tile that is not in any room is just where it is")
+
+	# --- the door, both ways ---------------------------------------------------
+	world.set_actor_pos(SimWorld.ACTOR_PLAYER, spot + Vector2i(0, 1))
+	var went_in: Dictionary = world.apply_action({ "verb": "use_door", "target": spot,
+		"actor": "player" }, GameState)
+	_assert(went_in.get("ok", false)
+			and Vector2i(went_in.get("dest", Vector2i(-1, -1))) == Vector2i(room["door"]),
+		"a tap on the hut takes her inside, through the doorway (%s)" % went_in)
+	_assert(world.actor_pos(SimWorld.ACTOR_PLAYER) == Vector2i(room["door"]),
+		"and she is standing in it")
+	var back_out: Dictionary = world.apply_action({ "verb": "use_door",
+		"target": Vector2i(room["door"]), "actor": "player" }, GameState)
+	_assert(back_out.get("ok", false)
+			and world.actor_pos(SimWorld.ACTOR_PLAYER) == spot + Vector2i(0, 1),
+		"and a tap on the doorway brings her back out onto her own doorstep (%s)" % back_out)
+	var part: Vector2i = spot + Vector2i(1, 0)
+	world.set_actor_pos(SimWorld.ACTOR_PLAYER, part + Vector2i(0, 1))
+	_assert(world.apply_action({ "verb": "use_door", "target": part,
+			"actor": "player" }, GameState).get("ok", false),
+		"any square of the hut is its door, because the arch is drawn across its front")
+
+	# --- it survives being saved ----------------------------------------------
+	var snap: Dictionary = SaveGame.capture(world, GameState)
+	var reloaded := SimWorld.new()
+	_assert(SaveGame.restore(snap, reloaded, GameState), "the farm saves and loads")
+	_assert(reloaded.rooms.has(room_id)
+			and Vector2i(reloaded.rooms[room_id]["anchor"]) == spot
+			and int(reloaded.rooms[room_id]["pitch"]) == 3,
+		"and the room comes back with both its numbers, or it is a room no renderer can place")
+	_assert(reloaded.is_walkable(Vector2i(room["door"]).x, Vector2i(room["door"]).y)
+			and not reloaded.is_walkable(origin.x, origin.y),
+		"...and its walls are still walls")
+
+	# --- and goes away with the hut -------------------------------------------
+	#
+	# Nothing living is ever pocketed (P-17, 2026-09-14): the hen was standing on
+	# the front row, which is outdoors, so picking the hut up leaves her on grass.
+	world.spawn_actor("chicken", SpeciesDefs.CHICKEN, spot)
+	var taken: Dictionary = world.apply_action({ "verb": "collect", "target": spot,
+		"actor": "player" }, GameState)
+	_assert(taken.get("ok", false) and String(taken.get("collected", "")) == "coop",
+		"the hut is picked back up (%s)" % taken)
+	_assert(world.rooms.is_empty() and world.coop_tiles().is_empty(),
+		"its inside goes with it, and its four squares are grass again")
+	_assert(not world.is_walkable(origin.x, origin.y)
+			and String(world.get_tile(origin.x, origin.y).get("state", "")) == WorldLayout.VOID,
+		"the slot it was using is dark again, ready for the next hut")
+	_assert(world.has_actor("chicken") and world.actor_pos("chicken") == spot,
+		"and the hen is standing where the hut was, rather than in the crate")
+	_assert(GameState.machines.get("coop", 0) == 1, "with the hut back in the crate")
+

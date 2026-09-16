@@ -116,7 +116,9 @@ and the farm's fixed stations stay a module constant until the multi-map
 loader moves them (that project's first step, now done). Art is derived, $0.00
 (`tools/gen_interior.py`, CREDITS.md): planks/walls from the fence's own
 browns; the window pane's blue is the one new colour. Reached from the title
-screen's debug row — now a 2x2 grid, four doors — via `ui/home_screen.tscn`
+screen's debug row via `ui/home_screen.tscn` *(that door was taken off the menu
+on the designer's word, 2026-09-15 — the screen still builds and the integration
+suite still renders it, but nothing on the title screen opens it)*
 (the Zoo's detached-state pattern; the farmer stands as scenery, no walking
 yet). **Deliberately not wired into play** *(superseded 2026-09-06 — T-39 wired
 the door, the walk indoors, and the cot's move into the live game)*: a door on
