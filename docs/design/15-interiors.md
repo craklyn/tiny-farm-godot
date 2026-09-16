@@ -54,6 +54,46 @@ Nothing stretches. Nothing is registered to anything, because nothing ever came 
 `mockups/interiors/q108_two_zooms.png` is those two panels: the same photograph of the
 running game, the same composition, one uniform zoom between them.
 
+### The leftover band, and the rule that follows
+
+A uniform pitch is set by the **tighter** axis. Six cells across three tiles wants two
+cells per tile; three cells down two tiles only wants one and a half. The room has to fit
+across, so the pitch is two — and the room is then three tiles by one and a half, leaving
+**half a tile of footprint unused at the top**. The CEO spotted the strip on 2026-09-15 and
+asked the right question: constrain the shapes so it never appears, or spend it?
+
+**Spend it, and the rule is this:**
+
+> Pick an integer pitch `k` (interior cells per outdoor tile). The room's **width is the
+> footprint's width × `k`**, exactly — so it fills across and the pitch is clean. Its
+> **height is free**, anything up to the footprint's height × `k`. Whatever height is not
+> used is a band of whole cell rows at the top, and that band is the **roof**.
+
+The house at `k = 2` therefore has a room six cells wide and anything from one to four
+cells deep. Six by three is the CEO's choice and leaves one cell row of eaves.
+
+Three reasons this beats matching the shapes (`mockups/interiors/q108_leftover_band.png`
+draws both):
+
+1. **It is the only place a building's identity can be.** Under the nested grid every
+   interior is a rectangle of floor with edge cells, so a house and a hen house look
+   identical from inside except for the furniture. The band is where the roofline goes, and
+   the roofline is what says which building she is standing in.
+2. **It keeps the freedom the directive asked for** — *"each inside space can be an
+   arbitrary dimension that we set"*. Matching the shapes takes that away: the room's
+   proportions become the building's proportions, and a 3×2 house can only ever hold a 6×4,
+   a 9×6, a 12×8.
+3. **The asymmetry is correct rather than tolerated.** The band lands at the top, which in
+   this projection is where a roof is. The bottom edge is the wall the door is in.
+
+What it costs is floor: at `k = 2` a 6×3 room is one row smaller than the 6×4 that would
+fill the footprint exactly. That is the price of the roof, and it is the same trade the
+game already makes outdoors, where a house's top half is roof rather than room.
+
+**The constraint this implies**, worth stating because it is the only thing the rule
+forbids: a room may not be a *narrower* shape than its building. Rooms are as wide as their
+footprint and as deep as they like, up to it.
+
 ### What this corrects
 
 An earlier draft of this chapter read the directive as a **differential transform** — the
@@ -212,6 +252,10 @@ Recorded so the estimate is honest. Nothing here has been built.
 **Settled by the directive and recorded as P-18:** the principle in §2; interiors nested in
 their building's footprint at finer pitch; entering is a uniform zoom; the farm stays
 visible throughout; the farmhouse is 3×2 outside and 6×3 inside.
+
+**Proposed, awaiting the CEO's yes:** the leftover-band rule in §2 — room width is the
+footprint's width times the pitch, room depth is free under it, and the strip that leaves is
+the roofline. Recommended over matching the shapes.
 
 **Settled by analysis:** one grid and one metric (§4); D-16 closed; transparency one level
 deep, on grounds of legibility (§6); portals survive only for exits that are not nested (§7).

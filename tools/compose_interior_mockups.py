@@ -217,7 +217,7 @@ WINDOW = (800, 600)
 INTERIOR_PITCH = 2       # interior cells per outdoor tile, each axis
 
 
-def farm_with_room(rw, rh, zoom, occupant="house"):
+def farm_with_room(rw, rh, zoom, occupant="house", band="none"):
     """The farm at `zoom`, with the house's footprint showing the room inside it.
 
     `zoom` 1 is how the farm is drawn today; 2 is standing in the room. The same
@@ -237,6 +237,17 @@ def farm_with_room(rw, rh, zoom, occupant="house"):
     frame = plate.copy()
     block = room_block(rw, rh, occupant, cell_px=cell, walls=False)
     frame.paste(block, (int(fx0), int(fy0)), block)
+
+    # **The leftover strip of footprint**, which exists whenever the room is a wider
+    # shape than the building it is in: a uniform pitch is set by the tighter axis, so a
+    # 6x3 room in a 3x2 house fills the width and leaves half a tile at the top. Drawn
+    # here as the house's own eaves — the bottom rows of farmhouse.png, at their own art
+    # scale, which is exactly the band's height and needs no squashing.
+    if band == "roof" and fy0 > hy0:
+        eaves = art("farmhouse").crop((0, 6, 48, 14))
+        eaves = eaves.resize((int(hx1 - hx0), int(fy0 - hy0)), Image.NEAREST)
+        frame.paste(eaves, (int(hx0), int(hy0)), eaves)
+
     outline(frame, (fx0, fy0, fx0 + fw, fy0 + fh), MARK, width=2)
 
     if zoom != 1:
@@ -398,6 +409,20 @@ def main():
         note="One world, one metric, two grids. Between these panels only the camera changed "
              "-- the house and the yard grow by the same factor, together, and nothing "
              "stretches. Both are the same photograph of the running game."))
+
+    # **What to do with the leftover strip** (CEO, 2026-09-15). A room that is a wider
+    # shape than its building leaves a band of footprint unused, because a uniform pitch
+    # is set by the tighter axis. Two answers, both drawn at house zoom: match the
+    # shapes so there is no band, or keep the band and spend it on the one thing a
+    # nested interior otherwise has no room for — saying which building you are in.
+    written.append(sheet(
+        [farm_with_room(6, 4, 2), farm_with_room(6, 3, 2, band="roof")],
+        ["(a) MATCHED SHAPE - a 6x4 room in a 3x2 house: the footprint is filled exactly",
+         "(b) THE BAND AS ROOF - a 6x3 room, and the half tile left over is the eaves"],
+        os.path.join(OUT, "q108_leftover_band.png"),
+        note="Both at house zoom. In (a) the room's shape is the building's shape and there is "
+             "nothing spare; in (b) the room is any shape wider than its building, and the strip "
+             "that leaves is where the roof goes."))
 
     # Both buildings, at each multiplier, every panel on the same canvas at the same
     # zoom — so what differs between them is how much room there is, and nothing else.

@@ -834,6 +834,17 @@ did. Nothing stretches, nothing is registered to anything, because nothing ever 
 Full analysis in `docs/design/15-interiors.md`; the two panels are
 `docs/design/mockups/interiors/q108_two_zooms.png`.
 
+**The leftover band** (CEO, 2026-09-15, and proposed rather than ruled). A uniform pitch is
+set by the tighter axis, so a 6×3 room in a 3×2 house fills the width and leaves half a tile
+of footprint at the top. The CEO asked whether to constrain the shapes so it never appears
+or to spend it on art. **The strawman is to spend it**: pick an integer pitch, make the
+room's width the footprint's width times that pitch, leave its depth free, and draw the
+rows that leaves as the building's roofline. It is the only place a building's identity can
+appear — under the nested grid a house and a hen house are the same rectangle of floor from
+inside — and it keeps the "arbitrary inside dimension" the directive asked for, which
+matching the shapes would take away. It costs one row of floor. Drawn both ways in
+`docs/design/mockups/interiors/q108_leftover_band.png`.
+
 **What the correction buys**, all of it simplification: distance is well defined everywhere
 in cells, so nothing has to be undefined and no measurement needs a guard; there is one grid
 and one pathfinding search; interiors need no page, no allocator and no portal, because they
