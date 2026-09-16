@@ -125,6 +125,42 @@ func _run_scenarios() -> void:
 	await _scenario_at_a_crow_eating_flaps_and_turns()
 	await _scenario_au_the_overnight_tells_a_story()
 	await _scenario_av_a_ransacked_plot_shows_it()
+	await _scenario_aw_the_front_door_holds_one_picture()
+
+func _scenario_aw_the_front_door_holds_one_picture() -> void:
+	# **The boot's two pictures are one file** (Q-103 as amended 2026-09-15). The
+	# engine holds the boot splash while the project loads, and the title scene
+	# draws its own plate over the first frame it renders. That hand-off is
+	# invisible only while both are literally the same image at the canvas's own
+	# size — and nothing fails loudly when they drift apart, the front door just
+	# starts to blink, which is the kind of thing that gets noticed on a tablet a
+	# week later. So it is asserted here instead.
+	#
+	# No scene is instantiated: the boot bloom never plays headless by design
+	# (`_boot_bloom_due`), so what can be checked without a display is the
+	# wiring, and the wiring is the part that silently rots.
+	print("\n--- Scenario AW: the engine's splash and the title screen's plate are one picture ---")
+
+	var T := load("res://ui/title_screen.gd")
+	var engine_splash := str(ProjectSettings.get_setting("application/boot_splash/image", ""))
+	_assert(engine_splash == T.BOOT_PLATE,
+		"the engine's splash and the scene's plate name one file (%s)" % engine_splash)
+	_assert(ResourceLoader.exists(T.BOOT_PLATE), "and that file is in the project")
+
+	var plate: Texture2D = load(T.BOOT_PLATE)
+	var canvas := Vector2(
+		float(ProjectSettings.get_setting("display/window/size/viewport_width", 0)),
+		float(ProjectSettings.get_setting("display/window/size/viewport_height", 0)))
+	_assert(plate != null and plate.get_size() == canvas,
+		"and it is drawn at the canvas's own size (%s), so neither copy is resampled" % canvas)
+	_assert(not bool(ProjectSettings.get_setting("application/boot_splash/use_filter", true)),
+		"and the engine draws it unfiltered, the way the scene does")
+
+	# The hold has to be able to end: a floor above its own ceiling would leave
+	# the icon on screen until the ceiling fired, every launch.
+	_assert(T.PLATE_MIN_MSEC < T.PLATE_MAX_MSEC,
+		"and the plate's floor sits under its ceiling, so the bloom is always reached")
+
 
 func _wait_until(pred: Callable, max_frames: int) -> bool:
 	for i in max_frames:

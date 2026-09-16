@@ -54,6 +54,10 @@ the layout per size rather than scaling one master:
   the centre ~66% is guaranteed visible. Its foreground is inset into that safe
   zone and its background is a separate full-bleed layer, which is why the
   subject is deliberately *smaller* here rather than a bug.
+- **The boot splash**, 800x600, is the odd one out: not square, not an icon, but
+  the same picture at x3 on a field run to the whole canvas. It is here rather
+  than in its own script so that the plate the player stares at while the game
+  loads cannot drift from the icon they tapped to start it.
 
 Every part is scaled by a whole number (NEAREST) so the pixel grid never lands
 half on a pixel. That is also why the subject fraction differs slightly between
@@ -127,18 +131,25 @@ def box_factor(box):
     return max(1, round(box / 192))
 
 
-def field(size, vignette=VIGNETTE):
+def field(width, height=None, vignette=VIGNETTE):
+    """The green ground the icon sits on. Square unless a height is given.
+
+    The boot splash (below) is the one rectangular call: it is the same field
+    run to a 4:3 canvas, so the plate the engine holds during the load is the
+    icon's own ground full-bleed rather than the icon pasted into a box.
+    """
+    height = width if height is None else height
     top, bottom = _hex(FIELD_TOP), _hex(FIELD_BOTTOM)
-    im = Image.new("RGBA", (size, size))
+    im = Image.new("RGBA", (width, height))
     px = im.load()
-    centre = (size - 1) / 2
-    longest = math.hypot(centre, centre)
-    for y in range(size):
-        q = y / (size - 1)
+    cx, cy = (width - 1) / 2, (height - 1) / 2
+    longest = math.hypot(cx, cy)
+    for y in range(height):
+        q = y / (height - 1)
         base = tuple(int(top[i] + (bottom[i] - top[i]) * q) for i in range(3))
-        for x in range(size):
+        for x in range(width):
             if vignette:
-                d = math.hypot(x - centre, y - centre) / longest
+                d = math.hypot(x - cx, y - cy) / longest
                 k = 1.0 - vignette * max(0.0, (d - 0.55) / 0.45)
                 px[x, y] = tuple(int(c * k) for c in base) + (255,)
             else:
@@ -177,6 +188,31 @@ def icon(size):
     return out
 
 
+# The picture the engine holds while the game loads (Q-103 as amended
+# 2026-09-15). It used to be the sunflower bloom's first frame, which meant the
+# first thing anyone saw was a still of an animation that had not started — and
+# a frozen animation reads as a hang, because the eye is waiting for it to move.
+# A still icon is just a logo, so the same wait stops looking broken. The title
+# scene opens on this same plate and only crosses to the bloom once it is live.
+BOOT_PLATE_SIZE = (800, 600)   # the project's own viewport, so it lands 1:1
+BOOT_PLATE_BOX = 576           # the approved 192 layout at a whole x3
+
+
+def boot_splash(size=BOOT_PLATE_SIZE, box=BOOT_PLATE_BOX):
+    """The subject on a full-bleed field, at the engine's own canvas size.
+
+    Sat on the bottom edge rather than centred, which is not a detail: the
+    layout crops her mid-bust, and a bust cropped by the edge of the screen
+    reads as a picture while the same cut floating in mid-air reads as a
+    sticker. That is the icon's own framing, so this is the icon large.
+    """
+    width, height = size
+    out = field(width, height)
+    art = subject(box)
+    out.alpha_composite(art, ((width - box) // 2, height - box))
+    return out
+
+
 def adaptive_foreground(size=432):
     """The subject on transparency, kept inside the launcher mask's safe zone."""
     return subject(size, box_frac=SAFE_BOX)
@@ -210,6 +246,9 @@ def main():
     write(resample(master, 144), os.path.join(OUT, "pwa_144.png"))
     write(resample(master, 180), os.path.join(OUT, "pwa_180.png"))
     write(icon(512), os.path.join(OUT, "pwa_512.png"))
+
+    # The engine's boot splash (project.godot `boot_splash/image`).
+    write(boot_splash(), os.path.join(OUT, "boot_splash.png"))
 
     for path, size in written:
         print(f"  {path:44s} {size[0]}x{size[1]}")

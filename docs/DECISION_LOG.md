@@ -682,6 +682,22 @@ sky, the scene picks up that frame, the bud opens and the seeds rise once while 
 fades up, the title and menu settle in as the last seed blooms, and a tap brightens the sky
 into the farm.
 
+**Amended 2026-09-15 (Q-103): the icon is the held picture, the bloom is the played one.**
+Seeing it run, the designer asked for "the farmer icon with the drone over the shoulder
+until the game is ready to unfreeze, and then show the animation." So the boot has two
+pictures. The **app icon** — the same farmer and drone the player tapped to start the game,
+composed large on its own field by `tools/gen_icon.py` so the two can never drift apart —
+is what the engine holds through the load, and the title scene redraws the identical plate
+over its own first frame so the hand-off between them has nothing in it. The **bloom** then
+plays exactly as ruled above, once the game is actually running underneath. The failure
+being fixed is a general one and is worth remembering the next time something is held on
+screen while a machine works: *a still frame of an animation reads as a hang, because the
+eye is waiting for it to move, where the same wait under a logo reads as nothing at all.*
+"When the game is ready" is measured rather than timed — the scene waits for several
+consecutive cheap frames, which is the load being over — with a floor so the icon is seen
+rather than flashed and a ceiling so a slow device still gets its flower
+(`ui/title_screen.gd`).
+
 **First version, deliberately small.** One loop per night, once per farm, no skip; the
 fade's colour becomes the Lab's sky so the loop's canvas never shows as a box; the loop is
 drawn from the Lab's exported sheet as it is, not re-authored in the engine. The D-8

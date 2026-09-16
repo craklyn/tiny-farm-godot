@@ -222,6 +222,13 @@ before the first public build ships.*
     outlines on plants read as mould; on a machine it reads as a machine, and the drone
     needs to separate from both the green field and her rust jumpsuit. Deliberate, and
     recorded here so it is not later mistaken for drift.
+  - **The boot splash, added 2026-09-15** (`assets/icon/boot_splash.png`) — **not
+    generated, $0.00.** The same `parts/` art at ×3, sat on the bottom edge of an
+    800×600 canvas with the same green field run to all four corners, written by the
+    same `tools/gen_icon.py` run that writes every icon size. It is what the engine
+    holds on screen while the game loads (Q-103 as amended), and it is one script's
+    output precisely so the picture the player waits on cannot drift from the icon they
+    tapped. Rights are the icon's, unchanged; no call was made.
 - **One sheet per entity, 2026-09-06** — **not generated, $0.00.** The four shared
   atlases (`animals.png`, `critters.png`, `crops.png`, `objects.png`) were cut into
   per-entity sheets — `chicken.png`, `crow.png`, `egg.png`, `ant_scout.png`,

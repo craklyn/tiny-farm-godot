@@ -145,9 +145,15 @@ today, the loop fades up over about 0.4 s, plays whole loops until at least thre
 have passed at the rate the Lab drew it (the crow twice, the robot once or twice), fades
 down, and the Day-N card follows as it always has. Sound: nothing new — the music keeps
 playing at its usual level — because an isolated squawk with no bed under it would sound
-thinner than silence. **The boot** (Q-103): the engine's splash is the bloom's first frame
-at ×5 on the sky, unfiltered; the title scene opens on that same frame, holds a breath, and
-the bud opens and the seeds rise once while the music fades up from silence over the rise.
+thinner than silence. **The boot** (Q-103, amended 2026-09-15): the engine's splash is the
+**app icon**, the farmer with the drone off her hat, at ×3 on its own green field run to the
+whole 800×600 canvas and sat on the bottom edge so she is cropped by the screen the way she
+is cropped by the icon (`tools/gen_icon.py` writes it, and writes the icon, so the picture
+the player is held on is the picture they tapped). The title scene opens on that same plate
+and holds it until the game is live under it — measured as several consecutive cheap frames,
+not a fixed wait — then dissolves it over about half a second onto the bloom's first frame
+on the sky at ×5, unfiltered; the scene holds a breath there, and the bud opens and the seeds
+rise once while the music fades up from silence over the rise.
 As the last seed blooms the title and menu settle in; if a farm is there to be shown under the menu it fades up beneath as the
 bloom fades out, otherwise the bloom keeps idling behind the menu. A tap fades through the
 sky into the farm rather than cutting. **The inset** (Q-104): the watering beam at ×1 in a
