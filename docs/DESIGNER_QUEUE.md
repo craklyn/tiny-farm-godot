@@ -11,26 +11,20 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
 
 ## Now — blocks M0 close or current work
 
-- **Q-108** How the farm looks from inside a building — **Ruling**. P-18 says a building
-  opens outward rather than cutting to a room, and that the farm stays visible through the
-  walls. Drawn how, is the question. **Built at the CEO's own numbers** (2026-09-15: 3×2
-  house, 6×3 room) and **decided on photographs** of the running game — the room shot from
-  inside, the yard shot from outside, and the plate now carrying the camera's world-to-screen
-  mapping so the farm is *placed* rather than pasted
-  (`docs/design/mockups/interiors/q108_registered.png`). That last part is a correction: the
-  first version of this card pasted the yard behind the room as wallpaper, which cannot keep a
-  relationship it never had, and the gap between the house and the shipping bin survived
-  outdoors and vanished indoors. The CEO caught it.
-  **What his numbers changed.** At the ×3 and ×4 rooms first shown here, registering the
-  outside left about one tile of yard, magnified past recognition — the option was barely
-  usable. At 6×3 there are 2.7 tiles across and 3.2 down and the yard reads: the hen, the bin,
-  the fence, the neighbour's plot. The restraint is what makes registering viable at all.
-  **One blemish:** 6 over 3 is ×2 and clean; 3 over 2 is ×1.5 and is not — every other row of
-  the magnified yard doubled, and a yard a third wider than it is tall. A 6×4 room is ×2 both
-  ways for one more row of floor. Options: **(a) registered 6×3**, **(b) registered 6×4**,
-  **(c) backdrop at ordinary size**, **(d) registered going in, backdrop once she is still**.
-  **No recommendation** between registering and not — the animated entry against the unscaled
-  yard is the taste this is asking for. Card: `hq/data/decisions/Q-108.json`.
+- **Q-108** How the farm reads through the walls — **Ruling**, and much smaller than it was.
+  P-18 was corrected on 2026-09-15: one world, one metric, two grids — a building's interior
+  is a finer grid nested inside its own footprint, and going inside is a uniform camera zoom
+  of ×2 and nothing else. So the geometric question this item used to ask (registered to the
+  doorway, or a backdrop lining up with nothing) is **gone**; there is no lie to catch. What
+  is left is **grain**: at ×2 the yard is six screen pixels per art pixel, and whether that
+  reads as *outside, seen through a window* or as *the world came closer* is treatment.
+  Panels: `docs/design/mockups/interiors/q108_two_zooms.png` — the same photograph of the
+  running game at both zooms. There are 2.7 tiles of yard across and 3.2 down, and the hen,
+  the bin, the fence and the neighbour all read. Options: **(a) nothing at all**, **(b)
+  haze**, **(c) desaturate and darken**, **(d) hard-cut walls with a clear yard**.
+  **Recommendation: (b)** — it is the studio's existing vocabulary for a soft edge, it says
+  "through a window" without hiding a crow, and it costs a dither rather than art.
+  Card: `hq/data/decisions/Q-108.json`.
 
 - **Q-109** How much room a room gets — **Ruling**, now narrowed. The farmhouse is
   provisionally answered (3×2 outside, 6×3 inside); what is left is whether that number holds

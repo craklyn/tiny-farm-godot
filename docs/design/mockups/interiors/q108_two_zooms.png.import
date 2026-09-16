@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cqwffyskgtqav"
-path="res://.godot/imported/q108_registered.png-148447f9e3438ad1d81f4cc1643b71c9.ctex"
+uid="uid://bwdmt3eqwkdf7"
+path="res://.godot/imported/q108_two_zooms.png-179f494029cb3d51f88e321a6c6de02b.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://docs/design/mockups/interiors/q108_registered.png"
-dest_files=["res://.godot/imported/q108_registered.png-148447f9e3438ad1d81f4cc1643b71c9.ctex"]
+source_file="res://docs/design/mockups/interiors/q108_two_zooms.png"
+dest_files=["res://.godot/imported/q108_two_zooms.png-179f494029cb3d51f88e321a6c6de02b.ctex"]
 
 [params]
 

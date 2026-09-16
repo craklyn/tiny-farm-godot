@@ -1,7 +1,7 @@
 {
  "id": "Q-109",
  "title": "How much room a room gets",
- "question": "**Provisionally answered for the farmhouse** (CEO, 2026-09-15: 3x2 outside, 6x3 inside — a doubling across and a half again down). This card is what is left: whether that number holds for the coop and for everything after it.\n\nUnder P-18 a building's inside is its outside multiplied by a whole number — the number has to be whole or sixteen-pixel art shimmers and the yard behind it squashes. The farmhouse is 3x2 on the farm, so it can hold a 6x4, a 9x6 or a 12x8 room. The coop is 2x2, so 4x4, 6x6 or 8x8.\n\nNo room but the farmhouse's exists, so these panels are drawn rather than photographed — but every piece in them is the game's own art at the size the game draws it, which is the point: a bed is 16x32 and takes two whole tiles, a farmer's cell is 48x48. What the pictures show is how much floor is left once the things that have to be in the room are in it.\n\nFor reference, her room today is 10x7 and nobody has called it cramped.\n\nThe catch is that this is not only a question about floor. The same number sets how hard the farm magnifies behind the walls, so a bigger room is also a smaller view out — see the Q-108 sheet, where three times already reduces the yard to about one tile a side. If Q-108 goes to the backdrop option the two come apart and this is a free choice; if it goes to registered dilation, every step up here is paid for out of the window.",
+ "question": "**Provisionally answered for the farmhouse** (CEO, 2026-09-15: 3x2 outside, 6x3 inside — six cells at half the pitch of an outdoor tile, which is three tiles by one and a half, so the room sits inside the footprint with the top half-row left for the roof). This card is what is left: whether that number holds for the coop and for everything after it.\n\nUnder P-18 a building's inside is its outside multiplied by a whole number — the number has to be whole or sixteen-pixel art shimmers and the yard behind it squashes. The farmhouse is 3x2 on the farm, so it can hold a 6x4, a 9x6 or a 12x8 room. The coop is 2x2, so 4x4, 6x6 or 8x8.\n\nNo room but the farmhouse's exists, so these panels are drawn rather than photographed — but every piece in them is the game's own art at the size the game draws it, which is the point: a bed is 16x32 and takes two whole tiles, a farmer's cell is 48x48. What the pictures show is how much floor is left once the things that have to be in the room are in it.\n\nFor reference, her room today is 10x7 and nobody has called it cramped.\n\nThe catch is that this is not only a question about floor. The same number sets how hard the farm magnifies behind the walls, so a bigger room is also a smaller view out — see the Q-108 sheet, where three times already reduces the yard to about one tile a side. If Q-108 goes to the backdrop option the two come apart and this is a free choice; if it goes to registered dilation, every step up here is paid for out of the window.",
  "why_now": "It is the one number in P-18 that is not forced, it sets the art budget for every interior the game ever has, and it is coupled to Q-108 — so the two want ruling together.",
  "options": [
   {
@@ -26,8 +26,8 @@
   },
   {
    "key": "e",
-   "label": "The farmhouse's own answer, everywhere (6x3 from 3x2)",
-   "detail": "Take the ruling already given and make it the rule: a room is its footprint doubled across and half again down. The coop's 2x2 becomes 4x3. Consistent, and it keeps the yard readable through every wall — but 4x3 is a small coop, and the half-again is the axis that costs integer scaling."
+   "label": "The farmhouse's own answer, everywhere",
+   "detail": "Make the ruling already given the rule: an interior is its footprint at half pitch, less a half-row for the roof. The coop's 2x2 becomes a 4x3 room. Consistent, needs no second number, and keeps the zoom at x2 for every building so entering always feels the same -- but 4x3 is a small coop."
   }
  ],
  "links": [
@@ -47,8 +47,8 @@
  "attachments": [
   {
    "type": "image",
-   "src": "docs/design/mockups/interiors/q108_registered.png",
-   "caption": "The farmhouse at the CEO's numbers: 3x2 outside, 6x3 inside, photographed."
+   "src": "docs/design/mockups/interiors/q108_two_zooms.png",
+   "caption": "The farmhouse at the CEO's numbers: 3x2 outside, a 6x3 room nested inside it at half pitch, at both zooms."
   },
   {
    "type": "image",

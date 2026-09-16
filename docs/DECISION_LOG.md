@@ -817,8 +817,34 @@ the farm. **The principle in one line: a tile is always the same size on screen;
 building changes which space the camera measures in, and the rest of the world is drawn at
 whatever scale keeps the doorway where it was.** Full analysis in `docs/design/15-interiors.md`.
 
-**Four consequences settled by analysis rather than by taste**, because each of them is
-forced rather than chosen:
+**Corrected 2026-09-15, and the correction is the design.** The first reading of this
+directive was a *differential transform*: the room drawn at one scale with the outdoors
+deformed around it by another, anchored on the doorway. The CEO replaced it with two
+pictures of the house and the yard growing **by the same factor, together**, and with the
+numbers that make it exact — a house 3 wide by 2 tall, a room 6 wide by 3 inside it. Six
+cells cannot fit in three tiles unless the cells are **half the pitch**, and that is the
+whole design:
+
+> **One world, one metric, two grids.** A building's interior is a finer grid nested inside
+> the building's own footprint. Going inside is a uniform camera zoom and nothing else.
+
+At ×2 the half-pitch interior renders at the size an outdoor tile used to, which is the
+directive's own sentence, and the yard renders at twice its usual size because everything
+did. Nothing stretches, nothing is registered to anything, because nothing ever came apart.
+Full analysis in `docs/design/15-interiors.md`; the two panels are
+`docs/design/mockups/interiors/q108_two_zooms.png`.
+
+**What the correction buys**, all of it simplification: distance is well defined everywhere
+in cells, so nothing has to be undefined and no measurement needs a guard; there is one grid
+and one pathfinding search; interiors need no page, no allocator and no portal, because they
+live where their building lives; and the transition is a tween on the camera's zoom with no
+second transform to keep in step. **The cost is resolution** — every sim coordinate doubles,
+so a farm is 64×40 cells rather than 32×20 tiles — and **art**, since a bed inside a room is
+drawn at half the pitch the farm's sprites use.
+
+**The four consequences below belonged to the discarded reading.** They are kept because the
+reasoning is sound and applies the day two spaces really are stitched together rather than
+nested, and because one of them turned out to name a real bug in today's build:
 
 1. **Distance between two spaces is undefined, not large.** A 3×3 hut with a 9×9 room means
    nine tiles indoors is three tiles outdoors, so no single number can be right in both. Every
@@ -838,13 +864,27 @@ forced rather than chosen:
 4. **The dilation factor is a whole number.** Integer scaling of 16-pixel art is exact; a
    fractional factor shimmers and seams, and different factors per axis squash the farm.
 
-**Why provisional.** Nothing is built, and two questions that change how it feels are open
-(Q-108, whether the outside is registered to the doorway or drawn as a backdrop; Q-109, how
-much bigger a room is than its building). **Trigger:** revisit when the first interior is
-playable and can be looked at — the whole of this entry is about how something looks and
-none of it has been seen.
+...and of those four, **1 and 2 are moot** under the nested grid (there is one metric, and
+nothing is glued), **3 survives** for exits that are not nested inside a building, and **4
+is absorbed**: the pitch ratio is a whole number for the same reason. What does not go away
+is the audit behind consequence 1 — seven measurements in today's build reach across the
+page boundary and are correct only by coincidence of layout. That is an ordinary bug about
+the layout the game has now, filed as work, and worth fixing whatever happens to interiors.
 
-### D-16. When interiors move from one grid to a grid per space
+**Why provisional.** Nothing is built, and two questions that change how it feels are open
+(Q-108, the treatment of the yard seen through the walls at ×2 — a question about grain now
+that it is no longer one about geometry; Q-109, whether the farmhouse's ratio holds for the
+coop). **Trigger:** revisit when the first interior is playable and can be looked at — the
+whole of this entry is about how something looks and none of it has been seen.
+
+### D-16. ~~When interiors move from one grid to a grid per space~~ — closed 2026-09-15
+**Closed by P-18's correction**: there is one grid at the finest pitch any space uses, and
+there are no separate spaces to give coordinates to. An interior is a rectangle of cells
+inside its building's footprint, created when the building is placed and destroyed when it
+is picked up, so no allocator and no per-space coordinate system is needed. The reasoning is
+kept below because it is the right reasoning for a world that glues spaces together, which
+this one no longer does.
+
 **Deferred 2026-09-14.** P-18 needs the sim to stop believing in one global metric. There are
 two ways to get there. **Model C** keeps today's single grid and adds one derived predicate —
 which space is this tile in — plus a guard at each place that measures; small, and it leaves

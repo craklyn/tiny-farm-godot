@@ -197,6 +197,59 @@ def outline(canvas, rect, colour, width=3):
 # The whole screen, not a crop of it. How much yard is left beside the room is most of
 # what Q-108 is deciding, and a panel narrower than the device understates it.
 WINDOW = (800, 600)
+
+# --- the nested grid, which is what the directive actually described ----------------
+#
+# **One world, one metric, two grids** (CEO, 2026-09-15, correcting these sheets). A
+# building's interior is not a separate space drawn at its own scale beside a deformed
+# outdoors. It is a **finer grid nested inside the building's own footprint**: the
+# farmhouse stands on 3 tiles by 2, and the room inside it is 6 cells by 3 at half that
+# pitch, which is 3 tiles by 1.5 — so it fits, with the top half-row left for the roof.
+#
+# Then going inside is a **uniform camera zoom** and nothing else. At x2 the half-pitch
+# interior renders at the size an outdoor tile used to, which is the directive's own
+# sentence, and the yard renders at twice its usual size because everything did. Nothing
+# stretches, nothing is registered to anything, because nothing ever came apart.
+#
+# The earlier sheets drew a differential transform — the room at one scale, the yard at
+# another — and that is a different design that happens to answer the same words.
+
+INTERIOR_PITCH = 2       # interior cells per outdoor tile, each axis
+
+
+def farm_with_room(rw, rh, zoom, occupant="house"):
+    """The farm at `zoom`, with the house's footprint showing the room inside it.
+
+    `zoom` 1 is how the farm is drawn today; 2 is standing in the room. The same
+    composition either way — only the camera changes, which is the whole claim.
+    """
+    plate, m = plate_and_mapping()
+    hx0, hy0, hx1, hy1 = house_rect(m)
+    tile = (hx1 - hx0) / m["house_tiles"][0]          # 48 screen px an outdoor tile
+    cell = tile / INTERIOR_PITCH                       # 24 screen px an interior cell
+
+    # The room sits on the floor of the footprint, so the half-row it does not fill is
+    # the roof line at the top — where a roof is.
+    fw, fh = rw * cell, rh * cell
+    fx0 = hx0 + ((hx1 - hx0) - fw) / 2.0
+    fy0 = hy1 - fh
+
+    frame = plate.copy()
+    block = room_block(rw, rh, occupant, cell_px=cell, walls=False)
+    frame.paste(block, (int(fx0), int(fy0)), block)
+    outline(frame, (fx0, fy0, fx0 + fw, fy0 + fh), MARK, width=2)
+
+    if zoom != 1:
+        frame = frame.resize((int(frame.width * zoom), int(frame.height * zoom)), Image.NEAREST)
+        fx0, fy0, fw, fh = fx0 * zoom, fy0 * zoom, fw * zoom, fh * zoom
+
+    # Centred on the room where the photograph reaches, clamped to it where it does not.
+    win = Image.new("RGBA", WINDOW, ground_fill(plate) + (255,))
+    ox = int(min(max(fx0 + fw / 2 - WINDOW[0] / 2, 0), max(frame.width - WINDOW[0], 0)))
+    oy = int(min(max(fy0 + fh / 2 - WINDOW[1] / 2, 0), max(frame.height - WINDOW[1], 0)))
+    win.paste(frame, (-ox, -oy))
+    return win
+
 MARK = (236, 145, 145)   # the rose accent, used only to outline the same rect in both
 
 
@@ -255,7 +308,7 @@ def interior_panel(rw, rh, registered=True, mark=True, occupant="house"):
 
 # --- Q-109: drawn, because no room but this one exists ------------------------------
 
-def room_block(rw, rh, occupant="house", cell_px=None):
+def room_block(rw, rh, occupant="house", cell_px=None, walls=True):
     """A room rw x rh inside a one-tile wall ring, furnished with what lives in it.
 
     The furniture is the point of these panels rather than decoration on them: a bed is
@@ -267,24 +320,32 @@ def room_block(rw, rh, occupant="house", cell_px=None):
     floor = art("terrain_floor").crop((TILE, TILE, TILE * 2, TILE * 2))
     wall = art("interior_wall")
     block = Image.new("RGBA", ((rw + 2) * TILE, (rh + 2) * TILE))
-    for ty in range(rh + 2):
-        for tx in range(rw + 2):
-            edge = tx in (0, rw + 1) or ty in (0, rh + 1)
-            block.paste(wall if edge else floor, (tx * TILE, ty * TILE))
-    block.paste(floor, (((rw + 2) // 2) * TILE, (rh + 1) * TILE))   # the doorway
+    if not walls:
+        # Nested inside a building's own footprint, the shell already standing on the
+        # farm is the wall. A ring here would draw a second one inside the first.
+        block = Image.new("RGBA", (rw * TILE, rh * TILE))
+        for ty in range(rh):
+            for tx in range(rw):
+                block.paste(floor, (tx * TILE, ty * TILE))
+    else:
+        for ty in range(rh + 2):
+            for tx in range(rw + 2):
+                edge = tx in (0, rw + 1) or ty in (0, rh + 1)
+                block.paste(wall if edge else floor, (tx * TILE, ty * TILE))
+        block.paste(floor, (((rw + 2) // 2) * TILE, (rh + 1) * TILE))   # the doorway
 
+    inset = 0 if not walls else TILE
     if occupant == "house":
         cot = art("cot").crop((0, 0, TILE, TILE * 2))
-        block.paste(cot, (TILE, TILE), cot)
+        block.paste(cot, (inset, inset), cot)
     else:
         hen = art("chicken").crop((0, 0, TILE, TILE))               # cell 0, facing right
-        block.paste(hen, (TILE, TILE * 2), hen)
+        block.paste(hen, (inset, inset + TILE), hen)
         egg = art("egg")
-        block.paste(egg, (TILE * 2, TILE * 2), egg)
-        block.paste(egg, (TILE, TILE * 3), egg)
+        block.paste(egg, (inset + TILE, inset + TILE), egg)
 
     her = art("characters").crop((0, 0, 48, 48))
-    block.paste(her, (TILE + (rw * TILE) // 2 - 24, TILE + (rh * TILE) // 2 - 24), her)
+    block.paste(her, (inset + (rw * TILE) // 2 - 24, inset + (rh * TILE) // 2 - 24), her)
     if cell_px is None:
         return block.resize((block.width * CAM, block.height * CAM), Image.NEAREST)
     k = cell_px / TILE
@@ -323,29 +384,20 @@ def main():
     os.makedirs(OUT, exist_ok=True)
     written = []
 
-    # **The registration check.** Outside then inside, edge to edge, with the same rect
-    # outlined in both: the three tiles by two the house stands on, and the six by three
-    # of floor those tiles become. Whatever sits beside the house outdoors sits beside
-    # the room indoors, further off by exactly the dilation and not otherwise moved —
-    # which is the thing the first version of this sheet could not do and the reason it
-    # was wrong.
+    # **The two zooms, which is the whole design in two pictures.** The same farm, the
+    # same composition, one uniform camera zoom between them. The house stands on three
+    # tiles by two; the room inside it is six cells by three at half that pitch, so it
+    # fits in the footprint with the top half-row left for the roof. At x2 those half-
+    # pitch cells render at the size an outdoor tile used to, which is what the directive
+    # asked for, and the yard is twice its usual size because everything is.
     written.append(sheet(
-        [exterior_panel(), interior_panel(6, 3)],
-        ["OUTSIDE - the house, three tiles by two",
-         "INSIDE - six by three of floor, the farm placed to match"],
-        os.path.join(OUT, "q108_registered.png"),
-        note="Both panels are the same photograph of the running game. The rose rect is the "
-             "same piece of the world in each: what the house stands on, and what it opens into. "
-             "The yard grows 2.0x across and 1.5x down, because the room does.",
-        gutter=0))
-
-    written.append(sheet(
-        [interior_panel(6, 3), interior_panel(6, 3, registered=False)],
-        ["(a) REGISTERED - the farm placed where it really is, dilated to match",
-         "(b) BACKDROP - the farm at the size it is drawn outdoors, lining up with nothing"],
-        os.path.join(OUT, "q108_outside_treatment.png"),
-        note="A 3x2 house opening into a 6x3 room. In (a) the gap between the house and what "
-             "stands beside it is kept, magnified; in (b) it is not, and the yard is readable."))
+        [farm_with_room(6, 3, 1), farm_with_room(6, 3, 2)],
+        ["OUTDOOR ZOOM - the house on its three tiles by two, the room inside at half pitch",
+         "HOUSE ZOOM - x2, and nothing has moved: the room now reads at tile size"],
+        os.path.join(OUT, "q108_two_zooms.png"),
+        note="One world, one metric, two grids. Between these panels only the camera changed "
+             "-- the house and the yard grow by the same factor, together, and nothing "
+             "stretches. Both are the same photograph of the running game."))
 
     # Both buildings, at each multiplier, every panel on the same canvas at the same
     # zoom — so what differs between them is how much room there is, and nothing else.
