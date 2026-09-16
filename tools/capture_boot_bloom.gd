@@ -22,6 +22,10 @@ func _ready() -> void:
 	# artifact worth avoiding for a screenshot meant to show the real layout.
 	# Scenario K (`tools/test_runner.gd`) already uses this same fix.
 	var title = load("res://ui/title_screen.tscn").instantiate()
+	# Farms of this rig's own (S-14): the tool runs with a display, so without
+	# this the screen would move a developer's pre-slot farm into slot 1 as a
+	# side effect of taking a screenshot.
+	title.slots_root = "user://capture_slots_scratch/"
 	get_tree().root.add_child.call_deferred(title)
 	await get_tree().process_frame
 	await get_tree().process_frame

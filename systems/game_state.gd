@@ -150,9 +150,29 @@ var boot_bloom_played: bool = false
 
 # Save file locations — overridable so automated sessions (robot tests) never
 # touch a real player's files
-var save_path: String = "user://autosave.json"
-var replay_path: String = "user://session_replay.json"
-var trace_path: String = "user://session_trace.jsonl"  # diagnostic; see systems/session_trace.gd
+var save_path: String = SaveSlots.save_path(1)
+var replay_path: String = SaveSlots.replay_path(1)
+var trace_path: String = SaveSlots.trace_path(1)  # diagnostic; see systems/session_trace.gd
+
+# Which of the three farms is being played (S-14). The three paths above are
+# still the truth every writer reads, and every tool that overrides them keeps
+# working exactly as it did; this is the number the title screen sets them from.
+var slot: int = 1
+
+
+# Point the three paths at one farm's directory. Everything a session writes
+# follows from this one call, which is why the title screen makes it before it
+# starts the game rather than each writer working the slot out for itself.
+#
+# `root` is here for the same reason the three paths are overridable at all: a
+# test can run the whole of this against a scratch directory and never come near
+# a real player's farms.
+func use_slot(n: int, root: String = SaveSlots.ROOT) -> void:
+	slot = SaveSlots.clamp_slot(n)
+	SaveSlots.ensure_dir(slot, root)
+	save_path = SaveSlots.save_path(slot, root)
+	replay_path = SaveSlots.replay_path(slot, root)
+	trace_path = SaveSlots.trace_path(slot, root)
 
 
 func _init() -> void:

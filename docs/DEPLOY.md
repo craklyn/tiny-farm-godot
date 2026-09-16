@@ -16,7 +16,10 @@ godot --path .
 ```
 
 Runs from `main.tscn` via `ui/title_screen.tscn`. Saves land in
-`~/.local/share/godot/app_userdata/Tiny Farm/`.
+`~/.local/share/godot/app_userdata/Tiny Farm/`, a directory per farm — `slot1/`, `slot2/`,
+`slot3/`, each holding that farm's `autosave.json`, `session_replay.json` and
+`session_trace.jsonl` (S-14). A farm saved by a build from before slots is moved into
+`slot1/` the first time a build with them launches.
 
 ---
 
@@ -114,6 +117,11 @@ for d in playtests/*/session_trace.jsonl; do md5sum "$d"; done | sort | uniq -c 
 paperwork, not breakage, and red has to mean broken or it stops meaning anything. The
 suite skips it and prints a note; HQ's Playtests page shows the backlog with a banner.
 Everything `SHELF` *does* claim is still pinned exactly as before.
+
+**Which farm gets pulled.** The three farms are `files/slot1`, `files/slot2` and
+`files/slot3` on the device (S-14); the script pulls whichever has the longest tap trace on
+it, which is the one that was played, and falls back to `files` itself for a tablet still
+running a build from before slots.
 
 **Trap:** Godot's `user://` on Android is the app's **internal** storage, reached with
 `run-as`, *not* `/sdcard/Android/data/<pkg>/files`. That external path exists and is

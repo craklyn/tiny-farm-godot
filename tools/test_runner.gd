@@ -11,13 +11,24 @@ var player: Node2D
 # Long enough for main.gd's TEACH_GLIDE (0.26s) plus a frame either side.
 const TEACH_GLIDE_WAIT := 0.4
 
+# Where this suite keeps the farm it plays — never `user://slot1`, which is a
+# real player's (S-14).
+const SUITE_SLOTS_ROOT := "user://itest_farm/"
+
 
 func _ready() -> void:
 	print("=".repeat(60))
 	print("TINY FARM — In-Situ Integration Test Runner")
 	print("=".repeat(60))
-	
-	
+
+	# A farm of the suite's own, before `main.tscn` exists to autosave into one.
+	# The played scene persists itself on a timer, so without this the suite
+	# overwrites whichever farm the developer running it was playing — and since
+	# S-14 that farm is in `user://slot1`, where it would also block a pre-slot
+	# farm from ever migrating in. Scenarios that point the three paths somewhere
+	# else for their own reasons still do; they restore to these.
+	GameState.use_slot(1, SUITE_SLOTS_ROOT)
+
 	# Instantiate Main scene
 	main_scene = preload("res://main.tscn").instantiate()
 	add_child(main_scene)
@@ -125,6 +136,7 @@ func _run_scenarios() -> void:
 	await _scenario_at_a_crow_eating_flaps_and_turns()
 	await _scenario_au_the_overnight_tells_a_story()
 	await _scenario_av_a_ransacked_plot_shows_it()
+	await _scenario_aw_three_farms_three_cards()
 
 func _wait_until(pred: Callable, max_frames: int) -> bool:
 	for i in max_frames:
@@ -6485,3 +6497,136 @@ func _scenario_av_a_ransacked_plot_shows_it() -> void:
 
 	yard.queue_free()
 	await get_tree().process_frame
+
+
+# --- Three farms on the title screen (S-14) -----------------------------------
+
+const SLOT_SCRATCH := "user://itest_slots_scratch/"
+
+
+func _wipe_dir(path: String) -> void:
+	var d := DirAccess.open(path)
+	if d == null:
+		return
+	d.list_dir_begin()
+	var entry := d.get_next()
+	while entry != "":
+		var full := path.path_join(entry)
+		if d.current_is_dir():
+			_wipe_dir(full)
+		else:
+			DirAccess.remove_absolute(full)
+		entry = d.get_next()
+	d.list_dir_end()
+	DirAccess.remove_absolute(path)
+
+
+# Every Label in a subtree, joined — what the card actually says, whatever it
+# was built out of.
+func _text_of(root: Node) -> String:
+	var out := ""
+	if root is Label:
+		out += String(root.text) + " "
+	for child in root.get_children():
+		out += _text_of(child)
+	return out
+
+
+func _scenario_aw_three_farms_three_cards() -> void:
+	# S-14: the game keeps three farms so two people can play without taking
+	# turns with the same land. The unit suite owns where the files go and what
+	# migration does to them; what this adds is the screen itself — three cards
+	# built from three directories, each recognisable without reading it, and a
+	# tap on one choosing that farm for the session that follows.
+	print("\n--- Scenario AW: three farms, three cards (S-14) ---")
+
+	# Farms of this scenario's own, in a scratch root. The developer running this
+	# has real farms in `user://slot1..3`, and a suite that reads or writes them
+	# is a suite that can eat somebody's game.
+	_wipe_dir(SLOT_SCRATCH)
+	var held := [GameState.save_path, GameState.replay_path, GameState.trace_path]
+	var held_slot: int = GameState.slot
+
+	var gs = load("res://systems/game_state.gd").new()
+	gs.reset()
+	gs.day = 9
+	gs.gold = 120
+	gs.total_shipped = 4
+	gs.crows_scared = 1
+	var world := SimWorld.new()
+	SimRng.reseed(31)
+	world.generate()
+	SaveSlots.ensure_dir(2, SLOT_SCRATCH)
+	_assert(SaveGame.save_to(SaveSlots.save_path(2, SLOT_SCRATCH), world, gs),
+		"a farm is written into the middle slot")
+
+	var title = load("res://ui/title_screen.tscn").instantiate()
+	title.slots_root = SLOT_SCRATCH
+	add_child(title)
+	await get_tree().process_frame
+
+	var cards := []
+	for n in [1, 2, 3]:
+		cards.append(_find_button(title, "SlotCard%d" % n))
+	_assert(cards[0] != null and cards[1] != null and cards[2] != null,
+		"the title screen builds a card for each of the three farms")
+
+	var big := true
+	for card in cards:
+		if card == null or card.custom_minimum_size.x < 300 or card.custom_minimum_size.y < 80:
+			big = false
+	_assert(big, "and every one of them is a full-width card, not a row — this is a thumb's menu")
+
+	# Recognisable without reading (S-7): a colour and a shape per farm, and no
+	# two the same.
+	var shapes := {}
+	var colours := {}
+	for n in [1, 2, 3]:
+		var emblem = title.find_child("SlotEmblem%d" % n, true, false)
+		if emblem != null:
+			shapes[emblem.shape] = true
+			colours[Color(emblem.tint).to_html(false)] = true
+	_assert(shapes.size() == 3 and colours.size() == 3,
+		"each farm has an emblem and a colour of its own (%d shapes, %d colours)"
+			% [shapes.size(), colours.size()])
+
+	# The card that holds a farm shows that farm; the two that do not offer a new one.
+	var middle := _text_of(cards[1])
+	_assert(middle.contains("Day 9"), "the farm's card shows the day it reached (%s)" % middle.strip_edges())
+	_assert(middle.contains("120g") and middle.contains("4 shipped") and middle.contains("1 crows shooed"),
+		"with its purse, what it has shipped and the crows it has seen off")
+	_assert(middle.contains("Homestead"), "and how far along the homestead is")
+	_assert(_text_of(cards[0]).contains("New farm") and _text_of(cards[2]).contains("New farm"),
+		"an empty card offers a new farm instead")
+
+	# Starting over is only offered where there is something to start over, and
+	# it is the small control — the card itself is the safe, big one.
+	_assert(_find_button(title, "SlotNewFarm2") != null,
+		"the farm's card carries a start-over control")
+	_assert(_find_button(title, "SlotNewFarm1") == null
+			and _find_button(title, "SlotNewFarm3") == null,
+		"and an empty card carries none, because there is nothing to replace")
+
+	# What a tap on a card does: that farm becomes the session's farm, and the
+	# screen will open on it next time.
+	title.choose_slot(3)
+	_assert(GameState.slot == 3, "tapping the third card plays the third farm")
+	_assert(GameState.save_path == SaveSlots.save_path(3, SLOT_SCRATCH)
+			and GameState.replay_path == SaveSlots.replay_path(3, SLOT_SCRATCH)
+			and GameState.trace_path == SaveSlots.trace_path(3, SLOT_SCRATCH),
+		"and the save, the replay and the trace all follow it there")
+	_assert(SaveSlots.last_played(SLOT_SCRATCH) == 3,
+		"the screen remembers it, so a tap anywhere resumes it next launch")
+	title.choose_slot(2)
+	_assert(GameState.slot == 2
+			and GameState.save_path == SaveSlots.save_path(2, SLOT_SCRATCH),
+		"and choosing another card moves the whole session to that farm instead")
+
+	title.queue_free()
+	await get_tree().process_frame
+
+	GameState.save_path = held[0]
+	GameState.replay_path = held[1]
+	GameState.trace_path = held[2]
+	GameState.slot = held_slot
+	_wipe_dir(SLOT_SCRATCH)

@@ -321,6 +321,38 @@ migration built and tested before the tag, or retires old saves at that release 
 plainly at Continue. The decision is written in the release notes each time. The save naming the
 build that wrote it (filed as work) is what makes the question answerable mechanically.
 
+### S-14. The game keeps three farms, a directory each, and an existing farm becomes the first
+**Asked for by the designer 2026-09-15:** three save slots, so he and his daughter can each keep
+a farm going with a third left for development. Built the same day.
+
+**Three fixed farms, numbered 1 to 3.** No naming them, no adding or removing them, no cloud,
+no import or export — P-13's rule, that the first version of a capability ships deliberately
+weak, applies to this as much as to a robot. The title screen is three stacked cards, one per
+farm; a card that holds a farm shows what that farm has done (its day, its purse, what it has
+shipped, the crows it has seen off, how far along the homestead is) and an empty one starts a
+new farm when it is tapped. Each card carries a colour and a shape of its own — green circle,
+rose triangle, blue square — because the player this game is designed for cannot read the
+words on it (S-7).
+
+**A slot is a location, not a format.** The three files a session writes keep the names they
+have always had and move one directory down: `user://slot1/autosave.json`,
+`user://slot1/session_replay.json`, `user://slot1/session_trace.jsonl`, and the same under
+`slot2` and `slot3`. Nothing about the save schema changes and `SaveGame.VERSION` is untouched,
+so every tool that reads a save reads a slot's save unchanged. Choosing a farm is navigation
+and never an Action: no verb is added to the gateway for it (S-3).
+
+**An old farm is moved into slot 1, once.** Every build before this one wrote its farm straight
+into `user://`. On the first run of a build that has slots, those files are copied into slot 1,
+verified, and only then removed — never renamed, because a rename that half-succeeds on Android's
+internal storage would leave slot 1 empty and the original gone. A slot 1 file that already
+exists is never overwritten; the file in `user://` is left where it is instead. The parked
+copies a farm leaves behind (`.bak` from a new farm, `.unloadable` from a save that would not
+load) travel with it, because they exist to be recovered by hand.
+
+This is S-13's question answered for this release: an existing farm continues, in slot 1, so
+the release notes say the game updated and now keeps three farms rather than one. Writing that
+line is the runbook's step, not this entry's.
+
 ## Tier 2 — Provisional (working answer + adjustment conditions)
 
 ### P-1. Touch-first, desktop always supported

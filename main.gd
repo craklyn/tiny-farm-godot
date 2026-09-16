@@ -802,6 +802,12 @@ func _process(delta: float) -> void:
 func persist_session() -> void:
 	if farm == null:
 		return
+	# A farm lives in a directory of its own now (S-14), and on Android that
+	# directory does not exist until something makes it. A missing one turns
+	# every write below into a silent failure, so it is guaranteed here as well
+	# as when the slot is chosen — this is the call a whole session is riding on.
+	for path in [GameState.save_path, GameState.replay_path, GameState.trace_path]:
+		SaveSlots.ensure_parent(path)
 	SaveGame.save_to(GameState.save_path, farm.sim, GameState)
 	if farm.replay != null:
 		# The same instant in sim time, written into both files (M2.5 WI-5). The

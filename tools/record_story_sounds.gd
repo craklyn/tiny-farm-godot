@@ -49,6 +49,10 @@ func _ready() -> void:
 # the music fading up) to the menu settled over the attract farm.
 func _record_boot() -> void:
 	var title = load("res://ui/title_screen.tscn").instantiate()
+	# Farms of this rig's own (S-14): the tool runs with a display, so without
+	# this the screen would move a developer's pre-slot farm into slot 1 as a
+	# side effect of recording a sound.
+	title.slots_root = "user://capture_slots_scratch/"
 	get_tree().root.add_child.call_deferred(title)  # full-rect Control: under the root, as in play
 	await get_tree().process_frame
 	await get_tree().process_frame

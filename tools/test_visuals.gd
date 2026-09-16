@@ -10,6 +10,11 @@ func _ready() -> void:
 
 	seed(12345) # Make map generation deterministic
 
+	# A farm of this rig's own: `main.tscn` autosaves on a timer, and the default
+	# farm is a real player's slot 1 (S-14) — which this would also fill, stopping
+	# a pre-slot farm from ever migrating into it.
+	GameState.use_slot(1, "user://capture_slots_scratch/")
+
 	var main_scene = load("res://main.tscn").instantiate()
 	add_child(main_scene)
 

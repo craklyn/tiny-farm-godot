@@ -1,13 +1,46 @@
-# title_screen.gd — boot screen: Continue (with a progress summary) or New Farm.
+# title_screen.gd — boot screen: three farms, pick one (S-14).
 #
-# The Continue card answers "where was I?" before committing to a tap, which
-# matters because the game has one save slot. New Farm is deliberately smaller
-# and asks for confirmation, since starting one replaces the farm on the next
-# sleep (S-7: nothing a pre-reader can tap should destroy progress silently).
+# Each card answers "where was I?" before committing to a tap, and each one is a
+# whole farm of its own: the game keeps three, so two people can play without
+# taking turns with the same land. A card that holds a farm shows what that farm
+# has done; an empty one starts a new farm when it is tapped.
+#
+# **A card has to be recognisable without reading it.** The game is played by a
+# pre-reader (S-7), so a farm is found by its colour and its shape — green
+# circle, rose triangle, blue square — and the words on the card are there for
+# whoever is reading over her shoulder. The one destructive control, starting
+# over on a farm that already exists, is deliberately the small one in the
+# corner, and it asks first: nothing a four-year-old can tap should destroy
+# progress silently.
 extends Control
 
 const CARD_W := 340
-const CARD_H := 132
+const SLOT_CARD_H := 92
+
+const SHAPE_CIRCLE := 0
+const SHAPE_TRIANGLE := 1
+const SHAPE_SQUARE := 2
+
+# Green circle, rose triangle, blue square (S-14). Colour and shape together,
+# never colour alone, so a card is still hers in the dark or on a washed-out
+# tablet screen. Index 0 is slot 1.
+const SLOT_LOOKS := [
+	{
+		"bg": Color(0.18, 0.42, 0.22), "border": Color(1.00, 0.72, 0.15),
+		"hover": Color(0.24, 0.52, 0.28), "emblem": Color(1.00, 0.84, 0.36),
+		"shape": SHAPE_CIRCLE,
+	},
+	{
+		"bg": Color(0.44, 0.20, 0.28), "border": Color(1.00, 0.58, 0.64),
+		"hover": Color(0.54, 0.26, 0.35), "emblem": Color(1.00, 0.66, 0.72),
+		"shape": SHAPE_TRIANGLE,
+	},
+	{
+		"bg": Color(0.16, 0.28, 0.46), "border": Color(0.50, 0.76, 1.00),
+		"hover": Color(0.21, 0.36, 0.56), "emblem": Color(0.62, 0.84, 1.00),
+		"shape": SHAPE_SQUARE,
+	},
+]
 
 # Q-103 ("the flower is the splash"): the engine's boot splash is the bloom
 # loop's closed bud, painted on the Lab's own sky. This scene picks up that
@@ -55,9 +88,17 @@ const SFX_CANDIDATES := [
 	"bloom_chime_cc0_333694", "bloom_chime_cc0_333695", "bloom_chime_cc0_333696",
 ]
 
-var _has_save := false
-var _summary: Dictionary = {}
+# Where the three farms are read from and written to. Overridable for the same
+# reason GameState's three paths are: a suite that instantiates this screen must
+# be able to look at farms of its own rather than at a real player's.
+var slots_root: String = SaveSlots.ROOT
+
+# One entry per slot, in slot order: { "slot": 1, "has_farm": true, "summary": {...} }.
+var _slots: Array[Dictionary] = []
+# Which farm a tap on the backdrop resumes (Q-8), or 0 when there is none yet.
+var _resume_slot := 0
 var _confirm_open := false
+var _confirm_slot := 0  # which farm the open confirmation is about
 var _confirm_layer: Control = null
 
 
@@ -83,13 +124,24 @@ func _ready() -> void:
 		if back != null:
 			back.color = BOOT_SKY_COLOUR
 
+	# Before anything reads a farm: a build that predates slots wrote its farm
+	# straight into `user://`, and that farm belongs in slot 1 (S-14). Done here
+	# because this is the game's entry scene, and skipped headless because the
+	# only headless callers are the suites and the tools, which bring farms of
+	# their own and must never move a developer's.
+	if DisplayServer.get_name() != "headless":
+		SaveSlots.migrate_legacy(slots_root)
+
+	# The slots are read before the attract loop starts, because the farm playing
+	# behind the menu is the one a tap would resume (T-16/Q-40).
+	#
+	# **Reading the farms changes nothing global.** `GameState` is pointed at a
+	# slot when a card is actually chosen (`choose_slot`) and not a moment
+	# earlier — otherwise merely building this screen, which the integration
+	# suite does half a dozen times to check a button exists, would silently
+	# redirect the played session's autosave.
+	_read_slots()
 	_start_attract()
-	_has_save = FileAccess.file_exists(GameState.save_path)
-	if _has_save:
-		_summary = _read_summary()
-		# A save we cannot parse is not a save we can offer to continue.
-		if _summary.is_empty():
-			_has_save = false
 	# Tree order end to end: backdrop, attract farm, the bloom, the menu — the
 	# bloom sits between the farm it will reveal and the menu that settles in
 	# over both of them.
@@ -116,7 +168,12 @@ func _start_attract() -> void:
 	# Headless has nothing to render into and no reason to spend the frames.
 	if DisplayServer.get_name() == "headless":
 		return
-	var replay: ReplayLog = AttractScript.choose_replay(GameState.replay_path, DEMO_REPLAY_PATH)
+	# The farm a tap would resume is the farm that plays behind the menu — read
+	# from the slot itself rather than from `GameState`, which this screen does
+	# not touch until a card is chosen.
+	var own_replay := SaveSlots.replay_path(
+		_resume_slot if _resume_slot > 0 else SaveSlots.last_played(slots_root), slots_root)
+	var replay: ReplayLog = AttractScript.choose_replay(own_replay, DEMO_REPLAY_PATH)
 	if replay == null:
 		return  # first boot on a fresh install: keep the flat backdrop
 
@@ -338,8 +395,56 @@ func _loop_bloom_forever() -> void:
 				return
 
 
-func _read_summary() -> Dictionary:
-	return SaveGame.summarize(SaveGame.load_dict(GameState.save_path))
+# --- The three farms ----------------------------------------------------------
+
+# What each slot holds, and which one a tap on the backdrop resumes. A save this
+# build cannot parse counts as no farm: a card that offers to continue something
+# that will not load is worse than a card that offers a fresh start.
+func _read_slots() -> void:
+	_slots.clear()
+	for n in range(1, SaveSlots.COUNT + 1):
+		var summary := SaveGame.summarize(
+			SaveGame.load_dict(SaveSlots.save_path(n, slots_root)))
+		_slots.append({ "slot": n, "has_farm": not summary.is_empty(), "summary": summary })
+
+	# Q-8's tap-anywhere still resumes a farm. The last one played is the one it
+	# means; if that slot is empty the lowest-numbered farm stands in, so a tap
+	# never does nothing while there is a farm on the screen to resume.
+	_resume_slot = 0
+	var last := SaveSlots.last_played(slots_root)
+	if _slot_has_farm(last):
+		_resume_slot = last
+	else:
+		for entry in _slots:
+			if entry["has_farm"]:
+				_resume_slot = int(entry["slot"])
+				break
+
+
+func _slot_has_farm(n: int) -> bool:
+	for entry in _slots:
+		if int(entry["slot"]) == n:
+			return bool(entry["has_farm"])
+	return false
+
+
+func _slot_summary(n: int) -> Dictionary:
+	for entry in _slots:
+		if int(entry["slot"]) == n:
+			return entry["summary"]
+	return {}
+
+
+# What a tap on a card decides, split from `start_game` so the choice can be
+# made — and checked — without a scene change riding on it.
+func choose_slot(n: int) -> void:
+	GameState.use_slot(n, slots_root)
+	SaveSlots.remember(n, slots_root)
+
+
+func _play_slot(n: int) -> void:
+	choose_slot(n)
+	start_game(_slot_has_farm(n))
 
 
 func _build_ui() -> void:
@@ -350,10 +455,13 @@ func _build_ui() -> void:
 	root_box.anchor_right = 0.5
 	root_box.anchor_bottom = 0.5
 	root_box.offset_left = -CARD_W / 2.0
-	root_box.offset_top = -150
+	# Three cards instead of one puts the column at roughly 460px, so it starts
+	# higher than the single card's -150 did — otherwise the credits line and the
+	# debug row below it fall off the bottom of an 800x600 screen.
+	root_box.offset_top = -234
 	root_box.offset_right = CARD_W / 2.0
-	root_box.offset_bottom = 150
-	root_box.add_theme_constant_override("separation", 14)
+	root_box.offset_bottom = 234
+	root_box.add_theme_constant_override("separation", 12)
 	root_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root_box)
 	_menu_root = root_box
@@ -375,11 +483,14 @@ func _build_ui() -> void:
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root_box.add_child(title)
 
-	if _has_save:
-		root_box.add_child(_make_continue_card())
-		root_box.add_child(_make_new_farm_button())
-	else:
-		root_box.add_child(_make_start_button())
+	# The three farms, stacked, each the full width of the column (S-14).
+	var slots_box := VBoxContainer.new()
+	slots_box.name = "SlotCards"
+	slots_box.add_theme_constant_override("separation", 10)
+	slots_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root_box.add_child(slots_box)
+	for n in range(1, SaveSlots.COUNT + 1):
+		slots_box.add_child(_make_slot_card(n))
 
 	# Deliberately NOT debug-gated: the bundled music is CC BY 4.0 and *requires*
 	# an attribution line in the shipped credits (CREDITS.md). Until this existed
@@ -443,87 +554,176 @@ func _style_button(btn: Button, bg: Color, border: Color, hover: Color) -> void:
 	btn.add_theme_stylebox_override("focus", _big_button_style(hover, border))
 
 
-# The headline action: big target, and it shows the farm it is about to resume.
-func _make_continue_card() -> Button:
+# --- A farm's card ------------------------------------------------------------
+#
+# One card per farm, all three the same size and all three the full width of the
+# column: this is a menu, so the cards are big stacked targets rather than rows.
+# The colour and the emblem are the farm's identity (S-14) and carry more of the
+# work than the words do, because the player this game is designed for cannot
+# read them (S-7).
+
+func _make_slot_card(n: int) -> Button:
+	var look: Dictionary = SLOT_LOOKS[SaveSlots.clamp_slot(n) - 1]
+	var has_farm := _slot_has_farm(n)
+
 	var btn := Button.new()
-	btn.name = "ContinueButton"
-	btn.custom_minimum_size = Vector2(CARD_W, CARD_H)
-	_style_button(btn, Color(0.18, 0.42, 0.22), Color(1.0, 0.72, 0.15), Color(0.24, 0.52, 0.28))
-	btn.pressed.connect(func(): start_game(true))
+	btn.name = "SlotCard%d" % n
+	btn.custom_minimum_size = Vector2(CARD_W, SLOT_CARD_H)
+	# An empty card is quieter than a farm that exists: same shape and the same
+	# target, drawn back so the eye lands on the farms first.
+	var bg: Color = look["bg"] if has_farm else Color(look["bg"]).darkened(0.45)
+	var border: Color = look["border"] if has_farm else Color(look["border"]).darkened(0.35)
+	_style_button(btn, bg, border, look["hover"])
+	btn.pressed.connect(func(): _play_slot(n))
+
+	var row := HBoxContainer.new()
+	row.set_anchors_preset(Control.PRESET_FULL_RECT)
+	row.offset_left = 12
+	row.offset_right = -12
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_theme_constant_override("separation", 10)
+	btn.add_child(row)
+
+	var emblem := SlotEmblem.new()
+	emblem.name = "SlotEmblem%d" % n
+	emblem.shape = int(look["shape"])
+	emblem.tint = look["emblem"] if has_farm else Color(look["emblem"]).darkened(0.25)
+	emblem.filled = has_farm
+	emblem.custom_minimum_size = Vector2(52, 52)
+	emblem.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	emblem.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(emblem)
 
 	var box := VBoxContainer.new()
-	box.set_anchors_preset(Control.PRESET_FULL_RECT)
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.add_theme_constant_override("separation", 2)
-	btn.add_child(box)
+	box.add_theme_constant_override("separation", 1)
+	row.add_child(box)
 
-	var head := Label.new()
-	head.text = "Continue"
-	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	head.add_theme_font_size_override("font_size", 30)
-	head.add_theme_color_override("font_color", Color(1.0, 0.86, 0.45))
-	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.add_child(head)
+	if has_farm:
+		_fill_farm_card(box, n)
+		# The one destructive control on this screen, and the only small target on
+		# it on purpose: it replaces a farm, and it asks first.
+		btn.add_child(_make_slot_new_farm_button(n))
+	else:
+		_fill_empty_card(box, look)
+	return btn
+
+
+# Left-aligned, unlike the empty card's centred invitation: the corner control
+# sits in the card's top right, and a centred headline runs into it.
+func _fill_farm_card(box: VBoxContainer, n: int) -> void:
+	var summary := _slot_summary(n)
 
 	var day := Label.new()
-	day.text = "Day %d" % _summary.get("day", 1)
-	day.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	day.add_theme_font_size_override("font_size", 20)
+	day.text = "Day %d" % summary.get("day", 1)
+	day.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	day.add_theme_font_size_override("font_size", 24)
 	day.add_theme_color_override("font_color", Color.WHITE)
 	day.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(day)
 
 	var stats := Label.new()
-	stats.text = "%dg     %d shipped     %d crows shooed" % [
-		_summary.get("gold", 0), _summary.get("shipped", 0), _summary.get("scared", 0)]
-	stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	stats.add_theme_font_size_override("font_size", 14)
-	stats.add_theme_color_override("font_color", Color(0.86, 0.94, 0.82))
+	stats.text = "%dg    %d shipped    %d crows shooed" % [
+		summary.get("gold", 0), summary.get("shipped", 0), summary.get("scared", 0)]
+	stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	stats.add_theme_font_size_override("font_size", 13)
+	stats.add_theme_color_override("font_color", Color(0.90, 0.95, 0.88))
 	stats.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(stats)
 
 	var progress := Label.new()
-	if _summary.get("phase1", false):
+	if summary.get("phase1", false):
 		progress.text = "Homestead complete"
 		progress.add_theme_color_override("font_color", Color(1.0, 0.86, 0.45))
 	else:
 		# Same two counters the sim uses for the phase-1 proof (Q-12), so the
 		# card shows real progression rather than a decorative number.
 		progress.text = "Homestead  %d/%d crops  %d/%d crows" % [
-			min(_summary.get("shipped", 0), SimWorld.PHASE1_SHIPPED_TARGET),
+			min(summary.get("shipped", 0), SimWorld.PHASE1_SHIPPED_TARGET),
 			SimWorld.PHASE1_SHIPPED_TARGET,
-			min(_summary.get("scared", 0), SimWorld.PHASE1_SCARED_TARGET),
+			min(summary.get("scared", 0), SimWorld.PHASE1_SCARED_TARGET),
 			SimWorld.PHASE1_SCARED_TARGET]
-		progress.add_theme_color_override("font_color", Color(0.74, 0.85, 0.70))
-	progress.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	progress.add_theme_font_size_override("font_size", 13)
+		progress.add_theme_color_override("font_color", Color(0.80, 0.88, 0.78))
+	progress.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	progress.add_theme_font_size_override("font_size", 12)
 	progress.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(progress)
 
-	return btn
+
+func _fill_empty_card(box: VBoxContainer, look: Dictionary) -> void:
+	var plus := Label.new()
+	plus.text = "+"
+	plus.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	plus.add_theme_font_size_override("font_size", 30)
+	plus.add_theme_color_override("font_color", Color(look["emblem"]))
+	plus.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(plus)
+
+	var word := Label.new()
+	word.text = "New farm"
+	word.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	word.add_theme_font_size_override("font_size", 14)
+	word.add_theme_color_override("font_color", Color(0.86, 0.90, 0.86))
+	word.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(word)
 
 
-func _make_new_farm_button() -> Button:
+# Corner control, over the card rather than inside its row, so the farm's own
+# figures keep the full width of the card to be read in.
+func _make_slot_new_farm_button(n: int) -> Button:
 	var btn := Button.new()
-	btn.name = "NewFarmButton"
-	btn.text = "New Farm"
-	btn.custom_minimum_size = Vector2(150, 40)
-	btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	btn.add_theme_font_size_override("font_size", 15)
-	_style_button(btn, Color(0.14, 0.30, 0.17), Color(0.55, 0.68, 0.52), Color(0.20, 0.38, 0.22))
-	btn.pressed.connect(_open_confirm)
+	btn.name = "SlotNewFarm%d" % n
+	btn.text = "New farm"
+	btn.add_theme_font_size_override("font_size", 11)
+	btn.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	btn.anchor_left = 1.0
+	btn.anchor_right = 1.0
+	btn.offset_left = -96
+	btn.offset_top = 6
+	btn.offset_right = -8
+	btn.offset_bottom = 34
+	btn.mouse_filter = Control.MOUSE_FILTER_STOP  # the card underneath must not also fire
+	_style_button(btn, Color(0.10, 0.14, 0.12, 0.85), Color(0.62, 0.66, 0.60),
+		Color(0.18, 0.22, 0.19, 0.95))
+	btn.pressed.connect(func(): _open_confirm(n))
 	return btn
 
 
-func _make_start_button() -> Button:
-	var btn := Button.new()
-	btn.name = "StartButton"
-	btn.text = "Start Farming"
-	btn.custom_minimum_size = Vector2(CARD_W, 76)
-	btn.add_theme_font_size_override("font_size", 28)
-	_style_button(btn, Color(0.18, 0.42, 0.22), Color(1.0, 0.72, 0.15), Color(0.24, 0.52, 0.28))
-	btn.pressed.connect(func(): start_game(false))
-	return btn
+# The shape half of a farm's identity: filled while the farm exists, an outline
+# while the slot is empty. Drawn rather than drawn from art, because three flat
+# shapes are what the recognition needs and a sprite would be three more files to
+# keep in step with the palette above.
+class SlotEmblem extends Control:
+	var shape: int = 0
+	var tint: Color = Color.WHITE
+	var filled: bool = true
+
+	func _draw() -> void:
+		var r: float = minf(size.x, size.y) * 0.42
+		var mid: Vector2 = size / 2.0
+		var pts := PackedVector2Array()
+		match shape:
+			1:  # triangle, point up
+				for i in 3:
+					var a: float = -PI / 2.0 + TAU * i / 3.0
+					pts.append(mid + Vector2(cos(a), sin(a)) * r * 1.15)
+			2:  # square
+				var h: float = r * 0.9
+				pts.append(mid + Vector2(-h, -h))
+				pts.append(mid + Vector2(h, -h))
+				pts.append(mid + Vector2(h, h))
+				pts.append(mid + Vector2(-h, h))
+			_:  # circle
+				for i in 28:
+					var a: float = TAU * i / 28.0
+					pts.append(mid + Vector2(cos(a), sin(a)) * r)
+		if filled:
+			draw_colored_polygon(pts, tint)
+		var outline := PackedVector2Array(pts)
+		outline.append(pts[0])
+		draw_polyline(outline, tint, 3.0, true)
 
 
 # --- Credits (all builds; a licence obligation, not a nicety) -----------------
@@ -825,11 +1025,16 @@ func _open_home() -> void:
 
 
 # --- New Farm confirmation ----------------------------------------------------
+#
+# One dialog, asked about one farm: the slot it was opened from is the slot it
+# replaces, and it says which farm that is in the only terms the screen has —
+# what day it had reached.
 
-func _open_confirm() -> void:
+func _open_confirm(n: int) -> void:
 	if _confirm_open:
 		return
 	_confirm_open = true
+	_confirm_slot = n
 	_set_attract_paused(true)  # one moving thing at a time
 
 	_confirm_layer = Control.new()
@@ -844,8 +1049,10 @@ func _open_confirm() -> void:
 	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_confirm_layer.add_child(dim)
 
-	# Solid card behind the prompt: dimming alone left the Continue card bleeding
+	# Solid card behind the prompt: dimming alone left the farm's card bleeding
 	# through the words, which is the last place we want a legibility problem.
+	# Taller than it was by the height of the emblem below, which names the farm
+	# being replaced before the sentence does.
 	var backing := Panel.new()
 	backing.set_anchors_preset(Control.PRESET_CENTER)
 	backing.anchor_left = 0.5
@@ -853,9 +1060,9 @@ func _open_confirm() -> void:
 	backing.anchor_right = 0.5
 	backing.anchor_bottom = 0.5
 	backing.offset_left = -190
-	backing.offset_top = -100
+	backing.offset_top = -128
 	backing.offset_right = 190
-	backing.offset_bottom = 100
+	backing.offset_bottom = 128
 	backing.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var backing_style := StyleBoxFlat.new()
 	backing_style.bg_color = Color(0.09, 0.16, 0.11, 0.98)
@@ -872,11 +1079,23 @@ func _open_confirm() -> void:
 	box.anchor_right = 0.5
 	box.anchor_bottom = 0.5
 	box.offset_left = -170
-	box.offset_top = -80
+	box.offset_top = -110
 	box.offset_right = 170
-	box.offset_bottom = 80
+	box.offset_bottom = 110
 	box.add_theme_constant_override("separation", 10)
 	_confirm_layer.add_child(box)
+
+	# Which farm this is about, in the terms the cards taught: its own colour and
+	# its own shape, before any of the words.
+	var look: Dictionary = SLOT_LOOKS[SaveSlots.clamp_slot(_confirm_slot) - 1]
+	var emblem := SlotEmblem.new()
+	emblem.name = "ConfirmEmblem"
+	emblem.shape = int(look["shape"])
+	emblem.tint = look["emblem"]
+	emblem.custom_minimum_size = Vector2(44, 44)
+	emblem.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	emblem.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(emblem)
 
 	var warn := Label.new()
 	warn.text = "Start a new farm?"
@@ -886,7 +1105,7 @@ func _open_confirm() -> void:
 	box.add_child(warn)
 
 	var detail := Label.new()
-	detail.text = "Your Day %d farm will be replaced." % _summary.get("day", 1)
+	detail.text = "Your Day %d farm will be replaced." % _slot_summary(_confirm_slot).get("day", 1)
 	detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	detail.add_theme_font_size_override("font_size", 14)
 	detail.add_theme_color_override("font_color", Color(0.92, 0.86, 0.72))
@@ -924,26 +1143,30 @@ func _close_confirm() -> void:
 
 
 func _gui_input(event: InputEvent) -> void:
-	# Tap-anywhere still resumes the farm (the kid-friendly default from Q-8's
-	# ruling), but never while the confirmation is up.
-	if _confirm_open or not _has_save:
+	# Tap-anywhere still resumes a farm (the kid-friendly default from Q-8's
+	# ruling) — the last one played, which is also the one showing behind the
+	# menu. Never while the confirmation is up, and never when all three slots
+	# are empty, where a tap has no farm to mean.
+	if _confirm_open or _resume_slot <= 0:
 		return
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		accept_event()
-		start_game(true)
+		_play_slot(_resume_slot)
 	elif event is InputEventScreenTouch and event.pressed:
 		accept_event()
-		start_game(true)
+		_play_slot(_resume_slot)
 	elif event.is_action_pressed("ui_accept"):
 		accept_event()
-		start_game(true)
+		_play_slot(_resume_slot)
 
 
 func _on_new_farm() -> void:
-	# Park the current farm first: with a single save slot, an accidental New
-	# Farm would otherwise destroy it at the first sleep. Recoverable by
-	# renaming the .bak files back.
-	if _has_save:
+	# Park the farm being replaced first: an accidental new farm would otherwise
+	# destroy it at the first sleep. The copies stay inside that farm's own
+	# directory, so the other two slots are untouched and a rescue is a rename.
+	var n := _confirm_slot
+	choose_slot(n)
+	if _slot_has_farm(n):
 		DirAccess.copy_absolute(GameState.save_path, GameState.save_path + ".bak")
 		if FileAccess.file_exists(GameState.replay_path):
 			DirAccess.copy_absolute(GameState.replay_path, GameState.replay_path + ".bak")

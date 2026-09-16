@@ -102,7 +102,17 @@ printf '%s' "$SERIAL" > "$LAST_TARGET_FILE"
 # that session overwrites the previous trace within seconds. A playtest is not
 # repeatable, so the one irreplaceable thing here must not depend on remembering
 # to pull first.
-if adb -s "$SERIAL" shell "run-as $PKG test -s files/session_trace.jsonl" >/dev/null 2>&1; then
+# The three farms each have a directory of their own (S-14); `files` itself is
+# where a build from before slots kept its session, and is still checked so this
+# keeps working on a tablet that has not been updated yet.
+session_on_device=0
+for d in files/slot1 files/slot2 files/slot3 files; do
+	if adb -s "$SERIAL" shell "run-as $PKG test -s $d/session_trace.jsonl" >/dev/null 2>&1; then
+		session_on_device=1
+		break
+	fi
+done
+if [[ "$session_on_device" -eq 1 ]]; then
 	step "Rescuing the play session already on the tablet"
 	echo "Existing session on device — pulling it before install."
 	"$(dirname "$0")/pull_session.sh" >/dev/null 2>&1 \

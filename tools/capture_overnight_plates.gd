@@ -27,6 +27,10 @@ const OUT_DIR := "res://docs/design/mockups/overnight_frames"
 
 
 func _ready() -> void:
+	# A farm of this rig's own: `main.tscn` autosaves on a timer, and the default
+	# farm is a real player's slot 1 (S-14) — which this would also fill, stopping
+	# a pre-slot farm from ever migrating into it.
+	GameState.use_slot(1, "user://capture_slots_scratch/")
 	await _capture_night(SimWorld.STORY_NIGHT_CROW, "plate_crow_night.png", true, 0)
 	await _capture_night(SimWorld.STORY_NIGHT_CROW, "plate_crow_night_x5.png", false, 5)
 	await _capture_night(SimWorld.STORY_NIGHT_ROBOT, "plate_robot_night.png", false, 0)

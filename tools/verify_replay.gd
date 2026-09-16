@@ -1,24 +1,34 @@
 # verify_replay.gd — Live-session replay harness (M2 exit-gate check)
 # Run AFTER playing the game and sleeping at least once:
 #   godot --headless --path . --script res://tools/verify_replay.gd
-# Loads the session's action log (user://session_replay.json) and the autosave
-# (user://autosave.json) — both written together at each sleep — replays the log
-# into a fresh world, and verifies the end state matches the autosave.
-# Presentation-only fields (selected tool/seed) are excluded: they are not
-# Actions and are not sim truth.
+# Loads the session's action log and the autosave — both written together at
+# each sleep — replays the log into a fresh world, and verifies the end state
+# matches the autosave. Presentation-only fields (selected tool/seed) are
+# excluded: they are not Actions and are not sim truth.
+#
+# Which farm: the last one played (S-14 keeps three, `systems/save_slots.gd`),
+# then any other slot that has a session in it, then the root of `user://` for a
+# farm left there by a build from before slots.
 extends SceneTree
 
 
 func _init() -> void:
-	var rlog := ReplayLog.load_from("user://session_replay.json")
-	var save := SaveGame.load_dict("user://autosave.json")
+	var dir := _find_session()
+	if dir.is_empty():
+		print("MISSING FILES: play a session (and sleep at least once) first.")
+		print("  looked in user://slot1..3 and user:// for session_replay.json + autosave.json")
+		quit(1)
+		return
+	var rlog := ReplayLog.load_from(dir.path_join(SaveSlots.REPLAY_FILE))
+	var save := SaveGame.load_dict(dir.path_join(SaveSlots.SAVE_FILE))
 	if rlog == null or save.is_empty():
 		print("MISSING FILES: play a session (and sleep at least once) first.")
-		print("  looked for user://session_replay.json and user://autosave.json")
+		print("  looked in user://slot1..3 and user:// for session_replay.json + autosave.json")
 		quit(1)
 		return
 
 	print("=== Live-session replay verification ===")
+	print("farm:           %s" % dir)
 	print("replay entries: %d (base_save: %s)" % [rlog.entries.size(), "yes" if not rlog.base_save.is_empty() else "no"])
 	# Both formats verify here, and which one this is decides what the check even
 	# means (M2.5 WI-5). A **v2** log is tick-stamped: the replay advances the sim
@@ -53,3 +63,17 @@ func _init() -> void:
 		if not report.get("state_matched", false):
 			print("MISMATCH: replay end state differs from autosave.")
 	quit(0 if matched else 1)
+
+
+# The first directory holding both halves of a session, last-played first. Both
+# halves, because a replay without its autosave is nothing to check against.
+func _find_session() -> String:
+	var candidates: Array[String] = [SaveSlots.dir_for(SaveSlots.last_played())]
+	for n in range(1, SaveSlots.COUNT + 1):
+		candidates.append(SaveSlots.dir_for(n))
+	candidates.append("user://")  # a farm from before slots, never moved
+	for dir in candidates:
+		if FileAccess.file_exists(dir.path_join(SaveSlots.REPLAY_FILE)) \
+				and FileAccess.file_exists(dir.path_join(SaveSlots.SAVE_FILE)):
+			return dir
+	return ""

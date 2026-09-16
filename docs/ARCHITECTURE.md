@@ -389,6 +389,33 @@ Current map is 32×20 tiles; phase 4 fiction says "too large to manage manually"
   it: additive keys default, **re-interpreted keys bump**, and the shim rides the version
   marker rather than a guess about the value.
 
+## Where a farm lives on disk (S-14)
+
+The game keeps **three farms**, and each one is a directory under `user://`:
+
+```
+user://slot1/autosave.json          the farm itself (SaveGame)
+user://slot1/session_replay.json    the session's Actions (ReplayLog)
+user://slot1/session_trace.jsonl    every tap and what became of it (SessionTrace)
+user://slot2/…  user://slot3/…      the same three, for the other two farms
+user://slots.json                   which farm was played last
+```
+
+A slot is a **location, not a format**: the file names are unchanged, the save schema is
+unchanged, and `SaveGame.VERSION` knows nothing about slots. `systems/save_slots.gd`
+(`SaveSlots`) owns the layout — where each file is, making the directory, which farm was
+played last, and moving a pre-slot farm out of `user://` into slot 1 on first run. Every
+function there takes the root it works under, so the suites exercise all of it, migration
+included, against a scratch directory rather than a developer's own farms.
+
+`GameState.use_slot(n)` points `save_path`, `replay_path` and `trace_path` at one farm, and
+that is the only thing choosing a farm does: it is UI navigation, so no verb is added to the
+gateway (S-3), and the three paths stay plain public fields that a test or a tool overrides
+directly, as they always have. The title screen is the only thing that calls it — building
+that screen reads the three farms but changes nothing global, because half the integration
+suite instantiates it just to check a button exists.
+
+
 ## Performance guardrails (adopt now, cheap; retrofit later, expensive)
 
 - Game truth changes only through `SimWorld.apply_action` (S-3). A fixed truth tick is

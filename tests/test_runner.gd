@@ -122,6 +122,8 @@ func _init() -> void:
 	test_sim_actions()
 	test_replay()
 	test_save_game()
+	test_save_slots()
+	test_save_slot_migration()
 	test_replay_from_save()
 	test_replay_flush()
 	test_crow_scared_verb()
@@ -921,6 +923,195 @@ func test_save_game() -> void:
 	var bad = JSON.parse_string(live)
 	bad["version"] = 999
 	_assert(not SaveGame.restore(bad, SimWorld.new(), GameState), "unknown save version refused")
+
+
+# --- Three farms, three directories (S-14) ------------------------------------
+#
+# Everything below runs under SLOT_SCRATCH, never under `user://slot1` and never
+# against `user://autosave.json`. A developer's own farms live at those paths and
+# a suite that writes them is a suite that eats somebody's game.
+const SLOT_SCRATCH := "user://test_slots_scratch/"
+
+
+func _wipe_dir(path: String) -> void:
+	var d := DirAccess.open(path)
+	if d == null:
+		return
+	d.list_dir_begin()
+	var entry := d.get_next()
+	while entry != "":
+		var full := path.path_join(entry)
+		if d.current_is_dir():
+			_wipe_dir(full)
+		else:
+			DirAccess.remove_absolute(full)
+		entry = d.get_next()
+	d.list_dir_end()
+	DirAccess.remove_absolute(path)
+
+
+func _write_text(path: String, text: String) -> void:
+	SaveSlots.ensure_parent(path)
+	var f := FileAccess.open(path, FileAccess.WRITE)
+	f.store_string(text)
+	f.close()
+
+
+func _read_text(path: String) -> String:
+	if not FileAccess.file_exists(path):
+		return ""
+	return FileAccess.get_file_as_string(path)
+
+
+func test_save_slots() -> void:
+	print("\n--- Save slots: three farms, three directories (S-14) ---")
+	_wipe_dir(SLOT_SCRATCH)
+
+	# The shipped layout, asserted as literal paths: every tool in the repo reads
+	# one of these three file names, and a slot must not have renamed any of them.
+	_assert(SaveSlots.COUNT == 3, "the game keeps three farms")
+	_assert(SaveSlots.save_path(1) == "user://slot1/autosave.json",
+		"slot 1's farm is user://slot1/autosave.json")
+	_assert(SaveSlots.replay_path(2) == "user://slot2/session_replay.json",
+		"slot 2's action log keeps the name every tool already reads")
+	_assert(SaveSlots.trace_path(3) == "user://slot3/session_trace.jsonl",
+		"and slot 3's trace does too")
+	_assert(SaveSlots.clamp_slot(0) == 1 and SaveSlots.clamp_slot(9) == 3,
+		"a slot number out of range lands on a real slot rather than a stray directory")
+
+	# use_slot derives all three paths together, for each of the three farms.
+	var held := [GameState.save_path, GameState.replay_path, GameState.trace_path, GameState.slot]
+	for n in [1, 2, 3]:
+		GameState.use_slot(n, SLOT_SCRATCH)
+		_assert(GameState.slot == n, "use_slot(%d) remembers which farm is being played" % n)
+		_assert(GameState.save_path == SLOT_SCRATCH + "slot%d/autosave.json" % n
+				and GameState.replay_path == SLOT_SCRATCH + "slot%d/session_replay.json" % n
+				and GameState.trace_path == SLOT_SCRATCH + "slot%d/session_trace.jsonl" % n,
+			"use_slot(%d) points the save, the replay and the trace at that farm" % n)
+		_assert(DirAccess.dir_exists_absolute(SaveSlots.dir_for(n, SLOT_SCRATCH)),
+			"and makes the directory, which Android does not have until something does")
+
+	# Three genuinely separate farms: writing one must not disturb another.
+	SimRng.reseed(91)
+	var world := SimWorld.new()
+	world.generate()
+	GameState.reset()
+	GameState.day = 4
+	GameState.gold = 40
+	SaveGame.save_to(SaveSlots.save_path(1, SLOT_SCRATCH), world, GameState)
+	var slot1_bytes := _read_text(SaveSlots.save_path(1, SLOT_SCRATCH))
+
+	GameState.reset()
+	GameState.day = 31
+	GameState.gold = 900
+	GameState.total_shipped = 22
+	GameState.crows_scared = 6
+	SaveGame.save_to(SaveSlots.save_path(2, SLOT_SCRATCH), world, GameState)
+
+	_assert(_read_text(SaveSlots.save_path(1, SLOT_SCRATCH)) == slot1_bytes,
+		"playing the second farm leaves the first one byte-identical")
+	_assert(not SaveSlots.has_farm(3, SLOT_SCRATCH),
+		"and the third is still empty, because nobody has started it")
+	var sum1 := SaveGame.summarize(SaveGame.load_dict(SaveSlots.save_path(1, SLOT_SCRATCH)))
+	var sum2 := SaveGame.summarize(SaveGame.load_dict(SaveSlots.save_path(2, SLOT_SCRATCH)))
+	_assert(int(sum1.get("day", 0)) == 4 and int(sum2.get("day", 0)) == 31,
+		"each card would show its own farm's day (4 and 31)")
+	_assert(int(sum1.get("gold", 0)) == 40 and int(sum2.get("gold", 0)) == 900,
+		"and its own purse (40g and 900g)")
+
+	# A farm written into a slot comes back out of it unchanged — the round trip
+	# the title screen's Continue depends on, done through a slot's own path.
+	GameState.reset()
+	GameState.day = 31
+	GameState.gold = 900
+	GameState.total_shipped = 22
+	GameState.crows_scared = 6
+	var live := JSON.stringify(SaveGame.capture(world, GameState))
+	var reloaded := SaveGame.load_dict(SaveSlots.save_path(2, SLOT_SCRATCH))
+	var world2 := SimWorld.new()
+	GameState.reset()
+	_assert(SaveGame.restore(reloaded, world2, GameState), "a farm reloads out of its slot")
+	_assert(JSON.stringify(SaveGame.capture(world2, GameState)) == live,
+		"and is value-identical to the farm that was saved into it")
+
+	GameState.save_path = held[0]
+	GameState.replay_path = held[1]
+	GameState.trace_path = held[2]
+	GameState.slot = held[3]
+	_wipe_dir(SLOT_SCRATCH)
+
+
+func test_save_slot_migration() -> void:
+	print("\n--- Save slots: a single-slot farm moves into slot 1, once (S-14) ---")
+	_wipe_dir(SLOT_SCRATCH)
+
+	# Nothing to move: the ordinary case on every run after the first.
+	var quiet := SaveSlots.migrate_legacy(SLOT_SCRATCH)
+	_assert(quiet["moved"].is_empty() and quiet["kept"].is_empty() and quiet["failed"].is_empty(),
+		"a fresh install has nothing to move and says so")
+
+	# What a build from before slots leaves in user://: the farm, its action log
+	# and its trace, sitting in the root.
+	_write_text(SLOT_SCRATCH + "autosave.json", '{"version":3,"state":{"day":17}}')
+	_write_text(SLOT_SCRATCH + "session_replay.json", '{"version":2,"entries":[]}')
+	_write_text(SLOT_SCRATCH + "session_trace.jsonl", "{\"kind\":\"tap\"}\n")
+
+	var first := SaveSlots.migrate_legacy(SLOT_SCRATCH)
+	_assert(first["moved"].size() == 3 and first["failed"].is_empty(),
+		"the farm, the log and the trace all move (%d of 3)" % first["moved"].size())
+	_assert(_read_text(SaveSlots.save_path(1, SLOT_SCRATCH)) == '{"version":3,"state":{"day":17}}',
+		"the farm is in slot 1, byte for byte")
+	_assert(_read_text(SaveSlots.replay_path(1, SLOT_SCRATCH)) == '{"version":2,"entries":[]}'
+			and _read_text(SaveSlots.trace_path(1, SLOT_SCRATCH)) == "{\"kind\":\"tap\"}\n",
+		"with the log and the trace it was recorded beside")
+	_assert(not FileAccess.file_exists(SLOT_SCRATCH + "autosave.json"),
+		"and the old location is empty, so nothing reads a stale farm from it")
+
+	# Run it again, and again: it works off what is in the root, and there is
+	# nothing there any more.
+	var second := SaveSlots.migrate_legacy(SLOT_SCRATCH)
+	var third := SaveSlots.migrate_legacy(SLOT_SCRATCH)
+	_assert(second["moved"].is_empty() and third["moved"].is_empty(),
+		"a second and third run move nothing — this happens once")
+	_assert(_read_text(SaveSlots.save_path(1, SLOT_SCRATCH)) == '{"version":3,"state":{"day":17}}',
+		"and slot 1 still holds the farm it was given")
+
+	# The dangerous case: a farm in the root AND a farm already in slot 1. The
+	# one in slot 1 has been played since the upgrade and is the live one; the
+	# root file is older. Neither is destroyed.
+	_write_text(SLOT_SCRATCH + "autosave.json", '{"version":3,"state":{"day":2}}')
+	var guarded := SaveSlots.migrate_legacy(SLOT_SCRATCH)
+	_assert(guarded["kept"].has("autosave.json") and guarded["moved"].is_empty(),
+		"a farm already in slot 1 is not overwritten")
+	_assert(_read_text(SaveSlots.save_path(1, SLOT_SCRATCH)) == '{"version":3,"state":{"day":17}}',
+		"slot 1 still holds the farm that was there")
+	_assert(_read_text(SLOT_SCRATCH + "autosave.json") == '{"version":3,"state":{"day":2}}',
+		"and the older one is left where it is rather than deleted")
+
+	# The parked copies move too: they exist to be recovered by hand, and a copy
+	# left behind in the root is a rescue nobody would find.
+	_wipe_dir(SLOT_SCRATCH)
+	_write_text(SLOT_SCRATCH + "autosave.json", "farm")
+	_write_text(SLOT_SCRATCH + "autosave.json.bak", "parked before a new farm")
+	_write_text(SLOT_SCRATCH + "autosave.json.unloadable", "would not load")
+	var rescues := SaveSlots.migrate_legacy(SLOT_SCRATCH)
+	_assert(rescues["moved"].size() == 3,
+		"the parked copies travel with the farm (%d of 3)" % rescues["moved"].size())
+	_assert(_read_text(SaveSlots.dir_for(1, SLOT_SCRATCH).path_join("autosave.json.bak"))
+			== "parked before a new farm",
+		"and the .bak is still readable where a rescue would look for it")
+
+	# Which farm was played last, for the title screen to open on.
+	_assert(SaveSlots.last_played(SLOT_SCRATCH) == 1,
+		"with nothing recorded, the first farm is the one that opens")
+	SaveSlots.remember(3, SLOT_SCRATCH)
+	_assert(SaveSlots.last_played(SLOT_SCRATCH) == 3, "and the last farm played is remembered")
+	_write_text(SaveSlots.last_played_path(SLOT_SCRATCH), "not json at all")
+	_assert(SaveSlots.last_played(SLOT_SCRATCH) == 1,
+		"a preference file we cannot read falls back to the first farm rather than to none")
+
+	_wipe_dir(SLOT_SCRATCH)
+
 
 func test_replay_from_save() -> void:
 	print("\n--- Replay-from-save (continue session) Tests ---")

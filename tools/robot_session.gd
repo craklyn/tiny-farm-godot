@@ -22,6 +22,9 @@ extends Node2D
 
 const ROBOT_SAVE := "user://robot_autosave.json"
 const ROBOT_REPLAY := "user://robot_session_replay.json"
+# The trace was the one file this session did not name, so it went to wherever
+# `GameState` was pointing — which since S-14 is a real player's slot 1.
+const ROBOT_TRACE := "user://robot_session_trace.jsonl"
 
 # T-32: the yard is home, not field. There is no longer anything inside the fence
 # a hoe will open, so the robot's day of work happens on the other side of the
@@ -97,7 +100,8 @@ func _ready() -> void:
 	# Isolate saves BEFORE the game boots
 	GameState.save_path = ROBOT_SAVE
 	GameState.replay_path = ROBOT_REPLAY
-	for path in [ROBOT_SAVE, ROBOT_REPLAY]:
+	GameState.trace_path = ROBOT_TRACE
+	for path in [ROBOT_SAVE, ROBOT_REPLAY, ROBOT_TRACE]:
 		if FileAccess.file_exists(path):
 			DirAccess.remove_absolute(path)
 

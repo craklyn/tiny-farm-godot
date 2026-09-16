@@ -12,6 +12,12 @@
 #   autosave.json        - the end state, which verify_replay.gd checks the
 #                          replay against.
 #
+# The game keeps three farms now (S-14), one directory each, so the three files
+# live in `files/slot1`, `files/slot2` or `files/slot3` on the device. This pulls
+# the farm with the longest tap trace on it — the one that was actually played —
+# and still works on a tablet running a build from before slots, which has them
+# in `files` itself.
+#
 # Pulled together and kept together: a replay without its autosave cannot be
 # verified, and a trace without its replay cannot be watched.
 #
@@ -49,7 +55,12 @@ PKG="com.daniel.tinyfarm"
 # /sdcard/Android/data/<pkg>/files path — that one exists and is readable, which
 # is what makes the mistake quiet: it is simply always empty. Internal storage
 # needs `run-as`, which works because we ship a debug build.
-REMOTE_DIR="files"
+USER_DIR="files"
+# The game keeps three farms, one per directory (S-14, systems/save_slots.gd), so
+# the play being rescued is in one of them rather than in `files` itself. `files`
+# stays last in the list because a tablet on a build from before slots still has
+# its session there, and this script has to keep working on one.
+SLOT_DIRS=("$USER_DIR/slot1" "$USER_DIR/slot2" "$USER_DIR/slot3" "$USER_DIR")
 STAMP="$(date +%Y-%m-%d_%H%M%S)"
 OUT="playtests/$STAMP"
 
@@ -69,6 +80,35 @@ if [[ -z "$SERIAL" ]]; then
 fi
 
 mkdir -p "$OUT"
+
+# Which farm was played. The trace is the identity of a play (see the rule
+# further down), so the farm with the most tap history on it is the one being
+# rescued; a farm nobody has touched since the last rescue has a shorter one.
+# Sizes are read on the device, because `run-as` is the only way in.
+remote_size() {
+	local size
+	size=$(adb -s "$SERIAL" exec-out \
+		"run-as $PKG sh -c 'wc -c < $1 2>/dev/null'" 2>/dev/null | tr -dc '0-9')
+	echo "${size:-0}"
+}
+
+REMOTE_DIR=""
+best_size=0
+for d in "${SLOT_DIRS[@]}"; do
+	size=$(remote_size "$d/session_trace.jsonl")
+	[[ "$size" -gt 0 ]] && echo "  $d: session_trace.jsonl is $size bytes"
+	if [[ "$size" -gt "$best_size" ]]; then
+		best_size="$size"
+		REMOTE_DIR="$d"
+	fi
+done
+if [[ -z "$REMOTE_DIR" ]]; then
+	# Nothing looked like a played farm. Fall back to the first slot so the
+	# listing below still shows a human what is actually on the device.
+	REMOTE_DIR="${SLOT_DIRS[0]}"
+fi
+echo "Pulling from $REMOTE_DIR"
+echo ""
 
 # Show what is actually there before pulling: an empty listing names the problem
 # immediately instead of producing three silent pull failures.

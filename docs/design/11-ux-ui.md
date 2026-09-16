@@ -69,7 +69,7 @@ tap bot → tap squad. The interface narrates the delegation arc (P-1 premise 3)
 | 8 | Cycle held tool | UI | — none, by design: the router auto-selects | — | Q / E / Tab | LB / RB |
 | 9 | Shop: buy & sell | World (transactions are Actions) | Tap seed box → tap a card | Click | Arrows + Space/Z in menu | D-pad + A in menu |
 | 10 | Pause / inventory | UI | HUD menu button | Click / Esc / I | Esc, I; arrows + Space/Z navigate | Start, Y; d-pad + A |
-| 11 | Title screen (continue, new farm, credits) | UI | Tap cards | Click / Enter | Enter | A |
+| 11 | Title screen (pick one of three farms, credits) | UI | Tap a farm's card | Click / Enter | Enter | A |
 | 12 | Camera | Cam | — none: auto-follow at fixed close-up altitude | — | — | — |
 | 13 | Site the scarecrow (beat E) 📐 | World (place) | Tap a tile, coverage ghost previews the radius | Click; hover-preview redundant with the ghost | open — Finding 1 | open — Finding 1 |
 | 14 | Look out of the window (P-16) | UI (a screen, never an Action) | Tap the glass from anywhere — auto walk-to the sill; any tap closes the view | Click, same | Walk up, Space; Space closes | Walk up, A; A closes |
@@ -508,6 +508,29 @@ work for the player's-own-session case.
 confirmation panel opens (recommendation: yes — one moving thing at a time)? Is it dropped
 on low-end devices, given it renders a second world? Does music continue across the scene
 change into `main.tscn`?
+
+## Three farms on the landing page (S-14, built 2026-09-15)
+
+The menu is three stacked cards, one per farm, full card width, above the credits line.
+A card that holds a farm shows that farm's day, purse, crops shipped, crows shooed and
+homestead progress — the same figures the single Continue card showed. An empty card shows
+a plus and starts a new farm when it is tapped.
+
+**The cards are told apart by colour and shape, not by words.** Farm 1 is a green card with
+a gold circle, farm 2 a rose card with a pink triangle, farm 3 a blue card with a blue
+square, and an empty card wears its shape as an outline rather than a solid. This is S-7
+applied literally: the player who matters most here cannot read "Day 12", and she should
+still be able to find her own farm on a shared tablet. The words stay for the adult reading
+over her shoulder.
+
+**Starting over is the small control, and it asks.** A farm's card carries a corner button
+that opens the existing confirmation, which names the farm being replaced by its day and
+shows its emblem. The card itself — the big target — always does the safe thing, which is
+to play that farm.
+
+**Tap-anywhere still resumes** (Q-8). It resumes the farm that was played last, which is
+also the farm playing behind the menu; if that slot is empty, the lowest-numbered farm that
+has one stands in, so a tap never does nothing while there is a farm on the screen.
 
 ## Constraints from decisions
 Every core interaction tap/drag-expressible (S-6); chunky targets and zero required

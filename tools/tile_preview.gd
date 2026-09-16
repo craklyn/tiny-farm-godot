@@ -1,6 +1,10 @@
 extends Node2D
 
 func _ready() -> void:
+	# A farm of this rig's own: `main.tscn` writes a real save when its window
+	# closes, and the default farm is a player's slot 1 (S-14). Without this,
+	# looking at some tile shapes costs somebody their farm.
+	GameState.use_slot(1, "user://capture_slots_scratch/")
 	var main_scene = load("res://main.tscn").instantiate()
 	add_child(main_scene)
 	await get_tree().process_frame
