@@ -85,14 +85,41 @@ fi
 
 # One device can appear twice (once by IP, once by mDNS name), so always target a
 # specific serial - a bare `adb install` fails with "more than one device".
+# **Split on the tab, not on whitespace** (2026-09-16). `adb devices` prints
+# `<serial>\t<state>`, and an mDNS serial has a space in it —
+# `adb-HA2KX7TG-Az5g1o (2)._adb-tls-connect._tcp`. Taking awk's `$1` off the default
+# whitespace split truncated that to `adb-HA2KX7TG-Az5g1o`, which matches no device,
+# so every `adb -s` below quietly failed: the session-rescue probe found nothing and
+# skipped itself, and the install never happened. Found the day it nearly threw away
+# a live play session.
+connected_serials() {
+	adb devices | awk -F'\t' '$2 == "device" { print $1 }'
+}
+
 SERIAL="$TARGET"
 if [[ -z "$SERIAL" ]]; then
-	SERIAL=$(adb devices | awk '/\tdevice$/ {print $1; exit}')
+	SERIAL=$(connected_serials | head -1)
 fi
 if [[ -z "$SERIAL" ]]; then
 	echo "No device. On the tablet: Developer options → Wireless debugging → ON," >&2
 	echo "then re-run with the IP:PORT it shows (pair first if this machine is new)." >&2
 	exit 1
+fi
+
+# **And check the serial is really there.** A remembered address goes stale the moment
+# the tablet reconnects under a different name, and the old failure mode for that was
+# a deploy that said every step's name and did none of them. If the named target is
+# not connected but something else is, say so and use what is there.
+if ! connected_serials | grep -Fxq "$SERIAL"; then
+	FALLBACK=$(connected_serials | head -1)
+	if [[ -z "$FALLBACK" ]]; then
+		echo "No device answering to '$SERIAL', and nothing else is connected." >&2
+		echo "On the tablet: Developer options → Wireless debugging → ON, then re-run" >&2
+		echo "with the IP:PORT it shows (pair first if this machine is new)." >&2
+		exit 1
+	fi
+	echo "'$SERIAL' is not connected; using '$FALLBACK' instead." >&2
+	SERIAL="$FALLBACK"
 fi
 
 printf '%s' "$SERIAL" > "$LAST_TARGET_FILE"
@@ -121,7 +148,14 @@ if [[ "$session_on_device" -eq 1 ]]; then
 fi
 
 step "Installing on the tablet"
-adb -s "$SERIAL" install -r "$APK"
+# `set -e` would catch a non-zero exit, but `adb install` is cheerful about
+# printing a failure and returning 0, so the word is what gets checked.
+install_out=$(adb -s "$SERIAL" install -r "$APK" 2>&1) || true
+echo "$install_out"
+if ! grep -q "^Success" <<<"$install_out"; then
+	echo "The install did not take. Nothing on the tablet has changed." >&2
+	exit 1
+fi
 # The launcher activity is GodotAppLauncher, not GodotApp; let the system resolve it.
 adb -s "$SERIAL" shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1 >/dev/null
 echo "Installed and launched $PKG on $SERIAL"
