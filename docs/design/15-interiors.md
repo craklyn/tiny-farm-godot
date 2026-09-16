@@ -387,6 +387,45 @@ P-13's deliberately weak first version is for, and a farm that already got into 
 comes out of it: picking a hut up takes every hut nested inside it and pays the crate for
 each. **What may go in a room is filed as a design question**, not answered by accident here.
 
+## 8a. Going through a door is still a cut, and it should not be
+
+*Reported in play 2026-09-16, handed to Tomas as `hq/data/work/w2b7e51c9d0af.json`.*
+
+The CEO: *"the camera position can jump a bit… things in the outer world suddenly hop to a
+new position and then zoom. This makes it feel like we've switched scenes and are doing a
+fake zoom."*
+
+**Two faults, and they are the same fault seen twice.**
+
+**The camera jumps.** `use_door` moves her tens of tiles in world coordinates and the camera,
+parented to her, snaps with her; only then does the zoom start. The fix is exact arithmetic
+rather than a feel: the backdrop already maps farm space into room space as
+`room_px = offset + farm_px × pitch`, so putting the camera at `offset + camera_farm_pos ×
+pitch` with `zoom ÷ pitch` at the instant of the swap shows a pixel-identical view, and one
+tween of position *and* zoom from there is continuous by construction.
+
+**And the world outside stops being itself.** The backdrop is a hand-written second pass
+drawing ground, boundaries and objects — so crops, effects and every actor pop out of
+existence on the swap frame. Fixing the camera alone moves the seam rather than removing it.
+
+**The correction worth keeping**, because it is the opposite of what it looks like: *the
+world is already alive*. `SimWorld` never pauses at a door — brains tick, the hen wanders,
+crows arrive, crops advance at the day turn. This is a drawing gap, not a simulation gap.
+
+**The mechanism to try** is a `SubViewport` sharing the main viewport's `World2D` with its
+own camera over the farm: the same canvas world, drawn by the code that already draws it,
+with no parallel renderer to keep honest. Two things are unknown and are to be spiked before
+anything is wired in — whether Godot does what that expects, and what it costs to draw the
+world twice a frame on a tablet. **A frame-rate regression on the device is not an agreed
+price**, and the fallback (re-implementing autotiled soil, growth stages, the watered chip,
+the ripe glow and every actor draw in a second pass) is a design decision rather than an
+implementation one.
+
+**And the bar the CEO set on it:** *"can you verify that it works as described before showing
+it to me again?"* By measurement, not by eye — a per-frame log of the camera path against a
+fixed world landmark, and a consecutive-frame image diff, baselined against the current build
+so the fault is measured before it is fixed.
+
 **Still not built:**
 
 - **Actors are not in the backdrop.** The yard out there shows ground and objects; the hen,
