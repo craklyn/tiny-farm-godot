@@ -1,6 +1,7 @@
 # 15 — Interiors: buildings you walk into without leaving the farm
 
-*Status: directive received 2026-09-14, corrected 2026-09-15, nothing built. This chapter
+*Status: directive received 2026-09-14, corrected 2026-09-15, **nothing built** — no game
+code exists for any of this. This chapter
 is the analysis the directive asked for, not a specification. What it settles is recorded
 as P-18; what it cannot settle is filed as Q-items and named here.*
 
@@ -266,6 +267,36 @@ deep, on grounds of legibility (§6); portals survive only for exits that are no
   how hard the walls cut. A question about grain, now that it is no longer a question about
   geometry.
 - **Q-109** — whether the farmhouse's ratio holds for the coop and everything after it.
+
+**Not designed, and load-bearing.** Three of these would have to be guessed at to start
+building, which is what makes this chapter a design and not a specification:
+
+1. **How big is the farmer indoors?** A uniform zoom doubles everything on screen, her
+   included — so does she keep her world size and stand on 2×2 interior cells, or does she
+   occupy one cell and halve? The first makes a 6×3 room three farmers wide and one and a
+   half deep, which may be smaller than it sounds; the second is a different fiction. The
+   mockups quietly assume the first and nobody has ruled on it.
+2. **Where is the wall, and what stops her leaving except by the door?** The mockups draw
+   all 6×3 cells as floor and let the building's exterior sprite be the wall. The sim still
+   needs to know which cells are impassable and which one is the threshold.
+3. **What the resolution change actually costs.** §4 says positions move from tiles to cells
+   and calls it arithmetic on a small number. That is the claim least tested here: 15 files
+   name `MAP_WIDTH`/`MAP_HEIGHT` and 55 reason in tiles, every verb's target tile changes
+   meaning, and the save format is at version 3 and would go to 4. Whether that is a week or
+   a month is unknown, and no estimate for this feature means anything until it is.
+
+**Not designed, and smaller:**
+
+4. **The existing home.** Today it is page 1, a 10×7 room behind a door. Under the nested
+   grid it becomes an interior of its own house — and 10 is not a multiple of the
+   farmhouse's 3, so the room the game ships cannot survive the rule in §2 unchanged. P-16's
+   window view lives in that room and moves with it.
+5. **When the zoom triggers and how it behaves.** On the tap, on crossing the threshold, or
+   on arriving? What does the camera do while she is standing *in* the doorway? §8 calls the
+   transition a tween and does not say what starts it.
+6. **Art at half pitch.** Every object inside a room needs art at half the farm's pitch, or
+   the farm's art used at half scale and looking it — plus a roofline strip per building
+   type for the band. Unpriced.
 
 **Deliberately not answered here:** what is *in* a room. This chapter is about the shape of
 the space; furnishing, chores, and what the coop's inside says about the hen live with P-17.
