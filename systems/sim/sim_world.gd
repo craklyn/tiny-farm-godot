@@ -2461,8 +2461,19 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 		# darkness — has no pair to look up, so the verb fails cleanly and an old
 		# farm keeps playing exactly as it did.
 		"use_door":
-			if not _is_player(String(action.get("actor", ""))):
-				return _fail("not_the_player")
+			# **A hen uses a door the way the farmer does** (P-18, 2026-09-15).
+			# This used to refuse everybody but the player, which was right while
+			# the only door was her own front door. A coop has one now, and the
+			# animal the coop is *for* has to be able to go through it — so the
+			# verb is the verb, and the two things that are hers alone (waking the
+			# machines, ringing the raid's bell) stay gated on her below.
+			#
+			# This is S-3 from the other side: a bot gets no verb the player lacks,
+			# and nothing else gets a private one either.
+			var walker := String(action.get("actor", ""))
+			var by_player := _is_player(walker)
+			if walker == "" or not (by_player or actors.has(walker)):
+				return _fail("no_such_actor")
 			# **Two kinds of door now** (P-18, 2026-09-15). The farmhouse's is laid
 			# out with the world: its tile carries a door object, and the pair comes
 			# from `WorldLayout`. A coop's is put down with the coop: its tile
@@ -2481,7 +2492,7 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			# door and reaches for it. Manhattan ≤ 1 rather than = 1, so standing
 			# *on* one — which nothing can do today, since a door blocks — is not
 			# a refusal some future layout would have to work around.
-			var from := actor_pos(ACTOR_PLAYER)
+			var from := actor_pos(walker)
 			if absi(from.x - target.x) + absi(from.y - target.y) > 1:
 				return _fail("too_far")
 			var dest: Vector2i = pair.get("to", Vector2i(-1, -1))
@@ -2492,7 +2503,18 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			# so her tile is sim truth on the far side too. Presentation reads
 			# `dest` off the result and puts her body there — a teleport is not a
 			# crossing, which is spawn's rule.
-			set_actor_pos(ACTOR_PLAYER, dest, face)
+			set_actor_pos(walker, dest, face)
+			# A creature that walks through a door has arrived somewhere it has to
+			# plan again from: whatever route it was following is on the other side
+			# of a wall now. The player's own path is presentation's business and is
+			# cleared there (`player.gd`).
+			if not by_player:
+				var e: Dictionary = actors[walker]
+				e["extra"]["path"] = []
+				e["extra"]["state"] = "idle"
+				e["extra"]["wake"] = clock.tick + 1
+				_schedule_brain(walker, clock.tick + 1)
+				return { "ok": true, "dest": dest, "face": face }
 			# **Stepping outside is the farm's starting bell, so ring it.** The
 			# machines stand still while she is indoors (`BotBrain.step`) and then
 			# nap for `IDLE_SECONDS` before looking again — so she came out and

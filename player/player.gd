@@ -689,6 +689,13 @@ func _execute_resolved_action(pa: Dictionary) -> void:
 		get_tree().get_first_node_in_group("Main").call_deferred(
 			"trigger_machine_menu_for", farm.sim.machine_at(target_t))
 		return
+	# ...and a tap on a building opens the building's own panel (P-18,
+	# 2026-09-15). The machine panel's shape, keyed on the tile: a coop cannot
+	# walk off while the panel is coming up, so there is no id to resolve.
+	if action == "open_structure":
+		get_tree().get_first_node_in_group("Main").call_deferred(
+			"trigger_structure_menu", target_t)
+		return
 	# T-9 (Q-34): picking the tool up is what opens its parcel. Two recorded
 	# actions rather than one hidden side effect, so a replay opens the same gate
 	# at the same moment and the sim keeps a single gateway per world change.

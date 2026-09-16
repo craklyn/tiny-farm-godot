@@ -357,18 +357,31 @@ deep, on grounds of legibility (§6); portals survive only for exits that are no
   this one, so walking in is one continuous zoom in and walking out is one zoom out
   (`main.gd`'s `_zoom_through_door`).
 
-**Not built, and the next things:**
+**Built the same day, the second pass:**
 
-- **Seeing the farm through the walls.** The room renders on its own page against darkness,
-  the way the home does. The backdrop — the yard drawn at `pitch` times its size, anchored so
-  the room sits inside its building — is a renderer pass that does not exist yet, and it is
-  the half of P-18 that makes the room feel like it is *inside* something.
-- **The hen does not go in.** She still shelters on the coop's front row, outdoors, which is
-  where P-17 put her before the hut had an inside. Following her in means a brain that can
-  target a room cell and a route that crosses a door.
-- **No tap picks the coop up.** The verb is implemented and tested, because the ruling exists
-  and a room has to have a way to be closed; but a tap on the hut is the door now, and giving
-  a structure a menu of its own is not in this version.
+- **The farm is drawn through the walls.** `farm.gd`'s `_draw_room_backdrop` takes the two
+  numbers on the room record and uses them as a transform: scale the farm by the pitch, put
+  the anchor where the room's origin is, and the yard lands around the room in the place it
+  really occupies. Registration by construction rather than by hand — whatever separates the
+  hut from the shipping bin outdoors separates the room from the bin in here, multiplied by
+  the pitch and not otherwise touched. Ground and objects only; her own building is skipped,
+  because she is standing in it. The camera stops clamping to the page while she is inside
+  and clamps to the room plus that ring of farm instead.
+- **The hen lets herself in.** `use_door` stopped being the player's alone — it is a verb she
+  already had, so nothing has a private one (S-3 read from the other side). On a wet day the
+  hen walks to the coop's doorstep and through it; on a dry one she walks to the doorway and
+  back out. A coop with no room under it still gets the front-row shelter P-17 shipped, so
+  the fallback is a fallback rather than a failure.
+- **A tap on the coop opens its panel** — *go inside* or *pick it up* — which is the machine
+  panel's shape keyed on a tile rather than an actor, since a building cannot walk off while
+  the panel is coming up. Both rows are ordinary Actions through the one gateway.
+
+**Still not built:**
+
+- **Actors are not in the backdrop.** The yard out there shows ground and objects; the hen,
+  a crow, the neighbour are scene nodes rather than part of this canvas, and drawing them
+  through the wall is a second pass nobody has written.
+- **The treatment of the yard is a placeholder.** A flat dim, pending **Q-108**.
 
 **Open, and filed:**
 

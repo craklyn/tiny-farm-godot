@@ -54,6 +54,16 @@ func step(world: SimWorld, actor_id: String, tick: int, gs = null) -> Dictionary
 	# recorded live, once re-rolled on replay — which is the exact desync class
 	# this whole file exists to end. Her lay is an Action like anyone else's, and
 	# the log is what carries it until WI-5 recomputes brains outright.
+	# The door she asked for last time she thought. Held on her scratch for one
+	# tick rather than returned from deep inside the wander, so that every Action
+	# this brain produces leaves from one place — `step` — which is what makes it
+	# readable and what keeps the replay's entries in an order a human can follow.
+	if extra.has("door_wanted"):
+		var want: Array = extra["door_wanted"]
+		extra.erase("door_wanted")
+		return { "verb": "use_door", "target": Vector2i(int(want[0]), int(want[1])),
+			"actor": actor_id }
+
 	if bool(extra.get("lay_due", false)):
 		extra["lay_due"] = false
 		if SimRng.randf() > EGG_CHANCE:
@@ -105,14 +115,22 @@ func _think(world: SimWorld, actor_id: String, _e: Dictionary, extra: Dictionary
 	# The weather is sim state rolled from the seed and re-applied by a replay, so
 	# a wet day puts the same hen in the same shed in a replay as it did in the
 	# session — no roll of her own, nothing to desync.
+	var here := world.actor_pos(actor_id)
+	var indoors := world.room_of_cell(here) != ""
 	if _wants_shelter(gs):
-		var here := world.actor_pos(actor_id)
-		if world.is_coop_tile(here):
+		if indoors:
 			_idle_for(extra, tick, SHELTER_IDLE)
 			return
 		if _head_for_shelter(world, actor_id, extra, tick, here):
 			return
-	var goal := _random_reachable(world, world.actor_pos(actor_id))
+	elif indoors:
+		# **A dry morning is what lets her out**, and out is through the door she
+		# came in by. Nothing else can get her from a room to the yard: the two are
+		# different pages and no route joins them, which is the same wall that keeps
+		# the dark under the farm from being somewhere to walk.
+		if _head_for_the_door(world, actor_id, extra, tick, here):
+			return
+	var goal := _random_reachable(world, here)
 	# Her route comes from the movement engine now (M2.5 WI-4), which reads the
 	# `ground` mode off her species row. Nothing about her walk changed: what she
 	# used to do by hand — find a route, re-check every tile as she reaches it,
@@ -169,6 +187,21 @@ func _wants_shelter(gs) -> bool:
 # behind its own wall (see that function).
 func _head_for_shelter(world: SimWorld, actor_id: String, extra: Dictionary,
 		tick: int, here: Vector2i) -> bool:
+	# **In, if there is an in** (P-18, 2026-09-15). A coop with a room under it is
+	# somewhere she can actually be, so she walks to its doorstep and lets herself
+	# through — the same `use_door` the farmer uses, which is the point of it being
+	# a verb rather than a thing only she can do.
+	#
+	# A coop with no room — one placed by an older build, or by a farm that ran out
+	# of slots — still gets the behaviour it shipped with: she stands on the front
+	# row and waits the rain out there. Falling back rather than failing is what
+	# keeps the hut an ornament rather than a dependency.
+	var doorstep := _nearest_doorstep(world, here)
+	if doorstep.x >= 0:
+		if here == doorstep:
+			return _step_through(world, actor_id, extra, tick, doorstep)
+		if _walk_to(world, actor_id, extra, tick, doorstep):
+			return true
 	var cells := world.coop_perches()
 	if cells.is_empty():
 		return false
@@ -187,6 +220,70 @@ func _head_for_shelter(world: SimWorld, actor_id: String, extra: Dictionary,
 		extra["wake"] = tick + Movement.ticks_per_tile(world.species_of(actor_id))
 		return true
 	return false
+
+
+# The square outside a coop she can reach and let herself in from — the tile the
+# room's door lets out onto. Nearest first, the perch draw's rule, and ties break on
+# the grid scan's order so two hens, a save and a replay choose the same hut.
+func _nearest_doorstep(world: SimWorld, here: Vector2i) -> Vector2i:
+	var best := Vector2i(-1, -1)
+	var best_d := 1 << 30
+	for id in world.room_ids():
+		var r: Dictionary = world.rooms[id]
+		var step: Vector2i = r.get("exit", Vector2i(-1, -1))
+		if step.x < 0 or not world.is_walkable(step.x, step.y):
+			continue
+		var d: int = absi(step.x - here.x) + absi(step.y - here.y)
+		if d < best_d:
+			best = step
+			best_d = d
+	return best
+
+
+# ...and the doorway she leaves by, from inside: the room she is standing in.
+func _own_doorway(world: SimWorld, here: Vector2i) -> Vector2i:
+	var id := world.room_of_cell(here)
+	if id == "":
+		return Vector2i(-1, -1)
+	return world.rooms[id].get("door", Vector2i(-1, -1))
+
+
+func _head_for_the_door(world: SimWorld, actor_id: String, extra: Dictionary,
+		tick: int, here: Vector2i) -> bool:
+	var way := _own_doorway(world, here)
+	if way.x < 0:
+		return false
+	if here == way:
+		return _step_through(world, actor_id, extra, tick, way)
+	return _walk_to(world, actor_id, extra, tick, way)
+
+
+# Stand on the threshold and reach for the door. The Action is returned by the
+# caller's caller — a brain says what it wants and the gateway decides — so this
+# records the intent on her scratch and wakes her next tick to act on it.
+func _step_through(world: SimWorld, actor_id: String, extra: Dictionary,
+		tick: int, at: Vector2i) -> bool:
+	var target := at
+	if world.room_of_cell(at) != "":
+		# Inside, the doorway *is* the square she stands on, and the door she wants
+		# is that same square: `room_door_at` reads it as the way out.
+		target = at
+	else:
+		# Outside, she is on the doorstep and the door is the hut above her.
+		target = at + Vector2i(0, -1)
+	extra["door_wanted"] = [target.x, target.y]
+	extra["state"] = "idle"
+	extra["wake"] = tick + 1
+	return true
+
+
+func _walk_to(world: SimWorld, actor_id: String, extra: Dictionary,
+		tick: int, goal: Vector2i) -> bool:
+	if not Movement.plan(world, actor_id, goal):
+		return false
+	extra["state"] = "moving"
+	extra["wake"] = tick + Movement.ticks_per_tile(world.species_of(actor_id))
+	return true
 
 
 # Anywhere she could walk to, including where she is standing — the same draw

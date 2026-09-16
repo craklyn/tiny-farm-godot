@@ -14197,10 +14197,19 @@ func test_the_door() -> void:
 		"actor": "player" }, gs)
 	_assert(not nothing.get("ok", false) and String(nothing.get("reason", "")) == "no_door_here",
 		"a tap on ordinary ground is not a door (%s)" % nothing)
+	# **A hen goes through a door too** (P-18, 2026-09-15). This used to refuse
+	# everybody but the player, which was right while the only door in the game was
+	# her own front door; a coop has one now and the animal it is for has to be able
+	# to use it. S-3 read from the other side: `use_door` is a verb the player
+	# already had, so nothing here is a capability an animal has and she does not.
 	w.set_actor_pos(SimWorld.ACTOR_CHICKEN, Vector2i(2, 3))
 	var hen := w.apply_action({ "verb": "use_door", "target": door, "actor": "chicken" }, gs)
-	_assert(not hen.get("ok", false) and String(hen.get("reason", "")) == "not_the_player",
-		"and nobody but the player goes indoors in phase 1 (%s)" % hen)
+	_assert(hen.get("ok", false)
+			and w.actor_pos(SimWorld.ACTOR_CHICKEN) == Vector2i(hen.get("dest", Vector2i(-1, -1))),
+		"a hen walks through a door as the farmer does, and ends up on the far side (%s)" % hen)
+	var nobody := w.apply_action({ "verb": "use_door", "target": door, "actor": "ghost" }, gs)
+	_assert(not nobody.get("ok", false) and String(nobody.get("reason", "")) == "no_such_actor",
+		"...but somebody who is not in the world does not (%s)" % nobody)
 
 	# **The migration's safety net, from the other side.** A world with no door
 	# table is every farm ever saved before today: even with a door object sitting
@@ -14932,28 +14941,34 @@ func test_chicken_coop() -> void:
 
 	GameState.weather = "rainy"
 	SimRng.reseed(515)
-	world.advance_ticks(900, GameState)
+	world.advance_ticks(1800, GameState)
 	var wet_spot := world.actor_pos("chicken")
-	_assert(world.is_coop_tile(wet_spot) and world.coop_perches().has(wet_spot),
-		"and when it rains she walks in and sits in the doorway (%s)" % wet_spot)
+	# **Inside now, not on the doorstep** (P-18, 2026-09-15). Before the hut had an
+	# inside she sheltered on its front row, which was the best the design could
+	# offer; now she walks to the doorstep, lets herself in, and is standing on the
+	# room's own floor.
+	_assert(world.room_of_cell(wet_spot) != "",
+		"and when it rains she lets herself in and stands on the floor of it (%s)" % wet_spot)
 
 	# She stays put while it is wet, rather than wandering back out and in again.
 	var settled := true
 	for i in 6:
 		world.advance_ticks(150, GameState)
-		if not world.is_coop_tile(world.actor_pos("chicken")):
+		if world.room_of_cell(world.actor_pos("chicken")) == "":
 			settled = false
-	_assert(settled, "and stays there as long as the rain does")
+	_assert(settled, "and stays inside as long as the rain does")
 
 	# ...and the sky clearing is what lets her out. Nothing else changes.
 	GameState.weather = "sunny"
 	world.schedule_all_brains()
 	var left := false
-	for i in 12:
+	for i in 20:
 		world.advance_ticks(150, GameState)
-		if not world.is_coop_tile(world.actor_pos("chicken")):
+		if world.room_of_cell(world.actor_pos("chicken")) == "" \
+				and not world.is_coop_tile(world.actor_pos("chicken")):
 			left = true
-	_assert(left, "a dry morning is what lets her out again")
+	_assert(left, "a dry morning is what lets her back out into the yard (%s)"
+		% world.actor_pos("chicken"))
 
 	# --- and it is an ornament, not a dependency -------------------------------
 	#

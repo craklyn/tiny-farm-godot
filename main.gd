@@ -533,6 +533,15 @@ func _refresh_camera_limits(snap: bool = false) -> void:
 	# camera until it ends, and `_settle_from_altitude` calls this to hand it back.
 	if is_teaching():
 		return
+	# **A room is not a page to be held inside** (P-18, 2026-09-15). Rooms are
+	# stored in slots on page 2, several to a page, and the farm is drawn around
+	# them — so clamping the view to the page would pin a room in the corner of a
+	# black rectangle and cut off the yard the walls exist to frame. Inside one, the
+	# limits come from the room and the backdrop it sits in, not from the page.
+	var room_id: String = farm.sim.room_of_cell(player.get_tile_pos())
+	if room_id != "":
+		_limit_to_room(farm.sim.rooms[room_id], snap)
+		return
 	var page: int = farm.sim.page_of(player.get_tile_pos())
 	_camera_page = page
 	var page_px: int = SimWorld.PAGE_ROWS * TILE_SIZE
@@ -557,6 +566,24 @@ func _refresh_camera_limits(snap: bool = false) -> void:
 	if snap:
 		# A door is not a walk: without this the view glides twenty rows through
 		# the dark to catch up with a farmer who is already indoors.
+		camera.reset_smoothing()
+
+
+# The view while she is indoors: the room, plus the ring of farm drawn around it, so
+# the camera may look out of the walls without wandering off into the dark beyond the
+# backdrop's reach.
+func _limit_to_room(room: Dictionary, snap: bool) -> void:
+	_camera_page = SimWorld.MAP_HEIGHT / SimWorld.PAGE_ROWS - 1
+	var origin: Vector2i = room.get("origin", Vector2i.ZERO)
+	var size: Vector2i = room.get("size", Vector2i.ZERO)
+	var pitch: int = maxi(1, int(room.get("pitch", 1)))
+	var reach: int = farm.BACKDROP_REACH * pitch
+	camera.limit_left = (origin.x - reach) * TILE_SIZE
+	camera.limit_right = (origin.x + size.x + reach) * TILE_SIZE
+	camera.limit_top = (origin.y - reach) * TILE_SIZE
+	camera.limit_bottom = (origin.y + size.y + reach) * TILE_SIZE
+	_update_rain()
+	if snap:
 		camera.reset_smoothing()
 
 
@@ -1029,6 +1056,19 @@ func trigger_machine_menu(at: Vector2i) -> void:
 # which machine it just put down.
 func trigger_machine_menu_for(id: String) -> void:
 	menus.open_machine_menu_for(id)
+
+
+## Open the panel a building gets (P-18, 2026-09-15) — go in, or pick it up.
+func trigger_structure_menu(at: Vector2i) -> void:
+	menus.open_structure_menu(at)
+
+
+## Walk her through a building's door, chosen from that panel. Routed through the
+## player node rather than straight at the gateway because `use_door` moves the sim
+## and it is `player.gd` that puts her body down on the far side and tells the
+## camera the page changed — which is what makes going in a zoom rather than a cut.
+func enter_structure(at: Vector2i) -> void:
+	player._execute_resolved_action({ "action": "use_door", "target_t": at })
 
 
 ## Open the training workbench standing at `at` (Q-101, 2026-09-10).

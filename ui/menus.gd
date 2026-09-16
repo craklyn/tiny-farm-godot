@@ -239,6 +239,24 @@ func open_menu(menu_name: String) -> void:
 ## and the moment one is placed. If nothing is standing there — she picked it up,
 ## or it walked off — nothing opens, because a panel about an absent machine has
 ## no honest content.
+## **The panel a building gets when you tap it** (P-18, 2026-09-15). A coop is not a
+## machine — it has no actor, no dials and nothing to send out — so it cannot use the
+## panel above, which is keyed on a registry id. What it has is two things you can do
+## to a building: go in, or pick it up.
+##
+## Keyed on the tile rather than on an id, because a building cannot walk: the square
+## she tapped is the square it is still standing on when she chooses.
+var structure_tile: Vector2i = Vector2i(-1, -1)
+var structure_options: Array = []
+
+
+func open_structure_menu(at: Vector2i) -> void:
+	if farm == null or not farm.sim.is_coop_tile(at):
+		return
+	structure_tile = at
+	open_menu("structure")
+
+
 func open_machine_menu(at: Vector2i) -> void:
 	if farm == null:
 		return
@@ -525,6 +543,24 @@ func _rebuild_options() -> void:
 			menu_panel.size = Vector2(
 				SCORECARD_PANEL_W if MachineDefs.program_of(mkey) == "policy" else 320.0,
 				_fit_panel_height())
+
+		"structure":
+			# Two rows and a close. Words, knowingly, for the machine panel's
+			# reason — there is no icon vocabulary for "go inside" yet, and the
+			# shop, which a pre-reader must use to play at all, stays wordless.
+			# Filed with Q-87.
+			title_label.text = MachineDefs.name_of(SimWorld.COOP_ITEM).to_upper()
+			gold_display.visible = false
+			shop_title_icon.visible = false
+			gold_icon.visible = false
+			structure_options = []
+			structure_options.append({ "kind": "enter" })
+			_add_option("Go inside", true)
+			structure_options.append({ "kind": "collect" })
+			_add_option("Pick up", true)
+			structure_options.append({ "kind": "close" })
+			_add_option("\u00d7", true, 28)
+			menu_panel.size = Vector2(320.0, _fit_panel_height())
 
 		"workbench", "window":
 			# **No rows at all.** The bench (`ui/workbench.gd`) and the window's
@@ -993,6 +1029,34 @@ func _select_current_option() -> void:
 			else:
 				close_menu()
 				menu_action.emit("resume")
+
+		"structure":
+			if selected_option >= structure_options.size():
+				close_menu()
+				menu_action.emit("resume")
+				return
+			var pick: Dictionary = structure_options[selected_option]
+			if String(pick.get("kind", "")) == "close":
+				close_menu()
+				menu_action.emit("resume")
+				return
+			# Both are sim Actions through the one gateway (P-9): the panel decides
+			# nothing, it asks and shows what came back. Going in is the same
+			# `use_door` the front door uses; picking up is the same `collect` an
+			# egg gets.
+			close_menu()
+			menu_action.emit("resume")
+			if String(pick.kind) == "enter":
+				var main_node := get_tree().get_first_node_in_group("Main")
+				if main_node != null and main_node.has_method("enter_structure"):
+					main_node.enter_structure(structure_tile)
+				return
+			if String(pick.kind) == "collect":
+				if farm.apply_action({ "verb": "collect", "target": structure_tile,
+						"actor": "player" }, GameState).get("ok", false):
+					AudioManager.play_sfx("jingle")
+					menu_action.emit("collected_structure")
+				return
 
 		"machine":
 			if selected_option >= machine_options.size():
