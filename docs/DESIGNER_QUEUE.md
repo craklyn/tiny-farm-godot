@@ -13,33 +13,36 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
 
 - **Q-108** How the farm looks from inside a building — **Ruling**. P-18 says a building
   opens outward rather than cutting to a room, and that the farm stays visible through the
-  walls. Drawn how, is the question. **Decided on pictures**: her real room photographed
-  (`tools/capture_interior_plate.tscn`), with the black beyond its walls filled by a second
-  photograph of the yard from the same run — so the two panels are the game beside itself
-  (`docs/design/mockups/interiors/q108_outside_treatment.png`). What the pictures show that
-  the description did not: registering the outside to the doorway means magnifying it by the
-  same whole number the room grew by, and at three times that leaves about **one tile of yard
-  a side**, magnified past recognition — you cannot read the weather off it, see the hen, or
-  notice a crow. What it buys is the way in: because the outside is true to the doorway,
-  entering is one continuous zoom anchored on the tile she tapped, which is the entire reason
-  for not cutting. Four options on the card: **(a) registered dilation**, **(b) backdrop at
-  ordinary size**, **(c) registered but with a small enough room to see past** (spends Q-109
-  on the view), **(d) registered going in, backdrop once she is standing still**. **No
-  recommendation** — (a) and (b) trade the animated entry against being able to read the farm,
-  and which of those matters more is the taste this is asking for. Card:
-  `hq/data/decisions/Q-108.json`.
+  walls. Drawn how, is the question. **Built at the CEO's own numbers** (2026-09-15: 3×2
+  house, 6×3 room) and **decided on photographs** of the running game — the room shot from
+  inside, the yard shot from outside, and the plate now carrying the camera's world-to-screen
+  mapping so the farm is *placed* rather than pasted
+  (`docs/design/mockups/interiors/q108_registered.png`). That last part is a correction: the
+  first version of this card pasted the yard behind the room as wallpaper, which cannot keep a
+  relationship it never had, and the gap between the house and the shipping bin survived
+  outdoors and vanished indoors. The CEO caught it.
+  **What his numbers changed.** At the ×3 and ×4 rooms first shown here, registering the
+  outside left about one tile of yard, magnified past recognition — the option was barely
+  usable. At 6×3 there are 2.7 tiles across and 3.2 down and the yard reads: the hen, the bin,
+  the fence, the neighbour's plot. The restraint is what makes registering viable at all.
+  **One blemish:** 6 over 3 is ×2 and clean; 3 over 2 is ×1.5 and is not — every other row of
+  the magnified yard doubled, and a yard a third wider than it is tall. A 6×4 room is ×2 both
+  ways for one more row of floor. Options: **(a) registered 6×3**, **(b) registered 6×4**,
+  **(c) backdrop at ordinary size**, **(d) registered going in, backdrop once she is still**.
+  **No recommendation** between registering and not — the animated entry against the unscaled
+  yard is the taste this is asking for. Card: `hq/data/decisions/Q-108.json`.
 
-- **Q-109** How much room a room gets — **Ruling**. Under P-18 a building's inside is its
-  outside multiplied by a whole number. The farmhouse is 3×2, so 6×4, 9×6 or 12×8; the coop
-  is 2×2, so 4×4, 6×6 or 8×8. **Decided on pictures** — drawn rather than photographed,
-  because no room but the farmhouse's exists, but every piece in them is the game's own art
-  at the size the game draws it, a 16×32 bed and a 48×48 farmer included
-  (`q109_farmhouse_multipliers.png`, `q109_coop_multipliers.png`). Her room today is 10×7 and
-  nobody has called it cramped. **The coupling is the real content of this item**: the same
-  number sets how hard the yard magnifies behind the walls, so under Q-108(a) every step up
-  here is paid for out of the window. Options: **(a) ×2**, **(b) ×3**, **(c) ×4**, **(d) a
-  number per building** rather than one for all. **Recommendation: (b)**, which lands the
-  house just under the 10×7 it already has and the coop at 6×6. Card:
+- **Q-109** How much room a room gets — **Ruling**, now narrowed. The farmhouse is
+  provisionally answered (3×2 outside, 6×3 inside); what is left is whether that number holds
+  for the coop and everything after it. Drawn panels of both buildings at ×2, ×3 and ×4, with
+  the game's own art at the size the game draws it — a 16×32 bed takes two whole tiles
+  (`q109_farmhouse_multipliers.png`, `q109_coop_multipliers.png`). **The coupling is the real
+  content**: the same number sets the room's size and the yard's magnification, so under
+  Q-108's registered options every step up is paid for out of the window. Options: **(a) ×2**,
+  **(b) ×3**, **(c) ×4**, **(d) a number per building**, **(e) the farmhouse's own answer
+  everywhere** — doubled across, half again down, which makes the coop 4×3.
+  **Recommendation: (d)**, now that the farmhouse has its own answer: a hen house never has to
+  be as big as a home, and nothing in P-18 wants one number for all of them. Card:
   `hq/data/decisions/Q-109.json`.
 
 - **Q-106** ~~A frame around the picture the sleep plays~~ — ✅ **ruled 2026-09-11: (a) no frame.** The overnight ships as it is. One change to how it is drawn: the dithered band at a loop's left and right edges is halved in width; he read the wider band as a blur. Built the same day (`systems/day_cycle.gd`).**

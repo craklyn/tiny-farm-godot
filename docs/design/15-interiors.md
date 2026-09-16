@@ -80,6 +80,29 @@ So a room is its building's footprint multiplied: the 2×2 coop at `k = 3` is a 
 room; the 3×2 farmhouse at `k = 4` is a 12×8 room. Both are enormous next to what
 they replace, and neither needs the footprint outside to grow by a single tile.
 
+### The CEO's own numbers, and what they cost (2026-09-15)
+
+> "please make the house 3-wide by 2-tall. And when the player is inside, please make
+> it 6-wide by 3-tall."
+
+Those are much less extreme than the ×3 and ×4 this section reached for, and the
+pictures say the restraint was right — see §3. They also break the whole-number rule
+above, and it is worth being exact about how much that costs rather than arguing from
+the rule:
+
+- Across, 6 tiles of floor over a 3-tile footprint is **×2**, which is clean: one art
+  pixel becomes six screen pixels.
+- Down, 3 tiles over 2 is **×1.5**, which is not: one art pixel becomes four and a half
+  screen pixels, so every other row of the magnified farm is doubled and the rest are
+  not. On the hen standing in the yard outside, visible at this scale, the effect is a
+  slight squatness and a ragged comb. It is a blemish rather than a disaster.
+- The two factors also differ, so the yard beyond the walls is *stretched* rather than
+  dilated — wider than it is tall by a third.
+
+**A 6×4 room fixes both for the price of one row of floor**: ×2 in each axis, integer
+scaling everywhere, no stretch. Recorded as the cheap alternative rather than as a
+correction, because a 6×3 room is a shape and the shape may be the point.
+
 ---
 
 ## 3. What the player experiences
@@ -90,10 +113,23 @@ swelling behind them, her own body never changing size. She ends up standing in 
 room several times larger than the hut she tapped, with the farm still there,
 magnified and softened, beyond the walls.
 
-**Being in.** The farm is present but out of reach, which is the correct feeling and
-is achieved by geometry rather than by a fade: at `k = 3` she can see perhaps two or
-three outdoor tiles past each wall. Enough to know the weather, to see the hen if she
-is out, to notice a crow. Not enough to farm.
+**Being in.** The farm is present but out of reach, which is the correct feeling and is
+achieved by geometry rather than by a fade. **How much of it she can see is the thing to
+measure, and it was measured wrong here first.** On an 800×600 screen at camera scale 3:
+
+| room | dilation | yard visible each side |
+|---|---|---|
+| 3×2 house → 6×3 (the CEO's numbers) | ×2.0 across, ×1.5 down | 2.7 tiles across, 3.2 down |
+| 3×3 house → 9×9 | ×3 | about 1 tile |
+| 3×2 house → 12×8 | ×4 | none worth the name |
+
+The multiplier eats the view twice over — a bigger room leaves less margin *and*
+magnifies harder into it — so this falls away faster than it looks like it should. At
+the CEO's numbers there is a real amount of farm out there: in
+`mockups/interiors/q108_registered.png` the hen, the shipping bin, the fence and the
+neighbour's plot are all legible through the walls. At ×3 there is a field of green and
+one enormous soft shape. **The restraint is what makes the registered option viable at
+all**, which is the opposite of what an earlier draft of this chapter assumed.
 
 **Coming out.** The reverse, anchored on the same doorway, so the world contracts
 back to exactly where she left it.
@@ -110,6 +146,13 @@ Two answers, and this is a taste call rather than an engineering one (**Q-108**)
 - **(a) Registered dilation.** The outside is geometrically true relative to the
   doorway, magnified by `k`, behind fog. Honest; the transition is a real continuous
   zoom; risks reading as "the world got closer".
+
+  **"Registered" has to mean registered.** The first version of the Q-108 sheet pasted
+  a farm capture behind the room as *wallpaper*, which cannot keep a relationship it
+  never had — the gap between the house and the shipping bin beside it survived in the
+  outdoor panel and vanished in the indoor one. The CEO caught it on 2026-09-15. The
+  plate now carries the camera's world-to-screen mapping beside it and the farm is
+  placed rather than pasted, and that gap is the test the picture has to pass.
 - **(b) Unregistered backdrop.** The outside is drawn at its ordinary scale behind
   fog, as scenery that does not line up with anything. Reads the way a window reads;
   the transition has nothing to animate, so the cut comes back in spirit if not in

@@ -1,28 +1,28 @@
 {
  "id": "Q-108",
  "title": "How the farm looks from inside a building",
- "question": "P-18 says a building opens outward rather than cutting to a room: tap the door and the hut dilates in place, so you watch the small thing become the big thing and never lose sight of the farm. That last part is the open question. The farm is still there behind the walls — but drawn how?\n\nThe picture below is a photograph of your real room. tools/capture_interior_plate.tscn walks the farmer in through her own front door and photographs what the game draws; everything outside the walls is black there today, and that black is exactly the area this question is about. The farm that goes into it is a second photograph from the same run, the same build and the same hour, so the two panels are the game beside itself.\n\nOne thing the pictures show that the description did not, and it is the whole decision. Registering the outside to the doorway means magnifying it by the same number the room grew by. At three times, a tile of grass is 144 pixels across, and what fits beside her room is roughly one tile of yard per side — panel (a) is a field of green and one enormous soft shape, which happens to be the very house she is standing in. You cannot read the weather off it, or see the hen, or notice a crow. Panel (b) gives up the geometry and you get the farm back: the house, the fence, the bushes, the neighbour.\n\nWhat (a) buys for that is the way in. Because the outside is true to the doorway, entering can be one continuous zoom anchored on the tile she tapped — which is the entire reason for not cutting. (b) has nothing to animate, so the cut comes back in spirit even though the screen never swaps.\n\nThe haze is drawn as an ordered dither of one added colour on the art's own pixel grid, not a blur, because that is the studio's rule for anything that reaches the screen and nobody has ruled on a blur.",
- "why_now": "Nothing is built yet, and this decides what gets built: (a) needs the parent space drawn under a transform and a tween on the way in, (b) needs a backdrop and no transition. It also sets whether Q-109's multiplier is a free choice or a cost.",
+ "question": "P-18 says a building opens outward rather than cutting to a room: tap the door and the hut dilates in place, so you watch the small thing become the big thing and never lose sight of the farm. That last part is the open question. The farm is still there behind the walls — but drawn how?\n\nBuilt at your numbers, 2026-09-15: a 3-wide by 2-tall house opening into a 6-wide by 3-tall room.\n\nBoth panels are photographs of the running game. A capture tool walks the farmer in through her own front door and shoots the room; everything beyond its walls is black there today, and that black is what this question fills. The yard that goes into it is a second shot from the same run, and the plate now carries the camera's world-to-screen mapping beside it — so the farm is *placed* rather than pasted.\n\nThat last part is the fix to the first version of this card, which pasted the yard behind the room as wallpaper. Wallpaper cannot keep a relationship it never had: the gap between the house and the shipping bin beside it survived outdoors and vanished indoors. In the registration sheet the same rose rectangle marks the same piece of world in both panels — what the house stands on, and what it opens into — and the hen, the bin, the fence and the neighbour's plot all sit where they really are, further off by exactly the dilation.\n\n**What your numbers changed.** At the ×3 and ×4 rooms this card first showed, registering the outside left about one tile of yard visible, magnified past recognition — the option was barely usable. At 6×3 there are 2.7 tiles across and 3.2 down, and you can read the farm. The restraint is what makes the registered option viable at all.\n\n**One blemish, stated plainly.** Six tiles of floor over a three-tile footprint is ×2, which is clean. Three over two is ×1.5, which is not: every other row of the magnified yard is doubled and the rest are not, so the hen outside is slightly squat with a ragged comb, and the yard is stretched wider than it is tall by a third. A 6×4 room would be ×2 in both axes with no stretch and no doubling, for the price of one more row of floor.\n\nThe haze is an ordered dither of one added colour on the art's own pixel grid, not a blur, because that is the studio's rule for anything that reaches the screen.",
+ "why_now": "Nothing is built yet and this decides what gets built: a registered outside needs the parent space drawn under a transform and a tween on the way in, a backdrop needs neither. It also settles whether Q-109's multiplier is a free choice or a cost.",
  "options": [
   {
    "key": "a",
-   "label": "Registered dilation",
-   "detail": "The outside stays geometrically true to the doorway, magnified by the same whole number the room grew by, behind haze. The way in is a real continuous zoom anchored on the tile she tapped. The price is in the picture: at three times you see about one tile of yard per side, magnified past recognition, and the bigger the room the less you see — the multiplier eats the view twice over."
+   "label": "Registered dilation, 6x3",
+   "detail": "Your numbers as asked. The outside stays true to the doorway, so entering can be one continuous zoom anchored on the tile she tapped — the whole reason for not cutting. You see 2.7 tiles of yard across and 3.2 down, which is enough to read the weather, see the hen and notice a crow. The price is the 1.5x vertical: every other row doubled, and a yard a third wider than it is tall."
   },
   {
    "key": "b",
-   "label": "Backdrop at ordinary size",
-   "detail": "The farm is drawn at the size it is drawn outdoors, behind the same haze, lining up with nothing. You can read the yard — the weather, the hen, a crow. The price is that the doorway no longer means anything geometrically, so there is no honest zoom to animate and entering becomes a dissolve."
+   "label": "Registered dilation, 6x4",
+   "detail": "The same thing with one more row of floor, which makes it x2 in both axes: integer scaling everywhere, no row doubling, no stretch. Slightly less yard visible below (2.4 tiles rather than 3.2) and a room that is squarer than the shape you asked for."
   },
   {
    "key": "c",
-   "label": "Registered, but the room is small enough to see past",
-   "detail": "Keep (a)'s geometry and spend Q-109 on it: at two times, an outside tile is 96 pixels and about two of them fit each side, which is enough to read grass from tilled soil and to see something move. Buys the animated entry back at the cost of the room being half the size — which is the thing P-18 exists to fix."
+   "label": "Backdrop at ordinary size",
+   "detail": "Give up the geometry: draw the yard at the size it is drawn outdoors, behind the same haze, lining up with nothing. Slightly more farm visible and no scaling artefact at all, because nothing is scaled. The price is that the doorway stops meaning anything, so there is no honest zoom to animate and entering becomes a dissolve."
   },
   {
    "key": "d",
    "label": "Registered going in, backdrop once you are there",
-   "detail": "Animate the true dilation on the way through the door, then settle to the ordinary-size backdrop once she is standing still. Gets the entry and the readable yard both; the price is that the world quietly changes scale after the transition ends, which is a lie the player may or may not catch."
+   "detail": "Animate the true dilation through the door, then settle to the ordinary-size backdrop once she is standing still. Gets the entry and the unscaled yard both; the price is that the world quietly changes scale after the transition ends."
   }
  ],
  "links": [
@@ -42,8 +42,13 @@
  "attachments": [
   {
    "type": "image",
+   "src": "docs/design/mockups/interiors/q108_registered.png",
+   "caption": "The registration check. Outside, then inside, edge to edge. The rose rectangle is the same piece of world in both: the three tiles by two the house stands on, and the six by three it opens into. The hen, the bin and the fence sit where they really are."
+  },
+  {
+   "type": "image",
    "src": "docs/design/mockups/interiors/q108_outside_treatment.png",
-   "caption": "Her real room, photographed. Left: the farm magnified three times, true to the doorway. Right: the farm at the size it is drawn outdoors."
+   "caption": "The same room with the yard placed truthfully (left) and drawn at its ordinary size (right)."
   }
  ],
  "ruled": null

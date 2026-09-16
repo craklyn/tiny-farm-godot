@@ -103,45 +103,159 @@ def tiled(src, w, h):
     return out
 
 
-# --- Q-108: over the real photograph ------------------------------------------------
+# --- Q-108: registered to the real house, over the real photograph ------------------
+#
+# **The first version of this sheet tiled the farm behind the room as wallpaper**, which
+# is not registration and cannot be: wallpaper has no idea where the house was, so the
+# gap between the house and the shrub beside it survived in the outdoor panel and
+# vanished in the indoor one. Spotted by the CEO, 2026-09-15. The plate now carries the
+# camera's world-to-screen mapping beside it (shot_outdoor_plate.json), so the farm can
+# be placed rather than pasted, and the gap is the test: whatever distance separates two
+# things outdoors separates them indoors, multiplied and not otherwise touched.
 
-def farm_at_screen_scale():
-    """The running farm, photographed with the HUD hidden. Tiles are 48 pixels, as on screen."""
-    # Cropped to the clean middle of the photograph: the camera letterboxes the top
-    # of the farm page with a grey strip and the build stamps its version across the
-    # bottom, and both would tile into the haze as furniture that is not the farm.
-    plate = shot("shot_outdoor_plate")
-    return plate.crop((0, 30, plate.width, plate.height - 66))
+import json as _json
 
 
-def q108_panel(k):
-    """The photographed room, with the dark outside its walls replaced by the farm.
+def plate_and_mapping():
+    plate = _unletterboxed(shot("shot_outdoor_plate"))
+    with open(os.path.join(REPO, "tools", "shot_outdoor_plate.json")) as fh:
+        m = _json.load(fh)
+    return plate, m
 
-    k = 3 magnifies the farm three-fold and is what registering it to the doorway costs;
-    k = 1 is the backdrop, the farm at the size it is drawn outdoors.
+
+def _unletterboxed(plate):
+    """Fill the camera's clamp bands with the nearest row of world.
+
+    main.gd clamps the view to the page she is on, so a photograph taken near the top
+    of the farm carries a flat grey band where the world runs out. Patched rather than
+    cropped, because the mapping beside the plate is in the plate's own coordinates and
+    a crop would silently shift every registered pixel.
     """
-    plate = shot("shot_interior_plate")
-    # The build watermark lives in the dark and is not part of the room.
-    ImageDraw.Draw(plate).rectangle([0, 520, SCREEN[0], SCREEN[1]], fill=(0, 0, 0, 255))
+    px = plate.load()
+    w, h = plate.size
 
-    farm = farm_at_screen_scale()
-    if k > 1:
-        farm = farm.resize((farm.width * k, farm.height * k), Image.NEAREST)
-    outside = hazed(tiled(farm, *SCREEN))
+    def flat(y):
+        first = px[0, y][:3]
+        if max(first) - min(first) > 6:      # a flat grey, not grass
+            return False
+        return all(px[x, y][:3] == first for x in range(0, w, 17))
 
-    # The black is the mask: anything the game drew as VOID becomes farm.
-    room_px, out_px = plate.load(), outside.load()
-    for y in range(SCREEN[1]):
-        for x in range(SCREEN[0]):
-            r, g, b, a = room_px[x, y]
-            if a and r + g + b > 60:
-                out_px[x, y] = (r, g, b, 255)
-    return outside
+    top = 0
+    while top < h and flat(top):
+        top += 1
+    bottom = h - 1
+    while bottom > top and flat(bottom):
+        bottom -= 1
+    for y in range(top):
+        plate.paste(plate.crop((0, top, w, top + 1)), (0, y))
+    for y in range(bottom + 1, h):
+        plate.paste(plate.crop((0, bottom, w, bottom + 1)), (0, y))
+    return plate
+
+
+def house_rect(m):
+    """The house's three tiles by two, in screen pixels of the outdoor plate."""
+    t, cam = m["tile_px"], m["camera_scale"]
+    cx, cy = m["screen_centre_world_px"]
+    vw, vh = m["viewport"]
+    ox, oy = m["house_origin_tile"]
+    tw, th = m["house_tiles"]
+
+    def to_screen(wx, wy):
+        return ((wx - cx) * cam + vw / 2.0, (wy - cy) * cam + vh / 2.0)
+
+    x0, y0 = to_screen(ox * t, oy * t)
+    x1, y1 = to_screen((ox + tw) * t, (oy + th) * t)
+    return (x0, y0, x1, y1)
+
+
+def ground_fill(plate):
+    """The commonest colour in the plate, for the sliver a transform leaves uncovered."""
+    small = plate.convert("RGB").resize((80, 60))
+    return max(small.getcolors(80 * 60), key=lambda c: c[0])[1]
+
+
+def room_over(rw, rh, floor_rect, canvas, occupant="house"):
+    """Draw a room whose FLOOR lands exactly on floor_rect, wall ring outside it.
+
+    The floor is what registers, not the drawn block: the *inside* of the house is what
+    maps onto the *outside* of the house, and the walls are the shell she is standing
+    within, drawn just beyond it.
+    """
+    cell = (floor_rect[2] - floor_rect[0]) / rw
+    block = room_block(rw, rh, occupant, cell_px=cell)
+    canvas.paste(block, (int(floor_rect[0] - cell), int(floor_rect[1] - cell)), block)
+    return canvas
+
+
+def outline(canvas, rect, colour, width=3):
+    ImageDraw.Draw(canvas).rectangle(
+        [rect[0], rect[1], rect[2] - 1, rect[3] - 1], outline=colour, width=width)
+    return canvas
+
+
+# The whole screen, not a crop of it. How much yard is left beside the room is most of
+# what Q-108 is deciding, and a panel narrower than the device understates it.
+WINDOW = (800, 600)
+MARK = (236, 145, 145)   # the rose accent, used only to outline the same rect in both
+
+
+def exterior_panel(mark=True):
+    plate, m = plate_and_mapping()
+    hx0, hy0, hx1, hy1 = house_rect(m)
+    win = Image.new("RGBA", WINDOW, ground_fill(plate) + (255,))
+    # Centred on the house where the photograph allows it, clamped to the plate where it
+    # does not — her house stands in the top-left corner of the farm, so a window truly
+    # centred on it would be half flat fill, which is a panel about its own framing.
+    ox = int(min(max(hx0 + (hx1 - hx0) / 2 - WINDOW[0] / 2, 0), plate.width - WINDOW[0]))
+    oy = int(min(max(hy0 + (hy1 - hy0) / 2 - WINDOW[1] / 2, 0), plate.height - WINDOW[1]))
+    win.paste(plate, (-ox, -oy))
+    if mark:
+        outline(win, (hx0 - ox, hy0 - oy, hx1 - ox, hy1 - oy), MARK)
+    return win
+
+
+def interior_panel(rw, rh, registered=True, mark=True, occupant="house"):
+    """Standing inside, with the farm placed truthfully (or not, for the backdrop)."""
+    plate, m = plate_and_mapping()
+    hx0, hy0, hx1, hy1 = house_rect(m)
+    cell = (hx1 - hx0) / m["house_tiles"][0]          # 48 screen pixels a tile
+
+    # The floor, at the game's own tile size. Centred in the window where the
+    # photograph reaches that far, and pulled back towards the house's own corner where
+    # it does not — her house stands in the top-left of the farm, so a centred room
+    # would have flat nothing along two of its sides, and a panel with invented ground
+    # in it is a panel arguing from something that was never photographed.
+    fw, fh = rw * cell, rh * cell
+    sx = fw / (hx1 - hx0)
+    sy = fh / (hy1 - hy0)
+    fx0 = min((WINDOW[0] - fw) / 2.0, hx0 * sx)
+    fy0 = min((WINDOW[1] - fh) / 2.0, hy0 * sy)
+    floor_rect = (fx0, fy0, fx0 + fw, fy0 + fh)
+
+    win = Image.new("RGBA", WINDOW, ground_fill(plate) + (255,))
+    if registered:
+        # The scale is what the room costs the world: the floor covers rw x rh tiles
+        # where the house covered 3 x 2, so the yard grows by those two ratios. They
+        # differ here (2.0 across, 1.5 down), which is what non-square dilation looks
+        # like, and the picture is the place to find out whether that reads.
+        big = plate.resize((int(plate.width * sx), int(plate.height * sy)), Image.NEAREST)
+        win.paste(big, (int(fx0 - hx0 * sx), int(fy0 - hy0 * sy)))
+    else:
+        # The backdrop: the same farm at the size it is drawn outdoors, lined up with
+        # nothing. Centred on the house so the panel is not accidentally about framing.
+        win.paste(plate, (int(fx0 + fw / 2 - (hx0 + hx1) / 2),
+                          int(fy0 + fh / 2 - (hy0 + hy1) / 2)))
+    win = hazed(win)
+    room_over(rw, rh, floor_rect, win, occupant)
+    if mark:
+        outline(win, floor_rect, MARK)
+    return win
 
 
 # --- Q-109: drawn, because no room but this one exists ------------------------------
 
-def room_block(rw, rh, occupant="house"):
+def room_block(rw, rh, occupant="house", cell_px=None):
     """A room rw x rh inside a one-tile wall ring, furnished with what lives in it.
 
     The furniture is the point of these panels rather than decoration on them: a bed is
@@ -171,7 +285,11 @@ def room_block(rw, rh, occupant="house"):
 
     her = art("characters").crop((0, 0, 48, 48))
     block.paste(her, (TILE + (rw * TILE) // 2 - 24, TILE + (rh * TILE) // 2 - 24), her)
-    return block.resize((block.width * CAM, block.height * CAM), Image.NEAREST)
+    if cell_px is None:
+        return block.resize((block.width * CAM, block.height * CAM), Image.NEAREST)
+    k = cell_px / TILE
+    return block.resize((int(round(block.width * k)), int(round(block.height * k))),
+                        Image.NEAREST)
 
 
 def q109_panel(rw, rh, cell, occupant):
@@ -184,8 +302,9 @@ def q109_panel(rw, rh, cell, occupant):
 
 # --- sheets -------------------------------------------------------------------------
 
-def sheet(panels, captions, path, note=""):
-    w = sum(p.width for p in panels) + GAP * (len(panels) - 1)
+def sheet(panels, captions, path, note="", gutter=None):
+    gap = GAP if gutter is None else gutter
+    w = sum(p.width for p in panels) + gap * (len(panels) - 1)
     h = panels[0].height + LABEL_H + (LABEL_H if note else 0)
     out = Image.new("RGBA", (w, h), BACKING + (255,))
     d = ImageDraw.Draw(out)
@@ -193,7 +312,7 @@ def sheet(panels, captions, path, note=""):
     for p, text in zip(panels, captions):
         out.paste(p, (x, LABEL_H))
         d.text((x + 6, 8), text, fill=INK)
-        x += p.width + GAP
+        x += p.width + gap
     if note:
         d.text((6, panels[0].height + LABEL_H + 8), note, fill=HAZE)
     out.save(path)
@@ -204,13 +323,29 @@ def main():
     os.makedirs(OUT, exist_ok=True)
     written = []
 
+    # **The registration check.** Outside then inside, edge to edge, with the same rect
+    # outlined in both: the three tiles by two the house stands on, and the six by three
+    # of floor those tiles become. Whatever sits beside the house outdoors sits beside
+    # the room indoors, further off by exactly the dilation and not otherwise moved —
+    # which is the thing the first version of this sheet could not do and the reason it
+    # was wrong.
     written.append(sheet(
-        [q108_panel(3), q108_panel(1)],
-        ["(a) REGISTERED - the farm magnified 3x, true to the doorway",
-         "(b) BACKDROP - the farm at the size it is drawn outdoors"],
+        [exterior_panel(), interior_panel(6, 3)],
+        ["OUTSIDE - the house, three tiles by two",
+         "INSIDE - six by three of floor, the farm placed to match"],
+        os.path.join(OUT, "q108_registered.png"),
+        note="Both panels are the same photograph of the running game. The rose rect is the "
+             "same piece of the world in each: what the house stands on, and what it opens into. "
+             "The yard grows 2.0x across and 1.5x down, because the room does.",
+        gutter=0))
+
+    written.append(sheet(
+        [interior_panel(6, 3), interior_panel(6, 3, registered=False)],
+        ["(a) REGISTERED - the farm placed where it really is, dilated to match",
+         "(b) BACKDROP - the farm at the size it is drawn outdoors, lining up with nothing"],
         os.path.join(OUT, "q108_outside_treatment.png"),
-        note="Her real room, photographed. Everything outside its walls is black in the game today; "
-             "that black is what each panel fills."))
+        note="A 3x2 house opening into a 6x3 room. In (a) the gap between the house and what "
+             "stands beside it is kept, magnified; in (b) it is not, and the yard is readable."))
 
     # Both buildings, at each multiplier, every panel on the same canvas at the same
     # zoom — so what differs between them is how much room there is, and nothing else.
