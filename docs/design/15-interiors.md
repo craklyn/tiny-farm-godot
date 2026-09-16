@@ -1,9 +1,9 @@
 # 15 — Interiors: buildings you walk into without leaving the farm
 
-*Status: directive received 2026-09-14, corrected 2026-09-15, **nothing built** — no game
-code exists for any of this. This chapter
-is the analysis the directive asked for, not a specification. What it settles is recorded
-as P-18; what it cannot settle is filed as Q-items and named here.*
+*Status: directive received 2026-09-14, corrected 2026-09-15, **first version built the same
+day** — the chicken coop has an inside, and you walk into it. What is in the game and what is
+not is §9. What this chapter settles is recorded as P-18; what it cannot settle is filed as
+Q-items and named here.*
 
 ---
 
@@ -336,6 +336,39 @@ the roofline. Recommended over matching the shapes.
 
 **Settled by analysis:** one grid and one metric (§4); D-16 closed; transparency one level
 deep, on grounds of legibility (§6); portals survive only for exits that are not nested (§7).
+
+**Built 2026-09-15, the coop's inside:**
+
+- The world gained a third page, the **rooms page**, dark until something has an inside
+  (`WorldLayout.ROOMS_PAGE`, fifteen 6×6 slots).
+- A coop put down opens a room in a slot and records its **anchor** and **pitch**
+  (`SimWorld.open_room`); picking it back up closes the room and returns the slot to
+  darkness. Both are ordinary consequences of `place` and `collect`.
+- The room is a one-cell ring of `WALL` around a **4×4 floor**, with one cell of the south
+  wall cut out as `GATE_OPEN` — the home's own vocabulary, so `is_walkable` refuses the walls
+  and `Movement` walks the floor with nothing new to learn.
+- A tap on any square of the hut is `use_door`; a tap on the doorway brings her out.
+- `world_pos_of_cell` turns any interior cell into a true position on the farm, which is the
+  whole of what the anchor and the pitch are for.
+- Saves carry the room registry (v3 → v4; an old farm is padded with a dark page and keeps
+  playing). The observation vector's vertical scale was **frozen** at the height it had, so
+  growing the world cannot silently re-scale every weight a robot has learned.
+- Going through the door zooms: the camera arrives at the other side's scale and tweens to
+  this one, so walking in is one continuous zoom in and walking out is one zoom out
+  (`main.gd`'s `_zoom_through_door`).
+
+**Not built, and the next things:**
+
+- **Seeing the farm through the walls.** The room renders on its own page against darkness,
+  the way the home does. The backdrop — the yard drawn at `pitch` times its size, anchored so
+  the room sits inside its building — is a renderer pass that does not exist yet, and it is
+  the half of P-18 that makes the room feel like it is *inside* something.
+- **The hen does not go in.** She still shelters on the coop's front row, outdoors, which is
+  where P-17 put her before the hut had an inside. Following her in means a brain that can
+  target a room cell and a route that crosses a door.
+- **No tap picks the coop up.** The verb is implemented and tested, because the ruling exists
+  and a room has to have a way to be closed; but a tap on the hut is the door now, and giving
+  a structure a menu of its own is not in this version.
 
 **Open, and filed:**
 

@@ -142,6 +142,69 @@ const WORKBENCH := "workbench"
 const CHICKEN_COOP := "chicken_coop"
 const CHICKEN_COOP_PART := "chicken_coop_part"
 
+# --- the rooms page (P-18, 2026-09-15) ----------------------------------------
+#
+# **Where a building's inside is kept.** P-18's interiors are nested grids: a room
+# is a rectangle of cells at a finer pitch than the farm, standing inside its
+# building's footprint. The *rendering* puts it there. The **storage** is a third
+# page of the same grid — page 2 — laid out in fixed slots, one per room.
+#
+# That split is the whole reason this is cheap. A room stored as ordinary tiles is
+# ordinary to everything the game already owns: `is_walkable` refuses its walls,
+# `Movement` walks its floor, `SaveGame` writes it with the rest of the grid, a
+# replay reproduces it, and not one of the 538 unit assertions that name a farm
+# coordinate has to move. What makes it a *room* rather than a second map is two
+# numbers recorded beside it — the **anchor** (its building's footprint) and the
+# **pitch** (how many of its cells fit in a farm tile) — which are exactly enough
+# to give every cell a true world position, and exactly what a later build would
+# need to flatten rooms into one fine grid if a requirement ever asks for that.
+#
+# Slots rather than a packer: rooms are small, few, and identical in size for now,
+# and a grid of fixed slots is a thing a replay reproduces by arithmetic instead
+# of by remembering an allocator's history.
+const ROOMS_PAGE := 2
+const ROOM_SLOT := Vector2i(6, 6)
+const ROOM_SLOT_COLUMNS := 5
+
+
+# Where slot `i` begins, in world tiles. Pure arithmetic on the slot index, so two
+# builds, a save and a replay put the same room in the same place.
+static func room_slot_origin(i: int) -> Vector2i:
+	return Vector2i(
+		(i % ROOM_SLOT_COLUMNS) * ROOM_SLOT.x,
+		ROOMS_PAGE * PAGE_ROWS + (i / ROOM_SLOT_COLUMNS) * ROOM_SLOT.y)
+
+
+# How many rooms the page holds. Three rows of five at 6x6, which is thirty
+# squares of a thirty-two wide page and eighteen rows of twenty.
+static func room_slot_count() -> int:
+	return ROOM_SLOT_COLUMNS * (PAGE_ROWS / ROOM_SLOT.y)
+
+
+# **The shape of a room**, as tile states, for a room `size` cells across: a
+# one-cell ring of WALL, FLOOR inside it, and one cell of the south wall cut out
+# as GATE_OPEN — which is the home's own vocabulary, unchanged, at a finer pitch.
+#
+# The ring is not decoration. It is the building seen from inside: its top row is
+# the roofline, its bottom row is the wall the door is cut in, and because it is
+# made of ordinary boundary states every mover in the game already refuses to walk
+# through it without being told anything (P-18 section 4a).
+static func room_cells(size: Vector2i) -> Array:
+	var rows: Array = []
+	for y in size.y:
+		var row: Array = []
+		for x in size.x:
+			var edge: bool = x == 0 or y == 0 or x == size.x - 1 or y == size.y - 1
+			row.append(WALL if edge else FLOOR)
+		rows.append(row)
+	rows[size.y - 1][size.x / 2] = GATE_OPEN      # the doorway, centre of the south wall
+	return rows
+
+
+# Which cell of a room is its doorway — the one `room_cells` cut out above.
+static func room_door_cell(size: Vector2i) -> Vector2i:
+	return Vector2i(size.x / 2, size.y - 1)
+
 # Who opens a gate, as recorded on the parcel. "start" means no gate at all.
 const OPENED_BY_START := "start"
 const OPENED_BY_COLD_OPEN := "cold_open"
@@ -403,7 +466,12 @@ static func compose() -> Dictionary:
 	# over every tile of this rect that no parcel claims. Wider than the map on
 	# purpose — the generator clamps, and a fill that had to know the map's width
 	# would be a third place that number lives.
-	world["void_fill"] = Rect2i(0, PAGE_ROWS, 64, PAGE_ROWS)
+	# ...and the rooms page below it (P-18, 2026-09-15), dark for the same reason
+	# and until the same thing happens: a building with an inside writes its room
+	# into a slot here when it is put down, and clears it when it is picked up. A
+	# farm with no such building has two pages of darkness under it and plays
+	# exactly as it did.
+	world["void_fill"] = Rect2i(0, PAGE_ROWS, 64, PAGE_ROWS * 2)
 	world["doors"] = doors_of_world()
 	return world
 

@@ -25,7 +25,7 @@
 # because the policy's weights are indexed by it, and a robot that saved its
 # weights under one order cannot be handed another):
 #
-#   [x / (MAP_WIDTH - 1), y / (MAP_HEIGHT - 1)]   if `self_pos`
+#   [x / (MAP_WIDTH - 1), y / (OBS_HEIGHT - 1)]   if `self_pos`
 #   [energy / ACTOR_MAX_ENERGY]                   if `energy`
 #   [1 if its hands are full, else 0]             if `carrying`
 #   [seeds in her box / SEEDS_FULL, capped at 1]  if `seeds`
@@ -59,6 +59,20 @@
 # one actor, whatever the size of the farm.
 class_name Observation
 extends RefCounted
+
+# **The vertical scale a position is reported on, frozen deliberately** (P-18,
+# 2026-09-15). This used to be `SimWorld.MAP_HEIGHT`, which was fine while the map
+# was the world. It is not fine now that the world grows a page whenever the game
+# learns a new kind of place: every weight a robot has learned is a weight on a
+# *number*, and re-scaling the number under it would quietly re-interpret weeks of
+# practice — a machine that had learned "go south" would wake up meaning something
+# else.
+#
+# So the scale is a constant of the observation rather than of the map. Two pages'
+# worth, which is what it was on the day robots started learning. A position below
+# it reports above 1.0, which is honest: a robot indoors is somewhere it has never
+# been, and the number says so.
+const OBS_HEIGHT := WorldLayout.PAGE_ROWS * 2
 
 
 # The v1 spec (Q-96, widened by Q-100). Returned fresh each call rather than
@@ -276,7 +290,7 @@ static func build(world: SimWorld, actor_id: String, spec: Dictionary, gs = null
 		# to be standing on: the number has to mean the same thing wherever the
 		# machine is, and a per-page normalisation would make two different tiles
 		# read alike.
-		out[1] = float(at.y) / float(SimWorld.MAP_HEIGHT - 1)
+		out[1] = float(at.y) / float(OBS_HEIGHT - 1)
 		i = 2
 	if with_energy:
 		# The world's own meter (`ACTOR_MAX_ENERGY`, 600 units — P-14's "a day's

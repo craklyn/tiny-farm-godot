@@ -8,10 +8,15 @@ class_name SimWorld
 extends RefCounted
 
 const MAP_WIDTH := 32
-# Two pages of 20 rows (2026-09-06). The farm is page 0 and every coordinate it
-# has ever had is unmoved; the home interior is page 1. See WorldLayout's page
-# block: a door is the only way between them, and it is a verb.
-const MAP_HEIGHT := 40
+# Three pages of 20 rows. The farm is page 0 and every coordinate it has ever had
+# is unmoved; the home interior is page 1 (2026-09-06); page 2 is the **rooms
+# page** (P-18, 2026-09-15), where a building's inside is stored in one of fifteen
+# fixed slots. See WorldLayout's page block and its rooms block: a door is the only
+# way between pages, and it is a verb.
+#
+# The rooms page is dark on a farm with no interior on it, which is every farm
+# until a coop is put down, and costs nothing but its rows.
+const MAP_HEIGHT := 60
 
 # How tall a page is, read from the layout data that defines it so the two
 # cannot drift. A page is a map: it has its own border ring, its own walls, and
@@ -876,6 +881,152 @@ const OPEN_STRUCTURE_OBJECTS := {
 const STALL_ITEM := "stall"
 const COOP_ITEM := "coop"
 
+# --- what a building's inside is (P-18, 2026-09-15) ----------------------------
+#
+# **A room is a rectangle of ordinary tiles, plus two numbers.** The tiles live in
+# a slot on the rooms page and are as ordinary as any other tile — walls that
+# `is_walkable` refuses, floor that `Movement` walks, saved and replayed with the
+# rest of the grid. The two numbers are what make it an *interior* rather than a
+# second map:
+#
+#   anchor  the tile its building stands on, so every cell has a true world
+#           position: `anchor + cell / pitch`
+#   pitch   how many of its cells fit in one farm tile
+#
+# Those are read by the renderer (which draws the room inside its building) and by
+# anything that needs to know where someone indoors really is. Nothing else in the
+# sim has to learn a new idea: to `Movement`, to `SaveGame`, to a replay, a room is
+# tiles.
+#
+# Keyed by room id ("coop_room_1"), so a farm may hold several. Saved; restored as
+# written. Each entry: { item, anchor, pitch, size, slot, origin, door, exit }.
+var rooms: Dictionary = {}
+
+
+# The rooms a farm has, by id, sorted — the registry's iteration-order rule, for
+# the same reason `learners()` sorts.
+func room_ids() -> Array:
+	var out: Array = rooms.keys().map(func(k): return String(k))
+	out.sort()
+	return out
+
+
+# The room whose building stands on this tile, or "". Asked by the renderer, which
+# wants to know whether the thing she just walked into has an inside.
+func room_of_anchor(anchor: Vector2i) -> String:
+	for id in room_ids():
+		if Vector2i(rooms[id].get("anchor", Vector2i(-1, -1))) == anchor:
+			return id
+	return ""
+
+
+# The room this tile is a cell of, or "". Read off the slot rectangles rather than
+# off the grid, because a room's floor is ordinary FLOOR and the home's floor is
+# too — what tells them apart is which rectangle the tile falls in.
+func room_of_cell(t: Vector2i) -> String:
+	for id in room_ids():
+		var r: Dictionary = rooms[id]
+		var o: Vector2i = r.get("origin", Vector2i(-1, -1))
+		var sz: Vector2i = r.get("size", Vector2i.ZERO)
+		if t.x >= o.x and t.y >= o.y and t.x < o.x + sz.x and t.y < o.y + sz.y:
+			return id
+	return ""
+
+
+# **Where a cell really is**, in farm tiles, as a float. This is the whole of what
+# the anchor and the pitch buy: an actor standing indoors has a true position on
+# the farm, so a distance to it is an ordinary distance and nothing has to be
+# undefined (P-18 section 4B).
+func world_pos_of_cell(t: Vector2i) -> Vector2:
+	var id := room_of_cell(t)
+	if id == "":
+		return Vector2(t)
+	var r: Dictionary = rooms[id]
+	var o: Vector2i = r.get("origin", Vector2i.ZERO)
+	var a: Vector2i = r.get("anchor", Vector2i.ZERO)
+	var pitch: float = maxf(1.0, float(r.get("pitch", 1)))
+	return Vector2(a) + Vector2(t - o) / pitch
+
+
+# The door pair for a tile, or {}, for rooms that were put down rather than laid
+# out (`WorldLayout.door_at` answers for the ones that were). Both ends: a tap on
+# the building goes in, a tap on the room's doorway comes out.
+func room_door_at(t: Vector2i) -> Dictionary:
+	for id in room_ids():
+		var r: Dictionary = rooms[id]
+		# **Any square of the building is its door**, not just the one it was put
+		# down on. The hut is two tiles by two and the arch is drawn across the
+		# middle of its front: a player aiming at the doorway is aiming at the
+		# picture, not at a cell index, and refusing three quarters of the hut
+		# would be the game being right about something nobody can see.
+		var anchor: Vector2i = r.get("anchor", Vector2i(-1, -1))
+		if anchor.x >= 0 and t in MachineDefs.footprint_cells(String(r.get("item", "")), anchor):
+			return { "at": t, "to": r.get("door", Vector2i(-1, -1)), "face": "up" }
+		if Vector2i(r.get("door", Vector2i(-1, -1))) == t:
+			return { "at": t, "to": r.get("exit", Vector2i(-1, -1)), "face": "down" }
+	return {}
+
+
+# The lowest free slot on the rooms page, or -1. Lowest rather than next, for
+# `next_machine_id`'s reason: put two coops down and pick the first up, and the
+# next one built takes the empty slot — in a live session and in a replay of it
+# alike, with no allocator history to save.
+func _free_room_slot() -> int:
+	var taken := {}
+	for id in rooms:
+		taken[int(rooms[id].get("slot", -1))] = true
+	for i in WorldLayout.room_slot_count():
+		if not taken.has(i):
+			return i
+	return -1
+
+
+# Put a room down: claim a slot, write its walls and floor into the grid, and
+# record the two numbers that say where it really is. Returns its id, or "".
+func open_room(item: String, anchor: Vector2i) -> String:
+	var spec: Dictionary = MachineDefs.room_of(item)
+	if spec.is_empty():
+		return ""
+	var slot := _free_room_slot()
+	if slot < 0:
+		return ""    # every slot full: the building still stands, it just has no inside
+	var size: Vector2i = spec.get("cells", WorldLayout.ROOM_SLOT)
+	var origin := WorldLayout.room_slot_origin(slot)
+	var cells := WorldLayout.room_cells(size)
+	for y in size.y:
+		for x in size.x:
+			set_tile_state(origin.x + x, origin.y + y, String(cells[y][x]))
+	var id := "%s_room_%d" % [item, slot + 1]
+	rooms[id] = {
+		"item": item,
+		"anchor": anchor,
+		"pitch": int(spec.get("pitch", 2)),
+		"size": size,
+		"slot": slot,
+		"origin": origin,
+		"door": origin + WorldLayout.room_door_cell(size),
+		# The square she steps out onto: the tile below the building's own, which
+		# is where she was standing when she reached for the door.
+		"exit": anchor + Vector2i(0, 1),
+	}
+	return id
+
+
+# ...and take it away again with its building. The slot goes back to VOID, which
+# is what the rest of the page is, so a picked-up coop leaves no room behind for a
+# save to carry or a renderer to find.
+func close_room(anchor: Vector2i) -> void:
+	var id := room_of_anchor(anchor)
+	if id == "":
+		return
+	var r: Dictionary = rooms[id]
+	var o: Vector2i = r.get("origin", Vector2i.ZERO)
+	var sz: Vector2i = r.get("size", Vector2i.ZERO)
+	for y in sz.y:
+		for x in sz.x:
+			set_tile_state(o.x + x, o.y + y, WorldLayout.VOID)
+	rooms.erase(id)
+
 # **What a machine forgets when it goes in the crate** (Q-98, ruled 2026-09-10:
 # "pick up is just repositioning, it shouldn't factory reset the robot").
 #
@@ -1678,6 +1829,19 @@ func coop_tiles() -> Array[Vector2i]:
 	return out
 
 
+# Which square of a coop is the one it was put down on — the front-left, the cell
+# that carries the drawn object and that everything about the hut is measured from.
+# Scanned outward rather than remembered, the grid-truth rule every other coop
+# question follows.
+func _coop_anchor_at(t: Vector2i) -> Vector2i:
+	for dy in range(0, MachineDefs.footprint_of(COOP_ITEM).y):
+		for dx in range(0, MachineDefs.footprint_of(COOP_ITEM).x):
+			var c := t + Vector2i(-dx, dy)
+			if get_object(c.x, c.y) == WorldLayout.CHICKEN_COOP:
+				return c
+	return Vector2i(-1, -1)
+
+
 # **Where the hen goes when it rains** (2026-09-11): the front row of every coop,
 # and only the front row.
 #
@@ -2241,6 +2405,24 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 				despawn_actor(machine_id)
 				gs.machines[machine_key] = int(gs.machines.get(machine_key, 0)) + 1
 				return { "ok": true, "collected": machine_key, "machine": machine_id }
+			# **And a hut she put down comes back up with its inside** (P-17's
+			# 2026-09-14 ruling: repositioning is the robot's tap, and nothing
+			# living is ever pocketed). All four squares clear, the room's slot
+			# goes back to darkness, and the hen — who was only ever standing on
+			# the front row — is left standing on the grass.
+			#
+			# **No tap produces this yet.** The tap on a coop is the door now, and
+			# giving a structure a menu of its own is not in this version; the verb
+			# is here because the ruling is, and because the room has to have a way
+			# to be closed that a test can reach. Filed.
+			if is_coop_tile(target):
+				var coop_anchor := _coop_anchor_at(target)
+				if coop_anchor.x >= 0:
+					close_room(coop_anchor)
+					for cell in MachineDefs.footprint_cells(COOP_ITEM, coop_anchor):
+						set_object(cell.x, cell.y, "")
+					gs.machines[COOP_ITEM] = int(gs.machines.get(COOP_ITEM, 0)) + 1
+					return { "ok": true, "collected": COOP_ITEM, "anchor": coop_anchor }
 			# **And a fence she built comes back up** (Q-92). Only hers: the
 			# world's own fences and hedges are the boundary that says "not yet",
 			# and the cold open is built on one — a player who could pull those up
@@ -2281,11 +2463,19 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 		"use_door":
 			if not _is_player(String(action.get("actor", ""))):
 				return _fail("not_the_player")
-			if not WorldLayout.is_door_object(get_object(target.x, target.y)):
-				return _fail("no_door_here")
-			var pair := WorldLayout.door_at(target, layout)
+			# **Two kinds of door now** (P-18, 2026-09-15). The farmhouse's is laid
+			# out with the world: its tile carries a door object, and the pair comes
+			# from `WorldLayout`. A coop's is put down with the coop: its tile
+			# carries the hut, and the pair comes from the room record. Kept as two
+			# tests rather than one so the old refusals survive unchanged — a tile
+			# with a door on it but no pair still "leads nowhere", and a tile with
+			# neither still has "no door here".
+			var door_object := WorldLayout.is_door_object(get_object(target.x, target.y))
+			var pair: Dictionary = WorldLayout.door_at(target, layout) if door_object else {}
 			if pair.is_empty():
-				return _fail("door_leads_nowhere")
+				pair = room_door_at(target)
+			if pair.is_empty():
+				return _fail("door_leads_nowhere" if door_object else "no_door_here")
 			# Adjacency is the special-object idiom (`Pathfinding.find_path_toward`
 			# walks her to a neighbouring tile and stops): she stands beside the
 			# door and reaches for it. Manhattan ≤ 1 rather than = 1, so standing
@@ -2423,7 +2613,14 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 				# moment it has proved what it proves, and the Mark III joins
 				# the shelf.
 				earn(MachineDefs.earns_of(item))
+				# **And if it has an inside, put the inside down too** (P-18). The
+				# room is written into a slot on the rooms page and anchored to the
+				# square she just tapped; from here it is ordinary tiles that
+				# ordinary things walk on.
+				var room_id := open_room(item, target)
 				var laid := { "ok": true, "structure": item, "cells": cells }
+				if room_id != "":
+					laid["room"] = room_id
 				# The stall's second bay, still under the name whatever draws it
 				# has always called it.
 				if cells.size() > 1:

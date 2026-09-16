@@ -564,6 +564,51 @@ func _refresh_camera_limits(snap: bool = false) -> void:
 # Public because that is the whole contract — nothing else may call it.
 func note_page_change() -> void:
 	_refresh_camera_limits(true)
+	_zoom_through_door()
+
+
+# **Going inside is a zoom** (P-18, ruled 2026-09-15). A building's interior is a
+# finer grid nested in its own footprint, so the difference between standing in the
+# yard and standing in the coop is how big a square is drawn — a whole-number
+# factor, the room's `pitch`.
+#
+# The move is the same one in both directions and needs no second transform: arrive
+# at the *other* side's scale and tween to this one. Walk in and the room begins at
+# the size the hut was out in the yard and grows to fill the screen; walk out and
+# the farm begins at the size it was through the doorway and settles back. What the
+# player sees is one continuous zoom either way, which is the whole reason for not
+# cutting.
+#
+# Nothing about the sim is involved. She is already standing where she is standing;
+# this is the camera catching up.
+const DOOR_ZOOM_SECONDS := 0.28   # [Playtest]
+var _door_zoom: Tween = null
+var _room_pitch: float = 1.0
+
+
+func _zoom_through_door() -> void:
+	if camera == null:
+		return
+	var at: Vector2i = player.get_tile_pos()
+	var room: String = farm.sim.room_of_cell(at)
+	var going_in: bool = room != ""
+	if going_in:
+		_room_pitch = maxf(1.0, float(farm.sim.rooms[room].get("pitch", 1)))
+	elif _room_pitch <= 1.0:
+		return      # she has never been inside one; an ordinary door, an ordinary cut
+	# Inside, a cell is drawn at tile size, so the room's own scale *is* CAMERA_SCALE
+	# and the farm's is CAMERA_SCALE times the pitch. Outside, the other way round.
+	var from: float = float(CAMERA_SCALE) / _room_pitch if going_in \
+		else float(CAMERA_SCALE) * _room_pitch
+	if _door_zoom != null and _door_zoom.is_valid():
+		_door_zoom.kill()
+	camera.zoom = Vector2(from, from)
+	_door_zoom = create_tween()
+	_door_zoom.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	_door_zoom.tween_property(camera, "zoom",
+		Vector2(CAMERA_SCALE, CAMERA_SCALE), DOOR_ZOOM_SECONDS)
+	if not going_in:
+		_room_pitch = 1.0
 
 
 # Where "to bed" points from where she is standing: the bed when she is in the

@@ -48,6 +48,12 @@ const SPECIAL_OBJECTS := {
 	# always had (an egg laid on tilled soil is collected, not planted into).
 	# Picking a thing up off a square is what a hand does with that square first.
 	"acorn":        "collect",
+	# **A tap on a coop goes inside it** (P-18, ruled 2026-09-15). The hut's own
+	# square is its doorway: she walks up to it and reaches for it, exactly as she
+	# does for the farmhouse door and the well. Entering is not a verb she did not
+	# already have — `use_door` is the same one the front door uses.
+	WorldLayout.CHICKEN_COOP: "use_door",
+	WorldLayout.CHICKEN_COOP_PART: "use_door",
 	"tool_axe":     "take_tool",
 	"tool_pickaxe": "take_tool",
 	# The door, both ends of it (2026-09-06). A tap on the farmhouse's door or on
