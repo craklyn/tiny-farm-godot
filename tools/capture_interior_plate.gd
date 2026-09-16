@@ -108,6 +108,14 @@ func _ready() -> void:
 	for i in 2:
 		await get_tree().process_frame
 
+	# Back to the doorstep before reaching for the door: `use_door` wants her within
+	# a tile of it, and the plate above deliberately stood her four away so her sprite
+	# would not overlap the house.
+	main.farm.sim.set_actor_pos("player", door + Vector2i(0, 1))
+	main.player.init_position(door.x, door.y + 1)
+	for i in 6:
+		await get_tree().process_frame
+
 	# Through the player node rather than straight at the gateway: `use_door` moves
 	# the sim, and it is `player.gd` that then puts the sprite down on the far side
 	# and tells `main.gd` the page changed. Calling the verb directly leaves the

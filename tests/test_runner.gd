@@ -15326,7 +15326,8 @@ func test_coop_interior() -> void:
 	# are a building's depth apart, and the whole world slid south by one tile.
 	#
 	# Asserted as arithmetic rather than as a picture, because that is what it is.
-	var back_offset: Vector2 = load("res://world/farm.gd").room_backdrop_offset(world.rooms[room_id])
+	var back_offset: Vector2 = load("res://world/farm.gd").room_backdrop_offset(
+		world.rooms[room_id], world.room_building_rect(world.rooms[room_id]))
 	var back_pitch := float(room["pitch"])
 	var to_screen := func(t: Vector2i) -> Vector2:
 		return back_offset + Vector2(t) * 16.0 * back_pitch
@@ -15396,6 +15397,49 @@ func test_coop_interior() -> void:
 			and not reloaded.is_walkable(origin.x, origin.y),
 		"...and its walls are still walls")
 
+	# --- nothing is put down inside a room -------------------------------------
+	#
+	# **Found in play, 2026-09-16**: a coop placed inside a coop's floor, and picking
+	# the outer one up wiped the inner hut's squares and left its room orphaned in a
+	# slot — the coop was simply gone. Refused whole rather than answered, which is
+	# what P-13's deliberately weak first version is for: what may go in a room is a
+	# design question, and this is the line until it is answered.
+	var inner := Vector2i(room["origin"]) + Vector2i(1, 1)
+	_assert(world.is_walkable(inner.x, inner.y),
+		"a room's floor is ordinary walkable ground (%s)" % inner)
+	_assert(not world.placeable_at(inner, "coop") and not world.placeable_at(inner, "sprinkler"),
+		"...and nothing may be set down on it, hut or machine")
+	_assert(not world.placeable_at(Vector2i(WorldLayout.home_room()["origin"]) + Vector2i(2, 2),
+			"sprinkler"),
+		"which goes for the farmhouse too, because the home is a room")
+
+	# ...and a farm that already got into that state comes out of it. Staged by hand,
+	# because the placement above is refused now and that is the point.
+	var nested := Vector2i(room["origin"]) + Vector2i(1, 2)
+	var nested_room := world.open_room("coop", nested)
+	for cell in MachineDefs.footprint_cells("coop", nested):
+		world.set_object(cell.x, cell.y, WorldLayout.CHICKEN_COOP if cell == nested
+			else WorldLayout.CHICKEN_COOP_PART)
+	_assert(nested_room != "" and world.rooms.has(nested_room),
+		"a coop nested inside another can be staged (%s)" % nested_room)
+	GameState.machines["coop"] = 0
+	var nest_up: Dictionary = world.apply_action({ "verb": "collect", "target": spot,
+		"actor": "player" }, GameState)
+	_assert(nest_up.get("ok", false) and int(nest_up.get("count", 0)) == 2,
+		"picking the outer hut up takes the nest with it (%s)" % nest_up)
+	_assert(GameState.machines.get("coop", 0) == 2,
+		"and the crate is paid for both, rather than one of them vanishing (%d)"
+			% GameState.machines.get("coop", 0))
+	_assert(not world.rooms.has(nested_room) and not world.rooms.has(room_id),
+		"with neither room left holding a slot")
+	# Put it back for the checks below.
+	GameState.machines["coop"] = 1
+	world.apply_action({ "verb": "place", "target": spot, "item": "coop",
+		"actor": "player" }, GameState)
+	room_id = world.room_of_anchor(spot)
+	room = world.rooms[room_id]
+	origin = room["origin"]
+
 	# --- and goes away with the hut -------------------------------------------
 	#
 	# Nothing living is ever pocketed (P-17, 2026-09-14): the hen was standing on
@@ -15405,8 +15449,10 @@ func test_coop_interior() -> void:
 		"actor": "player" }, GameState)
 	_assert(taken.get("ok", false) and String(taken.get("collected", "")) == "coop",
 		"the hut is picked back up (%s)" % taken)
-	_assert(world.rooms.is_empty() and world.coop_tiles().is_empty(),
+	_assert(not world.rooms.has(room_id) and world.coop_tiles().is_empty(),
 		"its inside goes with it, and its four squares are grass again")
+	_assert(world.rooms.has(SimWorld.HOME_ROOM_ID),
+		"...and the home is still a room, because nobody put the house down either")
 	_assert(not world.is_walkable(origin.x, origin.y)
 			and String(world.get_tile(origin.x, origin.y).get("state", "")) == WorldLayout.VOID,
 		"the slot it was using is dark again, ready for the next hut")

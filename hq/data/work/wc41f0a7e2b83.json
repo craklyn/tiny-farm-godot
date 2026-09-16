@@ -1,0 +1,15 @@
+{
+  "id": "wc41f0a7e2b83",
+  "title": "Decide what may be put down inside a room",
+  "level": "story",
+  "owner": "milo",
+  "tier": 2,
+  "tier_reason": "P-18 gave buildings interiors and the answer today is 'nothing at all', which is a holding line rather than a design. The coop's inside is look-and-collect and empty, which is the weakest version of the feature.",
+  "ask": "P-18 (docs/design/15-interiors.md) gave buildings interiors you walk into. Right now a room's floor is ordinary walkable ground and SimWorld.placeable_at refuses everything on it -- hut, machine, structure -- because a thing placed inside a room orphans when its host is picked up, and nobody had written the rules. Found in play 2026-09-16: a coop placed inside a coop, the outer one picked up, the inner one gone.\n\nThat refusal is a holding line, not a design. The question it is standing in for: what belongs inside a room, and what does a room do with it?\n\nThings to settle:\n  - Furnishing. Nest boxes, perches, bedding for a coop; whatever a house holds. Is furniture placed like a machine, bought like one, or part of the building?\n  - Machines indoors. A sprinkler in a bedroom is nonsense, but a workbench in a barn is not obviously so. Is 'indoors' a property a catalogue row declares?\n  - What happens to the contents when the building is picked up. P-17 ruled that nothing living is ever pocketed -- the hen falls out onto the grass. Objects need the same kind of answer, and the awkward case is that the grass a thing would fall onto is the square the building used to be on.\n  - Whether a room can hold a room. Today: no, and that is probably the right answer forever.\n\nThis is a design note first, and a Q-item for the CEO if it needs his taste. Not code.",
+  "first_action": "Write the design note in docs/design/15-interiors.md as a section on what a room holds, with a strawman for each of the four questions in the ask, and raise a Q-item for whichever of them is a matter of taste rather than of consequence.",
+  "state": "queued",
+  "thread": "claude",
+  "source": "chat",
+  "source_message": "Raised by the CEO 2026-09-16 after picking up a coop that had a coop inside it.",
+  "created": "2026-09-16"
+}

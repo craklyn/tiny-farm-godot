@@ -376,6 +376,17 @@ deep, on grounds of legibility (§6); portals survive only for exits that are no
   panel's shape keyed on a tile rather than an actor, since a building cannot walk off while
   the panel is coming up. Both rows are ordinary Actions through the one gateway.
 
+**And what a room holds is deliberately nothing, for now** (2026-09-16). A room's floor is
+ordinary walkable ground, so before this a coop could be set down inside another coop — and
+a sprinkler in the bedroom, since the home is a room too. Picking the host up then wiped the
+inner thing's squares and left its room holding a slot: the coop was simply gone. Everything
+about that needs rules nobody has written — what the inner thing is anchored to, where it
+goes when its host is picked up, and where a hen sheltering in it is standing once the room
+she was in has stopped existing. So `placeable_at` refuses the whole class, which is what
+P-13's deliberately weak first version is for, and a farm that already got into that state
+comes out of it: picking a hut up takes every hut nested inside it and pays the crate for
+each. **What may go in a room is filed as a design question**, not answered by accident here.
+
 **Still not built:**
 
 - **Actors are not in the backdrop.** The yard out there shows ground and objects; the hen,

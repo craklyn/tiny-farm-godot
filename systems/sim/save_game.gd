@@ -260,6 +260,11 @@ static func restore(data: Dictionary, world: SimWorld, gs) -> bool:
 			r2.append(String(obj))
 		world.objects.append(r2)
 	_restore_rooms(world, w.get("rooms", {}))
+	# A farm saved before the home joined the registry has no entry for it, and a
+	# player indoors on such a save would look out at nothing. Added on load rather
+	# than migrated into the file, because it is derived from the layout and a
+	# derived thing does not belong in a save (P-18).
+	world.register_home_room()
 	# The actor registry (M2.5 WI-2). Grids first, deliberately: the default spawn
 	# below reads the restored world — the gate tells it whether the neighbour is
 	# still here, the walkable tiles tell it where the hen can stand.
@@ -501,6 +506,9 @@ static func _capture_rooms(world: SimWorld) -> Dictionary:
 			"pitch": int(r.get("pitch", 2)),
 			"slot": int(r.get("slot", 0)),
 			"anchor": _pair(r.get("anchor", Vector2i.ZERO)),
+			# Present on the home only: the farmhouse has no catalogue row to read a
+			# footprint off, so its building's tiles ride on the entry.
+			"building": _rect(r.get("building", Rect2i())),
 			"size": _pair(r.get("size", Vector2i.ZERO)),
 			"origin": _pair(r.get("origin", Vector2i.ZERO)),
 			"door": _pair(r.get("door", Vector2i.ZERO)),
@@ -512,6 +520,17 @@ static func _capture_rooms(world: SimWorld) -> Dictionary:
 static func _pair(v) -> Array:
 	var t: Vector2i = v
 	return [t.x, t.y]
+
+
+static func _rect(v) -> Array:
+	var r: Rect2i = v
+	return [r.position.x, r.position.y, r.size.x, r.size.y]
+
+
+static func _unrect(v) -> Rect2i:
+	if v is Array and v.size() >= 4:
+		return Rect2i(int(v[0]), int(v[1]), int(v[2]), int(v[3]))
+	return Rect2i()
 
 
 static func _unpair(v) -> Vector2i:
@@ -538,6 +557,9 @@ static func _restore_rooms(world: SimWorld, saved) -> void:
 			"door": _unpair(r.get("door", [])),
 			"exit": _unpair(r.get("exit", [])),
 		}
+		var b := _unrect(r.get("building", []))
+		if b.size.x > 0:
+			world.rooms[String(id)]["building"] = b
 
 
 # v3 -> v4 (P-18, 2026-09-15): the grid grew a **rooms page**, so an old farm is

@@ -230,6 +230,11 @@ func _nearest_doorstep(world: SimWorld, here: Vector2i) -> Vector2i:
 	var best_d := 1 << 30
 	for id in world.room_ids():
 		var r: Dictionary = world.rooms[id]
+		# **Her coop, not the farmer's house.** The home joined the rooms registry on
+		# 2026-09-16 so that the farm could be drawn through its walls, and a hen who
+		# read that as shelter would let herself into the bedroom on a wet morning.
+		if String(r.get("item", "")) != SimWorld.COOP_ITEM:
+			continue
 		var step: Vector2i = world.room_exit_for(r)
 		if step.x < 0 or not world.is_walkable(step.x, step.y):
 			continue

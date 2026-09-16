@@ -1867,16 +1867,10 @@ func _draw() -> void:
 # So the corner that matters is the footprint's **top-left**, and it is read off the
 # footprint rather than computed from the anchor, so a building of another shape
 # cannot reintroduce this.
-static func room_backdrop_offset(r: Dictionary) -> Vector2:
+static func room_backdrop_offset(r: Dictionary, building: Rect2i) -> Vector2:
 	var pitch := float(r.get("pitch", 1))
 	var origin: Vector2i = r.get("origin", Vector2i.ZERO)
-	var anchor: Vector2i = r.get("anchor", Vector2i.ZERO)
-	var block := MachineDefs.footprint_cells(String(r.get("item", "")), anchor)
-	var top_left := anchor
-	for cell in block:
-		top_left.x = mini(top_left.x, cell.x)
-		top_left.y = mini(top_left.y, cell.y)
-	return Vector2(origin) * TILE_SIZE - Vector2(top_left) * TILE_SIZE * pitch
+	return Vector2(origin) * TILE_SIZE - Vector2(building.position) * TILE_SIZE * pitch
 
 
 const BACKDROP_DIM := Color(0.035, 0.035, 0.055, 0.30)
@@ -1918,11 +1912,15 @@ func _draw_room_backdrop() -> void:
 	_backdrop_rect = Rect2i(r.get("origin", Vector2i.ZERO), r.get("size", Vector2i.ZERO))
 	var pitch := float(r.get("pitch", 1))
 	var anchor: Vector2i = r.get("anchor", Vector2i.ZERO)
-	var offset: Vector2 = room_backdrop_offset(r)
+	var building: Rect2i = sim.room_building_rect(r)
+	var offset: Vector2 = room_backdrop_offset(r, building)
 
+	# The tiles her own building stands on. Skipped in the pass below, because she is
+	# inside it and its outside would be drawn through her own ceiling.
 	var own := {}
-	for cell in MachineDefs.footprint_cells(String(r.get("item", "")), anchor):
-		own[cell] = true
+	for oy in building.size.y:
+		for ox in building.size.x:
+			own[building.position + Vector2i(ox, oy)] = true
 
 	draw_set_transform(offset, 0.0, Vector2(pitch, pitch))
 	for ty in range(anchor.y - BACKDROP_REACH, anchor.y + BACKDROP_REACH + 1):
@@ -1964,7 +1962,8 @@ func _draw_room_backdrop() -> void:
 
 			var obj: String = objects[ty][tx]
 			if obj == "" or obj == WorldLayout.HOUSE_WALL or obj == WorldLayout.HOME_DOORWAY \
-					or obj == WorldLayout.ROBOT_STALL_SLOT or obj == WorldLayout.CHICKEN_COOP_PART:
+					or obj == WorldLayout.ROBOT_STALL_SLOT or obj == WorldLayout.CHICKEN_COOP_PART \
+					or obj == WorldLayout.ROOM_DOORWAY:
 				continue
 			# **Not the building she is standing in.** Its walls are the room around
 			# her; drawing its outside as well would put its roof through her own

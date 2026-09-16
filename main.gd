@@ -538,10 +538,18 @@ func _refresh_camera_limits(snap: bool = false) -> void:
 	# them — so clamping the view to the page would pin a room in the corner of a
 	# black rectangle and cut off the yard the walls exist to frame. Inside one, the
 	# limits come from the room and the backdrop it sits in, not from the page.
+	# **A room in a slot has no page to be held on; a room on a page does.** Several
+	# coops share the rooms page, so clamping to it would pin one in the corner of a
+	# rectangle containing the others — its own bounds are the only honest limit. The
+	# home is the other case: it has had a page to itself since 2026-09-06, the page
+	# fits it with a few rows to spare, and those rows are now where its backdrop
+	# shows. Nothing about that needed changing, so it is left alone.
 	var room_id: String = farm.sim.room_of_cell(player.get_tile_pos())
 	if room_id != "":
-		_limit_to_room(farm.sim.rooms[room_id], snap)
-		return
+		var room: Dictionary = farm.sim.rooms[room_id]
+		if farm.sim.page_of(room.get("origin", Vector2i.ZERO)) == WorldLayout.ROOMS_PAGE:
+			_limit_to_room(room, snap)
+			return
 	var page: int = farm.sim.page_of(player.get_tile_pos())
 	_camera_page = page
 	var page_px: int = SimWorld.PAGE_ROWS * TILE_SIZE

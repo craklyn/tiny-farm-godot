@@ -220,6 +220,30 @@ static func room_cells(size: Vector2i) -> Array:
 	return rows
 
 
+# **The home, described the way a room is described** (P-18, 2026-09-16).
+#
+# The farmhouse predates the room system by a fortnight: its interior is page 1, laid
+# out with the world, not a slot on the rooms page. That is fine — nothing about it
+# needs moving. What it lacked was the two numbers every room carries, the **anchor**
+# its building stands on and the **pitch** of its cells, and without those the
+# renderer had nothing to draw the farm around, so a player indoors looked out at
+# nothing at all.
+#
+# So: the shell the walls enclose, twelve cells by nine; the three tiles by two the
+# facade stands on out in the yard; and four, which is what twelve cells of width
+# inside a three-tile facade makes it. The depth does not divide as cleanly — nine
+# cells over two tiles is four and a half — so the room's bottom row overhangs the
+# building's southern edge by a quarter of a tile. That is a quarter of a tile on a
+# picture of a house, and the alternative is not seeing the farm.
+static func home_room() -> Dictionary:
+	return {
+		"origin": Vector2i(10, 5) + HOME_ORIGIN,   # the shell, walls included
+		"size": Vector2i(12, 9),
+		"building": Rect2i(1, 1, 3, 2),            # the facade's tiles on the farm
+		"pitch": 4,
+	}
+
+
 # Which cell of a room is its doorway — the one `room_cells` cut out above.
 static func room_door_cell(size: Vector2i) -> Vector2i:
 	return Vector2i(size.x / 2, size.y - 1)

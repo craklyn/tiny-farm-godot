@@ -6757,7 +6757,13 @@ func _scenario_ax_she_can_get_back_out_of_the_coop() -> void:
 	var gone := await _wait_until(
 		func(): return farm.get_object(hut.x, hut.y) == "", 200)
 	_assert(gone, "and picking it up takes the hut off the farm")
-	_assert(farm.sim.rooms.is_empty(), "its inside goes with it")
+	# The home is on the registry too now (P-18, 2026-09-16), so "no rooms" is not
+	# what picking a coop up leaves behind — "no coop rooms" is.
+	var coop_rooms := 0
+	for rid in farm.sim.room_ids():
+		if String(farm.sim.rooms[rid].get("item", "")) == SimWorld.COOP_ITEM:
+			coop_rooms += 1
+	_assert(coop_rooms == 0, "its inside goes with it")
 	_assert(GameState.machines.get("coop", 0) == 1, "and it is back in the crate")
 
 	GameState.save_path = real_paths[0]

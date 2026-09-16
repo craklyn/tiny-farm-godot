@@ -629,6 +629,10 @@ func generate(with_layout: Dictionary = WorldLayout.WORLD) -> void:
 	#    every time a save was loaded (finding F-7c). Last in the sequence, so
 	#    every draw above it keeps the stream position it has always had.
 	spawn_default_actors(true)
+	# The home is an interior like the coop's, and says so on the registry (P-18).
+	# After the cast, because nothing above it reads the rooms and the RNG stream's
+	# position is what every draw before it depends on.
+	register_home_room()
 
 
 # Inside the *page's* border ring — the tiles generation is allowed to write.
@@ -885,6 +889,11 @@ const OPEN_STRUCTURE_OBJECTS := {
 const STALL_ITEM := "stall"
 const COOP_ITEM := "coop"
 
+# The home's entry in the rooms registry. It is a room like any other to everything
+# that looks *at* it — the renderer, the camera — and a room like no other in that
+# nothing put it down and nothing can pick it up. See `WorldLayout.home_room`.
+const HOME_ROOM_ID := "home_room"
+
 # --- what a building's inside is (P-18, 2026-09-15) ----------------------------
 #
 # **A room is a rectangle of ordinary tiles, plus two numbers.** The tiles live in
@@ -913,6 +922,47 @@ func room_ids() -> Array:
 	var out: Array = rooms.keys().map(func(k): return String(k))
 	out.sort()
 	return out
+
+
+# **The tiles a room's building stands on, out in the world.** A coop's come from the
+# catalogue, because a coop was placed and its row says its shape. The home's are
+# recorded on its own entry, because the farmhouse was laid out with the world and
+# has no catalogue row. One question, two sources, so the renderer asks once.
+func room_building_rect(r: Dictionary) -> Rect2i:
+	if r.has("building"):
+		return r["building"]
+	var anchor: Vector2i = r.get("anchor", Vector2i.ZERO)
+	var cells := MachineDefs.footprint_cells(String(r.get("item", "")), anchor)
+	var lo := anchor
+	var hi := anchor
+	for c in cells:
+		lo.x = mini(lo.x, c.x); lo.y = mini(lo.y, c.y)
+		hi.x = maxi(hi.x, c.x); hi.y = maxi(hi.y, c.y)
+	return Rect2i(lo, hi - lo + Vector2i.ONE)
+
+
+# Put the home on the rooms registry, so the thing a player has been walking into
+# since 2026-09-06 gets what P-18 gives every other interior: a zoom on the way in
+# and her own farm visible through the walls. Called after generation and after a
+# load, and only when it is missing — a save written since this landed already has it.
+func register_home_room() -> void:
+	if rooms.has(HOME_ROOM_ID):
+		return
+	var h := WorldLayout.home_room()
+	rooms[HOME_ROOM_ID] = {
+		"item": "",
+		"pitch": int(h["pitch"]),
+		"slot": -1,                       # not on the rooms page; nothing allocated it
+		"anchor": Rect2i(h["building"]).position,
+		"size": h["size"],
+		"origin": h["origin"],
+		"building": h["building"],
+		# **No door of its own.** The farmhouse's is laid out with the world and
+		# answers from `WorldLayout.door_at`; a second pair here would be a second
+		# way in from a wall tile. `room_door_at` skips a room with no door.
+		"door": Vector2i(-1, -1),
+		"exit": Vector2i(-1, -1),
+	}
 
 
 # The room whose building stands on this tile, or "". Asked by the renderer, which
@@ -994,6 +1044,8 @@ func room_door_at(t: Vector2i) -> Dictionary:
 		# **A room with no way out is a room with no way in.** Refusing at the
 		# threshold is the only honest place to refuse: once she is inside, every
 		# answer is a bad one.
+		if Vector2i(r.get("door", Vector2i(-1, -1))).x < 0:
+			continue      # the home: its door is the world's, not the registry's
 		var leads_to := room_exit_for(r)
 		if leads_to.x < 0:
 			continue
@@ -1818,6 +1870,18 @@ func placeable_at(t: Vector2i, item: String = "") -> bool:
 	# hen sits, not a bay with a slot in it.
 	elif is_coop_tile(t):
 		return false
+	# **And nothing is put down inside a room** (P-13, 2026-09-16). A room's floor is
+	# ordinary walkable ground, so before this a coop could be set down inside
+	# another coop — and a sprinkler in the bedroom, since the home is a room too.
+	# Everything about that needs rules nobody has written: what the inner thing is
+	# anchored to, where it goes when its host is picked up, and where a hen
+	# sheltering in it is standing once the room she was in has stopped existing.
+	#
+	# Refused whole rather than answered, which is what a deliberately weak first
+	# version is for. What may go in a room is a real design question and is filed as
+	# one; this is the line until it is answered.
+	elif room_of_cell(t) != "":
+		return false
 	# ...and a structure wider or deeper than one square needs every cell of its
 	# block to be free ground (2026-09-11). This was the stall's second bay by
 	# name until the coop arrived with four cells; now the row says its own shape
@@ -1875,6 +1939,27 @@ func coop_tiles() -> Array[Vector2i]:
 		for x in MAP_WIDTH:
 			if WorldLayout.is_coop_object(objects[y][x]):
 				out.append(Vector2i(x, y))
+	return out
+
+
+# A coop and everything nested inside it, innermost last, by anchor. One entry on
+# every farm that has not got itself into the state above.
+func _coop_nest(anchor: Vector2i) -> Array[Vector2i]:
+	var out: Array[Vector2i] = [anchor]
+	var id := room_of_anchor(anchor)
+	if id == "":
+		return out
+	var r: Dictionary = rooms[id]
+	var o: Vector2i = r.get("origin", Vector2i.ZERO)
+	var sz: Vector2i = r.get("size", Vector2i.ZERO)
+	var inner := Rect2i(o, sz)
+	for other in room_ids():
+		if other == id:
+			continue
+		var a: Vector2i = rooms[other].get("anchor", Vector2i(-1, -1))
+		if a.x >= 0 and inner.has_point(a) \
+				and String(rooms[other].get("item", "")) == COOP_ITEM:
+			out.append_array(_coop_nest(a))
 	return out
 
 
@@ -2467,11 +2552,21 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			if is_coop_tile(target):
 				var coop_anchor := _coop_anchor_at(target)
 				if coop_anchor.x >= 0:
-					close_room(coop_anchor)
-					for cell in MachineDefs.footprint_cells(COOP_ITEM, coop_anchor):
-						set_object(cell.x, cell.y, "")
-					gs.machines[COOP_ITEM] = int(gs.machines.get(COOP_ITEM, 0)) + 1
-					return { "ok": true, "collected": COOP_ITEM, "anchor": coop_anchor }
+					# **The whole nest, not just the hut she tapped** (2026-09-16).
+					# Placing a coop inside a coop is refused now (`placeable_at`),
+					# but a farm saved before that could have one — and closing the
+					# outer room used to wipe the inner hut's squares and leave its
+					# room orphaned in a slot, so the coop was simply gone. Every hut
+					# anchored inside the one coming up comes up with it, and the
+					# crate is paid for each.
+					var taken_up := _coop_nest(coop_anchor)
+					for a in taken_up:
+						close_room(a)
+						for cell in MachineDefs.footprint_cells(COOP_ITEM, a):
+							set_object(cell.x, cell.y, "")
+					gs.machines[COOP_ITEM] = int(gs.machines.get(COOP_ITEM, 0)) + taken_up.size()
+					return { "ok": true, "collected": COOP_ITEM, "anchor": coop_anchor,
+						"count": taken_up.size() }
 			# **And a fence she built comes back up** (Q-92). Only hers: the
 			# world's own fences and hedges are the boundary that says "not yet",
 			# and the cold open is built on one — a player who could pull those up
