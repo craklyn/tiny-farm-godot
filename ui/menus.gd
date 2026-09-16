@@ -246,6 +246,10 @@ func open_menu(menu_name: String) -> void:
 ##
 ## Keyed on the tile rather than on an id, because a building cannot walk: the square
 ## she tapped is the square it is still standing on when she chooses.
+# How long the panel is gone before the door starts to move. See the `enter` row's
+# own note: the panel and the zoom on one frame read as one confusing thing.  [Playtest]
+const ENTER_DELAY_SECONDS := 0.10
+
 var structure_tile: Vector2i = Vector2i(-1, -1)
 var structure_options: Array = []
 
@@ -1047,9 +1051,23 @@ func _select_current_option() -> void:
 			close_menu()
 			menu_action.emit("resume")
 			if String(pick.kind) == "enter":
-				var main_node := get_tree().get_first_node_in_group("Main")
-				if main_node != null and main_node.has_method("enter_structure"):
-					main_node.enter_structure(structure_tile)
+				# **A beat between the panel going and the world moving** (CEO,
+				# 2026-09-16: "it's disorienting because the menu changes and the
+				# zoom happens at the same time"). Two things moving on one frame
+				# read as one confusing thing; a tenth of a second is enough for the
+				# eye to finish with the panel before the walls start to open.
+				#
+				# A one-shot timer rather than an `await`, so this function stays
+				# ordinary for every other row that calls it. The timer runs while
+				# paused by default, which is what is wanted: the resume above is
+				# handled by `main.gd` and the door should not wait on it.
+				var going_to := structure_tile
+				get_tree().create_timer(ENTER_DELAY_SECONDS).timeout.connect(
+					func():
+						var main_node := get_tree().get_first_node_in_group("Main")
+						if main_node != null and main_node.has_method("enter_structure"):
+							main_node.enter_structure(going_to),
+					CONNECT_ONE_SHOT)
 				return
 			if String(pick.kind) == "collect":
 				if farm.apply_action({ "verb": "collect", "target": structure_tile,
