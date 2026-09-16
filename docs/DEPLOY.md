@@ -129,6 +129,34 @@ readable, which is what makes the mistake quiet: it is simply always empty. The 
 version of this script pointed there and would have silently returned nothing from the
 playtest it was written for.
 
+**Trap:** the probe that picks the slot asks the device for a file size, and the answer
+has to be fenced. It used to strip everything that was not a digit from whatever the
+remote shell said — which harvested the `1` out of the word `slot1` in an error message
+about a directory that did not exist. On 2026-09-16 a tablet with no slots at all
+reported slots 1, 2 and 3 as one, two and three bytes. The device now answers `SIZE:<n>`
+and nothing else is counted.
+
+### Putting a farm back on the tablet
+
+```bash
+tools/push_session.sh playtests/2026-09-15_234314        # into slot 1
+tools/push_session.sh playtests/2026-09-15_234314 2      # into slot 2
+```
+
+The other half of the pull. A shelved session is not only evidence — once the device has
+moved on it is the *only* copy of that farm, and on 2026-09-16 a four-year-old's day-31
+farm had a new game started over it and had to be put back.
+
+It closes the game first (the app writes all three files when its window closes, so a
+push into a running game is undone the moment somebody backgrounds it), copies whatever
+is in the target slot to `<slot>/replaced-<timestamp>/` on the device so this can never
+be the thing that loses a farm, writes each file through base64, **verifies every one by
+md5**, and points `slots.json` at the slot it filled so the title screen opens there.
+
+**Trap:** `adb push` cannot reach internal storage and a raw `cat` over `adb shell` can
+translate newlines. Base64 in, base64 out, checksum after — anything less writes a file
+that looks fine in a listing and will not parse.
+
 ---
 
 ## 3. Web / itch.io (public releases)

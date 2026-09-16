@@ -143,11 +143,26 @@ mkdir -p "$OUT"
 # further down), so the farm with the most tap history on it is the one being
 # rescued; a farm nobody has touched since the last rescue has a shorter one.
 # Sizes are read on the device, because `run-as` is the only way in.
+# The size of one file on the device, or 0 if it is not there.
+#
+# **The answer is fenced, and the fence is the point.** The first version piped the
+# remote output through `tr -dc '0-9'`, which strips everything that is not a digit
+# — including the digits inside an error message. A missing `files/slot1/...` made
+# the remote shell complain about the path it could not open, `tr` harvested the
+# `1` out of the word `slot1`, and the probe reported slot 1 as a one-byte file.
+# Seen for real on 2026-09-16: slots 1, 2 and 3 reported 1, 2 and 3 bytes on a
+# device that had no slot directories at all. It picked the right farm that day
+# only because the real one was bigger than 3.
+#
+# So the remote says `SIZE:<n>` and nothing else counts. A file that is not there
+# prints `SIZE:0`, and anything the shell says on its own way out is ignored.
 remote_size() {
-	local size
-	size=$(adb -s "$SERIAL" exec-out \
-		"run-as $PKG sh -c 'wc -c < $1 2>/dev/null'" 2>/dev/null | tr -dc '0-9')
-	echo "${size:-0}"
+	local out
+	out=$(adb -s "$SERIAL" exec-out \
+		"run-as $PKG sh -c 'if [ -f \"$1\" ]; then echo SIZE:\$(wc -c < \"$1\"); else echo SIZE:0; fi'" \
+		2>/dev/null | tr -d ' \r')
+	out=$(printf '%s' "$out" | sed -n 's/.*SIZE:\([0-9][0-9]*\).*/\1/p' | head -1)
+	echo "${out:-0}"
 }
 
 REMOTE_DIR=""
