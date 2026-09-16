@@ -2881,8 +2881,12 @@ func _scenario_ae_the_home() -> void:
 	var title = load("res://ui/title_screen.tscn").instantiate()
 	add_child(title)
 	await get_tree().process_frame
-	_assert(_find_button(title, "HomeButton") != null,
-		"the title screen offers 'Home' in the debug grid")
+	# The door off the menu came out on the designer's word, 2026-09-15, and the
+	# room behind it did not: this screen is still built, still detached, still
+	# rendered. Asserted the other way round now so the button cannot quietly
+	# come back, and what follows proves the room itself is unharmed.
+	_assert(_find_button(title, "HomeButton") == null,
+		"the title screen no longer offers 'Home'")
 	title.queue_free()
 	await get_tree().process_frame
 
@@ -2938,9 +2942,8 @@ func _scenario_ac_the_zoo() -> void:
 	await get_tree().process_frame
 	_assert(_find_button(title, "ZooButton") != null,
 		"the title screen offers 'Zoo' beside 'Sound Test'")
-	_assert(_find_button(title, "SoundTestButton") != null
-			and _find_button(title, "HomeButton") != null,
-		"and the doors that were already there are still there")
+	_assert(_find_button(title, "SoundTestButton") != null,
+		"and the door that was already there is still there")
 	title.queue_free()
 	await get_tree().process_frame
 

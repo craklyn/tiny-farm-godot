@@ -43,8 +43,24 @@ const BLOOM_MANIFEST := "res://assets/anim/sunflower_bloom/manifest.json"
 const BLOOM_SHEET := "res://assets/anim/sunflower_bloom/sheet.png"
 const BLOOM_SCALE := 5
 const BLOOM_HOLD_SEC := 0.4       # a beat of stillness on the bud, after the icon, before it rises
+# The designer, 2026-09-15: "make the flower animation linger about 50% longer
+# before transitioning to main landing page." The rise itself is left at the rate
+# the Lab drew it — design/09 is explicit that a loop plays at its own rate — so
+# the extra time is a hold on the last bloomed frame instead. Hold plus rise was
+# 1.84 s; this takes the flower's whole moment to about 2.76 s. The chime is cut
+# to the same length (`tools/gen_sfx.py` reads this number out of this file), so
+# it rings out over the linger rather than finishing early and leaving silence.
+const BLOOM_LINGER_SEC := 0.9
 const BLOOM_TITLE_FADE_SEC := 0.5 # the title and menu settling in, not appearing
 const BLOOM_FARM_FADE_SEC := 1.0  # the attract farm fading up beneath the menu
+# The flower leaves faster than the farm arrives, and the menu waits for it to
+# be gone. Everything used to cross-fade on one clock, which put the Continue
+# card on screen over a half-dissolved sunflower for about half a second — two
+# subjects sharing the middle of the screen, which is what made the hand-off
+# read as muddy rather than as a fade. Now it is one thing at a time: the flower
+# dissolves into the farm, and only then does the menu settle onto it.
+const BLOOM_FADE_OUT_SEC := 0.7   # the flower going, on its own
+const BLOOM_MENU_DELAY_SEC := 0.55
 # Q-107 (2026-09-11): "add a bit more pause after that synthesized chime
 # finishes before we ramp into the main game's music" — the music used to
 # start its own fade-up the instant the chime did, finishing within a beat of
@@ -377,11 +393,23 @@ func _play_boot_bloom() -> void:
 		if not is_instance_valid(self):
 			return
 
-	# The last seed has landed: the title and menu settle in rather than
-	# appear, and whatever is behind the bloom takes its place.
+	# The last seed has landed. The flower holds there, bloomed, while the chime
+	# rings out — the moment the boot is actually for — and only then does the
+	# screen start becoming the menu. The shield stays up through it, because
+	# the menu underneath is still invisible and a tap on a button nobody can
+	# see would start the game.
+	await get_tree().create_timer(BLOOM_LINGER_SEC).timeout
+	if not is_instance_valid(self):
+		return
+
+	# The title and menu settle in rather than appear, and whatever is behind
+	# the bloom takes its place — in that order, not at once. The menu's own
+	# tween opens with the wait, so the card lands on a farm rather than on a
+	# flower that has not finished leaving.
 	_drop_intro_shield()
 	if _menu_root != null:
 		var menu_tween := create_tween()
+		menu_tween.tween_interval(BLOOM_MENU_DELAY_SEC)
 		menu_tween.tween_property(_menu_root, "modulate:a", 1.0, BLOOM_TITLE_FADE_SEC)
 
 	if _attract != null and is_instance_valid(_attract):
@@ -389,7 +417,7 @@ func _play_boot_bloom() -> void:
 		var reveal := create_tween()
 		reveal.set_parallel(true)
 		reveal.tween_property(_attract, "modulate:a", 1.0, BLOOM_FARM_FADE_SEC)
-		reveal.tween_property(_bloom, "modulate:a", 0.0, BLOOM_FARM_FADE_SEC)
+		reveal.tween_property(_bloom, "modulate:a", 0.0, BLOOM_FADE_OUT_SEC)
 		if back != null:
 			reveal.tween_property(back, "color", ATTRACT_EDGE_COLOUR, BLOOM_FARM_FADE_SEC)
 	else:
@@ -507,7 +535,12 @@ func _build_ui() -> void:
 		# farm is what you are looking at when one flips (`ui/menus.gd`), and the
 		# registry behind them is still `systems/look_lab.gd`. What replaces the
 		# door is a staged scenario, not a menu — Q-86 in `docs/DESIGNER_QUEUE.md`.
-		for b in [_make_sound_test_button(), _make_zoo_button(), _make_home_button()]:
+		# The Home door came out on the designer's word, 2026-09-15: "remove the
+		# 'home' button from the main landing page menu." `ui/home_screen.tscn`
+		# itself stays — it is a detached preview of the indoor room (T-37) and
+		# the integration suite still instantiates and renders it — but nothing
+		# on this menu opens it any more, and its button is gone with it.
+		for b in [_make_sound_test_button(), _make_zoo_button()]:
 			b.custom_minimum_size = Vector2(104, 34)
 			debug_row.add_child(b)
 
@@ -893,26 +926,6 @@ func _open_zoo() -> void:
 
 
 # T-37: the home, a scene-changing door on the Zoo's pattern.
-func _make_home_button() -> Button:
-	var btn := Button.new()
-	btn.name = "HomeButton"
-	btn.text = "Home"
-	btn.custom_minimum_size = Vector2(130, 34)
-	btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	btn.add_theme_font_size_override("font_size", 13)
-	_style_button(btn, Color(0.24, 0.18, 0.13), Color(0.70, 0.55, 0.40), Color(0.32, 0.24, 0.18))
-	btn.pressed.connect(_open_home)
-	return btn
-
-
-func _open_home() -> void:
-	if _confirm_open:
-		return
-	InputManager.has_click = false
-	AudioManager.play_sfx("click")
-	get_tree().change_scene_to_file("res://ui/home_screen.tscn")
-
-
 # --- New Farm confirmation ----------------------------------------------------
 
 func _open_confirm() -> void:

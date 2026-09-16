@@ -153,7 +153,13 @@ the player is held on is the picture they tapped). The title scene opens on that
 and holds it until the game is live under it — measured as several consecutive cheap frames,
 not a fixed wait — then dissolves it over about half a second onto the bloom's first frame
 on the sky at ×5, unfiltered; the scene holds a breath there, and the bud opens and the seeds
-rise once while the music fades up from silence over the rise.
+rise once while the music fades up from silence over the rise. **The flower then lingers**,
+bloomed and still, for about 0.9 s — roughly half again the length of the moment before it —
+with the chime's last note ringing out over the hold rather than the flower being held in
+silence. **The hand-off to the menu is sequenced, not crossfaded:** the flower dissolves into
+the farm on its own, and only once it is gone does the title and the menu settle onto it.
+Running all three on one clock is what made this read as muddy — a Continue card printed over
+a half-dissolved sunflower — and the fix was an order, not a longer fade.
 As the last seed blooms the title and menu settle in; if a farm is there to be shown under the menu it fades up beneath as the
 bloom fades out, otherwise the bloom keeps idling behind the menu. A tap fades through the
 sky into the farm rather than cutting. **The inset** (Q-104): the watering beam at ×1 in a
