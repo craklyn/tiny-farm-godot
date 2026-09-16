@@ -103,3 +103,7 @@ hq/data/loop_previews/
 # transient brainstorm session state (see .claude/hooks/brainstorm-guard.sh)
 .claude/.brainstorm-state
 hq/data/server.nohup.log
+
+# The door transition's per-frame captures (tools/measure_door_transition.tscn);
+# tools/measure_door_transition.py reads them. Review material, regenerated each run.
+tools/door_transition/

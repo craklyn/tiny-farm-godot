@@ -355,7 +355,8 @@ deep, on grounds of legibility (§6); portals survive only for exits that are no
   growing the world cannot silently re-scale every weight a robot has learned.
 - Going through the door zooms: the camera arrives at the other side's scale and tweens to
   this one, so walking in is one continuous zoom in and walking out is one zoom out
-  (`main.gd`'s `_zoom_through_door`).
+  (~~`main.gd`'s `_zoom_through_door`~~ — since 2026-09-16 a glide of position and zoom
+  together from the picture she was looking at, §8a; `main.gd`'s `_step_door_glide`).
 
 **Built the same day, the second pass:**
 
@@ -364,9 +365,10 @@ deep, on grounds of legibility (§6); portals survive only for exits that are no
   the anchor where the room's origin is, and the yard lands around the room in the place it
   really occupies. Registration by construction rather than by hand — whatever separates the
   hut from the shipping bin outdoors separates the room from the bin in here, multiplied by
-  the pitch and not otherwise touched. Ground and objects only; her own building is skipped,
-  because she is standing in it. The camera stops clamping to the page while she is inside
-  and clamps to the room plus that ring of farm instead.
+  the pitch and not otherwise touched. ~~Ground and objects only~~ — since 2026-09-16 the
+  whole live farm, rendered by a second view of the same canvas (§8a); her own building is
+  skipped, because she is standing in it. The camera stops clamping to the page while she is
+  inside and clamps to the room plus that ring of farm instead.
 - **The hen lets herself in.** `use_door` stopped being the player's alone — it is a verb she
   already had, so nothing has a private one (S-3 read from the other side). On a wet day the
   hen walks to the coop's doorstep and through it; on a dry one she walks to the doorway and
@@ -426,12 +428,80 @@ it to me again?"* By measurement, not by eye — a per-frame log of the camera p
 fixed world landmark, and a consecutive-frame image diff, baselined against the current build
 so the fault is measured before it is fixed.
 
-**Still not built:**
+### Measured, then built (2026-09-16)
 
-- **Actors are not in the backdrop.** The yard out there shows ground and objects; the hen,
-  a crow, the neighbour are scene nodes rather than part of this canvas, and drawing them
-  through the wall is a second pass nobody has written.
-- **The treatment of the yard is a placeholder.** A flat dim, pending **Q-108**.
+**The harness came first.** `tools/measure_door_transition.tscn` walks her through both doors
+the game has, both ways, and on every frame records the camera, where a fence corner at a
+known farm tile landed on the screen, and the frame itself; `tools/measure_door_transition.py`
+judges the four trips on three questions — did the landmark's screen path jump, did any frame's
+picture change out of line with its neighbours, and did the first frame on the far side differ
+from the last frame on the near side anywhere outside the threshold (the building, its roof, and
+the square she stepped onto). The bar: no step ≥ 4 px that is 3× its neighbours; no frame diff
+3× the frames around it; the swap frame within 1.5 levels of the one before, outside the threshold.
+
+**The build as it stood failed all three, on every door.** The landmark jumped 118–234 px on the
+swap frame; the swap frame differed from the one before by 37–45 levels across the whole picture;
+and the home's door also slid the view for six frames after the swap, the page clamp and the
+position smoothing pulling against each other.
+
+**The camera.** `main.gd` no longer tweens the zoom from a view that has already jumped. On the
+swap frame it puts the camera where the arithmetic above says the last frame's picture is —
+`offset + eye × pitch` at `zoom ÷ pitch`, the inverse coming out — with smoothing off and the
+limits stood aside, and holds it there for that one frame. From the next it glides position and
+zoom together, on the cubic ease-out the zoom always had, to wherever the room's (or the page's)
+limits would rest the camera, recomputed each frame from where she stands; a hitch advances it by
+at most a thirtieth of a second, so a slow frame cannot make it leap. It lands by handing the
+camera back — offset zero, limits on, smoothing on — on exactly the view those limits produce,
+so the hand-over is not a move. Two things fell out of writing the limits as numbers: a page's
+refresh now writes all four sides (a coop visit and the teaching glide each used to leave their
+horizontal pair behind), and the farmhouse's zoom is read off its room record like any other.
+
+**The yard.** The hand-written second pass is gone. The farm is drawn as two items — the farm
+page by one, everything above it by the other, the same pass over two row ranges — and a
+`SubViewport` sharing the world's canvas, with its own camera parked over the farm page at 1:1,
+renders the farm-page item every frame she is indoors: soil, crops, the ripe glow, the hen, a
+crow, the neighbour, the day tint, drawn by the code that already draws them. The main view culls
+that item while she is inside (a visibility layer), so page 0 exists exactly once on the screen —
+in the room's space, at the room's pitch — and never also at its own world position a few hundred
+pixels above her room, which the low zoom of a door used to reach into. The texture is drawn on a
+canvas layer of its own that follows the camera, because the sub-view renders the day tint and an
+item in the world's canvas would be tinted a second time on the way to the screen (measured: the
+yard came back 8% darker, most in green, on the first attempt). The dim — still Q-108's
+placeholder — ramps with the glide instead of popping: none of it on the swap frame going in,
+all of it going out until the walls have fallen away, and on the way out it leaves the building
+and her doorstep as lit as the room was.
+
+**The two unknowns, answered.** A `SubViewport` with `world_2d` shared and a `Camera2D` inside it
+renders the farm in 4.7; `CanvasLayer` content — the HUD, the build stamp — does not reach it,
+and a node on a culled visibility layer does not either. What it costs, measured by
+`tools/profile_door_backdrop.tscn` (and `tools/profile_android.sh`, which builds a profile APK
+under its own package name so the tablet's game and its saves are never touched):
+
+| where | draw calls | GPU ms/frame | frames/s |
+|---|---|---|---|
+| desktop, outdoors | 165 | 1.73 | 59.9 |
+| desktop, indoors | 178 | 2.26 | 59.9 |
+| tablet (Mali-G57), outdoors | 164 | 9.6 | 35.3 |
+| tablet (Mali-G57), indoors | 177 | 12.1 | 38.4 |
+
+No frame-rate regression on the device; the extra pass is 0.8 ms of its GPU. (The tablet runs the
+game at about 35 frames a second in the yard already, which this tool made visible and which is
+its own question.)
+
+**After.** All four trips pass the bar: the worst step in the landmark's path is 1.1–1.3× its
+neighbour, no frame spikes, and the swap frame differs from the one before by 0.10–0.34 levels
+outside the threshold — the one place the picture is allowed to change, because the hut becomes
+the room there. Headless, Scenario AY in `tools/test_runner.gd` asserts the same arithmetic
+through a tap: the glide starts from the mapped view, lands on the limits' own rest with no hop,
+and comes back out the same way.
+
+**What the swap still changes, on purpose:** the building itself. Outside it is a hut with a roof;
+inside it is a room with walls; the frame she steps through trades one for the other on the
+footprint. §3's picture — *"the room that was a smudge inside its walls"* — would need the hut
+drawn open from outside, which is art and taste, not camera work, and sits with Q-108.
+
+**Still a placeholder:** the treatment of the yard through the walls, a flat dim pending
+**Q-108**.
 
 **Open, and filed:**
 

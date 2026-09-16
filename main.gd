@@ -525,33 +525,42 @@ func _apply_cot_treatment() -> void:
 # (a door), which are the only two ways her page can change.
 var _camera_page: int = -1
 
-func _refresh_camera_limits(snap: bool = false) -> void:
-	if camera == null or player == null or farm == null:
-		return
-	# While she is at altitude the view is the whole page and then some, so the
-	# page's own limits would clamp it back down mid-glide. The mode owns the
-	# camera until it ends, and `_settle_from_altitude` calls this to hand it back.
-	if is_teaching():
-		return
-	# **A room is not a page to be held inside** (P-18, 2026-09-15). Rooms are
-	# stored in slots on page 2, several to a page, and the farm is drawn around
-	# them — so clamping the view to the page would pin a room in the corner of a
-	# black rectangle and cut off the yard the walls exist to frame. Inside one, the
-	# limits come from the room and the backdrop it sits in, not from the page.
-	# **A room in a slot has no page to be held on; a room on a page does.** Several
-	# coops share the rooms page, so clamping to it would pin one in the corner of a
-	# rectangle containing the others — its own bounds are the only honest limit. The
-	# home is the other case: it has had a page to itself since 2026-09-06, the page
-	# fits it with a few rows to spare, and those rows are now where its backdrop
-	# shows. Nothing about that needed changing, so it is left alone.
-	var room_id: String = farm.sim.room_of_cell(player.get_tile_pos())
+
+# **The limits the camera would have with her standing on `tile`**, as numbers
+# rather than as a write to the camera — so the door glide below can aim at the
+# view they produce before they are applied, and land on it without a hop.
+#
+# **A room is not a page to be held inside** (P-18, 2026-09-15). Rooms are stored
+# in slots on page 2, several to a page, and the farm is drawn around them — so
+# clamping the view to the page would pin a room in the corner of a black
+# rectangle and cut off the yard the walls exist to frame. Inside one, the limits
+# come from the room and the backdrop it sits in, not from the page. The home is
+# the other case: it has had a page to itself since 2026-09-06, the page fits it
+# with a few rows to spare, and those rows are now where its backdrop shows.
+#
+# All four sides, every time (2026-09-16). This used to write only the vertical
+# pair for a page, so a coop visit or a teaching glide — each of which sets its
+# own horizontal limits — left them behind when she came back out to the farm.
+func _camera_limits_for(tile: Vector2i) -> Dictionary:
+	var room_id: String = farm.sim.room_of_cell(tile)
 	if room_id != "":
 		var room: Dictionary = farm.sim.rooms[room_id]
 		if farm.sim.page_of(room.get("origin", Vector2i.ZERO)) == WorldLayout.ROOMS_PAGE:
-			_limit_to_room(room, snap)
-			return
-	var page: int = farm.sim.page_of(player.get_tile_pos())
-	_camera_page = page
+			# The view while she is indoors: the room, plus the ring of farm drawn
+			# around it, so the camera may look out of the walls without wandering
+			# off into the dark beyond the backdrop's reach.
+			var origin: Vector2i = room.get("origin", Vector2i.ZERO)
+			var size: Vector2i = room.get("size", Vector2i.ZERO)
+			var pitch: int = maxi(1, int(room.get("pitch", 1)))
+			var reach: int = farm.BACKDROP_REACH * pitch
+			return {
+				"page": SimWorld.MAP_HEIGHT / SimWorld.PAGE_ROWS - 1,
+				"left": (origin.x - reach) * TILE_SIZE,
+				"right": (origin.x + size.x + reach) * TILE_SIZE,
+				"top": (origin.y - reach) * TILE_SIZE,
+				"bottom": (origin.y + size.y + reach) * TILE_SIZE,
+			}
+	var page: int = farm.sim.page_of(tile)
 	var page_px: int = SimWorld.PAGE_ROWS * TILE_SIZE
 	# Q-68, via T-27's treatments, still applied — **and only to the farm.** The
 	# nudge exists because the stations in row 0-1 rise into the map's top row and
@@ -560,7 +569,6 @@ func _refresh_camera_limits(snap: bool = false) -> void:
 	# there to reveal, and a negative nudge would do the one thing this whole
 	# function exists to prevent: show a strip of the page above.
 	var nudge: int = CotPresentation.camera_top_limit(HUD_TOP_PX, CAMERA_SCALE) if page == 0 else 0
-	camera.limit_top = page * page_px + nudge
 	# **The bottom strip owes the map back too** (designer, 2026-09-08, watching
 	# live play: "the bottom strip of the map is overlapped by HUD"). The bottom
 	# bar is opaque furniture exactly like the top bar, so the camera may scroll
@@ -569,7 +577,27 @@ func _refresh_camera_limits(snap: bool = false) -> void:
 	# field she works, page 1's are the room's doorway wall, and past either
 	# edge is only border/void, so the revealed strip shows nothing that is not
 	# already the page's own dark margin. design/11 "strips and corners".
-	camera.limit_bottom = (page + 1) * page_px + int(round(HUD_BOTTOM_PX / float(CAMERA_SCALE)))
+	return {
+		"page": page,
+		"left": 0,
+		"right": MAP_WIDTH * TILE_SIZE,
+		"top": page * page_px + nudge,
+		"bottom": (page + 1) * page_px + int(round(HUD_BOTTOM_PX / float(CAMERA_SCALE))),
+	}
+
+
+func _refresh_camera_limits(snap: bool = false) -> void:
+	if camera == null or player == null or farm == null:
+		return
+	# While she is at altitude the view is the whole page and then some, so the
+	# page's own limits would clamp it back down mid-glide. The mode owns the
+	# camera until it ends, and `_settle_from_altitude` calls this to hand it back.
+	if is_teaching():
+		return
+	# The door glide owns it the same way, and applies these itself when it lands.
+	if not _door_glide.is_empty():
+		return
+	_apply_camera_limits(_camera_limits_for(player.get_tile_pos()))
 	_update_rain()   # the page is also what decides whether the sky shows
 	if snap:
 		# A door is not a walk: without this the view glides twenty rows through
@@ -577,96 +605,167 @@ func _refresh_camera_limits(snap: bool = false) -> void:
 		camera.reset_smoothing()
 
 
-# The view while she is indoors: the room, plus the ring of farm drawn around it, so
-# the camera may look out of the walls without wandering off into the dark beyond the
-# backdrop's reach.
-func _limit_to_room(room: Dictionary, snap: bool) -> void:
-	_camera_page = SimWorld.MAP_HEIGHT / SimWorld.PAGE_ROWS - 1
-	var origin: Vector2i = room.get("origin", Vector2i.ZERO)
-	var size: Vector2i = room.get("size", Vector2i.ZERO)
-	var pitch: int = maxi(1, int(room.get("pitch", 1)))
-	var reach: int = farm.BACKDROP_REACH * pitch
-	camera.limit_left = (origin.x - reach) * TILE_SIZE
-	camera.limit_right = (origin.x + size.x + reach) * TILE_SIZE
-	camera.limit_top = (origin.y - reach) * TILE_SIZE
-	camera.limit_bottom = (origin.y + size.y + reach) * TILE_SIZE
-	_update_rain()
-	if snap:
-		camera.reset_smoothing()
+func _apply_camera_limits(lim: Dictionary) -> void:
+	_camera_page = int(lim["page"])
+	camera.limit_left = int(lim["left"])
+	camera.limit_right = int(lim["right"])
+	camera.limit_top = int(lim["top"])
+	camera.limit_bottom = int(lim["bottom"])
 
 
-# Told by the player the instant a door has moved her (`player.gd`'s `use_door`).
-# Public because that is the whole contract — nothing else may call it.
-func note_page_change() -> void:
-	var was_page: int = _camera_page
-	_refresh_camera_limits(true)
-	_zoom_through_door(was_page)
+# Where the camera comes to rest looking at `eye` under these limits at this zoom
+# — the clamp `Camera2D` applies, in the order it applies it, so the glide's last
+# frame and the camera's first frame on its own are the same picture.
+func _clamped_centre(eye: Vector2, zoom: float, lim: Dictionary) -> Vector2:
+	var half: Vector2 = get_viewport_rect().size / (2.0 * zoom)
+	var view := Rect2(eye - half, half * 2.0)
+	if view.position.x < float(lim["left"]):
+		view.position.x = float(lim["left"])
+	if view.end.x > float(lim["right"]):
+		view.position.x = float(lim["right"]) - view.size.x
+	if view.end.y > float(lim["bottom"]):
+		view.position.y = float(lim["bottom"]) - view.size.y
+	if view.position.y < float(lim["top"]):
+		view.position.y = float(lim["top"])
+	return view.position + half
 
 
+# --- Going through a door is one move, not a cut and a zoom (design/15 §8a) ----
+#
 # **Going inside is a zoom** (P-18, ruled 2026-09-15). A building's interior is a
 # finer grid nested in its own footprint, so the difference between standing in the
 # yard and standing in the coop is how big a square is drawn — a whole-number
 # factor, the room's `pitch`.
 #
-# The move is the same one in both directions and needs no second transform: arrive
-# at the *other* side's scale and tween to this one. Walk in and the room begins at
-# the size the hut was out in the yard and grows to fill the screen; walk out and
-# the farm begins at the size it was through the doorway and settles back. What the
-# player sees is one continuous zoom either way, which is the whole reason for not
-# cutting.
+# **And the zoom starts from the picture she was already looking at** (CEO,
+# 2026-09-16: "the camera position can jump a bit… it feels like we've switched
+# scenes and are doing a fake zoom"). `use_door` moves her tens of tiles in world
+# coordinates, and a camera parented to her snaps with her — so the first version
+# of this tweened the zoom alone, from a view that had already jumped. The fix is
+# arithmetic rather than feel. The farm is drawn through a room's walls at
+# `room_px = offset + farm_px * pitch` (`Farm.room_backdrop_offset`), so at the
+# instant of the swap a camera at `offset + eye * pitch` with `zoom / pitch` shows
+# the same pixels the last frame showed; from there one glide of *both* position
+# and zoom to her new centre is continuous by construction. Coming out is the same
+# map inverted. tools/measure_door_transition.tscn is the proof, frame by frame.
+#
+# Three things about `Camera2D` the glide has to hold off: it is parented to the
+# player, so `position` is an offset from her; position smoothing would chase her
+# and fight the glide; and the limits clamp continuously, so the room's are not
+# applied until the glide has landed on the view they would produce.
 #
 # Nothing about the sim is involved. She is already standing where she is standing;
 # this is the camera catching up.
+#
 # Long enough to read as a move rather than a cut (CEO, 2026-09-16: "extend the
 # time it takes"). A third of a second was the first guess and it landed closer to a
 # jump than to a journey; at six tenths the walls visibly open out and the yard
-# visibly recedes, which is the whole reason for not cutting.  [Playtest]
-const DOOR_ZOOM_SECONDS := 0.60
-
-# **What the farmhouse's own door is worth as a zoom** (CEO, 2026-09-16: "make it so
-# entering and leaving the player's house does the effect").
-#
-# The house is not a nested room — it is page 1, laid out with the world, and it
-# predates P-18 by a fortnight. So it has no pitch to read, and this is one: the
-# figure P-18 would give it, since its room is twelve cells wide inside a
-# three-tile-wide facade. The zoom is the camera's business and needs nothing from
-# the sim, which is why the house can have the effect today without being moved into
-# the room system.  [Playtest]
-const HOME_ZOOM := 4.0
-var _door_zoom: Tween = null
-var _room_pitch: float = 1.0
+# visibly recedes. Tripled the same evening at the CEO's ask — "I want to have time
+# to perceive the effect right now" — with the expectation that he dials it back in
+# once he has.  [Playtest]
+const DOOR_ZOOM_SECONDS := 1.80
+# The glide in flight: { t, frame, eye0, zoom0 }. Empty when the camera is its own.
+var _door_glide: Dictionary = {}
 
 
-func _zoom_through_door(was_page: int = -1) -> void:
-	if camera == null:
+# Told by the player the instant a door has moved her (`player.gd`'s `use_door`),
+# with the tile she reached for it from — which is how the room she has just left
+# is known, since the sim no longer says she is in it. Public because that is the
+# whole contract — nothing else may call it.
+func note_page_change(from_tile: Vector2i = Vector2i(-1, -1)) -> void:
+	if camera == null or player == null or farm == null:
 		return
-	var at: Vector2i = player.get_tile_pos()
-	var room: String = farm.sim.room_of_cell(at)
-	var going_in: bool = room != ""
-	if going_in:
-		_room_pitch = maxf(1.0, float(farm.sim.rooms[room].get("pitch", 1)))
-	elif _room_pitch <= 1.0:
-		# Not a room — but the farmhouse's door is a door, and going through it
-		# should feel like going through one. The page she was on is what says which
-		# way: onto page 1 is inside, back to page 0 is out.
-		var now_page: int = farm.sim.page_of(at)
-		if was_page < 0 or now_page == was_page:
-			return
-		_room_pitch = HOME_ZOOM
-		going_in = now_page != 0
-	# Inside, a cell is drawn at tile size, so the room's own scale *is* CAMERA_SCALE
-	# and the farm's is CAMERA_SCALE times the pitch. Outside, the other way round.
-	var from: float = float(CAMERA_SCALE) / _room_pitch if going_in \
-		else float(CAMERA_SCALE) * _room_pitch
-	if _door_zoom != null and _door_zoom.is_valid():
-		_door_zoom.kill()
-	camera.zoom = Vector2(from, from)
-	_door_zoom = create_tween()
-	_door_zoom.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
-	_door_zoom.tween_property(camera, "zoom",
-		Vector2(CAMERA_SCALE, CAMERA_SCALE), DOOR_ZOOM_SECONDS)
-	if not going_in:
-		_room_pitch = 1.0
+	# The view the last frame was drawn with, read before anything below moves the
+	# camera: with smoothing on, `Camera2D` only recomputes its centre on its own
+	# tick, so this is still where the eye was when she reached for the door.
+	var eye: Vector2 = camera.get_screen_center_position()
+	var zoom: float = camera.zoom.x
+	var was_room: String = farm.sim.room_of_cell(from_tile) if from_tile.x >= 0 else ""
+	var now_room: String = farm.sim.room_of_cell(player.get_tile_pos())
+	var start: Dictionary = _door_view(was_room, now_room, eye, zoom)
+	if start.is_empty():
+		# Not a door the design knows — no room on either side. A snap, as before.
+		_door_glide = {}
+		_camera_page = -1
+		_refresh_camera_limits(true)
+		return
+	camera.position_smoothing_enabled = false
+	camera.limit_left = -CAM_FREE
+	camera.limit_top = -CAM_FREE
+	camera.limit_right = CAM_FREE
+	camera.limit_bottom = CAM_FREE
+	camera.zoom = Vector2(start["zoom"], start["zoom"])
+	camera.position = start["eye"] - player.global_position
+	camera.reset_smoothing()
+	_door_glide = {
+		"t": 0.0,
+		"frame": Engine.get_process_frames(),
+		"eye0": start["eye"],
+		"zoom0": float(start["zoom"]),
+		"going_in": now_room != "",
+	}
+	# The yard's dim travels with the glide rather than popping on with the room:
+	# none of it on the way in until the walls start to open, all of it on the way
+	# out until they have fallen away (`Farm.set_door_dim`).
+	if now_room != "":
+		farm.set_door_dim(0.0, 0.0)
+	else:
+		farm.set_door_dim(1.0, 1.0)
+	_camera_page = int(_camera_limits_for(player.get_tile_pos())["page"])
+	_update_rain()
+
+
+# The camera that shows, on the far side of the door, exactly what `eye` and `zoom`
+# showed on the near side. Empty when neither side is a room.
+func _door_view(was_room: String, now_room: String, eye: Vector2, zoom: float) -> Dictionary:
+	if now_room != "" and was_room == "":
+		var r: Dictionary = farm.sim.rooms[now_room]
+		var pitch: float = maxf(1.0, float(r.get("pitch", 1)))
+		var offset: Vector2 = farm.room_backdrop_offset(r, farm.sim.room_building_rect(r))
+		return { "eye": offset + eye * pitch, "zoom": zoom / pitch }
+	if was_room != "" and now_room == "":
+		var r: Dictionary = farm.sim.rooms[was_room]
+		var pitch: float = maxf(1.0, float(r.get("pitch", 1)))
+		var offset: Vector2 = farm.room_backdrop_offset(r, farm.sim.room_building_rect(r))
+		return { "eye": (eye - offset) / pitch, "zoom": zoom * pitch }
+	return {}
+
+
+# One frame of the glide. The swap frame itself is left alone so it draws the view
+# she had; from the next one, position and zoom move together on the cubic
+# ease-out the zoom always used, towards wherever the camera will rest on its own
+# — recomputed every frame from where she is, so a step taken mid-glide is
+# followed rather than snapped to at the end.
+func _step_door_glide(delta: float) -> void:
+	if _door_glide.is_empty() or camera == null:
+		return
+	if Engine.get_process_frames() == int(_door_glide["frame"]):
+		return
+	# A hitch — a slow frame on the tablet, the swap frame's own redraw — advances
+	# the glide by at most a thirtieth of a second, so it cannot leap.
+	_door_glide["t"] = float(_door_glide["t"]) + minf(delta, 1.0 / 30.0)
+	var u: float = clampf(float(_door_glide["t"]) / DOOR_ZOOM_SECONDS, 0.0, 1.0)
+	var e: float = 1.0 - pow(1.0 - u, 3.0)
+	if bool(_door_glide["going_in"]):
+		farm.set_door_dim(e, 0.0)
+	else:
+		farm.set_door_dim(1.0, 1.0 - e)
+	var lim: Dictionary = _camera_limits_for(player.get_tile_pos())
+	var rest: Vector2 = _clamped_centre(player.global_position, float(CAMERA_SCALE), lim)
+	var z: float = lerpf(float(_door_glide["zoom0"]), float(CAMERA_SCALE), e)
+	var eye: Vector2 = Vector2(_door_glide["eye0"]).lerp(rest, e)
+	camera.zoom = Vector2(z, z)
+	camera.position = eye - player.global_position
+	if u >= 1.0:
+		# Landed on the view the limits produce, so handing the camera back is not
+		# a move: its offset returns to her, the limits go on, and smoothing resumes
+		# from exactly here.
+		_door_glide = {}
+		farm.set_door_dim(1.0, 0.0)
+		camera.position = Vector2.ZERO
+		camera.position_smoothing_enabled = true
+		_camera_page = -1
+		_refresh_camera_limits(true)
 
 
 # Where "to bed" points from where she is standing: the bed when she is in the
@@ -749,6 +848,7 @@ func _process(delta: float) -> void:
 		cam_offset = camera.get_screen_center_position() * cam_scale - viewport_size / 2.0
 	InputManager.update_camera_offset(cam_offset, cam_scale)
 	_apply_altitude_gesture()
+	_step_door_glide(delta)
 
 	# Sim time first, before either early return: entities have always kept living
 	# through the day-cycle fade (their own `_process` ran), and the two returns

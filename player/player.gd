@@ -740,6 +740,7 @@ func _execute_resolved_action(pa: Dictionary) -> void:
 		if not through.get("ok", false):
 			return
 		var dest: Vector2i = through.get("dest", get_tile_pos())
+		var from_tile: Vector2i = get_tile_pos()
 		init_position(dest.x, dest.y)
 		facing = String(through.get("face", facing))
 		is_moving = false
@@ -748,13 +749,15 @@ func _execute_resolved_action(pa: Dictionary) -> void:
 		approach_target = Vector2i(-1, -1)
 		tap_indicator = {}
 		# The camera clamps to one page at a time, and the page just changed under
-		# it (`main.gd`'s `note_page_change`, which also snaps the view rather than
-		# letting it glide twenty rows through the dark). Told rather than polled so
-		# the snap happens on the frame she steps through; a farm with no Main above
-		# it — the title screen's attract loop — simply has nobody to tell.
+		# it (`main.gd`'s `note_page_change`, which starts the door's glide from the
+		# view she had rather than letting the camera glide twenty rows through the
+		# dark). Told rather than polled so it happens on the frame she steps
+		# through, and told where she came from, because the room she has just
+		# left is what the glide's first frame is drawn in; a farm with no Main
+		# above it — the title screen's attract loop — simply has nobody to tell.
 		var main_node = get_tree().get_first_node_in_group("Main")
 		if main_node != null and main_node.has_method("note_page_change"):
-			main_node.note_page_change()
+			main_node.note_page_change(from_tile)
 		if farm != null:
 			farm.queue_redraw()
 		return

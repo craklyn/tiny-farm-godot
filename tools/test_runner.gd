@@ -2428,6 +2428,11 @@ func _scenario_z_a_bed_button() -> void:
 	_assert(indoors, "and when she gets there she goes through it, into the room with the bed")
 	_assert(GameState.day == day_before,
 		"walking indoors is not sleeping — the day has not turned (`use_door` is free)")
+	# The door is a glide now (design/15 §8a): the camera owns itself until it
+	# lands and takes the room's limits then. Waited on rather than timed, because
+	# a hitch advances the glide by at most a thirtieth of a second per frame and
+	# this suite's frames are long.
+	await _wait_until(func(): return main_scene._door_glide.is_empty(), 900)
 	_assert(main_scene.camera.limit_top == _expected_camera_top()
 			and main_scene.camera.limit_bottom == _expected_camera_bottom(1),
 		"and the camera came with her, clamped to the room's page (%d..%d)"
@@ -3945,6 +3950,8 @@ func _scenario_ai_the_house_has_a_door() -> void:
 			and player.tap_indicator.is_empty() and player.approach_target.x < 0,
 		"with nothing left over from the walk that got her here")
 	_assert(GameState.day == day_before, "going indoors costs her nothing — no day, no energy")
+	# The door is a glide now (design/15 §8a); the room's limits go on when it lands.
+	await _wait_until(func(): return main_scene._door_glide.is_empty(), 900)
 	_assert(main_scene.camera.limit_top == _expected_camera_top()
 			and main_scene.camera.limit_top == 20 * 16
 			and main_scene.camera.limit_bottom == _expected_camera_bottom(1),
@@ -3961,6 +3968,7 @@ func _scenario_ai_the_house_has_a_door() -> void:
 	_assert(player.get_tile_pos() == Vector2i(2, 3),
 		"on her own doorstep (%s)" % player.get_tile_pos())
 	_assert(player.facing == "down", "facing out into the yard (%s)" % player.facing)
+	await _wait_until(func(): return main_scene._door_glide.is_empty(), 900)
 	_assert(main_scene.camera.limit_top == _expected_camera_top()
 			and main_scene.camera.limit_bottom == _expected_camera_bottom(0),
 		"and the camera is back on the farm's page (%d..%d)"
@@ -6765,6 +6773,136 @@ func _scenario_ax_she_can_get_back_out_of_the_coop() -> void:
 			coop_rooms += 1
 	_assert(coop_rooms == 0, "its inside goes with it")
 	_assert(GameState.machines.get("coop", 0) == 1, "and it is back in the crate")
+
+	GameState.save_path = real_paths[0]
+	GameState.replay_path = real_paths[1]
+	GameState.trace_path = real_paths[2]
+
+	# ------------------------------------------------------------------------------
+	print("\n--- Scenario AY: going through a door is one move of the camera, not a cut (design/15 §8a) ---")
+	#
+	# The CEO, 2026-09-16: "the camera position can jump a bit… it feels like we've
+	# switched scenes and are doing a fake zoom." The fix is arithmetic, and this is
+	# the arithmetic asserted through a tap: on the frame she steps through, the camera
+	# shows exactly the picture she was looking at, mapped into the room's space; six
+	# tenths of a second later it has landed where the room's limits would put it,
+	# with no hop at the hand-over; and the same both ways. The frame-by-frame proof
+	# on a display is tools/measure_door_transition.tscn — this is the headless half.
+	GameState.save_path = "user://door_move_autosave.json"
+	GameState.replay_path = "user://door_move_replay.json"
+	GameState.trace_path = "user://door_move_trace.jsonl"
+	GameState.gold = 1000
+	GameState.machines = {}
+	GameState.set_energy(GameState.max_energy)
+	main_scene.end_teaching()
+	var cam: Camera2D = main_scene.camera
+
+	var hut2 := Vector2i(15, 9)
+	for ty in range(7, 12):
+		for tx in range(13, 19):
+			_stage_tile(tx, ty, "cleared")
+	GameState.machines["coop"] = 1
+	var laid2: Dictionary = farm.apply_action({ "verb": "place", "target": hut2,
+		"item": "coop", "actor": "player" }, GameState)
+	_assert(laid2.get("ok", false) and String(laid2.get("room", "")) != "",
+		"a coop with an inside stands on the farm again (%s)" % laid2.get("room", ""))
+	var room2: Dictionary = farm.sim.rooms[String(laid2.room)]
+	var pitch2: float = float(room2["pitch"])
+	var offset2: Vector2 = farm.room_backdrop_offset(room2, farm.sim.room_building_rect(room2))
+	menus.close_menu()
+	await get_tree().process_frame
+
+	# On the doorstep, camera settled on her.
+	farm.sim.set_actor_pos("player", hut2 + Vector2i(0, 1))
+	player.init_position(hut2.x, hut2.y + 1)
+	player.path.clear()
+	player.pending_action = {}
+	main_scene._camera_page = -1
+	main_scene._refresh_camera_limits(true)
+	# At rest on her before the tap, so the picture the glide must start from is
+	# known: the camera smooths toward her, and the previous scenario left it
+	# elsewhere.
+	var at_rest := func() -> bool:
+		return cam.get_screen_center_position().distance_to(player.global_position) < 0.01 \
+			and is_equal_approx(cam.zoom.x, float(main_scene.CAMERA_SCALE))
+	var settled := await _wait_until(at_rest, 600)
+	_assert(settled, "the camera is at rest on her, out in the yard (%s)" % cam.get_screen_center_position())
+	var eye_out: Vector2 = cam.get_screen_center_position()
+	var zoom_out: float = cam.zoom.x
+
+	# --- in, by the tap --------------------------------------------------------------
+	InputManager.click_tile = hut2
+	InputManager.has_click = true
+	var asked2 := await _wait_until(func(): return menus.active_menu == "structure", 200)
+	_assert(asked2, "a tap on the hut asks what she wants to do with it")
+	menus.selected_option = 0      # "Go inside"
+	menus._select_current_option()
+	var inside2 := await _wait_until(
+		func(): return farm.sim.room_of_cell(player.get_tile_pos()) != "", 200)
+	_assert(inside2, "and she goes in (%s)" % player.get_tile_pos())
+	# The glide records the view it started from — which is what the swap frame was
+	# drawn with, whichever frame this test gets to look on. (The frame itself is
+	# the display harness's to prove.)
+	var glide_in: Dictionary = main_scene._door_glide.duplicate()
+	_assert(not glide_in.is_empty(), "the door's glide is in flight")
+	_assert(is_equal_approx(float(glide_in.get("zoom0", 0.0)), zoom_out / pitch2),
+		"it starts at the yard's zoom divided by the room's pitch (%.3f)" % glide_in.get("zoom0", 0.0))
+	var mapped_in: Vector2 = offset2 + eye_out * pitch2
+	_assert(Vector2(glide_in.get("eye0", Vector2.INF)).distance_to(mapped_in) < 0.5,
+		"and from where the yard's eye lands in the room's space (%s vs %s) — the same picture"
+			% [glide_in.get("eye0", Vector2.INF), mapped_in])
+	_assert(cam.limit_left == -main_scene.CAM_FREE and cam.limit_bottom == main_scene.CAM_FREE,
+		"the limits stand aside while it moves")
+	_assert(not cam.position_smoothing_enabled, "and smoothing does too, so nothing fights it")
+
+	var landed_in := await _wait_until(func(): return main_scene._door_glide.is_empty(), 900)
+	_assert(landed_in, "and then it lands")
+	_assert(is_equal_approx(cam.zoom.x, float(main_scene.CAMERA_SCALE)),
+		"at the room's own scale (%.2f)" % cam.zoom.x)
+	var lim_in: Dictionary = main_scene._camera_limits_for(player.get_tile_pos())
+	_assert(cam.limit_left == int(lim_in.left) and cam.limit_right == int(lim_in.right)
+			and cam.limit_top == int(lim_in.top) and cam.limit_bottom == int(lim_in.bottom),
+		"with the room's limits on the camera, all four sides (%d..%d, %d..%d)"
+			% [cam.limit_left, cam.limit_right, cam.limit_top, cam.limit_bottom])
+	_assert(cam.position == Vector2.ZERO and cam.position_smoothing_enabled,
+		"and the camera is hers again")
+	var rest_in: Vector2 = main_scene._clamped_centre(player.global_position,
+		float(main_scene.CAMERA_SCALE), lim_in)
+	_assert(cam.get_screen_center_position().distance_to(rest_in) < 0.5,
+		"resting exactly where those limits put it — no hop at the hand-over (%s vs %s)"
+			% [cam.get_screen_center_position(), rest_in])
+
+	# --- and out, by the tap on the doorway ---------------------------------------
+	# A tap on the doorway walks her a cell first and the camera follows her, so the
+	# picture the exit starts from is the camera's on the frame before the swap —
+	# tracked through the wait rather than read once beforehand.
+	var track := { "prev": cam.get_screen_center_position(), "cur": cam.get_screen_center_position() }
+	var out_and_tracked := func() -> bool:
+		track["prev"] = track["cur"]
+		track["cur"] = cam.get_screen_center_position()
+		return farm.sim.page_of(player.get_tile_pos()) == 0
+	InputManager.click_tile = player.get_tile_pos()
+	InputManager.has_click = true
+	var outside2 := await _wait_until(out_and_tracked, 300)
+	_assert(outside2, "a tap on the doorway brings her out (%s)" % player.get_tile_pos())
+	var eye_in: Vector2 = track["prev"]
+	var glide_out: Dictionary = main_scene._door_glide.duplicate()
+	_assert(is_equal_approx(float(glide_out.get("zoom0", 0.0)), float(main_scene.CAMERA_SCALE) * pitch2),
+		"on the way out the glide starts at the room's zoom times the pitch (%.1f)"
+			% glide_out.get("zoom0", 0.0))
+	var mapped_out: Vector2 = (eye_in - offset2) / pitch2
+	_assert(Vector2(glide_out.get("eye0", Vector2.INF)).distance_to(mapped_out) < 1.0,
+		"and from where the room's eye lands in the yard (%s vs %s)"
+			% [glide_out.get("eye0", Vector2.INF), mapped_out])
+	var landed_out := await _wait_until(func(): return main_scene._door_glide.is_empty(), 900)
+	_assert(landed_out and is_equal_approx(cam.zoom.x, float(main_scene.CAMERA_SCALE)),
+		"and it lands back at the yard's scale")
+	# A coop visit used to leave the room's horizontal pair on the camera, because
+	# the page's refresh only ever wrote the vertical one (fixed 2026-09-16).
+	_assert(cam.limit_left == 0 and cam.limit_right == SimWorld.MAP_WIDTH * 16,
+		"with the yard's own limits on it, sides included (%d..%d)" % [cam.limit_left, cam.limit_right])
+	_assert(cam.limit_top == _expected_camera_top() and cam.limit_bottom == _expected_camera_bottom(0),
+		"and the page's top and bottom (%d..%d)" % [cam.limit_top, cam.limit_bottom])
 
 	GameState.save_path = real_paths[0]
 	GameState.replay_path = real_paths[1]

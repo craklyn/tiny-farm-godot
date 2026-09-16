@@ -69,6 +69,19 @@ godot --headless --path . --script res://tools/measure_raid_race.gd
 # Verify the last human play session replays to the autosave
 godot --headless --path . --script res://tools/verify_replay.gd
 
+# Going through a door, measured frame by frame (design/15 §8a): every frame of each door
+# both ways under tools/door_transition/ (gitignored), then the verdict — a jump in a fence
+# corner's screen path, a spike between frames, or a swap frame that differs from the one
+# before it outside the threshold all fail. The capture needs a display; the verdict does not.
+godot --path . res://tools/measure_door_transition.tscn
+python3 tools/measure_door_transition.py
+
+# What the farm-through-the-walls costs: draw calls, GPU ms and frame rate in the yard and in
+# the coop — on this machine (needs a display), or on the tablet as a profile APK under its own
+# package name, so the game and its saves on the device are never touched
+godot --path . res://tools/profile_door_backdrop.tscn
+tools/profile_android.sh
+
 # The training workbench's five plates as PNGs (tools/shot_workbench_0..4.png) on a fresh
 # Mark III — needs a display; saves to scratch so it never seeds the next suite run
 godot --path . res://tools/capture_workbench.tscn

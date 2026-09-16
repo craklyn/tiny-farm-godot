@@ -565,6 +565,15 @@ JOBS = {
         "cmd": ["godot", "--headless", "--path", ".", "--script", "res://tools/benchmark_sim.gd"],
         "verdict": re.compile(r"plan gate \(>=\d+x\):\s+(PASS|FAIL)\s+\((\d+)x\)"),
     },
+    # Going through a door, measured frame by frame (design/15 §8a): four trips, each
+    # judged on the camera's path, the picture's continuity and the swap frame. The
+    # capture needs a display and the service has none, so the wrapper runs it under a
+    # virtual one; a run takes a few minutes.
+    "door": {
+        "label": "Door transition",
+        "cmd": ["tools/check_door_transition.sh"],
+        "verdict": re.compile(r"Doors:\s*(\d+) passed, (\d+) failed"),
+    },
 }
 _JOB_LOCK = threading.Lock()
 _RUNNING_JOBS = set()

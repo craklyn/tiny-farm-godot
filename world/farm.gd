@@ -205,6 +205,7 @@ func _ready() -> void:
 	_ripe_glow_node.material = glow_mat
 	_ripe_glow_node.draw.connect(_draw_ripe_glow)
 	add_child(_ripe_glow_node)
+	_build_views()
 	if generate_on_ready:
 		# gateway-ok: making a world is not changing one — there is nothing here
 		# yet for an action to have acted on, and a replay regenerates from the
@@ -1343,7 +1344,7 @@ func _is_soil_at(tx: int, ty: int) -> bool:
 # `CropPresentation.hash01`, a pure function of the square's coordinates — never
 # `SimRng`, never `randi()` — so a save, a replay and a screenshot land on the
 # same farm.
-func _queue_ripe(queue: Array[Dictionary], at: Vector2i, tex: Texture2D,
+func _queue_ripe(canvas: CanvasItem, queue: Array[Dictionary], at: Vector2i, tex: Texture2D,
 		region: Rect2, rect: Rect2, py: int, crop_type: String) -> void:
 	# The light is registered where the square is already being visited, rather
 	# than found by a second walk over the map, and drawn on the additive child
@@ -1379,26 +1380,49 @@ func _queue_ripe(queue: Array[Dictionary], at: Vector2i, tex: Texture2D,
 	queue.append({
 		"y": py,
 		"draw": func():
-			draw_texture_rect_region(tex, foot_dst, foot_src)
-			draw_texture_rect_region(tex, head_dst, head_src)
+			canvas.draw_texture_rect_region(tex, foot_dst, foot_src)
+			canvas.draw_texture_rect_region(tex, head_dst, head_src)
 			ripe_draws += 1
 	})
 
 
+# **The farm is drawn as two items** (2026-09-16, design/15 §8a): the farm page
+# by `_page0_node`, everything above it — the home, the rooms page, the dark
+# between — by this node. Same pass, same code, one row range each. The split is
+# what lets the yard be seen through a room's walls without a second renderer:
+# the view that draws the yard for the backdrop (`_backdrop_view`) shares this
+# canvas, and while she is indoors the main view culls the farm-page item and the
+# backdrop view renders it, so page 0 exists exactly once on the screen — in the
+# room's space, at the room's pitch — and never also at its own world position a
+# few hundred pixels above her room.
 func _draw() -> void:
+	_draw_room_backdrop()
+	_draw_pages(self, WorldLayout.PAGE_ROWS, MAP_HEIGHT)
+	if _page0_node != null:
+		_page0_node.queue_redraw()
+
+
+# Whether a thing standing at this world y, in pixels, is drawn by the pass that
+# covers rows y0 to y1.
+func _rows_hold(py: float, y0: int, y1: int) -> bool:
+	var row := int(floor(py / float(TILE_SIZE)))
+	return row >= y0 and row < y1
+
+
+func _draw_pages(canvas: CanvasItem, y0: int, y1: int) -> void:
 	var render_queue: Array[Dictionary] = []
-	# Rebuilt every pass by the tile loop below, then handed to the additive
-	# child at the end of it.
-	_ripe_glow.clear()
+	# Rebuilt by the pass that walks the farm page, then handed to the additive
+	# child at the end of it; crops grow nowhere else.
+	if y0 == 0:
+		_ripe_glow.clear()
 
 	# One weather read per frame, not per tile: the rain half of the picture
 	# rule (Q-52, `Autotile.draws_wet`) needs the sky, held through a day fade
 	# alongside the ground it is wetting.
 	var raining := raining_look()
 
-	_draw_room_backdrop()
 
-	for ty in MAP_HEIGHT:
+	for ty in range(y0, y1):
 		for tx in MAP_WIDTH:
 			# Held while a day transition fades out, live every other frame — see
 			# `hold_tile_look()`. Everything below reads the picture through this,
@@ -1418,15 +1442,15 @@ func _draw() -> void:
 			# Another room, kept on the same page as hers and nowhere near her in
 			# the world. Skipped whole — ground, boundaries and objects — so the
 			# backdrop's farm is what shows in that space instead.
-			if _backdrop_active and ty >= WorldLayout.ROOMS_PAGE * WorldLayout.PAGE_ROWS \
+			# **Standing in a room, nothing else up here is drawn** (P-18): not the
+			# dark the rooms are cut out of, not another coop's slot, not the home
+			# while she is in a coop. The backdrop has drawn her farm out there at
+			# the room's pitch, and anything else on these pages would be a second
+			# world standing in her yard at a scale nothing out there is drawn at —
+			# or, at the low zoom a door opens on, the home's room showing above
+			# the coop's. The farm page itself is the other item and is not here.
+			if _backdrop_active and ty >= WorldLayout.PAGE_ROWS \
 					and not _backdrop_rect.has_point(Vector2i(tx, ty)):
-				continue
-			if tile.state == WorldLayout.VOID and _backdrop_active:
-				# **Standing in a room, the dark is not dark** (P-18). The backdrop
-				# below has already drawn her farm out there, and painting the void
-				# over it would be the renderer covering up the one thing the walls
-				# exist to frame. Skipped rather than dimmed: a void tile carries
-				# nothing else to draw, which is what the branch below says.
 				continue
 			if tile.state == WorldLayout.VOID:
 				# The dark a room is cut out of (2026-09-06). Flat, textureless and
@@ -1435,7 +1459,7 @@ func _draw() -> void:
 				# skipped with it — a void tile carries no soil, no crop and nothing
 				# standing on it by construction, so this is the same picture the
 				# whole block would draw, in one call instead of a dozen.
-				draw_rect(Rect2(px, py, TILE_SIZE, TILE_SIZE), VOID_COLOR, true)
+				canvas.draw_rect(Rect2(px, py, TILE_SIZE, TILE_SIZE), VOID_COLOR, true)
 				continue
 			if tile.state == WorldLayout.YARD:
 				ground_tex = yard_texture
@@ -1458,7 +1482,7 @@ func _draw() -> void:
 			# them nothing and is waiting for them if they are ever varied.
 			var vx: int = (tx % GROUND_VARIANTS) * TILE_SIZE
 			var vy: int = (ty % GROUND_VARIANTS) * TILE_SIZE
-			draw_texture_rect_region(ground_tex, Rect2(px, py, TILE_SIZE, TILE_SIZE),
+			canvas.draw_texture_rect_region(ground_tex, Rect2(px, py, TILE_SIZE, TILE_SIZE),
 				Rect2(vx, vy, TILE_SIZE, TILE_SIZE))
 
 			# Draw tilled soil, edge-matched to its neighbours (see world/autotile.gd)
@@ -1483,12 +1507,12 @@ func _draw() -> void:
 					# Mid-soak (Q-52): the wet cell fades in over the dry one, so
 					# rain and the can are *seen* wetting the ground.
 					var dry := Autotile.atlas_coord(mask, false)
-					draw_texture_rect_region(dirt_texture, soil_rect,
+					canvas.draw_texture_rect_region(dirt_texture, soil_rect,
 						Rect2(dry.x * 16, dry.y * 16, 16, 16))
-					draw_texture_rect_region(dirt_texture, soil_rect,
+					canvas.draw_texture_rect_region(dirt_texture, soil_rect,
 						Rect2(coord.x * 16, coord.y * 16, 16, 16), Color(1, 1, 1, soak))
 				else:
-					draw_texture_rect_region(dirt_texture, soil_rect,
+					canvas.draw_texture_rect_region(dirt_texture, soil_rect,
 						Rect2(coord.x * 16, coord.y * 16, 16, 16))
 
 			# Queue obstacles and boundaries — whatever picture this square's
@@ -1500,7 +1524,7 @@ func _draw() -> void:
 				var ob_rect := _react_rect(px, py, k, TILE_SIZE, shake)
 				render_queue.append({
 					"y": py,
-					"draw": func(): draw_texture_rect_region(tile_sheet, ob_rect, tile_region)
+					"draw": func(): canvas.draw_texture_rect_region(tile_sheet, ob_rect, tile_region)
 				})
 			elif _chipping.has(Vector2i(tx, ty)):
 				# The tile is already cleared in the sim, but the clear's beats
@@ -1512,7 +1536,7 @@ func _draw() -> void:
 					var chip_rect := _react_rect(px, py, k, TILE_SIZE, shake)
 					render_queue.append({
 						"y": py,
-						"draw": func(): draw_texture_rect_region(chip_sheet, chip_rect, chip)
+						"draw": func(): canvas.draw_texture_rect_region(chip_sheet, chip_rect, chip)
 					})
 
 			# Queue crops
@@ -1535,12 +1559,12 @@ func _draw() -> void:
 					# next day. Every other square in the field goes down the
 					# ordinary path below, untouched.
 					if CropPresentation.shows(tile.state):
-						_queue_ripe(render_queue, Vector2i(tx, ty), crop_tex,
+						_queue_ripe(canvas, render_queue, Vector2i(tx, ty), crop_tex,
 							region, crop_rect, py, tile.crop_type)
 					else:
 						render_queue.append({
 							"y": py,
-							"draw": func(): draw_texture_rect_region(crop_tex, crop_rect, region)
+							"draw": func(): canvas.draw_texture_rect_region(crop_tex, crop_rect, region)
 						})
 
 				# T-28, satisfied treatment B: **the state shows before the tap.**
@@ -1561,12 +1585,18 @@ func _draw() -> void:
 						var wrect := Rect2(px + TILE_SIZE - 7.0 + shake, py + 0.5, 6.0, 6.0)
 						render_queue.append({
 							"y": py + 0.5,
-							"draw": func(): draw_texture_rect_region(
+							"draw": func(): canvas.draw_texture_rect_region(
 								wart[0], wrect, wart[1], Color(1, 1, 1, 0.92))
 						})
 
 			# Queue objects
 			var obj: String = objects[ty][tx]
+			# **Not the building she is standing in** (P-18). Its walls are the room
+			# around her, and the live view through those walls would otherwise show
+			# its roof standing over her own ceiling. Every *other* hut is drawn,
+			# because those are out there and she can see them.
+			if _backdrop_active and _backdrop_own.has_point(Vector2i(tx, ty)):
+				continue
 			if obj == WorldLayout.CHICKEN_COOP_PART:
 				# The coop's other three cells. Real to the sim — the hen shelters
 				# in them and nothing may be farmed there — and drawn by the
@@ -1607,7 +1637,7 @@ func _draw() -> void:
 						HOUSE_SIZE.x, HOUSE_SIZE.y)
 					render_queue.append({
 						"y": py,
-						"draw": func(): draw_texture_rect_region(
+						"draw": func(): canvas.draw_texture_rect_region(
 							house_tex, house_rect, house_reg)
 					})
 				continue
@@ -1626,7 +1656,7 @@ func _draw() -> void:
 				render_queue.append({
 					"y": py,
 					"draw": func():
-						draw_texture_rect_region(small_tex, egg_rect, small_reg)
+						canvas.draw_texture_rect_region(small_tex, egg_rect, small_reg)
 				})
 			elif obj != "":
 				# T-27 box 5 (treatment C): the same object, in its other state.
@@ -1641,7 +1671,7 @@ func _draw() -> void:
 					var region: Rect2 = obj_data[1]
 					render_queue.append({
 						"y": py,
-						"draw": func(): draw_texture_rect_region(tex, Rect2(px, py - (region.size.y - TILE_SIZE), region.size.x, region.size.y), region)
+						"draw": func(): canvas.draw_texture_rect_region(tex, Rect2(px, py - (region.size.y - TILE_SIZE), region.size.x, region.size.y), region)
 					})
 
 	# **The orders a mark-1 robot has been taught** (2026-09-03), drawn while she
@@ -1660,7 +1690,7 @@ func _draw() -> void:
 	# already drawn in — the set itself is computed once per tap, not per frame.
 	if not teaching_eligible.is_empty():
 		var dim_rects: Array[Rect2] = []
-		for ty in MAP_HEIGHT:
+		for ty in range(y0, y1):
 			for tx in MAP_WIDTH:
 				var dt := Vector2i(tx, ty)
 				if teaching_eligible.has(dt):
@@ -1673,18 +1703,20 @@ func _draw() -> void:
 				"y": 98500.0,
 				"draw": func():
 					for r in dim_rects:
-						draw_rect(r, TEACH_DIM, true)
+						canvas.draw_rect(r, TEACH_DIM, true)
 			})
 
 	for i in teaching_orders.size():
 		var ot: Vector2i = teaching_orders[i]
+		if not _rows_hold(ot.y * TILE_SIZE, y0, y1):
+			continue
 		var ocx := ot.x * TILE_SIZE + TILE_SIZE / 2.0
 		var ocy := ot.y * TILE_SIZE + TILE_SIZE / 2.0
 		render_queue.append({
 			"y": 99000.0,
 			"draw": func():
-				draw_circle(Vector2(ocx, ocy), 6.0, Color(0.25, 0.75, 1.0, 0.22))
-				draw_arc(Vector2(ocx, ocy), 6.0, 0.0, TAU, 16,
+				canvas.draw_circle(Vector2(ocx, ocy), 6.0, Color(0.25, 0.75, 1.0, 0.22))
+				canvas.draw_arc(Vector2(ocx, ocy), 6.0, 0.0, TAU, 16,
 					Color(0.55, 0.9, 1.0, 0.9), 1.0)
 		})
 
@@ -1692,6 +1724,8 @@ func _draw() -> void:
 	# is: a soft ring opening outward with three sparkles rising off it. No shake,
 	# no squash, no nope — the shapes say "yes" rather than "no" (Q-42).
 	for key in _acks.keys():
+		if not _rows_hold(Vector2i(key).y * TILE_SIZE, y0, y1):
+			continue
 		var ak: Vector2i = key
 		var ae: float = (Time.get_ticks_msec() - _acks[key]["t"]) / ACK_MS
 		if ae >= 1.0:
@@ -1703,13 +1737,13 @@ func _draw() -> void:
 		render_queue.append({
 			"y": 100000.0,
 			"draw": func():
-				draw_arc(Vector2(acx, acy), arad, 0.0, TAU, 20,
+				canvas.draw_arc(Vector2(acx, acy), arad, 0.0, TAU, 20,
 					Color(0.62, 0.90, 1.0, aa), 1.4)
 				for i in 3:
 					var ang: float = -PI / 2.0 + (i - 1) * 0.7
 					var d: float = 5.0 + 6.0 * ae
 					var sp := Vector2(acx + cos(ang) * d, acy + sin(ang) * d - 3.0 * ae)
-					draw_rect(Rect2(sp - Vector2(1.1, 1.1), Vector2(2.2, 2.2)),
+					canvas.draw_rect(Rect2(sp - Vector2(1.1, 1.1), Vector2(2.2, 2.2)),
 						Color(0.95, 1.0, 1.0, aa))
 		})
 
@@ -1743,11 +1777,11 @@ func _draw() -> void:
 						# behind it. One backing, one vocabulary — a glyph on a
 						# dark disc is "the game telling you something", whether
 						# it floats over a station or answers a tap.
-						draw_circle(Vector2(nx, ny), ACK_NOUN * 0.72,
+						canvas.draw_circle(Vector2(nx, ny), ACK_NOUN * 0.72,
 							Color(0.10, 0.09, 0.16, 0.62 * na))
-						draw_arc(Vector2(nx, ny), ACK_NOUN * 0.72, 0.0, TAU, 18,
+						canvas.draw_arc(Vector2(nx, ny), ACK_NOUN * 0.72, 0.0, TAU, 18,
 							Color(0.62, 0.90, 1.0, 0.85 * na), 1.0)
-						draw_texture_rect_region(nart[0],
+						canvas.draw_texture_rect_region(nart[0],
 							Rect2(nx - ACK_NOUN / 2.0, ny - ACK_NOUN / 2.0,
 								ACK_NOUN, ACK_NOUN),
 							nart[1], Color(1, 1, 1, na))
@@ -1758,14 +1792,16 @@ func _draw() -> void:
 						# required reading, not marks).
 						var tick := Vector2(nx + ACK_NOUN * 0.34, ny + ACK_NOUN * 0.30)
 						var col := Color(0.72, 0.97, 1.0, na)
-						draw_line(tick + Vector2(-2.6, -0.4), tick + Vector2(-0.9, 1.6), col, 1.4)
-						draw_line(tick + Vector2(-0.9, 1.6), tick + Vector2(2.6, -2.4), col, 1.4)
+						canvas.draw_line(tick + Vector2(-2.6, -0.4), tick + Vector2(-0.9, 1.6), col, 1.4)
+						canvas.draw_line(tick + Vector2(-0.9, 1.6), tick + Vector2(2.6, -2.4), col, 1.4)
 				})
 
 	# The missing-thing picture rides above everything, including the farmer —
 	# it is the whole message, so it must never be the thing that gets occluded.
 	for key in _refusals.keys():
 		var rk: Vector2i = key
+		if not _rows_hold(rk.y * TILE_SIZE, y0, y1):
+			continue
 		var icon: Array = _refuse_icon(String(_refusals[key]["why"]))
 		if icon.is_empty():
 			continue
@@ -1782,14 +1818,15 @@ func _draw() -> void:
 		var iy := rk.y * TILE_SIZE - ih - 3.0 - rise
 		render_queue.append({
 			"y": 100000.0,  # always last
-			"draw": func(): draw_texture_rect_region(tex, Rect2(ix, iy, iw, ih), reg,
+			"draw": func(): canvas.draw_texture_rect_region(tex, Rect2(ix, iy, iw, ih), reg,
 				Color(1, 1, 1, fade))
 		})
 
 	# Insert player into render queue if player exists
 	var player = get_node_or_null("../Player")
-	if player and player.has_method("queue_render"):
-		player.queue_render(self, render_queue)
+	if player and player.has_method("queue_render") \
+			and _rows_hold(player.position.y, y0, y1):
+		player.queue_render(canvas, render_queue)
 
 	# Insert every registered actor's sprite into the render queue (M2.5 WI-6).
 	# These are this farm's own children now rather than a sibling node some other
@@ -1797,8 +1834,8 @@ func _draw() -> void:
 	# populated farm without knowing anything about entities (finding F-3).
 	if actors_node != null:
 		for child in actors_node.get_children():
-			if child.has_method("queue_render"):
-				child.queue_render(self, render_queue)
+			if child.has_method("queue_render") and _rows_hold(child.position.y, y0, y1):
+				child.queue_render(canvas, render_queue)
 
 	# Inject insertion order for stable sorting
 	for i in range(render_queue.size()):
@@ -1874,13 +1911,15 @@ static func room_backdrop_offset(r: Dictionary, building: Rect2i) -> Vector2:
 
 
 const BACKDROP_DIM := Color(0.035, 0.035, 0.055, 0.30)
-const BACKDROP_REACH := 9      # farm tiles drawn around the anchor, each way
+const BACKDROP_REACH := 9      # farm tiles the camera may look out over, each way
+const BACKDROP_LAYER := 2      # the visibility layer the live view must not draw
 
 
 # True for the frame a room's backdrop was drawn on, read by the tile loop so it
 # leaves the dark alone instead of painting over the farm — and the rectangle of the
 # room she is actually standing in, so the tile loop can leave every *other* room
-# alone as well.
+# alone as well, and the tiles her own building stands on, so its outside is not
+# drawn through her own ceiling.
 #
 # **Rooms share a page, and that was visible** (CEO, 2026-09-16: "when two coops are
 # placed, they're side-by-side within the coop — you can see the next coop outside
@@ -1898,94 +1937,213 @@ const BACKDROP_REACH := 9      # farm tiles drawn around the anchor, each way
 # version of this and buys nothing the eye can see.
 var _backdrop_active := false
 var _backdrop_rect := Rect2i()
+var _backdrop_own := Rect2i()
+var _backdrop_offset := Vector2.ZERO
+var _backdrop_pitch := 1.0
+
+# **The farm through the walls is the farm, drawn by a second eye** (design/15 §8a,
+# 2026-09-16). The first backdrop was a hand-written second pass — ground, boundary
+# states, object sprites — and it did not draw crops, effects or a single actor, so
+# on the frame she stepped through a door every plant and every creature in the yard
+# popped out of existence. The CEO's question was whether the world could "actually
+# continue to simulate and update on the periphery of the room". It always did; the
+# sim never pauses at a door. What stopped was the *drawing*.
+#
+# So the second pass is gone. `_backdrop_view` is a `SubViewport` that shares this
+# canvas (`world_2d`), with its own camera parked over the farm page at 1:1: it
+# renders the same items the main view renders — soil, crops, the ripe glow, the hen,
+# a crow, the neighbour, the day tint — with the code that already draws them, and
+# there is no parallel renderer to keep honest. `_backdrop_node` then draws that
+# texture into the room's space at `offset + farm_px * pitch`, which is the same
+# transform the hand-written pass used, so registration is unchanged.
+#
+# The texture lands on a canvas layer of its own (see `_build_views` for why), and
+# `CanvasLayer` content — the HUD, the build stamp, that layer — belongs to the
+# main viewport and never reaches the sub-view; a spike confirmed it on 2026-09-16.
+#
+# The sub-view renders only while she is indoors (`_set_backdrop_live`). Its size is
+# the farm page at 1:1, 512×320, which is what a 19-tile reach at any position needs
+# and costs the GPU about a third of the main view's pixels.
+var _backdrop_view: SubViewport = null
+var _backdrop_layer: CanvasLayer = null
+var _backdrop_node: Node2D = null
+# The square the dim leaves lit on the way out: the building she has just stepped
+# out of, its roof, and the square she is standing on — the threshold, which is
+# the one place the swap is allowed to change the picture.
+var _exit_hole := Rect2i()
+var _dim_node: Node2D = null
+var _page_dim_node: Node2D = null
+var _page0_node: Node2D = null
+const PAGE0_LAYER := 4          # the farm page's items: what the backdrop view draws
+
+# How much of BACKDROP_DIM lies on the yard this frame — 1 at rest indoors, and
+# ramped through a door by `main.gd`'s glide so it never pops on: the swap frame
+# is drawn from the picture she was already looking at, dim included.
+var backdrop_dim_strength := 1.0
+# The same dim over the farm page while she is outdoors: the exit glide's other
+# half, where the room's dim lifts off the yard as the walls fall away.
+var page_dim_strength := 0.0
 
 
+
+func _build_views() -> void:
+	# The farm page, as an item of its own (see `_draw`).
+	_page0_node = Node2D.new()
+	_page0_node.name = "FarmPage"
+	_page0_node.visibility_layer = 1 | PAGE0_LAYER
+	_page0_node.draw.connect(func(): _draw_pages(_page0_node, 0, WorldLayout.PAGE_ROWS))
+	add_child(_page0_node)
+	_ripe_glow_node.visibility_layer = 1 | PAGE0_LAYER
+	# The main view never draws the farm page by that layer alone: outdoors the
+	# item carries layer 1 as well and is drawn as always; indoors it carries
+	# only the page layer, and only the backdrop view sees it.
+	get_viewport().canvas_cull_mask &= ~PAGE0_LAYER
+
+	_backdrop_view = SubViewport.new()
+	_backdrop_view.name = "FarmThroughTheWalls"
+	_backdrop_view.world_2d = get_viewport().find_world_2d()
+	_backdrop_view.size = Vector2i(MAP_WIDTH * TILE_SIZE, WorldLayout.PAGE_ROWS * TILE_SIZE)
+	_backdrop_view.disable_3d = true
+	_backdrop_view.transparent_bg = true
+	_backdrop_view.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	_backdrop_view.canvas_cull_mask = 1 | PAGE0_LAYER
+	var eye := Camera2D.new()
+	eye.name = "Eye"
+	eye.position = Vector2(_backdrop_view.size) / 2.0
+	eye.zoom = Vector2.ONE
+	_backdrop_view.add_child(eye)
+	add_child(_backdrop_view)
+
+	# The texture is drawn on a canvas layer of its own, below the world's, that
+	# follows the camera. Two reasons, and the first is the one that matters: the
+	# backdrop view renders the farm *with* the canvas's day tint, and an item in
+	# the world's canvas is tinted again on the way to the screen — a shader that
+	# overwrote COLOR did not stop it in the compatibility renderer, and the yard
+	# came out 8% darker than the same yard seen outdoors. A layer has no modulate
+	# of its own. The second is that a layer belongs to the viewport it hangs
+	# under, so the backdrop view can never draw the texture into itself.
+	_backdrop_layer = CanvasLayer.new()
+	_backdrop_layer.name = "RoomBackdropLayer"
+	_backdrop_layer.layer = -1
+	_backdrop_layer.follow_viewport_enabled = true
+	add_child(_backdrop_layer)
+	_backdrop_node = Node2D.new()
+	_backdrop_node.name = "RoomBackdrop"
+	_backdrop_node.draw.connect(_draw_backdrop_texture)
+	_backdrop_layer.add_child(_backdrop_node)
+
+	# Over the yard and under the room, so the room she is standing in is the lit
+	# thing and the wall is a real edge rather than a change of subject. A flat dim
+	# for now — the treatment of the yard seen through the walls is Q-108's. Its
+	# own item because the texture's material would paint it white, and on the
+	# backdrop node's layer so the backdrop view never dims the yard it renders.
+	_dim_node = Node2D.new()
+	_dim_node.name = "RoomBackdropDim"
+	_dim_node.z_index = -1
+	_dim_node.visibility_layer = 2
+	_dim_node.draw.connect(_draw_backdrop_dim)
+	add_child(_dim_node)
+
+	_page_dim_node = Node2D.new()
+	_page_dim_node.name = "FarmPageDim"
+	_page_dim_node.z_index = 1           # over the yard and whoever stands in it
+	_page_dim_node.visibility_layer = 2
+	_page_dim_node.draw.connect(_draw_page_dim)
+	add_child(_page_dim_node)
+
+
+# The door glide's hand on the two dims (`main.gd`), each 0..1.
+func set_door_dim(indoor: float, page: float) -> void:
+	backdrop_dim_strength = indoor
+	page_dim_strength = page
+	# Asked for the first time on the swap frame itself, before this farm has
+	# redrawn — so the room on record is still the one she has just left, and her
+	# tile is already the one she stepped out onto.
+	if page > 0.0 and _backdrop_active and player_node() != null:
+		var hole := Rect2i(_backdrop_own.position - Vector2i(0, 1), _backdrop_own.size + Vector2i(0, 1))
+		_exit_hole = hole.expand(player_node().get_tile_pos())
+	if _dim_node != null:
+		_dim_node.queue_redraw()
+	if _page_dim_node != null:
+		_page_dim_node.queue_redraw()
+
+
+func _set_backdrop_live(on: bool) -> void:
+	if _backdrop_view == null:
+		return
+	var mode := SubViewport.UPDATE_ALWAYS if on else SubViewport.UPDATE_DISABLED
+	if _backdrop_view.render_target_update_mode == mode:
+		return
+	_backdrop_view.render_target_update_mode = mode
+	var layer: int = PAGE0_LAYER if on else 1 | PAGE0_LAYER
+	_page0_node.visibility_layer = layer
+	_ripe_glow_node.visibility_layer = layer
+	_backdrop_node.queue_redraw()
+	_dim_node.queue_redraw()
+
+
+# Decides, for this frame, whether she is in a room and where the farm goes; the
+# farm itself is the live texture `_backdrop_node` draws beneath this item, and
+# the dim is `_dim_node`'s.
 func _draw_room_backdrop() -> void:
 	_backdrop_active = false
 	if sim == null or sim.rooms.is_empty() or player_node() == null:
+		_set_backdrop_live(false)
 		return
 	var id: String = sim.room_of_cell(player_node().get_tile_pos())
 	if id == "":
+		_set_backdrop_live(false)
 		return
 	_backdrop_active = true
 	var r: Dictionary = sim.rooms[id]
 	_backdrop_rect = Rect2i(r.get("origin", Vector2i.ZERO), r.get("size", Vector2i.ZERO))
-	var pitch := float(r.get("pitch", 1))
-	var anchor: Vector2i = r.get("anchor", Vector2i.ZERO)
-	var building: Rect2i = sim.room_building_rect(r)
-	var offset: Vector2 = room_backdrop_offset(r, building)
+	_backdrop_own = sim.room_building_rect(r)
+	_backdrop_pitch = float(r.get("pitch", 1))
+	_backdrop_offset = room_backdrop_offset(r, _backdrop_own)
+	_set_backdrop_live(true)
+	_backdrop_node.queue_redraw()
+	_dim_node.queue_redraw()
 
-	# The tiles her own building stands on. Skipped in the pass below, because she is
-	# inside it and its outside would be drawn through her own ceiling.
-	var own := {}
-	for oy in building.size.y:
-		for ox in building.size.x:
-			own[building.position + Vector2i(ox, oy)] = true
 
-	draw_set_transform(offset, 0.0, Vector2(pitch, pitch))
-	for ty in range(anchor.y - BACKDROP_REACH, anchor.y + BACKDROP_REACH + 1):
-		for tx in range(anchor.x - BACKDROP_REACH, anchor.x + BACKDROP_REACH + 1):
-			if tx < 0 or ty < 0 or tx >= MAP_WIDTH or ty >= MAP_HEIGHT:
-				continue
-			var tile: Dictionary = tile_look(tx, ty)
-			var state := String(tile.get("state", ""))
-			if state == "" or state == WorldLayout.VOID:
-				continue      # the dark under the farm is not scenery
-			var px := tx * TILE_SIZE
-			var py := ty * TILE_SIZE
-			var ground: Texture2D = tileset_texture
-			if state == WorldLayout.YARD:
-				ground = yard_texture
-			elif state == WorldLayout.FLOOR:
-				ground = floor_texture
-			var vx: int = (tx % GROUND_VARIANTS) * TILE_SIZE
-			var vy: int = (ty % GROUND_VARIANTS) * TILE_SIZE
-			draw_texture_rect_region(ground, Rect2(px, py, TILE_SIZE, TILE_SIZE),
-				Rect2(vx, vy, TILE_SIZE, TILE_SIZE))
+func _draw_backdrop_texture() -> void:
+	if not _backdrop_active or _backdrop_view == null:
+		return
+	_backdrop_node.draw_set_transform(_backdrop_offset, 0.0,
+		Vector2(_backdrop_pitch, _backdrop_pitch))
+	_backdrop_node.draw_texture_rect(_backdrop_view.get_texture(),
+		Rect2(Vector2.ZERO, Vector2(_backdrop_view.size)), false)
 
-			# **The boundaries, which are states and not objects** (fixed 2026-09-16,
-			# reported from play: "my coop is next to fencing and hedges and I cannot
-			# see them from inside"). A fence, a hedge, a gate, a rock, a log, the
-			# map's own border — every one of them is a *tile state* with a sheet in
-			# `tile_sheets`, and this pass was only ever picking a ground texture and
-			# then asking for objects. So the farm through the walls was a field of
-			# grass with the furniture missing, which is the one thing it exists not
-			# to be: what she looks out at has to be her farm, recognisably.
-			#
-			# `tile_picture` is the renderer's own one answer to "what does this state
-			# look like", so this cannot drift from the pass that draws the farm when
-			# she is standing on it.
-			var picture: Array = tile_picture(state)
-			if not picture.is_empty():
-				draw_texture_rect_region(picture[0],
-					Rect2(px, py, TILE_SIZE, TILE_SIZE), picture[1])
 
-			var obj: String = objects[ty][tx]
-			if obj == "" or obj == WorldLayout.HOUSE_WALL or obj == WorldLayout.HOME_DOORWAY \
-					or obj == WorldLayout.ROBOT_STALL_SLOT or obj == WorldLayout.CHICKEN_COOP_PART \
-					or obj == WorldLayout.ROOM_DOORWAY:
-				continue
-			# **Not the building she is standing in.** Its walls are the room around
-			# her; drawing its outside as well would put its roof through her own
-			# ceiling. Every *other* hut on the farm is drawn, because those are out
-			# there and she can see them.
-			if own.has(Vector2i(tx, ty)):
-				continue
-			var data = object_regions.get(obj)
-			if data == null:
-				continue
-			var tex: Texture2D = data[0]
-			var region: Rect2 = data[1]
-			draw_texture_rect_region(tex,
-				Rect2(px, py - (region.size.y - TILE_SIZE), region.size.x, region.size.y),
-				region)
-	# Over the yard and under the room, so the room she is standing in is the lit
-	# thing and the wall is a real edge rather than a change of subject.
-	draw_rect(Rect2(
-		(anchor.x - BACKDROP_REACH) * TILE_SIZE, (anchor.y - BACKDROP_REACH) * TILE_SIZE,
-		(BACKDROP_REACH * 2 + 1) * TILE_SIZE, (BACKDROP_REACH * 2 + 1) * TILE_SIZE),
-		BACKDROP_DIM, true)
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+func _draw_backdrop_dim() -> void:
+	if not _backdrop_active or backdrop_dim_strength <= 0.0:
+		return
+	var dim := BACKDROP_DIM
+	dim.a *= clampf(backdrop_dim_strength, 0.0, 1.0)
+	_dim_node.draw_set_transform(_backdrop_offset, 0.0, Vector2(_backdrop_pitch, _backdrop_pitch))
+	_dim_node.draw_rect(Rect2(0, 0, MAP_WIDTH * TILE_SIZE, WorldLayout.PAGE_ROWS * TILE_SIZE),
+		dim, true)
+
+
+func _draw_page_dim() -> void:
+	if page_dim_strength <= 0.0:
+		return
+	var dim := BACKDROP_DIM
+	dim.a *= clampf(page_dim_strength, 0.0, 1.0)
+	var page := Rect2i(0, 0, MAP_WIDTH, WorldLayout.PAGE_ROWS)
+	var hole := _exit_hole.intersection(page)
+	# Four rects around the hole rather than one over the page, so the building
+	# and the threshold she is standing on stay as lit as the room was.
+	var rects: Array[Rect2i] = []
+	if hole.has_area():
+		rects.append(Rect2i(page.position, Vector2i(page.size.x, hole.position.y - page.position.y)))
+		rects.append(Rect2i(Vector2i(page.position.x, hole.end.y), Vector2i(page.size.x, page.end.y - hole.end.y)))
+		rects.append(Rect2i(Vector2i(page.position.x, hole.position.y), Vector2i(hole.position.x - page.position.x, hole.size.y)))
+		rects.append(Rect2i(Vector2i(hole.end.x, hole.position.y), Vector2i(page.end.x - hole.end.x, hole.size.y)))
+	else:
+		rects.append(page)
+	for r in rects:
+		if r.has_area():
+			_page_dim_node.draw_rect(Rect2(r.position * TILE_SIZE, r.size * TILE_SIZE), dim, true)
 
 
 func _draw_ripe_glow() -> void:
