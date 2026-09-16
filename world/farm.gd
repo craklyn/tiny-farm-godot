@@ -1573,7 +1573,8 @@ func _draw() -> void:
 				# whose picture is two tiles wide. A cell of its own would be the
 				# right half of the shed drawn twice, half a tile to the right.
 				continue
-			if obj == WorldLayout.HOUSE_WALL or obj == WorldLayout.HOME_DOORWAY:
+			if obj == WorldLayout.HOUSE_WALL or obj == WorldLayout.HOME_DOORWAY \
+					or obj == WorldLayout.ROOM_DOORWAY:
 				# Two objects that are real to the sim and invisible to the
 				# renderer (2026-09-06). A house wall is part of the facade the
 				# door draws, just below, so a cell of its own would be drawing the

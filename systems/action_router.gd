@@ -56,6 +56,10 @@ const SPECIAL_OBJECTS := {
 	# pick it up. Not a verb, for the machine panel's reason — opening a panel
 	# changes nothing in the world, so nothing about it belongs in a replay. What
 	# the panel then does is `use_door` or `collect`, both through the one gateway.
+	# The way back out of a room. A tap on the doorway she is standing in is
+	# `use_door`, the same verb that brought her in (fixed 2026-09-16 — without an
+	# object here the doorway was a tile state, and a tile state answers no tap).
+	WorldLayout.ROOM_DOORWAY: "use_door",
 	WorldLayout.CHICKEN_COOP: "open_structure",
 	WorldLayout.CHICKEN_COOP_PART: "open_structure",
 	"tool_axe":     "take_tool",

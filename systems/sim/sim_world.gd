@@ -853,6 +853,10 @@ const OPEN_OBJECTS := {
 	# reason: a coop the hen cannot step into is a shed with a chicken standing
 	# outside it in the rain.
 	WorldLayout.CHICKEN_COOP: true, WorldLayout.CHICKEN_COOP_PART: true,
+	# ...and a room's doorway, which is the square she arrives on going in and the
+	# square she stands on to ask to leave. A door that blocked its own threshold
+	# would be a room with no way out (fixed 2026-09-16).
+	WorldLayout.ROOM_DOORWAY: true,
 }
 
 # The objects that are a **building you stand in** rather than a thing in your
@@ -996,6 +1000,11 @@ func open_room(item: String, anchor: Vector2i) -> String:
 	for y in size.y:
 		for x in size.x:
 			set_tile_state(origin.x + x, origin.y + y, String(cells[y][x]))
+	# **And the doorway gets an object, or there is no way to ask to leave.** The
+	# hole in the wall is a tile state and a tap resolves against objects, so
+	# without this a player walks in and is stuck — found in play, 2026-09-16.
+	var doorway := origin + WorldLayout.room_door_cell(size)
+	set_object(doorway.x, doorway.y, WorldLayout.ROOM_DOORWAY)
 	var id := "%s_room_%d" % [item, slot + 1]
 	rooms[id] = {
 		"item": item,
@@ -1024,6 +1033,7 @@ func close_room(anchor: Vector2i) -> void:
 	var sz: Vector2i = r.get("size", Vector2i.ZERO)
 	for y in sz.y:
 		for x in sz.x:
+			set_object(o.x + x, o.y + y, "")
 			set_tile_state(o.x + x, o.y + y, WorldLayout.VOID)
 	rooms.erase(id)
 

@@ -123,6 +123,7 @@ func _run_scenarios() -> void:
 	await _scenario_ah_the_mark_one_takes_exact_orders()
 	await _scenario_ai_the_house_has_a_door()
 	await _scenario_aj_the_robot_lives_in_a_stall()
+	await _scenario_ax_she_can_get_back_out_of_the_coop()
 	await _scenario_ak_she_puts_up_a_fence()
 	await _scenario_al_a_ripe_crop_carries()
 	await _scenario_am_the_mark_three_shows_its_practice()
@@ -6669,3 +6670,79 @@ func _scenario_ax_three_farms_three_cards() -> void:
 	GameState.trace_path = held[2]
 	GameState.slot = held_slot
 	_wipe_dir(SLOT_SCRATCH)
+
+
+func _scenario_ax_she_can_get_back_out_of_the_coop() -> void:
+	# **Found in play, 2026-09-16.** The CEO put a coop down, tapped it, went inside,
+	# and could not leave. The sim was right the whole time — `use_door` resolved in
+	# both directions and a unit test said so — but a room's doorway was a *tile
+	# state*, and `ActionRouter.SPECIAL_OBJECTS` is keyed on objects, so there was
+	# nothing on that square for a tap to mean. The verb worked; the tap did not.
+	#
+	# That is the exact failure this project has a comment about, from the day
+	# fencing shipped "with a verb, a state, a refund and 23 passing assertions, and
+	# no way to get any". A unit test that calls `apply_action` cannot see it. So
+	# this scenario drives the two taps a player makes and nothing else: one to go
+	# in, one to come out.
+	print("\n--- Scenario AX: she can get back out of the coop (found in play, 2026-09-16) ---")
+
+	var real_paths := [GameState.save_path, GameState.replay_path, GameState.trace_path]
+	GameState.save_path = "user://coop_autosave.json"
+	GameState.replay_path = "user://coop_replay.json"
+	GameState.trace_path = "user://coop_trace.jsonl"
+
+	var menus = main_scene.menus
+	GameState.gold = 1000
+	GameState.machines = {}
+	GameState.set_energy(GameState.max_energy)
+	main_scene.end_teaching()
+
+	var hut := Vector2i(15, 9)
+	for ty in range(7, 12):
+		for tx in range(13, 19):
+			_stage_tile(tx, ty, "cleared")
+	GameState.machines["coop"] = 1
+	var laid: Dictionary = farm.apply_action({ "verb": "place", "target": hut,
+		"item": "coop", "actor": "player" }, GameState)
+	_assert(laid.get("ok", false) and String(laid.get("room", "")) != "",
+		"a coop with an inside stands on the farm (%s)" % laid.get("room", ""))
+	var room: Dictionary = farm.sim.rooms[String(laid.room)]
+	var doorway: Vector2i = room["door"]
+	menus.close_menu()
+	await get_tree().process_frame
+
+	# **The object is the whole fix**, so assert it directly as well as through the
+	# taps below: a doorway with nothing on it is a doorway no tap can reach.
+	_assert(farm.get_object(doorway.x, doorway.y) == WorldLayout.ROOM_DOORWAY,
+		"its doorway carries something a tap can land on")
+	_assert(ActionRouter.SPECIAL_OBJECTS.get(WorldLayout.ROOM_DOORWAY, "") == "use_door",
+		"...and the router knows a tap on it is the door")
+
+	# --- tap one: in ------------------------------------------------------------
+	player.pos = Vector2(hut.x * 16.0 + 8.0, (hut.y + 1) * 16.0 + 8.0)
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+	InputManager.click_tile = hut
+	InputManager.has_click = true
+	var asked := await _wait_until(func(): return menus.active_menu == "structure", 200)
+	_assert(asked, "a tap on the hut asks what she wants to do with it")
+	menus.selected_option = 0      # "Go inside"
+	menus._select_current_option()
+	var inside := await _wait_until(
+		func(): return farm.sim.room_of_cell(player.get_tile_pos()) != "", 200)
+	_assert(inside, "and she goes in (%s)" % player.get_tile_pos())
+
+	# --- tap two: out, which is the one that was broken -------------------------
+	InputManager.click_tile = player.get_tile_pos()
+	InputManager.has_click = true
+	var outside := await _wait_until(
+		func(): return farm.sim.page_of(player.get_tile_pos()) == 0, 300)
+	_assert(outside, "and a tap on the doorway she is standing in brings her out again (%s)"
+		% player.get_tile_pos())
+	_assert(player.get_tile_pos() == hut + Vector2i(0, 1),
+		"onto her own doorstep, below the hut (%s)" % player.get_tile_pos())
+
+	GameState.save_path = real_paths[0]
+	GameState.replay_path = real_paths[1]
+	GameState.trace_path = real_paths[2]

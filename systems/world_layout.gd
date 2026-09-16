@@ -139,6 +139,20 @@ const WORKBENCH := "workbench"
 # **None of them block walking.** It is open-fronted like the stall, and it has to
 # be: a coop the hen cannot step into is a shed with a chicken standing outside it
 # in the rain. She walks in, and so may the farmer.
+# **The way out of a room** (P-18, fixed 2026-09-16). A room's doorway is a *tile
+# state* — `GATE_OPEN`, the hole cut in its south wall — and a tile state is not
+# something a tap can resolve against: `ActionRouter.SPECIAL_OBJECTS` is keyed on
+# objects. So a player could walk into a coop and had no way to ask to leave, which
+# is what the CEO found the first evening he played it.
+#
+# This object is what makes the doorway answer. It is the home's `HOME_DOORWAY` with
+# one difference that matters: it does **not** block walking. The home's doorway is
+# tapped from the floor beside it; a room's doorway is the square she arrives on and
+# the square she leaves from, so it has to be standable — `use_door` allows a
+# Manhattan distance of zero exactly so that standing on a door and reaching for it
+# is not a refusal.
+const ROOM_DOORWAY := "room_doorway"
+
 const CHICKEN_COOP := "chicken_coop"
 const CHICKEN_COOP_PART := "chicken_coop_part"
 
@@ -640,7 +654,7 @@ static func door_at(t: Vector2i, layout: Dictionary = DEFAULT) -> Dictionary:
 # on a door means the door rather than the ground under it, and the gateway asks
 # it as the verb's own guard.
 static func is_door_object(obj: String) -> bool:
-	return obj == HOUSE_DOOR or obj == HOME_DOORWAY
+	return obj == HOUSE_DOOR or obj == HOME_DOORWAY or obj == ROOM_DOORWAY
 
 
 # Is this object one of a stall's two bays? Asked wherever "a robot may be parked
