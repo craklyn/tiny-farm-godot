@@ -30,10 +30,28 @@ func _ready() -> void:
 		print("no four-square block free near the farmer; nothing captured")
 		get_tree().quit(1)
 		return
+	# **A fence right below the hut**, so the alignment is checkable by eye: the
+	# fence must appear immediately south of the room and never through it (the
+	# one-tile slide reported from play, 2026-09-16).
+	for dx in range(-2, 4):
+		main.farm.sim.set_tile_state(spot.x + dx, spot.y + 1, WorldLayout.FENCE_BUILT)
 	gs.machines["coop"] = 1
 	var laid: Dictionary = main.farm.apply_action({
 		"verb": "place", "target": spot, "item": "coop", "actor": "player" }, gs)
 	main.menus.close_menu()
+
+	# **A second coop**, because two of them share the rooms page and that used to be
+	# visible from inside the first (CEO, 2026-09-16). Put somewhere else on the farm
+	# entirely, which is the point: from inside one you should see yard where the
+	# other one's tiles happen to be kept, not the other one.
+	var second := _free_block(main, spot + Vector2i(5, 3))
+	if second.x >= 0:
+		gs.machines["coop"] = 1
+		main.farm.apply_action({
+			"verb": "place", "target": second, "item": "coop", "actor": "player" }, gs)
+		main.menus.close_menu()
+	for i in 6:
+		await get_tree().process_frame
 	main.farm.sim.set_actor_pos("player", spot + Vector2i(0, 1))
 	main.player.init_position(spot.x, spot.y + 1)
 	main.farm.queue_redraw()

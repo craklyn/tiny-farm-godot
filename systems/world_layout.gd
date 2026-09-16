@@ -178,21 +178,26 @@ const CHICKEN_COOP_PART := "chicken_coop_part"
 # of by remembering an allocator's history.
 const ROOMS_PAGE := 2
 const ROOM_SLOT := Vector2i(6, 6)
-const ROOM_SLOT_COLUMNS := 5
+# One tile of dark between slots. The renderer no longer draws a room that is not
+# hers, so this is not what separates them any more — but a wall ring that ever lost
+# a cell would otherwise open straight into the room next door, and a gap costs a
+# page that is mostly empty nothing at all.
+const ROOM_SLOT_GAP := 1
+const ROOM_SLOT_COLUMNS := 4
 
 
 # Where slot `i` begins, in world tiles. Pure arithmetic on the slot index, so two
 # builds, a save and a replay put the same room in the same place.
 static func room_slot_origin(i: int) -> Vector2i:
 	return Vector2i(
-		(i % ROOM_SLOT_COLUMNS) * ROOM_SLOT.x,
-		ROOMS_PAGE * PAGE_ROWS + (i / ROOM_SLOT_COLUMNS) * ROOM_SLOT.y)
+		(i % ROOM_SLOT_COLUMNS) * (ROOM_SLOT.x + ROOM_SLOT_GAP),
+		ROOMS_PAGE * PAGE_ROWS + (i / ROOM_SLOT_COLUMNS) * (ROOM_SLOT.y + ROOM_SLOT_GAP))
 
 
 # How many rooms the page holds. Three rows of five at 6x6, which is thirty
 # squares of a thirty-two wide page and eighteen rows of twenty.
 static func room_slot_count() -> int:
-	return ROOM_SLOT_COLUMNS * (PAGE_ROWS / ROOM_SLOT.y)
+	return ROOM_SLOT_COLUMNS * (PAGE_ROWS / (ROOM_SLOT.y + ROOM_SLOT_GAP))
 
 
 # **The shape of a room**, as tile states, for a room `size` cells across: a

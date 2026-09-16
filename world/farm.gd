@@ -1415,6 +1415,12 @@ func _draw() -> void:
 			# draws the same 16x16 cell from its own sheet — no autotiling, no
 			# edge cases: two seamless tiles that happen to meet at the fence.
 			var ground_tex: Texture2D = tileset_texture
+			# Another room, kept on the same page as hers and nowhere near her in
+			# the world. Skipped whole — ground, boundaries and objects — so the
+			# backdrop's farm is what shows in that space instead.
+			if _backdrop_active and ty >= WorldLayout.ROOMS_PAGE * WorldLayout.PAGE_ROWS \
+					and not _backdrop_rect.has_point(Vector2i(tx, ty)):
+				continue
 			if tile.state == WorldLayout.VOID and _backdrop_active:
 				# **Standing in a room, the dark is not dark** (P-18). The backdrop
 				# below has already drawn her farm out there, and painting the void
@@ -1844,13 +1850,60 @@ func _draw() -> void:
 # The dim is `[Playtest]` and provisional: **Q-108** is open on what the yard should
 # look like through a wall — nothing at all, haze, desaturation, or a hard-cut frame —
 # and this is the cheapest honest stand-in until that is ruled.
+# **Where the farm has to be drawn so the room lands inside its own building.**
+#
+# Pulled out of the draw and made pure because it is arithmetic, and arithmetic is
+# the kind of thing that can be wrong by exactly one tile and look almost right —
+# which it was, reported from play 2026-09-16: "the coop is translated down one tile
+# with respect to the external world, it's on top of the fence".
+#
+# The mistake was mapping the room's **origin**, which is its top-left cell, onto the
+# building's **anchor**, which is its *front-left* tile. A footprint runs upward from
+# its anchor (`MachineDefs.footprint_cells` steps by `-dy`), so the anchor is the
+# bottom of the block and the origin is the top of the room. Lining those two up
+# slides the whole world down by the building's depth less one — one tile for a coop,
+# which put the fence south of the hut straight through the middle of the room.
+#
+# So the corner that matters is the footprint's **top-left**, and it is read off the
+# footprint rather than computed from the anchor, so a building of another shape
+# cannot reintroduce this.
+static func room_backdrop_offset(r: Dictionary) -> Vector2:
+	var pitch := float(r.get("pitch", 1))
+	var origin: Vector2i = r.get("origin", Vector2i.ZERO)
+	var anchor: Vector2i = r.get("anchor", Vector2i.ZERO)
+	var block := MachineDefs.footprint_cells(String(r.get("item", "")), anchor)
+	var top_left := anchor
+	for cell in block:
+		top_left.x = mini(top_left.x, cell.x)
+		top_left.y = mini(top_left.y, cell.y)
+	return Vector2(origin) * TILE_SIZE - Vector2(top_left) * TILE_SIZE * pitch
+
+
 const BACKDROP_DIM := Color(0.035, 0.035, 0.055, 0.30)
 const BACKDROP_REACH := 9      # farm tiles drawn around the anchor, each way
 
 
 # True for the frame a room's backdrop was drawn on, read by the tile loop so it
-# leaves the dark alone instead of painting over the farm.
+# leaves the dark alone instead of painting over the farm — and the rectangle of the
+# room she is actually standing in, so the tile loop can leave every *other* room
+# alone as well.
+#
+# **Rooms share a page, and that was visible** (CEO, 2026-09-16: "when two coops are
+# placed, they're side-by-side within the coop — you can see the next coop outside
+# your current one, at the same zoom"). They are stored in slots six tiles apart, and
+# the tile loop draws the whole grid, so the neighbouring slot was drawn as ordinary
+# tiles right beside her — a second hut standing in her yard at indoor scale, which
+# is a scale nothing out there is drawn at.
+#
+# **The separation is a fact about what is drawn, not about where things are kept.**
+# From inside one coop, the place where another coop's tiles happen to be stored is,
+# in the world, just more yard — and the backdrop is already drawing that yard, at
+# the right scale, in the right place. So the fix is to stop drawing rooms that are
+# not hers and let the farm show through. Every room is then its own space to look at
+# without any of them needing its own coordinate system, which is the expensive
+# version of this and buys nothing the eye can see.
 var _backdrop_active := false
+var _backdrop_rect := Rect2i()
 
 
 func _draw_room_backdrop() -> void:
@@ -1862,10 +1915,10 @@ func _draw_room_backdrop() -> void:
 		return
 	_backdrop_active = true
 	var r: Dictionary = sim.rooms[id]
+	_backdrop_rect = Rect2i(r.get("origin", Vector2i.ZERO), r.get("size", Vector2i.ZERO))
 	var pitch := float(r.get("pitch", 1))
 	var anchor: Vector2i = r.get("anchor", Vector2i.ZERO)
-	var origin: Vector2i = r.get("origin", Vector2i.ZERO)
-	var offset := Vector2(origin) * TILE_SIZE - Vector2(anchor) * TILE_SIZE * pitch
+	var offset: Vector2 = room_backdrop_offset(r)
 
 	var own := {}
 	for cell in MachineDefs.footprint_cells(String(r.get("item", "")), anchor):

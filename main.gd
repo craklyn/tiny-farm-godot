@@ -590,8 +590,9 @@ func _limit_to_room(room: Dictionary, snap: bool) -> void:
 # Told by the player the instant a door has moved her (`player.gd`'s `use_door`).
 # Public because that is the whole contract — nothing else may call it.
 func note_page_change() -> void:
+	var was_page: int = _camera_page
 	_refresh_camera_limits(true)
-	_zoom_through_door()
+	_zoom_through_door(was_page)
 
 
 # **Going inside is a zoom** (P-18, ruled 2026-09-15). A building's interior is a
@@ -608,12 +609,27 @@ func note_page_change() -> void:
 #
 # Nothing about the sim is involved. She is already standing where she is standing;
 # this is the camera catching up.
-const DOOR_ZOOM_SECONDS := 0.28   # [Playtest]
+# Long enough to read as a move rather than a cut (CEO, 2026-09-16: "extend the
+# time it takes"). A third of a second was the first guess and it landed closer to a
+# jump than to a journey; at six tenths the walls visibly open out and the yard
+# visibly recedes, which is the whole reason for not cutting.  [Playtest]
+const DOOR_ZOOM_SECONDS := 0.60
+
+# **What the farmhouse's own door is worth as a zoom** (CEO, 2026-09-16: "make it so
+# entering and leaving the player's house does the effect").
+#
+# The house is not a nested room — it is page 1, laid out with the world, and it
+# predates P-18 by a fortnight. So it has no pitch to read, and this is one: the
+# figure P-18 would give it, since its room is twelve cells wide inside a
+# three-tile-wide facade. The zoom is the camera's business and needs nothing from
+# the sim, which is why the house can have the effect today without being moved into
+# the room system.  [Playtest]
+const HOME_ZOOM := 4.0
 var _door_zoom: Tween = null
 var _room_pitch: float = 1.0
 
 
-func _zoom_through_door() -> void:
+func _zoom_through_door(was_page: int = -1) -> void:
 	if camera == null:
 		return
 	var at: Vector2i = player.get_tile_pos()
@@ -622,7 +638,14 @@ func _zoom_through_door() -> void:
 	if going_in:
 		_room_pitch = maxf(1.0, float(farm.sim.rooms[room].get("pitch", 1)))
 	elif _room_pitch <= 1.0:
-		return      # she has never been inside one; an ordinary door, an ordinary cut
+		# Not a room — but the farmhouse's door is a door, and going through it
+		# should feel like going through one. The page she was on is what says which
+		# way: onto page 1 is inside, back to page 0 is out.
+		var now_page: int = farm.sim.page_of(at)
+		if was_page < 0 or now_page == was_page:
+			return
+		_room_pitch = HOME_ZOOM
+		going_in = now_page != 0
 	# Inside, a cell is drawn at tile size, so the room's own scale *is* CAMERA_SCALE
 	# and the farm's is CAMERA_SCALE times the pitch. Outside, the other way round.
 	var from: float = float(CAMERA_SCALE) / _room_pitch if going_in \

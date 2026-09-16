@@ -15241,6 +15241,25 @@ func test_coop_interior() -> void:
 	_assert(world.page_of(Vector2i(room["origin"])) == WorldLayout.ROOMS_PAGE,
 		"its tiles are stored on the rooms page, out of the farm's way")
 
+	# **Slots do not touch** (CEO, 2026-09-16). The renderer no longer draws a room
+	# that is not hers, so this is not what separates two coops any more — but a wall
+	# ring that ever lost a cell would otherwise open into the room next door, and a
+	# page that is mostly empty can afford the gap.
+	var seen_rects: Array[Rect2i] = []
+	for i in WorldLayout.room_slot_count():
+		var o := WorldLayout.room_slot_origin(i)
+		var rect := Rect2i(o, WorldLayout.ROOM_SLOT)
+		_assert_quiet(o.x >= 0 and o.y >= 0
+				and o.x + WorldLayout.ROOM_SLOT.x <= SimWorld.MAP_WIDTH
+				and o.y + WorldLayout.ROOM_SLOT.y <= SimWorld.MAP_HEIGHT,
+			"slot %d runs off the page at %s" % [i, o])
+		for other in seen_rects:
+			_assert_quiet(not rect.grow(1).intersects(other),
+				"slot %d at %s touches another" % [i, o])
+		seen_rects.append(rect)
+	_flush_quiet("every room slot is on the page and none touches another (%d slots)"
+		% WorldLayout.room_slot_count())
+
 	# --- and the room is a room ------------------------------------------------
 	var origin: Vector2i = room["origin"]
 	var size: Vector2i = room["size"]
@@ -15296,6 +15315,34 @@ func test_coop_interior() -> void:
 	_assert(world.apply_action({ "verb": "use_door", "target": part,
 			"actor": "player" }, GameState).get("ok", false),
 		"any square of the hut is its door, because the arch is drawn across its front")
+
+	# --- the room lands inside its own building --------------------------------
+	#
+	# **Reported from play, 2026-09-16**: "the coop is translated down one tile with
+	# respect to the external world — it's on top of the fence, instead of one tile
+	# north of the fence." The backdrop draws the farm under a transform built from
+	# the room's two numbers, and the transform lined the room's *top-left* up with
+	# the building's *front-left*. A footprint runs upward from its anchor, so those
+	# are a building's depth apart, and the whole world slid south by one tile.
+	#
+	# Asserted as arithmetic rather than as a picture, because that is what it is.
+	var back_offset: Vector2 = load("res://world/farm.gd").room_backdrop_offset(world.rooms[room_id])
+	var back_pitch := float(room["pitch"])
+	var to_screen := func(t: Vector2i) -> Vector2:
+		return back_offset + Vector2(t) * 16.0 * back_pitch
+	var block := MachineDefs.footprint_cells("coop", spot)
+	var top_left := spot
+	for cell in block:
+		top_left.x = mini(top_left.x, cell.x)
+		top_left.y = mini(top_left.y, cell.y)
+	_assert(to_screen.call(top_left) == Vector2(origin) * 16.0,
+		"the building's top-left corner is drawn exactly where the room begins (%s vs %s)"
+			% [to_screen.call(top_left), Vector2(origin) * 16.0])
+	# ...and therefore the square below the hut is drawn below the room, not through it.
+	var below := float(origin.y + size.y) * 16.0
+	_assert(is_equal_approx(to_screen.call(spot + Vector2i(0, 1)).y, below),
+		"and the square south of it begins exactly where the room ends (%.1f vs %.1f)"
+			% [to_screen.call(spot + Vector2i(0, 1)).y, below])
 
 	# --- a room you can enter is a room you can leave --------------------------
 	#
