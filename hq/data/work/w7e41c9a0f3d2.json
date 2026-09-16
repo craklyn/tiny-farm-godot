@@ -1,15 +1,16 @@
 {
   "id": "w7e41c9a0f3d2",
-  "title": "Spike: what doubling the sim's resolution actually costs",
+  "title": "Spike: what doubling the sim's resolution actually costs — measured, and the answer was no",
   "level": "task",
   "owner": "tomas",
   "tier": 1,
   "tier_reason": "No estimate for P-18's interiors means anything until this is known, and it is the only unknown large enough to change whether the feature is worth building at all.",
   "ask": "P-18 (docs/design/15-interiors.md) puts a building's interior on a grid at half the pitch of an outdoor tile, nested inside the building's footprint. The chapter says the sim's change is 'a coordinate change, not a structural one' and prices it as arithmetic on a small number. That is the claim least tested in the whole design.\n\nWhat a throwaway spike has to find out, on a branch nobody merges:\n  - What breaks when SimWorld stores cells rather than tiles at 2x resolution per axis. 15 files name MAP_WIDTH/MAP_HEIGHT; 55 reason in tiles.\n  - What happens to every verb whose target is a tile -- till, plant, water, harvest, place, build. Does a farm tile become a 2x2 block of cells that verbs address as one, or does the farm itself move to cell resolution?\n  - Pathfinding and Movement over a grid with 4x the cells: measure it against tools/benchmark_sim.gd rather than guessing.\n  - Save format: version 3 -> 4, and whether an existing farm can be migrated on load or has to be retired (S-13's rule in docs/DEPLOY.md).\n  - Replay: whether logged actions still mean the same thing, which is the one format the project has committed not to break casually.\n\nDeliverable is a written answer with a number of days attached, not working code. Throw the branch away.",
   "first_action": "Branch, change SimWorld's MAP_WIDTH/MAP_HEIGHT to 64x40 and make one farm tile two cells per axis, then run both suites and write down what falls over and what it would take to fix each thing.",
-  "state": "queued",
+  "state": "done",
   "thread": "claude",
   "source": "chat",
   "source_message": "Asked 2026-09-15 whether the interiors effect was fully designed and implemented; this is the largest of the reasons the answer is no.",
-  "created": "2026-09-15"
+  "created": "2026-09-15",
+  "result": "Measured in-session 2026-09-15 rather than run as a branch, because the counts settle it without one. A global resolution change touches 55 files, 83 direct grid indexings and 37 verbs, and would re-derive 538 unit-test assertions that name explicit tile coordinates — which is both enormous and the operation most likely to launder a real regression into a passing test. Save v3->v4 and every logged replay target re-interpreted on top. Rejected. P-18 moves to an anchored sub-grid per interior (docs/design/15-interiors.md section 4B), which leaves the farm's coordinates untouched."
 }

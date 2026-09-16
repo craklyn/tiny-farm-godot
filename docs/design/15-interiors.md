@@ -144,34 +144,110 @@ asks, and it wants captures rather than paragraphs.
 
 ## 4. How the world is represented
 
-**One grid, in the finest pitch any space uses.** That is the whole answer, and it is
-simpler than any of the three models an earlier draft weighed.
+Two ways to build this, and the difference between them is the whole cost of the feature.
+Measured 2026-09-15 rather than estimated.
 
-- A tile of farm is 2×2 interior cells. Sim positions are in cells; the farm's own objects
-  occupy cells in twos.
-- A building's interior is a rectangle of cells **inside the building's footprint**. It is
-  created when the building is placed and destroyed when it is picked up, and it needs no
-  allocator, no page, and no region table, because it lives where the building lives.
-- There is no portal. A door is a door in the ordinary sense — she walks through it — and
-  the camera zoom is a presentation response to which space she is standing in.
+### A — one global fine grid
 
-Consequences worth stating, because they are all improvements on the discarded design:
+Every outdoor tile becomes `k` cells and the whole world is stored at cell resolution. One
+grid, one metric, nothing nested — conceptually the cleanest thing there is.
 
-- **Distance is well defined everywhere**, in cells. A crow four tiles from the house is
-  eight cells from it, and eight cells from the farmer standing inside it. Nothing has to
-  be undefined and no measurement needs a guard.
-- **Nothing can be created or destroyed at runtime except cells**, so saves and replays keep
-  the shape they have.
-- **Pathfinding is one search on one grid.** Walking in through the door is walking.
-- **The cost is resolution.** Every sim coordinate doubles, so the grid is 4× the cells for
-  the same farm — 64×40 rather than 32×20 for page 0. That is arithmetic on a small number
-  and it is the price of the whole feature.
+| what it touches | count |
+|---|---|
+| files reasoning in tiles | 55 |
+| call sites indexing `tiles[y][x]` / `objects[y][x]` directly | 83 |
+| verbs whose target tile changes meaning | 37 |
+| **unit-test assertions naming explicit tile coordinates** | **538** |
+| save format | v3 → v4, every farm migrated |
+| replay format | every logged target re-interpreted |
 
-### D-16 is closed by this
+The 538 is the one that settles it. Those assertions are not scaffolding; they are the
+record of what the game actually does, written coordinate by coordinate over months, and
+re-deriving them all is both enormous and exactly the operation most likely to launder a
+real regression into a "fixed" test. **This is not the way.**
 
-The deferred question of when to move from one grid to a grid per space does not arise:
-there is one grid and there are no spaces to give coordinates to. Recorded as closed
-2026-09-15 rather than deleted, so the reasoning is findable.
+### B — an anchored sub-grid per interior  ← recommended
+
+The farm is untouched. A building with an interior owns a **small grid of its own**, which
+declares two things:
+
+- an **anchor**: the building's footprint on the farm;
+- a **pitch**: how many of its cells fit in one farm tile.
+
+Those two facts are what make it more than a second map. Every interior cell has an exact
+world position — `anchor + cell / pitch` — so:
+
+- **Distance is well defined** between anything inside and anything outside, without a
+  global resolution change. The senses work; nothing needs a guard.
+- **Rendering is exactly registered** by construction: draw the farm at zoom `Z` and the
+  room at `Z × pitch` about the anchor, and the room sits in its building because that is
+  what the anchor says.
+- **Going in is a camera zoom** of `pitch`, and nothing else moves.
+- **A room is created and destroyed with its building**, so the coop can still be picked up.
+- **Saves grow by a field.** Old farms have no rooms; the format is additive.
+
+What it reuses, all of it shipped and proven:
+
+| the room needs | what already does it |
+|---|---|
+| walls that block | `WorldLayout.WALL` + `is_boundary_state`, refused by `is_walkable` |
+| a doorway cut in a wall | `GATE_OPEN`, exactly how the home's south wall works |
+| a floor | `WorldLayout.FLOOR` |
+| a declared threshold pair | `WorldLayout.door_at` returns `{from, to}` |
+| movement over a grid | `Movement` is already `(world, mode, tile)` throughout |
+| a camera that zooms and pans smoothly, clamped | `main.gd`'s altitude gesture, shipped for robot teaching |
+
+**And it is re-implementable.** Anchor plus pitch is precisely the information needed to
+flatten every room into option A later, if a future requirement ever wants one global grid.
+Choosing B now forecloses nothing; choosing A now cannot be undone.
+
+### What B costs
+
+Two coordinate spaces exist again, so an actor's position is `(space, cell)` rather than a
+bare tile. That is contained — the registry already stores a position per actor, and the
+mapping above turns any of them into a world position on demand — but it is the one place
+where the design is genuinely more complicated than a single grid, and it is the price of
+not touching 538 assertions.
+
+---
+
+## 4a. The wall and the threshold
+
+The invention the CEO asked for on 2026-09-15, and it turns out to need less inventing than
+feared, because the game already contains a room with walls and a door cut in one of them.
+
+**A room is its building's footprint at the room's own pitch, with a one-cell boundary ring.**
+
+For the chicken coop, at pitch 3:
+
+```
+    footprint  2 x 2 tiles          room grid  6 x 6 cells
+    +-----------+                   # # # # # #      #  WALL   - blocks, and is the
+    |           |                   # . . . . #                building's own shell
+    |           |   zoom x3          # . . . . #      .  FLOOR  - 4 x 4 of it
+    |           |  ----------->     # . . . . #      +  GATE_OPEN - the doorway,
+    |           |                   # . . . . #                one cell of the south wall
+    +-----------+                   # # + # # #
+```
+
+Why a ring of cells rather than a rule about edges:
+
+1. **No new blocking concept.** `is_walkable` already refuses boundary states. A wall cell
+   is a wall the same way the home's walls are walls, and every mover — farmer, hen, a
+   future bot — obeys it without being told.
+2. **The ring is the building**, seen from inside. Its top row is the roofline the band
+   question was about; its bottom row is the wall the door is cut in. The shell and the
+   blocker are one thing rather than two that can disagree.
+3. **It fails visibly.** A room that lost its ring is a hole you can see, not a silent leak.
+
+**The threshold** is a declared pair, `door_at`'s existing shape: the `GATE_OPEN` cell in
+the south wall ↔ the farm tile immediately below the footprint. Crossing it is the one place
+the pitch changes, and it is one named edge rather than a property of the boundary in
+general.
+
+**The ring is why the pitch is 3 and not 2.** At pitch 2 a 2×2 coop is 4×4 cells and a ring
+leaves a 2×2 floor, which is not a room. At pitch 3 it is 6×6 cells and the floor is 4×4 —
+"a bit bigger", as asked, with the walls paid for.
 
 ---
 
@@ -271,19 +347,20 @@ deep, on grounds of legibility (§6); portals survive only for exits that are no
 **Not designed, and load-bearing.** Three of these would have to be guessed at to start
 building, which is what makes this chapter a design and not a specification:
 
-1. **How big is the farmer indoors?** A uniform zoom doubles everything on screen, her
-   included — so does she keep her world size and stand on 2×2 interior cells, or does she
-   occupy one cell and halve? The first makes a 6×3 room three farmers wide and one and a
-   half deep, which may be smaller than it sounds; the second is a different fiction. The
-   mockups quietly assume the first and nobody has ruled on it.
-2. **Where is the wall, and what stops her leaving except by the door?** The mockups draw
-   all 6×3 cells as floor and let the building's exterior sprite be the wall. The sim still
-   needs to know which cells are impassable and which one is the threshold.
-3. **What the resolution change actually costs.** §4 says positions move from tiles to cells
-   and calls it arithmetic on a small number. That is the claim least tested here: 15 files
-   name `MAP_WIDTH`/`MAP_HEIGHT` and 55 reason in tiles, every verb's target tile changes
-   meaning, and the save format is at version 3 and would go to 4. Whether that is a week or
-   a month is unknown, and no estimate for this feature means anything until it is.
+1. ~~How big is the farmer indoors?~~ **Ruled 2026-09-15: she keeps her screen size.** She
+   is the same number of pixels tall in both, which means her world size divides by the
+   pitch when she steps inside. The CEO accepted the visible consequence — *"they'll see her
+   size appear to change when zooming into or out of a different area"*. In grid units she
+   is unchanged, about two units tall wherever she stands; it is the unit that shrinks. This
+   is the roomier of the two answers: a 4×4 coop floor is two farmers across, where keeping
+   her world size would have made it one.
+2. ~~Where is the wall?~~ **Designed, §4a: a one-cell boundary ring of the room's own grid**,
+   reusing the `WALL` / `GATE_OPEN` / `FLOOR` vocabulary the home already uses, with the
+   threshold a declared `door_at` pair.
+3. ~~What the resolution change costs.~~ **Measured 2026-09-15, and it is why the design
+   changed**: 538 unit-test assertions name explicit tile coordinates, plus 83 direct grid
+   indexings and 37 verbs. §4 option A is off the table; the anchored sub-grid does not pay
+   any of it.
 
 **Not designed, and smaller:**
 
