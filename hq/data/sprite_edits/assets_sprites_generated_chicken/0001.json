@@ -1,0 +1,153 @@
+{
+  "seq": 1,
+  "kind": "edit",
+  "sheet": "assets/sprites/generated/chicken.png",
+  "key": "assets_sprites_generated_chicken",
+  "group": "actors",
+  "entity": "chicken",
+  "entity_name": "Chicken",
+  "note": "",
+  "diff": {
+    "frames": [
+      {
+        "index": 0,
+        "name": "walk right 1 · standing rest 1",
+        "changed": 3,
+        "added": 0,
+        "erased": 3,
+        "recolored": 0,
+        "silhouette": true,
+        "bbox": [
+          5,
+          14,
+          3,
+          2
+        ]
+      },
+      {
+        "index": 1,
+        "name": "walk right 2",
+        "changed": 4,
+        "added": 0,
+        "erased": 4,
+        "recolored": 0,
+        "silhouette": true,
+        "bbox": [
+          6,
+          14,
+          3,
+          2
+        ]
+      },
+      {
+        "index": 2,
+        "name": "walk right 3",
+        "changed": 2,
+        "added": 0,
+        "erased": 2,
+        "recolored": 0,
+        "silhouette": true,
+        "bbox": [
+          7,
+          15,
+          2,
+          1
+        ]
+      },
+      {
+        "index": 3,
+        "name": "walk right 4",
+        "changed": 3,
+        "added": 0,
+        "erased": 3,
+        "recolored": 0,
+        "silhouette": true,
+        "bbox": [
+          5,
+          14,
+          4,
+          2
+        ]
+      },
+      {
+        "index": 4,
+        "name": "walk left 1 · standing rest 2",
+        "changed": 3,
+        "added": 0,
+        "erased": 3,
+        "recolored": 0,
+        "silhouette": true,
+        "bbox": [
+          8,
+          14,
+          3,
+          2
+        ]
+      },
+      {
+        "index": 5,
+        "name": "walk left 2",
+        "changed": 4,
+        "added": 0,
+        "erased": 4,
+        "recolored": 0,
+        "silhouette": true,
+        "bbox": [
+          7,
+          14,
+          3,
+          2
+        ]
+      },
+      {
+        "index": 6,
+        "name": "walk left 3",
+        "changed": 2,
+        "added": 0,
+        "erased": 2,
+        "recolored": 0,
+        "silhouette": true,
+        "bbox": [
+          7,
+          15,
+          2,
+          1
+        ]
+      },
+      {
+        "index": 7,
+        "name": "walk left 4",
+        "changed": 3,
+        "added": 0,
+        "erased": 3,
+        "recolored": 0,
+        "silhouette": true,
+        "bbox": [
+          7,
+          14,
+          4,
+          2
+        ]
+      }
+    ],
+    "pixels": 24,
+    "colors_added": [],
+    "colors_removed": [],
+    "new_to_sheet": [],
+    "anims": [
+      "walk right",
+      "walk left",
+      "standing rest"
+    ]
+  },
+  "reverted_to": null,
+  "bytes": 1375,
+  "png": "0001.png",
+  "created": "2026-09-16T22:55",
+  "created_ts": 1789624502.7577386,
+  "filed": {
+    "work_id": "w080b861cad5",
+    "owner": "ingrid",
+    "title": "Read Daniel's hand edit to Chicken"
+  }
+}
