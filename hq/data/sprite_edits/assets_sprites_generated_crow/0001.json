@@ -1,0 +1,64 @@
+{
+  "seq": 1,
+  "kind": "edit",
+  "sheet": "assets/sprites/generated/crow.png",
+  "key": "assets_sprites_generated_crow",
+  "group": "actors",
+  "entity": "crow",
+  "entity_name": "Crow",
+  "note": "",
+  "diff": {
+    "frames": [
+      {
+        "index": 1,
+        "name": "flying 1 · eating a crop",
+        "changed": 1,
+        "added": 0,
+        "erased": 1,
+        "recolored": 0,
+        "silhouette": true,
+        "bbox": [
+          8,
+          14,
+          1,
+          1
+        ]
+      },
+      {
+        "index": 2,
+        "name": "flying 2",
+        "changed": 6,
+        "added": 0,
+        "erased": 6,
+        "recolored": 0,
+        "silhouette": true,
+        "bbox": [
+          1,
+          14,
+          6,
+          2
+        ]
+      }
+    ],
+    "pixels": 7,
+    "colors_added": [],
+    "colors_removed": [
+      "#f8f4e6"
+    ],
+    "new_to_sheet": [],
+    "anims": [
+      "flying",
+      "eating a crop"
+    ]
+  },
+  "reverted_to": null,
+  "bytes": 481,
+  "png": "0001.png",
+  "created": "2026-09-16T22:55",
+  "created_ts": 1789624545.8382921,
+  "filed": {
+    "work_id": "wabb24f97efa",
+    "owner": "ingrid",
+    "title": "Read Daniel's hand edit to Crow"
+  }
+}
