@@ -1793,3 +1793,13 @@ testable for free).
 - Desktop and Android builds stay green at every milestone (P-1).
 - Every milestone lands with sim-level tests (S-8).
 - Docs in `docs/` are updated in the same PR as the design change they reflect.
+- **A performance target names a behaviour that breaks (S-15, ruled 2026-09-19).** Every
+  benchmark figure recorded above against "the ≥100,000× gate" is history, and the gate
+  itself is retired: it was a round number chosen for headroom, not derived from anything
+  the game needs, and it went red because a walking speed was ruled slower rather than
+  because the code slowed down. What replaced it: throughput is counted in ticks of sim
+  time per wall-second, which no design decision can move; a crude order-of-magnitude
+  floor still fails the build; and the target above it is the worst frame the live game
+  can ask the sim for, fitting in the sim's share of a frame on the tablet. Read the
+  older numbers on this page as the x-realtime figures they were, and do not compare a
+  new one against them.

@@ -1,0 +1,18 @@
+{
+  "id": "wfd1627b62ab2",
+  "title": "Measure how much slower the tablet runs the sim than this desktop",
+  "level": "task",
+  "owner": "tomas",
+  "tier": 1,
+  "tier_reason": "filed by hand",
+  "ask": "The sim benchmark's frame-budget target divides by a desktop-to-tablet factor of 8 (tools/benchmark_sim.gd, DEVICE_FACTOR). That 8 is an assumption about a mid-range Android running GDScript, not a measurement — everything else in that budget is a fact about the game (a 60 fps frame, the sim's quarter of it, SimClock.MAX_TICKS_PER_FRAME), so this constant is the only soft number in a target the studio now holds itself to. Build the profile APK the way tools/profile_android.sh does — its own package name, so the tablet's real game and saves are never touched — run the scaling half of the benchmark on the device, and compare per-tick cost with eight busy machines against the desktop figure. Replace DEVICE_FACTOR with the measured ratio and say in the comment what device and build it came from. If the real factor is worse than 8 the target may start failing, which is the point: it would mean the tablet genuinely cannot absorb a busy frame, and that is a thing the player feels.",
+  "first_action": "Wake the tablet and put it on the network, then adb connect to the address in the repo's .adb_target (adb lives in ~/Android/Sdk/platform-tools and is not on PATH). It was off the network on the night of 2026-09-19, which is why this is a work item rather than a measurement.",
+  "state": "queued",
+  "thread": "tomas",
+  "source": "chief-of-staff",
+  "source_message": "Raised while rebuilding the benchmark's target around a real in-game behaviour. Everything in the budget is measured except how slow the tablet is, and that is the one number the verdict swings on.",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-19T00:38",
+  "created_ts": 1789803501.2836828
+}

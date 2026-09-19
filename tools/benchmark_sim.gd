@@ -37,7 +37,8 @@
 #
 # The exit code is the contract CI consumes (`.github/workflows/tests.yml`,
 # "Sim benchmark (smoke)"): 0 when the run is healthy, non-zero when it is not.
-# See FLOOR_X_REALTIME for what "not" means and why it is not the plan's gate.
+# See FLOOR_TICKS_PER_SEC for what "not" means, and the frame budget beside it
+# for the target that is reported but deliberately does not fail the build.
 extends SceneTree
 
 const DAYS := 1000
@@ -79,23 +80,60 @@ const SCALE_CENTRE := Vector2i(10, 13)
 const SCALE_CLEAR := 3
 
 # --- what makes this run a failure ---------------------------------------------
-# The plan's gate (M2_5_PLAN §4, WI-12): 100,000x realtime **on desktop**, with
-# travel modelled. It is reported as PASS/FAIL on every run and it is the number
-# that goes in the plan's §9. It does **not** decide the exit code — see below.
-# As of the WI-12 measurement it does not pass: ~82,000x, with the profile of
-# where the time goes recorded in the plan's §9. That is deliberately left
-# visible rather than adjusted to a number this machine happens to make.
-const GATE_X_REALTIME := 100000.0
-# What actually fails the process, and it is deliberately not the gate above, for
-# two reasons. CI runs this on a shared cloud runner several times slower than
-# any desktop, so a desktop threshold there would be a red build about somebody
-# else's machine; and the gate is currently missed by a fifth, which would make
-# every push red about a number the plan's §9 already records. This is the
-# order-of-magnitude floor instead — eight times under the measured figure, which
-# no honest hardware difference reaches and which the class of regression this
-# benchmark exists to catch (per-tick work, a heartbeat, a per-map pass in a
-# brain's think) blows straight through.
-const FLOOR_X_REALTIME := 10000.0
+# Two numbers, and they answer different questions.
+#
+# **1. The regression floor — the cheap alarm, and it is what fails the process.**
+# An order of magnitude under the measured throughput, counted in ticks of sim
+# time per wall-second. It exists to catch the catastrophic class of mistake this
+# file was written for — per-tick work, a heartbeat, a per-map pass inside a
+# brain's think — and it is deliberately crude: CI runs this on a shared cloud
+# runner several times slower than any desktop, so a threshold tuned to a desktop
+# would make red builds about somebody else's machine. Nothing honest about
+# hardware reaches a factor of eight.
+#
+# The unit is ticks per wall-second on purpose. Until 2026-09-19 this was
+# x-realtime, and x-realtime has a denominator the *designer* can move: the CEO
+# ruled on 2026-09-06 that the mark-1 walks at two thirds the farmer's pace, and
+# the same benchmark — same seed, same 62,000 tiles walked — went from 186,000
+# ticks of travel to 310,000 and the headline number fell by a quarter. The sim
+# had got *faster* per tick of work. A measure that reports a design ruling as an
+# engineering regression is the wrong measure; ticks per second is the work
+# actually simulated, and a walking speed cannot touch it.
+const FLOOR_TICKS_PER_SEC := 5000.0
+
+# **2. The frame budget — the number that means something in the game.** This is
+# the target, and it is not a round number picked for headroom: it is what the
+# live game asks of the sim in its worst frame, which is a thing the player can
+# feel go wrong.
+#
+# `main.gd`'s pump converts wall time into ticks and will hand the sim up to
+# `SimClock.MAX_TICKS_PER_FRAME` of them in a single frame. So the worst case is
+# that many ticks landing inside one frame, with a farm's worth of machines awake
+# in them. If that does not fit in the sim's slice of a frame, she sees a hitch —
+# a stutter as the fleet thinks — and that is the failure this target names.
+#
+# The budget, taken apart:
+#   a frame at 60 fps                                      16.67 ms
+#   × the sim's share of it (the rest is drawing and UI)    ~25%
+#   ÷ the ticks one frame may absorb (SimClock)             ÷ 4
+#   ÷ how much slower the tablet is than this desktop       ÷ 8
+# The first three are facts about the game. The fourth is **an assumption, not a
+# measurement** — a mid-range Android running GDScript against this desktop —
+# and it is the one number here still owed a real figure. Measuring it needs the
+# tablet awake and on the network (`tools/profile_android.sh`, which builds a
+# profile APK under its own package name so the real game and its saves are never
+# touched); it was unreachable the night this was written. It is held as one
+# constant so replacing it with a measured value is a one-line change.
+const FRAME_SECONDS := 1.0 / 60.0
+const SIM_SHARE_OF_FRAME := 0.25
+const DEVICE_FACTOR := 8.0
+
+# Which run the budget is judged against: the eight busy machines, because that is
+# the farm phase 1 is walking her toward — work delegated to a fleet — and they
+# are awake and moving every tick. The parked fleet is measured beside it and
+# reported against the same budget, but it does not decide the verdict: no shoo
+# bot ships (its debut is Q-56), so a farm cannot hold eight of them yet.
+const BUDGET_SUBJECT := "%d busy machines" % SCALE_FLEET
 
 
 func _init() -> void:
@@ -329,7 +367,11 @@ func _report(work: Dictionary, idle: Dictionary, one: Dictionary, many: Dictiona
 	var travel: int = work["travel_ticks"]
 	var days_per_sec := DAYS / elapsed
 	var x_realtime := days_per_sec * NOMINAL_DAY_SECONDS
-	var sim_seconds := float(work["end_tick"]) / float(SimClock.RATE)
+	var ticks: int = int(work["end_tick"])
+	var sim_seconds := float(ticks) / float(SimClock.RATE)
+	# The headline, and the one the floor is judged on: work simulated per second
+	# of wall clock. See FLOOR_TICKS_PER_SEC for why it is not x-realtime.
+	var ticks_per_sec := float(ticks) / elapsed
 
 	print("=== Sim fast-forward benchmark (travel modelled — M2.5 WI-12) ===")
 	print("days simulated:     %d" % DAYS)
@@ -341,9 +383,14 @@ func _report(work: Dictionary, idle: Dictionary, one: Dictionary, many: Dictiona
 	print("actions/sec:        %.0f" % (actions / elapsed))
 	print("actions/travel tick:%.3f (%.1f ticks of walking per action)"
 		% [float(actions) / maxf(1.0, float(travel)), float(travel) / float(actions)])
-	print("sim time advanced:  %.0f s in %.3f s wall (%.0fx clock rate)"
-		% [sim_seconds, elapsed, sim_seconds / elapsed])
-	print("x-realtime:         %.0fx (vs %.0f s nominal day)" % [x_realtime, NOMINAL_DAY_SECONDS])
+	print("sim time advanced:  %.0f s in %.3f s wall" % [sim_seconds, elapsed])
+	print("throughput:         %.0f ticks/sec (%d ticks simulated)"
+		% [ticks_per_sec, ticks])
+	# Kept for continuity with every figure recorded in ROADMAP.md before
+	# 2026-09-19, and labelled so nobody reads a verdict into it: its denominator
+	# is a nominal day, so it moves whenever a species' walking speed moves.
+	print("x-realtime:         %.0fx (context only — moves with walking speeds)"
+		% x_realtime)
 
 	# Ground rule 8, as a slope. The floor is what the farm costs with nobody on
 	# it but the hen; the interesting number is what each *additional* busy actor
@@ -372,8 +419,27 @@ func _report(work: Dictionary, idle: Dictionary, one: Dictionary, many: Dictiona
 	print("\ntravel modelled:    %s (%d tiles walked, %.1f ticks per action)"
 		% ["yes" if travelled else "NO", work["tiles_walked"],
 			float(travel) / float(maxi(actions, 1))])
-	print("plan gate (>=%dx):  %s (%.0fx)"
-		% [int(GATE_X_REALTIME), "PASS" if x_realtime >= GATE_X_REALTIME else "FAIL", x_realtime])
+
+	# The frame budget, worked out in the open so a reader can check it rather
+	# than take it. `budget` is what one tick of the sim may cost on this machine
+	# for the worst frame the live game can ask for to still fit on the tablet.
+	var budget_usec := FRAME_SECONDS * SIM_SHARE_OF_FRAME \
+		/ float(SimClock.MAX_TICKS_PER_FRAME) / DEVICE_FACTOR * 1000000.0
+	var busy_usec: float = many["elapsed"] / float(SCALE_TICKS) * 1000000.0
+	var parked_usec: float = parked["elapsed"] / float(SCALE_TICKS) * 1000000.0
+	var within_budget: bool = busy_usec <= budget_usec
+	print("regression floor (>=%d ticks/sec):  %s (%.0f ticks/sec)"
+		% [int(FLOOR_TICKS_PER_SEC),
+			"PASS" if ticks_per_sec >= FLOOR_TICKS_PER_SEC else "FAIL", ticks_per_sec])
+	print("frame budget (<=%.0f us/tick, %s):  %s (%.0f us/tick)"
+		% [budget_usec, BUDGET_SUBJECT, "PASS" if within_budget else "FAIL", busy_usec])
+	print("  the worst frame it stands for: %d ticks at once = %.2f ms here, %.2f ms on a tablet %dx slower, against %.2f ms of a 60 fps frame"
+		% [SimClock.MAX_TICKS_PER_FRAME,
+			busy_usec * SimClock.MAX_TICKS_PER_FRAME / 1000.0,
+			busy_usec * SimClock.MAX_TICKS_PER_FRAME * DEVICE_FACTOR / 1000.0,
+			int(DEVICE_FACTOR), FRAME_SECONDS * 1000.0])
+	print("  a parked fleet, for reference: %.0f us/tick (%s the same budget — not the verdict, no shoo bot ships)"
+		% [parked_usec, "within" if parked_usec <= budget_usec else "OVER"])
 
 	var failures: Array[String] = []
 	if not travelled:
@@ -383,9 +449,14 @@ func _report(work: Dictionary, idle: Dictionary, one: Dictionary, many: Dictiona
 			% [actions, work["unreachable"]])
 	if not orbiting:
 		failures.append("the fleet did not move, so the scaling run measured nothing")
-	if x_realtime < FLOOR_X_REALTIME:
-		failures.append("%.0fx realtime is under the %dx regression floor"
-			% [x_realtime, int(FLOOR_X_REALTIME)])
+	if ticks_per_sec < FLOOR_TICKS_PER_SEC:
+		failures.append("%.0f ticks/sec is under the %d ticks/sec regression floor"
+			% [ticks_per_sec, int(FLOOR_TICKS_PER_SEC)])
+	# The frame budget deliberately does not join this list. It is an absolute
+	# wall-clock figure, so on CI's shared cloud runner it would fail for reasons
+	# that have nothing to do with the code — the same argument that keeps the
+	# floor crude. It is judged where the machine is known: HQ's Engineering page,
+	# which runs this on the desktop and shows the verdict.
 	for f in failures:
 		printerr("BENCHMARK FAILED: %s" % f)
 	return 1 if not failures.is_empty() else 0

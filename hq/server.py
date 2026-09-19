@@ -563,7 +563,17 @@ JOBS = {
     "benchmark": {
         "label": "Sim benchmark",
         "cmd": ["godot", "--headless", "--path", ".", "--script", "res://tools/benchmark_sim.gd"],
-        "verdict": re.compile(r"plan gate \(>=\d+x\):\s+(PASS|FAIL)\s+\((\d+)x\)"),
+        # The target, since 2026-09-19: not a round number for headroom but the
+        # worst frame the live game can ask the sim for — `main.gd`'s pump can hand
+        # it four ticks at once, and those have to fit in the sim's slice of a 60 fps
+        # frame on the tablet or she sees the fleet stutter. The throughput line
+        # beside it is the crude regression alarm, and it is what fails CI.
+        "verdict": re.compile(
+            r"frame budget \(<=(\d+) us/tick[^)]*\):\s+(PASS|FAIL)\s+\((\d+) us/tick\)"),
+        "extra": {
+            "throughput": re.compile(r"throughput:\s+(\d+) ticks/sec"),
+            "worst_frame": re.compile(r"= [\d.]+ ms here, ([\d.]+) ms on a tablet"),
+        },
     },
     # Going through a door, measured frame by frame (design/15 §8a): four trips, each
     # judged on the camera's path, the picture's continuity and the swap frame. The
@@ -647,8 +657,20 @@ def _run_job(job):
                             "something only inside this studio" if m
                        else "the check did not finish")
         elif job == "benchmark":
-            ok = base_ok and bool(m and m.group(1) == "PASS")
-            summary = f"{int(m.group(2)):,}x realtime (gate ≥100,000x): {m.group(1)}" if m else "no verdict line found"
+            ok = base_ok and bool(m and m.group(2) == "PASS")
+            if m:
+                extra = spec.get("extra", {})
+                tp = extra["throughput"].search(out)
+                wf = extra["worst_frame"].search(out)
+                frame = f"{wf.group(1)} ms" if wf else "?"
+                rate = f"{int(tp.group(1)):,} ticks/sec" if tp else "?"
+                verb = "inside" if m.group(2) == "PASS" else "over"
+                summary = (f"With eight machines awake, the tablet's busiest frame spends "
+                           f"{frame} of its 16.7 ms working out what the farm does — {verb} "
+                           f"the quarter of a frame set aside for it: {m.group(2)}. "
+                           f"Speed: {rate}.")
+            else:
+                summary = "no verdict line found"
         else:
             ok = base_ok and bool(m and m.group(2) == "0")
             summary = f"{m.group(1)} passed, {m.group(2)} failed" if m else "no verdict line found"

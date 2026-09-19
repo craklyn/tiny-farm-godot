@@ -353,6 +353,43 @@ This is S-13's question answered for this release: an existing farm continues, i
 the release notes say the game updated and now keeps three farms rather than one. Writing that
 line is the runbook's step, not this entry's.
 
+### S-15. A performance target names a behaviour that breaks; the crude alarm under it stays
+**Ruled 2026-09-19.** The designer found the Engineering page showing the sim benchmark red
+against a gate of "≥100,000× realtime" and asked who had set it, because he had not. Nobody
+had: it first appears in `M2_5_PLAN.md` on 2026-08-31, chosen as "do not lose more than an
+order of magnitude of headroom" once the benchmark's worker started walking instead of
+teleporting. It had already cost an afternoon — Q-67's pathfinder rewrite was spent winning
+back a line nobody had committed to — and it was red for a reason that was not a regression:
+the mark-1 was ruled on 2026-09-06 to walk at two thirds the farmer's pace, so the same run
+over the same 62,000 tiles now spends 310,000 ticks of travel where it spent 186,000. Per tick
+of work the sim had got *faster*.
+
+**A number the studio holds itself to is derived from something the game does.** A target must
+be evidence that a named behaviour has broken — the player waits through this, the overnight
+must finish before morning, this many machines must think inside a frame — so that red means
+something failed. A round number picked for headroom is not a target: it produces red lights
+about nothing and sends people to optimise against a line nobody chose.
+
+**The crude alarm under it is a good mechanism and stays.** This is not an argument against
+cheap thresholds; the designer said so explicitly when he ruled. The two live at different
+altitudes. The order-of-magnitude floor costs no design effort and catches the catastrophic
+class of regression — per-tick work, a heartbeat, a per-map pass in a brain's think — and it
+remains the only thing that fails the build, because CI runs on a shared cloud runner and a
+threshold tuned to a desktop would make red builds about somebody else's machine. Once that
+floor is passing, the next number up is honed onto a real behaviour rather than guessed.
+
+**Measure in a unit the designer cannot move.** x-realtime divides by a nominal day, so a
+walking-speed ruling changed the number without the code changing; the headline is now ticks of
+sim time per wall-second, which is the work actually simulated. Prefer a unit that isolates
+the thing being judged over one whose denominator is a design decision.
+
+As built (`tools/benchmark_sim.gd`): the floor is 5,000 ticks/sec and fails the process; the
+target is `SimClock.MAX_TICKS_PER_FRAME` ticks — the most `main.gd`'s pump can hand the sim in
+one frame — with eight machines awake, fitting in the sim's quarter of a 60 fps frame on the
+tablet, and it is reported rather than exit-coded for the same CI reason. Measured that worst
+frame costs 0.42 ms on the desktop and an estimated 3.4 ms on the tablet against 16.7 ms. The
+desktop-to-tablet factor in that estimate is an assumption and is filed for measurement.
+
 ## Tier 2 — Provisional (working answer + adjustment conditions)
 
 ### P-1. Touch-first, desktop always supported

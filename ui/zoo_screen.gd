@@ -47,8 +47,8 @@ const WORLD_SCALE := 1.14
 const WORLD_ORIGIN := Vector2(6, 96)
 
 # `main.gd`'s dial, times the speed multiplier: whole ticks only, remainder
-# carried, and a hitch dropped rather than replayed in full.
-const MAX_TICKS_PER_FRAME := 4
+# carried, and a hitch dropped rather than replayed in full. The cap itself is
+# SimClock's, so this screen cannot drift away from what the game does.
 const SPEEDS: Array[int] = [1, 2, 4]
 
 # How often the census line is recomputed. It is O(actors) and nobody needs it
@@ -165,7 +165,7 @@ func pump(delta: float) -> void:
 	if whole <= 0:
 		return
 	_tick_debt -= float(whole)
-	farm.advance_sim(mini(whole, MAX_TICKS_PER_FRAME * rate), gs)
+	farm.advance_sim(mini(whole, SimClock.MAX_TICKS_PER_FRAME * rate), gs)
 
 
 # --- what the buttons do ---------------------------------------------------------

@@ -1517,6 +1517,10 @@ fit "scarecrow", and a collapse toggle for the playtest readout).*
   robot fixture, the demo replay and every human session. `test_pathfinder_identity` holds
   the old implementations against the new ones over 15,680 (start, goal, mode) pairs and
   336 flood fills, element for element, and the demo replay regenerates byte-identically.
+  *Footnote 2026-09-19 (S-15): the gate this afternoon was spent on turned out to be a number
+  the studio had set itself with no behaviour behind it, and it has since been retired. The
+  pathfinder work stands on its own — it made every walk in the game cheaper, including the
+  live one below — but it should not have been prompted by the threshold that prompted it.*
   As a bonus the live-game cost WI-12 flagged (deviation 7 — a shoo bot picking a patrol
   beat cost ~910 µs, four of them ~4 ms in a frame) is now ~410 µs. Detail and the full
   before/after in `M2_5_PLAN.md` §9 WI-12.

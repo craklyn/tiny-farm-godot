@@ -33,6 +33,15 @@ extends RefCounted
 # speeds (tiles per tick) against it.
 const RATE := 10
 
+# How many ticks one frame may absorb before the rest are dropped. It lives here
+# beside RATE for the same reason the px/s conversion does: it is a statement
+# about the tick, and a copy of it somewhere else would go quietly wrong the day
+# this moved. `main.gd`'s pump enforces it (a long frame is capped rather than
+# replayed in full, the judgement `entities/*.gd`'s MAX_STEP used to make per
+# entity); `tools/benchmark_sim.gd` budgets against it, because the worst frame
+# the live game can ask the sim for is this many ticks at once.
+const MAX_TICKS_PER_FRAME := 4
+
 # The px/s → tiles/tick conversion, kept here because the rate is here: a species
 # table that hard-codes the division would go quietly wrong the day RATE moves.
 # `systems/species_defs.gd` documents each row's px/s figure and the unit test

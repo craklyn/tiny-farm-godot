@@ -108,7 +108,9 @@ var _cold_open_started: bool = false
 # a stalled frame carrying an entity a whole tile, now made once for everybody.
 # Menus pause the tree, so a paused game pumps nothing and the world holds
 # (integration scenario L); the fast-forward tools never come through here at all.
-const MAX_TICKS_PER_FRAME := 4  # 0.4 s of sim time; beyond that a hitch is dropped
+# 0.4 s of sim time; beyond that a hitch is dropped. The number itself lives on
+# SimClock, beside the rate it is counted in, so the benchmark can budget a frame
+# against the same value this pump enforces.
 var _tick_debt: float = 0.0
 
 
@@ -120,7 +122,7 @@ func _pump_sim_clock(delta: float) -> void:
 	if whole <= 0:
 		return
 	_tick_debt -= float(whole)
-	farm.advance_sim(mini(whole, MAX_TICKS_PER_FRAME), GameState)
+	farm.advance_sim(mini(whole, SimClock.MAX_TICKS_PER_FRAME), GameState)
 
 
 # APPLICATION_PAUSED covers backgrounding, which is the common case, but not a

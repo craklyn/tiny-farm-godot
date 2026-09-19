@@ -1,18 +1,22 @@
 {
   "id": "w955474e2599b",
-  "title": "The sim benchmark has dropped below the 100,000x it must keep",
+  "title": "Why the sim benchmark went red, and what the target should have been",
   "level": "task",
   "owner": "tomas",
   "tier": 1,
   "tier_reason": "filed by hand",
   "ask": "The fast-forward benchmark now measures 82,421x realtime against a gate of 100,000x, and it fails reproducibly, not under load — two standalone runs on 104c3ee gave 82,202x and 82,421x. The last recorded pass, 302 commits ago at 4b20852, was 103,810x. So something in those 302 commits cost the simulation a fifth of its speed. Find where it went and either win it back or, with a written reason, move the gate. This is not a test-hygiene chore: the gate exists because phase 4 trains bots by fast-forwarding farms, and training time is measured in multiples of this number. The benchmark is also one of the five jobs CI runs on every push, so while it fails, main cannot go green — which is most likely part of why the build has been red for five days.\n\nBisect tools/benchmark_sim.gd's headline figure across 4b20852..HEAD. The travel model and the actor-cost ratios it prints alongside (6.00x total for 8x the actors, 7.57x on actor work) are the shape to compare, not just the headline.",
   "first_action": "Run godot --headless --path . --script res://tools/benchmark_sim.gd on 4b20852 and on HEAD, confirm the gap, then bisect it.",
-  "state": "queued",
+  "state": "done",
   "thread": "tomas",
   "source": "chief-of-staff",
   "source_message": "Found while bringing the Engineering page back on: every verdict on it was 302 commits old, and running them fresh turned the benchmark red.",
   "started": "",
   "attempts": 0,
   "created": "2026-09-10T22:30",
-  "created_ts": 1789104626.3543766
+  "created_ts": 1789104626.3543766,
+  "result": "Closed 2026-09-19 by the CEO's own question on the Engineering page: he asked who had set the 100,000x gate, because he had not. Nobody had, outside the studio's own plans — it first appears in M2_5_PLAN.md on 2026-08-31, in a plan the chief of staff wrote, chosen as \"do not lose more than an order of magnitude of headroom\" after the benchmark's worker started walking instead of teleporting. It was never derived from anything the game needs, and it had already cost an afternoon once: Q-67's pathfinder rewrite was spent winning back a line nobody had committed to.\n\nThere was no regression to bisect. The benchmark runs the same seed over the same 62,000 tiles as when it passed, but it now spends 310,000 ticks of travel where it once spent 186,000, because the CEO ruled from play on 2026-09-06 that the mark-1 walks at two thirds the farmer's pace. Per tick of simulation the code is faster than when the gate passed: about 42,000 ticks a second against 33,000. x-realtime fell because its denominator is a nominal day, and a slower walk spends more of one covering the same ground — so the measure was reporting a design ruling as an engineering failure.\n\nWhat shipped instead. The headline is now throughput in ticks of sim time per wall-second, which a walking speed cannot move. The crude regression alarm is kept, because the CEO was explicit that the mechanism is a good one — an order of magnitude under measured, now 5,000 ticks/sec, and it is still the only thing that fails the build, for the same reason as before (CI's shared runner is nobody's desktop). Above it sits a target derived from something the player can feel: main.gd's pump can hand the sim four ticks inside a single frame, so those four, with eight machines awake, must fit in the sim's quarter of a 60 fps frame on the tablet or she sees the fleet stutter. Measured today that worst frame costs 0.42 ms here and an estimated 3.37 ms on the tablet, against 16.67 ms — PASS.",
+  "recommend": "Two things this uncovered are filed separately and neither blocks anything: the desktop-to-tablet factor in the budget is an assumption rather than a measurement, and a parked fleet of eight shoo bots costs 232 us a tick, over twice a busy fleet and over the same budget.",
+  "finished": "2026-09-19T00:37",
+  "done_by": "claude"
 }

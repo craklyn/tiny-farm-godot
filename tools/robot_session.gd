@@ -79,7 +79,7 @@ const WALK_FRAMES := 4000
 const ACT_FRAMES := 1200
 
 # The morning after, pumped one frame at a time through `main.gd`'s own clock.
-# Each frame is MAX_TICKS_PER_FRAME ticks — 0.4 s of sim time — so this is four
+# Each frame is SimClock.MAX_TICKS_PER_FRAME ticks — 0.4 s of sim time — so this is four
 # minutes of farm, which is what a robot needs to walk out to a two-tile round
 # three rows away and park itself back in its bay.
 # Sized for the machine's whole round at its 2026-09-07 pace (two thirds of
@@ -318,7 +318,7 @@ func _ready() -> void:
 
 	var ticks_before: int = main_scene.farm.sim.clock.tick
 	for _i in MORNING_FRAMES:
-		main_scene._pump_sim_clock(float(main_scene.MAX_TICKS_PER_FRAME) / SimClock.RATE)
+		main_scene._pump_sim_clock(float(SimClock.MAX_TICKS_PER_FRAME) / SimClock.RATE)
 		await get_tree().process_frame
 	await _a_dial_turn_at_the_bench()
 	main_scene.persist_session()

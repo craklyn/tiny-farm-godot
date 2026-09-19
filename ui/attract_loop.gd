@@ -158,7 +158,7 @@ func _process(delta: float) -> void:
 # clock, so the hen potters on her own schedule. Nobody is checking — it is a
 # backdrop, and what it owes the player is a farm that looks alive, not one that
 # is bit-identical to somebody else's afternoon.
-const MAX_TICKS_PER_FRAME := 4
+# The cap is SimClock's — the same one the live game's pump enforces.
 var _tick_debt: float = 0.0
 
 
@@ -168,7 +168,7 @@ func _pump_sim_clock(delta: float) -> void:
 	if whole <= 0:
 		return
 	_tick_debt -= float(whole)
-	farm.advance_sim(mini(whole, MAX_TICKS_PER_FRAME), gs)
+	farm.advance_sim(mini(whole, SimClock.MAX_TICKS_PER_FRAME), gs)
 
 
 # The world the recorded session started from — used on the first play and on

@@ -881,7 +881,7 @@ func _scenario_l_menu_holds_world() -> void:
 	# what stops it happening anywhere else a frame hitches.
 	#
 	# Two caps now, and both are asserted: the renderer's (below) and, since WI-3,
-	# `main.gd`'s clock pump, which converts at most MAX_TICKS_PER_FRAME of a long
+	# `main.gd`'s clock pump, which converts at most SimClock.MAX_TICKS_PER_FRAME of a long
 	# frame into sim time so a hitch cannot run the world forward either.
 	for tx2 in [6, 7, 8]:
 		_stage_tile(tx2, 5, "cleared")
@@ -897,9 +897,9 @@ func _scenario_l_menu_holds_world() -> void:
 
 	var sim_before: int = farm.sim.clock.tick
 	main_scene._pump_sim_clock(2.0)
-	_assert(farm.sim.clock.tick - sim_before <= main_scene.MAX_TICKS_PER_FRAME,
+	_assert(farm.sim.clock.tick - sim_before <= SimClock.MAX_TICKS_PER_FRAME,
 		"and a stalled frame advances sim time by at most %d ticks, not 20"
-			% main_scene.MAX_TICKS_PER_FRAME)
+			% SimClock.MAX_TICKS_PER_FRAME)
 
 
 # Where the camera comes to rest for a player standing at `player_px`. Godot

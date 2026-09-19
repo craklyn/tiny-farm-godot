@@ -241,6 +241,19 @@ this plan's §9.
 gate, same spirit as M1.5's); per-tick cost demonstrably scales with actors (bench at
 1 vs 8 actors and record the ratio).
 
+> **Retired 2026-09-19 (S-15).** The 100,000× half of this criterion was written here and
+> nowhere else, and it was never derived from anything the game needs — it was "do not lose
+> more than an order of magnitude" once the worker started walking. It cost an afternoon
+> once (Q-67) and then went red for a reason that was not a regression: the mark-1 was ruled
+> on 2026-09-06 to walk at two thirds the farmer's pace, so the same run over the same
+> 62,000 tiles spends 310,000 ticks of travel where it spent 186,000, and x-realtime fell a
+> quarter while the sim got *faster* per tick. Throughput is now counted in ticks of sim time
+> per wall-second, the build-failing floor stays crude, and the target above it is the worst
+> frame `main.gd`'s pump can hand the sim fitting in the sim's share of a frame on the
+> tablet. The second half of this criterion — cost scaling with actors, not with ticks or map
+> area — was the load-bearing one all along and is unchanged and still met (7.7×–7.9× for 8×
+> the actors, every run since).
+
 ## 5. Deliberately NOT in scope
 
 Fire (destructive; Q-54 first). The pea ammo economy, peashooter bots, and towers
