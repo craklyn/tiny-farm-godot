@@ -46,6 +46,9 @@
   "095ba4370aa6a15dcff3": {
    "verdict": "ok"
   },
+  "09d6f31b5bc2ffecf7d7": {
+   "verdict": "ok"
+  },
   "0a01d7d6cfccee950342": {
    "verdict": "ok"
   },
@@ -83,6 +86,9 @@
   "0d29f3bc7971745f32a8": {
    "verdict": "ok"
   },
+  "0db3327a125dd7ce9363": {
+   "verdict": "ok"
+  },
   "0dbaf5b52c3edcf44b80": {
    "verdict": "ok"
   },
@@ -102,6 +108,9 @@
    "verdict": "ok"
   },
   "10ad0a9d229cb5acf7eb": {
+   "verdict": "ok"
+  },
+  "10c3248cf73ee478dd4e": {
    "verdict": "ok"
   },
   "110394eefed855aa260b": {
@@ -152,7 +161,13 @@
   "1489061201872c6b9065": {
    "verdict": "ok"
   },
+  "148fc0eafd1300d8c90c": {
+   "verdict": "ok"
+  },
   "14b468815817b869fe6f": {
+   "verdict": "ok"
+  },
+  "14e916bbe70b581f9093": {
    "verdict": "ok"
   },
   "15c22d4221e7c340938b": {
@@ -237,6 +252,9 @@
   "209bd283496773a6bbac": {
    "verdict": "ok"
   },
+  "20ae69c2463e3d5c8ca8": {
+   "verdict": "ok"
+  },
   "20e3317d1ab636490a38": {
    "verdict": "ok"
   },
@@ -251,6 +269,9 @@
    "why": "Bare pronouns without referents. Showing what? Keep what?"
   },
   "243ec9d3102adcc554a1": {
+   "verdict": "ok"
+  },
+  "24657daa25dd2a2ff545": {
    "verdict": "ok"
   },
   "246b43be4fa831b7f46d": {
@@ -400,6 +421,9 @@
   "31981f22e9a436b86278": {
    "verdict": "ok"
   },
+  "31f4dc4613a1e4f7bcc5": {
+   "verdict": "ok"
+  },
   "3232591e25fb0fb7444e": {
    "verdict": "ok"
   },
@@ -437,10 +461,22 @@
   "38859f2fa206cd4718ac": {
    "verdict": "ok"
   },
+  "39175b6cfb4598bf71bb": {
+   "verdict": "ok"
+  },
   "39bb01aff4b804c7644b": {
    "verdict": "ok"
   },
   "3ba43cb9d3f4e637c825": {
+   "verdict": "ok"
+  },
+  "3be9a1e23ce2f772b3c0": {
+   "instead": "Starting tonight, when a bird raids a square, a bitten stalk now appears instead of bare soil.",
+   "quote": "Since tonight, a square a bird empties keeps a bitten stalk standing on it instead of going to bare earth.",
+   "verdict": "second-look",
+   "why": "The grammar requires parsing — 'a square a bird empties' is missing the relative pronoun or needs restructuring, and 'Since tonight' is awkward for 'starting tonight'. The sentence taxes the reader with a second read."
+  },
+  "3bfcd7fcd160ba4018ff": {
    "verdict": "ok"
   },
   "3c48a204b77066e8f263": {
@@ -504,6 +540,9 @@
   "483a649005fae5c90770": {
    "verdict": "ok"
   },
+  "483be62609130484c6be": {
+   "verdict": "ok"
+  },
   "48a1ad7755020d35b857": {
    "baselined": "2026-09-19",
    "instead": "Label animation frames in the entity system so preview animations show real variations, not the same frame repeatedly",
@@ -511,7 +550,16 @@
    "verdict": "decode",
    "why": "\"Pose and variant sets,\" \"entity catalogue,\" and \"fake-cycling\" are all technical terms not defined."
   },
+  "48df11628890ba04be2a": {
+   "verdict": "ok"
+  },
   "493c001672e755b382de": {
+   "verdict": "ok"
+  },
+  "499570ea44df3f71f6eb": {
+   "verdict": "ok"
+  },
+  "49fc8e3895e5861014bd": {
    "verdict": "ok"
   },
   "4a22e1b793920ea2ab63": {
@@ -596,6 +644,9 @@
   "53d72197792ba046d53c": {
    "verdict": "ok"
   },
+  "53fd833287e76f791b8e": {
+   "verdict": "ok"
+  },
   "542662534a56390b0255": {
    "baselined": "2026-09-19",
    "instead": "would we even know they were there?",
@@ -660,6 +711,9 @@
    "why": "Grammatically incomplete; 'commits behind' is git jargon that reads oddly without a bridge word."
   },
   "603c9536cf48c4dc6c53": {
+   "verdict": "ok"
+  },
+  "607cf7ea61a61889f613": {
    "verdict": "ok"
   },
   "6096edbda94e92034ecb": {
@@ -734,6 +788,9 @@
   "6931e764bf1a79915d37": {
    "verdict": "ok"
   },
+  "694a4ae3f999a0965eb5": {
+   "verdict": "ok"
+  },
   "6a238f068fdb36e2f2fd": {
    "verdict": "ok"
   },
@@ -741,6 +798,9 @@
    "verdict": "ok"
   },
   "6b5047daa16ae0a50d37": {
+   "verdict": "ok"
+  },
+  "6d7a94b00cb4b6b048e0": {
    "verdict": "ok"
   },
   "6dc0765b6ad8c16132b7": {
@@ -765,6 +825,9 @@
    "quote": "thing open here — mine to handle.",
    "verdict": "decode",
    "why": "The sentence is incomplete; an opening word is missing and the reader cannot parse it."
+  },
+  "6f0972bb91f74b45586f": {
+   "verdict": "ok"
   },
   "6f8612d51653f93abcb4": {
    "verdict": "ok"
@@ -817,6 +880,9 @@
    "verdict": "ok"
   },
   "757d3ef7c599d8b5d92a": {
+   "verdict": "ok"
+  },
+  "76741438fbf74ed40a70": {
    "verdict": "ok"
   },
   "77071d7f8ff07845bc1d": {
@@ -878,6 +944,15 @@
   },
   "8035dff1d58ee311c890": {
    "verdict": "ok"
+  },
+  "8081d4318cf78c39bdeb": {
+   "verdict": "ok"
+  },
+  "80aa5a22bf035ba3a7b9": {
+   "instead": "It's a bit confusing how the card has changed, and there...",
+   "quote": "s a bit confusing how the card has changed, and there",
+   "verdict": "decode",
+   "why": "Sentence fragment starting with lowercase letter; the opening clause is cut off and the text cannot be parsed as a complete thought."
   },
   "80dade8ba64f421f1aad": {
    "verdict": "ok"
@@ -989,6 +1064,9 @@
   "8f65c1c357139b2e01bb": {
    "verdict": "ok"
   },
+  "9045e59dbb1112724cc2": {
+   "verdict": "ok"
+  },
   "91757e1af2c66a9d5097": {
    "verdict": "ok"
   },
@@ -1005,6 +1083,9 @@
    "verdict": "ok"
   },
   "9289308481c74ae7306f": {
+   "verdict": "ok"
+  },
+  "92aab01ca095802120be": {
    "verdict": "ok"
   },
   "92e546324dff0acbefd7": {
@@ -1032,6 +1113,9 @@
    "verdict": "ok"
   },
   "94b653533cb4746b6143": {
+   "verdict": "ok"
+  },
+  "952c2b2de84085ac2031": {
    "verdict": "ok"
   },
   "9538c8966bf1ac0538be": {
@@ -1067,6 +1151,9 @@
   "98bfab9353f6ef329ded": {
    "verdict": "ok"
   },
+  "98cb7b7d605f05ff8356": {
+   "verdict": "ok"
+  },
   "990eefcb15958620a48d": {
    "baselined": "2026-09-19",
    "instead": "plans are still being filed for {unassured} of {total} areas",
@@ -1089,6 +1176,9 @@
    "quote": "she already has",
    "verdict": "decode",
    "why": "Bare pronoun with no referent in the sentence; a reader arriving cold would not know who she is."
+  },
+  "9bd668f81661d6333906": {
+   "verdict": "ok"
   },
   "9c67bf164c655053c59b": {
    "verdict": "ok"
@@ -1127,6 +1217,12 @@
    "quote": "Spend recorded 0% of what this studio has spent",
    "verdict": "decode",
    "why": "Ambiguous whether 'spend' is 0%, or whether the recording covers 0% of total spend — the construction makes it unclear which quantity is measured."
+  },
+  "a1e59c5e2cbb701a989e": {
+   "instead": "There's a note about something I said about an earlier version of the card, and then...",
+   "quote": "s a note about something I said about an earlier version of the card, and then there",
+   "verdict": "decode",
+   "why": "Sentence fragment starting with lowercase letter; the opening words are missing and the statement is incomplete."
   },
   "a2428857b19d68a5d2ee": {
    "verdict": "ok"
@@ -1185,6 +1281,9 @@
    "quote": "The nameplate and the likes-and-dislikes grid",
    "verdict": "decode",
    "why": "This names two components but states no action—as a work item, it does not say what is being done with them."
+  },
+  "aaa63a7a0753a011b719": {
+   "verdict": "ok"
   },
   "aaed50c7cc4bce16a0b4": {
    "verdict": "ok"
@@ -1291,6 +1390,9 @@
   "bc563f962e028a05fc3a": {
    "verdict": "ok"
   },
+  "bc66470194770442d801": {
+   "verdict": "ok"
+  },
   "bd52a35426cee86d7add": {
    "verdict": "ok"
   },
@@ -1353,6 +1455,9 @@
    "verdict": "decode",
    "why": "\"The visual check\" is not named plainly, and \"give it a home\" is metaphorical for an unclear action."
   },
+  "c2d3a3d55d4f5ef1246f": {
+   "verdict": "ok"
+  },
   "c3288f7b45ed871aef1e": {
    "baselined": "2026-09-19",
    "instead": "Wire up the 'nothing loaded' error sound, or delete it if it's not being used",
@@ -1374,6 +1479,9 @@
    "verdict": "ok"
   },
   "c42935c07e3d7c64a9b5": {
+   "verdict": "ok"
+  },
+  "c4b8e4f6ce0e29c0d7d8": {
    "verdict": "ok"
   },
   "c4c1d12c757b1ae34353": {
@@ -1454,6 +1562,9 @@
   "cf51d6563c844ae51547": {
    "verdict": "ok"
   },
+  "cf964e3c44ee4e9b0a33": {
+   "verdict": "ok"
+  },
   "cfe05bc740fb78ad1e52": {
    "verdict": "ok"
   },
@@ -1461,6 +1572,9 @@
    "verdict": "ok"
   },
   "d055f438f36862882102": {
+   "verdict": "ok"
+  },
+  "d0576ee3c651dd1b59ce": {
    "verdict": "ok"
   },
   "d10fba8d06df9788313b": {
@@ -1518,6 +1632,9 @@
    "verdict": "ok"
   },
   "d77c29ad28bba99b32e8": {
+   "verdict": "ok"
+  },
+  "d845cf7cf8920c9d4e25": {
    "verdict": "ok"
   },
   "d8b4e9aa0f25d36b80a0": {
@@ -1602,6 +1719,9 @@
   "e17e7055c441d4572de0": {
    "verdict": "ok"
   },
+  "e21a8e3eda2ba3c66c4e": {
+   "verdict": "ok"
+  },
   "e32ffa88743568b86c6c": {
    "baselined": "2026-09-19",
    "instead": ": [owner name] owns it",
@@ -1656,6 +1776,9 @@
   "eb12e4ebfe0f3324af67": {
    "verdict": "ok"
   },
+  "ec53440686a57f47a89f": {
+   "verdict": "ok"
+  },
   "ec8aa101a744d5a08a5d": {
    "instead": "Players have no way to send feedback",
    "quote": "The first thing a player would tell us is the one thing we cannot hear",
@@ -1671,6 +1794,9 @@
    "quote": "butler's 47 commands all move build files",
    "verdict": "decode",
    "why": "Butler is itch.io's deployment tool, not introduced, leaving the reader unable to understand what is being referenced."
+  },
+  "ee6ac975e54332f72113": {
+   "verdict": "ok"
   },
   "eea6b8865b26e7f0c73c": {
    "verdict": "ok"
@@ -1722,12 +1848,18 @@
   "f6791e393e1c6defd387": {
    "verdict": "ok"
   },
+  "f6b68f2a1848449a1ee5": {
+   "verdict": "ok"
+  },
   "f73d0ca511d156accb3d": {
    "baselined": "2026-09-19",
    "instead": "The two simplest robots: the mark-1 arrives once the player has used it, the mark-2 once someone has trained a mark-1",
    "quote": "The robot ladder's bottom two rungs: the mark-1 arrives when the work has been felt, the mark-2 once a mark-1 has been used",
    "verdict": "decode",
    "why": "\"Robot ladder\" is not introduced plainly, and \"when the work has been felt\" is vague—felt by whom, in what sense?"
+  },
+  "f77a60d6e2d9ef672f71": {
+   "verdict": "ok"
   },
   "f7c5646da6f155452810": {
    "verdict": "ok"
@@ -1773,6 +1905,9 @@
    "verdict": "ok"
   },
   "fbb23c9cf13a57b17c97": {
+   "verdict": "ok"
+  },
+  "fbc63698af94d32647f9": {
    "verdict": "ok"
   },
   "fbe8c648b04c8a026601": {

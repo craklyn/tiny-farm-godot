@@ -1011,13 +1011,16 @@ function attachmentEl(att, entData, looks) {
 
 /* A decision card is a conversation, not a form ------------------------------
    His rule, 2026-09-19, looking at Q-110 after he had sent it back once and the
-   studio had answered: "It's a bit confusing how the card has changed, and
-   there's a quiz, and then there's a note about something I said about an
-   earlier version of the card, and then there's a submit button that's called
-   'Record ruling'. It makes it look like the text is the only thing recorded if
+   studio had answered: “It’s a bit confusing how the card has changed, and
+   there’s a quiz, and then there’s a note about something I said about an
+   earlier version of the card, and then there’s a submit button that’s called
+   ‘Record ruling’. It makes it look like the text is the only thing recorded if
    I push the button... I want to be able to respond to a ticket, wait until an
    agent follows up on my response, and then I see logically presented the
-   resolution of the original ask and addressing the question."
+   resolution of the original ask and addressing the question.”
+   (Curly quotes on purpose: `tools/check_writing.py` reads this file with a
+   forty-line tokenizer, and a straight apostrophe inside a comment can desync it
+   into judging the prose around it as text on the screen.)
 
    So the card reads top to bottom in the order things happened, and the thing
    being asked of him is last:
