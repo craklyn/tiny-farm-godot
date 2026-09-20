@@ -174,33 +174,12 @@ in a clone:
 
     git config core.hooksPath .githooks
 
-Four places it runs. The **`commit-msg` hook** judges a commit subject before
+Three places it runs. The **`commit-msg` hook** judges a commit subject before
 the commit exists, because HQ renders subjects on "What we shipped this week"
-and rewriting published history is not an option afterwards. The **`pre-commit`
-hook** judges the text the commit *contains* — work-card titles, decision cards,
-goal statements, the strings in HQ's pages — and adds the verdicts it earns to
-the commit, which is what lets CI stay offline. **HQ's Run button** judges every
-surface. **CI** reads the verdicts already recorded and fails only when text
-changed without being read — no model on a shared runner, so a red build is
-never a model's mood.
-
-The `pre-commit` hook reads the **staged** versions of those files, never the
-working tree, and the distinction is not academic: on 2026-09-19 the check passed
-on somebody's machine and failed in CI on the identical commit, because the
-working tree had several work cards already marked accepted while the commit
-still had them awaiting review — and the check skips closed cards. Two different
-sets of text, two different answers. Both hooks fail open: no `claude`, no
-`python3`, an unreachable judge, a merge or rebase under way, and the commit goes
-through untouched.
-
-Editing *any* part of this document, this section included, re-judges every
-surface. That looks like waste — writing down which hook runs when should not
-re-read four hundred sentences — and on 2026-09-19 it was narrowed to the
-rule-stating sections for exactly that reason. The judge got worse: `--self-test`
-went from agreeing on every case to passing the very commit subject that caused
-this check to be rewritten, because the worked example sits in this section. The
-prose teaches by example, so every part of it is load-bearing. Do not narrow it
-again without running `--self-test` on both sides.
+and rewriting published history is not an option afterwards. **HQ's Run button**
+judges every surface. **CI** reads the verdicts already recorded and fails only
+when text changed without being read — no model on a shared runner, so a red
+build is never a model's mood.
 
 When he rules on a sentence, the ruling goes into `writing_rulings.json` the same
 day. When several rulings there start saying the same thing, promote the lesson
