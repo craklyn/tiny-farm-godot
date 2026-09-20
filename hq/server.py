@@ -200,11 +200,32 @@ def load_looks():
 
 
 def api_queue():
-    """Raw queue parse + curated decision cards + any recorded rulings."""
+    """Raw queue parse + curated decision cards + any recorded rulings.
+
+    `decided` is the set of cards he has actually settled, and it is **not** the
+    same as the set of cards with a ruling on them. A ruling that picked no
+    option is him sending the card back — Q-110, 2026-09-19: "present to me what
+    each of these would look like and let me pick from the results instead of
+    the idea." That is a request, not a decision, and before this the card
+    dropped out of his inbox into the settled fold and the dashboard told him it
+    needed nothing from him. Every reader that asks "has he settled this?" reads
+    this list; `rulings` stays whole, because the integration bookkeeping still
+    has to see all of them.
+    """
     out = parse_queue()
     out["curated"] = load_dir_json("decisions")
     out["rulings"] = {r["id"]: r for r in load_dir_json("rulings")}
+    out["decided"] = sorted(rid for rid, r in out["rulings"].items() if r.get("option"))
     return out
+
+
+def _settled_rulings(queue):
+    """The rulings that picked an option — the ones a work session folds in.
+
+    A ruling with no option has nothing to fold in and is waiting on him, not on
+    the studio, so it must never be counted as work the studio owes.
+    """
+    return [r for r in queue["rulings"].values() if r.get("option")]
 
 
 _CONSISTENCY = []
@@ -2665,15 +2686,15 @@ def eval_measure(spec, depth=0):
                 return _reading(len([i for i in parsed if not i["answered"]]), "questions",
                                 "open questions in the designer queue", "", "cheap")
             if field == "prepped":
-                return _reading(len([c for c in q["curated"] if c["id"] not in q["rulings"]]),
+                return _reading(len([c for c in q["curated"] if c["id"] not in set(q["decided"])]),
                                 "cards", "decision cards prepped and waiting on you", "", "cheap")
             if field == "pending_rulings":
-                return _reading(len([r for r in q["rulings"].values()
+                return _reading(len([r for r in _settled_rulings(q)
                                      if r.get("status") == "pending_integration"]), "rulings",
                                 "rulings recorded but not yet worked in", "", "cheap")
             if field == "oldest_pending_days":
                 ds = [_days_since_date((r.get("ruled_at") or "")[:10])
-                      for r in q["rulings"].values() if r.get("status") == "pending_integration"]
+                      for r in _settled_rulings(q) if r.get("status") == "pending_integration"]
                 ds = [d for d in ds if d is not None]
                 if not ds:
                     return _reading(None, "days", "nothing is waiting", "", "cheap",
@@ -3787,8 +3808,9 @@ def _compute_signals_now():
     pillars = load_json(os.path.join(DATA, "pillars.json"))["pillars"]
     queue = api_queue()
     open_items = [q for q in queue["items"] if not q["answered"]]
-    curated_fresh = [c for c in queue["curated"] if c["id"] not in queue["rulings"]]
-    pending_rulings = [r for r in queue["rulings"].values()
+    decided = set(queue["decided"])
+    curated_fresh = [c for c in queue["curated"] if c["id"] not in decided]
+    pending_rulings = [r for r in _settled_rulings(queue)
                        if r.get("status") == "pending_integration"]
     projects = load_projects()
     blocked = [p for p in projects if p["status"] == "blocked"]
@@ -4122,7 +4144,7 @@ def api_needs(pillar_id):
 
     # 2. Decision cards this pillar's people own that he has not ruled on.
     q = api_queue()
-    ruled = set(q["rulings"])
+    ruled = set(q["decided"])
     for c in q["curated"]:
         if c["id"] in ruled:
             continue

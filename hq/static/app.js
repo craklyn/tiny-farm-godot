@@ -1010,9 +1010,16 @@ function attachmentEl(att, entData, looks) {
 }
 
 function decisionCard(c, ruling, entData, onRuled, looks) {
+  // A ruling that picked no option did not settle this card — it sent it back.
+  // (Q-110, 2026-09-19: "let me pick from the results instead of the idea.")
+  // So only a ruling with an option locks the card; a ruling without one leaves
+  // every control live and shows what he said last time above them, which is
+  // the reason the card is in front of him again.
+  const settled = !!(ruling && ruling.option);
+  const sentBack = ruling && !settled ? ruling : null;
   const opts = (c.options || []).map(o => `
-    <label class="opt ${ruling && ruling.option === o.key ? "picked" : ""}">
-      <input type="radio" name="opt-${c.id}" value="${o.key}" data-label="${esc(o.label)}" ${ruling ? "disabled" : ""} ${ruling && ruling.option === o.key ? "checked" : ""}>
+    <label class="opt ${settled && ruling.option === o.key ? "picked" : ""}">
+      <input type="radio" name="opt-${c.id}" value="${o.key}" data-label="${esc(o.label)}" ${settled ? "disabled" : ""} ${settled && ruling.option === o.key ? "checked" : ""}>
       <span><b>${esc(o.label)}</b>${o.recommended ? ' <span class="rec">recommended</span>' : ""}<br>
       <span class="small muted">${mdi(o.detail || "")}</span></span>
     </label>`).join("");
@@ -1032,9 +1039,10 @@ function decisionCard(c, ruling, entData, onRuled, looks) {
     ${atts}
     ${links ? `<p style="margin-top:10px">${links}</p>` : ""}
     <div class="d-options">${opts}</div>
-    ${ruling
+    ${settled
       ? `<div class="ruled-box">✅ <b>Ruled ${esc((ruling.ruled_at || "").replace("T", " "))}</b>${ruling.option_label ? " — " + esc(ruling.option_label) : ""}${ruling.judgment ? `<div class="small" style="margin-top:6px">"${esc(ruling.judgment)}"</div>` : ""}<div class="small muted" style="margin-top:6px">${ruling.status === "integrated" ? "Integrated into the design docs." : "Queued for the next work session to fold into the design docs."}</div></div>`
-      : `<div class="d-judge">
+      : `${sentBack ? `<div class="sentback-box">↩︎ <b>You sent this back ${esc((sentBack.ruled_at || "").replace("T", " "))}</b>${sentBack.judgment ? `<div class="small" style="margin-top:6px">"${esc(sentBack.judgment)}"</div>` : ""}<div class="small muted" style="margin-top:6px">You picked no option, so this is still yours to settle. What you asked for is on this card.</div></div>` : ""}
+        <div class="d-judge">
           <textarea placeholder="Your judgment, in your own words — required if you don't pick an option; welcome either way."></textarea>
           <button data-rule="${c.id}">Record ruling</button>
         </div>`}
@@ -1291,7 +1299,7 @@ async function boot() {
   try {
     const q = await api("/api/queue");
     updateQueueBadge({
-      decisions: (q.curated || []).filter(c => !(q.rulings || {})[c.id]).length,
+      decisions: (q.curated || []).filter(c => !(q.decided || []).includes(c.id)).length,
     });
   } catch { /* no badge */ }
 }

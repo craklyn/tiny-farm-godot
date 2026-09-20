@@ -628,11 +628,16 @@ async function renderWork(focusId) {
   // What a work item needs to show the decision it came from, in place before
   // the first card is built.
   decisionCtx = { curated, rulings, entData, looks };
-  // Ruled either way: by a ruling recorded through this page (hq/data/rulings),
+  // Settled either way: by a ruling recorded through this page (hq/data/rulings),
   // or by a ruling written onto the card itself when it was settled in chat.
-  const decisions = curated.filter(c => !rulings[c.id] && !c.ruled);
-  const ruled = curated.filter(c => rulings[c.id]);
-  const rawOpen = (queue.items || []).filter(q => !q.answered && !curatedIds.has(q.id) && !rulings[q.id]);
+  // A ruling that picked no option settles nothing — it is him sending the card
+  // back for something — so those cards stay in "Waiting for your ruling" with
+  // what he said last time shown on them. `queue.decided` is the server's list
+  // of the ones an option was actually picked on.
+  const decided = new Set(queue.decided || []);
+  const decisions = curated.filter(c => !decided.has(c.id) && !c.ruled);
+  const ruled = curated.filter(c => decided.has(c.id));
+  const rawOpen = (queue.items || []).filter(q => !q.answered && !curatedIds.has(q.id) && !decided.has(q.id));
   const answered = (queue.items || []).filter(q => q.answered);
   updateQueueBadge({ decisions: decisions.length });
   // A link that names one card lands with that card open — arriving at the
@@ -672,7 +677,11 @@ async function renderWork(focusId) {
       <div class="w-list" id="q-open"></div></section>`).firstElementChild;
     body.appendChild(sec);
     const qo = sec.querySelector("#q-open");
-    decisions.forEach(c => qo.appendChild(decisionCard(c, null, entData, () => renderWork(), looks)));
+    // The earlier ruling goes with the card when there was one: it is why the
+    // card is in front of him again, and the card shows it rather than looking
+    // like it was never touched.
+    decisions.forEach(c => qo.appendChild(
+      decisionCard(c, rulings[c.id] || null, entData, () => renderWork(), looks)));
   }
 
   const secs = [

@@ -635,6 +635,9 @@ code.ref { background: #1b1710; border: 1px solid var(--line); border-radius: 6p
 .d-judge { display: flex; gap: 10px; align-items: flex-end; margin-top: 10px; }
 .d-judge textarea { flex: 1; background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-family: inherit; font-size: 13.5px; height: 64px; resize: vertical; }
 .ruled-box { background: #26301f; border: 1px solid #3c5230; border-radius: 8px; padding: 12px 14px; margin-top: 10px; }
+/* A card he sent back without picking: still his, so it is marked in the amber
+   that means somebody else is holding it rather than the green that means done. */
+.sentback-box { background: #302a1f; border: 1px solid #5a4a2a; border-radius: 8px; padding: 12px 14px; margin-top: 10px; }
 
 /* ---------- inbox ---------- */
 .q-item { border-left: 3px solid var(--accent); }
