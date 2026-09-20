@@ -45,11 +45,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: The check catches a phrase he has actually had to decode
-        run: python3 tools/check_writing.py --self-test
-
-      - name: Plain language on every surface he reads
-        run: python3 tools/check_writing.py
+      # The judgement pass needs a model, and CI is the wrong place for one: a
+      # shared runner would pay for it on every push and could disagree with
+      # itself between two identical commits. So CI reads the verdicts already
+      # recorded in docs/writing_verdicts.json — offline, deterministic, and it
+      # fails when text has changed without being read, never because a model
+      # was in a different mood. The judging itself happens at commit time (the
+      # commit-msg hook) and behind HQ's Run button.
+      - name: Every surface he reads has been read, and passed
+        run: python3 tools/check_writing.py --verify
 
       # HQ's front-end files are plain scripts sharing one global scope, so the
       # same name in two of them is a SyntaxError that blanks every page — and

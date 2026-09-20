@@ -558,7 +558,9 @@ JOBS = {
         "label": "Plain-language check",
         "cmd": ["python3", "tools/check_writing.py"],
         "verdict": re.compile(r"(\d+) phrase\(s\) Daniel would have to decode"),
-        "clean": re.compile(r"No house vocabulary on any surface"),
+        "clean": re.compile(r"Nothing new he would have to decode"),
+        "soft": re.compile(r"(\d+) worth a second look"),
+        "known": re.compile(r"(\d+) older phrase\(s\) he would have to decode"),
     },
     "benchmark": {
         "label": "Sim benchmark",
@@ -652,9 +654,13 @@ def _run_job(job):
         elif job == "writing":
             clean = bool(spec["clean"].search(out))
             ok = base_ok and clean
-            summary = ("nothing on your screens needs decoding" if clean
-                       else f"{m.group(1)} phrase(s) on your screens use words that mean "
-                            "something only inside this studio" if m
+            known = spec["known"].search(out)
+            aside = (f" {known.group(1)} older ones are still on the list, filed as work."
+                     if known and known.group(1) != "0" else "")
+            summary = (("nothing written since the last check would make you stop and "
+                        "work out what it means." + aside) if clean
+                       else (f"{m.group(1)} new phrase(s) on your screens would make you "
+                             f"stop and work out what they mean." + aside) if m
                        else "the check did not finish")
         elif job == "benchmark":
             ok = base_ok and bool(m and m.group(2) == "PASS")

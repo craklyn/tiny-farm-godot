@@ -152,7 +152,36 @@ reachable by focus and by click.
 ## Where this is enforced
 
 Page *structure* rules live in `hq/README.md` ("The seven rules a pillar page
-has to meet"). This document governs the *prose* on any surface. The one
-automated check today is copy drift (features landed since the store page was
-last written); the rest is held by review — reading the surface as its actual
-reader, which is how every rule above was found.
+has to meet"). This document governs the *prose* on any surface.
+
+`tools/check_writing.py` enforces it, and **this document is what it enforces
+with**: the file you are reading, plus `docs/writing_rulings.json` — every call
+the CEO has actually made, grouped by the shape of the failure — are handed to a
+model that reads each piece of text the way a careful colleague would. Every
+finding must quote the phrase it objects to and offer a plain rewrite, or it is
+thrown away.
+
+It used to be a list of 23 banned words, and on 2026-09-19 that list said
+everything was fine while a commit subject he could not read sat on his
+dashboard, because the offending word was not on it. His ruling: *"There's tens
+of thousands of words that wouldn't be appropriate to use in an obscure way, so
+this can't scale properly."* A shape generalises where a vocabulary cannot —
+which is also why editing this document changes what the check enforces, and
+re-judges every surface.
+
+The hook has to be switched on once per machine, because git does not carry hooks
+in a clone:
+
+    git config core.hooksPath .githooks
+
+Three places it runs. The **`commit-msg` hook** judges a commit subject before
+the commit exists, because HQ renders subjects on "What we shipped this week"
+and rewriting published history is not an option afterwards. **HQ's Run button**
+judges every surface. **CI** reads the verdicts already recorded and fails only
+when text changed without being read — no model on a shared runner, so a red
+build is never a model's mood.
+
+When he rules on a sentence, the ruling goes into `writing_rulings.json` the same
+day. When several rulings there start saying the same thing, promote the lesson
+into this document and retire the duplicates: that file is a staging area for
+sharpening these rules, not an archive that only grows.

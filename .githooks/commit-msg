@@ -1,0 +1,13 @@
+#!/bin/sh
+# Judge a commit subject before the commit exists.
+#
+# Why here and not in CI: HQ's "What we shipped this week" renders commit
+# subjects straight from `git log`, so a subject is a page Daniel reads. By the
+# time CI could object, the commit exists, and the only fix is rewriting
+# published history — which he ruled out on 2026-09-19, the day a subject he
+# could not read reached that feed. This is the last moment the fix is free.
+#
+# It never blocks for an avoidable reason: no `claude` on PATH, a judge that
+# cannot be reached, a merge or a revert or a fixup — all pass straight through.
+# `git commit --no-verify` is the escape when the wording is genuinely right.
+exec python3 "$(git rev-parse --show-toplevel)/tools/check_writing.py" --subject "$1"

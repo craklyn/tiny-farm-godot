@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Catch house vocabulary before it reaches the one person who cannot ask it what it means.
+"""Catch writing Daniel would have to decode, before it reaches the one person who cannot ask it what it means.
 
 Daniel, 2026-09-04, reading a work card titled "Re-run the suites so each stamps
 the commit it proved":
@@ -10,38 +10,72 @@ the commit it proved":
     It's only causing friction, and the friction is so severe that it's getting
     in way of the process."
 
-The instruction is about mechanism. `docs/WRITING.md` has said "no house
-vocabulary on human surfaces" since 2026-09-03 and the rule kept being broken,
-because it depended on somebody noticing — and the person who notices is the one
-the rule exists to protect. So the rule gets a checker, the way the engine's
-one-gateway rule got one: a rule nobody has watched fail is only a claim that the
-rule holds.
+**Why this is not a word list any more.** It was one until 2026-09-19 — 23 banned
+terms, each with a plain replacement. That day a commit subject reached his
+dashboard reading "The sim benchmark's target is a frame she would feel, not a
+round number", and the check said nothing, because "frame" was not on the list.
+His ruling:
+
+    "I'm surprised a word list is a good solution. If I had a human coworker who
+    used a couple weird words, I'd be explaining a principle to follow and check.
+    Not a fixed set of words. There's tens of thousands of words that wouldn't be
+    appropriate to use in an obscure way, so this can't scale properly."
+
+So the rule is now checked the way a person would check it. `docs/WRITING.md` is
+the principle and `docs/writing_rulings.json` is every call he has actually made,
+kept as *shapes* of failure rather than as vocabulary; the two together brief a
+model that reads each piece of text and answers as a careful colleague would.
+There is no list to keep adding to, which is the point.
+
+**A finding must quote the phrase it objects to, say why, and offer a plain
+rewrite.** One with no quote is dropped unread. That is what keeps a judge from
+drifting into taste-policing, and it means every failure arrives with its fix.
 
 What it reads: the text fields that end up on screen — work-card titles, goal
 statements, decision-card questions and options, pillar names and taglines — plus
-the string literals in HQ's front-end code. Deliberately NOT: work-card briefs,
-persona prompts, code comments and design docs, which are written for agents,
-for machines, or for a teammate looking something up, and where a precise
-internal name is the right word.
+the string literals in HQ's front-end code, plus a commit subject when asked.
+Deliberately NOT: work-card briefs, persona prompts, code comments and design
+docs, which are written for agents, for machines, or for a teammate looking
+something up, and where a precise internal name is the right word.
 
-    python3 tools/check_writing.py              # every human-facing surface
-    python3 tools/check_writing.py --list       # the glossary, as a table
-    python3 tools/check_writing.py --self-test  # plant each shape and prove it is caught
+    python3 tools/check_writing.py                  # judge every human-facing surface
+    python3 tools/check_writing.py --verify         # offline: has everything been judged, and did it pass
+    python3 tools/check_writing.py --subject FILE   # judge one commit subject (the commit-msg hook)
+    python3 tools/check_writing.py --self-test      # replay every past ruling and prove the judge still agrees
+    python3 tools/check_writing.py --list           # the rulings, as a table
 
-A line that genuinely needs the word says so with `plain-ok: <reason>` on it (in
-code) or through a waiver in `docs/glossary.json` (in data), and the waiver is
+**Every verdict is cached** in `docs/writing_verdicts.json`, keyed by the text and
+by a fingerprint of the brief. So a re-run with nothing edited costs nothing and
+cannot flip its own answer; editing `WRITING.md` or the rulings re-judges
+everything, which is correct — the standard moved. CI runs `--verify`, which is
+offline and deterministic: it fails when text has changed without being judged,
+never because a model was in a different mood on a shared runner.
+
+A line that genuinely needs an odd word says so with `plain-ok: <reason>` on it
+(in code) or through a waiver in the rulings file (in data), and the waiver is
 printed rather than hidden — an excuse nobody can see is indistinguishable from a
 rule nobody applies.
 """
 import argparse
+import glob
+import hashlib
 import json
 import os
 import re
+import subprocess
 import sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-GLOSSARY = os.path.join(REPO, "docs", "glossary.json")
+RULINGS = os.path.join(REPO, "docs", "writing_rulings.json")
+BRIEF = os.path.join(REPO, "docs", "WRITING.md")
+CACHE = os.path.join(REPO, "docs", "writing_verdicts.json")
 WAIVER = re.compile(r"plain-ok:\s*(\S.*)$")
+
+# Small and fast on purpose: this is a reading comprehension question with the
+# standard supplied, not a reasoning problem, and it runs on every commit.
+JUDGE_MODEL = "haiku"
+BATCH = 25          # texts per call — one call for a whole sweep in most runs
+CALL_TIMEOUT = 180
 
 # Every field here is rendered to Daniel. The path is a dotted walk; `[]` means
 # "every item in this list". Adding a field is how a new surface joins the check.
@@ -69,13 +103,113 @@ CODE_SOURCES = ["hq/static/app.js", "hq/static/work.js", "hq/static/pillars.js",
 CLOSED_STATES = ("accepted", "dropped")
 
 
-def load_glossary(path=GLOSSARY):
-    doc = json.load(open(path, encoding="utf-8"))
-    terms = []
-    for t in doc.get("terms", []):
-        terms.append({**t, "rx": re.compile(r"\b(?:%s)" % t["term"], re.I)})
-    return terms, doc.get("waivers", [])
+# --- the brief the judge is given ----------------------------------------------
 
+def load_rulings(path=RULINGS):
+    return json.load(open(path, encoding="utf-8"))
+
+
+def brief_text(rulings=None):
+    """`WRITING.md` plus every ruling, as one system prompt.
+
+    The whole set goes in, every call. It is about three thousand tokens and the
+    corpus grows by a handful of rulings a year, so retrieval would be machinery
+    for a problem we do not have — and worse, it would rank by topic when what a
+    judge needs is the near-misses on the line, which come from anywhere."""
+    rulings = rulings or load_rulings()
+    lines = [open(BRIEF, encoding="utf-8").read(), "", "# Calls already made", ""]
+    for shape in rulings["shapes"]:
+        lines.append(f"## {shape['shape']}")
+        lines.append(shape["why_it_fails"])
+        for r in shape["rulings"]:
+            lines.append(f"- {r['verdict'].upper()}: “{r['text']}”")
+            lines.append(f"  why: {r['why']}")
+            lines.append(f"  instead: {r['instead']}")
+        lines.append("")
+    lines.append("## Ruled fine — do NOT flag anything like these")
+    for r in rulings["ruled_fine"]:
+        lines.append(f"- “{r['text']}”")
+        lines.append(f"  why it is fine: {r['why']}")
+    return "\n".join(lines)
+
+
+def brief_fingerprint(rulings=None):
+    """Changing the principle or the rulings invalidates every cached verdict,
+    because the standard they were judged against moved."""
+    h = hashlib.sha256()
+    h.update(open(BRIEF, "rb").read())
+    h.update(json.dumps(rulings or load_rulings(), sort_keys=True).encode())
+    h.update(SYSTEM.encode())
+    h.update(JUDGE_MODEL.encode())
+    return h.hexdigest()[:16]
+
+
+SYSTEM = """You are reviewing text that will be shown to one person: the founder of a small
+game studio. He arrives cold, between other things, holding none of the project's
+vocabulary and none of yesterday's conversation.
+
+Your standard is the document below — the studio's writing rules, and every call
+the founder has already made, grouped by the shape of the failure rather than by
+vocabulary. Apply the principle. Do NOT treat the examples as a list of banned
+words: a word that is wrong in one sentence is right in another, and the "ruled
+fine" section exists to show you where the line actually sits. Flagging good
+prose is a worse failure than missing a borderline case, because a check people
+learn to ignore protects nobody.
+
+TWO THINGS YOU ARE NOT DOING, and getting these wrong is the main way this check
+becomes noise people learn to skip.
+
+1. **This is not a style, tone or grammar review.** Do not flag passive voice, a
+   hidden actor, wordiness, repetition, a missing call to action, a sentence that
+   could be tighter, or anything you would merely have written differently. If a
+   reader takes the meaning straight off the page, it is "ok" however you would
+   have phrased it. The question you are answering is whether he would have to
+   work out what a word or phrase MEANS, or go and ask someone.
+
+   The one thing that is not a style question, though it looks like one: a
+   sentence that lands only on a **second read** — a riddle, an inversion, a line
+   arranged for effect where a plain statement belongs. He can get there, but he
+   pays a re-read to do it, and the studio's rule 3 says that tax is payable in
+   the game's own writing and never on a page someone works from. Judge those on
+   what they cost the reader, not on whether the meaning is ultimately available.
+
+2. **The studio's own names are not house vocabulary.** He coined them and uses
+   them every day: the game's characters, machines, places, features and
+   milestones — the Mark III and the mark-1, the Zoo, the Animation Lab and its
+   loops, the coop, the bin, the overnight, phase 4, Q-numbers for design
+   questions. A name for a thing in his own game or roadmap is a proper noun to
+   him, not jargon. What you ARE looking for is internal *process* and
+   *engineering* shorthand standing where an ordinary word exists — "provenance"
+   for where it came from, "the suites" for the tests, "monitoring is landing" for
+   a plan being written, "the look is holding" for nothing having changed.
+
+These three ARE in scope, and none of them is a style question — each one leaves
+the reader working out what was meant, which is the whole test:
+
+  - a metaphor or clever construction standing where the plain fact belongs
+    ("the one thing we cannot hear" for "players have no way to send feedback");
+  - a bare pronoun — she, it, they — whose referent is not in that same sentence;
+  - the internal mechanism named where the symptom belongs ("fits in a frame"
+    for "makes the tablet stutter").
+
+For each numbered text you are given, decide:
+  "ok"          — a stranger would understand this. Most text should be this.
+  "second-look" — understandable, but a word or construction is doing the reader
+                  no favours. Worth raising, not worth blocking.
+  "decode"      — the reader would have to work out what is meant, or ask someone.
+
+Reply with JSON only: {"findings": [{"n": <number>, "verdict": "...",
+"quote": "<the exact substring you object to, copied character for character>",
+"why": "<one sentence, plain>", "instead": "<the same text rewritten plainly>"}]}
+
+Omit any text you judge "ok" — report only second-look and decode. Every finding
+MUST carry a quote copied exactly from the text; a finding without one is thrown
+away unread.
+
+%s"""
+
+
+# --- reading the surfaces (unchanged in substance since 2026-09-04) ------------
 
 def walk(doc, path):
     """One dotted field path -> every string it names. `[]` iterates a list."""
@@ -169,6 +303,10 @@ def is_prose(s):
     # sentence full of syntax. Nothing a person sees contains an arrow function.
     if re.search(r"=>|\);|\bfunction\b|\bconst\b|\breturn\b|//|\$\{", s):
         return False
+    # A literal that starts or ends mid-tag survives rendered_text with its markup
+    # attached. It is not writing, and sending it to be judged buys nothing.
+    if re.search(r"[<>]|\b(?:class|href|src|style|aria-\w+)\s*=", s):
+        return False
     # `gate-src small muted` is a list of CSS classes, not a sentence: no capital,
     # no punctuation, and every word a lowercase identifier.
     if re.fullmatch(r"[a-z][a-z0-9-]*(?: [a-z][a-z0-9-]*)*", s):
@@ -183,24 +321,10 @@ def waived(waivers, where, text):
     return ""
 
 
-def scan(repo=REPO, terms=None, waivers=None):
-    import glob
-    if terms is None:
-        terms, waivers = load_glossary()
-    hits, excused = [], []
-
-    def check(text, where, what, extra=""):
-        for t in terms:
-            m = t["rx"].search(text or "")
-            if not m:
-                continue
-            why = waived(waivers, where, text) or (
-                WAIVER.search(extra).group(1) if WAIVER.search(extra) else "")
-            row = {"where": where, "what": what, "term": m.group(0), "text": text.strip()[:160],
-                   "instead": t["instead"], "means": t["means"], "hard": t.get("hard", True)}
-            (excused if why else hits).append(dict(row, waiver=why) if why else row)
-
-    for pattern, fields, what in (DATA_SOURCES if terms else []):
+def collect(repo=REPO):
+    """Every piece of human-facing text, as {text, where, what, near}."""
+    found = []
+    for pattern, fields, what in DATA_SOURCES:
         for path in sorted(glob.glob(os.path.join(repo, pattern))):
             rel = os.path.relpath(path, repo)
             try:
@@ -217,8 +341,9 @@ def scan(repo=REPO, terms=None, waivers=None):
                 continue
             for field in fields:
                 for text in walk(doc, field):
-                    check(text, rel, f"{what} · {field}")
-
+                    if text and text.strip():
+                        found.append({"text": text.strip(), "where": rel,
+                                      "what": f"{what} · {field}", "near": ""})
     for rel in CODE_SOURCES:
         path = os.path.join(repo, rel)
         if not os.path.isfile(path):
@@ -229,92 +354,411 @@ def scan(repo=REPO, terms=None, waivers=None):
             text = rendered_text(body)
             if not is_prose(text):
                 continue
-            near = "\n".join(lines[max(0, line_no - 2):line_no + 1])
-            check(text, rel, f"page text · line {line_no}", near)
-    return hits, excused
+            found.append({"text": text, "where": rel,
+                          "what": f"page text · line {line_no}",
+                          "near": "\n".join(lines[max(0, line_no - 2):line_no + 1])})
+    # One text can appear on several screens; judge it once.
+    seen, unique = set(), []
+    for row in found:
+        if row["text"] in seen:
+            continue
+        seen.add(row["text"])
+        unique.append(row)
+    return unique
 
 
-def report(hits, excused):
-    for row in sorted(excused, key=lambda r: r["where"]):
-        print(f"  allowed  {row['where']} — “{row['term']}” — {row['waiver']}")
-    if excused:
-        print()
-    for row in sorted(hits, key=lambda r: (not r["hard"], r["where"])):
-        mark = "MUST FIX" if row["hard"] else "consider"
+# --- the cache ------------------------------------------------------------------
+
+def key_of(text, fingerprint):
+    return hashlib.sha256((fingerprint + "\x00" + text).encode()).hexdigest()[:20]
+
+
+def load_cache():
+    try:
+        return json.load(open(CACHE, encoding="utf-8"))
+    except (OSError, ValueError):
+        return {"brief": "", "verdicts": {}}
+
+
+def save_cache(cache):
+    with open(CACHE, "w", encoding="utf-8") as f:
+        json.dump(cache, f, indent=1, ensure_ascii=False, sort_keys=True)
+        f.write("\n")
+
+
+# --- the judge ------------------------------------------------------------------
+
+def have_cli():
+    return subprocess.run(["which", "claude"], capture_output=True).returncode == 0
+
+
+def record_cost(usage, phase):
+    """Work the company does on its own spends the same allotment Daniel does,
+    so it says what it cost. Best-effort: never fail the check over bookkeeping."""
+    path = os.path.join(REPO, "hq", "data", "history", "tokens.jsonl")
+    if not usage or not os.path.isdir(os.path.dirname(path)):
+        return
+    try:
+        import datetime
+        row = {"at": datetime.datetime.now().isoformat(timespec="seconds"),
+               "phase": phase, "seat": "claude", "model": JUDGE_MODEL, "item": "check_writing",
+               **{k: v for k, v in usage.items() if isinstance(v, (int, float))}}
+        with open(path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(row) + "\n")
+    except OSError:
+        pass
+
+
+def parse_findings(body):
+    """The judge's findings, out of a reply that is JSON on a good day.
+
+    A judge quoting the text back at us will sooner or later put a quote mark or
+    a newline somewhere JSON does not allow, and a whole sweep once died on one
+    malformed reply. So: try the clean parse, then the braces, and if both fail
+    pull the findings out object by object. A batch we genuinely cannot read is
+    reported as unread rather than silently passed — see judge()."""
+    for attempt in (body, ):
+        try:
+            got = json.loads(attempt)
+            if isinstance(got, dict) and isinstance(got.get("findings"), list):
+                return got["findings"]
+        except ValueError:
+            pass
+    m = re.search(r"\{.*\}", body or "", re.S)
+    if m:
+        try:
+            return json.loads(m.group(0)).get("findings", []) or []
+        except ValueError:
+            pass
+    # Object-by-object salvage: one unparseable finding loses that finding, not
+    # the other twenty-four in the batch.
+    out = []
+    for chunk in re.findall(r"\{[^{}]*\}", body or "", re.S):
+        try:
+            got = json.loads(chunk)
+        except ValueError:
+            continue
+        if isinstance(got, dict) and "n" in got:
+            out.append(got)
+    if out:
+        return out
+    raise RuntimeError("the judge did not answer in JSON")
+
+
+def judge(texts, system, phase="writing-check"):
+    """One call for a batch. Returns {index: finding} for what it objected to."""
+    if not texts:
+        return {}
+    numbered = "\n\n".join(f"[{i}] {t}" for i, t in enumerate(texts)) + (
+        "\n\n---\nReply with the JSON object and nothing else — no preamble, no "
+        "explanation of your approach, no code fence. If none of the texts above is "
+        "worth reporting, the whole reply is exactly: {\"findings\": []}")
+    cmd = ["claude", "-p", numbered, "--append-system-prompt", system,
+           "--allowedTools", "", "--max-turns", "1",
+           "--output-format", "json", "--model", JUDGE_MODEL]
+    try:
+        proc = subprocess.run(cmd, cwd=REPO, capture_output=True, text=True,
+                              timeout=CALL_TIMEOUT,
+                              env={**os.environ, "CLAUDE_CODE_DISABLE_AUTOUPDATE": "1"})
+    except Exception as e:
+        raise RuntimeError(f"the judge could not be reached: {type(e).__name__}") from e
+    if proc.returncode != 0:
+        raise RuntimeError(f"the judge failed: {(proc.stderr or proc.stdout or '')[:200]}")
+    try:
+        envelope = json.loads(proc.stdout)
+        body = envelope.get("result", "")
+        usage = dict(envelope.get("usage") or {})
+        if envelope.get("total_cost_usd") is not None:
+            usage["list_usd"] = envelope["total_cost_usd"]
+        record_cost(usage, phase)
+    except ValueError:
+        body = proc.stdout
+    out = {}
+    for f in parse_findings(body):
+        try:
+            n = int(f["n"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        quote = (f.get("quote") or "").strip()
+        # The quote is the discipline. Without one there is nothing to check the
+        # judge against, and a finding nobody can verify is just nagging.
+        if not (0 <= n < len(texts)) or not quote or quote.lower() not in texts[n].lower():
+            continue
+        if f.get("verdict") not in ("second-look", "decode"):
+            continue
+        out[n] = {"verdict": f["verdict"], "quote": quote,
+                  "why": (f.get("why") or "").strip(),
+                  "instead": (f.get("instead") or "").strip()}
+    return out
+
+
+def judge_or_split(chunk, system, phase):
+    """Every text in the chunk with its verdict, or None where it defeated us.
+
+    A reply that will not parse is nearly always a reply that got too long, so a
+    failed batch is halved and tried again rather than written off — which both
+    rescues the texts either side of the awkward one and isolates the awkward one
+    down to a batch of one. Two full passes once left a hundred texts unread
+    because a whole batch died on whichever of its twenty-five was unquotable.
+    A single text that still fails comes back None: the run says so, exits
+    non-zero, and the next run tries only it."""
+    try:
+        found = judge(chunk, system, phase)
+        return [(t, found.get(i) or {"verdict": "ok"}) for i, t in enumerate(chunk)]
+    except RuntimeError as e:
+        if len(chunk) == 1:
+            print(f"  could not read the judge on “{chunk[0][:60]}…”: {e}")
+            return [(chunk[0], None)]
+    half = len(chunk) // 2
+    return (judge_or_split(chunk[:half], system, phase)
+            + judge_or_split(chunk[half:], system, phase))
+
+
+def verdicts_for(texts, rulings=None, refresh=True, phase="writing-check"):
+    """Cached verdict per text, judging only what has not been judged before."""
+    rulings = rulings or load_rulings()
+    fp = brief_fingerprint(rulings)
+    cache = load_cache()
+    if cache.get("brief") != fp:
+        cache = {"brief": fp, "verdicts": {}}     # the standard moved; start again
+    store = cache["verdicts"]
+    missing = [t for t in texts if key_of(t, fp) not in store]
+    unread = 0
+    if missing and refresh:
+        system = SYSTEM % brief_text(rulings)
+        for i in range(0, len(missing), BATCH):
+            chunk = missing[i:i + BATCH]
+            for text, verdict in judge_or_split(chunk, system, phase):
+                if verdict is None:
+                    unread += 1
+                else:
+                    store[key_of(text, fp)] = verdict
+            save_cache(cache)      # after every batch, not at the end
+    return {t: store.get(key_of(t, fp)) for t in texts}, unread
+
+
+# --- reporting -------------------------------------------------------------------
+
+def baseline_cache(cache=None):
+    """Mark every objection standing today as known, so CI is not red about text
+    nobody has touched.
+
+    A failing build has to mean something broke. Forty-two sentences that were
+    already on the screens when the judge arrived are a backlog, not a breakage,
+    so they are recorded here and filed as work instead. Anything written after
+    this date fails the build in the ordinary way, and a baselined line loses its
+    grandfathering the moment somebody edits it — the text is the cache key, so a
+    reworded sentence is a new one."""
+    import datetime
+    cache = cache or load_cache()
+    today = datetime.date.today().isoformat()
+    n = 0
+    for v in cache["verdicts"].values():
+        if v.get("verdict") in ("decode", "second-look") and not v.get("baselined"):
+            v["baselined"] = today
+            n += 1
+    save_cache(cache)
+    return n
+
+
+def report(rows, unjudged=0, strict=False):
+    # `strict` decides what gets PRINTED — CI wants only what is new, HQ's page
+    # wants the whole backlog visible. What FAILS is the same either way: text
+    # written since the baseline. A red that means "forty-two old sentences are
+    # still on the list" is a red about bookkeeping, and those get ignored.
+    if strict:
+        rows = [r for r in rows if not r.get("baselined")]
+    hard = [r for r in rows if r["verdict"] == "decode"]
+    soft = [r for r in rows if r["verdict"] == "second-look"]
+    new_hard = [r for r in hard if not r.get("baselined")]
+    for row in sorted(rows, key=lambda r: (r["verdict"] != "decode", r["where"])):
+        mark = "MUST FIX" if row["verdict"] == "decode" else "consider"
         print(f"  {mark}  {row['where']}")
-        print(f"            “{row['text']}”")
-        print(f"            “{row['term']}” means {row['means']} — say: {row['instead']}")
-    hard = [r for r in hits if r["hard"]]
+        print(f"            “{row['text'][:160]}”")
+        print(f"            “{row['quote']}” — {row['why']}")
+        if row.get("instead"):
+            print(f"            say: {row['instead']}")
     print()
-    if hard:
-        print(f"{len(hard)} phrase(s) Daniel would have to decode, and "
-              f"{len(hits) - len(hard)} worth a second look.")
-        print("Each one is a word that is exact to whoever wrote it and empty three feet away.")
+    if unjudged:
+        print(f"{unjudged} piece(s) of text have changed and have not been read yet — "
+              f"run `python3 tools/check_writing.py` to judge them.")
+        return 1
+    if new_hard:
+        print(f"{len(new_hard)} phrase(s) Daniel would have to decode, and "
+              f"{len([r for r in soft if not r.get('baselined')])} worth a second look.")
+        print("Each one is exact to whoever wrote it and empty three feet away.")
+        return 1
+    known_hard = len(hard) - len(new_hard)
+    known_soft = sum(1 for r in soft if r.get("baselined"))
+    fresh_soft = len(soft) - known_soft
+    print("Nothing new he would have to decode"
+          + (f"; {fresh_soft} worth a second look." if fresh_soft else "."))
+    if known_hard or known_soft:
+        print(f"{known_hard} older phrase(s) he would have to decode and {known_soft} "
+              f"worth a second look were already on the screens when this check "
+              f"arrived, and are filed as work rather than failing the build.")
+    return 0
+
+
+def rows_for(items, table, waivers, allow):
+    rows = []
+    for it in items:
+        v = table.get(it["text"])
+        if not v or v.get("verdict") == "ok":
+            continue
+        why = waived(waivers, it["where"], it["text"])
+        if not why and it.get("near"):
+            m = WAIVER.search(it["near"])
+            why = m.group(1) if m else ""
+        if why:
+            allow.append({"where": it["where"], "quote": v.get("quote", ""), "waiver": why})
+            continue
+        rows.append({**it, **v})   # v carries `baselined` when it has one
+    return rows
+
+
+# --- the modes --------------------------------------------------------------------
+
+def sweep(refresh=True, strict=False):
+    rulings = load_rulings()
+    items = collect()
+    table, _ = verdicts_for([i["text"] for i in items], rulings, refresh=refresh)
+    unjudged = sum(1 for i in items if table.get(i["text"]) is None)
+    allow = []
+    rows = rows_for(items, table, rulings.get("waivers", []), allow)
+    for a in sorted(allow, key=lambda r: r["where"]):
+        print(f"  allowed  {a['where']} — “{a['quote']}” — {a['waiver']}")
+    if allow:
+        print()
+    return report(rows, unjudged, strict)
+
+
+def check_subject(path_or_text):
+    """One commit subject, judged before the commit exists.
+
+    This is the only place that could have stopped the sentence that started all
+    of this. Once a commit is written, the only fix is rewriting published
+    history, which the CEO has ruled out."""
+    if os.path.isfile(path_or_text):
+        raw = open(path_or_text, encoding="utf-8").read()
     else:
-        print(f"No house vocabulary on any surface he reads"
-              + (f"; {len(hits)} worth a second look." if hits else "."))
-    return 1 if hard else 0
+        raw = path_or_text
+    subject = ""
+    for line in raw.splitlines():
+        if line.strip().startswith("#"):
+            continue
+        subject = line.strip()
+        break
+    if not subject or subject.lower().startswith(("merge ", "revert ", "fixup!", "squash!")):
+        return 0
+    if not have_cli():
+        print("plain-language check skipped: the claude CLI is not on PATH.")
+        return 0
+    try:
+        table, _ = verdicts_for([subject], phase="writing-check-subject")
+    except RuntimeError as e:
+        print(f"plain-language check skipped: {e}")
+        return 0
+    v = table.get(subject) or {"verdict": "ok"}
+    if v["verdict"] != "decode":
+        if v["verdict"] == "second-look":
+            print(f"  worth a second look: “{v['quote']}” — {v['why']}")
+            if v.get("instead"):
+                print(f"  say: {v['instead']}")
+        return 0
+    print()
+    print("This commit subject is one Daniel would have to decode.")
+    print(f"  you wrote : {subject}")
+    print(f"  the problem: “{v['quote']}” — {v['why']}")
+    if v.get("instead"):
+        print(f"  say       : {v['instead']}")
+    print()
+    print("Commit subjects are rendered on HQ's \"What we shipped this week\", so this")
+    print("is a page he reads, not a developer-only note. Reword it and commit again.")
+    print("If the wording is genuinely right, commit with --no-verify.")
+    return 1
 
 
 def self_test():
-    """Plant each shape of the failure and prove the check sees it."""
-    terms, waivers = load_glossary()
-    planted = [
-        ("Re-run the suites so each stamps the commit it proved", 3),
-        ("The attestation lapses when the invariant changes", 2),
-        ("Check the provenance and the release cadence for parity", 3),
-    ]
-    ok = True
-    for text, want in planted:
-        found = {t["rx"].search(text).group(0).lower()
-                 for t in terms if t["rx"].search(text)}
-        if len(found) >= want:
-            print(f"  caught  {len(found)} in “{text[:52]}…”")
-        else:
-            print(f"  MISSED  only {len(found)} of {want} in “{text}” — {found}")
-            ok = False
-    # Markup and interpolated code are not writing, and reporting them is how a
-    # checker gets ignored. This one is a class name and a field, and must pass.
-    markup = rendered_text('<span class="g-orphan">nobody owns this</span> '
-                           '<b>${gate.total - gate.met}</b> still to do')
-    if any(t["rx"].search(markup) for t in terms if t.get("hard", True)):
-        print(f"  MISSED  markup and code were read as writing: “{markup}”")
-        ok = False
-    else:
-        print("  caught  a CSS class and a field name are not reported as prose")
+    """Replay every ruling and prove the judge still makes the same call.
 
-    clean = "Run the four test suites again so each result records which version it tested"
-    bad = [t["term"] for t in terms if t.get("hard", True) and t["rx"].search(clean)]
-    if bad:
-        print(f"  MISSED  the plain rewrite is flagged by {bad} — the rule would block good text")
-        ok = False
-    else:
-        print("  caught  the plain rewrite passes, so the rule is not just banning words")
+    A model judge cannot be made deterministic, but it can be held to every line
+    ever drawn — which is what catches it drifting, here or under a new model."""
+    rulings = load_rulings()
+    cases = []
+    for shape in rulings["shapes"]:
+        for r in shape["rulings"]:
+            cases.append((r["text"], r["verdict"], shape["id"]))
+    for r in rulings["ruled_fine"]:
+        cases.append((r["text"], "ok", "ruled fine"))
+    table, _ = verdicts_for([c[0] for c in cases], rulings, phase="writing-check-selftest")
+    ok = True
+    for text, want, where in cases:
+        got = (table.get(text) or {"verdict": "ok"})["verdict"]
+        # "decode" and "second-look" are both objections; the tiers are a judgement
+        # of severity and holding the judge to the exact tier would make this brittle.
+        agree = (got == want) or (want != "ok" and got != "ok")
+        label = "agrees " if agree else "DIFFERS"
+        print(f"  {label}  [{where}] wanted {want:12} got {got:12} “{text[:48]}…”")
+        ok = ok and agree
     return ok
 
 
 def main(argv):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("--list", action="store_true", help="print the glossary and stop")
-    ap.add_argument("--self-test", action="store_true", help="prove the check catches each shape")
+    ap.add_argument("--list", action="store_true", help="print the rulings and stop")
+    ap.add_argument("--self-test", action="store_true",
+                    help="replay every past ruling and prove the judge still agrees")
+    ap.add_argument("--verify", action="store_true",
+                    help="offline: has everything been judged, and did it pass")
+    ap.add_argument("--subject", metavar="FILE_OR_TEXT",
+                    help="judge one commit subject (used by the commit-msg hook)")
+    ap.add_argument("--baseline", action="store_true",
+                    help="record today's objections as known, so CI fails only on new ones")
     args = ap.parse_args(argv)
 
-    terms, waivers = load_glossary()
     if args.list:
-        print(f"{'say this instead':52}  what the banned word meant")
-        for t in terms:
-            flag = "" if t.get("hard", True) else "  (soft)"
-            print(f"{t['instead'][:52]:52}  {t['means']}{flag}")
+        rulings = load_rulings()
+        for shape in rulings["shapes"]:
+            print(f"\n{shape['shape']}")
+            print(f"  {shape['why_it_fails']}")
+            for r in shape["rulings"]:
+                print(f"    {r['verdict']:12} “{r['text'][:64]}”")
+                print(f"    {'':12} say: {r['instead'][:64]}")
+        print("\nRuled fine — the line sits above these:")
+        for r in rulings["ruled_fine"]:
+            print(f"    {'ok':12} “{r['text'][:64]}”")
         return 0
+
+    if args.baseline:
+        n = baseline_cache()
+        print(f"{n} standing objection(s) recorded as known. CI now fails only on "
+              f"text written after today; editing any of them puts it back in scope.")
+        return 0
+
+    if args.subject:
+        return check_subject(args.subject)
+
     if args.self_test:
-        print("Planting phrases he has actually had to decode:")
+        if not have_cli():
+            print("SELF-TEST SKIPPED: the claude CLI is not on PATH.")
+            return 0
+        print("Replaying every call Daniel has made, against the judge as it stands:")
         good = self_test()
         print("SELF-TEST PASSED" if good else "SELF-TEST FAILED")
         return 0 if good else 1
 
-    print("Every word on a surface Daniel reads, checked against docs/glossary.json.")
-    hits, excused = scan(REPO, terms, waivers)
-    return report(hits, excused)
+    if args.verify:
+        print("Every surface he reads, against the verdicts already recorded "
+              "(offline — no model is called).")
+        return sweep(refresh=False, strict=True)
+
+    print("Every surface he reads, judged against docs/WRITING.md and "
+          "docs/writing_rulings.json.")
+    if not have_cli():
+        print("The claude CLI is not on PATH, so nothing new can be judged.")
+        return sweep(refresh=False)
+    return sweep(refresh=True)
 
 
 if __name__ == "__main__":

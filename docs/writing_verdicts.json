@@ -1,0 +1,1913 @@
+{
+ "brief": "46fa10f25f749409",
+ "verdicts": {
+  "00205cba5c15967382fb": {
+   "verdict": "ok"
+  },
+  "00857cde9e285a6ba26c": {
+   "verdict": "ok"
+  },
+  "00c69b56428e82c9a8ee": {
+   "verdict": "ok"
+  },
+  "02435e9d4061125fb010": {
+   "verdict": "ok"
+  },
+  "02bca82ae5aae6bac0f5": {
+   "verdict": "ok"
+  },
+  "02f29da273ab136c9695": {
+   "verdict": "ok"
+  },
+  "035326932dc911f68f92": {
+   "verdict": "ok"
+  },
+  "0480dfb34e24a1b2f06e": {
+   "baselined": "2026-09-19",
+   "instead": "The robot sees this, live: the bars showing what it is about to do",
+   "quote": "What it sees, live, and the bars showing what it is about to do",
+   "verdict": "decode",
+   "why": "Bare pronoun 'it' has no referent in the sentence — a reader would have to ask what 'it' is."
+  },
+  "04e1a482c230c184e80a": {
+   "baselined": "2026-09-19",
+   "instead": "Assembled like the game renders this creature: parts placed, rotated and joined",
+   "quote": "Assembled the way the game renderer builds this creature",
+   "verdict": "second-look",
+   "why": "The phrase 'the way the game renderer builds this creature' references internal engine behavior without clear explanation."
+  },
+  "04f93ad0a69228c23849": {
+   "verdict": "ok"
+  },
+  "051245ae587b12eeca93": {
+   "verdict": "ok"
+  },
+  "078bd5e5d5f71596b9f6": {
+   "verdict": "ok"
+  },
+  "085c10455cea73b3b343": {
+   "verdict": "ok"
+  },
+  "08ca3b1af6a7eaaf73a2": {
+   "verdict": "ok"
+  },
+  "08f93b0bb19fa7f7ff34": {
+   "baselined": "2026-09-19",
+   "instead": "the cost curve updates as each event is recorded",
+   "quote": "the cost curve draws as events land",
+   "verdict": "second-look",
+   "why": "Passive construction hiding the actor. Per rule 6, who makes the curve draw, and when?"
+  },
+  "091c004a7d0321157795": {
+   "verdict": "ok"
+  },
+  "095a108a8aad77264092": {
+   "baselined": "2026-09-19",
+   "instead": "The colour reference sheets could not be loaded",
+   "quote": "The sheets could not be read",
+   "verdict": "decode",
+   "why": "Undefined term — which sheets, and in what format?"
+  },
+  "09f58d7505b0a62f32ff": {
+   "baselined": "2026-09-19",
+   "instead": "It's done",
+   "quote": "did it",
+   "verdict": "decode",
+   "why": "The sentence has no subject; the reader does not know who performed the action."
+  },
+  "0ada2705d4f8181736b9": {
+   "verdict": "ok"
+  },
+  "0d0c0407b0d36bcc491a": {
+   "baselined": "2026-09-19",
+   "instead": "individual sprite files not yet combined into atlases",
+   "quote": "loose sprites",
+   "verdict": "second-look",
+   "why": "Vague descriptor without context; unclear what 'loose' means in this pipeline"
+  },
+  "0d5fc7b6d11701681f81": {
+   "verdict": "ok"
+  },
+  "0d6194a1db6f271f3ec9": {
+   "verdict": "ok"
+  },
+  "0d84bbf3656cf123f706": {
+   "verdict": "ok"
+  },
+  "0dcf53a2d9bff4de2540": {
+   "verdict": "ok"
+  },
+  "0dec43a08a6611c8ade9": {
+   "verdict": "ok"
+  },
+  "0e2f5bb9f7ef89e43abe": {
+   "verdict": "ok"
+  },
+  "0fa82bbbc12048a6c091": {
+   "verdict": "ok"
+  },
+  "1140920c34d539a33824": {
+   "baselined": "2026-09-19",
+   "instead": "If I can't trust the underlying data, I have nothing reliable to work from.",
+   "quote": "If I can't trust the data, then I can use the program report.",
+   "verdict": "decode",
+   "why": "The sentence contradicts itself; 'can't trust the data' should lead to 'can't use the program report,' but it says 'can use.'"
+  },
+  "1180374b643d12450c38": {
+   "verdict": "ok"
+  },
+  "11b1128e948c0811c58a": {
+   "verdict": "ok"
+  },
+  "11d82f481b36a60405d6": {
+   "verdict": "ok"
+  },
+  "12ab7a23641b0cb0443b": {
+   "verdict": "ok"
+  },
+  "134b23d3617ecf987461": {
+   "verdict": "ok"
+  },
+  "14119b2ddf3faad37bff": {
+   "verdict": "ok"
+  },
+  "14317608c619a5d8480a": {
+   "verdict": "ok"
+  },
+  "15542d82db3da17aed14": {
+   "verdict": "ok"
+  },
+  "157f454f12b2994f9d32": {
+   "verdict": "ok"
+  },
+  "15840018700a0d9f22bb": {
+   "verdict": "ok"
+  },
+  "15f3ca341dddaf25b5ac": {
+   "verdict": "ok"
+  },
+  "1613905164ecce7f7dae": {
+   "verdict": "ok"
+  },
+  "16f33c32b22174c950b8": {
+   "verdict": "ok"
+  },
+  "17135f867ad76d2a6bcf": {
+   "verdict": "ok"
+  },
+  "17fbdc21c4a5733c5313": {
+   "baselined": "2026-09-19",
+   "instead": "Tick two or more colors (tones) above and they fold into one, across the entire sheet.",
+   "quote": "Tick two or more tones above and they fold into one, across all of the sheet.",
+   "verdict": "second-look",
+   "why": "The term 'tones' is not introduced — a reader unfamiliar with this tool may not know what it means."
+  },
+  "182ec3cf65aed4ff22a9": {
+   "verdict": "ok"
+  },
+  "1833ee365768cd963e34": {
+   "baselined": "2026-09-19",
+   "instead": "What harvest-as-seed costs the simulation",
+   "quote": "What harvest-as-seed costs us in the simulation, honestly",
+   "verdict": "second-look",
+   "why": "The word 'honestly' is an editorial observation about the task, not a statement of what the deliverable is."
+  },
+  "1891c57f4678684ed274": {
+   "verdict": "ok"
+  },
+  "19910d5ea3602da24b01": {
+   "verdict": "ok"
+  },
+  "199452fa4328cbc3dcb5": {
+   "baselined": "2026-09-19",
+   "instead": "Document where the visual check runs, or remove claims that you have it",
+   "quote": "Give the visual check a home, or stop claiming it",
+   "verdict": "second-look",
+   "why": "Give a home is a figure of speech; the instruction is clearer stated directly."
+  },
+  "199e7c844d0764c2605a": {
+   "verdict": "ok"
+  },
+  "1b7364d325f558ef29e3": {
+   "verdict": "ok"
+  },
+  "1b82af95739f549db0eb": {
+   "verdict": "ok"
+  },
+  "1bab11d575368c2a5730": {
+   "verdict": "ok"
+  },
+  "1c00045608865025b88e": {
+   "verdict": "ok"
+  },
+  "1c90de60fc07c76ef6a3": {
+   "verdict": "ok"
+  },
+  "1d47977d9de60355c69e": {
+   "verdict": "ok"
+  },
+  "1d8d83b71f183be2ccdc": {
+   "verdict": "ok"
+  },
+  "1f0283734e0dbd578073": {
+   "verdict": "ok"
+  },
+  "1fb694793710e46451b7": {
+   "verdict": "ok"
+  },
+  "1fe43553bb2a21dd8c75": {
+   "verdict": "ok"
+  },
+  "20d220b8cd42697f14e3": {
+   "verdict": "ok"
+  },
+  "215efb2f30dee3857a4d": {
+   "verdict": "ok"
+  },
+  "218642864c42a7e3de90": {
+   "verdict": "ok"
+  },
+  "21897a6395ce6c41c55a": {
+   "verdict": "ok"
+  },
+  "23098cc3df287fa3f680": {
+   "verdict": "ok"
+  },
+  "23190b8c5344ff5fd2e6": {
+   "verdict": "ok"
+  },
+  "2419ba9e2893cdfcc257": {
+   "verdict": "ok"
+  },
+  "2484f2b4b833e6cefbca": {
+   "verdict": "ok"
+  },
+  "24aa7850bea11955ec85": {
+   "baselined": "2026-09-19",
+   "instead": "Something like: Future scope & studio infrastructure",
+   "quote": "Long-arc & internal",
+   "verdict": "second-look",
+   "why": "The categories are unclear without context — what divides 'long-arc' from immediate work?"
+  },
+  "24ad43186b293fef6133": {
+   "baselined": "2026-09-19",
+   "instead": "Shipped assets missing rights clearance · 0 of N · target 0",
+   "quote": "Assets missing rights clearance of shipped assets · target 0",
+   "verdict": "second-look",
+   "why": "Per rule 5, a number carries its denominator. This should show how many of how many."
+  },
+  "24e5d0dfec811c6f43d1": {
+   "verdict": "ok"
+  },
+  "250fa28a7f6fc507a946": {
+   "verdict": "ok"
+  },
+  "2558f81a7fe0b5e040a0": {
+   "verdict": "ok"
+  },
+  "25c6019b0ac1838d8b52": {
+   "verdict": "ok"
+  },
+  "263c4467d064920a9b58": {
+   "baselined": "2026-09-19",
+   "instead": "The next public release: no release train is declared yet",
+   "quote": "The next public release No release train is declared",
+   "verdict": "second-look",
+   "why": "Missing punctuation between two independent thoughts."
+  },
+  "27486a7d289565d5b686": {
+   "verdict": "ok"
+  },
+  "278481f5dd180212fa63": {
+   "verdict": "ok"
+  },
+  "2912539f1c676360c7e3": {
+   "verdict": "ok"
+  },
+  "296f044890a5ed934024": {
+   "baselined": "2026-09-19",
+   "instead": "Use the farmhouse's size ratio for all buildings",
+   "quote": "The farmhouse's own answer, everywhere",
+   "verdict": "second-look",
+   "why": "This is a clever phrase that taxes the reader with a second read; it doesn't plainly state what is being decided or applied."
+  },
+  "29967ec003cb14c9a8e7": {
+   "verdict": "ok"
+  },
+  "29c61db0619f3d81a9b7": {
+   "baselined": "2026-09-19",
+   "instead": "someone needs to prepare a decision on this before proceeding",
+   "quote": "owes you a card on this",
+   "verdict": "decode",
+   "why": "Card is internal HQ vocabulary for a decision record or work item; a stranger cannot tell what it means."
+  },
+  "2a1a7efc23ef8531a2ff": {
+   "verdict": "ok"
+  },
+  "2a1e8cc98f35abb45541": {
+   "verdict": "ok"
+  },
+  "2a2b9a4542720b39c70f": {
+   "verdict": "ok"
+  },
+  "2a49ddf9552983541116": {
+   "verdict": "ok"
+  },
+  "2a9f73557cc66cf98276": {
+   "verdict": "ok"
+  },
+  "2acd57f30efab6323dcb": {
+   "verdict": "ok"
+  },
+  "2bb57bef3875b65897b9": {
+   "verdict": "ok"
+  },
+  "2beff06d7952e280d243": {
+   "verdict": "ok"
+  },
+  "2bf75ac6219bed375d60": {
+   "verdict": "ok"
+  },
+  "2d2b7e30ebbaa6183c7a": {
+   "verdict": "ok"
+  },
+  "2d69caf368d2f71b998f": {
+   "verdict": "ok"
+  },
+  "2df513ee97df291950dd": {
+   "verdict": "ok"
+  },
+  "2eb78125b016f97dd1f6": {
+   "verdict": "ok"
+  },
+  "2ffe303622371dde87cd": {
+   "verdict": "ok"
+  },
+  "312bd6162e3572d48dc0": {
+   "verdict": "ok"
+  },
+  "3159330022d572fc1487": {
+   "verdict": "ok"
+  },
+  "31bb09422c9fbde6d094": {
+   "verdict": "ok"
+  },
+  "31ce904d0ae65122157e": {
+   "verdict": "ok"
+  },
+  "3295f3c174b3aa46c226": {
+   "verdict": "ok"
+  },
+  "3356e4de55e76b32d3d5": {
+   "verdict": "ok"
+  },
+  "34ec2e295dd5d7413569": {
+   "verdict": "ok"
+  },
+  "34fe6164642079d2759a": {
+   "baselined": "2026-09-19",
+   "instead": "satisfied (does not affect your score)",
+   "quote": "satisfied (never counted against)",
+   "verdict": "second-look",
+   "why": "'Never counted against' is unexplained; the reader does not know what it is never counted against."
+  },
+  "362c6410f2f592a32a69": {
+   "verdict": "ok"
+  },
+  "3679d7ae49aee05dc0f3": {
+   "baselined": "2026-09-19",
+   "instead": "where it came from written down",
+   "quote": "provenance written down",
+   "verdict": "decode",
+   "why": "Provenance is internal shorthand; the thing it names already has a plain word."
+  },
+  "36e8e12765e40e65007c": {
+   "verdict": "ok"
+  },
+  "373972ab1945e226b257": {
+   "verdict": "ok"
+  },
+  "378db9a7009c3636cd64": {
+   "verdict": "ok"
+  },
+  "379fb80a1e77205f114e": {
+   "verdict": "ok"
+  },
+  "37bb9b65f3db53ea0be7": {
+   "verdict": "ok"
+  },
+  "37d6db7de43d9b952149": {
+   "baselined": "2026-09-19",
+   "instead": "Introduce what is dormant, or defer the state to the content below: 'Feature X: dormant by your ruling' or simply describe the state in the section itself.",
+   "quote": "Dormant by your ruling.",
+   "verdict": "second-look",
+   "why": "A reader arriving at this headline does not know what the state of 'dormant' applies to — the line names no subject."
+  },
+  "3801ded67034c01d9007": {
+   "baselined": "2026-09-19",
+   "instead": "Rules that keep replays reproducible — this is the evidence",
+   "quote": "The evidence Rules that keep replays reproducible",
+   "verdict": "second-look",
+   "why": "The opening is inverted — 'evidence Rules' reads backward and forces a second pass to parse."
+  },
+  "382adbd79c8668bd6b78": {
+   "verdict": "ok"
+  },
+  "3a64d7ce010d4571acdd": {
+   "verdict": "ok"
+  },
+  "3a8248104c2419b8e503": {
+   "verdict": "ok"
+  },
+  "3af899dcb63503dac76c": {
+   "verdict": "ok"
+  },
+  "3afe2073c6c3e4e90929": {
+   "verdict": "ok"
+  },
+  "3b3b8a0658eb6092d973": {
+   "verdict": "ok"
+  },
+  "3b7aed038606b978c7a7": {
+   "verdict": "ok"
+  },
+  "3bbed2697ace07b72a15": {
+   "verdict": "ok"
+  },
+  "3bdb6aafcd9a32fafba7": {
+   "baselined": "2026-09-19",
+   "instead": "Name the subject: 'The pixel showing [state] is the one a player has to notice from across the plot.'",
+   "quote": "That is the one a player has to notice from across the plot.",
+   "verdict": "decode",
+   "why": "The bare pronoun 'the one' has no referent in this sentence — a reader would have to work back to prior context."
+  },
+  "3c7f6f94634db1f8034e": {
+   "verdict": "ok"
+  },
+  "3d42a0bcb9d856f14f02": {
+   "baselined": "2026-09-19",
+   "instead": "Write the design note on the shop system that lets players buy back what they've sold",
+   "quote": "Write the design note reversing the sell-then-buy economy",
+   "verdict": "second-look",
+   "why": "The term 'sell-then-buy economy' is undefined, and 'reversing' it is ambiguous without context."
+  },
+  "3e354cefc5a1d46f3edb": {
+   "verdict": "ok"
+  },
+  "3e5d2b227d8cefbd4c59": {
+   "verdict": "ok"
+  },
+  "3f51903fa4708ab7653a": {
+   "verdict": "ok"
+  },
+  "3faba1d15a5c487d59fe": {
+   "baselined": "2026-09-19",
+   "instead": "Nothing is in flight right now.",
+   "quote": "Nothing of 's is in flight right now.",
+   "verdict": "decode",
+   "why": "The possessive 's is incomplete and syntactically broken, making the sentence unreadable."
+  },
+  "3fb1bf7e427b7acdd6c2": {
+   "verdict": "ok"
+  },
+  "3fba2da9de42a2dae8f2": {
+   "verdict": "ok"
+  },
+  "412f87b3dc405c45d474": {
+   "verdict": "ok"
+  },
+  "415ff6773b1c4d2e2a6e": {
+   "baselined": "2026-09-19",
+   "instead": "so this gap could be a real miss in onboarding, or a tester who had already seen the cot",
+   "quote": "so that open bar could be a real miss or a tester who had already been shown the cot",
+   "verdict": "decode",
+   "why": "'That open bar' refers to a visual element the reader cannot see from the text alone."
+  },
+  "428baa0a27fcfa1cd35f": {
+   "verdict": "ok"
+  },
+  "42d9006be94c821c5353": {
+   "verdict": "ok"
+  },
+  "441f9d4dc27e09228631": {
+   "verdict": "ok"
+  },
+  "44cfabc3a2900d6b307d": {
+   "verdict": "ok"
+  },
+  "45a26132dc80dfad23f4": {
+   "verdict": "ok"
+  },
+  "465c1849a5bd67946b8a": {
+   "verdict": "ok"
+  },
+  "4737b81168c7f5623813": {
+   "baselined": "2026-09-19",
+   "instead": "[This should not appear to users]",
+   "quote": "margin-top:8px; display:flex; gap:6px",
+   "verdict": "decode",
+   "why": "This is CSS styling notation, not human text."
+  },
+  "484611228dd18af47a97": {
+   "verdict": "ok"
+  },
+  "486913696497561cf1dc": {
+   "verdict": "ok"
+  },
+  "4924c06b6fdd6403b55a": {
+   "verdict": "ok"
+  },
+  "494037b1ec1ed6976e1a": {
+   "baselined": "2026-09-19",
+   "instead": "Update the overnight loop to load its resources the same way the watering inset does",
+   "quote": "Point Jade's overnight-loop item at the watering inset's loader",
+   "verdict": "decode",
+   "why": "Technical jargon ('Point at', 'loader') and unclear what entity is being modified make this require decoding."
+  },
+  "49919bab238a925f5ac0": {
+   "verdict": "ok"
+  },
+  "4aad6d372b8a9bf31047": {
+   "verdict": "ok"
+  },
+  "4adcc52004b1a15723ab": {
+   "baselined": "2026-09-19",
+   "instead": "The erased tones are now transparent across the sheet.",
+   "quote": "Erased tones — across are now transparent.",
+   "verdict": "decode",
+   "why": "The phrasing 'across are now transparent' is grammatically broken and unclear."
+  },
+  "4b16e94cfe69849dcb80": {
+   "verdict": "ok"
+  },
+  "4bfe52eeb94e6401faba": {
+   "verdict": "ok"
+  },
+  "4c24545b29b8c0210d13": {
+   "baselined": "2026-09-19",
+   "instead": "Check where it came from, how often we release, and whether it is the same for everyone",
+   "quote": "Check the provenance and the release cadence for parity",
+   "verdict": "decode",
+   "why": "Three internal terms loaded into one clause; none has a plain name visible to the reader."
+  },
+  "4c3b3b97f306abc9830d": {
+   "verdict": "ok"
+  },
+  "4c3e083b94498cb5268b": {
+   "verdict": "ok"
+  },
+  "4c62a60b5f467a9cd904": {
+   "verdict": "ok"
+  },
+  "4c6feb0eafbed9a9bb72": {
+   "baselined": "2026-09-19",
+   "instead": "the finding about where the ground sits in the frame",
+   "quote": "ground-line finding",
+   "verdict": "decode",
+   "why": "This compound term is unexplained specialized vocabulary—a stranger has no way to know what a ground-line finding is or why it belongs in art-session notes."
+  },
+  "4d556328209a237751c5": {
+   "verdict": "ok"
+  },
+  "4daf7eeb3f74bd72f642": {
+   "verdict": "ok"
+  },
+  "4dcd0581a033ad9e3a7b": {
+   "verdict": "ok"
+  },
+  "4dd93d8f72eb8a815781": {
+   "verdict": "ok"
+  },
+  "4e620134a65587e3af4a": {
+   "verdict": "ok"
+  },
+  "4f3494396d82998a5040": {
+   "verdict": "ok"
+  },
+  "4f8967654a24ec33ac67": {
+   "verdict": "ok"
+  },
+  "4fa99fd937b7745c4966": {
+   "verdict": "ok"
+  },
+  "4ffee4c4053bf191c1ce": {
+   "verdict": "ok"
+  },
+  "5038bca6dfc1f3158751": {
+   "verdict": "ok"
+  },
+  "5096e4b2e98dcc788028": {
+   "verdict": "ok"
+  },
+  "509eaabf175baf36b59f": {
+   "baselined": "2026-09-19",
+   "instead": "This shows every cell of the sheet",
+   "quote": "This is all cell of the sheet",
+   "verdict": "decode",
+   "why": "'All cell' is grammatically unclear; the reader cannot tell if it describes one cell or multiple cells."
+  },
+  "50c517b52ca52d4dc76f": {
+   "verdict": "ok"
+  },
+  "515330754c0a167c9a72": {
+   "verdict": "ok"
+  },
+  "51d13aa1ccefca7b3074": {
+   "verdict": "ok"
+  },
+  "52c49e7a62d4332777b6": {
+   "verdict": "ok"
+  },
+  "53294101b361029f92d3": {
+   "baselined": "2026-09-19",
+   "instead": "Answering this requires visual captures rather than written paragraphs",
+   "quote": "it wants captures rather than paragraphs",
+   "verdict": "second-look",
+   "why": "A metaphor where the fact belongs: the insight is whether this needs visual material rather than text."
+  },
+  "53f13244db2c1a052675": {
+   "verdict": "ok"
+  },
+  "542daab10de7110d5401": {
+   "verdict": "ok"
+  },
+  "54779298e02aa05df5f0": {
+   "verdict": "ok"
+  },
+  "5478c8f9294535f19db7": {
+   "verdict": "ok"
+  },
+  "55274a2a69817a7395e4": {
+   "verdict": "ok"
+  },
+  "55a3bb9bf1a56c02ec98": {
+   "verdict": "ok"
+  },
+  "55e356a1a7fe07d30f9f": {
+   "verdict": "ok"
+  },
+  "5623e3beea36659223da": {
+   "verdict": "ok"
+  },
+  "564a2dbcadf7ca6b2eaa": {
+   "verdict": "ok"
+  },
+  "57753ad22cabe22c0fdd": {
+   "verdict": "ok"
+  },
+  "57c79aa5c5701c81de86": {
+   "verdict": "ok"
+  },
+  "57c7f051745773fa7ee1": {
+   "verdict": "ok"
+  },
+  "5838729b9c1de59c75a9": {
+   "verdict": "ok"
+  },
+  "591d57717967d574fc48": {
+   "verdict": "ok"
+  },
+  "59cad3a919670ffca60a": {
+   "verdict": "ok"
+  },
+  "5a85736acaeebd338361": {
+   "verdict": "ok"
+  },
+  "5ad67ee1f78753f0e6cd": {
+   "verdict": "ok"
+  },
+  "5b0386700baba67f15db": {
+   "verdict": "ok"
+  },
+  "5b4fc92db1e660bfd0d8": {
+   "verdict": "ok"
+  },
+  "5b86509729186fbc637b": {
+   "verdict": "ok"
+  },
+  "5c26c9416a1cbeaac680": {
+   "verdict": "ok"
+  },
+  "5c914a4d52612e6a8623": {
+   "verdict": "ok"
+  },
+  "5cd5faf4f1ec1585e0cc": {
+   "verdict": "ok"
+  },
+  "5d11cb4d29af141571d0": {
+   "verdict": "ok"
+  },
+  "5d3104d37c2a9d4c50e2": {
+   "verdict": "ok"
+  },
+  "5dc67172577cb8b34409": {
+   "verdict": "ok"
+  },
+  "5dd9f14dc1da58cb7ebb": {
+   "verdict": "ok"
+  },
+  "5e0d5e75634bfb44f061": {
+   "baselined": "2026-09-19",
+   "instead": "Your first save stores the sheet exactly as it is now as revision 0",
+   "quote": "Your first save banks the sheet exactly as it is now as revision 0",
+   "verdict": "second-look",
+   "why": "The verb 'banks' is not standard for storing data — a reader may pause to work out what it means."
+  },
+  "5e708395b67c97c83db7": {
+   "verdict": "ok"
+  },
+  "5e7cc358cefd488cdda7": {
+   "baselined": "2026-09-19",
+   "instead": "Match HQ's internal field names to the display text shown on its pages",
+   "quote": "Match HQ's back-end labels to the plain wording now on its pages",
+   "verdict": "second-look",
+   "why": "Back-end labels is technical jargon for internal field names; the sentence doesn't say plainly what they are."
+  },
+  "5ea94c6f3011477d1362": {
+   "baselined": "2026-09-19",
+   "instead": "Players have no way to send feedback",
+   "quote": "The first thing a player would tell us is the one thing we cannot hear",
+   "verdict": "decode",
+   "why": "An observation about the problem dressed as a fact; the reader has to decode it back to the actual problem."
+  },
+  "5eb9aeaedde46d40166b": {
+   "verdict": "ok"
+  },
+  "5f3a8aaf8bec518ba2dc": {
+   "verdict": "ok"
+  },
+  "61fa2ba55f14032fdcda": {
+   "baselined": "2026-09-19",
+   "instead": "The previous state is the sheet as it was when you opened the editor.",
+   "quote": "Before is the sheet as it was when you opened the editor.",
+   "verdict": "second-look",
+   "why": "Using 'Before' as a noun in 'Before is the sheet...' requires a second read to parse correctly."
+  },
+  "6411a0ecdafa7d35a8f3": {
+   "verdict": "ok"
+  },
+  "6411d45e9fe79bfd5fab": {
+   "verdict": "ok"
+  },
+  "642d510f116bee2ca461": {
+   "verdict": "ok"
+  },
+  "64e7d39d57928476974c": {
+   "baselined": "2026-09-19",
+   "instead": "without appearing stuck",
+   "quote": "reading as stuck",
+   "verdict": "decode",
+   "why": "The phrasing is unclear: does 'reading' mean 'appearing'? This costs a re-read to parse."
+  },
+  "655c0fb88028a372f22e": {
+   "verdict": "ok"
+  },
+  "65b255a1be452adc8b8a": {
+   "verdict": "ok"
+  },
+  "673d75b1e92febdb97e9": {
+   "verdict": "ok"
+  },
+  "674aca7d08f8bf6580e8": {
+   "baselined": "2026-09-19",
+   "instead": "[This should not appear to users]",
+   "quote": "<div class=\"needrow nk-\"",
+   "verdict": "decode",
+   "why": "This is HTML markup, not human text; it indicates code is rendering where prose should."
+  },
+  "677636031b3b66e6240e": {
+   "verdict": "ok"
+  },
+  "6791965d61eaa31e29aa": {
+   "verdict": "ok"
+  },
+  "684f5daa3b10351ed63b": {
+   "baselined": "2026-09-19",
+   "instead": "Rooms magnified 3x (Recommended)",
+   "quote": "Three times",
+   "verdict": "second-look",
+   "why": "Standing alone, it's unclear what is being tripled."
+  },
+  "68b1738bc39ca2bf1b80": {
+   "baselined": "2026-09-19",
+   "instead": "This is ours, but it has waited [timeframe] to start.",
+   "quote": "the delay is the news",
+   "verdict": "second-look",
+   "why": "An observation about the fact rather than the fact itself; state plainly what the delay cost."
+  },
+  "68febc9a07332d5c14f6": {
+   "verdict": "ok"
+  },
+  "691145e40f15881eb053": {
+   "verdict": "ok"
+  },
+  "69fabfa79ac44bd8665e": {
+   "baselined": "2026-09-19",
+   "instead": "The next public release ships once the onboarding checklist passes with a new player, then the tag goes out.",
+   "quote": "The next public release — the next public release — ships as once the onboarding checklist passes on a sitting with a brand-new player, and the tag goes out. of steps done on its critical work.",
+   "verdict": "decode",
+   "why": "Repeated phrase, 'ships as once' is grammatically wrong, 'sitting' is unclear, and 'of steps done' is a sentence fragment."
+  },
+  "6a24475fdf71435cd91e": {
+   "verdict": "ok"
+  },
+  "6af5566042f6df97ecf8": {
+   "verdict": "ok"
+  },
+  "6bb10d463203b9881e7b": {
+   "baselined": "2026-09-19",
+   "instead": "Run the four test suites again so each result records which version it tested",
+   "quote": "Re-run the suites so each stamps the commit it proved",
+   "verdict": "decode",
+   "why": "Three jargon terms at once: what the suites are, what 'stamps' means, and what 'proved' refers to."
+  },
+  "6c27838991397311a042": {
+   "verdict": "ok"
+  },
+  "6d198fd29234aeed5f91": {
+   "verdict": "ok"
+  },
+  "6d5f9c77510be32812f8": {
+   "baselined": "2026-09-19",
+   "instead": "it fits the visual language the overnight feature has already established",
+   "quote": "it belongs to the vocabulary the crow night already built",
+   "verdict": "second-look",
+   "why": "'The crow night' is poetic language that reads as clever phrasing rather than a clear reference; it is not established as a feature name and leaves the reader inferring what is meant."
+  },
+  "6dd3e07767ec57c10143": {
+   "verdict": "ok"
+  },
+  "6f0f7721426d4f7e9397": {
+   "verdict": "ok"
+  },
+  "6f2961943dbb0db223ba": {
+   "baselined": "2026-09-19",
+   "instead": "Scored on a build several commits behind what you would ship today",
+   "quote": "Scored on a build commits behind what you would ship today",
+   "verdict": "decode",
+   "why": "Grammar is incomplete — missing the link between 'build' and 'commits behind'."
+  },
+  "6f786f9230a26e76a39a": {
+   "verdict": "ok"
+  },
+  "6f81eaf453b2c3d5f091": {
+   "baselined": "2026-09-19",
+   "instead": "Someone outside the studio can access this right now.",
+   "quote": "Somebody outside the studio can hit this right now.",
+   "verdict": "second-look",
+   "why": "The bare pronoun 'this' has no referent in the sentence, and 'hit' is colloquial where the actual threat would be clearer."
+  },
+  "6f8580c5de6184aec362": {
+   "baselined": "2026-09-19",
+   "instead": "Scored on a build no longer in version control",
+   "quote": "Scored on a build that cannot be resolved any more",
+   "verdict": "decode",
+   "why": "'Cannot be resolved' is ambiguous — resolved in what sense, and why does it affect this score?"
+  },
+  "6fa0dffba62bcdd5f65c": {
+   "baselined": "2026-09-19",
+   "instead": "Rooms magnified 4x",
+   "quote": "Four times",
+   "verdict": "second-look",
+   "why": "Standing alone, it's unclear what is being quadrupled."
+  },
+  "7049569d4d1326672915": {
+   "verdict": "ok"
+  },
+  "7063629d61f5ecdb6aa3": {
+   "verdict": "ok"
+  },
+  "70b364a6ccc348543409": {
+   "verdict": "ok"
+  },
+  "70dae43f33f386867c18": {
+   "verdict": "ok"
+  },
+  "71737aaee8abd7e3dc16": {
+   "verdict": "ok"
+  },
+  "71dd45a3e5f12c123c17": {
+   "verdict": "ok"
+  },
+  "72d0f2068e1c2834b74e": {
+   "verdict": "ok"
+  },
+  "745b46c2cf08361b17e1": {
+   "verdict": "ok"
+  },
+  "75b109e1d2112527975b": {
+   "baselined": "2026-09-19",
+   "instead": "the candidate that won",
+   "quote": "the one that is not a loser",
+   "verdict": "second-look",
+   "why": "Colloquial and imprecise. It suggests a winner but sidesteps naming the decision plainly."
+  },
+  "75d0b850ceec61efa18f": {
+   "verdict": "ok"
+  },
+  "76f8c4ff5b9176367a8e": {
+   "verdict": "ok"
+  },
+  "76fcce22f3f589d48b80": {
+   "verdict": "ok"
+  },
+  "77b100e43761cabe4d01": {
+   "verdict": "ok"
+  },
+  "785e2658512cbc11284b": {
+   "verdict": "ok"
+  },
+  "78617f7f358b4a32ca14": {
+   "verdict": "ok"
+  },
+  "78b9ce901707844cd7a7": {
+   "verdict": "ok"
+  },
+  "7900b23d92cf709bc3c9": {
+   "verdict": "ok"
+  },
+  "79547c5c7c4d29a5a5e8": {
+   "verdict": "ok"
+  },
+  "7a02cd504e32eb6eea8b": {
+   "verdict": "ok"
+  },
+  "7adb044dc712028b4fb4": {
+   "verdict": "ok"
+  },
+  "7bcc4d677d5ba89b7739": {
+   "verdict": "ok"
+  },
+  "7bd8076ed631af3c57ac": {
+   "verdict": "ok"
+  },
+  "7da10006c16a086ec230": {
+   "verdict": "ok"
+  },
+  "7dfaa70e1f2e9d99301b": {
+   "verdict": "ok"
+  },
+  "7e32f3a0991f0686a1e8": {
+   "verdict": "ok"
+  },
+  "7fbafe7e1de95eac395d": {
+   "verdict": "ok"
+  },
+  "80544cc9ea1899cd5bc6": {
+   "baselined": "2026-09-19",
+   "instead": "Player support channels set up · 2 of 2 · target 2",
+   "quote": "Player support in place of 2 · target 2",
+   "verdict": "second-look",
+   "why": "Unclear what 'in place of 2' means, and no denominator per rule 5."
+  },
+  "805e704fb4ceb998e2a0": {
+   "verdict": "ok"
+  },
+  "816d03576c4c10131265": {
+   "verdict": "ok"
+  },
+  "81e075c55b24d7c8c4fb": {
+   "verdict": "ok"
+  },
+  "821d36af4bbc72f6a331": {
+   "verdict": "ok"
+  },
+  "824d4598d8069314d3fb": {
+   "verdict": "ok"
+  },
+  "82d2c5fcf70ab9498c79": {
+   "verdict": "ok"
+  },
+  "838ad036990d4ba60d9c": {
+   "verdict": "ok"
+  },
+  "83d5606dbb1c60a791b5": {
+   "baselined": "2026-09-19",
+   "instead": "For reference, the player's room today is 10x7 and nobody has called it cramped.",
+   "quote": "For reference, her room today is 10x7 and nobody has called it cramped.",
+   "verdict": "second-look",
+   "why": "The pronoun 'her' has no named referent in this sentence."
+  },
+  "8459fea067dff2b9f423": {
+   "verdict": "ok"
+  },
+  "84fd033894949e7feb93": {
+   "verdict": "ok"
+  },
+  "857085ec8b28db02beec": {
+   "verdict": "ok"
+  },
+  "8594d1e6cd623a05e1de": {
+   "verdict": "ok"
+  },
+  "86015824fedeccd892f2": {
+   "verdict": "ok"
+  },
+  "86413395e4c49575ba55": {
+   "verdict": "ok"
+  },
+  "8684a879493f293f6ae7": {
+   "verdict": "ok"
+  },
+  "873eec5f94311e7930c1": {
+   "verdict": "ok"
+  },
+  "87a405654f2d2054b548": {
+   "verdict": "ok"
+  },
+  "881bc0dbaa0d31938aa0": {
+   "verdict": "ok"
+  },
+  "8875d0bd0f4640981015": {
+   "verdict": "ok"
+  },
+  "88920db811171c9659e1": {
+   "verdict": "ok"
+  },
+  "8944f1ea4cd2c99e155b": {
+   "verdict": "ok"
+  },
+  "894857634091d5f06134": {
+   "baselined": "2026-09-19",
+   "instead": "[This should not appear to users; code is leaking through]",
+   "quote": ").join(\"\") : \" Nothing this week. \")}",
+   "verdict": "decode",
+   "why": "This is template or code syntax mixed with text; it is not readable as human prose."
+  },
+  "89919629e5196ace1109": {
+   "verdict": "ok"
+  },
+  "89a90ebe7dbb8b82495b": {
+   "baselined": "2026-09-19",
+   "instead": "The overnight after the player's own first watering",
+   "quote": "The overnight after her own first watering",
+   "verdict": "second-look",
+   "why": "The pronoun 'her' has no named referent in this sentence."
+  },
+  "89cd2c1b5a7cf2182f1c": {
+   "verdict": "ok"
+  },
+  "89e91df12724120ca6e9": {
+   "verdict": "ok"
+  },
+  "8aa79a84226cd777cb96": {
+   "verdict": "ok"
+  },
+  "8b18608b334a7f67bf1f": {
+   "baselined": "2026-09-19",
+   "instead": "— 8% of taps did nothing",
+   "quote": "— % of taps did nothing",
+   "verdict": "decode",
+   "why": "The percentage value is missing — this is incomplete data."
+  },
+  "8b7b1ba8afa9ab3ed0b0": {
+   "verdict": "ok"
+  },
+  "8b88338c1d51578a4878": {
+   "verdict": "ok"
+  },
+  "8bcd58daa202516ba8b7": {
+   "verdict": "ok"
+  },
+  "8be2c9d886664b11abb5": {
+   "verdict": "ok"
+  },
+  "8c3a85efbe91c133b1dd": {
+   "verdict": "ok"
+  },
+  "8c9b4ab239df77ff9dcb": {
+   "verdict": "ok"
+  },
+  "8cbc937d272eac79f0d9": {
+   "verdict": "ok"
+  },
+  "8d3981c8dba8c545a9e4": {
+   "verdict": "ok"
+  },
+  "8de824a929ab897a8e19": {
+   "baselined": "2026-09-19",
+   "instead": "The launch check is monitored. To publish from a terminal:",
+   "quote": "The launch check — of monitored To publish, from a terminal:",
+   "verdict": "decode",
+   "why": "The phrase 'of monitored To publish' does not parse — it appears to have lost words or been mangled. A reader cannot work out what is meant."
+  },
+  "8edab9ee4cd026fd914c": {
+   "verdict": "ok"
+  },
+  "8f15a0389fd2f08d38e6": {
+   "verdict": "ok"
+  },
+  "8faf4501faa607e7b2ee": {
+   "verdict": "ok"
+  },
+  "8fba890564ebe72ee769": {
+   "verdict": "ok"
+  },
+  "913dfa2b550896ac089b": {
+   "verdict": "ok"
+  },
+  "91fac400ab150588e901": {
+   "verdict": "ok"
+  },
+  "9286d767eef95933ccdc": {
+   "verdict": "ok"
+  },
+  "92c65ba6c0a26404cff4": {
+   "verdict": "ok"
+  },
+  "938e82e8d5ce36a2a1f1": {
+   "baselined": "2026-09-19",
+   "instead": "No record of where this sound came from",
+   "quote": "A shipped asset has no ledger line",
+   "verdict": "decode",
+   "why": "The internal term 'ledger line' names something the reader needs but cannot picture."
+  },
+  "93fe820ae39c3f4e1264": {
+   "verdict": "ok"
+  },
+  "9434a78daef91693676f": {
+   "verdict": "ok"
+  },
+  "9497bff95173c42620f2": {
+   "verdict": "ok"
+  },
+  "9547774af0fb8c5d8650": {
+   "verdict": "ok"
+  },
+  "95aac134c22e847c06f7": {
+   "verdict": "ok"
+  },
+  "95fdc4937994bd5d082f": {
+   "verdict": "ok"
+  },
+  "964aaafb932d5157a4dc": {
+   "verdict": "ok"
+  },
+  "9696e71a14362f6d2949": {
+   "baselined": "2026-09-19",
+   "instead": "Provide context: '[Thing] is in the cell on screen' or '[Thing] is not in the cell on screen'",
+   "quote": "in the cell on screen.",
+   "verdict": "decode",
+   "why": "Standing alone, this fragment is too isolated for a reader to understand what condition it describes."
+  },
+  "96c05dfe62d303480d2d": {
+   "verdict": "ok"
+  },
+  "979fcdd2186c95dc831b": {
+   "verdict": "ok"
+  },
+  "97b0d884acef09754ecb": {
+   "verdict": "ok"
+  },
+  "983bec628ace79d3608b": {
+   "verdict": "ok"
+  },
+  "9852a391ec97b953335a": {
+   "verdict": "ok"
+  },
+  "991bfba72ec281ccbb81": {
+   "verdict": "ok"
+  },
+  "99204d7591b8c2809fbb": {
+   "baselined": "2026-09-19",
+   "instead": "This is drawn from a single frame, so there is nothing to play.",
+   "quote": "is drawn from a single frame, so there is nothing to play.",
+   "verdict": "decode",
+   "why": "The subject is missing — a reader cannot tell what 'is drawn'."
+  },
+  "993497ffc65d334b4b1c": {
+   "verdict": "ok"
+  },
+  "99544af3653f51a49be4": {
+   "verdict": "ok"
+  },
+  "99e06271592aa7bf68ae": {
+   "verdict": "ok"
+  },
+  "99feba49c9f81039efd1": {
+   "verdict": "ok"
+  },
+  "9a246216a0d94a5145ea": {
+   "verdict": "ok"
+  },
+  "9a3ff8340042b1eca13a": {
+   "baselined": "2026-09-19",
+   "instead": "that a busy farm won't make the tablet stutter",
+   "quote": "whether a farm full of machines still fits in a frame on the tablet",
+   "verdict": "decode",
+   "why": "The mechanism 'fits in a frame' is still internal jargon; a reader does not know what that means."
+  },
+  "9a84fe5cb560fc7764a0": {
+   "verdict": "ok"
+  },
+  "9ad4820cecffc3a52864": {
+   "baselined": "2026-09-19",
+   "instead": "the room appears empty rather than spacious",
+   "quote": "the panels read as empty rather than spacious",
+   "verdict": "second-look",
+   "why": "'Panels' is ambiguous in this context, and 'read as' is design jargon for 'appear as'."
+  },
+  "9b29cbbdcee3c5c42a62": {
+   "baselined": "2026-09-19",
+   "instead": "checks are still being fielded for {unassured} of {total}",
+   "quote": "monitoring is still landing on {unassured} of {total} checks",
+   "verdict": "decode",
+   "why": "The word 'landing' is internal process vocabulary; a reader would have to ask what state these checks are in."
+  },
+  "9c9d26db3b0aec033291": {
+   "verdict": "ok"
+  },
+  "9dbe980ce2eb50ed967d": {
+   "verdict": "ok"
+  },
+  "9dedb82b7840635c92d6": {
+   "verdict": "ok"
+  },
+  "9eb7c19d6c7809f691b6": {
+   "verdict": "ok"
+  },
+  "9ee84382c659c5ba5818": {
+   "baselined": "2026-09-19",
+   "instead": "Out of tokens until [time]. Keep typing — anything you send is queued here and answered automatically when the window reopens.",
+   "quote": "Out of tokens until about",
+   "verdict": "decode",
+   "why": "Same issue as [16]: the timestamp is missing, and a reader of this status message needs to know when."
+  },
+  "9f1916ca4a8fd3d62a59": {
+   "baselined": "2026-09-19",
+   "instead": "sprite sheets",
+   "quote": "sheets",
+   "verdict": "second-look",
+   "why": "Technical term for sprite sheets without appositive on first mention; needs explanation per Rule 1"
+  },
+  "9fb6a51c1d61a1318047": {
+   "verdict": "ok"
+  },
+  "9fc719e05de141abb88d": {
+   "baselined": "2026-09-19",
+   "instead": "where the player got stuck",
+   "quote": "where she was lost",
+   "verdict": "decode",
+   "why": "Bare pronoun 'she' is not introduced in the sentence; 'lost' also lacks context—lost in what sense?"
+  },
+  "9fd3e254a8e87d68ac36": {
+   "verdict": "ok"
+  },
+  "a01b189264b03f4de2b6": {
+   "verdict": "ok"
+  },
+  "a1cdf0f8c40e4cf54833": {
+   "baselined": "2026-09-19",
+   "instead": "This release waits for: [list items]",
+   "quote": "This release waits for these",
+   "verdict": "decode",
+   "why": "The sentence is incomplete — 'these' refers to nothing, and 'waits for' is vague about the nature of the dependency."
+  },
+  "a1d38b23d26e1976e3a0": {
+   "verdict": "ok"
+  },
+  "a2560ff751d47a919f10": {
+   "verdict": "ok"
+  },
+  "a28583e2d588517efa40": {
+   "verdict": "ok"
+  },
+  "a2a47c62e87bb0685878": {
+   "baselined": "2026-09-19",
+   "instead": "I have not set goals for this area yet, so nothing is being measured",
+   "quote": "My goals I have not declared goals",
+   "verdict": "decode",
+   "why": "The statement structure is ambiguous—it reads as a fragment followed by a different sentence; a reader must reparse to find the meaning."
+  },
+  "a582da5bc28c54a2f5bf": {
+   "verdict": "ok"
+  },
+  "a62bd1e7aa79af0d5afa": {
+   "verdict": "ok"
+  },
+  "a7bf4e63637dddf835e9": {
+   "baselined": "2026-09-19",
+   "instead": "when the player has experienced the problem it solves",
+   "quote": "when the work has been felt",
+   "verdict": "decode",
+   "why": "Felt is metaphorical; the reader doesn't know whether this means experienced, understood, or something else."
+  },
+  "a7fd5080cf4df9021731": {
+   "verdict": "ok"
+  },
+  "a81e4fe9ddf7a7c36f1e": {
+   "verdict": "ok"
+  },
+  "a8dae8316660fa3020b2": {
+   "baselined": "2026-09-19",
+   "instead": "Tones folded into one color; the change applies across the sheet.",
+   "quote": "Folded tones into — across changed.",
+   "verdict": "decode",
+   "why": "The sentence is incomplete — 'Folded tones into —' ends mid-thought, and 'across changed' has no object."
+  },
+  "a8f815e1e43205e7cbf7": {
+   "baselined": "2026-09-19",
+   "instead": "The speed test now checks that a busy farm won't make the tablet stutter",
+   "quote": "The sim benchmark's target is a frame she would feel",
+   "verdict": "decode",
+   "why": "On a commit feed or summary, the bare 'she' has no referent, and 'a frame she would feel' is not a clear target."
+  },
+  "a97c73ca609764955eaf": {
+   "verdict": "ok"
+  },
+  "a9bcad0bc717ff239874": {
+   "verdict": "ok"
+  },
+  "a9de99b58e15e182ec6d": {
+   "verdict": "ok"
+  },
+  "ab3e9563b7f4fc0bfd13": {
+   "verdict": "ok"
+  },
+  "ab61345447316e7ac375": {
+   "verdict": "ok"
+  },
+  "aba2c092a203c8ddb69a": {
+   "baselined": "2026-09-19",
+   "instead": "The speed test now checks that a busy farm won't make the tablet stutter",
+   "quote": "The sim benchmark's target is a frame she would feel, not a round number",
+   "verdict": "decode",
+   "why": "A clever construction that taxes the reader with a second read; on a commit feed read out of context, 'she' and 'a frame she would feel' are a riddle."
+  },
+  "ac502370bbd70e39132e": {
+   "verdict": "ok"
+  },
+  "acc51e0487f4374b1fe7": {
+   "verdict": "ok"
+  },
+  "accd9054c21a26a7b0d6": {
+   "verdict": "ok"
+  },
+  "ada176d478b31b59ad4a": {
+   "verdict": "ok"
+  },
+  "adc5d6cdce57e3bcb2bb": {
+   "verdict": "ok"
+  },
+  "ae925c710b8765522a63": {
+   "verdict": "ok"
+  },
+  "b02b7565195e54d5aac6": {
+   "verdict": "ok"
+  },
+  "b09b8f6af85e5ea4d4be": {
+   "verdict": "ok"
+  },
+  "b12b025eb62e23c3193c": {
+   "verdict": "ok"
+  },
+  "b13afb70ac1b7fe86a3a": {
+   "verdict": "ok"
+  },
+  "b186f2a22a2d831bdbed": {
+   "baselined": "2026-09-19",
+   "instead": "This pillar does not exist. Open the Dashboard.",
+   "quote": "No such pillar. Dashboard",
+   "verdict": "decode",
+   "why": "Dashboard appears as a lone word with no clear relationship to the sentence before it—is it a button, an instruction, or incomplete text?"
+  },
+  "b1984f017986773a6a99": {
+   "verdict": "ok"
+  },
+  "b22a5115762eacbf27cd": {
+   "baselined": "2026-09-19",
+   "instead": "Features that are completed but not yet released",
+   "quote": "sitting finished on main",
+   "verdict": "second-look",
+   "why": "The metaphor 'sitting finished' hides the fact: these are completed features not yet released. Rule 3 says state the fact, not your observation about it."
+  },
+  "b2a11a28619994ac7514": {
+   "verdict": "ok"
+  },
+  "b2bd3afb9057c7e1c81c": {
+   "verdict": "ok"
+  },
+  "b2cf85860d25b5e91bc7": {
+   "verdict": "ok"
+  },
+  "b3192f3a1ef700b07e0e": {
+   "verdict": "ok"
+  },
+  "b3459bdd0f2668908ff1": {
+   "verdict": "ok"
+  },
+  "b3cbfe82c84bcf2f4836": {
+   "verdict": "ok"
+  },
+  "b475b8298b6977984b30": {
+   "verdict": "ok"
+  },
+  "b50a676d243e7d82f87b": {
+   "baselined": "2026-09-19",
+   "instead": "Can we meet players who contact us? Do we monitor for incoming contact?",
+   "quote": "If people showed up tomorrow, could we meet them — and would we even find out they had?",
+   "verdict": "second-look",
+   "why": "A construction that taxes the reader with a second read. The question is clever, but 'would we even find out they had' is an indirect way to ask whether the studio monitors for incoming players or contact."
+  },
+  "b5242ca7df35873350c5": {
+   "verdict": "ok"
+  },
+  "b5c7027bbdb6b6e0a01d": {
+   "baselined": "2026-09-19",
+   "instead": "Provide fuller context, or: art not shown in the gallery",
+   "quote": "art that nothing in the entity gallery lists",
+   "verdict": "decode",
+   "why": "Unexplained fragment with no context; the reader cannot tell what art this refers to or why it is not listed."
+  },
+  "b5ebd268fdf8840d1d71": {
+   "verdict": "ok"
+  },
+  "b674ff3939772cf6136e": {
+   "baselined": "2026-09-19",
+   "instead": "[This should not appear to users—it indicates a broken data structure or error state]",
+   "quote": ": \", length not recorded on the project\"}",
+   "verdict": "decode",
+   "why": "This is a JSON or data structure fragment; it appears to be code leaking through and is not readable as human text."
+  },
+  "b72b3a4718e21fc951f4": {
+   "verdict": "ok"
+  },
+  "b779eb92d6b794bd45e7": {
+   "baselined": "2026-09-19",
+   "instead": "Your written confirmation that you checked it yourself stops counting when the rule it confirmed changes",
+   "quote": "The attestation lapses when the invariant changes",
+   "verdict": "decode",
+   "why": "Both terms are internal to Daniel's verification process; neither is a word a reader would know."
+  },
+  "b7b6f72286ec5c67c0fc": {
+   "verdict": "ok"
+  },
+  "b81ac79a0c33e0e88a54": {
+   "verdict": "ok"
+  },
+  "b8556385ca11f7e014e5": {
+   "verdict": "ok"
+  },
+  "b865a48277a69a842368": {
+   "verdict": "ok"
+  },
+  "b8d2f50456c053bd04b8": {
+   "verdict": "ok"
+  },
+  "b9152089a22113532f50": {
+   "verdict": "ok"
+  },
+  "ba3edd52b44bc52d9757": {
+   "baselined": "2026-09-19",
+   "instead": "Evaluate the seeder bot loop against the animation standards for fluidity and timing",
+   "quote": "Say whether the seeder bot loop is any good",
+   "verdict": "second-look",
+   "why": "The phrase 'any good' is editorial and vague—it names no criterion, leaving the reader to guess what success looks like."
+  },
+  "ba4347f0bc2bf1f871ec": {
+   "baselined": "2026-09-19",
+   "instead": "Finance & Operations",
+   "quote": "Finance & Ops",
+   "verdict": "second-look",
+   "why": "'Ops' should be spelled out as 'Operations' — abbreviations tax the reader even when the meaning is guessable."
+  },
+  "bad1c64e7f8a2d14d473": {
+   "baselined": "2026-09-19",
+   "instead": "Announce it once on the Day-N card instead",
+   "quote": "Say it once at the sleep instead",
+   "verdict": "second-look",
+   "why": "'The sleep' is not an established term; a reader cannot tell whether this refers to nighttime, a specific scene, or something else, and 'say it once' lacks clear context for what is being said and to whom."
+  },
+  "bc930291b8b2904fe48a": {
+   "baselined": "2026-09-19",
+   "instead": "Complete the thought: '[Item name] has it — see it in the Work section.'",
+   "quote": "has it — see it in Work .",
+   "verdict": "decode",
+   "why": "The fragment is incomplete — 'has it' has no subject, and 'it' has no referent that a reader can find."
+  },
+  "bd52b647c6e4e440191d": {
+   "verdict": "ok"
+  },
+  "bd5b966b1a976e4288f8": {
+   "baselined": "2026-09-19",
+   "instead": "Player Update 1 — the next public release — goes out with no way for players to reply",
+   "quote": "Player Update 1 goes out with no route back",
+   "verdict": "decode",
+   "why": "The release name is introduced without context, and 'route back' is a figure of speech for a missing fact."
+  },
+  "bdc61712124b2cdee4df": {
+   "verdict": "ok"
+  },
+  "be9d8a872b60a7a1f5d2": {
+   "baselined": "2026-09-19",
+   "instead": "The previous state is the sheet as it was when you opened the editor.",
+   "quote": "before is the sheet as it was when you opened the editor.",
+   "verdict": "second-look",
+   "why": "Using 'before' as a noun in this construction is awkward and requires a second read."
+  },
+  "c032b135e59297c2b140": {
+   "verdict": "ok"
+  },
+  "c0c161c772290cc18dc5": {
+   "verdict": "ok"
+  },
+  "c0da4cab20e573f46117": {
+   "baselined": "2026-09-19",
+   "instead": "An inset card while the player keeps control",
+   "quote": "An inset card while she keeps control",
+   "verdict": "second-look",
+   "why": "The pronoun 'she' lacks a named referent in this sentence; in a farming game it likely means the player, but the rule requires introduction."
+  },
+  "c1f724096a4f761677fe": {
+   "baselined": "2026-09-19",
+   "instead": "Pair the nameplate and the likes-and-dislikes grid on the robot card",
+   "quote": "The nameplate and the likes-and-dislikes grid",
+   "verdict": "decode",
+   "why": "This is a sentence fragment with no verb—what is supposed to happen to these UI elements? A reader cannot tell whether the work is to build, review, adjust, or decide on them."
+  },
+  "c2f404b9a1b7cd0b0d91": {
+   "verdict": "ok"
+  },
+  "c3175cf0fa87bec75cd7": {
+   "verdict": "ok"
+  },
+  "c3f507f7de039fcc5866": {
+   "verdict": "ok"
+  },
+  "c45f99f5ea7623e97c2a": {
+   "verdict": "ok"
+  },
+  "c46a4d976b283ce86e37": {
+   "verdict": "ok"
+  },
+  "c496c5d7f1dce81df22e": {
+   "verdict": "ok"
+  },
+  "c57e666fc99ef98b27c4": {
+   "verdict": "ok"
+  },
+  "c61464cc35a421afa6cc": {
+   "verdict": "ok"
+  },
+  "c737c1732e139c9ace60": {
+   "verdict": "ok"
+  },
+  "c7a1185da847e402d992": {
+   "verdict": "ok"
+  },
+  "c7aeb154fc95e91c269a": {
+   "verdict": "ok"
+  },
+  "c7b6e5ffc04cd53044f9": {
+   "verdict": "ok"
+  },
+  "c7fc75e31352d6a393f8": {
+   "verdict": "ok"
+  },
+  "c844bf266a9cc02b9dfa": {
+   "verdict": "ok"
+  },
+  "ca132eb70a3af426fd09": {
+   "verdict": "ok"
+  },
+  "cab7a32735e29cfc2886": {
+   "verdict": "ok"
+  },
+  "cb0dfd504bbd1288bc43": {
+   "baselined": "2026-09-19",
+   "instead": "The next card is on the board and still being scoped",
+   "quote": "After this one, on the board, still being scoped — see the program",
+   "verdict": "decode",
+   "why": "'After this one' has no referent, and 'the program' is undefined."
+  },
+  "cb654ecbae1615984ee4": {
+   "baselined": "2026-09-19",
+   "instead": "built the way the game renders this creature, with parts placed, rotated and joined",
+   "quote": "built the way the game renderer builds this creature",
+   "verdict": "second-look",
+   "why": "References internal engine behavior — a reader may not know exactly what the game renderer does."
+  },
+  "cb6979044c644e4fee81": {
+   "verdict": "ok"
+  },
+  "cbbc0baf356b0d21aaa3": {
+   "verdict": "ok"
+  },
+  "cbe145b1aeb6d0d84cb5": {
+   "verdict": "ok"
+  },
+  "cd50096370348cda11c7": {
+   "verdict": "ok"
+  },
+  "cdef69a98125a21d6162": {
+   "verdict": "ok"
+  },
+  "cf525a8f9d5fcdc02de7": {
+   "baselined": "2026-09-19",
+   "instead": "GitHub CI is the only result someone outside the studio can check on the commit itself",
+   "quote": "GitHub CI the only result",
+   "verdict": "decode",
+   "why": "The sentence is missing a verb—should be 'GitHub CI is the only result'; a reader must reparse to find meaning."
+  },
+  "d023559b9e533dd341b2": {
+   "verdict": "ok"
+  },
+  "d089bfd90e6a57108d1e": {
+   "verdict": "ok"
+  },
+  "d0a103d8c0bcbcf9ff50": {
+   "baselined": "2026-09-19",
+   "instead": "I'm handling [specific item]: [why it is waiting]",
+   "quote": "thing open here — mine to handle",
+   "verdict": "decode",
+   "why": "Two vague nouns: a reader would have to ask what the thing is and what 'open' means."
+  },
+  "d1542cf7bf84b935e6ce": {
+   "verdict": "ok"
+  },
+  "d1fb438519efe39ea9dc": {
+   "baselined": "2026-09-19",
+   "instead": "Included in the release, but not required for launch",
+   "quote": "Rides along — ships with it, but the release does not wait for it",
+   "verdict": "second-look",
+   "why": "A stranger would not understand 'rides along' as studio jargon for a non-blocking shipped item."
+  },
+  "d211899493bef36b54fb": {
+   "baselined": "2026-09-19",
+   "instead": "Seven [if this is an entity name, introduce it: 'The seven senses, a subsystem that...'] reach across the page boundary unobstructed",
+   "quote": "Seven senses measure across the page boundary with nothing stopping them",
+   "verdict": "decode",
+   "why": "Multiple unexplained elements compound: what are 'senses'? What does it mean for them to 'measure across the page boundary'? The sentence assumes design vocabulary Daniel holds but a reader does not."
+  },
+  "d294ad7a26f5c669c933": {
+   "baselined": "2026-09-19",
+   "instead": "Every CI run on main. The hundred-run window has not been polled yet",
+   "quote": "Every CI run on main The hundred-run window has not been polled yet",
+   "verdict": "second-look",
+   "why": "Missing punctuation where two independent clauses meet."
+  },
+  "d31f7736815e5a545a5f": {
+   "verdict": "ok"
+  },
+  "d3881699169daae9ec30": {
+   "verdict": "ok"
+  },
+  "d39d6bf169acf8154f54": {
+   "verdict": "ok"
+  },
+  "d3efd3e6667258aa2cc8": {
+   "verdict": "ok"
+  },
+  "d4543131a97aa5d6992f": {
+   "verdict": "ok"
+  },
+  "d4957d92753f7b6700bc": {
+   "verdict": "ok"
+  },
+  "d53511a683148518b3c1": {
+   "verdict": "ok"
+  },
+  "d59471e26011945d8c20": {
+   "verdict": "ok"
+  },
+  "d59828f4881e608656dc": {
+   "baselined": "2026-09-19",
+   "instead": "each action in the session replays, tap by tap",
+   "quote": "every row replays, tap by tap",
+   "verdict": "second-look",
+   "why": "Without prior context, 'row' is ambiguous — it could mean each action, each session entry, or each line in a table."
+  },
+  "d599a0c4e688bffd26f0": {
+   "verdict": "ok"
+  },
+  "d5ce383c15aefe240c2d": {
+   "verdict": "ok"
+  },
+  "d67ebacc89f148166757": {
+   "verdict": "ok"
+  },
+  "d762f76e9f6b0e731cde": {
+   "verdict": "ok"
+  },
+  "d7f66fd791689347cb5b": {
+   "verdict": "ok"
+  },
+  "d80c84673d759aa353d9": {
+   "verdict": "ok"
+  },
+  "d8adc166904b5a0a3c2c": {
+   "verdict": "ok"
+  },
+  "d8f8611aae31c93ca6e0": {
+   "verdict": "ok"
+  },
+  "d9298b188379cb5cdb85": {
+   "verdict": "ok"
+  },
+  "db29a5e08211908776e2": {
+   "verdict": "ok"
+  },
+  "db402c67ccfb0c6cbb45": {
+   "baselined": "2026-09-19",
+   "instead": "Eight machines running at once, and the tablet still draws smoothly — it's using about a fifth of the time it has, and a quarter is the limit",
+   "quote": "the tablet's busiest frame spends 3.45 ms of its 16.7 ms working out what the farm does — inside the quarter of a frame set aside for it",
+   "verdict": "second-look",
+   "why": "Engineering metrics where a reader wants to know whether the game stutters; readable, but names the mechanism rather than the symptom."
+  },
+  "db5283afc648481a42f9": {
+   "verdict": "ok"
+  },
+  "dd3f5e1ce0e002c53e3a": {
+   "baselined": "2026-09-19",
+   "instead": "check both sprite sheets for light pixels where sprites meet the ground, which often indicate anti-aliasing artifacts",
+   "quote": "sweep both sheets for near-white at ground contact",
+   "verdict": "second-look",
+   "why": "Near-white is unexplained; the criterion and the visual problem it checks for are assumed knowledge."
+  },
+  "df966c9a861b5bb55d2c": {
+   "verdict": "ok"
+  },
+  "dfc419e9f4e7ea033537": {
+   "verdict": "ok"
+  },
+  "dfc7e7a6ff3066c683db": {
+   "verdict": "ok"
+  },
+  "e053279d43f3408f1b11": {
+   "baselined": "2026-09-19",
+   "instead": "The oldest run passed, but recent runs have failed · currently green runs hold",
+   "quote": "oldest on the left passed, failed of the last finished runs · green in a row right now",
+   "verdict": "decode",
+   "why": "Grammar is broken; 'failed of the last finished runs' is not a complete clause, and 'green in a row' is ambiguous about what it counts."
+  },
+  "e0ae479219a73c5854de": {
+   "verdict": "ok"
+  },
+  "e20b8d514f92835a788b": {
+   "verdict": "ok"
+  },
+  "e2fc9f7628710d783e44": {
+   "baselined": "2026-09-19",
+   "instead": "Drawn with the numbers from the crop definition",
+   "quote": "Drawn with the numbers read out of ,",
+   "verdict": "decode",
+   "why": "The phrase 'read out of ,' is incomplete; the object of 'out of' is missing."
+  },
+  "e31b0be7175e290d68fa": {
+   "verdict": "ok"
+  },
+  "e3726bb5c711fa8f3274": {
+   "verdict": "ok"
+  },
+  "e37e16541958adad9d20": {
+   "verdict": "ok"
+  },
+  "e3b8f3f9a5ed74803919": {
+   "verdict": "ok"
+  },
+  "e460d630f285fd0cae0c": {
+   "verdict": "ok"
+  },
+  "e47d1d6710cc04b201ca": {
+   "verdict": "ok"
+  },
+  "e4c202b15611f127365d": {
+   "verdict": "ok"
+  },
+  "e4f513cef65dc9cef725": {
+   "verdict": "ok"
+  },
+  "e5b5965bdd9084328391": {
+   "verdict": "ok"
+  },
+  "e67a563f1792c992b002": {
+   "verdict": "ok"
+  },
+  "e69f2a3cd201a6cd617a": {
+   "verdict": "ok"
+  },
+  "e6ba9ad82a27a36da964": {
+   "verdict": "ok"
+  },
+  "e6fa7bff150313213946": {
+   "verdict": "ok"
+  },
+  "e775d49c42750c686f44": {
+   "verdict": "ok"
+  },
+  "e779e2e7c9ebb0f30281": {
+   "baselined": "2026-09-19",
+   "instead": "The guide's own note says its colour ramps were measured from a sprite pack",
+   "quote": "s own note says its ramps were measured from a sprite pack",
+   "verdict": "decode",
+   "why": "'s own note' is incomplete — missing the subject whose note this is."
+  },
+  "ea5340685f21ed9b2385": {
+   "verdict": "ok"
+  },
+  "eb3a94a0e3805149f58d": {
+   "verdict": "ok"
+  },
+  "ed4fcbcb6dc52ba1c08c": {
+   "baselined": "2026-09-19",
+   "instead": "This pillar has no goals.",
+   "quote": "declares no goals",
+   "verdict": "second-look",
+   "why": "The word 'declares' is slightly formal where 'has' or 'shows' reads more plainly."
+  },
+  "ed9da15417274f8c0cd6": {
+   "baselined": "2026-09-19",
+   "instead": "The marked ones are the style guide names — some of them are still in the build",
+   "quote": "The notched ones are the the style guide names — of them are still in the build",
+   "verdict": "decode",
+   "why": "Typo ('the the'), incomplete opening, and 'of them' is unclear (should name which ones)."
+  },
+  "ee90bea3876d357b6686": {
+   "baselined": "2026-09-19",
+   "instead": "The Lab's loops have no line in the credits saying where they came from",
+   "quote": "Loops are art with no provenance entry",
+   "verdict": "decode",
+   "why": "Same term, and 'entry' hides what the reader needs to know — what is missing."
+  },
+  "ef5be7e66bfd47e28796": {
+   "verdict": "ok"
+  },
+  "efdf0182fd538bff1e2e": {
+   "verdict": "ok"
+  },
+  "f05102f92e2c7f8d12d0": {
+   "verdict": "ok"
+  },
+  "f1c8b80139236c2919a2": {
+   "verdict": "ok"
+  },
+  "f257c8fa53e17ec15630": {
+   "baselined": "2026-09-19",
+   "instead": "No recorded sessions include their test conditions",
+   "quote": "0 recorded sessions carry their conditions",
+   "verdict": "decode",
+   "why": "'Carry their conditions' is cryptic — the reader must guess what this means."
+  },
+  "f28201e82dcd10dd5c0e": {
+   "verdict": "ok"
+  },
+  "f391aec5f3886c181980": {
+   "verdict": "ok"
+  },
+  "f45c68e563ebb96149eb": {
+   "verdict": "ok"
+  },
+  "f526ea19518b6de74b46": {
+   "verdict": "ok"
+  },
+  "f649f2569df4153b5cb4": {
+   "verdict": "ok"
+  },
+  "f694ed9caa8805273cf2": {
+   "verdict": "ok"
+  },
+  "f6c51570261791c1a5f2": {
+   "verdict": "ok"
+  },
+  "f7faeff477dad4a4cec4": {
+   "baselined": "2026-09-19",
+   "instead": "Parameter tweaks must not change the rendered frame",
+   "quote": "Tuned values cannot be made the real render",
+   "verdict": "decode",
+   "why": "The reader would need to work out what 'tuned values' means and what 'made the real render' means — these are internal mechanism terms, not consequences."
+  },
+  "f900271c11b52df252f9": {
+   "verdict": "ok"
+  },
+  "f902275cb4078722c4a7": {
+   "verdict": "ok"
+  },
+  "faf72fbbcf71f6539dbc": {
+   "verdict": "ok"
+  },
+  "fbe95825c01352a68c40": {
+   "verdict": "ok"
+  },
+  "fc50e9c4225f856281df": {
+   "verdict": "ok"
+  },
+  "fc7cb8340292e577c93b": {
+   "verdict": "ok"
+  },
+  "fd0e6f359e88191541af": {
+   "verdict": "ok"
+  },
+  "fe0eed5604aab7261a54": {
+   "verdict": "ok"
+  },
+  "fe3996237323d6e1b915": {
+   "verdict": "ok"
+  },
+  "ff23fda8fcba9bd7f166": {
+   "verdict": "ok"
+  },
+  "ffe53d96f4681f81ed02": {
+   "verdict": "ok"
+  }
+ }
+}

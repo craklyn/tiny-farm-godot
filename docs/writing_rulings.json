@@ -1,0 +1,205 @@
+{
+  "note": "Every writing call the CEO has actually made, kept as the shapes of the failure rather than as a list of banned words. This file briefs the judge in tools/check_writing.py, briefs anyone drafting text a person will read, and doubles as the judge's regression suite: --self-test replays every ruling below and fails if the judge no longer agrees with one.",
+  "why": "It replaced a 23-word blocklist on 2026-09-19. Daniel: \"I'm surprised a word list is a good solution. If I had a human coworker who used a couple weird words, I'd be explaining a principle to follow and check. Not a fixed set of words. There's tens of thousands of words that wouldn't be appropriate to use in an obscure way, so this can't scale properly.\" A list can only hold the mistakes already made; a shape generalises across words nobody has thought of yet.",
+  "how_to_grow_it": "When he rejects a sentence, add the ruling here the same day, under the shape it belongs to, with his own words for why. When several rulings under one shape start saying the same thing, promote the lesson into docs/WRITING.md and retire the duplicates — this file is a staging area for sharpening the principle, not an archive that only grows. Keep ruled_fine populated: a judge shown only failures learns that everything is a failure.",
+  "shapes": [
+    {
+      "id": "internal-term-for-a-plain-thing",
+      "shape": "An internal term used where the thing already has a plain name",
+      "why_it_fails": "The word is exact to whoever wrote it and empty three feet away. The reader cannot ask the page what it meant.",
+      "rulings": [
+        {
+          "text": "Re-run the suites so each stamps the commit it proved",
+          "verdict": "decode",
+          "why": "Three at once. Daniel, reading this card on 2026-09-04: \"What are the suites? I think it's test suites, but I don't have enough context on this page to know. 'stamps' and 'proves' are terms of art, not literal?\"",
+          "instead": "Run the four test suites again so each result records which version it tested",
+          "ruled": "2026-09-04"
+        },
+        {
+          "text": "Give a dial turn on the workbench a sound, sourced free with its rights and provenance written down",
+          "verdict": "decode",
+          "why": "\"Provenance\" is the record of where an asset came from and on what terms. It has a plain name.",
+          "instead": "…with its rights and where it came from written down",
+          "ruled": "2026-09-12"
+        },
+        {
+          "text": "Loops are art with no provenance entry",
+          "verdict": "decode",
+          "why": "Same word, and \"entry\" hides that the missing thing is a line in the credits.",
+          "instead": "The Lab's loops have no line in the credits saying where they came from",
+          "ruled": "2026-09-12"
+        },
+        {
+          "text": "Check the provenance and the release cadence for parity",
+          "verdict": "decode",
+          "why": "Three internal terms in one clause: where it came from, how often we release, and whether it behaves the same for everyone.",
+          "instead": "Check where it came from, how often we release, and whether it is the same for everyone",
+          "ruled": "2026-09-04"
+        },
+        {
+          "text": "The attestation lapses when the invariant changes",
+          "verdict": "decode",
+          "why": "An attestation is his own written confirmation that he checked something himself; an invariant is a rule that must always hold.",
+          "instead": "Your written confirmation that you checked it yourself stops counting when the rule it confirmed changes",
+          "ruled": "2026-09-04"
+        },
+        {
+          "text": "A shipped asset has no ledger line",
+          "verdict": "decode",
+          "why": "Named in docs/WRITING.md as the example that taught rule 4.",
+          "instead": "No record of where this sound came from",
+          "ruled": "2026-09-03"
+        }
+      ],
+      "words_this_has_covered": [
+        "suites",
+        "stamps",
+        "proves",
+        "attestation",
+        "rollup",
+        "invariant",
+        "provenance",
+        "cadence",
+        "parity",
+        "plumbing",
+        "orphaned",
+        "manifest",
+        "harness",
+        "hygiene",
+        "tier",
+        "trace",
+        "gate",
+        "instrumentation",
+        "surface",
+        "ledger line"
+      ]
+    },
+    {
+      "id": "metaphor-instead-of-the-fact",
+      "shape": "A construction the author enjoyed, standing where the fact should be",
+      "why_it_fails": "A clever line taxes the reader with a second read. That tax is payable in the game's own writing; it is never payable on a page someone works from.",
+      "rulings": [
+        {
+          "text": "The sim benchmark's target is a frame she would feel, not a round number",
+          "verdict": "decode",
+          "why": "A commit subject, read on HQ's shipped-this-week feed. Daniel: \"WTF does 'a frame she would feel, not a round number' mean? This is not a useful message for a human like me.\" It does not say what changed.",
+          "instead": "The speed test now checks that a busy farm won't make the tablet stutter",
+          "ruled": "2026-09-19"
+        },
+        {
+          "text": "The first thing a player would tell us is the one thing we cannot hear",
+          "verdict": "decode",
+          "why": "The example that taught rule 3 in docs/WRITING.md. It is an observation about the fact rather than the fact.",
+          "instead": "Players have no way to send feedback",
+          "ruled": "2026-09-03"
+        }
+      ]
+    },
+    {
+      "id": "mechanism-instead-of-symptom",
+      "shape": "The internal mechanism named where the reader wants the consequence they would notice",
+      "why_it_fails": "A frame, a tick, a budget and a gate are units of the author's thinking, not of the reader's experience. Removing the obvious jargon is not enough if what remains still describes how the system works.",
+      "rulings": [
+        {
+          "text": "The sim benchmark now checks whether a farm full of machines still fits in a frame on the tablet",
+          "verdict": "decode",
+          "why": "Offered as the plain rewrite of the ruling above, and rejected too. Daniel: \"What does it mean for the machines to 'fit in a frame'? The language is still somewhat mysterious to me.\" One piece of house vocabulary had been swapped for another.",
+          "instead": "The speed test now checks that a busy farm won't make the tablet stutter",
+          "ruled": "2026-09-19"
+        },
+        {
+          "text": "With eight machines awake, the tablet's busiest frame spends 3.45 ms of its 16.7 ms working out what the farm does — inside the quarter of a frame set aside for it",
+          "verdict": "second-look",
+          "why": "Same failure on the Engineering page: milliseconds and frames where the reader wants to know whether the game stutters.",
+          "instead": "Eight machines running at once, and the tablet still draws smoothly — it's using about a fifth of the time it has, and a quarter is the limit",
+          "ruled": "2026-09-19"
+        }
+      ]
+    },
+    {
+      "id": "name-the-reader-never-met",
+      "shape": "A name, pronoun or id used before the reader has been given it",
+      "why_it_fails": "A name the reader did not coin carries nothing on first contact. First mention gets a plain appositive; the bare name is fine afterwards in the same view.",
+      "rulings": [
+        {
+          "text": "The sim benchmark's target is a frame she would feel",
+          "verdict": "decode",
+          "why": "\"She\" is the player. Nothing in the sentence says so, and on a commit feed there is no earlier sentence to have said it.",
+          "instead": "Name her, or drop the pronoun: \"…won't make the tablet stutter\"",
+          "ruled": "2026-09-19"
+        },
+        {
+          "text": "Player Update 1 goes out with no route back",
+          "verdict": "decode",
+          "why": "The example that taught rule 1 in docs/WRITING.md: the release name is unintroduced and \"route back\" is a figure of speech.",
+          "instead": "Player Update 1 — the next public release — goes out with no way for players to reply",
+          "ruled": "2026-09-03"
+        }
+      ]
+    }
+  ],
+  "ruled_fine": [
+    {
+      "text": "Run the four test suites again so each result records which version it tested",
+      "why": "The plain rewrite of the card that started all of this. It says \"test suites\" with \"four\" in front of it, which is a name the sentence introduces rather than assumes. A judge that flags this is banning words rather than holding the principle.",
+      "ruled": "2026-09-04"
+    },
+    {
+      "text": "Three farms, not one: a save lives in a slot of its own",
+      "why": "A commit subject from the same week Daniel complained about another one. It says what changed in words a stranger can picture.",
+      "ruled": "2026-09-19"
+    },
+    {
+      "text": "The tablet deploy stops reporting steps it did not take",
+      "why": "Commit subject. \"Deploy\" is the ordinary word for putting the game on the tablet, and the sentence names the change.",
+      "ruled": "2026-09-19"
+    },
+    {
+      "text": "Crow: 7 pixels changed by hand across 2 frames",
+      "why": "Commit subject. \"Frames\" here are animation frames the artist actually drew — the literal thing, not a metaphor for time. Context decides whether a word is house vocabulary.",
+      "ruled": "2026-09-19"
+    },
+    {
+      "text": "A gate in the fence the player walks through",
+      "why": "The map editor's parcel field. This is a real gate in a real fence, not the milestone sense. Marked plain-ok in the source so the check reports the exemption rather than hiding it.",
+      "ruled": "2026-09-04"
+    },
+    {
+      "text": "The speed test now checks that a busy farm won't make the tablet stutter",
+      "why": "The rewrite Daniel accepted on 2026-09-19, after two rejected attempts. It names the symptom a person would see.",
+      "ruled": "2026-09-19"
+    },
+    {
+      "text": "Give the Mark III its day: the learn setting in the bot brain, and Robot Mk III in the shop",
+      "why": "The Mark III is the robot in Daniel's own game — a name he chose and uses daily. Product names are proper nouns to their owner, not jargon. Flagging these is how the check turns into noise.",
+      "ruled": "2026-09-19"
+    },
+    {
+      "text": "The overnight plays a loop on the night the farm changed",
+      "why": "\"The overnight\" and \"loop\" are the game's own features, named in the design docs he wrote. Same reason as the Mark III.",
+      "ruled": "2026-09-19"
+    },
+    {
+      "text": "Let a machine work out of her stores: it carries what it cuts, plants from her seed box, and sells at the bin",
+      "why": "The nouns are fine — stores, seed box and bin are the game's own. Only the bare \"her\" is worth raising, and on a card sitting under a farming game it is a second-look at most, not something he would have to decode.",
+      "ruled": "2026-09-19"
+    },
+    {
+      "text": "Saved, but filing it to the art team failed.",
+      "why": "Understandable on first pass. A style editor might rewrite it; this check is not a style editor, and flagging plain-but-imperfect sentences is what makes a check people skip.",
+      "ruled": "2026-09-19"
+    },
+    {
+      "text": "Recorded games are the training data phase 4 runs on. A break here is silent until bot training fails, which is the worst possible time to find out.",
+      "why": "\"Phase 4\" is his own five-phase plan for the game. A milestone he named is not something he has to decode.",
+      "ruled": "2026-09-19"
+    }
+  ],
+  "waivers": [
+    {
+      "where": "hq/data/goals/engineering.json",
+      "phrase": "the newest finished run of the suite failed on main",
+      "why": "pending rewrite"
+    }
+  ]
+}
