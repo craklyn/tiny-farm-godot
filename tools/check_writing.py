@@ -109,15 +109,33 @@ def load_rulings(path=RULINGS):
     return json.load(open(path, encoding="utf-8"))
 
 
+ENFORCEMENT_HEADING = "\n## Where this is enforced"
+
+
+def brief_standard():
+    """The part of `WRITING.md` that states the standard, and nothing else.
+
+    Everything from "Where this is enforced" downwards describes the machinery —
+    which hook runs when, what CI reads, how to switch it on. That is operational
+    prose, not a rule about writing, and no verdict has ever turned on it. It
+    used to be inside the fingerprint below, which meant documenting a new hook
+    invalidated all 433 recorded verdicts and cost a half-hour re-judge that
+    could not have changed a single one of them (2026-09-19). The cut is the
+    heading, so a rule added above it still re-judges everything, as it must."""
+    text = open(BRIEF, encoding="utf-8").read()
+    head, sep, _ = text.partition(ENFORCEMENT_HEADING)
+    return head if sep else text
+
+
 def brief_text(rulings=None):
-    """`WRITING.md` plus every ruling, as one system prompt.
+    """The standard plus every ruling, as one system prompt.
 
     The whole set goes in, every call. It is about three thousand tokens and the
     corpus grows by a handful of rulings a year, so retrieval would be machinery
     for a problem we do not have — and worse, it would rank by topic when what a
     judge needs is the near-misses on the line, which come from anywhere."""
     rulings = rulings or load_rulings()
-    lines = [open(BRIEF, encoding="utf-8").read(), "", "# Calls already made", ""]
+    lines = [brief_standard(), "", "# Calls already made", ""]
     for shape in rulings["shapes"]:
         lines.append(f"## {shape['shape']}")
         lines.append(shape["why_it_fails"])
@@ -137,7 +155,8 @@ def brief_fingerprint(rulings=None):
     """Changing the principle or the rulings invalidates every cached verdict,
     because the standard they were judged against moved."""
     h = hashlib.sha256()
-    h.update(open(BRIEF, "rb").read())
+    # Exactly what the judge is briefed on, so the two can never drift apart.
+    h.update(brief_standard().encode())
     h.update(json.dumps(rulings or load_rulings(), sort_keys=True).encode())
     h.update(SYSTEM.encode())
     h.update(JUDGE_MODEL.encode())

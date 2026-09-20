@@ -1,0 +1,119 @@
+#!/bin/sh
+# Judge the text a commit CONTAINS, not just the subject it carries.
+#
+# Why this exists. On 2026-09-19 main went red because eleven work-card titles
+# and a decision card were committed without ever being read by the judge. CI
+# checks text offline against verdicts already recorded, so text nobody has
+# judged fails the build — and the person who wrote it had no way to know until
+# the push was already public. There was a hook for commit subjects and nothing
+# for the text inside the commit, which is the larger surface by far.
+#
+# Why it reads the STAGED tree and not the working tree. That same day the check
+# passed locally and failed in CI on the identical commit, because the working
+# tree had several work cards already marked accepted while the commit still had
+# them awaiting review — and the check deliberately skips closed cards. Two
+# different sets of text, two different answers. A hook reading the working tree
+# would have agreed with the wrong one. So the staged versions of the files the
+# check reads are written into a temporary tree, and the judgement happens there,
+# on exactly what is about to be committed.
+#
+# What it costs. Nothing on a commit that changes no surface text: the guard
+# below returns before any of this. When text did change, the judge is called
+# only for pieces never judged before — usually one or two, a second or two.
+# Verdicts it earns are written to docs/writing_verdicts.json and added to the
+# commit, which is what lets CI stay offline and never depend on a model.
+#
+# It never blocks for an avoidable reason: no python3, no judge reachable, a
+# merge or a rebase under way — all pass straight through, and every failure
+# inside this hook passes too. A writing check that stops someone committing
+# because a temporary directory could not be made is worse than the problem it
+# was written for. `git commit --no-verify` is the escape when the wording is
+# genuinely right.
+#
+# Deliberately NOT `set -e`: this script must fail open, and a stray non-zero
+# from a test or a grep would fail it closed on every commit in the repository.
+
+# Deliberately NOT triggered by docs/WRITING.md or docs/writing_rulings.json.
+# Editing the standard re-opens every sentence in the studio at once — the whole
+# backlog stops being grandfathered, because the grandfathering lives in the same
+# cache the new standard invalidates. That is a deliberate act with a deliberate
+# workflow (judge everything, re-baseline, commit the cache), not something for a
+# hook to resolve while somebody is trying to commit.
+PATTERNS="hq/data/work/*.json hq/data/goals/*.json hq/data/decisions/*.json
+          hq/data/pillars.json hq/data/rulings/*.json hq/static/*.js"
+
+ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+
+# Nothing staged that this check reads: the commit is code, art or docs, and the
+# judge has no opinion about any of it.
+git diff --cached --name-only --diff-filter=ACMR -- $PATTERNS 2>/dev/null \
+    | grep -q . || exit 0
+
+# A merge or a rebase writes commits nobody is composing. Blocking one strands
+# the repository mid-operation, which is worse than a sentence wanting a rewrite.
+GITDIR=$(git rev-parse --git-dir 2>/dev/null) || exit 0
+for f in MERGE_HEAD REBASE_HEAD CHERRY_PICK_HEAD; do
+    if [ -e "$GITDIR/$f" ]; then exit 0; fi
+done
+command -v python3 >/dev/null 2>&1 || exit 0
+
+TMP=$(mktemp -d 2>/dev/null) || exit 0
+trap 'rm -rf "$TMP"' EXIT
+
+# The staged tree, limited to what the check reads. `checkout-index` writes the
+# INDEX's content rather than the working tree's, which is the entire point.
+# `git ls-files` expands the patterns against the index, so a path staged for
+# deletion is simply absent and never asked for.
+FILES=$(git ls-files -- $PATTERNS tools/check_writing.py docs/WRITING.md \
+                       docs/writing_rulings.json docs/writing_verdicts.json 2>/dev/null)
+[ -n "$FILES" ] || exit 0
+# shellcheck disable=SC2086
+git checkout-index -f --prefix="$TMP/" -- $FILES >/dev/null 2>&1 || exit 0
+[ -f "$TMP/tools/check_writing.py" ] || exit 0
+
+# The judge records what it spends into hq/data/history/tokens.jsonl, relative to
+# wherever the script it is running from lives — which here is a temporary tree
+# that has no such directory, so every call this hook makes was being spent off
+# the books. The studio's rule is that work it does on its own says what it cost,
+# and a hook is exactly the kind of quiet, frequent work that rule was written
+# for. Point the temporary tree's ledger at the real one.
+mkdir -p "$TMP/hq/data" 2>/dev/null
+ln -sfn "$ROOT/hq/data/history" "$TMP/hq/data/history" 2>/dev/null
+
+# Everything in it has been read before: no model call, no delay.
+python3 "$TMP/tools/check_writing.py" --verify >/dev/null 2>&1 && exit 0
+
+echo "Reading the text in this commit…"
+python3 "$TMP/tools/check_writing.py" >"$TMP/out.txt" 2>&1
+if [ $? -ne 0 ] && ! grep -q "phrase(s)\|Nothing new" "$TMP/out.txt" 2>/dev/null; then
+    echo "  (the judge could not be reached — committing without it)"
+    exit 0
+fi
+
+# Judged. Either everything new in it reads plainly, or it does not.
+if python3 "$TMP/tools/check_writing.py" --verify >"$TMP/verdict.txt" 2>&1; then
+    cp "$TMP/docs/writing_verdicts.json" "$ROOT/docs/writing_verdicts.json" 2>/dev/null
+    git add "$ROOT/docs/writing_verdicts.json" 2>/dev/null
+    echo "Nothing in it he would have to decode. Verdicts added to the commit."
+    exit 0
+fi
+
+# Whether or not this commit proceeds, the verdicts are facts about the text and
+# were paid for in full. The first version of this hook deleted them along with
+# its temporary tree whenever it blocked, so the next attempt paid for the same
+# reading again — half an hour, the night it was written. Keep them, and stage
+# them: this hook reads the INDEX, so a verdict left only in the working tree is
+# one it cannot see next time.
+cp "$TMP/docs/writing_verdicts.json" "$ROOT/docs/writing_verdicts.json" 2>/dev/null
+git add "$ROOT/docs/writing_verdicts.json" 2>/dev/null
+
+cat "$TMP/verdict.txt"
+cat <<'MSG'
+
+This commit contains text Daniel would have to stop and work out, and nobody has
+written it before — so it is not the standing backlog, it is new. Reword it and
+commit again. If the wording is genuinely right, record why in
+docs/writing_rulings.json, or commit with --no-verify. Either way the reading
+above is kept and staged, so committing again does not pay for it twice.
+MSG
+exit 1
