@@ -844,6 +844,13 @@ static func _normalize_tile(tile) -> Dictionary:
 	# farm nothing has eaten off — which is what it is.
 	if bool(tile.get("ransacked", false)):
 		out["ransacked"] = true
+		# Which plant was taken off it (Q-110 b) — carried only when the square
+		# knows, which is every square marked from 2026-09-20 on. A save written
+		# before that marks the square without naming the crop, and the renderer
+		# reads that absence as "the raid's crop" until she works the square.
+		var crop := String(tile.get("ransacked_crop", ""))
+		if crop != "":
+			out["ransacked_crop"] = crop
 	return out
 
 

@@ -1,0 +1,46 @@
+{
+  "id": "Q-112",
+  "title": "What it costs her to clear a raided plot",
+  "question": "Since tonight, a square a bird empties keeps a bitten stalk standing on it instead of going to bare earth. That stalk is a picture and nothing else — one stroke of the hoe takes it away, exactly as bare soil took one stroke before. So the wreck she is looking at costs her nothing to deal with. Should it? Recommendation: leave it free for now.",
+  "why_now": "This is the half of your own ruling that was deliberately left undone. The card you picked from said leaving the plant behind 'changes what the square looks like she has to clear before replanting', and tonight's build changed what she sees without changing what she does — which is the right first version, and is not obviously the right end state. It is cheap to answer now and awkward to answer once players have a habit.",
+  "options": [
+    {
+      "key": "a",
+      "label": "Nothing changes",
+      "detail": "The stalk is scenery. The hoe goes through it like it always did and a raided square is one action from being a bed again. A raid already costs her a tomato and a walk out to the bed; this says one bird should not bill her twice for the same morning.",
+      "recommended": true
+    },
+    {
+      "key": "b",
+      "label": "Clearing it costs a beat",
+      "detail": "A raided square is cleared the way a weed is — its own small job before she can work the ground. The raid then costs a tomato and an action, and the field carries the memory of the morning until she deals with it. The risk is that the punishment lands on the player who was already unlucky."
+    },
+    {
+      "key": "c",
+      "label": "Clearing it gives something back",
+      "detail": "Pulling the wreck returns a seed, or a scrap of the crop. The loss is softened, walking over to it is worth doing, and a raided square becomes a small thing to find rather than a small thing to fix. It is the only option that makes the mark rewarding rather than neutral or costly."
+    },
+    {
+      "key": "d",
+      "label": "She cannot sow over it",
+      "detail": "A dead plant blocks planting until it is cleared, so the square is genuinely out of use until she attends to it. The strongest reading of 'the loss is real', and the one most likely to read as the game being annoying at a four-year-old."
+    }
+  ],
+  "links": [
+    {
+      "label": "The raid and what it leaves behind (design/04)",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/04-pests-and-ecology.md"
+    },
+    {
+      "label": "Q-110, the ruling that opened this",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"
+    }
+  ],
+  "attachments": [
+    {
+      "type": "image",
+      "src": "docs/design/mockups/ransack_mark/shipped_close.png",
+      "caption": "The square as it stands tonight: one stroke of the hoe and it is a bed again."
+    }
+  ]
+}

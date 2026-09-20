@@ -3,9 +3,8 @@
 
     python3 tools/compose_ransack_candidates.py
 
-Reads the plates tools/capture_ransack_candidates.tscn photographed in the running
-game and writes two comparison boards beside them in
-docs/design/mockups/ransack_mark/:
+Reads the plates photographed in the running game on 2026-09-19 and writes two
+comparison boards beside them in docs/design/mockups/ransack_mark/:
 
     candidates.png           the four squares close up, blown up ×3
     candidates_in_place.png  the same four at the size the game is played at
@@ -14,6 +13,13 @@ Needs no display — the plates carry the game's own rendering, and this only cr
 tiles and labels them. Every panel is the same farm, the same camera and the same
 morning; the only difference between them is what is drawn on the one square a
 crow emptied.
+
+The rig that took the plates is gone. It could only exist while three of the four
+pictures were candidates, and it drew them through the renderer's insides to keep
+them out of `world/`; once the designer picked (b) on 2026-09-19 those insides
+changed and the rig could no longer run. The plates are kept as the record of
+what the winner was picked over, this rebuilds the boards from them, and
+`tools/capture_ransack_mark.tscn` photographs what actually ships.
 """
 
 import os

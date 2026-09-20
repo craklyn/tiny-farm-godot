@@ -297,7 +297,6 @@ func sync_actors() -> void:
 			continue
 		node.queue_free()
 		actor_nodes.erase(id)
-	_sync_ransack_marks()
 
 
 # Every sprite, gone now — for a renderer that is starting the world over (the
@@ -324,118 +323,54 @@ func player_node() -> Node2D:
 var dirt_texture: Texture2D
 
 
-# --- the plot a crow emptied (Q-105, design/04) --------------------------------
+# --- the plot a crow emptied (Q-105, Q-110, design/04) ------------------------
 #
 # A square a bird ate the plant off is turned soil with nothing on it, which is
 # also exactly what a row she hoed and has not sown yet looks like — so without
 # something on it a loss reads as a chore she forgot. The sim marks the square
-# (`SimWorld`'s `eat_crop`) and clears the mark the moment she works it again;
-# this is what is drawn on it in the meantime.
+# (`SimWorld`'s `eat_crop`), records which crop was taken off it, and clears both
+# the moment she works it again; this is what is drawn on it in the meantime.
 #
-# **Made of pixels the game already ships**, which is what a first version is
-# allowed to be: three clods lifted out of the middle of the dirt sheet, scattered
-# across the square and lifting one after another on a slow loop, like earth still
-# settling where something scratched through it. A drawn version — tumbled leaves,
-# a feather left behind — is the artist's, and when it arrives the only thing here
-# that changes is which sheet and cell these read from.
-const RANSACK_CLODS := 3
-const RANSACK_CLOD_PX := 3.0
-const RANSACK_LOOP_SECONDS := 2.6
-const RANSACK_LIFT_PX := 1.0
-# Dug earth rather than the soil it sits on: the clods have to be a shade darker
-# than the square or they are three invisible pixels.
-const RANSACK_TINT := Color(0.68, 0.58, 0.48, 0.95)
-# The dirt sheet's fully-surrounded cell — soil with no edge in it, so any patch
-# of it is a patch of plain earth (`Autotile.atlas_coord`, mask 255).
-const RANSACK_SOIL_MASK := 255
-
-# Where the three clods sit inside a square, in pixels from its corner. Three
-# spots rather than a spray: the square has sixteen pixels a side and the mark has
-# to read at a glance on a tablet held at arm's length.
-const RANSACK_SPOTS: Array[Vector2] = [
-	Vector2(3.0, 9.0), Vector2(8.0, 4.0), Vector2(10.0, 10.0),
-]
+# **The plant is left standing, stripped** — the designer's ruling on Q-110,
+# 2026-09-19, picked from four pictures of the same square. So a raided square
+# does not go to bare earth at all: it keeps a bitten, broken-off stalk of
+# whatever was growing there, with a little debris at its base. That reads as a
+# loss rather than as ground, and it says which plant was taken. The sprites are
+# `<crop>_stripped.png`, one per crop, drawn from each crop's own colours by
+# `tools/gen_stripped_crops.py`.
+#
+# **It is drawn in the crop pass, because it is a plant.** The stripped stage goes
+# into the same render queue as the living crops, at the same square's y — which
+# is not a detail. The mark this replaces was a node of its own so it could animate,
+# and on 2026-09-16 the farm page moved into a child of the farm and painted over
+# every one of those nodes: the mark was invisible for four days with the whole
+# suite green. A picture that is drawn where the crops are drawn cannot be covered
+# by the ground, and it sorts under whoever is standing on the square for free.
+#
+# **Clearing it costs her nothing extra, on purpose.** The stalk is a picture, not
+# an obstacle: tilling or sowing the square takes it away like any other work, in
+# one verb, exactly as the clods went. Making her clear a wreck before she can
+# replant is a real design question and it is Q-112's, not this first version's.
+var stripped_sheets: Dictionary = {}   # crop -> its stripped stage, 16px
 
 
-## The clods drawn on a square something ate a plant off, as `{rect, region}`
-## pairs in the sheet's own coordinates — and nothing at all for a square with no
-## mark on it. A `RansackMark` node (`world/ransack_mark.gd`) draws exactly this
-## list every frame for as long as the square is marked, and the integration
-## suite asserts on exactly this list, so what is tested is what is on screen.
-## The nodes are kept in step with the sim by `_sync_ransack_marks`.
-var _ransack_nodes: Dictionary = {}  # Vector2i -> the node drawing that square
-
-
-func ransack_marks(tx: int, ty: int) -> Array[Dictionary]:
-	if not bool(tile_look(tx, ty).get("ransacked", false)):
-		return []
-	return ransack_clods(Vector2i(tx, ty), Time.get_ticks_msec() / 1000.0)
-
-
-# Pure, so the headless suite can hold it to account, and keyed off the square's
-# own coordinates rather than a die roll — the ground variant's rule (`tx % 3`),
-# for the same reason: a screenshot, a save and a replay all draw the same square
-# the same way, and nothing here has to reach for SimRng.
-static func ransack_clods(at: Vector2i, t_sec: float) -> Array[Dictionary]:
-	var cell := Autotile.atlas_coord(RANSACK_SOIL_MASK, false)
-	var out: Array[Dictionary] = []
-	for i in RANSACK_CLODS:
-		var spot: Vector2 = RANSACK_SPOTS[(i + at.x + at.y) % RANSACK_SPOTS.size()]
-		# One clod up while the other two rest, so the square stirs rather than
-		# pulsing — the same reason a crow on a crop is not allowed to hold still.
-		var phase := t_sec / RANSACK_LOOP_SECONDS + float(i) / float(RANSACK_CLODS)
-		var lift := -RANSACK_LIFT_PX * maxf(0.0, sin(phase * TAU))
-		out.append({
-			"rect": Rect2(
-				at.x * TILE_SIZE + spot.x, at.y * TILE_SIZE + spot.y + lift,
-				RANSACK_CLOD_PX, RANSACK_CLOD_PX),
-			# A different patch of the cell per clod, so three clods are three
-			# shapes rather than one pixel printed three times.
-			"region": Rect2(
-				cell.x * 16 + 3 + i * 4, cell.y * 16 + 4 + i * 3,
-				RANSACK_CLOD_PX, RANSACK_CLOD_PX),
-		})
-	return out
-
-
-# One node per marked square, created when the sim marks it and freed when she
-# works it again. A whole-map scan, so it is for the moments that can change the
-# set — a load or a replay (`sync_actors`), and an action that eats a plant —
-# never a frame; the nodes themselves pay for their own frames.
-func _sync_ransack_marks() -> void:
-	# A farm whose world has not been generated yet (a bare renderer in a test,
-	# a scene built before its sim is handed over) has no squares to read.
-	if sim == null or sim.tiles.size() < SimWorld.MAP_HEIGHT:
-		return
-	for ty in SimWorld.MAP_HEIGHT:
-		for tx in SimWorld.MAP_WIDTH:
-			var at := Vector2i(tx, ty)
-			var marked := bool(tile_look(tx, ty).get("ransacked", false))
-			var node = _ransack_nodes.get(at, null)
-			if marked and not is_instance_valid(node):
-				node = load("res://world/ransack_mark.gd").new()
-				node.name = "ransack_%d_%d" % [tx, ty]
-				node.at = at
-				node.farm = self
-				# It has to be drawn **after the pass that draws its ground**, and
-				# since the farm-through-the-walls change (2026-09-16) the farm page
-				# is not this node's own `_draw` any more — rows 0 to `PAGE_ROWS`
-				# are drawn by `_page0_node`, a child. A mark put at index 0, where
-				# this used to put it, is painted over by that child every frame, so
-				# from 16 September until this was found a raided square showed
-				# nothing at all. Sitting it just after the page node puts it back
-				# on top of its own soil; the page layer comes with it so the yard
-				# seen through a room's walls carries the mark too, the way the ripe
-				# glow does.
-				node.visibility_layer = 1 | PAGE0_LAYER
-				add_child(node)
-				move_child(node, _page0_node.get_index() + 1 if _page0_node != null else 0)
-				_ransack_nodes[at] = node
-			elif not marked and is_instance_valid(node):
-				node.queue_free()
-				_ransack_nodes.erase(at)
-			elif not marked:
-				_ransack_nodes.erase(at)
+## The plant left standing on a square something ate a crop off: the crop whose
+## stripped stage that square draws, and `""` for a square with no mark on it.
+## `_draw_pages` draws exactly this and the integration suite asserts on exactly
+## this, so what is tested is what is on screen.
+func ransack_plant(tx: int, ty: int) -> String:
+	var tile := tile_look(tx, ty)
+	if not bool(tile.get("ransacked", false)):
+		return ""
+	var crop := String(tile.get("ransacked_crop", ""))
+	# A save written before 2026-09-20 marked the square without recording what
+	# was taken off it, because nothing needed to know. The raid is the only
+	# thing that has ever emptied squares in numbers, so its crop is the guess —
+	# and it is a guess for exactly as long as that square goes unworked, since
+	# working it clears the mark and no new mark is ever written without a crop.
+	if crop == "":
+		crop = SimWorld.RAID_CROP
+	return crop if stripped_sheets.has(crop) else ""
 
 
 # T-32: the yard's ground. Derived from terrain_grass.png's noise pattern in the
@@ -486,6 +421,13 @@ func _load_textures() -> void:
 	interior_window_texture = load("res://assets/sprites/generated/interior_window.png")
 	# One sheet per entity (2026-09-06): a sheet's edit history then belongs to
 	# exactly one thing, and regenerating one sprite is a file swap.
+	# Q-110 b: the stripped stage a bird leaves standing, one 16px cell per crop
+	# beside that crop's own four-stage sheet (tools/gen_stripped_crops.py).
+	stripped_sheets = {
+		"wheat": load("res://assets/sprites/generated/wheat_stripped.png"),
+		"tomato": load("res://assets/sprites/generated/tomato_stripped.png"),
+		"pea": load("res://assets/sprites/generated/pea_stripped.png"),
+	}
 	crop_sheets = {
 		"wheat": load("res://assets/sprites/generated/wheat.png"),
 		"tomato": load("res://assets/sprites/generated/tomato.png"),
@@ -846,10 +788,6 @@ func _record(action: Dictionary, result: Dictionary, at_tick: int,
 						_report_watering_shot()
 		if String(action.get("verb", "")) == "sleep":
 			_notify_day_turn()
-		# A plant eaten off a square marks it, and any work on a marked square
-		# clears it (Q-105) — the only two moments the set of marks can change.
-		if String(action.get("verb", "")) == "eat_crop" or not _ransack_nodes.is_empty():
-			_sync_ransack_marks()
 		queue_redraw()
 
 
@@ -1549,6 +1487,21 @@ func _draw_pages(canvas: CanvasItem, y0: int, y1: int) -> void:
 						"y": py,
 						"draw": func(): canvas.draw_texture_rect_region(chip_sheet, chip_rect, chip)
 					})
+
+			# Queue the stripped plant a bird left standing (Q-110 b). Here, in
+			# the crop pass and on the square's own y, because it *is* a plant:
+			# it sorts with the living crops and with whoever walks past it, and
+			# nothing drawn later can cover it — which the mark it replaces
+			# learned the hard way (see the note on `ransack_plant`).
+			var ransacked := ransack_plant(tx, ty)
+			if ransacked != "":
+				var stripped_tex: Texture2D = stripped_sheets[ransacked]
+				var stripped_rect := _react_rect(px, py, k, TILE_SIZE, shake)
+				render_queue.append({
+					"y": py,
+					"draw": func(): canvas.draw_texture_rect(
+						stripped_tex, stripped_rect, false)
+				})
 
 			# Queue crops
 			if tile.state in ["seeded", "growing", "ready"]:

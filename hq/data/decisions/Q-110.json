@@ -2,7 +2,7 @@
   "id": "Q-110",
   "title": "The mark a crow leaves behind",
   "question": "When a crow eats a plant, the square it leaves looks exactly like a row that was hoed and never sown — so the game marks it. The mark it draws today is three small clods of earth, scattered across the square and rising one after another on a slow loop. On 15 September you looked at your daughter's farm, saw them, and asked what they were and whether they were a bug. That is the mark failing at the only job it has. What should a raided square look like instead? Recommendation: a feather.",
-  "why_now": "The mark was always a placeholder. It is made of pixels the game already ships — three patches lifted out of the dirt sheet — because a first version is allowed to be, and the code itself says a drawn version is the artist's to do. This is that moment arriving, and it arrived the way these things should: somebody looked at the game and could not read it. Her farm has two raided squares on it right now, so whatever wins can be judged on a real farm rather than a mock-up.",
+  "why_now": "The mark was always a placeholder. It is made of pixels the game already ships — three patches lifted out of the dirt sheet — because a first version is allowed to be, and the code itself says a drawn version is the artist's to do. This is that moment arriving, and it arrived the way these things should: somebody looked at the game and could not read it. Her farm has two raided squares on it right now, so whatever wins can be judged on a real farm rather than a mock-up. **Ruled and built, 2026-09-19.** You picked the stripped plant. A square a bird empties now keeps a bitten, broken-off stalk of whatever was growing on it: the square remembers which crop it lost, and wheat, tomato and pea each have a stripped stage drawn from their own colours. The feather is deleted. One thing was left deliberately undone and is Q-112: clearing the stalk costs you nothing extra, so a raided square is still one hoe stroke from being a bed again.",
   "options": [
     {
       "key": "a",
@@ -36,6 +36,11 @@
     }
   ],
   "attachments": [
+    {
+      "type": "image",
+      "src": "docs/design/mockups/ransack_mark/shipped_close.png",
+      "caption": "What ships now: a gap in a row of ripe tomatoes with a bitten stalk standing in it."
+    },
     {
       "type": "image",
       "src": "docs/design/mockups/ransack_mark/clods_close.png",

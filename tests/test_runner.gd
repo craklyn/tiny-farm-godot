@@ -2571,6 +2571,13 @@ func test_crow_raid_marks_the_plot() -> void:
 	_assert(not s.world.has_crop(plant.x, plant.y), "the last bird takes its tomato")
 	_assert(bool(s.world.get_tile(plant.x, plant.y).get("ransacked", false)),
 		"and leaves the square marked as a square something ate a plant off")
+	# **And names the plant it took.** The designer ruled on 2026-09-19 that the
+	# square keeps a bitten stalk of what was growing there (Q-110 b), so the
+	# square has to remember which crop that was — the state is cleared to soil
+	# the instant the bird eats, and after that nothing else can say.
+	_assert(String(s.world.get_tile(plant.x, plant.y).get("ransacked_crop", ""))
+			== SimWorld.RAID_CROP,
+		"and remembers that what it lost was a %s" % SimWorld.RAID_CROP)
 
 	# The mark rides in the save, because a farm reloaded the next minute is the
 	# same farm and the loss did not stop being true while the file was shut.
@@ -2580,6 +2587,9 @@ func test_crow_raid_marks_the_plot() -> void:
 	_assert(SaveGame.restore(snapshot, loaded, gs_loaded), "the morning save restores")
 	_assert(bool(loaded.get_tile(plant.x, plant.y).get("ransacked", false)),
 		"with the ransacked square still ransacked")
+	_assert(String(loaded.get_tile(plant.x, plant.y).get("ransacked_crop", ""))
+			== SimWorld.RAID_CROP,
+		"and still knowing which plant it lost, so it draws the right stalk")
 	_assert(SaveGame.capture_canonical(loaded, gs_loaded)
 			== SaveGame.capture_canonical(s.world, s.gs),
 		"and the two farms are the same farm in every other respect too")
@@ -2594,13 +2604,28 @@ func test_crow_raid_marks_the_plot() -> void:
 	_assert(not bool(old.get_tile(plant.x, plant.y).get("ransacked", false)),
 		"as a farm with nothing marked on it")
 
+	# A save from the four days when the square was marked but the crop was not
+	# recorded loads as a marked square that does not know what it lost. It stays
+	# a legal state, because the renderer has an answer for it and because the
+	# first work she does on the square ends it.
+	var mid = JSON.parse_string(JSON.stringify(snapshot))
+	mid["world"]["tiles"][plant.y][plant.x].erase("ransacked_crop")
+	var half := SimWorld.new()
+	var gs_half = load("res://systems/game_state.gd").new()
+	_assert(SaveGame.restore(mid, half, gs_half), "a save that marked the square but never named the crop loads")
+	_assert(bool(half.get_tile(plant.x, plant.y).get("ransacked", false))
+			and String(half.get_tile(plant.x, plant.y).get("ransacked_crop", "")) == "",
+		"as a marked square that does not know what it lost")
+
 	# She puts the hoe through it, and the square is hers again.
 	var tilled := s.act({ "verb": "till", "actor": "player", "target": plant })
 	_assert(tilled.get("ok", false), "she turns the square over")
-	_assert(not bool(s.world.get_tile(plant.x, plant.y).get("ransacked", false)),
-		"and the mark comes off with the first work she does on it")
+	_assert(not bool(s.world.get_tile(plant.x, plant.y).get("ransacked", false))
+			and String(s.world.get_tile(plant.x, plant.y).get("ransacked_crop", "")) == "",
+		"and the mark and the crop it named both come off with the first work she does on it")
 	gs_loaded.free()
 	gs_old.free()
+	gs_half.free()
 	s.done()
 
 

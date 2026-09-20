@@ -4,7 +4,7 @@
   "option_label": "The stripped plant",
   "judgment": null,
   "ruled_at": "2026-09-19T23:11:08",
-  "status": "pending_integration",
+  "status": "integrated",
   "earlier": [
     {
       "id": "Q-110",

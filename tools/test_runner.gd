@@ -6550,17 +6550,18 @@ func _scenario_au_the_overnight_tells_a_story() -> void:
 
 
 func _scenario_av_a_ransacked_plot_shows_it() -> void:
-	# The designer, 2026-09-11, on the raid's morning: "add a small animation
-	# indicator that the plot was ransacked by the bird." The sim marks the square
-	# a bird emptied and clears the mark when she works it again (Q-105, unit
-	# suite); this is the other half — that the mark reaches the screen, and that
-	# a square she has taken back does not keep wearing it.
+	# The designer, 2026-09-11: "add a small animation indicator that the plot was
+	# ransacked by the bird." Then, on 2026-09-19, having looked at four pictures
+	# of the same square, he picked what that indicator is (Q-110 b): the plant is
+	# left standing, stripped — a bitten stalk of whatever was growing there,
+	# rather than the square going to bare earth. The sim marks the square, names
+	# the crop it lost, and clears both when she works it again (unit suite); this
+	# is the other half — that the right plant reaches the screen, and that a
+	# square she has taken back stops wearing one.
 	#
 	# Scenario S's treatment: a **detached** farm, so nothing here depends on where
-	# the played session left the farmer or which crows are in the air. What is
-	# checked is the renderer's own answer for a square — `ransack_marks` is what
-	# `_draw` draws, so asserting on it is asserting on the picture.
-	print("\n--- Scenario AV: a plot a crow emptied wears the mark until she works it ---")
+	# the played session left the farmer or which crows are in the air.
+	print("\n--- Scenario AV: a plot a crow emptied wears a stripped plant until she works it ---")
 
 	var FarmScript = load("res://world/farm.gd")
 	var yard = FarmScript.new()
@@ -6570,67 +6571,63 @@ func _scenario_av_a_ransacked_plot_shows_it() -> void:
 	await get_tree().process_frame
 
 	# Two squares of turned soil side by side, and a bird takes the plant off one
-	# of them — through the gateway, because that is the only thing that marks a
-	# square and this scenario must not be able to mark one by hand.
+	# of them — through the renderer's gateway (`farm.apply_action`), which is the
+	# call the game makes, because this scenario must not be able to mark a square
+	# by hand.
 	var eaten := Vector2i(7, 9)
 	var spare := Vector2i(8, 9)
 	yard.set_tile_state(eaten.x, eaten.y, "growing", SimWorld.RAID_CROP)
 	yard.set_tile_state(spare.x, spare.y, "tilled")
-	# Through the *renderer's* gateway (`farm.apply_action`), which is what the game
-	# calls and what keeps the marks on screen in step with the sim — the sim's own
-	# `apply_action` marks the square but tells no renderer about it.
 	yard.apply_action({ "verb": "eat_crop", "actor": SimWorld.ACTOR_CROW, "target": eaten },
 		GameState)
 
-	_assert(yard.ransack_marks(eaten.x, eaten.y).size() == yard.RANSACK_CLODS,
-		"the emptied square draws its scattered earth (%d clods)"
-			% yard.ransack_marks(eaten.x, eaten.y).size())
-	_assert(yard.ransack_marks(spare.x, spare.y).is_empty(),
-		"and the turned square beside it, which nothing ate off, draws none")
+	_assert(yard.ransack_plant(eaten.x, eaten.y) == SimWorld.RAID_CROP,
+		"the emptied square draws the stripped stage of the crop it lost (%s)"
+			% yard.ransack_plant(eaten.x, eaten.y))
+	_assert(yard.ransack_plant(spare.x, spare.y) == "",
+		"and the turned square beside it, which nothing ate off, draws no plant at all")
 
-	# Every clod is inside its own square and reads out of the dirt sheet, so the
-	# mark cannot creep onto a neighbour or point at a cell that is not soil.
-	var inside := true
-	for mark in yard.ransack_marks(eaten.x, eaten.y):
-		var clod: Rect2 = mark["rect"]
-		inside = inside and clod.position.x >= eaten.x * yard.TILE_SIZE \
-			and clod.position.y >= eaten.y * yard.TILE_SIZE - yard.RANSACK_LIFT_PX \
-			and clod.end.x <= (eaten.x + 1) * yard.TILE_SIZE \
-			and clod.end.y <= (eaten.y + 1) * yard.TILE_SIZE
-	_assert(inside, "each clod sits inside the square it belongs to")
+	# Every crop the game can grow has a stripped stage, because every crop can be
+	# eaten. A crop whose sheet were missing would mark the square and draw
+	# nothing on it, which is the failure this whole item exists to end.
+	for crop in yard.crop_sheets.keys():
+		_assert(yard.stripped_sheets.get(crop) != null,
+			"%s has a stripped stage to leave behind" % crop)
 
-	# **And the mark is on top of its own ground.** The list above is what the mark
-	# draws; this is whether anything draws over it. The farm page — rows 0 to
-	# `PAGE_ROWS`, which is every square she farms — is drawn by a child of the farm
-	# (`FarmPage`, added by the farm-through-the-walls change), so a mark placed
-	# before that child in the drawing order is painted over by the soil every
-	# frame and the square shows nothing. That is exactly what happened between 16
-	# September and this assertion: the verb marked the square, the list came back
-	# with three clods in it, every check above passed, and there was nothing on
-	# screen. Asserting on the list is not asserting on the picture.
-	await get_tree().process_frame
-	var drawn = yard._ransack_nodes.get(eaten, null)
-	_assert(is_instance_valid(drawn), "the emptied square gets a node to draw its mark")
-	if is_instance_valid(drawn) and yard._page0_node != null:
-		_assert(drawn.get_index() > yard._page0_node.get_index(),
-			"and it is drawn after the farm page, so its own soil cannot cover it")
-		_assert(drawn.visibility_layer & yard.PAGE0_LAYER != 0,
-			"and it is on the page's layer, so the yard seen through a room's walls wears it too")
+	# **Nothing can paint over it.** The picture is queued in the same pass as the
+	# living crops, on the square's own y, rather than drawn by a node of the
+	# farm's — which is what it used to be. On 2026-09-16 the farm page moved into
+	# a child of the farm and covered every one of those nodes, and the mark was
+	# invisible for four days with this scenario passing, because it asserted the
+	# shape the mark would draw and never that anything could see it. There is no
+	# such node any more, and this is the assertion that says so.
+	var strays := []
+	for child in yard.get_children():
+		if String(child.name).begins_with("ransack"):
+			strays.append(String(child.name))
+	_assert(strays.is_empty(),
+		"and it is drawn with the crops rather than by a node the ground can cover")
 
-	# It loops rather than holding a pose: two moments a second apart are two
-	# different pictures.
-	var now: Array = FarmScript.ransack_clods(eaten, 0.0)
-	var later: Array = FarmScript.ransack_clods(eaten, 1.0)
-	var moved := false
-	for i in now.size():
-		moved = moved or now[i]["rect"].position.y != later[i]["rect"].position.y
-	_assert(moved, "and the earth is still settling a second later, rather than holding a pose")
+	# A crop the renderer has no stripped stage for leaves the square saying
+	# nothing rather than drawing the wrong plant on it.
+	yard.set_tile_state(spare.x, spare.y, "growing", "wheat")
+	yard.apply_action({ "verb": "eat_crop", "actor": SimWorld.ACTOR_CROW, "target": spare },
+		GameState)
+	_assert(yard.ransack_plant(spare.x, spare.y) == "wheat",
+		"a square a bird took wheat off wears stripped wheat, not the tomato")
+
+	# A square marked before the crop was recorded — every raided square in a save
+	# written between 11 and 19 September — reads as the raid's crop, which is
+	# what emptied squares in numbers, until the first work she does on it.
+	yard.sim.get_tile(eaten.x, eaten.y).erase("ransacked_crop")
+	_assert(yard.ransack_plant(eaten.x, eaten.y) == SimWorld.RAID_CROP,
+		"an older marked square, which never recorded its crop, still shows a plant")
 
 	# She puts the hoe through it. The square is hers again and stops saying
 	# anything happened to it.
 	yard.apply_action({ "verb": "till", "actor": SimWorld.ACTOR_PLAYER, "target": eaten },
 		GameState)
-	_assert(yard.ransack_marks(eaten.x, eaten.y).is_empty(),
+	_assert(yard.ransack_plant(eaten.x, eaten.y) == "",
 		"a re-tilled square draws nothing, because it is not a loss any more")
 
 	yard.queue_free()

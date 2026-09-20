@@ -342,20 +342,23 @@ before the first public build ships.*
   `*_meta.json`, the prompts and the palette locks archived per the standing policy at
   `assets/raw/2026-09-19-ransack-mark/`). Two 16px sprites, drawn so the designer could
   choose between pictures rather than between descriptions:
-  - `feather.png` — one crow feather lying on a square, 13 pixels across in the crow
-    sheet's own four colours. Generated at 64px (`rd_plus__default`, two images,
-    palette-locked to the crow's navy, its violet sheen and one pale highlight),
-    downscaled to the cell and quantized back onto that lock. The second candidate from
-    the same call is archived beside it and contributed no pixels.
-  - `tomato_stripped.png` — a tomato left as a bitten, drooping stalk with two torn leaf
-    stubs, loose leaf scraps and one scrap of tomato skin at its base. **Drawn by hand
-    in the shipped tomato's own six colours**, not generated: both generations of a
-    stripped plant came back as a plant standing in a pool of red, and the option is
-    only worth anything if the square still says *tomato*, which meant building it out
-    of `tomato.png`'s own stem. The two generations are archived as the reference they
-    were.
-  Both were made as candidates for a decision that is still open, so **at most one of
-  them will stay**; the loser is deleted when the designer picks.
+  - A crow feather for option (a), 13 pixels across in the crow sheet's own four
+    colours. Generated at 64px (`rd_plus__default`, two images, palette-locked to the
+    crow's navy, its violet sheen and one pale highlight), downscaled to the cell and
+    quantized back onto that lock. **It lost**: the designer picked the stripped plant
+    the same night, so `feather.png` was deleted and no feather pixel ships. The raws
+    are kept because the policy keeps every generation, bought or binned.
+  - A stripped tomato plant for option (b) — **which won**. Two generations of a
+    stripped plant came back as a plant standing in a pool of red, matching no crop in
+    the game, so they became reference rather than art and the sprite was drawn by hand
+    in the shipped tomato's own six colours: the option is only worth anything if the
+    square still says *tomato*, which meant building it out of `tomato.png`'s own stem.
+  **What ships from this batch is drawn, not generated, $0.00.** The ruling needed a
+  stripped stage per crop, so `wheat_stripped.png`, `tomato_stripped.png` and
+  `pea_stripped.png` are authored in `tools/gen_stripped_crops.py` (idempotent, no
+  network), each built only from colours already in that crop's own sheet — the pictures
+  are editable grids of letters in that file. The $0.108 bought the feather that lost and
+  the reference that shaped the one that won.
 - **P-16, the view out of the window, 2026-09-11** — **generated, $0.381 for one usable
   call** (same Retro Diffusion pipeline and rights as above; raws with `*_meta.json`, the
   prompt and the palette archived per the standing policy at

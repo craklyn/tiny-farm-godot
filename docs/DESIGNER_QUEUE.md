@@ -11,7 +11,7 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
 
 ## Now — blocks M0 close or current work
 
-- **Q-110** The mark a crow leaves does not read — **Ruling**, and it is Q-105's own outcome
+- ~~**Q-110** The mark a crow leaves does not read~~ — **Ruled 2026-09-19: (b), the stripped plant.** Built and shipped the same night; see the closing note below. It is Q-105's own outcome
   coming back for a second look. On 2026-09-15 the CEO looked at his daughter's farm, saw
   three small shapes stirring on a square three tiles east of the gate by her house, and could
   not tell what they were or whether they were a fault. **They are the ransack mark**: the sim
@@ -56,9 +56,16 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   (playing size), taken by `tools/capture_ransack_candidates.tscn`, which stages a bed of
   ripe tomatoes and puts a crow's `eat_crop` through the gateway so the square is really
   raided. Two new sprites were drawn for it: `assets/sprites/generated/feather.png` and
-  `assets/sprites/generated/tomato_stripped.png`. At most one of them survives the ruling;
-  the loser is deleted when the pick lands. The card carries all four pictures. **Still
-  awaiting the pick.**
+  `assets/sprites/generated/tomato_stripped.png`. The card carries all four pictures.
+
+  **Ruled 2026-09-19, option (b): the stripped plant.** A square a bird empties now keeps a
+  bitten, broken-off stalk of whatever was growing on it rather than going to bare earth.
+  The sim records which crop was taken (`ransacked_crop`, saved with the world, cleared with
+  the mark), and the renderer draws that crop's stripped stage in the same pass as the living
+  crops. Three stripped stages — wheat, tomato and pea — are drawn from each crop's own
+  colours by `tools/gen_stripped_crops.py`, where the pictures are editable grids of letters.
+  `feather.png` is deleted; it lost. Clearing the stalk costs her nothing extra in this first
+  version, which is Q-112 below.
 
   **And the mark had stopped being drawn at all.** Taking those pictures found that since
   2026-09-16 the ransack mark has been invisible: the farm-through-the-walls change moved
@@ -99,6 +106,26 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   silently; a release that stops and tells you what to paste costs a minute and never forgets,
   where a robot typing into somebody else's form breaks without a changelog and puts your
   itch.io login in CI. Card: `hq/data/decisions/Q-111.json`.
+
+- **Q-112** What it costs her to clear a raided plot — **Ruling**, opened by Q-110's own
+  ruling and deliberately parked until now. Since 2026-09-19 a square a bird empties keeps a
+  bitten stalk standing on it. That stalk is currently **a picture and nothing else**: tilling
+  or sowing the square takes it away in the same one verb that worked a bare square before,
+  so the wreck she is looking at costs her nothing to deal with. That was the right first
+  version — it changed what she sees without changing what she does — but it is not obviously
+  the right end state, and the card that asked the question said so: leaving the plant behind
+  "changes what the square looks like she has to clear before replanting."
+
+  The question: does a raided square become work? Options: **(a) nothing changes** — the
+  stalk is scenery and the hoe goes through it like always; **(b) it costs a beat** — clearing
+  a raided square is a clear, like a weed, so the raid takes one action off her day as well
+  as one tomato; **(c) it returns something** — clearing the wreck gives back a seed or a
+  scrap of the crop, so the loss is softened and picking it up is its own small reward;
+  **(d) it blocks sowing until cleared** — she cannot plant over a dead plant, which makes
+  the square a real chore. **Recommendation: (a)** for now, because a raid already costs her a
+  tomato and a walk, and charging her again for the same bird is a second tax on one event —
+  but this is squarely taste, and (c) is the one worth looking at next if you want the wreck
+  to be worth walking to. Bears on `design/04`; follows Q-110.
 
 - **Q-109** How much room a room gets — **Ruling**, now narrowed. The farmhouse is
   provisionally answered (3×2 outside, 6×3 inside); what is left is whether that number holds

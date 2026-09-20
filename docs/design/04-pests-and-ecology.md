@@ -144,29 +144,46 @@ bed to. `tools/measure_raid_race.gd` now walks her out onto both beds and plays 
 through the gateway rather than reasoning about it, so what it prints — two saved of three
 on each — is what the game does, and the unit suite asserts on the same two runs.
 
-**A ransacked plot says so** (designer, 2026-09-11, built). A square a bird emptied is
+**A ransacked plot says so** (designer, 2026-09-11; what it looks like ruled 2026-09-19). A square a bird emptied is
 turned soil with nothing on it, which is also what a row she hoed and has not sown looks
 like, so a loss read as a chore she forgot. The square now carries the fact that something
 ate a plant off it — saved with the world, cleared the moment she works it again — and
-wears a small looping mark while it does: three clods of earth scattered across it, lifting
-one after another as if the soil were still settling. **Deliberately made of pixels the
-game already ships** (they are lifted out of the tilled-soil sheet), so the first version
-costs no art; a drawn version, with tumbled leaves or a feather left behind, is the one
-piece of this still open.
+**does not go to bare earth at all**: it keeps the plant, stripped. What is left standing is
+a bitten, broken-off stalk of whatever was growing there — the head or the fruit gone, one or
+two torn leaf stubs still on it, and a little of it scattered on the ground at its base. The
+loss reads as a loss rather than as ground, and the square says which plant it lost.
 
-The drawn version is **Q-110**, which the designer opened on 2026-09-15 after looking at a
-raided square on a real farm and asking whether it was a fault — the mark failing at the only
-job it has. Three candidates are built and photographed on a real raided square in the running
-game (`tools/capture_ransack_candidates.tscn`, boards under
-`docs/design/mockups/ransack_mark/`): a crow's feather lying on the square, the tomato left as
-a bitten stalk, and the same three clods sat down on the soil and darkened. The pick is the
-designer's and is not made yet.
+That is **Q-110**, ruled 2026-09-19. The designer opened it on 15 September after looking at a
+raided square on a real farm and asking whether it was a fault — the first version's mark,
+three clods of earth cut from the tilled-soil sheet, failing at the only job it had. He then
+declined to choose between four descriptions and asked for all of them built: a crow's
+feather, the stripped plant, and the clods sat down and darkened were each drawn and
+photographed on a real raided square at the size the game draws it (boards under
+`docs/design/mockups/ransack_mark/`), and **the stripped plant won**.
 
-**Wherever the mark ends up, it has to be drawn after the pass that draws its own ground.**
-Rows 0 to `PAGE_ROWS` are drawn by `_page0_node`, a child of the farm, so a mark that sits
-before that child in the drawing order is painted over by the soil every frame and the square
-shows nothing at all. That is exactly what happened between 2026-09-16 and 2026-09-19, in
-public, with every test passing: the list of clods was asserted, the picture was not.
+How it is put together:
+
+- **The square remembers what it lost.** `eat_crop` writes `ransacked_crop` beside the mark,
+  read off the tile before the state is cleared to soil. It is saved with the world and it
+  comes off with the mark, by the same line that clears the mark.
+- **One stripped stage per crop**, drawn from that crop's own colours by
+  `tools/gen_stripped_crops.py` — wheat left headless with a few grains shaken out, the tomato
+  with a scrap of skin at its base, the pea with the tendril it was climbing by. The pictures
+  in that file are grids of letters, so changing one is editing the grid.
+- **It is drawn with the crops, in the crop pass, on the square's own y.** That is not a
+  detail. The first version's mark was a node of its own so it could animate, and on
+  2026-09-16 the farm page moved into a child of the farm and painted over every one of those
+  nodes: a raided square drew nothing at all for four days, in public, with both suites green,
+  because the tests asserted the shape the mark would draw and never that anything could see
+  it. A picture drawn where the crops are drawn cannot be covered by its own ground, and it
+  sorts under whoever is standing on the square for free. The check that a raided square does
+  not look like bare soil now lives in `tools/capture_ransack_mark.tscn`, beside the visual
+  regression, because only a real screen can answer it.
+
+**Clearing it costs her nothing extra, deliberately.** The stalk is a picture, not an
+obstacle: tilling or sowing the square takes it away in one verb, exactly as the clods went.
+Whether a raided square should become real work — a beat to clear, a seed returned, a block on
+sowing until it is cleared — is **Q-112**, and it is open.
 
 **What "planted" means** is settled by the crow's own appetite: the four are counted with
 the same rule a bird picks its target by, so a tile the crow could not eat does not count,

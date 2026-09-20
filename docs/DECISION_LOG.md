@@ -826,8 +826,10 @@ actually running, so that a player who comes out and does nothing still loses th
 `tools/measure_raid_race.gd` plays the morning out on two beds, near and far, and both
 save two of three. **And the plot a bird ransacked says so**: the square carries the fact
 that something ate a plant off it, saved with the world and cleared the moment she works it
-again, and wears a small looping mark — three clods of scattered earth — made from pixels
-the game already ships. A drawn version of that mark is open and belongs to the artist.
+again. The first version wore three clods of scattered earth cut from the tilled-soil sheet;
+**since Q-110 (ruled 2026-09-19) the square keeps the plant instead**, left standing as a
+bitten, broken-off stalk of whatever was growing on it, so the loss reads as a loss and the
+square says which crop it lost. What clearing that stalk should cost her is Q-112 and open.
 
 
 ### P-16. The window looks out on a stock hillside, and looking is not an Action

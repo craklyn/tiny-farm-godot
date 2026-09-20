@@ -1434,6 +1434,7 @@ func set_tile_state(tx: int, ty: int, new_state: String, crop_type: String = "")
 	# after, so `eat_crop`, which turns the square to soil and then marks it,
 	# does not have its own mark taken off by its own call.
 	tile.erase("ransacked")
+	tile.erase("ransacked_crop")
 	tile.state = new_state
 	if crop_type != "":
 		tile.crop_type = crop_type
@@ -3084,6 +3085,10 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			# meal read the same function, so a critter can never smell a tile the
 			# gateway would then refuse it.
 			if has_crop(target.x, target.y):
+				# Read before the state is written, because writing it clears the
+				# crop off the square — and which plant was taken is the thing
+				# the mark has to say (Q-110 b).
+				var taken := String(tile.get("crop_type", ""))
 				set_tile_state(target.x, target.y, "tilled")
 				# **The square says what happened to it** (Q-105, design/04).
 				# Turned soil with nothing standing on it is also what a row she
@@ -3097,6 +3102,13 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 				# cleared the moment she works it again, which every verb that
 				# touches a square does through `set_tile_state`.
 				tile["ransacked"] = true
+				# **And which plant it was.** The designer ruled on 2026-09-19
+				# that the square keeps a bitten stalk of the crop that was taken
+				# rather than going to bare earth (Q-110 b), so the loss reads as
+				# a loss and the square says what it lost. Saved with the world
+				# and cleared with the mark, by the same one line in
+				# `set_tile_state` that clears the mark.
+				tile["ransacked_crop"] = taken
 				_rain_wets_fresh_soil(target, gs)
 				return { "ok": true }
 			return _fail("no_crop")
