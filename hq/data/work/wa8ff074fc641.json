@@ -1,0 +1,18 @@
+{
+  "id": "wa8ff074fc641",
+  "title": "Three of the last four red builds were integration tests that pass on every machine we own",
+  "level": "story",
+  "owner": "tomas",
+  "tier": 1,
+  "tier_reason": "filed by hand after the third occurrence",
+  "ask": "The integration suite fails in CI on scenarios that pass locally, repeatedly, on unchanged game code. Known occurrences:\n\n  run 35133894142 — 'a coop with an inside stands on the farm'\n  run 35478192772 — 'a coop with an inside stands on the farm again'\n  run 35483508536 — 'and nothing but the walk reached the replay — looking is not an Action (1 verbs)' (Scenario AO, P-16, the window view)\n\nThe last of these failed on a commit that changed only JSON data files; the identical game code had passed in the run immediately before it. Locally the same commit gives 962 passed, 0 failed.\n\nTHE HYPOTHESIS, which is where to start rather than what to conclude. tools/test_runner.gd's `_wait_until(pred, max_frames)` waits a number of FRAMES, while the things it waits for — a walk arriving, an action resolving — advance on delta SECONDS. Headless Godot runs frames as fast as the machine allows, so the seconds inside one frame differ between this desktop and a shared CI runner, and a scenario that arrives comfortably inside its frame budget here can arrive early or late there. The window scenario's symptom fits: it selects the hoe so that a miss would till, and the failure is exactly one unexpected verb in the replay — a till that resolved before the window opened.\n\nWHAT TO DO. First reproduce it: run the integration suite with the frame rate pinned low (and again pinned high) and see whether these scenarios flip. If the hypothesis holds, the fix is not a bigger frame budget — it is waiting on the condition the scenario actually depends on. Where a scenario waits for a walk to finish, wait for the player to reach the tile; where it waits for an action, wait for the action lock, as `_wait_for_action` already does. A frame count is only ever right when the thing being waited for is itself counted in frames.\n\nWHY IT MATTERS MORE THAN ONE TEST. A red build has to mean something broke. Three reds in four that nobody can reproduce teaches everyone to push and look away, and the next real break arrives looking exactly like the last three.",
+  "first_action": "Read `_wait_until` and `_wait_for_action` at the top of tools/test_runner.gd, then list every scenario that calls `_wait_until` on something that advances on delta rather than on frames.",
+  "state": "queued",
+  "thread": "tomas",
+  "source": "chief-of-staff",
+  "source_message": "Noticed while clearing a different red build on 2026-09-19. The writing-check failure that night was real and is fixed; this one sat underneath it and is not.",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-19T19:28",
+  "created_ts": 1789871295.3962307
+}

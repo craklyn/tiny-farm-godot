@@ -32,6 +32,12 @@
   "013d076f556a4408cd9f": {
    "verdict": "ok"
   },
+  "02872ba11eab66f6b912": {
+   "instead": "The farm has two raided squares on it right now",
+   "quote": "Her farm has two raided squares on it right now",
+   "verdict": "second-look",
+   "why": "The pronoun her refers to the daughter from [8], but isn't clear if [9] is read independently."
+  },
   "02b7018e621772f5c7e8": {
    "verdict": "ok"
   },
@@ -140,6 +146,12 @@
   "1195d157ded5cd1127d6": {
    "verdict": "ok"
   },
+  "11c5497408ef4e8bef1b": {
+   "instead": "the next morning's card",
+   "quote": "the Day-N card",
+   "verdict": "second-look",
+   "why": "Day-N is unexplained; without context, it's unclear what this feature or reference means."
+  },
   "130086481bccaf2e6871": {
    "verdict": "ok"
   },
@@ -155,6 +167,12 @@
    "quote": "can hit this right now",
    "verdict": "second-look",
    "why": "The verb 'hit' is colloquial and requires interpretation; 'access' or 'reach' is plainer."
+  },
+  "15025c41bc225d217284": {
+   "instead": "while the player keeps control",
+   "quote": "while she keeps control",
+   "verdict": "second-look",
+   "why": "The pronoun she isn't introduced in this item; the reader has to infer it refers to the player."
   },
   "160eb7b2f4900eaf4b80": {
    "verdict": "ok"
@@ -204,6 +222,9 @@
    "verdict": "ok"
   },
   "1a63c4737f58b5ea4f52": {
+   "verdict": "ok"
+  },
+  "1a8f5ec0ffec270cb2ad": {
    "verdict": "ok"
   },
   "1af77da2c651048280fb": {
@@ -290,6 +311,9 @@
    "verdict": "ok"
   },
   "26cfb32812261e3f40d8": {
+   "verdict": "ok"
+  },
+  "27807fe1e3ebb49d9eb3": {
    "verdict": "ok"
   },
   "290380de2c5c1f44e51c": {
@@ -538,6 +562,9 @@
   "4be0ca19124a3cb01c80": {
    "verdict": "ok"
   },
+  "4bf58b8e6013e4eeb513": {
+   "verdict": "ok"
+  },
   "4d4f8b855d68de78593f": {
    "verdict": "ok"
   },
@@ -721,6 +748,9 @@
   "6b66d5ab36d833327aa7": {
    "verdict": "ok"
   },
+  "6c3865cbd1bd46ac52b3": {
+   "verdict": "ok"
+  },
   "6c44493419c09c039c4e": {
    "verdict": "ok"
   },
@@ -838,6 +868,9 @@
   "85c2d119a154fc00b275": {
    "verdict": "ok"
   },
+  "874791d677156484fee6": {
+   "verdict": "ok"
+  },
   "87710075e5e71d16a4b4": {
    "verdict": "ok"
   },
@@ -897,6 +930,9 @@
   "8ff8311daea1cd0d6f13": {
    "verdict": "ok"
   },
+  "90de4aac352303cfbd75": {
+   "verdict": "ok"
+  },
   "911044a01ae440ff1fd7": {
    "verdict": "ok"
   },
@@ -930,6 +966,9 @@
    "why": "'Before' is used as shorthand for a previous state without being named or introduced in this sentence."
   },
   "948573f433051e0be81c": {
+   "verdict": "ok"
+  },
+  "9530f107e4cbd1ad6888": {
    "verdict": "ok"
   },
   "955c1d16824762b5af61": {
@@ -1055,7 +1094,13 @@
   "aacc467e5296c97e177e": {
    "verdict": "ok"
   },
+  "ab2e48b972efda61da80": {
+   "verdict": "ok"
+  },
   "ab44ac9f47f9963b62bb": {
+   "verdict": "ok"
+  },
+  "abe4e3615ae7f4653b92": {
    "verdict": "ok"
   },
   "ad57e5a2c46a9231b878": {
@@ -1160,7 +1205,13 @@
   "bec87695f3c029f69320": {
    "verdict": "ok"
   },
+  "bfbe0360a6fa9f7fc78e": {
+   "verdict": "ok"
+  },
   "bfc35585290362008e39": {
+   "verdict": "ok"
+  },
+  "c092e9336ca3dbd40a06": {
    "verdict": "ok"
   },
   "c27023ae6ed510817274": {
@@ -1177,6 +1228,9 @@
    "why": "Inconsistent terminology with the same passage: earlier uses \"cuts away,\" here uses \"cut-in.\" In same context, use same term."
   },
   "c4a03b3e03073511bda0": {
+   "verdict": "ok"
+  },
+  "c4c751fa7a2528208240": {
    "verdict": "ok"
   },
   "c5192e62a2f72b7c8e8a": {
@@ -1228,6 +1282,9 @@
    "verdict": "ok"
   },
   "cd73bd0445c8d01fe4dc": {
+   "verdict": "ok"
+  },
+  "cf676ed2e47a4eb6a818": {
    "verdict": "ok"
   },
   "cfc94e81db686745c8db": {
@@ -1461,6 +1518,9 @@
   "efb5a00584b624341ce0": {
    "verdict": "ok"
   },
+  "efd7dfbbf843f7961906": {
+   "verdict": "ok"
+  },
   "f04d72f599350e7758b9": {
    "verdict": "ok"
   },
@@ -1508,6 +1568,9 @@
    "verdict": "ok"
   },
   "f7f1022a6e2e7574b0b5": {
+   "verdict": "ok"
+  },
+  "f8591e80d264ddb81814": {
    "verdict": "ok"
   },
   "fa42add8e1d62d101390": {
