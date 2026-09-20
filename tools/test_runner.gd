@@ -175,12 +175,58 @@ func _scenario_aw_the_front_door_holds_one_picture() -> void:
 		"and the plate's floor sits under its ceiling, so the bloom is always reached")
 
 
+# **A wait is counted in frames; almost nothing it waits for is** (2026-09-19).
+# Three of the four red builds before this comment was written were scenarios
+# here that pass on every machine the studio owns. The farm advances on delta
+# seconds — the hen's next step, a crow's dive, a robot's tick — and a frame is
+# however long this machine took to draw one, which is well under a millisecond
+# on the desktop and several milliseconds on a shared CI runner. So the same
+# number of frames buys ten times as much farm on the runner as it does here,
+# and a scenario that waits for its own thing gets the rest of the farm's day
+# thrown in.
+#
+# That is not a budget problem and a bigger `max_frames` does not touch it. Two
+# rules come out of it, and both are kept below:
+#
+#   1. **Wait on the condition the scenario depends on**, never on a count of
+#      frames that usually covers it. `_wait_for_action` is the pattern; the
+#      ground a structure is put down on (`_wait_for_clear_ground`) is the same
+#      shape, because what makes it un-placeable is a hen standing on it.
+#   2. **Assert about the actor the scenario is about.** Every actor's Action
+#      lands in the one replay, so "no verb was recorded" is a claim about the
+#      whole farm and fails the day a crow eats an acorn while the player walks.
+#      Scenario AO used to make exactly that claim, which is the best account
+#      anyone has of why run 35483508536 went red on a commit that changed only
+#      JSON: stretch that scenario's walk and a crow does exactly that.
+#
+# Measuring time is the same rule read backwards: the transition scenario W
+# times ran on the wall clock while the transition itself runs on delta, so it
+# read 500 ms of a 1.95 s fade the moment the two were allowed to differ.
 func _wait_until(pred: Callable, max_frames: int) -> bool:
 	for i in max_frames:
 		if pred.call():
 			return true
 		await get_tree().process_frame
 	return false
+
+
+# The ground a structure needs, waited for rather than assumed.
+#
+# `SimWorld.placeable_at` refuses every cell of the block somebody is standing
+# on, and the hen potters across the whole farm on the sim clock. Whether she is
+# on this square at this instant is therefore a function of how much sim time has
+# passed since the scenario started, which is frames times delta — the one number
+# that differs between this desktop and CI. `place` then comes back `occupied`
+# and the scenario fails on a message about coops.
+#
+# `_stage_tile` already claims a tile's state and its object layer; this claims
+# the last thing on it, by waiting for her to wander off. She is never still for
+# long (`ChickenBrain.REST_IDLE` is two to five seconds), so the budget only has
+# to outlast one of her rests.
+func _wait_for_clear_ground(anchor: Vector2i, item: String) -> bool:
+	return await _wait_until(
+		func(): return farm.sim.placeable_at(anchor, item), 1200)
+
 
 # The action lock, waited out by condition on both edges rather than assumed to
 # appear within exactly one frame. The begin-poll is bounded because instant
@@ -2079,7 +2125,12 @@ func _scenario_w_the_cot_presents_itself() -> void:
 	# Now the hostile part, which is simply what a four-year-old does when nothing
 	# appears to have happened yet: keep tapping. This covers the 1.5 s re-tap that
 	# cost her a day, and every other instant of the window besides.
-	var t0 := Time.get_ticks_msec()
+	# **Timed in the unit the transition runs on** (2026-09-19). `DayCycle` counts
+	# its 1.95 s of tuck, fade, hold and fade on delta, so summing the deltas this
+	# loop lives through measures the window itself. The wall clock measures how
+	# long this machine took to draw the frames, which is the same number only by
+	# coincidence and stops being it the moment a frame is slow — see `_wait_until`.
+	var window_sec := 0.0
 	var taps := 0
 	var guard := 0
 	while main_scene.day_cycle.is_active() and guard < 2000:
@@ -2088,7 +2139,8 @@ func _scenario_w_the_cot_presents_itself() -> void:
 		taps += 1
 		guard += 1
 		await get_tree().process_frame
-	var window_ms := Time.get_ticks_msec() - t0
+		window_sec += get_process_delta_time()
+	var window_ms := int(window_sec * 1000.0)
 	_assert(taps > 0, "she tapped the cot again during the transition (%d times)" % taps)
 	_assert(window_ms >= 1500,
 		"and the window covered the whole transition, well past the 1.5 s re-tap (%d ms)" % window_ms)
@@ -4113,6 +4165,7 @@ func _scenario_aj_the_robot_lives_in_a_stall() -> void:
 	player.path.clear()
 	player.pending_action = {}
 	await get_tree().process_frame
+	await _wait_for_clear_ground(stall, "stall")
 	InputManager.click_tile = stall
 	InputManager.has_click = true
 	var built := await _wait_until(
@@ -4147,6 +4200,7 @@ func _scenario_aj_the_robot_lives_in_a_stall() -> void:
 	_assert(ActionRouter.resolve(farm, GameState, stall, player.get_tile_pos(), false)
 			.get("action", "") == "place",
 		"holding a robot, a tap on the bay means 'park it here' — the one thing a bay takes")
+	await _wait_for_clear_ground(stall, "bot_mk1")
 	InputManager.click_tile = stall
 	InputManager.has_click = true
 	var parked := await _wait_until(func(): return farm.sim.machine_at(stall) != "", 200)
@@ -5012,11 +5066,23 @@ func _scenario_ao_the_window_looks_out() -> void:
 	_assert(view.window_tile == glass, "and it is this window she is looking out of (%s)" % view.window_tile)
 
 	# Nothing about looking is an Action. The walk over recorded her tile
-	# crossings, as every walk does (M2.5 WI-6); no *verb* was recorded at all.
+	# crossings, as every walk does (M2.5 WI-6) — those entries are `kind: "walk"`
+	# and carry no verb at all; no verb of hers was recorded either.
+	#
+	# **Hers, and only hers** (2026-09-19). One replay carries the whole farm, so
+	# counting every verb in this stretch asked the crows and the hen to hold
+	# still while she crossed the room, and how much farm goes by while she does
+	# is frames times delta (see `_wait_until`). Run 35483508536 went red here on
+	# a commit that changed only JSON files, reporting one unexpected verb; with
+	# the walk stretched until the farm gets a turn inside it, the extra verb is a
+	# crow eating an acorn out in the field. The claim being made is about her
+	# tap, so it is her Actions that are counted.
 	var verbs_since := 0
 	for i in range(acted_before, farm.replay.entries.size()):
 		var e: Dictionary = farm.replay.entries[i]
-		if String(e.get("verb", "")) != "" and String(e.get("verb", "")) != "walk":
+		if String(e.get("actor", "")) != "player":
+			continue
+		if String(e.get("verb", "")) != "":
 			verbs_since += 1
 	_assert(verbs_since == 0,
 		"and nothing but the walk reached the replay — looking is not an Action (%d verbs)" % verbs_since)
@@ -5116,6 +5182,9 @@ func _buy_and_place(item: String, at: Vector2i) -> String:
 	player.path.clear()
 	player.pending_action = {}
 	await get_tree().process_frame
+	# Staged ground is not free ground until nobody is standing on it — see
+	# `_wait_for_clear_ground`. Six scenarios put a robot down through here.
+	await _wait_for_clear_ground(at, item)
 	InputManager.click_tile = at
 	InputManager.has_click = true
 	await _wait_until(func(): return farm.sim.machine_at(at) != "", 200)
@@ -6527,6 +6596,24 @@ func _scenario_av_a_ransacked_plot_shows_it() -> void:
 			and clod.end.y <= (eaten.y + 1) * yard.TILE_SIZE
 	_assert(inside, "each clod sits inside the square it belongs to")
 
+	# **And the mark is on top of its own ground.** The list above is what the mark
+	# draws; this is whether anything draws over it. The farm page — rows 0 to
+	# `PAGE_ROWS`, which is every square she farms — is drawn by a child of the farm
+	# (`FarmPage`, added by the farm-through-the-walls change), so a mark placed
+	# before that child in the drawing order is painted over by the soil every
+	# frame and the square shows nothing. That is exactly what happened between 16
+	# September and this assertion: the verb marked the square, the list came back
+	# with three clods in it, every check above passed, and there was nothing on
+	# screen. Asserting on the list is not asserting on the picture.
+	await get_tree().process_frame
+	var drawn = yard._ransack_nodes.get(eaten, null)
+	_assert(is_instance_valid(drawn), "the emptied square gets a node to draw its mark")
+	if is_instance_valid(drawn) and yard._page0_node != null:
+		_assert(drawn.get_index() > yard._page0_node.get_index(),
+			"and it is drawn after the farm page, so its own soil cannot cover it")
+		_assert(drawn.visibility_layer & yard.PAGE0_LAYER != 0,
+			"and it is on the page's layer, so the yard seen through a room's walls wears it too")
+
 	# It loops rather than holding a pose: two moments a second apart are two
 	# different pictures.
 	var now: Array = FarmScript.ransack_clods(eaten, 0.0)
@@ -6710,6 +6797,8 @@ func _scenario_ax_she_can_get_back_out_of_the_coop() -> void:
 		for tx in range(13, 19):
 			_stage_tile(tx, ty, "cleared")
 	GameState.machines["coop"] = 1
+	var clear := await _wait_for_clear_ground(hut, "coop")
+	_assert(clear, "the four squares the coop stands on are free of anyone standing on them")
 	var laid: Dictionary = farm.apply_action({ "verb": "place", "target": hut,
 		"item": "coop", "actor": "player" }, GameState)
 	_assert(laid.get("ok", false) and String(laid.get("room", "")) != "",
@@ -6802,6 +6891,8 @@ func _scenario_ax_she_can_get_back_out_of_the_coop() -> void:
 		for tx in range(13, 19):
 			_stage_tile(tx, ty, "cleared")
 	GameState.machines["coop"] = 1
+	var clear2 := await _wait_for_clear_ground(hut2, "coop")
+	_assert(clear2, "its four squares are free of anyone standing on them again")
 	var laid2: Dictionary = farm.apply_action({ "verb": "place", "target": hut2,
 		"item": "coop", "actor": "player" }, GameState)
 	_assert(laid2.get("ok", false) and String(laid2.get("room", "")) != "",
