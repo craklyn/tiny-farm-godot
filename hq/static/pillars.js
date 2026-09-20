@@ -275,6 +275,15 @@ function routeControl(g) {
   if (route.kind === "decision") return `<a class="gbtn" href="#/inbox/${esc(route.id)}">Open the card</a>`;
   if (route.kind === "work") return `<a class="gbtn" href="#/work/${esc(route.id)}">See the filed plan</a>`;
   if (p2g.action) return fileBtn(g, p2g, p2g.action);
+  // Before admitting there is no route: the check that just failed usually knows
+  // where the evidence is. A failing build read a run URL to reach its verdict,
+  // so the control is that run — a page that names a problem and then offers
+  // nothing is the dead end the rules forbid, and "somebody owes you a card"
+  // is HQ apologising to him in place of an answer.
+  const ev = (g.situation || {}).link;
+  if (ev && ev.href) {
+    return `<a class="gbtn" href="${esc(ev.href)}" target="_blank" rel="noreferrer">${esc(ev.label || "See the evidence")}</a>`;
+  }
   if (g.needs_you) {
     return `<span class="g-orphan">not prepped — ${esc(g.owner_human || p2g.owner || "somebody")}
       owes you a card on this before it is fair to ask</span>`;

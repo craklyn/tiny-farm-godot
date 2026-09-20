@@ -2993,6 +2993,16 @@ def _composite_state(reading, compare):
     return min(states, key=lambda s: _STATE_RANK[s])
 
 
+def _clip(text, n):
+    """Cut on a word, never through one. The summary line is a precis of a check
+    whose full wording is listed underneath it, so losing the tail is fine and
+    ending mid-word ("into the da") is not."""
+    text = str(text)
+    if len(text) <= n:
+        return text
+    return text[:n].rsplit(" ", 1)[0].rstrip(" ,;—-") + "…"
+
+
 def _measured_human(reading, compare, state):
     """The '<measured> against <target>' half of a goal row, in words."""
     if reading.get("members") is not None:
@@ -3011,14 +3021,24 @@ def _measured_human(reading, compare, state):
                 parts.append((st, lab))
         n_ok = sum(1 for st, _ in parts if st == "green")
         bad = [(st, lab) for st, lab in parts if st != "green"]
-        head = f"{n_ok} of {len(parts)} hold"
-        if bad:
-            st0, lab0 = bad[0]
-            word = {"unchecked": "not monitored", "broken": "could not check",
-                    "red": "fails", "amber": "is slipping", "attested": "is attested only"}.get(st0, "fails")
-            head += f" — {word}: {lab0[:110]}"
-            if len(bad) > 1:
-                head += f" (and {len(bad) - 1} more)"
+        # Each member's label states the condition that is supposed to hold, so
+        # the sentence has to say which of them are not true yet. It used to
+        # read "1 of 2 hold — fails: <label>", which the CEO read as a claim
+        # that the label described what happens today: the opposite of the
+        # truth. Say "not yet true" and the label lands the right way round.
+        n = len(parts)
+        if not bad:
+            return ("both checks pass" if n == 2 else
+                    "the check passes" if n == 1 else f"all {n} checks pass")
+        st0, lab0 = bad[0]
+        lead = {"unchecked": "nothing measures", "broken": "could not check",
+                "red": "not yet true", "amber": "slipping",
+                "attested": "only your word covers"}.get(st0, "not yet true")
+        head = (f"{n_ok} of {n} checks pass" if n_ok else
+                f"neither check passes" if n == 2 else f"no check passes")
+        head += f"; {lead}: {_clip(lab0, 110)}"
+        if len(bad) > 1:
+            head += f" (and {len(bad) - 1} other{'' if len(bad) == 2 else 's'})"
         return head
     if reading.get("unchecked"):
         return "not monitored yet"
@@ -3043,7 +3063,16 @@ def _measured_human(reading, compare, state):
         label = (reading.get("source_human") or "").strip()
         return ("yes" if v else "no") + (f" — {label}" if label else "")
     if d == "in_set":
-        return str(v)
+        # A bare "failure" is a database value, not a reading: it names a verdict
+        # without naming what was judged. Subject first, verdict last, and the
+        # verdict in English — the raw word only where nothing translates it.
+        label = (reading.get("source_human") or "").strip()
+        said = {"success": "passed", "failure": "failed", "cancelled": "was cancelled",
+                "timed_out": "ran out of time", "in_progress": "is still running",
+                "startup_failure": "never started", "never_run": "has never run"}.get(str(v))
+        if label:
+            return f"{label} {said}" if said else f"{label} — {v}"
+        return said or str(v)
     if d in ("lower_is_better", "fresher_than"):
         # "1 records against a bar of 0 records" is arithmetic homework. A bar of
         # zero is a sentence about whether any exist at all, so say that.
@@ -3319,23 +3348,37 @@ def _route_target(route):
     kind, rid = (route or {}).get("kind"), (route or {}).get("id")
     if not kind or not rid:
         return None
+
+    def named(rec):
+        """Whoever holds the thing, in words. The owner field may be a seat id
+        or a person id; the line that says where something is filed has to read
+        as a name either way."""
+        who = rec.get("owner") or ""
+        seat = seat_for(who)
+        if seat:
+            person = _person_name(seat.get("held_by"))
+            rec["owner_human"] = seat.get("label", seat["id"]) + (f" ({person})" if person else "")
+        else:
+            rec["owner_human"] = _person_name(who) or who
+        return rec
+
     try:
         if kind == "work":
             for it in work.items():
                 if it.get("id") == rid:
-                    return {"kind": kind, "id": rid, "title": it.get("title", ""),
-                            "owner": it.get("owner", ""), "state": it.get("state", ""),
-                            "href": f"#/work/{rid}"}
+                    return named({"kind": kind, "id": rid, "title": it.get("title", ""),
+                                  "owner": it.get("owner", ""), "state": it.get("state", ""),
+                                  "href": f"#/work/{rid}"})
         elif kind == "project":
             doc = load_json(os.path.join(DATA, "projects", rid + ".json"))
-            return {"kind": kind, "id": rid, "title": doc.get("name", rid),
-                    "owner": doc.get("owner", ""), "state": doc.get("status", ""),
-                    "href": f"#/project/{rid}"}
+            return named({"kind": kind, "id": rid, "title": doc.get("name", rid),
+                          "owner": doc.get("owner", ""), "state": doc.get("status", ""),
+                          "href": f"#/project/{rid}"})
         elif kind == "decision":
             doc = load_json(os.path.join(DATA, "decisions", rid + ".json"))
-            return {"kind": kind, "id": rid, "title": doc.get("title", rid),
-                    "owner": doc.get("owner", ""), "state": "waiting on you",
-                    "href": f"#/inbox/{rid}"}
+            return named({"kind": kind, "id": rid, "title": doc.get("title", rid),
+                          "owner": doc.get("owner", ""), "state": "waiting on you",
+                          "href": f"#/inbox/{rid}"})
     except (OSError, ValueError, KeyError):
         pass
     # The route names something that is not there. Say so rather than rendering a
@@ -3391,11 +3434,21 @@ def eval_goal(goal):
     """One declared goal -> the row the page renders. Never raises: a malformed
     goal renders `broken` rather than taking down the pillar it lives on."""
     out = dict(goal)
+    # A goal is allowed to omit its short form; nothing downstream is allowed to
+    # discover that. The verdict box printed the literal word "undefined" at the
+    # top of the Engineering page for thirteen days because it read this field
+    # straight, so the fallback lives here, once, rather than at each reader.
+    out["statement_short"] = goal.get("statement_short") or goal.get("statement", "")
     try:
         reading = eval_measure(goal.get("measure") or {})
         compare = goal.get("compare") or {}
         if (goal.get("measure") or {}).get("kind") == "composite" and reading.get("members") is not None:
             state = _composite_state(reading, compare)
+            # The page shows the members, not just a count of them: "1 of 2"
+            # told the CEO a number and hid both things it was counting. Each
+            # member carries its own verdict so the row can list them.
+            for m in reading["members"]:
+                m["state"] = _state_from(m, m.get("compare") or compare)
         else:
             state = _state_from(reading, compare)
         state, out["situation"] = _goal_response(goal, state, reading)
@@ -3413,6 +3466,16 @@ def eval_goal(goal):
         # at him. Approvals are the Work page's job and the inbox's job — they
         # serve him as an approver, and the board is not a third copy of them.
         out["route_target"] = _route_target((goal.get("path_to_green") or {}).get("route"))
+        # The row said "vp-engineering owns it" — an internal key on a page the
+        # CEO reads, which tells him nothing he does not already have to decode.
+        # Send the seat's own label, and the name of whoever is sitting in it.
+        seat = seat_for(goal.get("owner") or (goal.get("path_to_green") or {}).get("owner"))
+        if seat:
+            who = _person_name(seat.get("held_by"))
+            out["owner_seat_label"] = seat.get("label", seat["id"])
+            out["owner_person"] = seat.get("held_by") or ""
+            out["owner_person_name"] = who
+            out["owner_human"] = out["owner_seat_label"] + (f" ({who})" if who else "")
         out["escalation"] = _escalation(goal, state, reading)
         # Red IS "his move" now, so it always reaches him; amber is the one
         # somebody is holding, which is what "ours to fix" has always meant.
@@ -4241,6 +4304,16 @@ def load_seats():
         return load_json(os.path.join(DATA, "seats.json")).get("seats", [])
     except Exception:
         return []
+
+
+def _person_name(emp_id):
+    if not emp_id:
+        return ""
+    try:
+        org = load_json(os.path.join(DATA, "org.json")).get("employees", [])
+    except Exception:
+        return ""
+    return next((e.get("name", "") for e in org if e.get("id") == emp_id), "")
 
 
 def seat_for(owner_id):
