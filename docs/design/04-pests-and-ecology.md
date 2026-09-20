@@ -180,10 +180,12 @@ How it is put together:
   not look like bare soil now lives in `tools/capture_ransack_mark.tscn`, beside the visual
   regression, because only a real screen can answer it.
 
-**Clearing it costs her nothing extra, deliberately.** The stalk is a picture, not an
-obstacle: tilling or sowing the square takes it away in one verb, exactly as the clods went.
-Whether a raided square should become real work — a beat to clear, a seed returned, a block on
-sowing until it is cleared — is **Q-112**, and it is open.
+**Clearing it costs her nothing extra** (**Q-112**, ruled 2026-09-19). The stalk is a
+picture, not an obstacle: tilling or sowing the square takes it away in one verb, exactly as
+the clods went. The alternatives were put to the designer the night the stalk shipped — a beat
+to clear it like a weed, a seed handed back for pulling it, or a block on sowing until it is
+gone — and he kept it free. A raid already costs her a tomato and the walk out to the bed, and
+charging her a second time for the same bird taxes the player who was already unlucky.
 
 **What "planted" means** is settled by the crow's own appetite: the four are counted with
 the same rule a bird picks its target by, so a tile the crow could not eat does not count,

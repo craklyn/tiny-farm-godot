@@ -107,8 +107,11 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   where a robot typing into somebody else's form breaks without a changelog and puts your
   itch.io login in CI. Card: `hq/data/decisions/Q-111.json`.
 
-- **Q-112** What it costs her to clear a raided plot — **Ruling**, opened by Q-110's own
-  ruling and deliberately parked until now. Since 2026-09-19 a square a bird empties keeps a
+- ~~**Q-112** What it costs her to clear a raided plot~~ — **Ruled 2026-09-19: (a), nothing
+  changes.** The bitten stalk stays scenery — one stroke of the hoe takes it, as it already
+  did the night this was asked, so nothing was built. What the ruling bought is that a
+  raided square being free to clear is now a decision on the record rather than a first
+  version nobody had revisited. Opened by Q-110's own ruling and answered the same night. Since 2026-09-19 a square a bird empties keeps a
   bitten stalk standing on it. That stalk is currently **a picture and nothing else**: tilling
   or sowing the square takes it away in the same one verb that worked a bare square before,
   so the wreck she is looking at costs her nothing to deal with. That was the right first
@@ -126,6 +129,7 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   tomato and a walk, and charging her again for the same bird is a second tax on one event —
   but this is squarely taste, and (c) is the one worth looking at next if you want the wreck
   to be worth walking to. Bears on `design/04`; follows Q-110.
+  Card: `hq/data/decisions/Q-112.json`.
 
 - **Q-109** How much room a room gets — **Ruling**, now narrowed. The farmhouse is
   provisionally answered (3×2 outside, 6×3 inside); what is left is whether that number holds
