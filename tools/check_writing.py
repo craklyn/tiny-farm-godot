@@ -70,6 +70,18 @@ RULINGS = os.path.join(REPO, "docs", "writing_rulings.json")
 BRIEF = os.path.join(REPO, "docs", "WRITING.md")
 CACHE = os.path.join(REPO, "docs", "writing_verdicts.json")
 WAIVER = re.compile(r"plain-ok:\s*(\S.*)$")
+# What an interpolated value looks like to the judge. A value stands in that gap
+# on the screen, so leaving the gap empty would be the checker inventing a
+# sentence the writer never wrote — see rendered_text.
+VALUE_HERE = "…"
+# The tags that put a line break on the screen. Their edges end a sentence.
+BLOCK_TAG = re.compile(
+    r"</?(?:h[1-6]|p|div|li|ul|ol|tr|td|th|table|section|article|header|footer|main"
+    r"|nav|aside|form|pre|blockquote|details|summary|figcaption|figure|button|label"
+    r"|legend|caption|option|dt|dd|br|hr)\b[^>]*>", re.I)
+# The same gap on the data side: a goal's verdict sentence carries {unassured}
+# and {total}, filled in by the page before it is read.
+DATA_SLOT = re.compile(r"\{[a-z][a-z0-9_]*\}")
 
 # Small and fast on purpose: this is a reading comprehension question with the
 # standard supplied, not a reasoning problem, and it runs on every commit.
@@ -232,35 +244,114 @@ def strings_in_js(text):
 
     Comments are skipped on purpose: `docs/WRITING.md` rule 8 puts design
     rationale in comments, and that prose is written for whoever maintains the
-    file. Only what can reach the screen is checked."""
-    out = []
-    i, line, n = 0, 1, len(text)
-    while i < n:
-        c = text[i]
-        if c == "\n":
-            line += 1; i += 1; continue
-        if c == "/" and i + 1 < n and text[i + 1] == "/":
-            while i < n and text[i] != "\n":
-                i += 1
-            continue
-        if c == "/" and i + 1 < n and text[i + 1] == "*":
-            j = text.find("*/", i + 2)
-            j = n if j < 0 else j + 2
-            line += text.count("\n", i, j)
-            i = j
-            continue
-        if c in "'\"`":
-            start, j = i + 1, i + 1
-            while j < n and text[j] != c:
-                if text[j] == "\\":
-                    j += 1
+    file. Only what can reach the screen is checked.
+
+    A template literal's `${ }` is read as code, not as more of the string. The
+    first version scanned from one backtick to the next, which meant a template
+    written inside a conditional ended its parent early: HQ's pages are full of
+    them, and the halves came back as texts like "s own note says its ramps" and
+    ": esc(p2g.owner)} owns it". Those are not sentences anybody wrote, and a
+    judge reading them objects to the checker rather than to the writing. So an
+    expression is skipped the way the browser skips it — leaving `${}` behind,
+    which `rendered_text` turns into the value a reader would see there — and any
+    template nested inside it is reported as the separate string it is."""
+    out, n = [], len(text)
+
+    def read_quoted(i, line, quote):
+        start = j = i + 1
+        while j < n and text[j] != quote:
+            if text[j] == "\\":
                 j += 1
-            body = text[start:j]
-            out.append((line, body))
-            line += body.count("\n")
-            i = j + 1
-            continue
-        i += 1
+            j += 1
+        body = text[start:j]
+        out.append((line, body))
+        return j + 1, line + body.count("\n")
+
+    def read_template(i, line):
+        opened, body, j = line, [], i + 1
+        while j < n and text[j] != "`":
+            if text[j] == "\\":
+                body.append(text[j:j + 2]); j += 2; continue
+            if text.startswith("${", j):
+                body.append("${}")
+                j, line = skip_code(j + 2, line, to_close=True)
+                continue
+            if text[j] == "\n":
+                line += 1
+            body.append(text[j]); j += 1
+        out.append((opened, "".join(body)))
+        return j + 1, line
+
+    def read_regex(i, line):
+        """Step over a /regex/, char class and all. Nothing in one is page text."""
+        j, in_class = i + 1, False
+        while j < n:
+            ch = text[j]
+            if ch == "\\":
+                j += 2; continue
+            if ch == "\n":
+                break                      # a regex cannot span lines: not one
+            if ch == "[":
+                in_class = True
+            elif ch == "]":
+                in_class = False
+            elif ch == "/" and not in_class:
+                j += 1
+                while j < n and text[j].isalpha():
+                    j += 1                 # its flags
+                return j, line
+            j += 1
+        return i + 1, line                 # unterminated: it was a division
+
+    def skip_code(i, line, to_close=False):
+        """Walk code. With `to_close`, stop just past the `}` that closes a `${`."""
+        depth, prev = 0, ""
+        while i < n:
+            c = text[i]
+            if c == "\n":
+                line += 1; i += 1; continue
+            if c == "/" and i + 1 < n and text[i + 1] == "/":
+                while i < n and text[i] != "\n":
+                    i += 1
+                continue
+            if c == "/" and i + 1 < n and text[i + 1] == "*":
+                j = text.find("*/", i + 2)
+                j = n if j < 0 else j + 2
+                line += text.count("\n", i, j)
+                i = j
+                continue
+            # A regex literal is not a string, and its quotes are not quotes.
+            # `esc()` in app.js is written `.replace(/[&<>"']/g, …)`, and the
+            # lone apostrophe inside that character class used to open a string
+            # that ran on for hundreds of lines — every piece of text in the
+            # file after line 42 was read paired with the wrong neighbour. The
+            # usual heuristic tells a regex from a division: after a value you
+            # are dividing, after an operator or an opening bracket you are not.
+            if c == "/" and (prev == "" or prev in "(,=:[!&|?{};+-*%~^<>"):
+                i, line = read_regex(i, line)
+                prev = "/"
+                continue
+            if c in "'\"":
+                i, line = read_quoted(i, line, c)
+                prev = c
+                continue
+            if c == "`":
+                i, line = read_template(i, line)
+                prev = "`"
+                continue
+            if to_close:
+                if c == "{":
+                    depth += 1
+                elif c == "}":
+                    if not depth:
+                        return i + 1, line
+                    depth -= 1
+            if not c.isspace():
+                prev = c
+            i += 1
+        return i, line
+
+    skip_code(0, 1)
     return out
 
 
@@ -272,10 +363,19 @@ def rendered_text(s):
     of them invisible to any reader, none of them a writing problem. A check that
     cries wolf on identifiers is a check people learn to skip, which leaves the
     real ones exactly as unfound as before. So the markup and the interpolated
-    code come out first, and only the words between the tags are read."""
+    code come out first, and only the words between the tags are read.
+
+    An interpolated value leaves a placeholder rather than a hole. Deleting it
+    outright turned "the last ${window} finished runs" into "the last finished
+    runs", and every sentence carrying a number into a fragment — so the judge
+    spent its objections on grammar nobody had written, and the real findings sat
+    underneath them. A person reading the page sees a value in that gap, so the
+    judge is shown one too."""
     out, depth, i, n = [], 0, 0, len(s)
     while i < n:                       # ${ ... } is code, however deeply nested
         if s.startswith("${", i):
+            if not depth:
+                out.append(VALUE_HERE)
             depth += 1; i += 2; continue
         if depth:
             if s[i] == "{":
@@ -286,9 +386,17 @@ def rendered_text(s):
             continue
         out.append(s[i]); i += 1
     text = "".join(out)
+    # A heading, a paragraph and a card are separate things on the screen, so
+    # they are separated here too. Run together by a plain space, a heading and
+    # the sentence under it arrive as "The next public release No next release
+    # is planned" — and the judge, quite reasonably, objects to a run-on nobody
+    # wrote. The middle dot is the separator HQ itself prints between facts.
+    text = re.sub(BLOCK_TAG, " · ", text)
     text = re.sub(r"<[^>]*>", " ", text)          # tags, and every attribute in them
     text = re.sub(r"&[a-z]+;|\\[nt]", " ", text)
-    return re.sub(r"\s+", " ", text).strip()
+    text = re.sub(r"\s+", " ", text).strip()
+    text = re.sub(r"(?:·\s*)+", "· ", text)       # one boundary, however many tags closed
+    return text.strip(" ·").strip()
 
 
 def is_prose(s):
@@ -341,7 +449,12 @@ def collect(repo=REPO):
                 continue
             for field in fields:
                 for text in walk(doc, field):
-                    if text and text.strip():
+                    # A pillar's verdict is a sentence with {unassured} and
+                    # {total} filled in before anyone sees it, the same way a
+                    # page fills in ${ }. Shown the raw braces, the judge objects
+                    # to a missing number that is never missing on the screen.
+                    text = DATA_SLOT.sub(VALUE_HERE, text or "")
+                    if text.strip():
                         found.append({"text": text.strip(), "where": rel,
                                       "what": f"{what} · {field}", "near": ""})
     for rel in CODE_SOURCES:

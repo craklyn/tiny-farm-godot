@@ -11,22 +11,22 @@
   },
   {
    "key": "b",
-   "label": "She walks out of the bloom",
+   "label": "The player starts already standing on the farm",
    "detail": "When the seeds have bloomed, the sky warms into the farm's own ground and she is standing on the real farm at the same spot, hands still on hips. No title screen; the corner cards are the menu. The first tap is her dropping her hands and stepping off."
   },
   {
    "key": "c",
-   "label": "The menu is the harvest",
+   "label": "The bloomed flowers are the menu",
    "detail": "The seeds rise and each blooms. The last blooms are the choices, one Continue and one New Farm, and the title is the big flower at her feet. The player picks a flower; it sheds its seeds into the ground and the ground becomes the farm."
   },
   {
    "key": "d",
-   "label": "The bloom is the loading",
+   "label": "The bloom lasts exactly as long as loading takes",
    "detail": "The bud opens exactly as fast as the save is read, and the seeds rise while the farm is built underneath. Nothing appears before the thing it stands for is ready. A two-second moment on a fast tablet, an honest one on a slow one, never a spinner."
   },
   {
    "key": "e",
-   "label": "The player's touch is the sunrise",
+   "label": "The player's first touch opens the flower",
    "detail": "She stands over a closed bud, still, until the screen is touched. The sky warms from under the finger, the bud opens, the seeds rise, and the title and menu fade in while they climb. Holding until the last seed blooms starts the game. The first thing the player learns is that they cause things. Worth trying second."
   }
  ],

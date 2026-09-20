@@ -90,7 +90,7 @@ function frontierCard(dx) {
       <a class="plain" href="${docHref(next.path)}">${esc(next.title)}</a> ${docStatusChip(next.status)}
       &nbsp;·&nbsp; ${chapters} &nbsp;·&nbsp; ${rulings}
     </div>
-    ${behind.length ? `<div class="small muted">Still open behind the frontier: ${behind.map(m => `${esc(m.id)} ${esc(m.title)}`).join(" · ")}</div>` : ""}
+    ${behind.length ? `<div class="small muted">Design questions still open on chapters already written: ${behind.map(m => `${esc(m.id)} ${esc(m.title)}`).join(" · ")}</div>` : ""}
   </div>`;
 }
 
@@ -127,7 +127,7 @@ async function renderDesign() {
     document about it. Changes made here land in the repo like any other work.</p>
     <div class="grid cols4">
       <a class="card tool-card" href="#/entities"><b>🐔 Entities</b>
-        <p class="small muted">Every creature, crop, and object, live from the real sprite
+        <p class="small muted">Every creature, crop, and object, drawn from the real sprite
         sheets — with an editor that repaints any frame and keeps every revision.</p></a>
       <a class="card tool-card" href="#/design/anim"><b>🌻 Animation Lab</b>
         <p class="small muted">Loops that are not entities — set pieces and effects, drawn from

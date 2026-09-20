@@ -3,7 +3,7 @@
   "verdict_template": {
     "fire": "{worst}",
     "attention": "{worst}",
-    "unassured": "Nothing is visibly wrong; monitoring is still landing on {unassured} of {total} areas, and the plans are filed.",
+    "unassured": "Nothing is visibly wrong; we are still building checks for {unassured} of the {total} areas, and the plans for those are written.",
     "ok": "The look is holding, and what checks it runs on every page load.",
     "dormant": "Dormant. {dormant_reason}",
     "nothing_for_you": "Nothing here needs you. {ours_line}"

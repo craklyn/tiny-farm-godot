@@ -458,8 +458,8 @@ function tokenStrip(t) {
   const m = n => (n >= 1e6 ? (n / 1e6).toFixed(1) + "M"
     : n >= 1000 ? Math.round(n / 1000) + "k" : String(n));
   const against = t.dry_spend
-    ? `The last time a window ran dry it had spent ${m(t.dry_spend)}.`
-    : `No window has run dry since this started recording, so there is no measured ceiling yet.`;
+    ? `The studio last ran out of its Claude usage allowance after spending ${m(t.dry_spend)} tokens.`
+    : `The studio has not run out of its Claude usage allowance since this page began recording, so nobody knows yet how many tokens that takes.`;
   return `<div class="w-tokens">Work the studio did on its own has put
     <b>${m(t.tokens)} tokens</b> through the model in the last ${t.hours} hours — ${m(t.fresh || 0)}
     of them new — over ${t.calls} model calls. ${against}</div>`;
@@ -673,8 +673,8 @@ async function renderWork(focusId) {
   $view.replaceChildren(h(`
     <h1>🧾 Your queue</h1>
     <p class="sub">Design questions waiting for your ruling, and everything the studio
-    started because you said something. Nothing here asked permission to
-    <em>exist</em> — ${esc(pol.rule)}${snap.capturing ? ` · reading ${snap.capturing} new exchange${snap.capturing > 1 ? "s" : ""} for work…` : ""}</p>
+    started because you said something. Nobody asked you before starting any of
+    it — ${esc(pol.rule)}${snap.capturing ? ` · reading ${snap.capturing} new exchange${snap.capturing > 1 ? "s" : ""} for work…` : ""}</p>
     ${tokenStrip(snap.tokens)}
     <div id="w-body"></div>`));
   const body = document.getElementById("w-body");
@@ -715,7 +715,7 @@ async function renderWork(focusId) {
   const secs = [
     workSection("Waiting on you", "Two kinds: work that has not happened because it is hard to undo, and work that is finished and wants your verdict on the result.", waiting, org, pol, { always: true }),
     workSection("Happening now", "Reversible, so nobody waited to be told twice.", by("doing"), org, pol),
-    workSection("Queued for a build session", "Touches the repo, so a session with write access — or the studio's own scheduled run — does it and shows you the diff.", by("waiting_session"), org, pol),
+    workSection("Queued for a build session", "Changes files in the repository, so a session with write access — or the studio's own scheduled run — makes the change and shows you what it altered.", by("waiting_session"), org, pol),
   ].filter(Boolean);
   secs.forEach(s => body.appendChild(s));
 

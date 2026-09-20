@@ -4,7 +4,7 @@
   "verdict_template": {
     "fire": "{worst}",
     "attention": "{worst}",
-    "unassured": "Nothing measurable is stopping a tag; monitoring is still landing on {unassured} of {total} checks a release has to pass, and the plans are filed.",
+    "unassured": "Nothing measurable is stopping a tag; we are still building checks for {unassured} of the {total} things a release has to pass, and the plans for those are written.",
     "ok": "Nothing stops a tag.",
     "dormant": "Dormant. {dormant_reason}",
     "nothing_for_you": "Nothing here needs you. {ours_line}"

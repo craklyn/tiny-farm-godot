@@ -110,7 +110,7 @@ async function updateNavPillars(sig) {
 function consistencyBanner(sig, pid) {
   const mine = (sig.consistency || []).filter(w => w.includes("/" + pid + "/") || w.includes(" " + pid + ":"));
   if (!mine.length) return "";
-  return `<div class="card badref"><b>This page is describing something that is not there</b>
+  return `<div class="card badref"><b>This page names something that is not in the repository</b>
     <ul class="req">${mine.map(w => `<li>${esc(w)}</li>`).join("")}</ul></div>`;
 }
 
@@ -129,7 +129,7 @@ const ESC_WHY = {
   authority: "Only you can settle this.",
   external_commitment: "We have told people outside the studio something this contradicts.",
   exposure: "Somebody outside the studio can hit this right now.",
-  age: "This is ours, but it has waited long enough that the delay is the news.",
+  age: "This goal is ours to finish, and it has waited long enough that the delay is now the problem.",
 };
 
 /* Band 1. The verdict is generated from the goals, never authored: a sentence
@@ -152,7 +152,7 @@ function verdictLine(g) {
   const ours = (g.goals || []).filter(x => x.ours);
   const worst = yours[0] || null;
   const oursLine = ours.length
-    ? `${ours.length} thing${ours.length === 1 ? " is" : "s are"} open here — ${ours.length === 1 ? "it's" : "they're"} mine to handle.`
+    ? `${ours.length} goal${ours.length === 1 ? " on this page is" : "s on this page are"} not met yet, and this team is handling ${ours.length === 1 ? "it" : "them"} without you.`
     : "";
   let text = worst ? (t[g.level] || "") : (t.nothing_for_you || "");
   const fill = {
@@ -190,7 +190,7 @@ function verdictLine(g) {
     budget: "This spends money, so it wants your yes.",
     "tie-break": "Two teams disagree and it needs you to settle it.",
     role: "This is a decision about who holds something.",
-    resource: "This needs something bought or asked for.",
+    resource: "This goal is waiting on something you have to buy, or ask someone outside the studio for.",
   };
   const esc0 = (worst && worst.escalation) || {};
   const askLine = ASK[cb.kind] || ESC_WHY[esc0.reason] || "This one is yours.";
@@ -376,10 +376,10 @@ function goalRow(g) {
   const escWhy = g.escalation && ESC_WHY[g.escalation.reason]
     ? `<div class="g-esc">${esc(ESC_WHY[g.escalation.reason])}${
         g.escalation.reason === "age" && g.escalation.days != null
-          ? ` It has been open ${g.escalation.days} day${g.escalation.days === 1 ? "" : "s"}.` : ""}</div>`
+          ? ` This goal has been open ${g.escalation.days} day${g.escalation.days === 1 ? "" : "s"}.` : ""}</div>`
     : "";
   const why = g.state === "green" ? "" :
-    `${escWhy}<div class="g-why">${mdInline(p2g.narrative || "Nobody has written down how this gets back to green, so the button beside it files that as the job.")}${owner}</div>${filedLine(g, ORG)}`;
+    `${escWhy}<div class="g-why">${mdInline(p2g.narrative || "Nobody has written down how to fix this goal. The button beside it puts writing that plan on someone's list.")}${owner}</div>${filedLine(g, ORG)}`;
   const reading = g.reading || {};
   const note = reading.would_need
     ? `<div class="g-need">Would need: ${esc(reading.would_need)}</div>` : "";
@@ -481,7 +481,7 @@ function wireFileButtons() {
       } catch (e) {
         btn.disabled = false;
         btn.textContent = was;
-        btn.title = "Could not file it: " + e.message;
+        btn.title = "The work card could not be added: " + e.message;
       }
     });
   });
@@ -518,7 +518,7 @@ function wireAttestButtons() {
         btn.disabled = false;
         btn.classList.remove("g-armed");
         btn.textContent = was;
-        btn.title = "Could not record it: " + e.message;
+        btn.title = "The record could not be saved: " + e.message;
       }
     });
   });
@@ -535,7 +535,7 @@ async function renderPillar(pid) {
   const [pillars, org, sig] = await Promise.all([api("/api/pillars"), api("/api/org"), signals(true)]);
   ORG = org;        // goal rows name the person holding the work they point at
   const p = pillars.pillars.find(x => x.id === pid);
-  if (!p) { $view.replaceChildren(h(`<div class="card">No such pillar. <a class="plain" href="#/">Dashboard</a></div>`)); return; }
+  if (!p) { $view.replaceChildren(h(`<div class="card">There is no page with that name. <a class="plain" href="#/">Go back to the dashboard</a></div>`)); return; }
   const lead = org.employees.find(e => e.id === p.lead);
   const team = org.employees.filter(e => e.team === p.team);
   const st = sig.status[pid] || { level: "ok", reasons: [], assured: 0, total: 0 };
@@ -611,7 +611,7 @@ async function instEngineering(root, below, sig, g) {
   const strip = [`<div class="ev-row ev-head"><span></span><span>what it checks</span><span>verdict</span><span>how far behind main</span></div>`];
   strip.push(`<div class="ev-row">
     <i class="dot ${(GOAL_META[ci.state] || GOAL_META.green).dcls}"></i>
-    <span><b>GitHub CI</b><br><span class="small muted">the only result someone outside the studio can check for themselves</span></span>
+    <span><b>GitHub CI</b><br><span class="small muted">the one result someone outside the studio can check for themselves</span></span>
     <span>${ciOk ? "passed" : esc(ci.measured_human || "unknown")}</span>
     <span class="ev-age">on the commit itself</span></div>`);
   JOBS.forEach(([id, label, what]) => {
@@ -644,7 +644,7 @@ async function instEngineering(root, below, sig, g) {
   root.replaceChildren(h(`
     <h2>The evidence</h2>
     <div class="card evcard">${strip.join("")}</div>
-    <h2>Rules that keep replays reproducible <span class="small muted">— a break here corrupts phase 4's training data</span></h2>
+    <h2>Rules that keep replays reproducible <span class="small muted">— breaking one of these ruins the recorded games that phase 4 trains its robots on</span></h2>
     <div class="card invcard">${invRows || "<span class='muted'>No rules are recorded here yet.</span>"}</div>
     <div id="ci-strip"></div>`));
 
@@ -661,8 +661,8 @@ async function instEngineering(root, below, sig, g) {
       stripEl.innerHTML = `<h2>Every CI run on main <span class="small muted">— oldest on the left</span></h2>
         <div class="card">
           <div class="cistrip">${ticks}</div>
-          <div class="small muted" style="margin-top:8px">${hist.passed} passed, ${hist.failed} failed
-            of the last ${hist.window} finished runs · ${hist.green_streak} green in a row right now.
+          <div class="small muted" style="margin-top:8px">Of the last ${hist.window} finished runs,
+            ${hist.passed} passed and ${hist.failed} failed · ${hist.green_streak} have passed in a row right now.
             Failures clustered on one day are an incident; spread out, a flaky test.</div>
         </div>`;
     } else {
@@ -820,9 +820,9 @@ async function instProduct(root, below, sig, g) {
   const releaseCard = near ? `
     <h2>The next public release</h2>
     <div class="card releasecard">
-      <p class="rel-lead"><b><a class="plain" href="#/program">${esc(near.name)}</a></b> — the next public release —
-        ships as <b>${esc(near.tag_intent || "an untagged build")}</b> once the onboarding checklist passes on a
-        sitting with a brand-new player, and the tag goes out.</p>
+      <p class="rel-lead"><b><a class="plain" href="#/program">${esc(near.name)}</a></b>
+        ships as <b>${esc(near.tag_intent || "an untagged build")}</b> once someone who has never played
+        the game gets through the opening checklist, and the tag goes out.</p>
       <div class="tr-bar" role="img" aria-label="${rd.done} of ${rd.total} critical steps done"><i style="width:${pct}%"></i></div>
       <div class="small muted"><b>${rd.done} of ${rd.total} steps</b> done on its critical work.</div>
       <div class="rb-title">What stands in front of it</div>
@@ -830,11 +830,11 @@ async function instProduct(root, below, sig, g) {
       ${gatingClear}
     </div>`
     : `<h2>The next public release</h2>
-       <div class="card muted">No release train is declared, so there is nothing to ship toward.</div>`;
+       <div class="card muted">No next release is planned, so there is nothing to ship toward.</div>`;
 
   const decay = lag.state === "broken"
     ? `Scored on a build that cannot be resolved any more.`
-    : `Scored ${gate && gate.scored_on ? esc(gate.scored_on) + " " : ""}on a build <b>${esc(String(lag.measured ?? "?"))} commits</b> behind what you would ship today.`;
+    : `Scored ${gate && gate.scored_on ? esc(gate.scored_on) + " " : ""}on a build <b>${esc(String(lag.measured ?? "?"))} commits</b> older than the one you would ship today.`;
 
   const gateCard = `
     <h2>The checklist it ships on ${gate && gate.total ? `<span class="small muted">— ${gate.met} of ${gate.total} conditions met, last scored ${esc(gate.scored_on)}</span>` : ""}</h2>
@@ -846,8 +846,8 @@ async function instProduct(root, below, sig, g) {
     </div>`;
 
   const laterNote = later.length
-    ? `<div class="rel-later small muted">After this one, ${later.length === 1 ? "one more release is" : later.length + " more releases are"}
-        on the board, still being scoped — <a class="plain" href="#/program">see the program</a>.</div>` : "";
+    ? `<div class="rel-later small muted">After the next release, ${later.length === 1 ? "one more is" : later.length + " more are"}
+        planned but not yet worked out in detail — <a class="plain" href="#/program">see the program report</a>.</div>` : "";
 
   root.replaceChildren(h(releaseCard + gateCard + laterNote));
 
@@ -875,10 +875,10 @@ function sparkline(sessions, g) {
   const labels = sessions.map((s, i) => `<text x="${x(i)}" y="${H - 8}" class="sp-lbl">${esc(s.name.slice(5, 10))}</text>`).join("");
   return `<svg viewBox="0 0 ${W} ${H}" class="spark" role="img" aria-label="dead taps per session">
       <line x1="${PAD}" y1="${y(BAR)}" x2="${W - PAD}" y2="${y(BAR)}" class="sp-bar"/>
-      <text x="${W - PAD}" y="${y(BAR) - 5}" class="sp-lbl" text-anchor="end">the most we allow, 12%</text>
+      <text x="${W - PAD}" y="${y(BAR) - 5}" class="sp-lbl" text-anchor="end">our limit: 12% of a session's taps may do nothing</text>
       <polyline points="${pts}" class="sp-line"/>${dots}${labels}
     </svg>
-    <p class="small muted">Every session here was played by you or your wife — none by a
+    <p class="small muted">Every session in this chart was played by you or your wife — none by a
       first-time player. The newest is
       ${sessions[sessions.length - 1] ? esc(String(daysAgo(sessions[sessions.length - 1].name))) : "?"} days old.</p>`;
 }
@@ -909,14 +909,14 @@ async function instArt(root, below, sig, g) {
     ribbon = `<div class="card palcard">
       <div class="ribbon">${cells}</div>
       <div class="pal-meta">
-        <b>${pal.colours} colours</b> across ${pal.sheets} shipped sheets, widest first by how much of
-        the game is that colour. The notched ones are the ${pal.named_total} the style guide names —
-        <b>${pal.named_present} of them are still in the build</b>.
+        <b>${pal.colours} colours</b> across ${pal.sheets} shipped sheets. The wider a band, the more of
+        the game is painted that colour. The notched bands are the ${pal.named_total} colours the style
+        guide names — <b>${pal.named_present} of those are still in the build</b>.
       </div>
       ${missing ? `<div class="pal-missing"><b>Named by the guide, present in nothing:</b> ${missing}
-        <div class="small muted">The guide's own note says its ramps were measured from a sprite pack
-        that is no longer in this repo. So this is not necessarily drift in the art — it may be a guide
-        describing a game we no longer have. Which of the two it is, is the look session's first question.</div></div>` : ""}
+        <div class="small muted">The guide's own note says its colour ranges were measured from a sprite pack
+        that is no longer in this repo. So this is not necessarily drift in the art — the guide may be
+        describing a game we no longer have. The look session's first question is which of the two it is.</div></div>` : ""}
     </div>`;
   }
   root.replaceChildren(h(`<h2>The palette, as shipped</h2>${ribbon}`));
@@ -937,9 +937,9 @@ async function instArt(root, below, sig, g) {
     foldSection("Every sound in the build", `${(audio.sfx || []).length} effects, ${(audio.music || []).length} music${orphans.size ? ` · ${orphans.size} the build never loads` : ""}`, board)
     + foldSection("The sheets on the wall", `${(pal && pal.sheet_names || []).length} sheets — browse and edit them in the gallery`,
       `<p class="small">${(pal && pal.sheet_names || []).map(n => `<code class="ref">${esc(n)}</code>`).join(" ")}</p>
-       <p class="small muted">Editing is in the <a class="plain" href="#/entities">gallery</a>, not here.
+       <p class="small muted">Editing is on the <a class="plain" href="#/entities">Entities</a> page, not here.
        Note that the editor currently opens only a sheet's preview frames — four of the chicken's eight
-       cells, four of the farmer's sixteen — so an edit made there covers part of a sheet.</p>`)));
+       frames, four of the farmer's sixteen — so an edit made there covers part of a sheet.</p>`)));
 
   below.querySelectorAll("[data-snd]").forEach(b => {
     let cur = null;
@@ -977,19 +977,19 @@ async function instMarketing(root, below, sig, g) {
 
     <div class="mk-grid">
       <div class="card blank">
-        <div class="blank-label">The number that wakes this pillar up</div>
+        <div class="blank-label">What has to happen before marketing starts</div>
         <div class="blank-field">${trigger.state === "green" ? esc(String(trigger.measured)) : "&nbsp;"}</div>
         <div class="small muted">${trigger.state === "green" ? "written down" :
-          "Nothing is written. Marketing is off by inertia rather than by decision, and either way it finds out late. One sentence from you — a date, a build, a wishlist count — turns waking up into a reading."}</div>
+          "Nothing is written. Marketing is switched off because nobody decided otherwise, and either way it finds out late. One sentence from you — a date, a build, a wishlist count — would turn that into a number anyone can read off this page."}</div>
       </div>
       <div class="card absence">
         <div class="abs-frame">
           <div class="abs-title">Who has opened the public build</div>
-          <div class="abs-body">no source</div>
+          <div class="abs-body">nobody is counting</div>
         </div>
         <div class="small muted">${esc(audience.measured_human || "not polled")}. One public build has been
-          live for weeks and nobody in this studio can say whether anyone has opened it. An itch.io API key
-          would give us views and plays.${filedLine(audience, ORG)}</div>
+          live for weeks and nobody in this studio can say whether anyone has opened it. With an itch.io API key, this page could
+          show how many people have viewed the page and played the game.${filedLine(audience, ORG)}</div>
       </div>
     </div>`));
 
@@ -1051,7 +1051,7 @@ async function instSales(root, below, sig, g, ctx) {
     <div class="card norelease">
       <div class="small muted">To publish, from a terminal:</div>
       <pre class="inert">git tag -a v0.2.0 -m "…"  &amp;&amp;  git push origin v0.2.0</pre>
-      <div class="small muted">Releases are cut by pushing a tag.</div>
+      <div class="small muted">You release the game by pushing a version tag.</div>
     </div>`));
 
   // The ladder: where we can sell it, and what the next storefront would cost.
@@ -1085,7 +1085,7 @@ async function instSales(root, below, sig, g, ctx) {
 
   below.replaceChildren(h(
     foldSection("Where we can sell it",
-      `${live} storefront${live === 1 ? "" : "s"} live${unruled ? ` · ${unruled} priced but unruled` : ""}`,
+      `${live} storefront${live === 1 ? "" : "s"} live${unruled ? ` · ${unruled} priced, but you have not said yes to them yet` : ""}`,
       `<p class="small muted">What each storefront requires.</p>${ladderHtml}`)
     + foldSection("Everything ever published", `${(sig.tags || []).length} tag${(sig.tags || []).length === 1 ? "" : "s"}`,
     (sig.tags || []).length
@@ -1181,8 +1181,8 @@ function manifestStrip(rel, days, tag) {
     <div class="ms-head">
       <div class="ms-num">${rel.ready}</div>
       <div class="ms-lede">
-        <b>things a player can't do yet, sitting finished on main</b>
-        <div class="small muted">${esc(rel.name)}${rel.subtitle ? ` — ${esc(rel.subtitle)}` : ""}${rel.tag_intent ? ` · would go out as ${esc(rel.tag_intent)}` : ""}${days != null ? ` · nothing has gone out for ${days} days` : ""}. Goal: release every 14 days.</div>
+        <b>things that are finished in the code but that no player can do yet</b>
+        <div class="small muted">${esc(rel.name)}${rel.subtitle ? ` — ${esc(rel.subtitle)}` : ""}${rel.tag_intent ? ` · would go out as ${esc(rel.tag_intent)}` : ""}${days != null ? ` · no release has gone out for ${days} days, against a goal of one every 14 days` : ""}.</div>
       </div>
     </div>
     <div class="msstrip">${cells}</div>
@@ -1291,7 +1291,7 @@ function spendSummary(doc) {
 function moneyTile(s, budgetLine, spend, unreadable) {
   if (!s) {
     return `<div class="card tile">
-        <div class="tile-h">Spend recorded</div>
+        <div class="tile-h">Spending written down</div>
         <div class="tile-big ${spend.state === "green" ? "ok" : "bad"}">0%</div>
         <div class="kpi-sub">of what this studio has spent · target 100%</div>
         <div class="kpi-rows">
@@ -1303,12 +1303,12 @@ function moneyTile(s, budgetLine, spend, unreadable) {
           ${unreadable ? `<div class="kpi-row"><i class="dot d-broken"></i>
             <span>A spend record file exists but could not be read: ${esc(unreadable)}</span></div>` : ""}
         </div>
-        <div class="kpi-foot">No total can be calculated from what is recorded.</div>
+        <div class="kpi-foot">Two runs have no record, so no total can be worked out.</div>
       </div>`;
   }
   const gaps = [];
   if (s.unconfirmed) gaps.push(`${s.unconfirmed} of the ${s.paidCount} run${s.paidCount === 1 ? "" : "s"} that cost money ${s.unconfirmed === 1 ? "is" : "are"} not confirmed against the vendor's own figure`);
-  if (s.unpriced) gaps.push(`${s.unpriced} of ${s.count} ${s.unpriced === 1 ? "has" : "have"} no cost written down, so the total is a floor rather than a figure`);
+  if (s.unpriced) gaps.push(`${s.unpriced} of ${s.count} ${s.unpriced === 1 ? "has" : "have"} no cost written down, so the real total is higher than the one shown`);
   const gapLine = gaps.length ? gaps.join("; ").replace(/^./, c => c.toUpperCase()) + "." : "";
   return `<div class="card tile">
         <div class="tile-h">Money left to spend on art</div>
@@ -1422,9 +1422,9 @@ async function instOps(root, below, sig, g) {
         <div class="kpi-sub">of 2 · target 2</div>
         <div class="kpi-rows">
           <div class="kpi-row"><i class="dot ${contact.state === "green" ? "d-ok" : "d-fire"}"></i>
-            <span><b>Feedback:</b> players have no way to send any. The public page lists no contact.</span></div>
+            <span><b>Feedback:</b> players have no way to send any. The public page gives no address or form for sending feedback.</span></div>
           <div class="kpi-row"><i class="dot ${words.state === "green" ? "d-ok" : "d-attn"}"></i>
-            <span><b>Translation:</b> not set up. The game gains text as it grows, and each string
+            <span><b>Translation:</b> the game has no translation system yet. It gains text as it grows, and each string
               written before this exists has to be redone.</span></div>
         </div>
         <div class="kpi-foot">Owned by Support and Localization.</div>
@@ -1436,7 +1436,7 @@ async function instOps(root, below, sig, g) {
       ${(credR.declared || []).map(k => {
         const have = (credR.present || []).includes(k);
         return `<a class="pill ${have ? "ok" : "bad"}" href="${docAnchor(".env.example", "")}"
-          title="${have ? "present in this machine's .env" : "declared, but not on this machine"}"
+          title="${have ? "this key is set in this machine's .env file" : "this key is named in .env.example but is not set on this machine"}"
           ><i class="dot ${have ? "d-ok" : "d-fire"}"></i>${esc(k)}</a>`;
       }).join("")}
 

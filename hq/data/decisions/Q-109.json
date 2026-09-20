@@ -12,22 +12,22 @@
   {
    "key": "b",
    "label": "Three times (Recommended)",
-   "detail": "A 9x6 farmhouse room and a 6x6 coop. Both are comfortably furnishable and the house lands just under the 10x7 she already has, so nothing about today's room gets worse. The view out under Q-108(a) is roughly one tile a side, which is where that option starts to look thin."
+   "detail": "A 9x6 farmhouse room and a 6x6 coop. Both are comfortably furnishable and the house lands just under the 10x7 room the player has today, so nothing about today's room gets worse. The view out under Q-108(a) is roughly one tile a side, which is where that option starts to look thin."
   },
   {
    "key": "c",
    "label": "Four times",
-   "detail": "A 12x8 farmhouse room and an 8x8 coop. Bigger than anything the game has content for — the panels read as empty rather than spacious, and an empty room is a room that needs furnishing before it is worth entering. Under Q-108(a) the yard is gone entirely."
+   "detail": "A 12x8 farmhouse room and an 8x8 coop. Bigger than anything the game has content for — the rooms look empty rather than spacious in the mockups, and an empty room is a room that needs furnishing before it is worth entering. Under Q-108(a) the yard is gone entirely."
   },
   {
    "key": "d",
    "label": "Per building, not one number",
-   "detail": "Let each building carry its own multiplier: the farmhouse at three, the coop at two, a future barn at four. Nothing in P-18 requires one number for all of them, and it means a hen house never has to be as big as a home. The price is that there is no single answer to how magnified the yard is, so Q-108's treatment has to hold up across the whole range."
+   "detail": "Let each building carry its own multiplier: the farmhouse at three, the coop at two, a future barn at four. Nothing in P-18 requires one number for all of them, and it means a hen house never has to be as big as a home. The price is that there is no single answer to how small the view out of the window becomes, so Q-108's treatment has to hold up across the whole range."
   },
   {
    "key": "e",
-   "label": "The farmhouse's own answer, everywhere",
-   "detail": "Make the ruling already given the rule: an interior is its footprint at half pitch, less a half-row for the roof. The coop's 2x2 becomes a 4x3 room. Consistent, needs no second number, and keeps the zoom at x2 for every building so entering always feels the same -- but 4x3 is a small coop."
+   "label": "Give every building the size rule already set for the farmhouse",
+   "detail": "Make the ruling already given the rule: an interior is its footprint at half pitch, less a half-row for the roof. The coop's 2x2 becomes a 4x3 room. Consistent, needs no second number, and makes every building twice the size inside, so entering always feels the same -- but 4x3 is a small coop."
   }
  ],
  "links": [

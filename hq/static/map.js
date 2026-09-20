@@ -33,7 +33,7 @@ async function renderMapEditor() {
       <div class="org-scroll"><canvas id="mp-canvas"></canvas></div>
       <div class="mp-side" id="mp-side"></div>
     </div>
-    <p class="small muted">Click a parcel to edit it. Station positions (cot, bin, well, seed box) currently live in the sim code, not the layout — moving them here is part of the game-side loader project in the program report.</p>`));
+    <p class="small muted">Click a parcel to edit it. Station positions (cot, bin, well, seed box) are still written into the game's own code rather than into this layout, so they cannot be moved from here yet. The work that would change that is in the program report.</p>`));
 
   const cv = document.getElementById("mp-canvas");
   const ctx = cv.getContext("2d");

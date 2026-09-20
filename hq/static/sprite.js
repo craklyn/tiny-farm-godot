@@ -373,14 +373,14 @@ async function renderSpriteEditor(path) {
           <figure><canvas id="sp-preview" width="${pvW}" height="${pvH}"></canvas><figcaption>after (your edits)</figcaption></figure>
         </div>
         <div id="sp-contact" class="sp-contact" hidden></div>
-        <p class="small muted" id="sp-pv-note">Both loop in sync at the game's own rate — before is the sheet as it was when you opened the editor.</p>
+        <p class="small muted" id="sp-pv-note">The two previews loop in step at the game's own rate. The "before" sheet is how it looked when you opened the editor.</p>
         <div id="sp-field"></div>
         <h2>Save</h2>
         <p class="small muted">Writes your edits back into <code class="ref">${esc(ent.sheet)}</code> and adds a revision to this sheet's history below. Every revision is kept — nothing you save is ever overwritten.</p>
         <label class="sp-note-label" for="sp-note">What were you fixing? <span class="sp-optional">optional</span></label>
         <input id="sp-note" class="sp-note" maxlength="200" autocomplete="off"
                placeholder="e.g. the ripe head read too cold against the field">
-        <p class="small muted sp-why">The panel below measures <em>what</em> moved; only you can say what you were going for. Worth a line when you are making a call about the look — skip it freely when you are just tidying something up.</p>
+        <p class="small muted sp-why">The panel below measures <em>what</em> moved; only you can say what you were going for. Worth a line when you are deciding how something should look — skip it freely when you are just tidying something up.</p>
         <div id="sp-diff" class="sp-diff"></div>
         <p><button id="sp-save">💾 Save to sheet</button>
         <button id="sp-revert" class="ghost">Discard my changes</button></p>
@@ -659,8 +659,8 @@ async function renderSpriteEditor(path) {
       <code class="ref">${esc(look.source)}</code>, over the game's tilled soil, and from your
       unsaved edits — repaint the last cell and watch it here.</p>
       ${gone.length ? `<p class="small" style="color:var(--bad)">Out of date: the game no longer
-        has ${esc(gone.join(", "))}. This preview is not showing what ships — fix the reader in
-        <code class="ref">hq/server.py</code>.</p>` : ""}
+        has ${esc(gone.join(", "))}. This preview is not showing what ships — update the code that
+        reads the sheets, in <code class="ref">hq/server.py</code>.</p>` : ""}
       <canvas id="sp-fieldcv" class="sp-field-cv" width="${PLANTS * tile * SCALE}" height="${tile * 2 * SCALE}"></canvas>`;
     if (gone.length) return;
 
@@ -790,7 +790,7 @@ async function renderSpriteEditor(path) {
     document.getElementById("sp-pv-note").textContent = on
       ? "Every state of this sheet at once, in order — before on top, your edits underneath. "
         + "The player meets these one at a time, so they are shown side by side rather than played."
-      : "Both loop in sync at the game's own rate — before is the sheet as it was when you opened the editor.";
+      : "The two previews loop in step at the game's own rate. The \"before\" sheet is how it looked when you opened the editor.";
     if (!on) return;
 
     const cells = curClip.drawings.map(d => d.cell).filter(c => c !== undefined);
@@ -832,7 +832,7 @@ async function renderSpriteEditor(path) {
         + (steps.length
           ? ` — the last step, ${esc(lab[lab.length - 2] || "the one before")} to `
             + `<b>${esc(lab[lab.length - 1] || "the last")}</b>, is <b>${esc(last)}</b>. `
-            + `That is the one a player has to notice from across the plot.`
+            + `That last step is the change a player has to notice from across the plot.`
           : "");
     }
   };
@@ -1051,7 +1051,7 @@ async function renderSpriteEditor(path) {
 
     if (sel.length < 2) {
       box.replaceChildren(h(`<div class="sp-merge-in">
-        <p class="sp-merge-say">Tick two or more tones above and they fold into one, across all
+        <p class="sp-merge-say">Select two or more tones above and they fold into one, across all
           ${cellsWord(frames.length)} of the sheet. Hover a tone to see where it sits.</p>
         <p class="sp-merge-hint" id="sp-merge-hint"></p>
         <div class="sp-merge-act">${gather}<button class="ghost" data-act="cancel">Done</button></div>
@@ -1272,9 +1272,9 @@ async function renderSpriteEditor(path) {
           : "Assembled drawings playing in sequence, built the way the game renderer builds this creature — your edits live on the right.")
         : cl.stills
           ? (cl.drawings.length > 1
-            ? "Poses, not a cycle — the preview holds the pose under your cursor. Before is the sheet as it was when you opened the editor."
-            : "A single pose — before is the sheet as it was when you opened the editor.")
-          : "Both loop in sync at the game's own rate — before is the sheet as it was when you opened the editor.";
+            ? "Poses, not a cycle — the preview holds the pose under your cursor. The \"before\" sheet is how it looked when you opened the editor."
+            : "A single pose. The \"before\" sheet is how it looked when you opened the editor.")
+          : "The two previews loop in step at the game's own rate. The \"before\" sheet is how it looked when you opened the editor.";
     }
     render();
   };
@@ -1516,8 +1516,8 @@ async function renderSpriteEditor(path) {
     } catch { }
     if (!steps.length) {
       box.innerHTML = `<h2>History</h2>
-        <p class="small muted">Nothing saved to this sheet yet. Your first save banks the sheet
-        exactly as it is now as revision 0, so there is always an untouched state to come back to.</p>`;
+        <p class="small muted">Nothing saved to this sheet yet. Your first save stores the sheet
+        exactly as it is now as revision 0, so there is always an untouched copy to come back to.</p>`;
       return;
     }
     const last = steps[steps.length - 1].seq;

@@ -556,7 +556,7 @@ function showPerson(org, id) {
     ${e.id !== "daniel" ? `<p style="margin-top:18px">
       <button data-chat="${e.id}">💬 Chat with ${esc(e.name.split(" ")[0])}</button>
       <button class="ghost" data-def="${e.id}">🧬 What defines them</button></p>
-    <div class="promptbox" hidden><p class="small muted">This is the exact system prompt handed to the Claude CLI when you chat with ${esc(e.name.split(" ")[0])} — persona + charter + studio context, with read-only access to the repo:</p><pre></pre></div>` : ""}
+    <div class="promptbox" hidden><p class="small muted">This is the exact system prompt handed to the Claude CLI when you chat with ${esc(e.name.split(" ")[0])} — who they are, what they are responsible for, and how this studio works, with permission to read the repository but not to change it:</p><pre></pre></div>` : ""}
   </div></div>`);
   document.body.appendChild(ov);
   const overlay = document.getElementById("overlay");
@@ -642,7 +642,7 @@ async function renderPerson(id) {
     ${e.id !== "daniel" ? `<p style="margin-bottom:20px">
       <button data-chat="${e.id}">💬 Chat with ${esc(first)}</button>
       <button class="ghost" data-def="${e.id}">🧬 What defines them</button></p>
-    <div class="promptbox card" hidden><p class="small muted">The exact system prompt handed to the Claude CLI when you chat with ${esc(first)} — persona + charter + studio context, with read-only access to the repo:</p><pre></pre></div>` : ""}
+    <div class="promptbox card" hidden><p class="small muted">The exact system prompt handed to the Claude CLI when you chat with ${esc(first)} — who they are, what they are responsible for, and how this studio works, with permission to read the repository but not to change it:</p><pre></pre></div>` : ""}
     <div class="card" style="margin-top:16px">
       <h2 style="margin-top:0">On ${esc(first)}'s plate</h2>
       ${plate || `<p class="muted">Nothing of ${esc(first)}'s is in flight right now.</p>`}
@@ -771,7 +771,7 @@ const daysSince = d => {
 function askOwner(p, owner) {
   try {
     sessionStorage.setItem("hq-chat-draft",
-      `Where does "${p.name}" stand right now? What's the fastest path to the next step` +
+      `Where do we stand on "${p.name}" right now, and what is the fastest path to the next step?` +
       (p.status === "blocked" ? " and what exactly would unblock it?" : "?"));
   } catch { }
   location.hash = "#/chat/" + owner.id;

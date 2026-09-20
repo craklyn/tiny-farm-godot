@@ -25,9 +25,9 @@ async function renderPlaytests() {
     <h1>🧪 Playtest Sessions</h1>
     ${unclassified.length ? `<div class="card" style="border-left:3px solid var(--warn,#c98a2e)">
       <b>⚠️ ${unclassified.length} session(s) not yet classified</b>
-      <p class="small muted">${unclassified.map(s => esc(s.name)).join(", ")} — shelved in <code>playtests/</code> but not pinned in <code>SHELF</code> (tests/test_runner.gd). The tests skip them and stay green on purpose: an unclassified session is paperwork, not a broken build. Pinning one records the log format it is and whether it still replays to its own autosave.</p>
+      <p class="small muted">${unclassified.map(s => esc(s.name)).join(", ")} — shelved in <code>playtests/</code> but not pinned in <code>SHELF</code> (tests/test_runner.gd). The tests skip them and stay green on purpose: an unclassified session is paperwork, not a broken build. Pinning one records which log format it uses and whether it still replays to its own autosave.</p>
     </div>` : ""}
-    <p class="sub">Every recorded session, scored from measurements the game takes while it is played. <b>Open one to watch it back</b> — every row replays, tap by tap. The targets are the ones ruled for the release checklist: wasted taps ≤ ${BAR_WASTED}%, longest stall ≤ ${BAR_STALL_MS / 1000}s. "Satisfied" taps (tapping something already done) never count against a player.</p>
+    <p class="sub">Every recorded session, scored from measurements the game takes while it is played. <b>Open one to watch it back</b> — every row replays, tap by tap. The targets are the ones ruled for the release checklist: no more than ${BAR_WASTED}% of a session's taps may do nothing, and the player may never go more than ${BAR_STALL_MS / 1000}s without something happening. "Satisfied" taps (tapping something already done) never count against a player.</p>
     <div class="card" style="overflow-x:auto"><table class="pt-table">
       <tr><th></th><th>Session</th><th>Build</th><th>Taps</th><th>Wasted</th><th>Satisfied</th><th>Longest stall</th><th>Days</th><th>Active</th></tr>
       ${real.map(s => `<tr class="pt-row" data-name="${esc(s.name)}" title="Watch this session played back">
@@ -81,7 +81,7 @@ async function renderPlaytestDetail(name) {
           <div class="tl-bad" style="height:${100 * m.wasted / maxBar}%"></div>
         </div></div>`;
     }).join("")}</div>
-    <p class="small muted" style="margin-top:6px">🟩 productive · 🟨 satisfied ("already done") · 🟥 wasted — one column per minute. A red streak is where she was lost; a gap is a break.</p></div>
+    <p class="small muted" style="margin-top:6px">🟩 productive · 🟨 satisfied ("already done") · 🟥 wasted — one column per minute. A red streak is a run of minutes where the player got nowhere; a gap is a break from playing.</p></div>
     <div class="pillar-grid">
       <div>
         <h2>First time each verb landed</h2>

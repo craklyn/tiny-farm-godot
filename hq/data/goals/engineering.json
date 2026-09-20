@@ -4,7 +4,7 @@
   "verdict_template": {
     "fire": "{worst}",
     "attention": "{worst}",
-    "unassured": "Nothing is failing; monitoring is still landing on {unassured} of {total} areas, and the plans are filed.",
+    "unassured": "Nothing is failing; we are still building checks for {unassured} of the {total} areas, and the plans for those are written.",
     "ok": "Green on main, and the test runs are recent enough to believe.",
     "dormant": "Dormant. {dormant_reason}",
     "nothing_for_you": "Nothing here needs you. {ours_line}"
@@ -189,7 +189,7 @@
         "direction": "must_be_true"
       },
       "path_to_green": {
-        "narrative": "The build half is done. The store page half has no sanctioned route: itch.io publishes no API for page text — butler's 47 commands all move build files, and the serverside API can only read — so the dashboard's editor is the only way in. That makes this a call for you: keep the paste as a permanent step in the runbook, or have the workflow drive itch.io's editor in a headless browser. [The card](#/inbox/Q-111) lays out both.",
+        "narrative": "The build half is done. The store page half has no sanctioned route: itch.io publishes no API for page text — butler, the upload tool itch.io gives you, has 47 commands and every one of them moves build files, and the serverside API can only read — so the dashboard's editor is the only way in. That makes this a call for you: keep the paste as a permanent step in the runbook, or have the workflow drive itch.io's editor in a headless browser. [The card](#/inbox/Q-111) lays out both.",
         "route": {
           "kind": "decision",
           "id": "Q-111"

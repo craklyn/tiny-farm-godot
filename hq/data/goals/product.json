@@ -3,7 +3,7 @@
   "verdict_template": {
     "fire": "{worst}",
     "attention": "{worst}",
-    "unassured": "Nothing is failing; monitoring is still landing on {unassured} of {total} areas, and the plans are filed.",
+    "unassured": "Nothing is failing; we are still building checks for {unassured} of the {total} areas, and the plans for those are written.",
     "ok": "Nothing is blocked and the evidence behind these numbers is fresh.",
     "dormant": "Dormant. {dormant_reason}",
     "nothing_for_you": "Nothing here needs you. {ours_line}"
@@ -16,7 +16,7 @@
       "owner": "program-lead",
       "severity": "important",
       "unit": "state",
-      "why_it_matters": "I need absolute trust in the progress we're making, as reported on the program report. If I can't trust the data, then I can use the program report. If I can't use the program report, then what do I use to know the current state of the company? And similarly, how will the entire org have a single source of truth for business-critical data and knowledge?",
+      "why_it_matters": "I need absolute trust in the progress we're making, as reported on the program report. If I can't trust the data, then I can't use the program report. If I can't use the program report, then what do I use to know the current state of the company? And similarly, how will the entire org have a single source of truth for business-critical data and knowledge?",
       "measure": {
         "kind": "unchecked",
         "reason": "nothing measures this yet",

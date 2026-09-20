@@ -4,7 +4,7 @@
   "verdict_template": {
     "fire": "{worst}",
     "attention": "{worst}",
-    "unassured": "Nothing is failing; monitoring is still landing on {unassured} of {total} areas, and the plans are filed.",
+    "unassured": "Nothing is failing; we are still building checks for {unassured} of the {total} areas, and the plans for those are written.",
     "ok": "Nothing owed, nothing unrecorded, and nobody waiting on a reply.",
     "dormant": "Dormant. {dormant_reason}",
     "nothing_for_you": "Nothing here needs you. {ours_line}"
