@@ -1,0 +1,18 @@
+{
+  "id": "w3a181e77f0da",
+  "title": "Give every goal that reaches Daniel a control he can press",
+  "level": "task",
+  "owner": "vp-engineering",
+  "tier": 1,
+  "tier_reason": "filed by hand",
+  "ask": "A goal that escalates to the CEO but declares no route renders, on his own pillar page, as: \"not prepped — VP of Engineering (Elena Volkov) owes you a card on this before it is fair to ask\". That is HQ naming a problem, putting it at the top of his screen, and then offering him nothing — the exact failure the standing rule against dead ends forbids, and he hit it on 2026-09-19 reading the Engineering page.\n\nTwo goals are in that state right now: engineering/build-branch-builds-green (red because the newest CI run on main failed) and, until 2026-09-19, engineering/automatic-release-pipeline (now routed to the Q-111 card). Sweep every goal file for a path_to_green whose route is kind \"none\" and which can reach him, and give each one a real destination.\n\nThe general fix has two halves. First, every escalating goal gets either a route or a path_to_green.action, so routeControl() in hq/static/pillars.js always has a button to draw. Second — the more useful half — a goal whose reading already knows where the evidence is should route there automatically: a failing CI goal knows the run URL it just read, so the control should be \"See the failing run\", not a confession that nobody wrote a card. Consider making reading.url a fallback route in routeControl rather than something only the attest path uses.\n\nThe self-accusing string should not survive the sweep. If a goal genuinely has no next step, that is a defect in the goal, not a sentence to render.",
+  "first_action": "Read routeControl() and the g-orphan branch in hq/static/pillars.js, then grep hq/data/goals/*.json for '\"kind\": \"none\"' and list which of those goals can escalate.",
+  "state": "queued",
+  "thread": "vp-engineering",
+  "source": "chief-of-staff",
+  "source_message": "Daniel asked what the Engineering headline was telling him. The undefined, the bare count and the ambiguous wording were fixed in that session; this is the part of the same block that was left — a finding with no way to act on it.",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-19T17:20",
+  "created_ts": 1789863622.5150352
+}

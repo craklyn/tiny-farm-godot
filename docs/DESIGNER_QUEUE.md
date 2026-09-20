@@ -65,6 +65,20 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   "through a window" without hiding a crow, and it costs a dither rather than art.
   Card: `hq/data/decisions/Q-108.json`.
 
+- **Q-111** The one release step that still waits on your hands — **Ruling**. A `v*` tag
+  already builds the game and uploads it to itch.io by itself; the store page's text does not
+  follow. That copy lives in `ITCH_PAGE.md` and the runbook's last box says to paste it into
+  itch.io's page editor. It stayed a hand-step for a reason nobody had written down: itch.io
+  publishes no way to change page text from a script — butler's forty-seven commands all move
+  build files, and the serverside API writes nothing but personal collections — so the web form
+  is the only door. Options: **(a) keep the paste and make the release refuse to forget it**,
+  **(b) drive itch.io's editor in a headless browser**, **(c) move the copy somewhere we
+  publish ourselves**, **(d) drop the store-page half of the goal**.
+  **Recommendation: (a)** — the automation that matters is the one that cannot fall over
+  silently; a release that stops and tells you what to paste costs a minute and never forgets,
+  where a robot typing into somebody else's form breaks without a changelog and puts your
+  itch.io login in CI. Card: `hq/data/decisions/Q-111.json`.
+
 - **Q-109** How much room a room gets — **Ruling**, now narrowed. The farmhouse is
   provisionally answered (3×2 outside, 6×3 inside); what is left is whether that number holds
   for the coop and everything after it. Drawn panels of both buildings at ×2, ×3 and ×4, with

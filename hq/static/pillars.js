@@ -158,7 +158,7 @@ function verdictLine(g) {
   const fill = {
     // The reading is only worth appending when it adds a number. A yes/no just
     // restates the sentence it follows ("the readout is still on — no").
-    worst: worst ? worst.statement_short + (
+    worst: worst ? (worst.statement_short || worst.statement || "") + (
       /^(yes|no)\b/.test(worst.measured_human || "") ? "" : ` — ${worst.measured_human}`) : "",
     ours_line: oursLine,
     unassured: String(g.total - g.assured),
@@ -235,7 +235,7 @@ const FILED_STATE = {
 function filedLine(g, org) {
   const t = g.route_target;
   if (!t || !t.title) return "";
-  const who = t.owner ? ownerName(org, t.owner) : "";
+  const who = t.owner_human || (t.owner ? ownerName(org, t.owner) : "");
   const state = FILED_STATE[t.state] || esc(t.state || "");
   return `<div class="g-filed">Filed${who ? ` to ${esc(who)}` : ""} as
     <a class="plain" href="${esc(t.href)}">${esc(t.title)}</a>${state ? ` — ${state}` : ""}.</div>`;
@@ -276,8 +276,8 @@ function routeControl(g) {
   if (route.kind === "work") return `<a class="gbtn" href="#/work/${esc(route.id)}">See the filed plan</a>`;
   if (p2g.action) return fileBtn(g, p2g, p2g.action);
   if (g.needs_you) {
-    return `<span class="g-orphan">not prepped — ${esc(p2g.owner || "somebody")} owes you a card
-      on this before it is fair to ask</span>`;
+    return `<span class="g-orphan">not prepped — ${esc(g.owner_human || p2g.owner || "somebody")}
+      owes you a card on this before it is fair to ask</span>`;
   }
   return `<span class="g-orphan">no route recorded — nobody owns this</span>`;
 }
@@ -291,6 +291,26 @@ function fileBtn(g, p2g, a) {
     >${esc(a.label || "Put it on someone's list")}</button>`;
 }
 
+/* A goal measured by several checks shows them. The summary line above it can
+   only carry a count and the first thing wrong, and a count is the one thing a
+   reader cannot act on: "1 of 2" names a number and hides both things it is
+   counting. Each check states the condition that is meant to hold, gets the
+   same status dot as everything else in HQ, and — where the check found it —
+   names the file it read, so the answer to "where would I even fix this?" is
+   on the row rather than in somebody's head. */
+function memberList(reading) {
+  const ms = (reading || {}).members;
+  if (!ms || ms.length < 2) return "";
+  return `<ul class="g-checks">${ms.map(m => {
+    const meta = GOAL_META[m.state] || GOAL_META.unchecked;
+    const where = (m.where || []).length
+      ? `<span class="g-where">${esc(m.where.slice(0, 2).join(", "))}</span>`
+      : (m.source_machine ? `<span class="g-where">${esc(m.source_machine)}</span>` : "");
+    return `<li><i class="dot ${meta.dcls}" title="${esc(meta.word)}"></i>
+      <span>${esc(m.source_human || "unnamed check")}</span> ${where}</li>`;
+  }).join("")}</ul>`;
+}
+
 function goalRow(g) {
   const m = GOAL_META[g.state] || GOAL_META.green;
   const p2g = g.path_to_green || {};
@@ -302,8 +322,14 @@ function goalRow(g) {
   const whose = g.state === "green" ? "" :
     g.needs_you ? `<span class="g-whose yours">yours</span>`
                 : `<span class="g-whose ours">ours</span>`;
-  const owner = g.state === "green" || !p2g.owner ? "" :
-    ` <span class="g-owner">— <a class="plain" data-person="${esc(p2g.owner)}">${esc(p2g.owner)}</a> owns it</span>`;
+  // The seat, then whoever is in it today — never the seat's internal key. A
+  // goal is carried by a seat so it survives the person leaving, but "owned by
+  // vp-engineering" is a database row, not an answer to "who is this?".
+  const owner = g.state === "green" || !(g.owner_seat_label || p2g.owner) ? "" :
+    ` <span class="g-owner">— ${g.owner_seat_label
+      ? `${esc(g.owner_seat_label)}${g.owner_person_name
+          ? ` (<a class="plain" data-person="${esc(g.owner_person)}">${esc(g.owner_person_name)}</a>)` : ""}`
+      : esc(p2g.owner)} owns it</span>`;
   const escWhy = g.escalation && ESC_WHY[g.escalation.reason]
     ? `<div class="g-esc">${esc(ESC_WHY[g.escalation.reason])}${
         g.escalation.reason === "age" && g.escalation.days != null
@@ -314,13 +340,14 @@ function goalRow(g) {
   const reading = g.reading || {};
   const note = reading.would_need
     ? `<div class="g-need">Would need: ${esc(reading.would_need)}</div>` : "";
+  const checks = memberList(reading);
   const stale = g.stale ? ` <span class="g-stale">last known reading — the source was unreachable</span>` : "";
   return `<div class="goalrow gs-${g.state}${mine ? " is-yours" : ""}">
     <i class="dot ${m.dcls}" title="${m.word}"></i>
     <div class="g-body">
       <div class="g-stmt">${esc(g.statement)}${whose}</div>
       <div class="g-meas">${esc(g.measured_human)}${stale}</div>
-      ${why}${note}
+      ${why}${checks}${note}
     </div>
     <div class="g-route">${routeHtml}</div>
   </div>`;

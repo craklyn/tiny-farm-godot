@@ -1,0 +1,51 @@
+{
+  "id": "Q-111",
+  "owner": "vp-engineering",
+  "title": "The store page is the one release step that still waits on your hands. Keep it, or drive itch.io's editor?",
+  "question": "Pushing a `v*` tag already builds the game and uploads it to itch.io on its own. One step does not follow: the text a visitor reads on the store page. That copy lives in `ITCH_PAGE.md` in the repo, and the runbook's last box says to paste it into itch.io's page editor by hand. It has stayed a hand-step because itch.io offers no way to change page text from a script: butler, itch.io's own command-line tool, has forty-seven commands and every one of them moves build files; itch.io's server API can read a game's sales and keys but can write nothing except your personal collections. The dashboard's web form is the only door. So the question is not how to build it — it is whether a fragile door is better than an honest manual step.",
+  "why_now": "It is the last thing standing between a tag and a finished release, and it is the reason the Engineering page has been asking for you for thirteen days. Whichever way you rule, the page stops asking.",
+  "options": [
+    {
+      "key": "a",
+      "label": "Keep the paste, and make the release refuse to forget it (Recommended)",
+      "detail": "The workflow keeps shipping the build, and gains a check: if ITCH_PAGE.md changed since the last tag, the release stops and tells you what to paste and where. Costs you about a minute per release, only when the copy actually changed, and it can never be skipped by accident. Nothing to maintain against somebody else's web form. The honest cost: a release is not fully hands-free, so this narrows the goal rather than meeting it."
+    },
+    {
+      "key": "b",
+      "label": "Drive itch.io's editor in a headless browser",
+      "detail": "A CI step logs in as you and fills the edit-game form. Fully hands-free while it works — and it breaks silently the first time itch.io changes a field name, a login flow, or adds a bot check, which will happen without warning and without a changelog. It also puts your itch.io login in CI, a stronger secret than the upload key we keep there now. Days to build, and permanently ours to repair."
+    },
+    {
+      "key": "c",
+      "label": "Move the page copy somewhere itch.io renders from",
+      "detail": "Stop describing the game on the store page at all: keep a one-line pitch there and point at a page we control and can publish automatically. Fully automatable, and it makes the itch page worse as a shopfront — the description is the thing a browsing player reads before they click. Only worth it if we are leaving itch as the main storefront anyway."
+    },
+    {
+      "key": "d",
+      "label": "Drop the store-page half of the goal",
+      "detail": "Say plainly that automatic release means the build, not the shopfront, and rewrite the goal to promise only that. Costs nothing, changes nothing, and leaves the paste as an undefended step somebody will one day forget."
+    }
+  ],
+  "links": [
+    {
+      "label": "The page copy that has to be pasted (ITCH_PAGE.md)",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/ITCH_PAGE.md"
+    },
+    {
+      "label": "The release workflow as it stands (.github/workflows/release.yml)",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/.github/workflows/release.yml"
+    },
+    {
+      "label": "The runbook box this is the last one of (docs/DEPLOY.md)",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DEPLOY.md"
+    },
+    {
+      "label": "itch.io's server API — read-only except for collections",
+      "href": "https://itch.io/docs/api/serverside"
+    },
+    {
+      "label": "butler's command list — every one of them moves build files",
+      "href": "https://github.com/itchio/butler"
+    }
+  ]
+}

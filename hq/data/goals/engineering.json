@@ -136,6 +136,7 @@
     {
       "id": "automatic-release-pipeline",
       "statement": "Automatic release pipeline",
+      "statement_short": "pushing a version tag ships the build, but the store page still waits on you to paste it",
       "owner": "vp-engineering",
       "severity": "important",
       "unit": "",
@@ -143,11 +144,11 @@
       "measure": {
         "kind": "composite",
         "op": "all_of",
-        "label": "what a tag does on its own, from build to the page a player lands on",
+        "label": "what pushing a version tag does on its own, from the build to the store page a player lands on",
         "members": [
           {
             "kind": "file_grep",
-            "label": "a tag publishes the build to the storefront with no hand on it",
+            "label": "pushing a v-tag uploads the build to itch.io with no hand on it (butler push, in .github/workflows/release.yml)",
             "paths": [
               ".github/workflows/release.yml"
             ],
@@ -163,7 +164,7 @@
           },
           {
             "kind": "file_grep",
-            "label": "the release updates the store page rather than a person doing it",
+            "label": "the same workflow also publishes the store page text from ITCH_PAGE.md",
             "paths": [
               ".github/workflows/release.yml"
             ],
@@ -183,9 +184,10 @@
         "direction": "must_be_true"
       },
       "path_to_green": {
-        "narrative": "Teach the release workflow to publish the page copy in ITCH_PAGE.md alongside the build.",
+        "narrative": "The build half is done. The store page half has no sanctioned route: itch.io publishes no API for page text — butler's 47 commands all move build files, and the serverside API can only read — so the dashboard's editor is the only way in. That makes this a call for you: keep the paste as a permanent step in the runbook, or have the workflow drive itch.io's editor in a headless browser. [The card](#/inbox/Q-111) lays out both.",
         "route": {
-          "kind": "none"
+          "kind": "decision",
+          "id": "Q-111"
         },
         "owner": "vp-engineering"
       },
