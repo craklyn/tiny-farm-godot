@@ -60,10 +60,15 @@
       },
       "path_to_green": {
         "narrative": "Re-read the vendor's terms, and any licence that came with an asset added since the last check.",
-        "route": {
-          "kind": "none"
-        },
-        "owner": "vp-design"
+        "owner": "vp-design",
+        "action": {
+          "label": "Put it on the VP of Design's list",
+          "tier": 1,
+          "level": "task",
+          "title": "Re-read the art vendor's terms and credit what is missing",
+          "ask": "Either a shipped file has no record of where it came from, or the reading of the vendor's terms has aged past its expiry. Credit every file that is missing from CREDITS.md, re-read the vendor's terms as they stand today, and bring the result back for the CEO to sign.",
+          "first_action": "Run the orphan-file check behind this goal to list the uncredited files, then open the vendor's terms page."
+        }
       },
       "history": {
         "record": false,

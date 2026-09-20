@@ -275,20 +275,54 @@ function routeControl(g) {
   if (route.kind === "decision") return `<a class="gbtn" href="#/inbox/${esc(route.id)}">Open the card</a>`;
   if (route.kind === "work") return `<a class="gbtn" href="#/work/${esc(route.id)}">See the filed plan</a>`;
   if (p2g.action) return fileBtn(g, p2g, p2g.action);
-  // Before admitting there is no route: the check that just failed usually knows
-  // where the evidence is. A failing build read a run URL to reach its verdict,
-  // so the control is that run — a page that names a problem and then offers
-  // nothing is the dead end the rules forbid, and "somebody owes you a card"
-  // is HQ apologising to him in place of an answer.
-  const ev = (g.situation || {}).link;
+  // Before anything generic: the check that just failed usually knows where the
+  // evidence is. A failing build read a run URL to reach its verdict, so the
+  // control is that run. The server hands that over as the situation's link;
+  // a reading that carries a URL and no situation is the same offer, so both
+  // are taken here rather than only the one the attest path happened to use.
+  const ev = (g.situation || {}).link || readingLink(g.reading);
   if (ev && ev.href) {
     return `<a class="gbtn" href="${esc(ev.href)}" target="_blank" rel="noreferrer">${esc(ev.label || "See the evidence")}</a>`;
   }
-  if (g.needs_you) {
-    return `<span class="g-orphan">not prepped — ${esc(g.owner_human || p2g.owner || "somebody")}
-      owes you a card on this before it is fair to ask</span>`;
-  }
-  return `<span class="g-orphan">no route recorded — nobody owns this</span>`;
+  // And there is no case after this one. The page used to end here by telling
+  // him, at the top of his own pillar, that somebody owed him a card — HQ
+  // naming a problem and then offering him nothing, which is the dead end the
+  // rules forbid. A goal that reaches him with no route recorded is a hole in
+  // the goal, so the button writes the card the confession described.
+  return fileBtn(g, p2g, routeGap(g, p2g));
+}
+
+/* A reading that fetched something remote keeps the address it read. That is a
+   real destination for a control, and on a failing build it is the best one
+   there is — the run whose log says which job broke. */
+function readingLink(reading) {
+  const url = (reading || {}).url;
+  return url ? { href: url, label: "See the run" } : null;
+}
+
+/* The card a goal should have carried, written from the goal itself so it
+   arrives complete: what is failing, what the last reading said, and the fact
+   that the route back was never written down. Filing it is both the fix for
+   this goal and the fix for the gap that left his page empty-handed. */
+function routeGap(g, p2g) {
+  const owner = p2g.owner || g.owner || "claude";
+  // The seat's own label or nothing: the internal key ("vp-design", "claude")
+  // is not a name, and a button reading "put it on the claude's list" is worse
+  // than the generic one it would replace.
+  const seat = g.owner_seat_label || "";
+  // Whole sentences, each one on its own, rather than a template chopped into
+  // fragments: the card is read by whoever picks the work up, and half a
+  // sentence at a line break is not something anyone can act on.
+  const gap = "Nobody recorded a fix for this goal, so the CEO's page had nothing on it he could press.";
+  const fix = "Fix the goal, or name who is holding it and until when.";
+  const after = "Record the fix in the goal itself, so the next person who reads it can see what was done.";
+  return {
+    owner: owner, tier: 1, level: "task",
+    title: `Record how to fix the goal ${g.statement}`,
+    ask: `${g.statement} — the reading is: ${g.measured_human || "nothing measures it yet"}. ${gap} ${fix}`,
+    first_action: `Open the goal ${g.id} in hq/data/goals/ and read how it is measured. ${after}`,
+    label: seat ? `Put it on the ${seat}'s list` : "Put it on someone's list",
+  };
 }
 
 function fileBtn(g, p2g, a) {
@@ -345,7 +379,7 @@ function goalRow(g) {
           ? ` It has been open ${g.escalation.days} day${g.escalation.days === 1 ? "" : "s"}.` : ""}</div>`
     : "";
   const why = g.state === "green" ? "" :
-    `${escWhy}<div class="g-why">${mdInline(p2g.narrative || "No route recorded — nobody owns getting this back to green.")}${owner}</div>${filedLine(g, ORG)}`;
+    `${escWhy}<div class="g-why">${mdInline(p2g.narrative || "Nobody has written down how this gets back to green, so the button beside it files that as the job.")}${owner}</div>${filedLine(g, ORG)}`;
   const reading = g.reading || {};
   const note = reading.would_need
     ? `<div class="g-need">Would need: ${esc(reading.would_need)}</div>` : "";

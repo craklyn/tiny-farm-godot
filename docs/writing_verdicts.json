@@ -225,6 +225,9 @@
    "verdict": "decode",
    "why": "The release name is unintroduced and 'no route back' is a figure of speech rather than the plain fact."
   },
+  "2028616c667d9aa4a557": {
+   "verdict": "ok"
+  },
   "20918647ac1e877113e4": {
    "verdict": "ok"
   },
@@ -511,6 +514,9 @@
   "4a22e1b793920ea2ab63": {
    "verdict": "ok"
   },
+  "4afee470a795a68ac263": {
+   "verdict": "ok"
+  },
   "4b2c68b467fc44802125": {
    "verdict": "ok"
   },
@@ -542,6 +548,9 @@
    "quote": "failed of the last finished runs",
    "verdict": "second-look",
    "why": "The construction \"failed of\" requires a second read to parse; the natural phrasing would omit \"of\"."
+  },
+  "50cadd8a4751a1cabe5f": {
+   "verdict": "ok"
   },
   "50db7c90e78a65c2e0d7": {
    "verdict": "ok"
@@ -864,6 +873,9 @@
    "verdict": "decode",
    "why": "This names the rendering mechanism rather than the visible problem; a reader cannot know what to fix without understanding the graphics pipeline."
   },
+  "8035dff1d58ee311c890": {
+   "verdict": "ok"
+  },
   "80dade8ba64f421f1aad": {
    "verdict": "ok"
   },
@@ -880,6 +892,12 @@
    "verdict": "ok"
   },
   "82bc093135391478ee2d": {
+   "verdict": "ok"
+  },
+  "836be81c34aef1a5e839": {
+   "verdict": "ok"
+  },
+  "839e9973392b01478144": {
    "verdict": "ok"
   },
   "8427c41f2a06cff87133": {
@@ -1005,6 +1023,9 @@
    "verdict": "ok"
   },
   "941ccf35f3cae6bdc81e": {
+   "verdict": "ok"
+  },
+  "945755f5ef8eca4a64b3": {
    "verdict": "ok"
   },
   "94b653533cb4746b6143": {

@@ -885,7 +885,6 @@ code.ref { background: #1b1710; border: 1px solid var(--line); border-radius: 6p
 .g-where { font-family: var(--mono, ui-monospace, monospace); font-size: 11.5px;
   color: var(--muted); }
 .g-stale { color: #e0912e; }
-.g-orphan { color: var(--red); font-size: 12px; }
 .g-route { white-space: nowrap; padding-top: 2px; }
 /* The most valuable thing a row can say in this studio, so it is the one row
    treatment that is visually distinct rather than merely coloured. */

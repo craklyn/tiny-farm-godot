@@ -3406,9 +3406,14 @@ def _goal_response(goal, state, reading):
         except (TypeError, ValueError):
             return None
 
+    # The reading kept the address it read, and on a failure that address is the
+    # best control the page can offer — the run whose log names the job that
+    # broke. Say which run it is: "see the run" beside a red goal is ambiguous
+    # about whether the run is the problem or merely the record.
     url = (reading or {}).get("url")
+    label = "See the failing run" if state == "red" else "See the run"
     sit = {"who": None, "doing": "", "until": None, "lapsed": False,
-           "link": {"label": "See the run", "href": url} if url else None}
+           "link": {"label": label, "href": url} if url else None}
 
     if state != "red":
         return state, sit

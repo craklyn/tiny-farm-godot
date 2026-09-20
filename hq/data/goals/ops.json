@@ -54,7 +54,7 @@
         },
         "owner": "vp-finance",
         "action": {
-          "label": "Put it on Harold's list",
+          "label": "Put it on the VP of Finance's list",
           "tier": 1,
           "level": "story",
           "ask": "Design and land hq/data/spend.json — one record per paid call, with the balance the vendor returned afterwards — and have the pixel-art pipeline write it as it spends. See the filed project for the full shape.",

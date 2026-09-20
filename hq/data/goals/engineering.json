@@ -93,10 +93,15 @@
       },
       "path_to_green": {
         "narrative": "Run `python3 tools/check_gateway.py` — a broken rule names the line that broke it, and what the line should have done instead.",
-        "route": {
-          "kind": "none"
-        },
-        "owner": "vp-engineering"
+        "owner": "vp-engineering",
+        "action": {
+          "label": "Put it on the VP of Engineering's list",
+          "tier": 1,
+          "level": "task",
+          "title": "Repair the rule that keeps recorded games replayable",
+          "ask": "One of the four checks behind this goal is failing, so a recorded game may no longer replay to the same ending — and recorded games are the training data the robots will learn from. Find the change that broke the rule and put the rule back, rather than relaxing it.",
+          "first_action": "Run python3 tools/check_gateway.py and the unit suite, and read which of the four checks is failing."
+        }
       },
       "history": {
         "record": true,
@@ -116,7 +121,7 @@
         "field": "newest_completed"
       },
       "path_to_green": {
-        "narrative": "",
+        "narrative": "The run that failed identifies the job that broke it, and that job's log shows the test or the compile error underneath. Open the run, fix what it shows, and push the fix to main.",
         "owner": "vp-engineering"
       },
       "history": {

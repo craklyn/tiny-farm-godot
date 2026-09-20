@@ -20,11 +20,19 @@
       "measure": {
         "kind": "unchecked",
         "reason": "nothing measures this yet",
-        "would_need": ""
+        "would_need": "A check that reads each item on the program report and compares it against the work filed under it, so an item whose state is older than the work underneath it is flagged before you ask about it."
       },
       "path_to_green": {
-        "narrative": "",
-        "owner": "program-lead"
+        "narrative": "Nothing compares the report against the work filed under it, so the report can go out of date without anyone noticing. Building that comparison is the first step, not reviewing the report.",
+        "owner": "program-lead",
+        "action": {
+          "label": "Put it on the Program Lead's list",
+          "tier": 1,
+          "level": "story",
+          "title": "Notice when the program report has gone stale",
+          "ask": "Build the check behind this goal: read every item on the program report, compare it against the work cards and projects filed under it, and fail when an item's stated progress is older than the work beneath it. The goal exists because the CEO has to be able to trust the report without spot-checking it.",
+          "first_action": "Read hq/server.py's program report builder and the goal's measure block, then write the check as a new measure kind."
+        }
       },
       "history": {
         "record": false,
