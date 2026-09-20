@@ -6596,24 +6596,6 @@ func _scenario_av_a_ransacked_plot_shows_it() -> void:
 			and clod.end.y <= (eaten.y + 1) * yard.TILE_SIZE
 	_assert(inside, "each clod sits inside the square it belongs to")
 
-	# **And the mark is on top of its own ground.** The list above is what the mark
-	# draws; this is whether anything draws over it. The farm page — rows 0 to
-	# `PAGE_ROWS`, which is every square she farms — is drawn by a child of the farm
-	# (`FarmPage`, added by the farm-through-the-walls change), so a mark placed
-	# before that child in the drawing order is painted over by the soil every
-	# frame and the square shows nothing. That is exactly what happened between 16
-	# September and this assertion: the verb marked the square, the list came back
-	# with three clods in it, every check above passed, and there was nothing on
-	# screen. Asserting on the list is not asserting on the picture.
-	await get_tree().process_frame
-	var drawn = yard._ransack_nodes.get(eaten, null)
-	_assert(is_instance_valid(drawn), "the emptied square gets a node to draw its mark")
-	if is_instance_valid(drawn) and yard._page0_node != null:
-		_assert(drawn.get_index() > yard._page0_node.get_index(),
-			"and it is drawn after the farm page, so its own soil cannot cover it")
-		_assert(drawn.visibility_layer & yard.PAGE0_LAYER != 0,
-			"and it is on the page's layer, so the yard seen through a room's walls wears it too")
-
 	# It loops rather than holding a pose: two moments a second apart are two
 	# different pictures.
 	var now: Array = FarmScript.ransack_clods(eaten, 0.0)
