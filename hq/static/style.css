@@ -596,7 +596,7 @@ code.ref { background: #1b1710; border: 1px solid var(--line); border-radius: 6p
 .d-body ul, .d-body ol { margin: 8px 0; padding-left: 22px; }
 .d-body li { margin: 3px 0; }
 .d-body code { background: var(--panel2); border-radius: 4px; padding: 1px 4px; font-size: 0.92em; }
-.att-row { display: flex; gap: 16px; flex-wrap: wrap; margin: 12px 0; }
+.att-row { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; margin: 12px 0; }
 .att { margin: 0; text-align: center; max-width: 190px; }
 .att img { max-width: 180px; max-height: 120px; image-rendering: pixelated; background: #1b1710; border: 1px solid var(--line); border-radius: 8px; padding: 6px; }
 .att canvas { image-rendering: pixelated; background: #1b1710; border: 1px solid var(--line); border-radius: 8px; }
@@ -637,7 +637,43 @@ code.ref { background: #1b1710; border: 1px solid var(--line); border-radius: 6p
 .ruled-box { background: #26301f; border: 1px solid #3c5230; border-radius: 8px; padding: 12px 14px; margin-top: 10px; }
 /* A card he sent back without picking: still his, so it is marked in the amber
    that means somebody else is holding it rather than the green that means done. */
-.sentback-box { background: #302a1f; border: 1px solid #5a4a2a; border-radius: 8px; padding: 12px 14px; margin-top: 10px; }
+/* ---------- a decision card's sections ----------
+   A card that has been round the loop is a conversation: the question, then
+   every turn since, then the one thing being asked of him. The headings exist
+   to keep those three apart — a card with no history shows only the quiet one
+   over the options, because labelling a single section is furniture. */
+.d-sec { font-size: 10.5px; letter-spacing: 1.4px; text-transform: uppercase;
+  color: var(--muted); margin: 18px 0 8px; padding-top: 12px; border-top: 1px solid var(--line); }
+.d-sec-quiet { border-top: none; padding-top: 0; margin-top: 14px; }
+.d-thread { margin-top: 0; border-top: none; padding-top: 0; }
+.d-when { text-transform: none; letter-spacing: 0; color: var(--muted); font-weight: 400; margin-left: 6px; }
+
+/* Who the card is waiting on, said on the card. Green is done, accent is his
+   move, amber is somebody else holding it — the same claim on his attention
+   these colours make everywhere else. */
+.d-chip { float: right; font-size: 10.5px; text-transform: uppercase; letter-spacing: 1.2px;
+  padding: 2px 9px; border-radius: 20px; border: 1px solid var(--accent); color: var(--accent); font-weight: 600; }
+.d-chip.done { border-color: var(--green); color: var(--green); }
+.d-chip.waiting { border-color: #a6812f; color: #d2a548; }
+
+/* The control says what it records, so it grows and shrinks with its label. */
+.d-ask { margin-top: 12px; }
+.d-ask[hidden] { display: none; }
+.d-say { width: 100%; background: var(--panel2); color: var(--text); border: 1px solid var(--line);
+  border-radius: 8px; padding: 10px 12px; font-family: inherit; font-size: 13.5px; height: 64px; resize: vertical; }
+.d-say:focus { outline: none; border-color: var(--accent); }
+.d-consequence { margin: 7px 2px 9px; }
+.d-record:disabled { opacity: .5; cursor: not-allowed; }
+
+/* How a card started, once it has a history: read, and folded. Same summary
+   affordance the work cards use for their earlier messages. */
+.d-origin { margin: 8px 0 0; }
+.d-origin > summary { cursor: pointer; color: var(--muted); font-size: 12px; list-style: none; }
+.d-origin > summary::-webkit-details-marker { display: none; }
+.d-origin > summary::before { content: "▸ "; }
+.d-origin[open] > summary::before { content: "▾ "; }
+.d-origin > summary:hover { color: var(--text); }
+.d-origin-b { padding-left: 2px; }
 
 /* ---------- inbox ---------- */
 .q-item { border-left: 3px solid var(--accent); }

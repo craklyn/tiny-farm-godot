@@ -157,6 +157,23 @@ def record_ruling(payload):
     if not judgment and not option:
         return {"error": "pick an option or write a judgment"}
     import datetime
+    rdir = os.path.join(DATA, "rulings")
+    os.makedirs(rdir, exist_ok=True)
+    path = os.path.join(rdir, f"{qid}.json")
+
+    # **Nothing he has said on a card is ever overwritten.** A card can go round
+    # more than once — he comments, the studio answers, he comments again — and
+    # this file used to keep only the latest, so the first thing he asked for
+    # disappeared the moment he said anything else. The card is a conversation,
+    # so the file keeps every turn: `earlier` is each previous ruling in the
+    # order he made them, and the top-level fields are the current one.
+    earlier = []
+    if os.path.isfile(path):
+        was = load_json(path)
+        if was:
+            earlier = list(was.pop("earlier", []) or [])
+            earlier.append(was)
+
     ruling = {
         "id": qid,
         "option": option or None,
@@ -164,10 +181,9 @@ def record_ruling(payload):
         "judgment": judgment or None,
         "ruled_at": datetime.datetime.now().isoformat(timespec="seconds"),
         "status": "pending_integration",
+        "earlier": earlier,
     }
-    rdir = os.path.join(DATA, "rulings")
-    os.makedirs(rdir, exist_ok=True)
-    with open(os.path.join(rdir, f"{qid}.json"), "w", encoding="utf-8") as f:
+    with open(path, "w", encoding="utf-8") as f:
         json.dump(ruling, f, indent=2, ensure_ascii=False)
     with open(os.path.join(rdir, "RULINGS.md"), "a", encoding="utf-8") as f:
         f.write(f"\n## {qid} — ruled {ruling['ruled_at']}\n")

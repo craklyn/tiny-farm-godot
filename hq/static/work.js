@@ -635,7 +635,20 @@ async function renderWork(focusId) {
   // what he said last time shown on them. `queue.decided` is the server's list
   // of the ones an option was actually picked on.
   const decided = new Set(queue.decided || []);
-  const decisions = curated.filter(c => !decided.has(c.id) && !c.ruled);
+  const open = curated.filter(c => !decided.has(c.id) && !c.ruled);
+  // Of the cards still open, the ones he has already answered and nobody has
+  // come back on are not his move, however much they look like it — counting
+  // them under "waiting for your ruling" makes that number something he has to
+  // audit instead of trust. A studio reply landing after his words puts the
+  // card back in his column.
+  const answeredBack = c => {
+    const r = rulings[c.id];
+    if (!r || !r.ruled_at) return false;
+    const since = (c.replies || []).some(x => String(x.at || "") > String(r.ruled_at));
+    return !since;
+  };
+  const decisions = open.filter(c => !answeredBack(c));
+  const withStudio = open.filter(answeredBack);
   const ruled = curated.filter(c => decided.has(c.id));
   const rawOpen = (queue.items || []).filter(q => !q.answered && !curatedIds.has(q.id) && !decided.has(q.id));
   const answered = (queue.items || []).filter(q => q.answered);
@@ -681,6 +694,21 @@ async function renderWork(focusId) {
     // card is in front of him again, and the card shows it rather than looking
     // like it was never touched.
     decisions.forEach(c => qo.appendChild(
+      decisionCard(c, rulings[c.id] || null, entData, () => renderWork(), looks)));
+  }
+
+  // Cards he has answered that are waiting on somebody here. Not folded away:
+  // he should be able to see what he said is still unanswered, and how long it
+  // has been, without opening anything.
+  if (withStudio.length) {
+    const sec = h(`<section class="w-sec">
+      <h2>You answered — waiting on the studio <span class="w-count">${withStudio.length}</span></h2>
+      <p class="sub">You replied to these and nobody has come back on it yet. They return to
+      the list above with an answer attached.</p>
+      <div class="w-list" id="q-back"></div></section>`).firstElementChild;
+    body.appendChild(sec);
+    const qb = sec.querySelector("#q-back");
+    withStudio.forEach(c => qb.appendChild(
       decisionCard(c, rulings[c.id] || null, entData, () => renderWork(), looks)));
   }
 

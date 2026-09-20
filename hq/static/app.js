@@ -1009,22 +1009,81 @@ function attachmentEl(att, entData, looks) {
   return wrap;
 }
 
+/* A decision card is a conversation, not a form ------------------------------
+   His rule, 2026-09-19, looking at Q-110 after he had sent it back once and the
+   studio had answered: "It's a bit confusing how the card has changed, and
+   there's a quiz, and then there's a note about something I said about an
+   earlier version of the card, and then there's a submit button that's called
+   'Record ruling'. It makes it look like the text is the only thing recorded if
+   I push the button... I want to be able to respond to a ticket, wait until an
+   agent follows up on my response, and then I see logically presented the
+   resolution of the original ask and addressing the question."
+
+   So the card reads top to bottom in the order things happened, and the thing
+   being asked of him is last:
+
+     1. **The question**, with the evidence it was first asked against.
+     2. **What has happened since** — every turn, his and the studio's, oldest
+        first. Whatever a turn produced is attached to that turn, so new
+        material is visibly the answer to what he asked for rather than more
+        evidence that was always there. This is the part that was missing: the
+        card changed under him with nothing to say what had changed or why.
+     3. **His call**, with a control that names what pressing it records.
+
+   A card that has never been round the loop renders as it always did — question,
+   evidence, options — because a section heading over a card with one section is
+   furniture. The thread appears the moment there is more than one thing to tell
+   apart. */
+
+function ruleWhen(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d)) return String(iso).replace("T", " ");
+  return `${d.toLocaleDateString([], { day: "numeric", month: "short" })} `
+       + `${d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
+}
+
+/* Every turn on a card, oldest first. His come out of the ruling file, which
+   keeps each earlier ruling in `earlier`; the studio's come off the card. */
+function decisionTurns(c, ruling) {
+  const his = r => ({
+    role: "daniel", at: r.ruled_at, text: r.judgment || "",
+    option: r.option, option_label: r.option_label,
+  });
+  const turns = [];
+  if (ruling) {
+    (ruling.earlier || []).forEach(r => turns.push(his(r)));
+    turns.push(his(ruling));
+  }
+  (c.replies || []).forEach(r => turns.push({
+    role: "studio", at: r.at, who: r.by || "Your chief of staff",
+    text: r.text || "", attachments: r.attachments || [],
+  }));
+  return turns.sort((a, b) => String(a.at || "").localeCompare(String(b.at || "")));
+}
+
 function decisionCard(c, ruling, entData, onRuled, looks) {
-  // A ruling that picked no option did not settle this card — it sent it back.
-  // (Q-110, 2026-09-19: "let me pick from the results instead of the idea.")
-  // So only a ruling with an option locks the card; a ruling without one leaves
-  // every control live and shows what he said last time above them, which is
-  // the reason the card is in front of him again.
+  // Only a ruling that picked an option settles a card. One with no option is
+  // him sending it back, which is a turn in the conversation, not a verdict.
   const settled = !!(ruling && ruling.option);
-  const sentBack = ruling && !settled ? ruling : null;
-  const opts = (c.options || []).map(o => `
-    <label class="opt ${settled && ruling.option === o.key ? "picked" : ""}">
-      <input type="radio" name="opt-${c.id}" value="${o.key}" data-label="${esc(o.label)}" ${settled ? "disabled" : ""} ${settled && ruling.option === o.key ? "checked" : ""}>
-      <span><b>${esc(o.label)}</b>${o.recommended ? ' <span class="rec">recommended</span>' : ""}<br>
+  const turns = decisionTurns(c, ruling);
+  // There is a conversation to show once the card has actually been round the
+  // loop: he answered and it came back, or he answered more than once.
+  const hasHistory = (c.replies || []).length > 0
+    || !!(ruling && (ruling.earlier || []).length);
+  const last = turns[turns.length - 1];
+  // He has spoken and nobody has answered yet: the card is in his list but the
+  // move is not his, and saying so is the difference between a queue he trusts
+  // and a queue he has to audit.
+  const waitingOnStudio = !settled && !!ruling && last && last.role === "daniel";
+
+  const optionsHtml = (c.options || []).map(o => `
+    <label class="opt" data-opt="${esc(o.key)}">
+      <input type="radio" name="opt-${c.id}" value="${esc(o.key)}" data-label="${esc(o.label)}">
+      <span><b>(${esc(o.key)}) ${esc(o.label)}</b>${o.recommended ? ' <span class="rec">recommended</span>' : ""}<br>
       <span class="small muted">${mdi(o.detail || "")}</span></span>
     </label>`).join("");
-  const atts = (c.attachments || []).length
-    ? `<div class="att-row"></div>` : "";
+
   // A link is {label, href}; an older card may carry a bare path string, and a
   // card that cannot render must never take the whole inbox down with it.
   const links = (c.links || []).map(raw => {
@@ -1032,28 +1091,134 @@ function decisionCard(c, ruling, entData, onRuled, looks) {
     const href = String(l.href || "");
     return `<a class="plain small" href="${esc(href)}" ${href.startsWith("http") ? 'target="_blank" rel="noopener"' : ""}>🔗 ${esc(l.label || href)}</a>`;
   }).join(" · ");
-  const card = h(`<div class="card d-card">
-    <div class="d-head" id="card-${c.id}"><span class="qid">${c.id}</span> <b>${esc(c.title)}</b></div>
+
+  // Once a card has been round the loop, how it started is context he has read
+  // and the latest turn is what he has not. It folds, so the thing being asked
+  // of him is on the screen rather than a scroll below its own history.
+  const origCount = (c.attachments || []).length;
+
+  const chip = settled
+    ? `<span class="d-chip done">Ruled${ruling.option ? ` — (${esc(ruling.option)}) ${esc(ruling.option_label || "")}` : ""}</span>`
+    : waitingOnStudio ? `<span class="d-chip waiting">Waiting on the studio</span>`
+    : `<span class="d-chip">Your call</span>`;
+
+  const card = h(`<div class="card d-card${settled ? " d-settled" : ""}">
+    <div class="d-head" id="card-${c.id}"><span class="qid">${c.id}</span> <b>${esc(c.title)}</b>${chip}</div>
+    ${hasHistory ? `<h4 class="d-sec">The question</h4>` : ""}
     <div class="d-body">${md(c.question)}</div>
+    ${hasHistory ? `<details class="d-origin"><summary>How this started${origCount ? ` · ${origCount} picture${origCount > 1 ? "s" : ""}` : ""}</summary><div class="d-origin-b">` : ""}
     ${c.why_now ? `<p class="small muted"><b>Why now:</b> ${mdi(c.why_now)}</p>` : ""}
-    ${atts}
+    <div class="att-row d-att-first"></div>
     ${links ? `<p style="margin-top:10px">${links}</p>` : ""}
-    <div class="d-options">${opts}</div>
-    ${settled
-      ? `<div class="ruled-box">✅ <b>Ruled ${esc((ruling.ruled_at || "").replace("T", " "))}</b>${ruling.option_label ? " — " + esc(ruling.option_label) : ""}${ruling.judgment ? `<div class="small" style="margin-top:6px">"${esc(ruling.judgment)}"</div>` : ""}<div class="small muted" style="margin-top:6px">${ruling.status === "integrated" ? "Integrated into the design docs." : "Queued for the next work session to fold into the design docs."}</div></div>`
-      : `${sentBack ? `<div class="sentback-box">↩︎ <b>You sent this back ${esc((sentBack.ruled_at || "").replace("T", " "))}</b>${sentBack.judgment ? `<div class="small" style="margin-top:6px">"${esc(sentBack.judgment)}"</div>` : ""}<div class="small muted" style="margin-top:6px">You picked no option, so this is still yours to settle. What you asked for is on this card.</div></div>` : ""}
-        <div class="d-judge">
-          <textarea placeholder="Your judgment, in your own words — required if you don't pick an option; welcome either way."></textarea>
-          <button data-rule="${c.id}">Record ruling</button>
-        </div>`}
+    ${hasHistory ? `</div></details>` : ""}
+    ${hasHistory ? `<h4 class="d-sec">What has happened since</h4><div class="w-convo d-thread"></div>` : ""}
+    <h4 class="d-sec${hasHistory ? "" : " d-sec-quiet"}">${settled ? "What you decided" : "Your call"}</h4>
+    <div class="d-options">${optionsHtml}</div>
+    <div class="d-ask">
+      <textarea class="d-say" placeholder="Anything you want to say — needed only if you are not picking an option"></textarea>
+      <p class="small muted d-consequence"></p>
+      <button class="d-record" data-rule="${c.id}" disabled></button>
+    </div>
+    <div class="d-done"></div>
   </div>`).firstElementChild;
-  const attRow = card.querySelector(".att-row");
-  if (attRow) (c.attachments || []).forEach(a => attRow.appendChild(attachmentEl(a, entData, looks)));
-  const btn = card.querySelector("[data-rule]");
-  if (btn) btn.addEventListener("click", async () => {
-    const sel = card.querySelector(`input[name="opt-${c.id}"]:checked`);
-    const judgment = card.querySelector("textarea").value.trim();
-    if (!sel && !judgment) { alert("Pick an option or write a judgment first."); return; }
+
+  // Evidence the question was first asked against stays with the question;
+  // anything a later turn produced hangs off that turn instead.
+  const firstRow = card.querySelector(".d-att-first");
+  (c.attachments || []).forEach(a => firstRow.appendChild(attachmentEl(a, entData, looks)));
+  if (!firstRow.children.length) firstRow.remove();
+
+  const thread = card.querySelector(".d-thread");
+  if (thread) turns.forEach(t => {
+    const you = t.role === "daniel";
+    const pill = you
+      ? (t.option
+          ? `<span class="w-move">ruled (${esc(t.option)}) ${esc(t.option_label || "")}</span>`
+          : `<span class="w-move w-move-follow">sent it back</span>`)
+      : `<span class="w-move w-move-revise">answered you</span>`;
+    const el = h(`<div class="w-msg${you ? " w-msg-you" : ""}">
+      <div class="w-msg-w">${you ? "You" : esc(t.who)} <span class="d-when">${esc(ruleWhen(t.at))}</span>${pill}</div>
+      <div class="w-msg-b">${t.text ? (you ? `<p>${esc(t.text)}</p>` : md(t.text)) : `<p class="muted">No words — just the pick.</p>`}</div>
+      ${(t.attachments || []).length ? `<div class="att-row"></div>` : ""}
+    </div>`).firstElementChild;
+    const row = el.querySelector(".att-row");
+    if (row) (t.attachments || []).forEach(a => row.appendChild(attachmentEl(a, entData, looks)));
+    thread.appendChild(el);
+  });
+
+  const ask = card.querySelector(".d-ask");
+  const done = card.querySelector(".d-done");
+  const ta = card.querySelector(".d-say");
+  const btn = card.querySelector(".d-record");
+  const note = card.querySelector(".d-consequence");
+  const radios = [...card.querySelectorAll(`input[name="opt-${c.id}"]`)];
+
+  // A settled card shows what was decided and, while the studio has not yet
+  // folded it into the design docs, offers to change it — a pick made by
+  // accident used to be permanent, on a control whose own label was the thing
+  // he said was unclear.
+  const lock = () => {
+    radios.forEach(r => {
+      r.disabled = true;
+      r.checked = r.value === ruling.option;
+      r.closest(".opt").classList.toggle("picked", r.checked);
+    });
+    ask.hidden = true;
+    const open = ruling.status !== "integrated";
+    done.innerHTML = `<div class="ruled-box">✅ <b>You ruled ${esc(ruleWhen(ruling.ruled_at))}</b> — (${esc(ruling.option)}) ${esc(ruling.option_label || "")}
+      ${ruling.judgment ? `<div class="small" style="margin-top:6px">"${esc(ruling.judgment)}"</div>` : ""}
+      <div class="small muted" style="margin-top:6px">${open
+        ? "Queued for the next work session to fold into the design docs — so it can still be changed."
+        : "Folded into the design docs."}</div>
+      ${open ? `<button class="small d-change" style="margin-top:10px">Change this ruling</button>` : ""}</div>`;
+    const ch = done.querySelector(".d-change");
+    if (ch) ch.addEventListener("click", () => {
+      radios.forEach(r => { r.disabled = false; });
+      ask.hidden = false;
+      done.innerHTML = "";
+      refresh();
+      ta.focus();
+    });
+  };
+
+  // What the button records, said on the button, and what recording it causes,
+  // said under it — both updated as he picks and types, because the whole
+  // complaint was that the control did not say what it was about to do.
+  const refresh = () => {
+    const sel = radios.find(r => r.checked);
+    radios.forEach(r => r.closest(".opt").classList.toggle("picked", r.checked));
+    const said = ta.value.trim();
+    if (sel) {
+      // The option's own words on the button, because the whole point is that he
+      // can see what he is about to record — clipped only when a label is long
+      // enough to turn the button into a paragraph.
+      const label = sel.dataset.label.length > 54
+        ? sel.dataset.label.slice(0, 52).trimEnd() + "…" : sel.dataset.label;
+      btn.disabled = false;
+      btn.textContent = `${settled ? "Replace my ruling" : "Record my ruling"} — (${sel.value}) ${label}`;
+      note.textContent = said
+        ? "Settles this card. Your comment is recorded with the pick and goes to whoever does the work."
+        : "Settles this card. The next work session folds it into the design docs.";
+    } else if (said) {
+      btn.disabled = false;
+      btn.textContent = "Send this back with my comment";
+      note.textContent = "Picks nothing and settles nothing. Your comment goes to the studio, and the card comes back to you with an answer to it.";
+    } else {
+      btn.disabled = true;
+      btn.textContent = "Pick an option or write a comment";
+      note.textContent = "Picking an option settles this card. Writing a comment without picking sends it back for more.";
+    }
+  };
+  radios.forEach(r => r.addEventListener("change", refresh));
+  ta.addEventListener("input", refresh);
+  refresh();
+  if (settled) lock();
+
+  btn.addEventListener("click", async () => {
+    const sel = radios.find(r => r.checked);
+    const judgment = ta.value.trim();
+    if (!sel && !judgment) return;
+    const was = btn.textContent;
     btn.disabled = true; btn.textContent = "Recording…";
     try {
       const r = await fetch("/api/ruling", {
@@ -1061,9 +1226,9 @@ function decisionCard(c, ruling, entData, onRuled, looks) {
         body: JSON.stringify({ id: c.id, option: sel ? sel.value : "", option_label: sel ? sel.dataset.label : "", judgment }),
       });
       const j = await r.json();
-      if (j.error) { alert(j.error); btn.disabled = false; btn.textContent = "Record ruling"; return; }
+      if (j.error) { alert(j.error); btn.disabled = false; btn.textContent = was; return; }
       onRuled(j.ruling);
-    } catch (e) { alert("Failed: " + e.message); btn.disabled = false; btn.textContent = "Record ruling"; }
+    } catch (e) { alert("Failed: " + e.message); btn.disabled = false; btn.textContent = was; }
   });
   return card;
 }

@@ -114,3 +114,11 @@ For chime under the bloom, I'm good with the recommendation. Please add a bit mo
 ## Q-110 — ruled 2026-09-19T17:00:25
 - In his words: Present to me what the feathers would look like, what the stripped plant would look like, and what the revamped clods would look like, and let me pick from the results instead of the idea, please.
 - Status: pending integration into docs/DESIGNER_QUEUE.md
+
+## Q-110 — ruled 2026-09-19T23:11:08
+- Picked: **(b) The stripped plant**
+- Status: pending integration into docs/DESIGNER_QUEUE.md
+
+## Q-92 — ruled 2026-09-19T23:14:16
+- Picked: **(a) Give her fence its own look — a lighter post-and-rail (Recommended)**
+- Status: pending integration into docs/DESIGNER_QUEUE.md
