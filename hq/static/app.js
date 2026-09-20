@@ -41,15 +41,38 @@ function showStaleBanner() {
 function h(html) { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content; }
 function esc(s) { return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 
-/* Markdown for chat replies: marked (parser) + DOMPurify (sanitizer), both
-   vendored in static/vendor/. Falls back to escaped plain text if either is
-   missing. */
+/* Markdown for authored prose — decision cards, work briefs, chat replies:
+   marked (parser) + DOMPurify (sanitizer), both vendored in static/vendor/.
+   Falls back to escaped plain text if either is missing.
+
+   This parser prints raw HTML as text rather than passing it through, which is
+   why it is its own instance rather than a global setting: the people and
+   agents writing cards, briefs and replies write markdown, and they write
+   placeholders in angle brackets — a path like assets/anim/<slug>/. Passed
+   through, marked hands that to DOMPurify as an unknown tag and it vanishes
+   from the sentence. The design docs (design.js) do use real HTML and keep the
+   stock parser. */
+const proseMd = window.marked
+  ? new marked.Marked({ renderer: { html(t) { return esc(typeof t === "string" ? t : t.text); } } })
+  : null;
+
 function md(src) {
   const text = String(src ?? "");
-  if (window.marked && window.DOMPurify) {
-    return DOMPurify.sanitize(marked.parse(text, { breaks: true, gfm: true }));
+  if (proseMd && window.DOMPurify) {
+    return DOMPurify.sanitize(proseMd.parse(text, { breaks: true, gfm: true }));
   }
   return `<p>${esc(text).replace(/\n/g, "<br>")}</p>`;
+}
+
+/* The same, for prose that has to stay inside a line — a label's detail, a
+   "Why now:" that follows a bold prefix. marked.parseInline emits no <p>, so
+   the result nests legally where a block render would not. */
+function mdi(src) {
+  const text = String(src ?? "");
+  if (proseMd && window.DOMPurify) {
+    return DOMPurify.sanitize(proseMd.parseInline(text, { gfm: true }));
+  }
+  return esc(text);
 }
 
 /* ---------------- sprite animator ---------------- */
@@ -991,7 +1014,7 @@ function decisionCard(c, ruling, entData, onRuled, looks) {
     <label class="opt ${ruling && ruling.option === o.key ? "picked" : ""}">
       <input type="radio" name="opt-${c.id}" value="${o.key}" data-label="${esc(o.label)}" ${ruling ? "disabled" : ""} ${ruling && ruling.option === o.key ? "checked" : ""}>
       <span><b>${esc(o.label)}</b>${o.recommended ? ' <span class="rec">recommended</span>' : ""}<br>
-      <span class="small muted">${esc(o.detail || "")}</span></span>
+      <span class="small muted">${mdi(o.detail || "")}</span></span>
     </label>`).join("");
   const atts = (c.attachments || []).length
     ? `<div class="att-row"></div>` : "";
@@ -1004,8 +1027,8 @@ function decisionCard(c, ruling, entData, onRuled, looks) {
   }).join(" · ");
   const card = h(`<div class="card d-card">
     <div class="d-head" id="card-${c.id}"><span class="qid">${c.id}</span> <b>${esc(c.title)}</b></div>
-    <p>${esc(c.question)}</p>
-    ${c.why_now ? `<p class="small muted"><b>Why now:</b> ${esc(c.why_now)}</p>` : ""}
+    <div class="d-body">${md(c.question)}</div>
+    ${c.why_now ? `<p class="small muted"><b>Why now:</b> ${mdi(c.why_now)}</p>` : ""}
     ${atts}
     ${links ? `<p style="margin-top:10px">${links}</p>` : ""}
     <div class="d-options">${opts}</div>

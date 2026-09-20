@@ -102,8 +102,8 @@ function followUpBox(fus, org) {
         <div class="w-spawn-m"><span class="chip w-level">${esc(fu.level || "task")}</span>
           <span class="chip ${TIER_CHIP[tier] || "t-ask"}">${esc(TIER_NAME[tier] || "?")}</span>
           <span>${esc(who.emoji)} ${esc(who.name)}</span></div>
-        ${fu.first_action ? `<p class="w-spawn-p"><b>First step:</b> ${esc(fu.first_action)}</p>` : ""}
-        ${fu.why ? `<p class="w-spawn-p muted">${esc(fu.why)}</p>` : ""}
+        ${fu.first_action ? `<p class="w-spawn-p"><b>First step:</b> ${mdi(fu.first_action)}</p>` : ""}
+        ${fu.why ? `<p class="w-spawn-p muted">${mdi(fu.why)}</p>` : ""}
         <p class="w-spawn-p muted">${esc(LANDS[tier] ? LANDS[tier](who.name.split(" ")[0]) : "")}</p>
       </div>`;
   }).join("")}
@@ -125,10 +125,10 @@ function recommendBlock(it) {
   if (!r) return "";
   return `<div class="w-rec">
     <div class="w-rec-h">The call to make</div>
-    ${r.question ? `<p class="w-rec-q">${esc(r.question)}</p>` : ""}
-    <p class="w-rec-a"><span class="w-rec-tag">Recommended</span> ${esc(r.answer)}</p>
-    ${r.why ? `<p class="w-rec-p muted">${esc(r.why)}</p>` : ""}
-    ${r.instead ? `<p class="w-rec-p"><b>If you'd rather:</b> ${esc(r.instead)} — say so in a comment below.</p>` : ""}
+    ${r.question ? `<p class="w-rec-q">${mdi(r.question)}</p>` : ""}
+    <p class="w-rec-a"><span class="w-rec-tag">Recommended</span> ${mdi(r.answer)}</p>
+    ${r.why ? `<p class="w-rec-p muted">${mdi(r.why)}</p>` : ""}
+    ${r.instead ? `<p class="w-rec-p"><b>If you'd rather:</b> ${mdi(r.instead)} — say so in a comment below.</p>` : ""}
   </div>`;
 }
 
@@ -415,9 +415,9 @@ function drainBlock(it, org) {
     ? `<pre class="w-stat">${esc(d.stat)}</pre>` : "";
   const [word, cls] = c ? (CHECK_WORD[c.verdict] || CHECK_WORD.concerns) : ["", ""];
   const findings = c && c.findings && c.findings.length
-    ? `<ul class="w-find">${c.findings.map(f => `<li><b>${esc(f.what)}</b>${
+    ? `<ul class="w-find">${c.findings.map(f => `<li><b>${mdi(f.what)}</b>${
         f.where ? ` <span class="muted">${esc(f.where)}</span>` : ""}${
-        f.fix ? `<br>${esc(f.fix)}` : ""}</li>`).join("")}</ul>` : "";
+        f.fix ? `<br>${mdi(f.fix)}` : ""}</li>`).join("")}</ul>` : "";
   const suites = s ? `<div class="w-suites">${Object.entries(s).map(([k, v]) =>
     `<span class="${v.ok ? "w-sui-ok" : "w-sui-bad"}">${esc(k)} tests ${v.ok ? "green" : "RED"}</span>`
   ).join(" · ")}</div>` : "";
@@ -426,7 +426,7 @@ function drainBlock(it, org) {
       by.model ? `, on ${esc(by.model)}` : ""} — ${esc(filesLine)}</div>
     ${emptyDiff}
     ${stat}
-    ${c ? `<div class="w-chk ${cls}"><b>${esc(word)}.</b> ${esc(c.summary || "")}${findings}</div>` : ""}
+    ${c ? `<div class="w-chk ${cls}"><b>${esc(word)}.</b> ${mdi(c.summary || "")}${findings}</div>` : ""}
     ${suites}
   </div>`;
 }
@@ -524,8 +524,8 @@ function workCard(it, org, pol) {
   const nextStep = it.first_action && it.state !== "for_review" ? it.first_action : "";
   const brief = it.ask || nextStep
     ? `<details class="w-brief"><summary>Show the brief written for ${esc(first)}</summary>
-        ${it.ask ? `<p class="w-ask">“${esc(it.ask)}”</p>` : ""}
-        ${nextStep ? `<p class="w-next"><b>Next step:</b> ${esc(nextStep)}</p>` : ""}
+        ${it.ask ? `<div class="w-ask">${md(it.ask)}</div>` : ""}
+        ${nextStep ? `<p class="w-next"><b>Next step:</b> ${mdi(nextStep)}</p>` : ""}
       </details>`
     : "";
   const dec = decisionFor(it);

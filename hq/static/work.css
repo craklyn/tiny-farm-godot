@@ -64,7 +64,14 @@
 .w-owner:hover { color: var(--text); border-color: var(--line); background: var(--panel2); }
 .w-owner:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .w-why { font-size: 11.5px; color: var(--muted); font-style: italic; }
-.w-ask { margin: 4px 0; color: var(--muted); font-style: italic; }
+.w-ask { margin: 4px 0; color: var(--muted); font-style: italic;
+  border-left: 2px solid var(--line); padding-left: 10px; }
+/* The brief is authored markdown, so it renders as blocks — the quote marks it
+   used to carry are the left rule now. */
+.w-ask p { margin: 4px 0; }
+.w-ask ul, .w-ask ol { margin: 4px 0; padding-left: 20px; }
+.w-ask > *:first-child { margin-top: 0; }
+.w-ask > *:last-child { margin-bottom: 0; }
 .w-next { margin: 6px 0; font-size: 13.5px; }
 .w-foot { display: flex; gap: 10px; align-items: baseline; margin-top: 8px; flex-wrap: wrap; }
 .w-foot-acts { margin-left: auto; display: flex; gap: 14px; align-items: baseline; }
