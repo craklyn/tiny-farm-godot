@@ -16,6 +16,12 @@
   "03f15dd215b2ad25eebd": {
    "verdict": "ok"
   },
+  "04152781488ddc7affa4": {
+   "instead": "at bedtime instead (or name the specific game moment)",
+   "quote": "at the sleep instead",
+   "verdict": "decode",
+   "why": "'The sleep' is undefined—it could mean nighttime, a game state, an animation, or the overnight cycle, and the reader has to guess."
+  },
   "066967e5f29da16e5c83": {
    "verdict": "ok"
   },
@@ -32,6 +38,9 @@
    "verdict": "ok"
   },
   "0769d71c8c398a38ba1b": {
+   "verdict": "ok"
+  },
+  "07bfae196c2836beca70": {
    "verdict": "ok"
   },
   "095ba4370aa6a15dcff3": {
@@ -87,6 +96,9 @@
    "verdict": "ok"
   },
   "0fa1ac65ddfcc954c09f": {
+   "verdict": "ok"
+  },
+  "0ffcbfe1e13d762ee069": {
    "verdict": "ok"
   },
   "10ad0a9d229cb5acf7eb": {
@@ -245,6 +257,9 @@
    "verdict": "ok"
   },
   "256b6b18033765f3cdfd": {
+   "verdict": "ok"
+  },
+  "25c6ef637410538a141e": {
    "verdict": "ok"
   },
   "25d8eb218995ba284a8b": {
@@ -659,6 +674,12 @@
   "6421c8f40da9c308a534": {
    "verdict": "ok"
   },
+  "646add3f9b47fef2dd06": {
+   "instead": "A crow raid happens while she walks; the damage marks where it struck",
+   "quote": "The raid's meal lasts as long as her walk",
+   "verdict": "decode",
+   "why": "'Raid's meal' is a metaphor for extent or duration; the reader has to work out what it means."
+  },
   "64f0185c9f9a1bf9c3b6": {
    "baselined": "2026-09-19",
    "instead": "Rewrite the store page to match the current build",
@@ -802,6 +823,12 @@
   "7a1fad480b6bc3e5c4b7": {
    "verdict": "ok"
   },
+  "7ad995031325e86944b8": {
+   "instead": "saw the marks, and asked what they were and whether they were a bug",
+   "quote": "saw them, and asked what they were and whether they were a bug",
+   "verdict": "second-look",
+   "why": "The pronoun 'them' has no named referent in the same sentence."
+  },
   "7b00828205ac168200bb": {
    "verdict": "ok"
   },
@@ -846,6 +873,9 @@
   "81b4995d97a4fb8b564d": {
    "verdict": "ok"
   },
+  "81cd8fafc277fe523019": {
+   "verdict": "ok"
+  },
   "821546048b445324bb1b": {
    "verdict": "ok"
   },
@@ -884,6 +914,12 @@
    "quote": "before is the sheet as it was when you opened the editor.",
    "verdict": "second-look",
    "why": "Same as 18 — word order makes this read as a statement when it is a label."
+  },
+  "87339152f33b1c468422": {
+   "instead": "the charts match what the test suite logged",
+   "quote": "the charts say the same thing as the robot's own scorecard",
+   "verdict": "second-look",
+   "why": "'The robot's own scorecard' is vague—its difference from 'the charts' and what it records are both unclear."
   },
   "883b4fbf767249de4463": {
    "verdict": "ok"
@@ -957,6 +993,12 @@
    "verdict": "ok"
   },
   "931dfd56fafcdb1a599c": {
+   "verdict": "ok"
+  },
+  "938babe427cc8e760456": {
+   "verdict": "ok"
+  },
+  "939a668ca79269d651a7": {
    "verdict": "ok"
   },
   "93ab0384c44be5d0ab19": {
@@ -1038,6 +1080,9 @@
    "verdict": "ok"
   },
   "9cde64fc106c198f51b9": {
+   "verdict": "ok"
+  },
+  "9ee1456291ee1b2ad2e9": {
    "verdict": "ok"
   },
   "9eebf305e14bbbb5df42": {
@@ -1262,6 +1307,9 @@
   "c15aee92b9910856e59a": {
    "verdict": "ok"
   },
+  "c17d6f6e7105dc40e905": {
+   "verdict": "ok"
+  },
   "c17fea87370dd377dac4": {
    "verdict": "ok"
   },
@@ -1373,6 +1421,9 @@
   "ceb467b17aecef160c4a": {
    "verdict": "ok"
   },
+  "ceda827233d8ff27798a": {
+   "verdict": "ok"
+  },
   "cf51d6563c844ae51547": {
    "verdict": "ok"
   },
@@ -1421,6 +1472,12 @@
    "verdict": "decode",
    "why": "Per rule 5, a number carries its denominator; 0.1 of what unit?"
   },
+  "d530ca026ef32b72f039": {
+   "instead": "it changes what the square looks like, and what she has to clear before replanting",
+   "quote": "it changes what the square looks like she has to clear before replanting",
+   "verdict": "second-look",
+   "why": "Grammar is ambiguous—unclear whether this is two separate things (what it looks like, and what she clears) or one."
+  },
   "d55474ca41d67594e647": {
    "verdict": "ok"
   },
@@ -1431,6 +1488,9 @@
    "verdict": "ok"
   },
   "d62cdfeb483891967665": {
+   "verdict": "ok"
+  },
+  "d77c29ad28bba99b32e8": {
    "verdict": "ok"
   },
   "d8b4e9aa0f25d36b80a0": {
@@ -1453,6 +1513,9 @@
    "verdict": "ok"
   },
   "db1b7b9750686bc44f58": {
+   "verdict": "ok"
+  },
+  "dc1ea34b074327526091": {
    "verdict": "ok"
   },
   "dcb8927179d3bbc655ed": {
@@ -1488,7 +1551,22 @@
   "df81857a0e8b714200cf": {
    "verdict": "ok"
   },
+  "e0bba8449aab1f2a0a3b": {
+   "instead": "the player keeps control",
+   "quote": "she keeps control",
+   "verdict": "second-look",
+   "why": "The pronoun 'she' has no named referent in the same sentence; at minimum it should say who keeps control."
+  },
   "e0cae9dcc194406eb6c7": {
+   "verdict": "ok"
+  },
+  "e0e1685cd82fd21684aa": {
+   "instead": "footsteps timed to the [bird's motion / tempo / whatever 'drive' refers to]",
+   "quote": "treads timed to the drive",
+   "verdict": "decode",
+   "why": "'The drive' is undefined; it could be a musical beat, a visual motion, or a technical term specific to the sound design."
+  },
+  "e0ee897905c5beaaf736": {
    "verdict": "ok"
   },
   "e0f6fddadab6328c0b9c": {
@@ -1599,6 +1677,9 @@
    "verdict": "ok"
   },
   "f4de393165d1a7f7a375": {
+   "verdict": "ok"
+  },
+  "f4f5ec3bcffb9462effa": {
    "verdict": "ok"
   },
   "f566c9de7901fc51da60": {
