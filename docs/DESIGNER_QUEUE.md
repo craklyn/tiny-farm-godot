@@ -47,8 +47,29 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   is gone. Sitting them on their tile's base line is a one-line fix and should ride with
   whichever option wins above.
 
-  **Panels are owed before this is ruled** — the same square of her farm under each option, so
-  the pick is made beside its rivals. Bears on `design/03` and `design/04`; follows Q-105.
+  **Panels, 2026-09-19.** The designer ruled on 19 September without picking an option:
+  *"Present to me what the feathers would look like, what the stripped plant would look like,
+  and what the revamped clods would look like, and let me pick from the results instead of the
+  idea."* All three are now built as real pixels and photographed on a real raided square in
+  the running game at the size it is played at —
+  `docs/design/mockups/ransack_mark/candidates.png` (close up) and `candidates_in_place.png`
+  (playing size), taken by `tools/capture_ransack_candidates.tscn`, which stages a bed of
+  ripe tomatoes and puts a crow's `eat_crop` through the gateway so the square is really
+  raided. Two new sprites were drawn for it: `assets/sprites/generated/feather.png` and
+  `assets/sprites/generated/tomato_stripped.png`. At most one of them survives the ruling;
+  the loser is deleted when the pick lands. The card carries all four pictures. **Still
+  awaiting the pick.**
+
+  **And the mark had stopped being drawn at all.** Taking those pictures found that since
+  2026-09-16 the ransack mark has been invisible: the farm-through-the-walls change moved
+  rows 0–`PAGE_ROWS` into `_page0_node`, a child of the farm, and `_sync_ransack_marks` was
+  still putting each mark at child index 0 — so the soil is painted over it every frame. Her
+  two raided squares show nothing today. Fixed in `world/farm.gd` (the mark now sits just
+  after the page node and carries the page's visibility layer, so the yard seen through a
+  room's walls wears it too), and the integration scenario now asserts the drawing order
+  rather than only the list of clods, which is the check that let this through.
+
+  Bears on `design/03` and `design/04`; follows Q-105.
 
 - **Q-108** How the farm reads through the walls — **Ruling**, and much smaller than it was.
   P-18 was corrected on 2026-09-15: one world, one metric, two grids — a building's interior

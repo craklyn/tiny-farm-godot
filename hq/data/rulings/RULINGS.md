@@ -110,3 +110,7 @@ For chime under the bloom, I'm good with the recommendation. Please add a bit mo
 - Picked: **(a) No frame — what ships today**
 - In his words: The blur effect at the left and right edges... please reduce the width of that effect by 50%.
 - Status: pending integration into docs/DESIGNER_QUEUE.md
+
+## Q-110 — ruled 2026-09-19T17:00:25
+- In his words: Present to me what the feathers would look like, what the stripped plant would look like, and what the revamped clods would look like, and let me pick from the results instead of the idea, please.
+- Status: pending integration into docs/DESIGNER_QUEUE.md

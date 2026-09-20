@@ -6576,7 +6576,10 @@ func _scenario_av_a_ransacked_plot_shows_it() -> void:
 	var spare := Vector2i(8, 9)
 	yard.set_tile_state(eaten.x, eaten.y, "growing", SimWorld.RAID_CROP)
 	yard.set_tile_state(spare.x, spare.y, "tilled")
-	yard.sim.apply_action({ "verb": "eat_crop", "actor": SimWorld.ACTOR_CROW, "target": eaten },
+	# Through the *renderer's* gateway (`farm.apply_action`), which is what the game
+	# calls and what keeps the marks on screen in step with the sim — the sim's own
+	# `apply_action` marks the square but tells no renderer about it.
+	yard.apply_action({ "verb": "eat_crop", "actor": SimWorld.ACTOR_CROW, "target": eaten },
 		GameState)
 
 	_assert(yard.ransack_marks(eaten.x, eaten.y).size() == yard.RANSACK_CLODS,
@@ -6596,6 +6599,24 @@ func _scenario_av_a_ransacked_plot_shows_it() -> void:
 			and clod.end.y <= (eaten.y + 1) * yard.TILE_SIZE
 	_assert(inside, "each clod sits inside the square it belongs to")
 
+	# **And the mark is on top of its own ground.** The list above is what the mark
+	# draws; this is whether anything draws over it. The farm page — rows 0 to
+	# `PAGE_ROWS`, which is every square she farms — is drawn by a child of the farm
+	# (`FarmPage`, added by the farm-through-the-walls change), so a mark placed
+	# before that child in the drawing order is painted over by the soil every
+	# frame and the square shows nothing. That is exactly what happened between 16
+	# September and this assertion: the verb marked the square, the list came back
+	# with three clods in it, every check above passed, and there was nothing on
+	# screen. Asserting on the list is not asserting on the picture.
+	await get_tree().process_frame
+	var drawn = yard._ransack_nodes.get(eaten, null)
+	_assert(is_instance_valid(drawn), "the emptied square gets a node to draw its mark")
+	if is_instance_valid(drawn) and yard._page0_node != null:
+		_assert(drawn.get_index() > yard._page0_node.get_index(),
+			"and it is drawn after the farm page, so its own soil cannot cover it")
+		_assert(drawn.visibility_layer & yard.PAGE0_LAYER != 0,
+			"and it is on the page's layer, so the yard seen through a room's walls wears it too")
+
 	# It loops rather than holding a pose: two moments a second apart are two
 	# different pictures.
 	var now: Array = FarmScript.ransack_clods(eaten, 0.0)
@@ -6607,7 +6628,7 @@ func _scenario_av_a_ransacked_plot_shows_it() -> void:
 
 	# She puts the hoe through it. The square is hers again and stops saying
 	# anything happened to it.
-	yard.sim.apply_action({ "verb": "till", "actor": SimWorld.ACTOR_PLAYER, "target": eaten },
+	yard.apply_action({ "verb": "till", "actor": SimWorld.ACTOR_PLAYER, "target": eaten },
 		GameState)
 	_assert(yard.ransack_marks(eaten.x, eaten.y).is_empty(),
 		"a re-tilled square draws nothing, because it is not a loss any more")

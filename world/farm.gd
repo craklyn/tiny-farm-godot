@@ -417,8 +417,19 @@ func _sync_ransack_marks() -> void:
 				node.name = "ransack_%d_%d" % [tx, ty]
 				node.at = at
 				node.farm = self
+				# It has to be drawn **after the pass that draws its ground**, and
+				# since the farm-through-the-walls change (2026-09-16) the farm page
+				# is not this node's own `_draw` any more — rows 0 to `PAGE_ROWS`
+				# are drawn by `_page0_node`, a child. A mark put at index 0, where
+				# this used to put it, is painted over by that child every frame, so
+				# from 16 September until this was found a raided square showed
+				# nothing at all. Sitting it just after the page node puts it back
+				# on top of its own soil; the page layer comes with it so the yard
+				# seen through a room's walls carries the mark too, the way the ripe
+				# glow does.
+				node.visibility_layer = 1 | PAGE0_LAYER
 				add_child(node)
-				move_child(node, 0)  # just above the ground, under everything that stands on it
+				move_child(node, _page0_node.get_index() + 1 if _page0_node != null else 0)
 				_ransack_nodes[at] = node
 			elif not marked and is_instance_valid(node):
 				node.queue_free()

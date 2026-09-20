@@ -1,0 +1,20 @@
+{
+  "id": "wq110capturedoc",
+  "title": "CLAUDE.md's command list is missing the Q-110 capture tool",
+  "level": "task",
+  "owner": "tomas",
+  "tier": 3,
+  "tier_reason": "A documentation gap in the file every session reads first; the tool exists and is green, it just is not listed where the others are.",
+  "ask": "CLAUDE.md's Commands section lists every capture_* scene with the command that runs it. Two tools added on 2026-09-19 for Q-110 are missing from it because another session was holding uncommitted edits to CLAUDE.md at the time and the rule was to commit only my own files. Add a block beside the other capture entries:\n\n# The four things a raided square could look like (Q-110): what ships today and the three\n# candidates, each on a real raided square at the size the game draws it, then the labelled\n# side-by-side boards. The capture needs a display; the compose step does not.\ngodot --path . res://tools/capture_ransack_candidates.tscn\npython3 tools/compose_ransack_candidates.py\n\nNothing else changes. Verify CLAUDE.md still reads cleanly around the insertion.",
+  "first_action": "Open CLAUDE.md's Commands section and find the capture_overnight_plates block, which is the closest match in shape (a capture that needs a display plus a compose step that does not).",
+  "state": "accepted",
+  "thread": "",
+  "source": "chief-of-staff",
+  "source_message": "Left open by the 2026-09-19 Q-110 session, which could not touch CLAUDE.md without sweeping up another session's in-flight edits.",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-19T21:14",
+  "created_ts": 1789877692.7256083,
+  "conversation": [],
+  "follow_ups": []
+}

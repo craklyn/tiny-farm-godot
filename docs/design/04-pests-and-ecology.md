@@ -154,6 +154,20 @@ game already ships** (they are lifted out of the tilled-soil sheet), so the firs
 costs no art; a drawn version, with tumbled leaves or a feather left behind, is the one
 piece of this still open.
 
+The drawn version is **Q-110**, which the designer opened on 2026-09-15 after looking at a
+raided square on a real farm and asking whether it was a fault — the mark failing at the only
+job it has. Three candidates are built and photographed on a real raided square in the running
+game (`tools/capture_ransack_candidates.tscn`, boards under
+`docs/design/mockups/ransack_mark/`): a crow's feather lying on the square, the tomato left as
+a bitten stalk, and the same three clods sat down on the soil and darkened. The pick is the
+designer's and is not made yet.
+
+**Wherever the mark ends up, it has to be drawn after the pass that draws its own ground.**
+Rows 0 to `PAGE_ROWS` are drawn by `_page0_node`, a child of the farm, so a mark that sits
+before that child in the drawing order is painted over by the soil every frame and the square
+shows nothing at all. That is exactly what happened between 2026-09-16 and 2026-09-19, in
+public, with every test passing: the list of clods was asserted, the picture was not.
+
 **What "planted" means** is settled by the crow's own appetite: the four are counted with
 the same rule a bird picks its target by, so a tile the crow could not eat does not count,
 and a bed can never pass the test and then leave a bird with nothing on the tile. A sown
