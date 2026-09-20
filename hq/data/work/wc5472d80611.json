@@ -1,6 +1,6 @@
 {
   "id": "wc5472d80611",
-  "title": "Fill in full frame lists and sweep both sheets for near-white at ground contact",
+  "title": "List every frame of the chicken and farmer sprite sheets, and clear the white pixels where they meet the ground",
   "level": "story",
   "owner": "yuki",
   "tier": 1,

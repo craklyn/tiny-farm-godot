@@ -1,6 +1,6 @@
 {
   "id": "wacf0fa540de",
-  "title": "Tag pose and variant sets in the entity catalogue so previews stop fake-cycling",
+  "title": "Mark which sprite sheets hold separate poses rather than an animation, so previews stop playing them as one",
   "level": "task",
   "owner": "claude",
   "tier": 1,

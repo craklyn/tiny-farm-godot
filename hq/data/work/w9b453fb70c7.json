@@ -1,6 +1,6 @@
 {
   "id": "w9b453fb70c7",
-  "title": "Match HQ's back-end labels to the plain wording now on its pages",
+  "title": "Rename the labels the dashboard's server sends so they match the wording on its pages",
   "level": "task",
   "owner": "claude",
   "tier": 1,

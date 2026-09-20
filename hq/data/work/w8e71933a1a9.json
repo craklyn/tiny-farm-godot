@@ -1,6 +1,6 @@
 {
   "id": "w8e71933a1a9",
-  "title": "Re-run the writing check over HQ's pages once the checker lands",
+  "title": "Re-run the plain-writing check over the dashboard's pages once that check is built",
   "level": "task",
   "owner": "claude",
   "tier": 0,

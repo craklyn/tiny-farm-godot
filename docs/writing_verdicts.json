@@ -22,6 +22,9 @@
    "verdict": "decode",
    "why": "'The sleep' is undefined—it could mean nighttime, a game state, an animation, or the overnight cycle, and the reader has to guess."
   },
+  "06366a1cde5d144beb03": {
+   "verdict": "ok"
+  },
   "066967e5f29da16e5c83": {
    "verdict": "ok"
   },
@@ -53,6 +56,9 @@
    "verdict": "ok"
   },
   "0a8dd8cd42692675bddb": {
+   "verdict": "ok"
+  },
+  "0aa1384dfce1708d70cb": {
    "verdict": "ok"
   },
   "0ac49d8c8b1f4ac71a58": {
@@ -129,6 +135,9 @@
   "1192b1785759abd0fb6c": {
    "verdict": "ok"
   },
+  "11ca337cebb43b5e7a72": {
+   "verdict": "ok"
+  },
   "1204885cd3189f81e96e": {
    "verdict": "ok"
   },
@@ -164,6 +173,12 @@
   "148fc0eafd1300d8c90c": {
    "verdict": "ok"
   },
+  "149afc6b6e9665a3bed4": {
+   "instead": "Draft how many items the player can carry in each game phase",
+   "quote": "carry-limit numbers",
+   "verdict": "decode",
+   "why": "Internal vocabulary for holding capacity that loses the plain meaning; the reader would not know what is being counted (items, weight, volume) or what mechanism applies to each phase."
+  },
   "14b468815817b869fe6f": {
    "verdict": "ok"
   },
@@ -171,6 +186,9 @@
    "verdict": "ok"
   },
   "15c22d4221e7c340938b": {
+   "verdict": "ok"
+  },
+  "15da062375f563ef5011": {
    "verdict": "ok"
   },
   "166c119cfa3e4edf2829": {
@@ -302,6 +320,9 @@
   "274b7b296438dd046593": {
    "verdict": "ok"
   },
+  "278ad77e46ff4e433ef5": {
+   "verdict": "ok"
+  },
   "2823400c3c0bce0f1884": {
    "verdict": "ok"
   },
@@ -370,6 +391,9 @@
    "quote": "A bench for parametric loops, once there are enough to need one",
    "verdict": "decode",
    "why": "\"Bench\" is unclear (workbench? test bench?), and \"parametric loops\" is not defined."
+  },
+  "2c3d2fdbb55c2bf31ea4": {
+   "verdict": "ok"
   },
   "2c6917bff93f9c0b2cf4": {
    "verdict": "ok"
@@ -461,6 +485,9 @@
   "38859f2fa206cd4718ac": {
    "verdict": "ok"
   },
+  "39067cbe33fe75d5ad77": {
+   "verdict": "ok"
+  },
   "39175b6cfb4598bf71bb": {
    "verdict": "ok"
   },
@@ -506,7 +533,13 @@
   "4025b14d063cafcf6bfe": {
    "verdict": "ok"
   },
+  "40c681ef91bb815c04f6": {
+   "verdict": "ok"
+  },
   "4272d303a8db36810dbf": {
+   "verdict": "ok"
+  },
+  "42759f368cb1ba184170": {
    "verdict": "ok"
   },
   "43d8e7e36aedbce85298": {
@@ -528,10 +561,19 @@
   "4614b88fbdf0489e12a8": {
    "verdict": "ok"
   },
+  "462305a3ff86c0d597ee": {
+   "verdict": "ok"
+  },
   "46411488592e90caf0e1": {
    "verdict": "ok"
   },
   "469c80a4f4a85b9d1271": {
+   "verdict": "ok"
+  },
+  "46c0200e3c525377794f": {
+   "verdict": "ok"
+  },
+  "479bbb78f8e40eb4a405": {
    "verdict": "ok"
   },
   "47c90f2f1f244842e774": {
@@ -590,6 +632,9 @@
    "verdict": "second-look",
    "why": "The bare pronoun 'she' has no referent in the visible context, and 'where she was lost' is a metaphor for the actual consequence the reader cares about."
   },
+  "4eb6e4be5f15230de3e1": {
+   "verdict": "ok"
+  },
   "4f988db3c9511dea7d56": {
    "verdict": "ok"
   },
@@ -616,6 +661,9 @@
    "verdict": "decode",
    "why": "Landing is internal shorthand for plans being filed; the construction is unclear to a reader unfamiliar with this term."
   },
+  "52a6246b6f531c32018d": {
+   "verdict": "ok"
+  },
   "52f180ae5f2107edcdb6": {
    "verdict": "ok"
   },
@@ -637,6 +685,12 @@
   },
   "53a64b1c1505e9452790": {
    "verdict": "ok"
+  },
+  "53acac13b4ef66cd4625": {
+   "instead": "Seven places where the game lets players interact across the farm-to-house boundary, as if the wall were not there.",
+   "quote": "Seven distance checks reach straight through the wall",
+   "verdict": "decode",
+   "why": "Distance checks is internal terminology for collision detection; state what players experience instead."
   },
   "53ca26e52a6e7b692ed7": {
    "verdict": "ok"
@@ -683,6 +737,9 @@
    "verdict": "ok"
   },
   "5a5e27aa918ac9acf086": {
+   "verdict": "ok"
+  },
+  "5a8b0481e8a09b50f745": {
    "verdict": "ok"
   },
   "5b105fed254b2143e558": {
@@ -737,6 +794,9 @@
   "6349ffd3e772b71a0839": {
    "verdict": "ok"
   },
+  "639c469dd9e7715ac4dd": {
+   "verdict": "ok"
+  },
   "6421c8f40da9c308a534": {
    "verdict": "ok"
   },
@@ -771,6 +831,9 @@
   "68a3539225cfff3214ef": {
    "verdict": "ok"
   },
+  "68b6124d8e7424507920": {
+   "verdict": "ok"
+  },
   "68d697e6ae6b424c15ca": {
    "baselined": "2026-09-19",
    "instead": "Doubling the simulation's resolution: measured, and not worth the performance cost",
@@ -789,6 +852,9 @@
    "verdict": "ok"
   },
   "694a4ae3f999a0965eb5": {
+   "verdict": "ok"
+  },
+  "69ace6adfea2cc5c5e1c": {
    "verdict": "ok"
   },
   "6a238f068fdb36e2f2fd": {
@@ -885,7 +951,13 @@
   "76741438fbf74ed40a70": {
    "verdict": "ok"
   },
+  "76791867283e029d8876": {
+   "verdict": "ok"
+  },
   "77071d7f8ff07845bc1d": {
+   "verdict": "ok"
+  },
+  "79ea0dd9d95c1735a9bb": {
    "verdict": "ok"
   },
   "79f100bdb194f3511beb": {
@@ -967,6 +1039,9 @@
    "verdict": "ok"
   },
   "821546048b445324bb1b": {
+   "verdict": "ok"
+  },
+  "8260cd6930e7d4de9645": {
    "verdict": "ok"
   },
   "82bc093135391478ee2d": {
@@ -1060,6 +1135,9 @@
    "quote": "The menu is the harvest",
    "verdict": "decode",
    "why": "Poetic metaphor instead of stating what this design option does."
+  },
+  "8e7de00fc699bcfcbacd": {
+   "verdict": "ok"
   },
   "8f65c1c357139b2e01bb": {
    "verdict": "ok"
@@ -1161,6 +1239,9 @@
    "verdict": "decode",
    "why": "Landing is internal shorthand for plans being filed; the construction is unclear to a reader unfamiliar with this term."
   },
+  "991dde97a6bf2197a128": {
+   "verdict": "ok"
+  },
   "99c4c675c1824e14e4a2": {
    "verdict": "ok"
   },
@@ -1257,6 +1338,9 @@
    "verdict": "ok"
   },
   "a57ea3741a5934bd1d31": {
+   "verdict": "ok"
+  },
+  "a5876e857b5d5b176eec": {
    "verdict": "ok"
   },
   "a5bf340e266550d43d5f": {
@@ -1356,6 +1440,9 @@
   "b2454a3b82907e6f26e3": {
    "verdict": "ok"
   },
+  "b4200a80213a58e6894c": {
+   "verdict": "ok"
+  },
   "b5a15e232ee67f498c1b": {
    "verdict": "ok"
   },
@@ -1379,6 +1466,9 @@
    "verdict": "ok"
   },
   "b9bff2a0e715ab40f03c": {
+   "verdict": "ok"
+  },
+  "ba0ff73d588ecbd34e18": {
    "verdict": "ok"
   },
   "bb32f446076def86956e": {
@@ -1508,6 +1598,12 @@
    "verdict": "decode",
    "why": "Complete fragment with bare pronouns. What has what? What is Work?"
   },
+  "c623b62678ef330d899f": {
+   "instead": "The crow's peck and the Mark III's seed scatter are far louder than the background music.",
+   "quote": "the robot's seed scatter",
+   "verdict": "second-look",
+   "why": "The robot is ambiguous when multiple robots are mentioned in this list."
+  },
   "c6a6eeef4f43a7b8aae1": {
    "verdict": "ok"
   },
@@ -1619,6 +1715,9 @@
    "verdict": "second-look",
    "why": "Grammar is ambiguous—unclear whether this is two separate things (what it looks like, and what she clears) or one."
   },
+  "d54652a8aa33369d0382": {
+   "verdict": "ok"
+  },
   "d55474ca41d67594e647": {
    "verdict": "ok"
   },
@@ -1630,6 +1729,18 @@
   },
   "d62cdfeb483891967665": {
    "verdict": "ok"
+  },
+  "d69ae61da5b7b617ae96": {
+   "verdict": "ok"
+  },
+  "d70523eb2edec824dc86": {
+   "verdict": "ok"
+  },
+  "d71f114ce029ebd9d09b": {
+   "instead": "List every frame of the farmer and crow sprite sheets, and clear the white pixels where they meet the ground.",
+   "quote": "List every frame of both sprite sheets",
+   "verdict": "second-look",
+   "why": "Which two sprite sheets—assumed from items [15] and [18] but not named here."
   },
   "d77c29ad28bba99b32e8": {
    "verdict": "ok"
@@ -1741,6 +1852,9 @@
   "e3b3ad0fad8efdb5bdb0": {
    "verdict": "ok"
   },
+  "e56eb1101b3cdfa536f2": {
+   "verdict": "ok"
+  },
   "e59c3d1246c88a276961": {
    "verdict": "ok"
   },
@@ -1842,6 +1956,9 @@
    "verdict": "decode",
    "why": "The sentence is structurally incomplete and the antecedent is unclear; 'it' has no referent on the same page and the verb phrase is malformed."
   },
+  "f59a0af028b26a05e75c": {
+   "verdict": "ok"
+  },
   "f5f51633f8f5661d5d7c": {
    "verdict": "ok"
   },
@@ -1870,6 +1987,12 @@
   "f8400215fa513cd9e53d": {
    "verdict": "ok"
   },
+  "f84f61bb6763a5f8b00d": {
+   "instead": "a grid showing what it likes and dislikes",
+   "quote": "the grid of what it likes and dislikes",
+   "verdict": "second-look",
+   "why": "The grid is introduced with a definite article but not previously established; a reader does not know what form this takes or whether it is an existing or new component."
+  },
   "f85b98e92a59a40112d9": {
    "verdict": "ok"
   },
@@ -1887,6 +2010,12 @@
   },
   "f95d5cf62850672b68dc": {
    "verdict": "ok"
+  },
+  "f9abc4b0981cfe8ccdf0": {
+   "instead": "Build the Mark III's name plate and the grid of what it likes and dislikes.",
+   "quote": "Build the robot's name plate",
+   "verdict": "second-look",
+   "why": "Three robots in scope (mark-1, mark-2, Mark III); which robot is this about?"
   },
   "fa6db273ee067f802f67": {
    "verdict": "ok"
@@ -1911,6 +2040,9 @@
    "verdict": "ok"
   },
   "fbe8c648b04c8a026601": {
+   "verdict": "ok"
+  },
+  "fc8f3b5aa1e95d7bfcbd": {
    "verdict": "ok"
   },
   "fd2c79343f9541c75739": {
