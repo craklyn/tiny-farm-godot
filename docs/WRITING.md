@@ -193,6 +193,15 @@ sets of text, two different answers. Both hooks fail open: no `claude`, no
 `python3`, an unreachable judge, a merge or rebase under way, and the commit goes
 through untouched.
 
+Editing *any* part of this document, this section included, re-judges every
+surface. That looks like waste — writing down which hook runs when should not
+re-read four hundred sentences — and on 2026-09-19 it was narrowed to the
+rule-stating sections for exactly that reason. The judge got worse: `--self-test`
+went from agreeing on every case to passing the very commit subject that caused
+this check to be rewritten, because the worked example sits in this section. The
+prose teaches by example, so every part of it is load-bearing. Do not narrow it
+again without running `--self-test` on both sides.
+
 When he rules on a sentence, the ruling goes into `writing_rulings.json` the same
 day. When several rulings there start saying the same thing, promote the lesson
 into this document and retire the duplicates: that file is a staging area for

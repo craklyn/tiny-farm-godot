@@ -39,6 +39,15 @@
 # cache the new standard invalidates. That is a deliberate act with a deliberate
 # workflow (judge everything, re-baseline, commit the cache), not something for a
 # hook to resolve while somebody is trying to commit.
+#
+# And it is the whole document that counts, operational sections included. That
+# looked like waste — writing down which hook runs when should not re-read 427
+# sentences — so on the night this hook was written the brief was narrowed to the
+# sections stating the rules. The judge got measurably worse: its own self-test
+# went from agreeing on every case to missing the exact commit subject the check
+# was built to catch, because the worked example lived in the section that had
+# been cut. The prose teaches by example, so all of it is load-bearing and the
+# fingerprint covering all of it is correct, not a wart.
 PATTERNS="hq/data/work/*.json hq/data/goals/*.json hq/data/decisions/*.json
           hq/data/pillars.json hq/data/rulings/*.json hq/static/*.js"
 
