@@ -344,14 +344,19 @@ function qPaneHtml(row, org) {
     </div>
 
     <div class="q-talk-box" id="q-pane-talk">
-      <textarea placeholder="Why, in a line — it rides along with Yes or No, and on its own it goes to ${esc(qFirst(ownerName))}, who answers if it takes a moment and otherwise sends it back to you while you move on."></textarea>
-      <div class="q-talk-acts"><button class="q-send" data-id="${esc(row.id)}">Send on its own</button></div>
+      <label class="q-talk-l" for="q-talk-t">Anything you want to say about this — optional</label>
+      <textarea id="q-talk-t" placeholder="A line of why. Whichever button you press, ${esc(qFirst(ownerName))} reads this."></textarea>
+      <div class="q-talk-acts">
+        <button class="ghost q-send" data-id="${esc(row.id)}">Ask ${esc(qFirst(ownerName))}, without answering yet</button>
+        <span class="q-talk-n">${esc(qFirst(ownerName))} answers within thirty seconds or hands it back and you move on.</span>
+      </div>
     </div>
 
     <div class="q-acts-big">
-      ${row.answer ? `<button class="q-yes" data-id="${esc(row.id)}">Yes — ${esc(row.answer.slice(0, 40))}</button>` : ""}
-      ${row.canDrop ? `<button class="ghost q-no" data-id="${esc(row.id)}">No</button>` : ""}
-      <button class="ghost q-talk" data-id="${esc(row.id)}">Talk to ${esc(qFirst(ownerName))}</button>
+      ${row.answer ? `<button class="q-yes" data-id="${esc(row.id)}">${
+        row.isDecision ? `Rule: ${esc(row.answer)}` : "Yes — do what is recommended above"}</button>` : ""}
+      ${row.canDrop ? `<button class="ghost q-no" data-id="${esc(row.id)}">${
+        row.isDecision ? "None of these" : "No — drop this"}</button>` : ""}
     </div>`;
 }
 
@@ -396,7 +401,7 @@ function qRender(state) {
     </div>
     <div class="q-row-acts">
       ${r.answer ? `<button class="q-yes" data-id="${esc(r.id)}">Yes</button>` : ""}
-      <button class="ghost q-talk" data-id="${esc(r.id)}">Talk</button>
+      <button class="ghost q-talk" data-id="${esc(r.id)}" title="Open this one and write to its owner">Ask</button>
       <span class="chip q-chip">${r.seconds <= Q_PICK_SECONDS ? "30 s" : "2 min"}</span>
     </div>
   </div>`;
@@ -495,10 +500,11 @@ function qRender(state) {
     if (yes) { const r = findRow(yes.dataset.id); if (r) { yes.disabled = true; qDoYes(r, reason()); } return; }
     if (no) { const r = findRow(no.dataset.id); if (r) { no.disabled = true; qDoNo(r, reason()); } return; }
     if (talk) {
+      // The box is always open in the pane; this only brings the right card up
+      // and puts the cursor in it.
       if (qSelected !== talk.dataset.id) qSelect(talk.dataset.id);
       const box = document.getElementById("q-pane-talk");
-      box.hidden = false;
-      box.querySelector("textarea").focus();
+      if (box) box.querySelector("textarea").focus();
       return;
     }
     if (send) {

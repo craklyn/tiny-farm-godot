@@ -89,3 +89,10 @@
 
 .q-acts-big { display: flex; gap: 8px; margin-top: 18px; flex-wrap: wrap; }
 .q-acts-big button { padding: 9px 16px; font-size: 14.5px; }
+
+/* The reason box sits above the verdicts, because what he writes rides along
+   with whichever one he presses — his rule: he must always be able to say why. */
+.q-talk-l { display: block; font-size: 12px; letter-spacing: .04em; text-transform: uppercase;
+            color: var(--muted, #a39c8e); margin-bottom: 4px; }
+.q-talk-n { font-size: 12px; color: var(--muted, #a39c8e); margin-left: 8px; }
+.q-talk-acts { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
