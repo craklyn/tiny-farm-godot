@@ -449,12 +449,21 @@ def drop_worktree(path):
 
 
 def worktree_patch(path):
-    """Everything the worker changed, as one patch, including files it added."""
+    """Everything the worker changed, as one patch, including files it added
+    and anything it already committed in its worktree.
+
+    The diff is taken against the commit the worktree was cut from, not its
+    HEAD: every brief tells a worker to commit early, and on 2026-09-21 a
+    worker that had committed its work and then run out of turns was held with
+    a patch holding only the one file it had not committed — the rest survived
+    only as loose objects in git."""
     sh(["git", "add", "-A"], cwd=path, timeout=120)
-    p = sh(["git", "diff", "--cached", "--binary"], cwd=path, timeout=120)
-    stat = sh(["git", "diff", "--cached", "--stat"], cwd=path, timeout=120).stdout.strip()
+    fork = sh(["git", "merge-base", "HEAD", "main"], cwd=path, timeout=60)
+    base = [fork.stdout.strip()] if fork.returncode == 0 and fork.stdout.strip() else []
+    p = sh(["git", "diff", "--cached", "--binary"] + base, cwd=path, timeout=120)
+    stat = sh(["git", "diff", "--cached", "--stat"] + base, cwd=path, timeout=120).stdout.strip()
     files = [ln.split("\t")[-1] for ln in
-             sh(["git", "diff", "--cached", "--name-only"], cwd=path,
+             sh(["git", "diff", "--cached", "--name-only"] + base, cwd=path,
                 timeout=120).stdout.splitlines() if ln.strip()]
     return p.stdout, stat, files
 
