@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
-"""What a comment on a Work card does, without a model in the loop.
+"""What a comment on a Work card does, and what a card may put in his queue,
+without a model in the loop.
 
 His rule, 2026-09-11: a comment is not a verdict, and he should not have to
 pick the path it takes. The owner reads it and makes one of four moves —
 answer, revise, follow-up, or "this needs work" — and the card says which.
 docs/QUEUE_TO_ZERO.md §8 adds the clock: the reply starts when he sends it, and
-thirty seconds later the card hands back and stops being his move. These tests
-pin both contracts at the seam where it is cheapest to check: the card's JSON
-before and after each API call and each (stubbed) reply.
+thirty seconds later the card hands back and stops being his move. §5 (S-17)
+adds what a finished card may start: an untiered follow-up is tier 1, one that
+is hard to walk back is a question somebody has to write before he sees it, one
+subject files one card, and a follow-up he already said yes to says so. These
+tests pin all three contracts at the seam where it is cheapest to check: the
+card's JSON before and after each API call and each (stubbed) reply.
 
     python3 hq/tests/test_work.py
 """
@@ -87,6 +91,14 @@ def card(**over):
     }
     base.update(over)
     return base
+
+
+# A complete recommendation: the choice, the answer, the reason that decides
+# it, and the alternative. A card needs one of these before it may ask him for
+# a yes, so most of the cards below carry it.
+REC = {"question": "Does the bloom open the game?", "answer": "Yes, keep it.",
+       "why": "it is the only thing on the boot a four-year-old reads",
+       "instead": "cut to the farm and lose the opening"}
 
 
 def reply(text, tail):
@@ -285,8 +297,9 @@ def main():
         check(it.get("awaiting_reply") is True,
               "the studio still owes the answer — handing back is not dropping it")
         snap = work.snapshot()
-        check(snap["waiting_on_you"] == sum(1 for i in snap["items"]
-                                            if i["state"] in ("needs_approval", "for_review")),
+        check(not any(i["state"] == "owed" and work._in_his_list(i) for i in snap["items"])
+              and snap["waiting_on_you"] + snap["unprepped"]
+              == sum(1 for i in snap["items"] if work._in_his_list(i)),
               "a handed-back card is not counted as waiting on him")
         check(snap["owed"] == 1 and snap["reply_seconds"] == 30 and snap["now"] > 0,
               "the page is told what is coming back, and on what clock")
@@ -407,6 +420,182 @@ def main():
         work.start_reply = lambda item_id: None
         for n in captures():
             os.remove(os.path.join(work.CAPTURES, n))
+
+        print("a follow-up that names no tier is tier 1")
+        got, _a, _r, _m = work._parse_follows(
+            '{"items": [{"title": "Trim the fade", "owner": "rin", '
+            '"first_action": "x", "why": "y"}]}', org, "sam")
+        check(got[0]["tier"] == 1, "silence about the tier is read as tier 1, not as ask-him-first")
+        got, _a, _r, _m = work._parse_follows(
+            '{"items": [{"title": "Trim the fade", "owner": "rin", "tier": "soon", '
+            '"first_action": "x", "why": "y"}]}', org, "sam")
+        check(got[0]["tier"] == 1, "a tier that is not a number is read the same way")
+        got, _a, _r, _m = work._parse_follows(
+            '{"items": [{"title": "Ship the build", "owner": "rin", "tier": 2, '
+            '"first_action": "x", "why": "y"}]}', org, "sam")
+        check(got[0]["tier"] == 2, "a tier that is named is kept")
+
+        print("work that is hard to walk back files as a question to be written")
+        work.save_item(card(id="w0000000b0001", recommend=REC, follow_ups=[
+            {"title": "Put the bloom on the store page", "owner": "rin", "level": "task",
+             "tier": 2, "first_action": "Swap the hero image.", "why": "players see it"}]))
+        work.api_post("/api/work/accept", {"id": "w0000000b0001"})
+        kid = [i for i in work.items() if i.get("parent") == "w0000000b0001"][0]
+        check(kid["state"] == "prepping" and kid["owner"] == "rin",
+              "a tier-2 follow-up waits with the seat that owns it, not in his list")
+        check(kid.get("prep_attempts") == 0 and kid.get("prepping_since"),
+              "the card says the question has not been written yet")
+        snap = work.snapshot()
+        check(snap["prepping"] == 1 and not work._in_his_list(kid),
+              "it is counted as a question being written, and not as one he has been asked")
+
+        print("the question comes back short, and is written again")
+        stub_cli(reply("It should go up.",
+                       '{"items": [], "recommend": {"question": "Hero image?", '
+                       '"answer": "Use the bloom."}}'))
+        work.prep_question(item(kid["id"]), org)
+        it = item(kid["id"])
+        check(it["state"] == "prepping" and it["prep_short"] == ["why", "instead"],
+              "a recommendation missing the reason and the alternative does not reach him")
+        check(it["prep_draft"]["answer"] == "Use the bloom.",
+              "what was written is kept, so the second draft is not written from nothing")
+        check("came back short of why, instead" in work._prep_prompt(it, org),
+              "and the seat is told what its draft was missing")
+        for _ in range(work.PREP_TRIES):
+            work.prep_question(item(kid["id"]), org)
+        it = item(kid["id"])
+        check(it["state"] == "prepping" and it.get("prep_stalled"),
+              "after three short drafts it stops rewriting and says a person has to write it")
+        check(work.snapshot()["prep_stalled"] == 1, "and the page can show that it stopped")
+
+        print("a complete question joins his list")
+        work.save_item(card(id="w0000000b0002", recommend=REC, follow_ups=[
+            {"title": "Raise the seed price", "owner": "rin", "level": "task", "tier": 2,
+             "first_action": "Edit the shop table.", "why": "the economy is loose"}]))
+        work.api_post("/api/work/accept", {"id": "w0000000b0002"})
+        kid2 = [i for i in work.items() if i.get("parent") == "w0000000b0002"][0]
+        stub_cli(reply("Seeds are too cheap by half.",
+                       '{"items": [], "recommend": {"question": "Raise the seed price?", '
+                       '"answer": "Raise it to 12.", "why": "a day of play buys the whole shop", '
+                       '"instead": "leave it and cut the harvest payout"}}'))
+        work.prep_question(item(kid2["id"]), org)
+        it = item(kid2["id"])
+        check(it["state"] == "needs_approval" and it["recommend"]["instead"],
+              "a question with all four parts is what reaches him")
+        check(it["prep_note"] == "Seeds are too cheap by half." and it["prepped"]["by"] == "rin",
+              "the paragraph the seat wrote is kept, and the card says who wrote it")
+        check(not it.get("result"),
+              "and it is not filed as a result — nobody has done anything here yet")
+        check("prep_short" not in it and "prep_draft" not in it,
+              "the drafting is over and the card stops showing it")
+        check(work.has_recommendation(it) and work._in_his_list(it),
+              "and it is now counted as waiting on him")
+
+        print("one subject, one card")
+        check(work.merge_key("The Record the crow landing.") == work.merge_key("Record the crow landing"),
+              "capitals, punctuation and a leading article are not part of a subject")
+        work.save_item(card(id="w0000000e0001", owner="rin", state="waiting_session",
+                            title="Record the crow landing", ask="Record it.", follow_ups=[]))
+        work.save_item(card(id="w0000000e0002", recommend=REC, follow_ups=[
+            {"title": "The Record the crow landing.", "owner": "rin", "level": "task",
+             "tier": 1, "first_action": "Record it in the coop.", "why": "the coop needs it too"}]))
+        work.api_post("/api/work/accept", {"id": "w0000000e0002"})
+        check(not [i for i in work.items() if i.get("parent") == "w0000000e0002"],
+              "the same subject, same owner, does not file a twin")
+        twin = item("w0000000e0001")
+        check("the coop needs it too" in twin["ask"] and twin["ask"].startswith("Record it."),
+              "the second ask is added to the card that already holds the subject")
+        check(twin["merged_from"][0]["id"] == "w0000000e0002",
+              "and the card records where it grew from")
+        check(item("w0000000e0002")["spawned"][0]["merged"] is True,
+              "the card he accepted says its work joined a card already open")
+
+        print("a restart in the middle of writing a question does not spend a try")
+        work.save_item(card(id="w00000000m10", owner="milo", state="prepping",
+                            prep_attempts=1, prep_in_flight=True))
+        work._sanitize()
+        it = item("w00000000m10")
+        check(it.get("prep_attempts") == 0 and not it.get("prep_in_flight"),
+              "the try is given back, so restarts cannot retire a question nobody wrote")
+
+        print("a finished card is not merged into")
+        work.save_item(card(id="w00000000m09", owner="ravi", state="for_review",
+                            title="Sweep the sheets for background fill"))
+        before = len(work.items())
+        twin = work._open_twin("ravi", work.merge_key("Sweep the sheets for background fill"))
+        check(twin is None,
+              "a card already finished and waiting on him is never a merge target")
+
+        print("what does not merge")
+        work.save_item(card(id="w0000000e0003", recommend=REC, follow_ups=[
+            {"title": "Record the crow landing", "owner": "sam", "level": "task", "tier": 1,
+             "first_action": "x", "why": "a different person"}]))
+        work.api_post("/api/work/accept", {"id": "w0000000e0003"})
+        check(len([i for i in work.items() if i.get("parent") == "w0000000e0003"]) == 1,
+              "the same subject for a different person is a different piece of work")
+        work.save_item(card(id="w0000000e0004", owner="rin", state="accepted",
+                            title="Paint the dusk sky", follow_ups=[]))
+        work.save_item(card(id="w0000000e0005", recommend=REC, follow_ups=[
+            {"title": "Paint the dusk sky", "owner": "rin", "level": "task", "tier": 1,
+             "first_action": "x", "why": "again"}]))
+        work.api_post("/api/work/accept", {"id": "w0000000e0005"})
+        check(len([i for i in work.items() if i.get("parent") == "w0000000e0005"]) == 1,
+              "a closed card is not a twin — work after a finished piece is new work")
+        work.save_item(card(id="w0000000e0007", owner="rin", state="done",
+                            title="Tune the rooster call", follow_ups=[]))
+        work.save_item(card(id="w0000000e0008", recommend=REC, follow_ups=[
+            {"title": "Tune the rooster call", "owner": "rin", "level": "task", "tier": 1,
+             "first_action": "x", "why": "again"}]))
+        work.api_post("/api/work/accept", {"id": "w0000000e0008"})
+        check(len([i for i in work.items() if i.get("parent") == "w0000000e0008"]) == 1,
+              "a card left in a state the page no longer writes cannot swallow new work either")
+
+        print("the same work named twice in one result files once")
+        work.save_item(card(id="w0000000e0006", recommend=REC, follow_ups=[
+            {"title": "Shorten the dawn fade", "owner": "rin", "level": "task", "tier": 1,
+             "first_action": "x", "why": "it drags"},
+            {"title": "shorten the dawn fade", "owner": "rin", "level": "task", "tier": 1,
+             "first_action": "x", "why": "and it drags at dusk too"}]))
+        work.api_post("/api/work/accept", {"id": "w0000000e0006"})
+        kids = [i for i in work.items() if i.get("parent") == "w0000000e0006"]
+        check(len(kids) == 1 and "and it drags at dusk too" in kids[0]["ask"],
+              "a result that names one piece of work twice files one card, carrying both asks")
+
+        print("a follow-up says which card promised it")
+        work.save_item(card(id="w0000000f0001", recommend=REC, follow_ups=[
+            {"title": "Fade the title card out", "owner": "rin", "level": "task", "tier": 1,
+             "first_action": "x", "why": "it cuts hard"}]))
+        work.api_post("/api/work/accept", {"id": "w0000000f0001"})
+        kid = [i for i in work.items() if i.get("parent") == "w0000000f0001"][0]
+        check(kid["promised_by"] == "w0000000f0001"
+              and kid["promised"]["title"] == "Fade the title card out",
+              "what his yes covered is on the child, so doing it does not come back for a second yes")
+        work.save_item(card(id="w0000000f0002"))
+        work.api_post("/api/work/respond", {"id": "w0000000f0002", "message": "The dusk sky is flat."})
+        stub_cli(reply("That is Rin's.",
+                       '{"items": [{"title": "Repaint the dusk gradient", "owner": "rin", '
+                       '"tier": 1, "first_action": "x", "why": "he said it is flat"}], '
+                       '"move": "follow-up"}'))
+        work._process_response(item("w0000000f0002"), org)
+        kid = [i for i in work.items() if i.get("parent") == "w0000000f0002"][0]
+        check("promised_by" not in kid,
+              "work filed from a conversation was promised by nothing, so it comes back as new")
+        for n in captures():
+            os.remove(os.path.join(work.CAPTURES, n))
+
+        print("only a question with an answer counts as waiting on him")
+        work.save_item(card(id="w0000000a0001", recommend={}, follow_ups=[]))
+        work.save_item(card(id="w0000000a0002", recommend=REC, follow_ups=[]))
+        snap = work.snapshot()
+        mine = {i["id"] for i in snap["items"] if work._in_his_list(i)}
+        check("w0000000a0002" in mine and "w0000000a0001" in mine,
+              "both are still on the page with their buttons")
+        check(snap["waiting_on_you"] == sum(1 for i in snap["items"]
+                                            if work._in_his_list(i) and work.has_recommendation(i)),
+              "the count is of cards carrying a recommended answer")
+        check(snap["unprepped"] == sum(1 for i in snap["items"]
+                                       if work._in_his_list(i) and not work.has_recommendation(i)),
+              "and the rest are counted separately rather than dropped")
 
         print("the old send-back path is gone")
         out = work.api_post("/api/work/redo", {"id": "w0000000000a1", "comment": "again"})

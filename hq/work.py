@@ -85,6 +85,12 @@ DEFAULT_POLICY = {
                  "studio's move: it leaves his list, shows in the strip of what "
                  "is coming back to him, and returns to the top of his list when "
                  "the answer lands."),
+        "prepping": ("Work that is hard to walk back, filed but not yet put to "
+                     "him. The seat that owns it is writing the question — the "
+                     "choice in his terms, the real options and what each costs, "
+                     "and the answer recommended — and the card joins his list "
+                     "the day that question is written. The studio's move, not "
+                     "his."),
     },
 }
 
@@ -103,11 +109,28 @@ def reply_seconds():
 
 LEVELS = ("task", "story", "epic", "project", "goal")
 
-# What a state means, in the order the Work page shows them. `owed` is the one
-# state that is not his move: he asked something on a card, nobody answered
-# within the thirty seconds, and the card left his list until the answer lands.
-STATES = ("needs_approval", "for_review", "owed", "doing", "waiting_session",
-          "accepted", "dropped", "landed")
+# What a state means, in the order the Work page shows them. Two of them are not
+# his move. `owed`: he asked something on a card, nobody answered within the
+# thirty seconds, and the card left his list until the answer lands.
+# `prepping`: work hard to walk back has been filed, and the seat that owns it
+# is writing the question he will be asked — it reaches his list only once the
+# question carries a recommended answer (S-17).
+STATES = ("needs_approval", "for_review", "owed", "prepping", "doing",
+          "waiting_session", "accepted", "dropped", "landed")
+
+# The tier a follow-up files at when it names none (S-17, §5.3).
+UNTIERED_FOLLOW = 1
+
+# What a recommendation has to say before the card carrying it may ask him for
+# a yes: the choice, the answer, the one reason that decides it, and the
+# alternative he might reasonably prefer. Three of the four is a briefing he
+# cannot act on without asking a question back.
+REC_PARTS = ("question", "answer", "why", "instead")
+
+# How many times the studio rewrites a question that comes back incomplete
+# before it stops and says a person has to write this one. Without a stop, a
+# seat that cannot answer the question loops on it for as long as HQ runs.
+PREP_TRIES = 3
 
 
 def bind(server_module):
@@ -183,6 +206,13 @@ def _sanitize():
         if it.get("state") == "doing" and it.get("started"):
             it["state"] = "doing"
             it["started"] = ""     # the worker picks it up again
+            save_item(it)
+        # A prep that was in flight when HQ stopped never came back, so the try
+        # it counted was never taken. Give it back, or a few restarts would
+        # retire a question nobody ever wrote.
+        elif it.get("prep_in_flight"):
+            it.pop("prep_in_flight", None)
+            it["prep_attempts"] = max(0, it.get("prep_attempts", 1) - 1)
             save_item(it)
 
 
@@ -404,10 +434,14 @@ def _clean_follow(raw, org, fallback_owner):
     title = str(raw.get("title") or "").strip()
     if not title:
         return None
+    # S-17, docs/QUEUE_TO_ZERO.md §5.3: a follow-up that names no tier is tier 1,
+    # never 2. Tier 2 is "ask him first", so defaulting to it spends his
+    # attention on the model's silence rather than on any judged risk. What the
+    # work actually turned out to be is decided by the checker reading the diff.
     try:
-        tier = int(raw.get("tier", 2))
+        tier = int(raw.get("tier", UNTIERED_FOLLOW))
     except Exception:
-        tier = 2
+        tier = UNTIERED_FOLLOW
     level = str(raw.get("level") or "task").lower()
     owner = str(raw.get("owner") or "").strip()
     if not any(e["id"] == owner for e in org["employees"]):
@@ -416,10 +450,30 @@ def _clean_follow(raw, org, fallback_owner):
         "title": title[:160],
         "owner": owner,
         "level": level if level in LEVELS else "task",
-        "tier": tier if tier in (0, 1, 2) else 2,
+        "tier": tier if tier in (0, 1, 2) else UNTIERED_FOLLOW,
         "first_action": str(raw.get("first_action") or "")[:600],
         "why": str(raw.get("why") or "")[:300],
     }
+
+
+def _follow_doc(tail):
+    """The JSON object a reply ends with, or None if there is not one. Kept
+    apart from reading it because the prep worker needs the raw
+    `recommend` — including a half-written one, which is exactly what it has to
+    name back to its author."""
+    txt = (tail or "").strip()
+    if not txt or txt.upper().startswith("NONE"):
+        return None
+    if txt.startswith("```"):
+        txt = re.sub(r"^```[a-z]*\n?|```$", "", txt).strip()
+    start, end = txt.find("{"), txt.rfind("}")
+    if start < 0 or end <= start:
+        return None
+    try:
+        doc = json.loads(txt[start:end + 1])
+    except Exception:
+        return None
+    return doc if isinstance(doc, dict) else None
 
 
 def _parse_follows(tail, org, fallback_owner):
@@ -430,17 +484,8 @@ def _parse_follows(tail, org, fallback_owner):
     tool, a sweep for the artist and a pipeline check for the engineer is three
     items, and filing only the first would quietly drop two. Four is the cap:
     past that it is a plan, and a plan is its own item."""
-    txt = (tail or "").strip()
-    if not txt or txt.upper().startswith("NONE"):
-        return [], None, None, None
-    if txt.startswith("```"):
-        txt = re.sub(r"^```[a-z]*\n?|```$", "", txt).strip()
-    start, end = txt.find("{"), txt.rfind("}")
-    if start < 0 or end <= start:
-        return [], None, None, None
-    try:
-        doc = json.loads(txt[start:end + 1])
-    except Exception:
+    doc = _follow_doc(tail)
+    if doc is None:
         return [], None, None, None
     raw = doc.get("items")
     if raw is None and doc.get("title"):
@@ -494,6 +539,58 @@ def follow_ups(item):
 
 def _asked_what_follows(item):
     return "follow_ups" in item or "follow_up" in item
+
+
+_ARTICLE = re.compile(r"^(?:the|a|an)\s+")
+
+
+def merge_key(title):
+    """What makes two cards the same subject. Capitals, punctuation and a
+    leading article are not part of a subject: "Record the crow landing" and
+    "The Record the crow landing." are one piece of work, and filing both is how
+    three cards end up asking one person to read the same edit (§5.4)."""
+    t = re.sub(r"[^a-z0-9 ]+", " ", (title or "").lower())
+    t = re.sub(r"\s+", " ", t).strip()
+    return _ARTICLE.sub("", t)
+
+
+# The states a card can still be merged into: everything that is live work.
+# Named as what counts rather than as what does not, so a card left in a state
+# this file no longer writes — the queue holds a few, filed before the states
+# had their present names — cannot quietly swallow new work.
+OPEN_STATES = ("needs_approval", "for_review", "owed", "prepping", "doing",
+               "waiting_session")
+# Where a twin may be merged: only a card whose work has not run yet. Appending
+# an ask to a card that is finished and sitting in Daniel's list would file work
+# nobody will ever do — the run it would have joined is over (2026-09-21).
+MERGEABLE_STATES = ("prepping", "doing", "waiting_session")
+
+
+def _open_twin(owner, key, exclude_id=""):
+    """A card of the same owner and the same subject whose work has not run
+    yet, or None. A finished or closed card is not a twin: work that follows a
+    finished piece is new work, and an ask appended to a card whose run is over
+    is an ask nobody will ever carry out."""
+    for other in items():
+        if other.get("id") == exclude_id or other.get("owner") != owner:
+            continue
+        if other.get("state") not in MERGEABLE_STATES:
+            continue
+        if merge_key(other.get("title")) == key:
+            return other
+    return None
+
+
+def recommendation_gaps(rec):
+    """Which of the four parts a recommendation is missing, in reading order."""
+    rec = rec if isinstance(rec, dict) else {}
+    return [p for p in REC_PARTS if not str(rec.get(p) or "").strip()]
+
+
+def has_recommendation(item):
+    """True when the card carries a question he can act on without asking one
+    back. Nothing without this may be counted as waiting on him (§5.2)."""
+    return not recommendation_gaps(item.get("recommend"))
 
 
 def _file_item(fields, cap, org):
@@ -1088,34 +1185,178 @@ def _process_response(item, org):
     return True
 
 
+# Where a follow-up was filed from, and whether the card it came from had
+# already promised it. A card he accepted, and a card that landed under the
+# arrival rule that stands in for his yes (S-16), both showed him what they
+# would start; work an owner files mid-conversation was promised by nothing.
+PROMISING = ("follow", "landed")
+
+
 def _file_follow_ups(item, fus, org, cap_id, message, said="", lead=""):
     """File the follow-ups a card names, each at its own tier and linked back
     to the card. Returns the children. `said` is anything he attached, which
     becomes part of every child's brief; `lead` opens each child's ask when
-    the message itself (a whole reply, say) is not the right opening."""
+    the message itself (a whole reply, say) is not the right opening.
+
+    Three of the spawn rules live here (S-17, docs/QUEUE_TO_ZERO.md §5): one
+    subject files one card, work hard to walk back is filed as a question to be
+    written rather than as an ask in his list, and a follow-up the card promised
+    says which card promised it."""
     started = []
+    seen = {}            # subject -> the card this block already filed it into
     for fu in fus:
         cap = {"to": item.get("thread") or item["owner"], "id": cap_id,
                "message": message[:2000]}
         ask = (f"{lead or message} {fu.get('why', '')}".strip())[:600]
         if said:
             ask += ("\n\nDaniel attached this, and it is part of the brief:\n" + said)
+        owner = fu.get("owner") or item["owner"]
+        key = merge_key(fu["title"])
+        # §5.4, one subject one card: the same work named twice in one result,
+        # or named again while the first card is still open, joins that card
+        # instead of filing a twin for the same person to read twice.
+        twin = seen.get((owner, key)) or _open_twin(owner, key, exclude_id=item["id"])
+        if twin:
+            _merge_into(twin, item, fu, ask)
+            started.append({"id": twin["id"], "title": twin["title"],
+                            "state": twin["state"], "owner": twin["owner"],
+                            "merged": True})
+            seen[(owner, key)] = twin
+            continue
         child = _file_item({
             "title": fu["title"],
             "level": fu.get("level", "task"),
-            "owner": fu.get("owner") or item["owner"],
-            "tier": fu.get("tier", 2),
+            "owner": owner,
+            "tier": fu.get("tier", UNTIERED_FOLLOW),
             "tier_reason": fu.get("why", "follows from this card"),
             "ask": ask,
             "first_action": fu.get("first_action", ""),
         }, cap, org)
         child["parent"] = item["id"]
+        # §5.2: a follow-up that is hard to walk back is not an ask in his list.
+        # It is a question somebody has to write first, and it waits with the
+        # studio until that question carries a recommended answer.
+        if child["tier"] == 2:
+            child["state"] = "prepping"
+            child["prepping_since"] = _now_iso()
+            child["prep_attempts"] = 0
+        # §5.1: his yes covers what the card said it would start, so a result
+        # that does what was promised can land instead of coming back for a
+        # second yes. What differs from the promise is what returns.
+        if cap_id in PROMISING:
+            child["promised_by"] = item["id"]
+            child["promised"] = {"card": item["title"],
+                                 "title": fu["title"],
+                                 "why": fu.get("why", "")}
         save_item(child)
+        seen[(owner, key)] = child
         started.append({"id": child["id"], "title": child["title"],
                         "state": child["state"], "owner": child["owner"]})
     if started:
         item["spawned"] = (item.get("spawned") or []) + started
     return started
+
+
+def _merge_into(twin, parent, fu, ask):
+    """Fold a follow-up into the open card that already holds its subject. The
+    ask is appended rather than replacing what is there — the second naming of
+    a piece of work usually says something the first did not — and the card
+    records where the addition came from, so its owner can see why it grew."""
+    twin["ask"] = (twin.get("ask", "").rstrip()
+                   + f"\n\nAlso asked, from “{parent['title']}”:\n{ask}")[:2400]
+    twin.setdefault("merged_from", []).append({
+        "id": parent["id"], "card": parent["title"], "title": fu["title"],
+        "at": _now_iso(),
+    })
+    save_item(twin)
+    return twin
+
+
+def _prep_prompt(item, org):
+    emp = next((e for e in org["employees"] if e["id"] == item["owner"]), None)
+    short = item.get("prep_short") or []
+    again = ""
+    if short:
+        again = (
+            "\n\nYou wrote this question once already and it came back short of "
+            + ", ".join(short)
+            + ". Write it again, complete this time, rather than defending the "
+              "last one.\n\nWhat you wrote last time:\n"
+            + json.dumps(item.get("prep_draft") or {}, ensure_ascii=False))
+    return f"""This is work you own, and it is hard to walk back, so Daniel has to say
+yes before anything happens. He will not see it as a task; he sees one question
+with a recommended answer, and his yes is him taking that recommendation, after
+which this same card goes into the build queue and is carried out. Your job
+right now is to write that question. Do not do the work.
+
+THE WORK: {item['title']}
+WHY IT FOLLOWS: {item.get('tier_reason', '')}
+WHAT IT ASKS FOR: {item.get('ask', '')}
+THE FIRST STEP AS FILED: {item.get('first_action', '')}
+YOU ARE: {emp['name'] if emp else item['owner']}{again}
+
+Read whatever you need in the repository to make the question real — the numbers,
+the options that actually exist, what each would cost and what it would take to
+undo each. Then answer with one short paragraph he reads first (the choice in
+front of him, in his terms, no jargon and no ticket ids), and end with the block.
+
+The block must carry "recommend" with all four parts filled in. A recommendation
+missing any part comes straight back to you.
+
+{FOLLOW_MARK}
+{{"items": [], "recommend": {{"question": "the choice, in one line and in his terms", "answer": "what you recommend he does", "why": "the one reason that decides it", "instead": "the alternative he might reasonably prefer, named honestly"}}}}"""
+
+
+def prep_question(item, org):
+    """Have the owner write the question a tier-2 follow-up puts to him.
+
+    Complete, it joins his list. Short, it stays with the studio, says what it
+    is short of, and is written again — up to PREP_TRIES, after which it stops
+    and says a person has to write this one. Looping forever on a question the
+    model cannot write is the failure mode this counter exists for."""
+    item["prep_attempts"] = item.get("prep_attempts", 0) + 1
+    # An attempt is only spent once it comes back. Marked in flight here so a
+    # restart in the middle of one can give the try back rather than burning it
+    # on a call that never ran.
+    item["prep_in_flight"] = True
+    save_item(item)
+    model = item.get("model") or HOST.seat_model(org, item["owner"])
+    text, limited = _run_cli(_prep_prompt(item, org),
+                             HOST.build_system_prompt(org, item["owner"]),
+                             "Read,Glob,Grep", HOST.MAX_TURNS, 420, model=model,
+                             phase="prep", seat=item["owner"], item=item["id"])
+    item.pop("prep_in_flight", None)
+    if limited:
+        item["prep_attempts"] -= 1      # the tokens were dry; that is not a try
+        save_item(item)
+        return False
+    body, _got, _amend, _rec, _move = _split_result(text, org, item["owner"])
+    _, _, tail = (text or "").partition(FOLLOW_MARK)
+    draft = (_follow_doc(tail) or {}).get("recommend")
+    draft = {k: str((draft or {}).get(k) or "").strip()[:400] for k in REC_PARTS}
+    gaps = recommendation_gaps(draft)
+    if gaps:
+        item["prep_draft"] = draft
+        item["prep_short"] = gaps
+        if item["prep_attempts"] >= PREP_TRIES:
+            item["prep_stalled"] = (
+                f"Written {item['prep_attempts']} times and still missing "
+                f"{', '.join(gaps)}. A person has to write this one.")
+        save_item(item)
+        return True
+    item["recommend"] = draft
+    # Kept apart from `result`: nothing has been done here, and a card headed
+    # "did it — here's the result" over a question nobody has answered yet is a
+    # false sentence on his page. The Work page shows this once it has a place
+    # for a question that was written rather than a piece of work that was done.
+    item["prep_note"] = body
+    item["state"] = "needs_approval"
+    item["prepped"] = {"at": _now_iso(), "by": item["owner"],
+                       "attempts": item["prep_attempts"]}
+    for k in ("prep_short", "prep_draft", "prep_stalled", "prepping_since"):
+        item.pop(k, None)
+    save_item(item)
+    return True
 
 
 def _propose_follow_up(item, org):
@@ -1191,6 +1432,15 @@ def worker():
             todo.sort(key=lambda i: i.get("created_ts", 0))
             if todo:
                 _process_item(todo[0], org)
+                continue
+            # A question waiting to be written is a piece of his queue that has
+            # not arrived yet. Oldest first, and one that has already stopped
+            # is left alone rather than rewritten forever.
+            unprepped = [i for i in items() if i.get("state") == "prepping"
+                         and not i.get("prep_stalled")]
+            unprepped.sort(key=lambda i: i.get("created_ts", 0))
+            if unprepped:
+                prep_question(unprepped[0], org)
                 continue
             # No card should sit in front of him with its consequence unknown.
             blind = [i for i in items()
@@ -1273,6 +1523,14 @@ def undo_landing(item):
     return True, "reverted"
 
 
+def _in_his_list(item):
+    """A card sitting in front of him with something to give. A finished card
+    whose changes never reached the repository is not one: there is nothing in
+    the tree to approve."""
+    return (item.get("state") in HIS_STATES
+            and not (item.get("state") == "for_review" and _held_back(item)))
+
+
 def snapshot():
     got = items()
     return {
@@ -1283,9 +1541,15 @@ def snapshot():
         # until the answer lands, and it says so in its own strip on the page.
         # A finished card whose patch never reached the tree is waiting on
         # whoever holds those files, not on him, and the page shows it in its
-        # own section with no verdict to give.
-        "waiting_on_you": sum(1 for i in got if i["state"] in HIS_STATES
-                              and not (i["state"] == "for_review" and _held_back(i))),
+        # own section with no verdict to give. And a card with no recommended
+        # answer is not a question yet, so it is not counted as one (S-17): it
+        # is still on the page with its buttons, its owner is the seat that
+        # owes the recommendation, and `unprepped` says how many there
+        # are — uncounted rather than hidden.
+        "waiting_on_you": sum(1 for i in got if _in_his_list(i) and has_recommendation(i)),
+        "unprepped": sum(1 for i in got if _in_his_list(i) and not has_recommendation(i)),
+        "prepping": sum(1 for i in got if i["state"] == "prepping"),
+        "prep_stalled": sum(1 for i in got if i.get("prep_stalled")),
         "owed": sum(1 for i in got if i["state"] == "owed"),
         # The page keeps the same clock the machine does, against the same
         # deadline, rather than starting its own when the card happened to load.

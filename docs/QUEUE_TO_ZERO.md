@@ -138,27 +138,39 @@ Load-bearing: without this the arrival policy only delays the growth.
    original yes. Work the studio proposes on its own initiative, not promised by
    any card he accepted, files at its tier and is subject to the same two rules.
 
-**Built 2026-09-21:** the rules above are in `hq/work.py`, with a test for each.
-A follow-up that names no tier files at tier 1. One that is hard to walk back
-files in a new state, `prepping`, owned by the seat named on it; that seat
-writes the question — the choice in his terms, the real options and what each
-costs, what undoing each would take, and the answer recommended — and the card
-may ask for his yes only once all four parts of the recommendation are there. A
-draft that comes back short says on the card what it is short of and is written
-again, three times, after which it stops and says a person has to write it. A
-follow-up whose owner and subject match a card already open joins that card, its
-ask appended and the card it came from recorded; capitals, punctuation and a
-leading article are not part of the subject. Every follow-up filed on his
-acceptance records which card promised it, so a result that does what was
-promised can land instead of returning for a second yes. And the count of what
-waits on him counts only finished work and asks that carry a recommended
-answer — 21 of the 41 cards in his list on the morning this landed; the other 20
-are counted separately rather than dropped from the page. Two things it does not
-do: the Work page has no section for a question being written up, so a card in
-`prepping` is out of sight until it is ready, and the same count is worked out
-three more times in `hq/server.py` — the nightly reading of the goal, the age of
-the oldest item, and the dashboard's own line — where it still counts every
-card, so the page and the dashboard disagree until those follow.
+**Built 2026-09-21:** the rules above are in `hq/work.py`, with a test for each
+in `hq/tests/test_work.py`. A follow-up that names no tier files at tier 1. One
+that is hard to walk back files in a new state, `prepping`, owned by the seat
+named on it; that seat writes the question — the choice in his terms, the real
+options and what each costs, what undoing each would take, and the answer
+recommended — and the card may ask for his yes only once all four parts of the
+recommendation are there. A draft that comes back short says on the card what it
+is short of, keeps what it did write so the next draft is not written from
+nothing, and is written again — three times, after which it stops and says a
+person has to write this one. A follow-up whose owner and subject match a card
+already open joins that card, its ask appended and the card it came from
+recorded; capitals, punctuation and a leading article are not part of the
+subject, and a result that names the same work twice in one block files it once.
+Every follow-up filed off a card he accepted, or off one that landed under the
+arrival rule, records which card promised it and what was promised, so a result
+that does what was promised can land instead of returning for a second yes;
+work an owner files in the middle of a conversation records no promise, because
+nothing promised it. And the count of what waits on him counts only finished
+work and asks that carry a recommended answer — 24 of the 41 cards in his list
+on the day this landed; the other 17 are counted separately rather than dropped
+from the page, and keep their buttons.
+
+Three things it does not do. The Work page groups cards by state and has no
+group for a question being written up, so a card in `prepping` is out of sight
+until it is ready, and stays out of sight if the writing stops; when it does
+arrive he sees the recommendation and the buttons, but not yet the paragraph
+the seat wrote to introduce it. The same count is worked out three more times
+in `hq/server.py` — the nightly reading of the goal, the dashboard's own line,
+and the age of the oldest item — where it still counts every card, so the page
+and the dashboard disagree until those follow. And the merge rule stops the
+next twin without collapsing the ones already filed: three open cards ask
+Ingrid to read the same hand edit to the obstacle set, and two ask her the same
+thing about the seeder bot loop.
 
 Applied to the 7 cards that still reach him today: accepting all of them files 17
 pieces of work, of which 3 are tier 2 and could come back as prepped questions.
