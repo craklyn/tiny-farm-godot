@@ -7,11 +7,11 @@
   "tier_reason": "Reversible local work authorized by Daniel; verify the result before completion.",
   "ask": "Implement docs/hq/MODEL_ROUTING_PLAN.md with temporary Claude-to-Codex mappings, all execution paths, visible provider/model, bounded failures and controlled single-item trial. This card is owned by the current interactive session; do not concurrently execute it.",
   "first_action": "Follow docs/hq/MODEL_ROUTING_PLAN.md; independent survey and implementation are coordinated in task 01a0c60d-2a78-7880-afd7-a34175409645.",
-  "state": "for_review",
+  "state": "landed",
   "thread": "claude",
   "source": "interactive",
   "source_message": "Daniel authorized the HQ redesign cards and a temporary Claude/Codex execution rule, followed by one supervised run.",
-  "result": "The shared Claude/Codex adapter and all HQ callers are implemented and committed. The temporary model mapping is recorded in hq/data/execution_policy.json. Background work remains paused. Independent review confirmed three integration fixes. Main-tree tests and the supervised trial are in progress; this card is not complete yet.",
+  "result": "Implemented and verified Claude/Codex routing. Eight HQ scripts pass; main game checks pass 2853 unit and 968 integration. Real Terra worker, Sol checker and Luna writing hooks succeeded. The supervised guide landed at 6778c51 after correcting a pre-existing random test fixture; prior failure and review history preserved. Astra/native Claude paths are fixture-tested only. See docs/hq/MODEL_ROUTING_VERIFICATION.md.",
   "started": "2026-09-21T15:44",
   "attempts": 1,
   "created": "2026-09-21T15:42",
@@ -21,5 +21,12 @@
   "interactive_task": "01a0c60d-2a78-7880-afd7-a34175409645",
   "follow_ups": [],
   "recommend": {},
-  "finished": "2026-09-21T15:44"
+  "finished": "2026-09-21T15:44",
+  "closed": "2026-09-21T16:56",
+  "landed": {
+    "at": "2026-09-21T16:56",
+    "by": "interactive",
+    "sha": "2156049",
+    "note": "Verified in the interactive session; full evidence and subsequent fixes in MODEL_ROUTING_VERIFICATION.md."
+  }
 }

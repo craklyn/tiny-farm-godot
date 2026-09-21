@@ -72,7 +72,7 @@ Use the new small routing-documentation card owned by Ravi (Sonnet -> Terra), ch
 
 - Survey complete; cards and policy recorded. Adapter 411b027 and consumers 2156049 are integrated on main.
 - Timer stopped; HQ stopped during change; no active drain observed.
-- Plan review complete. The independent implementation review confirmed its three defects fixed in ea39228/3c10c6c; adapter 10 and consumer 8 offline tests passed before integration. Main-tree verification in progress; live evidence TK.
+- Plan review complete. The independent implementation review confirmed its three defects fixed in ea39228/3c10c6c; adapter 10 and consumer 8 offline tests passed before integration. Main-tree verification and live trial completed; evidence in MODEL_ROUTING_VERIFICATION.md.
 
 ## 6. Sources and evidence
 
@@ -85,3 +85,5 @@ Independent review of the two implementation worktrees found three interoperatio
 ## 8. Resume after the trial test failure
 
 Daniel authorized fixing the test and then starting the redesign work on 2026-09-21. Read-only review found Scenario AH stages row 11 only at x=13..19 (tools/test_runner.gd:3571), while the later unmarked-tile search uses x=20..23 (:3782). Generated obstacles can invalidate every candidate. Extend the fixture through x=20, retain all assertions, and verify both suites. This changes test setup only. Retry the existing reviewed card’s checks and landing if supported, preserving the failed run. Then execute redesign cards in delivery order, one at a time, leaving unrelated backlog held.
+
+2026-09-21: fixture repair f38efa5 verified; trial landed automatically through the existing backend land function at 6778c51 after 2853 unit / 968 integration passes. Worker/checker results and usage reused unchanged after artifact-byte verification. Start redesign counts next under single-card nomination; unrelated backlog stays paused.

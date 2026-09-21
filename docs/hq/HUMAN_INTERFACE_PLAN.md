@@ -78,3 +78,11 @@ First truthful states and readiness; then the human brief, evidence and actions;
 2026-09-21 implementation rule: review-card creation must preserve a short deliverable name separately from the agent request; the shared review renderer adds “Review:” for the human decision. Keep original asks in the brief. This must apply across card entry paths, not only to one persona prompt. Legacy cards need a safe readable fallback without inventing an artifact or erasing history.
 
 2026-09-21 execution authorized: after repairing the integration fixture and completing the supervised routing trial, run these redesign cards in delivery order, with one active implementation at a time. Inspect each result and resolve failures before advancing. Keep unrelated backlog paused.
+
+## First-card implementation contract (reviewed 2026-09-21)
+
+Extend the existing server.waiting_on_you() read-only projection as the single source of ready membership: stable source IDs, status/reason and counts consumed by dashboard, navigation and queue. Current competing paths are server.py waiting_reading, work.py _in_his_list/snapshot, queue.js qClassify/qLoadData and app.js badge arithmetic. Survey found queue.js places work plus decisions into queueCounts.work while app.js adds decisions again; work.js also subtracts held cards already excluded by snapshot. Remove competing arithmetic, not useful rendering. Resolve send-back/owner-return consistently; a prior judgment alone must not permanently hide a returned decision.
+
+Fixtures cover prepared decisions, send-back/owner-return, preparing, owed/awaiting reply, held patches, verification pending, scheduled and actually landed work. Green suites are not recorded completion. Keep missing preparation and all checker/test warnings discoverable; explicit informed verdicts remain possible on finished results. Read operations must neither mutate records nor launch models, and an unavailable count is not zero. Compare ready IDs as well as totals across all three live surfaces.
+
+The subsequent deliverable gate extends this backend projection, not a separate frontend-only gate. Do not invent artifact requirements in the count card. Readiness, evidence and human brief requirements remain separate packages that share this projection.

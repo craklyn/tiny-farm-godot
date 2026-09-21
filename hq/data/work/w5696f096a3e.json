@@ -5,7 +5,7 @@
   "owner": "rin",
   "tier": 1,
   "tier_reason": "Reversible local work authorized by Daniel; verify the result before completion.",
-  "ask": "Implement section 1 of docs/hq/HUMAN_INTERFACE_PLAN.md. Daniel authorized this redesign on 2026-09-21. Preserve the acceptance requirements in that section and coordinate with the other sections. Do not duplicate existing deliverable gate w44ff2049d9a.",
+  "ask": "Implement section 1 of docs/hq/HUMAN_INTERFACE_PLAN.md. Daniel authorized this redesign on 2026-09-21. Preserve the acceptance requirements in that section and coordinate with the other sections. Do not duplicate existing deliverable gate w44ff2049d9a.\n\nFollow the reviewed First-card implementation contract at the end of HUMAN_INTERFACE_PLAN.md. Extend existing server.waiting_on_you projection; remove double-count/subtraction and competing client readiness arithmetic. Include fixture coverage and live-read API verification. Do not implement a rival artifact gate.",
   "first_action": "Read docs/hq/HUMAN_INTERFACE_PLAN.md section 1, inspect the current behavior and linked work, then implement and verify the specified outcome.",
   "state": "waiting_session",
   "thread": "claude",

@@ -3111,6 +3111,12 @@
   "dd9c32a51ca07fb49736": {
    "verdict": "ok"
   },
+  "dde81a93cb94fa525374": {
+   "instead": "Make the work card include its deliverable before the CEO sees it",
+   "quote": "Make a work card carry its deliverable before it reaches the CEO",
+   "verdict": "second-look",
+   "why": "“Carry its deliverable” makes the reader translate a metaphor instead of plainly saying the card must include the deliverable."
+  },
   "dee15b89307447b19d07": {
    "verdict": "ok"
   },
