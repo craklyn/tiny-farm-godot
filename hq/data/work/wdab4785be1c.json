@@ -7,7 +7,7 @@
  "tier_reason": "changes the drain and the work module; git reverts it; behind the suites",
  "ask": "Build the arrival rule (S-16; docs/QUEUE_TO_ZERO.md §4; the plain words are `arrival` in hq/data/work_policy.json). Do not survey the repo: every place you touch is named here.\n\n1. hq/work.py line 83: add \"landed\" to STATES. In snapshot() (line ~953) count waiting_on_you exactly as before (needs_approval + for_review) and add `landed_today`: cards with state landed whose `landed.at` is today.\n2. hq/drain.py write_back() (line ~1041) is the only place a drained card becomes for_review. Before it sets for_review, call a new `meets_landing_bar(item, rec, applied, suites)` that returns (True, \"\") or (False, reason). The bar, all four: item tier in (0, 1) — use `tier_checked` if the checker wrote one, else `tier`; `applied` is True and `suites` is a dict where every value's `ok` is true (for a tier-0 card with no diff, skip this gate); the checker verdict in rec[\"check\"][\"verdict\"] is \"pass\", or \"concerns\" with an empty findings list; and no path in rec[\"files\"] starts with docs/design/, docs/DEPLOY.md, ITCH_PAGE.md, .github/, or matches hq/data/releases.json. If it passes: `git add -- <rec files>` and `git commit -m <item title>` in REPO (never `git add -A`), set state \"landed\", `landed` = {at, sha, by: \"drain\"}, keep result/diff/check/suites as write_back already does. If it fails: set for_review exactly as today, and put the reason in item[\"diff\"][\"why_not_landed\"].\n3. hq/work.py: `POST /api/work/undo` with {id}: for a landed card, `git revert --no-edit <sha>`, set state for_review with a conversation line \"Daniel undid the landing\", and answer {ok, sha}. Add it beside /api/work/accept (line ~1041 in work.py).\n4. hq/work.py _process_item (line ~676), the tier-0 lane: a finished tier-0 card whose follow_ups are all tier ≤ 1 (or none) lands the same way without a commit: state \"landed\", landed = {at, by: \"worker\"}; otherwise for_review as today.\n5. hq/static/work.js: in the section list, add a fold \"Landed without you\" listing state landed cards (title, owner, when, and an Undo button that posts /api/work/undo). Do not change anything else on the page.\n6. Tests: a unit test in a new tests/test_landing_bar.py (plain python, run with `python3 -m pytest` if present else `python3 tests/test_landing_bar.py`) that calls meets_landing_bar with a fake rec for each gate and asserts the reason.\n\nCommit early and often in your worktree. Stay out of tests/test_runner.gd and the game code entirely; this item touches only hq/.",
  "first_action": "Read hq/drain.py write_back (line ~1041) and hq/work.py STATES (line 83), then write meets_landing_bar and its test first.",
- "state": "waiting_session",
+ "state": "accepted",
  "source": "chief-of-staff",
  "source_message": "Daniel said yes to the arrival rule (S-16) and the spawn rule (S-17) on 2026-09-20; docs/QUEUE_TO_ZERO.md §12 is the build order.",
  "thread": "claude",
@@ -89,9 +89,19 @@
  "started": "",
  "waiting_for": {
   "files": [
-   "docs/writing_verdicts.json"
+   "hq/drain.py"
   ],
-  "reason": "another session holds docs/writing_verdicts.json changed and uncommitted in the working tree; this is retried once that change is committed or put away",
-  "at": "2026-09-21T11:04"
+  "reason": "another session holds hq/drain.py changed and uncommitted in the working tree; this is retried once that change is committed or put away",
+  "at": "2026-09-21T11:28"
+ },
+ "closed": "2026-09-21T14:31",
+ "landed": {
+  "at": "2026-09-21T14:31",
+  "by": "chief-of-staff"
+ },
+ "closed_by": {
+  "seat": "chief-of-staff",
+  "rule": "S-16",
+  "note": "Tomas's drain half was recovered from git's loose objects and ported onto today's file by hand; the work-module half (the landed state, land_item, the undo endpoint) and the page's fold were written in the same landing. All three HQ test files green."
  }
 }

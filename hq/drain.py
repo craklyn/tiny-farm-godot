@@ -718,7 +718,11 @@ def do_item(item, org, run_id, log):
         if rec["check"] is None and not rec["limited"]:
             rec["check"] = {"verdict": "concerns", "summary": "nobody checked this — the "
                             "check call did not come back", "findings": [], "escalates": None,
-                            "escalation_reason": None}
+                            # `read` is False because this record stands for a read
+                            # that never happened. Work may land on a clean read, so
+                            # "found nothing" and "looked at nothing" have to be
+                            # different facts on the record, not a turn of phrase.
+                            "escalation_reason": None, "read": False}
     except Exception as e:
         rec["error"] = f"{type(e).__name__}: {e}"[:400]
     finally:
@@ -747,6 +751,9 @@ def parse_check(raw):
             findings.append({k: str(f.get(k) or "")[:400] for k in ("what", "where", "fix")})
     reason = str(doc.get("escalation_reason") or "").lower().strip()
     return {
+        # This record came from a read that actually happened, which is one of
+        # the four things work has to have before it may land without Daniel.
+        "read": True,
         "verdict": verdict if verdict in ("pass", "concerns", "fail") else "concerns",
         "summary": str(doc.get("summary") or "")[:600],
         "findings": findings,
@@ -1040,6 +1047,101 @@ def run_suites():
 # writing the result back onto the card
 # ---------------------------------------------------------------------------
 
+# Work that cannot be undone by reverting a commit, wherever it appears in a
+# diff: a release, the deploy runbook, the store page, the build pipeline, and
+# the design documents that hold the studio's direction. A patch touching any
+# of these goes to Daniel however green everything else is.
+NEVER_LANDS = ("docs/design/", "docs/DEPLOY.md", "ITCH_PAGE.md", ".github/",
+               "hq/data/releases.json")
+
+
+def _checked_tier(item, rec):
+    """How hard this work is to walk back, by the best reading available. The
+    chief of staff re-judges it from the diff actually produced, because the
+    tier on the card was assigned before anybody knew what the work would
+    touch, and an unknown blast radius is filed as the worst case."""
+    check = rec.get("check") or {}
+    for got in (check.get("tier_checked"), item.get("tier_checked"), item.get("tier")):
+        if got is not None:
+            try:
+                return int(got)
+            except (TypeError, ValueError):
+                return 2
+    return 2
+
+
+def meets_landing_bar(item, rec, applied, suites):
+    """Whether this finished card may go in without Daniel reading it, and if
+    not, the sentence that says why (S-16, docs/QUEUE_TO_ZERO.md §4).
+
+    All four have to hold, and none of them is the worker's own word for it:
+    the work is revertable, the test suites ran green over exactly this diff,
+    the chief of staff read the diff and found nothing, and nothing in the diff
+    is of a kind that reverting would not undo."""
+    files = list(rec.get("files") or [])
+
+    tier = _checked_tier(item, rec)
+    if tier not in (0, 1):
+        return False, ("this needed your yes before it happened, so it needs your "
+                       "answer now that it has")
+
+    # A reading produces no diff, so there is nothing for the suites to run
+    # over and nothing to land; everything else has to have been applied to
+    # the tree and proved there.
+    if not (tier == 0 and not files):
+        if not applied:
+            return False, "the change it wrote could not be applied to the repository"
+        if not isinstance(suites, dict) or not suites:
+            return False, "the test suites were not run over it"
+        red = sorted(name for name, got in suites.items() if not (got or {}).get("ok"))
+        if red:
+            return False, (f"the {' and '.join(red)} test suite"
+                           f"{'s are' if len(red) > 1 else ' is'} failing with this change in")
+
+    check = rec.get("check") or {}
+    verdict = check.get("verdict")
+    # A record saying nobody read the diff is not a clean read of it. The
+    # check writes that down itself when its call does not come back, so this
+    # asks the record rather than guessing from the words in it.
+    if check.get("read") is False:
+        return False, "nobody read the change it made"
+    if verdict == "pass":
+        pass
+    elif verdict == "concerns" and not check.get("findings"):
+        pass
+    elif verdict == "concerns":
+        return False, "the read of it raised something you should see"
+    else:
+        return False, "the read of it says this should not go in as it stands"
+
+    blocked = sorted({f for f in files
+                      if any(f == n or f.startswith(n) for n in NEVER_LANDS)})
+    if blocked:
+        return False, (f"it changes {blocked[0]}, which undoing a commit would not put back "
+                       "the way it was")
+
+    return True, ""
+
+
+def land(item, rec):
+    """Commit exactly the files this card changed. Never `git add -A`: other
+    sessions work in this same tree, and a landing that swept up somebody
+    else's half-finished file would be a second person's work committed under
+    a title that does not describe it. Returns the commit, or "" and why not."""
+    files = [f for f in (rec.get("files") or []) if f]
+    if not files:
+        return "", "there was nothing to commit"
+    add = sh(["git", "add", "--"] + files)
+    if add.returncode != 0:
+        return "", (add.stderr or add.stdout or "git add failed").strip()[:200]
+    made = sh(["git", "commit", "-m", item["title"], "--"] + files)
+    if made.returncode != 0:
+        sh(["git", "restore", "--staged", "--"] + files)
+        return "", (made.stderr or made.stdout or "git commit failed").strip()[:200]
+    got = sh(["git", "rev-parse", "HEAD"])
+    return got.stdout.strip(), ""
+
+
 def plain_failure(text, applied=None, why=""):
     """A card is something Daniel reads. A raw CLI envelope pasted into the
     result field — session ids, cache counters, a `duration_api_ms` — tells him
@@ -1095,8 +1197,22 @@ def write_back(item, rec, applied, why_not, suites, org):
     resume = "" if applied else (rec.get("resume") or auto_resume_reason(item, rec))
     item["attempts"] = item.get("attempts", 0) + 1
     item["done_by"] = {"seat": rec["seat"], "model": rec["model"], "lane": "drain"}
+    # Whether this goes in on its own or comes to Daniel. Work he would only
+    # rubber-stamp is work he should never have been shown, so the default is
+    # that it lands; what sends it to him is a named reason, written on the card
+    # so the next person can see which of the four things stopped it.
+    landed_ok, why_not_landed = meets_landing_bar(item, rec, applied, suites)
+    sha = ""
+    if landed_ok and (rec.get("files") or []):
+        sha, trouble = land(item, rec)
+        if not sha:
+            landed_ok, why_not_landed = False, trouble
     item["diff"] = {"stat": rec["stat"], "files": rec["files"][:40],
-                    "applied": applied, "why_not": why_not}
+                    "applied": applied, "why_not": why_not,
+                    "why_not_landed": why_not_landed}
+    if landed_ok:
+        work.land_item(item, "drain", sha=sha)
+
     if rec["check"]:
         item["check"] = rec["check"]
     if suites:
@@ -1135,7 +1251,8 @@ def write_back(item, rec, applied, why_not, suites, org):
         item.pop("follow_up", None)
         item["follow_ups"] = follows
         item["recommend"] = recommend or {}
-    item["state"] = "for_review"
+    if not landed_ok:
+        item["state"] = "for_review"
     item["finished"] = work._now_iso()
     work.finish_revision(item)
     work.save_item(item)
@@ -1353,26 +1470,37 @@ def main():
         print(f"  {'applied ' if ok else 'held    '} {it['id']}  {why}", flush=True)
 
     suites = None
-    if applied_files and touches_game(applied_files) and not args.no_suites:
-        print("\n  running both suites (an applied patch touched the game)…", flush=True)
+    if applied_files and not args.no_suites:
+        # Run whenever anything was applied, not only when the game itself was
+        # touched: a green run over the change is one of the four things that
+        # lets work go in without Daniel reading it, so a change that never
+        # faced the suites has no evidence to land on.
+        print("\n  running both suites over what was applied…", flush=True)
         suites = run_suites()
         for k, v in suites.items():
             print(f"  {k}: {'green' if v['ok'] else 'RED'}", flush=True)
 
+    done = []
     for it in pool:
         rec = records.get(it["id"])
         if not rec or rec["limited"]:
             continue          # still queued; the window will come back
         fresh = server.load_json(work._item_path(it["id"]))
-        write_back(fresh, rec, rec.get("applied", False), rec.get("why_not", ""),
-                   suites if rec.get("applied") else None, org)
+        done.append(write_back(fresh, rec, rec.get("applied", False), rec.get("why_not", ""),
+                               suites if rec.get("applied") else None, org))
 
     bill = server.sum_usage([u for r in records.values() for u in r["usage"]])
     esc = [(i, records[i["id"]]["check"]) for i in pool
            if (records.get(i["id"]) or {}).get("check")
            and records[i["id"]]["check"].get("escalates")]
+    went_in = [i for i in done if i.get("state") == "landed"]
     print(f"\nDrained in {int(time.time() - started) // 60} min. "
-          f"{sum(1 for r in records.values() if r.get('applied'))} of {len(pool)} landed.")
+          f"{sum(1 for r in records.values() if r.get('applied'))} of {len(pool)} applied to "
+          f"the tree; {len(went_in)} committed without Daniel, "
+          f"{sum(1 for i in done if i.get('state') == 'for_review')} waiting for him.")
+    for i in done:
+        if i.get("state") == "for_review":
+            print(f"  to Daniel: {i['id']}  {(i.get('diff') or {}).get('why_not_landed') or '—'}")
     print(f"Cost: {bill['calls']} model calls, {bill['tokens']:,} tokens "
           f"(${bill['list_usd']:.2f} at API list price — this is a subscription, so that "
           f"is a size, not a bill).")

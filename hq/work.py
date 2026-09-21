@@ -29,6 +29,7 @@ import datetime
 import json
 import os
 import re
+import subprocess
 import threading
 import time
 import uuid
@@ -106,7 +107,7 @@ LEVELS = ("task", "story", "epic", "project", "goal")
 # state that is not his move: he asked something on a card, nobody answered
 # within the thirty seconds, and the card left his list until the answer lands.
 STATES = ("needs_approval", "for_review", "owed", "doing", "waiting_session",
-          "accepted", "dropped")
+          "accepted", "dropped", "landed")
 
 
 def bind(server_module):
@@ -1224,6 +1225,50 @@ def _held_back(item):
     return (d.get("why_not") or "") not in ("", "nothing changed")
 
 
+def land_item(item, by, sha="", note=""):
+    """A finished card that met the landing bar goes in without a verdict.
+
+    It is closed, not queued: the work is committed and reported, and the Undo
+    on the page reverts that commit and gives the card back. Nothing here asks
+    Daniel anything, which is the point — work he would only rubber-stamp is
+    work he should never have been shown (S-16)."""
+    item["state"] = "landed"
+    item["closed"] = _now_iso()
+    item["landed"] = {"at": _now_iso(), "by": by, "sha": sha, "note": note}
+    fus = follow_ups(item)
+    if fus:
+        _file_follow_ups(item, fus, HOST.load_org(), cap_id="landed",
+                         message=f"Landed without Daniel: “{item['title']}”.")
+    return item
+
+
+def undo_landing(item):
+    """Put back what a landing changed, and give the card back to Daniel.
+
+    The commit is reverted rather than reset: other work has landed on top of
+    it since, and rewriting history under a shared tree is how a second
+    person's work disappears."""
+    sha = (item.get("landed") or {}).get("sha") or ""
+    if not sha:
+        item["state"] = "for_review"
+        item.pop("landed", None)
+        save_item(item)
+        return True, "there was no commit to undo, so the card is back with you"
+    got = subprocess.run(["git", "revert", "--no-edit", sha], cwd=HOST.REPO,
+                         capture_output=True, text=True, timeout=180)
+    if got.returncode != 0:
+        subprocess.run(["git", "revert", "--abort"], cwd=HOST.REPO,
+                       capture_output=True, text=True, timeout=60)
+        return False, ((got.stderr or got.stdout or "the revert did not apply").strip()[:200])
+    item["state"] = "for_review"
+    item["landing_undone"] = {"at": _now_iso(), "reverted": sha}
+    item.setdefault("conversation", []).append(
+        {"role": "daniel", "text": "Undid this landing.", "at": _now_iso(), "with": "undo"})
+    item.pop("landed", None)
+    save_item(item)
+    return True, "reverted"
+
+
 def snapshot():
     got = items()
     return {
@@ -1323,6 +1368,9 @@ def api_post(path, payload):
         _begin_answering(item)
         return saved
 
+    if path == "/api/work/undo":
+        ok, why = undo_landing(item)
+        return {"ok": ok, "why": why, "id": item["id"], "state": item["state"]}
     if path == "/api/work/accept":
         item["state"] = "accepted"
         item["closed"] = _now_iso()

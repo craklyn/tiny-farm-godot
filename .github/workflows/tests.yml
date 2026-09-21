@@ -77,6 +77,11 @@ jobs:
       - name: A worker that ran out of turns is tried again before it reaches Daniel
         run: python3 hq/tests/test_drain.py
 
+      # Which finished work may go in without Daniel reading it. Checked from
+      # made-up cards with no model and no repository in the loop.
+      - name: Work only goes in on its own when all four conditions hold
+        run: python3 hq/tests/test_landing_bar.py
+
   tests:
     runs-on: ubuntu-latest
     timeout-minutes: 15

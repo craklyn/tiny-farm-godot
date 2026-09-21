@@ -245,6 +245,12 @@ async function qLoadData() {
   const forReview = live("for_review");
   const awaitingStudio = work.filter(i => (i.state === "needs_approval" || i.state === "for_review") && i.awaiting_reply);
 
+  // Work that actually went in on its own, newest first. Until 2026-09-21 this
+  // fold could only show what WOULD land; now the drain commits it and the card
+  // says so, and each line can be put back.
+  const wentIn = work.filter(i => i.state === "landed")
+    .sort((a, b) => String((b.landed || {}).at || "").localeCompare(String((a.landed || {}).at || "")));
+
   const his = [], landed = [], studio = [];
   needsApproval.forEach(c => his.push({ card: c, reason: "hard to walk back, or a matter of taste" }));
   forReview.forEach(c => {
@@ -391,6 +397,9 @@ function qRender(state) {
     `<li><span class="q-fold-t">${esc(title)}</span>
       <small class="q-fold-r"> · ${esc(reason)}${fus ? ` · started ${fus} more` : ""}</small></li>`;
 
+  const wentInHtml = wentIn.map(c => `<li><b>${esc(c.title)}</b>
+    <small class="q-fold-r"> · ${esc(ownerOf(org, c.owner).name)} · went in ${esc(String((c.landed || {}).at || "").replace("T", " "))}</small>
+    <button class="ghost q-undo" data-id="${esc(c.id)}">Undo</button></li>`).join("");
   const digestHtml = landedWork.map(({ card, reason }) =>
     foldRow(card.title, reason, (card.follow_ups || []).length)).join("");
   const backHtml = [
@@ -408,9 +417,9 @@ function qRender(state) {
         <div class="q-band">${bandHtml}</div>
         ${stripHtml ? `<div class="q-strip">${stripHtml}</div>` : ""}
         <div id="q-groups">${groupsHtml || `<p class="muted">Nothing is waiting on you.</p>`}</div>
-        <h2 class="q-fold-h">Landed without you <span class="chip q-chip q-count">${landedWork.length}</span></h2>
-        <details class="q-fold"><summary>${landedWork.length} piece${landedWork.length === 1 ? "" : "s"} of finished work would land on their own once the landing bar exists</summary>
-          <ul class="q-fold-list">${digestHtml || "<li>Nothing yet.</li>"}</ul></details>
+        <h2 class="q-fold-h">Landed without you <span class="chip q-chip q-count">${wentIn.length + landedWork.length}</span></h2>
+        <details class="q-fold"><summary>${wentIn.length} piece${wentIn.length === 1 ? "" : "s"} of finished work went in without you${landedWork.length ? `, and ${landedWork.length} more would go in the same way on the next run` : ""}</summary>
+          <ul class="q-fold-list">${wentInHtml}${digestHtml}${(wentInHtml + digestHtml) ? "" : "<li>Nothing yet.</li>"}</ul></details>
         <h2 class="q-fold-h">Back with the studio <span class="chip q-chip q-count">${studioWork.length}</span></h2>
         <details class="q-fold"><summary>${studioWork.length} card${studioWork.length === 1 ? "" : "s"} go back to their owner instead of to you</summary>
           <ul class="q-fold-list">${backHtml || "<li>Nothing yet.</li>"}</ul></details>
@@ -487,6 +496,15 @@ function qRender(state) {
       if (!text || !r) return;
       send.disabled = true;
       qDoTalk(r, text);
+      return;
+    }
+    const undo = ev.target.closest(".q-undo");
+    if (undo) {
+      undo.disabled = true;
+      undo.textContent = "Putting it back…";
+      workPost("/api/work/undo", { id: undo.dataset.id })
+        .then(got => { if (got && got.ok === false) undo.textContent = got.why || "Could not undo"; else qRefresh(); })
+        .catch(() => { undo.textContent = "Could not undo"; });
       return;
     }
     if (row) { qSelect(row.dataset.id); return; }
