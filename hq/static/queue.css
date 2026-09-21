@@ -1,0 +1,91 @@
+/* Tiny Farm HQ — the queue reader (queue.js). Kept apart from work.css, which
+   another session owns; nothing here is meant to look like a different app,
+   so it draws on the same tokens style.css already defines (--panel, --line,
+   --text, --muted, --accent). */
+
+.q-app { display: grid; grid-template-columns: minmax(360px, 46%) 1fr; gap: 20px;
+  align-items: start; }
+.q-list { min-width: 0; }
+.q-pane { min-width: 0; border: 1px solid var(--line); border-radius: 10px;
+  padding: 16px 20px; background: var(--panel); position: sticky; top: 12px;
+  max-height: calc(100vh - 24px); overflow: auto; }
+@media (max-width: 900px) {
+  .q-app { grid-template-columns: 1fr; }
+  .q-pane { position: static; max-height: none; }
+}
+
+.q-band { border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px;
+  background: var(--panel); margin: 10px 0 4px; }
+.q-band b { font-size: 16px; }
+.q-band p { margin: 6px 0 0; color: var(--muted); font-size: 13.5px; }
+
+.q-strip { margin: 10px 0; padding: 10px 14px; border-radius: 8px;
+  background: var(--panel2); font-size: 13.5px; }
+
+.q-group-h { font-size: 14px; color: var(--accent); margin: 24px 0 8px;
+  display: flex; align-items: center; gap: 8px; }
+
+.q-row { display: grid; grid-template-columns: 1fr auto; gap: 10px;
+  padding: 12px 14px; border-radius: 10px; border: 1px solid var(--line);
+  background: var(--panel); margin-bottom: 10px; align-items: start; cursor: pointer; }
+.q-row.q-focus { border-color: var(--accent); background: var(--panel2); }
+.q-row-q { font-weight: 600; font-size: 14.5px; }
+.q-row-r { color: var(--muted); font-size: 13px; margin-top: 3px; }
+.q-row-none { font-style: italic; }
+.q-row-acts { display: flex; gap: 6px; align-items: center; }
+.q-row-acts button { white-space: nowrap; }
+
+.q-talk-box { margin-top: 14px; }
+.q-talk-box textarea { width: 100%; min-height: 60px; font: inherit; padding: 8px;
+  border-radius: 8px; border: 1px solid var(--line); background: var(--bg2); color: var(--text); }
+.q-talk-acts { margin-top: 6px; }
+
+.q-fold-h { font-size: 13px; letter-spacing: .03em; text-transform: uppercase;
+  color: var(--muted); margin: 22px 0 4px; display: flex; align-items: center; gap: 8px; }
+.q-fold { border: 1px solid var(--line); border-radius: 8px; padding: 4px 12px; margin-bottom: 4px; }
+.q-fold summary { cursor: pointer; padding: 8px 0; color: var(--muted); font-size: 13px; }
+.q-fold-list { list-style: none; margin: 0; padding: 0 0 10px; }
+.q-fold-list li { padding: 6px 0; border-top: 1px solid var(--line); font-size: 13.5px; }
+.q-fold-list li:first-child { border-top: 0; }
+.q-fold-r { color: var(--muted); }
+
+.chip.q-chip { background: var(--panel2); color: var(--muted); font-weight: 600; }
+
+/* The pane (§7): a fixed anatomy, same section rhythm every time. */
+.q-pane-empty { color: var(--muted); padding: 20px 0; }
+.q-pane-q { font-size: 19px; font-weight: 700; margin: 0 0 4px; }
+.q-pane-src { color: var(--muted); font-size: 12.5px; margin-bottom: 6px; }
+
+.q-sec { margin: 16px 0; }
+.q-sec h3 { font-size: 12.5px; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--muted); margin: 0 0 6px; }
+
+.q-rec { border-left: 4px solid var(--accent); padding: 8px 12px; border-radius: 0 8px 8px 0;
+  background: var(--panel2); }
+.q-rec b { display: block; font-size: 15px; }
+.q-rec p { margin: 6px 0 0; }
+.q-rec-none { border-left-color: var(--line); font-style: italic; }
+.q-instead { color: var(--muted); margin-top: 6px !important; font-style: normal; }
+
+.q-opt { padding: 8px 0; border-top: 1px solid var(--line); }
+.q-opt:first-child { border-top: 0; }
+.q-opt b { display: block; }
+.q-opt p { margin: 3px 0 0; color: var(--muted); font-size: 13.5px; }
+
+.q-fu-list { list-style: none; margin: 8px 0 0; padding: 0; }
+.q-fu-list li { padding: 5px 0; border-top: 1px solid var(--line); font-size: 13.5px; }
+.q-fu-list li:first-child { border-top: 0; }
+
+.q-msg { padding: 8px 10px; border-radius: 8px; margin: 6px 0; background: var(--panel2); }
+.q-msg-you { background: var(--bg2); }
+.q-msg-who { font-weight: 600; font-size: 12.5px; color: var(--muted); }
+
+.q-sec details { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; margin: 6px 0; }
+.q-sec details summary { cursor: pointer; font-weight: 600; font-size: 13.5px; }
+.q-sec details div { margin-top: 8px; white-space: pre-wrap; font-size: 13.5px; }
+.q-pane-muted { color: var(--muted); font-size: 13.5px; }
+.q-atts { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+.q-atts img, .q-atts video { max-width: 220px; border-radius: 6px; cursor: zoom-in; }
+
+.q-acts-big { display: flex; gap: 8px; margin-top: 18px; flex-wrap: wrap; }
+.q-acts-big button { padding: 9px 16px; font-size: 14.5px; }

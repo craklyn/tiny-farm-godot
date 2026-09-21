@@ -138,6 +138,28 @@ Load-bearing: without this the arrival policy only delays the growth.
    original yes. Work the studio proposes on its own initiative, not promised by
    any card he accepted, files at its tier and is subject to the same two rules.
 
+**Built 2026-09-21:** the rules above are in `hq/work.py`, with a test for each.
+A follow-up that names no tier files at tier 1. One that is hard to walk back
+files in a new state, `prepping`, owned by the seat named on it; that seat
+writes the question — the choice in his terms, the real options and what each
+costs, what undoing each would take, and the answer recommended — and the card
+may ask for his yes only once all four parts of the recommendation are there. A
+draft that comes back short says on the card what it is short of and is written
+again, three times, after which it stops and says a person has to write it. A
+follow-up whose owner and subject match a card already open joins that card, its
+ask appended and the card it came from recorded; capitals, punctuation and a
+leading article are not part of the subject. Every follow-up filed on his
+acceptance records which card promised it, so a result that does what was
+promised can land instead of returning for a second yes. And the count of what
+waits on him counts only finished work and asks that carry a recommended
+answer — 21 of the 41 cards in his list on the morning this landed; the other 20
+are counted separately rather than dropped from the page. Two things it does not
+do: the Work page has no section for a question being written up, so a card in
+`prepping` is out of sight until it is ready, and the same count is worked out
+three more times in `hq/server.py` — the nightly reading of the goal, the age of
+the oldest item, and the dashboard's own line — where it still counts every
+card, so the page and the dashboard disagree until those follow.
+
 Applied to the 7 cards that still reach him today: accepting all of them files 17
 pieces of work, of which 3 are tier 2 and could come back as prepped questions.
 Today accepting the 61 would file 97, all of which come back. The 9 tier-2

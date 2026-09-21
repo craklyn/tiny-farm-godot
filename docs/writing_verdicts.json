@@ -1527,6 +1527,12 @@
   "75b0b56f20e6ec41822b": {
    "verdict": "ok"
   },
+  "75f7a1a4d4b3a1db6887": {
+   "instead": "The queue page needs labels to group items by, and only the chief of staff can set them",
+   "quote": "subjects",
+   "verdict": "decode",
+   "why": "A reader arriving cold cannot determine whether 'subjects' are fields, categories, tags, or internal studio vocabulary."
+  },
   "76741438fbf74ed40a70": {
    "verdict": "ok"
   },
@@ -1713,6 +1719,9 @@
    "verdict": "ok"
   },
   "8508aef2ce5d2017c17a": {
+   "verdict": "ok"
+  },
+  "8587db3f1db359ba72b2": {
    "verdict": "ok"
   },
   "85b6bfbb3a78722df582": {
