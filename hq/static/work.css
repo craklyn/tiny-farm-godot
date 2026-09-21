@@ -56,6 +56,15 @@
   .w-dots i { opacity: .8; }
   .w-busy::after { background: var(--accent); background-size: 100% 100%; }
 }
+/* Work about to be attempted again wears the same accent as work in flight,
+   because from where he sits it is the same thing: he does nothing, and a new
+   result arrives. The line is the first thing in the body, above the result it
+   is about to contradict. */
+.w-again {
+  margin: 0 0 11px; padding: 8px 11px; border-radius: 8px; font-size: 13px;
+  color: var(--muted); background: var(--panel2); border-left: 3px solid var(--accent);
+}
+.w-again b { color: var(--text); }
 /* Clickable, but quietly: it is context on the card, not one of the two
    decisions the card is asking for. It only announces itself on hover. */
 .w-owner { margin-left: auto; font: inherit; font-size: 12px; color: var(--muted);

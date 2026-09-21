@@ -399,8 +399,12 @@ tie to a build.
   rather than swallowing them. `python3 hq/drain.py --list` to see the queue,
   `--all` to drain it, `--unattended` for the shape the timer runs (a few items, a
   token guard, one drain at a time). A card the owner is revising starts from its
-  earlier attempt, so what lands is only what changed. `docs/HOW_WORK_ORIGINATES.md`
-  is the norm in prose.
+  earlier attempt, so what lands is only what changed. A worker that ran out of
+  turns with edits in hand is not a result for Daniel: the card goes back into the
+  queue, ahead of the backlog, to be tried again from those edits with twice the
+  turns — twice at most, and only by a later run, so each retry faces the token
+  guard — and reaches him only when the drain has given up. `tests/test_drain.py`
+  pins that at the card's JSON. `docs/HOW_WORK_ORIGINATES.md` is the norm in prose.
 - `systemd/` — the user units that run the drain unattended on the HQ machine.
 - `data/org.json` — org chart + personas (Amazon titles/levels).
 - `data/entities.json` — entity gallery: sprite-sheet frame rects, fps, sounds,

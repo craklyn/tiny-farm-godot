@@ -153,6 +153,82 @@ function heldReason(it) {
   return d.why_not || "nothing landed";
 }
 
+/* Work that is about to be attempted again ---------------------------------
+   Two lanes move without him: the studio's scheduled run takes anything queued
+   for a build session, and HQ's own worker takes read-only work nobody has
+   started. A card sitting in one of those lanes with an attempt already behind
+   it is being tried again — the result on it, its diff and its recommendation
+   all came from the attempt that is about to be replaced. Approving any of
+   that would settle a result the studio is in the middle of rewriting, so the
+   card is treated exactly like work in flight: it moves, and the answers are
+   shown but not pressable. His rule, 2026-09-03 — a static word reads as
+   finished, and a control that invites a second click on something already
+   under way is a defect.
+
+   The two lanes count an attempt at different moments — HQ's worker counts one
+   when it starts, the scheduled run counts one when it writes the result back —
+   so a card being worked on this second already has the attempt in its tally
+   and a queued card does not. attemptsBehind is what is finished either way,
+   which makes the attempt now coming attemptsBehind + 1. */
+function attemptsBehind(it) {
+  const running = it.state === "doing" && !!it.started;
+  return Math.max(0, Number(it.attempts || 0) - (running ? 1 : 0));
+}
+
+function resuming(it) {
+  if (!(attemptsBehind(it) > 0 || it.revising)) return false;
+  return it.state === "waiting_session" || it.state === "doing";
+}
+
+const ORDINALS = ["", "first", "second", "third", "fourth", "fifth", "sixth",
+                  "seventh", "eighth", "ninth", "tenth"];
+function ordinal(n) { return ORDINALS[n] || `number ${n}`; }
+
+/* What the attempt before this one did to the repository, in one clause. Every
+   word of it is the card's own record — the files that landed, or the reason
+   nothing did — because "the last attempt changed something" he cannot see is
+   the same as saying nothing. */
+function lastAttemptDid(it) {
+  const d = it.diff;
+  const files = (d && d.files) || [];
+  const named = files.length <= 3
+    ? files.join(", ")
+    : `${files.slice(0, 3).join(", ")} and ${files.length - 3} more`;
+  if (d && d.applied) {
+    return files.length
+      ? `changed ${files.length} file${files.length === 1 ? "" : "s"} — ${named} — and that change is already in your copy of the code`
+      : "changed the code, and that change is already in your copy of it";
+  }
+  if (d && (d.why_not || "") === "nothing changed") return "changed no files";
+  if (d) return `changed nothing you have — ${d.why_not || "none of it landed"}`;
+  if (it.result) return "brought back the result below";
+  return "";
+}
+
+/* The one line a card being tried again has to carry: which attempt is coming,
+   who starts it (never him), and what the attempt before it did. */
+function againLine(it, org) {
+  if (!resuming(it)) return "";
+  const first = ownerOf(org, it.owner).name.split(" ")[0];
+  const nth = ordinal(attemptsBehind(it) + 1);
+  const running = it.state === "doing" && !!it.started;
+  const head = running
+    ? `${first} is on the ${nth} attempt, running now`
+    : it.state === "doing"
+      ? `${first}'s ${nth} attempt starts in a moment`
+      : `${first}'s ${nth} attempt is queued`;
+  const lane = running ? "nothing here is waiting on you"
+    : it.state === "doing" ? "HQ starts the next attempt without you, and nothing here is waiting on you"
+      : it.revising
+        ? "the comment on this card asked for another attempt, and the studio's scheduled run starts that attempt without you"
+        : "the studio's scheduled run starts the next attempt without you";
+  const did = lastAttemptDid(it);
+  // One line: what is happening and whose move it is. What a new attempt does to
+  // the result on the card is the consequence block's job, not this banner's.
+  return `<div class="w-again"><b>${esc(head)}</b> — ${esc(lane)}.
+    ${did ? `The attempt before it ${esc(did)}.` : ""}</div>`;
+}
+
 /* His rule, 2026-09-11: a comment is not a verdict, and he should not have to
    pick the path it takes. Whatever he writes, with a button or without one,
    the owner reads it and makes one of three moves — and the card says which. */
@@ -203,8 +279,9 @@ function consequence(it, org) {
       <div class="w-conseq-row"><b>What happens</b><span>${it.revising
         ? `${esc(first)} is revising the result you commented on. The next run of the build queue — a session, or the studio's own scheduled one — does it and brings the revised result back here.`
         : `The next run of the build queue — a session with repo access, or the studio's own scheduled one — picks this up, does it, and shows you the diff.`}</span></div>
-      <div class="w-conseq-row"><b>Drop it</b><span>Only if you want it not done — filed as dropped,
-        nothing changes.</span></div>
+      <div class="w-conseq-row"><b>Drop it</b><span>${resuming(it)
+        ? `Stops it — the attempt that is queued does not run. What an earlier attempt already changed stays as it is.`
+        : `Only if you want it not done — filed as dropped, nothing changes.`}</span></div>
       <div class="w-conseq-row"><b>Comment</b><span>Goes into ${esc(first)}'s brief before the work starts, and ${esc(first)} answers here.</span></div>
     </div>`;
   } else if (["accepted", "dropped"].includes(it.state)) {
@@ -365,6 +442,16 @@ function saveOpen(set) {
 function wantsLine(it, org) {
   const first = ownerOf(org, it.owner).name.split(" ")[0];
   if (it.awaiting_reply) return `${first} is writing back`;
+  // A card being tried again says so before it is opened, and says that the
+  // answer it is carrying is not his to give yet.
+  if (resuming(it)) {
+    const nth = ordinal(attemptsBehind(it) + 1);
+    if (it.state === "doing") {
+      return it.started ? `${first} is on the ${nth} attempt — nothing waiting on you`
+        : `${first}'s ${nth} attempt starts in a moment — nothing waiting on you`;
+    }
+    return `${first}'s ${nth} attempt is queued — nothing waiting on you`;
+  }
   if (it.state === "doing") return it.revising ? `${first} is revising it` : `${first} is working on it`;
   if (it.state === "waiting_session") return it.revising ? "queued for a build session — revising the result" : "queued for a build session";
   if (it.state === "needs_approval") return "not started — wants your yes";
@@ -486,14 +573,25 @@ function decisionFor(it) {
 
 function workCard(it, org, pol) {
   const who = ownerOf(org, it.owner);
-  const busy = !!it.awaiting_reply || it.state === "doing";
+  const again = resuming(it);
+  const busy = !!it.awaiting_reply || it.state === "doing" || again;
   const open = openSet().has(it.id);
+  // Saying yes to a card that is about to be attempted again would settle a
+  // result the studio is in the middle of replacing, so the yes is shown and
+  // not pressable until the new one lands. Two controls stay live on purpose:
+  // "Drop it", because stopping work is not a verdict on a result and it is
+  // the only way he has to stop it; and the comment box, because a comment is
+  // how he changes what the next attempt does before it runs.
+  // A card being tried again is in waiting_session or doing, and neither of
+  // those states renders a verdict button, so there is nothing here to disable.
+  // The banner above the card is what tells him the result is being replaced.
+  const locked = "";
   const acts = {
-    needs_approval: `<button data-act="approve" data-id="${it.id}">Yes, go ahead</button>
+    needs_approval: `<button data-act="approve" data-id="${it.id}"${locked}>Yes, go ahead</button>
                      <button class="ghost" data-act="drop" data-id="${it.id}">Not this</button>`,
     for_review: heldReason(it)
       ? `<button class="ghost" data-act="drop" data-id="${it.id}">Drop it</button>`
-      : `<button data-act="accept" data-id="${it.id}">Good — accept</button>
+      : `<button data-act="accept" data-id="${it.id}"${locked}>Good — accept</button>
          <button class="ghost" data-act="drop" data-id="${it.id}">Drop it</button>`,
     waiting_session: `<button class="ghost" data-act="drop" data-id="${it.id}">Drop it</button>`,
     doing: "", accepted: "", dropped: "",
@@ -514,7 +612,9 @@ function workCard(it, org, pol) {
         ${priors.map(p => `<div class="w-msg-b muted">${md(p.result)}</div>`).join("<hr>")}</details>` : "";
   const result = it.result
     ? `<div class="w-result${long ? " w-clip" : ""}"><div class="w-result-h">${esc(who.name.split(" ")[0])}${
-        held ? "'s attempt — what came back" : it.revising ? "'s result so far — being revised" : " did it — here's the result"}${revised}</div>${md(it.result)}
+        held ? "'s attempt — what came back" : it.revising ? "'s result so far — being revised"
+          : again ? "'s last attempt — what came back before it stopped"
+            : " did it — here's the result"}${revised}</div>${md(it.result)}
        ${long ? `<button class="w-more" data-more="${esc(it.id)}">Read all of it</button>` : ""}</div>${earlier}`
     : "";
   const why = it.tier_reason ? `<span class="w-why">${esc(it.tier_reason)}</span>` : "";
@@ -545,6 +645,7 @@ function workCard(it, org, pol) {
       </div>
     </div>
     <div class="w-body">
+      ${againLine(it, org)}
       ${dec ? `<div class="w-decision">
         <div class="w-decision-h">The decision this work came from — the card you ruled on</div>
       </div>` : ""}
@@ -557,7 +658,7 @@ function workCard(it, org, pol) {
       ${childrenNote(it, org)}
       ${spawnedNote(it)}
       ${decidedNote(it)}
-      ${(heldReason(it) || ["accepted", "dropped"].includes(it.state) ? "" : recommendBlock(it)) + consequence(it, org)
+      ${(again || heldReason(it) || ["accepted", "dropped"].includes(it.state) ? "" : recommendBlock(it)) + consequence(it, org)
           + replyBox(it, org) + `<div class="w-acts">${acts}${talkBtn}</div>`}
       <div class="w-outcome" hidden></div>
       <div class="w-foot">
@@ -864,8 +965,12 @@ async function renderWork(focusId) {
   workPoll = setInterval(() => {
     if (!(location.hash.slice(1) || "/").startsWith("/work")) { clearInterval(workPoll); workPoll = null; return; }
     workSnap().then(s => {
+      // The attempt count is in the stamp because a card can start another
+      // attempt without changing state, and the line naming which attempt it
+      // is on has to move when it does.
       const stamp = JSON.stringify(s.items.map(
-        i => [i.id, i.state, (i.conversation || []).length, !!i.awaiting_reply]));
+        i => [i.id, i.state, (i.conversation || []).length, !!i.awaiting_reply,
+              i.attempts || 0, !!i.started]));
       if (stamp !== workPoll.stamp) { workPoll.stamp = stamp; renderWork(); }
     }).catch(() => { });
   }, period);

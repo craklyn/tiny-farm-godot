@@ -88,6 +88,12 @@
   "07bfae196c2836beca70": {
    "verdict": "ok"
   },
+  "08359d55326086002d83": {
+   "instead": "A scheduled run will automatically start the next attempt; you don't need to trigger it",
+   "quote": "the studio's own scheduled run starts it, not you",
+   "verdict": "decode",
+   "why": "The pronoun \"it\" has no clear referent in the sentence—the reader cannot determine what being started."
+  },
   "0878f4d491c631be4354": {
    "verdict": "ok"
   },
@@ -432,6 +438,9 @@
   "1e6ac6d0661a735e8d23": {
    "verdict": "ok"
   },
+  "1e7733659f034012661c": {
+   "verdict": "ok"
+  },
   "1ec0101a17536c0b277a": {
    "verdict": "ok"
   },
@@ -496,6 +505,12 @@
   "243ec9d3102adcc554a1": {
    "verdict": "ok"
   },
+  "2462c6a08560533de377": {
+   "instead": "The automated system will start this work on its own",
+   "quote": "the studio's scheduled run",
+   "verdict": "decode",
+   "why": "Internal process vocabulary that a reader would not understand without explanation."
+  },
   "24657daa25dd2a2ff545": {
    "verdict": "ok"
   },
@@ -512,6 +527,9 @@
    "verdict": "ok"
   },
   "256b6b18033765f3cdfd": {
+   "verdict": "ok"
+  },
+  "25a96c50555e67c959ca": {
    "verdict": "ok"
   },
   "25c6ef637410538a141e": {
@@ -536,6 +554,9 @@
   "278ad77e46ff4e433ef5": {
    "verdict": "ok"
   },
+  "27af847bb8ef677ae5ca": {
+   "verdict": "ok"
+  },
   "2823400c3c0bce0f1884": {
    "verdict": "ok"
   },
@@ -548,6 +569,9 @@
    "quote": "drain the yard towards grey and down a step in value, so the room is the lit thing",
    "verdict": "decode",
    "why": "Technical language describes how to achieve the effect, not what the player sees."
+  },
+  "28e30a8452ab8bdb70d8": {
+   "verdict": "ok"
   },
   "29047620ae67c383e692": {
    "verdict": "ok"
@@ -703,6 +727,9 @@
   "3232591e25fb0fb7444e": {
    "verdict": "ok"
   },
+  "32b7840d373da0bcc561": {
+   "verdict": "ok"
+  },
   "32fea48c1a3e13b961cb": {
    "verdict": "ok"
   },
@@ -714,6 +741,12 @@
   },
   "33414a2133384eb679bf": {
    "verdict": "ok"
+  },
+  "344317d6a4c7854997d7": {
+   "instead": "The system will run your requested second attempt",
+   "quote": "this is the second try you asked for when you wrote back",
+   "verdict": "decode",
+   "why": "References a prior message ('when you wrote back') that is not on this surface."
   },
   "3480e0b12a8d994464ed": {
    "verdict": "ok"
@@ -806,6 +839,9 @@
   "3c0d7e9c874edd06fd1e": {
    "verdict": "ok"
   },
+  "3c1d89660519233dfc67": {
+   "verdict": "ok"
+  },
   "3c48a204b77066e8f263": {
    "verdict": "ok"
   },
@@ -822,6 +858,9 @@
    "verdict": "ok"
   },
   "3e0aeb9cdb9c615e3bca": {
+   "verdict": "ok"
+  },
+  "3e1fca60097d3c672ddf": {
    "verdict": "ok"
   },
   "3e915abb6fcb448ce43c": {
@@ -1150,6 +1189,12 @@
   "576bc50eeb72d05d16c3": {
    "verdict": "ok"
   },
+  "577b33f8282da5ff651b": {
+   "instead": "the studio's own scheduled run starts automatically",
+   "quote": "the studio's own scheduled run starts it",
+   "verdict": "second-look",
+   "why": "\"It\" has no prior introduction."
+  },
   "57ccfcd2f7b440201735": {
    "verdict": "ok"
   },
@@ -1332,6 +1377,12 @@
    "verdict": "decode",
    "why": "The actor is unclear—who would use the key? To do what? The sentence reads passive and the reader cannot act on it without knowing who owns the key and who calls the API."
   },
+  "669bf936db720a9840fc": {
+   "instead": "HQ automatically runs this, and you don't need to do anything",
+   "quote": "HQ starts it on its own",
+   "verdict": "second-look",
+   "why": "\"It\" has no antecedent — the reader doesn't know what HQ starts."
+  },
   "66cbe0fbc4d57827c34b": {
    "verdict": "ok"
   },
@@ -1396,6 +1447,12 @@
   },
   "6b8a79b8c20ce3a8c5bd": {
    "verdict": "ok"
+  },
+  "6ce56daec2e03521f4f0": {
+   "instead": "Cancel the queued attempt",
+   "quote": "Stops it",
+   "verdict": "second-look",
+   "why": "\"It\" has no referent — what is being stopped?"
   },
   "6d7a94b00cb4b6b048e0": {
    "verdict": "ok"
@@ -1524,6 +1581,9 @@
   "74166c6d110b35fb71f3": {
    "verdict": "ok"
   },
+  "7423bfb04f6c23a86024": {
+   "verdict": "ok"
+  },
   "754227c52e9e32a55ecc": {
    "verdict": "ok"
   },
@@ -1559,6 +1619,9 @@
    "quote": "The number that would start marketing work",
    "verdict": "second-look",
    "why": "What specific number is this—view count, player count, conversion rate? The reader has to infer from context."
+  },
+  "7861d36d5a8af30ae07e": {
+   "verdict": "ok"
   },
   "78a0ee5860ff19c1abc0": {
    "verdict": "ok"
@@ -1605,6 +1668,12 @@
   },
   "7b00828205ac168200bb": {
    "verdict": "ok"
+  },
+  "7b2bb1d77aadc37b2bc2": {
+   "instead": "This is the test result you requested earlier",
+   "quote": "it is the pass you asked for when you wrote back",
+   "verdict": "decode",
+   "why": "\"It\" is undefined, \"the pass\" appears to be house vocabulary (a test run?), and \"when you wrote back\" assumes context from outside this text."
   },
   "7b3bd0c9c48107ea5cfc": {
    "verdict": "ok"
@@ -1988,6 +2057,9 @@
   "98d09e6887349ef5b69e": {
    "verdict": "ok"
   },
+  "98dd84be72c526bdb79c": {
+   "verdict": "ok"
+  },
   "990eefcb15958620a48d": {
    "baselined": "2026-09-19",
    "instead": "plans are still being filed for {unassured} of {total} areas",
@@ -2280,6 +2352,12 @@
   "ae6dee18ff58efdf783f": {
    "verdict": "ok"
   },
+  "ae917ed573a45aac2e11": {
+   "instead": "Only if you want to cancel it",
+   "quote": "Only if you want it not done",
+   "verdict": "second-look",
+   "why": "\"It\" is undefined, and the double negative (\"it not done\") is awkward."
+  },
   "aea454e7fb71cb04d104": {
    "baselined": "2026-09-19",
    "instead": "The threshold is 12%, the most we allow. Every session so far has been played by you or your wife",
@@ -2543,6 +2621,9 @@
   "c42935c07e3d7c64a9b5": {
    "verdict": "ok"
   },
+  "c436e32f165b63e0e422": {
+   "verdict": "ok"
+  },
   "c4b8e4f6ce0e29c0d7d8": {
    "verdict": "ok"
   },
@@ -2757,6 +2838,9 @@
    "verdict": "second-look",
    "why": "The pronoun \"Both\" has no named referent in this sentence, requiring the reader to infer what the two things are from context."
   },
+  "d3deff7d0d0d4854ca11": {
+   "verdict": "ok"
+  },
   "d426d6c79c5bdc58c991": {
    "verdict": "ok"
   },
@@ -2828,6 +2912,9 @@
   "d77c29ad28bba99b32e8": {
    "verdict": "ok"
   },
+  "d7bddaa628bea7d812dc": {
+   "verdict": "ok"
+  },
   "d845cf7cf8920c9d4e25": {
    "verdict": "ok"
   },
@@ -2881,6 +2968,9 @@
    "verdict": "ok"
   },
   "db4edc5d5ec64e56a957": {
+   "verdict": "ok"
+  },
+  "db8bd257bb812dd3f5e5": {
    "verdict": "ok"
   },
   "dc1ea34b074327526091": {

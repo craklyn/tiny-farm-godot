@@ -210,6 +210,18 @@ worker's own diff, and the patch the drain lands, cover only what changed this t
 chief of staff checks that diff against the conversation, not only the original brief. If
 the earlier attempt never landed, both land together.
 
+**Running out of turns is the drain's mistake, not his decision.** The CEO's rule, filed
+from the conversation on making the sprite editor open the whole sheet, where a card had
+reached him only because its worker had used every one of the turns it was given, mid-edit.
+A turn budget the machine set too low is a budget
+the machine got wrong, so such an attempt never goes to him as a result: if it left edits
+behind, the card goes back into the queue — ahead of the backlog — with those edits as the
+next attempt's base and twice the standing turn budget. The retry is queued rather than run
+on the spot, so it is picked up by a later run and faces the token guard like any other
+item, and every attempt is counted and billed on the card. The drain gives a card two such
+retries; it reaches him when those are spent, or at once when an attempt ran out having
+changed nothing, and the card says which.
+
 ### The drain runs on a timer
 
 Settled by the CEO on 2026-09-11, looking at a revision he had asked for sitting behind

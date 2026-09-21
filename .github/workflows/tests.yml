@@ -71,6 +71,12 @@ jobs:
       - name: A comment on a work card is answered, revised, or filed
         run: python3 hq/tests/test_work.py
 
+      # A worker that ran out of turns with edits in hand is tried again from
+      # them, with more turns, and reaches Daniel only when the drain has
+      # given up. Checked at the card's JSON with no model in the loop.
+      - name: A worker that ran out of turns is tried again before it reaches Daniel
+        run: python3 hq/tests/test_drain.py
+
   tests:
     runs-on: ubuntu-latest
     timeout-minutes: 15

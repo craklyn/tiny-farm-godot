@@ -1,0 +1,125 @@
+{
+ "id": "w3d224539793",
+ "title": "Retry a worker that hit its limit on how many steps it may take, instead of sending the card to Daniel",
+ "level": "story",
+ "owner": "claude",
+ "tier": 1,
+ "tier_reason": "Running short of turns is a budget the machine got wrong, not a call Daniel has to make, and the resume-from-held-patch path already exists unused.",
+ "ask": "Filed from the conversation on “Make the sprite editor open the whole sheet”. Running short of turns is a budget the machine got wrong, not a call Daniel has to make, and the resume-from-held-patch path already exists unused.",
+ "first_action": "In hq/drain.py write_back: when run_cli's reason is the max_turns/tool_use one and rec['files'] is non-empty, re-queue the item to the same seat with the held patch as its base and WORKER_TURNS doubled for that attempt, rather than setting state 'for_review'. Cap at two auto-resumes (read item['spent']['attempts']), count each against UNATTENDED_WINDOW_SHARE, and send it to for_review with the plain_failure text when the cap is hit or when an attempt ran out having changed no files.",
+ "state": "accepted",
+ "thread": "rin",
+ "source": "chat",
+ "source_message": "Checked the repo: the sprite editor is done. `hq/static/sprite.js` now builds every cell of the sheet from the image's own dimensions (`hq/static/sprite.js:107-121`), marks which cells animate, which belong to another entity, and which nothing lists — and several later commits built on top of that (animations, assemblies, the save ledger). The Chicken-four-of-eight problem is gone. There's a duplicate card for the same ask already sitting in the dropped state; this one can be accepted as is.\n\nOn your real question — today the machinery is half there. When a worker runs out of turns, the drain already knows why (`hq/drain.py:316`), keeps the partial patch, and can start a second attempt from it rather than from main (`resume_held_patch`, `drain.py:375`). What's missing is the trigger: an out-of-turns stop sets the card to `for_review` and lands in your queue, and only you sending it back starts the resume. And the retry gets the same flat 60 turns that just proved too few.\n\nThat's the wrong shape — running short of turns isn't a decision of yours, it's the machine mis-sizing a budget. The progress test we need already exists in the record: an attempt that stopped mid-edit with changed files made progress; one that stopped having changed nothing didn't.\n\nMy recommendation below: auto-resume when files changed, with a bigger budget, capped at two resumes and charged to the same spend window — and only surface it to you when it stalls with nothing to show. That's Claude's machinery to change; the card treatment while it re-runs is mine.",
+ "result": "The change is in place and both HQ test files pass in my worktree. Here is what Daniel reads.\n\nA worker that runs out of turns no longer lands on your desk as a failed card. The drain now treats that as its own mistake and fixes it itself.\n\n**What it does now.** When a worker uses every turn it was given and has already changed files, the drain keeps those edits as a held patch, skips the chief of staff's check on the half-finished work, and puts the card back into the queue with the budget doubled from 60 to 120 turns. A card being retried goes to the front of the queue instead of behind the backlog. The retry is picked up by a later drain run rather than run on the spot, so it faces the same token guard as any other item, and every attempt is counted and billed on the card as before. The worker is told plainly that it is continuing from its own edits, or that it is starting from main if those edits no longer fit today's tree.\n\n**When it does reach you.** After the second retry runs out too, or immediately if an attempt ran out having changed nothing, the card comes to you saying exactly that: it ran out of turns, which attempt it was, and why the studio stopped trying. Anything the worker managed to say before it stopped sits beneath that sentence rather than in place of it. A retry that finishes cleanly arrives as an ordinary result with nothing left queued.\n\n**Where the words are.** The rule is written into the drain's own header, the HQ README, and the \"how work originates\" doc, so the code and the norm say the same thing. A new test file pins all of this at the card's JSON with no model in the loop, and CI now runs it beside the existing work-card test.\n\n**Two things to know.** The budget doubles from the standing 60 on every retry, not from the previous attempt, so no retry runs past 120 turns. And the cap counts every attempt the card has been paid for, including revisions you asked for, so a card you have already sent back twice will reach you rather than retry. That errs toward you seeing it, which felt like the right side to err on.",
+ "started": "",
+ "attempts": 1,
+ "created": "2026-09-19T23:55",
+ "created_ts": 1789887305.2566295,
+ "parent": "w5a4005536e1",
+ "follow_ups": [
+  {
+   "title": "Keep every landed patch on disk so a second revision starts from the whole earlier work",
+   "owner": "claude",
+   "level": "task",
+   "tier": 1,
+   "first_action": "In hq/drain.py, save_patch overwrites hq/data/patches/<id>.patch on every attempt; after a landed attempt and one revision, the file holds only the revision, so resume_for_revision cannot rebuild the worktree for a second revision if main has not been committed yet. Append attempts as <id>.<n>.patch or keep a cumulative patch, and add the case to hq/tests/test_drain.py.",
+   "why": "Found while tracing the resume path: a card revised twice before a commit starts its second revision from a tree missing the first attempt, and the brief tells the worker the edits are on main when they are not."
+  }
+ ],
+ "recommend": {},
+ "finished": "2026-09-20T02:10",
+ "done_by": {
+  "seat": "claude",
+  "model": "fable",
+  "lane": "drain"
+ },
+ "diff": {
+  "stat": ".github/workflows/tests.yml |   6 ++\n docs/HOW_WORK_ORIGINATES.md |  12 +++\n hq/README.md                |   8 +-\n hq/drain.py                 | 175 +++++++++++++++++++++++++++++++++++++-------\n hq/tests/test_drain.py      | 167 ++++++++++++++++++++++++++++++++++++++++++\n 5 files changed, 338 insertions(+), 30 deletions(-)",
+  "files": [
+   ".github/workflows/tests.yml",
+   "docs/HOW_WORK_ORIGINATES.md",
+   "hq/README.md",
+   "hq/drain.py",
+   "hq/tests/test_drain.py"
+  ],
+  "applied": true,
+  "why_not": ""
+ },
+ "check": {
+  "verdict": "concerns",
+  "summary": "The drain now re-queues a worker that ran out of turns with edits in hand, from its held patch with 120 turns, up to twice, and the docs, README, CI and a new test match the code; the one thing to watch is that I could not run the two test files here, so the reply's \"both pass\" is the worker's word until the committer runs them.",
+  "findings": [
+   {
+    "what": "The reply says both HQ test files pass; my attempt to run them was blocked in this seat, so that claim is unverified by the check",
+    "where": "hq/tests/test_drain.py",
+    "fix": "Run `python3 hq/tests/test_drain.py` and `python3 hq/tests/test_work.py` before committing; the diff reads correctly but nothing here proves it"
+   },
+   {
+    "what": "The retry brief tells the worker `git log` shows its earlier edits, but the held patch is applied uncommitted, so only `git status` will",
+    "where": "hq/drain.py:206",
+    "fix": "Drop `git log` from the sentence, or commit the held patch in the worktree the way resume_for_revision does"
+   }
+  ],
+  "escalates": null,
+  "escalation_reason": null
+ },
+ "usage": {
+  "calls_detail": [
+   {
+    "input": 610,
+    "output": 30702,
+    "cache_read": 1754003,
+    "cache_write": 110029,
+    "turns": 58,
+    "seconds": 387.7,
+    "list_usd": 4.1834,
+    "tokens": 1895344,
+    "fresh": 141341,
+    "phase": "drain-work",
+    "model": "fable",
+    "seat": "claude"
+   },
+   {
+    "input": 98,
+    "output": 5109,
+    "cache_read": 171866,
+    "cache_write": 51158,
+    "turns": 10,
+    "seconds": 69.7,
+    "list_usd": 1.3329,
+    "tokens": 228231,
+    "fresh": 56365,
+    "phase": "drain-check",
+    "model": "fable",
+    "seat": "claude"
+   }
+  ],
+  "input": 708,
+  "output": 35811,
+  "cache_read": 1925869,
+  "cache_write": 161187,
+  "tokens": 2123575,
+  "fresh": 197706,
+  "turns": 68,
+  "seconds": 457.4,
+  "list_usd": 5.5163,
+  "calls": 2
+ },
+ "spent": {
+  "attempts": 1,
+  "tokens": 2123575,
+  "fresh": 197706,
+  "list_usd": 5.5163
+ },
+ "closed": "2026-09-21T14:18",
+ "landed": {
+  "at": "2026-09-21T14:18",
+  "by": "chief-of-staff"
+ },
+ "closed_by": {
+  "seat": "chief-of-staff",
+  "rule": "S-16",
+  "note": "Landed by the chief of staff with the checker's findings fixed in the same landing. Both HQ test files run green here, and the retry brief now points at `git status` and `git diff` rather than `git log`."
+ }
+}

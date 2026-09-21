@@ -26,6 +26,13 @@ Nothing is committed. The item goes back to `for_review` with the diff, the
 check, the suites and the bill, and Daniel approves the result — which is the
 studio's rule, not a limitation of this file.
 
+One failure never reaches him as a result: a worker that used every turn it
+was given and left edits behind. That is a budget this file set wrong, so the
+item goes back into the queue (write_back) with its held patch as the next
+attempt's base and twice the turns, at most AUTO_RESUMES times; only when the
+drain has given up — the attempts are spent, or an attempt ran out having
+changed nothing — does the card reach him, saying so.
+
     python3 hq/drain.py --list
     python3 hq/drain.py --dry-run
     python3 hq/drain.py --all --jobs 3
@@ -82,6 +89,12 @@ def _set_run(run_id):
 # costs a whole second attempt. DRAIN_TURNS=120 in the environment raises it for
 # one run without editing this file.
 WORKER_TURNS = int(os.environ.get("DRAIN_TURNS") or 60)
+# A worker that used every turn and left edits behind is a budget the drain set
+# wrong, not a result for Daniel to judge. Such an attempt is queued again from
+# its held patch with twice the turns, at most this many times per card, and
+# only ever to be picked up by a later run — so each retry faces the token
+# window guard like any other item and its cost lands in the same ledger.
+AUTO_RESUMES = 2
 WORKER_TIMEOUT = 3600
 CHECK_TIMEOUT = 900
 # The checker's turns. Eight read a small diff; a 650-line sim change with four
@@ -192,7 +205,28 @@ def prior_checks(item):
             "early and often.\n")
 
 
-def task_prompt(item, org, resumed=""):
+def resume_brief(item, continuing, turns):
+    """What a worker is told when its earlier attempt ran out of turns and the
+    drain is trying again on its own. `continuing` says whether that attempt's
+    edits made it back into the worktree; when they did not, the worker starts
+    from main and is told so rather than left to look for edits that are not
+    there."""
+    resume = item.get("resume") or {}
+    if not resume:
+        return ""
+    why = resume.get("why") or "it used all of its turns"
+    where = ("Its edits are already in your worktree, uncommitted — `git status` and "
+             "`git diff` show them. Read them first, finish what the item asks for, "
+             "and do not start over."
+             if continuing else
+             "Its edits could not be put back onto today's tree, so you are starting "
+             "from main.")
+    return (f"\n\nYOUR EARLIER ATTEMPT RAN OUT OF TURNS — {why}. This attempt has {turns} "
+            f"turns, and there may not be another. {where} Commit early; reply with the "
+            "whole result as it now stands.\n")
+
+
+def task_prompt(item, org, resumed="", continuing=False, turns=WORKER_TURNS):
     convo = work._convo_lines(item, org)
     said = (f"\n\nWHAT DANIEL HAS SAID ABOUT THIS ON THE CARD — the most recent word on it, "
             f"and it overrides the brief wherever they disagree:\n\n{convo}\n") if convo else ""
@@ -208,7 +242,7 @@ def task_prompt(item, org, resumed=""):
 What Daniel asked for: {item.get('ask', '')}
 
 The next step, which is yours to take now: {item.get('first_action', '')}
-{said}{prior_checks(item)}{revising}
+{said}{prior_checks(item)}{revising}{resume_brief(item, continuing, turns)}
 Do the work in your worktree. Then reply with the deliverable Daniel reads: what
 you changed, what it now does, and anything you found that he should know.
 Plain language, no preamble, no ticket IDs, as short as the work allows. Do not
@@ -433,6 +467,36 @@ def run_cli(prompt, system, tools, model, cwd, timeout, turns, phase, seat, item
     finish(p.returncode, "" if text else "the CLI produced nothing")
     return text, usage, "" if text else "the CLI produced nothing"
 
+def ran_out_of_turns(err):
+    """Whether run_cli's reason is the turn budget — the one failure that is
+    the drain's own to fix."""
+    return bool(re.match(r"it used all \d+ of its turns", err or ""))
+
+
+def auto_resume_reason(item, rec):
+    """Why this attempt goes back into the queue instead of to Daniel, or "".
+
+    Three things have to hold: the worker ran out of turns, it changed files
+    (an attempt that ran out having touched nothing would only run out again),
+    and the card has not already had its share of attempts — `spent.attempts`
+    counts every attempt the card has been paid for, this one included."""
+    if rec.get("limited") or not ran_out_of_turns(rec.get("error")):
+        return ""
+    if not rec.get("files"):
+        return ""
+    attempts = int((item.get("spent") or {}).get("attempts") or 0) + 1
+    if attempts > AUTO_RESUMES:
+        return ""
+    return rec["error"]
+
+
+# ---------------------------------------------------------------------------
+# worktrees
+# ---------------------------------------------------------------------------
+
+_WT_LOCK = __import__("threading").Lock()
+
+
 def make_worktree(run_id, item_id):
     """Serialised: `git worktree add` writes .git/worktrees, and three seats
     starting at once would race for it."""
@@ -587,7 +651,10 @@ def do_item(item, org, run_id, log):
     thinking = int(item.get("tier") or 0) == 0
     rec = {"id": item["id"], "seat": seat, "model": model, "usage": [],
            "patch": "", "stat": "", "files": [], "result": "", "check": None,
-           "error": "", "limited": False}
+           "error": "", "limited": False, "resume": ""}
+    # A card queued again after running out of turns carries the budget for
+    # this attempt; everything else gets the standing one.
+    turns = int((item.get("resume") or {}).get("turns") or 0) or WORKER_TURNS
     tree = None
     try:
         if thinking:                      # claim it before the server's worker can
@@ -606,11 +673,15 @@ def do_item(item, org, run_id, log):
             log(f"{item['id']} · revises its earlier attempt ({prior_stat})")
         elif item.get("revising") and not thinking:
             log(f"{item['id']} · revises its earlier attempt (already on main)")
-        text, usage, err = run_cli(task_prompt(item, org, resumed=committed_prior),
+        if item.get("resume"):
+            log(f"{item['id']} · tries again with {turns} turns"
+                + ("" if resumed else " — the held patch no longer applies, so from main"))
+        text, usage, err = run_cli(task_prompt(item, org, resumed=committed_prior,
+                                               continuing=bool(resumed), turns=turns),
                                    seat_prompt(org, seat, thinking),
                                    READ_TOOLS if thinking else WRITE_TOOLS,
                                    model, tree, WORKER_TIMEOUT,
-                                   WORKER_TURNS, "drain-work", seat, item["id"])
+                                   turns, "drain-work", seat, item["id"])
         if usage:
             rec["usage"].append(dict(usage, phase="drain-work", model=model, seat=seat))
         if err == "LIMITED":
@@ -627,6 +698,13 @@ def do_item(item, org, run_id, log):
         else:
             rec["patch"], rec["stat"], rec["files"] = worktree_patch(tree)
         save_patch(item["id"], rec["patch"])
+        # An attempt the drain will try again is not read: nobody acts on a
+        # check of half-done work, and the check is a call on the chief of
+        # staff's model that the retry would only repeat.
+        rec["resume"] = auto_resume_reason(item, rec)
+        if rec["resume"]:
+            log(f"{item['id']} · {rec['resume']} — held for another attempt")
+            return rec
         # The chief of staff reads the diff, on his own seat's model.
         cmodel = server.seat_model(org, "claude")
         ctext, cusage, cerr = run_cli(check_prompt(item, text, rec["patch"], org), CHECK_SYSTEM,
@@ -733,9 +811,34 @@ def _restore(shot):
             pass
 
 
+def _drop_generated(patch):
+    """The patch without its changes to files every run rewrites anyway."""
+    import re as _re
+    parts = _re.split(r"(?=^diff --git )", patch or "", flags=_re.M)
+    keep = []
+    for part in parts:
+        m = _re.match(r"^diff --git a/(\S+)", part)
+        if m and _is_generated(m.group(1)):
+            continue
+        keep.append(part)
+    return "".join(keep)
+
+
 def _patch_paths(patch):
     """The paths a patch touches, from its own headers."""
     return sorted({m.group(1) for m in re.finditer(r"^\+\+\+ b/(.+)$", patch or "", re.M)})
+
+
+# Files every run rewrites on its own: the writing check's ledger of what it has
+# read, and the engine's regenerated sidecars. They are always dirty in somebody's
+# tree, and holding a whole patch because of one of them holds it forever — so a
+# patch's changes to them are dropped and the rest goes in.
+GENERATED = ("docs/writing_verdicts.json",)
+GENERATED_SUFFIXES = (".uid", ".import")
+
+
+def _is_generated(path):
+    return path in GENERATED or path.endswith(GENERATED_SUFFIXES)
 
 
 def _held_by_tree(paths):
@@ -743,6 +846,7 @@ def _held_by_tree(paths):
     working tree. A patch onto such a file either fails or, worse, lands on top of
     somebody's half-finished edit — so the drain does not try, and says whose
     change is in the way instead of spending a worker to find out again."""
+    paths = [p for p in (paths or []) if not _is_generated(p)]
     if not paths:
         return []
     got = subprocess.run(["git", "status", "--porcelain", "--untracked-files=all", "--"] + list(paths),
@@ -759,9 +863,13 @@ def _held_by_tree(paths):
 
 
 def _tree_reason(blocked):
+    """Whose change is in the way is not knowable from here — the drain shares
+    this tree with whoever is working in it, this session included — so the
+    sentence names the files and not a culprit."""
     shown = ", ".join(blocked[:3]) + (f" and {len(blocked) - 3} more" if len(blocked) > 3 else "")
-    return (f"another session holds {shown} changed and uncommitted in the working tree; "
-            f"this is retried once that change is committed or put away")
+    return (f"{shown} {'is' if len(blocked) == 1 else 'are'} changed and unsaved in the "
+            f"repository, so writing this in would write over that work; it goes in once "
+            f"those files are committed or put away")
 
 
 # What one item may cost across every attempt before the drain stops trying it
@@ -856,7 +964,11 @@ def apply_patch(patch, files):
     tree is left exactly as shaped as it was found."""
     if not patch.strip():
         return True, "nothing to apply"
-    blocked = _held_by_tree(files or _patch_paths(patch))
+    patch = _drop_generated(patch)
+    if not patch.strip():
+        return True, "nothing to apply"
+    files = [f for f in (files or _patch_paths(patch)) if not _is_generated(f)]
+    blocked = _held_by_tree(files)
     if blocked:
         return False, _tree_reason(blocked)
     before = _snapshot(files)
@@ -928,41 +1040,59 @@ def run_suites():
 # writing the result back onto the card
 # ---------------------------------------------------------------------------
 
-def plain_failure(text, applied=None):
+def plain_failure(text, applied=None, why=""):
     """A card is something Daniel reads. A raw CLI envelope pasted into the
     result field — session ids, cache counters, a `duration_api_ms` — tells him
     nothing and buries the one fact that matters, which is that the attempt did
-    not finish. Recognise it and say the fact instead."""
+    not finish. Recognise it and say the fact instead. When the caller already
+    knows the reason (`why`, as run_cli words it), the sentence is built from
+    that and the text is not inspected."""
     raw = (text or "").strip()
-    if not raw:
-        return ""
-    # An envelope that was truncated on its way into the card is still an
-    # envelope, and is the common case: it was clipped to fit an error field.
-    if not (raw.startswith("{") and '"duration_api_ms"' in raw[:400]):
-        return raw
-    stop = re.search(r'"stop_reason"\s*:\s*"([a-z_]+)"', raw)
-    why = {"max_turns": "it used all the turns it was given",
-           "tool_use": "it used all the turns it was given, mid-edit",
-           "refusal": "the model declined the task"}.get(
-               stop.group(1) if stop else "", "it did not finish cleanly")
+    if not why:
+        if not raw:
+            return ""
+        # An envelope that was truncated on its way into the card is still an
+        # envelope, and is the common case: it was clipped to fit an error field.
+        if not (raw.startswith("{") and '"duration_api_ms"' in raw[:400]):
+            return raw
+        stop = re.search(r'"stop_reason"\s*:\s*"([a-z_]+)"', raw)
+        why = {"max_turns": "it used all the turns it was given",
+               "tool_use": "it used all the turns it was given, mid-edit",
+               "refusal": "the model declined the task"}.get(
+                   stop.group(1) if stop else "", "it did not finish cleanly")
     tail = ("What it had already changed did land, and the check below is what "
             "the chief of staff made of it." if applied else
             "Nothing it left behind was applied.")
     return f"This attempt did not finish — {why}. {tail}"
 
 
+def _turns_result(item, rec, applied, body):
+    """The card's text when a worker ran out of turns and the drain is not
+    trying again: the fact, why the drain stopped, and whatever the worker
+    managed to say before it stopped."""
+    attempts = int((item.get("spent") or {}).get("attempts") or 0)
+    if not rec.get("files"):
+        stopped = "It changed no files, so trying again with more turns would only run out again."
+    else:
+        stopped = (f"That was attempt {attempts} on this card; the studio stops trying on its "
+                   f"own after {AUTO_RESUMES + 1}.")
+    text = plain_failure("", applied, why=rec["error"]) + " " + stopped
+    if body:
+        text += "\n\nWhat it said before it stopped:\n\n" + body
+    return text
+
+
 def write_back(item, rec, applied, why_not, suites, org):
+    """The attempt onto the card. Almost always that means `for_review`, with
+    whatever came back. The exception is a worker that ran out of turns with
+    edits in hand (auto_resume_reason): the card goes back into the queue
+    with the held patch as the next attempt's base and twice the standing
+    turn budget, because a budget the drain set wrong is the drain's to fix,
+    not Daniel's to judge. Either way the attempt is counted and billed."""
     body, follows, _amend, recommend, _move = work._split_result(rec["result"], org, item["owner"])
-    item["result"] = (plain_failure(body, applied)
-                      or (f"This attempt did not finish — {rec['error']}." if rec["error"]
-                          else "(no result came back)"))
-    if follows is not None:
-        item.pop("follow_up", None)
-        item["follow_ups"] = follows
-        item["recommend"] = recommend or {}
-    item["state"] = "for_review"
-    item["finished"] = work._now_iso()
-    work.finish_revision(item)
+    # do_item decides this before the patch is held; a record that skipped
+    # do_item gets the same answer here. Edits that landed are never retried.
+    resume = "" if applied else (rec.get("resume") or auto_resume_reason(item, rec))
     item["attempts"] = item.get("attempts", 0) + 1
     item["done_by"] = {"seat": rec["seat"], "model": rec["model"], "lane": "drain"}
     item["diff"] = {"stat": rec["stat"], "files": rec["files"][:40],
@@ -983,6 +1113,31 @@ def write_back(item, rec, applied, why_not, suites, org):
         "fresh": int(prev.get("fresh") or 0) + this["fresh"],
         "list_usd": round(float(prev.get("list_usd") or 0.0) + this["list_usd"], 4),
     }
+    if resume:
+        turns = WORKER_TURNS * 2
+        item["resume"] = {"why": resume, "turns": turns, "attempt": item["spent"]["attempts"],
+                          "at": work._now_iso()}
+        item["result"] = (f"This attempt did not finish — {resume}. Its edits are kept, and "
+                          f"the next run of the build queue tries again from them with "
+                          f"{turns} turns. Nothing has landed yet.")
+        item["state"] = "waiting_session"
+        item["started"] = ""
+        work.save_item(item)
+        return item
+    item.pop("resume", None)
+    if ran_out_of_turns(rec["error"]):
+        item["result"] = _turns_result(item, rec, applied, body)
+    else:
+        item["result"] = (plain_failure(body, applied)
+                          or (f"This attempt did not finish — {rec['error']}." if rec["error"]
+                              else "(no result came back)"))
+    if follows is not None:
+        item.pop("follow_up", None)
+        item["follow_ups"] = follows
+        item["recommend"] = recommend or {}
+    item["state"] = "for_review"
+    item["finished"] = work._now_iso()
+    work.finish_revision(item)
     work.save_item(item)
     return item
 
@@ -1048,6 +1203,9 @@ def queued(include_thinking=False):
     if include_thinking:
         out += [i for i in work.items()
                 if i.get("state") == "doing" and not i.get("started")]
+    # A card the drain is trying again is work already half paid for; it goes
+    # ahead of the backlog rather than behind fifty newer items.
+    out.sort(key=lambda i: 0 if i.get("resume") else 1)
     return out
 
 
@@ -1180,6 +1338,9 @@ def main():
         ok, why = (False, "the check said it should not land as it stands")
         if rec["limited"]:
             ok, why = False, "the token window ran dry before this finished"
+        elif rec.get("resume"):
+            # Its edits are the next attempt's starting point, not the tree's.
+            ok, why = False, f"held for another attempt — {rec['resume']}"
         elif rec["error"] and not rec["patch"]:
             ok, why = False, rec["error"]
         elif not rec["patch"].strip():
