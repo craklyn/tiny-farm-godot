@@ -25,7 +25,7 @@ Derive Dashboard, navigation, and Decisions counts from the same ready-for-human
 
 ### 2. Prepare a decision before putting it in the human queue
 
-Extend the existing deliverable gate (w44ff2049d9a) to require a specific human question, actual owner recommendation where a recommendation is appropriate, relevant inspectable evidence, and concrete consequences. Return incomplete preparation to the owner with a machine-readable reason. A real unresolved question can escalate with an explicit explanation; do not fabricate recommendations. Do not hide missing work from Work status. Coordinate with section 3.
+Extend the existing deliverable gate (w44ff2049d9a) to require a specific human question, actual owner recommendation where a recommendation is appropriate, relevant inspectable evidence, and concrete consequences. Return incomplete preparation to the owner with a machine-readable reason. A real unresolved question can escalate with an explicit explanation; do not fabricate recommendations. An owner preparation failure must not remove Daniel's ability to give an informed explicit verdict on a finished result. Keep unprepared work out of the default ready queue, but allow him to open it deliberately and accept or request changes with the missing preparation clearly stated. Do not hide missing work from Work status. Coordinate with section 3.
 
 ### 3. Present a short human brief separately from the agent record
 
@@ -70,3 +70,5 @@ First truthful states and readiness; then the human brief, evidence and actions;
 ## Execution record
 
 2026-09-21: design work preserved; implementation pending. Existing deliverable card reused. Backend routing is the current interactive task. No redesign item is claimed complete.
+
+2026-09-21 update from Daniel: a concurrent Claude session reports renaming the queue-row Ask button to Open, showing reply countdown and routing outcome near the composer, restoring an explicit verdict on finished results without recommendations, and adding a duplicate merge rule. Verify the current implementation before building those sections; reuse those fixes. Shared-tree ownership, staged writing checks, and restarting the live service remain required.
