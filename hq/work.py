@@ -25,6 +25,8 @@ norms can be edited without touching code.
 This module owns its own files and one worker thread; server.py binds it in and
 routes /api/work* here. It never blocks a chat reply — capture happens after.
 """
+import execution
+
 import datetime
 import json
 import os
@@ -775,29 +777,21 @@ def _run_cli(prompt, sys_prompt, tools, turns, timeout, model="", phase="", seat
     (text, limited); the call's cost is appended to the token ledger, because
     work the company does on its own spends the same allotment Daniel does and
     nothing used to say how much."""
-    import subprocess
-    cmd = ["claude", "-p", prompt, "--append-system-prompt", sys_prompt,
-           "--allowedTools", tools, "--max-turns", str(turns),
-           "--output-format", "json"]
-    if model:
-        cmd += ["--model", model]
-    try:
-        with HOST.CHAT_LOCK:
-            proc = subprocess.run(
-                cmd, cwd=HOST.REPO, capture_output=True, text=True, timeout=timeout,
-                env={**os.environ, "CLAUDE_CODE_DISABLE_AUTOUPDATE": "1"})
-    except Exception as e:
-        return f"[{type(e).__name__}] {e}"[:300], False
-    out = (proc.stdout or "") + "\n" + (proc.stderr or "")
-    if proc.returncode != 0:
-        if HOST._looks_like_limit(out):
-            HOST.note_limit(out)
-            return "", True
-        return HOST.cli_failure(proc), False
-    HOST.clear_limit()
-    text, usage = _read_cli_json(proc.stdout)
-    HOST.record_model_usage(phase or "work", seat, model, usage, item)
-    return text, False
+    if not execution.launch_allowed(item=item, phase=phase):
+        return "", True
+    with HOST.CHAT_LOCK:
+        result = execution.run_session(prompt, sys_prompt, tools, model, HOST.REPO,
+            timeout, turns, phase=phase or "work", seat=seat, item=item)
+    if result.get("held"):
+        return "", True
+    if result.get("limited"):
+        HOST.note_limit(result.get("error", ""), provider=result["provider"])
+        return "", True
+    HOST.record_model_usage(phase or "work", seat, result["model"], result.get("usage"), item)
+    if result.get("error"):
+        return result["error"], False
+    HOST.clear_limit(provider=result["provider"])
+    return result.get("text", ""), False
 
 
 def _read_cli_json(stdout):
@@ -819,6 +813,8 @@ def _read_cli_json(stdout):
 # ---------------------------------------------------------------------------
 
 def _process_capture(cap, org):
+    if not execution.launch_allowed():
+        return False
     text, limited = _run_cli(_capture_prompt(org, cap),
                              "You file work items for a small game studio. You "
                              "answer with JSON only.", "", 1, 180,
@@ -838,6 +834,8 @@ def _process_capture(cap, org):
 
 
 def _process_item(item, org):
+    if not execution.launch_allowed():
+        return False
     item["started"] = _now_iso()
     item["attempts"] = item.get("attempts", 0) + 1
     save_item(item)
@@ -847,6 +845,7 @@ def _process_item(item, org):
                              HOST.MAX_TURNS, 420, model=model,
                              phase="tier0", seat=item["owner"], item=item["id"])
     if limited:
+        item["attempts"] -= 1
         item["started"] = ""
         save_item(item)
         return False
@@ -1017,6 +1016,8 @@ def _hand_back(item, why=""):
 def hand_back_if_late(item_id):
     """The deadline, fired against the card on disk. Does nothing if the answer
     beat it, if the card already handed back, or if it is not his move."""
+    if not execution.launch_allowed():
+        return None
     try:
         item = HOST.load_json(_item_path(item_id))
     except Exception:
@@ -1030,7 +1031,7 @@ def _arm_deadline(item):
     """One timer per question. It is cheap, it fires once, and it does nothing
     if the answer arrived first — so an extra one costs nothing either. A card
     that is not in his list has no wait to end and gets no timer."""
-    if item.get("state") not in HIS_STATES:
+    if not execution.launch_allowed() or item.get("state") not in HIS_STATES:
         return None
     left = max(0.0, (item.get("reply_due_ts") or 0) - time.time())
     t = threading.Timer(left, hand_back_if_late, args=(item["id"],))
@@ -1042,6 +1043,8 @@ def _arm_deadline(item):
 def start_reply(item_id):
     """Start the owner's reply now. The page returns from his POST while this
     runs; the worker's tick is no longer what decides when the studio answers."""
+    if not execution.launch_allowed():
+        return False
     if HOST.limited_until():
         return None           # no tokens: the worker picks it up when there are
     if not _claim(item_id):
@@ -1083,6 +1086,8 @@ def _sweep_hand_backs():
 def _process_response(item, org):
     """He asked something on a card; the owner answers on the card. Runs off the
     page's thread so his POST never blocks on a model call."""
+    if not execution.launch_allowed():
+        return False
     asked = item.get("asked_ts")
     raw, limited = _run_cli(_response_prompt(item, org),
                             HOST.build_system_prompt(org, item["owner"]),
@@ -1314,6 +1319,8 @@ def prep_question(item, org):
     is short of, and is written again — up to PREP_TRIES, after which it stops
     and says a person has to write this one. Looping forever on a question the
     model cannot write is the failure mode this counter exists for."""
+    if not execution.launch_allowed():
+        return False
     item["prep_attempts"] = item.get("prep_attempts", 0) + 1
     # An attempt is only spent once it comes back. Marked in flight here so a
     # restart in the middle of one can give the try back rather than burning it
@@ -1362,6 +1369,8 @@ def prep_question(item, org):
 def _propose_follow_up(item, org):
     """Backfill for results that landed before the card showed consequences.
     New work answers this inside the call that does it and never reaches here."""
+    if not execution.launch_allowed():
+        return False
     prompt = f"""A piece of work in Tiny Farm HQ is finished and waiting for the
 CEO's verdict. He is about to accept or reject it, and he is entitled to know
 what his yes starts before he gives it.
@@ -1407,6 +1416,8 @@ def worker():
         try:
             # Before anything that can block for minutes: a question past its
             # thirty seconds stops being his, whatever else the studio is doing.
+            if not execution.launch_allowed():
+                continue
             _sweep_hand_backs()
             if HOST.limited_until():
                 continue
@@ -1452,6 +1463,9 @@ def worker():
 
 
 def start():
+    if not execution.launch_allowed():
+        threading.Thread(target=worker, daemon=True).start()
+        return
     # A restart takes the live deadlines with it. Anything already past its
     # thirty seconds hands back here rather than fifteen seconds into the
     # worker's first tick, and anything still inside its thirty seconds gets

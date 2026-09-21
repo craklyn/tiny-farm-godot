@@ -325,7 +325,7 @@ function anCostCard(L) {
   const made = [c.draws ? `${c.draws} drawing` : "", c.reworks ? `${c.reworks} rework${
     c.reworks === 1 ? "" : "s"}` : ""].filter(Boolean).join(" and ");
   return `
-    <p class="small"><b>$${c.list_usd.toFixed(2)}</b> across ${made}, over
+    <p class="small"><b>$${c.list_usd.toFixed(2)} known${c.unknown_cost_calls ? `; ${c.unknown_cost_calls} calls with unknown dollar cost` : ""}</b> across ${made}, over
       ${c.minutes} minutes of model time.</p>
     <p class="small muted">${c.tokens.toLocaleString()} tokens went through the model, of which
       ${c.fresh.toLocaleString()} were new — the rest is the same context read back on each

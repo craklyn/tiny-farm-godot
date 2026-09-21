@@ -611,4 +611,7 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    # These workflow fixtures stub model execution; use an enabled launch policy.
+    from unittest.mock import patch
+    with patch.object(work.execution, "launch_allowed", return_value=True):
+        sys.exit(main())

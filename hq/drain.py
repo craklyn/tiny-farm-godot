@@ -52,6 +52,8 @@ the token window is dry or when the studio's own work has already spent most of
 the last measured ceiling. Only one drain runs at a time; a manual run and the
 timer take the same lock.
 """
+import execution
+
 import argparse
 import concurrent.futures
 import json
@@ -501,117 +503,66 @@ def run_cli(prompt, system, tools, model, cwd, timeout, turns, phase, seat, item
     arrives, so a session can be watched while it runs and read back afterwards.
     The final `result` event carries the same fields the one-shot JSON envelope
     did, so what this returns is unchanged: (text, usage, error)."""
-    cmd = ["claude", "-p", prompt, "--append-system-prompt", system,
-           "--allowedTools", tools, "--max-turns", str(turns),
-           "--permission-mode", "acceptEdits", "--output-format", "stream-json", "--verbose"]
-    if model:
-        cmd += ["--model", model]
+    context = _launch_context(item_id)
+    adapter_phase = {"drain-work": "build-worker", "drain-check": "checker"}.get(phase, phase)
+    if not execution.launch_allowed(launch_context=context, item=item_id, phase=adapter_phase):
+        return "", None, "HELD"
     started = time.time()
     events_path, meta_path = _session_paths(phase, item_id)
-    meta = {"item": item_id, "seat": seat, "model": model or "", "phase": phase, "cwd": cwd,
-            "turns": turns, "timeout": timeout, "run": RUN_ID,
-            "started": time.strftime("%Y-%m-%dT%H:%M:%S"), "started_ts": started,
-            "pid": None, "finished": None, "exit": None, "error": "", "usage": None}
-
+    meta = {"item": item_id, "seat": seat, **execution.resolve_model(model),
+            "phase": phase, "cwd": cwd, "turns": turns, "timeout": timeout,
+            "run": RUN_ID, "started": time.strftime("%Y-%m-%dT%H:%M:%S"),
+            "started_ts": started, "pid": None, "finished": None, "usage": None}
     def save_meta():
-        try:
-            with open(meta_path, "w", encoding="utf-8") as f:
-                json.dump(meta, f)
-        except OSError:
-            pass
-
-    def finish(exit_code, error=""):
-        meta["finished"] = time.strftime("%Y-%m-%dT%H:%M:%S")
-        meta["exit"] = exit_code
-        meta["error"] = error
+        with open(meta_path, "w", encoding="utf-8") as f:
+            json.dump(meta, f)
+    def on_start(pid):
+        meta["pid"] = pid
         save_meta()
-
-    lines = []
-    try:
-        p = subprocess.Popen(cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                             text=True, env={**os.environ, "CLAUDE_CODE_DISABLE_AUTOUPDATE": "1"})
-    except Exception as e:
-        finish("launch", f"{type(e).__name__}: {e}"[:300])
-        return "", None, meta["error"]
-    meta["pid"] = p.pid
+    def on_event(event):
+        with open(events_path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(event) + "\n")
     save_meta()
-
-    def pump():
-        try:
-            with open(events_path, "a", encoding="utf-8") as f:
-                for line in p.stdout:
-                    lines.append(line)
-                    f.write(line)
-                    f.flush()
-        except (OSError, ValueError):
-            pass
-
-    reader = threading.Thread(target=pump, daemon=True)
-    reader.start()
-    try:
-        p.wait(timeout=timeout)
-    except subprocess.TimeoutExpired:
-        p.kill()
-        p.wait()
-        reader.join(5)
-        finish("timeout", f"the {phase} call ran past {timeout // 60} minutes and was stopped")
-        return "", None, meta["error"]
-    reader.join(10)
-    try:
-        stderr = p.stderr.read() or ""
-    except (OSError, ValueError):
-        stderr = ""
-    doc = None
-    for line in reversed(lines):
-        try:
-            ev = json.loads(line)
-        except ValueError:
-            continue
-        if isinstance(ev, dict) and ev.get("type") == "result":
-            doc = ev
-            break
-    raw = "".join(lines).strip()
-    usage = server.usage_from_cli(doc) if isinstance(doc, dict) else None
+    result = execution.run_session(prompt, system, tools, model, cwd, timeout, turns,
+        phase=adapter_phase, seat=seat, item=item_id, on_event=on_event, on_start=on_start,
+        launch_context=context)
+    usage = result.get("usage")
     if usage:
-        server.record_model_usage(phase, seat, model, usage, item_id)
-    meta["usage"] = usage
-    if p.returncode != 0:
-        # Only the CLI's own complaint counts as a usage limit: its error
-        # channel, and what the result event says. Never the event stream —
-        # it carries lines named rate_limit_event on every ordinary session,
-        # and on 2026-09-21 that misread every session that ended on its turn
-        # budget as "the window ran dry", which is retried without counting.
-        blob = stderr + "\n" + (str(doc.get("result") or "") if isinstance(doc, dict) else "")
-        if server._looks_like_limit(blob):
-            finish(p.returncode, "LIMITED")
-            return "", usage, "LIMITED"
-    if isinstance(doc, dict):
-        text = str(doc.get("result") or "").strip()
-        if p.returncode == 0 and not doc.get("is_error"):
-            finish(p.returncode)
-            return text, usage, ""
-        # A JSON envelope carries the reason; pasting the whole envelope into the
-        # error is how a card ends up showing Daniel a wall of session ids.
-        why = {"max_turns": f"it used all {turns} of its turns",
-               "tool_use": f"it used all {turns} of its turns mid-edit",
-               "refusal": "the model declined the task"}.get(
-                   str(doc.get("stop_reason") or ""), "")
-        err = (why or str(doc.get("subtype") or "the call did not finish cleanly"))[:300]
-        finish(p.returncode, err)
-        return text, usage, err
-    if p.returncode != 0:
-        err = (stderr or raw or "the CLI exited non-zero").strip()[:300]
-        finish(p.returncode, err)
-        return "", usage, err
-    # No result event came back: keep what the model said, lose only the price.
-    text = _last_assistant_text(lines)
-    finish(p.returncode, "" if text else "the CLI produced nothing")
-    return text, usage, "" if text else "the CLI produced nothing"
+        server.record_model_usage(phase, seat, result["model"], usage, item_id)
+    err = "HELD" if result.get("held") else "LIMITED" if result.get("limited") else result.get("error", "")
+    if not result.get("held") and not result.get("limited") and ran_out_of_turns(result):
+        err = f"it used all {turns} of its turns"
+    if result.get("limited"):
+        server.note_limit(result.get("error", ""), provider=result["provider"])
+    elif not err:
+        server.clear_limit(provider=result["provider"])
+    meta.update({key: result[key] for key in ("provider", "requested_model", "model")})
+    meta.update({"usage": usage, "finished": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                 "exit": result.get("exit_code"), "error": err,
+                 "stop_reason": result.get("stop_reason"), "subtype": result.get("subtype")})
+    save_meta()
+    return result.get("text", ""), usage, err
+
+SUPERVISED_IDS = set()
+
+
+def _launch_context(item_id):
+    policy = execution.load_policy()
+    if (policy["background_paused"] and item_id in SUPERVISED_IDS
+            and item_id == policy["trial_item"]):
+        return "supervised"
+    return "automatic"
+
 
 def ran_out_of_turns(err):
     """Whether run_cli's reason is the turn budget — the one failure that is
     the drain's own to fix."""
-    return bool(re.match(r"it used all \d+ of its turns", err or ""))
+    if isinstance(err, dict):
+        return (err.get("stop_reason") in ("max_turns", "tool_use")
+                or err.get("subtype") == "error_max_turns"
+                or ran_out_of_turns(err.get("error", "")))
+    return (err in ("max_turns", "error_max_turns")
+            or bool(re.match(r"it used all \d+ of its turns", err or "")))
 
 
 def auto_resume_reason(item, rec):
@@ -787,10 +738,13 @@ def touches_game(files):
 def do_item(item, org, run_id, log):
     """Worker then checker, both in the item's own worktree. Returns the record
     the session applies and writes back."""
+    context = _launch_context(item["id"])
+    if not execution.launch_allowed(launch_context=context, item=item["id"], phase="build-worker"):
+        return {"id": item["id"], "held": True, "error": "HELD", "usage": [], "files": [], "limited": False, "patch": "", "check": None}
     seat = item["owner"]
     model = item.get("model") or server.seat_model(org, seat)
     thinking = int(item.get("tier") or 0) == 0
-    rec = {"id": item["id"], "seat": seat, "model": model, "usage": [],
+    rec = {"id": item["id"], "seat": seat, **execution.resolve_model(model), "usage": [],
            "patch": "", "stat": "", "files": [], "result": "", "check": None,
            "error": "", "limited": False, "resume": ""}
     # A card queued again after running out of turns carries the budget for
@@ -824,7 +778,13 @@ def do_item(item, org, run_id, log):
                                    model, tree, WORKER_TIMEOUT,
                                    turns, "drain-work", seat, item["id"])
         if usage:
-            rec["usage"].append(dict(usage, phase="drain-work", model=model, seat=seat))
+            rec["usage"].append(dict(usage, phase="drain-work", seat=seat))
+        if err == "HELD":
+            rec["held"] = True
+            if thinking:
+                item["started"] = ""
+                work.save_item(item)
+            return rec
         if err == "LIMITED":
             rec["limited"] = True
             return rec
@@ -852,7 +812,10 @@ def do_item(item, org, run_id, log):
                                       "Read,Glob,Grep", cmodel, tree, CHECK_TIMEOUT,
                                       CHECK_TURNS, "drain-check", "claude", item["id"])
         if cusage:
-            rec["usage"].append(dict(cusage, phase="drain-check", model=cmodel, seat="claude"))
+            rec["usage"].append(dict(cusage, phase="drain-check", seat="claude"))
+        if cerr == "HELD":
+            rec["held"] = True
+            return rec
         if cerr == "LIMITED":
             rec["limited"] = True
         rec["check"] = parse_check(ctext) if ctext else None
@@ -1369,6 +1332,7 @@ def write_back(item, rec, applied, why_not, suites, org):
         "tokens": int(prev.get("tokens") or 0) + this["tokens"],
         "fresh": int(prev.get("fresh") or 0) + this["fresh"],
         "list_usd": round(float(prev.get("list_usd") or 0.0) + this["list_usd"], 4),
+        "unknown_cost_calls": int(prev.get("unknown_cost_calls") or 0) + this["unknown_cost_calls"],
     }
     if resume:
         turns = WORKER_TURNS * 2
@@ -1435,6 +1399,8 @@ def unattended_hold():
     """Why an unattended run should do nothing right now, or "" to go ahead.
     A dry window is the intake queue's own reading; the spend guard is the
     Work page's own number, so what the timer respects is what he can see."""
+    if not execution.launch_allowed():
+        return "automatic work is paused"
     if server.limited_until():
         return "the token window is dry"
     win = server.token_window()
@@ -1571,6 +1537,12 @@ def main():
         print("Nothing queued.")
         return 0
 
+    SUPERVISED_IDS.update(args.ids)
+    pool = [i for i in pool if execution.launch_allowed(launch_context=_launch_context(i["id"]), item=i["id"], phase="build-worker")]
+    if not pool:
+        print("Automatic work is paused; no permitted items selected.")
+        return 0
+
     run_id = time.strftime("%Y%m%d-%H%M%S") + "-" + uuid.uuid4().hex[:4]
     _set_run(run_id)
     started = time.time()
@@ -1602,7 +1574,7 @@ def main():
     applied_files = []
     for it in pool:
         rec = records.get(it["id"])
-        if not rec:
+        if not rec or rec.get("held"):
             continue
         ok, why = (False, "the check said it should not land as it stands")
         if rec["limited"]:
@@ -1635,7 +1607,7 @@ def main():
     done = []
     for it in pool:
         rec = records.get(it["id"])
-        if not rec or rec["limited"]:
+        if not rec or rec.get("held") or rec["limited"]:
             continue          # still queued; the window will come back
         fresh = server.load_json(work._item_path(it["id"]))
         done.append(write_back(fresh, rec, rec.get("applied", False), rec.get("why_not", ""),
@@ -1655,7 +1627,7 @@ def main():
             print(f"  to Daniel: {i['id']}  {(i.get('diff') or {}).get('why_not_landed') or '—'}")
     print(f"Cost: {bill['calls']} model calls, {bill['tokens']:,} tokens "
           f"(${bill['list_usd']:.2f} at API list price — this is a subscription, so that "
-          f"is a size, not a bill).")
+          f"is a size, not a bill; {bill['unknown_cost_calls']} calls have unknown dollar cost).")
     if esc:
         print("\nEscalated to Daniel:")
         for it, ch in esc:

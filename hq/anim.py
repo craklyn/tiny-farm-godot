@@ -16,6 +16,8 @@ of small files and caches on their timestamps. Drawing costs money and is only
 ever started by a button.
 """
 
+import execution
+
 import json
 import os
 import re
@@ -513,6 +515,8 @@ def record_verdict(payload):
 def start_rework(slug, note):
     """Send a loop back with an instruction. Same machinery as drawing one, a
     different prompt and the same slug."""
+    if not execution.launch_allowed():
+        return {"error": "Automatic work is paused", "held": True}
     if len(note) < 12:
         return {"error": "say what should change"}
     if len(note) > 4000:
@@ -571,6 +575,8 @@ def _close_review(slug, verdict, why):
 def start_run(payload):
     """Begin drawing a loop from a sentence. Returns immediately; the work
     happens on a thread and the page watches it."""
+    if not execution.launch_allowed():
+        return {"error": "Automatic work is paused", "held": True}
     subject = str(payload.get("subject") or "").strip()
     if len(subject) < 12:
         return {"error": "say a sentence or two about what should happen"}
@@ -640,6 +646,7 @@ def _cost_of(slug):
         "draws": sum(1 for r in runs if r.get("kind") != "rework"),
         "reworks": sum(1 for r in runs if r.get("kind") == "rework"),
         "list_usd": round(usd, 2),
+        "unknown_cost_calls": sum(1 for r in runs if r["cost"].get("list_usd") is None),
         "tokens": sum(int(r["cost"].get("tokens") or 0) for r in runs),
         "fresh": sum(int(r["cost"].get("fresh") or 0) for r in runs),
         "minutes": round(sum(float(r["cost"].get("seconds") or 0) for r in runs) / 60),
@@ -653,59 +660,34 @@ def _draw(run_id, prompt, known_slug=""):
     started = time.time()
     try:
         with DRAW_LOCK:
-            cmd = ["claude", "-p", prompt,
-                   "--allowedTools", DRAW_TOOLS,
-                   "--permission-mode", "acceptEdits",
-                   "--output-format", "stream-json", "--verbose",
-                   "--model", DRAW_MODEL]
-            p = subprocess.Popen(cmd, cwd=REPO, stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE, text=True, bufsize=1,
-                                 env={**os.environ, "CLAUDE_CODE_DISABLE_AUTOUPDATE": "1"})
-            rec = _load_run(run_id)
-            rec["pid"] = p.pid          # so it can be stopped from the page
-            _save_run(rec)
-            doc, turns, last_write = {}, 0, 0.0
-            for line in p.stdout:
-                if time.time() - started > DRAW_TIMEOUT:
-                    p.kill()
-                    raise subprocess.TimeoutExpired(cmd, DRAW_TIMEOUT)
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    event = json.loads(line)
-                except ValueError:
-                    continue
-                if event.get("type") == "result":
-                    doc = event
-                    continue
+            def on_start(pid):
+                rec = _load_run(run_id)
+                rec.update(pid=pid, **execution.resolve_model(DRAW_MODEL))
+                _save_run(rec)
+            def on_event(event):
                 step = _step_of(event)
-                if not step:
-                    continue
-                turns += 1
-                # Throttled: the page polls every few seconds, and a record
-                # rewritten per tool call would be all disk and no more truth.
-                if time.time() - last_write > 3:
-                    last_write = time.time()
+                if step:
                     rec = _load_run(run_id)
-                    if rec.get("state") != "drawing":
-                        break
-                    rec.update({"step": step, "turns": turns})
+                    rec.update(step=step, turns=rec.get("turns", 0) + 1)
                     _save_run(rec)
-            p.wait(timeout=60)
-        stderr = (p.stderr.read() or "") if p.stderr else ""
-        p = types.SimpleNamespace(returncode=p.returncode, stderr=stderr, stdout="")
-        reply = str(doc.get("result") or "")
-        cost = HOST.usage_from_cli(doc) if hasattr(HOST, "usage_from_cli") else None
-        # Into the same ledger every other lane writes to. Without this the Lab
-        # is the one place in the studio that can spend the shared allotment
-        # without the studio's own accounting seeing it.
-        if cost and hasattr(HOST, "record_model_usage"):
-            try:
-                HOST.record_model_usage("anim-rework" if known_slug else "anim-draw",
-                                        "claude", DRAW_MODEL, cost, known_slug or run_id)
-            except Exception:
-                pass
+            result = execution.run_session(prompt, "", DRAW_TOOLS, DRAW_MODEL,
+                REPO, DRAW_TIMEOUT, 80, phase="anim-rework" if known_slug else "anim-draw",
+                seat="claude", item=known_slug or run_id, on_start=on_start, on_event=on_event)
+        if result.get("held"):
+            rec = _load_run(run_id)
+            rec.update(state="held", error="Automatic work is paused")
+            _save_run(rec)
+            return
+        p = types.SimpleNamespace(returncode=result.get("exit_code") or (1 if result.get("error") else 0),
+                                  stderr=result.get("error", ""))
+        reply = result.get("text", "")
+        cost = result.get("usage")
+        if result.get("limited"):
+            HOST.note_limit(result.get("error", ""), provider=result["provider"])
+        elif not result.get("error"):
+            HOST.clear_limit(provider=result["provider"])
+        HOST.record_model_usage("anim-rework" if known_slug else "anim-draw",
+                                "claude", result["model"], cost, known_slug or run_id)
         slug = known_slug
         m = re.search(r"SLUG:\s*([a-z0-9_]{1,64})", reply)
         if m and not known_slug:

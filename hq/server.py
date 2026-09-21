@@ -26,6 +26,8 @@ Zero-dependency stdlib server:
 
 Run: python3 hq/server.py   (or via the tiny-farm-hq systemd user service)
 """
+import execution
+
 import json
 import os
 import re
@@ -1730,7 +1732,7 @@ def _tool_line(name, inp):
     if name == "Write":
         body = str(inp.get("content") or "")
         return f"Wrote {path} ({body.count(chr(10)) + 1} lines)"
-    if name == "Bash":
+    if name in ("Bash", "command_execution"):
         return "Ran: " + " ".join(str(inp.get("command") or "").split())[:200]
     if name == "Grep":
         return f"Searched for {inp.get('pattern', '')!r}" + (f" in {path}" if path else "")
@@ -1810,6 +1812,9 @@ def _session_progress(events_path):
                                        "cache_read_input_tokens", "cache_creation_input_tokens"))
                 elif ev.get("type") == "result":
                     cost = ev.get("total_cost_usd")
+                    if ev.get("provider") == "codex":
+                        u = ev.get("usage") or {}
+                        tokens = sum(int(u.get(k) or 0) for k in ("input_tokens", "output_tokens", "cache_read_input_tokens", "cache_creation_input_tokens"))
                 for c in _compact_event(ev):
                     last = c["text"]
     except OSError:
@@ -1865,6 +1870,7 @@ def worker_sessions():
                                                ("failed" if meta.get("error") else "finished"))
             out.append({"run": run, "name": stem, "item": meta.get("item"), "title": titles.get(meta.get("item"), ""),
                         "seat": meta.get("seat"), "who": who or meta.get("seat"), "model": meta.get("model"),
+                        "provider": meta.get("provider", "claude"), "requested_model": meta.get("requested_model", meta.get("model")),
                         "phase": {"drain-work": "worker", "drain-check": "checker"}.get(meta.get("phase"), meta.get("phase")),
                         "started": meta.get("started"), "elapsed": int(now - started_ts) if started_ts else None,
                         "finished": meta.get("finished"), "state": state, "error": meta.get("error") or "",
@@ -1913,7 +1919,7 @@ def usage_from_cli(doc):
         "cache_write": n("cache_creation_input_tokens"),
         "turns": int((doc or {}).get("num_turns") or 0),
         "seconds": round(((doc or {}).get("duration_ms") or 0) / 1000.0, 1),
-        "list_usd": round(float((doc or {}).get("total_cost_usd") or 0.0), 4),
+        "list_usd": round(float(doc["total_cost_usd"]), 4) if (doc or {}).get("total_cost_usd") is not None else None,
     }
     out["tokens"] = out["input"] + out["output"] + out["cache_read"] + out["cache_write"]
     # Most of a long agent session's tokens are the same context read back from
@@ -1954,13 +1960,14 @@ def sum_usage(rows):
                 total[k] += _fresh_of(r) if k == "fresh" else ((r or {}).get(k) or 0)
             except TypeError:
                 pass
+    total["unknown_cost_calls"] = sum(1 for r in rows or [] if (r or {}).get("list_usd") is None)
     total["calls"] = len(rows or [])
     total["seconds"] = round(total["seconds"], 1)
     total["list_usd"] = round(total["list_usd"], 4)
     return total
 
 
-def token_window(hours=TOKEN_WINDOW_HOURS):
+def token_window(hours=TOKEN_WINDOW_HOURS, provider=None):
     """What the studio's own work has spent in the trailing window, and the only
     honest denominator this machine holds: what it had spent in the window that
     last ran dry. A subscription publishes no token cap, so a bar we invented
@@ -1970,7 +1977,10 @@ def token_window(hours=TOKEN_WINDOW_HOURS):
     now = _t.time()
     span = hours * 3600.0
     rows = []
+    provider = provider or execution.resolve_model()["provider"]
     for r in read_history("tokens", 20000):
+        if r.get("provider", "claude") != provider:
+            continue
         ts = _parse_iso(r.get("at"))
         if ts:
             rows.append((ts, r))
@@ -1983,7 +1993,7 @@ def token_window(hours=TOKEN_WINDOW_HOURS):
     # in the five hours before it? Absent that, we have no denominator and say so.
     dry_at, dry_spend = "", None
     for ev in read_history("limits", 500):
-        if ev.get("event") != "hit":
+        if ev.get("provider", "claude") != provider or ev.get("event") != "hit":
             continue
         ts = _parse_iso(ev.get("at"))
         if not ts:
@@ -1997,6 +2007,8 @@ def token_window(hours=TOKEN_WINDOW_HOURS):
         "fresh": sum(_fresh_of(r) for r in recent),
         "calls": len(recent),
         "list_usd": round(sum(r.get("list_usd") or 0.0 for r in recent), 2),
+        "unknown_cost_calls": sum(1 for r in recent if r.get("list_usd") is None),
+        "provider": provider,
         "by_phase": by_phase,
         "dry_at": dry_at,
         "dry_spend": dry_spend,
@@ -4985,23 +4997,17 @@ EYE QUEUE: {json.dumps(live_eye(sig["eye"]))}
 RECENT COMMITS: {json.dumps({k: [c["subject"] for c in v["recent"][:3]] for k, v in sig["per_pillar"].items()})}
 QUEUE: {json.dumps(sig["queue"])}
 PROJECTS: {json.dumps([{"name": p["name"], "status": p["status"], "priority": p["priority"]} for p in projects])}"""
-    cmd = ["claude", "-p", prompt, "--append-system-prompt", sys_prompt,
-           "--allowedTools", "", "--max-turns", "3"]
-    try:
-        with CHAT_LOCK:  # honor the at-most-2-claude-subprocesses invariant
-            proc = subprocess.run(cmd, cwd=REPO, capture_output=True, text=True, timeout=180,
-                                  env={**os.environ, "CLAUDE_CODE_DISABLE_AUTOUPDATE": "1"})
-        if proc.returncode == 0:
-            brief = proc.stdout.strip()
-            clear_limit()
-        else:
-            brief = ""
-            # Out of tokens shows up here first as often as in chat; recording
-            # it means the chat page can warn before he types a word.
-            if _looks_like_limit((proc.stderr or "") + (proc.stdout or "")):
-                note_limit((proc.stderr or "") + (proc.stdout or ""))
-    except Exception:
-        brief = ""
+    if not execution.launch_allowed(phase="brief"):
+        return {"error": "Automatic work is paused", "held": True, "fingerprint": finger}
+    with CHAT_LOCK:
+        result = execution.run_session(prompt, sys_prompt, "", seat_model(org, "claude"),
+            REPO, 180, 3, phase="brief", seat="claude")
+    record_model_usage("brief", "claude", result["model"], result.get("usage"))
+    brief = result.get("text", "") if not result.get("error") else ""
+    if result.get("limited"):
+        note_limit(result.get("error", ""), provider=result["provider"])
+    elif brief:
+        clear_limit(provider=result["provider"])
     if not brief:
         return {"error": "brief generation failed", "fingerprint": finger,
                 "limited": bool(limited_until())}
@@ -5032,6 +5038,7 @@ OUTBOX_STATE = os.path.join(OUTBOX, "_limit.json")
 OUTBOX_KEEP_DAYS = 7
 _OUTBOX_LOCK = threading.Lock()   # guards the item files
 _LIMIT_LOCK = threading.Lock()    # guards _LIMIT (never taken with the above)
+_PROVIDER_LIMITS = {}
 _LIMIT = {"until": 0.0, "detail": ""}   # epoch seconds; 0 == not limited
 
 # Only ever matched against the output of a FAILED claude run, so breadth here
@@ -5072,45 +5079,48 @@ def _save_limit_locked():
     try:
         os.makedirs(OUTBOX, exist_ok=True)
         with open(OUTBOX_STATE, "w", encoding="utf-8") as f:
-            json.dump(_LIMIT, f)
+            json.dump({**_LIMIT, "providers": _PROVIDER_LIMITS}, f)
     except OSError:
         pass  # the queue still drains; we'd just re-learn the limit the hard way
 
 
-def note_limit(text):
-    """Record that Claude is out of tokens — from any CLI call, chat or brief."""
+def _limit_bucket(provider=None):
+    provider = provider or execution.resolve_model()["provider"]
+    if provider == "claude":
+        return _LIMIT
+    return _PROVIDER_LIMITS.setdefault(provider, {"until": 0.0, "detail": ""})
+
+
+def note_limit(text, provider=None):
+    provider = provider or execution.resolve_model()["provider"]
     import time as _t
     now = _t.time()
-    guess = _parse_reset(text, now) or (now + 20 * 60)
     with _LIMIT_LOCK:
-        cur = _LIMIT["until"] if _LIMIT["until"] > now else 0.0
-        _LIMIT["until"] = max(cur, guess)
-        _LIMIT["detail"] = " ".join((text or "").split())[:200]
+        bucket = _limit_bucket(provider)
+        cur = bucket["until"] if bucket["until"] > now else 0.0
+        bucket["until"] = max(cur, _parse_reset(text, now) or now + 20 * 60)
+        bucket["detail"] = " ".join((text or "").split())[:200]
         _save_limit_locked()
-        until = _LIMIT["until"]
     if not cur:
-        # cur is 0 only on the call that opens a fresh outage — later calls
-        # while it's still in force just refine the guess and must not each
-        # log a line, or the history would grow one row per failed retry.
-        append_history("limits", {"event": "hit", "until": until})
-    return until
+        append_history("limits", {"event": "hit", "until": bucket["until"], "provider": provider})
+    return bucket["until"]
 
 
-def clear_limit():
-    """A successful call is proof the window is open again."""
+def clear_limit(provider=None):
+    provider = provider or execution.resolve_model()["provider"]
     with _LIMIT_LOCK:
-        if not _LIMIT["until"]:
+        bucket = _limit_bucket(provider)
+        if not bucket["until"]:
             return
-        _LIMIT["until"] = 0.0
-        _LIMIT["detail"] = ""
+        bucket.update(until=0.0, detail="")
         _save_limit_locked()
-    parked = sum(1 for i in list_outbox() if i["state"] in ("queued", "sending"))
-    append_history("limits", {"event": "clear", "parked": parked})
+    append_history("limits", {"event": "clear", "provider": provider})
 
 
-def limited_until():
+def limited_until(provider=None):
     import time as _t
-    return _LIMIT["until"] if _LIMIT["until"] > _t.time() else 0.0
+    bucket = _limit_bucket(provider)
+    return bucket["until"] if bucket["until"] > _t.time() else 0.0
 
 
 def _outbox_path(item_id):
@@ -5191,7 +5201,7 @@ def queue_snapshot():
     return {
         "limited": bool(limited_until()),
         "limit_until": limited_until(),
-        "limit_detail": _LIMIT["detail"] if limited_until() else "",
+        "limit_detail": _limit_bucket()["detail"] if limited_until() else "",
         "pending": sum(1 for i in items if i["state"] in ("queued", "sending")),
         "items": items,
     }
@@ -5221,6 +5231,7 @@ def sanitize_outbox():
         saved = load_json(OUTBOX_STATE)
         _LIMIT["until"] = float(saved.get("until") or 0)
         _LIMIT["detail"] = saved.get("detail") or ""
+        _PROVIDER_LIMITS.update(saved.get("providers") or {})
     except Exception:
         pass
 
@@ -5234,7 +5245,7 @@ def _drain_outbox():
         _t.sleep(20)
         try:
             _prune_outbox()
-            if limited_until():
+            if not execution.launch_allowed() or limited_until():
                 continue
             now = _t.time()
             due = [i for i in list_outbox()
@@ -5245,7 +5256,12 @@ def _drain_outbox():
             item["state"] = "sending"
             item["attempts"] = item.get("attempts", 0) + 1
             _write_item(item)
-            res = _chat_once(item["to"], item["message"], item["history"])
+            res = _chat_once(item["to"], item["message"], item["history"], launch_context="automatic")
+            if res.get("held"):
+                item["state"] = "queued"
+                item["attempts"] -= 1
+                _write_item(item)
+                continue
             if res.get("limited"):
                 item["state"] = "queued"
                 item["next_try"] = _t.time() + 60
@@ -5295,7 +5311,7 @@ def seat_model(org, to_id, override=None):
     return (emp or {}).get("model") or ""
 
 
-def _chat_once(to_id, message, history, model=None):
+def _chat_once(to_id, message, history, model=None, launch_context="interactive"):
     """One real call to the CLI. Returns {"reply"} or {"error"[, "limited"]}."""
     org = load_org()
     convo = ""
@@ -5304,35 +5320,21 @@ def _chat_once(to_id, message, history, model=None):
         convo += f"{who}: {h.get('text', '')}\n\n"
     convo += f"Daniel: {message}"
     sys_prompt = build_system_prompt(org, to_id)
-    cmd = [
-        "claude", "-p", convo,
-        "--append-system-prompt", sys_prompt,
-        "--allowedTools", "Read,Glob,Grep",
-        "--max-turns", str(MAX_TURNS),
-    ]
     m = seat_model(org, to_id, model)
-    if m:
-        cmd += ["--model", m]
     with CHAT_LOCK:
-        try:
-            proc = subprocess.run(
-                cmd, cwd=REPO, capture_output=True, text=True, timeout=300,
-                env={**os.environ, "CLAUDE_CODE_DISABLE_AUTOUPDATE": "1"},
-            )
-        except subprocess.TimeoutExpired:
-            return {"error": "The team member took too long to reply (timeout)."}
-        except FileNotFoundError:
-            return {"error": "claude CLI not found on PATH for the service user."}
-    out = (proc.stdout or "") + "\n" + (proc.stderr or "")
-    if proc.returncode != 0:
-        if _looks_like_limit(out):
-            note_limit(out)
-            return {"error": "out of tokens", "limited": True,
-                    "detail": " ".join(out.split())[:200]}
-        return {"error": cli_failure(proc)}
-    clear_limit()
-    reply, kept = take_remembered(to_id, proc.stdout.strip())
-    return {"reply": reply, "remembered": kept}
+        result = execution.run_session(convo, sys_prompt, "Read,Glob,Grep", m,
+            REPO, 300, MAX_TURNS, phase="chat", seat=to_id, launch_context=launch_context)
+    record_model_usage("chat", to_id, result["model"], result.get("usage"))
+    if result.get("held"):
+        return {"error": "Automatic work is paused", "held": True}
+    if result.get("limited"):
+        note_limit(result.get("error", ""), provider=result["provider"])
+        return {"error": "out of tokens", "limited": True}
+    if result.get("error"):
+        return {"error": result["error"]}
+    clear_limit(provider=result["provider"])
+    reply, kept = take_remembered(to_id, result.get("text", ""))
+    return {"reply": reply, "remembered": kept, "provider": result["provider"], "model": result["model"]}
 
 
 def run_chat(payload):
@@ -5342,10 +5344,11 @@ def run_chat(payload):
     history = payload.get("history") or []
     if not message:
         return {"error": "empty message"}
-    if payload.get("queue") or limited_until():
+    provider = execution.resolve_model(seat_model(load_org(), to_id, payload.get("model")))["provider"]
+    if payload.get("queue") or limited_until(provider):
         item = enqueue_chat(to_id, message, history,
                             "manual" if payload.get("queue") else "limit")
-        return {"queued": item["id"], "resume_at": limited_until(),
+        return {"queued": item["id"], "resume_at": limited_until(provider),
                 "reason": item["reason"]}
     res = _chat_once(to_id, message, history, model=payload.get("model"))
     if res.get("reply"):
@@ -5353,7 +5356,7 @@ def run_chat(payload):
     if res.get("limited"):
         # He typed it before we knew; it is not his job to retype it later.
         item = enqueue_chat(to_id, message, history)
-        return {"queued": item["id"], "resume_at": limited_until(),
+        return {"queued": item["id"], "resume_at": limited_until(provider),
                 "reason": "limit"}
     return res
 
