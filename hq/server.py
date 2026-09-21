@@ -307,9 +307,13 @@ def waiting_on_you():
         # of the page is still true, and a page that renders nothing tells him
         # less than a page that renders what it can.
         items = []
+    # Exactly what the Work page counts, so the dashboard's figure and the page
+    # he opens from it can never disagree: it is his only if it is in his list,
+    # its changes reached the repository, and somebody has written the question
+    # with a recommended answer (S-17). Anything else is the studio's.
     finished = [i for i in items
-                if i.get("state") == "needs_approval"
-                or (i.get("state") == "for_review" and not work._held_back(i))]
+                if work._in_his_list(i) and work.has_recommendation(i)
+                and not work._held_back(i)]
     return {"decisions": decisions, "work": finished}
 
 
