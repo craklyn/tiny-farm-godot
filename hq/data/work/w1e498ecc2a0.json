@@ -1,0 +1,19 @@
+{
+  "id": "w1e498ecc2a0",
+  "title": "Fix the demo replay check failing on an old build label",
+  "level": "task",
+  "owner": "ravi",
+  "tier": 1,
+  "tier_reason": "Reversible build-check repair; keep game behavior and replay actions unchanged.",
+  "ask": "CI run 35665001793 fails Demo replay is not stale because regeneration changes only the replay header build_id. The same failure predates the Codex integration. Reproduce the generation/check in .github/workflows/tests.yml; make the recorded fixture and freshness check deterministic without dropping meaningful replay validation. Preserve unrelated dirty assets/demo/demo_replay.json work.",
+  "first_action": "Inspect the failed CI job at https://github.com/craklyn/tiny-farm-godot/actions/runs/35665001793, the demo generation command in .github/workflows/tests.yml, and how its header build_id is chosen. Fix in an isolated worktree and show repeat generation produces no diff.",
+  "state": "waiting_session",
+  "thread": "claude",
+  "source": "interactive",
+  "source_message": "Discovered while verifying the authorized HQ provider-routing work; recorded separately because the failure predates that work.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-21T16:19",
+  "created_ts": 1790032787.3368015
+}

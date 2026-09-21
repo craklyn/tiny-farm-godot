@@ -44,9 +44,13 @@ All six existing HQ scripts returned exit 0 before implementation: test_drain.py
 
 Implementation was interrupted by an account usage limit; Daniel increased the limit and both workers resumed the same preserved worktrees. Deterministic tests, independent review and main-tree verification remain pending. No live trial was started before this interruption.
 
-### Supervised live run — TK
+### Supervised live run — RUNNING
 
-No live provider run has been started. Worker/checker/judge models, actual events, suite results and final commit are TK.
+Run 20260921-161543-474c: Terra worker completed successfully in 46.7 seconds; Sol checker completed in 29.8 seconds and flagged a real documentation error: the guide described supervised trial work as the only launch exception, omitting explicit interactive calls and writing hooks. The patch was applied and suites started, but acceptance is correctly withheld. A same-card revision will preserve this finding. Final acceptance/commit are TK. Luna writing-check calls also succeeded and recorded provider=codex with unknown dollar price, rather than a fabricated zero.
+
+### Separate pre-existing CI failure — RECORDED
+
+CI run 35665001793 reports a demo replay freshness failure: regeneration changes only the header build_id. The prior main run 35664411769 was also failed. The bootstrap run additionally lacked verdicts for the newly filed card text; the routed writing hook has now judged that text. The demo-label problem is separately preserved as work card w1e498ecc2a0, not silently included in the provider change. Source: https://github.com/craklyn/tiny-farm-godot/actions/runs/35665001793 (failed job logs).
 
 ## 5. Conclusions
 

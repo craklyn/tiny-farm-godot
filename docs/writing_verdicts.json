@@ -1076,6 +1076,12 @@
   "4eb6e4be5f15230de3e1": {
    "verdict": "ok"
   },
+  "4efae8f86160948b99f8": {
+   "instead": "Fix the demo replay check that still uses an old version label",
+   "quote": "failing on an old build label",
+   "verdict": "second-look",
+   "why": "The reader has to work out whether the check uses an old version label or is checking an old build."
+  },
   "4f36e636a56f72d766c0": {
    "verdict": "ok"
   },
