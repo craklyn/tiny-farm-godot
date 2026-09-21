@@ -1634,7 +1634,12 @@ def _session_progress(events_path):
                     if mid not in seen:
                         seen.add(mid)
                         u = (ev.get("message") or {}).get("usage") or {}
-                        tokens += int(u.get("output_tokens") or 0) + int(u.get("input_tokens") or 0)
+                        # Everything that went through the model, as HQ's cost
+                        # lines count it — most of it is the cached context re-read
+                        # each turn, so output alone reads as a few hundred.
+                        tokens += sum(int(u.get(k) or 0) for k in
+                                      ("input_tokens", "output_tokens",
+                                       "cache_read_input_tokens", "cache_creation_input_tokens"))
                 elif ev.get("type") == "result":
                     cost = ev.get("total_cost_usd")
                 for c in _compact_event(ev):

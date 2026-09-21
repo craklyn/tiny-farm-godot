@@ -24,7 +24,7 @@ function wkHeader(s) {
   const who = esc(s.who || s.seat || "");
   const title = s.title ? `<a class="plain" href="#/work/${esc(s.item)}">${esc(s.title)}</a>` : esc(s.item || "");
   const turns = s.turns_allowed ? `${s.turns} of ${s.turns_allowed} turns` : `${s.turns} turns`;
-  const cost = s.cost != null ? ` · $${Number(s.cost).toFixed(2)}` : (s.tokens ? ` · ${s.tokens.toLocaleString()} tokens so far` : "");
+  const cost = s.cost != null ? ` · $${Number(s.cost).toFixed(2)}` : (s.tokens ? ` · ${s.tokens.toLocaleString()} tokens through the model so far` : "");
   const when = s.state === "running" ? `running ${wkElapsed(s.elapsed)}` : `${s.state} · started ${esc(s.started || "")}`;
   return `<div class="wk-head">
     <span class="wk-state ${esc(s.state)}">${esc(s.state)}</span>
