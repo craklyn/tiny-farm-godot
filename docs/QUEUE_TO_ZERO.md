@@ -145,25 +145,6 @@ follow-ups hiding in the landed and studio buckets arrive the same way, prepped,
 over the following days: at most 12 questions at 30 to 60 seconds each, against
 the 97 cards at two minutes each he faces now.
 
-Built 2026-09-21, in `hq/work.py` and covered by `hq/tests/test_work.py`. A
-follow-up that names no tier is filed as tier 1. A follow-up that is hard to
-walk back is filed in a new state, `prepping`, owned by the seat named on it;
-the read-only worker has that seat write the question, the options and a
-recommended answer, and the card may ask Daniel for a yes only once the
-recommendation carries the question, the answer, the reason and the alternative
-— three attempts at writing it, after which the card stays with the studio
-saying what it is short of. A follow-up whose owner and subject match an open
-card joins that card instead of filing a twin, and the card records where the
-addition came from. A follow-up filed on his acceptance records which card
-promised it; one an owner files from a conversation does not, because he never
-accepted it. The count of what waits on him, as the Work page reads it, now
-counts only finished work and asks that carry a recommended answer: 21 of the
-41 cards in his queue this morning. Two things this did not touch, both filed
-as work: the same count computed three more times in `hq/server.py` (the goal's
-nightly reading, the age of the oldest item, and the dashboard's), which still
-counts every card; and the Work page itself, which has no section for a card
-that is being written up, so one is out of sight while its question is drafted.
-
 ## 6. The shape view
 
 **Shapes considered.** Tabs on the existing page (his opening idea: cuts height,
