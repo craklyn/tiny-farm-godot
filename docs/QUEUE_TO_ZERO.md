@@ -319,7 +319,7 @@ w0a529a072ba (5), w40147e1305f (6); the Q-108 captures are w72dee30012f.
 | 2 | Spawn policy in `_file_follow_ups`: tier-1 default, merge twins, tier-2 follow-ups file as decisions to prep; `work_policy.json` gains both policies in words | Chief of Staff | Stops the growth. |
 | 3 | Close the nine stale cards; answer Q-108 with §11; add `oldest_waiting_days` to the goal's readings | Chief of Staff | Done 2026-09-20: eight closed, the ninth held by another session; Q-108 answered and the captures filed. |
 | 4 | The reader: cost band, subject groups, side pane with the fixed anatomy, keyboard, replacing `#/work` | UX Lead | Built from the mock; shown, not asked. |
-| 5 | Talk with the thirty-second clock and the `owed` state; the "coming back" strip | Lead in Engineering | Needs the reader's pane. |
+| 5 | Talk with the thirty-second clock and the `owed` state; the "coming back" strip | Lead in Engineering | The server half is done 2026-09-21: the reply starts on the comment, the clock is `reply_seconds` in the policy file, and the state is on every card the page reads. The clock and the strip he looks at are drawn by row 4. |
 | 6 | An executive pillar, or a home for `executive.json` on the dashboard, so the goal is read nightly | Chief of Staff | Makes the goal measured rather than filed. |
 
 ## 13. Kept off his plate
@@ -346,14 +346,20 @@ its crash on an unparseable follow-up block fixed, its parking of items blocked
 by another session's uncommitted files, and a cost cap of $20 per item across
 attempts (`ITEM_COST_CAP_USD`, overridable per card with `cost_cap_usd`).
 
+The hand-back in §8, on the server: writing on a card starts its owner's reply
+at once rather than on the next fifteen-second tick, and thirty seconds later
+the card goes to the state `owed`, leaves the count of what is waiting on him,
+and returns to the top of his list when the answer lands. The thirty seconds is
+`reply_seconds` in `hq/data/work_policy.json`. What he sees of it — the clock in
+the pane and the strip of what is coming back — is the reader's half, below.
+
 **Not built.** Everything in §12 except row 3. Six cards carry it; three were
 parked for cost after burning $109 on cold surveys and are rewritten with exact
 starting points (wdab4785be1c the landing bar, w9f46b7286df the robot unlock,
 w72dee30012f the through-walls captures, which need a display the timer does
-not have). The hand-back (w0a529a072ba) is held on a patch that waits for the
-other session's `hq/static/work.js`. The reader (wa92bd649e33) and the
-follow-up rule (w4a183a63692) came back "concerns", unapplied, for the same
-reason, and sit in his queue only because the landing bar does not exist yet.
+not have). The reader (wa92bd649e33) and the follow-up rule (w4a183a63692)
+came back "concerns", unapplied, for the same reason, and sit in his queue only
+because the landing bar does not exist yet.
 
 **The one blocker.** Another session in this working tree holds about forty
 files modified and uncommitted since 2026-09-19, among them `hq/drain.py`,
