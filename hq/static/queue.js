@@ -224,7 +224,7 @@ function qDecisionItem(c) {
     options: opts.map(o => ({ key: o.key, label: o.label, detail: o.detail || "",
       recommended: (o.label || "").includes("(Recommended)") })),
     followUps: [],
-    conversation: (c.replies || []).map(r => ({ who: r.by === "claude" ? "Claude" : (r.by || "the studio"), text: r.text || "", at: r.at || "" })),
+    conversation: (c.replies || []).map(r => ({ who: r.by === "claude" ? "Adam" : (r.by || "the studio"), text: r.text || "", at: r.at || "" })),
     attachments: c.attachments || [],
     evidence: qDecisionEvidence(c), source: `decision card ${c.id}`, canDrop: false,
   };

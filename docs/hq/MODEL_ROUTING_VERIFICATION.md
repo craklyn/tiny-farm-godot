@@ -46,7 +46,7 @@ Implementation was interrupted by an account usage limit; Daniel increased the l
 
 ### Supervised live run — RUNNING
 
-Run 20260921-161543-474c: Terra worker completed successfully in 46.7 seconds; Sol checker completed in 29.8 seconds and flagged a real documentation error: the guide described supervised trial work as the only launch exception, omitting explicit interactive calls and writing hooks. The patch was applied and suites started, but acceptance is correctly withheld. A same-card revision will preserve this finding. Final acceptance/commit are TK. Luna writing-check calls also succeeded and recorded provider=codex with unknown dollar price, rather than a fabricated zero.
+Run 20260921-161543-474c: Terra worker completed successfully in 46.7 seconds; Sol checker completed in 29.8 seconds and flagged a real documentation error: the guide described supervised trial work as the only launch exception, omitting explicit interactive calls and writing hooks. The patch was applied and suites started, but acceptance is correctly withheld. A same-card revision will preserve this finding. The same-card revision (20260921-162202-876b) passed independent model review, but its integration suite finished 967 passed and 1 failed: “there is an unmarked square to drag over.” The backend withheld the automatic commit. Read-only investigation found the scenario prepares x=13…19 on row 11 but searches unprepared random terrain at x=20…23; the likely fixture defect still needs correction and verification. Final acceptance and automatic commit remain pending. Luna writing-check calls also succeeded and recorded provider=codex with unknown dollar price, rather than a fabricated zero.
 
 ### Separate pre-existing CI failure — RECORDED
 
