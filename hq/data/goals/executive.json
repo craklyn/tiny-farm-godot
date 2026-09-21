@@ -1,6 +1,6 @@
 {
   "pillar": "executive",
-  "note": "The CEO's own goal, carried by the Chief of Staff seat. Not yet on a pillar page: the dashboard iterates hq/data/pillars.json and there is no executive pillar, so this file is read by nothing until the queue reader (docs/QUEUE_TO_ZERO.md) gives it a home. The reading it is measured on, queue_state / waiting_on_you, is in the evaluator already.",
+  "note": "The CEO's own goal, carried by the Chief of Staff seat. There is no executive pillar and the dashboard iterates hq/data/pillars.json, so this file is read by the dashboard's side panel instead: server.waiting_block() takes the statement and the target from here and puts them beside the live reading, and server.record_queue_night() writes that reading to hq/data/history/queue.jsonl once each evening. Both readings it is measured on, queue_state / waiting_on_you and queue_state / oldest_waiting_days, count through server.waiting_on_you(), which is also what the dashboard's own decision and work counts are taken from.",
   "verdict_template": {
     "fire": "{worst}",
     "attention": "{worst}",

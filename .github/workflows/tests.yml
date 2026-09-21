@@ -88,6 +88,12 @@ jobs:
       - name: A work item tried again is told what the earlier attempt did
         run: python3 hq/tests/test_drain_resume.py
 
+      # The count of what waits on Daniel is written to disk once each evening,
+      # so the burn-down is a record rather than a memory. Checked against a
+      # temporary folder with the clock handed in.
+      - name: Daniel's queue is recorded once a night and never twice
+        run: python3 hq/tests/test_queue_night.py
+
   tests:
     runs-on: ubuntu-latest
     timeout-minutes: 15

@@ -244,6 +244,170 @@ def _settled_rulings(queue):
     return [r for r in queue["rulings"].values() if r.get("option")]
 
 
+# ---------------------------------------------------------------------------
+# What waits on Daniel.
+#
+# One function, because it used to be two. The dashboard's side panel added its
+# own count of prepped decision cards to its own count of finished work, while
+# the goal in hq/data/goals/executive.json counted the same two things under
+# stricter rules — so the panel and the goal could print different numbers for
+# the same queue on the same screen. Every reader now asks here.
+# ---------------------------------------------------------------------------
+
+CARDS_FILED_TTL = 600
+_CARDS_FILED = {"at": 0.0, "by_id": {}}
+
+
+def cards_filed():
+    """{decision id: unix time the card was written}, taken from git.
+
+    A decision card carries no date of its own, and how long the oldest thing
+    on his desk has been there is one of the two numbers the goal is read on,
+    so the date comes from the commit that added the card."""
+    import time as _t
+    if _t.time() - _CARDS_FILED["at"] < CARDS_FILED_TTL and _CARDS_FILED["by_id"]:
+        return _CARDS_FILED["by_id"]
+    out = {}
+    try:
+        text = run_cmd(["git", "log", "--diff-filter=A", "--reverse", "--format=%ct",
+                        "--name-only", "--", "hq/data/decisions"])
+        stamp = None
+        for line in text.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            if line.isdigit():
+                stamp = int(line)
+            elif stamp is not None and line.endswith(".json"):
+                out.setdefault(os.path.basename(line)[:-5], stamp)
+    except Exception:
+        pass
+    _CARDS_FILED.update({"at": _t.time(), "by_id": out})
+    return out
+
+
+def waiting_on_you():
+    """What is on his desk: decision cards nobody has ruled on, and finished
+    work that wants his verdict.
+
+    A card is still his only while nobody has ruled on it — no option picked in
+    a ruling file, no ruling written onto the card, and no written judgment of
+    his, because a judgment either settles the question or hands it back to the
+    studio."""
+    q = api_queue()
+    rulings = q["rulings"]
+    decided = set(q["decided"])
+    decisions = [c for c in q["curated"]
+                 if c["id"] not in decided and not c.get("ruled")
+                 and not rulings.get(c["id"], {}).get("judgment")]
+    try:
+        items = work.items()
+    except Exception:
+        # One unreadable work card must not empty the whole dashboard: the rest
+        # of the page is still true, and a page that renders nothing tells him
+        # less than a page that renders what it can.
+        items = []
+    finished = [i for i in items
+                if i.get("state") == "needs_approval"
+                or (i.get("state") == "for_review" and not work._held_back(i))]
+    return {"decisions": decisions, "work": finished}
+
+
+def waiting_reading():
+    """The count, what it is made of, and how long the oldest has waited.
+
+    The age used to be read off finished work alone, so on a day with two
+    decision cards open and no finished work it said nothing was waiting."""
+    import time as _t
+    w = waiting_on_you()
+    filed = cards_filed()
+    ages = [_days_since_date((i.get("finished") or i.get("created") or "")[:10])
+            for i in w["work"]]
+    ages = [a for a in ages if a is not None]
+    for c in w["decisions"]:
+        ct = filed.get(c["id"])
+        if ct:
+            ages.append(int((_t.time() - ct) // 86400))
+    return {"count": len(w["decisions"]) + len(w["work"]),
+            "work": len(w["work"]),
+            "decisions": len(w["decisions"]),
+            "oldest_days": max(ages) if ages else None}
+
+
+# ---------------------------------------------------------------------------
+# One line a night.
+#
+# The goal is that nothing waits on him overnight, so the reading that settles
+# it is the one taken at the end of the day. HQ writes it once each evening to
+# hq/data/history/queue.jsonl, which makes the burn-down a record on disk
+# instead of something somebody has to remember.
+# ---------------------------------------------------------------------------
+
+QUEUE_NIGHT_HOUR = 21
+
+
+def record_queue_night(now=None):
+    """Write tonight's reading, unless tonight is already on file.
+
+    Returns the reading it wrote, or None when it wrote nothing. The recorder
+    wakes far more often than once a day, so the usual answer is None: one line
+    a night and never two.
+
+    Each line names the night it is for rather than only the moment it was
+    written. Those are the same date in every ordinary run, and keeping the
+    night on the line is what lets the rule be checked against dates other than
+    today's."""
+    import datetime
+    now = now or datetime.datetime.now()
+    if now.hour < QUEUE_NIGHT_HOUR:
+        return None
+    night = now.date().isoformat()
+    if any(_night_of(r) == night for r in read_history("queue", 400)):
+        return None
+    r = waiting_reading()
+    append_history("queue", {"night": night, "count": r["count"], "work": r["work"],
+                             "decisions": r["decisions"],
+                             "oldest_days": r["oldest_days"], "target": 0})
+    return r
+
+
+def _night_of(row):
+    return row.get("night") or (row.get("at") or "")[:10]
+
+
+def queue_nights():
+    """The evenings on file, oldest first."""
+    return [r for r in read_history("queue", 400) if isinstance(r.get("count"), int)]
+
+
+def _queue_night_thread():
+    import time as _t
+    while True:
+        try:
+            record_queue_night()
+        except Exception:
+            pass
+        _t.sleep(900)     # a quarter of an hour: the quantity is nights
+
+
+def waiting_block():
+    """The dashboard's row: the reading, the goal it is measured against, and
+    where the count stood on the first evening recorded."""
+    doc = load_goals("executive") or {}
+    goals = live_goals(doc)
+    g = goals[0] if goals else {}
+    nights = queue_nights()
+    out = dict(waiting_reading(),
+               title=doc.get("scoreboard_title") or "What waits on you",
+               goal=g.get("statement_short") or g.get("statement", ""),
+               target=(g.get("compare") or {}).get("target", 0),
+               nights=len(nights))
+    if nights:
+        out["first_night"] = _night_of(nights[0])
+        out["first_count"] = nights[0]["count"]
+    return out
+
+
 _CONSISTENCY = []
 
 
@@ -2895,32 +3059,19 @@ def eval_measure(spec, depth=0):
                 return _reading(len([c for c in q["curated"] if c["id"] not in set(q["decided"])]),
                                 "cards", "decision cards prepped and waiting on you", "", "cheap")
             if field == "waiting_on_you":
-                # The CEO's whole queue: decision cards prepped and not yet ruled, plus
-                # finished work awaiting his verdict and tier-2 work awaiting his yes.
-                # The count the "nothing waits on Daniel overnight" goal is read on.
-                # A decision card is his only while nobody has ruled: no option in a
-                # ruling file, no ruling written onto the card itself, and no written
-                # judgment of his (a judgment settles it or hands it to the studio).
-                rulings = q["rulings"]
-                prepped = [c for c in q["curated"]
-                           if c["id"] not in set(q["decided"]) and not c.get("ruled")
-                           and not rulings.get(c["id"], {}).get("judgment")]
-                cards = [i for i in work.items()
-                         if i.get("state") == "needs_approval"
-                         or (i.get("state") == "for_review" and not work._held_back(i))]
-                return _reading(len(prepped) + len(cards), "items",
-                                f"{len(cards)} pieces of finished work and {len(prepped)} decision cards waiting on you",
+                # The CEO's whole queue, counted by waiting_on_you() so that this
+                # goal and the dashboard row beside it can never disagree.
+                r = waiting_reading()
+                return _reading(r["count"], "items",
+                                f"{r['work']} pieces of finished work and {r['decisions']} decision cards waiting on you",
                                 "", "cheap")
             if field == "oldest_waiting_days":
-                ages = [_days_since_date((i.get("finished") or i.get("created") or "")[:10])
-                        for i in work.items()
-                        if i.get("state") == "needs_approval"
-                        or (i.get("state") == "for_review" and not work._held_back(i))]
-                ages = [a for a in ages if a is not None]
-                if not ages:
+                r = waiting_reading()
+                if r["oldest_days"] is None:
                     return _reading(None, "days", "nothing is waiting on you", "", "cheap",
                                     extra={"empty_ok": True})
-                return _reading(max(ages), "days", "how long the oldest item has waited on you", "", "cheap")
+                return _reading(r["oldest_days"], "days",
+                                "how long the oldest item has waited on you", "", "cheap")
             if field == "pending_rulings":
                 return _reading(len([r for r in _settled_rulings(q)
                                      if r.get("status") == "pending_integration"]), "rulings",
@@ -4041,8 +4192,11 @@ def _compute_signals_now():
     pillars = load_json(os.path.join(DATA, "pillars.json"))["pillars"]
     queue = api_queue()
     open_items = [q for q in queue["items"] if not q["answered"]]
-    decided = set(queue["decided"])
-    curated_fresh = [c for c in queue["curated"] if c["id"] not in decided]
+    # Both halves of his queue, counted once, by the one function that decides
+    # what is still his — so the row on the side panel, the goal it carries and
+    # the items in the list below can never print different numbers.
+    waiting = waiting_on_you()
+    curated_fresh = waiting["decisions"]
     pending_rulings = [r for r in _settled_rulings(queue)
                        if r.get("status") == "pending_integration"]
     projects = load_projects()
@@ -4222,7 +4376,7 @@ def _compute_signals_now():
         work_items = work.items()
     except Exception:
         work_items = []
-    verdicts = [i for i in work_items if i.get("state") in ("for_review", "needs_approval")]
+    verdicts = waiting["work"]
     work_queued = sum(1 for i in work_items if i.get("state") == "waiting_session")
     if verdicts:
         done = [i for i in verdicts if i.get("state") == "for_review"]
@@ -4271,6 +4425,7 @@ def _compute_signals_now():
                 "sfx_count": len([f for f in os.listdir(os.path.join(REPO, "assets/audio/sfx")) if f.endswith(".wav")])},
         "suite": suite,
         "work": {"waiting_on_you": len(verdicts), "queued": work_queued},
+        "waiting": waiting_block(),
         "goals": all_goals,
         "consistency": check_consistency(),
         "eye": eye,
@@ -5537,6 +5692,10 @@ def main():
     # Two of the four escalation tests are about time, which needs more than one
     # reading. Hourly, off the request path, because it writes a tracked file.
     threading.Thread(target=_goal_journal_thread, daemon=True).start()
+    # One reading of his queue each evening. The promise is that nothing waits
+    # on him overnight, and the only reading that can settle that is the one
+    # taken at the end of the day.
+    threading.Thread(target=_queue_night_thread, daemon=True).start()
     work.bind(sys.modules[__name__])
     studio.bind(sys.modules[__name__])
     anim.bind(sys.modules[__name__])

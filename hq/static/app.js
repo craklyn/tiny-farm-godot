@@ -326,6 +326,31 @@ $view.addEventListener("click", ev => {
 }, true);
 
 /* ---------------- dashboard ---------------- */
+/* The CEO's own goal — that nothing waits on him overnight — has one home on
+   the dashboard, and it is never folded away: while anything is on his desk it
+   is the queue that sets the pace of everything else. It sits on the side panel
+   rather than under "the one thing", because it will read red every day until
+   the queue is empty and the front of the page is for what moved today. */
+function waitingCard(w) {
+  if (!w || w.count == null) return "";
+  const rows = [
+    ["decisions you have not ruled on", w.decisions],
+    ["finished work waiting for your verdict", w.work],
+    ["days the oldest has waited", w.oldest_days],
+  ].filter(([, n]) => n);
+  const record = w.nights
+    ? `HQ first recorded this count on ${w.first_night}, when ${w.first_count} items were waiting for your decision.`
+    : "HQ records this count once a night, and the first night is tonight at nine.";
+  return `<div class="waiting-card" data-href="#/work">
+    <div class="wc-head">${esc(w.title)}</div>
+    <div class="wc-count">${w.count} <span class="wc-target">· target ${w.target}</span></div>
+    ${rows.map(([label, n]) =>
+      `<div class="wc-row"><span>${label}</span><b>${n}</b></div>`).join("")}
+    <div class="wc-goal small">${esc(w.goal)}</div>
+    <div class="wc-record small muted">${esc(record)}</div>
+  </div>`;
+}
+
 /* The landing page, on Rin's first principles: one visual hierarchy —
    (1) the single thing only the CEO can do, large; (2) the short ranked rest,
    dense; (3) the state of the world, glanceable; (4) the narrative brief,
@@ -380,12 +405,13 @@ async function renderDashboard() {
         <div id="dash-standup"></div>
       </div>
       <div class="dash-side">
+        ${waitingCard(sig.waiting)}
         <details class="side-fold" id="dash-pillars-fold">
           <summary class="side-head">The pillars <span class="small muted">· ${pillars.pillars.every(p => surfaceParked("/pillar/" + p.id)) ? "detail pages are switched off" : "click for detail"}</span></summary>
           <div id="dash-pillars"></div>
         </details>
         <div class="side-nums small">
-          <a class="plain" href="#/work">${sig.queue.prepped + sig.work.waiting_on_you} waiting on you · ${sig.work.queued} queued</a>
+          <a class="plain" href="#/work">${sig.work.queued} pieces of work queued</a>
           <a class="plain" href="#/program">${sig.projects.in_progress} in flight · ${sig.projects.blocked} blocked</a>
           <a class="plain" href="#/playtests">${sig.playtests.count} playtests</a>
           <a class="plain" href="#/org">${org.employees.length - 1} on your team</a>
