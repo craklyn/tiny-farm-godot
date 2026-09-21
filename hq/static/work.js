@@ -662,7 +662,13 @@ async function renderWork(focusId) {
   const by = st => snap.items.filter(i => i.state === st);
   childIndex = {};
   snap.items.forEach(i => { if (i.parent) (childIndex[i.parent] ||= []).push(i); });
-  const waiting = [...by("needs_approval"), ...by("for_review")];
+  // A finished card whose changes never reached the repository is not his to
+  // approve — there is nothing in the tree to approve — and the page already
+  // hides Accept on one. It must not be counted as waiting on him either: it
+  // is waiting on whoever holds the files it could not be written over.
+  const stuck = i => i.state === "for_review" && !!heldReason(i) && !resuming(i);
+  const waiting = [...by("needs_approval"), ...by("for_review").filter(i => !stuck(i))];
+  const held = by("for_review").filter(stuck);
   const closed = [...by("accepted"), ...by("dropped")];
   // First visit: the top decision is open and everything else is one line, so
   // the page opens showing how many things want him rather than one of them.
@@ -714,6 +720,9 @@ async function renderWork(focusId) {
 
   const secs = [
     workSection("Waiting on you", "Two kinds: work that has not happened because it is hard to undo, and work that is finished and wants your verdict on the result.", waiting, org, pol, { always: true }),
+    workSection("Finished, but it could not be written into the repository",
+      "Each of these changed files another session in the repository has open and unsaved, so the change was kept and not applied. It goes in as soon as those files are free; there is nothing for you to approve until then.",
+      held, org, pol),
     workSection("Happening now", "Reversible, so nobody waited to be told twice.", by("doing"), org, pol),
     workSection("Queued for a build session", "Changes files in the repository, so a session with write access — or the studio's own scheduled run — makes the change and shows you what it altered.", by("waiting_session"), org, pol),
   ].filter(Boolean);
@@ -865,7 +874,11 @@ async function renderWork(focusId) {
 }
 
 function updateWorkBadge(snap) {
-  updateQueueBadge({ work: snap.waiting_on_you || 0 });
+  // The badge counts what he can actually act on: a finished card whose changes
+  // never landed is waiting on the repository, not on him.
+  const stuck = (snap.items || []).filter(
+    i => i.state === "for_review" && !!heldReason(i) && !resuming(i)).length;
+  updateQueueBadge({ work: Math.max(0, (snap.waiting_on_you || 0) - stuck) });
 }
 
 /* ---- the strip on the chat page ----------------------------------------

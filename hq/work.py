@@ -1215,6 +1215,15 @@ def start():
 # API — server.py routes /api/work* straight here
 # ---------------------------------------------------------------------------
 
+def _held_back(item):
+    """True when a finished card's changes never reached the repository, so
+    there is nothing in the tree for Daniel to approve."""
+    d = item.get("diff") or {}
+    if not d or d.get("applied"):
+        return False
+    return (d.get("why_not") or "") not in ("", "nothing changed")
+
+
 def snapshot():
     got = items()
     return {
@@ -1223,7 +1232,11 @@ def snapshot():
         "capturing": len(_read_dir(CAPTURES)),
         # A card that handed back is not in this count: it is the studio's move
         # until the answer lands, and it says so in its own strip on the page.
-        "waiting_on_you": sum(1 for i in got if i["state"] in HIS_STATES),
+        # A finished card whose patch never reached the tree is waiting on
+        # whoever holds those files, not on him, and the page shows it in its
+        # own section with no verdict to give.
+        "waiting_on_you": sum(1 for i in got if i["state"] in HIS_STATES
+                              and not (i["state"] == "for_review" and _held_back(i))),
         "owed": sum(1 for i in got if i["state"] == "owed"),
         # The page keeps the same clock the machine does, against the same
         # deadline, rather than starting its own when the card happened to load.

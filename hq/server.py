@@ -2905,13 +2905,17 @@ def eval_measure(spec, depth=0):
                 prepped = [c for c in q["curated"]
                            if c["id"] not in set(q["decided"]) and not c.get("ruled")
                            and not rulings.get(c["id"], {}).get("judgment")]
-                cards = [i for i in work.items() if i.get("state") in ("needs_approval", "for_review")]
+                cards = [i for i in work.items()
+                         if i.get("state") == "needs_approval"
+                         or (i.get("state") == "for_review" and not work._held_back(i))]
                 return _reading(len(prepped) + len(cards), "items",
                                 f"{len(cards)} pieces of finished work and {len(prepped)} decision cards waiting on you",
                                 "", "cheap")
             if field == "oldest_waiting_days":
                 ages = [_days_since_date((i.get("finished") or i.get("created") or "")[:10])
-                        for i in work.items() if i.get("state") in ("needs_approval", "for_review")]
+                        for i in work.items()
+                        if i.get("state") == "needs_approval"
+                        or (i.get("state") == "for_review" and not work._held_back(i))]
                 ages = [a for a in ages if a is not None]
                 if not ages:
                     return _reading(None, "days", "nothing is waiting on you", "", "cheap",
