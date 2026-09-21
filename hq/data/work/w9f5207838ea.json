@@ -1,0 +1,22 @@
+{
+ "id": "w9f5207838ea",
+ "title": "A page where Daniel can watch any worker's session as it runs: every read, edit and command, the turns and cost so far, and the transcript afterwards",
+ "level": "story",
+ "owner": "tomas",
+ "tier": 1,
+ "tier_reason": "changes how the drain launches a worker and adds an HQ page; git reverts it; no model cost beyond what the worker already spends",
+ "ask": "Daniel asked for a 'Micromanager' page for debugging: a live view of every active worker so he can see whether the system is working and how, because today a worker is invisible until it finishes. Today run_cli in hq/drain.py runs `claude -p ... --output-format json` under subprocess.run, so nothing of a session exists until it ends, and afterwards only the final text and the diff survive. Change run_cli to `--output-format stream-json --verbose` under Popen, and tee every event line as it arrives to hq/data/runs/workers/<run_id>/<item_id>.jsonl (create the dir; keep the final-result parsing identical so nothing downstream changes). Serve GET /api/workers (the runs in flight: item, seat, model, started, turns used of the budget, tokens and dollars so far, files changed in the worktree from `git status --short`) and GET /api/workers/<run>/<item>?after=N (the event lines past N). Add #/workers to HQ: one panel per live worker, newest event at the bottom, each event rendered as a plain line — 'Read hq/work.py', 'Edited hq/work.py (+12 −3)', 'Ran: godot --headless ... (exit 0, 4 s)', the model's own words in a quieter type — with a running header of elapsed time, turns used of allowed, and cost so far. Finished runs stay listed for the day and the transcript is reachable from the work card as a fold 'How it was done'. Same view for the checker's session. Every sentence a human sees per docs/WRITING.md; the page's heading is Daniel's to name — offer 'Watch the workers' and keep 'Micromanager' if he prefers it. Note: hq/drain.py is held modified by another session; if the patch is parked, say so on this card.",
+ "first_action": "Read run_cli in hq/drain.py and the existing polling pattern in hq/static/work.js; switch run_cli to streaming with a tee and prove the drain's result parsing is unchanged by running one tier-1 item by hand before touching the page.",
+ "state": "waiting_session",
+ "source": "chief-of-staff",
+ "source_message": "Daniel, 2026-09-20: 'a Micromanager page where I can watch any active workers' sessions in real time ... for debugging purposes ... Right now it's so mysterious that I don't know what might be going wrong and how to direct you to change our system for the better.'",
+ "thread": "claude",
+ "created": "2026-09-20T21:58",
+ "created_ts": 1789966720.803735,
+ "recommend": {
+  "question": "Should workers' sessions be watchable live, or is the finished result enough?",
+  "answer": "Watchable live, and kept afterwards on the card.",
+  "why": "The cost is zero extra tokens; the session already happens. What is missing is that nobody wrote it down as it went, which is why the drain crashed all day today and nothing showed it.",
+  "instead": "Keep the result-only view and read journalctl by hand when something looks wrong."
+ }
+}
