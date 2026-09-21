@@ -1,18 +1,123 @@
 {
- "id": "w4a183a63692",
- "title": "Work that follows from a result Daniel accepted reaches him only when it is a question with a recommended answer",
- "level": "story",
- "owner": "claude",
- "tier": 1,
- "tier_reason": "changes how follow-ups are filed; git reverts it",
- "ask": "Build the spawn rule (S-17, docs/QUEUE_TO_ZERO.md §5) in hq/work.py _file_follow_ups and _parse_follows: a follow-up with no tier is tier 1, never 2; a tier-2 follow-up is filed as a decision to prep (a card in a new `prepping` state owned by the follow-up's owner, whose result must carry `recommend` with question, answer, why, instead before it may enter needs_approval); a follow-up whose owner and normalised title match an open card merges into it (append the ask, record `merged_from`); a child carries `promised_by` = the parent card so a landed result that matches its promise never returns; snapshot()'s waiting_on_you counts only for_review and needs_approval cards that carry a recommendation. Tests for each rule.",
- "first_action": "Read §5 and work_policy.json `spawn`; write the merge key and the prepping state first, since the drain item depends on neither.",
- "state": "waiting_session",
- "source": "chief-of-staff",
- "source_message": "Daniel said yes to the arrival rule (S-16) and the spawn rule (S-17) on 2026-09-20; docs/QUEUE_TO_ZERO.md §12 is the build order.",
- "thread": "claude",
- "created": "2026-09-20T21:23",
- "created_ts": 1789964629.754633,
- "plan_item": "docs/QUEUE_TO_ZERO.md §12",
- "promised_by": "docs/QUEUE_TO_ZERO.md"
+  "id": "w4a183a63692",
+  "title": "Work that follows from a result Daniel accepted reaches him only when it is a question with a recommended answer",
+  "level": "story",
+  "owner": "claude",
+  "tier": 1,
+  "tier_reason": "changes how follow-ups are filed; git reverts it",
+  "ask": "Build the spawn rule (S-17, docs/QUEUE_TO_ZERO.md §5) in hq/work.py _file_follow_ups and _parse_follows: a follow-up with no tier is tier 1, never 2; a tier-2 follow-up is filed as a decision to prep (a card in a new `prepping` state owned by the follow-up's owner, whose result must carry `recommend` with question, answer, why, instead before it may enter needs_approval); a follow-up whose owner and normalised title match an open card merges into it (append the ask, record `merged_from`); a child carries `promised_by` = the parent card so a landed result that matches its promise never returns; snapshot()'s waiting_on_you counts only for_review and needs_approval cards that carry a recommendation. Tests for each rule.",
+  "first_action": "Read §5 and work_policy.json `spawn`; write the merge key and the prepping state first, since the drain item depends on neither.",
+  "state": "for_review",
+  "source": "chief-of-staff",
+  "source_message": "Daniel said yes to the arrival rule (S-16) and the spawn rule (S-17) on 2026-09-20; docs/QUEUE_TO_ZERO.md §12 is the build order.",
+  "thread": "claude",
+  "created": "2026-09-20T21:23",
+  "created_ts": 1789964629.754633,
+  "plan_item": "docs/QUEUE_TO_ZERO.md §12",
+  "promised_by": "docs/QUEUE_TO_ZERO.md",
+  "attempts": 1,
+  "done_by": {
+    "seat": "claude",
+    "model": "fable",
+    "lane": "drain"
+  },
+  "diff": {
+    "stat": "docs/HOW_WORK_ORIGINATES.md |  30 +++++++\n docs/QUEUE_TO_ZERO.md       |   2 +-\n docs/writing_verdicts.json  |  54 +++++++++++\n hq/data/work_policy.json    |   3 +-\n hq/server.py                |   7 +-\n hq/static/work.js           |  21 ++++-\n hq/tests/test_work.py       | 102 +++++++++++++++++++++\n hq/work.py                  | 212 ++++++++++++++++++++++++++++++++++++++++----\n 8 files changed, 405 insertions(+), 26 deletions(-)",
+    "files": [
+      "docs/HOW_WORK_ORIGINATES.md",
+      "docs/QUEUE_TO_ZERO.md",
+      "docs/writing_verdicts.json",
+      "hq/data/work_policy.json",
+      "hq/server.py",
+      "hq/static/work.js",
+      "hq/tests/test_work.py",
+      "hq/work.py"
+    ],
+    "applied": false,
+    "why_not": "another session holds docs/HOW_WORK_ORIGINATES.md, docs/writing_verdicts.json, hq/static/work.js changed and uncommitted in the working tree; this is retried once that change is committed or put away"
+  },
+  "check": {
+    "verdict": "concerns",
+    "summary": "The spawn rule landed as specified — tier-1 default, prepping state with the four-field recommendation gate, twin merge, promised_by, and a count that only sees recommendations — but one restart path can strand a prep, and this sandbox would not let me run the tests or the writing check, so the green claims are the worker's, not mine.",
+    "findings": [
+      {
+        "what": "A prep retry cut off by a restart is never picked up again: _sanitize skips prepping cards that carry prep_short, but every retry after the first shortfall carries one, so a card at attempt 2 or 3 with `started` set stays invisible to the worker forever.",
+        "where": "hq/work.py:163-166",
+        "fix": "Drop the `and not it.get(\"prep_short\")` clause; `attempts < 3` already keeps a parked card parked. Add a test that restarts mid-retry and sees the card run again."
+      },
+      {
+        "what": "After three short preps the card parks in prepping with no way back but Drop: a comment from Daniel is answered on the card but does not restart the prep, and nothing surfaces the parked card to its owner.",
+        "where": "hq/work.py:625-635 (_finish_prep)",
+        "fix": "On a comment to a parked prepping card, clear `started` and reset `attempts` so the seat tries again with his words in the brief; or at least show the parked card in the owner's own queue rather than only under his 'Questions being prepared'."
+      },
+      {
+        "what": "I could not verify 'both HQ test files are green' or 'the writing check passes on every new sentence': python3 is blocked in this checker's sandbox. The verdict cache shows the first drafts of the new Work-page sentences were flagged and rewritten, which is consistent with the claim but not proof of it.",
+        "where": "hq/tests/test_work.py, docs/writing_verdicts.json",
+        "fix": "Whoever lands this runs `python3 hq/tests/test_work.py`, `python3 hq/tests/test_decisions.py` and `python3 tools/check_writing.py --verify` before committing."
+      }
+    ],
+    "escalates": null,
+    "escalation_reason": null
+  },
+  "usage": {
+    "calls_detail": [
+      {
+        "input": 930,
+        "output": 37403,
+        "cache_read": 3285888,
+        "cache_write": 126038,
+        "turns": 50,
+        "seconds": 632.9,
+        "list_usd": 5.2249,
+        "tokens": 3450259,
+        "fresh": 164371,
+        "phase": "drain-work",
+        "model": "fable",
+        "seat": "claude"
+      },
+      {
+        "input": 258,
+        "output": 10344,
+        "cache_read": 537081,
+        "cache_write": 57448,
+        "turns": 25,
+        "seconds": 167.5,
+        "list_usd": 1.9231,
+        "tokens": 605131,
+        "fresh": 68050,
+        "phase": "drain-check",
+        "model": "fable",
+        "seat": "claude"
+      }
+    ],
+    "input": 1188,
+    "output": 47747,
+    "cache_read": 3822969,
+    "cache_write": 183486,
+    "tokens": 4055390,
+    "fresh": 232421,
+    "turns": 75,
+    "seconds": 800.4,
+    "list_usd": 7.148,
+    "calls": 2
+  },
+  "spent": {
+    "attempts": 1,
+    "tokens": 4055390,
+    "fresh": 232421,
+    "list_usd": 7.148
+  },
+  "result": "The spawn rule is built, tested and recorded. Here is what he reads.\n\n**What changed.** Follow-ups filed off a card now obey the rule he settled on 2026-09-20. A follow-up that names no tier is tier 1, never 2. A tier-2 follow-up no longer lands in his queue as an ask: it files in a new `prepping` state owned by the seat named on it, and the read-only worker has that seat lay out the options and recommend one. The card enters his queue only when the recommendation carries the question, the answer, the reason and the alternative. A prep that comes back short stays the studio's, says what is missing, and is retried up to three times. A follow-up whose owner and subject match an open card merges into it, appending the ask and recording where it came from, instead of filing a twin. Every follow-up filed on his acceptance records which card promised it, so the landing rule can tell a result that matches its promise from one that differs. A follow-up an owner files from a conversation carries no promise, because he never accepted it. His yes on a prepped question is recorded as the answer, the same as on a finished result.\n\n**The count.** What waits on him now counts only cards that carry a recommendation, in the Work page's own count and in the dashboard's two readings of the same number. Against the real queue that takes it from 49 to 20. The other 29 finished cards still show on the page with their buttons, and the section says how many it left out of the count, until the landing rule lands them on its own. That is the first item in the build plan, already filed to Elena, and this change is written so the two compose.\n\n**Where it is recorded.** The prose policy, the plan's build table, and the policy file all carry the rule; the Work page shows prepping cards in their own section rather than hiding them. Tests cover each rule and both HQ test files are green. The writing check passes on every new sentence.\n\n**Two things he should know.** Four open cards under Ingrid, all titled \"Read Daniel's hand edit to obstacle_set\", are twins filed before this rule existed. The merge only applies going forward, and they are finished readings that the landing rule will clear, so I left them. And tier-2 work filed straight from a chat exchange, rather than as a follow-up, still arrives unprepped. That is a gap in the ruling's coverage rather than in this item, and I have filed it below.",
+  "follow_ups": [
+    {
+      "title": "Work filed straight from a chat exchange that is hard to walk back arrives as a question being prepared, not as an ask",
+      "owner": "claude",
+      "level": "task",
+      "tier": 1,
+      "first_action": "In hq/work.py _file_item, route tier-2 items filed by _process_capture into the prepping state with owes_recommendation set, matching _file_follow_ups; add a test in hq/tests/test_work.py that a captured tier-2 item lands as prepping and reaches needs_approval only with a full recommendation.",
+      "why": "The spawn rule now stops tier-2 follow-ups reaching him unprepped, but the same kind of work filed from chat still does, so his queue can still receive a card with no recommendation."
+    }
+  ],
+  "recommend": {},
+  "finished": "2026-09-20T22:14"
 }

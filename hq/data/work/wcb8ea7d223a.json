@@ -7,7 +7,7 @@
   "tier_reason": "filed by hand",
   "ask": "The stored suite results predate the change that made runs stamp the commit they proved, so their age is unknowable rather than large. Re-run the four suites from the Engineering page so each stamps a commit, then confirm the freshness column reads a number instead of 'unknown'.",
   "first_action": "Press Run on each of the four suites on #/pillar/engineering and watch the 'how far behind main' column.",
-  "state": "for_review",
+  "state": "accepted",
   "thread": "grace",
   "source": "chat",
   "source_message": "The stored suite results predate the change that made runs stamp the commit they proved, so their age is unknowable rather than large. Re-run the four suites from the Engineering page so each stamps a commit, then confirm the freshness column reads a number instead of 'unknown'.",
@@ -57,5 +57,6 @@
       },
       "why": "Reworded in plain language: the old title used words that mean something precise inside this studio and nothing outside it."
     }
-  ]
+  ],
+  "closed": "2026-09-11T12:52"
 }

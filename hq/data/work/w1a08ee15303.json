@@ -21,6 +21,11 @@
       "text": "Chief of staff, after the check: landed with four fixes made in the same commit. Frame 0 now holds through the fade-up so the fade-down lands on a loop boundary; the shown flag surviving a save is proved by a unit test (test_story_loop_shown_survives_a_save) and the scenario's third claim is reworded to what it proves; P-15's sentence about headless now says what is true (the loop plays wherever the hold plays, and suites that must not wait tell both nights up front, the robot session included); and the capture tool takes a second frame with the Day-N card on the sky, so the legibility check is a picture rather than a claim. The benchmark reading is being checked against the commit before today's work.",
       "role": "claude",
       "at": "2026-09-11T00:45"
+    },
+    {
+      "text": "For whoever touches the overnight's frames next: the HUD's watering close-up (ui/hud.gd, built for the watering shot) already reads an exported loop's manifest and cuts its sheet into frames — `_load_anim_manifest(slug)` and `_load_anim_frames(slug, manifest)`. The crow-gorge, seeder-bot and sunflower-bloom loops are the same kind of file (assets/anim/<slug>/ with a sheet and a manifest), so those two functions are what to call rather than re-deriving the reading. This pointer is late: systems/day_cycle.gd already carries its own copy of the manifest reader and a frames slicer (`_frames_for_slug`) that adds the edge dither and a per-loop cache on top. Folding the two into one shared reader is filed separately against Jade.",
+      "role": "claude",
+      "at": "2026-09-20T03:56"
     }
   ],
   "follow_ups": [

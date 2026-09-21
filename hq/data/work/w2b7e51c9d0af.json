@@ -25,5 +25,37 @@
     "gateway": "PASSED",
     "door_transition": "4 of 4 doors pass (tools/check_door_transition.sh)"
   },
-  "result": "Measured first, then fixed, then measured again. The harness (tools/measure_door_transition.tscn + .py) walks her through the coop's door and the farmhouse's, both ways, and records every frame: the camera, where a fence corner lands on the screen, and the picture itself. On the build you reported, the fence jumped 118 to 234 px on the swap frame and the swap frame differed from the one before by 37 to 45 levels across the whole picture; the farmhouse also slid the view for six frames after the swap. After the fix all four trips pass: the worst step in the fence's path is 1.1x its neighbour, no frame stands out from the frames around it, and the swap frame differs from the one before by 0.10 to 0.34 outside the threshold (the hut becoming the room, which is the one place the picture is meant to change). What changed: the camera now starts the door from the exact picture you were looking at (offset + eye x pitch at zoom / pitch) and glides position and zoom together to where the room's limits would rest it, landing without a hop; and the yard through the walls is the live farm, rendered by a second view sharing the same canvas, so crops, the hen, a crow and the neighbour are all there and nothing pops. Both unknowns on the card came back positive: the shared-world SubViewport works in 4.7 and the HUD does not leak into it; on the tablet (Mali-G57) the extra pass costs 2.4 ms of GPU per frame indoors and the frame rate did not drop (35.3 outdoors, 38.4 indoors). Your two asks from the evening: the glide is 1.8 s now (DOOR_ZOOM_SECONDS, marked for you to dial back), and the second of two side-by-side coops is drawn whole through the first one's wall on this build (the old backdrop painted grass over its right half; the live one cannot) - docs/design/mockups/door_transition/ has before/after strips and GIFs of the coop entry. Still parked, and still yours: ENTER_DELAY_SECONDS (0.10 -> 0.20?). One thing the profile tool made visible that is not this card's: the tablet runs the game at about 35 frames a second in the yard already. Design record: docs/design/15-interiors.md section 8a. HQ can run the door check as a job (Door transition)."
+  "result": "Measured first, then fixed, then measured again. The harness (tools/measure_door_transition.tscn + .py) walks her through the coop's door and the farmhouse's, both ways, and records every frame: the camera, where a fence corner lands on the screen, and the picture itself. On the build you reported, the fence jumped 118 to 234 px on the swap frame and the swap frame differed from the one before by 37 to 45 levels across the whole picture; the farmhouse also slid the view for six frames after the swap. After the fix all four trips pass: the worst step in the fence's path is 1.1x its neighbour, no frame stands out from the frames around it, and the swap frame differs from the one before by 0.10 to 0.34 outside the threshold (the hut becoming the room, which is the one place the picture is meant to change). What changed: the camera now starts the door from the exact picture you were looking at (offset + eye x pitch at zoom / pitch) and glides position and zoom together to where the room's limits would rest it, landing without a hop; and the yard through the walls is the live farm, rendered by a second view sharing the same canvas, so crops, the hen, a crow and the neighbour are all there and nothing pops. Both unknowns on the card came back positive: the shared-world SubViewport works in 4.7 and the HUD does not leak into it; on the tablet (Mali-G57) the extra pass costs 2.4 ms of GPU per frame indoors and the frame rate did not drop (35.3 outdoors, 38.4 indoors). Your two asks from the evening: the glide is 1.8 s now (DOOR_ZOOM_SECONDS, marked for you to dial back), and the second of two side-by-side coops is drawn whole through the first one's wall on this build (the old backdrop painted grass over its right half; the live one cannot) - docs/design/mockups/door_transition/ has before/after strips and GIFs of the coop entry. Still parked, and still yours: ENTER_DELAY_SECONDS (0.10 -> 0.20?). One thing the profile tool made visible that is not this card's: the tablet runs the game at about 35 frames a second in the yard already. Design record: docs/design/15-interiors.md section 8a. HQ can run the door check as a job (Door transition).",
+  "follow_ups": [
+    {
+      "title": "Set how long the door glide and the pause before it run",
+      "owner": "jade",
+      "level": "task",
+      "tier": 2,
+      "first_action": "Set DOOR_ZOOM_SECONDS to 0.9 in main.gd and ENTER_DELAY_SECONDS to 0.20 in ui/menus.gd, rerun tools/measure_door_transition.tscn plus the Python verdict on all four trips, and capture a fresh before/after strip into docs/design/mockups/door_transition/.",
+      "why": "The glide shipped at 1.8s as a placeholder and the beat before it is still parked at 0.10s — both are the CEO's numbers to settle and neither is settled by the fix itself."
+    },
+    {
+      "title": "Find out why the tablet draws the yard at 35 frames a second",
+      "owner": "jade",
+      "level": "story",
+      "tier": 0,
+      "first_action": "Run tools/profile_android.sh on the yard with the room backdrop inactive and break the frame down by draw calls and GPU ms to find what dominates outdoors, then write the finding into docs/design/15-interiors.md or a new note.",
+      "why": "The profiling built for this card showed the outdoor frame rate was already low before the second view existed, which is a separate problem nobody has looked at."
+    },
+    {
+      "title": "Record that the farm through the walls is one shared world view, not a second renderer",
+      "owner": "claude",
+      "level": "task",
+      "tier": 1,
+      "first_action": "Add a decision entry in docs/DECISION_LOG.md stating the room backdrop renders the live farm through a SubViewport sharing World2D, and that extending the hand-written pass into a parallel renderer is rejected; cite it from docs/design/15-interiors.md section 8a.",
+      "why": "The rejected alternative is the one a future session will reach for first, and nothing in the log currently closes that door."
+    }
+  ],
+  "recommend": {
+    "question": "How long should going through a door take, and how long is the pause before it starts?",
+    "answer": "Take the glide down to 0.9 seconds and lengthen the pause to 0.20, then judge it on the captured strip.",
+    "why": "She goes through doors dozens of times a day, and 1.8 seconds turns a routine step into a cutscene — but 0.6 was too short for the pause before it to read as a beat rather than a stutter.",
+    "instead": "Keep the full 1.8 seconds if the trip through the wall is meant to feel like a small event every time, in which case only the 0.20 pause changes."
+  }
 }

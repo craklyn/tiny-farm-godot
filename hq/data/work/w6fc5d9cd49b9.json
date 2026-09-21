@@ -8,7 +8,7 @@
   "decision": "Q-101",
   "ask": "WI-8 in docs/V0_2_2_PLAN.md: the two-day tune-and-replay chapter, the bench/panel parity scenario, and an attempt to put ui/ under the gateway checker; the design chapter and plan status updated.",
   "first_action": "Landed; see result.",
-  "state": "for_review",
+  "state": "accepted",
   "thread": "grace",
   "source": "chat",
   "source_message": "CEO, 2026-09-10: build the training workbench as v0.2.2 (Q-101), sim side first.",
@@ -20,5 +20,6 @@
   "parent": "training-workbench",
   "plan_item": "WI-8",
   "follow_ups": [],
-  "recommend": {}
+  "recommend": {},
+  "closed": "2026-09-11T09:37"
 }

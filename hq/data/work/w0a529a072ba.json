@@ -1,18 +1,84 @@
 {
- "id": "w0a529a072ba",
- "title": "Answer Daniel's comment on a piece of work within thirty seconds, or tell him it needs longer and show him the next item",
- "level": "story",
- "owner": "tomas",
- "tier": 1,
- "tier_reason": "changes the reply worker and the page; git reverts it",
- "ask": "Build §8 of docs/QUEUE_TO_ZERO.md. A comment starts the owner's reply at once (not on the next 15 s tick) with the card as context; the owner's prompt says: answer in place if the answer is at hand, otherwise say in one line that it needs work. The page shows a clock. At thirty seconds without an answer the card enters the new state `owed` (studio's move), leaves his list, shows in the 'coming back to you' strip with owner and elapsed time, and the reader advances. When the reply lands the card returns to the top of his list rendered as a conversation: his comment, the answer, then the open question. A reply that is only 'this needs work' also hands back. Tests on the state changes; the thirty seconds is a constant in work_policy.json.",
- "first_action": "Read _process_response and the worker loop in hq/work.py; add `owed` to STATES; make the reply start immediately on POST and let the page poll the clock.",
- "state": "waiting_session",
- "source": "chief-of-staff",
- "source_message": "Daniel said yes to the arrival rule (S-16) and the spawn rule (S-17) on 2026-09-20; docs/QUEUE_TO_ZERO.md §12 is the build order.",
- "thread": "claude",
- "created": "2026-09-20T21:23",
- "created_ts": 1789964629.754633,
- "plan_item": "docs/QUEUE_TO_ZERO.md §12",
- "promised_by": "docs/QUEUE_TO_ZERO.md"
+  "id": "w0a529a072ba",
+  "title": "Answer Daniel's comment on a piece of work within thirty seconds, or tell him it needs longer and show him the next item",
+  "level": "story",
+  "owner": "tomas",
+  "tier": 1,
+  "tier_reason": "changes the reply worker and the page; git reverts it",
+  "ask": "Build §8 of docs/QUEUE_TO_ZERO.md. A comment starts the owner's reply at once (not on the next 15 s tick) with the card as context; the owner's prompt says: answer in place if the answer is at hand, otherwise say in one line that it needs work. The page shows a clock. At thirty seconds without an answer the card enters the new state `owed` (studio's move), leaves his list, shows in the 'coming back to you' strip with owner and elapsed time, and the reader advances. When the reply lands the card returns to the top of his list rendered as a conversation: his comment, the answer, then the open question. A reply that is only 'this needs work' also hands back. Tests on the state changes; the thirty seconds is a constant in work_policy.json.",
+  "first_action": "Read _process_response and the worker loop in hq/work.py; add `owed` to STATES; make the reply start immediately on POST and let the page poll the clock.",
+  "state": "waiting_session",
+  "source": "chief-of-staff",
+  "source_message": "Daniel said yes to the arrival rule (S-16) and the spawn rule (S-17) on 2026-09-20; docs/QUEUE_TO_ZERO.md §12 is the build order.",
+  "thread": "claude",
+  "created": "2026-09-20T21:23",
+  "created_ts": 1789964629.754633,
+  "plan_item": "docs/QUEUE_TO_ZERO.md §12",
+  "promised_by": "docs/QUEUE_TO_ZERO.md",
+  "attempts": 1,
+  "done_by": {
+    "seat": "tomas",
+    "model": "opus",
+    "lane": "drain"
+  },
+  "diff": {
+    "stat": "hq/data/work_policy.json |   4 +-\n hq/static/work.js        | 116 ++++++++++++++++++--\n hq/tests/test_work.py    | 132 ++++++++++++++++++++++-\n hq/work.py               | 274 +++++++++++++++++++++++++++++++++++++++++++----\n 4 files changed, 491 insertions(+), 35 deletions(-)",
+    "files": [
+      "hq/data/work_policy.json",
+      "hq/static/work.js",
+      "hq/tests/test_work.py",
+      "hq/work.py"
+    ],
+    "applied": false,
+    "why_not": "held for another attempt — it used all 60 of its turns mid-edit"
+  },
+  "usage": {
+    "calls_detail": [
+      {
+        "input": 120,
+        "output": 48081,
+        "cache_read": 6724386,
+        "cache_write": 134138,
+        "turns": 61,
+        "seconds": 600.0,
+        "list_usd": 5.9094,
+        "tokens": 6906725,
+        "fresh": 182339,
+        "phase": "drain-work",
+        "model": "opus",
+        "seat": "tomas"
+      }
+    ],
+    "input": 120,
+    "output": 48081,
+    "cache_read": 6724386,
+    "cache_write": 134138,
+    "tokens": 6906725,
+    "fresh": 182339,
+    "turns": 61,
+    "seconds": 600.0,
+    "list_usd": 5.9094,
+    "calls": 1
+  },
+  "spent": {
+    "attempts": 1,
+    "tokens": 6906725,
+    "fresh": 182339,
+    "list_usd": 5.9094
+  },
+  "resume": {
+    "why": "it used all 60 of its turns mid-edit",
+    "turns": 120,
+    "attempt": 1,
+    "at": "2026-09-20T22:14"
+  },
+  "result": "This attempt did not finish — it used all 60 of its turns mid-edit. Its edits are kept, and the next run of the build queue tries again from them with 120 turns. Nothing has landed yet.",
+  "started": "",
+  "waiting_for": {
+    "files": [
+      "hq/static/work.js"
+    ],
+    "reason": "another session holds hq/static/work.js changed and uncommitted in the working tree; this is retried once that change is committed or put away",
+    "at": "2026-09-21T10:32"
+  }
 }

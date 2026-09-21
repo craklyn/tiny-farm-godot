@@ -28,5 +28,13 @@
       },
       "why": "Daniel ruled the sourcing order: free sounds first and a listening card; foley only as the fallback, batched."
     }
-  ]
+  ],
+  "waiting_for": {
+    "files": [
+      "CREDITS.md",
+      "docs/DESIGNER_QUEUE.md"
+    ],
+    "reason": "another session holds CREDITS.md, docs/DESIGNER_QUEUE.md changed and uncommitted in the working tree; this is retried once that change is committed or put away",
+    "at": "2026-09-21T10:32"
+  }
 }

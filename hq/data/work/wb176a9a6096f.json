@@ -8,7 +8,7 @@
   "decision": "Q-101",
   "ask": "WI-7 in docs/V0_2_2_PLAN.md: a 16x32 workbench sprite via the Retro Diffusion pipeline, one batch, raws archived, provenance and spend recorded, then swap the interim stall region for it.",
   "first_action": "Landed; see result.",
-  "state": "for_review",
+  "state": "accepted",
   "thread": "yuki",
   "source": "chat",
   "source_message": "CEO, 2026-09-10: build the training workbench as v0.2.2 (Q-101), sim side first.",
@@ -20,5 +20,6 @@
   "parent": "training-workbench",
   "plan_item": "WI-7",
   "follow_ups": [],
-  "recommend": {}
+  "recommend": {},
+  "closed": "2026-09-11T09:37"
 }

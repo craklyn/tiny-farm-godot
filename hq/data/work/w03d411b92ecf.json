@@ -8,7 +8,7 @@
   "decision": "Q-98",
   "ask": "WI-9 in docs/V0_2_2_PLAN.md: on collect, a learning robot's whole extra minus its errand keys is pushed onto GameState.boxed[key]; on place, the newest snapshot is popped and overlaid onto the fresh deploy; boxed is saved, restored and part of the canonical capture. The CEO's words: pick up is just repositioning, it shouldn't factory reset the robot.",
   "first_action": "Landed; see result.",
-  "state": "for_review",
+  "state": "accepted",
   "thread": "tomas",
   "source": "chat",
   "source_message": "CEO, 2026-09-10, ruling Q-98 in chat with the chief of staff.",
@@ -20,5 +20,6 @@
   "parent": "training-workbench",
   "plan_item": "WI-9",
   "follow_ups": [],
-  "recommend": {}
+  "recommend": {},
+  "closed": "2026-09-11T09:36"
 }

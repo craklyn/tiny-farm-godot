@@ -1,27 +1,136 @@
 {
- "id": "w72dee30012f",
- "title": "Take four pictures of the farmyard as seen from inside the house, one per way of drawing it, so Daniel can pick one",
- "level": "task",
- "owner": "sam",
- "tier": 1,
- "tier_reason": "captures and a card edit; nothing players see yet",
- "ask": "This card cannot be done by the unattended build queue: the captures need a display and the timer runs without one (hq/data/staff/claude/memory.md, 2026-09-04). Do not attempt the captures headless. What a worker without a display does instead: write the capture tool only — tools/capture_through_walls.tscn/.gd modelled on tools/capture_window_view.gd (read that file first; it is short) — that takes a treatment name from the command line (`--treatment=none|haze|desaturate|hardcut`), loads the same farm and hour each run, walks the player into the house, applies the treatment as a shader or dither on the yard layer, and saves docs/design/mockups/through_walls/<treatment>.png to scratch. Do not run it. Then set the card's next step to: `godot --path . res://tools/capture_through_walls.tscn --treatment=<each>` by hand in a session with a display, and attach the four files to hq/data/decisions/Q-108.json.",
- "first_action": "Read tools/capture_window_view.gd and CLAUDE.md's capture-tool entries, then write the tool without running it.",
- "state": "waiting_session",
- "source": "chief-of-staff",
- "source_message": "Daniel said yes to the arrival rule (S-16) and the spawn rule (S-17) on 2026-09-20; docs/QUEUE_TO_ZERO.md §12 is the build order.",
- "thread": "claude",
- "created": "2026-09-20T21:23",
- "created_ts": 1789964629.754633,
- "plan_item": "docs/QUEUE_TO_ZERO.md §12",
- "promised_by": "docs/QUEUE_TO_ZERO.md",
- "cost_cap_usd": 35.0,
- "amendments": [
-  {
-   "at": "2026-09-21T10:28",
-   "by": "chief-of-staff",
-   "what": "brief rewritten after the card was parked for cost",
-   "why": "Three attempts tried to shoot captures under a timer that has no display."
-  }
- ]
+  "id": "w72dee30012f",
+  "title": "Take four pictures of the farmyard as seen from inside the house, one per way of drawing it, so Daniel can pick one",
+  "level": "task",
+  "owner": "sam",
+  "tier": 1,
+  "tier_reason": "captures and a card edit; nothing players see yet",
+  "ask": "This card cannot be done by the unattended build queue: the captures need a display and the timer runs without one (hq/data/staff/claude/memory.md, 2026-09-04). Do not attempt the captures headless. What a worker without a display does instead: write the capture tool only — tools/capture_through_walls.tscn/.gd modelled on tools/capture_window_view.gd (read that file first; it is short) — that takes a treatment name from the command line (`--treatment=none|haze|desaturate|hardcut`), loads the same farm and hour each run, walks the player into the house, applies the treatment as a shader or dither on the yard layer, and saves docs/design/mockups/through_walls/<treatment>.png to scratch. Do not run it. Then set the card's next step to: `godot --path . res://tools/capture_through_walls.tscn --treatment=<each>` by hand in a session with a display, and attach the four files to hq/data/decisions/Q-108.json.",
+  "first_action": "Read tools/capture_window_view.gd and CLAUDE.md's capture-tool entries, then write the tool without running it.",
+  "state": "for_review",
+  "source": "chief-of-staff",
+  "source_message": "Daniel said yes to the arrival rule (S-16) and the spawn rule (S-17) on 2026-09-20; docs/QUEUE_TO_ZERO.md §12 is the build order.",
+  "thread": "claude",
+  "created": "2026-09-20T21:23",
+  "created_ts": 1789964629.754633,
+  "plan_item": "docs/QUEUE_TO_ZERO.md §12",
+  "promised_by": "docs/QUEUE_TO_ZERO.md",
+  "cost_cap_usd": 35.0,
+  "amendments": [
+    {
+      "at": "2026-09-21T10:28",
+      "by": "chief-of-staff",
+      "what": "brief rewritten after the card was parked for cost",
+      "why": "Three attempts tried to shoot captures under a timer that has no display."
+    }
+  ],
+  "attempts": 1,
+  "done_by": {
+    "seat": "sam",
+    "model": "sonnet",
+    "lane": "drain"
+  },
+  "diff": {
+    "stat": "tools/capture_through_walls.gd   | 179 +++++++++++++++++++++++++++++++++++++++\n tools/capture_through_walls.tscn |   6 ++\n 2 files changed, 185 insertions(+)",
+    "files": [
+      "tools/capture_through_walls.gd",
+      "tools/capture_through_walls.tscn"
+    ],
+    "applied": true,
+    "why_not": ""
+  },
+  "check": {
+    "verdict": "concerns",
+    "summary": "The capture tool is written as asked and touches nothing in the sim, but the hard-cut treatment frames a window centred on the whole 32x20 page while the house sits in that page's top-left corner, so that capture would show solid wall everywhere the camera can see rather than a framed view of the yard.",
+    "findings": [
+      {
+        "what": "Hard-cut window is centred on the full backdrop page, not on what the camera sees: the door is at tile (2,2), so the visible yard lies entirely inside the 22% top and left bands and the 'window' opens far off-screen to the lower right",
+        "where": "tools/capture_through_walls.gd:158-175 (_draw_hardcut, HARDCUT_WINDOW_MARGIN over farm._backdrop_view.size)",
+        "fix": "Build the window from the room's own building rect (farm._backdrop_own in tile units, times TILE_SIZE, in the same backdrop-local space) plus a margin of a few art pixels, or from the viewport's visible rect mapped through the camera; then the wall frame bites into the yard around the room instead of burying it"
+      },
+      {
+        "what": "The reply says hardcut 'tiles the wall texture into a frame around a centred window', which the code does only relative to the page; because it was never run, the description is of the intent, not of the picture it would produce",
+        "where": "reply, hardcut bullet",
+        "fix": "After the fix above, the session with a display should look at hardcut.png specifically before attaching it; the other three treatments cover the whole page and are unaffected"
+      },
+      {
+        "what": "No Commands entry in CLAUDE.md for the new tool, which every other capture tool has and which is where the next session with a display will look for it",
+        "where": "CLAUDE.md, Commands block",
+        "fix": "Add a two-line entry beside capture_window_view: what it shoots, that it needs a display, and the --treatment= form"
+      }
+    ],
+    "escalates": null,
+    "escalation_reason": null
+  },
+  "suites": {
+    "unit": {
+      "ok": true,
+      "tail": "  ✓ and the whole of it cost 230 gold, once (230)\n  ✓ with the machine back in its bay at the end of it, ready for a morning nobody has to run\n\n============================================================\nResults: 2853 PASSED, 0 FAILED\n============================================================"
+    },
+    "integration": {
+      "ok": true,
+      "tail": "  ✓ the screen remembers it, so a tap anywhere resumes it next launch\n  ✓ and choosing another card moves the whole session to that farm instead\n\n============================================================\nResults: 968 PASSED, 0 FAILED\n============================================================"
+    }
+  },
+  "usage": {
+    "calls_detail": [
+      {
+        "input": 86,
+        "output": 47044,
+        "cache_read": 4664089,
+        "cache_write": 155783,
+        "turns": 43,
+        "seconds": 509.8,
+        "list_usd": 2.0266,
+        "tokens": 4867002,
+        "fresh": 202913,
+        "phase": "drain-work",
+        "model": "sonnet",
+        "seat": "sam"
+      },
+      {
+        "input": 194,
+        "output": 6754,
+        "cache_read": 424608,
+        "cache_write": 79594,
+        "turns": 17,
+        "seconds": 96.8,
+        "list_usd": 2.0377,
+        "tokens": 511150,
+        "fresh": 86542,
+        "phase": "drain-check",
+        "model": "fable",
+        "seat": "claude"
+      }
+    ],
+    "input": 280,
+    "output": 53798,
+    "cache_read": 5088697,
+    "cache_write": 235377,
+    "tokens": 5378152,
+    "fresh": 289455,
+    "turns": 60,
+    "seconds": 606.6,
+    "list_usd": 4.0643,
+    "calls": 2
+  },
+  "spent": {
+    "attempts": 1,
+    "tokens": 5378152,
+    "fresh": 289455,
+    "list_usd": 4.0643
+  },
+  "result": "The tool is ready. Here's the deliverable:\n\nI wrote `tools/capture_through_walls.gd` and `tools/capture_through_walls.tscn`, modelled on `capture_window_view.gd` for the header/scratch-state conventions and on `capture_interior_plate.gd` for the actual staging (same house, same front door, same `use_door` entry — that's the existing Q-108 rig).\n\nWhat it does: takes `--treatment=none|haze|desaturate|hardcut` on the command line, loads the game fresh, stands the farmer at her own front door, walks her in, sets a fixed energy level so every run is the same hour, then paints the chosen treatment onto the yard visible through the walls and saves one file to `docs/design/mockups/through_walls/<treatment>.png`. None of the four treatments needed a shader:\n\n- **haze** tiles a small dither pattern over the yard, reusing `DayCycle.BAYER4` — the same ordered-dither matrix the game already uses to stipple loop edges into the sky, so it's the studio's existing vocabulary rather than a new technique.\n- **desaturate** is two flat washes (toward grey, then darker).\n- **hardcut** tiles the game's own interior wall texture into a frame around a centred window, so it's real in-game material standing in for the \"walls draw further in\" option, not new art.\n- **none** is the baseline, untouched.\n\nIt never touches `world/farm.gd` — the treatment is drawn on the same canvas layer the yard-through-the-walls texture already renders on, one node after it, so it can only ever paint over the yard, never the room itself. Nothing here is meant to ship; if Daniel picks one, it gets built properly in `farm.gd` afterward.\n\nOne thing worth flagging: `docs/design/mockups/through_walls/` doesn't exist yet, so I had the tool create it (`DirAccess.make_dir_recursive_absolute`) rather than assume it's there.\n\nI didn't run it — no display here, as the card says. It's untested; the next session with a display should sanity-check the first run's picture before treating all four as final.\n\nEverything is in the working tree, nothing committed, nothing pushed. Not safe to consider this item closed until the captures actually exist and get attached to Q-108 — that's the one remaining step, and it needs a display this session doesn't have.",
+  "follow_ups": [
+    {
+      "title": "Run the four through-the-walls captures and attach them to Q-108",
+      "owner": "claude",
+      "level": "task",
+      "tier": 1,
+      "first_action": "In a session with a display, run `godot --path . res://tools/capture_through_walls.tscn --treatment=<none|haze|desaturate|hardcut>` four times, then attach the four PNGs from docs/design/mockups/through_walls/ to hq/data/decisions/Q-108.json and update its next step.",
+      "why": "The capture tool is written but a headless worker can't run it; someone with a display has to produce the four pictures before Daniel can pick a treatment."
+    }
+  ],
+  "recommend": {},
+  "finished": "2026-09-21T10:45"
 }

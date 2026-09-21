@@ -93,7 +93,7 @@ function followUps(it) {
 function followUpBox(fus, org) {
   const one = fus.length === 1;
   return `<div class="w-spawn">
-    <div class="w-spawn-h">Accepting files ${one ? "exactly this" : `these ${fus.length}`} — nothing else</div>
+    <div class="w-spawn-h">Your yes starts ${one ? "exactly this piece of work" : `these ${fus.length} pieces of work`} — nothing else</div>
     ${fus.map(fu => {
     const who = ownerOf(org, fu.owner);
     const tier = Number(fu.tier ?? 2);
@@ -184,14 +184,14 @@ function consequence(it, org) {
     const rec = recommendOf(it);
     const takes = rec ? `Takes the recommendation — <b>${esc(rec.answer)}</b> — and files` : "Files";
     if (!("follow_ups" in it) && !("follow_up" in it)) {
-      rows.push(["Good — accept", `Files this as approved and closes it. ${esc(first)} is still working out what should follow — this card will say, in a moment, before you decide.`]);
+      rows.push(["Good — accept", `Records your yes and closes the card. ${esc(first)} is still working out what should follow — this card will say, in a moment, before you decide.`]);
     } else if (fus.length) {
       rows.push(["Good — accept", `${takes} the ${fus.length === 1 ? "one piece of work" : `${fus.length} pieces of work`} below. Anything you write above goes into their brief.`]);
       extra = followUpBox(fus, org);
     } else if (rec) {
       rows.push(["Good — accept", `Takes ${esc(first)}'s recommendation — <b>${esc(rec.answer)}</b> — and closes the card. The answer is recorded here; no further work is filed.`]);
     } else {
-      rows.push(["Good — accept", `Files this as approved and closes it. Nothing follows from it — no task, story, project or goal is created.`]);
+      rows.push(["Good — accept", `Records your yes and closes the card. Nothing follows from it — no task, story, project or goal is created.`]);
     }
     rows.push(["Drop it", rec
       ? `Filed as dropped. The question above stays open and nothing is filed.`

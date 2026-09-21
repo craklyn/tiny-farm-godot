@@ -71,5 +71,46 @@
     "list_usd": 6.9294
   },
   "follow_ups": [],
-  "recommend": {}
+  "recommend": {},
+  "conversation": [
+    {
+      "role": "daniel",
+      "text": "Can you determine if there is incomplete work, and if so complete it?  How do we (automatically, as an organization) check progress on a task that stopped due to max turns used, and if progress is being made, we then trigger a resume with more turns to apply to the problem?",
+      "at": "2026-09-19T23:52"
+    },
+    {
+      "role": "rin",
+      "text": "Checked the repo: the sprite editor is done. `hq/static/sprite.js` now builds every cell of the sheet from the image's own dimensions (`hq/static/sprite.js:107-121`), marks which cells animate, which belong to another entity, and which nothing lists — and several later commits built on top of that (animations, assemblies, the save ledger). The Chicken-four-of-eight problem is gone. There's a duplicate card for the same ask already sitting in the dropped state; this one can be accepted as is.\n\nOn your real question — today the machinery is half there. When a worker runs out of turns, the drain already knows why (`hq/drain.py:316`), keeps the partial patch, and can start a second attempt from it rather than from main (`resume_held_patch`, `drain.py:375`). What's missing is the trigger: an out-of-turns stop sets the card to `for_review` and lands in your queue, and only you sending it back starts the resume. And the retry gets the same flat 60 turns that just proved too few.\n\nThat's the wrong shape — running short of turns isn't a decision of yours, it's the machine mis-sizing a budget. The progress test we need already exists in the record: an attempt that stopped mid-edit with changed files made progress; one that stopped having changed nothing didn't.\n\nMy recommendation below: auto-resume when files changed, with a bigger budget, capped at two resumes and charged to the same spend window — and only surface it to you when it stalls with nothing to show. That's Claude's machinery to change; the card treatment while it re-runs is mine.",
+      "at": "2026-09-19T23:55",
+      "move": "follow-up",
+      "filed": [
+        {
+          "id": "w3d224539793",
+          "title": "Re-run an attempt that ran out of turns instead of sending it to Daniel",
+          "owner": "claude"
+        },
+        {
+          "id": "w0c9b0df8939",
+          "title": "Show a card that is being re-run after running short of turns as still working",
+          "owner": "rin"
+        }
+      ]
+    }
+  ],
+  "awaiting_reply": false,
+  "asked_ts": 1789887131.8133337,
+  "spawned": [
+    {
+      "id": "w3d224539793",
+      "title": "Re-run an attempt that ran out of turns instead of sending it to Daniel",
+      "state": "waiting_session",
+      "owner": "claude"
+    },
+    {
+      "id": "w0c9b0df8939",
+      "title": "Show a card that is being re-run after running short of turns as still working",
+      "state": "waiting_session",
+      "owner": "rin"
+    }
+  ]
 }

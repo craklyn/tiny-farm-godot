@@ -1992,11 +1992,17 @@
   "9a7cea62a02ef7635391": {
    "verdict": "ok"
   },
+  "9ae41b0ba5fa33ef926f": {
+   "verdict": "ok"
+  },
   "9b2af830be7755ab5492": {
    "instead": "won't make the tablet stutter",
    "quote": "fits in a frame",
    "verdict": "decode",
    "why": "'Fits in a frame' is house vocabulary for rendering performance; the reader cannot tell what actually fits."
+  },
+  "9b769a682ca67e657416": {
+   "verdict": "ok"
   },
   "9b8a7ac35a35ca49150e": {
    "verdict": "ok"
@@ -2064,6 +2070,9 @@
    "verdict": "ok"
   },
   "a0356a5ac4a1b9884272": {
+   "verdict": "ok"
+  },
+  "a07040df878ba46ea840": {
    "verdict": "ok"
   },
   "a07960413be1a04f5421": {
@@ -2972,6 +2981,9 @@
    "verdict": "ok"
   },
   "e56eb1101b3cdfa536f2": {
+   "verdict": "ok"
+  },
+  "e5740122ee7bc8378e85": {
    "verdict": "ok"
   },
   "e59c3d1246c88a276961": {

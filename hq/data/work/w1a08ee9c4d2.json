@@ -7,7 +7,7 @@
   "tier_reason": "It is the first thing every player sees on every launch, and it replaces the engine logo and the hard cut into the menu.",
   "ask": "Build Q-103's ruling, 'the flower is the splash', as written in design/09 'How a loop is shown — first version', The boot. Today: the engine shows its default splash, cuts hard to ui/title_screen.tscn, which draws the title and menu instantly over a flat backdrop or the attract farm, and the music starts at full level on the first frame; a tap cuts hard to main.tscn. Build: (1) project.godot boot splash = assets/anim/sunflower_bloom/splash.png (from the export item), background the Lab's sky (33,31,32), image filter OFF so pixels stay square, fullsize; (2) the title scene opens on that same frame at the same place and scale (×5, nearest-neighbour), holds ~0.4 s, then plays the bloom's sixteen frames once at the manifest's rate while the music fades up from silence over the rise (AudioManager's bgm starts playing at -10 dB in _ready; start it silent and tween it up); (3) as the last frame lands, the title and the menu fade in over ~0.5 s — no instant appearance; (4) if an attract farm is playing, it fades up beneath the menu over ~1 s while the bloom fades out; on a first boot with no farm, the bloom keeps looping behind the menu; (5) a tap (start_game) fades through the sky colour into the farm over ~0.3 s + 0.4 s instead of a bare change_scene. Tap-anywhere-to-continue and every existing button keep working; headless runs (the integration suite instantiates the title scene) must not wait on any of it — skip the animation when the display server is headless, as the attract loop already does. Do not touch the attract loop's own logic. Capture the moment as three PNGs (splash frame, mid-rise, menu settled) with a display and attach them.",
   "first_action": "Read ui/title_screen.gd _ready/_start_attract/_build_ui/start_game and systems/audio_manager.gd _ready, then place the bloom node between the attract farm and the menu in tree order.",
-  "state": "for_review",
+  "state": "accepted",
   "thread": "",
   "source": "chief-of-staff",
   "source_message": "Filed from the 2026-09-10 brainstorm on where the Animation Lab loops enter play (P-15, Q-103, Q-104).",
@@ -21,6 +21,12 @@
       "text": "Chief of staff, after the check: the bloom replayed on every return to the title screen (pause menu, zoo, home), which cut the music and shielded taps each time; fixed in the same commit with a once-per-launch flag on GameState, so a return lands on the settled menu. The stale sentence in design/09 about the music starting at full level is gone, both capture tools are in CLAUDE.md, and the closed-bud follow-up was already filed to Rin as w56cd4d2fe0d.",
       "role": "claude",
       "at": "2026-09-10T23:54"
+    },
+    {
+      "role": "daniel",
+      "text": "Will the sunflower bloom animate from closed to open? And how will thee player appear standing above it?  Maybe we can draw the player \"behind\" the flower and rising up out of it to its final key frame position?  And don't let any of the person draw beneath the flower while she's initially low with the flower. Only emerge from the top.  Please consider this, and if so modify the proposed next step.",
+      "at": "2026-09-11T14:28",
+      "with": "accept"
     }
   ],
   "follow_ups": [
@@ -139,5 +145,14 @@
     "tokens": 12043531,
     "fresh": 317164,
     "list_usd": 5.4667
-  }
+  },
+  "closed": "2026-09-11T14:28",
+  "spawned": [
+    {
+      "id": "w3635c813d7a",
+      "title": "Give the sunflower bloom a real closed-bud first frame",
+      "state": "waiting_session",
+      "owner": "yuki"
+    }
+  ]
 }

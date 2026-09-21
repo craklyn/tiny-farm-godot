@@ -7,33 +7,39 @@
   "tier_reason": "A generated sprite landing in assets/, with provenance; git reverts it.",
   "ask": "A third bot sheet on bot.png's exact layout (192x192, 4x4 of 48px, rows down/up/left/right, frame 0 the standing idle) so entities/bot.gd draws it with no new code. It must be tellable from the Mk I and Mk II at the table's viewing distance, and per the Q-84 ruling it should read as a machine.",
   "first_action": "Generate through the Retro Diffusion pipeline with the palette lock and post-processing, archive the raws under assets/raw/ as a dated batch, record provenance in CREDITS.md, and add the sheet path to the bot_mk3 row's icon.",
-  "state": "for_review",
+  "state": "waiting_session",
   "thread": "yuki",
   "source": "session",
   "source_message": "CEO, 2026-09-09, chief of staff session: v0.2.1 is the Mark III, the robot that learns by reinforcement (P-14).",
   "result": "Done and on main. assets/sprites/generated/bot_mk3.png: the Mark I's chassis in a teal-green ramp with a three-pixel antenna and a lit amber bead, planted per frame on the head so it sways through the walk; every cell keeps bot.png's edges and feet baseline to the pixel, the only outline change is the antenna. Three Retro Diffusion calls, four images at 96x96, seed 30903, $0.119 (API balance $0.745 to $0.626); raws, meta, prompts and the compositing script archived at assets/raw/2026-09-09-bot-mk3/; provenance paragraph in CREDITS.md. Wired: the bot_mk3 catalogue row's icon and entities/bot.gd's sheet choice. Both suites green after wiring. Not yet recorded in hq/data/spend.json, which another session holds open. Chief of staff looked at the sheet: tellable from the Mk II at a glance, reads as the same machine.",
-  "started": "2026-09-09",
+  "started": "",
   "attempts": 1,
   "created": "2026-09-09T20:01",
   "created_ts": 1789009294.6615415,
   "parent": "mark-3-learning-bot",
-  "follow_ups": [
+  "follow_ups": [],
+  "recommend": {},
+  "conversation": [
     {
-      "title": "Record the Mark III art spend in the HQ ledger",
-      "owner": "harold",
-      "level": "task",
-      "tier": 1,
-      "first_action": "Once the concurrent session releases hq/data/spend.json, append the 2026-09-09 bot_mk3 generation: $0.119, three Retro Diffusion calls, four 96x96 images, balance $0.745 to $0.626; confirm the running total matches the API balance.",
-      "why": "The result explicitly notes the cost has not reached the ledger, so the shared Claude/API balance is currently understated."
+      "role": "daniel",
+      "text": "Why don't I see Mark III on http://127.0.0.1:8642/#/entities?",
+      "at": "2026-09-19T23:48"
     },
     {
-      "title": "Render the three bot marks in the running game and compare them",
-      "owner": "jade",
-      "level": "task",
-      "tier": 0,
-      "first_action": "Launch the real game with a Mk I, Mk II and Mk III active on the farm at once, capture frames at normal play zoom while they walk, and post the captures for the chief of staff to judge tellability in motion.",
-      "why": "Tellability was checked on the sprite sheet in a file viewer, not at the table's viewing distance in motion, which is what the ask actually specified."
+      "role": "yuki",
+      "text": "The HQ entities page and the in-game shop read two different files. The game's catalogue (`systems/machine_defs.gd`) does have `bot_mk3` pointing at the new sheet — that's wired and tested. But the page you're looking at is driven by `hq/data/entities.json`, a hand-kept file that has entries for `bot` and `bot_mk2` and nothing for `bot_mk3` — I never added the third one. That's the gap: the sheet's real and shipped, it just isn't listed where you're looking.\n\nI'll add the `bot_mk3` entry to `hq/data/entities.json` now, same shape as the Mk II one (same 4x4/48px frame grid, same four walk animations plus the idle), with its own name and description, and confirm it renders on the page.",
+      "at": "2026-09-19T23:49",
+      "move": "revise"
     }
   ],
-  "recommend": {}
+  "awaiting_reply": false,
+  "asked_ts": 1789886892.5163987,
+  "revising": true,
+  "prior_results": [
+    {
+      "at": "",
+      "attempt": 1,
+      "result": "Done and on main. assets/sprites/generated/bot_mk3.png: the Mark I's chassis in a teal-green ramp with a three-pixel antenna and a lit amber bead, planted per frame on the head so it sways through the walk; every cell keeps bot.png's edges and feet baseline to the pixel, the only outline change is the antenna. Three Retro Diffusion calls, four images at 96x96, seed 30903, $0.119 (API balance $0.745 to $0.626); raws, meta, prompts and the compositing script archived at assets/raw/2026-09-09-bot-mk3/; provenance paragraph in CREDITS.md. Wired: the bot_mk3 catalogue row's icon and entities/bot.gd's sheet choice. Both suites green after wiring. Not yet recorded in hq/data/spend.json, which another session holds open. Chief of staff looked at the sheet: tellable from the Mk II at a glance, reads as the same machine."
+    }
+  ]
 }

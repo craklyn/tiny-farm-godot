@@ -7,7 +7,7 @@
   "tier_reason": "CREDITS.",
   "ask": "CREDITS.md records where every non-original asset came from, and the release policy requires verified terms before a public build ships. The Animation Lab's loops are new art built from the shipped sprite sheets by scripts in tools/experiments/, and CREDITS.md does not mention them at all. Add the entry: what they are, that they were authored rather than generated, that every colour comes from sheets already covered by the Retro Diffusion entry, and that no model was called so no third-party output rights attach.",
   "first_action": "Add a CREDITS.md section for the parametric loops, covering how they are made and why no new third-party rights attach",
-  "state": "for_review",
+  "state": "accepted",
   "thread": "claude",
   "source": "chat",
   "source_message": "Filed 2026-09-08 when Daniel asked whether there is now a system for adding animations to the Design Studio's animation page. The answer was most of one; these are the places it is not closed.",
@@ -24,5 +24,6 @@
     "lane": "session"
   },
   "follow_ups": [],
-  "recommend": {}
+  "recommend": {},
+  "closed": "2026-09-19T21:45"
 }

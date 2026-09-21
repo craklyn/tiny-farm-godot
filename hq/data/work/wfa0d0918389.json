@@ -7,7 +7,7 @@
   "tier_reason": "filed by hand",
   "ask": "Daniel's words, verbatim:\n\n\"I recommend we change the game so it's not necessary to buy seeds for the starting\nplants. Rather, the plants when harvested can be planted as seeds. They can also be used\nas consumables (e.g. pea shooter). Only when the player acquires an excess can they be\nsold. Excess will be defined by game phase. Early game, the player only has storage on\ntheir person and so excess is not a large number.. 5 or 10 maybe. Later, they'll get a\ngrain silo and other storage options that increases excess (so they can properly arm and\nstock their defensive structures).\n\nNote that if w",
   "first_action": "Read systems/sim/sim_world.gd (inventory, the shop verbs, apply_action), systems/sim/save_game.gd, systems/sim/replay_log.gd and docs/ARCHITECTURE.md's layer rules. Then answer: (1) what actually changes in the sim — new verbs, changed verbs, new state — and which of those are additions versus changes to existing behaviour; (2) what it does to saves (a version bump? migration of existing saves?) and to the replay format, which is future bot-training data and must not break casually; (3) whether a per-actor carry capacity is the same object as the per-actor energy meter already in the sim, or a",
-  "state": "for_review",
+  "state": "accepted",
   "thread": "elena",
   "source": "chat",
   "source_message": "Daniel's words, verbatim:\n\n\"I recommend we change the game so it's not necessary to buy seeds for the starting\nplants. Rather, the plants when harvested can be planted as seeds. They can also be used\nas consumables (e.g. pea shooter). Only when the player acquires an excess can they be\nsold. Excess will be defined by game phase. Early game, the player only has storage on\ntheir person and so excess is not a large number.. 5 or 10 maybe. Later, they'll get a\ngrain silo and other storage options that increases excess (so they can properly arm and\nstock their defensive structures).\n\nNote that if w",
@@ -117,6 +117,38 @@
       "findings": [],
       "escalates": null,
       "escalation_reason": null
+    }
+  ],
+  "closed": "2026-09-19T23:49",
+  "decided": {
+    "question": "When the pouch is full, does harvesting refuse, or does the extra crop fall on the ground to pick up later?",
+    "answer": "Refuse the harvest, leave the crop ripe on the tile, and show a wordless reason.",
+    "at": "2026-09-19T23:49"
+  },
+  "spawned": [
+    {
+      "id": "we49bc7771da",
+      "title": "Make harvested crops plantable and cap what the player can carry",
+      "state": "waiting_session",
+      "owner": "tomas"
+    },
+    {
+      "id": "w8fd8d88b290",
+      "title": "Judge whether the recorded playtest replays keep any value after the economy change",
+      "state": "doing",
+      "owner": "kenji"
+    },
+    {
+      "id": "wae1a8074c6a",
+      "title": "Draft the carry-limit numbers for each game phase",
+      "state": "waiting_session",
+      "owner": "marcus"
+    },
+    {
+      "id": "w0c48d13a9d7",
+      "title": "Design the wordless sign that the pouch is full",
+      "state": "waiting_session",
+      "owner": "sam"
     }
   ]
 }
