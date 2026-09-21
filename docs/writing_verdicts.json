@@ -1015,6 +1015,12 @@
   "4b411e54a78ef7cb0421": {
    "verdict": "ok"
   },
+  "4baaa39458e4d9fe27f5": {
+   "instead": "the reply overstated what had actually been completed",
+   "quote": "the reply claimed more than it had done",
+   "verdict": "second-look",
+   "why": "The pronoun 'it' has no clear referent in the sentence."
+  },
   "4c68b336f38cedf45de6": {
    "verdict": "ok"
   },
@@ -1465,6 +1471,9 @@
    "why": "Sentence is broken—text is missing after 'read out of'—and the remaining phrase is unclear."
   },
   "6dd99380010a0197862a": {
+   "verdict": "ok"
+  },
+  "6e069665d8aec969ea9b": {
    "verdict": "ok"
   },
   "6e13f57c97f4fd458beb": {
@@ -2222,6 +2231,12 @@
   "a34996db638740f0b929": {
    "verdict": "ok"
   },
+  "a4d70bccc5f49b5a12c6": {
+   "instead": "The reply exceeds what was originally asked",
+   "quote": "the reply overclaimed",
+   "verdict": "second-look",
+   "why": "\"Overclaimed\" is vague; it could mean overstated, over-promised, or exceeded the original scope"
+  },
   "a4e854796855ac5d494f": {
    "verdict": "ok"
   },
@@ -2437,6 +2452,9 @@
   "b65428a78b9713fa7f0b": {
    "verdict": "ok"
   },
+  "b6627ba3091fbf4bcb2b": {
+   "verdict": "ok"
+  },
   "b798094b925671e1070f": {
    "verdict": "ok"
   },
@@ -2502,6 +2520,12 @@
   },
   "bd89fbf78bd51cc26289": {
    "verdict": "ok"
+  },
+  "bdc30a6b1045cd7b60f4": {
+   "instead": "the sprite review request",
+   "quote": "the art-director card",
+   "verdict": "decode",
+   "why": "\"Art-director card\" is internal terminology; a reader would not know whether this refers to a UI element, a work task, a person's card, or something else"
   },
   "bdd882a84a9082806f88": {
    "verdict": "ok"

@@ -1,0 +1,34 @@
+{
+ "id": "Q-113",
+ "title": "How much a player can carry before she has to sell",
+ "question": "You asked for the sim change where a harvested crop can be replanted as its own seed, so buying starter seed disappears from the first hour. That change needs one number it doesn't have on its own: how much can she hold before the game asks her to sell the rest. You suggested 5 or 10 for early game, on her person, growing at each storage building she gets later. This is that number, and the numbers after it.\n\nThe test I sized it against: she should never stand on her own farm, seed in hand, unable to plant it, until the game has actually asked something of her in return. Her farm right now is small on purpose — the plot she inherits at the very start is a row of six tiles plus three more behind it, about nine in all, and planting itself costs her nothing (only clearing, tilling, watering and harvesting spend her day). A cap of **5** runs out before she has replanted even that first row — she'd be told no on her very first afternoon, for a reason nothing on screen explains. That repeats a problem already caught once in real play: a session logged 17 unexplained refusals out of 27 actions. A cap of **10** covers that whole starter plot in one pass. Nothing she does in her first sitting hits the ceiling.\n\nThe ceiling should still exist — it's what makes the shipping bin (already in the game, rarely visited) worth a walk. It just shouldn't be the first thing she meets.\n\nFor the building after it: you named a grain silo, and said it should let her \"properly arm and stock\" defensive structures — that's a phase 2/3 job the towers themselves don't have numbers for yet (Milo owns that design and it isn't written). What I can size now is the farming side: a fully worked wheat farm — replanted every cycle, nothing left fallow — tops out around 10 to 12 tiles under today's day length. A silo cap of **40** clears that more than three times over, so a bigger farm never feels the ceiling either; it only bites when she's stockpiling on purpose. Price it like the sprinkler, which is the last thing in the shop that costs gold and does no new work of its own — somewhere under its 120g, call it 80–100g, `[Playtest]`.\n\nOne thing this number can't fix on its own: today, one planted seed makes exactly one harvested crop, so a farm that replants itself produces nothing extra to sell — the carry cap would rarely have anything to bite on. That's a separate ruling (whether a planting should give back more than it cost), still unwritten, and I've filed it below so it doesn't stay dropped a second time.",
+ "why_now": "The sim side of harvest-as-seed is queued to start and needs exactly one number first: the keep line that decides when \"sell everything\" becomes \"sell what's over the line.\" That's economy tuning, which this studio rules on rather than an engineer guessing.",
+ "options": [
+  {
+   "key": "a",
+   "label": "5 on her person",
+   "detail": "Your low suggestion. Runs out before the player can replant even the row of land the game starts her with — her first refusal would land in her first few minutes, unexplained, and it would contradict the rule (Q-11) that a tired player keeps working slowly rather than being stopped, which exists so nothing early in the game ever refuses a player who cannot yet read."
+  },
+  {
+   "key": "b",
+   "label": "10 on her person, 40 at the grain silo (Recommended)",
+   "detail": "Covers her whole starter plot — the inherited row plus what's behind it, about nine tiles — in one uninterrupted harvest-and-replant pass, so nothing in her first sitting hits the ceiling. The silo number clears a fully worked farm several times over, so it reads as room to stockpile, not a new leash. `[Playtest]` on both, like every number in this economy so far."
+  },
+  {
+   "key": "c",
+   "label": "No cap until the grain silo exists",
+   "detail": "Simplest to build, and it removes the friction entirely — which is also the problem. The shipping bin gets no reason to matter until a building that doesn't exist yet shows up, so the trip you wanted this change to create never happens in phase 1 at all."
+  }
+ ],
+ "links": [
+  {
+   "label": "What harvest-as-seed costs in the simulation (the sim-side answer this number unblocks)",
+   "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"
+  },
+  {
+   "label": "Q-11, the soft-floor ruling this reasoning leans on",
+   "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"
+  }
+ ],
+ "subject": "What a harvest is worth"
+}

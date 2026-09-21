@@ -25,6 +25,6 @@
       "tools/capture_window_view.gd.uid"
     ],
     "reason": "another session holds CREDITS.md, assets/audio/sfx/peck_cc0_248254_raw.wav.import, assets/audio/sfx/seeder_scatter_cc0_348953_raw.wav.import and 1 more changed and uncommitted in the working tree; this is retried once that change is committed or put away",
-    "at": "2026-09-21T10:32"
+    "at": "2026-09-21T11:28"
   }
 }

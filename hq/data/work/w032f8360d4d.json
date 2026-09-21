@@ -1,0 +1,91 @@
+{
+  "id": "w032f8360d4d",
+  "title": "Draw the mark a crow leaves on a plot it emptied",
+  "level": "task",
+  "owner": "yuki",
+  "tier": 2,
+  "tier_reason": "The mark ships today as clods cut from the soil sheet, which is a placeholder the designer's ruling explicitly allowed until real art exists.",
+  "ask": "Accepted “The raid's meal lasts as long as her walk, and a ransacked plot says so”. The mark ships today as clods cut from the soil sheet, which is a placeholder the designer's ruling explicitly allowed until real art exists.",
+  "first_action": "Read 'A ransacked plot says so' in docs/design/04-pests-and-ecology.md and the three-clod placeholder in world/farm.gd (RANSACK_* constants), then make a 16px looping mark for an emptied soil square — scattered soil and a few tumbled leaves or a dropped feather, 3-4 frames, in the tilled-soil palette — and say which sheet and cell the renderer should read it from.",
+  "state": "accepted",
+  "thread": "tomas",
+  "source": "chat",
+  "source_message": "Accepted “The raid's meal lasts as long as her walk, and a ransacked plot says so”. The mark ships today as clods cut from the soil sheet, which is a placeholder the designer's ruling explicitly allowed until real art exists.",
+  "result": "Everything this item asks for is already done — it was overtaken by a ruling that landed after the item was filed. Nothing to draw.\n\nThe ask was written on September 11th off the clod placeholder — three clods of soil cut from the tilled-soil sheet, looping. On September 19th Daniel ruled Q-110 himself: he was shown four candidate marks (the clods sat down and darkened, a crow feather, and the stripped plant) and picked the stripped plant. That was built and shipped that same night — commit `fa2a693`. The clods, the loop, and the `RANSACK_*` constants this item points at are gone; there's no looping mark left in `world/farm.gd` at all.\n\nWhat ships instead: a static stripped-plant sprite per crop — `wheat_stripped.png`, `tomato_stripped.png`, `pea_stripped.png` in `assets/sprites/generated/`, one 16px cell each, drawn by hand in `tools/gen_stripped_crops.py` from each crop's own shipped palette (Retro Diffusion was tried first and came back as an unrecognizable plant in a pool of red — that attempt is archived as reference at `assets/raw/2026-09-19-ransack-mark/`, not shipped). It's read by `farm.gd`'s `ransack_plant()` / `stripped_sheets`, drawn in the crop pass on the square's own row so nothing can paint over it. CREDITS.md already carries full provenance for the batch, cost, and the losing candidates. Q-110 and Q-112 are both closed in `DESIGNER_QUEUE.md`.\n\nI checked the atlas and frame metadata for the three stripped sprites and they're organized correctly — nothing loose for engineering to guess at.\n\nNot committed, because there's no diff — the working tree matched what the item asked for before I touched it.",
+  "started": "",
+  "attempts": 1,
+  "created": "2026-09-11T14:25",
+  "created_ts": 1789161909.4134665,
+  "parent": "w6c081d8316e",
+  "approved": "2026-09-19T16:30",
+  "done_by": {
+    "seat": "yuki",
+    "model": "sonnet",
+    "lane": "drain"
+  },
+  "diff": {
+    "stat": "",
+    "files": [],
+    "applied": false,
+    "why_not": "nothing changed"
+  },
+  "check": {
+    "verdict": "pass",
+    "summary": "Nothing landed because nothing was needed: the clod placeholder this item was written against was replaced on September 19th by the stripped-plant mark Daniel chose in Q-110 (commit fa2a693), and the repo confirms every part of that claim, so the item can be closed as overtaken.",
+    "findings": [],
+    "escalates": null,
+    "escalation_reason": null
+  },
+  "usage": {
+    "calls_detail": [
+      {
+        "input": 16,
+        "output": 4433,
+        "cache_read": 427109,
+        "cache_write": 47184,
+        "turns": 13,
+        "seconds": 45.8,
+        "list_usd": 0.3216,
+        "tokens": 478742,
+        "fresh": 51633,
+        "phase": "drain-work",
+        "model": "sonnet",
+        "seat": "yuki"
+      },
+      {
+        "input": 34,
+        "output": 865,
+        "cache_read": 54212,
+        "cache_write": 26389,
+        "turns": 2,
+        "seconds": 13.7,
+        "list_usd": 0.5869,
+        "tokens": 81500,
+        "fresh": 27288,
+        "phase": "drain-check",
+        "model": "fable",
+        "seat": "claude"
+      }
+    ],
+    "input": 50,
+    "output": 5298,
+    "cache_read": 481321,
+    "cache_write": 73573,
+    "tokens": 560242,
+    "fresh": 78921,
+    "turns": 15,
+    "seconds": 59.5,
+    "list_usd": 0.9085,
+    "calls": 2
+  },
+  "spent": {
+    "attempts": 1,
+    "tokens": 560242,
+    "fresh": 78921,
+    "list_usd": 0.9085
+  },
+  "follow_ups": [],
+  "recommend": {},
+  "finished": "2026-09-21T03:26",
+  "closed": "2026-09-21T10:33"
+}

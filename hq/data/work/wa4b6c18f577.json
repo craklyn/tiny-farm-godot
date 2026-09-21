@@ -56,5 +56,6 @@
     "answer": "Accept the hoe now and have Kenji re-pick the number before the v0.2.1 tag.",
     "why": "A learning speed chosen because one seed happened to pass is not evidence the robot learns, and re-deriving it costs a demo run.",
     "instead": "Hold acceptance until the sweep is done — safer on paper, but the behaviour is already on main and green, so it delays the card without changing the code."
-  }
+  },
+  "subject": "The robot that learns"
 }

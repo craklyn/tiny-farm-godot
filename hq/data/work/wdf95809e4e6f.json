@@ -1,0 +1,20 @@
+{
+ "id": "wdf95809e4e6f",
+ "title": "Open a loop's showcase sprites in the sprite editor",
+ "level": "story",
+ "owner": "rin",
+ "tier": 2,
+ "tier_reason": "Three small edits to existing tools; nothing the game draws is touched, and every save lands in the sheet ledger, so it is revertable.",
+ "ask": "A loop in the Animation Lab now draws from hand-editable sprites under assets/showcase/<slug>/ (derived once from assets/raw/ by the loop's prep script; see assets/showcase/README.md). Daniel asked for a way to edit the art associated with an animation, in HQ. HQ already has a sprite editor (hq/static/sprite.js), but it opens a sheet only through the entity catalogue (group.entities -> ent.sheet + ent.frames) and the server's /api/sprite/save and /api/sprite/revert refuse any path outside assets/sprites/. Three changes close the gap: (1) hq/server.py: let save/revert accept an existing PNG under assets/showcase/ as well, keeping the ledger behaviour; (2) hq/static/sprite.js: a route that opens a sheet by path with the whole image as one cell when no catalogue entry exists (palette bar from the sheet's own colours as today, pencil/eraser/eyedrop, save to ledger); (3) hq/static/anim.js: the source chips on a loop's page link to that route for showcase files, and after a save the page's existing stale check offers 'Redraw from the current art'. The first concrete case is assets/showcase/watering_beam/can.png and plant.png, loaded by tools/experiments/vfx_watering_beam.py. Do not touch assets/raw/.",
+ "first_action": "Read hq/static/sprite.js around line 86 (how `ent` is resolved) and hq/server.py around line 1270 (the assets/sprites/ root check), then add the assets/showcase/ root to save and revert before touching the editor's routing.",
+ "state": "waiting_session",
+ "thread": "rin",
+ "source": "chat",
+ "source_message": "Filed 2026-09-09 when Daniel, reviewing the watering-beam loop, asked for a way to edit the assets associated to an animation (the generated can had a background pocket inside its handle). The pocket is fixed in the prep script; this item is the editing path.",
+ "result": "",
+ "started": "",
+ "attempts": 0,
+ "created": "2026-09-09T09:09",
+ "created_ts": 1788970191.586688,
+ "conversation": []
+}

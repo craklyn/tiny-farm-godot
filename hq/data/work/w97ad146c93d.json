@@ -1,0 +1,107 @@
+{
+ "id": "w97ad146c93d",
+ "title": "Have the overnight animation reuse the watering close-up's frame loader instead of writing a second one",
+ "level": "task",
+ "owner": "claude",
+ "tier": 1,
+ "tier_reason": "Jade's wave-3 item reads the same exported manifests days apart from this one; without the pointer the same loader gets written twice in two presentation files.",
+ "ask": "Accepted “The watering shot plays in a corner while she keeps control”. Jade's wave-3 item reads the same exported manifests days apart from this one; without the pointer the same loader gets written twice in two presentation files.",
+ "first_action": "Add a line to hq/data/work/w1a08ee15303.json noting that ui/hud.gd now has _load_anim_manifest/_load_anim_frames (built for Q-104's watering_beam inset), which crow_gorge/seeder_bot/sunflower_bloom can call instead of re-deriving the same sheet-and-manifest reading code.",
+ "state": "for_review",
+ "thread": "sam",
+ "source": "chat",
+ "source_message": "Accepted “The watering shot plays in a corner while she keeps control”.",
+ "result": "The note is on the overnight card. It tells whoever works those loops next that the HUD's watering close-up already has the two functions that read a loop's manifest and slice its sheet into frames, and that the three story loops are the same kind of file, so those functions are what to call.\n\nOne thing you should know: the pointer arrived after the damage. The overnight card was finished and reviewed on the 11th, and the day-cycle file already carries its own copy of the manifest reader, line for line, plus a frame slicer that adds the edge dither and a per-loop cache on top. So the second loader you were trying to prevent has been in the tree for nine days. The note now says so plainly rather than pretending it is still a warning, and the fold-together is filed below as a small engineering job for Jade. It is code behind green tests, so it reverts cleanly if it goes wrong.\n\nThe edit is in my worktree only, not committed. Nothing else changed.",
+ "started": "",
+ "attempts": 1,
+ "created": "2026-09-19T16:40",
+ "created_ts": 1789861228.630026,
+ "parent": "w1a08ee9c4d3",
+ "done_by": {
+  "seat": "claude",
+  "model": "fable",
+  "lane": "drain"
+ },
+ "diff": {
+  "stat": "hq/data/work/w1a08ee15303.json | 5 +++++\n 1 file changed, 5 insertions(+)",
+  "files": [
+   "hq/data/work/w1a08ee15303.json"
+  ],
+  "applied": true,
+  "why_not": ""
+ },
+ "check": {
+  "verdict": "pass",
+  "summary": "The pointer landed on the overnight card and the follow-up to merge the two loaders is filed against Jade; the reply's claim that the duplicate already exists in systems/day_cycle.gd is true (the manifest reader is identical to ui/hud.gd's, last touched 2026-09-11), so the item's original purpose is moot and the filed fold-together is the real remaining work.",
+  "findings": [
+   {
+    "what": "The reply says the overnight card was 'finished and reviewed on the 11th'; the card's state is still for_review, so that means the checker's pass, not Daniel's approval",
+    "where": "hq/data/work/w1a08ee15303.json:10",
+    "fix": "No change to the diff; read 'reviewed' as checked, not accepted"
+   }
+  ],
+  "escalates": null,
+  "escalation_reason": null
+ },
+ "usage": {
+  "calls_detail": [
+   {
+    "input": 162,
+    "output": 3180,
+    "cache_read": 276536,
+    "cache_write": 46287,
+    "turns": 9,
+    "seconds": 48.7,
+    "list_usd": 1.1586,
+    "tokens": 326165,
+    "fresh": 49629,
+    "phase": "drain-work",
+    "model": "fable",
+    "seat": "claude"
+   },
+   {
+    "input": 98,
+    "output": 2583,
+    "cache_read": 139163,
+    "cache_write": 31002,
+    "turns": 9,
+    "seconds": 36.3,
+    "list_usd": 0.7875,
+    "tokens": 172846,
+    "fresh": 33683,
+    "phase": "drain-check",
+    "model": "fable",
+    "seat": "claude"
+   }
+  ],
+  "input": 260,
+  "output": 5763,
+  "cache_read": 415699,
+  "cache_write": 77289,
+  "tokens": 499011,
+  "fresh": 83312,
+  "turns": 18,
+  "seconds": 85.0,
+  "list_usd": 1.9461,
+  "calls": 2
+ },
+ "spent": {
+  "attempts": 1,
+  "tokens": 499011,
+  "fresh": 83312,
+  "list_usd": 1.9461
+ },
+ "follow_ups": [
+  {
+   "title": "Give the watering close-up and the overnight one shared loop-frame reader",
+   "owner": "jade",
+   "level": "task",
+   "tier": 1,
+   "first_action": "Move _load_anim_manifest and _load_anim_frames out of ui/hud.gd into one static helper script under effects/ (for example effects/anim_sheet.gd), have ui/hud.gd call it, and rewrite systems/day_cycle.gd's _load_anim_manifest and _frames_for_slug to call the same helper and keep only the dissolve dither and the per-slug cache locally; then run the unit and integration suites and the watering-inset and overnight-crow captures to confirm the frames are unchanged.",
+   "why": "Both files now hold identical manifest-and-sheet reading code, so a change to the export format has to be made twice and will be missed once."
+  }
+ ],
+ "recommend": {},
+ "finished": "2026-09-20T04:05",
+ "subject": "How HQ works"
+}

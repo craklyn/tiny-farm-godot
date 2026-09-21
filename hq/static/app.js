@@ -216,6 +216,9 @@ async function route() {
     else if (hash.startsWith("/sprite/")) await renderSpriteEditor(hash.slice("/sprite/".length));
     else if (hash.startsWith("/pillar/")) await renderPillar(hash.slice("/pillar/".length));
     else if (hash.startsWith("/playtest/")) await renderPlaytestDetail(hash.slice("/playtest/".length));
+    // A page under /chat may carry a query of its own (the bullpen names one
+    // card), so match the address without it before falling through to the chat.
+    else if (routes[hash.split("?")[0]]) await routes[hash.split("?")[0]]();
     else if (hash.startsWith("/chat/")) await renderChat(hash.slice("/chat/".length));
     else if (hash.startsWith("/person/")) await renderPerson(hash.slice("/person/".length));
     else if (hash.startsWith("/work/")) await renderWork(hash.slice("/work/".length));

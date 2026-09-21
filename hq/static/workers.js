@@ -58,20 +58,32 @@ async function wkFill(panel, s) {
   if (!log.children.length) log.innerHTML = `<div class="l said">Nothing written yet.</div>`;
 }
 
+function wkWantedItem() {
+  // #/chat/bullpen?item=<card id> — how a result on the queue page links to the
+  // session that produced it.
+  const m = /[?&]item=([^&]+)/.exec(location.hash || "");
+  return m ? decodeURIComponent(m[1]) : "";
+}
+
 async function renderWorkers() {
   let snap;
   try { snap = await fetch("/api/workers").then(r => r.json()); }
   catch (e) { $view.innerHTML = `<div class="card">HQ could not read the sessions: ${esc(e.message)}</div>`; return; }
-  const sessions = snap.sessions || [];
+  const wanted = wkWantedItem();
+  const sessions = (snap.sessions || []).filter(x => !wanted || x.item === wanted);
   const running = sessions.filter(s => s.state === "running");
   const earlier = sessions.filter(s => s.state !== "running");
   const head = running.length
     ? `${running.length} session${running.length === 1 ? " is" : "s are"} running now.`
     : (earlier.length ? `No worker is running. The last session finished at ${esc(earlier[0].finished || earlier[0].started || "")}.`
                       : `No worker is running, and none has run since the drain started writing sessions down.`);
+  const forOne = wanted
+    ? `<p><b>Showing the sessions for one piece of work.</b> <a class="plain" href="#/chat/bullpen">Show every session instead</a></p>`
+    : "";
   $view.innerHTML = `
     <h1>🔭 The bullpen</h1>
     <p class="sub">Where the studio's workers can be watched as they work. Every model session the build queue runs, as it runs: what the worker reads, edits and runs, its turns and cost so far, and how it ended. The build queue itself starts these on its timer; nothing here starts one.</p>
+    ${forOne}
     <p><b>${head}</b></p>
     <div id="wk-running">${running.map(s => `<div class="wk-panel" data-key="${esc(wkKey(s))}">${wkHeader(s)}<div class="wk-log"></div></div>`).join("")}</div>
     ${earlier.length ? `<details class="card"><summary>Sessions from the last day (${earlier.length})</summary>
@@ -91,7 +103,7 @@ async function renderWorkers() {
 
   if (wkPoll) clearInterval(wkPoll);
   wkPoll = setInterval(async () => {
-    if ((location.hash.slice(1) || "/") !== "/chat/bullpen") { clearInterval(wkPoll); wkPoll = null; return; }
+    if (!(location.hash.slice(1) || "/").startsWith("/chat/bullpen")) { clearInterval(wkPoll); wkPoll = null; return; }
     let fresh;
     try { fresh = await fetch("/api/workers").then(r => r.json()); } catch (e) { return; }
     const now = (fresh.sessions || []).filter(s => s.state === "running");
@@ -116,4 +128,4 @@ async function renderWorkers() {
 // On a direct page-load app.js has already routed before this file ran, and
 // #/chat/bullpen fell through to the chat page; route again now that the
 // address is registered (the same dance design.js does for its pages).
-if ((location.hash.slice(1) || "/") === "/chat/bullpen") route();
+if ((location.hash.slice(1) || "/").startsWith("/chat/bullpen")) route();

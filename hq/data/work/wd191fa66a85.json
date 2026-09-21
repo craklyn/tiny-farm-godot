@@ -1,0 +1,33 @@
+{
+ "id": "wd191fa66a85",
+ "title": "Find every generated sprite sheet with opaque white where it should be see-through",
+ "level": "task",
+ "owner": "ravi",
+ "tier": 0,
+ "tier_reason": "Five of Daniel's seven hand edits are the same defect on different sheets, so the ones he has not opened yet almost certainly carry it too.",
+ "ask": "Accepted “Read Daniel's hand edit to Neighbour”. Five of Daniel's seven hand edits are the same defect on different sheets, so the ones he has not opened yet almost certainly carry it too.",
+ "first_action": "Script a read-only scan of assets/sprites/generated/*.png for fully-opaque pixels at or near #ffffff that sit outside a drawn shape (edge-connected to the transparent region). Report per sheet: file, frame index, pixel count, coordinates. Include neighbour.png frames 4 and 14 specifically — the hand edit left 53 pixels where the identical Farmer sweep took 56, and the 3-pixel gap is frame 4 (2px) plus one pixel of frame 14.",
+ "state": "for_review",
+ "thread": "ingrid",
+ "source": "chat",
+ "source_message": "Accepted “Read Daniel's hand edit to Neighbour”.",
+ "result": "I hit a hard wall: this session's shell only allows trivial filesystem checks (`ls`, `file`) — every command that actually executes logic (`python3`, `godot`, even `awk`) is blocked pending an approval that isn't available in an unattended run. I can't decode PNG pixel data by hand, so I can't produce the per-sheet/frame/pixel-count/coordinate table you asked for from this session.\n\nWhat I did instead: wrote the actual scan script, ready to run —\n`/tmp/claude-1000/-home-daniel-dev-tiny-farm-godot/59440ba9-4637-4601-a2df-fe1bf81986b5/scratchpad/scan_white_edges.py`\n\nIt does exactly what you specified: for each sheet in `assets/sprites/generated/*.png`, flood-fills from the sheet's four edges across pixels that are either transparent or opaque near-white (R,G,B ≥ 245, alpha ≥ 250), so it only flags near-white pixels that are actually connected to the outside — not white paint that's part of a drawn shape. It reports file, per-frame pixel counts, and (x,y) coordinates local to each frame. I aimed it at `neighbour.png` and the frame-square assumption specifically so frames 4 and 14 fall out naturally, but I haven't been able to execute it, so I can't confirm the 53-vs-56 gap you described — that's still unverified.\n\nWhat blocks it: no approved way to run an interpreter in this session. What it needs: one normal engineering session (interactive, or a build worktree with Bash execution approved) to run `python3 scan_white_edges.py` — it needs Pillow, which may need `pip install pillow` first — and capture the printed report.\n\nWhat this implies: the inventory step is stalled on a tooling gap, not on the defect itself — the defect (five of seven hand edits hitting the same thing) is credible enough that the real fix is still the pipeline's alpha step, which is already queued as its own item. This scan is diagnostic evidence for that fix, not a separate fix in itself.",
+ "started": "2026-09-19T16:39",
+ "attempts": 1,
+ "created": "2026-09-19T16:39",
+ "created_ts": 1789861168.3487298,
+ "parent": "wb238c456b9a",
+ "follow_ups": [
+  {
+   "title": "Run the leftover-white sprite scan and report results",
+   "owner": "ravi",
+   "level": "task",
+   "tier": 0,
+   "first_action": "In a session with normal Bash execution, run python3 on the prepared script at the scratchpad path above against assets/sprites/generated/*.png (pip install pillow first if missing), and post the per-sheet/frame/pixel-count/coordinate report.",
+   "why": "The scan logic is written and matches Daniel's spec, but this session's sandbox blocks running any interpreter, so the report was never produced."
+  }
+ ],
+ "recommend": {},
+ "finished": "2026-09-19T16:41",
+ "subject": "The sprite pipeline"
+}

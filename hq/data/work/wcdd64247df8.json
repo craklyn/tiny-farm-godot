@@ -7,7 +7,7 @@
   "tier_reason": "reading his edit and writing down what it implies — nothing to walk back",
   "ask": "Daniel hand-edited Obstacle Set in the sprite editor and said he was fixing: \"Checking that a second save does not undo the first one\". The measurement: Obstacle Set: 1 pixel across 1 frame (frame 1). The silhouette moved, not just the interior shading. Look at it against the style guide draft and the rest of the sheet, and say in a few lines what his edit is telling you about the direction — whether it agrees with the guide, quietly contradicts it, or repeats something he has done before. If it is just tidying and there is nothing to learn, say exactly that in one line; a short honest answer beats manufactured significance. Do not propose amendments to the guide yet; he wants a look session before it is signed. This is evidence-gathering for that session.",
   "first_action": "Open assets/sprites/generated/obstacles.png and the ledger entry (step 4) in HQ, compare it with the style guide in docs/design/09-art-direction.md, and write down what the edit says about his taste.",
-  "state": "for_review",
+  "state": "accepted",
   "thread": "ingrid",
   "source": "chat",
   "source_message": "Daniel hand-edited Obstacle Set in the sprite editor and said he was fixing: \"Checking that a second save does not undo the first one\". The measurement: Obstacle Set: 1 pixel across 1 frame (frame 1). The silhouette moved, not just the interior shading. Look at it against the style guide draft and the rest of the sheet, and say in a few lines what his edit is telling you about the direction — whether it agrees with the guide, quietly contradicts it, or repeats something he has done before. If it is just tidying and there is nothing to learn, say exactly that in one line; a short honest answer beats manufactured significance. Do not propose amendments to the guide yet; he wants a look session before it is signed. This is evidence-gathering for that session.",
@@ -32,5 +32,19 @@
     "why": "Evidence of your taste is what makes those cards worth my time, and an edit you took back is not evidence of anything.",
     "instead": "Leave every card open and let me judge relevance myself — honest, but it makes the ledger noisier the longer you use the editor."
   },
-  "finished": "2026-09-07T22:10"
+  "finished": "2026-09-07T22:10",
+  "closed": "2026-09-21T13:58",
+  "decided": {
+    "question": "Should a hand edit you later revert still reach me as something to read?",
+    "answer": "No — have HQ withdraw the card automatically when the step is undone, and let reverted steps stay in the ledger as history only.",
+    "at": "2026-09-21T13:58"
+  },
+  "spawned": [
+    {
+      "id": "wc8256f1fd37",
+      "title": "Close the art-director card when a sprite edit is reverted",
+      "state": "waiting_session",
+      "owner": "rin"
+    }
+  ]
 }

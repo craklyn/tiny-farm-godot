@@ -56,5 +56,6 @@
     "answer": "Make the fence real — a paddock bought in the shop that the robot learns inside, and keep the open farm for robots that have already learned.",
     "why": "A fresh robot wanders off a small plot within a minute, so without a fence its first days teach it nothing and read to the player as a broken machine rather than a learning one.",
     "instead": "Let it roam from day one and solve the wandering inside the learning rule instead, which keeps the world unchanged and adds nothing for the player to buy or place, but leaves early days looking like a malfunction."
-  }
+  },
+  "subject": "The robot that learns"
 }

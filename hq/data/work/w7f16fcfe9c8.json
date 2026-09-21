@@ -1,0 +1,23 @@
+{
+ "id": "w7f16fcfe9c8",
+ "title": "Two faults on the new queue page: a finished result with no recommendation is shown as if it had one, and the group order is not what the page says",
+ "level": "task",
+ "owner": "sam",
+ "tier": 1,
+ "tier_reason": "one HQ page file; git reverts it",
+ "ask": "The checker on card wa92bd649e33 found three faults; the reason field is fixed already. The two left, in hq/static/queue.js only: (1) a for_review card with a diff and no recommendation renders as 'Recommended: It does what was asked.' and is costed at 30 s — §7a of docs/QUEUE_TO_ZERO.md says a card whose only evidence is a diff is not prepped; show it as 'No recommendation — <owner> owes you one', cost it at two minutes, and sort it below the prepared picks; (2) the comment says groups keep arrival order, but rows are sorted cheapest-first before grouping, so group order comes out by each group's cheapest member — make the comment and the code agree, and say in the result which one you changed.",
+ "first_action": "Read qWorkItem and qRender in hq/static/queue.js.",
+ "state": "landed",
+ "source": "chief-of-staff",
+ "source_message": "From the checker on wa92bd649e33 and from the page as built, 2026-09-21.",
+ "thread": "claude",
+ "created": "2026-09-21T14:02",
+ "created_ts": 1790024532.999379,
+ "parent": "wa92bd649e33",
+ "closed": "2026-09-21T14:39",
+ "landed": {
+  "at": "2026-09-21T14:39",
+  "by": "chief-of-staff",
+  "note": "A finished result with no recommendation now says who owes one, costs two minutes and sorts after the prepared picks; the grouping comment and the code agree."
+ }
+}

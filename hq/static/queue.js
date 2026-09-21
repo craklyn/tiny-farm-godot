@@ -143,6 +143,12 @@ function qWorkEvidence(card, ownerName) {
   if (card.check && card.check.summary) items.push({ label: `Checker: ${card.check.verdict || ""}`, text: card.check.summary });
   const brief = card.ask || card.source_message || "";
   if (brief) items.push({ label: `The brief written for ${ownerName}`, text: brief });
+  // The session that produced this result is written down as it runs, so the
+  // result can be read back to how it was made rather than taken on trust.
+  if (card.started || card.diff) {
+    items.push({ label: "How it was done", link: `#/chat/bullpen?item=${encodeURIComponent(card.id)}`,
+                 text: "Open the record of the session that produced this: every file it read, every change it made, every command it ran, and what it cost." });
+  }
   return items;
 }
 
@@ -185,12 +191,15 @@ function qWorkItem(card, org, reason) {
   const rec = card.recommend || {};
   const hasRec = !!rec.answer;
   const question = rec.question || `${owner.name} built “${card.title}”. Does it stand?`;
-  const answer = hasRec ? rec.answer : (card.diff ? "It does what was asked." : "");
+  // A card whose only evidence is a change to the files is not prepped: nobody
+  // has said what he should do about it, and pretending otherwise turns his
+  // thirty-second pick into a rubber stamp (docs/QUEUE_TO_ZERO.md §7a).
+  const answer = hasRec ? rec.answer : "";
   const convo = (card.conversation || []).filter(m => m.text)
     .map(m => ({ who: m.role === "daniel" ? "You" : qFirst(owner.name), text: m.text, at: m.at || "" }));
   return {
     kind: card.state === "needs_approval" ? "approve" : "review",
-    id: card.id, cardId: card.id, isDecision: false,
+    id: card.id, cardId: card.id, isDecision: false, subject: card.subject || "",
     title: card.title, question, answer, why: rec.why || "", instead: rec.instead || "",
     owner, seconds: answer ? Q_PICK_SECONDS : Q_READ_SECONDS, state: card.state,
     tier: card.tier ?? 2, reason: reason || "hard to walk back, or a matter of taste",
@@ -207,7 +216,7 @@ function qDecisionItem(c) {
   const rec = opts.find(o => (o.label || "").includes("(Recommended)"));
   const owner = { name: "the seat that opened the card", emoji: "🗂️" };
   return {
-    kind: "rule", id: c.id, cardId: c.id, isDecision: true,
+    kind: "rule", id: c.id, cardId: c.id, isDecision: true, subject: c.subject || "",
     title: c.title, question: c.title,
     answer: rec ? clean(rec.label) : "", why: rec ? (rec.detail || "") : "", instead: "",
     recOption: rec, owner, seconds: rec ? Q_PICK_SECONDS : Q_READ_SECONDS,
@@ -259,7 +268,7 @@ async function qLoadData() {
   });
 
   return { org, rulings, hisWork: his, landedWork: landed, studioWork: studio,
-    hisDecisions, studioDecisions, awaitingStudio };
+    wentIn, hisDecisions, studioDecisions, awaitingStudio };
 }
 
 function qGroupBySubject(rows) {
@@ -269,11 +278,13 @@ function qGroupBySubject(rows) {
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(r);
   });
-  // Cheapest first within a group; "Everything else" last so a real subject
-  // always reads before the catch-all.
+  // Groups in the order their first question arrived, except the catch-all,
+  // which is always last so a named subject reads before it. Within a group,
+  // the quickest question first: several rulings on one subject often settle
+  // each other, and the cheap one is the way in.
   const names = [...groups.keys()].sort((a, b) => (a === "Everything else") - (b === "Everything else"));
   return names.map(name => {
-    const items = groups.get(name).sort((a, b) => a.seconds - b.seconds);
+    const items = [...groups.get(name)].sort((a, b) => a.seconds - b.seconds);
     return { name, items };
   });
 }
@@ -326,7 +337,8 @@ function qPaneHtml(row, org) {
 
     <div class="q-sec"><h3>The evidence</h3>
       ${row.evidence.length ? row.evidence.map(e =>
-        `<details><summary>${esc(e.label)}</summary><div>${mdi(e.text)}</div></details>`).join("")
+        `<details><summary>${esc(e.label)}</summary><div>${mdi(e.text)}${
+          e.link ? `<p><a class="plain" href="${e.link}">Open the session in the bullpen</a></p>` : ""}</div></details>`).join("")
         : `<p class="q-pane-muted">Nothing recorded yet.</p>`}
       <div class="q-atts" id="q-pane-atts"></div>
     </div>
@@ -344,7 +356,7 @@ function qPaneHtml(row, org) {
 }
 
 function qRender(state) {
-  const { org, hisWork, hisDecisions, landedWork, studioWork, studioDecisions, awaitingStudio } = state;
+  const { org, hisWork, hisDecisions, landedWork, studioWork, wentIn, studioDecisions, awaitingStudio } = state;
 
   const rows = [
     ...hisWork.map(x => qWorkItem(x.card, org, x.reason)),

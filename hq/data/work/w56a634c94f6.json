@@ -40,5 +40,6 @@
     "why": "It is a tool defect, not a taste call: he is painting pixels that never reach the screen, and that will keep happening on every ground sheet.",
     "instead": "Leave it and let the nine cells become nine variants the renderer picks between, which would break up the visible repeat — but that is a change of direction and belongs in the look session, not in a cleanup."
   },
-  "finished": "2026-09-07T18:46"
+  "finished": "2026-09-07T18:46",
+  "subject": "How the game looks"
 }

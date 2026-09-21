@@ -48,5 +48,6 @@
     "answer": "Treat them as blocking — no machine plants or sells where the player can see it until the cues land.",
     "why": "Our standing rule is that any actor's action the player watches gets the player's own sound and visual treatment, and a silent sale is the clearest way to break that.",
     "instead": "Ship the behaviour now and add cues in the next pass, which gets the economy in front of playtesters sooner but with a machine that acts invisibly."
-  }
+  },
+  "subject": "The robot that learns"
 }

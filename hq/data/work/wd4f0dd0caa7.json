@@ -1,0 +1,17 @@
+{
+ "id": "wd4f0dd0caa7",
+ "title": "Fix three faults in answering a comment within thirty seconds: the plan still says there is no hand-back, a second request for more time can put Daniel off twice, and the reply claimed more than it had done",
+ "level": "task",
+ "owner": "tomas",
+ "tier": 1,
+ "tier_reason": "hq/work.py and a design paragraph; git reverts it",
+ "ask": "The server half of the hand-back (card w0a529a072ba) landed with three checker findings to fix, in hq/work.py and docs/QUEUE_TO_ZERO.md only (do not touch hq/static/work.js): (1) docs/QUEUE_TO_ZERO.md §8 'How it works today' still says a worker answers one card per fifteen-second tick and that there is no hand-back — rewrite that paragraph in the past tense as what was true before 2026-09-21 and add one 'Built' line naming the owed state and THIRTY_SECONDS; (2) in _process_response the owed→for_review restore runs before the 'needs-work' guard, so a second needs-work reply can defer him again — restore after the guard, and add a test in hq/tests/test_work.py that a second needs-work on the same question does not re-enter owed; (3) the reply's claim that the deferral 'cannot be used twice' becomes true once (2) is done — say so in the result plainly. Run `python3 hq/tests/test_work.py` and report the last line.",
+ "first_action": "Read _process_response in hq/work.py around the owed handling, move the restore below the guard, write the test.",
+ "state": "waiting_session",
+ "source": "chief-of-staff",
+ "source_message": "The checker on w0a529a072ba, 2026-09-21 11:12.",
+ "thread": "claude",
+ "created": "2026-09-21T11:18",
+ "created_ts": 1790014738.614459,
+ "parent": "w0a529a072ba"
+}
