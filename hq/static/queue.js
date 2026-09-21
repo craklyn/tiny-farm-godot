@@ -348,13 +348,18 @@ function qPaneHtml(row, org) {
       <textarea id="q-talk-t" placeholder="A line of why. Whichever button you press, ${esc(qFirst(ownerName))} reads this."></textarea>
       <div class="q-talk-acts">
         <button class="ghost q-send" data-id="${esc(row.id)}">Ask ${esc(qFirst(ownerName))}, without answering yet</button>
-        <span class="q-talk-n">${esc(qFirst(ownerName))} answers within thirty seconds or hands it back and you move on.</span>
+        <span class="q-talk-n" id="q-talk-st">${esc(qFirst(ownerName))} answers within thirty seconds or hands it back and you move on.</span>
       </div>
     </div>
 
     <div class="q-acts-big">
-      ${row.answer ? `<button class="q-yes" data-id="${esc(row.id)}">${
-        row.isDecision ? `Rule: ${esc(row.answer)}` : "Yes — do what is recommended above"}</button>` : ""}
+      ${row.answer
+        ? `<button class="q-yes" data-id="${esc(row.id)}">${
+            row.isDecision ? `Rule: ${esc(row.answer)}` : "Yes — do what is recommended above"}</button>`
+        : (row.isDecision ? ""
+          // Nobody wrote a recommendation, which is the studio's failing, not a
+          // reason he cannot answer. A finished result always has a yes.
+          : `<button class="q-yes" data-id="${esc(row.id)}">Yes — this stands</button>`)}
       ${row.canDrop ? `<button class="ghost q-no" data-id="${esc(row.id)}">${
         row.isDecision ? "None of these" : "No — drop this"}</button>` : ""}
     </div>`;
@@ -379,7 +384,8 @@ function qRender(state) {
   const bandHtml = rows.length
     ? `<b>${rows.length} question${rows.length === 1 ? "" : "s"} · about ${minutes} minute${minutes === 1 ? "" : "s"} at your usual pace</b>
        <p>${picks} ${picks === 1 ? "is a pick" : "are picks"} between prepared options, about 30 seconds each.
-       ${reads} need${reads === 1 ? "s" : ""} you to read what came back, about two minutes each.</p>`
+       ${reads} need${reads === 1 ? "s" : ""} you to read what came back, about two minutes each.${
+         reads ? ` Of those ${reads}, nobody has written a recommendation yet; each says who owes you one, and you can still answer.` : ""}</p>`
     : `<b>Nothing is waiting on you.</b><p>The rest of the studio is working.</p>`;
 
   const owed = [
@@ -400,8 +406,8 @@ function qRender(state) {
         : `<div class="q-row-r q-row-none">No recommendation yet — ${esc(qFirst(r.owner.name))} owes one.</div>`}
     </div>
     <div class="q-row-acts">
-      ${r.answer ? `<button class="q-yes" data-id="${esc(r.id)}">Yes</button>` : ""}
-      <button class="ghost q-talk" data-id="${esc(r.id)}" title="Open this one and write to its owner">Ask</button>
+      ${r.kind === "rule" && !r.answer ? "" : `<button class="q-yes" data-id="${esc(r.id)}">Yes</button>`}
+      <button class="ghost q-talk" data-id="${esc(r.id)}" title="Open it and write to its owner">Open</button>
       <span class="chip q-chip">${r.seconds <= Q_PICK_SECONDS ? "30 s" : "2 min"}</span>
     </div>
   </div>`;
@@ -508,6 +514,21 @@ function qRender(state) {
       return;
     }
     if (send) {
+      const st = document.getElementById("q-talk-st");
+      if (st) {
+        // The thirty seconds he was promised, counted where he is looking. The
+        // card itself hands back when the clock runs out; this only shows it.
+        let left = 30;
+        st.textContent = "Sent. Waiting for an answer… 30 s";
+        clearInterval(window.qClock);
+        window.qClock = setInterval(() => {
+          left -= 1;
+          st.textContent = left > 0
+            ? `Sent. Waiting for an answer… ${left} s`
+            : "This is with the studio now. It comes back to the top of your list with the answer.";
+          if (left <= 0) clearInterval(window.qClock);
+        }, 1000);
+      }
       const r = findRow(send.dataset.id);
       const box = document.getElementById("q-pane-talk");
       const text = box.querySelector("textarea").value.trim();
