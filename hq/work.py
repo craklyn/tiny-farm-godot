@@ -75,12 +75,38 @@ DEFAULT_POLICY = {
                  "that produces a recommendation. Never file the action he is asking "
                  "about as if he had asked for it — that is filed later, at its own "
                  "tier, when he accepts the recommendation."),
+    # How long he may be kept waiting for an answer to something he wrote on a
+    # card. Past it the card stops being his move: docs/QUEUE_TO_ZERO.md §8.
+    "reply_seconds": 30,
+    "states": {
+        "owed": ("He asked something on a card and no answer came within thirty "
+                 "seconds, or the owner replied that the answer needs work. The "
+                 "studio's move: it leaves his list, shows in the strip of what "
+                 "is coming back to him, and returns to the top of his list when "
+                 "the answer lands."),
+    },
 }
+
+# The promise the page makes him, in seconds. The file is the real one; this is
+# what a machine with no policy file yet still honours.
+REPLY_SECONDS = 30
+
+
+def reply_seconds():
+    try:
+        got = int(policy().get("reply_seconds", REPLY_SECONDS))
+    except Exception:
+        return REPLY_SECONDS
+    return got if got > 0 else REPLY_SECONDS
+
 
 LEVELS = ("task", "story", "epic", "project", "goal")
 
-# What a state means, in the order the Work page shows them.
-STATES = ("needs_approval", "for_review", "doing", "waiting_session", "accepted", "dropped")
+# What a state means, in the order the Work page shows them. `owed` is the one
+# state that is not his move: he asked something on a card, nobody answered
+# within the thirty seconds, and the card left his list until the answer lands.
+STATES = ("needs_approval", "for_review", "owed", "doing", "waiting_session",
+          "accepted", "dropped")
 
 
 def bind(server_module):
@@ -313,7 +339,10 @@ AMEND_NOTE = (
 #              his verdict again
 #   follow-up  the comment is really new work, for this owner or another seat;
 #              it is filed now, linked to this card, and this card stands
-MOVES = ("answer", "revise", "follow-up")
+#   needs-work the answer is not at hand: the owner says so in one line and the
+#              card hands back to the studio instead of holding him there
+#              (docs/QUEUE_TO_ZERO.md §8)
+MOVES = ("answer", "revise", "follow-up", "needs-work")
 MOVE_NOTE_OPEN = """
 WHICH MOVE YOU ARE MAKING: add "move" to the block — one of
   "answer"     — what he wrote is a question or a call to make, and your reply
@@ -338,6 +367,33 @@ one of
   "follow-up"  — what he wrote is really a new piece of work. Name it in "items"
                  with its owner; it is filed the moment you reply, linked to
                  this card.
+"""
+# Added to either note when the card is sitting in his list while he waits for
+# this reply. docs/QUEUE_TO_ZERO.md §8: he is never kept waiting past thirty
+# seconds, so an owner who cannot answer now says so and hands the card back
+# rather than holding him there.
+MOVE_NOTE_LATE = """
+  "needs-work"  — you cannot answer him now: the answer needs reading, building
+                 or a call you are not in a position to make in this reply. Say
+                 that in ONE line, name what you will do, and stop. The card
+                 leaves his list, he moves straight on to the next question, and
+                 it comes back to him when the answer does. Never use this to
+                 buy time on something you could answer here.
+
+He is looking at this card with a clock running and has THIRTY SECONDS to give
+you. Answer in place if the answer is at hand; otherwise make your move
+"needs-work" in one line. A long reply that arrives late is worth less to him
+than a short one that arrives now.
+"""
+# Added instead, once the card has handed back. The wait is over, so there is
+# nothing left to buy by saying the answer needs work — this reply is the
+# answer, and it is what puts the card back in front of him.
+MOVE_NOTE_OWED = """
+HE HAS STOPPED WAITING FOR THIS ONE. The card left his list when nobody
+answered in thirty seconds, and it is listed to him as coming back. Take the
+time you need, do the reading the answer wants, and answer him properly: this
+reply is what returns the card to the top of his list, so there is no move here
+that defers it again.
 """
 
 
@@ -466,16 +522,26 @@ def _file_item(fields, cap, org):
     })
 
 
-def _follows_spec(org, amendable=False, moves=None):
+def _follows_spec(org, amendable=False, moves=None, wait=""):
     """`moves` is None for a result, "open" for a reply on a card that can still
-    change, "closed" for a reply on a card that has been accepted or dropped."""
+    change, "closed" for a reply on a card that has been accepted or dropped.
+    `wait` says where he is: "waiting" is a card in his list with the clock
+    running, which adds the one move that ends the wait; "owed" is a card that
+    already handed back, where the wait is over and this reply is the answer."""
     pol = policy()
     t0, t1, t2 = (pol["tiers"][k]["means"] for k in ("0", "1", "2"))
     amend = AMEND_NOTE if amendable else ""
     amend_field = (',\n "amend": {"title": ..., "ask": ..., "first_action": ...}'
                    if amendable else "")
     move_note = {"open": MOVE_NOTE_OPEN, "closed": MOVE_NOTE_CLOSED}.get(moves or "", "")
-    move_field = ',\n "move": "answer|revise|follow-up"' if moves else ""
+    allowed = {"open": ["answer", "revise", "follow-up"],
+               "closed": ["answer", "follow-up"]}.get(moves or "", [])
+    if allowed and wait == "waiting":
+        move_note += MOVE_NOTE_LATE
+        allowed.append("needs-work")
+    elif allowed and wait == "owed":
+        move_note += MOVE_NOTE_OWED
+    move_field = ',\n "move": "%s"' % "|".join(allowed) if allowed else ""
     none_line = ("the single word NONE — if nothing more should\nhappen — or "
                  if not moves else
                  "NONE — only when nothing more should happen AND your move is "
@@ -712,20 +778,44 @@ def _convo_lines(item, org):
 
 
 CLOSED_STATES = ("accepted", "dropped")
+# The two states that mean the card is sitting in his list wanting something
+# from him — and so the two he can be kept waiting on.
+HIS_STATES = ("needs_approval", "for_review")
+
+
+def _live_state(item):
+    """What the card really is. `owed` is not a kind of work, it is where a
+    card waits out an answer it owes him, so its real state is the one it
+    returns to when the answer lands."""
+    if item.get("state") == "owed":
+        return item.get("owed_from") or item.get("state")
+    return item.get("state")
+
+
+def _where_he_is(item):
+    """Whether he is in front of this card waiting for the reply, has already
+    been handed it back, or is nowhere near it — which is the difference
+    between an owner who may say the answer needs work and one who may not."""
+    if item.get("state") in HIS_STATES:
+        return "waiting"
+    if item.get("state") == "owed":
+        return "owed"
+    return ""
 
 
 def _can_revise(item):
     """A revision extends a finished result. A card that is closed has nothing
     to reopen; one not yet done, or still in flight, is changed by amending its
     brief rather than by revising a result it does not have."""
-    return item.get("state") == "for_review"
+    return _live_state(item) == "for_review"
 
 
 def _response_prompt(item, org):
     result = (item.get("result") or "").strip()
-    closed = item.get("state") in CLOSED_STATES
+    closed = _live_state(item) in CLOSED_STATES
     spec = _follows_spec(org, amendable=not closed,
-                         moves="open" if _can_revise(item) else "closed")
+                         moves="open" if _can_revise(item) else "closed",
+                         wait=_where_he_is(item))
     last = next((m for m in reversed(item.get("conversation", []))
                  if m.get("role") == "daniel"), {})
     how = {"accept": "He wrote it while ACCEPTING the card, which is now closed.",
@@ -768,9 +858,134 @@ answer commits to belongs in the block below.
 {spec}"""
 
 
+# ---------------------------------------------------------------------------
+# the thirty seconds
+#
+# What he wrote on a card used to wait for the worker's next fifteen-second
+# tick and then for however long the model took, with the card locked and
+# nothing on the page promising it would ever come back. docs/QUEUE_TO_ZERO.md
+# §8: the reply starts the moment he sends it, and thirty seconds later — by
+# the machine, not by his patience — the card stops being his move. It goes to
+# `owed`, leaves his list, shows in the strip of what is coming back to him,
+# and returns to the top of the list when the answer lands.
+# ---------------------------------------------------------------------------
+
+_REPLYING = set()            # item ids whose owner is writing back right now
+_REPLY_LOCK = threading.Lock()
+
+
+def _claim(item_id):
+    with _REPLY_LOCK:
+        if item_id in _REPLYING:
+            return False
+        _REPLYING.add(item_id)
+        return True
+
+
+def _release(item_id):
+    with _REPLY_LOCK:
+        _REPLYING.discard(item_id)
+
+
+def ask_owner(item):
+    """He has written on the card. The owner owes an answer and the clock is
+    running from now — the card carries the deadline so the page can show the
+    same clock the machine is keeping."""
+    item["awaiting_reply"] = True
+    item["asked_ts"] = time.time()
+    item["reply_due_ts"] = item["asked_ts"] + reply_seconds()
+    # Whatever brought it back last time is spent: this is a fresh question.
+    item.pop("returned_at", None)
+    item.pop("returned_ts", None)
+    return item
+
+
+def _hand_back(item, why=""):
+    """The card becomes the studio's move. Called on a card in hand, by the
+    deadline and by an owner who says the answer needs work. `owed_to` and
+    `owed_since` are what the strip says out loud: who is coming back to him,
+    and how long ago it left."""
+    if item.get("state") == "owed" or item.get("state") in CLOSED_STATES:
+        return item
+    item["owed_from"] = item.get("state")
+    item["state"] = "owed"
+    item["owed_to"] = item.get("owner")
+    item["owed_since"] = _now_iso()
+    item["owed_ts"] = time.time()
+    item["owed_why"] = why[:400]
+    return item
+
+
+def hand_back_if_late(item_id):
+    """The deadline, fired against the card on disk. Does nothing if the answer
+    beat it, if the card already handed back, or if it is not his move."""
+    try:
+        item = HOST.load_json(_item_path(item_id))
+    except Exception:
+        return None
+    if not item.get("awaiting_reply") or item.get("state") not in HIS_STATES:
+        return None
+    return save_item(_hand_back(item))
+
+
+def _arm_deadline(item):
+    """One timer per question. It is cheap, it fires once, and it does nothing
+    if the answer arrived first — so an extra one costs nothing either. A card
+    that is not in his list has no wait to end and gets no timer."""
+    if item.get("state") not in HIS_STATES:
+        return None
+    left = max(0.0, (item.get("reply_due_ts") or 0) - time.time())
+    t = threading.Timer(left, hand_back_if_late, args=(item["id"],))
+    t.daemon = True
+    t.start()
+    return t
+
+
+def start_reply(item_id):
+    """Start the owner's reply now. The page returns from his POST while this
+    runs; the worker's tick is no longer what decides when the studio answers."""
+    if HOST.limited_until():
+        return None           # no tokens: the worker picks it up when there are
+    if not _claim(item_id):
+        return None           # already being answered
+    t = threading.Thread(target=_reply_now, args=(item_id,), daemon=True)
+    t.start()
+    return t
+
+
+def _begin_answering(item):
+    """Both halves of the promise, made where he pressed the button: the reply
+    runs from now, and the deadline that ends his wait is armed whether or not
+    the reply ever comes back."""
+    _arm_deadline(item)
+    return start_reply(item["id"])
+
+
+def _reply_now(item_id):
+    try:
+        item = HOST.load_json(_item_path(item_id))
+        _process_response(item, HOST.load_org())
+    except Exception:
+        pass                  # the card keeps `awaiting_reply`; the worker retries
+    finally:
+        _release(item_id)
+
+
+def _sweep_hand_backs():
+    """The fallback for questions no live timer is watching — asked before a
+    restart, or picked up by the worker rather than by his POST."""
+    now = time.time()
+    for it in items():
+        if (it.get("awaiting_reply") and it.get("state") in HIS_STATES
+                and now >= (it.get("reply_due_ts")
+                            or (it.get("asked_ts") or now) + reply_seconds())):
+            hand_back_if_late(it["id"])
+
+
 def _process_response(item, org):
-    """He asked something on a card; the owner answers on the card. Runs on the
-    worker so the page never blocks on a model call."""
+    """He asked something on a card; the owner answers on the card. Runs off the
+    page's thread so his POST never blocks on a model call."""
+    asked = item.get("asked_ts")
     raw, limited = _run_cli(_response_prompt(item, org),
                             HOST.build_system_prompt(org, item["owner"]),
                             "Read,Glob,Grep", HOST.MAX_TURNS, 300,
@@ -782,10 +997,22 @@ def _process_response(item, org):
     # Re-read: he may have typed again while the owner was thinking, and his
     # message must not be lost to a stale copy of the item.
     fresh = HOST.load_json(_item_path(item["id"]))
+    # The answer he was owed has arrived. The card is his move again and comes
+    # back at the top of his list, not at the place in it that it left from.
+    if fresh.get("state") == "owed":
+        fresh["state"] = fresh.pop("owed_from", None) or "for_review"
+        for k in ("owed_to", "owed_since", "owed_ts", "owed_why"):
+            fresh.pop(k, None)
+        fresh["returned_at"] = _now_iso()
+        fresh["returned_ts"] = time.time()
     # A move the card cannot make is read as the nearest one it can: a closed
     # card has nothing to revise, and a card with no result yet is changed by
     # amending it, which the block already carries.
     if move == "revise" and not _can_revise(fresh):
+        move = "answer"
+    # Nor can a card that is not in his list hand back — there is no wait to
+    # end, and an accepted card must not reopen itself to say it needs longer.
+    if move == "needs-work" and fresh.get("state") not in HIS_STATES:
         move = "answer"
     if move is None and got is not None:
         move = "answer"
@@ -796,7 +1023,11 @@ def _process_response(item, org):
     convo = fresh.get("conversation", [])
     convo.append(msg)
     fresh["conversation"] = convo
-    fresh["awaiting_reply"] = False
+    # Answered — unless he wrote again while this was being written, in which
+    # case the newer question is still unanswered and the card must keep saying
+    # so. The reply now starts the moment he sends it, so two questions in quick
+    # succession is an ordinary thing to do rather than a rare race.
+    fresh["awaiting_reply"] = fresh.get("asked_ts") != asked
     # A conversation can change what the card is, not just what follows it. An
     # amendment is recorded rather than applied silently: he must be able to see
     # that the thing he is judging moved, and what it used to say.
@@ -828,10 +1059,22 @@ def _process_response(item, org):
         fresh["recommend"] = rec or {}
     if move == "revise":
         requeue_for_revision(fresh)
+    if move == "needs-work":
+        # He asked, the answer is not at hand, and the owner said so in one
+        # line. That line is not an answer, so the card does not go back into
+        # his list on the strength of it: it hands back and returns with the
+        # answer, exactly as a card that ran out of time does. The answer is
+        # still owed, so the card keeps asking for it and the worker writes it
+        # on a later tick — this time with no clock on him and no move that
+        # defers it again.
+        _hand_back(fresh, why=text or "")
+        fresh["awaiting_reply"] = True
+        fresh.pop("returned_at", None)
+        fresh.pop("returned_ts", None)
     save_item(fresh)
-    if move in ("revise", "follow-up"):
-        # The reply IS the work, or has filed it; reading it again for work
-        # would file the same thing twice.
+    if move in ("revise", "follow-up", "needs-work"):
+        # The reply IS the work, or has filed it, or is one line saying it is
+        # not done yet; reading any of those for work would file it twice.
         return True
     last_from_him = next((m["text"] for m in reversed(convo)
                           if m.get("role") == "daniel"), "")
@@ -916,13 +1159,24 @@ def worker():
     while True:
         time.sleep(15)
         try:
+            # Before anything that can block for minutes: a question past its
+            # thirty seconds stops being his, whatever else the studio is doing.
+            _sweep_hand_backs()
             if HOST.limited_until():
                 continue
             org = HOST.load_org()
-            waiting = [i for i in items() if i.get("awaiting_reply")]
+            # His POST starts the reply itself now, so what is left here is the
+            # stragglers: questions asked while the tokens were out, or asked
+            # before a restart took their thread with it.
+            waiting = [i for i in items()
+                       if i.get("awaiting_reply") and i["id"] not in _REPLYING]
             if waiting:
                 waiting.sort(key=lambda i: i.get("asked_ts", 0))
-                _process_response(waiting[0], org)
+                if _claim(waiting[0]["id"]):
+                    try:
+                        _process_response(waiting[0], org)
+                    finally:
+                        _release(waiting[0]["id"])
                 continue
             pending = sorted(_read_dir(CAPTURES), key=lambda c: c.get("created_ts", 0))
             if pending:
@@ -943,6 +1197,17 @@ def worker():
 
 
 def start():
+    # A restart takes the live deadlines with it. Anything already past its
+    # thirty seconds hands back here rather than fifteen seconds into the
+    # worker's first tick, and anything still inside its thirty seconds gets
+    # its deadline back, so the promise survives a restart to the second.
+    try:
+        _sweep_hand_backs()
+        for it in items():
+            if it.get("awaiting_reply") and it.get("state") in HIS_STATES:
+                _arm_deadline(it)
+    except Exception:
+        pass
     threading.Thread(target=worker, daemon=True).start()
 
 
@@ -956,7 +1221,14 @@ def snapshot():
         "policy": policy(),
         "items": got,
         "capturing": len(_read_dir(CAPTURES)),
-        "waiting_on_you": sum(1 for i in got if i["state"] in ("needs_approval", "for_review")),
+        # A card that handed back is not in this count: it is the studio's move
+        # until the answer lands, and it says so in its own strip on the page.
+        "waiting_on_you": sum(1 for i in got if i["state"] in HIS_STATES),
+        "owed": sum(1 for i in got if i["state"] == "owed"),
+        # The page keeps the same clock the machine does, against the same
+        # deadline, rather than starting its own when the card happened to load.
+        "now": time.time(),
+        "reply_seconds": reply_seconds(),
         "in_progress": sum(1 for i in got if i["state"] == "doing"),
         "queued": sum(1 for i in got if i["state"] == "waiting_session"),
         # What the company's unattended work has cost lately. It shares one
@@ -1020,8 +1292,7 @@ def api_post(path, payload):
         item.setdefault("conversation", []).append(
             {"role": "daniel", "text": said, "at": _now_iso(),
              "with": path.rsplit("/", 1)[-1]})
-        item["awaiting_reply"] = True
-        item["asked_ts"] = time.time()
+        ask_owner(item)
 
     if path == "/api/work/respond":
         # Writing back to a card is a conversation, not a verdict: it changes
@@ -1034,9 +1305,10 @@ def api_post(path, payload):
         convo = item.get("conversation", [])
         convo.append({"role": "daniel", "text": msg, "at": _now_iso()})
         item["conversation"] = convo
-        item["awaiting_reply"] = True
-        item["asked_ts"] = time.time()
-        return save_item(item)
+        ask_owner(item)
+        saved = save_item(item)
+        _begin_answering(item)
+        return saved
 
     if path == "/api/work/accept":
         item["state"] = "accepted"
@@ -1073,4 +1345,10 @@ def api_post(path, payload):
                            + "\n\nDaniel attached this when he approved it:\n" + said)
     else:
         return {"error": "not found"}
-    return save_item(item)
+    saved = save_item(item)
+    # After the verdict is on disk, never before: the reply re-reads the card
+    # when it lands, and a reply that started first could be answering a card
+    # this call is still in the middle of closing.
+    if item.get("awaiting_reply"):
+        _begin_answering(item)
+    return saved

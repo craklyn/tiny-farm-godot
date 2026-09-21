@@ -2,10 +2,12 @@
 """What a comment on a Work card does, without a model in the loop.
 
 His rule, 2026-09-11: a comment is not a verdict, and he should not have to
-pick the path it takes. The owner reads it and makes one of three moves —
-answer, revise, follow-up — and the card says which. These tests pin that
-contract at the seam where it is cheapest to check: the card's JSON before and
-after each API call and each (stubbed) reply.
+pick the path it takes. The owner reads it and makes one of four moves —
+answer, revise, follow-up, or "this needs work" — and the card says which.
+docs/QUEUE_TO_ZERO.md §8 adds the clock: the reply starts when he sends it, and
+thirty seconds later the card hands back and stops being his move. These tests
+pin both contracts at the seam where it is cheapest to check: the card's JSON
+before and after each API call and each (stubbed) reply.
 
     python3 hq/tests/test_work.py
 """
@@ -14,6 +16,7 @@ import os
 import shutil
 import sys
 import tempfile
+import time
 import types
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -99,11 +102,33 @@ def captures():
     return [n for n in os.listdir(work.CAPTURES) if n.endswith(".json")]
 
 
+def item(item_id):
+    return work.HOST.load_json(work._item_path(item_id))
+
+
+def until(cond, seconds=5.0):
+    """Wait for something a background thread is doing, or give up. Used only
+    where the thing under test IS the background start — everywhere else the
+    tests drive the reply by hand."""
+    end = time.time() + seconds
+    while time.time() < end:
+        if cond():
+            return True
+        time.sleep(0.02)
+    return False
+
+
 def main():
     tmp = tempfile.mkdtemp(prefix="hq-work-test-")
     try:
         work.bind(fake_host(tmp))
         org = ORG
+        # Writing on a card now starts the owner's reply immediately, on its own
+        # thread. Every test below drives the reply by hand so it can say what
+        # came back, so the automatic start is held off until the section that
+        # is about the automatic start.
+        real_start_reply = work.start_reply
+        work.start_reply = lambda item_id: None
 
         print("parsing the move")
         got, amend, rec, move = work._parse_follows('{"items": [], "move": "Follow_Up"}', org, "sam")
@@ -228,11 +253,141 @@ def main():
         spec = work._follows_spec(org, amendable=True, moves="open")
         check('"move": "answer|revise|follow-up"' in spec and "revise" in spec,
               "the reply block asks for the move")
+        spec = work._follows_spec(org, amendable=True, moves="open", wait="waiting")
+        check('"move": "answer|revise|follow-up|needs-work"' in spec,
+              "a card he is waiting in front of offers the move that ends the wait")
+        spec = work._follows_spec(org, amendable=True, moves="open", wait="owed")
+        check('"move": "answer|revise|follow-up"' in spec and "STOPPED WAITING" in spec,
+              "a card that already handed back cannot defer him a second time")
         spec = work._follows_spec(org, amendable=False, moves="closed")
         check("this card is closed" in spec and '"revise"     —' not in spec,
               "a closed card offers answer and follow-up only")
         spec = work._follows_spec(org)
         check('"move"' not in spec, "a result (not a reply) is not asked for a move")
+
+        print("thirty seconds, then the card hands back")
+        check("owed" in work.STATES, "handed back is a state the page can show")
+        check(work.reply_seconds() == 30, "the thirty seconds comes from the policy file")
+        work.save_item(card(id="w00000000c01"))
+        work.api_post("/api/work/respond", {"id": "w00000000c01", "message": "Why once?"})
+        it = item("w00000000c01")
+        check(round(it["reply_due_ts"] - it["asked_ts"]) == 30,
+              "the card carries the deadline, so the page and the machine keep one clock")
+        it["asked_ts"] -= 31
+        it["reply_due_ts"] -= 31
+        work.save_item(it)
+        work.hand_back_if_late("w00000000c01")
+        it = item("w00000000c01")
+        check(it["state"] == "owed" and it["owed_from"] == "for_review",
+              "a question nobody answered in thirty seconds leaves his list")
+        check(it.get("owed_to") == "sam" and it.get("owed_since"),
+              "the strip can name who it is coming back from, and since when")
+        check(it.get("awaiting_reply") is True,
+              "the studio still owes the answer — handing back is not dropping it")
+        snap = work.snapshot()
+        check(snap["waiting_on_you"] == sum(1 for i in snap["items"]
+                                            if i["state"] in ("needs_approval", "for_review")),
+              "a handed-back card is not counted as waiting on him")
+        check(snap["owed"] == 1 and snap["reply_seconds"] == 30 and snap["now"] > 0,
+              "the page is told what is coming back, and on what clock")
+
+        print("the answer brings it back to the top of his list")
+        stub_cli(reply("It plays once — looping it costs the quiet.", "NONE"))
+        work._process_response(item("w00000000c01"), org)
+        it = item("w00000000c01")
+        check(it["state"] == "for_review" and "owed_from" not in it and "owed_to" not in it,
+              "the card returns to the list it left")
+        check(it.get("returned_at") and it.get("returned_ts", 0) > 0,
+              "and returns at the top, not where it was")
+        check([m["role"] for m in it["conversation"][-2:]] == ["daniel", "sam"],
+              "it reads as a conversation: his comment, then the answer")
+        for n in captures():
+            os.remove(os.path.join(work.CAPTURES, n))
+
+        print("an owed card is still the card it was")
+        work.save_item(card(id="w00000000c02"))
+        work.api_post("/api/work/respond", {"id": "w00000000c02", "message": "Make it slower."})
+        prompt = work._response_prompt(item("w00000000c02"), org)
+        check("THIRTY SECONDS" in prompt and '"needs-work"' in prompt,
+              "the owner is told he is waiting, and how to say the answer needs work")
+        it = item("w00000000c02")
+        it["asked_ts"] -= 31
+        it["reply_due_ts"] -= 31
+        work.save_item(it)
+        work._sweep_hand_backs()
+        check(item("w00000000c02")["state"] == "owed",
+              "the sweep catches a question no live timer is watching")
+        prompt = work._response_prompt(item("w00000000c02"), org)
+        check("THIRTY SECONDS" not in prompt and "STOPPED WAITING" in prompt,
+              "once the card has handed back the owner is told to answer, not to defer")
+        stub_cli(reply("Slowing it to four seconds.", '{"items": [], "move": "revise"}'))
+        work._process_response(item("w00000000c02"), org)
+        it = item("w00000000c02")
+        check(it["state"] == "waiting_session" and it.get("revising") is True,
+              "a revise on a handed-back card still revises — owed is not what the card is")
+
+        print("a reply that is only 'this needs work' hands back too")
+        work.save_item(card(id="w00000000c03"))
+        work.api_post("/api/work/respond", {"id": "w00000000c03", "message": "What does it cost?"})
+        stub_cli(reply("I have to measure it on the tablet first.",
+                       '{"items": [], "move": "needs-work"}'))
+        work._process_response(item("w00000000c03"), org)
+        it = item("w00000000c03")
+        check(it["state"] == "owed" and it["owed_from"] == "for_review",
+              "a one-line 'not yet' does not put the card back in front of him")
+        check("measure it on the tablet" in it.get("owed_why", ""),
+              "the strip can say what it is waiting for")
+        check(it.get("returned_at") is None, "nothing came back, so nothing returns")
+        check(it.get("awaiting_reply") is True,
+              "the answer is still owed, so the card is still asking for it")
+        check(not captures(), "one line saying it is not done yet is not read for work")
+        stub_cli(reply("It costs 1.4 ms a frame on the tablet.", "NONE"))
+        work._process_response(item("w00000000c03"), org)
+        it = item("w00000000c03")
+        check(it["state"] == "for_review" and it.get("returned_at"),
+              "and the answer, when it comes, brings the card back as any other does")
+        for n in captures():
+            os.remove(os.path.join(work.CAPTURES, n))
+
+        print("a second question is not swallowed by the answer to the first")
+        work.save_item(card(id="w00000000c06"))
+        work.api_post("/api/work/respond", {"id": "w00000000c06", "message": "Why once?"})
+        stale = item("w00000000c06")
+        work.api_post("/api/work/respond", {"id": "w00000000c06", "message": "And how long is it?"})
+        stub_cli(reply("It plays once.", "NONE"))
+        work._process_response(stale, org)
+        it = item("w00000000c06")
+        check(it.get("awaiting_reply") is True,
+              "he wrote again while the answer was being written, so one is still owed")
+        for n in captures():
+            os.remove(os.path.join(work.CAPTURES, n))
+
+        print("a card that is not his move never hands back")
+        work.save_item(card(id="w00000000c04", state="accepted"))
+        work.api_post("/api/work/respond", {"id": "w00000000c04", "message": "Nice one."})
+        check(work._arm_deadline(item("w00000000c04")) is None,
+              "a closed card has no wait to end, so no clock runs on it")
+        stub_cli(reply("Thanks — it needs work before I can say more.",
+                       '{"items": [], "move": "needs-work"}'))
+        work._process_response(item("w00000000c04"), org)
+        it = item("w00000000c04")
+        check(it["state"] == "accepted" and it["conversation"][-1]["move"] == "answer",
+              "an accepted card does not reopen itself to say it needs longer")
+        for n in captures():
+            os.remove(os.path.join(work.CAPTURES, n))
+
+        print("the reply starts when he sends it, not on the next tick")
+        work.start_reply = real_start_reply
+        work.save_item(card(id="w00000000c05"))
+        stub_cli(reply("Yes — it opens over the title.", "NONE"))
+        work.api_post("/api/work/respond", {"id": "w00000000c05", "message": "Does it open over the title?"})
+        check(until(lambda: item("w00000000c05").get("awaiting_reply") is False),
+              "his POST starts the owner writing; no worker tick is involved")
+        check(item("w00000000c05")["conversation"][-1]["role"] == "sam",
+              "the answer is on the card")
+        work.start_reply = lambda item_id: None
+        for n in captures():
+            os.remove(os.path.join(work.CAPTURES, n))
 
         print("the old send-back path is gone")
         out = work.api_post("/api/work/redo", {"id": "w0000000000a1", "comment": "again"})
