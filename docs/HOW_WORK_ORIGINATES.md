@@ -275,3 +275,17 @@ same tokens — an order of magnitude, never a bill. What runs out here is a win
 - `hq/data/work/*.json` — one file per work item, the company's record of what it did.
 - `hq/static/work.js` — the Work page, ordered so that what needs him is loud and what the
   company is doing on its own is quiet but visible.
+
+**A second attempt is given the first one's own record.** An attempt that runs out of turns
+leaves its files behind — the held patch is applied into the next worktree — but for a
+while it left nothing of what it had worked out, so the next worker read the same code and
+made the same plan, and the studio paid twice for it. Every session is written down as it
+runs, so the retry's brief now carries the tail of the previous attempt's session: the last
+forty things it read, changed, ran and said, and the last thing it said in full, capped at
+four thousand characters and labelled as that attempt's own record rather than anybody's
+summary of it. The newest session is not automatically the one read — an attempt refused at
+the usage ceiling writes a file two lines long, and a run of those would otherwise hide the
+real attempt underneath them, so the most recent session that actually did something wins.
+
+- `hq/tests/test_drain_resume.py` — what a second attempt is told about the first one,
+  checked against recorded sessions written for the test; CI runs it.

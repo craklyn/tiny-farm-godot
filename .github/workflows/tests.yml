@@ -82,6 +82,12 @@ jobs:
       - name: Work only goes in on its own when all four conditions hold
         run: python3 hq/tests/test_landing_bar.py
 
+      # A second attempt at a piece of work is handed the first attempt's own
+      # record — what it read, changed, ran and said — so it continues the work
+      # instead of planning it again from nothing.
+      - name: A work item tried again is told what the earlier attempt did
+        run: python3 hq/tests/test_drain_resume.py
+
   tests:
     runs-on: ubuntu-latest
     timeout-minutes: 15

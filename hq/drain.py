@@ -226,6 +226,147 @@ def resume_brief(item, continuing, turns):
             "whole result as it now stands.\n")
 
 
+# The tail of an earlier attempt's own session, for the worker that picks the
+# item up next. Forty lines is roughly the last stretch of what it was doing
+# when it stopped — enough to continue from, short enough to be read rather
+# than skimmed. The whole block is capped so a long session cannot crowd out
+# the item itself.
+RESUME_LINES = 40
+RESUME_CHARS = 4000
+RESUME_SAID = 2000
+# One tool call per line; a line that runs past this is cut.
+RESUME_LINE_CHARS = 200
+
+
+def _session_streams(item_id):
+    """Every worker session recorded for this item, newest first.
+
+    The run happening now is skipped: the current session is writing its own
+    file while this prompt is being built, and a worker handed its own opening
+    lines back would be reading a mirror."""
+    out = []
+    try:
+        runs = os.listdir(WORKERS)
+    except OSError:
+        return out
+    for run in runs:
+        if RUN_ID and run == RUN_ID:
+            continue
+        path = os.path.join(WORKERS, run, f"{item_id}-drain-work.jsonl")
+        if os.path.isfile(path):
+            out.append(path)
+    out.sort(key=lambda p: os.path.getmtime(p), reverse=True)
+    return out
+
+
+# A worker reads and writes inside its own worktree, so every path it touched
+# is recorded under that worktree's directory. The next attempt is somewhere
+# else entirely, and a wall of absolute paths naming a directory that no longer
+# exists is both noise and a trap.
+_WORKTREE_PATH = re.compile(re.escape(WORKTREES) + r"/[^/\s]+/[^/\s]+/?")
+
+
+def _trim(text, limit):
+    """Shortened to fit, with the dead worktree paths taken out of it."""
+    text = _WORKTREE_PATH.sub("", str(text or "").strip()).replace(REPO + "/", "")
+    return text[:limit] + "…" if len(text) > limit else text
+
+
+def _squeeze(text, limit):
+    """The same, on one line — for the record's one-line-per-call part."""
+    return _trim(" ".join(str(text or "").split()), limit)
+
+
+def _stream_lines(path):
+    """One session's events as the plain lines HQ shows: what it read, edited,
+    ran and said. Tool output is dropped — the line above each result already
+    names the call, and forty lines of file contents is not a record of what an
+    attempt was doing. What failed is kept, because that is. So are the session's
+    own bookkeeping lines, which say nothing about the item."""
+    rows = []
+    try:
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                try:
+                    ev = json.loads(line)
+                except ValueError:
+                    continue
+                if not isinstance(ev, dict):
+                    continue
+                for c in server._compact_event(ev):
+                    if c["kind"] in ("result", "note", "start"):
+                        continue
+                    rows.append(c)
+    except OSError:
+        return []
+    return rows
+
+
+def _stopped_because(path):
+    """Why that session ended, from the record written beside its stream."""
+    meta_path = path[:-len(".jsonl")] + ".json"
+    try:
+        with open(meta_path, encoding="utf-8") as f:
+            meta = json.load(f)
+    except (OSError, ValueError):
+        return ""
+    err = str((meta or {}).get("error") or "").strip()
+    if err == "LIMITED":
+        return "it was cut off at the account's usage ceiling"
+    return err[:200]
+
+
+def prior_session(item):
+    """What the last attempt on this item actually did, in its own words.
+
+    A retry already gets that attempt's files — the held patch is applied into
+    its worktree — but not its reasoning, so it re-derives a plan the studio
+    has already paid for once. Every session is written down as it runs, so the
+    record exists; this is the part of it worth carrying forward.
+
+    The newest stream is not always the one to read. An attempt refused at the
+    usage ceiling writes a file two lines long, and eleven of those in a row
+    would otherwise hide the thirteen-minute attempt underneath them, so the
+    newest session that actually did something wins."""
+    for path in _session_streams(item["id"])[:12]:
+        rows = _stream_lines(path)
+        doing = [r for r in rows if r["kind"] in ("said", "tool", "error")]
+        if len(doing) < 3:
+            continue
+        said = ""
+        for r in rows:
+            if r["kind"] == "said":
+                said = r["text"]
+        why = _stopped_because(path)
+        head = ("\n\nWHAT YOUR EARLIER ATTEMPT DID — this is that attempt's own record, "
+                "written down as it worked, not a summary anybody wrote for you. "
+                + (f"It stopped before it finished: {why}. " if why else "")
+                + "Read it before you plan, and continue its work instead of starting "
+                "the item again from the beginning.\n\nThe last things it read, changed, "
+                "ran and said:\n\n")
+        # A session that ends in a long reply must not eat the whole cap: what
+        # it did and what it concluded are both wanted, so the last word is
+        # trimmed to leave room for the lines under any circumstances.
+        room = RESUME_CHARS - len(head) - 4 * RESUME_LINE_CHARS - 60
+        said = _trim(said, max(400, min(RESUME_SAID, room)))
+        tail = "\nThe last thing it said:\n\n" + (said or "(it said nothing)") + "\n"
+        budget = RESUME_CHARS - len(head) - len(tail)
+        picked = []
+        for r in reversed(rows[-RESUME_LINES:]):
+            text = _squeeze(r["text"], RESUME_LINE_CHARS)
+            if r["kind"] == "said":
+                text = "said: " + text
+            if budget - (len(text) + 3) < 0:
+                break
+            budget -= len(text) + 3
+            picked.append(text)
+        if not picked:
+            continue
+        body = "\n".join("  " + t for t in reversed(picked))
+        return head + body + "\n" + tail
+    return ""
+
+
 def task_prompt(item, org, resumed="", continuing=False, turns=WORKER_TURNS):
     convo = work._convo_lines(item, org)
     said = (f"\n\nWHAT DANIEL HAS SAID ABOUT THIS ON THE CARD — the most recent word on it, "
@@ -242,7 +383,7 @@ def task_prompt(item, org, resumed="", continuing=False, turns=WORKER_TURNS):
 What Daniel asked for: {item.get('ask', '')}
 
 The next step, which is yours to take now: {item.get('first_action', '')}
-{said}{prior_checks(item)}{revising}{resume_brief(item, continuing, turns)}
+{said}{prior_checks(item)}{prior_session(item)}{revising}{resume_brief(item, continuing, turns)}
 Do the work in your worktree. Then reply with the deliverable Daniel reads: what
 you changed, what it now does, and anything you found that he should know.
 Plain language, no preamble, no ticket IDs, as short as the work allows. Do not
@@ -1335,6 +1476,9 @@ def main():
     ap.add_argument("--limit", type=int, default=0, help="stop after N items")
     ap.add_argument("--jobs", type=int, default=3, help="seats working at once")
     ap.add_argument("--list", action="store_true", help="what is queued, and nothing else")
+    ap.add_argument("--brief", metavar="ID",
+                    help="print the brief the next attempt at this item would be given, "
+                         "and run nothing")
     ap.add_argument("--dry-run", action="store_true", help="say what would run")
     ap.add_argument("--apply", action="store_true",
                     help="re-apply held patches from hq/data/patches/, without running any model")
@@ -1408,6 +1552,14 @@ def main():
             print(f"not queued: {', '.join(sorted(missing))}")
     if args.limit:
         pool = pool[:args.limit]
+
+    if args.brief:
+        for it in work.items():
+            if it["id"] == args.brief:
+                print(task_prompt(it, org))
+                return 0
+        print(f"No work item {args.brief}.")
+        return 1
 
     if args.list or args.dry_run:
         for i in pool:
