@@ -54,7 +54,17 @@
       </div>
     </div>
     <a href="#/work" data-route="/work"><span>🧾</span> Your Queue <b id="work-badge" class="badge" hidden></b></a>
-    <a href="#/chat" data-route="/chat"><span>💬</span> Chief of Staff</a>
+    <div class="nav-group" data-grp="chief">
+      <div class="nav-parent">
+        <a href="#/chat" data-route="/chat"><span>💬</span> Chief of Staff</a>
+        <button class="nav-caret" data-grp="chief" aria-label="expand the chief of staff's pages">▸</button>
+      </div>
+      <!-- The chief of staff's own pages: the chat, and the bullpen where the
+           studio's workers can be watched as they work. -->
+      <div class="nav-sub" hidden>
+        <a href="#/chat/bullpen" data-route="/chat/bullpen"><span>🔭</span> The bullpen</a>
+      </div>
+    </div>
     <div class="sidebar-foot">
       <div class="nav-legend">
         <span><i class="dot d-ok"></i>under control</span>
@@ -81,5 +91,6 @@
 <script src="/static/design.js"></script>
 <script src="/static/anim.js"></script>
 <script src="/static/work.js"></script>
+<script src="/static/workers.js"></script>
 </body>
 </html>

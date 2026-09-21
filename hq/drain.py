@@ -53,6 +53,7 @@ import re
 import shutil
 import subprocess
 import sys
+import threading
 import time
 import uuid
 
@@ -65,6 +66,17 @@ import work                        # noqa: E402
 
 WORKTREES = os.path.expanduser("~/.cache/tiny-farm-drain")
 PATCHES = os.path.join(REPO, "hq", "data", "patches")
+# Every model session the drain runs is written here as it happens — one event
+# per line, the CLI's own stream — with a small record beside it. That is what
+# HQ's bullpen page (#/chat/bullpen) reads while a worker runs, and what a card's
+# "How it was done" fold reads afterwards. Gitignored with the rest of runs/.
+WORKERS = os.path.join(REPO, "hq", "data", "runs", "workers")
+RUN_ID = ""
+
+
+def _set_run(run_id):
+    global RUN_ID
+    RUN_ID = run_id
 # A worker's turn budget. 60 is enough for most items; a sim item that has to
 # write four tests on top of the code is not, and a worker cut off mid-edit
 # costs a whole second attempt. DRAIN_TURNS=120 in the environment raises it for
@@ -280,36 +292,123 @@ the four really applies."""
 # one CLI call
 # ---------------------------------------------------------------------------
 
+def _session_paths(phase, item_id):
+    """Where one session is written as it runs: the event stream and the record
+    beside it, under hq/data/runs/workers/<run>/<item>-<phase>."""
+    run = RUN_ID or (time.strftime("%Y%m%d-%H%M%S") + "-byhand")
+    d = os.path.join(WORKERS, run)
+    os.makedirs(d, exist_ok=True)
+    stem = os.path.join(d, f"{item_id or 'none'}-{phase}")
+    return stem + ".jsonl", stem + ".json"
+
+
+def _last_assistant_text(lines):
+    """What the model last said, from a stream that never produced a result
+    event — the reply is kept even when the envelope is lost."""
+    text = ""
+    for line in lines:
+        try:
+            ev = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(ev, dict) or ev.get("type") != "assistant":
+            continue
+        for block in ((ev.get("message") or {}).get("content") or []):
+            if isinstance(block, dict) and block.get("type") == "text" and block.get("text"):
+                text = block["text"]
+    return text.strip()
+
+
 def run_cli(prompt, system, tools, model, cwd, timeout, turns, phase, seat, item_id):
+    """One model session, streamed to disk as it runs.
+
+    Every event the CLI emits is appended to the session's file the moment it
+    arrives, so a session can be watched while it runs and read back afterwards.
+    The final `result` event carries the same fields the one-shot JSON envelope
+    did, so what this returns is unchanged: (text, usage, error)."""
     cmd = ["claude", "-p", prompt, "--append-system-prompt", system,
            "--allowedTools", tools, "--max-turns", str(turns),
-           "--permission-mode", "acceptEdits", "--output-format", "json"]
+           "--permission-mode", "acceptEdits", "--output-format", "stream-json", "--verbose"]
     if model:
         cmd += ["--model", model]
     started = time.time()
+    events_path, meta_path = _session_paths(phase, item_id)
+    meta = {"item": item_id, "seat": seat, "model": model or "", "phase": phase, "cwd": cwd,
+            "turns": turns, "timeout": timeout, "run": RUN_ID,
+            "started": time.strftime("%Y-%m-%dT%H:%M:%S"), "started_ts": started,
+            "pid": None, "finished": None, "exit": None, "error": "", "usage": None}
+
+    def save_meta():
+        try:
+            with open(meta_path, "w", encoding="utf-8") as f:
+                json.dump(meta, f)
+        except OSError:
+            pass
+
+    def finish(exit_code, error=""):
+        meta["finished"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+        meta["exit"] = exit_code
+        meta["error"] = error
+        save_meta()
+
+    lines = []
     try:
-        p = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout,
-                           env={**os.environ, "CLAUDE_CODE_DISABLE_AUTOUPDATE": "1"})
-    except subprocess.TimeoutExpired:
-        return "", None, f"the {phase} call ran past {timeout // 60} minutes and was stopped"
+        p = subprocess.Popen(cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                             text=True, env={**os.environ, "CLAUDE_CODE_DISABLE_AUTOUPDATE": "1"})
     except Exception as e:
-        return "", None, f"{type(e).__name__}: {e}"[:300]
-    raw = (p.stdout or "").strip()
-    doc = None
+        finish("launch", f"{type(e).__name__}: {e}"[:300])
+        return "", None, meta["error"]
+    meta["pid"] = p.pid
+    save_meta()
+
+    def pump():
+        try:
+            with open(events_path, "a", encoding="utf-8") as f:
+                for line in p.stdout:
+                    lines.append(line)
+                    f.write(line)
+                    f.flush()
+        except (OSError, ValueError):
+            pass
+
+    reader = threading.Thread(target=pump, daemon=True)
+    reader.start()
     try:
-        doc = json.loads(raw)
-    except ValueError:
-        pass
+        p.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        p.kill()
+        p.wait()
+        reader.join(5)
+        finish("timeout", f"the {phase} call ran past {timeout // 60} minutes and was stopped")
+        return "", None, meta["error"]
+    reader.join(10)
+    try:
+        stderr = p.stderr.read() or ""
+    except (OSError, ValueError):
+        stderr = ""
+    doc = None
+    for line in reversed(lines):
+        try:
+            ev = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(ev, dict) and ev.get("type") == "result":
+            doc = ev
+            break
+    raw = "".join(lines).strip()
     usage = server.usage_from_cli(doc) if isinstance(doc, dict) else None
     if usage:
         server.record_model_usage(phase, seat, model, usage, item_id)
+    meta["usage"] = usage
     if p.returncode != 0:
-        blob = raw + "\n" + (p.stderr or "")
+        blob = raw + "\n" + stderr
         if server._looks_like_limit(blob):
+            finish(p.returncode, "LIMITED")
             return "", usage, "LIMITED"
     if isinstance(doc, dict):
         text = str(doc.get("result") or "").strip()
         if p.returncode == 0 and not doc.get("is_error"):
+            finish(p.returncode)
             return text, usage, ""
         # A JSON envelope carries the reason; pasting the whole envelope into the
         # error is how a card ends up showing Daniel a wall of session ids.
@@ -317,20 +416,17 @@ def run_cli(prompt, system, tools, model, cwd, timeout, turns, phase, seat, item
                "tool_use": f"it used all {turns} of its turns mid-edit",
                "refusal": "the model declined the task"}.get(
                    str(doc.get("stop_reason") or ""), "")
-        return text, usage, (why or str(doc.get("subtype") or "the call did not "
-                                        "finish cleanly"))[:300]
+        err = (why or str(doc.get("subtype") or "the call did not finish cleanly"))[:300]
+        finish(p.returncode, err)
+        return text, usage, err
     if p.returncode != 0:
-        return "", usage, (p.stderr or raw or "the CLI exited non-zero").strip()[:300]
-    # No JSON came back: keep the reply, lose only the price.
-    return raw, usage, "" if raw else "the CLI produced nothing"
-
-
-# ---------------------------------------------------------------------------
-# worktrees
-# ---------------------------------------------------------------------------
-
-_WT_LOCK = __import__("threading").Lock()
-
+        err = (stderr or raw or "the CLI exited non-zero").strip()[:300]
+        finish(p.returncode, err)
+        return "", usage, err
+    # No result event came back: keep what the model said, lose only the price.
+    text = _last_assistant_text(lines)
+    finish(p.returncode, "" if text else "the CLI produced nothing")
+    return text, usage, "" if text else "the CLI produced nothing"
 
 def make_worktree(run_id, item_id):
     """Serialised: `git worktree add` writes .git/worktrees, and three seats
@@ -971,6 +1067,7 @@ def main():
         return 0
 
     run_id = time.strftime("%Y%m%d-%H%M%S") + "-" + uuid.uuid4().hex[:4]
+    _set_run(run_id)
     started = time.time()
     print(f"Draining {len(pool)} item(s), {args.jobs} at a time. Run {run_id}.\n", flush=True)
 

@@ -1538,6 +1538,191 @@ def read_history(name, limit=500):
 TOKEN_WINDOW_HOURS = 5.0     # the subscription window; what runs dry is this
 
 
+WORKERS_DIR = os.path.join(DATA, "runs", "workers")
+
+
+def _pid_alive(pid):
+    try:
+        os.kill(int(pid), 0)
+        return True
+    except (OSError, TypeError, ValueError):
+        return False
+
+
+def _tool_line(name, inp):
+    """One plain line for a tool call — what a person watching would want to
+    know, not the JSON."""
+    inp = inp if isinstance(inp, dict) else {}
+    path = inp.get("file_path") or inp.get("path") or inp.get("notebook_path") or ""
+    if name == "Read":
+        return f"Read {path}"
+    if name in ("Edit", "MultiEdit"):
+        old, new = str(inp.get("old_string") or ""), str(inp.get("new_string") or "")
+        return f"Edited {path} (−{old.count(chr(10)) + 1} +{new.count(chr(10)) + 1} lines)" if old or new else f"Edited {path}"
+    if name == "Write":
+        body = str(inp.get("content") or "")
+        return f"Wrote {path} ({body.count(chr(10)) + 1} lines)"
+    if name == "Bash":
+        return "Ran: " + " ".join(str(inp.get("command") or "").split())[:200]
+    if name == "Grep":
+        return f"Searched for {inp.get('pattern', '')!r}" + (f" in {path}" if path else "")
+    if name == "Glob":
+        return f"Listed files matching {inp.get('pattern', '')}"
+    if name in ("Agent", "Task"):
+        return "Started a helper: " + str(inp.get("description") or "")[:120]
+    if name == "TodoWrite":
+        return "Updated its to-do list"
+    return f"Used {name}"
+
+
+def _compact_event(ev):
+    """A CLI stream event -> zero or more plain lines {kind, text}."""
+    out = []
+    t = ev.get("type")
+    if t == "system" and ev.get("subtype") == "init":
+        out.append({"kind": "start", "text": f"Session opened on {ev.get('model', '')}"})
+    elif t == "assistant":
+        for block in ((ev.get("message") or {}).get("content") or []):
+            if not isinstance(block, dict):
+                continue
+            if block.get("type") == "text" and (block.get("text") or "").strip():
+                out.append({"kind": "said", "text": block["text"].strip()})
+            elif block.get("type") == "tool_use":
+                out.append({"kind": "tool", "text": _tool_line(block.get("name", ""), block.get("input"))})
+    elif t == "user":
+        for block in ((ev.get("message") or {}).get("content") or []):
+            if isinstance(block, dict) and block.get("type") == "tool_result":
+                body = block.get("content")
+                if isinstance(body, list):
+                    body = " ".join(str(b.get("text", "")) for b in body if isinstance(b, dict))
+                body = " ".join(str(body or "").split())
+                if block.get("is_error"):
+                    out.append({"kind": "error", "text": "Failed: " + body[:240]})
+                elif body:
+                    out.append({"kind": "result", "text": body[:160]})
+    elif t == "rate_limit_event":
+        info = ev.get("rate_limit_info") or {}
+        if info.get("status") and info.get("status") != "allowed":
+            out.append({"kind": "note", "text": f"Rate limit: {info.get('status')}"})
+    elif t == "result":
+        n = ev.get("num_turns")
+        secs = round((ev.get("duration_ms") or 0) / 1000)
+        cost = ev.get("total_cost_usd")
+        out.append({"kind": "done", "text": f"Finished: {ev.get('subtype', '')}"
+                    + (f", {n} turns" if n is not None else "") + f", {secs} s"
+                    + (f", ${cost:.2f}" if isinstance(cost, (int, float)) else "")})
+    return out
+
+
+def _session_progress(events_path):
+    """Turns, tokens and the last line so far, read from the stream file."""
+    seen = set()     # a streamed message arrives as several events; one turn each
+    tokens = 0
+    cost = None
+    last = ""
+    n = 0
+    try:
+        with open(events_path, encoding="utf-8") as f:
+            for line in f:
+                n += 1
+                try:
+                    ev = json.loads(line)
+                except ValueError:
+                    continue
+                if ev.get("type") == "assistant":
+                    mid = (ev.get("message") or {}).get("id") or n
+                    if mid not in seen:
+                        seen.add(mid)
+                        u = (ev.get("message") or {}).get("usage") or {}
+                        tokens += int(u.get("output_tokens") or 0) + int(u.get("input_tokens") or 0)
+                elif ev.get("type") == "result":
+                    cost = ev.get("total_cost_usd")
+                for c in _compact_event(ev):
+                    last = c["text"]
+    except OSError:
+        pass
+    return {"events": n, "turns": len(seen), "tokens": tokens, "cost": cost, "last": last[:160]}
+
+
+def worker_sessions():
+    """Every session the drain is running now, plus the ones from the last day,
+    newest first. Each is what the watching page shows in a panel header."""
+    import time as _t
+    out = []
+    if not os.path.isdir(WORKERS_DIR):
+        return out
+    now = _t.time()
+    titles = {}
+    try:
+        titles = {i.get("id"): i.get("title", "") for i in work.items()}
+    except Exception:
+        pass
+    for run in sorted(os.listdir(WORKERS_DIR), reverse=True)[:40]:
+        rd = os.path.join(WORKERS_DIR, run)
+        if not os.path.isdir(rd):
+            continue
+        for name in sorted(os.listdir(rd)):
+            if not name.endswith(".json"):
+                continue
+            meta = load_json(os.path.join(rd, name)) or {}
+            if not meta:
+                continue
+            stem = name[:-5]
+            running = not meta.get("finished") and _pid_alive(meta.get("pid"))
+            started_ts = float(meta.get("started_ts") or 0)
+            if not running and now - started_ts > 86400:
+                continue
+            prog = _session_progress(os.path.join(rd, stem + ".jsonl"))
+            files = []
+            cwd = meta.get("cwd") or ""
+            if running and os.path.isdir(cwd):
+                try:
+                    got = subprocess.run(["git", "status", "--short"], cwd=cwd, capture_output=True,
+                                         text=True, timeout=20)
+                    files = [l[3:] for l in got.stdout.splitlines() if len(l) > 3][:20]
+                except (OSError, subprocess.SubprocessError):
+                    files = []
+            # The drain names the person's own id (tomas, ravi); a goal names a
+            # seat. Either way the panel shows a person's name.
+            who = _person_name(meta.get("seat") or "")
+            if not who:
+                seat = seat_for(meta.get("seat") or "")
+                who = _person_name((seat or {}).get("held_by")) if seat else ""
+            state = "running" if running else ("stopped" if not meta.get("finished") else
+                                               ("failed" if meta.get("error") else "finished"))
+            out.append({"run": run, "name": stem, "item": meta.get("item"), "title": titles.get(meta.get("item"), ""),
+                        "seat": meta.get("seat"), "who": who or meta.get("seat"), "model": meta.get("model"),
+                        "phase": {"drain-work": "worker", "drain-check": "checker"}.get(meta.get("phase"), meta.get("phase")),
+                        "started": meta.get("started"), "elapsed": int(now - started_ts) if started_ts else None,
+                        "finished": meta.get("finished"), "state": state, "error": meta.get("error") or "",
+                        "turns_allowed": meta.get("turns"), "files": files, **prog})
+    running = [s for s in out if s["state"] == "running"]
+    rest = sorted([s for s in out if s["state"] != "running"], key=lambda s: s.get("started") or "", reverse=True)
+    return running + rest
+
+
+def worker_events(run, name, after=0):
+    """The plain lines of one session past line `after`, for the watching page."""
+    path = os.path.join(WORKERS_DIR, run, name + ".jsonl")
+    lines = []
+    total = 0
+    try:
+        with open(path, encoding="utf-8") as f:
+            for n, line in enumerate(f, 1):
+                total = n
+                if n <= after:
+                    continue
+                try:
+                    ev = json.loads(line)
+                except ValueError:
+                    continue
+                for c in _compact_event(ev):
+                    lines.append(dict(c, n=n))
+    except OSError:
+        return {"lines": [], "total": 0, "missing": True}
+    return {"lines": lines, "total": total}
+
+
 def usage_from_cli(doc):
     """The bill for one `claude -p --output-format json` call."""
     u = (doc or {}).get("usage") or {}
@@ -5117,6 +5302,18 @@ class Handler(BaseHTTPRequestHandler):
                     "sfx": sorted(f for f in os.listdir(sfx_dir) if f.endswith(".wav")),
                     "music": sorted(f for f in os.listdir(music_dir) if f.endswith((".ogg", ".wav"))),
                 })
+            if path == "/api/workers":
+                # The sessions the drain is running or ran today, for watching.
+                return self._send(200, {"sessions": worker_sessions()})
+            if path.startswith("/api/workers/"):
+                rest = path[len("/api/workers/"):].split("/")
+                if len(rest) != 2 or not all(re.fullmatch(r"[A-Za-z0-9_.-]+", r) for r in rest):
+                    return self._send(404, {"error": "no such session"})
+                try:
+                    after = int((query.get("after") or ["0"])[0])
+                except ValueError:
+                    after = 0
+                return self._send(200, worker_events(rest[0], rest[1], after))
             if path == "/api/spend":
                 # The money ledger, as written. Absent until the art pipeline has
                 # something to record, and half-written while it appends — both

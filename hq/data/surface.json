@@ -37,7 +37,8 @@
         "/chat": {
             "title": "Chief of Staff",
             "since": "2026-09-04",
-            "reason": "Off while HQ is rebuilt one page at a time. Nothing here is broken and nothing was deleted — this page is waiting its turn to be gone through with you and either kept as it is or redesigned."
+            "reason": "Off while HQ is rebuilt one page at a time. Nothing here is broken and nothing was deleted — this page is waiting its turn to be gone through with you and either kept as it is or redesigned. The bullpen beneath it (#/chat/bullpen), where the studio's workers are watched as they work, is live.",
+            "exact": true
         }
     }
 }
