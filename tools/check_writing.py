@@ -64,8 +64,12 @@ import os
 import re
 import subprocess
 import sys
+import shutil
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(REPO, 'hq'))
+import execution
+
 RULINGS = os.path.join(REPO, "docs", "writing_rulings.json")
 BRIEF = os.path.join(REPO, "docs", "WRITING.md")
 CACHE = os.path.join(REPO, "docs", "writing_verdicts.json")
@@ -502,7 +506,7 @@ def save_cache(cache):
 # --- the judge ------------------------------------------------------------------
 
 def have_cli():
-    return subprocess.run(["which", "claude"], capture_output=True).returncode == 0
+    return shutil.which(execution.resolve_model(JUDGE_MODEL)['provider']) is not None
 
 
 def record_cost(usage, phase):
@@ -514,8 +518,8 @@ def record_cost(usage, phase):
     try:
         import datetime
         row = {"at": datetime.datetime.now().isoformat(timespec="seconds"),
-               "phase": phase, "seat": "claude", "model": JUDGE_MODEL, "item": "check_writing",
-               **{k: v for k, v in usage.items() if isinstance(v, (int, float))}}
+               "phase": phase, "seat": "writing judge", "item": "check_writing",
+               **usage}
         with open(path, "a", encoding="utf-8") as f:
             f.write(json.dumps(row) + "\n")
     except OSError:
@@ -566,26 +570,13 @@ def judge(texts, system, phase="writing-check"):
         "\n\n---\nReply with the JSON object and nothing else — no preamble, no "
         "explanation of your approach, no code fence. If none of the texts above is "
         "worth reporting, the whole reply is exactly: {\"findings\": []}")
-    cmd = ["claude", "-p", numbered, "--append-system-prompt", system,
-           "--allowedTools", "", "--max-turns", "1",
-           "--output-format", "json", "--model", JUDGE_MODEL]
-    try:
-        proc = subprocess.run(cmd, cwd=REPO, capture_output=True, text=True,
-                              timeout=CALL_TIMEOUT,
-                              env={**os.environ, "CLAUDE_CODE_DISABLE_AUTOUPDATE": "1"})
-    except Exception as e:
-        raise RuntimeError(f"the judge could not be reached: {type(e).__name__}") from e
-    if proc.returncode != 0:
-        raise RuntimeError(f"the judge failed: {(proc.stderr or proc.stdout or '')[:200]}")
-    try:
-        envelope = json.loads(proc.stdout)
-        body = envelope.get("result", "")
-        usage = dict(envelope.get("usage") or {})
-        if envelope.get("total_cost_usd") is not None:
-            usage["list_usd"] = envelope["total_cost_usd"]
-        record_cost(usage, phase)
-    except ValueError:
-        body = proc.stdout
+    envelope = execution.run_session(numbered, system, "", JUDGE_MODEL, REPO,
+                                     CALL_TIMEOUT, 1, phase=phase,
+                                     item="check_writing", launch_context="writing_hook")
+    record_cost(envelope["usage"], phase)
+    if envelope["error"]:
+        raise RuntimeError("the judge failed: " + envelope["error"][:200])
+    body = envelope["text"]
     out = {}
     for f in parse_findings(body):
         try:

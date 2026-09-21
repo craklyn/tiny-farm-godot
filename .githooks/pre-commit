@@ -73,7 +73,8 @@ trap 'rm -rf "$TMP"' EXIT
 # INDEX's content rather than the working tree's, which is the entire point.
 # `git ls-files` expands the patterns against the index, so a path staged for
 # deletion is simply absent and never asked for.
-FILES=$(git ls-files -- $PATTERNS tools/check_writing.py docs/WRITING.md \
+FILES=$(git ls-files -- $PATTERNS tools/check_writing.py hq/execution.py \
+                       hq/data/execution_policy.json docs/WRITING.md \
                        docs/writing_rulings.json docs/writing_verdicts.json 2>/dev/null)
 [ -n "$FILES" ] || exit 0
 # shellcheck disable=SC2086
@@ -89,6 +90,35 @@ git checkout-index -f --prefix="$TMP/" -- $FILES >/dev/null 2>&1 || exit 0
 mkdir -p "$TMP/hq/data" 2>/dev/null
 ln -sfn "$ROOT/hq/data/history" "$TMP/hq/data/history" 2>/dev/null
 
+# Preserve unstaged verdicts: merge only verdict entries gained by this run.
+cp "$TMP/docs/writing_verdicts.json" "$TMP/before.json"
+merge_verdicts() {
+    python3 - "$ROOT" "$TMP" <<'PYTHON'
+import json, pathlib, subprocess, sys
+root, tmp = map(pathlib.Path, sys.argv[1:])
+path = 'docs/writing_verdicts.json'
+before = json.loads((tmp / 'before.json').read_text())
+after = json.loads((tmp / path).read_text())
+delta = {k: v for k, v in after.get('verdicts', {}).items()
+         if before.get('verdicts', {}).get(k) != v}
+if not delta:
+    sys.exit(0)
+for staged in (False, True):
+    raw = (subprocess.check_output(['git', 'show', ':' + path], cwd=root)
+           if staged else (root / path).read_bytes())
+    current = json.loads(raw)
+    if current.get('brief') != after.get('brief'):
+        raise RuntimeError('Writing standard changed during the check; retry with matching verdicts')
+    current.setdefault('verdicts', {}).update(delta)
+    payload = (json.dumps(current, indent=1, ensure_ascii=False, sort_keys=True) + '\n').encode()
+    if staged:
+        blob = subprocess.check_output(['git', 'hash-object', '-w', '--stdin'], input=payload, cwd=root).decode().strip()
+        subprocess.run(['git', 'update-index', '--cacheinfo', '100644,' + blob + ',' + path], cwd=root, check=True)
+    else:
+        (root / path).write_bytes(payload)
+PYTHON
+}
+
 # Everything in it has been read before: no model call, no delay.
 python3 "$TMP/tools/check_writing.py" --verify >/dev/null 2>&1 && exit 0
 
@@ -101,8 +131,7 @@ fi
 
 # Judged. Either everything new in it reads plainly, or it does not.
 if python3 "$TMP/tools/check_writing.py" --verify >"$TMP/verdict.txt" 2>&1; then
-    cp "$TMP/docs/writing_verdicts.json" "$ROOT/docs/writing_verdicts.json" 2>/dev/null
-    git add "$ROOT/docs/writing_verdicts.json" 2>/dev/null
+    merge_verdicts || exit 1
     echo "Nothing in it he would have to decode. Verdicts added to the commit."
     exit 0
 fi
@@ -113,8 +142,7 @@ fi
 # reading again — half an hour, the night it was written. Keep them, and stage
 # them: this hook reads the INDEX, so a verdict left only in the working tree is
 # one it cannot see next time.
-cp "$TMP/docs/writing_verdicts.json" "$ROOT/docs/writing_verdicts.json" 2>/dev/null
-git add "$ROOT/docs/writing_verdicts.json" 2>/dev/null
+merge_verdicts || exit 1
 
 cat "$TMP/verdict.txt"
 cat <<'MSG'
