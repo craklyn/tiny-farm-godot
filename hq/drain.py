@@ -799,10 +799,13 @@ def _item_spend(item_id):
 
 def _parked_by_cost(item):
     spent, attempts = _item_spend(item["id"])
-    if spent <= ITEM_COST_CAP_USD:
+    # A card whose brief was rewritten after it was parked carries its own cap,
+    # set by whoever rewrote it, so the rewrite is tried once more.
+    cap = float(item.get("cost_cap_usd") or ITEM_COST_CAP_USD)
+    if spent <= cap:
         return False
     note = {"reason": (f"this has already cost ${spent:.0f} across {attempts} attempts without a result, "
-                       f"more than the ${ITEM_COST_CAP_USD:.0f} an item may spend on its own; "
+                       f"more than the ${cap:.0f} it may spend on its own; "
                        f"it needs a smaller brief before it is tried again"),
             "spent_usd": round(spent, 2), "attempts": attempts, "at": work._now_iso()}
     old = item.get("waiting_for") or {}

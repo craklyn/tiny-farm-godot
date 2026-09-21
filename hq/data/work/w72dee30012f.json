@@ -5,8 +5,8 @@
  "owner": "sam",
  "tier": 1,
  "tier_reason": "captures and a card edit; nothing players see yet",
- "ask": "Q-108 asks how the farm reads through the walls: (a) nothing, (b) haze dither, (c) desaturate and darken, (d) hard-cut walls. Nothing has been seen. Shoot each in the real interior at ×2 with the same yard state and time of day (a hen and a crow in view), one capture per treatment, under docs/design/mockups/through_walls/, and write them onto hq/data/decisions/Q-108.json as attachments with the recommendation marked. Until the captures exist the card is the studio's, not his.",
- "first_action": "Read P-18 in docs/DECISION_LOG.md and the door tooling in CLAUDE.md (tools/profile_door_backdrop.tscn); add a capture tool that switches treatment per run.",
+ "ask": "This card cannot be done by the unattended build queue: the captures need a display and the timer runs without one (hq/data/staff/claude/memory.md, 2026-09-04). Do not attempt the captures headless. What a worker without a display does instead: write the capture tool only — tools/capture_through_walls.tscn/.gd modelled on tools/capture_window_view.gd (read that file first; it is short) — that takes a treatment name from the command line (`--treatment=none|haze|desaturate|hardcut`), loads the same farm and hour each run, walks the player into the house, applies the treatment as a shader or dither on the yard layer, and saves docs/design/mockups/through_walls/<treatment>.png to scratch. Do not run it. Then set the card's next step to: `godot --path . res://tools/capture_through_walls.tscn --treatment=<each>` by hand in a session with a display, and attach the four files to hq/data/decisions/Q-108.json.",
+ "first_action": "Read tools/capture_window_view.gd and CLAUDE.md's capture-tool entries, then write the tool without running it.",
  "state": "waiting_session",
  "source": "chief-of-staff",
  "source_message": "Daniel said yes to the arrival rule (S-16) and the spawn rule (S-17) on 2026-09-20; docs/QUEUE_TO_ZERO.md §12 is the build order.",
@@ -14,5 +14,14 @@
  "created": "2026-09-20T21:23",
  "created_ts": 1789964629.754633,
  "plan_item": "docs/QUEUE_TO_ZERO.md §12",
- "promised_by": "docs/QUEUE_TO_ZERO.md"
+ "promised_by": "docs/QUEUE_TO_ZERO.md",
+ "cost_cap_usd": 35.0,
+ "amendments": [
+  {
+   "at": "2026-09-21T10:28",
+   "by": "chief-of-staff",
+   "what": "brief rewritten after the card was parked for cost",
+   "why": "Three attempts tried to shoot captures under a timer that has no display."
+  }
+ ]
 }

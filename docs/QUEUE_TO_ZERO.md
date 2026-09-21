@@ -329,3 +329,47 @@ page load (his rule: nothing expensive happens because he navigated). The exact
 seconds-per-kind estimates are calibrated from the first week of the reader's
 own timestamps, which it records to the second. Whether the digest is daily or
 live is a taste call worth nothing until the digest exists; it starts live.
+
+## 14. Status and handover, 2026-09-21
+
+Written with the last of the week's Fable budget, for the Opus session that
+continues this. Read this section and the seat's notes for 2026-09-20 and
+2026-09-21 in `hq/data/staff/claude/memory.md`; the rest of this document is
+the design and does not need re-reading to act.
+
+**Ruled.** §4 and §5 are S-16 and S-17. §7a (the form of a briefing follows the
+walk-back) is his to rule on and has not been.
+
+**Built.** The bullpen (`#/chat/bullpen`): every drain session streamed to
+`hq/data/runs/workers/` and watched live. The drain's timer at twenty minutes,
+its crash on an unparseable follow-up block fixed, its parking of items blocked
+by another session's uncommitted files, and a cost cap of $20 per item across
+attempts (`ITEM_COST_CAP_USD`, overridable per card with `cost_cap_usd`).
+
+**Not built.** Everything in §12 except row 3. Six cards carry it; three were
+parked for cost after burning $109 on cold surveys and are rewritten with exact
+starting points (wdab4785be1c the landing bar, w9f46b7286df the robot unlock,
+w72dee30012f the through-walls captures, which need a display the timer does
+not have). The hand-back (w0a529a072ba) is held on a patch that waits for the
+other session's `hq/static/work.js`. The reader (wa92bd649e33) and the
+follow-up rule (w4a183a63692) came back "concerns", unapplied, for the same
+reason, and sit in his queue only because the landing bar does not exist yet.
+
+**The one blocker.** Another session in this working tree holds about forty
+files modified and uncommitted since 2026-09-19, among them `hq/drain.py`,
+`hq/static/work.js`, `hq/static/work.css`, `CREDITS.md` and `docs/DESIGNER_QUEUE.md`.
+Every drained patch that touches one of them parks. Until that session commits
+or stashes, the build cannot land; committing its files is not ours to do.
+Every commit of `hq/drain.py` from this seat has been made from HEAD plus our
+own hunks (`git hash-object -w` + `git update-index --cacheinfo`), never from
+the working tree.
+
+**The timer is stopped** as of this note, because the week's budget is at 88%
+across all models and the window guard reads the five-hour window, not the week.
+Restart it with `systemctl --user start tiny-farm-drain.timer` when the budget
+allows; the first two runs are watched in the bullpen, not left to the night.
+
+**Order for the next session.** Land the landing bar first (its brief names
+every line); then rerun the reader and follow-up cards, which will land once
+work.js is free; then the hand-back. Q-92's ruling and the ninth stale card
+(w1a08ee15303) wait on the same session's files.

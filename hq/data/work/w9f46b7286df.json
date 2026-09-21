@@ -1,20 +1,29 @@
 {
-  "id": "w9f46b7286df",
-  "title": "Unlock the first two robots: the mark-1 once the player has farmed enough by hand, the mark-2 once a mark-1 has been used",
-  "level": "story",
-  "owner": "tomas",
-  "tier": 2,
-  "tier_reason": "S-12 landed the top two rungs (bench, Mark III) on a ladder whose bottom two, ruled on 2026-09-04 under Q-88, were never built: today the mark-1 and the mark-2 are plain purchases with nothing but price between them, so a player can buy a reacting machine before ever using a pre-programmed one.",
-  "first_action": "Read Q-88's ruling in docs/DECISION_LOG.md and docs/design/06 'The rungs themselves' for what 'the work has been felt' and 'used a mark-1' mean in world terms, then add the two rungs to SimWorld.rungs beside RUNG_MK2_WORKED and RUNG_DESK_PLACED with earned_by/earns rows in systems/machine_defs.gd.",
-  "ask": "Found while building S-12 (w1a08ee15304): the brief assumed the mark-2's Q-88 gate lived in the sim, and it does not. Build the bottom two rungs with the same machinery S-12 used: two latched rung facts on the world (SimWorld.rungs, written by the gateway at the moment the proof happens, saved with the world, survive replay), read by SimWorld.offers so the shelf and the till ask one question. Define the proofs from Q-88 and design/06 — the mark-1 offered once the farming work has been felt (pick the world fact that means that; the tally mechanism MachineDefs.is_unlocked already reads harvest counts and may be the right shape), the mark-2 offered once a mark-1 of hers has completed a job. Unit tests: neither rung is offered early, each is offered the moment its condition holds, an older save is read sensibly. Keep the robot session and the integration scenarios staging the rungs they need (they already call sim.earn for the top two). Update the shop's [Playtest] comments for both rows. Do not touch the learner.",
-  "state": "waiting_session",
-  "thread": "",
-  "source": "chief-of-staff",
-  "source_message": "Filed by the chief of staff from Tomas's S-12 report, 2026-09-10.",
-  "result": "",
-  "started": "",
-  "attempts": 0,
-  "created": "2026-09-10T23:54",
-  "created_ts": 1789109646.224045,
-  "conversation": []
+ "id": "w9f46b7286df",
+ "title": "Unlock the first two robots: the mark-1 once the player has farmed enough by hand, the mark-2 once a mark-1 has been used",
+ "level": "story",
+ "owner": "tomas",
+ "tier": 2,
+ "tier_reason": "S-12 landed the top two rungs (bench, Mark III) on a ladder whose bottom two, ruled on 2026-09-04 under Q-88, were never built: today the mark-1 and the mark-2 are plain purchases with nothing but price between them, so a player can buy a reacting machine before ever using a pre-programmed one.",
+ "first_action": "Run the two greps above, read only the lines they point at plus 30 around each, then write the gate.",
+ "ask": "Do NOT start by reading tests/test_runner.gd; it is 15,000 lines and three attempts spent their whole budget in it. This item is the sim rule only, in one file, with one test.\n\nRule: the shop offers the mark-1 robot only once the player has farmed a full day (the sim's day counter is at least 1 and at least one harvest has been recorded), and offers the mark-2 only once a mark-1 has completed one round. Where: systems/sim/sim_world.gd — find the shop stock function with `grep -n \"shop\\|stock\\|bot_mk1\\|bot_mk2\" systems/sim/sim_world.gd` and gate the two entries there; the day counter and harvest count are fields on SimWorld (grep for `day` and `harvest` in that file's `var` lines). Test: append ONE function `test_robot_shop_unlocks()` to tests/test_runner.gd using tools/merge_appended_scenario.py's convention (append at the end, register the call at the top in _init beside the other test_ calls); assert the shelf before and after each condition via SimWorld.apply_action with the shop verb the other shop tests use — copy the staging lines from the nearest existing shop test, found with `grep -n \"func test_.*shop\" tests/test_runner.gd`. Run `godot --headless --path . --script res://tests/test_runner.gd` and report the PASSED/FAILED line. Write the rule into docs/DECISION_LOG.md under P-13's entry as one sentence with today's date.",
+ "state": "waiting_session",
+ "thread": "",
+ "source": "chief-of-staff",
+ "source_message": "Filed by the chief of staff from Tomas's S-12 report, 2026-09-10.",
+ "result": "",
+ "started": "",
+ "attempts": 0,
+ "created": "2026-09-10T23:54",
+ "created_ts": 1789109646.224045,
+ "conversation": [],
+ "cost_cap_usd": 45.0,
+ "amendments": [
+  {
+   "at": "2026-09-21T10:28",
+   "by": "chief-of-staff",
+   "what": "brief rewritten after the card was parked for cost",
+   "why": "Three attempts read the test suite from the top and edited nothing."
+  }
+ ]
 }
