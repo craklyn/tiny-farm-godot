@@ -81,3 +81,7 @@ Survey file:line table above; live systemctl status captured in this task. Futur
 ## 7. Review corrections before the live run
 
 Independent review of the two implementation worktrees found three interoperation defects before any real provider call: Codex commentary was concatenated into the returned final response and could break checker JSON parsing; Claude max-turn termination lost its structured reason and would break continuation; and named nontrial card execution remained blocked even after unpausing. Repair requirements: retain commentary only in the event stream, preserve and consume stop_reason/subtype, and test explicit nontrial IDs with the hold off as well as the nominated trial with the hold on. These are correctness fixes, not changes to the user-authorized routing rule.
+
+## 8. Resume after the trial test failure
+
+Daniel authorized fixing the test and then starting the redesign work on 2026-09-21. Read-only review found Scenario AH stages row 11 only at x=13..19 (tools/test_runner.gd:3571), while the later unmarked-tile search uses x=20..23 (:3782). Generated obstacles can invalidate every candidate. Extend the fixture through x=20, retain all assertions, and verify both suites. This changes test setup only. Retry the existing reviewed card’s checks and landing if supported, preserving the failed run. Then execute redesign cards in delivery order, one at a time, leaving unrelated backlog held.

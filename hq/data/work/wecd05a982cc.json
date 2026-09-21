@@ -5,7 +5,7 @@
   "owner": "rin",
   "tier": 1,
   "tier_reason": "Reversible local work authorized by Daniel; verify the result before completion.",
-  "ask": "Implement section 5 of docs/hq/HUMAN_INTERFACE_PLAN.md. Daniel authorized this redesign on 2026-09-21. Preserve the acceptance requirements in that section and coordinate with the other sections. Do not duplicate existing deliverable gate w44ff2049d9a.",
+  "ask": "Implement section 5 of docs/hq/HUMAN_INTERFACE_PLAN.md. Daniel authorized this redesign on 2026-09-21. Preserve the acceptance requirements in that section and coordinate with the other sections. Do not duplicate existing deliverable gate w44ff2049d9a.\n\nDaniel proposes the heading Review: The revised seeder-bot animation and response labels Approve, Comment, Reject and Close. See the dated wording note in HUMAN_INTERFACE_PLAN.md; distinguish feedback from verdict and artifact rejection from closing a panel.",
   "first_action": "Read docs/hq/HUMAN_INTERFACE_PLAN.md section 5, inspect the current behavior and linked work, then implement and verify the specified outcome.",
   "state": "waiting_session",
   "thread": "claude",
