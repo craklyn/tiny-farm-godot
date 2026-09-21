@@ -258,10 +258,22 @@ work already filed.
 
 ## 8. Dialogue, hand-back, and what he looks at meanwhile
 
-**How it works today.** A comment sets `awaiting_reply`; a background worker
-answers one card per fifteen-second tick, oldest first, with a five-minute
-model timeout, and the card's buttons lock while it does. There is no
-hand-back: he either waits or leaves with no signal that anything will return.
+**How it worked until 2026-09-21.** A comment set a flag; a background worker
+answered one card per fifteen-second tick, oldest first, with a five-minute
+model timeout, and the card's buttons locked while it did. There was no
+hand-back: he either waited or left with no signal that anything would return.
+
+**Built 2026-09-21**, in `hq/work.py` and covered by `hq/tests/test_work.py`.
+Writing on a card starts its owner's reply at that moment rather than on the
+next tick. Thirty seconds later — `reply_seconds` in
+`hq/data/work_policy.json` — an unanswered card enters the state `owed`, leaves
+the count of what waits on him, and names who owes it and since when. The
+answer brings the card back at the top of his list, rendered as the
+conversation it now is. An owner who cannot answer in time says so in one line
+and the card hands back the same way, and a card that has already handed back
+once cannot hand back again on the answer it returns with. What he sees of
+it — the clock in the pane and the strip of what is coming back — is the
+reader's, below.
 
 **Recommended.** Talk opens a box in the pane. Sending it starts the owner's
 reply at once, in the owner's own model, with the card as context, and a clock

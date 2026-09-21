@@ -1000,7 +1000,8 @@ def _process_response(item, org):
     fresh = HOST.load_json(_item_path(item["id"]))
     # The answer he was owed has arrived. The card is his move again and comes
     # back at the top of his list, not at the place in it that it left from.
-    if fresh.get("state") == "owed":
+    was_owed = fresh.get("state") == "owed"
+    if was_owed:
         fresh["state"] = fresh.pop("owed_from", None) or "for_review"
         for k in ("owed_to", "owed_since", "owed_ts", "owed_why"):
             fresh.pop(k, None)
@@ -1013,7 +1014,10 @@ def _process_response(item, org):
         move = "answer"
     # Nor can a card that is not in his list hand back — there is no wait to
     # end, and an accepted card must not reopen itself to say it needs longer.
-    if move == "needs-work" and fresh.get("state") not in HIS_STATES:
+    # A card that already handed back once cannot hand back on the answer it
+    # came back with: that would put him off twice on the same question, which
+    # is the thing the thirty seconds exists to stop.
+    if move == "needs-work" and (was_owed or fresh.get("state") not in HIS_STATES):
         move = "answer"
     if move is None and got is not None:
         move = "answer"

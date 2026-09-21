@@ -304,6 +304,25 @@ def main():
         for n in captures():
             os.remove(os.path.join(work.CAPTURES, n))
 
+        print("a card cannot put him off twice on one question")
+        work.save_item(card(id="w00000000c04"))
+        work.api_post("/api/work/respond", {"id": "w00000000c04", "message": "Why this way?"})
+        it = item("w00000000c04")
+        it["asked_ts"] -= 31
+        it["reply_due_ts"] -= 31
+        work.save_item(it)
+        work.hand_back_if_late("w00000000c04")
+        check(item("w00000000c04")["state"] == "owed", "it hands back the first time")
+        stub_cli(reply("Still looking into it.", '{"items": [], "move": "needs-work"}'))
+        work._process_response(item("w00000000c04"), org)
+        it = item("w00000000c04")
+        check(it["state"] == "for_review",
+              "a second request for more time is read as the answer, not as another deferral")
+        check(it["conversation"][-1].get("move") != "needs-work",
+              "and the card does not record it as handing back again")
+        for n in captures():
+            os.remove(os.path.join(work.CAPTURES, n))
+
         print("an owed card is still the card it was")
         work.save_item(card(id="w00000000c02"))
         work.api_post("/api/work/respond", {"id": "w00000000c02", "message": "Make it slower."})
