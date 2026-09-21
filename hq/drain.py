@@ -401,7 +401,12 @@ def run_cli(prompt, system, tools, model, cwd, timeout, turns, phase, seat, item
         server.record_model_usage(phase, seat, model, usage, item_id)
     meta["usage"] = usage
     if p.returncode != 0:
-        blob = raw + "\n" + stderr
+        # Only the CLI's own complaint counts as a usage limit: its error
+        # channel, and what the result event says. Never the event stream —
+        # it carries lines named rate_limit_event on every ordinary session,
+        # and on 2026-09-21 that misread every session that ended on its turn
+        # budget as "the window ran dry", which is retried without counting.
+        blob = stderr + "\n" + (str(doc.get("result") or "") if isinstance(doc, dict) else "")
         if server._looks_like_limit(blob):
             finish(p.returncode, "LIMITED")
             return "", usage, "LIMITED"
@@ -750,6 +755,63 @@ def _tree_reason(blocked):
             f"this is retried once that change is committed or put away")
 
 
+# What one item may cost across every attempt before the drain stops trying it
+# on its own. On 2026-09-21 three items were retried hourly at $15 a run,
+# landing nothing, because a misread hold was never counted as an attempt.
+ITEM_COST_CAP_USD = 20.0
+
+
+def _item_spend(item_id):
+    """Dollars every recorded session of this item has cost, from the session
+    records under hq/data/runs/workers/."""
+    total = 0.0
+    n = 0
+    try:
+        runs = os.listdir(WORKERS)
+    except OSError:
+        return 0.0, 0
+    for run in runs:
+        for name in os.listdir(os.path.join(WORKERS, run)):
+            if not name.startswith(item_id + "-") or not name.endswith(".json"):
+                continue
+            try:
+                with open(os.path.join(WORKERS, run, name), encoding="utf-8") as f:
+                    meta = json.load(f)
+            except (OSError, ValueError):
+                continue
+            cost = ((meta.get("usage") or {}).get("list_usd")) or 0.0
+            if not cost:
+                try:
+                    with open(os.path.join(WORKERS, run, name[:-5] + ".jsonl"), encoding="utf-8") as f:
+                        for line in f:
+                            if '"type": "result"' in line or '"type":"result"' in line:
+                                ev = json.loads(line)
+                                if ev.get("type") == "result":
+                                    cost = ev.get("total_cost_usd") or 0.0
+                except (OSError, ValueError):
+                    pass
+            total += float(cost or 0.0)
+            # A session the window guard stopped before it began costs nothing
+            # and is not an attempt.
+            n += 1 if (name.endswith("-drain-work.json") and cost) else 0
+    return total, n
+
+
+def _parked_by_cost(item):
+    spent, attempts = _item_spend(item["id"])
+    if spent <= ITEM_COST_CAP_USD:
+        return False
+    note = {"reason": (f"this has already cost ${spent:.0f} across {attempts} attempts without a result, "
+                       f"more than the ${ITEM_COST_CAP_USD:.0f} an item may spend on its own; "
+                       f"it needs a smaller brief before it is tried again"),
+            "spent_usd": round(spent, 2), "attempts": attempts, "at": work._now_iso()}
+    old = item.get("waiting_for") or {}
+    if (old.get("spent_usd"), old.get("attempts")) != (note["spent_usd"], note["attempts"]):
+        item["waiting_for"] = note
+        work.save_item(item)
+    return True
+
+
 def _parked_by_tree(item):
     """True when the item's held patch cannot land until a neighbour commits.
     Stamps the card so the queue says what it is waiting for, and clears the
@@ -967,6 +1029,10 @@ def queued(include_thinking=False):
     # not picked up: it would cost a worker and be held again for the same
     # reason. The card says what it waits for (`waiting_for`).
     out = [i for i in out if not _parked_by_tree(i)]
+    # An item that has already cost more than its cap across attempts without
+    # landing is not tried again on its own: it needs a smaller brief, and
+    # the card says so.
+    out = [i for i in out if not _parked_by_cost(i)]
     if include_thinking:
         out += [i for i in work.items()
                 if i.get("state") == "doing" and not i.get("started")]
