@@ -37,6 +37,10 @@ PARAMS = [
      "More reads as abundance, fewer as a few things you can follow."),
     ("open", 7, 2, 16, 1,
      "Frames the sunflower beneath her takes to unfurl."),
+    ("sink", 14.0, 0.0, 24.0, 1.0,
+     "How far below her standing height she starts. This is what makes her rise, rather than just being unmasked in place as the bud falls away."),
+    ("bud_w", 10.0, 4.0, 16.0, 0.5,
+     "How wide the sealed bud sits. Narrower reads as a bud; too wide starts to look like the open flower before it has opened."),
 ]
 P = {k: d for k, d, *_ in PARAMS}
 if len(sys.argv) > 2:                       # overrides.json, same shape as `values`
@@ -92,9 +96,13 @@ def petal(im, cx, cy, ang, length, wide, tip_light):
             else: c = PETAL_M
             px(im, x, y, c)
 
+def ease_out(t):
+    e = max(0.0, min(1.0, t))
+    return 1 - (1 - e) ** 3
+
 def big_flower(im, t):
     cy = GROUND + 6
-    e = max(0.0, min(1.0, t)); ease = 1 - (1 - e) ** 3
+    ease = ease_out(t)
     for i in range(11):
         a = math.pi + (i + 0.5) * math.pi / 11
         petal(im, CX, cy, a, int(4 + 16 * ease), 1.3 + 1.7 * ease, True)
@@ -103,6 +111,41 @@ def big_flower(im, t):
             d = (i / 8.0) ** 2 + (j / 3.0) ** 2
             if d <= 1:
                 px(im, CX + i, cy + j, CORE_M if d > 0.74 else (CORE_D if (i + j) % 2 else SEED_D))
+
+def clip_below(im, line_y):
+    """Erase every opaque pixel at or past `line_y` — the height she has
+    risen to. Deriving the clip from her own bounding box (rather than
+    matching it against a separately-drawn shape) is what guarantees no part
+    of her ever peeks out past whatever is meant to be hiding her."""
+    y0 = max(0, min(H, int(math.ceil(line_y))))
+    if y0 >= H:
+        return
+    data = im.load()
+    for y in range(y0, H):
+        for x in range(W):
+            if data[x, y][3]:
+                data[x, y] = (0, 0, 0, 0)
+
+def closed_bud(im, tip_y):
+    """The sealed bud's sepals, filling the ground up to just above `tip_y` —
+    the line she has risen past — so the clip reads as a bud's own taper
+    rather than a hard cutoff. Its height follows her rise directly, so it
+    can never fall short of covering her and never outlives the point where
+    big_flower's open disc takes over."""
+    base = GROUND + 6
+    top = tip_y - 3
+    h = int(round(base - top))
+    if h <= 0:
+        return
+    for row in range(h):
+        f = row / max(h - 1, 1)                       # 0 at the base, 1 at the sealed tip
+        rw = P["bud_w"] if f < 0.7 else P["bud_w"] * (1 - (f - 0.7) / 0.3)
+        y = base - row
+        for k in range(-int(rw), int(rw) + 1):
+            if f > 0.85: c = PETAL_D                  # a sliver of petal colour showing at the seal
+            elif abs(k) >= rw - 0.6: c = STEM_D
+            else: c = STEM_M
+            px(im, CX + k, y, c)
 
 # ------------------------------------------------- seed -> sprout -> sunflower
 def particle(im, x, y, t, front):
@@ -138,6 +181,7 @@ N, RISE, TURNS, RAD = int(P["count"]), P["rise"], P["turns"], P["rad"]
 
 def build():
     frames = []
+    open_n = max(int(P["open"]), 1)
     for f in range(F):
         u = f / F
         back, front = blank(), blank()
@@ -150,10 +194,30 @@ def build():
             x = CX + math.cos(a) * r
             fr = math.sin(a) > 0
             particle(front if fr else back, x, y, t, fr)
+        # Bud progress: 0 at the first frame (sealed), 1 once it has opened —
+        # held there for the rest of the loop, same shape as the old (f+1)/open
+        # ramp but starting a frame earlier so frame 0 is genuinely closed.
+        bloom_t = f / (open_n - 1) if open_n > 1 else 1.0
+        p = ease_out(bloom_t)
         im = blank()
-        big_flower(im, (f + 1) / P["open"])
+        big_flower(im, bloom_t)
         im.alpha_composite(back)
-        im.alpha_composite(GIRL, (CX - GIRL.size[0] // 2, GROUND - GIRL.size[1]))
+        # She rises out of the bud rather than standing over it the whole time:
+        # sunk below her standing height while it is sealed, at full height
+        # once it has opened. The reveal line is derived from her *current*
+        # top edge, not a fixed height, so however far she has risen, the
+        # clip always lines up with her own silhouette — nothing of her can
+        # ever show below it, at any sink/height combination.
+        gh = GIRL.size[1]
+        feet_y = GROUND + P["sink"] * (1 - p)
+        top_y = feet_y - gh
+        reveal_y = top_y + p * (gh + 1)
+        girl_layer = blank()
+        girl_layer.alpha_composite(GIRL, (CX - GIRL.size[0] // 2, int(round(top_y))))
+        clip_below(girl_layer, reveal_y)
+        im.alpha_composite(girl_layer)
+        if p < 1.0:                                    # fully risen: hand off cleanly to the open disc
+            closed_bud(im, reveal_y)
         im.alpha_composite(front)
         frames.append(im)
     return frames

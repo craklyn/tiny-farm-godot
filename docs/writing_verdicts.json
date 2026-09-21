@@ -1596,6 +1596,9 @@
   "7423bfb04f6c23a86024": {
    "verdict": "ok"
   },
+  "75317eca2607d2ff251f": {
+   "verdict": "ok"
+  },
   "754227c52e9e32a55ecc": {
    "verdict": "ok"
   },
@@ -2132,6 +2135,9 @@
    "verdict": "ok"
   },
   "9c67bf164c655053c59b": {
+   "verdict": "ok"
+  },
+  "9c716a56b95a4335eb95": {
    "verdict": "ok"
   },
   "9c9833b7df5448726b7f": {
@@ -3170,6 +3176,12 @@
   },
   "e8c093b03d059ec8b611": {
    "verdict": "ok"
+  },
+  "e91d80bd0bd258aaea36": {
+   "instead": "HQ's dashboard and the designer queue page count what is waiting on Daniel the same way, so the two numbers cannot disagree",
+   "quote": "The dashboard and the queue page count what is waiting on Daniel the same way, so the two numbers cannot disagree",
+   "verdict": "second-look",
+   "why": "The terms 'the dashboard' and 'the queue page' are not introduced or linked, making it unclear which specific tools are referenced."
   },
   "e930ce4ab968d7b855ec": {
    "verdict": "ok"

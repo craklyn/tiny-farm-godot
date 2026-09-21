@@ -39,22 +39,6 @@
       16,
       1,
       "Frames the sunflower beneath her takes to unfurl."
-    ],
-    [
-      "sink",
-      14.0,
-      0.0,
-      24.0,
-      1.0,
-      "How far below her standing height she starts. This is what makes her rise, rather than just being unmasked in place as the bud falls away."
-    ],
-    [
-      "bud_w",
-      10.0,
-      4.0,
-      16.0,
-      0.5,
-      "How wide the sealed bud sits. Narrower reads as a bud; too wide starts to look like the open flower before it has opened."
     ]
   ],
   "values": {
@@ -62,9 +46,7 @@
     "rad": 16.0,
     "rise": 54.0,
     "count": 28,
-    "open": 7,
-    "sink": 14.0,
-    "bud_w": 10.0
+    "open": 7
   },
   "frames": 16,
   "canvas": [

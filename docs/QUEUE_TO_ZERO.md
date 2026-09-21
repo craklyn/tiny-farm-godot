@@ -321,7 +321,11 @@ The mock runs this on a real thirty-second clock so the feel can be judged.
 
 The before figures are measured; the after figures are estimates from the
 policy applied to today's cards and the reader's cost per kind. The goal in
-`executive.json` will measure the real number every evening.
+`executive.json` measures the real number every evening: at nine o'clock HQ
+appends one line to `hq/data/history/queue.jsonl` with the count, its split
+into decisions and finished work, how long the oldest has waited, and the
+target of zero. The dashboard's side panel reads the goal and the latest
+reading together, and compares today against the first evening on file.
 
 ## 10. What saying yes causes, in one place
 
@@ -366,7 +370,7 @@ w0a529a072ba (5), w40147e1305f (6); the Q-108 captures are w72dee30012f.
 | 3 | Close the nine stale cards; answer Q-108 with §11; add `oldest_waiting_days` to the goal's readings | Chief of Staff | Done 2026-09-20: eight closed, the ninth held by another session; Q-108 answered and the captures filed. |
 | 4 | The reader: cost band, subject groups, side pane with the fixed anatomy, keyboard, replacing `#/work` | UX Lead | Built from the mock; shown, not asked. |
 | 5 | Talk with the thirty-second clock and the `owed` state; the "coming back" strip | Lead in Engineering | The server half is done 2026-09-21: the reply starts on the comment, the clock is `reply_seconds` in the policy file, and the state is on every card the page reads. The clock and the strip he looks at are drawn by row 4. |
-| 6 | An executive pillar, or a home for `executive.json` on the dashboard, so the goal is read nightly | Chief of Staff | Makes the goal measured rather than filed. |
+| 6 | An executive pillar, or a home for `executive.json` on the dashboard, so the goal is read nightly | Chief of Staff | Done 2026-09-21: the side panel carries the goal rather than a new pillar, and HQ writes the evening's reading to `hq/data/history/queue.jsonl`. The side panel was the smaller home — a pillar would have brought a detail page, a commit feed and a lead the goal has no use for. |
 
 ## 13. Kept off his plate
 

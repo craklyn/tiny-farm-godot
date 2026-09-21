@@ -55,6 +55,25 @@ a document that does not yet have force. Until the look session, the accumulated
 edits are the material that session is run from — his taste, shown rather than
 described. Amendment proposals turn on once the guide is approved.
 
+**The first edit read this way found a hole in the guide: how a sprite's edge is
+drawn.** On 2026-09-16 the designer edited the sheet for the neighbour, the woman
+who farms the plot next door in the game's opening, and every stroke was an
+erasure — 53 pixels taken out across thirteen of the sixteen frames, all of them
+at her feet, with no colour added, changed or removed. Each erasure moved the
+silhouette. Read against the style guide below, there is nothing to read it
+against: the guide fixes the per-material ramps, the coloured outlines, the
+contrast between the ambient world and the things worth touching, and the hues
+held back for overlays, and it says nothing about where a sprite stops. Today
+every sheet in `assets/sprites/generated/` stops hard — across all 51 of them not
+one pixel is partly transparent, so an edge is either fully drawn or fully absent
+— but that is what the image pipeline happens to produce, not a rule anyone chose.
+
+This belongs in the look session rather than in an amendment, for the reason above
+and for one more: the fourth look below, more detail per surface, is described as
+"softer edges", and whether a soft edge is allowed to be a half-transparent pixel
+or must be another step of the ramp is the same question. Answering it in the
+session settles both at once.
+
 ---
 
 ## The look session — the four looks (2026-09-04)
