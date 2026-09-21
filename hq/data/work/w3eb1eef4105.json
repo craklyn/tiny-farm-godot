@@ -1,0 +1,16 @@
+{
+ "id": "w3eb1eef4105",
+ "title": "A worker that is retried after running out of turns is told what its earlier attempt did and said, not only handed its files",
+ "level": "task",
+ "owner": "tomas",
+ "tier": 1,
+ "tier_reason": "changes the retry brief in the drain; git reverts it",
+ "ask": "Today a turn-limit retry (resume_brief in hq/drain.py) gets the held patch applied into its worktree and one paragraph saying the earlier attempt ran out. It is not shown what that attempt did or concluded, so it re-derives its own plan. Every session is now written to hq/data/runs/workers/<run>/<item>-drain-work.jsonl as it runs. When building the retry brief, read the previous attempt's stream (the newest file for the item), compact it the way server._compact_event does, and include: the last ~40 plain lines (what it read, edited, ran, said), and the last thing it said in full. Cap the block at ~4,000 characters. Say plainly in the brief that this is the previous attempt's own record. Prove it on one item by hand and show the brief.",
+ "first_action": "Read resume_brief and task_prompt in hq/drain.py and _compact_event in hq/server.py; write a helper that finds the newest session file for an item and returns the compacted tail.",
+ "state": "waiting_session",
+ "source": "chief-of-staff",
+ "source_message": "Daniel, 2026-09-21, asked whether a retried task continues where the previous one left off; the answer was 'files yes, memory no', and this closes the gap.",
+ "thread": "claude",
+ "created": "2026-09-21T02:13",
+ "created_ts": 1789982001.290505
+}
