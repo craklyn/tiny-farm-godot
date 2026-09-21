@@ -1,0 +1,104 @@
+{
+  "created": "2026-09-21T15:42:07",
+  "design_plan": "docs/hq/HUMAN_INTERFACE_PLAN.md",
+  "routing_plan": "docs/hq/MODEL_ROUTING_PLAN.md",
+  "existing_readiness_card": "w44ff2049d9a",
+  "items": [
+    {
+      "key": "counts",
+      "id": "w5696f096a3e",
+      "title": "Use the same count for decisions waiting on Daniel",
+      "owner": "rin",
+      "section": 1,
+      "path": "hq/data/work/w5696f096a3e.json"
+    },
+    {
+      "key": "brief",
+      "id": "wcfaddc94900",
+      "title": "Give each decision a short brief written for Daniel",
+      "owner": "rin",
+      "section": 3,
+      "path": "hq/data/work/wcfaddc94900.json"
+    },
+    {
+      "key": "evidence",
+      "id": "w0b19736e7b4",
+      "title": "Show playable comparisons before asking for a verdict",
+      "owner": "rin",
+      "section": 4,
+      "path": "hq/data/work/w0b19736e7b4.json"
+    },
+    {
+      "key": "actions",
+      "id": "wecd05a982cc",
+      "title": "Make decision buttons say exactly what they do",
+      "owner": "rin",
+      "section": 5,
+      "path": "hq/data/work/wecd05a982cc.json"
+    },
+    {
+      "key": "duplicates",
+      "id": "w568d2ba4340",
+      "title": "Combine requests that need the same decision",
+      "owner": "rin",
+      "section": 6,
+      "path": "hq/data/work/w568d2ba4340.json"
+    },
+    {
+      "key": "dashboard",
+      "id": "we51a6a6a350",
+      "title": "Show current facts and clear next actions on the dashboard",
+      "owner": "rin",
+      "section": 7,
+      "path": "hq/data/work/we51a6a6a350.json"
+    },
+    {
+      "key": "navigation",
+      "id": "w2a475fb5436",
+      "title": "Make HQ navigation follow what Daniel wants to do",
+      "owner": "rin",
+      "section": 8,
+      "path": "hq/data/work/w2a475fb5436.json"
+    },
+    {
+      "key": "layout",
+      "id": "wb369cf03b22",
+      "title": "Make decision pages readable on desktop and small screens",
+      "owner": "rin",
+      "section": 9,
+      "path": "hq/data/work/wb369cf03b22.json"
+    },
+    {
+      "key": "intake",
+      "id": "wb77bd7b3ed3",
+      "title": "Let Daniel request work without choosing a team member",
+      "owner": "rin",
+      "section": 10,
+      "path": "hq/data/work/wb77bd7b3ed3.json"
+    },
+    {
+      "key": "validate",
+      "id": "wdf70f8a117c",
+      "title": "Check the redesigned HQ with real decisions and requests",
+      "owner": "sam",
+      "section": 11,
+      "path": "hq/data/work/wdf70f8a117c.json"
+    },
+    {
+      "key": "routing",
+      "id": "wd345da8e7bd",
+      "title": "Let HQ run cards with Claude or Codex",
+      "owner": "ravi",
+      "section": 0,
+      "path": "hq/data/work/wd345da8e7bd.json"
+    },
+    {
+      "key": "pilot",
+      "id": "w85a6cc7505a",
+      "title": "Document the temporary model routing used by HQ",
+      "owner": "ravi",
+      "section": 0,
+      "path": "hq/data/work/w85a6cc7505a.json"
+    }
+  ]
+}

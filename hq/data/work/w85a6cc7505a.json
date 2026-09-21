@@ -1,0 +1,21 @@
+{
+  "id": "w85a6cc7505a",
+  "title": "Document the temporary model routing used by HQ",
+  "level": "task",
+  "owner": "ravi",
+  "tier": 1,
+  "tier_reason": "Reversible local work authorized by Daniel; verify the result before completion.",
+  "ask": "Create docs/hq/MODEL_ROUTING_QUICKSTART.md: a short operator guide describing the actual execution policy, four temporary mappings, original assignment preservation, background pause and nominated single-card trial, where Bullpen shows models, and how native Claude mode is restored deliberately. Read policy and adapter as evidence. Change only this new Markdown file. Do not run cards, change policy, restart services, or claim unobserved live success.",
+  "first_action": "Read hq/data/execution_policy.json and docs/hq/MODEL_ROUTING_PLAN.md section 3, confirm behavior in hq/execution.py, then write the short guide in docs/hq/MODEL_ROUTING_QUICKSTART.md. Commit that file alone; the runner performs independent checks.",
+  "state": "waiting_session",
+  "thread": "claude",
+  "source": "interactive",
+  "source_message": "Daniel authorized the HQ redesign cards and a temporary Claude/Codex execution rule, followed by one supervised run.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-21T15:42",
+  "created_ts": 1790030527.5062532,
+  "plan": "docs/hq/MODEL_ROUTING_PLAN.md",
+  "plan_section": 0
+}
