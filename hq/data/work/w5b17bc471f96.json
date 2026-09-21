@@ -8,7 +8,7 @@
   "decision": "Q-101",
   "ask": "WI-1 in docs/V0_2_2_PLAN.md: per-robot rewards in extra['rewards'] on the ten-step ladder, the tune verb through the gateway with flat row/value keys, and the day's bookkeeping every plate reads (entropy per decision, spent decisions, last action, last night's update size, a capped per-day ledger). The eight-farm learning gate and the demo's fixed-seed week must be unchanged.",
   "first_action": "Landed; see result.",
-  "state": "for_review",
+  "state": "accepted",
   "thread": "tomas",
   "source": "chat",
   "source_message": "CEO, 2026-09-10: build the training workbench as v0.2.2 (Q-101), sim side first.",
@@ -20,5 +20,11 @@
   "parent": "training-workbench",
   "plan_item": "WI-1",
   "follow_ups": [],
-  "recommend": {}
+  "recommend": {},
+  "closed": "2026-09-20T21:21",
+  "closed_by": {
+    "seat": "chief-of-staff",
+    "rule": "S-16",
+    "note": "The work is on main: built under docs/V0_2_2_PLAN.md (Q-101), landed 2026-09-10. The card outlived its question and needed no verdict."
+  }
 }

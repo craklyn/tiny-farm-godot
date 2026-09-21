@@ -390,6 +390,34 @@ tablet, and it is reported rather than exit-coded for the same CI reason. Measur
 frame costs 0.42 ms on the desktop and an estimated 3.4 ms on the tablet against 16.7 ms. The
 desktop-to-tablet factor in that estimate is an assumption and is filed for measurement.
 
+### S-16. Finished work that is verified and revertable lands without the CEO's verdict
+**Ruled 2026-09-20 (docs/QUEUE_TO_ZERO.md §4).** A finished piece of work reaches the CEO only
+when a wrong answer with nobody reviewing it would be hard to walk back, or the answer is his
+taste to settle. Everything else lands on its own and is reported: a digest on his queue page,
+one line per landing with an Undo that reverts the commit and reopens the card. The landing bar
+is checked by the machine and written on the card — tier 0 or 1; both suites green on a clean
+worktree at HEAD plus exactly the card's diff; the checker's verdict `pass`, or `concerns` with
+every finding fixed in the same landing; human-facing text past the writing check; nothing in
+the diff on the tier-2 list (a release, a deploy, spending, deleting, the store page, a
+design-direction document). A card that fails the bar goes back to its owner, never to him; a
+card that fails twice is closed by its owner's VP seat with a note. The checker re-judges a
+card's tier from the diff it read, and only that tier counts. This is S-9 applied to finishing
+work as it was already applied to starting it. On the day it was ruled it moved 21 of 61
+waiting cards out of his queue and sent 33 back to the studio.
+
+### S-17. A follow-up reaches the CEO only as a prepped question, and his yes covers what a card said it would start
+**Ruled 2026-09-20 (docs/QUEUE_TO_ZERO.md §5).** Accepting a card is a yes to the work the card
+said it would start; those follow-ups file at their own tier and meet S-16's bar like any other
+work, and they return to him only if the result differs from what was promised, as one question.
+A follow-up that is hard to walk back is not a card in his queue: it is a decision to be prepped
+(options, a recommendation, the consequence of each) and enters his queue the day the prep is
+done. Nothing without a recommendation may enter his queue; the seat that owes one is named on
+the item. A follow-up with no tier named is tier 1, re-judged by the checker. A follow-up whose
+owner and subject match an open card merges into it. Depth does not multiply: a follow-up of a
+follow-up is still under the original yes. Why: measured the same day, each verdict he gave
+filed 1.6 new verdicts on him (97 follow-ups on 61 cards, every one returning), so the queue
+could not converge on effort alone.
+
 ## Tier 2 — Provisional (working answer + adjustment conditions)
 
 ### P-1. Touch-first, desktop always supported

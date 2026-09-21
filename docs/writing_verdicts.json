@@ -447,6 +447,12 @@
   "2028616c667d9aa4a557": {
    "verdict": "ok"
   },
+  "202b913df872f2796db2": {
+   "instead": "being automatically routed to Daniel's queue unless the question has been validated",
+   "quote": "filing itself into Daniel's queue unless it is a prepped question",
+   "verdict": "decode",
+   "why": "'Filing' and 'prepped question' are internal process terms not explained to a reader."
+  },
   "2045bac2b434a27caa78": {
    "verdict": "ok"
   },
@@ -730,6 +736,12 @@
    "quote": "She walks out of the bloom",
    "verdict": "decode",
    "why": "Bare pronoun with no referent in the same sentence; the reader cannot identify who 'she' is from this text alone."
+  },
+  "36c0ff358b9ea830a219": {
+   "instead": "Rebuild the page where Daniel answers questions from the studio, showing: how long each answer takes, questions organized by topic, and one place to view each answer",
+   "quote": "where Daniel answers the studio: how long it will take him, the questions grouped by subject, and one place to read each",
+   "verdict": "decode",
+   "why": "The structure doesn't clarify what these elements refer to; it's unclear what questions are being answered or what 'how long it will take him' measures without filling in missing context yourself."
   },
   "36e85cc983473847300a": {
    "verdict": "ok"
@@ -1247,6 +1259,9 @@
   "626c55eb69777d3fe44d": {
    "verdict": "ok"
   },
+  "62861a05f88b88097eed": {
+   "verdict": "ok"
+  },
   "62ae9d34a885dffb5876": {
    "verdict": "ok"
   },
@@ -1482,8 +1497,20 @@
   "735b4e4f451ca9e312e0": {
    "verdict": "ok"
   },
+  "73704376654105d557a8": {
+   "instead": "whose writing check found nothing",
+   "quote": "whose check found nothing",
+   "verdict": "second-look",
+   "why": "Which check is being referred to is not specified; the reader cannot tell whether this means a writing check, a quality check, or some other automated check."
+  },
   "737ed8209d7c14bebb3f": {
    "verdict": "ok"
+  },
+  "73b2d804735e5f1690f9": {
+   "instead": "passes quality review",
+   "quote": "passes the landing bar",
+   "verdict": "decode",
+   "why": "'Landing bar' is undefined process terminology."
   },
   "740585f57b159e1a7e69": {
    "verdict": "ok"
@@ -1665,6 +1692,9 @@
   "83ea69aad2d36f79a9da": {
    "verdict": "ok"
   },
+  "83f81450c5bebcbc8f0b": {
+   "verdict": "ok"
+  },
   "8427c41f2a06cff87133": {
    "baselined": "2026-09-19",
    "instead": "upscaled from pixels already in the game",
@@ -1779,6 +1809,12 @@
    "quote": "⏳ Queued — tokens are out until about . This sends itself then; you can close the page.",
    "verdict": "decode",
    "why": "The sentence 'tokens are out until about' is incomplete with no time given, and 'This' is a bare pronoun whose referent is unclear."
+  },
+  "8d79b443489ef35186ea": {
+   "instead": "send this work back to the studio, or move Daniel to the next item",
+   "quote": "hand the card back to the studio and move him on",
+   "verdict": "decode",
+   "why": "Undefined what 'the card' is or what 'move him on' means."
   },
   "8d9b158a61616491f6db": {
    "verdict": "ok"
@@ -2118,6 +2154,9 @@
   "a5cf37a1e813bfd7b66c": {
    "verdict": "ok"
   },
+  "a6a2dcd72c5938db46d3": {
+   "verdict": "ok"
+  },
   "a6cffb635f6fe4d6539e": {
    "verdict": "ok"
   },
@@ -2284,6 +2323,9 @@
    "verdict": "decode",
    "why": "\"It\" is a bare pronoun without a referent in this sentence; \"beat its own expectations,\" \"still experimenting,\" and \"wasted\" are vague without context."
   },
+  "b65428a78b9713fa7f0b": {
+   "verdict": "ok"
+  },
   "b798094b925671e1070f": {
    "verdict": "ok"
   },
@@ -2428,6 +2470,9 @@
    "why": "\"The visual check\" is not named plainly, and \"give it a home\" is metaphorical for an unclear action."
   },
   "c2b9f194fcd3ffd53f95": {
+   "verdict": "ok"
+  },
+  "c2bd2da400b76f0995ef": {
    "verdict": "ok"
   },
   "c2d3a3d55d4f5ef1246f": {
@@ -2902,6 +2947,12 @@
   "e35693e9351d09ab0869": {
    "verdict": "ok"
   },
+  "e382ce2fbc4b1c63eb68": {
+   "instead": "a cost range display",
+   "quote": "a cost band",
+   "verdict": "decode",
+   "why": "Undefined what a cost band is—cost range, category, or threshold."
+  },
   "e3a3d93082321dc0e831": {
    "verdict": "ok"
   },
@@ -3016,6 +3067,12 @@
   },
   "f10a30745648451534e8": {
    "verdict": "ok"
+  },
+  "f1bc69260955ec76771f": {
+   "instead": "Photograph the four design variants of the yard visible through the windows so Daniel can choose one",
+   "quote": "Shoot the four treatments of the yard seen through the walls, in the real room, so Daniel can pick between pictures",
+   "verdict": "decode",
+   "why": "'Treatments,' 'seen through the walls,' and 'the real room' are unclear without context."
   },
   "f1bfe34e66f66b8e8569": {
    "verdict": "ok"

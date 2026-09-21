@@ -46,5 +46,12 @@
    "caption": "The two zooms. Left: the house on its three tiles by two, the room inside at half pitch. Right: x2, and nothing has moved. Both the same photograph of the game."
   }
  ],
- "ruled": null
+ "ruled": null,
+ "replies": [
+  {
+   "at": "2026-09-20T21:23",
+   "by": "claude",
+   "text": "Checked, and the answer is in two parts.\n\n**What the session settled and what it did not.** The geometry is settled (P-18, 2026-09-15: one world, one metric, two grids) and the yard seen through the walls is the live farm since 2026-09-16 (commit a15cc5e). That shipped with option (a), nothing at all, as the placeholder. The look — haze, desaturate, hard-cut — was never ruled, and the decision log says why: nothing had been seen. So this card is not closed by that work; it is smaller. It comes back to you as four captures of the real room, one per treatment, to pick from, and Sam is shooting them. Nothing needs you until they exist.\n\n**Other stories in the same boat.** Nine cards were waiting for your verdict on work that has been on main since 10–11 September: the four Animation Lab waves (the loops as sheets, the crow morning, the robot's ladder, the story-night frame) and four workbench cards filed off Q-101. Eight are closed today under the new rule that landed work needs no verdict (S-16); the ninth, the overnight loop, is held open by another session mid-edit and closes when it is free."
+  }
+ ]
 }

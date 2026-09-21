@@ -1,0 +1,18 @@
+{
+ "id": "w72dee30012f",
+ "title": "Take four pictures of the farmyard as seen from inside the house, one per way of drawing it, so Daniel can pick one",
+ "level": "task",
+ "owner": "sam",
+ "tier": 1,
+ "tier_reason": "captures and a card edit; nothing players see yet",
+ "ask": "Q-108 asks how the farm reads through the walls: (a) nothing, (b) haze dither, (c) desaturate and darken, (d) hard-cut walls. Nothing has been seen. Shoot each in the real interior at ×2 with the same yard state and time of day (a hen and a crow in view), one capture per treatment, under docs/design/mockups/through_walls/, and write them onto hq/data/decisions/Q-108.json as attachments with the recommendation marked. Until the captures exist the card is the studio's, not his.",
+ "first_action": "Read P-18 in docs/DECISION_LOG.md and the door tooling in CLAUDE.md (tools/profile_door_backdrop.tscn); add a capture tool that switches treatment per run.",
+ "state": "waiting_session",
+ "source": "chief-of-staff",
+ "source_message": "Daniel said yes to the arrival rule (S-16) and the spawn rule (S-17) on 2026-09-20; docs/QUEUE_TO_ZERO.md §12 is the build order.",
+ "thread": "claude",
+ "created": "2026-09-20T21:23",
+ "created_ts": 1789964629.754633,
+ "plan_item": "docs/QUEUE_TO_ZERO.md §12",
+ "promised_by": "docs/QUEUE_TO_ZERO.md"
+}

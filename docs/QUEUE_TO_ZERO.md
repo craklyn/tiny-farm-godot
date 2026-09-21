@@ -1,6 +1,6 @@
 # Burning the CEO's queue to zero
 
-*Status: proposal, 2026-09-20, from the Chief of Staff seat. The goal it serves is
+*Status: §4 and §5 ruled yes by Daniel on 2026-09-20 (S-16, S-17); the build in §12 is filed as work; §7a is his to rule on. Written from the Chief of Staff seat. The goal it serves is
 `hq/data/goals/executive.json` ("Nothing waits on Daniel overnight"). The mock of
 the reader it proposes is `docs/design/mockups/queue_to_zero/queue_reader.html`,
 rendered from today's real cards by `build_mock.py` beside it. Nothing here is
@@ -206,6 +206,34 @@ same anatomy from their two sources, so there is one reader.
 Keyboard: `j`/`k` move, `y` accepts, `t` opens the talk box. After a verdict the
 pane advances to the next question by itself.
 
+## 7a. The form of the briefing follows what yes commits him to
+
+Asked by Daniel on saying yes to §4 and §5: sometimes he should be able to just
+say yes, sometimes he should see a picture or a clip, sometimes a diff. What
+decides which?
+
+**Recommended: the form is picked by what a yes commits him to, not by what
+kind of work it was.** Three forms, and the seat prepping the question picks one
+when it finishes the card, never on page load:
+
+| Form | When | What he sees | Cost |
+|---|---|---|---|
+| **A line** | The walk-back is cheap, or the call is policy rather than taste, and a recommendation is on record. | The row itself: one-sentence question, recommended answer, Yes. The pane is there if he wants it; he need not open it. | about 10 s |
+| **A gallery** | The call is taste: a look, a sound, an animation, a piece of writing. | The thing itself, rendered, beside its rivals in the same form (his own rule: a pick is shown beside what it beat). Never a paragraph describing a picture. | about 30 s |
+| **Before and after** | A yes changes what a player experiences or sends something outward. | What changes for the player, as a capture, a clip or a replay of the real game, before beside after; the diff summarised in behaviour ("she can carry ten; the eleventh harvest is refused and the crop stays") with the raw diff folded. | about 2 min |
+
+Two consequences. **He never reads code as a briefing.** The checker reads code;
+what reaches him is what the code does, shown, with the diff one fold away for
+the day he wants it. A card whose only evidence is a diff is not prepped and
+does not enter his queue. **The cost chip on the row is the form's cost**, so the
+band's minutes come from the forms, and the reader learns the real numbers from
+its own timestamps after the first week.
+
+What saying yes causes: the prepping prompt gains the three forms and the rule
+for choosing; the reader gains a gallery block and a before/after block in the
+evidence position; the cost chip reads the form. All tier 1, inside the reader
+work already filed.
+
 ## 8. Dialogue, hand-back, and what he looks at meanwhile
 
 **How it works today.** A comment sets `awaiting_reply`; a background worker
@@ -281,13 +309,15 @@ store page, deleting, and any question the studio cannot recommend on.
 ## 12. Build plan, if he says yes
 
 All tier 1, each in its own worktree on the owner's default model, verified on a
-clean checkout before landing; the Chief of Staff reads every diff.
+clean checkout before landing; the Chief of Staff reads every diff. Filed
+2026-09-20 as cards wdab4785be1c (1), w4a183a63692 (2), wa92bd649e33 (4),
+w0a529a072ba (5), w40147e1305f (6); the Q-108 captures are w72dee30012f.
 
 | Order | Work | Owner seat | Why this order |
 |---|---|---|---|
 | 1 | The landing bar and the `landed` state in `hq/drain.py` and `hq/work.py`; the digest with Undo; the checker re-tiers | Lead in Engineering | Everything else is cheaper once fewer cards arrive. |
 | 2 | Spawn policy in `_file_follow_ups`: tier-1 default, merge twins, tier-2 follow-ups file as decisions to prep; `work_policy.json` gains both policies in words | Chief of Staff | Stops the growth. |
-| 3 | Close the nine stale cards; answer Q-108 with §11; add `oldest_waiting_days` to the goal's readings | Chief of Staff | Same day as 1; no code. |
+| 3 | Close the nine stale cards; answer Q-108 with §11; add `oldest_waiting_days` to the goal's readings | Chief of Staff | Done 2026-09-20: eight closed, the ninth held by another session; Q-108 answered and the captures filed. |
 | 4 | The reader: cost band, subject groups, side pane with the fixed anatomy, keyboard, replacing `#/work` | UX Lead | Built from the mock; shown, not asked. |
 | 5 | Talk with the thirty-second clock and the `owed` state; the "coming back" strip | Lead in Engineering | Needs the reader's pane. |
 | 6 | An executive pillar, or a home for `executive.json` on the dashboard, so the goal is read nightly | Chief of Staff | Makes the goal measured rather than filed. |

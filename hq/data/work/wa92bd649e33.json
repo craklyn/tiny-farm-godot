@@ -1,0 +1,18 @@
+{
+ "id": "wa92bd649e33",
+ "title": "Rebuild the page where Daniel answers questions from the studio: how long each will take him, the questions grouped by topic, and one place to read each",
+ "level": "story",
+ "owner": "sam",
+ "tier": 1,
+ "tier_reason": "HQ page; git reverts it; shown to Daniel as a result, not asked",
+ "ask": "Build the reader in docs/QUEUE_TO_ZERO.md §6–§7 from the mock docs/design/mockups/queue_to_zero/queue_reader.html (build_mock.py shows how the real cards map onto it). Replaces #/work. Left: the band (count, minutes at his pace, picks vs reads), the 'coming back to you' strip, questions grouped by `subject` (a field the chief of staff sets when prepping; ungrouped items under 'Everything else'), each row = one-sentence question, recommended answer, Yes, Talk, a cost chip; folds for 'Landed without you' (with Undo per line) and 'Back with the studio'. Right: the fixed anatomy — question; what I recommend and why and instead; options; what yes starts with each follow-up marked lands-on-its-own or comes-back-as-a-question; what you would be walking back; so far; evidence folded; Yes/No/Talk. Decision cards and work cards render through one anatomy. Keys j/k/y/t; the pane advances after a verdict. Every sentence per docs/WRITING.md. Keep hq/static/work.js's verdict endpoints; the page is presentation.",
+ "first_action": "Open the mock beside the current #/work, list every field each card type needs for the anatomy, and start from the band and the row, which need no new server data.",
+ "state": "waiting_session",
+ "source": "chief-of-staff",
+ "source_message": "Daniel said yes to the arrival rule (S-16) and the spawn rule (S-17) on 2026-09-20; docs/QUEUE_TO_ZERO.md §12 is the build order.",
+ "thread": "claude",
+ "created": "2026-09-20T21:23",
+ "created_ts": 1789964629.754633,
+ "plan_item": "docs/QUEUE_TO_ZERO.md §12",
+ "promised_by": "docs/QUEUE_TO_ZERO.md"
+}

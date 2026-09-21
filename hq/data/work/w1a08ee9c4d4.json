@@ -7,7 +7,7 @@
   "tier_reason": "p1 of P-15; the first version ships without a frame on purpose, and the frame is a taste call that needs the real overnight on screen to judge.",
   "ask": "Once the overnight player (the Jade item) is on main: render three frame treatments over real captures of the crow night and the robot night — a postcard (rounded card, thin light border, the Day-N type beneath), a viewfinder (corner brackets, a faint scan line; the near-future edge the studio allows), and a dream (a soft cloud-edged vignette, since it is a sleep) — every colour from the shipped palette, nothing smoothed. Also render 'no frame' as the fourth, since that is what ships. Put them to Daniel as one lettered decision card in hq/data/decisions/ with the captures attached and a recommendation, per the studio's rule that visual picks are shown as captures of the real game before he is asked. Do not build the winner; that is a follow-up for Jade.",
   "first_action": "Wait for the overnight player to land, then capture a crow night with a display.",
-  "state": "for_review",
+  "state": "accepted",
   "thread": "",
   "source": "chief-of-staff",
   "source_message": "Filed from the 2026-09-10 brainstorm on where the Animation Lab loops enter play (P-15, Q-103, Q-104).",
@@ -143,5 +143,11 @@
     "tokens": 9838980,
     "fresh": 304112,
     "list_usd": 10.0641
+  },
+  "closed": "2026-09-20T21:21",
+  "closed_by": {
+    "seat": "chief-of-staff",
+    "rule": "S-16",
+    "note": "The work is on main: landed 2026-09-11 (d2c2911), ruled Q-106. The card outlived its question and needed no verdict."
   }
 }

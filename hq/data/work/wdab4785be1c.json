@@ -1,0 +1,18 @@
+{
+ "id": "wdab4785be1c",
+ "title": "Finished work whose tests pass and whose check found nothing lands on its own instead of waiting for Daniel",
+ "level": "story",
+ "owner": "tomas",
+ "tier": 1,
+ "tier_reason": "changes the drain and the work module; git reverts it; behind the suites",
+ "ask": "Build the arrival rule (S-16, docs/QUEUE_TO_ZERO.md §4). In hq/drain.py write_back and hq/work.py's tier-0 worker: when a card meets the landing bar — tier 0 or 1; both suites green on a clean worktree at HEAD plus exactly the diff, run by the drain and recorded in `suites`; checker `pass`, or `concerns` with every finding fixed; human-facing text past tools/check_writing.py; nothing in the diff on the tier-2 list in work_policy.json — commit it and set state `landed` with `landed_by`, the commit sha, and a one-line digest entry. A card that fails goes back to its owner as a revise round; a second failure closes it under the owner's VP seat with a note. Never write for_review without a suites record. The checker re-judges the tier from the diff and writes `tier_checked`; only that counts for the bar. /api/work/undo reverts the commit and reopens the card. Tests for the bar's four gates.",
+ "first_action": "Read docs/QUEUE_TO_ZERO.md §4 and hq/data/work_policy.json `arrival`, then trace write_back in hq/drain.py and _process_item in hq/work.py; add the `landed` state to STATES and snapshot(), and write the bar as one function both lanes call.",
+ "state": "waiting_session",
+ "source": "chief-of-staff",
+ "source_message": "Daniel said yes to the arrival rule (S-16) and the spawn rule (S-17) on 2026-09-20; docs/QUEUE_TO_ZERO.md §12 is the build order.",
+ "thread": "claude",
+ "created": "2026-09-20T21:23",
+ "created_ts": 1789964629.754633,
+ "plan_item": "docs/QUEUE_TO_ZERO.md §12",
+ "promised_by": "docs/QUEUE_TO_ZERO.md"
+}

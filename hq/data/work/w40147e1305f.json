@@ -1,0 +1,18 @@
+{
+ "id": "w40147e1305f",
+ "title": "Give the goal that counts Daniel's queue a place on the dashboard so it is read every evening",
+ "level": "task",
+ "owner": "claude",
+ "tier": 1,
+ "tier_reason": "dashboard wiring; git reverts it",
+ "ask": "hq/data/goals/executive.json is read by nothing because the dashboard iterates hq/data/pillars.json. Give it a home: either an executive pillar row on the dashboard side panel that renders the goal's reading (queue_state / waiting_on_you, target 0, and oldest_waiting_days), or the goal on the reader's band itself. Record the reading nightly to hq/data/history so the burn-down is a fact, not a memory. Every sentence per docs/WRITING.md.",
+ "first_action": "Read load_goals and the dashboard's pillar loop in hq/server.py and hq/static/app.js; pick the smaller of the two homes and wire it.",
+ "state": "waiting_session",
+ "source": "chief-of-staff",
+ "source_message": "Daniel said yes to the arrival rule (S-16) and the spawn rule (S-17) on 2026-09-20; docs/QUEUE_TO_ZERO.md §12 is the build order.",
+ "thread": "claude",
+ "created": "2026-09-20T21:23",
+ "created_ts": 1789964629.754633,
+ "plan_item": "docs/QUEUE_TO_ZERO.md §12",
+ "promised_by": "docs/QUEUE_TO_ZERO.md"
+}

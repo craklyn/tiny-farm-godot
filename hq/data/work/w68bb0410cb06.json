@@ -8,7 +8,7 @@
   "decision": "Q-101",
   "ask": "WI-6 in docs/V0_2_2_PLAN.md: the brass plate with five computed lines and the fallback line, and the mosaic of summed weights (eight actions by thirteen input groups) with a tap-to-inspect card and a warm/cool legend. Read-only.",
   "first_action": "Landed; see result.",
-  "state": "for_review",
+  "state": "accepted",
   "thread": "sam",
   "source": "chat",
   "source_message": "CEO, 2026-09-10: build the training workbench as v0.2.2 (Q-101), sim side first.",
@@ -20,5 +20,11 @@
   "parent": "training-workbench",
   "plan_item": "WI-6",
   "follow_ups": [],
-  "recommend": {}
+  "recommend": {},
+  "closed": "2026-09-20T21:21",
+  "closed_by": {
+    "seat": "chief-of-staff",
+    "rule": "S-16",
+    "note": "The work is on main: built under docs/V0_2_2_PLAN.md (Q-101), landed 2026-09-10. The card outlived its question and needed no verdict."
+  }
 }
