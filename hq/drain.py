@@ -623,6 +623,58 @@ def _restore(shot):
             pass
 
 
+def _patch_paths(patch):
+    """The paths a patch touches, from its own headers."""
+    return sorted({m.group(1) for m in re.finditer(r"^\+\+\+ b/(.+)$", patch or "", re.M)})
+
+
+def _held_by_tree(paths):
+    """Which of these paths another session holds changed and uncommitted in the
+    working tree. A patch onto such a file either fails or, worse, lands on top of
+    somebody's half-finished edit — so the drain does not try, and says whose
+    change is in the way instead of spending a worker to find out again."""
+    if not paths:
+        return []
+    got = subprocess.run(["git", "status", "--porcelain", "--untracked-files=all", "--"] + list(paths),
+                         cwd=REPO, capture_output=True, text=True, timeout=60)
+    busy = set()
+    for line in got.stdout.splitlines():
+        if len(line) < 4:
+            continue
+        path = line[3:]
+        if " -> " in path:
+            path = path.split(" -> ", 1)[1]
+        busy.add(path.strip().strip('"'))
+    return [p for p in paths if p in busy]
+
+
+def _tree_reason(blocked):
+    shown = ", ".join(blocked[:3]) + (f" and {len(blocked) - 3} more" if len(blocked) > 3 else "")
+    return (f"another session holds {shown} changed and uncommitted in the working tree; "
+            f"this is retried once that change is committed or put away")
+
+
+def _parked_by_tree(item):
+    """True when the item's held patch cannot land until a neighbour commits.
+    Stamps the card so the queue says what it is waiting for, and clears the
+    stamp the moment the way is free."""
+    patch = load_patch(item["id"])
+    if not patch:
+        return False
+    files = (item.get("diff") or {}).get("files") or _patch_paths(patch)
+    blocked = _held_by_tree(files)
+    if blocked:
+        note = {"files": blocked[:8], "reason": _tree_reason(blocked), "at": work._now_iso()}
+        if item.get("waiting_for") != note:
+            item["waiting_for"] = note
+            work.save_item(item)
+        return True
+    if item.get("waiting_for"):
+        item.pop("waiting_for", None)
+        work.save_item(item)
+    return False
+
+
 def apply_patch(patch, files):
     """Onto the real working tree, one item at a time.
 
@@ -634,6 +686,9 @@ def apply_patch(patch, files):
     tree is left exactly as shaped as it was found."""
     if not patch.strip():
         return True, "nothing to apply"
+    blocked = _held_by_tree(files or _patch_paths(patch))
+    if blocked:
+        return False, _tree_reason(blocked)
     before = _snapshot(files)
     plain = subprocess.run(["git", "apply", "--whitespace=nowarn", "-"], cwd=REPO,
                            input=patch, capture_output=True, text=True, timeout=180)
@@ -812,6 +867,10 @@ def queued(include_thinking=False):
     is claimed by stamping `started` — the HQ server runs its own tier-0 worker
     and skips anything already claimed, so the two never take the same item."""
     out = [i for i in work.items() if i.get("state") == "waiting_session"]
+    # A retry whose held patch waits on another session's uncommitted file is
+    # not picked up: it would cost a worker and be held again for the same
+    # reason. The card says what it waits for (`waiting_for`).
+    out = [i for i in out if not _parked_by_tree(i)]
     if include_thinking:
         out += [i for i in work.items()
                 if i.get("state") == "doing" and not i.get("started")]

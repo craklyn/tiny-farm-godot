@@ -375,16 +375,16 @@ def _parse_follows(tail, org, fallback_owner):
     past that it is a plan, and a plan is its own item."""
     txt = (tail or "").strip()
     if not txt or txt.upper().startswith("NONE"):
-        return [], None, None
+        return [], None, None, None
     if txt.startswith("```"):
         txt = re.sub(r"^```[a-z]*\n?|```$", "", txt).strip()
     start, end = txt.find("{"), txt.rfind("}")
     if start < 0 or end <= start:
-        return [], None, None
+        return [], None, None, None
     try:
         doc = json.loads(txt[start:end + 1])
     except Exception:
-        return [], None, None
+        return [], None, None, None
     raw = doc.get("items")
     if raw is None and doc.get("title"):
         raw = [doc]                      # a lone object is still one item

@@ -1,13 +1,17 @@
-# Every two hours while the machine is up, starting a quarter of an hour after
-# boot. Frequent enough that a revision Daniel asked for comes back the same
-# afternoon; rare enough that a dry token window costs at most a few skipped
-# runs. Change OnUnitActiveSec to change the rhythm.
+# Every twenty minutes while the machine is up, starting a quarter of an hour
+# after boot. The interval is not the brake: every run checks the token window
+# first and does nothing when it is dry or when the studio's own work has
+# already spent its share of the last measured ceiling (hq/drain.py,
+# UNATTENDED_WINDOW_SHARE). So the timer fires often enough that the queue moves
+# at whatever pace the budget allows, and the guard decides the pace. It was two
+# hours until 2026-09-20, when Daniel asked why a queue of fifty waited on a
+# clock. Change OnUnitActiveSec to change the rhythm.
 [Unit]
-Description=Tiny Farm HQ — drain the build queue every two hours
+Description=Tiny Farm HQ — drain the build queue every twenty minutes
 
 [Timer]
 OnBootSec=15min
-OnUnitActiveSec=2h
+OnUnitActiveSec=20min
 Persistent=true
 Unit=tiny-farm-drain.service
 
