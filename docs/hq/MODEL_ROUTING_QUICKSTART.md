@@ -26,10 +26,15 @@ Background work is paused. Automatic queue work, capture, preparation,
 replies, deadlines, animation, and ordinary drain launches do not start a
 model while `background_paused` is `true`.
 
-The only exception is the card named by `trial_item`. A supervised drain run
-for that exact card may start its build worker and its checker. No other card
-is allowed through the pause. This policy currently nominates
-`w85a6cc7505a`.
+The pause blocks automatic launches only. A supervised launch is limited to
+the card named by `trial_item` and may run only its build-worker and checker
+phases; no other card can use supervised execution. This policy currently
+nominates `w85a6cc7505a`.
+
+Explicit interactive launches and `writing_hook` launches remain allowed while
+background work is paused. Interactive means work a person explicitly starts,
+not background work relabeled as interactive. Writing hooks remain available
+so reviewed commits can run their writing check.
 
 ## Watch the model that ran
 
