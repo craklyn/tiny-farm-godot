@@ -1,0 +1,17 @@
+{
+ "id": "w70b55f9f6eb",
+ "title": "You can open the record of the session that produced a finished result, from the result itself",
+ "level": "task",
+ "owner": "sam",
+ "tier": 1,
+ "tier_reason": "one HQ page file; git reverts it",
+ "ask": "Every model session is now written down under hq/data/runs/workers/ and shown on the bullpen page (#/chat/bullpen). The queue page's briefing pane (hq/static/queue.js) has an evidence list — 'What came back', 'Files changed', 'Test suites', 'Checker' — and should carry one more entry, 'How it was done', linking to that card's session in the bullpen. GET /api/workers returns every session with its `item` field, so match on the card id and link to #/chat/bullpen with the session named in the address; add whatever the bullpen page needs to open one session directly. Touch hq/static/queue.js and hq/static/workers.js only.",
+ "first_action": "Read the evidence block in hq/static/queue.js and renderWorkers in hq/static/workers.js; give the bullpen an address for one session first.",
+ "state": "waiting_session",
+ "source": "chief-of-staff",
+ "source_message": "Left open when the bullpen was built on 2026-09-20; the queue page it depends on now exists.",
+ "thread": "claude",
+ "created": "2026-09-21T14:07",
+ "created_ts": 1790024857.386005,
+ "parent": "w9f5207838ea"
+}

@@ -314,6 +314,12 @@
   "15da062375f563ef5011": {
    "verdict": "ok"
   },
+  "1604fd13279f83d46a14": {
+   "instead": "You can reach the session's information from the finished work by clicking one link.",
+   "quote": "its record is one click from the result",
+   "verdict": "decode",
+   "why": "Both 'record' and 'result' are undefined, and the phrasing describes mechanism rather than stating clearly what the reader can do."
+  },
   "16309f97681c1fc3a011": {
    "verdict": "ok"
   },
@@ -1845,6 +1851,9 @@
    "verdict": "ok"
   },
   "8eeda774dddaae60b6cd": {
+   "verdict": "ok"
+  },
+  "8f34b6f54b3613296d57": {
    "verdict": "ok"
   },
   "8f65a4aeaecc5781fbd7": {
