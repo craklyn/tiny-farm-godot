@@ -81,6 +81,16 @@ class Consumers(unittest.TestCase):
             self.assertTrue(server.limited_until('claude'))
             self.assertFalse(server.limited_until('codex'))
 
+    def test_cost_summary_distinguishes_unpriced_and_free(self):
+        unknown = server.sum_usage([{'list_usd': None}, {'list_usd': None}])
+        self.assertEqual(drain.cost_summary(unknown), 'dollar cost unavailable for 2 calls')
+        mixed = server.sum_usage([{'list_usd': None}, {'list_usd': 1.25}])
+        self.assertEqual(drain.cost_summary(mixed), '$1.25 known plus 1 call with unknown dollar cost')
+        known = server.sum_usage([{'list_usd': 1.25}, {'list_usd': 0.75}])
+        self.assertTrue(drain.cost_summary(known).startswith('$2.00 at API list price'))
+        free = server.sum_usage([{'list_usd': 0.0}])
+        self.assertTrue(drain.cost_summary(free).startswith('$0.00 at API list price'))
+
     def test_unknown_cost_is_counted(self):
         total = server.sum_usage([{'tokens': 11, 'list_usd': None}, {'tokens': 7, 'list_usd': 2.5}])
         self.assertEqual(total['list_usd'], 2.5)

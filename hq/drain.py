@@ -1433,6 +1433,20 @@ def queued(include_thinking=False):
     return out
 
 
+def cost_summary(bill):
+    """Describe known prices without turning unpriced calls into free calls."""
+    calls = int(bill.get("calls") or 0)
+    unknown = int(bill.get("unknown_cost_calls") or 0)
+    label = "call" if unknown == 1 else "calls"
+    if unknown and unknown >= calls:
+        return f"dollar cost unavailable for {unknown} {label}"
+    dollars = f"${bill['list_usd']:.2f}"
+    if unknown:
+        return f"{dollars} known plus {unknown} {label} with unknown dollar cost"
+    return (f"{dollars} at API list price — this is a subscription, so that "
+            "is a size, not a bill")
+
+
 def main():
     ap = argparse.ArgumentParser(description="Drain HQ's build-session queue.")
     ap.add_argument("ids", nargs="*", help="work item ids; default is every queued item")
@@ -1626,8 +1640,7 @@ def main():
         if i.get("state") == "for_review":
             print(f"  to Daniel: {i['id']}  {(i.get('diff') or {}).get('why_not_landed') or '—'}")
     print(f"Cost: {bill['calls']} model calls, {bill['tokens']:,} tokens "
-          f"(${bill['list_usd']:.2f} at API list price — this is a subscription, so that "
-          f"is a size, not a bill; {bill['unknown_cost_calls']} calls have unknown dollar cost).")
+          f"({cost_summary(bill)}).")
     if esc:
         print("\nEscalated to Daniel:")
         for it, ch in esc:
