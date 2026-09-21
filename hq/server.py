@@ -2704,6 +2704,29 @@ def eval_measure(spec, depth=0):
             if field == "prepped":
                 return _reading(len([c for c in q["curated"] if c["id"] not in set(q["decided"])]),
                                 "cards", "decision cards prepped and waiting on you", "", "cheap")
+            if field == "waiting_on_you":
+                # The CEO's whole queue: decision cards prepped and not yet ruled, plus
+                # finished work awaiting his verdict and tier-2 work awaiting his yes.
+                # The count the "nothing waits on Daniel overnight" goal is read on.
+                # A decision card is his only while nobody has ruled: no option in a
+                # ruling file, no ruling written onto the card itself, and no written
+                # judgment of his (a judgment settles it or hands it to the studio).
+                rulings = q["rulings"]
+                prepped = [c for c in q["curated"]
+                           if c["id"] not in set(q["decided"]) and not c.get("ruled")
+                           and not rulings.get(c["id"], {}).get("judgment")]
+                cards = [i for i in work.items() if i.get("state") in ("needs_approval", "for_review")]
+                return _reading(len(prepped) + len(cards), "items",
+                                f"{len(cards)} pieces of finished work and {len(prepped)} decision cards waiting on you",
+                                "", "cheap")
+            if field == "oldest_waiting_days":
+                ages = [_days_since_date((i.get("finished") or i.get("created") or "")[:10])
+                        for i in work.items() if i.get("state") in ("needs_approval", "for_review")]
+                ages = [a for a in ages if a is not None]
+                if not ages:
+                    return _reading(None, "days", "nothing is waiting on you", "", "cheap",
+                                    extra={"empty_ok": True})
+                return _reading(max(ages), "days", "how long the oldest item has waited on you", "", "cheap")
             if field == "pending_rulings":
                 return _reading(len([r for r in _settled_rulings(q)
                                      if r.get("status") == "pending_integration"]), "rulings",

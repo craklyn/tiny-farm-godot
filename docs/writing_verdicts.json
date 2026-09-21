@@ -546,6 +546,9 @@
   "2a569cced5bc04a5d94a": {
    "verdict": "ok"
   },
+  "2a58f07e48982fc4e00e": {
+   "verdict": "ok"
+  },
   "2a66c52e5ad4af7887f4": {
    "verdict": "ok"
   },
@@ -690,6 +693,12 @@
   },
   "32fea48c1a3e13b961cb": {
    "verdict": "ok"
+  },
+  "332bfe14c983b2183155": {
+   "instead": "Nothing is failing; we are still building the check for [area name] of the [number] areas.",
+   "quote": "Nothing is failing; we are still building the check for … of the … areas.",
+   "verdict": "decode",
+   "why": "The placeholders make the statement incomplete and unclear."
   },
   "33414a2133384eb679bf": {
    "verdict": "ok"
@@ -890,6 +899,12 @@
   },
   "4739dd7f61d44ac05817": {
    "verdict": "ok"
+  },
+  "47694a4737ed530f7c4d": {
+   "instead": "shows him each remaining item",
+   "quote": "gives him a reader",
+   "verdict": "decode",
+   "why": "Reader is undefined; it could mean a document, view, list, or interface."
   },
   "479bbb78f8e40eb4a405": {
    "verdict": "ok"
@@ -1516,6 +1531,9 @@
    "verdict": "ok"
   },
   "790f2dec607a0534c201": {
+   "verdict": "ok"
+  },
+  "795a76bcf943250003a7": {
    "verdict": "ok"
   },
   "79ea0dd9d95c1735a9bb": {
@@ -2744,6 +2762,9 @@
   "d8ca9b78a66af8c61a0f": {
    "verdict": "ok"
   },
+  "d9519560c37cef9bf363": {
+   "verdict": "ok"
+  },
   "d95d2645301a2a5f7008": {
    "verdict": "ok"
   },
@@ -2829,6 +2850,9 @@
   "df81857a0e8b714200cf": {
    "verdict": "ok"
   },
+  "e0a685b866155c557bad": {
+   "verdict": "ok"
+  },
   "e0b521e1541a33a4581d": {
    "instead": "Specify what breaks: 'If a replay rule breaks, it corrupts phase 4's training data' or 'If these rules fail, it corrupts training data'",
    "quote": "a break here corrupts phase 4's training data",
@@ -2912,6 +2936,9 @@
    "quote": "cannot be made the real render",
    "verdict": "second-look",
    "why": "The phrasing is grammatically awkward; 'made the real render' is not standard English."
+  },
+  "e7ad564a49c13a996e3f": {
+   "verdict": "ok"
   },
   "e7be8f769d4db985b60a": {
    "verdict": "ok"
