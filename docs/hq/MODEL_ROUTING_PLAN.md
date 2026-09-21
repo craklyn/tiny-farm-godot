@@ -70,10 +70,14 @@ Use the new small routing-documentation card owned by Ravi (Sonnet -> Terra), ch
 
 ## 5. Execution status
 
-- Survey complete; initial policy and cards being prepared.
+- Survey complete; cards and policy recorded. Adapter 411b027 and consumers 2156049 are integrated on main.
 - Timer stopped; HQ stopped during change; no active drain observed.
-- Plan review completed; launch context, tool restriction, cost aggregates, hook snapshot preservation and commit-before-trial requirements clarified. Implementation and live evidence TK.
+- Plan review complete. The independent implementation review confirmed its three defects fixed in ea39228/3c10c6c; adapter 10 and consumer 8 offline tests passed before integration. Main-tree verification in progress; live evidence TK.
 
 ## 6. Sources and evidence
 
 Survey file:line table above; live systemctl status captured in this task. Future raw run evidence belongs in hq/data/runs/ and linked final card fields. Live verification report will distinguish implemented, fixture-tested, and actually exercised provider/model paths.
+
+## 7. Review corrections before the live run
+
+Independent review of the two implementation worktrees found three interoperation defects before any real provider call: Codex commentary was concatenated into the returned final response and could break checker JSON parsing; Claude max-turn termination lost its structured reason and would break continuation; and named nontrial card execution remained blocked even after unpausing. Repair requirements: retain commentary only in the event stream, preserve and consume stop_reason/subtype, and test explicit nontrial IDs with the hold off as well as the nominated trial with the hold on. These are correctness fixes, not changes to the user-authorized routing rule.

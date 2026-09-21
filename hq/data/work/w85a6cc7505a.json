@@ -1,6 +1,6 @@
 {
   "id": "w85a6cc7505a",
-  "title": "Document the temporary model routing used by HQ",
+  "title": "Explain how HQ chooses an AI model for each task",
   "level": "task",
   "owner": "ravi",
   "tier": 1,

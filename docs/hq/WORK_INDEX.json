@@ -7,7 +7,7 @@
     {
       "key": "counts",
       "id": "w5696f096a3e",
-      "title": "Use the same count for decisions waiting on Daniel",
+      "title": "Show one consistent number of decisions waiting on Daniel across HQ",
       "owner": "rin",
       "section": 1,
       "path": "hq/data/work/w5696f096a3e.json"
@@ -23,7 +23,7 @@
     {
       "key": "evidence",
       "id": "w0b19736e7b4",
-      "title": "Show playable comparisons before asking for a verdict",
+      "title": "Show the current and proposed results side by side before a decision",
       "owner": "rin",
       "section": 4,
       "path": "hq/data/work/w0b19736e7b4.json"
@@ -95,7 +95,7 @@
     {
       "key": "pilot",
       "id": "w85a6cc7505a",
-      "title": "Document the temporary model routing used by HQ",
+      "title": "Explain how HQ chooses an AI model for each task",
       "owner": "ravi",
       "section": 0,
       "path": "hq/data/work/w85a6cc7505a.json"
