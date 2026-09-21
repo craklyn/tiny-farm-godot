@@ -5,7 +5,7 @@
   "owner": "rin",
   "tier": 1,
   "tier_reason": "Reversible local work authorized by Daniel; verify the result before completion.",
-  "ask": "Implement section 3 of docs/hq/HUMAN_INTERFACE_PLAN.md. Daniel authorized this redesign on 2026-09-21. Preserve the acceptance requirements in that section and coordinate with the other sections. Do not duplicate existing deliverable gate w44ff2049d9a.",
+  "ask": "Implement section 3 of docs/hq/HUMAN_INTERFACE_PLAN.md. Daniel authorized this redesign on 2026-09-21. Preserve the acceptance requirements in that section and coordinate with the other sections. Do not duplicate existing deliverable gate w44ff2049d9a.\n\nImplement the shared review title rule in the plan: short deliverable name separate from original agent ask, rendered as Review: <deliverable>. Cover card creation paths and legacy fallback; preserve history.",
   "first_action": "Read docs/hq/HUMAN_INTERFACE_PLAN.md section 3, inspect the current behavior and linked work, then implement and verify the specified outcome.",
   "state": "waiting_session",
   "thread": "claude",

@@ -3570,7 +3570,8 @@ func _scenario_ah_the_mark_one_takes_exact_orders() -> void:
 	await get_tree().process_frame
 
 	var spot := Vector2i(14, 9)
-	for tx in range(13, 20):
+	# Leave x20 teachable and unmarked for the later drag across an untaught square.
+	for tx in range(13, 21):
 		_stage_tile(tx, 9, "cleared")
 		_stage_tile(tx, 11, "seeded", "wheat")
 	player.pos = Vector2(13 * 16.0 + 8.0, 9 * 16.0 + 8.0)
