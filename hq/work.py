@@ -139,7 +139,7 @@ REC_PARTS = ("question", "answer", "why", "instead")
 PREP_TRIES = 3
 
 
-def bind(server_module):
+def bind(server_module, *, sanitize=True):
     """server.py hands us itself: org/personas, the CLI lock, the token-limit
     state from the intake queue. Keeps this file importable and testable on its
     own, and keeps server.py's diff to a handful of lines."""
@@ -152,7 +152,8 @@ def bind(server_module):
     os.makedirs(CAPTURES, exist_ok=True)
     if not os.path.isfile(POLICY_PATH):
         _write_json(POLICY_PATH, DEFAULT_POLICY)
-    _sanitize()
+    if sanitize:
+        _sanitize()
 
 
 # ---------------------------------------------------------------------------

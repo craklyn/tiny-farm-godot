@@ -3,6 +3,7 @@
 import json
 from pathlib import Path
 import sys
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -100,6 +101,24 @@ class ProcessReconciliation(unittest.TestCase):
             eligible, excluded = drain.classified_queue()
         self.assertNotIn("wecd05a982cc", {item["id"] for item in eligible})
         self.assertIn("wecd05a982cc", {item["id"] for item, _reason in excluded})
+
+    def test_operator_command_is_read_only_until_apply(self):
+        data = Path(self.tmp.name)
+        (data / "org.json").write_text(json.dumps({"employees": []}))
+        before = {p.name: p.read_bytes() for p in (data / "work").glob("*.json")}
+        command = [sys.executable, str(self.repo / "hq/reconcile_process_completion.py"),
+                   "--data-root", str(data)]
+        preview = subprocess.run(command, cwd=self.repo, text=True, capture_output=True)
+        self.assertEqual(preview.returncode, 0, preview.stdout + preview.stderr)
+        self.assertTrue(json.loads(preview.stdout)["applicable"])
+        self.assertEqual(before, {p.name: p.read_bytes() for p in (data / "work").glob("*.json")})
+        applied = subprocess.run(command + ["--apply"], cwd=self.repo, text=True, capture_output=True)
+        self.assertEqual(applied.returncode, 0, applied.stdout + applied.stderr)
+        self.assertTrue(json.loads(applied.stdout)["applied"])
+        self.assertEqual(json.loads((data / "work/wecd05a982cc.json").read_text())["state"],
+                         "waiting_session")
+        self.assertEqual(json.loads((data / "work/we11c4a7b3f92.json").read_text())["state"],
+                         "landed")
 
 
 if __name__ == "__main__":
