@@ -30,7 +30,9 @@ def _command(args, cwd, timeout=120, input=None):
 
 def verify(item_id, runs, assertion, repo=drain.REPO, output_root=None, runner=None):
     """Return evidence path, preserving every completed and incomplete attempt."""
-    if not re.fullmatch(r"w[a-f0-9]{12}", item_id):
+    # New cards use eleven hex characters after w; older imported cards also
+    # have readable alphanumeric IDs. Validate the path, not a guessed length.
+    if not re.fullmatch(r"w[a-zA-Z0-9]+", item_id):
         raise ValueError("expected a work-card ID")
     if runs < 1 or runs > 100:
         raise ValueError("runs must be between 1 and 100")

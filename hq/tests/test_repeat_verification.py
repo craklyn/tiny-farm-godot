@@ -73,7 +73,7 @@ class HeldPatchTests(unittest.TestCase):
         git(self.repo, "add", "example.txt")
         tree = git(self.repo, "write-tree")
         git(self.repo, "reset", "-q", "--hard", self.base)
-        self.item_id = "w123456789abc"
+        self.item_id = "w0f78d0a7d2d"  # A real generated card ID: w + 11 hex digits.
         card = {"id": self.item_id, "diff": {"applied": False},
                 "last_recorded_attempt": "attempt-1", "attempt_outcome": {
                     "patch_id": work.evidence_id(self.patch_text),
@@ -104,6 +104,10 @@ class HeldPatchTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "differs"):
             verify_held_patch.verify(self.item_id, 1, "known assertion", repo=self.repo,
                                      runner=[sys.executable, "-c", "print('Results: 1 PASSED, 0 FAILED')"])
+
+    def test_refuses_path_like_ids(self):
+        with self.assertRaisesRegex(ValueError, "work-card ID"):
+            verify_held_patch.verify("w../other", 1, "known assertion", repo=self.repo)
 
     def test_missing_result_is_incomplete(self):
         path = verify_held_patch.verify(self.item_id, 2, "known assertion", repo=self.repo,
