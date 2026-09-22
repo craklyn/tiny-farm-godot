@@ -30,14 +30,17 @@ import execution
 
 import copy
 import datetime
+import fcntl
 import hashlib
 import json
 import os
 import re
 import subprocess
 import sys
+import tempfile
 import threading
 import time
+from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, unquote, urlparse
 
@@ -1693,12 +1696,29 @@ Director is Daniel — every taste call terminates with him."""
 
 STAFF_MEMORY_MAX = 6000          # tail of the file that rides in the prompt
 REMEMBER_RE = re.compile(r"<remember>(.*?)</remember>", re.S | re.I)
+ATTRIBUTED_MEMORY_RE = re.compile(
+    r"^<!-- hq:owner-memory:v1 key=([0-9a-f]{64}) -->\n"
+    r".*?^<!-- /hq:owner-memory:v1 -->\n?", re.S | re.M)
 
 
 def staff_memory_path(pid):
     d = os.path.join(DATA, "staff", pid)
     os.makedirs(d, exist_ok=True)
     return os.path.join(d, "memory.md")
+
+
+@contextmanager
+def staff_memory_mutation(pid):
+    """Serialize chat, drain, recovery and Undo writes across processes."""
+    path = staff_memory_path(pid)
+    identity = hashlib.sha256(os.fsencode(os.path.realpath(path))).hexdigest()
+    lock_path = os.path.join(tempfile.gettempdir(), "tiny-farm-memory-" + identity + ".lock")
+    with open(lock_path, "a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        try:
+            yield path
+        finally:
+            fcntl.flock(lock, fcntl.LOCK_UN)
 
 
 def load_staff_memory(pid):
@@ -1714,8 +1734,17 @@ def append_staff_memory(pid, note):
     note = " ".join(str(note).split())[:600]
     if not note:
         return
-    with open(staff_memory_path(pid), "a", encoding="utf-8") as f:
-        f.write(f"- ({datetime.date.today().isoformat()}) {note}\n")
+    with staff_memory_mutation(pid) as path:
+        with open(path, "a", encoding="utf-8") as f:
+            f.write(f"- ({datetime.date.today().isoformat()}) {note}\n")
+
+
+def parse_remembered(reply):
+    """Return Daniel-safe prose and the proposed durable notes it contained."""
+    text = reply or ""
+    notes = [" ".join(str(note).split())[:600]
+             for note in REMEMBER_RE.findall(text)]
+    return REMEMBER_RE.sub("", text).strip(), [note for note in notes if note]
 
 
 def take_remembered(pid, reply):
@@ -1723,11 +1752,78 @@ def take_remembered(pid, reply):
     appended to that person's memory file and stripped from what Daniel sees.
     Cheaper than a second model call, and needs no write tools — the CLI these
     replies come from runs read-only on purpose."""
-    text = reply or ""
-    notes = REMEMBER_RE.findall(text)
+    text, notes = parse_remembered(reply)
     for n in notes:
         append_staff_memory(pid, n)
-    return REMEMBER_RE.sub("", text).strip(), len(notes)
+    return text, len(notes)
+
+
+def attributed_memory_key(work_id, attempt_id):
+    """Stable opaque identity for one work attempt's memory block."""
+    raw = json.dumps([str(work_id), str(attempt_id)], separators=(",", ":"))
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def commit_attributed_staff_memory(pid, work_id, attempt_id, proposals):
+    """Write one accepted attempt's lessons once, in an exactly removable block.
+
+    The on-disk contract is deliberately text-independent::
+
+        <!-- hq:owner-memory:v1 key=<sha256(work id, attempt id)> -->
+        - (YYYY-MM-DD; accepted work <id>; owner|checker) lesson
+        <!-- /hq:owner-memory:v1 -->
+
+    Removal uses only the opaque key. It never searches for lesson prose, so an
+    Undo cannot delete a similar note from chat or from another work item.
+    """
+    import datetime
+    key = attributed_memory_key(work_id, attempt_id)
+    rows = []
+    for proposal in proposals or []:
+        if not isinstance(proposal, dict):
+            continue
+        source = proposal.get("source") if proposal.get("source") in ("owner", "checker") else "owner"
+        text = " ".join(str(proposal.get("text") or "").split())[:600]
+        if text:
+            rows.append(f"- ({datetime.date.today().isoformat()}; accepted work {work_id}; {source}) {text}")
+    if not rows:
+        return False
+    block = (f"<!-- hq:owner-memory:v1 key={key} -->\n"
+             + "\n".join(rows)
+             + "\n<!-- /hq:owner-memory:v1 -->\n")
+    with staff_memory_mutation(pid) as path:
+        try:
+            with open(path, encoding="utf-8") as source_file:
+                current = source_file.read()
+        except FileNotFoundError:
+            current = ""
+        if any(found == key for found in ATTRIBUTED_MEMORY_RE.findall(current)):
+            return False
+        with open(path, "a", encoding="utf-8") as target:
+            if current and not current.endswith("\n"):
+                target.write("\n")
+            target.write(block)
+    return True
+
+
+def remove_attributed_staff_memory(pid, work_id, attempt_id):
+    """Remove only the block attributed to this work attempt, if it exists."""
+    key = attributed_memory_key(work_id, attempt_id)
+    with staff_memory_mutation(pid) as path:
+        try:
+            with open(path, encoding="utf-8") as source:
+                current = source.read()
+        except FileNotFoundError:
+            return False
+        kept = ATTRIBUTED_MEMORY_RE.sub(
+            lambda match: "" if match.group(1) == key else match.group(0), current)
+        if kept == current:
+            return False
+        tmp = path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as target:
+            target.write(kept)
+        os.replace(tmp, path)
+    return True
 
 
 def staff_open_work(pid, limit=8):

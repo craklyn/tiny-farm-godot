@@ -461,8 +461,14 @@ Reply with raw JSON, no fence and no prose:
 {{"verdict": "pass|concerns|fail", "complete": true,
  "summary": "one sentence Daniel can read: what landed, and what to watch",
  "findings": [{{"what": "the problem in one line", "where": "file or file:line", "fix": "what to do about it"}}],
+ "lesson_for_owner": null,
  "escalates": null,
  "escalation_reason": null}}
+
+When the review itself establishes a reusable rule for the owner, replace
+lesson_for_owner with {{"text": "the durable lesson"}}. This is the only place
+for that lesson; do not hide memory instructions in summary or findings. Leave
+it null when the review established no durable lesson.
 
 Set complete true only when the entire requested result is finished, not blocked or a partial attempt.
 "pass" means it did what was asked and you found nothing worth his time. "concerns"
@@ -885,6 +891,14 @@ def parse_check(raw):
     findings = []
     raw_findings = doc.get("findings")
     valid_findings = isinstance(raw_findings, list) and all(isinstance(f, dict) and f.get("what") for f in raw_findings)
+    raw_lesson = doc.get("lesson_for_owner")
+    valid_lesson = ("lesson_for_owner" not in doc or raw_lesson is None
+                    or (isinstance(raw_lesson, dict)
+                        and set(raw_lesson) == {"text"}
+                        and bool(str(raw_lesson.get("text") or "").strip())))
+    lesson = None
+    if valid_lesson and isinstance(raw_lesson, dict):
+        lesson = {"text": " ".join(str(raw_lesson["text"]).split())[:600]}
     for f in (raw_findings if isinstance(raw_findings, list) else [])[:8]:
         if isinstance(f, dict) and f.get("what"):
             findings.append({k: str(f.get(k) or "")[:400] for k in ("what", "where", "fix")})
@@ -893,10 +907,11 @@ def parse_check(raw):
         # This record came from a read that actually happened, which is one of
         # the four things work has to have before it may land without Daniel.
         "read": True,
-        "complete": doc.get("complete") is True and valid_findings,
+        "complete": doc.get("complete") is True and valid_findings and valid_lesson,
         "verdict": verdict if verdict in ("pass", "concerns", "fail") else "concerns",
         "summary": str(doc.get("summary") or "")[:600],
         "findings": findings,
+        "lesson_for_owner": lesson,
         "escalates": str(doc.get("escalates") or "").strip()[:600] or None,
         "escalation_reason": reason if reason in
         ("authority", "external_commitment", "exposure", "age") else None,
@@ -1468,8 +1483,9 @@ def _write_back(item, rec, applied, why_not, suites, org):
         if item.get("completion"):
             work.land_item(item, "drain", sha=item["completion"].get("sha", ""))
         return item
-    body, follows, _amend, recommend, _move = work._split_result(rec["result"], org, item["owner"])
-    deliverable = work.result_deliverable(rec["result"])
+    visible_result, owner_notes = server.parse_remembered(rec["result"])
+    body, follows, _amend, recommend, _move = work._split_result(visible_result, org, item["owner"])
+    deliverable = work.result_deliverable(visible_result)
     # do_item decides this before the patch is held; a record that skipped
     # do_item gets the same answer here. Edits that landed are never retried.
     resume = "" if applied or item.get("automatic_repairs") else (rec.get("resume") or auto_resume_reason(item, rec))
@@ -1489,8 +1505,11 @@ def _write_back(item, rec, applied, why_not, suites, org):
     item.pop("check", None)
     item.pop("completion", None)
     item.pop("repair_hold", None)
+    checker_lesson = None
     if rec["check"]:
-        item["check"] = dict(rec["check"])
+        item["check"] = {key: value for key, value in rec["check"].items()
+                         if key != "lesson_for_owner"}
+        checker_lesson = rec["check"].get("lesson_for_owner")
     if suites:
         item["suites"] = suites
     this = server.sum_usage(rec["usage"])
@@ -1533,7 +1552,7 @@ def _write_back(item, rec, applied, why_not, suites, org):
         # the deliverable path.
         item["deliverable"] = {**(item.get("deliverable") if isinstance(item.get("deliverable"), dict) else {}),
                                **deliverable}
-    item["attempt_outcome"] = work.attempt_outcome(rec["result"], rec.get("error"), rec.get("limited"))
+    item["attempt_outcome"] = work.attempt_outcome(visible_result, rec.get("error"), rec.get("limited"))
     item["attempt_outcome"].update({"id": rec.get("attempt_id") or work.evidence_id([item["id"], item["attempts"], rec["result"]]),
                                     "landing_verified": landed_ok,
                                     "patch_id": work.evidence_id(rec.get("patch", "")),
@@ -1545,6 +1564,10 @@ def _write_back(item, rec, applied, why_not, suites, org):
                                     "candidate_test_evidence": rec.get("candidate_test_evidence")})
     if item.get("check"):
         item["check"]["attempt_id"] = item["attempt_outcome"]["id"]
+    proposals = [{"source": "owner", "text": note} for note in owner_notes]
+    if isinstance(checker_lesson, dict) and checker_lesson.get("text"):
+        proposals.append({"source": "checker", "text": checker_lesson["text"]})
+    work.replace_owner_memory(item, item["attempt_outcome"]["id"], proposals)
     if landed_ok and (rec.get("files") or []):
         sha, trouble = land(item, rec)
         if not sha:

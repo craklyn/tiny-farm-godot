@@ -1020,6 +1020,65 @@ THE RESULT YOU GAVE HIM LAST TIME:
 """
 
 
+def _memory_writer(name):
+    """The bound main-tree server owns the sole durable-memory writer."""
+    writer = getattr(HOST, name, None)
+    return writer if callable(writer) else None
+
+
+def forget_owner_memory(item):
+    """Remove this card's attributed note without touching unrelated memory."""
+    record = item.get("owner_memory")
+    if not isinstance(record, dict):
+        return False
+    writer = _memory_writer("remove_attributed_staff_memory")
+    if writer:
+        writer(record.get("owner") or item.get("owner", ""), item["id"],
+               record.get("attempt_id", ""))
+    item.pop("owner_memory", None)
+    return True
+
+
+def replace_owner_memory(item, attempt_id, proposals):
+    """Bind proposed lessons to the exact attempt, replacing any older one."""
+    old = item.get("owner_memory")
+    if old and old.get("attempt_id") != attempt_id:
+        forget_owner_memory(item)
+    cleaned = [{"source": p.get("source") if p.get("source") in ("owner", "checker") else "owner",
+                "text": " ".join(str(p.get("text") or "").split())[:600]}
+               for p in (proposals or [])
+               if isinstance(p, dict) and str(p.get("text") or "").strip()]
+    if cleaned:
+        item["owner_memory"] = {"version": 1, "attempt_id": attempt_id,
+                                "owner": item.get("owner", ""), "proposals": cleaned,
+                                "committed": False}
+    elif item.get("owner_memory", {}).get("attempt_id") == attempt_id:
+        forget_owner_memory(item)
+
+
+def commit_owner_memory(item):
+    """Make the exact attempt's proposals durable, once acceptance is earned."""
+    record = item.get("owner_memory")
+    if not isinstance(record, dict) or record.get("committed"):
+        return False
+    writer = _memory_writer("commit_attributed_staff_memory")
+    if not writer:
+        return False
+    writer(record.get("owner") or item.get("owner", ""), item["id"],
+           record.get("attempt_id", ""), record.get("proposals") or [])
+    record["committed"] = True
+    return True
+
+
+def supersede_item(item, canonical_id):
+    """Close a duplicate and remove any lesson attributed to its result."""
+    forget_owner_memory(item)
+    item["state"] = "dropped"
+    item["closed"] = _now_iso()
+    item["superseded_by"] = canonical_id
+    return save_item(item)
+
+
 def requeue_for_revision(item):
     """The owner said "revise": the card goes back to the lane that can carry
     it out, carrying its earlier result, its diff and the conversation, so the
@@ -1031,6 +1090,9 @@ def requeue_for_revision(item):
     read; the suites are not, because they described a tree that is about to
     change. The applied diff stays as it is: it is on the tree, and the
     revision builds on it."""
+    # The next attempt replaces this attempt's proposal. This also removes a
+    # committed note if a previously accepted result is explicitly reopened.
+    forget_owner_memory(item)
     item["revising"] = True
     item["state"] = "doing" if int(item.get("tier") or 0) == 0 else "waiting_session"
     item["started"] = ""
@@ -1785,7 +1847,10 @@ def land_item(item, by, sha="", note=""):
     status, reason = completion_assessment(item)
     if status not in ("ready_to_apply", "completed"):
         raise ValueError(reason)
-    if status == "completed" and item.get("state") == "landed" and not item.get("pending_followups"):
+    memory_pending = (isinstance(item.get("owner_memory"), dict)
+                      and not item["owner_memory"].get("committed"))
+    if (status == "completed" and item.get("state") == "landed"
+            and not item.get("pending_followups") and not memory_pending):
         return item
     item.setdefault("completion", {"version": 1, "attempt_id": item["attempt_outcome"]["id"],
                           "at": _now_iso(), "sha": sha, "by": by,
@@ -1799,6 +1864,8 @@ def land_item(item, by, sha="", note=""):
     item["closed"] = item["completion"]["at"]
     item.setdefault("landed", {"at": item["completion"]["at"], "by": by, "sha": sha, "note": note})
     save_item(item)
+    if commit_owner_memory(item):
+        save_item(item)
     finish_pending_followups(item)
     return item
 
@@ -1834,7 +1901,9 @@ def recover_completion_work():
                     recovered.append(item["id"])
                 except RecordConflict:
                     continue
-            elif item.get("pending_followups") and item.get("completion"):
+            elif item.get("completion") and (item.get("pending_followups")
+                    or (isinstance(item.get("owner_memory"), dict)
+                        and not item["owner_memory"].get("committed"))):
                 try:
                     land_item(item, item["completion"].get("by", "recovery"),
                               sha=item["completion"].get("sha", ""))
@@ -1857,6 +1926,7 @@ def undo_landing(item):
         item["attempt_outcome"]["landing_verified"] = False
     sha = (item.get("landed") or {}).get("sha") or ""
     if not sha:
+        forget_owner_memory(item)
         item["state"] = "for_review"
         item.pop("landed", None)
         save_item(item)
@@ -1867,6 +1937,7 @@ def undo_landing(item):
         subprocess.run(["git", "revert", "--abort"], cwd=HOST.REPO,
                        capture_output=True, text=True, timeout=60)
         return False, ((got.stderr or got.stdout or "the revert did not apply").strip()[:200])
+    forget_owner_memory(item)
     item["state"] = "for_review"
     item["landing_undone"] = {"at": _now_iso(), "reverted": sha}
     item.setdefault("conversation", []).append(
@@ -2004,6 +2075,7 @@ def _api_post(path, payload):
         ok, why = undo_landing(item)
         return {"ok": ok, "why": why, "id": item["id"], "state": item["state"]}
     if path == "/api/work/accept":
+        commit_owner_memory(item)
         item["state"] = "accepted"
         item["closed"] = _now_iso()
         # His yes starts exactly the work the card showed him and nothing else.
@@ -2024,6 +2096,7 @@ def _api_post(path, payload):
             _file_follow_ups(item, fus, HOST.load_org(), cap_id="follow",
                              message=f"Accepted “{item['title']}”.", said=said)
     elif path == "/api/work/drop":
+        forget_owner_memory(item)
         item["state"] = "dropped"
         item["closed"] = _now_iso()
     elif path == "/api/work/approve":
@@ -2054,7 +2127,8 @@ def instruction_fingerprint(item):
     outcome_fields = {"_revision", "state", "result", "check", "prior_checks", "prior_results",
         "attempts", "done_by", "diff", "suites", "usage", "spent", "resume", "attempt_outcome",
         "completion", "pending_landing", "pending_followups", "closed", "landed", "finished",
-        "revising", "revisions", "spawned", "last_recorded_attempt", "repair_hold", "landing_recovery"}
+        "revising", "revisions", "spawned", "last_recorded_attempt", "repair_hold", "landing_recovery",
+        "owner_memory"}
     return evidence_id({key: value for key, value in item.items() if key not in outcome_fields})
 
 
@@ -2155,10 +2229,7 @@ def _reconcile_legacy_completion(manifest=None, *, apply=False):
             item["state"] = "waiting_session"
             save_item(item)
         elif action == "superseded/duplicate":
-            item["state"] = "dropped"
-            item["closed"] = _now_iso()
-            item["superseded_by"] = entry["canonical_id"]
-            save_item(item)
+            supersede_item(item, entry["canonical_id"])
         else:
             item["repair_hold"] = entry["operator_judgment"]["action"]
             item["operator_judgment"] = entry["operator_judgment"]
