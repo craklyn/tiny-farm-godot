@@ -88,6 +88,9 @@ def run(command: list[str], timeout: float, result_grace: float) -> int:
                 result = (int(match.group(1)), int(match.group(2)))
 
         code = proc.returncode or 0
+        if result is None:
+            print("ERROR: Godot check exited without a Results line", file=sys.stderr, flush=True)
+            return 1
         if result is not None and result[1] > 0:
             return 1
         return code

@@ -1189,7 +1189,7 @@ def _held_reason(stderr):
 
 
 def run_suites(cwd=REPO):
-    """Both headless suites, once, in the real tree."""
+    """Both headless suites, once, with private Godot user data."""
     out = {}
     for name, cmd in (
         ("unit", ["godot", "--headless", "--path", ".", "--script",
@@ -1198,11 +1198,11 @@ def run_suites(cwd=REPO):
                          "res://tools/test_runner.tscn"]),
     ):
         try:
-            p = sh(cmd, cwd=cwd, timeout=900)
-            tail = (p.stdout or "").strip().splitlines()[-6:]
-            failed = bool(re.search(r"(\d+) failed", p.stdout or "") and
-                          not re.search(r"\b0 failed", p.stdout or ""))
-            out[name] = {"ok": p.returncode == 0 and not failed,
+            p = sh([sys.executable, "tools/run_godot_test.py", "--timeout", "840", "--"] + cmd,
+                   cwd=cwd, timeout=900)
+            tail = ((p.stdout or "") + (p.stderr or "")).strip().splitlines()[-6:]
+            matches = re.findall(r"Results:\s*(\d+) PASSED,\s*(\d+) FAILED", p.stdout or "")
+            out[name] = {"ok": p.returncode == 0 and bool(matches) and int(matches[-1][1]) == 0,
                          "tail": "\n".join(tail)[-600:]}
         except Exception as e:
             out[name] = {"ok": False, "tail": f"{type(e).__name__}: {e}"[:300]}
