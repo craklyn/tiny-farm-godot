@@ -7,7 +7,7 @@
   "tier_reason": "filed by hand",
   "ask": "Daniel's words, verbatim:\n\n\"I recommend we change the game so it's not necessary to buy seeds for the starting\nplants. Rather, the plants when harvested can be planted as seeds. They can also be used\nas consumables (e.g. pea shooter). Only when the player acquires an excess can they be\nsold. Excess will be defined by game phase. Early game, the player only has storage on\ntheir person and so excess is not a large number.. 5 or 10 maybe. Later, they'll get a\ngrain silo and other storage options that increases excess (so they can properly arm and\nstock their defensive structures).\n\nNote that if w",
   "first_action": "Read crops/crop_defs.gd for the current prices and growth times, systems/machine_defs.gd for what gold currently buys, and the shop verbs in systems/sim/sim_world.gd. Then work out: (1) where gold comes from and goes today, and what removing the forced seed purchase does to that loop — does the player end up with too much gold, or none at all, and when; (2) whether a carry cap of 5-10 is a real constraint or a rounding error against current yields and prices; (3) what the silo tier has to be worth to be worth building, and roughly what it should cost; (4) whether machines being earned by demon",
-  "state": "for_review",
+  "state": "landed",
   "thread": "marcus",
   "source": "chat",
   "source_message": "Daniel's words, verbatim:\n\n\"I recommend we change the game so it's not necessary to buy seeds for the starting\nplants. Rather, the plants when harvested can be planted as seeds. They can also be used\nas consumables (e.g. pea shooter). Only when the player acquires an excess can they be\nsold. Excess will be defined by game phase. Early game, the player only has storage on\ntheir person and so excess is not a large number.. 5 or 10 maybe. Later, they'll get a\ngrain silo and other storage options that increases excess (so they can properly arm and\nstock their defensive structures).\n\nNote that if w",
@@ -115,5 +115,50 @@
     "fresh": 169604,
     "list_usd": 2.1334
   },
-  "subject": "What a harvest is worth"
+  "subject": "What a harvest is worth",
+  "_revision": 4,
+  "completion_reconciliation": {
+    "version": 1,
+    "manifest_id": "38bb688252099d3f8dc679c6d536b9e1ea6197db010adb6fa2b9030b59e42f33",
+    "at": "2026-09-21T22:43",
+    "classification": "safe_to_close",
+    "by": "Codex interactive independent read-only audit by build_adapter; bounded analysis outcome verified against current decision record",
+    "evidence_summary": "Q-113 preserves the analysis's core unresolved issue: one-for-one yield produces no crop surplus and storage capacity cannot fix production. Further seed-economy design is separately queued; closure does not settle that design."
+  },
+  "attempt_outcome": {
+    "version": 1,
+    "id": "historical-38bb688252099d3f8dc679c6d536b9e1ea6197db010adb6fa2b9030b59e42f33-w6ff2240c1fb",
+    "status": "complete",
+    "result_id": "fbed5f17b2f07c216baba4e61aee09dea817d42a4aafd9fa6135d0f3312d2e3d"
+  },
+  "completion": {
+    "version": 1,
+    "attempt_id": "historical-38bb688252099d3f8dc679c6d536b9e1ea6197db010adb6fa2b9030b59e42f33-w6ff2240c1fb",
+    "at": "2026-09-21T22:43",
+    "kind": "historical_review",
+    "by": "Codex interactive independent read-only audit by build_adapter; bounded analysis outcome verified against current decision record",
+    "evidence": {
+      "version": 1,
+      "manifest_id": "38bb688252099d3f8dc679c6d536b9e1ea6197db010adb6fa2b9030b59e42f33",
+      "at": "2026-09-21T22:43",
+      "classification": "safe_to_close",
+      "by": "Codex interactive independent read-only audit by build_adapter; bounded analysis outcome verified against current decision record",
+      "evidence_summary": "Q-113 preserves the analysis's core unresolved issue: one-for-one yield produces no crop surplus and storage capacity cannot fix production. Further seed-economy design is separately queued; closure does not settle that design."
+    }
+  },
+  "closed": "2026-09-21T22:43",
+  "landed": {
+    "at": "2026-09-21T22:43",
+    "by": "Codex interactive independent read-only audit by build_adapter; bounded analysis outcome verified against current decision record",
+    "sha": "",
+    "note": "Q-113 preserves the analysis's core unresolved issue: one-for-one yield produces no crop surplus and storage capacity cannot fix production. Further seed-economy design is separately queued; closure does not settle that design."
+  },
+  "spawned": [
+    {
+      "id": "w405c9324c29",
+      "title": "File the harvest-as-seed economy question for a ruling",
+      "state": "waiting_session",
+      "owner": "marcus"
+    }
+  ]
 }

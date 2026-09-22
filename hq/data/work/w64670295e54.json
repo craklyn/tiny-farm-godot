@@ -1,0 +1,28 @@
+{
+  "id": "w64670295e54",
+  "completion_key": "64670295e54a2b1cbf89ae4c6b170db24c3b405233bb161a63e1f5e04f3208ab",
+  "parent": "wae35fb20cb7",
+  "title": "Sweep the remaining generated sheets for trapped background pixels",
+  "level": "task",
+  "owner": "yuki",
+  "tier": 1,
+  "tier_reason": "The CEO cleaned four frames of one sheet by hand; the same trapped pixels are almost certainly sitting in sheets nobody has looked at.",
+  "ask": "Landed without Daniel: “Read Daniel's hand edit to Obstacle Set”. The CEO cleaned four frames of one sheet by hand; the same trapped pixels are almost certainly sitting in sheets nobody has looked at.",
+  "first_action": "Sweep every sheet in assets/sprites/generated/ for opaque #f8f4e6 the way characters.png and chicken were swept in wc5472d80611 — alpha to zero, nothing recoloured. Separately check obstacles.png frame 7 (closed gate) for baked grass at #bfd470: decide per pixel whether it is backdrop or intended shading, and report the count rather than guessing.",
+  "state": "waiting_session",
+  "thread": "ingrid",
+  "source": "chat",
+  "source_message": "Landed without Daniel: “Read Daniel's hand edit to Obstacle Set”.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-21T22:43",
+  "created_ts": 1790055811.5161881,
+  "_revision": 2,
+  "promised_by": "wae35fb20cb7",
+  "promised": {
+    "card": "Read Daniel's hand edit to Obstacle Set",
+    "title": "Sweep the remaining generated sheets for trapped background pixels",
+    "why": "The CEO cleaned four frames of one sheet by hand; the same trapped pixels are almost certainly sitting in sheets nobody has looked at."
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "id": "wa4ac1851a2f",
+  "completion_key": "a4ac1851a2fe5cc6ed464fb92be82f5e578436b3c22473a94b5c213d5c05a494",
+  "parent": "wae35fb20cb7",
+  "title": "Put the fence line and an open boundary in every look-session capture",
+  "level": "task",
+  "owner": "ingrid",
+  "tier": 1,
+  "tier_reason": "The boundary is where the CEO's own hand edits keep landing, and the current staging would show him four pictures that do not contain it.",
+  "ask": "Landed without Daniel: “Read Daniel's hand edit to Obstacle Set”. The boundary is where the CEO's own hand edits keep landing, and the current staging would show him four pictures that do not contain it.",
+  "first_action": "Amend the staging paragraph in the look-session section of docs/design/09-art-direction.md so all four captures frame the fence line and an open boundary alongside the player and one station, keeping seed 12345 and everything else identical.",
+  "state": "waiting_session",
+  "thread": "ingrid",
+  "source": "chat",
+  "source_message": "Landed without Daniel: “Read Daniel's hand edit to Obstacle Set”.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-21T22:43",
+  "created_ts": 1790055811.534649,
+  "_revision": 2,
+  "promised_by": "wae35fb20cb7",
+  "promised": {
+    "card": "Read Daniel's hand edit to Obstacle Set",
+    "title": "Put the fence line and an open boundary in every look-session capture",
+    "why": "The boundary is where the CEO's own hand edits keep landing, and the current staging would show him four pictures that do not contain it."
+  }
+}

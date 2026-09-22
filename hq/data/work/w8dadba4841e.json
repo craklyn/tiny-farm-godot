@@ -1,0 +1,28 @@
+{
+  "id": "w8dadba4841e",
+  "completion_key": "8dadba4841e4f3c6cb1d0822441373d43e9ee7da81afa9e9c3b58789782edf29",
+  "parent": "wae35fb20cb7",
+  "title": "Apply the written fix to the background-keying step in the art pipeline",
+  "level": "task",
+  "owner": "ravi",
+  "tier": 1,
+  "tier_reason": "Three sheets in a row have needed the CEO's hand to erase the same key colour, and every sheet generated before the reskin inherits the defect.",
+  "ask": "Landed without Daniel: “Read Daniel's hand edit to Obstacle Set”. Three sheets in a row have needed the CEO's hand to erase the same key colour, and every sheet generated before the reskin inherits the defect.",
+  "first_action": "The fix was written and verified in work item we7a0d7228ec but never applied because the code is at ~/.claude/skills/retro-diffusion-pixel-art/scripts/postprocess.py, outside the repo. Run a session with full filesystem access: add the non-propagating second pass that clears remaining near-plate pixels bordering cleared ones, and extend key_background to also clear enclosed pockets the corner flood cannot reach. Re-verify against the archived raws under assets/raw/.",
+  "state": "waiting_session",
+  "thread": "ingrid",
+  "source": "chat",
+  "source_message": "Landed without Daniel: “Read Daniel's hand edit to Obstacle Set”.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-21T22:43",
+  "created_ts": 1790055811.4979093,
+  "_revision": 2,
+  "promised_by": "wae35fb20cb7",
+  "promised": {
+    "card": "Read Daniel's hand edit to Obstacle Set",
+    "title": "Apply the written fix to the background-keying step in the art pipeline",
+    "why": "Three sheets in a row have needed the CEO's hand to erase the same key colour, and every sheet generated before the reskin inherits the defect."
+  }
+}

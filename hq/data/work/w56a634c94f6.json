@@ -7,7 +7,7 @@
   "tier_reason": "reading his edit and writing down what it implies — nothing to walk back",
   "ask": "Daniel hand-edited Field Grassland in the sprite editor. He left no note, which usually means routine cleanup rather than a decision about the look. The measurement: Field Grassland: 107 pixels across 1 frame (Field Grassland). Interior shading only — the silhouette is untouched. Look at it against the style guide draft and the rest of the sheet, and say in a few lines what his edit is telling you about the direction — whether it agrees with the guide, quietly contradicts it, or repeats something he has done before. If it is just tidying and there is nothing to learn, say exactly that in one line; a short honest answer beats manufactured significance. Do not propose amendments to the guide yet; he wants a look session before it is signed. This is evidence-gathering for that session.",
   "first_action": "Open assets/sprites/generated/terrain_field.png and the ledger entry (step 1) in HQ, compare it with the style guide in docs/design/09-art-direction.md, and write down what the edit says about his taste.",
-  "state": "for_review",
+  "state": "landed",
   "thread": "ingrid",
   "source": "chat",
   "source_message": "Daniel hand-edited Field Grassland in the sprite editor. He left no note, which usually means routine cleanup rather than a decision about the look. The measurement: Field Grassland: 107 pixels across 1 frame (Field Grassland). Interior shading only — the silhouette is untouched. Look at it against the style guide draft and the rest of the sheet, and say in a few lines what his edit is telling you about the direction — whether it agrees with the guide, quietly contradicts it, or repeats something he has done before. If it is just tidying and there is nothing to learn, say exactly that in one line; a short honest answer beats manufactured significance. Do not propose amendments to the guide yet; he wants a look session before it is signed. This is evidence-gathering for that session.",
@@ -41,5 +41,56 @@
     "instead": "Leave it and let the nine cells become nine variants the renderer picks between, which would break up the visible repeat — but that is a change of direction and belongs in the look session, not in a cleanup."
   },
   "finished": "2026-09-07T18:46",
-  "subject": "How the game looks"
+  "subject": "How the game looks",
+  "_revision": 4,
+  "completion_reconciliation": {
+    "version": 1,
+    "manifest_id": "38bb688252099d3f8dc679c6d536b9e1ea6197db010adb6fa2b9030b59e42f33",
+    "at": "2026-09-21T22:43",
+    "classification": "safe_to_close",
+    "by": "Codex interactive independent read-only audit by build_adapter; reading verified against recorded edit ledger",
+    "evidence_summary": "Terrain ledger 0001.json confirms 107 recolors, no added or erased pixels, and unchanged silhouette. Seam inspection and editor improvements are separate follow-ups."
+  },
+  "attempt_outcome": {
+    "version": 1,
+    "id": "historical-38bb688252099d3f8dc679c6d536b9e1ea6197db010adb6fa2b9030b59e42f33-w56a634c94f6",
+    "status": "complete",
+    "result_id": "36e448d7f9a0d56bf2adea290dfcb22a81f33bcbb04b80157d0201100ccfd31c"
+  },
+  "completion": {
+    "version": 1,
+    "attempt_id": "historical-38bb688252099d3f8dc679c6d536b9e1ea6197db010adb6fa2b9030b59e42f33-w56a634c94f6",
+    "at": "2026-09-21T22:43",
+    "kind": "historical_review",
+    "by": "Codex interactive independent read-only audit by build_adapter; reading verified against recorded edit ledger",
+    "evidence": {
+      "version": 1,
+      "manifest_id": "38bb688252099d3f8dc679c6d536b9e1ea6197db010adb6fa2b9030b59e42f33",
+      "at": "2026-09-21T22:43",
+      "classification": "safe_to_close",
+      "by": "Codex interactive independent read-only audit by build_adapter; reading verified against recorded edit ledger",
+      "evidence_summary": "Terrain ledger 0001.json confirms 107 recolors, no added or erased pixels, and unchanged silhouette. Seam inspection and editor improvements are separate follow-ups."
+    }
+  },
+  "closed": "2026-09-21T22:43",
+  "landed": {
+    "at": "2026-09-21T22:43",
+    "by": "Codex interactive independent read-only audit by build_adapter; reading verified against recorded edit ledger",
+    "sha": "",
+    "note": "Terrain ledger 0001.json confirms 107 recolors, no added or erased pixels, and unchanged silhouette. Seam inspection and editor improvements are separate follow-ups."
+  },
+  "spawned": [
+    {
+      "id": "wbaa17e2c5c5",
+      "title": "Look for seams in the field grassland after Daniel's edit",
+      "state": "doing",
+      "owner": "ravi"
+    },
+    {
+      "id": "wf6c0837f914",
+      "title": "Make the sprite editor treat a seamless ground sheet as its single tile",
+      "state": "waiting_session",
+      "owner": "rin"
+    }
+  ]
 }

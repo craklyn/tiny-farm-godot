@@ -1,0 +1,28 @@
+{
+  "id": "wf6c0837f914",
+  "completion_key": "f6c0837f91467d06523f1764e2606df149c1a9bcb5215d3461378e012e84a654",
+  "parent": "w56a634c94f6",
+  "title": "Make the sprite editor treat a seamless ground sheet as its single tile",
+  "level": "story",
+  "owner": "rin",
+  "tier": 1,
+  "tier_reason": "Eight ninths of his work on that sheet never reaches the screen and the copies silently drift apart.",
+  "ask": "Landed without Daniel: “Read Daniel's hand edit to Field Grassland”. Eight ninths of his work on that sheet never reaches the screen and the copies silently drift apart.",
+  "first_action": "In hq/data/entities.json, terrain_field and terrain_floor declare frames [[0,0,48,48]] but the game draws only the centre 16x16 cell. Give a seamless ground sheet a frame definition of that one cell, and write the edited cell back into all nine copies on save, so what he paints is what ships.",
+  "state": "waiting_session",
+  "thread": "ingrid",
+  "source": "chat",
+  "source_message": "Landed without Daniel: “Read Daniel's hand edit to Field Grassland”.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-21T22:43",
+  "created_ts": 1790055811.4776843,
+  "_revision": 2,
+  "promised_by": "w56a634c94f6",
+  "promised": {
+    "card": "Read Daniel's hand edit to Field Grassland",
+    "title": "Make the sprite editor treat a seamless ground sheet as its single tile",
+    "why": "Eight ninths of his work on that sheet never reaches the screen and the copies silently drift apart."
+  }
+}

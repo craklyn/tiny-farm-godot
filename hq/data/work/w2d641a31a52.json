@@ -7,7 +7,7 @@
   "tier_reason": "reading his edit and writing down what it implies — nothing to walk back",
   "ask": "Daniel hand-edited Obstacle Set in the sprite editor. He left no note, which usually means routine cleanup rather than a decision about the look. The measurement: Obstacle Set: 35 pixels across 4 frames (frame 4, frame 7, frame 8, frame 12). Colors dropped: #f8f4e6, #bfd470. The silhouette moved, not just the interior shading. Look at it against the style guide draft and the rest of the sheet, and say in a few lines what his edit is telling you about the direction — whether it agrees with the guide, quietly contradicts it, or repeats something he has done before. If it is just tidying and there is nothing to learn, say exactly that in one line; a short honest answer beats manufactured significance. Do not propose amendments to the guide yet; he wants a look session before it is signed. This is evidence-gathering for that session.",
   "first_action": "Open assets/sprites/generated/obstacles.png and the ledger entry (step 2) in HQ, compare it with the style guide in docs/design/09-art-direction.md, and write down what the edit says about his taste.",
-  "state": "for_review",
+  "state": "dropped",
   "thread": "ingrid",
   "source": "chat",
   "source_message": "Daniel hand-edited Obstacle Set in the sprite editor. He left no note, which usually means routine cleanup rather than a decision about the look. The measurement: Obstacle Set: 35 pixels across 4 frames (frame 4, frame 7, frame 8, frame 12). Colors dropped: #f8f4e6, #bfd470. The silhouette moved, not just the interior shading. Look at it against the style guide draft and the rest of the sheet, and say in a few lines what his edit is telling you about the direction — whether it agrees with the guide, quietly contradicts it, or repeats something he has done before. If it is just tidying and there is nothing to learn, say exactly that in one line; a short honest answer beats manufactured significance. Do not propose amendments to the guide yet; he wants a look session before it is signed. This is evidence-gathering for that session.",
@@ -49,5 +49,16 @@
     "instead": "Leave it alone — each fix is under a minute in the sprite editor, and a check that is too eager will start flagging interior colour that is meant to be there."
   },
   "finished": "2026-09-07T16:41",
-  "subject": "How the game looks"
+  "subject": "How the game looks",
+  "_revision": 1,
+  "completion_reconciliation": {
+    "version": 1,
+    "manifest_id": "38bb688252099d3f8dc679c6d536b9e1ea6197db010adb6fa2b9030b59e42f33",
+    "at": "2026-09-21T22:43",
+    "classification": "superseded/duplicate",
+    "by": "Codex interactive independent read-only audit by subagent build_adapter; operator review, not native checker approval",
+    "evidence_summary": "The 35-pixel obstacle edit is covered by the consolidated reading in wae35fb20cb7. Preserve ledger links and history, and avoid filing the same repair suggestions twice."
+  },
+  "closed": "2026-09-21T22:43",
+  "superseded_by": "wae35fb20cb7"
 }

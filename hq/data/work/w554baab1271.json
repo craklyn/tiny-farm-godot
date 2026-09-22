@@ -7,7 +7,7 @@
   "tier_reason": "reading his edit and writing down what it implies — nothing to walk back",
   "ask": "Daniel hand-edited Obstacle Set in the sprite editor and said he was fixing: \"Space between the fenceposts is transparent again — the middle band was opaque white\". The measurement: Obstacle Set: 14 pixels across 1 frame (frame 5). Colors dropped: #f8f4e6. The silhouette moved, not just the interior shading. Look at it against the style guide draft and the rest of the sheet, and say in a few lines what his edit is telling you about the direction — whether it agrees with the guide, quietly contradicts it, or repeats something he has done before. If it is just tidying and there is nothing to learn, say exactly that in one line; a short honest answer beats manufactured significance. Do not propose amendments to the guide yet; he wants a look session before it is signed. This is evidence-gathering for that session.",
   "first_action": "Open assets/sprites/generated/obstacles.png and the ledger entry (step 3) in HQ, compare it with the style guide in docs/design/09-art-direction.md, and write down what the edit says about his taste.",
-  "state": "for_review",
+  "state": "landed",
   "thread": "ingrid",
   "source": "chat",
   "source_message": "Daniel hand-edited Obstacle Set in the sprite editor and said he was fixing: \"Space between the fenceposts is transparent again — the middle band was opaque white\". The measurement: Obstacle Set: 14 pixels across 1 frame (frame 5). Colors dropped: #f8f4e6. The silhouette moved, not just the interior shading. Look at it against the style guide draft and the rest of the sheet, and say in a few lines what his edit is telling you about the direction — whether it agrees with the guide, quietly contradicts it, or repeats something he has done before. If it is just tidying and there is nothing to learn, say exactly that in one line; a short honest answer beats manufactured significance. Do not propose amendments to the guide yet; he wants a look session before it is signed. This is evidence-gathering for that session.",
@@ -19,5 +19,42 @@
   "follow_ups": [],
   "recommend": {},
   "finished": "2026-09-07T22:07",
-  "subject": "How the game looks"
+  "subject": "How the game looks",
+  "_revision": 4,
+  "completion_reconciliation": {
+    "version": 1,
+    "manifest_id": "38bb688252099d3f8dc679c6d536b9e1ea6197db010adb6fa2b9030b59e42f33",
+    "at": "2026-09-21T22:43",
+    "classification": "safe_to_close",
+    "by": "Codex interactive independent read-only audit by build_adapter; reading verified against recorded edit ledger",
+    "evidence_summary": "Obstacle ledger 0003.json confirms 14 erasures in frame index 4 at rectangle [4,7,7,2]. This is a distinct recurrence of the white fence band, not merely the earlier edit duplicated."
+  },
+  "attempt_outcome": {
+    "version": 1,
+    "id": "historical-38bb688252099d3f8dc679c6d536b9e1ea6197db010adb6fa2b9030b59e42f33-w554baab1271",
+    "status": "complete",
+    "result_id": "ac9f93bcb46637b04f8f8edaab06e5e015d2632992fa4729ce0861592eb771f4"
+  },
+  "completion": {
+    "version": 1,
+    "attempt_id": "historical-38bb688252099d3f8dc679c6d536b9e1ea6197db010adb6fa2b9030b59e42f33-w554baab1271",
+    "at": "2026-09-21T22:43",
+    "kind": "historical_review",
+    "by": "Codex interactive independent read-only audit by build_adapter; reading verified against recorded edit ledger",
+    "evidence": {
+      "version": 1,
+      "manifest_id": "38bb688252099d3f8dc679c6d536b9e1ea6197db010adb6fa2b9030b59e42f33",
+      "at": "2026-09-21T22:43",
+      "classification": "safe_to_close",
+      "by": "Codex interactive independent read-only audit by build_adapter; reading verified against recorded edit ledger",
+      "evidence_summary": "Obstacle ledger 0003.json confirms 14 erasures in frame index 4 at rectangle [4,7,7,2]. This is a distinct recurrence of the white fence band, not merely the earlier edit duplicated."
+    }
+  },
+  "closed": "2026-09-21T22:43",
+  "landed": {
+    "at": "2026-09-21T22:43",
+    "by": "Codex interactive independent read-only audit by build_adapter; reading verified against recorded edit ledger",
+    "sha": "",
+    "note": "Obstacle ledger 0003.json confirms 14 erasures in frame index 4 at rectangle [4,7,7,2]. This is a distinct recurrence of the white fence band, not merely the earlier edit duplicated."
+  }
 }

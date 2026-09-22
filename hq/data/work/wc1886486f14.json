@@ -7,7 +7,7 @@
   "tier_reason": "filed by hand",
   "ask": "Two of the three rules that keep replays reproducible are grepped on every page load and hold today. The third — that every world mutation goes through SimWorld.apply_action — has no checker at all: a renderer writing straight into the grid would compile and pass both suites, and the break would stay silent until phase-4 bot training failed on corrupt data. Write a static check over world/, entities/ and player/ for assignments into SimWorld's fields, and add it as a fifth CI job.",
   "first_action": "Read docs/ARCHITECTURE.md's layer rules and systems/sim/sim_world.gd, then write the check and prove it catches a deliberate violation.",
-  "state": "for_review",
+  "state": "landed",
   "thread": "elena",
   "source": "chat",
   "source_message": "Two of the three rules that keep replays reproducible are grepped on every page load and hold today. The third — that every world mutation goes through SimWorld.apply_action — has no checker at all: a renderer writing straight into the grid would compile and pass both suites, and the break would stay silent until phase-4 bot training failed on corrupt data. Write a static check over world/, entities/ and player/ for assignments into SimWorld's fields, and add it as a fifth CI job.",
@@ -86,5 +86,42 @@
     "list_usd": 7.0101
   },
   "follow_ups": [],
-  "recommend": {}
+  "recommend": {},
+  "_revision": 4,
+  "completion_reconciliation": {
+    "version": 1,
+    "manifest_id": "38bb688252099d3f8dc679c6d536b9e1ea6197db010adb6fa2b9030b59e42f33",
+    "at": "2026-09-21T22:43",
+    "classification": "safe_to_close",
+    "by": "Codex interactive independent read-only audit by build_adapter; historical gaps checked against current checker and CI source, without rerunning suites",
+    "evidence_summary": "Historical concerns are repaired: tools/check_gateway.py covers whole-field replacement and includes its regression, CI runs self-test and check, and no pyc files are tracked. Scope has since expanded to UI."
+  },
+  "attempt_outcome": {
+    "version": 1,
+    "id": "historical-38bb688252099d3f8dc679c6d536b9e1ea6197db010adb6fa2b9030b59e42f33-wc1886486f14",
+    "status": "complete",
+    "result_id": "e13553413a937b6c658273ac61f239e56dd7a54d2b68f6064afc36ba91ed127a"
+  },
+  "completion": {
+    "version": 1,
+    "attempt_id": "historical-38bb688252099d3f8dc679c6d536b9e1ea6197db010adb6fa2b9030b59e42f33-wc1886486f14",
+    "at": "2026-09-21T22:43",
+    "kind": "historical_review",
+    "by": "Codex interactive independent read-only audit by build_adapter; historical gaps checked against current checker and CI source, without rerunning suites",
+    "evidence": {
+      "version": 1,
+      "manifest_id": "38bb688252099d3f8dc679c6d536b9e1ea6197db010adb6fa2b9030b59e42f33",
+      "at": "2026-09-21T22:43",
+      "classification": "safe_to_close",
+      "by": "Codex interactive independent read-only audit by build_adapter; historical gaps checked against current checker and CI source, without rerunning suites",
+      "evidence_summary": "Historical concerns are repaired: tools/check_gateway.py covers whole-field replacement and includes its regression, CI runs self-test and check, and no pyc files are tracked. Scope has since expanded to UI."
+    }
+  },
+  "closed": "2026-09-21T22:43",
+  "landed": {
+    "at": "2026-09-21T22:43",
+    "by": "Codex interactive independent read-only audit by build_adapter; historical gaps checked against current checker and CI source, without rerunning suites",
+    "sha": "",
+    "note": "Historical concerns are repaired: tools/check_gateway.py covers whole-field replacement and includes its regression, CI runs self-test and check, and no pyc files are tracked. Scope has since expanded to UI."
+  }
 }

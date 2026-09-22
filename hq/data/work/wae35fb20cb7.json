@@ -7,7 +7,7 @@
   "tier_reason": "reading his edit and writing down what it implies — nothing to walk back",
   "ask": "Daniel hand-edited Obstacle Set in the sprite editor and said he was fixing: \"Space between fenceposts should be transparent\". The measurement: Obstacle Set: 14 pixels across 1 frame (frame 5). Colors dropped: #f8f4e6. The silhouette moved, not just the interior shading. Look at it against the style guide draft and the rest of the sheet, and say in a few lines what his edit is telling you about the direction — whether it agrees with the guide, quietly contradicts it, or repeats something he has done before. If it is just tidying and there is nothing to learn, say exactly that in one line; a short honest answer beats manufactured significance. Do not propose amendments to the guide yet; he wants a look session before it is signed. This is evidence-gathering for that session.",
   "first_action": "Open assets/sprites/generated/obstacles.png and the ledger entry (step 1) in HQ, compare it with the style guide in docs/design/09-art-direction.md, and write down what the edit says about his taste.",
-  "state": "for_review",
+  "state": "landed",
   "thread": "ingrid",
   "source": "chat",
   "source_message": "Daniel hand-edited Obstacle Set in the sprite editor and said he was fixing: \"Space between fenceposts should be transparent\". The measurement: Obstacle Set: 14 pixels across 1 frame (frame 5). Colors dropped: #f8f4e6. The silhouette moved, not just the interior shading. Look at it against the style guide draft and the rest of the sheet, and say in a few lines what his edit is telling you about the direction — whether it agrees with the guide, quietly contradicts it, or repeats something he has done before. If it is just tidying and there is nothing to learn, say exactly that in one line; a short honest answer beats manufactured significance. Do not propose amendments to the guide yet; he wants a look session before it is signed. This is evidence-gathering for that session.",
@@ -49,5 +49,62 @@
     "instead": "You could let it ride until after the look session — the cleanup is minutes per sheet — but that bets on nobody generating art in the meantime."
   },
   "finished": "2026-09-07T16:39",
-  "subject": "How the game looks"
+  "subject": "How the game looks",
+  "_revision": 4,
+  "completion_reconciliation": {
+    "version": 1,
+    "manifest_id": "38bb688252099d3f8dc679c6d536b9e1ea6197db010adb6fa2b9030b59e42f33",
+    "at": "2026-09-21T22:43",
+    "classification": "safe_to_close",
+    "by": "Codex interactive independent read-only audit by build_adapter; consolidated reading verified against recorded edit ledgers",
+    "evidence_summary": "Consolidated reading matches obstacle ledgers 0001.json and 0002.json: 14 fence erasures plus 35 erasures across tree and gate cells. Deduplicate proposed cleanup follow-ups against existing pipeline and cleanup cards."
+  },
+  "attempt_outcome": {
+    "version": 1,
+    "id": "historical-38bb688252099d3f8dc679c6d536b9e1ea6197db010adb6fa2b9030b59e42f33-wae35fb20cb7",
+    "status": "complete",
+    "result_id": "79fd8307550fb04712ba60bdcea719b60b1c73b63a3a434083cac950a28ea7cf"
+  },
+  "completion": {
+    "version": 1,
+    "attempt_id": "historical-38bb688252099d3f8dc679c6d536b9e1ea6197db010adb6fa2b9030b59e42f33-wae35fb20cb7",
+    "at": "2026-09-21T22:43",
+    "kind": "historical_review",
+    "by": "Codex interactive independent read-only audit by build_adapter; consolidated reading verified against recorded edit ledgers",
+    "evidence": {
+      "version": 1,
+      "manifest_id": "38bb688252099d3f8dc679c6d536b9e1ea6197db010adb6fa2b9030b59e42f33",
+      "at": "2026-09-21T22:43",
+      "classification": "safe_to_close",
+      "by": "Codex interactive independent read-only audit by build_adapter; consolidated reading verified against recorded edit ledgers",
+      "evidence_summary": "Consolidated reading matches obstacle ledgers 0001.json and 0002.json: 14 fence erasures plus 35 erasures across tree and gate cells. Deduplicate proposed cleanup follow-ups against existing pipeline and cleanup cards."
+    }
+  },
+  "closed": "2026-09-21T22:43",
+  "landed": {
+    "at": "2026-09-21T22:43",
+    "by": "Codex interactive independent read-only audit by build_adapter; consolidated reading verified against recorded edit ledgers",
+    "sha": "",
+    "note": "Consolidated reading matches obstacle ledgers 0001.json and 0002.json: 14 fence erasures plus 35 erasures across tree and gate cells. Deduplicate proposed cleanup follow-ups against existing pipeline and cleanup cards."
+  },
+  "spawned": [
+    {
+      "id": "w8dadba4841e",
+      "title": "Apply the written fix to the background-keying step in the art pipeline",
+      "state": "waiting_session",
+      "owner": "ravi"
+    },
+    {
+      "id": "w64670295e54",
+      "title": "Sweep the remaining generated sheets for trapped background pixels",
+      "state": "waiting_session",
+      "owner": "yuki"
+    },
+    {
+      "id": "wa4ac1851a2f",
+      "title": "Put the fence line and an open boundary in every look-session capture",
+      "state": "waiting_session",
+      "owner": "ingrid"
+    }
+  ]
 }

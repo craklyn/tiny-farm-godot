@@ -1,0 +1,28 @@
+{
+  "id": "wbaa17e2c5c5",
+  "completion_key": "baa17e2c5c5cd198040733f6164fc3c4d2f4d7c5cb5a8929a265c9678d56f9e9",
+  "parent": "w56a634c94f6",
+  "title": "Look for seams in the field grassland after Daniel's edit",
+  "level": "task",
+  "owner": "ravi",
+  "tier": 0,
+  "tier_reason": "His brush crossed the tile's own edges on a sheet the game repeats everywhere, so the field may now show a grid.",
+  "ask": "Landed without Daniel: “Read Daniel's hand edit to Field Grassland”. His brush crossed the tile's own edges on a sheet the game repeats everywhere, so the field may now show a grid.",
+  "first_action": "Render a frame of the field filled with assets/sprites/generated/terrain_field.png and inspect tile boundaries; also compare the nine 16x16 cells of that 48x48 file against each other and report how far they now differ, and whether cell (16,16,16,16) — the only one farm.gd draws — still wraps edge-to-edge.",
+  "state": "doing",
+  "thread": "ingrid",
+  "source": "chat",
+  "source_message": "Landed without Daniel: “Read Daniel's hand edit to Field Grassland”.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-21T22:43",
+  "created_ts": 1790055811.4598384,
+  "_revision": 2,
+  "promised_by": "w56a634c94f6",
+  "promised": {
+    "card": "Read Daniel's hand edit to Field Grassland",
+    "title": "Look for seams in the field grassland after Daniel's edit",
+    "why": "His brush crossed the tile's own edges on a sheet the game repeats everywhere, so the field may now show a grid."
+  }
+}

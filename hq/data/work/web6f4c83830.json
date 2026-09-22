@@ -1,0 +1,28 @@
+{
+  "id": "web6f4c83830",
+  "completion_key": "eb6f4c838301f32006e551805fa42eeb3db62c6596de89513efe91e3621ac836",
+  "parent": "wf1b3b951813",
+  "title": "Re-measure the style guide against the sprites that actually ship",
+  "level": "task",
+  "owner": "ingrid",
+  "tier": 1,
+  "tier_reason": "The guide's whole measured baseline cites a sprite set the repository no longer contains.",
+  "ask": "Landed without Daniel: “Confirm the four visual treatments worth rendering for Daniel to choose between”. The guide's whole measured baseline cites a sprite set the repository no longer contains.",
+  "first_action": "Decode the generated sheets and rewrite the guide's ramps, anchors and current-state section from them instead of from the removed Sprout Lands set",
+  "state": "waiting_session",
+  "thread": "claude",
+  "source": "chat",
+  "source_message": "Landed without Daniel: “Confirm the four visual treatments worth rendering for Daniel to choose between”.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-21T22:43",
+  "created_ts": 1790055811.618672,
+  "_revision": 2,
+  "promised_by": "wf1b3b951813",
+  "promised": {
+    "card": "Confirm the four visual treatments worth rendering for Daniel to choose between",
+    "title": "Re-measure the style guide against the sprites that actually ship",
+    "why": "The guide's whole measured baseline cites a sprite set the repository no longer contains."
+  }
+}

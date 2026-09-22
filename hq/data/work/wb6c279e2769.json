@@ -1,0 +1,28 @@
+{
+  "id": "wb6c279e2769",
+  "completion_key": "b6c279e27699d84c1f378c170aac8cd75ad3a45fa82bf1adf810857a81e93033",
+  "parent": "wf1b3b951813",
+  "title": "Render the four looks, including cold light",
+  "level": "task",
+  "owner": "jade",
+  "tier": 1,
+  "tier_reason": "The list of looks is closed, and three of the four are grades of a single capture.",
+  "ask": "Landed without Daniel: “Confirm the four visual treatments worth rendering for Daniel to choose between”. The list of looks is closed, and three of the four are grades of a single capture.",
+  "first_action": "On the desktop, capture the base frame at day three mid-morning on seed 12345 with the player and one station in frame, then grade the quiet-world and cold-light variants from it",
+  "state": "waiting_session",
+  "thread": "claude",
+  "source": "chat",
+  "source_message": "Landed without Daniel: “Confirm the four visual treatments worth rendering for Daniel to choose between”.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-21T22:43",
+  "created_ts": 1790055811.5818896,
+  "_revision": 2,
+  "promised_by": "wf1b3b951813",
+  "promised": {
+    "card": "Confirm the four visual treatments worth rendering for Daniel to choose between",
+    "title": "Render the four looks, including cold light",
+    "why": "The list of looks is closed, and three of the four are grades of a single capture."
+  }
+}

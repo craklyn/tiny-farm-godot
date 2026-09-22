@@ -1,0 +1,28 @@
+{
+  "id": "wfd1109745a0",
+  "completion_key": "fd1109745a0b1b9be992fb2b3c59ae8b136c518692ae83461e797ae60aa6a9e7",
+  "parent": "w59c6ab05678",
+  "title": "Render one sprite with a hard edge and with a soft edge, side by side",
+  "level": "task",
+  "owner": "yuki",
+  "tier": 0,
+  "tier_reason": "An edge is a pixel-level difference nobody can rule on from a description.",
+  "ask": "Landed without Daniel: “Add how a sprite's edge is drawn to the look session agenda”. An edge is a pixel-level difference nobody can rule on from a description.",
+  "first_action": "Take the neighbour sheet as it ships and make a second copy whose outline carries part-transparent pixels at the silhouette; render both in the game at tablet scale, same frame and seed, and save the pair for the look session.",
+  "state": "doing",
+  "thread": "ingrid",
+  "source": "chat",
+  "source_message": "Landed without Daniel: “Add how a sprite's edge is drawn to the look session agenda”.",
+  "result": "",
+  "started": "2026-09-21T22:50",
+  "attempts": 0,
+  "created": "2026-09-21T22:43",
+  "created_ts": 1790055811.439042,
+  "_revision": 3,
+  "promised_by": "w59c6ab05678",
+  "promised": {
+    "card": "Add how a sprite's edge is drawn to the look session agenda",
+    "title": "Render one sprite with a hard edge and with a soft edge, side by side",
+    "why": "An edge is a pixel-level difference nobody can rule on from a description."
+  }
+}

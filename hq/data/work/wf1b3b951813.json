@@ -7,7 +7,7 @@
   "tier_reason": "The art director owns which looks are worth the CEO's attention before anyone renders them.",
   "ask": "Accepted “Render side-by-side look captures for the CEO to pick from”. The art director owns which looks are worth the CEO's attention before anyone renders them.",
   "first_action": "Read the four proposed treatments and either sign off or replace one, writing the final list into the style guide's look-session note",
-  "state": "for_review",
+  "state": "landed",
   "thread": "claude",
   "source": "chat",
   "source_message": "Accepted “Render side-by-side look captures for the CEO to pick from”. The art director owns which looks are worth the CEO's attention before anyone renders them.",
@@ -92,5 +92,62 @@
     "seconds": 248.9,
     "list_usd": 2.3387
   },
-  "subject": "How the game looks"
+  "subject": "How the game looks",
+  "_revision": 4,
+  "completion_reconciliation": {
+    "version": 1,
+    "manifest_id": "38bb688252099d3f8dc679c6d536b9e1ea6197db010adb6fa2b9030b59e42f33",
+    "at": "2026-09-21T22:43",
+    "classification": "safe_to_close",
+    "by": "Codex interactive independent read-only audit by build_adapter; bounded treatment-selection assignment verified in current documents",
+    "evidence_summary": "Art-direction document and Q-14 retain the four treatments, common staging and rendering as remaining work. This assignment selected treatments; it did not require final look approval."
+  },
+  "attempt_outcome": {
+    "version": 1,
+    "id": "historical-38bb688252099d3f8dc679c6d536b9e1ea6197db010adb6fa2b9030b59e42f33-wf1b3b951813",
+    "status": "complete",
+    "result_id": "dd33ecd0ea41990a19456fbfba34faee1369efd202061fa678eccc6a2641d287"
+  },
+  "completion": {
+    "version": 1,
+    "attempt_id": "historical-38bb688252099d3f8dc679c6d536b9e1ea6197db010adb6fa2b9030b59e42f33-wf1b3b951813",
+    "at": "2026-09-21T22:43",
+    "kind": "historical_review",
+    "by": "Codex interactive independent read-only audit by build_adapter; bounded treatment-selection assignment verified in current documents",
+    "evidence": {
+      "version": 1,
+      "manifest_id": "38bb688252099d3f8dc679c6d536b9e1ea6197db010adb6fa2b9030b59e42f33",
+      "at": "2026-09-21T22:43",
+      "classification": "safe_to_close",
+      "by": "Codex interactive independent read-only audit by build_adapter; bounded treatment-selection assignment verified in current documents",
+      "evidence_summary": "Art-direction document and Q-14 retain the four treatments, common staging and rendering as remaining work. This assignment selected treatments; it did not require final look approval."
+    }
+  },
+  "closed": "2026-09-21T22:43",
+  "landed": {
+    "at": "2026-09-21T22:43",
+    "by": "Codex interactive independent read-only audit by build_adapter; bounded treatment-selection assignment verified in current documents",
+    "sha": "",
+    "note": "Art-direction document and Q-14 retain the four treatments, common staging and rendering as remaining work. This assignment selected treatments; it did not require final look approval."
+  },
+  "spawned": [
+    {
+      "id": "wb6c279e2769",
+      "title": "Render the four looks, including cold light",
+      "state": "waiting_session",
+      "owner": "jade"
+    },
+    {
+      "id": "wcac1b777695",
+      "title": "Stop the asset pipeline shifting red by one",
+      "state": "waiting_session",
+      "owner": "ravi"
+    },
+    {
+      "id": "web6f4c83830",
+      "title": "Re-measure the style guide against the sprites that actually ship",
+      "state": "waiting_session",
+      "owner": "ingrid"
+    }
+  ]
 }
