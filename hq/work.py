@@ -29,6 +29,7 @@ import execution
 
 from contextlib import contextmanager
 import fcntl
+import tempfile
 import hashlib
 import datetime
 import json
@@ -230,7 +231,9 @@ def mutation_lock():
             finally:
                 _MUTATION_LOCAL.depth -= 1
             return
-        with open(os.path.join(WORK, ".mutation.lock"), "a") as lock:
+        identity = hashlib.sha256(os.fsencode(os.path.realpath(WORK))).hexdigest()
+        lock_path = os.path.join(tempfile.gettempdir(), "tiny-farm-work-" + identity + ".lock")
+        with open(lock_path, "a") as lock:
             fcntl.flock(lock, fcntl.LOCK_EX)
             _MUTATION_LOCAL.depth = 1
             try:

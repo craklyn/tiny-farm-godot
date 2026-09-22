@@ -28,6 +28,13 @@ class Revisions(unittest.TestCase):
         item['ask']='New request';work.save_item(item)
         self.assertEqual(item['_revision'],2)
         self.assertEqual(work.load_item('wtest'),item)
+    def test_mutation_lock_leaves_no_artifact_in_work_directory(self):
+        before=set(Path(work.WORK).iterdir())
+        with work.mutation_lock():
+            with work.mutation_lock():
+                self.assertEqual(before,set(Path(work.WORK).iterdir()))
+        self.assertEqual(before,set(Path(work.WORK).iterdir()))
+
     def test_new_record_cannot_overwrite_an_existing_legacy_record(self):
         work._write_json(work._item_path('wtest'),{'id':'wtest','state':'for_review'})
         with self.assertRaises(work.RecordConflict):work.save_item({'id':'wtest','state':'doing'})
