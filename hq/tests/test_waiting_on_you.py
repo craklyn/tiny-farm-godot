@@ -18,8 +18,19 @@ REC = {"question": "Keep it?", "answer": "Keep it", "why": "It works",
 
 
 def card(card_id, state, **extra):
-    out = {"id": card_id, "state": state, "recommend": REC}
+    out = {
+        "id": card_id,
+        "state": state,
+        "recommend": REC,
+        "deliverable": {
+            "name": "The revised result",
+            "evidence": [{"label": "Review it", "href": "/review/result"}],
+        },
+        "follow_ups": [],
+    }
     out.update(extra)
+    if out.get("follow_ups") is None:
+        out.pop("follow_ups")
     return out
 
 
@@ -46,6 +57,18 @@ def main():
         card("w-ready", "for_review"),
         card("w-approval", "needs_approval"),
         card("w-unprepared", "for_review", recommend={}),
+        card("w-no-question", "for_review", recommend={}, recommendation_required=False,
+             recommendation_reason="Daniel must judge the result."),
+        card("w-no-recommendation", "for_review", recommend={"question": "Keep it?"}),
+        card("w-no-recommendation-explanation", "for_review", recommend={},
+             review_question="Keep it?", recommendation_required=False),
+        card("w-no-deliverable", "for_review", deliverable={}),
+        card("w-no-evidence", "for_review", deliverable={"name": "The revised result"}),
+        card("w-no-consequences", "for_review", follow_ups=None),
+        card("w-explicit-verdict", "for_review", recommend={},
+             review_question="Does this finished result stand?",
+             recommendation_required=False,
+             recommendation_reason="Only Daniel can judge whether this animation reads clearly."),
         card("w-reply", "for_review", awaiting_reply=True),
         card("w-held", "for_review", held_patch="/tmp/patch"),
         card("w-preparing", "prepping"),
@@ -67,15 +90,29 @@ def main():
     try:
         got = server.waiting_on_you()
         ids = {row["source_id"] for row in got["ready"]}
-        check(ids == {"q-ready", "q-returned", "w-ready", "w-approval"},
-              "prepared decisions, returned decisions, reviews and approvals share one ready set")
-        check(got["count"] == 4 and got["counts"] == {"total": 4, "work": 2, "decisions": 2},
+        check(ids == {"q-ready", "q-returned", "w-ready", "w-approval", "w-explicit-verdict"},
+              "prepared decisions, returned decisions, reviews, approvals and explicit verdicts share one ready set")
+        check(got["count"] == 5 and got["counts"] == {"total": 5, "work": 3, "decisions": 2},
               "the total and its split are derived from that set")
         reading = server.waiting_reading()
         dashboard = server.waiting_block()
         check(reading["count"] == dashboard["count"] == len(ids),
               "dashboard and navigation totals match the ready IDs shown by the queue")
         states = {row["source_id"]: row["status"] for row in got["items"]}
+        preparation = {row["source_id"]: row.get("preparation") for row in got["items"]}
+        for card_id, code in (("w-no-question", "question"),
+                              ("w-no-recommendation", "recommendation"),
+                              ("w-no-recommendation-explanation", "recommendation_explanation")):
+            check(preparation[card_id]["missing"] == [code] and card_id not in ids,
+                  f"{code} has its own preparation gap and cannot enter the ready queue")
+        check(preparation["w-no-deliverable"]["missing"] == ["deliverable", "evidence"],
+              "a work card without its named deliverable stays out of the ready queue")
+        check(preparation["w-no-evidence"]["missing"] == ["evidence"],
+              "a named deliverable needs inspectable evidence")
+        check(preparation["w-no-consequences"]["missing"] == ["consequences"],
+              "a review records what Daniel's answer does next")
+        check(preparation["w-explicit-verdict"]["ready"],
+              "a finished result can ask for an informed verdict without a fabricated recommendation")
         check(states["q-studio"] == "awaiting_owner_reply" and states["w-reply"] == "awaiting_owner_reply",
               "send-backs stay with the studio until an owner returns them")
         check(states["w-held"] == "verification_pending", "held patches await verification")
@@ -107,6 +144,38 @@ def main():
               "an unavailable work reading is not reported as zero")
     finally:
         server.api_queue, server.work.items, server.work._held_back = old_queue, old_items, old_held
+
+    concrete = {"title": "Fix the preview", "owner": "rin",
+                "first_action": "Render the revised animation at game size", "tier": 1}
+    for field, value in (("follow_ups", []), ("follow_ups", [concrete]), ("follow_up", concrete)):
+        sample = card("w-valid-consequence", "for_review")
+        sample.pop("follow_ups")
+        sample[field] = value
+        check(server.work_preparation(sample)["ready"],
+              f"{field} accepts concrete next work or canonical explicit no-work")
+    for field in ("follow_ups", "follow_up"):
+        malformed = [None, "", " ", {}, False, 0, "NONE", [None], [""], [{}],
+                     {"title": "Incomplete"}, [concrete, None],
+                     {**concrete, "first_action": " "}, {**concrete, "tier": "1"}]
+        if field == "follow_up":
+            malformed.append([])
+        else:
+            malformed.extend([concrete, [{**concrete, "title": {}}], [{**concrete, "owner": ""}]])
+        for value in malformed:
+            sample = card("w-bad-consequence", "for_review")
+            sample.pop("follow_ups")
+            sample[field] = value
+            check(server.work_preparation(sample)["missing"] == ["consequences"],
+                  f"{field} rejects malformed consequence {value!r}")
+            with patch.object(server, "api_queue", return_value={"curated": [], "rulings": {}, "decided": []}), \
+                 patch.object(server.work, "items", return_value=[sample]):
+                projected = server.waiting_on_you()
+            check(projected["available"] and projected["count"] == 0
+                  and projected["items"][0]["preparation"]["missing"] == ["consequences"],
+                  "malformed consequences stay visible as preparation gaps, not ready work")
+    sample = card("w-conflicting-consequence", "for_review", follow_up=None)
+    check(server.work_preparation(sample)["missing"] == ["consequences"],
+          "an explicit empty list does not mask a malformed singular consequence")
 
     # Exercise production readers rather than replacing them with throwing stubs.
     with tempfile.TemporaryDirectory() as tmp:

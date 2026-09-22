@@ -294,25 +294,94 @@ def cards_filed():
 
 def _pending_review_status(item):
     """Describe unfinished review work; passing checks never prove it landed."""
-    missing = " The result is missing a recommended answer."
     if item.get("state") != "for_review":
-        return "preparing", "The question is missing a recommended answer."
+        return "preparing", "The owner is preparing the question."
     if item.get("decision"):
-        return "preparing", "This card refers to an earlier decision; the owner must reconcile its status." + missing
+        return "preparing", "This card refers to an earlier decision; the owner must reconcile its status."
     if item.get("source") == "chief-of-staff" and str(item.get("created", ""))[:10] == "2026-09-10":
-        return "verification_pending", "This older card needs its completion verified." + missing
+        return "verification_pending", "This older card needs its completion verified."
     tier = item.get("tier", 2)
     follows = item.get("follow_ups") or []
     max_tier = max((f.get("tier", 1) for f in follows), default=0)
     if (item.get("check") or {}).get("verdict") == "fail":
-        return "verification_pending", "The checker found it not done; the owner must revise it." + missing
+        return "verification_pending", "The checker found it not done; the owner must revise it."
     if tier == 0 and max_tier < 2:
-        return "ready_to_apply", "The reading is awaiting recorded completion." + missing
+        return "ready_to_apply", "The reading is awaiting recorded completion."
     suites = item.get("suites") or {}
     green = bool(suites) and all(v.get("ok") if isinstance(v, dict) else v for v in suites.values())
     if tier == 1 and green and max_tier <= 1:
-        return "ready_to_apply", "Checks passed, but completion has not been recorded." + missing
-    return "preparing", "The result is missing a recommended answer."
+        return "ready_to_apply", "Checks passed, but completion has not been recorded."
+    return "preparing", "The owner is preparing the result."
+
+
+def work_preparation(item):
+    """Return the recorded preparation a work card needs before it is ready.
+
+    This is deliberately a pure reader.  A queue read must not silently revise
+    a card or start an owner session; the caller receives stable codes it can
+    show to Daniel and pass back to the owner.
+
+    A finished result may honestly have no recommendation.  In that case its
+    owner records ``recommendation_required: false`` and why, leaving Daniel
+    able to make an explicit verdict instead of manufacturing an answer for
+    him.
+    """
+    missing = []
+    deliverable = item.get("deliverable")
+    if not isinstance(deliverable, dict) or not str(deliverable.get("name") or "").strip():
+        missing.append("deliverable")
+
+    evidence = deliverable.get("evidence") if isinstance(deliverable, dict) else None
+    if not isinstance(evidence, list) or not any(
+            isinstance(entry, dict) and str(entry.get("href") or entry.get("path") or "").strip()
+            for entry in evidence):
+        missing.append("evidence")
+
+    question = ((item.get("recommend") or {}).get("question")
+                if isinstance(item.get("recommend"), dict) else "")
+    question = question or item.get("review_question")
+    if not str(question or "").strip():
+        missing.append("question")
+
+    recommendation_required = item.get("recommendation_required") is not False
+    if recommendation_required:
+        if not work.has_recommendation(item):
+            missing.append("recommendation")
+    elif not str(item.get("recommendation_reason") or "").strip():
+        missing.append("recommendation_explanation")
+
+    # The canonical empty list explicitly starts no work. A legacy singular
+    # follow-up must name concrete work; null and malformed values say nothing.
+    def concrete_follow_up(value):
+        if not isinstance(value, dict):
+            return False
+        if not all(isinstance(value.get(key), str) and value[key].strip()
+                   for key in ("title", "owner", "first_action")):
+            return False
+        return ("tier" not in value or
+                type(value["tier"]) is int and value["tier"] in (0, 1, 2))
+
+    consequences = False
+    if "follow_ups" in item:
+        values = item["follow_ups"]
+        consequences = isinstance(values, list) and all(concrete_follow_up(v) for v in values)
+        if "follow_up" in item:
+            consequences = consequences and concrete_follow_up(item["follow_up"])
+    elif "follow_up" in item:
+        consequences = concrete_follow_up(item["follow_up"])
+    if not consequences:
+        missing.append("consequences")
+
+    labels = {
+        "deliverable": "a short name for the deliverable",
+        "evidence": "inspectable evidence for that deliverable",
+        "question": "the specific question for Daniel",
+        "recommendation": "the owner's recommendation",
+        "recommendation_explanation": "why no recommendation is appropriate",
+        "consequences": "what Daniel's answer will do next",
+    }
+    return {"ready": not missing, "missing": missing,
+            "missing_labels": [labels[code] for code in missing]}
 
 
 def waiting_on_you():
@@ -373,7 +442,8 @@ def _waiting_on_you_complete():
     }
     for item in items:
         held = item.get("state") == "for_review" and work._held_back(item)
-        ready = (work._in_his_list(item) and work.has_recommendation(item)
+        preparation = work_preparation(item)
+        ready = (work._in_his_list(item) and preparation["ready"]
                  and not item.get("awaiting_reply"))
         if ready:
             status, reason = "ready", "A prepared result is ready for your verdict."
@@ -383,12 +453,16 @@ def _waiting_on_you_complete():
         elif item.get("awaiting_reply"):
             status, reason = "awaiting_owner_reply", "The studio owes a reply to your comment."
         elif work._in_his_list(item):
-            status, reason = _pending_review_status(item)
+            status, reason = (("preparing", "The outcome is not recorded.")
+                              if "consequences" in preparation["missing"] else _pending_review_status(item))
+            missing_reason = "The owner still needs " + ", ".join(preparation["missing_labels"]) + "."
+            reason = missing_reason if status == "preparing" else reason + " " + missing_reason
         else:
             status, reason = labels.get(item.get("state"),
                                         ("unknown", "This work state is not recognized; the owner must verify it."))
         projected.append({"source_id": item["id"], "source": "work", "ready": ready,
-                          "status": status, "reason": reason})
+                          "status": status, "reason": reason,
+                          "preparation": preparation})
     ready_rows = [row for row in projected if row["ready"]]
     counts = {"total": len(ready_rows), "work": len(finished),
               "decisions": len(decisions)}
