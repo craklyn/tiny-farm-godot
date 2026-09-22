@@ -16,6 +16,22 @@ import execution as e
 
 
 class ExecutionTests(unittest.TestCase):
+    def setUp(self):
+        # Exercise the real policy loader against a stable fixture, never the
+        # operator's current provider, pause setting, or nominated work card.
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        self.policy_path = Path(folder.name) / 'execution_policy.json'
+        self.policy_path.write_text(json.dumps({
+            'version': 1, 'mode': 'codex', 'default_model': 'opus',
+            'mappings': {'fable': 'gpt-6-astra', 'opus': 'gpt-5.6-sol',
+                         'sonnet': 'gpt-5.6-terra', 'haiku': 'gpt-5.6-luna'},
+            'background_paused': True, 'trial_item': 'w85a6cc7505a',
+        }))
+        policy_patch = patch.object(e, 'POLICY_PATH', self.policy_path)
+        policy_patch.start()
+        self.addCleanup(policy_patch.stop)
+
     def test_routes_and_hold(self):
         for source, model in e.MODELS.items():
             self.assertEqual(e.resolve_model(source)['model'], model)
@@ -157,7 +173,8 @@ class ExecutionTests(unittest.TestCase):
             for name in ['tools/check_writing.py', 'hq/execution.py', 'hq/data/execution_policy.json']:
                 dest = root / name
                 dest.parent.mkdir(parents=True, exist_ok=True)
-                dest.write_bytes((ROOT / name).read_bytes())
+                source = self.policy_path if name == 'hq/data/execution_policy.json' else ROOT / name
+                dest.write_bytes(source.read_bytes())
             cli = root / 'codex'
             cli.write_text('#!/usr/bin/env python3\nimport json\nprint(json.dumps({"type":"item.completed","item":{"type":"agent_message","text":\'{"findings": []}\'}}))\nprint(json.dumps({"type":"turn.completed","usage":{}}))\n')
             cli.chmod(0o755)
@@ -173,7 +190,8 @@ class ExecutionTests(unittest.TestCase):
                          'hq/data/execution_policy.json', 'docs/WRITING.md', 'docs/writing_rulings.json']:
                 dest = root / name
                 dest.parent.mkdir(parents=True, exist_ok=True)
-                dest.write_bytes((ROOT / name).read_bytes())
+                source = self.policy_path if name == 'hq/data/execution_policy.json' else ROOT / name
+                dest.write_bytes(source.read_bytes())
             def git(*args):
                 return subprocess.check_output(['git', *args], cwd=root, stderr=subprocess.STDOUT)
             git('init', '-q')
