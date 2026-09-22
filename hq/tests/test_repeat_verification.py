@@ -123,6 +123,43 @@ class HeldPatchTests(unittest.TestCase):
         self.assertEqual(evidence["completed_runs"], 0)
         self.assertEqual([row["completed"] for row in evidence["runs"]], [False, False])
 
+    def test_default_wrapper_is_current_checkout_not_historical_candidate(self):
+        original = verify_held_patch._command
+        seen = []
+        def fake_command(args, cwd, timeout=120, input=None):
+            if len(args) > 1 and args[0] == sys.executable and args[1].endswith("run_godot_test.py"):
+                seen.append((args, cwd))
+                return subprocess.CompletedProcess(args, 0,
+                    "  ✓ known assertion\nResults: 2 PASSED, 0 FAILED\n", "")
+            return original(args, cwd, timeout=timeout, input=input)
+        with patch.object(verify_held_patch, "_command", side_effect=fake_command):
+            path = verify_held_patch.verify(self.item_id, 1, "known assertion", repo=self.repo)
+        with open(path) as source:
+            evidence = json.load(source)
+        self.assertEqual(evidence["assertion_passes"], 1)
+        self.assertEqual(len(seen), 1)
+        self.assertTrue(os.path.isabs(seen[0][0][1]))
+        self.assertTrue(seen[0][0][1].startswith(os.path.dirname(HQ)))
+        self.assertNotEqual(seen[0][1], os.path.dirname(HQ))
+
+    def test_rejects_multiple_summaries_and_stray_assertion_after_summary(self):
+        command = [sys.executable, "-c", "print('  ✓ known assertion'); "
+                   "print('Results: 2 PASSED, 0 FAILED'); "
+                   "print('Results: 2 PASSED, 0 FAILED')"]
+        path = verify_held_patch.verify(self.item_id, 1, "known assertion", repo=self.repo,
+                                        runner=command)
+        with open(path) as source:
+            evidence = json.load(source)
+        self.assertEqual(evidence["completed_runs"], 0)
+        stray = [sys.executable, "-c", "print('Results: 2 PASSED, 0 FAILED'); "
+                 "print('  ✓ known assertion')"]
+        path = verify_held_patch.verify(self.item_id, 1, "known assertion", repo=self.repo,
+                                        runner=stray)
+        with open(path) as source:
+            evidence = json.load(source)
+        self.assertEqual(evidence["completed_runs"], 1)
+        self.assertEqual(evidence["assertion_passes"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()

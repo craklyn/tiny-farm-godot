@@ -77,7 +77,9 @@ def verify(item_id, runs, assertion, repo=drain.REPO, output_root=None, runner=N
                     "assertion": assertion, "requested_runs": runs, "completed_runs": 0,
                     "assertion_passes": 0, "assertion_failures": 0, "runs": [],
                     "created": datetime.now(timezone.utc).isoformat()}
-        run_cmd = runner or [sys.executable, "tools/run_godot_test.py", "--timeout", "840", "--",
+        wrapper = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                               "tools", "run_godot_test.py")
+        run_cmd = runner or [sys.executable, wrapper, "--timeout", "840", "--",
                              "godot", "--headless", "--path", ".", "res://tools/test_runner.tscn"]
         for number in range(1, runs + 1):
             try:
@@ -91,15 +93,23 @@ def verify(item_id, runs, assertion, repo=drain.REPO, output_root=None, runner=N
             log_name = f"run-{number:02d}.log"
             with open(os.path.join(evidence_dir, log_name), "w", encoding="utf-8") as sink:
                 sink.write(output)
-            matches = RESULT.findall(output)
+            matches = list(RESULT.finditer(output))
             # Exit 1 is a completed failing suite; timeouts, kills, and other
             # abnormal exits cannot count even if output contained a result.
-            completed = bool(matches) and code in (0, 1)
-            failed_assertion = bool(re.search(r"FAIL:\s*[^\n]*" + re.escape(assertion), output))
-            passed_assertion = bool(re.search(r"^[^\n]*[✓✔][^\n]*" + re.escape(assertion), output, re.M))
+            completed = len(matches) == 1 and code in (0, 1)
+            # Read only the assertion in this single completed suite. A wrapper
+            # diagnostic or earlier run fragment after the summary cannot turn
+            # this run into a pass, nor can contradictory marks be resolved by
+            # choosing the more convenient one.
+            suite_output = output[:matches[0].start()] if completed else ""
+            assertion_lines = [line for line in suite_output.splitlines() if assertion in line]
+            failures = [line for line in assertion_lines if "FAIL:" in line]
+            passes = [line for line in assertion_lines if re.search(r"^\s*[✓✔]\s", line)]
+            failed_assertion = len(failures) > 0 and not passes
+            passed_assertion = len(passes) == 1 and not failures
             row = {"number": number, "exit_code": code, "completed": completed,
-                   "passed": int(matches[-1][0]) if completed else None,
-                   "failed": int(matches[-1][1]) if completed else None,
+                   "passed": int(matches[0].group(1)) if completed else None,
+                   "failed": int(matches[0].group(2)) if completed else None,
                    "assertion": "fail" if failed_assertion else "pass" if passed_assertion else "unknown",
                    "log": log_name}
             evidence["runs"].append(row)
