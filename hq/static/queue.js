@@ -419,8 +419,9 @@ function qRender(state) {
     ? `${execution.queued} accepted pieces are held${execution.pause.reason ? `: ${execution.pause.reason}` : "."}`
     : `${execution.queued} accepted pieces are eligible. The scheduler is ${execution.timer.active === false ? "stopped" : "active"}; up to ${execution.batch_limit} start every ${execution.interval_minutes} minutes.`;
   const executionHtml = `<section class="exec-control ${execution.paused ? "paused" : "running"}">
-    <a class="exec-open" href="#/work/queue"><span class="exec-name">Task queue</span>
-      <span class="exec-status tip" tabindex="0" data-tip="${esc(statusTip)}"><i></i>${esc(autoStatus)}</span></a>
+    <span class="exec-name">Task queue</span>
+    <span class="exec-status tip" tabindex="0" data-tip="${esc(statusTip)}"><i></i>${esc(autoStatus)}</span>
+    <a class="exec-view" href="#/work/queue">View queue <span aria-hidden="true">→</span></a>
     <button class="ghost exec-toggle tip" id="q-exec-toggle" aria-label="${execution.paused ? "Resume" : "Pause"} automatic task queue work"
       data-tip="${execution.paused ? "Resume working through the accepted task queue." : "Pause working through the accepted task queue."}">${execution.paused ? "▶" : "Ⅱ"}</button>
   </section>`;

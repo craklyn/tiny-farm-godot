@@ -140,12 +140,15 @@ button:disabled { opacity: .5; cursor: default; }
   min-height: 32px; padding: 3px 4px 3px 11px; margin: 0 0 16px; border: 1px solid var(--line);
   border-radius: 18px; background: var(--panel); font-size: 12.5px; }
 .exec-name { color: var(--muted); }
-.exec-open { display: inline-flex; align-items: center; gap: 9px; color: inherit; text-decoration: none; }
 .exec-status { display: inline-flex; align-items: center; gap: 5px; font-weight: 700; }
 .exec-status i { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
 .exec-control.paused .exec-status { color: #d2a548; }
 .exec-control.paused .exec-status i { background: #d2a548; }
 button.exec-toggle { width: 27px; height: 27px; padding: 0; border-radius: 50%; font-size: 12px; line-height: 1; }
+.exec-view { align-self: stretch; display: inline-flex; align-items: center; gap: 4px; margin: -3px 0 -3px 3px;
+  padding: 0 11px; border-left: 1px solid var(--line); border-right: 1px solid var(--line);
+  color: var(--blue); font-weight: 700; text-decoration: none; }
+.exec-view:hover, .exec-view:focus-visible { background: var(--panel2); color: var(--accent); text-decoration: underline; }
 .tip { position: relative; }
 .tip::after { content: attr(data-tip); position: absolute; z-index: 30; left: 50%; top: calc(100% + 9px);
   width: max-content; max-width: min(320px, 75vw); padding: 8px 10px; border: 1px solid var(--line);
