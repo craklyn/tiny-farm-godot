@@ -693,6 +693,49 @@ def _file_item(fields, cap, org):
     })
 
 
+def file_automatic(fields, source_ref):
+    """File one machine-detected repair, once, and put it ahead of routine work."""
+    org = HOST.load_org()
+    title = str(fields.get("title") or "").strip()[:160]
+    owner = str(fields.get("owner") or "elena")
+    existing = next((i for i in items() if i.get("source_ref") == source_ref), None)
+    # A closed repair still consumes its run. Until GitHub finishes the next
+    # run, the poller will keep seeing the old failure; that must not reopen
+    # work which already landed.
+    if existing is not None and existing.get("state") not in OPEN_STATES:
+        return existing
+    if existing is None:
+        key = merge_key(title)
+        existing = next((i for i in items()
+                         if merge_key(i.get("title")) == key
+                         and i.get("state") in MERGEABLE_STATES), None)
+    if existing is not None:
+        existing["source_ref"] = source_ref
+        existing["source"] = "automatic"
+        existing["urgent"] = True
+        existing["owner"] = owner
+        existing["thread"] = owner
+        existing["ask"] = str(fields.get("ask") or existing.get("ask") or "")[:600]
+        existing["first_action"] = str(
+            fields.get("first_action") or existing.get("first_action") or "")[:600]
+        return save_item(existing)
+
+    clean = {
+        "title": title or "Repair the failed build on main",
+        "level": str(fields.get("level") or "task"),
+        "owner": owner,
+        "tier": 1,
+        "tier_reason": "A failed build on main blocks every release and is safe to repair without a product ruling.",
+        "ask": str(fields.get("ask") or "")[:600],
+        "first_action": str(fields.get("first_action") or "")[:600],
+    }
+    item = _file_item(clean, {"to": owner, "message": clean["ask"], "id": source_ref}, org)
+    item["source_ref"] = source_ref
+    item["source"] = "automatic"
+    item["urgent"] = True
+    return save_item(item)
+
+
 def _follows_spec(org, amendable=False, moves=None, wait=""):
     """`moves` is None for a result, "open" for a reply on a card that can still
     change, "closed" for a reply on a card that has been accepted or dropped.

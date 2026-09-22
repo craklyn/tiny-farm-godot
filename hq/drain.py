@@ -1434,8 +1434,10 @@ def queued(include_thinking=False):
         out += [i for i in work.items()
                 if i.get("state") == "doing" and not i.get("started")]
     # A card the drain is trying again is work already half paid for; it goes
-    # ahead of the backlog rather than behind fifty newer items.
-    out.sort(key=lambda i: 0 if i.get("resume") else 1)
+    # first. A machine-detected release blocker goes next rather than waiting
+    # behind routine work while main stays red.
+    out.sort(key=lambda i: (0 if i.get("resume") else
+                            1 if i.get("urgent") else 2))
     return out
 
 

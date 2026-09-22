@@ -2290,6 +2290,21 @@ def _refresh_ci_history():
             json.dump(doc, f)
     except OSError:
         pass
+    # Detection is not ownership. The newest failed run becomes concrete
+    # Engineering work in the background poll, never while rendering a page.
+    # The run URL is the event identity, so repeated polls produce one card.
+    if done and done[0].get("conclusion") != "success" and done[0].get("url"):
+        failed = done[0]
+        work.file_automatic({
+            "title": "Restore the failed build on main",
+            "owner": "elena",
+            "level": "task",
+            "ask": ("The newest finished tests workflow on main failed. Diagnose and repair "
+                    "the first failed check without weakening it. Failing run: "
+                    + failed["url"]),
+            "first_action": ("Open " + failed["url"]
+                             + " and reproduce the first failed job from a clean checkout."),
+        }, "ci:" + failed["url"])
 
 
 def ci_history():
@@ -5923,6 +5938,9 @@ def main():
     check_consistency()
     sanitize_runs()
     sanitize_outbox()
+    work.bind(sys.modules[__name__])
+    studio.bind(sys.modules[__name__])
+    anim.bind(sys.modules[__name__])
     threading.Thread(target=_drain_outbox, daemon=True).start()
     # The 100-run CI window, polled off the request path: at --limit 100 the gh
     # call costs about four seconds against a one-second call at --limit 10, so
@@ -5936,9 +5954,6 @@ def main():
     # on him overnight, and the only reading that can settle that is the one
     # taken at the end of the day.
     threading.Thread(target=_queue_night_thread, daemon=True).start()
-    work.bind(sys.modules[__name__])
-    studio.bind(sys.modules[__name__])
-    anim.bind(sys.modules[__name__])
     work.start()
     server = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
     print(f"Tiny Farm HQ on http://localhost:{PORT}")

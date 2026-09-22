@@ -122,7 +122,15 @@
       },
       "path_to_green": {
         "narrative": "The run that failed identifies the job that broke it, and that job's log shows the test or the compile error underneath. Open the run, fix what it shows, and push the fix to main.",
-        "owner": "vp-engineering"
+        "owner": "vp-engineering",
+        "action": {
+          "label": "Put the failed build on Engineering's list",
+          "tier": 1,
+          "level": "task",
+          "title": "Restore the failed build on main",
+          "ask": "The newest finished tests workflow on main failed. Open the failing run, identify the first failed check, repair the cause rather than weakening the check, and push the verified fix to main.",
+          "first_action": "Open the failing run linked on the Engineering page and read the first failed job's log. Reproduce that exact command from a clean checkout before changing code."
+        }
       },
       "history": {
         "record": false,
