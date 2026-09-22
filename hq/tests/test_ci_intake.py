@@ -41,6 +41,14 @@ def main():
             "url": "https://github.example/runs/42",
         }]
         try:
+            print("an in-progress push does not steal the failed run's identity")
+            in_progress = [{**runs[0], "status": "in_progress", "conclusion": "",
+                            "url": "https://github.example/runs/43"}, runs[0]]
+            with patch.object(server, "run_cmd", return_value=json.dumps(in_progress)):
+                reading = server.eval_measure({"kind": "ci_state"})
+            check(reading["value"] == "failure" and reading["url"].endswith("/42"),
+                  "the verdict and link both name the newest finished run")
+
             with patch.object(server, "run_cmd", return_value=json.dumps(runs)):
                 server._refresh_ci_history()
                 server._refresh_ci_history()

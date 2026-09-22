@@ -3170,7 +3170,7 @@ def eval_measure(spec, depth=0):
                 return _reading("success" if ci["green"] else "failure", "verdict",
                                 "the newest finished run of the tests workflow on main",
                                 "gh run list --limit 10", "network", stale=ci.get("stale", False),
-                                extra={"url": (ci.get("latest") or {}).get("url")})
+                                extra={"url": (ci.get("completed") or ci.get("latest") or {}).get("url")})
             h = ci_history()
             if not h:
                 return _reading(None, error="the 100-run window has not been polled yet")
@@ -4516,6 +4516,9 @@ def _ci_status():
             return {"available": True, "latest": {"url": tick.get("url"),
                     "displayTitle": tick.get("title"), "status": "completed",
                     "conclusion": "success" if tick.get("ok") else "failure"},
+                    "completed": {"url": tick.get("url"),
+                    "displayTitle": tick.get("title"), "status": "completed",
+                    "conclusion": "success" if tick.get("ok") else "failure"},
                     "has_completed": True, "green": bool(tick.get("ok")),
                     "in_progress": False, "stale": True,
                     "polled_at": history.get("polled_at", "")}
@@ -4526,6 +4529,7 @@ def _ci_status():
     result = {
         "available": bool(runs),
         "latest": latest,
+        "completed": done,
         "has_completed": bool(done),
         "green": bool(done and done.get("conclusion") == "success"),
         "in_progress": bool(latest and latest.get("status") != "completed"),
