@@ -766,6 +766,9 @@
   "34a44558a05a683e65a7": {
    "verdict": "ok"
   },
+  "35139fa9ec19ac591228": {
+   "verdict": "ok"
+  },
   "3517b12561cff92afa65": {
    "verdict": "ok"
   },
@@ -1753,6 +1756,9 @@
   "7d2f28cdfc3a5db7811e": {
    "verdict": "ok"
   },
+  "7d5c916502c41ee24c69": {
+   "verdict": "ok"
+  },
   "7e302981a72a5efe040b": {
    "verdict": "ok"
   },
@@ -2315,6 +2321,9 @@
   "a4ff397733715b9be73e": {
    "verdict": "ok"
   },
+  "a5240c1795a5c40b598c": {
+   "verdict": "ok"
+  },
   "a53eb4731d7231ade8f3": {
    "verdict": "ok"
   },
@@ -2502,10 +2511,16 @@
    "verdict": "second-look",
    "why": "Two clauses are fused; the reader must parse where the statement ends and the next begins."
   },
+  "b2eba8f857002527a8e9": {
+   "verdict": "ok"
+  },
   "b3685853aa102f694a4a": {
    "verdict": "ok"
   },
   "b4200a80213a58e6894c": {
+   "verdict": "ok"
+  },
+  "b449661b5686cbc7ec97": {
    "verdict": "ok"
   },
   "b5a15e232ee67f498c1b": {
@@ -2762,6 +2777,9 @@
    "verdict": "decode",
    "why": "Complete fragment with bare pronouns. What has what? What is Work?"
   },
+  "c58af920b885bd0a7c46": {
+   "verdict": "ok"
+  },
   "c623b62678ef330d899f": {
    "instead": "The crow's peck and the Mark III's seed scatter are far louder than the background music.",
    "quote": "the robot's seed scatter",
@@ -3006,6 +3024,9 @@
    "verdict": "ok"
   },
   "d69ae61da5b7b617ae96": {
+   "verdict": "ok"
+  },
+  "d6e917b25b9bea983f16": {
    "verdict": "ok"
   },
   "d70523eb2edec824dc86": {

@@ -104,6 +104,12 @@ const Q_PICK_SECONDS = 30, Q_READ_SECONDS = 120;
 
 function qFirst(name) { return String(name || "").split(" ")[0]; }
 
+function qNoRecommendation(row) {
+  return row.isDecision
+    ? "The studio has not recommended an option yet."
+    : `${qFirst(row.owner.name)} has not recommended an answer yet.`;
+}
+
 /* Evidence, folded, in the order §7 item 7 lists it: what came back, files
    changed, suites, the checker, the brief. Only what the card actually
    carries — an absent field is left out rather than shown empty. */
@@ -184,11 +190,15 @@ function qWorkItem(card, org, reason) {
 }
 
 /* An open decision card as a question row. Mirrors decision_item(). */
-function qDecisionItem(c) {
+function qDecisionItem(c, org, seats) {
   const opts = c.options || [];
   const clean = l => (l || "").replace(" (Recommended)", "");
   const rec = opts.find(o => (o.label || "").includes("(Recommended)"));
-  const owner = { name: "the seat that opened the card", emoji: "🗂️" };
+  const seat = (seats && seats.seats || []).find(s => s.id === c.owner);
+  const ownerId = seat ? seat.held_by : c.owner;
+  const foundOwner = ownerId && ownerOf(org, ownerId);
+  const owner = foundOwner && foundOwner.name && foundOwner.name !== ownerId
+    ? foundOwner : { name: "the studio", emoji: "🗂️" };
   return {
     kind: "rule", id: c.id, cardId: c.id, isDecision: true, subject: c.subject || "",
     title: c.title, question: c.title,
@@ -206,9 +216,9 @@ function qDecisionItem(c) {
 
 async function qLoadData() {
   delete cache["/api/queue"];
-  const [org, snap, queue, waiting] = await Promise.all([
+  const [org, snap, queue, waiting, seats] = await Promise.all([
     api("/api/org"), fetch("/api/work").then(r => { noteVersion(r); return r.json(); }),
-    api("/api/queue"), api("/api/waiting-on-you"),
+    api("/api/queue"), api("/api/waiting-on-you"), api("/api/seats"),
   ]);
   const ready = new Set((waiting.ready || []).map(row => row.source_id));
   const reasons = new Map((waiting.items || []).map(row => [row.source_id, row.reason]));
@@ -243,7 +253,7 @@ async function qLoadData() {
   });
   wentIn.sort((a, b) => String((b.landed || {}).at || "").localeCompare(String((a.landed || {}).at || "")));
   return { org, rulings, hisWork: his, pendingCompletion: pending, studioWork: studio,
-    wentIn, closedWork: closed, hisDecisions, studioDecisions, awaitingStudio, waiting };
+    wentIn, closedWork: closed, hisDecisions, studioDecisions, awaitingStudio, waiting, seats };
 
 }
 
@@ -295,11 +305,21 @@ function qPaneHtml(row, org) {
     <div class="q-sec"><h3>What I recommend</h3>
       ${row.answer
         ? `<div class="q-rec"><b>${mdi(row.answer)}</b>${row.why ? `<p>${mdi(row.why)}</p>` : ""}${row.instead ? `<p class="q-instead">Instead: ${mdi(row.instead)}</p>` : ""}</div>`
-        : `<div class="q-rec q-rec-none"><b>No recommendation on this one.</b><p>It should not have reached you without one; ${esc(qFirst(ownerName))} owes it.</p></div>`}
+        : `<div class="q-rec q-rec-none"><b>No recommendation on this one.</b><p>${esc(qNoRecommendation(row))}</p></div>`}
     </div>
 
-    ${row.options.length ? `<div class="q-sec"><h3>The options</h3>${row.options.map(o =>
-      `<div class="q-opt"><b>${esc(o.label)}</b><p>${mdi(o.detail)}</p></div>`).join("")}</div>` : ""}
+    ${row.isDecision ? `<div class="q-sec q-decision-form"><h3>Choose an answer</h3>
+      <fieldset><legend class="sr-only">Recorded options for ${esc(row.title)}</legend>${row.options.map(o =>
+        `<label class="q-choice"><input type="radio" name="q-choice-${esc(row.id)}" value="${esc(o.key)}" data-intent="choose" data-label="${esc(o.label)}">
+          <span><b>${esc(o.label)}</b>${o.recommended ? ' <span class="rec">recommended</span>' : ""}<small>${mdi(o.detail)}</small></span></label>`).join("")}
+        <label class="q-choice q-revise"><input type="radio" name="q-choice-${esc(row.id)}" value="" data-intent="revise" data-label="None of these — revise and ask me again">
+          <span><b>None of these — revise and ask me again.</b><small>Tell the studio what needs to change. The decision stays open.</small></span></label>
+      </fieldset>
+      <label class="q-talk-l" for="q-decision-feedback">Feedback — optional unless you ask for a revision</label>
+      <textarea id="q-decision-feedback" placeholder="Add context for the studio"></textarea>
+      <p class="q-decision-status" id="q-decision-status" role="status"></p>
+      <button class="q-decision-submit" data-id="${esc(row.id)}">Submit decision</button>
+    </div>` : ""}
 
     <div class="q-sec"><h3>What yes starts</h3>
       <p>${esc(qYesCauses(row))}</p>
@@ -319,16 +339,16 @@ function qPaneHtml(row, org) {
       <div class="q-atts" id="q-pane-atts"></div>
     </div>
 
-    <div class="q-talk-box" id="q-pane-talk">
+    ${row.isDecision ? "" : `<div class="q-talk-box" id="q-pane-talk">
       <label class="q-talk-l" for="q-talk-t">Anything you want to say about this — optional</label>
       <textarea id="q-talk-t" placeholder="A line of why. Whichever button you press, ${esc(qFirst(ownerName))} reads this."></textarea>
       <div class="q-talk-acts">
         <button class="ghost q-send" data-id="${esc(row.id)}">Ask ${esc(qFirst(ownerName))}, without answering yet</button>
         <span class="q-talk-n" id="q-talk-st">${esc(qFirst(ownerName))} answers within thirty seconds or hands it back and you move on.</span>
       </div>
-    </div>
+    </div>`}
 
-    <div class="q-acts-big">
+    ${row.isDecision ? "" : `<div class="q-acts-big">
       ${row.answer
         ? `<button class="q-yes" data-id="${esc(row.id)}">${
             row.isDecision ? `Rule: ${esc(row.answer)}` : "Yes — do what is recommended above"}</button>`
@@ -338,7 +358,7 @@ function qPaneHtml(row, org) {
           : `<button class="q-yes" data-id="${esc(row.id)}">Yes — this stands</button>`)}
       ${row.canDrop ? `<button class="ghost q-no" data-id="${esc(row.id)}">${
         row.isDecision ? "None of these" : "No — drop this"}</button>` : ""}
-    </div>`;
+    </div>`}`;
 }
 
 function qRender(state) {
@@ -346,7 +366,7 @@ function qRender(state) {
 
   const rows = [
     ...hisWork.map(x => qWorkItem(x.card, org, x.reason)),
-    ...hisDecisions.map(qDecisionItem),
+    ...hisDecisions.map(c => qDecisionItem(c, org, state.seats)),
   ];
   const picks = rows.filter(r => r.answer).length, reads = rows.length - picks;
   const minutes = Math.round(rows.reduce((a, r) => a + r.seconds, 0) / 60);
@@ -382,10 +402,10 @@ function qRender(state) {
       <div class="q-row-q">${mdi(r.question)}</div>
       ${r.answer
         ? `<div class="q-row-r">Recommended: ${mdi(r.answer)}</div>`
-        : `<div class="q-row-r q-row-none">No recommendation yet — ${esc(qFirst(r.owner.name))} owes one.</div>`}
+        : `<div class="q-row-r q-row-none">No recommendation yet — ${esc(qNoRecommendation(r))}</div>`}
     </div>
     <div class="q-row-acts">
-      ${r.kind === "rule" && !r.answer ? "" : `<button class="q-yes" data-id="${esc(r.id)}">Yes</button>`}
+      ${r.kind === "rule" ? "" : `<button class="q-yes" data-id="${esc(r.id)}">Yes</button>`}
       <button class="ghost q-talk" data-id="${esc(r.id)}" title="Open it and write to its owner">Open</button>
       <span class="chip q-chip">${r.seconds <= Q_PICK_SECONDS ? "30 s" : "2 min"}</span>
     </div>
@@ -454,13 +474,9 @@ function qRender(state) {
   }
 
   async function qDoYes(r, comment) {
-    if (r.isDecision) {
-      await fetch("/api/ruling", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: r.cardId, option: r.recOption.key, option_label: r.recOption.label.replace(" (Recommended)", ""), judgment: comment || "" }) });
-    } else {
-      const path = r.state === "needs_approval" ? "/api/work/approve" : "/api/work/accept";
-      await workPost(path, { id: r.cardId, comment: comment || "" });
-    }
+    const path = r.state === "needs_approval" ? "/api/work/approve" : "/api/work/accept";
+    const result = await workPost(path, { id: r.cardId, comment: comment || "" });
+    if (result && result.error) throw new Error(result.error);
     qRefresh();
   }
 
@@ -470,12 +486,8 @@ function qRender(state) {
   }
 
   async function qDoTalk(r, text) {
-    if (r.isDecision) {
-      await fetch("/api/ruling", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: r.cardId, option: "", option_label: "", judgment: text }) });
-    } else {
-      await workPost("/api/work/respond", { id: r.cardId, message: text });
-    }
+    const result = await workPost("/api/work/respond", { id: r.cardId, message: text });
+    if (result && result.error) throw new Error(result.error);
     qRefresh();
   }
 
@@ -484,6 +496,7 @@ function qRender(state) {
     const no = ev.target.closest(".q-no");
     const talk = ev.target.closest(".q-talk");
     const send = ev.target.closest(".q-send");
+    const decisionSubmit = ev.target.closest(".q-decision-submit");
     const row = ev.target.closest(".q-row");
     // Whatever he has written in the pane rides along with the verdict, because
     // he must always be able to say why in the same breath as the answer.
@@ -492,7 +505,29 @@ function qRender(state) {
       const ta = box && box.querySelector("textarea");
       return ta ? ta.value.trim() : "";
     };
-    if (yes) { const r = findRow(yes.dataset.id); if (r) { yes.disabled = true; qDoYes(r, reason()); } return; }
+    if (decisionSubmit) {
+      const r = findRow(decisionSubmit.dataset.id);
+      const selected = document.querySelector(`input[name="q-choice-${decisionSubmit.dataset.id}"]:checked`);
+      const feedback = (document.getElementById("q-decision-feedback") || {}).value || "";
+      const status = document.getElementById("q-decision-status");
+      if (!r || !selected) { if (status) status.textContent = "Choose an option before submitting."; return; }
+      if (selected.dataset.intent === "revise" && !feedback.trim()) {
+        if (status) status.textContent = "Tell the studio what to revise before submitting.";
+        return;
+      }
+      decisionSubmit.disabled = true;
+      if (status) status.textContent = "Recording…";
+      fetch("/api/ruling", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: r.cardId, submission_id: decisionSubmissionId(decisionSubmit, selected.dataset.intent, selected.value, feedback), intent: selected.dataset.intent, option: selected.value,
+          option_label: selected.dataset.label, judgment: feedback.trim() })
+      }).then(async response => {
+        const body = await response.json();
+        if (!response.ok || body.error) throw new Error(body.error || `Could not record this (${response.status}).`);
+        qRefresh();
+      }).catch(error => { decisionSubmit.disabled = false; if (status) status.textContent = error.message; });
+      return;
+    }
+    if (yes) { const r = findRow(yes.dataset.id); if (r) { yes.disabled = true; qDoYes(r, reason()).catch(error => { yes.disabled = false; alert(error.message); }); } return; }
     if (no) { const r = findRow(no.dataset.id); if (r) { no.disabled = true; qDoNo(r, reason()); } return; }
     if (talk) {
       // The box is always open in the pane; this only brings the right card up
@@ -523,7 +558,7 @@ function qRender(state) {
       const text = box.querySelector("textarea").value.trim();
       if (!text || !r) return;
       send.disabled = true;
-      qDoTalk(r, text);
+      qDoTalk(r, text).catch(error => { send.disabled = false; alert(error.message); });
       return;
     }
     const undo = ev.target.closest(".q-undo");

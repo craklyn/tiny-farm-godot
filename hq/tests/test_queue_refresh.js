@@ -24,6 +24,9 @@ const ctx = vm.createContext({
   $view: { replaceChildren: value => { rendered = value; }, addEventListener() {} },
 });
 vm.runInContext(app.slice(app.indexOf('async function api('), app.indexOf('/* This page is long-lived')), ctx);
+const submissionStart = app.indexOf('function decisionSubmissionId');
+const submissionEnd = app.indexOf('\n\nfunction decisionCard', submissionStart);
+vm.runInContext(app.slice(submissionStart, submissionEnd), ctx);
 vm.runInContext(fs.readFileSync(path.join(__dirname, '../static/queue.js'), 'utf8'), ctx);
 (async () => {
   let data = await ctx.qLoadData();
@@ -50,5 +53,38 @@ vm.runInContext(fs.readFileSync(path.join(__dirname, '../static/queue.js'), 'utf
   assert.doesNotMatch(rendered, /Nothing is waiting on you/);
   assert.equal(badge.available, false);
   assert.equal(reads, 4);
+  // The shared queue pane keeps every recorded decision option actionable,
+  // including a revision path that cannot quietly settle the card.
+  const decision = ctx.qDecisionItem({ id: 'Q-quiz', title: 'Pick a room', options: [
+    { key: 'a', label: 'Small room', detail: 'More yard.' },
+    { key: 'b', label: 'Large room (Recommended)', detail: 'More floor.' },
+  ] }, { employees: [] }, {});
+  const pane = ctx.qPaneHtml(decision, { employees: [] });
+  assert.match(pane, /name="q-choice-Q-quiz" value="a"/);
+  assert.match(pane, /name="q-choice-Q-quiz" value="b"/);
+  assert.match(pane, /recommended/);
+  assert.match(pane, /None of these — revise and ask me again\./);
+  assert.ok(pane.indexOf('None of these — revise and ask me again.') < pane.indexOf('q-decision-feedback'));
+  const noRecommendation = ctx.qDecisionItem({ id: 'Q-empty', title: 'Open question', options: [
+    { key: 'a', label: 'First option', detail: '' },
+  ] }, { employees: [] }, {});
+  assert.match(ctx.qPaneHtml(noRecommendation, { employees: [] }), /the studio has not recommended an option yet/i);
+  // Seat-owned cards resolve to the person currently holding that seat.
+  ctx.ownerOf = (org, id) => org.employees.find(person => person.id === id) || { name: id };
+  const seated = ctx.qDecisionItem({ id: 'Q-seat', title: 'Owner', owner: 'vp-engineering', options: [] },
+    { employees: [{ id: 'elena', name: 'Elena Volkov' }] },
+    { seats: [{ id: 'vp-engineering', held_by: 'elena' }] });
+  assert.equal(seated.owner.name, 'Elena Volkov');
+  assert.match(app, /data-intent="revise"/);
+  assert.match(app, /intent: sel\.dataset\.intent/);
+  const control = { dataset: {} };
+  const firstSubmit = ctx.decisionSubmissionId(control, 'revise', '', 'Show the rooms side by side.');
+  const lostResponseRetry = ctx.decisionSubmissionId(control, 'revise', '', 'Show the rooms side by side.');
+  const editedRetry = ctx.decisionSubmissionId(control, 'revise', '', 'Show the coop beside it too.');
+  assert.equal(lostResponseRetry, firstSubmit);
+  assert.notEqual(editedRetry, firstSubmit);
+  assert.match(app, /submission_id: decisionSubmissionId\(btn, sel\.dataset\.intent, sel\.value, judgment\)/);
+  const queueSource = fs.readFileSync(path.join(__dirname, '../static/queue.js'), 'utf8');
+  assert.match(queueSource, /submission_id: decisionSubmissionId\(decisionSubmit, selected\.dataset\.intent, selected\.value, feedback\)/);
   console.log('Queue refresh, deliberate review links and unavailable status pass.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

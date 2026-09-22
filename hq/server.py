@@ -148,6 +148,30 @@ def load_dir_json(sub, *, strict=False):
 
 
 QID_RE = re.compile(r"^Q-\d+[a-z]?$")
+SUBMISSION_ID_RE = re.compile(r"^[A-Za-z0-9_-]{16,128}$")
+_RULING_LOCKS = {}
+_RULING_LOCKS_GUARD = threading.Lock()
+
+
+def _ruling_lock(qid):
+    """One lock per decision; unrelated decisions still post concurrently."""
+    with _RULING_LOCKS_GUARD:
+        if qid not in _RULING_LOCKS:
+            _RULING_LOCKS[qid] = threading.Lock()
+        return _RULING_LOCKS[qid]
+
+
+def _replace_json(path, doc):
+    """Replace a ruling only after its complete next history is on disk."""
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(doc, f, indent=2, ensure_ascii=False)
+    os.replace(tmp, path)
+
+
+def _canonical_submission(intent, option, judgment):
+    return {"intent": intent, "option": option or None,
+            "judgment": " ".join(judgment.split()) or None}
 
 
 def record_ruling(payload):
@@ -156,48 +180,85 @@ def record_ruling(payload):
     qid = str(payload.get("id", ""))
     if not QID_RE.match(qid):
         return {"error": "bad decision id"}
+    intent = str(payload.get("intent", "")).strip()
+    submission_id = str(payload.get("submission_id", "")).strip()
     judgment = str(payload.get("judgment", "")).strip()
     option = str(payload.get("option", "")).strip()
-    option_label = str(payload.get("option_label", "")).strip()
-    if not judgment and not option:
-        return {"error": "pick an option or write a judgment"}
+    if intent not in ("choose", "revise"):
+        return {"error": "choose an option or ask for a revision"}
+    if not SUBMISSION_ID_RE.match(submission_id):
+        return {"error": "missing or invalid submission id; reload the decision card and try again"}
+    try:
+        decision = next(c for c in load_dir_json("decisions") if c.get("id") == qid)
+    except StopIteration:
+        return {"error": "no such decision"}
+    choices = {str(o.get("key", "")).strip(): o for o in decision.get("options", [])
+               if isinstance(o, dict) and str(o.get("key", "")).strip()}
+    if intent == "choose":
+        if option not in choices:
+            return {"error": "that option is not on this decision"}
+        option_label = str(choices[option].get("label", "")).strip()
+    else:
+        if option:
+            return {"error": "a revision cannot also pick an option"}
+        if not judgment:
+            return {"error": "tell the studio what to revise"}
+        option_label = ""
+    submission_payload = _canonical_submission(intent, option, judgment)
     import datetime
-    rdir = os.path.join(DATA, "rulings")
-    os.makedirs(rdir, exist_ok=True)
-    path = os.path.join(rdir, f"{qid}.json")
+    # The lock includes every stateful part of a revision.  In particular, two
+    # HTTP worker threads cannot both scan before either writes the linked task.
+    with _ruling_lock(qid):
+        rdir = os.path.join(DATA, "rulings")
+        os.makedirs(rdir, exist_ok=True)
+        path = os.path.join(rdir, f"{qid}.json")
+        was = load_json(path) if os.path.isfile(path) else None
+        history = list((was or {}).get("earlier", []) or [])
+        for prior in history + ([was] if was else []):
+            if prior.get("submission_id") == submission_id:
+                if prior.get("submission_payload") != submission_payload:
+                    return {"error": "this submission id was already used for different decision content"}
+                out = {"ok": True, "ruling": prior}
+                if prior.get("revision_work_id"):
+                    out["revision_work_id"] = prior["revision_work_id"]
+                return out
 
-    # **Nothing he has said on a card is ever overwritten.** A card can go round
-    # more than once — he comments, the studio answers, he comments again — and
-    # this file used to keep only the latest, so the first thing he asked for
-    # disappeared the moment he said anything else. The card is a conversation,
-    # so the file keeps every turn: `earlier` is each previous ruling in the
-    # order he made them, and the top-level fields are the current one.
-    earlier = []
-    if os.path.isfile(path):
-        was = load_json(path)
+        # **Nothing he has said on a card is ever overwritten.** A card can go
+        # round more than once, so the file keeps each prior turn in order.
+        earlier = history
         if was:
-            earlier = list(was.pop("earlier", []) or [])
+            was = dict(was)
+            was.pop("earlier", None)
             earlier.append(was)
-
-    ruling = {
-        "id": qid,
-        "option": option or None,
-        "option_label": option_label or None,
-        "judgment": judgment or None,
-        "ruled_at": datetime.datetime.now().isoformat(timespec="seconds"),
-        "status": "pending_integration",
-        "earlier": earlier,
-    }
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(ruling, f, indent=2, ensure_ascii=False)
-    with open(os.path.join(rdir, "RULINGS.md"), "a", encoding="utf-8") as f:
-        f.write(f"\n## {qid} — ruled {ruling['ruled_at']}\n")
-        if option_label:
-            f.write(f"- Picked: **({option}) {option_label}**\n")
-        if judgment:
-            f.write(f"- In his words: {judgment}\n")
-        f.write("- Status: pending integration into docs/DESIGNER_QUEUE.md\n")
-    return {"ok": True, "ruling": ruling}
+        ruling = {
+            "id": qid,
+            "option": option or None,
+            "option_label": option_label or None,
+            "judgment": judgment or None,
+            "intent": intent,
+            "submission_id": submission_id,
+            "submission_payload": submission_payload,
+            "ruled_at": datetime.datetime.now().isoformat(timespec="seconds"),
+            "status": "pending_integration",
+            "earlier": earlier,
+        }
+        if intent == "revise":
+            revision = work.file_decision_revision(decision, judgment, ruling["ruled_at"], submission_id)
+            ruling["revision_work_id"] = revision["id"]
+        _replace_json(path, ruling)
+        with open(os.path.join(rdir, "RULINGS.md"), "a", encoding="utf-8") as f:
+            f.write(f"\n## {qid} — ruled {ruling['ruled_at']}\n")
+            if option_label:
+                f.write(f"- Picked: **({option}) {option_label}**\n")
+            if judgment:
+                f.write(f"- In his words: {judgment}\n")
+            if intent == "revise":
+                f.write(f"- Revision work: {ruling['revision_work_id']}\n")
+            f.write("- Status: pending integration into docs/DESIGNER_QUEUE.md\n")
+        out = {"ok": True, "ruling": ruling}
+        if intent == "revise":
+            out["revision_work_id"] = ruling["revision_work_id"]
+        return out
 
 
 def load_looks():

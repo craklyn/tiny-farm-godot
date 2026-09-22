@@ -1095,6 +1095,21 @@ function decisionTurns(c, ruling) {
   return turns.sort((a, b) => String(a.at || "").localeCompare(String(b.at || "")));
 }
 
+function decisionSubmissionId(control, intent, option, feedback) {
+  // Keep this id on the button after a failed fetch: clicking again is a retry
+  // of one human action. Editing any submitted value starts a new action, even
+  // before the browser has received the earlier response.
+  const fingerprint = JSON.stringify({ intent, option,
+    feedback: String(feedback || "").trim().replace(/\s+/g, " ") });
+  if (control.dataset.submissionFingerprint === fingerprint) return control.dataset.submissionId;
+  const uuid = globalThis.crypto && globalThis.crypto.randomUUID
+    ? globalThis.crypto.randomUUID()
+    : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+  control.dataset.submissionId = `decision-${uuid}`;
+  control.dataset.submissionFingerprint = fingerprint;
+  return control.dataset.submissionId;
+}
+
 function decisionCard(c, ruling, entData, onRuled, looks) {
   // Only a ruling that picked an option settles a card. One with no option is
   // him sending it back, which is a turn in the conversation, not a verdict.
@@ -1110,12 +1125,20 @@ function decisionCard(c, ruling, entData, onRuled, looks) {
   // and a queue he has to audit.
   const waitingOnStudio = !settled && !!ruling && last && last.role === "daniel";
 
-  const optionsHtml = (c.options || []).map(o => `
+  const optionsHtml = (c.options || []).map(o => {
+    const recommended = o.recommended || String(o.label || "").includes("(Recommended)");
+    return `
     <label class="opt" data-opt="${esc(o.key)}">
-      <input type="radio" name="opt-${c.id}" value="${esc(o.key)}" data-label="${esc(o.label)}">
-      <span><b>(${esc(o.key)}) ${esc(o.label)}</b>${o.recommended ? ' <span class="rec">recommended</span>' : ""}<br>
+      <input type="radio" name="opt-${c.id}" value="${esc(o.key)}" data-intent="choose" data-label="${esc(o.label)}">
+      <span><b>(${esc(o.key)}) ${esc(o.label)}</b>${recommended ? ' <span class="rec">recommended</span>' : ""}<br>
       <span class="small muted">${mdi(o.detail || "")}</span></span>
-    </label>`).join("");
+    </label>`;
+  }).join("") + `
+    <label class="opt d-revise" data-opt="revise">
+      <input type="radio" name="opt-${c.id}" value="" data-intent="revise" data-label="None of these — revise and ask me again">
+      <span><b>None of these — revise and ask me again.</b><br>
+      <span class="small muted">Tell the studio what needs to change. The decision stays open.</span></span>
+    </label>`;
 
   // A link is {label, href}; an older card may carry a bare path string, and a
   // card that cannot render must never take the whole inbox down with it.
@@ -1148,7 +1171,8 @@ function decisionCard(c, ruling, entData, onRuled, looks) {
     <h4 class="d-sec${hasHistory ? "" : " d-sec-quiet"}">${settled ? "What you decided" : "Your call"}</h4>
     <div class="d-options">${optionsHtml}</div>
     <div class="d-ask">
-      <textarea class="d-say" placeholder="Anything you want to say — needed only if you are not picking an option"></textarea>
+      <label class="small muted" for="decision-feedback-${esc(c.id)}">Feedback — optional unless you ask for a revision</label>
+      <textarea class="d-say" id="decision-feedback-${esc(c.id)}" placeholder="Add context for the studio"></textarea>
       <p class="small muted d-consequence"></p>
       <button class="d-record" data-rule="${c.id}" disabled></button>
     </div>
@@ -1221,7 +1245,7 @@ function decisionCard(c, ruling, entData, onRuled, looks) {
     const sel = radios.find(r => r.checked);
     radios.forEach(r => r.closest(".opt").classList.toggle("picked", r.checked));
     const said = ta.value.trim();
-    if (sel) {
+    if (sel && sel.dataset.intent === "choose") {
       // The option's own words on the button, because the whole point is that he
       // can see what he is about to record — clipped only when a label is long
       // enough to turn the button into a paragraph.
@@ -1232,14 +1256,16 @@ function decisionCard(c, ruling, entData, onRuled, looks) {
       note.textContent = said
         ? "Settles this card. Your comment is recorded with the pick and goes to whoever does the work."
         : "Settles this card. The next work session folds it into the design docs.";
-    } else if (said) {
-      btn.disabled = false;
-      btn.textContent = "Send this back with my comment";
-      note.textContent = "Picks nothing and settles nothing. Your comment goes to the studio, and the card comes back to you with an answer to it.";
+    } else if (sel && sel.dataset.intent === "revise") {
+      btn.disabled = !said;
+      btn.textContent = "Send revision request";
+      note.textContent = said
+        ? "The decision stays open, and the responsible owner receives the revision."
+        : "Tell the studio what to revise before sending this request.";
     } else {
       btn.disabled = true;
-      btn.textContent = "Pick an option or write a comment";
-      note.textContent = "Picking an option settles this card. Writing a comment without picking sends it back for more.";
+      btn.textContent = "Choose an option";
+      note.textContent = "Choose one recorded option, or ask for a revision with feedback.";
     }
   };
   radios.forEach(r => r.addEventListener("change", refresh));
@@ -1250,14 +1276,16 @@ function decisionCard(c, ruling, entData, onRuled, looks) {
   btn.addEventListener("click", async () => {
     const sel = radios.find(r => r.checked);
     const judgment = ta.value.trim();
-    if (!sel && !judgment) return;
+    if (!sel || (sel.dataset.intent === "revise" && !judgment)) return;
     const was = btn.textContent;
     btn.disabled = true; btn.textContent = "Recording…";
     try {
       const r = await fetch("/api/ruling", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: c.id, option: sel ? sel.value : "", option_label: sel ? sel.dataset.label : "", judgment }),
+        body: JSON.stringify({ id: c.id, submission_id: decisionSubmissionId(btn, sel.dataset.intent, sel.value, judgment), intent: sel.dataset.intent, option: sel.value,
+          option_label: sel.dataset.label, judgment }),
       });
+      if (!r.ok) throw new Error(`The studio could not record your response (${r.status}).`);
       const j = await r.json();
       if (j.error) { alert(j.error); btn.disabled = false; btn.textContent = was; return; }
       onRuled(j.ruling);

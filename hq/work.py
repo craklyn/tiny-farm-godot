@@ -208,6 +208,53 @@ def save_item(item):
     return _write_json(_item_path(item["id"]), item)
 
 
+def file_decision_revision(decision, feedback, ruled_at, submission_id):
+    """File one durable owner handoff for a decision Daniel sent back.
+
+    Decision cards predate work ownership, so an older card without an owner is
+    triaged by the Chief of Staff.  ``decision_id`` and ``return_to_decision``
+    make the return contract explicit: the decision stays open until its owner
+    adds a reply after this ruling's timestamp.
+    """
+    decision_id = str(decision.get("id") or "")
+    for item in items():
+        if (item.get("decision_id") == decision_id
+                and item.get("revision_submission_id") == submission_id):
+            return item
+    try:
+        org = HOST.load_org()
+    except Exception:
+        org = {"employees": []}
+    owner = str(decision.get("owner") or "")
+    people = {e.get("id") for e in org.get("employees", [])}
+    if owner not in people:
+        try:
+            seat = HOST.seat_for(owner)
+            owner = seat.get("held_by", "") if seat else ""
+        except Exception:
+            owner = ""
+    if owner not in people:
+        owner = "claude"
+    now = _now_iso()
+    item = {
+        "id": "w" + uuid.uuid4().hex[:11],
+        "title": f"Revise decision {decision_id}: {decision.get('title') or 'untitled decision'}"[:160],
+        "level": "task", "owner": owner, "tier": 1,
+        "tier_reason": "Daniel asked for the decision to be revised before he chooses.",
+        "ask": ("Revise this decision using Daniel's feedback, then add a reply to the "
+                f"decision card {decision_id} so it returns to his queue.\n\n"
+                f"Daniel's feedback:\n{feedback}")[:2400],
+        "first_action": "Read the decision card and Daniel's feedback; revise the choices or evidence, then reply on the card.",
+        "state": "waiting_session", "thread": owner, "source": "decision_revision",
+        "source_message": feedback[:2000], "result": "", "started": "", "attempts": 0,
+        "created": now, "created_ts": time.time(), "parent": decision_id,
+        "decision_id": decision_id, "revision_feedback": feedback,
+        "revision_submission_id": submission_id,
+        "return_to_decision": {"id": decision_id, "after": ruled_at},
+    }
+    return save_item(item)
+
+
 def _sanitize():
     """A restart mid-run leaves an item claiming to be in progress. Say the true
     thing instead: it never finished, and it is due to run again."""
