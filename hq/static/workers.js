@@ -12,8 +12,35 @@ routes["/work/queue"] = renderExecutionQueue;
 
 let wkPoll = null;
 const wkSeen = {};   // session key -> lines already rendered
+const WK_VIEW_KEY = "hq-bullpen-view";
 
 function wkKey(s) { return s.run + "/" + s.name; }
+
+function wkActivity(s) { return s.finished || s.started || ""; }
+
+function wkGroups(sessions) {
+  const groups = new Map();
+  for (const session of sessions) {
+    const key = session.item || `session:${wkKey(session)}`;
+    if (!groups.has(key)) groups.set(key, {item: session.item || "", title: session.title || session.item || "Untitled work", sessions: [], updated: ""});
+    const group = groups.get(key);
+    group.sessions.push(session);
+    if (wkActivity(session) > group.updated) group.updated = wkActivity(session);
+  }
+  for (const group of groups.values()) group.sessions.sort((a, b) => wkActivity(b).localeCompare(wkActivity(a)));
+  return [...groups.values()].sort((a, b) => b.updated.localeCompare(a.updated));
+}
+
+function wkView() {
+  try { return localStorage.getItem(WK_VIEW_KEY) === "sessions" ? "sessions" : "work"; }
+  catch (e) { return "work"; }
+}
+
+function wkPhase(s) {
+  if (s.phase === "checker") return "Review";
+  if (s.phase === "worker") return "Work";
+  return s.phase ? s.phase.charAt(0).toUpperCase() + s.phase.slice(1) : "Work";
+}
 
 function wkElapsed(sec) {
   if (sec == null) return "";
@@ -21,7 +48,7 @@ function wkElapsed(sec) {
   return m ? `${m} min ${s} s` : `${s} s`;
 }
 
-function wkHeader(s) {
+function wkHeader(s, showTitle=true) {
   const who = esc(s.who || s.seat || "");
   const title = s.title ? `<a class="plain" href="#/work/${esc(s.item)}">${esc(s.title)}</a>` : esc(s.item || "");
   const turns = s.provider !== "codex" && s.turns_allowed ? `${s.turns} of ${s.turns_allowed} turns` : `${s.turns} turns`;
@@ -30,12 +57,38 @@ function wkHeader(s) {
   const when = s.state === "running" ? `running ${wkElapsed(s.elapsed)}` : `started ${esc(s.started || "")}`;
   return `<div class="wk-head">
     <span class="wk-state ${esc(s.state)}">${esc(stateLabel)}</span>
-    <b>${who}</b> <span class="muted">as ${esc(s.phase || "worker")} on ${esc(s.provider || "claude")} / ${esc(s.model || "the default model")}${s.requested_model && s.requested_model !== s.model ? ` (assigned ${esc(s.requested_model)})` : ""}</span>
-    <span>${title}</span>
+    <b>${esc(wkPhase(s))} · ${who}</b> <span class="muted">on ${esc(s.provider || "claude")} / ${esc(s.model || "the default model")}${s.requested_model && s.requested_model !== s.model ? ` (assigned ${esc(s.requested_model)})` : ""}</span>
+    ${showTitle ? `<span>${title}</span>` : ""}
     <span class="muted">${esc(when)} · ${turns}${cost}</span>
     ${s.error ? `<span class="muted">· ${esc(s.error)}</span>` : ""}
   </div>` + (s.files && s.files.length
     ? `<div class="wk-files">Changed so far: ${s.files.map(esc).join(", ")}</div>` : "");
+}
+
+function wkPanel(s, showTitle=true) {
+  const running = s.state === "running";
+  return `<div class="wk-panel" data-key="${esc(wkKey(s))}" data-state="${esc(s.state)}">${wkHeader(s, showTitle)}${running
+    ? `<div class="wk-log"></div>`
+    : `<details><summary class="wk-files">Show what it did</summary><div class="wk-log"></div></details>`}</div>`;
+}
+
+function wkGroup(group, activeItem, wanted) {
+  const running = group.sessions.some(s => s.state === "running");
+  const isActive = running || (activeItem && group.item === activeItem);
+  const workers = group.sessions.filter(s => s.phase !== "checker").length;
+  const reviews = group.sessions.filter(s => s.phase === "checker").length;
+  const parts = [];
+  if (workers) parts.push(`${workers} work session${workers === 1 ? "" : "s"}`);
+  if (reviews) parts.push(`${reviews} review${reviews === 1 ? "" : "s"}`);
+  const state = running ? "working now" : isActive ? "active" : "latest session finished";
+  return `<details class="wk-group" data-item="${esc(group.item)}" ${isActive || wanted ? "open" : ""}>
+    <summary class="wk-group-head">
+      <span class="wk-state ${running ? "running" : "finished"}">${state}</span>
+      <span class="wk-group-title">${group.item ? `<a class="plain" href="#/work/${encodeURIComponent(group.item)}">${esc(group.title)}</a>` : esc(group.title)}</span>
+      <span class="muted">${esc(group.updated)} · ${parts.join(" · ")}</span>
+    </summary>
+    <div class="wk-group-sessions">${group.sessions.map(s => wkPanel(s, false)).join("")}</div>
+  </details>`;
 }
 
 function wkLine(l) {
@@ -79,6 +132,7 @@ async function renderWorkers() {
   const rawActive = snap.active || execution.active || null;
   const active = rawActive && (!wanted || rawActive.item === wanted) ? rawActive : null;
   const activeKey = active ? [active.run, active.item, active.phase, active.at].join("/") : "";
+  const view = wkView();
   const head = running.length
     ? `${running.length} session${running.length === 1 ? " is" : "s are"} running now.`
     : active
@@ -86,7 +140,7 @@ async function renderWorkers() {
     : (earlier.length ? `No worker is running. The last session finished at ${esc(earlier[0].finished || earlier[0].started || "")}.`
                       : `No worker is running, and none has run since the drain started writing sessions down.`);
   const forOne = wanted
-    ? `<p><b>Showing the sessions for one piece of work.</b> <a class="plain" href="#/chat/bullpen">Show every session instead</a></p>`
+    ? `<p><b>Showing one piece of work.</b> <a class="plain" href="#/chat/bullpen">Show the whole Bullpen</a></p>`
     : "";
   const autoStatus = execution.paused ? "Paused" : (execution.timer.active === false ? "Scheduler stopped" : "Running");
   const statusTip = execution.paused
@@ -105,10 +159,18 @@ async function renderWorkers() {
     ${control}
     ${forOne}
     <p><b>${head}</b></p>
-    <div id="wk-running" data-active="${esc(activeKey)}">${running.map(s => `<div class="wk-panel" data-key="${esc(wkKey(s))}">${wkHeader(s)}<div class="wk-log"></div></div>`).join("")}</div>
-    ${earlier.length ? `<details class="card"><summary>Sessions from the last day (${earlier.length})</summary>
-      ${earlier.map(s => `<div class="wk-panel" data-key="${esc(wkKey(s))}">${wkHeader(s)}<details><summary class="wk-files">Show what it did</summary><div class="wk-log"></div></details></div>`).join("")}
-    </details>` : ""}`;
+    <div class="wk-view-toggle" role="group" aria-label="Bullpen view">
+      <button type="button" data-view="work" aria-pressed="${view === "work"}">By work item</button>
+      <button type="button" data-view="sessions" aria-pressed="${view === "sessions"}">Every session</button>
+    </div>
+    <div id="wk-sessions" data-active="${esc(activeKey)}">${view === "work"
+      ? wkGroups(sessions).map(group => wkGroup(group, active && active.item, wanted)).join("")
+      : `${running.map(s => wkPanel(s)).join("")}${earlier.length ? `<details class="card" open><summary>Sessions from the last day (${earlier.length})</summary>${earlier.map(s => wkPanel(s)).join("")}</details>` : ""}`
+    }</div>`;
+  $view.querySelectorAll(".wk-view-toggle button").forEach(button => button.addEventListener("click", () => {
+    try { localStorage.setItem(WK_VIEW_KEY, button.dataset.view); } catch (e) { /* The default still works without storage. */ }
+    renderWorkers();
+  }));
   document.getElementById("wk-exec-toggle").addEventListener("click", async ev => {
     const action = execution.paused ? "resume" : "pause";
     let reason = "";
@@ -126,7 +188,7 @@ async function renderWorkers() {
   const byKey = {};
   sessions.forEach(s => { byKey[wkKey(s)] = s; });
   for (const s of running) wkFill($view.querySelector(`.wk-panel[data-key="${CSS.escape(wkKey(s))}"]`), s);
-  $view.querySelectorAll("#wk-running ~ details .wk-panel > details").forEach(d => {
+  $view.querySelectorAll(".wk-panel > details").forEach(d => {
     d.addEventListener("toggle", () => {
       if (!d.open) return;
       const panel = d.closest(".wk-panel");
@@ -140,19 +202,19 @@ async function renderWorkers() {
     if (!(location.hash.slice(1) || "/").startsWith("/chat/bullpen")) { clearInterval(wkPoll); wkPoll = null; return; }
     let fresh;
     try { fresh = await fetch("/api/workers").then(r => r.json()); } catch (e) { return; }
-    const now = (fresh.sessions || []).filter(s => s.state === "running");
+    const now = (fresh.sessions || []).filter(s => s.state === "running" && (!wanted || s.item === wanted));
     const freshActive = fresh.active && (!wanted || fresh.active.item === wanted) ? fresh.active : null;
     const freshActiveKey = freshActive ? [freshActive.run, freshActive.item, freshActive.phase, freshActive.at].join("/") : "";
-    const shown = [...$view.querySelectorAll("#wk-running .wk-panel")].map(p => p.dataset.key);
+    const shown = [...$view.querySelectorAll('.wk-panel[data-state="running"]')].map(p => p.dataset.key);
     const same = now.length === shown.length && now.every(s => shown.includes(wkKey(s)))
-      && ($view.querySelector("#wk-running")?.dataset.active || "") === freshActiveKey;
+      && ($view.querySelector("#wk-sessions")?.dataset.active || "") === freshActiveKey;
     if (!same) { renderWorkers(); return; }
     for (const s of now) {
       const panel = $view.querySelector(`.wk-panel[data-key="${CSS.escape(wkKey(s))}"]`);
       if (!panel) continue;
       const head = panel.querySelector(".wk-head");
       const tmp = document.createElement("div");
-      tmp.innerHTML = wkHeader(s);
+      tmp.innerHTML = wkHeader(s, view === "sessions");
       head.replaceWith(tmp.firstElementChild);
       const files = panel.querySelector(".wk-files");
       const nf = tmp.querySelector(".wk-files");

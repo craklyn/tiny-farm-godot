@@ -1595,6 +1595,15 @@ a.tool-card b { display: block; margin-bottom: 4px; }
 .sp-contact-key { display: flex; gap: 10px; margin: 6px 0 0; opacity: .75; }
 
 /* Watch the workers (#/workers): one panel per model session the drain runs. */
+.wk-view-toggle{display:inline-flex;gap:3px;padding:3px;margin:0 0 8px;border:1px solid var(--line,#3a352d);border-radius:9px;background:rgba(0,0,0,.12)}
+.wk-view-toggle button{border:0;border-radius:6px;padding:6px 11px;background:transparent;color:var(--muted,#a39c8e);cursor:pointer}
+.wk-view-toggle button[aria-pressed="true"]{background:var(--card,rgba(255,255,255,.08));color:inherit;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.wk-group{border:1px solid var(--line,#3a352d);border-radius:12px;margin:12px 0;background:var(--card,rgba(255,255,255,.03))}
+.wk-group-head{display:flex;flex-wrap:wrap;gap:7px 13px;align-items:baseline;padding:13px 15px;cursor:pointer}
+.wk-group-head::marker{color:var(--muted,#a39c8e)}
+.wk-group-title{font-weight:650;flex:1 1 360px}.wk-group-head .muted{font-size:13px}
+.wk-group-sessions{padding:0 12px 4px;border-top:1px solid var(--line,#3a352d)}
+.wk-group-sessions .wk-panel{margin:10px 0;background:rgba(0,0,0,.08)}
 .wk-panel{border:1px solid var(--line,#3a352d);border-radius:10px;margin:14px 0;background:var(--card,rgba(255,255,255,.03))}
 .wk-head{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline;padding:10px 14px;border-bottom:1px solid var(--line,#3a352d)}
 .wk-head b{font-size:15px}.wk-head .muted{font-size:13px}
