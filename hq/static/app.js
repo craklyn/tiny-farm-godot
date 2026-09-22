@@ -6,12 +6,13 @@ const cache = {};
 const animators = [];
 
 async function api(path) {
-  if (cache[path]) return cache[path];
+  const live = path === "/api/waiting-on-you";
+  if (!live && cache[path]) return cache[path];
   const r = await fetch(path);
   if (!r.ok) throw new Error(`${path}: ${r.status}`);
   noteVersion(r);
   const j = await r.json();
-  cache[path] = j;
+  if (!live) cache[path] = j;
   return j;
 }
 
@@ -1494,23 +1495,21 @@ async function boot() {
     }));
   api("/api/signals").then(updateNavPillars).catch(() => {});
   try {
-    const q = await api("/api/queue");
-    updateQueueBadge({
-      decisions: (q.curated || []).filter(c => !(q.decided || []).includes(c.id)).length,
-    });
+    const waiting = await api("/api/waiting-on-you");
+    updateQueueBadge(waiting);
   } catch { /* no badge */ }
 }
 
-// One badge for the one queue, fed from two places: the decisions prepped for
-// him and the finished work wanting his verdict. Raw un-curated questions are
-// the chief of staff's backlog, not his, and are not counted. It HIDES at zero
-// — an empty queue must stop asking for attention.
-const queueCounts = { work: 0, decisions: 0 };
-function updateQueueBadge(part) {
-  Object.assign(queueCounts, part);
+// One badge fed by the server's ready set. An unavailable reading is not zero.
+function updateQueueBadge(waiting) {
   const b = document.getElementById("work-badge");
   if (!b) return;
-  const n = (queueCounts.work || 0) + (queueCounts.decisions || 0);
+  if (!waiting || waiting.available === false || waiting.count == null) {
+    b.textContent = "?";
+    b.hidden = false;
+    return;
+  }
+  const n = waiting.count;
   b.textContent = n || "";
   b.hidden = !n;
 }

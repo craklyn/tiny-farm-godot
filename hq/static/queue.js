@@ -100,33 +100,7 @@ if (/^\/(work|inbox)(\/|$)/.test(location.hash.slice(1) || "/")) route();
 
 const Q_PICK_SECONDS = 30, Q_READ_SECONDS = 120;
 
-function qGreen(suites) {
-  return !!suites && typeof suites === "object" && Object.keys(suites).length > 0
-    && Object.values(suites).every(v => (v && typeof v === "object") ? v.ok : v);
-}
 
-/* Ported from docs/design/mockups/queue_to_zero/build_mock.py:classify(),
-   which is the studio's one written account of the arrival policy (§4)
-   applied to a real card. Keep the two in step; this is the same policy, not
-   a second opinion on it. Returns [bucket, reason] where bucket is
-   "his" | "landed" | "studio". */
-function qClassify(card) {
-  const tier = card.tier ?? 2;
-  const fus = card.follow_ups || [];
-  const maxFu = fus.length ? Math.max(...fus.map(f => f.tier ?? 1)) : 0;
-  const check = card.check || {};
-  if (card.decision) return ["studio", "filed off a decision already ruled and built; the card outlived its question"];
-  if (card.source === "chief-of-staff" && (card.created || "").slice(0, 10) === "2026-09-10")
-    return ["studio", "the work is on main since 10–11 September; the card was never closed"];
-  if (tier === 2) return ["his", "hard to walk back, or a matter of taste"];
-  if (tier === 0 && maxFu === 2) return ["his", "the answer recommends something hard to walk back"];
-  if (tier === 0) return ["landed", "a reading; what follows from it is all revertable"];
-  if (check.verdict === "fail") return ["studio", "the checker found it not done; the owner revises"];
-  if (qGreen(card.suites) && maxFu <= 1) return ["landed", "revertable, and the suites are green on record"];
-  if (qGreen(card.suites) && maxFu === 2) return ["his", "revertable work, but one thing it proposes is not"];
-  if (card.diff) return ["studio", "revertable, but the suites were never run on a clean checkout"];
-  return ["studio", "a write-up with no diff; verified by the drain before it lands"];
-}
 
 function qFirst(name) { return String(name || "").split(" ")[0]; }
 
@@ -232,9 +206,12 @@ function qDecisionItem(c) {
 
 async function qLoadData() {
   delete cache["/api/queue"];
-  const [org, snap, queue] = await Promise.all([
-    api("/api/org"), fetch("/api/work").then(r => { noteVersion(r); return r.json(); }), api("/api/queue"),
+  const [org, snap, queue, waiting] = await Promise.all([
+    api("/api/org"), fetch("/api/work").then(r => { noteVersion(r); return r.json(); }),
+    api("/api/queue"), api("/api/waiting-on-you"),
   ]);
+  const ready = new Set((waiting.ready || []).map(row => row.source_id));
+  const reasons = new Map((waiting.items || []).map(row => [row.source_id, row.reason]));
   const rulings = queue.rulings || {};
   const curated = queue.curated || [];
   const decided = new Set(queue.decided || []);
@@ -245,30 +222,29 @@ async function qLoadData() {
     const since = (c.replies || []).some(x => String(x.at || "") > String(r.ruled_at));
     return !since;
   };
-  const hisDecisions = open.filter(c => !answeredBack(c));
+  const hisDecisions = open.filter(c => ready.has(c.id));
   const studioDecisions = open.filter(answeredBack);
 
   const work = snap.items || [];
-  const live = st => work.filter(i => i.state === st && !i.awaiting_reply);
-  const needsApproval = live("needs_approval");
-  const forReview = live("for_review");
-  const awaitingStudio = work.filter(i => (i.state === "needs_approval" || i.state === "for_review") && i.awaiting_reply);
-
-  // Work that actually went in on its own, newest first. Until 2026-09-21 this
-  // fold could only show what WOULD land; now the drain commits it and the card
-  // says so, and each line can be put back.
-  const wentIn = work.filter(i => i.state === "landed")
-    .sort((a, b) => String((b.landed || {}).at || "").localeCompare(String((a.landed || {}).at || "")));
-
-  const his = [], landed = [], studio = [];
-  needsApproval.forEach(c => his.push({ card: c, reason: "hard to walk back, or a matter of taste" }));
-  forReview.forEach(c => {
-    const [bucket, reason] = qClassify(c);
-    ({ his, landed, studio })[bucket].push({ card: c, reason });
+  const statuses = new Map((waiting.items || []).filter(row => row.source === "work")
+    .map(row => [row.source_id, row]));
+  const his = [], pending = [], studio = [], wentIn = [], awaitingStudio = [], closed = [];
+  work.forEach(card => {
+    const row = statuses.get(card.id) || { status: "unknown", reason: "Current work status is unavailable." };
+    const entry = { card, reason: row.reason };
+    if (row.status === "ready") his.push(entry);
+    else if (row.status === "completed") wentIn.push(card);
+    else if (row.status === "ready_to_apply") pending.push(entry);
+    else if (row.status === "closed") closed.push(entry);
+    else {
+      studio.push(entry);
+      if (row.status === "awaiting_owner_reply") awaitingStudio.push(card);
+    }
   });
+  wentIn.sort((a, b) => String((b.landed || {}).at || "").localeCompare(String((a.landed || {}).at || "")));
+  return { org, rulings, hisWork: his, pendingCompletion: pending, studioWork: studio,
+    wentIn, closedWork: closed, hisDecisions, studioDecisions, awaitingStudio, waiting };
 
-  return { org, rulings, hisWork: his, landedWork: landed, studioWork: studio,
-    wentIn, hisDecisions, studioDecisions, awaitingStudio };
 }
 
 function qGroupBySubject(rows) {
@@ -366,7 +342,7 @@ function qPaneHtml(row, org) {
 }
 
 function qRender(state) {
-  const { org, hisWork, hisDecisions, landedWork, studioWork, wentIn, studioDecisions, awaitingStudio } = state;
+  const { org, hisWork, hisDecisions, pendingCompletion, studioWork, wentIn, closedWork, studioDecisions, awaitingStudio } = state;
 
   const rows = [
     ...hisWork.map(x => qWorkItem(x.card, org, x.reason)),
@@ -381,7 +357,10 @@ function qRender(state) {
   // extra bookkeeping across the reload.
   if (!qSelected || !rows.some(r => r.id === qSelected)) qSelected = rows[0] ? rows[0].id : null;
 
-  const bandHtml = rows.length
+  const unavailable = state.waiting.available === false;
+  const bandHtml = unavailable
+    ? `<b>Queue count unavailable.</b><p>HQ could not read the current queue. Try refreshing; this does not mean no items are waiting.</p>`
+    : rows.length
     ? `<b>${rows.length} question${rows.length === 1 ? "" : "s"} · about ${minutes} minute${minutes === 1 ? "" : "s"} at your usual pace</b>
        <p>${picks} ${picks === 1 ? "is a pick" : "are picks"} between prepared options, about 30 seconds each.
        ${reads} need${reads === 1 ? "s" : ""} you to read what came back, about two minutes each.${
@@ -416,19 +395,24 @@ function qRender(state) {
     <h2 class="q-group-h">${esc(g.name)} <span class="chip q-chip q-count">${g.items.length}</span></h2>
     ${g.items.map(rowHtml).join("")}`).join("");
 
-  const foldRow = (title, reason, fus) =>
-    `<li><span class="q-fold-t">${esc(title)}</span>
-      <small class="q-fold-r"> · ${esc(reason)}${fus ? ` · started ${fus} more` : ""}</small></li>`;
+  const foldRow = (card, reason) => {
+    const preparation = (state.waiting.items || []).find(row => row.source_id === card.id);
+    const warnings = [reason, preparation && preparation.reason, card.check && card.check.summary].filter(Boolean);
+    return `<li><span class="q-fold-t">${esc(card.title)}</span>
+      <small class="q-fold-r"> · ${esc([...new Set(warnings)].join(" · "))}</small>
+      <a class="plain" href="#/work/${encodeURIComponent(card.id)}">Open result</a></li>`;
+  };
 
   const wentInHtml = wentIn.map(c => `<li><b>${esc(c.title)}</b>
     <small class="q-fold-r"> · ${esc(ownerOf(org, c.owner).name)} · went in ${esc(String((c.landed || {}).at || "").replace("T", " "))}</small>
     <button class="ghost q-undo" data-id="${esc(c.id)}">Undo</button></li>`).join("");
-  const digestHtml = landedWork.map(({ card, reason }) =>
-    foldRow(card.title, reason, (card.follow_ups || []).length)).join("");
+  const digestHtml = pendingCompletion.map(({ card, reason }) =>
+    foldRow(card, reason)).join("");
   const backHtml = [
-    ...studioWork.map(({ card, reason }) => foldRow(card.title, reason)),
+    ...studioWork.map(({ card, reason }) => foldRow(card, reason)),
   ].join("");
 
+  const closedHtml = closedWork.map(({ card, reason }) => foldRow(card, reason)).join("");
   const selectedRow = rows.find(r => r.id === qSelected);
 
   $view.replaceChildren(h(`
@@ -439,13 +423,18 @@ function qRender(state) {
         about. Everything else the studio is doing needs nothing from you and is not on this page.</p>
         <div class="q-band">${bandHtml}</div>
         ${stripHtml ? `<div class="q-strip">${stripHtml}</div>` : ""}
-        <div id="q-groups">${groupsHtml || `<p class="muted">Nothing is waiting on you.</p>`}</div>
-        <h2 class="q-fold-h">Landed without you <span class="chip q-chip q-count">${wentIn.length + landedWork.length}</span></h2>
-        <details class="q-fold"><summary>${wentIn.length} piece${wentIn.length === 1 ? "" : "s"} of finished work went in without you${landedWork.length ? `, and ${landedWork.length} more would go in the same way on the next run` : ""}</summary>
-          <ul class="q-fold-list">${wentInHtml}${digestHtml}${(wentInHtml + digestHtml) ? "" : "<li>Nothing yet.</li>"}</ul></details>
+        <div id="q-groups">${groupsHtml || `<p class="muted">${unavailable ? "The current queue could not be verified." : "Nothing is waiting on you."}</p>`}</div>
+        <h2 class="q-fold-h">Landed without you <span class="chip q-chip q-count">${wentIn.length}</span></h2>
+        <details class="q-fold"><summary>${wentIn.length} piece${wentIn.length === 1 ? "" : "s"} of finished work went in without you</summary>
+          <ul class="q-fold-list">${wentInHtml || "<li>Nothing yet.</li>"}</ul></details>
+        <h2 class="q-fold-h">Awaiting completion <span class="chip q-chip q-count">${pendingCompletion.length}</span></h2>
+        <details class="q-fold"><summary>${pendingCompletion.length} result${pendingCompletion.length === 1 ? "" : "s"} still need completion recorded</summary>
+          <ul class="q-fold-list">${digestHtml || "<li>Nothing yet.</li>"}</ul></details>
         <h2 class="q-fold-h">Back with the studio <span class="chip q-chip q-count">${studioWork.length}</span></h2>
         <details class="q-fold"><summary>${studioWork.length} card${studioWork.length === 1 ? "" : "s"} go back to their owner instead of to you</summary>
           <ul class="q-fold-list">${backHtml || "<li>Nothing yet.</li>"}</ul></details>
+      <details class="q-fold"><summary>Closed work (${closedWork.length})</summary>
+        <ul class="q-fold-list">${closedHtml || "<li>Nothing yet.</li>"}</ul></details>
       </div>
       <div class="q-pane" id="q-pane">${qPaneHtml(selectedRow, org)}</div>
     </div>
@@ -553,7 +542,7 @@ function qRender(state) {
     qLoadData().then(qRender).catch(() => {});
   }
 
-  updateQueueBadge({ work: (state.hisWork.length + state.hisDecisions.length) });
+  updateQueueBadge(state.waiting);
 }
 
 /* j/k move the selection (and the pane with it); y takes the selected row's

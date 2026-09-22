@@ -164,18 +164,25 @@ def _write_json(path, doc):
     return doc
 
 
-def _read_dir(d):
+def _read_dir(d, *, strict=False):
     out = []
     try:
         names = sorted(os.listdir(d))
     except OSError:
+        if strict:
+            raise
         return out
     for n in names:
         if not n.endswith(".json") or n.startswith("_"):
             continue
         try:
-            out.append(HOST.load_json(os.path.join(d, n)))
+            record = HOST.load_json(os.path.join(d, n))
+            if strict and (not isinstance(record, dict) or not record.get("id") or not record.get("state")):
+                raise ValueError(f"Malformed work record: {n}")
+            out.append(record)
         except Exception:
+            if strict:
+                raise
             continue
     return out
 
@@ -187,8 +194,8 @@ def policy():
         return DEFAULT_POLICY
 
 
-def items():
-    got = _read_dir(WORK)
+def items(*, strict=False):
+    got = _read_dir(WORK, strict=strict)
     got.sort(key=lambda i: i.get("created_ts", 0), reverse=True)
     return got
 

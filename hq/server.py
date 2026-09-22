@@ -137,11 +137,14 @@ def api_program():
             "unassigned": [p["id"] for p in projects if p["id"] not in assigned]}
 
 
-def load_dir_json(sub):
+def load_dir_json(sub, *, strict=False):
     d = os.path.join(DATA, sub)
-    if not os.path.isdir(d):
+    if not strict and not os.path.isdir(d):
         return []
-    return [load_json(os.path.join(d, f)) for f in sorted(os.listdir(d)) if f.endswith(".json")]
+    records = [load_json(os.path.join(d, f)) for f in sorted(os.listdir(d)) if f.endswith(".json")]
+    if strict and any(not isinstance(record, dict) or not record.get("id") for record in records):
+        raise ValueError(f"Malformed {sub} record")
+    return records
 
 
 QID_RE = re.compile(r"^Q-\d+[a-z]?$")
@@ -217,7 +220,7 @@ def load_looks():
     return out
 
 
-def api_queue():
+def api_queue(*, strict=False):
     """Raw queue parse + curated decision cards + any recorded rulings.
 
     `decided` is the set of cards he has actually settled, and it is **not** the
@@ -230,9 +233,10 @@ def api_queue():
     this list; `rulings` stays whole, because the integration bookkeeping still
     has to see all of them.
     """
-    out = parse_queue()
-    out["curated"] = load_dir_json("decisions")
-    out["rulings"] = {r["id"]: r for r in load_dir_json("rulings")}
+    # Strict membership reads need curated cards and rulings, not the raw Markdown backlog.
+    out = {} if strict else parse_queue()
+    out["curated"] = load_dir_json("decisions", strict=strict)
+    out["rulings"] = {r["id"]: r for r in load_dir_json("rulings", strict=strict)}
     out["decided"] = sorted(rid for rid, r in out["rulings"].items() if r.get("option"))
     return out
 
@@ -288,35 +292,109 @@ def cards_filed():
     return out
 
 
-def waiting_on_you():
-    """What is on his desk: decision cards nobody has ruled on, and finished
-    work that wants his verdict.
+def _pending_review_status(item):
+    """Describe unfinished review work; passing checks never prove it landed."""
+    missing = " The result is missing a recommended answer."
+    if item.get("state") != "for_review":
+        return "preparing", "The question is missing a recommended answer."
+    if item.get("decision"):
+        return "preparing", "This card refers to an earlier decision; the owner must reconcile its status." + missing
+    if item.get("source") == "chief-of-staff" and str(item.get("created", ""))[:10] == "2026-09-10":
+        return "verification_pending", "This older card needs its completion verified." + missing
+    tier = item.get("tier", 2)
+    follows = item.get("follow_ups") or []
+    max_tier = max((f.get("tier", 1) for f in follows), default=0)
+    if (item.get("check") or {}).get("verdict") == "fail":
+        return "verification_pending", "The checker found it not done; the owner must revise it." + missing
+    if tier == 0 and max_tier < 2:
+        return "ready_to_apply", "The reading is awaiting recorded completion." + missing
+    suites = item.get("suites") or {}
+    green = bool(suites) and all(v.get("ok") if isinstance(v, dict) else v for v in suites.values())
+    if tier == 1 and green and max_tier <= 1:
+        return "ready_to_apply", "Checks passed, but completion has not been recorded." + missing
+    return "preparing", "The result is missing a recommended answer."
 
-    A card is still his only while nobody has ruled on it — no option picked in
-    a ruling file, no ruling written onto the card, and no written judgment of
-    his, because a judgment either settles the question or hands it back to the
-    studio."""
-    q = api_queue()
+
+def waiting_on_you():
+    """Publish a count only when every membership source was read completely."""
+    try:
+        return _waiting_on_you_complete()
+    except Exception:
+        return {"available": False, "count": None, "counts": None,
+                "ready": [], "items": [], "decisions": [], "work": [],
+                "error": "Queue records could not be read completely. Existing records remain accessible in Work."}
+
+
+def _waiting_on_you_complete():
+    """The read-only source of truth for what Daniel can act on now.
+
+    Every consumer uses the stable ``source_id`` values in ``ready``.  ``items``
+    also explains excluded states so a count never hides preparation, a held
+    patch, verification, or scheduled work.  Reading this projection does not
+    save a record or launch a model.
+    """
+    q = api_queue(strict=True)
     rulings = q["rulings"]
     decided = set(q["decided"])
-    decisions = [c for c in q["curated"]
-                 if c["id"] not in decided and not c.get("ruled")
-                 and not rulings.get(c["id"], {}).get("judgment")]
+    decisions = []
+    projected = []
+    for c in q["curated"]:
+        cid = c["id"]
+        ruling = rulings.get(cid, {})
+        settled = cid in decided or bool(c.get("ruled"))
+        returned = bool(ruling.get("ruled_at") and any(
+            str(reply.get("at") or "") > str(ruling["ruled_at"])
+            for reply in c.get("replies", [])))
+        ready = not settled and (not ruling.get("judgment") or returned)
+        status = "ready" if ready else ("completed" if settled else "awaiting_owner_reply")
+        reason = ("A prepared decision is ready for your answer."
+                  if ready else
+                  "Your answer was recorded." if settled else
+                  "The studio owes a reply to your comment.")
+        projected.append({"source_id": cid, "source": "decision", "ready": ready,
+                          "status": status, "reason": reason})
+        if ready:
+            decisions.append(c)
     try:
-        items = work.items()
+        items = work.items(strict=True)
     except Exception:
-        # One unreadable work card must not empty the whole dashboard: the rest
-        # of the page is still true, and a page that renders nothing tells him
-        # less than a page that renders what it can.
-        items = []
-    # Exactly what the Work page counts, so the dashboard's figure and the page
-    # he opens from it can never disagree: it is his only if it is in his list,
-    # its changes reached the repository, and somebody has written the question
-    # with a recommended answer (S-17). Anything else is the studio's.
-    finished = [i for i in items
-                if work._in_his_list(i) and work.has_recommendation(i)
-                and not work._held_back(i)]
-    return {"decisions": decisions, "work": finished}
+        return {"available": False, "count": None, "counts": None,
+                "ready": [], "items": projected, "decisions": decisions,
+                "work": [], "error": "Work records are unavailable."}
+    finished = []
+    labels = {
+        "prepping": ("preparing", "The owner is preparing the question."),
+        "owed": ("awaiting_owner_reply", "The studio owes a reply."),
+        "doing": ("preparing", "The work is still running."),
+        "waiting_session": ("scheduled", "The work is scheduled to run."),
+        "accepted": ("closed", "Your acceptance was recorded; any follow-up has its own work card."),
+        "landed": ("completed", "The work is recorded as landed."),
+        "dropped": ("closed", "The work was closed without approval."),
+    }
+    for item in items:
+        held = item.get("state") == "for_review" and work._held_back(item)
+        ready = (work._in_his_list(item) and work.has_recommendation(item)
+                 and not item.get("awaiting_reply"))
+        if ready:
+            status, reason = "ready", "A prepared result is ready for your verdict."
+            finished.append(item)
+        elif held:
+            status, reason = "verification_pending", "The patch has not reached the repository."
+        elif item.get("awaiting_reply"):
+            status, reason = "awaiting_owner_reply", "The studio owes a reply to your comment."
+        elif work._in_his_list(item):
+            status, reason = _pending_review_status(item)
+        else:
+            status, reason = labels.get(item.get("state"),
+                                        ("unknown", "This work state is not recognized; the owner must verify it."))
+        projected.append({"source_id": item["id"], "source": "work", "ready": ready,
+                          "status": status, "reason": reason})
+    ready_rows = [row for row in projected if row["ready"]]
+    counts = {"total": len(ready_rows), "work": len(finished),
+              "decisions": len(decisions)}
+    return {"available": True, "count": counts["total"], "counts": counts,
+            "ready": ready_rows, "items": projected,
+            "decisions": decisions, "work": finished}
 
 
 def waiting_reading():
@@ -326,6 +404,9 @@ def waiting_reading():
     decision cards open and no finished work it said nothing was waiting."""
     import time as _t
     w = waiting_on_you()
+    if not w["available"]:
+        return {"count": None, "work": None, "decisions": len(w["decisions"]),
+                "oldest_days": None, "available": False}
     filed = cards_filed()
     ages = [_days_since_date((i.get("finished") or i.get("created") or "")[:10])
             for i in w["work"]]
@@ -334,9 +415,9 @@ def waiting_reading():
         ct = filed.get(c["id"])
         if ct:
             ages.append(int((_t.time() - ct) // 86400))
-    return {"count": len(w["decisions"]) + len(w["work"]),
-            "work": len(w["work"]),
-            "decisions": len(w["decisions"]),
+    return {"count": w["count"],
+            "work": w["counts"]["work"],
+            "decisions": w["counts"]["decisions"],
             "oldest_days": max(ages) if ages else None}
 
 
@@ -5559,6 +5640,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, doc)
             if path == "/api/chat/queue":
                 return self._send(200, queue_snapshot())
+            if path == "/api/waiting-on-you":
+                return self._send(200, waiting_on_you())
             if path.startswith("/api/work"):
                 return self._send(200, work.api_get(path))
             if path == "/api/health":

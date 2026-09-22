@@ -690,7 +690,13 @@ function workSection(title, sub, list, org, pol, opts = {}) {
     <p class="sub">${esc(sub)}</p>
     <div class="w-list"></div></section>`).firstElementChild;
   const box = wrap.querySelector(".w-list");
-  list.forEach(it => box.appendChild(workCard(it, org, pol)));
+  list.forEach(it => {
+    const card = workCard(it, org, pol);
+    const reason = opts.reasons && opts.reasons.get(it.id);
+    if (reason) card.querySelector(".w-body").prepend(
+      h(`<p class="w-preparation-warning"><b>Preparation or verification:</b> ${esc(reason)}</p>`).firstElementChild);
+    box.appendChild(card);
+  });
   return wrap;
 }
 
@@ -721,8 +727,11 @@ async function renderWork(focusId) {
   // it is the same job — say yes or no — so one page carries both. Never
   // cached: a ruling recorded here must change what the next render shows.
   delete cache["/api/queue"];
-  const [snap, queue, entData, looks] = await Promise.all([
-    workSnap(), api("/api/queue"), api("/api/entities"), api("/api/looks")]);
+  const [snap, queue, entData, looks, attention] = await Promise.all([
+    workSnap(), api("/api/queue"), api("/api/entities"), api("/api/looks"), api("/api/waiting-on-you")]);
+  const attentionUnavailable = attention.available === false;
+  const readyIds = new Set((attentionUnavailable ? [] : attention.ready || []).map(row => row.source_id));
+  const attentionReasons = new Map((attention.items || []).map(row => [row.source_id, row.reason]));
   const rulings = queue.rulings || {};
   const curated = queue.curated || [];
   const curatedIds = new Set(curated.map(c => c.id));
@@ -748,12 +757,11 @@ async function renderWork(focusId) {
     const since = (c.replies || []).some(x => String(x.at || "") > String(r.ruled_at));
     return !since;
   };
-  const decisions = open.filter(c => !answeredBack(c));
+  const decisions = open.filter(c => readyIds.has(c.id));
   const withStudio = open.filter(answeredBack);
   const ruled = curated.filter(c => decided.has(c.id));
   const rawOpen = (queue.items || []).filter(q => !q.answered && !curatedIds.has(q.id) && !decided.has(q.id));
   const answered = (queue.items || []).filter(q => q.answered);
-  updateQueueBadge({ decisions: decisions.length });
   // A link that names one card lands with that card open — arriving at the
   // whole queue and hunting for it is a dead end wearing a destination.
   if (focusId && snap.items.some(i => i.id === focusId)) {
@@ -767,9 +775,9 @@ async function renderWork(focusId) {
   // approve — there is nothing in the tree to approve — and the page already
   // hides Accept on one. It must not be counted as waiting on him either: it
   // is waiting on whoever holds the files it could not be written over.
-  const stuck = i => i.state === "for_review" && !!heldReason(i) && !resuming(i);
-  const waiting = [...by("needs_approval"), ...by("for_review").filter(i => !stuck(i))];
-  const held = by("for_review").filter(stuck);
+  const reviewable = [...by("needs_approval"), ...by("for_review")];
+  const waiting = reviewable.filter(i => readyIds.has(i.id));
+  const preparing = reviewable.filter(i => !readyIds.has(i.id));
   const closed = [...by("accepted"), ...by("dropped")];
   // First visit: the top decision is open and everything else is one line, so
   // the page opens showing how many things want him rather than one of them.
@@ -820,16 +828,20 @@ async function renderWork(focusId) {
   }
 
   const secs = [
-    workSection("Waiting on you", "Two kinds: work that has not happened because it is hard to undo, and work that is finished and wants your verdict on the result.", waiting, org, pol, { always: true }),
-    workSection("Finished, but it could not be written into the repository",
-      "Each of these changed files another session in the repository has open and unsaved, so the change was kept and not applied. It goes in as soon as those files are free; there is nothing for you to approve until then.",
-      held, org, pol),
+    workSection(attentionUnavailable ? "Queue count unavailable" : "Waiting on you",
+      attentionUnavailable
+        ? "HQ could not verify which items are waiting. Refresh to try again; this does not mean the queue is empty. Existing results remain available below."
+        : "Two kinds: work that has not happened because it is hard to undo, and work that is finished and wants your verdict on the result.",
+      waiting, org, pol, { always: true }),
+    workSection("Preparation and verification",
+      "These results are not counted as waiting on you. Read the preparation or verification warning before giving a verdict; you can still open a finished result and comment or decide explicitly.",
+      preparing, org, pol, { reasons: attentionReasons }),
     workSection("Happening now", "Reversible, so nobody waited to be told twice.", by("doing"), org, pol),
     workSection("Queued for a build session", "Changes files in the repository, so a session with write access — or the studio's own scheduled run — makes the change and shows you what it altered.", by("waiting_session"), org, pol),
   ].filter(Boolean);
   secs.forEach(s => body.appendChild(s));
 
-  if (!waiting.length && !by("doing").length && !by("waiting_session").length) {
+  if (!attentionUnavailable && !waiting.length && !preparing.length && !by("doing").length && !by("waiting_session").length) {
     body.querySelector(".w-list").appendChild(h(`<p class="muted">Nothing open. Work lands here on its own as you talk to the team — you never have to file anything.</p>`).firstElementChild);
   }
 
@@ -979,11 +991,8 @@ async function renderWork(focusId) {
 }
 
 function updateWorkBadge(snap) {
-  // The badge counts what he can actually act on: a finished card whose changes
-  // never landed is waiting on the repository, not on him.
-  const stuck = (snap.items || []).filter(
-    i => i.state === "for_review" && !!heldReason(i) && !resuming(i)).length;
-  updateQueueBadge({ work: Math.max(0, (snap.waiting_on_you || 0) - stuck) });
+  api("/api/waiting-on-you").then(updateQueueBadge).catch(() =>
+    updateQueueBadge({ available: false }));
 }
 
 /* ---- the strip on the chat page ----------------------------------------
