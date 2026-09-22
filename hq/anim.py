@@ -191,6 +191,7 @@ def loops_index():
             "script": script if has_script else None,
             "sources": sources, "stale": stale,
             "asks": asks_for(slug),
+            "work_item": (_active_review_for_slug(slug) or {}).get("id"),
             "cost": _cost_of(slug),
             "drawn": time.strftime("%Y-%m-%d %H:%M", time.localtime(drawn_at)),
         })
@@ -493,6 +494,7 @@ def record_verdict(payload):
     A verdict without a reason is not recorded, because the reason is the only
     part of this that helps whoever picks it up next."""
     slug = str(payload.get("slug") or "")
+    work_id = str(payload.get("work_id") or "")
     verdict = str(payload.get("verdict") or "")
     why = str(payload.get("why") or "").strip()
     if not re.fullmatch(r"[a-z0-9_]{1,64}", slug):
@@ -501,18 +503,30 @@ def record_verdict(payload):
         return {"error": "unknown verdict"}
     if not why:
         return {"error": "say why first — that sentence is what reaches the next person"}
+    item, path, error = _review_record(work_id, slug)
+    if error:
+        return {"error": error}
     if verdict == "rework":
-        return start_rework(slug, why)
+        return start_rework(slug, why, work_id, item, path)
     _append_ask(slug, {"at": time.strftime("%Y-%m-%dT%H:%M:%S"), "kind": verdict,
                        "text": why, "run_id": ""})
-    _close_review(slug, verdict, why)
-    return {"ok": True, "verdict": verdict,
+    item["state"] = "accepted" if verdict == "keep" else "dropped"
+    item["result"] = f"Daniel's verdict from the Animation Lab: {verdict}. {why}"
+    item.setdefault("conversation", []).append(
+        {"role": "daniel", "text": why, "at": time.strftime("%Y-%m-%dT%H:%M"),
+         "with": verdict})
+    try:
+        _write_review(item, path)
+    except OSError as exc:
+        return {"error": f"could not save the verdict: {exc}"}
+    return {"ok": True, "verdict": verdict, "work_id": work_id,
+            "state": item["state"],
             "note": ("Kept, and the reason is on the loop's record."
                      if verdict == "keep" else
                      "Dropped, and the reason is on the loop's record. Nothing was deleted.")}
 
 
-def start_rework(slug, note):
+def start_rework(slug, note, work_id="", review=None, review_path=""):
     """Send a loop back with an instruction. Same machinery as drawing one, a
     different prompt and the same slug."""
     if not execution.launch_allowed():
@@ -532,23 +546,80 @@ def start_rework(slug, note):
     run_id = f"r{int(time.time())}{os.urandom(2).hex()}"
     rec = _save_run({
         "id": run_id, "subject": note, "state": "drawing", "kind": "rework",
-        "slug": slug, "step": "", "turns": 0,
+        "slug": slug, "work_item": work_id, "step": "", "turns": 0,
         "started": time.strftime("%Y-%m-%dT%H:%M:%S"),
         "started_ts": time.time(), "finished": "", "error": "", "cost": None, "note": "",
     })
-    _append_ask(slug, {"at": rec["started"], "kind": "rework", "text": note,
-                       "run_id": run_id})
-    threading.Thread(target=_draw, args=(run_id, prompt, slug), daemon=True).start()
-    return {"ok": True, "run": rec}
+    try:
+        _append_ask(slug, {"at": rec["started"], "kind": "rework", "text": note,
+                           "run_id": run_id})
+        if review is not None:
+            review["state"] = "doing"
+            review["result"] = f"Animation Lab rework started: {note}"
+            review.setdefault("conversation", []).append(
+                {"role": "daniel", "text": note,
+                 "at": time.strftime("%Y-%m-%dT%H:%M"), "with": "rework"})
+            _write_review(review, review_path)
+        threading.Thread(target=_draw, args=(run_id, prompt, slug), daemon=True).start()
+    except Exception as exc:
+        rec.update(state="failed", finished=time.strftime("%Y-%m-%dT%H:%M:%S"),
+                   error=f"could not start rework: {exc}"[:300])
+        _save_run(rec)
+        if review is not None:
+            review["state"] = "for_review"
+            review["result"] = rec["error"]
+            try:
+                _write_review(review, review_path)
+            except OSError:
+                pass
+        return {"error": rec["error"]}
+    return {"ok": True, "verdict": "rework", "work_id": work_id,
+            "state": "doing", "run": rec}
 
 
-def _close_review(slug, verdict, why):
-    """A verdict answers the queued review, so the review stops asking."""
+def _work_slug(item):
+    """Explicit on new records; exact route parsing keeps old reviews usable."""
+    if item.get("anim_slug"):
+        return item["anim_slug"]
+    match = re.fullmatch(r"Open #/design/anim/([a-z0-9_]{1,64}) and watch it at both sizes",
+                         item.get("first_action") or "")
+    return match.group(1) if match else ""
+
+
+def _review_record(work_id, slug):
+    if not re.fullmatch(r"w[a-zA-Z0-9_-]{1,127}", work_id):
+        return None, "", "a work item is required for this verdict"
+    path = os.path.join(DATA, "work", f"{work_id}.json")
+    try:
+        with open(path, encoding="utf-8") as fh:
+            item = json.load(fh)
+    except (OSError, ValueError):
+        return None, path, "that Animation Lab review no longer exists"
+    if item.get("id") != work_id or item.get("source") != "anim_lab":
+        return None, path, "that work item is not an Animation Lab review"
+    if item.get("state") != "for_review":
+        return None, path, "that Animation Lab review is no longer awaiting a verdict"
+    if _work_slug(item) != slug:
+        return None, path, "that work item belongs to a different animation"
+    return item, path, None
+
+
+def _write_review(item, path):
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        json.dump(item, fh, indent=2)
+    os.replace(tmp, path)
+    _INDEX_CACHE["key"] = None
+
+
+def _active_review_for_slug(slug):
+    """Newest exact review identity for the Lab page to send back on verdict."""
     wdir = os.path.join(DATA, "work")
     try:
         names = os.listdir(wdir)
     except OSError:
-        return
+        return None
+    found = []
     for name in names:
         path = os.path.join(wdir, name)
         try:
@@ -556,20 +627,12 @@ def _close_review(slug, verdict, why):
                 item = json.load(fh)
         except Exception:
             continue
-        if item.get("source") != "anim_lab" or slug not in (item.get("title") or "").replace(" ", "_"):
+        if item.get("source") != "anim_lab" or _work_slug(item) != slug:
             continue
-        if item.get("state") in ("accepted", "dropped"):
+        if item.get("state") not in ("for_review", "doing"):
             continue
-        item["state"] = "accepted" if verdict == "keep" else "dropped"
-        item["result"] = f"Daniel's verdict from the Animation Lab: {verdict}. {why}"
-        item.setdefault("conversation", []).append(
-            {"role": "daniel", "text": why, "at": time.strftime("%Y-%m-%dT%H:%M"),
-             "with": verdict})
-        try:
-            with open(path, "w", encoding="utf-8") as fh:
-                json.dump(item, fh, indent=2)
-        except OSError:
-            pass
+        found.append(item)
+    return max(found, key=lambda item: item.get("created_ts") or 0) if found else None
 
 
 def start_run(payload):
@@ -677,6 +740,7 @@ def _draw(run_id, prompt, known_slug=""):
             rec = _load_run(run_id)
             rec.update(state="held", error="Automatic work is paused")
             _save_run(rec)
+            _reopen_review(rec)
             return
         p = types.SimpleNamespace(returncode=result.get("exit_code") or (1 if result.get("error") else 0),
                                   stderr=result.get("error", ""))
@@ -726,16 +790,20 @@ def _draw(run_id, prompt, known_slug=""):
                 _append_ask(slug, {'at': rec.get('started', ''), 'kind': 'draw',
                                    'text': rec.get('subject', ''), 'run_id': run_id})
             _file_for_review(rec)
+        else:
+            _reopen_review(rec)
     except subprocess.TimeoutExpired:
         rec = _load_run(run_id)
         rec.update({"state": "failed", "finished": time.strftime("%Y-%m-%dT%H:%M:%S"),
                     "error": f"ran past {DRAW_TIMEOUT // 60} minutes and was stopped"})
         _save_run(rec)
+        _reopen_review(rec)
     except Exception as e:
         rec = _load_run(run_id)
         rec.update({"state": "failed", "finished": time.strftime("%Y-%m-%dT%H:%M:%S"),
                     "error": f"{type(e).__name__}: {e}"[:300]})
         _save_run(rec)
+        _reopen_review(rec)
 
 
 def cancel_run(payload):
@@ -766,6 +834,7 @@ def cancel_run(payload):
     rec.update({"state": "cancelled", "finished": time.strftime("%Y-%m-%dT%H:%M:%S"),
                 "error": "stopped on request"})
     _save_run(rec)
+    _reopen_review(rec)
     if rec.get("slug"):
         _append_ask(rec["slug"], {"at": rec["finished"], "kind": "cancelled",
                                   "text": "The rework was stopped before it finished. "
@@ -783,6 +852,25 @@ def _load_run(run_id):
         return {"id": run_id}
 
 
+def _reopen_review(rec):
+    """A failed rework puts its exact review back; it never disappears in doing."""
+    work_id = rec.get("work_item") or ""
+    if not work_id:
+        return
+    path = os.path.join(DATA, "work", f"{work_id}.json")
+    try:
+        with open(path, encoding="utf-8") as fh:
+            item = json.load(fh)
+        if (item.get("id") != work_id or item.get("source") != "anim_lab"
+                or _work_slug(item) != rec.get("slug")):
+            return
+        item["state"] = "for_review"
+        item["result"] = "Animation Lab rework did not finish: " + (rec.get("error") or "unknown error")
+        _write_review(item, path)
+    except (OSError, ValueError):
+        return
+
+
 def _file_for_review(rec):
     """A finished loop wants a verdict, and a verdict is Daniel's to give — so it
     goes to his queue rather than being announced and forgotten. The art
@@ -792,9 +880,33 @@ def _file_for_review(rec):
     bill = (f"It cost ${spent:.2f} and {cost.get('turns', '?')} turns."
             if isinstance(spent, (int, float)) else
             "Its cost was not reported by the CLI.")
-    wid = f"w{rec['id']}"
+    wid = rec.get("work_item") or f"w{rec['id']}"
+    if rec.get("work_item"):
+        path = os.path.join(DATA, "work", f"{wid}.json")
+        try:
+            with open(path, encoding="utf-8") as fh:
+                item = json.load(fh)
+            if (item.get("id") != wid or item.get("source") != "anim_lab"
+                    or _work_slug(item) != rec["slug"]):
+                raise ValueError("review identity does not match this animation")
+            item["state"] = "for_review"
+            item["result"] = "Animation Lab rework finished and is ready for another verdict."
+            item.setdefault("conversation", []).append(
+                {"role": "assistant", "text": item["result"],
+                 "at": time.strftime("%Y-%m-%dT%H:%M"), "with": "rework_done"})
+            _write_review(item, path)
+            rec["work_item"] = wid
+            _save_run(rec)
+            return True
+        except (OSError, ValueError) as exc:
+            rec["state"] = "failed"
+            rec["error"] = f"could not return rework for review: {exc}"
+            _save_run(rec)
+            _reopen_review(rec)
+            return False
     item = {
         "id": wid,
+        "anim_slug": rec["slug"],
         "title": f"Say whether the {rec['slug'].replace('_', ' ')} loop is any good",
         # The work title records why this card exists.  The short deliverable
         # name is what the shared review renderer puts after "Review:".
@@ -826,6 +938,9 @@ def _file_for_review(rec):
             json.dump(item, fh, indent=2)
         rec["work_item"] = wid
         _save_run(rec)
+        return True
     except OSError as e:
-        rec["note"] = (rec.get("note") or "") + f"\n(could not file for review: {e})"
+        rec["state"] = "failed"
+        rec["error"] = f"could not file for review: {e}"
         _save_run(rec)
+        return False

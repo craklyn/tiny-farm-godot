@@ -27,6 +27,8 @@ func _ready() -> void:
 	# S-14 that farm is in `user://slot1`, where it would also block a pre-slot
 	# farm from ever migrating in. Scenarios that point the three paths somewhere
 	# else for their own reasons still do; they restore to these.
+	_assert(not FileAccess.file_exists(SUITE_SLOTS_ROOT.path_join("slot1/autosave.json")),
+		"the integration suite starts without another session's autosave")
 	GameState.use_slot(1, SUITE_SLOTS_ROOT)
 
 	# Instantiate Main scene
@@ -908,8 +910,8 @@ func _scenario_l_menu_holds_world() -> void:
 	await get_tree().process_frame
 	_assert(not get_tree().paused, "closing it starts the world again")
 	farm.sim.set_actor_pos(chicken.actor_id, Vector2i(7, 5))
-	for i in 20: await get_tree().process_frame
-	_assert(chicken.position != frozen_at, "and she carries on from where she stood")
+	var resumed: bool = await _wait_until(func(): return chicken.position != frozen_at, 600)
+	_assert(resumed, "and she carries on from where she stood")
 
 	# The inventory is a menu too, and so is the pause screen it was already true of.
 	for name in ["inventory", "pause"]:

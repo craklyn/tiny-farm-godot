@@ -38,19 +38,19 @@ spurious diffs.
 godot --path .
 
 # Unit suite (sim, actions, replay, saves, rng)
-godot --headless --path . --script res://tests/test_runner.gd
+python3 tools/run_godot_test.py -- godot --headless --path . --script res://tests/test_runner.gd
 
 # Integration suite (instantiates the real main scene, simulated input)
-godot --headless --path . res://tools/test_runner.tscn
+python3 tools/run_godot_test.py -- godot --headless --path . res://tools/test_runner.tscn
 
 # Robot session: plays the real game end-to-end, then verifies its own replay
-godot --headless --path . res://tools/robot_session.tscn
+python3 tools/run_godot_test.py -- godot --headless --path . res://tools/robot_session.tscn
 
 # Visual regression (renders a frame, diffs against tools/baseline.png) — needs a display
 godot --path . res://tools/test_visuals.tscn
 
 # Sim fast-forward benchmark
-godot --headless --path . --script res://tools/benchmark_sim.gd
+python3 tools/run_godot_test.py -- godot --headless --path . --script res://tools/benchmark_sim.gd
 
 # What a taught robot is worth in a day (T-39): two identical player-days, one with
 # a stalled mark-1 — prints the comparison table the unit test asserts on

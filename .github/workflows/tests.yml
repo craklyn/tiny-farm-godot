@@ -97,6 +97,9 @@ jobs:
       - name: A failed build becomes one urgent Engineering repair
         run: python3 hq/tests/test_ci_intake.py
 
+      - name: Animation Lab launches and verdicts preserve their work record
+        run: python3 hq/test_anim.py
+
   tests:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -140,13 +143,16 @@ jobs:
         run: git diff --exit-code assets/demo/demo_replay.json
 
       - name: Unit suite
-        run: '"$GODOT" --headless --path . --script res://tests/test_runner.gd'
+        run: 'python3 tools/run_godot_test.py -- "$GODOT" --headless --path . --script res://tests/test_runner.gd'
 
       - name: Integration suite
-        run: '"$GODOT" --headless --path . res://tools/test_runner.tscn'
+        run: 'python3 tools/run_godot_test.py -- "$GODOT" --headless --path . res://tools/test_runner.tscn'
 
       - name: Robot session (end-to-end)
-        run: '"$GODOT" --headless --path . res://tools/robot_session.tscn'
+        run: 'python3 tools/run_godot_test.py -- "$GODOT" --headless --path . res://tools/robot_session.tscn'
 
       - name: Sim benchmark (smoke)
-        run: '"$GODOT" --headless --path . --script res://tools/benchmark_sim.gd'
+        run: 'python3 tools/run_godot_test.py -- "$GODOT" --headless --path . --script res://tools/benchmark_sim.gd'
+
+      - name: Test process isolation and exit handling
+        run: python3 tools/test_process_integrity.py
