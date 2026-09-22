@@ -39,6 +39,8 @@ Animation reviews have playable current/proposed results at normal game size; au
 
 Replace generic Yes with the actual action, including negative recommendations. Keep real alternatives visible, distinguish request changes from cancel/drop, allow explanatory comments, and confirm what was recorded and which work starts next. Do not require a comment when a prepared alternative exists. Verify both a recommended Yes and recommended No and successful navigation to the next question.
 
+For a quiz or design choice, render every recorded option as a selectable choice before the comment field. Always add “None of these — revise and ask me again.” That choice does not record a ruling: it requires Daniel’s feedback, returns the card to its owner for revision, and brings the revised question back through the readiness gate. Put the optional comment after the choices and use one clear submit button. Resolve the owner’s human name for question and missing-recommendation controls; when the record cannot identify an owner, say “the studio” rather than rendering a blank label such as “Ask the”. Apply this shared behavior to both Queue and direct-card views, with keyboard and narrow-width coverage.
+
 ### 6. Combine duplicate requests without losing distinct decisions
 
 One human action should produce one queue entry even if it unblocks several tasks. Identical titles need deduplication or distinct outcome names, never silent data deletion. Preserve links to all source work and prior decisions. Include stable ordering and return-to-list/selected-item behavior.
