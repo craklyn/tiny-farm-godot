@@ -247,11 +247,19 @@ async function qLoadData() {
   const work = snap.items || [];
   const statuses = new Map((waiting.items || []).filter(row => row.source === "work")
     .map(row => [row.source_id, row]));
-  const his = [], pending = [], studio = [], wentIn = [], awaitingStudio = [], closed = [];
+  const his = [], pending = [], waitingStart = [], studio = [], wentIn = [], awaitingStudio = [], closed = [];
   work.forEach(card => {
     const row = statuses.get(card.id) || { status: "unknown", reason: "Current work status is unavailable." };
     const entry = { card, reason: row.reason };
-    if (row.status === "ready") his.push(entry);
+    // /api/work and /api/waiting-on-you are live reads made together. A card
+    // can be requeued between them, leaving the projection describing the
+    // result from the attempt before the card's current one. Execution state
+    // is unambiguous here: work with no start time has not produced a result
+    // that could be awaiting completion.
+    const hasNotStarted = card.state === "waiting_session"
+      || (card.state === "doing" && !card.started);
+    if (hasNotStarted) waitingStart.push(entry);
+    else if (row.status === "ready") his.push(entry);
     else if (row.status === "completed") wentIn.push(card);
     else if (row.status === "ready_to_apply") pending.push(entry);
     else if (row.status === "closed") closed.push(entry);
@@ -261,7 +269,7 @@ async function qLoadData() {
     }
   });
   wentIn.sort((a, b) => String((b.landed || {}).at || "").localeCompare(String((a.landed || {}).at || "")));
-  return { org, rulings, hisWork: his, pendingCompletion: pending, studioWork: studio,
+  return { org, rulings, hisWork: his, pendingCompletion: pending, waitingToStart: waitingStart, studioWork: studio,
     wentIn, closedWork: closed, hisDecisions, studioDecisions, awaitingStudio, waiting, seats };
 
 }
@@ -375,7 +383,7 @@ function qPaneHtml(row, org) {
 }
 
 function qRender(state) {
-  const { org, hisWork, hisDecisions, pendingCompletion, studioWork, wentIn, closedWork, studioDecisions, awaitingStudio } = state;
+  const { org, hisWork, hisDecisions, pendingCompletion, waitingToStart, studioWork, wentIn, closedWork, studioDecisions, awaitingStudio } = state;
 
   const rows = [
     ...hisWork.map(x => qWorkItem(x.card, org, x.reason)),
@@ -441,6 +449,8 @@ function qRender(state) {
     <button class="ghost q-undo" data-id="${esc(c.id)}">Undo</button></li>`).join("");
   const digestHtml = pendingCompletion.map(({ card, reason }) =>
     foldRow(card, reason)).join("");
+  const waitingStartHtml = waitingToStart.map(({ card, reason }) =>
+    foldRow(card, reason)).join("");
   const backHtml = [
     ...studioWork.map(({ card, reason }) => foldRow(card, reason)),
   ].join("");
@@ -463,6 +473,9 @@ function qRender(state) {
         <h2 class="q-fold-h">Awaiting completion <span class="chip q-chip q-count">${pendingCompletion.length}</span></h2>
         <details class="q-fold"><summary>${pendingCompletion.length} result${pendingCompletion.length === 1 ? "" : "s"} still need completion recorded</summary>
           <ul class="q-fold-list">${digestHtml || "<li>Nothing yet.</li>"}</ul></details>
+        <h2 class="q-fold-h">Waiting to start <span class="chip q-chip q-count">${waitingToStart.length}</span></h2>
+        <details class="q-fold"><summary>${waitingToStart.length} accepted piece${waitingToStart.length === 1 ? "" : "s"} of work ${waitingToStart.length === 1 ? "has" : "have"} not started yet</summary>
+          <ul class="q-fold-list">${waitingStartHtml || "<li>Nothing yet.</li>"}</ul></details>
         <h2 class="q-fold-h">Back with the studio <span class="chip q-chip q-count">${studioWork.length}</span></h2>
         <details class="q-fold"><summary>${studioWork.length} card${studioWork.length === 1 ? "" : "s"} go back to their owner instead of to you</summary>
           <ul class="q-fold-list">${backHtml || "<li>Nothing yet.</li>"}</ul></details>
