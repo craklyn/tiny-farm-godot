@@ -75,8 +75,13 @@ async function renderWorkers() {
   const sessions = (snap.sessions || []).filter(x => !wanted || x.item === wanted);
   const running = sessions.filter(s => s.state === "running");
   const earlier = sessions.filter(s => s.state !== "running");
+  const rawActive = snap.active || execution.active || null;
+  const active = rawActive && (!wanted || rawActive.item === wanted) ? rawActive : null;
+  const activeKey = active ? [active.run, active.item, active.phase, active.at].join("/") : "";
   const head = running.length
     ? `${running.length} session${running.length === 1 ? " is" : "s are"} running now.`
+    : active
+      ? `No model session is running. ${esc(active.detail || "The task queue is finishing its current work.")}${active.title ? ` — ${esc(active.title)}` : ""}`
     : (earlier.length ? `No worker is running. The last session finished at ${esc(earlier[0].finished || earlier[0].started || "")}.`
                       : `No worker is running, and none has run since the drain started writing sessions down.`);
   const forOne = wanted
@@ -99,7 +104,7 @@ async function renderWorkers() {
     ${control}
     ${forOne}
     <p><b>${head}</b></p>
-    <div id="wk-running">${running.map(s => `<div class="wk-panel" data-key="${esc(wkKey(s))}">${wkHeader(s)}<div class="wk-log"></div></div>`).join("")}</div>
+    <div id="wk-running" data-active="${esc(activeKey)}">${running.map(s => `<div class="wk-panel" data-key="${esc(wkKey(s))}">${wkHeader(s)}<div class="wk-log"></div></div>`).join("")}</div>
     ${earlier.length ? `<details class="card"><summary>Sessions from the last day (${earlier.length})</summary>
       ${earlier.map(s => `<div class="wk-panel" data-key="${esc(wkKey(s))}">${wkHeader(s)}<details><summary class="wk-files">Show what it did</summary><div class="wk-log"></div></details></div>`).join("")}
     </details>` : ""}`;
@@ -135,8 +140,11 @@ async function renderWorkers() {
     let fresh;
     try { fresh = await fetch("/api/workers").then(r => r.json()); } catch (e) { return; }
     const now = (fresh.sessions || []).filter(s => s.state === "running");
+    const freshActive = fresh.active && (!wanted || fresh.active.item === wanted) ? fresh.active : null;
+    const freshActiveKey = freshActive ? [freshActive.run, freshActive.item, freshActive.phase, freshActive.at].join("/") : "";
     const shown = [...$view.querySelectorAll("#wk-running .wk-panel")].map(p => p.dataset.key);
-    const same = now.length === shown.length && now.every(s => shown.includes(wkKey(s)));
+    const same = now.length === shown.length && now.every(s => shown.includes(wkKey(s)))
+      && ($view.querySelector("#wk-running")?.dataset.active || "") === freshActiveKey;
     if (!same) { renderWorkers(); return; }
     for (const s of now) {
       const panel = $view.querySelector(`.wk-panel[data-key="${CSS.escape(wkKey(s))}"]`);

@@ -2,7 +2,7 @@
   "id": "wcac1b777695",
   "completion_key": "cac1b7776953b56399af95ade6e2135b94b32edf12217753d2f93a7cd8ccc44d",
   "parent": "wf1b3b951813",
-  "title": "Stop the asset pipeline shifting red by one",
+  "title": "Fix the art-processing steps so they no longer change the artwork's red colour by one value",
   "level": "task",
   "owner": "ravi",
   "tier": 1,
@@ -22,7 +22,7 @@
   "promised_by": "wf1b3b951813",
   "promised": {
     "card": "Confirm the four visual treatments worth rendering for Daniel to choose between",
-    "title": "Stop the asset pipeline shifting red by one",
+    "title": "Fix the art-processing steps so they no longer change the artwork's red colour by one value",
     "why": "Four palette colours read as lost from the build when they are present one red step off, so the art scoreboard is reporting drift that has not happened."
   }
 }

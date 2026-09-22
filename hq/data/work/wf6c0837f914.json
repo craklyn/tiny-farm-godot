@@ -2,7 +2,7 @@
   "id": "wf6c0837f914",
   "completion_key": "f6c0837f91467d06523f1764e2606df149c1a9bcb5215d3461378e012e84a654",
   "parent": "w56a634c94f6",
-  "title": "Make the sprite editor treat a seamless ground sheet as its single tile",
+  "title": "Make the sprite editor use the seamless ground sheet as one image instead of cutting it into multiple tiles",
   "level": "story",
   "owner": "rin",
   "tier": 1,
@@ -22,7 +22,7 @@
   "promised_by": "w56a634c94f6",
   "promised": {
     "card": "Read Daniel's hand edit to Field Grassland",
-    "title": "Make the sprite editor treat a seamless ground sheet as its single tile",
+    "title": "Make the sprite editor use the seamless ground sheet as one image instead of cutting it into multiple tiles",
     "why": "Eight ninths of his work on that sheet never reaches the screen and the copies silently drift apart."
   }
 }

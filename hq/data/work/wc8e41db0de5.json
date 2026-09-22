@@ -2,7 +2,7 @@
   "id": "wc8e41db0de5",
   "completion_key": "c8e41db0de56e10dfcddb97d6389c1fbcdf720c9e7e1dea59bc0cee9675e218f",
   "parent": "w8fd8d88b290",
-  "title": "Write down which replay verbs survive the pouch change",
+  "title": "Write down which actions can still be replayed after the pouch changes",
   "level": "task",
   "owner": "kenji",
   "tier": 1,
@@ -22,7 +22,7 @@
   "promised_by": "w8fd8d88b290",
   "promised": {
     "card": "Judge whether the recorded playtest replays keep any value after the economy change",
-    "title": "Write down which replay verbs survive the pouch change",
+    "title": "Write down which actions can still be replayed after the pouch changes",
     "why": "Without this, a future training pass that checks replay-verify status will read a build mismatch as 'corpus is dead' and quietly drop 38 sessions of real play."
   }
 }

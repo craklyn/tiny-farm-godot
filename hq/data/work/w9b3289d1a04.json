@@ -2,7 +2,7 @@
   "id": "w9b3289d1a04",
   "completion_key": "9b3289d1a048cc1aaccf156b637e3a2611838c7143f70cbc0b1b2818b04773ab",
   "parent": "w8fd8d88b290",
-  "title": "Commit the five recorded sessions waiting in the working tree",
+  "title": "Add the five recorded sessions to the project's history",
   "level": "task",
   "owner": "kenji",
   "tier": 1,
@@ -22,7 +22,7 @@
   "promised_by": "w8fd8d88b290",
   "promised": {
     "card": "Judge whether the recorded playtest replays keep any value after the economy change",
-    "title": "Commit the five recorded sessions waiting in the working tree",
+    "title": "Add the five recorded sessions to the project's history",
     "why": "playtests/README.md states these are committed on purpose as exit-gate evidence; five sessions have sat uncommitted for over a week."
   }
 }

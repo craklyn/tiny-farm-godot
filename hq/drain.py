@@ -80,12 +80,25 @@ PATCHES = os.path.join(REPO, "hq", "data", "patches")
 # HQ's bullpen page (#/chat/bullpen) reads while a worker runs, and what a card's
 # "How it was done" fold reads afterwards. Gitignored with the rest of runs/.
 WORKERS = os.path.join(REPO, "hq", "data", "runs", "workers")
+DRAIN_STATE = os.path.join(REPO, "hq", "data", "runs", "drain.json")
 RUN_ID = ""
 
 
 def _set_run(run_id):
     global RUN_ID
     RUN_ID = run_id
+
+
+def record_phase(run_id, item=None, phase="idle", detail=""):
+    """One live fact for the parts of a drain run that are not model sessions."""
+    os.makedirs(os.path.dirname(DRAIN_STATE), exist_ok=True)
+    doc = {"run": run_id, "pid": os.getpid(), "item": (item or {}).get("id", ""),
+           "title": (item or {}).get("title", ""), "phase": phase,
+           "detail": detail, "at": work._now_iso()}
+    tmp = DRAIN_STATE + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(doc, f)
+    os.replace(tmp, DRAIN_STATE)
 # A worker's turn budget. 60 is enough for most items; a sim item that has to
 # write four tests on top of the code is not, and a worker cut off mid-edit
 # costs a whole second attempt. DRAIN_TURNS=120 in the environment raises it for
@@ -777,6 +790,7 @@ def do_item(item, org, run_id, log):
         if item.get("resume"):
             log(f"{item['id']} · tries again with {turns} turns"
                 + ("" if resumed else " — the held patch no longer applies, so from main"))
+        record_phase(run_id, item, "worker", "The owner is repairing it.")
         text, usage, err = run_cli(task_prompt(item, org, resumed=committed_prior,
                                                continuing=bool(resumed), turns=turns),
                                    seat_prompt(org, seat, thinking),
@@ -818,6 +832,7 @@ def do_item(item, org, run_id, log):
             "base_files": git_blobs(tree, base, rec["files"]),
         }
         # The chief of staff reads the diff, on his own seat's model.
+        record_phase(run_id, item, "reviewing", "The chief of staff is reading the proposed change.")
         cmodel = server.seat_model(org, "claude")
         ctext, cusage, cerr = run_cli(check_prompt(item, text, rec["patch"], org), CHECK_SYSTEM,
                                       "Read,Glob,Grep", cmodel, tree, CHECK_TIMEOUT,
@@ -833,6 +848,7 @@ def do_item(item, org, run_id, log):
         if rec["check"] and not cerr:
             rec["check_evidence"] = work.evidence_id([rec["result"], rec["patch"], rec["candidate"]])
         if rec["files"] and rec["check"] and not cerr:
+            record_phase(run_id, item, "checking_candidate", "The proposed change is running its tests.")
             rec["candidate_suites"] = run_suites(cwd=tree)
         rec["candidate_unchanged"] = sh(["git", "diff", "--quiet", rec["candidate"]["tree"], "--"], cwd=tree).returncode == 0
         rec["candidate_test_evidence"] = work.evidence_id([rec["candidate"], rec.get("candidate_suites")])
@@ -1686,6 +1702,7 @@ def run_verified_batch(pool, org, run_id, log, *, no_suites=False):
     records, done = {}, []
     for selected in pool:
         item = work.load_item(selected["id"])
+        record_phase(run_id, item, "starting", "The task queue is preparing its isolated checkout.")
         rec = do_item(item, org, run_id, log)
         records[item["id"]] = rec
         if rec.get("held") or rec.get("limited"):
@@ -1708,11 +1725,13 @@ def run_verified_batch(pool, org, run_id, log, *, no_suites=False):
               and (rec.get("check") or {}).get("complete") is True
               and not (rec.get("check") or {}).get("findings")
               and rec.get("candidate_unchanged") is True):
+            record_phase(run_id, item, "applying", "The reviewed change is being applied to the repository.")
             ok, why = apply_patch(rec["patch"], rec["files"])
         rec["applied"], rec["why_not"] = ok, "" if ok else why
         suites = None
         if ok and not no_suites:
             rec["tree_evidence"] = tree_evidence(rec["files"])
+            record_phase(run_id, item, "verifying", "The applied change is running both game test suites.")
             suites = run_suites()
         rec["test_evidence"] = work.evidence_id([rec.get("patch", ""), suites])
         fresh = work.load_item(item["id"])
@@ -1720,6 +1739,7 @@ def run_verified_batch(pool, org, run_id, log, *, no_suites=False):
             rec["held"], rec["error"] = True, "the work card changed during validation; reassessment is required"
             continue
         try:
+            record_phase(run_id, item, "recording", "The result and its evidence are being recorded.")
             done.append(write_back(fresh, rec, ok, rec["why_not"], suites, org))
         except work.RecordConflict:
             rec["held"], rec["error"] = True, "the work card changed before completion was saved; reassessment is required"
@@ -1855,6 +1875,7 @@ def main():
         print(f"  [{time.strftime('%H:%M:%S')}] {msg}", flush=True)
 
     records, done = run_verified_batch(pool, org, run_id, log, no_suites=args.no_suites)
+    record_phase(run_id, None, "finished", "The selected batch finished.")
     shutil.rmtree(os.path.join(WORKTREES, run_id), ignore_errors=True)
 
     bill = server.sum_usage([u for r in records.values() for u in r["usage"]])

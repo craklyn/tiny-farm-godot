@@ -857,7 +857,12 @@ def file_automatic(fields, source_ref):
         key = merge_key(title)
         existing = next((i for i in items()
                          if merge_key(i.get("title")) == key
-                         and i.get("state") in MERGEABLE_STATES), None)
+                         and i.get("state") in MERGEABLE_STATES
+                         # Once a session has begun, its brief is immutable.
+                         # A later failed run is a later incident, not permission
+                         # to make the worker solve a different failure mid-run.
+                         and not i.get("started")
+                         and not i.get("attempts")), None)
     if existing is not None:
         existing["source_ref"] = source_ref
         existing["source"] = "automatic"
@@ -867,6 +872,9 @@ def file_automatic(fields, source_ref):
         existing["ask"] = str(fields.get("ask") or existing.get("ask") or "")[:600]
         existing["first_action"] = str(
             fields.get("first_action") or existing.get("first_action") or "")[:600]
+        existing["source_message"] = existing["ask"]
+        existing["incident"] = {"kind": "ci_failure", "identity": source_ref,
+                                "detected": existing.get("created") or _now_iso()}
         return save_item(existing)
 
     clean = {
@@ -882,6 +890,8 @@ def file_automatic(fields, source_ref):
     item["source_ref"] = source_ref
     item["source"] = "automatic"
     item["urgent"] = True
+    item["incident"] = {"kind": "ci_failure", "identity": source_ref,
+                        "detected": item.get("created") or _now_iso()}
     return save_item(item)
 
 

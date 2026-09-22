@@ -1931,6 +1931,15 @@ WORKERS_DIR = os.path.join(DATA, "runs", "workers")
 _EXECUTION_QUEUE_CACHE = {"work_stamp": None, "data": None}
 
 
+def drain_state():
+    """The non-model phase of the current drain, if its process is still alive."""
+    try:
+        doc = load_json(os.path.join(DATA, "runs", "drain.json"))
+    except Exception:
+        return None
+    return doc if doc.get("phase") != "finished" and _pid_alive(doc.get("pid")) else None
+
+
 def execution_queue_snapshot():
     """Read the drain's own order; reuse it only while every work record is unchanged."""
     work_dir = os.path.join(DATA, "work")
@@ -1978,6 +1987,7 @@ def execution_control_snapshot():
         "batch_limit": 3,
         "interval_minutes": 20,
         "timer": timer,
+        "active": drain_state(),
     }
 
 
@@ -4004,7 +4014,14 @@ def _goal_journal():
     out = {}
     rows = read_history("goals", 4000)
     for row in rows:
-        for gid, state in (row.get("states") or {}).items():
+        states = row.get("states") or {}
+        # The journal stores exceptions only. Once an id disappears from the
+        # next reading it is green (or no longer live), so its failure interval
+        # ends there. Treating absence as "still failing" produced a sixteen-day
+        # age for a CI incident that had begun minutes earlier.
+        for gid in set(out) - set(states):
+            out[gid]["since"], out[gid]["worsening"], out[gid]["last"] = "", False, "green"
+        for gid, state in states.items():
             seen = out.setdefault(gid, {"since": "", "last": "green", "worsening": False})
             if state == "green":
                 seen["since"], seen["worsening"] = "", False
@@ -4072,8 +4089,25 @@ def _route_target(route):
         if kind == "work":
             for it in work.items():
                 if it.get("id") == rid:
+                    sessions = [s for s in worker_sessions() if s.get("item") == rid]
+                    running = next((s for s in sessions if s.get("state") == "running"), None)
+                    live = drain_state()
+                    human = ""
+                    if running:
+                        human = ("being reviewed now" if running.get("phase") == "checker"
+                                 else "being worked on now")
+                    elif live and live.get("item") == rid:
+                        human = live.get("detail") or live.get("phase", "").replace("_", " ")
+                    human = human or {
+                        "waiting_session": "queued for the next task-queue run",
+                        "for_review": "finished, with a result to review",
+                        "landed": "landed; waiting for the next build verdict",
+                        "accepted": "accepted and closed",
+                        "dropped": "dropped",
+                    }.get(it.get("state"), "")
                     return named({"kind": kind, "id": rid, "title": it.get("title", ""),
                                   "owner": it.get("owner", ""), "state": it.get("state", ""),
+                                  "state_human": human,
                                   "href": f"#/work/{rid}"})
         elif kind == "project":
             doc = load_json(os.path.join(DATA, "projects", rid + ".json"))
@@ -4168,6 +4202,25 @@ def eval_goal(goal):
         else:
             state = _state_from(reading, compare)
         state, out["situation"] = _goal_response(goal, state, reading)
+        p2g = dict(goal.get("path_to_green") or {})
+        # A failed CI reading already creates its Engineering repair off the
+        # request path. Resolve that one incident here instead of offering the
+        # CEO a button that creates a second card for the same failure.
+        if (goal.get("measure") or {}).get("kind") == "ci_state" and state == "red":
+            source_ref = "ci:" + str(reading.get("url") or "")
+            repair = next((i for i in work.items()
+                           if i.get("source_ref") == source_ref), None) if reading.get("url") else None
+            if repair:
+                p2g["route"] = {"kind": "work", "id": repair["id"]}
+                out["path_to_green"] = p2g
+                target = _route_target(p2g["route"])
+                if repair.get("state") in work.OPEN_STATES:
+                    state = "amber"
+                    out["situation"] = {"who": repair.get("owner"),
+                                        "doing": (target or {}).get("state_human", ""),
+                                        "until": None, "lapsed": False,
+                                        "link": {"label": "See the repair",
+                                                 "href": f"#/work/{repair['id']}"}}
         out["state"] = state
         out["reading"] = reading
         out["measured"] = reading.get("value")
@@ -4181,7 +4234,7 @@ def eval_goal(goal):
         # his, which meant every pillar holding something awaiting a yes glowed
         # at him. Approvals are the Work page's job and the inbox's job — they
         # serve him as an approver, and the board is not a third copy of them.
-        out["route_target"] = _route_target((goal.get("path_to_green") or {}).get("route"))
+        out["route_target"] = _route_target(p2g.get("route"))
         # The row said "vp-engineering owns it" — an internal key on a page the
         # CEO reads, which tells him nothing he does not already have to decode.
         # Send the seat's own label, and the name of whoever is sitting in it.
@@ -4202,10 +4255,10 @@ def eval_goal(goal):
                             and (out.get("route_target") or {}).get("state") == "pending integration")
         if pending_decision:
             out["escalation"] = None
-        # Red IS "his move" now, so it always reaches him; amber is the one
-        # somebody is holding, which is what "ours to fix" has always meant.
-        out["needs_you"] = (state == "red" or bool(out["escalation"])) and not pending_decision
-        out["ours"] = state == "amber" or pending_decision
+        # Health and attention are separate facts. A red check is not Daniel's
+        # move unless it passes an escalation test; a held repair is ours.
+        out["needs_you"] = bool(out["escalation"]) and not pending_decision
+        out["ours"] = (state not in ("green", "attested") and not out["needs_you"])
     except Exception as e:
         out["state"] = "broken"
         out["reading"] = _reading(None, error=str(e)[:160])
@@ -4451,6 +4504,21 @@ def _ci_status():
     if not runs and _CI_LAST:
         # Transient gh failure: better a labeled stale answer than a false one.
         return {**_CI_LAST, "stale": True}
+    if not runs:
+        # A restart clears the in-memory fallback, but the slower background
+        # poll is already durable on disk. Keep its newest completed verdict
+        # and run link, clearly marked stale, instead of turning a known failed
+        # build into an unlinked "GitHub is unreachable" dead end.
+        history = ci_history() or {}
+        ticks = history.get("ticks") or []
+        if ticks:
+            tick = ticks[-1]
+            return {"available": True, "latest": {"url": tick.get("url"),
+                    "displayTitle": tick.get("title"), "status": "completed",
+                    "conclusion": "success" if tick.get("ok") else "failure"},
+                    "has_completed": True, "green": bool(tick.get("ok")),
+                    "in_progress": False, "stale": True,
+                    "polled_at": history.get("polled_at", "")}
     latest = runs[0] if runs else None
     # Green/red reads the newest COMPLETED run, so a push that is still running
     # neither hides an existing red nor claims an unearned green.
@@ -5789,7 +5857,7 @@ class Handler(BaseHTTPRequestHandler):
                 })
             if path == "/api/workers":
                 # The sessions the drain is running or ran today, for watching.
-                return self._send(200, {"sessions": worker_sessions()})
+                return self._send(200, {"sessions": worker_sessions(), "active": drain_state()})
             if path == "/api/execution":
                 return self._send(200, execution_control_snapshot())
             if path == "/api/execution/queue":

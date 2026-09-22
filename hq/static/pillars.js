@@ -236,7 +236,7 @@ function filedLine(g, org) {
   const t = g.route_target;
   if (!t || !t.title) return "";
   const who = t.owner_human || (t.owner ? ownerName(org, t.owner) : "");
-  const state = FILED_STATE[t.state] || esc(t.state || "");
+  const state = t.state_human || FILED_STATE[t.state] || esc(t.state || "");
   return `<div class="g-filed">Filed${who ? ` to ${esc(who)}` : ""} as
     <a class="plain" href="${esc(t.href)}">${esc(t.title)}</a>${state ? ` — ${state}` : ""}.</div>`;
 }
