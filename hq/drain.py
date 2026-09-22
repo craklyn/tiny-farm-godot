@@ -133,7 +133,12 @@ WRITE_TOOLS = ("Read,Glob,Grep,Edit,Write,MultiEdit,NotebookEdit,Bash,TodoWrite,
 READ_TOOLS = "Read,Glob,Grep"
 
 
-def sh(args, cwd=REPO, timeout=120, check=False):
+def sh(args, cwd=None, timeout=120, check=False):
+    # Resolve the repository at call time. The process canary binds REPO to an
+    # isolated temporary Git repository; a definition-time default would send
+    # otherwise-unqualified Git commands back to the live checkout.
+    if cwd is None:
+        cwd = REPO
     p = subprocess.run(args, cwd=cwd, capture_output=True, text=True, timeout=timeout)
     if check and p.returncode != 0:
         raise RuntimeError(f"{' '.join(args)}\n{p.stdout}\n{p.stderr}"[:800])
