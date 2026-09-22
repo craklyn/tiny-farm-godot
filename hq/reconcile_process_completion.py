@@ -26,9 +26,10 @@ def main(argv=None):
     parser.add_argument("--data-root", type=Path,
                         default=Path(__file__).resolve().parent / "data",
                         help=argparse.SUPPRESS)
+    parser.add_argument("--manifest", type=Path, help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
     work.bind(FileHost(args.data_root), sanitize=False)
-    report = work.reconcile_process_completion(apply=args.apply)
+    report = work.reconcile_process_completion(manifest=args.manifest, apply=args.apply)
     print(json.dumps(report, indent=2))
     return 0 if report["applicable"] else 2
 

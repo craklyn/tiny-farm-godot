@@ -23,15 +23,33 @@ class ProcessReconciliation(unittest.TestCase):
         self.repo = Path(__file__).resolve().parents[2]
         self.manifest = json.loads((self.repo / "hq/data/process_completion_reconciliation.json").read_text())
         for entry in self.manifest["cards"]:
-            source = self.repo / "hq/data/work" / f"{entry['id']}.json"
-            item = json.loads(source.read_text())
+            item = {"id": entry["id"], "title": "Immutable reconciliation fixture",
+                    "owner": "claude", "tier": 1, "state": "waiting_session",
+                    "ask": "Do the bounded work.", "first_action": "Read the fixture.",
+                    "result": "", "attempts": 0, "created": "2026-09-22T00:00",
+                    "created_ts": 1, "_revision": 0}
+            if entry["id"] == "wecd05a982cc":
+                item.update(result="A rejected result.", attempts=1, revising=True,
+                            prior_results=[{"result": "Earlier result."}],
+                            prior_checks=[{"verdict": "fail", "findings": ["missing linkage"]}])
             work._write_json(work._item_path(entry["id"]), item)
+            if entry["classification"] == "hold_for_linkage":
+                stable = dict(item)
+                stable.pop("_revision", None)
+                stable.pop("waiting_for", None)
+                entry["expected_snapshots"] = [{"state": item["state"],
+                                                "stable_fingerprint": work.evidence_id(stable)}]
+            else:
+                entry["expected_snapshots"] = [{"state": item["state"], "revision": 0,
+                                                "fingerprint": work.reconciliation_fingerprint(item)}]
+        self.manifest_path = Path(self.tmp.name) / "process-manifest.json"
+        self.manifest_path.write_text(json.dumps(self.manifest))
 
     def tearDown(self):
         self.tmp.cleanup()
 
     def test_apply_is_idempotent_and_never_fabricates_a_checker_or_acceptance(self):
-        report = work.reconcile_process_completion(apply=True)
+        report = work.reconcile_process_completion(self.manifest, apply=True)
         self.assertTrue(report["applied"])
         self.assertEqual(report["totals"], {"safe_to_close": 9, "leave_open": 2,
                                             "hold_for_linkage": 1})
@@ -53,7 +71,7 @@ class ProcessReconciliation(unittest.TestCase):
             self.assertTrue(item["repair_brief"])
             self.assertEqual(item["process_completion_reconciliation"]["classification"], "leave_open")
         first = {p.name: p.read_bytes() for p in Path(work.WORK).glob("*.json")}
-        self.assertTrue(work.reconcile_process_completion(apply=True)["applied"])
+        self.assertTrue(work.reconcile_process_completion(self.manifest, apply=True)["applied"])
         self.assertEqual(first, {p.name: p.read_bytes() for p in Path(work.WORK).glob("*.json")})
 
     def test_changed_record_blocks_every_write(self):
@@ -61,7 +79,7 @@ class ProcessReconciliation(unittest.TestCase):
         changed["ask"] += " New instruction."
         work.save_item(changed)
         before = {p.name: p.read_bytes() for p in Path(work.WORK).glob("*.json")}
-        report = work.reconcile_process_completion(apply=True)
+        report = work.reconcile_process_completion(self.manifest, apply=True)
         self.assertFalse(report["applied"])
         self.assertIn("wbbbcc2086a1f: state or reviewed evidence changed", report["errors"])
         self.assertEqual(before, {p.name: p.read_bytes() for p in Path(work.WORK).glob("*.json")})
@@ -77,8 +95,8 @@ class ProcessReconciliation(unittest.TestCase):
             return original(*args, **kwargs)
         with patch.object(work, "land_item", side_effect=interrupt_once):
             with self.assertRaises(RuntimeError):
-                work.reconcile_process_completion(apply=True)
-        self.assertTrue(work.reconcile_process_completion(apply=True)["applied"])
+                work.reconcile_process_completion(self.manifest, apply=True)
+        self.assertTrue(work.reconcile_process_completion(self.manifest, apply=True)["applied"])
         closed = [work.load_item(entry["id"])["state"]
                   for entry in self.manifest["cards"] if entry["classification"] == "safe_to_close"]
         self.assertEqual(closed, ["landed"] * 9)
@@ -88,7 +106,7 @@ class ProcessReconciliation(unittest.TestCase):
         original["waiting_for"] = {"reason": "a live scheduler refresh", "at": "later"}
         work.save_item(original)
         original = work.load_item("wecd05a982cc")
-        work.reconcile_process_completion(apply=True)
+        work.reconcile_process_completion(self.manifest, apply=True)
         held = work.load_item("wecd05a982cc")
         for field in ("ask", "result", "attempts", "revising", "prior_checks", "prior_results", "waiting_for"):
             self.assertEqual(held.get(field), original.get(field))
@@ -107,7 +125,7 @@ class ProcessReconciliation(unittest.TestCase):
         (data / "org.json").write_text(json.dumps({"employees": []}))
         before = {p.name: p.read_bytes() for p in (data / "work").glob("*.json")}
         command = [sys.executable, str(self.repo / "hq/reconcile_process_completion.py"),
-                   "--data-root", str(data)]
+                   "--data-root", str(data), "--manifest", str(self.manifest_path)]
         preview = subprocess.run(command, cwd=self.repo, text=True, capture_output=True)
         self.assertEqual(preview.returncode, 0, preview.stdout + preview.stderr)
         self.assertTrue(json.loads(preview.stdout)["applicable"])
@@ -119,6 +137,10 @@ class ProcessReconciliation(unittest.TestCase):
                          "waiting_session")
         self.assertEqual(json.loads((data / "work/we11c4a7b3f92.json").read_text())["state"],
                          "landed")
+        after = subprocess.run(command, cwd=self.repo, text=True, capture_output=True)
+        self.assertEqual(after.returncode, 0, after.stdout + after.stderr)
+        self.assertTrue(json.loads(after.stdout)["applicable"],
+                        "the fixture remains valid after the same audit has already been applied")
 
 
 if __name__ == "__main__":
