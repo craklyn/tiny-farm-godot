@@ -4,6 +4,10 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
 const items = ['ready', 'held', 'unprepared'].map(id => ({ id, state: 'for_review' }));
+items.push(
+  { id: 'running', state: 'doing', owner: 'rin', started: '2026-09-21T21:00' },
+  { id: 'not-started', state: 'doing', owner: 'rin', started: '' },
+);
 const attention = { available: true, ready: [{ source_id: 'ready', source: 'work' }], items: [
   { source_id: 'held', reason: 'The patch has not reached the repository.' },
   { source_id: 'unprepared', reason: 'The result is missing a recommended answer.' },
@@ -12,7 +16,8 @@ const sections = [];
 function element(html = '') {
   return { html, children: [], appendChild(child) { this.children.push(child); },
     prepend(child) { this.children.unshift(child); }, querySelector() { return this; },
-    querySelectorAll() { return []; }, addEventListener() {} };
+    querySelectorAll() { return []; }, addEventListener() {}, closest() { return this; },
+    scrollIntoView() {}, classList: { add() {}, remove() {} } };
 }
 const body = element();
 const storage = new Map();
@@ -31,6 +36,7 @@ vm.runInContext(fs.readFileSync(path.join(__dirname, '../static/work.js'), 'utf8
 // Card composition is unchanged; replace its unrelated artifact/DOM dependencies.
 ctx.workCard = item => element(item.id);
 ctx.tokenStrip = () => '';
+ctx.ownerOf = () => ({ name: 'Rin' });
 (async () => {
   await ctx.renderWork();
   const ready = sections.find(el => el.html.includes('Waiting on you'));
@@ -41,6 +47,21 @@ ctx.tokenStrip = () => '';
   assert.deepEqual(preparing.children.map(el => el.html), ['held', 'unprepared']);
   assert.match(preparing.children[0].children[0].html, /patch has not reached/);
   assert.match(preparing.children[1].children[0].html, /missing a recommended answer/);
+  const happening = sections.find(el => el.html.includes('Happening now'));
+  const waitingStart = sections.find(el => el.html.includes('Waiting to start'));
+  assert.deepEqual(happening.children.map(el => el.html), ['running']);
+  assert.deepEqual(waitingStart.children.map(el => el.html), ['not-started']);
+  assert.equal(ctx.wantsLine(items[3], {}), 'Rin is working on it');
+  assert.equal(ctx.wantsLine(items[4], {}), 'Rin is waiting to start');
+  // A direct work link is a detail view, not a misleading viewport into the
+  // full queue, and a refresh keeps the ID taken from the address.
+  sections.length = 0;
+  body.children.length = 0;
+  ctx.location.hash = '#/work/not-started';
+  await ctx.renderWork();
+  const detail = sections.find(el => el.html.includes('This work'));
+  assert.deepEqual(detail.children.map(el => el.html), ['not-started']);
+  assert.equal(sections.length, 1);
   // A failed projection is not a successfully empty queue.
   sections.length = 0;
   body.children.length = 0;

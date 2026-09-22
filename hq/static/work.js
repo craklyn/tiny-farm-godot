@@ -468,7 +468,10 @@ function wantsLine(it, org) {
     }
     return `${first}'s ${nth} attempt is queued — nothing waiting on you`;
   }
-  if (it.state === "doing") return it.revising ? `${first} is revising it` : `${first} is working on it`;
+  if (it.state === "doing") {
+    if (!it.started) return `${first} is waiting to start`;
+    return it.revising ? `${first} is revising it` : `${first} is working on it`;
+  }
   if (it.state === "waiting_session") return it.revising ? "queued for a build session — revising the result" : "queued for a build session";
   if (it.state === "needs_approval") return "not started — wants your yes";
   if (it.state === "accepted") return "accepted";
@@ -740,7 +743,14 @@ function workFold(title, note, count, buildCards) {
   return sec;
 }
 
-async function renderWork(focusId) {
+function workFocusId() {
+  const hash = location.hash.slice(1).split("?")[0];
+  if (hash.startsWith("/work/")) return decodeURIComponent(hash.slice("/work/".length));
+  if (hash.startsWith("/inbox/")) return decodeURIComponent(hash.slice("/inbox/".length));
+  return "";
+}
+
+async function renderWork(focusId = workFocusId()) {
   const org = await api("/api/org");
   // The decision queue is kept in different files from work items, but for him
   // it is the same job — say yes or no — so one page carries both. Never
@@ -788,6 +798,9 @@ async function renderWork(focusId) {
   }
   const pol = snap.policy;
   const by = st => snap.items.filter(i => i.state === st);
+  const focusedItem = focusId ? snap.items.find(i => i.id === focusId) : null;
+  const doingNow = by("doing").filter(i => !!i.started);
+  const waitingToStart = by("doing").filter(i => !i.started);
   childIndex = {};
   snap.items.forEach(i => { if (i.parent) (childIndex[i.parent] ||= []).push(i); });
   // A finished card whose changes never reached the repository is not his to
@@ -815,7 +828,7 @@ async function renderWork(focusId) {
 
   // His rulings come first: a design question he has not settled is holding up
   // work, and the work below it is already done.
-  if (decisions.length) {
+  if (!focusedItem && decisions.length) {
     const sec = h(`<section class="w-sec">
       <h2>Waiting for your ruling <span class="w-count">${decisions.length}</span></h2>
       <p class="sub">Design questions prepped for you, each in plain language with what you
@@ -834,7 +847,7 @@ async function renderWork(focusId) {
   // Cards he has answered that are waiting on somebody here. Not folded away:
   // he should be able to see what he said is still unanswered, and how long it
   // has been, without opening anything.
-  if (withStudio.length) {
+  if (!focusedItem && withStudio.length) {
     const sec = h(`<section class="w-sec">
       <h2>You answered — waiting on the studio <span class="w-count">${withStudio.length}</span></h2>
       <p class="sub">You replied to these and nobody has come back on it yet. They return to
@@ -846,7 +859,9 @@ async function renderWork(focusId) {
       decisionCard(c, rulings[c.id] || null, entData, () => renderWork(), looks)));
   }
 
-  const secs = [
+  const secs = focusedItem ? [
+    workSection("This work", "The work named by the link you opened.", [focusedItem], org, pol),
+  ] : [
     workSection(attentionUnavailable ? "Queue count unavailable" : "Waiting on you",
       attentionUnavailable
         ? "HQ could not verify which items are waiting. Refresh to try again; this does not mean the queue is empty. Existing results remain available below."
@@ -855,16 +870,17 @@ async function renderWork(focusId) {
     workSection("Preparation and verification",
       "These results are not counted as waiting on you. Read the preparation or verification warning before giving a verdict; you can still open a finished result and comment or decide explicitly.",
       preparing, org, pol, { reasons: attentionReasons }),
-    workSection("Happening now", "Reversible, so nobody waited to be told twice.", by("doing"), org, pol),
+    workSection("Happening now", "This work is now underway.", doingNow, org, pol),
+    workSection("Waiting to start", "The studio accepted this work, but it has not started yet and can still be cancelled.", waitingToStart, org, pol),
     workSection("Queued for a build session", "Changes files in the repository, so a session with write access — or the studio's own scheduled run — makes the change and shows you what it altered.", by("waiting_session"), org, pol),
   ].filter(Boolean);
   secs.forEach(s => body.appendChild(s));
 
-  if (!attentionUnavailable && !waiting.length && !preparing.length && !by("doing").length && !by("waiting_session").length) {
+  if (!focusedItem && !attentionUnavailable && !waiting.length && !preparing.length && !by("doing").length && !by("waiting_session").length) {
     body.querySelector(".w-list").appendChild(h(`<p class="muted">Nothing open. Work lands here on its own as you talk to the team — you never have to file anything.</p>`).firstElementChild);
   }
 
-  if (closed.length) {
+  if (!focusedItem && closed.length) {
     const hist = h(`<section class="w-sec"><h2 id="w-hist-t" class="w-toggle">▸ Closed (${closed.length})</h2>
       <div class="w-list" id="w-hist" hidden></div></section>`).firstElementChild;
     const box = hist.querySelector("#w-hist");
@@ -877,13 +893,13 @@ async function renderWork(focusId) {
   }
 
   let settledFold = null, rawFold = null;
-  if (ruled.length || answered.length) {
+  if (!focusedItem && (ruled.length || answered.length)) {
     settledFold = workFold("Decisions already settled", "", ruled.length + answered.length,
       () => [...ruled.map(c => decisionCard(c, rulings[c.id], entData, () => renderWork(), looks)),
              ...answered.map(queueCard)]);
     body.appendChild(settledFold);
   }
-  if (rawOpen.length) {
+  if (!focusedItem && rawOpen.length) {
     rawFold = workFold("Questions not yet prepped for you",
       "Open questions still in raw internal form. Ask your chief of staff to turn any of these into a decision you can rule on.",
       rawOpen.length, () => rawOpen.map(queueCard));
@@ -1002,7 +1018,7 @@ async function renderWork(focusId) {
       const stamp = JSON.stringify(s.items.map(
         i => [i.id, i.state, (i.conversation || []).length, !!i.awaiting_reply,
               i.attempts || 0, !!i.started]));
-      if (stamp !== workPoll.stamp) { workPoll.stamp = stamp; renderWork(); }
+      if (stamp !== workPoll.stamp) { workPoll.stamp = stamp; renderWork(focusId); }
     }).catch(() => { });
   }, period);
 

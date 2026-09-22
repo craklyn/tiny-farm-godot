@@ -43,6 +43,9 @@
   "04bb224a923c6ee6721c": {
    "verdict": "ok"
   },
+  "04cbd4273be66eef6e7d": {
+   "verdict": "ok"
+  },
   "06366a1cde5d144beb03": {
    "verdict": "ok"
   },
@@ -84,6 +87,12 @@
   },
   "078e32f38485ddc543b2": {
    "verdict": "ok"
+  },
+  "078fd94447cdf119eb5b": {
+   "instead": "The studio accepted this work, but it has not started yet and can still be cancelled.",
+   "quote": "Reversible work the studio has accepted, but no worker session has started yet.",
+   "verdict": "decode",
+   "why": "“Reversible work” and “worker session” describe internal workflow states rather than telling the reader plainly what is happening."
   },
   "07bfae196c2836beca70": {
    "verdict": "ok"
@@ -558,6 +567,9 @@
    "verdict": "ok"
   },
   "274b7b296438dd046593": {
+   "verdict": "ok"
+  },
+  "2768245a1fc8f473f8af": {
    "verdict": "ok"
   },
   "278ad77e46ff4e433ef5": {
@@ -1692,6 +1704,12 @@
   "790f2dec607a0534c201": {
    "verdict": "ok"
   },
+  "794e712d75cb66ec634b": {
+   "instead": "This work is now underway.",
+   "quote": "A worker session has started and is running this work.",
+   "verdict": "decode",
+   "why": "“Worker session” names an internal mechanism instead of plainly saying that the work is underway."
+  },
   "795a76bcf943250003a7": {
    "verdict": "ok"
   },
@@ -2470,6 +2488,9 @@
   "aee6253f6a8183fb2e59": {
    "verdict": "ok"
   },
+  "af423b3aba3d3571b62c": {
+   "verdict": "ok"
+  },
   "af7a481f7628e34fd5b9": {
    "baselined": "2026-09-19",
    "instead": "so they read without needing specialized knowledge",
@@ -3033,7 +3054,10 @@
    "verdict": "ok"
   },
   "d6e917b25b9bea983f16": {
-   "verdict": "ok"
+   "instead": "None of the recorded options — revise and ask me again. Tell the studio what needs to change. The decision stays open.",
+   "quote": "None of these",
+   "verdict": "second-look",
+   "why": "The reader must look elsewhere to identify what “these” refers to."
   },
   "d70523eb2edec824dc86": {
    "verdict": "ok"
