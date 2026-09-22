@@ -2,7 +2,18 @@
  "id": "close-m15-gate",
  "name": "Close the M1.5 exit gate (cot re-evidence)",
  "priority": 1,
- "status": "planned",
+ "status": "waiting",
+ "waiting": {
+  "authorized_by": {
+   "kind": "decision",
+   "id": "Q-90"
+  },
+  "wake_event": {
+   "type": "release_reached",
+   "release_id": "update-1-1"
+  },
+  "resume_status": "planned"
+ },
  "owner": "sofia",
  "contributors": [
   "wei",

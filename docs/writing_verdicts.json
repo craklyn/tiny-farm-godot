@@ -2509,6 +2509,9 @@
   "ac278fa6679557d1a3d4": {
    "verdict": "ok"
   },
+  "ac443f7acbd9403a5ce2": {
+   "verdict": "ok"
+  },
   "ac7f938c60eabe16850c": {
    "verdict": "ok"
   },
@@ -2655,6 +2658,12 @@
   },
   "b8cc67e303e7956c12b2": {
    "verdict": "ok"
+  },
+  "b8f80175b06462de1dce": {
+   "instead": "What must be true for this work to be complete",
+   "quote": "Definition of done",
+   "verdict": "second-look",
+   "why": "This project-management phrase makes the reader work out that it means the conditions for completing the work."
   },
   "b94f745e5ebb62275e6c": {
    "verdict": "ok"
@@ -3514,6 +3523,12 @@
   },
   "f3061be01d391a17309b": {
    "verdict": "ok"
+  },
+  "f329f1d94a2173ee9440": {
+   "instead": "The rule that decides when this work is paused is not working: …. …",
+   "quote": "when this work waits",
+   "verdict": "second-look",
+   "why": "“Waits” makes the reader translate the process into the plain fact that the work is paused."
   },
   "f4de393165d1a7f7a375": {
    "verdict": "ok"

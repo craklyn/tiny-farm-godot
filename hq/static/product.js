@@ -26,18 +26,28 @@ async function loadPlan() {
   return r.json();
 }
 
-async function savePlan() {
+async function savePlan(operation = null) {
   const r = await fetch("/api/product/plan", {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
+      revision: planState.revision,
       capacity_days_per_week: planState.capacity_days_per_week,
       releases: planState.releases.map(x => ({
         id: x.id, release_id: x.release_id, name: x.name,
         codename: x.codename, contains: x.contains, stories: x.stories,
+        add_story_ids: operation && operation.releaseId === x.id ? operation.add || [] : [],
+        delete_story_ids: operation && operation.releaseId === x.id ? operation.delete || [] : [],
       })),
     }),
   });
-  planState = await r.json();
+  const result = await r.json();
+  if (result.error) {
+    alert(result.error);
+    planState = await loadPlan();
+    paintPlan();
+    return;
+  }
+  planState = result;
   paintPlan();
 }
 
@@ -160,8 +170,9 @@ function paintPlan() {
   });
   $view.querySelectorAll(".ps-del").forEach(el => {
     el.addEventListener("click", () => {
-      planState.releases[+el.dataset.r].stories.splice(+el.dataset.s, 1);
-      savePlan();
+      const rel = planState.releases[+el.dataset.r];
+      const removed = rel.stories.splice(+el.dataset.s, 1)[0];
+      savePlan({ releaseId: rel.id, delete: [removed.id] });
     });
   });
   $view.querySelectorAll("[data-add]").forEach(el => {
@@ -169,9 +180,13 @@ function paintPlan() {
       const title = el.value.trim();
       if (!title) return;
       const rel = planState.releases[+el.dataset.r];
-      rel.stories.push({ id: "s" + (rel.stories.length + 1), title, estimate_days: null, done: false });
+      const used = new Set(rel.stories.map(story => story.id));
+      let seq = rel.stories.length + 1;
+      while (used.has("s" + seq)) seq++;
+      const id = "s" + seq;
+      rel.stories.push({ id, title, estimate_days: null, done: false });
       el.value = "";
-      savePlan();
+      savePlan({ releaseId: rel.id, add: [id] });
     };
     el.addEventListener("keydown", ev => { if (ev.key === "Enter") { ev.preventDefault(); add(); } });
     el.addEventListener("blur", add);

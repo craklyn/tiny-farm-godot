@@ -2,7 +2,18 @@
   "id": "replay-phase-b",
   "name": "Replay v2 Phase B (session verification hardening)",
   "priority": 2,
-  "status": "blocked",
+  "status": "waiting",
+  "waiting": {
+    "authorized_by": {
+      "kind": "decision",
+      "id": "Q-90"
+    },
+    "wake_event": {
+      "type": "release_reached",
+      "release_id": "update-1-1"
+    },
+    "resume_status": "in_progress"
+  },
   "owner": "tomas",
   "contributors": [
     "grace",
@@ -36,9 +47,6 @@
   "links": [
     "docs/M2_5_PLAN.md"
   ],
-  "blocked_on": "fresh-playtest",
-  "blocked_since": "2026-09-01",
-  "unblock_action": "When the next public update nears, record one never-before-played tester's first unguided session on the tablet's current build — the same sitting that scores the onboarding gate — and confirm it replays exactly against its autosave.",
   "release": "update-1",
   "release_critical": false,
   "depends_on": [

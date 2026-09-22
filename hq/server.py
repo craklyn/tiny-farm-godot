@@ -28,6 +28,9 @@ Run: python3 hq/server.py   (or via the tiny-farm-hq systemd user service)
 """
 import execution
 
+import copy
+import datetime
+import hashlib
 import json
 import os
 import re
@@ -92,6 +95,98 @@ def _last_touched(path):
     return when
 
 
+WAITING_RESUME_STATUSES = {"planned", "in_progress"}
+WAITING_EVENT_TYPES = {"date_reached", "project_status", "release_reached"}
+
+
+def _release_reached(event, plan):
+    """Whether a release train has reached the named release.
+
+    Reached is deliberately monotonic: once every earlier sketched release is
+    complete, the event stays satisfied while the target is active and after it
+    ships. An empty placeholder is not a release the machine can call reached.
+    """
+    releases = (plan or {}).get("releases")
+    if not isinstance(releases, list):
+        return "invalid", "the release plan is unavailable"
+    release_id = event.get("release_id")
+    target = next((i for i, row in enumerate(releases)
+                   if isinstance(row, dict) and row.get("id") == release_id), None)
+    if not release_id or target is None:
+        return "invalid", f"release '{release_id or ''}' does not exist"
+    for row in releases[:target + 1]:
+        stories = row.get("stories") if isinstance(row, dict) else None
+        if not isinstance(stories, list):
+            return "invalid", f"release '{row.get('id', '')}' has no readable stories"
+        if any(not isinstance(story, dict) for story in stories):
+            return "invalid", f"release '{row.get('id', '')}' has a malformed story"
+        if not stories:
+            return "waiting", f"waiting for release {release_id} to be sketched"
+        if row is not releases[target] and any(not story.get("done") for story in stories):
+            return "waiting", f"waiting for release {release_id} to become current"
+    return "satisfied", f"release {release_id} has been reached"
+
+
+def evaluate_waiting_project(project, projects_by_id, release_plan, ruling_ids, today=None):
+    """Evaluate one declared wait without mutating its stored record."""
+    wait = project.get("waiting")
+    if not isinstance(wait, dict):
+        return {"state": "invalid", "reason": "waiting details are missing"}
+    auth = wait.get("authorized_by")
+    if (not isinstance(auth, dict) or auth.get("kind") != "decision"
+            or not auth.get("id")):
+        return {"state": "invalid", "reason": "the authorizing decision is missing"}
+    if auth["id"] not in ruling_ids:
+        return {"state": "invalid",
+                "reason": f"authorizing decision '{auth['id']}' has no recorded ruling"}
+    resume = wait.get("resume_status")
+    if resume not in WAITING_RESUME_STATUSES:
+        return {"state": "invalid", "reason": f"resume status '{resume}' is not actionable"}
+    event = wait.get("wake_event")
+    if not isinstance(event, dict) or event.get("type") not in WAITING_EVENT_TYPES:
+        kind = event.get("type") if isinstance(event, dict) else None
+        return {"state": "invalid", "reason": f"wake event type '{kind or ''}' is not supported"}
+
+    kind = event["type"]
+    if kind == "release_reached":
+        state, reason = _release_reached(event, release_plan)
+    elif kind == "project_status":
+        project_id, expected = event.get("project_id"), event.get("status")
+        target = projects_by_id.get(project_id)
+        if not project_id or target is None:
+            state, reason = "invalid", f"project '{project_id or ''}' does not exist"
+        elif project_id == project.get("id"):
+            state, reason = "invalid", "a project cannot wait on its own status"
+        elif expected != "done":
+            state, reason = "invalid", "a project wake event must wait for status 'done'"
+        elif target.get("status") == expected:
+            state, reason = "satisfied", f"project {project_id} is {expected.replace('_', ' ')}"
+        else:
+            state, reason = "waiting", f"waiting for project {project_id} to become {expected.replace('_', ' ')}"
+    else:
+        raw = event.get("date")
+        try:
+            due = datetime.date.fromisoformat(str(raw))
+        except (TypeError, ValueError):
+            state, reason = "invalid", f"date '{raw or ''}' is not YYYY-MM-DD"
+        else:
+            now = today or datetime.date.today()
+            if now >= due:
+                state, reason = "satisfied", f"{due.isoformat()} has arrived"
+            else:
+                state, reason = "waiting", f"waiting until {due.isoformat()}"
+    return {"state": state, "reason": reason, "event": copy.deepcopy(event),
+            "authorized_by": copy.deepcopy(auth)}
+
+
+def _waiting_ruling_ids():
+    out = set()
+    for row in load_dir_json("rulings"):
+        if row.get("id") and (row.get("option") or row.get("judgment")):
+            out.add(row["id"])
+    return out
+
+
 def load_projects():
     pdir = os.path.join(DATA, "projects")
     projects = []
@@ -103,6 +198,24 @@ def load_projects():
         p["last_touched"] = _last_touched(full)
         p["next_step"] = next((s["step"] for s in p.get("plan", []) if not s.get("done")), None)
         projects.append(p)
+    by_id = {p.get("id"): p for p in projects if p.get("id")}
+    try:
+        release_plan = load_json(os.path.join(DATA, "release_plan.json"))
+    except Exception:
+        release_plan = None
+    ruling_ids = _waiting_ruling_ids()
+    for p in projects:
+        if p.get("status") != "waiting":
+            continue
+        result = evaluate_waiting_project(p, by_id, release_plan, ruling_ids)
+        p["declared_status"] = "waiting"
+        p["wake_evaluation"] = result
+        if result["state"] == "satisfied":
+            p["status"] = p["waiting"]["resume_status"]
+        elif result["state"] == "invalid":
+            # A broken wait is ordinary blocked work, not a quiet exemption.
+            p["status"] = "blocked"
+            p["unblock_action"] = "Repair this project's waiting rule: " + result["reason"] + "."
     projects.sort(key=lambda p: p.get("priority", 999))
     return projects
 
@@ -651,10 +764,14 @@ def check_consistency():
 
     try:
         ids = {e["id"] for e in load_org()["employees"]}
-        for p in load_projects():
+        projects = load_projects()
+        for p in projects:
             for pid in [p.get("owner")] + list(p.get("contributors", [])):
                 if pid and pid not in ids:
                     note(f"project {p['id']}: unknown person '{pid}'")
+            wake = p.get("wake_evaluation") or {}
+            if p.get("declared_status") == "waiting" and wake.get("state") == "invalid":
+                note(f"project {p['id']}: waiting rule is invalid — {wake.get('reason', 'unknown error')}")
         open_ids = {i["id"] for i in parse_queue()["items"]}
         published = set(load_looks())
         for c in load_dir_json("decisions"):
@@ -666,8 +783,13 @@ def check_consistency():
                          f"but no sheet is published — run tools/compose_look_sheets.py")
         # Goal routes: a red goal whose way back points at nothing is worse than
         # a red goal with no route at all, because it looks answered.
-        pools = {"project": {p["id"] for p in load_projects()},
-                 "work": {i["id"] for i in (work.items() if hasattr(work, "items") else [])},
+        try:
+            work_ids = {i["id"] for i in work.items(strict=True)}
+        except Exception as exc:
+            work_ids = None
+            note(f"work references unavailable: {type(exc).__name__}: {str(exc)[:120]}")
+        pools = {"project": {p["id"] for p in projects},
+                 "work": work_ids,
                  "decision": {c["id"] for c in load_dir_json("decisions")}}
         pillars = load_json(os.path.join(DATA, "pillars.json"))["pillars"]
         for pl in pillars:
@@ -684,7 +806,10 @@ def check_consistency():
                                    ("blocker surface", (p2g.get("ceo_blocker") or {}).get("surface"))):
                     if not ref or ref.get("kind") in (None, "none"):
                         continue
-                    if ref.get("id") not in pools.get(ref["kind"], set()):
+                    pool = pools.get(ref["kind"], set())
+                    if pool is None:
+                        continue
+                    if ref.get("id") not in pool:
                         note(f"goal {pl['id']}/{g.get('id')}: {label} points at "
                              f"{ref['kind']} '{ref.get('id')}', which does not exist")
     except Exception as e:
@@ -3934,7 +4059,7 @@ def _open_since_index():
             if not name.endswith(".json"):
                 continue
             doc = load_json(os.path.join(DATA, "projects", name))
-            if doc.get("blocked_since"):
+            if doc.get("status") == "blocked" and doc.get("blocked_since"):
                 idx[("project", doc.get("id"))] = doc["blocked_since"]
     except Exception:
         pass
@@ -4581,6 +4706,11 @@ def compute_signals():
         return data
 
 
+def _blocked_projects(projects):
+    """Only genuine blockage feeds unblock actions and blocked-age signals."""
+    return [project for project in projects if project.get("status") == "blocked"]
+
+
 def _compute_signals_now():
     import time as _t
     pillars = load_json(os.path.join(DATA, "pillars.json"))["pillars"]
@@ -4594,7 +4724,7 @@ def _compute_signals_now():
     pending_rulings = [r for r in _settled_rulings(queue)
                        if r.get("status") == "pending_integration"]
     projects = load_projects()
-    blocked = [p for p in projects if p["status"] == "blocked"]
+    blocked = _blocked_projects(projects)
     _pt_root = os.path.join(REPO, "playtests")
     sessions = sorted(d for d in os.listdir(_pt_root)
                       if os.path.isdir(os.path.join(_pt_root, d))) \
@@ -4992,7 +5122,16 @@ def _need_href(surface):
     return None
 
 
-def product_plan():
+_PRODUCT_PLAN_LOCK = threading.Lock()
+_PLAN_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
+
+
+def _plan_revision(doc):
+    raw = json.dumps(doc, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def product_plan(plan=None):
     """What the Product & Program page shows. Every date here is COMPUTED from
     the work still outstanding beneath it — milestone, stories, an estimate in
     days of work on each — because the CEO ruled (2026-09-04) that a date is an
@@ -5005,7 +5144,7 @@ def product_plan():
     tags, and the next release's player-facing feature list from
     hq/data/releases.json."""
     import datetime
-    plan = load_json(os.path.join(DATA, "release_plan.json"))
+    plan = plan if plan is not None else load_json(os.path.join(DATA, "release_plan.json"))
     today = datetime.date.today()
     cap = float(plan.get("capacity_days_per_week") or 0) or 5.0
 
@@ -5062,44 +5201,154 @@ def product_plan():
                                for f in train.get("features", [])]
         out.append(row)
     return {"last_shipped": last, "releases": out, "today": today.isoformat(),
+            "revision": _plan_revision(plan),
             "capacity_days_per_week": cap}
 
 
-def save_product_plan(payload):
-    """The CEO's own edits to the plan: an estimate on a story, a story ticked
-    off, how much work fits in a week. Written whole, because the page holds
-    the whole plan and one person edits it."""
+def _plan_id(value, label):
+    if not isinstance(value, str) or not _PLAN_ID_RE.fullmatch(value):
+        raise ValueError(f"{label} must have a valid id")
+    return value
+
+
+def _story_owned_fields(story):
+    title = str(story.get("title", "")).strip()
+    if not title:
+        raise ValueError("a story title cannot be empty; delete it explicitly")
+    raw = story.get("estimate_days")
+    try:
+        estimate = None if raw in (None, "") else max(0.0, round(float(raw), 2))
+    except (TypeError, ValueError):
+        estimate = None
+    return {"title": title, "estimate_days": estimate, "done": bool(story.get("done"))}
+
+
+def _merge_product_plan(kept, payload):
+    """Merge the plan editor's fields without treating omission as deletion."""
     if not isinstance(payload, dict) or not isinstance(payload.get("releases"), list):
-        return {"error": "a plan needs a list of releases"}
-    kept = load_json(os.path.join(DATA, "release_plan.json"))
-    doc = {"note": kept.get("note", ""),
-           "capacity_days_per_week": float(payload.get("capacity_days_per_week") or 5) or 5.0,
-           "releases": []}
-    for r in payload["releases"]:
-        stories = []
-        for st in r.get("stories", []) or []:
-            title = str(st.get("title", "")).strip()
-            if not title:
-                continue
-            raw = st.get("estimate_days")
-            try:
-                estimate = None if raw in (None, "") else max(0.0, round(float(raw), 2))
-            except (TypeError, ValueError):
-                estimate = None
-            stories.append({"id": str(st.get("id") or f"s{len(stories) + 1}"),
-                            "title": title, "estimate_days": estimate,
-                            "done": bool(st.get("done"))})
-        doc["releases"].append({
-            "id": str(r.get("id", "")), "release_id": r.get("release_id"),
-            "name": str(r.get("name", "")), "codename": r.get("codename") or None,
-            "contains": str(r.get("contains", "")), "stories": stories})
+        raise ValueError("a plan needs a list of releases")
+    if payload.get("revision") != _plan_revision(kept):
+        raise RuntimeError("stale_revision")
+    try:
+        capacity = float(payload.get("capacity_days_per_week"))
+    except (TypeError, ValueError):
+        raise ValueError("capacity must be a positive number")
+    if capacity <= 0:
+        raise ValueError("capacity must be a positive number")
+
+    doc = copy.deepcopy(kept)
+    stored_releases = doc.get("releases")
+    if not isinstance(stored_releases, list):
+        raise ValueError("the stored plan has no readable releases")
+    by_release = {}
+    for release in stored_releases:
+        if not isinstance(release, dict):
+            raise ValueError("the stored plan contains a malformed release")
+        rid = _plan_id(release.get("id"), "each stored release")
+        if rid in by_release:
+            raise ValueError(f"the stored plan repeats release id '{rid}'")
+        by_release[rid] = release
+
+    seen_releases = set()
+    for incoming in payload["releases"]:
+        if not isinstance(incoming, dict):
+            raise ValueError("each release edit must be an object")
+        rid = _plan_id(incoming.get("id"), "each release edit")
+        if rid in seen_releases:
+            raise ValueError(f"release id '{rid}' is duplicated")
+        seen_releases.add(rid)
+        release = by_release.get(rid)
+        if release is None:
+            raise ValueError(f"release id '{rid}' does not exist")
+        for field in ("release_id", "name", "codename", "contains"):
+            if field in incoming:
+                if field in ("name", "contains"):
+                    release[field] = str(incoming[field] or "")
+                else:
+                    release[field] = incoming[field] or None
+
+        incoming_stories = incoming.get("stories", [])
+        additions = incoming.get("add_story_ids", [])
+        deletions = incoming.get("delete_story_ids", [])
+        if not all(isinstance(rows, list) for rows in (incoming_stories, additions, deletions)):
+            raise ValueError("story edits, additions and deletions must be lists")
+        stories = release.get("stories")
+        if not isinstance(stories, list):
+            raise ValueError(f"release '{rid}' has no readable stories")
+        stored_by_id = {}
+        for story in stories:
+            if not isinstance(story, dict):
+                raise ValueError(f"release '{rid}' contains a malformed story")
+            sid = _plan_id(story.get("id"), f"each stored story in release '{rid}'")
+            if sid in stored_by_id:
+                raise ValueError(f"release '{rid}' repeats story id '{sid}'")
+            stored_by_id[sid] = story
+
+        add_ids = [_plan_id(sid, "each added story") for sid in additions]
+        delete_ids = [_plan_id(sid, "each deleted story") for sid in deletions]
+        if len(add_ids) != len(set(add_ids)) or len(delete_ids) != len(set(delete_ids)):
+            raise ValueError(f"release '{rid}' repeats an add or delete id")
+        overlap = set(add_ids) & set(delete_ids)
+        if overlap:
+            raise ValueError(f"story '{sorted(overlap)[0]}' cannot be added and deleted together")
+        for sid in add_ids:
+            if sid in stored_by_id:
+                raise ValueError(f"story '{sid}' already exists in release '{rid}'")
+        for sid in delete_ids:
+            if sid not in stored_by_id:
+                raise ValueError(f"story '{sid}' does not exist in release '{rid}'")
+
+        edits = {}
+        for incoming_story in incoming_stories:
+            if not isinstance(incoming_story, dict):
+                raise ValueError("each story edit must be an object")
+            sid = _plan_id(incoming_story.get("id"), "each story edit")
+            if sid in edits:
+                raise ValueError(f"story id '{sid}' is duplicated in release '{rid}'")
+            if sid in delete_ids:
+                raise ValueError(f"story '{sid}' is both edited and deleted")
+            if sid not in stored_by_id and sid not in add_ids:
+                raise ValueError(f"story '{sid}' is new but was not explicitly added")
+            edits[sid] = incoming_story
+        missing_adds = [sid for sid in add_ids if sid not in edits]
+        if missing_adds:
+            raise ValueError(f"added story '{missing_adds[0]}' has no story record")
+
+        for sid, incoming_story in edits.items():
+            if sid in stored_by_id:
+                stored_by_id[sid].update(_story_owned_fields(incoming_story))
+            else:
+                story = {"id": sid, **_story_owned_fields(incoming_story)}
+                stories.append(story)
+                stored_by_id[sid] = story
+        if delete_ids:
+            release["stories"] = [story for story in stories if story.get("id") not in delete_ids]
+
+    doc["capacity_days_per_week"] = capacity
+    return doc
+
+
+def save_product_plan(payload):
+    """Revision-checked, lossless merge of the fields the plan page owns."""
     path = os.path.join(DATA, "release_plan.json")
-    tmp = path + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(doc, f, ensure_ascii=False, indent=2)
-        f.write("\n")
-    os.replace(tmp, path)
-    return product_plan()
+    with _PRODUCT_PLAN_LOCK:
+        kept = load_json(path)
+        try:
+            doc = _merge_product_plan(kept, payload)
+        except RuntimeError as exc:
+            if str(exc) == "stale_revision":
+                return {"error": "The release plan changed after this page loaded. Reloaded the current plan.",
+                        "code": "stale_revision", "revision": _plan_revision(kept)}
+            raise
+        except ValueError as exc:
+            return {"error": str(exc), "code": "invalid_plan",
+                    "revision": _plan_revision(kept)}
+        tmp = path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(doc, f, ensure_ascii=False, indent=2)
+            f.write("\n")
+        os.replace(tmp, path)
+    return product_plan(doc)
 
 
 GOAL_AREA_RE = re.compile(r"^[a-z][a-z0-9_-]{0,30}$")
@@ -6100,10 +6349,12 @@ def sanitize_runs():
 
 
 def main():
+    # Consistency checks resolve goal routes through the work store. Bind that
+    # store first or every valid work reference looks absent at startup.
+    work.bind(sys.modules[__name__])
     check_consistency()
     sanitize_runs()
     sanitize_outbox()
-    work.bind(sys.modules[__name__])
     studio.bind(sys.modules[__name__])
     anim.bind(sys.modules[__name__])
     threading.Thread(target=_drain_outbox, daemon=True).start()

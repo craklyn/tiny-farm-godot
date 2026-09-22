@@ -861,6 +861,20 @@ function blockedOnChip(p, byId) {
   return "";
 }
 
+function waitingLine(p) {
+  const evaluation = p.wake_evaluation;
+  if (!evaluation) return "";
+  const ruling = evaluation.authorized_by && evaluation.authorized_by.id;
+  const rulingLink = ruling ? ` Set by <a class="plain" href="#/inbox/${esc(ruling)}">${esc(ruling)}</a>.` : "";
+  if (evaluation.state === "waiting") {
+    return `<span class="waits">Waiting on purpose: ${esc(evaluation.reason)}.</span>${rulingLink}`;
+  }
+  if (evaluation.state === "satisfied") {
+    return `<span class="waits">The work is ready to resume: ${esc(evaluation.reason)}.</span>${rulingLink}`;
+  }
+  return `<span class="waits">The rule that decides when this work waits is not working: ${esc(evaluation.reason)}.</span>${rulingLink}`;
+}
+
 function projRow(p, org, byId) {
   const owner = org ? org.employees.find(e => e.id === p.owner) : null;
   const days = p.status === "blocked" ? daysSince(p.blocked_since) : null;
@@ -871,6 +885,7 @@ function projRow(p, org, byId) {
     <div style="min-width:0">
       <div class="nm">${esc(p.name)}</div>
       <div class="small muted">${esc(p.summary.split(". ")[0])}.${waits.length ? ` <span class="waits">waits on ${waits.join(", ")}</span>` : ""}${blockedOnChip(p, byId)}</div>
+      ${waitingLine(p) ? `<div class="small">${waitingLine(p)}</div>` : ""}
       ${p.next_step ? `<div class="small nxt"><span class="nxt-label">next</span> ${esc(p.next_step)}</div>` : ""}
     </div>
     <div class="ow">
@@ -976,6 +991,7 @@ async function renderProject(id) {
     <div class="card"><ul class="req">${p.requirements.map(r => `<li>${esc(r)}</li>`).join("")}</ul></div>
     <h2>Where it stands</h2>
     <div class="card">${esc(p.current_status)}</div>
+    ${p.wake_evaluation ? `<h2>What wakes it</h2><div class="card">${waitingLine(p)}</div>` : ""}
     <h2>The plan</h2>
     <div class="card">${plan}${p.plan_note ? `<p class="small muted" style="margin-top:10px">📝 ${esc(p.plan_note)}</p>` : ""}</div>
     ${p.links && p.links.length ? `<h2>Reference</h2><p>${p.links.map(l => `<code class="ref">${esc(l)}</code>`).join("")}</p>` : ""}

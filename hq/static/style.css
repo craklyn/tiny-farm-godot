@@ -173,6 +173,7 @@ button.exec-toggle { width: 27px; height: 27px; padding: 0; border-radius: 50%; 
 .chip.in_progress { background: #2d4a2d; color: var(--green); }
 .chip.blocked { background: #4a2d28; color: var(--red); }
 .chip.planned { background: #2d3c4a; color: var(--blue); }
+.chip.waiting { background: #3b3548; color: #c9b8e8; }
 .chip.done { background: #3a3a2d; color: var(--accent); }
 .chip.lvl { background: var(--panel2); color: var(--accent); }
 .chip.team { background: var(--panel2); color: var(--muted); font-weight: 500; }
