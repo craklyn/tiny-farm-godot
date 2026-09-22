@@ -53,6 +53,7 @@ def main():
     queue = {"curated": decisions, "decided": ["q-done"], "rulings": {
         "q-returned": {"judgment": "More detail", "ruled_at": "2026-09-21T12:00:00Z"},
         "q-studio": {"judgment": "More detail", "ruled_at": "2026-09-21T12:00:00Z"},
+        "q-done": {"option": "b", "status": "pending_integration"},
     }}
     fixtures = [
         card("w-ready", "for_review"),
@@ -118,6 +119,8 @@ def main():
               "a finished result can ask for an informed verdict without a fabricated recommendation")
         check(states["q-studio"] == "awaiting_owner_reply" and states["w-reply"] == "awaiting_owner_reply",
               "send-backs stay with the studio until an owner returns them")
+        check(states["q-done"] == "pending_integration",
+              "a chosen ruling remains visibly with the studio until integration")
         check(states["w-held"] == "verification_pending", "held patches await verification")
         check(states["w-preparing"] == states["w-doing"] == states["w-build-running"] == "preparing",
               "only work with a recorded start is running")
@@ -148,6 +151,10 @@ def main():
         check("function reviewTitle(item)" in app_js and "reviewTitle(it)" in work_js
               and "reviewTitle(card)" in review_queue_js,
               "both review views use one deliverable-first title rule with a legacy fallback")
+        check('status === "pending_integration"' in review_queue_js
+              and "...studioDecisions.map(card =>" in review_queue_js
+              and "belong to the studio now, not to you" in review_queue_js,
+              "the current Work page keeps pending rulings visible as studio-owned")
 
         # Execute the production renderers with representative cards.  These
         # checks deliberately assert the order a person reads, rather than

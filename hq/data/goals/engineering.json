@@ -197,7 +197,7 @@
         "direction": "must_be_true"
       },
       "path_to_green": {
-        "narrative": "The build half is done. The store page half has no sanctioned route: itch.io publishes no API for page text — butler, the upload tool itch.io gives you, has 47 commands and every one of them moves build files, and the serverside API can only read — so the dashboard's editor is the only way in. That makes this a call for you: keep the paste as a permanent step in the runbook, or have the workflow drive itch.io's editor in a headless browser. [The card](#/inbox/Q-111) lays out both.",
+        "narrative": "The build half is done. You chose to have the release workflow drive itch.io's editor in a browser running without opening a window. That ruling is waiting for Engineering to integrate and implement it; nothing further is needed from you. [The card](#/inbox/Q-111) keeps the ruling and its reasoning.",
         "route": {
           "kind": "decision",
           "id": "Q-111"

@@ -66,6 +66,21 @@ vm.runInContext(fs.readFileSync(path.join(__dirname, '../static/queue.js'), 'utf
   assert.match(pane, /recommended/);
   assert.match(pane, /None of these — revise and ask me again\./);
   assert.ok(pane.indexOf('None of these — revise and ask me again.') < pane.indexOf('q-decision-feedback'));
+
+  // Rendering a chosen ruling that still awaits integration must not throw, and
+  // it stays findable in the studio-owned fold rather than disappearing.
+  rendered = '';
+  ctx.$view = { replaceChildren(node) { rendered = node.firstElementChild.html; } };
+  ctx.h = html => ({ firstElementChild: { html, querySelector() { return null; }, querySelectorAll() { return []; } } });
+  ctx.qRender({ org: { employees: [] }, hisWork: [], hisDecisions: [], pendingCompletion: [],
+    waitingToStart: [], studioWork: [], wentIn: [], closedWork: [], awaitingStudio: [],
+    studioDecisions: [{ id: 'Q-pending', title: 'Publish the store page' }],
+    rulings: { 'Q-pending': { option: 'b', status: 'pending_integration' } }, seats: {},
+    waiting: { available: true, ready: [], items: [{ source_id: 'Q-pending', source: 'decision',
+      status: 'pending_integration', reason: 'Your ruling is waiting for the studio to integrate it.' }] } });
+  assert.match(rendered, /Back with the studio/);
+  assert.match(rendered, /Publish the store page/);
+  assert.match(rendered, /waiting for the studio to integrate/);
   const noRecommendation = ctx.qDecisionItem({ id: 'Q-empty', title: 'Open question', options: [
     { key: 'a', label: 'First option', detail: '' },
   ] }, { employees: [] }, {});

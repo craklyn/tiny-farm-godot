@@ -12,6 +12,13 @@ const attention = { available: true, ready: [{ source_id: 'ready', source: 'work
   { source_id: 'held', reason: 'The patch has not reached the repository.' },
   { source_id: 'unprepared', reason: 'The result is missing a recommended answer.' },
 ] };
+const queue = { curated: [
+  { id: 'q-pending', title: 'Pending ruling' },
+  { id: 'q-integrated', title: 'Integrated ruling' },
+], decided: ['q-pending', 'q-integrated'], rulings: {
+  'q-pending': { option: 'b', status: 'pending_integration' },
+  'q-integrated': { option: 'a', status: 'integrated' },
+}, items: [] };
 const sections = [];
 function element(html = '') {
   return { html, children: [], appendChild(child) { this.children.push(child); },
@@ -23,7 +30,7 @@ const body = element();
 const storage = new Map();
 const ctx = vm.createContext({
   routes: {}, location: { hash: '#/' }, route() {}, cache: {},
-  api: async url => url === '/api/waiting-on-you' ? attention : {},
+  api: async url => url === '/api/waiting-on-you' ? attention : url === '/api/queue' ? queue : {},
   fetch: async () => ({ json: async () => ({ items, policy: { rule: '' } }) }), noteVersion() {},
   esc: String, md: String, mdi: String, updateQueueBadge() {},
   setInterval() { return 1; }, clearInterval() {}, setTimeout() {}, window: { addEventListener() {} },
@@ -35,6 +42,7 @@ const ctx = vm.createContext({
 vm.runInContext(fs.readFileSync(path.join(__dirname, '../static/work.js'), 'utf8'), ctx);
 // Card composition is unchanged; replace its unrelated artifact/DOM dependencies.
 ctx.workCard = item => element(item.id);
+ctx.decisionCard = item => element(item.id);
 ctx.tokenStrip = () => '';
 ctx.ownerOf = () => ({ name: 'Rin' });
 (async () => {
@@ -53,6 +61,9 @@ ctx.ownerOf = () => ({ name: 'Rin' });
   assert.deepEqual(waitingStart.children.map(el => el.html), ['not-started']);
   assert.equal(ctx.wantsLine(items[3], {}), 'Rin is working on it');
   assert.equal(ctx.wantsLine(items[4], {}), 'Rin is waiting to start');
+  const studio = sections.find(el => el.html.includes('You answered — waiting on the studio'));
+  assert.deepEqual(studio.children.map(el => el.html), ['q-pending']);
+  assert.match(studio.html, /studio's move now/);
   // A direct work link is a detail view, not a misleading viewport into the
   // full queue, and a refresh keeps the ID taken from the address.
   sections.length = 0;

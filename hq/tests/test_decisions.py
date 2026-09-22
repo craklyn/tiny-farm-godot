@@ -83,6 +83,26 @@ def main():
               "a card he answered without picking is still his to settle")
         check("Q-900" not in q["decided"], "and a card he never touched is not decided either")
 
+        print("a settled decision hands its linked goal to the studio")
+        target = server._route_target({"kind": "decision", "id": "Q-902"})
+        check(target["state"] == "pending integration",
+              "a decision route reports the recorded integration hand-off")
+        old_eval_measure, old_state_from = server.eval_measure, server._state_from
+        old_goal_response, old_escalation = server._goal_response, server._escalation
+        try:
+            server.eval_measure = lambda measure: {"value": False}
+            server._state_from = lambda reading, compare: "red"
+            server._goal_response = lambda goal, state, reading: (state, {"link": None})
+            server._escalation = lambda goal, state, reading: {"reason": "age"}
+            goal = server.eval_goal({"id": "linked-goal", "statement": "Ship it",
+                                     "owner": "rin", "measure": {}, "compare": {},
+                                     "path_to_green": {"route": {"kind": "decision", "id": "Q-902"}}})
+            check(not goal["needs_you"] and goal["ours"] and goal["escalation"] is None,
+                  "a red goal cannot ask Daniel again while its chosen ruling awaits integration")
+        finally:
+            server.eval_measure, server._state_from = old_eval_measure, old_state_from
+            server._goal_response, server._escalation = old_goal_response, old_escalation
+
         print("nothing he has said is overwritten")
         server.record_ruling({"id": "Q-901", "intent": "choose", "submission_id": submission(3), "option": "a", "option_label": "A feather",
                               "judgment": "Going with the feather after all."})

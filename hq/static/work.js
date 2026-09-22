@@ -787,8 +787,11 @@ async function renderWork(focusId = workFocusId()) {
     return !since;
   };
   const decisions = open.filter(c => readyIds.has(c.id));
-  const withStudio = open.filter(answeredBack);
-  const ruled = curated.filter(c => decided.has(c.id));
+  const pendingIntegration = curated.filter(c => decided.has(c.id)
+    && (rulings[c.id] || {}).status === "pending_integration");
+  const withStudio = [...open.filter(answeredBack), ...pendingIntegration];
+  const ruled = curated.filter(c => decided.has(c.id)
+    && (rulings[c.id] || {}).status !== "pending_integration");
   const rawOpen = (queue.items || []).filter(q => !q.answered && !curatedIds.has(q.id) && !decided.has(q.id));
   const answered = (queue.items || []).filter(q => q.answered);
   // A link that names one card lands with that card open — arriving at the
@@ -850,8 +853,8 @@ async function renderWork(focusId = workFocusId()) {
   if (!focusedItem && withStudio.length) {
     const sec = h(`<section class="w-sec">
       <h2>You answered — waiting on the studio <span class="w-count">${withStudio.length}</span></h2>
-      <p class="sub">You replied to these and nobody has come back on it yet. They return to
-      the list above with an answer attached.</p>
+      <p class="sub">These are the studio's move now: either your ruling is waiting to be
+      integrated, or your request for a revision is waiting for an answer.</p>
       <div class="w-list" id="q-back"></div></section>`).firstElementChild;
     body.appendChild(sec);
     const qb = sec.querySelector("#q-back");

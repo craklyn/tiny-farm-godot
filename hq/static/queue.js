@@ -242,7 +242,9 @@ async function qLoadData() {
     return !since;
   };
   const hisDecisions = open.filter(c => ready.has(c.id));
-  const studioDecisions = open.filter(answeredBack);
+  const pendingIntegration = curated.filter(c => decided.has(c.id)
+    && (rulings[c.id] || {}).status === "pending_integration");
+  const studioDecisions = [...open.filter(answeredBack), ...pendingIntegration];
 
   const work = snap.items || [];
   const statuses = new Map((waiting.items || []).filter(row => row.source === "work")
@@ -384,6 +386,8 @@ function qPaneHtml(row, org) {
 
 function qRender(state) {
   const { org, hisWork, hisDecisions, pendingCompletion, waitingToStart, studioWork, wentIn, closedWork, studioDecisions, awaitingStudio } = state;
+  const decisionReasons = new Map((state.waiting.items || [])
+    .filter(row => row.source === "decision").map(row => [row.source_id, row.reason]));
 
   const rows = [
     ...hisWork.map(x => qWorkItem(x.card, org, x.reason)),
@@ -453,7 +457,11 @@ function qRender(state) {
     foldRow(card, reason)).join("");
   const backHtml = [
     ...studioWork.map(({ card, reason }) => foldRow(card, reason)),
+    ...studioDecisions.map(card => `<li><span class="q-fold-t">${esc(card.title)}</span>
+      <small class="q-fold-r"> · ${esc(decisionReasons.get(card.id) || "The studio owes the next move.")}</small>
+      <a class="plain" href="#/inbox/${encodeURIComponent(card.id)}">Open decision</a></li>`),
   ].join("");
+  const backCount = studioWork.length + studioDecisions.length;
 
   const closedHtml = closedWork.map(({ card, reason }) => foldRow(card, reason)).join("");
   const selectedRow = rows.find(r => r.id === qSelected);
@@ -476,8 +484,8 @@ function qRender(state) {
         <h2 class="q-fold-h">Waiting to start <span class="chip q-chip q-count">${waitingToStart.length}</span></h2>
         <details class="q-fold"><summary>${waitingToStart.length} accepted piece${waitingToStart.length === 1 ? "" : "s"} of work ${waitingToStart.length === 1 ? "has" : "have"} not started yet</summary>
           <ul class="q-fold-list">${waitingStartHtml || "<li>Nothing yet.</li>"}</ul></details>
-        <h2 class="q-fold-h">Back with the studio <span class="chip q-chip q-count">${studioWork.length}</span></h2>
-        <details class="q-fold"><summary>${studioWork.length} card${studioWork.length === 1 ? "" : "s"} go back to their owner instead of to you</summary>
+        <h2 class="q-fold-h">Back with the studio <span class="chip q-chip q-count">${backCount}</span></h2>
+        <details class="q-fold"><summary>${backCount} card${backCount === 1 ? "" : "s"} belong to the studio now, not to you</summary>
           <ul class="q-fold-list">${backHtml || "<li>Nothing yet.</li>"}</ul></details>
       <details class="q-fold"><summary>Closed work (${closedWork.length})</summary>
         <ul class="q-fold-list">${closedHtml || "<li>Nothing yet.</li>"}</ul></details>

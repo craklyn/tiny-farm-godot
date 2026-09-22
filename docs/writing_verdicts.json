@@ -1549,6 +1549,12 @@
   "6f0972bb91f74b45586f": {
    "verdict": "ok"
   },
+  "6f4914100487a7131309": {
+   "instead": "in a browser running without opening a window",
+   "quote": "in a headless browser",
+   "verdict": "decode",
+   "why": "This engineering term does not tell a cold reader that the browser runs without showing a window."
+  },
   "6f6c9076eecbcb2b65dd": {
    "instead": "… piece open on this page, and Carmen owns it rather than you.",
    "quote": "… piece… open on this page, and … mine to handle rather than yours.",
@@ -2024,6 +2030,9 @@
   "8fe11165cd394f9d460d": {
    "verdict": "ok"
   },
+  "903b6e445c46f317e64d": {
+   "verdict": "ok"
+  },
   "9045e59dbb1112724cc2": {
    "verdict": "ok"
   },
@@ -2460,6 +2469,9 @@
    "verdict": "ok"
   },
   "add28adbc749eaf93851": {
+   "verdict": "ok"
+  },
+  "adde835171338ee22394": {
    "verdict": "ok"
   },
   "ae32e597388e59713049": {

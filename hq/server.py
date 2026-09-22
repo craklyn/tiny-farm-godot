@@ -476,9 +476,13 @@ def _waiting_on_you_complete():
             str(reply.get("at") or "") > str(ruling["ruled_at"])
             for reply in c.get("replies", [])))
         ready = not settled and (not ruling.get("judgment") or returned)
-        status = "ready" if ready else ("completed" if settled else "awaiting_owner_reply")
+        pending_integration = bool(settled and ruling.get("status") == "pending_integration")
+        status = ("ready" if ready else "pending_integration" if pending_integration
+                  else "completed" if settled else "awaiting_owner_reply")
         reason = ("A prepared decision is ready for your answer."
                   if ready else
+                  "Your ruling is waiting for the studio to integrate it."
+                  if pending_integration else
                   "Your answer was recorded." if settled else
                   "The studio owes a reply to your comment.")
         projected.append({"source_id": cid, "source": "decision", "ready": ready,
@@ -4032,8 +4036,13 @@ def _route_target(route):
                           "href": f"#/project/{rid}"})
         elif kind == "decision":
             doc = load_json(os.path.join(DATA, "decisions", rid + ".json"))
+            ruling_path = os.path.join(DATA, "rulings", rid + ".json")
+            ruling = load_json(ruling_path) if os.path.isfile(ruling_path) else {}
+            state = ("pending integration"
+                     if ruling.get("option") and ruling.get("status") == "pending_integration"
+                     else "waiting on you")
             return named({"kind": kind, "id": rid, "title": doc.get("title", rid),
-                          "owner": doc.get("owner", ""), "state": "waiting on you",
+                          "owner": doc.get("owner", ""), "state": state,
                           "href": f"#/inbox/{rid}"})
     except (OSError, ValueError, KeyError):
         pass
@@ -4138,10 +4147,19 @@ def eval_goal(goal):
             out["owner_person_name"] = who
             out["owner_human"] = out["owner_seat_label"] + (f" ({who})" if who else "")
         out["escalation"] = _escalation(goal, state, reading)
+        # A goal may still be red while the studio implements the ruling that
+        # clears it. Once Daniel has chosen an option, the failed measure is no
+        # longer evidence that another decision is his; the ruling file is the
+        # authoritative hand-off until integration changes the measured source.
+        route = (goal.get("path_to_green") or {}).get("route") or {}
+        pending_decision = (route.get("kind") == "decision"
+                            and (out.get("route_target") or {}).get("state") == "pending integration")
+        if pending_decision:
+            out["escalation"] = None
         # Red IS "his move" now, so it always reaches him; amber is the one
         # somebody is holding, which is what "ours to fix" has always meant.
-        out["needs_you"] = state == "red" or bool(out["escalation"])
-        out["ours"] = state == "amber"
+        out["needs_you"] = (state == "red" or bool(out["escalation"])) and not pending_decision
+        out["ours"] = state == "amber" or pending_decision
     except Exception as e:
         out["state"] = "broken"
         out["reading"] = _reading(None, error=str(e)[:160])
