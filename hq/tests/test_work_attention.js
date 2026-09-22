@@ -7,6 +7,11 @@ const items = ['ready', 'held', 'unprepared'].map(id => ({ id, state: 'for_revie
 items.push(
   { id: 'running', state: 'doing', owner: 'rin', started: '2026-09-21T21:00' },
   { id: 'not-started', state: 'doing', owner: 'rin', started: '' },
+  { id: 'repair-held', title: 'Decision actions', level: 'task', tier: 1,
+    state: 'waiting_session', owner: 'rin', started: '', attempts: 1,
+    repair_hold: 'Do not schedule another attempt until the reviewed patch is reconciled.',
+    result: 'The first implementation remains available for review.',
+    conversation: [{ role: 'rin', text: 'The original result is still here.' }] },
 );
 const attention = { available: true, ready: [{ source_id: 'ready', source: 'work' }], items: [
   { source_id: 'held', reason: 'The patch has not reached the repository.' },
@@ -41,6 +46,7 @@ const ctx = vm.createContext({
 });
 vm.runInContext(fs.readFileSync(path.join(__dirname, '../static/work.js'), 'utf8'), ctx);
 // Card composition is unchanged; replace its unrelated artifact/DOM dependencies.
+const actualWorkCard = ctx.workCard;
 ctx.workCard = item => element(item.id);
 ctx.decisionCard = item => element(item.id);
 ctx.tokenStrip = () => '';
@@ -59,8 +65,21 @@ ctx.ownerOf = () => ({ name: 'Rin' });
   const waitingStart = sections.find(el => el.html.includes('Waiting to start'));
   assert.deepEqual(happening.children.map(el => el.html), ['running']);
   assert.deepEqual(waitingStart.children.map(el => el.html), ['not-started']);
+  const repairHeld = sections.find(el => el.html.includes('Held from automatic work'));
+  assert.deepEqual(repairHeld.children.map(el => el.html), ['repair-held']);
+  assert.match(repairHeld.html, /Nothing here starts automatically/);
   assert.equal(ctx.wantsLine(items[3], {}), 'Rin is working on it');
   assert.equal(ctx.wantsLine(items[4], {}), 'Rin is waiting to start');
+  assert.match(ctx.wantsLine(items[5], {}), /^held from automatic work — Do not schedule/);
+  assert.equal(ctx.resuming(items[5]), false, 'a repair hold outranks retry-shaped attempt data');
+  assert.match(ctx.againLine(items[5], {}), /Nothing starts automatically/);
+  assert.doesNotMatch(ctx.againLine(items[5], {}), /attempt is queued|scheduled run|starts in a moment/);
+  const heldCard = actualWorkCard(items[5], { employees: [] }, { tiers: { '1': { name: 'Do it, show the diff' } } }).html;
+  assert.match(heldCard, /held from automatic work/i);
+  assert.match(heldCard, /first implementation remains available for review/i);
+  assert.match(heldCard, /original result is still here/i);
+  assert.match(heldCard, /Nothing starts automatically/);
+  assert.doesNotMatch(heldCard, /data-act=|data-send=|class="w-reply|scheduled run|attempt is queued|starts in a moment/);
   const studio = sections.find(el => el.html.includes('You answered — waiting on the studio'));
   assert.deepEqual(studio.children.map(el => el.html), ['q-pending']);
   assert.match(studio.html, /studio's move now/);

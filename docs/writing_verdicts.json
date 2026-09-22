@@ -22,6 +22,9 @@
   "024510a54199bf243a1b": {
    "verdict": "ok"
   },
+  "02647fa7550fb1d88983": {
+   "verdict": "ok"
+  },
   "02d3c53650dcf844e021": {
    "verdict": "ok"
   },
@@ -149,11 +152,20 @@
    "verdict": "decode",
    "why": "\"Jade\" is not named, and \"overnight-loop item\" and \"watering inset's loader\" are feature names not defined on this surface."
   },
+  "0b6971c0be9c78f381ca": {
+   "verdict": "ok"
+  },
   "0ba49642b9ce86f9eccb": {
    "instead": "Name what has been open: '[Something] has been open … days' or establish the referent in the prior line",
    "quote": "It has been open … day….",
    "verdict": "decode",
    "why": "'It' is a bare pronoun whose referent is not in this sentence."
+  },
+  "0bcdf4b96a7ab2ec1974": {
+   "instead": "Nothing starts automatically. The studio must clear this pause and record what happens next.",
+   "quote": "Held from automatic work",
+   "verdict": "second-look",
+   "why": "The title makes the reader decide what “held” means before the explanation settles it."
   },
   "0c3b0d89c1dbaf5db958": {
    "verdict": "ok"
@@ -421,6 +433,12 @@
   },
   "1b8bb021cc6bdb7e5030": {
    "verdict": "ok"
+  },
+  "1ba904ba82173f9ed2f5": {
+   "instead": "The last result — this work is paused and will not start automatically",
+   "quote": "held from automatic work",
+   "verdict": "second-look",
+   "why": "The detached status uses “held” without saying plainly that the work is paused."
   },
   "1bfca7e35a43a35da6f3": {
    "verdict": "ok"
@@ -940,6 +958,12 @@
   },
   "4280469f1c724f8b7316": {
    "verdict": "ok"
+  },
+  "42cdf1bea43427cf9794": {
+   "instead": "Paused and will not start automatically",
+   "quote": "Held from automatic work",
+   "verdict": "second-look",
+   "why": "As a standalone title, “held” leaves the status slightly ambiguous."
   },
   "42d4ad28ecdc963311df": {
    "verdict": "ok"
@@ -1665,6 +1689,12 @@
   "72f63b7c200c79b4512d": {
    "verdict": "ok"
   },
+  "732b79ec3d1c574bb01f": {
+   "instead": "This work is paused and will not start automatically.",
+   "quote": "held from automatic work",
+   "verdict": "second-look",
+   "why": "“Held” can mean paused or retained, so the status takes an extra moment to parse."
+  },
   "735b4e4f451ca9e312e0": {
    "verdict": "ok"
   },
@@ -1726,6 +1756,9 @@
    "verdict": "ok"
   },
   "76aac856117dfb619e77": {
+   "verdict": "ok"
+  },
+  "76c3f826c0f2a264c13d": {
    "verdict": "ok"
   },
   "77071d7f8ff07845bc1d": {
@@ -2661,6 +2694,12 @@
   },
   "b6627ba3091fbf4bcb2b": {
    "verdict": "ok"
+  },
+  "b775f7f916a2590064cb": {
+   "instead": "Paused repairs no longer appear ready to start",
+   "quote": "Held repairs",
+   "verdict": "second-look",
+   "why": "“Held” can mean either paused or physically retained, so the title makes the reader stop to determine which meaning applies."
   },
   "b798094b925671e1070f": {
    "verdict": "ok"

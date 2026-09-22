@@ -191,7 +191,12 @@ function attemptsBehind(it) {
   return Math.max(0, Number(it.attempts || 0) - (running ? 1 : 0));
 }
 
+function repairHoldReason(it) {
+  return String(it.repair_hold || "").trim();
+}
+
 function resuming(it) {
+  if (repairHoldReason(it)) return false;
   if (!(attemptsBehind(it) > 0 || it.revising)) return false;
   return it.state === "waiting_session" || it.state === "doing";
 }
@@ -224,6 +229,9 @@ function lastAttemptDid(it) {
 /* The one line a card being tried again has to carry: which attempt is coming,
    who starts it (never him), and what the attempt before it did. */
 function againLine(it, org) {
+  const repairHold = repairHoldReason(it);
+  if (repairHold) return `<div class="w-again"><b>Held from automatic work</b> — ${esc(repairHold)}
+    Nothing starts automatically. The studio must resolve the hold and record what happens next.</div>`;
   if (!resuming(it)) return "";
   const first = ownerOf(org, it.owner).name.split(" ")[0];
   const nth = ordinal(attemptsBehind(it) + 1);
@@ -258,7 +266,12 @@ function consequence(it, org) {
   const first = ownerOf(org, it.owner).name.split(" ")[0];
   const rows = [];
   let extra = "";
-  if (it.state === "needs_approval") {
+  if (repairHoldReason(it)) {
+    return `<div class="w-conseq">
+      <div class="w-conseq-h">Nothing needed from you</div>
+      <div class="w-conseq-row"><b>What happens</b><span>Nothing starts automatically. The studio must resolve the hold before this work can move.</span></div>
+    </div>`;
+  } else if (it.state === "needs_approval") {
     rows.push(["Yes, go ahead", `Nothing runs on its own. It joins the build queue, and the next run — a session, or the studio's own scheduled one — carries out the step above and shows you the diff.`]);
     rows.push(["Not this", `Filed as dropped. Nothing is created and nothing changes.`]);
     rows.push(commentRow(first));
@@ -457,6 +470,8 @@ function saveOpen(set) {
 
 function wantsLine(it, org) {
   const first = ownerOf(org, it.owner).name.split(" ")[0];
+  const repairHold = repairHoldReason(it);
+  if (repairHold) return `held from automatic work — ${repairHold}`;
   if (it.awaiting_reply) return `${first} is writing back`;
   // A card being tried again says so before it is opened, and says that the
   // answer it is carrying is not his to give yet.
@@ -592,8 +607,9 @@ function decisionFor(it) {
 
 function workCard(it, org, pol) {
   const who = ownerOf(org, it.owner);
+  const repairHold = repairHoldReason(it);
   const again = resuming(it);
-  const busy = !!it.awaiting_reply || it.state === "doing" || again;
+  const busy = !repairHold && (!!it.awaiting_reply || it.state === "doing" || again);
   const open = openSet().has(it.id);
   // Saying yes to a card that is about to be attempted again would settle a
   // result the studio is in the middle of replacing, so the yes is shown and
@@ -605,7 +621,7 @@ function workCard(it, org, pol) {
   // those states renders a verdict button, so there is nothing here to disable.
   // The banner above the card is what tells him the result is being replaced.
   const locked = "";
-  const acts = {
+  const acts = repairHold ? "" : ({
     needs_approval: `<button data-act="approve" data-id="${it.id}"${locked}>Yes, go ahead</button>
                      <button class="ghost" data-act="drop" data-id="${it.id}">Not this</button>`,
     for_review: heldReason(it)
@@ -614,11 +630,11 @@ function workCard(it, org, pol) {
          <button class="ghost" data-act="drop" data-id="${it.id}">Drop it</button>`,
     waiting_session: `<button class="ghost" data-act="drop" data-id="${it.id}">Drop it</button>`,
     doing: "", accepted: "", dropped: "",
-  }[it.state] || "";
+  }[it.state] || "");
   // Comment with no verdict: the owner answers on the card and makes a move.
   // Available on every card, closed ones included — a question about work
   // already accepted is still a question its owner should answer.
-  const talkBtn = `<button class="${acts ? "ghost" : ""}" data-send="${esc(it.id)}">Comment</button>`;
+  const talkBtn = repairHold ? "" : `<button class="${acts ? "ghost" : ""}" data-send="${esc(it.id)}">Comment</button>`;
   // The result is the tall part of a card. It folds to a readable window with
   // the rest one click away, rather than pushing the next decision off screen.
   const long = (it.result || "").length > 900;
@@ -631,7 +647,8 @@ function workCard(it, org, pol) {
         ${priors.map(p => `<div class="w-msg-b muted">${md(p.result)}</div>`).join("<hr>")}</details>` : "";
   const result = it.result
     ? `<div class="w-result${long ? " w-clip" : ""}"><div class="w-result-h">${esc(who.name.split(" ")[0])}${
-        held ? "'s attempt — what came back" : it.revising ? "'s result so far — being revised"
+        repairHold ? "'s last result — held from automatic work"
+          : held ? "'s attempt — what came back" : it.revising ? "'s result so far — being revised"
           : again ? "'s last attempt — what came back before it stopped"
             : " did it — here's the result"}${revised}</div>${md(it.result)}
        ${long ? `<button class="w-more" data-more="${esc(it.id)}">Read all of it</button>` : ""}</div>${earlier}`
@@ -679,8 +696,9 @@ function workCard(it, org, pol) {
       ${childrenNote(it, org)}
       ${spawnedNote(it)}
       ${decidedNote(it)}
-      ${(again || heldReason(it) || ["for_review", "accepted", "dropped"].includes(it.state) ? "" : recommendBlock(it))
-          + consequence(it, org) + replyBox(it, org) + `<div class="w-acts">${acts}${talkBtn}</div>`}
+      ${(again || repairHold || heldReason(it) || ["for_review", "accepted", "dropped"].includes(it.state) ? "" : recommendBlock(it))
+          + consequence(it, org) + (repairHold ? "" : replyBox(it, org))
+          + `<div class="w-acts">${acts}${talkBtn}</div>`}
       ${brief}
       <div class="w-outcome" hidden></div>
       <div class="w-foot">
@@ -808,7 +826,8 @@ async function renderWork(focusId = workFocusId()) {
     const set = openSet(); set.add(focusId); saveOpen(set);
   }
   const pol = snap.policy;
-  const by = st => snap.items.filter(i => i.state === st);
+  const repairHeld = snap.items.filter(i => repairHoldReason(i));
+  const by = st => snap.items.filter(i => i.state === st && !repairHoldReason(i));
   const focusedItem = focusId ? snap.items.find(i => i.id === focusId) : null;
   const doingNow = by("doing").filter(i => !!i.started);
   const waitingToStart = by("doing").filter(i => !i.started);
@@ -883,12 +902,16 @@ async function renderWork(focusId = workFocusId()) {
       "These results are not counted as waiting on you. Read the preparation or verification warning before giving a verdict; you can still open a finished result and comment or decide explicitly.",
       preparing, org, pol, { reasons: attentionReasons }),
     workSection("Happening now", "This work is now underway.", doingNow, org, pol),
+    workSection("Held from automatic work",
+      "Nothing here starts automatically. The reason on each card says what the studio must resolve before it can move.",
+      repairHeld, org, pol),
     workSection("Waiting to start", "The studio accepted this work, but it has not started yet and can still be cancelled.", waitingToStart, org, pol),
     workSection("Queued for a build session", "Changes files in the repository, so a session with write access — or the studio's own scheduled run — makes the change and shows you what it altered.", by("waiting_session"), org, pol),
   ].filter(Boolean);
   secs.forEach(s => body.appendChild(s));
 
-  if (!focusedItem && !attentionUnavailable && !waiting.length && !preparing.length && !by("doing").length && !by("waiting_session").length) {
+  if (!focusedItem && !attentionUnavailable && !waiting.length && !preparing.length && !repairHeld.length
+      && !by("doing").length && !by("waiting_session").length) {
     body.querySelector(".w-list").appendChild(h(`<p class="muted">Nothing open. Work lands here on its own as you talk to the team — you never have to file anything.</p>`).firstElementChild);
   }
 
