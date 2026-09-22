@@ -3,6 +3,7 @@
 import os
 import json
 import tempfile
+import subprocess
 from pathlib import Path
 from unittest.mock import patch
 import sys
@@ -134,9 +135,118 @@ def main():
             queue_js = f.read()
         with open(os.path.join(static, "work.js"), encoding="utf-8") as f:
             work_js = f.read()
+        with open(os.path.join(static, "queue.js"), encoding="utf-8") as f:
+            review_queue_js = f.read()
         check("/api/waiting-on-you" in app_js and "/api/waiting-on-you" in queue_js
               and "/api/waiting-on-you" in work_js,
               "navigation and both queue readers consume the shared API")
+        check("function reviewTitle(item)" in app_js and "reviewTitle(it)" in work_js
+              and "reviewTitle(card)" in review_queue_js,
+              "both review views use one deliverable-first title rule with a legacy fallback")
+
+        # Execute the production renderers with representative cards.  These
+        # checks deliberately assert the order a person reads, rather than
+        # merely checking that implementation words occur in a source file.
+        renderer_test = r'''
+const assert = require("node:assert/strict"), fs = require("node:fs"), vm = require("node:vm");
+const root = process.argv[1];
+const shared = { routes: {}, location: { hash: "#/" }, route() {}, cache: {},
+  api: async () => ({}), fetch: async () => ({ json: async () => ({}) }), noteVersion() {},
+  updateQueueBadge() {}, esc: String, mdi: String, md: String,
+  reviewTitle: item => "Review: " + ((item.deliverable || {}).name || item.title || "Finished work"),
+  ownerOf: () => ({ name: "Rin", emoji: "🌱" }), openSet: () => new Set(), resuming: () => false,
+  heldReason: () => "", wantsLine: () => "", tierChip: () => "", againLine: () => "",
+  amendNote: () => "", drainBlock: () => "", costLine: () => "", convoBlock: () => "",
+  childrenNote: () => "", spawnedNote: () => "", consequence: () => "", replyBox: () => "",
+  decisionFor: () => null, setInterval: () => 1, clearInterval() {}, setTimeout() {},
+  window: { addEventListener() {} }, localStorage: { getItem: () => null, setItem() {} },
+  document: { getElementById: () => ({ addEventListener() {} }), addEventListener() {} }, $view: { replaceChildren() {} },
+  h: html => ({ firstElementChild: { html, querySelector: () => null } }), };
+const appSource = fs.readFileSync(root + "/hq/static/app.js", "utf8");
+const evidenceHelper = appSource.slice(appSource.indexOf("function reviewEvidenceLinks("), appSource.indexOf("/* Markdown for authored prose"));
+const evidenceContext = vm.createContext({});
+vm.runInContext(evidenceHelper, evidenceContext);
+shared.reviewEvidenceLinks = evidenceContext.reviewEvidenceLinks;
+const queue = vm.createContext({ ...shared });
+vm.runInContext(fs.readFileSync(root + "/hq/static/queue.js", "utf8"), queue);
+const index = (text, needle) => { const found = text.indexOf(needle); assert.ok(found >= 0, needle); return found; };
+const animation = queue.qPaneHtml({ id: "animation", question: "Does the motion read clearly?", title: "Review: Watering animation", source: "work card animation", owner: { name: "Ingrid" }, answer: "Keep this timing", why: "The pause reads at game size.", instead: "Slow it down", options: [], followUps: [], conversation: [], attachments: [], canDrop: true, deliverableEvidence: [{ label: "Play the watering animation", href: "/review/watering" }], evidence: [{ label: "Run notes", text: "Frames checked" }] }, {});
+assert.ok(index(animation, "Does the motion read clearly?") < index(animation, "Play the watering animation"));
+assert.ok(index(animation, "Play the watering animation") < index(animation, "What I recommend"));
+const design = queue.qPaneHtml({ id: "design", question: "Which tool should players receive first?", title: "First tool", source: "decision card design", owner: { name: "Milo" }, answer: "Watering can", why: "It teaches the core loop.", instead: "Hoe", options: [{ label: "Watering can", detail: "Care for a planted crop." }], followUps: [], conversation: [], attachments: [], canDrop: false, deliverableEvidence: [], evidence: [{ label: "Design comparison", text: "Both choices shown" }] }, {});
+assert.ok(index(design, "Which tool should players receive first?") < index(design, "What I recommend"));
+assert.ok(index(design, "What I recommend") < index(design, "What yes starts"));
+const incomplete = queue.qPaneHtml({ id: "incomplete", question: "Does this result stand despite the missing recommendation?", title: "Review: Crop icon", source: "work card incomplete", owner: { name: "Yuki" }, answer: "", why: "", instead: "", options: [], followUps: [], conversation: [], attachments: [], canDrop: true, deliverableEvidence: [{ label: "Open the crop icon", href: "/review/icon" }], evidence: [], }, {});
+assert.ok(index(incomplete, "Does this result stand despite the missing recommendation?") < index(incomplete, "Open the crop icon"));
+assert.ok(index(incomplete, "Open the crop icon") < index(incomplete, "No recommendation on this one."));
+const work = vm.createContext({ ...shared });
+vm.runInContext(fs.readFileSync(root + "/hq/static/work.js", "utf8"), work);
+const card = work.workCard({ id: "work-animation", title: "Internal animation task", state: "for_review", owner: "rin", level: "task", deliverable: { name: "Watering animation", evidence: [{ label: "Play the watering animation", href: "/review/watering" }] }, recommend: { question: "Does the motion read clearly?", answer: "Keep this timing", why: "The pause reads at game size.", instead: "Slow it down" }, result: "The frames are ready." }, {}, {}).html;
+assert.ok(index(card, "Does the motion read clearly?") < index(card, "Play the watering animation"));
+assert.ok(index(card, "Play the watering animation") < index(card, "Recommended"));
+assert.ok(index(card, "Recommended") < index(card, "The frames are ready."));
+// Supported production path entries use only the already-served repo roots.
+const schemaCard = { id: "path-review", title: "Path evidence", state: "for_review", owner: "rin", level: "task",
+  recommend: { question: "Keep this?", answer: "Keep it", why: "Clear", instead: "Revise" },
+  deliverable: { name: "Path evidence", evidence: [
+    { label: "Asset image", path: "assets/anim/sunflower_bloom/sheet.png" },
+    { label: "Design notes", path: "docs/design/mockups/example image.png" },
+    { label: "Loop", path: "tools/experiments/out/seeder_bot/seeder_bot.gif" },
+    { label: "Safe fragment", href: "#/design/anim/seeder_bot" },
+    { label: "Safe web", href: "https://example.com/review" },
+    { label: "Unsafe script", href: "javascript:alert(1)" },
+    { label: "Unsafe data", href: "data:text/html,hi" },
+    { label: "Unsafe mixed case", href: "JaVaScRiPt:alert(1)" },
+    { label: "Unsafe newline", href: "java\nscript:alert(1)" },
+    { label: "Unsafe file", href: "file:///etc/passwd" },
+    { label: "Unsafe path", path: "docs/../../etc/passwd" },
+    { label: "Absolute path", path: "/etc/passwd" },
+    { label: "Private repo data", path: "hq/data/org.json" },
+  ] } };
+const schemaQueue = queue.qPaneHtml(queue.qWorkItem(schemaCard, {}, ""), {});
+const schemaLegacy = work.workCard(schemaCard, {}, {}).html;
+for (const html of [schemaQueue, schemaLegacy]) {
+  for (const href of ["/assets/anim/sunflower_bloom/sheet.png", "/docs/design/mockups/example%20image.png", "/loops/seeder_bot/seeder_bot.gif", "#/design/anim/seeder_bot", "https://example.com/review"])
+    assert.ok(html.includes('href="' + href + '"'), href);
+  assert.ok(!html.includes("Unsafe"));
+  assert.ok(!html.includes("Absolute path"));
+  assert.ok(!html.includes("Private repo data"));
+}
+// These are recorded repository cards, not invented example rows. Their missing
+// deliverable fields must remain missing; the positive cases above test new evidence.
+const readCard = (kind, id) => JSON.parse(fs.readFileSync(root + "/hq/data/" + kind + "/" + id + ".json", "utf8"));
+const actualAnimation = readCard("work", "wr1788991284fa19");
+const actualIncomplete = readCard("work", "w449aff92129");
+const actualDesign = readCard("decisions", "Q-107");
+for (const recorded of [actualAnimation, actualIncomplete]) {
+  const row = queue.qWorkItem(recorded, {}, "Recorded review");
+  const html = queue.qPaneHtml(row, {});
+  assert.ok(html.includes(recorded.title), "legacy review retains its actual title");
+  assert.equal(row.deliverableEvidence.length, 0, "does not invent evidence for old cards");
+  if (recorded.recommend && recorded.recommend.question)
+    assert.ok(index(html, recorded.recommend.question) < index(html, "What I recommend"));
+  else assert.ok(html.includes("No recommendation on this one."));
+  const legacy = work.workCard(recorded, {}, {}).html;
+  assert.ok(legacy.includes(recorded.title));
+  if (recorded.state === "for_review")
+    assert.ok(legacy.includes('data-act="drop"'), "a reviewable result can be rejected");
+  else assert.ok(!legacy.includes('data-act="drop"'), "a closed result cannot be rejected twice");
+  assert.ok(legacy.includes('data-send="' + recorded.id + '"'), "recorded incomplete result keeps Comment");
+  assert.ok(legacy.includes(recorded.ask), "the original ask remains available");
+}
+const choice = queue.qPaneHtml(queue.qDecisionItem(actualDesign, {}, { seats: [] }), {});
+for (const option of actualDesign.options) assert.ok(choice.includes('value="' + option.key + '"'));
+assert.equal((choice.match(/type="radio"/g) || []).length, actualDesign.options.length + 1);
+assert.equal((choice.match(/class="q-decision-submit"/g) || []).length, 1);
+assert.ok(choice.includes('data-intent="revise"'));
+assert.ok(index(choice, "q-pane-atts") < index(choice, "What I recommend"));
+console.log("Rendered review cards keep question, artifact, recommendation, and result in order.");
+'''
+        rendered = subprocess.run(["node", "-e", renderer_test, os.path.dirname(os.path.dirname(HERE))],
+                                 text=True, capture_output=True)
+        check(rendered.returncode == 0, "animation, design-choice and incomplete cards render their human briefs in order")
+        if rendered.returncode:
+            print(rendered.stderr)
 
         server.work.items = lambda **kwargs: (_ for _ in ()).throw(OSError("unreadable"))
         unavailable = server.waiting_on_you()
@@ -228,6 +338,41 @@ def main():
                 "id": "Q-2", "judgment": "revise", "ruled_at": "2026-09-21"}))
             check(server.waiting_on_you()["available"] is False,
                   "invalid nested decision data is caught inside the availability boundary")
+
+    # Exercise real routing and file reads without starting a service.
+    import io
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        outside = root / "private.txt"
+        outside.write_bytes(b"private")
+        for route, directory in (("docs", "docs"), ("assets", "assets"),
+                                 ("loops", server.anim.LOOPS_DIR)):
+            served = root / directory
+            served.mkdir(parents=True, exist_ok=True)
+            (served / "review image.png").write_bytes(b"review evidence")
+            (served / "%20.txt").write_bytes(b"decoded once")
+            (served / "escape.txt").symlink_to(outside)
+            def request(suffix):
+                handler = object.__new__(server.Handler)
+                handler.path = "/" + route + "/" + suffix
+                handler.wfile = io.BytesIO()
+                codes = []
+                handler.send_response = codes.append
+                handler.send_header = lambda *args: None
+                handler.end_headers = lambda: None
+                with patch.object(server, "REPO", tmp):
+                    handler.do_GET()
+                return codes[-1], handler.wfile.getvalue()
+            check(request("review%20image.png") == (200, b"review evidence"),
+                  f"{route} routing serves a real filename containing a space")
+            check(request("%2520.txt") == (200, b"decoded once"),
+                  f"{route} routing decodes exactly once")
+            for unsafe in ("%2e%2e/private.txt", "../private.txt", "%2Fprivate.txt",
+                           "folder%2fprivate.txt", "%5cprivate.txt", "%00.png",
+                           "bad%.png", "bad%2.png", "bad%gg.png", "%ff.png", "escape.txt"):
+                code, body = request(unsafe)
+                check(code in (400, 403) and body != b"private",
+                      f"{route} rejects unsafe file path {unsafe}")
 
     return 1 if failures else 0
 

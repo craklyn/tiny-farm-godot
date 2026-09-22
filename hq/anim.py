@@ -796,6 +796,9 @@ def _file_for_review(rec):
     item = {
         "id": wid,
         "title": f"Say whether the {rec['slug'].replace('_', ' ')} loop is any good",
+        # The work title records why this card exists.  The short deliverable
+        # name is what the shared review renderer puts after "Review:".
+        "deliverable": {"name": f"The {rec['slug'].replace('_', ' ')} animation"},
         "level": "story", "owner": "ingrid", "tier": 2,
         "tier_reason": "A finished loop is waiting on a verdict only Daniel can give.",
         "ask": (

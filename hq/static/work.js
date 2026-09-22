@@ -132,6 +132,22 @@ function recommendBlock(it) {
   </div>`;
 }
 
+function reviewQuestion(it) {
+  if (it.state !== "for_review") return "";
+  const question = (it.recommend && it.recommend.question) || it.review_question;
+  return question
+    ? `<div class="w-rec"><p class="w-rec-q">${mdi(question)}</p></div>`
+    : "";
+}
+
+function reviewEvidence(it) {
+  if (it.state !== "for_review") return "";
+  const evidence = reviewEvidenceLinks(it);
+  if (!evidence.length) return "";
+  return `<div class="w-rec"><div class="w-rec-h">The result to review</div><p class="w-rec-q">${evidence.map(e =>
+    `<a class="plain" href="${esc(e.href)}">${esc(e.label || "Open the reviewed result")}</a>`).join(" · ")}</p></div>`;
+}
+
 function decidedNote(it) {
   const d = it.decided;
   if (!d || !d.answer) return "";
@@ -640,7 +656,7 @@ function workCard(it, org, pol) {
           <span class="w-owner-wrap"><button class="w-owner" data-person="${esc(it.owner)}"
             title="Who ${esc(who.name.split(" ")[0])} is, what they own, and what else they are carrying">${esc(who.emoji)} ${esc(who.name)}</button></span>
         </div>
-        <h3>${esc(it.title)}</h3>
+        <h3>${esc(FINISHED.includes(it.state) ? reviewTitle(it) : it.title)}</h3>
         <div class="w-wants">${esc(wantsLine(it, org))}${busy ? `<span class="w-dots"><i></i><i></i><i></i></span>` : ""}</div>
       </div>
     </div>
@@ -649,7 +665,9 @@ function workCard(it, org, pol) {
       ${dec ? `<div class="w-decision">
         <div class="w-decision-h">The decision this work came from — the card you ruled on</div>
       </div>` : ""}
-      ${brief}
+      ${reviewQuestion(it)}
+      ${reviewEvidence(it)}
+      ${it.state === "for_review" ? recommendBlock(it) : ""}
       ${amendNote(it, org)}
       ${result}
       ${drainBlock(it, org)}
@@ -658,8 +676,9 @@ function workCard(it, org, pol) {
       ${childrenNote(it, org)}
       ${spawnedNote(it)}
       ${decidedNote(it)}
-      ${(again || heldReason(it) || ["accepted", "dropped"].includes(it.state) ? "" : recommendBlock(it)) + consequence(it, org)
-          + replyBox(it, org) + `<div class="w-acts">${acts}${talkBtn}</div>`}
+      ${(again || heldReason(it) || ["for_review", "accepted", "dropped"].includes(it.state) ? "" : recommendBlock(it))
+          + consequence(it, org) + replyBox(it, org) + `<div class="w-acts">${acts}${talkBtn}</div>`}
+      ${brief}
       <div class="w-outcome" hidden></div>
       <div class="w-foot">
         <span class="small muted">${it.thread ? `from your chat with ${esc(ownerOf(org, it.thread).name.split(" ")[0])} · ` : ""}${esc(it.created || "")}</span>

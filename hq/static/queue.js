@@ -132,6 +132,13 @@ function qWorkEvidence(card, ownerName) {
   return items;
 }
 
+/* The named deliverable is the thing Daniel is deciding about.  It is not
+   technical evidence to discover after the recommendation: its recorded link
+   belongs directly under the question in the selected review. */
+function qDeliverableEvidence(card) {
+  return reviewEvidenceLinks(card);
+}
+
 function qDecisionEvidence(c) {
   const items = [];
   if (c.question) items.push({ label: "How this started", text: c.question });
@@ -170,7 +177,7 @@ function qWorkItem(card, org, reason) {
   const owner = ownerOf(org, card.owner);
   const rec = card.recommend || {};
   const hasRec = !!rec.answer;
-  const question = rec.question || `${owner.name} built “${card.title}”. Does it stand?`;
+  const question = rec.question || card.review_question || "Does this reviewed result stand?";
   // A card whose only evidence is a change to the files is not prepped: nobody
   // has said what he should do about it, and pretending otherwise turns his
   // thirty-second pick into a rubber stamp (docs/QUEUE_TO_ZERO.md §7a).
@@ -180,11 +187,13 @@ function qWorkItem(card, org, reason) {
   return {
     kind: card.state === "needs_approval" ? "approve" : "review",
     id: card.id, cardId: card.id, isDecision: false, subject: card.subject || "",
-    title: card.title, question, answer, why: rec.why || "", instead: rec.instead || "",
+    title: card.state === "for_review" ? reviewTitle(card) : card.title,
+    question, answer, why: rec.why || "", instead: rec.instead || "",
     owner, seconds: answer ? Q_PICK_SECONDS : Q_READ_SECONDS, state: card.state,
     tier: card.tier ?? 2, reason: reason || "hard to walk back, or a matter of taste",
     diffApplied: !!(card.diff && card.diff.applied),
     options: [], followUps: card.follow_ups || [], conversation: convo, attachments: [],
+    deliverableEvidence: qDeliverableEvidence(card),
     evidence: qWorkEvidence(card, owner.name), source: `work card ${card.id}`, canDrop: true,
   };
 }
@@ -209,7 +218,7 @@ function qDecisionItem(c, org, seats) {
       recommended: (o.label || "").includes("(Recommended)") })),
     followUps: [],
     conversation: (c.replies || []).map(r => ({ who: r.by === "claude" ? "Adam" : (r.by || "the studio"), text: r.text || "", at: r.at || "" })),
-    attachments: c.attachments || [],
+    attachments: c.attachments || [], deliverableEvidence: qDeliverableEvidence(c),
     evidence: qDecisionEvidence(c), source: `decision card ${c.id}`, canDrop: false,
   };
 }
@@ -302,6 +311,11 @@ function qPaneHtml(row, org) {
     <div class="q-pane-q">${mdi(row.question)}</div>
     <div class="q-pane-src">${esc(row.title)} · ${esc(row.source)} · ${esc(ownerName)}</div>
 
+    ${row.deliverableEvidence && row.deliverableEvidence.length ? `<div class="q-sec q-review-artifact"><h3>The result to review</h3>${row.deliverableEvidence.map(e =>
+      `<a class="plain" href="${esc(e.href)}">${esc(e.label)}</a>`).join(" · ")}</div>` : ""}
+
+    <div class="q-atts" id="q-pane-atts"></div>
+
     <div class="q-sec"><h3>What I recommend</h3>
       ${row.answer
         ? `<div class="q-rec"><b>${mdi(row.answer)}</b>${row.why ? `<p>${mdi(row.why)}</p>` : ""}${row.instead ? `<p class="q-instead">Instead: ${mdi(row.instead)}</p>` : ""}</div>`
@@ -336,7 +350,6 @@ function qPaneHtml(row, org) {
         `<details><summary>${esc(e.label)}</summary><div>${mdi(e.text)}${
           e.link ? `<p><a class="plain" href="${e.link}">Open the session in the bullpen</a></p>` : ""}</div></details>`).join("")
         : `<p class="q-pane-muted">Nothing recorded yet.</p>`}
-      <div class="q-atts" id="q-pane-atts"></div>
     </div>
 
     ${row.isDecision ? "" : `<div class="q-talk-box" id="q-pane-talk">

@@ -5622,6 +5622,21 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+    def _send_repo_file(self, root, encoded_rel):
+        # Decode URL path segments once, before the existing realpath containment check.
+        # Encoded separators must never change the route's directory structure.
+        if (re.search(r"%(?![0-9a-fA-F]{2})", encoded_rel)
+                or re.search(r"%(?:2f|5c|00)", encoded_rel, re.I)):
+            return self._send(400, {"error": "invalid file path"})
+        try:
+            rel = unquote(encoded_rel, errors="strict")
+        except UnicodeDecodeError:
+            return self._send(400, {"error": "invalid file path"})
+        if (any(part in ("", ".", "..") for part in rel.split("/"))
+                or "\\" in rel or any(ord(char) < 32 or ord(char) == 127 for char in rel)):
+            return self._send(403, {"error": "forbidden"})
+        return self._send_file(root, rel)
+
     def do_GET(self):
         parts = urlparse(self.path)
         path, query = parts.path, parse_qs(parts.query)
@@ -5631,13 +5646,13 @@ class Handler(BaseHTTPRequestHandler):
             if path.startswith("/static/"):
                 return self._send_file(STATIC, path[len("/static/"):])
             if path.startswith("/assets/"):
-                return self._send_file(os.path.join(REPO, "assets"), path[len("/assets/"):])
-            if path.startswith("/docs/") and ".." not in path:
+                return self._send_repo_file(os.path.join(REPO, "assets"), path[len("/assets/"):])
+            if path.startswith("/docs/"):
                 # Decision cards attach mockups and design pages under docs/; served
                 # read-only like assets/ so a card's pictures show in the queue.
-                return self._send_file(os.path.join(REPO, "docs"), path[len("/docs/"):])
+                return self._send_repo_file(os.path.join(REPO, "docs"), path[len("/docs/"):])
             if path.startswith("/loops/"):
-                return self._send_file(os.path.join(REPO, anim.LOOPS_DIR), path[len("/loops/"):])
+                return self._send_repo_file(os.path.join(REPO, anim.LOOPS_DIR), path[len("/loops/"):])
             if path.startswith("/loop-preview/"):
                 return self._send_file(anim.PREVIEWS, path[len("/loop-preview/"):])
             if path.startswith("/ledger/"):

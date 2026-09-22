@@ -1296,6 +1296,7 @@ def write_back(item, rec, applied, why_not, suites, org):
     turn budget, because a budget the drain set wrong is the drain's to fix,
     not Daniel's to judge. Either way the attempt is counted and billed."""
     body, follows, _amend, recommend, _move = work._split_result(rec["result"], org, item["owner"])
+    deliverable = work.result_deliverable(rec["result"])
     # do_item decides this before the patch is held; a record that skipped
     # do_item gets the same answer here. Edits that landed are never retried.
     resume = "" if applied else (rec.get("resume") or auto_resume_reason(item, rec))
@@ -1356,6 +1357,11 @@ def write_back(item, rec, applied, why_not, suites, org):
         item.pop("follow_up", None)
         item["follow_ups"] = follows
         item["recommend"] = recommend or {}
+    if deliverable:
+        # Naming a revised result must not remove evidence already attached by
+        # the deliverable path.
+        item["deliverable"] = {**(item.get("deliverable") if isinstance(item.get("deliverable"), dict) else {}),
+                               **deliverable}
     if not landed_ok:
         item["state"] = "for_review"
     item["finished"] = work._now_iso()

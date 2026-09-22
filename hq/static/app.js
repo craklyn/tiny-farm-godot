@@ -42,6 +42,45 @@ function showStaleBanner() {
 function h(html) { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content; }
 function esc(s) { return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 
+// A work title tells the studio what it was asked to do. A review heading
+// tells Daniel what finished thing is in front of him. Keep those names apart;
+// old records retain their title as the readable fallback rather than gaining
+// a fictional artifact name during rendering.
+function reviewTitle(item) {
+  const name = item && item.deliverable && String(item.deliverable.name || "").trim();
+  return `Review: ${name || (item && item.title) || "Finished work"}`;
+}
+
+// Evidence uses existing read-only HQ routes; a repo path is never a filesystem URL.
+function reviewEvidenceLinks(item) {
+  const evidence = item && item.deliverable && item.deliverable.evidence;
+  if (!Array.isArray(evidence)) return [];
+  const safeHref = value => {
+    if (typeof value !== "string") return "";
+    const href = value.trim();
+    if (!href || /[\x00-\x20\x7f\\]/.test(href) || href.startsWith("//")) return "";
+    if (/^https?:\/\/[^/]+/i.test(href)) return href;
+    if (/^[a-z][a-z0-9+.-]*:/i.test(href)) return "";
+    return href;
+  };
+  const servedPath = value => {
+    if (typeof value !== "string" || /[\x00-\x1f\x7f\\]/.test(value)) return "";
+    const parts = value.split("/");
+    if (parts.some(part => !part || part === "." || part === "..")) return "";
+    const routes = [["assets/", "/assets/"], ["docs/", "/docs/"],
+      ["tools/experiments/out/", "/loops/"]];
+    for (const [prefix, route] of routes) {
+      if (value.startsWith(prefix)) return route + value.slice(prefix.length).split("/").map(encodeURIComponent).join("/");
+    }
+    return "";
+  };
+  return evidence.flatMap(entry => {
+    if (!entry || typeof entry !== "object") return [];
+    const href = safeHref(entry.href) || servedPath(entry.path);
+    return href ? [{ href, label: String(entry.label || "Open the reviewed result") }] : [];
+  });
+}
+
 /* Markdown for authored prose — decision cards, work briefs, chat replies:
    marked (parser) + DOMPurify (sanitizer), both vendored in static/vendor/.
    Falls back to escaped plain text if either is missing.

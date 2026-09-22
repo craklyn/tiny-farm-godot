@@ -146,6 +146,17 @@ def main():
               and it["result"] == "Done: the sheet opens.",
               "the finished result reaches him with nothing left queued")
 
+        print("a review keeps its own short name")
+        evidence = [{"label": "Open it", "href": "/review/sheet"}]
+        it = card(id="w0000000000d5", deliverable={"name": "Earlier name", "evidence": evidence})
+        named_result = ("The editor now opens every cell.\n"
+                        + work.FOLLOW_MARK + "\n"
+                        + '{"deliverable": {"name": "The full sprite sheet editor"}, "items": []}')
+        it = drain.write_back(it, rec(id="w0000000000d5", error="", result=named_result),
+                              False, "nothing changed", None, org)
+        check(it.get("deliverable") == {"name": "The full sprite sheet editor", "evidence": evidence},
+              "the build queue records a review name without replacing the original ask or evidence")
+
         print("a partial reply is kept beneath the failure, never in its place")
         it = card(id="w0000000000e5", spent={"attempts": 2, "tokens": 0, "fresh": 0, "list_usd": 0})
         it = drain.write_back(it, rec(id="w0000000000e5", result="I opened the sheet and"),

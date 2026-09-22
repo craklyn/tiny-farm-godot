@@ -152,6 +152,12 @@ def main():
         parts = work._split_result("just prose", org, "sam")
         check(len(parts) == 5 and parts[1] is None and parts[4] is None,
               "a reply with no block yields five parts, all unknown")
+        named = reply("The bloom is ready.",
+                      '{"deliverable": {"name": "The sunflower bloom animation"}, "items": []}')
+        check(work.result_deliverable(named) == {"name": "The sunflower bloom animation"},
+              "a completed result keeps Daniel's short deliverable name separate from its ask")
+        check(work.result_deliverable("just prose") is None,
+              "an older result without a recorded deliverable is not given an invented one")
 
         print("a comment on Accept is answered, and travels into what the yes starts")
         work.save_item(card())

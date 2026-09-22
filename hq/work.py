@@ -570,6 +570,23 @@ def _parse_follows(tail, org, fallback_owner):
     return [g for g in got if g], (amend or None), rec, (move if move in MOVES else None)
 
 
+def result_deliverable(text):
+    """The short name Daniel sees when reviewing a completed result.
+
+    The agent's ask remains the durable instruction on the card.  This is a
+    separate, deliberately small name for the thing that came back; it must
+    never be inferred from an old ask because that can name work rather than
+    the result Daniel is judging.  Evidence belongs to the existing readiness
+    check and is intentionally not manufactured here.
+    """
+    _, _, tail = (text or "").partition(FOLLOW_MARK)
+    raw = (_follow_doc(tail) or {}).get("deliverable")
+    if not isinstance(raw, dict):
+        return None
+    name = str(raw.get("name") or "").strip()[:160]
+    return {"name": name} if name else None
+
+
 def _split_result(text, org, fallback_owner):
     """(the deliverable he reads, what accepting it would file or None if the
     reply never said, any amendment to the item itself, the recommendation his
@@ -710,7 +727,10 @@ sweep for the artist and a check in the pipeline are three items with three
 owners, and naming only the first quietly drops the other two. Four at most —
 past that it is a plan, and a plan is its own item.
 {amend}{move_note}
-{{"items": [{{"title": "short and plain", "owner": "<roster id>", "level": "task|story|epic|project|goal", "tier": 0|1|2, "first_action": "the single next concrete step, specific enough to just do", "why": "one sentence: why this follows"}}]{amend_field}{move_field}}}
+{{"deliverable": {{"name": "the short name of the finished result Daniel reviews"}}, "items": [{{"title": "short and plain", "owner": "<roster id>", "level": "task|story|epic|project|goal", "tier": 0|1|2, "first_action": "the single next concrete step, specific enough to just do", "why": "one sentence: why this follows"}}]{amend_field}{move_field}}}
+
+`deliverable.name` is for Daniel, not a rewrite of the ask: name the finished
+thing he can inspect in a few plain words. Keep the original ask in the card.
 
 TITLES: Daniel reads the queue title-first, so a title is read with nothing around it to settle what it means: no ticket IDs, and no verb that could mean its own opposite. "Hold the foley session" was read as both delay it and run it. Prefer the longer unambiguous verb — "Take the foley session off the schedule". The ask and first_action below are read by the agent that does the work, so write those for efficiency. Never put these words in a title — each is exact inside this studio and empty three feet away: suite (say "test suite"), stamp (say "record"), prove or proof (say "test" or "evidence"), attestation, invariant, provenance, cadence, parity, plumbing, orphan, manifest, harness, hygiene, tier, trace, gate, instrument, surface. Say the literal thing. docs/glossary.json is the full list and the build fails on it.
 
@@ -904,11 +924,18 @@ def _process_item(item, org):
         save_item(item)
         return False
     body, got, _amend, rec, _move = _split_result(text, org, item["owner"])
+    deliverable = result_deliverable(text)
     item["result"] = body or "(no result came back)"
     if got is not None:
         item.pop("follow_up", None)
         item["follow_ups"] = got
         item["recommend"] = rec or {}
+    if deliverable:
+        # Evidence is supplied and checked on its own path.  A later result
+        # may give the review a better name, but must not erase the existing
+        # inspectable record while doing so.
+        item["deliverable"] = {**(item.get("deliverable") if isinstance(item.get("deliverable"), dict) else {}),
+                               **deliverable}
     item["state"] = "for_review"
     item["finished"] = _now_iso()
     finish_revision(item)
