@@ -73,8 +73,10 @@ def main():
         card("w-reply", "for_review", awaiting_reply=True),
         card("w-held", "for_review", held_patch="/tmp/patch"),
         card("w-preparing", "prepping"),
-        card("w-doing", "doing"),
+        card("w-doing", "doing", started="2026-09-21T12:00:00Z"),
+        card("w-waiting", "doing", started=""),
         card("w-scheduled", "waiting_session"),
+        card("w-build-running", "waiting_session", started="2026-09-21T12:00:00Z"),
         card("w-accepted", "accepted"),
         card("w-landed", "landed", suites={"unit": {"ok": True}}),
         card("w-reading", "for_review", tier=0, recommend={}),
@@ -117,8 +119,11 @@ def main():
         check(states["q-studio"] == "awaiting_owner_reply" and states["w-reply"] == "awaiting_owner_reply",
               "send-backs stay with the studio until an owner returns them")
         check(states["w-held"] == "verification_pending", "held patches await verification")
-        check(states["w-preparing"] == states["w-doing"] == "preparing", "unfinished work is preparing")
-        check(states["w-scheduled"] == "scheduled" and states["w-accepted"] == "closed", "queued work is scheduled; acceptance is recorded separately")
+        check(states["w-preparing"] == states["w-doing"] == states["w-build-running"] == "preparing",
+              "only work with a recorded start is running")
+        check(states["w-waiting"] == states["w-scheduled"] == "scheduled"
+              and states["w-accepted"] == "closed",
+              "unstarted work is scheduled; acceptance is recorded separately")
         check(states["w-reading"] == states["w-green"] == "ready_to_apply", "readings and green reversible work await completion, not landed")
         check(states["w-failed"] == states["w-old"] == "verification_pending", "failed checks and old completion claims need verification")
         check(states["w-risky"] == "preparing" and states["w-unknown"] == "unknown", "risky follow-ups and unknown states cannot imply completion")

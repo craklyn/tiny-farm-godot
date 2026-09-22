@@ -205,6 +205,12 @@ def _item_path(item_id):
 
 
 def save_item(item):
+    # Tier-1 work belongs to the build queue. `doing` is the immediate,
+    # read-only lane; filing repository work there leaves it invisible to the
+    # drain while the page claims somebody is doing it. Keep the lane derived
+    # from the work's recorded risk whenever a malformed producer crosses it.
+    if int(item.get("tier") or 0) == 1 and item.get("state") == "doing":
+        item["state"] = "waiting_session"
     return _write_json(_item_path(item["id"]), item)
 
 

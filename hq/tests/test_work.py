@@ -135,6 +135,11 @@ def main():
     try:
         work.bind(fake_host(tmp))
         org = ORG
+        malformed = card(id="wbadlane0001", state="doing", tier=1, started="", attempts=0)
+        work.save_item(malformed)
+        check(item(malformed["id"])["state"] == "waiting_session",
+              "tier-1 work cannot be saved in the immediate-work lane")
+        os.remove(work._item_path(malformed["id"]))
         # Writing on a card now starts the owner's reply immediately, on its own
         # thread. Every test below drives the reply by hand so it can say what
         # came back, so the automatic start is held off until the section that

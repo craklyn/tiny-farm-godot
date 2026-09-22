@@ -9,6 +9,7 @@ const items = [
   { id: 'failed', title: 'Failed result', state: 'for_review', tier: 1, owner: 'rin', check: { verdict: 'fail' } },
   { id: 'queued', title: 'Queued work', state: 'waiting_session', owner: 'rin', started: '' },
   { id: 'accepted', title: 'Accepted thinking', state: 'doing', owner: 'rin', started: '' },
+  { id: 'running', title: 'Running build', state: 'waiting_session', owner: 'rin', started: '2026-09-21T21:00' },
 ];
 let rendered = '';
 const waiting = { available: true, count: 0, ready: [], items: [
@@ -18,6 +19,7 @@ const waiting = { available: true, count: 0, ready: [], items: [
   // A result from the preceding attempt can race with a freshly requeued card.
   { source: 'work', source_id: 'queued', status: 'ready_to_apply', reason: 'Completion is not recorded.' },
   { source: 'work', source_id: 'accepted', status: 'preparing', reason: 'The work is still running.' },
+  { source: 'work', source_id: 'running', status: 'preparing', reason: 'The work is running now.' },
 ] };
 const context = vm.createContext({
   routes: {}, location: { hash: '#/' }, cache: {}, noteVersion() {},
@@ -34,7 +36,7 @@ vm.runInContext(fs.readFileSync(path.join(__dirname, '../static/queue.js'), 'utf
   assert.deepEqual(Array.from(data.wentIn, x => x.id), ['recorded']);
   assert.deepEqual(Array.from(data.pendingCompletion, x => x.card.id), ['prospective']);
   assert.deepEqual(Array.from(data.waitingToStart, x => x.card.id), ['queued', 'accepted']);
-  assert.deepEqual(Array.from(data.studioWork, x => x.card.id), ['failed']);
+  assert.deepEqual(Array.from(data.studioWork, x => x.card.id), ['failed', 'running']);
   context.qRender(data);
   const landed = rendered.split('Landed without you')[1].split('Awaiting completion')[0];
   assert.match(landed, /q-count">1</);

@@ -495,8 +495,6 @@ def _waiting_on_you_complete():
     labels = {
         "prepping": ("preparing", "The owner is preparing the question."),
         "owed": ("awaiting_owner_reply", "The studio owes a reply."),
-        "doing": ("preparing", "The work is still running."),
-        "waiting_session": ("scheduled", "The work is scheduled to run."),
         "accepted": ("closed", "Your acceptance was recorded; any follow-up has its own work card."),
         "landed": ("completed", "The work is recorded as landed."),
         "dropped": ("closed", "The work was closed without approval."),
@@ -519,8 +517,14 @@ def _waiting_on_you_complete():
             missing_reason = "The owner still needs " + ", ".join(preparation["missing_labels"]) + "."
             reason = missing_reason if status == "preparing" else reason + " " + missing_reason
         else:
-            status, reason = labels.get(item.get("state"),
-                                        ("unknown", "This work state is not recognized; the owner must verify it."))
+            state = item.get("state")
+            if state in ("doing", "waiting_session"):
+                status, reason = (("preparing", "The work is running now.")
+                                  if item.get("started") else
+                                  ("scheduled", "The work is waiting to start."))
+            else:
+                status, reason = labels.get(state,
+                                            ("unknown", "This work state is not recognized; the owner must verify it."))
         projected.append({"source_id": item["id"], "source": "work", "ready": ready,
                           "status": status, "reason": reason,
                           "preparation": preparation})

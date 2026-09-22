@@ -256,8 +256,8 @@ async function qLoadData() {
     // result from the attempt before the card's current one. Execution state
     // is unambiguous here: work with no start time has not produced a result
     // that could be awaiting completion.
-    const hasNotStarted = card.state === "waiting_session"
-      || (card.state === "doing" && !card.started);
+    const hasNotStarted = (card.state === "waiting_session" || card.state === "doing")
+      && !card.started;
     if (hasNotStarted) waitingStart.push(entry);
     else if (row.status === "ready") his.push(entry);
     else if (row.status === "completed") wentIn.push(card);

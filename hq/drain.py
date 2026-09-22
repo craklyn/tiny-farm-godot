@@ -752,9 +752,11 @@ def do_item(item, org, run_id, log):
     turns = int((item.get("resume") or {}).get("turns") or 0) or WORKER_TURNS
     tree = None
     try:
-        if thinking:                      # claim it before the server's worker can
-            item["started"] = work._now_iso()
-            work.save_item(item)
+        # The card and the bullpen must agree on whether this is queued or
+        # running. Tier-0 also needs this claim before the server's own worker
+        # can see it; tier-1 needs it so the page has real start evidence.
+        item["started"] = work._now_iso()
+        work.save_item(item)
         tree = make_worktree(run_id, item["id"])
         base = sh(["git", "rev-parse", "HEAD"], cwd=tree, timeout=60).stdout.strip()
         log(f"{item['id']} · {seat} on {model or 'the default model'} · {item['title'][:60]}")
@@ -781,9 +783,8 @@ def do_item(item, org, run_id, log):
             rec["usage"].append(dict(usage, phase="drain-work", seat=seat))
         if err == "HELD":
             rec["held"] = True
-            if thinking:
-                item["started"] = ""
-                work.save_item(item)
+            item["started"] = ""
+            work.save_item(item)
             return rec
         if err == "LIMITED":
             rec["limited"] = True
