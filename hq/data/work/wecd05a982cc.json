@@ -11,7 +11,7 @@
   "thread": "claude",
   "source": "interactive",
   "source_message": "Daniel authorized the HQ redesign cards and a temporary Claude/Codex execution rule, followed by one supervised run.",
-  "result": "",
+  "result": "Partial implementation landed in 30bc271 after Daniel's live Queue correction. Both decision views now show every recorded option, the always-present revise-and-ask-again choice, feedback after the choices, and one submit button. Blank owner wording falls back to the studio. Normal choices are validated; revision feedback keeps the decision open and creates one linked owner task, with concurrent and lost-response retries covered. All HQ checks, 2,853 unit checks and 968 integration checks passed; live Q-109 verification showed all five options plus the revision choice. The remaining section-5 work is the separate Approve, Comment, Reject and Close behavior for finished work results.",
   "started": "",
   "attempts": 0,
   "created": "2026-09-21T15:42",
