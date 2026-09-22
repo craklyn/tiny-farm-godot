@@ -361,18 +361,7 @@ def _pending_review_status(item):
         return "preparing", "This card refers to an earlier decision; the owner must reconcile its status."
     if item.get("source") == "chief-of-staff" and str(item.get("created", ""))[:10] == "2026-09-10":
         return "verification_pending", "This older card needs its completion verified."
-    tier = item.get("tier", 2)
-    follows = item.get("follow_ups") or []
-    max_tier = max((f.get("tier", 1) for f in follows), default=0)
-    if (item.get("check") or {}).get("verdict") == "fail":
-        return "verification_pending", "The checker found it not done; the owner must revise it."
-    if tier == 0 and max_tier < 2:
-        return "ready_to_apply", "The reading is awaiting recorded completion."
-    suites = item.get("suites") or {}
-    green = bool(suites) and all(v.get("ok") if isinstance(v, dict) else v for v in suites.values())
-    if tier == 1 and green and max_tier <= 1:
-        return "ready_to_apply", "Checks passed, but completion has not been recorded."
-    return "preparing", "The owner is preparing the result."
+    return work.completion_assessment(item)
 
 
 def work_preparation(item):
@@ -507,10 +496,15 @@ def _waiting_on_you_complete():
         held = item.get("state") == "for_review" and work._held_back(item)
         preparation = work_preparation(item)
         ready = (work._in_his_list(item) and preparation["ready"]
-                 and not item.get("awaiting_reply"))
+                 and not item.get("awaiting_reply") and not item.get("repair_hold")
+                 and not item.get("pending_landing") and not item.get("pending_followups"))
         if ready:
             status, reason = "ready", "A prepared result is ready for your verdict."
             finished.append(item)
+        elif item.get("pending_landing"):
+            status, reason = "verification_pending", "The recorded commit attempt is being recovered."
+        elif item.get("repair_hold"):
+            status, reason = work.completion_assessment(item)
         elif held:
             status, reason = "verification_pending", "The patch has not reached the repository."
         elif item.get("awaiting_reply"):
@@ -5928,6 +5922,8 @@ class Handler(BaseHTTPRequestHandler):
         if path.startswith("/api/work"):
             try:
                 return self._send(200, work.api_post(path, payload))
+            except work.RecordConflict as e:
+                return self._send(409, {"error": str(e), "id": e.item_id, "revision": e.actual})
             except Exception as e:
                 return self._send(500, {"error": str(e)[:300]})
         if path in ("/api/chat/cancel", "/api/chat/retry"):

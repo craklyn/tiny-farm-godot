@@ -386,6 +386,7 @@ What Daniel asked for: {item.get('ask', '')}
 
 The next step, which is yours to take now: {item.get('first_action', '')}
 {said}{prior_checks(item)}{prior_session(item)}{revising}{resume_brief(item, continuing, turns)}
+Include outcome: {{"status": "complete|blocked|unfinished", "reason": "concrete reason"}} in the final WHAT FOLLOWS JSON object. Use items: [] rather than NONE.
 Do the work in your worktree. Then reply with the deliverable Daniel reads: what
 you changed, what it now does, and anything you found that he should know.
 Plain language, no preamble, no ticket IDs, as short as the work allows. Do not
@@ -395,7 +396,7 @@ If you could not finish it, say in one line what is blocking it and who has to
 unblock it. A blocked item honestly reported beats a plausible guess, and if the
 blocker is Daniel himself, name what you need from him.
 
-{work._follows_spec(org)}"""
+{work._follows_spec(org, completion=True)}"""
 
 
 CHECK_SYSTEM = """You are Daniel's chief of staff at Tiny Farm Studio, checking work another
@@ -444,12 +445,13 @@ THE DIFF THEY PRODUCED:
 {diff[:60000] if diff else '(no files changed)'}
 
 Reply with raw JSON, no fence and no prose:
-{{"verdict": "pass|concerns|fail",
+{{"verdict": "pass|concerns|fail", "complete": true,
  "summary": "one sentence Daniel can read: what landed, and what to watch",
  "findings": [{{"what": "the problem in one line", "where": "file or file:line", "fix": "what to do about it"}}],
  "escalates": null,
  "escalation_reason": null}}
 
+Set complete true only when the entire requested result is finished, not blocked or a partial attempt.
 "pass" means it did what was asked and you found nothing worth his time. "concerns"
 means it is usable but you found something he or the owner should know. "fail"
 means it should not land as it stands.
@@ -572,6 +574,8 @@ def auto_resume_reason(item, rec):
     (an attempt that ran out having touched nothing would only run out again),
     and the card has not already had its share of attempts — `spent.attempts`
     counts every attempt the card has been paid for, this one included."""
+    if item.get("automatic_repairs") or item.get("repair_hold"):
+        return ""
     if rec.get("limited") or not ran_out_of_turns(rec.get("error")):
         return ""
     if not rec.get("files"):
@@ -744,7 +748,7 @@ def do_item(item, org, run_id, log):
     seat = item["owner"]
     model = item.get("model") or server.seat_model(org, seat)
     thinking = int(item.get("tier") or 0) == 0
-    rec = {"id": item["id"], "seat": seat, **execution.resolve_model(model), "usage": [],
+    rec = {"id": item["id"], "attempt_id": work.uuid.uuid4().hex, "seat": seat, **execution.resolve_model(model), "usage": [],
            "patch": "", "stat": "", "files": [], "result": "", "check": None,
            "error": "", "limited": False, "resume": ""}
     # A card queued again after running out of turns carries the budget for
@@ -807,6 +811,12 @@ def do_item(item, org, run_id, log):
         if rec["resume"]:
             log(f"{item['id']} · {rec['resume']} — held for another attempt")
             return rec
+        rec["candidate"] = {
+            "tree": sh(["git", "write-tree"], cwd=tree, check=True).stdout.strip(),
+            "base": base,
+            "files": git_blobs(tree, "", rec["files"]),
+            "base_files": git_blobs(tree, base, rec["files"]),
+        }
         # The chief of staff reads the diff, on his own seat's model.
         cmodel = server.seat_model(org, "claude")
         ctext, cusage, cerr = run_cli(check_prompt(item, text, rec["patch"], org), CHECK_SYSTEM,
@@ -820,6 +830,12 @@ def do_item(item, org, run_id, log):
         if cerr == "LIMITED":
             rec["limited"] = True
         rec["check"] = parse_check(ctext) if ctext else None
+        if rec["check"] and not cerr:
+            rec["check_evidence"] = work.evidence_id([rec["result"], rec["patch"], rec["candidate"]])
+        if rec["files"] and rec["check"] and not cerr:
+            rec["candidate_suites"] = run_suites(cwd=tree)
+        rec["candidate_unchanged"] = sh(["git", "diff", "--quiet", rec["candidate"]["tree"], "--"], cwd=tree).returncode == 0
+        rec["candidate_test_evidence"] = work.evidence_id([rec["candidate"], rec.get("candidate_suites")])
         if rec["check"] is None and not rec["limited"]:
             rec["check"] = {"verdict": "concerns", "summary": "nobody checked this — the "
                             "check call did not come back", "findings": [], "escalates": None,
@@ -851,7 +867,9 @@ def parse_check(raw):
         return None
     verdict = str(doc.get("verdict") or "concerns").lower()
     findings = []
-    for f in (doc.get("findings") or [])[:8]:
+    raw_findings = doc.get("findings")
+    valid_findings = isinstance(raw_findings, list) and all(isinstance(f, dict) and f.get("what") for f in raw_findings)
+    for f in (raw_findings if isinstance(raw_findings, list) else [])[:8]:
         if isinstance(f, dict) and f.get("what"):
             findings.append({k: str(f.get(k) or "")[:400] for k in ("what", "where", "fix")})
     reason = str(doc.get("escalation_reason") or "").lower().strip()
@@ -859,6 +877,7 @@ def parse_check(raw):
         # This record came from a read that actually happened, which is one of
         # the four things work has to have before it may land without Daniel.
         "read": True,
+        "complete": doc.get("complete") is True and valid_findings,
         "verdict": verdict if verdict in ("pass", "concerns", "fail") else "concerns",
         "summary": str(doc.get("summary") or "")[:600],
         "findings": findings,
@@ -1127,7 +1146,7 @@ def _held_reason(stderr):
             f"{'has' if len(paths) == 1 else 'have'} changed since it was written")
 
 
-def run_suites():
+def run_suites(cwd=REPO):
     """Both headless suites, once, in the real tree."""
     out = {}
     for name, cmd in (
@@ -1137,7 +1156,7 @@ def run_suites():
                          "res://tools/test_runner.tscn"]),
     ):
         try:
-            p = sh(cmd, timeout=900)
+            p = sh(cmd, cwd=cwd, timeout=900)
             tail = (p.stdout or "").strip().splitlines()[-6:]
             failed = bool(re.search(r"(\d+) failed", p.stdout or "") and
                           not re.search(r"\b0 failed", p.stdout or ""))
@@ -1175,6 +1194,92 @@ def _checked_tier(item, rec):
     return 2
 
 
+def git_blobs(repo, revision, files):
+    """Exact Git blob and mode identities, including deletion and symlink changes."""
+    result = {}
+    for name in sorted(files):
+        if revision:
+            line = sh(["git", "ls-tree", revision, "--", name], cwd=repo, check=True).stdout.strip()
+            result[name] = line.split("\t", 1)[0] if line else None
+        else:
+            path = os.path.join(repo, name)
+            if not os.path.lexists(path):
+                result[name] = None
+                continue
+            if os.path.islink(path):
+                raw = os.readlink(path).encode()
+                blob = subprocess.run(["git", "hash-object", "--stdin"], cwd=repo,
+                                      input=raw, capture_output=True, check=True).stdout.decode().strip()
+                mode = "120000"
+            else:
+                blob = sh(["git", "hash-object", "--", name], cwd=repo, check=True).stdout.strip()
+                mode = "100755" if os.stat(path).st_mode & 0o111 else "100644"
+            result[name] = mode + " blob " + blob
+    return result
+
+
+def committed_candidate(repo, sha, transaction):
+    candidate = transaction["candidate"]
+    files = transaction["files"]
+    parents = sh(["git", "rev-list", "--parents", "-n", "1", sha], cwd=repo, check=True).stdout.split()
+    if len(parents) != 2 or parents[1] != transaction["parent"]:
+        return False
+    paths = sh(["git", "diff-tree", "--no-commit-id", "--name-only", "-r", sha], cwd=repo, check=True).stdout.splitlines()
+    committed_tree = sh(["git", "rev-parse", sha + "^{tree}"], cwd=repo, check=True).stdout.strip()
+    return (committed_tree == candidate["tree"] and set(paths) == set(files)
+            and git_blobs(repo, sha, files) == candidate["files"]
+            and git_blobs(repo, parents[1], files) == candidate["base_files"])
+
+
+def recover_pending_landing(item):
+    """Resolve a durable transaction from Git history without rerunning an agent."""
+    tx = item.get("pending_landing")
+    if not tx:
+        return False
+    if tx.get("scope_id") != work.instruction_fingerprint(item):
+        item["repair_hold"] = "The instructions changed during the commit attempt; the owner must reassess it."
+        item["landing_recovery"] = {**tx, "reason": item["repair_hold"]}
+        item.pop("pending_landing", None)
+        work.save_item(item)
+        return False
+    found = sh(["git", "log", "--all", "--format=%H", "--fixed-strings", "--grep=HQ-Attempt: " + tx["attempt_id"]],
+               cwd=server.REPO, check=True).stdout.splitlines()
+    matches = [sha for sha in found if ("HQ-Attempt: " + tx["attempt_id"]) in
+               sh(["git", "show", "-s", "--format=%B", sha], cwd=server.REPO, check=True).stdout.splitlines()]
+    if len(matches) == 1 and committed_candidate(server.REPO, matches[0], tx):
+        item["attempt_outcome"]["landing_verified"] = True
+        item["pending_landing"]["resolved"] = "committed"
+        work.land_item(item, "drain-recovery", sha=matches[0])
+        item.pop("pending_landing", None)
+        work.save_item(item)
+        return True
+    item["state"] = "for_review"
+    item["attempt_outcome"]["landing_verified"] = False
+    if matches:
+        reason = "The commit differs from the checked candidate; the owner must inspect it."
+    else:
+        head = sh(["git", "rev-parse", "HEAD"], cwd=server.REPO, check=True).stdout.strip()
+        reason = ("The commit did not happen; the checked changes remain available for the operator."
+                  if head == tx["parent"] else "Repository history changed before the commit could be recovered.")
+    item["repair_hold"] = reason
+    item["landing_recovery"] = {**tx, "matches": matches, "reason": reason}
+    item.pop("pending_landing", None)
+    work.save_item(item)
+    return True
+
+
+def tree_evidence(files):
+    values = []
+    for name in sorted(files):
+        path = os.path.join(server.REPO, name)
+        try:
+            with open(path, "rb") as source:
+                values.append([name, work.hashlib.sha256(source.read()).hexdigest()])
+        except FileNotFoundError:
+            values.append([name, None])
+    return work.evidence_id(values)
+
+
 def meets_landing_bar(item, rec, applied, suites):
     """Whether this finished card may go in without Daniel reading it, and if
     not, the sentence that says why (S-16, docs/QUEUE_TO_ZERO.md §4).
@@ -1184,8 +1289,28 @@ def meets_landing_bar(item, rec, applied, suites):
     the chief of staff read the diff and found nothing, and nothing in the diff
     is of a kind that reverting would not undo."""
     files = list(rec.get("files") or [])
+    outcome = work.attempt_outcome(rec.get("result", ""), rec.get("error"), rec.get("limited"))
+    if outcome["status"] != "complete":
+        return False, outcome["reason"] or "the attempt did not finish"
+    if rec.get("check_evidence") != work.evidence_id([rec.get("result"), rec.get("patch", ""), rec.get("candidate")]):
+        return False, "the check does not describe this result and diff"
 
+    candidate = rec.get("candidate") or {}
+    if not candidate.get("tree") or rec.get("candidate_unchanged") is not True:
+        return False, "the checked candidate changed before verification finished"
+    if rec.get("candidate_test_evidence") != work.evidence_id([candidate, rec.get("candidate_suites")]):
+        return False, "the test record does not identify the checked candidate"
+    if files:
+        candidate_suites = rec.get("candidate_suites") or {}
+        if any(not (candidate_suites.get(name) or {}).get("ok") for name in ("unit", "integration")):
+            return False, "the checked candidate did not pass both test suites"
+        if git_blobs(server.REPO, "", files) != candidate.get("files"):
+            return False, "the applied files differ from the checked candidate"
     tier = _checked_tier(item, rec)
+    if tier == 0 and files:
+        return False, "a reading unexpectedly changed files and needs its risk checked"
+    if tier == 1 and not files:
+        return False, "no change was produced for this build task"
     if tier not in (0, 1):
         return False, ("this needed your yes before it happened, so it needs your "
                        "answer now that it has")
@@ -1196,9 +1321,14 @@ def meets_landing_bar(item, rec, applied, suites):
     if not (tier == 0 and not files):
         if not applied:
             return False, "the change it wrote could not be applied to the repository"
+        if rec.get("tree_evidence") != tree_evidence(files):
+            return False, "the files changed after the tests ran"
+        if rec.get("test_evidence") != work.evidence_id([rec.get("patch", ""), suites]):
+            return False, "the tests do not describe this diff"
         if not isinstance(suites, dict) or not suites:
             return False, "the test suites were not run over it"
-        red = sorted(name for name, got in suites.items() if not (got or {}).get("ok"))
+        red = sorted(name for name in set(suites) | {"unit", "integration"}
+                     if not (suites.get(name) or {}).get("ok"))
         if red:
             return False, (f"the {' and '.join(red)} test suite"
                            f"{'s are' if len(red) > 1 else ' is'} failing with this change in")
@@ -1208,11 +1338,9 @@ def meets_landing_bar(item, rec, applied, suites):
     # A record saying nobody read the diff is not a clean read of it. The
     # check writes that down itself when its call does not come back, so this
     # asks the record rather than guessing from the words in it.
-    if check.get("read") is False:
+    if check.get("read") is not True:
         return False, "nobody read the change it made"
-    if verdict == "pass":
-        pass
-    elif verdict == "concerns" and not check.get("findings"):
+    if verdict == "pass" and check.get("complete") is True and not check.get("findings"):
         pass
     elif verdict == "concerns":
         return False, "the read of it raised something you should see"
@@ -1236,15 +1364,28 @@ def land(item, rec):
     files = [f for f in (rec.get("files") or []) if f]
     if not files:
         return "", "there was nothing to commit"
-    add = sh(["git", "add", "--"] + files)
+    parent = sh(["git", "rev-parse", "HEAD"], cwd=server.REPO).stdout.strip()
+    candidate = rec["candidate"]
+    if (parent != candidate.get("base")
+            or git_blobs(server.REPO, "", files) != candidate["files"]
+            or git_blobs(server.REPO, parent, files) != candidate["base_files"]):
+        return "", "the repository changed after the candidate was checked"
+    item["pending_landing"] = {"version": 1, "attempt_id": item["attempt_outcome"]["id"],
+                               "parent": parent, "files": files, "candidate": candidate,
+                               "scope_id": work.instruction_fingerprint(item)}
+    work.save_item(item)
+    add = sh(["git", "add", "--"] + files, cwd=server.REPO)
     if add.returncode != 0:
         return "", (add.stderr or add.stdout or "git add failed").strip()[:200]
-    made = sh(["git", "commit", "-m", item["title"], "--"] + files)
+    made = sh(["git", "commit", "-m", item["title"], "-m", "HQ-Attempt: " + item["attempt_outcome"]["id"], "--"] + files, cwd=server.REPO)
     if made.returncode != 0:
-        sh(["git", "restore", "--staged", "--"] + files)
+        sh(["git", "restore", "--staged", "--"] + files, cwd=server.REPO)
         return "", (made.stderr or made.stdout or "git commit failed").strip()[:200]
-    got = sh(["git", "rev-parse", "HEAD"])
-    return got.stdout.strip(), ""
+    got = sh(["git", "rev-parse", "HEAD"], cwd=server.REPO)
+    sha = got.stdout.strip()
+    if not committed_candidate(server.REPO, sha, item["pending_landing"]):
+        return "", "the committed files differ from the checked candidate"
+    return sha, ""
 
 
 def plain_failure(text, applied=None, why=""):
@@ -1290,17 +1431,33 @@ def _turns_result(item, rec, applied, body):
 
 
 def write_back(item, rec, applied, why_not, suites, org):
+    with work.mutation_lock():
+        current = work.load_item(item["id"]) if os.path.exists(work._item_path(item["id"])) else {}
+        if current.get("_revision", 0) != item.get("_revision", 0):
+            raise work.RecordConflict(item["id"], item.get("_revision", 0), current.get("_revision", 0))
+        return _write_back(item, rec, applied, why_not, suites, org)
+
+
+def _write_back(item, rec, applied, why_not, suites, org):
     """The attempt onto the card. Almost always that means `for_review`, with
     whatever came back. The exception is a worker that ran out of turns with
     edits in hand (auto_resume_reason): the card goes back into the queue
     with the held patch as the next attempt's base and twice the standing
     turn budget, because a budget the drain set wrong is the drain's to fix,
     not Daniel's to judge. Either way the attempt is counted and billed."""
+    if item.get("pending_landing"):
+        recover_pending_landing(item)
+        return item
+    if rec.get("attempt_id") and item.get("last_recorded_attempt") == rec["attempt_id"]:
+        if item.get("completion"):
+            work.land_item(item, "drain", sha=item["completion"].get("sha", ""))
+        return item
     body, follows, _amend, recommend, _move = work._split_result(rec["result"], org, item["owner"])
     deliverable = work.result_deliverable(rec["result"])
     # do_item decides this before the patch is held; a record that skipped
     # do_item gets the same answer here. Edits that landed are never retried.
-    resume = "" if applied else (rec.get("resume") or auto_resume_reason(item, rec))
+    resume = "" if applied or item.get("automatic_repairs") else (rec.get("resume") or auto_resume_reason(item, rec))
+    item["last_recorded_attempt"] = rec.get("attempt_id")
     item["attempts"] = item.get("attempts", 0) + 1
     item["done_by"] = {"seat": rec["seat"], "model": rec["model"], "lane": "drain"}
     # Whether this goes in on its own or comes to Daniel. Work he would only
@@ -1309,18 +1466,15 @@ def write_back(item, rec, applied, why_not, suites, org):
     # so the next person can see which of the four things stopped it.
     landed_ok, why_not_landed = meets_landing_bar(item, rec, applied, suites)
     sha = ""
-    if landed_ok and (rec.get("files") or []):
-        sha, trouble = land(item, rec)
-        if not sha:
-            landed_ok, why_not_landed = False, trouble
     item["diff"] = {"stat": rec["stat"], "files": rec["files"][:40],
                     "applied": applied, "why_not": why_not,
                     "why_not_landed": why_not_landed}
-    if landed_ok:
-        work.land_item(item, "drain", sha=sha)
 
+    item.pop("check", None)
+    item.pop("completion", None)
+    item.pop("repair_hold", None)
     if rec["check"]:
-        item["check"] = rec["check"]
+        item["check"] = dict(rec["check"])
     if suites:
         item["suites"] = suites
     this = server.sum_usage(rec["usage"])
@@ -1363,10 +1517,33 @@ def write_back(item, rec, applied, why_not, suites, org):
         # the deliverable path.
         item["deliverable"] = {**(item.get("deliverable") if isinstance(item.get("deliverable"), dict) else {}),
                                **deliverable}
-    if not landed_ok:
+    item["attempt_outcome"] = work.attempt_outcome(rec["result"], rec.get("error"), rec.get("limited"))
+    item["attempt_outcome"].update({"id": rec.get("attempt_id") or work.evidence_id([item["id"], item["attempts"], rec["result"]]),
+                                    "landing_verified": landed_ok,
+                                    "patch_id": work.evidence_id(rec.get("patch", "")),
+                                    "check_evidence": rec.get("check_evidence"),
+                                    "test_evidence": rec.get("test_evidence"),
+                                    "tree_evidence": rec.get("tree_evidence"),
+                                    "candidate": rec.get("candidate"),
+                                    "candidate_tests": rec.get("candidate_suites"),
+                                    "candidate_test_evidence": rec.get("candidate_test_evidence")})
+    if item.get("check"):
+        item["check"]["attempt_id"] = item["attempt_outcome"]["id"]
+    if landed_ok and (rec.get("files") or []):
+        sha, trouble = land(item, rec)
+        if not sha:
+            landed_ok, why_not_landed = False, trouble
+    item["attempt_outcome"]["landing_verified"] = landed_ok
+    item["diff"]["why_not_landed"] = why_not_landed
+    if landed_ok:
+        work.land_item(item, "drain", sha=sha)
+        item.pop("pending_landing", None)
+    else:
         item["state"] = "for_review"
     item["finished"] = work._now_iso()
     work.finish_revision(item)
+    if not landed_ok:
+        work.queue_one_repair(item)
     work.save_item(item)
     return item
 
@@ -1430,7 +1607,8 @@ def queued(include_thinking=False):
     # An item that has already cost more than its cap across attempts without
     # landing is not tried again on its own: it needs a smaller brief, and
     # the card says so.
-    out = [i for i in out if not _parked_by_cost(i)]
+    out = [i for i in out if not _parked_by_cost(i) and not i.get("repair_hold")
+           and not i.get("pending_landing") and not i.get("pending_followups")]
     if include_thinking:
         out += [i for i in work.items()
                 if i.get("state") == "doing" and not i.get("started")]
@@ -1456,6 +1634,53 @@ def cost_summary(bill):
             "is a size, not a bill")
 
 
+def run_verified_batch(pool, org, run_id, log, *, no_suites=False):
+    """Finish one candidate before creating the next, retaining exact parent identity."""
+    records, done = {}, []
+    for selected in pool:
+        item = work.load_item(selected["id"])
+        rec = do_item(item, org, run_id, log)
+        records[item["id"]] = rec
+        if rec.get("held") or rec.get("limited"):
+            continue
+        ok, why = False, "the check said it should not land as it stands"
+        fresh = work.load_item(item["id"])
+        if fresh.get("_revision", 0) != item.get("_revision", 0):
+            rec["held"], rec["error"] = True, "the work card changed during execution; the result needs reassessment"
+            continue
+        candidate = rec.get("candidate") or {}
+        head = sh(["git", "rev-parse", "HEAD"], cwd=server.REPO).stdout.strip()
+        if candidate and candidate.get("base") != head:
+            why = "the candidate is stale; repository history changed before application"
+        elif rec.get("resume"):
+            why = "held for another attempt — " + rec["resume"]
+        elif not rec.get("patch", "").strip():
+            why = rec.get("error") or "nothing changed"
+        elif (not rec.get("error") and work.attempt_outcome(rec["result"])["status"] == "complete"
+              and (rec.get("check") or {}).get("verdict") == "pass"
+              and (rec.get("check") or {}).get("complete") is True
+              and not (rec.get("check") or {}).get("findings")
+              and rec.get("candidate_unchanged") is True):
+            ok, why = apply_patch(rec["patch"], rec["files"])
+        rec["applied"], rec["why_not"] = ok, "" if ok else why
+        suites = None
+        if ok and not no_suites:
+            rec["tree_evidence"] = tree_evidence(rec["files"])
+            suites = run_suites()
+        rec["test_evidence"] = work.evidence_id([rec.get("patch", ""), suites])
+        fresh = work.load_item(item["id"])
+        if fresh.get("_revision", 0) != item.get("_revision", 0):
+            rec["held"], rec["error"] = True, "the work card changed during validation; reassessment is required"
+            continue
+        try:
+            done.append(write_back(fresh, rec, ok, rec["why_not"], suites, org))
+        except work.RecordConflict:
+            rec["held"], rec["error"] = True, "the work card changed before completion was saved; reassessment is required"
+            continue
+        log(f"finished {item['id']} · {done[-1]['state']}")
+    return records, done
+
+
 def main():
     ap = argparse.ArgumentParser(description="Drain HQ's build-session queue.")
     ap.add_argument("ids", nargs="*", help="work item ids; default is every queued item")
@@ -1463,7 +1688,7 @@ def main():
     ap.add_argument("--thinking", action="store_true",
                     help="also run tier-0 items (analysis and drafting, read-only)")
     ap.add_argument("--limit", type=int, default=0, help="stop after N items")
-    ap.add_argument("--jobs", type=int, default=3, help="seats working at once")
+    ap.add_argument("--jobs", type=int, default=3, help="retained for compatibility; verified items run sequentially")
     ap.add_argument("--list", action="store_true", help="what is queued, and nothing else")
     ap.add_argument("--brief", metavar="ID",
                     help="print the brief the next attempt at this item would be given, "
@@ -1483,6 +1708,9 @@ def main():
 
     work.bind(server)
     org = server.load_org()
+    # Recovery is local bookkeeping and must run even while models are paused.
+    if not (args.list or args.dry_run or args.brief):
+        work.recover_completion_work()
 
     if args.unattended:
         args.all = True
@@ -1569,72 +1797,13 @@ def main():
     run_id = time.strftime("%Y%m%d-%H%M%S") + "-" + uuid.uuid4().hex[:4]
     _set_run(run_id)
     started = time.time()
-    print(f"Draining {len(pool)} item(s), {args.jobs} at a time. Run {run_id}.\n", flush=True)
+    print(f"Draining {len(pool)} item(s), one verified item at a time. Run {run_id}.\n", flush=True)
 
     def log(msg):
         print(f"  [{time.strftime('%H:%M:%S')}] {msg}", flush=True)
 
-    records = {}
-    with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, args.jobs)) as ex:
-        futures = {ex.submit(do_item, i, org, run_id, log): i for i in pool}
-        for fut in concurrent.futures.as_completed(futures):
-            it = futures[fut]
-            try:
-                records[it["id"]] = fut.result()
-            except Exception as e:
-                records[it["id"]] = {"id": it["id"], "seat": it["owner"], "model": "",
-                                     "usage": [], "patch": "", "stat": "", "files": [],
-                                     "result": "", "check": None, "limited": False,
-                                     "error": f"{type(e).__name__}: {e}"[:300]}
-            r = records[it["id"]]
-            v = (r.get("check") or {}).get("verdict", "—")
-            log(f"done {it['id']} · {v} · {len(r['files'])} file(s) changed"
-                + (f" · {r['error'][:80]}" if r["error"] else ""))
+    records, done = run_verified_batch(pool, org, run_id, log, no_suites=args.no_suites)
     shutil.rmtree(os.path.join(WORKTREES, run_id), ignore_errors=True)
-
-    # Apply sequentially, in the order they were queued, so the tree only ever
-    # moves one item at a time and a conflict names the item that caused it.
-    applied_files = []
-    for it in pool:
-        rec = records.get(it["id"])
-        if not rec or rec.get("held"):
-            continue
-        ok, why = (False, "the check said it should not land as it stands")
-        if rec["limited"]:
-            ok, why = False, "the token window ran dry before this finished"
-        elif rec.get("resume"):
-            # Its edits are the next attempt's starting point, not the tree's.
-            ok, why = False, f"held for another attempt — {rec['resume']}"
-        elif rec["error"] and not rec["patch"]:
-            ok, why = False, rec["error"]
-        elif not rec["patch"].strip():
-            ok, why = False, "nothing changed"
-        elif (rec["check"] or {}).get("verdict") != "fail":
-            ok, why = apply_patch(rec["patch"], rec["files"])
-            if ok:
-                applied_files += rec["files"]
-        rec["applied"], rec["why_not"] = ok, ("" if ok else why)
-        print(f"  {'applied ' if ok else 'held    '} {it['id']}  {why}", flush=True)
-
-    suites = None
-    if applied_files and not args.no_suites:
-        # Run whenever anything was applied, not only when the game itself was
-        # touched: a green run over the change is one of the four things that
-        # lets work go in without Daniel reading it, so a change that never
-        # faced the suites has no evidence to land on.
-        print("\n  running both suites over what was applied…", flush=True)
-        suites = run_suites()
-        for k, v in suites.items():
-            print(f"  {k}: {'green' if v['ok'] else 'RED'}", flush=True)
-
-    done = []
-    for it in pool:
-        rec = records.get(it["id"])
-        if not rec or rec.get("held") or rec["limited"]:
-            continue          # still queued; the window will come back
-        fresh = server.load_json(work._item_path(it["id"]))
-        done.append(write_back(fresh, rec, rec.get("applied", False), rec.get("why_not", ""),
-                               suites if rec.get("applied") else None, org))
 
     bill = server.sum_usage([u for r in records.values() for u in r["usage"]])
     esc = [(i, records[i["id"]]["check"]) for i in pool

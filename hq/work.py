@@ -27,6 +27,9 @@ routes /api/work* here. It never blocks a chat reply — capture happens after.
 """
 import execution
 
+from contextlib import contextmanager
+import fcntl
+import hashlib
 import datetime
 import json
 import os
@@ -179,6 +182,8 @@ def _read_dir(d, *, strict=False):
             record = HOST.load_json(os.path.join(d, n))
             if strict and (not isinstance(record, dict) or not record.get("id") or not record.get("state")):
                 raise ValueError(f"Malformed work record: {n}")
+            if d == WORK and isinstance(record, dict):
+                record.setdefault("_revision", 0)
             out.append(record)
         except Exception:
             if strict:
@@ -204,14 +209,77 @@ def _item_path(item_id):
     return os.path.join(WORK, f"{item_id}.json")
 
 
+_MUTATION_THREADS = threading.RLock()
+_MUTATION_LOCAL = threading.local()
+_MUTATION_PID = os.getpid()
+
+
+@contextmanager
+def mutation_lock():
+    """All work-record writes share the same reentrant, process-safe boundary."""
+    global _MUTATION_PID, _MUTATION_THREADS, _MUTATION_LOCAL
+    if _MUTATION_PID != os.getpid():
+        _MUTATION_PID = os.getpid()
+        _MUTATION_THREADS = threading.RLock()
+        _MUTATION_LOCAL = threading.local()
+    with _MUTATION_THREADS:
+        if getattr(_MUTATION_LOCAL, "depth", 0):
+            _MUTATION_LOCAL.depth += 1
+            try:
+                yield
+            finally:
+                _MUTATION_LOCAL.depth -= 1
+            return
+        with open(os.path.join(WORK, ".mutation.lock"), "a") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            _MUTATION_LOCAL.depth = 1
+            try:
+                yield
+            finally:
+                _MUTATION_LOCAL.depth = 0
+                fcntl.flock(lock, fcntl.LOCK_UN)
+
+
+def load_item(item_id):
+    item = HOST.load_json(_item_path(item_id))
+    item.setdefault("_revision", 0)
+    return item
+
+
+class RecordConflict(RuntimeError):
+    def __init__(self, item_id, expected, actual):
+        self.item_id, self.expected, self.actual = item_id, expected, actual
+        super().__init__("This work card changed while the request was running. Reload it before trying again.")
+
+
+def validate_revision(item):
+    """Check a loaded record before any dependent mutation, under the shared lock."""
+    with mutation_lock():
+        try:
+            with open(_item_path(item["id"]), encoding="utf-8") as source:
+                current = json.load(source)
+        except FileNotFoundError:
+            current = {}
+        if current and "_revision" not in item:
+            raise RecordConflict(item["id"], None, current.get("_revision", 0))
+        actual, expected = current.get("_revision", 0), item.get("_revision", 0)
+        if type(actual) is not int or actual < 0 or type(expected) is not int or expected != actual:
+            raise RecordConflict(item["id"], expected, actual)
+        return actual
+
+
 def save_item(item):
-    # Tier-1 work belongs to the build queue. `doing` is the immediate,
-    # read-only lane; filing repository work there leaves it invisible to the
-    # drain while the page claims somebody is doing it. Keep the lane derived
-    # from the work's recorded risk whenever a malformed producer crosses it.
-    if int(item.get("tier") or 0) == 1 and item.get("state") == "doing":
-        item["state"] = "waiting_session"
-    return _write_json(_item_path(item["id"]), item)
+    """Compare-and-swap the durable revision; never merge a stale whole record."""
+    with mutation_lock():
+        path = _item_path(item["id"])
+        actual = validate_revision(item)
+        # Repository work stays in the build lane even if a producer files it as doing.
+        if int(item.get("tier") or 0) == 1 and item.get("state") == "doing":
+            item["state"] = "waiting_session"
+        saved = dict(item, _revision=actual + 1)
+        _write_json(path, saved)
+        item["_revision"] = saved["_revision"]
+        return item
 
 
 def file_decision_revision(decision, feedback, ruled_at, submission_id):
@@ -576,6 +644,74 @@ def _parse_follows(tail, org, fallback_owner):
     return [g for g in got if g], (amend or None), rec, (move if move in MOVES else None)
 
 
+def evidence_id(value):
+    return hashlib.sha256(json.dumps(value, sort_keys=True, default=str).encode()).hexdigest()
+
+
+def attempt_outcome(text, error="", limited=False):
+    body, _, tail = (text or "").partition(FOLLOW_MARK)
+    doc = _follow_doc(tail) or {}
+    outcome = doc.get("outcome") if isinstance(doc, dict) else None
+    status = outcome.get("status") if isinstance(outcome, dict) else "unknown"
+    reason = str(outcome.get("reason") or "") if isinstance(outcome, dict) else ""
+    try:
+        envelope = json.loads(body)
+    except (ValueError, TypeError):
+        envelope = None
+    if error or limited:
+        status, reason = "unfinished", error or "The model allowance ended before completion."
+    elif not body.strip() or isinstance(envelope, dict):
+        status, reason = "unknown", "No usable result was returned."
+    if status not in ("complete", "blocked", "unfinished"):
+        status, reason = "unknown", reason or "The owner did not record whether the work finished."
+    return {"version": 1, "status": status, "reason": reason,
+            "result_id": evidence_id(body.strip())}
+
+
+def completion_assessment(item):
+    attempt = item.get("attempt_outcome") or {}
+    completion = item.get("completion") or {}
+    if completion.get("version") == 1 and completion.get("attempt_id") == attempt.get("id"):
+        return "completed", "Completion was verified and recorded."
+    if item.get("repair_hold"):
+        return "verification_pending", item["repair_hold"]
+    if attempt.get("version") != 1:
+        return "verification_pending", "This older result needs completion verified."
+    if attempt.get("status") != "complete":
+        return "verification_pending", attempt.get("reason") or "The owner has not finished the work."
+    check = item.get("check") or {}
+    if (check.get("verdict") != "pass" or check.get("findings") or check.get("read") is not True
+            or check.get("complete") is not True or check.get("attempt_id") != attempt.get("id")):
+        return "verification_pending", "The result needs a clean check of this attempt."
+    if attempt.get("result_id") != evidence_id(item.get("result", "")):
+        return "verification_pending", "The result changed after it was checked."
+    if not attempt.get("landing_verified"):
+        return "verification_pending", ((item.get("diff") or {}).get("why_not_landed")
+                                         or "The current changes still need landing evidence.")
+    return "ready_to_apply", "Completion was verified; recording the landing remains."
+
+
+def queue_one_repair(item):
+    check = item.get("check") or {}
+    attempt = item.get("attempt_outcome") or {}
+    if check.get("verdict") not in ("concerns", "fail") and not check.get("findings"):
+        return False
+    if attempt.get("status") in ("blocked", "unknown") or check.get("escalates"):
+        item["repair_hold"] = attempt.get("reason") or "The owner needs a dependency or decision before continuing."
+        return False
+    if item.get("automatic_repairs", 0) >= 1:
+        item["repair_hold"] = "The repair still needs verification; the owner must resolve the remaining findings."
+        return False
+    item["automatic_repairs"] = 1
+    item["repair_brief"] = check.get("summary", "") + "\n" + json.dumps(check.get("findings") or [])
+    item.setdefault("attempt_history", []).append(dict(attempt))
+    requeue_for_revision(item)
+    # The checked drain also handles read-only repairs; the intake worker must not claim them.
+    item["state"] = "waiting_session"
+    save_item(item)
+    return True
+
+
 def result_deliverable(text):
     """The short name Daniel sees when reviewing a completed result.
 
@@ -678,8 +814,12 @@ def _file_item(fields, cap, org):
         owner = cap["to"]
     tier = fields["tier"]
     state = {0: "doing", 1: "waiting_session", 2: "needs_approval"}[tier]
+    if cap.get("completion_key") and tier == 2:
+        state = "prepping"
     return save_item({
-        "id": "w" + uuid.uuid4().hex[:11],
+        "id": cap.get("child_id") or "w" + uuid.uuid4().hex[:11],
+        **({"completion_key": cap["completion_key"], "parent": cap["parent"]}
+           if cap.get("completion_key") else {}),
         "title": fields["title"],
         "level": fields["level"],
         "owner": owner,
@@ -742,7 +882,7 @@ def file_automatic(fields, source_ref):
     return save_item(item)
 
 
-def _follows_spec(org, amendable=False, moves=None, wait=""):
+def _follows_spec(org, amendable=False, moves=None, wait="", completion=False):
     """`moves` is None for a result, "open" for a reply on a card that can still
     change, "closed" for a reply on a card that has been accepted or dropped.
     `wait` says where he is: "waiting" is a card in his list with the clock
@@ -766,6 +906,10 @@ def _follows_spec(org, amendable=False, moves=None, wait=""):
                  if not moves else
                  "NONE — only when nothing more should happen AND your move is "
                  "\"answer\" — or\n")
+    outcome_field = (', "outcome": {"status": "complete|blocked|unfinished", "reason": "concrete reason if unfinished"}'
+                     if completion else "")
+    if completion:
+        none_line = ""
     return f"""End your reply with this line exactly:
 
 {FOLLOW_MARK}
@@ -776,7 +920,7 @@ sweep for the artist and a check in the pipeline are three items with three
 owners, and naming only the first quietly drops the other two. Four at most —
 past that it is a plan, and a plan is its own item.
 {amend}{move_note}
-{{"deliverable": {{"name": "the short name of the finished result Daniel reviews"}}, "items": [{{"title": "short and plain", "owner": "<roster id>", "level": "task|story|epic|project|goal", "tier": 0|1|2, "first_action": "the single next concrete step, specific enough to just do", "why": "one sentence: why this follows"}}]{amend_field}{move_field}}}
+{{"deliverable": {{"name": "the short name of the finished result Daniel reviews"}}, "items": [{{"title": "short and plain", "owner": "<roster id>", "level": "task|story|epic|project|goal", "tier": 0|1|2, "first_action": "the single next concrete step, specific enough to just do", "why": "one sentence: why this follows"}}]{amend_field}{move_field}{outcome_field}}}
 
 `deliverable.name` is for Daniel, not a rewrite of the ask: name the finished
 thing he can inspect in a few plain words. Keep the original ask in the card.
@@ -791,7 +935,7 @@ Unknown blast radius is a 2, never a 0. Each item goes to the person whose job
 it actually is, by id, from this roster:
 {_roster_line(org)}
 
-NONE is the honest answer more often than not, and inventing work to look busy
+{("Use items: [] when nothing follows; always include the outcome object." if completion else "NONE is the honest answer more often than not.")} Inventing work to look busy
 costs him the attention this system exists to protect. But a gap you noticed
 and did not file is a gap he has to remember for you — name it.
 
@@ -805,7 +949,7 @@ and did not file is a gap he has to remember for you — name it.
 def _do_prompt(item, org):
     emp = next((e for e in org["employees"] if e["id"] == item["owner"]), None)
     name = emp["name"] if emp else "you"
-    spec = _follows_spec(org)
+    spec = _follows_spec(org, completion=True)
     # Anything he said on the card outranks the original brief — a second
     # attempt that ignores what he told you is not a second attempt.
     convo = _convo_lines(item, org)
@@ -844,6 +988,9 @@ def revision_brief(item):
     """What a worker is told when it is extending its own earlier result rather
     than producing one. Shared with the drain, so the two lanes revise the same
     way. Empty unless the card is mid-revision."""
+    if item.get("repair_brief"):
+        return ("\nREPAIR YOUR OWN RESULT: " + item["repair_brief"]
+                + "\nPreserve what still stands. Earlier result:\n" + item.get("result", "")[:6000])
     if not item.get("revising"):
         return ""
     prior = (item.get("prior_results") or [{}])[-1].get("result") or item.get("result") or ""
@@ -959,36 +1106,14 @@ def _process_capture(cap, org):
 def _process_item(item, org):
     if not execution.launch_allowed():
         return False
-    item["started"] = _now_iso()
-    item["attempts"] = item.get("attempts", 0) + 1
-    save_item(item)
-    sys_prompt = HOST.build_system_prompt(org, item["owner"])
-    model = item.get("model") or HOST.seat_model(org, item["owner"])
-    text, limited = _run_cli(_do_prompt(item, org), sys_prompt, "Read,Glob,Grep",
-                             HOST.MAX_TURNS, 420, model=model,
-                             phase="tier0", seat=item["owner"], item=item["id"])
-    if limited:
-        item["attempts"] -= 1
+    # Read-only work uses the same checked completion path as changes.
+    import drain
+    record = drain.do_item(item, org, "reading-" + uuid.uuid4().hex[:12], lambda message: None)
+    if record.get("held") or record.get("limited"):
         item["started"] = ""
         save_item(item)
         return False
-    body, got, _amend, rec, _move = _split_result(text, org, item["owner"])
-    deliverable = result_deliverable(text)
-    item["result"] = body or "(no result came back)"
-    if got is not None:
-        item.pop("follow_up", None)
-        item["follow_ups"] = got
-        item["recommend"] = rec or {}
-    if deliverable:
-        # Evidence is supplied and checked on its own path.  A later result
-        # may give the review a better name, but must not erase the existing
-        # inspectable record while doing so.
-        item["deliverable"] = {**(item.get("deliverable") if isinstance(item.get("deliverable"), dict) else {}),
-                               **deliverable}
-    item["state"] = "for_review"
-    item["finished"] = _now_iso()
-    finish_revision(item)
-    save_item(item)
+    drain.write_back(item, record, False, "nothing changed", None, org)
     return True
 
 
@@ -1149,7 +1274,7 @@ def hand_back_if_late(item_id):
     if not execution.launch_allowed():
         return None
     try:
-        item = HOST.load_json(_item_path(item_id))
+        item = load_item(item_id)
     except Exception:
         return None
     if not item.get("awaiting_reply") or item.get("state") not in HIS_STATES:
@@ -1194,7 +1319,7 @@ def _begin_answering(item):
 
 def _reply_now(item_id):
     try:
-        item = HOST.load_json(_item_path(item_id))
+        item = load_item(item_id)
         _process_response(item, HOST.load_org())
     except Exception:
         pass                  # the card keeps `awaiting_reply`; the worker retries
@@ -1229,7 +1354,7 @@ def _process_response(item, org):
     text, got, amend, rec, move = _split_result(raw, org, item["owner"])
     # Re-read: he may have typed again while the owner was thinking, and his
     # message must not be lost to a stale copy of the item.
-    fresh = HOST.load_json(_item_path(item["id"]))
+    fresh = load_item(item["id"])
     # The answer he was owed has arrived. The card is his move again and comes
     # back at the top of his list, not at the place in it that it left from.
     was_owed = fresh.get("state") == "owed"
@@ -1340,8 +1465,19 @@ def _file_follow_ups(item, fus, org, cap_id, message, said="", lead=""):
     started = []
     seen = {}            # subject -> the card this block already filed it into
     for fu in fus:
+        completion_key = (evidence_id([item["id"], item.get("completion", {}).get("attempt_id"), fu])
+                          if cap_id == "landed" else "")
+        if completion_key:
+            previous = next((child for child in items() if child.get("completion_key") == completion_key
+                             or completion_key in child.get("completion_keys", [])), None)
+            if previous:
+                started.append({"id": previous["id"], "title": previous["title"],
+                                "state": previous["state"], "owner": previous["owner"]})
+                continue
         cap = {"to": item.get("thread") or item["owner"], "id": cap_id,
                "message": message[:2000]}
+        if completion_key:
+            cap.update(child_id="w" + completion_key[:11], completion_key=completion_key, parent=item["id"])
         ask = (f"{lead or message} {fu.get('why', '')}".strip())[:600]
         if said:
             ask += ("\n\nDaniel attached this, and it is part of the brief:\n" + said)
@@ -1352,6 +1488,8 @@ def _file_follow_ups(item, fus, org, cap_id, message, said="", lead=""):
         # instead of filing a twin for the same person to read twice.
         twin = seen.get((owner, key)) or _open_twin(owner, key, exclude_id=item["id"])
         if twin:
+            if completion_key:
+                twin.setdefault("completion_keys", []).append(completion_key)
             _merge_into(twin, item, fu, ask)
             started.append({"id": twin["id"], "title": twin["title"],
                             "state": twin["state"], "owner": twin["owner"],
@@ -1388,7 +1526,7 @@ def _file_follow_ups(item, fus, org, cap_id, message, said="", lead=""):
         started.append({"id": child["id"], "title": child["title"],
                         "state": child["state"], "owner": child["owner"]})
     if started:
-        item["spawned"] = (item.get("spawned") or []) + started
+        item["spawned"] = list({child["id"]: child for child in (item.get("spawned") or []) + started}.values())
     return started
 
 
@@ -1546,6 +1684,7 @@ def worker():
         try:
             # Before anything that can block for minutes: a question past its
             # thirty seconds stops being his, whatever else the studio is doing.
+            recover_completion_work()
             if not execution.launch_allowed():
                 continue
             _sweep_hand_backs()
@@ -1630,14 +1769,68 @@ def land_item(item, by, sha="", note=""):
     on the page reverts that commit and gives the card back. Nothing here asks
     Daniel anything, which is the point — work he would only rubber-stamp is
     work he should never have been shown (S-16)."""
+    status, reason = completion_assessment(item)
+    if status not in ("ready_to_apply", "completed"):
+        raise ValueError(reason)
+    if status == "completed" and item.get("state") == "landed" and not item.get("pending_followups"):
+        return item
+    item.setdefault("completion", {"version": 1, "attempt_id": item["attempt_outcome"]["id"],
+                          "at": _now_iso(), "sha": sha, "by": by,
+                          "kind": "change" if sha else "reading",
+                          "evidence": dict(item["attempt_outcome"])})
+    item.setdefault("pending_followups", {"version": 1, "attempt_id": item["completion"]["attempt_id"],
+                                         "items": follow_ups(item)})
+    # Persist the recoverable obligation before publishing the completed state.
+    save_item(item)
     item["state"] = "landed"
-    item["closed"] = _now_iso()
-    item["landed"] = {"at": _now_iso(), "by": by, "sha": sha, "note": note}
-    fus = follow_ups(item)
-    if fus:
-        _file_follow_ups(item, fus, HOST.load_org(), cap_id="landed",
-                         message=f"Landed without Daniel: “{item['title']}”.")
+    item["closed"] = item["completion"]["at"]
+    item.setdefault("landed", {"at": item["completion"]["at"], "by": by, "sha": sha, "note": note})
+    save_item(item)
+    finish_pending_followups(item)
     return item
+
+
+def finish_pending_followups(item):
+    pending = item.get("pending_followups")
+    if not pending:
+        return
+    # Read/deduplicate/file is one cross-process operation, including closed children.
+    with mutation_lock():
+        fresh = load_item(item["id"])
+        if fresh["_revision"] != item.get("_revision", 0):
+            raise RecordConflict(item["id"], item.get("_revision", 0), fresh["_revision"])
+        _file_follow_ups(item, pending["items"], HOST.load_org(), cap_id="landed",
+                         message=f"Landed without Daniel: “{item['title']}”.")
+        item.pop("pending_followups", None)
+        save_item(item)
+
+
+def recover_completion_work():
+    """Select recoverable obligations independently of model launch permission."""
+    import drain
+    # A live drain owns pending transactions until it releases this same lock.
+    lock = drain.take_lock()
+    if lock is None:
+        return []
+    try:
+        recovered = []
+        for item in items():
+            if item.get("pending_landing"):
+                try:
+                    drain.recover_pending_landing(item)
+                    recovered.append(item["id"])
+                except RecordConflict:
+                    continue
+            elif item.get("pending_followups") and item.get("completion"):
+                try:
+                    land_item(item, item["completion"].get("by", "recovery"),
+                              sha=item["completion"].get("sha", ""))
+                    recovered.append(item["id"])
+                except RecordConflict:
+                    continue
+        return recovered
+    finally:
+        lock.close()
 
 
 def undo_landing(item):
@@ -1646,6 +1839,9 @@ def undo_landing(item):
     The commit is reverted rather than reset: other work has landed on top of
     it since, and rewriting history under a shared tree is how a second
     person's work disappears."""
+    item.pop("completion", None)
+    if item.get("attempt_outcome"):
+        item["attempt_outcome"]["landing_verified"] = False
     sha = (item.get("landed") or {}).get("sha") or ""
     if not sha:
         item["state"] = "for_review"
@@ -1716,6 +1912,11 @@ def api_get(path):
 
 
 def api_post(path, payload):
+    with mutation_lock():
+        return _api_post(path, payload)
+
+
+def _api_post(path, payload):
     if path == "/api/work/new":
         org = HOST.load_org()
         try:
@@ -1742,7 +1943,13 @@ def api_post(path, payload):
     p = _item_path(item_id)
     if not os.path.isfile(p):
         return {"error": "no such item"}
-    item = HOST.load_json(p)
+    item = load_item(item_id)
+    # Reject stale actions before comments, child filing, merges or Git side effects.
+    actual = validate_revision(item)
+    if "_revision" in payload:
+        expected = payload["_revision"]
+        if type(expected) is not int or expected != actual:
+            raise RecordConflict(item_id, expected, actual)
 
     # Every verdict may carry a reason, and the reason is recorded on the card
     # before the verdict is applied — so a second attempt knows why it is a
@@ -1825,3 +2032,127 @@ def api_post(path, payload):
     if item.get("awaiting_reply"):
         _begin_answering(item)
     return saved
+
+
+LEGACY_COMPLETION_IDS = "w2d226ab695b,w72dee30012f,w8fd8d88b290,w59c6ab05678,w6ef64f2e6dd,wd191fa66a85,wabb24f97efa,w554baab1271,w56a634c94f6,w2d641a31a52,wae35fb20cb7,w8e71933a1a9,w6ff2240c1fb,wfce637ce465,w3169ae0d4da,wcd3806bc3a4,wc1886486f14,w5a4005536e1,wf1b3b951813".split(",")
+
+
+def instruction_fingerprint(item):
+    outcome_fields = {"_revision", "state", "result", "check", "prior_checks", "prior_results",
+        "attempts", "done_by", "diff", "suites", "usage", "spent", "resume", "attempt_outcome",
+        "completion", "pending_landing", "pending_followups", "closed", "landed", "finished",
+        "revising", "revisions", "spawned", "last_recorded_attempt", "repair_hold", "landing_recovery"}
+    return evidence_id({key: value for key, value in item.items() if key not in outcome_fields})
+
+
+def reconciliation_fingerprint(item):
+    # Freeze the entire reviewed record, including every instruction, reply,
+    # ownership, risk and conversation field, rather than guessing which matters.
+    return evidence_id(dict(item, _revision=item.get("_revision", 0)))
+
+
+def pending_conversation(item, *, include_revision=True):
+    conversation = item.get("conversation") or []
+    return bool(item.get("awaiting_reply") or (include_revision and item.get("revising")) or item.get("state") == "owed"
+                or (conversation and conversation[-1].get("role") == "daniel")
+                or item["id"] in _REPLYING)
+
+
+def reconcile_legacy_completion(manifest=None, *, apply=False):
+    with mutation_lock():
+        return _reconcile_legacy_completion(manifest, apply=apply)
+
+
+def _reconcile_legacy_completion(manifest=None, *, apply=False):
+    """Apply only the reviewed historical manifest; preflight every card first."""
+    if manifest is None:
+        manifest = os.path.join(os.path.dirname(__file__), "data", "completion_reconciliation.json")
+    if isinstance(manifest, (str, os.PathLike)):
+        with open(manifest, encoding="utf-8") as source:
+            manifest = json.load(source)
+    manifest_id = evidence_id(manifest)
+    by_id = {item["id"]: item for item in items(strict=True)}
+    report, errors = [], []
+    classifications = {"safe_to_close": 8, "return_to_owner": 9,
+                       "superseded/duplicate": 1, "needs_operator_judgment": 1}
+    entries = manifest.get("cards", [])
+    if (len(entries) != 19 or {entry["id"] for entry in entries} != set(LEGACY_COMPLETION_IDS)
+            or any(sum(e["classification"] == k for e in entries) != n for k, n in classifications.items())):
+        raise ValueError("The reviewed manifest must contain the exact nineteen classified cards.")
+    for entry in entries:
+        item = by_id.get(entry["id"])
+        done = item and (item.get("completion_reconciliation") or {}).get("manifest_id") == manifest_id
+        if not item:
+            errors.append(entry["id"] + ": record missing")
+        elif pending_conversation(item, include_revision=not done):
+            errors.append(entry["id"] + ": a conversation or reply is still pending")
+        elif not done and (item.get("state") != entry.get("expected_state")
+                           or item.get("_revision", 0) != entry.get("expected_revision", 0)
+                           or reconciliation_fingerprint(item) != entry.get("expected_fingerprint")):
+            errors.append(entry["id"] + ": state or reviewed evidence changed")
+        if item and not done and entry["classification"] == "return_to_owner" and item.get("owner") != entry.get("owner"):
+            errors.append(entry["id"] + ": reviewed owner changed")
+        if entry["classification"] == "superseded/duplicate" and entry.get("canonical_id") not in by_id:
+            errors.append(entry["id"] + ": canonical card missing")
+        report.append({"id": entry["id"], "classification": entry["classification"], "already_applied": bool(done)})
+    if errors or not apply:
+        return {"applicable": not errors, "applied": False, "errors": errors,
+                "totals": classifications, "cards": report}
+    # Re-read every target under the shared write lock before the first mutation.
+    # Thus any stale preflight aborts without changing even the first card.
+    for entry in entries:
+        fresh = load_item(entry["id"])
+        if reconciliation_fingerprint(fresh) != reconciliation_fingerprint(by_id[entry["id"]]):
+            return {"applicable": False, "applied": False, "errors": [entry["id"] + ": changed during preflight"],
+                    "totals": classifications, "cards": report}
+    for entry in entries:
+        item = load_item(entry["id"])
+        if reconciliation_fingerprint(item) != reconciliation_fingerprint(by_id[entry["id"]]):
+            raise RuntimeError("A work record was written outside the shared mutation lock")
+        if (item.get("completion_reconciliation") or {}).get("manifest_id") == manifest_id:
+            if item.get("completion") and item.get("pending_followups"):
+                land_item(item, item["completion"].get("by", manifest["audit_attribution"]),
+                          note=entry["evidence_summary"])
+            continue
+        attribution = entry.get("audit_attribution") or manifest["audit_attribution"]
+        audit = {"version": 1, "manifest_id": manifest_id, "at": _now_iso(),
+                 "classification": entry["classification"], "by": attribution,
+                 "evidence_summary": entry["evidence_summary"]}
+        action = entry["classification"]
+        item["completion_reconciliation"] = audit
+        if action == "safe_to_close":
+            attempt_id = "historical-" + manifest_id + "-" + item["id"]
+            item["attempt_outcome"] = {"version": 1, "id": attempt_id, "status": "complete",
+                                       "result_id": evidence_id(item.get("result", ""))}
+            # An attributed operator audit, explicitly distinct from a native checker pass.
+            item["completion"] = {"version": 1, "attempt_id": attempt_id, "at": audit["at"],
+                                  "kind": "historical_review", "by": attribution, "evidence": audit}
+            item["pending_followups"] = {"version": 1, "attempt_id": attempt_id, "items": [fu for fu in follow_ups(item) if not any(
+                    merge_key(old.get("title", "")) == merge_key(fu.get("title", ""))
+                    and old.get("owner") == (fu.get("owner") or item["owner"])
+                    for old in (item.get("spawned") or []))]}
+            save_item(item)
+        elif action == "return_to_owner":
+            if item["owner"] != entry["owner"]:
+                raise ValueError("Reviewed repair owner differs from the recorded owner")
+            item["repair_brief"] = entry["repair_ask"]
+            item["automatic_repairs"] = 1
+            item.pop("repair_hold", None)
+            requeue_for_revision(item)
+            item["state"] = "waiting_session"
+            save_item(item)
+        elif action == "superseded/duplicate":
+            item["state"] = "dropped"
+            item["closed"] = _now_iso()
+            item["superseded_by"] = entry["canonical_id"]
+            save_item(item)
+        else:
+            item["repair_hold"] = entry["operator_judgment"]["action"]
+            item["operator_judgment"] = entry["operator_judgment"]
+            save_item(item)
+    for entry in entries:
+        if entry["classification"] == "safe_to_close":
+            item = load_item(entry["id"])
+            if item.get("pending_followups"):
+                land_item(item, item["completion"]["by"], note=entry["evidence_summary"])
+    return {"applicable": True, "applied": True, "errors": [], "totals": classifications, "cards": report}

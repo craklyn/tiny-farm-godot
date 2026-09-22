@@ -127,7 +127,7 @@ def main():
         check(states["w-waiting"] == states["w-scheduled"] == "scheduled"
               and states["w-accepted"] == "closed",
               "unstarted work is scheduled; acceptance is recorded separately")
-        check(states["w-reading"] == states["w-green"] == "ready_to_apply", "readings and green reversible work await completion, not landed")
+        check(states["w-reading"] == states["w-green"] == "verification_pending", "legacy readings and green changes need explicit completion verification")
         check(states["w-failed"] == states["w-old"] == "verification_pending", "failed checks and old completion claims need verification")
         check(states["w-risky"] == "preparing" and states["w-unknown"] == "unknown", "risky follow-ups and unknown states cannot imply completion")
         check(states["w-landed"] == "completed", "green tests do not replace recorded landing")

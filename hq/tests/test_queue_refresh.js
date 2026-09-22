@@ -9,7 +9,8 @@ const items = [{ id: 'unprepared', title: 'Seeder animation', owner: 'rin', stat
 let projection = { available: true, count: 0, ready: [], items: [
   { source: 'work', status: 'preparing', source_id: 'unprepared', reason: 'The result is missing a recommended answer.' },
 ] };
-let reads = 0, rendered = '', badge;
+let reads = 0, rendered = '', badge, qAppListener;
+const qApp = { addEventListener(type, listener) { if (type === 'click') qAppListener = listener; } };
 const ctx = vm.createContext({
   routes: {}, location: { hash: '#/' },
   cache: { '/api/waiting-on-you': { available: true, count: 99, ready: [{ source_id: 'stale' }] } },
@@ -20,7 +21,7 @@ const ctx = vm.createContext({
   } }),
   ownerOf: () => ({ name: 'Rin' }), esc: String, mdi: String,
   h: value => value, updateQueueBadge: value => { badge = value; },
-  document: { getElementById: () => ({ addEventListener() {} }), addEventListener() {} },
+  document: { getElementById: id => id === 'q-app' ? qApp : ({ addEventListener() {} }), addEventListener() {} },
   $view: { replaceChildren: value => { rendered = value; }, addEventListener() {} },
 });
 vm.runInContext(app.slice(app.indexOf('async function api('), app.indexOf('/* This page is long-lived')), ctx);
@@ -33,6 +34,7 @@ vm.runInContext(fs.readFileSync(path.join(__dirname, '../static/queue.js'), 'utf
   let data = await ctx.qLoadData();
   assert.equal(data.waiting.count, 0); // ignores an existing cached answer
   ctx.qRender(data);
+  assert.equal(typeof qAppListener, 'function');
   assert.match(rendered, /href="#\/work\/unprepared">Open result/);
   assert.match(rendered, /missing a recommended answer/);
   assert.match(rendered, /preview needs visual verification/);

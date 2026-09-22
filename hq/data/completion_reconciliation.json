@@ -1,0 +1,201 @@
+{
+  "schema_version": 1,
+  "audit_attribution": "Codex interactive independent read-only audit by subagent build_adapter; operator review, not native checker approval",
+  "scope": "19 live work cards projected ready_to_apply; classifications assess each bounded assignment, not approval of design recommendations",
+  "limitations": "Source, card, ledger and artifact inspection only; no models or broad test suites run. Prior checker findings must be preserved. Deduplicate follow-ups before any closure operation that files child cards.",
+  "cards": [
+    {
+      "id": "w2d226ab695b",
+      "classification": "return_to_owner",
+      "owner": "yuki",
+      "evidence_summary": "Result says requested captures were not made. Existing boot screenshots do not establish a labeled before/after animation comparison attached to this card.",
+      "repair_ask": "Produce and attach labeled before-and-after boot bloom animations from identified source versions so Daniel can compare the change.",
+      "expected_state": "for_review",
+      "expected_fingerprint": "9e4d7251246c2c7d29d87c7ff879569cfb1fdd2bc8ac6954bbd98f0a17b5a251",
+      "expected_revision": 0
+    },
+    {
+      "id": "w72dee30012f",
+      "classification": "return_to_owner",
+      "owner": "sam",
+      "evidence_summary": "Requested through_walls capture directory is absent. Capture script hard-cut opening is centered on the full farm; Q-108 now describes nested-grid times-two geometry and references only a two-zoom photograph.",
+      "repair_ask": "Update capture staging for current Q-108 geometry, correct the hard-cut opening, render all four treatments from identical staging, inspect them, and attach them to Q-108.",
+      "expected_state": "for_review",
+      "expected_fingerprint": "6f030600a6a3d24f8bf8c5e0c2495a4c8fd27850364379ce5e2401fdbad45a17",
+      "expected_revision": 0
+    },
+    {
+      "id": "w8fd8d88b290",
+      "classification": "needs_operator_judgment",
+      "evidence_summary": "Retaining historical replays is supported, but unchanged action grammar does not establish unchanged training value after stock or reward changes. The proposed vintage boundary is absent from playtests/README.md.",
+      "operator_judgment": {
+        "owner": "Codex",
+        "consult_owner": "kenji",
+        "action": "Accept or qualify the conclusion as retain historical corpus while reassessing training suitability, then separate and assign archival housekeeping before closure. Do not equate stable verb names with demonstrated training validity.",
+        "requires_daniel": false
+      },
+      "expected_state": "for_review",
+      "expected_fingerprint": "851d34d8290ca7fff0c5dd840927c6c31a96d91502b4f6dadd645d6843821215",
+      "expected_revision": 0
+    },
+    {
+      "id": "w59c6ab05678",
+      "classification": "safe_to_close",
+      "evidence_summary": "docs/design/09-art-direction.md lines 58-76 include the requested sprite-edge discussion, binary versus partial transparency, and the fourth look's dependency. Rendering comparisons is separate work.",
+      "audit_attribution": "Codex interactive independent read-only audit by build_adapter; bounded agenda assignment verified in current source",
+      "expected_state": "for_review",
+      "expected_fingerprint": "fd68e68ca991a6148d2709852a39ff8f7bec9b873d6aff2927697238045aae3f",
+      "expected_revision": 0
+    },
+    {
+      "id": "w6ef64f2e6dd",
+      "classification": "return_to_owner",
+      "owner": "ravi",
+      "evidence_summary": "Cleanup and validation functions exist, but repository search finds no production build-script calls; usage examples and tests alone do not make cleanup automatic.",
+      "repair_ask": "Connect white-edge cleanup and validation to actual sprite build writes, add palette-preservation coverage, and verify a representative build uses the checks. Coordinate with existing pipeline work to avoid duplicate implementation.",
+      "expected_state": "for_review",
+      "expected_fingerprint": "aa5675c5974c7b48f7118fd0831a8679ca37ab44848655e04f5202b04a24e02e",
+      "expected_revision": 0
+    },
+    {
+      "id": "wd191fa66a85",
+      "classification": "return_to_owner",
+      "owner": "ravi",
+      "evidence_summary": "Result reports blocked execution and supplies no per-sheet, frame or coordinate inventory. Existing cleanup work is w5426d0d8fac.",
+      "repair_ask": "Run the generated-sheet white-pixel scan and attach a per-sheet, frame and coordinate inventory, distinguishing intentional palette colors from unwanted opaque background. Coordinate findings with w5426d0d8fac.",
+      "expected_state": "for_review",
+      "expected_fingerprint": "48ee11d80d837ae4a37d4dad34e3e1b3b3456df7e2fb62c5e79f9fb620b2f881",
+      "expected_revision": 0
+    },
+    {
+      "id": "wabb24f97efa",
+      "classification": "return_to_owner",
+      "owner": "ingrid",
+      "evidence_summary": "Result is a truncated Claude transport envelope with stop_reason tool_use. Crow edit ledger records seven erasures across two frames removing color #f8f4e6, but no completed interpretation is delivered.",
+      "repair_ask": "Replace the incomplete transport output with a finished reading of Daniel's recorded crow edit, separating observed pixel changes from inferred art-direction implications.",
+      "expected_state": "for_review",
+      "expected_fingerprint": "b2e381f073476754458ecc1562527e36dbf494067362414d177c66f8a24b5bb6",
+      "expected_revision": 0
+    },
+    {
+      "id": "w554baab1271",
+      "classification": "safe_to_close",
+      "evidence_summary": "Obstacle ledger 0003.json confirms 14 erasures in frame index 4 at rectangle [4,7,7,2]. This is a distinct recurrence of the white fence band, not merely the earlier edit duplicated.",
+      "audit_attribution": "Codex interactive independent read-only audit by build_adapter; reading verified against recorded edit ledger",
+      "expected_state": "for_review",
+      "expected_fingerprint": "729648051e2d022ffd193fba228ae3014561de08732f03c347de9fcd1d3a03da",
+      "expected_revision": 0
+    },
+    {
+      "id": "w56a634c94f6",
+      "classification": "safe_to_close",
+      "evidence_summary": "Terrain ledger 0001.json confirms 107 recolors, no added or erased pixels, and unchanged silhouette. Seam inspection and editor improvements are separate follow-ups.",
+      "audit_attribution": "Codex interactive independent read-only audit by build_adapter; reading verified against recorded edit ledger",
+      "expected_state": "for_review",
+      "expected_fingerprint": "2c90319e3604a6b701de56ace02deecc8ae400ebec463c68e3e9fc08368ce856",
+      "expected_revision": 0
+    },
+    {
+      "id": "w2d641a31a52",
+      "classification": "superseded/duplicate",
+      "canonical_id": "wae35fb20cb7",
+      "evidence_summary": "The 35-pixel obstacle edit is covered by the consolidated reading in wae35fb20cb7. Preserve ledger links and history, and avoid filing the same repair suggestions twice.",
+      "expected_state": "for_review",
+      "expected_fingerprint": "ebe495233f6409492fe754517f177e213043e73a74098112a4cf47da0826d9dc",
+      "expected_revision": 0
+    },
+    {
+      "id": "wae35fb20cb7",
+      "classification": "safe_to_close",
+      "evidence_summary": "Consolidated reading matches obstacle ledgers 0001.json and 0002.json: 14 fence erasures plus 35 erasures across tree and gate cells. Deduplicate proposed cleanup follow-ups against existing pipeline and cleanup cards.",
+      "audit_attribution": "Codex interactive independent read-only audit by build_adapter; consolidated reading verified against recorded edit ledgers",
+      "expected_state": "for_review",
+      "expected_fingerprint": "89e05bd53d9ea5dd26a249ecc2953dd7c2eccf383fb621e139ea9b183c9294f5",
+      "expected_revision": 0
+    },
+    {
+      "id": "w8e71933a1a9",
+      "classification": "return_to_owner",
+      "owner": "claude",
+      "evidence_summary": "Result did not run the checker. Its manual word-list simulation is obsolete because tools/check_writing.py replaced that method on September 19.",
+      "repair_ask": "Run the current writing checker against current visible dashboard page text, address concrete findings, and record the actual validation result. Do not reuse the obsolete word-list simulation as evidence.",
+      "expected_state": "for_review",
+      "expected_fingerprint": "8871d047c2186e492bd1f6ef2058666e1133e288c1524bc7544b038a7c99c982",
+      "expected_revision": 0
+    },
+    {
+      "id": "w6ff2240c1fb",
+      "classification": "safe_to_close",
+      "evidence_summary": "Q-113 preserves the analysis's core unresolved issue: one-for-one yield produces no crop surplus and storage capacity cannot fix production. Further seed-economy design is separately queued; closure does not settle that design.",
+      "audit_attribution": "Codex interactive independent read-only audit by build_adapter; bounded analysis outcome verified against current decision record",
+      "expected_state": "for_review",
+      "expected_fingerprint": "aa1ceb377053af67ce40f46e74aefa08f5485e23da8c60fcd4d5ed15d7f4c7d6",
+      "expected_revision": 0
+    },
+    {
+      "id": "wfce637ce465",
+      "classification": "return_to_owner",
+      "owner": "milo",
+      "evidence_summary": "The checker's substantive coverage gap remains: the requested colony-sim comparison is missing and several requested genres are shallow. The result acknowledges truncated input.",
+      "repair_ask": "Complete the requested colony-sim and underdeveloped genre comparisons, save the survey in a durable research note, and retain the explicit limitation that parts of the original brief were truncated.",
+      "expected_state": "for_review",
+      "expected_fingerprint": "b7dc08049752dbb0186dad27846e4ed5e2f164b25fb172ff6b173c087c93f0db",
+      "expected_revision": 0
+    },
+    {
+      "id": "w3169ae0d4da",
+      "classification": "return_to_owner",
+      "owner": "victor",
+      "evidence_summary": "docs/DEPLOY.md still promises a Sales-page recording button and expiring web-play record, but current server lacks the recording implementation claimed by the card. Existing manual_attest logic is a different mechanism.",
+      "repair_ask": "Reconcile the promised web-play attestation with the actual endpoint, UI and release-readiness behavior; verify expiration across release and game-content changes, including dirty game content, and update the runbook to match.",
+      "expected_state": "for_review",
+      "expected_fingerprint": "4342095b383292598eb98129f8e6d5d80abfc3544a9d2bf3996b62d60b02b809",
+      "expected_revision": 0
+    },
+    {
+      "id": "wcd3806bc3a4",
+      "classification": "return_to_owner",
+      "owner": "victor",
+      "evidence_summary": "Current release_manifest still trusts project status done rather than deriving completion from plan steps, contradicting the recorded result. Existing w17cbb1e9823 covers three questionable feature claims.",
+      "repair_ask": "Restore and test step-derived project readiness in the release manifest, reconcile current feature claims with build evidence, and coordinate with w17cbb1e9823 instead of duplicating its audit.",
+      "expected_state": "for_review",
+      "expected_fingerprint": "cf6cdbd3449aa0e993bac1b399b30c173aceea3b75980df1d2e1a17b9236dcee",
+      "expected_revision": 0
+    },
+    {
+      "id": "wc1886486f14",
+      "classification": "safe_to_close",
+      "evidence_summary": "Historical concerns are repaired: tools/check_gateway.py covers whole-field replacement and includes its regression, CI runs self-test and check, and no pyc files are tracked. Scope has since expanded to UI.",
+      "audit_attribution": "Codex interactive independent read-only audit by build_adapter; historical gaps checked against current checker and CI source, without rerunning suites",
+      "expected_state": "for_review",
+      "expected_fingerprint": "58b464a0670e8d7fe53492e2ee92ee8bc522f49d2b82d504b53a688bec744cef",
+      "expected_revision": 0
+    },
+    {
+      "id": "w5a4005536e1",
+      "classification": "safe_to_close",
+      "evidence_summary": "Current sprite editor derives all cells from image dimensions. Later implementation builds on this, and the recorded owner follow-up confirms completion and separately files worker-retry machinery.",
+      "audit_attribution": "Codex interactive independent read-only audit by build_adapter; whole-sheet implementation and recorded follow-up inspected",
+      "expected_state": "for_review",
+      "expected_fingerprint": "d9ce104e9b10609e5a86d348f2655435e8e17bea5cafadd8aeaeeb01dc9f2333",
+      "expected_revision": 0
+    },
+    {
+      "id": "wf1b3b951813",
+      "classification": "safe_to_close",
+      "evidence_summary": "Art-direction document and Q-14 retain the four treatments, common staging and rendering as remaining work. This assignment selected treatments; it did not require final look approval.",
+      "audit_attribution": "Codex interactive independent read-only audit by build_adapter; bounded treatment-selection assignment verified in current documents",
+      "expected_state": "for_review",
+      "expected_fingerprint": "fd2c8a2e163c8046347843b6c8d88c08bef6200dd6b291979e0592bb0c543b4d",
+      "expected_revision": 0
+    }
+  ],
+  "totals": {
+    "safe_to_close": 8,
+    "return_to_owner": 9,
+    "superseded/duplicate": 1,
+    "needs_operator_judgment": 1,
+    "all": 19
+  },
+  "application_guidance": "The eight bounded closures, nine returns and one linked supersession are suitable for mechanical application after checking that card state and evidence have not changed. Preserve previous checks and attribute this audit honestly. The corpus judgment needs engineering/operator adjudication, not Daniel's taste. This manifest itself changes no work records."
+}

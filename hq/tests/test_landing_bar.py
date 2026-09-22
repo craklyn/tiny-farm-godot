@@ -22,6 +22,8 @@ HQ = os.path.dirname(HERE)
 sys.path.insert(0, HQ)
 
 import drain  # noqa: E402
+import work
+import json
 
 
 FAILS = []
@@ -41,9 +43,10 @@ def item(**over):
 
 
 def rec(**over):
-    base = {"files": ["entities/crow.gd"],
+    base = {"files": ["entities/crow.gd"], "patch": "fixture diff",
+            "result": "Finished.\n" + work.FOLLOW_MARK + '\n{"outcome":{"status":"complete"},"follow_ups":[]}',
             "check": {"verdict": "pass", "summary": "does what was asked",
-                      "findings": [], "read": True}}
+                      "findings": [], "read": True, "complete": True}}
     base.update(over)
     return base
 
@@ -52,7 +55,15 @@ GREEN = {"unit": {"ok": True, "tail": ""}, "integration": {"ok": True, "tail": "
 
 
 def bar(it=None, r=None, applied=True, suites=GREEN):
-    return drain.meets_landing_bar(it or item(), r or rec(), applied, suites)
+    r = r or rec()
+    r["candidate"] = {"tree":"fixture-tree", "files":drain.git_blobs(drain.server.REPO,"",r["files"])}
+    r["candidate_unchanged"] = True
+    r["candidate_suites"] = GREEN if r["files"] else None
+    r["candidate_test_evidence"] = work.evidence_id([r["candidate"],r["candidate_suites"]])
+    r["check_evidence"] = work.evidence_id([r["result"], r["patch"],r["candidate"]])
+    r["test_evidence"] = work.evidence_id([r["patch"], suites])
+    r["tree_evidence"] = drain.tree_evidence(r["files"])
+    return drain.meets_landing_bar(it or item(), r, applied, suites)
 
 
 def main():
@@ -91,7 +102,7 @@ def main():
 
     print("somebody has to have read the diff")
     ok, why = bar(r=rec(check={"verdict": "concerns", "findings": [], "read": True}))
-    check(ok, "a read that found nothing worth his time is a clean read")
+    check(not ok, "concerns cannot certify completion even with no listed findings")
     ok, why = bar(r=rec(check={"verdict": "concerns", "read": True, "findings": [
         {"what": "the crow can leave through a closed gate", "where": "crow.gd", "fix": ""}]}))
     check(not ok and "something you should see" in why,

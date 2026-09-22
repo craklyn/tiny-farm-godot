@@ -1,11 +1,11 @@
 # Tiny Farm HQ — the studio working its own queue, unattended.
 #
-# Runs hq/drain.py in its unattended shape: a few items per run, two seats at a
-# time, and it does nothing at all when the token window is dry or when the
+# Runs hq/drain.py in its unattended shape: a few items per run, verifying and landing each
+# before creating the next candidate, and it does nothing at all when the token window is dry or when the
 # studio's own work has already spent most of the last measured ceiling. A
 # manual `python3 hq/drain.py` and this unit never run at once — the drain
-# takes a lock. Results land on the Work page for Daniel's verdict; nothing is
-# committed or pushed.
+# takes a lock. Verified reversible work may be committed automatically; incomplete work
+# returns once to its owner, then waits for intervention. Nothing is pushed.
 #
 # Install (once, on the machine that runs HQ):
 #   systemctl --user link  $PWD/hq/systemd/tiny-farm-drain.service
