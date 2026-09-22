@@ -1599,25 +1599,72 @@ def queued(include_thinking=False):
     """What the drain may pick up. Tier 1 always; tier 0 on request, and then it
     is claimed by stamping `started` — the HQ server runs its own tier-0 worker
     and skips anything already claimed, so the two never take the same item."""
-    out = [i for i in work.items() if i.get("state") == "waiting_session"]
+    out, _held = classified_queue(include_thinking)
+    return out
+
+
+def classified_queue(include_thinking=False):
+    """The drain's exact candidates and exclusions, in the order it will use."""
+    all_items = work.items()
+    out = [i for i in all_items
+           if i.get("state") == "waiting_session" and not i.get("started")]
+    held = []
     # A retry whose held patch waits on another session's uncommitted file is
     # not picked up: it would cost a worker and be held again for the same
     # reason. The card says what it waits for (`waiting_for`).
-    out = [i for i in out if not _parked_by_tree(i)]
+    candidates = []
+    for item in out:
+        reason = ""
+        if _parked_by_tree(item):
+            reason = (item.get("waiting_for") or {}).get("reason") or "another change is in the way"
+        elif _parked_by_cost(item):
+            reason = (item.get("waiting_for") or {}).get("reason") or "the automatic cost limit was reached"
+        elif item.get("repair_hold"):
+            reason = str(item["repair_hold"])
+        elif item.get("pending_landing"):
+            reason = "the recorded commit attempt is being recovered"
+        elif item.get("pending_followups"):
+            reason = "the result's follow-up work is still being recorded"
+        if reason:
+            held.append((item, reason))
+        else:
+            candidates.append(item)
+    out = candidates
     # An item that has already cost more than its cap across attempts without
     # landing is not tried again on its own: it needs a smaller brief, and
     # the card says so.
-    out = [i for i in out if not _parked_by_cost(i) and not i.get("repair_hold")
-           and not i.get("pending_landing") and not i.get("pending_followups")]
     if include_thinking:
-        out += [i for i in work.items()
+        out += [i for i in all_items
                 if i.get("state") == "doing" and not i.get("started")]
     # A card the drain is trying again is work already half paid for; it goes
     # first. A machine-detected release blocker goes next rather than waiting
     # behind routine work while main stays red.
     out.sort(key=lambda i: (0 if i.get("resume") else
                             1 if i.get("urgent") else 2))
-    return out
+    return out, held
+
+
+def queue_view():
+    """JSON-safe, human-facing projection of the same queue `queued()` drains."""
+    eligible, held = classified_queue()
+
+    def row(item, *, position=None, reason=""):
+        priority = "retry" if item.get("resume") else "urgent" if item.get("urgent") else "ordinary"
+        why = ("An earlier attempt left useful work, so the scheduler finishes it first."
+               if priority == "retry" else
+               "This blocks a release or the build on main."
+               if priority == "urgent" else
+               "Ordinary work runs newest first after retries and urgent work.")
+        return {"id": item["id"], "title": item.get("title", "Untitled"),
+                "owner": item.get("owner", ""), "created": item.get("created", ""),
+                "position": position, "priority": priority, "why": why,
+                "reason": reason}
+
+    working = [row(item) for item in work.items()
+               if item.get("state") in ("waiting_session", "doing") and item.get("started")]
+    return {"working": working,
+            "eligible": [row(item, position=n) for n, item in enumerate(eligible, 1)],
+            "held": [row(item, reason=reason) for item, reason in held]}
 
 
 def cost_summary(bill):
@@ -1690,6 +1737,7 @@ def main():
     ap.add_argument("--limit", type=int, default=0, help="stop after N items")
     ap.add_argument("--jobs", type=int, default=3, help="retained for compatibility; verified items run sequentially")
     ap.add_argument("--list", action="store_true", help="what is queued, and nothing else")
+    ap.add_argument("--list-json", action="store_true", help=argparse.SUPPRESS)
     ap.add_argument("--brief", metavar="ID",
                     help="print the brief the next attempt at this item would be given, "
                          "and run nothing")
@@ -1709,7 +1757,7 @@ def main():
     work.bind(server)
     org = server.load_org()
     # Recovery is local bookkeeping and must run even while models are paused.
-    if not (args.list or args.dry_run or args.brief):
+    if not (args.list or args.list_json or args.dry_run or args.brief):
         work.recover_completion_work()
 
     if args.unattended:
@@ -1722,7 +1770,7 @@ def main():
             return 0
 
     lock = None
-    if not (args.list or args.dry_run):
+    if not (args.list or args.list_json or args.dry_run):
         lock = take_lock()
         if lock is None:
             print("Another drain is running; not starting a second one.")
@@ -1758,6 +1806,10 @@ def main():
                 print(f"  repaired {it['id']}  {it['title'][:60]}")
                 n += 1
         print(f"{n} card(s) repaired.")
+        return 0
+
+    if args.list_json:
+        print(json.dumps(queue_view()))
         return 0
 
     pool = queued(args.thinking)

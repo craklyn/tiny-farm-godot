@@ -8,6 +8,11 @@
     "sonnet": "gpt-5.6-terra",
     "haiku": "gpt-5.6-luna"
   },
-  "background_paused": true,
-  "trial_item": "wcfaddc94900"
+  "background_paused": false,
+  "trial_item": "wcfaddc94900",
+  "background_pause": {
+    "by": "daniel",
+    "at": "2026-09-21T22:45:00-0700",
+    "reason": ""
+  }
 }

@@ -9,6 +9,7 @@ from pathlib import Path
 import re
 import signal
 import subprocess
+import tempfile
 import threading
 import time
 import tomllib
@@ -28,6 +29,37 @@ def load_policy():
             or policy.get('mappings') != MODELS):
         raise ValueError('Invalid HQ execution policy; restore version 1 model mappings and launch controls')
     return policy
+
+
+def set_background_paused(paused, *, by='daniel', reason=''):
+    """Atomically change the operator brake without rewriting model routing."""
+    if not isinstance(paused, bool):
+        raise ValueError('Paused must be true or false')
+    reason = str(reason or '').strip()
+    if paused and not reason:
+        raise ValueError('A reason is required when automatic work is paused')
+    policy = load_policy()
+    policy['background_paused'] = paused
+    policy['background_pause'] = {
+        'by': str(by or 'daniel')[:80],
+        'at': time.strftime('%Y-%m-%dT%H:%M:%S%z'),
+        'reason': reason[:300] if paused else '',
+    }
+    POLICY_PATH.parent.mkdir(parents=True, exist_ok=True)
+    fd, name = tempfile.mkstemp(prefix=POLICY_PATH.name + '.', dir=POLICY_PATH.parent)
+    try:
+        with os.fdopen(fd, 'w') as handle:
+            json.dump(policy, handle, indent=2)
+            handle.write('\n')
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(name, POLICY_PATH)
+    finally:
+        try:
+            os.unlink(name)
+        except FileNotFoundError:
+            pass
+    return load_policy()
 
 
 def resolve_model(requested='', *, provider=None):

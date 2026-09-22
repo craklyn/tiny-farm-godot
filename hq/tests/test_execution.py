@@ -48,6 +48,17 @@ class ExecutionTests(unittest.TestCase):
             self.assertTrue(e.run_session('', '', '', 'haiku', str(ROOT), 1, 1)['held'])
             popen.assert_not_called()
 
+    def test_pause_control_records_reason_and_resumes(self):
+        paused = e.set_background_paused(True, by='daniel', reason='Investigating a worker loop')
+        self.assertTrue(paused['background_paused'])
+        self.assertEqual(paused['background_pause']['by'], 'daniel')
+        self.assertEqual(paused['background_pause']['reason'], 'Investigating a worker loop')
+        with self.assertRaisesRegex(ValueError, 'reason is required'):
+            e.set_background_paused(True, reason='')
+        resumed = e.set_background_paused(False, by='daniel')
+        self.assertFalse(resumed['background_paused'])
+        self.assertEqual(resumed['background_pause']['reason'], '')
+
     def test_native_events_and_rollback(self):
         policy = e.load_policy()
         policy['mode'] = 'claude'

@@ -225,9 +225,11 @@ function qDecisionItem(c, org, seats) {
 
 async function qLoadData() {
   delete cache["/api/queue"];
-  const [org, snap, queue, waiting, seats] = await Promise.all([
+  const [org, snap, queue, waiting, seats, execution, executionQueue] = await Promise.all([
     api("/api/org"), fetch("/api/work").then(r => { noteVersion(r); return r.json(); }),
     api("/api/queue"), api("/api/waiting-on-you"), api("/api/seats"),
+    fetch("/api/execution").then(r => r.json()),
+    fetch("/api/execution/queue").then(r => r.json()),
   ]);
   const ready = new Set((waiting.ready || []).map(row => row.source_id));
   const reasons = new Map((waiting.items || []).map(row => [row.source_id, row.reason]));
@@ -249,7 +251,9 @@ async function qLoadData() {
   const work = snap.items || [];
   const statuses = new Map((waiting.items || []).filter(row => row.source === "work")
     .map(row => [row.source_id, row]));
-  const his = [], pending = [], waitingStart = [], studio = [], wentIn = [], awaitingStudio = [], closed = [];
+  const eligibleIds = new Set((executionQueue.eligible || []).map(row => row.id));
+  const heldReasons = new Map((executionQueue.held || []).map(row => [row.id, row.reason]));
+  const his = [], pending = [], waitingStart = [], heldStart = [], studio = [], wentIn = [], awaitingStudio = [], closed = [];
   work.forEach(card => {
     const row = statuses.get(card.id) || { status: "unknown", reason: "Current work status is unavailable." };
     const entry = { card, reason: row.reason };
@@ -260,7 +264,8 @@ async function qLoadData() {
     // that could be awaiting completion.
     const hasNotStarted = (card.state === "waiting_session" || card.state === "doing")
       && !card.started;
-    if (hasNotStarted) waitingStart.push(entry);
+    if (hasNotStarted && eligibleIds.has(card.id)) waitingStart.push(entry);
+    else if (hasNotStarted && heldReasons.has(card.id)) heldStart.push({card, reason: heldReasons.get(card.id)});
     else if (row.status === "ready") his.push(entry);
     else if (row.status === "completed") wentIn.push(card);
     else if (row.status === "ready_to_apply") pending.push(entry);
@@ -272,7 +277,8 @@ async function qLoadData() {
   });
   wentIn.sort((a, b) => String((b.landed || {}).at || "").localeCompare(String((a.landed || {}).at || "")));
   return { org, rulings, hisWork: his, pendingCompletion: pending, waitingToStart: waitingStart, studioWork: studio,
-    wentIn, closedWork: closed, hisDecisions, studioDecisions, awaitingStudio, waiting, seats };
+    wentIn, closedWork: closed, hisDecisions, studioDecisions, awaitingStudio, waiting, seats, execution,
+    heldToStart: heldStart };
 
 }
 
@@ -386,6 +392,11 @@ function qPaneHtml(row, org) {
 
 function qRender(state) {
   const { org, hisWork, hisDecisions, pendingCompletion, waitingToStart, studioWork, wentIn, closedWork, studioDecisions, awaitingStudio } = state;
+  const execution = Object.assign({ paused: false, pause: {}, queued: waitingToStart.length,
+    batch_limit: 3, interval_minutes: 20, timer: { active: null } }, state.execution || {});
+  execution.pause ||= {};
+  execution.timer ||= { active: null };
+  const heldToStart = state.heldToStart || [];
   const decisionReasons = new Map((state.waiting.items || [])
     .filter(row => row.source === "decision").map(row => [row.source_id, row.reason]));
 
@@ -403,6 +414,16 @@ function qRender(state) {
   if (!qSelected || !rows.some(r => r.id === qSelected)) qSelected = rows[0] ? rows[0].id : null;
 
   const unavailable = state.waiting.available === false;
+  const autoStatus = execution.paused ? "Paused" : (execution.timer.active === false ? "Scheduler stopped" : "Running");
+  const statusTip = execution.paused
+    ? `${execution.queued} accepted pieces are held${execution.pause.reason ? `: ${execution.pause.reason}` : "."}`
+    : `${execution.queued} accepted pieces are eligible. The scheduler is ${execution.timer.active === false ? "stopped" : "active"}; up to ${execution.batch_limit} start every ${execution.interval_minutes} minutes.`;
+  const executionHtml = `<section class="exec-control ${execution.paused ? "paused" : "running"}">
+    <a class="exec-open" href="#/work/queue"><span class="exec-name">Task queue</span>
+      <span class="exec-status tip" tabindex="0" data-tip="${esc(statusTip)}"><i></i>${esc(autoStatus)}</span></a>
+    <button class="ghost exec-toggle tip" id="q-exec-toggle" aria-label="${execution.paused ? "Resume" : "Pause"} automatic task queue work"
+      data-tip="${execution.paused ? "Resume working through the accepted task queue." : "Pause working through the accepted task queue."}">${execution.paused ? "▶" : "Ⅱ"}</button>
+  </section>`;
   const bandHtml = unavailable
     ? `<b>Queue count unavailable.</b><p>HQ could not read the current queue. Try refreshing; this does not mean no items are waiting.</p>`
     : rows.length
@@ -414,12 +435,14 @@ function qRender(state) {
 
   const owed = [
     ...awaitingStudio.map(c => ({ who: ownerOf(org, c.owner).name, title: c.title, since: c.asked_ts })),
-    ...studioDecisions.map(c => ({ who: "the seat that opened the card", title: c.title, since: Date.parse((state.rulings[c.id] || {}).ruled_at || "") / 1000 || 0 })),
+    ...studioDecisions.map(c => ({ who: "Studio", title: c.title, since: Date.parse((state.rulings[c.id] || {}).ruled_at || "") / 1000 || 0 })),
   ];
   const stripHtml = owed.length
-    ? `<b>Coming back to you:</b> ` + owed.map(o =>
-        `${esc(qFirst(o.who))} on “${esc(o.title.slice(0, 60))}”${o.since ? ` <span class="chip q-chip">${esc(qTimeAgo(o.since))}</span>` : ""}`
-      ).join(" · ")
+    ? `<div class="q-strip-title">Coming back to you</div>
+       <ul class="q-strip-list">${owed.map(o => `<li>
+         <span class="q-strip-item">${esc(o.title)}</span>
+         <span class="q-strip-meta">${esc(qFirst(o.who))}${o.since ? ` · ${esc(qTimeAgo(o.since))}` : ""}</span>
+       </li>`).join("")}</ul>`
     : "";
 
   const rowHtml = r => `<div class="q-row${r.id === qSelected ? " q-focus" : ""}" data-id="${esc(r.id)}">
@@ -455,6 +478,7 @@ function qRender(state) {
     foldRow(card, reason)).join("");
   const waitingStartHtml = waitingToStart.map(({ card, reason }) =>
     foldRow(card, reason)).join("");
+  const heldStartHtml = heldToStart.map(({ card, reason }) => foldRow(card, reason)).join("");
   const backHtml = [
     ...studioWork.map(({ card, reason }) => foldRow(card, reason)),
     ...studioDecisions.map(card => `<li><span class="q-fold-t">${esc(card.title)}</span>
@@ -472,6 +496,7 @@ function qRender(state) {
       <div class="q-list">
         <p class="sub">Questions the studio needs an answer to, one at a time, grouped by what they are
         about. Everything else the studio is doing needs nothing from you and is not on this page.</p>
+        ${executionHtml}
         <div class="q-band">${bandHtml}</div>
         ${stripHtml ? `<div class="q-strip">${stripHtml}</div>` : ""}
         <div id="q-groups">${groupsHtml || `<p class="muted">${unavailable ? "The current queue could not be verified." : "Nothing is waiting on you."}</p>`}</div>
@@ -481,9 +506,12 @@ function qRender(state) {
         <h2 class="q-fold-h">Awaiting completion <span class="chip q-chip q-count">${pendingCompletion.length}</span></h2>
         <details class="q-fold"><summary>${pendingCompletion.length} result${pendingCompletion.length === 1 ? "" : "s"} still need completion recorded</summary>
           <ul class="q-fold-list">${digestHtml || "<li>Nothing yet.</li>"}</ul></details>
-        <h2 class="q-fold-h">Waiting to start <span class="chip q-chip q-count">${waitingToStart.length}</span></h2>
-        <details class="q-fold"><summary>${waitingToStart.length} accepted piece${waitingToStart.length === 1 ? "" : "s"} of work ${waitingToStart.length === 1 ? "has" : "have"} not started yet</summary>
+        <h2 class="q-fold-h">${execution.paused ? "Held while automatic work is paused" : "Waiting to start"} <span class="chip q-chip q-count">${waitingToStart.length}</span></h2>
+        <details class="q-fold"><summary>${waitingToStart.length} accepted piece${waitingToStart.length === 1 ? "" : "s"} of work ${execution.paused ? (waitingToStart.length === 1 ? "is" : "are") + " held" : (waitingToStart.length === 1 ? "has" : "have") + " not started yet"}</summary>
           <ul class="q-fold-list">${waitingStartHtml || "<li>Nothing yet.</li>"}</ul></details>
+        <h2 class="q-fold-h">Held from automatic work <span class="chip q-chip q-count">${heldToStart.length}</span></h2>
+        <details class="q-fold"><summary>${heldToStart.length} piece${heldToStart.length === 1 ? " is" : "s are"} waiting for a named blocker to clear</summary>
+          <ul class="q-fold-list">${heldStartHtml || "<li>Nothing yet.</li>"}</ul></details>
         <h2 class="q-fold-h">Back with the studio <span class="chip q-chip q-count">${backCount}</span></h2>
         <details class="q-fold"><summary>${backCount} card${backCount === 1 ? "" : "s"} belong to the studio now, not to you</summary>
           <ul class="q-fold-list">${backHtml || "<li>Nothing yet.</li>"}</ul></details>
@@ -499,6 +527,21 @@ function qRender(state) {
   const fillAtts = row => { const box = attsBox(); if (box && row) (row.attachments || [])
     .forEach(a => { try { box.appendChild(attachmentEl(a, null, null)); } catch (e) {} }); };
   fillAtts(selectedRow);
+
+  document.getElementById("q-exec-toggle").addEventListener("click", async ev => {
+    const action = execution.paused ? "resume" : "pause";
+    let reason = "";
+    if (action === "resume") {
+      if (!confirm(`Resume automatic work? ${execution.queued} accepted pieces are queued; up to ${execution.batch_limit} will start every ${execution.interval_minutes} minutes.`)) return;
+    } else {
+      reason = prompt("Why is automatic work being paused?") || "";
+      if (!reason.trim()) return;
+    }
+    ev.currentTarget.disabled = true;
+    const got = await workPost("/api/execution", { action, reason });
+    if (got.error) { alert(got.error); ev.currentTarget.disabled = false; return; }
+    qRefresh();
+  });
 
   function qSelect(id) {
     qSelected = id;

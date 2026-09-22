@@ -34,6 +34,7 @@ import re
 import subprocess
 import sys
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, unquote, urlparse
 
@@ -1927,6 +1928,57 @@ TOKEN_WINDOW_HOURS = 5.0     # the subscription window; what runs dry is this
 
 
 WORKERS_DIR = os.path.join(DATA, "runs", "workers")
+_EXECUTION_QUEUE_CACHE = {"work_stamp": None, "data": None}
+
+
+def execution_queue_snapshot():
+    """Read the drain's own order; reuse it only while every work record is unchanged."""
+    work_dir = os.path.join(DATA, "work")
+    try:
+        work_stamp = max((os.stat(os.path.join(work_dir, name)).st_mtime_ns
+                          for name in os.listdir(work_dir) if name.endswith(".json")), default=0)
+    except OSError:
+        work_stamp = None
+    if (_EXECUTION_QUEUE_CACHE["data"] is not None
+            and _EXECUTION_QUEUE_CACHE["work_stamp"] == work_stamp):
+        return _EXECUTION_QUEUE_CACHE["data"]
+    got = subprocess.run([sys.executable, os.path.join(HQ_DIR, "drain.py"), "--list-json"],
+                         cwd=REPO, capture_output=True, text=True, timeout=10)
+    if got.returncode:
+        raise RuntimeError((got.stderr or "The task queue could not be read.")[:300])
+    data = json.loads(got.stdout)
+    _EXECUTION_QUEUE_CACHE.update({"work_stamp": work_stamp, "data": data})
+    return data
+
+
+def execution_control_snapshot():
+    """The real launch brake, timer state, and work it currently governs."""
+    policy = execution.load_policy()
+    queue = execution_queue_snapshot()
+    queued = len(queue["eligible"])
+    timer = {"active": None, "state": "unknown"}
+    try:
+        shown = subprocess.run(
+            ["systemctl", "--user", "show", "tiny-farm-drain.timer",
+             "--property=ActiveState", "--property=SubState", "--value"],
+            capture_output=True, text=True, timeout=2)
+        values = shown.stdout.splitlines()
+        if shown.returncode == 0 and values:
+            active = values[0].strip() == "active"
+            timer = {"active": active,
+                     "state": " / ".join(value.strip() for value in values if value.strip())}
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+    return {
+        "paused": policy["background_paused"],
+        "pause": policy.get("background_pause") or {},
+        "provider": policy["mode"],
+        "mappings": policy["mappings"],
+        "queued": queued,
+        "batch_limit": 3,
+        "interval_minutes": 20,
+        "timer": timer,
+    }
 
 
 def _pid_alive(pid):
@@ -5738,6 +5790,10 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/workers":
                 # The sessions the drain is running or ran today, for watching.
                 return self._send(200, {"sessions": worker_sessions()})
+            if path == "/api/execution":
+                return self._send(200, execution_control_snapshot())
+            if path == "/api/execution/queue":
+                return self._send(200, execution_queue_snapshot())
             if path.startswith("/api/workers/"):
                 rest = path[len("/api/workers/"):].split("/")
                 if len(rest) != 2 or not all(re.fullmatch(r"[A-Za-z0-9_.-]+", r) for r in rest):
@@ -5851,6 +5907,18 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/standup":
             try:
                 return self._send(200, make_standup())
+            except Exception as e:
+                return self._send(500, {"error": str(e)[:300]})
+        if path == "/api/execution":
+            try:
+                action = payload.get("action")
+                if action not in ("pause", "resume"):
+                    return self._send(400, {"error": "action must be pause or resume"})
+                execution.set_background_paused(
+                    action == "pause", by="daniel", reason=payload.get("reason", ""))
+                return self._send(200, execution_control_snapshot())
+            except ValueError as e:
+                return self._send(400, {"error": str(e)[:300]})
             except Exception as e:
                 return self._send(500, {"error": str(e)[:300]})
         if path.startswith("/api/run/"):

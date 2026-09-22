@@ -818,7 +818,13 @@
   "3748340bf4da686f7fb4": {
    "verdict": "ok"
   },
+  "37601b7df5dd00fb0064": {
+   "verdict": "ok"
+  },
   "378df1febaca2a4fc214": {
+   "verdict": "ok"
+  },
+  "37b6854a559b14c585f8": {
    "verdict": "ok"
   },
   "38515d6ef103618a22bb": {
@@ -1008,6 +1014,12 @@
   "48788c7cb1ff0d4149ac": {
    "verdict": "ok"
   },
+  "487d5bb8113b6f4d3348": {
+   "instead": "Apply the written fix to the step that removes the background from the art",
+   "quote": "background-keying step in the art pipeline",
+   "verdict": "decode",
+   "why": "The internal name for the pipeline step does not tell a cold reader what it does."
+  },
   "48a1ad7755020d35b857": {
    "baselined": "2026-09-19",
    "instead": "Label animation frames in the entity system so preview animations show real variations, not the same frame repeatedly",
@@ -1050,6 +1062,12 @@
    "quote": "the reply claimed more than it had done",
    "verdict": "second-look",
    "why": "The pronoun 'it' has no clear referent in the sentence."
+  },
+  "4bdf9760df040744d9c6": {
+   "instead": "Fix the asset pipeline so it no longer changes the red colour channel by one value",
+   "quote": "shifting red by one",
+   "verdict": "decode",
+   "why": "The reader cannot tell what red is being shifted in or what the one is counting."
   },
   "4c68b336f38cedf45de6": {
    "verdict": "ok"
@@ -1437,6 +1455,9 @@
   "66cbe0fbc4d57827c34b": {
    "verdict": "ok"
   },
+  "66e950bcb25b7432f10c": {
+   "verdict": "ok"
+  },
   "672b3c3abcf48476e6bd": {
    "verdict": "ok"
   },
@@ -1812,6 +1833,12 @@
   "8084246edef5b61b7b88": {
    "verdict": "ok"
   },
+  "80861fe7a264555c3358": {
+   "instead": "File the question of whether harvested crops become seeds for a ruling",
+   "quote": "harvest-as-seed economy question",
+   "verdict": "second-look",
+   "why": "This compressed phrase makes the reader unpack what decision about harvested crops becoming seeds is being requested."
+  },
   "80aa5a22bf035ba3a7b9": {
    "instead": "It's a bit confusing how the card has changed, and there...",
    "quote": "s a bit confusing how the card has changed, and there",
@@ -2105,6 +2132,12 @@
   "956fec063938a09c4372": {
    "verdict": "ok"
   },
+  "958866b249edcf9d6597": {
+   "instead": "Write down which replay actions still work after the pouch changes",
+   "quote": "which replay verbs survive the pouch change",
+   "verdict": "second-look",
+   "why": "“Survive” and “verbs” make the reader work out which replay actions still work after the pouch changes."
+  },
   "9590f12450dc27ee0536": {
    "verdict": "ok"
   },
@@ -2270,6 +2303,9 @@
   "9fe9e17f4027843d46a4": {
    "verdict": "ok"
   },
+  "a0026b3a30162e6ab14b": {
+   "verdict": "ok"
+  },
   "a028835926dddc429357": {
    "verdict": "ok"
   },
@@ -2374,6 +2410,9 @@
    "why": "\"The four looks\" assumes prior context; which four, and what kind of testing, are not specified."
   },
   "a5cf37a1e813bfd7b66c": {
+   "verdict": "ok"
+  },
+  "a61b7a34feb87bef2dcb": {
    "verdict": "ok"
   },
   "a6a2dcd72c5938db46d3": {
@@ -2871,6 +2910,9 @@
    "verdict": "decode",
    "why": "The reader cannot tell what is being switched or what the temporary change means."
   },
+  "caf833e131f5e52ef4e1": {
+   "verdict": "ok"
+  },
   "cb076e74671bc8344a57": {
    "baselined": "2026-09-19",
    "instead": "Re-run the writing check over the dashboard once the writing-rules checker is deployed",
@@ -2890,6 +2932,9 @@
    "quote": "Check whether the generation pipeline's alpha step leaves near-white behind",
    "verdict": "decode",
    "why": "\"Alpha step\" is image-processing jargon (transparency channel handling); \"leaves near-white behind\" cryptically describes a technical artifact the reader would have to decode."
+  },
+  "cb3cf67cf1ceb7a6957d": {
+   "verdict": "ok"
   },
   "cb811c4681baae83f29a": {
    "verdict": "ok"
@@ -3176,6 +3221,12 @@
    "verdict": "second-look",
    "why": "Stand is unclear on its own—the reader has to infer it means 'where do we stand' rather than having it stated plainly."
   },
+  "dd10e9aa64317c0c8c8e": {
+   "instead": "Commit the five recorded sessions that have not yet been committed",
+   "quote": "waiting in the working tree",
+   "verdict": "decode",
+   "why": "A reader unfamiliar with version control would have to ask what it means for sessions to be waiting there."
+  },
   "dd40587a97a3d217c753": {
    "baselined": "2026-09-19",
    "instead": "Show previous frame faintly",
@@ -3271,6 +3322,12 @@
   "e3b3ad0fad8efdb5bdb0": {
    "verdict": "ok"
   },
+  "e54239837fe58e0a0c2a": {
+   "instead": "Make the sprite editor use the seamless ground sheet as one image instead of cutting it into multiple tiles",
+   "quote": "treat a seamless ground sheet as its single tile",
+   "verdict": "decode",
+   "why": "This describes the editor's internal handling rather than plainly stating how the image should be used."
+  },
   "e55ebf492af89af62241": {
    "verdict": "ok"
   },
@@ -3360,6 +3417,9 @@
    "quote": "butler's 47 commands all move build files",
    "verdict": "decode",
    "why": "Butler is itch.io's deployment tool, not introduced, leaving the reader unable to understand what is being referenced."
+  },
+  "ed4c155c4873ad212577": {
+   "verdict": "ok"
   },
   "ed6b6d90a76adfb6942c": {
    "verdict": "ok"
