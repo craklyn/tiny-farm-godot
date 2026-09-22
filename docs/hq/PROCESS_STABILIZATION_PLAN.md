@@ -1,7 +1,7 @@
 # Bring HQ's work process to a known-good state
 
 Date: 2026-09-22
-Status: IN PROGRESS
+Status: VERIFIED; THREE HISTORICAL CARD FOLLOW-UPS REMAIN
 Owner: Chief of Staff
 
 ## Outcome
@@ -110,4 +110,14 @@ Cards: `w9b453fb70c7`, `w8e71933a1a9`, `w37ca945abca2`.
 - 2026-09-22 10:35 PDT — Paused new automatic task starts. One already-running candidate check was allowed to continue.
 - 2026-09-22 — Initial survey found nine in-scope cards. Plan review added three verification-integrity cards and one unfiled Bullpen classification defect necessary for the stated outcome. Foundational landing, retry-context, attention-count, and hand-back cards are already solved and will not be rerun.
 - 2026-09-22 — Plan review corrected lifecycle gaps around auto-landing, reviewer lessons, Undo, wake events, stale writes, test discovery, and safe end-to-end verification.
-- Next — Implement clusters A through E in isolated worktrees.
+- 2026-09-22 — Implemented clusters A through E in isolated worktrees and landed reviewed commits `459e9c5`, `63c875c`, `ba68a69`, `64399ce`, `0733f41`, and `ede6356` on main. The queue remains paused while the historical cards are reconciled.
+- 2026-09-22 — The complete HQ runner passed 27/27 locally discovered test files with no skips or failures; Animation Lab passed 11/11; the frontend static check and offline end-to-end process canary passed. Both isolated Godot suites passed (2,853 unit assertions and 969 integration assertions, zero failures). HQ was restarted and the live Bullpen showed the paused state and grouped work items.
+- 2026-09-22 — Offline writing verification still reports four MUST FIX titles on unrelated local work-card data, plus existing advisory notes. This does not establish a new code failure or a clean writing pass. The live writing judge was not run because its external submission was not authorized in this environment.
+- 2026-09-22 — CI could not be queried from this sandbox: the installed `gh` command is blocked by snap confinement and direct GitHub DNS is unavailable. The local suite results above are the verification evidence, not a claim about remote CI.
+- 2026-09-22 — Live Bullpen inspection found a grouped disclosure whose nested card link stole the expand action. Landed `329499d` to separate those actions, restarted HQ, and observed the row expand in place and its separate “Open work card” link navigate. The full HQ runner then passed 28/28 locally discovered files with browser access; its two Chrome fixtures cannot start under the restricted shell sandbox alone.
+- 2026-09-22 — Applied the guarded process-card audit. Nine bounded cards closed with operator-attributed commit and test evidence; the wider language sweep and writing verification remain queued; the old decision-action card retains its failed-review and revision history but is held out of scheduling until its independently-landed implementation is explicitly linked. No native checker approval or Daniel acceptance was inferred. The dry-run remained applicable after application.
+- 2026-09-22 — The first reconciliation fixture incorrectly copied live cards and failed after the real audit changed them. Replaced it with synthetic immutable fixtures in `d59d66c`; the full HQ runner passed 29/29 locally discovered test files with browser access after the live audit.
+- 2026-09-22 — Landed `da7f27e` so the held decision-action card no longer promises an automatic retry or offers actions that cannot resolve the operator hold. Restarted HQ and observed the preserved result/history and explicit “Nothing starts automatically” message. HQ runner passed 29/29 again; frontend collision check passed.
+- 2026-09-22 — A Queue navigation once displayed “Running” while the policy and Bullpen said “Paused.” A hard reload and a direct-card-to-Queue browser reproduction both showed the correct Paused state; the local `/api/execution` endpoint also reported paused. No reproducible code defect was found, so no speculative patch was made.
+- Follow-ups — The wider rendered-language sweep and writing verification remain open. The decision-action card remains held from scheduling until its rejected candidate and separately-landed implementation are explicitly linked. This audit is a process-state reconciliation, not a substitute for that provenance or a claim that those three cards are done.
+- Next — Reconcile historical process cards against the landed commits, inspect the final live state, and resume automatic starts only when no process card can relaunch obsolete or overlapping work.
