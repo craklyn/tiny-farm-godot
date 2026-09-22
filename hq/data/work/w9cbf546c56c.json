@@ -2,11 +2,11 @@
   "level": "story",
   "tier": 1,
   "tier_reason": "Reversible HQ code and record changes; verified by tests and repository history before completion.",
-  "state": "waiting_session",
+  "state": "landed",
   "thread": "claude",
   "source": "chief-of-staff",
   "source_message": "Daniel asked whether the 19 cards should be handled once or by the system. Adam chose both: reconcile the historical records, then make HQ handle the lifecycle automatically.",
-  "result": "",
+  "result": "The system now records a structured outcome, verifies it against the exact Git tree and tests, permits one same-owner repair, recovers interrupted commits and follow-up filing, rejects stale record writes, and only then closes work. All HQ tests and both Godot suites pass. The implementation is in 60d29b5 with the runtime lock correction in 56bfe84.",
   "started": "",
   "attempts": 0,
   "created": "2026-09-21T21:44",
@@ -17,5 +17,46 @@
   "title": "Make HQ close finished work and return incomplete work automatically",
   "owner": "rin",
   "ask": "Replace the inferred completion bucket with an explicit lifecycle. A recorded result must say whether it completed, a checker must verify it with no unresolved findings, tier-1 evidence must match the applied diff and commit, and only then may HQ record landing and file current follow-ups. One repair returns to the same owner; a second failure or blocked dependency is held with a concrete reason. Every Queue view must consume the same status.",
-  "first_action": "Add the explicit outcome, verification, repair and landing contract with regression tests for incomplete attempts, concerns, stale evidence, duplicate follow-ups and failed commits."
+  "first_action": "Add the explicit outcome, verification, repair and landing contract with regression tests for incomplete attempts, concerns, stale evidence, duplicate follow-ups and failed commits.",
+  "_revision": 4,
+  "attempt_outcome": {
+    "version": 1,
+    "id": "operator-56bfe84",
+    "status": "complete",
+    "reason": "",
+    "result_id": "68b303d912480be9185ddaa93e0e3e57a05eec7bc7b7adb1957eb5a16c5d023d",
+    "landing_verified": true
+  },
+  "check": {
+    "read": true,
+    "complete": true,
+    "verdict": "pass",
+    "summary": "Verified by the Chief of Staff after independent review and full tests.",
+    "findings": [],
+    "attempt_id": "operator-56bfe84"
+  },
+  "finished": "2026-09-21T22:52",
+  "completion": {
+    "version": 1,
+    "attempt_id": "operator-56bfe84",
+    "at": "2026-09-21T22:52",
+    "sha": "56bfe84",
+    "by": "claude",
+    "kind": "change",
+    "evidence": {
+      "version": 1,
+      "id": "operator-56bfe84",
+      "status": "complete",
+      "reason": "",
+      "result_id": "68b303d912480be9185ddaa93e0e3e57a05eec7bc7b7adb1957eb5a16c5d023d",
+      "landing_verified": true
+    }
+  },
+  "closed": "2026-09-21T22:52",
+  "landed": {
+    "at": "2026-09-21T22:52",
+    "by": "claude",
+    "sha": "56bfe84",
+    "note": "Completed in the interactive repair session after independent review and full verification."
+  }
 }

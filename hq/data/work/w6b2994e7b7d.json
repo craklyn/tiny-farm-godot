@@ -2,11 +2,11 @@
   "level": "story",
   "tier": 1,
   "tier_reason": "Reversible HQ code and record changes; verified by tests and repository history before completion.",
-  "state": "waiting_session",
+  "state": "landed",
   "thread": "claude",
   "source": "chief-of-staff",
   "source_message": "Daniel asked whether the 19 cards should be handled once or by the system. Adam chose both: reconcile the historical records, then make HQ handle the lifecycle automatically.",
-  "result": "",
+  "result": "The frozen 19-card audit was applied exactly once: eight completed assignments closed, nine incomplete assignments returned to their recorded owners, one duplicate closed against its canonical reading, and one qualified engineering conclusion was held for operator judgment. The migration is idempotent and recorded in c6a9b6b.",
   "started": "",
   "attempts": 0,
   "created": "2026-09-21T21:44",
@@ -39,5 +39,46 @@
     "wc1886486f14",
     "w5a4005536e1",
     "wf1b3b951813"
-  ]
+  ],
+  "_revision": 4,
+  "attempt_outcome": {
+    "version": 1,
+    "id": "operator-c6a9b6b",
+    "status": "complete",
+    "reason": "",
+    "result_id": "6c40f0b818eb50cae8f7f1271491d6e4e71d2a81396fd80d9229f362e8c278f9",
+    "landing_verified": true
+  },
+  "check": {
+    "read": true,
+    "complete": true,
+    "verdict": "pass",
+    "summary": "Verified by the Chief of Staff after independent review and full tests.",
+    "findings": [],
+    "attempt_id": "operator-c6a9b6b"
+  },
+  "finished": "2026-09-21T22:52",
+  "completion": {
+    "version": 1,
+    "attempt_id": "operator-c6a9b6b",
+    "at": "2026-09-21T22:52",
+    "sha": "c6a9b6b",
+    "by": "claude",
+    "kind": "change",
+    "evidence": {
+      "version": 1,
+      "id": "operator-c6a9b6b",
+      "status": "complete",
+      "reason": "",
+      "result_id": "6c40f0b818eb50cae8f7f1271491d6e4e71d2a81396fd80d9229f362e8c278f9",
+      "landing_verified": true
+    }
+  },
+  "closed": "2026-09-21T22:52",
+  "landed": {
+    "at": "2026-09-21T22:52",
+    "by": "claude",
+    "sha": "c6a9b6b",
+    "note": "Completed in the interactive repair session after independent review and full verification."
+  }
 }
